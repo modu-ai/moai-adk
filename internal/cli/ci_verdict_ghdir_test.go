@@ -23,11 +23,17 @@ func TestDefaultGhRunnerRunsGhInTheProjectRoot(t *testing.T) {
 	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	root := t.TempDir()
+	// pwd reports the symlink-resolved path (/private prefix on darwin);
+	// compare against the same normalization.
+	want, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("EvalSymlinks: %v", err)
+	}
 	out, err := defaultGhRunner(root, "run", "list")
 	if err != nil {
 		t.Fatalf("defaultGhRunner: %v", err)
 	}
-	if got := strings.TrimSpace(string(out)); got != root {
-		t.Errorf("gh ran in %q, want the resolved project root %q (the positional vector: gh resolved the repo from the process cwd)", got, root)
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Errorf("gh ran in %q, want the resolved project root %q (the positional vector: gh resolved the repo from the process cwd)", got, want)
 	}
 }
