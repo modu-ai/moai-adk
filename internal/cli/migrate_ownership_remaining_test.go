@@ -396,68 +396,13 @@ func TestRemainingListKeeps313UnregisteredCopies(t *testing.T) {
 		}
 	})
 
-	t.Run("RenderedByTheUpdateFlow", func(t *testing.T) {
-		home := installMigrationUserCounterparts(t)
-		t.Setenv("HOME", home)
-		t.Setenv("USERPROFILE", home)
-		requireUserCounterpart(t, home, migIdenticalSkill)
-		root := buildMigrationFixture(t)
-		planted := plantUnregisteredMirrorCopies(t, root)
-		prevVerbose := updateVerboseMode
-		t.Cleanup(func() { updateVerboseMode = prevVerbose; updateLedger.reset() })
+	t.Run("RenderedByTheUpdateFlow", func(t *testing.T) { renderedFlowCase(t, false) })
 
-		// Run 1: a plain run (the project version differs from the binary, so it
-		// reaches reconciliation), default view.
-		updateLedger.reset()
-		updateVerboseMode = false
-		run1 := runUpdateFlowPlain(t, root)
-		if run1.Skipped {
-			t.Fatalf("run 1 was skipped before reconciliation; it judged nothing")
-		}
-		assertFileAbsent(t, root, migIdenticalSkill) // the reach control was removed
-		for _, p := range defaultRenderProblems(terminalBlockLines(), run1.Out, planted) {
-			t.Errorf("default view: %s", p)
-		}
-
-		// Run 2: --force, --verbose. A plain same-version re-run would be skipped,
-		// so the run is forced and its reach is asserted (rule 7).
-		updateLedger.reset()
-		updateVerboseMode = true
-		run2 := runUpdateFlowForced(t, root)
-		if run2.NewPriorManifest == "" {
-			t.Fatalf("run 2 left no new manifest.prior.json; the Backup stage was not reached")
-		}
-		if got, err := os.ReadFile(run2.NewPriorManifest); err != nil || !bytes.Equal(got, run2.StartManifest) {
-			t.Errorf("run 2: manifest.prior.json is not the manifest as the run loaded it (%v)", err)
-		}
-		block2 := terminalBlockLines()
-		// Run 1's start manifest is kept as a prior generation for run 2. It
-		// registered two files under `.claude/skills` whose bytes equal two of
-		// the planted copies, and design.md D-2 reads a record with the same hash
-		// under ANOTHER key as "the original deployed path is missing" — not as
-		// "no record at all". Those two rows therefore carry that narrower
-		// reason in run 2; every other copy keeps no-provenance-record.
-		sameHashElsewhere := map[string]bool{
-			".agents/skills/moai-foundation-core/SKILL.md": true, // sibling of migIdenticalSkill
-			".agents/skills/moai-workflow-tdd/SKILL.md":    true, // sibling of migModifiedSkill
-		}
-		reasonOf := func(rel string) keepReason {
-			if sameHashElsewhere[rel] {
-				return evidenceIncompleteReason(evidenceOriginalPath)
-			}
-			return keepNoProvenanceRecord
-		}
-		for _, p := range verboseRenderProblems(block2, planted, reasonOf) {
-			t.Errorf("verbose view: %s", p)
-		}
-
-		for _, p := range planted {
-			got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(p.rel)))
-			if err != nil || !bytes.Equal(got, p.data) {
-				t.Errorf("%s did not survive the two update runs byte for byte (%v)", p.rel, err)
-			}
-		}
-	})
+	// Two updates whose run backups fall in the same clock second share one run
+	// directory (the name has one-second resolution), and the later run's own
+	// copy replaces the earlier generation in it. The shared directory is
+	// simulated deterministically here instead of waiting for the clock.
+	t.Run("RenderedByTheUpdateFlowInOneSecond", func(t *testing.T) { renderedFlowCase(t, true) })
 
 	t.Run("MixedReasonsEveryRowHasOne", func(t *testing.T) {
 		home := installMigrationUserCounterparts(t)
@@ -487,4 +432,90 @@ func TestRemainingListKeeps313UnregisteredCopies(t *testing.T) {
 			t.Errorf("the mixed fixture produced %d distinct reasons, want at least 4", len(reasons))
 		}
 	})
+}
+
+// shareRunDirectoryWithRun1 makes the next run behave as if its run backup fell
+// in the same clock second as run 1: when the Backup stage writes its copy of the
+// start-of-run manifest, run 1's copy is first moved into that very directory,
+// where the real writer then replaces it — the end state of a shared directory.
+func shareRunDirectoryWithRun1(t *testing.T, run1 forcedRun) {
+	t.Helper()
+	real := priorManifestWriter
+	swapPriorManifestWriter(t, func(runDir string, data []byte) error {
+		if err := os.MkdirAll(runDir, 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(run1.NewPriorManifest, filepath.Join(runDir, priorManifestName)); err != nil {
+			return err
+		}
+		return real(runDir, data)
+	})
+}
+
+// renderedFlowCase drives the real update flow twice over the 313-copy fixture
+// and judges the default view of run 1 and the --verbose view of run 2.
+func renderedFlowCase(t *testing.T, shareRunDirectory bool) {
+	home := installMigrationUserCounterparts(t)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	requireUserCounterpart(t, home, migIdenticalSkill)
+	root := buildMigrationFixture(t)
+	planted := plantUnregisteredMirrorCopies(t, root)
+	prevVerbose := updateVerboseMode
+	t.Cleanup(func() { updateVerboseMode = prevVerbose; updateLedger.reset() })
+
+	// Run 1: a plain run (the project version differs from the binary, so it
+	// reaches reconciliation), default view.
+	updateLedger.reset()
+	updateVerboseMode = false
+	run1 := runUpdateFlowPlain(t, root)
+	if run1.Skipped {
+		t.Fatalf("run 1 was skipped before reconciliation; it judged nothing")
+	}
+	assertFileAbsent(t, root, migIdenticalSkill) // the reach control was removed
+	for _, p := range defaultRenderProblems(terminalBlockLines(), run1.Out, planted) {
+		t.Errorf("default view: %s", p)
+	}
+
+	// Run 2: --force, --verbose. A plain same-version re-run would be skipped,
+	// so the run is forced and its reach is asserted (rule 7).
+	updateLedger.reset()
+	updateVerboseMode = true
+	if shareRunDirectory {
+		shareRunDirectoryWithRun1(t, run1)
+	}
+	run2 := runUpdateFlowForced(t, root)
+	if run2.NewPriorManifest == "" {
+		t.Fatalf("run 2 left no new manifest.prior.json; the Backup stage was not reached")
+	}
+	if got, err := os.ReadFile(run2.NewPriorManifest); err != nil || !bytes.Equal(got, run2.StartManifest) {
+		t.Errorf("run 2: manifest.prior.json is not the manifest as the run loaded it (%v)", err)
+	}
+	block2 := terminalBlockLines()
+	// Run 1's start manifest is kept as a prior generation for run 2. It
+	// registered two files under `.claude/skills` whose bytes equal two of
+	// the planted copies, and design.md D-2 reads a record with the same hash
+	// under ANOTHER key as "the original deployed path is missing" — not as
+	// "no record at all". Those two rows therefore carry that narrower
+	// reason in run 2; every other copy keeps no-provenance-record.
+	sameHashElsewhere := map[string]bool{
+		".agents/skills/moai-foundation-core/SKILL.md": true, // sibling of migIdenticalSkill
+		".agents/skills/moai-workflow-tdd/SKILL.md":    true, // sibling of migModifiedSkill
+	}
+	reasonOf := func(rel string) keepReason {
+		if sameHashElsewhere[rel] {
+			return evidenceIncompleteReason(evidenceOriginalPath)
+		}
+		return keepNoProvenanceRecord
+	}
+	for _, p := range verboseRenderProblems(block2, planted, reasonOf) {
+		t.Errorf("verbose view: %s", p)
+	}
+
+	for _, p := range planted {
+		got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(p.rel)))
+		if err != nil || !bytes.Equal(got, p.data) {
+			t.Errorf("%s did not survive the two update runs byte for byte (%v)", p.rel, err)
+		}
+	}
 }
