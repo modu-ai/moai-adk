@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -36,15 +37,43 @@ type baseFreshnessSettings struct {
 
 // baseFreshnessGateConfig reads the gate's two keys from the project at root.
 func baseFreshnessGateConfig(root string) baseFreshnessSettings {
-	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	dotMoai := filepath.Join(root, ".moai")
+	loader := config.NewLoader()
+	cfg, err := loader.Load(dotMoai)
 	if err != nil {
 		return baseFreshnessSettings{Err: err}
 	}
 	if cfg == nil {
 		return baseFreshnessSettings{Err: errors.New("the configuration did not load")}
 	}
+	// The loader turns a workflow.yaml read or parse failure into a warning plus
+	// defaults and returns no error, so a broken file would read as "gate off".
+	// A verdict on defaults nobody chose is no verdict: report the failure.
+	if cause := workflowConfigFailure(dotMoai, loader.LoadedSections()); cause != nil {
+		return baseFreshnessSettings{Err: cause}
+	}
 	gate := cfg.Workflow.BaseFreshnessGate
 	return baseFreshnessSettings{Enabled: gate.Enabled, K: gate.MaxBehindLandings}
+}
+
+// workflowConfigFailure reports why workflow.yaml, present on disk, did not
+// load: nil when the file is absent (defaults are the intended state) or the
+// loader marked the workflow section loaded.
+func workflowConfigFailure(dotMoai string, loaded map[string]bool) error {
+	data, err := os.ReadFile(filepath.Join(dotMoai, "config", "sections", "workflow.yaml"))
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return nil
+	case err != nil:
+		return fmt.Errorf("read workflow.yaml: %w", err)
+	case loaded["workflow"]:
+		return nil
+	}
+	var probe map[string]any
+	if perr := yaml.Unmarshal(data, &probe); perr != nil {
+		return fmt.Errorf("parse workflow.yaml: %w", perr)
+	}
+	return errors.New("parse workflow.yaml: a value has the wrong type")
 }
 
 // checkBaseFreshness judges the candidate tree in dir for card against the
@@ -66,6 +95,10 @@ func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch 
 		_, _ = fmt.Fprintln(notices, res.Notice)
 	}
 	if !res.Admit {
+		// The root error handler renders nothing for an exit-coded error, so the
+		// verb writes the sentinel line itself (the idiom auditPlanFail uses);
+		// without it the refusal exits 16 with no output at all.
+		_, _ = fmt.Fprintln(notices, res.Refusal)
 		return &exitCodeError{code: factory.BaseFreshnessExitRefused, msg: res.Refusal}
 	}
 	return nil

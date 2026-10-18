@@ -170,6 +170,14 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		reason := fmt.Sprintf("no valid re-measure record for tree %s (%v)", ShortSHA(res.Tree), err)
 		return violation(res, in, reason, "Run moai integration remeasure after the last absorb, then retry.")
 	}
+	// The record file is keyed by the current tree, but the reader returns the
+	// tree field as written (the merge step's cause 4 relies on that), so a
+	// forged or corrupted file can name another tree. Only a record that names
+	// the tree being judged is a record for it.
+	if rec.Tree != res.Tree {
+		reason := fmt.Sprintf("the re-measure record stored for tree %s names tree %s, not the current tree", ShortSHA(res.Tree), ShortSHA(rec.Tree))
+		return violation(res, in, reason, "Run moai integration remeasure after the last absorb, then retry.")
+	}
 
 	// A base the tip does not descend from is stale whatever K is.
 	if _, err := git("merge-base", "--is-ancestor", rec.Base, res.Tip); err != nil {
