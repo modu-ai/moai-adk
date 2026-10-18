@@ -381,6 +381,12 @@ func TestMain(m *testing.M) {
 	// one. Tests that exercise the chooser pin the seam true for their own
 	// duration (SPEC-LANE-JOIN-RUN-SELECT-001).
 	runSelectionInteractive = func() bool { return false }
+	// The t1779 environment gate refuses a lane launch from a terminal-less
+	// or sandboxed context; no test may depend on this process's terminal
+	// state (a go test run's stdout is not a tty and CI may carry no TERM).
+	// Tests that exercise the gate re-arm the real body for their own
+	// duration.
+	codexLaneEnvironmentRefusalFn = func([]string) string { return "" }
 	// The project directory a launching session exports must not steer any
 	// test's project-root resolution (SPEC-AUDIT-MODEL-CONVERGE-001
 	// REQ-ACV-019); TestMain_ScrubsClaudeProjectDir guards this line.

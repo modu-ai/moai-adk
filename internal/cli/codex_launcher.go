@@ -991,6 +991,14 @@ const codexLaneAutoPrompt = "Run `moai todo --auto-lane` now. " +
 // `codex` launch, and the lane claim's pid anchor stays valid).
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
+	// Card t1779: the environment gate is the launch's FIRST act — ahead of
+	// the parent-checkout rule, the run join, the lane-label claim, the
+	// stamps, and the direct door's launch-pending registration — so a
+	// known-bad environment costs one stderr line and zero side effects.
+	if diag := codexLaneEnvironmentRefusalFn(os.Environ()); diag != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
+		return &exitCodeError{code: 1}
+	}
 	// The lane session leases through `moai todo --auto` from the parent
 	// checkout — the lease machinery's own precondition (REQ-SD-010).
 	launchDir := codexLaneLaunchDir()
