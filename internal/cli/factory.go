@@ -520,6 +520,11 @@ const ambiguousFactoryLeaderSentinel = "AMBIGUOUS_FACTORY_LEADER"
 // gate matches it to decide whether discovery may run.
 const noActiveFactorySentinel = "NO_ACTIVE_FACTORY"
 
+// joinCancelledSentinel is the lane chooser's cancel answer
+// (SPEC-LANE-JOIN-RUN-SELECT-001 REQ-LJR-004): the operator cancelled, entered
+// nothing, or input ended before a valid choice. No run is joined.
+const joinCancelledSentinel = "FACTORY_JOIN_CANCELLED"
+
 // ambiguousJoinGuidance appends the resolution commands to the typed
 // ambiguity error (card t1444 ③): the runs are already named with the facts
 // that distinguish them (owner, lead pid, start); the operator gets the
@@ -604,6 +609,13 @@ func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunc
 	if isAmbiguous {
 		// ③: every escape of this error carries the resolution commands.
 		err = ambiguousJoinGuidance(root, err)
+	}
+	// SPEC-LANE-JOIN-RUN-SELECT-001: an unnamed ambiguity on an interactive
+	// session is answered by the chooser. An explicit run or a named leader is
+	// a decision and never reaches it; off a terminal the guided refusal above
+	// stands.
+	if isAmbiguous && explicit == "" && leadTarget == "" && runSelectionInteractive() {
+		return chooseLaneRun(root, timing)
 	}
 	// Discovery answers two refusals: record absence — the original
 	// fallback — and, since card t1444 ①, live ambiguity when the operator
