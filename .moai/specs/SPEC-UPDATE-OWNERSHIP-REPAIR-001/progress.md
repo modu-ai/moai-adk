@@ -1315,6 +1315,106 @@ exit=1
 
 종료 코드 1.
 
+**수정 (커밋 C `3d8045852c`, 시험 파일만 — 제품 코드 변경 없음).** 같은 초 공유는 `internal/cli/update/backup` 의 기존 동작이고 이 카드가 건드리지 않는 파일이므로 제품은 고치지 않았다. 시험이 시계 운에 기대던 두 가정을 없앴다, 단언은 약하게 하지 않고:
+
+1. 실행 2 는 시작 전에 실행 1 의 실행 백업 이름이 가리키는 초보다 **뒤의 시계 초** 가 될 때까지 기다린다 (`awaitClockSecondAfter`: 고정 대기가 아니라 25ms 간격 폴링, 최대 5초, 이름이 시각이 아니거나 시계가 안 가면 큰 소리로 실패). 그러면 실행 2 의 백업이 실행 1 의 디렉터리를 쓸 수 없다.
+2. 기대 이유가 「실행 1 의 세대가 보존되었는가」 라는 **관측된 사실** 을 따른다 (`priorGenerationRetained`: 현재 실행 자신의 것을 뺀 `manifest.prior.json` 중 실행 1 의 시작 매니페스트와 바이트가 같은 것이 있는가). 보존되었으면 두 복사본이 `evidence-incomplete:original-deployed-path`, 아니면 313개 모두 `no-provenance-record` 이고 프로젝트에 `manifest.prior.json` 이 정확히 하나다. 관측과 시험 변형 (`shareRunDirectory`) 이 어긋나면 디렉터리 이름 둘을 담은 메시지로 즉시 실패한다. 결정적 변형 `RenderedByTheUpdateFlowInOneSecond` 가 공유 쪽 가지를, 기본 변형이 별개 디렉터리 쪽 가지를 매번 정확히 단언한다.
+
+**약해지지 않았음을 보이는 변이 (트리 `3d8045852c` + 임시 변경, 되돌림 `cmp` 확인)**: `newPriorGenerationSource.generations()` 가 항상 빈 세대를 돌려주게 하면 기본 변형이 붉다 (공유 변형은 PASS — 그 가지는 세대가 없는 것이 맞다).
+
+```text
+    migrate_ownership_remaining_test.go:534: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenanc
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (7.83s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (4.16s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (3.67s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	9.155s
+FAIL
+RESTORED
+```
+
+**증거 (트리 `3d8045852c`, 작업 트리 깨끗; 측정 시작 시점 `60.43 41.63 44.85` 의 부하 평균)**
+
+연속 7회 — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$' -count=1 -v` (매 실행 한 번씩 따로, 줄은 원문에서 추림). 7/7 통과, 모든 rc 0:
+
+```text
+run 1 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (19.33s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (3.17s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (3.43s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	20.856s
+run 2 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (23.09s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (2.75s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (3.02s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.287s
+run 3 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (20.25s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (2.19s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (3.52s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	21.290s
+run 4 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (16.12s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (2.15s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (2.17s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	17.108s
+run 5 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (15.33s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (2.20s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (2.37s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	16.247s
+run 6 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (22.96s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (2.15s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (5.14s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.200s
+run 7 rc=0
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (22.24s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (4.01s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (3.17s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	23.510s
+```
+
+선택자 묶음 한 번 (기준선 11 + chunk 1 의 22 + chunk 2 의 새 최상위 시험 12 = 45개; 앞서 쓴 34개 선택자의 상위 집합) — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<45개 앵커된 이름>)$' -count=1 -v`: 최상위 `--- PASS` 45개, `--- FAIL`/`--- SKIP` 0개.
+
+```text
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	70.128s
+exit=0
+```
+
+품질 (트리 `3d8045852c`): 빌드, 윈도 빌드, gofmt, vet 모두 `exit=0`; 린트는 이전과 같은 `factory_run_adopt.go` 의 기존 errcheck 3건뿐이다.
+
+```text
+HEAD=3d8045852c24ba9befa976639ea2445dc37dc8ca
+$ go build ./...
+exit=0
+$ GOOS=windows GOARCH=amd64 go build ./...
+exit=0
+$ gofmt -l internal/cli internal/manifest
+exit=0
+$ go vet ./internal/cli/ ./internal/manifest/
+exit=0
+$ golangci-lint run ./internal/manifest/ ./internal/cli/
+3 issues:
+* errcheck: 3
+exit=1
+```
+
+**시계 초 경계에 기대는 다른 시험 목록 (chunk 1, 2 에서 내가 쓴 것을 코드로 확인; 말없이 바꾸지 않았다)**
+
+| 시험 / 도우미 | 시계 의존 | 처리 |
+|---|---|---|
+| `TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow` | 두 실행의 실행 백업이 같은 초면 실행 1 의 세대가 대체됨 (이번 간헐 실패) | **이번에 고침** (위) |
+| `TestPriorManifestRetainedInRunBackup` (`update_prior_manifest_test.go:220,260`) | 실행 2, 3 앞에 `time.Sleep(1100ms)`. 다음 실행의 백업은 이전 실행의 백업보다 최소 1.1초 뒤이므로 이름이 항상 달라진다 — 부하는 간격을 늘릴 뿐 줄이지 않는다 | **그대로 둠** (고정 대기가 하한이라 결정적이며 chunk 1 정직한 회계 3 에 기록됨). 폴링으로 바꾸면 의도는 같고 더 빠르나 말없는 변경이 되므로 목록만 적는다 |
+| `runUpdateFlow` 도우미 (`migrate_ownership_helpers_test.go:453`, `NewPriorManifest`) | `began := now-1s` 보다 새로운 mtime 의 `manifest.prior.json` 중 이름순 마지막을 고름. 일반(건너뛰는) 실행 직후 1초 안에 있으면 앞 실행의 파일을 새것으로 잘못 보고할 수 있음 | **그대로 둠**: `NewPriorManifest` 를 단언하는 곳은 강제 실행 뒤뿐이며 (`runUpdateFlowForced` 가 `Skipped` 를 먼저 거부하고, 이름순 마지막이 항상 가장 새 디렉터리) 건너뛴 실행의 값을 단언에 쓰는 시험은 없다. 잠재적 약점으로 공개 |
+| `TestOwnershipHelperForcedRunReachesReconciliation` | 실행 4 번을 이어 돌림 | 시계 초와 무관: 단언은 `skipped` 불리언뿐이다 |
+| `TestProfileEnvDoesNotReachProfileRoot` 카나리·대조군 | 실행마다 별개 프로젝트, 타임스탬프·실행 디렉터리 이름은 `<TS>`/`<RUN>` 으로 정규화 | 초 경계에 걸려도 구조(디렉터리 수)가 달라지지 않는다 — 코드 읽기 + 정규화를 고친 뒤 변이 없는 상태로 이 시험을 6번 실행(한 실행은 1초보다 길어 경계를 반드시 넘는다)해 차이가 없었다는 관측. 별도의 경계 강제 실험은 하지 않았다 |
+| 그 밖의 새 시험 (`StructuredRows...`, 사례 시험, 경우 시험, 특성화 시험 등) | 한 프로젝트에 한 번의 마이그레이션 또는 한 번의 실행 | 두 실행이 한 디렉터리를 공유할 수 없다 |
+| `update_prior_manifest_test.go` 와 `..._io_test.go` 의 합성 세대 (`20260101_00000N`) | 시계 초가 아니라 **날짜** 에 의존: 진짜 실행의 이름 (오늘) 이 합성 이름 (2026-01-01) 보다 뒤에 정렬되어야 하는 가지가 있다 | 지금 날짜에서 참. 시계가 2026-01-01 이전이면 순서 가정이 깨진다 — 공개만 하고 바꾸지 않았다 |
+
+**남는 제품 쪽 사실 (잔여 위험으로 공개, 이번 수정이 고치지 않음).** 같은 시계 초에 시작한 두 갱신은 이전 세대 하나를 잃는다. 방향은 보존 쪽이라 (증거가 줄어 `managed` 로 승격될 파일이 줄 뿐) 제거 방향의 오류는 없다. 두 세대를 모두 남기려면 실행 백업 디렉터리 이름의 해상도를 올리거나 (`internal/cli/update/backup`) 읽는 쪽이 한 디렉터리의 여러 세대를 읽도록 design.md D-3 항목 3 의 「정확한 이름만 읽는다」 를 고쳐야 하며 둘 다 이 카드의 범위 밖이다. 리더가 원하면 별도 카드로.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
