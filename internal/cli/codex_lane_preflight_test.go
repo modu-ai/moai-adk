@@ -159,6 +159,35 @@ func TestCodexLaneLaunchRefusesPlainSessionRecursion(t *testing.T) {
 	}
 }
 
+// TestCodexSpawnCommandCarriesSessionMarker — the BOTH-DOORS
+// self-identification contract: the direct child env (codexChildEnv) and the
+// spawn pane's command env (buildCodexSpawnCommandWithEnv) must carry the
+// marker identically. The spawn door assembles its pane env on the tmux
+// command line, never from req.Env, so a door that drops the stamp revives
+// the F1 recursion class on a real-TTY pane (card t1779, sync-audit
+// round-2 F4).
+func TestCodexSpawnCommandCarriesSessionMarker(t *testing.T) {
+	if got := launchEnvValue(codexChildEnv(), config.EnvMoaiCodexSession); got != "1" {
+		t.Fatalf("direct door %s = %q, want \"1\"", config.EnvMoaiCodexSession, got)
+	}
+	command := buildCodexSpawnCommand("/test/codex", nil)
+	if !strings.Contains(command, config.EnvMoaiCodexSession+"=1") {
+		t.Fatalf("spawn command %q lacks %s=1 — the pane carries no session marker", command, config.EnvMoaiCodexSession)
+	}
+}
+
+// TestCodexChildEnvStampsSessionMarkerWithoutAmbient — the writer half
+// without ambient shadowing: with the marker absent from this process's
+// environment, the stamp must still land, proving the stamp rather than
+// t.Setenv inheritance (card t1779, sync-audit round-2 F3).
+func TestCodexChildEnvStampsSessionMarkerWithoutAmbient(t *testing.T) {
+	t.Setenv(config.EnvMoaiCodexSession, "")
+	_ = os.Unsetenv(config.EnvMoaiCodexSession)
+	if got := launchEnvValue(codexChildEnv(), config.EnvMoaiCodexSession); got != "1" {
+		t.Fatalf("codexChildEnv %s = %q, want the stamp \"1\" without ambient inheritance", config.EnvMoaiCodexSession, got)
+	}
+}
+
 // TestCodexLaneLaunchEnvironmentRefusalSandboxSignature — a sandbox whose
 // process-listing probe fails with "operation not permitted" reads as the
 // sandbox signature and earns the same refusal as a terminal-less

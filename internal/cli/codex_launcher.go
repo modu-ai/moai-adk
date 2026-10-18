@@ -398,6 +398,11 @@ func buildCodexSpawnCommandWithEnv(program string, args, factoryEnv []string) st
 	for _, key := range codexLaneLaunchEnvKeys {
 		parts = append(parts, key+"=")
 	}
+	// Self-identification (card t1779, sync-audit round-2 F4): the pane's env
+	// is THIS command line, never req.Env, so the marker the direct door
+	// stamps through codexChildEnv must be stamped here too — a pane without
+	// it revives the plain-session recursion class on a real-TTY pane.
+	parts = append(parts, config.EnvMoaiCodexSession+"=1")
 	for _, entry := range factoryEnv {
 		key, value, _ := strings.Cut(entry, "=")
 		parts = append(parts, key+"="+shellQuote(value))

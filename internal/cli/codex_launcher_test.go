@@ -908,6 +908,8 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 	// so without it the new window could resolve a different home than the
 	// direct path assigns.
 	// resolveCodexHomeDir's second result is the source label, not an error.
+	// The MOAI_CODEX_SESSION assignment is new (card t1779 round-2 F4): the
+	// pane's env is this command line, so both doors self-identify.
 	codexHome, _ := resolveCodexHomeDir()
 	laneBlanks := ""
 	for _, key := range codexLaneLaunchEnvKeys {
@@ -915,6 +917,7 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 	}
 	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
 		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " + laneBlanks +
+		config.EnvMoaiCodexSession + "=1 " +
 		"exec " + shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)
