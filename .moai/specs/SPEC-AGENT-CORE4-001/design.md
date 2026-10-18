@@ -47,8 +47,8 @@ call a Go test or a small command, provided the summary line reaches stdout at e
 No agent name changes. The enumeration sweep: the highest distinct-name count in the twelve bodies
 is 9 (manager-lead) against `SweepThreshold = 10`, so the source copies are not swept. The numeral
 layer scans the repository and discharges hits through path-keyed registry rows; the source copy of
-manager-design carries "13 retained agents" and needs rows keyed to
-`internal/template/agentemit/source/manager-design.md` mirroring the C1/C2/C3 rows (AC-AC4-010).
+manager-design carries "13 retained agents" and needs one ClaimCount row keyed to
+`internal/template/agentemit/source/manager-design.md` (AC-AC4-010).
 
 ## §5 Not here
 

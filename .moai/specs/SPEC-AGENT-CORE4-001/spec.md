@@ -145,6 +145,8 @@ M0 aborts and the pairs are recomputed and re-audited.
 
 ### §C.2 The `AGENTS.local.md` §2.0 rewrite (lands with M2)
 
+Run-phase note: the committed text reads "The only hand-edited layer" on the Source row while the C1 row says C1 of the eight stays hand-edited; read the Source row as "for the generated agents". The pairs below are the text as committed (AC-AC4-012 compares against them); the file itself is user-owned and a wording fix is a follow-up outside this SPEC.
+
 Exactly these eight lines of the file at the baseline change (line numbers are those at `06095bb8fa`;
 matching is by content). Line 98 becomes two lines. Everything else stays byte-identical:
 `git diff --numstat` of the M2 commit for this file prints `9	8	AGENTS.local.md`. The rule applies to the
@@ -229,6 +231,8 @@ Claude and Codex, the preload probe, the doctor check.
 | iter1 D14 core-body preservation | piece 2 | pinned [HARD]-clause list; implementer budget row |
 | iter1 D15 "never blocks a spawn" statements | piece 2 | rewrite sentence and file header; deny in a separate handler |
 | iter1 D18 doctor check name | piece 3 | registered check is "Skills Allowlist" (`internal/cli/doctor.go:306`) |
+| Baseline tests with a literal 12 (`!= 12` in `golden_test.go`, `len(roles) != 12` in `permission_contract_test.go`) and the subtests `twelve_sources_twelve_definitions`, `contract_rows_unchanged_for_twelve` | piece 2 | REQ-AC4-011 forbids changing them in piece 1; piece 2 retargets them when it retires the eight, without asserting a literal 12 |
+| Frozen C3 header `# Neutral source: .claude/agents/moai/<name>.md (body carried verbatim).` in every C3 file | piece 2 | the wording predates the agent source layer; correct it in the emitter when the eight are absorbed |
 | C1 of the eight | piece 2 | C1 of the eight stays hand-managed until piece 2 absorbs or retires them (sequencing per board d-20261018T070809Z-924f, decision Q20); the card completion "copy diff 0" for them is piece 2's |
 | Q2, Q3, Q6-Q11 (open); Q5, Q12-Q15 (withdrawn, re-open where needed) | pieces 2, 3 | `decision-index.md` hand-off rows |
 
