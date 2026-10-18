@@ -288,7 +288,9 @@ func writeFileAtomic(rt *os.Root, root, rel string, data []byte) error {
 		return err
 	}
 	_, werr := f.Write(data)
-	err = errors.Join(werr, f.Close())
+	// OpenFile applies the process umask to perm; the mode is set explicitly so
+	// an existing definition keeps its bits and a new one gets 0644.
+	err = errors.Join(werr, f.Chmod(perm), f.Close())
 	if err == nil {
 		testHook("before-commit")
 		err = refuseLinks(root, rel)

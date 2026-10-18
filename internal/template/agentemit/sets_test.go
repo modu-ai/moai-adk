@@ -485,10 +485,15 @@ func TestUpdateDirectorySwapDuringWrite(t *testing.T) {
 }
 
 // TestUpdatePreservesFileMode pins that replacing an existing definition keeps
-// its permission bits instead of resetting them.
+// its permission bits instead of resetting them, even under a restrictive
+// process umask (which would otherwise strip them from the new file). The
+// umask is process-global, so this test must not run in parallel.
 func TestUpdatePreservesFileMode(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permission bits are not meaningful on Windows")
+	}
+	if !restrictUmask(t) {
+		t.Skip("the platform has no process umask")
 	}
 	man := mustManifest(t)
 	root, lay := fixtureRoot(t, twoSources())
@@ -502,7 +507,12 @@ func TestUpdatePreservesFileMode(t *testing.T) {
 	}
 	fi, err := os.Stat(stale)
 	if err != nil || fi.Mode().Perm() != 0o640 {
-		t.Errorf("replaced file mode = %v, %v; want 0640 preserved", fi.Mode().Perm(), err)
+		t.Errorf("replaced file mode = %v, %v; want -rw-r----- (0640) preserved under umask 077", fi.Mode().Perm(), err)
+	}
+	// A file created fresh gets the default 0644, not a umask-reduced mode.
+	fresh, err := os.Stat(filepath.Join(root, "out/c2/beta.md"))
+	if err != nil || fresh.Mode().Perm() != 0o644 {
+		t.Errorf("new file mode = %v, %v; want 0644", fresh.Mode().Perm(), err)
 	}
 	if _, err := agentemit.Check(root, lay, man); err != nil {
 		t.Errorf("Check after Update: %v", err)
