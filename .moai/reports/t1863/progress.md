@@ -253,7 +253,7 @@ Verdict read: `.moai/reports/t1863/sync-audit-cold.md` round 2 section (FAIL 0.9
 
 **GREEN (verbatim)**: `--- PASS: TestAdoptRunCASRefusesPostClassificationBackendFlip (0.31s)` / `--- PASS: TestAdoptRunPeerGuardRefusesInsideWindow (0.24s)`. Scoped verification: AC-003 `ok 8.832s` (both legs), AC-004 `ok 9.257s` (3 variants), round-2 window refusals `ok 8.762s`, T1 regressions `TestFactoryLeadRefusesCodexLedRun ok 4.405s` / `TestEnterSelectedFactoryRunRefusesLiveLegacyPeer ok 2.611s`, resume baselines (AdoptsSingleCandidate 3.458s / WarnsOnMultipleCandidates 1.889s / WarnsCodexLedCandidate 2.456s), homestate adopt baselines (RefusesChangedStamp 0.744s / RestampsOwner 0.539s / RefusesNonActiveRun 0.650s / RetireRunIfDeadCardReadHoldsWriteLock 0.574s). gofmt clean, `GOOS=windows` exit 0, lint exit 1 with only the 3 pre-existing baseline findings (0 NEW).
 
-### Sync-audit round 4 repair (F1'' backend ABA) — commit `PLACEHOLDER-R4`
+### Sync-audit round 4 repair (F1'' backend ABA) — commit `0164b4607`
 
 Verdict read: `.moai/reports/t1863/sync-audit-cold.md` round 3 section (FAIL 0.93; F1'/F2/F3/F4 closed, one ABA residual).
 
