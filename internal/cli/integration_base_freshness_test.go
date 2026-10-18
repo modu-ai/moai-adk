@@ -81,6 +81,10 @@ func newBFCFixture(t *testing.T) *bfcFixture {
 	}
 	bfcGit(t, f.card, "add", "card.txt")
 	bfcGit(t, f.card, "commit", "-q", "-m", "card work")
+	// The gate measures the configured integration target only (audit iter10
+	// H1). The fixture is a github-flow project: its develop_branch is empty by
+	// design and the flow-scoped IntegrationTarget resolves to `main`.
+	writeGitStrategyFixture(t, root, "github-flow", `""`)
 	// A card session's environment names the lane it runs in; the fixture pins
 	// only what the verbs under test read.
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
@@ -260,8 +264,11 @@ func TestBaseFreshnessCLIUncertaintyAdmitsWithCauseLine(t *testing.T) {
 			bfcWriteWorkflow(f.t, f.root, "workflow:\n  base_freshness_gate:\n    enabled: true\n  agent_tiers:\n    classes:\n      lane: bogus\n")
 		}, card, nil, "configuration unreadable"},
 		{"negative K", func(f *bfcFixture) { bfcWriteWorkflow(f.t, f.root, bfcGateYAML(true, -1)) }, card, nil, "negative"},
-		{"integration branch unresolvable", nil,
-			[]string{"--card", "t1", "--branch", "no-such-branch", "--session", "sess-lane1"}, nil, "no-such-branch"},
+		{"integration branch unresolvable", func(f *bfcFixture) {
+			// The configured target names a branch that does not exist; the gate
+			// measures the configured target only, so the cause names it.
+			writeGitStrategyFixture(f.t, f.root, "git-flow", "no-such-branch")
+		}, []string{"--card", "t1", "--session", "sess-lane1"}, nil, "no-such-branch"},
 		{"git failure injected", func(f *bfcFixture) {
 			orig := baseFreshnessSeams
 			baseFreshnessSeams = factory.BaseFreshnessSeams{Git: func(args ...string) (string, error) {
@@ -817,5 +824,104 @@ func TestRemeasureAndAcquireAgreeOnIntegrationTargetAcrossLinkedRoot(t *testing.
 	}
 	if lock := sdWindow(t, common); lock.SessionID != "sess-lane1" {
 		t.Fatalf("the window must be recorded for the caller at the common root: %+v", lock)
+	}
+}
+
+// ---- audit iter10 H1/H2: the gate measures the configured integration target ----
+
+func TestAcquireWithoutBranchMeasuresTheConfiguredTargetInGitHubFlow(t *testing.T) {
+	// Audit iter10 H1: in a github-flow project develop_branch is empty by design,
+	// so without --branch acquire resolved its target to the caller's own branch
+	// and the gate then read the call as made from the integration branch and
+	// returned without measuring. A candidate one landing behind `main`, K=0, gate
+	// on, acquire --card without --branch must be refused.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	f.land(1)
+
+	_, _, err := f.acquire("--card", "t1", "--session", "sess-lane1")
+	requireFreshnessRefusal(t, err)
+	if !strings.Contains(err.Error(), "local main") {
+		t.Fatalf("the refusal must name the configured target main: %v", err)
+	}
+	if got := windowBytes(t, f.root); got != "<absent>" {
+		t.Fatalf("a refused acquire must record no window, got %s", got)
+	}
+}
+
+func TestAcquireRefusesAnExplicitBranchOtherThanTheConfiguredTarget(t *testing.T) {
+	// Audit iter10 H1 and the leader's ruling: the gate measures the configured
+	// integration target only. An explicit --branch that differs is refused with a
+	// reason naming both branches, never admitted and never measured against the
+	// other branch. The candidate is FRESH against both (alternate sits on main's
+	// tip), so only the mismatch can refuse it.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	bfcGit(t, f.repo, "branch", "alternate", "main")
+
+	_, _, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1")
+	requireFreshnessRefusal(t, err)
+	for _, want := range []string{"alternate", "main", "configured integration target"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("the refusal must carry %q: %v", want, err)
+		}
+	}
+	if got := windowBytes(t, f.root); got != "<absent>" {
+		t.Fatalf("a refused acquire must record no window, got %s", got)
+	}
+}
+
+func TestAcquireExplicitBranchOtherThanTheConfiguredTargetIsAdvisoryWhenGateOff(t *testing.T) {
+	// The same mismatch with the gate off (the shipped default): acquire still
+	// records the window for the explicit branch, prints no sentinel, and the one
+	// advisory line names both branches.
+	f := newBFCFixture(t)
+	f.writeRecord(f.base)
+	bfcGit(t, f.repo, "branch", "alternate", "main")
+
+	stdout, stderr, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1")
+	if err != nil {
+		t.Fatalf("acquire with the gate off must succeed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if strings.Contains(stdout+stderr, bfcSentinel) {
+		t.Fatalf("an advisory must not print the sentinel\nstdout: %s\nstderr: %s", stdout, stderr)
+	}
+	lines := freshnessLines(stderr)
+	if len(lines) != 1 || !strings.HasPrefix(lines[0], "base-freshness (advisory, gate off): would refuse") ||
+		!strings.Contains(lines[0], "alternate") || !strings.Contains(lines[0], "main") {
+		t.Fatalf("want exactly one advisory line naming both branches, got %q\nstderr: %s", lines, stderr)
+	}
+	if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" || lock.Branch != "alternate" {
+		t.Fatalf("the window must be recorded for the caller on the explicit branch: %+v", lock)
+	}
+}
+
+func TestRemeasureThenAcquireAdmitsWhenATagSharesTheIntegrationBranchName(t *testing.T) {
+	// Audit iter10 H2: remeasure named its absorbed base with a bare-name
+	// merge-base, which git resolves to a tag before a branch, while the gate reads
+	// refs/heads/<branch>. With an older tag named like the integration branch the
+	// record's base followed the tag and the refusal repeated after the prescribed
+	// remedy. The record's base must be the BRANCH tip.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	bfcGit(t, f.repo, "tag", "main", f.base)
+	f.land(1)
+	bfcGit(t, f.card, "merge", "-q", "--no-ff", "-m", "absorb main", "refs/heads/main")
+	tip := bfcGit(t, f.repo, "rev-parse", "refs/heads/main")
+
+	if _, stderr, err := runIntegrationSplit(t, f.card, f.root, "remeasure", "--", "true"); err != nil {
+		t.Fatalf("remeasure must succeed: %v\nstderr: %s", err, stderr)
+	}
+	rec, err := factory.ReadRemeasureRecord(f.root, f.tree())
+	if err != nil {
+		t.Fatalf("remeasure must store its record: %v", err)
+	}
+	if rec.Base != tip {
+		t.Fatalf("the record's base must be the branch tip %s, got %s (the older tag is %s)", tip, rec.Base, f.base)
+	}
+	if stdout, stderr, err := f.acquire("--card", "t1", "--session", "sess-lane1"); err != nil {
+		t.Fatalf("acquire after a remeasure of an absorbed candidate must admit: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 }

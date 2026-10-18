@@ -688,7 +688,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 	}
 
 	tree := headTreeSHA(worktree, headAfter)
-	base, err := gitMergeBase(worktree, baseBranch)
+	base, err := gitMergeBase(worktree, integrationBranchRef(baseBranch))
 	if err != nil {
 		return nil, err
 	}

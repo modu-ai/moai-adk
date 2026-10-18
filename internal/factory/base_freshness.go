@@ -68,8 +68,14 @@ type BaseFreshnessInput struct {
 	// CardID is the card the entry is for. Empty means the gate does not apply
 	// (a leader acquiring without a card).
 	CardID string
-	// IntegrationBranch is the local branch the candidate lands on.
+	// IntegrationBranch is the local branch the candidate lands on: the configured
+	// integration target, never a fallback to the caller's current branch.
 	IntegrationBranch string
+	// RequestedBranch is the branch an explicit `--branch` on the refused verb
+	// named; empty when the verb was given none. The gate measures the configured
+	// IntegrationBranch only, so a request for another branch is a refusal (or,
+	// with the gate off, an advisory) and is never measured.
+	RequestedBranch string
 	// K is the tolerance, read from configuration by the caller. The gate holds
 	// no threshold of its own (REQ-ISB-007).
 	K int
@@ -135,6 +141,8 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	if err != nil {
 		return uncertain(res, gitCause("rev-parse", err))
 	}
+	// branch is the candidate worktree's real current branch; it is compared with
+	// the configured IntegrationBranch, which the caller never derives from it.
 	branch := strings.TrimSpace(head)
 	if branch == "HEAD" || (in.IntegrationBranch != "" && branch == in.IntegrationBranch) {
 		res.Applicable = false
@@ -150,7 +158,15 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		return uncertain(res, "the integration branch is not configured")
 	}
 
-	tipOut, err := git("rev-parse", "--verify", "refs/heads/"+in.IntegrationBranch)
+	// The gate measures the configured integration target only. A request for any
+	// other branch is refused (the gate off: advised) before anything is read, so
+	// the candidate is never measured against the other branch.
+	if requested := strings.TrimSpace(in.RequestedBranch); requested != "" && requested != in.IntegrationBranch {
+		reason := fmt.Sprintf("--branch %s differs from the configured integration target %s, and the gate measures the configured integration target only", requested, in.IntegrationBranch)
+		return violation(res, in, reason, fmt.Sprintf("Acquire without --branch (the configured target %s), or change the configured integration target, then retry.", in.IntegrationBranch))
+	}
+
+	tipOut, err := git("rev-parse", "--verify", integrationBranchRef(in.IntegrationBranch))
 	if err != nil {
 		return uncertain(res, fmt.Sprintf("integration branch %s is unresolvable (%s)", in.IntegrationBranch, gitCause("rev-parse", err)))
 	}
@@ -206,6 +222,14 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		return violation(res, in, reason, absorbRemedy(in.IntegrationBranch))
 	}
 	return res
+}
+
+// integrationBranchRef is the one fully qualified spelling of the integration
+// branch: the gate reads its tip through it and the re-measure names its absorbed
+// base through it, so a tag sharing the branch's name cannot make the two
+// disagree (card t1834, sync-audit iter10 H2).
+func integrationBranchRef(branch string) string {
+	return "refs/heads/" + branch
 }
 
 // gitCause renders a git failure as the operation and, for a process exit, its

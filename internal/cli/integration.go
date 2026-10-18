@@ -446,7 +446,11 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// window record is written and before any --wait ticket is
 			// enqueued. Its refusal layer is gated on
 			// workflow.base_freshness_gate.enabled; an uncertain verdict admits.
-			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, branch); freshErr != nil {
+			// The gate measures the configured integration target only: the window
+			// record above may fall back to the caller's branch, the measurement
+			// never does, and an explicit --branch naming another branch is the
+			// gate's to refuse (card t1834, sync-audit iter10 H1).
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, gitFlow.IntegrationTarget, branchFlag); freshErr != nil {
 				return freshErr
 			}
 			// The pid recorded is the OWNING SESSION's, never this process's.
