@@ -1,4 +1,4 @@
-package template
+package template_test
 
 import (
 	"os"
@@ -99,6 +99,11 @@ func TestTemplateSkillListingBudget(t *testing.T) {
 	if len(entries) < minSweptSkills {
 		t.Fatalf("swept %d skills, want at least %d: an empty sweep must not pass", len(entries), minSweptSkills)
 	}
+	total := 0
+	for _, e := range entries {
+		total += e.chars()
+	}
+	t.Logf("swept %d skills, %d chars of description + when_to_use (ceiling %d)", len(entries), total, skillListingCeilingChars)
 	for _, v := range checkSkillListing(entries) {
 		t.Error(v)
 	}
