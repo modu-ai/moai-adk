@@ -95,11 +95,11 @@ Agent definitions exist in three copies, rendered from one edit surface: the age
 | Copy | Path | Nature |
 |---|---|---|
 | C1 | `.claude/agents/moai/*.md` | Local dogfooding; rendered from the agent source and byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); hand-edited for the remaining agents until piece 2 absorbs or retires them |
-| Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer** |
+| Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer for the generated agents** |
 | C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, **rendered from the agent source** |
 | C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-rendered from the agent source** (`internal/template/agentemit`) |
 
-[HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3.
+[HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3 for the generated agents; C1 of the remaining agents is not rendered until piece 2.
 
 [HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix the agent source and regenerate.
 
