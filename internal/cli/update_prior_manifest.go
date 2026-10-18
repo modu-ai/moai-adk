@@ -27,12 +27,13 @@ import (
 	"sort"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 // priorManifestName is the file the start-of-run manifest is kept under.
-const priorManifestName = "manifest.prior.json"
+const priorManifestName = backup.PriorManifestName
 
 // priorManifestGenerations bounds how many retained generations the evidence
 // source reads (newest first). It is a lookup bound only; the backup retention

@@ -16,6 +16,14 @@ import (
 // is bookkeeping, not a user file: a restore never copies it into the project.
 const RunMarkerName = ".moai-run"
 
+// PriorManifestName is the file the update's Backup stage writes at the root of
+// the run backup directory: the project manifest as the run loaded it, byte for
+// byte (SPEC-UPDATE-OWNERSHIP-REPAIR-001). Like the run marker it is backup
+// bookkeeping, not a user file: a restore never copies it into the project. The
+// update code names the file through this constant, so the writer and the
+// restore walks cannot drift apart.
+const PriorManifestName = "manifest.prior.json"
+
 // runIDLayout is the time layout of a run id: UTC, nanosecond precision, and
 // fixed width, so lexical order equals time order.
 const runIDLayout = "2006-01-02T15:04:05.000000000Z"

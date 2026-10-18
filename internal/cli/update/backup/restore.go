@@ -266,6 +266,13 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 			return nil
 		}
 
+		// The prior-manifest copy at the backup root is bookkeeping too (the project
+		// manifest as the run loaded it): it must not land in .moai/config. Only the
+		// root-level file is meant; a same-named file below it is user content.
+		if relPath == PriorManifestName {
+			return nil
+		}
+
 		// The unmanaged config directories belong to RestoreUnmanagedConfigDirs,
 		// which every caller runs next and which honors the skip filter for
 		// profiles and rules the reconciliation archived or preserved. Writing

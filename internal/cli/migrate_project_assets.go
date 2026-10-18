@@ -91,7 +91,7 @@ const migrationBackupSubdir = "removed-assets"
 // update flow, a fresh timestamped one for a standalone migration call. The
 // directory is memoized back into rc so later removals in the same run reuse
 // it.
-func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash string, data []byte) error {
+func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash string, data []byte, mode os.FileMode) error {
 	dir := ""
 	if rc != nil {
 		dir = rc.runBackupDir
@@ -107,8 +107,15 @@ func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash st
 	if err := os.MkdirAll(filepath.Dir(dst), defs.DirPerm); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(dst), err)
 	}
-	if err := os.WriteFile(dst, data, defs.FilePerm); err != nil {
+	if err := os.WriteFile(dst, data, mode); err != nil {
 		return fmt.Errorf("write %s: %w", dst, err)
+	}
+	// WriteFile applies the umask and leaves an existing file's mode alone, so the
+	// permission bits are set explicitly: an executable managed file (the deployer
+	// writes shell scripts 0755) must keep its execute bit in the backup, because
+	// the backup is what restores it.
+	if err := os.Chmod(dst, mode); err != nil {
+		return fmt.Errorf("set mode of %s: %w", dst, err)
 	}
 	return nil
 }
@@ -119,6 +126,8 @@ type removalCandidate struct {
 	rel  string
 	abs  string
 	data []byte
+	// mode is the file's permission bits as they are now; the backup copy keeps them.
+	mode os.FileMode
 	row  remainingRow
 }
 
@@ -133,7 +142,7 @@ func backUpRemovalCandidates(projectRoot string, rc *migrationRunContext, cands 
 	}
 	var written []string
 	for _, c := range cands {
-		if err := backupRemovedAsset(projectRoot, rc, c.rel, c.data); err != nil {
+		if err := backupRemovedAsset(projectRoot, rc, c.rel, c.data, c.mode); err != nil {
 			if rc != nil {
 				for _, dst := range written {
 					_ = os.Remove(dst)
@@ -384,8 +393,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			// removal-eligible: collected here, removed only after the run
 			// backup holds the byte copy of EVERY candidate and the
 			// prior-manifest copy (REQ-OWR-016) — see the batch step below.
+			mode := os.FileMode(defs.FilePerm)
+			if info, statErr := os.Stat(p); statErr == nil {
+				mode = info.Mode().Perm()
+			}
 			candidates = append(candidates, removalCandidate{
-				rel: relSlash, abs: p, data: v.data,
+				rel: relSlash, abs: p, data: v.data, mode: mode,
 				row: v.rowKeptFor(relSlash, keepBackupFailed),
 			})
 			return nil
