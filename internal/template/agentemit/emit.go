@@ -71,7 +71,13 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		if err != nil {
 			return nil, nil, err
 		}
-		doc, err := ParseAgentDoc(file, codexView)
+		// Both views are validated: a marker block may sit inside the
+		// frontmatter, so the Claude view can carry a tools token or YAML the
+		// Codex view never sees, and it must not ship unchecked.
+		if _, _, err := parseAndClassify(man, file, claudeView); err != nil {
+			return nil, nil, err
+		}
+		doc, hasMCP, err := parseAndClassify(man, file, codexView)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -79,17 +85,6 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 			return nil, nil, fmt.Errorf("%s: duplicate agent name %q (also declared by %s) — Codex namespace collision", file, doc.Name, prev)
 		}
 		seenName[doc.Name] = file
-
-		hasMCP := false
-		for _, tok := range doc.Tools {
-			class, ok := classifyToken(man, tok)
-			if !ok {
-				return nil, nil, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
-			}
-			if class == "moai-mcp" {
-				hasMCP = true
-			}
-		}
 
 		tomlData, sandbox, err := renderTOML(doc, man, hasMCP)
 		if err != nil {
@@ -115,6 +110,27 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		pub.CodexTOML[a.path] = a.data
 	}
 	return pub, verdicts, nil
+}
+
+// parseAndClassify parses one rendered view of an agent source and classifies
+// every tools token against the mapping manifest (fail-closed). It reports
+// whether the view carries a moai-mcp tool.
+func parseAndClassify(man Manifest, file string, view []byte) (AgentDoc, bool, error) {
+	doc, err := ParseAgentDoc(file, view)
+	if err != nil {
+		return AgentDoc{}, false, err
+	}
+	hasMCP := false
+	for _, tok := range doc.Tools {
+		class, ok := classifyToken(man, tok)
+		if !ok {
+			return AgentDoc{}, false, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
+		}
+		if class == "moai-mcp" {
+			hasMCP = true
+		}
+	}
+	return doc, hasMCP, nil
 }
 
 // codexTOMLPath resolves the emitted TOML path for one .md source according

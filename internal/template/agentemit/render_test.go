@@ -171,6 +171,51 @@ func TestRenderUnmappedCapabilityFails(t *testing.T) {
 			t.Errorf("want an error naming agents/bad.md and Bogus, got %v", err)
 		}
 	})
+	// A claude-only block may sit inside the frontmatter: the Claude view then
+	// carries frontmatter the Codex view never sees. Both views are validated, so
+	// an unmapped token or broken YAML there fails closed instead of shipping to
+	// the Claude publication (REQ-AC4-004, regardless of which view carries it).
+	frontmatterWithClaudeOnly := func(claudeLines string) string {
+		return "---\nname: marked\ndescription: |\n  Marked.\n" +
+			"<!-- claude-only -->\n" + claudeLines + "<!-- /claude-only -->\n" +
+			"<!-- codex-only -->\ntools: Read\n<!-- /codex-only -->\n" +
+			"model: inherit\neffort: low\n---\n\nbody\n"
+	}
+	t.Run("claude_view_unmapped_tools_token_names_file_and_token", func(t *testing.T) {
+		set := fstest.MapFS{"agents/marked.md": &fstest.MapFile{Data: []byte(frontmatterWithClaudeOnly("tools: Read, Bogus\n"))}}
+		pub, err := agentemit.EmitAll(set, "agents", man)
+		if err == nil || !strings.Contains(err.Error(), "agents/marked.md") || !strings.Contains(err.Error(), "Bogus") {
+			t.Errorf("want an error naming agents/marked.md and Bogus, got %v", err)
+		}
+		if pub != nil {
+			t.Error("a failed emission must return no publication")
+		}
+	})
+	t.Run("claude_view_broken_yaml_names_file", func(t *testing.T) {
+		set := fstest.MapFS{"agents/marked.md": &fstest.MapFile{Data: []byte(frontmatterWithClaudeOnly("tools: Read\nskills: [unterminated\n"))}}
+		pub, err := agentemit.EmitAll(set, "agents", man)
+		if err == nil || !strings.Contains(err.Error(), "agents/marked.md") || !strings.Contains(err.Error(), "frontmatter parse") {
+			t.Errorf("want a frontmatter parse error naming agents/marked.md, got %v", err)
+		}
+		if pub != nil {
+			t.Error("a failed emission must return no publication")
+		}
+	})
+	t.Run("claude_view_defect_leaves_no_output_and_check_fails", func(t *testing.T) {
+		root, lay := fixtureRoot(t, map[string]string{"marked.md": frontmatterWithClaudeOnly("tools: Read, Bogus\n")})
+		lay.Targets = lay.Targets[:2]
+		if _, err := agentemit.Update(root, lay, man); err == nil || !strings.Contains(err.Error(), "Bogus") {
+			t.Errorf("Update must fail naming the token, got %v", err)
+		}
+		if _, err := agentemit.Check(root, lay, man); err == nil || !strings.Contains(err.Error(), "Bogus") {
+			t.Errorf("Check must fail naming the token, got %v", err)
+		}
+		for _, tg := range lay.Targets {
+			if _, err := os.Stat(root + "/" + tg.Dir); !os.IsNotExist(err) {
+				t.Errorf("%s: a failed run left output behind (stat err %v)", tg.Name, err)
+			}
+		}
+	})
 	t.Run("unterminated_marker_names_file", func(t *testing.T) {
 		_, err := agentemit.EmitAll(markedSource("\nShared.\n<!-- claude-only -->\nnever closed\n"), "agents", man)
 		if err == nil || !strings.Contains(err.Error(), "agents/marked.md") || !strings.Contains(err.Error(), "claude-only") {

@@ -165,8 +165,9 @@ func Check(root string, lay Layout, man Manifest) (Summary, error) {
 	return sum, nil
 }
 
-// Update renders the sets and writes the files under root. Rendering finishes
-// before the first write, so a source that cannot be rendered leaves root
+// Update renders the sets and writes the files under root. Rendering and the
+// symlink check finish before the first write, so a source that cannot be
+// rendered, or a target path that runs through a symlink, leaves root
 // untouched. A file that already holds the rendered bytes is not rewritten.
 func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	files, specs, err := renderTargets(root, lay, man)
@@ -174,7 +175,13 @@ func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	if err != nil {
 		return sum, err
 	}
-	for _, p := range sortedPaths(files) {
+	paths := sortedPaths(files)
+	for _, p := range paths {
+		if err := refuseLinks(root, p); err != nil {
+			return sum, err
+		}
+	}
+	for _, p := range paths {
 		dst := filepath.Join(root, filepath.FromSlash(p))
 		if cur, rerr := os.ReadFile(dst); rerr == nil && bytes.Equal(cur, files[p]) {
 			continue
@@ -182,11 +189,61 @@ func Update(root string, lay Layout, man Manifest) (Summary, error) {
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return sum, fmt.Errorf("agentemit: %w", err)
 		}
-		if err := os.WriteFile(dst, files[p], 0o644); err != nil {
+		if err := writeFileAtomic(dst, files[p]); err != nil {
 			return sum, fmt.Errorf("agentemit: %w", err)
 		}
 	}
 	return sum, nil
+}
+
+// refuseLinks fails when an existing component of rel (slash-separated, below
+// root) is a symlink, when a parent is not a directory, or when the target
+// exists but is not a regular file. root itself may be a symlink (a temporary
+// directory commonly is); only what lies below it is checked. An absent
+// component ends the walk: everything beneath it will be created by Update.
+func refuseLinks(root, rel string) error {
+	parts := strings.Split(rel, "/")
+	cur := root
+	for i, part := range parts {
+		cur = filepath.Join(cur, part)
+		fi, err := os.Lstat(cur)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("agentemit: %w", err)
+		}
+		shown := strings.Join(parts[:i+1], "/")
+		switch {
+		case fi.Mode()&os.ModeSymlink != 0:
+			return fmt.Errorf("agentemit: refusing to write through symlink %s (target %s)", shown, rel)
+		case i == len(parts)-1 && !fi.Mode().IsRegular():
+			return fmt.Errorf("agentemit: refusing to overwrite non-regular file %s", shown)
+		case i < len(parts)-1 && !fi.IsDir():
+			return fmt.Errorf("agentemit: %s is not a directory (target %s)", shown, rel)
+		}
+	}
+	return nil
+}
+
+// writeFileAtomic writes data to dst through a temporary file in the same
+// directory followed by a rename, so dst is replaced as a whole and never
+// written through a link that appeared at its path after the check.
+func writeFileAtomic(dst string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".agents-emit-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	_, werr := tmp.Write(data)
+	err = errors.Join(werr, tmp.Close(), os.Chmod(name, 0o644))
+	if err == nil {
+		err = os.Rename(name, dst)
+	}
+	if err != nil {
+		_ = os.Remove(name)
+	}
+	return err
 }
 
 // printf writes a line to a command stream. A failed write to stdout or stderr

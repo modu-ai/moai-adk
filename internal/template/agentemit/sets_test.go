@@ -267,6 +267,144 @@ func TestUpdateThenCheckRoundTrip(t *testing.T) {
 	}
 }
 
+// TestUpdateRefusesSymlinkTargets pins that Update never writes through a
+// symlink: a link at a target file path, or at a target directory, is refused
+// with an error naming the path, and the file it points at stays unchanged.
+func TestUpdateRefusesSymlinkTargets(t *testing.T) {
+	man := mustManifest(t)
+	const victimBytes = "outside file: must stay untouched\n"
+
+	t.Run("symlink_target_file_refused", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		victim := filepath.Join(t.TempDir(), "victim.md")
+		writeFile(t, victim, []byte(victimBytes))
+		link := filepath.Join(root, "out/c2/alpha.md")
+		if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Symlink(victim, link); err != nil {
+			t.Skipf("symlinks are not available: %v", err)
+		}
+		_, err := agentemit.Update(root, lay, man)
+		if err == nil || !strings.Contains(err.Error(), "out/c2/alpha.md") || !strings.Contains(err.Error(), "symlink") {
+			t.Fatalf("Update must refuse the symlink target naming its path, got %v", err)
+		}
+		got, rerr := os.ReadFile(victim)
+		if rerr != nil || string(got) != victimBytes {
+			t.Errorf("the file behind the symlink changed: %q, %v", got, rerr)
+		}
+		if fi, lerr := os.Lstat(link); lerr != nil || fi.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("the refused symlink must stay in place, got %v, %v", fi, lerr)
+		}
+	})
+	t.Run("symlink_target_directory_refused", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		outside := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, "out"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Symlink(outside, filepath.Join(root, "out/c2")); err != nil {
+			t.Skipf("symlinks are not available: %v", err)
+		}
+		_, err := agentemit.Update(root, lay, man)
+		if err == nil || !strings.Contains(err.Error(), "out/c2") || !strings.Contains(err.Error(), "symlink") {
+			t.Fatalf("Update must refuse the symlink directory naming its path, got %v", err)
+		}
+		entries, rerr := os.ReadDir(outside)
+		if rerr != nil || len(entries) != 0 {
+			t.Errorf("a file was written through the directory symlink: %v, %v", entries, rerr)
+		}
+	})
+	t.Run("non_regular_target_refused", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		if err := os.MkdirAll(filepath.Join(root, "out/c2/alpha.md"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		_, err := agentemit.Update(root, lay, man)
+		if err == nil || !strings.Contains(err.Error(), "out/c2/alpha.md") || !strings.Contains(err.Error(), "non-regular") {
+			t.Fatalf("Update must refuse a directory at a target file path naming it, got %v", err)
+		}
+	})
+	t.Run("file_in_place_of_directory_refused", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		writeFile(t, filepath.Join(root, "out/c2"), []byte("not a directory\n"))
+		_, err := agentemit.Update(root, lay, man)
+		if err == nil || !strings.Contains(err.Error(), "out/c2") || !strings.Contains(err.Error(), "not a directory") {
+			t.Fatalf("Update must refuse a file where a directory is needed naming it, got %v", err)
+		}
+	})
+	t.Run("refusal_precedes_every_write", func(t *testing.T) {
+		// The refused path sorts after a clean one: nothing is written first.
+		root, lay := fixtureRoot(t, twoSources())
+		lay.Targets = lay.Targets[:1]
+		if err := os.MkdirAll(filepath.Join(root, "out/c2/beta.md"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if _, err := agentemit.Update(root, lay, man); err == nil {
+			t.Fatal("Update must refuse the directory at out/c2/beta.md")
+		}
+		if _, err := os.Stat(filepath.Join(root, "out/c2/alpha.md")); !os.IsNotExist(err) {
+			t.Errorf("alpha.md was written before the refusal (stat err %v)", err)
+		}
+	})
+	t.Run("unwritable_directory_fails_without_leftovers", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		lay.Targets = lay.Targets[:1]
+		dir := filepath.Join(root, "out/c2")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if probe, err := os.CreateTemp(dir, "probe-*"); err == nil {
+			_ = probe.Close()
+			t.Skip("directory permissions are not enforced for this user")
+		}
+		if _, err := agentemit.Update(root, lay, man); err == nil || !strings.Contains(err.Error(), "agentemit:") {
+			t.Fatalf("Update must fail when the target directory is not writable, got %v", err)
+		}
+		if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+			t.Errorf("a failed write left files behind: %v", entries)
+		}
+	})
+	t.Run("unreadable_directory_fails_the_link_check", func(t *testing.T) {
+		root, lay := fixtureRoot(t, twoSources())
+		lay.Targets = lay.Targets[:1]
+		dir := filepath.Join(root, "out")
+		if err := os.MkdirAll(filepath.Join(dir, "c2"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Chmod(dir, 0o000); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if _, err := os.Lstat(filepath.Join(dir, "c2")); err == nil {
+			t.Skip("directory permissions are not enforced for this user")
+		}
+		if _, err := agentemit.Update(root, lay, man); err == nil || !strings.Contains(err.Error(), "agentemit:") {
+			t.Fatalf("Update must fail when a path component cannot be inspected, got %v", err)
+		}
+	})
+	t.Run("regular_target_is_replaced_without_leftovers", func(t *testing.T) {
+		// Positive control: a plain stale file is overwritten by the temp-file
+		// plus rename path, and no temp file stays behind.
+		root, lay := fixtureRoot(t, twoSources())
+		stale := filepath.Join(root, "out/c2/alpha.md")
+		writeFile(t, stale, []byte("stale\n"))
+		if _, err := agentemit.Update(root, lay, man); err != nil {
+			t.Fatalf("Update: %v", err)
+		}
+		if _, err := agentemit.Check(root, lay, man); err != nil {
+			t.Errorf("Check after Update: %v", err)
+		}
+		if got := listNames(t, filepath.Join(root, "out/c2"), ""); strings.Join(got, ",") != "alpha.md,beta.md" {
+			t.Errorf("C2 directory = %v, want only the two rendered files", got)
+		}
+	})
+}
+
 func TestCheckReportsMissingAndDifferingFiles(t *testing.T) {
 	root, lay := fixtureRoot(t, twoSources())
 	man := mustManifest(t)
