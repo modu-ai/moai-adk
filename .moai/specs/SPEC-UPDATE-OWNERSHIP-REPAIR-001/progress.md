@@ -4114,6 +4114,111 @@ gofmt-exit=0 untracked=0
 4. F-C 는 거절 (위 결정 기록).
 5. 코덱스·감사의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다.
 
+### Chunk 13 (shrink, leader B) — 기록 시작
+
+네 번째 독립 sync 감사 (HEAD `aba63b1483`, 영수증 `rcpt-bc15a518bfe20c055b8f4bda`) 가 필수 codex 백엔드에서 FAIL 이다: N-A (확인 뒤에 프로젝트 루트를 경로 문자열로 `os.OpenRoot` 로 열어서, 루트 경로를 바꿔치기하면 밖의 바이트를 읽음), N-B (`os.RemoveAll(sibling)` 이 너무 넓음), N-C (바꿔치기한 절대 경로의 프로젝트 안 링크가 `symlink-escape` 로 남음). 리더는 (게시판 `d-20261018T174444Z-b5ea`, 처분 B) 고치지 않고 **보호하는 면을 줄이기로** 결정했다. 근거 문서는 `.moai/reports/t1865/sync-audit.md` (round 4) 와 `sync-hold.md` 이며 고치지 않았다. 자원 입장 규칙은 슬롯 조건이 더해졌다: 1분 부하 <= 32, 여유 메모리 >= 50%, `go-test-heavy` 슬롯이 착지·재측정 세션에 잡혀 있지 않음, 처음 충족되면 30초 뒤 재확인, Go 호출은 한 번에 하나. 모든 호출은 `admit.sh` 가 규칙을 확인한 뒤 시작했고 호출마다 시각·부하·메모리·슬롯 상태가 말미의 `admit.log` 표에 있다. 슬롯 점유가 첫 호출을 한참 늦췄다 (착지 재측정 세션 `lane-40` 이 점유 중이었다; 슬롯은 한 번도 잡지 않았다).
+
+#### 결정과 범위
+
+1. **형제 디렉터리 방식을 없앤다.** 같은 시계 초에 시작한 둘째 실행이 의도한 실행 백업 디렉터리에서 이미 `manifest.prior.json` 을 만나면: 덮어쓰지 않고, 다른 디렉터리도 만들지 않으며, 상태는 `priorManifestFailed` — 이미 있는 닫힌 실패 경로이므로 그 실행은 아무것도 제거하지 않고 (REQ-OWR-016) 보고가 이유를 말하며, 앞 실행의 사본은 바이트 그대로 남는다. 삭제: `claimPriorManifestDir` 의 형제 생성, `copyRunMarker`, 이음매 `priorManifestMarkerCopy`, `priorManifestSiblingMax`, `os.RemoveAll` 정리. 유지: 이름 바꾸기 실패 때의 임시 파일 정리, 복원이 백업 루트의 `manifest.prior.json` 과 `manifest.prior.json.tmp-*` 를 건너뛰는 것 (비판받지 않음).
+2. **등록 안 된 파일은 경로 구성 요소에 심볼릭 링크가 하나도 없을 때만 읽는다.** 프로젝트 루트부터 파일까지 모든 구성 요소를 루트 핸들로 `Lstat` 하고, 링크가 하나라도 있으면 (안을 가리키든 밖을 가리키든) 읽지 않고 기존 이유 `symlink-escape` 로 둔다 (class unregistered, `v.data` 없음, 잔여 행). 끊어지거나 순환하는 링크는 `read-failed` 로 남는다 (`Root.Stat` 이 오류). 마지막 요소가 파이프·소켓·장치이면 열기 전에 `non-regular-file`. 이것이 등록 안 된 분기에서 `pathLeavesRoot` 를 대체하며, `pathLeavesRoot` 는 호출자가 없어져 삭제한다 (`withinRootBoundary` 는 다른 사용처가 있어 그대로).
+3. **루트를 경로로 다시 열지 않고 한 번만 연다.** `newOwnershipEnv` 가 `os.OpenRoot(projectRoot)` 를 한 번 열어 환경(`ownershipEnv.root`)에 담고, 등록 안 된 파일의 읽기는 모두 그 핸들의 `Lstat`/`Open` 을 쓰며 `migrateProjectCommonAssets` 가 끝날 때 닫는다. 이 환경을 만드는 곳이 둘뿐이라 (마이그레이션과 `--dry-run` 미리보기) 큰 변경이 필요하지 않았다. 미리보기 환경 (`migrate_ownership_env.go`) 은 건드리지 않았다: 그쪽 핸들은 표준 라이브러리의 종료자 (`runtime.SetFinalizer`) 가 닫는다. 시험이 손으로 만든 환경 (`root` 가 nil) 은 그 호출 하나를 위해 경로 문자열로 연다 — 운영 경로는 항상 핸들을 가진다 (시험이 열기 횟수 1 로 고정).
+4. **범위 가드.** 바뀌는 함수: `classifyOwnershipCore` (등록 안 된 분기 한 줄), `classifyUnregistered`, 새 `readUnregistered`/`escapesRoot`, `newOwnershipEnv`, `migrateProjectCommonAssets` (`defer env.closeRoot()` 한 줄), `preservePriorManifest` 와 그 이음매, 삭제한 `pathLeavesRoot`·`readUnregisteredInsideRoot`·`errReadEscapesRoot`·`claimPriorManifestDir`·`copyRunMarker`. 바꾸지 않는 것: 등록된 파일의 읽기, `disposition`, 걷기, 빈 디렉터리 정리, 복원 코드, dry-run 파일, manifest/types.
+
+#### 바뀌는 기준선 (결정에 의한 변경)
+
+chunk 6 에서 측정해 고정한 「프로젝트 안 일반 파일을 가리키는 심볼릭 링크는 대상의 바이트로 판정」 (`no-provenance-record`, 바이트를 읽음) 이 **「읽지 않고 `symlink-escape`」** 로 바뀐다. 같은 결정으로 「프로젝트 안 파이프를 가리키는 링크」 의 이유도 `non-regular-file` 에서 `symlink-escape` 로 바뀐다 (링크를 따라가지 않으므로 파이프를 건드리지 않는다). 끊어진 링크와 순환은 종전대로 `read-failed`, 일반 파일은 종전대로 내용으로 판정한다. 이름이 어긋나 보이는 점 (`symlink-escape` 가 프로젝트 안을 가리키는 링크에도 쓰임) 은 리더가 기존 이유를 쓰라고 정했기 때문이다. F-C (대소문자를 구분하지 않는 파일 시스템) 는 건드리지 않았다: 공개된 한계 그대로.
+
+#### 삭제·바뀐 시험과 이음매 (이유와 함께)
+
+| 대상 | 처분 | 이유 |
+|---|---|---|
+| `TestPriorManifestOfAnEarlierRunSurvivesALaterRun` (여섯 하위 시험: 같은 설정 백업 경로 두 실행, 이름 순서와 읽는 쪽, 직접 만들지 않은 디렉터리 건너뛰기, 이름 소진 닫힘, 설정 경로 없는 실행, 보존 정책이 형제를 같은 실행으로 셈) | **삭제** | 형제 방식이 없어졌다. 대신 `TestSecondClaimInTheSameDirectoryFailsClosed` |
+| `TestMarkerCopyFailureFailsClosedWithoutResidue` (표지 복사 실패·실패 뒤 잔여물 없음·파일 생성 뒤 실패·표지 없음·CRLF·이름 점유·끝 구분자) 와 파일 `update_prior_manifest_markercopy_test.go` | **삭제** | 표지 복사와 형제가 없어졌다 |
+| 이음매 `priorManifestMarkerCopy` | **삭제** | 위와 같음 |
+| 이음매 `readWindowHook` | **유지**, 단계 이름 `check-to-read`/`lstat-to-open` | 두 창에서 바꿔치기하는 경쟁 행에 필요 |
+| `migrate_ownership_unregsymlink_test.go`, `…_ancestorlink_test.go`, `…_nonregular_test.go` 의 프로젝트 안 링크 대조군 | **기대 변경** (`symlink-escape`, 읽지 않음) | 바뀐 기준선 |
+| 경계 표 (`TestPathBoundaryCounterexamples`) 의 `pathLeavesRoot` 행 아홉 (경계 그룹 네 + 상대 뿌리 `.` 다섯) | **삭제** | 함수가 삭제됨. 같은 질문은 걷기 수준 행 (업데이트 명령 형태, 뿌리 `.`) 과 심볼릭 링크 행이 이제 판정 함수 수준에서 묻는다. 순수 `withinRootBoundary` 행 일곱은 유지 |
+| 경계 표 심볼릭 링크 그룹 세 행, 걷기 그룹 한 행, 종류 그룹 한 행 | **기대 변경** | 바뀐 기준선 |
+| 경계 표 경쟁 그룹 | **재작성** | 새 창 이름, 절대 링크 행 (`Root` 가 절대 링크를 거부 → N-C 가 같은 이유로 일관), 상대 링크 통제 행, 그리고 **루트 경로 바꿔치기 행** (N-A 재현) |
+| `migrate_ownership_recovery_test.go` 의 `NoWaitConsecutiveRuns` 가지 | **삭제**, AC-OWR-18 에 사례 `PriorManifestCollided` 추가 | 시계에 맡긴 가지는 이제 결정적으로 충돌 결과를 단언할 수 없다. 새 사례는 실행이 들어갈 수 있는 모든 초의 실행 디렉터리에 앞 실행의 사본을 심어 충돌을 확실하게 만든다 |
+| `migrate_ownership_remaining_test.go` 의 「한 초 안」 사례 | 주석만 변경 | 시험은 「앞 세대가 없는 잔여 목록」 의 렌더링 시험으로 남고 작성 방식은 쓰기 이음매 모사 그대로 |
+| 새 시험 | **추가** | `TestSecondClaimInTheSameDirectoryFailsClosed`, `TestMigrationOpensTheProjectRootOnce` |
+
+#### 시험 먼저 — RED 셀 (A `544c071c9e`, 호출 시각·부하는 `admit.log` 첫 줄)
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestSecondClaimInTheSameDirectoryFailsClosed|TestMigrationOpensTheProjectRootOnce|TestPathBoundaryCounterexamples|TestUnregisteredSymlinkOutsideProjectIsNotRead|TestUnregisteredFileBelowASymlinkedAncestorIsNotRead|TestNonRegularFilesAreKeptWithoutBeingRead|TestInterruptedMigrationRecoversAndConverges|TestRepeatedUpdateIsIdempotent)$' -count=1 -v -timeout 40m
+    migrate_ownership_ancestorlink_test.go:137: switch=false in-project symlinked ancestor: class="unregistered" keep="no-provenance-record" data="# inside, through a symlinked ancestor\n", want unregistered/"symlink-escape"/""
+    migrate_ownership_ancestorlink_test.go:137: switch=true in-project symlinked ancestor: class="unregistered" keep="no-provenance-record" data="# inside, through a symlinked ancestor\n", want unregistered/"symlink-escape"/""
+--- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead (1.29s)
+    --- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/ControlsAreJudgedAsDecided (0.00s)
+    migrate_ownership_boundary_table_test.go:485: symlink to an in-project file: kept unread (changed baseline, chunk 13): observed "class=unregistered keep=no-provenance-record read=content", want "class=unregistered keep=symlink-escape read=none"
+    migrate_ownership_boundary_table_test.go:485: symlinked ancestor directory inside: kept unread (changed baseline, chunk 13): observed "class=unregistered keep=no-provenance-record read=content", want "class=unregistered keep=symlink-escape read=none"
+    migrate_ownership_boundary_table_test.go:485: chain of links staying inside: kept unread (changed baseline, chunk 13): observed "class=unregistered keep=no-provenance-record read=content", want "class=unregistered keep=symlink-escape read=none"
+    migrate_ownership_boundary_table_test.go:485: update-shaped run (root '.'): in-project symlink with an absolute target is kept unread: observed "class=unregistered reason=no-provenance-record removed=1", want "class=unregistered reason=symlink-escape removed=1"
+    migrate_ownership_boundary_table_test.go:485: update-shaped run (root '.'): in-project symlink with a relative target is kept unread: observed "class=unregistered reason=no-provenance-record removed=1", want "class=unregistered reason=symlink-escape removed=1"
+    migrate_ownership_boundary_table_test.go:485: target swapped for a link to an outside file after the path was examined, before it is opened: observed "class=unregistered keep=no-provenance-record read=content swapped=false", want "class=unregistered keep=symlink-escape read=none swappe
+    migrate_ownership_boundary_table_test.go:485: target swapped for an ABSOLUTE link to a file inside the project: the Root refuses absolute links, so it is kept unread: observed "class=unregistered keep=no-provenance-record read=content swapped=false", want "class=unregistered keep=symli
+    migrate_ownership_boundary_table_test.go:485: control: target swapped for a RELATIVE link to another file inside the project is followed inside the Root: observed "class=unregistered keep=no-provenance-record read=content swapped=false", want "class=unregistered keep=no-provenance-reco
+    migrate_ownership_boundary_table_test.go:485: the project root path swapped for a link to an outside tree after the environment was built: observed "class=unregistered keep=symlink-escape read=none swapped=true", want "class=unregistered keep=no-provenance-record read=content swapped=t
+    migrate_ownership_boundary_table_test.go:485: link to a FIFO inside the project: a link is never followed: observed "class=unregistered keep=non-regular-file read=none", want "class=unregistered keep=symlink-escape read=none"
+--- FAIL: TestPathBoundaryCounterexamples (1.93s)
+    --- FAIL: TestPathBoundaryCounterexamples/symlink/symlink_to_an_in-project_file:_kept_unread_(changed_baseline,_chunk_13) (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/symlink/symlinked_ancestor_directory_inside:_kept_unread_(changed_baseline,_chunk_13) (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/symlink/chain_of_links_staying_inside:_kept_unread_(changed_baseline,_chunk_13) (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/flow/update-shaped_run_(root_'.'):_in-project_symlink_with_an_absolute_target_is_kept_unread (0.43s)
+    --- FAIL: TestPathBoundaryCounterexamples/flow/update-shaped_run_(root_'.'):_in-project_symlink_with_a_relative_target_is_kept_unread (0.45s)
+    --- FAIL: TestPathBoundaryCounterexamples/race/target_swapped_for_a_link_to_an_outside_file_after_the_path_was_examined,_before_it_is_opened (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/race/target_swapped_for_an_ABSOLUTE_link_to_a_file_inside_the_project:_the_Root_refuses_absolute_links,_so_it_is_kept_unread (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/race/control:_target_swapped_for_a_RELATIVE_link_to_another_file_inside_the_project_is_followed_inside_the_Root (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/race/the_project_root_path_swapped_for_a_link_to_an_outside_tree_after_the_environment_was_built (0.00s)
+    --- FAIL: TestPathBoundaryCounterexamples/kind/link_to_a_FIFO_inside_the_project:_a_link_is_never_followed (0.00s)
+    migrate_ownership_nonregular_test.go:231: .agents/skills/moai-nonregular/link-to-pipe: reason "non-regular-file", want "symlink-escape"
+    migrate_ownership_nonregular_test.go:231: .agents/skills/moai-nonregular/link-to-plain: reason "no-provenance-record", want "symlink-escape"
+--- FAIL: TestNonRegularFilesAreKeptWithoutBeingRead (0.70s)
+--- PASS: TestRepeatedUpdateIsIdempotent (7.62s)
+    migrate_ownership_recovery_test.go:902: compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-foundation-core/SKILL.md was removed or changed by the interrupted run (open <tmp>/.claude/skills/moai-foundation-core/SKILL.md: no such file or directory)
+    migrate_ownership_recovery_test.go:865: (interrupted) the manifest lost its entry for .claude/skills/moai-foundation-core/SKILL.md
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-foundation-core/SKILL.md has no row with reason backup-failed (row "")
+    migrate_ownership_recovery_test.go:865: (interrupted) a complete backup copy of .claude/skills/moai-foundation-core/SKILL.md exists although nothing was removed
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-ref-owasp-checklist/SKILL.md was removed or changed by the interrupted run (open <tmp>/.claude/skills/moai-ref-owasp-checklist/SKILL.md: no such file or directory)
+    migrate_ownership_recovery_test.go:865: (interrupted) the manifest lost its entry for .claude/skills/moai-ref-owasp-checklist/SKILL.md
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-ref-owasp-checklist/SKILL.md has no row with reason backup-failed (row "")
+    migrate_ownership_recovery_test.go:865: (interrupted) a complete backup copy of .claude/skills/moai-ref-owasp-checklist/SKILL.md exists although nothing was removed
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-workflow-testing/SKILL.md was removed or changed by the interrupted run (open <tmp>/.claude/skills/moai-workflow-testing/SKILL.md: no such file or directory)
+    migrate_ownership_recovery_test.go:865: (interrupted) the manifest lost its entry for .claude/skills/moai-workflow-testing/SKILL.md
+    migrate_ownership_recovery_test.go:865: (interrupted) .claude/skills/moai-workflow-testing/SKILL.md has no row with reason backup-failed (row "")
+    migrate_ownership_recovery_test.go:865: (interrupted) a complete backup copy of .claude/skills/moai-workflow-testing/SKILL.md exists although nothing was removed
+    migrate_ownership_recovery_test.go:869: the collided run wrote its own copy: <tmp>/.moai-backups/20261019_030526-02/manifest.prior.json
+    migrate_ownership_recovery_test.go:878: the run does not say why it removed nothing: [{sev:1 msg:Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.}]
+--- FAIL: TestInterruptedMigrationRecoversAndConverges (8.77s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/PriorManifestCollided/DistinctRunDirectories (0.50s)
+    migrate_ownership_rootonce_test.go:46: the project root was opened 0 times, want exactly once per run
+--- FAIL: TestMigrationOpensTheProjectRootOnce (1.11s)
+    migrate_ownership_unregsymlink_test.go:121: switch=false in-project symlink: class="unregistered" keep="no-provenance-record" data="# an unregistered file inside the project\n", want unregistered/"symlink-escape"/no bytes
+    migrate_ownership_unregsymlink_test.go:121: switch=true in-project symlink: class="unregistered" keep="no-provenance-record" data="# an unregistered file inside the project\n", want unregistered/"symlink-escape"/no bytes
+    migrate_ownership_unregsymlink_test.go:175: .agents/skills/moai-unreg-symlink/to-inside: row {Rel:.agents/skills/moai-unreg-symlink/to-inside Class:unregistered Reason:no-provenance-record Missing:[deployed-version original-deployed-path prior-manifest-record] Counterpart:n/a ProfileSi
+--- FAIL: TestUnregisteredSymlinkOutsideProjectIsNotRead (0.80s)
+    update_prior_manifest_collision_test.go:90: the second claim in the same directory: ("<tmp>/.moai-backups/20261018_153045-02", 1, <nil>), want a failed state with an error
+    update_prior_manifest_collision_test.go:198: state=1, want failed
+    update_prior_manifest_collision_test.go:201: the run removed [.claude/skills/moai-foundation-core/SKILL.md] although its prior manifest copy was not kept
+    update_prior_manifest_collision_test.go:204: the report does not say why the run removed nothing:
+--- FAIL: TestSecondClaimInTheSameDirectoryFailsClosed (1.58s)
+    --- FAIL: TestSecondClaimInTheSameDirectoryFailsClosed/SameDirectory (0.01s)
+    --- FAIL: TestSecondClaimInTheSameDirectoryFailsClosed/TheLaterRunRemovesNothingAndSaysWhy (1.54s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	24.703s
+FAIL
+rc=1
+[...] 「the earlier copy in <dir> changed」 줄 175개 생략 (아래 주의)
+```
+
+붉은 이유: 올바른 이유다. (1) 둘째 청구가 같은 디렉터리에서 형제 `…-02` 를 만들어 성공했고 (`state=1`), 그 실행이 `SKILL.md` 를 제거했으며 보고가 이유를 말하지 않았다. (2) 프로젝트 안 링크 (직접, 상위 디렉터리, 사슬, 업데이트 형태 걷기 둘) 가 바이트를 읽고 `no-provenance-record` 로 판정됐다 (`symlink-escape` 가 결정). 파이프를 가리키는 링크는 `non-regular-file` 였다. (3) 새 창 `lstat-to-open` 은 수정 전 코드에 없어 이음매가 불리지 않았다 (`swapped=false`; 약한 RED — 실질 증거는 수정 뒤 초록과 변이). (4) 루트 경로 바꿔치기 행은 환경이 만든 핸들을 쓰지 않고 경로 문자열로 열어 `symlink-escape` 로 관측됐다 (기대: 핸들이 가리키는 원본 프로젝트의 내용을 읽음). (5) `TestMigrationOpensTheProjectRootOnce`: 열기 0회 (`newOwnershipEnv` 가 아직 열지 않음). (6) AC-OWR-18 의 `PriorManifestCollided` 가 형제 `…-02` 에 자기 사본을 썼다.
+
+**주의 (정직한 회계).** 이 RED 실행의 `PriorManifestCollided` 는 첫 판본의 단언을 쓰고 있었다: 심은 모든 디렉터리에 앞 사본이 남아 있어야 한다고 단언했는데 실행 끝의 백업 보존 (기존 별개 경로) 이 오래된 실행 디렉터리를 정리해 대부분이 사라졌다 (그래서 「earlier copy … changed」 줄이 많다). 커밋하기 전에 단언을 「남은 디렉터리만 판정: 하나 이상 남음, 모두 심은 이름, 모두 앞 사본이 바이트 그대로」 로 고쳤다. 고친 단언은 아직 새 코드로 실행하지 않았다 — 수정 뒤 초록 실행이 그 첫 실행이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
