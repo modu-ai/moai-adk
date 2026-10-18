@@ -22,3 +22,7 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §G Override and Refusal Record
+
+- 2026-10-18T22:59:15Z SPEC-V3R6-DOCS-PREREWRITE-SWEEPA-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1721/.moai/reports/t1721/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1721/.moai/reports/t1721/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1721/.moai/reports/t1721/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1721/.moai/reports/t1721/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1721/.moai/reports/t1721/plan-audit.md
