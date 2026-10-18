@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-d7d5659c",
+  "generated_at": "2026-07-28T16:55:44Z",
+  "generator_version": "0.1.0",
+  "observation_count": 6,
+  "pattern_key": "tool_failure:DesignSync:UnknownFailure",
+  "source_ts": "2026-07-21T05:30:27Z",
+  "tier": "rule"
+}

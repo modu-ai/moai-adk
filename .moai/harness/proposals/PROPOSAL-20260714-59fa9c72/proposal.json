@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-20260714-59fa9c72",
+  "generated_at": "2026-07-26T03:19:55Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "tool_failure:Bash:SandboxViolation",
+  "source_ts": "2026-07-14T01:54:10Z",
+  "tier": "auto_update"
+}

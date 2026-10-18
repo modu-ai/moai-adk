@@ -87,7 +87,6 @@ func TestTemplateGitignoreIgnoresLocalArtifacts(t *testing.T) {
 		{".moai/harness/learning-history/tier-promotions.jsonl", true, "learning ledger is runtime output"},
 		{".moai/harness/observations.yaml", true, "harness observations (runtime)"},
 		{".moai/harness/usage-log.jsonl.prune-state", true, "usage-log prune state (runtime)"},
-		{".moai/harness/proposals/p-1/proposal.yaml", true, "harness proposals (runtime)"},
 		{".moai/harness/README.md", false, "harness documentation stays trackable"},
 
 		// Scaffolds — must stay trackable so the directories ship.

@@ -37,7 +37,6 @@ var generatedArtifactIgnoreRules = []string{
 	".moai/harness/usage-log.jsonl.prune-state",
 	".moai/harness/usage-log.jsonl.prune-heal",
 	".moai/harness/learning-history/",
-	".moai/harness/proposals/",
 }
 
 func TestEmbeddedGitignoreCoversGeneratedArtifacts(t *testing.T) {

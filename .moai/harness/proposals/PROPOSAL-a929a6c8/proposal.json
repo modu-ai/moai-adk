@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-a929a6c8",
+  "generated_at": "2026-08-05T10:04:50Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "tool_failure:EnterWorktree:UnknownFailure",
+  "source_ts": "2026-08-19T13:33:58Z",
+  "tier": "auto_update"
+}

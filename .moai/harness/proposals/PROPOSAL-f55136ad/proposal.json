@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-f55136ad",
+  "generated_at": "2026-09-19T13:42:57Z",
+  "generator_version": "0.1.0",
+  "observation_count": 5,
+  "pattern_key": "user_prompt:SPEC-CONFIG-001:",
+  "source_ts": "2026-09-19T13:42:57Z",
+  "tier": "rule"
+}

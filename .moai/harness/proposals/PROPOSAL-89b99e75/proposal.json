@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-89b99e75",
+  "generated_at": "2026-07-28T16:55:44Z",
+  "generator_version": "0.1.0",
+  "observation_count": 6,
+  "pattern_key": "tool_failure:Bash:PermissionDenied",
+  "source_ts": "2026-10-04T06:08:17Z",
+  "tier": "rule"
+}

@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-4b1069cf",
+  "generated_at": "2026-09-22T05:35:37Z",
+  "generator_version": "0.1.0",
+  "observation_count": 5,
+  "pattern_key": "tool_failure:ScheduleWakeup:UnknownFailure",
+  "source_ts": "2026-09-22T05:35:37Z",
+  "tier": "rule"
+}

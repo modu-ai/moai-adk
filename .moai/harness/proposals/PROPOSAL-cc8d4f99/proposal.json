@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-cc8d4f99",
+  "generated_at": "2026-08-12T20:40:10Z",
+  "generator_version": "0.1.0",
+  "observation_count": 10,
+  "pattern_key": "subagent_stop:frontend-worker:",
+  "source_ts": "2026-08-12T21:03:17Z",
+  "tier": "auto_update"
+}
