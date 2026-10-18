@@ -216,6 +216,130 @@ Exit code: 0 (verbatim result lines)
 ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.651s
 ```
 
+
+### M3 measurement (plan.md B.3) — what git hands a pre-commit hook, per commit shape (tree 00e7843ab plus the M1/M2 commits; git as installed; throwaway repo under /private/tmp)
+Command: `sh m3_measure.sh` (scratch script; the hook records the commit-accurate list `git diff --cached --name-only --no-renames -z` with the environment as git gave it, and the existing helper's form with every `gitenv.RepoScopingVars` entry removed). Exit code: 0. Verbatim output:
+```
+## plain: git commit (a/x.go staged, d/z.go modified unstaged)
+  cwd=/private/tmp/t1673-tmp/m3/repo
+  GIT_DIR=<unset>
+  GIT_INDEX_FILE=.git/index
+  commit-accurate : a/x.go 
+  existing helper : a/x.go 
+## plain: git commit -a
+  cwd=/private/tmp/t1673-tmp/m3/repo
+  GIT_DIR=<unset>
+  GIT_INDEX_FILE=/private/tmp/t1673-tmp/m3/repo/.git/index.lock
+  commit-accurate : a/x.go d/z.go 
+  existing helper : a/x.go 
+## plain: git commit d/z.go
+  cwd=/private/tmp/t1673-tmp/m3/repo
+  GIT_DIR=<unset>
+  GIT_INDEX_FILE=/private/tmp/t1673-tmp/m3/repo/.git/next-index-61161.lock
+  commit-accurate : d/z.go 
+  existing helper : a/x.go 
+## plain: staged rename old/o.go -> new/o.go
+  cwd=/private/tmp/t1673-tmp/m3/repo
+  GIT_DIR=<unset>
+  GIT_INDEX_FILE=.git/index
+  commit-accurate : new/o.go old/o.go 
+  existing helper : new/o.go 
+## plain: git commit --amend after staging f.go
+  cwd=/private/tmp/t1673-tmp/m3/repo
+  GIT_DIR=<unset>
+  GIT_INDEX_FILE=.git/index
+  commit-accurate : f.go 
+  existing helper : f.go 
+## linked worktree: git commit
+  cwd=/private/tmp/t1673-tmp/m3/wt
+  GIT_DIR=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt
+  GIT_INDEX_FILE=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt/index
+  commit-accurate : a/x.go 
+  existing helper : a/x.go 
+## linked worktree: git commit -a
+  cwd=/private/tmp/t1673-tmp/m3/wt
+  GIT_DIR=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt
+  GIT_INDEX_FILE=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt/index.lock
+  commit-accurate : a/x.go d/z.go 
+  existing helper : a/x.go 
+## linked worktree: git commit d/z.go
+  cwd=/private/tmp/t1673-tmp/m3/wt
+  GIT_DIR=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt
+  GIT_INDEX_FILE=/private/tmp/t1673-tmp/m3/repo/.git/worktrees/wt/next-index-61400.lock
+  commit-accurate : d/z.go 
+  existing helper : a/x.go 
+```
+Reading: under `git commit -a` and a path-limited commit git exports GIT_INDEX_FILE as an absolute path to a temporary index (`index.lock` / `next-index-N.lock`); under a plain commit or `--amend` it is the relative `.git/index`; in a linked worktree GIT_DIR is `<main>/.git/worktrees/<name>` and GIT_INDEX_FILE is absolute under it. The commit-accurate list is the one built from that index; the existing helper misses `d/z.go` under `-a`, returns `a/x.go` instead of `d/z.go` for a path-limited commit, and omits the old path of a rename — identical in the linked worktree. `--amend` yields exactly the newly staged `f.go` (the amended commit's own files are not re-reported). Mechanism chosen: read GIT_INDEX_FILE (made absolute against the hook's cwd) for this one query only, every other repository-location variable stays scrubbed, rename detection off (`--no-renames`), NUL-separated names (`-z`).
+
+### RED-M3a — AC-PAS-005 adapter half, AC-PAS-008 go list half, AC-PAS-009 (adapters; tree = M2 GREEN plus the M3a RED test files and the adapter stubs)
+The adapters are stubs returning an error, so each assertion fails on the right reason: no list and no graph is produced. The subtest `a_directory_outside_any_repository_is_a_query_failure` passes against the stub (a stub error is also an error); it is not a red cell. Exit code of each command: 1.
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_GoListGraph$' -count=1 -v`
+```
+=== RUN   TestAffectedScope_GoListGraph
+    affected_scope_adapters_test.go:72: listModuleGraph: affected-scope: package-graph adapter not implemented
+--- FAIL: TestAffectedScope_GoListGraph (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.753s
+FAIL
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_IncompleteGraphFallsBack$' -count=1 -v`
+```
+=== RUN   TestAffectedScope_IncompleteGraphFallsBack
+    affected_scope_adapters_test.go:117: control: a clean module was refused: affected-scope: package-graph adapter not implemented
+--- FAIL: TestAffectedScope_IncompleteGraphFallsBack (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.505s
+FAIL
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_RealGitRenameDelete$' -count=1 -v`
+```
+=== RUN   TestAffectedScope_RealGitRenameDelete
+=== RUN   TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers
+    affected_scope_adapters_test.go:168: queryCommitChanges: affected-scope: commit-changes adapter not implemented
+=== RUN   TestAffectedScope_RealGitRenameDelete/deleting_the_last_file_of_a_package_selects_its_updated_importers
+    affected_scope_adapters_test.go:196: queryCommitChanges: affected-scope: commit-changes adapter not implemented
+=== RUN   TestAffectedScope_RealGitRenameDelete/a_nested_module_root_reports_its_offset_inside_the_repository
+    affected_scope_adapters_test.go:222: queryCommitChanges: affected-scope: commit-changes adapter not implemented
+=== RUN   TestAffectedScope_RealGitRenameDelete/nothing_staged_is_an_empty_list,_not_an_error
+    affected_scope_adapters_test.go:233: files = [], err = affected-scope: commit-changes adapter not implemented, want an empty list and no error
+=== RUN   TestAffectedScope_RealGitRenameDelete/a_directory_outside_any_repository_is_a_query_failure
+--- FAIL: TestAffectedScope_RealGitRenameDelete (1.22s)
+    --- FAIL: TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers (0.44s)
+    --- FAIL: TestAffectedScope_RealGitRenameDelete/deleting_the_last_file_of_a_package_selects_its_updated_importers (0.27s)
+    --- FAIL: TestAffectedScope_RealGitRenameDelete/a_nested_module_root_reports_its_offset_inside_the_repository (0.30s)
+    --- FAIL: TestAffectedScope_RealGitRenameDelete/nothing_staged_is_an_empty_list,_not_an_error (0.21s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/a_directory_outside_any_repository_is_a_query_failure (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	1.713s
+FAIL
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_ChangedSetMatchesCommit$' -count=1 -v`
+```
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit/plain_repository
+    affected_scope_hook_test.go:149: (i) git commit (only a/x.go staged): the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "a/x.go"
+    affected_scope_hook_test.go:149: (ii) git commit -a: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "a/x.go d/z.go"
+    affected_scope_hook_test.go:149: (iii) git commit d/z.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "d/z.go"
+    affected_scope_hook_test.go:149: (iv) staged rename old/o.go -> new/o.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "new/o.go old/o.go"
+    affected_scope_hook_test.go:149: (v) git commit --amend after staging f.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "f.go"
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit/linked_worktree
+    affected_scope_hook_test.go:158: (i) git commit (only a/x.go staged): the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "a/x.go"
+    affected_scope_hook_test.go:158: (ii) git commit -a: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "a/x.go d/z.go"
+    affected_scope_hook_test.go:158: (iii) git commit d/z.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "d/z.go"
+    affected_scope_hook_test.go:158: (iv) staged rename old/o.go -> new/o.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "new/o.go old/o.go"
+    affected_scope_hook_test.go:158: (v) git commit --amend after staging f.go: the gate saw "ERROR: affected-scope: commit-changes adapter not implemented", the commit records "f.go"
+--- FAIL: TestAffectedScope_ChangedSetMatchesCommit (1.99s)
+    --- FAIL: TestAffectedScope_ChangedSetMatchesCommit/plain_repository (0.86s)
+    --- FAIL: TestAffectedScope_ChangedSetMatchesCommit/linked_worktree (1.13s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	2.615s
+FAIL
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
