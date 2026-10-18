@@ -221,7 +221,20 @@ gaps: package-wide `internal/cli` suite NOT run locally (rule 35e9 — batch CI 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-10-18T01:48:00Z (2026-10-18 10:48 KST)
+sync_commit_sha: pending-backfill-sync (placeholder — a commit cannot cite its own hash; the real SHA is backfilled in the immediately following commit, per the D3 pattern)
+ac_count_at_sync: 7 (live AC-CEP-001..007 counted from acceptance.md SSOT by the B12 counter: live=7 excluded=0 ambiguous=0)
+b12_self_test_a_duplicate_grep: pass — `grep -c 'SPEC-CARD-ELIGIBLE-PULL-001' CHANGELOG.md` → 0 (exit 1, no prior entry; emission proceeded)
+b12_self_test_b_ac_count: pass — B12 counter stdout 7 == CHANGELOG-cited acceptance-criteria count 7; source acceptance.md (tier M resolver), not progress.md
+b12_self_test_c_path_check: pass — every referenced path verified by ls before commit (internal/cli/factory_card.go, internal/cli/mcp_factory_card.go, internal/config/types.go, internal/config/defaults.go, .moai/config/sections/workflow.yaml, internal/template/templates/.moai/config/sections/workflow.yaml)
+changelog_entry_position: [Unreleased] > ### Added, top entry
+frontmatter_status_transitions.spec_md: in-progress → implemented → completed, both transitions merged into this single sync commit (3-phase close; status only — updated already 2026-10-18, no byte change)
+frontmatter_status_transitions.plan_acceptance: untouched — updated already 2026-10-18 on both artifacts; no status field exists (Artifact Statelessness)
+mx_tag_check: read-only pass — @MX:NOTE + @MX:SPEC present on factoryEligibility (factory_card.go:1352-1353); the sync phase added no code, so no tag edits (card instruction: Go code/tests untouched in sync)
+rollout_note: t1240-shaped self-dispatch deployments must set workflow.factory.self_dispatch: true to preserve lane bare-next unowned-card leasing
+known_deviation_for_audit: I-1 — REQ-CEP-003 condition 2 implemented via the priority==high surrogate (recorded §E.2; left as recorded for the sync auditor to judge, not editorialized)
+notes: one sync commit carries the CHANGELOG entry + this §E.4 signal + the spec.md status close; body content of spec.md/plan.md/acceptance.md untouched; no push (factory card branch — the leader batch-lands per the lane protocol)
 
 ## §G Override and Refusal Record
 
