@@ -109,3 +109,13 @@ below are the baseline; the card-review and sync audit re-read from disk.
 ## Hold (RESOLVED 06:32Z)
 
 - t1827 landed on local main `026f48658f`; hold lifted, implementation landed above.
+
+## Landing queue wait (07:07Z, leader msg)
+
+Leader confirmed merge-ready (sync-audit PASS, receipt `rcpt-887168f33117a07a6c6f2161`) and
+queued this card at position 10: `t1834(진행 중) → t1682 → t1688 → t1703 → t1866 → t1859 →
+t1708 → t1680 → t1821 → t1862 → t1709 → t1860`. On my turn: absorb latest main → scoped
+re-measure (rule 35e9) → `factory complete`. Pre-verified here: the audited tree for the
+sync-audit verdict was HEAD `e707bdf806` (fix + tests); the verdict-file commit `0a752d2c9a`
+adds reports only, so the audited code is unchanged by the record commit. Lease renewal
+continues every cron fire until the turn arrives.
