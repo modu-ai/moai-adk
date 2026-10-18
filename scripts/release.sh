@@ -232,7 +232,7 @@ fi
 # (CodeRabbit) answers "success" while the Actions jobs are red or still running.
 # Passes only when every check run on the commit is completed and concluded
 # success, neutral or skipped, AND the repository's own CI workflow reported:
-# each name in CI_REQUIRED_CHECKS below must be present among them, published by
+# each name in the release_gate list of .github/required-checks.yml must be present among them, published by
 # the GitHub Actions app (a check run of the right name from another app does
 # not count). Absent,
 # pending, failed, unreadable and "only somebody else's checks" are all
@@ -257,16 +257,25 @@ else
     # would leave the gate demanding nothing, so either one is a refusal.
     CI_CHECKS_FILE="$SCRIPT_DIR/../.github/required-checks.yml"
     [[ -f "$CI_CHECKS_FILE" ]] || die "CI gate: the required-checks file $CI_CHECKS_FILE is missing, so the checks to demand cannot be read. Restore it, or pass --skip-ci-check to override (recorded in the release summary)."
-    while IFS= read -r check_name; do
-        [[ -n "$check_name" ]] && CI_REQUIRED_CHECKS+=("$check_name")
-    done < <(awk '
-        /^release_gate:/ { inblock = 1; next }
+    # A malformed list (trailing comment, single quote, duplicate name or key)
+    # is refused here with its own message instead of surfacing later as a
+    # misleading "not reported". The awk prints the reason and exits 1.
+    CI_GATE_NAMES="$(awk '
+        { sub(/\r$/, "") }
+        /^release_gate:/ { if (seen_key++) { print "duplicate release_gate key"; exit 1 } inblock = 1; next }
         inblock && /^[^ \t#]/ { inblock = 0 }
         inblock && /^[ \t]+-[ \t]/ {
             sub(/^[ \t]+-[ \t]+/, ""); sub(/[ \t]+$/, "")
+            if ($0 ~ /[ \t]#/) { print "entry with a trailing comment: " $0; exit 1 }
+            if (substr($0, 1, 1) == "\047") { print "single-quoted entry (use plain or double quotes): " $0; exit 1 }
             if ($0 ~ /^".*"$/) $0 = substr($0, 2, length($0) - 2)
+            if (names[$0]++) { print "duplicate name: " $0; exit 1 }
             print
-        }' "$CI_CHECKS_FILE")
+        }' "$CI_CHECKS_FILE")" \
+        || die "CI gate: malformed release_gate in $CI_CHECKS_FILE: $CI_GATE_NAMES. Fix the list there, or pass --skip-ci-check to override (recorded in the release summary)."
+    while IFS= read -r check_name; do
+        [[ -n "$check_name" ]] && CI_REQUIRED_CHECKS+=("$check_name")
+    done <<< "$CI_GATE_NAMES"
     (( ${#CI_REQUIRED_CHECKS[@]} > 0 )) || die "CI gate: no release_gate check names could be read from $CI_CHECKS_FILE, so the gate would demand nothing. Fix the release_gate list there, or pass --skip-ci-check to override (recorded in the release summary)."
 
     # One line per check run: "<name><TAB><status><TAB><conclusion><TAB><app slug>".
@@ -294,7 +303,7 @@ else
             || CI_MISSING="${CI_MISSING:+$CI_MISSING; }$expected"
     done
     if [[ -n "$CI_MISSING" ]]; then
-        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin (by name, from the $CI_APP app): $CI_MISSING. The repository CI workflow (CI_REQUIRED_CHECKS in this script) has not run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
+        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin (by name, from the $CI_APP app): $CI_MISSING. The release_gate checks of .github/required-checks.yml have not all run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
     fi
     log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green; CI workflow checks present from $CI_APP: ${CI_REQUIRED_CHECKS[*]})"
 fi

@@ -43,6 +43,16 @@ func TestReleaseScriptCIGateSSoTFailsClosed(t *testing.T) {
 			wantOut: []string{"[FAIL] CI gate: no release_gate check names could be read"}},
 		{name: "empty_release_gate_block_is_refused", ssot: ptr(mainOnly + "release_gate:\nauxiliary:\n  - x\n"), wantExit: 1,
 			wantOut: []string{"[FAIL] CI gate: no release_gate check names could be read"}},
+		{name: "trailing_comment_is_malformed", ssot: ptr(gateSSoT("  - Lint # keep\n  - \"Test (ubuntu-latest)\"\n  - \"Build (linux/amd64)\"\n")), wantExit: 1,
+			wantOut: []string{"[FAIL] CI gate: malformed release_gate in", "trailing comment"}},
+		{name: "single_quoted_entry_is_malformed", ssot: ptr(gateSSoT("  - Lint\n  - 'Test (ubuntu-latest)'\n  - \"Build (linux/amd64)\"\n")), wantExit: 1,
+			wantOut: []string{"[FAIL] CI gate: malformed release_gate in", "single-quoted"}},
+		{name: "duplicate_name_is_malformed", ssot: ptr(gateSSoT("  - Lint\n  - Lint\n  - Lint\n")), wantExit: 1,
+			wantOut: []string{"[FAIL] CI gate: malformed release_gate in", "duplicate name"}},
+		{name: "duplicate_key_is_malformed", ssot: ptr(gateSSoT("  - Lint\n") + "release_gate:\n  - \"Test (ubuntu-latest)\"\n"), wantExit: 1,
+			wantOut: []string{"[FAIL] CI gate: malformed release_gate in", "duplicate release_gate key"}},
+		{name: "crlf_real_ssot_copy_passes", ssot: ptr(strings.ReplaceAll(string(realSSoT), "\n", "\r\n")), wantExit: 0,
+			wantOut: []string{"CI gate:     verified"}},
 		{name: "control_real_ssot_copy_passes", ssot: ptr(string(realSSoT)), wantExit: 0,
 			wantOut: []string{"CI gate:     verified"}},
 	}
@@ -91,4 +101,54 @@ func TestReleaseScriptCIGateSSoTFailsClosed(t *testing.T) {
 	}
 }
 
+// gateSSoT builds a minimal SSoT whose release_gate block holds the given
+// pre-indented list lines.
+func gateSSoT(items string) string {
+	return "version: 1\nbranches:\n  main:\n    contexts:\n      - Lint\nrelease_gate:\n" + items
+}
+
 func ptr(s string) *string { return &s }
+
+// TestReleaseScriptRealSSoTDemandsEveryPinnedCheck drives the REAL script against
+// the REAL .github/required-checks.yml (rlsRelease), with check-run pages from
+// which exactly one pinned name is absent, and a page holding only Lint. The
+// script names no check itself, so these rows are what fail the moment someone
+// shortens the real release_gate list: the gate would then stop demanding the
+// dropped name and the corresponding row would exit 0.
+func TestReleaseScriptRealSSoTDemandsEveryPinnedCheck(t *testing.T) {
+	rlsRequireTools(t, "jq")
+
+	run := func(name, conclusion string) string {
+		return `{"name":"` + name + `","status":"completed","conclusion":"` + conclusion + `","app":{"slug":"github-actions"}}`
+	}
+	page := func(runs ...string) string {
+		return `{"total_count":` + string(rune('0'+len(runs))) + `,"check_runs":[` + strings.Join(runs, ",") + `]}`
+	}
+	lint, test, build := run("Lint", "success"), run("Test (ubuntu-latest)", "success"), run("Build (linux/amd64)", "success")
+	const tail = "): "
+
+	rows := []struct {
+		name    string
+		runs    string
+		missing string
+	}{
+		{name: "lint_missing", runs: page(test, build), missing: "Lint. The"},
+		{name: "test_missing", runs: page(lint, build), missing: "Test (ubuntu-latest). The"},
+		{name: "build_missing", runs: page(lint, test), missing: "Build (linux/amd64). The"},
+		{name: "only_lint_green", runs: page(lint), missing: "Test (ubuntu-latest); Build (linux/amd64). The"},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+			s := rlsNewStub(t)
+			s.setCheckRuns(t, row.runs)
+			res := rlsRelease(t, r, s, rlsRcTag, "--dry-run")
+			out := rlsNorm(res.out)
+			t.Logf("exit=%d\n%s", res.exit, out)
+			if res.exit != 1 {
+				t.Errorf("exit code = %d, want 1", res.exit)
+			}
+			rlsMustContain(t, out, "CI gate: expected check run(s) not reported", "github-actions app"+tail+row.missing)
+		})
+	}
+}
