@@ -1853,13 +1853,16 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 // record show no card the attempt could take (an empty queue; an unknown,
 // keep-set, or serial-blocked nominee; a quota hold that leaves only the
 // lane's assigned card; an assigned card arm (a) itself would skip — its
-// queue item excluded, or its self-excluding serial read busy; or a bare
-// attempt whose every candidate is queued-excluded — hold-marked or blocked —
-// or a serial candidate whose own self-excluding slot read is busy), and true
-// whenever a read fails or the answer needs the section's own checks. The
-// serial read is the same factorySerialInFlightExcluding the lease arms run,
-// over the rows this peek already loads. A lease that wins a race the peek
-// could not see prints the query as unavailable.
+// queue item excluded, its selection skip, or its self-excluding serial read
+// busy; or a bare attempt whose every candidate is queued-excluded —
+// hold-marked, blocked, or one of the selection skips the un-nominated arms
+// apply: another lane's bundle member, an unmerged after-hint predecessor, an
+// unmerged hub predecessor (card t1746) — or a serial candidate whose own
+// self-excluding slot read is busy), and true whenever a read fails or the
+// answer needs the section's own checks. The serial read is the same
+// factorySerialInFlightExcluding the lease arms run, over the rows this peek
+// already loads. A lease that wins a race the peek could not see prints the
+// query as unavailable.
 func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string, held bool) bool {
 	rec, err := todoStoreAt(root).LoadPure()
 	if err != nil {
@@ -1904,11 +1907,46 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		}
 		return false
 	}
+	// The selection skips, mirrored from the un-nominated arms over the rows
+	// this peek already loads (card t1746): another lane's bundle member, a
+	// candidate whose after-hint predecessor is unmerged, and a candidate with
+	// an unmerged sharer on any of its hub paths lease on no arm, so they are
+	// no candidate here either — answering true for one re-queried gh on every
+	// --wait poll. mergedLocal reads every run, the same set the selector's
+	// skip reads (card t1454); a read failure fails open like the reads above.
+	bundleLane := make(map[string]string, len(rows))
+	for _, c := range rows {
+		if c.BundleID != "" && strings.TrimSpace(c.OwnerLabel) != "" {
+			if _, seen := bundleLane[c.BundleID]; !seen {
+				bundleLane[c.BundleID] = strings.TrimSpace(c.OwnerLabel)
+			}
+		}
+	}
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return true
+	}
+	mergedLocal := factoryMergedCards(allRuns)
+	hubWaitUnmerged := func(cardID string) (string, bool) {
+		return factoryHubWaitUnmerged(rec, rows, mergedLocal, cardID)
+	}
+	selectionSkips := func(c homestate.Card) bool {
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				return true
+			}
+		}
+		if c.HintAfter != "" && !mergedLocal[c.HintAfter] {
+			return true
+		}
+		_, wait := hubWaitUnmerged(c.CardID)
+		return wait
+	}
 	// Arm (a) mirror: an assigned-to-this-lane row is a candidate only past
 	// the same gates the lease edge applies — the queue item's keep-set
-	// refusal, and the self-excluding serial read with sibling assigned rows
-	// ignored (card t1542). An excluded or serial-blocked assigned card
-	// leaves the attempt to the bare arms below.
+	// refusal, the selection skips, and the self-excluding serial read with
+	// sibling assigned rows ignored (card t1542). An excluded, skipped, or
+	// serial-blocked assigned card leaves the attempt to the bare arms below.
 	for i := range rows {
 		c := rows[i]
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
@@ -1918,6 +1956,9 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			if factoryKeepSetRefusal(it, &rows[i], lane, false) != nil {
 				continue
 			}
+		}
+		if selectionSkips(c) {
+			continue
 		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
 			continue
@@ -1952,6 +1993,24 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			if hasRow && !(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
 				continue
 			}
+		}
+		// The selection skips, mirrored per candidate from the arm that would
+		// take it: a recorded row answers to the full predicate (arms (b) and
+		// (c)), a rowless queued candidate to the generated hub hint and the
+		// hub wait arm (c) checks at promotion, and a rowless picked card to
+		// the hub wait of (b2) alone (card t1746).
+		if row, ok := rowByID[it.ID]; ok {
+			if selectionSkips(row) {
+				continue
+			}
+		} else if it.State == factory.BacklogStateQueued {
+			if hf := factoryHubChainFields(rec, rows, it.ID, nil); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+				continue
+			} else if _, wait := hubWaitUnmerged(it.ID); wait {
+				continue
+			}
+		} else if _, wait := hubWaitUnmerged(it.ID); wait {
+			continue
 		}
 		if classOf(it.ID).Mode != factory.ClassModeSerial || !factorySerialInFlightExcluding(rows, classOf, it.ID, now, false) {
 			return true
