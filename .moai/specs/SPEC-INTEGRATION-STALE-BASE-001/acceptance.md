@@ -85,8 +85,9 @@ Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002;
 **Given** the gate enabled, K = 0, a configured integration target `main`, a branch `alternate` created on `main`'s tip, and a valid re-measure record for the candidate, so that the candidate is fresh against both branches and only the mismatch can refuse it; and the same candidate with an explicit `--branch` equal to the target (also with surrounding blanks) or with no flag.
 **When** `moai integration acquire --card <id> --branch alternate` runs (G-18b) and the pure gate evaluates `RequestedBranch` set to `alternate`, to `main`, to ` main ` and to empty (G-18).
 **Then** `acquire` exits 16 with a line beginning `BASE_FRESHNESS_VIOLATION:` that names `alternate`, `main` and `configured integration target`, on one line, and records no window; the pure gate, for `alternate`, returns no tip and no landings count (it measured neither branch); for `main`, ` main ` and empty it admits silently with landings behind 0, exactly as without the field.
+**Remedy wording (audit iter11 F3).** The refusal's remedy is flow-specific: with a develop branch configured (git-flow) it reads `Acquire without --branch (the configured target <target>), or change the configured integration target, then retry.`; with an empty `develop_branch` (github-flow, gitlab-flow) it reads `Acquire with --branch <target> (the configured integration target), or change the configured integration target, then retry.`, selected by `BaseFreshnessInput.OmittedBranchTakesTarget`; the selector changes wording only and never a verdict.
 **Mutant probe.** A gate that measures `alternate` admits the fresh candidate and fails the refusal clause; one that compares `--branch` untrimmed refuses ` main `; one that drops the check admits `alternate`.
-**Tests.** `TestAcquireRefusesAnExplicitBranchOtherThanTheConfiguredTarget` (`internal/cli/integration_base_freshness_test.go`), `TestBaseFreshnessRequestedBranchOtherThanTheTargetIsRefusedNotMeasured` and `TestBaseFreshnessRequestedBranchEqualToTheTargetIsMeasuredAsBefore` (`internal/factory/base_freshness_target_test.go`).
+**Tests.** `TestAcquireRefusesAnExplicitBranchOtherThanTheConfiguredTarget` and, for the remedy wording, `TestAcquireRefusalRemedyInGitHubFlowNamesTheTargetAndFollowingItRecordsIt` and `TestAcquireRefusalRemedyInGitFlowKeepsOmitBranch` (`internal/cli/integration_base_freshness_test.go`), `TestBaseFreshnessRequestedBranchOtherThanTheTargetIsRefusedNotMeasured`, `TestBaseFreshnessRequestedBranchEqualToTheTargetIsMeasuredAsBefore` and `TestBaseFreshnessRefusalRemedyNamesTheBranchPerFlow` (`internal/factory/base_freshness_target_test.go`).
 
 ### AC-ISB-005 — the record is required whatever L is
 
@@ -122,9 +123,9 @@ Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002;
 
 **Given** `GIT_DIR` and `GIT_WORK_TREE` in the process environment naming another repository, and a card worktree one commit past an absorbed landing.
 **When** `RunRemeasure` runs for the card (G-20).
-**Then** the stored record is keyed by the card's own HEAD tree and based on the card's own merge-base, and the gate reading that tree finds a valid record.
-**Mutant probe.** Any of `gitHeadSHA`, `gitMergeBase` or `headTreeSHA` run without the scrub keys the record by the other repository's tree and the gate reports no valid record for a candidate that was just remeasured.
-**Test.** `TestRemeasureKeysRecordByOwnTreeUnderInheritedGitEnv` (`internal/factory/integration_remeasure_gitenv_test.go`).
+**Then** the stored record is keyed by the card's own HEAD tree and based on the card's own merge-base, and the gate reading that tree finds a valid record; and the `sh -c` measuring command child, which runs with `gitenv.Env()`, measures the candidate worktree and not the other repository, while every other user environment variable (for example a marker variable set by the caller) is still visible to the command.
+**Mutant probe.** Any of `gitHeadSHA`, `gitMergeBase` or `headTreeSHA` run without the scrub keys the record by the other repository's tree and the gate reports no valid record for a candidate that was just remeasured; a measuring child started without `cmd.Env = gitenv.Env()` inherits `GIT_DIR` and measures the other repository; a child started with an emptied environment fails the keeps-the-rest test.
+**Tests.** `TestRemeasureKeysRecordByOwnTreeUnderInheritedGitEnv` (the three git helpers), `TestRemeasureCommandMeasuresTheCandidateUnderInheritedGitEnv` and `TestRemeasureCommandKeepsTheRestOfTheUserEnvironment` (the command child), all in `internal/factory/integration_remeasure_gitenv_test.go`.
 
 ### AC-ISB-007 — K lives in configuration
 
@@ -149,10 +150,11 @@ Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002;
 
 ### AC-ISB-009 — uncertainty admits with one cause line; not-applicable admits silently
 
-**Given** the gate enabled and the tree otherwise stale, in two groups. Uncertain (applicable call): unreadable configuration; K = -1; integration branch missing or unresolvable; a git failure injected through the runner seam. Not applicable: no `--card`; cwd on the integration branch; detached HEAD.
+**Given** the gate enabled and the tree otherwise stale, in two groups. Uncertain (applicable call): unreadable configuration; K = -1; integration branch missing or unresolvable; a git failure injected through the runner seam. Not applicable: no `--card`; cwd on the integration branch, including when a tag shares the integration branch's name (audit iter11 F2: the full HEAD ref from `git symbolic-ref --quiet HEAD` is compared with `refs/heads/<target>`); detached HEAD (`symbolic-ref --quiet` exit 1). A candidate on a branch other than the integration branch is still measured when a tag shares the integration branch's name.
 **When** the pure gate evaluates each (G-09) and the CLI path runs `acquire` for each in a fixture repository (G-09b).
 **Then** every uncertain case exits 0, records the window, and writes exactly one stderr line naming its cause (the line count is asserted equal to 1); every not-applicable case exits 0, records the window, and writes no gate line; none prints the sentinel.
-**Mutant probe.** A gate treating a git failure as stale refuses the injected case; a gate printing for not-applicable fails the silent clause; a pure-package test alone would pass a CLI that drops the line, which G-09b catches.
+**Mutant probe.** A gate treating a git failure as stale refuses the injected case; a gate printing for not-applicable fails the silent clause; a pure-package test alone would pass a CLI that drops the line, which G-09b catches; a gate comparing the short branch name instead of the full ref treats the integration tree as a card branch when a tag shares the name, which the shadowing-tag tests catch.
+**Tests (audit iter11 F2).** `TestBaseFreshnessIntegrationTreeIsNotApplicableWhenATagSharesTheBranchName` and `TestBaseFreshnessCandidateOffTheIntegrationBranchIsStillMeasuredWithAShadowingTag` (`internal/factory/base_freshness_target_test.go`); a failure of the symbolic-ref read other than exit 1 is uncertain and admits with one cause line.
 
 ### AC-ISB-010 — K = 0 agrees with merge cause 2; K above 0 never relaxes it
 
