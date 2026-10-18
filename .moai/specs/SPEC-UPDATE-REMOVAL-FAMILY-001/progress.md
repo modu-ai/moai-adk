@@ -213,7 +213,7 @@ audit_ready: true
 
 ```yaml
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8aee4a953b
 sync_status: complete
 sync_actor: manager-docs (card t1668)
 b12_self_test_a: pass — pre-emission grep `grep -c 'SPEC-UPDATE-REMOVAL-FAMILY-001' CHANGELOG.md` returned 0 (이번 실행 관측, exit 1 = 매치 없음) — 중복 엔트리 없음 확인 후 발행
