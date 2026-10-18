@@ -25,8 +25,11 @@ import (
 func envDiffGit(t *testing.T, repo string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", repo,
+		"-c", "commit.gpgSign=false",
 		"-c", "user.name=env-diff-base-test",
 		"-c", "user.email=env-diff-base-test@example.invalid"}, args...)...)
+	// The fixture must not depend on the caller's git configuration.
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v in %s: %v\n%s", args, repo, err, out)
@@ -137,5 +140,48 @@ func TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain(t *testing.T) {
 	}
 	if got := srlDiffBase(t, repo); got != want {
 		t.Fatalf("srlDiffBase picked %s; want merge-base with origin/main %s, not stale develop %s (card t1856)", got, want, viaDevelop)
+	}
+}
+
+// TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain pins that no develop-family
+// ref resolves the base: with neither local main nor origin/main, a stale
+// develop and a stale origin/develop are both present, and the resolver MUST
+// fall through to its documented HEAD fallback.
+func TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain(t *testing.T) {
+	repo := envDiffTempRepo(t, "card-branch") // no local main, no origin/main
+	envDiffCommit(t, repo, "base.txt", "base\n")
+	envDiffGit(t, repo, "branch", "develop")
+	envDiffGit(t, repo, "update-ref", "refs/remotes/origin/develop", "HEAD")
+	envDiffCommit(t, repo, "card.txt", "card work\n")
+
+	for _, ref := range []string{"develop", "origin/develop"} {
+		if base := envDiffGit(t, repo, "merge-base", "HEAD", ref); base == "" || base == "HEAD" {
+			t.Fatalf("fixture invalid: merge-base with %s is %q, must be a commit that differs from the HEAD fallback", ref, base)
+		}
+	}
+	if got := srlDiffBase(t, repo); got != "HEAD" {
+		t.Fatalf("srlDiffBase picked %s; want the HEAD fallback, a develop-family ref must never resolve the base (card t1856)", got)
+	}
+}
+
+// TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain pins that
+// origin/develop never sits ahead of origin/main: with no local main and a
+// stale origin/develop older than origin/main, the base MUST be the
+// merge-base with origin/main.
+func TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain(t *testing.T) {
+	repo := envDiffTempRepo(t, "card-branch") // no local main in this repo
+	envDiffCommit(t, repo, "base.txt", "base\n")
+	envDiffGit(t, repo, "update-ref", "refs/remotes/origin/develop", "HEAD") // stale
+	envDiffCommit(t, repo, "landed.txt", "landed on origin/main\n")
+	envDiffGit(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+	envDiffCommit(t, repo, "card.txt", "card work\n")
+
+	want := envDiffGit(t, repo, "merge-base", "HEAD", "origin/main")
+	viaDevelop := envDiffGit(t, repo, "merge-base", "HEAD", "origin/develop")
+	if want == "" || want == viaDevelop {
+		t.Fatalf("fixture invalid: origin/main base %q must be non-empty and differ from origin/develop base %q", want, viaDevelop)
+	}
+	if got := srlDiffBase(t, repo); got != want {
+		t.Fatalf("srlDiffBase picked %s; want merge-base with origin/main %s, not stale origin/develop %s (card t1856)", got, want, viaDevelop)
 	}
 }
