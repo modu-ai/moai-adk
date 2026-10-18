@@ -60,10 +60,12 @@ const DefaultLandedRef = "origin/main"
 // landings are recent by construction.
 //
 // The trade-off is documented behaviour, pinned by
-// TestLandedCheck_WindowEdge: a landing commit older than the window is
-// outside the walk and answers not-landed. The auto-done scan
-// (LandedScanArgs) is a separate surface with its own query and is unchanged
-// by this bound.
+// TestLandedCheck_WindowEdge: a walk that FILLS the window without an
+// attribution answers unknown (indeterminate — older commits were never
+// read), so `--require-landed` proceeds instead of refusing; only a walk
+// that saw the whole history without a hit answers not-landed. The auto-done
+// scan (LandedScanArgs) is a separate surface with its own query and is
+// unchanged by this bound.
 const LandedMaxCount = 500
 
 // LandingAnswer is the landed check's THREE-valued answer.
@@ -83,7 +85,10 @@ const (
 	// subject stream carries no attribution of the card.
 	LandingNotLanded LandingAnswer = "not-landed"
 	// LandingUnknown means the question could not be asked — no git, no such
-	// ref, a broken remote. It is NOT evidence of not-landed.
+	// ref, a broken remote — or the bounded walk filled its window without an
+	// attribution, so commits older than the window were never read and the
+	// answer is indeterminate (card t1805 iter2). It is NOT evidence of
+	// not-landed.
 	LandingUnknown LandingAnswer = "unknown"
 )
 
@@ -306,12 +311,13 @@ func LandedBranchFromRef(ref string) string {
 // stream: the predicate decides on attribution position within a subject, and
 // a `%B` stream would feed commit bodies to it as if they were subjects. The
 // walk is bounded to the ref's most recent LandedMaxCount subjects
-// (card t1805): the unbounded full-history walk was the t1746 defect, and the
-// window edge's not-landed trade-off is documented on the constant and pinned
-// by test. The ref is an INPUT rather than a package constant so the package
-// stays a pure function of what it is given (prlink.go's NFR-4 ruling). An
-// empty ref falls back to DefaultLandedRef rather than emitting an empty argv
-// element, which git would read as the working tree.
+// (card t1805): the unbounded full-history walk was the t1746 defect, and a
+// filled window answers unknown rather than not-landed (documented on the
+// constant, pinned by test). The ref is an INPUT rather than a package
+// constant so the package stays a pure function of what it is given
+// (prlink.go's NFR-4 ruling). An empty ref falls back to DefaultLandedRef
+// rather than emitting an empty argv element, which git would read as the
+// working tree.
 //
 // Exported so the tripwire can assert against the implementation's own
 // construction rather than against a transcription of it — a test that
@@ -362,6 +368,12 @@ func (q GitLandedQuerier) LandedRef() string {
 // mention, a mid-sentence mention, a branch name, and a dependency note
 // attribute nothing (REQ-TLA-001..004).
 //
+// The answer's third value carries the window: a walk that FILLED the window
+// (LandedMaxCount subjects seen) without an attribution is INDETERMINATE —
+// commits older than the window were never read — and answers unknown, never
+// not-landed (card t1805 iter2). not-landed is reserved for a walk that saw
+// the whole history and found nothing.
+//
 // It returns a three-valued answer and an error, and NOTHING else (REQ-1.10).
 // The subject stream is consumed here and discarded: no SHA and no subject
 // escapes this function.
@@ -385,10 +397,22 @@ func (q GitLandedQuerier) Landed(cardID string) (LandingAnswer, error) {
 		return LandingUnknown, fmt.Errorf("prlink: git log %s: %w", ref, err)
 	}
 	branch := landedBranchFromRef(ref)
+	subjects := 0
 	for _, subject := range strings.Split(out, "\n") {
+		if strings.TrimSpace(subject) == "" {
+			continue
+		}
+		subjects++
 		if subjectAttribution(subject, branch) == cardID {
 			return LandingLanded, nil
 		}
+	}
+	// A window that filled without an attribution is INDETERMINATE, never
+	// not-landed: commits older than the bound were never read, so "nothing
+	// here" is not evidence of absence (card t1805 iter2 — the filled-window
+	// regression that made `--require-landed` refuse a landed card's done).
+	if subjects >= LandedMaxCount {
+		return LandingUnknown, nil
 	}
 	return LandingNotLanded, nil
 }

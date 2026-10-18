@@ -13,11 +13,9 @@
 //	answers     — landed / not-landed are unchanged on a fixture history
 //	              fully inside the window, against the unbounded reference
 //
-// The window's edge is pinned as documented behaviour: a landing older than
-// the bound answers not-landed. 500 is the pinned bound — at t1746's
-// load-200 anchor (~139 µs/commit) it measures ~70 ms, and origin/main grew
-// ~5,892 commits in its last 30 days (measured 2026-10-18), so the window
-// covers roughly 2.5 days of landing activity.
+// The window's trade-off, restated: the bound changes cost, and a FILLED
+// window without an attribution answers unknown — not-landed requires the
+// walk to have seen the whole history (window not filled).
 package factory
 
 import (
@@ -161,17 +159,18 @@ func deepLandedRepo(t *testing.T, filler int, landing string) string {
 }
 
 // The window's edge is documented behaviour, pinned here: a landing OLDER
-// than the bound is outside the walk and answers not-landed; the same
+// than the bound leaves the walk with a FILLED window and no attribution —
+// indeterminate, so it answers unknown (require-landed proceeds); the same
 // landing at the tip stays inside and answers landed.
 func TestLandedCheck_WindowEdge(t *testing.T) {
-	t.Run("landing older than the bound reports not-landed", func(t *testing.T) {
+	t.Run("landing older than the bound answers unknown", func(t *testing.T) {
 		dir := deepLandedRepo(t, pinnedLandedMaxCount+5, "below")
 		landed, err := (GitLandedQuerier{Run: gitIn(dir)}).Landed("t199")
 		if err != nil {
 			t.Fatalf("landed: %v", err)
 		}
-		if landed != LandingNotLanded {
-			t.Errorf("a landing %d commits past the bound answered %q, want %q (the documented window trade-off)", pinnedLandedMaxCount+5, landed, LandingNotLanded)
+		if landed != LandingUnknown {
+			t.Errorf("a landing %d commits past the bound answered %q, want %q (a filled window is indeterminate, never not-landed)", pinnedLandedMaxCount+5, landed, LandingUnknown)
 		}
 	})
 	t.Run("landing at the tip reports landed", func(t *testing.T) {
