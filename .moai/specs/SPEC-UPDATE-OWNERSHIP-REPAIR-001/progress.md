@@ -1969,6 +1969,141 @@ removalEnabled = true 를 대입하는 비시험 코드                         
 8. C2, C3 의 단계별 중간 결과(C1 직후와 C3 직후의 시험 출력)는 터미널에서 봤으나 파일로 저장하지 않았다. 그 상태의 증거는 위 Pc (C2 되돌림) 와 Pe (C3 되돌림) 변이 실행이다.
 9. 최종 GREEN 의 AC-OWR-16 판정 명령 1 은 `-count=1` 한 번과 별도 5회 반복이다. 이 머신의 부하 평균은 대략 24에서 90 사이였다.
 
+### Run chunk 4 (M8, M9, M10) — 기록 시작
+
+시작 HEAD `cf2581728e`, 브랜치 `WT-update-ownership-repair`, 작업 트리 깨끗. 기록 규약은 앞 chunk 와 같다. 이번 chunk 부터는 모든 셀을 저장한 출력 파일에서 스크립트로 옮겼고 손으로 다시 치지 않았다 (종료 코드는 각 실행에서 직접 읽음). 시험은 `TMPDIR=/private/tmp/own-fixture-d1` 아래 임시 디렉터리와 임시 HOME 만 썼다.
+
+**lane 결정 (chunk 4 시작에 기록)**
+
+1. chunk 3 이 더한 `internal/cli/update.go` 의 두 변경 — `--dry-run` 이 업데이트 잠금을 잡지 않는다 (`d09d66c6f9`), `--dry-run` 이 이진 설치 단계에 닿지 않는다 (`4767df4de4`) — 은 받아들인다. REQ-OWR-011 이 dry-run 은 어떤 파일이나 디렉터리도 만들거나 지우지 않는다고 요구하기 때문이다. sync 단계가 알아야 할 사용자 가시 부작용 둘: (a) 다른 업데이트가 잠금을 들고 있는 동안에도 `--dry-run` 이 `ErrUpdateLockHeld` 로 거절되지 않고 진행하므로 그 실행의 중간 상태를 읽을 수 있다. (b) `--dry-run` 은 새 버전 확인과 이진 자체 업데이트를 더 이상 하지 않는다.
+2. REQ-OWR-006 / AC-OWR-10 의 에이전트 문구 틈 (프로젝트 배포기는 에이전트를 쓰지 않고 사용자 자산 단계가 쓴다) 은 공개된 부채로 둔다. SPEC 본문은 고치지 않는다.
+
+#### M8 — AC-OWR-15 `TestRemovedAssetBackupRestoreByteIdentical`
+
+**커밋 A `415644baff`** (`internal/cli/migrate_ownership_restore_test.go` 한 파일, 운영 코드 변경 없음). 작업 트리 깨끗, 부하 평균 35.63 35.87 34.58.
+
+**도착 셀 — 이 기준은 도착 때 초록이다 (RED-now 없음).** acceptance.md 가 적은 RED 이유 (「매니페스트 사본이 실행 백업에 없어 (ii) (iii) 가 붉다」) 는 M1b 가 `manifest.prior.json` 을 만들면서 이미 닫혔다. 그래서 이 기준은 release-blocking 이 아니라 regression-guard 로 도착하고, 붉음은 변이에서 관측한다 (AC-OWR-08 과 같은 처리). 판정 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemovedAssetBackupRestoreByteIdentical$' -count=1 -v`, 종료 코드 0, 시험 로그 줄과 `---` 줄만 원문 순서대로:
+
+```text
+    migrate_ownership_restore_test.go:593: observation: manifest.prior.json has mode 600, the manifest it copies had 600 (the file modes of the restore area are asserted for the removed files only)
+    migrate_ownership_restore_test.go:710: difference class manifest   : 1 path(s)
+    migrate_ownership_restore_test.go:710: difference class run-backup : 93 path(s)
+    migrate_ownership_restore_test.go:710: difference class logs       : 0 path(s)
+    migrate_ownership_restore_test.go:710: difference class state      : 0 path(s)
+    migrate_ownership_restore_test.go:710: difference class OUTSIDE-E  : 0 path(s)
+--- PASS: TestRemovedAssetBackupRestoreByteIdentical (4.43s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/ReachedReconciliation (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/BackupCopiesAreByteIdentical (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/PriorManifestIsTheStartManifest (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/RestoreAreaIsByteIdentical (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/DifferenceSentinel (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.13s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/NormaliserErasesOnlyClockDerivedText (0.00s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/ExpectedSetMembersThatDiffer (0.03s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantCRLFInBackupCopyIsCaught (0.17s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantTruncatedBackupCopyIsCaught (0.15s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantMissingBackupCopyIsCaught (0.18s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantBackupCopyModeNarrowedIsCaught (0.22s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantReserialisedPriorManifestIsCaught (0.14s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantStrayFileInRunBackupIsCaught (0.15s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantStrayRemovedAssetIsCaught (0.26s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantRunAlsoDeletesTheUsersFileIsCaught (0.14s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantRunAlsoRewritesAnotherFileIsCaught (0.13s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantRunNarrowsAFileModeIsCaught (0.24s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantRunLeavesAFileInTheNamespaceBackupChangedIsCaught (0.14s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantRunWritesAStateFileIsCaught (0.20s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantManifestNotRestoredIsCaught (0.14s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantSkippedRunIsCaught (0.08s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantUnrestoredTreeIsCaught (0.04s)
+    --- PASS: TestRemovedAssetBackupRestoreByteIdentical/MutantControlRunThatRemovedFilesIsCaught (0.03s)
+PASS
+```
+
+**연속 5회 (같은 트리 `415644baff`, 종료 코드는 각 실행에서 읽음)**
+
+```text
+TestRemovedAssetBackupRestoreByteIdentical run 1 rc=0 top-pass=1 sub-pass=24 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	5.284s
+TestRemovedAssetBackupRestoreByteIdentical run 2 rc=0 top-pass=1 sub-pass=24 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	6.526s
+TestRemovedAssetBackupRestoreByteIdentical run 3 rc=0 top-pass=1 sub-pass=24 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	7.674s
+TestRemovedAssetBackupRestoreByteIdentical run 4 rc=0 top-pass=1 sub-pass=24 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	16.645s
+TestRemovedAssetBackupRestoreByteIdentical run 5 rc=0 top-pass=1 sub-pass=24 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	6.891s
+```
+
+**시험 안의 변이 (순수 단언이 변이 입력 앞에서 붉음을 시험이 직접 관측, 위 PASS 줄의 `Mutant*IsCaught`)**: 백업 사본 줄 끝 변경, 절반 잘림, 사본 없음, 사본 모드 0600, 매니페스트 사본을 2칸 들여쓰기로 재직렬화, 실행 백업에 낯선 파일, 낯선 제거 자산, 사용자 파일도 같이 삭제, 다른 파일 내용 재작성, 다른 파일 모드 축소, 네임스페이스 백업 안의 파일 변경, `.moai/state` 에 파일 추가, 매니페스트 미복원 (모두 해당 절의 단언이 붉음). 도달 변이 셋: 건너뛴 실행 1, 복원하지 않은 트리, 제거를 한 통제 실행.
+
+**운영 코드에 넣은 임시 변이 넷 (커밋 `415644baff` 기준, 변이 뒤 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL`; 위 시험 전체를 돌린 출력의 줄 추림, 같은 문제 줄은 한 번만)**
+
+- **Q1** `preservePriorManifest` 가 사본을 쓰기 전에 매니페스트를 2칸 들여쓰기로 재직렬화한다:
+
+```text
+    migrate_ownership_restore_test.go:615: (ii) manifest.prior.json differs from the manifest as it was before the run (2004 vs 2174 bytes)
+    migrate_ownership_restore_test.go:615: (iii) the restored manifest is not the pre-run manifest (err=<nil>)
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (17.19s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/PriorManifestIsTheStartManifest (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/RestoreAreaIsByteIdentical (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.08s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	18.555s
+rc=1
+```
+
+- **Q2** `backupRemovedAsset` 가 바이트의 앞 절반만 쓴다:
+
+```text
+    migrate_ownership_restore_test.go:615: (i) the backup copy of .claude/skills/moai-foundation-core/SKILL.md differs from the file as it was before the run (9971 vs 19943 bytes)
+    migrate_ownership_restore_test.go:615: (i) the backup copy of .claude/skills/moai-ref-owasp-checklist/SKILL.md differs from the file as it was before the run (4560 vs 9120 bytes)
+    migrate_ownership_restore_test.go:615: (i) the backup copy of .claude/skills/moai-workflow-testing/SKILL.md differs from the file as it was before the run (5398 vs 10797 bytes)
+    migrate_ownership_restore_test.go:615: (iii) the restored .claude/skills/moai-foundation-core/SKILL.md differs from its pre-run bytes
+    migrate_ownership_restore_test.go:615: (iii) the restored .claude/skills/moai-ref-owasp-checklist/SKILL.md differs from its pre-run bytes
+    migrate_ownership_restore_test.go:615: (iii) the restored .claude/skills/moai-workflow-testing/SKILL.md differs from its pre-run bytes
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-foundation-core/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-ref-owasp-checklist/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-workflow-testing/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (15.05s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/BackupCopiesAreByteIdentical (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/RestoreAreaIsByteIdentical (0.00s)
+```
+
+- **Q3** 제거 암이 파일을 제거할 때 사용자 파일 `.claude/skills/mine/SKILL.md` 도 지운다:
+
+```text
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/mine/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (10.10s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/DifferenceSentinel (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.13s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/ExpectedSetMembersThatDiffer (0.11s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/MutantRunAlsoDeletesTheUsersFileIsCaught (0.26s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	11.580s
+rc=1
+```
+
+- **Q4** `backupRemovedAsset` 가 사본을 `0o600` 으로 쓴다:
+
+```text
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-foundation-core/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-ref-owasp-checklist/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+    migrate_ownership_restore_test.go:615: (iv) .claude/skills/moai-workflow-testing/SKILL.md differs between the restored tree and the control tree and is outside the expected set
+    migrate_ownership_restore_test.go:623: (i-mode) the backup copy of .claude/skills/moai-foundation-core/SKILL.md has mode 600, the file had 644
+    migrate_ownership_restore_test.go:623: (i-mode) the backup copy of .claude/skills/moai-ref-owasp-checklist/SKILL.md has mode 600, the file had 644
+    migrate_ownership_restore_test.go:623: (i-mode) the backup copy of .claude/skills/moai-workflow-testing/SKILL.md has mode 600, the file had 644
+    migrate_ownership_restore_test.go:623: (iii-mode) the restored .claude/skills/moai-foundation-core/SKILL.md has mode 600, it had 644
+    migrate_ownership_restore_test.go:623: (iii-mode) the restored .claude/skills/moai-ref-owasp-checklist/SKILL.md has mode 600, it had 644
+    migrate_ownership_restore_test.go:623: (iii-mode) the restored .claude/skills/moai-workflow-testing/SKILL.md has mode 600, it had 644
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (28.32s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/DifferenceSentinel (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.18s)
+```
+
+**구현 커밋 C 없음.** 남은 차이가 없다: 이 기준이 요구하는 동작은 M1b 가 만든 것으로 이미 성립한다.
+
+**관측과 정직한 회계**
+
+1. **SPEC 의 기대 차이 집합 E 에 빠진 시계 파생 위치 둘을 이 시험이 처음 측정했다.** 갱신 한 번은 `.moai-backups/<YYYYMMDD_HHMMSS>` 말고도 `.moai/backups/update-<UTC 시각>/` (안에 `.moai-run`, `.complete` 표식, 내용이 시각) 와 `.moai/archive/files/update-migration/<YYYYMMDD_HHMMSS>/` 를 만든다. 정규화 없이 비교하면 통제 실행과 이름이 같은 초면 `.moai-run` 내용만, 다른 초면 디렉터리 이름이 E 밖 차이로 나온다 — 시각에 따라 결과가 갈리는 시험이 된다. 그래서 design.md D-8 L3 의 정규화 (실행 백업 디렉터리 이름 → `<RUN>`, 시각 → 표식 값 가리기) 를 이 두 위치에 같은 방식으로 적용했다 (`restoreNormalize`). 정규화 규칙 자체를 시험이 먼저 단언한다: 시각만 다른 두 입력은 같아지고, 두 번 정규화한 결과가 같고, 이 두 위치 밖의 이름과 값은 그대로이고, 네임스페이스 백업 안의 내용 차이는 살아남으며, 한 트리에 두 디렉터리가 있으면 합치지 않고 보고한다. 시각 독립: 통제 실행은 실행 1 이 쓴 모든 시계 이름의 초가 지난 뒤에 시작하게 기다려 (폴링) 두 실행의 이름이 다르게 만들고 (전제로 단언), 같은 이름인 경우는 통제 트리의 시계 디렉터리를 실행 1 의 이름으로 바꾼 복사본으로 만들어 `SharedClockNamesJudgeTheSame` 이 같은 단언을 돌린다. 두 분기가 모두 초록이다.
+2. E 의 나머지 항목은 이 흐름에서 이렇게 측정됐다 (시험 로그 `difference class`): 매니페스트 1, 실행 백업 93 (두 이름 분기의 합), 로그 0, 상태 0, E 밖 0. 로그와 상태는 차이가 하나도 없으므로 E 가 그 둘을 허용하지만 이 시험은 아무것도 숨기지 않는다. 그래도 둘의 경로가 한쪽에만 있는 경우는 붉게 만든다 (절 (iv-c), 변이 `RunWritesAStateFile`).
+3. **N4 잔여 (E 안의 차이와 파일 모드) 의 처분: 시험이 닿는 곳까지 닫았다.** E 안의 차이: 매니페스트 파일은 복원 영역 R 에 들어 있어 (iii) 이 바이트로 비교한다; 실행 백업은 통제 실행의 백업 배치에 더해 정확히 `removed-assets/<제거한 경로>` 만 더 가진다 (절 (iv-b)); 로그/상태는 경로 집합 (iv-c). 파일 모드: 스냅샷 서술자에 모드가 들어 있어 R 밖의 모드 차이는 (iv) 가 잡고, R 의 제거된 파일은 백업 사본과 복원본의 모드가 실행 전 모드와 같아야 한다 (`(i-mode)`, `(iii-mode)`). **닫히지 않은 것(시험이 못 본다):** `.moai/logs/**` 와 `.moai/state/**` 안의 내용 차이, 디렉터리 mtime·xattr·소유자, 프로젝트 밖 (HOME 등) 쓰기, 그리고 복원 절차가 시험 전용 복사이므로 실제 운영자가 `cp` 로 복원할 때의 모드.
+4. 관측: 매니페스트와 그 사본 `manifest.prior.json` 은 모드가 같다 (둘 다 `0600`, 시험 로그 `observation:` 줄). SPEC 은 파일 모드를 보존 범위 밖으로 둔다 (spec.md § J) 이므로 시험은 매니페스트 모드를 단언하지 않고 로그로만 남긴다. 복원 절차가 매니페스트를 `0644` 로 쓰는 것은 시험 전용 절차의 선택이며 T0 와의 차이 판정에서는 매니페스트가 E 에 들어 있어 영향이 없다.
+5. **N23 (plan.md M8 이 AC-OWR-15 (v) 도달 단언을 빠뜨림) 처분: 닫음.** 시험 절 (v) 이 실행 1 의 `skipped == false`, 새 `manifest.prior.json`, 제거 목록이 비어 있지 않음 (제거 후보 셋과 정확히 같음), 통제 실행이 같은 단계에 닿고 아무것도 제거하지 않음을 단언하고, 변이 `MutantSkippedRunIsCaught`, `MutantControlRunThatRemovedFilesIsCaught` 가 이를 붉게 만든다.
+6. N17 (어느 해시를 비교하는지 밝히지 않음) 처분은 M9 와 함께 마지막에 정리한다. 이 시험의 트리 비교는 내용만 본다 (경로, 바이트, 모드, 디렉터리 존재; 디렉터리 mtime 은 보지 않음) — 시험 파일 머리 주석에도 적었다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
