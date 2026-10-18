@@ -89,3 +89,35 @@ func TestRunMultiAudit_DeltaNote_AnInSessionAnchorIsMarkedScopeNotVerified(t *te
 		}
 	}
 }
+
+// Card t1708 (sync-audit F5) — the codex clause of the delta note follows the
+// verdicts too: it described a codex scope even when codex never ran.
+func TestRunMultiAudit_DeltaNote_CodexOffDoesNotClaimACodexScope(t *testing.T) {
+	note := deltaNoteFor(t, "", ReviewOutput{}, config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateOff, GLM: config.AuditGateOff},
+		func(string) ReviewOutput { return claudeReview("pass") })
+
+	for _, claim := range []string{"codex was scoped", "prose only", "not mechanically bounded"} {
+		if strings.Contains(note, claim) {
+			t.Errorf("note claims %q although the codex gate was off: %q", claim, note)
+		}
+	}
+	if !strings.Contains(note, "codex did not run") {
+		t.Errorf("note must say codex did not run on the delta: %q", note)
+	}
+	if !strings.Contains(note, noteSHA) || !strings.Contains(note, "no second-review record and no session state written") {
+		t.Errorf("note must keep the delta base and the tail: %q", note)
+	}
+}
+
+// A codex verdict in the slice keeps the prose-only statement.
+func TestRunMultiAudit_DeltaNote_CodexVerdictKeepsTheProseOnlyStatement(t *testing.T) {
+	note := deltaNoteFor(t, "", ReviewOutput{}, config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateOff},
+		func(string) ReviewOutput { return claudeReview("pass") })
+
+	if !strings.Contains(note, "codex was scoped in prose only (not mechanically bounded)") {
+		t.Errorf("codex ran; note must keep the prose-only statement: %q", note)
+	}
+	if strings.Contains(note, "codex did not run") {
+		t.Errorf("codex ran; note must not say it did not: %q", note)
+	}
+}
