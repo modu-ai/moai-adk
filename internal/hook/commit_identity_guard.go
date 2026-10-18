@@ -74,7 +74,7 @@ var commitVerbs = map[string]bool{
 // fails when a literal is missing from this list (AC-CIG-010) — 60 literals
 // after the landing/sweep/t1379/t1395/quota-dirs fixture emails joined the
 // enumeration and the t1453 landing-predicate fixture email (gfd-test) was
-// registered.
+// registered; 61 with the t1856 env-diff-base fixture email.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -84,6 +84,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"c@e.invalid",
 	"chain-test@example.com",
 	"disposal-test@example.com",
+	"env-diff-base-test@example.invalid",
 	"f@e.com",
 	"f@example.com",
 	"f3@example.com",

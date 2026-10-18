@@ -228,6 +228,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// artifact inventory (legacy backlog.json, .migrated, session
 		// records), judged from the same detector (REQ-TSP-042). Read-only.
 		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
+		// SPEC-MOAI-DB-PATHS-001 (card t1827): zero-byte *.db files at unconfirmed
+		// paths, the trace of a guessed path opened with sqlite3. Read-only,
+		// warning severity, never gates doctor.
+		{dbPathGhostCheckName, func(v bool) DiagnosticCheck { return checkDBPathGhosts(cwd, v) }},
 		// SPEC-SESSION-CC-VERSION-001 REQ-SCV-007: per live registry session,
 		// the running Claude Code version against the installed one. Read-only,
 		// at most one probe per live entry, advisory — never CheckFail, so it
@@ -316,6 +320,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// factory section — the persisted leader role, with the literal
 		// relaunch message for a legacy run.
 		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
+		// Card t1683 (SPEC-REVIEW-GATE-REPAIR-001 F4): the turn-end review
+		// gate and the lane card-review stage both active — one card diff
+		// reviewed twice. Advisory, never gates doctor.
+		{reviewLayerOverlapCheckName, func(v bool) DiagnosticCheck { return checkReviewLayerOverlap(cwd, v) }},
 		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the owner_label
 		// vocabulary drift — legacy spellings left in the runtime
 		// assignments table, counted from the same detectors the refusal
