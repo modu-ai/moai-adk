@@ -712,6 +712,44 @@ exit=0
 - design.md D-3 항목 1 은 「`Track` 이 찍는다」 고만 적었으나 `Track` 은 배포 경로와 재추적 경로가 공유하므로 둘을 가를 장치가 필요했다. 계획의 파일 목록 안에서 `Manager` 에 배포 창 설정 메서드 `SetDeployingVersion` 을 더하는 방식으로 풀었다 (`internal/template/deployer.go` 는 건드리지 않았다). 인터페이스 확장이 계획의 명시적 선택은 아니므로 리더가 승인 여부를 알아야 한다.
 - 갭 G-K 를 실측했다 (acceptance.md 는 「측정하지 않았다」): 실행 백업 12개, `PruneBackups(…, 5, 0)`; `manifest.prior.json` 이 없으면 5개가 남고, 실행마다 내용이 다른 `manifest.prior.json` 이 있으면 8개가 남는다 (센서스가 서로 다른 버전을 보호 대상으로 세어 오래된 3개를 더 남김). 정책은 바꾸지 않았고 기존 `pastKeep` 한도 안이지만, 이 SPEC 이 실행 백업마다 파일 하나를 더하므로 디스크 사용이 정책의 상한까지 늘어난다.
 
+### Run chunk 2 (M2, M3, M4) — 기록 시작
+
+시작 HEAD `5eed5816ae`, 브랜치 `WT-update-ownership-repair`, 기록 규약은 chunk 1 과 같다 (명령, 원문 출력, 종료 코드, 트리 SHA; 시험은 `TMPDIR=/private/tmp/own-fixture-d1` 아래 임시 디렉터리와 임시 HOME 만 썼다; 판정 도구는 이 트리의 `go test`, 바이너리 교체 없음). 이 chunk 는 `internal/cli` 패키지 전체, `-race`, 자원 슬롯을 쓰지 않는다 (앵커된 `-run` 만).
+
+**리더 결정 세 건 (lane, 이 chunk 의 입력으로 기록)**
+
+1. `Manager.SetDeployingVersion` 인터페이스 추가 (chunk 1 의 M1b) 는 승인되었다.
+2. N15 의 더 엄격한 비교 (`TemplateHash` 한 가지만 비교, 등록 경로와 같게) 는 승인되었다.
+3. SPEC 문구 결함 네 건 — AC-21 판정 명령 경로, 구성 (o) 누락, `removalBackupWriter`, AC-06 (b) — 은 공개된 부채로 남고 SPEC 본문 (spec.md, plan.md, acceptance.md, design.md, research.md) 은 고치지 않는다.
+
+#### M2 — 프로필 도달 유지 이유 (AC-OWR-07, AC-OWR-08)
+
+**AC-OWR-07 — 커밋 A** `73ace0cc2e` (시험 파일만: `internal/cli/migrate_ownership_profile_test.go`). 시험 `TestProfileMappedCopyKeptWithoutCounterpart` 는 서브 시험 여섯: `NoCounterpart` (빈 사용자 루트), `ConfirmedCounterpartStillKept`, `DifferingCounterpartIsUnconfirmed`, `ReachControlUnmappedTwinRemoves` (프로필에 지도하지 않은 쌍둥이가 같은 입력으로 세 사본을 제거 — 규칙 8), 변이 `MutantIgnoringTheMappingIsCaught`, `MutantPretendingToReadTheProfileSideIsCaught`.
+
+**AC-OWR-07 RED 셀 (트리 `73ace0cc2e`, A 커밋 직후, 작업 트리 깨끗)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestProfileMappedCopyKeptWithoutCounterpart$' -count=1 -v`
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_profile_test.go:65:73: undefined: counterpartStatus
+internal/cli/migrate_ownership_profile_test.go:96:11: row.Counterpart undefined (type remainingRow has no field or method Counterpart)
+internal/cli/migrate_ownership_profile_test.go:97:95: row.Counterpart undefined (type remainingRow has no field or method Counterpart)
+internal/cli/migrate_ownership_profile_test.go:99:11: row.ProfileSide undefined (type remainingRow has no field or method ProfileSide)
+internal/cli/migrate_ownership_profile_test.go:99:26: undefined: profileSideNotChecked
+internal/cli/migrate_ownership_profile_test.go:100:86: row.ProfileSide undefined (type remainingRow has no field or method ProfileSide)
+internal/cli/migrate_ownership_profile_test.go:100:99: undefined: profileSideNotChecked
+internal/cli/migrate_ownership_profile_test.go:128:52: undefined: counterpartStatusAbsent
+internal/cli/migrate_ownership_profile_test.go:140:52: undefined: counterpartStatusConfirmed
+internal/cli/migrate_ownership_profile_test.go:163:52: undefined: counterpartStatusUnconfirmed
+internal/cli/migrate_ownership_profile_test.go:163:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+종료 코드 1. 이유: 잔존 행에 사용자 루트 대응물 상태와 프로필 쪽 상태를 담는 어휘와 필드가 아직 없어서 시험 패키지가 빌드되지 않는다 (시험이 존재하는 상태의 빌드 실패이며 제로 매치 셀렉터가 아니다). 이 RED 는 빌드 실패 형이다: 단언 수준의 실패 (`absent` 가 기록되지 않음 등) 는 이 시점에 관측되지 않는다. 변이 구현 앞에서 시험이 붉어지는 직접 관측은 C 커밋 GREEN 원문의 두 `Mutant...IsCaught` 서브 시험이 한다. 코드 읽기로 아는 사실 (측정 아님): `profile-reach` 이유와 `KeptBy` 표지는 chunk 1 의 코드가 이미 쓴다. 모자란 것은 두 상태 필드뿐이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
