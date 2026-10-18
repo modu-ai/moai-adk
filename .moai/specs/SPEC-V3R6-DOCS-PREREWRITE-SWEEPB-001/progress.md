@@ -12,6 +12,7 @@ measured_tree: 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M)
 gate_state: decision-index.md (Gate)
 lane_decision: D4/D5 option (A): REQ-PRC-001-001 is a contribution obligation (lane-27 judgment, auto-semantics ladder terminal step)
+q13_q17_verdict: recorded for t1722 only (operator 10-19, board d-20261018T234041Z-0e9b); plan artifacts changed, confirming delta audit pending
 
 ## §E.2 Run-phase Evidence
 

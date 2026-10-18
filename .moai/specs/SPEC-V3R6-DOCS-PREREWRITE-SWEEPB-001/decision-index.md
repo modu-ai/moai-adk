@@ -2,15 +2,15 @@
 
 Revision 0.4.0 (2026-10-19). The Gate changed in 0.3.0 (the reconciliation with the umbrella start rule). 0.4.0 changes no verdict and not the Gate. It records that the SPEC's requirements are contribution obligations, so a change another card lands in the twelve files is outside them (spec.md, Requirements), and the text of Q-SWB-1 option (b) now says "by this card".
 
-Revision 0.2.0 (2026-10-19). The three `DEFAULT-APPLIED` stamps of revision 0.1.0 are withdrawn: a planner default is not an operator verdict (umbrella plan.md §B; the sibling SWEEPA withdrew its identical stamps after plan-audit iteration 1). Q13 and Q17 are open rows with an empty `Operator verdict:`; each keeps its rule-ranked `Default:` as a proposal and its options. Q-SWB-1 carries the ruling cited in the Gate.
+Revision 0.2.0 (2026-10-19). The three `DEFAULT-APPLIED` stamps of revision 0.1.0 are withdrawn: a planner default is not an operator verdict (umbrella plan.md §B; the sibling SWEEPA withdrew its identical stamps after plan-audit iteration 1). At that revision Q13 and Q17 were open rows with an empty `Operator verdict:`; each keeps its rule-ranked `Default:` as a proposal and its options. Q-SWB-1 carries the ruling cited in the Gate.
 
 Revision 0.1.0 (2026-10-19). This child carries copies of the umbrella rows Q13 and Q17 with the umbrella's numbering unchanged, and owns the new row Q-SWB-1. The umbrella is SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001; its decision-index.md (revision 0.3.1) holds stubs for Q13 and Q17, and the source text of both rows is at commit bdb7b764 of that file. `interview.decision_gate` is `on`, so this file is part of the artifact set and every row routes with one of the four labels. The new row uses the prefix `Q-SWB-` so it cannot collide with the umbrella's Q1 to Q24 or with another child's new rows.
 
 Labels: DECIDED and POLICY-COVERED need an authority anchor in the committed tree (product.md, a completed SPEC's HISTORY or Amendments row, `.moai/config/sections/*.yaml`, or the constitution). None of the rows below has one, so every row is FOUNDER. `.moai/docs/docs-site-i18n-rules.md` is a committed document outside the authority register; the rows cite it as a fact, not as authority. No row carries a recommendation. A `Default:` is the option the published Default rule ranks first, a policy application and a proposal, not a verdict.
 
-**Gate (stated once; every other file points here by row id).** Q-SWB-1 is decided: option (b), retain, on board record `d-20261018T201957Z-c26e` (decider as the record reads it: leader tn1p4e under operator delegation). Consequently this card edits no page, and no tracked file outside this SPEC directory is edited. Fact, not a verdict: Q13 governs Class C lines and there are none at the pin (plan.md §A.2); Q17 governs edits and there are none under (b). The umbrella start rule (umbrella plan.md:L30: a child starts only when each decision row it depends on carries an operator verdict) is reconciled by board record `d-20261018T223420Z-7f98`, a judgment that the rule gates only the rows a child has an operand for, so it does not block this child's start; it is not an operator verdict on Q13 or Q17. Q13 and Q17 stay open with empty verdicts for the children that have operands. The run-phase work (plan.md M1 to M3) is evidence recording and regression-guard checks only.
+**Gate (stated once; every other file points here by row id).** Q-SWB-1 is decided: option (b), retain, on board record `d-20261018T201957Z-c26e` (decider as the record reads it: leader tn1p4e under operator delegation). Consequently this card edits no page, and no tracked file outside this SPEC directory is edited. Fact, not a verdict: Q13 governs Class C lines and there are none at the pin (plan.md §A.2); Q17 governs edits and there are none under (b). The umbrella start rule (umbrella plan.md:L30: a child starts only when each decision row it depends on carries an operator verdict) is reconciled by board record `d-20261018T223420Z-7f98`, a judgment that the rule gates only the rows a child has an operand for, so it does not block this child's start; it is not an operator verdict on Q13 or Q17. Q13 and Q17 carry the verdict "not applicable" for this child only (their rows); they stay open for the children that have operands. The run-phase work (plan.md M1 to M3) is evidence recording and regression-guard checks only.
 
-Board check: Q-SWB-1 is answered by the records cited in the Gate. The verdict records of Q13 and Q17 were not queried in this pass (acceptance.md gap G7), so no claim is made about them.
+Board check: Q-SWB-1 is answered by the records cited in the Gate. The verdict records of Q13 and Q17 were not queried in this pass (acceptance.md gap G7); their rows cite the leader-reported board record and no more.
 
 Evidence references (E-SWB-n) point to acceptance.md §C, measured at tree commit 2bcce5d9dc.
 
@@ -24,7 +24,7 @@ Child: SWEEPB (SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001), decision row Q13; the umbr
 Default: delete the stale citation (rule: smaller user-visible surface)
 Alternate: replace the citation with the current equivalent, where the operator names one for each form
 Scope: Q13 governs Class C lines only. It does not govern the twelve Class N lines; their disposition is Q-SWB-1.
-Operator verdict:
+Operator verdict: not applicable — no operand in t1722 (operator 10-19, board d-20261018T234041Z-0e9b; applicability basis d-20261018T223420Z-7f98)
 
 ### Q17: Do the same edits land in en, ja, and zh in the same change? (cross-cutting; SWEEPB copy)
 Label: FOUNDER
@@ -35,7 +35,7 @@ Class: implementation-level
 Child: cross-cutting (README, REDIR, SWEEPA to SWEEPF, FLAG); SWEEPB copy
 Default: edit all four locales in one change (rule: preserves current behavior; the four locales carry the same twelve logical citations today)
 Alternate: edit the ko copy in this change and the en, ja, and zh copies in a later change
-Operator verdict:
+Operator verdict: not applicable — no operand in t1722 (operator 10-19, board d-20261018T234041Z-0e9b; applicability basis d-20261018T223420Z-7f98)
 
 ### Q-SWB-1: Do the twelve retirement statements count as stale citations?
 Label: FOUNDER
@@ -53,8 +53,8 @@ Operator verdict: (b) retain — ruled on board d-20261018T201957Z-c26e, decided
 
 | Row | Class | Default | Alternate | Operator verdict |
 |-----|-------|---------|-----------|------------------|
-| Q13 | implementation-level | delete (smaller surface) | replace | empty (open) |
-| Q17 | implementation-level | all four locales in one change | ko first, rest later | empty (open) |
+| Q13 | implementation-level | delete (smaller surface) | replace | not applicable — no operand in t1722 (operator 10-19; see the row) |
+| Q17 | implementation-level | all four locales in one change | ko first, rest later | not applicable — no operand in t1722 (operator 10-19; see the row) |
 | Q-SWB-1 | implementation-level | (b) retain | (a1) reword | (b) retain — board d-20261018T201957Z-c26e (decided_by=leader tn1p4e under operator delegation) |
 
 The state of the rows is in the Gate above.
