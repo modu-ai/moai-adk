@@ -121,6 +121,8 @@ lane 在 `run` 结束、进入集成之前，还要走一个 `card-review` 阶�
 
 哪个编号被哪条 lane 占用，记录在 `~/.moai/db/<project-key>/factory/factory.db`。新 lane 领取存活 lane 中**最大编号的下一个**，不会回填中间的空位：存活的是 lane-1 和 lane-3 时，新 lane 是 lane-4。已死 lane 的 claim 不再占住编号。lane 编号是自动分配的，所以与 `--name`/`-n` 同时使用会报错。
 
+数据库路径不要猜，用 `moai paths` 确认。用 `sqlite3` 打开 `~/.moai/db/todo.db` 这类猜出来的路径，会创建出一个空文件，所以不要这样做。确需直接读取时，只读把 `.db`、`.db-wal`、`.db-shm` 一起复制出来的快照；平时优先使用 `moai todo list --json`、`moai factory status` 等 CLI。
+
 主导会话的 socket 开在 `/tmp/moai-socket-factory/<run-id>`，引导提示会告诉你实际路径。主导会话和 lane 会话启动时，会各在 `.moai/state/todo/<session-id>.json` 写入一份会话记录，包含角色、后端和进入时间。
 
 工厂会话启动时，会把连续 Stop 钩子的拦截上限提高到 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200`。这是允许无人值守运行更久的设置，并不是绕过关卡的手段，因为人工审批关卡是编排者发出的提问，而不是 Stop 钩子的拦截。
