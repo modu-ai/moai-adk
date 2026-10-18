@@ -3405,6 +3405,106 @@ $ git diff --name-only dfd7c40fb2..HEAD
 5. 흐름 수준의 무대기 가지는 충돌 경로를 결정적으로 밟지 않는다 (위). 결정적 증거는 단위 수준이다.
 6. 코덱스 게이트 재심사는 레인의 몫이다. 이 chunk 는 `.moai/reports/t1865/sync-audit.md`·`.moai/state/audit-receipts`·§E.4·CHANGELOG·SPEC 본문을 건드리지 않았다.
 
+### Chunk 10 (card-review round 4) — 기록 시작
+
+카드 리뷰 (advisory codex, HEAD `b5ffc48971` = `fa26fcaf17` 위의 문서 커밋) 가 P2 셋을 냈고 레인이 코드에서 확인했다. (A) 와 (B) 는 받아들여 시험 먼저 고치고, (C) 는 레인이 거절해 기록만 한다. 각 지적마다 시험 (RED) → 이 기록 → 수정 순서이며 순서의 증거는 커밋 그래프이다.
+
+#### (A) 심볼릭 링크로 된 상위 디렉터리 — 등록 안 된 파일이 프로젝트 밖에서 읽힌다 (REQ-OWR-005)
+
+chunk 9 의 `linkLeavesRoot` 는 경로의 **마지막 요소**가 링크일 때만 막았다. 프로젝트의 `.codex` (또는 `.claude`, `.agents`) 가 외부 디렉터리를 가리키면 그 아래 일반 파일은 이 검사를 통과해 `classifyUnregistered` 가 외부 파일을 읽었다.
+
+**걷기 동작 (코드 읽기 + 시험으로 확인).** `filepath.WalkDir(projectRoot/<root>)` 는 걷기 뿌리에 `os.Lstat` 을 쓰며 이는 **상위** 링크는 따라가고 마지막 요소만 링크로 보고한다. 그래서 (i) 상위가 링크이면 걷기는 외부 `agents/moai` 를 내려가며 그 아래 모든 파일을 프로젝트 상대 이름으로 내놓는다 — 가드가 각 파일에서 전체 경로를 풀어야 모두 덮는다; (ii) 걷기 뿌리 자신이 링크이면 내려가지 않고 링크 하나를 비디렉터리 항목으로 내놓는다 (종전 마지막 요소 가드가 이미 덮던 형태; 시험이 대조군으로 둔다). 등록된 파일 경로가 이미 의존하는 `withinRootBoundary` 사용처 (`disposition`, 빈 디렉터리 정리 `migrate_ownership_emptydir.go:152`, `migrate_project_assets.go` 의 정리 경계) 는 모두 `EvalSymlinks` 로 **전체 경로**를 풀어 비교하므로 이미 전체 경로 해석이다 — 바꿀 곳이 없다. 등록 경로의 읽기가 경계 검사보다 앞서는 문제는 chunk 9 에서 기록한 N16 계열 부채 그대로이며, 상위 링크 형태에도 똑같이 적용된다 (AC-OWR-01 의 고정 기대 때문에 그대로 둔다).
+
+**A (시험)** `780f7862f2` — `internal/cli/migrate_ownership_ancestorlink_test.go` (`//go:build !windows`, `TestUnregisteredFileBelowASymlinkedAncestorIsNotRead`). 판정 함수 절 (프로필 모양 내용을 가진 외부 디렉터리를 `.codex` 로 연결; 최상위와 한 단계 아래 파일; 제거 스위치 끔·켬), 대조군 절 (프로젝트 안을 가리키는 상위 링크는 내용으로 판정, 일반 파일, 끊어진 상위 링크 아래, 없는 파일), 흐름 절 둘 (상위가 링크인 걷기, 걷기 뿌리 자신이 링크인 걷기; 같은 걷기가 `migIdenticalSkill` 을 제거해 도달을 확인).
+
+RED-now (명령 · 트리 SHA `780f7862f2` · 종료 코드 · 원문):
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestUnregisteredFileBelowASymlinkedAncestorIsNotRead$' -count=1 -v
+=== RUN   TestUnregisteredFileBelowASymlinkedAncestorIsNotRead
+=== RUN   TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/AncestorLeavesTheProject
+    migrate_ownership_ancestorlink_test.go:93: switch=false .codex/agents/moai/profile-agent.md: the verdict function read 34 bytes from outside the project
+    migrate_ownership_ancestorlink_test.go:96: switch=false .codex/agents/moai/profile-agent.md: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_ancestorlink_test.go:93: switch=false .codex/agents/moai/sub/deep.md: the verdict function read 41 bytes from outside the project
+    migrate_ownership_ancestorlink_test.go:96: switch=false .codex/agents/moai/sub/deep.md: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_ancestorlink_test.go:93: switch=true .codex/agents/moai/profile-agent.md: the verdict function read 34 bytes from outside the project
+    migrate_ownership_ancestorlink_test.go:96: switch=true .codex/agents/moai/profile-agent.md: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_ancestorlink_test.go:93: switch=true .codex/agents/moai/sub/deep.md: the verdict function read 41 bytes from outside the project
+    migrate_ownership_ancestorlink_test.go:96: switch=true .codex/agents/moai/sub/deep.md: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+=== RUN   TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/ControlsAreJudgedAsBefore
+=== RUN   TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/AncestorOfTheWalkRoot
+    migrate_ownership_ancestorlink_test.go:185: .codex/agents/moai/profile-agent.md: row class="unregistered" reason="no-provenance-record", want unregistered/"symlink-escape"
+    migrate_ownership_ancestorlink_test.go:190: .codex/agents/moai/profile-agent.md: the verdict carried 34 bytes read from outside the project
+    migrate_ownership_ancestorlink_test.go:185: .codex/agents/moai/sub/deep.md: row class="unregistered" reason="no-provenance-record", want unregistered/"symlink-escape"
+    migrate_ownership_ancestorlink_test.go:190: .codex/agents/moai/sub/deep.md: the verdict carried 41 bytes read from outside the project
+    migrate_ownership_ancestorlink_test.go:195: .codex/agents/moai/profile-agent.md carried 34 bytes
+    migrate_ownership_ancestorlink_test.go:195: .codex/agents/moai/sub/deep.md carried 41 bytes
+=== RUN   TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/TheWalkRootItself
+--- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead (1.99s)
+    --- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/AncestorLeavesTheProject (0.57s)
+    --- PASS: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/ControlsAreJudgedAsBefore (0.00s)
+    --- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/AncestorOfTheWalkRoot (0.73s)
+    --- PASS: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/TheWalkRootItself (0.69s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.115s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 상위가 링크인 두 형태 (판정 함수, 걷기) 모두에서 외부 파일의 34 와 41 바이트를 읽었고 이유가 `no-provenance-record` 로 나왔다 (`symlink-escape` 가 맞다). 대조군 (프로젝트 안 상위 링크, 일반 파일, 끊어진 상위 링크, 없는 파일)과 걷기 뿌리 자신이 링크인 형태는 수정 전에도 통과한다 — 바뀌면 안 되는 것의 고정이다.
+
+#### (B) 실패한 이름 바꾸기가 남긴 임시 파일 `manifest.prior.json.tmp-*`
+
+`writePriorManifest` 는 이름 바꾸기가 실패하면 임시 파일을 지우지 않고 돌아갔다. 읽는 쪽이 그 이름을 무시한다는 주석은 맞지만, `RestoreMoaiConfigLegacy` (그리고 섹션이 없는 백업의 `RestoreMoaiConfigRetained`, `RestoreFromBackupDir`) 가 백업 루트의 모든 파일을 `.moai/config` 로 복사해 임시 파일이 프로젝트에 들어간다.
+
+**B (시험)** `9cc9b77a01` — 두 끝을 모두 고정한다. `internal/cli/update_prior_manifest_tmpcleanup_test.go` (`TestFailedPriorManifestRenameLeavesNoTemporaryFile`: 쓰는 쪽 임시 이름이 리터럴 `manifest.prior.json.tmp-` 로 시작함; 주입한 이름 바꾸기 실패와 실제 이름 바꾸기 실패 (자리를 차지한 디렉터리) 뒤에 임시 파일이 없고 오류가 종전 그대로 (`rename into place`, 주입 오류를 감쌈) 보고되며 최종 이름이 없음; 백업 단계 인수인계 — 실패한 상태에서 마이그레이션이 파일을 하나도 제거하지 않고, 같은 픽스처의 주입 없는 통제 실행은 `migIdenticalSkill` 을 제거함) 와 `internal/cli/update/backup/restore_prior_manifest_tmp_test.go` (복원 네 진입점; 백업 루트의 임시 파일은 복사되지 않고, 하위 디렉터리의 같은 이름 파일은 사용자 내용으로 복원됨; 이름은 리터럴). 기존 시험 `TestPriorManifestAtomicWriteFailures` 의 (q) 는 이름 바꾸기 뒤 임시 파일이 **남아 있다**는 것을 전제로 반환 후에 그 파일을 읽었다 — 그 전제는 이 수정이 의도적으로 바꾸는 동작이므로, 전제 (이름 바꾸기 시점에 임시 파일이 완전한 바이트를 가짐) 를 이름 바꾸기 이중 안에서 읽도록 옮겼다. 단언 (최종 이름 없음, 세대 없음, 오류 반환) 은 그대로다.
+
+RED-now (트리 SHA `9cc9b77a01`, 종료 코드, 원문; 저장 파일 `b-red-cli.txt`, `b-red-backup.txt`):
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestFailedPriorManifestRenameLeavesNoTemporaryFile|TestPriorManifestAtomicWriteFailures)$' -count=1 -v
+--- PASS: TestPriorManifestAtomicWriteFailures (0.05s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/o-normal-run-goes-through-temp-then-rename (0.02s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/p-failure-during-the-temporary-write (0.01s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/q-failure-between-the-temporary-write-and-the-rename (0.01s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/r-real-rename-failure-onto-an-occupied-name (0.02s)
+    update_prior_manifest_tmpcleanup_test.go:74: temporary files remain after the failed rename: [manifest.prior.json.tmp-881594078]
+    update_prior_manifest_tmpcleanup_test.go:94: temporary files remain after the failed rename: [manifest.prior.json.tmp-1722304425]
+    update_prior_manifest_tmpcleanup_test.go:136: temporary files remain in the run backup: [manifest.prior.json.tmp-3588344372]
+--- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile (0.85s)
+    --- PASS: TestFailedPriorManifestRenameLeavesNoTemporaryFile/TheNameTheWriterUsesIsTheNameTheRestoreSkips (0.01s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/InjectedRenameFailure (0.00s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/RealRenameFailureOntoAnOccupiedName (0.01s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/TheRunStillRemovesNothing (0.84s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.858s
+FAIL
+rc=1
+```
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/update/backup/ -run '^TestRestore(Legacy|RetainedWithoutSections|RetainedWithSections|FromBackupDir)SkipsPriorManifestTemporaryFile$' -count=1 -v
+    restore_prior_manifest_tmp_test.go:58: manifest.prior.json.tmp-4242 from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreLegacySkipsPriorManifestTemporaryFile (0.00s)
+    restore_prior_manifest_tmp_test.go:66: manifest.prior.json.tmp-4242 from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifestTemporaryFile (0.00s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifestTemporaryFile (0.00s)
+Warning: merge failed for notes/manifest.prior.json, restoring backup
+Warning: merge failed for notes/manifest.prior.json.tmp-4242, restoring backup
+    restore_prior_manifest_tmp_test.go:87: manifest.prior.json.tmp-4242 from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifestTemporaryFile (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.337s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 실패한 이름 바꾸기 뒤 임시 파일이 남았고 (주입, 실제, 인수인계 세 곳), 복원 세 진입점이 백업 루트의 임시 파일을 `.moai/config` 로 복사했다. 섹션이 있는 백업의 `RetainedWithSections` 는 섹션 YAML 만 걸으므로 수정 전에도 통과하는 특성 기록이다 (chunk 5 와 같은 구성).
+
+#### (C) 거절 기록 — 리뷰의 둘째 P2
+
+리뷰는 레거시 백업 루트에 사용자가 글자 그대로 `manifest.prior.json` 이라는 설정 파일을 두었다면 이제 `--restore` 가 그것을 건너뛴다고 지적했다. 레인이 거절했다: (1) 그런 파일이 `.moai/config` 에 존재할 수 있는 유일한 경로는 chunk 5 가 고친 복원 결함 그 자체인데 그 결함은 출하된 적이 없다; (2) 이름은 REQ-OWR-015 와 design.md D-3 이 고정한다; (3) 복원 걷기는 그 둘을 구별할 방법이 없다. **공개된 한계**: 백업 루트의 이름이 `manifest.prior.json` (또는 `manifest.prior.json.tmp-` 접두사) 인 파일은 복원에서 제외된다. 하위 디렉터리의 같은 이름 파일은 계속 복원된다 (시험이 고정).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
