@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "moai update ownership verdict and legacy-migration repair: evidence-based per-file ownership, profile-reach keep reasons, case-variant paths, emptied-directory pruning, and a remaining-file list (follow-up to SPEC-UPDATE-REMOVAL-FAMILY-001)"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-10-18
 updated: 2026-10-18
 author: "GOOS (via manager-spec, card t1865)"
