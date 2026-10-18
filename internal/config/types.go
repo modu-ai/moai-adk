@@ -1230,6 +1230,17 @@ type GatePreCommitConfig struct {
 	// unrelated to the staged change cannot block unrelated commits. The
 	// standalone `moai gate` CLI ignores this key entirely.
 	Enabled bool `yaml:"enabled"`
+	// TestScope scopes the Go test step in the pre-commit context
+	// (SPEC-PRECOMMIT-AFFECTED-SCOPE-001).
+	TestScope GatePreCommitTestScope `yaml:"test_scope"`
+}
+
+// GatePreCommitTestScope configures which packages the pre-commit context's
+// Go test step runs.
+type GatePreCommitTestScope struct {
+	// Mode is "affected" (changed-file packages plus their direct dependents;
+	// the default) or "full" (every package in the module, today's scope).
+	Mode string `yaml:"mode"`
 }
 
 // GateTypecheck configures the gate's type-check axis.
