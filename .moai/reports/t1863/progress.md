@@ -238,7 +238,7 @@ Verdict read: `.moai/reports/t1863/sync-audit-cold.md` (FAIL 0.86, two codex-gat
 
 Scoped verification (verbatim tails): AC-003 `ok 13.650s` (both legs), AC-004 `ok 12.999s` (3 variants), AC-007 `ok 9.750s`, gating `ok 33.653s` (14/14 rows), anchors test `ok 1.637s` post-F4, T1 regressions `TestEnterSelectedFactoryRun*` + `TestFactoryLeadRefusesCodexLedRun` each `ok`. gofmt clean; `GOOS=windows` build exit 0; lint exit 1 with only the 3 pre-existing baseline findings (0 NEW).
 
-### Sync-audit round 3 repair (F1' residual) — commit `PLACEHOLDER-R3`
+### Sync-audit round 3 repair (F1' residual) — commit `727f9e33f`
 
 Verdict read: `.moai/reports/t1863/sync-audit-cold.md` round 2 section (FAIL 0.90 converging; F2/F3/F4 closed, F1' residual blocking).
 
