@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LEADER-ADOPT-CORE-001
 title: "Factory leader start over an orphaned run — promptless refusal with guidance, the deliberate --factory-run adopt pinned to the adoption write, and the guidance text that describes both"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-18
 updated: 2026-10-18
 author: manager-spec

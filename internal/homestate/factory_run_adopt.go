@@ -95,6 +95,55 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 	return RunOwner{}, candidates, nil
 }
 
+// OrphanRun is one orphan run — an ACTIVE run a fresh leader start would
+// strand — together with the count of its non-terminal cards, the number the
+// leader-start guidance renders (SPEC-FACTORY-LEADER-ADOPT-CORE-001).
+type OrphanRun struct {
+	RunOwner
+	// NonTerminalCards counts the run's cards outside the shared terminal
+	// set (sqlTerminalStates). The count is what makes the run an orphan:
+	// a dead-owner run with only terminal cards and no workers is finished,
+	// and the lane-join reconciliation is free to retire it.
+	NonTerminalCards int
+}
+
+// FindOrphanRuns returns every orphan run — an ACTIVE run whose owner is
+// classified dead ON THE RUN ROW'S OWN STAMP (BasisStamp, the same admit
+// rule as FindResumableRun) and which holds at least one non-terminal card —
+// with each run's non-terminal card count. A peer-classified run (BasisPeer)
+// or a boot-proof run (BasisBoot) carries no row-level identity to
+// compare-and-set against, so neither is ever an orphan; live and
+// indeterminate owners are not; a workers-only run holds no card to orphan.
+//
+// The finder is SELECT-only: it classifies the rows and counts cards and
+// writes nothing (AC-FLAC-001's content-snapshot guarantee).
+//
+// @MX:NOTE: [AUTO] the orphan admit rule is Classification==OwnerDead && Basis==BasisStamp && NonTerminalCards>=1 — the stamp basis is the identity the adoption's compare-and-set needs
+// @MX:REASON: a boot-proof or peer-classified run has no row-level owner identity, so an adopt keyed on it could not refuse a competing writer (SPEC-FACTORY-LEADER-ADOPT-CORE-001 REQ-FLAC-001)
+func (f *FactoryDB) FindOrphanRuns(ctx context.Context, opts ReconcileOptions) ([]OrphanRun, error) {
+	owners, err := f.classifyRuns(ctx, opts, "active")
+	if err != nil {
+		return nil, err
+	}
+	var orphans []OrphanRun
+	for _, o := range owners {
+		if o.Classification != OwnerDead || o.Basis != BasisStamp {
+			continue
+		}
+		// The count is a read on the pool handle after classifyRuns drained
+		// its row cursor, so the single-connection pool cannot deadlock.
+		var nonTerminal int
+		if err := f.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM cards WHERE run_id=?1 AND state NOT IN `+sqlTerminalStates, o.RunID).Scan(&nonTerminal); err != nil {
+			return nil, err
+		}
+		if nonTerminal < 1 {
+			continue
+		}
+		orphans = append(orphans, OrphanRun{RunOwner: o, NonTerminalCards: nonTerminal})
+	}
+	return orphans, nil
+}
+
 // AdoptRun re-adopts one ACTIVE run for the resuming leader process: it
 // restamps the owner identity to the supplied pid and process-start
 // fingerprint and appends one run.resumed event carrying the adoption basis,

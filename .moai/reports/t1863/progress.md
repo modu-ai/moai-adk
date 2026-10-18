@@ -27,8 +27,46 @@ run: tn1p4e · lane: lane-18 · 트리: `.moai/worktrees/t1863` · 브랜치: `W
 - 07:1xZ — **운영자 결정 접수(보드 d-20261018T070800Z-52cc, 리더 전달)**: FOUNDER Q1=거부·안내(run 미생성) / Q2=모든 명시 --factory-run 리더 시작에 인수 기록 경로 통일 / Q3=chooser 카드 착지 전까지 터미널 무관 거부 — 셋 다 작성본 그대로. decision-index 3개 판정 칸 기입 + 보드 인용(커밋 5e6c58daba). **해시 불변 검증**: spec+plan+acceptance 연접 SHA-256 = a9f3f549…(편집 전후 동일 — decision-index 는 해시 대상 외). **카드 spec_id 보정 완료**(리더, 운영자 승인 — SPEC-FACTORY-LEADER-ADOPT-CORE-001, 백업 db + card.fields 이벤트).
 - 07:1xZ — **T5 증거 매듭 실측**(plan 단계 변주): T5 진입이 감사 시점 트리(2178966bb)를 요구하나 판정 파일이 그 커밋에 미추적 → "artifact absent at commit" 거부 실측. t1828 T11/T13 전례의 정당한 풀림 적용: 감사자가 동일 판정을 판정 파일 추적 커밋(5e6c58daba) 기준으로 재앵커(내용 불변·해시 결속 동일, 재감사 아님) → 판정 파일 커밋 → T5(5e6c58daba:iter3) → T7 → T8a. 재발행 요청 발송, 대기.
 - 07:2x-07:3xZ — T5 착지(v8, 증거 5e6c58daba:plan.md — 감사 앵커 커밋에 추적된 plan 산출물). **T7 천장 거부 실측**: 라운드 3 ≥ Tier M 상한 2 → Rung 3 hold. 원인 추적(코드 완독): Rung 0 pass-through 암(REQ-ACE-013, admission-clean 이면 천장 무관 승인)이 실패 — 파싱 필드 전부 정상, 실패 요인은 **hashOK=false**: 시임이 `ComputeHash(specDir)`(런타임 조성 — 파일 순서 [acceptance, decision-index, design, plan, research, spec, tasks], 각 `이름:길이\0`+바이트+\0, decision-index 포함)와 판정 기재 해시를 비교하는데 감사자가 단순 연접 SHA(a9f3f549)를 기재. 기계 조성 산출: `a0f8cb8e…`(판정 기입 반영). 감사자 교정 요청(양쪽 해시 표기 동시 갱신 — 미갱신 시 duplicate-keys). 교정 도착 시 T7 재시도.
+- 07:4x-07:5xZ — T7 매듭 완전 해소 3단: (1) 해시 조성 교정(감사자, 게이트 실함수로 독립 검증 동일값) → 재시도 여전히 hold → (2) 모듈 내 임시 프로브로 승인 술부 직접 실행 → 실패 사유 확정: **`duplicated decision key(s): plan_artifact_hash`** — 6행 프로즈 편집이 구성 설명을 키 줄에 부착해 값 불일치 → (3) 6행 값 정화 교정. **T7 kickoff 착지(07:37:24, 증거 PASS 판정·audited 5e6c58daba)** — kickoff 는 비임대 상태(lease-holding 목록 외, holder 공실 정상). 임대 만료 1회 자연 경과(수거 불요 — kickoff 무임대 설계).
+- 07:5xZ — **T8a 착지: `t1863: run (v10)`** — `moai factory decide --gate kickoff --choice approve --decider audit`(자율 감사 심의). 첫 시도 거부 → 원인: §E.1 의 bare `audit_ready: true` 신호 행 누락(저작 시 plan_status 만 기재; card_audit_kickoff.go:47-94 판독부 확인) → 신호 행 추가(소유권: §E.1 기계 신호 한 줄 기계적 보완) → 승인. §F 모드 선택 로그 기록(serial, Tier M) → run 진입 문서 커밋 `6400ae9d4e`(판정 3종+§G+§F). manager-develop 스폰(M1→M4 직렬, RED 먼저, Section A-E 템플릿).
 
 ## 3. 산출물
 
 - SPEC 디렉터리: `.moai/specs/SPEC-FACTORY-LEADER-ADOPT-CORE-001/` (manager-spec 스폰 예정)
 - plan-audit: `.moai/reports/t1863/plan-audit-iter*.md` (예정)
+
+## §E.2 Run-phase Evidence
+
+Tree: `.moai/worktrees/t1863` (branch `WT-10-18-t1849`). Every command below was run in this tree with the environment scrubbed (`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && TMPDIR=/private/tmp/moai-lda-verify`) and `-count=1`, one plain `-run` pattern per invocation.
+
+### M1 — Orphan finder (AC-FLAC-001) — commit `<M1-SHA>`
+
+RED (pre-fix, verbatim; the finder does not exist yet, so the three named tests cannot compile — the E1 swept set is 0/3):
+
+```text
+$ go test ./internal/homestate -run 'TestFindOrphanRunsRequiresDeadStampAndCards' -count=1 -v
+# github.com/modu-ai/moai-adk/internal/homestate [...]
+internal/homestate/factory_run_orphan_test.go:183:21: db.FindOrphanRuns undefined (type *FactoryDB has no field or method FindOrphanRuns)
+internal/homestate/factory_run_orphan_test.go:211:21: db.FindOrphanRuns undefined (type *FactoryDB has no field or method FindOrphanRuns)
+internal/homestate/factory_run_orphan_test.go:248:21: db.FindOrphanRuns undefined (type *FactoryDB has no field or method FindOrphanRuns)
+FAIL	github.com/modu-ai/moai-adk/internal/homestate [build failed]
+FAIL
+```
+
+GREEN (verbatim tails, post-fix):
+
+```text
+$ go test ./internal/homestate -run 'TestFindOrphanRunsRequiresDeadStampAndCards' -count=1 -v
+--- PASS: TestFindOrphanRunsRequiresDeadStampAndCards (0.47s)
+ok  	github.com/modu-ai/moai-adk/internal/homestate	0.861s
+$ go test ./internal/homestate -run 'TestFindOrphanRunsExcludesNonQualifyingRuns' -count=1 -v
+--- PASS: TestFindOrphanRunsExcludesNonQualifyingRuns (0.45s)
+ok  	github.com/modu-ai/moai-adk/internal/homestate	0.670s
+$ go test ./internal/homestate -run 'TestFindOrphanRunsCountsNonTerminalCardsOnly' -count=1 -v
+--- PASS: TestFindOrphanRunsCountsNonTerminalCardsOnly (0.55s)
+ok  	github.com/modu-ai/moai-adk/internal/homestate	0.812s
+```
+
+E4 regression guards stay green after M1 (9/9, each `ok`): TestAdoptRunRefusesChangedStamp, TestLiveRecordsTerminalSetMatchesSharedDefinition, TestReconcilePreservesDeadOwnerRunWithLiveRecords, TestReconcilePreservesDeadOwnerWithOnlyWorkers, TestReconcileRetiresDeadOwnerWithTerminalRecordsOnly, TestFindResumableRunAdoptsSingleDeadOwnerWithLiveRecords, TestFindResumableRunSkipsLiveOwner, TestFindResumableRunSkipsRunWithoutLiveRecords, TestFindResumableRunReportsMultipleCandidates.
+
+`gofmt -l` on the two touched files: clean. spec.md frontmatter `draft → in-progress` recorded on this milestone's commit (Status Transition Ownership Matrix, manager-develop).
