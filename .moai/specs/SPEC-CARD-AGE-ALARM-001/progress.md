@@ -11,15 +11,142 @@ open_conditions: none
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Tree: worktree `.moai/worktrees/t1838`, branch `WT-10-17-g1`, HEAD `2a1a7f62e`. Every command below ran in this run (2026-10-18, manager-develop evidence delegation) against that HEAD unless a line says otherwise. Judging toolchain: `go` as installed via PATH (direct `go test` / `go build` / `go vet` invocations); no moai binary was used as a measurement tool.
+
+### Commits (E6)
+
+| SHA | Role |
+|---|---|
+| `3b4f6ee31` | M1 RED — card_age_alarm config tests |
+| `d5f2b9b56` | M1 GREEN — card_age_alarm config keys |
+| `019a3ab03` | M2 RED — age measurement tests |
+| `54b08b753` | M2 GREEN — read-only age measurement |
+| `8670542c6` | M3 RED — status wiring tests |
+| `2a1a7f62e` | M3 GREEN — status wiring and display |
+| this evidence commit | §E.2/§E.3 recording — self-referential; resolves to `git rev-parse --short HEAD` on `WT-10-17-g1` immediately after it lands (D3 placeholder philosophy, single-commit close, no backfill) |
+
+Run-phase file set (`git diff --name-only 3b4f6ee31^..HEAD`, 12 files): `.moai/specs/SPEC-CARD-AGE-ALARM-001/spec.md`, `internal/cli/factory_age_alarm.go`, `internal/cli/factory_age_alarm_test.go`, `internal/cli/factory_card.go`, `internal/config/defaults.go`, `internal/config/loader_card_age_alarm.go`, `internal/config/loader_card_age_alarm_test.go`, `internal/config/testdata/shipped_key_inventory.yaml`, `internal/config/types.go`, `internal/homestate/card_age.go`, `internal/homestate/card_age_test.go`, `internal/template/templates/.moai/config/sections/workflow.yaml` (9 Go files among them). This evidence commit additionally carries the lane's §F Phase 4 Mode Selection record, which was already present (uncommitted) in the working tree at delegation start — same file, coherent §F content, committed here rather than left dirty.
+
+No push — lane worktree; the factory leader batch-pushes card branches.
+
+### E8 — RED disposition (honesty record)
+
+The lane session that landed M1-M3 died before recording the verbatim RED outputs; no historical RED stdout exists and none is fabricated. Falsifiability is restored two ways:
+
+1. Commit-graph witness: each milestone's RED commit precedes its GREEN commit — `3b4f6ee31` → `d5f2b9b56`, `019a3ab03` → `54b08b753`, `8670542c6` → `2a1a7f62e`, in `git log --oneline` order on this branch. Each pair is two separate commits, so the ordering claim is witnessed by the graph, not by prose.
+2. Live mutant probes (both mutants are the ones acceptance.md names; protocol: apply mutant → observe the named test FAIL → `git restore` the file → re-observe GREEN; all on HEAD `2a1a7f62e`):
+   - Heartbeat-conflation mutant — `internal/homestate/card_age.go`, `out.Activity.At` admitted to the no-progress basis in `ComputeCardAges`. `go test -count=1 -run 'TestCardAgeSignals' ./internal/homestate` →
+     ```
+     --- FAIL: TestCardAgeSignals (4.55s)
+         card_age_test.go:274: no-progress after renewal = {Known:true At:2026-09-26 18:00:00 +0000 UTC Age:1h0m0s}, want still 9h25m0s — activity is not progress
+     FAIL
+     FAIL	github.com/modu-ai/moai-adk/internal/homestate	4.976s
+     ```
+     exit=1. Restored (`git status --short` back to only progress.md); the full 7-test homestate batch re-observed `ok github.com/modu-ai/moai-adk/internal/homestate 22.269s`, exit=0.
+   - Append-event mutant — `internal/cli/factory_age_alarm.go`, one `INSERT INTO events(run_id,kind,payload_json,created_at)` inside `computeFactoryAgeAlarms` after the events read. `go test -count=1 -run 'TestAgeAlarmNoWrites' ./internal/cli` →
+     ```
+     --- FAIL: TestAgeAlarmNoWrites (2.71s)
+         factory_age_alarm_test.go:241: the alarm computation wrote:
+             before below:1:2026-09-26T08:30:00Z gate-alert:1:2026-09-24T00:00:00Z gate-warn:1:2026-09-25T21:00:00Z stall-warn:1:2026-09-26T05:00:00Z events=0
+             after  below:1:2026-09-26T08:30:00Z gate-alert:1:2026-09-24T00:00:00Z gate-warn:1:2026-09-25T21:00:00Z stall-warn:1:2026-09-26T05:00:00Z events=2
+     FAIL
+     FAIL	github.com/modu-ai/moai-adk/internal/cli	4.199s
+     ```
+     exit=1 (events 0 → 2: one appended row per status invocation). Restored; the full cli batch re-observed `ok github.com/modu-ai/moai-adk/internal/cli 14.516s`, exit=0.
+
+### GREEN, per AC (E1) — this run, HEAD `2a1a7f62e`
+
+Command (config): `go test -v -count=1 -run 'TestLoadCardAgeAlarm|TestCardAgeAlarmBounds' ./internal/config` → `--- PASS: TestLoadCardAgeAlarm (0.02s)` with 4 passing subtests (no-file / no-block / enabled-only / all-keys), `--- PASS: TestCardAgeAlarmBounds (0.00s)` with 10 passing subtests, `ok github.com/modu-ai/moai-adk/internal/config 0.352s`, exit=0.
+
+Command (homestate): `go test -v -count=1 -run 'TestGateWaitAge|TestCardAgeSignals|TestNoProgressAge|TestNoProgressAgeCreationAnchor|TestAgeAnchorsFutureTimestamps|TestStageCheckpointSameStageReEntry|TestAgeAlarmCoverage' ./internal/homestate` →
+```
+--- PASS: TestGateWaitAge (6.36s)
+    --- PASS: TestGateWaitAge/kickoff-entry-event-not-updated-at (1.01s)
+    --- PASS: TestGateWaitAge/mid-merge-expiry-anchors-on-lease-expired-event (1.62s)
+    --- PASS: TestGateWaitAge/no-events-row-falls-back-to-updated-at (1.65s)
+    --- PASS: TestGateWaitAge/needs-decision-and-blocked-are-gate-states (2.08s)
+--- PASS: TestCardAgeSignals (1.74s)
+--- PASS: TestNoProgressAge (1.27s)
+--- PASS: TestNoProgressAgeCreationAnchor (2.86s)
+--- PASS: TestAgeAnchorsFutureTimestamps (3.82s)
+--- PASS: TestStageCheckpointSameStageReEntry (1.60s)
+--- PASS: TestAgeAlarmCoverage (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/homestate	18.099s
+```
+exit=0 (TestNoProgressAgeCreationAnchor carried 3 passing subtests, TestAgeAnchorsFutureTimestamps 4).
+
+Command (cli): `go test -v -count=1 -run 'TestFactoryStatusAgeAlarm|TestFactoryStatusDisabledUnchanged|TestAgeAlarmNoWrites' ./internal/cli` →
+```
+--- PASS: TestFactoryStatusDisabledUnchanged (1.12s)
+--- PASS: TestFactoryStatusAgeAlarmText (1.08s)
+--- PASS: TestFactoryStatusAgeAlarmJSON (1.25s)
+--- PASS: TestFactoryStatusAgeAlarmRefusedKey (0.82s)
+--- PASS: TestAgeAlarmNoWrites (2.19s)
+--- PASS: TestFactoryStatusAgeAlarmFutureCommit (1.63s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	9.457s
+```
+exit=0. The `TestFactoryStatusAgeAlarm` selector matches the Text/JSON/RefusedKey/FutureCommit variants by unanchored regex, so this batch swept 6 named tests, not 3.
+
+Sweep-count proof (`go test <pkg> -list '<same pattern>'`; none printed `[no tests to run]`, each listing ended `ok <pkg>`): config 2 names (TestLoadCardAgeAlarm, TestCardAgeAlarmBounds); homestate 7 names (the seven above); cli 6 names (the six above).
+
+AC flips of the authoring greps (acceptance.md RED cells observed 0/empty on `7faf75fdf`):
+- `grep -c "card_age_alarm" internal/config/defaults.go` → `2`, exit=0 (AC-CAA-001 flip).
+- `grep -rln "CardAgeAlarm" internal/config/` → 5 files (`types.go`, `defaults.go`, `loader_card_age_alarm.go`, `loader_card_age_alarm_test.go`, `testdata/shipped_key_inventory.yaml`), exit=0 (AC-CAA-002 flip).
+- `grep -c "card_age_alarm" internal/template/templates/.moai/config/sections/workflow.yaml` → `2`, exit=0 (AC-CAA-002 flip).
+
+| AC | Status | Evidence (this run, HEAD `2a1a7f62e`) |
+|---|---|---|
+| AC-CAA-001 | PASS | `TestLoadCardAgeAlarm` PASS (4 subtests); defaults.go grep = 2 |
+| AC-CAA-002 | PASS | `TestCardAgeAlarmBounds` PASS (10 subtests); both greps ≥ 1; degrade-not-refuse on the status surface = `TestFactoryStatusAgeAlarmRefusedKey` PASS (exactly 1 warning line, card rows survive) |
+| AC-CAA-003 | PASS | `TestGateWaitAge` PASS (4 subtests incl. the updated_at fallback) |
+| AC-CAA-004 | PASS | `TestCardAgeSignals`, `TestNoProgressAge`, `TestNoProgressAgeCreationAnchor`, `TestAgeAnchorsFutureTimestamps`, `TestStageCheckpointSameStageReEntry`, `TestFactoryStatusAgeAlarmFutureCommit` all PASS; the heartbeat-conflation mutant probe FAILs as acceptance.md requires |
+| AC-CAA-005 | PASS | `TestFactoryStatusAgeAlarmJSON` PASS |
+| AC-CAA-006 | PASS | `TestFactoryStatusAgeAlarmText` PASS |
+| AC-CAA-007 | PASS (regression guard) | `TestFactoryStatusDisabledUnchanged` PASS |
+| AC-CAA-008 | PASS (regression guard) | `TestAgeAlarmNoWrites` PASS; the append-event mutant probe FAILs as acceptance.md requires |
+| AC-CAA-009 | PASS | `TestAgeAlarmCoverage` PASS |
+
+### Quality batch (E2, E3, E4, E5)
+
+- `go vet ./internal/config ./internal/homestate ./internal/cli` → no output, exit=0.
+- `GOOS=windows GOARCH=amd64 go build ./internal/config ./internal/homestate ./internal/cli` → no output, exit=0 (scoped 3-package form; the run had launched and completed before the slot-release directive arrived — see Gaps).
+- E4 boundary: `grep -rn 'AskUserQuestion' internal/homestate internal/cli/factory_age_alarm.go internal/cli/factory_age_alarm_test.go internal/cli/factory_card.go internal/config/defaults.go` → no output, exit=1 (0 matches across the whole homestate package and this SPEC's cli/config files). For the record: the delegation's whole-package form (`grep -rn 'AskUserQuestion' internal/config internal/homestate internal/cli --include='*.go' | grep -v _test.go`) prints ~80 pre-existing comment/doc mentions, all in files outside this SPEC's 12-file diff (harness.go, mcp_*.go, agentlint, ...) — 0 matches is not obtainable from that form on this tree, so the scoped probe above is the E4 verdict for this card.
+- E3 coverage (scoped-coverage discipline — `-run`-limited `-cover`; package-wide suites deferred to CI under the load rule): config `ok ... coverage: 1.5% of statements`; homestate (7-name pattern) `coverage: 20.1% of statements`; cli (3-name pattern) `coverage: 4.8% of statements` (a second scoped run for the coverprofile measured 4.9% — run-to-run variance in the package-wide denominator). Per-file on the three new files (same scoped runs, `-coverprofile` + `go tool cover -func`): `internal/config/loader_card_age_alarm.go` — LoadCardAgeAlarm 80.0%, ResolveCardAgeAlarm 100.0%, parseAlarmBand 100.0%; `internal/homestate/card_age.go` — ComputeCardAges 92.9%, LoadCardEvents 76.2%, creationEvent 75.0%, all other functions 100.0%; `internal/cli/factory_age_alarm.go` — computeFactoryAgeAlarms 91.7%, bandAgeAlarm 100.0%, ageAlarmSignal 100.0%, writeFactoryAgeAlarmText 100.0%, factoryAgeAlarmCommitAt 77.8%.
+- E5 lint: `golangci-lint run --timeout=5m ./internal/config/... ./internal/homestate/... ./internal/cli/...` → `Error: parallel golangci-lint is running`, exit=3 (another session's golangci-lint held the lock). The go-test-heavy slot was then released by the lane per the leader directive (t1858 landing remeasure priority, 2026-10-18T01:56Z) and was not re-acquired, so no retry was made. DEFERRED TO CI; new-vs-baseline lint classification for the three packages is unobserved in this run.
+- `gofmt -l` on the 9 run-phase Go files → empty list, exit=0.
+
+### Gaps (not observed)
+
+- Historical verbatim RED outputs of M1-M3: lost (the lane session died before recording them). Falsifiability restored via the commit-graph witness and the two live mutant probes above; the loss itself remains the Gap.
+- golangci-lint on the three packages: not observed (concurrent-lock exit 3, then the slot was released for the t1858 landing remeasure — leader directive 2026-10-18T01:56Z). Deferred to CI.
+- Package-wide suites, `-race`, full-coverage runs, and repo-wide `go build ./...` / `GOOS=windows go build ./...`: deferred to CI under the load rule (scoped `-run` tests and the scoped 3-package windows build were run instead).
+- Windows EXECUTION of the tests: unobserved (cross build only).
+- CI on the integration branch has not run for this tree: the repository-wide test verdict is PENDING at the time of this record and belongs to that CI run.
+- The evidence-commit SHA cannot appear inside the commit that creates it; it is recorded in §E.3 as "this evidence commit" and resolves to the branch HEAD after landing.
+
+### Residual risk
+
+- The M1 GREEN commit `d5f2b9b56` carried an in-flight test repair (the template-parity case parses short-form durations — a test adjusted on the GREEN commit, disclosed in that commit's body). The M1 RED→GREEN pair therefore does not witness the final test text's red state; that criterion is carried by the authoring-time RED cell on `7faf75fdf` (grep = 0) and this run's live GREEN.
+- The M1-M3 commits carry no `Authored-By-Agent:` trailer, so the ownership lint reads the `draft → in-progress` transition as `OwnershipTransitionUnmeasured` (Info severity). History is not rewritten; this evidence commit carries the trailer.
+- Scoped coverage percentages use package-wide denominators under `-run` filters; the per-file numbers on the three new files are the load-rule-sanctioned substitute, and CI owns the package-wide figure.
+- Load-rule deferrals (lint, package-wide suites / race / full coverage) mean a NEW lint finding or a suite-level regression outside the swept tests would first surface in CI, not in this record.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-10-18
+run_commits: 3b4f6ee31 + d5f2b9b56 (M1 RED+GREEN), 019a3ab03 + 54b08b753 (M2 RED+GREEN), 8670542c6 + 2a1a7f62e (M3 RED+GREEN), plus this evidence commit (HEAD of WT-10-17-g1 immediately after it lands)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier M · scope 6 files (3 new, 3 touched) · domains 1 (Go backend chain `internal/config` → `internal/homestate` → `internal/cli` + 1 template yaml) · language mix Go + yaml · concurrency benefit LOW (coding-heavy, fixed milestone order)
+- Mode evaluation: `direct` not selected (specialist domain — manager-develop per Status Transition Ownership Matrix) · `serial` **selected** · `fanout` not selected (coding-heavy per the coding-task parallelism caveat; M2 anchors feed the M3 renderer — inter-milestone dependency) · `sweep` not selected (6 files, not a mechanical bulk transform)
+- Decision: serial
+- Justification: plan §D fixes M1→M2→M3 order with each milestone's RED landing before its implementation; later milestones consume earlier ones' anchors (§C symbols), so sequential single-specialist delegation is the safe shape. Recorded 2026-10-18 by lane-33 on takeover: M1-M3 had already landed under lane-7's session in exactly this serial shape (one specialist chain, one milestone at a time); the remaining run work — AC verification + §E.2/§E.3 evidence — is one further manager-develop delegation.
 
 ## §G Override and Refusal Record
 
