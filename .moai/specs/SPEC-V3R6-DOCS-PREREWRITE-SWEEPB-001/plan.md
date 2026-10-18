@@ -9,7 +9,7 @@
 
 ### A.2 E01 hit inventory (12 matches in 12 files, one per file; 0 Class C, 12 Class N)
 
-Per-line inventory and the edit unit, in one table so that the inventory and the allowed edit are the same object. The `Unit` column is the exact range a disposition may change; the hit line is inside it. `Base lines` is the file's line count at the pin (E-SWB-7).
+Per-line inventory at the pin. The `Unit` column is the line range of the superseded option (a), kept for the record; no criterion uses it. `Base lines` is the file's line count at the pin (E-SWB-7), also a record of the pin and not a check.
 
 | # | Page | Locale | Hit line | Unit (lines) | Class | Matched form | Base lines |
 |---|------|--------|----------|--------------|-------|--------------|-----------|
@@ -66,22 +66,22 @@ The installed `moai` reports `moai_cp/20261007_195927-1888-g7705b365e2`, built 2
 
 ## B. Milestones
 
-Q-SWB-1 is decided (b) on board record `d-20261018T201957Z-c26e` (decision-index.md, Gate). No milestone edits a page. The former edit milestones (Class C edit, Class N edit) are not applicable and are removed.
+The decided state is in decision-index.md (Gate; row Q-SWB-1). No milestone edits a page. The former edit milestones (Class C edit, Class N edit) are not applicable and are removed.
 
-- **M1 (Priority High): re-run the inventory.** On the run-start tree re-run the E01 inventory of §A.2. Any E01 match not in §A.2, by content, is a blocker report (return, do not edit). If a page moved on `main`, recompute the Base lines column from content.
-- **M2 (Priority High): regression-guard verification.** Run the AC commands of acceptance.md §B from the card worktree root: the twelve files byte-identical to the pin, the twelve retained lines present in all four locales, the swept-count control. Carry the deciding output into `.moai/reports/t1722/verdict.md`, not into scratch.
+- **M1 (Priority High): re-run the inventory.** On the run-start tree re-run the E01 inventory of §A.2. Any E01 match not in §A.2, by content, is a blocker report (return, do not edit). Record the run-start E01 count per file as evidence; it is not a criterion, and a lower count caused by a change landed on `main` is not this card's regression.
+- **M2 (Priority High): regression-guard verification.** Run the AC commands of acceptance.md §B from the card worktree root: this card's own diff touches none of the twelve files, nothing else outside the SPEC records, and no Class C line exists. Carry the deciding output into `.moai/reports/t1722/verdict.md`, not into scratch.
 - **M3 (Priority Medium): sequencing re-check.** Re-run the overlap probes of acceptance.md E-SWB-8 on current `main` (SWEEPA's file list, any new child spec naming one of the twelve files). Under (b) a finding is recorded, not acted on.
 
 ## C. Risks
 
-- **R1, moving coordinates.** The twelve pages are edited occasionally (acceptance.md E-SWB-9: the last 8 commits touching them are model-policy, tokenomics, and index edits). Line numbers can move before the run phase. Every check keys on content; the Unit column is recomputed at M1.
+- **R1, moving coordinates.** The twelve pages are edited occasionally (acceptance.md E-SWB-9: the last 8 commits touching them are model-policy, tokenomics, and index edits). Line numbers can move before the run phase. Every check keys on content or on the card's own diff, never on a line number.
 - **R4, the umbrella's closing check.** The umbrella's `cited-verbs: 0` check and GATE's exemption entry C-7 (which names only the `cg-mode.md` and `moai-todo.md` pages) would report these twelve lines. That is outside this card and was recorded as a follow-up of the umbrella closing card.
 - **R5, installed-build lag.** The CLI probes rest on a build 48 commits behind the tree (A.4).
-- **R6, same-line overlap with the README child.** Korean `tokenomics-overview.md:112` and Korean `multi-llm/_index.md:164` are lines the README child's REQ-PRC-004 targets. It does not conflict under (b), because this SPEC edits nothing.
+- **R6, same-line overlap with the README child.** Korean `tokenomics-overview.md:112` and Korean `multi-llm/_index.md:164` are lines the README child's REQ-PRC-004 targets. The two obligations conflict (that child's REQ keeps the passage on one Korean page; a SPEC that required these lines to stay would contradict it), so this SPEC deliberately holds no obligation on those lines: it binds only this card's own diff. A removal of those two lines by the README child is not a regression of this SPEC.
 
 ## D. Tests named, not run
 
-- No Go test exists or is added; no Go build or test was run in this plan phase. The checks are the commands in acceptance.md §B. Each RED-now observation and each control was run once against the pin or a named historical commit (acceptance.md §C). No green-path run exists, because nothing has been edited.
+- No Go test exists or is added; no Go build or test was run in this plan phase. The checks are the commands in acceptance.md §B. Each RED-now observation and each control was run once against the pin or a named historical commit (acceptance.md §C). No green-path run exists, because nothing has been edited. Each control runs its own AC command form on a named historical input (acceptance.md E-SWB-10).
 
 ## E. Open questions
 
