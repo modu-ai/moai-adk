@@ -153,13 +153,7 @@ func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), factoryAgeAlarmGitTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "-C", worktreePath, "-c", "log.showSignature=false", "log", "-1", "--format=%cI")
-	// gitenv.Env, not os.Environ — the house pattern of internal/core/git
-	// execGit: a lane or hook process exports GIT_DIR / GIT_WORK_TREE, and an
-	// inherited copy outranks -C. GIT_TERMINAL_PROMPT=0 keeps a read that
-	// cannot authenticate from blocking on a prompt; GIT_NO_LAZY_FETCH=1
-	// keeps a missing object from triggering the lazy fetch that would run
-	// the repo's configured transport (iter2 N1).
-	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1")
+	cmd.Env = ageAlarmChildEnv()
 	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, false
@@ -169,4 +163,16 @@ func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return at, true
+}
+
+// ageAlarmChildEnv builds the child environment of the age-alarm commit
+// read. gitenv.Env, not os.Environ — the house pattern of internal/core/git
+// execGit: a lane or hook process exports GIT_DIR / GIT_WORK_TREE, and an
+// inherited copy outranks -C (iter1 F1). GIT_TERMINAL_PROMPT=0 keeps a read
+// that cannot authenticate from blocking on a prompt; GIT_NO_LAZY_FETCH=1
+// keeps a missing object from triggering the lazy fetch that would run the
+// repo's configured transport (iter2 N1). Pinned by
+// TestFactoryAgeAlarmChildEnvProtocolPin (the env-map seam).
+func ageAlarmChildEnv() []string {
+	return append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1")
 }

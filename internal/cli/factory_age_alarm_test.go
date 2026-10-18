@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -621,5 +622,59 @@ func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
 	}
 	if _, err := os.Stat(lazyMarker); err == nil {
 		t.Errorf("the ext helper of the promisor worktree executed during the commit read (N1: git lazily fetched through remote.origin.url): %s exists", lazyMarker)
+	}
+}
+
+// TestFactoryAgeAlarmChildEnvProtocolPin pins sync-audit iter3 N3: the
+// version-independent transport block on the age-alarm commit read. The
+// lazy-fetch pin (GIT_NO_LAZY_FETCH=1, iter2 N1) is only honored from git
+// 2.46.0 — the guard does not exist in older releases (source-verified:
+// promisor-remote.c @ v2.43.0..v2.45.0 carries no env check) — so on git
+// < 2.46.0 the ext:: transport armed by remote.origin.url +
+// protocol.ext.allow=always stays reachable. GIT_ALLOW_PROTOCOL is
+// different: is_transport_allowed consults its env allow-list BEFORE any
+// repo config (transport.c @ v2.43.0:1070-1076, master:1095-1109), so an
+// EMPTY value — an empty allow-list — blocks every transport including
+// ext:: regardless of the attacker's repo config, on every supported git
+// version.
+//
+// Seam: the env-map seam, not the promisor marker leg. On git >= 2.46.0 the
+// lazy-fetch pin already blocks the marker leg's vector, so the new pin is
+// unobservable there (the leg cannot discriminate it); what the marker leg
+// cannot see, the constructed env itself can. The helper the production
+// code calls is invoked directly and the constructed environment is
+// asserted as a map.
+func TestFactoryAgeAlarmChildEnvProtocolPin(t *testing.T) {
+	env := ageAlarmChildEnv()
+	values := make(map[string]string, len(env))
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			values[k] = v
+		}
+	}
+	// N3: present, with an EMPTY value (an empty env allow-list).
+	v, ok := values["GIT_ALLOW_PROTOCOL"]
+	if !ok {
+		// Name only the git-prefixed keys — the full env carries unrelated
+		// and sometimes sensitive parent-process values a failure log must
+		// not echo.
+		gitKeys := make([]string, 0, len(values))
+		for k := range values {
+			if strings.HasPrefix(k, "GIT_") {
+				gitKeys = append(gitKeys, k)
+			}
+		}
+		sort.Strings(gitKeys)
+		t.Fatalf("GIT_ALLOW_PROTOCOL absent from the child env's git keys %v: the version-independent transport block (N3) is missing — on git < 2.46.0 the ext:: transport of remote.origin.url stays reachable", gitKeys)
+	}
+	if v != "" {
+		t.Errorf("GIT_ALLOW_PROTOCOL=%q, want the EMPTY allow-list: a non-empty value whitelists transports and lets repo config extend it; an empty one short-circuits is_transport_allowed before any repo config", v)
+	}
+	// Regression: the earlier pins survive alongside the new one.
+	if v, ok := values["GIT_NO_LAZY_FETCH"]; !ok || v != "1" {
+		t.Errorf("GIT_NO_LAZY_FETCH = present=%v value=%q, want present with \"1\" (iter2 N1 pin regressed)", ok, v)
+	}
+	if v, ok := values["GIT_TERMINAL_PROMPT"]; !ok || v != "0" {
+		t.Errorf("GIT_TERMINAL_PROMPT = present=%v value=%q, want present with \"0\" (iter1 F1 pin regressed)", ok, v)
 	}
 }
