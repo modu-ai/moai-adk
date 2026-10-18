@@ -173,11 +173,26 @@ func integrationSessionID(explicit string) string {
 	if id := strings.TrimSpace(os.Getenv(config.EnvClaudeCodeSessionID)); id != "" {
 		return id
 	}
-	data, err := os.ReadFile(filepath.Join(integrationLockRoot(), session.CurrentSideChannelFile))
+	data, err := os.ReadFile(filepath.Join(integrationSidecarRoot(), session.CurrentSideChannelFile))
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(string(data))
+}
+
+// integrationSidecarRoot is the directory whose side-channel file integrationSessionID
+// reads: the one the SessionStart hook WROTE it to. The hook writes at the project
+// directory exactly as Claude Code names it (input.ProjectDir), so a CLAUDE_PROJECT_DIR
+// naming a linked worktree is read there as given — NOT at the repository common root that
+// integrationLockRoot answers for the lock record, which would adopt whichever session
+// last started at the primary checkout (card t1680, sync-audit iter3 R3-1). With the
+// variable unset there is no written-at location to follow, so the git-resolved
+// integrationLockRoot fallback stands as before.
+func integrationSidecarRoot() string {
+	if dir := strings.TrimSpace(os.Getenv("CLAUDE_PROJECT_DIR")); dir != "" {
+		return dir
+	}
+	return integrationLockRoot()
 }
 
 // currentBranch reports the checked-out branch of the caller's tree, for the
