@@ -133,6 +133,11 @@ func TestBrokerOpenContextBoundsGitPathResolution(t *testing.T) {
 	}
 }
 
+// The property: after delayed Git path resolution, the SQLite busy wait is sized
+// from the budget that is left, not from the caller's original budget. It is
+// pinned as state (the busy_timeout the opener chose), because a wall-clock
+// bound on this call measured scheduler overshoot instead: under load the delayed
+// Git probe alone outlived the whole caller budget (card t1807).
 func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := brokerGitRoot(t)
@@ -151,12 +156,16 @@ func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	if _, err := db.Exec("PRAGMA journal_mode=WAL; BEGIN IMMEDIATE"); err != nil {
 		t.Fatal(err)
 	}
-	slowBrokerGit(t, 400)
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
+	// The budget is generous so a loaded machine's Git process startup cannot
+	// consume it before the busy-wait sizing is reached; what separates the correct
+	// sizing from the stale one is gitDelay/2, independent of the budget. The
+	// observer cancels the context so the test does not wait out the held lock.
+	const gitDelay, budget = 1200 * time.Millisecond, 10 * time.Second
+	slowBrokerGit(t, int(gitDelay/time.Millisecond))
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
-	started := time.Now()
-	store, err := OpenWithContext(ctx, root, "run-lock")
-	elapsed := time.Since(started)
+	busy := int64(-1)
+	store, err := openWithContextObserved(ctx, root, "run-lock", budget, func(ms int64) { busy = ms; cancel() })
 	if store != nil {
 		_ = store.Close()
 		t.Fatal("locked path returned a store")
@@ -164,9 +173,15 @@ func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	if err == nil {
 		t.Fatal("locked initialization succeeded")
 	}
-	t.Logf("delayed Git plus WAL lock elapsed=%v", elapsed)
-	if elapsed > 650*time.Millisecond {
-		t.Fatalf("busy wait used stale pre-path budget: %v", elapsed)
+	if busy < 0 {
+		t.Fatalf("path resolution never reached the busy-wait sizing: %v", err)
+	}
+	// The busy wait is half the budget left after Git: at most (budget-gitDelay)/2.
+	// Sizing it from the pre-path budget would give budget/2, more than the whole
+	// budget that remains.
+	t.Logf("busy_timeout chosen after delayed Git=%dms (pre-path budget/2=%dms)", busy, budget.Milliseconds()/2)
+	if limit := (budget - gitDelay).Milliseconds() / 2; busy > limit {
+		t.Fatalf("busy wait used stale pre-path budget: busy_timeout=%dms, remaining-budget limit=%dms", busy, limit)
 	}
 }
 
