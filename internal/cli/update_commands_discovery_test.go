@@ -564,6 +564,54 @@ func TestCommandsSingleDispositionAndPresent(t *testing.T) {
 		v2Tree = ownTreeSnapshot(t, filepath.Join(root, ".claude", "commands"), ownTreeOpts{})
 	})
 
+	// V3 is the field shape of a lost manifest: every command is on disk with the
+	// template's bytes and none has a manifest entry, under a stale record. Each
+	// of them takes the same one disposition, and all stay present.
+	t.Run("V3_NoManifestRecords", func(t *testing.T) {
+		home := ownIsolateHome(t)
+		root := t.TempDir()
+		cmdWriteProject(t, root, "claude", cmdOldVersion)
+		var all []string
+		for rel, data := range control.commands {
+			ownAddUnregistered(t, root, rel, data)
+			all = append(all, rel)
+		}
+		sort.Strings(all)
+		ownAddUnregistered(t, root, cmdUserOwn, cmdUserOwnBytes)
+		cmdStampManifest(t, root, cmdOldVersion, cmdStaleTree)
+		for _, p := range cmdPlanProblems(t, root, all...) {
+			t.Errorf("plan: %s", p)
+		}
+		updateLedger.reset()
+		began := time.Now().Add(-time.Second).UnixNano()
+		out := cmdRunCommand(t, root, false)
+		if cmdSkipped(out) {
+			t.Fatalf("V3 was ended by the version-match skip; it judged nothing:\n%s", out)
+		}
+		if cmdNewPriorManifest(root, began) == "" {
+			t.Fatalf("V3 left no new manifest.prior.json; the Backup stage was not reached")
+		}
+		cmdLogObservation(t, "V3", root, out)
+		lines := strings.Split(ansiStrip.ReplaceAllString(out, ""), "\n")
+		for _, rel := range all {
+			n := 0
+			for _, line := range lines {
+				if strings.Contains(line, rel) {
+					n++
+				}
+			}
+			if n > 1 {
+				t.Errorf("%s: %d report lines describe it, want at most one disposition line", rel, n)
+			}
+		}
+		if got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(cmdUserOwn))); err != nil || !bytes.Equal(got, cmdUserOwnBytes) {
+			t.Errorf("S4 %s: the user's own command changed (%v)", cmdUserOwn, err)
+		}
+		for _, p := range cmdPresenceProblems(t, root, home, cmdControl{commands: control.commands}, nil) {
+			t.Errorf("presence: %s", p)
+		}
+	})
+
 	t.Run("V1AndV2ReachTheSameCommandsTree", func(t *testing.T) {
 		if v1Tree == nil || v2Tree == nil {
 			t.Fatalf("a variant did not complete (V1 %d entries, V2 %d entries); there is nothing to compare", len(v1Tree), len(v2Tree))
