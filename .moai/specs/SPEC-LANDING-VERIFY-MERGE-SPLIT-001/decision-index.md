@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -34,6 +34,12 @@ Board `2c51`: see Q13.
 > Unchanged: no past-PASS substitution, no test exclusion, no default-permission expansion; the 9dbe shape and Q7-Q13 rulings stand.
 
 Effect on earlier rows: the order inside piece A recorded at Q7 is refined by P2 — the in-repo key is switched on by a separate later commit on main, not by a milestone of this SPEC's branch; piece A's own landing is not the gate's first live use.
+
+## Plan-audit iteration 2 ruling, verbatim (board 470c)
+
+> t1872 piece A, N2 (plan audit iter2 FAIL 0.80). Policy: the gate's enable key is read from the integration branch's committed content (the blob at <integration-branch>:<config path>, the branch named by the common-root integration config — consistent with t1834 F2), not from any working tree. Reason: the primary checkout is detached and stale (478285ab4c) and moving it is the operator's keep-set (branch guard), and binding the consumer to .claude/worktrees/main ties correctness to one local layout. With this source, an enable or revert commit on main takes effect when it lands, which an AC must observe. Options (a) keep the primary checkout on main and (b) read .claude/worktrees/main are rejected for those reasons. iter3 is the last Tier L round; a FAIL there goes to hold + shrink proposal (rule C 9e76).
+
+Effect on earlier text: the "integration root's configuration" wording of version 0.3.0 (REQ-LVM-007) is replaced by the committed blob of the integration branch (REQ-LVM-017).
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -198,4 +204,54 @@ Why unresolved: the audit showed a `-run`-narrowed attempt counts today.
 Default: exact argv equality of the `go test` segment after dropping leading environment assignments and an `unset … &&` scrub segment; any other compound, pipe or extra segment refuses (rule: the option that refuses strictly more, the fail-closed direction the rulings require)
 Alternate: compare only the package list and flags that select tests
 Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+
+## Rows Q18-Q22 (plan-audit iteration 2)
+
+### Q18: Which source decides whether the gate is on?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: none in the committed tree (source: board 470c)
+Why unresolved: the primary checkout is a stale detached HEAD that an enable or revert commit on main never reaches (measured at 478285ab4c while main was elsewhere).
+Operator verdict: DECIDED (board 470c): the committed blob `<integration-branch>:.moai/config/sections/workflow.yaml`, the branch named by the common-root integration configuration; no working tree is consulted; keeping the primary on main and reading the main worktree are rejected.
+
+### Q19: How does a lane's verdict file carry the receipt ids, and how is it found?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: no Go code parses an `audit_receipt:` line from a verdict file; measured sample of 8 merge-ready SPEC cards: all 8 verdicts cite receipt ids somewhere, only 2 as a top-level `audit_receipt:` machine line (`research.md` §10).
+Default: SPEC cards locate the newest `sync-audit*.md` under `.moai/reports/<card-id>/` (the T13 reader's rule: highest `-iter<N>`, then latest modification) and the verdict must carry exactly one `audit_receipt: rcpt-…[,rcpt-…]` machine line; the sync-auditor protocol and the audit artifact convention state it (rule: the smaller user-visible surface — one machine line instead of a new file). Consequence stated: a verdict lacking the line is refused while the gate is on; such a card is re-audited at landing anyway (board 2c51)
+Alternate: parse the `AUDIT-VERDICT:` final-message line or free prose
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+
+### Q20: What is the gate state when the key cannot be read?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (delegated by board 470c: "specify")
+Why unresolved: a gate that refuses landings when ON must neither turn OFF silently nor wedge every landing.
+Default: an absent file or key, or an explicit false, reads OFF; an unresolvable integration branch, a failed read, an unparseable file or a non-boolean value reads ON with a named notice `gate_state_unreadable` and an audit row (rule: the option that refuses strictly more, without a wedge — ON still admits a landing that satisfies the gate, including the card that repairs the file)
+Alternate: treat unreadable as OFF, or refuse every landing
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+
+### Q21: Which cited receipts must pass?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the auditor protocol cites every receipt id received, including failed extra calls; a universal rule would fail verdicts the existing guard accepts.
+Default: at least one cited receipt must qualify (readable, codex or multi-backend tool, unmet-gate empty, codex verdict pass, audited tree matching, audited commit equivalent to HEAD); a failed or inconclusive extra call is recorded, does not block, and never replaces the pass (rule: the option that preserves current behaviour — the existing guard accepts one qualifying receipt)
+Alternate: every cited receipt must pass
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+
+### Q22: What does "the audited commit is the current HEAD" mean when bookkeeping follows?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (sources: boards 2c51, 0577 P3)
+Why unresolved: REQ-LVM-008 tolerated an evidence-directory difference while REQ-LVM-010 demanded exact equality, so the tolerated case could never pass.
+Default: one predicate for verdict and receipt — the audited commit is equivalent to HEAD when it equals HEAD, or is an ancestor of HEAD and the diff between them lists only paths under `.moai/reports/<card-id>/`; no other path is exempt, a progress or SPEC backfill after the audited SHA refuses (rule: the option that preserves current behaviour — the allowance the SPEC-less path already applies)
+Alternate: exact equality only
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
 
