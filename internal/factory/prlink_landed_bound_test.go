@@ -119,7 +119,14 @@ func TestLandedCheck_BoundedAnswersMatchUnboundedReference(t *testing.T) {
 // deepLandedRepo builds a history of depth filler commits via plumbing
 // (commit-tree — no working-tree churn), optionally carrying a landing
 // commit BELOW the fillers (older than the window) or ABOVE them (newest).
+// emptyLeading, when positive, makes that many leading fillers carry an
+// EMPTY subject — the records the window-fill count must not lose.
 func deepLandedRepo(t *testing.T, filler int, landing string) string {
+	t.Helper()
+	return deepLandedRepoAt(t, filler, landing, 0)
+}
+
+func deepLandedRepoAt(t *testing.T, filler int, landing string, emptyLeading int) string {
 	t.Helper()
 	dir := t.TempDir()
 	gitCfg := filepath.Join(dir, "gitconfig")
@@ -149,13 +156,36 @@ func deepLandedRepo(t *testing.T, filler int, landing string) string {
 		parent = run("commit-tree", rootTree, "-p", parent, "-m", "fix(web): register signal handling before binding the listener (t199)")
 	}
 	for i := 0; i < filler; i++ {
-		parent = run("commit-tree", rootTree, "-p", parent, "-m", fmt.Sprintf("chore: filler %d", i))
+		msg := fmt.Sprintf("chore: filler %d", i)
+		if i < emptyLeading {
+			msg = ""
+		}
+		parent = run("commit-tree", rootTree, "-p", parent, "-m", msg)
 	}
 	if landing == "above" {
 		parent = run("commit-tree", rootTree, "-p", parent, "-m", "fix(web): register signal handling before binding the listener (t199)")
 	}
 	run("update-ref", "refs/remotes/origin/main", parent)
 	return dir
+}
+
+// The window-fill count must count RECORDS, not non-empty lines: an
+// empty-subject commit inside the window must not shrink the count below
+// the bound and misclassify a filled window as not-landed (audit round-2
+// P2, receipt rcpt-3f73dd5aaf92b14cbfb87741).
+func TestLandedCheck_EmptySubjectInsideWindowStillIndeterminate(t *testing.T) {
+	// 1 seed + 1 landing + 500 fillers = 502 records examined, the landing
+	// 501 deep (outside the window); 3 fillers carry an empty subject, so a
+	// non-empty-line count reads 499 — below the bound, misclassifying the
+	// filled window as not-landed.
+	dir := deepLandedRepoAt(t, pinnedLandedMaxCount, "below", 3)
+	landed, err := (GitLandedQuerier{Run: gitIn(dir)}).Landed("t199")
+	if err != nil {
+		t.Fatalf("landed: %v", err)
+	}
+	if landed != LandingUnknown {
+		t.Errorf("a filled window carrying empty-subject commits answered %q, want %q (records examined, not non-empty lines)", landed, LandingUnknown)
+	}
 }
 
 // The window's edge is documented behaviour, pinned here: a landing OLDER

@@ -397,21 +397,24 @@ func (q GitLandedQuerier) Landed(cardID string) (LandingAnswer, error) {
 		return LandingUnknown, fmt.Errorf("prlink: git log %s: %w", ref, err)
 	}
 	branch := landedBranchFromRef(ref)
-	subjects := 0
 	for _, subject := range strings.Split(out, "\n") {
-		if strings.TrimSpace(subject) == "" {
-			continue
-		}
-		subjects++
 		if subjectAttribution(subject, branch) == cardID {
 			return LandingLanded, nil
 		}
 	}
-	// A window that filled without an attribution is INDETERMINATE, never
-	// not-landed: commits older than the bound were never read, so "nothing
-	// here" is not evidence of absence (card t1805 iter2 — the filled-window
-	// regression that made `--require-landed` refuse a landed card's done).
-	if subjects >= LandedMaxCount {
+	// Records examined: git emits exactly one newline per record, empty
+	// subjects included — counting non-empty lines undercounts a window that
+	// carries them and misclassifies the fill as a whole-history miss (audit
+	// round-2 P2, receipt rcpt-3f73dd5aaf92b14cbfb87741). A window that
+	// filled without an attribution is INDETERMINATE, never not-landed:
+	// commits older than the bound were never read, so "nothing here" is not
+	// evidence of absence (card t1805 iter2 — the filled-window regression
+	// that made `--require-landed` refuse a landed card's done).
+	seen := strings.Count(out, "\n")
+	if !strings.HasSuffix(out, "\n") && strings.TrimSpace(out) != "" {
+		seen++
+	}
+	if seen >= LandedMaxCount {
 		return LandingUnknown, nil
 	}
 	return LandingNotLanded, nil
