@@ -22,13 +22,21 @@ const leaseHoldingMarks = "?,?,?,?,?,?,?,?"
 // IN-list skeleton is leaseHoldingMarks; every value rides a ? placeholder.
 const liveLeaseCrossRunQuery = `SELECT run_id, lease_holder, lease_expires_at FROM cards WHERE card_id=? AND run_id<>? AND state IN (?,?,?,?,?,?,?,?) AND lease_holder<>''`
 
+// decisionWaitingState reports the non-lease-holding states that wait on a
+// decision and keep their owner label meanwhile (card t1859).
+func decisionWaitingState(s string) bool { return s == CardKickoff || s == CardNeedsDecision }
+
 // ReassignCard moves a card to another registered lane (card t1696): lanes
 // that relaunch come back under fresh labels and never reuse the old one, so
 // a card owned by a dead label had no path back into a lease — the holder
 // guard refused every actor, and `assign --to` only moves a picked card. It
-// is the leader's recovery path and admits two shapes:
+// is the leader's recovery path and admits three shapes:
 //
 //   - an `assigned` card (defect D2): the owner swaps, the state stays;
+//   - a decision-waiting card, `kickoff` or `needs-decision` (card t1859):
+//     such a state holds no lease, so a dead owner label blocked both this
+//     path and the audit kickoff decision (T8a leases to a registered
+//     owner); the owner swaps, the state and the Decision* fields stay;
 //   - a lease-holding card whose lease expired (defect D4, lane-17's
 //     state=run shape): the expiry lands like T27/T28 — an expired card
 //     returns to `assigned`, and one that expired MID-MERGE lands `blocked`
@@ -72,8 +80,8 @@ func (f *FactoryDB) ReassignCard(ctx context.Context, runID, cardID, newOwner, a
 			return nil, fmt.Errorf("%w: card %s holds pre-F1 state %q; only an operator abandon is accepted", ErrLegacyState, cur.CardID, cur.State)
 		case holding && !expired:
 			return nil, fmt.Errorf("%w: card %s holds a live lease (holder %q, expires %s); reassignment waits out the lease or follows its expiry", ErrLeaseHolder, cur.CardID, cur.LeaseHolder, cur.LeaseExpiresAt)
-		case !holding && cur.State != CardAssigned:
-			return nil, fmt.Errorf("%w: card %s is %s; reassignment moves an assigned card, or a card whose lease expired", ErrIllegalTransition, cur.CardID, cur.State)
+		case !holding && cur.State != CardAssigned && !decisionWaitingState(cur.State):
+			return nil, fmt.Errorf("%w: card %s is %s; reassignment moves an assigned card, a decision-waiting card (kickoff, needs-decision), or a card whose lease expired", ErrIllegalTransition, cur.CardID, cur.State)
 		case newOwner == cur.OwnerLabel:
 			return nil, fmt.Errorf("%w: card %s is already assigned to %q", ErrInvalidCardInput, cur.CardID, newOwner)
 		}
