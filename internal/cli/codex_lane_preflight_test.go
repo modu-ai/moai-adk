@@ -163,8 +163,9 @@ func TestCodexLaneLaunchEnvironmentRefusalSandboxSignature(t *testing.T) {
 // pre-execution refusal exists for (card t1779 card-review P2-2). Real
 // terminals stay admitted whatever TERM carries.
 func TestCodexLaneLaunchEnvironmentRefusalNonTerminalStdio(t *testing.T) {
-	prev := codexLaneStdioIsTerminalFn
-	t.Cleanup(func() { codexLaneStdioIsTerminalFn = prev })
+	prevProbe, prevStdio := codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn
+	codexLaneSandboxProbeFn = func() error { return nil } // isolate from the seat's ps state
+	t.Cleanup(func() { codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn = prevProbe, prevStdio })
 
 	codexLaneStdioIsTerminalFn = func() bool { return false }
 	if got := codexLaneLaunchEnvironmentRefusal([]string{"TERM=xterm-256color"}); !strings.Contains(got, "interactive terminal") {
