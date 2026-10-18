@@ -70,6 +70,11 @@ type BaseFreshnessInput struct {
 	CardID string
 	// IntegrationBranch is the local branch the candidate lands on.
 	IntegrationBranch string
+	// ExplicitBranch is true when IntegrationBranch came from an explicit
+	// `--branch` on the refused verb. The remedy then names
+	// `remeasure --branch <IntegrationBranch>`: a bare remeasure measures against
+	// the configured branch and would not clear the refusal.
+	ExplicitBranch bool
 	// K is the tolerance, read from configuration by the caller. The gate holds
 	// no threshold of its own (REQ-ISB-007).
 	K int
@@ -168,7 +173,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	}
 	if err != nil {
 		reason := fmt.Sprintf("no valid re-measure record for tree %s (%s)", ShortSHA(res.Tree), recordCause(rec, err))
-		return violation(res, in, reason, "Run moai integration remeasure after the last absorb, then retry.")
+		return violation(res, in, reason, recordRemedy(in))
 	}
 	// The record file is keyed by the current tree, but the reader returns the
 	// tree field as written (the merge step's cause 4 relies on that), so a
@@ -176,7 +181,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	// the tree being judged is a record for it.
 	if rec.Tree != res.Tree {
 		reason := fmt.Sprintf("the re-measure record stored for tree %s names tree %s, not the current tree", ShortSHA(res.Tree), ShortSHA(rec.Tree))
-		return violation(res, in, reason, "Run moai integration remeasure after the last absorb, then retry.")
+		return violation(res, in, reason, recordRemedy(in))
 	}
 
 	// A base the tip does not descend from is stale whatever K is.
@@ -188,7 +193,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		res.Stale = true
 		reason := fmt.Sprintf("card %s is stale against local %s (tip %s): the re-measure record's base %s is not an ancestor of the tip, whatever %s=%d",
 			in.CardID, in.IntegrationBranch, ShortSHA(res.Tip), ShortSHA(rec.Base), BaseFreshnessKey, in.K)
-		return violation(res, in, reason, absorbRemedy(in.IntegrationBranch))
+		return violation(res, in, reason, absorbRemedy(in))
 	}
 
 	countOut, err := git("rev-list", "--count", "--first-parent", rec.Base+".."+res.Tip)
@@ -203,7 +208,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	if behind > in.K {
 		reason := fmt.Sprintf("card %s is %d landings behind local %s (tip %s), more than %s=%d",
 			in.CardID, behind, in.IntegrationBranch, ShortSHA(res.Tip), BaseFreshnessKey, in.K)
-		return violation(res, in, reason, absorbRemedy(in.IntegrationBranch))
+		return violation(res, in, reason, absorbRemedy(in))
 	}
 	return res
 }
@@ -238,8 +243,22 @@ func recordCause(rec *RemeasureRecord, err error) string {
 	}
 }
 
-func absorbRemedy(branch string) string {
-	return fmt.Sprintf("Absorb local %s into the card branch, re-run moai integration remeasure, then retry.", branch)
+func absorbRemedy(in BaseFreshnessInput) string {
+	return fmt.Sprintf("Absorb local %s into the card branch, re-run %s, then retry.", in.IntegrationBranch, remeasureCommand(in))
+}
+
+// recordRemedy is the remedy for a missing or unusable re-measure record.
+func recordRemedy(in BaseFreshnessInput) string {
+	return fmt.Sprintf("Run %s after the last absorb, then retry.", remeasureCommand(in))
+}
+
+// remeasureCommand names the remeasure invocation that clears a refusal: it
+// carries --branch only when the refused verb did.
+func remeasureCommand(in BaseFreshnessInput) string {
+	if in.ExplicitBranch {
+		return "moai integration remeasure --branch " + in.IntegrationBranch
+	}
+	return "moai integration remeasure"
 }
 
 // violation turns a positive finding into a refusal when the gate is enabled
