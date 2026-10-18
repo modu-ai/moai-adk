@@ -138,6 +138,24 @@ func TestMarkerCopyFailureFailsClosedWithoutResidue(t *testing.T) {
 		}
 	})
 
+	t.Run("SuffixNamesTakenByAFileOrADanglingLinkAreSkipped", func(t *testing.T) {
+		root, cfg, _ := collisionRun(t)
+		collisionPreserve(t, root, cfg, collisionGen("one"))
+		if err := os.WriteFile(cfg+"-02", []byte("a file stands here\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(root, "nowhere"), cfg+"-03"); err != nil {
+			t.Fatalf("os.Symlink failed: %v", err)
+		}
+		d := collisionPreserve(t, root, cfg, collisionGen("two"))
+		if filepath.Base(d) != collisionStamp+"-04" {
+			t.Errorf("the copy went to %s, want the first free name %s-04", d, collisionStamp)
+		}
+		if got, err := os.ReadFile(cfg + "-02"); err != nil || string(got) != "a file stands here\n" {
+			t.Errorf("the file occupying -02 was disturbed (%v)", err)
+		}
+	})
+
 	t.Run("ABackupPathWithATrailingSeparatorStillGetsASibling", func(t *testing.T) {
 		root, cfg, _ := collisionRun(t)
 		collisionPreserve(t, root, cfg, collisionGen("one"))

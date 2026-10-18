@@ -146,10 +146,10 @@ func TestCounterpartFifoIsNotOpened(t *testing.T) {
 
 // releaseBlockedFifoRead ends a read blocked on fifo and waits for the goroutine
 // that held it, so nothing outlives the temporary tree.
-func releaseBlockedFifoRead(done <-chan ownershipVerdict, fifo string) {
+func releaseBlockedFifoRead(done <-chan ownershipVerdict, fifos ...string) {
 	deadline := time.After(30 * time.Second)
 	for {
-		pokeFifos([]string{fifo})
+		pokeFifos(fifos)
 		select {
 		case <-done:
 			return
