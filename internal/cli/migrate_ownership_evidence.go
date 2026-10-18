@@ -64,11 +64,6 @@ type provenanceSource interface {
 	generations() []priorGeneration
 }
 
-// noEvidenceSource yields nothing; every unregistered file is then kept.
-type noEvidenceSource struct{}
-
-func (noEvidenceSource) generations() []priorGeneration { return nil }
-
 // newProvenanceSource builds the evidence source the migration uses for one
 // project. It is a package-level variable, like removalEnabled: a test swaps it
 // to supply generations directly, and t.Cleanup restores it. No production code

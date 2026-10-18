@@ -44,9 +44,9 @@ const priorManifestGenerations = 8
 type priorManifestState int
 
 const (
-	// priorManifestNotAttempted: no Backup stage ran before the migration
-	// (a direct call). The migration is then not blocked on a manifest copy.
-	priorManifestNotAttempted priorManifestState = iota
+	// The zero value means no Backup stage ran before the migration (a direct
+	// call): the migration is then not blocked on a manifest copy.
+	_ priorManifestState = iota
 	// priorManifestWritten: the copy is in the run backup.
 	priorManifestWritten
 	// priorManifestAbsent: the project had no manifest file at load time, so
