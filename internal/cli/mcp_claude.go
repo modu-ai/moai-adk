@@ -276,6 +276,10 @@ func scrubClaudeAuditEnv(environ []string) []string {
 		if _, scrub := claudeAuditScrubKeySet[key]; scrub {
 			continue
 		}
+		// t1869: a claude child must not report into the parent's Orca pane.
+		if isOrcaPaneOwnedEnvKey(key) {
+			continue
+		}
 		out = append(out, entry)
 	}
 	return out
