@@ -1,10 +1,14 @@
-package homestate
+//go:build !windows
 
-// process_probe_test.go — card t1779 card-review P2-1: the probe must
+// process_probe_unix_test.go — card t1779 card-review P2-1: the probe must
 // SURFACE the ps process's stderr. In a sandbox, ps exits 1 with
 // "Operation not permitted" on stderr; a bare exec error string ("exit
 // status 1") hides exactly the text the cli-side sandbox-signature match
 // needs. A fake ps on PATH drives the real exec → ExitError → stderr path.
+// Unix-only: on Windows ProcessListProbeError always returns nil
+// (process_probe_windows.go), so the fake-ps contract has no Windows half.
+
+package homestate
 
 import (
 	"os"
