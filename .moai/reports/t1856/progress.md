@@ -440,3 +440,106 @@ Wait record `w-t1856-20261017T1935Z-c305b` (explicit wait, no idle-spin):
 - on resolution: spawn the N1 repair (a fixture with only develop-family refs expecting HEAD, a stale
   origin/develop versus origin/main case, `-c commit.gpgSign=false`, observe mutant F fail), re-run
   the targeted selector, then audit round 3 with the required codex backend.
+
+## 13. Sync audit round 2 repair (lane-22)
+
+Audit: `.moai/reports/t1856/sync-audit.md` round 2 (N1 blocking, N2-N4 optional). Repair tree HEAD
+before this round: `530d5a803`; test-code commit: `3b4a99378`. The resolver `srlDiffBase` is unchanged
+(ref list `{"main","origin/main"}`, last line `return "HEAD"`).
+
+### Dispositions
+
+- N1 repaired. Two tests added to `internal/hook/env_literal_diff_base_test.go`, same helper style and
+  fixture email, each checking first that the expected answer differs from the wrong one:
+  `TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain` (no local main, no origin/main, stale `develop` and
+  `refs/remotes/origin/develop`; the resolver must return the string `HEAD`; the fixture asserts both
+  develop-family merge-bases are commits, not `HEAD`) and
+  `TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain` (no local main, `origin/develop` older than
+  `origin/main`; base must be the origin/main merge-base).
+- N2 repaired. Every helper git call carries `-c commit.gpgSign=false`, and runs with
+  `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1` appended to the inherited environment.
+  The `-c user.email=env-diff-base-test@example.invalid` literal is untouched, so the AC-CIG-010 drift
+  test still passes. The assertions are unchanged.
+- N3 recounted below. N4 recorded below.
+- CHANGELOG: the test count changed from four to six (recounted with
+  `grep -c '^func TestSrlDiffBase' internal/hook/env_literal_diff_base_test.go` = 6), so the sentence
+  was corrected and lists all six pins.
+
+### Mutant observation (ref list of srlDiffBase edited, selector `-run 'TestSrlDiffBase'`, restored each time with `git checkout -- internal/hook/env_literal_diff_test.go`)
+
+All four mutants die; none survives.
+
+F `{"main","origin/main","develop","origin/develop"}` (dies):
+```
+--- FAIL: TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain (0.18s)
+    env_literal_diff_base_test.go:163: srlDiffBase picked 75fb09e73b219655b1b4d73f82d83ae8ae3dce0e; want the HEAD fallback, a develop-family ref must never resolve the base (card t1856)
+```
+G `{"main","origin/develop","origin/main"}` (dies):
+```
+--- FAIL: TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain (0.13s)
+    env_literal_diff_base_test.go:163: srlDiffBase picked ca6755f381709db4655d0e7aeaaed3c01142973a; want the HEAD fallback, a develop-family ref must never resolve the base (card t1856)
+--- FAIL: TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain (0.16s)
+    env_literal_diff_base_test.go:185: srlDiffBase picked ca6755f381709db4655d0e7aeaaed3c01142973a; want merge-base with origin/main 84096f78a8541c4a67031e8ab32680146d8870f4, not stale origin/develop ca6755f381709db4655d0e7aeaaed3c01142973a (card t1856)
+```
+C `{"main","develop","origin/main"}` (dies, earlier kill holds):
+```
+--- FAIL: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.16s)
+    env_literal_diff_base_test.go:142: srlDiffBase picked 41a33f0c471c73deed30a08623cf8e81d6d9ba5e; want merge-base with origin/main 707d90ac70a7cae06e7412f9523eb55b116d2ab5, not stale develop 41a33f0c471c73deed30a08623cf8e81d6d9ba5e (card t1856)
+--- FAIL: TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain (0.14s)
+    env_literal_diff_base_test.go:163: srlDiffBase picked 41a33f0c471c73deed30a08623cf8e81d6d9ba5e; want the HEAD fallback, a develop-family ref must never resolve the base (card t1856)
+```
+D `{"origin/main","main"}` (dies, earlier kill holds):
+```
+--- FAIL: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.23s)
+    env_literal_diff_base_test.go:120: srlDiffBase picked 2af2806d94bdaa09896b4ef63a7d80b941f0afe2; want merge-base with local main bcec466ee5d8fee61536779f72199be037aa6511, not stale origin/main 2af2806d94bdaa09896b4ef63a7d80b941f0afe2 (card t1856)
+```
+After each mutant, `git diff --stat` listed only `internal/hook/env_literal_diff_base_test.go`. No mutant was committed.
+
+### Targeted GREEN (real resolver, TMPDIR/GOTMPDIR under /private/tmp/t-rp)
+
+```
+--- PASS: TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration (0.66s)
+--- PASS: TestSrlDiffBaseResolvesFromMainNotStaleDevelop (0.30s)
+--- PASS: TestSrlDiffBaseFallsBackToOriginMain (0.12s)
+--- PASS: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.15s)
+--- PASS: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.15s)
+--- PASS: TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain (0.12s)
+--- PASS: TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain (0.16s)
+    env_literal_diff_test.go:52: env-literal sweep: 2 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=e4b747678aae096b22769fdfd3efc5d89498006a, distinct literals=0
+--- PASS: TestNoNewEnvLiteralsInDiff (0.08s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.418s
+```
+The swept count is 2 (non-zero). `grep -n 'private/tmp' internal/hook/env_literal_diff_base_test.go` printed nothing.
+
+### N3 recount of `origin/develop`, excluding sections 10-13 of this file
+
+Section 11 counted 1923 before its own commit and the report files kept growing, so the figure moved.
+The stable form excludes the lane's own report directory and the CHANGELOG:
+`git grep -n 'origin/develop' -- . ':!.moai/reports/t1856' ':!CHANGELOG.md' | wc -l` = 1897 on this tree
+(working tree with the new tests, before commit). The same exclusion measured 1888 in round 1. A sorted
+`comm` of the two listings shows the whole +9 is `internal/hook/env_literal_diff_base_test.go`
+(the new tests and comments name `origin/develop`); no other file gained or lost a hit. The unfiltered
+count is 1943 here; the lane's own files hold the rest (progress.md 18, sync-audit.md 8, verdict.md 2
+and CHANGELOG.md 18 in the same measurement, in tracked state), so unfiltered totals drift with every
+record this lane appends and are not a baseline.
+
+### N4 verification form that worked under the worktree guard
+
+Plain separate commands, one per call, each starting with `cd <worktree absolute path> &&` only where
+it was a single simple command. Test runs were one compound `unset CLAUDE_PROJECT_DIR GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CONFIG_GLOBAL MOAI_SESSION_ID && TMPDIR=/private/tmp/t-rp/tmp GOTMPDIR=/private/tmp/t-rp/gotmp go test ./internal/hook -run '...' -count=1`,
+with the `|` pattern working inside a single `-run` selector, piped to `grep -E` for the result lines.
+Mutant edits were made with the Edit tool and restored with a plain `git checkout -- <file>` call. What
+was refused: a multi-line python heredoc that also ran git commands in the same call, so file edits
+went through the Edit tool and git calls stayed separate. Scrubbed: the six variables in the unset
+list. Not scrubbed: the rest of the inherited environment (PATH, HOME, MOAI_* others, OTEL_*), which
+the tests do not read; the fixtures themselves now run with GIT_CONFIG_GLOBAL=/dev/null and
+GIT_CONFIG_NOSYSTEM=1.
+
+### Gaps
+
+- The Linux run was NOT observed locally: CI is Linux-only and this agent ran on macOS.
+- The full `internal/hook` package and the landing re-measure have not run since this change.
+- Audit round 3 is pending (required codex backend).
+- The repair changes only test code in `internal/hook`; no non-test file changed this round.
+- The HEAD-fallback test asserts the literal string `HEAD` the resolver returns, so it pins that
+  documented fallback, not a commit sha.
