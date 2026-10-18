@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUXIU-GOLDEN-REFRESH-001
 title: "tuxiu golden fixture refresh — U-08 data-invariance exception, in-repo regeneration harness, postm4 re-capture"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -26,6 +26,7 @@ tags: "golden,testdata,regeneration,characterization,data-invariance,test-infra"
 | 0.1.0 | 2026-10-19 | manager-spec (lane-11, card t1681) | Initial plan-phase draft (card t1681, run tn1p4e, lane-11, Class C). Tier M — 3 artifacts. U-08 제거 이후 stale 상태로 남은 `internal/cli/testdata/tuxiu/` 골든의 (1) 데이터 불변 계약 예외 확정, (2) 저장소 내 재생성 명령 정의, (3) 재생성 실행을 다룬다. |
 | 0.1.1 | 2026-10-19 | manager-spec (lane-11, card t1681) | Plan-audit iter-1 FAIL(0.81, MP-8) repair — D1 RED-now 4요소 완결(AC-TGR-001/003/007), D2 archive DATA 재현 불가(부활 3 ID) → decision-index Q6 신설 + 기본안 적용, REQ-TGR-002/004/008 수정, D3 타이트닝 입력을 원시 라인으로 고정 + 3변형 probe 확대(REQ-TGR-007), D4 AC-TGR-004 커밋-기반 Given, D5 AC-TGR-003/006 전체-저장소 범위 관측 추가. |
 | 0.1.2 | 2026-10-19 | manager-spec (lane-11, card t1681) | Plan-audit iter-2 FAIL(0.88) repair — D6 AC-TGR-001 명령-출력 형식 일치(`grep -rln` bare-path 본인 관측값으로 교체), D7 REQ-TGR-007을 시딩 항목 행 2행까지 단정으로 확대 + 삭제 mutant를 probe에 추가, D8 plan M1 완료 판정을 예상 RED 상태로 재정의, O4 외양 정규화 한정 조항, O5 AC-TGR-003/006 청결-시작 Given. |
+| 0.1.3 | 2026-10-19 | manager-spec (lane-11, card t1681) | Leader disposition(rule C 9e76, board d-20261018T172043Z-8bcd) — D9: 삭제 mutant(ii)를 plan M1(a)에서 M3(6) 관찰 행렬(무조작 PASS → 삭제 FAIL → 복원 PASS)로 이동. 시딩 항목 행은 M1 온디스크 골든에 부재하므로 M1 합성 골든 조작을 하지 않는다. |
 
 ## §A Context
 

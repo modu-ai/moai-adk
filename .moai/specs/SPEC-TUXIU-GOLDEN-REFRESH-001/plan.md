@@ -22,7 +22,7 @@
 
 ### M1 — 예외 계약 확정 + 가드 타이트닝 (REQ-TGR-001/003/007/008)
 
-결정 계층. 작업: (1) 테스트 헤더 문서에 예외 제1 항목(U-08 — 제거 전 리터럴, 재판 레코드 SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-011/AC-RC30-09)과 제2 항목(archive 부분집합 — 근거 레코드 SPEC-UPDATE-LEGACY-SKILL-LIST-001, decision-index Q6) 추가; (2) 교차-기준선 DATA 비교(`tuxDataLines` 경로 한정)에서 archive 부분집합(`✓ archive:` 항목 행 + `total: N skills archived` 요약 행) 제외; (3) `:201`의 `strings.Contains`를 원시(ANSI-stripped) 라인 exact-line 단정으로 교체 — 기대값은 요약 행 `total: 2 skills archived`와 시딩 ID 항목 행 2행(`✓ archive: <id> → .moai/archive/skills/v2.16/<id>`, Q6 시딩 계약 상수)이며, 허용 전처리는 pill-bracket 제거 + trim 같은 외양 정규화로 한정된다(접미사 처리 없음), 단정 입력에는 (2)의 제외가 적용되지 않는다(계층 분리 — 그렇지 않으면 mutant 생존); (4) pre-logo 3파일 예외 표기. 완료 판정: (a) mutant 조작 — postm4 update stdout 3변형 각각의 (i) 접미사 주입과 (ii) 시딩 항목 행 삭제(요약 행 유지) — 각각에 대해 타이트닝 단정 FAIL을 확인하고 주입을 복원한다(M4 음성 제어 선례); (b) 무조작 트리에서 가드 스위트는 예상 RED 상태로 종료한다 — 타이트닝 기대(요약 + 항목 행)가 미재생성 stale 골든(`total: 3 skills archived, 0 user customizations modified` + 부활 3 ID 기록)과 불일치하여 FAIL이며, 교차 비교(AC-TUXIU-016)는 (2)의 제외 편입으로 PASS를 유지한다. 예상 RED의 관측 행렬을 M1 종료 시 기록하고, GREEN 복귀는 M3 재생성에서 일어난다(acceptance.md AC-TGR-005의 순서 의존성 노트와 동일 기록). M1에서 '기존 4테스트 PASS 유지'를 요구하지 않는다 — PASS 유지는 M3 재생성 이후의 상태다.
+결정 계층. 작업: (1) 테스트 헤더 문서에 예외 제1 항목(U-08 — 제거 전 리터럴, 재판 레코드 SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-011/AC-RC30-09)과 제2 항목(archive 부분집합 — 근거 레코드 SPEC-UPDATE-LEGACY-SKILL-LIST-001, decision-index Q6) 추가; (2) 교차-기준선 DATA 비교(`tuxDataLines` 경로 한정)에서 archive 부분집합(`✓ archive:` 항목 행 + `total: N skills archived` 요약 행) 제외; (3) `:201`의 `strings.Contains`를 원시(ANSI-stripped) 라인 exact-line 단정으로 교체 — 기대값은 요약 행 `total: 2 skills archived`와 시딩 ID 항목 행 2행(`✓ archive: <id> → .moai/archive/skills/v2.16/<id>`, Q6 시딩 계약 상수)이며, 허용 전처리는 pill-bracket 제거 + trim 같은 외양 정규화로 한정된다(접미사 처리 없음), 단정 입력에는 (2)의 제외가 적용되지 않는다(계층 분리 — 그렇지 않으면 mutant 생존); (4) pre-logo 3파일 예외 표기. 완료 판정: (a) mutant 조작 — postm4 update stdout 3변형 각각의 접미사 주입(i) — 에 대해 타이트닝 단정 FAIL을 확인하고 주입을 복원한다(M4 음성 제어 선례). 시딩 항목 행 삭제 mutant(ii)는 M3로 옮긴다 — 시딩 ID 항목 행은 M1 시점 온디스크 골든에 존재하지 않으므로(재생성은 M3) M1에서 이를 만드는 것은 합성 골든 조작이 된다; (b) 무조작 트리에서 가드 스위트는 예상 RED 상태로 종료한다 — 타이트닝 기대(요약 + 항목 행)가 미재생성 stale 골든(`total: 3 skills archived, 0 user customizations modified` + 부활 3 ID 기록)과 불일치하여 FAIL이며, 교차 비교(AC-TUXIU-016)는 (2)의 제외 편입으로 PASS를 유지한다. 예상 RED의 관측 행렬을 M1 종료 시 기록하고, GREEN 복귀는 M3 재생성에서 일어난다(acceptance.md AC-TGR-005의 순서 의존성 노트와 동일 기록). M1에서 '기존 4테스트 PASS 유지'를 요구하지 않는다 — PASS 유지는 M3 재생성 이후의 상태다.
 
 ### M2 — 재생성 하네스 + make 타깃 (REQ-TGR-004/005)
 
@@ -30,7 +30,7 @@
 
 ### M3 — 재생성 실행 + 전체 검증 (REQ-TGR-002/006)
 
-기계적 계층. 작업: (1) `make tuxiu-golden-capture`로 postm4 12파일 재기록; (2) diff 검증 — 전체-저장소 관측(AC-TGR-006)에서 변경이 허용 목록으로 한정, pre-logo 12파일 무변경, 예상 내용 변경은 update stdout 3파일(literal 접미사 소멸 + Q6 archive DATA 편입); (3) grep 검증 — postm4에서 제거 리터럴 0매치; (4) 4테스트 `-count=1` PASS; (5) update stderr 3파일 + init 6파일의 바이트 동일성 실측 기록(decision-index Q3 증거 소거). 완료 판정: AC-TGR-001/002/005/006/008 GREEN.
+기계적 계층. 작업: (1) `make tuxiu-golden-capture`로 postm4 12파일 재기록; (2) diff 검증 — 전체-저장소 관측(AC-TGR-006)에서 변경이 허용 목록으로 한정, pre-logo 12파일 무변경, 예상 내용 변경은 update stdout 3파일(literal 접미사 소멸 + Q6 archive DATA 편입); (3) grep 검증 — postm4에서 제거 리터럴 0매치; (4) 4테스트 `-count=1` PASS; (5) update stderr 3파일 + init 6파일의 바이트 동일성 실측 기록(decision-index Q3 증거 소거); (6) 삭제 mutant 관찰 행렬(AC-TGR-007 (ii)) — 재생성된 무조작 골든에서 4테스트 PASS, 시딩 `✓ archive:` 항목 행 삭제 상태에서 타이트닝 단정 FAIL, 복원 후 PASS — 를 관측·기록한다. 완료 판정: AC-TGR-001/002/005/006/008 GREEN.
 
 ## §4 Risks and mitigations
 
