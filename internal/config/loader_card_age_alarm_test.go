@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,4 +191,43 @@ func caaTemplateValue(t *testing.T, body, key string) string {
 	}
 	t.Fatalf("template carries no %s line", key)
 	return ""
+}
+
+// TestCardAgeAlarmTypeErrorIsolated pins sync-audit iter1 F3: a YAML type
+// error in one card_age_alarm key (a list where a string belongs) degrades the
+// alarm only — the block takes its compiled defaults (enabled=false) and
+// exactly one warning line names the key path — while every other workflow
+// key, the written lease timing included, keeps the file's written values.
+// Before the fix the type error failed the whole shared WorkflowConfig decode,
+// so the lease keys silently reverted to their defaults too and the alarm
+// disabled with no key-naming warning.
+func TestCardAgeAlarmTypeErrorIsolated(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	root := t.TempDir()
+	caaWriteWorkflow(t, root, "workflow:\n  factory_lease:\n    duration: 45m\n    renew_interval: 10m\n  card_age_alarm:\n    enabled: true\n    gate_warn_after: [6h]\n")
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	lease := LoadFactoryLease(root)
+	if lease.Duration != "45m" || lease.RenewInterval != "10m" {
+		t.Fatalf("LoadFactoryLease = %+v, want the written 45m/10m — an alarm-key type error must not revert the lease keys", lease)
+	}
+	alarm := LoadCardAgeAlarm(root)
+	if want := NewDefaultWorkflowConfig().CardAgeAlarm; alarm != want {
+		t.Fatalf("LoadCardAgeAlarm on a type-invalid block = %+v, want the compiled defaults %+v (alarm degraded)", alarm, want)
+	}
+	warnLines := 0
+	for _, l := range strings.Split(strings.TrimRight(logs.String(), "\n"), "\n") {
+		if strings.Contains(l, "level=WARN") {
+			warnLines++
+		}
+	}
+	if warnLines != 1 {
+		t.Fatalf("got %d warning lines across both loaders, want exactly 1:\n%s", warnLines, logs.String())
+	}
+	if !strings.Contains(logs.String(), "workflow.card_age_alarm") {
+		t.Fatalf("the warning does not name the key path workflow.card_age_alarm:\n%s", logs.String())
+	}
 }

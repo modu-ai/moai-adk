@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -352,5 +353,118 @@ func TestFactoryStatusAgeAlarmFutureCommit(t *testing.T) {
 		" stage=9h57m0s commit=unknown activity=9h58m0s"
 	if alarmLine != want {
 		t.Fatalf("alarm line =\n  %s\nwant\n  %s", alarmLine, want)
+	}
+}
+
+// caaDatedRepo builds a git repository whose single head commit is
+// committer-dated at — the controlled clock of the env-isolation and
+// signature-trap probes of sync-audit iter1. When signatureTrap is set the
+// repo also arms the F2 trap: log.showSignature=true plus a gpg.program whose
+// fake signer records each invocation into the marker file and "signs" the
+// head commit, so any signature verification during a later read (the helper
+// runs on both the sign and the verify path) leaves the marker behind.
+func caaDatedRepo(t *testing.T, at time.Time, signatureTrap bool) (dir, marker string) {
+	t.Helper()
+	root := t.TempDir()
+	dir = filepath.Join(root, "repo")
+	marker = filepath.Join(root, "gpg-ran")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_COMMITTER_DATE="+at.Format(time.RFC3339),
+			"GIT_AUTHOR_DATE="+at.Format(time.RFC3339),
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "a.txt")
+	if signatureTrap {
+		gpg := filepath.Join(root, "fake-gpg.sh")
+		script := fmt.Sprintf("#!/bin/sh\necho run >> %q\ncat > /dev/null\n"+
+			"printf -- '-----BEGIN PGP SIGNATURE-----\\n\\niHUEABYIAB0WIQTdummy\\n=abcd\\n-----END PGP SIGNATURE-----\\n'\n"+
+			"echo '[GNUPG:] SIG_CREATED 0 0 17 0 0 0' >&2\nexit 0\n", marker)
+		if err := os.WriteFile(gpg, []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		git("config", "gpg.program", gpg)
+		git("config", "user.signingkey", "DEADBEEF")
+		git("config", "log.showSignature", "true")
+		git("commit", "-q", "-S", "-m", "dated commit")
+	} else {
+		git("commit", "-q", "-m", "dated commit")
+	}
+	return dir, marker
+}
+
+// TestFactoryAgeAlarmGitEnvIsolation pins sync-audit iter1 F1 and F2: the
+// commit-signal reader of REQ-CAA-004 is repo-isolated and helper-free. An
+// inherited GIT_DIR / GIT_WORK_TREE (git exports them into every hook process)
+// outranks `git -C` and would redirect the read to a foreign repository — the
+// commit signal then reports the foreign head and a stale-card alarm is
+// suppressed (F1). A repo config with log.showSignature=true and a gpg.program
+// executes that helper program during the read (F2). The trap is armed in BOTH
+// repositories so the marker assertion fails whichever repository a
+// non-isolated read lands in: the foreign one (env leak) or the target's own
+// config (env scrub without the signature flag — the two fixes must land
+// together).
+func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
+	_, _ = fcFixture(t)
+	root := factoryCardRoot()
+	caaEnableAlarm(t, root, "")
+	// Repos first, env after: the setup git calls must run against the repos
+	// being created, not the foreign context armed below.
+	target, targetMarker := caaDatedRepo(t, fcNow.Add(-5*time.Hour), true)
+	foreign, foreignMarker := caaDatedRepo(t, fcNow.Add(-5*time.Hour).Add(-365*24*time.Hour), true)
+	// Premise control: the fake signer ran during setup, so the marker
+	// mechanism itself is proven before its absence is read as isolation.
+	for _, m := range []string{targetMarker, foreignMarker} {
+		if _, err := os.Stat(m); err != nil {
+			t.Fatalf("signature trap never fired during setup (%s): the marker mechanism is broken", m)
+		}
+		if err := os.Remove(m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("GIT_DIR", filepath.Join(foreign, ".git"))
+	t.Setenv("GIT_WORK_TREE", foreign)
+
+	fcPlace(t, root, homestate.Card{
+		CardID: "enviso", State: homestate.CardRun,
+		UpdatedAt:    fcNow.Add(-10 * time.Hour).Format(time.RFC3339Nano),
+		WorktreePath: target,
+	})
+	out, _, err := runFactory(t, "status")
+	if err != nil {
+		t.Fatalf("factory status: %v", err)
+	}
+	var alarmLine string
+	for _, l := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+		if strings.HasPrefix(l, "age-alarm card=enviso ") {
+			alarmLine = l
+		}
+	}
+	if alarmLine == "" {
+		t.Fatalf("no alarm row for the env-isolation card:\n%s", out)
+	}
+	// F1: the commit signal reads the card's worktree head (committer-dated
+	// fcNow-5h), never the foreign repository the inherited GIT_DIR names
+	// (fcNow-5h-1y). Non-fatal so the F2 leg below reports in the same run.
+	if !strings.Contains(alarmLine, " commit=5h0m0s") {
+		t.Errorf("commit signal did not read the card's worktree (F1: inherited GIT_DIR outranked -C):\n  %s\nwant commit=5h0m0s (head of %s)", alarmLine, target)
+	}
+	// F2: no configured helper program executed during the read.
+	for repo, m := range map[string]string{"target": targetMarker, "foreign": foreignMarker} {
+		if _, err := os.Stat(m); err == nil {
+			t.Errorf("the gpg helper of the %s repository executed during the commit read (F2): %s exists", repo, m)
+		}
 	}
 }
