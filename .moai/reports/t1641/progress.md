@@ -280,3 +280,13 @@ round-1 P1 and P2 repairs hold. New blockers (the auditor drafted the required f
   the test file as a row.
 
 Leader: the counter's round 3 is the last — a FAIL there holds the card.
+
+## MCP reconnection confirmed (2026-10-19, board d-20261018T235443Z-39d8)
+
+Per the leader's verification request: one `mcp__moai__session_list` call from this session
+at 2026-10-19T00:1xZ UTC — **SUCCESS** (server responded; result 97,136 characters of
+session-list JSON, saved to the tool-results file by the display-size wrapper). The moai MCP
+server is reconnected in this lane session. Per standing rule bc8c the audit proxy ends
+automatically: the lane runs the t1641 round-3 (final) delta audit directly through its own
+plan-auditor spawn with in-session `audit_multi` (codex required), and t1862's landing can
+use the MCP `factory_complete` when its turn arrives.
