@@ -139,23 +139,36 @@ func resolveLaunchView(entry []string) launchView {
 // same walk also takes that launcher-owned flag where it stands (see
 // walkLaunchArgs): the returned view is the view of the argv the backend
 // receives — the flag already gone from FinalArgv when it was an override — and
-// the returned ordinals say which occurrences of the flag in entry were
-// overrides (the k-th flag token in entry, counting from the start). The branch
-// split and the worktree normalization both leave every ownFlag token in place
-// and in order, so an ordinal counted over LaunchArgs addresses the same token
-// in entry.
+// the returned indices say which tokens of entry were the overrides.
+//
+// The branch split and the worktree normalization do not leave the tokens alone:
+// the split removes the --branch tokens, and the normalization rewrites
+// `--worktree=<v>` / `-w=<v>` into two tokens, the second synthesized out of
+// the value. Every token of LaunchArgs therefore carries its origin — the index
+// of the typed token in entry it came from, -1 where the rewrite made it — so a
+// token the user did not type as a standalone flag can never stand as the
+// override, and a token is removed by its origin, not by counting equal ones.
 func resolveOwning(entry []string, ownFlag string) (launchView, []int) {
 	v := launchView{Entry: entry}
 	v.StageA = readFirstWorktree(entry)
 
-	rest, branch, has, err := splitWorktreeBranchFlag(entry)
+	rest, restOrigin, branch, has, err := splitWorktreeBranchFlagFrom(entry)
 	v.Branch = branchAnnotation{Present: has, Branch: branch, Err: err}
 	v.Stripped = entry
+	strippedOrigin := []int(nil) // nil: v.Stripped is entry itself, origin is the identity
 	if err == nil && has {
-		v.Stripped = rest
+		v.Stripped, strippedOrigin = rest, restOrigin
 	}
 	v.StageB = readFirstWorktree(v.Stripped)
-	v.LaunchArgs = normalizeWorktreeFlag(v.Stripped)
+	var launchOrigin []int
+	v.LaunchArgs, launchOrigin = normalizeWorktreeFlagFrom(v.Stripped)
+	typed := make([]int, len(launchOrigin))
+	for k, o := range launchOrigin {
+		typed[k] = o
+		if o >= 0 && strippedOrigin != nil {
+			typed[k] = strippedOrigin[o]
+		}
+	}
 
 	if err != nil {
 		// A malformed --branch is refused when the launch materializes it, so there
@@ -163,11 +176,11 @@ func resolveOwning(entry []string, ownFlag string) (launchView, []int) {
 		// refuses into one it accepts.
 		ownFlag = ""
 	}
-	var ordinals []int
-	v.Consumed, ordinals = walkLaunchArgs(v.LaunchArgs, ownFlag)
+	var dropped []int
+	v.Consumed, dropped = walkLaunchArgs(v.LaunchArgs, typed, ownFlag)
 	v.FinalArgv = v.Consumed.PassThrough
 	v.Selection = selectBackendWorktree(v.FinalArgv)
-	return v, ordinals
+	return v, dropped
 }
 
 // materializeBranch runs the card-t295 --branch materialization the view
@@ -195,7 +208,7 @@ func readFirstWorktree(args []string) worktreeRead {
 // whole tail after that separator, passes through verbatim. A second separator in
 // the tail belongs to the backend and stays byte-for-byte intact.
 func consumeLaunchArgs(extraArgs []string) launchConsumption {
-	c, _ := walkLaunchArgs(extraArgs, "")
+	c, _ := walkLaunchArgs(extraArgs, nil, "")
 	return c
 }
 
@@ -204,15 +217,16 @@ func consumeLaunchArgs(extraArgs []string) launchConsumption {
 // (REQ-LA-005), so the override decision and the argv the backend receives are
 // two outputs of ONE walk.
 //
-// The flag counts only where it stands: in the launcher segment (before the
-// first separator the walk did not eat as an option value) and not as the value
-// of a backend option. Both are read on what is left once the walk has dropped
-// the launcher's own options — the sequence the backend reads — never on the
-// typed argv, where a token's neighbour may be one the backend never sees. The
-// flag is then dropped from PassThrough, and the returned ordinals name its
-// occurrences among the flag tokens of extraArgs (the k-th, counting from the
-// start).
-func walkLaunchArgs(extraArgs []string, ownFlag string) (launchConsumption, []int) {
+// The flag counts only where it stands: typed as a standalone token (typed[i] >= 0
+// — a token the -w normalization synthesized out of an `=` form has -1 and never
+// stands; nil typed reads every token as typed), in the launcher segment (before
+// the first separator the walk did not eat as an option value) and not as the
+// value of a backend option. The last two are read on what is left once the walk
+// has dropped the launcher's own options — the sequence the backend reads — never
+// on the typed argv, where a token's neighbour may be one the backend never sees.
+// The flag is then dropped from PassThrough, and the returned indices name the
+// dropped tokens by their typed index (typed[i], or i when typed is nil).
+func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchConsumption, []int) {
 	var c launchConsumption
 	var origin []int // origin[k]: the index in extraArgs of the launcher-segment token PassThrough[k]
 	segment := -1    // len(PassThrough) at the first separator the walk did not eat
@@ -254,13 +268,20 @@ func walkLaunchArgs(extraArgs []string, ownFlag string) (launchConsumption, []in
 		segment = len(c.PassThrough)
 	}
 
-	var ordinals []int
+	var dropped []int
 	if ownFlag != "" {
-		if standing := standingOwnFlags(c.PassThrough[:segment], ownFlag); len(standing) > 0 {
+		at := make([]int, segment) // at[k]: typed index of the launcher-segment token PassThrough[k]
+		for k := range at {
+			at[k] = origin[k]
+			if typed != nil {
+				at[k] = typed[origin[k]]
+			}
+		}
+		if standing := standingOwnFlags(c.PassThrough[:segment], at, ownFlag); len(standing) > 0 {
 			drop := make(map[int]bool, len(standing))
 			for _, k := range standing {
 				drop[k] = true
-				ordinals = append(ordinals, ownFlagOrdinal(extraArgs, origin[k], ownFlag))
+				dropped = append(dropped, at[k])
 			}
 			kept := make([]string, 0, len(c.PassThrough)-len(standing))
 			for k, tok := range c.PassThrough {
@@ -272,18 +293,19 @@ func walkLaunchArgs(extraArgs []string, ownFlag string) (launchConsumption, []in
 		}
 	}
 	c.ChainTarget = extractWorktreeLaunchTarget(c.PassThrough)
-	return c, ordinals
+	return c, dropped
 }
 
 // standingOwnFlags returns the positions in segment — the launcher segment as the
-// backend reads it — where flag stands as an option of its own: the positions the
-// backend option model does not take as another option's value.
-func standingOwnFlags(segment []string, flag string) []int {
-	var at []int
+// backend reads it — where flag stands as an option of its own: typed as a
+// standalone token (at[i] >= 0, the typed index) and not taken by the backend
+// option model as another option's value.
+func standingOwnFlags(segment []string, at []int, flag string) []int {
+	var standing []int
 	for i := 0; i < len(segment); i++ {
 		tok := segment[i]
-		if tok == flag {
-			at = append(at, i)
+		if tok == flag && at[i] >= 0 {
+			standing = append(standing, i)
 			continue
 		}
 		if len(tok) < 2 || tok[0] != '-' {
@@ -292,19 +314,7 @@ func standingOwnFlags(segment []string, flag string) []int {
 		_, span := backendOptionStep(segment, i, worktreeSelection{})
 		i += span
 	}
-	return at
-}
-
-// ownFlagOrdinal counts the flag tokens of args before index upTo: the ordinal of
-// the flag token standing at upTo.
-func ownFlagOrdinal(args []string, upTo int, flag string) int {
-	n := 0
-	for _, a := range args[:upTo] {
-		if a == flag {
-			n++
-		}
-	}
-	return n
+	return standing
 }
 
 // consumeAllowCardAnchor is the launcher's consumption of its own override flag
@@ -316,23 +326,18 @@ func ownFlagOrdinal(args []string, upTo int, flag string) int {
 // launcher has dropped its own options — is that option's value. Both stay in
 // the argv.
 func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
-	_, ordinals := resolveOwning(args, allowCardAnchorFlag)
-	drop := make(map[int]bool, len(ordinals))
-	for _, k := range ordinals {
-		drop[k] = true
+	_, dropped := resolveOwning(args, allowCardAnchorFlag)
+	drop := make(map[int]bool, len(dropped))
+	for _, i := range dropped {
+		drop[i] = true
 	}
 	rest = make([]string, 0, len(args))
-	seen := 0
-	for _, a := range args {
-		if a == allowCardAnchorFlag {
-			seen++
-			if drop[seen-1] {
-				continue
-			}
+	for i, a := range args {
+		if !drop[i] {
+			rest = append(rest, a)
 		}
-		rest = append(rest, a)
 	}
-	return rest, len(ordinals) > 0
+	return rest, len(dropped) > 0
 }
 
 // --- backend option model: the worktree selection ----------------------------
@@ -488,42 +493,57 @@ func scanShortCluster(argv []string, i int, cur worktreeSelection) (worktreeSele
 // left untouched — they are already verbatim pass-through to claude.
 // The name is optional: a bare -w lets claude auto-generate a worktree name.
 func normalizeWorktreeFlag(args []string) []string {
-	normalized := make([]string, 0, len(args)+1)
+	normalized, _ := normalizeWorktreeFlagFrom(args)
+	return normalized
+}
+
+// normalizeWorktreeFlagFrom is normalizeWorktreeFlag that also returns, for each
+// token of the result, the index in args of the token it came from — -1 for the
+// name an `=` form was split into, which nobody typed as a token of its own.
+func normalizeWorktreeFlagFrom(args []string) (normalized []string, origin []int) {
+	normalized = make([]string, 0, len(args)+1)
+	origin = make([]int, 0, len(args)+1)
+	emit := func(tok string, from int) {
+		normalized = append(normalized, tok)
+		origin = append(origin, from)
+	}
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
 			// Everything after -- is verbatim pass-through.
-			normalized = append(normalized, args[i:]...)
+			for j := i; j < len(args); j++ {
+				emit(args[j], j)
+			}
 			break
 		}
 		switch {
 		case arg == "-w" || arg == "--worktree":
-			normalized = append(normalized, "--worktree")
+			emit("--worktree", i)
 			// Optional value: consume the next token unless it is another flag
 			// or the pass-through marker.
 			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				normalized = append(normalized, args[i+1])
+				emit(args[i+1], i+1)
 				i++
 			}
 		case strings.HasPrefix(arg, "--worktree="):
 			name := strings.TrimPrefix(arg, "--worktree=")
-			normalized = append(normalized, "--worktree")
+			emit("--worktree", i)
 			if name != "" {
-				normalized = append(normalized, name)
+				emit(name, -1)
 			}
 		case strings.HasPrefix(arg, "-w="):
 			name := strings.TrimPrefix(arg, "-w=")
-			normalized = append(normalized, "--worktree")
+			emit("--worktree", i)
 			if name != "" {
-				normalized = append(normalized, name)
+				emit(name, -1)
 			}
 		default:
-			normalized = append(normalized, arg)
+			emit(arg, i)
 		}
 	}
 
-	return normalized
+	return normalized, origin
 }
 
 // worktreeFlagValue scans args (stopping at the "--" pass-through marker) for
@@ -562,18 +582,29 @@ func worktreeFlagValue(args []string) (string, bool) {
 // missing or option-shaped value is a parse error at this boundary — an
 // unconsumed option-shaped token must never leak into the backend argv.
 func splitWorktreeBranchFlag(args []string) (rest []string, branch string, has bool, err error) {
+	rest, _, branch, has, err = splitWorktreeBranchFlagFrom(args)
+	return rest, branch, has, err
+}
+
+// splitWorktreeBranchFlagFrom is splitWorktreeBranchFlag that also returns, for
+// each token of rest, its index in args.
+func splitWorktreeBranchFlagFrom(args []string) (rest []string, origin []int, branch string, has bool, err error) {
 	rest = make([]string, 0, len(args))
+	origin = make([]int, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
-			rest = append(rest, args[i:]...)
-			return rest, branch, has, nil
+			for j := i; j < len(args); j++ {
+				rest = append(rest, args[j])
+				origin = append(origin, j)
+			}
+			return rest, origin, branch, has, nil
 		}
 		switch {
 		case arg == "--branch":
 			has = true
 			if i+1 >= len(args) || args[i+1] == "--" || strings.HasPrefix(args[i+1], "-") {
-				return nil, "", true, fmt.Errorf("--branch requires a branch name")
+				return nil, nil, "", true, fmt.Errorf("--branch requires a branch name")
 			}
 			branch = args[i+1]
 			i++
@@ -581,13 +612,14 @@ func splitWorktreeBranchFlag(args []string) (rest []string, branch string, has b
 			has = true
 			branch = strings.TrimPrefix(arg, "--branch=")
 			if branch == "" {
-				return nil, "", true, fmt.Errorf("--branch requires a branch name")
+				return nil, nil, "", true, fmt.Errorf("--branch requires a branch name")
 			}
 		default:
 			rest = append(rest, arg)
+			origin = append(origin, i)
 		}
 	}
-	return rest, branch, has, nil
+	return rest, origin, branch, has, nil
 }
 
 // extractWorktreeLaunchTarget returns the -w/--worktree value from normalized

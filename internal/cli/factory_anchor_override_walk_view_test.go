@@ -22,6 +22,7 @@ func TestLauncherAnchorOverrideWalkViewAgreement(t *testing.T) {
 		"-w", "WT-card", "--worktree=", "--branch", "main", allowCardAnchorFlag,
 		"--name", "-cn", "-b", "--model", "opus", argSeparator,
 	}
+	alphabet = append(alphabet, flagBearingWorktreeForms()...)
 	total, bad := 0, 0
 	eachArgv(alphabet, 4, func(g []string) {
 		total++
@@ -55,8 +56,8 @@ func TestLauncherAnchorOverrideWalkViewAgreement(t *testing.T) {
 				g, problems, decided.FinalArgv, decided.Selection, launched.FinalArgv, launched.Selection, rest)
 		}
 	})
-	if total < 22000 {
-		t.Errorf("enumerated only %d argv, want the full space", total)
+	if want := argvSpace(len(alphabet), 4); total != want {
+		t.Errorf("enumerated %d argv, want the full space %d", total, want)
 	}
 	if bad > 0 {
 		t.Errorf("%d of %d argv: the override decision and the launch disagree", bad, total)
