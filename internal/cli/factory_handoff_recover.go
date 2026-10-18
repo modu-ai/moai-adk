@@ -18,7 +18,7 @@ import (
 var abandonLaneProbe = homestate.ProbeProcessIdentity
 
 func newFactoryCommand() *cobra.Command {
-	factory := &cobra.Command{Use: "factory", Short: "Factory runtime maintenance"}
+	factory := &cobra.Command{Use: "factory", Short: "Factory runtime maintenance", Long: "Factory runtime maintenance.\n\nRun `moai paths` for the confirmed factory and broker database paths; never guess\na database path. Opening a missing file with sqlite3 creates an empty one."}
 	handoff := &cobra.Command{Use: "handoff", Short: "Factory handoff maintenance"}
 	var id int64
 	var token, decision string
