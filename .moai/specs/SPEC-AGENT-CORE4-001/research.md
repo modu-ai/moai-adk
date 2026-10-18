@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Research: piece 1 baselines"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-18
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Design: agent sources and renderers"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-10-18
 ---
 
@@ -37,7 +37,7 @@ sources.
 
 ## §3 Generation and check
 
-`make agents-emit` writes C2, C3 for the twelve and, from M2, C1, C3p for the carried four (C1 of the eight stays hand-managed, decision Q20).
+`make agents-emit` writes C2, C3 for the twelve and, from M2, C1, C3p for the carried four (C1 of the eight joins when piece 2 absorbs or retires them, decision Q20).
 `make agents-emit-check` re-renders in memory, compares the same sets, never writes, prints
 `specs=<n> copies=<k> diff=<d>` and fails naming the first differing file. The Makefile target may
 call a Go test or a small command, provided the summary line reaches stdout at exit 0.

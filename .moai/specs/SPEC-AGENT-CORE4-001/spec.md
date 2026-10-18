@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Agent core four, piece 1: agent sources, two renders, generated copies"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -42,10 +42,9 @@ that commit's `research.md` and `design.md`.
 - **The eight** — manager-spec, manager-develop, manager-docs, manager-git, manager-lead,
   manager-todo, plan-auditor, sync-auditor. **The carried four** — builder-harness, e2e-tester,
   manager-design, super-advisor. **The twelve** — both sets.
-- **Baseline** — the tree at the parent of the M0 commit (`<M0>^`); the M0 commit records its SHA in
-  `m0-baseline.md` and as `m0_commit:` in `progress.md`. No hash file is frozen: the baseline bytes
-  are read from git (`git show <M0>^:<path>`), so a foreign commit absorbed before M0 moves the
-  baseline instead of making a frozen value stale.
+- **Baseline** — the tree at the parent of the M0 commit (`<M0>^`). M0 absorbs local main first, so
+  foreign commits on the guarded paths are inside the baseline. The M0 SHA is recorded once, by the
+  M1 run, in `progress.md` §E.2. There is no frozen hash file and no permanent baseline test.
 - **Agent source** — a verbatim copy of the shipped definition file (frontmatter keys `name`,
   `description`, `tools`, `color`, `permissionMode`, `isolation`, `memory`, `skills`, `hooks`,
   `model`, `effort` as shipped, then the body); the only addition is the optional block markers.
@@ -60,7 +59,9 @@ Operator decision `d-20261018T062320Z-5952` (decided_by operator, 2026-10-18, sc
 generated outputs; the agent source is the only edit surface; C2 is rendered from it; C1 is
 byte-identical to C2; hand-editing C2 fails `make build`; the contrary `AGENTS.local.md` §2.0
 sentences are superseded and rewritten by this work; other in-flight cards move their agent edits
-to the source layer when they land after piece 1.
+to the source layer when they land after piece 1. Leader ruling `d-20261018T070809Z-924f` (leader under operator
+delegation, interpreting `d-20261018T062320Z-5952`): C1 = C2 applies to the four carried agents in piece 1 and to the
+remaining agents when piece 2 absorbs or retires them — sequencing, not narrowing.
 
 - **REQ-AC4-001** The agent definition set shall have exactly one agent source per definition and
   no rendered C2 or C3 file without one.
@@ -72,43 +73,124 @@ to the source layer when they land after piece 1.
 - **REQ-AC4-004** When a `tools:` token of an agent source has no manifest mapping, or a block
   marker is unterminated or nested, the emitter shall fail emission naming the file and the token
   or marker.
-- **REQ-AC4-005** At M1, the C2 and C3 files of the twelve shall equal their bytes at the baseline.
-- **REQ-AC4-006** From M2 on, each carried-four definition shall differ from its baseline on exactly
-  the 8 lines of §C.1, matched by their old content, and each new line shall contain no `~/`.
+- **REQ-AC4-005** At M1, the twelve agent sources shall equal their baseline C2 files and the M1
+  commit shall change no shipped C2 or C3 byte, verified once by the M1 acceptance cell.
+- **REQ-AC4-006** At M2, each carried-four definition shall differ from its baseline on exactly the
+  8 lines of §C.1, and each new line shall contain no `~/`, verified once by the M2 acceptance cell.
 - **REQ-AC4-007** From M2 on, C1 shall equal C2 and C3p shall equal C3 for the carried four.
 - **REQ-AC4-008** When a rendered file differs from a fresh render, the read-only emission check
   shall fail naming the file, and the check shall leave every rendered file unmodified.
 - **REQ-AC4-009** When `make agents-emit-check` passes, it shall print `specs=<n> copies=<k>
   diff=0`.
-- **REQ-AC4-010** The commit history shall show the M0 baseline commit, alone, before any commit
-  that changes an agent source or a rendered definition, then M1, then M2.
-- **REQ-AC4-011** The roster guard's numeral layer shall report no undischarged hit for the agent
+- **REQ-AC4-010** The roster guard's numeral layer shall report no undischarged hit for the agent
   source directory.
-- **REQ-AC4-012** The emission test suite shall keep every test and assertion it holds at the
+- **REQ-AC4-011** The emission test suite shall keep every test and assertion it holds at the
   baseline, the Markdown identity assertion being replaced by equality with a fresh render.
-- **REQ-AC4-013** In the commit that makes the renderer generate C2 (M1), `AGENTS.local.md` §2.0
-  shall have only its sentences stating that C1 differs from C2 or that C2 is hand-edited replaced
-  by the rule: the agent source is the sole edit surface, C2 and C3 are rendered from it, C1 equals
-  C2 for generated agents, and hand-editing C2 turns `make build` red; no other line of the file
-  changes, and the commit message cites `d-20261018T062320Z-5952`.
+- **REQ-AC4-012** In the M2 commit, `AGENTS.local.md` shall have exactly the eight lines of §C.2
+  replaced by their stated new text and no other line changed, and the M2 commit message shall cite
+  board `d-20261018T062320Z-5952`.
+
+After landing, no frozen-equality test exists: a legitimate later edit of an agent goes to the agent
+source, `make agents-emit` regenerates the copies, and the permanent guard is
+`make agents-emit-check` (REQ-AC4-008/009). No existing test is skipped or relaxed by this
+design (REQ-AC4-011).
 
 ### §C.1 The 8 line changes (carried four)
 
-Old = the C2 line at the baseline (matched by content, not line number); new = the text shown. Rule:
-the new line is the project-copy (C1) line, except e2e-tester:143, where C1 itself holds `~/` and
-the new line drops it (which also fixes the shipped `~/~/.claude/` defect). If any of the 8 old
-lines no longer matches at M0, M0 aborts and the pairs are recomputed and re-audited; a change to
-any other line of the carried four is preserved and the expected result is recomputed at M0 by the
-documented command (`acceptance.md` §3).
+Literal lines; line numbers are those of the baseline C2 file and matching is by content. New line =
+the project-copy (C1) line, except e2e-tester:143, where C1 itself holds `~/` and the new line drops
+it (which also fixes the shipped `~/~/.claude/` defect). If any old line no longer matches at M0,
+M0 aborts and the pairs are recomputed and re-audited.
 
-1. builder-harness:38 — old has `~/.claude/agents/` inside the table cell "`.claude/agents/` or `~/.claude/agents/` (with `--moai`)"; new: `~/.claude/agents/` replaced by `.claude/agents/moai/`.
-2. builder-harness:155 — old: `` `~/.claude/agents/manager-spec.md` for the verbatim line: ``; new: `` `.claude/agents/moai/manager-spec.md` for the verbatim line: ``.
-3. e2e-tester:92 — old holds `~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; new: the same sentence with `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`.
-4. e2e-tester:143 — old holds `~/~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; new: `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`.
-5. manager-design:50 — old: `` `~/.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary: ``; new: the same with `.claude/skills/moai/workflows/design.md`.
-6. manager-design:203 — old: `- **Design pipeline skill**: ` + `~/.claude/skills/moai/workflows/design.md` + ` (D1-D5).`; new: with `.claude/skills/moai/workflows/design.md`.
-7. manager-design:206 — old: `- **Agent catalog**: ` + `CLAUDE.md` + ` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).`; new: `- **Agent catalog**: ` + `.moai/config/sections/delegation.yaml` + ` (13 retained agents — manager-design is row 6 of the Selection Decision Tree).`
-8. super-advisor:129 — old: `- Advisor/Evaluator separation: ` + `~/.claude/agents/{plan-auditor,sync-auditor}.md` + `.`; new: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
+1. `builder-harness.md` line 38
+```text
+- | `agent` | `.claude/agents/` or `~/.claude/agents/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
++ | `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
+```
+2. `builder-harness.md` line 155
+```text
+- `~/.claude/agents/manager-spec.md` for the verbatim line:
++ `.claude/agents/moai/manager-spec.md` for the verbatim line:
+```
+3. `e2e-tester.md` line 92
+```text
+- Native desktop toolkits (AppKit, WinUI/Win32, Qt, GTK) are automated through the host OS accessibility layer. The per-OS recipes (macOS / Windows / Linux — defaults, fallbacks, install and probe commands, permission prerequisites) and the desktop-native evidence-source + token-cost ordering live in `~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; load that reference before any desktop-native work (§ Conditional Skill Loading). Only the recipe matching the HOST OS is probed and executed — state a host-OS/target-OS mismatch in the report instead of probing it. Scripts and flows live under `e2e/desktop-native/`; AX-tree snapshots and run logs ride the existing `e2e/.runs/` timestamped-log convention.
++ Native desktop toolkits (AppKit, WinUI/Win32, Qt, GTK) are automated through the host OS accessibility layer. The per-OS recipes (macOS / Windows / Linux — defaults, fallbacks, install and probe commands, permission prerequisites) and the desktop-native evidence-source + token-cost ordering live in `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; load that reference before any desktop-native work (§ Conditional Skill Loading). Only the recipe matching the HOST OS is probed and executed — state a host-OS/target-OS mismatch in the report instead of probing it. Scripts and flows live under `e2e/desktop-native/`; AX-tree snapshots and run logs ride the existing `e2e/.runs/` timestamped-log convention.
+```
+4. `e2e-tester.md` line 143
+```text
+- - When the detected project type is `desktop-native`, read `~/~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
++ - When the detected project type is `desktop-native`, read `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` for the per-OS accessibility recipes before probing.
+```
+5. `manager-design.md` line 50
+```text
+- `~/.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary:
++ `.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary:
+```
+6. `manager-design.md` line 203
+```text
+- - **Design pipeline skill**: `~/.claude/skills/moai/workflows/design.md` (D1-D5).
++ - **Design pipeline skill**: `.claude/skills/moai/workflows/design.md` (D1-D5).
+```
+7. `manager-design.md` line 206
+```text
+- - **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
++ - **Agent catalog**: `.moai/config/sections/delegation.yaml` (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
+```
+8. `super-advisor.md` line 129
+```text
+- - Advisor/Evaluator separation: `~/.claude/agents/{plan-auditor,sync-auditor}.md`.
++ - Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
+```
+
+### §C.2 The `AGENTS.local.md` §2.0 rewrite (lands with M2)
+
+Exactly these eight lines of the file at the baseline change (line numbers are those at `06095bb8fa`;
+matching is by content). Line 98 becomes two lines. Everything else stays byte-identical:
+`git diff --numstat` of the M2 commit for this file prints `9	8	AGENTS.local.md`. The rule applies to the
+generated agents (the carried four); the remaining agents join when piece 2 absorbs or retires them.
+
+- line 91
+```text
+- ### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
++ ### [HARD] §2.0 There are three copies of the agent definitions, and only the agent source is edited by hand
+```
+- line 93
+```text
+- Agent definitions exist in three copies, but **only one of them is not a hand-edit target.**
++ Agent definitions exist in three copies, rendered from one edit surface: the agent source layer `internal/template/agentemit/source/*.md`. **The agent source is the sole edit surface**; none of the three copies is a hand-edit target for the generated agents.
+```
+- line 97
+```text
+- | C1 | `.claude/agents/moai/*.md` | Local dogfooding, hand-edited |
++ | C1 | `.claude/agents/moai/*.md` | Local dogfooding; rendered from the agent source and byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); hand-edited for the remaining agents until piece 2 absorbs or retires them |
+```
+- line 98
+```text
+- | C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
++ | Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer** |
++ | C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, **rendered from the agent source** |
+```
+- line 99
+```text
+- | C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-emitted from C2** (`internal/template/agentemit`) |
++ | C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-rendered from the agent source** (`internal/template/agentemit`) |
+```
+- line 101
+```text
+- [HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
++ [HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3.
+```
+- line 103
+```text
+- [HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix C2 and regenerate.
++ [HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix the agent source and regenerate.
+```
+- line 109
+```text
+- | `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output emitted from `.md` | Every local build. **Read-only — does not regenerate** |
++ | `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output rendered from the agent source | Every local build. **Read-only — does not regenerate** |
+```
 
 ## §D Out of Scope — follow-on pieces
 
@@ -130,7 +212,7 @@ Claude and Codex, the preload probe, the doctor check.
 ### Out of Scope — other
 
 - docs-site and README pages, user-scope `~/.claude/agents`, and the `AGENTS.local.md` §2.0 text
-  (user-owned; only the §2.0 sentences named in REQ-AC4-013 change).
+  (user-owned; only the §2.0 lines named in REQ-AC4-012 change).
 - Any change of agent bodies, tools, model, effort or permission mode beyond the 8 pinned lines.
 
 ## §E Hand-off table (audit defects not fixed here)
@@ -147,8 +229,8 @@ Claude and Codex, the preload probe, the doctor check.
 | iter1 D14 core-body preservation | piece 2 | pinned [HARD]-clause list; implementer budget row |
 | iter1 D15 "never blocks a spawn" statements | piece 2 | rewrite sentence and file header; deny in a separate handler |
 | iter1 D18 doctor check name | piece 3 | registered check is "Skills Allowlist" (`internal/cli/doctor.go:306`) |
-| C1 of the eight | piece 2 | C1 of the eight stays hand-managed until piece 2 absorbs them (decision Q20) |
-| Q2, Q3, Q5-Q15 | pieces 2, 3 | `decision-index.md` hand-off rows |
+| C1 of the eight | piece 2 | C1 of the eight stays hand-managed until piece 2 absorbs or retires them (sequencing per board d-20261018T070809Z-924f, decision Q20); the card completion "copy diff 0" for them is piece 2's |
+| Q2, Q3, Q6-Q11 (open); Q5, Q12-Q15 (withdrawn, re-open where needed) | pieces 2, 3 | `decision-index.md` hand-off rows |
 
 ## §F HISTORY
 
@@ -158,3 +240,4 @@ Claude and Codex, the preload probe, the doctor check.
 | 0.2.0 | 2026-10-18 | Narrowed to piece 1 after plan-audit iter1 FAIL (commit `8260bbaa0b`). |
 | 0.3.0 | 2026-10-18 | Plan-audit iter2 FAIL fixes: Tier L, all twelve sources at M1, both renderers read the source, pinned line pairs, path-based ordering ACs, decisions Q17 and Q18. |
 | 0.4.0 | 2026-10-18 | Plan-audit iter3 FAIL fixes: sources are verbatim shipped files, baseline read from git instead of frozen hashes, ordering ACs bound to the recorded M0 commit, verdict section §G; operator decision `d-20261018T062320Z-5952` closes Q4 and Q17; REQ-AC4-013 added. |
+| 0.5.0 | 2026-10-18 | Plan-audit iter4 FAIL (STOP) fixes under rule C final delta (d-20261018T070809Z-924f): git-history ordering cells and permanent baseline tests removed (one-time M1/M2 cells instead), AGENTS.local.md §2.0 rewrite moved to M2 with exact text, Q20 decided by the board. |

@@ -3,7 +3,7 @@
 Per `interview.decision_gate: on`. This file is inside the plan-artifact hash
 (`internal/runtime/audit_cache.go`), so an edit here after audit invalidates the audit; this
 revision changes it deliberately. Verdicts on rows that are still open are recorded in `progress.md`
-`## §G Operator verdicts`. No product-level row carries a default or DEFAULT-APPLIED.
+`## §G Operator verdicts`. No row carries DEFAULT-APPLIED; every product-level row is open or decided by a named board record.
 
 ### Q1: One SPEC or several?
 Label: FOUNDER
@@ -30,7 +30,7 @@ Operator verdict: DECIDED by the operator — the same board decision `d-2026101
 Label: FOUNDER
 Class: implementation-level
 Authority anchor: (none — the Tier table is a rule file outside the register)
-Why unresolved: lane judgment: about 25 authored files (39+ with generated copies) and 2,969 lines of new tracked agent text; by files this is Tier L. 13 REQ / 13 AC under ceilings 25 / 25; artifact set five plus progress and decision-index. The leader may rule otherwise.
+Why unresolved: lane judgment: about 25 authored files (39+ with generated copies) and 2,969 lines of new tracked agent text; by files this is Tier L. 12 REQ / 12 AC under ceilings 25 / 25; artifact set five plus progress and decision-index. The leader may rule otherwise.
 Operator verdict: LANE-JUDGED 2026-10-18 card t1649 (Tier L)
 
 ### Q19: Which catalog citation survives on manager-design line 206?
@@ -42,12 +42,10 @@ Operator verdict:
 
 ### Q20: Is C1 generated for the eight in piece 1?
 Label: FOUNDER
-Class: implementation-level
+Class: product-level
 Authority anchor: (none)
-Why unresolved: the operator decision says C1 equals C2; for the eight, C1 differs from C2 in three files (manager-develop, manager-spec, plan-auditor), and C2 uses user-scope `~/.claude/` paths that C1 does not. Generating C1 for the eight would change shipped project bytes that piece 2 retires anyway.
-Default: C1 of the eight stays hand-managed until piece 2 absorbs them; the rewritten §2.0 says C1 equals C2 for generated agents (rule: preserves current behavior)
-Alternate: generate C1 for all twelve in M2
-Operator verdict: DEFAULT-APPLIED 2026-10-18 card t1649 plan-author (manager-spec)
+Why unresolved: closed. The eight retiring agents differ between C1 and C2 in three files, and C2 uses user-scope `~/.claude/` paths that C1 does not.
+Operator verdict: DECIDED by the leader under operator delegation — decision board `d-20261018T070809Z-924f` (interpreting operator ruling `d-20261018T062320Z-5952`): the end state (every generated agent C1 = C2, card completion "copy diff 0") stands; piece 1 renders only the four carried agents, so C1 = C2 applies to those four in piece 1 and to the remaining agents when piece 2 absorbs or retires them. Sequencing, not narrowing.
 
 ### Q16: Development methodology
 Label: POLICY-COVERED
