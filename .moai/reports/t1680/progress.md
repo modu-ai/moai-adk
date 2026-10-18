@@ -183,3 +183,43 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	23.075s
 - card-review: `.moai/reports/t1680/card-review.md` (codex_review scope=card, pass, 0 findings).
 - Gaps: no full `internal/cli` run (ruling 35e9); other packages not run; CI owns the repository-wide verdict. Out of scope by leader split: N3, F8, (c) -> t1867. Observation only: the `@MX:ANCHOR` call-site count on `mcpRequiredProjectRoot` (3 stated, 4 actual).
 - Next: record `sync-audit` and `merge-ready`, take a landing turn from the leader (line end at last report: ... -> t1688 -> t1703), then absorb main and remeasure with `-run` selections.
+
+## Sync-audit iter3 repair (rule C) — 2026-10-18
+
+Finding R3-1 (P1, `.moai/reports/t1680/sync-audit-iter3.md`): `integrationSessionID` read the SessionStart side-channel file at `integrationLockRoot()`, which since the common-root normalization answers the repository common root. With `CLAUDE_PROJECT_DIR` naming a linked worktree and `CLAUDE_CODE_SESSION_ID` unset, the caller adopted the id recorded at the primary checkout and could release another session's window without `--force`. The hook writes the file at `input.ProjectDir` (`internal/hook/session_start.go:483`), so read and write roots had diverged.
+
+**Fix (leader ruling, read location only):** new `integrationSidecarRoot()` in `internal/cli/integration.go`, used only by `integrationSessionID`: `CLAUDE_PROJECT_DIR` as given when set, else the unchanged `integrationLockRoot()` fallback. `integrationLockRoot`, `integrationCommonRootOf`, the MCP handler and `factory_card.go` are untouched.
+
+**Commits:** RED `726259c51` (`test(cli): RED for integrationSessionID ...`), GREEN `ed56cb400f` (`fix(cli): read the session sidecar where the SessionStart hook writes it`). Tests: `internal/cli/integration_session_sidecar_test.go` (4 new tests, real temp repo with a linked worktree, two sidecar slots HOLDER-SESSION at the primary / CALLER-SESSION at the linked tree).
+
+**RED (verbatim, at `726259c51`):**
+
+```
+integration_session_sidecar_test.go:75: variable names the linked worktree: integrationSessionID("") = "HOLDER-SESSION", want "CALLER-SESSION" (the slot at .../Common-Root-Linked)
+integration_session_sidecar_test.go:75: variable names a subdir of the linked: integrationSessionID("") = "HOLDER-SESSION", want "SUBDIR-SESSION" (the slot at .../Common-Root-Linked/pkg/deep)
+--- FAIL: TestIntegrationSessionID_ReadsTheSlotWhereTheHookWritesIt (0.41s)
+integration_session_sidecar_test.go:96: release by CALLER-SESSION succeeded on a window held by HOLDER-SESSION without --force: release-integration window released (was HOLDER-SESSION on main)
+--- FAIL: TestIntegrationRelease_LinkedWorktreeCallerCannotReleaseAnotherSessionsWindow (0.48s)
+--- PASS: TestIntegrationSessionID_ControlCasesKeepTheirPrecedence (0.44s)
+--- PASS: TestIntegrationSessionID_PlainProjectReadsWhereTheHookWrites (0.45s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.167s
+```
+
+**GREEN (verbatim, at `ed56cb400f`):**
+
+```
+--- PASS: TestIntegrationSessionID_ReadsTheSlotWhereTheHookWritesIt (0.22s)
+--- PASS: TestIntegrationRelease_LinkedWorktreeCallerCannotReleaseAnotherSessionsWindow (0.33s)
+--- PASS: TestIntegrationSessionID_ControlCasesKeepTheirPrecedence (0.24s)   (3 subtests PASS: explicit --session, CLAUDE_CODE_SESSION_ID, variable-unset git fallback)
+--- PASS: TestIntegrationSessionID_PlainProjectReadsWhereTheHookWrites (0.30s)
+--- PASS: TestIntegrationSessionID_EnvBeatsSidecar (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.612s
+```
+
+**Caller survey:** `grep CurrentSideChannelFile internal --include=*.go` (non-test): readers are `internal/cli/integration.go:176` (fixed here) and `internal/cli/session.go:282` (`resolveCurrentSessionID`, reads at `resolveProjectDir()` = `CLAUDE_PROJECT_DIR` as given, else cwd, which already equals the hook's write location); the writer is `internal/hook/session_start.go:483`. No other reader uses `integrationLockRoot()`. `integrationSessionID`'s callers (`factory_card.go`, `slot.go` x2, `integration_merge.go`, `integration.go` x2, `factory_merge.go`, `local_main_resync.go`, `session_worktree_automerge.go`) all gain the corrected read; none needed their own change. `integrationLockRoot()` still serves the lock record, config and re-measure paths.
+
+**Verification (this tree, HEAD `ed56cb400f`, `-count=1`, TMPDIR=GOTMPDIR=/private/tmp/t1680-tmp):** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` no output; `go vet ./internal/cli/` no output; `gofmt -l internal/cli` empty. Regression selections: `TestMCPVerbParity_|TestIntegrationCommonRootOf_|TestIntegrationLockRoot_Linked|TestIntegrationWindowRootAgrees` 12 PASS / 0 FAIL (ok 37.992s); grep-derived lock CLI and session-resolution tests (`TestIntegrationStatus_|TestIntegration_AcquireStatusRelease|TestIntegrationAcquire_|TestIntegrationRelease_|TestResolveCurrentSessionID_|TestResolveArmSessionID_`) 36 PASS / 0 FAIL (ok 7.942s); `^TestSD_AC|DecidePush` 33 PASS / 0 FAIL (ok 149.654s); `-race` of the new tests 5 PASS / 0 FAIL (ok 4.574s).
+
+**Gaps:** `golangci-lint run --timeout=5m ./internal/cli/` reports 1 issue, `internal/cli/paths.go:172:79: ST1008 error should be returned as the last argument (staticcheck)`; `paths.go` is not touched by this card (last change `2a8a66bf59`, from main's absorbed t1827), so I treat it as a main-side baseline and did not alter it (scope discipline); no lint finding in the card's files. Test (b) seeds the holder through `factory.AcquireIntegrationLock` (the primitive `acquire` calls) with pid 0, not through the `acquire` CLI, because an in-process CLI acquire records the owning-session pid and the same process then matches the second release key (t951), which would make the refusal assertion depend on the machine's process ancestry. The full `internal/cli` suite was not run (ruling 35e9); no go-test-heavy slot taken; CHANGELOG not edited (the t1680 entry makes no claim about the session id source, `grep t1680 CHANGELOG.md` read); `/verify` wrapper not invoked; CI owns the repository-wide verdict (PENDING).
+
+**Residual-risk:** with `CLAUDE_PROJECT_DIR` unset the fallback still reads the slot at the git common root (unchanged behavior; from inside a linked worktree that is the primary's slot, pinned by the control subtest), so a runtime that sets neither the session env var nor the project dir can still adopt the primary's last-started session; that is the pre-card behavior. The hook's own `input.ProjectDir` is assumed equal to the `CLAUDE_PROJECT_DIR` the CLI sees (Claude Code sets both); a runtime that gives the hook a different directory than the shell variable would still diverge. The sidecar remains one slot per project directory (last SessionStart wins), as before.
