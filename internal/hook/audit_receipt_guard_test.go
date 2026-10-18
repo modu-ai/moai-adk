@@ -461,6 +461,62 @@ func TestSubagentStop_BackgroundSpawnAuditorPassIsProvable(t *testing.T) {
 	}
 }
 
+// Card t1861: a card-flow audit has no SPEC id, so the auditor's verdict line
+// names the card (observed spellings: `spec=t1854`, `spec=card-t1856`). The
+// parser refused those lines as "verdict line missing" although the verdict
+// line was the last non-empty line of the final message — the refusals
+// observed on t1854 iter2, t1833 iter4 and t1856 iter3. A card-spec PASS
+// citing a receipt the store corroborates must be accepted exactly like a
+// SPEC-spec one, and must leave no unknown-spec rejection behind.
+func TestSubagentStop_CardSpecVerdictLineIsProvable(t *testing.T) {
+	for _, spec := range []string{"t1861", "card-t1861"} {
+		t.Run(spec, func(t *testing.T) {
+			root := newGateTree(t, "required")
+			agentID := "a-t1861-auditor"
+			started := time.Now().UTC().Add(-time.Minute)
+			seedStart(t, root, agentID, auditreceipt.AgentSyncAuditor, started)
+			id := seedReceipt(t, root, auditreceipt.Receipt{
+				Tool:      auditreceipt.ToolCodexAudit,
+				TreeRoot:  root,
+				CreatedAt: time.Now().UTC(),
+			})
+			// The final message shape the incidents produced: prose, then the
+			// verdict line as the last non-empty line.
+			msg := "Codex passed and the receipt is corroborated by the store.\n\n" +
+				"AUDIT-VERDICT: PASS spec=" + spec + " receipts=" + id
+			out := runStop(t, stopInput(root, auditreceipt.AgentSyncAuditor, agentID, msg, false))
+			if out.Decision != "" {
+				t.Fatalf("decision = %q, want none — a proven card-spec PASS must not block (reason %q)", out.Decision, out.Reason)
+			}
+			if _, err := auditreceipt.ReadRejectionIn(root, root, auditreceipt.AgentSyncAuditor, auditreceipt.UnknownSpec); err == nil {
+				t.Fatal("unknown-spec rejection recorded for a provable card-spec PASS")
+			}
+		})
+	}
+}
+
+// Card t1861, no-loosening pin: accepting the card-spec spellings must not
+// accept a message whose verdict line is genuinely absent — the refusal the
+// guard exists for stays.
+func TestSubagentStop_CardSpecNoVerdictLineStillRefused(t *testing.T) {
+	root := newGateTree(t, "required")
+	agentID := "a-t1861-auditor-2"
+	seedStart(t, root, agentID, auditreceipt.AgentSyncAuditor, time.Now().UTC().Add(-time.Minute))
+	seedReceipt(t, root, auditreceipt.Receipt{
+		Tool:      auditreceipt.ToolCodexAudit,
+		TreeRoot:  root,
+		CreatedAt: time.Now().UTC(),
+	})
+	out := runStop(t, stopInput(root, auditreceipt.AgentSyncAuditor, agentID,
+		"Audit done. PASS. No verdict line follows this prose.", false))
+	if out.Decision != "block" {
+		t.Fatalf("decision = %q, want block — a final message with no verdict line must still be refused", out.Decision)
+	}
+	if r, err := auditreceipt.ReadRejectionIn(root, root, auditreceipt.AgentSyncAuditor, auditreceipt.UnknownSpec); err != nil || r.Cause != auditreceipt.CauseVerdictLineMissing {
+		t.Fatalf("rejection = %+v (err %v), want an unknown-spec record with cause %q", r, err, auditreceipt.CauseVerdictLineMissing)
+	}
+}
+
 // Card t1544 card-review P2: two concurrent same-role background auditors
 // share the derived marker. The first accepted PASS must not destroy the
 // second instance's provability, and the second start must not move the
