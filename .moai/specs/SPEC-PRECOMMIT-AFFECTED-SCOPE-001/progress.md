@@ -847,6 +847,107 @@ Final-tree re-runs: `go test ./internal/hook/quality -count=1` exit 0 (`ok ... 2
 
 Live AC count 15 (001-011 less 012, 013-016): 15 PASS, 0 FAIL.
 
+
+### Sync-audit round 1 repair (F1-F3; audit report `.moai/reports/t1673/sync-audit.md` at 183c4b18d, FAIL 0.74)
+RED commit: the failing regression tests plus the `UnstagedGo` field stub (parent of the GREEN commit); GREEN commit `73994a41ad7bbab9a2b9f42afe11a9697ac3ee02`. Each pair below is one command, run on the RED tree and again on the GREEN tree, TMPDIR=GOTMPDIR=/private/tmp/t1673-tmp.
+
+**F1 — diff.relative=true in a nested module.** Command: `go test ./internal/hook/quality -run '^TestAffectedScope_DiffRelativeConfigIgnored$' -count=1 -v`
+RED (exit 1):
+```
+=== RUN   TestAffectedScope_DiffRelativeConfigIgnored
+    affected_scope_repair_test.go:41: files = [a/a.go], prefix = "svc", want [svc/a/a.go] and "svc" (diff.relative=true must not make names cwd-relative)
+--- FAIL: TestAffectedScope_DiffRelativeConfigIgnored (0.46s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	1.100s
+FAIL
+```
+GREEN (exit 0):
+```
+=== RUN   TestAffectedScope_DiffRelativeConfigIgnored
+--- PASS: TestAffectedScope_DiffRelativeConfigIgnored (0.50s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	1.269s
+```
+Fix: both git queries run as `git -c diff.relative=false diff ...`. The `-c` form was chosen over `--no-relative` because `-c` works on every git, while `--no-relative` needs git 2.28; verified against the installed git 2.54.0 by the test above (the test sets `diff.relative true` in the repository and the RED output is the cwd-relative name `a/a.go`).
+
+**F2 — staged change to a, unstaged edit removing b's import of a.** Command: `go test ./internal/hook/quality -run '^TestAffectedScope_UnstagedGoEditFallsBackToFullModule$' -count=1 -v`
+RED (exit 1):
+```
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/a_clean_working_tree_keeps_the_narrow_set
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_edit_removing_an_import_widens_to_the_full_module
+    affected_scope_repair_test.go:141: go test calls = [test ./a], want [test ./...] (an unstaged Go edit makes the graph unreliable)
+        affected-scope: selected 1, dropped 0 (running 1)
+        
+        quality gate steps (3 configured):
+          - go vet: disabled — turned off by the gate.disabled_steps setting
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 8ms at 2026-10-18T12:28:15.778+09:00 — go test ./a
+    affected_scope_repair_test.go:144: the summary does not name the reason and the fallback:
+        affected-scope: selected 1, dropped 0 (running 1)
+        
+        quality gate steps (3 configured):
+          - go vet: disabled — turned off by the gate.disabled_steps setting
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 8ms at 2026-10-18T12:28:15.778+09:00 — go test ./a
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_non-Go_edit_does_not_widen
+--- FAIL: TestAffectedScope_UnstagedGoEditFallsBackToFullModule (2.60s)
+    --- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/a_clean_working_tree_keeps_the_narrow_set (0.84s)
+    --- FAIL: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_edit_removing_an_import_widens_to_the_full_module (0.94s)
+    --- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_non-Go_edit_does_not_widen (0.82s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	3.077s
+FAIL
+```
+GREEN (exit 0):
+```
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/a_clean_working_tree_keeps_the_narrow_set
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_edit_removing_an_import_widens_to_the_full_module
+=== RUN   TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_non-Go_edit_does_not_widen
+--- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule (2.50s)
+    --- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/a_clean_working_tree_keeps_the_narrow_set (0.72s)
+    --- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_edit_removing_an_import_widens_to_the_full_module (0.98s)
+    --- PASS: TestAffectedScope_UnstagedGoEditFallsBackToFullModule/an_unstaged_non-Go_edit_does_not_widen (0.80s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.969s
+```
+Fix: `queryCommitChanges` also runs `git -c diff.relative=false diff --name-only --no-renames -z` (working tree against the index the commit records, the hook-provided index included) and keeps the `.go`, `go.mod`, `go.sum`, `go.work`, `go.work.sum` names in `UnstagedGo`; `scopeGoTestStep` runs the full module with the notice `affected-scope: working tree differs from the index in <files>; ... falling back to the full module (go test ./...)` when the list is non-empty. A query failure is the existing changed-file-query fallback. Under `git commit -a` the hook's temporary index already holds the tracked edits, so the common `-a` shape stays narrow; under a path-limited commit any other modified tracked Go file widens the scope (conservative). The clean-tree subtest and the unstaged-non-Go subtest keep `test ./a ./b`. `TestAffectedScope_ChangedSetMatchesCommit` (hook, all five shapes, plain and linked worktree) still passes with the new query (exit 0, `ok ... 4.317s`), so the extra git call raises no error against the temporary indexes.
+
+**F3 — file embedded by two packages.** Command: `go test ./internal/hook/quality -run '^TestAffectedScope_SharedEmbedFileHasAllOwners$' -count=1 -v`
+RED (exit 1):
+```
+=== RUN   TestAffectedScope_SharedEmbedFileHasAllOwners
+    affected_scope_repair_test.go:65: selected = [example.com/m/assets example.com/m/x], want exactly [example.com/m example.com/m/assets example.com/m/x]
+    affected_scope_repair_test.go:67: iteration 0
+--- FAIL: TestAffectedScope_SharedEmbedFileHasAllOwners (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.476s
+FAIL
+```
+GREEN (exit 0), 50 iterations inside the test:
+```
+=== RUN   TestAffectedScope_SharedEmbedFileHasAllOwners
+--- PASS: TestAffectedScope_SharedEmbedFileHasAllOwners (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.460s
+```
+Fix: `scopeOwners.embedded` maps a file to the sorted set of its owners; `owner` returns a slice and `selectAffected` marks every owner touched and, for source changes, source.
+
+**Re-runs after the fixes (this run, this tree, HEAD 73994a41ad7bbab9a2b9f42afe11a9697ac3ee02 after the GREEN commit):**
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/hook/quality/ ./internal/config/ ./internal/cli/` exit 0; `gofmt -l internal/hook/quality internal/cli internal/config` printed nothing; `golangci-lint run --timeout=3m ./internal/hook/quality/...` `0 issues.`
+- `go test -race -count=1 ./internal/hook/quality/` exit 0: `ok  	github.com/modu-ai/moai-adk/internal/hook/quality	64.672s` (no leased slot; the package ran in the time quoted).
+- `go test -count=1 ./internal/cli -run 'TestUpdateGateYAML|TestRunGate|TestPreCommit|TestPrecommit|TestGateYAML|TestGateConfig|TestGatePreCommit|TestGAR_|TestGateCmd_' -v` exit 0, 72 top-level PASS, no FAIL: `ok  	github.com/modu-ai/moai-adk/internal/cli	67.872s`. The full internal/cli suite was not run (ruling 35e9).
+- probe016.sh against a build of the GREEN commit (`/private/tmp/t1673-bin/moai-repair`, `moai version` prints `t1673-repair   73994a41a`), exit 0:
+```
+AC-016/001 change a: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a ./b', got 'test ./a ./b')
+AC-004 test-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a', got 'test ./a')
+AC-006 docs-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=0 (wanted 0), wanted go argv 'none', got 'none')
+AC-011 mode: bogus: GREEN  (gate exit=1, message names the key=yes)
+exit=0
+```
+(One earlier attempt printed four RED lines with `gate exit=127`: the build command had been refused by the worktree guard, so the binary did not exist; rebuilt through a script and re-run, result above.)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
