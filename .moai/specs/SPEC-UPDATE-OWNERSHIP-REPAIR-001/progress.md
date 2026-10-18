@@ -441,6 +441,277 @@ exit=1
 
 실패 이유: 운영 쓰기 함수와 운영 이전 세대 원천이 아직 없어 빌드 실패 (plan.md § G.1: (h) 는 M1b 이후에만 도달 가능). 제로 매치 아님 (`[build failed]`).
 
+### Run chunk 1 GREEN 기록과 정직한 회계 (M0 + M1a + M1b)
+
+모든 GREEN 은 트리 `a10e4a65df5b0b69955275636125169079cfb191` 에서 한 번에 다시 쟀다 (판정 도구: 이 트리의 `go test`, Go 1.26.8 darwin/arm64, 바이너리 교체 없음; 빌드 `go build ./...`). 출력에서 `=== RUN` 줄과 설정 알림 한 줄 (`SUNSET_CONFIG_DORMANT_NOTICE`) 은 뺐고 나머지는 원문이다. 마지막 줄 `exit=` 는 명령의 종료 코드이다.
+
+**커밋 지도 (기준 HEAD `785f2b6c48`)**
+
+| 묶음 | A (시험만) | B (RED 셀) | C (구현) | 비고 |
+|------|-----------|-----------|----------|------|
+| M0 | `e902867dea` (도우미 + 얼린 기준선, 도착 시 GREEN 특성화) | `360f63dd31` | — | 운영 코드 변경 없음 |
+| M1a AC-OWR-01 ~ -05 (a)-(g) | `9b73a35938` | `4764764ff0` | `3133329a64` | C 에 증거 시험 한 픽스처 수정이 들어 있다 (아래 정직한 회계 1) |
+| M1b AC-OWR-06, -20, -21, -05 (h) | `f9206f5242` + `da53289c5f` (이름 충돌 수정) | `558dd9e6c2` | `f8936c2070` | 뒤따른 커밋: `3d6bc6512e` (죽은 코드 제거), `9b0a503651` (시계 초 해상도 시험 고침), `a10e4a65df` (어휘 특성화 시험), `7d8be68f6c` (spec.md status draft → in-progress) |
+
+**승격 상태 (acceptance.md 「등급과 RED 셀 규약」)**: AC-OWR-01 ~ -05, -06, -20, -21 은 A → B → C 순서를 모두 마쳤다 (커밋 그래프가 순서를 증명). RED 셀 네 요소 (명령, 원문 stdout, 종료 코드, 트리 SHA) 가 위 셀에 있고 이유를 적었으므로 release-blocking 으로 승격 자격을 갖춘다. 단 RED 는 모두 빌드 실패 형이다 — 변이 구현 앞에서 시험이 붉어지는 직접 관측은 GREEN 출력의 `MutantIsCaught` 서브 시험과 아래 변이 점검 표가 맡는다. AC-OWR-05 (h) 는 M1b 에서 승격. 나머지 AC (07 ~ 19) 는 이 chunk 의 범위 밖으로 regression-guard 상태 그대로이다.
+
+**AC-OWR-01 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipVerdictClasses$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipVerdictClasses (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.226s
+exit=0
+```
+
+**AC-OWR-02 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipPreserveByteEqualUserFile$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipPreserveByteEqualUserFile (3.04s)
+    --- PASS: TestOwnershipPreserveByteEqualUserFile/Premise (1.04s)
+    --- PASS: TestOwnershipPreserveByteEqualUserFile/Preserve (1.13s)
+    --- PASS: TestOwnershipPreserveByteEqualUserFile/MutantIsCaught (0.87s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.257s
+exit=0
+```
+
+**AC-OWR-03 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipPreserveUserModifiedFile$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipPreserveUserModifiedFile (3.37s)
+    --- PASS: TestOwnershipPreserveUserModifiedFile/Reach (0.93s)
+    --- PASS: TestOwnershipPreserveUserModifiedFile/Preserve (1.15s)
+    --- PASS: TestOwnershipPreserveUserModifiedFile/MutantIsCaught (1.28s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.510s
+exit=0
+```
+
+**AC-OWR-04 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipUnregisteredUnknownOriginKeptWithReason$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipUnregisteredUnknownOriginKeptWithReason (2.05s)
+    --- PASS: TestOwnershipUnregisteredUnknownOriginKeptWithReason/Reach (0.59s)
+    --- PASS: TestOwnershipUnregisteredUnknownOriginKeptWithReason/Reasons (0.83s)
+    --- PASS: TestOwnershipUnregisteredUnknownOriginKeptWithReason/MutantIsCaught (0.63s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.169s
+exit=0
+```
+
+**AC-OWR-05 (a)-(g) GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipAttestedManagedOnlyWithFullEvidence$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence (0.02s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/Positive (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/a-no-deployed-version (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/b-record-only-under-another-path (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/c-no-record-anywhere (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/c-no-generation-at-all (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/d-disk-bytes-differ-from-record (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/e-prior-provenance-user-created (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/f-prior-provenance-user-modified (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/g-prior-provenance-deprecated (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/g-prior-provenance-generated-managed (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/g-prior-provenance-empty (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/g-prior-provenance-unknown-string (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/n14-newest-incomplete-older-complete (0.00s)
+    --- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence/n15-deployed-hash-match-only (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.322s
+exit=0
+```
+
+**AC-OWR-05 (h) GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipAttestedManagedThroughOperatingSource$' -count=1 -v`
+
+```text
+--- PASS: TestOwnershipAttestedManagedThroughOperatingSource (0.02s)
+    --- PASS: TestOwnershipAttestedManagedThroughOperatingSource/h1-existing-untracked-file-is-recorded-user-created-and-stays-unregistered (0.01s)
+    --- PASS: TestOwnershipAttestedManagedThroughOperatingSource/h2-file-the-run-deployed-is-attested-managed (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.060s
+exit=0
+```
+
+**AC-OWR-06 (a) GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/manifest/ -run '^TestManifestRecordsDeployedVersion$' -count=1 -v`
+
+```text
+--- PASS: TestManifestRecordsDeployedVersion (0.01s)
+    --- PASS: TestManifestRecordsDeployedVersion/DeployPathStampsTemplateManagedEntries (0.00s)
+    --- PASS: TestManifestRecordsDeployedVersion/NonDeployPathsNeitherSetNorClear (0.00s)
+    --- PASS: TestManifestRecordsDeployedVersion/PersistsUnderTheDeployedVersionKeyAndOmitsEmpty (0.00s)
+    --- PASS: TestManifestRecordsDeployedVersion/LegacyJSONRoundTripsByteForByte (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.260s
+exit=0
+```
+
+**AC-OWR-06 (b)(c) GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestPriorManifestRetainedInRunBackup|TestPriorGenerationSourceBoundedAndTolerant)$' -count=1 -v`
+
+```text
+--- PASS: TestPriorManifestRetainedInRunBackup (4.10s)
+--- PASS: TestPriorGenerationSourceBoundedAndTolerant (0.01s)
+    --- PASS: TestPriorGenerationSourceBoundedAndTolerant/BoundedToTheNewestEight (0.01s)
+    --- PASS: TestPriorGenerationSourceBoundedAndTolerant/DamagedGenerationsAreNoEvidenceAndDoNotKillTheRun (0.00s)
+    --- PASS: TestPriorGenerationSourceBoundedAndTolerant/CurrentRunDirectoryIsExcluded (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.289s
+exit=0
+```
+
+**AC-OWR-20 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestBackupFailureRemovesNothingThroughProductionPath$' -count=1 -v`
+
+```text
+--- PASS: TestBackupFailureRemovesNothingThroughProductionPath (4.02s)
+    --- PASS: TestBackupFailureRemovesNothingThroughProductionPath/a-prior-manifest-copy-fails (1.53s)
+    --- PASS: TestBackupFailureRemovesNothingThroughProductionPath/b-candidate-bytes-copy-fails (1.14s)
+    --- PASS: TestBackupFailureRemovesNothingThroughProductionPath/c-twin-without-injection-removes-all-three (1.35s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.035s
+exit=0
+```
+
+**AC-OWR-21 GREEN** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ ./internal/manifest/ -run '^(TestPriorManifestAtomicWriteFailures|TestPriorGenerationCorruptIsNoEvidence|TestLegacyManifestRoundTrip|TestDowngradeDropsEvidenceNotSafety|TestPriorGenerationsAreLookupBoundOnly)$' -count=1 -v`
+
+```text
+--- PASS: TestPriorManifestAtomicWriteFailures (0.04s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/o-normal-run-goes-through-temp-then-rename (0.01s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/p-failure-during-the-temporary-write (0.01s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/q-failure-between-the-temporary-write-and-the-rename (0.01s)
+    --- PASS: TestPriorManifestAtomicWriteFailures/r-real-rename-failure-onto-an-occupied-name (0.01s)
+--- PASS: TestPriorGenerationCorruptIsNoEvidence (0.03s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/intact (0.00s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/truncated-json (0.00s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/empty-file (0.00s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/json-but-not-a-manifest (0.00s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/json-object-without-files (0.01s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/directory-in-place-of-the-file (0.00s)
+    --- PASS: TestPriorGenerationCorruptIsNoEvidence/only-a-temporary-name-exists (0.00s)
+--- PASS: TestLegacyManifestRoundTrip (0.01s)
+--- PASS: TestDowngradeDropsEvidenceNotSafety (0.01s)
+    --- PASS: TestDowngradeDropsEvidenceNotSafety/newer_binary's_generation_attests (0.00s)
+    --- PASS: TestDowngradeDropsEvidenceNotSafety/after_the_older_binary_saved,_the_file_is_kept (0.00s)
+    update_prior_manifest_io_test.go:544: G-K measurement: without prior manifests 5 run backups survive [20260101_000008 20260101_000009 20260101_000010 20260101_000011 20260101_000012]; with distinct prior manifests 8 survive [20260101_000005 20260101_000006 20260101_000007 20260101_000008 20260101_000009 20260101_000010 20260101_000011 20260101_000012]
+--- PASS: TestPriorGenerationsAreLookupBoundOnly (0.52s)
+    --- PASS: TestPriorGenerationsAreLookupBoundOnly/OnlyTheReaderUsesTheBound (0.38s)
+    --- PASS: TestPriorGenerationsAreLookupBoundOnly/SameRuleWithAndWithoutPriorManifest (0.07s)
+    --- PASS: TestPriorGenerationsAreLookupBoundOnly/MeasuredWhenEveryRunHoldsADifferentPriorManifest (0.08s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.242s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.132s [no tests to run]
+exit=0
+```
+
+
+**기준선 11개 + 마이그레이션·갱신 61시험 묶음 (회귀 가드, 트리 `a10e4a65df5b0b69955275636125169079cfb191`)**
+
+```text
+--- PASS: TestMigrationClassifiesUnregisteredMirrorCopy (0.49s)
+--- PASS: TestMigrationKeepsSharedCopyUnderProfileReach (0.66s)
+--- PASS: TestMigrationRemovesSharedCopyWithoutProfileReach (0.56s)
+--- PASS: TestMigrationBackupBeforeRemoval (1.02s)
+--- PASS: TestEmptiedSkillDirRemoved (2.73s)
+    --- PASS: TestEmptiedSkillDirRemoved/emptied_dir_removed_with_its_last_file (1.45s)
+    --- PASS: TestEmptiedSkillDirRemoved/dir_with_user_content_stays (1.29s)
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (1.45s)
+--- PASS: TestMigrationRemovalGate (2.35s)
+--- PASS: TestRF2F3b_MigrationPreservesUntracked (0.01s)
+moai-cli-test: userHomeDirFn redirected real home to sandbox /private/tmp/own-fixture-d1/moai-cli-home-1420669734
+--- PASS: TestMigrationIdempotent (1.53s)
+--- PASS: TestMigrationPreservesExistingMirrorEntries (1.56s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.206s
+exit=0
+```
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/cli	50.524s
+exit=0
+```
+
+(둘째 묶음은 `update_migrate_test.go`, `fix_round3_cli_test.go`, `migrate_profile_reach_test.go`, `migrate_removal_*_test.go`, `m0_doctor_red_test.go`, `update_dryrun_preview*_test.go`, `update_dry_run_reach_test.go`, `update_manifest_retrack_test.go`, `update_template_sync*_test.go` 의 모든 최상위 시험 61개를 앵커된 `-run` 으로 쓸어낸 것이다.)
+
+**M0 도우미 시험 + 얼린 기준선 비교**
+
+```text
+--- PASS: TestOwnershipHelperTreeSnapshotSeesDirMtime (0.01s)
+    migrate_ownership_helpers_test.go:980: force=false run=1 skipped=false
+    migrate_ownership_helpers_test.go:985: force=false run=2 skipped=true
+    migrate_ownership_helpers_test.go:990: force=true  run=3 skipped=false
+    migrate_ownership_helpers_test.go:995: force=false run=4 skipped=true
+--- PASS: TestOwnershipHelperForcedRunReachesReconciliation (3.65s)
+--- PASS: TestOwnershipHelperUsesRealEmbeddedPaths (1.98s)
+--- PASS: TestProfileCallsiteBaselineMatchesTree (6.79s)
+--- PASS: TestOwnershipHelperFixtureBuilders (0.01s)
+    --- PASS: TestOwnershipHelperFixtureBuilders/RegisteredUserCreatedAndTreeDiff (0.01s)
+    --- PASS: TestOwnershipHelperFixtureBuilders/TemporaryHomeGuard (0.00s)
+    --- PASS: TestOwnershipHelperFixtureBuilders/CanaryProfileStates (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.917s
+exit=0
+```
+
+**품질 측정 (트리 `a10e4a65df5b0b69955275636125169079cfb191`)**
+
+- `gofmt -l internal/cli internal/manifest` → 빈 출력, `exit=0`.
+- `go vet ./internal/cli/ ./internal/manifest/` → `exit=0`. `go build ./...` → `exit=0`. `GOOS=windows GOARCH=amd64 go build ./...` → `exit=0` (새 코드는 `os`/`path/filepath` 만 쓴다).
+- `golangci-lint run ./internal/manifest/ ./internal/cli/` (v2.1.6) → 3 issues, 모두 `internal/cli/factory_run_adopt.go:79:15`, `:91:14`, `:103:14` 의 `errcheck` (`fmt.Fprintf` 반환값). 그 파일은 기준 `cdd72a814` 와 바이트 동일하다 (`git diff --quiet cdd72a814 HEAD -- internal/cli/factory_run_adopt.go` → `exit 0`; 카드 t1707 의 기존 부채). 이 카드가 만든 파일에는 이슈가 0건이다. 범위 규율로 고치지 않았다.
+- `go test ./internal/manifest/ -count=1 -cover` → `coverage: 89.7% of statements` (`exit=0`). `internal/cli` 는 패키지 전체를 돌리지 않는 제약 때문에 패키지 단위 커버리지를 재지 못했다 (Gaps). 대신 이 chunk 의 시험 묶음에 `-coverprofile` 을 걸어 새 코드의 함수별 커버리지를 쟀다: `classifyOwnership` 90.5%, `classifyUnregistered` 100%, `disposition` 100%, `reasonTag` 100%, `provenanceEvidence` 100%, `backUpRemovalCandidates` 100%, `writePriorManifest` 100%, `readPriorGenerations` 97.1%, `recordManifestDeployedVersion` 100%, `readStartManifest` 100%; 이 측정 뒤에 빈 가지를 `migrate_ownership_vocabulary_test.go` 로 메웠고, 그 두 시험만 따로 돌려 다시 쟀다 (`go test ./internal/cli/ -run '^(TestKeepReasonVocabularyIsClosed|TestPreservePriorManifestOutcomes)$' -count=1 -v -coverprofile=…`, 트리 `a10e4a65df`, 두 시험 `--- PASS`, `exit=0`): `valid` 100%, `isKnownKeepReason` 100%, `preservePriorManifest` 100%, `writePriorManifestTemp` 50.0% (임시 파일의 쓰기·동기화·닫기 실패 가지는 이 환경에서 유발할 수 없어 닿지 못했다 — Gaps).
+- 서브에이전트 경계 grep (`AskUserQuestion` 을 새 비시험 파일 다섯에서 찾기) → 일치 없음, `exit=1`.
+- `removalEnabled` 비시험 대입 스캔 (`grep -rn --include='*.go' --exclude='*_test.go' 'removalEnabled\s*=' internal`) → 선언 한 줄 (`internal/cli/migrate_project_assets.go:39:var removalEnabled = false`) 뿐, `exit=0`. 이 chunk 의 제거 관련 시험은 모두 `enableRemovalForTest` 로 스위치를 시험 안에서만 켠다.
+- 보호 파일 불변: `git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile` → `exit=0`. AC-OWR-08 명령 2 형식: `git log --oneline cdd72a814..HEAD --grep='(card t1865)' -- internal/config/protected_zone.go internal/config/userroots.go internal/profile` → 빈 stdout, `exit=0`; 양성 대조군 `-- .moai/specs` → 한 줄 이상 (측정 시 10줄, `exit=0`). AC-OWR-21 (e) 명령 2: `... -- internal/cli/update/backup` → 빈 stdout, `exit=0`.
+
+**변이 점검 (이 chunk 의 핵심 변이를 구현에 직접 주입해 시험이 붉어지는지 관측, 주입 뒤 원상 복구함)**
+
+| 변이 | 붉어진 시험 |
+|------|-------------|
+| 이전 매니페스트를 최종 이름에 직접 쓰기 | `TestPriorManifestAtomicWriteFailures` o, p, q (r 은 AC 가 말한 대로 못 가른다) |
+| 사본을 재직렬화 | `TestPriorManifestRetainedInRunBackup` |
+| Backup 단계가 사본 실패를 삼키고 성공을 인계 | `TestBackupFailureRemovesNothingThroughProductionPath/a-prior-manifest-copy-fails` |
+| 후보 파일 바이트 사본 실패를 건너뛰고 제거 계속 | `.../b-candidate-bytes-copy-fails` |
+| `Track` 이 이미 있는 배포 버전을 지움 / 어디서나 지어냄 / `user_created` 도 도장 | `TestManifestRecordsDeployedVersion` 의 해당 하위 시험 |
+| 세대 상한 없이 읽기 | `TestPriorGenerationSourceBoundedAndTolerant/BoundedToTheNewestEight` |
+| 매 실행 `DeployedAt` 갱신 / 배포 저장에서 모든 항목에 버전 찍기 | `TestPriorManifestRetainedInRunBackup` |
+| 이전 기록 출처값 무시 | `TestOwnershipAttestedManagedOnlyWithFullEvidence` e, f, g 와 n14 |
+| 오래된 세대가 새 세대를 이김 | `.../n14-newest-incomplete-older-complete` |
+| 바이트 일치 승격 대역 / 템플릿 디렉터리 이름 승격 대역 / 바이트 무시 분류기 | `MutantIsCaught` 서브 시험 (AC-OWR-02, -03, -04) |
+| 두 관측점을 정상으로 거친 뒤 최종 이름을 다시 직접 쓰기 (M-F) | **붉어지지 않음** (`ok`) — 부채 N24 가 공개한 한계이며 실측으로 확인했다 |
+
+**정직한 회계 (RED → GREEN 의 어긋남을 숨기지 않는다)**
+
+1. M1a 의 증거 시험 (c) 경우의 픽스처는 A 커밋에서 틀렸다: 「어느 경로에도 기록 없음」 이라면서 무관한 키의 기록이 디스크 바이트와 같은 해시를 가져 사실은 (b) 모양이었다. 구현을 붙이자 이 시험이 붉어져 알았고, C 커밋 `3133329a64` 에서 시험 파일의 그 한 기록만 다른 해시로 고쳤다. 단언은 바뀌지 않았다.
+2. M1b A 커밋의 도우미 `keysOf` 가 기존 `update_deny_migration_test.go` 의 `keysOf` 와 겹쳐 컴파일 오류가 하나 더 섞였다. RED 를 재기 전에 별도 커밋 `da53289c5f` 로 이름만 바꿨고 RED 셀은 그 뒤 트리에서 쟀다.
+3. `TestPriorManifestRetainedInRunBackup` 은 실행 백업 디렉터리 이름이 초 해상도이므로 빠른 두 실행이 한 디렉터리를 공유하면 흔들렸다 (한 번 붉음을 직접 관측). 시험 쪽에서 실행 2 와 3 앞에 1.1초를 기다리게 고쳤다 (`f8936c2070` 의 실행 3 대기, `9b0a503651` 의 실행 2 대기). 운영 동작은 바꾸지 않았다. 참고: 같은 초의 두 실행이 한 실행 백업을 공유하면 둘째 실행의 `manifest.prior.json` 이 이름 바꾸기로 첫째의 것을 원자적으로 대체한다.
+4. 변이 점검 중 `track-always-stamps` 변이 한 번은 컴파일 오류 (`prev` 미사용) 로 변이로서 성립하지 않아 다시 만들어 돌렸다 (표는 성립한 변이만 적었다).
+5. 이 chunk 의 A 커밋 직후에는 `internal/cli` 시험 패키지가 통째로 빌드되지 않으므로 그 시점에는 기준선 11개를 돌릴 수 없었다. 회귀 가드는 C 이후 트리에서 돌렸다.
+6. Manager 인터페이스에 메서드가 하나 늘었으므로 (`SetDeployingVersion`) 그 영향을 받는 패키지를 `go vet` 로 컴파일 확인했고 (`go vet ./internal/cli/ ./internal/cli/update/ ./internal/cli/update/backup/ ./internal/cli/update/merge/ ./internal/codexwiring/ ./internal/core/project/ ./internal/manifest/ ./internal/template/` → `vet-exit=0`, 트리 `f8936c2070`), `./internal/manifest/ ./internal/template/ ./internal/core/project/ ./internal/cli/update/backup/` 패키지 시험도 한 번 돌렸다 (모두 `ok`; `internal/template` 패키지 전체는 249초 걸렸다 — 무거운 실행 한 번이었음을 밝힌다).
+
+**Binding run conditions 처분 (이 chunk 의 파일에 닿는 것)**
+
+| 부채 | 처분 | 근거 |
+|------|------|------|
+| N14 세대 우선순위 없음 | 처분됨 (고침, 보존 방향) | 레코드를 가진 가장 새 세대가 결정한다. `provenanceEvidence`, 시험 `n14-newest-incomplete-older-complete` + 변이 `older-gen-outvotes` 붉음 |
+| N15 `DeployedHash` 일치 허용 | 처분됨 (고침, 보존 방향) | 비교를 `TemplateHash` 한 가지로 좁혔다 (등록 경로와 같다). design.md D-2 의 「(또는 DeployedHash)」 문구와 다르게 더 엄격하다 — 리더가 알아야 하는 편차로 아래에 올렸다. 시험 `n15-deployed-hash-match-only` |
+| N18 AC-OWR-20 (a)(b) 와 규칙 7 조건 (ii) | 처분됨 | (a) 에서는 새 유효 `manifest.prior.json` 이 만들어지지 않는 것이 시험의 요점이므로 도달을 「쓰기 함수 호출 1회 + 마이그레이션 도달」 로 단언했고, (b) 는 `rc.priorManifest == written` 으로 단언했다. 시험 주석에 적었다 |
+| N19 `.moai/config` 없을 때 실행 디렉터리 | 처분됨 | `preservePriorManifest` 가 설정 백업이 디렉터리를 만들지 않았으면 `ensureRunBackupDir` 로 새 실행 디렉터리 (`<프로젝트>/.moai-backups/<타임스탬프>/manifest.prior.json`) 를 만든다. 시험 「a fresh run directory when the config backup made none」 |
+| N20 건너뛴 `UserCreated` 항목에 `deployed_version` 없음 | 처분됨 | `Track` 은 `template_managed` 만 도장한다. 시험 `DeployPathStampsTemplateManagedEntries` 와 `h1-...` (실제 배포기로 만든 건너뛴 항목의 값이 비어 있음) |
+| N21 AC-OWR-20 (b) 의 `removalBackupWriter` | 처분됨 (SPEC 문구 결함으로 보고) | D-3 항목 5 가 정의하는 것은 `priorManifestWriter` 하나뿐이라 (b) 는 그 대역이 실행 디렉터리 안에 막는 디렉터리를 미리 만드는 방식으로 구현했다. REQ-OWR-005 문구 부분은 M2 chunk 의 몫 |
+| N22 AC-OWR-21 When 절의 구성 (o) 누락 | 처분됨 (시험이 (o) 를 가진다, SPEC 문구 결함으로 보고) | `TestPriorManifestAtomicWriteFailures/o-normal-run-goes-through-temp-then-rename` |
+| N24 변이 M-F 미검출 | 확인됨, 못 닫음 (공개한 한계) | 위 변이 표: 두 관측점을 정상으로 거친 뒤 최종 이름을 다시 쓰는 구현은 `ok`. 접근 기록 시임 없이는 닫을 수 없다 |
+| N23 (M8), N4 잔여 (M8), N16 (M2, 카드 t1702 보류 범위), N17 (M9) | 이월 | 각각 M8 / M2 / M9 를 맡는 chunk 로 넘긴다 |
+
+**SPEC 쪽 결함·불일치로 보고하는 것 (고치지 않았다)**
+
+- AC-OWR-21 의 판정 명령 1 은 `./internal/cli/ ./internal/manifest/` 를 함께 쓸지만 다섯 시험은 모두 `internal/cli` 에 있어 manifest 쪽은 `[no tests to run]` (`ok`) 이다 (규칙 4: 제로 매치는 통과가 아니다). 판정은 cli 줄의 다섯 `--- PASS` 로 성립한다.
+- AC-OWR-21 (a) 의 When 절에 (o) 가 없다 (N22), AC-OWR-20 (b) 가 정의되지 않은 `removalBackupWriter` 를 가리킨다 (N21).
+- AC-OWR-06 (b) 가 말하는 「사용자 수정 파일이 있어 실행 2 가 그 파일을 다시 배포하지 않는다」 는 이 트리에서 프로젝트 쪽 공통 자산 (스킬·에이전트) 이 프로젝트 배포기에 의해 배포되지 않는다는 사실 (사용자 홈 설치로 이전) 에 기대야 성립한다. 시험은 배포되지 않는 공통 자산 항목 두 개 (오래된 도장이 있는 것, 없는 것) 로 「배포하지 않은 항목은 지어지지도 지워지지도 않는다」 를 단언했다.
+- design.md D-3 항목 1 은 「`Track` 이 찍는다」 고만 적었으나 `Track` 은 배포 경로와 재추적 경로가 공유하므로 둘을 가를 장치가 필요했다. 계획의 파일 목록 안에서 `Manager` 에 배포 창 설정 메서드 `SetDeployingVersion` 을 더하는 방식으로 풀었다 (`internal/template/deployer.go` 는 건드리지 않았다). 인터페이스 확장이 계획의 명시적 선택은 아니므로 리더가 승인 여부를 알아야 한다.
+- 갭 G-K 를 실측했다 (acceptance.md 는 「측정하지 않았다」): 실행 백업 12개, `PruneBackups(…, 5, 0)`; `manifest.prior.json` 이 없으면 5개가 남고, 실행마다 내용이 다른 `manifest.prior.json` 이 있으면 8개가 남는다 (센서스가 서로 다른 버전을 보호 대상으로 세어 오래된 3개를 더 남김). 정책은 바꾸지 않았고 기존 `pastKeep` 한도 안이지만, 이 SPEC 이 실행 백업마다 파일 하나를 더하므로 디스크 사용이 정책의 상한까지 늘어난다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
