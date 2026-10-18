@@ -184,6 +184,38 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.483s
 FAIL
 ```
 
+
+### GREEN-M2 — core implemented (same command as RED-M2, flipped; tree = M2 GREEN commit)
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_' -count=1 -v`
+Exit code: 0 (verbatim result lines)
+```
+--- PASS: TestAffectedScope_DirectDependents (0.00s)
+--- PASS: TestAffectedScope_TestImportEdges (0.00s)
+--- PASS: TestAffectedScope_Ownership (0.00s)
+--- PASS: TestAffectedScope_TestOnlyNarrows (0.00s)
+--- PASS: TestAffectedScope_DeletedAndRenamed (0.00s)
+    --- PASS: TestAffectedScope_DeletedAndRenamed/deleted_last_file_of_a_package (0.00s)
+    --- PASS: TestAffectedScope_DeletedAndRenamed/rename_inside_a_package (0.00s)
+    --- PASS: TestAffectedScope_DeletedAndRenamed/rename_across_packages_reports_both_directories (0.00s)
+--- PASS: TestAffectedScope_DropAndEmpty (0.00s)
+    --- PASS: TestAffectedScope_DropAndEmpty/a_selection_with_one_untested_package (0.00s)
+    --- PASS: TestAffectedScope_DropAndEmpty/a_changed_list_holding_only_a_docs_file (0.00s)
+    --- PASS: TestAffectedScope_DropAndEmpty/every_selected_package_is_untested (0.00s)
+    --- PASS: TestAffectedScope_DropAndEmpty/no_changed_list_at_all (0.00s)
+--- PASS: TestAffectedScope_WideningTriggers (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/flat_go.mod (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/flat_go.sum (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/flat_go.work (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/flat_go.work.sum (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/flat_.moai/config/build-tags (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/nested_module,_trigger_at_the_repository_root:_go.work (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/nested_module,_trigger_at_the_repository_root:_.moai/config/build-tags (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/nested_module_without_a_trigger_narrows (0.00s)
+    --- PASS: TestAffectedScope_WideningTriggers/a_nested_go.mod_anywhere_widens (0.00s)
+--- PASS: TestAffectedScope_RootPackageAndAncestorFallback (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.651s
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
