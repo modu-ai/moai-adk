@@ -11,9 +11,11 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -133,6 +135,83 @@ func TestMigrationBackupBeforeRemoval(t *testing.T) {
 	if _, found := disk.GetEntry(migIdenticalSkill); found {
 		t.Errorf("the removed file's manifest entry resurrected after the full update flow")
 	}
+}
+
+// TestRemovalBackupRefusesPlantedSymlinkDestination — sync-audit D1 (card
+// t1668): the removal-backup DESTINATION is project-controlled content. A
+// symlink planted under the run backup directory must never route the
+// pre-removal copy outside the project, and a symlink planted at the copy
+// path itself must never turn the backup into a no-copy write onto the
+// source. Both shapes refuse the removal: the file stays project-side and
+// the run reports the refusal.
+func TestRemovalBackupRefusesPlantedSymlinkDestination(t *testing.T) {
+	t.Run("removed_assets_dir_symlinked_outside", func(t *testing.T) {
+		enableRemovalForTest(t)
+		root := buildMigrationFixture(t)
+		home := installMigrationUserCounterparts(t)
+		outside := t.TempDir()
+
+		// The run backup directory the migration will reuse (the rc path
+		// makes the destination deterministic), with removed-assets planted
+		// as a symlink pointing outside the project.
+		runDir := filepath.Join(root, ".moai-backups", "20260101_000000")
+		if err := os.MkdirAll(runDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, filepath.Join(runDir, "removed-assets")); err != nil {
+			t.Fatal(err)
+		}
+
+		rc := &migrationRunContext{runBackupDir: runDir}
+		var lines []string
+		removed, err := migrateProjectCommonAssets(root, home, true, nil, func(format string, args ...interface{}) {
+			lines = append(lines, fmt.Sprintf(format, args...))
+		}, rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(removed) != 0 {
+			t.Errorf("the migration removed %v despite the unsafe backup destination", removed)
+		}
+		assertFilePresent(t, root, migIdenticalSkill)
+		if !slices.ContainsFunc(lines, func(l string) bool {
+			return strings.Contains(l, "removal refused") && strings.Contains(l, migIdenticalSkill)
+		}) {
+			t.Errorf("no removal-refused line for %s in the migration output: %q", migIdenticalSkill, lines)
+		}
+		if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+			t.Errorf("the backup write escaped through the planted symlink: %v", entries)
+		}
+	})
+
+	t.Run("dst_symlink_onto_source_refused", func(t *testing.T) {
+		root := t.TempDir()
+		src := filepath.Join(root, "asset.md")
+		if err := os.WriteFile(src, []byte("the only copy"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		runDir := filepath.Join(root, ".moai-backups", "20260101_000000")
+		if err := os.MkdirAll(filepath.Join(runDir, "removed-assets"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		dst := filepath.Join(runDir, "removed-assets", "asset.md")
+		if err := os.Symlink(src, dst); err != nil {
+			t.Fatal(err)
+		}
+
+		rc := &migrationRunContext{runBackupDir: runDir}
+		err := backupRemovedAsset(root, rc, "asset.md", []byte("the only copy"))
+		if err == nil {
+			t.Fatal("the backup write followed a symlink planted at the destination — the copy is a no-write and os.Remove would take the only copy")
+		}
+		if !strings.Contains(err.Error(), "BACKUP_DEST_UNSAFE") {
+			t.Errorf("the refusal does not carry the destination-unsafe sentinel: %v", err)
+		}
+		// The planted link is intact and no regular-file copy replaced it.
+		if info, statErr := os.Lstat(dst); statErr != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("the planted symlink was disturbed: %v (%v)", info, statErr)
+		}
+	})
 }
 
 // TestEmptiedSkillDirRemoved is AC-RC30-11 (U-10, REQ-RC30-004): a skill

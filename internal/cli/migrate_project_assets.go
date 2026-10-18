@@ -74,6 +74,11 @@ type migrationRunContext struct {
 // writes in the same run directory (the diskBackupSubdir pattern).
 const migrationBackupSubdir = "removed-assets"
 
+// backupDestUnsafeSentinel prefixes every destination-guard refusal in
+// backupRemovedAsset, so the refused removal's cause is grep-able in run
+// output (the ARCHIVE_SYMLINK precedent).
+const backupDestUnsafeSentinel = "BACKUP_DEST_UNSAFE:"
+
 // backupRemovedAsset writes a byte copy of a file that is about to be removed
 // into the run backup (REQ-RC30-004, U-02 / AC-RC30-03). It reuses
 // ensureRunBackupDir so a run keeps exactly one backup directory: an
@@ -81,6 +86,18 @@ const migrationBackupSubdir = "removed-assets"
 // update flow, a fresh timestamped one for a standalone migration call. The
 // directory is memoized back into rc so later removals in the same run reuse
 // it.
+//
+// The destination gets the mirror of the removal point's source-side guard
+// (sync-audit D1, card t1668): the run directory is project-controlled
+// content, so a symlink planted under it would route the write outside the
+// project — or onto the source file itself, turning the backup into a
+// no-copy right before os.Remove takes the only copy. The guard resolves the
+// trusted run directory once and verifies EVERY destination component below
+// it BEFORE creating anything (a verify-then-MkdirAll order — creating
+// first and resolving after would still litter the symlink's target), then
+// creates exclusively. Any refusal surfaces as a backup-write failure, which
+// the removal point treats as refuse-the-removal (the file stays
+// project-side, reported).
 func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash string, data []byte) error {
 	dir := ""
 	if rc != nil {
@@ -93,14 +110,58 @@ func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash st
 	if rc != nil {
 		rc.runBackupDir = runDir
 	}
-	dst := filepath.Join(runDir, migrationBackupSubdir, filepath.FromSlash(relSlash))
-	if err := os.MkdirAll(filepath.Dir(dst), defs.DirPerm); err != nil {
-		return fmt.Errorf("create %s: %w", filepath.Dir(dst), err)
+	trustedRunDir, err := filepath.EvalSymlinks(runDir)
+	if err != nil {
+		return fmt.Errorf("%s resolve run backup dir %s: %w", backupDestUnsafeSentinel, runDir, err)
 	}
-	if err := os.WriteFile(dst, data, defs.FilePerm); err != nil {
+	dst := filepath.Join(trustedRunDir, migrationBackupSubdir, filepath.FromSlash(relSlash))
+	// Walk every component of the destination below the trusted run dir:
+	// each must be absent (creatable) or a real directory — a symlink at
+	// ANY depth would route the write outside, and a ".." component would
+	// leave the trusted root entirely. The final component must be absent
+	// outright (an existing entry there — symlink included — is refused,
+	// closing the no-copy-onto-source shape).
+	relToRun, err := filepath.Rel(trustedRunDir, dst)
+	if err != nil {
+		return fmt.Errorf("%s relate destination %s: %w", backupDestUnsafeSentinel, dst, err)
+	}
+	parts := strings.Split(filepath.ToSlash(relToRun), "/")
+	check := trustedRunDir
+	for i, part := range parts {
+		if part == ".." || part == "" {
+			return fmt.Errorf("%s destination component %q of %s is not a relative in-root path", backupDestUnsafeSentinel, part, relSlash)
+		}
+		check = filepath.Join(check, filepath.FromSlash(part))
+		info, statErr := os.Lstat(check)
+		if os.IsNotExist(statErr) {
+			continue
+		}
+		if statErr != nil {
+			return fmt.Errorf("%s stat destination component %s: %w", backupDestUnsafeSentinel, check, statErr)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s destination component %s is a planted symlink", backupDestUnsafeSentinel, check)
+		}
+		if i < len(parts)-1 && !info.IsDir() {
+			return fmt.Errorf("%s destination component %s is not a directory", backupDestUnsafeSentinel, check)
+		}
+		if i == len(parts)-1 {
+			return fmt.Errorf("%s destination %s already exists", backupDestUnsafeSentinel, check)
+		}
+	}
+	dstDir := filepath.Dir(dst)
+	if err := os.MkdirAll(dstDir, defs.DirPerm); err != nil {
+		return fmt.Errorf("create %s: %w", dstDir, err)
+	}
+	f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, defs.FilePerm)
+	if err != nil {
+		return fmt.Errorf("%s exclusive create %s: %w", backupDestUnsafeSentinel, dst, err)
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
-	return nil
+	return f.Close()
 }
 
 // migrateProjectCommonAssets removes template-managed common skills and
