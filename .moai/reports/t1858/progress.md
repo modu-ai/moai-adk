@@ -60,3 +60,15 @@ Files changed in sync (docs only; no spec/scripts/internal/.github/test/rules to
 - `.moai/docs/batch-failure-bisect-runbook.md` - three statements that named `CI_REQUIRED_CHECKS` as the home of the required check names now name the `release_gate` list of `.github/required-checks.yml` (a rename is a one-place edit there; missing/empty file makes the script refuse).
 
 Commands run: `grep -n '^### Fixed' CHANGELOG.md`; `grep -n 'CI_REQUIRED_CHECKS\|release_gate' .moai/docs/batch-failure-bisect-runbook.md`; `git diff --stat`; `ls .github/required-checks.yml internal/config/required_checks_release_gate_test.go`. No markdown or docs lint exists in the Makefile (grep for markdownlint/docs-check/lint-md returned nothing), so none was run.
+
+## Sync audit round 1: FAIL, repair spawn blocked (lane-31)
+
+Verdict: `.moai/reports/t1858/sync-audit.md` = FAIL @`f9458ae18`; required backend codex `fail`, receipts `rcpt-b6a0f22a9eee365cd060f299` (audit_multi) and `rcpt-b2c03755b996d645bf1ea108` (standalone codex). Defects: F1 BLOCKING (the gate only checks "non-empty": a `release_gate` shortened to `- Lint` lets a tag through on a lone green Lint; reproduced by the auditor's awk probes and by codex end to end), F2 SHOULD-FIX (CRLF, trailing comment, single quote misparse), F3 MINOR (stale `CI_REQUIRED_CHECKS` comment and die text), F4 MINOR (subset test too weak).
+
+Repair plan (the lane's judgment, ladder terminal step): pin the demanded set in two CI-enforced layers without a check literal in `scripts/`: (a) `internal/config` test asserting `release_gate` equals exactly the three names, no duplicates; (b) `internal/template` tests driving the REAL script against the REAL SSoT with one name missing at a time and a Lint-only page; plus strict awk (reject CRLF residue, trailing comment, single quote, duplicate name/key) and fixed wording.
+
+Blocked, verbatim deny from the real `Agent(manager-develop)` spawn attempt:
+```
+PreToolUse:Agent hook error: AUDIT_RECEIPT_VIOLATION: manager-develop cannot be spawned while an audit PASS stands unproven in /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858. Outstanding: sync-auditor / unknown-spec / verdict line missing. Re-run the audit through codex_audit or audit_multi and let the auditor end with a verdict line citing the receipt.
+```
+Facts read from the tree (read-only, nothing deleted or edited): `.moai/state/audit-receipts/rejections/sync-auditor--unknown-spec.json` = agent_id `a39f63408f3184be8`, cause `verdict line missing`, rejected_at `2026-10-18T01:13:24.954843Z`, reentry_warned true; `starts/` holds 0 files, `rejections/` holds 1 file. The same auditor agent_id ended with a FAIL verdict line (`AUDIT-VERDICT: FAIL spec=t1858 receipts=…`), committed with this note. The lane does not clear the record, does not substitute another agent type, and does not edit code itself; it asks the leader to clear the record under standing c305, after which the repair spawn runs.
