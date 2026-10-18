@@ -9,7 +9,7 @@ Base tree **B0** = `f4bcd4f2cc65342559b505f1e5a29df80f992894` (local `main` at t
 ### A.1 Data model and identity (highest change risk)
 
 - **One mutable row per card id, copies are sealed.** `card_current` keeps the legacy column names so the 15 statements that name `cards` change by table name only (§ I). Reversal cost: high after any deployment is cut over; the rollback verb is the exit.
-- **Attempt = run-bound engagement** (decision-index Q2). A lease re-grant is a transition. Reversal cost: adding per-grant attempts later is additive (a new `source` value), removing them is not.
+- **Attempt = one lease grant or run engagement, sealed when it ends** (decision-index Q2, ruled: design principle 6). Every write that clears a holder, reassigns, moves run or re-picks a terminal card seals the pre-write record in its own transaction (REQ-CDI-023). Cost: one archive row per ended grant. Reversal cost: high once rows exist.
 - **Project scope = empty `run_id` on a non-terminal record** (Q3). The alternative (force a destination at cutover) adds an input to every cutover.
 - **Sealed legacy rows plus a retained `cards_pre_cutover`.** Two verbatim copies of each legacy row exist after the cutover by design: the immutable attempt (the history) and the retained table (the rollback and count reference).
 - **Layout is the database's property** (Q1, Q4): marker on `meta.schema_version`, never a per-open read of the key.
@@ -27,14 +27,14 @@ The eight facts S-1 to S-8 of `spec.md` § E.2 are the interface; `design.md` §
 
 - `moai factory identity report [--emit <path>]` (read-only), `identity cutover --resolutions <path>`, `identity rollback`; `moai factory reconcile [--card <id>|--all]`; `moai factory runs --retire <run> [--into <run>]`.
 - Lane sessions are refused for `cutover` and `rollback` (the guard `factoryLaneRefusal` already refuses decisions in lanes).
-- `relaunch --from-run` passes its `--run` as the destination; its help text, which says it "does not migrate card leases or worktrees" (`factory_relaunch.go`, verb long description), is rewritten for the identity layout.
+- On a refused migration `relaunch --from-run` prints the left-active line and still launches (REQ-CDI-016). It passes its `--run` as the destination; its help text, which says it "does not migrate card leases or worktrees" (`factory_relaunch.go`, verb long description), is rewritten for the identity layout.
 - Operator-facing text follows the neighbours (English, identifiers verbatim). No prompt is added; the verbs take everything from flags and files (the subagent boundary forbids prompts).
 - Exit codes: `0` done; `1` refusal on a precondition (nothing written); `2` validation failure inside the transaction (rolled back). Output names the failing check by the ids V-1 to V-7 and R-1 to R-4 of design.md.
 
 ### A.4 The operation journal
 
 - Four kinds, closed (S-8). Images are held in the journal, so the queue's table and the lock record do not change (Out of Scope).
-- Decisions are a pure function of rows and readbacks, with no clock (REQ-CDI-019); the 13-cell table in design.md § 6.3 is the specification and the test list.
+- Decisions are a pure function of rows and readbacks, with no clock (REQ-CDI-019); the 14-cell table in design.md § 6.3 is the specification and the test list.
 - Separable: the journal does not change the identity layout. If the plan-audit ceiling forces a split, the second part is M6 (cut line in § C).
 
 ### A.5 Rollout, rollback, compatibility
@@ -48,7 +48,7 @@ The eight facts S-1 to S-8 of `spec.md` § E.2 are the interface; `design.md` §
 No prerequisite card has to land first. At run entry the run re-reads, on the tree it starts from, and records in `progress.md` § E.2:
 
 - **B-1 coordinates.** `grep -n "PRIMARY KEY(run_id, card_id)" internal/homestate/factory.go` (line 77 at B0), `grep -rn "FROM cards\|INTO cards\|UPDATE cards\|JOIN cards" internal --include='*.go' --exclude='*_test.go'` (15 lines at B0, § I), `grep -n "const factorySchemaVersion" internal/homestate/factory.go` (6 at B0).
-- **B-2 schema base.** If stage E's migration landed first the base is higher; every fixture is built from the run-entry tree's own schema (AC-CDI-006), and M1's helper keeps the marker beside whatever base the chain ends at.
+- **B-2 schema base.** If stage E's migration landed first the base is higher, and if it adds a `cards` column it follows design § 2.7 (the `cards` view cannot be altered; alter the three tables and rebuild the view and its triggers); every fixture is built from the run-entry tree's own schema (AC-CDI-006), and M1's helper keeps the marker beside whatever base the chain ends at.
 - **B-3 the legacy retire guard.** If SPEC-FACTORY-RETIRE-GUARD-001 (card t1852) has landed, `RetireRunIfDead` carries its typed refusal; the identity branch is placed before it and the legacy branch keeps it. If it has not, the legacy branch is the B0 behavior. AC-CDI-002 holds in both orders.
 - **B-4 stage A.** If a re-planned stage A has landed a grant table, AC-CDI-013 adds the real table as a second fixture.
 - **B-5 the ceiling record.** `moai spec ceiling` counts rounds only from `plan-audit.md` and `plan-audit-iter<N>.md` in `.moai/reports/t1842/`; verdict files use those names.
@@ -69,7 +69,7 @@ The `TestCDI_*` family as failing tests, compiling against declarations that ret
 
 ### M3 — Identity-layout records
 
-Statement routing, `ErrCardNotMember`, `ErrCardEngaged`, seal, join, re-pick, version and `attempt_no` monotonicity, cross-run readers. AC-CDI-011, AC-CDI-012, AC-CDI-013 (the join and seal halves), AC-CDI-016 (join half).
+Statement routing, `ErrCardNotMember`, `ErrCardEngaged`, the seal writers of design § 4.4 (REQ-CDI-023, AC-CDI-025), join, re-pick, version and `attempt_no` monotonicity, cross-run readers. AC-CDI-011, AC-CDI-012, AC-CDI-013 (the join and seal halves), AC-CDI-016 (join half), AC-CDI-025.
 
 ### M4 — Retirement as migration
 
@@ -141,3 +141,27 @@ The fifteen lines that name `cards` in non-test code at B0 (`grep -rn "FROM card
 | 15 | `internal/factory/gtd_operation.go:558` | read (`run_id` and `card_id`) | the view; a card not in that run reads as zero rows, as a missing row does today |
 
 Writers are rows 2, 3 and 11 plus the new seal, join and migration writers; every other row is a reader. A reader that must see sealed attempts reads `card_attempts` by name; none reads a sealed attempt as a lease (REQ-CDI-012, AC-CDI-011).
+
+## J. Revision after plan audit iteration 1 (FAIL 0.74)
+
+Source: `.moai/reports/t1842/plan-audit.md`. Probes for every engine claim below ran under the project driver (`modernc.org/sqlite` v1.60.1, SQLite 3.53.4) in a scratch program, not on the command line (research.md § 6). Lane rulings: Q2 follows design principle 6; Q7 is strict.
+
+| Defect | Disposition | Where |
+|--------|-------------|-------|
+| D1 rollback keeps trigger names | Fixed: rollback drops and recreates triggers and indexes under `__rb<N>` names; AC extended (new tables refuse update, delete, replace after the second cutover; distinct names). Probe: six distinct trigger names, both tables protected. | design § 7, § 2.2; AC-CDI-010 |
+| D2 assign committed, lease not | Fixed: a queue claim is one operation across both transitions with a `progress` marker set in the assign transaction; new cell `queue_claim__assigned_only` (fourteen cells); relation to the `BeforeCommit` ordering stated. | design § 6.1 to § 6.3; REQ-CDI-017, REQ-CDI-019; AC-CDI-019 |
+| D3 conflict rule ignores owners and liveness | Fixed per ruling: strict rule on distinct owner labels plus unexpired lease or registered-worker holder on a row to be sealed; report lists owners and expiries; Q7 ruled. Fresh counts recorded. | REQ-CDI-003, REQ-CDI-005; design § 3.3 C-2; AC-CDI-003, AC-CDI-005; research § 4 |
+| D4 "removed by construction" overclaim | Fixed: wording narrowed to duplicate-row classes; surviving single-row hazards are an explicit out-of-scope item with seam S-2. | spec § E.3, § G; design § 8.1, § 8.2 |
+| D5 file-set byte identity | Fixed: invariant restated as `factory.db` plus table content, sidecars permitted; probe shows `mode=ro` creates `-wal`/`-shm`, `immutable=1` does not (not used, unsafe beside a writer). | REQ-CDI-003; design § 3.1; AC-CDI-003 |
+| D6 `attempt_no` across rollback | Fixed: per-card floor kept in the `__rb<N>` archive, next cutover numbers above it; AC-011 mix gains reassign, rollback and re-cutover. | REQ-CDI-007, REQ-CDI-011, REQ-CDI-012; design § 1, § 7; AC-CDI-011 |
+| D7 idempotence beyond in-flight rows | Fixed: intent lookup in every state with a defined return per terminal state; concurrent presentations resolve to one row. | REQ-CDI-018; design § 6.2; AC-CDI-018 |
+| D8 REPLACE onto a terminal journal row | Fixed: `BEFORE UPDATE` guard on `op_id`, `kind`, `intent_key`, `card_id`, `attempt_no`. Probe: the replace-onto statement aborts, the terminal row survives. | REQ-CDI-021; design § 2.2; AC-CDI-021 |
+| D9 sealed attempt is not a lease | Fixed: clause added to REQ-CDI-012 naming the readers. | REQ-CDI-012; AC-CDI-011 |
+| D10 Q2 narrowing | Fixed per ruling: principle 6 followed. Feasible: every write that ends a grant seals the pre-write record in its own transaction (one row per ended grant, no second transaction); no obstacle found, so no open row. | REQ-CDI-023; design § 4.4; AC-CDI-025; decision-index Q2 |
+| D11 column-adding migrations vs the view | Fixed: S-6 and D-5 scoped to the version string; rule for a column-adding migration stated and probed (alter the three tables, rebuild the view and triggers in one transaction). | spec D-5, S-6; design § 2.7; plan § B-2 |
+| D12 REQ-015 vs AC-014 columns | Fixed: `attempt_no` added to REQ-CDI-015. | REQ-CDI-015 |
+| D13 AC-023/024 trace | Fixed: D-8 added for AC-CDI-023; AC-CDI-024 is mapped to the plan's M0 ordering explicitly. | spec D-8, § H |
+| D14 existence-only RED and file-pinned E20 | Fixed: E00 note states the behavioral red is `baseline.md`; E20 replaced by a pair over the `operation_*.go` glob plus an import-graph test. | acceptance E00, E20a, E20b |
+| D15 `FactoryTablePresent` | Fixed: query `type IN ('table','view')` for `cards`; subtest added. | design § 9; AC-CDI-022 |
+| D16 relaunch after a refused migration | Fixed: stated (prints the left-active line, still launches, exit status as for any refused retirement). | REQ-CDI-016 |
+| D17 S-2 at cutover | Fixed: S-2 states the numbering at cutover. | spec S-2 |

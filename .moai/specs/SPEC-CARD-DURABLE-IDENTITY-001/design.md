@@ -9,8 +9,8 @@ How the requirements in `spec.md` are met. Names below are the names the run pha
 | legacy layout | The database as at B0: table `cards`, `PRIMARY KEY(run_id, card_id)`, `meta.schema_version` equal to the build's integer. |
 | identity layout | The database after the cutover: `meta.schema_version` carries the marker (§ 2.6) and the objects of § 2.1 exist. |
 | current record | The one mutable row per card id (table `card_current`). Its `run_id` is the open membership's run; the empty string means **project scope** (no open membership). |
-| attempt | One run-bound engagement of a card. A **sealed attempt** is an immutable row in `card_attempts`. The engagement in progress is the current record, numbered by `attempt_no`. |
-| `attempt_no` | Per card, strictly increasing. At the cutover, a card id's k legacy rows become sealed attempts 1..k, numbered by the run's `created_at` then `run_id` (a numbering order, never a selection); the current record continues as attempt k+1. |
+| attempt | One lease grant or run engagement of a card, whichever ends first (REQ-CDI-023). When it ends, its ending state is appended to `card_attempts` as an immutable **sealed attempt**; the open attempt is the current record, numbered by `attempt_no`. |
+| `attempt_no` | Per card, strictly increasing. At the cutover, a card id's k legacy rows become sealed attempts 1..k, numbered by the run's `created_at` then `run_id` (a numbering order, never a selection); the current record continues as attempt k+1. A rolled-back layout leaves a per-card floor (§ 7); the next cutover numbers above it, so `attempt_no` never falls across rollback and re-cutover. |
 | membership | A row in `card_membership` linking a card's attempt to a run. At most one is open per card. |
 | active card | A current record whose state is not `done`, `failed` or `abandoned` (`terminalStates`, `internal/homestate/card_record.go:74`). |
 | operation | One cross-store act of kind `queue_claim`, `card_grant`, `lock_acquire` or `git_merge`, recorded in `factory_operations`. |
@@ -24,7 +24,7 @@ How the requirements in `spec.md` are met. Names below are the names the run pha
 |--------|------|-------------------|
 | `card_current` | table | The 31 columns of the legacy `cards` table (`internal/homestate/card_record.go:159-162` lists them) plus `attempt_no INTEGER NOT NULL`. `PRIMARY KEY(card_id)`. Index on `(run_id, state)`. |
 | `card_attempts` | table | The same 31 columns plus `attempt_no`, `source` (`cutover` or `seal`), `sealed_at`, `seal_reason`, `seal_op_id`. `PRIMARY KEY(card_id, attempt_no)`. Never updated or deleted. |
-| `card_membership` | table | `card_id`, `attempt_no`, `run_id`, `state` (`open` or `closed`), `closed_reason`, `recorded_at`. `PRIMARY KEY(card_id, attempt_no)`. Index on `(run_id, state)`. |
+| `card_membership` | table | `card_id`, `first_attempt_no`, `last_attempt_no`, `run_id`, `state` (`open` or `closed`), `closed_reason`, `recorded_at`. `PRIMARY KEY(card_id, first_attempt_no)`. A membership spans every attempt of one card in one run; at the cutover each legacy row gets its own (first equals last). Index on `(run_id, state)`. |
 | `cards_pre_cutover` | table | The legacy table renamed, rows untouched, guarded by the same immutability triggers. Retained for rollback and for the count check; purging it is out of scope. |
 | `cards` | view | Read-only projection of `card_current` in the legacy 31-column shape, with `INSTEAD OF` insert, update and delete triggers that abort with the text `factory identity cutover: this build predates the identity layout; upgrade moai`. |
 | `factory_operations` | table | The journal (§ 6). |
@@ -33,7 +33,9 @@ A fresh database on the legacy layout creates none of these and `factoryDDL` (`i
 
 ### 2.2 Immutability (REQ-CDI-008, REQ-CDI-021)
 
-`card_attempts`, `cards_pre_cutover` and terminal `factory_operations` rows carry three `BEFORE` triggers each: `UPDATE` and `DELETE` abort, and an `INSERT` whose primary key already exists aborts (this third trigger is what stops `INSERT OR REPLACE`, `REPLACE` and `UPDATE OR REPLACE`, which delete without firing a delete trigger). Observed on SQLite 3.54.0, command line: all six statement forms aborted with `sealed attempt is immutable` and the row survived (research.md § 6). The project driver is exercised by AC-CDI-007.
+`card_attempts`, `cards_pre_cutover` and terminal `factory_operations` rows carry three `BEFORE` triggers each: `UPDATE` and `DELETE` abort, and an `INSERT` whose primary key already exists aborts (this third trigger is what stops `INSERT OR REPLACE`, `REPLACE` and `UPDATE OR REPLACE`, which delete without firing a delete trigger). Observed on SQLite 3.54.0, command line: all six statement forms aborted with `sealed attempt is immutable` and the row survived (research.md § 6). The project driver (`modernc.org/sqlite` v1.60.1, SQLite 3.53.4) was exercised in a scratch program during the plan revision: the plan audit's probe aborted update, delete, duplicate insert, `INSERT OR REPLACE`, `REPLACE INTO`, `UPDATE OR REPLACE` and `INSERT OR IGNORE` on `card_attempts` (and update, delete and `INSERT OR REPLACE` on `cards_pre_cutover`) with the row count unchanged, and the revision's own probe re-confirmed update, delete and `INSERT OR REPLACE` on the rebuilt tables (research.md § 6).
+
+`factory_operations` carries, besides the terminal-row triggers, a `BEFORE UPDATE` trigger that aborts when `NEW.op_id`, `kind`, `intent_key`, `card_id` or `attempt_no` differs from the old value. Without it an `UPDATE OR REPLACE` that renames a non-terminal row onto a terminal row's `op_id` deletes the terminal row without firing a delete trigger. Observed under the project driver: `UPDATE OR REPLACE factory_operations SET op_id='T' WHERE op_id='P'` aborted with `op identity immutable`, the terminal row stayed, and the forward move `prepared` to `applied` was allowed.
 
 ### 2.3 Legacy name reuse (REQ-CDI-010)
 
@@ -55,11 +57,15 @@ Fresh and migrated databases list the 31 columns in different orders: the fresh 
 - This build splits the value into a numeric base and a marker, and its migration chain (`factory.go:338-367`) advances the base through a helper that re-attaches the marker, so a later additive migration (stage A or stage E) runs on either layout.
 - The cutover and rollback change the marker only; they never change the base.
 
+### 2.7 A later migration that adds a column (REQ-CDI-022; spec D-5)
+
+`ALTER TABLE cards ADD COLUMN` fails on the identity layout because `cards` is a view (`SQL logic error: Cannot add a column to a view`, observed under the project driver). The rule for a later column-adding migration (existing examples: `factory.go:508`, `:588`): in one transaction, `ALTER TABLE` each of `card_current`, `card_attempts` and `cards_pre_cutover`, then `DROP VIEW cards` and recreate the view with the new column list and its three `INSTEAD OF` triggers. Observed under the project driver: adding a column to `card_current` while the view exists succeeded, and the view and trigger were recreated in one transaction; a stale handle's insert through the rebuilt view still aborted. A migration that adds a new table needs none of this.
+
 ## 3. Cutover
 
 ### 3.1 `moai factory identity report` (REQ-CDI-003)
 
-Opens with `OpenFactoryReadonly` (`factory.go:237`; `mode=ro`, no DDL) and prints, in this order: counts (legacy rows, distinct ids, duplicated ids); per duplicated id the candidate rows; blocked ids (§ 3.3 C-2); the unreconciled record-unavailable entries (`card_unavailable.go:18`); the resolution input. The proposal rule P: an id is pre-filled when it has exactly one non-terminal row, else when it has exactly one non-terminal row in an `active` run; otherwise blank. Terminal-only duplicates are blank.
+Opens with `OpenFactoryReadonly` (`factory.go:237`; `mode=ro`, no DDL) and prints, in this order: counts (legacy rows, distinct ids, duplicated ids); per duplicated id the candidate rows (run, state, owner label, lease holder, lease expiry, run status); blocked ids (§ 3.3 C-2); the unreconciled record-unavailable entries (`card_unavailable.go:18`); the resolution input. The proposal rule P: an id is pre-filled when it has exactly one non-terminal row, else when it has exactly one non-terminal row in an `active` run; otherwise blank. Terminal-only duplicates are blank. The invariant is that the `factory.db` file and the content of every table are unchanged: the read-only open (`mode=ro`) creates `-wal` and `-shm` sidecar files even on a quiescent database (observed under the project driver: a copy with no sidecars gained `f.db-shm` and `f.db-wal`, the `f.db` bytes equal), so those two files are permitted and the test hashes `factory.db` and a dump of every table. An `immutable=1` open creates no sidecar but is unsafe beside a live writer, so it is not used.
 
 ### 3.2 The resolution input
 
@@ -70,15 +76,15 @@ One JSON object per line: `{"card_id":"…","run_id":"…"}`. `report --emit <pa
 Preconditions, checked before the transaction opens and again inside it:
 
 - C-1 the key is true, the database is on the legacy layout, the session is not a lane session (`factoryLaneRefusal`, `factory_card.go:120`);
-- C-2 no card id has non-terminal rows in two or more runs whose status is `active`, and the record-unavailable log has no unreconciled entry;
+- C-2 (a) no card id has non-terminal rows carrying two or more distinct non-empty owner labels (`owner_label` or `lease_holder`); (b) no non-terminal row that is not its card id's resolved row holds an unexpired lease (parsed against the transaction's single `now`; an unparseable expiry counts as unexpired) or a lease holder that is a `workers` row bound to that row's run; (c) the record-unavailable log has no unreconciled entry. The report lists owner labels and lease expiries so the operator can release or abandon the rows named; the lease reading is a precondition, not an ownership decision;
 - C-3 every duplicated id has a resolution naming one of its own legacy rows;
 - C-4 for an id with a non-terminal row, the named row is non-terminal.
 
 Steps inside one write transaction (the DSN takes the lock at `BEGIN`, `factory.go:303`):
 
 1. `ALTER TABLE cards RENAME TO cards_pre_cutover`; create the § 2.1 objects and triggers.
-2. `INSERT INTO card_attempts … SELECT` every legacy row, `attempt_no` from `ROW_NUMBER() OVER (PARTITION BY card_id ORDER BY runs.created_at, run_id)`, `source='cutover'`, `seal_reason='cutover-archive'`.
-3. For each distinct card id, `INSERT INTO card_current` from the resolved legacy row (all 31 columns), `attempt_no = k+1`; if the resolved row's run has status `retired` and the row is non-terminal, set `run_id=''` and `version=version+1` and append a `card.migrated` event (`reason: cutover-run-retired`).
+2. `INSERT INTO card_attempts … SELECT` every legacy row, `attempt_no` from `ROW_NUMBER() OVER (PARTITION BY card_id ORDER BY runs.created_at, run_id)` plus the card's floor from any `card_attempts__rb*` archive, `source='cutover'`, `seal_reason='cutover-archive'`.
+3. For each distinct card id, `INSERT INTO card_current` from the resolved legacy row (all 31 columns), `attempt_no = floor+k+1`; if the resolved row's run has status `retired` and the row is non-terminal, set `run_id=''` and `version=version+1` and append a `card.migrated` event (`reason: cutover-run-retired`).
 4. One `card_membership` row per sealed attempt (`closed`, `cutover-archive`) and one `open` row per current record that has a run.
 5. Create the `cards` view and its three triggers.
 6. Validate (V-1 to V-7).
@@ -92,7 +98,7 @@ Validation, all inside the transaction (REQ-CDI-009); each failure names its che
 | V-1 | `count(card_attempts) = count(cards_pre_cutover)` |
 | V-2 | `count(card_current) = count(distinct card_id in cards_pre_cutover)` |
 | V-3 | no `card_attempts.card_id` lacks a `card_current` row |
-| V-4 | every `card_membership` row names an attempt (or the current `attempt_no`) and a `runs` row |
+| V-4 | every `card_membership` row spans attempt numbers that exist (in `card_attempts` or the current record) and names a `runs` row |
 | V-5 | every `leader_approvals` row whose `(run_id, card_id)` matched a legacy row before still matches a sealed attempt; the set of approval and dispatch references that did not resolve before is equal to the set after |
 | V-6 | for every legacy row, the sealed attempt of the same `(run_id, card_id)` equals it column by column |
 | V-7 | for every `card_current` row not moved to project scope, every one of the 31 columns equals the resolved legacy row's; for every moved row, all columns equal it except `run_id` (empty) and `version` (one higher) |
@@ -115,7 +121,7 @@ Every one of the 15 statements that name `cards` in non-test code (`grep` at B0:
 
 ### 4.4 Seal
 
-Inside the caller's transaction: copy the current record into `card_attempts` (`source='seal'`, reason, the operation id if any), close the membership (`closed_reason`), set `attempt_no = attempt_no + 1` on the current record, apply the change (new run, or new state), `version = version + 1`, open the next membership, append the event. Nothing in a seal touches `lease_holder`, `lease_expires_at`, `heartbeat_at` or `owner_label` (REQ-CDI-014).
+A seal runs inside the writing transaction and before the write changes the record, in these funnels: `applyLeaseExpiry` (`card_transition.go:422`); `commitTransition` (`:826`) when the next state holds no lease or the run changes; `ReassignCard` (`card_reassign.go:50`); `recordPickedTx` on a terminal record (`card_picked.go:159`); and the migration and join writers (§§ 4.5, 5). A lease renewal (`RenewLeaseUnderRoster`, `:489`) seals nothing. The cost of ending a grant is one `INSERT … SELECT` of the 31 columns plus the five archive columns and, when the run changes, one membership row, in a transaction that already holds the write lock: no second transaction, and the seal commits or rolls back with the version compare-and-set. Steps: copy the current record into `card_attempts` (`source='seal'`, reason, the operation id if any), close the membership when the run changes (`closed_reason`), set `attempt_no = attempt_no + 1` on the current record, apply the change (new run, or new state), `version = version + 1`, open the next membership when the run changes, append the event. Nothing in a seal touches `lease_holder`, `lease_expires_at`, `heartbeat_at` or `owner_label` (REQ-CDI-014).
 
 ### 4.5 Join
 
@@ -141,11 +147,11 @@ Any step failing returns the typed refusal listing each blocked card and its rea
 
 ### 6.1 Rows
 
-`factory_operations(op_id TEXT PRIMARY KEY, kind TEXT, intent_key TEXT, card_id TEXT, attempt_no INTEGER, run_id TEXT, actor TEXT, state TEXT, expect_json TEXT, before_json TEXT, after_json TEXT, result_json TEXT, created_at TEXT, updated_at TEXT)`. `state` is one of `prepared`, `applied`, `reconciled`, `void`, `superseded`, `blocked`. A partial unique index on `intent_key WHERE state IN ('prepared','applied')` keeps one in-flight row per intent. Triggers enforce forward-only movement and refuse update and delete of a terminal row. The operation id is minted by the caller (random 128 bits, hex); decisions never read a clock (REQ-CDI-019).
+`factory_operations(op_id TEXT PRIMARY KEY, kind TEXT, intent_key TEXT, card_id TEXT, attempt_no INTEGER, run_id TEXT, actor TEXT, state TEXT, progress TEXT, expect_json TEXT, before_json TEXT, after_json TEXT, result_json TEXT, created_at TEXT, updated_at TEXT)`. `state` is one of `prepared`, `applied`, `reconciled`, `void`, `superseded`, `blocked`. A partial unique index on `intent_key WHERE state IN ('prepared','applied')` keeps one in-flight row per intent. Triggers enforce forward-only movement, refuse update and delete of a terminal row, and refuse any update that changes `op_id`, `kind`, `intent_key`, `card_id` or `attempt_no` (§ 2.2). The operation id is minted by the caller (random 128 bits, hex); decisions never read a clock (REQ-CDI-019).
 
 | Kind | Intent key | Effect (external store) | Readback | Before and after image | Factory half |
 |------|------------|-------------------------|----------|------------------------|--------------|
-| `queue_claim` | kind, card, run, owner, expected version | the queue's claim and current-dispatch record (`todo_dispatch_current.go:31`, `backlog_store.go:973`), read through the non-adopting `LoadPure` | the record names the run and owner | run and owner before and after | the assign and lease transitions (`factory_card.go:1173-1191`) |
+| `queue_claim` | kind, card, run, owner, expected version | the queue's claim and current-dispatch record (`todo_dispatch_current.go:31`, `backlog_store.go:973`), read through the non-adopting `LoadPure` | the record names the run and owner | run and owner before and after | the assign and lease transitions as one operation: the assign transition's transaction sets `progress='assign-landed'` in the row, the lease transition's moves it to `applied` (`factory_card.go:1173-1191`) |
 | `card_grant` | kind, card, attempt, lane, expected version | none (factory record only) | the current record's holder and version | holder and version | the lease transition itself; the row commits in the same transaction, inserted as `applied` |
 | `lock_acquire` | kind, session, card, branch | the integration-window record (`integration_lock.go:355`) | `ReadIntegrationLock` (`:251`) names the session, card and branch | prior holder | none |
 | `git_merge` | kind, card, attempt, base tip, card tip | the merge commit on the integration branch (`integration_merge_step.go:178`) | the integration tip's parents include the card tip, and a valid re-measure record exists for its tree (the adoption probe, `factory_card.go:2229-2238`) | base tip and expected merge tip | `merge-ready → merging → merged-local` (`completeTransitions`, `factory_card.go:2356`) |
@@ -154,16 +160,19 @@ No field is added to the queue's table or to the lock record: the journal holds 
 
 ### 6.2 Protocol
 
-An operation whose effect precedes its factory change: commit the row as `prepared` (own transaction), perform the effect, then commit the factory change and the row's move to `applied` together. An operation whose effect is the factory change: one transaction inserts the row as `applied`. A second presentation finds the in-flight row by intent key and goes to § 6.3 instead of repeating the effect (REQ-CDI-018).
+An operation whose effect precedes its factory change: commit the row as `prepared` (own transaction), perform the effect, then commit the factory change and the row's move to `applied` together. An operation whose effect is the factory change: one transaction inserts the row as `applied`. Relation to the existing ordering: today the queue write is the last act inside each factory transaction (`followRecord` as `BeforeCommit`, `factory_card.go:1170-1172`). The new protocol commits the `prepared` row first and then lets the same hook write the queue record inside each transition, so a crash between the queue write and the factory commit leaves exactly the orphan window the table decides, on purpose.
+
+A second presentation looks the intent key up in every state (REQ-CDI-018): an in-flight row is continued through § 6.3; a `reconciled` row returns its `result_json`; a `superseded` or `blocked` row refuses with the recorded reason; a `void` row, whose effect was proven absent, is a new presentation and mints a new row. The partial unique index over in-flight rows makes two concurrent presentations resolve to one row; the loser re-reads and continues it.
 
 ### 6.3 Decision table (REQ-CDI-019)
 
-Thirteen cells; each has a subtest of the same name in AC-CDI-019.
+Fourteen cells; each has a subtest of the same name in AC-CDI-019.
 
 | Cell | Row state | Readback | Decision and writes |
 |------|-----------|----------|---------------------|
 | `queue_claim__after_prepared` | prepared | queue shows before-image; factory unchanged | `void`; no write |
 | `queue_claim__after_effect` | prepared | queue shows after-image; factory unchanged | roll the factory half forward at the recorded expected version; landed: `reconciled`; refused (stale version or holder): compensate the queue by compare-and-set to the before-image, then `void`; queue no longer shows the after-image: `superseded`, no write |
+| `queue_claim__assigned_only` | prepared, `progress='assign-landed'` | queue shows after-image; factory `assigned` at the recorded assign version, owner equal to the row's | roll the lease edge forward at the recorded lease version: landed: `reconciled`; refused (stale version, holder or guard): `superseded` with result `assigned-only`, no write (the queue after-image is consistent with state `assigned`, so nothing is compensated; the lane retries through `next --card`) |
 | `queue_claim__after_record` | applied | factory landed | queue shows after-image: `reconciled`; before-image: re-apply the idempotent queue write, `reconciled`; another run named: `superseded`, no write |
 | `card_grant__client_lost` | applied | current record shows the grant | `reconciled` |
 | `card_grant__superseded_by_later_write` | applied | holder differs or the attempt is sealed | `superseded` |
@@ -188,7 +197,7 @@ A merge that is neither landed nor proven absent (a ref that cannot be resolved)
 
 ## 7. Rollback (REQ-CDI-011)
 
-`moai factory identity rollback`, one transaction: refuse in a lane session, on the legacy layout, or while a journal row is non-terminal; drop the view and its triggers; create a fresh `cards` table of the legacy shape; fill it with one row per `(run_id, card_id)` pair taken from the highest-`attempt_no` source of that pair among the sealed attempts and the current record (so a state written after the cutover wins over its cutover snapshot, and the older rows stay in the archive); verify R-1 pairs rebuilt equal pairs known, R-2 every current record is represented, R-3 no version is lower than its `cards_pre_cutover` counterpart, R-4 every pair untouched since the cutover equals its `cards_pre_cutover` row by column; rename each identity object to `<name>__rb<N>` (triggers follow the rename) so a later cutover starts fresh; strip the marker; append `identity.rollback`.
+`moai factory identity rollback`, one transaction: refuse in a lane session, on the legacy layout, or while a journal row is non-terminal; drop the view and its triggers; create a fresh `cards` table of the legacy shape; fill it with one row per `(run_id, card_id)` pair taken from the highest-`attempt_no` source of that pair among the sealed attempts and the current record (so a state written after the cutover wins over its cutover snapshot, and the older rows stay in the archive); verify R-1 pairs rebuilt equal pairs known, R-2 every current record is represented, R-3 no version is lower than its `cards_pre_cutover` counterpart, R-4 every pair untouched since the cutover equals its `cards_pre_cutover` row by column; rename each identity table to `<name>__rb<N>`, then for each renamed table `DROP TRIGGER` and `DROP INDEX` its objects and recreate them under `__rb<N>`-suffixed names (SQLite keeps trigger names across `ALTER TABLE … RENAME`, so the plain names would otherwise block the next cutover; observed under the project driver, and the drop-and-recreate form left six distinct trigger names, the new `card_attempts` and the archive both refusing update, delete and replace); write each card's highest `attempt_no` into a floor kept in the `__rb<N>` archive (the next cutover reads `max(attempt_no)` per card from every `card_attempts__rb*` and numbers above it); strip the marker; append `identity.rollback`.
 
 ## 8. The seam with stage A and with later stages (REQ-CDI-014, REQ-CDI-022)
 
@@ -204,7 +213,7 @@ A merge that is neither landed nor proven absent (a ref that cannot be resolved)
 
 ### 8.2 Obligations this SPEC cannot discharge for stage A (stated, not imposed)
 
-- On the **legacy layout** the tie and unparseable-heartbeat hazard (i4-R4-1) remains. Stage A's re-plan either keeps a durable ambiguity mark for the legacy layout or requires the identity layout before its `enforce` step; this SPEC publishes S-7 so that it can.
+- S-1 removes only the duplicate-row classes: the more-than-one-lease-holding-row cases (i1-D1(b), i2-N1, i3-D1) and the tie branch of i4-R4-1. It does **not** remove i1-D1(a), a grant that still names lane A's session while the one card row is lane B's, nor the unparseable-heartbeat branch of i4-R4-1 on a single row. Stage A keeps, on both layouts, the holder and granted-at match and a durable ambiguity mark; S-2 gives it the sealed holder and `attempt_no` to compare. On the **legacy layout** the duplicate-row classes remain until the cutover; stage A's re-plan either keeps its gate there or requires the identity layout before its `enforce` step (S-7).
 - A grant keyed by card id needs no `attempt_no`; stage A may store it as correlation. Neither is required.
 - A migration that moves a lease-holding card does not change its holder, so a liveness evaluator that compares holder and session sees the same grant; whether the moved card's process identity still matches is stage A's concern.
 
@@ -218,7 +227,7 @@ A merge that is neither landed nor proven absent (a ref that cannot be resolved)
 ## 9. Compatibility and coexistence
 
 - **Older builds:** refused at open (§ 2.6); a pre-opened handle's card writes abort (§ 2.3).
-- **Read-only openers** (`OpenFactoryReadonly`) work on both layouts; on the identity layout `FactoryTablePresent` (`factory.go:277`) gains the new table names in its allowlist.
+- **Read-only openers** (`OpenFactoryReadonly`) work on both layouts; on the identity layout `FactoryTablePresent` (`factory.go:277`) gains the new table names in its allowlist and queries `type IN ('table','view')` for `cards`, because it is a view there (the present query, `factory.go:288`, answers `type='table'` and would report it absent).
 - **MCP factory tools** share the verb bodies (`mcp_factory_card.go`) and inherit the behavior; no new tool.
 - **`moai update`** syncs the template `workflow.yaml` key; the cutover is never run by it.
 
@@ -228,7 +237,7 @@ A merge that is neither landed nor proven absent (a ref that cannot be resolved)
 |-------------|---------|
 | Re-key `cards` in place to `PRIMARY KEY(card_id)` and drop duplicates | Destroys rows; the card makes row preservation the core. |
 | Keep `PRIMARY KEY(run_id, card_id)` and add an identity table with a pointer | Leaves duplicate live rows; stage A's consistency gate stays necessary. |
-| An attempt per lease grant | Writes a row per expiry-and-regrant cycle, which the design document counts in the dozens at fleet scale (a figure from that untracked document, not an authority); stage A's grant ledger is the home of per-grant history (Q2). |
+| An attempt only per run engagement | Overwrites the displaced lease grant in the current record; the previous holder would survive only in the mutable `events` log. Rejected by the lane ruling (Q2) in favour of design principle 6. |
 | Cutover at first open when the key is true | A write transaction over every row while other processes hold handles; no quiet-window control (Q4). |
 | Layout chosen by the config key at every open | Worktrees carry their own copy of the tracked file and share one database (Q1). |
 | Application-level immutability only | A second connection or an older build bypasses it; a trigger is enforced by the store. |
@@ -248,6 +257,8 @@ A merge that is neither landed nor proven absent (a ref that cannot be resolved)
 | Two sessions reconcile the same row | The first's forward move wins; the second's compare-and-set or forward-only trigger refuses and it re-reads. |
 | A journal row stays `prepared` | Reported by `reconcile --all`; its decision is a pure function of the stores, so a later pass decides it. |
 | The record-unavailable log gains an entry after the precondition check | Caught by the in-transaction re-check; the cutover refuses. |
+| A claim dies after the assign transition commits | The `queue_claim__assigned_only` cell: the next pass rolls the lease edge forward or records `assigned-only`. |
+| A rollback and a second cutover | Trigger and index names differ (§ 7); attempt numbers continue above the floor. |
 
 ## 12. File plan
 

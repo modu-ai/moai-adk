@@ -72,6 +72,22 @@ Taken 2026-10-18T00:31:45Z: `cp /Users/goos/.moai/db/moai-adk-go-1bd3d038/factor
 
 What this says for the design: the cutover would block on zero card ids today (REQ-CDI-005), would need 26 blank resolutions filled by an operator, and would turn 143 non-terminal rows of retired runs into sealed attempts while 93 card ids become project-scope records. The 41-card figure in the design document is for run `tmvgvn` at an earlier moment.
 
+### 4.1 Revision measurement (fresh copy, strict conflict rule)
+
+Taken 2026-10-18T01:16:00Z: `cp` of `factory.db` to the scratchpad (no `-wal`/`-shm` at copy time). `sqlite3` on the copy, owner labels taken as `owner_label` union `lease_holder` over non-terminal rows, a lease unexpired when `julianday(lease_expires_at) > julianday('now')`, a live holder one that is a `workers` row bound to the row's run.
+
+| Query | Output |
+|-------|--------|
+| rows / distinct ids / duplicated ids | 300 / 228 / 55 |
+| ids with two or more distinct non-empty owner labels among non-terminal rows (rule a) | 25 (`owner_label` alone: 25) |
+| non-terminal rows with an unexpired lease now | 12 |
+| non-terminal rows whose holder is a worker bound to the row's run | 20 |
+| ids with two or more non-terminal rows and some row unexpired or worker-bound (rule b, an upper bound: the resolved row is exempt) | 4 |
+| ids blocked by rule a or rule b (upper bound) | 27 |
+| ids with non-terminal rows in two or more active runs | 0 |
+
+So the strict rule blocks 25 ids by owner labels and at most 27 in all on this copy, against 0 for the run-status rule it replaces; the operator releases or abandons the rows the report names before a cutover.
+
 ## 5. Coordination facts
 
 - **Card t1852, SPEC-FACTORY-RETIRE-GUARD-001** (worktree t1852, unmerged; `spec.md` read for requirements and Out of Scope): REQ-RRG-001 refuses `RetireRunIfDead` on a dead-owner active run that holds non-terminal cards, with a typed error and the exits (join, adopt, `decide --choice abandon --run`); REQ-RRG-007 keeps `retirable` the only predicate and leaves `retireRunUnlessLive` and `ReconcileActiveRuns` unchanged; its Out of Scope moves "retire = transfer" to card t1842 and says the refusal "is a temporary safeguard that card is expected to revise"; REQ-RRG-005 only reports the stranded cards of an already retired run. That its plan audit reached PASS 0.94 and that it is blocked at kickoff on an empty `spec_id` comes from the memory record `project_card_t1852_kickoff_specid_block.md`, not from a verdict file read here.
@@ -86,10 +102,21 @@ Run with `sqlite3` against scratch databases in the scratchpad; the project's dr
 2. A table with `BEFORE UPDATE`, `BEFORE DELETE` triggers and a `BEFORE INSERT` trigger that aborts when `EXISTS` a row with the same primary key: `UPDATE`, `DELETE`, `INSERT OR REPLACE`, `UPDATE OR REPLACE`, `REPLACE INTO` and a plain duplicate `INSERT` each printed `sealed attempt is immutable` and exited 1; the row was unchanged afterwards.
 3. Two statements the design leans on were not run at all: `ROW_NUMBER() OVER (PARTITION BY …)` under the project driver, and a rename of a table with attached triggers.
 
+## 6.1 Observed under the project driver (plan revision)
+
+Scratch module with the repository's `go.mod` and `go.sum`, run as `env GOFLAGS=-mod=mod GOPROXY=off go -C <dir> run .`; `select sqlite_version()` printed `3.53.4`, `go.mod` pins `modernc.org/sqlite v1.60.1`.
+
+1. Rollback naming: after `ALTER TABLE … RENAME`, dropping the three triggers and recreating them under `__rb1` names, a second table and triggers under the plain names were created without error; `UPDATE`, `DELETE` and `INSERT OR REPLACE` on the new table and on the archive each aborted (`immutable`); six triggers, six distinct names.
+2. Journal identity guard: `UPDATE OR REPLACE factory_operations SET op_id='T' WHERE op_id='P'` aborted (`op identity immutable`), the terminal row remained, and `UPDATE … SET state='applied' WHERE op_id='P'` succeeded.
+3. Column-adding migration: `ALTER TABLE cards ADD COLUMN` on the view failed (`Cannot add a column to a view`); `ALTER TABLE card_current ADD COLUMN` succeeded while the view existed; dropping and recreating the view and its trigger in one transaction succeeded and a later insert through the view aborted.
+4. Read-only sidecars on a quiescent copy of the live database: `mode=ro&_pragma=query_only(ON)` left `f.db`, `f.db-shm`, `f.db-wal` with the `f.db` bytes equal and 300 rows readable; `immutable=1` left only `f.db`.
+
+The plan audit's own probe covered the view over the legacy name, `INSTEAD OF` triggers, `ROW_NUMBER()`, a table rename inside a transaction and a stale handle, all under the same driver and version.
+
 ## 7. Not verified at plan time
 
 - No `go build` and no `go test` was run (host load average 20.63 at 09:33). The four existing retire tests of AC-CDI-002 were not observed to pass.
-- The project's SQLite driver was not exercised (§ 6).
+- The revision's driver probes used reduced schemas, not the 31-column `cards` DDL or the real triggers (§ 6.1); the full cutover transaction was not exercised because no cutover code exists.
 - Whether any process outside the factory verbs writes `cards` was inferred from a grep of the repository, not from a runtime trace.
 - Whether the MCP server holds a factory database handle between calls was not observed (stage A recorded the same gap; the MCP factory tools delegate into the same open path).
 - The stage-A iteration 1 to 3 defect bodies were read as headlines and opening sentences only.
