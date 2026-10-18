@@ -2937,11 +2937,181 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	32.594s
 FAIL
 ```
 
+**커밋 C `1d5ecbbc7c`** (`internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go`). `classifyOwnershipCore` — 판정의 유일한 진입점 — 가 두 갈래 모두에서 읽기 전에 경로의 종류를 `os.Stat` 으로 묻는다 (`unreadableKind`; Stat 은 `ReadFile` 처럼 링크를 따라가고 경로를 열지 않으므로 막히지 않는다). FIFO, 소켓, 장치, 특수 파일, 또는 그것을 가리키는 심볼릭 링크는 새 닫힌 어휘 이유 `non-regular-file` 로 보존한다: 미등록 경로는 미등록 그대로, 등록 경로는 읽기 실패가 이미 그랬듯 `user-modified` 로. 디렉터리, 끊어진 링크, 조사할 수 없는 경로는 새 이유를 받지 않고 예전처럼 읽기에서 실패한다 (`read-failed`) — 일반 파일을 가리키는 링크는 가리키는 파일의 바이트로 판정된다 (수정 전 측정과 같음). 걷기의 보고 줄은 새 이유를 이름 붙여 설명한다.
+
+**GREEN (트리 `1d5ecbbc7c`; 연속 5회, 종료 코드는 각 실행에서 읽음).** 새 선택자 `-run '^(TestNonRegularFilesAreKeptWithoutBeingRead|TestKeepReasonVocabularyIsClosed)$'` (`TMPDIR=/private/tmp/own-fixture-d1 ... -count=1 -v`; 상위 둘 + 변이 서브 시험 넷):
+
+```text
+run 1: rc=0 PASS-lines=6 FAIL-lines=0
+run 2: rc=0 PASS-lines=6 FAIL-lines=0
+run 3: rc=0 PASS-lines=6 FAIL-lines=0
+run 4: rc=0 PASS-lines=6 FAIL-lines=0
+run 5: rc=0 PASS-lines=6 FAIL-lines=0
+```
+
+**회귀: 이 카드의 시험 전부 (앵커된 이름 68개 — 카드가 `cdd72a814` 이후 바꾼 `internal/cli/*_test.go` 에서 뽑은 이름 + 기준선 11 + 가드; 새 시험 하나가 늘었다; 패키지 전체 실행 아님)**, 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<아래 이름>)$' -count=1 -v -coverprofile=<파일>`, 종료 코드 0, 최상위 `--- PASS`=68 `--- FAIL`=0 `--- SKIP`=0, 부하 평균 시작 `37.71 37.52 43.50` 끝 `63.15 80.95 64.92` (이 머신이 평소보다 훨씬 바빴다: 실행 415초):
+
+```text
+PASS
+coverage: 10.0% of statements
+```
+
+```text
+TestAliasToAKeyTheManifestLacksIsNoAlias
+TestBackupFailureRemovesNothingThroughProductionPath
+TestCaseVariantCounterpartAndMirrorSpelling
+TestCaseVariantOnHostFilesystem
+TestCaseVariantResolvesToRegisteredEntry
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun
+TestCommandsSingleDispositionAndPresent
+TestCounterpartLocationAndStatusEdges
+TestDowngradeDropsEvidenceNotSafety
+TestDryRunChangesNothingAndMatchesVerdict
+TestDryRunRunsNoBinaryUpdateStep
+TestEmptiedSkillDirRemoved
+TestEmptyDirProvenanceVerdict
+TestInterruptedMigrationRecoversAndConverges
+TestKeepReasonVocabularyIsClosed
+TestLegacyManifestRoundTrip
+TestManagedOnlyEmptyDirsPruned
+TestMigrationBackupBeforeRemoval
+TestMigrationClassifiesUnregisteredMirrorCopy
+TestMigrationDefaultKeepsConfirmedProjectCopy
+TestMigrationIdempotent
+TestMigrationKeepsSharedCopyUnderProfileReach
+TestMigrationPreservesExistingMirrorEntries
+TestMigrationRemovalGate
+TestMigrationRemovesSharedCopyWithoutProfileReach
+TestNoProfileRootAccessInUpdateSources
+TestNonRegularFilesAreKeptWithoutBeingRead
+TestOwnershipAttestedManagedOnlyWithFullEvidence
+TestOwnershipAttestedManagedThroughOperatingSource
+TestOwnershipHelperFixtureBuilders
+TestOwnershipHelperForcedRunReachesReconciliation
+TestOwnershipHelperTreeSnapshotSeesDirMtime
+TestOwnershipHelperUsesRealEmbeddedPaths
+TestOwnershipPreserveByteEqualUserFile
+TestOwnershipPreserveUserModifiedFile
+TestOwnershipUnregisteredUnknownOriginKeptWithReason
+TestOwnershipVerdictClasses
+TestPreservePriorManifestOutcomes
+TestPreviewOmitsRemovalCandidateWhileSwitchOff
+TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy
+TestPreviewVerdictsFailClosed
+TestPriorGenerationCorruptIsNoEvidence
+TestPriorGenerationSourceBoundedAndTolerant
+TestPriorGenerationsAreLookupBoundOnly
+TestPriorManifestAtomicWriteFailures
+TestPriorManifestRetainedInRunBackup
+TestProfileCallsiteBaselineMatchesTree
+TestProfileEnvDoesNotReachProfileRoot
+TestProfileMappedCopyKeptWithoutCounterpart
+TestProfileReachMarkUsesTheRegisteredKeyUnderACaseAlias
+TestProfileScanCatchesMutants
+TestPruneNestedEmptyDirGuards
+TestRF2F3b_MigrationPreservesUntracked
+TestRemainingListKeeps313UnregisteredCopies
+TestRemainingRenderEdges
+TestRemovalSwitchStaysOffInProduction
+TestRemovedAssetBackupRestoreByteIdentical
+TestRepeatedUpdateIsIdempotent
+TestShouldSkipBinaryUpdate_DevBuild
+TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2
+TestShouldSkipBinaryUpdate_EnvVar
+TestShouldSkipBinaryUpdate_EnvVar_Phase5
+TestShouldSkipBinaryUpdate_Normal
+TestShouldSkipBinaryUpdate_TemplatesOnlyFlag
+TestUpdateDoesNotRestorePriorManifestIntoConfig
+TestUpdateDryRun_ZeroMutation
+TestVerdictAndPreviewCodeHasNoWritableCalls
+TestViewOfManifestIsAReadOnlyCopy
+```
+
+**운영 코드 변이 하나 (트리 `1d5ecbbc7c`, 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL`).** `unreadableKind` 가 항상 거짓을 돌려준다 (가드 제거): 시험이 멈추지 않고 붉다 (마이그레이션이 30초 안에 돌아오지 못함):
+
+```text
+    migrate_ownership_nonregular_test.go:227: the migration did not return: it is blocked reading a FIFO
+--- FAIL: TestNonRegularFilesAreKeptWithoutBeingRead (34.41s)
+    --- PASS: TestNonRegularFilesAreKeptWithoutBeingRead/MutantHungIsCaught (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	36.249s
+FAIL
+rc=1
+```
+
+**점검한 것 (같은 읽기 결함이 다른 곳에 있는지).**
+
+1. `migrate_ownership.go` 의 읽기 두 곳 (등록 경로 `ReadFile`, `classifyUnregistered` 의 `ReadFile`): 둘 다 가드 뒤에 있다. 등록된 `user_created` 는 원래 읽지 않고 먼저 돌아온다.
+2. 미리보기 (`update_dryrun_preview.go`, `migrate_ownership_env.go`): 판정을 `classifyOwnership` 로 부르므로 같은 가드를 거친다. 파일 읽기는 따로 없다.
+3. 빈 디렉터리 정리 (`migrate_ownership_emptydir.go`): `Lstat`, `ReadDir`, `os.Remove` 만 쓴다 — 파일을 열지 않는다. 디렉터리 `ReadDir` 은 FIFO 항목이 있어도 막히지 않는다.
+4. 대소문자 별칭 (`migrate_ownership_case.go`): `os.Stat`/`os.SameFile` 만, 내장 템플릿은 `fs.ReadDir`.
+5. 이전 세대 읽기 (`update_prior_manifest.go`): `Lstat` 뒤 `IsRegular()` 가 아니면 건너뛴다 (M1b 가 이미 막음). 시작 매니페스트 읽기 `readStartManifest` 는 매니페스트 파일 하나이고 `manifest.Load` 와 같은 대상이다 (이 카드 이전부터 같은 파일을 읽는다).
+6. `userCounterpartConfirmed` (`migrate_project_assets.go` 의 사용자 홈 쪽 `ReadFile`): 기준 이전부터 있는 코드이고 읽는 대상이 프로젝트 안이 아니라 사용자 루트의 설치 파일이다. 건드리지 않았다.
+7. 기준 `cdd72a814` 의 등록 경로 읽기 (기준판 `migrate_project_assets.go` 236행 `os.ReadFile(p)`) 도 가드가 없었다: 등록된 FIFO 는 기준에서도 막혔을 것이다. 퇴보는 미등록 쪽이지만 두 쪽을 함께 막았다.
+
+**품질 (트리 `1d5ecbbc7c`)**
+
+```text
+go build ./... rc=0
+GOOS=windows go build ./... rc=0
+gofmt -l internal/cli internal/manifest rc=0 output-bytes=0
+go vet ./internal/cli/ ./internal/cli/update/backup/ ./internal/manifest/ rc=0 output-bytes=0
+GOOS=windows go vet (same three packages) rc=0 output-bytes=0
+```
+
+`golangci-lint run ./internal/cli/ ./internal/cli/update/backup/ ./internal/manifest/`: 카드 파일에 대한 지적 0건, 남은 셋은 이 카드가 만지지 않은 기존 errcheck:
+
+```text
+internal/cli/factory_run_adopt.go:79:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:91:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:103:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+3 issues:
+* errcheck: 3
+```
+
+**하드 제약 점검**
+
+```text
+--- protected/profile (card commits)
+exit=0
+--- positive control
+      31
+--- diff names protected/profile/audit-receipts/templates
+grep-exit=1
+--- removalEnabled
+grep-exit=1
+40:var removalEnabled = false
+--- SPEC bodies since f9c4c76d4f
+grep-exit=1
+--- files touched by chunk 6
+.moai/specs/SPEC-UPDATE-OWNERSHIP-REPAIR-001/progress.md
+internal/cli/migrate_ownership.go
+internal/cli/migrate_ownership_nonregular_test.go
+internal/cli/migrate_ownership_vocabulary_test.go
+internal/cli/migrate_project_assets.go
+```
+
+**범위가 좁은 구문 커버리지 (위 회귀 한 번의 프로필)**
+
+```text
+internal/cli/migrate_ownership.go: whole-file 96.2% (128/133); chunk-6 changed lines 100.0% (10/10 statements in blocks touching the chunk-6 diff)
+internal/cli/migrate_project_assets.go: whole-file 82.8% (221/267); chunk-6 changed lines 100.0% (1/1 statements in blocks touching the chunk-6 diff)
+```
+
+**정직한 회계 / 잔여 위험 / 갭.**
+
+1. **이유 어휘가 늘었다.** design.md D-1 은 닫힌 집합이 SPEC 개정으로만 늘어난다고 적는다. `non-regular-file` 은 시험과 닫힌 어휘 시험에 의도적으로 더했고 SPEC 본문은 고치지 않았다 — 필요하면 manager-spec 재위임 사안이다 (기준 AC-OWR-04/-14 의 일반 파일 이유 기대는 바뀌지 않았고 회귀에서 통과).
+2. 종류 확인과 읽기 사이의 경합 (그 사이에 일반 파일이 FIFO 로 바뀜) 은 막지 않는다. 열기를 `O_NONBLOCK` 으로 하면 막을 수 있으나 최소 변경 범위를 넘는다.
+3. `os.ModeIrregular` 와 소켓·장치 종류는 FIFO 와 같은 분기를 타지만 시험은 FIFO 만 만든다 (소켓과 장치 파일을 이식성 있게 만들 수 없다). 같은 비트 마스크 한 줄이다.
+4. 이 머신에서 `syscall.Mkfifo` 가 실패하면 시험은 건너뛴다 (`t.Skipf`) — 이 파일 시스템 능력 확인 외에 시험 제외는 없다. 이 실행들에서는 건너뛰지 않았다 (SKIP=0).
+5. 업데이트 흐름의 다른 앞 단계(조정 분석 등 이 카드가 만들지 않은 코드)가 FIFO 를 읽는지는 점검하지 않았다 — 기준에도 있던 코드이다.
+6. 실행하지 않은 것: `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지, `-race`, Windows 시험 실행 (빌드와 vet 만; 새 시험은 `!windows` 빌드 태그).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: 051ddc18ef  # code-verification baseline: the last test/code commit (chunk 5 card-review fix C); the evidence commit that carries this block follows it
+run_commit_sha: 1d5ecbbc7c  # code-verification baseline: the last test/code commit (chunk 6 card-review fix C); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -2951,8 +3121,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 38  # non-.moai files added or edited over the card: 22 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup)
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef
+total_run_phase_files: 39  # non-.moai files added or edited over the card: 23 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup; chunk 6 added 1 test file)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
@@ -3001,6 +3171,8 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 **열린 제품 쪽 사실 (이 카드 밖, sync·리더가 알아야 함).** 같은 시계 초에 시작한 두 갱신은 실행 백업 디렉터리를 공유하고, 뒤 실행이 만든 `manifest.prior.json` 이 앞 실행의 것을 대체해 **더 오래된 이전 세대를 잃는다.** 영향은 증거 손실뿐이다: 그 세대를 근거로 하던 판정 (미등록 파일의 `managed` 승격, 이전 실행이 비운 디렉터리 정리) 이 보존 쪽으로 기운다 — 파일은 지워지지 않는다. AC-OWR-18 (c) 의 `SharedRunDirectory` 분기가 이를 정확히 단언한다 (디렉터리 셋이 남고 `empty-dir-no-provenance` 로 나열됨). 근거: 실행 백업 이름의 초 단위 해상도 (`defs.BackupTimestampFormat`). 고치려면 이 카드 밖의 변경이 필요하다 (실행 백업 이름이나 세대 보존 방식).
 
 **chunk 5 (카드 리뷰 수정)로 바뀐 것.** 코덱스 카드 리뷰의 P2 둘을 고쳤다: 복원이 `manifest.prior.json` 을 `.moai/config` 로 복사하던 결함(이 카드가 만든 것)과 제거 후보 백업 사본이 실행 비트를 잃던 잠복 결함. 커밋 A `73e37d3832`, B `9c00e81a2c`, C `051ddc18ef`. 같은 부류로 확인했으나 고치지 않은 것: Legacy 복원 걷기는 `removed-assets/**`, `in-memory-backups/**` 도 `.moai/config` 로 복사한다 (앞의 것은 제거 스위치가 꺼져 있어 운영에서 비어 있고, 뒤의 것은 이 카드 이전부터). 보존 정책 센서스가 `manifest.prior.json` 을 내용으로 세는 문제(갭 G-K)는 REQ-OWR-017 때문에 건드리지 않았다.
+
+**chunk 6 (둘째 카드 리뷰 지적)로 바뀐 것.** 판정 함수가 읽기 전에 파일 종류를 묻지 않아 공통 자산 걷기 아래의 FIFO 가 `moai update` 를 멈추게 했다. 판정의 유일한 진입점에서 종류를 먼저 확인하고 새 이유 `non-regular-file` 로 보존한다 (A `2eeb0559bd`, B `60d38d1559`, C `1d5ecbbc7c`). 이유 어휘가 하나 늘었다 — SPEC 본문 (design.md D-1) 개정이 필요한 사안으로 공개한다.
 
 **SPEC 본문에 대한 공개 (본문은 고치지 않았다; 필요하면 manager-spec 재위임).**
 
