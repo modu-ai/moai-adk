@@ -179,6 +179,14 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	if parsed && !line.IsPass() {
 		// A FAIL needs no receipt: it is not claiming an audit approved anything.
 		if !g.assumed() {
+			// A parsed FAIL answers an earlier stop of this role that ended without
+			// a verdict line: that refusal stays outstanding otherwise, and the
+			// spawn guard then denies the fix-agent only a PASS could unblock
+			// (card t1855). Only that cause is cleared; every other refusal needs
+			// its own proof.
+			if err := auditreceipt.ClearRejectionsForRoleInTreeKindCause(g.store, g.tree, input.AgentType, auditreceipt.KindReceipt, auditreceipt.CauseVerdictLineMissing); err != nil {
+				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
+			}
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
 			recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
