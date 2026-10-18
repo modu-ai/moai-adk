@@ -224,7 +224,7 @@ e2e_red_discipline: "behavioral RED captured per milestone (M1 compile RED for t
 ci_run_on_integration_branch: "PENDING at report time — the repository-wide test verdict is owned by the CI run on the integration branch, not by this lane"
 ```
 
-### Sync-audit repair round (F1, F2 blocking; F3, F4) — commit `PLACEHOLDER-REPAIR`
+### Sync-audit repair round (F1, F2 blocking; F3, F4) — commit `a3f42e6c89`
 
 Verdict read: `.moai/reports/t1863/sync-audit-cold.md` (FAIL 0.86, two codex-gate P2s). Both premises were re-verified against the code before repair.
 
