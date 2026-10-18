@@ -11,6 +11,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -202,6 +203,10 @@ func TestMCPVerbParity_RecordRoot(t *testing.T) {
 	}
 }
 
+var windowStampRe = regexp.MustCompile(`since \S+`)
+
+func maskWindowStamp(s string) string { return windowStampRe.ReplaceAllString(s, "since <stamp>") }
+
 // TestMCPVerbParity_CompleteWindowRoot: complete reads and writes the integration window and
 // the re-measure record at the parent checkout on both surfaces (the verb's integrationLockRoot),
 // not at the caller's linked tree. Row one: a window another lane holds at the parent refuses
@@ -242,7 +247,9 @@ func TestMCPVerbParity_CompleteWindowRoot(t *testing.T) {
 			t.Fatalf("verb arm: err = %q, want a refusal naming lane-1", verbErr)
 		}
 		toolErr, toolState, _ := arm(t, true, true)
-		if !strings.Contains(toolErr, verbErr) {
+		// The refusal carries the window's acquired-at stamp, which each arm's fixture takes from the
+		// wall clock; the comparison masks it so the table stays deterministic.
+		if !strings.Contains(maskWindowStamp(toolErr), maskWindowStamp(verbErr)) {
 			t.Errorf("tool arm: err = %q, want the verb's refusal %q", toolErr, verbErr)
 		}
 		if toolState != verbState {
