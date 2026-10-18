@@ -254,3 +254,29 @@ No identifier added, removed, or renumbered: 15 REQ (spec.md) and 15 AC (accepta
 - The next delta audit (codex required, fresh bc8c proxy brief) is not this session's to run; no `plan-audit*.md` was written.
 - design.md §D.3's substitution class table was not edited (not in this delegation's four-file write set); plan.md M7 now states the rule-source members' removal from the path-string class, and design.md's table remains read-through-the-plan text until its owner revises it.
 - The dispatch's "six rule files" vs the measured five-`paths:`-keys census is recorded above, not reconciled by editing the plan to a bare "six" — the plan names the measured set.
+
+## Round-2 proxy audit FAIL and final repair round (2026-10-19)
+
+The round-2 proxy audit returned **FAIL 0.80** (`plan-audit-delta2.md`: verdict FAIL,
+must_pass_failed 1, blocking_count 3, codex leg fail, receipt
+`rcpt-03225d18a7dc4a018105dc3d`, audited_sha `a286e02696…`). Verified by the auditor: the
+round-1 P1 and P2 repairs hold. New blockers (the auditor drafted the required fixes):
+- **D1 (critical, MP-9)**: plan.md:115's M6 split seam (M6b) re-orders the rule `paths:`
+  edits after the rename, against acceptance.md:109's same-milestone clause. Fix: keep
+  rename + pin-test rewrite + five `paths:` keys + mechanics:199 cross-reference + two
+  doc-test rewrites in ONE unit; if anything splits, split off the slash-command,
+  router-skill and published-skills edits instead.
+- **D2 (major)**: AC-TU-011's namespace test is placed at M5 by acceptance.md:90 but plan
+  M5 carries none of it; two unnamed collisions — a test file under `internal/factory/gtd_*.go`
+  trips AC-TU-011's own no-change guard, and a contiguous `"moai:gtd-card:"` literal in the
+  test trips AC-TU-010's residual grep. Fix: add the test to M5 (Files/Packages
+  `internal/factory`, name-exact selection), name a file outside the glob (e.g.
+  `card_uuid_namespace_test.go`), require the literal assembled non-contiguously or matched
+  against bytes read from `gtd_engage.go`.
+- **D3 (major)**: `TestNoResidualGTDSpelling` (and any tracked planted fixture) contains its
+  own four-pattern alternation, so the completion grep can never reach exit 1. Fix: state in
+  AC-TU-010 and plan M8 RED that the test assembles its pattern from non-contiguous parts
+  and writes its fixture to a temp directory at run time; optionally re-run the grep over
+  the test file as a row.
+
+Leader: the counter's round 3 is the last — a FAIL there holds the card.
