@@ -794,15 +794,22 @@ func emitDryRunReinstallPlan(cmd *cobra.Command, cwd string, force bool, th tui.
 }
 
 // shouldSkipBinaryUpdate returns true when the binary update step should
-// be skipped. This happens in three cases:
+// be skipped. This happens in four cases:
 //  1. The --templates-only flag is set (update command only).
-//  2. The MOAI_SKIP_BINARY_UPDATE=1 environment variable is set (used by
+//  2. The --dry-run flag is set (update command only): a dry run installs
+//     nothing and changes no file (REQ-OWR-011), and this step runs before the
+//     dry-run branch.
+//  3. The MOAI_SKIP_BINARY_UPDATE=1 environment variable is set (used by
 //     reexecNewBinary to prevent infinite re-exec loops).
-//  3. The current binary is a dev build (version contains "dirty", "dev",
+//  4. The current binary is a dev build (version contains "dirty", "dev",
 //     or "none"), where self-update is meaningless.
 func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 	// Flag check (only the update command registers this flag)
 	if f := cmd.Flags().Lookup("templates-only"); f != nil && f.Value.String() == "true" {
+		return true
+	}
+
+	if f := cmd.Flags().Lookup("dry-run"); f != nil && f.Value.String() == "true" {
 		return true
 	}
 
