@@ -2,7 +2,7 @@
 id: SPEC-AGENT-CORE4-001
 title: "Agent core four, piece 1: agent sources, two renders, generated copies"
 version: "0.6.0"
-status: in-progress
+status: completed
 created: 2026-10-18
 updated: 2026-10-18
 author: "Goos Kim"
