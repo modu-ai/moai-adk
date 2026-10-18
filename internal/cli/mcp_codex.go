@@ -457,7 +457,7 @@ type codexCommandRunner interface {
 type realCodexRunner struct{}
 
 func (realCodexRunner) run(ctx context.Context, binaryPath string, args []string, stdin string) (string, error) {
-	cmd := exec.CommandContext(ctx, binaryPath, args...)
+	cmd := codexChildCmd(ctx, binaryPath, args)
 	cmd.Stdin = strings.NewReader(stdin)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -2482,7 +2482,7 @@ var codexLoginStatusRunner codexLoginStatusRunnerFunc = defaultLoginStatusRunner
 // streams. A non-zero exit is DATA, not a failure: codex reports a logged-out
 // or degraded state that way and the status line still arrives.
 func defaultLoginStatusRunner(ctx context.Context, binaryPath string) ([]byte, []byte, int, error) {
-	cmd := exec.CommandContext(ctx, binaryPath, "login", "status")
+	cmd := codexChildCmd(ctx, binaryPath, []string{"login", "status"})
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
