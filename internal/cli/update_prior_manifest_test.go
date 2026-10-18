@@ -302,7 +302,7 @@ func TestPriorGenerationSourceBoundedAndTolerant(t *testing.T) {
 			t.Errorf("read %d generation files, want %d (the 9th and later must not be opened)", src.reads, priorManifestGenerations)
 		}
 		if _, ok := gens[0].files["gen-10-only.md"]; !ok {
-			t.Errorf("generations are not newest first: first holds %v", keysOf(gens[0].files))
+			t.Errorf("generations are not newest first: first holds %v", priorKeysOf(gens[0].files))
 		}
 		for _, g := range gens {
 			if _, ok := g.files["gen-01-only.md"]; ok {
@@ -347,10 +347,10 @@ func TestPriorGenerationSourceBoundedAndTolerant(t *testing.T) {
 			t.Fatalf("valid generations %v, want exactly the 2 intact ones", names)
 		}
 		if _, ok := gens[0].files["good-newest.md"]; !ok {
-			t.Errorf("newest valid generation missing: %v", keysOf(gens[0].files))
+			t.Errorf("newest valid generation missing: %v", priorKeysOf(gens[0].files))
 		}
 		if _, ok := gens[1].files["good-older.md"]; !ok {
-			t.Errorf("older valid generation missing: %v", keysOf(gens[1].files))
+			t.Errorf("older valid generation missing: %v", priorKeysOf(gens[1].files))
 		}
 		if src.reads != 6 {
 			t.Errorf("attempted %d generation reads, want 6 (every retained run backup is tried once)", src.reads)
@@ -369,7 +369,7 @@ func TestPriorGenerationSourceBoundedAndTolerant(t *testing.T) {
 	})
 }
 
-func keysOf(m map[string]priorRecord) []string {
+func priorKeysOf(m map[string]priorRecord) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
