@@ -923,6 +923,345 @@ exit=1
 
 종료 코드 1. 이유: 파일시스템 모드를 주입하는 별칭 확정 함수와 그 판정 필드가 아직 없어서 시험 패키지가 빌드되지 않는다 (시험이 존재하는 상태의 빌드 실패이며 제로 매치가 아니다). 이 RED 는 빌드 실패 형이다: 이 두 시험의 단언 수준 실패는 이 시점에 관측되지 않는다 (호스트 쪽만 위 셀에서 단언 수준으로 관측). 변이 앞의 직접 관측은 C 커밋 GREEN 원문의 변이 서브 시험이 한다.
 
+### Run chunk 2 GREEN 기록과 정직한 회계 (M2 + M3 + M4)
+
+GREEN 셀의 트리: AC 판정 명령, 기준선·chunk 1 회귀, 61시험 묶음은 모두 트리 `91e5bbcfa5` (C11, 작업 트리 깨끗 — `git status --short` 빈 출력) 에서 쟀다. 그 뒤에 더해진 커밋 `abd9bbda34` 는 시험 파일 하나(`migrate_ownership_coverage_test.go`)뿐이어서 비시험 코드는 같고, 그 시험의 실행과 품질 측정(빌드, 윈도 빌드, gofmt, vet, 린트)은 `abd9bbda34` 에서 다시 쟀다. 판정 도구는 이 트리의 `go test` (Go 1.26.8, darwin/arm64), 린트는 설치된 golangci-lint v2.1.6 (이 저장소 도구가 아니라 외부 린터이며, 이 트리의 소스를 읽은 결과이다). 출력에서 `=== RUN` 줄과 설정 알림 한 줄(`SUNSET_CONFIG_DORMANT_NOTICE`)은 뺐고 나머지는 원문이다. `coverage: N% of statements` 줄은 `-coverprofile` 을 건 좁은 실행의 **패키지 전체 대비** 비율이라 의미 있는 측정이 아니다 (새 코드의 함수별 측정은 아래).
+
+**커밋 지도 (기준 HEAD `5eed5816ae`)**
+
+| 묶음 | A (시험만) | B (RED 셀) | C (구현) | 비고 |
+|------|-----------|-----------|----------|------|
+| M2 AC-OWR-07 | `73ace0cc2e` | `36f638ef0a` | `cca0c9ead1` | RED 는 빌드 실패 형 |
+| M2 AC-OWR-08 | `aa8037a7f2` | `ae4032950e` | — | 가드: 도착 시 GREEN, 붉음은 변이로 관측 (구현 커밋 없음) |
+| M3 AC-OWR-14 | `167a6c0af4` | `db68f30cf7` | `e6e3e8d9f2` | RED 는 단언 수준 (정직한 회계 3 의 시험 보정 포함) |
+| M4 AC-OWR-11 호스트 쪽 | `5246f408cf` | `cbf9579e9a` | `91e5bbcfa5` | RED 는 단언 수준 |
+| M4 AC-OWR-11 주입 쪽, AC-OWR-12 | `ae8868f6fc` | `cbf9579e9a` | `91e5bbcfa5` | RED 는 빌드 실패 형 |
+| 특성화 시험 (C 뒤) | `abd9bbda34` | — | — | 시험만 |
+
+**승격 상태 (acceptance.md 「등급과 RED 셀 규약」)**: AC-OWR-07, -11, -12, -14 는 A → B → C 순서를 마쳤고 (커밋 그래프가 순서를 증명) RED 셀 네 요소 (명령, 원문 stdout, 종료 코드, 트리 SHA) 와 이유가 있다. 단 AC-OWR-07 과 AC-OWR-11 주입 쪽 / AC-OWR-12 의 RED 는 빌드 실패 형이다 (단언 수준의 붉음은 GREEN 출력의 `Mutant...IsCaught` 서브 시험과 아래 변이 점검 표가 맡는다). AC-OWR-08 은 도착 시 GREEN 인 가드라서 「RED-now」 가 깨끗한 트리에는 없다: 그 붉음의 원문은 실제 운영 코드에 임시로 끼운 변이 R1, R2 의 셀과 시험 안 변이 서브 시험이다. release-blocking 으로 칠지 regression-guard 로 칠지의 분류는 감사의 몫이며 여기서는 사실만 적는다.
+
+**AC-OWR-07 GREEN (트리 `91e5bbcfa5`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestProfileMappedCopyKeptWithoutCounterpart$' -count=1 -v -coverprofile=...`
+
+```text
+--- PASS: TestProfileMappedCopyKeptWithoutCounterpart (9.93s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/NoCounterpart (0.02s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/ConfirmedCounterpartStillKept (2.88s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/DifferingCounterpartIsUnconfirmed (2.75s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/ReachControlUnmappedTwinRemoves (1.57s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/MutantIgnoringTheMappingIsCaught (2.68s)
+    --- PASS: TestProfileMappedCopyKeptWithoutCounterpart/MutantPretendingToReadTheProfileSideIsCaught (0.03s)
+PASS
+coverage: 5.3% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	12.624s	coverage: 5.3% of statements
+exit=0
+```
+
+**AC-OWR-08 GREEN (트리 `91e5bbcfa5`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestProfileEnvDoesNotReachProfileRoot|TestNoProfileRootAccessInUpdateSources|TestProfileScanCatchesMutants)$' -count=1 -v -coverprofile=...`
+
+```text
+--- PASS: TestNoProfileRootAccessInUpdateSources (12.18s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/ScannedSetIsTheGoListClosure (4.23s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/NoNewCallSiteAgainstTheBaseline (2.26s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/MigrationPreviewAndVerdictFilesAddNothing (1.49s)
+--- PASS: TestProfileScanCatchesMutants (15.66s)
+    --- PASS: TestProfileScanCatchesMutants/UnmutatedTreeIsClean (2.27s)
+    --- PASS: TestProfileScanCatchesMutants/M-a_read-and-discard_through_an_exported_helper (3.38s)
+    --- PASS: TestProfileScanCatchesMutants/M-b_spliced_token_read_of_the_config-dir_variable (1.93s)
+    --- PASS: TestProfileScanCatchesMutants/M-c_a_second_os.Stat_in_launchCandidateIsUsable (1.85s)
+    --- PASS: TestProfileScanCatchesMutants/M-d_a_new_function_in_internal/profile_that_lists_a_directory (2.23s)
+    --- PASS: TestProfileScanCatchesMutants/M-e_a_new_file_calling_an_exported_profile_helper (2.89s)
+    --- PASS: TestProfileScanCatchesMutants/M-f_an_environment_read_with_a_non-constant_name (1.12s)
+--- PASS: TestProfileEnvDoesNotReachProfileRoot (23.33s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/NormalizationRules (0.00s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/ControlTwoRunsOfTheSameStateAreIdentical (8.78s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/ThreeProfileStatesLeaveTheSameRecord (8.13s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/MutantReadingTheCanaryIsSeen (6.41s)
+PASS
+coverage: 7.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	53.719s	coverage: 7.1% of statements
+exit=0
+```
+
+**AC-OWR-14 GREEN (트리 `91e5bbcfa5`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$' -count=1 -v -coverprofile=...`
+
+```text
+--- PASS: TestRemainingListKeeps313UnregisteredCopies (52.38s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/Premise (0.44s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/StructuredRowsKeepEveryCopy (4.59s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantEmptyReasonRowsIsCaught (4.02s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantPrintingEveryPathByDefaultIsCaught (0.58s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantBytesEqualPromotionIsCaught (30.89s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (9.15s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MixedReasonsEveryRowHasOne (2.70s)
+PASS
+coverage: 7.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	54.073s	coverage: 7.9% of statements
+exit=0
+```
+
+**AC-OWR-11 GREEN (트리 `91e5bbcfa5`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestCaseVariantResolvesToRegisteredEntry|TestCaseVariantOnHostFilesystem)$' -count=1 -v -coverprofile=...`
+
+```text
+--- PASS: TestCaseVariantOnHostFilesystem (5.57s)
+    --- PASS: TestCaseVariantOnHostFilesystem/the_host's_own_case_mode_decides_the_expectation (4.05s)
+    --- PASS: TestCaseVariantOnHostFilesystem/the_operational_code_never_runs_the_project-root_probe (1.53s)
+--- PASS: TestCaseVariantResolvesToRegisteredEntry (0.03s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/case-insensitive_mode:_one_file,_the_registered_verdict (0.01s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/case-insensitive_mode:_a_user-modified_registered_file_stays_user-modified (0.00s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/case-sensitive_mode:_two_files (0.00s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/the_exact_registered_spelling_is_looked_up_first (0.00s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/mutant:_an_always-alias_resolver_is_caught (0.01s)
+    --- PASS: TestCaseVariantResolvesToRegisteredEntry/an_ambiguous_alias_is_no_alias (0.00s)
+PASS
+coverage: 5.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.379s	coverage: 5.1% of statements
+exit=0
+```
+
+**AC-OWR-12 GREEN (트리 `91e5bbcfa5`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestCaseVariantCounterpartAndMirrorSpelling$' -count=1 -v -coverprofile=...`
+
+```text
+--- PASS: TestCaseVariantCounterpartAndMirrorSpelling (4.68s)
+    --- PASS: TestCaseVariantCounterpartAndMirrorSpelling/case-insensitive:_the_spelling_does_not_make_the_counterpart_unconfirmed (2.92s)
+    --- PASS: TestCaseVariantCounterpartAndMirrorSpelling/case-sensitive_control:_the_same_project_reports_an_unconfirmed_counterpart (1.75s)
+PASS
+coverage: 5.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.289s	coverage: 5.2% of statements
+exit=0
+```
+
+**기준선 11개 + chunk 1 의 22개 회귀 (트리 `91e5bbcfa5`, 앵커된 `-run`, 최상위 `--- PASS` 만 추림)** — 쓸어낸 최상위 시험 수 33 (= 11 + 22)
+
+```text
+--- PASS: TestMigrationClassifiesUnregisteredMirrorCopy (2.31s)
+--- PASS: TestOwnershipAttestedManagedOnlyWithFullEvidence (0.24s)
+--- PASS: TestOwnershipHelperTreeSnapshotSeesDirMtime (0.04s)
+--- PASS: TestOwnershipHelperForcedRunReachesReconciliation (6.65s)
+--- PASS: TestOwnershipHelperUsesRealEmbeddedPaths (2.19s)
+--- PASS: TestProfileCallsiteBaselineMatchesTree (13.39s)
+--- PASS: TestOwnershipHelperFixtureBuilders (0.12s)
+--- PASS: TestOwnershipVerdictClasses (0.04s)
+--- PASS: TestOwnershipPreserveByteEqualUserFile (8.86s)
+--- PASS: TestOwnershipPreserveUserModifiedFile (6.76s)
+--- PASS: TestOwnershipUnregisteredUnknownOriginKeptWithReason (6.12s)
+--- PASS: TestKeepReasonVocabularyIsClosed (0.00s)
+--- PASS: TestPreservePriorManifestOutcomes (0.05s)
+--- PASS: TestMigrationKeepsSharedCopyUnderProfileReach (2.26s)
+--- PASS: TestMigrationRemovesSharedCopyWithoutProfileReach (2.00s)
+--- PASS: TestMigrationReachLeavesUserModifiedCopy (2.39s)
+--- PASS: TestMigrationBackupBeforeRemoval (7.27s)
+--- PASS: TestEmptiedSkillDirRemoved (6.80s)
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (3.20s)
+--- PASS: TestMigrationRemovalGate (3.40s)
+--- PASS: TestRF2F3b_MigrationPreservesUntracked (0.01s)
+--- PASS: TestMigrationIdempotent (3.22s)
+--- PASS: TestMigrationPreservesExistingMirrorEntries (3.60s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+--- PASS: TestPriorManifestAtomicWriteFailures (0.06s)
+--- PASS: TestPriorGenerationCorruptIsNoEvidence (0.07s)
+--- PASS: TestLegacyManifestRoundTrip (0.01s)
+--- PASS: TestDowngradeDropsEvidenceNotSafety (0.04s)
+--- PASS: TestPriorGenerationsAreLookupBoundOnly (0.67s)
+--- PASS: TestPriorManifestRetainedInRunBackup (10.73s)
+--- PASS: TestPriorGenerationSourceBoundedAndTolerant (0.02s)
+--- PASS: TestBackupFailureRemovesNothingThroughProductionPath (13.68s)
+--- PASS: TestOwnershipAttestedManagedThroughOperatingSource (0.04s)
+PASS
+coverage: 8.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli	108.166s	coverage: 8.1% of statements
+exit=0
+```
+
+**마이그레이션·갱신 61시험 묶음 (chunk 1 과 같은 파일 목록의 모든 최상위 시험을 앵커된 `-run` 으로, 트리 `91e5bbcfa5`)** — 쓸어낸 최상위 시험 수 61 (기대 61). 이 묶음은 이번 chunk 가 갱신 흐름의 표준 출력(마이그레이션의 파일별 보류 줄을 `--verbose` 없이는 내지 않음)을 바꿨으므로 회귀 가드로 다시 돌렸다.
+
+```text
+--- PASS: TestFR3_1_MigrationPreservesOnUnverifiable (0.01s)
+--- PASS: TestMigrationClassifiesUnregisteredMirrorCopy (5.52s)
+--- PASS: TestDoctorProjectManifestLoadFailureNotDisguised (0.00s)
+--- PASS: TestDoctorProjectManifestPreservedOnLoadFailure (0.00s)
+--- PASS: TestDoctorUserInstallHonestFailureAndReadOnly (0.00s)
+--- PASS: TestDoctorLockCheckVacuousNotReportedMatch (0.01s)
+--- PASS: TestDoctorWorkflowRootSelectedByRequiredFile (0.02s)
+--- PASS: TestDoctorFallbackKeepsProjectScopeL1 (0.02s)
+--- PASS: TestMigrationKeepsSharedCopyUnderProfileReach (6.11s)
+--- PASS: TestMigrationRemovesSharedCopyWithoutProfileReach (5.21s)
+--- PASS: TestMigrationReachLeavesUserModifiedCopy (5.15s)
+--- PASS: TestFileEntryKeptBy (0.00s)
+--- PASS: TestMigrationBackupBeforeRemoval (7.01s)
+--- PASS: TestEmptiedSkillDirRemoved (4.88s)
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (3.42s)
+--- PASS: TestMigrationRemovalGate (3.45s)
+--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan (0.01s)
+--- PASS: TestUpdateDryRun_EmitsResidueCleanupPlan (0.00s)
+--- PASS: TestUpdateDryRun_ZeroMutation (0.02s)
+--- PASS: TestUpdateDryRun_PreservesExistingOutput (0.01s)
+--- PASS: TestPreviewPreservedLinesCountByDefault (0.01s)
+--- PASS: TestRetrackManifestFilesResolvesDriftAndKeepsTemplateHash (0.00s)
+--- PASS: TestRetrackManifestFilesLeavesUserOwnedEntriesAlone (0.00s)
+--- PASS: TestRetrackManifestFilesSkipsAbsentAndUntracked (0.00s)
+--- PASS: TestRetrackSectionFilesCoversSectionDirectory (0.00s)
+--- PASS: TestRetrackSectionFiles_FailureReturnsErrorAndPrintsNothing (0.01s)
+--- PASS: TestRunUpdateRestoreRetracksSections (0.06s)
+--- PASS: TestUpdateMigratesLegacyProject (6.18s)
+--- PASS: TestUpdateOptedOutMigrationPreservesManagedRootLocals (1.64s)
+--- PASS: TestMigrationArchivesModifiedBeforeRemoval (0.05s)
+--- PASS: TestMigrationIdempotent (3.18s)
+--- PASS: TestUpdateForceKeepsPlantedCommonAssets (2.22s)
+--- PASS: TestUpdateLocalModeKeepsFullScope (1.10s)
+--- PASS: TestUpdateNeverFlipsModeRecord (2.86s)
+--- PASS: TestForceUpdatePreservesUserCommonAssets (2.16s)
+--- PASS: TestNotDemonstratedPreservationHoldsAtNextLocalUpdate (2.71s)
+--- PASS: TestPreservedSectionSurvivesRestoreUntouched (1.06s)
+--- PASS: TestMigrationArchiveRefusesSymlinkedArchiveDestination (0.22s)
+--- PASS: TestUnknownSkillPreservedAcrossLocalUpdates (3.21s)
+--- PASS: TestMigrationPreservesExistingMirrorEntries (3.07s)
+--- PASS: TestUpdatePreservesUserModifiedPolicies (1.78s)
+--- PASS: TestCommonAssetCleanFilterNormalizesSeparators (0.00s)
+--- PASS: TestMigrationRefusesRemovalWhenUserInstallMissing (1.72s)
+--- PASS: TestUserCounterpartMustBeCurrentVersion (0.01s)
+--- PASS: TestCancelledUpdateKeepsProjectManagedAssets (2.88s)
+--- PASS: TestRecordlessBranchTallyCountsReconcileRemovals (1.49s)
+--- PASS: TestAgentsSkillsCounterpartMapsToClaudeSource (0.01s)
+--- PASS: TestReconcileDropsStaleManifestRecord (1.47s)
+--- PASS: TestPostRemovalUserFileSurvivesNextUpdate (4.40s)
+--- PASS: TestAgentsOriginSkillMapsToItsOwnCatalogSource (0.01s)
+--- PASS: TestPreviewFlagsMigrationRemovalCandidates (0.01s)
+--- PASS: TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl (0.02s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.01s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy (0.01s)
+--- PASS: TestTallyCountsMigrationRemovals (4.46s)
+--- PASS: TestSkipDecisionUsesTreeHash (0.17s)
+--- PASS: TestPreviewCountEqualsRunCount (0.02s)
+--- PASS: TestTemplateSync_SymlinkedNamespaceBackupRootReportsSkippedPruning (6.55s)
+--- PASS: TestVersionMatchSkipKeepsCorruptManifestInPlace (0.02s)
+--- PASS: TestUpdateSkippedOnVersionMatchRejectsChangedTemplateTree (0.55s)
+--- PASS: TestStampSkewWarning (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	97.831s
+exit=0
+```
+
+**특성화 시험 (트리 `abd9bbda34`)**: `TestProfileReachMarkUsesTheRegisteredKeyUnderACaseAlias`, `TestAliasToAKeyTheManifestLacksIsNoAlias`, `TestCounterpartLocationAndStatusEdges`, `TestRemainingRenderEdges` — 모두 PASS (명령: `go test ./internal/cli/ -run '^(...)$' -count=1 -v`, 종료 코드 0). 첫 시험은 프로필 도달 표지를 **등록된 키** 로 쓰는 가지를 지킨다: 변이 (디스크 철자로 쓰기) 를 끼우면 마이그레이션이 `mark profile-reach keep ... entry not found` 로 중단되어 붉어짐을 관측했다.
+
+**품질 측정 (트리 `abd9bbda34`)**
+
+```text
+HEAD=abd9bbda3410cc58a954cbd95b77f2352e3b7b0d
+$ go build ./...
+exit=0
+$ GOOS=windows GOARCH=amd64 go build ./...
+exit=0
+$ gofmt -l internal/cli internal/manifest
+exit=0
+$ go vet ./internal/cli/ ./internal/manifest/
+exit=0
+$ golangci-lint run ./internal/manifest/ ./internal/cli/
+internal/cli/factory_run_adopt.go:79:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+			fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
+			           ^
+internal/cli/factory_run_adopt.go:91:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+		fmt.Fprintf(warn, "factory leader resume: run %s is led by codex — a claude leader does not adopt it; retire it first or relaunch the codex leader deliberately\n", adopt.RunID)
+		           ^
+internal/cli/factory_run_adopt.go:103:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+		fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first\n", adopt.RunID, value, adopt.RunID)
+		           ^
+3 issues:
+* errcheck: 3
+exit=1
+```
+
+린트 3건은 모두 `internal/cli/factory_run_adopt.go` 의 기존 `errcheck` (chunk 1 과 같은 3건; 그 파일은 기준 `cdd72a814` 와 바이트 동일 — `git diff --quiet cdd72a814 HEAD -- internal/cli/factory_run_adopt.go` → 종료 코드 0) 이고 이 카드가 만든 파일의 이슈는 0건이다. 범위 규율로 고치지 않았다.
+
+**파일 불변·경계 확인 (트리 `abd9bbda34`)**
+
+```text
+HEAD=abd9bbda3410cc58a954cbd95b77f2352e3b7b0d
+$ git log --oneline cdd72a814..HEAD --grep=(card t1865) -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+exit=0
+$ git log --oneline cdd72a814..HEAD --grep=(card t1865) -- .moai/specs | wc -l (positive control: at least one line)
+      15
+$ git log --oneline cdd72a814..HEAD --grep=(card t1865) -- internal/cli/update/backup
+exit=0
+$ grep -rn --include='*.go' --exclude='*_test.go' 'removalEnabled\s*=' internal
+internal/cli/migrate_project_assets.go:40:var removalEnabled = false
+exit=0
+$ grep -n 'AskUserQuestion' <the five new non-test files>
+exit=1
+$ git diff --stat 5eed5816ae HEAD -- internal ":(exclude)*_test.go"
+ internal/cli/migrate_ownership.go           | 181 +++++++++++++++++++++++++++-
+ internal/cli/migrate_ownership_case.go      | 149 +++++++++++++++++++++++
+ internal/cli/migrate_ownership_remaining.go | 155 ++++++++++++++++++++++++
+ internal/cli/migrate_project_assets.go      |  29 ++++-
+ internal/cli/update_template_sync.go        |   5 +-
+ 5 files changed, 508 insertions(+), 11 deletions(-)
+```
+
+보호 파일 둘과 `internal/profile` 은 이 카드의 커밋이 건드리지 않았다 (명령 2 빈 출력·종료 코드 0, 양성 대조군 15줄). `removalEnabled` 의 비시험 대입은 선언 한 줄뿐이다 (`= false`, `internal/cli/migrate_project_assets.go:40`). 서브에이전트 경계 grep 은 일치 없음 (종료 코드 1).
+
+**새 코드의 함수별 커버리지 (이 chunk 의 AC 시험 + 회귀 묶음의 `-coverprofile` 을 합친 값, `go tool cover -func`; 패키지 전체를 돌리지 못하는 제약 때문에 패키지 단위 비율은 재지 못했다)**: 파일별 문장 커버리지 `migrate_ownership.go` 96.0% (119/124), `migrate_ownership_case.go` 96.6% (57/59), `migrate_ownership_remaining.go` 100% (64/64), `migrate_ownership_evidence.go` 100% (25/25), `update_prior_manifest.go` 87.5% (70/80); 100% 아닌 새 함수: `classifyOwnershipCore` 85.7%, `userCounterpartStatus` 90.9%, `shippedCaseSpelling` 94.1%, `canonicalCounterpartRel` 93.3%. 수정한 기존 파일 `migrate_project_assets.go` 는 이 좁은 실행에서 82.5% (212/257) 이다 — 기존 코드의 가지 (`verifyMigrationFinalState` 63.2% 등) 를 좁은 묶음이 다 밟지 않기 때문이며 85% 기준 확인은 CI 의 전체 실행 몫이다 (Gaps). `update_template_sync.go` 는 호출 줄 둘만 바꿨고 파일 단위로 재지 않았다.
+
+**변이 점검 (실제 운영 코드에 임시로 변이를 끼워 시험이 붉어지는지 관측, 매번 바이트 복사본으로 되돌리고 `cmp` 로 동일 확인; 이 표는 성립한 변이만 적었다)**
+
+| 변이 (임시) | 붉어진 시험 |
+|------|-------------|
+| R1 `migrate_ownership.go` 에 `profile.GetProfileDir` 로 프로필 뿌리를 읽고 버리는 함수 | `TestNoProfileRootAccessInUpdateSources` (새 호출 지점 + 판정 코드 영 규칙) |
+| R2 프로필 쪽 기록이 `CLAUDE_CONFIG_DIR/skills/x/SKILL.md` 의 존재에 좌우됨 | `TestProfileEnvDoesNotReachProfileRoot/ThreeProfileStatesLeaveTheSameRecord` (같은 상태 대조군은 PASS) |
+| M2-1 대응물 상태를 행에 기록하지 않음 | `TestProfileMappedCopyKeptWithoutCounterpart` 의 세 사용자 루트 상태 서브 시험 |
+| M2-2 프로필 쪽 상태를 항상 `n/a` 로 기록 | 같은 세 서브 시험 |
+| M3-1 잔존 행 정렬 제거 | `StructuredRowsKeepEveryCopy`, `RenderedByTheUpdateFlow` (경로 사전순) |
+| M3-2 파일별 보류 줄을 항상 표준 출력으로 | `RenderedByTheUpdateFlow` (기본 표준 출력에 313개 경로) |
+| M3-3 잔존 목록을 터미널 블록에 기록하지 않음 | `RenderedByTheUpdateFlow` (이유별 줄 없음, 파일별 행 0) |
+| M3-4 기본 보기에도 파일별 행을 모두 기록 | `RenderedByTheUpdateFlow` (기본 블록에 313개 경로, 324줄) |
+| M4-1 별칭이 파일 동일성을 보지 않음 | `TestCaseVariantResolvesToRegisteredEntry/case-sensitive_mode:_two_files` |
+| M4-2 대응물 확인에서 대소문자 해소 제거 | `TestCaseVariantCounterpartAndMirrorSpelling/case-insensitive...` (대응물 `unconfirmed`) |
+| M4-3 출하된 철자를 보고하지 않음 | 같은 서브 시험 (`case variant of ""`) |
+| M4-4 실제 마이그레이션에서 별칭 조회 생략 | `TestCaseVariantOnHostFilesystem` (호스트: `unregistered`) |
+| 프로필 도달 표지를 디스크 철자 키로 씀 | `TestProfileReachMarkUsesTheRegisteredKeyUnderACaseAlias` |
+| 시험 안 변이: 스캔 M-a ~ M-f, 카나리 읽는 분류기, 항상 별칭, 비운 이유 열, 모든 경로 출력, 바이트 일치 승격 대역, 프로필 지도 무시, 프로필 쪽을 읽은 척 | 각각의 `Mutant...` / `M-x` 서브 시험이 비어 있지 않은 문제 목록을 직접 관측 |
+
+**정직한 회계 (RED → GREEN 의 어긋남을 숨기지 않는다)**
+
+1. AC-OWR-07 의 A 커밋은 새 어휘 (`counterpartStatus`, `ProfileSide` 필드) 를 요구해 RED 가 빌드 실패이다. 단언 수준의 「`absent` 가 기록되지 않음」 은 이 시점에 관측되지 않았다. 그 몫은 C 커밋 GREEN 출력의 변이 서브 시험과 변이 점검 표의 M2-1, M2-2 가 한다.
+2. AC-OWR-08 의 시험은 처음 쓴 초안이 두 곳에서 틀렸고 A 커밋 **전에** 디버그 실행으로 고쳤다 (그래서 A 커밋은 최종 모양이다): (a) 「마이그레이션·미리보기·판정·갱신 동기화 파일」 을 acceptance.md 의 `migrate_*.go` 글롭으로 잡았더니 `moai migrate` 하위 명령의 파일 (`migrate_profiles.go`, `migrate_home_state.go` 등) 이 기준선 행을 이미 가지고 있어 붉었다 — 이 SPEC 이 더하거나 고친 파일 (`migrate_ownership*.go`, `update_prior_manifest.go`, `update_template_sync.go`, `update_dryrun_preview.go`) 은 프로필 호출 지점 0, `migrate_project_assets.go` 는 기준선의 한 행 정확히 하나로 좁혔다. (b) 같은 상태 두 번 구동의 **대조군** 이 정규화 부족을 드러냈다: 파일 시스템 안전 철자의 타임스탬프 (`update-2026-10-18T06-31-53Z`) 와 경로 키 안의 실행 디렉터리 이름이 지워지지 않았다. 정규화는 여전히 세 종류 (임시 루트, 실행 디렉터리 이름, 타임스탬프) 뿐이고 위 두 철자를 그 종류에 포함시켰다.
+3. AC-OWR-14 의 시험은 C 커밋에서 한 번 보정했다: 실행 2 (`--force`) 에서 313개 중 두 개 (`.agents/skills/moai-foundation-core/SKILL.md`, `.agents/skills/moai-workflow-tdd/SKILL.md`) 의 이유가 `no-provenance-record` 가 아니라 `evidence-incomplete:original-deployed-path` 로 나왔다. 실행 1 의 시작 매니페스트가 이전 세대로 보존되고 거기에 같은 해시의 `.claude/skills` 등록 기록이 있기 때문이며, design.md D-2 가 정확히 그렇게 읽는다 (「같은 해시의 기록이 다른 키에만 있으면 original-deployed-path 가 빠진 것」). 구현이 아니라 시험의 기대가 틀렸다. 단언은 그 두 경로에 한해 좁은 이유를 기대하게 바뀌었고 나머지 311개는 `no-provenance-record` 그대로이다. A 커밋의 RED 이유 네 개 (정렬, 기본 출력 313 경로, 이유별 줄 없음, 파일별 행 없음) 는 이 보정과 무관하다.
+4. AC-OWR-14 의 구현은 첫 판에서 chunk 1 의 `TestBackupFailureRemovesNothingThroughProductionPath` 를 붉게 했다: 흐름의 표준 출력이 `backup-failed` 를 이름 붙여야 하는데 파일별 보류 줄을 기본에서 빼면서 그 줄도 사라졌다. 실패는 백업 실패로 제거를 거부한 줄이 정상 상태의 보류가 아니라 운영자가 봐야 할 실패라서 예외로 두는 것으로 고쳤다 (`[reason: backup-failed]` 태그가 붙은 줄은 기본에서도 표준 출력으로 나간다; 개수는 그 실행이 제거할 파일 수로 한정). 이후 61시험 묶음과 chunk 1 회귀가 모두 GREEN.
+5. AC-OWR-11 의 A 커밋을 둘로 나눴다 (호스트 쪽 `5246f408cf`, 주입 쪽 `ae8868f6fc`): 새 API 를 쓰는 시험과 같은 커밋에 두면 호스트 쪽의 단언 수준 RED 가 빌드 실패에 가려진다. 호스트 쪽은 현재 식별자만 쓰도록 쓰고 철자 차이 보고는 보고 줄의 `case-variant` 문자열로 단언했다.
+6. 임시 변이는 `cp` 로 원본 복사본을 되돌리고 `cmp` 로 바이트 동일을 확인했다. 한 스크립트가 끝에 `git diff --quiet` (HEAD 대비) 로 `DIRTY` 를 적었는데, 그 시점에 해당 파일이 HEAD 보다 앞선 미커밋 구현이라서였고 복원 실패가 아니다 (같은 시점의 `cmp` 가 `BYTE-IDENTICAL-RESTORED`). 변이 M4-4 의 첫 형태는 미사용 변수·import 로 컴파일되지 않아 변이로 성립하지 않았고 (표에는 두 번째 형태만) 다시 만들어 돌렸다.
+7. 측정 중 이 머신의 부하 평균이 약 65 였다 (`uptime`). `go test` 호출 몇 건이 도구의 120초 제한을 넘어 분리 실행했다. 시간은 증거로 쓰지 않는다.
+8. AC-OWR-08 의 카나리는 외곽 진입 `runUpdateFlowForced` 가 아니라 `runTemplateSyncWithReporter` (`--force` 플래그 설정, 마이그레이션 실행 문맥을 시험이 쥠) 를 구동한다. 잔존 행·제거 목록을 구조로 관측하려는 선택이며, 버전 일치 건너뛰기 관문은 외곽 진입에만 있어 이 진입은 항상 조정에 닿는다. 규칙 7 의 (ii) 새 `manifest.prior.json` 의 바이트 == 실행 전 매니페스트, (iii) 잔존 행 양수 와 프로필 지도 사본 행 존재는 매 실행 단언한다.
+
+**이 chunk 가 만진 부채의 처분 (Binding run conditions)**
+
+| 부채 | 처분 | 근거 |
+|------|------|------|
+| N16 프로필 뿌리 읽기를 실행 시점 조각으로 조립한 경로가 AC-OWR-08 을 피함 | **열린 채 공개** (우회하지 않음) | 이 chunk 는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔의 새 행 0, 판정·보고·동기화·미리보기 새 코드의 프로필 호출 지점 0 (`MigrationPreviewAndVerdictFilesAddNothing`), 보호 파일 둘과 `internal/profile` 불변 (L4). 조각 조립 + 결과 버림 읽기는 L1 도 L3 도 못 본다는 한계는 그대로이며 카드 t1702 보류 범위다. 프로필 쪽 파일을 읽어야만 충족되는 요구는 나오지 않았다 (Q5 중단 조건 미발동). |
+| N21 중 REQ-OWR-005 문구 (「동결된 기존 접촉들」 대 「단일 기존 접촉」) | SPEC 문구 결함으로 **공개, 본문 미수정** | 리더 결정 3. 시험은 한 행·개수 1 의 예외를 기준선 행으로 단언한다. |
+| N17 (M9), N23·N4 잔여 (M8) | 이월 (이 chunk 의 범위 밖) | M8, M9 를 맡는 chunk 로 |
+
+**SPEC 쪽 결함·불일치로 보고하는 것 (고치지 않았다)**
+
+- AC-OWR-08 이 「마이그레이션·미리보기·판정·갱신 동기화 파일 (`migrate_*.go`, ...)」 의 새 호출 지점이 0 이라고 쓰는데, `migrate_*.go` 글롭은 `moai migrate` 하위 명령의 파일도 포함하고 그 파일들은 기준선에 프로필 행을 가진다. 시험은 이 SPEC 의 새 파일·고친 파일로 좁혔다.
+- AC-OWR-14 는 313개의 이유를 `no-provenance-record` 로 적는다. 첫 실행에서는 그렇다. 그러나 이전 세대 (`manifest.prior.json`) 가 쌓인 뒤에는 같은 해시의 `.claude/skills` 기록이 있는 복사본의 이유가 `evidence-incomplete:original-deployed-path` 가 된다 (design.md D-2 의 결과). 현장 313개 중 `.claude/skills` 짝이 매니페스트에 등록된 만큼은 두 번째 실행부터 그 이유로 바뀔 수 있다 — 보존이라는 결과는 같다. 리더가 알아야 하는 현장 가시 효과이다.
+- AC-OWR-12 의 「미등록 복사본이 `case-variant` 이유를 받는다」 는 무엇에 대한 변형인지 적지 않았다. 미등록 파일에는 등록 키가 없으므로 **출하된 (내장 템플릿) 철자** 에 대한 변형으로 구현했다 (`remainingRow.CaseVariantOf`). 이유 집합 (design.md D-1) 의 `case-variant` 는 닫힌 이유가 아니라 표지로 둬서 `TestKeepReasonVocabularyIsClosed` 의 닫힌 집합을 바꾸지 않았다.
+- AC-OWR-14 의 「기본 렌더는 개별 경로를 찍지 않으며」 는 갱신 흐름이 마이그레이션의 파일별 보고 줄을 기본에서 이미 313줄 찍고 있었다는 측정 (A14 의 RED) 으로 흐름 자체의 표준 출력까지 포함하게 읽었다. 이를 위해 갱신 흐름의 보고 콜백이 `--verbose` 없이는 파일별 보류 줄을 내지 않도록 호출 줄 하나를 바꿨다 (사용자 눈에 보이는 동작 변화: 보류 파일의 이름은 `moai update --verbose` 에서 터미널 블록의 Reference 줄로 나오고, 기본에서는 이유별 개수만 나온다).
+
+**Gaps (관측하지 않은 것)**
+
+- `internal/cli` 패키지 전체, `-race`, 저장소 전체 시험은 돌리지 않았다 (lane 제약). 저장소 전체 시험 판정은 통합 브랜치의 CI 가 소유하며 보고 시점에 **보류** 이다.
+- 윈도·리눅스에서는 컴파일만 확인했다 (`GOOS=windows GOARCH=amd64 go build ./...`). 새 시험은 darwin 에서만 실행했다. 대소문자 시험은 두 모드를 흉내 낸 주입으로 어느 호스트에서나 같은 결과를 주지만, 호스트 시험의 **구분 모드 가지** (리눅스) 는 이 머신(무구분)에서 실행되지 않았다.
+- 새 코드가 아닌 기존 파일 `migrate_project_assets.go` 의 파일 단위 커버리지는 좁은 묶음에서 82.5% 이다 (위). 85% 기준은 CI 의 전체 실행으로 확인해야 한다.
+- 접근 기록 시임이 없어 「프로필 뿌리를 읽지 않았다」 는 호출 지점 동결 + 차분 카나리 + 변이 관측의 추론이다 (한계 (1)(3) 그대로; N16).
+- 린트는 설치된 `golangci-lint` v2.1.6 이며 이 트리에서 빌드한 도구가 아니다.
+- 시험 시간(부하 평균 약 65)은 증거가 아니다.
+- 카나리의 구동 진입이 외곽 진입이 아니다 (정직한 회계 8).
+
+**잔여 위험**
+
+- 호출 지점 스캔의 한계 (조각난 경로 + 버림 읽기) 는 열려 있다 (N16, 카드 t1702 보류).
+- 갱신 흐름의 표준 출력 변화 (기본에서 보류 파일별 줄이 사라짐) 를 기대하는 다른 소비자 (스크립트·문서) 가 있다면 영향을 받는다. 이 저장소 시험 중에는 61시험 묶음과 chunk 1 회귀에 그런 기대가 없었다.
+- 현장의 313개는 두 번째 실행부터 일부가 다른 (더 좁은) 보류 이유로 나올 수 있다 (위 SPEC 쪽 불일치).
+- `hostCaseFS` 는 패키지 변수라 병렬 시험이 바꾸면 서로 간섭한다. 이 chunk 의 시험은 `t.Parallel()` 을 쓰지 않고 `t.Cleanup` 으로 복원한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
