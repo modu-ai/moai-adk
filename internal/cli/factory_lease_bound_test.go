@@ -312,46 +312,87 @@ func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 	}
 }
 
-// flWaitStartSeam installs the lease's queue-lock wait seam (factoryLeaseWaitStart,
-// AC-FAL-007 (c)) for the test, restored at cleanup, and returns the getter of the
-// instant the seam fired. The getter fails the test unless the seam fired exactly
-// once: each lease call reads the clock once, immediately before its first
-// queue-lock wait. The instant is read from the real clock inside the seam, not
-// taken from its argument: the argument is factoryCardNow's read, and fcFixture
-// pins factoryCardNow to a fixed 2026-09-26 date, so the argument cannot serve as a
-// wall-clock start. The seam fires immediately before the wait, so the two reads
-// differ only by the call itself.
-//
-// At that first firing the helper also starts a timer that calls release after
-// holdFor. The caller's holder keeps the queue lock from before the verb starts;
-// starting its release timer at the wait, rather than before the verb, keeps the
-// lock held for longer than B during the wait whatever the pre-lock latency, which
-// varies with the host's load. The timer is stopped at cleanup.
-func flWaitStartSeam(t *testing.T, holdFor time.Duration, release func()) func() time.Time {
+// flQueueReleaseSlack is the slack past the queue lock's wait budget B that the
+// release deadline carries. It is a hang/mutant bound, not a measurement: no
+// pass/fail rides on elapsed wall-clock. The release is a state event the test
+// controls — a context that starts counting at the lease's first queue-lock
+// wait and expires B + flQueueReleaseSlack later — so a lease that gives up
+// within its budget returns with the lock still held, with ~4 s of allowance
+// above the worst measured harness overhead (1.14 s, the t1506 verification
+// pass), while a lease that ignores its budget only returns after the
+// deadline-driven release.
+const flQueueReleaseSlack = 4 * time.Second
+
+// flVerbResult carries one qasRunNext call's outcome from the goroutine that
+// ran it to the test body.
+type flVerbResult struct {
+	out, stderr string
+	err         error
+	returned    time.Time
+}
+
+// flRunNextAsync runs qasRunNext on a goroutine and returns the channel its
+// result arrives on, so the test body can check the order "the call returned ->
+// the release signal" against the goroutine's send.
+func flRunNextAsync(t *testing.T, args ...string) <-chan flVerbResult {
+	t.Helper()
+	done := make(chan flVerbResult, 1)
+	go func() {
+		out, stderr, err := qasRunNext(t, args...)
+		done <- flVerbResult{out, stderr, err, time.Now()}
+	}()
+	return done
+}
+
+// flWaitStartRelease installs the lease's queue-lock wait seam
+// (factoryLeaseWaitStart, AC-FAL-007 (c)) and arms the release of the held
+// queue lock at a state event the test controls (card t1807's pattern): a
+// context created at the seam's first firing — the instant the call reached its
+// queue-lock wait — that expires releaseAfter later, at which point
+// releaseSignal is closed and the queue lock is released. The release is
+// deadline-driven, not a midpoint timer: nothing decides pass/fail on elapsed
+// wall-clock, and the caller checks the order "the call returned -> the release
+// signal" with a non-blocking receive. Creating the context at the wait, rather
+// than before the verb, keeps the lock held past the release deadline during
+// the wait whatever the pre-lock latency, which varies with the host's load.
+// The getter returns the instant the seam fired and fails the test unless the
+// seam fired exactly once: each lease call reads the clock once, immediately
+// before its first queue-lock wait (for the bare form this is the one-attempt
+// premise). The instant is read from the real clock inside the seam, not taken
+// from its argument: the argument is factoryCardNow's read, and fcFixture pins
+// factoryCardNow to a fixed 2026-09-26 date, so the argument cannot serve as a
+// wall-clock start.
+func flWaitStartRelease(t *testing.T, releaseAfter time.Duration, release func()) (func() time.Time, <-chan struct{}) {
 	t.Helper()
 	var (
 		mu    sync.Mutex
 		at    time.Time
 		fired int
-		hold  *time.Timer
 	)
+	releaseSignal := make(chan struct{})
+	releaserDone := make(chan struct{})
 	prev := factoryLeaseWaitStart
 	factoryLeaseWaitStart = func(time.Time) {
 		mu.Lock()
 		defer mu.Unlock()
-		if fired == 0 {
-			at = time.Now()
-			hold = time.AfterFunc(holdFor, release)
-		}
 		fired++
+		if fired == 1 {
+			at = time.Now()
+			releaseCtx, cancel := context.WithTimeout(context.Background(), releaseAfter)
+			// Cleanups run LIFO: cancel first (the releaser wakes), then the
+			// done-wait, then the seam restore registered at the helper's call.
+			t.Cleanup(func() { <-releaserDone })
+			t.Cleanup(cancel)
+			go func() {
+				defer close(releaserDone)
+				<-releaseCtx.Done()
+				close(releaseSignal)
+				release()
+			}()
+		}
 	}
 	t.Cleanup(func() {
 		factoryLeaseWaitStart = prev
-		mu.Lock()
-		defer mu.Unlock()
-		if hold != nil {
-			hold.Stop()
-		}
 	})
 	return func() time.Time {
 		t.Helper()
@@ -359,44 +400,53 @@ func flWaitStartSeam(t *testing.T, holdFor time.Duration, release func()) func()
 		defer mu.Unlock()
 		switch {
 		case fired == 0:
-			t.Fatal("factoryLeaseWaitStart never fired: the lease reached no queue-lock wait, so the measured interval has no start (AC-FAL-007 (c))")
+			t.Fatal("factoryLeaseWaitStart never fired: the lease reached no queue-lock wait, so the contract has no start (AC-FAL-007 (c))")
 		case fired != 1:
 			t.Fatalf("factoryLeaseWaitStart fired %d times, want exactly 1: the lease reads the clock once, immediately before its queue-lock wait (AC-FAL-007 (c))", fired)
 		}
 		return at
-	}
+	}, releaseSignal
 }
 
 // TestFactoryLeaseQueueLockStallBounded — AC-FAL-007 (c): the queue lock held by
-// the test for longer than the budget B. The nominated lease returns within B +
-// 500 ms with exit 4 and a detail naming the queue lock; the bare form returns
-// within B + 500 ms — one attempt, not five — with exit 1, the lock's timeout
-// error on standard error, nothing on standard output (in particular not `no
-// card is available`), and no record row written. The measured interval of both
-// forms starts at the lease's queue-lock wait seam (factoryLeaseWaitStart): the
-// clock read taken after the factory-record open and immediately before the
-// wait, so the record open and the verb's pre-lock work sit outside it. The holder
-// keeps the queue lock from before the verb starts, and its B + 2 s release timer
-// starts at the first queue-lock wait (flWaitStartSeam), so the lock is held for
-// longer than B during the wait.
+// the test for longer than the budget B. The contract is order, not elapsed
+// wall-clock (card t1746, following card t1807's pattern): the lock is released
+// at a state event the test controls — a release context that starts counting at
+// the lease's first queue-lock wait (flWaitStartRelease) and expires
+// B + flQueueReleaseSlack later — and the lease must return BEFORE that release
+// signal fires: a lease that gives up within its budget returns with the lock
+// still held, while a lease that ignores its budget only returns after the
+// deadline-driven release. The verb runs on a goroutine (flRunNextAsync) and the
+// order is checked with a non-blocking receive after the result arrives;
+// elapsed time is logged for diagnostics only. The nominated lease then exits 4
+// with a `raced` refusal whose detail names the queue lock and writes no record
+// row; the bare form — one attempt, not five (the seam fired exactly once) —
+// exits 1 with the lock's timeout error on standard error, nothing on standard
+// output (in particular not `no card is available`), and no record row written.
 func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 	t.Run("nominated", func(t *testing.T) {
 		budget := flBudget(t)
 		root, _ := nmQueuedNominee(t)
 		nmIsolatedWorktrees(t, "t1")
 		end := flHoldQueue(t, root)
-		waitStart := flWaitStartSeam(t, budget+2*time.Second, end)
-		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
-		returned := time.Now()
-		end()
-		elapsed := returned.Sub(waitStart())
-		t.Logf("nominated under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stderr=%q", elapsed, nmExit(err), err, stderr)
-		if limit := budget + flMargin; elapsed > limit {
-			t.Errorf("the nominated lease returned %s after its queue-lock wait began, want within %s (B + 500 ms)", elapsed, limit)
+		waitStart, released := flWaitStartRelease(t, budget+flQueueReleaseSlack, end)
+		res := <-flRunNextAsync(t, "--run", fcRun, "--card", "t1")
+		// Order check: the lease must return before the release signal fires.
+		heldAtReturn := true
+		select {
+		case <-released:
+			heldAtReturn = false
+		default:
 		}
-		nmAssertRefused(t, out, stderr, err, "raced")
-		if !strings.Contains(stderr, "queue lock") {
-			t.Errorf("refusal detail = %q, want it to name the queue lock", stderr)
+		end()
+		elapsed := res.returned.Sub(waitStart())
+		t.Logf("nominated under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stderr=%q", elapsed, nmExit(res.err), res.err, res.stderr)
+		if !heldAtReturn {
+			t.Errorf("the nominated lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget", elapsed, flQueueReleaseSlack, budget)
+		}
+		nmAssertRefused(t, res.out, res.stderr, res.err, "raced")
+		if !strings.Contains(res.stderr, "queue lock") {
+			t.Errorf("refusal detail = %q, want it to name the queue lock", res.stderr)
 		}
 		if n := nmRowCount(t, root, "t1"); n != 0 {
 			t.Errorf("t1 has %d record rows, want 0", n)
@@ -408,23 +458,29 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1", "t2")
 		end := flHoldQueue(t, root)
-		waitStart := flWaitStartSeam(t, budget+2*time.Second, end)
-		out, stderr, err := qasRunNext(t, "--run", fcRun)
-		returned := time.Now()
-		end()
-		elapsed := returned.Sub(waitStart())
-		t.Logf("bare under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stdout=%q stderr=%q", elapsed, nmExit(err), err, out, stderr)
-		if limit := budget + flMargin; elapsed > limit {
-			t.Errorf("the bare lease returned %s after its queue-lock wait began, want within %s (B + 500 ms, one attempt)", elapsed, limit)
+		waitStart, released := flWaitStartRelease(t, budget+flQueueReleaseSlack, end)
+		res := <-flRunNextAsync(t, "--run", fcRun)
+		// Order check: the lease must return before the release signal fires.
+		heldAtReturn := true
+		select {
+		case <-released:
+			heldAtReturn = false
+		default:
 		}
-		if err == nil || nmExit(err) == 3 || nmExit(err) == 0 {
+		end()
+		elapsed := res.returned.Sub(waitStart())
+		t.Logf("bare under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stdout=%q stderr=%q", elapsed, nmExit(res.err), res.err, res.out, res.stderr)
+		if !heldAtReturn {
+			t.Errorf("the bare lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget, one attempt", elapsed, flQueueReleaseSlack, budget)
+		}
+		if err := res.err; err == nil || nmExit(err) == 3 || nmExit(err) == 0 {
 			t.Errorf("the bare lease returned %v (exit %d), want an error with exit 1", err, nmExit(err))
 		}
-		if err != nil && !strings.Contains(stderr+err.Error(), "lock") {
-			t.Errorf("the bare lease's error %q (stderr %q) does not carry the queue lock's timeout", err, stderr)
+		if res.err != nil && !strings.Contains(res.stderr+res.err.Error(), "lock") {
+			t.Errorf("the bare lease's error %q (stderr %q) does not carry the queue lock's timeout", res.err, res.stderr)
 		}
-		if out != "" {
-			t.Errorf("the bare lease wrote stdout %q, want nothing (in particular not `no card is available`)", out)
+		if res.out != "" {
+			t.Errorf("the bare lease wrote stdout %q, want nothing (in particular not `no card is available`)", res.out)
 		}
 		for _, id := range []string{"t1", "t2"} {
 			if n := nmRowCount(t, root, id); n != 0 {
