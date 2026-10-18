@@ -1,0 +1,129 @@
+---
+id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
+title: "The agentic-trunk workflow value: name the lane -> serial local landing -> batch PR -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
+version: "0.1.0"
+status: draft
+created: 2026-10-18
+updated: 2026-10-18
+author: manager-spec
+priority: P1
+phase: "v3.2.0 target"
+module: "internal/config, internal/cli, internal/statusline, internal/template, .claude/rules, .claude/skills, .moai/config, docs-site"
+lifecycle: spec-anchored
+tags: "agentic-trunk, git-strategy, workflow-value, disposition, integration-target, statusline, doctor, guidance, template-first"
+tier: L
+related_specs: [SPEC-GITSTRAT-WORKFLOW-READER-001, SPEC-GITHUB-FLOW-DEFAULT-001, SPEC-LOCAL-MAIN-FLOW-001, SPEC-PRIMARY-LANDING-ONLY-001, SPEC-LANDING-SURFACE-RULES-001]
+---
+
+# SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
+
+Card: **t1831** (Class C, P1, plan -> run -> sync; operator directive 2026-10-17, naming delegated to the lane). Transferred scope: item F of t1830 (SPEC-PRIMARY-LANDING-ONLY-001, plan held at the audit ceiling).
+
+## HISTORY
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-10-18 | manager-spec | Initial plan-phase artifacts. Evidence read in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846); quantified in research.md. |
+
+## 1. Context and problem
+
+1. **The operating model has no name in the product.** This repository runs: card worktrees branch from local `main`; each card lands serially in one dedicated integration worktree through `moai integration merge --card` with scoped tests; roughly every `lead_push_threshold` (20) landings the leader opens one batch pull request from `release/main-batch-YYYYMMDD` with one CI run; `main` is then tagged for release. Its live config value is `git_strategy.manual.workflow: git-flow` with `develop_branch: main` (`.moai/config/sections/git-strategy.yaml`), a label from the retired develop era. The yaml carries a comment that still says "workflow stays git-flow until the GitHub Flow residue sweep lands".
+2. **`git-flow` misdescribes it and `github-flow` is wrong in the other direction.** The model has no `develop` branch and no per-card pull request. The operator rejected `github-flow` because it misleads (Jev 0.92) and chose `agentic-trunk` (Jev 0.72 first choice; Codex runner-up).
+3. **The reader rejects any new value.** The allowed set is exactly four values (`loader_workflow_disposition.go`); an unknown value classifies invalid, resolves an empty integration target, and the base-branch consumers (`worktree done`/`sweep`, `goal approve`, `factory merge ready`/`complete`, card diff base) refuse an empty target. Flipping the live yaml to a value the running binary does not know therefore stops the factory, not only a diagnostic.
+4. **Guidance is spread over the whole tree.** 704 tracked files match the flow-name pattern; most are SPEC and report history that this SPEC leaves alone. The live operating descriptions are in the repo-local rule and local guide, in 7 distributed rule and skill sources plus their deployed copies, in the sync delivery skill (whose value domain is "exactly `github-flow` and `git-flow`" and which stops delivery on any other value), and in the docs-site `moai-sync` page (4 locales).
+
+## 2. Goal
+
+Give the model one canonical value, `agentic-trunk`, with an explicit and tested behavior mapping, make the product read it (reader, consumers, doctor, statusline), reflect the name in repo-local and distributed guidance, and switch this repository's live value last, after a binary that understands it is installed. `git-flow` and `github-flow` stay valid and behave as today; the distributed default stays `github-flow` for every mode.
+
+## 3. Requirements (GEARS)
+
+### 3.1 Value set and reader
+
+- REQ-AGT-001: The workflow value set shall contain `agentic-trunk` as a fifth value appended after the four existing values, and `github-flow`, `git-flow`, `gitlab-flow` and `release-flow` shall classify and resolve their integration targets exactly as before.
+- REQ-AGT-002: The disposition classifier shall classify `agentic-trunk` as valid and not git-flow (the class `github-flow` has), by exact case-sensitive match.
+- REQ-AGT-003: The integration target of `agentic-trunk` shall be the fixed branch `main`, independent of the `develop_branch`, `environment`, `release_branch_prefix` and `main_branch` keys.
+- REQ-AGT-004: When the active mode profile's workflow is `agentic-trunk`, the strategy reader shall report the integration target `main` in every `git_strategy.mode`, and shall project the legacy develop-branch seam to `main` only in manual mode.
+- REQ-AGT-005: The strategy reader shall expose a local-integration predicate that is true for manual-mode `git-flow` and for manual-mode `agentic-trunk` and false otherwise, and the existing git-flow-only predicate shall keep its present answers.
+
+### 3.2 Behavior mapping in consumers
+
+- REQ-AGT-006: While the workflow is `agentic-trunk`, `factory complete` and `factory merge ready` shall take the integration-window local-merge path and shall open no pull request.
+- REQ-AGT-007: Where session-exit auto-merge is enabled and the project is manual-mode `agentic-trunk`, the auto-merge shall merge the session branch into `main` under the guards manual `git-flow` has today, and its skip notice shall name both workflows.
+- REQ-AGT-008: When `moai integration acquire` runs in a manual-mode `agentic-trunk` project without `--branch`, it shall record the window against the worktree holding `main` and shall write no caller-fallback warning.
+- REQ-AGT-009: The allowed-set listings in the invalid-value diagnostics shall include `agentic-trunk`, and each fix suggestion that names `github-flow (target main)` shall also name `agentic-trunk`.
+- REQ-AGT-010: While the workflow is `agentic-trunk`, the keys `develop_branch`, `release_branch_prefix` and `rc_version_format` shall be ignored without any diagnostic, and the keys `lead_push_threshold`, `merge_method` and `worktree_base_branch` shall keep their present meaning.
+- REQ-AGT-011: The card-landing checks of `moai worktree done` and `moai worktree sweep` shall treat a card landed under `agentic-trunk` as they treat a card merged with a merge commit, and shall read no workflow value.
+
+### 3.3 Display and compatibility
+
+- REQ-AGT-012: When the active workflow is `agentic-trunk`, the doctor check "Git Strategy Workflow" shall report status OK with a message naming the flow, the integration target `main` and the standing-branch interpretation (a single trunk, serial local landing, batch pull request, tagged release).
+- REQ-AGT-013: Where the active workflow is a valid value other than `github-flow`, the statusline shall show the workflow value beside the branch, and for `github-flow`, an absent, unreadable or invalid value it shall render byte-identically to today, adding no git invocation.
+- REQ-AGT-014: When `moai update` runs against a project whose manual-mode workflow is `agentic-trunk`, it shall preserve that value verbatim.
+
+### 3.4 Defaults, guards and the live configuration
+
+- REQ-AGT-015: The shipped defaults (the template `git-strategy.yaml.tmpl` and the built-in default configuration) shall keep `github-flow` for the manual, personal and team profiles.
+- REQ-AGT-016: The github-flow sweep guard shall stay armed only for `github-flow`, and its arming test shall assert that an `agentic-trunk` root does not arm it.
+- REQ-AGT-017: The live value of this repository's `git_strategy.manual.workflow` shall change only in a separate commit that follows an installed binary built from a tree containing REQ-AGT-001 to REQ-AGT-004, and only after that binary's doctor check reports `agentic-trunk` as OK.
+- REQ-AGT-018: Once changed, this repository's `git-strategy.yaml` shall carry `workflow: agentic-trunk` in the manual profile only, keep `lead_push_threshold: 20`, carry no `develop_branch`, `release_branch_prefix` or `rc_version_format` key in the manual profile, and carry no comment that says the workflow stays `git-flow`.
+
+### 3.5 Guidance
+
+- REQ-AGT-019: The repo-local guidance (`.claude/rules/local/gitflow-lane-protocol.md` title and section titles, `AGENTS.local.md` section 4, `.claude/rules/local/repo-local-pr-policy.md`, and the notices of the three `.moai/docs` doctrine files) shall name this repository's model `agentic-trunk`, state its four steps, keep the rule file's path, and leave every rule's substance unchanged.
+- REQ-AGT-020: The distributed rules and skills that describe the local `WT-*` integration route as a `git-flow` variant shall name `agentic-trunk` as the second workflow using that route, the sync delivery skill shall list `agentic-trunk` in its value domain and route it without a push step, and every file shall keep `github-flow` as the distributed default.
+- REQ-AGT-021: Each edited template source shall be byte-identical to its deployed counterpart after the template build.
+- REQ-AGT-022: The docs-site `moai-sync` page shall list `agentic-trunk` in all four locales (ko canonical, then en, ja, zh) in the same landing.
+- REQ-AGT-023: The edits to `AGENTS.local.md` and `gitflow-lane-protocol.md` shall carry both this SPEC's flow naming and the Integration-Worktree Rule of SPEC-PRIMARY-LANDING-ONLY-001 without removing either.
+
+### 3.6 Verification discipline
+
+- REQ-AGT-024: The verification of this SPEC shall use test runs anchored by `-run`, shall add no test skip, and shall not widen any timeout; where a package suite is red on main for a reason outside this SPEC, the acceptance criteria shall still name the anchored tests that decide.
+
+## 4. Behavior mapping (summary; the code-level mapping is in design.md section 2)
+
+| Behavior | agentic-trunk follows | Evidence |
+|---|---|---|
+| Delivery of a card | git-flow: local integration window, `--no-ff`, no per-card PR | REQ-AGT-006 |
+| Integration target | github-flow: fixed `main` | REQ-AGT-003 |
+| Standing branches | github-flow: `main` only, no `develop`, no per-release branch cut by lanes | REQ-AGT-010 |
+| Session-exit auto-merge | git-flow: manual-mode gate, same guards | REQ-AGT-007 |
+| Window recording by `acquire` | git-flow: records the worktree holding the target | REQ-AGT-008 |
+| Batch push | neither: leader-run `release/main-batch-YYYYMMDD` PR by `lead_push_threshold` | REQ-AGT-010 |
+| Release branch per version (`release/vX.Y.Z` lane merge) | not followed | REQ-AGT-010, REQ-AGT-020 |
+
+## 5. Open questions (defaults recorded; none blocks run unless marked)
+
+| Id | Question | Recommended default |
+|---|---|---|
+| OQ-1 | Is the target fixed `main`, or does it honor `develop_branch` / `main_branch`? | Fixed `main` (REQ-AGT-003). Alternate: honor `main_branch` when set. |
+| OQ-2 | Does the sweep guard arm for `agentic-trunk`? | No in this SPEC (REQ-AGT-016); pre-measure the armed finding count at M4 and open a follow-up card if it is zero. |
+| OQ-3 | Who runs the cutover (install the tree-built rc, reconnect every `moai mcp-server`, flip the live value)? Blocks M6 only. | The leader, as the operator-requested rc build of the repo-local protocol section 9, in a window with no lane mid-landing. |
+| OQ-4 | Statusline rule: label every valid non-`github-flow` value, or `agentic-trunk` only? | Every valid non-`github-flow` value (REQ-AGT-013). Needs a note to t1830, whose REQ-PLO-009 requires byte-identical render today. |
+| OQ-5 | Offer `agentic-trunk` in the project wizard (`tab_schema.json`, 3 option lists)? | No: it is a factory operating value set by editing the yaml; the wizard keeps its two simple choices. |
+| OQ-6 | Rename `gitflow-lane-protocol.md`? | Keep the path: 222 SPEC files and 16 other tracked files outside `.moai/specs` and `.moai/reports` (including `internal/cli/codex_review_scope.go`) cite it. |
+| OQ-7 | `agentic-trunk` in a non-manual mode: keep the develop-seam gate? | Yes (REQ-AGT-004): the seam stays manual-only as for `git-flow`; the target is mode-independent as for `github-flow`. |
+
+## 6. Exclusions
+
+### Out of Scope — behavior changes beyond the value
+
+- Changing which command pushes `main`, the batch-close trigger, the batch PR procedure or the green condition: the operating model is unchanged; only its name and the reader's acceptance of the name change.
+- Automating the batch PR or the tagged release: they stay leader-run steps.
+- A new disposition class: `agentic-trunk` takes the existing valid-non-git-flow class.
+
+### Out of Scope — default values and user projects
+
+- Changing the shipped default of any mode, or making `agentic-trunk` the default for any user project.
+- Offering `agentic-trunk` in the wizard (OQ-5 default).
+- Migrating existing user projects' values.
+
+### Out of Scope — the audit-side gates and history
+
+- Arming the github-flow sweep guard for `agentic-trunk` (OQ-2 default); a follow-up card owns it.
+- Editing SPEC bodies, `.moai/reports/`, `CHANGELOG.md` history, or the already-superseded develop-era text marked `[SUPERSEDED]` in `AGENTS.local.md`.
+- Repairing the red main test `TestNoHardcodedContexts` (card t1858).
+
+### Out of Scope — adjacent landing-surface work
+
+- Everything in SPEC-PRIMARY-LANDING-ONLY-001 scopes A to E (integration-worktree designation key, primary staleness follow step, detached-HEAD statusline, card base ref). This SPEC only reconciles the shared files (REQ-AGT-023) and notes the statusline interaction (OQ-4).
