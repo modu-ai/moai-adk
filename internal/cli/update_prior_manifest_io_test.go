@@ -162,9 +162,13 @@ func TestPriorManifestAtomicWriteFailures(t *testing.T) {
 
 	t.Run("q-failure-between-the-temporary-write-and-the-rename", func(t *testing.T) {
 		_, runDir := newRun(t)
-		var tempPath string
+		var atRename []byte
+		var atRenameErr error
 		steps := swapPriorWriteHooks(t, nil, func(oldPath, _ string) error {
-			tempPath = oldPath
+			// The premise is read where it holds: at the moment of the rename the
+			// temporary file carries the complete bytes. (The writer removes the
+			// temporary file once the rename has failed, so it is not read after.)
+			atRename, atRenameErr = os.ReadFile(oldPath)
 			return injected // the rename double reports failure without renaming
 		})
 		err := writePriorManifest(runDir, data)
@@ -174,9 +178,8 @@ func TestPriorManifestAtomicWriteFailures(t *testing.T) {
 		if len(*steps) != 2 || (*steps)[1].op != "rename" {
 			t.Fatalf("steps %+v: the rename observation point was not reached", *steps)
 		}
-		full, readErr := os.ReadFile(tempPath)
-		if readErr != nil || !bytes.Equal(full, data) {
-			t.Fatalf("test premise: the temporary file should hold the complete bytes at this point: %v", readErr)
+		if atRenameErr != nil || !bytes.Equal(atRename, data) {
+			t.Fatalf("test premise: the temporary file should hold the complete bytes at the rename: %v", atRenameErr)
 		}
 		if _, statErr := os.Lstat(finalIn(runDir)); !os.IsNotExist(statErr) {
 			t.Errorf("the final name exists after the rename failed (%v): a complete-looking temporary file must NOT count as a generation", statErr)
