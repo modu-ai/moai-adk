@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "moai update ownership verdict and legacy-migration repair: evidence-based per-file ownership, profile-reach keep reasons, case-variant paths, emptied-directory pruning, and a remaining-file list (follow-up to SPEC-UPDATE-REMOVAL-FAMILY-001)"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -24,6 +24,7 @@ related_specs: [SPEC-UPDATE-REMOVAL-FAMILY-001, SPEC-UPDATE-REPAIR-RC30-001, SPE
 | 0.1.0 | 2026-10-18 | GOOS (manager-spec, card t1865) | 초기 plan-phase 초안. 운영자 지시 10-18 (Class C, P1, t1668 후속) 의 현장 진단 일곱 항목과 미등록 파일 보존 강화 조건 (6) 을 요구사항 15개와 인수 기준 19개로 옮겼다. 코드 조사는 research.md, 데이터 모델 결정은 design.md, 결정 지점은 decision-index.md 에 있다. 리더 구속 제약 (board d-20261018T020724Z-48fb) 을 § F 에 그대로 실었다. |
 | 0.2.0 | 2026-10-18 | GOOS (manager-spec, card t1865) | 계획 감사 iteration 1 (FAIL 0.68, MP-8 실패, 차단 결함 5건) 의 결함 D1-D15 를 처리한 수정판. 요구사항 15 → 16 (REQ-OWR-016: 이전 매니페스트 사본이 실패하면 제거 차단), 인수 기준 19 → 20 (AC-OWR-20). REQ-OWR-008/-011/-015 문구를 고치고 `removal-eligible` 정의를 § B 한 곳으로 모았다. 결함별 처분과 증거는 progress.md § E.1 의 "Plan audit iteration 1 repair" 표에 있다. |
 | 0.3.0 | 2026-10-18 | GOOS (manager-spec, card t1865) | 계획 감사 iteration 2 (FAIL 0.76, 차단 결함 N1-N5, 필수 백엔드 codex 실패) 의 수정판과 리더 지시 두 건. 요구사항 16 → 17 (REQ-OWR-017: 이전 세대 조회 한도·손상 허용·보존 기간 무변경), 인수 기준 20 → 21 (AC-OWR-21). REQ-OWR-002 에 이전 기록의 출처가 `template_managed` 여야 한다는 조건을 넣었다 (N2). REQ-OWR-005 를 좁은 예외 하나 (`launchCandidateIsUsable` 의 기존 `os.Stat` 한 호출) 와 호출 지점 동결 기준선으로 다시 썼다 (N1, N8, 리더 판정 OQ-5). REQ-OWR-012/-013 이 버전 일치 건너뛰기를 명시한다 (N5). REQ-OWR-015/-016 은 리더 결정 d-20261018T040918Z-def2 (Q2 = 가, 조건부) 의 조건 (1)-(5) 을 싣는다. 결함별 처분은 progress.md § E.1 의 "Plan audit iteration 2 repair" 표. |
+| 0.3.1 | 2026-10-18 | GOOS (manager-spec, card t1865) | 천장 보정 커밋 (계획 감사 iteration 3 FAIL 0.84 vs 0.85, 차단 결함 N12·N13; 리더 판정 보드 d-20261018T044408Z-3e9d, 상시 규칙 C). 정확히 두 결함만 고쳤다: N12 (AC-OWR-21 이 이전 매니페스트의 임시 쓰기 + 이름 바꾸기 생성을 관측하지 못함 — design.md D-3 항목 3 에 관측점 두 개 추가, AC-OWR-21 (a) 재설계) 와 N13 (plan.md M8·M9 의 낡은 의무). 요구사항·인수 기준 id 집합, 마일스톤 구성, Q2/Q5/OQ 결정은 바뀌지 않았다. N14-N21 과 N4 잔여는 decision-index.md 에 수용 부채로 기록했다. |
 
 ## A. 배경
 

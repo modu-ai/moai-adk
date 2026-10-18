@@ -65,6 +65,14 @@ artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (5, Tier L) +
 
 잔여 (해결 못 한 것): Q2 는 결정되었으나 Kickoff 는 독립 계획 감사 뒤에 정한다. 접근 기록 시임이 없어 조각난 경로 + 버림 읽기는 감지 불가 (리더 수락 대기, decision-index.md 수용 부채). 일반 같은 버전 재실행의 복구 부재 (OQ-6, 리더에게). 보존 정책 센서스가 `manifest.prior.json` 에 미치는 효과는 미측정 (G-K).
 
+### Ceiling correction commit (2026-10-18, manager-spec, card t1865)
+
+- 입력: `.moai/reports/t1865/plan-audit-iter3.md` — FAIL 0.84 (문턱 0.85), 차단 결함 N12·N13, 필수 백엔드 codex 실패, 감사 대상 SHA `a2a7b8bb2`. 리더 판정 (보드 d-20261018T044408Z-3e9d, 상시 규칙 C): 정확히 한 번의 보정 커밋이 N12·N13 만 고치고, 그 뒤 그 커밋에 한정된 delta 감사 한 번. 이 판은 spec.md `0.3.1`.
+- N12 고침: design.md D-3 항목 3 에 관측점 변수 `priorManifestTempWrite`·`priorManifestRename` 을 더했고, AC-OWR-21 (a) 를 정상 실행 (o) 과 세 실패 (p) 임시 쓰기 도중, (q) 임시 쓰기와 이름 바꾸기 사이, (r) 실제 이름 바꾸기 실패로 다시 썼다. 최종 이름에 직접 쓰는 변이는 (o) 의 기록 단언과 (p)(q) 의 오류·최종 이름 부재 단언에서 붉어진다. plan.md M1b 파일 목록·GREEN 과 acceptance.md § M 21행에 같은 관측점을 반영했다.
+- N13 고침: plan.md M8 단계 1 을 AC-OWR-15 의 복원 영역 바이트 동일 + 통제 실행 센티널로, M9 단계 1 (a) 를 REQ-OWR-016 에 맞는 제거 0건·`backup-failed` 이유 나열로 바꿨다.
+- N14-N21 과 N4 잔여: decision-index.md 에 수용 부채로 id 별 기록 (N16 은 리더 지정 문구). 요구사항·인수 기준 id 집합, 마일스톤 구성, Q2/Q5/OQ 결정은 바뀌지 않았다.
+- plan_artifact_hash 는 이 문서가 계산하지 않는다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

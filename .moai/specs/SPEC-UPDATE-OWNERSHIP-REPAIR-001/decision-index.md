@@ -67,3 +67,16 @@ The following findings are accepted rather than fixed, each with its reason. The
 - D15: `update_template_sync.go` takes call-line changes in M1b, M3 and conditionally M6, and `migrate_project_assets.go` in M1a, M2, M3 and M5, so landing after t1668 and a later merge of main may conflict in those two files. Mitigated by keeping new judgment code in new files and by removing the production change from M8; the residual conflict risk is accepted.
 - D2 limits: the source scan misses a path built without any listed token, and the differential canary misses a profile-side read whose result is discarded; both are stated in design.md D-8. A file-access recording seam was considered and not adopted because it would reshape the judgment code and widen the conflict surface in the two files above.
 - D9 limit: if the stale-record variant of the commands fixture cannot be driven through an existing seam, the M6 measurement records that and the commands criterion stays a regression guard (plan.md M6).
+
+## Accepted debt (plan audit iteration 3, ceiling correction commit)
+
+Recorded by id at the leader's ruling (board d-20261018T044408Z-3e9d, standing rule C 9e76): exactly one correction commit fixes N12 and N13 only, and the optional iteration-3 findings below are carried as accepted debt rather than fixed. Source: `.moai/reports/t1865/plan-audit-iter3.md` (defects N14-N21, Class optional).
+- N4 remainder: the whole-tree equality after restore is withdrawn as unsatisfiable (AC-OWR-15 now asserts byte equality over the removed files plus the manifest, and the control-run difference sentinel D ⊆ E). What that sentinel cannot see is accepted: a difference confined to a path inside the expected set E, and file modes (spec.md § J).
+- N14: no precedence among prior manifest generations when they disagree about a path (design.md D-2, REQ-OWR-002). Accepted; the removal stays reversible (byte backup, confirmed user-root counterpart).
+- N15: the attested `managed` path also accepts a `DeployedHash` match (design.md D-2), looser than the registered path, which compares `TemplateHash` only. Accepted; in deployer-written entries the two hashes coincide.
+- N16: a profile-root read through a path assembled from run-time fragments escapes AC-OWR-08 — accepted — within card t1702's hold scope (t1702 stays on its 3.3 hold; this SPEC does not depend on, reset or bypass it).
+- N17: AC-OWR-17 and AC-OWR-18 say "tree hash" without stating that the compared hash is content-only (paths, bytes, mode), while the M0 helper includes directory mtime. Accepted.
+- N18: AC-OWR-20 (a) and (b) are told to satisfy rule 7, whose condition (ii) requires a valid new `manifest.prior.json`; the parenthetical in the When clause carries the intent. Accepted.
+- N19: no run directory exists when there is no `.moai/config` to back up, and the SPEC does not say where `manifest.prior.json` goes in that case. Accepted.
+- N20: the deployer's skipped `UserCreated` entry is not asserted to carry no `deployed_version` (AC-OWR-06 (a), AC-OWR-05 (h1)). Accepted.
+- N21: wording in REQ-OWR-005 ("the frozen existing contacts" versus "the single existing contact") and in AC-OWR-20 (b) (the `removalBackupWriter` stand-in that design.md D-3 item 5 does not define). Accepted.

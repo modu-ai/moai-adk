@@ -1,13 +1,13 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "research — moai update ownership verdict and legacy-migration repair"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-10-18
 ---
 
 # SPEC-UPDATE-OWNERSHIP-REPAIR-001 — 코드 조사 기록 (research.md)
 
-> 이 파일은 plan 시점 HEAD `cdd72a814` 의 조사 기록이다. 버전 번호는 SPEC 묶음 (spec.md `0.3.0`) 과 맞췄을 뿐 본문 수치(요구사항·인수 기준 개수 등)는 갱신하지 않았다. 현재 개수와 이후 측정은 spec.md, acceptance.md § L 이 가진다.
+> 이 파일은 plan 시점 HEAD `cdd72a814` 의 조사 기록이다. 버전 번호는 SPEC 묶음 (spec.md `0.3.1`) 과 맞췄을 뿐 본문 수치(요구사항·인수 기준 개수 등)는 갱신하지 않았다. 현재 개수와 이후 측정은 spec.md, acceptance.md § L 이 가진다.
 
 ## A. 목적과 방법
 

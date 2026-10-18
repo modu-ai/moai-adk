@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "implementation plan"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-10-18
 ---
 
@@ -80,7 +80,7 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 |----------|-----------|------|
 | M0 | — | `internal/cli/migrate_ownership_helpers_test.go` (`runUpdateFlowForced` — `--force` 로 조정에 닿게 하고 `skipped` 와 새 `manifest.prior.json` 유무를 돌려줌; 공유 픽스처: 등록/미등록/수정/사용자 작성 파일, 이전 세대 매니페스트 빌더, 프로필 샌드박스와 카나리, 디렉터리 mtime 을 담는 트리 해시, 경로 지정 사용자 대응물 설치 도우미), `internal/cli/testdata/profile_callsite_baseline.txt` (프로필 심볼·토큰·`internal/profile` 안 파일시스템 동사의 (파일, 심볼) 별 호출 지점 개수 — `go list -deps ./internal/cli` 닫힘을 손대지 않은 트리로 측정해 얼린 기준선, 예외 행 하나 포함) |
 | M1a | `internal/cli/migrate_ownership.go` (신규: 분류, 처분, 이유 코드, `classifyOwnership`), `internal/cli/migrate_ownership_evidence.go` (신규: `provenanceSource` 인터페이스, 해석기 `provenanceEvidence`, 원천을 얻는 패키지 수준 변수), `internal/cli/migrate_project_assets.go` (판정 호출 교체) | `internal/cli/migrate_ownership_test.go`, `internal/cli/migrate_ownership_evidence_test.go` |
-| M1b | `internal/manifest/types.go`, `internal/manifest/manifest.go`, `internal/cli/update_prior_manifest.go` (신규: `priorManifestWriter` 변수와 원자적 이전 매니페스트 쓰기, 보존 실패 결과 전달, 이전 세대 원천 읽기), `internal/cli/migrate_project_assets.go` (제거 암을 「후보 수집 → 전체 백업 확인 → 일괄 제거」 로 나눔; REQ-OWR-016), `internal/cli/update_template_sync.go` (호출 줄만: Backup 단계 보존 호출, 배포 단계 저장의 `Version`·`DeployedAt` 갱신 호출) | `internal/manifest/manifest_deployed_version_test.go`, `internal/cli/update_prior_manifest_test.go`, `internal/cli/update_prior_manifest_io_test.go` (AC-OWR-21) |
+| M1b | `internal/manifest/types.go`, `internal/manifest/manifest.go`, `internal/cli/update_prior_manifest.go` (신규: `priorManifestWriter` 변수와 원자적 이전 매니페스트 쓰기 — 임시 쓰기와 이름 바꾸기는 `priorManifestTempWrite`·`priorManifestRename` 관측점 변수로만, 보존 실패 결과 전달, 이전 세대 원천 읽기), `internal/cli/migrate_project_assets.go` (제거 암을 「후보 수집 → 전체 백업 확인 → 일괄 제거」 로 나눔; REQ-OWR-016), `internal/cli/update_template_sync.go` (호출 줄만: Backup 단계 보존 호출, 배포 단계 저장의 `Version`·`DeployedAt` 갱신 호출) | `internal/manifest/manifest_deployed_version_test.go`, `internal/cli/update_prior_manifest_test.go`, `internal/cli/update_prior_manifest_io_test.go` (AC-OWR-21) |
 | M2 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (호출 줄) | `internal/cli/migrate_ownership_profile_test.go`, `internal/cli/migrate_ownership_noprofileaccess_test.go` (심볼 단위 스캔 + 변이 대조군 + 정규화 카나리) |
 | M3 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (행 수집 호출), `internal/cli/update_template_sync.go` (렌더 호출 줄) | `internal/cli/migrate_ownership_remaining_test.go` |
 | M4 | `internal/cli/migrate_ownership.go` (별칭 확정: 파일시스템 모드 프로브 없이 관측된 동일성으로) | `internal/cli/migrate_ownership_case_test.go` |
@@ -120,7 +120,7 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 **M1b — 배포 버전 기록, 이전 매니페스트 보존, 이전 세대 원천 (decision-index.md Q2 (가) 확인 뒤)**
 
 1. RED: `TestManifestRecordsDeployedVersion` (`internal/manifest`), `TestPriorManifestRetainedInRunBackup`, `TestPriorGenerationSourceBoundedAndTolerant` (AC-OWR-06 (a)(b)(c)), `TestBackupFailureRemovesNothingThroughProductionPath` (AC-OWR-20, 전체 흐름), `TestPriorManifestAtomicWriteFailures`, `TestPriorGenerationCorruptIsNoEvidence`, `TestLegacyManifestRoundTrip`, `TestDowngradeDropsEvidenceNotSafety`, `TestPriorGenerationsAreLookupBoundOnly` (AC-OWR-21), 그리고 AC-OWR-05 (h) 의 운영 원천 두 건.
-2. GREEN: `FileEntry` 에 `deployed_version` (omitempty) — 이번 실행이 배포한 항목에만 찍고 배포하지 않은 항목은 채우지도 지우지도 않는다 (재추적 경로 보존), 갱신의 배포 단계 저장에서 매니페스트 수준 `Version` 을 갱신하고 `DeployedAt` 은 `Version` 이 바뀔 때만 갱신 (`recordTemplateTree` 와 같은 자리, `update_template_sync.go:672-673`; design.md D-3 항목 1-2; 저장은 기존 `Save` 의 임시 파일 + 이름 바꾸기). Backup 단계가 시작 시점 매니페스트의 **원본 바이트**를 `<runDir>/manifest.prior.json` 으로 **임시 파일 + 이름 바꾸기로** 보존하고 (`priorManifestWriter` 변수 경유) 그 성공 여부를 실행 문맥에 넘긴다. 마이그레이션 제거 암은 「후보 수집 → 모든 바이트 사본과 매니페스트 사본 확인 → 일괄 제거」 로 나뉘어, 어느 백업이든 실패하면 그 실행의 제거가 0건이다 (REQ-OWR-016, design.md D-3 항목 3-5). 이전 세대 원천 (최근 순으로 최대 `priorManifestGenerations` 개) 을 `update_prior_manifest.go` 에 만들어 M1a 의 패키지 수준 변수에 꽂는다.
+2. GREEN: `FileEntry` 에 `deployed_version` (omitempty) — 이번 실행이 배포한 항목에만 찍고 배포하지 않은 항목은 채우지도 지우지도 않는다 (재추적 경로 보존), 갱신의 배포 단계 저장에서 매니페스트 수준 `Version` 을 갱신하고 `DeployedAt` 은 `Version` 이 바뀔 때만 갱신 (`recordTemplateTree` 와 같은 자리, `update_template_sync.go:672-673`; design.md D-3 항목 1-2; 저장은 기존 `Save` 의 임시 파일 + 이름 바꾸기). Backup 단계가 시작 시점 매니페스트의 **원본 바이트**를 `<runDir>/manifest.prior.json` 으로 **임시 파일 + 이름 바꾸기로** 보존하고 (`priorManifestWriter` 변수 경유; 임시 쓰기와 이름 바꾸기는 `priorManifestTempWrite`·`priorManifestRename` 변수로만 수행 — design.md D-3 항목 3) 그 성공 여부를 실행 문맥에 넘긴다. 마이그레이션 제거 암은 「후보 수집 → 모든 바이트 사본과 매니페스트 사본 확인 → 일괄 제거」 로 나뉘어, 어느 백업이든 실패하면 그 실행의 제거가 0건이다 (REQ-OWR-016, design.md D-3 항목 3-5). 이전 세대 원천 (최근 순으로 최대 `priorManifestGenerations` 개) 을 `update_prior_manifest.go` 에 만들어 M1a 의 패키지 수준 변수에 꽂는다.
 3. 호환: `deployed_version` 이 없는 기존 항목은 읽기에서 그대로 유효하다 (기존 동작 유지). 증거 부족은 미등록 파일의 `managed` 승격만 막는다.
 4. Q2 는 (가) 로 결정되었다 (이 계획의 기록). (나) 였다면 M1b 를 접었을 것이다 — 그 기록된 대안의 목록은 § G.1.
 5. 보존 기간: `priorManifestGenerations` (8) 는 조회 한도일 뿐이다. 이 마일스톤은 삭제·정리·보존 기간 단축을 더하지 않고 `internal/cli/update/backup/` 를 건드리지 않는다 (design.md D-3 항목 8, AC-OWR-21 (e)).
@@ -175,14 +175,14 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
 ### M8 — 백업·복원 바이트 동일 — Priority Medium
 
-1. RED: `TestRemovedAssetBackupRestoreByteIdentical` (AC-OWR-15) — 픽스처에서 제거 스위치를 켜고 실행. 제거된 파일의 백업 사본 sha256 == 제거 전 sha256, 이전 매니페스트 사본이 `<runDir>/manifest.prior.json`, 사본을 원위치에 되돌린 트리의 해시 == 실행 전 트리 해시 (런 백업 디렉터리 제외).
+1. RED: `TestRemovedAssetBackupRestoreByteIdentical` (AC-OWR-15) — 픽스처에서 제거 스위치를 켜고 실행 (실행 1, 일반 — 시작 매니페스트는 비정규 모양), 같은 픽스처의 독립 복사본에 스위치를 끄고 같은 흐름을 돌린 통제 실행 T0 를 함께 둔다. 단언은 AC-OWR-15 와 같다: 제거된 각 파일의 백업 사본 sha256 == 제거 전 sha256; `<runDir>/manifest.prior.json` 바이트 == 실행 전 매니페스트 파일 바이트; 복원 영역 R = {제거된 파일 전부, 매니페스트 파일} 을 사본으로 되돌린 트리 T2 에서 R 의 각 파일 바이트 == 실행 전 바이트; 나머지 차이 센티널 — T2 와 T0 의 차이 경로 집합 D 가 비어 있지 않고 D ⊆ E (E = `.moai/manifest.json`, `.moai-backups/**`, `.moai/logs/**`, `.moai/state/**`, 정규화 뒤) 이며 E 밖 차이는 붉다. 되돌린 전체 트리의 해시가 실행 전과 같다는 조건은 요구하지 않는다 — 전체 흐름이 `llm.yaml` 을 다시 쓰고 템플릿을 배포하므로 어떤 올바른 구현도 통과하지 못한다 (AC-OWR-15 서두, 감사 N4·N13).
 2. GREEN: 시험 안의 복원 절차(사본 되돌리기)는 시험 전용이며 운영 하위 명령이 아니다. 운영 코드 변경 없음 — 이전 매니페스트 보존은 M1b 가 만든다 (Q2 (나) 이면 파일 바이트 일치만 단언한다).
 
 산출물: AC-OWR-15 GREEN.
 
 ### M9 — 반복 갱신 멱등과 중도 중단 복구 — Priority High
 
-1. RED: `TestRepeatedUpdateIsIdempotent` (AC-OWR-17: 실행 2·3 은 `--force`, 도달 단언, 건너뛰는 일반 재실행 사례 분리), `TestInterruptedMigrationRecoversAndConverges` (AC-OWR-18). 중단 모사는 운영 코드에 시험용 끼어들기를 넣지 않고 픽스처로 한다: (a) 둘째 파일의 백업 디렉터리를 쓸 수 없게 만들어 부분 진행을 만든다, (b) 매니페스트를 실행 전 바이트로 되돌려 저장 전 중단을 모사한다, (c) 정리된 빈 디렉터리를 다시 만들어 정리 전 중단을 모사한다. 복구 후 재실행은 중단 없는 실행의 최종 상태와 같아야 한다.
+1. RED: `TestRepeatedUpdateIsIdempotent` (AC-OWR-17: 실행 2·3 은 `--force`, 도달 단언, 건너뛰는 일반 재실행 사례 분리), `TestInterruptedMigrationRecoversAndConverges` (AC-OWR-18). 중단 모사는 운영 코드에 시험용 끼어들기를 넣지 않고 픽스처로 한다: (a) 한 후보의 실행 백업 경로 자리에 디렉터리를 두어 백업을 쓸 수 없게 만든다 — 그 실행은 제거가 막혀 파일을 하나도 제거하지 않는다 (REQ-OWR-016: 부분 진행은 없다). 단언은 제거 목록이 비어 있고, 보존된 파일이 잔존 행에 이유 `backup-failed` 로 나열됨이다 (AC-OWR-18 (a), AC-OWR-20), (b) 매니페스트를 실행 전 바이트로 되돌려 저장 전 중단을 모사한다, (c) 정리된 빈 디렉터리를 다시 만들어 정리 전 중단을 모사한다. 복구 후 재실행은 중단 없는 실행의 최종 상태와 같아야 한다.
 2. GREEN: 대부분 M1-M5 가 닫는다. 남는 차이만 고친다 (예: 되살아난 매니페스트 항목, 남은 빈 디렉터리).
 
 산출물: AC-OWR-17, -18 GREEN.
