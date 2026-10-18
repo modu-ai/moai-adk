@@ -32,3 +32,17 @@ Add a top-level `release_gate:` list to `.github/required-checks.yml` (the SSoT)
 ## Gaps (so far)
 - No fix applied yet; the repair, its tests, and the re-measure are recorded below as they are produced.
 - t1853 (lane-26): `git -C ../t1853 diff --quiet 3642a3a9b -- scripts/release.sh .github/required-checks.yml` reported no difference at the time of writing, so there is no same-line overlap *now*; whether t1853 edits these files later is unobserved.
+
+## Run evidence (run phase, cycle_type=tdd; base tree be83fea45)
+
+- RED (before struct value/YAML block): `go test ./internal/config -run TestRequiredChecks_ReleaseGateSubsetOfMain -count=1`
+  -> `--- FAIL ... required_checks_release_gate_test.go:17: release_gate must be a non-empty list in .github/required-checks.yml` / `FAIL github.com/modu-ai/moai-adk/internal/config 0.298s`
+- GREEN: same command -> `--- PASS: TestRequiredChecks_ReleaseGateSubsetOfMain (0.00s)` / `ok ... internal/config 0.122s`
+- `go test ./internal/config -count=1` -> `ok github.com/modu-ai/moai-adk/internal/config 13.534s` (includes TestNoHardcodedContexts, now PASS)
+- `bash -n scripts/release.sh` -> exit 0; `grep -c 'Test (ubuntu-latest)' scripts/release.sh` -> 0; no `Build (linux` / `"Lint"` literal left either
+- awk read in isolation against the real SSoT -> `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`
+- `go test ./internal/template -run 'TestReleaseScript|TestTestInputFilters' -count=1 -v` -> 7 TestReleaseScript* and 2 TestTestInputFilters* all PASS; `ok ... internal/template 29.735s`
+- `./scripts/ci-mirror/validate-required-checks.sh` (the other SSoT consumer) -> exit 0, all validations passed
+- `gofmt -l internal/config` -> empty; `go vet ./internal/config` -> exit 0
+
+Gaps: the script's own fail-closed `die` branches (file missing, zero names) were not driven end to end; only the awk yielding 0 lines on a block-less file was probed. The internal/cli tests that mention release.sh were not run (they reference the script for unrelated reasons). Full repository suite not run (scoped by instruction).

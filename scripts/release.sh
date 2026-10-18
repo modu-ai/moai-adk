@@ -30,6 +30,10 @@
 
 set -euo pipefail
 
+# Locate this script's own directory now: validation 3 changes the working
+# directory, and the required-checks SSoT is resolved relative to the script.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ─── Color helpers ─────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -237,17 +241,33 @@ fi
 #
 # CI_REQUIRED_CHECKS: the check-run names the CI workflow (.github/workflows/
 # ci.yml, `name: CI`) publishes on a push to main. A check run is named after
-# its JOB: `Lint`, `Test (ubuntu-latest)` (the real job or its docs-only
-# skip-marker publish the same name) and `Build (linux/amd64)`. They are the
-# subset of .github/required-checks.yml (branches.main.contexts) that ci.yml
-# itself emits; a renamed job or a changed matrix is a one-line change here.
-CI_REQUIRED_CHECKS=("Lint" "Test (ubuntu-latest)" "Build (linux/amd64)")
+# its JOB. The names are read from the release_gate block of the required-checks
+# SSoT (.github/required-checks.yml), the one place check names are kept; a
+# renamed job or a changed matrix is a one-place edit there, never here.
+CI_REQUIRED_CHECKS=()
 CI_GATE="verified"
 if [[ "$SKIP_CI_CHECK" == true ]]; then
     CI_GATE="OVERRIDDEN (--skip-ci-check)"
     log_warn "CI gate OVERRIDDEN (--skip-ci-check): $VERSION would be tagged on ${LOCAL_SHA:0:12} with NO verified passing CI on origin"
 else
     command -v gh >/dev/null 2>&1 || die "CI gate: the gh CLI is not available, so the CI verdict of ${LOCAL_SHA:0:12} on origin cannot be read. Install gh, or pass --skip-ci-check to override (recorded in the release summary)."
+
+    # Read the required check names from the SSoT's top-level release_gate list
+    # (POSIX awk, runs on BSD awk). Fail closed: a missing file or an empty list
+    # would leave the gate demanding nothing, so either one is a refusal.
+    CI_CHECKS_FILE="$SCRIPT_DIR/../.github/required-checks.yml"
+    [[ -f "$CI_CHECKS_FILE" ]] || die "CI gate: the required-checks file $CI_CHECKS_FILE is missing, so the checks to demand cannot be read. Restore it, or pass --skip-ci-check to override (recorded in the release summary)."
+    while IFS= read -r check_name; do
+        [[ -n "$check_name" ]] && CI_REQUIRED_CHECKS+=("$check_name")
+    done < <(awk '
+        /^release_gate:/ { inblock = 1; next }
+        inblock && /^[^ \t#]/ { inblock = 0 }
+        inblock && /^[ \t]+-[ \t]/ {
+            sub(/^[ \t]+-[ \t]+/, ""); sub(/[ \t]+$/, "")
+            if ($0 ~ /^".*"$/) $0 = substr($0, 2, length($0) - 2)
+            print
+        }' "$CI_CHECKS_FILE")
+    (( ${#CI_REQUIRED_CHECKS[@]} > 0 )) || die "CI gate: no release_gate check names could be read from $CI_CHECKS_FILE, so the gate would demand nothing. Fix the release_gate list there, or pass --skip-ci-check to override (recorded in the release summary)."
 
     # One line per check run: "<name><TAB><status><TAB><conclusion><TAB><app slug>".
     CI_RUNS="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
