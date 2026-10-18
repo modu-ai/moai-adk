@@ -342,7 +342,21 @@ audit_ready: true
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+- sync_complete_at: 2026-10-18T00:18:54Z
+- sync_commit_sha: pending-backfill
+- sync_commit_sha_note: the sync commit that carries this block cannot cite its own hash, so the canonical placeholder stands until a following commit backfills it; run HEAD at sync start is `d45a13131`
+- sync_status: audit-ready; documentation synced, SPEC status moved in-progress -> implemented -> completed on the single sync commit; independent sync audit and repository-wide build/test verdicts pending
+- b12_self_test_a: `grep -c 'SPEC-INTEGRATION-STALE-BASE-001' CHANGELOG.md` printed `0` before emission (exit 1, no prior entry), and `1` after
+- b12_self_test_b: ac_source=`.moai/specs/SPEC-INTEGRATION-STALE-BASE-001/acceptance.md`, tier=M (resolved, non-empty); the live-identifier counter printed `16` (stderr `live=16 excluded=0 ambiguous=0`, exit 0); the CHANGELOG entry states `AC-ISB-001..016` (16 criteria). The 16 requirement lines `- REQ-ISB-NNN` in spec.md match the entry's `REQ-ISB-001..016`
+- b12_self_test_c: every path named in the CHANGELOG entry was checked with `ls` (all 7 implementation files, the two rule/config files and the SPEC progress record exist); the 9 test names it cites were each found by `grep -rl '^func <name>('` in the file the entry names
+- changelog_entry_position: first bullet under `## [Unreleased]` / `### Added` in CHANGELOG.md
+- frontmatter_status_transitions.spec_md: `status: in-progress` -> `implemented` -> `completed` applied atomically on this sync commit (the schema's merged close); `updated:` already `2026-10-18` (the sync date), unchanged. A first pass that stopped at `implemented` was measured by `moai spec audit` (MCP `spec_audit`, filter SPEC-INTEGRATION-STALE-BASE-001) as `SyncStatusDrift` MUST-FIX ("§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed"), which is why the terminal value is written here
+- frontmatter_status_transitions.plan_md_acceptance_md: not applicable (neither file carries a frontmatter block, so there is no `status:` or `updated:` to refresh)
+- frontmatter_status_transitions.progress_md: not applicable (no frontmatter; body sections only)
+- docs_scope: CHANGELOG.md only. The rule guidance (`factory-dispatch-gates.md` plus its template mirror) and the `workflow.base_freshness_gate` config block landed in run milestones M1 and M4; plan.md §G9 records that no docs-site or README page for `workflow.*` keys was planned, and none was added
+- canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
+
+audit_ready: true
 
 ## §F Phase 4 Mode Selection
 

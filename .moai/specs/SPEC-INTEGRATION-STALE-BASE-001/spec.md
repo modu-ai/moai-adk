@@ -2,7 +2,7 @@
 id: SPEC-INTEGRATION-STALE-BASE-001
 title: "Base-freshness gate before the integration window: refuse entry when the candidate is more than K landings behind local main or carries no post-absorb re-measure"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec (card t1834)
