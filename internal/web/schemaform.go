@@ -312,7 +312,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{
 			ID: settings.SectionReport, PanelID: "report", Icon: "panel-bottom",
 			TitleKey: "sec.report.title", DescKey: "sec.report.desc",
-			Title: "Report", Desc: "Output format for the HTML report skill (report.format: html+md or md).",
+			Title: "Report", Desc: "Output format for the HTML report skill (report.format: html+md, md, or artifact).",
 			Fields: settings.SectionFields(settings.SectionReport), Extras: true,
 		},
 		{

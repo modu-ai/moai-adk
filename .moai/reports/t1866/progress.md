@@ -52,6 +52,20 @@ The four launcher cells are: unset profile + Claude backend → `--permission-mo
 
 `gofmt -l` over the touched directories printed nothing; `go vet` over `internal/config`, `internal/settings`, `internal/core/project`, `internal/cli/wizard`, `internal/template` printed nothing.
 
+## Follow-up evidence (leader's request for the init, update and web gaps)
+
+```
+go test ./internal/cli -run '^(TestInit_FreshProjectCarriesTheShippedDefaults|TestUpdate_KeepsUserValuesForTheDefaultsT1866Changed)$' -count=1 -v
+--- PASS: TestInit_FreshProjectCarriesTheShippedDefaults (1.63s)
+--- PASS: TestUpdate_KeepsUserValuesForTheDefaultsT1866Changed (0.51s)
+ok  	github.com/modu-ai/moai-adk/internal/cli  3.465s
+```
+
+- `TestInit_FreshProjectCarriesTheShippedDefaults` runs the real init command function in-process through `quietWizardRunInit`, which installs `prepareSafeInitHome`: it redirects the home seams under a temp dir and fingerprints the REAL home before and after, failing the test if the real user folders changed. It asserts `report.yaml` `format: artifact` and, through the config loader, `llm.glm.effort` high/medium/low/fable = max/high/max/high. The wizard's own defaults are asserted by `TestReportFormatQuestion`, `TestReportFormatInWizard` and `TestInitialProfileResult_ShippedLaunchDefaults`.
+- Sensitivity check: with the template `llm.yaml` `low` temporarily put back to `"low"`, the init test failed with `llm.glm.effort.low = "low", want "max"`; the template was restored (`git diff` on it empty afterwards).
+- `TestUpdate_KeepsUserValuesForTheDefaultsT1866Changed` drives the real update cycle (`runTemplateSyncAt`) over a project whose `llm.yaml` is the real embedded template with `effort.low: low` and `effort.fable: max` (the pre-t1866 defaults, now the user's values; `replaceOnce` requires the new defaults to be present first, so the fixture differs from the template) plus `report.yaml` `format: md`, and a profile storing `permission_mode: acceptEdits` in an isolated store. After the update all four values are the user's. The profile store is outside what `moai update` rewrites, so that last assertion pins non-interference rather than a merge. Not mutation-checked: an update that overwrote user values was not constructed.
+- Web description: the English, Korean, Japanese and Chinese `sec.report.desc` strings in `i18n.js` already named `artifact`; the stale text was the Go fallback in `internal/web/schemaform.go` ("html+md or md"), now "html+md, md, or artifact". `go test ./internal/web -run 'I18n|i18n|Governance|Baseline|Untranslated|Report|SchemaForm|Schemaform'` passed (31 i18n/baseline tests selected plus the report/schema-form ones).
+
 ## What the wizard saves (source read, not run end to end)
 
 `runProfileSetup` writes `PermissionMode: permissionMode` (`profile_setup.go`, the preferences literal) from the wizard result, so a user who accepts the pre-selected `auto` stores `"auto"` explicitly; the same holds for the pre-selected `sonnet[1m]` and `medium`. The launcher cells above cover what such a stored `auto` does at launch.
@@ -65,9 +79,7 @@ The four launcher cells are: unset profile + Claude backend → `--permission-mo
 ## Gaps
 
 - Whole-package runs observed passing: `internal/settings` and `internal/cli/wizard` only. Not run whole: `internal/config`, `internal/core/project` (its whole-package result was not observed; only the named report tests and the init test), `internal/template` and `internal/cli`, and no landing re-measure has run. Package-wide suites need the `go-test-heavy` slot; the lane has not held it for this card. `internal/cli` ran only the tests named above.
-- `moai init` in a temporary directory with a temporary HOME was not run: the worktree guard refuses a `HOME=` override, and an init without it could write to the real user folders. A binary built from this tree exists in scratch (machine-local) and was not used. What a fresh project receives is inferred from: `report.yaml` in the embedded templates (read), `writeReportConfig` (`TestInit_ReportYAMLDefaultsToArtifact`, observed), and the embedded `llm.yaml` equal to the Go constants (observed).
-- That `moai update` leaves an existing user's value for `llm.glm.effort.low` / `.fable` or `report.format` alone is covered by the generic update-preservation tests (5 passed); no test changes those two keys specifically and runs update.
-- `moai web`'s report description text (`internal/web/schemaform.go`, `i18n.js`) was not changed or checked beyond a grep; `docs-site/content/ko` carries no `report.format` text; the en, ja and zh docs-site trees were not searched.
+- (Closed in the follow-up commit, see "Follow-up evidence" below: the in-process init run, the update-preservation test and the web description.) Open remainder: the en, ja and zh docs-site trees were not searched; `docs-site/content/ko` carries no `report.format` text.
 - The web console's empty-option labels for `model` and `effort_level` ("(project default)", "(model policy, else Claude Code default ...)") still describe an unset profile; only the TUI wizard pre-selection changed for those two keys.
 - The `internal/web` suite ran only for the tests named `Permission|acceptEdits|AcceptEdits|permission_mode|MainSession|Normaliz` (3 tests).
 - The built binary was not run, so the launcher change was observed through the exec seam in tests, not in a real launch.
