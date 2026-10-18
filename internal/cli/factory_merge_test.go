@@ -161,6 +161,7 @@ func readLockRoot(t *testing.T, lockRoot string) factory.IntegrationLock {
 // evaluated and recorded, the window is taken, and the recorded checks
 // predate the window's acquire stamp (AC-FLA-009's second half).
 func TestFactoryMergeReady_ClearsAndTakesWindow(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	_, lockRoot, specID := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 
 	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
@@ -202,6 +203,7 @@ func TestFactoryMergeReady_ClearsAndTakesWindow(t *testing.T) {
 // A failing triple refuses BEFORE any window is taken: the failing condition
 // is named, the run is recorded, and the lock root stays empty.
 func TestFactoryMergeReady_RefusesFailingConditionBeforeWindow(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	_, lockRoot, specID := mergeReadyFixture(t, "audit-ready", "lane-9", "sess-lane-9")
 
 	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
@@ -228,6 +230,7 @@ func TestFactoryMergeReady_RefusesFailingConditionBeforeWindow(t *testing.T) {
 // named, the window stays with its holder, and the lane's checks are
 // already recorded — the verdict the lane waits on.
 func TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	_, lockRoot, specID := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	holdWindowFor(t, lockRoot, "sess-other", "lane-7")
 
@@ -251,6 +254,7 @@ func TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed(t *testing.T) {
 // gate refuses, naming the absence — a merge without the window is not
 // available on this path.
 func TestFactoryMergeGate_NoRecordRefuses(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 
 	out, err := runFactoryMerge(t, "merge", "gate", "--card", "t9001")
@@ -268,6 +272,7 @@ func TestFactoryMergeGate_NoRecordRefuses(t *testing.T) {
 // AC-FLA-011, positive case: with a live acquire record for this lane the
 // gate proceeds — the window covers the moment.
 func TestFactoryMergeGate_LiveHoldProceeds(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	_, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	holdWindowFor(t, lockRoot, "sess-lane-9", "lane-9")
 

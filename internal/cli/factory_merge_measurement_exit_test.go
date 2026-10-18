@@ -18,6 +18,7 @@ import (
 )
 
 func TestFactoryMergeReadyMeasurementFailureResolvesNonZeroExit(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	repo, lockRoot, specID := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	// Break only condition (d): clear the seeded re-measure record, exactly as
 	// the RED overlay does for the same measurement-failure route.

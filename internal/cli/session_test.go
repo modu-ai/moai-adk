@@ -45,6 +45,7 @@ func runSession(t *testing.T, args ...string) (string, error) {
 // TestSessionRegisterSmoke verifies the register verb populates the
 // registry and emits expected output.
 func TestSessionRegisterSmoke(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	cases := []struct {
@@ -79,6 +80,7 @@ func TestSessionRegisterSmoke(t *testing.T) {
 // TestSessionListSmoke verifies list returns valid JSON when --json
 // passed, and human-readable text otherwise.
 func TestSessionListSmoke(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	// Empty registry: list --json returns [] (valid JSON array).
@@ -125,6 +127,7 @@ func TestSessionListSmoke(t *testing.T) {
 
 // TestSessionHeartbeatSmoke verifies heartbeat updates the registry.
 func TestSessionHeartbeatSmoke(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 	if _, err := runSession(t, "register", "uuid-hb", "SPEC-A", "plan"); err != nil {
 		t.Fatal(err)
@@ -141,6 +144,7 @@ func TestSessionHeartbeatSmoke(t *testing.T) {
 // TestSessionDeregisterSmoke verifies deregister removes the entry and is
 // idempotent (second invocation returns OK without error).
 func TestSessionDeregisterSmoke(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 	if _, err := runSession(t, "register", "uuid-de", "SPEC-A", "plan"); err != nil {
 		t.Fatal(err)
@@ -166,6 +170,7 @@ func TestSessionDeregisterSmoke(t *testing.T) {
 // TestSessionPurgeSmoke verifies purge returns purged_count=0 on a fresh
 // registry (no stale entries possible immediately after register).
 func TestSessionPurgeSmoke(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 	if _, err := runSession(t, "register", "uuid-fresh", "SPEC-A", "plan"); err != nil {
 		t.Fatal(err)
@@ -182,6 +187,7 @@ func TestSessionPurgeSmoke(t *testing.T) {
 // TestSessionFiveVerbsHelp verifies that `moai session --help` lists
 // exactly 5 verbs (REQ-COORD-021 / AC-COORD-013).
 func TestSessionFiveVerbsHelp(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd := newSessionCmd()
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
@@ -201,6 +207,7 @@ func TestSessionFiveVerbsHelp(t *testing.T) {
 // TestSessionListJSONParseability verifies that the list --json output is
 // always a valid JSON array (orchestrator pre-spawn check depends on this).
 func TestSessionListJSONParseability(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 	out, err := runSession(t, "list", "--json", "--filter-spec=SPEC-NONEXISTENT")
 	if err != nil {

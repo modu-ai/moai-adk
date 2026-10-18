@@ -84,7 +84,11 @@ func TestHomeGuard_RepositoryHasNoNewHomeAccess(t *testing.T) {
 		if !seed[k] {
 			newSites++
 			v := res.Violations[i]
-			t.Errorf("NEW home access %s:%d: %s: %s\n  Use testguard.RedirectHome(t) or testguard.RealHome(), or add `// home-guard:allow <reason>` on the line or the line above.", v.File, v.Line, v.Kind, v.Text)
+			hint := "Use testguard.RedirectHome(t) or testguard.RealHome(), or add `// home-guard:allow <reason>` on the line or the line above."
+			if v.Kind == KindIndirectGlobalGitConfig {
+				hint = "This test reaches an exec of `git config --global`. Swap the seams on that path (internal/cli: isolateGitGlobalSeams(t) or swapM7Seams), call testguard.RedirectHome(t), or add `// home-guard:allow <reason>` on the line above the func."
+			}
+			t.Errorf("NEW home access %s:%d: %s: %s\n  %s", v.File, v.Line, v.Kind, v.Text, hint)
 		}
 	}
 	stale := 0

@@ -20,6 +20,7 @@ import (
 )
 
 func TestRedT1582MergeReadyMeasurementFailureStillExitsZero(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	repo, lockRoot, specID := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	// Break ONLY condition (d): clear the seeded re-measure record —
 	// (a) sync-audit passes (sync_status complete), (b)+(c) pass on the

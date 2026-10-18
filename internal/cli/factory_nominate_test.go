@@ -409,6 +409,7 @@ func nmNextFlagNames(t *testing.T) []string {
 // TestFactoryNextFlagSet — the CLI interface is exactly the baseline plus
 // --card: nothing else was added.
 func TestFactoryNextFlagSet(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	want := []string{"card", "run", "wait", "wait-bound"}
 	if got := nmNextFlagNames(t); strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("factory next flags = %v, want %v (the baseline --run/--wait/--wait-bound plus --card)", got, want)
@@ -1397,6 +1398,7 @@ func TestTodoNonLaneGPTSessionNotRefused(t *testing.T) {
 // TestFactoryFallbackDeclarePrintsLeasePath — the declare confirmation routes
 // the lane to the lease path, not to the serial cycle a lane may no longer run.
 func TestFactoryFallbackDeclarePrintsLeasePath(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	laneEnv(t)

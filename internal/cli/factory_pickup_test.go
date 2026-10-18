@@ -13,6 +13,7 @@ import (
 // while t1332 has not landed — the pickup decision exits 0 under the
 // fallback classification and carries the single-dispatch behavior marker.
 func TestFactoryPickupPlanFallsBackWithoutMetadata(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	laneEnv(t)
 	out, _, err := runFactory(t, "pickup", "plan", "--card", "t1")
@@ -30,6 +31,7 @@ func TestFactoryPickupPlanFallsBackWithoutMetadata(t *testing.T) {
 // AC-FLA-006 at the CLI edge: a sequential classification evaluates under
 // the classified rules (here: free group, so allowed and exclusive).
 func TestFactoryPickupPlanClassifiedSequentialFreeGroup(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	laneEnv(t)
 	out, _, err := runFactory(t, "pickup", "plan", "--card", "t1", "--axis", "sequential", "--group", "alpha")
@@ -47,6 +49,7 @@ func TestFactoryPickupPlanClassifiedSequentialFreeGroup(t *testing.T) {
 // AC-FLA-008 at the CLI edge: an unknown axis value is tolerated — exit 0,
 // fallback classification, tolerated-unknown condition logged.
 func TestFactoryPickupPlanUnknownAxisTolerated(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	laneEnv(t)
 	out, _, err := runFactory(t, "pickup", "plan", "--card", "t1", "--axis", "banana")
@@ -60,6 +63,7 @@ func TestFactoryPickupPlanUnknownAxisTolerated(t *testing.T) {
 
 // The --json surface carries the decision machine-readably.
 func TestFactoryPickupPlanJSONCarriesDecision(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	laneEnv(t)
 	out, _, err := runFactory(t, "pickup", "plan", "--card", "t1", "--json")
@@ -80,6 +84,7 @@ func TestFactoryPickupPlanJSONCarriesDecision(t *testing.T) {
 
 // The verb is lane-scoped: no lane identity, no decision.
 func TestFactoryPickupPlanRequiresLaneLabel(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	_, errOut, err := runFactory(t, "pickup", "plan", "--card", "t1")
 	if err == nil {

@@ -463,6 +463,7 @@ func TestWorktreeLaunchRejectsConcurrentWriter(t *testing.T) {
 // stays, with the reason named, and a Codex tree comes out exactly like a
 // Claude tree in the same state.
 func TestPRMergeCleanupRefusesAnchoredCodexTree(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	base := t.TempDir()
 	t.Setenv(config.EnvClaudeProjectDir, base)
 	live := os.Getpid()

@@ -23,6 +23,11 @@ const (
 	// library never expands it, so a test using it either creates a directory
 	// named "~" under the working directory or relies on a home-expansion seam.
 	KindTildeLiteral = "~/ literal"
+	// KindIndirectGlobalGitConfig marks a top-level test function whose call
+	// chain reaches an `exec.Command("git", "config", "--global", ...)` sink
+	// without swapping the seam on that path, without redirecting the global git
+	// config, and without an allowlist marker.
+	KindIndirectGlobalGitConfig = "indirect git config --global"
 )
 
 // allowComment matches the allowlist marker `home-guard:allow <reason>` inside a
@@ -34,7 +39,7 @@ var allowComment = regexp.MustCompile(`//\s*home-guard:allow\s+\S`)
 type Violation struct {
 	File string // path as scanned; relative to the scan root for ScanTree
 	Line int    // 1-based line of the offending expression or literal
-	Kind string // KindUserHomeDir or KindTildeLiteral
+	Kind string // KindUserHomeDir, KindTildeLiteral or KindIndirectGlobalGitConfig
 	Text string // the offending source line, trimmed
 }
 
@@ -171,6 +176,8 @@ func lineAt(lines []string, n int) string {
 // output. A file that does not parse fails the whole scan.
 func ScanTree(root string, dirs []string) (Result, error) {
 	var res Result
+	// pkgs groups every .go file by its directory for the indirect check.
+	pkgs := map[string]map[string][]byte{}
 	for _, dir := range dirs {
 		base := filepath.Join(root, dir)
 		err := filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
@@ -183,18 +190,28 @@ func ScanTree(root string, dirs []string) (Result, error) {
 				}
 				return nil
 			}
-			if !d.Type().IsRegular() || !strings.HasSuffix(d.Name(), "_test.go") {
+			if !d.Type().IsRegular() || !strings.HasSuffix(d.Name(), ".go") {
 				return nil
 			}
 			rel, err := filepath.Rel(root, path)
 			if err != nil {
 				return err
 			}
+			rel = filepath.ToSlash(rel)
 			src, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
-			vs, err := ScanSource(filepath.ToSlash(rel), src)
+			pkg := pkgs[filepath.ToSlash(filepath.Dir(rel))]
+			if pkg == nil {
+				pkg = map[string][]byte{}
+				pkgs[filepath.ToSlash(filepath.Dir(rel))] = pkg
+			}
+			pkg[rel] = src
+			if !strings.HasSuffix(d.Name(), "_test.go") {
+				return nil
+			}
+			vs, err := ScanSource(rel, src)
 			if err != nil {
 				return err
 			}
@@ -205,6 +222,16 @@ func ScanTree(root string, dirs []string) (Result, error) {
 		if err != nil {
 			return Result{}, fmt.Errorf("scan %s: %w", base, err)
 		}
+	}
+	for dir, files := range pkgs {
+		if !mentionsGlobalFlag(files) {
+			continue
+		}
+		vs, err := scanIndirect(files)
+		if err != nil {
+			return Result{}, fmt.Errorf("scan %s: %w", dir, err)
+		}
+		res.Violations = append(res.Violations, vs...)
 	}
 	sort.SliceStable(res.Violations, func(i, j int) bool {
 		a, b := res.Violations[i], res.Violations[j]

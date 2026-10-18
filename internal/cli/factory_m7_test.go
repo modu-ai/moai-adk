@@ -29,6 +29,7 @@ import (
 // source scan: no user-facing factory string carries `worker` or `agent` as a
 // role or `lead` as the leader noun.
 func TestSD_AC021_LegacySpellingsRefused(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Run("launcher parse (moai cc / moai glm)", func(t *testing.T) {
 		rows := []struct {
 			args     []string

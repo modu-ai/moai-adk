@@ -58,6 +58,7 @@ func fixtureEntry(sessionID string, pid int) session.Entry {
 // a degrading fixture (dead pid → unknown) still lists the entry, renders
 // unknown in both outputs, and the command exits 0.
 func TestSessionListCCVersion(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Run("json carries both reads", func(t *testing.T) {
 		withTempRegistry(t)
 		saveResolveCCVersionsSeam(t)
@@ -143,6 +144,7 @@ func TestSessionListCCVersion(t *testing.T) {
 // orchestrator pre-spawn batch contract and fails the moment enrichment
 // leaks into the default path.
 func TestSessionListDefaultNoProbe(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 	saveResolveCCVersionsSeam(t)
 	writeSessionRegistryFixture(t, []session.Entry{fixtureEntry("uuid-noprobe-1", 4242)})

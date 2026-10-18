@@ -120,6 +120,7 @@ func gitFlowRow() targetRow {
 // target. It passes before and after the swap; the shapes with no configured
 // branch keep today's refusal and caller fallback.
 func TestDeliveryBaseGitFlowUnchanged(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Run("complete resolves the configured develop branch", func(t *testing.T) {
 		root := t.TempDir()
 		installTargetRow(t, root, gitFlowRow())
@@ -175,6 +176,7 @@ func TestDeliveryBaseGitFlowUnchanged(t *testing.T) {
 // the environment and release-prefix answers for the other two flows, and no
 // target (caller fallback / refusal) for every row the interpreter leaves empty.
 func TestDeliveryBaseResolvesFromIntegrationTarget(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	for _, row := range interpretationRows() {
 		t.Run("complete/"+row.name, func(t *testing.T) {
 			root := t.TempDir()

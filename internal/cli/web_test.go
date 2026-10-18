@@ -11,6 +11,7 @@ import (
 // SPEC-WEB-CONSOLE-002 supersedes the 8080 candidate from SPEC-WEB-CONSOLE-001
 // REQ-WC-001 with 3041 (8080 frequently collides with other local dev servers).
 func TestWebCmd_FlagsRegistered(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd := newWebCmd()
 
 	portFlag := cmd.Flags().Lookup("port")
@@ -39,6 +40,7 @@ func TestWebCmd_FlagsRegistered(t *testing.T) {
 // TestWebCmd_HelpListsFlags verifies AC-WC-001: `moai web --help` exits 0 and the
 // help text lists both flags.
 func TestWebCmd_HelpListsFlags(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd := newWebCmd()
 	out := &strings.Builder{}
 	cmd.SetOut(out)
@@ -67,6 +69,7 @@ func TestWebCmd_HelpListsFlags(t *testing.T) {
 
 // TestWebCmd_Use verifies the subcommand is named "web".
 func TestWebCmd_Use(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd := newWebCmd()
 	if !strings.HasPrefix(cmd.Use, "web") {
 		t.Errorf("web command Use = %q, want prefix \"web\"", cmd.Use)

@@ -31,6 +31,7 @@ func seedRegistryPeer(t *testing.T, root, name string) {
 
 // AC-FLA-001: with nothing registered the probe reports channel-unavailable.
 func TestFactoryMessagingProbeReportsChannelUnavailableWithoutRegistry(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	out, _, err := runFactory(t, "messaging", "probe")
 	if err != nil {
@@ -43,6 +44,7 @@ func TestFactoryMessagingProbeReportsChannelUnavailableWithoutRegistry(t *testin
 
 // AC-FLA-001: a registered lead peer flips the verdict to available.
 func TestFactoryMessagingProbeReportsAvailableWithRegisteredLead(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	seedRegistryPeer(t, root, "team-lead")
@@ -57,6 +59,7 @@ func TestFactoryMessagingProbeReportsAvailableWithRegisteredLead(t *testing.T) {
 
 // The --json surface carries the verdict machine-readably.
 func TestFactoryMessagingProbeJSONCarriesVerdict(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	out, _, err := runFactory(t, "messaging", "probe", "--json")
 	if err != nil {
@@ -74,6 +77,7 @@ func TestFactoryMessagingProbeJSONCarriesVerdict(t *testing.T) {
 // AC-FLA-002: the directed request lands as an observation, and the ack marks
 // it — the lane's own request lifecycle closes mechanically.
 func TestFactoryMessagingRequestAndAckLifecycle(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	laneEnv(t)
@@ -102,6 +106,7 @@ func TestFactoryMessagingRequestAndAckLifecycle(t *testing.T) {
 
 // The directed-request verbs are lane-scoped: no lane label, no request.
 func TestFactoryMessagingRequestRequiresLaneLabel(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	_, errOut, err := runFactory(t, "messaging", "request")
 	if err == nil {
@@ -115,6 +120,7 @@ func TestFactoryMessagingRequestRequiresLaneLabel(t *testing.T) {
 // AC-FLA-003: declare → restore → declare produces exactly the three events
 // of two counted switches, and a declare while active is refused.
 func TestFactoryFallbackDeclareRestoreLifecycle(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	laneEnv(t)
@@ -150,6 +156,7 @@ func TestFactoryFallbackDeclareRestoreLifecycle(t *testing.T) {
 
 // The fallback query surface answers count-by-lane (AC-FLA-003's check).
 func TestFactoryFallbackQueryPrintsCountByLane(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	laneEnv(t)
@@ -172,6 +179,7 @@ func TestFactoryFallbackQueryPrintsCountByLane(t *testing.T) {
 // (`fallback --all`) — the joint summary an operator reads without a lane
 // session. Text and --json forms carry one row per lane with its event count.
 func TestFactoryFallbackAllLanesCountsAcrossLanes(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	store := factorylane.NewStore(root, nil)
@@ -215,6 +223,7 @@ func TestFactoryFallbackAllLanesCountsAcrossLanes(t *testing.T) {
 // The polish stays additive: `--all` needs no lane identity, while the bare
 // single-lane query keeps refusing without one (existing contract unchanged).
 func TestFactoryFallbackAllNeedsNoLaneBareStillDoes(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Chdir(t.TempDir())
 	if _, _, err := runFactory(t, "fallback", "--all"); err != nil {
 		t.Fatalf("fallback --all without a lane label: %v", err)
@@ -230,6 +239,7 @@ func TestFactoryFallbackAllNeedsNoLaneBareStillDoes(t *testing.T) {
 
 // An unknown trigger kind is refused at the CLI edge before any write.
 func TestFactoryFallbackDeclareRefusesUnknownTrigger(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	laneEnv(t)

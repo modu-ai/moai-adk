@@ -20,6 +20,7 @@ import (
 )
 
 func TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	// sync-audit fails FIRST (the sync record reads audit-ready, not complete),
 	// and the re-measure record for the candidate tree is cleared, so condition
 	// (d) fails as well. failed_condition names sync-audit; the process exit must

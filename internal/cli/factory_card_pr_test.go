@@ -656,6 +656,7 @@ func TestFactoryDecidePushGateClosesAMergedPRCard(t *testing.T) {
 // `factory merge ready` is the pre-PR check's entry too; under github-flow it
 // takes no window.
 func TestFactoryMergeReadyGitHubFlowTakesNoWindow(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	_, lockRoot, specID := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	ghfWriteConfig(t, lockRoot, "")
 	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")

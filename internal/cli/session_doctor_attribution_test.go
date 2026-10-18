@@ -16,6 +16,7 @@ import (
 // (b) whether the current process's session_id is present, (c) the likely
 // root cause when the registry is empty.
 func TestSessionDoctorRegistryAbsent(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	// Registry file does NOT exist yet (no register call made).
@@ -51,6 +52,7 @@ func TestSessionDoctorRegistryAbsent(t *testing.T) {
 // TestSessionDoctorRegistryPresentWithEntry verifies doctor reports
 // registry_exists=true and entry_count when the registry has entries.
 func TestSessionDoctorRegistryPresentWithEntry(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	if _, err := runSession(t, "register", "uuid-doc-1", "SPEC-DOC", "plan"); err != nil {
@@ -86,6 +88,7 @@ func fmtSlice(s []any) string {
 // TestSessionDoctorHumanReadable verifies the non-JSON path emits
 // readable text mentioning registry state.
 func TestSessionDoctorHumanReadable(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	out, err := runSession(t, "doctor")

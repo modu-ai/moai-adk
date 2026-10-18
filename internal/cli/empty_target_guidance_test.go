@@ -97,6 +97,7 @@ func TestEmptyTargetGoalApproveNamesTheFix(t *testing.T) {
 }
 
 func TestEmptyTargetMergeReadyNamesTheFixAndTheTargetFlag(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	for _, row := range emptyTargetRows(t) {
 		t.Run(row.name, func(t *testing.T) {
 			run, err := runMergeReadyWithRow(t, row)

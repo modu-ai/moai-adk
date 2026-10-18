@@ -35,6 +35,7 @@ func TestWorktreeNew_MissingNameFangErrorNamesExpectedArgument(t *testing.T) {
 }
 
 func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	var addCalls int
 	var gotDest, gotBranch string
@@ -65,6 +66,7 @@ func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 }
 
 func TestWorktreeNew_RefusesPlainDirectoryBeforeGit(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	dest := filepath.Join(root, ".moai", "worktrees", "plain-dir")
 	if err := os.MkdirAll(dest, 0o755); err != nil {

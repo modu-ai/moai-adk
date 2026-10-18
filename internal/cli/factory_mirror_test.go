@@ -153,6 +153,7 @@ func fcStatusReportsUnavailable(t *testing.T, runID, cardID string) (bool, bool)
 // a failed mirror write leaves the dispatch intact, is logged and reported,
 // and is reconciled by exactly one record.drift event on the next write.
 func TestFR_AC024_GTDDispatchMirrorsFactoryRecord(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root, store := todoFixture(t)
 	const run = "run-gtd"
 	stdout, _, d1 := fcGTDDispatch(t, store, "mirror gtd dispatch one", "fr-gtd-1", "worker-2", run)
@@ -210,6 +211,7 @@ func TestFR_AC024_GTDDispatchMirrorsFactoryRecord(t *testing.T) {
 // AC-025 — the auto-mission dispatch path mirrors the assignment too, with
 // the same fail-open, logging, and reconciliation behavior.
 func TestFR_AC025_GoalDispatchMirrorsFactoryRecord(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	rootA, storeA := todoFixture(t)
 	const sessionA = "018f4f4a-7b7c-7a11-8f4d-f33333333333"
 	op, d2, _ := fcGoalDispatch(t, rootA, storeA, "mirror goal dispatch", "fr-goal-1", sessionA, "worker-3", "auto-run-3")

@@ -819,6 +819,7 @@ func TestPaths_FlagsAreExclusive(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestPaths_HelpPointers(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	var save string
 	for _, c := range newHandoffCmd().Commands() {
 		if c.Name() == "save" {

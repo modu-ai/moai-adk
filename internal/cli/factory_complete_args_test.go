@@ -14,6 +14,7 @@ import (
 // touches no factory store: the panic site precedes every store call, and HOME
 // and MOAI_HOME point at throwaway directories regardless.
 func TestFactoryCompleteWithoutArgsIsAUsageError(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_HOME", t.TempDir())
 	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
@@ -40,6 +41,7 @@ func TestFactoryCompleteWithoutArgsIsAUsageError(t *testing.T) {
 // (SPEC-FACTORY-LEASE-RENEW-001 M2, commit 4750b8b57, registered it). This
 // locks the registration so a future edit of the verb list cannot drop it.
 func TestFactoryRenewVerbIsRegistered(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd, _, err := newFactoryCommand().Find([]string{"renew"})
 	if err != nil {
 		t.Fatalf("factory renew lookup: %v", err)

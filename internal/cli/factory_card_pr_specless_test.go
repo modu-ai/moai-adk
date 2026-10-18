@@ -96,6 +96,7 @@ func TestMergeReadinessBeforePRSpecLess(t *testing.T) {
 // before this follow-up. (`factory complete` under git-flow never runs the
 // triple at all — TestFactoryCompleteWindowGitFlowUnchanged.)
 func TestFactoryMergeReadySpecLessGitFlowUnchanged(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	repo, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
 	dir := filepath.Join(repo, ".moai", "reports", "t9001")

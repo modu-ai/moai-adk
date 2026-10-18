@@ -46,6 +46,7 @@ func runFactoryCommand(t *testing.T, args ...string) (string, error) {
 // owner, each refusal exiting non-zero, leaving the run active, and naming its
 // classification as the reason. Only the dead-owner run is retired.
 func TestFactoryRunsCommandReportsAndRefuses(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 

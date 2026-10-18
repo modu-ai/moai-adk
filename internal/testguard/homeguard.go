@@ -7,7 +7,9 @@
 //     would resolve under the operator's real home.
 //   - ScanTree is a light source scanner. It fails on a test file that reads the
 //     home directory through os.UserHomeDir or expands a "~/" literal, unless the
-//     line carries a `home-guard:allow <reason>` comment.
+//     line carries a `home-guard:allow <reason>` comment. It also fails a test
+//     function whose call chain reaches an exec of `git config --global`
+//     without isolating that seam (indirect.go).
 //
 // Windows layout: the default temp dir lies under the real home, so the sandbox
 // root would be refused as "inside the real home". The refusal is skipped for a

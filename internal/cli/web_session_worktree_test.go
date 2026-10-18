@@ -137,6 +137,7 @@ func (e *strErr) Error() string { return e.s }
 // TestRunWeb_AutoEntryOn_SuppressesAdvisory — REQ-SW-013 / AC-SW-013 positive:
 // feature ON + materialization succeeds → emitWorktreeAdvisory is SUPPRESSED.
 func TestRunWeb_AutoEntryOn_SuppressesAdvisory(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	dest := t.TempDir()
 	out, _, _ := runWebHarness(t, materializeSeams(dest), withRootDir(dest))
@@ -152,6 +153,7 @@ func TestRunWeb_AutoEntryOn_SuppressesAdvisory(t *testing.T) {
 // TestRunWeb_AutoEntryOff_AdvisoryFires — REQ-SW-001 / AC-SW-001 negative
 // control: feature OFF → advisory fires exactly as today (byte-identical).
 func TestRunWeb_AutoEntryOff_AdvisoryFires(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	// MOAI_SESSION_WORKTREE deliberately UNSET.
 	root := t.TempDir()
 	out, _, _ := runWebHarness(t, materializeSeams(root), withRootDir(root))
@@ -165,6 +167,7 @@ func TestRunWeb_AutoEntryOff_AdvisoryFires(t *testing.T) {
 // negative control: feature ON + materialization fell back → advisory STILL
 // fires (the hazard was NOT avoided by construction).
 func TestRunWeb_AutoEntryOn_FailBack_AdvisoryFires(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	root := t.TempDir()
 	out, _, _ := runWebHarness(t, failBackSeams(), withRootDir(root))

@@ -17,6 +17,7 @@ import (
 // `moai session --help` MUST list `current` alongside the 5 original verbs
 // + `doctor`. 7 subcommands total (5 original + current + doctor).
 func TestSessionCurrentListedInHelp(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	cmd := newSessionCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
@@ -40,6 +41,7 @@ func TestSessionCurrentListedInHelp(t *testing.T) {
 // `current` subcommand emits the canonical fallback string (REQ-RDP-006)
 // and exits 0 (graceful degradation, NOT an error).
 func TestSessionCurrentFallbackWhenNoSideChannel(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	// Point CLAUDE_PROJECT_DIR at the temp dir so resolveProjectDir finds it
@@ -59,6 +61,7 @@ func TestSessionCurrentFallbackWhenNoSideChannel(t *testing.T) {
 // TestSessionCurrentJSONFallback verifies the --json path carries the
 // canonical fallback + availability flag.
 func TestSessionCurrentJSONFallback(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
@@ -88,6 +91,7 @@ func TestSessionCurrentJSONFallback(t *testing.T) {
 // TestSessionCurrentShowFallbackFlag verifies --show-fallback prints ONLY
 // the canonical fallback string (for paste-ready resume emission).
 func TestSessionCurrentShowFallbackFlag(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	withTempRegistry(t)
 
 	out, err := runSession(t, "current", "--show-fallback")
@@ -109,6 +113,7 @@ func TestSessionCurrentShowFallbackFlag(t *testing.T) {
 // makes the UUID available. This test simulates the side-channel file's
 // presence (M3 will write it for real).
 func TestSessionCurrentReadsSideChannel(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)

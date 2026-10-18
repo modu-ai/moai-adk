@@ -49,6 +49,7 @@ func captureRelaunchLaunch(t *testing.T) *[][]string {
 // AC-SRH-001 — the dry-run matrix, and every printed line is accepted by the
 // target launcher's own argument classifier.
 func TestFactoryRelaunchDryRunMatrix(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 
@@ -110,6 +111,7 @@ func TestFactoryRelaunchDryRunMatrix(t *testing.T) {
 // AC-SRH-002 — legacy lane spellings and Codex pins are refused with the
 // reason named; a legal pin is accepted in the same test (positive control).
 func TestFactoryRelaunchRefusesLegacyAndCodexPins(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 
@@ -183,6 +185,7 @@ func runRows(t *testing.T, root string) (rows string, events int) {
 // owner classifies dead; every other case leaves it untouched, launches
 // anyway, and names the outcome.
 func TestFactoryRelaunchFromRunRetiresDeadOwnerOnly(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	liveStart := homestate.CurrentProcessFingerprint()
@@ -258,6 +261,7 @@ func TestFactoryRelaunchFromRunRetiresDeadOwnerOnly(t *testing.T) {
 // AC-004 — --dry-run writes nothing even with a dead-owner --from-run, and the
 // lane's clear-policy environment is untouched.
 func TestFactoryRelaunchDoesNotMutateRunRecords(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	deadPID, deadStart := deadOwnerIdentity(t)
@@ -287,6 +291,7 @@ func TestFactoryRelaunchDoesNotMutateRunRecords(t *testing.T) {
 
 // AC-004 — the help text states the distinction from the clear-policy loop.
 func TestFactoryRelaunchHelpDistinguishesClearPolicy(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	stdout, _, err := runRelaunch(t, "--help")
 	if err != nil {
 		t.Fatalf("--help: %v", err)
@@ -299,6 +304,7 @@ func TestFactoryRelaunchHelpDistinguishesClearPolicy(t *testing.T) {
 // AC-006 — every line the shared builder can print is accepted by the verb,
 // and the verb answers with exactly the launch line the same arguments imply.
 func TestRelaunchCommandRoundTrip(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	n := 0
@@ -330,6 +336,7 @@ func TestRelaunchCommandRoundTrip(t *testing.T) {
 // The verb, without --dry-run, hands the provider's own lane-join argv to the
 // launch seam — and surfaces the child's refusal rather than swallowing it.
 func TestFactoryRelaunchLaunchesProviderEntry(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	captured := captureRelaunchLaunch(t)
@@ -351,6 +358,7 @@ func TestFactoryRelaunchLaunchesProviderEntry(t *testing.T) {
 // join: the verb says so once on stderr before launching, leaves stdout and the
 // launched argv alone, and stays silent when --lane is not supplied.
 func TestFactoryRelaunchLaneIsIgnoredWithNote(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	const note = "--lane lane-3 is ignored"
@@ -390,6 +398,7 @@ func TestFactoryRelaunchLaneIsIgnoredWithNote(t *testing.T) {
 // A failing launcher child is surfaced: its exit status is propagated, and any
 // other launch failure is wrapped with the line that was being launched.
 func TestFactoryRelaunchSurfacesLaunchFailure(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	prev := factoryRelaunchExecFn
@@ -412,6 +421,7 @@ func TestFactoryRelaunchSurfacesLaunchFailure(t *testing.T) {
 // An unmeasurable factory state never retires anything: the outcome is named
 // and the launch still proceeds.
 func TestFactoryRelaunchFromRunUnavailableStateLeavesRunUntouched(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	dbPath, err := homestate.FactoryDBPath(root)

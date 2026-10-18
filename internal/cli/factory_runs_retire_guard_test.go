@@ -115,6 +115,7 @@ func hasHangul(s string) bool {
 // session, with the cards, the exits and the abandon caveats; nothing is read
 // from stdin and nothing changes.
 func TestFactoryRunsRetireRefusesInProgressCards(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	deadPID, deadStart := deadOwnerIdentity(t)
@@ -169,6 +170,7 @@ func TestFactoryRunsRetireRefusesInProgressCards(t *testing.T) {
 
 // AC-RRG-006 — a retired run's stranded cards are reported on success.
 func TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	deadPID, deadStart := deadOwnerIdentity(t)
@@ -233,6 +235,7 @@ func TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun(t *testing.T) {
 
 // AC-RRG-007 — relaunch --from-run leaves a run holding cards active.
 func TestRelaunchFromRunLeavesRunWithCardsActive(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := runOwnerSandbox(t)
 	t.Chdir(root)
 	deadPID, deadStart := deadOwnerIdentity(t)

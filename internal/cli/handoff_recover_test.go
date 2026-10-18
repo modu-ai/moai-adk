@@ -93,6 +93,7 @@ func TestResumeLegacyUnknownOwnerRequiresZeroActiveCensus(t *testing.T) {
 }
 
 func TestFactoryRecoverResumeCommandValidatesAndFailsDeadLegacyClaim(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Setenv("MOAI_HOME", filepath.Join(t.TempDir(), "home"))
 	t.Chdir(root)
@@ -125,6 +126,7 @@ func TestFactoryRecoverResumeCommandValidatesAndFailsDeadLegacyClaim(t *testing.
 }
 
 func TestFactoryRecoverResumeCommandRequeuesUnknownOwnerAtZeroCensus(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	root := t.TempDir()
 	t.Setenv("MOAI_HOME", filepath.Join(t.TempDir(), "home"))
 	t.Chdir(root)
