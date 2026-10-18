@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand/v2"
 	"os"
 	"path"
 	"path/filepath"
@@ -194,8 +193,6 @@ func orphans(root string, tg Target, ext string, files map[string][]byte) []stri
 // symlink check finish before the first write, so a source that cannot be
 // rendered, or a target path that runs through a symlink, leaves root
 // untouched. A file that already holds the rendered bytes is not rewritten.
-// Every write goes through an os.Root on root, so a directory swapped for a
-// symlink after the check cannot redirect a write outside root.
 func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	files, specs, err := renderTargets(root, lay, man)
 	sum := Summary{Specs: specs, Copies: len(lay.Targets)}
@@ -208,16 +205,15 @@ func Update(root string, lay Layout, man Manifest) (Summary, error) {
 			return sum, err
 		}
 	}
-	rt, err := os.OpenRoot(root)
-	if err != nil {
-		return sum, fmt.Errorf("agentemit: %w", err)
-	}
-	defer func() { _ = rt.Close() }()
 	for _, p := range paths {
-		if cur, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(p))); rerr == nil && bytes.Equal(cur, files[p]) {
+		dst := filepath.Join(root, filepath.FromSlash(p))
+		if cur, rerr := os.ReadFile(dst); rerr == nil && bytes.Equal(cur, files[p]) {
 			continue
 		}
-		if err := writeFileAtomic(rt, root, p, files[p]); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return sum, fmt.Errorf("agentemit: %w", err)
+		}
+		if err := writeFileAtomic(dst, files[p]); err != nil {
 			return sum, fmt.Errorf("agentemit: %w", err)
 		}
 	}
@@ -254,52 +250,27 @@ func refuseLinks(root, rel string) error {
 	return nil
 }
 
-// testHook is a test seam called at named points of writeFileAtomic.
-var testHook = func(stage string) {}
-
-// writeFileAtomic writes data to rel (slash-separated, below root) through a
-// uniquely named temporary file in the same directory followed by a rename, so
-// the target is replaced as a whole. All operations go through rt, which
-// refuses any path that leaves root, so a directory swapped for a symlink
-// after the up-front check cannot redirect the write. Symlinks that stay
-// inside root are not an escape for rt; the link check is therefore re-run
-// just before the rename. An existing target keeps its permission bits.
-func writeFileAtomic(rt *os.Root, root, rel string, data []byte) error {
-	native := filepath.FromSlash(rel)
-	dir := filepath.Dir(native)
-	if err := rt.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	testHook("before-temp")
+// writeFileAtomic writes data to dst through a temporary file in the same
+// directory followed by a rename, so dst is replaced as a whole. The mode is
+// set explicitly (the process umask would otherwise strip bits): an existing
+// target keeps its permission bits, a new file gets 0644.
+func writeFileAtomic(dst string, data []byte) error {
 	perm := os.FileMode(0o644)
-	if fi, err := rt.Lstat(native); err == nil {
+	if fi, err := os.Lstat(dst); err == nil {
 		perm = fi.Mode().Perm()
 	}
-	var f *os.File
-	var tmp string
-	var err error
-	for range 8 {
-		tmp = filepath.Join(dir, fmt.Sprintf(".agents-emit-%016x", rand.Uint64()))
-		if f, err = rt.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm); !errors.Is(err, fs.ErrExist) {
-			break
-		}
-	}
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".agents-emit-*")
 	if err != nil {
 		return err
 	}
-	_, werr := f.Write(data)
-	// OpenFile applies the process umask to perm; the mode is set explicitly so
-	// an existing definition keeps its bits and a new one gets 0644.
-	err = errors.Join(werr, f.Chmod(perm), f.Close())
+	name := tmp.Name()
+	_, werr := tmp.Write(data)
+	err = errors.Join(werr, tmp.Chmod(perm), tmp.Close())
 	if err == nil {
-		testHook("before-commit")
-		err = refuseLinks(root, rel)
-	}
-	if err == nil {
-		err = rt.Rename(tmp, native)
+		err = os.Rename(name, dst)
 	}
 	if err != nil {
-		_ = rt.Remove(tmp)
+		_ = os.Remove(name)
 	}
 	return err
 }
