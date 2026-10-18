@@ -76,7 +76,16 @@ Weighted overall: 0.4×95 + 0.25×95 + 0.2×88 + 0.15×95 = 93.6 → **0.94**. M
 
 ### Iteration history
 
-- Round 1 (5016f892ee, rcpt-a81048def09011de1aaaad6e): FAIL 0.86 — F1 wide window, F2 snapshot, F3 close-error, F4 anchors.
+- Round 1 (5016f892ee, rcpt-a81048def09011de1aaaad6e): FAIL 0.86 — F1 wide window, F2 snapshot, F3 close-error, F4 anchors. Reissued as `sync-audit-iter2.md`.
 - Round 2 (7d5b0a9075, rcpt-09bc8a607dc7527013ea91a0): FAIL 0.90 — F2/F3/F4 closed; F1 narrowed to the post-guard sub-window (F1').
 - Round 3 (e760d8c5cd, rcpt-41ca45474ac49ecb1cf445c8): FAIL 0.93 — F1' closed (CAS + peerGuard verified); one ABA hole (F1'').
-- Round 4 (this file, 70c9bf41ac, rcpt-ce872a2553c05281e6731a44): **PASS 0.94** — F1'' closed (classified-backend refusal + discriminating ABA test); codex gate pass, 0 findings.
+- Round 4 (this file, 70c9bf41ac, rcpt-ce872a2553c05281e6731a44): **PASS 0.94** — F1'' closed (classified-backend refusal + discriminating ABA test); codex gate pass, 0 findings. Reissued as `sync-audit-iter3.md` for the T11 v14 evidence anchor.
+
+## Round-5 addendum — post-record corroboration run (tree advanced by a records-only commit)
+
+- **Tree advance (verified)**: `70c9bf41ac..3f1c669b45` = one commit, `docs(t1863): sync-audit 4-round verdict PASS, card-review, run records` — two `.moai/reports/t1863` files only (card-review.md +6, this file +82). No code, no docs, no README changes: every round-4 measurement applies byte-identically to this head's tree content.
+- **Fresh corroboration run** (stop-hook receipt-freshness requirement; `mcp__moai__audit_multi`, target baseBranch, card t1863): receipt **rcpt-790b63ab92c83d8909d2dd26**; result fail with ONE finding.
+- **The finding [P3, docs-precision, real]** `README.md:70` (and the ko/ja/zh twins): the dead-leader paragraph's refusal sentence — "A leader start without a resume option over **such a run** is refused with guidance" — takes its antecedent from "a run still carrying **cards or workers**", but the refusal (REQ-FLAC-002/005 via `FindOrphanRuns`) covers runs with ≥1 non-terminal CARD only: a workers-only dead-owner run is exempt (REQ-FLAC-001) and the start mints — exactly the SPEC's documented residual (`spec.md §F`, Out of Scope — Workers-only dead-owner runs), pinned by the gating test's workers-only row (launch: true). Codex reproduced the mint over a workers-only run. The prose overstates; the behavior is per-SPEC.
+- **Classification: P3, optional-grade, prose-only** — AC-FLAC-010 judges prose by review, not machine ("Prose outside the anchor lines is reviewed, not machine-judged"); the anchors themselves are exact and unaffected. It does not retroactively alter the round-4 PASS at the recorded anchor (the sentence is unchanged since M4; the round-4 gate passed over it — reviewer variance run-to-run).
+- **Required fix (one clause × 4 locales)**: narrow the antecedent to in-progress cards — en: "A leader start without a resume option over a run that still holds in-progress cards is refused with guidance and creates no run" — mirrored in ko/ja/zh (their "이런 런" / "そのような run" / "这样的 run" inherit the same cards-or-workers antecedent). Then a fresh gate re-runs (round 5 → expected pass) before T13.
+- **Auditor disposition**: no repairs made by this auditor. The round-4 PASS verdict for anchor `70c9bf41ac` stands (reissued as `sync-audit-iter3.md`); this addendum records the post-record finding and its prescription for the orchestrator's repair round.
