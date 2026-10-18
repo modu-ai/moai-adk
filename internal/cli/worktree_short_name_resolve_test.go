@@ -380,6 +380,70 @@ func TestResolveMoaiWorktreeShortName_StateErrorPropagates(t *testing.T) {
 	}
 }
 
+// TestResolveMoaiWorktreeShortName_ValueConsumerAdjacentHonoredLast is the
+// sync-audit delta D1 shape A: the launcher strips -c, so the backend's
+// required-value `--append-system-prompt` consumes the SECOND -w as its value
+// and the selection stays `card`. The value the resolver judges must be the
+// one the launcher-consumed argv selects — walking the raw argv honors the
+// last `-w fresh` instead and never judges the registered card tree.
+func TestResolveMoaiWorktreeShortName_ValueConsumerAdjacentHonoredLast(t *testing.T) {
+	root := overrideFindRoot(t)
+	rec := &moaiStateRecorder{state: moaiShortNameRegistered}
+	overrideMoaiStateSeam(t, rec)
+
+	got, err := resolveMoaiWorktreeShortName([]string{"-w", "card", "--append-system-prompt", "-c", "-w", "fresh"}, io.Discard)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := filepath.Join(root, ".moai", "worktrees", "card")
+	wantArgs := []string{"-w", want, "--append-system-prompt", "-c", "-w", "fresh"}
+	if strings.Join(got, "\x00") != strings.Join(wantArgs, "\x00") {
+		t.Fatalf("args = %v, want %v (the backend-selected card value rewritten)", got, wantArgs)
+	}
+	if len(rec.calls) != 1 || rec.calls[0] != "card" {
+		t.Fatalf("state seam consulted about %v, want exactly [card]", rec.calls)
+	}
+	// The rewritten argv's backend selection is the .moai tree: what the
+	// resolver judged is what selectBackendWorktree will pick.
+	view := resolveLaunchView(got)
+	if !view.Selection.HasValue || view.Selection.Value != want {
+		t.Fatalf("backend selection = %+v, want the .moai tree %q", view.Selection, want)
+	}
+}
+
+// TestResolveMoaiWorktreeShortName_BareWorktreeBeforeLauncherBoolean is the
+// sync-audit delta D1 shape B: the raw walk reads `-w` valueless (the next
+// token -c is flag-shaped), but the launcher REMOVES -c, so the backend sees
+// `-w card` and honors card. The judgment must run over the stripped argv —
+// otherwise the registered card tree is never consulted and the backend twins
+// it.
+func TestResolveMoaiWorktreeShortName_BareWorktreeBeforeLauncherBoolean(t *testing.T) {
+	root := overrideFindRoot(t)
+	rec := &moaiStateRecorder{state: moaiShortNameRegistered}
+	overrideMoaiStateSeam(t, rec)
+
+	got, err := resolveMoaiWorktreeShortName([]string{"-w", "-c", "card"}, io.Discard)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := filepath.Join(root, ".moai", "worktrees", "card")
+	// The rewrite replaces the raw position of the value token the backend
+	// honors — card, AFTER the launcher-owned -c, which stays for the launcher
+	// to strip; the normalized argv then reads --worktree -c <tree>, and the
+	// consumed backend argv reads --worktree <tree>.
+	wantArgs := []string{"-w", "-c", want}
+	if strings.Join(got, "\x00") != strings.Join(wantArgs, "\x00") {
+		t.Fatalf("args = %v, want %v (the backend-honored card value rewritten)", got, wantArgs)
+	}
+	if len(rec.calls) != 1 || rec.calls[0] != "card" {
+		t.Fatalf("state seam consulted about %v, want exactly [card]", rec.calls)
+	}
+	view := resolveLaunchView(got)
+	if !view.Selection.HasValue || view.Selection.Value != want {
+		t.Fatalf("backend selection = %+v, want the .moai tree %q", view.Selection, want)
+	}
+}
+
 // setupRegisteredTreeRepo builds a throwaway repository holding a real
 // registered worktree at .moai/worktrees/<name>, points findProjectRootFn at
 // it, and returns the repo root, the tree's absolute path, and — for the
@@ -610,6 +674,58 @@ func TestGLMEntry_LastHonoredShortNameEntersMoaiTree(t *testing.T) {
 	}
 	if got != treePath {
 		t.Fatalf("backend worktree value = %q, want the .moai tree %q", got, treePath)
+	}
+}
+
+// TestCCEntry_LauncherStrippedSelectionEntersMoaiTree is the sync-audit delta
+// D1 shape A end to end: `-w card --append-system-prompt -c -w fresh` with a
+// registered .moai/worktrees/card — the launcher strips -c, the backend's
+// required-value option consumes the second -w, and the session must enter
+// the .moai tree the backend actually selects, never twin card.
+func TestCCEntry_LauncherStrippedSelectionEntersMoaiTree(t *testing.T) {
+	_, treePath, _ := setupRegisteredTreeRepo(t, "card")
+	rec := &wiringLaunchRecorder{}
+	overrideUnifiedLaunch(t, rec)
+
+	buf := new(strings.Builder)
+	ccCmd.SetOut(buf)
+	ccCmd.SetErr(buf)
+
+	if err := ccCmd.RunE(ccCmd, []string{"-w", "card", "--append-system-prompt", "-c", "-w", "fresh"}); err != nil {
+		t.Fatalf("cc entry: %v", err)
+	}
+	if rec.args == nil {
+		t.Fatal("launch seam never ran")
+	}
+	sel := selectBackendWorktree(consumeLaunchArgs(rec.args).PassThrough)
+	if !sel.HasValue || sel.Value != treePath {
+		t.Fatalf("backend selection over the launched argv = %+v, want the .moai tree %q", sel, treePath)
+	}
+}
+
+// TestGLMEntry_BareWorktreeBeforeLauncherBooleanEntersMoaiTree is the
+// sync-audit delta D1 shape B end to end through the glm entry: the launcher
+// removes -c from between the bare -w and its would-be positional, the
+// backend honors card, and the launched argv must select the registered
+// .moai/worktrees/card.
+func TestGLMEntry_BareWorktreeBeforeLauncherBooleanEntersMoaiTree(t *testing.T) {
+	_, treePath, _ := setupRegisteredTreeRepo(t, "card")
+	rec := &wiringLaunchRecorder{}
+	overrideUnifiedLaunch(t, rec)
+
+	buf := new(strings.Builder)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	if err := runGLM(glmCmd, []string{"-w", "-c", "card"}); err != nil {
+		t.Fatalf("glm entry: %v", err)
+	}
+	if rec.args == nil {
+		t.Fatal("launch seam never ran")
+	}
+	sel := selectBackendWorktree(consumeLaunchArgs(rec.args).PassThrough)
+	if !sel.HasValue || sel.Value != treePath {
+		t.Fatalf("backend selection over the launched argv = %+v, want the .moai tree %q", sel, treePath)
 	}
 }
 

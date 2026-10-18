@@ -183,7 +183,7 @@ func resolveOwning(entry []string, ownFlag string) (launchView, []int) {
 		ownFlag = ""
 	}
 	var dropped []int
-	v.Consumed, dropped = walkLaunchArgs(v.LaunchArgs, typed, ownFlag)
+	v.Consumed, dropped, _ = walkLaunchArgs(v.LaunchArgs, typed, ownFlag)
 	v.FinalArgv = v.Consumed.PassThrough
 	v.Selection = selectBackendWorktree(v.FinalArgv)
 	return v, dropped
@@ -214,7 +214,7 @@ func readFirstWorktree(args []string) worktreeRead {
 // whole tail after that separator, passes through verbatim. A second separator in
 // the tail belongs to the backend and stays byte-for-byte intact.
 func consumeLaunchArgs(extraArgs []string) launchConsumption {
-	c, _ := walkLaunchArgs(extraArgs, nil, "")
+	c, _, _ := walkLaunchArgs(extraArgs, nil, "")
 	return c
 }
 
@@ -230,17 +230,26 @@ func consumeLaunchArgs(extraArgs []string) launchConsumption {
 // value of a backend option. The last two are read on what is left once the walk
 // has dropped the launcher's own options — the sequence the backend reads — never
 // on the typed argv, where a token's neighbour may be one the backend never sees.
-// The flag is then dropped from PassThrough, and the returned indices name the
-// dropped tokens by their typed index (typed[i], or i when typed is nil).
-func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchConsumption, []int) {
+// The flag is then dropped from PassThrough, and the second returned slice names
+// the dropped tokens by their typed index (typed[i], or i when typed is nil).
+//
+// The third return maps PassThrough back onto the walk's input: origin[k] is the
+// index in extraArgs of the raw token PassThrough[k] came from — launcher-segment
+// remainder and separator tail alike. It lets a consumer rewrite the raw argv at
+// a position the walk selected in PassThrough coordinates, and is aligned only
+// when ownFlag is empty (an override drop rebuilds both slices together).
+func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchConsumption, []int, []int) {
 	var c launchConsumption
-	var origin []int // origin[k]: the index in extraArgs of the launcher-segment token PassThrough[k]
+	var origin []int // origin[k]: the index in extraArgs of the raw token PassThrough[k] came from
 	segment := -1    // len(PassThrough) at the first separator the walk did not eat
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if arg == "--" {
 			segment = len(c.PassThrough)
 			c.PassThrough = append(c.PassThrough, extraArgs[i+1:]...)
+			for j := i + 1; j < len(extraArgs); j++ { // the verbatim tail keeps its raw positions too
+				origin = append(origin, j)
+			}
 			break
 		}
 		switch arg {
@@ -290,16 +299,19 @@ func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchCons
 				dropped = append(dropped, at[k])
 			}
 			kept := make([]string, 0, len(c.PassThrough)-len(standing))
+			keptOrigin := make([]int, 0, len(origin)-len(standing))
 			for k, tok := range c.PassThrough {
 				if !drop[k] {
 					kept = append(kept, tok)
+					keptOrigin = append(keptOrigin, origin[k])
 				}
 			}
 			c.PassThrough = kept
+			origin = keptOrigin
 		}
 	}
 	c.ChainTarget = extractWorktreeLaunchTarget(c.PassThrough)
-	return c, dropped
+	return c, dropped, origin
 }
 
 // standingOwnFlags returns the positions in segment — the launcher segment as the
@@ -777,59 +789,38 @@ type moaiWorktreeOccurrence struct {
 }
 
 // readBackendSelectedWorktree reads raw launch args the way the backend
-// selects a worktree from the argv it receives: the launcher consumes its own
-// options first (the -b, --permission-mode, -c, --model shapes walkLaunchArgs
-// eats, each value option taking its next token), drops the first "--", and
-// the rest — the launcher-segment remainder plus the verbatim tail — is the
-// backend argv, where the LAST worktree option wins (selectBackendWorktree)
-// and a second "--" ends option parsing. The walk reuses backendOptionStep,
-// the one option step the selection itself walks, so a token is an option
-// here exactly when it is one there. For a single -w the read agrees with
-// worktreeFlagValue; when several stand, this — not the first match — is the
-// value the collision resolution must judge (sync-audit F1).
+// selects a worktree from the argv it receives. The launcher consumption runs
+// FIRST — walkLaunchArgs removes the launcher-owned options (-b, -c, --model,
+// --permission-mode, each value option with its next token) and the first
+// "--", and PassThrough is the argv the backend reads — and the selection walk
+// runs over THAT output with selectBackendWorktree, the same walk
+// resolveOwning's Selection takes over FinalArgv. The honored occurrence is
+// mapped back through the walk's origin indices to the raw entry for the
+// in-place rewrite. Walking the raw argv instead diverges wherever a launcher-owned
+// token sits next to a value-consuming option: the launcher REMOVES the token
+// while an in-place skip only hides it, so the two adjacencies differ
+// (sync-audit delta D1: `-w card --append-system-prompt -c -w fresh` and
+// `-w -c card`). For a single -w the read agrees with worktreeFlagValue; when
+// several stand, this — not the first match — is the value the collision
+// resolution must judge (sync-audit F1).
 func readBackendSelectedWorktree(args []string) moaiWorktreeOccurrence {
-	var occ moaiWorktreeOccurrence
-	seenSeparator := false
-	for i := 0; i < len(args); i++ {
-		tok := args[i]
-		if tok == "--" {
-			if seenSeparator {
-				break // the backend's option terminator
-			}
-			seenSeparator = true // the launcher's separator: dropped before the backend reads the rest
-			continue
-		}
-		if !seenSeparator {
-			switch tok {
-			case "-b", "--bypass", "-c", "--continue":
-				continue // launcher-owned booleans: consumed before the backend sees them
-			case "--permission-mode", "--model", "-m":
-				if i+1 < len(args) {
-					i++ // consumed with its value token, flag-shaped or not
-				}
-				continue
-			}
-			if strings.HasPrefix(tok, "--model=") || strings.HasPrefix(tok, "--permission-mode=") {
-				continue // launcher-owned = forms
-			}
-		}
-		if len(tok) < 2 || tok[0] != '-' {
-			continue // a positional (a prompt, or a value already consumed)
-		}
-		sel, span := backendOptionStep(args, i, worktreeSelection{})
-		if sel.Present {
-			occ = moaiWorktreeOccurrence{
-				Has:        sel.HasValue,
-				Value:      sel.Value,
-				Attached:   sel.Spelling == spellingAttached || sel.Spelling == spellingCluster,
-				OptIndex:   i,
-				ValueIndex: -1,
-			}
-			if span == 1 {
-				occ.ValueIndex = i + 1
-			}
-		}
-		i += span
+	c, _, origin := walkLaunchArgs(args, nil, "")
+	sel := selectBackendWorktree(c.PassThrough)
+	if !sel.Present || sel.Index < 0 || sel.Index >= len(origin) {
+		return moaiWorktreeOccurrence{}
+	}
+	occ := moaiWorktreeOccurrence{
+		Has:        sel.HasValue,
+		Value:      sel.Value,
+		Attached:   sel.Spelling == spellingAttached || sel.Spelling == spellingCluster,
+		OptIndex:   origin[sel.Index],
+		ValueIndex: -1,
+	}
+	// The two-token spellings (and a cluster whose w ends the token) take the
+	// next PassThrough token as their value; the option step reports that span.
+	// Its raw position comes from the same origin mapping.
+	if _, span := backendOptionStep(c.PassThrough, sel.Index, worktreeSelection{}); span == 1 && sel.Index+1 < len(origin) {
+		occ.ValueIndex = origin[sel.Index+1]
 	}
 	return occ
 }
