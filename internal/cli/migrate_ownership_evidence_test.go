@@ -92,7 +92,9 @@ func TestOwnershipAttestedManagedOnlyWithFullEvidence(t *testing.T) {
 			[]priorGeneration{{name: "g", files: map[string]priorRecord{otherKey: complete}}},
 			ownershipUnregistered, evidenceIncompleteReason(evidenceOriginalPath), []evidenceItem{evidenceOriginalPath}},
 		{"c-no-record-anywhere", nil,
-			[]priorGeneration{{name: "g", files: map[string]priorRecord{".agents/skills/unrelated/SKILL.md": complete}}},
+			[]priorGeneration{{name: "g", files: map[string]priorRecord{".agents/skills/unrelated/SKILL.md": {
+				provenance: manifest.TemplateManaged, templateHash: manifest.HashBytes([]byte("an unrelated template")),
+				deployedHash: manifest.HashBytes([]byte("an unrelated template")), deployedVersion: "v-prior"}}}},
 			ownershipUnregistered, keepNoProvenanceRecord, allThree},
 		{"c-no-generation-at-all", nil, nil, ownershipUnregistered, keepNoProvenanceRecord, allThree},
 		{"d-disk-bytes-differ-from-record", []byte("# edited after the recorded deploy\n"),

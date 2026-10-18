@@ -66,6 +66,10 @@ type migrationRunContext struct {
 	// after the whole update flow ends.
 	removed          []string
 	keptProfileReach []string
+	// remaining is one row per file the migration left in place under the four
+	// common-asset roots (REQ-OWR-009): path, ownership class, keep reason, and
+	// the evidence items an unregistered file lacks.
+	remaining []remainingRow
 }
 
 // migrationBackupSubdir names the run-backup subdirectory holding the
@@ -183,6 +187,17 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		return nil, fmt.Errorf("resolve project root: %w", absErr)
 	}
 	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
+	env := ownershipEnv{
+		entry:    mgr.GetEntry,
+		evidence: newProvenanceSource(projectRoot),
+		counterpartConfirmed: func(rel string) bool {
+			return userCounterpartConfirmed(userManifest, cat, embedded, homeDir, rel)
+		},
+		notInCatalog:   func(rel string) bool { return skillNotInCatalog(cat, rel) },
+		profileMapped:  profileMapped,
+		removalEnabled: removalEnabled,
+		rootResolved:   rootResolved,
+	}
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 		err := filepath.WalkDir(absRoot, func(p string, d fs.DirEntry, err error) error {
@@ -201,113 +216,96 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			}
 			relSlash := filepath.ToSlash(rel)
 
-			entry, hasEntry := mgr.GetEntry(relSlash)
-			provenance := ""
-			if hasEntry && entry != nil {
-				provenance = string(entry.Provenance)
+			// One verdict function decides the class and the disposition
+			// (REQ-OWR-001); this walk only acts on it. A hash match with a
+			// template is never creation provenance — an unregistered file is
+			// kept unless the prior manifest generations prove all three
+			// evidence items (migrate_ownership_evidence.go).
+			v := classifyOwnershipFn(env, relSlash, p)
+			if !v.removalEligible && rc != nil {
+				rc.remaining = append(rc.remaining, remainingRow{Rel: relSlash, Class: v.class, Reason: v.keep, Missing: v.missing})
 			}
-			// F3 (review-fix round 2): judge the CURRENT bytes, not the
-			// recorded provenance alone — a file the user modified AFTER
-			// install still reads template_managed. When the on-disk hash
-			// differs from the recorded template hash, the file is
-			// user-modified in fact and is preserved (C6). An untracked
-			// file (no manifest entry) is user-owned — never deleted
-			// (AGENTS.local.md user-settings protection).
-			if !hasEntry || entry == nil {
+			tag := reasonTag(v)
+			switch v.class {
+			case ownershipUnregistered:
 				untouched++
 				migrationPreservedProjectFiles[p] = true
-				// M6 (REQ-SRF-001): an unregistered mirror copy is
-				// CLASSIFIED + REPORTED per file — a hash match with the
-				// template is not creation provenance, so the copy stays
-				// and the removal question is named for the user (the
-				// audited round-8 contract: preservation is the default).
-				report("  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): %s", relSlash)
+				// M6 (REQ-SRF-001): an unregistered mirror copy is CLASSIFIED +
+				// REPORTED per file; preservation is the default.
+				report("  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval)%s: %s", tag, relSlash)
 				return nil
-			}
-			if provenance == string(manifest.UserCreated) {
+			case ownershipUserCreated:
 				untouched++
 				return nil
-			}
-			// Item 1 (fix round 3): the deletion preconditions are
-			// MANDATORY — a failed read or an empty recorded template hash
-			// PRESERVES the file (never falls through to deletion). Deletion
-			// requires: bytes readable AND template hash recorded AND
-			// current bytes matching it AND the user counterpart confirmed.
-			currentBytes, readErr := os.ReadFile(p)
-			if readErr != nil || entry.TemplateHash == "" {
+			case ownershipUserModified:
 				preserved++
 				migrationPreservedProjectFiles[p] = true
-				report("  migration: preserved (cannot verify against the template — read failed or no template hash): %s", relSlash)
+				switch v.keep {
+				case keepReadFailed, keepNoTemplateHash:
+					report("  migration: preserved (cannot verify against the template — read failed or no template hash)%s: %s", tag, relSlash)
+				default:
+					if v.bytesMatchTemplate {
+						report("  migration: preserved (you modified it)%s: %s", tag, relSlash)
+					} else {
+						report("  migration: preserved (bytes differ from the template — treated as user-modified)%s: %s", tag, relSlash)
+					}
+				}
 				return nil
 			}
-			if manifest.HashBytes(currentBytes) != entry.TemplateHash {
-				preserved++
-				migrationPreservedProjectFiles[p] = true
-				report("  migration: preserved (bytes differ from the template — treated as user-modified): %s", relSlash)
-				return nil
-			}
-			if provenance == string(manifest.UserModified) {
-				preserved++
-				migrationPreservedProjectFiles[p] = true
-				report("  migration: preserved (you modified it): %s", relSlash)
-				return nil
-			}
-			// U-01 (option (c), AC-RC30-27): under profile reach a shipped copy
-			// (template_managed, bytes equal to the template) stays project-side
-			// and is marked for the profile session. It is neither removed nor
-			// refreshed in rc.30. A retired (deprecated) copy is not in the kept
-			// set. The counterpart check does not gate this keep, so every shipped
-			// copy of a mapped project carries the mark.
-			if profileMapped && provenance == string(manifest.TemplateManaged) {
-				if err := mgr.SetKeptBy(relSlash, manifest.KeptByProfileReach); err != nil {
-					return fmt.Errorf("mark profile-reach keep for %s: %w", relSlash, err)
+			// v.class == ownershipManaged from here on.
+			switch v.keep {
+			case keepProfileReach:
+				// U-01 (option (c), AC-RC30-27): under profile reach a shipped copy
+				// stays project-side and is marked for the profile session. The
+				// mark lives on a manifest entry, so an attested copy (no entry)
+				// is kept without one.
+				if v.attestation == nil {
+					if err := mgr.SetKeptBy(relSlash, manifest.KeptByProfileReach); err != nil {
+						return fmt.Errorf("mark profile-reach keep for %s: %w", relSlash, err)
+					}
+					if rc != nil {
+						rc.keptProfileReach = append(rc.keptProfileReach, relSlash)
+					}
 				}
 				stayed++
 				migrationPreservedProjectFiles[p] = true
-				if rc != nil {
-					rc.keptProfileReach = append(rc.keptProfileReach, relSlash)
-				}
-				report("  migration: kept (profile-mapped project — profile sessions need this shared copy, so it stays project-side): %s", relSlash)
+				report("  migration: kept (profile-mapped project — profile sessions need this shared copy, so it stays project-side)%s: %s", tag, relSlash)
 				return nil
-			}
-			// template_managed with template-matching bytes: removable once
-			// the user counterpart is confirmed.
-			if !userCounterpartConfirmed(userManifest, cat, embedded, homeDir, relSlash) {
-				// Optional-pack (non-L0) asset without an opted-in selection,
-				// or a failed counterpart write: stays project-side, reported
-				// — and gated out of the cleanup list (F2).
-				stayed++
-				migrationPreservedProjectFiles[p] = true
+			case keepNonCatalog:
 				// U-09 (REQ-RC30-005): a skill the catalog does not carry has no
-				// installer source, so no bundle opts it in and the opt-in
-				// command would name nothing that can help.
-				if skillNotInCatalog(cat, relSlash) {
-					report("  migration: kept project-side (no catalog entry for this managed skill — no bundle carries it, so there is no opt-in): %s", relSlash)
-					return nil
-				}
-				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): %s", relSlash)
+				// installer source, so no bundle opts it in.
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept project-side (no catalog entry for this managed skill — no bundle carries it, so there is no opt-in)%s: %s", tag, relSlash)
 				return nil
-			}
-			resolvedP, resErr := filepath.EvalSymlinks(p)
-			if resErr != nil || !withinRootBoundary(rootResolved, resolvedP) {
-				report("  migration: removal refused (path escapes the project root through a symlink): %s", relSlash)
+			case keepCounterpartUnconfirmed:
+				// Optional-pack (non-L0) asset without an opted-in selection, or
+				// a failed counterpart write: stays project-side, reported.
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update)%s: %s", tag, relSlash)
 				return nil
-			}
-			if !removalEnabled {
+			case keepSymlinkEscape:
+				report("  migration: removal refused (path escapes the project root through a symlink)%s: %s", tag, relSlash)
+				return nil
+			case keepRemovalGateOff:
 				// AC-RC30-02 (the removal criterion) belongs to card t1668; the switch ships off.
 				stayed++
 				migrationPreservedProjectFiles[p] = true
-				report("  migration: kept project-side (removal is not enabled yet): %s", relSlash)
+				report("  migration: kept project-side (removal is not enabled yet)%s: %s", tag, relSlash)
 				return nil
 			}
 			// REQ-RC30-004 (U-02, AC-RC30-03, card t1668 M1): a byte copy of
 			// the file lands in the run backup BEFORE os.Remove. A removal
 			// whose backup copy cannot be written is not a removal — the
 			// file stays project-side, reported.
-			if bErr := backupRemovedAsset(projectRoot, rc, relSlash, currentBytes); bErr != nil {
+			if bErr := backupRemovedAsset(projectRoot, rc, relSlash, v.data); bErr != nil {
 				stayed++
 				migrationPreservedProjectFiles[p] = true
-				report("  migration: removal refused (the run-backup copy failed): %s: %v", relSlash, bErr)
+				if rc != nil {
+					rc.remaining = append(rc.remaining, remainingRow{Rel: relSlash, Class: v.class, Reason: keepBackupFailed})
+				}
+				report("  migration: removal refused (the run-backup copy failed) [reason: %s]: %s: %v", keepBackupFailed, relSlash, bErr)
 				return nil
 			}
 			if err := os.Remove(p); err != nil {
