@@ -304,11 +304,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
 	// destructive step so a concurrent moai update fails fast with a diagnostic
 	// instead of interleaving destructive deploy/clean/restore operations.
+	//
+	// A --dry-run takes no lock: it runs no destructive step, and creating then
+	// removing .moai/.update.lock would move the mtime of .moai/ — a dry run
+	// creates, modifies and deletes nothing (REQ-OWR-011).
 	lockRoot, _ := findProjectRoot()
 	if lockRoot == "" {
 		lockRoot, _ = os.Getwd()
 	}
-	if lockRoot != "" {
+	if lockRoot != "" && !getBoolFlag(cmd, "dry-run") {
 		releaseLock, lockErr := acquireUpdateLock(lockRoot)
 		if lockErr != nil {
 			return lockErr
