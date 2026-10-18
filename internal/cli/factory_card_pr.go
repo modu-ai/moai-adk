@@ -56,9 +56,18 @@ var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, e
 
 // factoryGHEnv is the environment a gh call runs with: the caller's, minus the
 // git variables that choose a repository (an inherited GIT_DIR would outrank
-// the directory gh is started in).
+// the directory gh is started in) and minus GH_REPO — gh honors GH_REPO over
+// its working directory, so a stray value would retarget the call to another
+// repository's PR operations (card t1710).
 func factoryGHEnv() []string {
-	return append(gitenv.Env(), "GH_PROMPT_DISABLED=1")
+	env := make([]string, 0, len(gitenv.Env())+1)
+	for _, kv := range gitenv.Env() {
+		if name, _, ok := strings.Cut(kv, "="); ok && name == "GH_REPO" {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return append(env, "GH_PROMPT_DISABLED=1")
 }
 
 // factoryPRFields is the `gh pr view --json` field list the edge reads.

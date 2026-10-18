@@ -30,9 +30,13 @@ import (
 type ghRunner func(args ...string) ([]byte, error)
 
 // defaultGhRunner runs gh with output capture, folding stderr into the error
-// so a degraded query names its fault.
+// so a degraded query names its fault. The environment is the delivery edge's
+// gh environment (card t1710): this runner answers the landing gate's verdict
+// question, and an inherited GIT_DIR or a stray GH_REPO would read another
+// repository's checks.
 func defaultGhRunner(args ...string) ([]byte, error) {
 	cmd := exec.Command("gh", args...)
+	cmd.Env = factoryGHEnv()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
