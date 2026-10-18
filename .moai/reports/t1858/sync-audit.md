@@ -1,103 +1,187 @@
 auditor-model: claude-sonnet-5-5
 
-# Sync audit: card t1858 (Class B, no SPEC)
+# Sync audit, card t1858, iteration 2 (delta re-audit)
 
 verdict: FAIL
-audited_sha: f9458ae18998afe5d4e4a2d9deea8b2138dd2f96
+audited_sha: 16ba65ac9209789ae9b9560c84a4dc5cd7afa9b2
 
-Overall: FAIL. The required backend `codex` returned `fail`, so the overall verdict cannot be PASS whatever my own reading says. My own mechanical probes independently reproduce the codex finding (F1).
+Overall Verdict: **FAIL**. Class B card, no SPEC. Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858`, branch WT-release-checks-ssot, HEAD 16ba65ac9.
 
-Scores (0.00-1.00): Functionality 0.80, Security 0.60, Craft 0.85, Consistency 0.90. The must-pass dimension Security is below its pass bar because of F1.
+The required backend `codex` returned `verdict: fail`, so the overall verdict cannot be PASS. I also independently confirmed its P1 finding (an unguarded CI path), and reproduced its P2 finding with my own probes.
 
-## Audit plan and required backends
-`moai verify audit-plan --project-root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858`: `config_status: ok`, `cross_model_active: true`, `enforced_required: ["codex"]`, claude gate `off`, glm gate `off`, codex gate `required`.
+## Scores (harmonic-style; must-pass Functionality and Security)
 
-`mcp__moai__audit_multi` (card_id t1858, project_root = the worktree, target baseBranch), digest members:
-- overall_verdict: `fail`
-- gate_unmet: not present in the result (`residual_risk_note`: "required-backend FAIL: codex")
-- plan_source: `config`
-- per_backend_verdicts: backend `codex`, gate `required`, verdict `fail`
-- audit_receipt: `rcpt-b6a0f22a9eee365cd060f299`
-- participant_count 1, fail_open_backends []
-- build_commit `ee981a932` (an ancestor of tree HEAD; the MCP server reports "moai binary lag").
+| Dimension | Score | Verdict | Basis |
+|---|---|---|---|
+| Functionality (40%) | 0.70 | FAIL | F1 is not closed end to end: the pin tests do not run on the PR shape that shortens the list (F5). Empty or unrecognised entries are dropped silently (F6). |
+| Security (25%) | 0.60 | FAIL | The release gate can still be weakened to a lone green `Lint` through an SSoT-only PR. |
+| Craft (20%) | 0.85 | PASS | All commands below are green. The new tests are sensitive (shown below). The awk handles CRLF, comments, quotes, and duplicates. |
+| Consistency (15%) | 0.85 | PASS | `ptr` helper is intentional. No check-name literal in scripts/. Existing release tests unchanged. |
 
-codex finding, verbatim (Korean as returned):
-> [P1] 잘못되거나 축소된 목록으로 필수 CI 검사 두 개를 생략할 수 있음 — scripts/release.sh:270. 신뢰도: 높음. HEAD `f9458ae18`의 스크립트 복사본으로 재현했어. 블록 목록에 `Lint`만 넣거나 세 번 반복하면, 성공한 `Lint` 응답 하나만으로 종료 코드 0과 `CI gate: verified`가 나와. 중첩 매핑과 중복 `release_gate` 키도 같은 우회가 가능해. 정상 세 이름 목록은 동일한 응답에서 거부됐어. 원인: awk가 YAML 구조를 검증하지 않고 항목을 수집하며, 이후에는 비어 있는지만 확인해. 추가된 설정 테스트도 비어 있지 않은 부분집합을 허용해. 권고: 최상위 문자열 목록을 구조적으로 파싱하고 중복 키·중복 이름·필수 이름 누락을 거부해. 위 사례를 `Lint` 단독 응답으로 실행하는 회귀 테스트를 추가해.
-
-The orchestrator must write the digest to `<toplevel>/.moai/state/audit-plan-result.json` and run `moai verify audit-plan --result-file`; my verdict is not final until that check passes.
-
-## Claim / Evidence per acceptance criterion
-
-### A1 TestNoHardcodedContexts passes, existing test unchanged: PASS
-- `git diff --stat 3642a3a9b..HEAD -- internal/config/required_checks_test.go` printed nothing (byte-unchanged). `git diff --name-only ... | grep _test.go` lists only the two NEW files `internal/config/required_checks_release_gate_test.go` and `internal/template/release_ci_gate_ssot_test.go`. No existing test was weakened.
-- `go test ./internal/config -run TestNoHardcodedContexts -count=1` -> `ok  	github.com/modu-ai/moai-adk/internal/config	0.333s`
-- `go test ./internal/config -count=1` -> `ok  	github.com/modu-ai/moai-adk/internal/config	4.980s`
-
-### A2 Same three names, same error texts: PASS (with the F1 caveat on the contract)
-- Diff of `scripts/release.sh`: the only changes are the `CI_REQUIRED_CHECKS=()` initialisation, the SSoT read block and its two new `die` texts. The existing `expected check run(s) not reported` text, the loop at lines 292-297 and the `log_ok` line are unchanged.
-- The real SSoT block parsed by the script's own awk (extracted verbatim) yields `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`.
-- `go test ./internal/template -run 'RequiredChecks|Required|AutoMerge|ReleaseScript|CIGate|TestTestInputFilters' -count=1` -> `ok  	github.com/modu-ai/moai-adk/internal/template	29.447s` (existing release_* tests pass with no edits).
-- Caveat: nothing pins the demanded SET to those three names (see F1).
-
-### A3 Fail-closed: FAIL (partial)
-Refusals work for: missing file, no `release_gate` block, empty block (driven end to end by `TestReleaseScriptCIGateSSoTFailsClosed`, which passes; the progress record also shows it was sensitivity-checked against neutered `die` guards). `--skip-ci-check` branch is untouched by the diff (the `if SKIP ... else` structure is unchanged).
-
-Probes of the script's own awk program against crafted SSoT files (output via `cat -vet`):
-
-| Input | awk yields | Outcome |
-|---|---|---|
-| flow list `release_gate: [Lint, "Test (ubuntu-latest)"]` | nothing | SAFE (refusal: zero names) |
-| trailing comment `- Lint # c` | `Lint # c` | SAFE (name never matches a check run, so the gate refuses as "not reported") |
-| CRLF line endings | `Lint^M`, `"Test (ubuntu-latest)"^M` | SAFE (names never match; quotes not stripped; refuses, but with a misleading "not reported" message) |
-| `release_gate` nested under `branches:` | nothing | SAFE (refusal) |
-| duplicate `release_gate` keys | all entries of both blocks, `Lint` twice | SAFE for dup-of-correct (stricter, harmless) |
-| single-quoted entry | `'Test (ubuntu-latest)'` (quotes kept) | SAFE (never matches, refuses) |
-| tab-indented, column-0 list items | `Lint` / nothing | indifferent / SAFE |
-| name with spaces/parens (double-quoted) | stripped correctly | correct |
-| **list reduced to `- Lint`** | `Lint` | **UNSAFE: gate demands one name; a lone green `Lint` from github-actions passes it** |
-| **`Lint` repeated three times** | `Lint` x3 | **UNSAFE: same** |
-
-So the awk cannot yield a wrong NAME that passes (wrong names over-refuse), but it yields a SHORT list that passes, and nothing checks that the list holds the three required names. The only guard is "non-empty"; the Go test asserts "non-empty subset of branches.main.contexts" (a subset allows `Lint` alone); the Go-side fixtures for the release gate carry extra check runs and cannot detect a shortened SSoT. This matches codex's finding. The attack surface is a deliberate or careless edit of a repo-controlled file in a PR, not a remote input; but the card's own contract is "same three names, fail closed", and a tag is irreversible, so a silent weakening of this gate by editing one YAML line is a real regression in safety relative to the previous hard-coded array (which was pinned by tests with 3-name fixtures).
-
-### A4 No behavior change elsewhere: PASS
-- Line 343 `for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"` is outside the diff (`git diff ... -- scripts/release.sh | grep Release Verify` printed nothing).
-- `./scripts/ci-mirror/validate-required-checks.sh` -> `✅ All validations passed` (final line; the captured exit variable printed empty because of the pipe, the success banner is the observed result).
-- Consumers: `git grep -l 'required-checks' -- '*_test.go'` -> internal/ciwatch/{classifier,coverage}_test.go, internal/cli/candidate_landing_gate_test.go, internal/config/required_checks_test.go, internal/template/auto_merge_checks_test.go, internal/template/release_ci_gate_ssot_test.go.
-  - `go test ./internal/ciwatch ./internal/config ./internal/template -run 'RequiredChecks|Required|AutoMerge|ReleaseScript|CIGate|TestTestInputFilters' -count=1` -> ok, ok, ok (0.104s / 0.125s / 29.447s).
-  - `go test ./internal/cli -run 'BranchProtection|CandidateLanding|RequiredChecks' -count=1` -> `ok  	github.com/modu-ai/moai-adk/internal/cli	1.105s`.
-- The new top-level `release_gate` key is tolerated by the Go loader (the struct field was added; the unchanged strictness tests pass) and by the validator script.
-
-### A5 Docs accuracy: PASS with one stale-text finding
-- CHANGELOG entry matches the code (key name, struct field, subset test, relative resolution, refusal, same three names).
-- Runbook (three statements) now names `release_gate` in `.github/required-checks.yml`; consistent with the code.
-- Stale: `scripts/release.sh` line 235 comment (`each name in CI_REQUIRED_CHECKS below must be present among them`) and the die text at line 297 (`The repository CI workflow (CI_REQUIRED_CHECKS in this script) has not run ...`) still say the names live in the script. The error text is kept verbatim on purpose (A2), but it now points readers to a place that no longer holds the names. The CHANGELOG states the error texts are unchanged, which is accurate.
-
-### Lint / format
-- `gofmt -l internal/config internal/template` -> empty; `go vet ./internal/config ./internal/template` clean.
-- `golangci-lint run ./internal/config/ ./internal/template/` -> `0 issues.`
-
-## Baseline-attribution
-Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858`, HEAD `f9458ae18998afe5d4e4a2d9deea8b2138dd2f96`, merge base `3642a3a9b`; every command above run in this audit against this tree. `go`/`golangci-lint` are tree-independent toolchains. The `moai` CLI used for `audit-plan` and the MCP server were built from `ee981a932`, an ancestor of HEAD (reported by the tool as build lag); their outputs describe the audit-plan surface, not repo code under test. The awk probes used the script's awk program text copied from `scripts/release.sh`, run on macOS BSD awk.
-
-## Defect list
-- F1 [BLOCKING] scripts/release.sh:~262-270 and .github/required-checks.yml `release_gate` - gate checks only "non-empty"; a list reduced to one name (e.g. only `Lint`, or one name repeated) lets a tag be cut when only that check is green. Reproduced by my awk probe (`Lint` / `Lint` x3) and by codex (exit 0, `CI gate: verified`). Required fix: pin the demanded set so a shortened SSoT cannot pass: (a) add a test asserting `release_gate` contains exactly/at least `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)` (Go test next to the existing subset test), and (b) add a test driving release.sh with a one-name SSoT and a `Lint`-only check-run set that must refuse. Optionally make the script dedupe names and reject a list shorter than the pinned minimum.
-- F2 [SHOULD-FIX] scripts/release.sh awk (lines ~257-266) - tolerates CRLF, trailing comment, single quotes poorly: yields names with `\r`, ` # c`, or quotes, which over-refuse with a misleading "not reported" message instead of "malformed release_gate". Required fix: strip `\r` and trailing ` #` comments, and either support or explicitly reject single-quoted entries, so a malformed list fails with the intended message.
-- F3 [MINOR] scripts/release.sh:235 comment and :297 die text still say the names live in `CI_REQUIRED_CHECKS` of the script. Required fix: reword to "the release_gate list of .github/required-checks.yml" (changing the die text needs the A2 tests updated, so the lane may keep the text and only fix the comment).
-- F4 [MINOR] internal/config/required_checks_release_gate_test.go - passes for any non-empty subset; document or tighten (folds into F1 fix).
-
-## Gaps
-- No live GitHub call was made; real check-run names published by ci.yml on a push to main are unobserved (carried from the card).
-- I did not run the full repository test suite; the A4 consumer tests were scoped to the packages/tests named above. `internal/cli` was run with a `-run` filter only.
-- I did not drive release.sh end to end myself; the script-level refusal evidence for A3 comes from the card's `TestReleaseScriptCIGateSSoTFailsClosed` (re-run green in the `ReleaseScript|CIGate` filter above) plus my direct awk probes. The unsafe cases are shown at the awk-output level and corroborated by codex's end-to-end reproduction, not by my own full script run.
-- `validate-required-checks.sh` exit code was swallowed by the pipe; the success banner was observed.
-- Windows/Git-Bash awk behavior was not observed.
-- claude and glm backends are `off` by the audit plan; only codex voted (participant_count 1).
-
-## Residual-risk
-- Even after F1 is fixed, the awk is a line-pattern reader, not a YAML parser; an exotic but valid YAML shape (anchors, flow style, multi-line scalars) will either refuse or be misread. Flow style refuses safely today.
-- The gate remains only as correct as the check names in ci.yml; the first real `--dry-run` release is the first live measurement.
+Must-pass firewall: Functionality and Security are both below threshold, so overall FAIL.
 
 ## Iteration history
-Iteration 1 (this audit): FAIL, driven by required-backend codex `fail` and F1 (reproduced independently). Re-audit scope on fix: F1 (+F2/F3 if taken), delta only.
 
-AUDIT-VERDICT: FAIL spec=t1858 receipts=rcpt-b6a0f22a9eee365cd060f299
+- Iteration 1: FAIL @ f9458ae18. F1 BLOCKING (shortened `release_gate` lets a tag through on a lone green Lint); F2 SHOULD-FIX (CRLF, trailing comment, single quote, duplicate name, duplicate key); F3 MINOR (stale `CI_REQUIRED_CHECKS` wording); F4 MINOR (weak subset test).
+- Iteration 2 (this file): FAIL @ 16ba65ac9. F2, F3, F4 closed. F1 only partly closed: the pins are real but a CI path-filter hole (F5) lets the exact attack PR skip them. One new SHOULD-FIX (F6).
+
+## Defects
+
+| Id | Severity | Status | Location | Description | Required fix |
+|---|---|---|---|---|---|
+| F1 | BLOCKING | PARTIALLY CLOSED, residual is F5 | internal/config/required_checks_release_gate_test.go, internal/template/release_ci_gate_ssot_test.go | Both pins fail correctly on a shortened list when they run (proved below). | See F5. |
+| F5 | BLOCKING | NEW | .github/test-input-filters.yml (go_code list) | `.github/required-checks.yml` is not in `go_code`. A PR that edits only that file classifies as "no Go inputs", the real `Test (ubuntu-latest)` job does not run, and `test-skip-marker` (same check name) reports green. Neither pin runs, so a PR shortening `release_gate` to `- Lint` merges and the script alone then accepts a lone green Lint. | Add `'.github/required-checks.yml'` to `go_code` with an evidence comment, and pin it in internal/template/test_input_filter_parity_test.go (the existing filter guard). Defense in depth: a count floor in release.sh (`>= 3` names) names no check and passes TestNoHardcodedContexts, but it does not stop a rename, so it is optional. |
+| F6 | SHOULD-FIX | NEW | scripts/release.sh:267-278 | An entry of `-` (no trailing space), `- ""`, or `- ` yields an empty name. The awk drops or skips it silently and the gate demands fewer checks (probes below: `Lint` only, rc=0). Combined with F5 it widens the shortening path. | Make the awk exit 1 with "empty release_gate entry" for an empty name, and refuse any line inside the block that is not a `- name` entry or a comment. Add rows for them in TestReleaseScriptCIGateSSoTFailsClosed. |
+| F2 | SHOULD-FIX | CLOSED | scripts/release.sh:263-275 | CRLF stripped. Trailing comment, single quote, duplicate name and duplicate key die with `malformed release_gate in <file>: <reason>`. | none |
+| F3 | MINOR | CLOSED | scripts/release.sh:235,306 | The die text now cites `.github/required-checks.yml`. The comment at line 242 still names the real variable `CI_REQUIRED_CHECKS`, which is accurate. | none |
+| F4 | MINOR | CLOSED | required_checks_release_gate_test.go | Subset test replaced by an exact three-name pin. | none |
+| F7 | MINOR, optional | NEW | scripts/release.sh:235 | One comment line is over-long after the edit. | Rewrap. |
+
+## 1. Claim
+
+1. F2, F3, F4 are closed and the regression checks hold.
+2. F1 is closed by two CI-enforced pins. **Rejected**: the pins do not run on an SSoT-only PR (F5).
+3. The awk is fail-closed on malformed input. **Partly rejected**: empty names are silently dropped (F6).
+
+## 2. Evidence (commands run in this run, tree 16ba65ac9)
+
+### 2a. audit-plan (verbatim, trimmed)
+
+```
+$ moai verify audit-plan --project-root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858
+"config_status": "ok", "model": "codex",
+backends: claude gate off, codex gate required, glm gate off
+"cross_model_active": true, "cross_model_required": true, "enforced_required": ["codex"]
+```
+
+### 2b. Regression checks
+
+```
+$ grep -c 'Test (ubuntu-latest)' scripts/release.sh
+0
+$ git diff --quiet 3642a3a9b HEAD -- internal/config/required_checks_test.go && echo UNCHANGED
+UNCHANGED
+$ git diff 3642a3a9b HEAD --stat -- internal/template/release_*test.go
+ internal/template/release_ci_gate_ssot_test.go | 154 +++++++++++++++++++++++++   (the only file; other release_* tests untouched)
+$ git diff 3642a3a9b HEAD -- scripts/release.sh | grep -n 'Release Verify'
+(no output: Release Verify legs untouched)
+$ go test ./internal/config -count=1
+ok  	github.com/modu-ai/moai-adk/internal/config	8.538s
+$ go test ./internal/template -run 'TestReleaseScript|TestTestInputFilters' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	35.305s
+$ gofmt -l internal/config internal/template        (no output)
+$ golangci-lint run ./internal/config/ ./internal/template/
+0 issues.
+$ scripts/ci-mirror/validate-required-checks.sh
+✅ All validations passed
+$ git status --short        (clean)
+```
+
+### 2c. Sensitivity of the pins (actually run, on a scratch copy, not the tree)
+
+`git archive HEAD` extracted to `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/3485ddff-4832-470a-9a17-ee4dac7ad178/scratchpad/copy2`; in the copy only, `release_gate` was shortened to `- Lint`.
+
+```
+$ go test ./internal/config -run ReleaseGate -count=1
+--- FAIL: TestRequiredChecks_ReleaseGateSubsetOfMain
+    release_gate lacks the pinned check "Test (ubuntu-latest)": [Lint]
+    release_gate lacks the pinned check "Build (linux/amd64)": [Lint]
+    release_gate must hold exactly [Lint Test (ubuntu-latest) Build (linux/amd64)], got [Lint]
+FAIL
+$ go test ./internal/template -run TestReleaseScriptRealSSoTDemandsEveryPinnedCheck -count=1
+--- FAIL: .../test_missing   exit code = 0, want 1
+--- FAIL: .../build_missing  exit code = 0, want 1
+--- FAIL: .../only_lint_green exit code = 0, want 1
+FAIL
+```
+
+Both pins are sensitive when they run. The unshortened copy passed both (first attempt, before the edit applied): `ok config 0.328s`, `ok template 4.407s`.
+
+### 2d. The hole: the pins do not always run (read from the tree)
+
+```
+$ grep -n 'required-checks' .github/test-input-filters.yml
+(no match)
+go_code list: '**/*.go', go.mod, go.sum, Makefile, 4 workflow/filter files,
+  '.github/branch-protection.json.gtmpl', '.moai/**', templates, .claude/*, scripts/ci*, scripts/release.sh, ...
+.github/workflows/ci.yml:666  test-skip-marker: name: Test (${{ matrix.os }}), if: needs.detect.outputs.go_code != 'true'
+```
+
+`.github/required-checks.yml` matches no `go_code` pattern. A PR touching only that file gets the skip-marker stub as the required `Test (ubuntu-latest)`. I did not run GitHub Actions; this is derived from the committed filter and workflow definitions (also the codex reading, below).
+
+### 2e. awk probes (the exact awk extracted from release.sh lines 263-274 and run on crafted files)
+
+| Input | Outcome | Class |
+|---|---|---|
+| real SSoT | 3 names | SAFE |
+| tab indentation | names read | SAFE |
+| quoted name containing `#` (`"Lint #1"`) | refused (trailing-comment) | SAFE (over-strict, fails closed) |
+| name with trailing spaces | trimmed, correct names | SAFE |
+| entry `-` (no space) | silently skipped, `Lint` only, rc=0 | UNSAFE (F6) |
+| entry `- ` (trailing space) | empty name dropped, `Lint` only, rc=0 | UNSAFE (F6) |
+| entry `- ""` | empty name dropped, rc=0 | UNSAFE (F6) |
+| `release_gate:` then comment line then list | names read | SAFE |
+| list item at column 0 | block ends, zero names, die | SAFE |
+| `release_gate_x:` key | no match, zero names, die | SAFE |
+| flow list `release_gate: [Lint, Test]` | zero names, die | SAFE |
+| `release_gate: # c` | names read | SAFE |
+| indented `release_gate:` key | zero names, die | SAFE |
+| `-Lint` (no space) | skipped, zero names, die | SAFE |
+| unterminated quote `"Lint` | name `"Lint` demanded, never reported, die later | SAFE |
+| anchor `&a Lint` | name `&a Lint` demanded, die later | SAFE |
+| nested deeper item | extra name demanded | SAFE |
+| blank line inside list | skipped, rest read | SAFE |
+| `---` document marker mid-list | block ends, later names dropped, rc=0 | UNSAFE (unrealistic, same class as F6) |
+| duplicate `release_gate:` key | refused | SAFE |
+| CRLF file | names read | SAFE |
+
+### 2f. Required backend result (verbatim fields from `mcp__moai__audit_multi`, card_id t1858, project_root as above, no `gates` argument)
+
+```
+overall_verdict: fail
+gate_unmet: (absent)
+plan_source: config
+residual_risk_note: required-backend FAIL: codex
+audit_receipt: rcpt-afa2e6a2fb9d201f141c43b7
+per_backend_verdicts: backend=codex gate=required verdict=fail
+build_lag: installed binary built from ee981a932, an ancestor of HEAD 16ba65ac9
+```
+
+Codex findings verbatim:
+
+> [P1] 설정 파일만 변경하면 새 pin 테스트가 실행되지 않아 F1 우회가 남음 — internal/config/required_checks_release_gate_test.go:23
+> 신뢰도: 높음. `.github/test-input-filters.yml`에는 `.github/required-checks.yml`과 매칭되는 규칙이 없어. CI 정의상 이 경우 실제 테스트 대신 같은 이름의 성공 skip-marker가 실행돼.
+> HEAD `16ba65ac9`에서 축소 목록은 pin 테스트를 직접 실행하면 실패했지만, 스크립트는 성공한 `Lint` 응답 하나로 종료 코드 0과 `CI gate: verified`를 출력했어. 따라서 Go 테스트에 집합을 고정하는 것만으로는 충분하지 않아.
+> 권고: 해당 YAML을 공통 CI 입력 필터와 필터 보호 테스트에 추가해. 실제 GitHub Actions 실행은 미측정이며, 경로 매칭과 실행 조건을 로컬에서 확인했어.
+>
+> [P2] 빈 이름과 인식하지 못한 항목을 조용히 버려 불완전한 목록을 승인함 — scripts/release.sh:267
+> 신뢰도: 높음. `Lint` 뒤에 `- ""`, 값 없는 `-`, 또는 예상하지 않은 매핑을 넣은 스크립트 복사본을 각각 실행했어. 모두 `Lint`만 요구하며 종료 코드 0과 `CI gate: verified`를 출력했어. 정상 세 항목 설정은 동일한 응답에서 거부됐어.
+> 원인: awk는 매칭되는 줄만 수집하고, 277행은 빈 이름을 버리며, 마지막에는 전체 목록이 비었는지만 검사해.
+> 권고: 허용한 목록 문법 밖의 항목과 빈 이름을 즉시 거부하고, 축소 목록도 런타임에서 거부하도록 완전성 검증을 추가해. 위 입력을 직접 거부하는 회귀 테스트가 필요해.
+
+The P1 matches my reading of the filter (2d). The P2 empty-name part matches my probes (2e). Its "unexpected mapping" variant I did not reproduce (my probes of a nested item and an anchor failed closed).
+
+## 3. Baseline-attribution
+
+- Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1858`, HEAD `16ba65ac9209789ae9b9560c84a4dc5cd7afa9b2`, clean status.
+- Delta: `git diff 5f1e6583f..HEAD` (5 files).
+- Judging build: installed moai built from `ee981a932`, an ancestor of HEAD (the tool's own build_lag note). The audit-plan and audit_multi outputs above come from that older build. The go, gofmt, golangci-lint and shell results do not depend on it.
+- The scratch copy is a `git archive HEAD` extraction; the tree itself was not edited.
+
+## 4. Gaps
+
+- GitHub Actions was not run: F5 comes from reading `.github/test-input-filters.yml` and ci.yml, not from an actual CI run.
+- Codex's "unexpected mapping" variant of F6 was not reproduced.
+- The claude and glm backends are gate-off per the plan; no second opinion beyond codex.
+- Initial attempt to create a scratch copy with an `rm -rf` was denied by the permission system; I used a fresh directory instead. No effect on results.
+- `rlsRequireTools(t, "jq")`: the template pin is skipped where `jq` is absent. I ran it with jq present; CI presence of jq was not measured.
+
+## 5. Residual-risk
+
+- Until F5 is fixed, an SSoT-only PR can shorten `release_gate` and merge on the skip-marker, after which a lone green `Lint` lets a tag through.
+- After F5 and F6, a deliberate two-place edit (SSoT plus the Go pin) remains a legitimate way to change the demanded set; that is by design.
+- Admin-bypass merges skip the pins.
+
+Addendum: a second single-backend adversarial `codex_audit` (receipt rcpt-4f0500c01469bec3f88471c2) also returned `verdict: fail` with the same two findings: P1 (`.github/test-input-filters.yml:58`, the SSoT-only PR skips the pins; codex says it evaluated the filter with picomatch, giving `go_code=false`) and P2 (`scripts/release.sh:271`, empty/bare-`-`/whitespace entries dropped, script exits 0 on a shortened list). Hosted CI was not run by codex either.
+
+AUDIT-VERDICT: FAIL spec=t1858 receipts=rcpt-afa2e6a2fb9d201f141c43b7,rcpt-4f0500c01469bec3f88471c2
