@@ -101,7 +101,7 @@ Validation, all inside the transaction (REQ-CDI-009); each failure names its che
 | V-4 | every `card_membership` row spans attempt numbers that exist (in `card_attempts` or the current record) and names a `runs` row, or a run that was already absent from `runs` before the cutover (the set of absent runs named by memberships equals the pre-cutover set of absent runs of `cards_pre_cutover`, the comparison V-5 makes for references; observed on the real 31-column DDL: strict check 2 offending memberships, differential check 0) |
 | V-5 | every `leader_approvals` row whose `(run_id, card_id)` matched a legacy row before still matches a sealed attempt; the set of approval and dispatch references that did not resolve before is equal to the set after |
 | V-6 | for every legacy row, the sealed attempt of the same `(run_id, card_id)` equals it column by column |
-| V-7 | for every `card_current` row not moved to project scope, every one of the 31 columns equals the resolved legacy row's; for every moved row, all columns equal it except `run_id` (empty) and `version` (one higher) |
+| V-7 | for every `card_current` row not moved to project scope, every one of the 31 columns equals the resolved legacy row's; for every moved row, all columns equal it except `run_id` (empty) and `version` (the resolved row's version plus one, or the card's version floor plus one when that is higher) |
 
 Fault points for tests: `cutover.after-copy`, `cutover.before-validate`, `cutover.before-marker`, `cutover.before-commit`, through a package-level seam of the shape `cardTransitionFault` already has (`card_transition.go:231-238`).
 
