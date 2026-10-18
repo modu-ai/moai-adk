@@ -322,6 +322,18 @@ Each mutant was applied to the working tree, the named test run, and the file re
 - The CLI tests run the verbs in-process with a changed working directory and a pinned `CLAUDE_PROJECT_DIR`; a lane whose real session environment names a different project root than its worktree was not reproduced.
 - Repository-wide test and build verdicts belong to the CI run on the project's integration branch and are PENDING at report time.
 
+### E.2.7 Audit-fix round (sync-audit codex findings 1-3)
+
+Appended; no earlier evidence rewritten. RED `187e58c1b` + `da0e3e840`, GREEN `619402f00` (commit graph orders RED before GREEN).
+
+| Finding | RED reproduction (observed) | Fix | Test |
+|---|---|---|---|
+| 1 [P1] refusal silent | real process, pre-fix build: `exit=16 stdout=[] stderr=[]`; fixed build: exit 16, sentinel line on stderr | `checkBaseFreshness` writes the refusal to the verb's writer before returning the exit-16 error | `TestBaseFreshnessRefusalReachesTheUserThroughTheRootErrorPath`, `TestFactoryCompleteRefusalIsVisible` (both through `runFang`) |
+| 2 [P2] foreign tree field accepted | `Admit:true` for a record file named for the current tree whose `tree` names another | `EvaluateBaseFreshness` requires `rec.Tree == res.Tree` after validation | `TestBaseFreshnessRefusesRecordNamingAnotherTree` (K=0, K=2) |
+| 3 [P2] config failure read as gate-off | stderr `base-freshness (advisory, gate off): would refuse ...` for malformed YAML, wrong-typed key, unreadable file | `workflowConfigFailure` routes a present-but-unloaded `workflow.yaml` to `ConfigErr` with the read/parse cause | `TestBaseFreshnessConfigLoadFailureIsUncertainty` (3 cases) |
+
+Mutant probes: each fix reverted alone, the matching test went red, the fix was restored, `cmp` against the saved copy identical. Complete's refusal line goes to stdout (the verb's existing writer); acquire's goes to stderr.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-10-17T16:01:36Z
