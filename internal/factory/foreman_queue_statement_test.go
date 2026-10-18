@@ -20,6 +20,13 @@ package factory
 // honors for any origin (state_dir.go override branch), and pins HOME to a
 // canary so neither side can touch the operator's home. Executing sh keeps
 // this test POSIX-only; it is skipped where sh does not exist.
+//
+// SPEC-MOAI-DB-PATHS-001 (card t1827): the script no longer recomputes the
+// project key; it asks `moai paths --field todo-dir`. The fixture therefore
+// provisions a `moai` STUB on the subprocess PATH that prints the resolver's
+// directory for exactly that invocation and exits 2 for anything else. The stub
+// proves the script consumes the command output unchanged; the real command's
+// agreement with the resolver is proved by internal/cli TestPaths_*.
 
 import (
 	"os"
@@ -100,6 +107,9 @@ func TestForemanQueueWatchResolvesCanonicalStateDir(t *testing.T) {
 	}
 	canaryHome := t.TempDir()
 	moaiHome := t.TempDir()
+	t.Setenv("MOAI_HOME", moaiHome)
+	want := StateDirForRoot(root)
+	binDir, argLog := foremanMoaiStub(t, want)
 
 	scriptPath := filepath.Join(t.TempDir(), "watch-resolution.sh")
 	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
@@ -107,8 +117,9 @@ func TestForemanQueueWatchResolvesCanonicalStateDir(t *testing.T) {
 	}
 	cmd := exec.Command("sh", scriptPath)
 	cmd.Dir = root
-	env := envWithout(t, "MOAI_HOME", "HOME")
-	env = append(env, "HOME="+canaryHome, "MOAI_HOME="+moaiHome)
+	env := envWithout(t, "MOAI_HOME", "HOME", "PATH")
+	env = append(env, "HOME="+canaryHome, "MOAI_HOME="+moaiHome,
+		"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -118,11 +129,17 @@ func TestForemanQueueWatchResolvesCanonicalStateDir(t *testing.T) {
 	if got == "" {
 		t.Fatal("the skill's resolution prologue printed no queue directory — it no longer assigns $d")
 	}
-
-	t.Setenv("MOAI_HOME", moaiHome)
-	want := StateDirForRoot(root)
+	// The script must consume the command output unchanged, and call exactly
+	// `moai paths --field todo-dir`.
+	logged, err := os.ReadFile(argLog)
+	if err != nil {
+		t.Fatalf("the stub was never invoked: %v", err)
+	}
+	if string(logged) != "paths --field todo-dir\n" {
+		t.Errorf("the script invoked moai as %q, want exactly one call `paths --field todo-dir`", logged)
+	}
 	if got != want {
-		t.Errorf("the skill's watch directory %q does not match the resolver %q — the documented queue path has drifted from StateDirForRoot", got, want)
+		t.Errorf("the skill's watch directory %q does not equal the command output %q", got, want)
 	}
 	if want == projectStateDirForRoot(root) {
 		t.Errorf("the resolver answered project-local %q for the standard git-repo case — the fixture lost its home resolution (MOAI_HOME override broken?)", want)
@@ -152,4 +169,25 @@ func envWithout(t *testing.T, names ...string) []string {
 		env = append(env, kv)
 	}
 	return env
+}
+
+// foremanMoaiStub writes an executable `moai` stub into a fresh directory and
+// returns that directory and the file the stub appends its arguments to. The
+// stub prints queueDir for exactly `paths --field todo-dir` and exits 2 for
+// anything else.
+func foremanMoaiStub(t *testing.T, queueDir string) (binDir, argLog string) {
+	t.Helper()
+	binDir = t.TempDir()
+	argLog = filepath.Join(t.TempDir(), "moai-args.log")
+	stub := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$*\" >> '" + argLog + "'\n" +
+		"if [ $# -eq 3 ] && [ \"$1\" = paths ] && [ \"$2\" = --field ] && [ \"$3\" = todo-dir ]; then\n" +
+		"  printf '%s\\n' '" + queueDir + "'\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 2\n"
+	if err := os.WriteFile(filepath.Join(binDir, "moai"), []byte(stub), 0o700); err != nil {
+		t.Fatalf("write the moai stub: %v", err)
+	}
+	return binDir, argLog
 }
