@@ -133,7 +133,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 
 	head, err := git("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		return uncertain(res, "git: "+err.Error())
+		return uncertain(res, gitCause("rev-parse", err))
 	}
 	branch := strings.TrimSpace(head)
 	if branch == "HEAD" || (in.IntegrationBranch != "" && branch == in.IntegrationBranch) {
@@ -152,12 +152,12 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 
 	tipOut, err := git("rev-parse", "--verify", "refs/heads/"+in.IntegrationBranch)
 	if err != nil {
-		return uncertain(res, fmt.Sprintf("integration branch %s is unresolvable: %v", in.IntegrationBranch, err))
+		return uncertain(res, fmt.Sprintf("integration branch %s is unresolvable (%s)", in.IntegrationBranch, gitCause("rev-parse", err)))
 	}
 	res.Tip = strings.TrimSpace(tipOut)
 	treeOut, err := git("rev-parse", "HEAD^{tree}")
 	if err != nil {
-		return uncertain(res, "git: "+err.Error())
+		return uncertain(res, gitCause("rev-parse", err))
 	}
 	res.Tree = strings.TrimSpace(treeOut)
 
@@ -167,7 +167,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		err = ValidateRemeasureRecord(rec)
 	}
 	if err != nil {
-		reason := fmt.Sprintf("no valid re-measure record for tree %s (%v)", ShortSHA(res.Tree), err)
+		reason := fmt.Sprintf("no valid re-measure record for tree %s (%s)", ShortSHA(res.Tree), recordCause(rec, err))
 		return violation(res, in, reason, "Run moai integration remeasure after the last absorb, then retry.")
 	}
 	// The record file is keyed by the current tree, but the reader returns the
@@ -183,7 +183,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	if _, err := git("merge-base", "--is-ancestor", rec.Base, res.Tip); err != nil {
 		var exit *factorylane.GitExitError
 		if !errors.As(err, &exit) || exit.ExitCode != gitExitNotAncestor {
-			return uncertain(res, "git: "+err.Error())
+			return uncertain(res, gitCause("merge-base", err))
 		}
 		res.Stale = true
 		reason := fmt.Sprintf("card %s is stale against local %s (tip %s): the re-measure record's base %s is not an ancestor of the tip, whatever %s=%d",
@@ -193,11 +193,11 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 
 	countOut, err := git("rev-list", "--count", "--first-parent", rec.Base+".."+res.Tip)
 	if err != nil {
-		return uncertain(res, "git: "+err.Error())
+		return uncertain(res, gitCause("rev-list", err))
 	}
 	behind, err := strconv.Atoi(strings.TrimSpace(countOut))
 	if err != nil {
-		return uncertain(res, fmt.Sprintf("git rev-list printed %q, not a count", strings.TrimSpace(countOut)))
+		return uncertain(res, "git rev-list printed a non-numeric count")
 	}
 	res.Behind = behind
 	if behind > in.K {
@@ -206,6 +206,36 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 		return violation(res, in, reason, absorbRemedy(in.IntegrationBranch))
 	}
 	return res
+}
+
+// gitCause renders a git failure as the operation and, for a process exit, its
+// code. Git's own text (stderr, the error string) is never forwarded: it quotes
+// configuration values and paths the operator did not mean to print.
+func gitCause(op string, err error) string {
+	var exit *factorylane.GitExitError
+	if errors.As(err, &exit) {
+		return fmt.Sprintf("git %s failed (exit %d)", op, exit.ExitCode)
+	}
+	return fmt.Sprintf("git %s could not run", op)
+}
+
+// recordCause names why a record is not usable from a fixed phrase set. Record
+// fields (command, build identity, failing names, the stored SHAs) are untrusted
+// text and are never printed; only the exit code, a number, is.
+func recordCause(rec *RemeasureRecord, err error) string {
+	switch {
+	case rec == nil && strings.HasPrefix(err.Error(), "no re-measure record"):
+		return "no re-measure record is stored for it"
+	case rec == nil:
+		return "the stored re-measure record is unreadable"
+	case rec.Tree == "" || rec.Base == "" || rec.Command == "" || rec.BuildIdentity == "" ||
+		!isFullSHA(rec.Tree) || !isFullSHA(rec.Base):
+		return "the record is incomplete or malformed"
+	case rec.ExitCode != 0:
+		return fmt.Sprintf("its command exited %d", rec.ExitCode)
+	default:
+		return "its structured test report is missing or empty"
+	}
 }
 
 func absorbRemedy(branch string) string {

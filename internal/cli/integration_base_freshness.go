@@ -116,7 +116,7 @@ func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrat
 	}
 	dir, err := os.Getwd()
 	if err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "base-freshness: not measured — cannot resolve the working directory: %v\n", err)
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "base-freshness: not measured — cannot resolve the working directory")
 		return nil
 	}
 	return checkBaseFreshness(cmd.ErrOrStderr(), root, dir, cardID, integrationBranch)

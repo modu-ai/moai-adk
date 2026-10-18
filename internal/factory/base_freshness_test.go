@@ -316,10 +316,10 @@ func TestBaseFreshnessFailOpenCauses(t *testing.T) {
 			}, "integration branch"},
 			{"git failure on rev-list", func(f *bfFixture) (BaseFreshnessInput, BaseFreshnessSeams) {
 				return f.input(0, true), BaseFreshnessSeams{Git: failingGitIn(f.card, "rev-list")}
-			}, "injected rev-list failure"},
+			}, "git rev-list could not run"},
 			{"git failure on rev-parse", func(f *bfFixture) (BaseFreshnessInput, BaseFreshnessSeams) {
 				return f.input(0, true), BaseFreshnessSeams{Git: failingGitIn(f.card, "rev-parse")}
-			}, "injected rev-parse failure"},
+			}, "git rev-parse could not run"},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
