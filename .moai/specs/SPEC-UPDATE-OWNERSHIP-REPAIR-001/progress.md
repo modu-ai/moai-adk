@@ -3194,7 +3194,7 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 
 ```yaml
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill  # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: e99a990296dc8d84b48891a9d916b8379b9f4f3b  # the sync commit could not cite its own hash (it carried pending-backfill); this value is backfilled in the following commit
 sync_status: complete
 b12_self_test_a: pass  # pre-emission grep: `grep -c 'SPEC-UPDATE-OWNERSHIP-REPAIR-001' CHANGELOG.md` printed 0 before the entry and 1 after
 b12_self_test_b: pass-with-disclosure  # ac_source=.moai/specs/SPEC-UPDATE-OWNERSHIP-REPAIR-001/acceptance.md (tier L). The B12 counter printed 22 (live=22 excluded=0 ambiguous=0): the 21 AC-OWR-01..21 criteria (21 `### AC-OWR-` headings) plus AC-COLLECTOR-ANCHOR-001, an unmarked citation of another SPEC's criteria inside the criterion-grade paragraph (line 19). Marking it `[REF]` needs an acceptance.md body edit, which is not this commit's to make. The CHANGELOG says 21.
@@ -3214,7 +3214,9 @@ This sync commit edits `CHANGELOG.md`, this section, and the `spec.md` frontmatt
 2. Dry run and the update lock: `moai update --dry-run` takes no update lock (`internal/cli/update.go`), so a dry run is no longer refused while another update holds the lock and its result may then reflect that run's intermediate state. A one-line warning in the dry-run output was considered and is NOT implemented: carried as a disclosed follow-up/debt.
 3. Same-second backup directory: two updates started in the same clock second share a run backup directory and the older `manifest.prior.json` generation is lost. Evidence loss only (verdicts lean toward keeping); outside this card; follow-up candidate (see §E.3 "열린 제품 쪽 사실").
 4. Legacy restore walk: `RestoreMoaiConfigLegacy` also copies `removed-assets/**` and `in-memory-backups/**` into `.moai/config` (found by the codex card review, not fixed here). `removed-assets` belongs to card t1668 and is empty while the removal switch is off; `in-memory-backups` predates this card.
-5. Keep-reason vocabulary: the closed vocabulary gained `non-regular-file` (code, `internal/cli/migrate_ownership.go`). The matching row in the design.md D-1 vocabulary table is added by manager-spec in a following revision commit (lane-directed); the lane cites that commit SHA in the audit brief. This sync commit edits no SPEC body.
+5. Keep-reason vocabulary: the closed vocabulary gained `non-regular-file` (code, `internal/cli/migrate_ownership.go`). The design.md D-1 closed keep-reason list now contains `non-regular-file`, added by manager-spec in commit `0a33265120` (design.md only, one line). The earlier E.2 statements (the chunk-6 accounting near line 3103 and any other "design row pending" wording) were true when written and are superseded by this backfill commit; those E.2 lines are not edited (append-only record). The sync commit `e99a990296` itself edited no SPEC body.
+
+   SPEC-body edit set for the audit brief: design.md only, by manager-spec, `0a33265120`. Since the plan phase (last plan-phase commit `073b3e1382`), spec.md changed only by status transitions (`7d8be68f6c` draft to in-progress, `e99a990296` to completed); plan.md, acceptance.md and research.md are unchanged since `073b3e1382`.
 6. FIFO race: a regular file swapped for a FIFO between the kind check and the read is not covered (§E.2 chunk 6 accounting item 3 covers the sibling kinds `os.ModeIrregular`, sockets and devices, which take the same branch but are not exercised by a test).
 7. `removalEnabled` is `false` in production: no project file is removed by this change.
 
