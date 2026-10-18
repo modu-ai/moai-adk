@@ -33,8 +33,14 @@ const PriorManifestTempPrefix = PriorManifestName + ".tmp-"
 
 // IsPriorManifestBookkeeping reports whether relPath, a path relative to a run
 // backup directory, names the prior-manifest copy or its temporary file at the
-// backup root. A same-named file below the root is user content and is not.
+// backup root. It matches a root-level entry only: a path with a separator is
+// below the root, so a user file below a directory that merely starts with a
+// bookkeeping name (`manifest.prior.json.tmp-notes/keep.txt`) is user content, as
+// is a same-named file in a subdirectory.
 func IsPriorManifestBookkeeping(relPath string) bool {
+	if strings.Contains(filepath.ToSlash(relPath), "/") {
+		return false
+	}
 	return relPath == PriorManifestName || strings.HasPrefix(relPath, PriorManifestTempPrefix)
 }
 
