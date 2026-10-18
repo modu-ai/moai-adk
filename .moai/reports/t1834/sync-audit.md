@@ -4,6 +4,10 @@ Export relayed by the lane (lane-28): the `audit_multi` MCP tool returns the ver
 
 ## Verdict
 
+verdict: PASS
+audited_sha: ae092df3adf82decccaa2e47a35a25ad9f963426
+
+
 **PASS** — round 4, tree HEAD `ae092df3a`, backend codex (gate `required`), receipt `rcpt-8fdd95a2ca747abf709b8914`, `overall_verdict: pass`, `findings: []`, `participant_count: 1`. No numeric score is returned by this tool.
 
 ## Iteration history
