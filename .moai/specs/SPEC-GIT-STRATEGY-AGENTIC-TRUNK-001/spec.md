@@ -1,7 +1,7 @@
 ---
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial local landing -> batch PR -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -25,6 +25,7 @@ Card: **t1831** (Class C, P1, plan -> run -> sync; operator directive 2026-10-17
 |------|--------|--------|
 | 2026-10-18 | manager-spec | Initial plan-phase artifacts (0.1.0). Evidence read in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846); quantified in research.md. |
 | 2026-10-18 | manager-spec | 0.2.0: plan-audit iteration 1 repairs: D1-D7 (RED-now cells authored at plan time on tree `f4175587119b5cfeb8d8348fc74cada8764e89ed`; the `factory-dispatch.md` template/deployed divergence recorded and decided; one cutover precondition set P1-P5 across REQ-AGT-017, plan M6 and design section 4; judges rebuilt for AC-AGT-015, -020 and -023; the DevelopBranch consumers added as REQ-AGT-025 and AC-AGT-025). Optional D8-D11 folded: GEARS rewording of REQ-AGT-018 and REQ-AGT-024, template-match exclusions named, REQ-AGT-019 sub-item judges added, the raw-merge demotion recorded in design section 5. 25 requirements, 25 acceptance criteria. |
+| 2026-10-18 | manager-spec | 0.3.0: plan-audit iteration 2 repairs: D1, D2 and the optional/codex findings. D1: REQ-AGT-021 now carries the one recorded exception (the live-only tail sentence of `factory-dispatch.md` line 222, commit `7ff326d99`, card t1815), so requirement and AC-AGT-021 agree. D2: REQ-AGT-020 states that `agentic-trunk` follows neither the per-version release branch nor a lane push, and the line-222 edit no longer attaches `agentic-trunk` to the `release/vX.Y.Z` push (the `names git-flow or agentic-trunk` sentinel is retired and its absence is judged). Optional: AC-AGT-020 judges the whole agentic-trunk block for any push instruction; AC-AGT-023 is non-vacuous at N0 = 0 and rejects a bare label; the P4 precondition of REQ-AGT-017 is probed over all running servers, not one project directory. 25 requirements, 25 acceptance criteria. |
 
 ## 1. Context and problem
 
@@ -66,14 +67,14 @@ Give the model one canonical value, `agentic-trunk`, with an explicit and tested
 
 - REQ-AGT-015: The shipped defaults (the template `git-strategy.yaml.tmpl` and the built-in default configuration) shall keep `github-flow` for the manual, personal and team profiles.
 - REQ-AGT-016: The github-flow sweep guard shall stay armed only for `github-flow`, and its arming test shall assert that an `agentic-trunk` root does not arm it.
-- REQ-AGT-017: The live value of this repository's `git_strategy.manual.workflow` shall change to `agentic-trunk` only in a separate commit for which all five preconditions hold: (P1) the commits that implement REQ-AGT-001 to REQ-AGT-016, REQ-AGT-020, REQ-AGT-021 and REQ-AGT-025 (plan milestones M1 to M5) are its ancestors, (P2) the installed `moai` binary is byte-identical to the build of the commit's parent and reports that commit, (P3) that installed binary's doctor check reports `agentic-trunk` as OK, (P4) every running `moai mcp-server` has been reconnected so the doctor's MCP server version check reports no stale server, and (P5) the leader runs the cutover with the operator's confirmation while no integration window is held.
+- REQ-AGT-017: The live value of this repository's `git_strategy.manual.workflow` shall change to `agentic-trunk` only in a separate commit for which all five preconditions hold: (P1) the commits that implement REQ-AGT-001 to REQ-AGT-016, REQ-AGT-020, REQ-AGT-021 and REQ-AGT-025 (plan milestones M1 to M5) are its ancestors, (P2) the installed `moai` binary is byte-identical to the build of the commit's parent and reports that commit, (P3) that installed binary's doctor check reports `agentic-trunk` as OK, (P4) no running `moai mcp-server` process on the machine predates the installed binary, whichever project directory records it: the doctor's MCP server version check reports no stale server and the oldest running server started after the install (a server of another project that is left running is named in the progress record), and (P5) the leader runs the cutover with the operator's confirmation while no integration window is held.
 - REQ-AGT-018: When the live value of this repository's `git_strategy.manual.workflow` is `agentic-trunk`, the file `.moai/config/sections/git-strategy.yaml` shall carry `workflow: agentic-trunk` in the manual profile only, keep `lead_push_threshold: 20`, carry no `develop_branch`, `release_branch_prefix` or `rc_version_format` key in the manual profile, and carry no comment that says the workflow stays `git-flow`.
 
 ### 3.5 Guidance
 
 - REQ-AGT-019: The repo-local guidance (`.claude/rules/local/gitflow-lane-protocol.md` title and section titles, `AGENTS.local.md` section 4, `.claude/rules/local/repo-local-pr-policy.md`, and the notices of the three `.moai/docs` doctrine files) shall name this repository's model `agentic-trunk`, state its four steps, keep the rule file's path, and leave every rule's substance unchanged.
-- REQ-AGT-020: The distributed rules and skills that describe the local `WT-*` integration route as a `git-flow` variant shall name `agentic-trunk` as the second workflow using that route, the sync delivery skill shall list `agentic-trunk` in its value domain and route it without a push step, and every file shall keep `github-flow` as the distributed default.
-- REQ-AGT-021: Each edited template source shall be byte-identical to its deployed counterpart after the template build.
+- REQ-AGT-020: The distributed rules and skills that describe the local `WT-*` integration route as a `git-flow` variant shall name `agentic-trunk` as the second workflow using that route, where they describe the per-version release-branch push of the git-flow variant they shall state that `agentic-trunk` takes no per-version release branch and runs no lane push, the sync delivery skill shall list `agentic-trunk` in its value domain and route it without a push step, and every file shall keep `github-flow` as the distributed default.
+- REQ-AGT-021: The edited template sources shall each be byte-identical to their deployed counterparts after the template build, except that the deployed `factory-dispatch.md` shall keep the one live-only sentence that ends its line 222, which the template omits on purpose (commit `7ff326d99`, card t1815).
 - REQ-AGT-022: The docs-site `moai-sync` page shall list `agentic-trunk` in all four locales (ko canonical, then en, ja, zh) in the same landing.
 - REQ-AGT-023: The edits to `AGENTS.local.md` and `gitflow-lane-protocol.md` shall carry both this SPEC's flow naming and the Integration-Worktree Rule of SPEC-PRIMARY-LANDING-ONLY-001 without removing either.
 
