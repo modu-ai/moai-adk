@@ -145,7 +145,12 @@ func writeFactoryAgeAlarmText(w io.Writer, rows []factoryAgeAlarmView, warning s
 // (GIT_NO_LAZY_FETCH=1) so a promisor worktree's missing head object cannot
 // send the read after remote.origin.url — an ext:: transport there would
 // execute a repo-designated helper program, while with the pin the read fails
-// and the commit signal renders unknown (sync-audit iter2 N1). A missing or
+// and the commit signal renders unknown (sync-audit iter2 N1) — but that
+// guard first exists in git 2.46.0, so the transport itself is also pinned
+// OFF (GIT_ALLOW_PROTOCOL=""): an empty env allow-list that
+// is_transport_allowed consults before any repo config, blocking every
+// transport including ext:: on every supported git version (sync-audit
+// iter3 N3). A missing or
 // unreadable worktree, a failed or timed-out invocation, and an unparseable
 // stamp all render unknown — never a fabricated value, never a failed status
 // command.
@@ -171,8 +176,14 @@ func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
 // inherited copy outranks -C (iter1 F1). GIT_TERMINAL_PROMPT=0 keeps a read
 // that cannot authenticate from blocking on a prompt; GIT_NO_LAZY_FETCH=1
 // keeps a missing object from triggering the lazy fetch that would run the
-// repo's configured transport (iter2 N1). Pinned by
-// TestFactoryAgeAlarmChildEnvProtocolPin (the env-map seam).
+// repo's configured transport (iter2 N1) — a guard git first honors in
+// 2.46.0. GIT_ALLOW_PROTOCOL="" appends the version-independent block: an
+// empty env allow-list, which is_transport_allowed consults BEFORE the
+// per-protocol repo config (transport.c @ v2.43.0:1070-1076, master
+// :1095-1109), so every transport including ext:: is blocked regardless of
+// an attacker's protocol.ext.allow=always, on every supported git version
+// (iter3 N3). Pinned by TestFactoryAgeAlarmChildEnvProtocolPin (the env-map
+// seam).
 func ageAlarmChildEnv() []string {
-	return append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1")
+	return append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=")
 }
