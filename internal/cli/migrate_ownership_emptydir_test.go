@@ -306,6 +306,10 @@ func TestManagedOnlyEmptyDirsPruned(t *testing.T) {
 		root, home := emptyDirFixture(t, true)
 		// Every skill directory goes; the roots and the agent directory must not.
 		run := runOwnershipMigration(t, root, home)
+		// The reach control: the pruning step ran in this very run.
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(emptyDirPrevRunEmptied))); err == nil {
+			t.Fatalf("the reach control %s was not pruned: the keeps below would prove nothing", emptyDirPrevRunEmptied)
+		}
 		for _, rel := range []string{".claude/skills", ".agents/skills", emptyDirAgentDir} {
 			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
 				t.Errorf("%s was removed (%v)", rel, err)
@@ -358,8 +362,8 @@ func TestManagedOnlyEmptyDirsPruned(t *testing.T) {
 		})
 		run := runOwnershipMigration(t, root, home)
 		got := emptyDirProblems(root, run, before, emptyDirPrevRunEmptied, emptyDirStandardExpectations(true))
-		if !problemsMention(got, emptyDirNoRecord) {
-			t.Errorf("the assertion stayed green in front of a step that removes every empty directory; problems: %v", got)
+		if !slices.Contains(got, emptyDirNoRecord+": removed, want it kept") {
+			t.Errorf("the assertion did not report the removed directory without provenance; problems: %v", got)
 		}
 	})
 
@@ -387,15 +391,10 @@ func TestManagedOnlyEmptyDirsPruned(t *testing.T) {
 		})
 		run := runOwnershipMigration(t, root, home)
 		got := emptyDirProblems(root, run, before, emptyDirPrevRunEmptied, emptyDirStandardExpectations(true))
-		if !problemsMention(got, emptyDirMixedParent) {
-			t.Errorf("the assertion stayed green in front of a step that ignores a user_created record; problems: %v", got)
+		if !slices.Contains(got, emptyDirMixedParent+": removed, want it kept") {
+			t.Errorf("the assertion did not report the directory a user_created record covers; problems: %v", got)
 		}
 	})
-}
-
-// problemsMention reports whether any problem names rel.
-func problemsMention(problems []string, rel string) bool {
-	return slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, rel+":") })
 }
 
 // swapEmptyDirProvenance installs the provenance judgment of the pruning step
