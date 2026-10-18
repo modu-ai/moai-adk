@@ -34,6 +34,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1080,4 +1081,70 @@ func TestProfileCallsiteBaselineMatchesTree(t *testing.T) {
 	for _, p := range problems {
 		t.Errorf("profile call-site baseline drift: %s", p)
 	}
+}
+
+// TestOwnershipHelperFixtureBuilders characterizes the builders the later
+// milestones share: the user-created state, the tree diff, the temporary-home
+// guard, and the three canary profile states. A helper nothing exercises is a
+// helper nothing can trust.
+func TestOwnershipHelperFixtureBuilders(t *testing.T) {
+	t.Run("RegisteredUserCreatedAndTreeDiff", func(t *testing.T) {
+		root := t.TempDir()
+		const rel = ".claude/skills/mine/SKILL.md"
+		ownAddRegisteredUserCreated(t, root, rel, []byte("# mine\n"))
+		mgr := manifest.NewManager()
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatal(err)
+		}
+		if e, ok := mgr.GetEntry(rel); !ok || e.Provenance != manifest.UserCreated {
+			t.Fatalf("user-created builder recorded %+v (found=%v)", e, ok)
+		}
+		before := ownTreeSnapshot(t, root, ownTreeOpts{})
+		ownWriteFile(t, root, "added/file.txt", []byte("x"))
+		ownWriteFile(t, root, rel, []byte("# mine, edited\n"))
+		diff := ownTreeDiff(before, ownTreeSnapshot(t, root, ownTreeOpts{}))
+		want := []string{".claude/skills/mine/SKILL.md", "added/", "added/file.txt"}
+		if !reflect.DeepEqual(diff, want) {
+			t.Errorf("tree diff %v, want %v", diff, want)
+		}
+	})
+
+	t.Run("TemporaryHomeGuard", func(t *testing.T) {
+		home := ownIsolateHome(t)
+		ownAssertHomeIsolated(t)
+		got, err := os.UserHomeDir()
+		if err != nil || got != home {
+			t.Errorf("isolated HOME resolves to %q (%v), want %q", got, err, home)
+		}
+	})
+
+	t.Run("CanaryProfileStates", func(t *testing.T) {
+		base := ownProfileSandbox(t)
+		for _, tc := range []struct {
+			state     ownCanaryState
+			wantFiles bool
+			sameAsTpl bool
+		}{{ownCanaryNone, false, false}, {ownCanaryTemplateSame, true, true}, {ownCanaryDiffers, true, false}} {
+			dir := ownCanaryProfileDir(t, base, tc.state)
+			skill := filepath.Join(dir, "skills", "x", "SKILL.md")
+			data, err := os.ReadFile(skill)
+			if tc.wantFiles != (err == nil) {
+				t.Fatalf("state %d: skill present=%v, want %v", tc.state, err == nil, tc.wantFiles)
+			}
+			if tc.wantFiles && tc.sameAsTpl != bytes.Equal(data, ownEmbeddedBytes(t, ownEmbeddedClaudeSkill)) {
+				t.Errorf("state %d: template-equality of the canary skill is %v, want %v", tc.state, !tc.sameAsTpl, tc.sameAsTpl)
+			}
+			// A fresh state replaces the previous one.
+			if err := os.RemoveAll(filepath.Join(dir, "skills")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.RemoveAll(filepath.Join(dir, "agents")); err != nil {
+				t.Fatal(err)
+			}
+			ownSetClaudeConfigDir(t, dir)
+			if os.Getenv(config.EnvClaudeConfigDir) != dir {
+				t.Errorf("CLAUDE_CONFIG_DIR was not pointed at the canary directory")
+			}
+		}
+	})
 }
