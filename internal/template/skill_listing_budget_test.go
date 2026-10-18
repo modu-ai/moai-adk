@@ -286,6 +286,41 @@ func TestCheckSkillListing_ParsedFrontmatterBoundary(t *testing.T) {
 	}
 }
 
+// A SKILL.md-shaped string goes through the extraction the real-tree test uses.
+// asideSplitFrontmatter cuts at "\n---", which removes the clip newline of a
+// block scalar that is the last frontmatter key; the guard restores it.
+func TestCheckSkillListing_SkillMDLastKeyWhenToUse(t *testing.T) {
+	desc := "description: " + strings.Repeat("a", 1000) + "\n"
+	cases := []struct {
+		name     string
+		text     string
+		wantUnit int
+		wantFail bool
+	}{
+		// 1000 + 3 (separator) + 533 + 1 (clip newline) = 1,537 fails.
+		{"last key 533 is 1537", "---\nname: x\n" + desc + "when_to_use: |\n  " + strings.Repeat("b", 533) + "\n---\nbody\n", 1537, true},
+		// 1000 + 3 + 532 + 1 = 1,536 passes.
+		{"last key 532 is 1536", "---\nname: x\n" + desc + "when_to_use: |\n  " + strings.Repeat("b", 532) + "\n---\nbody\n", 1536, false},
+		// Not last: the same numbers.
+		{"middle key 533 is 1537", "---\nname: x\n" + desc + "when_to_use: |\n  " + strings.Repeat("b", 533) + "\nmodel: m\n---\nbody\n", 1537, true},
+		{"middle key 532 is 1536", "---\nname: x\n" + desc + "when_to_use: |\n  " + strings.Repeat("b", 532) + "\nmodel: m\n---\nbody\n", 1536, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e, err := parseSkillMD("x", tc.text)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if got := e.chars(); got != tc.wantUnit {
+				t.Errorf("chars() = %d, want %d", got, tc.wantUnit)
+			}
+			if failed := len(checkSkillListing([]skillListingEntry{e})) != 0; failed != tc.wantFail {
+				t.Errorf("violation = %v, want %v", failed, tc.wantFail)
+			}
+		})
+	}
+}
+
 func TestTemplateSkillListingBudget(t *testing.T) {
 	skillsDir := filepath.Join("templates", ".claude", "skills")
 	dirs, err := os.ReadDir(skillsDir)
@@ -301,11 +336,7 @@ func TestTemplateSkillListingBudget(t *testing.T) {
 		if err != nil {
 			t.Fatalf("skill %q: %v", d.Name(), err)
 		}
-		fm, ok := asideSplitFrontmatter(string(raw))
-		if !ok {
-			t.Fatalf("skill %q: no frontmatter", d.Name())
-		}
-		entry, err := parseSkillListingEntry(d.Name(), fm)
+		entry, err := parseSkillMD(d.Name(), string(raw))
 		if err != nil {
 			t.Fatalf("skill %q: %v", d.Name(), err)
 		}

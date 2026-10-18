@@ -95,3 +95,13 @@ func parseSkillListingEntry(name, frontmatter string) (skillListingEntry, error)
 		WhenToUse:   fm.WhenToUse,
 	}, nil
 }
+
+// parseSkillMD extracts the frontmatter of a SKILL.md and parses it. It is the
+// one extraction the guard uses, so only this guard is affected.
+func parseSkillMD(name, text string) (skillListingEntry, error) {
+	fm, ok := asideSplitFrontmatter(text)
+	if !ok {
+		return skillListingEntry{}, fmt.Errorf("skill %q: no frontmatter", name)
+	}
+	return parseSkillListingEntry(name, fm)
+}
