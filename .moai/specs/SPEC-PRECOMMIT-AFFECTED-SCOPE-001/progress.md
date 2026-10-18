@@ -532,6 +532,133 @@ AC-011 mode: bogus: RED  (gate exit=0, message names the key=no)
 exit=1
 ```
 
+
+### GREEN-M3b — gate wiring (same commands as RED-M3b, flipped; tree = M3b GREEN commit)
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_AffectedScope_EmptySelectionSkips$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestQualityGate_AffectedScope_EmptySelectionSkips
+--- PASS: TestQualityGate_AffectedScope_EmptySelectionSkips (0.24s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.904s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_AffectedScope_QueryFailureFallsBack$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack/changed-file_query_fails
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack/package-graph_query_fails
+--- PASS: TestQualityGate_AffectedScope_QueryFailureFallsBack (0.55s)
+    --- PASS: TestQualityGate_AffectedScope_QueryFailureFallsBack/changed-file_query_fails (0.28s)
+    --- PASS: TestQualityGate_AffectedScope_QueryFailureFallsBack/package-graph_query_fails (0.27s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	1.429s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_AffectedScope_ArgumentList$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestQualityGate_AffectedScope_ArgumentList
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/selection_narrows_to_module-root-relative_patterns
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/a_widening_trigger_runs_the_full_module_and_says_why
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/build_tags_survive_the_replaced_argument_list
+--- PASS: TestQualityGate_AffectedScope_ArgumentList (1.18s)
+    --- PASS: TestQualityGate_AffectedScope_ArgumentList/selection_narrows_to_module-root-relative_patterns (0.49s)
+    --- PASS: TestQualityGate_AffectedScope_ArgumentList/a_widening_trigger_runs_the_full_module_and_says_why (0.40s)
+    --- PASS: TestQualityGate_AffectedScope_ArgumentList/build_tags_survive_the_replaced_argument_list (0.29s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.104s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_AffectedScope_ContextIsolation$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/without_the_pre-commit_flag_the_Go_test_step_is_test_./...
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/mode_full_restores_test_./...
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/the_vet_step_is_identical_with_and_without_the_flag
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/node_test_step_is_identical_with_the_flag
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/python_test_step_is_identical_with_the_flag
+2026/10/18 11:31:50 WARN no sources for step: treating as skip step=mypy extensions=.py,.pyi hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/10/18 11:31:51 WARN no sources for step: treating as skip step=mypy extensions=.py,.pyi hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+--- PASS: TestQualityGate_AffectedScope_ContextIsolation (2.01s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/without_the_pre-commit_flag_the_Go_test_step_is_test_./... (0.24s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/mode_full_restores_test_./... (0.23s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/the_vet_step_is_identical_with_and_without_the_flag (0.47s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/node_test_step_is_identical_with_the_flag (0.43s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/python_test_step_is_identical_with_the_flag (0.65s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.569s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_StepBudgetsUnchanged$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestQualityGate_StepBudgetsUnchanged
+=== RUN   TestQualityGate_StepBudgetsUnchanged/standalone
+=== RUN   TestQualityGate_StepBudgetsUnchanged/pre-commit_affected_scope
+--- PASS: TestQualityGate_StepBudgetsUnchanged (0.01s)
+    --- PASS: TestQualityGate_StepBudgetsUnchanged/standalone (0.00s)
+    --- PASS: TestQualityGate_StepBudgetsUnchanged/pre-commit_affected_scope (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.678s
+```
+
+### GREEN-M3b (CLI) — runner-side rejection and the real-hook end-to-end
+
+Command: `go test ./internal/cli -run '^TestRunGatePreCommitInvalidScopeModeRejected$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestRunGatePreCommitInvalidScopeModeRejected
+--- PASS: TestRunGatePreCommitInvalidScopeModeRejected (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.626s
+```
+
+Command: `go test ./internal/cli -run '^TestRunGatePreCommitFullScopeModeAccepted$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestRunGatePreCommitFullScopeModeAccepted
+--- PASS: TestRunGatePreCommitFullScopeModeAccepted (3.27s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.223s
+```
+
+Command: `go test ./internal/cli -run '^TestRunGateStandaloneIgnoresScopeMode$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestRunGateStandaloneIgnoresScopeMode
+--- PASS: TestRunGateStandaloneIgnoresScopeMode (1.47s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.059s
+```
+
+Command: `go test ./internal/cli -run '^TestPreCommitAffectedScopeE2E$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestPreCommitAffectedScopeE2E
+=== RUN   TestPreCommitAffectedScopeE2E/a_change_to_a_runs_exactly_a_and_b
+=== RUN   TestPreCommitAffectedScopeE2E/a_failing_dependent_blocks_the_commit_and_the_unaffected_package_never_runs
+--- PASS: TestPreCommitAffectedScopeE2E (71.78s)
+    --- PASS: TestPreCommitAffectedScopeE2E/a_change_to_a_runs_exactly_a_and_b (2.41s)
+    --- PASS: TestPreCommitAffectedScopeE2E/a_failing_dependent_blocks_the_commit_and_the_unaffected_package_never_runs (2.61s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	74.051s
+```
+
+Mutant probe, AC-PAS-014 (temporary edit, reverted before the commit; `grep -rn MUTANT internal/hook` prints nothing from this card): replacing the test step's call-site budget in `runToolchainTestStep` with `2*g.config.TestTimeout` leaves every YAML and default value unchanged but turns `TestQualityGate_StepBudgetsUnchanged` red:
+```
+--- FAIL: TestQualityGate_StepBudgetsUnchanged (0.01s)
+    --- FAIL: TestQualityGate_StepBudgetsUnchanged/standalone (0.00s)
+        affected_scope_gate_test.go:380: step "go test" received budget 4m0s, want 2m0s
+    --- FAIL: TestQualityGate_StepBudgetsUnchanged/pre-commit_affected_scope (0.00s)
+        affected_scope_gate_test.go:380: step "go test" received budget 4m0s, want 2m0s
+FAIL
+```
+Wider M3 verification (this run, this tree): `go test ./internal/hook/quality -count=1` exit 0 (`ok 36.928s`, whole package); `go test ./internal/cli -run '^(TestRunGate|TestGAR_|TestGateCmd_|TestPrecommitE2E|TestUpdateGateYAML|TestPreCommitHook_|TestPreCommitRelocation_)' -count=1 -v` exit 0, 40 PASS lines, no FAIL (targeted selection only, ruling 35e9; the full internal/cli suite was not run). The existing tests `TestRunGatePreCommitOptInRunsHeavyGate` and `TestRunGatePreCommitOptInPassingProjectPasses` run a non-git fixture, so the changed-file query fails and the gate falls back to the full module; both stay green by that fallback.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_

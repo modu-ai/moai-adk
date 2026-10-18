@@ -61,6 +61,9 @@ func runScopeQuery(ctx context.Context, dir string, env []string, name string, a
 // temporary index holding the commit's content, which the real index does not
 // (SPEC-PRECOMMIT-AFFECTED-SCOPE-001 REQ-PAS-009). A relative value is relative
 // to the hook's working directory, which is this process's.
+//
+// @MX:NOTE: [AUTO] the one query that keeps GIT_INDEX_FILE; the scrubbed staged-file helper reports the wrong set under `commit -a` and path-limited commits
+// @MX:SPEC: SPEC-PRECOMMIT-AFFECTED-SCOPE-001
 func commitQueryEnv() []string {
 	env := stepEnv()
 	if idx := os.Getenv("GIT_INDEX_FILE"); idx != "" {

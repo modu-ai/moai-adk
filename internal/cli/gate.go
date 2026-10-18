@@ -78,11 +78,23 @@ func runGate(cmd *cobra.Command, _ []string) error {
 	// project-wide failure unrelated to the staged change must not block
 	// unrelated commits. Without the marker this key is never read, so the
 	// standalone `moai gate` contract is byte-for-byte unchanged.
-	if os.Getenv(config.EnvPreCommitMarker) == "1" && !cfg.PreCommitEnabled {
+	preCommit := os.Getenv(config.EnvPreCommitMarker) == "1"
+	if preCommit && !cfg.PreCommitEnabled {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 			"[moai gate] pre-commit context: heavy gate not opted in — skipping the project-wide steps "+
 				"(opt in via gate.pre_commit.enabled: true in .moai/config/sections/gate.yaml)\n")
 		return nil
+	}
+	// Opted in under the marker: the Go test step runs the packages the commit
+	// can affect unless gate.pre_commit.test_scope.mode says "full"
+	// (SPEC-PRECOMMIT-AFFECTED-SCOPE-001). An unknown mode is refused outright —
+	// the gate never picks a scope for the operator. Without the marker none of
+	// this is read, so the standalone and PreToolUse scopes are unchanged.
+	if preCommit {
+		if errs := config.ValidateGateTestScopeMode(cfg.PreCommitTestScope); len(errs) > 0 {
+			return &config.ValidationErrors{Errors: errs}
+		}
+		cfg.PreCommitContext = true
 	}
 
 	// The lock is taken before anything else the run does (except reading the
