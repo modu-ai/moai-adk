@@ -12,6 +12,10 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -59,13 +63,19 @@ func checkReviewLayerOverlap(projectRoot string, verbose bool) DiagnosticCheck {
 // roots that were actually observed.
 func laneRecordPresent(projectRoot string) (lane, readable bool) {
 	roots := []string{projectRoot}
-	if primary, _, err := auditreceipt.IdentifyPrimaryCheckout(projectRoot); err == nil && primary != projectRoot {
-		roots = append(roots, primary)
-	}
 	readable = true
+	primary, _, err := auditreceipt.IdentifyPrimaryCheckout(projectRoot)
+	switch {
+	case err == nil && primary != projectRoot:
+		roots = append(roots, primary)
+	case err != nil && isLinkedWorktreeRoot(projectRoot):
+		// A linked worktree whose primary cannot be identified leaves the
+		// primary record directory unobserved.
+		readable = false
+	}
 	for _, root := range roots {
 		records, err := factory.ReadAll(root)
-		if err != nil {
+		if err != nil || recordFilesSkipped(root, len(records)) {
 			readable = false
 			continue
 		}
@@ -76,4 +86,28 @@ func laneRecordPresent(projectRoot string) (lane, readable bool) {
 		}
 	}
 	return false, readable
+}
+
+// isLinkedWorktreeRoot reports whether root's .git is a regular file, the
+// marker of a linked worktree top level.
+func isLinkedWorktreeRoot(root string) bool {
+	info, err := os.Lstat(filepath.Join(root, ".git"))
+	return err == nil && info.Mode().IsRegular()
+}
+
+// recordFilesSkipped reports whether root's record directory holds more
+// *.json files than the shared reader returned: ReadAll skips a record it
+// cannot read or parse, and a skipped record is not an observed absence.
+func recordFilesSkipped(root string, read int) bool {
+	entries, err := os.ReadDir(factory.RuntimeStateDirForRoot(root))
+	if err != nil {
+		return false
+	}
+	files := 0
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			files++
+		}
+	}
+	return files > read
 }

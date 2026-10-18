@@ -160,6 +160,51 @@ func TestDoctorReviewLayerOverlap_UnreadablePrimaryRecords(t *testing.T) {
 	}
 }
 
+// TestDoctorReviewLayerOverlap_SkippedRecordIsNotAbsence — a record file the
+// shared reader skips (here: unreadable) must not read as "no lane record".
+func TestDoctorReviewLayerOverlap_SkippedRecordIsNotAbsence(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("file permission denial is not enforceable here")
+	}
+	root := t.TempDir()
+	writeReviewLayersWorkflow(t, root, reviewGateOnYAML)
+	seedFactoryRecord(t, root, "lane-session", "lane")
+	path := factory.RecordPath(root, "lane-session")
+	if err := os.Chmod(path, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
+
+	check := checkReviewLayerOverlap(root, false)
+
+	if check.Status != uikit.CheckOK || !strings.Contains(check.Message, "unreadable") {
+		t.Errorf("status = %v message = %q, want ok with an unreadable-records message", check.Status, check.Message)
+	}
+}
+
+// TestDoctorReviewLayerOverlap_UnidentifiablePrimary — a linked worktree whose
+// primary checkout cannot be identified leaves the primary record directory
+// unobserved, so the check must not state an absence.
+func TestDoctorReviewLayerOverlap_UnidentifiablePrimary(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("file permission denial is not enforceable here")
+	}
+	fx := newUntrackedFixture(t, reviewGateOnYAML)
+	writeReviewLayersWorkflow(t, fx.W, reviewGateOnYAML)
+	seedFactoryRecord(t, fx.P, "lane-session", "lane")
+	dotGit := filepath.Join(fx.W, ".git")
+	if err := os.Chmod(dotGit, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dotGit, 0o644) })
+
+	check := checkReviewLayerOverlap(fx.W, false)
+
+	if check.Status != uikit.CheckOK || !strings.Contains(check.Message, "unreadable") {
+		t.Errorf("status = %v message = %q, want ok with an unreadable-records message", check.Status, check.Message)
+	}
+}
+
 // TestDoctorReviewLayerOverlap_Registered — the check is reachable through the
 // grouped table (`moai doctor --check "Review Layer Overlap"`).
 func TestDoctorReviewLayerOverlap_Registered(t *testing.T) {
