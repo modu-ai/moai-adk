@@ -2,6 +2,7 @@ package template_test
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf16"
 
@@ -46,8 +47,11 @@ type skillListingEntry struct {
 // Stated limits:
 //
 //  1. An empty description makes the host use the first body line (up to 100
-//     units); chars() counts 0, an undercount. No deployed skill is affected, and
-//     a test row pins it.
+//     units), which the guard does not measure; parseSkillListingEntry rejects
+//     such a skill by name instead of undercounting it. The same parser rejects
+//     keep-chomped block scalars (|+ / >+) and non-string scalars (a float, a
+//     bool or an int) in description or when_to_use. No deployed skill uses any
+//     of the three.
 //  2. The 1,536 cap is the host default skillListingMaxDescChars; a user can
 //     raise it.
 //  3. The reading is of one Claude Code version; a later release can change the
@@ -81,13 +85,43 @@ func checkSkillListing(entries []skillListingEntry) []string {
 	return out
 }
 
+// keepChompedScalar matches a description or when_to_use key line whose block
+// scalar carries the keep chomping indicator (+), with or without an indent digit.
+var keepChompedScalar = regexp.MustCompile(`(?m)^(description|when_to_use):[ \t]*[|>](?:\+[1-9]?|[1-9]\+)[ \t]*(?:#.*)?$`)
+
 // parseSkillListingEntry reads description and when_to_use from a frontmatter
 // block. The one edit is dropping the trailing newline of the description: the
 // host trims it. when_to_use keeps its trailing newline, which the host keeps.
+// Shapes whose host count the guard cannot measure are rejected by name: a
+// keep-chomped block scalar (the host counts its trailing blank lines), a
+// description or when_to_use that is not a string, and an empty description (the
+// host then falls back to the first body line).
 func parseSkillListingEntry(name, frontmatter string) (skillListingEntry, error) {
+	if m := keepChompedScalar.FindStringSubmatch(frontmatter); m != nil {
+		return skillListingEntry{}, fmt.Errorf("skill %q: %s is a keep-chomped block scalar (|+ or >+); keep-chomped block scalars are not supported by the listing guard because their trailing blank lines are counted by the host", name, m[1])
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(frontmatter), &doc); err != nil {
+		return skillListingEntry{}, fmt.Errorf("parse frontmatter: %w", err)
+	}
+	if doc.Kind == yaml.DocumentNode && len(doc.Content) == 1 && doc.Content[0].Kind == yaml.MappingNode {
+		kv := doc.Content[0].Content
+		for i := 0; i+1 < len(kv); i += 2 {
+			key, val := kv[i].Value, kv[i+1]
+			if key != "description" && key != "when_to_use" {
+				continue
+			}
+			if tag := val.ShortTag(); val.Kind == yaml.ScalarNode && tag != "!!str" && tag != "!!null" {
+				return skillListingEntry{}, fmt.Errorf("skill %q: %s resolves to %s, not a string; quote it so the guard measures the text the host reads", name, key, tag)
+			}
+		}
+	}
 	var fm asideFrontmatter
 	if err := yaml.Unmarshal([]byte(frontmatter), &fm); err != nil {
 		return skillListingEntry{}, fmt.Errorf("parse frontmatter: %w", err)
+	}
+	if strings.TrimSpace(fm.Description) == "" {
+		return skillListingEntry{}, fmt.Errorf("skill %q: description is empty; the host then falls back to the first body line, which the guard does not measure, so the skill is rejected rather than undercounted", name)
 	}
 	return skillListingEntry{
 		Name:        name,
