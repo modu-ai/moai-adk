@@ -1,4 +1,4 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — acceptance criteria (v0.4.0, piece A)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — acceptance criteria (v0.5.0, piece A)
 
 Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testable. The GEARS requirements are `spec.md` §3. Counts: 18 requirements, 18 acceptance criteria (Tier L ceiling 25/25), one-to-one. The evidence ledger at the end holds 24 observations because several criteria span two or three packages.
 
@@ -53,22 +53,22 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 - Verify: config (N=2) `go test ./internal/config -run '^(TestLandingGateDefaultsOff|TestRunNarrowingAllowanceInternalCLIOnly)$' -count=1 -v`; factory (N=1) `go test ./internal/factory -run '^TestGateOffMatchesTodaysBehaviour$' -count=1 -v`.
 - RED-now: E-007a, E-007b. Green: M1.
 
-### AC-LVM-008 — verdict locator and equivalent HEAD (REQ-LVM-008)
+### AC-LVM-008 — verdict locator and equals-HEAD (REQ-LVM-008)
 
-- **Given** the gate on and a SPEC card whose `.moai/reports/<card-id>/` holds `sync-audit.md`, `sync-audit-iter2.md`, `sync-audit-iter10.md`, **Then** the located verdict is `-iter10` (numeric, not lexical); a card with only a `verdict.md` or no file is refused; `complete` refuses when the verdict's audited commit is an earlier commit (a) with a non-empty change since, (b) with an empty or patch-identical change since; refuses when HEAD differs from the audited commit by (c) a `progress.md` edit under the SPEC directory or (d) a path under `.moai/reports/` but another card's directory; and passes when the audited commit equals HEAD or is an ancestor differing only under `.moai/reports/<card-id>/`.
-- Verify: factorylane (N=7) `go test ./internal/factorylane -run '^(TestSyncAuditVerdictLocatorPicksNewestIteration|TestSPECCardWithoutSyncAuditVerdictRefused|TestSyncAuditVerdictMustNameEquivalentHead|TestEarlierPassNeverSubstitutes|TestOnlyEvidenceDirDiffTolerated|TestProgressBackfillAfterAuditRefuses|TestOtherReportsPathNotTolerated)$' -count=1 -v`; cli (N=1) `go test ./internal/cli -run '^TestCompleteRefusesStaleAuditHead$' -count=1 -v`.
+- **Given** the gate on and a SPEC card whose `.moai/reports/<card-id>/` holds `sync-audit.md`, `sync-audit-iter2.md`, `sync-audit-iter10.md`, **Then** the located verdict is `-iter10` (numeric, not lexical); a SPEC card with only a `verdict.md` or with no file is refused; a SPEC-less card is located at `.moai/reports/<card-id>/verdict.md` and refused when that file is absent; `complete` passes only when the verdict's audited commit equals HEAD, and refuses when it is an earlier commit (a) with a non-empty change since, (b) with an empty or patch-identical change since — including an `--allow-empty` commit or a no-change merge after the audited commit, which is the empty-diff-ancestor negative — (c) followed by a `progress.md` edit under the SPEC directory, or (d) followed by a commit that touches only `.moai/reports/<card-id>/`; there is no tolerated difference.
+- Verify: factorylane (N=8) `go test ./internal/factorylane -run '^(TestSyncAuditVerdictLocatorPicksNewestIteration|TestSPECCardWithoutSyncAuditVerdictRefused|TestSPECLessCardVerdictLocatedAtVerdictMd|TestSyncAuditVerdictMustNameCurrentHead|TestEarlierPassNeverSubstitutes|TestEmptyDiffAncestorRefused|TestProgressBackfillAfterAuditRefuses|TestEvidenceDirDiffAfterAuditRefused)$' -count=1 -v`; cli (N=1) `go test ./internal/cli -run '^TestCompleteRefusesStaleAuditHead$' -count=1 -v`.
 - RED-now: E-008a, E-008b. Green: M3.
 
-### AC-LVM-009 — receipt commit field, writer and entry points (REQ-LVM-009)
+### AC-LVM-009 — receipt commit and target fields, writer and entry points (REQ-LVM-009)
 
-- **Given** the real writer called for a tree at HEAD `H`, **Then** the receipt carries `audited_commit` `H` (full 40-hex); **Given** the tree's HEAD moved while the call ran, **Then** the field is empty; **Given** a real entry point (`codex_audit` with a mocked backend that moves HEAD during the call), **Then** the receipt carries the HEAD captured at entry or an empty field, never the later HEAD; **Given** a legacy receipt JSON without the field, **Then** it decodes as unbound and the file is byte-identical after a read-and-verify pass.
-- Verify: auditreceipt (N=3) `go test ./internal/auditreceipt -run '^(TestReceiptRoundTripsAuditedCommit|TestLegacyReceiptDecodesAsUnbound|TestExistingReceiptNeverRewritten)$' -count=1 -v`; cli (N=3) `go test ./internal/cli -run '^(TestWriterStampsAuditedCommit|TestWriterLeavesEmptyWhenHeadMoved|TestEntryPointCapturesStartHead)$' -count=1 -v`.
+- **Given** the real writer called for a tree at HEAD `H` for review target `T`, **Then** the receipt carries `audited_commit` `H` (full 40-hex) and `audit_target` `T`; **Given** the tree's HEAD moved while the call ran, **Then** `audited_commit` is empty; **Given** a real entry point (`codex_audit` with a mocked backend that moves HEAD during the call), **Then** the receipt carries the HEAD captured at entry or an empty field, never the later HEAD; **Given** a legacy receipt JSON without the fields, **Then** it decodes as unbound and the file is byte-identical after a read-and-verify pass.
+- Verify: auditreceipt (N=3) `go test ./internal/auditreceipt -run '^(TestReceiptRoundTripsAuditedCommit|TestLegacyReceiptDecodesAsUnbound|TestExistingReceiptNeverRewritten)$' -count=1 -v`; cli (N=4) `go test ./internal/cli -run '^(TestWriterStampsAuditedCommit|TestWriterLeavesEmptyWhenHeadMoved|TestEntryPointCapturesStartHead|TestWriterRecordsAuditTarget)$' -count=1 -v`.
 - RED-now: E-009a, E-009b. Green: M2.
 
 ### AC-LVM-010 — receipt binding in `complete` (REQ-LVM-010)
 
-- **Given** the gate on and a verdict citing receipts, **Then** `complete` passes when one cited receipt is readable, a codex or multi-backend audit receipt, has `tree_root` equal to the audited tree's store root, an empty unmet gate, verdict pass, and an audited commit equal to HEAD or equivalent to it (evidence-directory difference only); and each of (b) an older-HEAD receipt, (c) an absent receipt, (d) an unreadable (corrupt) receipt, (e) a legacy receipt without the field, (f) a receipt with the field empty, (g) a receipt with a non-empty unmet gate, (h) a receipt from another `tree_root` fails to qualify and refuses when it is the only citation; a verdict citing one qualifying receipt plus one failed or inconclusive extra call passes (the extra is recorded), and a verdict citing only failed calls refuses. The passing fixtures' receipts are produced by the real writer.
-- Verify: factorylane (N=10) `go test ./internal/factorylane -run '^(TestReceiptAtCurrentHeadPasses|TestReceiptAtEquivalentHeadPasses|TestReceiptFromOlderHeadRefused|TestAbsentReceiptRefused|TestUnreadableReceiptRefused|TestLegacyReceiptWithoutCommitRefused|TestReceiptWithEmptyCommitRefused|TestUnmetGateReceiptRefused|TestReceiptFromOtherTreeRootRefused|TestFailedExtraReceiptDoesNotBlockButNeverReplacesPass)$' -count=1 -v`; cli (N=2) `go test ./internal/cli -run '^(TestRealWriterReceiptSatisfiesBinding|TestRealWriterReceiptAtEquivalentHeadSatisfiesBinding)$' -count=1 -v`.
+- **Given** the gate on and a verdict citing receipts, **Then** `complete` passes when one cited receipt, looked up at the store root of the audited tree, is readable, a codex or multi-backend audit receipt, has `tree_root` equal to the normalized path of the audited tree itself, an empty unmet gate, verdict pass, and `audited_commit` equal to HEAD; and each of (b) an older-HEAD receipt, (c) an absent receipt, (d) an unreadable (corrupt) receipt, (e) a legacy receipt without the field, (f) a receipt with the field empty, (g) a receipt with a non-empty unmet gate, (h) a receipt whose `tree_root` is another tree's path for the same commit, (i) a receipt whose commit is an ancestor of HEAD with an empty diff, fails to qualify and refuses when it is the only citation; **Given** a config-orphaned card worktree `W` (no configuration of its own) whose primary checkout is `P`, **Then** a receipt filed at `P`'s store with `tree_root` = `W` qualifies for `W` (positive control; the store root is not the compared quantity) and a receipt filed there with `tree_root` = `P` for the same commit is refused for `W`; a verdict citing one qualifying receipt plus one failed or inconclusive extra call passes (the extra is recorded), and one citing only failed calls refuses. The passing fixtures' receipts are produced by the real writer.
+- Verify: factorylane (N=11) `go test ./internal/factorylane -run '^(TestReceiptAtCurrentHeadPasses|TestReceiptFromOlderHeadRefused|TestAbsentReceiptRefused|TestUnreadableReceiptRefused|TestLegacyReceiptWithoutCommitRefused|TestReceiptWithEmptyCommitRefused|TestUnmetGateReceiptRefused|TestReceiptFromOtherTreeRootRefused|TestReceiptForConfigOrphanedWorktreeQualifies|TestReceiptAtEmptyDiffAncestorRefused|TestFailedExtraReceiptDoesNotBlockButNeverReplacesPass)$' -count=1 -v`; cli (N=2) `go test ./internal/cli -run '^(TestRealWriterReceiptSatisfiesBinding|TestRealWriterReceiptForOrphanedWorktreeSatisfiesBinding)$' -count=1 -v`.
 - RED-now: E-010a, E-010b. Green: M3.
 
 ### AC-LVM-011 — lane guidance, one check per procedure step (REQ-LVM-011)
@@ -104,20 +104,20 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 
 ### AC-LVM-016 — manifest currency by re-derivation (REQ-LVM-016)
 
-- **Given** a manifest derived at an earlier HEAD that lists only package `p`, **When** a later commit changes package `q` and the lane runs only the existing `p` call at the current HEAD, **Then** every consumer refuses as the thirteenth class (stale manifest, `q` missing); **Given** a later commit that adds a reader of a changed non-Go file, **Then** the refusal names the reader; **Given** a later harmless commit that leaves the derived set unchanged, **Then** the old manifest still passes (positive control); the merge step, `complete`, condition (d) and `manifest verify` each re-derive.
-- Verify (N=4): `go test ./internal/factory -run '^(TestGateRejectsStaleManifestMissingCall|TestGateRejectsManifestWithNewReaderSince|TestAllConsumersReDeriveManifest|TestCurrentManifestSurvivesHarmlessLaterCommit)$' -count=1 -v`.
+- **Given** a manifest derived at an earlier HEAD that lists only package `p`, **When** a later commit changes package `q` and the lane runs only the existing `p` call at the current HEAD, **Then** every consumer refuses as the thirteenth class (stale manifest, `q` missing); **Given** a later commit that adds a reader of a changed non-Go file, **Then** the refusal names the reader; **Given** a later harmless commit that leaves the derived set unchanged, **Then** the stored manifest still equals the derivation (positive control for the manifest comparison only: the attempts stay bound to tree and HEAD, class 7, so the calls are re-run); **Given** a verifier process whose GOOS, GOARCH, CGO_ENABLED, GOFLAGS or tags differ from the manifest's recorded environment, **Then** the re-derivation runs under the recorded environment and no spurious class-13 refusal occurs; the merge step, `complete`, condition (d) and `manifest verify` each re-derive.
+- Verify (N=5): `go test ./internal/factory -run '^(TestGateRejectsStaleManifestMissingCall|TestGateRejectsManifestWithNewReaderSince|TestAllConsumersReDeriveManifest|TestCurrentManifestSurvivesHarmlessLaterCommit|TestReDerivationUsesManifestEnvironmentNotVerifierEnv)$' -count=1 -v`.
 - RED-now: E-016. Green: M1.
 
 ### AC-LVM-017 — gate state read from the integration branch's committed blob (REQ-LVM-017)
 
-- **Given** a temporary repository with an integration branch `main`, a card branch, and a primary checkout deliberately left detached on an older commit that never receives branch commits (the negative control; the real primary is never touched), **When** a commit on `main` sets `workflow.landing_gate.enabled: true`, **Then** the reader reports on and the landing verbs apply the gate, even though the detached primary's file says false or is absent; **When** a following commit on `main` sets it false, **Then** the reader reports off; **Given** the card branch carries its own `enabled: true`, **Then** it is ignored; **Given** an absent file or key, **Then** off; **Given** an unresolvable integration branch, a malformed YAML blob, or a non-boolean value (`"yes"`, `1`), **Then** the reader reports on, prints `gate_state_unreadable`, and appends an audit row — and a landing that satisfies the gate is still admitted (no wedge), including a card that repairs the file.
-- Verify: factory (N=8) `go test ./internal/factory -run '^(TestGateStateReadFromIntegrationBranchBlob|TestEnableCommitOnIntegrationBranchTakesEffect|TestRevertCommitOnIntegrationBranchTakesEffect|TestStalePrimaryCheckoutDoesNotAffectGateState|TestCardBranchCopyOfKeyIgnored|TestAbsentKeyReadsOff|TestUnreadableStateTreatedOnWithNotice|TestUnreadableStateStillAdmitsCompliantLanding)$' -count=1 -v`; cli (N=1) `go test ./internal/cli -run '^TestCompleteReadsGateFromIntegrationBranch$' -count=1 -v`.
+- **Given** a temporary repository with an integration branch `main`, a card worktree, and a stand-in primary checkout deliberately left detached on an older commit that never receives branch commits (the negative control; the real primary is never touched), with `CLAUDE_PROJECT_DIR` set to the stand-in and the reader run from the card worktree (the real resolution order of `integrationLockRoot()`), **When** a commit on `main` sets `workflow.landing_gate.enabled: true`, **Then** the reader reports on and the landing verbs apply the gate, even though the stand-in's file says false or is absent; **When** a following commit on `main` sets it false, **Then** the reader reports off; **Given** the card branch carries its own `enabled: true`, **Then** it is ignored; **Given** no integration branch configured (no window record, empty target), **Then** off — the project has not opted in; **Given** a branch configured whose ref does not exist, **Then** the landing is refused with the named error `gate_state_integration_branch_unresolvable`; **Given** the branch resolves and the path is absent, **Then** off, and **Given** the path is present but the read fails, the YAML is unparseable, or the value is non-boolean (`"yes"`, `1`), **Then** on with the notice `gate_state_unreadable` and an audit row — and a landing that satisfies the gate is still admitted (no deadlock for an unreadable file, including the card that repairs it). No-deadlock reasoning for the unresolvable branch: the merge step cannot run without that branch, and repairing the branch configuration or ref needs no landing.
+- Verify: factory (N=11) `go test ./internal/factory -run '^(TestGateStateReadFromIntegrationBranchBlob|TestEnableCommitOnIntegrationBranchTakesEffect|TestRevertCommitOnIntegrationBranchTakesEffect|TestStalePrimaryCheckoutDoesNotAffectGateState|TestCardBranchCopyOfKeyIgnored|TestAbsentKeyReadsOff|TestNoIntegrationBranchConfiguredReadsOff|TestConfiguredButUnresolvableBranchRefusesNamed|TestUnreadableFileTreatedOnWithNotice|TestUnreadableFileStillAdmitsCompliantLanding|TestAbsentPathVersusFailedReadDiscriminated)$' -count=1 -v`; cli (N=1) `go test ./internal/cli -run '^TestCompleteReadsGateFromIntegrationBranch$' -count=1 -v`.
 - RED-now: E-017a, E-017b. Green: M1.
 
 ### AC-LVM-018 — citation line grammar and its documentation (REQ-LVM-018)
 
-- **Given** a located SPEC-card verdict, **Then** the line `audit_receipt: rcpt-<a>,rcpt-<b>` yields two ids; and the gate-on `complete` refuses when the line is missing, appears twice, is empty, reads `none`, carries a malformed id, or cites an id absent from the store; and the sync-auditor protocol, its template mirror and the audit artifact convention each contain the phrase `audit_receipt machine line`.
-- Verify: factorylane (N=7) `go test ./internal/factorylane -run '^(TestAuditReceiptLineParsesCommaList|TestAuditReceiptLineMissingRefused|TestAuditReceiptLineNoneRefused|TestAuditReceiptLineEmptyRefused|TestAuditReceiptLineMalformedIdRefused|TestAuditReceiptLineDuplicateRefused|TestCitedIdAbsentFromStoreRefused)$' -count=1 -v`; one invocation per file (each exit 0): `grep -c -F -e "audit_receipt machine line" .claude/agents/moai/sync-auditor.md`, the same on `internal/template/templates/.claude/agents/moai/sync-auditor.md` and `.moai/docs/audit-artifact-convention.md`; `cmp .claude/agents/moai/sync-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md` (exit 0 at the pin and must stay 0: regression guard).
+- **Given** a located verdict (SPEC card or SPEC-less card), **Then** the line `audit_receipt: rcpt-<a>,rcpt-<b>` yields two ids; and the gate-on `complete` refuses when the line is missing, appears twice, is empty, reads `none`, carries a malformed id, or cites an id absent from the store, for a SPEC-less card as for a SPEC card; and the sync-auditor protocol, its template mirror and the audit artifact convention each contain the phrase `audit_receipt machine line`.
+- Verify: factorylane (N=8) `go test ./internal/factorylane -run '^(TestAuditReceiptLineParsesCommaList|TestAuditReceiptLineMissingRefused|TestAuditReceiptLineNoneRefused|TestAuditReceiptLineEmptyRefused|TestAuditReceiptLineMalformedIdRefused|TestAuditReceiptLineDuplicateRefused|TestCitedIdAbsentFromStoreRefused|TestSPECLessCardCitationLineRequired)$' -count=1 -v`; one invocation per file (each exit 0): `grep -c -F -e "audit_receipt machine line" .claude/agents/moai/sync-auditor.md`, the same on `internal/template/templates/.claude/agents/moai/sync-auditor.md` and `.moai/docs/audit-artifact-convention.md`; `cmp .claude/agents/moai/sync-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md` (exit 0 at the pin and must stay 0: regression guard).
 - RED-now: E-018 and the three phrase greps (each exit 1, recorded in the ledger note). Green: M3 (parser, tests) and M4 (documents).
 
 ## Mutant probes (verification-completeness §2)
@@ -132,8 +132,11 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 | AC-LVM-005 | verifier accepts a package that passed with zero tests | `TestGateRejectsEmptySweep` |
 | AC-LVM-016 | verifier compares attempts only, never re-derives the manifest | `TestGateRejectsStaleManifestMissingCall` |
 | AC-LVM-017 | state read from the primary checkout's working tree | `TestStalePrimaryCheckoutDoesNotAffectGateState` |
-| AC-LVM-017 | unreadable state silently reads off | `TestUnreadableStateTreatedOnWithNotice` |
-| AC-LVM-008 | binding accepts an ancestor whose diff is empty | `TestEarlierPassNeverSubstitutes` |
+| AC-LVM-017 | unreadable file silently reads off | `TestUnreadableFileTreatedOnWithNotice` |
+| AC-LVM-017 | an unconfigured project reads on, or a missing configured branch reads off | `TestNoIntegrationBranchConfiguredReadsOff`, `TestConfiguredButUnresolvableBranchRefusesNamed` |
+| AC-LVM-016 | re-derivation under the verifier's own environment | `TestReDerivationUsesManifestEnvironmentNotVerifierEnv` |
+| AC-LVM-008 | binding accepts an ancestor whose diff is empty or limited to the evidence directory | `TestEarlierPassNeverSubstitutes`, `TestEmptyDiffAncestorRefused`, `TestEvidenceDirDiffAfterAuditRefused` |
+| AC-LVM-010 | receipt `tree_root` compared with the store root instead of the audited tree's path (refuses every orphaned-worktree receipt) | `TestReceiptForConfigOrphanedWorktreeQualifies`, `TestReceiptFromOtherTreeRootRefused` |
 | AC-LVM-010 | binding matches a receipt by card id or time instead of the audited commit | `TestReceiptFromOlderHeadRefused`, `TestLegacyReceiptWithoutCommitRefused` |
 | AC-LVM-010 | binding applies "every cited receipt" so a verdict with no citation passes vacuously | `TestAuditReceiptLineMissingRefused`, `TestAuditReceiptLineNoneRefused` |
 | AC-LVM-012 | a branch commit enables the key and a later one removes it | the empty `git log <S0>^..<S4> -- workflow.yaml` |
@@ -242,11 +245,11 @@ names_found: 0 (required: 1)
 ```
 #### E-008a
 ```
-command: grep -rhoE "^func (TestSyncAuditVerdictLocatorPicksNewestIteration|TestSPECCardWithoutSyncAuditVerdictRefused|TestSyncAuditVerdictMustNameEquivalentHead|TestEarlierPassNeverSubstitutes|TestOnlyEvidenceDirDiffTolerated|TestProgressBackfillAfterAuditRefuses|TestOtherReportsPathNotTolerated)\(" internal/factorylane --include='*_test.go'
+command: grep -rhoE "^func (TestSyncAuditVerdictLocatorPicksNewestIteration|TestSPECCardWithoutSyncAuditVerdictRefused|TestSPECLessCardVerdictLocatedAtVerdictMd|TestSyncAuditVerdictMustNameCurrentHead|TestEarlierPassNeverSubstitutes|TestEmptyDiffAncestorRefused|TestProgressBackfillAfterAuditRefuses|TestEvidenceDirDiffAfterAuditRefused)\(" internal/factorylane --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 7)
+names_found: 0 (required: 8)
 ```
 #### E-008b
 ```
@@ -266,23 +269,23 @@ names_found: 0 (required: 3)
 ```
 #### E-009b
 ```
-command: grep -rhoE "^func (TestWriterStampsAuditedCommit|TestWriterLeavesEmptyWhenHeadMoved|TestEntryPointCapturesStartHead)\(" internal/cli --include='*_test.go'
+command: grep -rhoE "^func (TestWriterStampsAuditedCommit|TestWriterLeavesEmptyWhenHeadMoved|TestEntryPointCapturesStartHead|TestWriterRecordsAuditTarget)\(" internal/cli --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 3)
+names_found: 0 (required: 4)
 ```
 #### E-010a
 ```
-command: grep -rhoE "^func (TestReceiptAtCurrentHeadPasses|TestReceiptAtEquivalentHeadPasses|TestReceiptFromOlderHeadRefused|TestAbsentReceiptRefused|TestUnreadableReceiptRefused|TestLegacyReceiptWithoutCommitRefused|TestReceiptWithEmptyCommitRefused|TestUnmetGateReceiptRefused|TestReceiptFromOtherTreeRootRefused|TestFailedExtraReceiptDoesNotBlockButNeverReplacesPass)\(" internal/factorylane --include='*_test.go'
+command: grep -rhoE "^func (TestReceiptAtCurrentHeadPasses|TestReceiptFromOlderHeadRefused|TestAbsentReceiptRefused|TestUnreadableReceiptRefused|TestLegacyReceiptWithoutCommitRefused|TestReceiptWithEmptyCommitRefused|TestUnmetGateReceiptRefused|TestReceiptFromOtherTreeRootRefused|TestReceiptForConfigOrphanedWorktreeQualifies|TestReceiptAtEmptyDiffAncestorRefused|TestFailedExtraReceiptDoesNotBlockButNeverReplacesPass)\(" internal/factorylane --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 10)
+names_found: 0 (required: 11)
 ```
 #### E-010b
 ```
-command: grep -rhoE "^func (TestRealWriterReceiptSatisfiesBinding|TestRealWriterReceiptAtEquivalentHeadSatisfiesBinding)\(" internal/cli --include='*_test.go'
+command: grep -rhoE "^func (TestRealWriterReceiptSatisfiesBinding|TestRealWriterReceiptForOrphanedWorktreeSatisfiesBinding)\(" internal/cli --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
@@ -322,19 +325,19 @@ names_found: 0 (required: 4)
 ```
 #### E-016
 ```
-command: grep -rhoE "^func (TestGateRejectsStaleManifestMissingCall|TestGateRejectsManifestWithNewReaderSince|TestAllConsumersReDeriveManifest|TestCurrentManifestSurvivesHarmlessLaterCommit)\(" internal/factory --include='*_test.go'
+command: grep -rhoE "^func (TestGateRejectsStaleManifestMissingCall|TestGateRejectsManifestWithNewReaderSince|TestAllConsumersReDeriveManifest|TestCurrentManifestSurvivesHarmlessLaterCommit|TestReDerivationUsesManifestEnvironmentNotVerifierEnv)\(" internal/factory --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 4)
+names_found: 0 (required: 5)
 ```
 #### E-017a
 ```
-command: grep -rhoE "^func (TestGateStateReadFromIntegrationBranchBlob|TestEnableCommitOnIntegrationBranchTakesEffect|TestRevertCommitOnIntegrationBranchTakesEffect|TestStalePrimaryCheckoutDoesNotAffectGateState|TestCardBranchCopyOfKeyIgnored|TestAbsentKeyReadsOff|TestUnreadableStateTreatedOnWithNotice|TestUnreadableStateStillAdmitsCompliantLanding)\(" internal/factory --include='*_test.go'
+command: grep -rhoE "^func (TestGateStateReadFromIntegrationBranchBlob|TestEnableCommitOnIntegrationBranchTakesEffect|TestRevertCommitOnIntegrationBranchTakesEffect|TestStalePrimaryCheckoutDoesNotAffectGateState|TestCardBranchCopyOfKeyIgnored|TestAbsentKeyReadsOff|TestNoIntegrationBranchConfiguredReadsOff|TestConfiguredButUnresolvableBranchRefusesNamed|TestUnreadableFileTreatedOnWithNotice|TestUnreadableFileStillAdmitsCompliantLanding|TestAbsentPathVersusFailedReadDiscriminated)\(" internal/factory --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 8)
+names_found: 0 (required: 11)
 ```
 #### E-017b
 ```
@@ -346,11 +349,11 @@ names_found: 0 (required: 1)
 ```
 #### E-018
 ```
-command: grep -rhoE "^func (TestAuditReceiptLineParsesCommaList|TestAuditReceiptLineMissingRefused|TestAuditReceiptLineNoneRefused|TestAuditReceiptLineEmptyRefused|TestAuditReceiptLineMalformedIdRefused|TestAuditReceiptLineDuplicateRefused|TestCitedIdAbsentFromStoreRefused)\(" internal/factorylane --include='*_test.go'
+command: grep -rhoE "^func (TestAuditReceiptLineParsesCommaList|TestAuditReceiptLineMissingRefused|TestAuditReceiptLineNoneRefused|TestAuditReceiptLineEmptyRefused|TestAuditReceiptLineMalformedIdRefused|TestAuditReceiptLineDuplicateRefused|TestCitedIdAbsentFromStoreRefused|TestSPECLessCardCitationLineRequired)\(" internal/factorylane --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 7)
+names_found: 0 (required: 8)
 ```
 
 Non-Go cells, exit codes observed at the pin: the 18 `grep -q -F -e "<phrase>" <rule or mirror>` calls of AC-LVM-011 → 1 each; `grep -q -F -e "audit_receipt machine line"` on `.claude/agents/moai/sync-auditor.md`, its template mirror and `.moai/docs/audit-artifact-convention.md` → 1 each; `git grep -n -F -e landing_gate HEAD -- .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml` → 1; `git log --format=%H -1 --grep='^feat(SPEC-LANDING-VERIFY-MERGE-SPLIT-001): M1 '` → 0 with empty stdout; the M0 subject → 0, empty; `git ls-files --error-unmatch .moai/specs/SPEC-LANDING-VERIFY-MERGE-SPLIT-001/evidence/m0-baseline.md` → 1. Regression guards (green now): `cmp` of the factory-dispatch-mechanics rule and mirror → 0; `cmp` of the sync-auditor protocol and mirror → 0.

@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -40,6 +40,12 @@ Effect on earlier rows: the order inside piece A recorded at Q7 is refined by P2
 > t1872 piece A, N2 (plan audit iter2 FAIL 0.80). Policy: the gate's enable key is read from the integration branch's committed content (the blob at <integration-branch>:<config path>, the branch named by the common-root integration config — consistent with t1834 F2), not from any working tree. Reason: the primary checkout is detached and stale (478285ab4c) and moving it is the operator's keep-set (branch guard), and binding the consumer to .claude/worktrees/main ties correctness to one local layout. With this source, an enable or revert commit on main takes effect when it lands, which an AC must observe. Options (a) keep the primary checkout on main and (b) read .claude/worktrees/main are rejected for those reasons. iter3 is the last Tier L round; a FAIL there goes to hold + shrink proposal (rule C 9e76).
 
 Effect on earlier text: the "integration root's configuration" wording of version 0.3.0 (REQ-LVM-007) is replaced by the committed blob of the integration branch (REQ-LVM-017).
+
+## Plan-audit iteration 3 ruling, verbatim (board 5d4d)
+
+> t1872 piece A, plan audit iter3 (last Tier L round) FAIL 0.84. Rule C (9e76): one correction + one delta audit. Choice: option 1 (one anchor-delta commit for D1 and D2, absorbing D3-D6 and the minor D7-D9; REQ/AC ids unchanged), not the A1/A2 split. D1: 'equivalent' means equal to HEAD, one definition (consistent with 0577 P3). D2: look the receipt up at its store root and compare the audited tree path and identity, with a config-orphan worktree fixture. D3 policy: no integration branch configured -> the project has not opted in -> gate OFF; an integration branch configured but unresolvable -> the landing is refused with a named error (fail-closed). This does not deadlock: the merge step cannot run without that branch, and recovery is repairing the branch configuration or ref, which needs no landing. A FAIL on the delta goes to hold + the A1/A2 split as the shrink.
+
+Effect on earlier rows: Q22 below is replaced (exact equality, no tolerance); Q20 is narrowed by the D3 policy.
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -225,15 +231,13 @@ Default: SPEC cards locate the newest `sync-audit*.md` under `.moai/reports/<car
 Alternate: parse the `AUDIT-VERDICT:` final-message line or free prose
 Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
 
-### Q20: What is the gate state when the key cannot be read?
+### Q20: What is the gate state when the key or the branch cannot be read?
 
 Label: FOUNDER
-Class: implementation-level
-Authority anchor: none (delegated by board 470c: "specify")
-Why unresolved: a gate that refuses landings when ON must neither turn OFF silently nor wedge every landing.
-Default: an absent file or key, or an explicit false, reads OFF; an unresolvable integration branch, a failed read, an unparseable file or a non-boolean value reads ON with a named notice `gate_state_unreadable` and an audit row (rule: the option that refuses strictly more, without a wedge — ON still admits a landing that satisfies the gate, including the card that repairs the file)
-Alternate: treat unreadable as OFF, or refuse every landing
-Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+Class: product-level
+Authority anchor: none in the committed tree (source: board 5d4d, refining board 470c)
+Why unresolved: a gate that refuses landings when on must neither turn off silently nor wedge every landing.
+Operator verdict: DECIDED (board 5d4d, D3): no integration branch configured → the project has not opted in → the gate is OFF; a branch configured but unresolvable → the landing is refused with the named error `gate_state_integration_branch_unresolvable` (fail-closed; not a deadlock, since the merge step cannot run without that branch and repair needs no landing). Stated by the lane within that ruling, implementation-level: with the branch resolved, an absent path or key or an explicit false reads off, and a failed read of a present path, an unparseable file or a non-boolean value reads on with the notice `gate_state_unreadable` (still admitting a compliant landing, including the repairing card).
 
 ### Q21: Which cited receipts must pass?
 
@@ -241,17 +245,36 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: none
 Why unresolved: the auditor protocol cites every receipt id received, including failed extra calls; a universal rule would fail verdicts the existing guard accepts.
-Default: at least one cited receipt must qualify (readable, codex or multi-backend tool, unmet-gate empty, codex verdict pass, audited tree matching, audited commit equivalent to HEAD); a failed or inconclusive extra call is recorded, does not block, and never replaces the pass (rule: the option that preserves current behaviour — the existing guard accepts one qualifying receipt)
+Default: at least one cited receipt must qualify (readable, codex or multi-backend tool, unmet-gate empty, codex verdict pass, audited tree matching, audited commit equal to HEAD); a failed or inconclusive extra call is recorded, does not block, and never replaces the pass (rule: the option that preserves current behaviour — the existing guard accepts one qualifying receipt)
 Alternate: every cited receipt must pass
 Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
 
-### Q22: What does "the audited commit is the current HEAD" mean when bookkeeping follows?
+### Q22: What does "the audited commit is the current HEAD" mean?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: none in the committed tree (sources: boards 2c51, 0577 P3, 5d4d)
+Why unresolved: version 0.4.0 tolerated an ancestor whose diff is confined to `.moai/reports/<card-id>/`; its predicate also admitted an empty-diff ancestor that REQ-LVM-008 refuses.
+Operator verdict: DECIDED (board 5d4d, D1): "equivalent" means equal to HEAD, one definition for the verdict and the receipt; no tolerance for an empty-diff, patch-identical or evidence-directory ancestor.
+
+## Rows Q23-Q24 (plan-audit iteration 3, in-card judgments)
+
+### Q23: Is the review target recorded in new receipts, and does it gate qualification?
 
 Label: FOUNDER
 Class: implementation-level
-Authority anchor: none (sources: boards 2c51, 0577 P3)
-Why unresolved: REQ-LVM-008 tolerated an evidence-directory difference while REQ-LVM-010 demanded exact equality, so the tolerated case could never pass.
-Default: one predicate for verdict and receipt — the audited commit is equivalent to HEAD when it equals HEAD, or is an ancestor of HEAD and the diff between them lists only paths under `.moai/reports/<card-id>/`; no other path is exempt, a progress or SPEC backfill after the audited SHA refuses (rule: the option that preserves current behaviour — the allowance the SPEC-less path already applies)
-Alternate: exact equality only
-Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+Authority anchor: none
+Why unresolved: the receipt binds a commit but not the audited scope; a partial-scope audit stamped with the current HEAD would read as the audit of that HEAD.
+Default: record `audit_target` additively and do not gate on it; name the partial-scope case as accepted residual R5 (rule: the smaller user-visible surface — the legitimate full-scope target values are not enumerated at plan time, and a guessed gate could refuse valid audits)
+Alternate: qualify only a base-branch review target
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:20:00Z manager-spec+lane t1872
 
+### Q24: Does the receipt binding apply to SPEC-less cards?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (source: board 2c51 binds `complete` without a card-kind limit)
+Why unresolved: the SPEC-less readiness path binds `audited_sha` only, and iteration 3 found the scope undefined.
+Default: yes — the SPEC-less verdict is `.moai/reports/<card-id>/verdict.md`, and the citation line and the receipt binding apply to it as to a SPEC card (rule: the option that preserves the operator's ruling — Q13 has no card-kind exception)
+Alternate: SPEC cards only
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:20:00Z manager-spec+lane t1872
