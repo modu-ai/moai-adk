@@ -46,3 +46,9 @@ Add a top-level `release_gate:` list to `.github/required-checks.yml` (the SSoT)
 - `gofmt -l internal/config` -> empty; `go vet ./internal/config` -> exit 0
 
 Gaps: the script's own fail-closed `die` branches (file missing, zero names) were not driven end to end; only the awk yielding 0 lines on a block-less file was probed. The internal/cli tests that mention release.sh were not run (they reference the script for unrelated reasons). Full repository suite not run (scoped by instruction).
+
+## Fail-closed evidence (follow-up, test internal/template/release_ci_gate_ssot_test.go)
+
+`TestReleaseScriptCIGateSSoTFailsClosed` runs a COPY of the real script from `<tmp>/scripts/release.sh` with `<tmp>/.github/required-checks.yml` set per case (`--dry-run`, stub gh): SSoT absent, no release_gate block, empty release_gate block (all exit 1 with `[FAIL] CI gate: ...` and no check-runs call), and a control with a copy of the real SSoT (exit 0, `CI gate:     verified`).
+
+Sensitivity: first draft matched on message text only and PASSED with both `die` guards neutered to `log_warn` (the text still printed, exit 1 came from a later failure) - a wrong-reason pass. Fixed by requiring the `[FAIL]` prefix and no `check-runs` gh call. Re-run with both guards neutered in the real script (temporary, restored with `git checkout -- scripts/release.sh`): the three refusal rows FAIL ("a refused gate must not read the check runs; gh calls: [api --paginate ... check-runs ...]"), control PASS. Unmutated: all four PASS; `git diff -- scripts/release.sh` empty.
