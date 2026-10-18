@@ -1,0 +1,75 @@
+# Decision index: SPEC-CARD-DURABLE-IDENTITY-001
+
+Decisions surfaced while assembling the SPEC that the operator did not settle in an interview (the card is an operator-delegated design; no interview ran). Every row is labelled by the routing rule: no committed artifact decides these questions under identical conditions, no operator setting or constitution clause covers them, and none needs data that does not exist yet. The authority register holds committed artifacts only; the leader's design document and the card text are machine-local and are not cited as authority. What the card text itself prescribes (row preservation, retirement as migration, old builds refusing writes, rollback preserving new grants, the journal, the flag default off) is not a row: it is the scope, and spec.md § B records it.
+
+The Default of each row is the published rule's selection, applied in order: the option that preserves current behavior; else the option whose undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible surface. A Default is a policy application, not a recommendation. No row is product-level: every behavior these rows change sits behind `workflow.card_identity.enabled`, which ships `false`, so no shipped command's default behavior, feature or template default changes.
+
+### Q1: Is the identity layout selected by the database or by the config key at every open?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: two placements satisfy the requirements. The tracked `workflow.yaml` is copied into every worktree and can differ between trees, while the factory database is shared by all of them, so a key consulted at every open could refuse a lane whose tree carries another value. No committed artifact decides between them.
+Class: implementation-level
+Default: the recorded schema version carries the layout and the key only permits the cutover verb (rule: smaller user-visible surface — one refusal on one verb, against a refusal path at every open of every tree; the first two clauses of the rule do not rank the options, since both leave current behavior unchanged and both revert in one revert)
+Alternate: the key is read at every open and a mismatch with the database's layout refuses the open
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q2: What is an attempt?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the design document says re-grants create attempts and the card says every historical `(run_id, card_id)` row is an attempt; the two readings differ when a lease expires and is granted again inside one run, which happens often. No committed artifact decides the granularity.
+Class: implementation-level
+Default: an attempt is one run-bound engagement of a card, and a re-grant inside it is a transition recorded in the event log (rule: preserves current behavior — today a re-grant writes no new row and the `card.transition` event carries the before and after)
+Alternate: every lease grant opens an attempt, so each expiry-and-regrant cycle seals one
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q3: What becomes of a non-terminal card whose run is already retired when the cutover runs?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: such a card needs a run to be worked on, and the cutover cannot know which. It can leave the card in project scope (no open membership) for a later verb to join, or demand a destination for each at cutover time. Measured on the copy of the live database: 93 card ids are in that position.
+Class: implementation-level
+Default: project scope; the card keeps every field and a later `assign` or `next` joins it to a run (rule: smaller user-visible surface — the cutover takes no destination input)
+Alternate: the cutover refuses until each such card, or all of them through one flag, is given a destination run
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q4: Who starts the cutover?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the card requires a quiet window even behind a flag; whether the first open with the key true performs the migration or an explicit verb does is not stated.
+Class: implementation-level
+Default: an explicit verb, `moai factory identity cutover` (rule: preserves current behavior — opening the database never migrates its layout, and an older build's open of an unmigrated database is unchanged)
+Alternate: the first open of the factory by a build with the key true performs the cutover
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q5: Where does the operation journal live?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the existing failed-write log is a file beside the database so that it survives a database failure; a journal inside the database commits with the grant it records. The card asks for a durable journal or outbox and does not choose.
+Class: implementation-level
+Default: a table in the factory database (rule: smaller user-visible surface — one store and no new file format to read or clean)
+Alternate: a file beside the database for the kinds whose effect precedes the factory change, and a row in the database only for `card_grant`
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q6: Are leader approval receipts carried across a migration?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: a receipt binds a run and a version, and a migration changes both. Carrying it means re-stamping a receipt the leader issued, which the leader-approval code does only at the done edges (`leader_approval.go`, the approval re-bind inside the transition).
+Class: implementation-level
+Default: not carried; the leader re-approves after a migration (rule: preserves current behavior — a receipt is valid only for the run and version it names and is stale once either moves)
+Alternate: the migration re-stamps the receipt to the destination run and the new version in the same transaction
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
+
+### Q7: What counts as conflicting active owners that block the cutover?
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the card says conflicting active owners block migration with a report. "Active" can mean the run is active or the owner label is non-empty on a non-terminal row. Measured on the copy of the live database: no card id has non-terminal rows in two active runs, and 25 card ids have two or more distinct owner labels across non-terminal rows (18 only in retired runs, 7 with one row in the active run).
+Class: implementation-level
+Default: non-terminal rows of one card id in two or more runs whose status is `active` block, and cannot be overridden; non-terminal rows in retired runs need an explicit resolution but do not block (rule: smaller user-visible surface — 0 card ids blocked on the measured copy against 25 for the alternate, so the operator is not sent to abandon rows of runs that no longer exist before a cutover; the first two clauses of the rule do not rank the options)
+Alternate: any two distinct owner labels among a card id's non-terminal rows block, whatever the run status
+Operator verdict: DEFAULT-APPLIED 2026-10-18T00:53:21Z manager-spec (lane t1842, plan close)
