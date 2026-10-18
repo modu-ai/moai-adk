@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.8.0 adds the ruling on Q27 and Q28 (board `d-20261018T171932Z-6404`, `6404`) and corrects the recorded time of rows Q15-Q17, Q19, Q21, Q23, Q24, Q25 and Q26 to the commit time of the commit that last set each verdict. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.9.0 adds the plan-audit A2 round 1 record and the MP-1 id-gap ruling (board `d-20261018T173648Z-9b0e`, `9b0e`), row Q30, and corrects the recorded time of rows Q2-Q6 (to `21b62f7dcc`, 15:04:14Z) and Q28 (to `9e2b56196f`, 17:18:08Z), the commits that set them. Version 0.8.0 adds the ruling on Q27 and Q28 (board `d-20261018T171932Z-6404`, `6404`) and corrects the recorded time of rows Q15-Q17, Q19, Q21, Q23, Q24, Q25 and Q26 to the commit time of the commit that last set each verdict. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -63,6 +63,12 @@ Effect on earlier rows: rows about the gate core — Q4 (package coverage observ
 
 Effect on earlier rows: Q7 and the Q27 row below are settled by this ruling (the key is off in this SPEC and on only after both pieces); Q28 keeps its default and gains the A1 inheritance. The recorded time of rows Q25 and Q26 was wrong (written before the clock was read) and is corrected to the commit time of `9713b6757d`, which introduced them.
 
+## Plan-audit A2 round 1 and the MP-1 ruling, verbatim (board 9b0e)
+
+Evidence (local, untracked, not authority): `.moai/reports/t1872/plan-audit-a2.md` (FAIL 0.81 at `edee2983cc`; codex required fail, receipts `rcpt-f90c0a8ce10bb3170ace76fa`, `rcpt-a30ddabf48c08a0ccf4cc5e5`).
+
+> t1872 A2 plan audit cycle 1/3 FAIL 0.81 (.moai/reports/t1872/plan-audit-a2.md; codex required fail rcpt-a30ddabf48c08a0ccf4cc5e5). MP-1 ruling: record the id-gap exemption, do not renumber. The A2 SPEC keeps REQ-LVM-007, 008, 009, 010, 012, 017, 018; the absent ids (001-006, 011, 013-016) moved to card t1875 (A1, SPEC-LANDING-COMPLETENESS-GATE-001) under split d20e and are listed in spec.md §7's hand-over table. Reason: ids are stable and are never renumbered or deleted; renumbering would rewrite the A1 hand-over, the SPEC, and every AC reference. The exemption is written in the SPEC as an explicit clause naming the gap, its reason, and this record. For MP-9 at acceptance.md:16 the characterization test lands in its own commit before the factoryCompleteCard edit (rule 2.3: the commit graph is the only ordering witness), or the AC is rewritten to what the graph can show.
+
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
 ### Q1: Is the work one SPEC, and how large?
@@ -83,7 +89,7 @@ Authority anchor: none
 Why unresolved: no committed rule states the shipped default of a new landing key.
 Default: the key ships false in the distributed template (rule: the option that preserves current behaviour); this repository's own configuration is switched on at the last milestone of A, which Q7 decides
 Alternate: ship the key true everywhere
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:03:32Z manager-spec+lane t1872 (template default false; the in-repo switch is Q7)
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:04:14Z manager-spec+lane t1872 (template default false; the in-repo switch is Q7)
 
 ### Q3: Is "ready to land" a derived view or a stored marker?
 
@@ -93,7 +99,7 @@ Authority anchor: none
 Why unresolved: the card asks for a ready state; the form is open.
 Default: not built in A (rule: the smaller user-visible surface); the follow-up piece C is to be derived at read time with no stored marker
 Alternate: build a stored marker now
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:03:32Z manager-spec+lane t1872 (OUT-OF-SCOPE for A per board 9dbe; recorded for C)
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:04:14Z manager-spec+lane t1872 (OUT-OF-SCOPE for A per board 9dbe; recorded for C)
 
 ### Q4: Where does package coverage come from?
 
@@ -103,7 +109,7 @@ Authority anchor: none
 Why unresolved: coverage could be lane-declared or observed from the test stream.
 Default: observed from the `go test -json` terminal events against a `go list`-resolved expected set (rule: the smaller user-visible surface — no new declaration for lanes to keep)
 Alternate: lane-declared package lists
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:03:32Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:04:14Z manager-spec+lane t1872
 
 ### Q5: Does a test-only change still pull in the changed package's importers?
 
@@ -113,7 +119,7 @@ Authority anchor: none (the b2cd text and the t1709 reading are board rulings)
 Why unresolved: the standing scope reads "packages the card changed plus the packages importing them" with no test-only exclusion.
 Default: importers are always included (rule: the option that preserves current behaviour — the conservative resolution applied at t1709); consistent with the ruling's "no test exclusion"
 Alternate: exclude importers when only `_test.go` files changed
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:03:32Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:04:14Z manager-spec+lane t1872
 
 ### Q6: Is the reuse decision by content equality of the scope or by path-matching?
 
@@ -123,7 +129,7 @@ Authority anchor: none
 Why unresolved: only relevant to the reuse relaxation.
 Default: not built (rule: the option that preserves current behaviour)
 Alternate: build either predicate
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:03:32Z manager-spec+lane t1872 (OUT-OF-SCOPE for A: reuse is not built, Q8)
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:04:14Z manager-spec+lane t1872 (OUT-OF-SCOPE for A: reuse is not built, Q8)
 
 ## Rows Q7-Q13 (product-level; answered by the operator through the leader)
 
@@ -337,7 +343,7 @@ Why unresolved: the binding can be applied by `moai factory complete` alone, or 
 Default: `complete` only (rule: the smaller user-visible surface; it also leaves the github-flow readiness caller, the merge step and `merge.go` untouched, so this SPEC edits one hunk that piece A1 also edits, the call in `factoryCompleteCard`)
 Alternate: `complete` plus condition (a) through an optional hook field of the triple input (the `VerifyRemeasure` precedent), left unwired by the github-flow caller; or, further, the merge step's landing check
 Consequence recorded (design R6): a lane that skips `complete` is not bound by the audit binding, and `factory merge ready` can read ready where `complete` then refuses.
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:15:00Z manager-spec+lane t1872; ruling added by board 6404 (2026-10-18T17:19:32Z): the binding is applied in `complete` only; the direct merge path binding (`factorylane/merge.go:174` and `:245`, `integration_merge_step.go:321-325`) is in piece A1's scope (spec §7 row 12), and R6 is an accepted residual for A2 because the key stays off until A1 lands.
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:18:08Z manager-spec+lane t1872; ruling added by board 6404 (2026-10-18T17:19:32Z): the binding is applied in `complete` only; the direct merge path binding (`factorylane/merge.go:174` and `:245`, `integration_merge_step.go:321-325`) is in piece A1's scope (spec §7 row 12), and R6 is an accepted residual for A2 because the key stays off until A1 lands.
 
 ### Q29: Is piece A2 independent of piece A1 in code?
 
@@ -346,3 +352,11 @@ Class: implementation-level
 Authority anchor: none in the committed tree (source: board d20e asked the independence to be proved by code; the evidence is `research.md` §12)
 Why unresolved: the split is sound only if no A2 requirement needs an A1 type, behaviour or verb, and if A2's `complete` behaves coherently while A1's manifest does not exist.
 Operator verdict: DECIDED (board d20e: A2 stays on t1872 and lands first; A1 is blocked until t1872 is merged-local). Planner finding, not a ruling: no A2 requirement needs an A1 type, behaviour or verb (`research.md` §12, observed file and line); four places named an A1 concept and were adjusted (REQ-LVM-007 narrowing allowance, REQ-LVM-012 manifest wording, REQ-LVM-017 consumers and `manifest verify`, and the old REQ-LVM-011, whose audit-side half is attached to REQ-LVM-012 and REQ-LVM-018); with the gate on and no manifest in existence, `complete` runs today's checks plus the audit binding.
+
+### Q30: Are the absent requirement ids a defect or a documented exemption?
+
+Label: FOUNDER
+Class: process
+Authority anchor: none in the committed tree (source: board 9b0e)
+Why unresolved: strict id contiguity (plan-audit MP-1) conflicts with stable ids across the split d20e; renumbering would rewrite the A1 hand-off table, this SPEC and every criterion reference.
+Operator verdict: DECIDED (board 9b0e, 2026-10-18T17:36:48Z, leader under operator delegation): the gap is an explicit exemption, not renumbered; the clause is in spec.md §3 (REQ id gap waiver) naming the gap ids, the reason (split d20e) and this record.
