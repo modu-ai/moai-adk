@@ -2104,6 +2104,135 @@ rc=1
 5. **N23 (plan.md M8 이 AC-OWR-15 (v) 도달 단언을 빠뜨림) 처분: 닫음.** 시험 절 (v) 이 실행 1 의 `skipped == false`, 새 `manifest.prior.json`, 제거 목록이 비어 있지 않음 (제거 후보 셋과 정확히 같음), 통제 실행이 같은 단계에 닿고 아무것도 제거하지 않음을 단언하고, 변이 `MutantSkippedRunIsCaught`, `MutantControlRunThatRemovedFilesIsCaught` 가 이를 붉게 만든다.
 6. N17 (어느 해시를 비교하는지 밝히지 않음) 처분은 M9 와 함께 마지막에 정리한다. 이 시험의 트리 비교는 내용만 본다 (경로, 바이트, 모드, 디렉터리 존재; 디렉터리 mtime 은 보지 않음) — 시험 파일 머리 주석에도 적었다.
 
+#### M9 — AC-OWR-17 `TestRepeatedUpdateIsIdempotent`
+
+**커밋 A `5614767764`** (`internal/cli/migrate_ownership_recovery_test.go` 한 파일, 운영 코드 변경 없음; AC-OWR-18 은 같은 파일에 뒤따르는 별도 커밋). 작업 트리 깨끗, 부하 평균 24.69 30.50 32.95.
+
+**도착 셀 — 이 기준도 도착 때 초록이다 (RED-now 없음).** acceptance.md 의 RED 이유 (「잔존 행이 없어 단언 불가, 배포 단계가 매 실행 `DeployedAt` 을 갱신하는 구현이 들어오면 붉어진다」) 는 M1b 와 M3 가 이미 닫았다: `DeployedAt` 은 `Version` 이 바뀔 때만 움직이고 (`recordManifestDeployedVersion`), 잔존 행은 M3 가 만든다. 그래서 regression-guard 로 도착하고 붉음은 변이에서 관측한다. 판정 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRepeatedUpdateIsIdempotent$' -count=1 -v`, 종료 코드 0, 결과 줄과 시험 로그 줄만 (원문 순서):
+
+```text
+=== RUN   TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 2 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 41 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+=== RUN   TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+=== RUN   TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 8, run 2 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 8, run 3 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 8, run 4 lists 8; 0 row(s) differ between them (reason refinement only)
+=== RUN   TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 8, run 2 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 8, run 3 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 8, run 4 lists 8; 0 row(s) differ between them (reason refinement only)
+--- PASS: TestRepeatedUpdateIsIdempotent (25.03s)
+    --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories (6.37s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/ReachedReconciliation (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/ForcedRepeats (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/ManifestBytes (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/RemainingRows (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/RowOrder (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/DistinctRunDirectories/PlainRepeatSkips (0.00s)
+    --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory (6.58s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/ReachedReconciliation (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/ForcedRepeats (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/ManifestBytes (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/RemainingRows (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/RowOrder (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/ManyUnregisteredCopies/SharedRunDirectory/PlainRepeatSkips (0.00s)
+    --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories (8.77s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/ReachedReconciliation (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/ForcedRepeats (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/ManifestBytes (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/RemainingRows (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/RowOrder (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/DistinctRunDirectories/PlainRepeatSkips (0.00s)
+    --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory (3.30s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/ReachedReconciliation (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/ForcedRepeats (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/ManifestBytes (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/RemainingRows (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/RowOrder (0.00s)
+        --- PASS: TestRepeatedUpdateIsIdempotent/Mixed/SharedRunDirectory/PlainRepeatSkips (0.00s)
+PASS
+```
+
+시험의 구성: 실행 1 은 일반, 실행 2·3 은 `--force`, 그리고 **실행 4 (`--force`) 를 하나 더 둔다** — 아래 「관측 1」 때문에 정상 상태를 증명하려고 더한 것이며 기준 본문의 셋을 줄이지 않는다. 그 뒤 일반 재실행 둘. 픽스처는 둘 (313개 미등록 복사본 + 제거 대상 하나, 그리고 섞인 픽스처: 등록 managed 다섯, 사용자 작성 하나, 미등록 다섯), 시계 분기는 둘 (구별되는 실행 디렉터리: 이전 실행이 쓴 모든 시계 이름의 초가 지나길 폴링으로 기다림; 공유 실행 디렉터리: 이전 실행의 백업 내용을 다음 실행 디렉터리에 합치는 쓰기 대역으로 같은 초의 최종 상태를 재현). 네 조합이 모두 같은 단언을 돈다. 규칙 7: 센 실행은 (i) 건너뛰지 않음 (ii) 그 실행 직후 읽은 새 `manifest.prior.json` 이 실행이 시작한 매니페스트와 같음 (iii) 잔존 행이 양수인 것만이고, 센 수가 몬 수와 같아야 한다. 일반 재실행의 「아무것도 쓰지 않음」 은 헬퍼의 mtime 창 (`began = now-1s`) 이 직전 실행의 사본을 새것으로 읽을 수 있어 쓰지 않고, 재실행 전후 `.moai-backups` 목록이 같음으로 단언한다.
+
+**비교하는 해시는 내용만이다 (부채 N17 처분).** 경로, 바이트, 모드, 디렉터리 존재. 디렉터리 mtime 과 시계 값은 들어 있지 않다. 두 다른 실행을 비교할 때 매니페스트의 `deployed_at` 값만 가린다. 실행마다 제 몫을 더하는 시계 파생 위치는 빼고 비교한다: `.moai-backups/`, `.moai/backups/` (네임스페이스 백업), `.moai/archive/files/update-migration/`, `.moai/logs/`, `.moai/state/`. 기준 본문의 제외 목록은 앞의 것, 로그, 상태 셋뿐이어서 둘이 빠져 있다 — 이 시험이 처음 측정했다 (M8 기록의 관측 1 과 같은 두 위치).
+
+**연속 5회 (같은 트리 `5614767764`, 종료 코드는 각 실행에서 읽음)**
+
+```text
+TestRepeatedUpdateIsIdempotent run 1 rc=0 top-pass=1 all-pass=41 fail=0 skip=0 
+TestRepeatedUpdateIsIdempotent run 2 rc=0 top-pass=1 all-pass=41 fail=0 skip=0 
+TestRepeatedUpdateIsIdempotent run 3 rc=0 top-pass=1 all-pass=41 fail=0 skip=0 
+TestRepeatedUpdateIsIdempotent run 4 rc=0 top-pass=1 all-pass=41 fail=0 skip=0 
+TestRepeatedUpdateIsIdempotent run 5 rc=0 top-pass=1 all-pass=41 fail=0 skip=0 
+```
+
+**시험 안의 변이 (순수 단언, `Mixed/DistinctRunDirectories` 아래 `Mutant*IsCaught` 열둘 모두 통과):** 매 실행 `DeployedAt` 갱신, 행이 맵 순서, 행 하나 빠짐, 행 하나의 이유 바뀜, 실행 2 건너뜀, 실행 3 이 사본을 안 씀, 실행 3 의 사본이 시작 매니페스트가 아님, 실행 3 에서 트리가 바뀜, 일반 재실행이 조정함, 일반 재실행이 트리를 다시 씀, 일반 재실행이 실행 백업을 씀, 일반 재실행끼리 출력이 다름.
+
+**운영 코드에 넣은 임시 변이 넷 (커밋 `5614767764` 기준, 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL`, 위 시험 전체를 돌린 출력의 줄 추림)**
+
+- **R1** `recordManifestDeployedVersion` 이 `Version` 이 같아도 `DeployedAt` 을 매번 갱신한다 (구별되는 디렉터리 분기가 초를 갈라 놓으므로 관측된다; 공유 분기만으로는 같은 초에 떨어지면 못 본다 — 그래서 두 분기가 있다):
+
+```text
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 2 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 41 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:513: (manifest) the manifest bytes changed between run 2 and run 3
+    migrate_ownership_recovery_test.go:513: (manifest) the manifest bytes changed between run 3 and run 4
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 8, run 2 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 8, run 3 lists 8; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 8, run 4 lists 8; 0 row(s) differ between them (reason refinement only)
+```
+
+- **R2** `sortRemainingRows` 가 아무것도 하지 않는다 (행이 루트 순서로 나옴):
+
+```text
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 2 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 41 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:513: (order) run 1 lists its rows out of path order
+    migrate_ownership_recovery_test.go:513: (order) run 2 lists its rows out of path order
+    migrate_ownership_recovery_test.go:513: (order) run 3 lists its rows out of path order
+    migrate_ownership_recovery_test.go:513: (order) run 4 lists its rows out of path order
+```
+
+- **R3** `versionMatchSkipsSync` 가 항상 거짓이다 (같은 버전의 일반 재실행이 건너뛰지 않음):
+
+```text
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 2 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 41 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:513: (plain) plain re-run 1 was not skipped
+    migrate_ownership_recovery_test.go:513: (plain) plain re-run 1 produced a remaining list
+    migrate_ownership_recovery_test.go:513: (plain) plain re-run 1 changed the run backups: [20261018_192840/.moai-run]
+    migrate_ownership_recovery_test.go:513: (plain) plain re-run 2 was not skipped
+    migrate_ownership_recovery_test.go:513: (plain) plain re-run 2 produced a remaining list
+```
+
+- **R4** 마이그레이션이 매 실행 `.moai/idempotence-probe` 를 새 값으로 쓴다:
+
+```text
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 2 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 41 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 3 lists 315, run 4 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:513: (tree) runs 2 and 3 left different trees: [.moai/idempotence-probe]
+    migrate_ownership_recovery_test.go:513: (tree) runs 3 and 4 left different trees: [.moai/idempotence-probe]
+    migrate_ownership_recovery_test.go:501: remaining rows: run 1 lists 315, run 2 lists 315; 0 row(s) differ between them (reason refinement only)
+    migrate_ownership_recovery_test.go:501: remaining rows: run 2 lists 315, run 3 lists 315; 0 row(s) differ between them (reason refinement only)
+```
+
+**관측 1 — REQ-OWR-012 의 「동일한 잔존 목록」 은 313개 픽스처의 앞 실행에서 이유 열에서만 어긋난다 (공개된 한계, 구현을 바꾸지 않음).** 시험 로그가 센 결과: 313개 픽스처, 구별되는 디렉터리 — 실행 1 → 2 에서 2행, 실행 2 → 3 에서 41행의 이유가 `no-provenance-record` 에서 `evidence-incomplete:original-deployed-path` 로 바뀌고, 실행 3 → 4 에서는 0행이다. 같은 픽스처의 공유 디렉터리 분기와 섞인 픽스처의 두 분기에서는 어느 쌍도 0행이다. 원인: design.md D-2 는 다른 키 아래 같은 해시의 기록이 보존된 이전 세대에 있으면 이유를 더 구체적인 `evidence-incomplete:original-deployed-path` 로 가른다. 보존 세대는 실행마다 하나씩 늘고, 실행 3 이 읽는 세대에는 첫 배포가 끝난 뒤의 매니페스트 (실행 2 의 시작 매니페스트) 가 처음 들어와 41행이 더 가려진다. 시작 매니페스트가 안정되고 나면 (실행 3 → 4) 목록은 이유까지 같다. 파일 목록, 분류 (class), 처분 (모두 보존) 은 모든 쌍에서 같다. 이 정제를 없애는 것은 AC-OWR-14 (`RenderedByTheUpdateFlow` 가 정제를 단언한다) 와 design.md D-2 를 바꾸는 일이라 이 마일스톤의 「M1-M5 가 남긴 차이만 고친다」 범위 밖이다. 시험은 이렇게 단언한다: 모든 쌍에서 같은 파일·같은 분류, 이유는 같거나 이 한 가지 정제 (`no-provenance-record` → `evidence-incomplete:original-deployed-path`) 뿐이고, 마지막 쌍 (정상 상태) 은 완전히 같아야 하며, 정제가 일어날 수 없는 경우 (섞인 픽스처, 공유 디렉터리) 는 모든 쌍이 완전히 같아야 한다. 기준 본문의 「셋 모두 같다」 를 그대로 단언하면 313개 픽스처에서 붉다 — 이것이 이 한계의 직접 증거이다. 처분: 공개된 한계 (disclosed-limit), 리더에게 보고.
+
+**구현 커밋 C 없음.** 구현이 남은 차이가 없다 (관측 1 은 의도된 설계 D-2 의 결과이고 SPEC 본문 수정 사안이다).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
