@@ -257,26 +257,34 @@ else
     # would leave the gate demanding nothing, so either one is a refusal.
     CI_CHECKS_FILE="$SCRIPT_DIR/../.github/required-checks.yml"
     [[ -f "$CI_CHECKS_FILE" ]] || die "CI gate: the required-checks file $CI_CHECKS_FILE is missing, so the checks to demand cannot be read. Restore it, or pass --skip-ci-check to override (recorded in the release summary)."
-    # A malformed list (trailing comment, single quote, duplicate name or key)
-    # is refused here with its own message instead of surfacing later as a
-    # misleading "not reported". The awk prints the reason and exits 1.
+    # A malformed list (empty or space-padded entry, trailing comment, single
+    # quote, unrecognized line, duplicate name or key) is refused here with its
+    # own message instead of surfacing later as a misleading "not reported", and
+    # no entry is dropped without a decision. The awk prints the reason and exits 1.
     CI_GATE_NAMES="$(awk '
         { sub(/\r$/, "") }
         /^release_gate:/ { if (seen_key++) { print "duplicate release_gate key"; exit 1 } inblock = 1; next }
         inblock && /^[^ \t#]/ { inblock = 0 }
-        inblock && /^[ \t]+-[ \t]/ {
-            sub(/^[ \t]+-[ \t]+/, ""); sub(/[ \t]+$/, "")
+        inblock && /^[ \t]*(#.*)?$/ { next }
+        inblock && /^[ \t]+-([ \t]|$)/ {
+            sub(/^[ \t]+-[ \t]*/, ""); sub(/[ \t]+$/, "")
             if ($0 ~ /[ \t]#/) { print "entry with a trailing comment: " $0; exit 1 }
             if (substr($0, 1, 1) == "\047") { print "single-quoted entry (use plain or double quotes): " $0; exit 1 }
-            if ($0 ~ /^".*"$/) $0 = substr($0, 2, length($0) - 2)
+            if ($0 ~ /^".*"$/ && length($0) >= 2) {
+                $0 = substr($0, 2, length($0) - 2)
+                if ($0 ~ /^[ \t]|[ \t]$/ && $0 !~ /^[ \t]*$/) { print "space-padded name: \"" $0 "\""; exit 1 }
+            }
+            if ($0 ~ /^[ \t]*$/) { print "empty entry"; exit 1 }
             if (names[$0]++) { print "duplicate name: " $0; exit 1 }
             print
-        }' "$CI_CHECKS_FILE")" \
+            next
+        }
+        inblock { print "unrecognized line: " $0; exit 1 }' "$CI_CHECKS_FILE")" \
         || die "CI gate: malformed release_gate in $CI_CHECKS_FILE: $CI_GATE_NAMES. Fix the list there, or pass --skip-ci-check to override (recorded in the release summary)."
+    [[ -n "$CI_GATE_NAMES" ]] || die "CI gate: no release_gate check names could be read from $CI_CHECKS_FILE, so the gate would demand nothing. Fix the release_gate list there, or pass --skip-ci-check to override (recorded in the release summary)."
     while IFS= read -r check_name; do
-        [[ -n "$check_name" ]] && CI_REQUIRED_CHECKS+=("$check_name")
+        CI_REQUIRED_CHECKS+=("$check_name")
     done <<< "$CI_GATE_NAMES"
-    (( ${#CI_REQUIRED_CHECKS[@]} > 0 )) || die "CI gate: no release_gate check names could be read from $CI_CHECKS_FILE, so the gate would demand nothing. Fix the release_gate list there, or pass --skip-ci-check to override (recorded in the release summary)."
 
     # One line per check run: "<name><TAB><status><TAB><conclusion><TAB><app slug>".
     CI_RUNS="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \

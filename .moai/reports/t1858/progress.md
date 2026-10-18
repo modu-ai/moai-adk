@@ -83,3 +83,12 @@ Defects from `.moai/reports/t1858/sync-audit.md`: F1 BLOCKING (gate only demande
 - F3: comment and die text now point at the `release_gate` list of `.github/required-checks.yml`; no test asserted the old phrase. CHANGELOG sentence extended to mention malformed lists and the pin.
 - Not touched: `Release Verify (...)` legs, `TestNoHardcodedContexts`, `required_checks_test.go`.
 - Limit: the script cannot know the floor without naming the checks, so the floor is the CI-required Go test plus the real-SSoT script tests, not the script.
+
+## Sync-audit repair r2 (run phase, cycle_type=tdd; base 16ba65ac9)
+
+Defects from iteration 2 of `.moai/reports/t1858/sync-audit.md`: F5 SHOULD-FIX (`.github/required-checks.yml` absent from the `go_code` filter, so an SSoT-only PR gets the skip-marker as `Test (ubuntu-latest)` and the pin tests never run), F6 SHOULD-FIX (empty `release_gate` entries silently dropped).
+
+- F5: `'.github/required-checks.yml'` added to `go_code` in `.github/test-input-filters.yml` with a comment naming the readers; the same path added to `requiredGoCodeRoots` in `internal/template/test_input_filter_parity_test.go`. RED (entry in the guard list, absent from the filter): `go_code list lost required root ".github/required-checks.yml"` (`TestTestInputFiltersCoversGoTestInputs` FAIL). GREEN after the filter edit. Sensitivity: filter entry removed again (backup, `cmp` restored) -> same FAIL.
+- F6: awk in `scripts/release.sh` now refuses an empty entry (`-`, `- `, `- ""`, `- "  "`), a space-padded quoted name, and any non-comment, non-entry line inside the block (`-Lint`), each as `[FAIL] CI gate: malformed release_gate in <file>: <reason>`; the `[[ -n "$check_name" ]] &&` skip is gone (an empty awk result dies before the loop, so the loop cannot add an empty element). `- name`, `- "name"`, tab indentation, CRLF, comment and blank lines inside the block still pass. Seven rows added to `TestReleaseScriptCIGateSSoTFailsClosed` (six refusals plus a tab-indent pass). RED before the script change: the six refusal rows FAIL. Sensitivity (script mutated one guard at a time, backup restored, `cmp` identical): empty-entry guard off -> 4 rows FAIL; space-padded off -> 1 row; unrecognized-line off -> 1 row.
+- CHANGELOG sentence extended to list the new refusals. Not touched: `Release Verify (...)` legs, `TestNoHardcodedContexts`, `required_checks_test.go`.
+- Not addressed (auditor classed unrealistic): a `---` document marker mid-list still ends the block.
