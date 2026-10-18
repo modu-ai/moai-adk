@@ -41,7 +41,7 @@ type InitOptions struct {
 	NonInteractive    bool     // If true, skip wizard and use defaults/flags.
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
-	ReportFormat      string   // Report output format: "html+md", "md", or "artifact" (empty → html+md default).
+	ReportFormat      string   // Report output format: "html+md", "md", or "artifact" (empty → artifact default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	// (The former project-mode field was removed by SPEC-INIT-UPDATE-CONSISTENCY-001
@@ -253,9 +253,9 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	// persisted to llm.profile at init.go (REQ-MPM-016).
 
 	// Step 3c: Persist the resolved report format to report.yaml. This runs on
-	// BOTH the deployer path (overriding the template default html+md with the
+	// BOTH the deployer path (overriding the template default artifact with the
 	// wizard/flag-selected value) and the fallback path (which does not emit
-	// report.yaml otherwise). Empty resolves to html+md.
+	// report.yaml otherwise). Empty resolves to artifact.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

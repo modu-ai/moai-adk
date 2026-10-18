@@ -660,14 +660,20 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		permMode = "bypassPermissions"
 		legacyBypass = true
 	}
+	// The permission decision follows the provider the command selected as well as
+	// the llm.yaml re-read: applyGLMMode exports the GLM environment before it
+	// persists team_mode, and a failed save leaves llm.yaml reading as Claude.
+	permGLM := glmBackend || os.Getenv(config.EnvMoaiLaunchProvider) == "glm"
 	// A profile that never chose a mode launches Claude sessions in auto (card
 	// t1866, operator decision 2026-10-18). Applied after the overrides above so
 	// an explicit DO_CLAUDE_* choice still wins.
 	if permMode == "" {
-		permMode = launchDefaultPermissionMode(glmBackend)
+		permMode = launchDefaultPermissionMode(permGLM)
 	}
-	syncPermMode := launchDefaultPermissionMode(glmBackend)
-	if prefs.PermissionMode != "" || legacyBypass {
+	syncPermMode := launchDefaultPermissionMode(permGLM)
+	// A mode chosen outside the profile (settings.local.json DO_CLAUDE_*) is not
+	// the launcher default: keep the pre-t1866 sync (the override is removed).
+	if prefs.PermissionMode != "" || legacyBypass || settings["DO_CLAUDE_PERMISSION_MODE"] != "" {
 		syncPermMode = prefs.PermissionMode
 	}
 	// A stored or settings-chosen auto is dropped under a GLM backend: the GLM
@@ -675,11 +681,11 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// and the profile wizard now pre-selects auto, so more profiles hold it. An
 	// explicit `--permission-mode auto` typed on the command line is not touched
 	// here — it keeps its own refusal.
-	if glmBackend && permMode == "auto" {
+	if permGLM && permMode == "auto" {
 		fmt.Fprintln(os.Stderr, "Note: permission mode auto is not available on the GLM backend; launching without it.")
 		permMode = ""
 	}
-	if glmBackend && syncPermMode == "auto" {
+	if permGLM && syncPermMode == "auto" {
 		syncPermMode = ""
 	}
 	cont := settings["DO_CLAUDE_CONTINUE"] == "true"
@@ -739,6 +745,14 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	if !cont && settingsLocalPath != "" {
 		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, syncPermMode); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
+		}
+	}
+	// A resume skips the sync above, so a launcher-written auto left by an earlier
+	// Claude launch would survive into a GLM session. Remove exactly that value;
+	// any other defaultMode, and every Claude-backend resume, is left alone.
+	if cont && permGLM && settingsLocalPath != "" {
+		if err := dropAutoDefaultModeFromSettingsLocal(settingsLocalPath); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to clear stale auto permission mode: %v\n", err)
 		}
 	}
 
@@ -1166,6 +1180,31 @@ func launchDefaultPermissionMode(glmBackend bool) string {
 		return ""
 	}
 	return "auto"
+}
+
+// dropAutoDefaultModeFromSettingsLocal removes permissions.defaultMode from
+// settings.local.json only when it equals "auto" (the GLM launcher refuses auto,
+// card t1866). A missing file, an absent key and every other value are left
+// untouched, and the file is not rewritten when nothing changes.
+func dropAutoDefaultModeFromSettingsLocal(settingsPath string) error {
+	m, err := readSettingsMap(settingsPath)
+	if err != nil {
+		return err
+	}
+	perms, _ := m["permissions"].(map[string]any)
+	if mode, _ := perms["defaultMode"].(string); mode != "auto" {
+		return nil
+	}
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		perms, _ := m["permissions"].(map[string]any)
+		if mode, _ := perms["defaultMode"].(string); mode != "auto" {
+			return
+		}
+		delete(perms, "defaultMode")
+		if len(perms) == 0 {
+			delete(m, "permissions")
+		}
+	})
 }
 
 // syncPermissionModeToSettingsLocal persists the profile permission mode
