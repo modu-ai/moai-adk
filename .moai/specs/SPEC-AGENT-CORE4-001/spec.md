@@ -194,6 +194,10 @@ generated agents (the carried four); the remaining agents join when piece 2 abso
 + | `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output rendered from the agent source | Every local build. **Read-only — does not regenerate** |
 ```
 
+### §C.3 Threat model of the generated-copy writer and checker
+
+The writer `Update` and the checker `Check` run in a trusted developer checkout (`make agents-emit`, `make agents-emit-check`, `make build`); a concurrent attacker with write access to the working tree is not assumed. Under REQ-AC4-008 (the read-only check fails naming the file and leaves every rendered file unmodified; no requirement states the symlink rules separately and none is added), the writer therefore guarantees only (a) an up-front `Lstat` refusal of symlinked or non-regular targets and of symlinked or non-directory parents, (b) a temp file in the same directory followed by a rename, and (c) preservation of the existing target's file mode (new files 0644), and `Check` reports nested orphans and symlink entries. It does not claim resistance to a time-of-check/time-of-use race between the link check and the rename: a symlink swap in the rename window, replacement of the temp file before the rename, and stale `.agents-emit-*` detection are deferred to a hardening follow-up candidate recorded in `progress.md` §E.2 (board `d-20261018T095117Z-28d1`).
+
 ## §D Out of Scope — follow-on pieces
 
 ### Out of Scope — piece 2 (retirement, guards, replacement paths)
