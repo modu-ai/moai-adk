@@ -133,6 +133,7 @@ func newDecisionReadCmd() *cobra.Command {
 			_, _ = fmt.Fprintln(out, res.StatusLine())
 			for _, r := range res.Records {
 				_, _ = fmt.Fprintln(out, r.Line())
+				_, _ = fmt.Fprintf(out, "  digest: %s\n", r.Digest())
 				_, _ = fmt.Fprintf(out, "  body: %s\n", r.Body)
 				for _, kv := range [][2]string{{"predicate", r.Predicate}, {"supersedes", r.Supersedes}, {"resolves", r.Resolves}, {"release", r.Release}, {"cards", strings.Join(r.Cards, ",")}} {
 					if kv[1] != "" {

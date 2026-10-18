@@ -232,9 +232,10 @@ func TestRecord_DigestPinsTheStoredBoardLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second := validRuling("card:t1")
-	second.Body = "a different body"
-	if _, err := Append(board, second, AppendOptions{}); err != nil {
+	secondRec := validRuling("card:t1")
+	secondRec.Body = "a different body"
+	second, err := Append(board, secondRec, AppendOptions{})
+	if err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(board)
