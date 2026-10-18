@@ -207,3 +207,50 @@ Leader-ordered repair (normal round; tree writes resumed):
    updates land in one milestone).
 3. manager-spec commits the repair.
 4. One delta audit with codex required, through a fresh bc8c proxy brief.
+
+## Repair revision 6 (2026-10-19, manager-spec, leader ruling on rcpt-54ca7c42603570ff69d6589e)
+
+Authority: the leader's repair ruling of 10-19 (decision-index.md Q11) on the proxy codex leg (standing rule bc8c, receipt `rcpt-54ca7c42603570ff69d6589e`, bound to HEAD `0fa5dc2892`; findings verbatim in `plan-audit-delta.md` § "Codex leg (proxy, 2026-10-19)"). Scope: the two blocking findings P1-P2 plus the optional P3 wording fix, exactly as ordered — spec.md, plan.md, acceptance.md, decision-index.md revised in place; no code, template, or non-SPEC file touched; no `plan-audit*.md` written (the next delta audit with codex required is the auditor's, through a fresh bc8c proxy brief). Start state: HEAD `01e876706f`, branch `WT-todo-unify`, clean (`git status --short` empty before editing). This section is committed by the revision-6 commit itself; the commit sha is read from the branch log after it lands (a commit cannot carry its own sha — the same convention as the revision-4 and revision-5 records, which record their start HEAD).
+
+### Where P1 landed (file:line)
+
+- spec.md:94 (REQ-TU-011): the grep-0 target restated as "nothing outside one named preservation exception"; the exception written as the file:literal pair `internal/factory/gtd_engage.go` × `"moai:gtd-card:"` — the card-UUID hash namespace (`gtdCardUUID` derives every persisted card UUID from `sha256("moai:gtd-card:" + itemID)`), which the `moai:gtd` alternative matches and REQ-TU-012 freezes — minimal (this file+literal only; any other matching line in the file, and any other file, stays residual), named as an exception with its reason, not a pattern carve-out; "grep-0 means zero residual hits outside the named exception".
+- acceptance.md:63 (AC-TU-010): the completion grep gains exactly one path exclusion (`':!internal/factory/gtd_engage.go'`) plus the excepted-file row — a read of the excepted file finds no matching line other than the namespace literal itself; the two clauses together are the mechanical form of "zero hits outside the named exception". The RED-now cell keeps the original four-exclusion command's measured 397/101 and names the exception's line (`gtd_engage.go:28`) as one of them.
+- acceptance.md:89-91 (AC-TU-011, extended — no new AC id): the byte-invariance row — given the `gtd_engage.go` source, the namespace input of `gtdCardUUID` is the byte literal `moai:gtd-card:` and the hash input is that literal concatenated with the raw item id; test `TestGTDCardUUIDNamespaceInvariant` (`internal/factory`, created at M5, class G) asserts literal + construction with a known-answer UUID vector; the mutant row names `moai:todo-card:`, a reordered/interpolated construction, or any edit to the literal as failing — even where the diff pin is blind because a later change moved the file.
+
+### Where P2 landed (file:line)
+
+- plan.md:111-117 (M6): title gains "rule paths"; RED adds the rewritten pin test's red reason (the rule sources still carry the old path) and the two document tests rewritten first to read `workflows/todo.md` (their current fixture paths read `workflows/gtd.md` — `todo_skill_doc_test.go:22-23`, `todo_skill_doc_parity_test.go:24-25`); GREEN carries the five rule sources' `paths:` key updates (measured at HEAD: line 3 of `cross-session-messaging.md`, `factory-dispatch.md`, `factory-dispatch-cards.md`, `factory-dispatch-detail.md`, `factory-dispatch-gates.md`, template source + deployed mirror each, glob-shape-preserving segment swap) plus the `factory-dispatch-mechanics.md:199` prose cross-reference, and states the two document tests' post-milestone form; Files grows to about 24 items with the M6b split seam named (rule keys + mechanics + doc-test rewrites; neither M7 nor M8 starts before both land).
+- plan.md:122 (M7 GREEN): the path-string class loses its rule-source members (M6 updated them).
+- plan.md:129 (M8a): the batch's rule-source entry narrowed to rule prose — the `paths:` keys are absent from this batch, already new-path from M6.
+- plan.md:60 (pre-flight item 7) and plan.md:128 (M8 unit/size): the exception file `internal/factory/gtd_engage.go` is named as excluded from the M8 input set (preserved Go source, one line, no milestone edits it).
+- plan.md:166 (§H risk row) and acceptance.md:109 (§3 edge case): the "M6/M8 together" wording replaced — rename + consumer edits + rule `paths:` keys in M6; residual path strings in test prose/policies/codemaps in M8's sweep.
+
+### P3: taken
+
+Contained wording fix, as the ruling allowed. plan.md:131 (M8 Mechanism): "a green `TestNoResidualGTDSpelling`" after M8 replaced by "zero replacements and no hit outside the always-loaded pair" — M8 closes with script idempotence observed and the residual test recorded RED (the two `AGENTS.md` files keep it red until M9); the full-residual GREEN is M9's completion condition (AC-TU-010 already stated the flip story; M9's guards already own the green). No expansion beyond that one sentence.
+
+### decision-index.md and HISTORY
+
+- decision-index.md:3 (intro names Q11), :17 (revision-6 paragraph: the two findings, the ordered repair, round accounting — the FAIL consumed round 1 of the 94a7 counter, this repair round is round 2, a third FAIL holds), :154-165 (Q11 row: decided_by leader, evidence the receipt + the re-measured `gtd_engage.go:28` line + the pin-test mechanics, essence P1 exemption + P2 M6/M8a reordering, alternates rejected, Operator verdict `LEADER-DECIDED 2026-10-19`).
+- spec.md:4 (`version: "0.6.0"`) and spec.md:37 (HISTORY 0.6.0 row). `status:` untouched (`draft` as found); `updated:` already 2026-10-19, unchanged.
+
+### Identifier outcome
+
+No identifier added, removed, or renumbered: 15 REQ (spec.md) and 15 AC (acceptance.md), verified below; the P1 criteria extend AC-TU-010 and AC-TU-011 in place (no new id, so no 1:1 disturbance: AC-TU-010→REQ-TU-011, AC-TU-011→REQ-TU-012 unchanged). No machine-key-shaped line added anywhere (the receipt id appears only inside prose and `evidence_refs=`).
+
+### Verification this round (commands run, output seen; tree HEAD `01e876706f`, working tree = the revision)
+
+- P1 premise re-measured by this session, not cited from the proxy: `sed -n '20,34p' internal/factory/gtd_engage.go` shows `gtdCardUUID` with `sum := sha256.Sum256([]byte("moai:gtd-card:" + itemID))`; `git grep -n -E 'moai gtd|/moai:gtd|moai:gtd|gtd\.md' -- internal/factory/gtd_engage.go` prints `internal/factory/gtd_engage.go:28: sum := sha256.Sum256([]byte("moai:gtd-card:" + itemID))`, exit 0 — one hit, the line the exception shields.
+- P2 premise re-measured: `git grep -n 'workflows/gtd.md' -- .claude/rules internal/template/templates/.claude/rules` prints the `paths:` key at line 3 of the five rule documents (deployed + template source = 10 lines) plus the `factory-dispatch-mechanics.md:199` prose line; `internal/template/workflow_rule_paths_pinned_test.go:24-58` read — the test compares the embedded tree's `paths:` value against the recorded expectation at `:31`, so a rewritten expectation cannot pass without the same-milestone rule edit; the two M6 doc tests' fixture paths confirmed at `todo_skill_doc_test.go:22-23` and `todo_skill_doc_parity_test.go:24-25`. (The dispatch said "six rule files' `paths:` keys"; the tree measures five `paths:` keys + the sixth file's prose cross-reference — both are named in M6, the census stated as measured.)
+- Lint (installed binary, both modes, on the files as committed): `moai spec lint SPEC-TODO-UNIFY-001` printed one INFO row — `INFO OwnershipTransitionUnmeasured ... commit 63829fe20a0f13fa93e974fe9331bb455ccb1009 (docs(t1641): SPEC-TODO-UNIFY-001 plan artifacts (card t1641)) has no Authored-By-Agent trailer — ownership transition unmeasured` — and `0 error(s), 0 warning(s)`, `lint-exit=0`; `moai spec lint --strict SPEC-TODO-UNIFY-001` printed the same INFO and `0 error(s), 0 warning(s)`, `strict-exit=0`.
+- Marker and counts: `git grep -c 'NEEDS CLARIFICATION' -- .moai/specs/SPEC-TODO-UNIFY-001` printed nothing, exit 1; `grep -c 'lane-judgment, leader-confirmed 10-18 (conditional)' decision-index.md` printed 1, and the line's md5 is identical at HEAD and in the working tree (`dadaf7ac41457efd0ace3ff487698a1e` both); `grep -c -E '^\*\*REQ-TU-[0-9]+ ' spec.md` printed 15; `grep -c -E '^\*\*AC-TU-[0-9]+ ' acceptance.md` printed 15.
+- Scope: `git status --short` before this record listed exactly the four SPEC artifacts; no file outside `.moai/specs/SPEC-TODO-UNIFY-001/` and this record is staged.
+
+### Gaps (not observed)
+
+- No `go test` was run (card constraint): `TestGTDCardUUIDNamespaceInvariant` is a named criterion with a mutant, not an observation; its RED/GREEN evidence is M5's to record. Every claim about the pin-test mechanics is a static reading of `workflow_rule_paths_pinned_test.go`, not an executed selection.
+- Lint is attributed to the installed ancestor build (research.md §R.1 lineage), per the dispatch's rule — the SPEC's DoD re-lints from a tree build at run time.
+- The next delta audit (codex required, fresh bc8c proxy brief) is not this session's to run; no `plan-audit*.md` was written.
+- design.md §D.3's substitution class table was not edited (not in this delegation's four-file write set); plan.md M7 now states the rule-source members' removal from the path-string class, and design.md's table remains read-through-the-plan text until its owner revises it.
+- The dispatch's "six rule files" vs the measured five-`paths:`-keys census is recorded above, not reconciled by editing the plan to a bare "six" — the plan names the measured set.
