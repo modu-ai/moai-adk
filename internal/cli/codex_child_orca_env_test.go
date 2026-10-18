@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -131,20 +132,156 @@ func TestCodexAuditMCPListDropsOrcaPaneEnv(t *testing.T) {
 	assertT1869Env(t, readT1869Dump(t, dump))
 }
 
+// unsetenvForTest removes key for the test and restores its previous value AND
+// presence afterwards. t.Setenv(key, "") would leave it set to empty, which is a
+// different state from unset.
+func unsetenvForTest(t *testing.T, key string) {
+	t.Helper()
+	prev, had := os.LookupEnv(key)
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if had {
+			_ = os.Setenv(key, prev)
+		} else {
+			_ = os.Unsetenv(key)
+		}
+	})
+}
+
+// t1869 production semantics under test: an ordinary codex child inherits the
+// parent's audit-leg marker as it is (nothing added, nothing removed); a leg
+// child gets MOAI_CODEX_AUDIT_LEG=1 appended last, so it wins over any ambient value.
 func TestCodexChildCmdDropsOrcaPaneEnvOrdinaryAndLeg(t *testing.T) {
+	for _, amb := range []struct {
+		name    string
+		set     bool
+		value   string
+		ordWant string // marker value an ordinary child must show ("" = absent)
+	}{
+		{"ambient-unset", false, "", ""},
+		{"ambient-1", true, "1", "1"},
+		{"ambient-0", true, "0", "0"},
+	} {
+		t.Run(amb.name, func(t *testing.T) {
+			unsetenvForTest(t, codexAuditLegEnv)
+			if amb.set {
+				t.Setenv(codexAuditLegEnv, amb.value)
+			}
+			setT1869FakeEnv(t)
+
+			ord := t1869EnvMap(codexChildCmd(context.Background(), "codex", []string{"app-server"}).Env)
+			assertT1869Env(t, ord)
+			v, present := ord[codexAuditLegEnv]
+			if amb.ordWant == "" && present {
+				t.Errorf("an ordinary child with no ambient marker must not carry one, got %q", v)
+			}
+			if amb.ordWant != "" && v != amb.ordWant {
+				t.Errorf("an ordinary child must inherit the ambient marker %q, got %q", amb.ordWant, v)
+			}
+
+			legEnv := codexChildCmd(withCodexAuditLeg(context.Background()), "codex", []string{"app-server"}).Env
+			assertT1869Env(t, t1869EnvMap(legEnv))
+			last := ""
+			for _, e := range legEnv {
+				if k, val, _ := strings.Cut(e, "="); k == codexAuditLegEnv {
+					last = val
+				}
+			}
+			if last != "1" {
+				t.Errorf("a leg child must end with %s=1 (last entry wins), got %q", codexAuditLegEnv, last)
+			}
+		})
+	}
+}
+
+// t1869Expected is the independent statement of the contract: env minus the
+// six pane keys and the ORCA_AGENT_HOOK_ family, nothing else.
+func t1869Expected(env []string) []string {
+	var out []string
+	for _, e := range env {
+		k, _, _ := strings.Cut(e, "=")
+		skip := strings.HasPrefix(k, "ORCA_AGENT_HOOK_")
+		for _, d := range t1869Dropped {
+			if k == d {
+				skip = true
+			}
+		}
+		if !skip {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func assertT1869SameSet(t *testing.T, got, want []string) {
+	t.Helper()
+	g, w := append([]string(nil), got...), append([]string(nil), want...)
+	slices.Sort(g)
+	slices.Sort(w)
+	if !slices.Equal(g, w) {
+		t.Fatalf("child env differs from parent env minus exactly the dropped keys:\n got %d entries, want %d\n only in got: %v\n only in want: %v",
+			len(g), len(w), t1869Diff(g, w), t1869Diff(w, g))
+	}
+}
+
+func t1869Diff(a, b []string) []string {
+	var d []string
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			k, _, _ := strings.Cut(x, "=")
+			d = append(d, k) // key only: never print values
+		}
+	}
+	return d
+}
+
+// An ordinary child's env is exactly the parent env minus the dropped keys.
+func TestCodexChildCmdEnvIsParentMinusDroppedKeys(t *testing.T) {
 	setT1869FakeEnv(t)
-	ordinary := codexChildCmd(context.Background(), "codex", []string{"app-server"})
-	got := t1869EnvMap(ordinary.Env)
-	assertT1869Env(t, got)
-	if _, ok := got[codexAuditLegEnv]; ok {
-		t.Fatalf("an ordinary child must not carry the audit-leg marker")
+	got := codexChildCmd(context.Background(), "codex", []string{"app-server"}).Env
+	assertT1869SameSet(t, got, t1869Expected(os.Environ()))
+}
+
+// The app-server spawn path (review gate, codex_task, MCP codex tools).
+func TestCodexSessionRunnerStartDropsOrcaPaneEnv(t *testing.T) {
+	setT1869FakeEnv(t)
+	bin, dump := t1869FakeCodex(t, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	conn, err := (realCodexSessionRunner{}).start(ctx, bin, nil)
+	if err != nil {
+		t.Fatalf("start: %v", err)
 	}
-	leg := codexChildCmd(withCodexAuditLeg(context.Background()), "codex", []string{"app-server"})
-	lgot := t1869EnvMap(leg.Env)
-	assertT1869Env(t, lgot)
-	if lgot[codexAuditLegEnv] != "1" {
-		t.Fatalf("the audit-leg marker must survive, got %q", lgot[codexAuditLegEnv])
+	for {
+		if _, ok := conn.recv(); !ok { // EOF: the fake exited after dumping its env
+			break
+		}
 	}
+	_ = conn.close()
+	assertT1869Env(t, readT1869Dump(t, dump))
+}
+
+// The claude audit / participation child env builder (leader ruling, same cause
+// family). Fixed synthetic input keeps it hermetic.
+func TestScrubClaudeAuditEnvDropsOnlyOrcaPaneKeysAdditionally(t *testing.T) {
+	in := []string{"PATH=/bin", "HOME=/h", "T1869_SENTINEL=s", "ORCA_APP_VERSION=1", "ANTHROPIC_API_KEY=k"}
+	want := []string{"PATH=/bin", "HOME=/h", "T1869_SENTINEL=s", "ORCA_APP_VERSION=1"} // ANTHROPIC_* is the existing scrub
+	for _, k := range t1869Dropped {
+		in = append(in, k+"=v")
+	}
+	assertT1869SameSet(t, scrubClaudeAuditEnv(in), want)
+}
+
+func TestClaudeAuditChildDropsOrcaPaneEnv(t *testing.T) {
+	setT1869FakeEnv(t)
+	bin, dump := t1869FakeCodex(t, "")
+	env := scrubClaudeAuditEnv(os.Environ())
+	if _, _, err := (realClaudeRunner{}).RunAudit(context.Background(), bin, t.TempDir(), nil, env, nil); err != nil {
+		t.Fatalf("RunAudit: %v", err)
+	}
+	assertT1869Env(t, readT1869Dump(t, dump))
 }
 
 func TestCodexChildCmdKeepsLaneIdentityDropOfLauncherEnv(t *testing.T) {
