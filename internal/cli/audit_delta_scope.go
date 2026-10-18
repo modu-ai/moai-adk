@@ -3,7 +3,7 @@ package cli
 // Card t1708 — delta scope for codex_audit / audit_multi.
 //
 // A re-audit of a card that was already reviewed up to some commit used to see
-// the full `<merge-base>...HEAD` diff, so pre-existing findings re-surfaced on
+// the full diff from the resolved base, so pre-existing findings re-surfaced on
 // every pass. The explicit optional input `delta_base` names that previously
 // audited commit; every backend then measures from it instead of the resolved
 // base. Absent ⇒ none of this code runs and behaviour is byte-identical.
@@ -55,7 +55,10 @@ func validateDeltaBase(root, raw string) (string, error) {
 	if err != nil || full == "" {
 		return "", fmt.Errorf("delta_base %s is not a commit in %s", sha, root)
 	}
-	if _, err := runReviewGit(root, "merge-base", "--is-ancestor", full, "HEAD"); err != nil {
+	// Nothing reachable from delta_base may be missing from HEAD: an empty
+	// HEAD..delta_base range means delta_base is already part of HEAD's history.
+	ahead, err := runReviewGit(root, "rev-list", "--count", "HEAD.."+full)
+	if err != nil || strings.TrimSpace(ahead) != "0" {
 		return "", fmt.Errorf("delta_base %s is not an ancestor of HEAD", full)
 	}
 	return full, nil

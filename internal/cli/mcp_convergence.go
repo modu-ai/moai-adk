@@ -722,7 +722,8 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 //     audited tree's workflow.yaml explicitly configures `required` fails the
 //     overall verdict when its backend returned no verdict (see
 //     enforceRequiredGateUnmet). Unset gates keep the fail-open behavior.
-//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
+//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json
+//     (a delta call, cfg.DeltaBase set, does not — see the persist step).
 //
 // It NEVER returns a hard error — every path produces a structured
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
@@ -908,7 +909,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	if cfg.DeltaBase != "" {
 		// A delta call states its own scope: claude and glm measured from the
 		// base exactly, codex was only asked to (turn/start has no target).
-		note := "delta_base " + cfg.DeltaBase + ": claude/glm reviewed " + cfg.DeltaBase + "...HEAD; codex was scoped in prose only (not mechanically bounded); no second-review record written"
+		note := "delta_base " + cfg.DeltaBase + ": claude/glm reviewed " + cfg.DeltaBase + "...HEAD; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written"
 		if result.ResidualRiskNote != "" {
 			note += " | " + result.ResidualRiskNote
 		}
@@ -936,10 +937,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// (REQ-WSR-003); a config-orphaned worktree whose primary cannot be
 	// identified has no store, so the write is skipped and the result says so
 	// (REQ-WSR-004).
+	//
+	// A delta call (card t1708) is not persisted at all: this file is the
+	// session's full-review verdict as the Stop gate reads it (it blocks on
+	// overall_verdict fail and checks no scope), so a delta pass written here
+	// would open the gate after a failed full review. Nothing else reads a
+	// per-session delta file, so a separate name would be dead state; the delta
+	// result goes to the caller and its audit receipt still records below.
 	if cfg.ProjectRoot != "" {
 		result.TreeRoot = cfg.ProjectRoot
 	}
-	if cfg.SessionID != "" {
+	if cfg.SessionID != "" && cfg.DeltaBase == "" {
 		var unresolved *auditreceipt.UnresolvedStoreError
 		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
 			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
