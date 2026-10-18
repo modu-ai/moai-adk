@@ -1117,6 +1117,15 @@ func ensureGlobalSettingsEnv() error {
 		return nil
 	}
 
+	// Canonical form of the file as read, so the write below can be skipped when
+	// the cleanup leaves the settings meaning unchanged (card t1703). The env
+	// refresh deletes and re-adds PATH, which flags needsUpdate even when the
+	// value is identical.
+	originalCanonical, err := json.Marshal(existingSettings)
+	if err != nil {
+		return fmt.Errorf("marshal existing global settings: %w", err)
+	}
+
 	needsUpdate := false
 
 	// Clean up legacy hooks including orphaned scripts and deprecated Python hooks
@@ -1195,6 +1204,11 @@ func ensureGlobalSettingsEnv() error {
 	}
 
 	if !needsUpdate {
+		return nil
+	}
+
+	// Same meaning as the file on disk: leave its bytes and mtime alone.
+	if finalCanonical, err := json.Marshal(existingSettings); err == nil && string(finalCanonical) == string(originalCanonical) {
 		return nil
 	}
 
