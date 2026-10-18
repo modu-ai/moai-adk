@@ -340,6 +340,63 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	2.615s
 FAIL
 ```
 
+
+### GREEN-M3a — adapters implemented (same four commands as RED-M3a, flipped; tree = M3a GREEN commit)
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_GoListGraph$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestAffectedScope_GoListGraph
+--- PASS: TestAffectedScope_GoListGraph (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.527s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_IncompleteGraphFallsBack$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestAffectedScope_IncompleteGraphFallsBack
+--- PASS: TestAffectedScope_IncompleteGraphFallsBack (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.537s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_RealGitRenameDelete$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestAffectedScope_RealGitRenameDelete
+=== RUN   TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers
+=== RUN   TestAffectedScope_RealGitRenameDelete/deleting_the_last_file_of_a_package_selects_its_updated_importers
+=== RUN   TestAffectedScope_RealGitRenameDelete/a_nested_module_root_reports_its_offset_inside_the_repository
+=== RUN   TestAffectedScope_RealGitRenameDelete/nothing_staged_is_an_empty_list,_not_an_error
+=== RUN   TestAffectedScope_RealGitRenameDelete/a_directory_outside_any_repository_is_a_query_failure
+--- PASS: TestAffectedScope_RealGitRenameDelete (1.95s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers (0.48s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/deleting_the_last_file_of_a_package_selects_its_updated_importers (0.64s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/a_nested_module_root_reports_its_offset_inside_the_repository (0.47s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/nothing_staged_is_an_empty_list,_not_an_error (0.35s)
+    --- PASS: TestAffectedScope_RealGitRenameDelete/a_directory_outside_any_repository_is_a_query_failure (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.438s
+```
+
+Command: `go test ./internal/hook/quality -run '^TestAffectedScope_ChangedSetMatchesCommit$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit/plain_repository
+=== RUN   TestAffectedScope_ChangedSetMatchesCommit/linked_worktree
+--- PASS: TestAffectedScope_ChangedSetMatchesCommit (4.34s)
+    --- PASS: TestAffectedScope_ChangedSetMatchesCommit/plain_repository (2.55s)
+    --- PASS: TestAffectedScope_ChangedSetMatchesCommit/linked_worktree (1.79s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	4.863s
+```
+
+Mutant probes executed against the GREEN adapters (temporary edits, reverted before the commit; `grep -n MUTANT` over the file prints nothing afterwards):
+- dropping the hook-provided index (the scrubbed-only environment the old helper used): `TestAffectedScope_ChangedSetMatchesCommit` FAILS in both repository shapes — `(ii) git commit -a: the gate saw "a/x.go", the commit records "a/x.go d/z.go"` and `(iii) git commit d/z.go: the gate saw "a/x.go", the commit records "d/z.go"`.
+- dropping `--no-renames` (the default name list): `TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers` FAILS — `changed list [e/x.go] must carry both the old path a/x.go and the new path e/x.go (rename detection off)`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
