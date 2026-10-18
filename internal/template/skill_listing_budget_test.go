@@ -172,7 +172,7 @@ func TestCountSkillChars_UTF16Semantics(t *testing.T) {
 		// A run of newlines is one space: "a b" = 3.
 		{"newline run", skillListingEntry{Name: "x", Description: "a\n\nb"}, 3},
 		// Zero-width spaces (format characters) collapse as one run: "a b" = 3.
-		{"zero-width run", skillListingEntry{Name: "x", Description: "a​​b"}, 3},
+		{"zero-width run", skillListingEntry{Name: "x", Description: "a\u200b\u200bb"}, 3},
 		// Literal spaces are not part of the collapsed class: "a  b" = 4.
 		{"literal spaces stay", skillListingEntry{Name: "x", Description: "a  b"}, 4},
 		// description is trimmed: "ab" = 2.
