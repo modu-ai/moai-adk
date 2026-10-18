@@ -11,10 +11,12 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // writeReviewLayersWorkflow writes workflow.yaml under root with the given body.
@@ -132,6 +134,29 @@ func TestDoctorReviewLayerOverlap_RecordAtPrimaryRoot(t *testing.T) {
 
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("status = %v, want warn (message %q)", check.Status, check.Message)
+	}
+}
+
+// TestDoctorReviewLayerOverlap_UnreadablePrimaryRecords — when the primary
+// checkout's record directory cannot be read, the check must not state an
+// absence it never observed: it reports "unreadable, overlap not judged".
+func TestDoctorReviewLayerOverlap_UnreadablePrimaryRecords(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("directory permission denial is not enforceable here")
+	}
+	fx := newUntrackedFixture(t, reviewGateOnYAML)
+	writeReviewLayersWorkflow(t, fx.W, reviewGateOnYAML)
+	seedFactoryRecord(t, fx.P, "lane-session", "lane")
+	dir := factory.RuntimeStateDirForRoot(fx.P)
+	if err := os.Chmod(dir, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	check := checkReviewLayerOverlap(fx.W, false)
+
+	if check.Status != uikit.CheckOK || !strings.Contains(check.Message, "unreadable") {
+		t.Errorf("status = %v message = %q, want ok with an unreadable-records message", check.Status, check.Message)
 	}
 }
 

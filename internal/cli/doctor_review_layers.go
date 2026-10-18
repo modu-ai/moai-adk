@@ -54,19 +54,21 @@ func checkReviewLayerOverlap(projectRoot string, verbose bool) DiagnosticCheck {
 // laneRecordPresent looks for a lane session record under projectRoot and under
 // the primary checkout of its repository: the session-start writer keys the
 // record by the session's project directory, which is the primary checkout for
-// a session working in a linked worktree. readable is false only when no
-// record directory could be read at all.
+// a session working in a linked worktree. readable is false when no lane was
+// found and any candidate root failed to read: an absence is only reported for
+// roots that were actually observed.
 func laneRecordPresent(projectRoot string) (lane, readable bool) {
 	roots := []string{projectRoot}
 	if primary, _, err := auditreceipt.IdentifyPrimaryCheckout(projectRoot); err == nil && primary != projectRoot {
 		roots = append(roots, primary)
 	}
+	readable = true
 	for _, root := range roots {
 		records, err := factory.ReadAll(root)
 		if err != nil {
+			readable = false
 			continue
 		}
-		readable = true
 		for i := range records {
 			if records[i].Role == "lane" {
 				return true, true
