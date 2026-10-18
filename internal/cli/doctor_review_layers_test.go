@@ -182,6 +182,25 @@ func TestDoctorReviewLayerOverlap_SkippedRecordIsNotAbsence(t *testing.T) {
 	}
 }
 
+// TestDoctorReviewLayerOverlap_LaneRecordBesideMalformedFile — a malformed
+// record file next to a valid lane record must not hide the lane: the lane was
+// observed, so the warning stands.
+func TestDoctorReviewLayerOverlap_LaneRecordBesideMalformedFile(t *testing.T) {
+	root := t.TempDir()
+	writeReviewLayersWorkflow(t, root, reviewGateOnYAML)
+	seedFactoryRecord(t, root, "lane-session", "lane")
+	bad := filepath.Join(filepath.Dir(factory.RecordPath(root, "lane-session")), "broken.json")
+	if err := os.WriteFile(bad, []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	check := checkReviewLayerOverlap(root, false)
+
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("status = %v message = %q, want warn", check.Status, check.Message)
+	}
+}
+
 // TestDoctorReviewLayerOverlap_UnidentifiablePrimary — a linked worktree whose
 // primary checkout cannot be identified leaves the primary record directory
 // unobserved, so the check must not state an absence.

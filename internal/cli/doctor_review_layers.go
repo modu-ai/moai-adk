@@ -75,14 +75,19 @@ func laneRecordPresent(projectRoot string) (lane, readable bool) {
 	}
 	for _, root := range roots {
 		records, err := factory.ReadAll(root)
-		if err != nil || recordFilesSkipped(root, len(records)) {
+		if err != nil {
 			readable = false
 			continue
 		}
+		// A lane that was observed stands whatever else sits beside it; only
+		// the absence claim depends on every record file having been read.
 		for i := range records {
 			if records[i].Role == "lane" {
 				return true, true
 			}
+		}
+		if recordFilesSkipped(root, len(records)) {
+			readable = false
 		}
 	}
 	return false, readable
