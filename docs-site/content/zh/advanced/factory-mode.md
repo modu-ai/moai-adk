@@ -64,7 +64,7 @@ lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。
 | `--leader <名称>` | 指定要加入的主导会话（默认 `leader`）。只能与 `-l` 或 `--lane` 一起用，不是任何进入令牌的短形式 |
 | `--factory-run <run-id>` | 按 id 指定要加入的运行 |
 
-`--leader` 与 `--factory-run` 是不同的选择器，不能同时使用。如果存活的运行不止一个，无法判断该加入哪个，加入会被拒绝，错误信息会提示在 `--factory-run <run-id>` 与 `--leader <主导会话名>` 之间选一个，并与 `-l` 一起使用。所有者已经退出的运行，可以用 `moai factory runs --retire <run-id>` 退役。但如果运行里还有处于完成、失败、放弃之外状态的卡片，命令不会退役，而是拒绝，并列出这些卡片和可以改用的办法（用 `moai cc -l --factory-run <run-id>` 加入，用 `moai cc -f --factory-run <run-id>` 接管，或对每张卡片执行 `moai factory decide <卡片> --choice abandon --run <run-id>`）。加入和接管只在运行处于活动状态时有效，放弃卡片无法撤销。没有强制退役的标志。对已经退役的运行再次执行该命令，只报告结果而不再写入，并列出仍滞留的卡片。仍有此类卡片的活动运行，`moai factory relaunch --from-run` 同样让它保持活动状态，并报告 `left active (N in-progress cards)`；已经退役的运行则原样不动（`not active (retired), left untouched`）。
+`--leader` 与 `--factory-run` 是不同的选择器，不能同时使用。如果存活的运行不止一个，无法判断该加入哪个，具体行为取决于会话类型。在终端中运行 `-l` 会打开选择界面，逐个列出运行的 run id、主导会话是否存活、主导会话名称、开始时间（KST）、最近一次 lane 活动以及进行中的卡片数。你可以加入其中一个运行，也可以取消；若某个运行的主导会话已退出且没有进行中的卡片，还可以先将其退役，再加入剩下的运行（提示文字为韩文）。没有终端时，加入会被拒绝，错误信息会列出全部候选及其开始时间（KST），并提示在 `--factory-run <run-id>` 与 `--leader <主导会话名>` 之间选一个，并与 `-l` 一起使用。指定了 `--factory-run`，或用 `--leader` 指明了主导会话时，不会打开选择界面。所有者已经退出的运行，可以用 `moai factory runs --retire <run-id>` 退役。但如果运行里还有处于完成、失败、放弃之外状态的卡片，命令不会退役，而是拒绝，并列出这些卡片和可以改用的办法（用 `moai cc -l --factory-run <run-id>` 加入，用 `moai cc -f --factory-run <run-id>` 接管，或对每张卡片执行 `moai factory decide <卡片> --choice abandon --run <run-id>`）。加入和接管只在运行处于活动状态时有效，放弃卡片无法撤销。没有强制退役的标志。对已经退役的运行再次执行该命令，只报告结果而不再写入，并列出仍滞留的卡片。仍有此类卡片的活动运行，`moai factory relaunch --from-run` 同样让它保持活动状态，并报告 `left active (N in-progress cards)`；已经退役的运行则原样不动（`not active (retired), left untouched`）。
 
 **运行记录缺失，只要主导会话还活着，也能加入。** 当一条有效记录都没有时（记录自动退役，或主导会话没有写过记录），加入不会直接被拒绝。它会用 pid 和进程启动指纹验证本项目中存活的主导会话，以该主导会话的身份恢复运行记录，再走普通关卡加入。若验证出多个主导会话，会列出全部候选并以失败收场；一个都没有，则维持拒绝。
 
@@ -120,6 +120,8 @@ lane 在 `run` 结束、进入集成之前，还要走一个 `card-review` 阶�
 ## lane 编号与运行记录
 
 哪个编号被哪条 lane 占用，记录在 `~/.moai/db/<project-key>/factory/factory.db`。新 lane 领取存活 lane 中**最大编号的下一个**，不会回填中间的空位：存活的是 lane-1 和 lane-3 时，新 lane 是 lane-4。已死 lane 的 claim 不再占住编号。lane 编号是自动分配的，所以与 `--name`/`-n` 同时使用会报错。
+
+数据库路径不要猜，用 `moai paths` 确认。用 `sqlite3` 打开 `~/.moai/db/todo.db` 这类猜出来的路径，会创建出一个空文件，所以不要这样做。确需直接读取时，只读把 `.db`、`.db-wal`、`.db-shm` 一起复制出来的快照；平时优先使用 `moai todo list --json`、`moai factory status` 等 CLI。
 
 主导会话的 socket 开在 `/tmp/moai-socket-factory/<run-id>`，引导提示会告诉你实际路径。主导会话和 lane 会话启动时，会各在 `.moai/state/todo/<session-id>.json` 写入一份会话记录，包含角色、后端和进入时间。
 

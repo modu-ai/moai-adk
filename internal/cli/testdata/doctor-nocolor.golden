@@ -24,6 +24,7 @@
 │    info    Served Model             run with --check "Served Model"                                                                                          │
 │    ok      Todo Store Divergence    no stale project-local queue store                                                                                       │
 │    ok      Todo Ghost Inventory     no ghost queue artifacts                                                                                                 │
+│    ok      DB Path Ghosts           no zero-byte database files at unconfirmed paths                                                                         │
 │    ok      Session CC Version       no active sessions registered — nothing to compare                                                                       │
 │    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                                │
 │    warn    Constitution Registry    zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify        │
@@ -34,7 +35,7 @@
 │    ok      User Lock                no user lock marker present                                                                                              │
 │    ok      Plugin Migration         plugin carrier retired — if a prior release installed the moai plugin, remove it manually: claude plugin uninstall moai  │
 │    ok      Home Disk Usage          no ~/.moai home found — nothing to report                                                                                │
-│    17 ok, 3 warn, 0 fail                                                                                                                                     │
+│    18 ok, 3 warn, 0 fail                                                                                                                                     │
 │                                                                                                                                                              │
 │  Workspace ---                                                                                                                                               │
 │    STATUS  CHECK                  MESSAGE                                                                                                                    │
@@ -51,14 +52,15 @@
 │    ok      Worktree Base Branch   git_strategy.worktree_base_branch unset — card worktrees follow the repository default                                     │
 │    ok      Git Strategy Workflow  git_strategy workflow unreadable or no active profile — nothing to interpret                                               │
 │    info    Factory Run            no session records — no factory run declared                                                                               │
+│    ok      Review Layer Overlap   turn-end review gate is off; no overlapping review layers                                                                  │
 │    ok      Owner Label Drift      no legacy owner_label rows                                                                                                 │
 │    warn    BODP Config            .moai/branches/ not found — BODP audit trail disabled                                                                      │
 │    warn    Telemetry Config       .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                   │
 │    warn    Glamour Cache          glamour not integrated                                                                                                     │
 │    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                                  │
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                           │
-│    9 ok, 9 warn, 0 fail                                                                                                                                      │
+│    10 ok, 9 warn, 0 fail                                                                                                                                     │
 │                                                                                                                                                              │
-│  [Pass 32]  [Warn 12]  [Fail 0]                                                                                                                              │
+│  [Pass 34]  [Warn 12]  [Fail 0]                                                                                                                              │
 │                                                                                                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

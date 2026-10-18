@@ -64,7 +64,7 @@ $ moai codex -l    # Codex 레인
 | `--leader <이름>` | 합류할 리더 세션을 지정합니다 (기본값 `leader`). `-l` 또는 `--lane`과만 함께 쓰며, 진입 토큰의 짧은 형태가 아닙니다 |
 | `--factory-run <run-id>` | 합류할 실행을 id로 지정합니다 |
 
-`--leader`와 `--factory-run`은 서로 다른 선택자라 함께 쓸 수 없습니다. 살아 있는 실행이 둘 이상이어서 어디에 합류할지 정할 수 없으면 합류는 거부되고, 오류가 `-l`과 함께 `--factory-run <run-id>`나 `--leader <리더 이름>` 중 하나를 고르라고 안내합니다. 죽은 소유자의 실행은 `moai factory runs --retire <run-id>`로 은퇴시킬 수 있습니다. 다만 완료·실패·종료 상태가 아닌 카드가 남아 있는 실행은 은퇴시키지 않고 거절하며, 그 카드 목록과 대신 쓸 방법(`moai cc -l --factory-run <run-id>`로 합류, `moai cc -f --factory-run <run-id>`로 이어받기, 카드별 `moai factory decide <카드> --choice abandon --run <run-id>`)을 보여줍니다. 합류와 이어받기는 실행이 활성인 동안만 통하고, 카드 종료는 되돌릴 수 없습니다. 강제로 은퇴시키는 플래그는 없습니다. 이미 은퇴한 실행을 다시 지목하면 쓰기 없이 결과를 알리고 남은 카드를 나열합니다. 이런 카드가 남은 활성 실행은 `moai factory relaunch --from-run`도 활성 상태로 두고 `left active (N in-progress cards)`로 알리며, 이미 은퇴한 실행은 건드리지 않습니다(`not active (retired), left untouched`).
+`--leader`와 `--factory-run`은 서로 다른 선택자라 함께 쓸 수 없습니다. 살아 있는 실행이 둘 이상이어서 어디에 합류할지 정할 수 없을 때의 동작은 세션 종류에 따라 갈립니다. 터미널에서 `-l`을 실행하면 선택 화면이 열려, 실행마다 run id, 리더 생존 여부, 리더 이름, 시작 시각(KST), 마지막 레인 활동, 진행 중인 카드 수를 보여 줍니다. 한 실행에 합류하거나 취소할 수 있고, 리더가 종료됐으며 진행 중인 카드가 없는 실행이라면 그 실행을 은퇴시킨 뒤 남은 실행에 합류하는 선택도 할 수 있습니다(안내 문구는 한국어로 표시됩니다). 터미널이 아닌 환경에서는 합류가 거부되며, 오류가 모든 후보를 시작 시각(KST)과 함께 나열하고 `-l`과 함께 `--factory-run <run-id>`나 `--leader <리더 이름>` 중 하나를 고르라고 안내합니다. `--factory-run`을 지정하거나 `--leader`로 리더를 지정하면 선택 화면은 열리지 않습니다. 죽은 소유자의 실행은 `moai factory runs --retire <run-id>`로 은퇴시킬 수 있습니다. 다만 완료·실패·종료 상태가 아닌 카드가 남아 있는 실행은 은퇴시키지 않고 거절하며, 그 카드 목록과 대신 쓸 방법(`moai cc -l --factory-run <run-id>`로 합류, `moai cc -f --factory-run <run-id>`로 이어받기, 카드별 `moai factory decide <카드> --choice abandon --run <run-id>`)을 보여줍니다. 합류와 이어받기는 실행이 활성인 동안만 통하고, 카드 종료는 되돌릴 수 없습니다. 강제로 은퇴시키는 플래그는 없습니다. 이미 은퇴한 실행을 다시 지목하면 쓰기 없이 결과를 알리고 남은 카드를 나열합니다. 이런 카드가 남은 활성 실행은 `moai factory relaunch --from-run`도 활성 상태로 두고 `left active (N in-progress cards)`로 알리며, 이미 은퇴한 실행은 건드리지 않습니다(`not active (retired), left untouched`).
 
 **실행 기록이 없어도 리더가 살아 있으면 합류합니다.** 활성 기록이 하나도 없을 때(기록이 자동 은퇴했거나 리더가 기록하지 않은 경우) 합류는 곧바로 거부로 끝나지 않습니다. 이 프로젝트의 살아 있는 리더 세션을 pid와 프로세스 시작 지문으로 검증하고, 그 리더의 신원으로 실행 기록을 복원한 뒤 평범한 게이트로 합류합니다. 검증된 리더가 둘 이상이면 후보를 모두 이름 붙여 실패로 닫고, 없으면 거부가 그대로 섭니다.
 
@@ -120,6 +120,8 @@ flowchart TD
 ## 레인 번호와 실행 기록
 
 어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 새 레인은 살아 있는 레인 가운데 **가장 큰 번호의 다음 번호**를 받으며, 중간의 빈 번호를 채우지는 않습니다. 살아 있는 레인이 lane-1과 lane-3이면 새 레인은 lane-4입니다. 죽은 레인의 claim은 더 이상 번호를 막지 않습니다. 레인 번호는 자동 배정이므로 `--name`/`-n`을 함께 쓰면 오류입니다.
+
+데이터베이스 경로는 추측하지 말고 `moai paths`로 확인합니다. `~/.moai/db/todo.db`처럼 추측한 경로를 `sqlite3`로 열면 빈 파일이 만들어지므로 열지 않습니다. 직접 읽어야 하면 `.db`, `.db-wal`, `.db-shm`을 함께 복사한 스냅샷에서만 읽고, 평소에는 `moai todo list --json`, `moai factory status` 같은 CLI를 우선 씁니다.
 
 리더의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고, 부트스트랩 안내가 실제 경로를 알려 줍니다. 리더와 레인 세션은 시작할 때 `.moai/state/todo/<session-id>.json`에 역할·백엔드·진입 시각이 담긴 세션 레코드를 한 번 남깁니다.
 
