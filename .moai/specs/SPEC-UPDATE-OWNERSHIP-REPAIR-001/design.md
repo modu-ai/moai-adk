@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "design — ownership verdict, provenance evidence, and manifest additions"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-10-18
 ---
 
@@ -25,7 +25,7 @@ created: 2026-10-18
 - `user-modified`: 항목이 있으나 바이트가 `TemplateHash` 와 다르거나 `Provenance` 가 `user_modified`.
 - `user-created`: `Provenance` 가 `user_created`.
 - `unregistered`: 매니페스트 항목이 없고 증명도 되지 않음.
-- 처분 `removal-eligible` 은 판정 함수가 말하는 "t1668 의 게이트 앞까지의 후보" 이다. 실제 제거는 `removalEnabled`, 백업 선행, 사용자 대응물 확인, 루트 경계 검사를 모두 지난 뒤에만 일어난다. 판정 함수는 제거하지 않는다.
+- 처분 `removal-eligible` 의 정의는 spec.md § B 한 곳이다 — 이 문서는 인용만 한다. 판정 입력에 제거 스위치, 사용자 대응물 확인 결과, 프로필 도달 유지, 루트 경계 (심링크 탈출) 가 모두 들어 있다: 하나라도 빠지면 `keep(<이유>)` (스위치가 꺼진 기본값은 `keep(removal-gate-off)`) 이고, 판정 함수 바깥에 남는 것은 실행 시점에만 알 수 있는 조건 — 백업 사본 쓰기 성공, OS 읽기·삭제 오류 — 뿐이다. 그래서 `--dry-run` 미리보기가 알리는 후보 집합 (REQ-OWR-011) 과 판정의 `removal-eligible` 집합이 같고, 실제로 제거된 집합은 그 부분집합이다. 판정 함수는 제거하지 않는다. (종전 문장은 "t1668 의 게이트 앞까지의 후보" 였고 스위치·대응물을 판정 밖에 두어, 스위치가 꺼진 구성에서 acceptance.md 와 후보 집합이 어긋났다 — 감사 D8.)
 
 이유 코드의 닫힌 집합 (제안): `user-modified`, `user-created`, `no-provenance-record`, `evidence-incomplete:<항목>`, `record-hash-mismatch`, `profile-reach`, `counterpart-unconfirmed`, `non-catalog`, `removal-gate-off`, `case-variant`, `symlink-escape`, `read-failed`, `no-template-hash`, `empty-dir-no-provenance`, `backup-failed`. 새 이유는 SPEC 개정 없이 늘리지 않는다 (잔존 목록이 열린 어휘가 되면 이유별 집계가 의미를 잃는다).
 
@@ -64,13 +64,15 @@ reconcile 의 `ClassUserModified` 는 "템플릿 운반 + 기록 없음" 도 포
 - 내장 템플릿 트리와의 바이트 일치 — 이 바이너리의 내장 트리가 출시 트리와 같다는 보장이 없다 (dirty 빌드 `ee981a932`, research.md D(1)).
 - 정규 스킬 경로와의 기계적 관계 (`.agents/skills/<n>` ↔ `.claude/skills/<n>`) — 관계는 누가 그 복사본을 만들었는지를 증명하지 않는다 (D-5).
 
-테스트 가능성: 증거 원천은 인터페이스 (`provenanceSource`) 로 두어 시험이 이전 세대를 직접 공급할 수 있게 한다. 이것이 AC-OWR-05 의 양성 픽스처와 변이 네 가지를 운영 경로와 독립으로 만든다.
+테스트 가능성: 증거 원천은 인터페이스 (`provenanceSource`) 로 두어 시험이 이전 세대를 직접 공급할 수 있게 한다. 이것이 AC-OWR-05 의 양성 픽스처와 변이 네 가지를 운영 경로와 독립으로 만든다. 인터페이스와 해석기 `provenanceEvidence` 는 영속 기록 생산 (D-3, M1b) 과 분리된 새 파일에 두고 M1a 에서 만든다 — Q2 가 (나) 로 풀려 M1b 가 접혀도 AC-OWR-05 가 쓰는 코드는 남는다 (감사 D6).
+
+운영 경로가 원천을 얻는 자리는 `removalEnabled` 와 같은 모양의 패키지 수준 변수 하나이다 (시험이 바꾸고 `t.Cleanup` 이 복원하며, 운영 코드 어디도 그 변수를 시험 값으로 대체하지 않는다). 이 변수가 있어서 AC-OWR-02 의 대조군이 **잘못된 승격 구현을 주입**할 수 있다: 파일 자신의 바이트와 내장 템플릿 트리의 일치만으로 세 증거를 모두 "있다" 고 답하는 대역 원천을 꽂고, 보존 단언이 그 대역 앞에서 붉어지는지를 시험이 직접 관측한다 (단언은 문제 목록을 돌려주는 순수 함수이고 메타 시험이 대역 입력에 대해 목록이 비어 있지 않음을 단언한다). 입력 쪽 변형만으로는 이 변이를 구성할 수 없다 — 내장 트리에 같은 경로 파일이 있는 픽스처여야 변이가 발화한다 (AC-OWR-02 의 전제 단계가 이를 먼저 단언한다).
 
 ## D-3 — 매니페스트 추가분과 호환 (decision-index.md Q2 (가) 에서만)
 
 1. `FileEntry.DeployedVersion string` — JSON `deployed_version,omitempty`. `Track` 이 기록할 때 배포 바이너리의 버전을 찍는다 (`pkg/version.GetVersion()`). 파일이 실제로 쓰일 때만 `Track` 이 불리므로 (`deployer.go:294`) 값은 "그 바이트를 마지막에 쓴 버전" 이다. 이것이 필요한 이유: 혼합 버전 상태가 실재한다 (사용자 수정으로 갱신이 건너뛰어진 파일은 매니페스트 수준 버전보다 오래된 버전의 바이트를 가진다).
 2. 매니페스트 수준 `Version` 은 갱신의 배포 단계 저장에서 배포 버전으로 갱신한다 (`recordTemplateTree` 와 같은 자리, `update_template_sync.go:672-673`). `DeployedAt` 은 `Version` 이 바뀔 때만 바꾼다 — 같은 버전의 반복 갱신이 매니페스트 바이트를 바꾸면 REQ-OWR-012 (멱등) 가 깨진다.
-3. 실행 백업 디렉터리에 `manifest.prior.json` 을 쓴다: Backup 단계가 시작 시점 매니페스트의 원본 바이트를 그대로 복사한다 (재직렬화하지 않는다 — 바이트 동일을 위해). 쓰기 실패는 경고이며 실행을 막지 않는다 (증거가 줄 뿐 데이터를 잃지 않는다). 단 이 파일이 있어야 제거된 항목의 복원이 소유권 정보를 함께 되돌린다 (REQ-OWR-010).
+3. 실행 백업 디렉터리에 `manifest.prior.json` 을 쓴다: Backup 단계가 시작 시점 매니페스트의 원본 바이트를 그대로 복사한다 (재직렬화하지 않는다 — 바이트 동일을 위해). **쓰기가 실패하면 이 실행의 제거가 막힌다 (fail-closed, REQ-OWR-016).** 이유: 이 사본은 제거된 파일의 복원이 소유권 정보를 함께 되돌리는 유일한 수단이다 (REQ-OWR-010). 사본 없이 제거하면 파일 사본만 남고 매니페스트 항목은 사라져 복원이 불가능한 상태가 된다. 구현 모양: Backup 단계가 쓰기 결과를 실행 문맥 (`migrationRunContext`) 에 한 값으로 넘기고, 마이그레이션은 제거 직전 그 값을 읽는다 — 값이 실패이면 모든 후보가 `keep(backup-failed)` 가 되고 잔존 행의 이유로 남으며 경고 한 줄이 이름을 댄다. 갱신의 나머지 (배포, 비제거 마이그레이션) 는 계속된다 — 막히는 것은 제거뿐이다. 파일 사본 하나의 쓰기 실패는 t1668 대로 그 파일만 보존한다. 증거 생산의 다른 쪽 (`deployed_version`, 매니페스트 수준 `Version`) 은 제거와 무관하므로 fail-open 이다.
 4. 호환: `deployed_version` 이 없는 기존 JSON 은 그대로 적재되고 저장 시 필드를 지어내지 않는다. 증거 부족은 미등록 파일의 `managed` 승격만 막는다 — 등록된 항목의 기존 판정 (`TemplateHash` 와 바이트 비교) 은 바뀌지 않는다. 이전 바이너리가 새 매니페스트를 읽으면 알 수 없는 필드를 무시하고, 다시 저장하면 필드가 사라진다. 그 경우 이후 증거는 사라진 만큼 약해질 뿐 보존 방향의 오류는 만들지 않는다 (증거 없음 = 보존).
 
 Q2 가 (나) 로 풀리면 1-3 은 없고 4 만 남는다.
@@ -83,7 +85,7 @@ Q2 가 (나) 로 풀리면 1-3 은 없고 4 만 남는다.
 2. 후보마다 `os.Stat(root/rel)` 과 `os.Stat(root/key)` 를 하고 `os.SameFile` 이 참이면 별칭이다. 후보가 정확히 하나일 때만 확정한다 (둘 이상이면 모호하므로 별칭 없음).
 3. 대소문자 구분 파일시스템에서는 `root/key` 가 없거나 다른 파일이라 `SameFile` 이 거짓이다. 그러므로 파일시스템 모드를 따로 판정할 필요가 없다 — 판정 근거가 관측된 동일성 자체이다.
 
-`probeCaseSensitiveFS` (`update_cleanup.go:387`) 는 프로젝트 루트에 프로브 파일을 쓴다. dry-run 은 아무것도 쓰면 안 되므로 (REQ-OWR-011) 판정 경로에서 쓰지 않는다.
+`probeCaseSensitiveFS` (`update_cleanup.go:387`) 는 프로젝트 루트에 프로브 파일을 쓴다. dry-run 은 아무것도 쓰면 안 되므로 (REQ-OWR-011) 판정 경로에서 쓰지 않는다. 이 함수에는 비시험 호출자가 없다 (acceptance.md § L-9). plan.md M4 가 이 함수를 재사용한다고 적었던 종전 문장은 이 절과 모순이어서 고쳤다.
 
 시험 가능성: 별칭 확정 함수가 `stat` 과 `sameFile` 을 인자로 받게 하여 대소문자 구분/무구분 두 모드를 한 시험에서 주입으로 단언한다 (AC-OWR-11). 실제 호스트 시험은 호스트의 관측에 맞는 기대를 단언한다. 시험을 건너뛰지 않는다.
 
@@ -112,3 +114,23 @@ t1668 의 `pruneEmptiedSkillDir` (제거 직후 정확히 한 단계) 는 그대
 정렬: `rel` 사전순 (결정적). 렌더: 이유별 개수 한 줄이 기본이고 `--verbose` 에서 행마다 한 줄 (운영자 ruling d-20261012T221654Z-9ced 와 같은 형태). 마이그레이션이 행을 모아 돌려주고 (`migrationRunContext` 에 필드를 더하는 방식이 기존 `removed`/`keptProfileReach` 와 같은 결), 갱신 흐름이 터미널 참조 행으로 낸다 (decision-index.md Q3 (가)).
 
 프로필 대응물: 사용자 루트의 대응물만 `userCounterpartConfirmed` 로 확인한다 (`migrate_project_assets.go:377-452`). 프로필 쪽은 읽지 않으므로 `not-checked` 로 기록한다 (REQ-OWR-005, decision-index.md Q5). `KeptBy` 표지는 Q1 의 DECIDED 대로 그대로 쓴다 — 표지의 뜻을 바꾸지 않는다. 표지를 읽어 사본을 되찾는 소비자 (후속 카드 t1642) 는 되찾기 시점에 대응물을 다시 확인해야 한다. 이 SPEC 은 소비자를 만들지 않는다.
+
+## D-8 — 프로필 루트 무접근을 어떻게 검증하는가 (감사 D2, D7)
+
+**왜 종전 방식이 부족했는가.** (1) 0o000 디렉터리 읽기 오류에 기대는 방식은 읽기 오류를 버리는 구현을 통과시키고, root 로 도는 실행에서는 권한 오류 자체가 나지 않는다. (2) `claude-skills@` 문자열 스캔은 공허하다: 이 트리의 Go 소스에는 그 문자열이 없어서 (acceptance.md § L-7) 어떤 구현도 통과시킨다. (3) 스캔 대상을 판정 파일 두세 개로 좁히면 다른 파일의 도우미가 빠진다.
+
+**선택한 방식 — 세 층, 서로 다른 구멍을 막는다.**
+
+| 층 | 무엇을 | 잡는 것 | 못 잡는 것 (한계) |
+|----|--------|---------|-------------------|
+| 소스 스캔 (기준선 대비) | `internal/cli` (하위 포함), `internal/userassets`, `internal/manifest` 의 모든 비시험 `.go` 파일에서 프로필 경로를 만드는 토큰 — `GetBaseDir`, `BaseDirOverride`, `EnvClaudeConfigDir`, `CLAUDE_CONFIG_DIR`, `claude-profiles`, `profilesDir`, `GetCurrentName`, `claude-skills@`, `claude-agents@` — 의 파일별 개수를 M0 에서 손대지 않은 트리로 측정해 기준선 데이터로 얼리고, 시험은 기준선에 없는 파일·토큰이나 늘어난 개수를 실패시킨다 | 갱신 호출 경로의 어느 파일에든 새로 생긴 프로필 경로 구성. 오류를 삼키는 읽기도 경로 구성 토큰이 있으면 잡힌다 | 토큰 없이 경로를 이어 붙이는 구현, 기준선에 이미 있는 파일 안의 새 사용 (개수가 늘면 잡히지만 같은 개수로 바꿔치기하면 못 잡음) |
+| 차분 카나리 | 프로필 설정 디렉터리 (`profile.BaseDirOverride` 아래 `work/`) 의 `skills/`·`agents/` 에 대응 파일을 세 상태 — 없음, 템플릿과 바이트 같음, 해시 다름 — 로 놓고 같은 프로젝트에 마이그레이션·갱신 흐름을 세 번 돌려 모든 관측 출력 (제거 목록, 잔존 행, 저장된 매니페스트 바이트, 보고 줄, 표준 출력·오류, 백업 디렉터리 목록, 프로젝트 트리 해시) 이 세 번 모두 바이트 단위로 같음을 단언 | 프로필 쪽 읽기 결과가 판정·출력·부수 효과 어디에든 영향을 주는 구현 (오류를 삼키는 구현 포함 — 값이 쓰이면 출력이 달라진다) | 읽기 결과를 버리는 접근. 이것은 소스 스캔 층의 몫이며 둘 다 못 잡는 경우가 남는다 — 잔여 위험으로 인정한다 |
+| 파일 불변 | `git log --oneline cdd72a814..HEAD --grep='(card t1865)' -- internal/config/protected_zone.go internal/config/userroots.go` 가 빈 출력·종료 0, 같은 형식의 양성 대조군(`-- .moai/specs`) 이 한 줄 이상 | 이 카드의 커밋이 두 파일을 건드린 것. main 병합이 두 파일을 바꿔도 거짓 적색이 되지 않는다 | 카드 id 를 빠뜨린 커밋 (추적 운반자 규칙 AGENTS.md § 3 이 지킨다) |
+
+**접근 기록 시임은 만들지 않는다.** 마이그레이션은 `os.ReadFile`/`os.Stat` 를 직접 쓴다. 파일 접근을 모두 주입 가능한 파일시스템으로 감싸는 것은 판정 코드의 모양을 바꾸는 큰 변경이며 t1668 코드와 병합 충돌 면적을 넓힌다 (감사 D15). 감사 D2 가 제안한 접근 계수 시임은 이 SPEC 의 범위에서 채택하지 않았고, 대신 위 세 층의 한계를 있는 그대로 적는다. 접근 계수가 필요해지면 후속 카드로 분리한다.
+
+**0o000 모드는 판정 근거로 쓰지 않는다.** root 로 도는 실행에서 무력하고, 오류 전파를 전제하기 때문이다.
+
+## D-9 — dry-run 무변경을 어떻게 검증하는가 (감사 D7)
+
+REQ-OWR-011 은 명령 (`moai update --dry-run`) 에 걸린다. 검증은 그 명령이 디스패치하는 분기 전체 (`runUpdate`, `update.go:361`) 를 기존 시험 헬퍼 `runDryRunUpdateInProject` 로 구동한다. 트리 해시 비교만으로는 "만들었다가 지우는" 임시 쓰기 (예: `probeCaseSensitiveFS` 가 하는 일) 를 못 본다. 그래서 실행 전에 모든 디렉터리의 mtime 을 고정된 과거 시각으로 맞추고 (`os.Chtimes`), 트리 해시에 디렉터리 mtime 을 넣는다: 디렉터리 안에서 항목이 생기거나 사라지면 mtime 이 지금으로 바뀐다. 이 방식은 mtime 해상도와 무관하고 root 에서도 성립한다. 한계: 파일 내용을 바꾸지 않고 모드만 바꿨다 되돌리는 쓰기, 프로젝트 밖(HOME 등) 으로의 쓰기는 이 방식이 보지 못한다 — 기존 `TestUpdateDryRun_ZeroMutation` 이 기존 분기의 같은 성질을 지키고, 이 SPEC 이 더하는 코드 (판정·미리보기 새 파일) 는 쓰기 가능 호출이 없음을 소스 스캔으로 따로 단언한다 (AC-OWR-16).

@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "moai update ownership verdict and legacy-migration repair: evidence-based per-file ownership, profile-reach keep reasons, case-variant paths, emptied-directory pruning, and a remaining-file list (follow-up to SPEC-UPDATE-REMOVAL-FAMILY-001)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -22,6 +22,7 @@ related_specs: [SPEC-UPDATE-REMOVAL-FAMILY-001, SPEC-UPDATE-REPAIR-RC30-001, SPE
 | 버전 | 날짜 | 작성자 | 내용 |
 |------|------|--------|------|
 | 0.1.0 | 2026-10-18 | GOOS (manager-spec, card t1865) | 초기 plan-phase 초안. 운영자 지시 10-18 (Class C, P1, t1668 후속) 의 현장 진단 일곱 항목과 미등록 파일 보존 강화 조건 (6) 을 요구사항 15개와 인수 기준 19개로 옮겼다. 코드 조사는 research.md, 데이터 모델 결정은 design.md, 결정 지점은 decision-index.md 에 있다. 리더 구속 제약 (board d-20261018T020724Z-48fb) 을 § F 에 그대로 실었다. |
+| 0.2.0 | 2026-10-18 | GOOS (manager-spec, card t1865) | 계획 감사 iteration 1 (FAIL 0.68, MP-8 실패, 차단 결함 5건) 의 결함 D1-D15 를 처리한 수정판. 요구사항 15 → 16 (REQ-OWR-016: 이전 매니페스트 사본이 실패하면 제거 차단), 인수 기준 19 → 20 (AC-OWR-20). REQ-OWR-008/-011/-015 문구를 고치고 `removal-eligible` 정의를 § B 한 곳으로 모았다. 결함별 처분과 증거는 progress.md § E.1 의 "Plan audit iteration 1 repair" 표에 있다. |
 
 ## A. 배경
 
@@ -43,7 +44,9 @@ related_specs: [SPEC-UPDATE-REMOVAL-FAMILY-001, SPEC-UPDATE-REPAIR-RC30-001, SPE
 ## B. 용어
 
 - **소유권 분류 (ownership class)**: 네 값의 닫힌 집합 — `managed`, `user-modified`, `user-created`, `unregistered`. 파일 하나가 정확히 하나를 받는다.
-- **처분 (disposition)**: 소유권 분류와 별개의 두 번째 단계 — `keep(<이유>)` 또는 `removal-eligible`. 분류가 처분을 정하지 않는다. `removal-eligible` 이어도 실제 제거는 t1668 의 게이트 (`removalEnabled`, 백업 선행, 사용자 대응물 확인) 뒤에서만 일어난다.
+- **처분 (disposition)**: 소유권 분류와 별개의 두 번째 단계 — `keep(<이유>)` 또는 `removal-eligible`. 분류가 처분을 정하지 않는다.
+- **`removal-eligible`** (정의는 여기 한 곳이다. design.md D-1 과 acceptance.md 는 이 정의를 인용한다): 판정 함수가 이번 실행의 입력으로 내리는 후보 판정이며, 다섯 조건을 모두 갖춘 파일이다 — (i) 분류가 `managed`, (ii) 프로필 도달 유지 대상이 아님, (iii) 사용자 루트 대응물이 확인됨, (iv) 제거 스위치 (`removalEnabled`) 가 켜져 있음, (v) 루트 경계 안 (심링크 탈출 아님). 하나라도 빠지면 `keep(<이유>)` 이고, 스위치가 꺼진 기본 구성에서는 `keep(removal-gate-off)` 이다. 실행 시점에만 알 수 있는 조건 — 백업 사본 쓰기 성공, 읽기·삭제 OS 오류 — 은 판정 밖이다. 따라서 실제로 제거된 집합은 언제나 `removal-eligible` 집합의 부분집합이고, 그런 실패가 없으면 둘은 같다. 판정 함수는 제거하지 않는다.
+- **프로필 루트 (profile root)**: launch profile 의 설정 디렉터리 (`<profile base>/<name>`, 프로필 세션에서 `CLAUDE_CONFIG_DIR` 이 가리키는 곳) 아래의 `skills`·`agents` 디렉터리와 그 하위, 그리고 t1702 설계의 `claude-skills@<profile>`·`claude-agents@<profile>` 철자. 코드 수준 사실 (이번 실행 측정): 이 트리의 Go 소스에는 `claude-skills@` 문자열이 없다 (acceptance.md § L-7). 기존 런치 원장 판정 (`profile.ResolveLaunchProfileForProject`, 이 SPEC 이 바꾸지 않음) 은 프로필 설정 디렉터리 항목 자체의 존재만 `os.Stat` 으로 본다 (`internal/profile/profile.go:439`, acceptance.md § L-8) — 안의 내용을 읽거나 열거하지 않는다. 이 SPEC 은 그 위에 접근을 더하지 않는다.
 - **증명된 managed (attested)**: 매니페스트에 항목이 없는 파일이 세 증거 — 배포 버전, 원래 배포 경로, 이전 매니페스트 기록 — 를 모두 갖춰 `managed` 로 분류된 경우. 파일 자신의 바이트에서 나오지 않은 증거여야 한다.
 - **잔존 행 (remaining row)**: 마이그레이션이 제자리에 둔 파일 하나의 기록 — 경로, 소유권 분류, 이유, 빠진 증거 항목.
 
@@ -58,16 +61,17 @@ related_specs: [SPEC-UPDATE-REMOVAL-FAMILY-001, SPEC-UPDATE-REPAIR-RC30-001, SPE
 - **REQ-OWR-005** (Unwanted behavior): The update shall not read, enumerate, supply, or write any profile root (the `claude-skills@<profile>` and `claude-agents@<profile>` directories), and shall not change `internal/config/userroots.go` or `internal/config/protected_zone.go`.
 - **REQ-OWR-006** (Ubiquitous): The update shall give each file under `.claude/commands/` and `.claude/agents/` exactly one disposition per run, and after every run — an interrupted and then recovered run included — every command and agent file the template carries shall be present.
 - **REQ-OWR-007** (Event-driven): **When** a path found on disk differs from a manifest key only in letter case and, on a case-insensitive filesystem, names the same file as that key, the verdict function shall treat the two spellings as one file, apply the registered entry's verdict, report the spelling difference, and not rename the file; on a case-sensitive filesystem the two spellings shall remain distinct files.
-- **REQ-OWR-008** (Event-driven): **When** a skill directory (a directory below `.claude/skills/` or `.agents/skills/`) is empty and the prior manifest record shows that every file once recorded under it was template-managed and none remains on disk, the migration shall remove the directory — whether this run or an earlier one emptied it — and otherwise shall keep the empty directory and record `empty-dir-no-provenance`.
+- **REQ-OWR-008** (Event-driven): **When** a skill directory (a directory below `.claude/skills/` or `.agents/skills/`) is empty and the prior manifest record shows that every file once recorded under it was template-managed and none remains on disk, the migration shall remove the directory — whether this run or an earlier one emptied it — and otherwise shall keep the empty directory and record that no provenance record covers it.
 - **REQ-OWR-009** (Ubiquitous): The update shall produce a deterministic remaining-file list with one row per file the migration leaves in place under the four common-asset roots, each row carrying path, ownership class, keep reason, and missing evidence items, and shall render it grouped by reason with per-file rows under `--verbose`.
 - **REQ-OWR-010** (Event-driven): **When** the migration removes a file, the run backup shall hold a byte-identical copy of that file and a copy of the prior manifest, such that returning both to their original locations reproduces the pre-run bytes of the file and of the manifest.
-- **REQ-OWR-011** (Unwanted behavior): The dry-run shall not create, modify, or delete any file or directory, and the candidates it announces shall be exactly those the verdict function marks `removal-eligible`.
+- **REQ-OWR-011** (Unwanted behavior): The `moai update --dry-run` command — every step it runs, the ownership preview included — shall not create, modify, or delete any file or directory, and the removal candidates it announces shall be exactly the files the verdict function marks `removal-eligible`.
 - **REQ-OWR-012** (Ubiquitous): A repeated update over an unchanged tree shall leave the project tree byte-identical outside the timestamped run-backup directories and shall produce an identical remaining-file list.
 - **REQ-OWR-013** (Event-driven): **When** an update run is interrupted or fails partway through the migration, the update shall have preserved every file it removed in the run backup, and a re-run after recovery shall reach the same final state as an uninterrupted run, without resurrecting a removed manifest entry and without leaving an emptied managed directory.
 - **REQ-OWR-014** (Unwanted behavior): The update shall not enable the removal switch: `removalEnabled` shall keep its default `false`, no production code path shall set it to true, and every removal-related test shall enable it only inside its own fixture.
-- **REQ-OWR-015** (Ubiquitous): Each manifest entry a deploy writes shall record the version of the moai binary that wrote it, and each update run shall retain the manifest as loaded at the start of the run in the run backup, so that a later run can confirm a deployed version and a prior record.
+- **REQ-OWR-015** (Ubiquitous): Each manifest entry a deploy writes shall record which moai binary version wrote it; each deploy shall refresh the manifest-level version record to the writing binary's version and shall change the manifest-level deployment timestamp only when that version changes; and each update run shall retain the manifest as loaded at the start of the run in the run backup, so that a later run can confirm a deployed version and a prior record.
+- **REQ-OWR-016** (Event-driven): **When** the run backup cannot hold the byte copy of a removal candidate or the prior-manifest copy, the migration shall not remove that file — and, for a failed prior-manifest copy, shall not remove any file — in that run, and shall list each such candidate as kept with the reason that the backup failed.
 
-REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기다린다. 확인 전에도 REQ-OWR-001 과 -003 은 이행 가능하며 (증거가 없으면 모든 미등록 파일이 보존된다), REQ-OWR-002 의 "증명된 managed" 양성 경로와 REQ-OWR-010 의 매니페스트 사본이 REQ-OWR-015 에 의존한다 (plan.md M1b).
+REQ-OWR-015 와 REQ-OWR-016 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기다린다. 확인 전에도 REQ-OWR-001 과 -003 은 이행 가능하며 (증거가 없으면 모든 미등록 파일이 보존된다), REQ-OWR-002 의 "증명된 managed" 양성 경로는 함수 수준에서 증거를 직접 공급하는 시험으로 닫힌다 (plan.md M1a). Q2 에 의존하는 요구사항·인수 기준·마일스톤의 전체 목록과, (나) 로 풀릴 때 남는 집합은 decision-index.md Q2 와 plan.md § G.1 에 있다 — (나) 는 그 목록을 빼는 것만으로 성립하도록 만들었다.
 
 ## D. 항목별 판정표
 
@@ -101,15 +105,16 @@ REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기
 | (7) | REQ-OWR-012 | AC-OWR-17 |
 | (7) | REQ-OWR-013 | AC-OWR-18 |
 | (1), (7) 게이트 | REQ-OWR-014 | AC-OWR-19 |
-| (6) 증거 생산 | REQ-OWR-015 | AC-OWR-05, -06 |
+| (6) 증거 생산 | REQ-OWR-015 | AC-OWR-05, -06, -17 |
+| (7) | REQ-OWR-016 | AC-OWR-20, -18 |
 
-요구사항 15개 (Tier L 상한 25), 인수 기준 19개 (상한 25). 인수 기준이 없는 요구사항은 없다.
+요구사항 16개 (Tier L 상한 25), 인수 기준 20개 (상한 25). 인수 기준이 없는 요구사항은 없다.
 
 ## F. 제약
 
 1. **구속 제약 (리더, board d-20261018T020724Z-48fb).** (a) 이 SPEC 과 구현은 프로필 루트 (`claude-skills@<profile>/`, `claude-agents@<profile>/`) 에 쓰지 않고, 프로필 루트를 열거하거나 공급하지 않으며, `internal/config/userroots.go` 와 `internal/config/protected_zone.go` 를 건드리지 않는다. 프로필 처리는 읽기 전용 확인이며 불확실하면 보존한다. t1702 는 3.3 보류를 유지하고, 이 SPEC 은 그 판정을 되돌리거나 우회하거나 의존하지 않는다. 요구사항이 프로필 루트 쓰기나 F2 보호를 필요로 하게 되면 멈추고 blocker 보고를 낸다.
 2. **t1668 안전 게이트 유지.** `removalEnabled` 기본 false (`internal/cli/migrate_project_assets.go:38-39`), 프로덕션 활성화 없음, 제거 관련 시험은 픽스처 안에서만 스위치를 주입한다.
-3. **시험 실행 범위.** 카드 워크트리와 픽스처/임시 HOME 만 쓴다. `TMPDIR` 는 `/private/tmp` 아래 (HOME 이나 저장소 아래 금지, 카드 토큰이 없는 이름). 실제 홈, mo.ai.kr, `moai update` 재실행, 바이너리 교체를 쓰지 않는다. 시험은 `HOME` 과 `CLAUDE_CONFIG_DIR` 을 직접 지정한다.
+3. **시험 실행 범위.** 카드 워크트리와 픽스처/임시 HOME 만 쓴다. `TMPDIR` 는 `/private/tmp` 아래 (HOME 이나 저장소 아래 금지, 카드 토큰이 없는 이름이며 디렉터리는 사전 점검 P0 (plan.md § C) 이 만든다). 실제 홈, mo.ai.kr, `moai update` 재실행, 바이너리 교체를 쓰지 않는다. 시험은 `HOME` 과 `CLAUDE_CONFIG_DIR` 을 직접 지정한다.
 4. **필수 시험군.** 명령/에이전트 탐색 회귀, 프로필 환경 (`CLAUDE_CONFIG_DIR`), macOS 대소문자 무구분 경로 (`skill.md` vs `SKILL.md`), 중도 중단 → 복구 → 재실행, 백업/복원 바이트 동일, dry-run 무변경, 반복 갱신 뒤 잔존 목록, 보존 픽스처 네 가지 (§ G 의 AC-OWR-02 ~ -05).
 5. **금지.** 시험 제외, 제한시간 증가, 가드/감사 우회, 거절 기록 삭제, 승인창 선택. 가드나 감사가 추가 승인을 요구하면 막힘으로 보고하고 우회하지 않는다.
 6. **RED 선행.** 모든 행동 변화는 실패하는 시험을 먼저 기록한 뒤 구현한다 (plan.md).
@@ -123,24 +128,25 @@ REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기
 | AC | 요지 | 요구사항 |
 |----|------|----------|
 | AC-OWR-01 | 판정 함수의 네 분류 | 001 |
-| AC-OWR-02 | 보존 픽스처 1 — 템플릿과 바이트가 같은 사용자 작성 미등록 파일 | 002, 003 |
+| AC-OWR-02 | 보존 픽스처 1 — 내장 템플릿의 실재 경로와 바이트가 같은 미등록 파일 (템플릿 조회 성공을 먼저 단언, 승격 변이 대조군 포함) | 002, 003 |
 | AC-OWR-03 | 보존 픽스처 2 — 사용자 수정 파일 | 002 |
 | AC-OWR-04 | 보존 픽스처 3 — 출처 불명 미등록 파일, 이유와 빠진 증거 기록 | 003 |
-| AC-OWR-05 | 양성 픽스처 4 — 증거 완비 파일만 managed, 증거 하나씩 빼면 보존 (변이 시험) | 002, 015 |
-| AC-OWR-06 | 배포 버전 기록과 이전 매니페스트 보존 | 015 |
+| AC-OWR-05 | 양성 픽스처 4 — 증거 완비 파일만 managed, 증거 하나씩 빼면 보존 (변이 시험, 함수 수준) | 002, 015 |
+| AC-OWR-06 | 배포 버전 기록, 이전 매니페스트 보존, 이전 세대 원천 읽기 | 015 |
 | AC-OWR-07 | 프로필 지도 프로젝트: 대응 파일 없는 사본 보존과 이유 | 004 |
-| AC-OWR-08 | `CLAUDE_CONFIG_DIR` 환경, 프로필 루트 무접근 | 005 |
-| AC-OWR-09 | commands 한 처분, 존재 | 006 |
-| AC-OWR-10 | 중단 뒤에도 commands/agents 탐색 가능 | 006 |
+| AC-OWR-08 | 프로필 루트 무접근 — 갱신 경로 전체 소스 스캔(기준선 대비) + 차분 카나리 + 파일 불변 | 005 |
+| AC-OWR-09 | commands 한 처분, 존재 (같은 버전 / 낡은 기록 두 변형) | 006 |
+| AC-OWR-10 | 중단 뒤에도 commands/agents 탐색 가능 (commands 와 agents 의 형식 분리) | 006 |
 | AC-OWR-11 | 대소문자 변형 — 양쪽 파일시스템 모드 | 007 |
 | AC-OWR-12 | 대소문자 변형 — 사용자 매니페스트 키, `.agents/skills` 철자 | 007 |
 | AC-OWR-13 | 관리 파일만 있던 빈 디렉터리 정리 | 008 |
 | AC-OWR-14 | 잔존 목록과 313개 보존 | 003, 009 |
 | AC-OWR-15 | 백업·복원 바이트 동일 | 010 |
-| AC-OWR-16 | dry-run 무변경, 판정 일치 | 001, 011 |
-| AC-OWR-17 | 반복 갱신 멱등 | 012 |
-| AC-OWR-18 | 중단 → 복구 → 재실행 수렴 | 013 |
+| AC-OWR-16 | `moai update --dry-run` 전체 진입의 무변경 (디렉터리 mtime 포함)과 판정 일치 | 001, 011 |
+| AC-OWR-17 | 반복 갱신 멱등 | 012, 015 |
+| AC-OWR-18 | 중단 → 복구 → 재실행 수렴 | 013, 016 |
 | AC-OWR-19 | 제거 스위치 기본값과 프로덕션 비활성 | 014 |
+| AC-OWR-20 | 이전 매니페스트 사본 쓰기 실패 시 제거 차단 (fail-closed) | 016 |
 
 ## H. 교차 참조와 의존성
 
@@ -166,6 +172,9 @@ REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기
 - commands: 관리 청소 대상 `internal/cli/update/deploy/deploy.go:65-75`, 기본 경로는 reconcile (`update_template_sync.go:609`).
 - 이미 있는 이름 바꾸기 장치: `internal/cli/update/skillresidue/residue.go` (`.claude/skills` 의 배포되는 스킬만).
 - `internal/config/userroots.go` 는 이 트리에 없다. `internal/config/protected_zone.go` 는 있고 건드리지 않는다.
+- 프로필 접근의 기존 사실: 마이그레이션이 부르는 런치 원장 판정 `profile.ResolveLaunchProfileForProject` (`migrate_project_assets.go:185`) 는 `launchCandidateIsUsable` 안에서 `os.Stat(<profile base>/<name>)` 로 프로필 설정 디렉터리 항목의 존재와 디렉터리 여부만 본다 (`internal/profile/profile.go:439`). 안의 `skills`·`agents` 는 열지 않는다. 이 접근은 Q1 (DECIDED) 의 매핑 판정에 속하는 기존 코드이며 이 SPEC 이 더하거나 바꾸지 않는다.
+- `probeCaseSensitiveFS` (`update_cleanup.go:387`) 는 비시험 호출자가 없다 (acceptance.md § L-9). 판정·미리보기 경로는 이 함수를 부르지 않는다 (design.md D-4).
+- `moai update --dry-run` 의 전체 진입은 `update.go:361` 의 분기이며 (`previewReconciliation` 은 그 안의 한 단계), 기존 시험 헬퍼 `runDryRunUpdateInProject` (`update_dry_run_reach_test.go:84`) 가 이 분기를 `runUpdate` 로 구동한다.
 
 ## J. 제외 (Exclusions)
 
@@ -177,7 +186,8 @@ REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기
 ### Out of Scope — 프로필 루트의 열거·쓰기·보호
 
 - 다중 프로필 루트 도달은 카드 t1702 (3.3 보류) 의 범위이다. 열거가 필요해지면 구현하지 않고 멈춰 보고한다.
-- `internal/config/userroots.go`, `internal/config/protected_zone.go` 의 변경, 프로필 쪽 대응물의 존재·해시 읽기는 하지 않는다 (decision-index.md Q5).
+- `internal/config/userroots.go`, `internal/config/protected_zone.go` 의 변경, 프로필 쪽 대응물의 존재·해시 읽기는 하지 않는다 (decision-index.md Q5, 리더 판정 2026-10-18: 프로필 루트는 읽지 않고 프로필 쪽 상태는 `not-checked` 로 기록하며 프로필 지도 사본은 무조건 보존한다).
+- 기존 런치 원장 판정이 하는 프로필 설정 디렉터리 항목의 `os.Stat` (§ I) 은 이 SPEC 이 바꾸지 않는다. 그 접근을 없애는 것은 Q1 의 매핑 판정을 바꾸는 일이며 범위 밖이다.
 
 ### Out of Scope — 미등록 파일의 일괄 재분류·자동 채택·삭제
 
@@ -197,4 +207,4 @@ REQ-OWR-015 은 결정 지점 Q2 (decision-index.md) 가 운영자 확인을 기
 
 ## K. 의사결정 지점
 
-이 SPEC 의 결정은 decision-index.md 에 있다 (`interview.decision_gate: on`). 다섯 행: Q1 (프로필 지도 사본 유지, DECIDED), Q2 (배포 버전 기록과 이전 매니페스트 보존 — 운영자 확인 대기, 제품 수준), Q3 (잔존 목록의 형태, 기본값 적용), Q4 (대소문자 변형의 처리 범위, 기본값 적용), Q5 (프로필 쪽 대응물 읽기, 증거 대기). Q2 가 비어 있는 동안 자율 Kickoff 는 막히고 운영자에게 간다.
+이 SPEC 의 결정은 decision-index.md 에 있다 (`interview.decision_gate: on`). 다섯 행: Q1 (프로필 지도 사본 유지, DECIDED), Q2 (배포 버전 기록과 이전 매니페스트 보존 — 운영자 확인 대기, 제품 수준. 열려 있고 이 수정판은 답하지 않는다), Q3 (잔존 목록의 형태, 기본값 적용), Q4 (대소문자 변형의 처리 범위, 기본값 적용), Q5 (프로필 쪽 대응물 읽기 — 리더 판정 2026-10-18 로 보수적 읽기 확정, 라벨은 증거 대기를 유지). Q2 가 비어 있는 동안 자율 Kickoff 는 막히고 운영자에게 간다.
