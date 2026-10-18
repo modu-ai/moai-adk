@@ -128,7 +128,7 @@ Your options, in order of preference:
 
 Never guess a database path; ask the project which paths it uses.
 
-Find the database files with `moai paths`; never guess them. It prints the project key and the confirmed paths of the queue, the factory, and the factory broker databases, from the same resolvers the `moai todo` and `moai factory` verbs use. `moai paths --field todo-db` prints one bare value, `moai paths --json` one JSON object.
+Find the database files with `moai paths`; never guess them. It prints the project key and the confirmed paths of the queue, the factory, and the factory broker databases, by the root rule the `moai todo` verbs and the factory card root use (`CLAUDE_PROJECT_DIR` first). `moai factory runs` and `moai factory recover-resume` resolve the project from the current directory instead, so they agree with `moai paths` only when `CLAUDE_PROJECT_DIR` names the project of the current directory. `moai paths --field todo-db` prints one bare value, `moai paths --json` one JSON object.
 
 Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`. The list is illustrative: only the output of `moai paths` is valid.
 

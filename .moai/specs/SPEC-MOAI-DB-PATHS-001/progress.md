@@ -169,6 +169,16 @@ Named Gap (spec F.5 sync checkpoint), codemaps NOT regenerated in this task: `.m
 
 Other Gaps: the lint binary `/private/tmp/dbp-bin/moai-tree` prints commit `none` in `version`; progress §E.2 records it as built from 944f7ee76, and the only Go file changed since is internal/template/db_paths_surfaces_test.go. The whole internal/cli package run remains left to CI (see §E.2 Gaps).
 
+### Sync-phase corrections after audit 1
+
+Source: sync audit 1 findings F1 and F2 (`.moai/reports/t1827/sync-audit.md`).
+
+- F1 (resolver-parity wording): `moai paths` resolves the project root with `CLAUDE_PROJECT_DIR` first, while `moai factory runs` and `moai factory recover-resume` use the current directory, so the two agree only when `CLAUDE_PROJECT_DIR` names the project of the current directory. Leader ruling: no verb behavior change. The SPEC wording was narrowed to the facts in 88ecbd2e1 (spec.md REQ-DBP-002 and new section H, which records the divergence as debt); the follow-up that aligns the `factoryCardRoot()` path is queued by the leader. This commit narrows the same claim on the one doc surface that carried it, `.moai/docs/todo-queue-storage.md:131`, and its template twin `internal/template/templates/.moai/docs/todo-queue-storage.md:131` (identical line in both). Swept the other instruction surfaces, the four README files and the four-locale docs-site pages for paraphrases of the parity claim (EN "same resolvers", ko/ja/zh equivalents): none found; they only say to find paths with `moai paths`.
+- F2 (--run validation order): fixed in a596bfe5f, which validates the `--run` id before the unresolved-home early return. Files: `internal/cli/paths.go`, `internal/cli/paths_test.go`, `internal/factorymsg/store.go` (adds the exported `ErrInvalidRunID` sentinel).
+- Files edited in this correction: `.moai/docs/todo-queue-storage.md`, `internal/template/templates/.moai/docs/todo-queue-storage.md`, this progress.md.
+- Checks after the doc edit: `TestDBPathsBlock_Surfaces`, the embed-manifest tests (`TestEmbeddedSetEqualsManifest`, `TestDiskTreeMatchesManifest`) and `TestGoldenCommittedArtifactsMatchEmission` pass; no manifest or golden was regenerated because none named the edited file as stale.
+- Pending: a scope-limited sync delta audit (codex required) covering 88ecbd2e1, a596bfe5f and this commit. `sync_commit_sha` stays `pending-backfill`.
+
 ## §G Override and Refusal Record
 
 - 2026-10-17T12:25:39Z SPEC-MOAI-DB-PATHS-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit.md
