@@ -115,6 +115,9 @@ var requiredGoCodeRoots = []string{
 	"scripts/release.sh",
 	"scripts/verify-release-provenance.sh",
 	".goreleaser.yml",
+	// Card t1858: the release_gate pin tests (internal/config, internal/template)
+	// read this file; an edit to it alone must run them.
+	".github/required-checks.yml",
 }
 
 func TestTestInputFiltersCoversGoTestInputs(t *testing.T) {

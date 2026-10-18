@@ -45,8 +45,9 @@ origin CI 결과**를 확인한다(검증 9).
   origin의 끝과 같음을 이미 보장하므로 `<sha>`는 태그될 커밋이다.
 - 통과 조건: check run이 하나 이상 있고, 전부 `completed`이며, 전부 `success`, `neutral`, `skipped` 중
   하나로 끝났고, 이 저장소 CI 워크플로(`.github/workflows/ci.yml`, `name: CI`)가 게시하는 check run 세 개가
-  이름까지 일치하고 `github-actions` 앱이 게시한 것으로 모두 있다: `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`. 이름 목록은 스크립트
-  검증 9 맨 위의 `CI_REQUIRED_CHECKS` 한 곳이고, 잡 이름이 바뀌면 그 한 줄을 고친다. 다른 앱의 녹색 check run
+  이름까지 일치하고 `github-actions` 앱이 게시한 것으로 모두 있다: `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`. 이름 목록은 `.github/required-checks.yml`의
+  `release_gate` 목록 한 곳이고(스크립트는 이름을 직접 갖지 않고 이 파일을 읽는다), 잡 이름이 바뀌면 그 목록만 고친다.
+  파일이 없거나 이름을 하나도 읽지 못하면 스크립트는 태그를 만들지 않고 거부한다. 다른 앱의 녹색 check run
   하나만으로는, 그리고 필수 이름을 쓰는 다른 앱의 check run으로는 통과하지 못한다(`app.slug`를 읽어 비교한다. 앱 정보가 없는 check run도 세지 않는다).
 - 거부(종료 코드 1, 조건 이름을 출력): check run 없음, 진행 중인 것이 있음, 실패한 것이 있음, 읽기 실패,
   `gh` 없음, CI 워크플로의 check run이 빠져 있음(없는 이름을 나열한다). 실패와 진행 중이 함께 있으면
@@ -73,9 +74,9 @@ origin CI 결과**를 확인한다(검증 9).
    좁히지 않은 이유는, 태그가 되돌릴 수 없는 쪽이라 과잉 거부가 과잉 허용보다 싸기 때문이다. 상태(status)로
    보고하는 외부 점검(CodeRabbit)은 이 확인이 읽지 않는다. 이름으로 요구하는 세 개는 `ci.yml`이 push에서
    게시하는 잡 이름이라 `Guard Bundle`, `Analyze (Go) (go)`, 다른 `Build` 행렬 칸은 이름으로는 요구하지 않는다
-   (실패하면 전부 요구 조건에 걸려 막는다). `CI_REQUIRED_CHECKS`와 실제 게시 이름이 어긋나면 안전한 쪽으로,
+   (실패하면 전부 요구 조건에 걸려 막는다). `release_gate`와 실제 게시 이름이 어긋나면 안전한 쪽으로,
    즉 태그를 거부하는 쪽으로 실패한다.
-2. **GitHub 응답 형식과 이름의 실측.** 이 확인의 jq 식과 `CI_REQUIRED_CHECKS`의 세 이름은 가짜 `gh`와
+2. **GitHub 응답 형식과 이름의 실측.** 이 확인의 jq 식과 `release_gate`의 세 이름은 가짜 `gh`와
    `ci.yml`·`.github/required-checks.yml` 읽기로만 정했다. 실제 GitHub가 main push 커밋에 게시하는 check run
    이름은 원격에 접속해야 하므로 이 카드에서 확인하지 않았다. 다음 실제 릴리스의 `--dry-run`이 첫 실측이다.
    이름이 다르면 그 실행이 `expected check run(s) not reported`로 거부하므로 거짓 통과는 나지 않는다.
