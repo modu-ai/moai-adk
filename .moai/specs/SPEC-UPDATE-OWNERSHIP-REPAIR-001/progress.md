@@ -3145,6 +3145,33 @@ rc=1
 
 붉은 이유: 단언 실패이며 올바른 이유다. 프로필 모양 대상으로 가는 직접 링크와 사슬(링크 → 프로젝트 안 링크 → 밖) 둘 다 34 바이트를 읽었고(`read 34 bytes from outside the project`, `carried 34 bytes read through the symlink`) 이유가 `no-provenance-record` 로 나왔다 (`symlink-escape` 가 맞다). 통제 단언(프로젝트 안 링크, 끊어진 링크, 도달 확인, 대상 불변)은 한 줄도 실패하지 않았다.
 
+#### F3 — 사용자 루트 대응물이 FIFO 이면 판정이 멈춘다
+
+**A** `34c69c19fc` — `internal/cli/migrate_ownership_counterpartfifo_test.go` (`//go:build !windows`, `TestCounterpartFifoIsNotOpened`). 등록된 managed 파일의 사용자 루트 대응물을 FIFO 로 바꾼 뒤 (a) 판정 함수를 프로필 매핑 프로젝트와 일반 프로젝트로 각각 부르고 (b) 실제 걷기를 돈다. 멈춤은 `migrate_ownership_nonregular_test.go` 와 같은 방식 (고루틴 + 한정 대기는 멈춤 감지용일 뿐 속도 단언이 아님, 막힌 읽기는 FIFO 를 건드려 풀어 임시 트리보다 오래 살지 않게 함) 으로 감지한다. 기대: 대응물은 열리지 않고 `unconfirmed`, 프로젝트 사본 유지, 제거 0, 이유 `counterpart-unconfirmed` (프로필 매핑은 `profile-reach`).
+
+RED-now (명령 · 트리 SHA `34c69c19fc` · 종료 코드 · 원문):
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestCounterpartFifoIsNotOpened$' -count=1 -v
+=== RUN   TestCounterpartFifoIsNotOpened
+=== RUN   TestCounterpartFifoIsNotOpened/ProfileMappedProject
+    migrate_ownership_counterpartfifo_test.go:112: the verdict did not return: it is blocked reading the user-root counterpart FIFO <tmp>/004/.claude/skills/moai-foundation-core/SKILL.md
+=== RUN   TestCounterpartFifoIsNotOpened/OrdinaryProject
+    migrate_ownership_counterpartfifo_test.go:112: the verdict did not return: it is blocked reading the user-root counterpart FIFO <tmp>/004/.claude/skills/moai-foundation-core/SKILL.md
+=== RUN   TestCounterpartFifoIsNotOpened/MigrationReturnsAndKeepsTheProjectCopy
+    migrate_ownership_counterpartfifo_test.go:123: the migration did not return: it is blocked reading the user-root counterpart FIFO <tmp>/004/.claude/skills/moai-foundation-core/SKILL.md
+--- FAIL: TestCounterpartFifoIsNotOpened (92.33s)
+    --- FAIL: TestCounterpartFifoIsNotOpened/ProfileMappedProject (30.98s)
+    --- FAIL: TestCounterpartFifoIsNotOpened/OrdinaryProject (30.56s)
+    --- FAIL: TestCounterpartFifoIsNotOpened/MigrationReturnsAndKeepsTheProjectCopy (30.79s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	93.691s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 세 절 모두 30 초 한정 대기 안에 반환하지 못했다 (판정 함수 두 절은 대응물 FIFO 의 읽기에서, 걷기 절은 같은 읽기에서 막힘). 원문의 임시 경로 접미사는 가독성을 위해 `<tmp>` 로 줄였다 (정규식 치환 한 줄; 나머지 바이트는 저장 파일과 같다).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
