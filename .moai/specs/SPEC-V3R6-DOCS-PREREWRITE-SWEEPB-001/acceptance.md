@@ -26,7 +26,7 @@ P-ALL = P-TOK P-IDX P-POL
 
 ### A.3 Classification
 
-The default state of Q-SWB-1 is option (b) (decision-index.md, Gate), so no page changes and every criterion below is true at the pin. A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2); each one does, so each is a regression-guard. AC-PRC-001-002 is the one criterion that has a red state: under option (a) it is **release-blocking** and flips from red to green at M3 (RED-now cell E-SWB-2); under option (b) it is a **regression-guard**. No criterion is release-blocking under the default.
+Nothing is edited at the pin, so every criterion below is true there except AC-PRC-001-002 under option (a); the rows that decide the branch are in decision-index.md (Gate). A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2); each one does, so each is a regression-guard. AC-PRC-001-002 is the one criterion that has a red state: under option (a) it is **release-blocking** and flips from red to green at M3 (RED-now cell E-SWB-2); under option (b) it is a **regression-guard**. Under option (b) no criterion is release-blocking.
 
 ## B. Acceptance criteria
 
@@ -57,7 +57,7 @@ The first command prints every W01 match line that carries neither content key o
 
 AC-PRC-001-002 maps REQ-PRC-001-002.
 
-**Branch (b): Q-SWB-1 retains the twelve lines (default).**
+**Branch (b): Q-SWB-1 retains the twelve lines.**
 
 - **Given** the verdict is (b),
 - **When** these two commands run,

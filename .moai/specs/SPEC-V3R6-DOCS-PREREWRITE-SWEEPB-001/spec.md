@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001
 title: "Docs Pre-Rewrite Cleanup — stale CLI citations on tokenomics-overview and two multi-llm pages (child SWEEPB, card t1722)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001]
 | Date | Version | Author | Change |
 |------|---------|--------|--------|
 | 2026-10-19 | 0.1.0 | manager-spec | Initial plan-phase authoring for card t1722 (class C), child SWEEPB of the umbrella SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (card t1655, split 6 of 11, operator approval `d-20261014T060405Z-0fcd`). Every count below was measured on tree commit 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 in this pass. The structure follows the sibling child SWEEPA (card t1721) after its plan-audit iteration 1 (FAIL 0.69): the five blocking defects of that report are designed out here (edit unit defined once in plan.md §A.2; gate state stated once in decision-index.md; Class C and Class N separated; no requirement defers to a decision a stamp already makes; a byte-unchanged and hunk-containment criterion closes the emptied-page mutant). Status `draft`. |
+| 2026-10-19 | 0.2.0 | manager-spec | Revision before the plan audit, on the leader's instruction and the sibling's iteration-1 result (SWEEPA, FAIL 0.69, defects D2 and D4). Withdrawn: the three `DEFAULT-APPLIED` stamps on Q13, Q17, and Q-SWB-1, because a planner default is not an operator verdict (umbrella plan.md §B). The three rows are open with an empty verdict, each keeping its ranked `Default:` and options. The gate is stated once, in decision-index.md (Gate), with the milestone-to-row map; the revisability and stamp-effect paragraphs are removed, and the other files cite the Gate by row id. The measurement, the edit units, the criteria, and the controls are unchanged. Requirement count 4 and criterion count 5, unchanged. Status stays `draft`. |
 
 **Tier note.** Tier M: the 12 files sit in the 5 to 15 file band; each edit unit is one line or one paragraph, far under 300 changed lines; the umbrella assigned tier M to each child (umbrella spec.md, § Child SPECs). This SPEC carries 4 requirements and 5 acceptance criteria, under the Tier M ceilings of 16 and 16. No design.md or research.md is authored.
 
