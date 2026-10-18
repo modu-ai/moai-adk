@@ -22,12 +22,14 @@ const reviewLayerOverlapCheckName = "Review Layer Overlap"
 
 // checkReviewLayerOverlap warns when the turn-end review gate is enabled and a
 // factory lane session record exists. The gate is read through the hook's own
-// reader (fail-closed: unreadable config reads as off), so doctor and the hook
-// cannot disagree on "enabled"; an unreadable record store reads as no lane.
+// reader from the hook's own config root (a config-orphaned linked worktree
+// reads its primary checkout; unreadable config reads as off), so doctor and
+// the hook cannot disagree on "enabled"; an unreadable record store reads as
+// no lane.
 func checkReviewLayerOverlap(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: reviewLayerOverlapCheckName, Status: uikit.CheckOK}
 
-	if !readCodexReviewGateEnabled(projectRoot) {
+	if !readCodexReviewGateEnabled(reviewGateConfigRoot(projectRoot)) {
 		check.Message = "turn-end review gate is off; no overlapping review layers"
 		return check
 	}

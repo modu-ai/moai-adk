@@ -106,6 +106,20 @@ func TestDoctorReviewLayerOverlap(t *testing.T) {
 	}
 }
 
+// TestDoctorReviewLayerOverlap_ConfigOrphanedWorktree — a linked worktree with
+// no .moai of its own reads the gate flag from its primary checkout, exactly as
+// the Stop hook does, so a lane record in that worktree still warns.
+func TestDoctorReviewLayerOverlap_ConfigOrphanedWorktree(t *testing.T) {
+	fx := newUntrackedFixture(t, reviewGateOnYAML)
+	seedFactoryRecord(t, fx.W, "lane-session", "lane")
+
+	check := checkReviewLayerOverlap(fx.W, false)
+
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("status = %v, want warn (message %q)", check.Status, check.Message)
+	}
+}
+
 // TestDoctorReviewLayerOverlap_Registered — the check is reachable through the
 // grouped table (`moai doctor --check "Review Layer Overlap"`).
 func TestDoctorReviewLayerOverlap_Registered(t *testing.T) {
