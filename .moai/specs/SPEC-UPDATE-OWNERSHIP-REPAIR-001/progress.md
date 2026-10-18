@@ -2709,11 +2709,206 @@ RED 셀 (같은 트리), 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./in
 FAIL	github.com/modu-ai/moai-adk/internal/cli	7.655s
 ```
 
+**커밋 C `051ddc18ef`** (운영 코드: `internal/cli/update/backup/run_marker.go` 에 내보내는 상수 `PriorManifestName`, `internal/cli/update/backup/restore.go` 의 Legacy 걷기가 루트의 그 파일을 건너뜀, `internal/cli/update_prior_manifest.go` 가 쓰는 쪽 이름을 그 상수로 정의, `internal/cli/migrate_project_assets.go` 의 제거 후보가 파일 권한 비트를 실어 나르고 `backupRemovedAsset` 가 그 모드로 쓴 뒤 `chmod`). `RestoreMoaiConfigRetained` 는 고치지 않았다 — `sections/` 아래 YAML 만 걷고 `sections/` 가 없으면 Legacy 로 넘어가므로 같은 구멍이 아니다 (시험 `TestRestoreRetainedWithSectionsSkipsPriorManifest` 가 특성화로 지킨다). 상수는 Legacy 걷기에서 루트 상대 경로가 정확히 같을 때만 건너뛴다 (하위 디렉터리의 같은 이름은 사용자 내용이므로 계속 복원, 시험이 단언).
+
+**GREEN (트리 `051ddc18ef`, 종료 코드는 각 실행에서 직접 읽음; 연속 5회).** 새 선택자: 복원 수준 `go test ./internal/cli/update/backup/ -run 'PriorManifest'`, 흐름 수준 `-run '^TestUpdateDoesNotRestorePriorManifestIntoConfig$'`, AC-OWR-15 `-run '^TestRemovedAssetBackupRestoreByteIdentical$'` (모두 `TMPDIR=/private/tmp/own-fixture-d1 ... -count=1 -v`):
+
+```text
+run 1: backup-level rc=0 pass=4 fail=0 | flow-level rc=0 pass=1 fail=0 | AC-OWR-15 rc=0 top-pass=1 all-pass=28 fail=0
+run 2: backup-level rc=0 pass=4 fail=0 | flow-level rc=0 pass=1 fail=0 | AC-OWR-15 rc=0 top-pass=1 all-pass=28 fail=0
+run 3: backup-level rc=0 pass=4 fail=0 | flow-level rc=0 pass=1 fail=0 | AC-OWR-15 rc=0 top-pass=1 all-pass=28 fail=0
+run 4: backup-level rc=0 pass=4 fail=0 | flow-level rc=0 pass=1 fail=0 | AC-OWR-15 rc=0 top-pass=1 all-pass=28 fail=0
+run 5: backup-level rc=0 pass=4 fail=0 | flow-level rc=0 pass=1 fail=0 | AC-OWR-15 rc=0 top-pass=1 all-pass=28 fail=0
+```
+
+`go test ./internal/cli/update/backup/ -count=1` (건드린 패키지 전체, 작은 패키지): 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.104s`.
+
+**회귀: 이 카드의 시험 전부 (앵커된 이름 67개 — 앞 chunk 의 66개 + 새 흐름 시험 하나; 이름은 카드가 `cdd72a814` 이후 바꾼 `internal/cli/*_test.go` 에서 뽑고 기준선 11 + 가드를 더했다; `internal/cli` 패키지 전체 실행 아님)**, 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<아래 이름>)$' -count=1 -v -coverprofile=<파일>`, 종료 코드 0, 최상위 `--- PASS`=67 `--- FAIL`=0 `--- SKIP`=0, 부하 평균 시작 `34.09 27.35 27.91` 끝 `36.52 34.25 30.88`:
+
+```text
+PASS
+coverage: 10.0% of statements
+```
+
+```text
+TestAliasToAKeyTheManifestLacksIsNoAlias
+TestBackupFailureRemovesNothingThroughProductionPath
+TestCaseVariantCounterpartAndMirrorSpelling
+TestCaseVariantOnHostFilesystem
+TestCaseVariantResolvesToRegisteredEntry
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun
+TestCommandsSingleDispositionAndPresent
+TestCounterpartLocationAndStatusEdges
+TestDowngradeDropsEvidenceNotSafety
+TestDryRunChangesNothingAndMatchesVerdict
+TestDryRunRunsNoBinaryUpdateStep
+TestEmptiedSkillDirRemoved
+TestEmptyDirProvenanceVerdict
+TestInterruptedMigrationRecoversAndConverges
+TestKeepReasonVocabularyIsClosed
+TestLegacyManifestRoundTrip
+TestManagedOnlyEmptyDirsPruned
+TestMigrationBackupBeforeRemoval
+TestMigrationClassifiesUnregisteredMirrorCopy
+TestMigrationDefaultKeepsConfirmedProjectCopy
+TestMigrationIdempotent
+TestMigrationKeepsSharedCopyUnderProfileReach
+TestMigrationPreservesExistingMirrorEntries
+TestMigrationRemovalGate
+TestMigrationRemovesSharedCopyWithoutProfileReach
+TestNoProfileRootAccessInUpdateSources
+TestOwnershipAttestedManagedOnlyWithFullEvidence
+TestOwnershipAttestedManagedThroughOperatingSource
+TestOwnershipHelperFixtureBuilders
+TestOwnershipHelperForcedRunReachesReconciliation
+TestOwnershipHelperTreeSnapshotSeesDirMtime
+TestOwnershipHelperUsesRealEmbeddedPaths
+TestOwnershipPreserveByteEqualUserFile
+TestOwnershipPreserveUserModifiedFile
+TestOwnershipUnregisteredUnknownOriginKeptWithReason
+TestOwnershipVerdictClasses
+TestPreservePriorManifestOutcomes
+TestPreviewOmitsRemovalCandidateWhileSwitchOff
+TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy
+TestPreviewVerdictsFailClosed
+TestPriorGenerationCorruptIsNoEvidence
+TestPriorGenerationSourceBoundedAndTolerant
+TestPriorGenerationsAreLookupBoundOnly
+TestPriorManifestAtomicWriteFailures
+TestPriorManifestRetainedInRunBackup
+TestProfileCallsiteBaselineMatchesTree
+TestProfileEnvDoesNotReachProfileRoot
+TestProfileMappedCopyKeptWithoutCounterpart
+TestProfileReachMarkUsesTheRegisteredKeyUnderACaseAlias
+TestProfileScanCatchesMutants
+TestPruneNestedEmptyDirGuards
+TestRF2F3b_MigrationPreservesUntracked
+TestRemainingListKeeps313UnregisteredCopies
+TestRemainingRenderEdges
+TestRemovalSwitchStaysOffInProduction
+TestRemovedAssetBackupRestoreByteIdentical
+TestRepeatedUpdateIsIdempotent
+TestShouldSkipBinaryUpdate_DevBuild
+TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2
+TestShouldSkipBinaryUpdate_EnvVar
+TestShouldSkipBinaryUpdate_EnvVar_Phase5
+TestShouldSkipBinaryUpdate_Normal
+TestShouldSkipBinaryUpdate_TemplatesOnlyFlag
+TestUpdateDoesNotRestorePriorManifestIntoConfig
+TestUpdateDryRun_ZeroMutation
+TestVerdictAndPreviewCodeHasNoWritableCalls
+TestViewOfManifestIsAReadOnlyCopy
+```
+
+**운영 코드 변이 둘 (트리 `051ddc18ef`, 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL`; 출력 줄 추림).** (1) 발견 2: `backupRemovedAsset` 가 모드와 무관하게 `defs.FilePerm` 으로 쓴다 — AC-OWR-15 가 붉다:
+
+```text
+    migrate_ownership_restore_test.go:629: (i-mode) the backup copy of .claude/skills/moai-workflow-project/scripts/navigator-audit.sh has mode 644, the file had 755
+    migrate_ownership_restore_test.go:629: (iii-mode) the restored .claude/skills/moai-workflow-project/scripts/navigator-audit.sh has mode 644, it had 755
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (9.06s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/BackupCopyModes (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/RestoredModes (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/DifferenceSentinel (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.06s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/ExpectedSetMembersThatDiffer (0.08s)
+```
+
+(2) 발견 1: 건너뛰는 조건을 꺼 둔다 — 복원 수준 시험 셋이 붉고 `sections/` 있는 사례는 초록 그대로이다:
+
+```text
+--- FAIL: TestRestoreLegacySkipsPriorManifest (0.00s)
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifest (0.00s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifest (0.00s)
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifest (0.01s)
+rc=1
+```
+
+**발견 1에서 더 점검한 것 (모두 `internal/cli/update/backup` 아래의 걷기·세는 코드, 코드 읽기와 필요한 곳의 실행으로).**
+
+1. `RestoreMoaiConfigRetained` 의 걷기: `sections/` 만, `.yaml`/`.yml` 만 — 루트의 JSON 이 들어갈 수 없음. 시험으로 특성화.
+2. `RestoreMoaiConfigLegacy`: 구멍 (고침). `RestoreFromBackupDir` (--restore 진입점, 두 번 적용) 와 `RestoreMoaiConfig` 도 같은 걷기를 거친다 — 시험 셋 모두 포함.
+3. `RestoreUnmanagedConfigDirsSkipping`: `evaluator-profiles`, `astgrep-rules` 두 디렉터리만 — 해당 없음.
+4. `base_loader.go`, `snapshot.go`, `backup.go` 의 걷기: 원본 설정과 템플릿 스냅샷 쪽을 걷는다 (백업 디렉터리의 루트가 아님) — 해당 없음.
+5. 보존 정책 센서스 (`retention_prune.go` `takeCensus`/`isBookkeepingFile`): 부기 파일은 이름 셋 (실행 표식, `.complete`, `backup_metadata.json`) 뿐이라 `manifest.prior.json` 은 내용 키와 크기에 들어간다. **바꾸지 않았다:** REQ-OWR-017 이 보존 정책 변경을 금지하고 갭 G-K (센서스가 이 파일로 예산을 바꾸는지) 는 측정되지 않은 채이다 — 잔여 위험으로 남긴다.
+6. **같은 부류로 새로 확인한 것 (고치지 않음, 최소 변경 지시): Legacy 걷기는 `removed-assets/**` 와 `in-memory-backups/**` 도 `.moai/config/` 로 복사한다.** 임시 시험(삭제함)으로 확인했다 (`removed-assets copied into config: true`, `in-memory-backups copied into config: true`). `in-memory-backups` 는 이 카드 이전부터이고 (UDS 카드), `removed-assets` 는 t1668 의 것이며 제거 스위치가 꺼져 있어 운영에서는 비어 있다. 같은 한 줄 부류의 수정이므로 리더가 원하면 후속 카드에서 고친다.
+
+**품질 (트리 `051ddc18ef`)**
+
+```text
+go build ./... rc=0
+GOOS=windows go build ./... rc=0
+gofmt -l internal/cli internal/manifest rc=0 output-bytes=0
+go vet ./internal/cli/ ./internal/cli/update/backup/ ./internal/manifest/ rc=0 output-bytes=0
+GOOS=windows go vet (same three packages) rc=0 output-bytes=0
+```
+
+`golangci-lint run ./internal/cli/ ./internal/cli/update/backup/ ./internal/manifest/` 종료 코드 1: 카드 파일에 대한 지적 0건, 남은 셋은 이 카드가 만지지 않은 기존 errcheck:
+
+```text
+internal/cli/factory_run_adopt.go:79:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:91:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:103:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+3 issues:
+* errcheck: 3
+```
+
+**하드 제약 점검 (최종 트리)**
+
+```text
+--- protected/profile (card commits)
+exit=0
+--- positive control
+      29
+--- diff names protected/profile/audit-receipts/templates
+grep-exit=1
+--- removalEnabled
+grep-exit=1
+40:var removalEnabled = false
+--- SPEC bodies since 7b758103d8
+grep-exit=1
+--- files touched by chunk 5 so far
+.moai/specs/SPEC-UPDATE-OWNERSHIP-REPAIR-001/progress.md
+internal/cli/migrate_ownership_restore_test.go
+internal/cli/migrate_project_assets.go
+internal/cli/update/backup/restore.go
+internal/cli/update/backup/restore_prior_manifest_test.go
+internal/cli/update/backup/run_marker.go
+internal/cli/update_prior_manifest.go
+internal/cli/update_prior_manifest_restore_test.go
+```
+
+**범위가 좁은 구문 커버리지 (위 회귀 한 번의 프로필 + `update/backup` 패키지 전체 시험 한 번; 앞 chunk 와 같은 계산)**
+
+```text
+internal/cli/migrate_ownership.go (created) 96.0% (119/124 statements)
+internal/cli/migrate_ownership_case.go (created) 96.6% (57/59 statements)
+internal/cli/migrate_ownership_emptydir.go (created) 93.3% (84/90 statements)
+internal/cli/migrate_ownership_env.go (created) 94.4% (34/36 statements)
+internal/cli/migrate_ownership_evidence.go (created) 100.0% (25/25 statements)
+internal/cli/migrate_ownership_remaining.go (created) 100.0% (67/67 statements)
+internal/cli/update_prior_manifest.go (created) 87.5% (70/80 statements)
+internal/cli/migrate_project_assets.go (edited) whole-file 82.7% (220/266); card-changed lines 87.9% (102/116)
+internal/cli/update.go (edited) whole-file 35.7% (146/409); card-changed lines 100.0% (5/5)
+internal/cli/update_dryrun_preview.go (edited) whole-file 86.1% (31/36); card-changed lines 100.0% (8/8)
+internal/cli/update_template_sync.go (edited) whole-file 64.9% (276/425); card-changed lines 90.3% (28/31)
+internal/cli/update/backup/restore.go (edited, whole backup package tests) whole-file 89.1% (106/119); card-changed lines 100.0% (2/2)
+internal/cli/update/backup/run_marker.go (edited): the card added one constant, no statements
+```
+
+`migrate_project_assets.go` 전체 82.7% 는 85% 미만이다 (이 카드 이전의 t1668 코드가 대부분; 카드가 바꾼 줄 87.9%). 새로 더한 `mode` 가지는 시험이 덮는다 (AC-OWR-15 의 실행 파일).
+
+**정직한 회계 / 갭 / 잔여 위험 (chunk 5)**
+
+1. AC-OWR-15 시험이 실행 파일 후보를 하나 더 가지게 되어 후보가 셋에서 넷이 되었다. 앞 chunk 의 AC-OWR-15 기록 수치(변이 개수 등)는 이 시험의 이전 판에 대한 것이고 변이 `BackupCopyLosesTheExecuteBit` 하나와 보고 묶음 둘 (`BackupCopyModes`, `RestoredModes`) 이 늘었다.
+2. 발견 2 의 모드 보존은 `os.Stat` 의 권한 비트(`Mode().Perm()`) 이다. setuid/sticky 비트와 소유자는 보존하지 않는다 (공통 자산 파일에는 해당 없음). `os.Stat` 이 실패하면 `defs.FilePerm` 으로 되돌아간다 (제거 자체는 그 파일을 이미 읽었으므로 실패 가능성이 낮다).
+3. 발견 1 의 복원 수준 시험은 실제 업데이트의 Restore 순서(`RestoreFromBackupDir` 두 번 적용)에서 두 번째 적용이 `notes/manifest.prior.json` 에 대해 「merge failed ... restoring backup」 경고를 낸다는 것을 보았다 — 이미 있는 비 YAML 대상에 대한 기존 동작이고 이 수정과 무관하다.
+4. 실행하지 않은 것: `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지, `-race`, Windows 시험 실행 (빌드와 vet 만). 착지 재측정 몫이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: 8afbbe9436  # code-verification baseline: the last test/code commit; the evidence commit that carries this block follows it
+run_commit_sha: 051ddc18ef  # code-verification baseline: the last test/code commit (chunk 5 card-review fix C); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -2723,8 +2918,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 34  # non-.moai files added or edited over the card: 20 test files, 13 Go sources, 1 data file
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C
+total_run_phase_files: 38  # non-.moai files added or edited over the card: 22 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
@@ -2743,7 +2938,7 @@ m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell rec
 | AC-OWR-12 | release-blocking | 빌드 실패 형 | `ae8868f6fc` | `cbf9579e9a` | `91e5bbcfa5` |
 | AC-OWR-13 | release-blocking | 단언 수준 | `42854e32aa` + `866a1f8103` | `89731b5e59` | `ba1ebac9a4` |
 | AC-OWR-14 | release-blocking | 단언 수준 | `167a6c0af4` | `db68f30cf7` | `e6e3e8d9f2` |
-| AC-OWR-15 | **regression-guard** | 도착 시 초록, 운영 코드 변이 넷과 시험 안 변이에서 붉음 | `415644baff` | `b896029228` | — |
+| AC-OWR-15 | **regression-guard** | 도착 시 초록, 운영 코드 변이 넷과 시험 안 변이에서 붉음. chunk 5 에서 실행 파일 후보를 더하자 모드 절이 붉었다 (발견 2, 잠복 결함) | `415644baff` (+ chunk 5 `73e37d3832`) | `b896029228` (+ `9c00e81a2c`) | chunk 5 `051ddc18ef` |
 | AC-OWR-16 | release-blocking | 단언 수준 | `2d6ec34053` | `0065cb21ed` | `4683bed8e0`, `d09d66c6f9`, `4767df4de4` |
 | AC-OWR-17 | **regression-guard** | 도착 시 초록, 운영 코드 변이 넷과 시험 안 변이에서 붉음 | `5614767764` | `7414777ee3` | — |
 | AC-OWR-18 | **regression-guard** | 도착 시 초록, 운영 코드 변이 셋과 시험 안 변이에서 붉음 | `ace2e8d84b` | `886f5b2d82` | — |
@@ -2771,6 +2966,8 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 | N24 변이 M-F (두 관측점을 정상으로 거친 뒤 최종 이름을 다시 쓰기) 미검출 | **확인됨, 못 닫음 (공개한 한계)** | 실측으로 `ok` 임을 확인했다 (chunk 1 변이 표). 접근 기록 이음매 없이는 닫을 수 없다 |
 
 **열린 제품 쪽 사실 (이 카드 밖, sync·리더가 알아야 함).** 같은 시계 초에 시작한 두 갱신은 실행 백업 디렉터리를 공유하고, 뒤 실행이 만든 `manifest.prior.json` 이 앞 실행의 것을 대체해 **더 오래된 이전 세대를 잃는다.** 영향은 증거 손실뿐이다: 그 세대를 근거로 하던 판정 (미등록 파일의 `managed` 승격, 이전 실행이 비운 디렉터리 정리) 이 보존 쪽으로 기운다 — 파일은 지워지지 않는다. AC-OWR-18 (c) 의 `SharedRunDirectory` 분기가 이를 정확히 단언한다 (디렉터리 셋이 남고 `empty-dir-no-provenance` 로 나열됨). 근거: 실행 백업 이름의 초 단위 해상도 (`defs.BackupTimestampFormat`). 고치려면 이 카드 밖의 변경이 필요하다 (실행 백업 이름이나 세대 보존 방식).
+
+**chunk 5 (카드 리뷰 수정)로 바뀐 것.** 코덱스 카드 리뷰의 P2 둘을 고쳤다: 복원이 `manifest.prior.json` 을 `.moai/config` 로 복사하던 결함(이 카드가 만든 것)과 제거 후보 백업 사본이 실행 비트를 잃던 잠복 결함. 커밋 A `73e37d3832`, B `9c00e81a2c`, C `051ddc18ef`. 같은 부류로 확인했으나 고치지 않은 것: Legacy 복원 걷기는 `removed-assets/**`, `in-memory-backups/**` 도 `.moai/config` 로 복사한다 (앞의 것은 제거 스위치가 꺼져 있어 운영에서 비어 있고, 뒤의 것은 이 카드 이전부터). 보존 정책 센서스가 `manifest.prior.json` 을 내용으로 세는 문제(갭 G-K)는 REQ-OWR-017 때문에 건드리지 않았다.
 
 **SPEC 본문에 대한 공개 (본문은 고치지 않았다; 필요하면 manager-spec 재위임).**
 
