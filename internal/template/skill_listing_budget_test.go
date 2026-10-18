@@ -198,10 +198,6 @@ func TestCountSkillChars_UTF16Semantics(t *testing.T) {
 		{"description padding counts", skillListingEntry{Name: "x", Description: "  ab  "}, 6},
 		// England flag: seven astral runes, 7 x 2 = 14 units.
 		{"england flag is fourteen units", skillListingEntry{Name: "x", Description: englandFlag}, 14},
-		// Documented limit, pinned: an empty description counts 0, although the host
-		// then falls back to the first body line (up to 100 units). A later change to
-		// this behavior shows up here. No deployed skill has an empty description.
-		{"empty description counts zero (pinned limit)", skillListingEntry{Name: "x", Description: ""}, 0},
 		// when_to_use is not trimmed: 1 + 3 + 3 (" x ") = 7.
 		{"when_to_use untrimmed", skillListingEntry{Name: "x", Description: "d", WhenToUse: " x "}, 7},
 		// A whitespace-only when_to_use is still set, so the separator counts: 1 + 3 + 3 = 7.
@@ -316,6 +312,61 @@ func TestCheckSkillListing_SkillMDLastKeyWhenToUse(t *testing.T) {
 			}
 			if failed := len(checkSkillListing([]skillListingEntry{e})) != 0; failed != tc.wantFail {
 				t.Errorf("violation = %v, want %v", failed, tc.wantFail)
+			}
+		})
+	}
+}
+
+// SKILL.md-shaped text goes through parseSkillMD, the path the real-tree test
+// uses. Shapes whose host count the guard cannot measure are rejected by name
+// instead of being undercounted; valid shapes must still parse.
+func TestParseSkillMD_RejectsUnsupportedShapes(t *testing.T) {
+	md := func(fm string) string { return "---\nname: x\n" + fm + "---\nfirst body line\n" }
+	cases := []struct {
+		name    string
+		text    string
+		wantErr []string // all substrings must appear in the error; nil means valid
+	}{
+		// Keep-chomped block scalars: the host counts their trailing blank lines.
+		{"keep when_to_use last and empty", md("description: d\nwhen_to_use: |+\n\n\n"), []string{"when_to_use", "keep-chomped"}},
+		{"keep when_to_use in the middle", md("description: d\nwhen_to_use: |+\n  text\n\n\nmodel: m\n"), []string{"when_to_use", "keep-chomped"}},
+		{"keep folded description", md("description: >+\n  text\n\n\n"), []string{"description", "keep-chomped"}},
+		{"keep with indent digit", md("description: |2+\n    text\n\n"), []string{"description", "keep-chomped"}},
+		{"keep with digit after plus", md("description: >+2\n    text\n\n"), []string{"description", "keep-chomped"}},
+		// Non-string scalars.
+		{"float description", md("description: 1e20\n"), []string{"description", "not a string"}},
+		{"bool description", md("description: true\n"), []string{"description", "not a string"}},
+		{"int when_to_use", md("description: d\nwhen_to_use: 12\n"), []string{"when_to_use", "not a string"}},
+		// Empty description: the host falls back to the first body line.
+		{"missing description", md(""), []string{"description", "empty", "first body line"}},
+		{"null description", md("description:\n"), []string{"description", "empty", "first body line"}},
+		{"quoted empty description", md("description: \"\"\n"), []string{"description", "empty", "first body line"}},
+		{"whitespace block description", md("description: |\n   \n"), []string{"description", "empty", "first body line"}},
+		// Valid shapes must not be swallowed by the rejections.
+		{"plain", md("description: plain text\nwhen_to_use: more\n"), nil},
+		{"quoted number string", md("description: \"1e20\"\n"), nil},
+		{"literal block", md("description: |\n  one\n  two\n"), nil},
+		{"folded block", md("description: >\n  one\n  two\n"), nil},
+		{"literal strip", md("description: |-\n  one\n"), nil},
+		{"folded strip", md("description: >-\n  one\n"), nil},
+		{"null when_to_use is unset", md("description: d\nwhen_to_use:\n"), nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := parseSkillMD("x", tc.text)
+			if tc.wantErr == nil {
+				if err != nil {
+					t.Fatalf("valid shape rejected: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("want a rejection mentioning %v, got none", tc.wantErr)
+			}
+			for _, want := range tc.wantErr {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q must mention %q", err.Error(), want)
+				}
 			}
 		})
 	}
