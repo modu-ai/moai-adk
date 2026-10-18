@@ -1,5 +1,7 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17.
+
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
 **Provenance note.** The boards named below (`e4cc` = `d-20261018T144629Z-e4cc`, `2c51` = `d-20261018T145532Z-2c51`, `5923` = `d-20261018T143825Z-5923`, `9dbe` = `d-20261018T150139Z-9dbe`) are machine-local and are not committed authority, so no row is routed DECIDED or POLICY-COVERED by routing; every row keeps the label FOUNDER and records the operator's answer, with its source ids, on the `Operator verdict` line. This committed file carries the wording so a reader on another machine has it.
@@ -20,6 +22,18 @@
 Board `e4cc` (the scope addition that made the completeness gate item 6, ordered first): the gate is a per-card required-command manifest from the b2cd scope; per call an attempt id, command, exit, `go test -json` package completion with no missing package, and tree/SHA binding; `complete` and landing-ready read the whole manifest on the same tree, not the last record; an interrupted attempt never counts; negative tests for a missing manifest or call, partial JSON, interruption, another SHA or tree, unverified environment/tag/non-Go inputs, and an undecidable overlap; a positive control with the full manifest passing on the current tree.
 
 Board `2c51`: see Q13.
+
+## Plan-audit iteration 1 rulings, verbatim (board 0577)
+
+> t1872 piece A, leader-owned policy items raised by plan audit iter1 (FAIL 0.73). Leader under operator delegation.
+> P1 Binary used for landing (B5): a gate counts as ON only when the judging build contains it (rule 2.2 tool provenance). Landing commands the gate governs (remeasure, factory complete, merge step) run through a binary built from main at the landing HEAD and invoked by path, never through a PATH-resolved installed build that may lag. No installed-binary reinstall is implied by this ruling. The MCP server that writes audit receipts must be running a build that contains the receipt change before a receipt counts as SHA-bound; the SPEC states this as a precondition, not a step the card performs.
+> P2 Switch order (B5): A lands under the current rule; its own landing is not the gate's first real use. The config key turns on in a later, separate commit on main after A is landed and the binary from P1 exists; the first gated landing is the next landing after that commit. Cards already merge-ready need no re-audit for the switch itself: each still takes a HEAD-confirmation audit at landing (2c51), and its landing remeasure uses the structured form once the key is on.
+> P3 Post-audit commits (B5, REQ-LVM-008): no evidence or progress backfill lands after the audited SHA; bookkeeping is committed before the final audit, which binds the final HEAD (2c51).
+> P4 Receipt SHA (B1): adding the audited commit SHA to NEW receipts is approved as an additive field; existing receipts are not rewritten or deleted, they stay valid records but cannot satisfy the HEAD binding. The receipt writer and schema enter the contact list and the Tier arithmetic.
+> P5 Recovery (optional defect): the gate's own revert must be landable — the SPEC names the recovery path (the config key off in one commit, which the gate does not judge), not a bypass of any audit.
+> Unchanged: no past-PASS substitution, no test exclusion, no default-permission expansion; the 9dbe shape and Q7-Q13 rulings stand.
+
+Effect on earlier rows: the order inside piece A recorded at Q7 is refined by P2 — the in-repo key is switched on by a separate later commit on main, not by a milestone of this SPEC's branch; piece A's own landing is not the gate's first live use.
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -91,7 +105,7 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: none in the committed tree (sources: the operator's direct request, board e4cc, board 9dbe)
 Why unresolved: enabling makes `moai factory complete`, the merge step and merge-readiness refuse any landing without a whole, same-tree manifest pass.
-Operator verdict: DECIDED (operator direct request + e4cc, recorded by board 9dbe): once piece A lands, the completeness gate is turned ON in this repository. Order inside A: (1) the structured re-measure form is available and lanes are told to use it; (2) the negative tests (script-wrapped record, missing package, wrong SHA, interrupted attempt are REFUSED) and the positive test (a complete structured record is admitted) pass; (3) only then, in the same piece, the configuration key is switched ON.
+Operator verdict: DECIDED (operator direct request + e4cc, recorded by board 9dbe): once piece A lands, the completeness gate is turned ON in this repository. Order inside A: (1) the structured re-measure form is available and lanes are told to use it; (2) the negative tests (script-wrapped record, missing package, wrong SHA, interrupted attempt are REFUSED) and the positive test (a complete structured record is admitted) pass; (3) only then the configuration key is switched ON. Refined by board 0577 P2: the switch is a later, separate commit on main after piece A has landed and the P1 binary exists; the first landing the gate governs is the next one after it.
 
 ### Q8: Is the re-measure reuse relaxation built, and under what non-Go policy?
 
@@ -139,8 +153,49 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: none in the committed tree (source: board 2c51 `d-20261018T145532Z-2c51`, recorded by board 9dbe)
 Why unresolved: today only `sync_status: complete` is read for SPEC cards (`internal/factorylane/merge.go` `checkSyncAudit`).
-Operator verdict: DECIDED (2c51): `complete` binds the sync-audit verdict to the card's CURRENT HEAD, and the required backend's receipt from that HEAD must pass; a previous PASS never substitutes.
+Operator verdict: DECIDED (2c51): `complete` binds the sync-audit verdict to the card's CURRENT HEAD, and the required backend's receipt from that HEAD must pass; a previous PASS never substitutes. Refined by board 0577 P3 and P4: no backfill commit lands after the audited SHA (bookkeeping is committed before the final audit); NEW receipts carry the audited commit, and existing receipts stay valid records but cannot satisfy the HEAD binding.
 
 ## Still forbidden (board 9dbe, unchanged)
 
 No replacement of a past PASS, no excluded tests, no widened default permissions, no audit skipping, fail-closed on every undecidable reading, and the single main writer.
+
+## Rows Q14-Q17 (plan-audit iteration 1, in-card judgments)
+
+### Q14: How is a receipt tied to a commit?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none in the committed tree (source: board 0577 P4)
+Why unresolved: `auditreceipt.Receipt` carries no commit (`internal/auditreceipt/store.go:166-177`) and its writer sets none (`internal/cli/mcp_audit_receipt.go:70-80`); a verdict-file-only binding was the alternative.
+Operator verdict: DECIDED (board 0577 P4, approved by the leader): add an audited-commit field to NEW receipts at write time, additive; existing receipts are never rewritten or deleted and cannot satisfy the HEAD binding. A receipt whose audited tree moved while the call ran is written with the field empty and never binds. Landing policy is unchanged beyond Q13: no existing receipt is rejected as a record; it only fails to satisfy a binding it never claimed.
+
+### Q15: Where does a lane produce the manifest?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the audit found no named verb for the manifest.
+Default: verbs under the existing `moai integration` family: `manifest derive`, `manifest show`, `manifest verify`, and `remeasure --call` (rule: the smaller user-visible surface — no new top-level family)
+Alternate: a new top-level `moai landing` family
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+
+### Q16: What is the manifest of a card with no Go change?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: a documentation-, rule- or configuration-only card has no `go test` call, and the audit found no defined admission.
+Default: reader calls found by the reader search become calls; when there are none, the manifest is empty-with-evidence (changed-path list recomputed by the verifier, the `go list` proof that no Go package contains a changed path, the recorded reader-search result) and is admitted (rule: the option that preserves current behaviour — such cards land today, and the gate must not wedge them)
+Alternate: require a declared non-Go verification command for every such card
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+
+### Q17: How is an attempt's command compared with the manifest call's?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the audit showed a `-run`-narrowed attempt counts today.
+Default: exact argv equality of the `go test` segment after dropping leading environment assignments and an `unset … &&` scrub segment; any other compound, pipe or extra segment refuses (rule: the option that refuses strictly more, the fail-closed direction the rulings require)
+Alternate: compare only the package list and flags that select tests
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+
