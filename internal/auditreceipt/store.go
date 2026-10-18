@@ -1295,6 +1295,17 @@ func ClearRejectionsForRoleInTree(storeRoot, treeRoot, agentType string) error {
 // Records of the other kind, of another role, or of another tree are left in
 // place, as is a record that cannot be read.
 func ClearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind string) error {
+	return clearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind, false, "")
+}
+
+// ClearRejectionsForRoleInTreeKindCause is ClearRejectionsForRoleInTreeKind
+// narrowed to the records whose cause is exactly cause. Records of any other
+// cause are left in place.
+func ClearRejectionsForRoleInTreeKindCause(storeRoot, treeRoot, agentType, kind, cause string) error {
+	return clearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind, true, cause)
+}
+
+func clearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind string, matchCause bool, cause string) error {
 	dir := filepath.Join(StateDir(storeRoot), rejectionsRel)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -1310,7 +1321,8 @@ func ClearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind strin
 		}
 		var r Rejection
 		if err := readJSON(filepath.Join(dir, e.Name()), &r); err != nil ||
-			!ownTree(r.TreeRoot, storeRoot, treeRoot) || r.AgentType != agentType || RejectionKind(r) != kind {
+			!ownTree(r.TreeRoot, storeRoot, treeRoot) || r.AgentType != agentType || RejectionKind(r) != kind ||
+			(matchCause && r.Cause != cause) {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !os.IsNotExist(err) {

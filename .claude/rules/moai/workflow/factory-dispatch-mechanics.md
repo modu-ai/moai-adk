@@ -134,6 +134,11 @@ file the completion report names:
    The card-review stage). The receipt the review returns is the mechanical
    basis of the lane's own completion verdict — a completion carrying
    neither a review receipt nor a recorded reason for its absence is a gap.
+2b. **Workflow-file check** — runs before Deliver. A branch changing
+   `.github/workflows/**` is "operator review required before landing": the
+   lane stops here (no `moai factory complete`, no PR) and reports to the
+   leader (`factory-dispatch-cards.md` § Workflow-file changes need operator
+   review).
 3. **Deliver** — `moai factory complete`: under github-flow (the
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
@@ -174,6 +179,7 @@ a duty not listed is a lane's:
 | Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+| Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 
 Everything that used to sit with the leader per card — the completion
 verdict, the merge approval, the `todo done`, the stage advancement — is

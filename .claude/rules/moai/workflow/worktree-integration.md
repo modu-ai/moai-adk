@@ -45,6 +45,7 @@ Relationships:
 - `moai worktree new <name>` creates an **L1** tree at `.moai/worktrees/<name>`, returns its absolute path, never enters it, and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. Enter it from a new Codex CLI session with `codex -C <absolute-path>` or from Claude with `moai cc -w <absolute-path>` (short-name `-w` still resolves `.claude/worktrees/<name>`; `moai cc -w <name> --branch <existing>` remains the existing-branch path for the gitflow integration worktree).
 - `moai update` (primary checkout) moves registered legacy `.claude/worktrees/` trees to `.moai/worktrees/` via `git worktree move` (`--dry-run` lists planned moves only). Trees that are locked, session-anchored, process-occupied, or collision-blocked stay put with a reason — rerun after resolving it; if process working directories cannot be inspected, no tree moves; a linked-worktree launch leaves sibling trees in place. Modified, untracked, and ignored files move with their tree. Never copy a worktree directory by hand.
 - An **L1** ephemeral worktree is materialized autonomously by the runtime for an isolated subagent; independent of L2, it may occur inside the main checkout or an L2 worktree.
+- Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
 
 [HARD] **`moai worktree new` creates L1; `done` refuses both L1 roots by code.** Project trees under `.claude/worktrees/` and `.moai/worktrees/` are outside the L2 lifecycle registry. `done` refuses either root — with or without `--force` — and `recover` is unchanged by that guard. `clean --merged-only`'s WT- sweep (below) is the documented exception to the L2-only lifecycle. L1 disposal is the session-end keep/remove prompt where available, or `git worktree unlock` + `git worktree remove` after the session releases its lock and the branch is integrated.
@@ -91,6 +92,8 @@ Behavior:
 - Creates `.claude/worktrees/<name>/` automatically
 - Branches from default remote branch
 - On session end: prompts to keep (with commits) or auto-deletes (no changes)
+
+A card or team worktree is created through the MoAI creation paths and branches from the named local ref of the integration branch, never from HEAD; `claude --worktree`, which branches from the remote default branch, is not used for it. This is a convention the creator confirms, not a check: creation can fall back to the invoking tree's HEAD when the configured base cannot be resolved, so confirm the new tree's HEAD after creation. The ref is read when the tree is created; the tree does not follow later moves of the branch.
 
 tmux flag notes:
 - Requires tmux or iTerm2
