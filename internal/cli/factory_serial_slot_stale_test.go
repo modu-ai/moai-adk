@@ -254,6 +254,10 @@ func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
 				rows = append(rows, homestate.Card{CardID: "t2", State: homestate.CardPicked})
 			}
 			fcPlace(t, root, rows...)
+			// The assignment's owner is a registered, live, idle lane: a pure
+			// assignment holds the slot only while its owner is alive (card
+			// t1821), so the control needs a roster row for lane-1.
+			sdRegisterLane(t, root, "lane-1")
 			sdRegisterLane(t, root, "lane-2")
 
 			got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-2")
