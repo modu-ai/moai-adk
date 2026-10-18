@@ -73,6 +73,25 @@ artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (5, Tier L) +
 - N14-N21 과 N4 잔여: decision-index.md 에 수용 부채로 id 별 기록 (N16 은 리더 지정 문구). 요구사항·인수 기준 id 집합, 마일스톤 구성, Q2/Q5/OQ 결정은 바뀌지 않았다.
 - plan_artifact_hash 는 이 문서가 계산하지 않는다.
 
+## Binding run conditions
+
+Copied by the plan→run Kickoff transition (lane-31, 2026-10-18T04:53Z) from `.moai/reports/t1865/plan-audit-iter4-delta.md` (verdict PASS-WITH-DEBT, audited_sha 073b3e1382b80f67e5ca9ac1f11ea4e1bab196e4, codex receipt rcpt-711bb9d54319e0e61892f763). Each is a run-phase condition the sync audit re-reads; an undisposed one caps the sync verdict at FAIL.
+
+- debt: N22 dispose_in=run AC-OWR-21 When clause omits configuration (o)
+- debt: N23 dispose_in=run plan.md M8 omits AC-OWR-15 (v) reach assertion
+- debt: N24 dispose_in=run mutant M-F (hooks then direct rewrite of the final name) undetected by AC-OWR-21 (a), disclosed limit
+- debt: N4-remainder dispose_in=run whole-tree equality withdrawn; the D subset-of-E sentinel cannot see a difference inside E or file modes
+- debt: N14 dispose_in=run no precedence among prior manifest generations that disagree (design.md D-2, REQ-OWR-002)
+- debt: N15 dispose_in=run attested managed path also accepts a DeployedHash match, looser than the registered path
+- debt: N16 dispose_in=run profile-root read through a run-time-assembled path escapes AC-OWR-08; card t1702 hold scope, not bypassed
+- debt: N17 dispose_in=run AC-OWR-17/-18 say "tree hash" without stating the compared hash is content-only
+- debt: N18 dispose_in=run AC-OWR-20 (a)(b) told to satisfy rule 7 whose condition (ii) needs a new manifest.prior.json
+- debt: N19 dispose_in=run no run directory when there is no .moai/config to back up; location of manifest.prior.json unstated
+- debt: N20 dispose_in=run skipped UserCreated entry not asserted to carry no deployed_version
+- debt: N21 dispose_in=run wording in REQ-OWR-005 and AC-OWR-20 (b) removalBackupWriter stand-in not defined by D-3 item 5
+
+decision record: decided_by=lane-31 (card orchestrator, plan→run Kickoff, autonomous per auto-semantics §9.1) evidence_refs=.moai/reports/t1865/plan-audit-iter4-delta.md PASS-WITH-DEBT 0.92 audited 073b3e1382b80f67e5ca9ac1f11ea4e1bab196e4, codex pass rcpt-711bb9d54319e0e61892f763, plan_artifact_hash bd1f442c1bb2570a9f0747a875f0bae19de4374b3fc480d0a830d57f3fceeb2d unchanged at HEAD 508b32659c; Q2 (ga) conditional board d-20261018T040918Z-def2; leader rulings d-20261018T044408Z-3e9d (rule C delta round) ladder_path=gate §9.1 (factory stage plan-audit v12, kickoff v13, decide --decider audit → run v14)
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
@@ -84,3 +103,8 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-18T04:53:21Z SPEC-UPDATE-OWNERSHIP-REPAIR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 3 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter4-delta.md
+- 2026-10-18T04:53:26Z SPEC-UPDATE-OWNERSHIP-REPAIR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 3 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865/.moai/reports/t1865/plan-audit-iter4-delta.md
