@@ -23,3 +23,13 @@ Only the three call sites change: `fmt.Fprintf(warn, ...)` -> `_, _ = fmt.Fprint
 ## Gaps
 - The first attempt to rename the branch in this session was refused by the branch guard before any change: `BRANCH_GUARD_VIOLATION: git branch in primary checkout (use a worktree; ...)`. The session's working directory was still the primary checkout at that moment (the `cd <tree> && git branch -m` form is read against the session directory). It was not routed around: once the session's working directory was this worktree the same rename ran there and succeeded.
 - No code change yet at the time of writing; verification and the re-run of the same command are recorded below.
+
+## Run evidence (this run, tree 66d752f78 + the 3-line edit)
+- RED re-run before editing: `golangci-lint run --enable-only errcheck ./internal/cli/` -> exit=1, 3 issues (lines 79, 91, 103).
+- Edit: `fmt.Fprintf(warn, ...)` -> `_, _ = fmt.Fprintf(warn, ...)` at those three sites; message text unchanged.
+- GREEN: same command -> exit=0, `0 issues.` (output: /private/tmp/lxq/errcheck-green.txt, machine-local).
+- `gofmt -l internal/cli/factory_run_adopt.go` -> empty; `go build ./internal/cli/` -> exit 0.
+- `go test ./internal/cli -run 'TestAdoptResumedLeaderRun|TestStrictResumeCarrierSeen|TestLeaderRunIDWasMinted' -count=1 -v` -> 7 PASS, `ok ... 5.960s`.
+- `golangci-lint run ./internal/cli/` (default config) -> exit 0, `0 issues.`
+- Judging build: golangci-lint v2.1.6 (go1.26.8), installed binary, not built from this tree (it is a third-party tool, no tree lag applies).
+- Gaps: full internal/cli suite not run (left to CI by instruction); test/lint output files live in /private/tmp/lxq and are not committed.
