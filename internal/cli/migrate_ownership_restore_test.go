@@ -280,18 +280,16 @@ func awaitClockPast(t *testing.T, stamps []time.Time) {
 // restoreWorld is everything the criterion reads: the fixture's pre-run state, the
 // two runs' reach observations, and where the trees are.
 type restoreWorld struct {
-	root1, root0       string // T1 (switch on) and the control T0 (switch off)
-	rels               []string
-	pre                map[string][]byte
-	preMode            map[string]os.FileMode
-	preManifest        []byte
-	preManifestMode    os.FileMode
-	run1, run0         forcedRun
-	runDir1, runDir0   string
-	removedAfterRun1   []string // the removal candidates absent after run 1
-	removedAfterRun0   []string // the same for the control (must stay empty)
-	postRun1Snapshot   map[string]string
-	postRun1AssetFiles map[string]string // rel -> sha of every file under removed-assets (run 1)
+	root1, root0     string // T1 (switch on) and the control T0 (switch off)
+	rels             []string
+	pre              map[string][]byte
+	preMode          map[string]os.FileMode
+	preManifest      []byte
+	preManifestMode  os.FileMode
+	run1, run0       forcedRun
+	runDir1, runDir0 string
+	removedAfterRun1 []string // the removal candidates absent after run 1
+	removedAfterRun0 []string // the same for the control (must stay empty)
 }
 
 // restoreProblems is the whole of AC-OWR-15 as a pure function over a world and
