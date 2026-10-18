@@ -206,7 +206,7 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-18T01:55:00Z (2026-10-18 10:55 KST)
-run_commit_sha: pending-backfill-run (final evidence commit lands after this write; the §E.2 evidence names every commit it measured against)
+run_commit_sha: 3adc37875 (backfilled — the commit that carried the completed §E.2/§E.3; per the D3 placeholder pattern a commit cannot cite its own hash)
 run_status: complete (M1-M5 per plan §F order; corrected M5 close per leader order 2026-10-18 — narrowed anchored verification, package-wide suite recorded as GAP)
 ac_pass_count: 7
 ac_fail_count: 0
