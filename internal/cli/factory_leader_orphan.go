@@ -76,13 +76,15 @@ func renderRunStartKST(value string) string {
 // The block offers no retirement: no path this SPEC adds offers to retire a
 // run (REQ-FLAC-007).
 func renderLeaderStartOrphanGuidance(w io.Writer, entryCmd string, orphans []homestate.OrphanRun) {
-	fmt.Fprintln(w, leaderStartOrphanHeader)
+	// The renderer's writes go to the caller's stderr buffer; a short write
+	// cannot be recovered here, so the error is explicitly discarded.
+	_, _ = fmt.Fprintln(w, leaderStartOrphanHeader)
 	for _, o := range orphans {
-		fmt.Fprintf(w, "  run %s: owner %s, lead pid %d, started %s, %d in-progress card(s)\n",
+		_, _ = fmt.Fprintf(w, "  run %s: owner %s, lead pid %d, started %s, %d in-progress card(s)\n",
 			o.RunID, o.Classification, o.LeadPID, renderRunStartKST(o.CreatedAt), o.NonTerminalCards)
-		fmt.Fprintf(w, "  adopt this run deliberately: %s --factory-run %s\n", entryCmd, o.RunID)
+		_, _ = fmt.Fprintf(w, "  adopt this run deliberately: %s --factory-run %s\n", entryCmd, o.RunID)
 	}
-	fmt.Fprintln(w, "no run was created and no session was started.")
+	_, _ = fmt.Fprintln(w, "no run was created and no session was started.")
 }
 
 // refuseLeaderStartOverOrphans is the leader branch's orphan gate

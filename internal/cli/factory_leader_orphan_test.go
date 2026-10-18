@@ -542,21 +542,6 @@ func adoptContentSnapshot(t *testing.T, root string) string {
 	return b.String()
 }
 
-// totalEventCount counts every event row in the sandbox, any run.
-func totalEventCount(t *testing.T, root string) int {
-	t.Helper()
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		t.Fatalf("open factory for event total: %v", err)
-	}
-	defer func() { _ = db.Close() }()
-	var n int
-	if err := db.DB.QueryRow(`SELECT COUNT(*) FROM events`).Scan(&n); err != nil {
-		t.Fatalf("count events: %v", err)
-	}
-	return n
-}
-
 // noRetiredEventAnywhere asserts REQ-FLAC-007's negative: no run.retired
 // event exists in the sandbox at all.
 func noRetiredEventAnywhere(t *testing.T, root string) {
@@ -813,7 +798,7 @@ func TestLeaderStartOrphanTouchesNoOtherRun(t *testing.T) {
 	// The deliberate adopt: only the adopted run's own row and event move.
 	root = seedGateRuns(t, fixture)
 	othersBefore := gateRunRows(t, root)
-	c = installAdoptEntryEnv(t, root)
+	installAdoptEntryEnv(t, root)
 	if _, err := runEntryWithStderr(t, "cc", "-f", "--factory-run", "t-orphan"); err != nil {
 		t.Fatalf("adopt launch refused: %v", err)
 	}
