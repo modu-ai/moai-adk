@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -401,6 +402,200 @@ func TestUpdateRefusesSymlinkTargets(t *testing.T) {
 		}
 		if got := listNames(t, filepath.Join(root, "out/c2"), ""); strings.Join(got, ",") != "alpha.md,beta.md" {
 			t.Errorf("C2 directory = %v, want only the two rendered files", got)
+		}
+	})
+}
+
+// TestUpdateDirectorySwapDuringWrite simulates the check-then-write race
+// deterministically: the seam swaps the target directory for a symlink at a
+// chosen stage of the atomic write, after the up-front symlink check has
+// passed. Update must fail and the location the symlink points at must stay
+// untouched.
+func TestUpdateDirectorySwapDuringWrite(t *testing.T) {
+	man := mustManifest(t)
+	swapAt := func(t *testing.T, stage string, linkTarget func(root string) string) (root string, outside string, err error) {
+		t.Helper()
+		var lay agentemit.Layout
+		root, lay = fixtureRoot(t, twoSources())
+		lay.Targets = lay.Targets[:1]
+		outside = t.TempDir()
+		swapped := false
+		restore := agentemit.SetWriteHook(func(got string) {
+			if got != stage || swapped {
+				return
+			}
+			swapped = true
+			dir := filepath.Join(root, "out/c2")
+			if rerr := os.Rename(dir, dir+".moved"); rerr != nil {
+				t.Errorf("swap: rename: %v", rerr)
+				return
+			}
+			dest := outside
+			if linkTarget != nil {
+				dest = linkTarget(root)
+			}
+			if lerr := os.Symlink(dest, dir); lerr != nil {
+				t.Skipf("symlinks are not available: %v", lerr)
+			}
+		})
+		t.Cleanup(restore)
+		_, err = agentemit.Update(root, lay, man)
+		if !swapped {
+			t.Fatalf("the %s seam was never reached", stage)
+		}
+		return root, outside, err
+	}
+	untouched := func(t *testing.T, dir string) {
+		t.Helper()
+		if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+			t.Errorf("the location behind the swapped directory changed: %v, %v", entries, err)
+		}
+	}
+
+	t.Run("swap_before_temp_creation_outside_root", func(t *testing.T) {
+		_, outside, err := swapAt(t, "before-temp", nil)
+		if err == nil {
+			t.Error("Update must fail when the directory becomes a symlink before the temp file is created")
+		}
+		untouched(t, outside)
+	})
+	t.Run("swap_before_rename_outside_root", func(t *testing.T) {
+		_, outside, err := swapAt(t, "before-commit", nil)
+		if err == nil {
+			t.Error("Update must fail when the directory becomes a symlink before the rename")
+		}
+		untouched(t, outside)
+	})
+	t.Run("swap_before_rename_inside_root", func(t *testing.T) {
+		// A symlink that stays inside the root is not an escape for the root
+		// confinement, so the up-front link check is re-run before the rename.
+		var inside string
+		_, _, err := swapAt(t, "before-commit", func(root string) string {
+			inside = filepath.Join(root, "inside")
+			if mkerr := os.MkdirAll(inside, 0o755); mkerr != nil {
+				t.Errorf("mkdir: %v", mkerr)
+			}
+			return inside
+		})
+		if err == nil || !strings.Contains(err.Error(), "symlink") {
+			t.Errorf("Update must refuse the swapped directory naming the symlink, got %v", err)
+		}
+		untouched(t, inside)
+	})
+}
+
+// TestUpdatePreservesFileMode pins that replacing an existing definition keeps
+// its permission bits instead of resetting them.
+func TestUpdatePreservesFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission bits are not meaningful on Windows")
+	}
+	man := mustManifest(t)
+	root, lay := fixtureRoot(t, twoSources())
+	stale := filepath.Join(root, "out/c2/alpha.md")
+	writeFile(t, stale, []byte("stale\n"))
+	if err := os.Chmod(stale, 0o640); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	if _, err := agentemit.Update(root, lay, man); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	fi, err := os.Stat(stale)
+	if err != nil || fi.Mode().Perm() != 0o640 {
+		t.Errorf("replaced file mode = %v, %v; want 0640 preserved", fi.Mode().Perm(), err)
+	}
+	if _, err := agentemit.Check(root, lay, man); err != nil {
+		t.Errorf("Check after Update: %v", err)
+	}
+}
+
+// TestCheckReportsNestedOrphans pins that the orphan scan covers a whole target
+// directory tree: a definition file with no agent source is reported wherever
+// it sits below a full set's directory, symlinks included, and a legitimate
+// generated set still reads diff=0.
+func TestCheckReportsNestedOrphans(t *testing.T) {
+	man := mustManifest(t)
+	generated := func(t *testing.T) (string, agentemit.Layout) {
+		t.Helper()
+		root, lay := fixtureRoot(t, twoSources())
+		if _, err := agentemit.Update(root, lay, man); err != nil {
+			t.Fatalf("Update: %v", err)
+		}
+		return root, lay
+	}
+	wantOrphan := func(t *testing.T, root string, lay agentemit.Layout, wantPath string) {
+		t.Helper()
+		sum, err := agentemit.Check(root, lay, man)
+		if err == nil || len(sum.Diffs) != 1 || !strings.HasPrefix(sum.Diffs[0], wantPath+":") ||
+			!strings.Contains(sum.Diffs[0], "no agent source") {
+			t.Fatalf("want exactly one orphan diff for %s, got err=%v diffs=%v", wantPath, err, sum.Diffs)
+		}
+	}
+
+	t.Run("generated_set_still_clean", func(t *testing.T) {
+		root, lay := generated(t)
+		if err := os.MkdirAll(filepath.Join(root, "out/c2/empty/dir"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		writeFile(t, filepath.Join(root, "out/c2/notes.txt"), []byte("not a definition\n"))
+		sum, err := agentemit.Check(root, lay, man)
+		if err != nil || sum.String() != "specs=2 copies=4 diff=0" {
+			t.Errorf("clean generated set: %q, %v", sum.String(), err)
+		}
+	})
+	t.Run("top_level_rogue_file_reported", func(t *testing.T) {
+		root, lay := generated(t)
+		writeFile(t, filepath.Join(root, "out/c2/rogue.md"), []byte("rogue\n"))
+		wantOrphan(t, root, lay, "out/c2/rogue.md")
+	})
+	t.Run("nested_rogue_file_reported", func(t *testing.T) {
+		root, lay := generated(t)
+		writeFile(t, filepath.Join(root, "out/c2/nested/rogue.md"), []byte("rogue\n"))
+		wantOrphan(t, root, lay, "out/c2/nested/rogue.md")
+	})
+	t.Run("deeply_nested_rogue_toml_reported", func(t *testing.T) {
+		root, lay := generated(t)
+		writeFile(t, filepath.Join(root, "out/c3/a/b/rogue.toml"), []byte("x = 1\n"))
+		wantOrphan(t, root, lay, "out/c3/a/b/rogue.toml")
+	})
+	t.Run("nested_file_with_rendered_name_reported", func(t *testing.T) {
+		// A nested copy of a legitimate name is still an extra shipped file.
+		root, lay := generated(t)
+		writeFile(t, filepath.Join(root, "out/c2/sub/alpha.md"), []byte("copy\n"))
+		wantOrphan(t, root, lay, "out/c2/sub/alpha.md")
+	})
+	t.Run("symlink_entry_reported", func(t *testing.T) {
+		root, lay := generated(t)
+		if err := os.Symlink(t.TempDir(), filepath.Join(root, "out/c2/linkdir")); err != nil {
+			t.Skipf("symlinks are not available: %v", err)
+		}
+		wantOrphan(t, root, lay, "out/c2/linkdir")
+	})
+	t.Run("project_set_ignores_other_agents", func(t *testing.T) {
+		root, lay := generated(t)
+		writeFile(t, filepath.Join(root, "proj/c1/hand-managed.md"), []byte("hand\n"))
+		writeFile(t, filepath.Join(root, "proj/c1/nested/hand-managed.md"), []byte("hand\n"))
+		if sum, err := agentemit.Check(root, lay, man); err != nil {
+			t.Errorf("a project set sits beside hand-managed files: %q, %v", sum.String(), err)
+		}
+	})
+	t.Run("unreadable_nested_directory_reported", func(t *testing.T) {
+		root, lay := generated(t)
+		dir := filepath.Join(root, "out/c2/locked")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Chmod(dir, 0o000); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if _, err := os.ReadDir(dir); err == nil {
+			t.Skip("directory permissions are not enforced for this user")
+		}
+		sum, err := agentemit.Check(root, lay, man)
+		if err == nil || len(sum.Diffs) != 1 || !strings.HasPrefix(sum.Diffs[0], "out/c2/locked:") ||
+			!strings.Contains(sum.Diffs[0], "unreadable") {
+			t.Errorf("want one unreadable diff for out/c2/locked, got err=%v diffs=%v", err, sum.Diffs)
 		}
 	})
 }

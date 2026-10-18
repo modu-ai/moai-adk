@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path"
 	"path/filepath"
@@ -147,16 +148,7 @@ func Check(root string, lay Layout, man Manifest) (Summary, error) {
 		if tg.Codex {
 			ext = ".toml"
 		}
-		entries, derr := os.ReadDir(filepath.Join(root, filepath.FromSlash(tg.Dir)))
-		if derr != nil {
-			continue // an absent directory is already reported as missing files
-		}
-		for _, e := range entries {
-			p := path.Join(tg.Dir, e.Name())
-			if _, rendered := files[p]; !e.IsDir() && strings.HasSuffix(e.Name(), ext) && !rendered {
-				sum.Diffs = append(sum.Diffs, p+": no agent source renders this file")
-			}
-		}
+		sum.Diffs = append(sum.Diffs, orphans(root, tg, ext, files)...)
 	}
 	sort.Strings(sum.Diffs)
 	if len(sum.Diffs) > 0 {
@@ -165,10 +157,45 @@ func Check(root string, lay Layout, man Manifest) (Summary, error) {
 	return sum, nil
 }
 
+// orphans walks the whole directory tree of a full set and lists every entry
+// that could ship without an agent source rendering it: a definition file
+// (by extension) at any depth that the render does not produce, and every
+// symlink, which the walk never follows. An absent directory is already
+// reported as missing files; an unreadable one is reported here.
+func orphans(root string, tg Target, ext string, files map[string][]byte) []string {
+	var out []string
+	top := filepath.Join(root, filepath.FromSlash(tg.Dir))
+	_ = filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
+		rel, rerr := filepath.Rel(root, p)
+		if rerr != nil {
+			rel = p
+		}
+		rel = filepath.ToSlash(rel)
+		switch {
+		case err != nil && errors.Is(err, fs.ErrNotExist):
+			return nil
+		case err != nil:
+			out = append(out, rel+": unreadable: "+err.Error())
+			return nil
+		case d.Type()&fs.ModeSymlink != 0:
+			out = append(out, rel+": symlink in a generated directory; no agent source renders it")
+		case d.IsDir():
+		case strings.HasSuffix(d.Name(), ext):
+			if _, rendered := files[rel]; !rendered {
+				out = append(out, rel+": no agent source renders this file")
+			}
+		}
+		return nil
+	})
+	return out
+}
+
 // Update renders the sets and writes the files under root. Rendering and the
 // symlink check finish before the first write, so a source that cannot be
 // rendered, or a target path that runs through a symlink, leaves root
 // untouched. A file that already holds the rendered bytes is not rewritten.
+// Every write goes through an os.Root on root, so a directory swapped for a
+// symlink after the check cannot redirect a write outside root.
 func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	files, specs, err := renderTargets(root, lay, man)
 	sum := Summary{Specs: specs, Copies: len(lay.Targets)}
@@ -181,15 +208,16 @@ func Update(root string, lay Layout, man Manifest) (Summary, error) {
 			return sum, err
 		}
 	}
+	rt, err := os.OpenRoot(root)
+	if err != nil {
+		return sum, fmt.Errorf("agentemit: %w", err)
+	}
+	defer func() { _ = rt.Close() }()
 	for _, p := range paths {
-		dst := filepath.Join(root, filepath.FromSlash(p))
-		if cur, rerr := os.ReadFile(dst); rerr == nil && bytes.Equal(cur, files[p]) {
+		if cur, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(p))); rerr == nil && bytes.Equal(cur, files[p]) {
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return sum, fmt.Errorf("agentemit: %w", err)
-		}
-		if err := writeFileAtomic(dst, files[p]); err != nil {
+		if err := writeFileAtomic(rt, root, p, files[p]); err != nil {
 			return sum, fmt.Errorf("agentemit: %w", err)
 		}
 	}
@@ -226,22 +254,50 @@ func refuseLinks(root, rel string) error {
 	return nil
 }
 
-// writeFileAtomic writes data to dst through a temporary file in the same
-// directory followed by a rename, so dst is replaced as a whole and never
-// written through a link that appeared at its path after the check.
-func writeFileAtomic(dst string, data []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(dst), ".agents-emit-*")
+// testHook is a test seam called at named points of writeFileAtomic.
+var testHook = func(stage string) {}
+
+// writeFileAtomic writes data to rel (slash-separated, below root) through a
+// uniquely named temporary file in the same directory followed by a rename, so
+// the target is replaced as a whole. All operations go through rt, which
+// refuses any path that leaves root, so a directory swapped for a symlink
+// after the up-front check cannot redirect the write. Symlinks that stay
+// inside root are not an escape for rt; the link check is therefore re-run
+// just before the rename. An existing target keeps its permission bits.
+func writeFileAtomic(rt *os.Root, root, rel string, data []byte) error {
+	native := filepath.FromSlash(rel)
+	dir := filepath.Dir(native)
+	if err := rt.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	testHook("before-temp")
+	perm := os.FileMode(0o644)
+	if fi, err := rt.Lstat(native); err == nil {
+		perm = fi.Mode().Perm()
+	}
+	var f *os.File
+	var tmp string
+	var err error
+	for range 8 {
+		tmp = filepath.Join(dir, fmt.Sprintf(".agents-emit-%016x", rand.Uint64()))
+		if f, err = rt.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm); !errors.Is(err, fs.ErrExist) {
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}
-	name := tmp.Name()
-	_, werr := tmp.Write(data)
-	err = errors.Join(werr, tmp.Close(), os.Chmod(name, 0o644))
+	_, werr := f.Write(data)
+	err = errors.Join(werr, f.Close())
 	if err == nil {
-		err = os.Rename(name, dst)
+		testHook("before-commit")
+		err = refuseLinks(root, rel)
+	}
+	if err == nil {
+		err = rt.Rename(tmp, native)
 	}
 	if err != nil {
-		_ = os.Remove(name)
+		_ = rt.Remove(tmp)
 	}
 	return err
 }
