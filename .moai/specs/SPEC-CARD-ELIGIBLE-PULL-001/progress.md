@@ -293,6 +293,19 @@ factory_nominate_test.go:1214: bare `factory next` transcript "arm-order" change
 
 **Standing Gap re-ruled acceptable per the round-3 verdict**: package-wide `internal/cli` remains unrun locally (rule 35e9 — batch CI owns it); its acceptability precondition (F10+F11+F12 landed) is now met.
 
+### Round-5 repair — F13 (template internal-content leak) — 2026-10-18 (tree `414aec43f` → commit `7847834791`)
+
+- **RED (anchored, at HEAD `414aec43f` pre-fix)**: `go test ./internal/template/ -run '^TestTemplateNoInternalContentLeak$' -count=1 -v` —
+  ```
+  internal_content_leak_test.go:1643: template internal-content leak detected (2 occurrences, mode=narrow):
+  internal_content_leak_test.go:1653:   [1] templates/.moai/config/sections/workflow.yaml | class=C1-spec-id-prefix | match=SPEC-CARD-ELIGIBLE-PULL-001
+  internal_content_leak_test.go:1653:   [2] templates/.moai/config/sections/workflow.yaml | class=C9-card-id | match=t1240
+  ```
+- **Fix**: the template `workflow.yaml` factory comment block de-identified — the flag key and its user-facing behavior only (no SPEC id, no card id, no internal paths; internal arm vocabulary genericized). The repo-side `.moai/config/sections/workflow.yaml` keeps its identifiers (only the template is leak-scanned).
+- **GREEN**: same anchored command → `--- PASS: TestTemplateNoInternalContentLeak (2.39s)`, `ok github.com/modu-ai/moai-adk/internal/template 2.905s`.
+- **Neighbors (anchored)**: `TestFactoryDispatchBodyCarriesRenewIntervalLinkage` → PASS (`ok … 0.371s`); config shipped-key pair `^TestWorkflowFactorySelfDispatchDefault$|^TestShippedConfigKeysHaveReaders$` → `ok github.com/modu-ai/moai-adk/internal/config 16.484s`. No template test asserts the self_dispatch block text (grep: 0 hits).
+- **Lesson recorded**: the t1808 lesson recurs — template-tree edits require the `internal/template` package tests; three audit rounds (including round-3's sweep of my own diff) missed this file because the sweep axes covered `internal/cli`/`internal/config` only. The template yaml was IN the plan §D file scope from M1; the leak gate simply was never run against it until round 4.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-18T01:55:00Z (2026-10-18 10:55 KST)
