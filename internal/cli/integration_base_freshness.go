@@ -41,7 +41,8 @@ func baseFreshnessGateConfig(root string) baseFreshnessSettings {
 	loader := config.NewLoader()
 	cfg, err := loader.Load(dotMoai)
 	if err != nil {
-		return baseFreshnessSettings{Err: err}
+		// The loader's text can quote a rejected value; name the file and kind.
+		return baseFreshnessSettings{Err: errors.New("workflow.yaml was rejected by validation")}
 	}
 	if cfg == nil {
 		return baseFreshnessSettings{Err: errors.New("the configuration did not load")}
@@ -69,9 +70,10 @@ func workflowConfigFailure(dotMoai string, loaded map[string]bool) error {
 	case loaded["workflow"]:
 		return nil
 	}
+	// Fixed, input-free causes only: a parser error quotes the offending value.
 	var probe map[string]any
-	if perr := yaml.Unmarshal(data, &probe); perr != nil {
-		return fmt.Errorf("parse workflow.yaml: %w", perr)
+	if yaml.Unmarshal(data, &probe) != nil {
+		return errors.New("parse workflow.yaml: invalid YAML syntax")
 	}
 	return errors.New("parse workflow.yaml: a value has the wrong type")
 }
