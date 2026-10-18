@@ -3633,6 +3633,112 @@ untracked=0
 5. (B) 기존 시험 (q) 의 전제 위치를 옮긴 것은 수정이 바꾸는 동작에 맞춘 것이다. 단언은 약화하지 않았다.
 6. 코덱스 카드 리뷰의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다.
 
+### Chunk 11 (delta-audit repair) — 기록 시작
+
+두 번째 독립 sync 감사 (delta, HEAD `38c8ca5376`, 영수증 `rcpt-aeb48f1d567c915a06f7b90f`) 가 FAIL (필수 codex 백엔드만) 을 냈다. 감사는 round 1 의 F1/F2/F3 이 고쳐졌음을 확인했고 코덱스의 P2 둘이 감사의 N1, N2 이다. 근거 문서는 `.moai/reports/t1865/sync-audit.md` (이 chunk 는 고치지 않았다). 레인 요구: 두 지적을 시험 먼저 고치고, 같은 chunk 에서 최근 라운드의 작은 도우미들을 공격자의 눈으로 다시 읽어 결과를 이 기록에 남기며, 경로 경계 반례를 한 표로 고정한다. 각 지적마다 시험 (RED) → 이 기록 → 수정 순서이며 순서의 증거는 커밋 그래프이다.
+
+#### 공격자 시점 자체 검토 (적대적 자체 검토) — 결과 표
+
+"실제 문제" 로 판정된 것은 이 chunk 에서 시험 먼저 고쳤다. 판정 근거는 열 「확인 방법」 이다.
+
+| 도우미 | 공격 시나리오 | 결과 | 확인 방법 |
+|---|---|---|---|
+| `IsPriorManifestBookkeeping` | 접두사 일치에 구분자 검사가 없음 — `manifest.prior.json.tmp-notes/keep.txt` | **실제 문제 N1** — 수정 | 감사 재현 + 표 행 2개 + 단위 표 3행 RED |
+| 〃 | Windows 경로 (`\`) | 수정은 `filepath.ToSlash` 로 구분자를 본다. Windows 실행은 하지 않았다 (빌드·vet 만) | 코드 읽기 |
+| 〃 | 대소문자 구분 없는 파일 시스템 | 쓰는 쪽이 소문자 이름만 만든다. 같은 이름의 다른 대소문자 파일은 대소문자 구분 FS 에서는 다른 이름 (복원됨), 구분 없는 FS 에서는 같은 파일이라 공존 불가 | 단위 표 행 (「another letter case is another name」) |
+| 〃 | 이름에 접두사가 들어 있을 뿐인 경우, 빈 이름 | `HasPrefix` 만 쓰므로 앞에 붙는 경우만 일치. 빈 이름과 `…json.tmp` (대시 없음) 는 거짓 | 단위 표 행 |
+| 〃 | 접두사와 똑같은 루트 파일 이름 (`manifest.prior.json.tmp-`) | 루트 수준이므로 건너뛴다. `CreateTemp` 는 항상 숫자를 붙이므로 이 이름은 사용자 파일과만 충돌한다 — 수용 | 단위 표 행 |
+| `claimPriorManifestDir` | 접미사 이름이 파일·끊어진 심볼릭 링크로 이미 있음 | `Mkdir` 가 `EEXIST` 를 돌려주므로 건너뛴다. 결과: 문제 없음 | 시험 `SuffixNamesTakenByAFileOrADanglingLinkAreSkipped` (도착 시 초록) |
+| 〃 | `-99` 상한 | 소진하면 오류, 아무것도 덮어쓰지 않음 | chunk 9 시험 (재실행 초록) |
+| 〃 | 끝에 구분자가 붙은 실행 디렉터리 (`<dir>/`) | **실제 문제** — 형제가 디렉터리 안 `<dir>/-02` 로 만들어진다 (실행 디렉터리의 형제가 아님) — 수정 (`filepath.Clean`) | 시험 `ABackupPathWithATrailingSeparatorStillGetsASibling` RED |
+| 〃 | 실행 디렉터리가 심볼릭 링크 | 형제는 링크 옆의 실제 디렉터리로 만들어지고 사본은 거기 들어간다. `.moai-backups` 는 프로젝트 자신의 영역이며 루트가 링크면 보존 정책이 거부한다 (`OldBackupRootRefused`) — 새 경로 없음 | 코드 읽기 |
+| `copyRunMarker` | 표지 복사 실패가 무시됨 | **실제 문제 N2** — 수정 | 시험 RED (아래) |
+| 〃 | 표지에 줄이 더 있거나 CRLF | 첫 줄만 취하고 `TrimSpace` 가 `\r` 을 지운 뒤 한 줄로 쓴다 — 보존 정책이 같은 실행으로 센다 | 시험 `MarkerWithExtraLinesAndCRLF…` (도착 시 초록) |
+| 〃 | 표지의 첫 줄이 실행 id 로 해석되지 않음 | 그대로 복사한다. 원본도 이름으로 센 독립 실행이고 형제는 비관리 항목이 된다 — 새 위험은 아니나 **남는 한계로 공개** (수정하지 않음: 해석 규칙이 백업 패키지의 비공개 함수다) | 코드 읽기 |
+| `pathLeavesRoot` | `EvalSymlinks` 의 오류 (ELOOP, ENOTDIR, 권한) 가 읽기로 이어지는가 | 오류면 보고하지 않고 읽기가 같은 경로 해석에서 같은 이유로 실패한다 → `read-failed`, 읽은 바이트 없음. ELOOP 와 ENOTDIR 는 표 행으로 고정. 권한 오류는 root 실행에서 재현할 수 없어 시험하지 않았다 (추론) | 표 행 2개 (도착 시 초록) |
+| 〃 | 빈 `rootResolved` | 모든 존재하는 경로를 뿌리 밖으로 보아 읽지 않는다 (fail closed) — 표 행 2개로 고정 (등록·미등록) | 표 행 (도착 시 초록) |
+| 〃 | 업데이트 명령의 실제 뿌리는 `"."` (`update_template_sync.go:230`) | **실제 문제** — 절대 경로 대상의 프로젝트 안 링크는 `Rel(".", 절대경로)` 가 실패해 뿌리 밖으로 읽혀 `symlink-escape` 로 바뀐다 (기준 커밋에서는 내용으로 판정). 안전한 쪽(읽지 않음)이지만 운영 동작이 바뀐다 — 수정 (뿌리와 경로를 절대·해석된 형태로 맞춤) | 표 행 3개 RED, 걷기 수준 행 RED |
+| `withinRootBoundary` | 형제 `proj-xxx-evil`, `proj-xxx2` 가 문자열 접두사로 안쪽 취급 | 안 된다 — `filepath.Rel` 로 요소 단위 비교한다 | 표 행 4개 (도착 시 초록) |
+| 〃 | 최상위 항목 이름이 `..` 로 시작 (`..hidden`) | **실제 문제 (과잉 거부)** — `HasPrefix(rel, "..")` 가 안쪽 이름을 밖으로 본다. 공통 자산 뿌리 아래는 항상 `.claude/…` 로 시작해 닿지 않지만 도우미의 계약 위반 — 수정 | 표 행 2개 RED |
+| `unreadableKind`, 대응물 확인 | `Stat` 대 `Lstat`, 링크 루프 | `Stat` 은 링크를 따라가 FIFO 로 가는 링크를 잡는다. 루프·끊어진 링크는 `Stat` 오류 → 거짓 → 읽기가 실패한다 (블록하지 않음). 대응물 FIFO 는 `Stat` 으로 막힘 | 표 행 (링크→FIFO, 루프, 대응물 FIFO; 도착 시 초록) |
+| `writePriorManifest` 정리 | 임시 이름 충돌, 오류 감싸기 | `CreateTemp` 가 `O_EXCL` + 난수라 덮어쓰지 않는다. `os.Remove` 는 비어 있지 않은 디렉터리를 지우지 못한다 (최선 노력). 오류는 `%w` 로 감싸 `errors.Is` 가 통한다 (시험이 단언) | chunk 10 시험 + 코드 읽기 |
+
+더 큰 수정이 필요한 문제는 찾지 못했다 (블로커 없음). 종류 확인과 읽기, `EvalSymlinks` 와 읽기 사이의 경합은 이전 chunk 에서 공개한 한계 그대로다.
+
+#### N1 — RED 셀 (A `ef45c82cc9`)
+
+`internal/cli/update/backup/restore_prior_manifest_tmp_test.go` 를 확장했다: 접두사 이름의 **디렉터리** 안 사용자 파일 (`manifest.prior.json.tmp-notes/keep.txt`), 최종 이름에 접미사가 붙은 디렉터리 (`manifest.prior.json.d/x`), 접두사 디렉터리 아래의 정확한 최종 이름은 복원되어야 하고, 루트 임시 파일은 건너뛴다. `IsPriorManifestBookkeeping` 의 단위 표 시험 `TestIsPriorManifestBookkeeping` 을 더했다.
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/update/backup/ -run '^(TestRestore(Legacy|RetainedWithoutSections|RetainedWithSections|FromBackupDir)SkipsPriorManifestTemporaryFile|TestIsPriorManifestBookkeeping)$' -count=1 -v
+    restore_prior_manifest_tmp_test.go:75: manifest.prior.json.tmp-notes/keep.txt was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/keep.txt: no such file or directory, got "")
+    restore_prior_manifest_tmp_test.go:75: manifest.prior.json.tmp-notes/manifest.prior.json was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/manifest.prior.json: no such file or directory, got "")
+--- FAIL: TestRestoreLegacySkipsPriorManifestTemporaryFile (0.01s)
+    restore_prior_manifest_tmp_test.go:83: manifest.prior.json.tmp-notes/keep.txt was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/keep.txt: no such file or directory, got "")
+    restore_prior_manifest_tmp_test.go:83: manifest.prior.json.tmp-notes/manifest.prior.json was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/manifest.prior.json: no such file or directory, got "")
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifestTemporaryFile (0.01s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifestTemporaryFile (0.01s)
+Warning: merge failed for manifest.prior.json.d/x, restoring backup
+Warning: merge failed for notes/manifest.prior.json, restoring backup
+Warning: merge failed for notes/manifest.prior.json.tmp-4242, restoring backup
+    restore_prior_manifest_tmp_test.go:104: manifest.prior.json.tmp-notes/keep.txt was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/keep.txt: no such file or directory, got "")
+    restore_prior_manifest_tmp_test.go:104: manifest.prior.json.tmp-notes/manifest.prior.json was not restored as user content (err=open <tmp>/.moai/config/manifest.prior.json.tmp-notes/manifest.prior.json: no such file or directory, got "")
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifestTemporaryFile (0.01s)
+    restore_prior_manifest_tmp_test.go:134: a file below a directory named like the temporary prefix: IsPriorManifestBookkeeping("manifest.prior.json.tmp-notes/keep.txt") = true, want false
+    restore_prior_manifest_tmp_test.go:134: a directory named like the temporary prefix: IsPriorManifestBookkeeping("manifest.prior.json.tmp-notes/") = true, want false
+    restore_prior_manifest_tmp_test.go:134: the final name below a prefixed directory: IsPriorManifestBookkeeping("manifest.prior.json.tmp-notes/manifest.prior.json") = true, want false
+--- FAIL: TestIsPriorManifestBookkeeping (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.486s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 접두사 디렉터리 아래 두 파일이 복원되지 않았고 (`was not restored as user content`), 단위 표에서 구분자가 있는 세 이름이 `true` 로 판정되었다. 섹션이 있는 백업의 시험은 섹션 YAML 만 걷기 때문에 수정 전에도 통과한다 (특성 기록).
+
+#### N2 — RED 셀 (A `2cd11e520e`)
+
+`internal/cli/update_prior_manifest_markercopy_test.go` (`TestMarkerCopyFailureFailsClosedWithoutResidue`). 표지 복사에 주입 이음매 `priorManifestMarkerCopy` 를 더했다 (동작 중립: 오류는 수정 전까지 무시됨; 다른 `priorManifest*` 이음매와 같은 방식, 운영 코드는 바꾸지 않음). 표지 복사가 실패하면 만든 형제가 남지 않아야 하고, 상태는 `priorManifestFailed`, 그 실행은 파일을 하나도 제거하지 않아야 한다 (주입 없는 통제 실행은 `migIdenticalSkill` 을 제거). 복사할 표지가 아예 없으면 종전 동작 (형제는 표지 없이 만들어짐). 표지에 줄이 더 있거나 CRLF 이면 한 줄로 정리되어 복사되고 보존 정책이 같은 실행으로 센다. 끝에 구분자가 붙은 경로의 형제.
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestMarkerCopyFailureFailsClosedWithoutResidue$' -count=1 -v
+    update_prior_manifest_markercopy_test.go:58: got ("<tmp>/.moai-backups/20261018_153045-02", 1, <nil>), want a failed state carrying the injected error
+    update_prior_manifest_markercopy_test.go:101: state=1 err=<nil>, want a failed state carrying the injected error
+    update_prior_manifest_markercopy_test.go:104: the run removed [.claude/skills/moai-foundation-core/SKILL.md] although its prior manifest copy could not be placed
+    update_prior_manifest_markercopy_test.go:147: the sibling is <tmp>/.moai-backups/20261018_153045/-02, want <tmp>/.moai-backups/20261018_153045-02 (a sibling of the run directory, not a directory inside it)
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (1.61s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/NoSiblingIsLeftAndTheEarlierCopyIsUntouched (0.02s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/TheRunRemovesNothing (1.54s)
+    --- PASS: TestMarkerCopyFailureFailsClosedWithoutResidue/NoMarkerToCopyKeepsTheBehaviourItAlwaysHad (0.02s)
+    --- PASS: TestMarkerCopyFailureFailsClosedWithoutResidue/MarkerWithExtraLinesAndCRLFIsCopiedAsOneCleanLine (0.02s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/ABackupPathWithATrailingSeparatorStillGetsASibling (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.905s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 주입한 표지 복사 실패가 무시되어 상태가 성공 (`1` = `priorManifestWritten`, 오류 없음) 이었고 그 실행이 `SKILL.md` 를 제거했다. 끝에 구분자가 붙은 경로는 형제가 `<dir>/-02` (디렉터리 안) 로 만들어졌다. 나머지 두 절 (표지 없음, CRLF) 은 종전 동작을 고정하며 수정 전에도 통과한다.
+
+#### 경로 경계 반례 표 — RED 셀 (A `d122d6794e`)
+
+`internal/cli/migrate_ownership_boundary_table_test.go` (`//go:build !windows`, `TestPathBoundaryCounterexamples`) 한 시험 안의 표: 복원 (이름 필터), 경계 (`withinRootBoundary`, `pathLeavesRoot`; 문자열 접두사를 공유하는 형제 디렉터리 `proj-xxx-evil`, `proj-xxx2`; 업데이트 명령 형태의 상대 뿌리 `.`), 걷기 (업데이트 형태 실행), 심볼릭 링크 (프로젝트 안, 밖, 상위 안·밖, 사슬, 끊어진 링크, 루프, ENOTDIR, 없는 파일, 일반 파일), 종류 (FIFO 미등록·등록·링크, 디렉터리, 사용자 루트 대응물 FIFO), 빈 `rootResolved`. 행마다 `TABLE|그룹|경우|expected|observed` 한 줄을 로그에 남긴다. FIFO 가 있는 행은 고루틴 + 한정 대기로 멈춤을 감지하고 FIFO 를 건드려 풀며, 실패한 `os.Symlink`·`mkfifo` 는 `t.Fatalf` 이다.
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestPathBoundaryCounterexamples$' -count=1 -v   (표 43행 중 어긋난 행만)
+    migrate_ownership_boundary_table_test.go:454: manifest.prior.json.tmp-notes/keep.txt: observed "skipped", want "restored"
+    migrate_ownership_boundary_table_test.go:454: manifest.prior.json.tmp-notes/manifest.prior.json: observed "skipped", want "restored"
+    migrate_ownership_boundary_table_test.go:454: withinRootBoundary: top-level entry whose name starts with two dots is inside: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: pathLeavesRoot: file in a top-level directory named '..hidden': observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: root '.': in-project symlink whose target is an ABSOLUTE in-project path: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: root '.' reached through a symlinked working directory: in-project absolute link target: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: update-shaped run (root '.'): in-project symlink with an absolute target: observed "class=unregistered reason=symlink-escape removed=1", want "class=unregistered reason=no-provenance-record removed=1"
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 어긋난 일곱 행: 접두사 디렉터리 둘 (N1), 최상위 `..hidden` 이름 둘 (`withinRootBoundary` 의 `HasPrefix(rel, "..")`), 상대 뿌리 `.` 에서 절대 경로 대상의 프로젝트 안 링크 셋 (경로 해석 도우미, 심볼릭 링크로 된 작업 디렉터리, 업데이트 형태 걷기 — 걷기에서는 `symlink-escape` 로 읽혀 `no-provenance-record` 가 아님). 나머지 표 행(경계 위반 형제 디렉터리, 모든 심볼릭 링크 행, 종류 행, 빈 뿌리)은 수정 전에도 기대와 같다 — 바뀌면 안 되는 것의 고정이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
