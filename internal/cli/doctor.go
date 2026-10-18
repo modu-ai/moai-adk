@@ -320,6 +320,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// factory section — the persisted leader role, with the literal
 		// relaunch message for a legacy run.
 		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
+		// Card t1683 (SPEC-REVIEW-GATE-REPAIR-001 F4): the turn-end review
+		// gate and the lane card-review stage both active — one card diff
+		// reviewed twice. Advisory, never gates doctor.
+		{reviewLayerOverlapCheckName, func(v bool) DiagnosticCheck { return checkReviewLayerOverlap(cwd, v) }},
 		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the owner_label
 		// vocabulary drift — legacy spellings left in the runtime
 		// assignments table, counted from the same detectors the refusal

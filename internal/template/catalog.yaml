@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 690a801102c9c09bcdbcc6c4c2b321b4b3ab2d6ee16d11eda3a80c85355e06df
+              hash: c7527d885f8a5856f0824e677c04509eda03f23d117dab80210252f46c98f061
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -175,7 +175,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: 122a1f1e5719d012ff047093ae6dc021c75713064a491461a8eca59438cc6453
+              hash: 332974b6913e2a6e778f4b90882ba5896712274cb3d76d9b1f00e48488c9739f
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core
@@ -384,7 +384,7 @@ catalog:
                 - name: manager-git
                   tier: optional-pack:delivery
                   path: templates/.claude/agents/moai/manager-git.md
-                  hash: 67146452778ca2e3d7922caddc0bf388023634e18f2d8af289f17244d01742ef
+                  hash: 492d7cb9764f14fcd880842278d1dc5087b06ba5aa0dc9211207113d08a1b101
                   version: 1.0.0
         deployment:
             description: Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure

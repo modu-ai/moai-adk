@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -71,6 +72,11 @@ func newFactoryCommand() *cobra.Command {
 // copy of it: retirement happens only on a positive `dead` classification, on
 // this path exactly as on every other (REQ-005). There is no interactive
 // prompt — the subagent boundary forbids it, and the command is operator-invoked.
+//
+// A run that still holds in-progress cards is refused, with the cards and the
+// exits listed (SPEC-FACTORY-RETIRE-GUARD-001); the refusal is a temporary
+// safeguard until retirement can transfer the cards. Retiring an already-retired
+// run succeeds without a write and lists the cards it still strands.
 func newFactoryRunsCommand() *cobra.Command {
 	var retire string
 	cmd := &cobra.Command{
@@ -89,10 +95,22 @@ func newFactoryRunsCommand() *cobra.Command {
 			opts := factorymsg.ReconcileOptionsFor(root)
 			if retire != "" {
 				classification, retireErr := db.RetireRunIfDead(cmd.Context(), retire, opts)
+				var cardsErr *homestate.RunInProgressCardsError
+				if errors.As(retireErr, &cardsErr) {
+					// Refuse-only: list the cards and the exits, retire nothing.
+					writeRetireRefusal(cmd.OutOrStdout(), retire, classification, cardsErr.Cards)
+					return retireErr
+				}
 				if retireErr != nil {
 					return retireErr
 				}
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "retired %s (owner %s)\n", retire, classification)
+				// Read after the retirement call returned, so no transaction is open.
+				stranded, err := db.InProgressCards(cmd.Context(), retire)
+				if err != nil {
+					return err
+				}
+				writeStrandedCards(cmd.OutOrStdout(), retire, stranded)
 				return nil
 			}
 			owners, err := db.ClassifyRuns(cmd.Context(), opts)
@@ -107,7 +125,7 @@ func newFactoryRunsCommand() *cobra.Command {
 			return w.Flush()
 		},
 	}
-	cmd.Flags().StringVar(&retire, "retire", "", "Retire the named run — refused unless its owner classifies dead")
+	cmd.Flags().StringVar(&retire, "retire", "", "Retire the named run — refused unless its owner classifies dead and it holds no in-progress cards")
 	return cmd
 }
 

@@ -168,6 +168,53 @@ func Registry() []Site {
 			Note:   "Whole-file: the //go:embed path lines enumerate the tracked template tree, whose templates/.claude/agents/moai/*.md members are the definition-file population by construction.",
 		},
 
+		// ── Listings the sweep found undeclared (card t1857) ───────────────
+		//
+		// Card t1808 added a role/model/effort table to the rule below and a
+		// matching Codex table to the golden test, and a ledger snapshot re-quoted
+		// the rule; each file then enumerated the whole definition population
+		// (12 names) while no row declared it. Measured, not inferred: the sweep
+		// reported exactly these four paths at base dc9cab984.
+		{
+			ID:         "agent-common-protocol-model-effort-roles",
+			Path:       ".claude/rules/moai/core/agent-common-protocol.md",
+			Axis:       AxisDefinitionFiles,
+			Claims:     ClaimMembership,
+			BlockStart: "Phase owners declare model and effort explicitly",
+			BlockEnd:   "| Mechanical roles |",
+			Note: "§ Subagent Model and Effort: the opening sentence names manager-lead (declares " +
+				"neither key) and the role table names the other eleven definition files, so the " +
+				"region is the complete definition-file population. Block-scoped, not whole-file: " +
+				"Explore is mentioned further down as a read-only exemption, and the built-in has " +
+				"no definition file. No count is stated, so no Count claim.",
+		},
+		{
+			ID:         "agent-common-protocol-model-effort-roles-mirror",
+			Path:       "internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md",
+			Axis:       AxisDefinitionFiles,
+			Claims:     ClaimMembership,
+			BlockStart: "Phase owners declare model and effort explicitly",
+			BlockEnd:   "| Mechanical roles |",
+			Note:       "Template original of the row above; the repo copy is rendered from it, so the claims are equal.",
+		},
+		{
+			ID:   "agentemit-golden-codex-model-effort",
+			Path: "internal/template/agentemit/golden_test.go",
+			Axis: AxisSubsetByDesign,
+			Note: "Test fixtures, not a roster claim: realSetCodexModelEffort tabulates only the roles " +
+				"that DECLARE model and effort (manager-lead is omitted by design and appears only " +
+				"in a comment saying so) and expectedMCPCarriers lists the seven mcp carriers. The " +
+				"file's union of names reaches the sweep threshold without any listing being a complete roster.",
+		},
+		{
+			ID:   "binding-ledger-quoted-rule-text",
+			Path: "internal/template/testdata/binding_ledger.json",
+			Axis: AxisSubsetByDesign,
+			Note: "A snapshot of before/after rule text quoted across many rules; the agent names are " +
+				"incidental quotation (the t1808 model/effort sentence among them), not a roster " +
+				"anyone maintains. It claims neither a membership nor a count.",
+		},
+
 		// ── Retained-roster sites that are currently consistent ────────────
 		{
 			ID:           "agent-authoring-catalog",
@@ -513,8 +560,17 @@ func Registry() []Site {
 	}
 	for _, site := range sites {
 		if strings.HasPrefix(site.Path, ".claude/rules/moai/") {
+			orig := site.Path
 			site.ID += "-policy"
 			site.Path = strings.Replace(site.Path, ".claude/rules/moai/", ".moai/policies/", 1)
+			if why, stale := staleProjections[orig]; stale {
+				// The projection no longer carries the claim, so the twin asserts
+				// nothing and declares the sweep will not reach it.
+				site.Axis, site.Claims = AxisSubsetByDesign, 0
+				site.BlockStart, site.BlockEnd, site.CountPattern = "", "", ""
+				site.KnownStale, site.SweepUnreachable = nil, why
+				site.Note = "Stale .moai/policies projection of " + orig + "; see staleProjections."
+			}
 			sites = append(sites, site)
 		}
 		if strings.HasPrefix(site.Path, "internal/template/templates/.codex/agents/") {
@@ -524,6 +580,18 @@ func Registry() []Site {
 		}
 	}
 	return sites
+}
+
+// staleProjections names .claude/rules/moai/ rows whose derived .moai/policies
+// twin is a projection that predates the listing (card t1857).
+//
+// The twin of agent-common-protocol.md is the pre-t1808 text: it names five
+// agents and carries no role table, so the base row's membership claim cannot
+// hold there and the sweep cannot reach it. The entry is a declaration with a
+// reason, self-expiring like SweepUnreachable: once the projection is refreshed
+// past the sweep threshold, the converse check fails and says to delete it.
+var staleProjections = map[string]string{
+	".claude/rules/moai/core/agent-common-protocol.md": "the .moai/policies projection predates the t1808 role table and names fewer than SweepThreshold agents",
 }
 
 // indexCatalogStale builds the staleness marker shared by the INDEX.md rows,

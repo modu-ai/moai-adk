@@ -420,6 +420,16 @@ func checkAllFiles(ls *Lockset) []Violation {
 // @MX:WARN: [AUTO] Uses goroutine + channel for cancellation.
 // @MX:REASON: Budget enforcement requires concurrent timeout; cancel channel prevents goroutine leak.
 func runWithBudget(root string, budget time.Duration) BudgetResult {
+	return runWithBudgetAfter(root, budget, time.After)
+}
+
+// runWithBudgetAfter は runWithBudget の本体で、タイマー生成関数を注入できます。
+// runWithBudgetAfter is the body of runWithBudget with an injectable timer
+// source: tests pass a function returning a nil channel (never fires) so only
+// the scan-finished arm of the select can win.
+// @MX:WARN: [AUTO] Uses goroutine + channel for cancellation.
+// @MX:REASON: Budget enforcement requires concurrent timeout; cancel channel prevents goroutine leak.
+func runWithBudgetAfter(root string, budget time.Duration, after func(time.Duration) <-chan time.Time) BudgetResult {
 	type scanResult struct {
 		violations []Violation
 		// stderr はゴルーチン内でのみ書き込まれ、channel 経由で返される。
@@ -428,6 +438,8 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 		stderr string
 	}
 
+	const budgetMsg = "validator exceeded 30s budget, consider scoping to changed files only"
+	start := time.Now()
 	done := make(chan scanResult, 1)
 
 	go func() {
@@ -443,6 +455,12 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 
 	select {
 	case result := <-done:
+		// An overrun is an overrun regardless of which select arm won: a scan
+		// that finishes after the budget elapsed but before the timer is
+		// scheduled must still report the budget-exceeded result.
+		if time.Since(start) > budget {
+			return BudgetResult{ExitCode: 4, Stderr: budgetMsg}
+		}
 		if len(result.violations) > 0 {
 			return BudgetResult{
 				Violations: result.violations,
@@ -451,12 +469,11 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 			}
 		}
 		return BudgetResult{ExitCode: 0, Stderr: result.stderr}
-	case <-time.After(budget):
-		msg := "validator exceeded 30s budget, consider scoping to changed files only"
+	case <-after(budget):
 		return BudgetResult{
 			ExitCode: 4,
 			// stderr from the goroutine is not safe to read here — omit partial output.
-			Stderr: msg,
+			Stderr: budgetMsg,
 		}
 	}
 }

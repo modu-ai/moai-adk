@@ -55,6 +55,14 @@ branches:
     # the published set for release-base PRs is empty. Trigger expansion is
     # the release-pipeline scope (t1536); revisit this list if that lands.
     contexts: []
+# The check-run names ci.yml publishes on a push to main that scripts/release.sh
+# demands on the commit it tags (a pushed v* tag cannot be moved). A subset of
+# branches.main.contexts (TestRequiredChecks_ReleaseGateSubsetOfMain enforces it).
+# Update: edit this file ONLY; release.sh reads this block and names no check itself.
+release_gate:
+  - Lint
+  - "Test (ubuntu-latest)"
+  - "Build (linux/amd64)"
 # Auxiliary checks run on PRs but DO NOT block merge (advisory only).
 # Wave 2 watch loop reads this list to discriminate failures.
 auxiliary:
