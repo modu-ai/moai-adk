@@ -85,11 +85,15 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Card t1708: the optional delta scope, validated once before any backend
 	// runs. Like the unusable project_root above it is a caller input the caller
 	// can correct, so it is a hard error rather than a fallback to the full diff.
+	rawDeltaBase, deltaErr := deltaBaseArg(req)
+	if deltaErr != nil {
+		return toolErr(auditMultiToolName, deltaErr), nil
+	}
 	deltaRoot := projectRoot
-	if deltaRoot == "" && req.GetString("delta_base", "") != "" {
+	if deltaRoot == "" && rawDeltaBase != "" {
 		deltaRoot = resolveProjectDir()
 	}
-	deltaBase, deltaErr := readDeltaBase(deltaRoot, req.GetString("delta_base", ""), target)
+	deltaBase, deltaErr := readDeltaBase(deltaRoot, rawDeltaBase, target)
 	if deltaErr != nil {
 		return toolErr(auditMultiToolName, deltaErr), nil
 	}

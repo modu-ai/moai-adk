@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // deltaBaseRef is the Ref a delta scope reports in review_base.
@@ -64,6 +66,22 @@ func validateDeltaBase(root, raw string) (string, error) {
 	return full, nil
 }
 
+// deltaBaseArg reads the raw delta_base argument. GetString returns its default
+// for any non-string value, which would read an array, object, number, bool or
+// null as "absent" and silently widen the call to a full-scope review, so a
+// present key that is not a string is an error here. Absent ⇒ "".
+func deltaBaseArg(req mcp.CallToolRequest) (string, error) {
+	raw, present := req.GetArguments()[deltaBaseRef]
+	if !present {
+		return "", nil
+	}
+	s, ok := raw.(string)
+	if !ok {
+		return "", fmt.Errorf("delta_base must be a string (a commit SHA), got %T", raw)
+	}
+	return s, nil
+}
+
 // readDeltaBase validates the optional delta_base argument against target. It
 // returns "" when the argument is absent. A delta scope is a base-branch scope,
 // so any other target is rejected rather than silently ignoring the value.
@@ -86,6 +104,38 @@ func deltaReviewBase(sha string) reviewBase {
 // scope reaches codex as prompt text only, and the result says so.
 func deltaProseReviewBase(sha string) string {
 	return deltaBaseRef + " " + sha + " (prose-only scope: codex adversarial mode cannot be bounded mechanically)"
+}
+
+// deltaScopeNote is the residual_risk_note clause of a delta audit_multi call.
+// It states only what the verdicts show: a claude or glm leg counts as having
+// reviewed delta_base...HEAD when it produced a pass/fail verdict itself; the
+// caller's in-session Claude anchor arrives with a scope the server cannot know.
+func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
+	var reviewed []string
+	anchor := false
+	for _, v := range verdicts {
+		if v.Backend != BackendClaude && v.Backend != BackendGLM {
+			continue
+		}
+		switch {
+		case v.Source == "in_session_anchor":
+			anchor = true
+		case v.Verdict == "pass" || v.Verdict == "fail":
+			reviewed = append(reviewed, v.Backend)
+		}
+	}
+	var clauses []string
+	if len(reviewed) > 0 {
+		clauses = append(clauses, strings.Join(reviewed, "/")+" reviewed "+sha+"...HEAD")
+	}
+	if anchor {
+		clauses = append(clauses, "the in-session claude result is the caller's (scope not verified)")
+	}
+	if len(clauses) == 0 {
+		clauses = append(clauses, "no claude or glm leg produced a verdict on it")
+	}
+	return "delta_base " + sha + ": " + strings.Join(clauses, "; ") +
+		"; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written"
 }
 
 // codexDeltaScopeClause extends the adversarial prompt for a delta audit. The

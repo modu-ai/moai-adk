@@ -2083,7 +2083,11 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Card t1708: the optional delta scope. An unusable value is REJECTED here,
 	// before any codex process starts — falling back to the full diff would
 	// review more than the caller asked for while reporting success.
-	deltaBase, deltaErr := readDeltaBase(root, req.GetString("delta_base", ""), target)
+	rawDeltaBase, deltaErr := deltaBaseArg(req)
+	if deltaErr != nil {
+		return toolErr("codex_audit", deltaErr), nil
+	}
+	deltaBase, deltaErr := readDeltaBase(root, rawDeltaBase, target)
 	if deltaErr != nil {
 		return toolErr("codex_audit", deltaErr), nil
 	}

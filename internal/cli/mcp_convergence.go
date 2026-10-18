@@ -907,9 +907,10 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
 	}
 	if cfg.DeltaBase != "" {
-		// A delta call states its own scope: claude and glm measured from the
-		// base exactly, codex was only asked to (turn/start has no target).
-		note := "delta_base " + cfg.DeltaBase + ": claude/glm reviewed " + cfg.DeltaBase + "...HEAD; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written"
+		// A delta call states its own scope: the claude/glm legs that returned a
+		// verdict measured from the base exactly, codex was only asked to
+		// (turn/start has no target).
+		note := deltaScopeNote(cfg.DeltaBase, verdicts)
 		if result.ResidualRiskNote != "" {
 			note += " | " + result.ResidualRiskNote
 		}
