@@ -40,7 +40,7 @@ The eight facts S-1 to S-8 of `spec.md` § E.2 are the interface; `design.md` §
 ### A.5 Rollout, rollback, compatibility
 
 - This SPEC ships the key `false` in the repository and the template. No deployment is cut over by landing it.
-- Operator sequence, documented in the verbs' help and the sync-phase CHANGELOG entry: set the key in the tree that runs the verb; stop every lane and leader process; `identity report --emit`; fill the blanks; `identity cutover`; restart every process that opened the factory before; `identity report` again.
+- Operator sequence, documented in the verbs' help and the sync-phase CHANGELOG entry: set the key in the tree that runs the verb; stop every lane and leader process; `identity report --emit`; fill the blanks; `identity cutover`; restart every process that opened the factory before; `identity report` again. Before the `cutover`, clear each id the report lists as blocked (REQ-CDI-005 has no override): for owner-label conflicts, the operator abandons (`moai factory decide <card> --choice abandon --run <run>`, which exists from every non-terminal state, `card_transition.go:172-176`) or reassigns the rows that should not continue; for a live lease on a row to be sealed, the operator waits for the lease to end, stops its lane, or abandons that row. On the 2026-10-18T01:16:00Z copy this is 25 ids by owner labels and at most 27 in all (research § 4.1); 18 of the 25 have every conflicting row in a retired run.
 - Rollback is `identity rollback`; a code revert across the cutover is not a rollback, and an older build cannot open the database (REQ-CDI-010).
 
 ## B. Run-entry precondition and re-verification
@@ -65,19 +65,19 @@ The `TestCDI_*` family as failing tests, compiling against declarations that ret
 
 ### M2 — Report, resolution, cutover, validation, immutability, projection
 
-`identity report`, the resolution input, `identity cutover` with C-1 to C-4, V-1 to V-7, the triggers, the `cards` view, the fault seams. AC-CDI-003 to AC-CDI-009 and the cutover half of AC-CDI-016.
+`identity report`, the resolution input, `identity cutover` with C-1 to C-4, V-1 to V-7, the triggers (including the seal trigger of design § 4.4), the `cards` view, the fault seams. AC-CDI-003 to AC-CDI-009 and the cutover half of AC-CDI-016.
 
 ### M3 — Identity-layout records
 
-Statement routing, `ErrCardNotMember`, `ErrCardEngaged`, the seal writers of design § 4.4 (REQ-CDI-023, AC-CDI-025), join, re-pick, version and `attempt_no` monotonicity, cross-run readers. AC-CDI-011, AC-CDI-012, AC-CDI-013 (the join and seal halves), AC-CDI-016 (join half), AC-CDI-025.
+Statement routing, `ErrCardNotMember`, `ErrCardEngaged`, the seal writers of design § 4.4 (REQ-CDI-023, AC-CDI-025), join, re-pick, version and `attempt_no` monotonicity, cross-run readers. AC-CDI-011 (invariants; its migration and rollback operations finish at M4 and M5), AC-CDI-012, AC-CDI-013 (the join and seal halves), AC-CDI-016 (join half), AC-CDI-025 (all subtests except `migration_seals`).
 
 ### M4 — Retirement as migration
 
-`retireRunWithMigration`, `--into`, `relaunch` destination, roster re-bind, dispatch re-point, refusals, the flag-set assertion. AC-CDI-014, AC-CDI-015.
+`retireRunWithMigration`, `--into`, `relaunch` destination, roster re-bind, dispatch re-point, refusals, the flag-set assertion. AC-CDI-014, AC-CDI-015, and the migration step of AC-CDI-025 (`migration_seals`, which makes AC-CDI-025 green).
 
 ### M5 — Rollback and the seam contract
 
-`identity rollback` with R-1 to R-4, the generic epoch-carrier fixture across cutover, join, retire and rollback, the published read surface and the additive JSON fields. AC-CDI-010, AC-CDI-013, AC-CDI-022.
+`identity rollback` with R-1 to R-4, the generic epoch-carrier fixture across cutover, join, retire and rollback, the published read surface and the additive JSON fields. AC-CDI-010, AC-CDI-013, AC-CDI-022, and the rollback operations of AC-CDI-011 (which make it green).
 
 > **Cut line.** M0 to M5 deliver the identity layer and stand alone. M6 may land as a second part.
 
@@ -165,3 +165,20 @@ Source: `.moai/reports/t1842/plan-audit.md`. Probes for every engine claim below
 | D15 `FactoryTablePresent` | Fixed: query `type IN ('table','view')` for `cards`; subtest added. | design § 9; AC-CDI-022 |
 | D16 relaunch after a refused migration | Fixed: stated (prints the left-active line, still launches, exit status as for any refused retirement). | REQ-CDI-016 |
 | D17 S-2 at cutover | Fixed: S-2 states the numbering at cutover. | spec S-2 |
+
+## K. Revision after plan audit iteration 2 (FAIL 0.78)
+
+Source: `.moai/reports/t1842/plan-audit-iter2.md`. Probes ran under the project driver (modernc v1.60.1, SQLite 3.53.4); results in research.md § 6.2.
+
+| Defect | Disposition | Where |
+|--------|-------------|-------|
+| R2-D1 restamp not sealed | Fixed by moving the seal into a store-level trigger on the current record, so no caller can miss it; all six non-test callers of `updateCardRow` plus the renewal enumerated with a per-caller verdict; S-5 corrected; AC-025 gains the restamp, every-writer, raw-update and exact-count subtests; the AC-011 mix gains restamp. Probe: scripted sequence produced exactly the expected seals. | design § 4.4; REQ-CDI-023; S-5; AC-CDI-025, AC-CDI-011 |
+| R2-D2 project-scope rollback | Fixed: a project-scope record takes the run of its newest sealed attempt; cutover step 2 is a left join on `runs`; AC-010 gains the stranded-card fixture, no-empty-run, V-4 and missing-run subtests. | REQ-CDI-011; design § 7, § 3.3; AC-CDI-010 |
+| R2-D3 REPLACE deletes an in-flight row | Fixed: `BEFORE INSERT` guard on an in-flight intent collision and `BEFORE DELETE` guard on every row; probe: INSERT OR REPLACE and REPLACE INTO abort, row P intact. | REQ-CDI-021; design § 2.2, § 6.1; AC-CDI-021 |
+| R2-D4 Green-path milestones | Fixed: AC-011 green at M5 (M3 for the invariants, M4 for migration, M5 for rollback), AC-025 green at M4 (M3 except migration); M3, M4 and M5 lists updated. | acceptance AC-011, AC-025; plan § C |
+| R2-D5 stale counts, missing operator step | Fixed: R-4 and research § 4 state the strict-rule counts (25 by owner labels, at most 27); § A.5 gains the step that clears each blocked id (operator abandon, or release) before the cutover. | spec R-4; research § 4; plan § A.5 |
+| R2-D6 seal predicate stated three ways | Fixed: one predicate in REQ-CDI-023 and the trigger; abandon (keeps holder, seals nothing) and join (run changes, seals) settled; exact archive-row count asserted (six). | REQ-CDI-023; design § 4.4; AC-CDI-025 |
+| R2-D7 DROP INDEX on auto-indexes | Fixed: only explicitly created triggers and indexes are dropped and recreated; auto-indexes follow the rename. Probe: `index associated with UNIQUE or PRIMARY KEY constraint cannot be dropped`. | design § 7 |
+| R2-D8 report vs rule (b); seal vs holder-clearing | Fixed: report evaluates rule (b) against the proposed resolution and lists blank ids as blocked unless resolved to a named row; a seal is the archive append and bump only, the accompanying write clears the holder as at B0. | REQ-CDI-003, REQ-CDI-014; S-3; AC-CDI-013 |
+| R2-D9 journal needs a transaction-aware hook | Fixed: `TransitionRequest.Op` (operation reference) written by `transitionTx` through the transition's own `tx`; `BeforeCommit` stays for the queue write. | design § 6.2, § 12 |
+| R2-D10 AC-025 Given order | Fixed: expire, reassign to lane-2 (then restamp to lane-3), lease by the owner. | AC-CDI-025 |

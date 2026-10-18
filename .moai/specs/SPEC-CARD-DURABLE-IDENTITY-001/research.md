@@ -70,7 +70,7 @@ Taken 2026-10-18T00:31:45Z: `cp /Users/goos/.moai/db/moai-adk-go-1bd3d038/factor
 | `legacy states present` | `done, abandoned, leased, assigned, sync-audit, plan, plan-audit, run, merged-local, sync, merge-ready, kickoff, picked` |
 | column order in the copy | `run_id, card_id, owner_label, state, version, evidence_path, updated_at, stage, lease_holder, lease_expires_at, heartbeat_at, decision_gate, decision_question, decision_resume, decider, decided_at, failure_reason, hint_prefer, hint_after, spec_id, worktree_path, evidence_sha, merge_sha, merge_tree, remeasure_path, contract_spec_id, contract_sha256, contract_signed_at, contract_event, bundle_id, bundle_order` |
 
-What this says for the design: the cutover would block on zero card ids today (REQ-CDI-005), would need 26 blank resolutions filled by an operator, and would turn 143 non-terminal rows of retired runs into sealed attempts while 93 card ids become project-scope records. The 41-card figure in the design document is for run `tmvgvn` at an earlier moment.
+What this says for the design: under the run-status rule the first revision had, the cutover would have blocked 0 card ids; under the strict rule now in force (§ 4.1) it blocks 25 card ids by owner labels and at most 27 in all until the operator clears them (plan § A.5); it needs 26 blank resolutions filled by an operator, and would turn 143 non-terminal rows of retired runs into sealed attempts while 93 card ids become project-scope records. The 41-card figure in the design document is for run `tmvgvn` at an earlier moment.
 
 ### 4.1 Revision measurement (fresh copy, strict conflict rule)
 
@@ -112,6 +112,15 @@ Scratch module with the repository's `go.mod` and `go.sum`, run as `env GOFLAGS=
 4. Read-only sidecars on a quiescent copy of the live database: `mode=ro&_pragma=query_only(ON)` left `f.db`, `f.db-shm`, `f.db-wal` with the `f.db` bytes equal and 300 rows readable; `immutable=1` left only `f.db`.
 
 The plan audit's own probe covered the view over the legacy name, `INSTEAD OF` triggers, `ROW_NUMBER()`, a table rename inside a transaction and a stale handle, all under the same driver and version.
+
+## 6.2 Observed under the project driver (revision for audit iteration 2)
+
+Same scratch module and driver as § 6.1 (`modernc.org/sqlite` v1.60.1, SQLite 3.53.4), reduced schemas.
+
+1. Seal trigger (`AFTER UPDATE … WHEN` predicate, archive insert of the `OLD` columns, nested `attempt_no` bump): a script of grant (`''` to a label), expiry-like write, owner restamp, worktree write, holder clear, run change, abandon and terminal re-pick produced exactly four archive rows (restamp, clear, run change, re-pick), `attempt_no` 1 to 5; each row held the owner and holder it carried; the archive refused an update.
+2. After `ALTER TABLE … RENAME` the seal trigger followed the renamed table (`tbl_name` `card_current__rb1`), so rollback must drop it. `DROP INDEX sqlite_autoindex_*` failed: `index associated with UNIQUE or PRIMARY KEY constraint cannot be dropped`.
+3. Journal: with the partial unique index alone, `INSERT OR REPLACE` of row Q on in-flight intent `kP` removed row P (progress and before-image gone). With a `BEFORE INSERT` guard on an in-flight intent collision and a `BEFORE DELETE` guard, `INSERT OR REPLACE`, `REPLACE INTO` and a plain `DELETE` all aborted and row P survived intact; a terminal row with the same intent was still insertable.
+4. A column-adding migration with a stale seal trigger: the next update failed loudly (`table at2 has 4 columns but 3 values were supplied`) when the insert was positional; a named column list would omit the new column silently, so the trigger is rebuilt with the migration (design § 2.7).
 
 ## 7. Not verified at plan time
 
