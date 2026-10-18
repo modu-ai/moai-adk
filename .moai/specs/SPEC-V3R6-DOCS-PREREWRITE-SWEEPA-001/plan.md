@@ -57,10 +57,10 @@ Reading: the Class C instruction does not resolve. The three Class N statements 
 
 The installed `moai` reports `moai_cp/20261007_195927-1888-g7705b365e2`, built 2026-10-18T10:45:08Z. Commit 7705b365e2 is a strict ancestor of the tree HEAD (`merge-base --is-ancestor` exit 0; `rev-list --count 7705b365e2..2bcce5d9dc` prints 48). The probes were therefore not made by a build of this tree, and none was built (no Go build, by the lane's machine rule). The mitigation is a source read at the pin, not a substitute: of the 48 commits, 15 files under `internal/cli` and `cmd` differ, and the `Use:` declarations at the pin show no top-level registration of `codemaps`, `gpt`, or `model` (E-SWA-6). The claim cited is "installed build 7705b365e2 against tree 2bcce5d9dc".
 
-### A.5 Per-form evidence for the Q13 choice
+### A.5 Per-form evidence (Q13 for Class C, Q-SWA-1 for Class N)
 
 - **Class C, `moai codemaps` (step 3, "rebuild the graph").** The step regenerates `nav-graph.json`. That file's producer is the hidden verb `moai navigator-sync` (A.3). The registered slash command `/moai codemaps` resolves, but `.claude/commands/moai/codemaps.md` describes it (its `description:` line, translated from Korean) as scanning the codebase and generating architecture docs in `codemaps/`, and neither that file nor `.claude/skills/moai/workflows/codemaps.md` contains `nav-graph` (E-SWA-6). It shares a name with the cited form and does not do the cited job, so it is not an equivalent. A replace option would therefore document a hidden verb, which Q13 leaves to the operator to name.
-- **Class N lines.** A retired or absent verb has no current equivalent; `moai migrate cg` is already named inside the factory row. Whether these lines are edited at all is Q-SWA-1; how they are edited, if so, is Q13.
+- **Class N lines.** A retired or absent verb has no current equivalent; `moai migrate cg` is already named inside the factory row. Whether these lines are edited at all is Q-SWA-1; how they are edited, if so, is Q-SWA-1 option (a1) reword or (a2) delete; Q13 does not govern them.
 
 ## B. Milestones (ordered by likelihood of change; mechanical steps last)
 

@@ -25,17 +25,17 @@ P-PRO = 'docs-site/content/*/advanced/profile-matrix.md'
 
 ### A.3 Classification
 
-AC-PRC-001-001 is release-blocking and flips from red to green. AC-PRC-001-002 is release-blocking under branch (a), where it flips from red to green, and a regression-guard under branch (b), where it is true at the pin. AC-PRC-001-003 and AC-PRC-001-004 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known historical input that turns the same form red. AC-PRC-001-005 mixes both: its FLAG and factory-mode checks are preservation, while its bas-navigator bound (non-empty edit within the unit) and dangling-step check flip from red to green at M2 and carry their controls.
+AC-PRC-001-001 is release-blocking and flips from red to green. AC-PRC-001-002 is release-blocking under branch (a), where it flips from red to green, and a regression-guard under branch (b), where it is true at the pin. AC-PRC-001-003 and AC-PRC-001-004 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known historical input that turns the same form red. AC-PRC-001-005 mixes both. Its command 2 (the bas-navigator numstat bound, which requires a non-empty edit within the edit unit) is the release-blocking part: it is red at the pin and flips to green at M2, and E-SWA-15 is its RED-now cell. Commands 1 and 3 to 6 are green at the pin and are preservation checks, including command 6 (the dangling-step check, which prints `moai codemaps` at the pin) and the Class N bounds; their controls are E-SWA-13 and E-SWA-14. No command other than command 2 is claimed to flip.
 
 ## B. Acceptance criteria
 
 | AC | Requirement | Depends on | Class | RED-now or control | Green path |
 |----|-------------|------------|-------|--------------------|------------|
 | AC-PRC-001-001 | REQ-PRC-001-001 | Q13, Q17 | release-blocking | E-SWA-2, E-SWA-3 (4 matches, RED) | M2 |
-| AC-PRC-001-002 | REQ-PRC-001-002 | Q-SWA-1, Q13, Q17 | release-blocking under (a); regression-guard under (b) | E-SWA-2, E-SWA-3 (8 matches, RED under branch a); E-SWA-11 (control, branch b) | M3 |
+| AC-PRC-001-002 | REQ-PRC-001-002 | Q-SWA-1, Q17 | release-blocking under (a); regression-guard under (b) | E-SWA-2, E-SWA-3 (8 matches, RED under branch a); E-SWA-11 (control, branch b) | M3 |
 | AC-PRC-001-003 | REQ-PRC-001-003 | Q17 | preservation | E-SWA-12 (control) | M2, M3 |
 | AC-PRC-001-004 | REQ-PRC-001-004 | none | preservation | E-SWA-7 (control) | M5 |
-| AC-PRC-001-005 | REQ-PRC-001-004 | Q-SWA-1 (bounds on the Class N files) | preservation and release-blocking | E-SWA-13, E-SWA-14 (controls) | M2, M3, M4, M5 |
+| AC-PRC-001-005 | REQ-PRC-001-004 | Q-SWA-1 (bounds on the Class N files) | release-blocking (command 2); preservation (the rest) | E-SWA-15 (RED-now, command 2); E-SWA-13, E-SWA-14 (controls) | M2, M3, M4, M5 |
 
 ### AC-PRC-001-001 — the Class C lines are gone
 
@@ -281,7 +281,22 @@ printf '```bash\n# 2) x\ncmd\n\n# 3) Rebuild the graph\n```\n' | awk '<command 6
 git grep -n -E "^# 3\)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'   -> 12 lines: line 74, 97, 135 in each locale (`# 3)` also opens later blocks, so the check is scoped to the first block)
 ```
 
-At plan time commands 2 to 4 of AC-PRC-001-005 over `main...HEAD` print nothing, which is red for command 2 by design and the expected state for commands 3 and 4 before any edit.
+At plan time commands 3 and 4 of AC-PRC-001-005 over `main...HEAD` print nothing, the expected state before any edit; command 2 printing nothing is red, recorded in E-SWA-15.
+
+### E-SWA-15 — RED-now cell for AC-PRC-001-005 command 2
+
+Tree: HEAD `640d2471cd78ff43e5b69e355f423620ff9913c9` (the docs-site tree equals the pin 2bcce5d9dc, because the plan commits touch only the SPEC directory; local `main` is the pin). Commands, each followed by `; echo "exit=$?"`, run from the card worktree root:
+
+```
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'; echo "exit=$?"   -> (no stdout)   exit=0
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md'; echo "exit=$?"    -> (no stdout)   exit=0
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"  -> (no stdout)   exit=0
+git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^[-+].*(--factory-run|--clear-policy)"; echo "exit=$?"   -> (no stdout)   exit=1 (rg, no match)
+git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^@@"; echo "exit=$?"   -> (no stdout)   exit=1 (rg, no match)
+for each locale of bas-navigator.md: git show HEAD:docs-site/content/<locale>/advanced/bas-navigator.md | awk '<command 6>'   -> moai codemaps (ko, en, ja, zh)
+```
+
+Reading: command 2 is expected to print four numstat lines after M2 and prints none now, so it is red at the pin; this is the only red command of AC-PRC-001-005. Commands 1, 3, 4, and 5 print nothing, the expected state before any edit; command 6 prints `moai codemaps`, which does not begin with `# 3)`, so it is green at the pin and its red form is the `printf` fixture of E-SWA-14.
 
 ## D. Gaps and residual risk
 

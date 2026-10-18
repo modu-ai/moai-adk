@@ -6,7 +6,7 @@ Revision 0.1.0 (2026-10-19). This child owns the full row Q-SWA-1 and carries co
 
 Labels: DECIDED and POLICY-COVERED need an authority anchor in the committed tree (product.md, a completed SPEC's HISTORY or Amendments row, `.moai/config/sections/*.yaml`, or the constitution). None of the rows below has one, so every row is FOUNDER. `.moai/docs/docs-site-i18n-rules.md` is a committed document outside the authority register; the rows cite it as a fact, not as authority. No row carries a recommendation. The `Default:` lines on Q13 and Q17 are proposals ranked by the published Default rule, not recommendations and not verdicts.
 
-**Gate (stated once; every other file points here by row id).** Q13, Q17, and Q-SWA-1 are open. Until each of the three carries an operator verdict, no tracked file outside this SPEC directory is edited, which holds M2 and M3 of plan.md together. Q13 and Q17 are needed by M2 and M3, and Q-SWA-1 by M3; the three are gated as one set so that no file states a partial order of its own.
+**Gate (stated once; every other file points here by row id).** Q13, Q17, and Q-SWA-1 are open. Until each of the three carries an operator verdict, no tracked file outside this SPEC directory is edited, which holds M2 and M3 of plan.md together. Q13 is needed by M2, Q17 by M2 and M3, and Q-SWA-1 by M3; the three are gated as one set so that no file states a partial order of its own.
 
 Board check (2026-10-18): `moai decision read --scope card:t1655` returned 134 records and `moai decision read --scope card:t1721` returned 122 (standing rulings included). A search of both outputs for `Q13` and `Q17` found no match, and a search for a known record id in each file did match, so the search was live (acceptance.md E-SWA-10). No board record answers either row.
 
@@ -15,8 +15,8 @@ Evidence references (E-SWA-n) point to acceptance.md §C, measured at tree commi
 ### Q13: Is each stale citation deleted or replaced?
 Label: FOUNDER
 Authority anchor: none in the committed tree
-Why unresolved: carried from the umbrella, whose count of distinct stale forms is 18 (umbrella revision 0.3.0, defect B12). Some forms have a current equivalent and some have none; replacing a citation changes what a reader is told to run, and the default and the alternate apply per form. For this child the forms are `moai codemaps` (4 lines, Class C) and, only if Q-SWA-1 brings them in, `moai cg`, `moai gpt`, and `moai model profile` (8 lines, Class N). The per-form evidence, including the one registered but hidden verb that does the cited job, is in plan.md §A.5 and is not repeated here.
-Requirement: REQ-PRC-001 (page part): REQ-PRC-001-001 and REQ-PRC-001-002
+Why unresolved: carried from the umbrella, whose count of distinct stale forms is 18 (umbrella revision 0.3.0, defect B12). Some forms have a current equivalent and some have none; replacing a citation changes what a reader is told to run, and the default and the alternate apply per form. For this child Q13 covers one form only: `moai codemaps` (4 lines, Class C). The eight Class N lines are not Q13's; their disposition is Q-SWA-1 (a1 reword, a2 delete, b keep). The per-form evidence for the Class C form, including the one registered but hidden verb that does the cited job, is in plan.md §A.5 and is not repeated here.
+Requirement: REQ-PRC-001 (page part): REQ-PRC-001-001
 Class: implementation-level
 Child: SWEEPA (SPEC-V3R6-DOCS-PREREWRITE-SWEEPA-001), decision row Q13; the umbrella row is shared with README and SWEEPB to SWEEPF, each for its own files
 Default: delete the stale citation (rule: smaller user-visible surface)
