@@ -939,16 +939,18 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// identified has no store, so the write is skipped and the result says so
 	// (REQ-WSR-004).
 	//
-	// A delta call (card t1708) is not persisted at all: this file is the
-	// session's full-review verdict as the Stop gate reads it (it blocks on
+	// A delta call (card t1708) persists only when it FAILS (card t1873): this
+	// file is the session's verdict as the Stop gate reads it (it blocks on
 	// overall_verdict fail and checks no scope), so a delta pass written here
-	// would open the gate after a failed full review. Nothing else reads a
-	// per-session delta file, so a separate name would be dead state; the delta
-	// result goes to the caller and its audit receipt still records below.
+	// would open the gate after a failed full review, while a delta fail must
+	// close it even after a passing full review. A delta pass or inconclusive
+	// persists nothing. Nothing else reads a per-session delta file, so a
+	// separate name would be dead state; the delta result goes to the caller and
+	// its audit receipt still records below.
 	if cfg.ProjectRoot != "" {
 		result.TreeRoot = cfg.ProjectRoot
 	}
-	if cfg.SessionID != "" && cfg.DeltaBase == "" {
+	if cfg.SessionID != "" && (cfg.DeltaBase == "" || result.OverallVerdict == overallVerdictFail) {
 		var unresolved *auditreceipt.UnresolvedStoreError
 		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
 			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
