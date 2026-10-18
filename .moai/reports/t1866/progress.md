@@ -143,3 +143,26 @@ Gaps remaining: no whole-package run of `internal/cli`, `internal/config`, `inte
 Honest line: the round-2 repair instruction told the implementer to assert the exec seam for a resume, although a resume's first child start is `tryCmd.Run()`; that instruction was the lane's mistake, found by the round-3 audit.
 
 Note: the third and fourth fix spawns were refused with AUDIT_RECEIPT_VIOLATION (unknown-spec) and the leader removed those guard records after backing them up (board 6a81; backup directories `backup-rejection-20261018T060040Z` and `backup-rejection-20261018T061236Z`).
+
+## Landing re-measure finding: stale web test
+
+The landing re-measure ran the whole `internal/web` package and found `TestGLMEffortTierDefaults` (`internal/web/glm_tier_test.go`) failing. Verbatim failure lines:
+
+```
+glm_tier_test.go:150: llm.glm.effort.low Default = "max", want "low"
+glm_tier_test.go:150: llm.glm.effort.fable Default = "high", want "max"
+glm_tier_test.go:162: llm.glm.effort.low: rendered page does not preselect the default "low" (t1278: radio checked marker)
+```
+
+Cause: the test still pinned the previous shipped defaults (low=low, fable=max). The card changed them to the operator-confirmed combination (`config.DefaultGLMEffortLow = "max"`, `config.DefaultGLMEffortFable = "high"`); the product behavior is right, the test expectation was stale.
+
+Fix (test only): in `wantDefault`, low is now `template.GLMStateMax` and fable `template.GLMStateHigh` (assertions replaced, none removed or loosened); the doc comment now states high Max, medium High, low Max, fable High, notes glm-5.3-flash accepts max only so low=Max matches the wire. A `grep -rn` over `*_test.go` in `internal/web`, `internal/template`, `internal/settings` found no other test pinning the old low/fable effort defaults (template tests cover the reasoning-state overlay mapping, not the defaults; `glm_tier_defaults_test.go` compares against the Go constants).
+
+Commands and observed output (each prefixed with the `unset MOAI_KANBAN_*` trio):
+- RED: `go test ./internal/web -run '^TestGLMEffortTierDefaults$' -count=1` -> the three lines above, `FAIL github.com/modu-ai/moai-adk/internal/web 1.054s`.
+- GREEN: same command -> `ok  github.com/modu-ai/moai-adk/internal/web 0.880s`.
+- Whole package: `go test ./internal/web -p 1 -count=1` -> `ok  github.com/modu-ai/moai-adk/internal/web 45.186s`.
+
+Honest line: the lane's earlier scope check ran `internal/web` only by name pattern (3 to 31 tests), which is why the stale test was missed until the landing re-measure ran the whole package.
+
+Note: the fifth fix spawn was refused with AUDIT_RECEIPT_VIOLATION (unknown-spec) and the leader removed that guard record after backing it up (board 6a81, board entry d-20261018T103229Z-1628, backup directory `backup-rejection-20261018T103222Z`).
