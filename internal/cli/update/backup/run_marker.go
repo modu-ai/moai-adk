@@ -24,6 +24,20 @@ const RunMarkerName = ".moai-run"
 // restore walks cannot drift apart.
 const PriorManifestName = "manifest.prior.json"
 
+// PriorManifestTempPrefix is the prefix of the temporary file the update code
+// creates in the run backup directory while it writes manifest.prior.json (it
+// reaches the final name by renaming that file). It is bookkeeping exactly like
+// the final name, and a failed write may leave it behind, so a restore never
+// copies it either. The writer builds the file's name from this constant.
+const PriorManifestTempPrefix = PriorManifestName + ".tmp-"
+
+// IsPriorManifestBookkeeping reports whether relPath, a path relative to a run
+// backup directory, names the prior-manifest copy or its temporary file at the
+// backup root. A same-named file below the root is user content and is not.
+func IsPriorManifestBookkeeping(relPath string) bool {
+	return relPath == PriorManifestName || strings.HasPrefix(relPath, PriorManifestTempPrefix)
+}
+
 // runIDLayout is the time layout of a run id: UTC, nanosecond precision, and
 // fixed width, so lexical order equals time order.
 const runIDLayout = "2006-01-02T15:04:05.000000000Z"

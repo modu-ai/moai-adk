@@ -267,9 +267,10 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 		}
 
 		// The prior-manifest copy at the backup root is bookkeeping too (the project
-		// manifest as the run loaded it): it must not land in .moai/config. Only the
-		// root-level file is meant; a same-named file below it is user content.
-		if relPath == PriorManifestName {
+		// manifest as the run loaded it), and so is the temporary file a failed write
+		// of it may have left: neither may land in .moai/config. Only the root-level
+		// names are meant; a same-named file below the root is user content.
+		if IsPriorManifestBookkeeping(relPath) {
 			return nil
 		}
 

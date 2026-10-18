@@ -77,7 +77,7 @@ var priorManifestWriter = writePriorManifest
 // writePriorManifestTemp writes data to a temporary file in dir (a name other
 // than the final one, so a half-written file never answers to it) and syncs it.
 func writePriorManifestTemp(dir string, data []byte) (string, error) {
-	f, err := os.CreateTemp(dir, priorManifestName+".tmp-*")
+	f, err := os.CreateTemp(dir, backup.PriorManifestTempPrefix+"*")
 	if err != nil {
 		return "", fmt.Errorf("create temporary prior manifest: %w", err)
 	}
@@ -101,16 +101,21 @@ func writePriorManifestTemp(dir string, data []byte) (string, error) {
 
 // writePriorManifest creates <runDir>/manifest.prior.json holding data. The
 // final name is reached only by renaming a complete temporary file onto it, so
-// it either holds every byte or does not exist. A temporary file left by a
-// failed rename is complete-looking but carries another name and is ignored by
-// the reader.
+// it either holds every byte or does not exist. On any failure after the
+// temporary file exists it is removed, best effort: the reader ignores its name,
+// but a legacy restore copies every file at the backup root, so a leftover would
+// land in the project. The failure itself is reported unchanged.
 func writePriorManifest(runDir string, data []byte) error {
 	tmp, err := priorManifestTempWrite(runDir, data)
 	if err != nil {
+		if tmp != "" {
+			_ = os.Remove(tmp)
+		}
 		return fmt.Errorf("preserve prior manifest: %w", err)
 	}
 	final := filepath.Join(runDir, priorManifestName)
 	if err := priorManifestRename(tmp, final); err != nil {
+		_ = os.Remove(tmp)
 		return fmt.Errorf("preserve prior manifest: rename into place: %w", err)
 	}
 	return nil
