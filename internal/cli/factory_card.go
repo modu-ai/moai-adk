@@ -1430,7 +1430,17 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	if err != nil {
 		return nom, nil, err
 	}
-	if blocker, wait := factoryHubWaitUnmerged(queueRec, cards, factoryMergedCards(allRuns), cardID); wait {
+	mergedAll := factoryMergedCards(allRuns)
+	// The stored order of an ASSIGNED row (card t1711): its lease edge (T3)
+	// carries no predecessor guard of its own — the T2 guard fired when the
+	// card was assigned — so a hint recorded on the assigned row afterwards
+	// (`assign --after`) would be honoured by the unnominated selection and
+	// bypassed by this door. The same merged set the selection reads decides
+	// here, and the refusal writes nothing.
+	if nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.HintAfter != "" && !mergedAll[nom.row.HintAfter] {
+		return nom, nil, fmt.Errorf("factory next: %w: %s has not reached %s (git-flow) or %s (github-flow)", homestate.ErrPredecessorUnmerged, nom.row.HintAfter, homestate.CardMergedLocal, homestate.CardMergedPR)
+	}
+	if blocker, wait := factoryHubWaitUnmerged(queueRec, cards, mergedAll, cardID); wait {
 		return nom, nil, fmt.Errorf("factory next: %w: %s has not reached %s (git-flow) or %s (github-flow)", homestate.ErrPredecessorUnmerged, blocker, homestate.CardMergedLocal, homestate.CardMergedPR)
 	}
 	// The claim would refuse a foreign tree only after the promotion; deciding
@@ -2807,7 +2817,7 @@ func requireQueuePicked(root, cardID string) error {
 }
 
 func newFactoryAssignCommand() *cobra.Command {
-	var to, prefer, after, spec, worktree, contractRef, run string
+	var to, prefer, after, spec, worktree, contractRef, note, run string
 	var reassign bool
 	cmd := &cobra.Command{
 		Use:   "assign <card>",
@@ -2826,6 +2836,7 @@ func newFactoryAssignCommand() *cobra.Command {
 				return nil
 			}
 			fields.HintPrefer, fields.HintAfter, fields.SpecID = flag("prefer", &prefer), flag("after", &after), flag("spec", &spec)
+			notePtr := flag("note", &note)
 			if cmd.Flags().Changed("worktree") {
 				abs := worktree
 				if abs != "" {
@@ -2903,7 +2914,7 @@ func newFactoryAssignCommand() *cobra.Command {
 				if strings.TrimSpace(to) == "" {
 					return errors.New("factory assign: --reassign needs --to <lane>")
 				}
-				for _, name := range []string{"prefer", "after", "spec", "worktree", "contract-ref"} {
+				for _, name := range []string{"prefer", "after", "spec", "worktree", "contract-ref", "note"} {
 					if cmd.Flags().Changed(name) {
 						return fmt.Errorf("factory assign: --reassign takes --to only; --%s changes no other field", name)
 					}
@@ -2917,6 +2928,12 @@ func newFactoryAssignCommand() *cobra.Command {
 			}
 			var card homestate.Card
 			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
+				if edited, handled, err := factoryAssignOnAssigned(ctx, db, runID, cardID, fields, notePtr, to, now); err != nil {
+					return err
+				} else if handled {
+					card = edited
+					return nil
+				}
 				recordCard, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
 				if err != nil {
 					return err
@@ -2989,11 +3006,51 @@ func newFactoryAssignCommand() *cobra.Command {
 		"move an assigned or decision-waiting (kickoff, needs-decision) card to --to's registered lane (the leader path for a card whose owner lane is gone; refuses a live lease and every other field)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
 	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
+	cmd.Flags().StringVar(&note, "note", "", "dispatch note recorded with an assigned card (one line; appended to the record's event log)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
 	cmd.Flags().StringVar(&worktree, "worktree", "", "card worktree path")
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// factoryAssignOnAssigned is the order-and-note edit of an ALREADY-ASSIGNED
+// card (card t1711): `assign --after` and `--note` on an assigned row record
+// the dispatch order and a dispatch note without moving the card. handled
+// reports that the edit ran (or was refused with err); an unhandled call falls
+// through to the picked-row record write. Only the order and the note may
+// change here — any other field keeps its picked-only rule — and, like the
+// dispatch-binding re-bind, the edit is the leader or operator's act, never a
+// lane session's.
+func factoryAssignOnAssigned(ctx context.Context, db *homestate.FactoryDB, runID, cardID string, fields homestate.CardFields, note *string, to string, now time.Time) (homestate.Card, bool, error) {
+	if note == nil && fields.HintAfter == nil {
+		return homestate.Card{}, false, nil
+	}
+	if fields.HintPrefer != nil || fields.SpecID != nil || fields.WorktreePath != nil || fields.Contract != nil {
+		return homestate.Card{}, false, nil
+	}
+	cur, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil && !errors.Is(err, homestate.ErrCardNotFound) {
+		return homestate.Card{}, false, err
+	}
+	if err != nil || cur.State != homestate.CardAssigned {
+		if note != nil {
+			return homestate.Card{}, false, fmt.Errorf("factory assign: --note records on an assigned card; %s is not assigned", cardID)
+		}
+		return homestate.Card{}, false, nil
+	}
+	if factoryLaneRefusal() {
+		return homestate.Card{}, false, fmt.Errorf("factory assign: refused — %s: editing the dispatch order is the leader path's act (%s=%s marks a lane)",
+			factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+	}
+	if lane := strings.TrimSpace(to); lane != "" && lane != cur.OwnerLabel {
+		return homestate.Card{}, false, fmt.Errorf("factory assign: card %s is assigned to %q; the order edit takes no different --to (use --reassign)", cardID, cur.OwnerLabel)
+	}
+	card, err := db.RecordAssignedHint(ctx, runID, cardID, homestate.AssignedHint{After: fields.HintAfter, Note: note}, "assign", now)
+	if err != nil {
+		return homestate.Card{}, false, err
+	}
+	return card, true, nil
 }
 
 // factoryAssignReassign is the write half of `factory assign --reassign`
