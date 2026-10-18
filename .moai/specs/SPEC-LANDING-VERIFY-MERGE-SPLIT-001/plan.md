@@ -7,7 +7,7 @@ Priority-ordered, no time estimates. Development mode TDD (RED first). Each mile
 1. **The receipt commit field and the verdict citation line** (REQ-LVM-009, 018) — a schema change in the receipt store and a new machine-read line: highest change likelihood.
 2. **The audit binding in `complete`** (REQ-LVM-008, 010) — a landing-policy edge: what equals HEAD, which receipt qualifies, where the refusal sits.
 3. **The gate-state source** (REQ-LVM-017, board 470c) — a policy edge: which committed blob decides, and the fail-modes.
-4. **Switch discipline and prerequisites** (REQ-LVM-012, spec C5) — operator-visible landing policy; the switch is outside this branch. Open product question Q27 (when the key turns on) is the operator's.
+4. **Switch discipline and prerequisites** (REQ-LVM-012, spec C5) — operator-visible landing policy; the switch is outside this branch. Decided (Q27, board 6404): the key turns on only after A2 and A1 have both landed; this SPEC ships the audit binding and the switch reader with the key off.
 5. **Lane guidance and protocol text** (REQ-LVM-012, 018 documents).
 6. Wiring in `factoryCompleteCard` and the status display — mechanical.
 
@@ -56,7 +56,7 @@ Exit: AC-LVM-012, 018.
 
 ## D. Ordering, machine-checkable
 
-M0 < M1 < M2 < M3 < M4 in the commit graph (AC-LVM-012); the branch's `workflow.yaml` history is empty (no enabling); the enabling commit is a later, separate commit on main made after this SPEC has landed and a by-path binary built from the landing HEAD is in use; its post-landing witness is in AC-LVM-012. Cards already merge-ready are not re-audited for the switch; each takes the HEAD-confirmation audit at landing, which produces the machine line and a bound receipt.
+M0 < M1 < M2 < M3 < M4 in the commit graph (AC-LVM-012); the branch's `workflow.yaml` history is empty (no enabling); the enabling commit is a later, separate commit on main made only after this SPEC and SPEC-LANDING-COMPLETENESS-GATE-001 have both landed and a by-path binary built from a HEAD containing both is in use; its post-landing witness is in AC-LVM-012. Cards already merge-ready are not re-audited for the switch; each takes the HEAD-confirmation audit at landing, which produces the machine line and a bound receipt.
 
 ## E. Per-milestone method
 
@@ -70,11 +70,11 @@ Each milestone: (1) write the AC's tests first and observe them red for the stat
 
 | Risk | Mitigation |
 |---|---|
-| Enabling later refuses merge-ready cards until their audit is re-run with the conforming server | decided cost (board 0577 P2); M4 guidance precedes the switch; the leader's pre-switch list is in `research.md` §10 (6 of 8 sampled verdicts lack the `audit_receipt:` line and are re-audited at landing anyway) |
+| Enabling (after both pieces have landed) refuses merge-ready cards until their audit is re-run with the conforming server | decided cost (board 0577 P2); M4 guidance precedes the switch; the leader's pre-switch list is in `research.md` §10 (6 of 8 sampled verdicts lack the `audit_receipt:` line and are re-audited at landing anyway) |
 | The gate on before the receipt-writing server runs the M1 build refuses every landing | fail-closed and visible (the refusal names an unbound receipt); prerequisite C5 puts the by-path binary and the server check before the switch; the refusal precedes the window, so nothing wedges |
 | An unreadable gate key could wedge or silently disable the gate | an unreadable present file reads on with a notice and still admits a compliant landing, including the repairing card; an unconfigured project reads off; a configured-but-missing branch refuses with a named error and needs no landing to repair (REQ-LVM-017, board 5d4d) |
 | The gate on in a build that lacks it is silently inert | the switch is gated on the by-path binary prerequisite (C5) |
-| The direct merge verb and merge-readiness condition (a) do not apply the binding (decision Q28 default) | a lane that skips `complete` is not bound; recorded as design residual R6 and as an open consideration for the leader; extending the binding is an edit of the shared merge hunk owned by piece A1 |
+| The direct merge verb and merge-readiness condition (a) do not apply the binding (decision Q28 default) | a lane that skips `complete` is not bound; accepted residual R6 for A2 because the key stays off until A1 lands; the binding on the direct merge path (`merge.go:174`, `:245`, `integration_merge_step.go:321-325`) is an acceptance requirement of A1 (decision Q28, board 6404), so the gate is never on with the side door |
 | Both pieces edit `factoryCompleteCard` | A1 is blocked until this card is merged-local (board d20e); this SPEC's edit is one call between `factory_card.go:2178` and `:2185` |
 | Plan audit holds at the Tier L ceiling | the audit cycle restarts on the reduced scope (board d20e); disposition in `progress.md` |
 

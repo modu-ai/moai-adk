@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.8.0 adds the ruling on Q27 and Q28 (board `d-20261018T171932Z-6404`, `6404`) and corrects the recorded time of rows Q25 and Q26. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -56,6 +56,12 @@ Effect on earlier rows: Q22 below is replaced (exact equality, no tolerance); Q2
 > Supersedes d-20261018T170122Z-adbe (wording fix only: A1's card id is t1875). t1872 split after the 4812 exception ended (iter5 FAIL 0.86 @9713b6757d; codex required fail rcpt-5ccf101ec66f0bd46ee54f10, rcpt-6f3244d2a8df252898424d5b; blockers B1-B3 all in the gate core). A2 = audit binding + switch kernel (REQ-LVM-007, 008, 009, 010, 012, 017, 018) stays on card t1872 under its frozen spec_id SPEC-LANDING-VERIFY-MERGE-SPLIT-001 and lands first; its plan re-verifies independence from A1 in code and starts a fresh plan audit cycle on the reduced scope. A1 = gate core (REQ-LVM-001-006, 013-016 plus B1-B3 closure) is card t1875 with new SPEC-LANDING-COMPLETENESS-GATE-001, blocked until t1872 is merged-local (shared edit sites factoryCompleteCard and factorylane/merge.go). e4cc holds: no reuse relaxation opens before A1 lands.
 
 Effect on earlier rows: rows about the gate core — Q4 (package coverage observed), Q5 (importers always included), Q15 (producer verbs), Q16 (zero-Go card), Q17 (command comparison), Q25 (effective GOFLAGS), Q26 (module files) — stay recorded here as history and are re-adopted by SPEC-LANDING-COMPLETENESS-GATE-001 (card t1875); Q6 and Q8 (reuse) remain not built (board e4cc). Rows Q7, Q13, Q14, Q18-Q24 stay with this SPEC. The 4812 exception is over.
+
+## Ruling on Q27 and Q28, verbatim (board 6404)
+
+> t1872 A2 open questions (leader under operator delegation; e4cc, 0577 P2, 9dbe Q7). Q27: the gate key turns ON only after BOTH A2 (t1872) and A1 (t1875) have landed, in a separate main commit, judged by a build that contains both (0577 P1). Reason: with A2 alone, 'ON' would enforce audit binding on 'moai factory complete' while 'moai integration merge --card' still bypasses it (Q28 residue R6), which is a gate with a known side door. Q28: A2 keeps the binding on complete only (surface minimal, DEFAULT-APPLIED stands) because the key stays OFF until A1 lands; A1 (t1875) adds the binding to the direct merge path (factorylane/merge.go:174/:245, integration_merge_step.go:321-325) as part of its scope, so ON never ships with the side door. A2's plan audit cycle may start now with these two rows filled (Tier L, counted fresh).
+
+Effect on earlier rows: Q7 and the Q27 row below are settled by this ruling (the key is off in this SPEC and on only after both pieces); Q28 keeps its default and gains the A1 inheritance. The recorded time of rows Q25 and Q26 was wrong (written before the clock was read) and is corrected to the commit time of `9713b6757d`, which introduced them.
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -299,7 +305,7 @@ Authority anchor: none (scope granted by board 4812: "an effective-GOFLAGS const
 Why unresolved: a narrowing GOFLAGS set identically at derivation and at the attempt passed both the argv comparison and the fingerprint equality (reproduced by the auditor: plain `go test -json` ends fail, `GOFLAGS='-run=^TestGood$'` ends pass).
 Default: the effective GOFLAGS, as resolved by `go env`, may carry no test-selection, test-truncation or test-shaping flag (`-run`, `-skip`, `-failfast`, `-short`, `-list`, `-shuffle`, `-count`, `-timeout`, `-p`, `-parallel`, `-cpu`, `-bench`, `-fuzz`); build-only flags pass; the 35e9 narrowing lives in the call's argv only (rule: the option that refuses strictly more, the fail-closed direction the rulings require)
 Alternate: refuse only `-run` and `-skip`
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:50:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:45:28Z manager-spec+lane t1872
 
 ### Q26: What does a go.mod, go.sum, go.work or go.work.sum change select?
 
@@ -309,7 +315,7 @@ Authority anchor: none (scope granted by board 4812: "changes cannot yield an em
 Why unresolved: the four files are repository-wide inputs; the textual reader search would yield an arbitrary subset or an empty manifest.
 Default: every Go package of the module becomes a whole-package call, no reader search, no 35e9 narrowing for a call selected only by them; the zero-call path never admits such a card (rule: the option that refuses strictly more)
 Alternate: refuse the card as underivable
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:50:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:45:28Z manager-spec+lane t1872
 
 ## Rows Q27-Q29 (split to piece A2)
 
@@ -320,7 +326,7 @@ Class: product-level
 Authority anchor: none in the committed tree (sources: boards 0577 P2, d20e)
 Why unresolved: board 9dbe/e4cc ordered the enabling after the structured re-measure form, its tests and the lane guidance exist (all gate core, now card t1875); board 0577 P2 says the key turns on in a later, separate commit after piece A has landed. With A2 landing first the key, once on, enforces only the audit binding until A1 lands; this SPEC does not choose the moment.
 Options (neutral): switch the key on after A2 lands (audit binding alone is enforced, completeness is added when A1 lands under the same key); switch it on only after A1 lands (both enforced together); keep a separate key for each half.
-Operator verdict:
+Operator verdict: DECIDED (board 6404, 2026-10-18T17:19:32Z, leader under operator delegation): the key is switched on only after BOTH A2 (t1872) and A1 (t1875) have landed, in a separate commit on main, judged by a build that contains both (0577 P1). Reason: with A2 alone on, `complete` is bound while `moai integration merge --card` stays a side door. A2 ships the audit binding and the switch reader with the key off.
 
 ### Q28: Which landing commands apply the audit binding?
 
@@ -331,7 +337,7 @@ Why unresolved: the binding can be applied by `moai factory complete` alone, or 
 Default: `complete` only (rule: the smaller user-visible surface; it also leaves the github-flow readiness caller, the merge step and `merge.go` untouched, so this SPEC edits one hunk that piece A1 also edits, the call in `factoryCompleteCard`)
 Alternate: `complete` plus condition (a) through an optional hook field of the triple input (the `VerifyRemeasure` precedent), left unwired by the github-flow caller; or, further, the merge step's landing check
 Consequence recorded (design R6): a lane that skips `complete` is not bound by the audit binding, and `factory merge ready` can read ready where `complete` then refuses.
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:15:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:15:00Z manager-spec+lane t1872; ruling added by board 6404 (2026-10-18T17:19:32Z): the binding is applied in `complete` only; the direct merge path binding (`factorylane/merge.go:174` and `:245`, `integration_merge_step.go:321-325`) is in piece A1's scope (spec §7 row 12), and R6 is an accepted residual for A2 because the key stays off until A1 lands.
 
 ### Q29: Is piece A2 independent of piece A1 in code?
 
