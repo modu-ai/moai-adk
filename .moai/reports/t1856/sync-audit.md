@@ -3,9 +3,11 @@ auditor-model: claude-sonnet-5-5
 # Sync audit, card t1856, round 3
 
 verdict: PASS
-audited_sha: c4a7a79af4fa79362a0e869d496168dab2347d70
+audited_sha: a574521ea738350c2b87fc9e8fba5229f37ff1c1
 
-Result: PASS, score 0.93. N1 (the develop-appending mutant) is closed: all seven mutants the leader listed die when executed by the auditor, and the required codex backend returned `pass` with a receipt after observing a Linux run. No blocking finding remains. N2 is closed by reading and by codex's Linux observation; the auditor's own hostile-config probe was refused by the worktree guard (Gap). N3 and N4 are disposed in progress.md section 13. Landing re-measure and the full package remain owed, as Gaps and not as debt against this card.
+Result: PASS, score 0.93, confirmed by a procedural delta audit (round 4) at the recorded evidence commit a574521ea. The substantive round 3 audit read c4a7a79af; the only change between the two is this report file (observed, see round 4 below). Receipts: rcpt-d2a9b4966e2dbaa1b9fed034, rcpt-07a9a12af551f557c7cdd039, rcpt-0c2ec421e378917d492b537d.
+
+Round 3 summary: PASS, score 0.93. N1 (the develop-appending mutant) is closed: all seven mutants the leader listed die when executed by the auditor, and the required codex backend returned `pass` with a receipt after observing a Linux run. No blocking finding remains. N2 is closed by reading and by codex's Linux observation; the auditor's own hostile-config probe was refused by the worktree guard (Gap). N3 and N4 are disposed in progress.md section 13. Landing re-measure and the full package remain owed, as Gaps and not as debt against this card.
 
 Card: t1856, Class B defect fix, no SPEC. Tree: /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1856, branch WT-10-17-jev. Pre-card base e4b747678.
 
@@ -14,7 +16,28 @@ Card: t1856, Class B defect fix, no SPEC. Tree: /Users/goos/MoAI/moai-adk-go/.mo
 - Round 1 (audited_sha 772c1c050): FAIL 0.55. Blocking F1 (`/private/tmp` hard-coded in tests) and F2 (main -> origin/main order not pinned); non-blocking F3-F5 (records). Preserved in commit 6b97e64bc.
 - Round 2 (audited_sha edbf85602): FAIL 0.72. F1-F5 closed; blocking N1 (mutant `{"main","origin/main","develop","origin/develop"}` survived all four tests); optional N2, N3, N4. Preserved in commit 5e8c07915.
 - Repair commits since round 2: 3b4a99378 (test code: two added tests, `-c commit.gpgSign=false`, `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`) and c4a7a79af (progress.md section 13, CHANGELOG sentence). 530d5a803 and 5e8c07915 are records only.
-- Round 3 (this file, audited_sha c4a7a79af4fa79362a0e869d496168dab2347d70): PASS 0.93.
+- Round 3 (read commit c4a7a79af4fa79362a0e869d496168dab2347d70): PASS 0.93. The seven mutants, the Linux observation through codex, and the record checks below were taken at that commit.
+- Round 4 (this file, audited_sha a574521ea738350c2b87fc9e8fba5229f37ff1c1): PASS 0.93, a procedural delta audit at the evidence commit the factory recorded, because the gate binds the recorded commit to `audited_sha`. Verification at a574521ea: `git rev-parse HEAD` printed a574521ea738350c2b87fc9e8fba5229f37ff1c1; `git status --porcelain` printed nothing; `git diff --name-only c4a7a79af a574521ea` printed only `.moai/reports/t1856/sync-audit.md`; `git diff c4a7a79af a574521ea --stat` printed `.moai/reports/t1856/sync-audit.md | 158 ++++++++++++++++++++------------------ / 1 file changed, 82 insertions(+), 76 deletions(-)`; `git diff c4a7a79af a574521ea -- internal/hook` printed nothing, so the resolver and both test files are byte-identical to c4a7a79af, and no code, test, CHANGELOG or progress record changed. The targeted selector was re-run (below) and the required codex audit re-run, receipt rcpt-0c2ec421e378917d492b537d (pass, no findings). The seven mutants were not re-run, by the coordinator's scope; the resolver bytes are unchanged, so the round 3 kills stand.
+
+### Round 4 targeted run at a574521ea
+
+Form: `unset CLAUDE_PROJECT_DIR GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CONFIG_GLOBAL MOAI_SESSION_ID && TMPDIR=/private/tmp/audit3r3 GOTMPDIR=/private/tmp/audit3r3 go test ./internal/hook -run 'TestSrlDiffBase|TestNoNewEnvLiteralsInDiff|TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration' -count=1 -v` (accepted by the guard).
+
+```
+--- PASS: TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration (1.13s)
+--- PASS: TestSrlDiffBaseResolvesFromMainNotStaleDevelop (0.25s)
+--- PASS: TestSrlDiffBaseFallsBackToOriginMain (0.13s)
+--- PASS: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.19s)
+--- PASS: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.18s)
+--- PASS: TestSrlDiffBaseIgnoresDevelopFamilyWithoutMain (0.16s)
+--- PASS: TestSrlDiffBaseSkipsStaleOriginDevelopBeforeOriginMain (0.20s)
+    env_literal_diff_test.go:52: env-literal sweep: 2 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=e4b747678aae096b22769fdfd3efc5d89498006a, distinct literals=0
+--- PASS: TestNoNewEnvLiteralsInDiff (0.06s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.761s
+```
+
+Swept count is 2 (non-empty). The MOAI_KANBAN_* and MOAI_FACTORY_* variables remain set (not in the unset list).
 
 ## Scores and dimension notes
 
@@ -33,7 +56,9 @@ Weighted harmonic mean about 0.93. Both must-pass dimensions meet threshold; the
 
 | Backend | Gate | Result | Receipt |
 |---|---|---|---|
-| codex (adversarial, baseBranch) | required | pass, no findings | rcpt-d2a9b4966e2dbaa1b9fed034 |
+| codex (adversarial, baseBranch), round 3 at c4a7a79af | required | pass, no findings | rcpt-d2a9b4966e2dbaa1b9fed034 |
+| codex (adversarial, baseBranch), round 3 confirmation at c4a7a79af | required | pass, no findings | rcpt-07a9a12af551f557c7cdd039 |
+| codex (adversarial, baseBranch), round 4 delta at a574521ea | required | pass, no findings | rcpt-0c2ec421e378917d492b537d |
 | claude | off | not run | none |
 | glm | off | not run | none |
 
