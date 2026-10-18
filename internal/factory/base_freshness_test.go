@@ -195,50 +195,6 @@ func TestLandingsBehindCountsFirstParent(t *testing.T) {
 	}
 }
 
-func TestBaseFreshnessRemedyNamesExplicitBranch(t *testing.T) {
-	// Follow-up (card t1834): an acquire that carried an explicit --branch gets a
-	// remedy naming `remeasure --branch <that branch>` on every refusal path;
-	// without it the text stays byte-identical.
-	const plainAbsorb = "Absorb local main into the card branch, re-run moai integration remeasure, then retry."
-	const plainRecord = "Run moai integration remeasure after the last absorb, then retry."
-	cases := []struct {
-		name  string
-		build func(t *testing.T) *bfFixture
-		plain string
-		named string
-	}{
-		{"landings behind", func(t *testing.T) *bfFixture {
-			f := newBFFixture(t)
-			f.writeRecord(f.base, nil)
-			f.landEmpty(1)
-			return f
-		}, plainAbsorb, "Absorb local main into the card branch, re-run moai integration remeasure --branch main, then retry."},
-		{"stale base", func(t *testing.T) *bfFixture {
-			f := newBFFixture(t)
-			f.writeRecord(f.orphanCommit(), nil)
-			return f
-		}, plainAbsorb, "Absorb local main into the card branch, re-run moai integration remeasure --branch main, then retry."},
-		{"no record", func(t *testing.T) *bfFixture { return newBFFixture(t) },
-			plainRecord, "Run moai integration remeasure --branch main after the last absorb, then retry."},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			f := tc.build(t)
-			plain := EvaluateBaseFreshness(f.input(0, true), BaseFreshnessSeams{})
-			if plain.Admit || !strings.HasSuffix(plain.Refusal, tc.plain) || strings.Contains(plain.Refusal, "--branch") {
-				t.Fatalf("without an explicit branch the remedy must stay %q: %+v", tc.plain, plain)
-			}
-			in := f.input(0, true)
-			in.ExplicitBranch = true
-			named := EvaluateBaseFreshness(in, BaseFreshnessSeams{})
-			if named.Admit || !strings.HasSuffix(named.Refusal, tc.named) {
-				t.Fatalf("with an explicit branch the remedy must end %q: %+v", tc.named, named)
-			}
-			requireOneLine(t, "refusal", named.Refusal)
-		})
-	}
-}
-
 func TestBaseFreshnessKBoundary(t *testing.T) {
 	// AC-ISB-004: landings behind equal to K admits, K+1 refuses, and the
 	// refusal names the numbers, the key, the tip, and the remedy.

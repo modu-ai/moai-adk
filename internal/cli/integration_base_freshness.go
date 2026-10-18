@@ -82,14 +82,13 @@ func workflowConfigFailure(dotMoai string, loaded map[string]bool) error {
 // local integration branch and renders the outcome: the one notice line (an
 // uncertainty cause or the gate-off advisory) goes to notices, and an enabled
 // refusal comes back as the exit-16 error whose text starts with the sentinel.
-func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch string, explicitBranch bool) error {
+func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch string) error {
 	settings := baseFreshnessGateConfig(root)
 	res := factory.EvaluateBaseFreshness(factory.BaseFreshnessInput{
 		Root:              root,
 		Dir:               dir,
 		CardID:            cardID,
 		IntegrationBranch: integrationBranch,
-		ExplicitBranch:    explicitBranch,
 		K:                 settings.K,
 		Enabled:           settings.Enabled,
 		ConfigErr:         settings.Err,
@@ -110,9 +109,8 @@ func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch 
 // acquireBaseFreshnessPrecondition is `moai integration acquire`'s call: the
 // candidate is the caller's working directory, as the remeasure verb keys it.
 // An invocation without a card id is not the gate's business and stays silent
-// (a leader acquiring for a batch). explicitBranch is true when the target came
-// from --branch, so the refusal's remedy names remeasure --branch.
-func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrationBranch string, explicitBranch bool) error {
+// (a leader acquiring for a batch).
+func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrationBranch string) error {
 	if cardID == "" {
 		return nil
 	}
@@ -121,7 +119,7 @@ func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrat
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "base-freshness: not measured — cannot resolve the working directory")
 		return nil
 	}
-	return checkBaseFreshness(cmd.ErrOrStderr(), root, dir, cardID, integrationBranch, explicitBranch)
+	return checkBaseFreshness(cmd.ErrOrStderr(), root, dir, cardID, integrationBranch)
 }
 
 // completeBaseFreshnessPrecondition is `moai factory complete`'s call, made
@@ -134,5 +132,5 @@ func completeBaseFreshnessPrecondition(out io.Writer, lockRoot, integTree, branc
 	if factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch) != "" {
 		return nil
 	}
-	return checkBaseFreshness(out, lockRoot, cardTree, cardID, branch, false)
+	return checkBaseFreshness(out, lockRoot, cardTree, cardID, branch)
 }

@@ -446,7 +446,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// window record is written and before any --wait ticket is
 			// enqueued. Its refusal layer is gated on
 			// workflow.base_freshness_gate.enabled; an uncertain verdict admits.
-			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, branch, source == factory.BranchSourceFlag); freshErr != nil {
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, branch); freshErr != nil {
 				return freshErr
 			}
 			// The pid recorded is the OWNING SESSION's, never this process's.
