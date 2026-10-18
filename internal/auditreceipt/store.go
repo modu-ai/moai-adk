@@ -131,6 +131,18 @@ const specIDBody = `SPEC(?:-[A-Z][A-Z0-9]*)+-[0-9]{3}`
 // every card mention.
 const cardIDBody = `(?:card-)?t[0-9]+`
 
+// cardSpecIDPattern is cardIDBody anchored to the whole value: a rejection's
+// SpecID IS the id, not a span of free text.
+var cardSpecIDPattern = regexp.MustCompile(`^` + cardIDBody + `$`)
+
+// IsCardSpecID reports whether spec is a card id (the spec= value a card-flow
+// audit's verdict line carries). A card-attributed record names an id the
+// SPEC-extraction axes cannot see, so its consumers treat it like unknown-spec:
+// conservative, never discriminated per-milestone (card t1861, sync-audit F1).
+func IsCardSpecID(spec string) bool {
+	return cardSpecIDPattern.MatchString(spec)
+}
+
 // specIDPattern finds a SPEC id anywhere in free text.
 var specIDPattern = regexp.MustCompile(specIDBody)
 
