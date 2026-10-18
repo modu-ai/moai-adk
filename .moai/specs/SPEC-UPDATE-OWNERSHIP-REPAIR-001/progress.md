@@ -750,6 +750,100 @@ exit=1
 
 종료 코드 1. 이유: 잔존 행에 사용자 루트 대응물 상태와 프로필 쪽 상태를 담는 어휘와 필드가 아직 없어서 시험 패키지가 빌드되지 않는다 (시험이 존재하는 상태의 빌드 실패이며 제로 매치 셀렉터가 아니다). 이 RED 는 빌드 실패 형이다: 단언 수준의 실패 (`absent` 가 기록되지 않음 등) 는 이 시점에 관측되지 않는다. 변이 구현 앞에서 시험이 붉어지는 직접 관측은 C 커밋 GREEN 원문의 두 `Mutant...IsCaught` 서브 시험이 한다. 코드 읽기로 아는 사실 (측정 아님): `profile-reach` 이유와 `KeptBy` 표지는 chunk 1 의 코드가 이미 쓴다. 모자란 것은 두 상태 필드뿐이다.
 
+**AC-OWR-08 — 커밋 A** `aa8037a7f2` (시험 파일만: `internal/cli/migrate_ownership_noprofileaccess_test.go`; C07 `cca0c9ead1` 뒤에 컴파일된다). 세 시험: `TestNoProfileRootAccessInUpdateSources` (L1: `go list -deps` 닫힘과 스캔 집합이 양방향으로 같음 + 여섯 핵심 패키지 포함, 기준선 대비 새 호출 지점·늘어난 개수 없음, 이 SPEC 이 더하거나 고친 `migrate_ownership*.go`·`update_prior_manifest.go`·`update_template_sync.go`·`update_dryrun_preview.go` 에는 프로필 호출 지점이 0 이고 `migrate_project_assets.go` 는 기준선의 한 행 `profile.ResolveLaunchProfileForProject` x1 만 남음), `TestProfileScanCatchesMutants` (L2: 변이 M-a ~ M-f 를 실제 닫힘 소스에 끼워 비어 있지 않은 문제 목록을 직접 관측; 변이 없는 맵은 깨끗), `TestProfileEnvDoesNotReachProfileRoot` (L3: 정규화 규칙 자기 단언, **같은 상태 두 번 구동의 동일성 대조군** — 정규화가 잡음을 지우는지 먼저 확인 — 그리고 상태 셋 `absent`/`template-equal`/`differing` 의 정규화 관측 기록 동일성, 그리고 프로필 디렉터리를 읽는 분류기 변이 앞에서 기록이 갈라짐).
+
+**등급 정직 공개.** AC-OWR-08 의 시험은 운영 코드에 새 심볼을 요구하지 않고 (잔존 행 필드 `ProfileSide` 는 C07 이 이미 도입), 깨끗한 트리에서 도착 시 GREEN 이다. 이 기준은 「변이가 붉어짐」 으로 증명되는 가드이고 AC 의 RED 이유 문장도 그렇게 말한다 (변이 입력으로 적색을 기록). 그래서 AC-OWR-08 에는 구현 커밋 C 가 없다: 아래 셀이 도착 셀이자 GREEN 셀이다. 붉음은 세 층에서 직접 관측했다 — (1) 시험 안 변이 (아래 도착 출력의 `M-a`..`M-f` 와 `MutantReadingTheCanaryIsSeen` 서브 시험 PASS = 변이가 붉게 잡혔다는 뜻), (2) **실제 운영 코드에 임시로 끼운 변이 두 건** (R1: 스캔, R2: 카나리; 둘 다 되돌렸고 `git diff --quiet` 와 `git status --short` 빈 출력으로 확인), (3) 파일 불변 L4 명령.
+
+**AC-OWR-08 도착 셀 (트리 `aa8037a7f2`, 작업 트리 깨끗)** — 명령 1: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestProfileEnvDoesNotReachProfileRoot|TestNoProfileRootAccessInUpdateSources|TestProfileScanCatchesMutants)$' -count=1 -v`
+
+```text
+--- PASS: TestNoProfileRootAccessInUpdateSources (11.42s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/ScannedSetIsTheGoListClosure (5.22s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/NoNewCallSiteAgainstTheBaseline (1.99s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/MigrationPreviewAndVerdictFilesAddNothing (0.80s)
+--- PASS: TestProfileScanCatchesMutants (5.08s)
+    --- PASS: TestProfileScanCatchesMutants/UnmutatedTreeIsClean (0.54s)
+    --- PASS: TestProfileScanCatchesMutants/M-a_read-and-discard_through_an_exported_helper (0.49s)
+    --- PASS: TestProfileScanCatchesMutants/M-b_spliced_token_read_of_the_config-dir_variable (0.98s)
+    --- PASS: TestProfileScanCatchesMutants/M-c_a_second_os.Stat_in_launchCandidateIsUsable (0.50s)
+    --- PASS: TestProfileScanCatchesMutants/M-d_a_new_function_in_internal/profile_that_lists_a_directory (1.34s)
+    --- PASS: TestProfileScanCatchesMutants/M-e_a_new_file_calling_an_exported_profile_helper (0.75s)
+    --- PASS: TestProfileScanCatchesMutants/M-f_an_environment_read_with_a_non-constant_name (0.49s)
+--- PASS: TestProfileEnvDoesNotReachProfileRoot (21.14s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/NormalizationRules (0.00s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/ControlTwoRunsOfTheSameStateAreIdentical (4.80s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/ThreeProfileStatesLeaveTheSameRecord (9.30s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/MutantReadingTheCanaryIsSeen (7.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	39.215s
+exit=0
+```
+
+**AC-OWR-08 명령 2·3 (L4 파일 불변, 같은 트리 `aa8037a7f2`)** — 명령 3 이 양성 대조군이다 (명령 2 의 빈 출력을 읽기 전에 먼저 확인: 한 줄 이상이어야 한다). 이 트리에서 측정한 값은 12줄.
+
+```text
+$ git log --oneline cdd72a814..HEAD --grep=(card t1865) -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+exit=0
+$ git log --oneline cdd72a814..HEAD --grep=(card t1865) -- .moai/specs
+36f638ef0a docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): chunk 2 start, lane decisions, M2 AC-OWR-07 RED cell (card t1865)
+5eed5816ae docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): run chunk 1 GREEN record, mutation checks, honest accounting and debt dispositions (card t1865)
+7d8be68f6c feat(SPEC-UPDATE-OWNERSHIP-REPAIR-001): M1 status draft to in-progress (card t1865)
+558dd9e6c2 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): M1b RED cells for AC-OWR-06, -20, -21 and AC-OWR-05 (h) (card t1865)
+4764764ff0 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): M1a RED cells for AC-OWR-01..05 (card t1865)
+360f63dd31 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): M0 baseline evidence and M6 commands probe result (card t1865)
+785f2b6c48 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): Kickoff transition record and binding run conditions (card t1865)
+073b3e1382 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): ceiling correction for N12 and N13 (card t1865)
+a2a7b8bb24 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): plan audit iteration 2 repair N1-N11, Q2 decided (a) conditional, narrow OQ-5 carve-out, v0.3.0 (card t1865)
+3c334dfdd7 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): plan audit iteration 1 repair, v0.2.0 (card t1865)
+a8ad48c08d docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): plan-phase artifacts (Tier L, 5 artifacts) (card t1865)
+3e77fffd65 docs(SPEC-UPDATE-OWNERSHIP-REPAIR-001): read-only code investigation record (card t1865)
+exit=0
+```
+
+**R1 — 실제 운영 코드 변이 (스캔 적색, 트리 `aa8037a7f2` + 임시 변경)**: `internal/cli/migrate_ownership.go` 에 `internal/profile` import 와 `_, _ = os.ReadDir(filepath.Join(profile.GetProfileDir("work"), "skills"))` 를 담은 함수를 임시로 더했다. 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestNoProfileRootAccessInUpdateSources$' -count=1 -v`
+
+```text
+    migrate_ownership_noprofileaccess_test.go:163: NEW call site "internal/cli/migrate_ownership.go\tprofile.GetProfileDir" x1
+    migrate_ownership_noprofileaccess_test.go:185: new judgment, sync or preview code carries a profile call site: "internal/cli/migrate_ownership.go\tprofile.GetProfileDir" x1
+--- FAIL: TestNoProfileRootAccessInUpdateSources (17.78s)
+    --- PASS: TestNoProfileRootAccessInUpdateSources/ScannedSetIsTheGoListClosure (7.98s)
+    --- FAIL: TestNoProfileRootAccessInUpdateSources/NoNewCallSiteAgainstTheBaseline (2.09s)
+    --- FAIL: TestNoProfileRootAccessInUpdateSources/MigrationPreviewAndVerdictFilesAddNothing (0.77s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	19.700s
+FAIL
+exit=1
+```
+
+되돌린 뒤 `git diff --quiet -- internal/cli/migrate_ownership.go` → 종료 코드 0 (`REVERTED-CLEAN` 출력), `git status --short` 빈 출력.
+
+**R2 — 실제 운영 코드 변이 (카나리 적색, 트리 `aa8037a7f2` + 임시 변경)**: `classifyOwnership` 의 프로필 쪽 기록에 `os.ReadFile(CLAUDE_CONFIG_DIR/skills/x/SKILL.md)` 가 성공하면 `seen` 으로 적는 세 줄을 임시로 더했다. 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestProfileEnvDoesNotReachProfileRoot$' -count=1 -v` (이 변이는 스캔이 아니라 카나리와 도달 단언이 잡는다: 같은 상태 대조군은 PASS, 세 상태 시험이 붉음)
+
+```text
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-custom/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-foundation-core/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-workflow-tdd/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/agents/moai/manager-develop.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/agents/moai/manager-docs.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-custom/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-foundation-core/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/skills/moai-workflow-tdd/SKILL.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/agents/moai/manager-develop.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:603: .claude/agents/moai/manager-docs.md: profile side "seen", want "not-checked"
+    migrate_ownership_noprofileaccess_test.go:609: run 1 differs from run 0 in the remaining rows
+    migrate_ownership_noprofileaccess_test.go:609: run 2 differs from run 0 in the remaining rows
+--- FAIL: TestProfileEnvDoesNotReachProfileRoot (16.25s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/NormalizationRules (0.00s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/ControlTwoRunsOfTheSameStateAreIdentical (1.98s)
+    --- FAIL: TestProfileEnvDoesNotReachProfileRoot/ThreeProfileStatesLeaveTheSameRecord (5.74s)
+    --- PASS: TestProfileEnvDoesNotReachProfileRoot/MutantReadingTheCanaryIsSeen (8.53s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	17.684s
+FAIL
+exit=1
+REVERTED-CLEAN
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
