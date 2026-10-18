@@ -2334,6 +2334,95 @@ rc=1
 3. (a) 에서 실패한 실행은 갱신의 나머지를 계속한다: 그 실행의 배포는 진행되고 (매니페스트 저장, 템플릿 배포), 막히는 것은 제거뿐이다 (design.md D-3 항목 4). 시험은 후보 보존, 매니페스트 항목 유지, 사본 부재, 행 이유를 단언한다. 복구 실행 뒤 최종 트리가 기준과 같다는 것이 「배포가 이어졌다」 의 간접 증거이다.
 4. 부채 N18 (AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음) 처분은 E.3 에서 한다.
 
+#### M10 — AC-OWR-19 `TestRemovalSwitchStaysOffInProduction`
+
+**커밋 A `dd5a4b42b6`** (`internal/cli/migrate_ownership_gate_test.go` 한 파일, 운영 코드 변경 없음). 작업 트리 깨끗, 부하 평균 32.17 30.74 32.25.
+
+**A 직전 트리 `886f5b2d82` 에서의 셀 (RED 도 통과도 아님).** 시험 파일을 치워 둔 채 같은 선택자를 돌렸다 (파일을 다시 가져다 놓고 `cmp` 로 `RESTORED-IDENTICAL` 확인). 제로 매치 규칙 (acceptance.md 규약 4) 대로 통과로 읽지 않는다 — 이 시점에는 소스 스캔 시험이 없었다는 사실만 기록한다:
+
+```text
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.739s [no tests to run]
+rc=0
+```
+
+**도착 셀 (트리 `dd5a4b42b6`).** 판정 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestRemovalSwitchStaysOffInProduction|TestMigrationRemovalGate|TestMigrationDefaultKeepsConfirmedProjectCopy)$' -count=1 -v`, 종료 코드 0. 새 시험은 비시험 코드에서 스위치를 바꿀 수 있는 문장이 없음을 단언하고, 기존 두 게이트 시험은 그대로 초록이다. 이 기준은 acceptance.md 가 정한 대로 regression-guard 이고 실패쪽은 운영 코드 변이로 관측한다:
+
+```text
+    migrate_ownership_gate_test.go:205: scanned 403 non-test files: 1 declaration, 3 mentions, 1 keyed hand-overs, 0 violations
+--- PASS: TestRemovalSwitchStaysOffInProduction (0.13s)
+    --- PASS: TestRemovalSwitchStaysOffInProduction/DefaultIsOff (0.00s)
+    --- PASS: TestRemovalSwitchStaysOffInProduction/NoProductionStatementChangesTheSwitch (0.13s)
+    --- PASS: TestRemovalSwitchStaysOffInProduction/ScanMutants (0.00s)
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (1.22s)
+--- PASS: TestMigrationRemovalGate (0.56s)
+PASS
+```
+
+**연속 5회 (같은 트리, 종료 코드는 각 실행에서 읽음; 세 시험을 한 호출로)**
+
+```text
+TestRemovalSwitchStaysOffInProduction+gate pair run 1 rc=0 top-pass=3 all-pass=18 fail=0 skip=0 
+TestRemovalSwitchStaysOffInProduction+gate pair run 2 rc=0 top-pass=3 all-pass=18 fail=0 skip=0 
+TestRemovalSwitchStaysOffInProduction+gate pair run 3 rc=0 top-pass=3 all-pass=18 fail=0 skip=0 
+TestRemovalSwitchStaysOffInProduction+gate pair run 4 rc=0 top-pass=3 all-pass=18 fail=0 skip=0 
+TestRemovalSwitchStaysOffInProduction+gate pair run 5 rc=0 top-pass=3 all-pass=18 fail=0 skip=0 
+```
+
+**스캔의 도달 단언.** 시험은 스캔이 패키지에 닿았음을 먼저 단언한다: 읽은 비시험 파일 수가 100 이상 (위 로그 403), 패키지 수준 `var removalEnabled = false` 가 정확히 하나, 변수를 쓰는 곳 (언급) 과 `ownershipEnv` 로 넘기는 키 필드 (migrate_project_assets.go 의 `removalEnabled: removalEnabled`) 가 있음. 시작 시점 값이 거짓임도 단언한다 (`DefaultIsOff`). 스캔이 보는 문장: 대입 (`=`, `:=`, 연산 대입), 범위 절의 대입, 증감, 주소 취하기, 필드 `removalEnabled` 에 대한 대입, 합성 리터럴의 필드 `removalEnabled` 가 패키지 변수의 읽기가 아닌 값을 받는 경우, 유일한 `= false` 선언 말고 다른 선언 (지역 가림 포함). **보지 못하는 것:** 리플렉션이나 `unsafe` 를 통한 쓰기, `go:linkname`, 이 패키지 밖의 프로세스가 스위치를 켜는 일. 설정 파일과 환경 변수는 위 문장 없이는 변수에 닿을 수 없다.
+
+**시험 안의 변이 (스캔이 틀린 소스 앞에서 붉음, `ScanMutants` 열두 개 모두 통과):** init 에서 true 대입, 설정값(비상수) 대입, 선언 기본값 true, 선언 값이 함수 호출, 지역 `:=` 가림, 주소 취하기, 환경 필드 대입, 환경 필드 리터럴 true, 환경 필드 리터럴이 설정값, 연산 대입, 범위 대입, 패키지 수준 선언 둘. 출하 모양 (`var removalEnabled = false`, 읽기, 키 필드로 변수 넘김) 은 조용하다.
+
+**운영 코드에 넣은 임시 변이 셋 (커밋 `dd5a4b42b6` 기준, `cmp` 대조 `RESTORED-IDENTICAL`, 세 시험을 한 호출로 돌린 출력의 줄 추림)**
+
+- **T1** 기본값을 `var removalEnabled = true` 로 뒤집는다 — 새 시험과 기존 두 게이트 시험이 모두 붉다 (기준 본문이 요구한 실패쪽 관측):
+
+```text
+    migrate_ownership_gate_test.go:183: removalEnabled is true at the start of the test: the shipped default must be false
+    migrate_ownership_gate_test.go:197: found 0 package-level `var removalEnabled = false` declarations, want exactly 1
+    migrate_ownership_gate_test.go:203: production code can change the removal switch: migrate_project_assets.go:40:5: a declaration of removalEnabled other than the package-level `= false`
+    migrate_ownership_gate_test.go:205: scanned 403 non-test files: 0 declaration, 3 mentions, 1 keyed hand-overs, 1 violations
+--- FAIL: TestRemovalSwitchStaysOffInProduction (0.15s)
+    --- FAIL: TestRemovalSwitchStaysOffInProduction/DefaultIsOff (0.00s)
+    --- FAIL: TestRemovalSwitchStaysOffInProduction/NoProductionStatementChangesTheSwitch (0.15s)
+    migrate_removal_switch_test.go:23: .claude/skills/moai-foundation-core/SKILL.md missing: stat /private/tmp/own-fixture-d1/TestMigrationDefaultKeepsConfirmedProjectCopy2661427888/001/.claude/skills/moai-foundation-core/SKILL.md
+--- FAIL: TestMigrationDefaultKeepsConfirmedProjectCopy (0.75s)
+    migrate_removal_switch_test.go:60: default-configuration migration removed [.claude/skills/moai-foundation-core/SKILL.md]; the gate must keep every removal-preconditioned copy
+    migrate_removal_switch_test.go:62: .claude/skills/moai-foundation-core/SKILL.md missing: stat /private/tmp/own-fixture-d1/TestMigrationRemovalGate806506081/001/.claude/skills/moai-foundation-core/SKILL.md: no such file or dire
+```
+
+- **T2** `func init() { removalEnabled = true }` 를 더한다 (기본 선언은 `false` 그대로 — 선언만 보는 스캔이 놓칠 변이):
+
+```text
+    migrate_ownership_gate_test.go:183: removalEnabled is true at the start of the test: the shipped default must be false
+    migrate_ownership_gate_test.go:203: production code can change the removal switch: migrate_project_assets.go:42:15: an assignment to removalEnabled
+    migrate_ownership_gate_test.go:205: scanned 403 non-test files: 1 declaration, 4 mentions, 1 keyed hand-overs, 1 violations
+--- FAIL: TestRemovalSwitchStaysOffInProduction (0.11s)
+    --- FAIL: TestRemovalSwitchStaysOffInProduction/DefaultIsOff (0.00s)
+    --- FAIL: TestRemovalSwitchStaysOffInProduction/NoProductionStatementChangesTheSwitch (0.11s)
+    migrate_removal_switch_test.go:23: .claude/skills/moai-foundation-core/SKILL.md missing: stat /private/tmp/own-fixture-d1/TestMigrationDefaultKeepsConfirmedProjectCopy634228031/001/.claude/skills/moai-foundation-core/SKILL.md:
+--- FAIL: TestMigrationDefaultKeepsConfirmedProjectCopy (0.54s)
+    migrate_removal_switch_test.go:60: default-configuration migration removed [.claude/skills/moai-foundation-core/SKILL.md]; the gate must keep every removal-preconditioned copy
+```
+
+- **T3** `newOwnershipEnv` 가 `removalEnabled: true` 를 넘긴다 (변수는 그대로 `false`, 환경만 켜짐):
+
+```text
+    migrate_ownership_gate_test.go:200: the scan found no mention (2) or keyed hand-over (0) of the switch: it is not looking at the code that uses it
+    migrate_ownership_gate_test.go:203: production code can change the removal switch: migrate_project_assets.go:196:3: a composite-literal field removalEnabled that is not a read of the package variable
+    migrate_ownership_gate_test.go:205: scanned 403 non-test files: 1 declaration, 2 mentions, 0 keyed hand-overs, 1 violations
+--- FAIL: TestRemovalSwitchStaysOffInProduction (0.39s)
+    --- FAIL: TestRemovalSwitchStaysOffInProduction/NoProductionStatementChangesTheSwitch (0.39s)
+    migrate_removal_switch_test.go:23: .claude/skills/moai-foundation-core/SKILL.md missing: stat /private/tmp/own-fixture-d1/TestMigrationDefaultKeepsConfirmedProjectCopy3315918169/001/.claude/skills/moai-foundation-core/SKILL.md
+--- FAIL: TestMigrationDefaultKeepsConfirmedProjectCopy (1.84s)
+    migrate_removal_switch_test.go:60: default-configuration migration removed [.claude/skills/moai-foundation-core/SKILL.md]; the gate must keep every removal-preconditioned copy
+```
+
+T3 에서는 기존 게이트 시험도 붉다 (환경이 켜져 제거가 일어남). T2 에서 새 시험의 `DefaultIsOff` 와 스캔이 모두 붉고, T1 에서는 선언 스캔과 시작 값 단언이 둘 다 붉다.
+
+**구현 커밋 C 없음.** 구현이 필요한 차이가 없다 (스위치는 처음부터 꺼져 있다).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
