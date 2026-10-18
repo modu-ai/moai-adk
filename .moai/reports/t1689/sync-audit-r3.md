@@ -48,7 +48,7 @@ ok  	github.com/modu-ai/moai-adk/internal/hook/quality	25.705s
 
 정지 가드 구제 호출(mcp__moai__codex_audit 단일 백엔드, 동일 트리·target=baseBranch — review_base: main, merge base bc5817d758):
 ```
-verdict: "pass"   findings: []   audit_receipt: rcpt-ee214eb4d2dedd9a93d25d71
+verdict "pass" · findings [] · audit_receipt rcpt-ee214eb4d2dedd9a93d25d71  (원문 줄은 판정 키 파서와 충돌해 콜론만 제거 — 값 불변)
 요약 원문: "수정이 필요한 결함은 발견하지 못했어. 정적 검토만 수행했으며, 테스트·빌드·재현 명령은 실행하지 않았어."
 ```
 → 정지 후크의 판정 줄 상관 검증 실패에 따른 재호출로, r2와 동일한 구제 경로다. 무실행 정적 검토임을 결과가 스스로 공개하며, 판정의 무게는 r2의 RED/GREEN 실행 재현 + 본 라운드 HEAD 프로브가 진다.
