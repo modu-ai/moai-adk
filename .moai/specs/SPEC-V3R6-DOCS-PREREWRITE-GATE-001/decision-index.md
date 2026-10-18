@@ -4,17 +4,17 @@ Revision 0.1.0 (2026-10-18). Each row states one decision the operator does not 
 
 Labels: DECIDED and POLICY-COVERED need a committed anchor in the authority register (committed artifacts only: `.moai/project/product.md`, prior completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml`, the constitution). None of the rows below has one, so every row routes to FOUNDER or EVIDENCE-NEEDED. Workflow comments, `vercel.json`, and `.moai/docs/*` are committed documents outside the register; the rows cite them as facts, not as authority.
 
-No row carries a recommendation. A `Default:` line is the output of the published Default rule (the option that preserves current behavior; else the option whose undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible surface), not a preference. At plan close, implementation-level rows that carry a `Default:` and an empty verdict are filled with `DEFAULT-APPLIED`. Rows that are open block the autonomous Kickoff and go to the operator; the gating column of the summary below says which acceptance criteria each open row holds.
+No row carries a recommendation. A `Default:` line is the output of the published Default rule (the option that preserves current behavior; else the option whose undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible surface), not a preference. At plan close, implementation-level rows that carry a `Default:` and an empty verdict are filled with `DEFAULT-APPLIED`. Open rows go to the operator. Which milestones each open row holds is in the summary table below: Q9, Q11, and Q25 do not stop the Kickoff from admitting the card and running M1, M4, and M5 step 1, but the run cannot complete without Q9 and Q11 (M5 steps 2 and 3 need M2 and M3). If the Kickoff is taken in its operator form because rows stay open, the operator answers those rows then; this index rules on none of them.
 
 | Row | Label | Owner | Verdict state | Blocks | Kickoff can proceed without it |
 |-----|-------|-------|---------------|--------|-------------------------------|
 | Q5 | EVIDENCE-NEEDED | GATE (producer input) | open | nothing: no output of the checker and no criterion reads it | yes |
-| Q9 | FOUNDER | GATE | open (operator policy) | milestone M3 and AC-PRC-012 only; REQ-PRC-012 is conditional on it | yes for M1, M2, M4, M5; M3 waits. If the answer is "do not block", REQ-PRC-012 and AC-PRC-012 are not applicable and the parent's M6 imports AC-PRC-012 as such (acceptance.md AC-PRC-012) |
+| Q9 | FOUNDER | GATE | open (operator policy) | milestone M3 and AC-PRC-012 only; REQ-PRC-012 is conditional on it | yes as far as M1, M2, M4, and M5 step 1; M3 waits, and M5 steps 2 and 3 (full verification) complete only after M3. If the answer is "do not block", REQ-PRC-012 and AC-PRC-012 are not applicable and the parent's M6 imports AC-PRC-012 as such (acceptance.md AC-PRC-012) |
 | Q10 | FOUNDER | GATE | DEFAULT-APPLIED | nothing open | yes |
-| Q11 | EVIDENCE-NEEDED | GATE | open | milestone M2, AC-PRC-014, and the conditional file `docs-site/.htmltest.yml` | yes for M1, M3, M4, M5; M2 waits |
+| Q11 | EVIDENCE-NEEDED | GATE | open | milestone M2, AC-PRC-014, and the conditional file `docs-site/.htmltest.yml` | yes as far as M1, M3, M4, and M5 step 1; M2 waits, and M5 step 2 (all three manifest entries) and step 3 (full verification) complete only after M2 |
 | Q18 | FOUNDER | FLAG (input to GATE) | open at FLAG | nothing: the checker does not count flags (C-6) | yes |
 | Q22 | FOUNDER | GATE (leader-confirmed) | open (operator policy) | nothing in this SPEC; the parent's REQ-PRC-015 closure | yes |
-| Q25 | FOUNDER | GATE (proposed number) | open; working shape LANE-RULED | the trigger blocks of the three new workflows only | yes: the working shape (a) is used until the operator answers |
+| Q25 | FOUNDER | GATE (proposed number) | open; working shape LANE-RULED | the trigger blocks of the three new workflows only | yes: the working shape (a) is used until the operator answers; it does not hold M5 |
 | Q26 | FOUNDER | GATE (proposed number) | DEFAULT-APPLIED | nothing open | yes |
 
 ## Lane rulings (plan-audit iteration 1 correction)

@@ -83,6 +83,7 @@ Do not start until Q9 carries an operator verdict.
 ### M5 — Priority Medium: the cited-verbs job, the registration sweep, and the full verification (REQ-PRC-002, AC-PRC-002 Then 5 and 6; gate Q25)
 
 1. Write `docs-cited-verbs.yml`: checkout, `actions/setup-go@v7` with `go-version-file: go.mod`, `go build -o "$RUNNER_TEMP/moai" ./cmd/moai`, the test, then the checker with `--moai "$RUNNER_TEMP/moai"`. Triggers per Q25.
+   Steps 2 and 3 are held until the other milestones they read exist: step 2 needs the link-check manifest entry made in M2 (waits on Q11), and step 3 runs §E items 2 and 4, which need M3 (waits on Q9) and M2. A run started before Q9 and Q11 are answered completes M1, M4, and M5 step 1 and reports steps 2 and 3 as held.
 2. Confirm all three manifest entries and run the census test.
 3. Run the whole deliverable list of §E on the final tree and write the evidence into `progress.md` §E.2 and the lane's verdict file.
 
