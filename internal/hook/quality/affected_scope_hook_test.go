@@ -24,6 +24,9 @@ import (
 const (
 	scopeHelperOutEnv   = "MOAI_SCOPE_HELPER_OUT"
 	scopeHelperIndexEnv = "MOAI_SCOPE_HELPER_INDEX"
+	// scopeHelperUnstagedEnv, when set in the hook's environment, names a file
+	// that receives the UnstagedGo list.
+	scopeHelperUnstagedEnv = "MOAI_SCOPE_HELPER_UNSTAGED"
 )
 
 // TestScopeHookHelper is the hook-side process: a no-op in a normal run.
@@ -48,6 +51,12 @@ func TestScopeHookHelper(t *testing.T) {
 	}
 	if err := os.WriteFile(out, []byte(body), 0o644); err != nil {
 		t.Fatalf("write %s: %v", out, err)
+	}
+	// An optional second file records the working-tree-versus-index list.
+	if out2 := os.Getenv(scopeHelperUnstagedEnv); out2 != "" && err == nil {
+		if err := os.WriteFile(out2, []byte(strings.Join(ch.UnstagedGo, "\n")), 0o644); err != nil {
+			t.Fatalf("write %s: %v", out2, err)
+		}
 	}
 }
 
