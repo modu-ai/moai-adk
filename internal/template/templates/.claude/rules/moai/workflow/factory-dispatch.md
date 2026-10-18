@@ -103,7 +103,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 
 ### The lane's task list carries the card's stages
 
-[HARD] A lane `TaskCreate`s its stages at intake, `TaskUpdate`s every transition, reports done only when the list shows the end state (or says why not); a contradicting list is a missing-evidence gap.
+A lane MAY track its stages in the task list; when it does, it deletes the previous card's tasks at card transition. The card's state of record is the factory record and progress.md — the task list is never completion evidence.
 
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("The lane's task list carries the card's stages").
 
