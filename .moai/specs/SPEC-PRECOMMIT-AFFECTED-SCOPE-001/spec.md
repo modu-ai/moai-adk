@@ -97,9 +97,9 @@ Outside the pre-commit context — the standalone `moai gate`, the PreToolUse pa
 
 Where `gate.pre_commit.test_scope.mode` is present in `gate.yaml`, the gate shall accept `affected` or `full`, shall default to `affected` when the key is absent, and shall reject any other value with a message naming the key and the accepted values; `full` restores today's `./...` scope in the pre-commit context.
 
-### REQ-PAS-012 — Visible deferral of over-budget packages (Capability gate) — PROVISIONAL, gated by decision-index Q1
+### REQ-PAS-012 — WITHDRAWN (slot retained for traceability)
 
-Where `gate.pre_commit.test_scope.deferred_packages` lists import-path patterns, the gate shall leave packages matching them out of the executed test set and shall name each one in the summary as deferred to CI; the key shall default to empty so that, absent configuration, nothing is deferred. If decision-index Q1 resolves against the mechanism, this requirement, AC-PAS-012 and plan.md M4 are deleted.
+Withdrawn by the leader's ruling on decision-index Q1 (board d-20261018T005931Z-f264): the gate carries no configurable mechanism that leaves selected packages out of the executed test set, because such a list is a standing skip path and test skips are forbidden. The gate shall run every package it selects, within the unchanged test budget; a commit whose affected set includes `internal/cli` therefore fails by budget overrun (see § C, Out of Scope — name-based selection for `internal/cli`).
 
 ### REQ-PAS-013 — Suppression-policy check ignores fixtures (Unwanted)
 
@@ -127,9 +127,10 @@ The delivered code and configuration shall not write `core.hooksPath` or any oth
 - Non-Go toolchains (node, python, rust, java and the rest of the `toolchains` table) keep their current test commands.
 - The hook shell script and its Go raw-string twin are not edited; scoping happens inside `moai gate`.
 
-### Out of Scope — Test-selection inside a package
+### Out of Scope — Test-selection inside a package (name-based selection for `internal/cli`)
 
 - Choosing individual tests by name (`-run`) is not done by the gate. It remains the operator and lane technique under ruling 35e9 for `internal/cli`.
+- Consequence, stated plainly: a commit whose affected set includes `internal/cli` fails by budget overrun (its suite exceeds the unchanged 120 s test budget; no timeout is enlarged and nothing is skipped). A pre-commit `-run` selection for `internal/cli`, in the manner of ruling 35e9, is a follow-up card recorded by the leader and is not part of this SPEC.
 - Test files that read repository files by relative path are invisible to package-graph analysis (residual risk R3 in plan.md); CI remains the net.
 
 ### Out of Scope — Policy semantics of the suppression check

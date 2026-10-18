@@ -19,7 +19,7 @@ Conventions. "Run" commands are plain single invocations, scoped per `plan.md` �
 | AC-PAS-009 | REQ-PAS-009 | release-blocking |
 | AC-PAS-010 | REQ-PAS-010 | regression-guard |
 | AC-PAS-011 | REQ-PAS-011 | release-blocking |
-| AC-PAS-012 | REQ-PAS-012 | provisional (Q1) |
+| AC-PAS-012 | REQ-PAS-012 | withdrawn (Q1) |
 | AC-PAS-013 | REQ-PAS-013 | release-blocking |
 | AC-PAS-014 | REQ-PAS-014 | regression-guard |
 | AC-PAS-015 | REQ-PAS-015 | regression-guard |
@@ -95,11 +95,8 @@ Run: `... -run '^TestQualityGate_AffectedScope_ContextIsolation$'` (fake `go` bi
 **Then** absent → `affected`; `affected` and `full` accepted; `bogus` rejected with a message containing `gate.pre_commit.test_scope.mode`, `affected` and `full`; and the new block is byte-identical in `.moai/config/sections/gate.yaml` and `internal/template/templates/.moai/config/sections/gate.yaml`.
 Run: `go test ./internal/config -run '^TestGatePreCommitTestScope$' -count=1 -v`; `go test ./internal/cli -run '^TestUpdateGateYAMLPreservesUserValues$' -count=1 -v` and `go test ./internal/cli -run '^TestUpdateGateYAMLDeliversNewPreCommitKey$' -count=1 -v` (existing tests; both must still pass, and the second is the pattern for delivering the new keys).
 
-### AC-PAS-012 — Visible deferral (REQ-PAS-012) — PROVISIONAL, applies only if decision-index Q1 resolves for the mechanism
-**Given** `deferred_packages` listing `internal/cli`, and a selection containing it plus one other package
-**When** the Go test step runs
-**Then** the argument list omits `internal/cli`, the summary names it as deferred to CI, and with the list empty nothing is omitted.
-Run: `... -run '^TestQualityGate_AffectedScope_Deferral$'`.
+### AC-PAS-012 — WITHDRAWN (slot retained for traceability; maps the withdrawn REQ-PAS-012)
+Withdrawn by the Q1 ruling (board d-20261018T005931Z-f264). It has no Given/When/Then and no test. Its preservation counterpart is AC-PAS-014: no skip path is added.
 
 ### AC-PAS-013 — Suppression check ignores fixtures, still catches production (REQ-PAS-013) — release-blocking
 **Given** a temporary project with a copy of `suppressed.go` under `internal/astgrep/testdata/fixtures/go/` and a production file with a bare `// ast-grep-ignore`
@@ -185,7 +182,7 @@ AC-PAS-010, -014 and -015 assert preservation (green today by construction). The
 - A build-constraint-excluded Go file: owner is its directory's package (plan.md R4).
 
 ## Definition of Done
-1. AC-PAS-001..-011, -013, -016 pass with swept count ≥ 1 and RED output captured before GREEN; AC-PAS-012 passes or is deleted with Q1; AC-PAS-014 and -015 guards pass.
+1. AC-PAS-001..-011, -013, -016 pass with swept count ≥ 1 and RED output captured before GREEN; AC-PAS-012 is withdrawn; AC-PAS-014 and -015 guards pass.
 2. LEDGER-PAS-013-A command exits 0 on the final tree, from a binary built from that tree (tool-provenance: the judging build's commit is cited beside the tree HEAD).
 3. `internal/hook/quality`, `internal/config` pass in full; `internal/cli` and the other dependents pass under the § D selection with the `ls` evidence for dropped importers recorded.
 4. Both `gate.yaml` copies updated; no timeout value changed; no skip added; `core.hooksPath` unchanged.

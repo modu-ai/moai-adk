@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-PRECOMMIT-AFFECTED-SCOPE-001
 
-Authored at plan phase per `interview.decision_gate: on` (`.moai/config/sections/interview.yaml:6`). One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` line is the published Default rule applied, not a preference. Q1 and Q5 are product-level and keep an empty verdict, which blocks the autonomous Kickoff until the operator answers; Q2 and Q3 are implementation-level and carry the applied default.
+Authored at plan phase per `interview.decision_gate: on` (`.moai/config/sections/interview.yaml:6`). One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` line is the published Default rule applied, not a preference. Q1 and Q5 are product-level and were RULED by the leader under operator delegation (board d-20261018T005931Z-f264); Q2 and Q3 are implementation-level and carry the applied default (Q3 endorsed by the leader); Q4 stays EVIDENCE-NEEDED for a run-phase measurement.
 
 ### Q1: May the pre-commit gate carry a configured list of packages it leaves out of the executed test set and reports as deferred to CI?
 
@@ -11,7 +11,7 @@ Why unresolved: The two constraints collide in this repository. `internal/cli` i
 Options: (A) ship the mechanism (REQ-PAS-012, AC-PAS-012, M4) with an empty default; this repository's value is set at handoff. (B) ship no mechanism; a commit that selects `internal/cli` fails by timeout until a separate card designs name-based selection.
 Default: (B) (rule: the option that preserves current behavior)
 Alternate: (A)
-Operator verdict:
+Operator verdict: RULED 2026-10-18 leader (tn1p4e, operator delegation) board d-20261018T005931Z-f264: (B) — no configurable deferral mechanism (a deferred_packages list, even empty by default, is a standing skip path and the operator forbids test skips); a commit whose affected set includes internal/cli fails by budget overrun, the 120 s budget stays unchanged, and a pre-commit -run selection for internal/cli is a follow-up card recorded by the leader, outside this SPEC. REQ-PAS-012, AC-PAS-012 and plan M4 are withdrawn.
 
 ### Q2: When a commit changes go.mod, go.sum, go.work, go.work.sum or the build-tags file, what test scope does the gate use?
 
@@ -50,4 +50,4 @@ Why unresolved: The switch is a write to the shared repository configuration tha
 Options: unset `core.hooksPath` in the shared configuration; enable per-worktree configuration; leave hooks off and keep the per-invocation `git -c core.hooksPath=...` override for rehearsal only.
 Default: leave hooks off (rule: the option that preserves current behavior)
 Alternate: unset `core.hooksPath` in the shared configuration
-Operator verdict:
+Operator verdict: RULED 2026-10-18 leader (tn1p4e, operator delegation) board d-20261018T005931Z-f264: hooks stay OFF in this card; plan.md § E keeps the runbook with the three options (unset shared core.hooksPath / per-worktree config / keep off) and the pre-push 5 s sleep revival note; the actual re-enable is a post-landing operator decision.

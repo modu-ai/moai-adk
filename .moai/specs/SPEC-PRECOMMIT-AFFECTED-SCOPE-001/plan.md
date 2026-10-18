@@ -7,7 +7,7 @@ Tier M. Milestones are ordered by decision-reversibility: user-visible configura
 - Work tree: card t1673, branch `WT-pre-commit-gate`, planned against `3642a3a9b9cf101863656153d2d99b69fcb66a05`.
 - Development mode per `.moai/config/sections/quality.yaml` (read at run entry; this plan is mode-neutral: every AC names a test whose RED output is captured before GREEN).
 - Verification constraints that bind the run phase (leader dispatch, not negotiable here): no test skips, no timeout enlargement (gate budgets stay 30/60/120/300), no full `internal/cli` suite (ruling 35e9; use `-run`), an importer with zero `*_test.go` files is dropped from remeasure with the reason `no test files (ls)` (ruling 148c).
-- Open decisions that gate parts of this plan: see `decision-index.md` (Q1 gates M4; Q2 and Q3 carry applied defaults; Q4 and Q5 gate nothing in the code).
+- Decisions: see `decision-index.md` (Q1 ruled B and Q5 ruled hooks-off, both by the leader; Q2 and Q3 carry applied defaults; Q4 is a run-phase measurement and gates nothing in the code).
 
 ## B. Technical approach
 
@@ -35,7 +35,7 @@ The existing staged-file helper scrubs `GIT_INDEX_FILE` and `GIT_DIR` from its e
 
 ### B.4 Configuration
 
-New keys under `gate.pre_commit` in `gate.yaml`: `test_scope.mode` (`affected` default, `full`) and, provisional on Q1, `test_scope.deferred_packages` (empty default). Touch points: config types, defaults, validation (reject unknown mode), the CLI mapping into the gate configuration, the local `gate.yaml`, and its template twin (`internal/template/templates/.moai/config/sections/gate.yaml`; the two files differ today only in `pre_commit.enabled` and `rules_dir`, F4 — keep those differences). `moai update` already preserves user edits to `gate.yaml` (covered by `update_gate_yaml_preserve_test.go`); the new keys must not break that behaviour. The `moai web` gate panel is not extended (Out of Scope: nothing requires it).
+New keys under `gate.pre_commit` in `gate.yaml`: `test_scope.mode` (`affected` default, `full`). No package-exclusion key exists (Q1 ruled B). Touch points: config types, defaults, validation (reject unknown mode), the CLI mapping into the gate configuration, the local `gate.yaml`, and its template twin (`internal/template/templates/.moai/config/sections/gate.yaml`; the two files differ today only in `pre_commit.enabled` and `rules_dir`, F4 — keep those differences). `moai update` already preserves user edits to `gate.yaml` (covered by `update_gate_yaml_preserve_test.go`); the new keys must not break that behaviour. The `moai web` gate panel is not extended (Out of Scope: nothing requires it).
 
 ### B.5 Deterministic test strategy
 
@@ -58,10 +58,10 @@ RED: config tests for default (`affected`), valid values, invalid-value rejectio
 RED→GREEN over the injected-graph tables. Covers REQ-PAS-002/-003/-004/-005/-006/-007 at the core level; AC-PAS-001..-007.
 
 ### M3 — Adapters, gate wiring, fallbacks, summary (Priority High)
-Start with the B.3 measurement and record its output in `progress.md` §E.2. Then: git adapter, `go list` adapter, wiring behind the pre-commit flag, fallback notices, summary lines (selected / dropped / deferred / widened). Covers REQ-PAS-001/-008/-009/-010; AC-PAS-008, -009, -010, -016.
+Start with the B.3 measurement and record its output in `progress.md` §E.2. Then: git adapter, `go list` adapter, wiring behind the pre-commit flag, fallback notices, summary lines (selected / dropped / widened). Covers REQ-PAS-001/-008/-009/-010; AC-PAS-008, -009, -010, -016.
 
-### M4 — Deferral of over-budget packages (Priority Medium; PROVISIONAL on decision-index Q1)
-Implement only if Q1 resolves for the mechanism. Covers REQ-PAS-012; AC-PAS-012. If Q1 resolves against, delete this milestone, REQ-PAS-012 and AC-PAS-012 and re-run the plan audit.
+### M4 — WITHDRAWN (slot retained so M5/M6 numbering stays stable)
+The deferral mechanism was withdrawn by the Q1 ruling (board d-20261018T005931Z-f264); REQ-PAS-012 and AC-PAS-012 are withdrawn with it. Nothing is implemented under this milestone.
 
 ### M5 — Suppression-check fix (Priority Medium; mechanical)
 RED: a test that builds a temporary project holding a copy of the Go fixture under `.../testdata/...` plus a production file with a bare marker; expects only the production violation. GREEN: walk change (B.6). Covers REQ-PAS-013; AC-PAS-013.
@@ -83,6 +83,8 @@ Affected packages of this SPEC's own change (expected, to be re-derived by the r
 The importer drop is a recorded fact (`ls` output), not a skip: a package with no test files has an empty swept set.
 
 ## E. Handoff — hooks re-enablement runbook (documentation; no milestone executes it)
+
+Status (Q5 ruling, board d-20261018T005931Z-f264): hooks stay OFF in this card. The actual re-enable is a post-landing operator decision among three options: (1) unset the shared `core.hooksPath`; (2) per-worktree configuration; (3) keep hooks off (rehearsal only through the per-invocation override). The steps below serve options 1 and 2.
 
 Audience: factory leader / operator, after this SPEC has landed on local `main` and the rc binary built from it is installed on PATH (the hook resolves `moai` through PATH; a bare `cp` over the binary produced SIGKILL 137 before — use the clean reinstall in the local lane protocol §9).
 
@@ -108,7 +110,7 @@ Rollback (single command, reversible): `git config core.hooksPath /dev/null`.
 | ID | Risk | Mitigation |
 |----|------|------------|
 | R1 | `git commit -a` / path commits: the changed set read from the real index under-scopes the commit (B.3). | M3 measures both shapes first; AC-PAS-009 is release-blocking. |
-| R2 | `internal/cli` appears in the affected set of many commits (direct dependent of `internal/hook/quality`; dependent of most packages through its own imports) and its suite alone exceeds the unchanged 120 s budget. Without a deferral mechanism a commit that selects it fails by timeout. | Q1. The mechanism is provisional; the default is empty so nothing is skipped unless the operator configures it. |
+| R2 | `internal/cli` appears in the affected set of many commits (direct dependent of `internal/hook/quality`; dependent of most packages through its own imports) and its suite alone exceeds the unchanged 120 s budget. A commit that selects it fails by budget overrun. | Accepted by ruling Q1=(B): no deferral or skip mechanism exists and the 120 s budget is unchanged. A pre-commit `-run` selection for `internal/cli` (as in ruling 35e9) is a follow-up card recorded by the leader, outside this SPEC. |
 | R3 | Tests that read repository files by path (not embed, not testdata) are invisible to package analysis. | Accepted; CI is the net (AGENTS.md §4). Recorded as residual risk. |
 | R4 | A package whose only change is a build-constraint-excluded file on this platform. | Ownership counts ignored-Go files (B.2 step 2). |
 | R5 | `go list` cost on a 176-package module is unmeasured as wall time (Gap G2). | Executed once per gate run, not per package; its failure falls back (REQ-PAS-008). Measure at M3 and record; no timing assertion in tests. |
