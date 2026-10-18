@@ -371,10 +371,18 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 
 // walkSourceFiles recursively walks source files under projectDir.
 // Returns only files for which commentPrefix is non-empty.
-// Suppression policy checks apply to production code, so *_test.go and common exclusion paths are skipped.
+// Suppression policy checks apply to production code, so *_test.go, testdata directories and
+// common exclusion paths are skipped. A testdata directory holds fixtures, not production source:
+// the Go suppression fixture puts @MX:REASON before its marker (ast-grep suppresses the line after
+// the marker), the opposite of the order this check requires (SPEC-PRECOMMIT-AFFECTED-SCOPE-001
+// REQ-PAS-013). Only directories below projectDir are tested, so a project that itself lives under
+// a directory named testdata is still checked.
 func walkSourceFiles(projectDir string) []string {
 	var files []string
 	_ = filepath.WalkDir(projectDir, func(path string, d os.DirEntry, err error) error {
+		if err == nil && d.IsDir() && d.Name() == "testdata" && path != projectDir {
+			return filepath.SkipDir
+		}
 		if err != nil || d.IsDir() {
 			return nil
 		}

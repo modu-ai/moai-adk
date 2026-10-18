@@ -712,6 +712,24 @@ quality gate steps (3 configured):
 exit=1
 ```
 
+
+### GREEN-M5 — AC-PAS-013 unit half (same command as RED-M5, flipped; tree = M5 GREEN commit). The real-tool half (LEDGER-PAS-013-A) is re-run against a binary built from the final tree in the M6 entry.
+
+Command: `go test ./internal/hook/quality -run '^TestSuppressionWalkSkipsTestdata$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestSuppressionWalkSkipsTestdata
+=== RUN   TestSuppressionWalkSkipsTestdata/the_fixture_alone_is_not_reported
+=== RUN   TestSuppressionWalkSkipsTestdata/production_code_under_a_fixtures_segment_is_still_reported
+=== RUN   TestSuppressionWalkSkipsTestdata/a_testdata_directory_above_the_project_root_does_not_hide_production_code
+--- PASS: TestSuppressionWalkSkipsTestdata (0.01s)
+    --- PASS: TestSuppressionWalkSkipsTestdata/the_fixture_alone_is_not_reported (0.00s)
+    --- PASS: TestSuppressionWalkSkipsTestdata/production_code_under_a_fixtures_segment_is_still_reported (0.00s)
+    --- PASS: TestSuppressionWalkSkipsTestdata/a_testdata_directory_above_the_project_root_does_not_hide_production_code (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.566s
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
