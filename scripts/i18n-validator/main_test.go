@@ -527,21 +527,23 @@ func TestX(t *testing.T) {
 }
 
 // TestBudget_OverrunReportedWhenScanFinishesFirst pins that an overrun is
-// reported even when the scan goroutine wins the select against the timer:
-// an empty directory scans almost instantly, so the done arm often wins
-// against a 1ns budget, yet the elapsed time still exceeds the budget.
+// reported even when the scan goroutine wins the select against the timer.
+// The injected timer is a nil channel, which never fires, so the done arm is
+// the only arm that can win; the 1ns budget has certainly elapsed by then, so
+// only the done arm's elapsed-time check can produce exit code 4. Removing
+// that check makes this test fail every run, with no dependence on scheduling.
 func TestBudget_OverrunReportedWhenScanFinishesFirst(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
-	const iterations = 20000
-	exitZero := 0
-	for range iterations {
-		result := runWithBudget(dir, 1*time.Nanosecond)
-		if result.ExitCode != 4 || !strings.Contains(result.Stderr, "budget") {
-			exitZero++
-		}
+	neverFires := func(time.Duration) <-chan time.Time { return nil }
+
+	result := runWithBudgetAfter(dir, 1*time.Nanosecond, neverFires)
+	if result.ExitCode != 4 {
+		t.Errorf("expected exit code 4 when the scan finishes after the budget, got %d", result.ExitCode)
 	}
-	if exitZero > 0 {
-		t.Errorf("%d/%d iterations did not report the budget overrun (want exit 4 + 'budget' in stderr)", exitZero, iterations)
+	if !strings.Contains(result.Stderr, "budget") {
+		t.Errorf("expected 'budget' in stderr, got: %q", result.Stderr)
 	}
 }
 
