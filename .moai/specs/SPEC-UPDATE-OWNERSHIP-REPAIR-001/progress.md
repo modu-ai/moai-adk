@@ -3111,6 +3111,40 @@ internal/cli/migrate_project_assets.go: whole-file 82.8% (221/267); chunk-6 chan
 
 **Chunk 8 addendum (추가만).** 레인 결정: `migrate_ownership_test.go` 의 `t.Skipf("symlinks unavailable here")` 도 같은 규칙(건너뛴 시험은 아무것도 쓸어내지 않음)에 걸린다. 커밋 `4f970def44` 가 `TestOwnershipVerdictClasses` 의 뿌리 경계(심볼릭 링크 탈출) 사례를 새 시험 `TestOwnershipVerdictSymlinkEscape` 로 `migrate_ownership_symlink_test.go` (`//go:build !windows`) 로 옮겼고, 단언은 그대로이며 `os.Symlink` 실패는 경로와 오류를 담은 `t.Fatalf` 이다. 부모 시험은 나머지 사례를 그대로 가지며, 건너뛰기가 가로막던 뒤쪽의 폐기(deprecated) 사본 점검이 이제 항상 실행된다. 이동한 사례는 태그 없는 파일에서 참조되지 않는다 (`grep` 결과 없음); `GOOS=windows go vet ./internal/cli/` rc=0. 저장한 출력: 이동한 시험과 부모 시험의 앵커 선택자 `^(TestOwnershipVerdictSymlinkEscape|TestOwnershipVerdictClasses)$` 연속 3회 모두 rc=0, PASS 2줄, FAIL 0, SKIP 0; `gofmt -l internal/cli` 출력 없음; `go vet ./internal/cli/` 호스트 rc=0. 카드가 `cdd72a814` 이후 바꾼 모든 시험 파일의 `t.Skip`/`Skipf`/`SkipNow`/`testing.Short` 재조사: 호출 없음 (남은 일치는 `first.Skipped` 변수 이름과 새 파일 머리 주석의 문구뿐).
 
+### Chunk 9 (sync-audit repair) — 기록 시작
+
+독립 sync 감사 (HEAD `dfd7c40fb2`, 영수증 `rcpt-7770ccadc2f78594b050e777`) 가 FAIL 을 냈고 레인이 F1, F2, F3 을 받아들였다 (F4 는 거절, F5/F6 은 공개 사항). 근거 문서는 `.moai/reports/t1865/sync-audit.md` 의 Findings 절이며 이 chunk 는 그 파일을 고치지 않았다. 각 지적마다 A (시험만) → B (이 기록) → C (구현) 순서이고 순서의 증거는 커밋 그래프이다.
+
+#### F1 — 등록 안 된 심볼릭 링크가 프로젝트 밖 파일을 읽는다 (REQ-OWR-005, AC-OWR-08 계열)
+
+**A** `6315473594` — `internal/cli/migrate_ownership_unregsymlink_test.go` (`//go:build !windows`, `TestUnregisteredSymlinkOutsideProjectIsNotRead`). 판정 함수를 직접 부르는 절 (제거 스위치 끔·켬 각각)과 실제 걷기를 도는 절로 나뉜다. 걷기 절은 분류기를 감싸 각 판정이 실은 `v.data` 길이를 기록하고, 읽기가 일어났다면 그 길이가 0 이 아니게 된다. 통제: 프로젝트 안 링크는 대상 바이트로 판정(`no-provenance-record`), 끊어진 링크는 `read-failed`, 같은 걷기가 `migIdenticalSkill` 을 제거(도달 확인), 프로필 모양 대상 파일의 바이트 불변, 링크 자체 불변.
+
+RED-now (명령 · 트리 SHA `6315473594` · 종료 코드 · 원문):
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestUnregisteredSymlinkOutsideProjectIsNotRead$' -count=1 -v
+=== RUN   TestUnregisteredSymlinkOutsideProjectIsNotRead
+    migrate_ownership_unregsymlink_test.go:109: switch=false .agents/skills/moai-unreg-symlink/to-profile: the verdict function read 34 bytes from outside the project
+    migrate_ownership_unregsymlink_test.go:112: switch=false .agents/skills/moai-unreg-symlink/to-profile: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_unregsymlink_test.go:109: switch=false .agents/skills/moai-unreg-symlink/chained: the verdict function read 34 bytes from outside the project
+    migrate_ownership_unregsymlink_test.go:112: switch=false .agents/skills/moai-unreg-symlink/chained: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_unregsymlink_test.go:109: switch=true .agents/skills/moai-unreg-symlink/to-profile: the verdict function read 34 bytes from outside the project
+    migrate_ownership_unregsymlink_test.go:112: switch=true .agents/skills/moai-unreg-symlink/to-profile: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_unregsymlink_test.go:109: switch=true .agents/skills/moai-unreg-symlink/chained: the verdict function read 34 bytes from outside the project
+    migrate_ownership_unregsymlink_test.go:112: switch=true .agents/skills/moai-unreg-symlink/chained: class="unregistered" keep="no-provenance-record" eligible=false, want unregistered/"symlink-escape"/false
+    migrate_ownership_unregsymlink_test.go:148: .agents/skills/moai-unreg-symlink/to-profile: row class="unregistered" reason="no-provenance-record", want unregistered/"symlink-escape"
+    migrate_ownership_unregsymlink_test.go:153: .agents/skills/moai-unreg-symlink/to-profile: the verdict carried 34 bytes read through the symlink
+    migrate_ownership_unregsymlink_test.go:148: .agents/skills/moai-unreg-symlink/chained: row class="unregistered" reason="no-provenance-record", want unregistered/"symlink-escape"
+    migrate_ownership_unregsymlink_test.go:153: .agents/skills/moai-unreg-symlink/chained: the verdict carried 34 bytes read through the symlink
+--- FAIL: TestUnregisteredSymlinkOutsideProjectIsNotRead (0.95s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.436s
+FAIL
+rc=1
+```
+
+붉은 이유: 단언 실패이며 올바른 이유다. 프로필 모양 대상으로 가는 직접 링크와 사슬(링크 → 프로젝트 안 링크 → 밖) 둘 다 34 바이트를 읽었고(`read 34 bytes from outside the project`, `carried 34 bytes read through the symlink`) 이유가 `no-provenance-record` 로 나왔다 (`symlink-escape` 가 맞다). 통제 단언(프로젝트 안 링크, 끊어진 링크, 도달 확인, 대상 불변)은 한 줄도 실패하지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
