@@ -266,3 +266,9 @@ Verdict read: `.moai/reports/t1863/sync-audit-cold.md` round 3 section (FAIL 0.9
 **Judgment call — the optional in-UPDATE codex exclusion was NOT taken**: with the classified refusal + the CAS, a commit-time codex backend is unreachable (classified codex → refused; classified non-codex + post-read flip → CAS miss). Hardcoding the codex backend into homestate SQL would leak a cli-layer policy into the state layer for no additional coverage.
 
 **GREEN (verbatim)**: `--- PASS: TestExplicitFactoryRunAdoptRefusesABARoundTrip (2.48s)` / `ok ... 3.583s`. Scoped verification: AC-003 `ok 6.281s`, AC-004 `ok 6.037s`, round-2 window refusals `ok 5.524s`, `TestFactoryLeadRefusesCodexLedRun ok 1.964s`, `TestAdoptResumedLeaderRunWarnsCodexLedCandidate ok 1.498s` (the other codex refusal site), skill test `ok 8.498s`. gofmt clean, `GOOS=windows` exit 0, lint exit 1 with only the 3 pre-existing baseline findings (0 NEW).
+
+## 7. 마무리 기록 (lane-18)
+
+- 10:49Z — **T13 merge-ready v15 착지**(iter3 PASS@70c9bf41ac 판독). 증거 문서 커밋 `dc896a5e30`. 리더 완료 보고 발송(msg a8234431), 크론 삭제.
+- 10:5xZ — **round-5 부가기록(감사자 자발 신선도 게이트)**: stop hook 요구로 현재 head(3f1c669b45, 기록 전용 커밋)에서 codex 재실행 → **P3 1건**(산문): README.md:70+ko/ja/zh 쌍둥이 — 거부 문장의 "such a run" 선행사가 "cards or workers"에서 취해지나 실제 거부는 non-terminal **cards** 보유 run 한정(REQ-FLAC-001, workers-only run 은 면제·mint — gating 시험 workers-only 행이 고정, spec §F 잔여 기재). 분류: P3·선택 등급·산문 전용(AC-FLAC-010 은 산문을 리뷰로 판정), 행위는 SPEC 본제대로, 기록 앵커 70c9bf41ac 의 round-4 PASS 를 소급 변경하지 않음(문장은 M4 이후 불변, round-4 게이트 통과 — 검토자 분산). 처방: 4개 로케일 × 1절(선행사를 "a run that still holds in-progress cards"로 협소화) 후 신규 게이트. **판정: merge-ready 는 앵커 PASS 로 유지, P3 는 후속 결함 후보로 리더 회송**(receipt rcpt-790b63ab…, round-5 부가기록은 sync-audit-cold.md).
+- 10:5xZ — **리더 지시 접수(운영자 결정 보드 0c9a)**: 레인 6개 축소·신규 배차 중단. lane-18 임무 = t1863 착지까지(착지 대기열 8번째: t1680→t1821→t1834→t1839→t1709→t1710→t1860→**t1863**). 임대 갱신 유지, 차례 때 슬롯 획득·흡수 후 통합. t1828 은 merge-ready 유지(원 지시). 갱신 전용 크론 재무장.
