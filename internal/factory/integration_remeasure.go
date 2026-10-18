@@ -600,6 +600,7 @@ func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 func gitHeadSHA(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("read HEAD of %s: %v", dir, err)
@@ -612,6 +613,7 @@ func gitHeadSHA(dir string) (string, error) {
 func gitMergeBase(dir, baseRef string) (string, error) {
 	cmd := exec.Command("git", "merge-base", baseRef, "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("merge-base %s..HEAD in %s: %v", baseRef, dir, err)
@@ -722,6 +724,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 func headTreeSHA(dir, commit string) string {
 	cmd := exec.Command("git", "rev-parse", commit+"^{tree}")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
