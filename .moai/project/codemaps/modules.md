@@ -1,6 +1,28 @@
 # 패키지 모듈 상세
 
-## 현재 최종 통합 트리의 책임 — e65b3b
+## 현재 최종 통합 트리의 책임 — t1693 판
+
+기준은 `ec164d45d2`다. 앵커 `db0c514d3b` 이후 이 트리의 비테스트 소스 374개 변경(888파일 창)에서 아래 책임을 대조했다. 두 신규 패키지와 창의 주요 책임 이동을 서술하며 런타임 보장으로 확대하지 않는다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/testguard`의 homeguard.go · scan.go · home_access_seed.txt | cli 시험의 home 우회를 두 갈래로 막는 시험 전용 가드 패키지다. `RedirectHome`은 `HOME`·`USERPROFILE`·`CODEX_HOME`·XDG 계열·`CLAUDE_CONFIG_DIR`·`MOAI_HOME`·`GIT_CONFIG_GLOBAL`(빈 파일 생성) 열 환경값을 `t.TempDir()` 아래로 돌리고 샌드박스 HOME을 돌려준다. `CheckSeamHomes`는 빈·상대·리터럴 `..`·심벌릭 링크와 `os.SameFile`·최근 존재 조상 탐색으로 실제 home 안이나 위로 풀리는 seam을 거절하고, `CheckGlobalConfigPin`은 면제 밖의 git-config pin을, `TempDirExemption`은 Windows의 temp-under-home 사례를, `judgeSandbox`는 둘을 조립해 판정한다. `RealHome`은 계정 DB(`user.LookupId`/`user.Current`)에서 실제 home을 구해 시험이 돌린 `HOME`을 신뢰하지 않는다. scan 절은 AST로 시험 소스의 `os.UserHomeDir` 선택자와 `~/` 리터럴을 찾고, 줄 번호 없는 안정 key로 `go:embed` 기준선과 대조해 신규 접근만 실패시키며, `// home-guard:allow <reason>` 주석이 개별 면제를 기록한다. 가져오는 것은 표준 library뿐이라 검사 대상 패키지를 컴파일하지 않는다. |
+| `internal/cli/update/skillresidue`의 residue.go | 이전 버전·중단 배포의 skill 폴더 잔여를 수리한다. `Clean`은 배포 템플릿이 해당 skill을 운반할 때만 빈 폴더를 지우고, 소문자 `skill.md`를 `SKILL.md`로 옮기며(`SkipRenames`로 확정 전 보류), 두 이름이 공존하면 옮기지 않고 보고하고, 퇴역 skill 폴더 `moai-kanban-foreman`과 그 `.agents/skills` 링크는 후속자가 배포될 때만 보고한다. `.moai`·`.claude`·`.claude/skills`가 심벌릭 링크면 전 단계를 거절한다. 이름바꾸기는 프로젝트 루트에 묶인 `os.OpenRoot`로 무작위 staging 폴더를 독점 `Mkdir`로 확보한 뒤 열린 폴더 서술자 기준 원자 no-replace rename(renameat2 `RENAME_NOREPLACE`·renameatx_np `RENAME_EXCL`·Windows MoveFileEx)으로 각 단계마다 `os.SameFile` 신원 대조를 하고, no-replace 미지원 플랫폼은 hard-link 후 각 이름의 신원을 확인하고 떨어뜨리는 경로로 간다. 호출은 `internal/cli`의 update_state_residue.go 한 곳(확정 전 `SkipRenames`, 확정 후 `ApplyDeferredRenames`)이다. |
+| `internal/cli/update/backup/retention_prune.go` · retention_select.go | 백업 보존 창을 관리한다. `.moai-backups/`와 `.moai/backups/`의 실행 표식으로 후보를 모아 최신 창과 보호 past version·분류 불가 항목을 보유한 실행을 남기고 나머지를 비운다. 백업 루트가 심볼릭 링크이거나 프로젝트 밖으로 나가면 전체 프루닝을 거절하고, 비관리 항목은 보고만 한다. 유일한 `RemoveAll` 지점은 파괴 대상 레지스트리의 `PruneBackups` 면제 행이다. |
+| `internal/cli/update_integrity_probe.go` | 버전 일치로 template sync를 건너뛰는 갱신 경로에서 대표 관리 경로 둘의 존재·JSON 해석을 일정 비용 canary로 probing해 구조적 소실을 경고한다. 경고 후 계속이며 갱신의 종료 코드를 바꾸지 않는다. |
+| `internal/factory/candidate_record.go` | 후보 CI 판정을 (카드 id, 고정 SHA) 키로 기록한다 — 후보 커밋, 대상 브랜치와 tip, `ci/<card>` 브랜치, 실행 식별·시도, `pending`/`green`/`red` 판정. 기록은 primary checkout의 `.moai/state`에 놓여 한 워크트리의 판정이 병합 트리에서 읽히고, pending은 착지 판정에서 fail-closed로 명시 관측만 green/red로 움직인다. red 후보 홀드는 이 기록이 담당한다. |
+| `internal/cli/local_main_resync.go` | `moai integration resync` — 통합 창 안에서 primary checkout의 로컬 `main`을 `origin/main`에서 tool 소유 fast-forward 전용으로 재동기화한다. fetch된 ref를 명시 pin하고 읽기 전용 ancestry 검사로 HEAD를 분류해 거절·no-op·fast-forward로 나뉘며 모든 경로에서 창을 내려놓는다. |
+| `internal/cli/paths.go` | `moai paths` — 프로젝트 키·todo dir/db·factory db(`-wal`/`-shm` 동반 통계 포함)를 JSON이나 닫힌 `--field` 집합으로 보고하는 확인된 경로 출처다. 경로 해석은 교체 가능한 seam으로 `internal/homestate`에 위임한다. |
+| `internal/hook/role_rules.go` · internal/hook/user_root_zone.go | role_rules는 SessionStart에서 factory leader·lane 세션에 역할 한정 규칙 core를 표식 구간으로 주입하고, 배포 파일 결핍을 경고·읽기 지시로 드러내며, 만복본은 묶인 템플릿으로 대체하고, 10,000자 상한 위 delivery는 런타임 저장 파일 채널로 온전히 전달한다. user_root_zone은 쓰기 구역 가드의 사용자 루트 절반으로 `user-root:<slug>/…` 항목을 네 사용자 설치 루트에서 절대화·심벌릭 해소해 같은 inode 경로로 모으고, 보호는 manifest 추적 파일로 한정한다. |
+| `internal/statusline/usage_fallback.go` | stdin payload에 `rate_limits`가 없을 때 primary checkout과 링크된 워크트리(64 디렉터리 상한)의 context-usage 기록에서 계정 단위 quota를 합산하는 로컬 대체다. 읽기 전용이며 모든 실패는 n/a로 후퇴한다. |
+| `internal/cli`의 update_integrity_probe · paths · local_main_resync 외 창 행 | 임대 갱신의 roster 결속 판독(t1663), 완료 회복의 큐 잠금 하 engagement 순서와 검증 영수증 전용 재스탬프·죽은 소유자 구조(t1538), 병합 창의 원인-7 단일 변경 절과 측정 실패 거절의 비영 종료(t1582), 상속 `GIT_DIR`의 무시 확산(t1589), 단일 파싱 launch view와 `-w` 재작성의 token origin·구분자-값 규칙(t1748), codex `-l`의 자기 디렉터리 판정과 자식 앵커 이동(t1628), `llm.defaults.sessions` 런치 기본값과 역할별 모델·effort 방출(t1808), 리뷰 게이트의 잠금 하 per-key 블록 상한과 심벌릭 block-lock 거절(t1620)이 이번 창에서 해당 행의 책임에 더해졌다. |
+| `internal/homestate`의 leader_approval.go · factory_run_select.go | 리더 승인 게이트 상태와 lane 합류 run 선택용 읽기 전용 `ActiveRunFacts`를 factory DB 위에서 제공한다. |
+
+`internal/cli`의 glm save 거절·bundle 안내·template sync·update restore·migrate deploy-mode·doctor probe 등 t1619의 시험 보강 155파일 창은 described 시험 전용이라 위 표의 책임 이동이 아니다. testdata의 codex 0.161.0·0.162.1 픽스처는 묶음 데이터다.
+
+> 이전 판의 `internal/template/templates/CLAUDE.md`·`internal/template/pluginemit` 퇴역 기록은 변동 없이 유효하다.
+
+## 이전 최종 통합 트리의 책임 — t1469 판
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 앞선840826의 소스34개 수정 설명에 외부 main의 Go13경로 변화를 대조했다. 이번 창에서 비테스트 파일7개가 바뀌었고(수정6·추가1), 새 패키지는 없다. 추가된 비테스트 파일은 codex_review_cache.go다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.
 

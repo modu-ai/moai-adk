@@ -1,6 +1,10 @@
 # 진입점
 
-## 현재 최종 통합 트리의 진입점 — e65b3b
+## 현재 최종 통합 트리의 진입점 — t1693 판
+
+기준은 `ec164d45d2`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250→**278**개(78→**91**개 파일), `rootCmd.AddCommand(` 줄은 68→**71**개다. 창의 새로운 사용자 명령은 `moai paths`(t1827 — 프로젝트 키·DB 경로의 확인된 보고)와 `moai integration resync`(t1616 — 창 내 fast-forward 전용 로컬 main 재동기화)다. doctor에는 "DB Path Ghosts" 검사(t1827)가, update에는 무결성 canary probe와 백업 보존 프루닝(t1733)이 합류했다.
+
+## 이전 최종 통합 트리의 진입점 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250개(78개 파일), `rootCmd.AddCommand(` 줄은 68개다. 앞선840826 이후 이 수는 변하지 않았다. 호출 줄 수를 실행 가능한 명령 개수로 취급하지 않는다.
 

@@ -1,6 +1,14 @@
 # 데이터 흐름
 
-## 현재 최종 통합 트리의 흐름 — e65b3b
+## 현재 최종 통합 트리의 흐름 — t1693 판
+
+기준은 `ec164d45d2`다. 앵커 `db0c514d3b` 이후 이번 창에서 실제 호출부와 저장 경로가 움직인 세 흐름의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
+
+1. 갱신 보존 흐름 — `moai update`의 버전 일치 건너뛰기 경로에서 `internal/cli/update_integrity_probe.go`가 대표 관리 경로 둘의 canary로 구조적 소실을 경고한다. housekeeping 단계에서 `internal/cli/update_state_residue.go`가 `internal/cli/update/skillresidue`의 `Clean`을 `SkipRenames`로 실행해 빈 폴더·소문자 skill.md·퇴역 skill을 분류하고, 사용자 확정 뒤 `ApplyDeferredRenames`가 원자 no-replace rename으로 `SKILL.md`를 확정한다. 백업 청소는 `internal/cli/update/backup/retention_prune.go`가 두 백업 루트의 실행 표식을 모아 보존 창 밖만 비우고, 심벌릭 루트·프로젝트 밖이면 전체를 거절한다.
+2. 후보 CI 판정 흐름 — `internal/factory/candidate_record.go`가 primary checkout의 `.moai/state`에 (카드 id, 고정 SHA) 키로 후보 커밋·대상 tip·CI 실행 식별·`pending`/`green`/`red` 판정을 기록한다. 착지 판정은 pending을 fail-closed로 읽고, red 후보 홀드는 이 기록이 담당하며 카드-blind 통합 창과 각각 다른 자물쇠다.
+3. 로컬 main 재동기화 흐름 — `moai integration resync`(`internal/cli/local_main_resync.go`)가 통합 창을 잡고 `fetch origin main:refs/remotes/origin/main`으로 ref를 명시 pin한 뒤 읽기 전용 ancestry 검사로 HEAD를 분류해 거절·no-op·fast-forward 중 하나로 끝내며 모든 경로에서 창을 내려놓는다. primary가 오염되면 거절한다(t1616).
+
+## 이전 최종 통합 트리의 흐름 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
 

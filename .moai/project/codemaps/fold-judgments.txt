@@ -144,3 +144,11 @@ fold internal/atomicfile/bootid_linux.go
 fold internal/atomicfile/bootid_other.go
 fold internal/atomicfile/owner.go
 fold internal/atomicfile/section.go
+
+# --- 2026-10-19 refresh (worktree t1693, HEAD ec164d45d2, card t1693) ---
+# 위 53개 fold 단위는 이번 refresh 본문(t1693 판 섹션)과 대조해 그대로 성립함을
+# 확인했으므로 모두 남겨 둡니다. 이번 창에서 새로 내린 fold·omission 판정은
+# 없습니다 — 신규 패키지(testguard, update/skillresidue)는 본문이 직접
+# 기술하고, 창의 나머지 파일은 modules.md t1693 판의 그룹 행이 운반합니다.
+# fold 가드 검사는 본문 작성 시점에 통과를 관측했습니다(본 커밋의 시험 실행
+# 기록이 최종 확인입니다).

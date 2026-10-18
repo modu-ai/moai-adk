@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## t1469 판의 의존성 — main 흡수 병합 트리
+## t1693 판의 의존성
+
+기준은 `ec164d45d2`다. `go list -deps -json ./...`에서 모듈 패키지 176개, 내부 import 517쌍, 최상위 집계 325쌍을 측정했다(2세그먼트 접기·self-edge 제외 기준). 앵커 `db0c514d3b`의 174/512/320 대비 패키지 +2(`internal/testguard`, `internal/cli/update/skillresidue`), 엣지 +5/+5다. 새 의존성은 두 신규 패키지가 연다 — `internal/testguard`는 내부 import가 하나도 없는 표준 library 전용(검사기가 검사 대상을 컴파일하지 않는 설계)이고, `internal/cli/update/skillresidue`는 `golang.org/x/sys/unix`(linux/darwin)·`golang.org/x/sys/windows`의 rename primitive만 가져오며 이를 import하는 production 경로는 `internal/cli`의 update_state_residue.go 한 곳이다(testguard의 cli 쪽 접속은 19개 `_test.go`가 전부다). 그 외 창의 새 에지 — `internal/hook`은 role_rules·user_root_zone에서 `internal/config`·`internal/template`·`pkg/version`을, `internal/cli`은 local_main_resync에서 `internal/factorylane`·`internal/session`을, paths에서 `internal/homestate`·`internal/factorymsg`를 새로 읽는다. `internal/statusline`은 usage_fallback에서 `internal/config`를 읽는다. `go.mod`는 앵커 이후 처음 움직였다 — 8개 직접 require의 버전 상승(bubbletea/v2 2.0.10→2.1.0, a-h/templ 0.3.1020→0.3.1070, mark3labs/mcp-go 1.1.1→1.2.1, mattn/go-runewidth, x/net·sync·sys·tools)과 `golang.org/x/mod` v0.41.0의 indirect→직접 승격이며, 새 require 추가는 없다. 이번 판의 최상위 fan-in은 `internal/config` 32·`internal/paths` 16·`internal/atomicfile` 15, fan-out 최상위는 `internal/cli` 77·`internal/hook` 41이다(2세그먼트 접기 기준; 이전 판 표의 fan-in/out 수치와 집계 방식이 다르므로 나란히 비교하지 않는다). 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다.
+
+## 이전 최종 통합 트리의 의존성 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(HEAD `77e296541`, origin/main 흡수 `1f3606d0f` 직후)다. `go list -deps -json ./...`에서 모듈 패키지 174개, 내부 import 512쌍, 최상위 집계 320쌍을 측정했다. 앵커 `e65b3b469`의 170/481/306 대비 패키지 +4(`internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`), 엣지 +31/+14다. 새 의존성은 피드백 참여 파이프라인이 연다 — `internal/bugreport`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/outbox`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/publish`는 `internal/config`를 새로 import 한다(민감정보 마스킹은 기존 `internal/feedback` 스크러버 재사용). `internal/atomicfile`의 신규 bootid·owner·section 파일은 기존 소비자 관계를 바꾸지 않는다. 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다(이번 판의 최상위 fan-in 최상위는 `internal/config` 48·`internal/harness` 25·`internal/cli` 24, fan-out 최상위는 `internal/cli` 167·`internal/hook` 64다).
 

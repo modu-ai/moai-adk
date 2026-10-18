@@ -1,6 +1,14 @@
 # 아키텍처 개요
 
-## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
+## 현재 최종 통합 트리 — t1693 판
+
+기준은 카드 t1693 작업 트리(브랜치 `WT-codemaps-described-sourc`, HEAD `ec164d45d2`)다. 스탬프 앵커 `db0c514d3b`(t1469 이후 본문 기준) 뒤 `moai graph check`가 보고한 described-source-diff 264(임계 40)를 이 트리에서 소진한다. `find internal cmd pkg`와 `go list -deps -json ./...`를 같은 명령으로 다시 쟀다 — 비테스트 Go 파일 1663→**1748**, 테스트 3086→**3438**, 모듈 패키지 174→**176**(신규 `internal/testguard`, `internal/cli/update/skillresidue`), 최상위 디렉터리 89→**90**(`internal` 85→**86** — 신규 testguard; `cmd` 2·`pkg` 2 불변), 내부 import 엣지는 패키지 단위 512→**517**쌍, 최상위로 접고 self-edge를 뺀 집계 320→**325**쌍이다. 임베드 원본은 624파일로 재확인 결과 변동이 없었다.
+
+창은 흡수된 main 802커밋(카드 토큰 89종, 무카드 130)의 여덟 묶음이다 — **① 홈 가드 샌드박스**(card t1801 — 신규 `internal/testguard`: cli 시험의 home 우회를 원천 차단하는 런타임 샌드박스와 `os.UserHomeDir`·`~/` 리터럴의 저장소 기준선 검사, 아래 § `modules.md` t1693 판 행) · **② 갱신 보존 이행과 백업 위생**(t1547 계열 · t1733 백업 보존 창 · t1687 — 신규 `internal/cli/update/skillresidue`의 잔여 수리와 원자 no-replace 이름바꾸기, `retention_prune`의 내용 기반 보존 창, 관리 표면 무결성 프로브) · **③ 후보 CI 기록**(t1478 — 신규 `internal/factory/candidate_record.go`의 카드·SHA 키 판정 기록과 fail-closed 착지 판정) · **④ 로컬 main 흐름**(t1616 — `moai integration resync`의 창 내 fast-forward 전용 재동기화와 오염 primary 거절) · **⑤ 공장 임대·완료 회복**(t1663 갱신의 roster 결속 · t1538 완료 회복의 소유자 구조 · t1582 원인-7 창 · t1589 상속 GIT_DIR 무시) · **⑥ 런처·세션 기본값**(t1748 단일 파싱 launch view · t1628 codex `-l` 자기 디렉터리 판정 · t1808 `llm.defaults.sessions` 기본값과 역할별 모델·effort 방출) · **⑦ 훅 예산·감사 수리**(t1469 상시 로드 예산의 조립 판정 · t1617 역할 주입 예산 상한 · t1776 감사 수리 2–8차 · t1712 link-own 판정 축소 · t1620 리뷰 게이트 블록 상한) · **⑧ 대규모 시험 보강**(t1619 — glm save 거절·bundle 안내·template sync·update restore·migrate deploy-mode·doctor probe의 미커버 경로 봉합, 36 test 커밋). 신규 `moai paths`(t1827)와 진입점 증가는 § `entry-points.md` t1693 판이, 새 엣지는 § `dependencies.md` t1693 판이 운반한다. `go.mod`는 앵커 이후 처음 움직였다 — 8개 직접 require의 버전 상승(charm.land/bubbletea/v2 2.1.0, a-h/templ 0.3.1070, mark3labs/mcp-go 1.2.1 등)과 `golang.org/x/mod`의 indirect→직접 승격(§ `dependencies.md` t1693 판).
+
+패키지별 서술은 § `modules.md` t1693 판이 운반한다. 이 절은 소스 구조 측정이며 OS 런타임이나 원격 실행의 성공 판정이 아니다.
+
+## 이전 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.
 
