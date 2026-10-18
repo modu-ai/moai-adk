@@ -21,10 +21,13 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -137,10 +140,67 @@ func preservePriorManifest(projectRoot, configBackupPath string, data []byte) (s
 	if err != nil {
 		return configBackupPath, priorManifestFailed, err
 	}
+	// Two runs that start in one clock second are handed the same directory name.
+	// The copy of an earlier run is never replaced (REQ-OWR-017): this run's copy
+	// goes to a directory no other run writes to.
+	if runDir, err = claimPriorManifestDir(runDir); err != nil {
+		return configBackupPath, priorManifestFailed, err
+	}
 	if err := priorManifestWriter(runDir, data); err != nil {
 		return runDir, priorManifestFailed, err
 	}
 	return runDir, priorManifestWritten, nil
+}
+
+// priorManifestSiblingMax is the highest collision suffix claimPriorManifestDir
+// tries. The suffix is two digits wide so that directory-name order stays age
+// order (the reader sorts by name).
+const priorManifestSiblingMax = 99
+
+// claimPriorManifestDir returns the directory this run's prior-manifest copy goes
+// to. A run writes its copy once, so a manifest.prior.json already in runDir is an
+// earlier run's: the copy then goes to a new sibling `<runDir>-NN` (NN = 02..99),
+// created with Mkdir so a directory that already exists, whoever made it, is
+// never written into. The sibling carries runDir's run marker, so retention
+// counts both directories as the one run it already counted. Failing to find or
+// make a free sibling is an error: the caller then blocks every removal.
+func claimPriorManifestDir(runDir string) (string, error) {
+	_, err := os.Lstat(filepath.Join(runDir, priorManifestName))
+	if errors.Is(err, fs.ErrNotExist) {
+		return runDir, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("look for an earlier prior manifest in %s: %w", runDir, err)
+	}
+	for n := 2; n <= priorManifestSiblingMax; n++ {
+		sibling := fmt.Sprintf("%s-%02d", runDir, n)
+		if err := os.Mkdir(sibling, defs.DirPerm); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				continue
+			}
+			return "", fmt.Errorf("create run backup directory %s: %w", sibling, err)
+		}
+		copyRunMarker(runDir, sibling)
+		return sibling, nil
+	}
+	return "", fmt.Errorf("no free sibling name for %s up to -%02d", runDir, priorManifestSiblingMax)
+}
+
+// copyRunMarker gives dst the run marker src carries, best effort. A marker that
+// is absent, not a regular file or unreadable is no marker (the read never blocks
+// on a pipe), and a failed write leaves dst without one, which retention reads as
+// a directory no backup writer named: counted as unmanaged, never removed.
+func copyRunMarker(src, dst string) {
+	path := filepath.Join(src, backup.RunMarkerName)
+	if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	line, _, _ := strings.Cut(string(data), "\n")
+	_ = backup.WriteRunMarker(dst, strings.TrimSpace(line))
 }
 
 // recordManifestDeployedVersion refreshes the manifest-level version to the
