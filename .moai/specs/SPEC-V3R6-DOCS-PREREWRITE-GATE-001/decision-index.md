@@ -9,7 +9,7 @@ No row carries a recommendation. A `Default:` line is the output of the publishe
 | Row | Label | Owner | Verdict state | Blocks | Kickoff can proceed without it |
 |-----|-------|-------|---------------|--------|-------------------------------|
 | Q5 | EVIDENCE-NEEDED | GATE (producer input) | open | nothing: no output of the checker and no criterion reads it | yes |
-| Q9 | FOUNDER | GATE | open (operator policy) | milestone M3 and AC-PRC-012 only; REQ-PRC-012 is conditional on it | yes as far as M1, M2, M4, and M5 step 1; M3 waits, and M5 steps 2 and 3 (full verification) complete only after M3. If the answer is "do not block", REQ-PRC-012 and AC-PRC-012 are not applicable and the parent's M6 imports AC-PRC-012 as such (acceptance.md AC-PRC-012) |
+| Q9 | FOUNDER | GATE | open (operator policy) | milestone M3 and AC-PRC-012 only; REQ-PRC-012 is conditional on it | yes as far as M1, M2, M4, and M5 step 1; M3 waits, and M5 step 3 (full verification) completes only after M3. If the answer is "do not block", REQ-PRC-012 and AC-PRC-012 are not applicable and the parent's M6 imports AC-PRC-012 as such (acceptance.md AC-PRC-012) |
 | Q10 | FOUNDER | GATE | DEFAULT-APPLIED | nothing open | yes |
 | Q11 | EVIDENCE-NEEDED | GATE | open | milestone M2, AC-PRC-014, and the conditional file `docs-site/.htmltest.yml` | yes as far as M1, M3, M4, and M5 step 1; M2 waits, and M5 step 2 (all three manifest entries) and step 3 (full verification) complete only after M2 |
 | Q18 | FOUNDER | FLAG (input to GATE) | open at FLAG | nothing: the checker does not count flags (C-6) | yes |
