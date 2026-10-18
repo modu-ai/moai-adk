@@ -137,6 +137,31 @@ func overrideWalkRows() []walkRow {
 		// -w normalization: a bare -w followed by the flag stays bare; the flag is
 		// standing and, once removed, the name after it is -w's value.
 		overRow("a bare -w, the flag, then the name", []string{"-w", flag, "WT-card"}, []string{"-w", "WT-card"}, []string{"--worktree", "WT-card"}),
+
+		// Iteration 4 F1: `--worktree=<flag>` and `-w=<flag>` are rewritten into two
+		// tokens, and the second is the flag text — but nobody typed it as a flag, so
+		// it never stands, and the typed standalone flag keeps its own reading.
+		keepRow("F1 --worktree=<flag> as a synthesized token, the typed flag is a prompt value",
+			[]string{"-b", "--worktree=" + flag, "--append-system-prompt", flag},
+			[]string{"--worktree", flag, "--append-system-prompt", flag}),
+		keepRow("F1 -w=<flag> as a synthesized token, the typed flag is a prompt value",
+			[]string{"-b", "-w=" + flag, "--append-system-prompt", flag},
+			[]string{"--worktree", flag, "--append-system-prompt", flag}),
+		keepRow("F1 --worktree=<flag> alone", []string{"--worktree=" + flag}, []string{"--worktree", flag}),
+		keepRow("F1 -w=<flag> then a name", []string{"-w=" + flag, "WT-card"}, []string{"--worktree", flag, "WT-card"}),
+		overRow("F1 --worktree=<flag> then a typed standalone flag",
+			[]string{"--worktree=" + flag, flag},
+			[]string{"--worktree=" + flag},
+			[]string{"--worktree", flag}),
+		overRow("F1 -w=<flag> then a typed standalone flag and a prompt",
+			[]string{"-w=" + flag, flag, "hello"},
+			[]string{"-w=" + flag, "hello"},
+			[]string{"--worktree", flag, "hello"}),
+		overRow("F1 a typed standalone flag before --worktree=<flag>",
+			[]string{flag, "--worktree=" + flag},
+			[]string{"--worktree=" + flag},
+			[]string{"--worktree", flag}),
+		keepRow("F1 --worktree=<flag> after the separator is the backend's", []string{"--", "--worktree=" + flag, flag}, []string{"--worktree=" + flag, flag}),
 	}
 
 	// F2, the matrix: a backend value option, a launcher-consumed token, the flag
@@ -196,6 +221,29 @@ func TestLauncherAnchorOverrideWalk(t *testing.T) {
 		})
 		t.Run(arm+"/F1_permission_mode_equals_separator", func(t *testing.T) {
 			refused(t, []string{"-f", "--permission-mode=--", argSeparator, allowCardAnchorFlag, "-w", "WT-card"})
+		})
+
+		// Iteration 4 F1: the flag-equal token the -w normalization synthesizes out
+		// of `--worktree=<flag>` / `-w=<flag>` is not a typed flag. It is no override,
+		// and it must not shift the reading of a typed token.
+		t.Run(arm+"/F1_worktree_equals_flag_is_no_override", func(t *testing.T) {
+			refused(t, []string{"-f", "--worktree=" + allowCardAnchorFlag, "-w", "WT-card"})
+		})
+		t.Run(arm+"/F1_w_equals_flag_is_no_override", func(t *testing.T) {
+			refused(t, []string{"-f", "-w=" + allowCardAnchorFlag, "-w", "WT-card"})
+		})
+		t.Run(arm+"/F1_synthesized_token_does_not_shift_the_typed_flag", func(t *testing.T) {
+			refused(t, []string{"-f", "--worktree=" + allowCardAnchorFlag, "-w", "WT-card", "--append-system-prompt", allowCardAnchorFlag})
+		})
+		t.Run(arm+"/F1_typed_flag_after_the_equals_form_is_honored", func(t *testing.T) {
+			fx := newLeaderFixture(t)
+			obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--worktree=" + allowCardAnchorFlag, "-w", "WT-card", allowCardAnchorFlag})
+			if obs.err != nil || !obs.launched {
+				t.Fatalf("%s: override launch: err=%v launched=%v, want the typed override honored", arm, obs.err, obs.launched)
+			}
+			if _, err := os.Stat(filepath.Join(fx.root, config.DefaultLeaderAnchorAuditRelPath)); err != nil {
+				t.Errorf("%s: no audit row for an honored override: %v", arm, err)
+			}
 		})
 
 		// F2: the launcher strips the token between a value option and the flag, so
@@ -288,6 +336,75 @@ func lookupLauncherForm(tok string) (oracleForm, bool) {
 	return oracleForm{}, false
 }
 
+// worktreeFormOracle restates, by hand, the -w / --branch spellings the launcher
+// rewrites before its consumption walk reads anything (normalizeWorktreeFlag,
+// splitWorktreeBranchFlag). The value says whether the spelling carries its value
+// in the same token (`--worktree=<v>`); TestLauncherAnchorOverrideWalkProperty/
+// worktree_form_table_is_complete keeps the table in step with the code.
+var worktreeFormOracle = map[string]bool{
+	"-w": false, "--worktree": false, "--worktree=": true, "-w=": true,
+	"--branch": false, "--branch=": true,
+}
+
+// flagBearingWorktreeForms returns every `=` spelling of the table carrying the
+// override flag text as its value: the typed tokens that, once rewritten, put a
+// flag-equal token into the argv without anyone typing a flag.
+func flagBearingWorktreeForms() []string {
+	var out []string
+	for form, joined := range worktreeFormOracle {
+		if joined {
+			out = append(out, form+allowCardAnchorFlag)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// argvSpace is the number of sequences of 1..maxLen tokens over an alphabet.
+func argvSpace(alphabet, maxLen int) int {
+	total, pow := 0, 1
+	for n := 1; n <= maxLen; n++ {
+		pow *= alphabet
+		total += pow
+	}
+	return total
+}
+
+// launchTok is one token of the argv the consumption walk reads.
+type launchTok struct {
+	tok string
+	at  int // index in the typed argv; -1 for a token the launcher synthesized
+}
+
+// launchTokens restates the rewrite that precedes the walk: before the first typed
+// separator the launcher removes the --branch tokens and splits `--worktree=<v>` /
+// `-w=<v>` into `--worktree` and a synthesized `<v>`; the tail after that separator
+// is verbatim backend input.
+func launchTokens(g []string) []launchTok {
+	firstSep := len(g)
+	for i, tok := range g {
+		if tok == argSeparator {
+			firstSep = i
+			break
+		}
+	}
+	var out []launchTok
+	for i, tok := range g {
+		switch {
+		case i < firstSep && strings.HasPrefix(tok, "--branch="):
+			// removed before the walk
+		case i < firstSep && (strings.HasPrefix(tok, "--worktree=") || strings.HasPrefix(tok, "-w=")):
+			out = append(out, launchTok{"--worktree", i})
+			if value := tok[strings.Index(tok, "=")+1:]; value != "" {
+				out = append(out, launchTok{value, -1})
+			}
+		default:
+			out = append(out, launchTok{tok, i})
+		}
+	}
+	return out
+}
+
 // walkExpect is the oracle's answer for one typed launcher argv.
 type walkExpect struct {
 	allowed bool
@@ -295,20 +412,22 @@ type walkExpect struct {
 	final   []string // what the backend receives (before launcher-injected flags)
 }
 
-// expectWalk applies the rule directly: strip what the launcher consumes (up to
-// the first separator it does not eat as a value), read the remaining sequence
-// by the backend value model, and take the flag where it stands.
+// expectWalk applies the rule directly: rewrite the -w / --branch spellings, strip
+// what the launcher consumes (up to the first separator it does not eat as a
+// value), read the remaining sequence by the backend value model, and take the
+// flag where it stands — a TYPED flag token only, never one the rewrite made.
 func expectWalk(g []string) walkExpect {
-	var kept []int // indices of launcher-segment tokens the launcher passes through
-	sep := len(g)
-	for i := 0; i < len(g); {
-		tok := g[i]
+	items := launchTokens(g)
+	var kept []int // indices into items of the tokens the launcher passes through
+	sep := len(items)
+	for i := 0; i < len(items); {
+		tok := items[i].tok
 		if tok == argSeparator {
 			sep = i
 			break
 		}
 		if f, ok := lookupLauncherForm(tok); ok {
-			if f.takesValue && i+1 < len(g) {
+			if f.takesValue && i+1 < len(items) {
 				i += 2
 			} else {
 				i++
@@ -318,31 +437,33 @@ func expectWalk(g []string) walkExpect {
 		kept = append(kept, i)
 		i++
 	}
-	standing := map[int]bool{}
+	standingAt := map[int]bool{}   // typed index of a standing flag
+	standingItem := map[int]bool{} // item index of a standing flag
 	for k := 0; k < len(kept); k++ {
-		tok := g[kept[k]]
-		if tok == allowCardAnchorFlag {
-			standing[kept[k]] = true
+		it := items[kept[k]]
+		if it.tok == allowCardAnchorFlag && it.at >= 0 {
+			standingAt[it.at] = true
+			standingItem[kept[k]] = true
 			continue
 		}
-		if backendTakesValue[tok] {
+		if backendTakesValue[it.tok] {
 			k++
 		}
 	}
 	var e walkExpect
-	e.allowed = len(standing) > 0
+	e.allowed = len(standingAt) > 0
 	for i, tok := range g {
-		if !standing[i] {
+		if !standingAt[i] {
 			e.rest = append(e.rest, tok)
 		}
 	}
 	for _, idx := range kept {
-		if !standing[idx] {
-			e.final = append(e.final, g[idx])
+		if !standingItem[idx] {
+			e.final = append(e.final, items[idx].tok)
 		}
 	}
-	if sep < len(g) {
-		e.final = append(e.final, g[sep+1:]...)
+	for _, it := range items[min(sep+1, len(items)):] {
+		e.final = append(e.final, it.tok)
 	}
 	return e
 }
@@ -463,6 +584,47 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 		}
 	})
 
+	// The same completeness check for the rewrite that precedes the walk: a -w or
+	// --branch spelling added to the normalization or the branch split and not to
+	// worktreeFormOracle would otherwise be silently absent from the enumerations.
+	t.Run("worktree_form_table_is_complete", func(t *testing.T) {
+		walked := map[string]bool{}
+		read := map[string]bool{}
+		ast.Inspect(parseGoFile(t, "launch_view.go"), func(n ast.Node) bool {
+			fn, ok := n.(*ast.FuncDecl)
+			if !ok {
+				return true
+			}
+			switch fn.Name.Name {
+			case "normalizeWorktreeFlag", "normalizeWorktreeFlagFrom", "splitWorktreeBranchFlag", "splitWorktreeBranchFlagFrom":
+				read[fn.Name.Name] = true
+				for _, lit := range tokenLiterals(fn, "arg") {
+					walked[lit] = true
+				}
+			}
+			return false
+		})
+		for _, name := range []string{"normalizeWorktreeFlag", "splitWorktreeBranchFlag"} {
+			if !read[name] {
+				t.Fatalf("launch_view.go does not define %s: the completeness check has nothing to read", name)
+			}
+		}
+		delete(walked, argSeparator)
+		for lit := range walked {
+			if _, ok := worktreeFormOracle[lit]; !ok {
+				t.Errorf("the -w / --branch rewrite matches %q, which worktreeFormOracle does not know: add the spelling to the table", lit)
+			}
+		}
+		for lit := range worktreeFormOracle {
+			if !walked[lit] {
+				t.Errorf("worktreeFormOracle names %q, which the -w / --branch rewrite no longer matches", lit)
+			}
+		}
+		if len(walked) < 5 {
+			t.Errorf("the rewrite matched only %d literals %v: the AST read is not seeing the cases", len(walked), walked)
+		}
+	})
+
 	// For every short launcher argv: the override decision, the argv left to the
 	// launch and the argv the backend receives all follow from the one rule.
 	t.Run("override_decision_and_exec_argv_agree", func(t *testing.T) {
@@ -475,6 +637,8 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 				alphabet = append(alphabet, name)
 			}
 		}
+		// The spellings the launcher rewrites into a flag-equal token nobody typed.
+		alphabet = append(alphabet, flagBearingWorktreeForms()...)
 		// A map range is unordered; sort for a deterministic enumeration.
 		sort.Strings(alphabet)
 
@@ -494,9 +658,16 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 			if !sameArgv(final, want.final) {
 				problems = append(problems, "argv the backend receives")
 			}
-			// The same statement without the oracle: a flag that was an override is
-			// gone from the argv the backend receives.
-			if countToken(g, allowCardAnchorFlag) == 1 && allowed && countToken(final, allowCardAnchorFlag) > 0 {
+			// The same statement without the walk: a flag that was an override is
+			// gone from the argv the backend receives. What may remain is only a
+			// flag-equal token the -w rewrite made out of an `=` form's value.
+			synthesized := 0
+			for _, it := range launchTokens(g) {
+				if it.at < 0 && it.tok == allowCardAnchorFlag {
+					synthesized++
+				}
+			}
+			if countToken(g, allowCardAnchorFlag) == 1 && allowed && countToken(final, allowCardAnchorFlag) > synthesized {
 				problems = append(problems, "an override reached the backend")
 			}
 			// Once the launcher has consumed its override, nothing is left to consume.
@@ -512,8 +683,8 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 					g, strings.Join(problems, ", "), allowed, rest, final, want.allowed, want.rest, want.final)
 			}
 		})
-		if total < 100000 {
-			t.Errorf("enumerated only %d argv, want the full space (alphabet %d, length 1..4)", total, len(alphabet))
+		if want := argvSpace(len(alphabet), 4); total != want {
+			t.Errorf("enumerated %d argv, want the full space %d (alphabet %d, length 1..4)", total, want, len(alphabet))
 		}
 		if bad > 0 {
 			t.Errorf("%d of %d argv disagree with the rule", bad, total)
@@ -527,6 +698,22 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 	// further to consume.
 	t.Run("worktree_and_branch_tokens", func(t *testing.T) {
 		alphabet := []string{"-w", "WT-card", "--branch", "main", allowCardAnchorFlag, "--name", "-b", argSeparator, "--worktree="}
+		alphabet = append(alphabet, flagBearingWorktreeForms()...)
+		// Metamorphic: a `=` spelling whose value is the flag text and one whose value
+		// is inert are the same argv to the rule, because the token the rewrite makes
+		// out of the value is never a typed flag. Swapping one for the other must not
+		// change which typed flag tokens are removed.
+		inert := func(argv []string) []string {
+			out := append([]string(nil), argv...)
+			for i, tok := range out {
+				for _, form := range flagBearingWorktreeForms() {
+					if tok == form {
+						out[i] = strings.TrimSuffix(form, allowCardAnchorFlag) + "x"
+					}
+				}
+			}
+			return out
+		}
 		total, bad := 0, 0
 		eachArgv(alphabet, 4, func(g []string) {
 			total++
@@ -541,6 +728,10 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 			if again, still := consumeAllowCardAnchor(rest); still || !sameArgv(again, rest) {
 				problems = append(problems, "override still standing after consumption")
 			}
+			swappedRest, swappedAllowed := consumeAllowCardAnchor(inert(g))
+			if swappedAllowed != allowed || !sameArgv(swappedRest, inert(rest)) {
+				problems = append(problems, "a flag-bearing = spelling reads differently from an inert one")
+			}
 			if len(problems) == 0 {
 				return
 			}
@@ -549,8 +740,8 @@ func TestLauncherAnchorOverrideWalkProperty(t *testing.T) {
 				t.Errorf("argv %q: %s (rest=%q allowed=%v)", g, strings.Join(problems, ", "), rest, allowed)
 			}
 		})
-		if total < 7000 {
-			t.Errorf("enumerated only %d argv, want the full space", total)
+		if want := argvSpace(len(alphabet), 4); total != want {
+			t.Errorf("enumerated %d argv, want the full space %d", total, want)
 		}
 		if bad > 0 {
 			t.Errorf("%d of %d argv break an invariant", bad, total)
