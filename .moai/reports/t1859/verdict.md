@@ -1,7 +1,9 @@
 # Card t1859 — lane verdict (Class B, run → sync, no SPEC)
 
 verdict: PASS
-audited_sha: 261aae8d19753351a82e9e2b3608bc6d0a4ef4a1
+audited_sha: d4bf95b3196204a21287a416ab27e43632adbabc
+
+Second absorb (lane-22): main 23296dcc98 (card t1682's landing: `.gitignore` template, two template tests, untracked `.moai/harness/*` files) was absorbed with a no-ff merge, HEAD d4bf95b31, no conflict. The round-2 head-confirmation audit `.moai/reports/t1859/sync-audit-head-confirmation-r2.md` is PASS at that head (codex required pass, receipt `rcpt-b18f35c6505ed2d7be7e9ef1`): the card's four files are byte-identical to the previously audited head, t1682's file set does not overlap the card's, and the repo-root `.gitignore:235` rule `.moai/reports/*` still applies, so evidence files keep needing `git add -f`. No tests were run by that audit; the landing re-measure is the final-tree measurement.
 
 Absorb update (lane-22): main 225bcb8fce was absorbed by a no-ff merge, HEAD 261aae8d1; the only conflict was CHANGELOG.md, resolved by keeping both sides' entries. The head-confirmation audit `.moai/reports/t1859/sync-audit-head-confirmation.md` is PASS at that head (codex required pass, receipt `rcpt-625e0d395d78e21402a2eec8`): the card's files are unchanged, the fix is intact, no conflict markers remain, and main's new changes in `internal/homestate` do not touch the audit-kickoff path the card's end-to-end test drives. That audit ran no tests, so the landing re-measure is the final-tree measurement. The paragraph below is the earlier verdict at `d72444538`, kept as the history it was.
 
