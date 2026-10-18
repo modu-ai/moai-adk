@@ -982,8 +982,14 @@ debts:
 sync_complete_at: 2026-10-18
 sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
 sync_status: completed-with-open-debt
-audit_ready: false
-audit_ready_reason: "B12 AC-count self-test (b) fails mechanically: the counter prints 20, the stated live count is 15. The excess is four shorthand tokens (AC-016, AC-004, AC-006, AC-011) in acceptance.md lines 146-149, verbatim probe output in the evidence ledger, carrying no [REF] mark. Clearing it is a SPEC-body edit (add [REF] after each token) owned by manager-spec; manager-docs may not make it. All other sync checks passed."
+audit_ready: true
+audit_ready_reason: "Was false at the first sync commit because B12 self-test (b) prints 20 against the stated 15 live. Sync audit round 1 (.moai/reports/t1673/sync-audit.md) ruled that artifact real but low severity and non-blocking: the CHANGELOG '15 live' is accurate. Corrected diagnosis from that ruling: 20 = 16 distinct AC-PAS- identifiers (AC-PAS-012 is unmarked everywhere, so the counter reads it live) + the four shorthand tokens AC-016, AC-004, AC-006, AC-011 (acceptance.md lines 146-149); marking only the four would leave 16, so the complete fix is the moai-ac-prefix declaration plus [RETIRED] on AC-PAS-012. It stays open manager-spec debt (SPEC-body edit on a completed SPEC needs the amendment transition). Every other check this agent owns passed (go build, lint 0/0, CHANGELOG and docs parity)."
+sync_audit_round1: "FAIL 0.74 at 183c4b18d on three under-selection defects F1-F3; repaired by manager-develop (RED 835df28b2, GREEN 73994a41a, evidence 1309c60ed). Delta re-audit pending."
+sync_docs_delta: "CHANGELOG entry (edited in place) and docs-site moai-gate.md in ko/en/ja/zh now state the F2 behaviour: a .go, go.mod, go.sum, go.work or go.work.sum file that differs between the working tree and the index runs the full module with a notice naming the files (code: affected_scope_queries.go UnstagedGo = files from git diff --name-only, filtered to .go or the widen base names; affected_scope_gate.go falls back before the graph query). F1 (diff.relative=false on both git queries) and F3 (a file embedded by several packages is owned by all of them) are internal corrections and need no operator-facing sentence."
+open_debt_f4_f6_for_manager_spec:
+  - "F4: B12 counter artifact above (acceptance.md prefix declaration + [RETIRED] on AC-PAS-012)"
+  - "F5: S1-a, S1-b, S2 wording in acceptance.md / REQ-PAS-011 / AC-PAS-011 / AC-PAS-003 Given, plus the tree-pin wording"
+  - "F6: internal/config/gate_test_scope.go accepts an explicit mode: \"\" and resolves it to affected, while REQ-PAS-011 says any value other than affected or full is rejected when the key is present; harmless in effect"
 sync_head_at_start: aaf01ee7e0c27bff958f8db082e4db3c40ce8f39
 b12_self_test_a: "PASS - grep -c 'SPEC-PRECOMMIT-AFFECTED-SCOPE-001' CHANGELOG.md printed 0 before emission"
 b12_self_test_b: "FAIL (counter 20 vs stated 15) - ac_source=.moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/acceptance.md, tier=M, state=resolved; counter stdout 20, stderr live=20 excluded=0 ambiguous=0; declared criteria AC-PAS-001..016 = 16 identifiers, AC-PAS-012 withdrawn => 15 live; CHANGELOG states 15"
