@@ -659,6 +659,59 @@ FAIL
 ```
 Wider M3 verification (this run, this tree): `go test ./internal/hook/quality -count=1` exit 0 (`ok 36.928s`, whole package); `go test ./internal/cli -run '^(TestRunGate|TestGAR_|TestGateCmd_|TestPrecommitE2E|TestUpdateGateYAML|TestPreCommitHook_|TestPreCommitRelocation_)' -count=1 -v` exit 0, 40 PASS lines, no FAIL (targeted selection only, ruling 35e9; the full internal/cli suite was not run). The existing tests `TestRunGatePreCommitOptInRunsHeavyGate` and `TestRunGatePreCommitOptInPassingProjectPasses` run a non-git fixture, so the changed-file query fails and the gate falls back to the full module; both stay green by that fallback.
 
+
+### RED-M5 — AC-PAS-013 (suppression walk reaches testdata; tree = M3b GREEN plus the M5 RED test file)
+Why red: the walk has no testdata exclusion, so the Go fixture (whose @MX:REASON precedes its marker, spec.md F8) is reported in both the fixture-only case and the mixed case. The third subtest (an ancestor directory named testdata above the project root) passes today and is the guard for the GREEN design, not a red cell.
+
+Command: `go test ./internal/hook/quality -run '^TestSuppressionWalkSkipsTestdata$' -count=1 -v`
+Exit code: 1
+```
+=== RUN   TestSuppressionWalkSkipsTestdata
+=== RUN   TestSuppressionWalkSkipsTestdata/the_fixture_alone_is_not_reported
+    astgrep_gate_testdata_walk_test.go:46: the testdata fixture was examined: ok = false
+        ast-grep suppression policy violations:
+        
+        [SUPPRESSION_WITHOUT_REASON] ast-grep suppression at /private/tmp/t1673-tmp/TestSuppressionWalkSkipsTestdatathe_fixture_alone_is_not_report60559039/001/internal/astgrep/testdata/fixtures/go/suppressed.go:15 requires adjacent '// @MX:REASON <rationale>' on next line
+=== RUN   TestSuppressionWalkSkipsTestdata/production_code_under_a_fixtures_segment_is_still_reported
+    astgrep_gate_testdata_walk_test.go:63: violations = 2, want exactly 1 (the production file):
+        ast-grep suppression policy violations:
+        
+        [SUPPRESSION_WITHOUT_REASON] ast-grep suppression at /private/tmp/t1673-tmp/TestSuppressionWalkSkipsTestdataproduction_code_under_a_fixture3755740873/001/internal/astgrep/testdata/fixtures/go/suppressed.go:15 requires adjacent '// @MX:REASON <rationale>' on next line
+        [SUPPRESSION_WITHOUT_REASON] ast-grep suppression at /private/tmp/t1673-tmp/TestSuppressionWalkSkipsTestdataproduction_code_under_a_fixture3755740873/001/internal/prod/fixtures/bad.go:4 requires adjacent '// @MX:REASON <rationale>' on next line
+    astgrep_gate_testdata_walk_test.go:66: the violation is not the production file's:
+        ast-grep suppression policy violations:
+        
+        [SUPPRESSION_WITHOUT_REASON] ast-grep suppression at /private/tmp/t1673-tmp/TestSuppressionWalkSkipsTestdataproduction_code_under_a_fixture3755740873/001/internal/astgrep/testdata/fixtures/go/suppressed.go:15 requires adjacent '// @MX:REASON <rationale>' on next line
+        [SUPPRESSION_WITHOUT_REASON] ast-grep suppression at /private/tmp/t1673-tmp/TestSuppressionWalkSkipsTestdataproduction_code_under_a_fixture3755740873/001/internal/prod/fixtures/bad.go:4 requires adjacent '// @MX:REASON <rationale>' on next line
+=== RUN   TestSuppressionWalkSkipsTestdata/a_testdata_directory_above_the_project_root_does_not_hide_production_code
+--- FAIL: TestSuppressionWalkSkipsTestdata (0.03s)
+    --- FAIL: TestSuppressionWalkSkipsTestdata/the_fixture_alone_is_not_reported (0.01s)
+    --- FAIL: TestSuppressionWalkSkipsTestdata/production_code_under_a_fixtures_segment_is_still_reported (0.01s)
+    --- PASS: TestSuppressionWalkSkipsTestdata/a_testdata_directory_above_the_project_root_does_not_hide_production_code (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.843s
+FAIL
+```
+
+
+LEDGER-PAS-013-A re-run (real tool, RED, this run): command `sh ledger013.sh <moai>` = the ledger recipe (project with go.mod, the fixture copied to internal/astgrep/testdata/fixtures/go/suppressed.go, the repository's .moai/astgrep-rules copied, and the ledger's gate.yaml) then `env CLAUDE_PROJECT_DIR=<project> <moai> gate`. Judging build: `/private/tmp/t1673-bin/moai-base`, built from tree HEAD `00e7843ab` (the suppression walk is identical at the M3b GREEN tree). Exit code: 1. Output (project path elided):
+```
+ast-grep suppression policy violations:
+
+[SUPPRESSION_WITHOUT_REASON] ast-grep suppression at <project>/internal/astgrep/testdata/fixtures/go/suppressed.go:15 requires adjacent '// @MX:REASON <rationale>' on next line
+
+quality gate steps (3 configured):
+  - go vet: disabled — turned off by the gate.disabled_steps setting
+  - golangci-lint: disabled — turned off by the gate.disabled_steps setting
+  - go test: not reached
+          
+   ERROR  
+          
+  Quality gate failed.                                                                                                
+
+exit=1
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
