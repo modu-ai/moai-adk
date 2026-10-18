@@ -3109,11 +3109,13 @@ internal/cli/migrate_project_assets.go: whole-file 82.8% (221/267); chunk-6 chan
 
 **Chunk 7 addendum (추가만).** 레인 검토가 이 chunk 의 `migrate_ownership_nonregular_test.go` 가 `syscall.Mkfifo` 실패 때 `t.Skipf` 하던 것을 짚었다: 건너뛴 시험은 아무것도 쓸어내지 않아 이 시험이 막으려는 멈춤이 mkfifo 를 거부하는 파일 시스템에서 보이지 않게 돌아올 수 있다. 커밋 `2b801c1971` 이 이를 `t.Fatalf` (같은 메시지 + 디렉터리 경로) 로 바꿨다. 위 「정직한 회계」 4번의 「건너뛴다 (`t.Skipf`)」 서술은 이 커밋으로 대체된다 (시험이 건너뛰지 않고 실패한다; 유일한 제외는 `//go:build !windows`). 저장한 출력: 해당 시험 연속 3회 rc=0 (각 PASS 5줄, FAIL 0, SKIP 0), 이 파일의 선택자 `^(TestNonRegularFilesAreKeptWithoutBeingRead|TestKeepReasonVocabularyIsClosed)$` 한 번 rc=0 (PASS 6줄, FAIL 0, SKIP 0, 부하 평균이 100 안팎인 머신), `gofmt -l internal/cli` 출력 없음, `go vet ./internal/cli/` 호스트·Windows 모두 rc=0. 이 카드가 `cdd72a814` 이후 바꾼 시험 파일의 `t.Skip` 전수 조사 결과: (1) `migrate_ownership_nonregular_test.go` — 위에서 고침; (2) `migrate_ownership_test.go:381` `t.Skipf("symlinks unavailable here: %v", err)` — 이 카드가 만든 파일(M1a, `9b73a35938`)의 심볼릭 링크 탈출 사례에서 `os.Symlink` 실패 때 건너뜀. 같은 규칙에 걸리지만 지시에 따라 이번에는 고치지 않았고 리더가 정하도록 보고한다 (고친다면 같은 모양의 `t.Fatalf`); (3) `migrate_ownership_helpers_test.go:1008` 은 `t.Logf` 의 `skipped=` 변수 출력이지 건너뛰기가 아니다. 그 밖의 파일에는 `t.Skip`, `SkipNow`, `testing.Short` 가 없다.
 
+**Chunk 8 addendum (추가만).** 레인 결정: `migrate_ownership_test.go` 의 `t.Skipf("symlinks unavailable here")` 도 같은 규칙(건너뛴 시험은 아무것도 쓸어내지 않음)에 걸린다. 커밋 `4f970def44` 가 `TestOwnershipVerdictClasses` 의 뿌리 경계(심볼릭 링크 탈출) 사례를 새 시험 `TestOwnershipVerdictSymlinkEscape` 로 `migrate_ownership_symlink_test.go` (`//go:build !windows`) 로 옮겼고, 단언은 그대로이며 `os.Symlink` 실패는 경로와 오류를 담은 `t.Fatalf` 이다. 부모 시험은 나머지 사례를 그대로 가지며, 건너뛰기가 가로막던 뒤쪽의 폐기(deprecated) 사본 점검이 이제 항상 실행된다. 이동한 사례는 태그 없는 파일에서 참조되지 않는다 (`grep` 결과 없음); `GOOS=windows go vet ./internal/cli/` rc=0. 저장한 출력: 이동한 시험과 부모 시험의 앵커 선택자 `^(TestOwnershipVerdictSymlinkEscape|TestOwnershipVerdictClasses)$` 연속 3회 모두 rc=0, PASS 2줄, FAIL 0, SKIP 0; `gofmt -l internal/cli` 출력 없음; `go vet ./internal/cli/` 호스트 rc=0. 카드가 `cdd72a814` 이후 바꾼 모든 시험 파일의 `t.Skip`/`Skipf`/`SkipNow`/`testing.Short` 재조사: 호출 없음 (남은 일치는 `first.Skipped` 변수 이름과 새 파일 머리 주석의 문구뿐).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: 2b801c1971  # code-verification baseline: the last test/code commit (chunk 7: FIFO test fails loudly instead of skipping; chunk 6 fix C is 1d5ecbbc7c); the evidence commit that carries this block follows it
+run_commit_sha: 4f970def44  # code-verification baseline: the last test/code commit (chunk 8: symlink-escape case moved to a !windows file; chunk 7 FIFO test 2b801c1971; chunk 6 fix C 1d5ecbbc7c); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -3123,7 +3125,7 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 39  # non-.moai files added or edited over the card: 23 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup; chunk 6 added 1 test file)
+total_run_phase_files: 40  # non-.moai files added or edited over the card: 24 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup; chunk 6 added 1 test file; chunk 8 added 1 test file)
 m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c
 ```
 
@@ -3174,7 +3176,7 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 
 **chunk 5 (카드 리뷰 수정)로 바뀐 것.** 코덱스 카드 리뷰의 P2 둘을 고쳤다: 복원이 `manifest.prior.json` 을 `.moai/config` 로 복사하던 결함(이 카드가 만든 것)과 제거 후보 백업 사본이 실행 비트를 잃던 잠복 결함. 커밋 A `73e37d3832`, B `9c00e81a2c`, C `051ddc18ef`. 같은 부류로 확인했으나 고치지 않은 것: Legacy 복원 걷기는 `removed-assets/**`, `in-memory-backups/**` 도 `.moai/config` 로 복사한다 (앞의 것은 제거 스위치가 꺼져 있어 운영에서 비어 있고, 뒤의 것은 이 카드 이전부터). 보존 정책 센서스가 `manifest.prior.json` 을 내용으로 세는 문제(갭 G-K)는 REQ-OWR-017 때문에 건드리지 않았다.
 
-**chunk 6 (둘째 카드 리뷰 지적)로 바뀐 것.** 판정 함수가 읽기 전에 파일 종류를 묻지 않아 공통 자산 걷기 아래의 FIFO 가 `moai update` 를 멈추게 했다. 판정의 유일한 진입점에서 종류를 먼저 확인하고 새 이유 `non-regular-file` 로 보존한다 (A `2eeb0559bd`, B `60d38d1559`, C `1d5ecbbc7c`). 이유 어휘가 하나 늘었다 — SPEC 본문 (design.md D-1) 개정이 필요한 사안으로 공개한다. (chunk 7: 같은 시험의 mkfifo 실패 때 건너뛰기를 `t.Fatalf` 로 바꿨다, `2b801c1971`; 이 카드가 만든 시험 파일에 남은 `t.Skipf` 는 `migrate_ownership_test.go:381` 하나로 리더 판단 대기.)
+**chunk 6 (둘째 카드 리뷰 지적)로 바뀐 것.** 판정 함수가 읽기 전에 파일 종류를 묻지 않아 공통 자산 걷기 아래의 FIFO 가 `moai update` 를 멈추게 했다. 판정의 유일한 진입점에서 종류를 먼저 확인하고 새 이유 `non-regular-file` 로 보존한다 (A `2eeb0559bd`, B `60d38d1559`, C `1d5ecbbc7c`). 이유 어휘가 하나 늘었다 — SPEC 본문 (design.md D-1) 개정이 필요한 사안으로 공개한다. (chunk 7: 같은 시험의 mkfifo 실패 때 건너뛰기를 `t.Fatalf` 로 바꿨다, `2b801c1971`. chunk 8: 마지막 남은 `t.Skipf` 였던 `migrate_ownership_test.go` 의 심볼릭 링크 탈출 사례를 `!windows` 파일로 옮기고 실패로 바꿨다, `4f970def44` — 카드가 바꾼 시험 파일에 건너뛰기 호출은 이제 없다.)
 
 **SPEC 본문에 대한 공개 (본문은 고치지 않았다; 필요하면 manager-spec 재위임).**
 
