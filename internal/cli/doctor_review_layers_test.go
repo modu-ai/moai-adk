@@ -1,0 +1,121 @@
+// doctor_review_layers_test.go — card t1683 (SPEC-REVIEW-GATE-REPAIR-001
+// follow-up F4): the doctor warning for the two review layers being active
+// together, so the same card diff is reviewed twice.
+//
+// Warn only when BOTH hold: the turn-end codex review gate is enabled and a
+// factory lane session record exists (the card-review stage is a mandatory
+// lane step with no config switch of its own). Every other state is OK, and
+// an unreadable or absent config never fails the advisory check.
+package cli
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+)
+
+// writeReviewLayersWorkflow writes workflow.yaml under root with the given body.
+func writeReviewLayersWorkflow(t *testing.T, root, body string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const reviewGateOnYAML = "workflow:\n  codex:\n    review_gate:\n      enabled: true\n"
+const reviewGateOffYAML = "workflow:\n  codex:\n    review_gate:\n      enabled: false\n"
+
+func TestDoctorReviewLayerOverlap(t *testing.T) {
+	cases := []struct {
+		name    string
+		setup   func(t *testing.T, root string)
+		want    uikit.CheckStatus
+		wantMsg []string
+	}{
+		{
+			name: "gate-on-and-lane-record",
+			setup: func(t *testing.T, root string) {
+				writeReviewLayersWorkflow(t, root, reviewGateOnYAML)
+				seedFactoryRecord(t, root, "lane-session", "lane")
+			},
+			want:    uikit.CheckWarn,
+			wantMsg: []string{"review_gate", "card-review", "twice", "workflow.codex.review_gate.enabled"},
+		},
+		{
+			name: "gate-off-and-lane-record",
+			setup: func(t *testing.T, root string) {
+				writeReviewLayersWorkflow(t, root, reviewGateOffYAML)
+				seedFactoryRecord(t, root, "lane-session", "lane")
+			},
+			want: uikit.CheckOK,
+		},
+		{
+			name: "gate-on-without-lane-record",
+			setup: func(t *testing.T, root string) {
+				writeReviewLayersWorkflow(t, root, reviewGateOnYAML)
+				seedFactoryRecord(t, root, "leader-session", "leader")
+			},
+			want: uikit.CheckOK,
+		},
+		{
+			name:  "config-absent",
+			setup: func(t *testing.T, root string) { seedFactoryRecord(t, root, "lane-session", "lane") },
+			want:  uikit.CheckOK,
+		},
+		{
+			name: "config-unparseable",
+			setup: func(t *testing.T, root string) {
+				writeReviewLayersWorkflow(t, root, "workflow: [unclosed\n")
+				seedFactoryRecord(t, root, "lane-session", "lane")
+			},
+			want: uikit.CheckOK,
+		},
+		{
+			name:  "empty-root",
+			setup: func(t *testing.T, root string) {},
+			want:  uikit.CheckOK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			tc.setup(t, root)
+
+			check := checkReviewLayerOverlap(root, false)
+
+			if check.Name != reviewLayerOverlapCheckName {
+				t.Errorf("name = %q, want %q", check.Name, reviewLayerOverlapCheckName)
+			}
+			if check.Status != tc.want {
+				t.Errorf("status = %v, want %v (message %q)", check.Status, tc.want, check.Message)
+			}
+			joined := check.Message + "\n" + check.Detail
+			for _, want := range tc.wantMsg {
+				if !strings.Contains(joined, want) {
+					t.Errorf("message does not carry %q:\n%s", want, joined)
+				}
+			}
+		})
+	}
+}
+
+// TestDoctorReviewLayerOverlap_Registered — the check is reachable through the
+// grouped table (`moai doctor --check "Review Layer Overlap"`).
+func TestDoctorReviewLayerOverlap_Registered(t *testing.T) {
+	groups := runGroupedChecks(false, reviewLayerOverlapCheckName)
+	for _, g := range groups {
+		for _, c := range g.checks {
+			if c.Name == reviewLayerOverlapCheckName {
+				return
+			}
+		}
+	}
+	t.Errorf("%q not reachable via runGroupedChecks — not registered", reviewLayerOverlapCheckName)
+}

@@ -207,6 +207,7 @@ var doctorCheckNameContract = map[string]bool{
 	"mcpProviderDuplicatesCheckName": true,
 	"mcpServerVersionCheckName":      true,
 	"ownerLabelDriftCheckName":       true,
+	"reviewLayerOverlapCheckName":    true,
 	"servedModelCheckName":           true,
 	"settingsDefaultModeCheckName":   true,
 	"todoGhostInventoryCheckName":    true,
