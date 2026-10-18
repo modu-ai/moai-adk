@@ -1244,7 +1244,19 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		// ungated golden failed with next#2 head="t1" via arm (c)): the same
 		// fixture under the OFF default — t5 leases via arm (a), the queued
 		// pair via arm (c), and the unowned picked pair is silently skipped.
-		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		//
+		// SPEC-CARD-ELIGIBLE-PULL-001 (sync-audit round-3 F11 — mutant-proof
+		// the pin): the OFF candidates t3/t4 carry the SAME spec ids as the
+		// armed golden, so a dormancy regression changes the TRANSCRIPT
+		// itself (the picked pair would lease instead of waiting); and the
+		// capture asserts refusal-line ABSENCE before normalization, so the
+		// golden also fails if a regression expresses only as reason lines
+		// the nmStep normalization would otherwise discard. Either mutant
+		// branch is caught; both were observed failing under the auditor's
+		// active()-removal mutant after this fix.
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t3", "SPEC-ARMORD-B2")
+		cepSetSpecID(t, store, "t4", "SPEC-ARMORD-B")
 		fcPlace(t, root,
 			homestate.Card{CardID: "t4", State: homestate.CardPicked},
 			homestate.Card{CardID: "t5", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
@@ -1253,6 +1265,9 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		var steps []string
 		for i := 1; i <= 6; i++ {
 			out, stderr, err := qasRunNext(t, "--run", fcRun)
+			if lines := cepRefusedLines(out); len(lines) > 0 {
+				t.Fatalf("OFF dormancy emitted refusal lines %v at next#%d — the skip must be quiet (no evaluation, no reason)", lines, i)
+			}
 			steps = append(steps, nmStep(fmt.Sprintf("next#%d", i), out, stderr, err))
 		}
 		nmCompareGolden(t, "arm-order-off-dormancy", steps)
