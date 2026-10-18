@@ -3192,7 +3192,50 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill  # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete
+b12_self_test_a: pass  # pre-emission grep: `grep -c 'SPEC-UPDATE-OWNERSHIP-REPAIR-001' CHANGELOG.md` printed 0 before the entry and 1 after
+b12_self_test_b: pass-with-disclosure  # ac_source=.moai/specs/SPEC-UPDATE-OWNERSHIP-REPAIR-001/acceptance.md (tier L). The B12 counter printed 22 (live=22 excluded=0 ambiguous=0): the 21 AC-OWR-01..21 criteria (21 `### AC-OWR-` headings) plus AC-COLLECTOR-ANCHOR-001, an unmarked citation of another SPEC's criteria inside the criterion-grade paragraph (line 19). Marking it `[REF]` needs an acceptance.md body edit, which is not this commit's to make. The CHANGELOG says 21.
+b12_self_test_c: pass  # every file path named in the CHANGELOG entry checked with ls (spec.md, plus the implementation files read for the entry)
+changelog_entry_position: "[Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed on this single sync commit; updated: 2026-10-18"
+  plan_md_acceptance_md: "untouched (frontmatter carries no updated: field and no status:)"
+canary_compliance_check: not-applicable
+```
+
+This sync commit edits `CHANGELOG.md`, this section, and the `spec.md` frontmatter `status:` only. It does not edit any SPEC body (`spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`) and does not touch §E.1-§E.3.
+
+**Caveats for the sync auditor and the leader (user-visible side effects and open limits).**
+
+1. Default output: without `--verbose`, `moai update` no longer prints a per-file line for each kept file; the grouped Reference rows (one line per reason with a count) carry them. Source: `internal/cli/migrate_ownership_remaining.go` (`remainingAwareReport`, `recordRemainingList`).
+2. Dry run and the update lock: `moai update --dry-run` takes no update lock (`internal/cli/update.go`), so a dry run is no longer refused while another update holds the lock and its result may then reflect that run's intermediate state. A one-line warning in the dry-run output was considered and is NOT implemented: carried as a disclosed follow-up/debt.
+3. Same-second backup directory: two updates started in the same clock second share a run backup directory and the older `manifest.prior.json` generation is lost. Evidence loss only (verdicts lean toward keeping); outside this card; follow-up candidate (see §E.3 "열린 제품 쪽 사실").
+4. Legacy restore walk: `RestoreMoaiConfigLegacy` also copies `removed-assets/**` and `in-memory-backups/**` into `.moai/config` (found by the codex card review, not fixed here). `removed-assets` belongs to card t1668 and is empty while the removal switch is off; `in-memory-backups` predates this card.
+5. Keep-reason vocabulary: the closed vocabulary gained `non-regular-file` (code, `internal/cli/migrate_ownership.go`). The matching row in the design.md D-1 vocabulary table is added by manager-spec in a following revision commit (lane-directed); the lane cites that commit SHA in the audit brief. This sync commit edits no SPEC body.
+6. FIFO race: a regular file swapped for a FIFO between the kind check and the read is not covered (§E.2 chunk 6 accounting item 3 covers the sibling kinds `os.ModeIrregular`, sockets and devices, which take the same branch but are not exercised by a test).
+7. `removalEnabled` is `false` in production: no project file is removed by this change.
+
+**SPEC-wording debts for the sync auditor's brief (bodies not edited; disclosed in §E.3).**
+
+- REQ-OWR-006 / AC-OWR-10: the project deployer never writes agents; the user-asset phase does, so AC-OWR-10 tests agents where they are delivered.
+- AC-OWR-21: the command path, and the missing case (o) (the test carries `o-normal-run-goes-through-temp-then-rename`).
+- AC-OWR-20 (b): `removalBackupWriter` is named, while D-3 item 5 defines `priorManifestWriter`; the test follows D-3.
+- AC-OWR-06 (b), AC-OWR-08 glob, and AC-OWR-12 reason referent: wording points named in the lane's sync brief (the exact referents were not re-derived in this phase); the tests assert the intent.
+- Also from §E.3: REQ-OWR-012 / AC-OWR-17 "same remaining list" versus the D-2 reason refinement; the expected-difference set of AC-OWR-15 and the exclusion list of AC-OWR-17 omit two clock-derived locations; N15 narrows the evidence comparison to `TemplateHash` (leader-approved).
+
+**Binding-run-condition dispositions:** as recorded in §E.3 ("Binding run conditions 의 처분", N4 residual through N24); not re-judged here. N16 is open and disclosed, N24 is a confirmed limit.
+
+**Honest gaps.**
+
+- Not run: the full `internal/cli` package test, package-wide coverage, and `-race` (carried to CI or the leader's landing remeasurement).
+- Windows: build and vet only; no test execution on Windows.
+- Gap G-K (the retention-policy census counting `manifest.prior.json` as content) is unmeasured and untouched because of REQ-OWR-017.
+- Case-sensitive file system branch of `TestCaseVariantOnHostFilesystem` is not exercised on the host.
+- Code-review findings and their fixes (from §E.3): chunk 5, two findings (restore copied `manifest.prior.json` into `.moai/config`; a removed executable's backup copy lost its mode), fixed in `051ddc18ef`; chunk 6, the FIFO stall (the verdict read before checking the file kind), fixed in `1d5ecbbc7c`, with the chunk 7 and chunk 8 follow-ups (`2b801c1971`, `4f970def44`) making the two tests fail instead of skip.
+- Sync-phase checks were limited by instruction: no Go test package was run in this phase, only `go build` and `moai spec lint`; the judging build recorded `vcs.revision=478285ab4c1fc893b020bb464d14cb69c8422523` with `vcs.modified=true` against the tree HEAD `175407599b`, so that stamp is not the tree HEAD (the binary was built from this worktree's files).
 
 ## §G Override and Refusal Record
 
