@@ -1,7 +1,7 @@
 ---
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial local landing -> batch PR -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -23,14 +23,15 @@ Card: **t1831** (Class C, P1, plan -> run -> sync; operator directive 2026-10-17
 
 | Date | Author | Change |
 |------|--------|--------|
-| 2026-10-18 | manager-spec | Initial plan-phase artifacts. Evidence read in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846); quantified in research.md. |
+| 2026-10-18 | manager-spec | Initial plan-phase artifacts (0.1.0). Evidence read in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846); quantified in research.md. |
+| 2026-10-18 | manager-spec | 0.2.0: plan-audit iteration 1 repairs: D1-D7 (RED-now cells authored at plan time on tree `f4175587119b5cfeb8d8348fc74cada8764e89ed`; the `factory-dispatch.md` template/deployed divergence recorded and decided; one cutover precondition set P1-P5 across REQ-AGT-017, plan M6 and design section 4; judges rebuilt for AC-AGT-015, -020 and -023; the DevelopBranch consumers added as REQ-AGT-025 and AC-AGT-025). Optional D8-D11 folded: GEARS rewording of REQ-AGT-018 and REQ-AGT-024, template-match exclusions named, REQ-AGT-019 sub-item judges added, the raw-merge demotion recorded in design section 5. 25 requirements, 25 acceptance criteria. |
 
 ## 1. Context and problem
 
 1. **The operating model has no name in the product.** This repository runs: card worktrees branch from local `main`; each card lands serially in one dedicated integration worktree through `moai integration merge --card` with scoped tests; roughly every `lead_push_threshold` (20) landings the leader opens one batch pull request from `release/main-batch-YYYYMMDD` with one CI run; `main` is then tagged for release. Its live config value is `git_strategy.manual.workflow: git-flow` with `develop_branch: main` (`.moai/config/sections/git-strategy.yaml`), a label from the retired develop era. The yaml carries a comment that still says "workflow stays git-flow until the GitHub Flow residue sweep lands".
 2. **`git-flow` misdescribes it and `github-flow` is wrong in the other direction.** The model has no `develop` branch and no per-card pull request. The operator rejected `github-flow` because it misleads (Jev 0.92) and chose `agentic-trunk` (Jev 0.72 first choice; Codex runner-up).
 3. **The reader rejects any new value.** The allowed set is exactly four values (`loader_workflow_disposition.go`); an unknown value classifies invalid, resolves an empty integration target, and the base-branch consumers (`worktree done`/`sweep`, `goal approve`, `factory merge ready`/`complete`, card diff base) refuse an empty target. Flipping the live yaml to a value the running binary does not know therefore stops the factory, not only a diagnostic.
-4. **Guidance is spread over the whole tree.** 704 tracked files match the flow-name pattern; most are SPEC and report history that this SPEC leaves alone. The live operating descriptions are in the repo-local rule and local guide, in 7 distributed rule and skill sources plus their deployed copies, in the sync delivery skill (whose value domain is "exactly `github-flow` and `git-flow`" and which stops delivery on any other value), and in the docs-site `moai-sync` page (4 locales).
+4. **Guidance is spread over the whole tree.** 704 tracked files match the flow-name pattern; most are SPEC and report history that this SPEC leaves alone. The live operating descriptions are in the repo-local rule and local guide, in six distributed rule files and the git-workflow skill plus their deployed copies, in the sync delivery skill (whose value domain is "exactly `github-flow` and `git-flow`" and which stops delivery on any other value), and in the docs-site `moai-sync` page (4 locales).
 
 ## 2. Goal
 
@@ -65,8 +66,8 @@ Give the model one canonical value, `agentic-trunk`, with an explicit and tested
 
 - REQ-AGT-015: The shipped defaults (the template `git-strategy.yaml.tmpl` and the built-in default configuration) shall keep `github-flow` for the manual, personal and team profiles.
 - REQ-AGT-016: The github-flow sweep guard shall stay armed only for `github-flow`, and its arming test shall assert that an `agentic-trunk` root does not arm it.
-- REQ-AGT-017: The live value of this repository's `git_strategy.manual.workflow` shall change only in a separate commit that follows an installed binary built from a tree containing REQ-AGT-001 to REQ-AGT-004, and only after that binary's doctor check reports `agentic-trunk` as OK.
-- REQ-AGT-018: Once changed, this repository's `git-strategy.yaml` shall carry `workflow: agentic-trunk` in the manual profile only, keep `lead_push_threshold: 20`, carry no `develop_branch`, `release_branch_prefix` or `rc_version_format` key in the manual profile, and carry no comment that says the workflow stays `git-flow`.
+- REQ-AGT-017: The live value of this repository's `git_strategy.manual.workflow` shall change to `agentic-trunk` only in a separate commit for which all five preconditions hold: (P1) the commits that implement REQ-AGT-001 to REQ-AGT-016, REQ-AGT-020, REQ-AGT-021 and REQ-AGT-025 (plan milestones M1 to M5) are its ancestors, (P2) the installed `moai` binary is byte-identical to the build of the commit's parent and reports that commit, (P3) that installed binary's doctor check reports `agentic-trunk` as OK, (P4) every running `moai mcp-server` has been reconnected so the doctor's MCP server version check reports no stale server, and (P5) the leader runs the cutover with the operator's confirmation while no integration window is held.
+- REQ-AGT-018: When the live value of this repository's `git_strategy.manual.workflow` is `agentic-trunk`, the file `.moai/config/sections/git-strategy.yaml` shall carry `workflow: agentic-trunk` in the manual profile only, keep `lead_push_threshold: 20`, carry no `develop_branch`, `release_branch_prefix` or `rc_version_format` key in the manual profile, and carry no comment that says the workflow stays `git-flow`.
 
 ### 3.5 Guidance
 
@@ -78,7 +79,11 @@ Give the model one canonical value, `agentic-trunk`, with an explicit and tested
 
 ### 3.6 Verification discipline
 
-- REQ-AGT-024: The verification of this SPEC shall use test runs anchored by `-run`, shall add no test skip, and shall not widen any timeout; where a package suite is red on main for a reason outside this SPEC, the acceptance criteria shall still name the anchored tests that decide.
+- REQ-AGT-024: While this SPEC's acceptance criteria are judged, the judges shall use test runs anchored by `-run`, shall add no test skip, and shall not widen any timeout; where a package suite is red on main for a reason outside this SPEC, the acceptance criteria shall still name the anchored tests that decide.
+
+### 3.7 Consumers of the legacy develop-branch seam
+
+- REQ-AGT-025: While the workflow is `agentic-trunk` in manual mode and the manual profile carries no `develop_branch` key, the closure push guard, the contract push check and the card-base resolution shall use `main` as the integration branch, with the outcome a git-flow profile whose `develop_branch` is `main` has today.
 
 ## 4. Behavior mapping (summary; the code-level mapping is in design.md section 2)
 
@@ -98,7 +103,7 @@ Give the model one canonical value, `agentic-trunk`, with an explicit and tested
 |---|---|---|
 | OQ-1 | Is the target fixed `main`, or does it honor `develop_branch` / `main_branch`? | Fixed `main` (REQ-AGT-003). Alternate: honor `main_branch` when set. |
 | OQ-2 | Does the sweep guard arm for `agentic-trunk`? | No in this SPEC (REQ-AGT-016); pre-measure the armed finding count at M4 and open a follow-up card if it is zero. |
-| OQ-3 | Who runs the cutover (install the tree-built rc, reconnect every `moai mcp-server`, flip the live value)? Blocks M6 only. | The leader, as the operator-requested rc build of the repo-local protocol section 9, in a window with no lane mid-landing. |
+| OQ-3 | Who runs the cutover (install the tree-built rc, reconnect every `moai mcp-server`, flip the live value)? Blocks M6 only. | Decided (leader ruling): the leader runs the cutover as the operator-requested rc build of the repo-local protocol section 9, with the operator's confirmation, in a window with no lane mid-landing, because replacing the installed binary affects every session on the machine. Preconditions P1 to P5 are REQ-AGT-017. |
 | OQ-4 | Statusline rule: label every valid non-`github-flow` value, or `agentic-trunk` only? | Every valid non-`github-flow` value (REQ-AGT-013). Needs a note to t1830, whose REQ-PLO-009 requires byte-identical render today. |
 | OQ-5 | Offer `agentic-trunk` in the project wizard (`tab_schema.json`, 3 option lists)? | No: it is a factory operating value set by editing the yaml; the wizard keeps its two simple choices. |
 | OQ-6 | Rename `gitflow-lane-protocol.md`? | Keep the path: 222 SPEC files and 16 other tracked files outside `.moai/specs` and `.moai/reports` (including `internal/cli/codex_review_scope.go`) cite it. |

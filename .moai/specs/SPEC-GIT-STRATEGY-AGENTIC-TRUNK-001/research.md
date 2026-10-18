@@ -21,7 +21,7 @@ Measured in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846)
 | `.moai/config/sections/**` | 2 (`git-strategy.yaml` 6 lines, `shipped_key_inventory` testdata) | `git-strategy.yaml` edited |
 | other testdata / json | 7 | untouched |
 
-Files affected by the SPEC: about 8 Go source + 10 Go test + 10 template source + 10 deployed projections + 6 repo-local guidance + 1 live config + 4 docs-site = 49. That is above the 15-file line of Tier L.
+Files affected by the SPEC (recounted at version 0.2.0): about 8 Go source + 13 Go test + 9 template source + 8 deployed projections + 6 repo-local guidance + 1 live config + 4 docs-site = 49. That is above the 15-file line of Tier L.
 
 ## R2. The reader and its consumers (code read, not inferred)
 
@@ -76,6 +76,14 @@ The last row is the vacuous-green trap in its pure form: a selector that matches
 ## R7. Not observed
 
 - The armed finding count of `TestGitHubFlowSweepGuard` (set `MOAI_SWEEP_GUARD_ARMED=1`) was not run; it decides OQ-2's follow-up, and M4 measures it.
-- No Go test other than the `internal/config` selector above was run; the RED-now observations for `internal/cli`, `internal/statusline`, `internal/cli/update` and `internal/template` use the same selector form and are taken at the M0 baseline step.
+- (Superseded by R8: the RED-now observations for `internal/cli`, `internal/statusline`, `internal/cli/update`, `internal/template`, `internal/hook` and `internal/escalation` were taken in the plan-audit iteration 1 repair and live in acceptance.md.)
 - The statusline render cost of one extra small YAML read per render was not measured.
 - Whether another process caches the workflow value (long-lived `moai mcp-server` processes keep the build they started with — the server instructions of this session say so) was not enumerated; the cutover step treats every running server as stale.
+
+## R8. Measurements added by the plan-audit iteration 1 repair (tree f4175587119b5cfeb8d8348fc74cada8764e89ed)
+
+- Parity of the template/deployed pairs in scope: seven `cmp -s` pairs exit 0 (`factory-dispatch-mechanics`, `factory-dispatch-core`, `worktree-integration`, `delivery-policy`, `spec-workflow`, `sync/delivery.md`, `moai-ref-git-workflow/SKILL.md`); `factory-dispatch.md` exits 1 with exactly one differing line (222). The deployed line carries a trailing sentence about `moai worktree sweep` that the template lacks. `git log -S'disposing the card'` shows commit `7ff326d99` (card t1815, "drop live-only worktree-sweep sentence leaked into factory-dispatch mirror") removed it from the template deliberately, so the divergence is intended and the reconciliation keeps it.
+- `DevelopBranch` consumers (non-test Go, all through `config.LoadGitFlowDevelopBranch`): `contract_pushcheck.go:37` (empty prints `inactive (no git-flow integration branch configured)`), `hook/closure_push.go:153-161` (`integrationBranchFor`, with a primary-checkout fallback through the git common directory), `escalation/newapi.go:126-143` (`cardBase`: non-empty is the sole merge-base candidate, empty falls to origin/HEAD, `main`, `master`). `loader_slot_lease.go` only mentions the function in a comment. Plus the two `LoadGitFlowIntegrationConfig` readers already in design section 2 (`integration.go:466`, `session_worktree_automerge.go:176-183`).
+- The doctor already carries the two cutover witnesses: the `Git Strategy Workflow` row (a `warn` for an unknown value on the installed build, exit 0) and the `MCP Server Version` row (`ok ... match the installed binary (<commit>)`, or `warn ... running MCP server is stale`); `moai doctor --check "<row name>"` runs one row. `scripts/verify-local-install.sh <built> <installed> <short-sha>` checks byte identity and the installed binary's reported commit.
+- The sweep guard disarms on this repository (`sweep guard disarmed: git_strategy workflow="git-flow" (armed only when "github-flow")`); the existing `arming-switch` subtest passes today, which is why a dedicated test is the flip judge.
+- Template files matching the flow-name pattern: 15. Edited: six rule files, `sync/delivery.md`, `moai-ref-git-workflow/SKILL.md`, `workflow.yaml` (comment). Excluded by name: `auto-semantics.md`, `spec-workflow-detail.md`, `manager-git.md`, `manager-git.toml`, `tab_schema.json`, `git-strategy.yaml.tmpl`.
