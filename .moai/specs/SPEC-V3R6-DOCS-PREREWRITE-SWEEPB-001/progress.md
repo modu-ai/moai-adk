@@ -6,11 +6,12 @@ Card t1722, child SWEEPB of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001. Only §E.1 ca
 
 plan_status: audit-ready
 audit_ready: true
-plan_complete_at: 2026-10-18T22:36:59Z
-plan_revision: 0.3.0 (after plan-audit iteration 1; see decision-index.md Gate)
+plan_complete_at: 2026-10-18T23:17:52Z
+plan_revision: 0.4.0 (after plan-audit iteration 2; D4-D6)
 measured_tree: 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M)
 gate_state: decision-index.md (Gate)
+lane_decision: D4/D5 option (A): REQ-PRC-001-001 is a contribution obligation (lane-27 judgment, auto-semantics ladder terminal step)
 
 ## §E.2 Run-phase Evidence
 

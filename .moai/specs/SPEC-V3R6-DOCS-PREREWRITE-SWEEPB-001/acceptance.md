@@ -6,7 +6,7 @@
 
 Document-level pin: tree commit `2bcce5d9dc4c5f57bb98bcfa553e0061fa373681`. It binds every RED-now cell, control, and evidence entry in §C that carries no pin of its own. The commands in §B judge the sweep tip, so they read `HEAD` of the card branch, not the pin.
 
-The patterns and pathspecs below are defined once and used by name. `E01` is the umbrella's family F1 pattern. `W01` is `E01` with `[[:space:]]+` in place of the single space; it is the mutant guard, because a stale citation respelled with two spaces passes `E01` and still tells the reader to run an absent verb. `P-ALL` is the three pathspecs together and reaches exactly 12 files.
+The patterns and pathspecs below are defined once and used by name. `E01` is the umbrella's family F1 pattern. `W01` is `E01` with `[[:space:]]+` in place of the single space; it is the pattern of the run-start inventory record (AC-PRC-001-001), because a stale citation respelled with two spaces passes `E01` and would otherwise not show in that record. `P-ALL` is the three pathspecs together and reaches exactly 12 files.
 
 ```
 E01 = (^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)
@@ -26,38 +26,38 @@ P-ALL = P-TOK P-IDX P-POL
 
 ### A.3 Classification
 
-The decided state is in decision-index.md (Gate; row Q-SWB-1): this card edits no page, so every criterion below is true at the pin and all five are **regression-guards**. None is release-blocking: the card closes as rationale recorded plus zero page changes. A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2), so each criterion carries a control that runs **its own command form** on a named historical input and observes the red output (§C, E-SWB-10).
+The decided state is in decision-index.md (Gate; row Q-SWB-1): this card edits no page, so every entry below is true at the pin. AC-PRC-001-002 to -005 are **regression-guards**; none is release-blocking: the card closes as rationale recorded plus zero page changes. A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2), so each of them carries a control that runs **its own command form** on a named input (a historical commit or a scratch fixture) and observes the red output (§C, E-SWB-10). AC-PRC-001-001 is not one of them: it is a run-start inventory record that decides no requirement.
 
-All criteria except AC-PRC-001-001 are **contribution-relative**: they measure this card's own diff (`main...HEAD`, the merge-base form), so a change another card landed on `main` and this branch absorbed does not move them. AC-PRC-001-001 reads the tree at `HEAD` but asks only for the absence of Class C lines, which no README-child removal can break. No criterion tests an absolute count of the twelve lines, so the removal of Korean `tokenomics-overview.md:112` and `multi-llm/_index.md:164` by the README child's REQ-PRC-004 is not a regression of this SPEC.
+Every requirement is a contribution obligation (spec.md, Requirements), so the four deciding criteria are **contribution-relative**: they measure this card's own diff (`main...HEAD`, the merge-base form), and a change another card landed on `main` and this branch absorbed does not move them. REQ-PRC-001-001 is decided by AC-PRC-001-002, which fails on any change to the twelve files, so it needs no classifier of the changed line. AC-PRC-001-001 reads the tree at `HEAD` and records the lines the twelve files carry at run start; it decides no requirement and is not a gate on a change absorbed from `main`. A Class C line that arrives that way shows in the record and is a finding for plan.md M1, not a failure of this SPEC. No criterion tests an absolute count of the twelve lines, so the removal of Korean `tokenomics-overview.md:112` and `multi-llm/_index.md:164` by the README child's REQ-PRC-004 is not a regression of this SPEC.
 
 ## B. Acceptance criteria
 
 | AC | Requirement | Class | State at the pin | Control | Milestone |
 |----|-------------|-------|------------------|---------|-----------|
-| AC-PRC-001-001 | REQ-PRC-001-001 | regression-guard | true (no output) | E-SWB-10a | M2 |
-| AC-PRC-001-002 | REQ-PRC-001-002 | regression-guard | true (`exit=0`) | E-SWB-10b | M2 |
+| AC-PRC-001-001 | REQ-PRC-001-001 (record only; decided by AC-PRC-001-002) | evidence record | prints the 12 retained lines | none (decides nothing) | M1 |
+| AC-PRC-001-002 | REQ-PRC-001-001, REQ-PRC-001-002 | regression-guard | true (`exit=0`) | E-SWB-10b, E-SWB-10a | M2 |
 | AC-PRC-001-003 | REQ-PRC-001-003 | regression-guard | true (no output, three commands) | E-SWB-10c | M2 |
 | AC-PRC-001-004 | REQ-PRC-001-004 | regression-guard | true (no output) | E-SWB-10d | M2 |
 | AC-PRC-001-005 | REQ-PRC-001-002 | regression-guard | true (no output) | E-SWB-10e | M2 |
 
-### AC-PRC-001-001 — no line tells the reader to run an unresolved form
+### AC-PRC-001-001 — run-start inventory: the lines the twelve files carry at HEAD (evidence record)
 
-AC-PRC-001-001 maps REQ-PRC-001-001.
+AC-PRC-001-001 is an evidence record for REQ-PRC-001-001. It decides nothing: REQ-PRC-001-001 is decided by AC-PRC-001-002, and this record is not a gate on a change absorbed from `main`.
 
 - **Given** the tip is `HEAD` of the card branch,
-- **When** these two commands run,
-- **Then** the first prints nothing and the second prints at least one line (it is the positive control: the same grep without the filter).
+- **When** these two commands run (milestone M1),
+- **Then** the first prints the W01 match lines the twelve files carry and the second prints the per-file counts; neither is empty, and both are carried into `.moai/reports/t1722/verdict.md`.
 
 ```
-git grep -n -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md' | rg -v -F -e "llm.team_mode: cg" -e "moai model profile"
+git grep -n -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 git grep -c -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 ```
 
-The first command prints every W01 match line that carries neither content key of the Class N set (the `llm.team_mode: cg` token that ends every notice, and `moai model profile`); a surviving line is a Class C candidate or an unknown form. At the pin the second prints 12 lines, each ending `:1` (E-SWB-2); at a later tree it may print fewer, and fewer is not a failure, but empty means the grep swept nothing and the first command's silence is uninterpreted. Control (E-SWB-10a): the first command's form over `bas-navigator.md`, a page with a real Class C line, prints that line.
+The inventory carries no exemption: every W01 match is printed and compared by content with the twelve retained lines of E-SWB-5. At the pin the first command prints those twelve lines and the second prints 12 lines, each ending `:1` (E-SWB-2; observed again at HEAD 61e857c67f in this pass). A printed line that is not among the twelve is a finding for plan.md M1 (a blocker report, no edit); it fails no criterion. At a later tree fewer lines are not a failure, and an empty second command means the grep swept nothing. On the scratch fixtures of E-SWB-10a the first command prints the added line next to the retained one, so the record shows it; the deciding red there is AC-PRC-001-002's.
 
 ### AC-PRC-001-002 — this card's diff touches none of the twelve files
 
-AC-PRC-001-002 maps REQ-PRC-001-002.
+AC-PRC-001-002 maps REQ-PRC-001-001 and REQ-PRC-001-002. Any change to any of the twelve files fails it, whatever the changed line says, so it decides both "this card adds no Class C line" and "this card changes none of the twelve files" without classifying a line.
 
 - **Given** the card branch,
 - **When** this command runs,
@@ -67,7 +67,7 @@ AC-PRC-001-002 maps REQ-PRC-001-002.
 git diff --quiet main...HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"
 ```
 
-Control (E-SWB-10b): the same form with `6581cdccbb~1...6581cdccbb` in place of `main...HEAD` prints `exit=1`. A change landed on `main` and absorbed is outside this criterion (E-SWB-10f).
+Control (E-SWB-10b): the same form with `6581cdccbb~1...6581cdccbb` in place of `main...HEAD` prints `exit=1`. Negative control for REQ-PRC-001-001 (E-SWB-10a): on a scratch fixture whose card branch appends a Class C line that contains an exempt-looking substring, the same form prints `exit=1`. A change landed on `main` and absorbed is outside this criterion (E-SWB-10f, E-SWB-10g).
 
 ### AC-PRC-001-003 — no locale copy of any page changes
 
@@ -172,7 +172,7 @@ Reading: each of the twelve files carries one line that matches E01. Under the r
 
 ### E-SWB-3 — pattern W01 over the twelve files
 
-Command: the same as E-SWB-2 with W01 in place of E01. Exit code: 0. Output: the same twelve lines, line for line (observed in this run). The mutant guard adds no match today and closes only the respelling route.
+Command: the same as E-SWB-2 with W01 in place of E01. Exit code: 0. Output: the same twelve lines, line for line (observed in this run). W01 is the pattern of the AC-PRC-001-001 inventory record; it adds no match today and closes only the respelling route of that record.
 
 ### E-SWB-4 — quiet verdict word, and the other umbrella families
 
@@ -235,16 +235,22 @@ GATE exemption: `grep -n -i -E "exempt|retire|notice|marker" <t1717 GATE spec.md
 
 Command: `git log --oneline -n 8 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 -- <P-ALL>`. Exit code: 0. Output: 6581cdccbb, a9859a2199, c5620da649, be5d56b8c5, 1f287c5791, 4716869503, 211defda4f, d97290ede2.
 
-### E-SWB-10 — controls (each runs its own AC command form on a named historical input) and mutant-probe observations
+### E-SWB-10 — controls (each runs its own command form on a named input) and mutant-probe observations
 
-Pin for the named inputs: every commit below is an ancestor of `2bcce5d9dc4c5f57bb98bcfa553e0061fa373681` except c8b12d827, a descendant of it on this branch.
+Pin for the named historical inputs: every commit below is an ancestor of `2bcce5d9dc4c5f57bb98bcfa553e0061fa373681` except c8b12d827, a descendant of it on this branch. The scratch fixtures of E-SWB-10a and E-SWB-10g are throwaway repositories outside the tree, built by two script files in the session scratch directory and run with the fixture as working directory; the acceptance command forms ran with their text unchanged. A fixture is not a commit of this repository: its identity is the SHAs recorded below, and its base file is `git show 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681:docs-site/content/ko/advanced/tokenomics-overview.md` (131 lines, the notice at line 112).
 
-- **E-SWB-10a (AC-PRC-001-001).** `git grep -n -E "<W01>" 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 -- docs-site/content/en/advanced/bas-navigator.md | rg -v -F -e "llm.team_mode: cg" -e "moai model profile"`. Exit 0. Output: `2bcce5d9dc4c5f57bb98bcfa553e0061fa373681:docs-site/content/en/advanced/bas-navigator.md:75:moai codemaps`. Positive control of the AC form at HEAD: `git grep -c -E "<W01>" HEAD -- <P-ALL>` prints the 12 lines of E-SWB-2 with `HEAD:` prefix.
+- **E-SWB-10a (AC-PRC-001-002, REQ-PRC-001-001: a card adds a Class C line that carries an exempt-looking substring).** Two fixtures, one four-element RED-now cell each. In both the card branch `card` forks from `main` and appends one line at line 132 of the page.
+  - Fixture f: `main` = b5e1f6a989cd1da0c4944192e3b080100f29f082, card tip = 4407d3a9ac47d6515d9e059a81139964a2a60e60, added line "Run `moai model profile` to inspect the resolved values." (a run instruction for the absent verb, containing the substring `moai model profile`).
+  - Fixture g: `main` = 4e93f969103e56719be4a041578fe1169133e676, card tip = 1e0853eb0494197558a96cd5e478b8c5e72eb138, added line "Run `moai  cg` now; migrate the `llm.team_mode: cg` configuration afterwards." (two spaces, and the substring `llm.team_mode: cg`).
+  - Command (the AC-PRC-001-002 form, single invocation): `git diff --quiet main...HEAD -- <P-ALL>`. Stdout: empty. Exit code: 1. Tree: the fixture card tip named above. The AC text form with `; echo "exit=$?"` printed `exit=1` on both. The same fixtures give AC-PRC-001-003's tokenomics form `docs-site/content/ko/advanced/tokenomics-overview.md` (exit 0 of the diff) and AC-PRC-001-005's form `1	0	docs-site/content/ko/advanced/tokenomics-overview.md`.
+  - The AC-PRC-001-001 inventory form on both fixtures prints the retained notice (line 112) and the added line (line 132); its count command prints `HEAD:docs-site/content/ko/advanced/tokenomics-overview.md:2`. The record therefore shows the added line. The withdrawn filtered form (a substring exemption on those two strings) printed nothing on fixture f with exit 1, as the plan-audit iteration 2 reproduced; that form was not re-run here and is no longer in this SPEC.
+  - Positive control of the AC-PRC-001-001 form at HEAD of this card (61e857c67f2b70b2cd3c83f4982481be0bff5dfa): the first command printed 12 lines (`wc -l` 12), the same twelve `file:line` hits as E-SWB-5; the count command printed the 12 lines of E-SWB-2 with the `HEAD:` prefix, each ending `:1` (exit 0 both).
 - **E-SWB-10b (AC-PRC-001-002).** `git diff --quiet 6581cdccbb~1...6581cdccbb -- <P-ALL>; echo "exit=$?"` prints `exit=1`. At the card tip, `git diff --quiet main...HEAD -- <P-ALL>; echo "exit=$?"` prints `exit=0`.
 - **E-SWB-10c (AC-PRC-001-003).** `git diff --name-only 6581cdccbb~1...6581cdccbb -- 'docs-site/content/*/multi-llm/model-policy.md'` prints `docs-site/content/en/multi-llm/model-policy.md` and `docs-site/content/ko/multi-llm/model-policy.md`.
 - **E-SWB-10d (AC-PRC-001-004).** `git diff --name-only c5620da649~1...c5620da649 -- . ':!<P-TOK>' ':!<P-IDX>' ':!<P-POL>' ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001' ':!.moai/reports/t1722'` prints 13 paths (en `advanced/token-budget.md`, en `claude-code/foundations/commands.md`, en `cost-optimization/prompt-caching.md`, and ten more in ja, ko, zh).
 - **E-SWB-10e (AC-PRC-001-005).** `git diff --numstat 4716869503~1...4716869503 -- <P-ALL>` prints `162	54	docs-site/content/en/multi-llm/_index.md`, `156	41	docs-site/content/ja/multi-llm/_index.md`, `141	39	docs-site/content/zh/multi-llm/_index.md`.
 - **E-SWB-10f (mutant e: a change landed on `main` and absorbed).** Stand-in without writing the tree: treat commit 2bcce5d9dc as `main` (it contains the change of 6581cdccbb) and c8b12d827 as the absorbing branch tip. `git diff --quiet 2bcce5d9dc...c8b12d827 -- 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"` prints `exit=0` (AC-PRC-001-002 form: not this card's contribution, so no failure). The absolute comparison to the older base, `git diff --quiet 6581cdccbb~1 c8b12d827 -- 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"`, prints `exit=1`, showing the change is really present in the tip and only the contribution form ignores it.
+- **E-SWB-10g (mutant h: a Class C line landed on `main` by another card and absorbed).** Fixture h: base = 4e93f969103e56719be4a041578fe1169133e676; `main` tip = 4bc60baa3f20c036d63d192a804b1abd69848b56 appends line 132 "Run `moai  cg` now."; the card tip b197775bb123aaf39de2425150f6e418844bdf91 is a no-fast-forward merge of that `main` into `card` and adds nothing of its own. Observed: AC-PRC-001-002 form, stdout empty, exit code 0 (the AC text form printed `exit=0`); AC-PRC-001-003 tokenomics form, no output; AC-PRC-001-005 form, no output; the AC-PRC-001-001 inventory prints lines 112 and 132 (count `:2`). No deciding criterion moves, and the record shows the line, which plan.md M1 records as a finding. This is the reading of spec.md (Requirements, closing paragraph).
 
 ## D. Gaps and residual risk
 
@@ -256,11 +262,11 @@ Pin for the named inputs: every commit below is an ancestor of `2bcce5d9dc4c5f57
 - **G4: other children.** SWEEPC to SWEEPF and FLAG have no SPEC on disk; whether one of them names these twelve files is unobserved.
 - **G5: no trial merge** with the README child or with any other branch.
 - **G6: parity gate and i18n rules document.** `bash scripts/docs-i18n-check.sh` was not run, and `.moai/docs/docs-site-i18n-rules.md` lines 61 and 65 were taken from the umbrella's E-24, not re-read.
-- **G7: decision board.** `moai decision read` was not queried for Q13, Q17, or Q-SWB-1; no claim is made that a board record does or does not answer them.
+- **G7: decision board.** This pass read the board scope `card:t1722` once (`moai decision read --scope card:t1722 --all`, exit 0, `board=ok unparseable=0 records=149`); it contains the two records the Gate cites. Verdict records of Q13 and Q17 in any other scope (the umbrella's, or another child's) were not queried, and no claim is made that a board record does or does not answer them. Q-SWB-1 is answered by the records cited in decision-index.md (Gate).
 - **G8: same-disposition across the model-policy locales** has no mechanical check; it is a reviewer read.
 - **G9: leased cards.** No queue or factory query was made. The overlap statement rests on the SPEC directories present in the worktrees (E-SWB-8, command B), which cannot show a card that has no SPEC yet.
 
-**Mutant probe** (observations in E-SWB-10; the mutants were not materialized as commits, so each result rests on the named historical input):
+**Mutant probe** (observations in E-SWB-10; rows (f), (g), and (h) rest on scratch fixtures, the others on a named historical input; no mutant was committed to this repository):
 
 | Mutant | Caught by | Observed |
 |--------|-----------|----------|
@@ -269,16 +275,17 @@ Pin for the named inputs: every commit below is an ancestor of `2bcce5d9dc4c5f57
 | (c) delete a retained line in one locale | AC-PRC-001-002, AC-PRC-001-003 | 10c lists the single changed locale copies |
 | (d) edit a page outside the twelve | AC-PRC-001-004 | 10d 13 paths |
 | (e) land a one-line change on `main` and absorb it | must NOT fail | 10f `exit=0` |
-| (f) add a Class C line (a run instruction for an absent verb) | AC-PRC-001-001 | 10a prints the line |
-| (g) respell `moai  cg` with two spaces | AC-PRC-001-001 (W01) | covered by the W01 form |
+| (f) add a Class C line (a run instruction for an absent verb), including one that contains an exempt-looking substring | AC-PRC-001-002 (also AC-PRC-001-003, AC-PRC-001-005) | 10a fixture f: AC-002 form exit code 1; AC-003 form lists the ko page; AC-005 form `1 0` |
+| (g) respell `moai  cg` with two spaces, or add a line that carries `llm.team_mode: cg` | AC-PRC-001-002 (also AC-PRC-001-003, AC-PRC-001-005) | 10a fixture g: AC-002 form exit code 1 |
+| (h) a Class C line lands on `main` by another card and is absorbed | must NOT fail | 10g fixture h: AC-002 exit code 0; AC-003 and AC-005 no output; the AC-001 record prints the line |
 
-Not closed: a respelling outside both patterns (a quoted verb name).
+Not closed: nothing inside the twelve files falls outside AC-PRC-001-002, which does not read the spelling of the changed line. The AC-PRC-001-001 record lists W01 matches only, so a respelling outside that pattern (a quoted verb name) would not show in it; the record decides nothing.
 
-**Residual risk:** a green result proves this card's diff touches none of the twelve files and adds no Class C line. It does not prove the retained notices are the right call (the ruling in decision-index.md, Gate), and it says nothing about the pages after another card edits them.
+**Residual risk:** a green result proves this card's diff touches none of the twelve files (AC-PRC-001-002) and therefore adds no Class C line. It does not prove the retained notices are the right call (the ruling in decision-index.md, Gate), and it says nothing about the pages after another card edits them.
 
 ## E. Definition of Done
 
-- The five criteria print their expected output at the tip and the deciding lines are carried into `.moai/reports/t1722/verdict.md` with the command and output.
+- The four deciding criteria (AC-PRC-001-002 to -005) print their expected output at the tip, the AC-PRC-001-001 inventory is recorded, and the deciding lines are carried into `.moai/reports/t1722/verdict.md` with the command and output.
 - The card closes as rationale recorded plus zero page changes; this card's diff touches none of the twelve files.
 - The state of Q13, Q17, and Q-SWB-1 is as decision-index.md (Gate) states; this file adds no second reading.
 - The umbrella's closing measurement is not part of this Definition of Done.

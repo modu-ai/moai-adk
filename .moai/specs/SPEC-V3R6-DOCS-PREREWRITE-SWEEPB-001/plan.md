@@ -68,8 +68,8 @@ The installed `moai` reports `moai_cp/20261007_195927-1888-g7705b365e2`, built 2
 
 The decided state is in decision-index.md (Gate; row Q-SWB-1). No milestone edits a page. The former edit milestones (Class C edit, Class N edit) are not applicable and are removed.
 
-- **M1 (Priority High): re-run the inventory.** On the run-start tree re-run the E01 inventory of §A.2. Any E01 match not in §A.2, by content, is a blocker report (return, do not edit). Record the run-start E01 count per file as evidence; it is not a criterion, and a lower count caused by a change landed on `main` is not this card's regression.
-- **M2 (Priority High): regression-guard verification.** Run the AC commands of acceptance.md §B from the card worktree root: this card's own diff touches none of the twelve files, nothing else outside the SPEC records, and no Class C line exists. Carry the deciding output into `.moai/reports/t1722/verdict.md`, not into scratch.
+- **M1 (Priority High): re-run the inventory.** On the run-start tree run the two commands of AC-PRC-001-001 (the inventory record) and compare the printed lines by content with §A.2. Any match not in §A.2 is a finding and a blocker report (return, do not edit); it fails no criterion, because the requirements bind this card's own diff, not the content the tree carries (spec.md, Requirements). Record the run-start count per file as evidence; it is not a criterion, and a lower count, or an added line, caused by a change landed on `main` is not this card's regression.
+- **M2 (Priority High): regression-guard verification.** Run the AC commands of AC-PRC-001-002 to -005 (acceptance.md §B) from the card worktree root: this card's own diff touches none of the twelve files (and so adds no Class C line) and nothing else outside the SPEC records. Carry the deciding output into `.moai/reports/t1722/verdict.md`, not into scratch.
 - **M3 (Priority Medium): sequencing re-check.** Re-run the overlap probes of acceptance.md E-SWB-8 on current `main` (SWEEPA's file list, any new child spec naming one of the twelve files). Under (b) a finding is recorded, not acted on.
 
 ## C. Risks
@@ -81,7 +81,7 @@ The decided state is in decision-index.md (Gate; row Q-SWB-1). No milestone edit
 
 ## D. Tests named, not run
 
-- No Go test exists or is added; no Go build or test was run in this plan phase. The checks are the commands in acceptance.md §B. Each RED-now observation and each control was run once against the pin or a named historical commit (acceptance.md §C). No green-path run exists, because nothing has been edited. Each control runs its own AC command form on a named historical input (acceptance.md E-SWB-10).
+- No Go test exists or is added; no Go build or test was run in this plan phase. The checks are the commands in acceptance.md §B. Each RED-now observation and each control was run once against the pin or a named historical commit (acceptance.md §C). No green-path run exists, because nothing has been edited. Each control runs its own AC command form on a named input, a historical commit or a scratch fixture (acceptance.md E-SWB-10).
 
 ## E. Open questions
 

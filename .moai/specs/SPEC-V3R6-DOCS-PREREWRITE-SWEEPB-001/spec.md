@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001
 title: "Docs Pre-Rewrite Cleanup — stale CLI citations on tokenomics-overview and two multi-llm pages (child SWEEPB, card t1722)"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -24,8 +24,9 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001]
 | 2026-10-19 | 0.1.0 | manager-spec | Initial plan-phase authoring for card t1722 (class C), child SWEEPB of the umbrella SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (card t1655, split 6 of 11, operator approval `d-20261014T060405Z-0fcd`). Every count below was measured on tree commit 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 in this pass. The structure follows the sibling child SWEEPA (card t1721) after its plan-audit iteration 1 (FAIL 0.69): the five blocking defects of that report are designed out here (edit unit defined once in plan.md §A.2; gate state stated once in decision-index.md; Class C and Class N separated; no requirement defers to a decision a stamp already makes; a byte-unchanged and hunk-containment criterion closes the emptied-page mutant). Status `draft`. |
 | 2026-10-19 | 0.2.0 | manager-spec | Revision before the plan audit, on the leader's instruction and the sibling's iteration-1 result (SWEEPA, FAIL 0.69, defects D2 and D3/D4). Withdrawn: the three `DEFAULT-APPLIED` stamps on Q13, Q17, and Q-SWB-1, because a planner default is not an operator verdict (umbrella plan.md §B). Q-SWB-1 is then decided (b) retain, on board record `d-20261018T201957Z-c26e`, so the requirements, milestones, and criteria are rewritten for zero page changes and the option (a) path is removed from them; Q13 and Q17 stay open with empty verdicts and no operand. The gate is stated once, in decision-index.md (Gate), with the milestone-to-row map; the revisability and stamp-effect paragraphs are removed, and the other files cite the Gate by row id. The measurement and the controls are unchanged; the criteria are reduced to regression-guards for zero page changes. Requirement count 4 and criterion count 5. Status stays `draft`. |
 | 2026-10-19 | 0.3.0 | manager-spec | Revision after plan-audit iteration 1 (FAIL 0.78, `.moai/reports/t1722/plan-audit.md`, audited 2227269ae0). D1: REQ-PRC-001-002 and -003 are rewritten as contribution obligations (this card's own diff touches none of the twelve files); the "byte-identical to the pin" and "keep its inventoried citation" wording is deleted; the absolute-count checks are removed from the criteria; the README child's removal of the two Korean lines is stated not to be a regression. D2: every criterion's control now runs its own command form on a named historical input. D3: the umbrella start rule is reconciled in decision-index.md (Gate) by board record `d-20261018T223420Z-7f98`, a judgment that the rule applies only to rows with an operand; it is not a verdict on Q13 or Q17. O1 to O4 and O6: restatements turned into pointers, decider named on the Q-SWB-1 verdict, option (a) leftovers removed, AC-001 given a positive control over a HEAD grep, the fact clause taken out of REQ-PRC-001-001. Requirement count 4, criterion count 5. Status stays `draft`. |
+| 2026-10-19 | 0.4.0 | manager-spec | Revision after plan-audit iteration 2 (FAIL 0.82, `.moai/reports/t1722/plan-audit-iter2.md`, audited 61e857c67f). D4 and D5, one reading (option A of the report, the lane's recorded judgment): REQ-PRC-001-001 is a contribution obligation, "this card adds no Class C line to any of the twelve files", and AC-PRC-001-002 decides it, because that criterion fails on any change to the twelve files whatever the changed line says. AC-PRC-001-001 is re-classed as a run-start inventory record on the HEAD tree: it decides no requirement and gates no change absorbed from `main`. Its substring exemption is removed, and the negative control moves to AC-PRC-001-002 on a scratch fixture that carries a Class C line containing an exempt substring (acceptance.md E-SWB-10a). D6: gap G7 is narrowed to the Q13 and Q17 verdict records, and its Q-SWB-1 wording now agrees with the Gate. O7 and O8: a revision note in the decision-index.md header, and "by this card" on the two sentences that keep the retained lines. Requirement count 4, criterion entries 5 (four deciding criteria and one inventory record). Status stays `draft`. |
 
-**Tier note.** Tier M: the 12 files sit in the 5 to 15 file band; no page is edited under the ruling; the umbrella assigned tier M to each child (umbrella spec.md, § Child SPECs). This SPEC carries 4 requirements and 5 acceptance criteria, under the Tier M ceilings of 16 and 16. No design.md or research.md is authored.
+**Tier note.** Tier M: the 12 files sit in the 5 to 15 file band; no page is edited under the ruling; the umbrella assigned tier M to each child (umbrella spec.md, § Child SPECs). This SPEC carries 4 requirements and 5 acceptance entries (four deciding criteria and one inventory record), under the Tier M ceilings of 16 and 16. No design.md or research.md is authored.
 
 ## Overview (WHY)
 
@@ -41,7 +42,7 @@ Measured state on tree 2bcce5d9dc (evidence in acceptance.md §C; per-line inven
 
 ## Scope (WHAT)
 
-Files this child covers (12; none is edited under the ruling on Q-SWB-1): `docs-site/content/{ko,en,ja,zh}/advanced/tokenomics-overview.md` and `docs-site/content/{ko,en,ja,zh}/multi-llm/{_index,model-policy}.md`.
+Files this child covers (12; this card edits none of them under the ruling on Q-SWB-1): `docs-site/content/{ko,en,ja,zh}/advanced/tokenomics-overview.md` and `docs-site/content/{ko,en,ja,zh}/multi-llm/{_index,model-policy}.md`.
 
 Terms, defined once here and used without restatement in the other artifacts:
 
@@ -56,7 +57,7 @@ Dispositions are owned by decision rows in decision-index.md: Q13 (delete or rep
 
 Each requirement below is a part of the umbrella's REQ-PRC-001 (page part). The umbrella identifier is not renumbered; the four-segment spelling is the lint-collectible form of the same requirement.
 
-- REQ-PRC-001-001: The twelve files **shall** contain no Class C line, that is, no line that instructs the reader to run an E01 or W01 match.
+- REQ-PRC-001-001: This card **shall** add no Class C line to any of the twelve files, that is, no line that instructs the reader to run an E01 or W01 match.
 - REQ-PRC-001-002: This card **shall** change none of the twelve files: the card's own diff against `main` (merge-base form, `main...HEAD`) touches none of them (Q-SWB-1, decision-index.md).
 - REQ-PRC-001-003: This card **shall** change no locale copy (ko, en, ja, zh) of any of the three pages, individually per page.
 - REQ-PRC-001-004: This card **shall** modify no file outside the twelve listed files, apart from this SPEC's own records and the card's evidence.
@@ -92,4 +93,4 @@ Each item is named so that a later change cannot claim it silently.
 ### Out of Scope — closing measurement and new prose
 
 - The umbrella's closing measurement (M6) and the GATE citation checker, including its exemption list.
-- Any edit of the twelve pages, and any new prose or translation. Under the ruling on Q-SWB-1 the retired-notice and history lines stay as written.
+- Any edit of the twelve pages, and any new prose or translation. Under the ruling on Q-SWB-1 this card leaves the retired-notice and history lines as written; that is not an obligation on a later change by another card, such as the README child's removal of the two Korean lines.
