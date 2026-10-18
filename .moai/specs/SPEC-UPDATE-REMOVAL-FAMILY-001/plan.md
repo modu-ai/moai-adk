@@ -3,6 +3,7 @@ id: SPEC-UPDATE-REMOVAL-FAMILY-001
 title: "implementation plan"
 version: "0.1.0"
 created: 2026-10-17
+updated: 2026-10-18
 ---
 
 # SPEC-UPDATE-REMOVAL-FAMILY-001 — 구현 계획

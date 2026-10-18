@@ -211,7 +211,24 @@ audit_ready: true
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+```yaml
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+sync_actor: manager-docs (card t1668)
+b12_self_test_a: pass — pre-emission grep `grep -c 'SPEC-UPDATE-REMOVAL-FAMILY-001' CHANGELOG.md` returned 0 (이번 실행 관측, exit 1 = 매치 없음) — 중복 엔트리 없음 확인 후 발행
+b12_self_test_b: pass — AC 카운터(acceptance.md, tier M 소스) live=6 declared 기준(AC-RC30-01/-02/-03/-11/-26/-27 제거 반쪽), 모호(identifier) 0. 참고: 기계 카운트는 7 — 일곱째 식별자 AC-RC30-28 은 파일 본문 자체가 t1642 소유 cross-reference 로 기재("G-28 계승 ... 소유 카드의 갭이다")한 것으로, [REF] 표지는 body 수정이라 manager-docs 금지 범위라 미표지. CHANGELOG 엔트리는 파일이 선언한 6 기준을 이름으로 참조(5 PASS + AC-RC30-01 deferred)하며 §E.3 ac_matrix 와 일치.
+b12_self_test_c: pass — 엔트리가 명명하는 5 경로 모두 `ls` 실측 존재 확인 (migrate_project_assets.go, update_template_sync.go, migrate_removal_backup_test.go, migrate_removal_switch_test.go, migrate_profile_reach_test.go — 이번 실행)
+changelog_entry_position: "[Unreleased] → Added 섹션 선두 bullet (Keep a Changelog 1.1.0 형식)"
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented → completed (merged close — 이 단일 sync 커밋이 3-phase close; 별도 Mx 커밋 없음)
+  plan_md: status 필드 없음 (Artifact Statelessness) — updated: 만 refresh
+  acceptance_md: status 필드 없음 (Artifact Statelessness) — updated: 만 refresh
+mx_tag_validation: read-only 검증 완료 — 신규 코드는 미Export 헬퍼 단일 호출자(pruneEmptiedSkillDir, backupRemovedAsset, verifyMigrationFinalState, migrationRunContext)로 ANCHOR 팬인 조건 미충족, goroutine/복잡도 ≥15 위험 패턴 없음, 추가·수정할 태그 없음 (소스 파일 수정은 manager-docs 금지 범위)
+commit_subject: "chore(SPEC-UPDATE-REMOVAL-FAMILY-001): 3-phase close (card t1668)" — full-ID exact-token 규정 준수
+```
+
+audit_ready: true
 
 ## §G Override and Refusal Record
 

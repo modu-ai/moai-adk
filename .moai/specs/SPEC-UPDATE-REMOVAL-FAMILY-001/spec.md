@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-REMOVAL-FAMILY-001
 title: "moai update removal family: gated project-side removal, backup-before-removal, emptied-directory pruning, and integrity-probe criterion (rc.30 split B)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-17
 updated: 2026-10-18
 author: "GOOS (via manager-spec, card t1668)"
