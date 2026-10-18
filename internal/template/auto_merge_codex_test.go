@@ -1069,7 +1069,7 @@ func TestAutoMergeWiresGuardAndGate(t *testing.T) {
 			files := idx(func(s amStep) bool { return s.ID == "files" })
 			review := idx(func(s amStep) bool { return s.ID == "review" })
 			merge := idx(func(s amStep) bool { return s.Name == amMergeName })
-			if !(head >= 0 && head < checks && checks < files && files < review && review < merge) || merge != len(wf.steps())-1 {
+			if head < 0 || head >= checks || checks >= files || files >= review || review >= merge || merge != len(wf.steps())-1 {
 				t.Fatalf("step order head=%d checks=%d files=%d review=%d merge=%d (of %d)", head, checks, files, review, merge, len(wf.steps()))
 			}
 		}},
