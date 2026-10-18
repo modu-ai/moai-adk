@@ -340,6 +340,55 @@ func flowRows() []tableRow {
 	}
 }
 
+// raceRows swaps the file under the verdict function's feet, at a seam variable
+// called inside the unregistered read, and requires that no byte outside the
+// project is read (delta-audit round 3, finding F-A). The swap runs on the verdict's
+// goroutine, so it reports through t.Errorf.
+func raceRows() []tableRow {
+	const rel = ".agents/skills/moai-table/swap.md"
+	row := func(name, stage, expected string, to func(root, out string) string) tableRow {
+		return tableRow{"race", name, expected, func(t *testing.T) string {
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			abs := filepath.Join(root, filepath.FromSlash(rel))
+			tbWrite(t, abs, "# inside\n")
+			tbWrite(t, filepath.Join(out, "f.md"), "# outside the project\n")
+			tbWrite(t, filepath.Join(root, "other.md"), "# another file inside\n")
+			swapped := false
+			prev := readWindowHook
+			t.Cleanup(func() { readWindowHook = prev })
+			readWindowHook = func(s, at string) {
+				if s != stage || swapped {
+					return
+				}
+				swapped = true
+				if err := os.Remove(at); err != nil {
+					t.Errorf("swap: remove %s: %v", at, err)
+				}
+				if err := os.Symlink(to(root, out), at); err != nil {
+					t.Errorf("swap: symlink %s: %v", at, err)
+				}
+			}
+			v := tbClassify(t, tbEnv(root, nil), rel, abs)
+			return tbVerdict(v, "# inside\n") + fmt.Sprintf(" swapped=%v", swapped)
+		}}
+	}
+	toOutside := func(_, out string) string { return filepath.Join(out, "f.md") }
+	toInside := func(root, _ string) string { return filepath.Join(root, "other.md") }
+	const escaped = "class=unregistered keep=symlink-escape read=none swapped=true"
+	return []tableRow{
+		row("target swapped for a link to an outside file between the boundary check and the read", "check-to-read", escaped, toOutside),
+		row("target swapped for a link to an outside file after the path was resolved, before it is opened", "resolve-to-open", escaped, toOutside),
+		row("control: target swapped for a link to ANOTHER INSIDE file is still judged by content", "check-to-read", "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", toInside),
+	}
+}
+
 func kindRows() []tableRow {
 	const content = "# a registered file\n"
 	reg := func(rel string) map[string]*manifest.FileEntry {
@@ -444,6 +493,7 @@ func TestPathBoundaryCounterexamples(t *testing.T) {
 	rows = append(rows, boundaryRows()...)
 	rows = append(rows, symlinkRows()...)
 	rows = append(rows, flowRows()...)
+	rows = append(rows, raceRows()...)
 	rows = append(rows, kindRows()...)
 	rows = append(rows, emptyRootRows()...)
 	for _, r := range rows {

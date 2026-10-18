@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -66,6 +67,36 @@ func TestMarkerCopyFailureFailsClosedWithoutResidue(t *testing.T) {
 		rep := backup.PruneBackups(root, -1, 0) // a negative keepCount removes nothing
 		if rep.Runs != 1 || rep.Unmanaged.Count != 0 {
 			t.Errorf("retention sees runs=%d unmanaged=%d, want 1 and 0: a failed claim must leave no unmanaged residue", rep.Runs, rep.Unmanaged.Count)
+		}
+	})
+
+	// The failure comes AFTER the marker file exists: the sibling is no longer empty,
+	// and removing it must still work (delta-audit round 3, finding F-B). The shared
+	// run directory must not be touched.
+	t.Run("FailureAfterTheMarkerFileWasCreatedLeavesNoSibling", func(t *testing.T) {
+		root, cfg, marker := collisionRun(t)
+		collisionPreserve(t, root, cfg, collisionGen("one"))
+		swapMarkerCopy(t, func(_, dst string) error {
+			if err := os.WriteFile(filepath.Join(dst, backup.RunMarkerName), nil, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return injected
+		})
+		dir, state, err := preservePriorManifest(root, cfg, collisionGen("two"))
+		if state != priorManifestFailed || !errors.Is(err, injected) {
+			t.Fatalf("got (%q, %v, %v), want a failed state carrying the injected error", dir, state, err)
+		}
+		if names := backupNames(t, root); !slices.Equal(names, []string{collisionStamp}) {
+			t.Errorf("backup directories %v remain, want only the intended %s (the sibling with its half-written marker must be removed)", names, collisionStamp)
+		}
+		if got := collisionCopy(t, cfg); got != string(collisionGen("one")) {
+			t.Errorf("the shared run directory's copy changed: %s", got)
+		}
+		if got, err := os.ReadFile(filepath.Join(cfg, backup.RunMarkerName)); err != nil || strings.TrimSpace(string(got)) != marker {
+			t.Errorf("the shared run directory's marker is %q (%v), want %q", got, err, marker)
+		}
+		if rep := backup.PruneBackups(root, -1, 0); rep.Runs != 1 || rep.Unmanaged.Count != 0 {
+			t.Errorf("retention sees runs=%d unmanaged=%d, want 1 and 0", rep.Runs, rep.Unmanaged.Count)
 		}
 	})
 

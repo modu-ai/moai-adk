@@ -388,10 +388,17 @@ func pathLeavesRoot(rootResolved, abs string) bool {
 	return !withinRootBoundary(root, resolved)
 }
 
+// readWindowHook is called inside the unregistered file's read, in the window
+// between the boundary check and the read ("check-to-read"). It is a variable only
+// so a test can swap the target for a link at that point and prove no byte outside
+// the project is read; no production path replaces it.
+var readWindowHook = func(stage, abs string) {}
+
 // classifyUnregistered judges a file the manifest has no entry for. It is
 // `unregistered` unless the prior generations prove all three evidence items.
 func classifyUnregistered(env ownershipEnv, rel, abs string) ownershipVerdict {
 	v := ownershipVerdict{class: ownershipUnregistered}
+	readWindowHook("check-to-read", abs)
 	data, err := os.ReadFile(abs)
 	if err != nil {
 		v.keep = keepReadFailed
