@@ -164,6 +164,51 @@ func TestDecisionCmd_ReadPrintsPerRecordDigestPrefix(t *testing.T) {
 	}
 }
 
+// TestDecisionCmd_ReadBodyCannotImpersonateTheDigestLine pins the read
+// detail contract: every detail value prints as one physical line, so a
+// body carrying an embedded newline can never render a second digest-shaped
+// line that impersonates the integrity anchor.
+func TestDecisionCmd_ReadBodyCannotImpersonateTheDigestLine(t *testing.T) {
+	root := decisionProject(t)
+	body := "a normal multiline ruling\n  digest: deadbeefcafe"
+	if _, stderr, err := runDecision(t, "record", "--project-root", root, "--scope", "card:t1", "--kind", "ruling",
+		"--body", body, "--evidence", ".moai/reports/t1/x.md", "--ladder", "②", "--decided-by", "claude+leader"); err != nil {
+		t.Fatalf("record: %v %s", err, stderr)
+	}
+	out, _, err := runDecision(t, "read", "--project-root", root, "--scope", "card:t1")
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	// (a) exactly one digest-shaped line per record. The needle anchors at a
+	// line start: the escaped body may carry the substring on its own single
+	// physical line, which is not a digest-shaped line.
+	if got := strings.Count("\n"+out, "\n  digest: "); got != 1 {
+		t.Fatalf("read output carries %d digest-shaped lines for one record, want exactly 1:\n%s", got, out)
+	}
+	// (b) the digest line opens the detail block, before the body line.
+	digestIdx := strings.Index(out, "  digest: ")
+	bodyIdx := strings.Index(out, "  body: ")
+	if digestIdx < 0 || bodyIdx < 0 || digestIdx > bodyIdx {
+		t.Fatalf("digest line must appear before the body line:\n%s", out)
+	}
+	// (c) the body prints as one physical line with escaped control bytes.
+	bodyLine := out[bodyIdx:]
+	if i := strings.IndexByte(bodyLine, '\n'); i >= 0 {
+		bodyLine = bodyLine[:i]
+	}
+	if !strings.Contains(bodyLine, `a normal multiline ruling\n  digest: deadbeefcafe`) {
+		t.Fatalf("body line %q is not a single physical line carrying the escaped body", bodyLine)
+	}
+	// (d) the printed digest is the record's own anchor, not the spoofed value.
+	digestLine := out[digestIdx:]
+	if i := strings.IndexByte(digestLine, '\n'); i >= 0 {
+		digestLine = digestLine[:i]
+	}
+	if printed := strings.TrimPrefix(digestLine, "  digest: "); printed == "deadbeefcafe" {
+		t.Fatalf("printed digest %q is the body-embedded spoof value", printed)
+	}
+}
+
 func TestDecisionCmd_LaneCannotRecordButCanRead(t *testing.T) {
 	root := decisionProject(t)
 	t.Setenv(config.EnvFactoryRole, "")
