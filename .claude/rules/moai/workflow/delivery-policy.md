@@ -15,6 +15,12 @@ plan, run, and sync.
    an explicitly configured `git-flow` `WT-*` integration branch merged into
    the designated local integration worktree; it is still pushed by
    `manager-git` only after the local merge and required checks.
+   Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route),
+   it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs
+   landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout
+   is the human and leader workspace and does not check out the integration branch.
+   Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree
+   are outside this sentence.
 3. `--pr` selects the PR route but never grants an early push. The route table
    records the base branch, owner, approval requirement, and final push target.
 4. A phase cannot infer a direct push from its Tier. If route metadata is

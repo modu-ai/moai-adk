@@ -306,6 +306,7 @@ The empty value — the shipped default — means take no action on both paths, 
 
 `moai doctor --check 'Worktree Base Branch'` reports the current comparison without writing anything, and distinguishes a plain mismatch (repaired by running the alignment) from an unresolvable value (repaired by correcting the setting). It reports metadata state only — worktrees already cut from the wrong base are not re-created by it.
 
+**Branch base for card and team worktrees.** A card or team worktree is created through the MoAI creation paths and branches from the named local ref of the integration branch, never from HEAD; `claude --worktree`, which branches from the remote default branch, is not used for it. This is a convention the creator confirms, not a check: creation can fall back to the invoking tree's HEAD when the configured base cannot be resolved, so confirm the new tree's HEAD after creation. The ref is read when the tree is created; the tree does not follow later moves of the branch.
 
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 
