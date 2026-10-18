@@ -237,8 +237,19 @@ func (l *Loader) loadWorkflowSection(dir string, cfg *Config) error {
 	wrapper := &workflowFileWrapper{Workflow: cfg.Workflow}
 	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
 	if err != nil {
-		slog.Warn("failed to load workflow config, using defaults", "error", err)
-		return nil
+		// A YAML type error in a card_age_alarm key must not fail the whole
+		// shared decode: it would revert every workflow setting —
+		// local_main_integration.enabled among them — to its default.
+		// decodeWorkflowWithoutAlarm re-decodes with the alarm block stripped
+		// (the cardAgeAlarmFile / factoryLeaseFile isolation pattern); any
+		// OTHER key's type error fails the stripped pass too and keeps the
+		// original warn-and-default fallback.
+		if recovered, ok := decodeWorkflowWithoutAlarm(dir, cfg.Workflow); ok {
+			wrapper, loaded = recovered, true
+		} else {
+			slog.Warn("failed to load workflow config, using defaults", "error", err)
+			return nil
+		}
 	}
 	if loaded {
 		if err := wrapper.Workflow.AgentTiers.Validate(); err != nil {
@@ -248,6 +259,63 @@ func (l *Loader) loadWorkflowSection(dir string, cfg *Config) error {
 		l.loadedSections["workflow"] = true
 	}
 	return nil
+}
+
+// decodeWorkflowWithoutAlarm is loadWorkflowSection's recovery pass
+// (card-review R2, SPEC-CARD-AGE-ALARM-001, the cardAgeAlarmFile /
+// factoryLeaseFile isolation pattern): it re-decodes workflow.yaml with the
+// card_age_alarm block removed from the workflow mapping, so a YAML type
+// error in an alarm key no longer fails the shared WorkflowConfig decode —
+// every other workflow key keeps the file's written value, and the removed
+// block is decoded in isolation instead. The isolated alarm decode degrades
+// to the seeded default with the established one-warning convention naming
+// workflow.card_age_alarm (the LoadCardAgeAlarm path). The ok return is false
+// when the failure is not alarm-caused — the file does not parse as a
+// workflow mapping at all, or any other key carries its own type error — and
+// the caller keeps its original warn-and-default fallback.
+func decodeWorkflowWithoutAlarm(dir string, seed WorkflowConfig) (*workflowFileWrapper, bool) {
+	path := filepath.Join(dir, "workflow.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
+	}
+	var doc map[string]yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, false
+	}
+	fileNode, ok := doc["workflow"]
+	if !ok || fileNode.Kind != yaml.MappingNode {
+		return nil, false
+	}
+	stripped := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	var alarmNode *yaml.Node
+	for i := 0; i+1 < len(fileNode.Content); i += 2 {
+		key, value := fileNode.Content[i], fileNode.Content[i+1]
+		if key.Value == "card_age_alarm" {
+			alarmNode = value
+			continue
+		}
+		stripped.Content = append(stripped.Content, key, value)
+	}
+	wrapper := &workflowFileWrapper{Workflow: seed}
+	docNode := &yaml.Node{
+		Kind: yaml.MappingNode, Tag: "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "workflow"},
+			stripped,
+		},
+	}
+	if err := docNode.Decode(wrapper); err != nil {
+		return nil, false
+	}
+	if alarmNode != nil {
+		if err := alarmNode.Decode(&wrapper.Workflow.CardAgeAlarm); err != nil {
+			slog.Warn("failed to decode card age alarm block, using defaults",
+				"path", path, "key", "workflow.card_age_alarm", "error", err)
+			wrapper.Workflow.CardAgeAlarm = seed.CardAgeAlarm
+		}
+	}
+	return wrapper, true
 }
 
 // loadStatuslineSection loads the statusline configuration section from statusline.yaml.

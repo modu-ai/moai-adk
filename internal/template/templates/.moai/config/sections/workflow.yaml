@@ -27,7 +27,7 @@ workflow:
         duration: 15m
         renew_interval: 5m
     # card_age_alarm: display-only work-item-age alarms on gate-waiting and
-    # stalled factory cards (SPEC-CARD-AGE-ALARM-001). Ships OFF; while
+    # stalled factory cards. Ships OFF; while
     # enabled is false the `moai factory status` output is unchanged. The four
     # bands are unmeasured chosen starting points, not recommendations — gate
     # waits are human-scale, working-card stalls machine-scale — and G1 exists
