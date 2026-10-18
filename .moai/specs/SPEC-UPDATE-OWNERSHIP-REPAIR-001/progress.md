@@ -2660,6 +2660,55 @@ grep-exit=1
 5. **실행하지 않은 것 (갭).** `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지, `-race`, Windows 에서의 시험 실행 (빌드와 vet 만), 다른 OS 에서의 대소문자 구분 파일시스템 실행 — 이 chunk 의 금지 범위이거나 CI/리더의 착지 재측정 몫이다.
 6. **착지 재측정이 볼 위험.** 이 카드의 시험은 `internal/cli` 에서 무겁다 (회귀 한 번 148초, 부하 평균 약 30). 패키지 전체 실행과 병렬 실행에서 시간 초과나 간헐 실패가 나타날 수 있다. 앞 chunk 에서 한 번 있었던 시계 초 의존 실패 (AC-OWR-14) 는 고쳤고, 이 chunk 의 시험은 처음부터 시계 독립으로 썼다. 이 chunk 의 새 시험 넷 모두 연속 5회 초록이다 (각 도착 셀).
 
+#### Chunk 5 (card-review fixes)
+
+코덱스 카드 리뷰(조언용, HEAD `7b758103d8`)의 P2 둘을 lane 이 코드로 확인했다. 둘 다 실제 결함이다. 규약은 앞 chunk 와 같다: 시험 커밋 A, 셀 기록 B, 수정 C. 셀은 저장한 출력 파일에서 스크립트로 옮겼다.
+
+**커밋 A `73e37d3832`** (시험만: `internal/cli/update/backup/restore_prior_manifest_test.go`, `internal/cli/update_prior_manifest_restore_test.go`, `internal/cli/migrate_ownership_restore_test.go`). 부하 평균 13.03 20.91 26.68.
+
+**발견 1 — `manifest.prior.json` 이 복원 때 `.moai/config` 로 복사된다 (이 카드가 만든 결함).** Backup 단계는 이 파일을 실행 백업 디렉터리 루트에 둔다. `RestoreMoaiConfigLegacy` 는 백업 루트 전체를 걸으며 `backup_metadata.json`, `.template-defaults`, 실행 표식, 비관리 설정 디렉터리만 건너뛰므로, 설정에 `sections/` 가 없던 프로젝트(백업에도 없음)에서는 이 파일이 `.moai/config/manifest.prior.json` 이 된다. `RestoreMoaiConfigRetained` 는 `sections/` 가 있으면 그 아래 YAML 만 걷고, 없으면 Legacy 로 넘어간다. 시험은 파일 이름 `manifest.prior.json` 을 리터럴로 적는다 (디스크에 실제로 쓰이는 이름을 고정; 수정이 쓰는 상수와 독립). 같은 이름이 하위 디렉터리에 있으면 사용자 내용이라 계속 복원해야 한다는 단언도 넣었다.
+
+RED 셀 (트리 `73e37d3832`, 작업 트리 깨끗). 명령 1 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/update/backup/ -run 'PriorManifest' -count=1 -v`, 종료 코드 1, 시험 로그 줄과 결과 줄만 (원문 순서):
+
+```text
+    restore_prior_manifest_test.go:73: manifest.prior.json from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreLegacySkipsPriorManifest (0.00s)
+    restore_prior_manifest_test.go:83: manifest.prior.json from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifest (0.00s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifest (0.00s)
+    restore_prior_manifest_test.go:107: manifest.prior.json from the backup root was copied into the config tree (stat err: <nil>)
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifest (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.165s
+FAIL
+```
+
+(`TestRestoreRetainedWithSectionsSkipsPriorManifest` 는 초록이다: `sections/` 가 있는 백업은 구멍이 없다 — 특성화로 남긴다.) 명령 2 (업데이트 전체 흐름, 설정에 `sections/` 없는 프로젝트) `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestUpdateDoesNotRestorePriorManifestIntoConfig$' -count=1 -v`, 종료 코드 1. 도달 대조군(새 사본이 생겼고 설정 파일이 복원됨)은 통과한 뒤의 단언이 붉다:
+
+```text
+    update_prior_manifest_restore_test.go:36: manifest.prior.json was copied into .moai/config by the update (stat err: <nil>)
+--- FAIL: TestUpdateDoesNotRestorePriorManifestIntoConfig (0.36s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.081s
+FAIL
+```
+
+**발견 2 — 제거 후보의 백업 사본이 실행 비트를 잃는다 (잠복: 제거 스위치는 운영에서 꺼져 있다).** `backupRemovedAsset` 가 모든 사본을 `defs.FilePerm` (0644) 으로 쓴다. AC-OWR-15 의 모드 절 `(i-mode)`, `(iii-mode)` 은 있었지만 픽스처에 실행 파일이 없어 볼 수 없었다. 픽스처에 실제 내장 템플릿의 실행 스크립트 `.claude/skills/moai-workflow-project/scripts/navigator-audit.sh` 를 등록된 managed 후보로 더하고 0755 로 만들었다 (사전 단언: 실행 전 모드가 755). 모드 절 둘이 보고되지 않던 구멍도 고쳤다: `(i-mode)`, `(iii-mode)` 이 이전에는 어느 서브 시험 묶음에도 속하지 않아 `(iv)` 로만 드러났다 — 이제 각각 `BackupCopyModes`, `RestoredModes` 로 보고된다. 변이 `BackupCopyLosesTheExecuteBit` 를 더했다.
+
+RED 셀 (같은 트리), 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemovedAssetBackupRestoreByteIdentical$' -count=1 -v`, 종료 코드 1, 모드 줄과 실패 줄만 (같은 문제 줄은 한 번):
+
+```text
+    migrate_ownership_restore_test.go:629: (i-mode) the backup copy of .claude/skills/moai-workflow-project/scripts/navigator-audit.sh has mode 644, the file had 755
+    migrate_ownership_restore_test.go:629: (iii-mode) the restored .claude/skills/moai-workflow-project/scripts/navigator-audit.sh has mode 644, it had 755
+--- FAIL: TestRemovedAssetBackupRestoreByteIdentical (6.91s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/BackupCopyModes (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/RestoredModes (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/DifferenceSentinel (0.00s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/SharedClockNamesJudgeTheSame (0.18s)
+    --- FAIL: TestRemovedAssetBackupRestoreByteIdentical/ExpectedSetMembersThatDiffer (0.08s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.655s
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
