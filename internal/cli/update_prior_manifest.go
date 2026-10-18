@@ -70,6 +70,14 @@ var priorManifestTempWrite = writePriorManifestTemp
 // priorManifestRename moves the temporary file onto its final name.
 var priorManifestRename = os.Rename
 
+// priorManifestMarkerCopy gives a new sibling run directory the run marker of the
+// directory it stands beside. Like the two observation points above it is a
+// variable only so a test can inject a failure; no production path replaces it.
+var priorManifestMarkerCopy = func(src, dst string) error {
+	copyRunMarker(src, dst)
+	return nil
+}
+
 // priorManifestWriter is how the Backup stage preserves the manifest. Its
 // default is writePriorManifest; a test wraps it to inject a failure.
 var priorManifestWriter = writePriorManifest
@@ -185,7 +193,7 @@ func claimPriorManifestDir(runDir string) (string, error) {
 			}
 			return "", fmt.Errorf("create run backup directory %s: %w", sibling, err)
 		}
-		copyRunMarker(runDir, sibling)
+		_ = priorManifestMarkerCopy(runDir, sibling)
 		return sibling, nil
 	}
 	return "", fmt.Errorf("no free sibling name for %s up to -%02d", runDir, priorManifestSiblingMax)
