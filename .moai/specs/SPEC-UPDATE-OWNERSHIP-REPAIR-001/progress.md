@@ -1763,6 +1763,212 @@ FAIL
 
 **SPEC 쪽 판정.** REQ-OWR-011 은 「명령 — 그것이 하는 모든 단계 — 은 어떤 파일이나 디렉터리도 만들거나 바꾸거나 지우지 않는다」 라고 쓴다. 잠금과 이진 설치는 그 문구를 어기는 현재 동작이므로 AC 를 약화하지 않고 (센티널에서 `.moai/` 를 면제하지 않고) 제품을 고치는 쪽을 택했다. 두 수정은 `update.go` 의 각각 한 줄이고 서로 별개의 커밋이라 리더가 따로 되돌릴 수 있다. 리더가 다른 판단을 하면: C2 를 되돌리면 AC-OWR-16 의 `.moai/` 줄이 다시 붉고, C3 를 되돌리면 `TestDryRunRunsNoBinaryUpdateStep` 만 붉다.
 
+**커밋 (M7).** A `2d6ec34053` (시험만) → B `0065cb21ed` (위 RED 셀) → C1 `4683bed8e0` (미리보기가 판정 함수를 부른다) → C2 `d09d66c6f9` (`--dry-run` 이 업데이트 잠금을 잡지 않는다) → C3 `4767df4de4` (`--dry-run` 이 이진 설치 단계에 닿지 않는다). C 뒤에 시험만 더한 커밋 둘이 있다: `96cdad896d` (아래 「센티널 강화」), `84eaf40383` (아래 「fail-closed 가장자리」). 최종 HEAD `84eaf4038328ce95403e7593504a8108b34cdf82`.
+
+**C1 — 운영 코드 변경.** `internal/cli/migrate_ownership_env.go` 신규 (`manifestView`, `viewOfManager`, `viewOfManifest`, `previewVerdicts`, `buildPreviewEnv`), `internal/cli/migrate_project_assets.go` (마이그레이션의 판정 환경 조립을 `newOwnershipEnv`/`ownershipEnvInputs` 로 옮김 — 프로필 원장을 읽는 `profile.ResolveLaunchProfileForProject` 호출은 같은 파일에 그대로 한 곳이고, 새 파일에는 프로필 심볼이 없다), `internal/cli/update_dryrun_preview.go` (자체 판정 `migrationRemovalCandidate` 삭제, `verdicts.removalEligible` 호출로 교체, 읽기 전용 로더 `update.LoadManifestReadOnly` 유지). 환경은 첫 질문에서 늦게 조립하고, 제거 스위치가 꺼져 있으면 (`removalEnabled &&` 가 앞서 거짓) 사용자 홈을 전혀 읽지 않는다. 홈, 번들 템플릿, 카탈로그, 사용자 매니페스트, 프로젝트 루트를 읽지 못하면 후보를 하나도 알리지 않는다 (제거를 짐작하지 않음).
+
+**C1 만 적용한 상태 (트리 `4683bed8e0`, 저장된 원문)** — 후보 비교는 초록이 되고 `.moai/` 와 이진 설치만 붉다:
+
+```text
+    migrate_ownership_preview_test.go:317: the dry run changed the tree (paths whose bytes, mode or directory mtime moved): [.moai/]
+    migrate_ownership_preview_test.go:345: the dry run changed the tree: [.moai/]
+    migrate_ownership_preview_test.go:356: the dry run changed the tree: [.moai/]
+--- FAIL: TestDryRunChangesNothingAndMatchesVerdict (9.33s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (2.54s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (2.13s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/SwitchOffAnnouncesNothing (1.45s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantOwnJudgmentIsCaught (2.26s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantCreateThenDeleteIsSeenByTheDigest (0.94s)
+    migrate_ownership_preview_test.go:425: a dry run called the binary installer 1 time(s)
+--- FAIL: TestDryRunRunsNoBinaryUpdateStep (0.01s)
+--- PASS: TestVerdictAndPreviewCodeHasNoWritableCalls (0.01s)
+--- PASS: TestUpdateDryRun_ZeroMutation (0.01s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/v2.16.0 (0.01s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/3.0.1 (0.01s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	11.018s
+FAIL
+```
+
+**최종 GREEN (트리 `84eaf4038328`, 작업 트리 깨끗, 부하 평균 `24.46 44.24 56.49`)**
+
+판정 명령 1 — `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestDryRunChangesNothingAndMatchesVerdict$' -count=1 -v`, 종료 코드 0:
+
+```text
+--- PASS: TestDryRunChangesNothingAndMatchesVerdict (8.70s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (1.18s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (1.28s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/SwitchOffAnnouncesNothing (1.63s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantOwnJudgmentIsCaught (2.52s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantRootProbeIsSeenByTheDigest (0.87s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantCreateThenDeleteIsSeenByTheDigest (1.21s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.135s
+```
+
+판정 명령 2 (가드) — `... -run '^TestUpdateDryRun_ZeroMutation$' ...`, 종료 코드 0:
+
+```text
+--- PASS: TestUpdateDryRun_ZeroMutation (0.01s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/v2.16.0 (0.01s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/3.0.1 (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.096s
+```
+
+같은 트리의 나머지 둘 — `... -run '^(TestDryRunRunsNoBinaryUpdateStep|TestVerdictAndPreviewCodeHasNoWritableCalls)$' ...`, 종료 코드 0:
+
+```text
+--- PASS: TestDryRunRunsNoBinaryUpdateStep (0.01s)
+--- PASS: TestVerdictAndPreviewCodeHasNoWritableCalls (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.012s
+```
+
+**연속 5회씩 (같은 트리, 각 실행의 종료 코드를 직접 읽음)**
+
+```text
+TestDryRunChangesNothingAndMatchesVerdict run 1 rc=0 top-pass=1 sub-pass=6 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	24.000s
+TestDryRunChangesNothingAndMatchesVerdict run 2 rc=0 top-pass=1 sub-pass=6 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	16.977s
+TestDryRunChangesNothingAndMatchesVerdict run 3 rc=0 top-pass=1 sub-pass=6 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	20.566s
+TestDryRunChangesNothingAndMatchesVerdict run 4 rc=0 top-pass=1 sub-pass=6 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	26.012s
+TestDryRunChangesNothingAndMatchesVerdict run 5 rc=0 top-pass=1 sub-pass=6 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	63.590s
+TestDryRunRunsNoBinaryUpdateStep run 1 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	2.153s
+TestDryRunRunsNoBinaryUpdateStep run 2 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	2.194s
+TestDryRunRunsNoBinaryUpdateStep run 3 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.438s
+TestDryRunRunsNoBinaryUpdateStep run 4 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.431s
+TestDryRunRunsNoBinaryUpdateStep run 5 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.456s
+TestVerdictAndPreviewCodeHasNoWritableCalls run 1 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.388s
+TestVerdictAndPreviewCodeHasNoWritableCalls run 2 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.386s
+TestVerdictAndPreviewCodeHasNoWritableCalls run 3 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.317s
+TestVerdictAndPreviewCodeHasNoWritableCalls run 4 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.146s
+TestVerdictAndPreviewCodeHasNoWritableCalls run 5 rc=0 top-pass=1 sub-pass=0 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	1.288s
+```
+
+**실제 운영 코드 변이 다섯 (트리 `96cdad896d` 기준, 임시 변경; 모두 되돌렸고 세 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL`; 명령은 `-run '^(TestDryRunChangesNothingAndMatchesVerdict|TestDryRunRunsNoBinaryUpdateStep|TestVerdictAndPreviewCodeHasNoWritableCalls)$' -count=1 -v` 의 줄 추림, 앞 여덟 줄)**
+
+- **Pa** `previewVerdicts.removalEligible` 가 판정 없이 항상 참 (미리보기가 제 판정을 안 쓰는 최악의 경우):
+
+```text
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .agents/skills/moai-custom-x/SKILL.md
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .agents/skills/moai-plan/SKILL.md
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/agents/moai/manager-git.md
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/skills/moai-custom/SKILL.md
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/skills/moai-ref-owasp-checklist/SKILL.md
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/skills/moai-workflow-tdd/SKILL.md
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .agents/skills/moai-custom-x/SKILL.md
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .agents/skills/moai-plan/SKILL.md
+```
+
+- **Pb** `previewReconciliation` 이 프로젝트 루트에 `probeCaseSensitiveFS(projectRoot)` 를 부름 (기준이 이름으로 든 변이):
+
+```text
+    migrate_ownership_preview_test.go:317: the dry run changed the tree (paths whose bytes, mode or directory mtime moved): [./]
+    migrate_ownership_preview_test.go:345: the dry run changed the tree: [./]
+    migrate_ownership_preview_test.go:356: the dry run changed the tree: [./]
+--- FAIL: TestDryRunChangesNothingAndMatchesVerdict (14.06s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (2.04s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (2.58s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/SwitchOffAnnouncesNothing (2.30s)
+    migrate_ownership_preview_test.go:526: writable call in verdict/preview code: update_dryrun_preview.go: previewReconciliation calls probeCaseSensitiveFS
+```
+
+- **Pc** `--dry-run` 이 업데이트 잠금을 다시 잡음 (C2 를 되돌린 것과 같다):
+
+```text
+    migrate_ownership_preview_test.go:317: the dry run changed the tree (paths whose bytes, mode or directory mtime moved): [.moai/]
+    migrate_ownership_preview_test.go:345: the dry run changed the tree: [.moai/]
+    migrate_ownership_preview_test.go:356: the dry run changed the tree: [.moai/]
+--- FAIL: TestDryRunChangesNothingAndMatchesVerdict (12.94s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (2.18s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (2.02s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/SwitchOffAnnouncesNothing (2.01s)
+FAIL
+```
+
+- **Pd** `buildPreviewEnv` 가 루트에 `.probe` 를 쓰고 지움:
+
+```text
+    migrate_ownership_preview_test.go:317: the dry run changed the tree (paths whose bytes, mode or directory mtime moved): [./]
+    migrate_ownership_preview_test.go:345: the dry run changed the tree: [./]
+--- FAIL: TestDryRunChangesNothingAndMatchesVerdict (20.10s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (2.77s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (2.95s)
+    migrate_ownership_preview_test.go:526: writable call in verdict/preview code: migrate_ownership_env.go: buildPreviewEnv calls os.WriteFile
+    migrate_ownership_preview_test.go:526: writable call in verdict/preview code: migrate_ownership_env.go: buildPreviewEnv calls os.Remove
+--- FAIL: TestVerdictAndPreviewCodeHasNoWritableCalls (0.01s)
+```
+
+- **Pe** `shouldSkipBinaryUpdate` 가 `--dry-run` 을 보지 않음 (C3 를 되돌린 것과 같다):
+
+```text
+    migrate_ownership_preview_test.go:443: a dry run called the binary installer 1 time(s)
+--- FAIL: TestDryRunRunsNoBinaryUpdateStep (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	16.343s
+FAIL
+```
+
+**센티널 강화 (정직 공개, 커밋 `96cdad896d`, 시험만).** Pd 를 처음 돌렸을 때 소스 스캔만 붉고 트리 해시는 초록이었다 — 프로젝트 루트 디렉터리 바로 아래에 만들었다 지운 파일이 루트 디렉터리 자신의 mtime 만 바꾸는데, M0 의 `ownTreeSnapshot` 이 루트(`.`)를 건너뛰어 그것을 기록하지 않았기 때문이다. 기준 본문은 정확히 그 변이(`probeCaseSensitiveFS(projectRoot)` 가 프로젝트 루트 mtime 을 바꾼다)를 이름으로 든다. 그래서 `DirMtime` 일 때 루트 자신의 모드와 mtime 을 `./` 항목으로 기록하게 고치고, 도우미 자기 시험 `TestOwnershipHelperTreeSnapshotSeesDirMtime` 에 루트 직속의 만들었다-지움 사례를 더했고, AC-OWR-16 시험에 그 변이(`MutantRootProbeIsSeenByTheDigest`)를 더했다. 이 강화는 C1-C3 뒤에 들어왔다: 강화된 센티널로 AC-OWR-16 을 다시 쟀고 (위 최종 GREEN 이 강화 뒤 값) 루트 mtime 은 실제 `--dry-run` 에서 움직이지 않는다. 위 Pb, Pd 의 `[./]` 줄이 강화 효과의 원문이다.
+
+**fail-closed 가장자리 (커밋 `84eaf40383`, 시험만).** `migrate_ownership_env.go` 의 범위가 85% 미만 (83.3%) 이어서 환경을 못 읽을 때 아무것도 알리지 않는 동작과 중첩 정리의 보호를 시험했다: `TestPreviewVerdictsFailClosed` (도달 대조군 — 모든 입력이 읽히면 알림; 홈 없음, 깨진 사용자 매니페스트, 풀리지 않는 프로젝트 루트, 매니페스트 없음 → 알림 없음; 환경은 한 번만 만들어 재사용), `TestViewOfManifestIsAReadOnlyCopy`, `TestPruneNestedEmptyDirGuards` (빈 디렉터리 제거, 내용 있는 디렉터리 유지, 루트 밖 빈 디렉터리 거절, 없는 디렉터리). 변이 둘을 돌렸다: Qb (중첩 정리가 루트 경계 검사를 버림) 는 붉다 (`migrate_ownership_env_test.go:176: pruned=true err=<nil>, want the directory outside the root refused`, `--- FAIL: TestPruneNestedEmptyDirGuards/RefusesAnEmptyDirectoryOutsideTheRoot`). Qa (깨진 사용자 매니페스트를 실패로 보지 않고 빈 매니페스트로 읽음) 는 **붉어지지 않았다 (`ok`)**: 빈 사용자 매니페스트는 어떤 대응물도 확인하지 못하므로 「실패 닫힘」 과 「빈 것으로 읽음」 이 이 입력에서 같은 결과(알림 없음)를 낸다 — 동등 변이이다. 그 서브 시험은 메커니즘이 아니라 결과를 단언한다.
+
+**회귀 (앵커된 이름 60개, 최종 트리 `84eaf40383`)** — 기준선 11 + chunk 1, 2 의 시험 + M5 둘 (`TestManagedOnlyEmptyDirsPruned`, `TestEmptyDirProvenanceVerdict`) + M6 둘 + M7 셋과 새 시험 셋 + 가드 (`TestUpdateDryRun_ZeroMutation`, `TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy`) + `shouldSkipBinaryUpdate` 의 기존 시험 넷; 이름 수는 `sort -u | wc -l` 로 60. 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<60개>)$' -count=1 -v -coverprofile=...`: `exit=0`, `top-level PASS=60 FAIL=0 SKIP=0`, `ok  	github.com/modu-ai/moai-adk/internal/cli	82.741s`. `internal/manifest` 의 `TestManifestRecordsDeployedVersion`: 직전 측정 (트리 `96cdad896d`) 에서 `--- PASS`.
+
+**범위가 좁은 구문 커버리지 (위 회귀 한 번의 프로필; 패키지 전체가 아니라 앵커된 60개만이므로 그 파일을 덮는 다른 시험은 세지 않는다)**
+
+```text
+migrate_ownership_emptydir.go 93.3% (84/90 statements)
+migrate_ownership_env.go 94.4% (34/36 statements)
+update_dryrun_preview.go 86.1% (31/36 statements)
+migrate_ownership_remaining.go 100.0% (67/67 statements)
+migrate_project_assets.go 82.8% (216/261 statements)
+update.go 35.7% (146/409 statements)
+```
+
+이 chunk 가 새로 만든 파일 넷은 모두 85% 이상이다. `migrate_project_assets.go` 와 `update.go` 는 대부분 이전에 있던 코드이고 이 60개 밖의 시험이 덮는 부분이 있어 85% 판정에 쓸 수 없다 (측정 갭; 패키지 전체 측정은 이 chunk 의 금지 범위이고 M10 과 CI 의 몫).
+
+**품질 (최종 트리 `84eaf40383`, 각 명령의 종료 코드 직접 읽음)**
+
+```text
+go build ./... exit=0
+GOOS=windows go build ./... exit=0
+gofmt -l exit=0 (출력 없음)
+go vet exit=0 (internal/cli, internal/manifest)
+GOOS=windows go vet ./internal/cli/ exit=0 (시험 파일 포함)
+golangci-lint run ./internal/manifest/ ./internal/cli/ exit=1:
+		fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --ret
+		           ^
+3 issues:
+* errcheck: 3
+```
+
+린트가 보고한 셋은 모두 이 chunk 가 만지지 않은 `internal/cli/factory_run_adopt.go` 의 기존 errcheck 이다 (chunk 2 기록과 같은 셋). chunk 3 파일에 대한 린트 지적은 0건이다 (`grep` 으로 chunk 3 파일명을 찾아 출력 없음을 확인).
+
+**하드 제약 확인 (최종 HEAD)**
+
+```text
+git log --oneline cdd72a814..HEAD --grep='(card t1865)' -- internal/config/protected_zone.go internal/config/userroots.go internal/profile   → 빈 출력, exit=0
+git log --oneline cdd72a814..HEAD --grep='(card t1865)' -- .moai/specs | wc -l                                                                    → 22 (양성 대조군)
+git diff --name-only cdd72a814..HEAD | grep -E "protected_zone|userroots|^internal/profile/"                                                      → none
+internal/cli/migrate_project_assets.go:40:var removalEnabled = false
+removalEnabled = true 를 대입하는 비시험 코드                                                                                                       → 없음 (grep exit 1)
+```
+
+**M7 정직한 회계 / 갭 / 잔여 위험**
+
+1. **C2, C3 는 `internal/cli/update.go` 의 제품 동작 변경이다.** M7 의 서술된 운영 파일 (`update_dryrun_preview.go`) 밖이다. REQ-OWR-011 의 「그 명령이 하는 모든 단계」 문구와 AC-OWR-16 의 센티널이 요구해서 했고, 한 줄씩이며 각각 별도 커밋이다. 되돌리면: C2 → `.moai/` 줄이 AC-OWR-16 에서 다시 붉다 (Pc), C3 → `TestDryRunRunsNoBinaryUpdateStep` 만 붉다 (Pe). 리더가 다른 판단을 하면 커밋 단위로 되돌릴 수 있다.
+2. **C2 의 부작용 (코드 읽기로 안 사실, 별도 시험 없음):** 다른 업데이트가 잠금을 들고 있는 동안에도 `--dry-run` 은 이제 `ErrUpdateLockHeld` 로 거절되지 않고 진행한다 (읽기만 하므로 해가 없으나 미리보기가 다른 실행의 중간 상태를 읽을 수 있다). 잠금 자체의 시험 (`acquireUpdateLock` 직접 호출) 은 영향이 없다.
+3. **C3 의 부작용:** `--dry-run` 은 더 이상 새 버전 확인 줄이나 이진 설치를 하지 않는다. 개발 빌드를 쓰는 기존 시험은 이 단계를 원래 건너뛰므로 영향이 없고, 릴리스 모양의 버전 시험은 위 새 시험뿐이다.
+4. **디렉터리 mtime 방식의 한계는 기준 본문이 이미 적은 것과 같다:** 모드만 바꿨다 되돌리는 쓰기와 프로젝트 밖(HOME 등) 으로의 쓰기는 이 센티널이 보지 못한다. 미리보기는 사용자 홈과 프로필 원장을 읽기만 한다 (쓰기 가능 호출 없음을 스캔이 지킨다).
+5. **미리보기가 보는 후보는 reconcile 계획의 `UserOwned` 중 공통 자산 청소 대상뿐이다** (`removalEnabled && isCommonAssetCleanTarget && 판정`). 판정이 제거 대상으로 보지만 계획이 `UserOwned` 로 분류하지 않는 파일은 알리지 않는다. 시험은 픽스처의 제거 대상이 전부 `UserOwned` 안에 있음을 먼저 단언한다 (이 픽스처에서는 성립); 다른 모양의 프로젝트에서 성립하는지는 측정하지 않았다.
+6. 판정의 `removal-eligible` 은 실행 시점 조건 (백업 사본 쓰기 성공, OS 읽기·삭제 오류) 을 포함하지 않는다 (spec.md § B). 그래서 미리보기가 알린 후보와 실제 제거 목록은 실행 때 백업이 실패하면 다를 수 있다 (REQ-OWR-016 이 그때 제거 0건).
+7. 제거 스위치가 운영에서 항상 꺼져 있으므로 (`removalEnabled = false`) 미리보기의 새 환경 조립은 운영에서 아직 한 번도 돌지 않는다; 시험 안에서만 스위치를 켠다.
+8. C2, C3 의 단계별 중간 결과(C1 직후와 C3 직후의 시험 출력)는 터미널에서 봤으나 파일로 저장하지 않았다. 그 상태의 증거는 위 Pc (C2 되돌림) 와 Pe (C3 되돌림) 변이 실행이다.
+9. 최종 GREEN 의 AC-OWR-16 판정 명령 1 은 `-count=1` 한 번과 별도 5회 반복이다. 이 머신의 부하 평균은 대략 24에서 90 사이였다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
