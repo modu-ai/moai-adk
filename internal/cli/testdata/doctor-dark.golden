@@ -61,6 +61,6 @@
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                           │
 │    10 ok, 9 warn, 0 fail                                                                                                                                     │
 │                                                                                                                                                              │
-│   Pass 33    Warn 12    Fail 0                                                                                                                               │
+│   Pass 34    Warn 12    Fail 0                                                                                                                               │
 │                                                                                                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
