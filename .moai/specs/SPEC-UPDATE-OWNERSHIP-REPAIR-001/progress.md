@@ -40,6 +40,31 @@ artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (5, Tier L) +
 
 추가로 발견해 고친 것: (X1) plan.md M4 가 `probeCaseSensitiveFS` 재사용을 지시했으나 design.md D-4 는 모드 프로브 없는 별칭 확정을 정했고 그 함수는 비시험 호출자가 없다 (L-9) — M4 를 design.md 와 맞췄다. (X2) 위 D2 의 문자열 스캔 공허. (X3) 기존 런치 원장 판정이 프로필 설정 디렉터리 항목을 stat 한다 (L-8) — 이 SPEC 이 더하지 않는 기존 접근이며 plan.md OQ-5 로 리더에게 올렸다.
 
+### Plan audit iteration 2 repair (2026-10-18, manager-spec, card t1865)
+
+- 입력: `.moai/reports/t1865/plan-audit-iter2.md` — FAIL, 점수 0.76 (Tier L 문턱 0.85), 차단 결함 N1-N5, 필수 백엔드 codex 실패, 감사 대상 SHA `3c334dfdd`. 이 수정판은 spec.md `0.3.0` — 요구사항 17 (REQ-OWR-017 추가), 인수 기준 21 (AC-OWR-21 추가). 리더 지시 두 건을 같은 커밋에 실었다: OQ-5 의 좁은 예외 (보드 판정, 2026-10-18) 와 Q2 = (가) 조건부 (보드 d-20261018T040918Z-def2; 설계 결정일 뿐, 사용자 보안 승인·실제 홈 접근 승인·Kickoff 사전 승인 아님). plan_artifact_hash 는 이 문서가 계산하지 않는다 (lane 이 커밋 뒤 런타임 `ComputeHash` 로 다시 계산한다).
+- 처리 원칙: 결함마다 이 트리 (`5fb8920ee`) 에서 자기 명령으로 확인한 뒤 고쳤고, 스무 개 넘는 기준 전체에 「가장 싼 변이」 점검을 돌려 같은 부류의 약점을 acceptance.md § M 표에 남겼다.
+
+| 결함 | 처분 | 근거와 수정 위치 |
+|------|------|-------------------|
+| N1 AC-OWR-08 이 `internal/profile`·도우미를 못 봄 | 고침 (확인됨) | `go list -deps ./internal/cli` = 모듈 안 142개, 여섯 핵심 패키지 포함 (§ L-11). `internal/profile` 이 갱신 경로에서 불린다 (`migrate_project_assets.go:185`, `update.go:693-698`, `update_participation.go:49`; § L-12). `GetProfileDir` 는 `profile.go:193` 내보낸 경로 생산 도우미. AC-OWR-08 을 도출한 호출 닫힘 전체, `internal/profile` 의 내보낸 식별자 전부, 상수 접기 뒤 토큰, 비상수 환경 변수 읽기, `internal/profile` 함수 단위 파일시스템 동사의 호출 지점 동결로 재설계. 스캔 변이 대조군 M-a ~ M-f. 접근 기록 시임 없음 → 조각난 경로 + 버림은 못 잡음을 한계 (1)(3) 과 수용 부채에 이름으로 기록. 카나리는 도우미 읽기를 관측한다는 약속을 철회 (atime 은 근거가 못 됨). design.md D-8, acceptance.md AC-OWR-08, decision-index.md 수용 부채 |
+| N2 이전 기록 출처값 미검증 | 고침 (확인됨) | `internal/template/deployer.go:265-267` 이 미등록 기존 파일을 `UserCreated` 로 기록 (관측). 출처 상수는 `internal/manifest/types.go:17-35` (§ L-15). REQ-OWR-002 와 spec.md § B 에 템플릿 관리 출처값 정의, AC-OWR-05 변이 (e)(f)(g) 와 운영 원천 경유 (h1)(h2), 이전 세대를 실제 상수로 만들도록 Given 수정. design.md D-2 |
+| N3 Backup 단계 → 마이그레이션 인계 미검증 | 고침 (확인됨) | 호출 경로: `update_template_sync.go:815-817`. 패키지 수준 `priorManifestWriter` 시임 (운영 쓰기 함수를 감싼 대역, 목적지에 디렉터리 충돌로 실패) 을 도입하고 AC-OWR-20 을 `runTemplateSyncWithProgress` 전체 흐름 (`--force`) 으로 재설계: 제거 0건, 사본 유지, 이유 `backup-failed`, 배포 계속, 사본 실패를 삼키는 변이, 쌍둥이 대조 (c). REQ-OWR-016 은 파일 바이트 사본 실패까지 포함해 「0건 제거」 로 엄격해짐 (리더 조건 2). design.md D-3 항목 3-5, plan.md M1b |
+| N4 AC-OWR-15 전체 트리 동일 불가 | 고침 (확인됨) | 전체 흐름이 `llm.yaml` 을 다시 쓰고 템플릿을 배포한다 (`update_migrate_test.go` 의 `TestMigrationIdempotent` 가 `ReadDeployMode == "local"` 단언). 단언을 복원 영역 R = {제거 파일, 매니페스트} 의 바이트 동일 + 스위치 끈 통제 실행 T0 와의 비교로 계산한 나머지 차이 집합 D ⊆ E 센티널로 재진술. 비정규 시작 매니페스트로 재직렬화 변이를 잡음 |
+| N5 버전 일치 건너뛰기 | 고침 (확인됨, 실측) | `update_template_sync.go:1239-1248`. overlay 탐침: 일반 실행 1 `skipped=false`, 일반 실행 2 `skipped=true`, `--force` 실행 `skipped=false`, 이어 일반 실행 `skipped=true` (§ L-13). 메커니즘 선택: 여러 번 실행하는 기준은 `--force` 헬퍼 `runUpdateFlowForced` + 건너뛰는 일반 재실행 사례 분리 + 도달 단언 (규칙 7: `skipped==false`, 새 `manifest.prior.json`, 양수 잔존 행, 쓸어낸 실행 수). 영향: AC-OWR-06, -09, -10, -14, -17, -18, -20, -21. REQ-OWR-012/-013 이 건너뛰기를 명시. 관문 변경은 범위 밖 (OQ-6, 리더에게). design.md D-10 |
+| N6 AC-OWR-08(b) 휘발 필드 | 고침 (확인됨) | 정규화 (임시 루트→`<ROOT>`, 백업 디렉터리 이름→`<RUN>`, 타임스탬프·`deployed_at`→`<TS>`) 를 먼저 단언하고 비교. 지워진 영역은 한계로 기록. design.md D-8 L3 |
+| N7 Q2 (가) 가 현장에서 바꾸는 것 | 고침 | decision-index.md Q2 (가) 와 plan.md OQ-2 에 「지금 현장 313개에는 아무것도 바꾸지 않는다 (증거는 (가) 이후 배포분에만 생김, 복사 폴백 거울은 등록되지 않음)」 와 (가) 가 바꾸는 것을 명시 (리더 지시의 잔여 진술) |
+| N8 REQ-OWR-005 의 OQ-5 예외 | 고침 (확인됨) | REQ-OWR-005 에 금지 동사 (open, read, enumerate, stat, walk, supply, write) 와 좁은 예외 하나 (`launchCandidateIsUsable` 의 `os.Stat`, `profile.go:439` — 카드 이전부터 있어 위반이 아님) 를 넣고, 새 호출 지점·다른 함수·파일·패키지는 예외 아님을 명시. AC-OWR-08 예외는 기준선의 한 행 (함수·`os.Stat`·개수 1), 변이 M-c (같은 함수에 둘째 `os.Stat`) 가 붉다. 리더 판정 (2026-10-18) 을 그대로 따름 |
+| N9 낡은 개수 | 고침 | plan.md: 인수 기준 21, 요구사항 17, 시험 파일 16개 (§ F 시험 열을 센 값), AC-OWR-01 ~ -21 |
+| N10 AC-OWR-17 분류 불일치 | 고침 | plan.md § G.1 의 남음 열에서 AC-OWR-17 을 뺐다 (축소 열에만) — decision-index.md 와 일치 |
+| N11 research.md 버전 | 고침 | research.md 를 `0.3.0` 으로 올리고 기록임을 한 줄 명시 |
+
+리더 조건 (Q2 (가)) 처리: (1) `deployed_version` 은 이번 실행이 배포한 항목에만, 채우기·추정 없음 (REQ-OWR-015, AC-OWR-06) (2) 원본 바이트 → `manifest.prior.json`, 백업 실패 시 0건 제거 (REQ-OWR-016, AC-OWR-20) (3) 원자성: `Save` 유지, 이전 세대도 임시 파일 + 이름 바꾸기, 손상 세대는 증거 없음 (design.md D-3 항목 2-3, AC-OWR-21 (a)(b)) (4) `priorManifestGenerations`=8 은 조회 한도, 기존 `PruneBackups(…, 5, …)` 와의 관계는 design.md D-3 항목 8, 보존 정책 파일 불변 (AC-OWR-21 (e)) (5) 옛 JSON·같은 버전 반복·다운그레이드 (REQ-OWR-017, AC-OWR-21 (c)(d)(f)) (6) 시험 목록은 AC-OWR-06, -20, -21 (7) 삭제·보호 완화·보안 권한·`removalEnabled`·t1702 가 섞인 항목 없음 — 해당 항목은 싣지 않았다.
+
+수정 중 발견해 같이 고친 것: (Y1) 종전 AC-OWR-03/-04 의 「변이」 는 서술뿐이라 시험이 붉음을 관측하지 못했다 — 변이 주입 대조 실행을 넣었다. (Y2) 보존 기준 (-02, -03, -04, -07, -14) 은 제거 암에 닿지 못해도 공허하게 통과했다 — 도달 대조군 (규칙 8) 을 넣었다. (Y3) AC-OWR-16 은 계획이 비거나 후보가 `UserOwned` 가 아니면 빈 집합끼리 같아졌다 — 사전 단언을 넣었다 (design.md D-9). (Y4) AC-OWR-06 의 사본 바이트 단언은 시작 매니페스트가 정규 모양이면 재직렬화 변이를 못 잡았다 — 비정규 모양으로 쓰도록 했다.
+
+잔여 (해결 못 한 것): Q2 는 결정되었으나 Kickoff 는 독립 계획 감사 뒤에 정한다. 접근 기록 시임이 없어 조각난 경로 + 버림 읽기는 감지 불가 (리더 수락 대기, decision-index.md 수용 부채). 일반 같은 버전 재실행의 복구 부재 (OQ-6, 리더에게). 보존 정책 센서스가 `manifest.prior.json` 에 미치는 효과는 미측정 (G-K).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-OWNERSHIP-REPAIR-001
 title: "implementation plan"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-18
 ---
 
@@ -9,7 +9,7 @@ created: 2026-10-18
 
 ## A. 컨텍스트
 
-카드 t1865, Class C, P1. 워크트리 `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865`, 브랜치 `WT-update-ownership-repair`, plan-phase 출발 HEAD `cdd72a814` (t1668 의 `e1e163320` 병합 포함). 근거 문서: spec.md (요구사항 16, 인수 기준 20), research.md (코드 조사), design.md (데이터 모델), decision-index.md (결정 지점), acceptance.md (판정 명령).
+카드 t1865, Class C, P1. 워크트리 `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865`, 브랜치 `WT-update-ownership-repair`, plan-phase 출발 HEAD `cdd72a814` (t1668 의 `e1e163320` 병합 포함). 근거 문서: spec.md (요구사항 17, 인수 기준 21), research.md (코드 조사), design.md (데이터 모델), decision-index.md (결정 지점), acceptance.md (판정 명령).
 
 개발 모드: RED-GREEN-REFACTOR (TDD). 모든 마일스톤은 실패하는 시험을 먼저 기록하고 (RED, 원문 출력 + 종료 코드 + 실패 이유 + 트리 SHA) 구현으로 닫는다. 제로 매치 셀렉터 (`[no tests to run]` + `ok`) 는 RED 도 PASS 도 아니다.
 
@@ -17,13 +17,13 @@ created: 2026-10-18
 
 | 근거 | 값 |
 |------|-----|
-| 인수 기준 수 | 20 — Tier M 상한 16 초과 (Tier L 상한 25 이내) |
-| 요구사항 수 | 16 — Tier M 상한 16 에 닿으며 데이터 모델 결정이 포함됨 |
-| 영향 파일 | 운영 코드 8~9 + 시험 14 = 22 개 안팎 (아래 § F 의 표) — Tier L 구간 (> 15) |
-| 규모 | 새 코드와 시험을 합쳐 1,000 줄을 넘길 것으로 본다 (판정 함수, 증거 해석, 빈 디렉터리 정리, 잔존 행 렌더, 시험 13개) |
+| 인수 기준 수 | 21 — Tier M 상한 16 초과 (Tier L 상한 25 이내) |
+| 요구사항 수 | 17 — Tier M 상한 16 초과 (Tier L 상한 25 이내), 데이터 모델 결정이 포함됨 |
+| 영향 파일 | 운영 코드 8~9 + 시험 16 = 24~25 개 안팎 (아래 § F 의 표) — Tier L 구간 (> 15) |
+| 규모 | 새 코드와 시험을 합쳐 1,000 줄을 넘길 것으로 본다 (판정 함수, 증거 해석, 빈 디렉터리 정리, 잔존 행 렌더, 시험 파일 16개 — § F 의 시험 열을 센 값) |
 | 구조 | 영속 매니페스트 데이터 모델 변경 (파일별 배포 버전, 이전 세대 보존) 과 네 곳의 소유권 판정 어휘 통합 |
 
-Tier L 의 plan-audit 통과 기준은 0.85 이다. 감사가 반복 상한에 닿으면 분할선은 M1b + M8 (증거 생산: 배포 버전 기록, 이전 매니페스트 보존, 복원 일치) 과 나머지 (판정, 보존 이유, 잔존 목록, 대소문자, 빈 디렉터리, commands) 사이이다. 이 분할은 decision-index.md Q2 가 어느 쪽으로 풀리든 성립한다. (나) 로 풀릴 때 접히는 것과 남는 것의 전체 목록은 § G.1.
+Tier L 의 plan-audit 통과 기준은 0.85 이다. 감사가 반복 상한에 닿으면 분할선은 M1b + M8 (증거 생산: 배포 버전 기록, 이전 매니페스트 보존, 복원 일치) 과 나머지 (판정, 보존 이유, 잔존 목록, 대소문자, 빈 디렉터리, commands) 사이이다. Q2 는 리더가 옵션 (가) 로 조건부 결정했다 (보드 d-20261018T040918Z-def2) — (가) 가 이 계획의 기록이다. 옵션 (나) 의 뺄셈 지도 (접히는 것과 남는 것의 전체 목록) 는 기록된 대안으로 § G.1 에 남는다.
 
 ## B. 알려진 문제와 트리 상태 (이번 실행 관측, HEAD `cdd72a814`)
 
@@ -37,7 +37,9 @@ research.md 가 근거와 좌표를 가진다. 계획에 직접 영향을 주는
 6. 소문자 `skill.md` 는 맵 조회에서 등록 키 `SKILL.md` 를 놓친다. 기존 이름 바꾸기 장치는 `.claude/skills` 의 배포되는 스킬만 덮는다.
 7. 기존 시험 11개가 이 트리에서 통과한다 (research.md B). 이 계획의 모든 마일스톤은 그 11개와 t1668 의 시험을 GREEN 으로 유지한다.
 8. 이 트리에 `internal/config/userroots.go` 는 없다. `internal/config/protected_zone.go` 는 있고 건드리지 않는다.
-9. 이 트리의 Go 소스에는 `claude-skills@` 문자열이 없다 (acceptance.md § L-7). 기존 런치 원장 판정이 프로필 설정 디렉터리 항목 자체에 `os.Stat` 한다 (`profile.go:439`, § L-8) — 내용은 열지 않는다. 프로필 무접근 검증 설계는 design.md D-8.
+9. 이 트리의 Go 소스에는 `claude-skills@` 문자열이 없다 (acceptance.md § L-7). 기존 런치 원장 판정이 프로필 설정 디렉터리 항목 자체에 `os.Stat` 한다 (`launchCandidateIsUsable`, `profile.go:439`, § L-8) — 내용은 열지 않는다. 이 한 호출만이 REQ-OWR-005 의 이름 붙은 예외이다 (리더 판정 OQ-5). 갱신 경로 호출 닫힘에는 `internal/profile` 이 있고 내보낸 경로 도우미 (`GetProfileDir` 등) 가 있다 (§ L-11, L-12). 프로필 무접근 검증 설계는 design.md D-8.
+12. 같은 버전의 일반 재실행은 조정 단계 앞에서 건너뛴다 (`update_template_sync.go:1239-1248`; 이번 실행 측정 § L-13). 여러 번 실행하는 기준은 `--force` 로 구동하고 도달을 단언한다 (design.md D-10).
+13. 리더 결정 d-20261018T040918Z-def2: Q2 = (가), 조건부, 설계 결정일 뿐 (사용자 보안 승인 아님, 실제 홈 접근 승인 아님, Kickoff 사전 승인 아님). (나) 뺄셈 지도는 기록된 대안이다.
 10. `probeCaseSensitiveFS` 는 비시험 호출자가 없다 (§ L-9). `moai update --dry-run` 전체 진입은 `update.go:361` 이고 기존 시험 헬퍼 `runDryRunUpdateInProject` 가 구동한다 (design.md D-9).
 11. 템플릿 commands 17개는 모두 frontmatter 에 `name:` 이 없고 `description:` 은 있다. 에이전트 12개는 모두 `name:` 이 있다 (§ L-3). 템플릿 감사 시험 (`commands_audit_test.go`) 이 요구하는 것은 `description` 과 `allowed-tools` 이다.
 
@@ -48,6 +50,7 @@ research.md 가 근거와 좌표를 가진다. 계획에 직접 영향을 주는
 - [ ] `go build ./...` 성공.
 - [ ] 기준선 시험 (research.md B 의 11개) GREEN: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestMigrationClassifiesUnregisteredMirrorCopy|TestMigrationKeepsSharedCopyUnderProfileReach|TestMigrationRemovesSharedCopyWithoutProfileReach|TestEmptiedSkillDirRemoved|TestMigrationBackupBeforeRemoval|TestMigrationDefaultKeepsConfirmedProjectCopy|TestMigrationRemovalGate|TestMigrationIdempotent|TestMigrationPreservesExistingMirrorEntries|TestRF2F3b_MigrationPreservesUntracked|TestPreviewOmitsRemovalCandidateWhileSwitchOff)$' -count=1 -v` — 쓸어낸 시험 수가 11 인지 확인한다. (이번 plan 실행 측정, 트리 `15db036a3`: 11 PASS, `ok ... 44.908s`, 종료 코드 0 — acceptance.md § L-4.)
 - [ ] `git status --short` 가 깨끗한지, `git rev-parse --short HEAD` 와 `git branch --show-current` 를 매 커밋 직전에 다시 읽는다.
+- [ ] 이 트리의 건너뛰기 관문 측정 재확인: 같은 픽스처에 일반 실행 1 은 건너뛰지 않고 일반 실행 2 는 건너뛴다 (acceptance.md § L-13). 여러 번 실행하는 모든 시험은 `--force` 헬퍼 `runUpdateFlowForced` 와 도달 단언(규칙 7)을 쓴다.
 - [ ] 시험 격리 확인: 새 시험은 `t.TempDir()` + `t.Setenv("HOME", …)` + `CLAUDE_CONFIG_DIR` 명시 지정, `profile.BaseDirOverride` 를 임시 디렉터리로 두고 복원한다 (`profileReachSandbox` 패턴, `migrate_profile_reach_test.go:29-40`). `TMPDIR` 는 `/private/tmp` 아래 카드 토큰이 없는 이름.
 
 ## D. 제약
@@ -63,7 +66,7 @@ research.md 가 근거와 좌표를 가진다. 계획에 직접 영향을 주는
 
 run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
-- AC-OWR-01 ~ -19 의 판정 명령 원문 출력과 종료 코드 (acceptance.md). 각 RED 셀: 명령, 원문 stdout, 종료 코드, 고정한 트리 SHA, 실패 이유.
+- AC-OWR-01 ~ -21 의 판정 명령 원문 출력과 종료 코드 (acceptance.md). 각 RED 셀: 명령, 원문 stdout, 종료 코드, 고정한 트리 SHA, 실패 이유.
 - 기준선 11개 + t1668 시험의 재실행 원문 (회귀 가드).
 - `go test -cover` — 터치한 패키지 (`internal/cli`, `internal/manifest`) 85% 이상.
 - `golangci-lint run internal/cli/... internal/manifest/...`, `go vet`, `gofmt -l`.
@@ -75,10 +78,10 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
 | 마일스톤 | 운영 코드 | 시험 |
 |----------|-----------|------|
-| M0 | — | `internal/cli/migrate_ownership_helpers_test.go` (공유 픽스처: 등록/미등록/수정/사용자 작성 파일, 이전 세대 매니페스트 빌더, 프로필 샌드박스와 카나리, 디렉터리 mtime 을 담는 트리 해시, 경로 지정 사용자 대응물 설치 도우미), `internal/cli/testdata/profile_token_baseline.txt` (프로필 경로 구성 토큰의 파일별 개수 — 손대지 않은 트리로 측정해 얼린 기준선 데이터) |
+| M0 | — | `internal/cli/migrate_ownership_helpers_test.go` (`runUpdateFlowForced` — `--force` 로 조정에 닿게 하고 `skipped` 와 새 `manifest.prior.json` 유무를 돌려줌; 공유 픽스처: 등록/미등록/수정/사용자 작성 파일, 이전 세대 매니페스트 빌더, 프로필 샌드박스와 카나리, 디렉터리 mtime 을 담는 트리 해시, 경로 지정 사용자 대응물 설치 도우미), `internal/cli/testdata/profile_callsite_baseline.txt` (프로필 심볼·토큰·`internal/profile` 안 파일시스템 동사의 (파일, 심볼) 별 호출 지점 개수 — `go list -deps ./internal/cli` 닫힘을 손대지 않은 트리로 측정해 얼린 기준선, 예외 행 하나 포함) |
 | M1a | `internal/cli/migrate_ownership.go` (신규: 분류, 처분, 이유 코드, `classifyOwnership`), `internal/cli/migrate_ownership_evidence.go` (신규: `provenanceSource` 인터페이스, 해석기 `provenanceEvidence`, 원천을 얻는 패키지 수준 변수), `internal/cli/migrate_project_assets.go` (판정 호출 교체) | `internal/cli/migrate_ownership_test.go`, `internal/cli/migrate_ownership_evidence_test.go` |
-| M1b | `internal/manifest/types.go`, `internal/manifest/manifest.go`, `internal/cli/update_prior_manifest.go` (신규: 이전 매니페스트 보존, 보존 실패 결과 전달, 이전 세대 원천 읽기), `internal/cli/update_template_sync.go` (호출 줄만: Backup 단계 보존 호출, 배포 단계 저장의 `Version`·`DeployedAt` 갱신 호출) | `internal/manifest/manifest_deployed_version_test.go`, `internal/cli/update_prior_manifest_test.go` |
-| M2 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (호출 줄) | `internal/cli/migrate_ownership_profile_test.go`, `internal/cli/migrate_ownership_noprofileaccess_test.go` |
+| M1b | `internal/manifest/types.go`, `internal/manifest/manifest.go`, `internal/cli/update_prior_manifest.go` (신규: `priorManifestWriter` 변수와 원자적 이전 매니페스트 쓰기, 보존 실패 결과 전달, 이전 세대 원천 읽기), `internal/cli/migrate_project_assets.go` (제거 암을 「후보 수집 → 전체 백업 확인 → 일괄 제거」 로 나눔; REQ-OWR-016), `internal/cli/update_template_sync.go` (호출 줄만: Backup 단계 보존 호출, 배포 단계 저장의 `Version`·`DeployedAt` 갱신 호출) | `internal/manifest/manifest_deployed_version_test.go`, `internal/cli/update_prior_manifest_test.go`, `internal/cli/update_prior_manifest_io_test.go` (AC-OWR-21) |
+| M2 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (호출 줄) | `internal/cli/migrate_ownership_profile_test.go`, `internal/cli/migrate_ownership_noprofileaccess_test.go` (심볼 단위 스캔 + 변이 대조군 + 정규화 카나리) |
 | M3 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (행 수집 호출), `internal/cli/update_template_sync.go` (렌더 호출 줄) | `internal/cli/migrate_ownership_remaining_test.go` |
 | M4 | `internal/cli/migrate_ownership.go` (별칭 확정: 파일시스템 모드 프로브 없이 관측된 동일성으로) | `internal/cli/migrate_ownership_case_test.go` |
 | M5 | `internal/cli/migrate_ownership.go`, `internal/cli/migrate_project_assets.go` (정리 단계 호출) | `internal/cli/migrate_ownership_emptydir_test.go` |
@@ -100,7 +103,8 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
 1. P0 (`mkdir -p /private/tmp/own-fixture-d1`) 를 실행한다. 기준선 시험 11개 + t1668 시험을 실행해 GREEN 원문을 progress.md § E.2 에 남긴다 (쓸어낸 수 확인).
 2. 공유 시험 헬퍼를 `migrate_ownership_helpers_test.go` 에 만든다: 상태별 파일 빌더 (등록 managed, 등록 user-modified, 등록 user-created, **내장 템플릿의 실재 경로에서 읽은 바이트로 만든 미등록 파일**, 템플릿 바이트와 다른 출처 불명 파일), 이전 세대 매니페스트 빌더, 프로필 샌드박스 (`CLAUDE_CONFIG_DIR` 지정/해제) 와 카나리 프로필 디렉터리 빌더 (세 상태), 경로를 지정하는 사용자 대응물 설치 도우미, 트리 해시 계산 (경로 + 바이트 + 모드 + **디렉터리 mtime**, 런 백업 디렉터리 제외 옵션; 실행 전에 모든 디렉터리 mtime 을 고정 과거 시각으로 맞추는 도우미).
-3. 프로필 경로 구성 토큰의 기준선을 측정해 `testdata/profile_token_baseline.txt` 에 얼린다 (손대지 않은 트리, 측정 명령과 트리 SHA 를 파일 머리에 적는다). 이 트리에서 파일 19개가 해당한다 (acceptance.md § L-10).
+3. 프로필 호출 지점 기준선을 측정해 `testdata/profile_callsite_baseline.txt` 에 얼린다 (손대지 않은 트리, 측정 명령과 트리 SHA 를 파일 머리에 적는다): `go list -deps ./internal/cli` 닫힘 (이 트리 142개 패키지, § L-11) 의 비시험 파일에서 `internal/profile` 내보낸 식별자 호출 지점·문자열 토큰·상수 아닌 환경 변수 읽기를 (파일, 심볼) 별로 세고, `internal/profile` 안에서는 함수 단위 파일시스템 동사 호출을 센다. 이름 붙은 예외 행 하나 (`launchCandidateIsUsable` · `os.Stat` · 1) 를 기준선에 표시한다. 종전 19개 파일 토큰 기준선 (§ L-10) 은 정보로 남는다.
+3a. `runUpdateFlowForced` 를 만든다 (`--force`, `runTemplateSyncWithProgress` 의 `skipped` 와 실행 백업의 새 `manifest.prior.json` 유무를 돌려줌). 건너뛰기 관문 측정 (§ L-13) 을 progress.md § E.2 에 재기록한다.
 4. 헬퍼는 실제 홈을 읽거나 쓰지 않는다. 임시 HOME 만.
 
 산출물: 기준선 원문, 공유 헬퍼, 기준선 데이터. 터치 파일: 시험 1개 + 데이터 1개.
@@ -115,12 +119,13 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
 **M1b — 배포 버전 기록, 이전 매니페스트 보존, 이전 세대 원천 (decision-index.md Q2 (가) 확인 뒤)**
 
-1. RED: `TestManifestRecordsDeployedVersion` (`internal/manifest`), `TestPriorManifestRetainedInRunBackup`, `TestPriorGenerationSourceBoundedAndTolerant` (AC-OWR-06 (a)(b)(c)), `TestPriorManifestWriteFailureBlocksRemoval` (AC-OWR-20).
-2. GREEN: `FileEntry` 에 `deployed_version` (omitempty), `Track` 이 배포 바이너리 버전을 기록, 갱신의 배포 단계 저장에서 매니페스트 수준 `Version` 을 갱신하고 `DeployedAt` 은 `Version` 이 바뀔 때만 갱신 (`recordTemplateTree` 와 같은 자리, `update_template_sync.go:672-673`; design.md D-3), Backup 단계가 시작 시점 매니페스트를 `<runDir>/manifest.prior.json` 으로 보존하고 그 성공 여부를 실행 문맥에 넘긴다 (실패이면 제거 차단, REQ-OWR-016, design.md D-3 항목 3). 이전 세대 원천 (최근 순으로 최대 `priorManifestGenerations` 개) 을 `update_prior_manifest.go` 에 만들어 M1a 의 패키지 수준 변수에 꽂는다.
+1. RED: `TestManifestRecordsDeployedVersion` (`internal/manifest`), `TestPriorManifestRetainedInRunBackup`, `TestPriorGenerationSourceBoundedAndTolerant` (AC-OWR-06 (a)(b)(c)), `TestBackupFailureRemovesNothingThroughProductionPath` (AC-OWR-20, 전체 흐름), `TestPriorManifestAtomicWriteFailures`, `TestPriorGenerationCorruptIsNoEvidence`, `TestLegacyManifestRoundTrip`, `TestDowngradeDropsEvidenceNotSafety`, `TestPriorGenerationsAreLookupBoundOnly` (AC-OWR-21), 그리고 AC-OWR-05 (h) 의 운영 원천 두 건.
+2. GREEN: `FileEntry` 에 `deployed_version` (omitempty) — 이번 실행이 배포한 항목에만 찍고 배포하지 않은 항목은 채우지도 지우지도 않는다 (재추적 경로 보존), 갱신의 배포 단계 저장에서 매니페스트 수준 `Version` 을 갱신하고 `DeployedAt` 은 `Version` 이 바뀔 때만 갱신 (`recordTemplateTree` 와 같은 자리, `update_template_sync.go:672-673`; design.md D-3 항목 1-2; 저장은 기존 `Save` 의 임시 파일 + 이름 바꾸기). Backup 단계가 시작 시점 매니페스트의 **원본 바이트**를 `<runDir>/manifest.prior.json` 으로 **임시 파일 + 이름 바꾸기로** 보존하고 (`priorManifestWriter` 변수 경유) 그 성공 여부를 실행 문맥에 넘긴다. 마이그레이션 제거 암은 「후보 수집 → 모든 바이트 사본과 매니페스트 사본 확인 → 일괄 제거」 로 나뉘어, 어느 백업이든 실패하면 그 실행의 제거가 0건이다 (REQ-OWR-016, design.md D-3 항목 3-5). 이전 세대 원천 (최근 순으로 최대 `priorManifestGenerations` 개) 을 `update_prior_manifest.go` 에 만들어 M1a 의 패키지 수준 변수에 꽂는다.
 3. 호환: `deployed_version` 이 없는 기존 항목은 읽기에서 그대로 유효하다 (기존 동작 유지). 증거 부족은 미등록 파일의 `managed` 승격만 막는다.
-4. Q2 가 (나) 로 풀리면 M1b 전체를 접는다 — 접히는 것과 남는 것의 전체 목록은 § G.1.
+4. Q2 는 (가) 로 결정되었다 (이 계획의 기록). (나) 였다면 M1b 를 접었을 것이다 — 그 기록된 대안의 목록은 § G.1.
+5. 보존 기간: `priorManifestGenerations` (8) 는 조회 한도일 뿐이다. 이 마일스톤은 삭제·정리·보존 기간 단축을 더하지 않고 `internal/cli/update/backup/` 를 건드리지 않는다 (design.md D-3 항목 8, AC-OWR-21 (e)).
 
-산출물: AC-OWR-01 ~ -06, -20 GREEN. 터치 파일: 위 표.
+산출물: AC-OWR-01 ~ -06, -20, -21 GREEN. 터치 파일: 위 표.
 
 ### M2 — 프로필 도달 유지 이유 — Priority High
 
@@ -177,7 +182,7 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 
 ### M9 — 반복 갱신 멱등과 중도 중단 복구 — Priority High
 
-1. RED: `TestRepeatedUpdateIsIdempotent` (AC-OWR-17: 실행 1, 2, 3 뒤 트리 해시와 잔존 행이 같다), `TestInterruptedMigrationRecoversAndConverges` (AC-OWR-18). 중단 모사는 운영 코드에 시험용 끼어들기를 넣지 않고 픽스처로 한다: (a) 둘째 파일의 백업 디렉터리를 쓸 수 없게 만들어 부분 진행을 만든다, (b) 매니페스트를 실행 전 바이트로 되돌려 저장 전 중단을 모사한다, (c) 정리된 빈 디렉터리를 다시 만들어 정리 전 중단을 모사한다. 복구 후 재실행은 중단 없는 실행의 최종 상태와 같아야 한다.
+1. RED: `TestRepeatedUpdateIsIdempotent` (AC-OWR-17: 실행 2·3 은 `--force`, 도달 단언, 건너뛰는 일반 재실행 사례 분리), `TestInterruptedMigrationRecoversAndConverges` (AC-OWR-18). 중단 모사는 운영 코드에 시험용 끼어들기를 넣지 않고 픽스처로 한다: (a) 둘째 파일의 백업 디렉터리를 쓸 수 없게 만들어 부분 진행을 만든다, (b) 매니페스트를 실행 전 바이트로 되돌려 저장 전 중단을 모사한다, (c) 정리된 빈 디렉터리를 다시 만들어 정리 전 중단을 모사한다. 복구 후 재실행은 중단 없는 실행의 최종 상태와 같아야 한다.
 2. GREEN: 대부분 M1-M5 가 닫는다. 남는 차이만 고친다 (예: 되살아난 매니페스트 항목, 남은 빈 디렉터리).
 
 산출물: AC-OWR-17, -18 GREEN.
@@ -188,15 +193,15 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 2. `go test -cover` (터치한 패키지 85% 이상), `golangci-lint run`, `go vet`, `gofmt -l`.
 3. 결과를 progress.md § E.2 에 기록하고 § E.3 을 작성한다.
 
-### G.1 Q2 = (나) 일 때의 뺄셈 지도 (감사 D6)
+### G.1 Q2 = (나) 일 때의 뺄셈 지도 — 기록된 대안 (감사 D6)
 
-(나) 는 아래 "접힘" 열을 제거하고 "축소" 열을 줄이는 것만으로 성립해야 한다. "남음" 열은 손대지 않는다. 이 표는 decision-index.md Q2 의 결과 목록과 같은 내용이며, 어느 쪽이 바뀌면 다른 쪽을 같이 고친다.
+**Q2 는 (가) 로 결정되었다 (리더, 보드 d-20261018T040918Z-def2, 2026-10-18). 이 계획의 기록은 (가) 이며 이 표는 (나) 였을 때의 뺄셈을 기록으로만 남긴다.** (나) 는 아래 "접힘" 열을 제거하고 "축소" 열을 줄이는 것만으로 성립해야 한다. "남음" 열은 손대지 않는다. 이 표는 decision-index.md Q2 의 결과 목록과 같은 내용이며, 어느 쪽이 바뀌면 다른 쪽을 같이 고친다.
 
 | 구분 | 요구사항 | 인수 기준 | 마일스톤·코드 |
 |------|----------|-----------|----------------|
-| **접힘 (삭제)** | REQ-OWR-015, REQ-OWR-016 | AC-OWR-06, AC-OWR-20 | M1b 전체: `deployed_version` 필드, 매니페스트 수준 `Version`/`DeployedAt` 갱신, `manifest.prior.json`, 이전 세대 원천 읽기 (`update_prior_manifest.go`), 보존 실패 전달 |
-| **축소** | REQ-OWR-010 → 파일 바이트 사본 반쪽만. REQ-OWR-008 → "이번 실행이 비운" 반쪽만 (t1668 의 `pruneEmptiedSkillDir` 가 이미 한다). REQ-OWR-013 → "비어 있는 관리 디렉터리가 남지 않음" 절은 이번 실행이 비운 것에 한정 | AC-OWR-15 → 매니페스트 사본 단언 제외. AC-OWR-13 → 사례 A·C 삭제, B·D·E·F 는 t1668 코드에 대한 회귀 가드 (새 코드 없음). AC-OWR-18 → 하위 사례 (c) 삭제, (a)(b) 남음. AC-OWR-17 → `DeployedAt` 갱신 변이 삭제 | M5 접힘 (새 코드 없음, 시험은 B·D·E·F 가드로 남김). M8 → 파일 바이트 일치만 |
-| **남음 (함수 수준 포함)** | REQ-OWR-001, 002, 003, 004, 005, 006, 007, 009, 011, 012, 014 | AC-OWR-01, 02, 03, 04, **05 (증거를 시험이 직접 공급하는 함수 수준 — M1a 의 해석기가 필요로 하는 코드는 M1a 에 있으므로 남는다)**, 07, 08, 09, 10, 11, 12, 14, 16, 17, 19 | M0, M1a, M2, M3, M4, M6, M7, M9, M10 |
+| **접힘 (삭제)** | REQ-OWR-015, REQ-OWR-016 (매니페스트 사본 반쪽; 파일 바이트 사본 실패 시 일괄 보존은 남음), REQ-OWR-017 | AC-OWR-06, AC-OWR-20 (매니페스트 사본 하위 사례), AC-OWR-21, AC-OWR-05 (h) | M1b 전체: `deployed_version` 필드, 매니페스트 수준 `Version`/`DeployedAt` 갱신, `manifest.prior.json`, 이전 세대 원천 읽기 (`update_prior_manifest.go`), 보존 실패 전달 |
+| **축소** | REQ-OWR-010 → 파일 바이트 사본 반쪽만. REQ-OWR-008 → "이번 실행이 비운" 반쪽만 (t1668 의 `pruneEmptiedSkillDir` 가 이미 한다). REQ-OWR-013 → "비어 있는 관리 디렉터리가 남지 않음" 절은 이번 실행이 비운 것에 한정 | AC-OWR-15 → 매니페스트 사본 단언 제외. AC-OWR-13 → 사례 A·C 삭제, B·D·E·F 는 t1668 코드에 대한 회귀 가드 (새 코드 없음). AC-OWR-18 → 하위 사례 (c) 삭제, (a)(b) 남음. AC-OWR-17 → `DeployedAt` 갱신 변이 삭제 (AC-OWR-17 은 **축소** 열에만 있다 — 남음 열에서 뺐다, 감사 N10) | M5 접힘 (새 코드 없음, 시험은 B·D·E·F 가드로 남김). M8 → 파일 바이트 일치만 |
+| **남음 (함수 수준 포함)** | REQ-OWR-001, 002, 003, 004, 005, 006, 007, 009, 011, 012, 014 | AC-OWR-01, 02, 03, 04, **05 (a)-(g) (증거를 시험이 직접 공급하는 함수 수준 — M1a 의 해석기가 필요로 하는 코드는 M1a 에 있으므로 남는다)**, 07, 08, 09, 10, 11, 12, 14, 16, 19 | M0, M1a, M2, M3, M4, M6, M7, M9, M10 |
 
 **(나) 의 운영자 가시 결과**: 현장 증상 (5) 중 이전 실행이 비워 둔 빈 디렉터리 3개는 운영에서 정리되지 않는다. 현장 증상 (6) 의 양성 경로 (증거 완비 파일이 managed 로 판정됨) 는 운영에서 도달할 수 없고 함수 수준에서만 시험된다. 이 둘은 (나) 를 고르는 순간 카드 범위 항목 (5)·(6) 의 일부가 의도적으로 미이행이 된다는 뜻이다.
 
@@ -215,15 +220,19 @@ run 단계 종료 시 progress.md §E.2 에 다음을 원문으로 기록한다.
 - 313개를 기본 출력에 모두 찍는 것 (운영자 ruling d-20261012T221654Z-9ced).
 - 운영 코드에 중단용 끼어들기(훅)를 넣는 것 — 중단 모사는 픽스처로 한다.
 - 제거 스위치를 운영 경로에서 켜거나 기본값을 바꾸는 것.
+- 여러 번 실행하는 기준을 `--force` 없이 같은 버전으로 돌려 건너뛴 실행을 통과로 읽는 것 (design.md D-10, 규칙 7).
+- 이전 세대를 최종 이름에 직접 쓰거나 손상 세대를 증거로 읽는 것, 이번 실행이 배포하지 않은 항목에 `deployed_version` 을 채우는 것 (REQ-OWR-015, -017).
+- 보존 정책 변경이나 새 삭제로 이전 세대를 정리하는 것 (REQ-OWR-017).
 - `git add -A`, 브랜치 상태 변경, 다른 트리 (t1668, 1차 체크아웃) 편집.
 
 ## I. 열린 항목
 
 - OQ-1: 프로필 지도 프로젝트에서 "대응 파일 해시 일치가 이전/보존을 가른다"는 리더 문장과 DECIDED 옵션 (c) 사이의 해석. **리더 판정 2026-10-18 로 닫혔다**: 보수적 읽기 — 프로필 루트는 읽지 않고, 프로필 쪽 상태는 `not-checked` 로 기록하며, 프로필 지도 사본은 무조건 보존한다 (decision-index.md Q5).
-- OQ-2: Q2 (배포 버전 기록과 이전 매니페스트 보존) 운영자 확인. 확인 전에도 M1a-M7, M9-M10 은 진행 가능하다.
+- OQ-2: Q2 는 리더가 옵션 (가) 로 조건부 결정했다 (보드 d-20261018T040918Z-def2, 2026-10-18; 설계 결정일 뿐 사용자 보안 승인·실제 홈 접근 승인·Kickoff 사전 승인 아님). 운영자 가시 잔여 진술 (감사 N7): (가) 는 지금 현장의 `.agents/skills` 313개 파일의 판정을 **바꾸지 않는다** — 증거는 (가) 가 들어온 뒤 배포되는 파일에 대해서만 생기고, 복사 폴백 거울은 애초에 매니페스트에 등록되지 않는다 (design.md D-5). (가) 가 바꾸는 것: 이후 실행이 배포하는 항목에 배포 버전이 찍히고, 매니페스트 수준 `Version` 이 갱신되며, 실행 백업마다 `manifest.prior.json` 이 하나 생기고, 백업이 실패한 실행은 파일을 제거하지 않는다.
 - OQ-3: 복사 폴백 거울을 배포 시점에 기록하는 배포기 변경은 이 SPEC 밖이다 (spec.md § J). 이 변경이 없으면 `.agents/skills` 복사본은 영구히 미등록 보존이다.
 - OQ-4: commands 의 "이전 제외 ↔ 재배포" 가 재현되지 않을 경우의 처리 (M6). 같은 버전과 낡은 기록 두 변형을 모두 돌린 뒤에만 "재현 안 됨" 으로 닫는다.
-- OQ-5 (리더에게): 기존 런치 원장 판정이 프로필 설정 디렉터리 항목 자체에 `os.Stat` 한다 (`profile.go:439`). 이 SPEC 은 그 접근을 더하지도 바꾸지도 않으며 "프로필 루트" 를 `skills`·`agents` 하위로 읽는다 (spec.md § B). 리더 제약의 "어떤 종류의 접근도 없음" 이 이 기존 stat 까지 포함한다고 읽는다면 그 접근을 없애는 일은 Q1 의 매핑 판정을 바꾸는 별개 카드이다.
+- OQ-5: **리더 판정으로 닫혔다 (2026-10-18)**: 기존 `os.Stat` (`launchCandidateIsUsable`, `profile.go:439`) 는 카드 이전부터 있어 REQ-OWR-005 위반이 아니라 「이 카드가 더하지 않는 기존 접촉」 이다. 예외는 좁게 쓴다: (1) 이 SPEC 은 그 함수를 새로 부르지도 동작을 바꾸지도 않는다, (2) AC-OWR-08 의 스캔 예외는 그 **한 함수의 한 호출** 이름이며 (심볼 + 파일:줄) 파일 전체나 패키지 전체가 아니다, (3) 그 함수나 다른 프로필 접촉 심볼의 **새 호출 지점**은 스캔을 붉게 한다 (같은 함수를 한 번 더 부르는 변이 M-c 가 붉다). 정의는 spec.md § B, 요구사항은 REQ-OWR-005.
+- OQ-6 (리더에게): 같은 버전의 일반 재실행은 조정 단계 앞에서 건너뛴다 (`update_template_sync.go:1239-1248`; 이번 실행 측정 § L-13). 그래서 복구 (REQ-OWR-013) 와 빈 디렉터리 정리의 이전 실행 사례는 `--force` 나 템플릿·버전 변화가 있는 실행에서만 닿는다. 이 SPEC 은 관문을 바꾸지 않는다 (범위 밖; 바꾸려면 `versionMatchSkipsSync` 를 다루는 별도 마일스톤·카드가 필요하다). 일반 재실행도 복구해야 한다고 판단하면 그 별개 카드를 연다.
 
 ## J. 교차 참조
 
