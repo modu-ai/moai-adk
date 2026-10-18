@@ -461,6 +461,24 @@ func factoryLaneRequiresGitTree(root string) error {
 	return fmt.Errorf("factory lane launch: refused — %s is not a git working tree, and a lane session needs the git repository it will carry cards for (run the lane inside the project checkout)", root)
 }
 
+// refuseLiveLegacyPeerRun is the REQ-RNC-022 run boundary: a LIVE legacy
+// record in the run's broker database refuses the launch/join/adopt with the
+// retire-and-relaunch message; a dead legacy row is stale and blocks
+// nothing. Shared by enterSelectedFactoryRun (the T1 pre-check) and
+// adoptExplicitLeaderRun (the classify-to-write window re-check, sync-audit
+// F1) so the refusal text and the predicate stay one definition.
+func refuseLiveLegacyPeerRun(root, runID string) error {
+	value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, runID)
+	if err != nil {
+		return err
+	}
+	if !live {
+		return nil
+	}
+	return fmt.Errorf("factory run %s holds live legacy record %q from a binary before the leader/lane rename — "+
+		"end its sessions, retire with 'moai factory runs --retire %s', then relaunch", runID, value, runID)
+}
+
 // enterSelectedFactoryRun resolves the run a lane joins or a leader starts.
 // timing, when non-nil, records the active-run resolution step of the codex
 // lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012); the
@@ -493,11 +511,8 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool, timing *
 	// REQ-RNC-022 run boundary: a LIVE legacy record in the run's broker
 	// database refuses the launch/join with the retire-and-relaunch message.
 	// A dead legacy row is stale and blocks nothing.
-	if value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, runID); err != nil {
+	if err := refuseLiveLegacyPeerRun(root, runID); err != nil {
 		return func() {}, err
-	} else if live {
-		return func() {}, fmt.Errorf("factory run %s holds live legacy record %q from a binary before the leader/lane rename — "+
-			"end its sessions, retire with 'moai factory runs --retire %s', then relaunch", runID, value, runID)
 	}
 	restore := captureEnvState(config.EnvFactoryRunID)
 	_ = os.Setenv(config.EnvFactoryRunID, runID)

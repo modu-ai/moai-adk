@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -49,9 +50,15 @@ func seedAdoptEntryRun(t *testing.T, runID, backend string, live bool, laneCapac
 	if err := db.RecordRun(context.Background(), run); err != nil {
 		t.Fatalf("record run %s: %v", runID, err)
 	}
-	for _, card := range []struct{ id, state string }{{"c-1", "run"}, {"c-2", "blocked"}} {
-		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,updated_at) VALUES(?,?,?,?)`,
-			runID, card.id, card.state, "2026-10-14T00:00:00Z"); err != nil {
+	// The cards carry non-default version and evidence_path values, so a
+	// mutant that writes cards diverges on the discriminating fields the
+	// cards snapshot compares (sync-audit F2).
+	for _, card := range []struct{ id, state, evidence string }{
+		{"c-1", "run", ".moai/reports/" + runID + "/card-c-1.md"},
+		{"c-2", "blocked", ""},
+	} {
+		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,version,evidence_path,updated_at) VALUES(?,?,?,?,?,?)`,
+			runID, card.id, card.state, 3, card.evidence, "2026-10-14T00:00:00Z"); err != nil {
 			t.Fatalf("insert card %s: %v", card.id, err)
 		}
 	}
@@ -78,7 +85,10 @@ func installAdoptEntryEnv(t *testing.T, root string) *factoryLaunchCapture {
 }
 
 // adoptCardsSnapshot renders the run's card rows as one string so a
-// byte-identical before/after pair proves the adopt touched no card.
+// byte-identical before/after pair proves the adopt touched no card. Every
+// selected column is compared — version and evidence_path included (the
+// sync-audit F2 finding: a snapshot that drops selected columns lets a
+// card-writing mutant pass the byte-identical assertion).
 func adoptCardsSnapshot(t *testing.T, root, runID string) string {
 	t.Helper()
 	db, err := homestate.OpenFactory(root)
@@ -99,7 +109,7 @@ func adoptCardsSnapshot(t *testing.T, root, runID string) string {
 		if err := rows.Scan(&cardID, &owner, &state, &version, &evidence, &updated, &stage); err != nil {
 			t.Fatalf("cards snapshot scan: %v", err)
 		}
-		b.WriteString(cardID + "|" + owner + "|" + state + "|" + stage + "|" + updated + "\n")
+		b.WriteString(cardID + "|" + owner + "|" + state + "|" + strconv.Itoa(version) + "|" + evidence + "|" + stage + "|" + updated + "\n")
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatalf("cards snapshot rows: %v", err)
@@ -355,6 +365,121 @@ func TestExplicitFactoryRunAdoptRefusals(t *testing.T) {
 		}
 		if got := adoptEventCount(t, root, "adopt-race", "run.started") + adoptEventCount(t, root, "adopt-race", "run.resumed"); got != eventsBefore {
 			t.Errorf("events changed across the refused adopt: %d -> %d", eventsBefore, got)
+		}
+		if n := adoptRunsCount(t, root); n != 1 {
+			t.Errorf("runs rows = %d, want 1", n)
+		}
+	})
+}
+
+// AC-FLAC-004 (sync-audit F1) — the codex-led and live-legacy-peer refusals
+// are re-applied INSIDE the classify-to-write window of the deliberate
+// adopt. enterSelectedFactoryRun applies both before the adopt (the T1
+// checks), but the window is wide: a backend flip to codex, or a legacy-peer
+// registration, can land between the fresh classification and the adoption
+// write — and the stamp the compare-and-set checks did not change, so
+// without a re-check the takeover would adopt a run its guards refuse.
+func TestExplicitFactoryRunAdoptReappliesWindowRefusals(t *testing.T) {
+	t.Run("backend-flip-in-window", func(t *testing.T) {
+		root := seedAdoptEntryRun(t, "adopt-flip", "claude", false, 1)
+		cardsBefore := adoptCardsSnapshot(t, root, "adopt-flip")
+		prod := classifyNamedRun
+		classifyNamedRun = func(ctx context.Context, root, runID string) (homestate.RunOwner, error) {
+			owner, err := prod(ctx, root, runID)
+			if err != nil {
+				return owner, err
+			}
+			// The competing writer flips the run's backend to codex between
+			// classification and write; the stamp is untouched, so a bare
+			// compare-and-set would still match.
+			db, openErr := homestate.OpenFactory(root)
+			if openErr != nil {
+				return owner, openErr
+			}
+			defer func() { _ = db.Close() }()
+			if _, err := db.DB.Exec(`UPDATE runs SET lead_backend='codex' WHERE run_id=?`, runID); err != nil {
+				return owner, err
+			}
+			return owner, nil
+		}
+		t.Cleanup(func() { classifyNamedRun = prod })
+
+		c := installAdoptEntryEnv(t, root)
+		err := runAdoptEntry(t, "-f", "--factory-run", "adopt-flip")
+		if err == nil {
+			t.Fatal("the adopt proceeded over a run whose backend flipped to codex inside the window; want the refusal")
+		}
+		if !strings.Contains(err.Error(), "codex") {
+			t.Errorf("refusal %q does not name the codex-led refusal", err.Error())
+		}
+		if c.args != nil {
+			t.Errorf("the launch seam was called on a refused adopt")
+		}
+		if status, backend, pid, start, _ := adoptRunRow(t, root, "adopt-flip"); status != "active" || backend != "codex" || pid != 99999999 || start != "gone-before-explicit" {
+			t.Errorf("row after refused adopt = (%s, %s, %d, %s), want the competing writer's (active, codex, 99999999, gone-before-explicit)", status, backend, pid, start)
+		}
+		if n := adoptEventCount(t, root, "adopt-flip", "run.resumed"); n != 0 {
+			t.Errorf("run.resumed events = %d, want 0", n)
+		}
+		if after := adoptCardsSnapshot(t, root, "adopt-flip"); after != cardsBefore {
+			t.Errorf("cards changed across the refused adopt")
+		}
+		if n := adoptRunsCount(t, root); n != 1 {
+			t.Errorf("runs rows = %d, want 1", n)
+		}
+	})
+
+	t.Run("legacy-peer-in-window", func(t *testing.T) {
+		root := seedAdoptEntryRun(t, "adopt-peerw", "claude", false, 1)
+		cardsBefore := adoptCardsSnapshot(t, root, "adopt-peerw")
+		prod := classifyNamedRun
+		classifyNamedRun = func(ctx context.Context, root, runID string) (homestate.RunOwner, error) {
+			owner, err := prod(ctx, root, runID)
+			if err != nil {
+				return owner, err
+			}
+			// A legacy peer registers inside the window: the broker gains a
+			// LIVE record the messaging layer refuses to address alongside
+			// this leader.
+			s, openErr := factorymsg.Open(root, runID)
+			if openErr != nil {
+				return owner, openErr
+			}
+			p := factorymsg.Peer{
+				ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: "claude",
+				Role: "worker", Slot: "worker-2", Generation: 1,
+				PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint(),
+			}
+			if _, err := s.RegisterLaunchPending(context.Background(), p); err != nil {
+				_ = s.Close()
+				return owner, err
+			}
+			_ = s.Close()
+			return owner, nil
+		}
+		t.Cleanup(func() { classifyNamedRun = prod })
+
+		c := installAdoptEntryEnv(t, root)
+		err := runAdoptEntry(t, "-f", "--factory-run", "adopt-peerw")
+		if err == nil {
+			t.Fatal("the adopt proceeded over a run that gained a live legacy peer inside the window; want the refusal")
+		}
+		for _, want := range []string{"worker-2", "adopt-peerw"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("refusal %q lacks %q", err.Error(), want)
+			}
+		}
+		if c.args != nil {
+			t.Errorf("the launch seam was called on a refused adopt")
+		}
+		if status, backend, pid, start, _ := adoptRunRow(t, root, "adopt-peerw"); status != "active" || backend != "claude" || pid != 99999999 || start != "gone-before-explicit" {
+			t.Errorf("row after refused adopt = (%s, %s, %d, %s), want unchanged (active, claude, 99999999, gone-before-explicit)", status, backend, pid, start)
+		}
+		if n := adoptEventCount(t, root, "adopt-peerw", "run.resumed"); n != 0 {
+			t.Errorf("run.resumed events = %d, want 0", n)
+		}
+		if after := adoptCardsSnapshot(t, root, "adopt-peerw"); after != cardsBefore {
+			t.Errorf("cards changed across the refused adopt")
 		}
 		if n := adoptRunsCount(t, root); n != 1 {
 			t.Errorf("runs rows = %d, want 1", n)

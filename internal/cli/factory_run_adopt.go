@@ -143,15 +143,27 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, backend string, warn i
 // adoption write lands it on the runs row in the same transaction as the
 // stamp (plan-audit D1).
 //
-// The codex-led and live-legacy-peer refusals are NOT re-implemented here:
-// enterSelectedFactoryRun already applies both as errors before this point,
-// and REQ-FLAC-004's abort is this write's own refusal (the owner changed
-// between classification and write, so the compare-and-set misses) returning
-// unchanged — nothing minted, nothing modified; the first write of the launch
-// is still recordLeaderRunStart, which this precedes.
-func adoptExplicitLeaderRun(root, runID, backend string) (string, error) {
+// The codex-led and live-legacy-peer refusals are re-applied INSIDE the
+// classify-to-write window (sync-audit F1): enterSelectedFactoryRun applies
+// both before the adopt, but the window is wide — a backend flip to codex,
+// or a legacy-peer registration, can land between the fresh classification
+// and the write, and the stamp the compare-and-set checks did not change, so
+// a bare CAS would adopt a run its guards refuse. REQ-FLAC-004's abort is
+// any of these refusals (or the compare-and-set miss — the owner changed
+// between classification and write) returning unchanged — nothing minted,
+// nothing modified; the first write of the launch is still
+// recordLeaderRunStart, which this precedes.
+func adoptExplicitLeaderRun(root, runID, backend string) (adopted string, err error) {
 	owner, err := classifyNamedRun(context.Background(), root, runID)
 	if err != nil {
+		return "", err
+	}
+	// The window re-checks: immediately-checked preconditions after the
+	// fresh classification, before the write.
+	if err = refuseCodexLeaderRun(root, runID); err != nil {
+		return "", err
+	}
+	if err = refuseLiveLegacyPeerRun(root, runID); err != nil {
 		return "", err
 	}
 	db, openErr := homestate.OpenFactory(root)
@@ -159,7 +171,7 @@ func adoptExplicitLeaderRun(root, runID, backend string) (string, error) {
 		return "", openErr
 	}
 	defer closeFactoryInto(&err, db, "factory state")
-	if err := db.AdoptRun(context.Background(), owner, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderStartAdoptionBasis); err != nil {
+	if err = db.AdoptRun(context.Background(), owner, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderStartAdoptionBasis); err != nil {
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, runID)
