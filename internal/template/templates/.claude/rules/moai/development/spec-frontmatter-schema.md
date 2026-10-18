@@ -113,7 +113,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 
 | Section | Purpose | Parsed by era.go? | Owner / when written |
 |---------|---------|-------------------|----------------------|
-| `## §E.1 Plan-phase Audit-Ready Signal` | Plan-phase completion signal (`plan_status: audit-ready`, `plan_complete_at`) | No (only §E.2-§E.5 headings + the two SHA fields are matched) | manager-spec (plan-phase) |
+| `## §E.1 Plan-phase Audit-Ready Signal` | Plan-phase completion signal (`plan_status: audit-ready`, `plan_complete_at`); write a bare `audit_ready: true` line (the kickoff gate also tolerates one leading `- ` or `* ` bullet marker) | No (only §E.2-§E.5 headings + the two SHA fields are matched) | manager-spec (plan-phase) |
 | `## §E.2 Run-phase Evidence` | Run-phase evidence; the literal `§E.2` heading is the run-evidence START marker era.go detects | **YES** — literal `§E.2` heading | manager-develop (run-phase) |
 | `## §E.3 Run-phase Audit-Ready Signal` | Run-phase completion signal | **YES** — literal `§E.3` heading | manager-develop (run-phase) |
 | `## §E.4 Sync-phase Audit-Ready Signal` | Sync-phase close; carries the literal `sync_commit_sha:` field (populated by the single sync commit) | **YES** — literal `§E.4` heading + `sync_commit_sha` field | manager-docs (sync commit) |
