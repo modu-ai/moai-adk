@@ -367,23 +367,9 @@ func TestOwnershipVerdictClasses(t *testing.T) {
 		}
 	}
 
-	// Root boundary: a registered copy that is a symlink out of the root.
-	outside := t.TempDir()
-	outBytes := []byte("# outside the project\n")
-	if err := os.WriteFile(filepath.Join(outside, "SKILL.md"), outBytes, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	const esc = ".claude/skills/escape/SKILL.md"
-	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "escape"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join(outside, "SKILL.md"), filepath.Join(root, filepath.FromSlash(esc))); err != nil {
-		t.Skipf("symlinks unavailable here: %v", err)
-	}
-	entries[esc] = &manifest.FileEntry{Provenance: manifest.TemplateManaged, TemplateHash: manifest.HashBytes(outBytes)}
-	if v := classifyOwnership(baseEnv(), esc, filepath.Join(root, filepath.FromSlash(esc))); v.class != ownershipManaged || v.removalEligible || v.keep != keepSymlinkEscape {
-		t.Errorf("symlink escape: got class=%q eligible=%v keep=%q, want managed/false/%q", v.class, v.removalEligible, v.keep, keepSymlinkEscape)
-	}
+	// The root-boundary case (a registered copy that is a symlink out of the root)
+	// needs os.Symlink and lives in migrate_ownership_symlink_test.go, which is
+	// tagged !windows: a build tag is the only exclusion, a skip would sweep nothing.
 
 	// A retired (deprecated) copy is not in the profile-reach kept set.
 	dep := fmt.Sprintf(".claude/skills/matrix-%s-%t/SKILL.md", manifest.Deprecated, true)
