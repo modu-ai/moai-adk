@@ -269,7 +269,7 @@ git diff --numstat 449b1c9931~1 449b1c9931 -- 'docs-site/content/*/advanced/fact
 git diff -U0 449b1c9931~1 449b1c9931 -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^-[^-]"                               -> 8
 ```
 
-At plan time the same four commands over `main...HEAD` print nothing, the expected state before any edit.
+At plan time under Q-SWA-1 branch (b) the same four commands over `main...HEAD` print nothing, the expected state before any edit; under branch (a) the status follows the branch-by-branch statement in A.3, the AC-PRC-001-005 row, and E-SWA-15, where commands 3 to 5 are red at plan time.
 
 ### E-SWA-14 — controls for the per-file bounds and the dangling-step check
 
