@@ -14,6 +14,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -451,4 +452,142 @@ func TestFactoryCompleteAdoptionNotRefusedByBaseFreshness(t *testing.T) {
 		requireFreshnessRefusal(t, err)
 		sdCardUnchanged(t, "non-adoption refusal", root, "t1", before)
 	})
+}
+
+// ---- audit-fix round: the refusal must reach the user ----------------------
+
+// runIntegrationThroughRoot runs `moai integration …` through the real root
+// execution seam (runFang with moaiErrorHandler), the path a process takes. A
+// refusal that only rides the returned error is invisible there: the handler is
+// silent for an exit-coded error, so the message has to be written by the verb.
+func runIntegrationThroughRoot(t *testing.T, worktree, root string, args ...string) (stdout, stderr string, exit int) {
+	t.Helper()
+	prev, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(worktree); err != nil {
+		t.Fatalf("chdir %s: %v", worktree, err)
+	}
+	defer func() { _ = os.Chdir(prev) }()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	rootCmd := &cobra.Command{Use: "moai"}
+	rootCmd.AddCommand(newIntegrationCmd())
+	var out, errBuf bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&errBuf)
+	rootCmd.SetArgs(append([]string{"integration"}, args...))
+	runErr := runFang(context.Background(), rootCmd)
+	return out.String(), errBuf.String(), exitCodeForError(runErr)
+}
+
+func TestBaseFreshnessRefusalReachesTheUserThroughTheRootErrorPath(t *testing.T) {
+	// AC-ISB-001 / AC-ISB-011 (audit-fix round): through the root error handler
+	// the stale-base refusal exits 16 AND the sentinel line with its recovery
+	// guidance is on standard error, exactly once. The gate-off advisory and the
+	// uncertainty notice already printed; the refusal alone was silent.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	f.land(1)
+
+	stdout, stderr, exit := runIntegrationThroughRoot(t, f.card, f.root,
+		"acquire", "--card", "t1", "--branch", "main", "--session", "sess-lane1")
+	if exit != factory.BaseFreshnessExitRefused {
+		t.Fatalf("exit = %d, want %d\nstdout: %q\nstderr: %q", exit, factory.BaseFreshnessExitRefused, stdout, stderr)
+	}
+	var sentinelLines []string
+	for _, line := range strings.Split(stderr, "\n") {
+		if strings.HasPrefix(line, bfcSentinel) {
+			sentinelLines = append(sentinelLines, line)
+		}
+	}
+	if len(sentinelLines) != 1 {
+		t.Fatalf("want exactly one sentinel line on stderr, got %d\nstdout: %q\nstderr: %q", len(sentinelLines), stdout, stderr)
+	}
+	for _, want := range []string{"1 landings behind", "max_behind_landings=0", "moai integration remeasure"} {
+		if !strings.Contains(sentinelLines[0], want) {
+			t.Fatalf("the visible refusal must carry %q: %s", want, sentinelLines[0])
+		}
+	}
+}
+
+func TestFactoryCompleteRefusalIsVisible(t *testing.T) {
+	// AC-ISB-002 / AC-ISB-011 (audit-fix round): `moai factory complete` shares
+	// the refusal body; the refusal line must be in the command's own output, not
+	// only in the returned error that the root handler renders as nothing.
+	root, integ, _ := mwq19Fixture(t)
+	bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+	fcGit(t, integ, "commit", "-q", "--allow-empty", "-m", "another lane landed")
+
+	stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	requireFreshnessRefusal(t, err)
+	var n int
+	for _, line := range strings.Split(stdout+"\n"+stderr, "\n") {
+		if strings.HasPrefix(line, bfcSentinel) {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("want exactly one sentinel line in the command output, got %d\nstdout: %q\nstderr: %q", n, stdout, stderr)
+	}
+}
+
+// ---- audit-fix round: a config load failure is uncertainty -----------------
+
+func TestBaseFreshnessConfigLoadFailureIsUncertainty(t *testing.T) {
+	// AC-ISB-009 (audit-fix round): the shared config loader turns a read or
+	// parse failure of workflow.yaml into a warning plus defaults, so the gate
+	// would read "gate off" and print the advisory — a verdict taken on defaults
+	// the operator did not choose. The gate must route the failure through the
+	// uncertainty path with the real cause: admit, exactly one gate line, naming
+	// the configuration, and no "advisory, gate off" claim.
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, f *bfcFixture)
+		cause string
+	}{
+		{"malformed YAML", func(t *testing.T, f *bfcFixture) {
+			bfcWriteWorkflow(t, f.root, "workflow:\n  base_freshness_gate: [unterminated\n    enabled: true\n")
+		}, "parse"},
+		{"wrongly typed key", func(t *testing.T, f *bfcFixture) {
+			bfcWriteWorkflow(t, f.root, "workflow:\n  base_freshness_gate:\n    enabled: \"not-a-bool\"\n    max_behind_landings: [1]\n")
+		}, "parse"},
+		{"unreadable file", func(t *testing.T, f *bfcFixture) {
+			// A directory where the file belongs: ReadFile fails with a
+			// non-NotExist error on every platform, without depending on the
+			// test process's privileges.
+			dir := filepath.Join(f.root, ".moai", "config", "sections", "workflow.yaml")
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				t.Fatal(err)
+			}
+		}, "read"},
+	}
+	args := []string{"--card", "t1", "--branch", "main", "--session", "sess-lane1"}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newBFCFixture(t)
+			f.writeRecord(f.base)
+			f.land(1)
+			c.setup(t, f)
+			stdout, stderr, err := f.acquire(args...)
+			if err != nil {
+				t.Fatalf("an unreadable configuration must admit, got %v\nstderr: %s", err, stderr)
+			}
+			if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" {
+				t.Fatalf("the window must be recorded for the caller: %+v", lock)
+			}
+			if strings.Contains(stdout+stderr, "advisory, gate off") || strings.Contains(stdout+stderr, bfcSentinel) {
+				t.Fatalf("a config failure must not read as gate-off or as a refusal\nstderr: %s", stderr)
+			}
+			lines := freshnessLines(stderr)
+			if len(lines) != 1 {
+				t.Fatalf("want exactly one gate line, got %q\nstderr: %s", lines, stderr)
+			}
+			if !strings.Contains(lines[0], "configuration unreadable") || !strings.Contains(lines[0], c.cause) ||
+				!strings.Contains(lines[0], "workflow.yaml") {
+				t.Fatalf("the line must name the configuration, the file and the cause %q: %s", c.cause, lines[0])
+			}
+		})
+	}
 }

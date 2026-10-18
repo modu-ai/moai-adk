@@ -15,6 +15,7 @@ package factory
 // the content-free-absorb shape the stored-base measurement exists for.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -693,5 +694,50 @@ func TestBaseFreshnessDecisionCodeHasNoThresholdLiteral(t *testing.T) {
 	}
 	if got := thresholdLiteralComparisons(t, string(src)); len(got) != 0 {
 		t.Fatalf("the gate compares landings behind or K against an integer literal at %v", got)
+	}
+}
+
+func TestBaseFreshnessRefusesRecordNamingAnotherTree(t *testing.T) {
+	// AC-ISB-005 (audit-fix round): a record FILE named for the current tree
+	// whose inner Tree field names a different tree is not a record for the
+	// current tree. ReadRemeasureRecord returns the field as written (the merge
+	// step's cause 4 depends on that), so the gate itself must compare it with
+	// the tree it resolved; WriteRemeasureRecord forces the field, so the forged
+	// file is written directly. At L=0 the stale-base arms cannot mask it.
+	for _, k := range []int{0, 2} {
+		t.Run(fmt.Sprintf("K=%d", k), func(t *testing.T) {
+			f := newBFFixture(t)
+			current := f.tree()
+			other := bfGit(t, f.repo, "rev-parse", "main^{tree}")
+			if other == current {
+				t.Fatal("fixture: the two trees must differ")
+			}
+			forged := RemeasureRecord{
+				Tree: other, Base: f.base, Command: "true", BuildIdentity: "moai test",
+				RecordedAt: time.Date(2026, 10, 18, 9, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			}
+			data, err := json.Marshal(forged)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(remeasureDir(f.root), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(remeasureDir(f.root), current+".json"), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			res := EvaluateBaseFreshness(f.input(k, true), BaseFreshnessSeams{})
+			if res.Admit {
+				t.Fatalf("a record whose tree field names another tree must refuse: %+v", res)
+			}
+			requireOneLine(t, "refusal", res.Refusal)
+			if !strings.HasPrefix(res.Refusal, BaseFreshnessSentinel) ||
+				!strings.Contains(res.Refusal, "re-measure record") ||
+				!strings.Contains(res.Refusal, ShortSHA(current)) ||
+				!strings.Contains(res.Refusal, ShortSHA(other)) {
+				t.Fatalf("the refusal must carry the sentinel and name both trees: %s", res.Refusal)
+			}
+		})
 	}
 }
