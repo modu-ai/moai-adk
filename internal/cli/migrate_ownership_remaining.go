@@ -92,7 +92,12 @@ func remainingSummaryLines(rows []remainingRow) []string {
 		if label == "" {
 			label = "(no reason recorded)"
 		}
-		line := fmt.Sprintf("kept in place: %d file(s) — %s", g.count, label)
+		noun := "file(s)"
+		if keepReason(name) == keepEmptyDirNoProvenance {
+			// This reason's rows are empty directories, not files.
+			noun = "empty director(ies)"
+		}
+		line := fmt.Sprintf("kept in place: %d %s — %s", g.count, noun, label)
 		if g.uniform && g.missing != "" {
 			line += " (missing evidence: " + g.missing + ")"
 		}

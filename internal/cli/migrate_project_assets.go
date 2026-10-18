@@ -413,6 +413,11 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		}
 	}
 
+	// REQ-OWR-008 (M5): a skill directory the walk left empty is pruned when the
+	// records show only template-managed files were ever in it. A separate step
+	// after the walk and the removals; independent of the removal switch.
+	pruneManagedEmptyDirs(projectRoot, rootResolved, mgr, evidence, rc, report)
+
 	// The remaining list is returned in path order (REQ-OWR-009).
 	if rc != nil {
 		sortRemainingRows(rc.remaining)
