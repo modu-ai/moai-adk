@@ -10,12 +10,12 @@ import (
 
 const (
 	// skillEntryCapChars is Claude Code's default skillListingMaxDescChars: the
-	// cap on one entry. The guard measures an upper bound of it in UTF-16
-	// units of "description - when_to_use". A user can raise the host setting; the
-	// guard pins the default.
+	// cap on one entry, counted in UTF-16 units of
+	// "description - when_to_use". A user can raise the host setting; the guard
+	// pins the default.
 	skillEntryCapChars = 1536
 	// skillListingCeilingChars is the deployed-total ceiling in the same host
-	// count: 897 units (3.6% of the ceiling) above the 24,103 measured on card
+	// count: 862 units (3.4% of the ceiling) above the 24,138 measured on card
 	// t1796 against main 03faddb705.
 	skillListingCeilingChars = 25000
 )
@@ -28,18 +28,20 @@ type skillListingEntry struct {
 	WhenToUse   string
 }
 
-// chars is an UPPER BOUND of the entry's length in Claude Code's per-entry
-// count: the UTF-16 units of "description - when_to_use" (the separator only
-// when when_to_use is non-empty) with each "<" written as "&lt;" and each ">" as
-// "&gt;". An astral rune such as an emoji counts 2.
+// chars is the entry's length in UTF-16 units of "description - when_to_use"
+// (the separator only when when_to_use is non-empty) with each "<" written as
+// "&lt;" and each ">" as "&gt;". An astral rune such as an emoji counts 2.
 //
-// Invariant: for every skill with a non-empty description, chars() is at least
-// the host's count. The guard applies only the steps that lengthen the string.
-// The two it applies, read from Claude Code 2.1.302, are the "<" / ">" escape
-// (rB) and the " - " join (bPt); "&" is not escaped. The steps that only shorten
-// or keep the length are deliberately NOT applied (invisible-character run
-// collapse, ANSI stripping, description trim), so the guard overcounts for them
-// and cannot pass an entry the host truncates.
+// Invariant: for the deployed set, chars() is at least the host's count, because
+// it applies every step the host performs that lengthens the string and skips
+// those that only shorten it. Read from Claude Code 2.1.302: the "<" / ">" escape
+// (rB; "&" is not escaped), the " - " join (bPt), and the when_to_use newline.
+// The host does not trim when_to_use and its sanitizer turns the trailing newline
+// of a block scalar into one space, so each block-scalar when_to_use counts +1
+// (measured: 35 deployed skills, total 24,138, largest entry 1,441); chars()
+// counts that newline as 1 unit and adds no collapse logic. Skipped: invisible
+// character run collapse, ANSI stripping, description trim (the guard overcounts
+// for them).
 //
 // Stated limits:
 //
@@ -50,11 +52,6 @@ type skillListingEntry struct {
 //     raise it.
 //  3. The reading is of one Claude Code version; a later release can change the
 //     pipeline and this guard would not notice.
-//  4. Whether the host YAML reader keeps the trailing newline of a block scalar
-//     is unobserved; parseSkillListingEntry drops it from both fields. The host
-//     trims the description, so only when_to_use matters: if the host keeps its
-//     newline, the host counts 1 more unit per such when_to_use, at most 35 on
-//     the deployed total.
 func (e skillListingEntry) chars() int {
 	text := hostEscaper.Replace(e.Description)
 	if e.WhenToUse != "" {
@@ -75,19 +72,18 @@ func checkSkillListing(entries []skillListingEntry) []string {
 		n := e.chars()
 		total += n
 		if n > skillEntryCapChars {
-			out = append(out, fmt.Sprintf("skill %q: description - when_to_use is %d UTF-16 units (upper bound of the host count), over the %d cap (skillListingMaxDescChars)", e.Name, n, skillEntryCapChars))
+			out = append(out, fmt.Sprintf("skill %q: description - when_to_use is %d UTF-16 units, over the %d cap (skillListingMaxDescChars)", e.Name, n, skillEntryCapChars))
 		}
 	}
 	if total > skillListingCeilingChars {
-		out = append(out, fmt.Sprintf("deployed skill listing text is %d UTF-16 units of `description - when_to_use` (upper bound of the host count), over the %d ceiling; raising the ceiling needs a recorded decision referencing card t1796 (skill-authoring.md §Listing budget)", total, skillListingCeilingChars))
+		out = append(out, fmt.Sprintf("deployed skill listing text is %d UTF-16 units of `description - when_to_use`, over the %d ceiling; raising the ceiling needs a recorded decision referencing card t1796 (skill-authoring.md §Listing budget)", total, skillListingCeilingChars))
 	}
 	return out
 }
 
 // parseSkillListingEntry reads description and when_to_use from a frontmatter
-// block. The one edit is dropping the trailing newline of a block scalar in
-// either field (limit 4), so a `|` or `>` value is measured as its text. The
-// host trims the description, so its trailing newline never counts there.
+// block. The one edit is dropping the trailing newline of the description: the
+// host trims it. when_to_use keeps its trailing newline, which the host keeps.
 func parseSkillListingEntry(name, frontmatter string) (skillListingEntry, error) {
 	var fm asideFrontmatter
 	if err := yaml.Unmarshal([]byte(frontmatter), &fm); err != nil {
@@ -96,6 +92,6 @@ func parseSkillListingEntry(name, frontmatter string) (skillListingEntry, error)
 	return skillListingEntry{
 		Name:        name,
 		Description: strings.TrimRight(fm.Description, "\n"),
-		WhenToUse:   strings.TrimRight(fm.WhenToUse, "\n"),
+		WhenToUse:   fm.WhenToUse,
 	}, nil
 }
