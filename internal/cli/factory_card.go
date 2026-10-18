@@ -2030,7 +2030,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
 		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
