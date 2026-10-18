@@ -8,13 +8,17 @@ package template
 // this file runs under _test.go only.
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -136,16 +140,30 @@ func newAnchorContentFn(t *testing.T, anchorSHA string) func(repoRel string) ([]
 	root, gitErr := anchorGitWorktreeRoot()
 	var mu sync.Mutex
 	cache := map[string][]byte{}
+	absent := map[string]bool{}
+	// One long-lived `git cat-file --batch` serves every blob: the fetcher used
+	// to spawn a `git show` per path (~400 serial spawns, repeated for absent
+	// paths), so the test's wall time scaled with per-spawn latency under load.
+	var reader *anchorBlobReader
+	if gitErr == nil {
+		var err error
+		if reader, err = startAnchorBlobReader(root); err != nil {
+			t.Fatalf("start anchor blob reader: %v", err)
+		}
+		t.Cleanup(reader.close)
+	}
 	return func(repoRel string) ([]byte, bool) {
 		mu.Lock()
+		defer mu.Unlock()
 		if hit, ok := cache[repoRel]; ok {
-			mu.Unlock()
 			return hit, true
 		}
-		mu.Unlock()
+		if absent[repoRel] {
+			return nil, false
+		}
 		var data []byte
 		if gitErr == nil {
-			out, err := exec.Command("git", "-C", root, "show", anchorSHA+":"+repoRel).Output()
+			out, err := reader.read(anchorSHA + ":" + repoRel)
 			if err == nil {
 				data = out
 			} else {
@@ -155,7 +173,8 @@ func newAnchorContentFn(t *testing.T, anchorSHA string) func(repoRel string) ([]
 				// TODAY's bytes and let a later-added binding fragment pass
 				// the AC-ALB-021(2) "already in anchor copy" exemption — the
 				// absent-at-anchor case must read as absent.
-				t.Logf("[anchor-content] %s absent at anchor %s (git show: %v); anchorLines stays empty", repoRel, anchorSHA, err)
+				t.Logf("[anchor-content] %s absent at anchor %s (git cat-file: %v); anchorLines stays empty", repoRel, anchorSHA, err)
+				absent[repoRel] = true
 				return nil, false
 			}
 		} else {
@@ -168,11 +187,69 @@ func newAnchorContentFn(t *testing.T, anchorSHA string) func(repoRel string) ([]
 			}
 			data = read
 		}
-		mu.Lock()
 		cache[repoRel] = data
-		mu.Unlock()
 		return data, true
 	}
+}
+
+// anchorBlobReader reads blobs from one `git cat-file --batch` process. Calls
+// are serialized by the caller (newAnchorContentFn holds its mutex).
+type anchorBlobReader struct {
+	cmd *exec.Cmd
+	in  io.WriteCloser
+	out *bufio.Reader
+}
+
+func startAnchorBlobReader(root string) (*anchorBlobReader, error) {
+	cmd := exec.Command("git", "-C", root, "cat-file", "--batch")
+	in, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return &anchorBlobReader{cmd: cmd, in: in, out: bufio.NewReader(out)}, nil
+}
+
+// read returns the blob named by spec ("<sha>:<path>"); a missing object or a
+// non-blob is an error, never an empty success.
+func (r *anchorBlobReader) read(spec string) ([]byte, error) {
+	if _, err := io.WriteString(r.in, spec+"\n"); err != nil {
+		return nil, err
+	}
+	header, err := r.out.ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+	fields := strings.Fields(strings.TrimSuffix(header, "\n"))
+	if len(fields) == 2 && fields[1] == "missing" {
+		return nil, errors.New("object missing")
+	}
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("unexpected cat-file header %q", header)
+	}
+	size, err := strconv.Atoi(fields[2])
+	if err != nil {
+		return nil, fmt.Errorf("unexpected cat-file size in %q", header)
+	}
+	body := make([]byte, size+1) // contents plus the trailing LF
+	if _, err := io.ReadFull(r.out, body); err != nil {
+		return nil, err
+	}
+	if fields[1] != "blob" {
+		return nil, fmt.Errorf("object is a %s, not a blob", fields[1])
+	}
+	return body[:size], nil
+}
+
+func (r *anchorBlobReader) close() {
+	_ = r.in.Close()
+	_ = r.cmd.Wait()
 }
 
 // ---------------------------------------------------------------------------
