@@ -279,6 +279,9 @@ func resolveZoneTarget(root, raw string, listings ...map[string]*zoneNameIndex) 
 		if realTarget, ok := zoneResolve(native); ok {
 			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
 				add(rel)
+				if canon := zoneCanonicalRel(filepath.ToSlash(realRoot), rel, listingCache(listings)); canon != rel {
+					add(canon)
+				}
 			}
 		}
 	}
@@ -304,6 +307,9 @@ func resolveZoneTarget(root, raw string, listings ...map[string]*zoneNameIndex) 
 			if realTarget, ok := zoneResolve(absRaw); ok {
 				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
 					add(rel)
+					if canon := zoneCanonicalRel(filepath.ToSlash(realRoot), rel, listingCache(listings)); canon != rel {
+						add(canon)
+					}
 				}
 			}
 		}
@@ -391,6 +397,9 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 		if realTarget, _, ok := zoneResolveParent(native, cache); ok {
 			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
 				add(rel)
+				if canon := zoneCanonicalRel(filepath.ToSlash(realRoot), rel, cache); canon != rel {
+					add(canon)
+				}
 			}
 		}
 	}
@@ -421,6 +430,9 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 			if ok2 {
 				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
 					add(rel)
+					if canon := zoneCanonicalRel(filepath.ToSlash(realRoot), rel, cache); canon != rel {
+						add(canon)
+					}
 				}
 			}
 		}
@@ -524,4 +536,85 @@ func newZoneNameIndex(names []string) *zoneNameIndex {
 // has reports whether name is byte-equal to a real directory entry.
 func (idx *zoneNameIndex) has(name string) bool {
 	return idx.exact[name]
+}
+
+// alias returns the real entry that name aliases under NFC plus Unicode
+// simple case folding (Ä/ä), the relation a case-insensitive volume applies.
+func (idx *zoneNameIndex) alias(name string) (string, bool) {
+	want := norm.NFC.String(name)
+	for real := range idx.exact {
+		if strings.EqualFold(norm.NFC.String(real), want) {
+			return real, true
+		}
+	}
+	return "", false
+}
+
+// zoneCanonicalRel rewrites the non-ASCII components of an already-RESOLVED
+// relative path (card t1804) to the spelling the directory really lists. The
+// manifest fold is ASCII-only, so a parent spelled as a non-ASCII case
+// variant (`ä` for the protected `Ä`) reaches the zone on a case-insensitive
+// volume while every resolved form keeps the operand's spelling and misses
+// the entry. The input is the output of the physical walk — it holds no ".."
+// to pop and is never built from raw text. A component is substituted only
+// when the OS demonstrably names an existing entry through it (Lstat succeeds
+// while the listing lacks the exact spelling), so a case-sensitive volume or a
+// nonexistent spelling stays untouched. The caller ADDS the result next to the
+// original form; it never replaces a form already found.
+func zoneCanonicalRel(realRoot, rel string, listings map[string]*zoneNameIndex) string {
+	parts := strings.Split(rel, "/")
+	dir := filepath.FromSlash(realRoot)
+	changed := false
+	for i, part := range parts {
+		if part == ".." {
+			break
+		}
+		if part == "" || part == "." || isASCII(part) {
+			dir = filepath.Join(dir, part)
+			continue
+		}
+		var idx *zoneNameIndex
+		if cached, hit := listings[dir]; hit {
+			idx = cached
+		} else if entries, err := zoneParentLister(dir); err == nil {
+			names := make([]string, 0, len(entries))
+			for _, e := range entries {
+				names = append(names, e.Name())
+			}
+			idx = newZoneNameIndex(names)
+			if listings != nil {
+				listings[dir] = idx
+			}
+		}
+		if idx == nil {
+			break
+		}
+		if !idx.has(part) {
+			if _, err := os.Lstat(filepath.Join(dir, part)); err != nil {
+				break
+			}
+			real, ok := idx.alias(part)
+			if !ok {
+				break
+			}
+			parts[i] = real
+			changed = true
+			part = real
+		}
+		dir = filepath.Join(dir, part)
+	}
+	if !changed {
+		return rel
+	}
+	return strings.Join(parts, "/")
+}
+
+// isASCII reports whether s holds only ASCII bytes.
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
