@@ -1,7 +1,7 @@
 ---
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial local landing -> batch PR -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -26,6 +26,7 @@ Card: **t1831** (Class C, P1, plan -> run -> sync; operator directive 2026-10-17
 | 2026-10-18 | manager-spec | Initial plan-phase artifacts (0.1.0). Evidence read in tree `6041c38a4` (branch `WT-agentic-trunk`, local main after t1846); quantified in research.md. |
 | 2026-10-18 | manager-spec | 0.2.0: plan-audit iteration 1 repairs: D1-D7 (RED-now cells authored at plan time on tree `f4175587119b5cfeb8d8348fc74cada8764e89ed`; the `factory-dispatch.md` template/deployed divergence recorded and decided; one cutover precondition set P1-P5 across REQ-AGT-017, plan M6 and design section 4; judges rebuilt for AC-AGT-015, -020 and -023; the DevelopBranch consumers added as REQ-AGT-025 and AC-AGT-025). Optional D8-D11 folded: GEARS rewording of REQ-AGT-018 and REQ-AGT-024, template-match exclusions named, REQ-AGT-019 sub-item judges added, the raw-merge demotion recorded in design section 5. 25 requirements, 25 acceptance criteria. |
 | 2026-10-18 | manager-spec | 0.3.0: plan-audit iteration 2 repairs: D1, D2 and the optional/codex findings. D1: REQ-AGT-021 now carries the one recorded exception (the live-only tail sentence of `factory-dispatch.md` line 222, commit `7ff326d99`, card t1815), so requirement and AC-AGT-021 agree. D2: REQ-AGT-020 states that `agentic-trunk` follows neither the per-version release branch nor a lane push, and the line-222 edit no longer attaches `agentic-trunk` to the `release/vX.Y.Z` push (the `names git-flow or agentic-trunk` sentinel is retired and its absence is judged). Optional: AC-AGT-020 judges the whole agentic-trunk block for any push instruction; AC-AGT-023 is non-vacuous at N0 = 0 and rejects a bare label; the P4 precondition of REQ-AGT-017 is probed over all running servers, not one project directory. 25 requirements, 25 acceptance criteria. |
+| 2026-10-18 | manager-spec | 0.3.1: plan-audit iteration 3 repair: D1 only. AC-AGT-020 Judge 6 now ends the agentic-trunk block at the next sibling (a heading of level 1 to 4, or the next `##### Strategy:` heading, outside a fenced snippet) instead of at any heading, so a push placed after a sub-heading or after a `#` comment line inside a fenced snippet is counted; two failing controls added (ledger E26). D2 to D6 are recorded as known debt in progress.md, not repaired. 25 requirements, 25 acceptance criteria. |
 
 ## 1. Context and problem
 

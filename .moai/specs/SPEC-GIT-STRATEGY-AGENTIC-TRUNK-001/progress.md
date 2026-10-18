@@ -4,8 +4,15 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-18
-plan_tree: c6e590507b39e27acc3305a3a1aa3dc488aef0c0 (branch WT-agentic-trunk; the tree the iteration 2 audit judged and the iteration 2 repair observed); tier L; 25 requirements, 25 acceptance criteria (version 0.3.0); open questions OQ-1 to OQ-7 carry recorded defaults (spec.md section 5).
-plan_audit: iteration 1 returned FAIL 0.75 on tree f4175587119b5cfeb8d8348fc74cada8764e89ed (report .moai/reports/t1831/plan-audit.md, defects D1-D11); version 0.2.0 repaired D1-D7 and folded the optional D8-D11. Iteration 2 returned FAIL 0.875 on tree c6e590507b39e27acc3305a3a1aa3dc488aef0c0 (report .moai/reports/t1831/plan-audit-iter2.md, blocking D1 and D2, optional D3-D6, codex receipt rcpt-d75d4a819c98c8c571ab00c4); version 0.3.0 repairs D1 and D2 and the optional D3-D6. The iteration 3 re-audit has not run; this record does not claim it passes.
+plan_tree: c6e590507b39e27acc3305a3a1aa3dc488aef0c0 (branch WT-agentic-trunk; the tree the iteration 2 audit judged and the iteration 2 repair observed); tier L; 25 requirements, 25 acceptance criteria (version 0.3.1); open questions OQ-1 to OQ-7 carry recorded defaults (spec.md section 5).
+plan_audit: iteration 1 returned FAIL 0.75 on tree f4175587119b5cfeb8d8348fc74cada8764e89ed (report .moai/reports/t1831/plan-audit.md, defects D1-D11); version 0.2.0 repaired D1-D7 and folded the optional D8-D11. Iteration 2 returned FAIL 0.875 on tree c6e590507b39e27acc3305a3a1aa3dc488aef0c0 (report .moai/reports/t1831/plan-audit-iter2.md, blocking D1 and D2, optional D3-D6, codex receipt rcpt-d75d4a819c98c8c571ab00c4); version 0.3.0 repairs D1 and D2 and the optional D3-D6. Iteration 3 returned FAIL on the required codex gate (report .moai/reports/t1831/plan-audit-iter3.md, aggregate 0.875, blocking D1, optional D2-D6); version 0.3.1 repairs D1 only (Judge 6 block end and two failing controls, ledger E26). The iteration 4 re-audit has not run; this record does not claim it passes.
+
+Known debt (plan-audit iteration 3, not repaired):
+- D2: AC-AGT-021 Judge B (iv) compares the 322-byte size difference only; a same-length edit to one copy of the factory-dispatch line 222 passes it, and Judge B (iii) greps the clause prefix only.
+- D3: AC-AGT-023 Judge 3 is vacuous at N0 = 0 for the alternation blind spot; Judges 4 and 5 carry the non-vacuity, Judge 3 alone does not.
+- D4: REQ-AGT-017 P4 wording uses `pgrep -o` (oldest process only) while the P4b exception reads over all running servers; wording mismatch, resolved the same way by a reasonable engineer.
+- D5: the `ps eww` foreign-server judge (servers whose CLAUDE_PROJECT_DIR is another project) is not recorded as its own ledger entry.
+- D6: REQ-AGT-021 literal coverage of the `workflow.yaml` template comment is stated by the requirement but not judged line by line.
 
 ## §E.2 Run-phase Evidence
 
