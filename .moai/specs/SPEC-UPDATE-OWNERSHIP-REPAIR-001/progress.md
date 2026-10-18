@@ -94,7 +94,111 @@ decision record: decided_by=lane-31 (card orchestrator, plan→run Kickoff, auto
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+기록 규약: 각 셀은 명령, 원문 출력, 종료 코드, 트리 SHA 를 갖는다. 출력 중 시각 잡음 한 줄 (`INFO SUNSET_CONFIG_DORMANT_NOTICE`) 은 시험이 아닌 설정 알림이며 판정과 무관하다. 모든 시험은 `TMPDIR=/private/tmp/own-fixture-d1` 아래 임시 디렉터리와 임시 HOME 만 썼다. 판정 도구는 이 트리의 `go test` (Go 1.26.8, darwin/arm64) 이며 바이너리 교체는 없다.
+
+### M0 — 기준선과 공유 픽스처 (run chunk 1)
+
+**P0 (사전 점검)**: `mkdir -p /private/tmp/own-fixture-d1` 실행 뒤 `ls -ld /private/tmp/own-fixture-d1` → `drwxr-xr-x@ 3 goos  wheel  96 Oct 18 13:11 /private/tmp/own-fixture-d1`, 종료 코드 0. 시작 트리 `785f2b6c48`, 브랜치 `WT-update-ownership-repair`, `git status --short` 깨끗.
+
+**M0 커밋**: `e902867dea` (`internal/cli/migrate_ownership_helpers_test.go`, `internal/cli/testdata/profile_callsite_baseline.txt` 만 추가, 운영 코드 변경 없음). 기준선 데이터는 운영 코드가 손대지 않은 트리 `785f2b6c48` 에서 측정해 얼렸다 (`go test ./internal/cli/ -run '^TestProfileCallsiteBaselineMatchesTree$' -update-profile-baseline`, 156 행 / 스캔한 파일 1642개; `go list -deps` 닫힘은 GOOS darwin·linux·windows 합집합). 예외 행은 정확히 한 줄: `internal/profile/profile.go  fs:launchCandidateIsUsable:os.Stat  1  exception`. 마이그레이션·미리보기·갱신 동기화 파일의 행은 기존 `migrate_project_assets.go  profile.ResolveLaunchProfileForProject  1` 한 줄뿐이다.
+
+**기준선 시험 11개 (GREEN, 회귀 가드 — 트리 `e902867dea`)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestMigrationClassifiesUnregisteredMirrorCopy|TestMigrationKeepsSharedCopyUnderProfileReach|TestMigrationRemovesSharedCopyWithoutProfileReach|TestEmptiedSkillDirRemoved|TestMigrationBackupBeforeRemoval|TestMigrationDefaultKeepsConfirmedProjectCopy|TestMigrationRemovalGate|TestMigrationIdempotent|TestMigrationPreservesExistingMirrorEntries|TestRF2F3b_MigrationPreservesUntracked|TestPreviewOmitsRemovalCandidateWhileSwitchOff)$' -count=1 -v` — 쓸어낸 시험 수 11 (`--- PASS` 11줄), 종료 코드 0.
+
+```text
+=== RUN   TestMigrationClassifiesUnregisteredMirrorCopy
+--- PASS: TestMigrationClassifiesUnregisteredMirrorCopy (1.68s)
+=== RUN   TestMigrationKeepsSharedCopyUnderProfileReach
+--- PASS: TestMigrationKeepsSharedCopyUnderProfileReach (1.36s)
+=== RUN   TestMigrationRemovesSharedCopyWithoutProfileReach
+--- PASS: TestMigrationRemovesSharedCopyWithoutProfileReach (1.27s)
+=== RUN   TestMigrationBackupBeforeRemoval
+2026/10/18 14:14:34 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestMigrationBackupBeforeRemoval (1.67s)
+=== RUN   TestEmptiedSkillDirRemoved
+=== RUN   TestEmptiedSkillDirRemoved/emptied_dir_removed_with_its_last_file
+=== RUN   TestEmptiedSkillDirRemoved/dir_with_user_content_stays
+--- PASS: TestEmptiedSkillDirRemoved (2.56s)
+    --- PASS: TestEmptiedSkillDirRemoved/emptied_dir_removed_with_its_last_file (1.63s)
+    --- PASS: TestEmptiedSkillDirRemoved/dir_with_user_content_stays (0.93s)
+=== RUN   TestMigrationDefaultKeepsConfirmedProjectCopy
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (0.92s)
+=== RUN   TestMigrationRemovalGate
+--- PASS: TestMigrationRemovalGate (0.94s)
+=== RUN   TestRF2F3b_MigrationPreservesUntracked
+--- PASS: TestRF2F3b_MigrationPreservesUntracked (0.00s)
+=== RUN   TestMigrationIdempotent
+moai-cli-test: userHomeDirFn redirected real home to sandbox /private/tmp/own-fixture-d1/moai-cli-home-3022242697
+--- PASS: TestMigrationIdempotent (0.80s)
+=== RUN   TestMigrationPreservesExistingMirrorEntries
+--- PASS: TestMigrationPreservesExistingMirrorEntries (1.14s)
+=== RUN   TestPreviewOmitsRemovalCandidateWhileSwitchOff
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.783s
+exit=0
+```
+
+**M0 도우미 시험 (특성화, 도착 시 GREEN — 트리 `e902867dea`)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestOwnershipHelperTreeSnapshotSeesDirMtime|TestOwnershipHelperForcedRunReachesReconciliation|TestOwnershipHelperUsesRealEmbeddedPaths|TestProfileCallsiteBaselineMatchesTree)$' -count=1 -v` — 종료 코드 0. 둘째 줄 묶음이 건너뛰기 관문 재측정 (acceptance.md § L-13 의 이 실행 재기록): 일반 1 `skipped=false`, 일반 2 `skipped=true`, `--force` `skipped=false`, 이어 일반 `skipped=true`.
+
+```text
+=== RUN   TestOwnershipHelperTreeSnapshotSeesDirMtime
+--- PASS: TestOwnershipHelperTreeSnapshotSeesDirMtime (0.01s)
+=== RUN   TestOwnershipHelperForcedRunReachesReconciliation
+2026/10/18 14:14:50 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    migrate_ownership_helpers_test.go:979: force=false run=1 skipped=false
+    migrate_ownership_helpers_test.go:984: force=false run=2 skipped=true
+    migrate_ownership_helpers_test.go:989: force=true  run=3 skipped=false
+    migrate_ownership_helpers_test.go:994: force=false run=4 skipped=true
+--- PASS: TestOwnershipHelperForcedRunReachesReconciliation (3.49s)
+=== RUN   TestOwnershipHelperUsesRealEmbeddedPaths
+--- PASS: TestOwnershipHelperUsesRealEmbeddedPaths (1.47s)
+=== RUN   TestProfileCallsiteBaselineMatchesTree
+--- PASS: TestProfileCallsiteBaselineMatchesTree (3.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	9.425s
+exit=0
+```
+
+**M6 열린 질문 탐침 (commands 이전 제외 ↔ 재배포 순환이 재현되는가) — 결과: 재현되지 않음 (두 변형 모두)**
+
+탐침은 던져 버리는 시험 파일 (`zz_m6_probe_test.go`, 커밋하지 않음, 삭제함) 이었고 판정 시험이 아니다. 같은 프로젝트 모양을 두 변형으로 `runTemplateSyncWithProgress` (일반 실행, `--force` 없음) 에 먹여 관측만 했다. 픽스처 네 상태: S1 `.claude/commands/moai/gtd.md` (등록 managed, 건강), S2 `.claude/commands/moai/fix.md` (등록 managed 로 순수 템플릿 바이트를 기록한 뒤 사용자가 `USERLINE: keep me` 한 줄을 덧붙임), S3 `.claude/commands/moai/todo.md` (템플릿과 바이트 같고 항목 없음), S4 `.claude/commands/moai-user-cmd.md` (사용자 작성). 변형 V1 같은 버전 (`system.yaml` 없음 → 프로젝트 버전 `0.0.0`, 바이너리와 다름), V2 낡은 기록 (`system.yaml` `template_version: v3.0.0`, 매니페스트 `Version: v3.0.0`, `TemplateTreeHash: stale-tree-hash`; 구동은 `runUpdate` 가 아니라 같은 관문 `versionMatchSkipsSync` 를 거치는 `runTemplateSyncWithProgress`). 원문 (관측 줄만 추림, 색상 제어 문자와 `total: 0 skills archived` 줄은 뺌, 트리 `785f2b6c48` + M0 파일):
+
+```text
+M6PROBE V1-same-version skipped=false
+M6PROBE V1-same-version template-commands=17 missing=0
+M6PROBE V1-same-version USERLINE found in .claude/commands/moai/fix.md
+M6PROBE V1-same-version OUTLINE: Reconciliation: 1 refreshed, 0 merged, 1 conflict(s), 3 preserved, 0 archived-removed
+M6PROBE V1-same-version OUTLINE:   conflict: .claude/commands/moai/fix.md (sidecar: .claude/commands/moai/fix.md.moai-new)
+M6PROBE V1-same-version S2 fix.md has USERLINE=true
+M6PROBE V1-same-version S2 sidecar fix.md.moai-new present
+M6PROBE V1-same-version S1 gtd equals template=true
+M6PROBE V1-same-version S3 todo equals template=true
+M6PROBE V1-same-version S4 foreign unchanged=true
+M6PROBE V1-same-version out-lines-mentioning .claude/commands/moai/gtd.md = 0
+M6PROBE V1-same-version out-lines-mentioning .claude/commands/moai/fix.md = 1
+M6PROBE V1-same-version out-lines-mentioning .claude/commands/moai/todo.md = 0
+M6PROBE V1-same-version out-lines-mentioning .claude/commands/moai-user-cmd.md = 0
+M6PROBE V2-stale-record skipped=false
+M6PROBE V2-stale-record template-commands=17 missing=0
+M6PROBE V2-stale-record USERLINE found in .claude/commands/moai/fix.md
+M6PROBE V2-stale-record OUTLINE: Reconciliation: 1 refreshed, 0 merged, 1 conflict(s), 3 preserved, 0 archived-removed
+M6PROBE V2-stale-record OUTLINE:   conflict: .claude/commands/moai/fix.md (sidecar: .claude/commands/moai/fix.md.moai-new)
+M6PROBE V2-stale-record S2 fix.md has USERLINE=true
+M6PROBE V2-stale-record S2 sidecar fix.md.moai-new present
+M6PROBE V2-stale-record S1 gtd equals template=true
+M6PROBE V2-stale-record S3 todo equals template=true
+M6PROBE V2-stale-record S4 foreign unchanged=true
+M6PROBE V2-stale-record out-lines-mentioning .claude/commands/moai/gtd.md = 0
+M6PROBE V2-stale-record out-lines-mentioning .claude/commands/moai/fix.md = 1
+M6PROBE V2-stale-record out-lines-mentioning .claude/commands/moai/todo.md = 0
+M6PROBE V2-stale-record out-lines-mentioning .claude/commands/moai-user-cmd.md = 0
+```
+
+해석: 두 변형 모두 템플릿이 운반하는 commands 17개가 전부 존재하고 (`missing=0`), S1 은 템플릿 바이트, S2 는 사용자 줄 보존 + 충돌 사이드카 하나 (보고에 한 번만 나타남), S3 은 템플릿 바이트, S4 는 불변이다. 어떤 경로도 두 처분으로 보고되지 않았다. 따라서 이 트리에서 현장의 「commands 가 이전 대상에서 빠졌다가 재배포됨」 순환은 두 변형으로 재현되지 않았다. M6 의 AC-OWR-09 는 회귀 가드로 남을 가능성이 높고 (결정은 M6 chunk), V2 구동의 한계 — `runUpdate` 진입이 아니라 `runTemplateSyncWithProgress` 를 기존 시임으로 구동했고 낡은 기록은 `system.yaml`·매니페스트 `Version`·`TemplateTreeHash` 세 곳으로 모사했다 — 를 갭으로 남긴다. 참고 관측 (판정 아님): 탐침의 첫 시도는 S2 의 매니페스트에 편집 뒤 바이트의 해시를 배포 해시로 기록하는 잘못된 픽스처였고, 그 모양에서는 사용자 줄이 사이드카·백업 없이 「refreshed」 로 덮였다. 현실에서는 편집이 기록보다 나중이므로 (`ownAddRegisteredEdited` 가 그 순서로 만든다) 이 모양은 정상 경로가 아니지만, 매니페스트가 편집 뒤 상태를 배포 해시로 갖는 항목은 템플릿 소유로 읽혀 덮인다는 사실은 M6 chunk 가 알아 둘 만하다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
