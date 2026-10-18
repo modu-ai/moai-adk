@@ -139,6 +139,15 @@ var claudeOptionModelSnapshot = claudeOptionModel{
 	// (profile) precedes it in the launcher segment only (r4), so the claude
 	// class is recorded here to keep the two surfaces distinct.
 	"-p": claudeOptionBoolean,
+
+	// Measured short booleans (claude 2.1.302 `claude --help`, re-measured
+	// 2026-10-18 for SPEC-LAUNCHER-ARGV-001): `-c, --continue`, `-h, --help`,
+	// `-v, --version`. They matter to the worktree selection's short-cluster
+	// decomposition (`-cw<tree>` is `-c` then `-w<tree>`): a letter the model
+	// cannot classify ends the cluster walk, which would hide the `w`. The resume
+	// interpreters treat a boolean and an unknown token identically (consume
+	// nothing), so these entries change no resume outcome.
+	"-c": claudeOptionBoolean, "-h": claudeOptionBoolean, "-v": claudeOptionBoolean,
 }
 
 // claudeModelDeriveOnce bounds the derivation to one attempt per process:
