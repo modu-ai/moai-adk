@@ -38,7 +38,8 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: (none)
 Why unresolved: corrected facts (grep): C2 cites `CLAUDE.md` § 4 (the file does not exist in this repository); C1 cites `.moai/config/sections/delegation.yaml` (the file exists, holds "13 retained agents" at line 14 and manager-design at line 97, but has no "Selection Decision Tree"). The tree is in `.claude/skills/moai-foundation-core/modules/agents-reference.md:46` and its row 6 is manager-git, so the sentence "manager-design is row 6" is stale under either citation. The plan keeps the C1 citation because three roster-guard registry rows match `(?:§ 4|delegation\.yaml`) (N retained agents` and a different file would turn them red. Changing it changes two derived results and the registry patterns.
-Operator verdict:
+Operator verdict: DECIDED by the leader under operator delegation — d-20261018T080202Z-deb4
+Debt: piece 1 copies agent sources byte-for-byte, so manager-design line 206 keeps its current citation in piece 1; the citation is stale (the Selection Decision Tree lives in `.claude/skills/moai-foundation-core/modules/agents-reference.md:46`, not in `delegation.yaml`) and is corrected in piece 2, where manager-design leaves the core set.
 
 ### Q20: Is C1 generated for the eight in piece 1?
 Label: FOUNDER
