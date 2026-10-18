@@ -55,7 +55,10 @@ func mkfifo(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	if err := syscall.Mkfifo(path, 0o644); err != nil {
-		t.Skipf("mkfifo is not available on this file system: %v", err)
+		// Not a skip: a skipped test sweeps nothing and the hang it guards could come
+		// back unseen on a file system that refuses mkfifo. The build tag above is the
+		// only exclusion.
+		t.Fatalf("mkfifo is not available on this file system (%s): %v", filepath.Dir(path), err)
 	}
 }
 
