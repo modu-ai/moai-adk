@@ -309,6 +309,11 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			// still set; the fixture's own `todo add` needs a clean env.
 			sdClearLaneEnv(t)
 			root, store := sdMoaiFixture(t)
+			// SPEC-CARD-ELIGIBLE-PULL-001 update: this arm-(b2) lease is the
+			// parity test's vehicle; the self-dispatch flag is armed so the
+			// subject (cli and mcp lease identically) keeps its coverage
+			// behind the gate.
+			cepSelfDispatchYAML(t, root, true)
 			fcQueue(t, store, factory.BacklogStatePicked)
 			sdRegisterLane(t, root, "lane-1")
 			sdLaneEnv(t, "lane-1", "")

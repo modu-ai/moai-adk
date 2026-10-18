@@ -147,11 +147,77 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
   ```
 - **Scope suite (E2 form)** — `go test ./internal/cli/ -run '^TestFactoryEligiblePullOffDormancy$|^TestFactoryEligiblePullOnGate$|^TestFactoryEligiblePullOnEligible$|^TestFactoryEligiblePullTraceless$|^TestFactoryEligiblePullRefusalGrammar$' -count=1` — exit 0: `ok github.com/modu-ai/moai-adk/internal/cli 16.402s`.
 
-_<M5 evidence appended below>_
+### M5 — regression-guard deployment + verification — tree `ceb392ed3` + fail-safe cell
+
+- **E5 scoped diff** — `git diff e43b3eea2..HEAD --stat -- internal/cli/ internal/config/`: exactly the planned files; among EXISTING test files only `factory_self_dispatch_test.go` (±39 lines, the two flipped subtests) changed; every untouched-arm test file byte-identical:
+  ```
+   internal/cli/factory_card.go                       | 249 +++++++++--
+   internal/cli/factory_card_eligible_pull_test.go    | 460 +++++++++++++++++++++
+   internal/cli/factory_self_dispatch_test.go         |  39 +-
+   internal/cli/mcp_factory_card.go                   |   7 +-
+   internal/config/defaults.go                        |  11 +
+   internal/config/defaults_test.go                   |  46 +++
+   .../config/testdata/shipped_key_inventory.yaml     |  3 +
+   internal/config/types.go                           |  18 +
+   8 files changed, 780 insertions(+), 53 deletions(-)
+  ```
+- **E3 vet** — `go vet ./internal/cli/ ./internal/config/` — exit 0, no output.
+- **E5 lint** — `golangci-lint run ./internal/cli/... ./internal/config/...` — 3 issues, identical to the pre-implementation baseline (errcheck ×3, all in `internal/cli/factory_run_adopt.go`, outside this SPEC's file scope): `3 issues: * errcheck: 3` → NEW issues: 0.
+- **E4 subagent-boundary grep** — `grep -rn 'AskUserQuestion' <4 touched non-test files>` — 0 matches.
+- **E6 OFF-dormancy + preserved re-run at final tree** — `go test ./internal/cli/ -run '^TestFactoryEligiblePullOffDormancy$|^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1` — exit 0: `ok github.com/modu-ai/moai-adk/internal/cli 14.277s` (AC-CEP-001 dormancy cells + all six AC008 subtests incl. the four preserved).
+- **E3 coverage (new gate paths)** — `go test ./internal/cli/ -run '^TestFactoryEligiblePull.*$|^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1 -coverprofile=…` + `go tool cover -func`:
+  ```
+  factory_card.go:393:  factoryNextLeaseOnceEligibility  80.8%   (uncovered: infra error paths — record-open/pass/lock errors)
+  factory_card.go:1303: factoryNextNoCardText           100.0%
+  factory_card.go:1377: disqualify                      100.0%   (all five conditions + the pass path)
+  factory_card.go:1424: factorySelfDispatchEnabled       75.0%   (uncovered: the defensive err!=nil branch; malformed-yaml → defaults → dormant proven behaviorally)
+  ```
+  New-path coverage ≈ 91% weighted (target 85%). Package-wide: `go test ./internal/config/ -cover -count=1` — `ok … coverage: 85.6% of statements` (≥85).
+- **Fail-safe cell added**: `unreadable config fails safe to dormancy` (malformed workflow.yaml → loader warn-and-default → arms dormant; loader contract makes this the behavioral carrier of the kill-switch default).
+- **Slot wait record (leader load rule)**: `moai slot acquire --resource go-test-heavy` → exit 3 at first attempt; holder lane-11 (`t1668 M8: go test -cover ./internal/cli/`, bound ends 2026-10-17T21:19:15Z). Windows cross-build and package-wide internal/cli run wait for the lease; retried below.
+- **Load-rule deviation, recorded**: two incremental single-package `go build ./internal/cli/` compile checks (M3, M4) ran without a lease — the rule names `go build` among heavy runs. Incremental single-package builds measured seconds and machine load stayed nominal (test timings unchanged across the run), but the letter of the rule was missed; subsequent builds (incl. the windows cross-build) wait for the lease.
+
+- **Adjacent-family regression evidence (anchored selectors, slot-exempt)**:
+  - classify family: `go test ./internal/cli/ -run '^TestFactoryNextParallelizableConcurrentLeases$|^TestFactoryNextRecordAndClaimRaceOnLeasedRow$|^TestFactoryNextDuplicateDispatchGuard$' -count=1` — `ok … 5.143s`.
+  - serial-slot family (11 tests): anchored multi-name selector — `ok … 39.557s`.
+  - bundle family: first pass found ONE test using an ungated (b) lease as its vehicle —
+    ```
+    --- FAIL: TestFactoryNextAfterGuardCountsOtherRunsMerges
+        factory_bundle_test.go:376: lane-1's lease = "", want t2 — a predecessor merged under run-prev still gated the after guard
+    ```
+    The test's SUBJECT is the after-guard's cross-run merged-set scope (card t1454 r2f5); its VEHICLE was an unowned-picked arm-(b) lease. Update (RED observed above, pre-fix): fixture arms `cepSelfDispatchYAML(t, root, true)` so the subject keeps its coverage — the gate's condition 4 now carries it (a run-prev merge read as unmerged would refuse `predecessor-unmerged` instead of leasing). GREEN: `go test ./internal/cli/ -run '^TestFactoryNextAfterGuardCountsOtherRunsMerges$' -count=1 -v` — `--- PASS (1.52s)`. This test was outside the §C.3 enumeration (its file greps as bundle-family, not lease-once); the anchored sweep caught it, the package-wide run below is the completeness check.
+  - remaining bundle family (8 tests anchored): `ok … 22.158s`.
+- **Slot lease acquired** (after the recorded wait): `moai slot acquire --resource go-test-heavy` — success; holder `lane-17-t1839`, bound 25m.
+- **E2 cross-platform build (slot-gated)**: `GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/config/` — exit 0, no output.
+
+- **M5 corrected close (leader order, binding — 2026-10-18)**: the package-wide `internal/cli` rerun is DROPPED (rule 35e9: internal/cli runs only the tests the card affects, via anchored `-run`; the rest belongs to batch CI; no-timeout-expansion). The two local package-wide attempts are recorded as EVENTS, not verdicts, and are cited as neither pass nor fail: attempt 1 hit the go-test default 600 s timeout (`FAIL … 600.860s`, tail-only output — no per-test detail); attempt 2 was ordered dropped by the leader and died with the session (its partial output is not evidence of anything). No further slot acquisition.
+- **GAP — package-wide `internal/cli` suite: NOT run locally.** Rule 35e9: batch CI owns it; slot-leak incident 2026-10-18. The card's regression coverage is the narrowed anchored runs below plus the scoped diff.
+- **Narrowed M5 verification (all anchored, slot-exempt, final tree `ef7e84fe4` + parity repair)**:
+  - `go test ./internal/cli/ -run '^TestFactoryEligiblePull.*$' -count=1` — `ok github.com/modu-ai/moai-adk/internal/cli 19.295s` (whole new family incl. the fail-safe cell).
+  - Flipped/updated + MCP-surface + codex-next batch: `go test ./internal/cli/ -run '^TestSD_AC008_NextSelectionOrderAndOutput$|^TestFactoryNextAfterGuardCountsOtherRunsMerges$|^TestSD_AC014_MCPMatchesCLIWithProjectRoot$|^TestSD_AC023_CodexNextSkipsUnadvanceableCard$' -count=1` — first run FAIL, one more (b2)-vehicle test found and repaired (below); after repair — `ok github.com/modu-ai/moai-adk/internal/cli 39.036s`.
+  - `TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_next_leases_identically` — RED observed verbatim pre-fix: `factory_m3_test.go:327: cli next: factory next: no card is available` (fixture leased a queue-picked no-row card through arm (b2); under the OFF default both surfaces answer no-card). Repair: fixture arms `cepSelfDispatchYAML(t, root, true)` — the parity SUBJECT (cli and mcp lease identically) keeps its coverage behind the gate. GREEN: `go test ./internal/cli/ -run '^TestSD_AC014_MCPMatchesCLIWithProjectRoot$' -count=1 -v` — 6/6 subtests PASS (`ok … 18.846s`).
+  - `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1 -v` — `--- PASS (0.00s)`, `ok … 0.327s`.
+  - `go test ./internal/config/ -cover -count=1` — `ok … coverage: 85.6% of statements` (≥85).
+  - `go vet ./internal/cli/ ./internal/config/` — exit 0.
+  - `golangci-lint run ./internal/cli/... ./internal/config/...` — `3 issues: * errcheck: 3` — identical to the pre-implementation baseline (all in `factory_run_adopt.go`, outside scope): NEW issues 0.
+  - E2 cross-platform (delegation-sanctioned, slot-gated, recorded above): `GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/config/` — exit 0.
+- **Updated existing tests, final ledger** (each with RED observed pre-fix): `TestSD_AC008` subtests ×2 (expectation flips), `TestFactoryNextAfterGuardCountsOtherRunsMerges` (flag armed), `TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_next_leases_identically` (flag armed). Every other existing test file byte-identical to base `e43b3eea2`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-18T01:55:00Z (2026-10-18 10:55 KST)
+run_commit_sha: pending-backfill-run (final evidence commit lands after this write; the §E.2 evidence names every commit it measured against)
+run_status: complete (M1-M5 per plan §F order; corrected M5 close per leader order 2026-10-18 — narrowed anchored verification, package-wide suite recorded as GAP)
+ac_pass_count: 7
+ac_fail_count: 0
+preserve_list_post_run_count: 3 (arm (a)+assigned-rows semantics — AC008/AC023 preserved cells GREEN; arm (b-priority) bundle-ownership semantics — bundle family anchored GREEN; arm (c) promotion + serial-slot read-only — serial-slot family anchored GREEN, slot semantics untouched per D5)
+l44_pre_commit_fetch: done — `git fetch origin main` exit 0; divergence `10 99` (origin 10 / branch 99 — expected git-flow shape; local main ahead of origin, card branch stacks on it)
+l44_post_push_fetch: n/a — no push (factory card; the leader batch-lands; §E.2 records the no-push rule)
+new_warnings_or_lints_introduced: 0 (final `golangci-lint run ./internal/cli/... ./internal/config/...` = `3 issues: * errcheck: 3`, byte-identical to the pre-implementation baseline, all in factory_run_adopt.go outside this SPEC's file scope)
+cross_platform_build.windows_amd64: pass (GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/config/ — exit 0, slot-gated)
+total_run_phase_files: 10 changed (6 in-scope source/config/yaml + 2 in-scope test files authored + 2 existing test files updated under the RED-first update policy) + 1 cascade fixture (shipped_key_inventory.yaml) + 2 SPEC-side evidence files (spec.md frontmatter status/updated only; progress.md §E.2/§E.3)
+m1_to_mN_commit_strategy: per-milestone Conventional commits M1..M5 (`feat`/`test` prefixes, `(card t1839)` in every subject, Authored-By-Agent: manager-develop + 🗿 MoAI trailers); M1 carries the draft → in-progress transition; no push, no PR
+gaps: package-wide `internal/cli` suite NOT run locally (rule 35e9 — batch CI owns it); CI on the integration branch owns the repository-wide test verdict and that verdict is PENDING at report time; interpretation I-1 (priority=high as the Class-C surrogate for REQ-CEP-003 condition 2) awaits operator/auditor review; two incremental single-package `go build ./internal/cli/` compile checks ran lease-less during M3/M4 (recorded deviation, §E.2 M5)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
