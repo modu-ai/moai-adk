@@ -213,6 +213,22 @@ func maskWindowStamp(s string) string { return windowStampRe.ReplaceAllString(s,
 // the second lane naming the holder. Row two: a re-measure record written at the parent by the
 // lane's usual measurement is found, and the card reaches merged-local.
 func TestMCPVerbParity_CompleteWindowRoot(t *testing.T) {
+	completeWindowRootRows(t, false)
+}
+
+// TestMCPVerbParity_CompleteWindowRootNonParentEnv is the same table with
+// CLAUDE_PROJECT_DIR naming the LINKED worktree of the lane's card instead of the parent
+// checkout (sync-audit round 1, F1). Both surfaces resolve the window and re-measure root
+// to the repository common root, so the variable no longer splits them: the window another
+// lane holds at the parent still refuses the second lane on the verb and on the MCP
+// handler, and the re-measure record written at the parent is found by both.
+func TestMCPVerbParity_CompleteWindowRootNonParentEnv(t *testing.T) {
+	completeWindowRootRows(t, true)
+}
+
+// completeWindowRootRows runs the two window-root rows. envLinked pins CLAUDE_PROJECT_DIR to
+// the acting lane's own linked worktree after the fixture has pinned it to the parent.
+func completeWindowRootRows(t *testing.T, envLinked bool) {
 	arm := func(t *testing.T, viaMCP, holderOther bool) (string, string, string) {
 		t.Helper()
 		root, integWT, cards := sdMergeFixture(t, true, true, false, 2)
@@ -229,6 +245,9 @@ func TestMCPVerbParity_CompleteWindowRoot(t *testing.T) {
 		sdLaneEnv(t, lane, "")
 		t.Setenv(config.EnvClaudeCodeSessionID, "sess-"+lane)
 		t.Chdir(root)
+		if envLinked {
+			t.Setenv("CLAUDE_PROJECT_DIR", tree.wt)
+		}
 		var err error
 		if viaMCP {
 			err = callFactoryTool(handleFactoryComplete)(t, map[string]any{"card": card, "run": fcRun, "project_root": tree.wt})

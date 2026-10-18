@@ -76,6 +76,10 @@ func integrationLockRoot() string {
 	return resolveProjectDir()
 }
 
+// integrationCommonRootOf is the window-root rule shared by the verbs and the MCP handlers.
+// RED stub (card t1680): keeps the pre-repair behaviour so the new tests fail on assertions.
+func integrationCommonRootOf(dir string) string { return canonicalTreeSpelling(dir) }
+
 // canonicalTreeSpelling returns git's own spelling of dir's top level, and dir
 // verbatim whenever git cannot answer for it (card t766).
 //
