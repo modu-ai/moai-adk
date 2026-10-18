@@ -98,10 +98,18 @@ func parseSkillListingEntry(name, frontmatter string) (skillListingEntry, error)
 
 // parseSkillMD extracts the frontmatter of a SKILL.md and parses it. It is the
 // one extraction the guard uses, so only this guard is affected.
+//
+// asideSplitFrontmatter cuts at "\n---", which removes the clip newline of a
+// block scalar that is the last frontmatter key. Assumption, not an observed
+// host fact: the host cuts after the closing delimiter and keeps that newline.
+// Restoring it here can only overcount, the safe direction.
 func parseSkillMD(name, text string) (skillListingEntry, error) {
 	fm, ok := asideSplitFrontmatter(text)
 	if !ok {
 		return skillListingEntry{}, fmt.Errorf("skill %q: no frontmatter", name)
+	}
+	if !strings.HasSuffix(fm, "\n") {
+		fm += "\n"
 	}
 	return parseSkillListingEntry(name, fm)
 }
