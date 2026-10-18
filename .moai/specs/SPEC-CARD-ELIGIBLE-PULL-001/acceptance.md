@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "인수 기준 — 플래그 OFF 휴면, 자격 게이트 5조건, 구조화 거부"
-version: "0.2.2"
+version: "0.3.0"
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec
@@ -32,17 +32,17 @@ maps REQ-CEP-001
 
 maps REQ-CEP-002, REQ-CEP-003
 
-- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted) — hold **상태** 후보가 여기 속한다: 입장 = 큐 picked이므로 hold 상태는 조건 1에서 실격해 항상 `not-admitted`로 발현한다(`held` 토큰은 폐쇄 집합에 없다 — 흡수 관계의 명시, D9); (ii) 유효 분류가 Class C인데 spec 식별자가 row·큐 힌트 어디에도 없다(spec-missing); (iii) **picked 상태 + hold 마커** — 카드 텍스트가 hold 마커로 시작, 상태 독립 술어 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`) 경유(`hold-marker`; `factoryQueuedHoldMarked`는 Queued 조건부라 이 picked+마커 조합을 잡지 못한다 — 픽스처는 반드시 picked+마커 조합으로 짠다); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다((i)의 hold-상태 픽스처는 `refused not-admitted:` 라인을, (iii)의 picked+마커 픽스처는 `refused hold-marker:` 라인을 주장한다).
+- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted) — hold **상태** 후보가 여기 속한다: 입장 = 큐 picked이므로 hold 상태는 조건 1에서 실격해 항상 `not-admitted`로 발현한다(`held` 토큰은 폐쇄 집합에 없다 — 흡수 관계의 명시, D9); (ii) spec 식별자가 row·큐 힌트 어디에도 없다(유효 분류·우선순위 무관 — Class C 포함, priority==high도 면제 없음; spec-missing — 0.3.0 amendment의 fail-closed); (iii) **picked 상태 + hold 마커** — 카드 텍스트가 hold 마커로 시작, 상태 독립 술어 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`) 경유(`hold-marker`; `factoryQueuedHoldMarked`는 Queued 조건부라 이 picked+마커 조합을 잡지 못한다 — 픽스처는 반드시 picked+마커 조합으로 짠다); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다((i)의 hold-상태 픽스처는 `refused not-admitted:` 라인을, (iii)의 picked+마커 픽스처는 `refused hold-marker:` 라인을 주장한다).
 - RED-now 셀 계획(각 셀): RED 테스트가 먼저 작성된다 — 현 트리는 게이트가 없어 (i)~(v) 셀에서 임대가 일어나거나(예: hold 마커·Class C 무spec 후보가 (b)/(b2)로 임대), 임대가 안 일어나도 사유 라인이 없어 라인 주장이 실패한다.
 - Green path: M2(RED 확정) → M3(게이트) → M4(표면).
 
-### AC-CEP-003 — 플래그 ON, 적격 임대 유지(과차단 없음)
+### AC-CEP-003 — 플래그 ON, 무spec self-경로 거부 + 적격 임대 유지(0.3.0 amendment)
 
 maps REQ-CEP-002, REQ-CEP-003
 
-- **Given** 플래그 ON. 무소유 picked 후보가 5조건 전부를 만족한다(admitted·spec 있는 Class C 또는 Class C 아님·hold 아님·의존성 충족·parallel 모드이거나 슬롯 비어 있음). **When** bare `factory next`를 실행한다. **Then** 후보는 암 (b)/(b2) 경유로 오늘과 같은 절차로 정상 임대된다 — 게이트는 적격 카드를 막지 않는다.
-- RED-now 셀 계획(D3): 이 기준의 RED 전제(무게이트 암이 적격 후보를 임대한다)는 게이트 도입 **전에만** 관찰 가능하다 — 관찰은 **M1 진입 시점**(구현 전 트리)에 수행해 기저 커밋 핀과 함께 §E.2에 기록하며, 이 관찰이 회귀 수호 핀을 겸한다(two-cell discipline의 regression-guard 분류). 픽스처 자체는 M2에서 **룰-페어링**(verification-completeness §2)으로 짠다 — 같은 픽스처 안에 적격 후보(임대 주장)와 실격 형제(거부 라인 주장)를 함께 두어 과차단·과통과 양방향 뮤턴트에 저항한다.
-- Green path: M4 — 픽스처의 **양 주장**(적격 임대와 실격 형제의 거부 라인)이 모두 표면이 존재하는 M4에서 닫힌다(D8; 룰-페어링 유지 — 픽스처를 분리하지 않는다).
+- **Given** 플래그 ON. (a) 무소유 picked 후보가 spec 식별자를 row·큐 힌트 어디에도 갖지 않는다(유효 분류·우선순위 무관 — priority==high도 포함). (b) 대조: 카드가 이 레인에 배정되어 있다(assigned). (c) 룰-페어링 픽스처의 적격 형제는 **spec 식별자를 보유한다**(spec 있는 Class C 또는 Class C 아님 + 나머지 4조건 충족). **When** bare `factory next`를 실행한다. **Then** (a) 무spec 후보는 제네릭 암 (b)/(b2)를 통해 **절대 임대되지 않고** 항상 `refused spec-missing:` 라인으로 거부된다(fail-closed); (b) 배정 카드는 기존 배정 경로 그대로 정상 임대된다(leader-assignment·자기 배정 우선 무영향); (c) spec 보유 적격 형제는 (b)/(b2) 경유로 정상 임대된다 — 게이트는 적격 카드를 막지 않는다.
+- 셀 계획(0.3.0): (a)는 fail-closed의 직접 셀이자 F1 수정 검증 셀 — priority==high 대리가 남아 있으면 (a)가 RED로 붉어진다(대리 제거 확인). (a)의 RED는 amendment 구현 전 트리에서 관찰한다; 종전 RED 관찰(M1 진입의 무게이트 임대 사실, 기저 커밋 핀 — D3의 regression-guard)은 그대로 유효하다. (c)의 픽스처는 이제 적격 형제가 spec을 반드시 보유한다. 룰-페어링 유지 — 적격 임대 주장과 실격 형제의 거부 라인 주장이 같은 픽스처에 함께 산다.
+- Green path: M4 — 픽스처의 **양 주장**(적격 임대와 실격 형제의 거부 라인)이 모두 표면이 존재하는 M4에서 닫힌다(D8; 룰-페어링 유지 — 픽스처를 분리하지 않는다; 마일스톤 불변).
 
 ### AC-CEP-004 — 배정·번들·승격 경로 면역(플래그 양상 모두)
 

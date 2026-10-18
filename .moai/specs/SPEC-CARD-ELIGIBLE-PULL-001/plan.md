@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "구현 계획 — 설정 키 배관, RED 우선 휴면·게이트 테스트, 자격 술어 적용, 구조화 거부 표면, 회귀 수호 배치"
-version: "0.2.2"
+version: "0.3.0"
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec
@@ -41,7 +41,7 @@ tier: M
 - **롤아웃 주의(D6).** t1240 self-dispatch 런 중 레인의 bare-next 무소유 임대에 의존하는 기존 배포는 이 변경이 반영되는 시점에 `workflow.factory.self_dispatch: true`로 설정해야 그 면이 유지된다(기본 false는 제네릭 암 휴면). 활성화 주체·시점: 해당 배포의 운영자(팩토리 리더)가 변경 반영 시 설정한다 — 기본값 전환은 이 SPEC이 수행하지 않는다.
 - **플래그 OFF = 제네릭 암 휴면(킬스위치, Q1 판정).** OFF(기본)에서 암 (b)/(b2)는 무소유 카드에 대해 어떤 임대도 하지 않는다. 스킵은 **조용한 스킵**이다 — 암 (c)의 hold-skip 패턴과 동일하게: 임대 없음, 기록 없음, 사유 라인 없음. 사유 라인은 플래그 ON에서 게이트가 후보를 **평가하고 실격시켰을 때만** 존재한다(평가가 없으면 사유도 없다). 배정 경로(암 (a))·자기 번들(암 (b-priority))·암 (c) 승격은 플래그와 무관하게 기존 조건 그대로다.
 - **테스트 갱신 정책(RED-first).** 기존 (b)/(b2)의 무게이트 임대를 고정하던 테스트는 **의도적으로 갱신**한다: 기대를 뒤집은 직후 현 코드에서 RED를 관찰하고(이 관찰이 TDD의 RED 증거가 된다), 구현이 GREEN으로 만든다. 관측 없는 뒤집기(수정 후 바로 맞아들어가는 test-after)는 무효다. 무관 경로(암 (a)/(b-priority)/(c))의 기존 테스트는 무수정이며, 신규 시나리오는 신규 테스트 파일에 든다.
-- **플래그 ON = 자격 게이트.** 5조건 술어(REQ-CEP-003)를 (b)/(b2) 평가에 적용하고 실격 사유(토큰+카드 id)를 수집해 넘긴다. hold **마커** 검사의 운반체는 상태 독립 함수 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`)다 — `factoryQueuedHoldMarked`(`factory_card.go:1259-1266`)는 `it.State == Queued &&` 조건부라 picked 후보에는 절대 발화하지 않으므로 게이트의 마커 검사로 쓸 수 없다(D1). hold **상태** 검사는 큐 picked 검사(조건 1)가 담당한다 — hold 상태 후보는 입장에서 이미 실격하므로 항상 `not-admitted`로 발현한다(`held` 토큰은 없다, D9). 선행/hub 대기 술어는 기존 함수(`selectionSkips`/`hubWaitUnmerged`)를 재사용해 적용 지점만 명시적으로 바꾼다. 직렬 슬롯은 기존 판정을 읽기만 한다(D5).
+- **플래그 ON = 자격 게이트.** 5조건 술어(REQ-CEP-003)를 (b)/(b2) 평가에 적용하고 실격 사유(토큰+카드 id)를 수집해 넘긴다. 조건 2(spec 존재)는 **fail-closed**다 — spec 식별자가 없는 카드는 유효 분류·우선순위와 무관하게 제네릭 암에서 절대 임대되지 않고 항상 `spec-missing`으로 거부된다; priority==high 등 어떤 대리 조건도 이 거부를 면제할 수 없다(0.3.0 amendment, F1 — 대리 구현은 발산 결함이었다). hold **마커** 검사의 운반체는 상태 독립 함수 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`)다 — `factoryQueuedHoldMarked`(`factory_card.go:1259-1266`)는 `it.State == Queued &&` 조건부라 picked 후보에는 절대 발화하지 않으므로 게이트의 마커 검사로 쓸 수 없다(D1). hold **상태** 검사는 큐 picked 검사(조건 1)가 담당한다 — hold 상태 후보는 입장에서 이미 실격하므로 항상 `not-admitted`로 발현한다(`held` 토큰은 없다, D9). 선행/hub 대기 술어는 기존 함수(`selectionSkips`/`hubWaitUnmerged`)를 재사용해 적용 지점만 명시적으로 바꾼다. 직렬 슬롯은 기존 판정을 읽기만 한다(D5).
 - **공유 거부 결과 경로(D2).** 수집된 사유 라인은 선택 패스가 반환하는 결과에 실려 양 표면으로 흐른다 — cobra verb(`factory_card.go`)와 MCP 핸들러(`mcp_factory_card.go:187`가 자체 고정 텍스트를 갖는 지점)가 **하나의 공유 소스에서 같은 텍스트를 렌더**한다. 두 표면이 각자 문자열을 조립하면 AC-CEP-006(5)의 동일 텍스트 요구가 지켜질 수 없다.
 - **Row-preserving·무마이그레이션.** 큐 스키마·레코드 row 구조 변경 없음, 행 삭제 없음.
 - **그림자 측정 불필요(스테이지 C) 선언.** 이 SPEC(스테이지 C — 선택 거부·휴면)은 소유권을 바꾸지 않는다: OFF 스킵과 ON 게이트 실격 모두 row 생성·claim·상태 전이를 전혀 일으키지 않으므로(REQ-CEP-006) 임대·기록 경로의 기존 판정이 그대로 증언하고, 신규 동작을 그림자 실행으로 비교 측정할 측도가 없다. 그림자 측정은 상태를 바꾸는 스테이지(A/B/D)의 도구다.
