@@ -1482,6 +1482,54 @@ FAIL
 
 해석: 사례 B (`moai-foundation-core`, 이번 실행이 마지막 파일을 제거) 는 이 stub 상태에서도 붉지 않았다 — t1668 의 `pruneEmptiedSkillDir` 가 이미 하는 일이므로 B 는 새 코드 없이 회귀 가드이다 (plan.md § G.1, acceptance AC-OWR-13 비고와 같은 예측). 붉은 것은 A, A', C 의 세 단계, 미러 쪽 관리 디렉터리, 혼합 자식 (정리되지 않음) 과 D, E, 혼합 부모, 미러 D (잔존 행 없음) 이다. 이유: 걷기 뒤의 정리 단계가 없고 정리 판단의 근거 (시작 매니페스트 + 이전 세대 기록 해석) 가 없다 — 정확히 acceptance 의 RED 이유 문장이다.
 
+**AC-OWR-13 — 커밋 C** `ba1ebac9a4` (`internal/cli/migrate_ownership_emptydir.go` 신규, `internal/cli/migrate_project_assets.go` 호출 한 줄 + 주석, `internal/cli/migrate_ownership_remaining.go` 묶음 줄의 명사). 정리 단계 `pruneManagedEmptyDirs` 는 걷기와 제거가 끝난 뒤, 매니페스트 항목 정리와 잔존 행 정렬 앞에서 한 번 돈다. 두 스킬 루트 아래 디렉터리마다 그 트리에 파일이 하나도 없을 때만 (파일, 심링크, 읽기 오류가 하나라도 있으면 그 트리는 후보가 아니다) 가장 깊은 디렉터리부터 판정한다. 판정 `dirManagedProvenance` 는 시작 시점 매니페스트와 보존된 이전 세대 두 원천에서 `<디렉터리>/` 접두의 모든 기록을 모아, 기록이 있고 전부 `template_managed` 이며 기록된 경로가 하나도 디스크에 없을 때만 「관리 파일만 있던」 으로 본다 (비관리 기록이 한 원천에라도 있으면 그 기록이 판정을 정한다: `user_created` > `user_modified` > 그 밖). 제거는 스킬 디렉터리 한 단계 아래는 t1668 의 `pruneEmptiedSkillDir` 를 그대로 재사용하고, 더 깊은 단계는 같은 경계 검사를 가진 `pruneNestedEmptyDir` (`os.Remove` 만) 가 한다. 스킬 루트 자체, 에이전트 디렉터리, 심링크 미러 루트는 후보가 아니다. 유지된 디렉터리는 이유 `empty-dir-no-provenance` 의 잔존 행이 된다 (분류는 판정이 정한다: 기록 없음 `unregistered`, `user_created` 기록 `user-created`).
+
+**AC-OWR-13 GREEN (트리 `ba1ebac9a4`, 작업 트리 깨끗; 이 실행의 부하 평균은 측정 끝에서 `88.55 54.77 45.84`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestManagedOnlyEmptyDirsPruned|TestEmptyDirProvenanceVerdict)$' -count=1 -v` (인용은 `--- ` 줄만, 서브 시험 이름은 원문 그대로):
+
+```text
+--- PASS: TestManagedOnlyEmptyDirsPruned (61.27s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/Premise (36.10s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/PrunesManagedOnlyAndKeepsTheRest (11.32s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/IndependentOfTheRemovalSwitch (4.41s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/RootsAndAgentDirectoriesAreNeverCandidates (1.88s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/RemainingRowsAreDirectoriesNotFiles (1.94s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/MutantPruningAnyEmptyDirIsCaught (1.94s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/MutantIgnoringNonManagedRecordsIsCaught (3.67s)
+--- PASS: TestEmptyDirProvenanceVerdict (0.00s)
+    (서브 시험 열한 개 모두 PASS)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	62.801s
+```
+
+(이 실행의 종료 코드는 인용하지 않는다 — 파이프 뒤에서 읽어 값이 비었다. 종료 코드는 아래 연속 5회의 값이 증거이다.)
+
+**연속 5회 (같은 선택자 `^TestManagedOnlyEmptyDirsPruned$`, 각 `-count=1 -v`, 각 실행의 종료 코드를 직접 읽음; 트리 `89731b5e59` + 아직 커밋하지 않은 구현 C — 같은 내용이 `ba1ebac9a4`)**
+
+```text
+run 1 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.515s
+run 2 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	9.192s
+run 3 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.072s
+run 4 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	5.646s
+run 5 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.518s
+```
+
+**실제 운영 코드 변이 둘 (트리 `89731b5e59` + 임시 변경; 둘 다 되돌렸고 `cmp` 로 원본과 동일함을 확인, 출력 `RESTORED-IDENTICAL`)**
+
+- R1 정리 단계 호출 한 줄을 지움 → 서브 시험 여섯이 붉다 (`Premise` 만 PASS): `PrunesManagedOnlyAndKeepsTheRest`, `IndependentOfTheRemovalSwitch`, `RootsAndAgentDirectoriesAreNeverCandidates`, `RemainingRowsAreDirectoriesNotFiles`, 두 변이 서브 시험. 종료 `FAIL github.com/modu-ai/moai-adk/internal/cli 10.078s`.
+- R2 `dirManagedProvenance` 가 비관리 기록 (`user_created`, `user_modified`, 그 밖) 을 보지 않게 함 → 서브 시험 셋 (`PrunesManagedOnlyAndKeepsTheRest`, `IndependentOfTheRemovalSwitch`, `RemainingRowsAreDirectoriesNotFiles`) 과 표 시험의 다섯 경우 (`a_user_created_record_beside_managed_ones`, `a_user_modified_record`, `a_deprecated_record_is_not_managed`, `an_empty_provenance_value_is_not_managed`, `a_user_created_record_in_the_older_of_two_sources_still_counts`) 가 붉다. 종료 `FAIL github.com/modu-ai/moai-adk/internal/cli 9.805s`.
+
+**회귀 (기준선 11 + chunk 1, 2 의 시험 33 + 이번 M5 둘 = 앵커된 이름 46개, 트리 `89731b5e59` + 구현 C)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<46개 앵커된 이름>)$' -count=1 -v` (이름 목록 = plan.md 의 기준선 11개 + `migrate_ownership*_test.go`, `update_prior_manifest*_test.go` 의 최상위 `func Test…` 전부, `sort -u` 로 46개임을 `wc -l` 로 확인). 출력 요약 (내 집계 한 줄과 `go test` 마지막 줄): `top-level PASS=46 FAIL=0 SKIP=0`, `ok  	github.com/modu-ai/moai-adk/internal/cli	90.840s`, `exit=0`. `internal/manifest` 의 `TestManifestRecordsDeployedVersion`: `--- PASS`, `ok  	github.com/modu-ai/moai-adk/internal/manifest	0.258s`. (chunk 2 의 기록은 「45개」 라 적었고 이 트리에서 `internal/cli` 에서 내가 센 앞선 시험은 11 + 21 + 12 = 44개이다; 이번 46 = 44 + 2 는 센 이름과 `--- PASS` 수가 일치한다. 앞선 「45」 는 `internal/manifest` 의 시험 하나를 합쳐 센 값으로 보이나 (44 + 1), 그 기록의 명령을 다시 돌려 확인하지 않았다 — 미검증.)
+
+**M5 정직한 회계**
+
+1. 사례 B (이번 실행이 마지막 파일을 제거) 는 새 코드 없이 t1668 의 `pruneEmptiedSkillDir` 가 이미 하는 일이다 — RED 의 stub 측정에서도 붉지 않았다. 이 케이스는 회귀 가드이며 이번 단계가 한 일이 아니다.
+2. 판정 어휘는 닫힌 이유 집합을 늘리지 않았다 (`empty-dir-no-provenance` 는 chunk 1 에서 이미 어휘에 있었다).
+3. 「스킬 디렉터리」 의 깊이: REQ-OWR-008 은 「스킬 루트 아래의 디렉터리」 라 하고 design.md D-6 은 중첩을 아래쪽부터 위로 평가한다고 한다. 이 구현은 스킬 루트 아래 모든 깊이의 디렉터리를 같은 규칙으로 평가한다 (스킬 루트 자신은 아님).
+4. 심링크로 된 미러 루트 (`.agents/skills` 가 심링크) 는 후보가 아니다: 그 디렉터리는 대상 루트에서 판정된다. 실제 심링크 미러 루트를 둔 픽스처로 이 가지를 시험하지는 않았다 (코드 읽기와 `Lstat` 분기만) — 갭.
+5. `--dry-run` 미리보기는 이 정리를 알리지 않는다 (요구사항에 없고 미리보기 개정은 M7 의 판정 일치 범위에 이 디렉터리 정리를 넣지 않았다).
+6. 잔존 행에는 디렉터리 행이 생긴다. 묶음 줄은 이 이유에서만 「file(s)」 대신 「empty director(ies)」 를 쓴다 (`remainingSummaryLines` 의 명사 한 곳).
+7. `userAssetsInstalled` 가 거짓이거나 프로젝트 매니페스트가 없는 실행은 걷기 앞에서 끝나므로 정리 단계에도 닿지 않는다 (기존 조기 반환을 바꾸지 않았다).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
