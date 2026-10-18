@@ -60,6 +60,13 @@ gate:
   # `enabled` key above.
   pre_commit:
     enabled: false
+    # Which packages the Go test step runs in this context. "affected" (the
+    # default) tests the packages that own a file in the commit plus the
+    # packages that directly import them; "full" restores `go test ./...`.
+    # A commit that changes go.mod, go.sum, go.work, go.work.sum or
+    # .moai/config/build-tags always runs the full module.
+    test_scope:
+      mode: affected
   ast_grep_gate:
     enabled: true
     # Where this project's ast-grep rules live. This is the single source of

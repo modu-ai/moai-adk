@@ -74,6 +74,12 @@ type GateConfig struct {
 	// operator decision 2). The field travels here so one config load feeds
 	// both the wait budget and the pre-commit decision.
 	PreCommitEnabled bool
+	// PreCommitTestScope carries gate.pre_commit.test_scope.mode ("affected" or
+	// "full"; empty reads as "affected") into the CLI entry
+	// (SPEC-PRECOMMIT-AFFECTED-SCOPE-001). Like PreCommitEnabled, Run never
+	// reads it: the CLI validates it and decides whether the run is in the
+	// pre-commit context.
+	PreCommitTestScope string
 }
 
 // GraphFreshnessConfig configures the graph-freshness step of the quality

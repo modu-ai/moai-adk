@@ -51,6 +51,30 @@ FAIL
 ```
 Why red: default, validation and both YAML copies are not yet implemented (the two `accepts_*` subtests pass because the struct field already decodes; they are not the red cells).
 
+### GREEN-M1 — AC-PAS-011 config half (same command, flipped; tree = M1 GREEN commit)
+Command: `go test ./internal/config -run '^TestGatePreCommitTestScope$' -count=1 -v`
+Exit code: 0
+```
+=== RUN   TestGatePreCommitTestScope
+=== RUN   TestGatePreCommitTestScope/absent_key_defaults_to_affected
+=== RUN   TestGatePreCommitTestScope/pre_commit_without_test_scope_defaults_to_affected
+=== RUN   TestGatePreCommitTestScope/accepts_affected
+=== RUN   TestGatePreCommitTestScope/accepts_full
+=== RUN   TestGatePreCommitTestScope/rejects_any_other_value_naming_the_key_and_the_accepted_values
+=== RUN   TestGatePreCommitTestScope/shipped_gate.yaml_copies_agree_on_the_scope_block
+--- PASS: TestGatePreCommitTestScope (0.01s)
+    --- PASS: TestGatePreCommitTestScope/absent_key_defaults_to_affected (0.00s)
+    --- PASS: TestGatePreCommitTestScope/pre_commit_without_test_scope_defaults_to_affected (0.00s)
+    --- PASS: TestGatePreCommitTestScope/accepts_affected (0.00s)
+    --- PASS: TestGatePreCommitTestScope/accepts_full (0.00s)
+    --- PASS: TestGatePreCommitTestScope/rejects_any_other_value_naming_the_key_and_the_accepted_values (0.00s)
+    --- PASS: TestGatePreCommitTestScope/shipped_gate.yaml_copies_agree_on_the_scope_block (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.327s
+```
+Other M1 verification (this run, this tree): `go test ./internal/config -count=1` fails only `TestNoHardcodedContexts` (BASELINE, not attributable: it reads `scripts/release.sh`, which contains the forbidden string `Test (ubuntu-latest)` at HEAD (`grep -c` = 2) and which this card does not touch; `git diff --stat HEAD -- scripts/release.sh` is empty). `TestShippedConfigKeysHaveReaders` turned red on the new key and was repaired by one inventory row in `internal/config/testdata/shipped_key_inventory.yaml` (class W). `go test ./internal/settings ./internal/web -count=1` exit 0. `go test ./internal/cli -run '^(TestUpdateGateYAMLPreservesUserValues|TestUpdateGateYAMLDeliversNewPreCommitKey|TestRunGate|TestGAR_|TestGateCmd_RunE_Behavior|TestGateCmd_PassPathEmitsExecutionSummary|TestPrecommitE2E)' -count=1 -v` exit 0 (the two update tests PASS). `go test ./internal/template -count=1` exit 0 (`ok 440.463s`; NOTE: run before the slot lease, see Gaps). `make build` exit 0 and left no tracked change.
+Decision recorded: an empty `test_scope.mode` (the zero value of a hand-built Config) validates and resolves to `affected`; only a non-empty unknown value is rejected (needed so existing tests that call `Validate` on zero-valued configs keep passing).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_

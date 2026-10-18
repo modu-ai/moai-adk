@@ -50,6 +50,9 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check git strategy merge_method enum (per-mode profile)
 	errs = append(errs, validateGitStrategyMergeMethod(cfg)...)
 
+	// Check the pre-commit Go test scope mode (SPEC-PRECOMMIT-AFFECTED-SCOPE-001).
+	errs = append(errs, ValidateGateTestScopeMode(cfg.Gate.PreCommit.TestScope.Mode)...)
+
 	// Check for unexpanded dynamic tokens
 	errs = append(errs, validateDynamicTokens(cfg)...)
 

@@ -434,6 +434,9 @@
 - path: "gate.pre_commit.enabled"
   class: W
   evidence: reader internal/cli/gate.go (runGate pre-commit marker branch — honored only under MOAI_PRECOMMIT=1)
+- path: "gate.pre_commit.test_scope.mode"
+  class: W
+  evidence: reader internal/cli/gate.go (mapConfigGateToQuality carries it; runGate validates it under MOAI_PRECOMMIT=1)
 - path: "gate.skip_tests"
   class: R
   evidence: none

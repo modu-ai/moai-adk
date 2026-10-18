@@ -195,7 +195,8 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 
 		// Pre-commit-context opt-in (SPEC-PRECOMMIT-GATE-SCOPE-001). Consumed
 		// only by runGate's marker-gated branch; the runner never reads it.
-		PreCommitEnabled: g.PreCommit.Enabled,
+		PreCommitEnabled:   g.PreCommit.Enabled,
+		PreCommitTestScope: g.PreCommit.TestScope.Mode,
 	}
 	// Map gate.disabled_steps through verbatim (issue #1265): the runner reads
 	// FALSE as "skip this step", so normalising values here would silently stop

@@ -1243,6 +1243,9 @@ func NewDefaultGateConfig() GateConfig {
 		// SPEC-PRECOMMIT-GATE-SCOPE-001).
 		PreCommit: GatePreCommitConfig{
 			Enabled: false,
+			// The Go test step tests the packages a commit can affect, not the
+			// whole module (SPEC-PRECOMMIT-AFFECTED-SCOPE-001).
+			TestScope: GatePreCommitTestScope{Mode: GateTestScopeAffected},
 		},
 	}
 }
