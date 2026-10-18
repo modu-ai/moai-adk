@@ -98,7 +98,7 @@ func performClaudeAuditWith(ctx context.Context, req claudeAuditRequest, binary 
 	if target == "" {
 		target = codexTargetUncommitted
 	}
-	diff, err := collectReviewDiff(root, target)
+	diff, err := collectReviewDiffCtx(ctx, root, target)
 	if err != nil || strings.TrimSpace(diff) == "" {
 		return claudeInconclusive(claudeErrDiffUnavailable, "Claude audit has no reviewable change", req.Model, req.Effort)
 	}

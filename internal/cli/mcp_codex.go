@@ -254,6 +254,13 @@ type ReviewOutput struct {
 	// review. It feeds the receipt's codex_error and never reaches the JSON output.
 	StderrTail string `json:"-"`
 
+	// RecordingDefect carries synthesizeReviewOutput's finding that the body
+	// stated `Verdict: pass` while finding bullets made the recorded verdict
+	// fail (card t1708). Like StderrTail it never reaches the tool's JSON output,
+	// so the audit tools' output schema is untouched; audit_multi forwards it to
+	// PerBackendVerdict.RecordingDefect.
+	RecordingDefect string `json:"-"`
+
 	// Provenance identifies the backend transport that actually produced the
 	// review. It is optional so the existing Codex/GLM output remains byte-for-
 	// byte compatible until those backends opt into the common metadata.
@@ -1736,9 +1743,10 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 		verdict = codexUnrecognizedVerdict(method)
 	}
 	return flagVerdictFindingsContradiction(ReviewOutput{
-		Verdict:  verdict,
-		Summary:  strings.TrimSpace(reviewText),
-		Findings: codexFindingsOf(reviewText),
+		Verdict:         verdict,
+		Summary:         strings.TrimSpace(reviewText),
+		Findings:        codexFindingsOf(reviewText),
+		RecordingDefect: describeRecordingDefect(signals, verdict),
 		// NextSteps stays empty here, and that is the value rather than a gap.
 		// claude and glm carry next_steps from the model's OWN structured output
 		// (mcp_claude_protocol.go, mcp_glm.go); codex answers in prose, so this
@@ -1932,6 +1940,33 @@ func describeSignalDivergence(signals []codexVerdictSignal, adopted string) stri
 	return "codex signals diverged: " + strings.Join(parts, ", ") + "; adopted " + adopted
 }
 
+// describeRecordingDefect names the case where the body STATES a pass yet the
+// adopted verdict is fail only because severity-tagged finding bullets outweigh
+// it (P-CONS). The bullets may sit outside the audited scope (a "pre-existing"
+// section), so a bare fail would hide that the reviewer said pass. A stated fail
+// among the non-bullet signals means the body did not say pass, so no defect.
+// It describes; it never changes the adopted verdict.
+func describeRecordingDefect(signals []codexVerdictSignal, adopted string) string {
+	if adopted != "fail" {
+		return ""
+	}
+	statedPass, statedFail, bullets := false, false, false
+	for _, s := range signals {
+		switch {
+		case s.source == "severity-tagged finding bullet":
+			bullets = true
+		case s.verdict == "pass":
+			statedPass = true
+		case s.verdict == "fail":
+			statedFail = true
+		}
+	}
+	if !statedPass || statedFail || !bullets {
+		return ""
+	}
+	return "codex body stated pass but the recorded verdict is fail: severity-tagged finding bullets outweighed the stated pass (they may be outside the audited scope, e.g. pre-existing items)"
+}
+
 // codexAdversarialVerdictFormat and codexAdversarialFindingFormat are the
 // output format the adversarial request pins (SPEC-CODEX-PARSER-SHAPE-001
 // candidate (d)).
@@ -2045,6 +2080,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		rootArg = root
 	}
 
+	// Card t1708: the optional delta scope. An unusable value is REJECTED here,
+	// before any codex process starts — falling back to the full diff would
+	// review more than the caller asked for while reporting success.
+	rawDeltaBase, deltaErr := deltaBaseArg(req)
+	if deltaErr != nil {
+		return toolErr("codex_audit", deltaErr), nil
+	}
+	deltaBase, deltaErr := readDeltaBase(root, rawDeltaBase, target)
+	if deltaErr != nil {
+		return toolErr("codex_audit", deltaErr), nil
+	}
+
 	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
 	// result this handler returns below, fail-open exits included — an
 	// inconclusive verdict is still a verdict that must name its binary.
@@ -2083,14 +2130,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// no target and names no base, so it records no review_base.
 	var base *reviewBase
 	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
-		if b, err := resolveReviewBase(root); err == nil {
+		b, err := resolveReviewBase(root)
+		if deltaBase != "" {
+			b, err = deltaReviewBase(deltaBase), nil // the validated delta base replaces the resolved one
+		}
+		if err == nil {
 			base = &b
 			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.MergeBase}
 		}
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
-		params["prompt"] = codexAdversarialReviewPrompt(focus)
+		params["prompt"] = codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
 		if focus != "" {
 			params["focus"] = focus
 		}
@@ -2100,6 +2151,9 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	if base != nil {
 		out.ReviewBase = base.String()
+	}
+	if deltaBase != "" && mode == codexModeAdversarial {
+		out.ReviewBase = deltaProseReviewBase(deltaBase) // turn/start has no target: say the scope was only asked for
 	}
 	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
 	// fail under a required gate (t1788).
