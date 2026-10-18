@@ -141,7 +141,7 @@ run_commits: 3b4f6ee31 + d5f2b9b56 (M1 RED+GREEN), 019a3ab03 + 54b08b753 (M2 RED
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 55778cc398c995560ea38fdbfc534a5412bf20b5
 
 ## §F Phase 4 Mode Selection
 
