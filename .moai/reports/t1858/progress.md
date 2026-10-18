@@ -52,3 +52,11 @@ Gaps: the script's own fail-closed `die` branches (file missing, zero names) wer
 `TestReleaseScriptCIGateSSoTFailsClosed` runs a COPY of the real script from `<tmp>/scripts/release.sh` with `<tmp>/.github/required-checks.yml` set per case (`--dry-run`, stub gh): SSoT absent, no release_gate block, empty release_gate block (all exit 1 with `[FAIL] CI gate: ...` and no check-runs call), and a control with a copy of the real SSoT (exit 0, `CI gate:     verified`).
 
 Sensitivity: first draft matched on message text only and PASSED with both `die` guards neutered to `log_warn` (the text still printed, exit 1 came from a later failure) - a wrong-reason pass. Fixed by requiring the `[FAIL]` prefix and no `check-runs` gh call. Re-run with both guards neutered in the real script (temporary, restored with `git checkout -- scripts/release.sh`): the three refusal rows FAIL ("a refused gate must not read the check runs; gh calls: [api --paginate ... check-runs ...]"), control PASS. Unmutated: all four PASS; `git diff -- scripts/release.sh` empty.
+
+## Sync evidence
+
+Files changed in sync (docs only; no spec/scripts/internal/.github/test/rules touched):
+- `CHANGELOG.md` - one entry under `## [Unreleased]` / `### Fixed` (card t1858).
+- `.moai/docs/batch-failure-bisect-runbook.md` - three statements that named `CI_REQUIRED_CHECKS` as the home of the required check names now name the `release_gate` list of `.github/required-checks.yml` (a rename is a one-place edit there; missing/empty file makes the script refuse).
+
+Commands run: `grep -n '^### Fixed' CHANGELOG.md`; `grep -n 'CI_REQUIRED_CHECKS\|release_gate' .moai/docs/batch-failure-bisect-runbook.md`; `git diff --stat`; `ls .github/required-checks.yml internal/config/required_checks_release_gate_test.go`. No markdown or docs lint exists in the Makefile (grep for markdownlint/docs-check/lint-md returned nothing), so none was run.
