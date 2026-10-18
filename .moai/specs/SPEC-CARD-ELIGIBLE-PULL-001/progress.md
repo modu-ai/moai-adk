@@ -223,7 +223,7 @@ gaps: package-wide `internal/cli` suite NOT run locally (rule 35e9 — batch CI 
 
 sync_status: complete
 sync_complete_at: 2026-10-18T01:48:00Z (2026-10-18 10:48 KST)
-sync_commit_sha: pending-backfill-sync (placeholder — a commit cannot cite its own hash; the real SHA is backfilled in the immediately following commit, per the D3 pattern)
+sync_commit_sha: 438a3c96e (backfilled — the commit that carried the §E.4 signal, the CHANGELOG entry, and the status close; per the D3 placeholder pattern a commit cannot cite its own hash)
 ac_count_at_sync: 7 (live AC-CEP-001..007 counted from acceptance.md SSOT by the B12 counter: live=7 excluded=0 ambiguous=0)
 b12_self_test_a_duplicate_grep: pass — `grep -c 'SPEC-CARD-ELIGIBLE-PULL-001' CHANGELOG.md` → 0 (exit 1, no prior entry; emission proceeded)
 b12_self_test_b_ac_count: pass — B12 counter stdout 7 == CHANGELOG-cited acceptance-criteria count 7; source acceptance.md (tier M resolver), not progress.md
