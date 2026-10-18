@@ -3,6 +3,8 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
+audit_verdict: plan audit iter2 PASS 0.91, audited_sha 49cb21de9, verdict file .moai/reports/t1718/plan-audit-iter2.md; history: iter1 FAIL 0.72 (.moai/reports/t1718/plan-audit-iter1.md).
 plan_revision: 0.3.0
 plan_complete_at: 2026-10-18T17:06:37Z
 plan_revision_2_at: 2026-10-18T17:13:14Z
@@ -27,3 +29,10 @@ _pending run-phase (manager-develop)_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase (manager-docs)_
+
+## §G Override and Refusal Record
+
+- 2026-10-18T20:31:31Z SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter2.md
+- 2026-10-18T20:33:31Z SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter2.md
+- 2026-10-18T20:33:34Z SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter2.md
+- 2026-10-18T20:33:41Z SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1718/.moai/reports/t1718/plan-audit-iter2.md
