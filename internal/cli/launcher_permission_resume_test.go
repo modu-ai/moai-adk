@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
 // Launch scenarios that run more than once in one project, or that start from a
@@ -171,17 +172,165 @@ func TestLaunch_GLMResumeKeepsOtherDefaultModes(t *testing.T) {
 
 // TestLaunch_ClaudeResumeDoesNotRewriteSettingsLocal: on the Claude backend a
 // resume leaves a hand-edited defaultMode alone (the sync runs on fresh launches
-// only), even though an unset profile would default to auto.
+// only), even though an unset profile would default to auto, and adds no default
+// --permission-mode flag to the child (the auto default is for new sessions only,
+// card t1866 operator exception b18d). The child is the pinned stub, which a
+// --continue launch starts through exec.Command(...).Run().
 func TestLaunch_ClaudeResumeDoesNotRewriteSettingsLocal(t *testing.T) {
 	for _, hand := range []string{"plan", "auto"} {
 		t.Run(hand, func(t *testing.T) {
 			root := permissionProject(t)
 			writeSettingsDoc(t, root, map[string]any{"permissions": map[string]any{"defaultMode": hand}})
+			argsFile := pinArgsRecordingClaude(t)
 
-			launchInProject(t, []string{"--continue"})
+			if err := launchClaudeDefault("", []string{"--continue"}); err != nil {
+				t.Fatalf("launch: %v", err)
+			}
 
 			if got := settingsDefaultMode(readSettingsDoc(t, root)); got != hand {
 				t.Errorf("defaultMode = %q after a Claude resume, want the hand-edited %q", got, hand)
+			}
+			if args := recordedChildArgs(t, argsFile); hasArg(args, "--permission-mode") {
+				t.Errorf("child args %v carry --permission-mode on a resume with an unset profile, want none", args)
+			}
+		})
+	}
+}
+
+// pinArgsRecordingClaude pins a stub claude binary that writes its arguments, one
+// per line, to a file in its own temp directory (never the project's .claude
+// directory) and exits 0. It returns the file path; the file exists only if the
+// binary ran.
+func pinArgsRecordingClaude(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	argsFile := filepath.Join(dir, "claude-args")
+	bin := filepath.Join(dir, "claude-args-stub")
+	script := "#!/bin/sh\n: >> '" + argsFile + "'\nfor a in \"$@\"; do printf '%s\\n' \"$a\" >> '" + argsFile + "'; done\nexit 0\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write args stub: %v", err)
+	}
+	t.Setenv(config.EnvClaudeBin, bin)
+	return argsFile
+}
+
+// recordedChildArgs returns the arguments the args-recording stub saw. It fails
+// the test when the stub never ran, so an absent flag is never read from a child
+// that did not start.
+func recordedChildArgs(t *testing.T, argsFile string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("the pinned claude binary never ran (args file %s): %v", argsFile, err)
+	}
+	return strings.Fields(string(raw))
+}
+
+func hasArg(args []string, want string) bool {
+	for _, a := range args {
+		if a == want {
+			return true
+		}
+	}
+	return false
+}
+
+// TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag: the auto default
+// for a profile that never chose a mode applies to NEW sessions only. A resume
+// (typed --continue / -c, or DO_CLAUDE_CONTINUE=true in settings.local.json) on the
+// Claude backend passes no --permission-mode, so the child follows
+// permissions.defaultMode in settings.local.json (card t1866, operator exception b18d).
+func TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag(t *testing.T) {
+	cases := []struct {
+		name      string
+		extraArgs []string
+		envCont   bool
+	}{
+		{name: "--continue", extraArgs: []string{"--continue"}},
+		{name: "-c", extraArgs: []string{"-c"}},
+		{name: "DO_CLAUDE_CONTINUE=true", envCont: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := permissionProject(t)
+			if tc.envCont {
+				setSettingsEnv(t, root, "DO_CLAUDE_CONTINUE", "true")
+			}
+			argsFile := pinArgsRecordingClaude(t)
+
+			if err := launchClaudeDefault("", tc.extraArgs); err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+
+			args := recordedChildArgs(t, argsFile)
+			if !hasArg(args, "--continue") {
+				t.Fatalf("child args %v lack --continue: this was not a resume", args)
+			}
+			if hasArg(args, "--permission-mode") {
+				t.Errorf("child args %v carry --permission-mode on a resume with an unset profile, want none", args)
+			}
+		})
+	}
+}
+
+// TestLaunch_ClaudeResumeUnsetProfileFollowsHandWrittenDefaultMode: a hand-edited
+// permissions.defaultMode: plan survives a Claude resume with an unset profile
+// byte for byte, and no --permission-mode flag overrides it at run time.
+func TestLaunch_ClaudeResumeUnsetProfileFollowsHandWrittenDefaultMode(t *testing.T) {
+	root := permissionProject(t)
+	writeSettingsDoc(t, root, map[string]any{"permissions": map[string]any{"defaultMode": "plan"}})
+	before, err := os.ReadFile(settingsLocalPathFor(root))
+	if err != nil {
+		t.Fatalf("read settings.local.json: %v", err)
+	}
+	argsFile := pinArgsRecordingClaude(t)
+
+	if err := launchClaudeDefault("", []string{"--continue"}); err != nil {
+		t.Fatalf("launch: %v", err)
+	}
+
+	if args := recordedChildArgs(t, argsFile); hasArg(args, "--permission-mode") {
+		t.Errorf("child args %v carry --permission-mode, which would override the hand-written plan", args)
+	}
+	after, err := os.ReadFile(settingsLocalPathFor(root))
+	if err != nil {
+		t.Fatalf("read settings.local.json after launch: %v", err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("settings.local.json changed: before %q, after %q", before, after)
+	}
+}
+
+// TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode: only the unset-profile
+// DEFAULT is skipped on a resume. A stored profile mode (auto included) and a
+// typed --permission-mode are still forwarded to the child.
+func TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode(t *testing.T) {
+	cases := []struct {
+		name      string
+		stored    string
+		extraArgs []string
+		want      string
+	}{
+		{name: "stored auto profile", stored: "auto", extraArgs: []string{"--continue"}, want: "auto"},
+		{name: "typed plan", extraArgs: []string{"--permission-mode", "plan", "--continue"}, want: "plan"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			permissionProject(t)
+			if tc.stored != "" {
+				if err := profile.WritePreferences("default", profile.ProfilePreferences{PermissionMode: tc.stored}); err != nil {
+					t.Fatalf("seed profile: %v", err)
+				}
+			}
+			argsFile := pinArgsRecordingClaude(t)
+
+			if err := launchClaudeDefault("", tc.extraArgs); err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+
+			args := recordedChildArgs(t, argsFile)
+			if got := permissionModeArg(args); got != tc.want {
+				t.Errorf("--permission-mode = %q in child args %v, want %q forwarded on the resume", got, args, tc.want)
 			}
 		})
 	}

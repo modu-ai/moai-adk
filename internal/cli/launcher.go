@@ -664,12 +664,9 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// the llm.yaml re-read: applyGLMMode exports the GLM environment before it
 	// persists team_mode, and a failed save leaves llm.yaml reading as Claude.
 	permGLM := glmBackend || os.Getenv(config.EnvMoaiLaunchProvider) == "glm"
-	// A profile that never chose a mode launches Claude sessions in auto (card
-	// t1866, operator decision 2026-10-18). Applied after the overrides above so
-	// an explicit DO_CLAUDE_* choice still wins.
-	if permMode == "" {
-		permMode = launchDefaultPermissionMode(permGLM)
-	}
+	// The auto default for a profile that never chose a mode (card t1866) is
+	// applied further down, once the argv has fixed the final resume flag and any
+	// typed --permission-mode: it is for NEW sessions only.
 	syncPermMode := launchDefaultPermissionMode(permGLM)
 	// A mode chosen outside the profile (settings.local.json DO_CLAUDE_*) is not
 	// the launcher default: keep the pre-t1866 sync (the override is removed).
@@ -710,6 +707,16 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	}
 	if consumed.ModelSet {
 		model = consumed.Model
+	}
+	// A profile that never chose a mode launches NEW Claude sessions in auto (card
+	// t1866, operator decision 2026-10-18; resume exception b18d). A resume
+	// (settings DO_CLAUDE_CONTINUE or a typed -c/--continue, both folded into cont
+	// above) passes no default flag, so the child follows permissions.defaultMode
+	// in settings.local.json. Applied after the overrides above so an explicit
+	// DO_CLAUDE_* choice or a typed --permission-mode still wins; a stored profile
+	// mode is never touched here and is forwarded on a resume as before.
+	if permMode == "" && !cont && !consumed.PermissionModeSet {
+		permMode = launchDefaultPermissionMode(permGLM)
 	}
 
 	// 5b. Sync the profile permission-mode preference to settings.local.json

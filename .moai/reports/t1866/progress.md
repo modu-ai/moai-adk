@@ -166,3 +166,40 @@ Commands and observed output (each prefixed with the `unset MOAI_KANBAN_*` trio)
 Honest line: the lane's earlier scope check ran `internal/web` only by name pattern (3 to 31 tests), which is why the stale test was missed until the landing re-measure ran the whole package.
 
 Note: the fifth fix spawn was refused with AUDIT_RECEIPT_VIOLATION (unknown-spec) and the leader removed that guard record after backing it up (board 6a81, board entry d-20261018T103229Z-1628, backup directory `backup-rejection-20261018T103222Z`).
+
+## Audit repair round 4 (operator exception b18d: auto default for new sessions only)
+
+Finding F14 (`.moai/reports/t1866/sync-audit-iter6.md`, P1 per codex, `internal/cli/launcher.go:670`): with an unset profile permission mode, `--continue` still appended `--permission-mode auto` to the child argv, so a hand-edited `permissions.defaultMode: plan` in `settings.local.json` stayed on disk but was overridden at run time. Operator decision (board d-20261018T104449Z-b18d): the `auto` default for a profile that never chose a mode applies to new sessions only.
+
+Change (`internal/cli/launcher.go`, `runLaunchClaude`): the default application moved from before the argv consumption to after it, and became `if permMode == "" && !cont && !consumed.PermissionModeSet { permMode = launchDefaultPermissionMode(permGLM) }`, where `cont` is the final resume flag (settings `DO_CLAUDE_CONTINUE` or a typed `-c`/`--continue`). Unchanged: the GLM drop of a stored/settings-chosen `auto` (still before the typed-argv consumption), a typed `--permission-mode` winning, the `DO_CLAUDE_BYPASS` legacy path, `syncPermMode`, the resume drop of a stale `auto` on GLM, the failed-removal error. A stored profile mode (including `auto`) is still forwarded on a resume. CHANGELOG t1866 entry reworded to match. The extra `!consumed.PermissionModeSet` term keeps a typed (even empty) `--permission-mode` from being replaced by the default, as before.
+
+Tests (all start the `--continue` child through `tryCmd.Run()` on a pinned stub claude that records its args to a file in its own temp dir, helper `pinArgsRecordingClaude`; they do not use the exec seam). RED run, `go test ./internal/cli -run '^(TestLaunch_ClaudeResume)' -count=1 -v`, before the fix:
+
+```
+    launcher_permission_resume_test.go:194: child args [--permission-mode auto --continue --model opus[1m]] carry --permission-mode on a resume with an unset profile, want none
+--- FAIL: TestLaunch_ClaudeResumeDoesNotRewriteSettingsLocal (0.45s)
+    --- FAIL: TestLaunch_ClaudeResumeDoesNotRewriteSettingsLocal/plan (0.23s)
+    --- FAIL: TestLaunch_ClaudeResumeDoesNotRewriteSettingsLocal/auto (0.23s)
+--- FAIL: TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag (0.74s)
+    --- FAIL: TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag/--continue (0.25s)
+    --- FAIL: TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag/-c (0.25s)
+    --- FAIL: TestLaunch_ClaudeResumeUnsetProfileAddsNoDefaultPermissionFlag/DO_CLAUDE_CONTINUE=true (0.23s)
+    launcher_permission_resume_test.go:293: child args [--permission-mode auto --continue --model opus[1m]] carry --permission-mode, which would override the hand-written plan
+--- FAIL: TestLaunch_ClaudeResumeUnsetProfileFollowsHandWrittenDefaultMode (0.23s)
+--- PASS: TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode (0.47s)
+    --- PASS: TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode/stored_auto_profile (0.24s)
+    --- PASS: TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode/typed_plan (0.22s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.559s
+```
+
+GREEN, same command, after the fix: every test and subtest above `--- PASS` (including `TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode`), final lines `PASS` and `ok  	github.com/modu-ai/moai-adk/internal/cli	3.600s`.
+
+Guards (green before the fix, as intended): `TestLaunch_ClaudeResumeStillForwardsChosenPermissionMode` (stored `auto` profile + `--continue` forwards `auto`; typed `--permission-mode plan --continue` forwards `plan`), the existing fresh-launch default test (unset profile + Claude + fresh launch gives `--permission-mode auto`, not re-run in isolation but inside the broad run below), and the existing GLM resume tests. RED for the stated reason: the new/updated resume tests failed because the child argv carried `--permission-mode auto` on a resume.
+
+Broad run, `go test ./internal/cli -run '^TestLaunch_' -count=1 -v` after the fix: exit 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	4.616s`; 29 `--- PASS`, 0 `--- FAIL`, 0 `--- SKIP` lines. `go test ./internal/settings ./internal/cli/wizard ./internal/core/project -count=1`: all three `ok`. `gofmt -l internal/cli`: no output.
+
+Gaps: no whole-package run of `internal/cli`, `internal/web`, `internal/template` or `internal/config` this round; no live Claude process (the child is a stub that records argv); the broad run was a name pattern, not the full suite.
+
+The previous round's (round 6) audit made two codex calls whose results disagreed (receipts rcpt-813169891395590312ae33f6 pass, rcpt-ef9584ba0990325e17cfe714 fail).
+
+The leader removed the guard records created after rounds 5 and 6 after backing them up (board 6a81; backup directories `backup-rejection-20261018T103222Z` and `backup-rejection-20261018T104643Z`; the second was made by the pre-reinstall guard binary).
