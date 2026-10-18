@@ -214,7 +214,10 @@ func TestPriorManifestRetainedInRunBackup(t *testing.T) {
 	// Pin the manifest-level timestamp so run 2 proves a version change moves it.
 	rewriteManifestNonCanonical(t, root, func(_ map[string]map[string]any, top map[string]any) { top["deployed_at"] = sentinelAt })
 
-	// Run 2 (--force, v2).
+	// Run 2 (--force, v2). Run backup directories are named at one-second
+	// resolution, so wait the second out: the assertions below are about two
+	// DISTINCT run backups, not about two runs that landed in one clock second.
+	time.Sleep(1100 * time.Millisecond)
 	setBinaryVersion(t, v2)
 	run2 := runUpdateFlowForced(t, root)
 	if run2.NewPriorManifest == "" {
