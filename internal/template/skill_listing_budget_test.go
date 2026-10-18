@@ -220,9 +220,10 @@ func TestCountSkillChars_UTF16Semantics(t *testing.T) {
 
 func TestParseSkillListingEntry_KeepsRawFields(t *testing.T) {
 	// chars() applies only the lengthening steps, so parsing hands it the YAML
-	// values unfolded. A literal block scalar keeps its interior
-	// newline; the single trailing newline of the block is dropped (a stated
-	// limit: the host YAML reader's treatment of it is not mirrored).
+	// values unfolded. A literal block scalar keeps its interior newline, and
+	// when_to_use keeps the single trailing newline of the block as well: the host
+	// does not trim when_to_use and its sanitizer turns that newline into one
+	// space, a unit the host counts. The description loses it (the host trims).
 	fm := "name: x\ndescription: >-\n  alpha\n  beta\nwhen_to_use: |\n  one\n  two\n"
 	got, err := parseSkillListingEntry("x", fm)
 	if err != nil {
@@ -231,8 +232,8 @@ func TestParseSkillListingEntry_KeepsRawFields(t *testing.T) {
 	if got.Description != "alpha beta" {
 		t.Errorf("Description = %q, want %q", got.Description, "alpha beta")
 	}
-	if got.WhenToUse != "one\ntwo" {
-		t.Errorf("WhenToUse = %q, want %q", got.WhenToUse, "one\ntwo")
+	if got.WhenToUse != "one\ntwo\n" {
+		t.Errorf("WhenToUse = %q, want %q", got.WhenToUse, "one\ntwo\n")
 	}
 	// A folded block scalar (`>`) keeps one trailing newline; parsing drops it
 	// from the description too (the host trims the description).
@@ -242,6 +243,46 @@ func TestParseSkillListingEntry_KeepsRawFields(t *testing.T) {
 	}
 	if got.Description != "alpha beta" {
 		t.Errorf("folded Description = %q, want %q", got.Description, "alpha beta")
+	}
+}
+
+// Sync-audit finding F9: real frontmatter text goes through the parser into the
+// checker, so a parse-level edit that changes a count shows up at the boundary.
+func TestCheckSkillListing_ParsedFrontmatterBoundary(t *testing.T) {
+	desc1000 := strings.Repeat("a", 1000)
+	cases := []struct {
+		name     string
+		fm       string
+		wantUnit int
+		wantFail bool
+	}{
+		// The block scalar `|` ends in a newline the host keeps and counts as one
+		// space: 1000 + 3 (separator) + 533 + 1 (newline) = 1,537 fails.
+		{"block when_to_use 533 is 1537", "name: x\ndescription: " + desc1000 + "\nwhen_to_use: |\n  " + strings.Repeat("b", 533) + "\n", 1537, true},
+		// 1000 + 3 + 532 + 1 = 1,536 passes.
+		{"block when_to_use 532 is 1536", "name: x\ndescription: " + desc1000 + "\nwhen_to_use: |\n  " + strings.Repeat("b", 532) + "\n", 1536, false},
+		// A folded `>` description keeps a trailing newline in the parsed value, the
+		// host trims it: 1,536 passes, 1,537 fails.
+		{"folded description 1536", "name: x\ndescription: >\n  " + strings.Repeat("a", 1536) + "\n", 1536, false},
+		{"folded description 1537", "name: x\ndescription: >\n  " + strings.Repeat("a", 1537) + "\n", 1537, true},
+		// A single-line when_to_use has no trailing newline: 1000 + 3 + 533 = 1,536
+		// passes, 534 gives 1,537 and fails.
+		{"plain when_to_use 533 is 1536", "name: x\ndescription: " + desc1000 + "\nwhen_to_use: " + strings.Repeat("b", 533) + "\n", 1536, false},
+		{"plain when_to_use 534 is 1537", "name: x\ndescription: " + desc1000 + "\nwhen_to_use: " + strings.Repeat("b", 534) + "\n", 1537, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e, err := parseSkillListingEntry("x", tc.fm)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if got := e.chars(); got != tc.wantUnit {
+				t.Errorf("chars() = %d, want %d", got, tc.wantUnit)
+			}
+			if failed := len(checkSkillListing([]skillListingEntry{e})) != 0; failed != tc.wantFail {
+				t.Errorf("violation = %v, want %v", failed, tc.wantFail)
+			}
+		})
 	}
 }
 
