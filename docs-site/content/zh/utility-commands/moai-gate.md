@@ -125,6 +125,17 @@ gate:
 同一个键也可以在 `moai web` 的 **Gate** 设置面板中编辑，保存时精确写入 `.moai/config/sections/gate.yaml`。
 {{< /callout >}}
 
+开启 `gate.pre_commit.enabled` 后，Go 测试步骤运行的范围由 `gate.pre_commit.test_scope.mode` 决定。
+
+```yaml
+gate:
+  pre_commit:
+    test_scope:
+      mode: affected   # 默认值 — "full" 则测试整个模块 (go test ./...)
+```
+
+`affected`(默认)只测试包含本次提交文件的包，以及直接 import 这些包的包。若提交修改了 `go.mod`、`go.sum`、`go.work`、`go.work.sum` 或 `.moai/config/build-tags`，则始终测试整个模块。如果变更文件或包依赖图的查询失败，门禁会给出提示并回退到整个模块。`affected` 和 `full` 之外的值会被拒绝。测试超时(`timeouts.test`)保持不变，因此受影响范围包含 `internal/cli` 这类大包的提交，仍可能超时。
+
 单独执行的 `moai gate` 会忽略这个键，继续遵循既有的 `gate.enabled` 设置。需要紧急提交时，可用 `SKIP_MOAI_PRECOMMIT=1 git commit` 跳过钩子本身。
 
 ## 相关文档

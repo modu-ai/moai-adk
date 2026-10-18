@@ -2,7 +2,7 @@
 id: SPEC-PRECOMMIT-AFFECTED-SCOPE-001
 title: "Pre-commit gate tests only the affected Go packages; ast-grep suppression check stops flagging test fixtures"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-18
 updated: 2026-10-18
 author: manager-spec

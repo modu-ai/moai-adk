@@ -125,6 +125,17 @@ gate:
 同じキーは `moai web` の **Gate** 設定パネルからも編集でき、保存は正確に `.moai/config/sections/gate.yaml` に書き込まれます。
 {{< /callout >}}
 
+`gate.pre_commit.enabled` を有効にした場合、Go テストステップが実行する範囲は `gate.pre_commit.test_scope.mode` で決まります。
+
+```yaml
+gate:
+  pre_commit:
+    test_scope:
+      mode: affected   # デフォルト — "full" ならモジュール全体 (go test ./...)
+```
+
+`affected`(デフォルト)では、コミットに含まれるファイルを持つパッケージと、そのパッケージを直接 import するパッケージだけをテストします。`go.mod`、`go.sum`、`go.work`、`go.work.sum`、`.moai/config/build-tags` が変わったコミットは常にモジュール全体をテストします。変更ファイルまたはパッケージグラフの照会に失敗した場合は、通知を出してモジュール全体に戻ります。`affected` と `full` 以外の値は拒否されます。テストの制限時間(`timeouts.test`)は変わらないため、`internal/cli` のような大きなパッケージが対象に含まれるコミットは、引き続き制限時間を超える可能性があります。
+
 単独で実行した `moai gate` はこのキーを無視し、従来どおり既存の `gate.enabled` 設定に従います。急いでコミットしたいときは `SKIP_MOAI_PRECOMMIT=1 git commit` でフック自体をスキップできます。
 
 ## 関連ドキュメント

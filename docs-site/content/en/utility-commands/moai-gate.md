@@ -125,6 +125,17 @@ gate:
 The same key is editable in the **Gate** panel of `moai web`, and saving writes exactly `.moai/config/sections/gate.yaml`.
 {{< /callout >}}
 
+When `gate.pre_commit.enabled` is on, `gate.pre_commit.test_scope.mode` decides how much the Go test step runs.
+
+```yaml
+gate:
+  pre_commit:
+    test_scope:
+      mode: affected   # default — "full" runs the whole module (go test ./...)
+```
+
+In `affected` mode (the default) the step tests the packages that own a file in the commit plus the packages that directly import them. A commit that changes `go.mod`, `go.sum`, `go.work`, `go.work.sum` or `.moai/config/build-tags` always tests the whole module. If the changed-file or package-graph query fails, the gate prints a notice and falls back to the whole module. Any value other than `affected` or `full` is rejected. The test time limit (`timeouts.test`) is unchanged, so a commit whose affected set includes a large package such as `internal/cli` can still exceed it.
+
 A standalone `moai gate` run ignores this key and keeps following the existing `gate.enabled` setting. When you need to commit urgently, `SKIP_MOAI_PRECOMMIT=1 git commit` bypasses the hook itself.
 
 ## Related documents

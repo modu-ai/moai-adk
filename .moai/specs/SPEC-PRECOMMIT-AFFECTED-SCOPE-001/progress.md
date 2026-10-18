@@ -877,7 +877,37 @@ debts:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+```yaml
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: completed-with-open-debt
+audit_ready: false
+audit_ready_reason: "B12 AC-count self-test (b) fails mechanically: the counter prints 20, the stated live count is 15. The excess is four shorthand tokens (AC-016, AC-004, AC-006, AC-011) in acceptance.md lines 146-149, verbatim probe output in the evidence ledger, carrying no [REF] mark. Clearing it is a SPEC-body edit (add [REF] after each token) owned by manager-spec; manager-docs may not make it. All other sync checks passed."
+sync_head_at_start: aaf01ee7e0c27bff958f8db082e4db3c40ce8f39
+b12_self_test_a: "PASS - grep -c 'SPEC-PRECOMMIT-AFFECTED-SCOPE-001' CHANGELOG.md printed 0 before emission"
+b12_self_test_b: "FAIL (counter 20 vs stated 15) - ac_source=.moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/acceptance.md, tier=M, state=resolved; counter stdout 20, stderr live=20 excluded=0 ambiguous=0; declared criteria AC-PAS-001..016 = 16 identifiers, AC-PAS-012 withdrawn => 15 live; CHANGELOG states 15"
+b12_self_test_c: "PASS - every path cited in the CHANGELOG entry resolved with ls before commit"
+changelog_entry_position: "CHANGELOG.md [Unreleased] / Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed on this single sync commit (status + updated only; updated already 2026-10-18)"
+  plan_md_acceptance_md: "no frontmatter block; nothing to refresh"
+canary_compliance_check: "not applicable - this SPEC defines no forward-looking policy that its own sync tests"
+docs_site_touched: "docs-site/content/{ko,en,ja,zh}/utility-commands/moai-gate.md - test_scope.mode note, same commit, ko canonical"
+mx_validation: "3 existing @MX:NOTE tags (selectAffected, commitQueryEnv, scopeGoTestStep) each with @MX:SPEC; no tag added, removed or changed; no ANCHOR needed (no function with fan_in >= 3 in the new files was found by reading the call sites); no goroutines"
+open_debt_for_manager_spec:
+  - "S1-a: REQ-PAS-011 / AC-PAS-011 do not state the non-zero exit of the rejected mode value (spec-change request filed in the run report)"
+  - "S1-b: acceptance.md tree-pin wording for the RED-now cells (RED re-measured on 00e7843ab, GREEN on 9d114393c)"
+  - "S2: AC-PAS-003 Given does not say the new packages carry test files"
+  - "AC-PAS-003 mutant weakness"
+  - "acceptance.md lines 146-149: four shorthand AC tokens need [REF] marks (clears B12 self-test b)"
+disposed_in_run_not_open: "S3 (placeholder replaced by the named build /private/tmp/t1673-bin/moai) and S4 (unit test plus package d in the AC-PAS-016 module) are recorded as disposed in the run-phase evidence, so they are not open here; the sync request listed them as open and this record follows the run evidence"
+carried_run_debts:
+  - "Q4 (project-wide vet/lint/typecheck runtime) unmeasured; gates only the post-landing hook re-enable runbook"
+  - "no full-package -race run of internal/hook/quality or internal/config"
+  - "internal/cli package coverage not measured (ruling 35e9)"
+  - "baseline failure internal/config TestNoHardcodedContexts (scripts/release.sh), not attributable to this card"
+  - "go-test-heavy slot never held (lane-25 held it); no heavy suite run at sync"
+```
 
 ## §G Override and Refusal Record
 
