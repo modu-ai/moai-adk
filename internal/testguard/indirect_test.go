@@ -539,6 +539,62 @@ func TestIndirect_LocalsResolveToEveryAssignment(t *testing.T) {
 	nCase(t, "\ts := seamArgs{safeDirAdd: "+stubAdd+"}\n\ts = "+bothLit+"\n\tswapSeams(t, s)", true)
 }
 
+// TestIndirect_LocalClosureCountsAtItsExecutedCall (M1): a closure held in a
+// local isolates only where the call through the local is itself executed.
+func TestIndirect_LocalClosureCountsAtItsExecutedCall(t *testing.T) {
+	decl := "\tf := func() { isolate() }\n"
+	for name, body := range map[string]string{
+		"deferred":     decl + "\tdefer f()",
+		"in_cleanup":   decl + "\tt.Cleanup(func() { f() })",
+		"under_if":     decl + "\tif false {\n\t\tf()\n\t}",
+		"never_called": decl + "\t_ = f",
+		"go_statement": decl + "\tgo f()",
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	nCase(t, decl+"\tf()", false)
+	nCase(t, decl+"\tt.Run(\"x\", func(t *testing.T) { f() })", false)
+}
+
+// TestIndirect_WrapperOfTheOriginalIsNotAReplacement (M2): a literal that calls
+// the seam's captured original still reaches the real sink.
+func TestIndirect_WrapperOfTheOriginalIsNotAReplacement(t *testing.T) {
+	for name, body := range map[string]string{
+		"spy": "\torig, origGet := safeDirAdd, globalGet\n" +
+			"\tsafeDirAdd = func(s string) error { return orig(s) }\n" +
+			"\tglobalGet = func(s string) string { return origGet(s) }",
+		"alias_chain_spy": "\torig, origGet := safeDirAdd, globalGet\n\ta, b := orig, origGet\n" +
+			"\tsafeDirAdd = func(s string) error { return a(s) }\n" +
+			"\tglobalGet = func(s string) string { return b(s) }",
+		"self_recursion": "\tsafeDirAdd = func(s string) error { return safeDirAdd(s) }\n\tglobalGet = " + stubGet,
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	nCase(t, "\torig := safeDirAdd\n\t_ = orig\n\tsafeDirAdd = "+stubAdd+"\n\tglobalGet = "+stubGet, false)
+}
+
+// TestIndirect_SetenvKeyIsTheFirstArgument (M3): GIT_CONFIG_GLOBAL as the value
+// of another variable isolates nothing.
+func TestIndirect_SetenvKeyIsTheFirstArgument(t *testing.T) {
+	nCase(t, "\tt.Setenv(\"UNRELATED\", \"GIT_CONFIG_GLOBAL\")", true)
+	nCase(t, "\tt.Setenv(\"GIT_CONFIG_GLOBAL\", t.TempDir())", false)
+}
+
+// TestIndirect_LoopsAndSwitchCasesThatCannotRun (M4): a for with a false
+// condition, a range over an empty literal, and a `case false` do not run.
+func TestIndirect_LoopsAndSwitchCasesThatCannotRun(t *testing.T) {
+	for name, body := range map[string]string{
+		"for_false":       "\tfor i := 0; false; i++ {\n\t\tisolate()\n\t}",
+		"range_empty":     "\tfor range []int{} {\n\t\tisolate()\n\t}",
+		"range_empty_str": "\tfor range \"\" {\n\t\tisolate()\n\t}",
+		"switch_case_off": "\tswitch {\n\tcase false:\n\t\tisolate()\n\t}",
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	nCase(t, "\tswitch {\n\tcase true:\n\t\tisolate()\n\t}", false)
+	nCase(t, "\tfor range []int{1} {\n\t\tisolate()\n\t}", false)
+}
+
 // dispatchProd builds a command tree of n handlers; the first one reaches the
 // global git config sink and the others do nothing.
 func dispatchProd(n int) string {

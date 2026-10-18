@@ -29,17 +29,23 @@ import (
 //     "config" and "--global".
 //   - A seam is a variable node. A test isolates a seam only by an executed
 //     replacement: a call statement, on the path from the test function, to a
-//     test-file function that assigns the seam a replacement value (a func
-//     literal, a function, or a call result that does not use the seam's own
-//     value), or to a helper that stores a parameter, or a field of a parameter
-//     struct, in the seam while the call passes a replacement at that argument
-//     position. RedirectHome, or setting GIT_CONFIG_GLOBAL, isolates every seam.
+//     test-file function that assigns the seam a replacement value, or to a
+//     helper that stores a parameter, or a field of a parameter struct, in the
+//     seam while the call passes a replacement at that argument position. A
+//     replacement is a func literal that does not use the seam's own value
+//     (directly or through a local derived from it), a function, or a call
+//     result that does not take the seam's value. RedirectHome, or a Setenv
+//     whose first argument is the literal "GIT_CONFIG_GLOBAL", isolates every
+//     seam.
 //   - Executed means run before the sink: statements outside defer, go, a
-//     Cleanup argument, a closure that is not invoked on the spot or passed to
-//     Run or called through a local variable that holds it, and an `if false`
-//     body. A restore is not a replacement: the seam
-//     itself, a local whose every assignment derives from the seam (through any
-//     chain of locals or a call that takes it), or a field read of a local.
+//     Cleanup argument, a closure that is not invoked on the spot, passed to
+//     Run, or called through a local variable at a call that is itself executed,
+//     an `if` or `for` whose condition is the literal false, a range over an
+//     empty composite literal or the empty string, and a `case false` of a
+//     tagless switch. A restore is not a replacement: the seam itself, a local
+//     whose every assignment derives from the seam (through any chain of locals
+//     or a call that takes it), a func literal that uses the seam's value, or a
+//     field read of a local.
 //
 // A top-level Test, Benchmark or Fuzz function that reaches a sink along a path
 // with no isolated seam is reported once, on its declaration line, unless the
@@ -65,12 +71,24 @@ import (
 //   - Writes to the global git config by other routes (writing .gitconfig
 //     directly, an environment other than GIT_CONFIG_GLOBAL) are not covered.
 //   - Isolation is credited from calls on the executed path only; a helper
-//     stored in a variable and called through it, a helper that forwards its
-//     parameter to a second helper, and a field assigned on a local struct
-//     (a.f = stub) are not credited, so the test is reported.
+//     stored in a package-level variable or a struct field and called through
+//     it, a helper that forwards its parameter to a second helper, and a field
+//     assigned on a local struct (a.f = stub) are not credited, so the test is
+//     reported.
+//   - A func literal that calls the real function by name (not through the
+//     seam's value) is credited as a replacement although it reaches the sink.
+//   - RedirectHome is credited for any executed call to a function or qualified
+//     selector with that name, and Setenv for any call whose first argument is
+//     the literal "GIT_CONFIG_GLOBAL"; the arguments of RedirectHome and the
+//     value given to GIT_CONFIG_GLOBAL are not inspected.
 //   - Order inside a function is not modeled: a swap or RedirectHome written
-//     after the call that reaches the sink still isolates, and any condition
-//     other than the literal false is treated as possibly true.
+//     after the call that reaches the sink still isolates, and an early return,
+//     panic or Fatal before the isolating call is not seen.
+//   - Only the constant-false forms named above are read as not executed; any
+//     other condition (1 > 2, a named constant, a loop that cannot iterate for a
+//     reason other than a false condition or an empty literal, a `case false`
+//     of a switch with a tag) is treated as possibly true, so isolation under
+//     it is credited.
 //   - A local is judged by every assignment to it in its function, whatever the
 //     order; a local with any assignment that is not a replacement is not one.
 //   - All .go files of a directory form one package: build tags are ignored and
@@ -416,20 +434,9 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				})
 				return vals, ok && len(vals) > 0
 			}
-			// A closure held in a local variable and called through it runs too.
-			ast.Inspect(fd, func(n ast.Node) bool {
-				if c, ok := n.(*ast.CallExpr); ok {
-					if id, ok := c.Fun.(*ast.Ident); ok && id.Obj != nil && local(id) {
-						vals, _ := defsOf(id.Obj)
-						for _, v := range vals {
-							if lit, ok := v.(*ast.FuncLit); ok {
-								run[lit] = true
-							}
-						}
-					}
-				}
-				return true
-			})
+			// inLit is the set of closures already walked from a call through a
+			// local variable, so a self-calling closure ends.
+			inLit := map[*ast.FuncLit]bool{}
 			// fromSeam reports whether e is derived from the seam's own value.
 			var fromSeam func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool
 			fromSeam = func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool {
@@ -467,7 +474,16 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				case *ast.ParenExpr:
 					return isRepl(v.X, seam, seen)
 				case *ast.FuncLit:
-					return true
+					// A literal that uses the seam's own value (directly, or through a
+					// local derived from it) still reaches the real function.
+					uses := false
+					ast.Inspect(v.Body, func(n ast.Node) bool {
+						if id, ok := n.(*ast.Ident); ok && fromSeam(id, seam, map[*ast.Object]bool{}) {
+							uses = true
+						}
+						return !uses
+					})
+					return !uses
 				case *ast.Ident:
 					if v.Name == "nil" || v.Name == seam {
 						return false
@@ -529,6 +545,10 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				}
 				return false
 			}
+			isFalse := func(e ast.Expr) bool {
+				id, ok := e.(*ast.Ident)
+				return ok && id.Name == "false"
+			}
 			var walk func(ast.Node) bool
 			walk = func(n ast.Node) bool {
 				switch x := n.(type) {
@@ -537,7 +557,7 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				case *ast.DeferStmt, *ast.GoStmt:
 					return false
 				case *ast.IfStmt:
-					if id, ok := x.Cond.(*ast.Ident); ok && id.Name == "false" {
+					if isFalse(x.Cond) {
 						if x.Init != nil {
 							ast.Inspect(x.Init, walk)
 						}
@@ -546,6 +566,51 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 						}
 						return false
 					}
+				case *ast.ForStmt:
+					if isFalse(x.Cond) {
+						if x.Init != nil {
+							ast.Inspect(x.Init, walk)
+						}
+						return false
+					}
+				case *ast.RangeStmt:
+					switch c := x.X.(type) {
+					case *ast.CompositeLit:
+						if len(c.Elts) == 0 {
+							ast.Inspect(x.X, walk)
+							return false
+						}
+					case *ast.BasicLit:
+						if c.Kind == token.STRING && (c.Value == `""` || c.Value == "``") {
+							return false
+						}
+					}
+				case *ast.SwitchStmt:
+					if x.Tag != nil {
+						break
+					}
+					if x.Init != nil {
+						ast.Inspect(x.Init, walk)
+					}
+					for _, s := range x.Body.List {
+						cc := s.(*ast.CaseClause)
+						off := len(cc.List) > 0
+						for _, e := range cc.List {
+							if !isFalse(e) {
+								off = false
+							}
+						}
+						if off {
+							continue
+						}
+						for _, e := range cc.List {
+							ast.Inspect(e, walk)
+						}
+						for _, st := range cc.Body {
+							ast.Inspect(st, walk)
+						}
+					}
+					return false
 				case *ast.AssignStmt:
 					if x.Tok != token.ASSIGN || len(x.Lhs) != len(x.Rhs) {
 						break
@@ -587,6 +652,14 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 					switch f := x.Fun.(type) {
 					case *ast.Ident:
 						if local(f) {
+							// A closure held in a local runs here, at this executed call.
+							vals, _ := defsOf(f.Obj)
+							for _, v := range vals {
+								if lit, ok := v.(*ast.FuncLit); ok && !inLit[lit] {
+									inLit[lit] = true
+									ast.Inspect(lit.Body, walk)
+								}
+							}
 							break
 						}
 						if f.Name == "RedirectHome" {
@@ -607,8 +680,12 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 						if qualified(f.X) && f.Sel.Name == "RedirectHome" {
 							owner.isolates = true
 						}
-						if f.Sel.Name == "Setenv" && hasStringArg(x, gitGlobalConfigEnv) {
-							owner.isolates = true
+						if f.Sel.Name == "Setenv" && len(x.Args) > 0 {
+							if lit, ok := x.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+								if s, err := strconv.Unquote(lit.Value); err == nil && s == gitGlobalConfigEnv {
+									owner.isolates = true
+								}
+							}
 						}
 					}
 				}
