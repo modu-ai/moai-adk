@@ -390,7 +390,14 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 		if !retirable(o.Classification) {
 			return o.Classification, fmt.Errorf("%w: run %s owner classified %s", ErrRunOwnerNotDead, runID, o.Classification)
 		}
-		if err := f.retireRun(ctx, runID, o.Classification, o.Basis); err != nil {
+		// An already-retired run with a dead owner is an idempotent no-op: no
+		// write, no card read, no second run.retired event. It sits AFTER the
+		// owner gate (a live owner is still refused) and BEFORE the card guard,
+		// which binds active runs only.
+		if o.Status == "retired" {
+			return o.Classification, nil
+		}
+		if err := f.retireRun(ctx, o); err != nil {
 			return o.Classification, err
 		}
 		return o.Classification, nil
@@ -401,21 +408,54 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 // retireRun transitions one active run to 'retired' and appends a run.retired
 // event carrying the classification and the proof basis that established it
 // (REQ-010b). The row is preserved: deleting it would make the retirement
-// itself unobservable. This is the deliberate path — the operator's
-// RetireRunIfDead and the migration pass — which retires regardless of the
-// records the run carries.
-func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) error {
+// itself unobservable. This is the operator's deliberate path
+// (SPEC-FACTORY-RETIRE-GUARD-001): inside one write-locked transaction —
+// status -> stamp -> cards -> flip -> event — it refuses a run whose classified
+// owner stamp is no longer on the row, refuses a run that still holds
+// non-terminal cards, and flips only under that stamp, appending the event only
+// when exactly one row changed. The transaction is BEGIN IMMEDIATE (the
+// factory DSN carries _txlock=immediate, pool size 1), so no write can commit
+// between the card read and the flip.
+//
+// @MX:NOTE: [AUTO] order inside the transaction is status -> stamp -> cards -> flip -> event; the stamp check precedes the card read so a restamped run never yields the cards error
+// @MX:REASON: the cards error lists an irreversible abandon exit; it must only be shown for a run whose classified owner is still on the row (SPEC-FACTORY-RETIRE-GUARD-001 plan §C.2)
+func (f *FactoryDB) retireRun(ctx context.Context, owner RunOwner) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
+	changed := fmt.Errorf("%w: run %s changed owner or status since classification", ErrRunOwnerNotDead, owner.RunID)
+	var status, start string
+	var pid int
+	if err := tx.QueryRowContext(ctx, `SELECT status, lead_pid, lead_process_start FROM runs WHERE run_id=?`, owner.RunID).Scan(&status, &pid, &start); err != nil {
 		return err
 	}
-	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(c), string(basis))
-	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, runID, payload, now); err != nil {
+	if status != "active" || pid != owner.LeadPID || start != owner.LeadProcessStart {
+		return changed
+	}
+	cards, err := inProgressCards(ctx, tx, owner.RunID)
+	if err != nil {
+		return err
+	}
+	if len(cards) > 0 {
+		return &RunInProgressCardsError{RunID: owner.RunID, Cards: cards}
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
+		now, owner.RunID, owner.LeadPID, owner.LeadProcessStart)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return changed
+	}
+	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(owner.Classification), string(owner.Basis))
+	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, owner.RunID, payload, now); err != nil {
 		return err
 	}
 	return tx.Commit()
