@@ -28,3 +28,12 @@ run: tn1p4e · lane: lane-18 · 트리: `.moai/worktrees/t1779` · 브랜치: `W
 ## 자원 입장 규칙 (보드 d-20261018T151201Z-8c1e, 10-18)
 
 - 다음 Go 호출부터 적용: 신규 go test(-run 한정 포함)·go build·go vet·golangci-lint·make — 호출 전 1분 load 32 이하 AND 메모리 free 50% 이상 확인, 첫 충족 후 (레인 18 mod 6)×30s=0s 대기·재확인·시작. 레인당 Go 호출 1회(에이전트 포함), 다중 패키지 -p 4 이하. 착지 remeasure 가 go-test-heavy 보유 중엔 개발 우선순위 신규 호출 금지(Monitor until-loop 60s 재확인). load>32 로 인한 실패는 load 를 함께 기록·조건 충족 시 재실행(결함·PASS 미보고). 시험 제외·timeout 증가·PASS 대체·추가 슬롯 없음. 대리자에게 전달 완료(수리 검증 잔여 호출에 적용).
+
+## Run-phase completion (delegate 1ccf2f355b)
+
+- 구현 커밋: `1ccf2f355b` fix(cli): refuse moai codex -l before execution in unusable terminals — 6 파일 +315행, 트리 클린, 미푸시.
+- 3 RED-GREEN: RED-1 DumbTerm(런치 진행 1회 — 거부 부재 실측) / RED-2 Recursive / RED-3 샌드박스 시그니처(guard 수준) → 전부 GREEN. 롤백 양성 대조 시험 추가(spawn 문 등록→스탬프 실패→정확한 행 롤백).
+- 삽입점 판단(브리프 정정): -l 경로는 defaultCodexSpawnLaunch 를 통과하지 않음 — runCodex→runCodexFactoryLane 진입(codexLaneParentCheckout 이전)이 사이드이펙트 전 외곽점. ps 프로브는 homestate 소유(exec-primitive 가드 준수), TestMain 핀으로 기존 시험 무관성 유지.
+- 검증: 패밀리 8종 + 새 시험 5종 전부 ok, gofmt 클린, native/windows 빌드 OK, 자원 규칙 하 호출 전 입장 확인.
+- 레인 독립 스팟검증: DumbTerm `ok 3.660s` · Recursive `ok 3.077s` · gofmt 클린.
+- Gaps: TERM-unset+비단말 stdout 분기 전용 시험 없음(같은 거부문 공유, 코드 검토만). CI 는 통합 소관.
