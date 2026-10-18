@@ -248,9 +248,9 @@ func defaultRenderProblems(block []string, stdout string, planted []plantedCopy)
 }
 
 // verboseRenderProblems is the pure assertion on the --verbose view: every
-// planted path has exactly one row carrying its reason, and the rows are in path
-// order.
-func verboseRenderProblems(block []string, planted []plantedCopy) []string {
+// planted path has exactly one row carrying the reason reasonOf names for it, and
+// the rows are in path order.
+func verboseRenderProblems(block []string, planted []plantedCopy, reasonOf func(rel string) keepReason) []string {
 	pt := newProblemTally()
 	var order []string
 	for _, p := range planted {
@@ -264,8 +264,8 @@ func verboseRenderProblems(block []string, planted []plantedCopy) []string {
 			pt.add(fmt.Sprintf("a planted path has %d verbose rows, want exactly 1", len(hits)), p.rel)
 			continue
 		}
-		if !strings.Contains(hits[0], string(keepNoProvenanceRecord)) {
-			pt.add("a verbose row carries no reason", hits[0])
+		if want := reasonOf(p.rel); !strings.Contains(hits[0], string(want)) {
+			pt.add(fmt.Sprintf("a verbose row does not carry its reason %q", want), hits[0])
 		}
 		order = append(order, p.rel)
 	}
@@ -431,7 +431,23 @@ func TestRemainingListKeeps313UnregisteredCopies(t *testing.T) {
 			t.Errorf("run 2: manifest.prior.json is not the manifest as the run loaded it (%v)", err)
 		}
 		block2 := terminalBlockLines()
-		for _, p := range verboseRenderProblems(block2, planted) {
+		// Run 1's start manifest is kept as a prior generation for run 2. It
+		// registered two files under `.claude/skills` whose bytes equal two of
+		// the planted copies, and design.md D-2 reads a record with the same hash
+		// under ANOTHER key as "the original deployed path is missing" — not as
+		// "no record at all". Those two rows therefore carry that narrower
+		// reason in run 2; every other copy keeps no-provenance-record.
+		sameHashElsewhere := map[string]bool{
+			".agents/skills/moai-foundation-core/SKILL.md": true, // sibling of migIdenticalSkill
+			".agents/skills/moai-workflow-tdd/SKILL.md":    true, // sibling of migModifiedSkill
+		}
+		reasonOf := func(rel string) keepReason {
+			if sameHashElsewhere[rel] {
+				return evidenceIncompleteReason(evidenceOriginalPath)
+			}
+			return keepNoProvenanceRecord
+		}
+		for _, p := range verboseRenderProblems(block2, planted, reasonOf) {
 			t.Errorf("verbose view: %s", p)
 		}
 

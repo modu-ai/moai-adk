@@ -404,6 +404,11 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		}
 	}
 
+	// The remaining list is returned in path order (REQ-OWR-009).
+	if rc != nil {
+		sortRemainingRows(rc.remaining)
+	}
+
 	// Drop manifest entries whose file is gone (removed by the loop above or
 	// a prior run), then save once.
 	dropped := 0

@@ -831,9 +831,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 					migrationRun.mgr = mgr
 					migrationRun.runBackupDir = priorRunDir
-					_, migErr := migrateProjectCommonAssets(projectRoot, homeDir, migrationRun.userAssetsInstalled, nil, func(format string, args ...interface{}) {
-						_, _ = fmt.Fprintf(out, format+"\n", args...)
-					}, migrationRun)
+					_, migErr := migrateProjectCommonAssets(projectRoot, homeDir, migrationRun.userAssetsInstalled, nil, remainingAwareReport(out, updateVerboseMode), migrationRun)
+					recordRemainingList(updateLedger, migrationRun.remaining, updateVerboseMode)
 					if migErr != nil {
 						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", migErr)
 					}
