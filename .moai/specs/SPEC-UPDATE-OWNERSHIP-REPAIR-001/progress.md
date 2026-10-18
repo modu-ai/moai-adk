@@ -873,6 +873,56 @@ exit=1
 
 종료 코드 1. 이유 (단언 수준의 실패, 올바른 이유로 붉음): (1) 잔존 행이 경로 사전순이 아니다 — 걷기가 `.claude/skills` 뿌리를 `.agents/skills` 보다 먼저 돌아 행이 걷기 순서로 쌓인다. (2) **기본 표준 출력이 313개 경로를 전부 찍는다** — 갱신 흐름이 마이그레이션의 파일별 보고 줄 (`migration: unregistered mirror copy ... [reason: ...]: <경로>`) 을 그대로 `out` 으로 보낸다 (이번 측정으로 확인된 기존 동작; 코드 읽기 아님). (3) 기본 보기에 `no-provenance-record` 와 313 이상의 개수를 담은 이유별 한 줄이 없다. (4) `--verbose` 터미널 블록에 파일별 잔존 행이 없다 (313개 모두 0 행). 같은 출력의 통과 서브 시험이 보여주는 것: 구조 행의 나머지 (분류, 이유, 빠진 증거, 바이트, 제거 대조군) 는 chunk 1 의 코드가 이미 맞게 낸다 — 모자란 것은 정렬과 렌더뿐이다. 변이 서브 시험 셋의 PASS 는 각 변이 앞에서 단언이 비어 있지 않은 문제 목록을 돌려줬다는 뜻이다. 제로 매치가 아니며 (서브 시험 7개가 실제로 돌았다) 빌드 실패도 아니다.
 
+#### M4 — 대소문자 변형 (AC-OWR-11, AC-OWR-12)
+
+시험을 두 커밋으로 나눴다. 호스트 쪽 시험은 지금 있는 식별자만 쓰므로 컴파일되어 **단언 수준에서** 붉고, 파일시스템 대소문자 모드를 주입하는 시험은 새 API (`caseFS`, `resolveCaseAlias`, 판정의 `caseAlias`/`caseVariantOf`/`key`) 를 쓰므로 빌드 실패로 붉다. 한 커밋에 묶으면 호스트 쪽 단언 수준 RED 가 빌드 실패에 가려지기 때문이다.
+
+**AC-OWR-11 호스트 쪽 — 커밋 A1** `5246f408cf` (시험 파일만: `internal/cli/migrate_ownership_case_host_test.go`). 시험 `TestCaseVariantOnHostFilesystem` 는 서브 시험 둘: 호스트의 대소문자 모드를 **시험 자신의 임시 디렉터리 안에서** 프로브하고 (프로젝트 루트에 쓰는 `probeCaseSensitiveFS` 는 쓰지 않는다) 그 결과가 요구하는 기대를 단언한다 — 건너뛰는 가지가 없다 (무구분 호스트: 물리 파일 하나, 등록 항목의 판정이 적용됨, 철자 차이가 보고됨, 디렉터리 목록 불변; 구분 호스트: 두 철자가 별개 파일, 소문자 쪽은 `unregistered`, 등록 쪽은 `managed`); 그리고 운영 소스에서 `probeCaseSensitiveFS` 호출식을 AST 로 세어 0 임을 단언하고 (비시험 호출자가 없다), 호출을 끼운 변이 소스 앞에서 스캔이 붉음을 직접 관측한다.
+
+**AC-OWR-11 호스트 쪽 RED 셀 (트리 `5246f408cf`, 작업 트리 깨끗; 이 머신은 darwin, 대소문자 무구분)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestCaseVariantOnHostFilesystem$' -count=1 -v`
+
+```text
+    migrate_ownership_case_host_test.go:121: case-insensitive host: class "unregistered" for the lower-case spelling, want "managed" (the registered entry's verdict applies to the one file)
+    migrate_ownership_case_host_test.go:124: case-insensitive host: the spelling difference is not reported: "  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval) [reason: no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record]: .claude/skills/moai-ref-owasp-checklist/skill.md"
+--- FAIL: TestCaseVariantOnHostFilesystem (1.75s)
+    --- FAIL: TestCaseVariantOnHostFilesystem/the_host's_own_case_mode_decides_the_expectation (1.43s)
+    --- PASS: TestCaseVariantOnHostFilesystem/the_operational_code_never_runs_the_project-root_probe (0.32s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.941s
+FAIL
+exit=1
+```
+
+종료 코드 1. 이유 (단언 수준, 올바른 이유로 붉음): 무구분 호스트에서 등록 키 `SKILL.md` 와 같은 물리 파일을 걷기가 `skill.md` 로 만나면 맵 조회가 빗나가 `unregistered` 로 센다 (현장 증상 (4) 그대로); 철자 차이도 보고되지 않는다. 둘째 서브 시험 PASS 는 `probeCaseSensitiveFS` 의 비시험 호출자가 이미 없다는 사실의 도착 시 GREEN 이다 (가드이며 변이로 붉음을 관측한다).
+
+**AC-OWR-11 주입 쪽, AC-OWR-12 — 커밋 A2** `ae8868f6fc` (시험 파일만: `internal/cli/migrate_ownership_case_test.go`). `TestCaseVariantResolvesToRegisteredEntry` 는 파일시스템 모드를 주입한다: 실제 디렉터리 내용 위에서 무구분/구분 `stat` 을 흉내 내 두 모드를 같은 시험에서 단언하고 (무구분: 한 파일, 등록 항목의 판정 — 제거 가능 판정까지 — 이 적용되고 사용자 수정은 사용자 수정으로 남음, 구분: `unregistered`, 키 없음), 정확한 철자를 먼저 찾고, 모호한 별칭은 별칭이 아니며, 항상 별칭으로 합치는 대역은 붉게 잡힌다. `TestCaseVariantCounterpartAndMirrorSpelling` (AC-OWR-12) 은 사용자 매니페스트가 `SKILL.md` 를 기록하고 프로젝트 파일은 `skill.md` 인 경우에 대응물 상태가 `confirmed` 이고, 철자가 `skill.md` 인 미등록 거울 복사본이 한 행으로 `no-provenance-record` 와 출하된 철자 `SKILL.md` 에 대한 변형 표지를 받으며 두 철자 모두 이름 바뀌지 않음을 단언하고, 구분 모드 대조군에서는 같은 프로젝트가 `confirmed` 가 아님을 단언한다.
+
+**AC-OWR-11 주입 쪽 / AC-OWR-12 RED 셀 (트리 `ae8868f6fc`, 작업 트리 깨끗)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestCaseVariantResolvesToRegisteredEntry|TestCaseVariantOnHostFilesystem|TestCaseVariantCounterpartAndMirrorSpelling)$' -count=1 -v`
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_case_test.go:37:30: undefined: caseFS
+internal/cli/migrate_ownership_case_test.go:38:9: undefined: caseFS
+internal/cli/migrate_ownership_case_test.go:58:28: undefined: caseFS
+internal/cli/migrate_ownership_case_test.go:59:9: undefined: caseFS
+internal/cli/migrate_ownership_case_test.go:100:68: undefined: caseFS
+internal/cli/migrate_ownership_case_test.go:114:3: unknown field caseAlias in struct literal of type ownershipEnv
+internal/cli/migrate_ownership_case_test.go:115:11: undefined: resolveCaseAlias
+internal/cli/migrate_ownership_case_test.go:134:8: v.caseVariantOf undefined (type ownershipVerdict has no field or method caseVariantOf)
+internal/cli/migrate_ownership_case_test.go:135:77: v.caseVariantOf undefined (type ownershipVerdict has no field or method caseVariantOf)
+internal/cli/migrate_ownership_case_test.go:137:8: v.key undefined (type ownershipVerdict has no field or method key)
+internal/cli/migrate_ownership_case_test.go:137:8: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+종료 코드 1. 이유: 파일시스템 모드를 주입하는 별칭 확정 함수와 그 판정 필드가 아직 없어서 시험 패키지가 빌드되지 않는다 (시험이 존재하는 상태의 빌드 실패이며 제로 매치가 아니다). 이 RED 는 빌드 실패 형이다: 이 두 시험의 단언 수준 실패는 이 시점에 관측되지 않는다 (호스트 쪽만 위 셀에서 단언 수준으로 관측). 변이 앞의 직접 관측은 C 커밋 GREEN 원문의 변이 서브 시험이 한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
