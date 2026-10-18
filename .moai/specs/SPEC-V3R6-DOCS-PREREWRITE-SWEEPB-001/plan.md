@@ -33,7 +33,7 @@ Content of each hit (verbatim lines are in E-SWB-5):
 
 Totals: per page 4, 4, 4; per locale 3, 3, 3, 3; Class C 0, Class N 12. The four locales carry the same logical citation on every page; only the line numbers differ (the pages are not line-aligned), so there is no count drift between locales. A hit is identified by content (R1).
 
-**Edit-unit bounds (the single statement of the allowed edit under Q-SWB-1 option a).** AC-PRC-001-005 measures these.
+**Edit-unit bounds (superseded option (a) path, kept for the record).** No criterion measures these under the ruling.
 
 | Page | Locale | Removed lines | Added lines |
 |------|--------|---------------|-------------|
@@ -41,7 +41,7 @@ Totals: per page 4, 4, 4; per locale 3, 3, 3, 3; Class C 0, Class N 12. The four
 | multi-llm/model-policy | en, ko | 1 to 4 | 0 to 4 |
 | multi-llm/model-policy | ja, zh | exactly 1 | 0 or 1 |
 
-Under option (b) every row of both the bounds table and the diff is empty: the twelve files do not change.
+The ruling is (b): the twelve files do not change, and the bounds above are the superseded option (a) path, kept for the record.
 
 ### A.3 CLI surface check of every `moai` form the twelve pages cite
 
@@ -64,23 +64,20 @@ Reading: no cited form that fails to resolve is presented as usable. The twelve 
 
 The installed `moai` reports `moai_cp/20261007_195927-1888-g7705b365e2`, built 2026-10-18T10:45:08Z. Commit 7705b365e2 is a strict ancestor of the tree HEAD (`merge-base --is-ancestor` exit 0; `rev-list --count 7705b365e2..2bcce5d9dc` prints 48; E-SWB-0). The probes were therefore not made by a build of this tree, and none was built (no Go build, by the lane's machine rule). The mitigation is a source read at the pin, not a substitute: 15 files under `internal/cli` and `cmd` differ between the two commits, none of them `cg.go` or `migrate_cg.go`, and the `Use:` declarations at the pin show `cg` (hidden, "Retired CG launcher") and `migrate cg`, and no top-level `gpt`, `codemaps`, or `model` (E-SWB-6). The claim cited is "installed build 7705b365e2 against tree 2bcce5d9dc".
 
-## B. Milestones (ordered by likelihood of change; mechanical steps last)
+## B. Milestones
 
-- **M1 (Priority High): re-run the inventory.** The gate, and which decision row each milestone needs, are in decision-index.md (Gate) and are not restated here. Re-run the E01 inventory on the run-start tree. Any E01 match not in §A.2, by content, is a blocker report (return, do not edit). Under Q-SWB-1 option (a) only: confirm by content whether the README child's REQ-PRC-004 has landed on Korean `tokenomics-overview.md` line 112 and Korean `multi-llm/_index.md` line 164; if it has not landed and is not sequenced, stop with a blocker report, because both children would edit the same lines. Recompute the Unit column from content on the run-start tree.
-- **M2 (Priority High): Class C edit, if any.** If M1 found a Class C line, remove its instruction inside its edit unit as Q13 states. At the pin there is none; with none found, M2 changes no file.
-- **M3 (Priority Medium): Class N edit, or none.** Under Q-SWB-1 option (a), edit the twelve units in all four locales (Q17), reworded (a1) or deleted (a2) as the verdict states, keeping each locale's disposition the same. Rewording in ko, ja, and zh follows the native-idiom rule inline; these are paragraph-level edits, not a heavy artifact. Under option (b), no file changes and acceptance.md lists the twelve lines.
-- **M4 (Priority High before landing): sequencing re-verification.** Re-run the overlap probes of acceptance.md E-SWB-8 on current `main`: SWEEPA's file list, the README child's landed state, and any new child spec naming one of the twelve files.
-- **M5 (Priority Medium): verification.** Run the AC commands of acceptance.md §B from the card worktree root and carry the deciding output into the verdict file (`.moai/reports/t1722/verdict.md`), not into scratch.
+Q-SWB-1 is decided (b) on board record `d-20261018T201957Z-c26e` (decision-index.md, Gate). No milestone edits a page. The former edit milestones (Class C edit, Class N edit) are not applicable and are removed.
+
+- **M1 (Priority High): re-run the inventory.** On the run-start tree re-run the E01 inventory of §A.2. Any E01 match not in §A.2, by content, is a blocker report (return, do not edit). If a page moved on `main`, recompute the Base lines column from content.
+- **M2 (Priority High): regression-guard verification.** Run the AC commands of acceptance.md §B from the card worktree root: the twelve files byte-identical to the pin, the twelve retained lines present in all four locales, the swept-count control. Carry the deciding output into `.moai/reports/t1722/verdict.md`, not into scratch.
+- **M3 (Priority Medium): sequencing re-check.** Re-run the overlap probes of acceptance.md E-SWB-8 on current `main` (SWEEPA's file list, any new child spec naming one of the twelve files). Under (b) a finding is recorded, not acted on.
 
 ## C. Risks
 
 - **R1, moving coordinates.** The twelve pages are edited occasionally (acceptance.md E-SWB-9: the last 8 commits touching them are model-policy, tokenomics, and index edits). Line numbers can move before the run phase. Every check keys on content; the Unit column is recomputed at M1.
-- **R2, prose adjacency in tokenomics-overview.** The notice is the lead paragraph of the section "CG retirement and migration"; the paragraphs after it (migration writes, the `claude-glm` target) follow. Deleting the notice (a2) leaves those paragraphs without their lead sentence. Rewording (a1) does not. The sentence stays a reviewer read; no criterion measures coherence.
-- **R3, information lost by deleting a Class N unit.** Deleting the `model-policy.md` clause removes the only sentence that says the `moai model profile` accessor existed; the next paragraph still says the apparatus was retired. Rewording keeps both facts. The choice is an explicit option of Q-SWB-1.
-- **R4, the umbrella's closing check.** If Q-SWB-1 stays at option (b), the umbrella's closing check (E-01 residue) and the GATE checker must admit the same twelve lines; GATE's exemption entry C-7 names only the `cg-mode.md` and `moai-todo.md` pages. That is an amendment outside this SPEC.
+- **R4, the umbrella's closing check.** The umbrella's `cited-verbs: 0` check and GATE's exemption entry C-7 (which names only the `cg-mode.md` and `moai-todo.md` pages) would report these twelve lines. That is outside this card and was recorded as a follow-up of the umbrella closing card.
 - **R5, installed-build lag.** The CLI probes rest on a build 48 commits behind the tree (A.4).
-- **R6, same-line overlap with the README child.** Korean `tokenomics-overview.md` line 112 and Korean `multi-llm/_index.md` line 164 are both this child's units and the README child's REQ-PRC-004 targets. No trial merge was made. Under option (b) there is no overlap, because this child edits nothing.
-- **R7, Q24 tension.** The umbrella's decided Q24 fixes unmarked narrative lines. If the operator reads the notices as narrative, option (b) is wrong and (a) applies. That reading is the operator's to settle (decision-index.md, Q-SWB-1).
+- **R6, same-line overlap with the README child.** Korean `tokenomics-overview.md:112` and Korean `multi-llm/_index.md:164` are lines the README child's REQ-PRC-004 targets. It does not conflict under (b), because this SPEC edits nothing.
 
 ## D. Tests named, not run
 

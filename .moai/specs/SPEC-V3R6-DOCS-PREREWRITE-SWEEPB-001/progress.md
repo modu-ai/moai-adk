@@ -6,8 +6,8 @@ Card t1722, child SWEEPB of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001. Only §E.1 ca
 
 plan_status: audit-ready
 audit_ready: true
-plan_complete_at: 2026-10-18T20:19:59Z
-plan_revision: 0.2.0 (planner-default stamps withdrawn)
+plan_complete_at: 2026-10-18T20:21:51Z
+plan_revision: 0.2.0 (stamps withdrawn; Q-SWB-1 decided (b) on board d-20261018T201957Z-c26e)
 measured_tree: 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M)
 gate_state: decision-index.md (Gate)

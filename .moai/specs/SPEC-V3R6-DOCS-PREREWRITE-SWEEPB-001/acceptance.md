@@ -26,23 +26,23 @@ P-ALL = P-TOK P-IDX P-POL
 
 ### A.3 Classification
 
-Nothing is edited at the pin, so every criterion below is true there except AC-PRC-001-002 under option (a); the rows that decide the branch are in decision-index.md (Gate). A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2); each one does, so each is a regression-guard. AC-PRC-001-002 is the one criterion that has a red state: under option (a) it is **release-blocking** and flips from red to green at M3 (RED-now cell E-SWB-2); under option (b) it is a **regression-guard**. Under option (b) no criterion is release-blocking.
+Q-SWB-1 is decided (b) on board record `d-20261018T201957Z-c26e` (decision-index.md, Gate), so the sweep edits no page and every criterion below is true at the pin. A criterion that is true before any work is vacuous unless it carries a control (verification-completeness §2); each one does, so all five are **regression-guards**. None is release-blocking: the card closes as rationale recorded plus zero page changes. Each control is a command run on a known historical input that turns the same form red. The old option (a) path (edit the twelve units) is not applicable and has no criterion; its text survives only in the Q-SWB-1 options for the record.
 
 ## B. Acceptance criteria
 
-| AC | Requirement | Depends on | Class | State at the pin | Cell | Green path |
-|----|-------------|------------|-------|------------------|------|------------|
-| AC-PRC-001-001 | REQ-PRC-001-001 | Q13 | regression-guard | true (no output) | control E-SWB-10a | M1, M2 |
-| AC-PRC-001-002 | REQ-PRC-001-002 | Q-SWB-1, Q17 | release-blocking under (a); regression-guard under (b) | red under (a): 12 matches; true under (b) | RED-now E-SWB-2, E-SWB-3; control E-SWB-10b | M3 |
-| AC-PRC-001-003 | REQ-PRC-001-003 | Q17 | regression-guard | true (no output) | control E-SWB-10c | M3 |
-| AC-PRC-001-004 | REQ-PRC-001-004 | none | regression-guard | true (no output) | control E-SWB-10d | M5 |
-| AC-PRC-001-005 | REQ-PRC-001-004 | Q-SWB-1 (bounds) | regression-guard under (b); release-blocking under (a) for the non-empty and bound checks | true under (b) | controls E-SWB-10e, E-SWB-7 | M3, M4, M5 |
+| AC | Requirement | Class | State at the pin | Control | Milestone |
+|----|-------------|-------|------------------|---------|-----------|
+| AC-PRC-001-001 | REQ-PRC-001-001 | regression-guard | true (no output) | E-SWB-10a | M2 |
+| AC-PRC-001-002 | REQ-PRC-001-002 | regression-guard | true (12 lines, `exit=0`) | E-SWB-10b | M2 |
+| AC-PRC-001-003 | REQ-PRC-001-003 | regression-guard | true (4 lines per page) | E-SWB-10c | M2 |
+| AC-PRC-001-004 | REQ-PRC-001-004 | regression-guard | true (no output) | E-SWB-10d | M2 |
+| AC-PRC-001-005 | REQ-PRC-001-002 | regression-guard | true (zero diff, 12 base counts) | E-SWB-10e, E-SWB-7 | M2 |
 
 ### AC-PRC-001-001 — no line tells the reader to run an unresolved form
 
 AC-PRC-001-001 maps REQ-PRC-001-001.
 
-- **Given** the sweep tip is `HEAD` of the card branch,
+- **Given** the tip is `HEAD` of the card branch,
 - **When** these two commands run,
 - **Then** the first prints nothing and the second prints exactly 12 paths.
 
@@ -51,60 +51,44 @@ git grep -n -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:
 git ls-files -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 ```
 
-The first command prints every W01 match line that carries neither content key of the Class N set (the `llm.team_mode: cg` token that ends every notice, and `moai model profile`); a surviving line is a Class C candidate or an unknown form. Under option (b) all twelve matches carry a key and none survives; under option (a) there are no matches. The second command is the swept-set control. Control (E-SWB-10a): the same filter over `bas-navigator.md`, a page with a real Class C line, prints that line.
+The first command prints every W01 match line that carries neither content key of the Class N set (the `llm.team_mode: cg` token that ends every notice, and `moai model profile`); a surviving line is a Class C candidate or an unknown form. The second is the swept-set control. Control (E-SWB-10a): the same filter over `bas-navigator.md`, a page with a real Class C line, prints that line.
 
-### AC-PRC-001-002 — the Class N lines match the Q-SWB-1 verdict
+### AC-PRC-001-002 — the twelve retained lines are present and the files are unchanged
 
 AC-PRC-001-002 maps REQ-PRC-001-002.
 
-**Branch (b): Q-SWB-1 retains the twelve lines.**
-
-- **Given** the verdict is (b),
+- **Given** the tip,
 - **When** these two commands run,
-- **Then** the first prints exactly 12 lines, each ending `:1`, and the second prints `exit=0` (no difference).
+- **Then** the first prints exactly 12 lines, each ending `:1`, and the second prints `exit=0` (no difference from `main`).
 
 ```
 git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 git diff --quiet main...HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"
 ```
 
-Branch (b) is true at the pin. Control (E-SWB-10b): the second command prints `exit=1` over a commit that does change these pages.
+True at the pin (E-SWB-2). Control (E-SWB-10b): the second command prints `exit=1` over a commit that does change these pages. The first command is the swept-count control: a count other than 12 lines means a retained line was removed or a new match added.
 
-**Branch (a): Q-SWB-1 treats the twelve lines as stale citations (a1 reword or a2 delete).**
-
-- **Given** the verdict is (a),
-- **When** these three commands run,
-- **Then** the first two print `exit=1` and the third prints exactly 12 paths.
-
-```
-git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"
-git grep -q -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"
-git ls-files -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
-```
-
-RED-now at the pin under (a): E-SWB-2 prints 12 lines ending `:1`, E-SWB-3 prints the same 12, and E-SWB-4 shows the quiet form exits 0. The third command is the swept-set control; it does not stop a page from being emptied, which AC-PRC-001-005 does.
-
-### AC-PRC-001-003 — each page changes in all four locales or in none
+### AC-PRC-001-003 — the four locales keep the same citation on every page
 
 AC-PRC-001-003 maps REQ-PRC-001-003.
 
-- **Given** Q17 carries a verdict that edits land in all four locales in one change,
+- **Given** the tip,
 - **When** the three commands run, one per page,
-- **Then** each prints either nothing or exactly four paths.
+- **Then** each prints exactly four lines, one per locale, each ending `:1`.
 
 ```
-git diff --name-only main...HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md'
-git diff --name-only main...HEAD -- 'docs-site/content/*/multi-llm/_index.md'
-git diff --name-only main...HEAD -- 'docs-site/content/*/multi-llm/model-policy.md'
+git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md'
+git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/multi-llm/_index.md'
+git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/multi-llm/model-policy.md'
 ```
 
-Control (E-SWB-10c): commit 6581cdccbb changed only the en and ko copies of `model-policy.md`, prints two paths, which this criterion rejects. For the two notice pages, the four `git diff --numstat` lines of AC-PRC-001-005 carry the same added value (all 0 under a2, all 1 under a1); a differing value is a mixed disposition. The model-policy disposition is a reviewer read (gap G8). The repository's own parity gate is a confirmatory check, not the criterion; it was not run in this pass (G6).
+Control (E-SWB-10c): commit 6581cdccbb changed only the en and ko copies of `model-policy.md`, so the diff-path form prints two paths over that commit, showing the locale-set form can detect a partial-locale change.
 
 ### AC-PRC-001-004 — nothing outside the twelve files changes
 
 AC-PRC-001-004 maps REQ-PRC-001-004.
 
-- **Given** the sweep tip,
+- **Given** the tip,
 - **When** this command runs,
 - **Then** it prints nothing.
 
@@ -112,26 +96,22 @@ AC-PRC-001-004 maps REQ-PRC-001-004.
 git diff --name-only main...HEAD -- . ':!docs-site/content/*/advanced/tokenomics-overview.md' ':!docs-site/content/*/multi-llm/_index.md' ':!docs-site/content/*/multi-llm/model-policy.md' ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001' ':!.moai/reports/t1722'
 ```
 
-Control (E-SWB-10d): the same exclusion form over the range of commit c5620da649 prints 13 paths, so the form does print when something outside the list changes. At plan time over `main...HEAD` it prints nothing, the expected state before any edit.
+Control (E-SWB-10d): the same exclusion form over the range of commit c5620da649 prints 13 paths.
 
-### AC-PRC-001-005 — every change stays inside its edit unit
+### AC-PRC-001-005 — the twelve files are byte-identical to the pin
 
-AC-PRC-001-005 maps REQ-PRC-001-004. The edit units and bounds are plan.md §A.2; this criterion measures them for all twelve files, so a page cannot be emptied, a page cannot be edited outside its unit, and under option (a) a page cannot be left untouched.
+AC-PRC-001-005 maps REQ-PRC-001-002 (byte-unchanged clause). It closes the emptied-page mutant: the line counts and the numstat catch a blanked or truncated page that still contains its E01 line.
 
-- **Given** the sweep tip and the Q-SWB-1 verdict,
-- **When** these commands run (command 3 once per row of plan.md §A.2, command 2 once per page),
-- **Then** under (b) command 1 prints `exit=0`, command 2 prints nothing, command 3 prints `0`, and command 4 prints the 12 base counts of plan.md §A.2; under (a) command 1 prints `exit=1`, command 2 prints four numstat lines per page within the bounds of plan.md §A.2 (empty output is red: the unit must be gone), command 3 prints `0` for every row, and command 4 prints each file's base count minus its removed plus its added lines.
+- **Given** the tip,
+- **When** these two commands run,
+- **Then** the first prints nothing and the second prints the 12 base counts of plan.md §A.2 (E-SWB-7).
 
 ```
-git diff --quiet main...HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'; echo "exit=$?"
-git diff --numstat main...HEAD -- 'docs-site/content/*/multi-llm/_index.md'
-git diff -U0 main...HEAD -- <FILE> | awk -v lo=<LO> -v hi=<HI> '/^@@/ {split($2,a,","); s=-a[1]; n=(a[2]==""?1:a[2]); if (n==0) {ok=(s>=lo-1 && s<=hi)} else {ok=(s>=lo && s+n-1<=hi)}; if (!ok) bad++} END {print bad+0}'
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 git grep -c "" HEAD -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'
 ```
 
-Command 3 takes `<FILE>`, `<LO>`, `<HI>` from the 12 rows of plan.md §A.2 (Unit column); it counts diff hunks whose old-side range falls outside the unit, so `0` means every changed line is inside the unit. Command 2 is shown for `_index.md`; run it for each of the three pages. Mutants this closes: blanking a page exceeds the removed bound, the hunk range, and the line count; deleting only part of a unit inside the bound is allowed by design; editing a different line of the page puts a hunk outside the unit; leaving a page untouched under (a) prints `exit=0` for command 1 and an empty numstat. If `main` moves a page before the run, the Unit column is recomputed by content at M1 and the recomputed values are recorded in the verdict.
-
-Controls (E-SWB-10e, E-SWB-7): command 3 over commit 6581cdccbb for the en `model-policy.md` with the unit 187 to 190 prints `1` (the commit changed lines 66 to 69); command 2 over commit 4716869503 prints `162 54`, `156 41`, `141 39` for `_index.md` (above the removed bound of 1); at plan time command 2 prints nothing (red under (a) by design) and command 4 prints the 12 base counts.
+Control (E-SWB-10e): over the range of commit 4716869503 the first command prints `162 54`, `156 41`, `141 39` for `_index.md`, so a page edit shows as non-empty output. If a page moves on `main` before the run, the base counts are recomputed from the run-start tree and recorded in the verdict.
 
 ## C. Evidence ledger
 
@@ -169,7 +149,7 @@ docs-site/content/zh/multi-llm/_index.md
 docs-site/content/zh/multi-llm/model-policy.md
 ```
 
-### E-SWB-2 — RED-now (under Q-SWB-1 option a), pattern E01 over the twelve files
+### E-SWB-2 — baseline (the retained set), pattern E01 over the twelve files
 
 Command: `git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 -- 'docs-site/content/*/advanced/tokenomics-overview.md' 'docs-site/content/*/multi-llm/_index.md' 'docs-site/content/*/multi-llm/model-policy.md'`. Exit code: 0. Output:
 
@@ -188,7 +168,7 @@ Command: `git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]
 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681:docs-site/content/zh/multi-llm/model-policy.md:1
 ```
 
-Why red under (a): each of the twelve files carries one line that matches E01; the sweep edits exactly those lines. Why it is not red under (b): the twelve lines are the retained set. All twelve are Class N (E-SWB-5, E-SWB-6).
+Reading: each of the twelve files carries one line that matches E01. Under the ruling (b) these twelve lines are the retained set and no criterion is red at the pin. All twelve are Class N (E-SWB-5, E-SWB-6).
 
 ### E-SWB-3 — pattern W01 over the twelve files
 
@@ -261,7 +241,7 @@ Command: `git log --oneline -n 8 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 -- <P-
 - **E-SWB-10b (AC-PRC-001-002 b).** `git diff --quiet 6581cdccbb~1 6581cdccbb -- <P-ALL>; echo "exit=$?"` prints `exit=1`.
 - **E-SWB-10c (AC-PRC-001-003).** `git diff --name-only 6581cdccbb~1 6581cdccbb` prints `docs-site/content/en/multi-llm/model-policy.md` and `docs-site/content/ko/multi-llm/model-policy.md` (two paths, neither none nor four).
 - **E-SWB-10d (AC-PRC-001-004).** `git diff --name-only c5620da649~1 c5620da649 -- . ':!<P-TOK>' ':!<P-IDX>' ':!<P-POL>' ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001' ':!.moai/reports/t1722'` prints 13 paths (`docs-site/content/en/advanced/token-budget.md`, `.../en/claude-code/foundations/commands.md`, `.../en/cost-optimization/prompt-caching.md`, and ten more in ja, ko, zh).
-- **E-SWB-10e (AC-PRC-001-005).** `git diff -U0 6581cdccbb~1 6581cdccbb -- docs-site/content/en/multi-llm/model-policy.md | awk -v lo=187 -v hi=190 '<command 3>'` prints `1` (the changed hunk starts at line 66). `git diff --numstat 4716869503~1 4716869503 -- 'docs-site/content/*/multi-llm/_index.md'` prints `162 54` (en), `156 41` (ja), `141 39` (zh), above the removed bound of 1.
+- **E-SWB-10e (AC-PRC-001-005).** `git diff --numstat 4716869503~1 4716869503 -- 'docs-site/content/*/multi-llm/_index.md'` prints `162 54` (en), `156 41` (ja), `141 39` (zh), so a page edit shows as non-empty output.
 
 ## D. Gaps and residual risk
 
@@ -277,13 +257,13 @@ Command: `git log --oneline -n 8 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681 -- <P-
 - **G8: same-disposition across the model-policy locales** has no mechanical check; it is a reviewer read.
 - **G9: leased cards.** No queue or factory query was made. The overlap statement rests on the SPEC directories present in the worktrees (E-SWB-8, command B), which cannot show a card that has no SPEC yet.
 
-**Mutant probe.** A lazy implementation (1) leaves the pages untouched under option (a): AC-PRC-001-002 (a) fails; (2) blanks or truncates pages: AC-PRC-001-005 bounds, hunk containment, and line counts fail; (3) edits en only or ko only: AC-PRC-001-003 fails; (4) respells `moai  cg` with two spaces: W01 in AC-PRC-001-001 and (a) catches it; (5) adds a new run instruction for an absent verb: AC-PRC-001-001's filter prints it; (6) changes a retained line while claiming option (b): AC-PRC-001-002 (b) `exit=1`; (7) appends a content key to a new Class C line to dodge the filter: AC-PRC-001-005 hunk containment under (a), or the byte-unchanged check under (b). Not closed: a respelling outside both patterns (a quoted verb name), and the coherence of the page after a disposition (R2).
+**Mutant probe.** A lazy implementation (1) blanks or truncates a page: AC-PRC-001-005 numstat and line counts fail; (2) edits en only or ko only: AC-PRC-001-002 (diff) and AC-PRC-001-003 (per-page counts) fail; (3) removes a retained notice: AC-PRC-001-002 and -003 print fewer than 12 lines; (4) respells `moai  cg` with two spaces: W01 in AC-PRC-001-001 catches it; (5) adds a new run instruction for an absent verb: AC-PRC-001-001's filter prints it; (6) appends a content key to a new Class C line to dodge the filter: the byte-unchanged checks of AC-PRC-001-002 and -005 catch it. Not closed: a respelling outside both patterns (a quoted verb name).
 
-**Residual risk:** a green result proves that no unresolved-verb spelling matches and that edits stay inside their units, not that the page reads coherently in four locales. The reviewer reads the edited units.
+**Residual risk:** a green result proves the twelve files are byte-identical to the pin and no new unresolved-verb spelling was added. It does not prove the retained notices are the right call; that is the ruling on board `d-20261018T201957Z-c26e`.
 
 ## E. Definition of Done
 
-- AC-PRC-001-002 prints its expected output for the Q-SWB-1 branch in force at the sweep tip, and its result is carried into `.moai/reports/t1722/verdict.md` with the command and the deciding lines.
-- AC-PRC-001-001 and AC-PRC-001-003 to AC-PRC-001-005 print their expected output at the sweep tip.
+- The five criteria print their expected output at the tip and the deciding lines are carried into `.moai/reports/t1722/verdict.md` with the command and output.
+- The card closes as rationale recorded plus zero page changes; the twelve files are byte-identical to the pin.
 - The state of Q13, Q17, and Q-SWB-1 is as decision-index.md (Gate) states; this file adds no second reading.
-- The umbrella's closing measurement is not part of this Definition of Done; it is the umbrella's M6.
+- The umbrella's closing measurement is not part of this Definition of Done.
