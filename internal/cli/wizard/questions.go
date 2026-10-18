@@ -111,11 +111,11 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select report format",
 			Description: "Controls whether reports are generated as HTML+Markdown, Markdown only, or published as a Claude Artifact.",
 			Options: []Option{
-				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
+				{Label: "HTML + Markdown", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
 				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
-				{Label: "Artifact (Claude)", Value: "artifact", Desc: "Publish the report as a Claude Artifact (falls back to html+md when the Artifact tool is unavailable)"},
+				{Label: "Artifact (Claude) (Recommended)", Value: "artifact", Desc: "Publish the report as a Claude Artifact (falls back to html+md when the Artifact tool is unavailable)"},
 			},
-			Default:  "html+md",
+			Default:  "artifact",
 			Required: true,
 		},
 	}

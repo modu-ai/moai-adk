@@ -361,8 +361,8 @@ const (
 	// pinned to max on the wire by the effort overlay whatever the slot says.
 	DefaultGLMEffortHigh   = "max"
 	DefaultGLMEffortMedium = "high"
-	DefaultGLMEffortLow    = "low"
-	DefaultGLMEffortFable  = "max"
+	DefaultGLMEffortLow    = "max"
+	DefaultGLMEffortFable  = "high"
 	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
 	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
 	// web console locks the tier effort select to max when a tier slot holds

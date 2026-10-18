@@ -394,13 +394,14 @@ func TestDefaultGLMConstants(t *testing.T) {
 			t.Errorf("%s: got %q, want %q", name, gw[0], gw[1])
 		}
 	}
-	// Per-tier reasoning-state defaults: high->max, medium->high, low->low,
-	// fable->max (glm-5.3-flash stays pinned to max on the wire by the overlay).
+	// Per-tier reasoning-state defaults: high->max, medium->high, low->max,
+	// fable->high (operator-confirmed combination; glm-5.3-flash accepts max
+	// only, so the low slot's max matches what the overlay wires anyway).
 	efforts := map[string][2]string{
 		"DefaultGLMEffortHigh":   {DefaultGLMEffortHigh, "max"},
 		"DefaultGLMEffortMedium": {DefaultGLMEffortMedium, "high"},
-		"DefaultGLMEffortLow":    {DefaultGLMEffortLow, "low"},
-		"DefaultGLMEffortFable":  {DefaultGLMEffortFable, "max"},
+		"DefaultGLMEffortLow":    {DefaultGLMEffortLow, "max"},
+		"DefaultGLMEffortFable":  {DefaultGLMEffortFable, "high"},
 	}
 	for name, gw := range efforts {
 		if gw[0] != gw[1] {

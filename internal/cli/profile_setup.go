@@ -16,9 +16,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Wizard default constants.
+// Wizard default constants. They are the CLAUDE-settings values pre-selected for
+// a profile that stored nothing (card t1866, operator decision 2026-10-18); a
+// stored choice always wins. defaultModel is the 1M Sonnet picker value the web
+// console labels "Sonnet 5.5" (the picker offers no bare alias).
 const (
-	defaultPermissionMode = "acceptEdits"
+	defaultPermissionMode = "auto"
+	defaultModel          = "sonnet[1m]"
+	defaultEffortLevel    = "medium"
+
+	// acceptEditsPermissionMode is the mode whose persistence the wizard
+	// confirms: it was the default until card t1866 and is now an ordinary
+	// explicit choice that writes a settings.local.json override.
+	acceptEditsPermissionMode = "acceptEdits"
 )
 
 // acceptEditsConfirmationLine is the deterministic English confirmation emitted
@@ -251,6 +261,12 @@ func initialProfileResult(existingPrefs profile.ProfilePreferences) wizard.Profi
 	if result.PermissionMode == "" {
 		result.PermissionMode = defaultPermissionMode
 	}
+	if result.Model == "" {
+		result.Model = defaultModel
+	}
+	if result.EffortLevel == "" {
+		result.EffortLevel = defaultEffortLevel
+	}
 	if cwd, err := os.Getwd(); err == nil {
 		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
 			if dm, _, readErr := readCurrentProjectConfig(cwd); readErr == nil {
@@ -359,7 +375,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// project acceptEdits default (card t1414). The confirmation line surfaces
 	// the persistence so the selection is not perceived as silent
 	// (REQ-CCI-006).
-	if permissionMode == defaultPermissionMode {
+	if permissionMode == acceptEditsPermissionMode {
 		emitAcceptEditsConfirmation(cmd.OutOrStdout(), result.ConversationLang)
 	}
 

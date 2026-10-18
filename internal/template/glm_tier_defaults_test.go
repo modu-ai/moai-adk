@@ -15,7 +15,8 @@ import (
 // config.NewDefaultLLMConfig() fills an absent key with (glm-5.3 for
 // high/medium/fable, glm-5.3-flash for low), and every tier effort equals the
 // reasoning-state default config.DefaultGLMEffort* names (high max, medium
-// high, low low, fable max) — the same default the web console preselects.
+// high, low max, fable high since card t1866) — the same default the web
+// console preselects.
 func TestGLMTierDefaultsTemplateMatchesGoDefaults(t *testing.T) {
 	fsys, err := EmbeddedTemplates()
 	if err != nil {

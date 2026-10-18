@@ -93,7 +93,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	}
 	d.TypeText("uniproj")
 	d.Enter() // project_name -> report_format
-	d.Enter() // report_format (html+md) -> next group
+	d.Enter() // report_format (artifact, the default) -> next group
 
 	// Group (Git): git_mode manual -> personal (one cursor down).
 	frame := d.View()
@@ -138,7 +138,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 		ConversationLang: "en",
 		UserName:         "octo-dev",
 		ProjectName:      "uniproj",
-		ReportFormat:     "html+md",
+		ReportFormat:     "artifact",
 		GitMode:          "personal",
 		GitProvider:      "github",
 		GitHubUsername:   "octocat",

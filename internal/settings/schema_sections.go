@@ -581,8 +581,8 @@ func cacheFields() []FieldDef {
 // reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md / artifact).
 // moai-domain-html-report skill이 읽어 출력 포맷을 결정한다. artifact는
 // Claude Artifact 게시 경로이며 Artifact 도구가 없는 세션(Codex·GLM·API-key)에서는
-// html+md로 자동 폴백한다 (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001/002). 기본값
-// html+md는 불변이고 기존 두 값의 순서·의미는 보존된다.
+// html+md로 자동 폴백한다 (SPEC-REPORT-ARTIFACT-DELIVERY-001 REQ-001/002). 배포
+// 기본값은 artifact(card t1866)이고, 기존 두 값의 순서·의미는 보존된다.
 var reportFormatValues = []string{"html+md", "md", "artifact"}
 
 // reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 3-옵션

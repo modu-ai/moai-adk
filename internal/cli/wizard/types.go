@@ -21,9 +21,9 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd
 
-	// Report format — html+md or md. Persisted to report.yaml at init.
-	// Empty resolves to the html+md default at persistence time.
-	ReportFormat string // Report output format: html+md, md
+	// Report format — html+md, md, or artifact. Persisted to report.yaml at init.
+	// Empty resolves to the artifact default at persistence time.
+	ReportFormat string // Report output format: html+md, md, artifact
 
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team

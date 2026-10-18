@@ -686,8 +686,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Project name, model policy, and report format are no longer asked on
 		// the init path (SPEC-INIT-QUIET-WIZARD-001): the project name falls to
 		// the directory-name default, the model profile to medium, and the
-		// report format to html+md — the same values a user accepting every
-		// former default received.
+		// report format to artifact (the shipped default since card t1866;
+		// html+md before it) — the same values a user accepting every
+		// current default receives.
 		if opts.DevelopmentMode == "" {
 			opts.DevelopmentMode = result.DevelopmentMode
 		}

@@ -632,6 +632,18 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// 4. Read project settings.local.json for DO_CLAUDE_* flags (overrides profile)
 	settings := readSettingsLocalForLaunch()
 
+	// 4a. Resolve the backend before the permission mode: an unset profile
+	// permission mode defaults to auto on the Claude backend only (card t1866),
+	// so the default depends on it. Step 6 reads the same values.
+	glmBackend := false
+	var glmModels config.GLMModels
+	var glmTierEffort config.GLMTierEffort
+	sessionRoot := ""
+	if root, err := findProjectRoot(); err == nil {
+		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
+		sessionRoot = root
+	}
+
 	// Profile model is the default; settings.local.json overrides
 	if settings["DO_CLAUDE_MODEL"] == "" && prefs.Model != "" {
 		settings["DO_CLAUDE_MODEL"] = prefs.Model
@@ -641,10 +653,34 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// settings.local.json DO_CLAUDE_PERMISSION_MODE overrides profile.
 	// Legacy DO_CLAUDE_BYPASS is also honored for backward compatibility.
 	permMode := prefs.PermissionMode
+	legacyBypass := false
 	if settings["DO_CLAUDE_PERMISSION_MODE"] != "" {
 		permMode = settings["DO_CLAUDE_PERMISSION_MODE"]
 	} else if settings["DO_CLAUDE_BYPASS"] == "true" && permMode == "" {
 		permMode = "bypassPermissions"
+		legacyBypass = true
+	}
+	// A profile that never chose a mode launches Claude sessions in auto (card
+	// t1866, operator decision 2026-10-18). Applied after the overrides above so
+	// an explicit DO_CLAUDE_* choice still wins.
+	if permMode == "" {
+		permMode = launchDefaultPermissionMode(glmBackend)
+	}
+	syncPermMode := launchDefaultPermissionMode(glmBackend)
+	if prefs.PermissionMode != "" || legacyBypass {
+		syncPermMode = prefs.PermissionMode
+	}
+	// A stored or settings-chosen auto is dropped under a GLM backend: the GLM
+	// launcher refuses `--permission-mode auto` on its own command line (glm.go),
+	// and the profile wizard now pre-selects auto, so more profiles hold it. An
+	// explicit `--permission-mode auto` typed on the command line is not touched
+	// here — it keeps its own refusal.
+	if glmBackend && permMode == "auto" {
+		fmt.Fprintln(os.Stderr, "Note: permission mode auto is not available on the GLM backend; launching without it.")
+		permMode = ""
+	}
+	if glmBackend && syncPermMode == "auto" {
+		syncPermMode = ""
 	}
 	cont := settings["DO_CLAUDE_CONTINUE"] == "true"
 	model := settings["DO_CLAUDE_MODEL"]
@@ -701,7 +737,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// edited by hand. cont is fully resolved by now (settings DO_CLAUDE_CONTINUE
 	// plus the -c/--continue arg parsed in the loop above).
 	if !cont && settingsLocalPath != "" {
-		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, prefs.PermissionMode); err != nil {
+		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, syncPermMode); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
 		}
 	}
@@ -711,15 +747,8 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// slot env that setGLMEnv configured; under a Claude backend the stored or
 	// flagged value passes through verbatim — Claude Code resolves alias
 	// semantics itself at launch time, so no compile-time snapshot id is ever
-	// substituted for an alias (SPEC-ALIAS-PASSTHROUGH-001).
-	glmBackend := false
-	var glmModels config.GLMModels
-	var glmTierEffort config.GLMTierEffort
-	sessionRoot := ""
-	if root, err := findProjectRoot(); err == nil {
-		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
-		sessionRoot = root
-	}
+	// substituted for an alias (SPEC-ALIAS-PASSTHROUGH-001). The backend itself
+	// was resolved above (step 4a), before the permission mode needed it.
 	// card t1808: a factory leader/lane launches with its session default
 	// model (llm.defaults.sessions) unless the operator passed --model; under
 	// GLM the value is a slot alias, which resolveMainSessionModel keeps.
@@ -1125,6 +1154,18 @@ func readSettingsLocalForLaunch() map[string]string {
 		result[k] = v
 	}
 	return result
+}
+
+// launchDefaultPermissionMode is the permission mode a launch uses when the
+// profile never chose one (card t1866, operator decision 2026-10-18): auto on the
+// Claude backend. The GLM backend keeps the empty mode — the GLM launcher
+// refuses `--permission-mode auto` (glm.go: auto needs a supported Claude
+// model), so a default there would break every unset-profile GLM launch.
+func launchDefaultPermissionMode(glmBackend bool) string {
+	if glmBackend {
+		return ""
+	}
+	return "auto"
 }
 
 // syncPermissionModeToSettingsLocal persists the profile permission mode

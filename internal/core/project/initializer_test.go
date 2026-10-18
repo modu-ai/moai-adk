@@ -282,9 +282,10 @@ func TestInit_ReportYAMLWithSelectedFormat(t *testing.T) {
 	}
 }
 
-// TestInit_ReportYAMLDefaultsToHTMLMD verifies an empty ReportFormat resolves to
-// the html+md default at persistence time.
-func TestInit_ReportYAMLDefaultsToHTMLMD(t *testing.T) {
+// TestInit_ReportYAMLDefaultsToArtifact verifies an empty ReportFormat resolves to
+// the artifact default at persistence time (the report skill falls back to
+// html+md where the Artifact tool is absent).
+func TestInit_ReportYAMLDefaultsToArtifact(t *testing.T) {
 	root := t.TempDir()
 	init := NewInitializer(nil, nil, nil)
 
@@ -307,8 +308,8 @@ func TestInit_ReportYAMLDefaultsToHTMLMD(t *testing.T) {
 	assertFileExists(t, reportPath)
 	var reportData reportYAML
 	readYAML(t, reportPath, &reportData)
-	if reportData.Report.Format != "html+md" {
-		t.Errorf("report.format = %q, want %q (default)", reportData.Report.Format, "html+md")
+	if reportData.Report.Format != "artifact" {
+		t.Errorf("report.format = %q, want %q (default)", reportData.Report.Format, "artifact")
 	}
 }
 

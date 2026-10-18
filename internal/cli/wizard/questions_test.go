@@ -37,8 +37,8 @@ func TestReportFormatQuestion(t *testing.T) {
 		}
 	}
 
-	if q.Default != "html+md" {
-		t.Errorf("report_format default = %q, want %q", q.Default, "html+md")
+	if q.Default != "artifact" {
+		t.Errorf("report_format default = %q, want %q", q.Default, "artifact")
 	}
 
 	if q.Condition != nil {

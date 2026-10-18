@@ -114,8 +114,8 @@ llm:
     effort:
       high: "max"
       medium: "high"
-      low: "low"
-      fable: "max"
+      low: "max"
+      fable: "high"
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──

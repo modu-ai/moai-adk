@@ -436,8 +436,8 @@ func TestReportFormatInWizard(t *testing.T) {
 	if q == nil {
 		t.Fatal("report_format question should be in wizard")
 	}
-	if q.Default != "html+md" {
-		t.Errorf("report_format default should be 'html+md', got %q", q.Default)
+	if q.Default != "artifact" {
+		t.Errorf("report_format default should be 'artifact', got %q", q.Default)
 	}
 
 	// development_mode is no longer an interactive question.

@@ -567,13 +567,14 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 // writeReportConfig persists the resolved report format to
 // .moai/config/sections/report.yaml. It runs unconditionally after template
 // deployment so the wizard/flag-selected value overrides the template default
-// (html+md). An empty opts.ReportFormat resolves to the html+md default. The
+// (artifact). An empty opts.ReportFormat resolves to the artifact default; the
+// report skill falls back to html+md where the Artifact tool is absent. The
 // closed set of accepted values (html+md / md / artifact) is owned by the
 // internal/settings reportFormatValues SSOT.
 func (i *projectInitializer) writeReportConfig(opts InitOptions, result *InitResult) error {
 	format := opts.ReportFormat
 	if format == "" {
-		format = "html+md"
+		format = "artifact"
 	}
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 	content := fmt.Sprintf("report:\n  format: %s\n", format)

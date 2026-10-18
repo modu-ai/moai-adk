@@ -218,7 +218,7 @@ func quietWizardObserveDefaults(projectDir, wantName string) []quietWizardMismat
 	if err := quietWizardReadYAML(filepath.Join(sections, defs.ReportYAML), &reportDoc); err != nil {
 		fail("report.yaml", err)
 	} else {
-		check("report.yaml report.format", "html+md", reportDoc.Report.Format)
+		check("report.yaml report.format", "artifact", reportDoc.Report.Format)
 	}
 
 	llmPath := filepath.Join(sections, quietWizardLLMYAML)

@@ -126,9 +126,9 @@ func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 	}
 
 	exempt := map[string]string{
-		"glm tier effort high":  DefaultGLMEffortHigh,
-		"glm tier effort fable": DefaultGLMEffortFable,
-		"glm audit pin effort":  DefaultGLMAuditEffort,
+		"glm tier effort high": DefaultGLMEffortHigh,
+		"glm tier effort low":  DefaultGLMEffortLow,
+		"glm audit pin effort": DefaultGLMAuditEffort,
 	}
 	var maxCells []string
 	for name, v := range exempt {
@@ -142,7 +142,7 @@ func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 	}
 	for name, v := range map[string]string{
 		"glm tier effort medium": DefaultGLMEffortMedium,
-		"glm tier effort low":    DefaultGLMEffortLow,
+		"glm tier effort fable":  DefaultGLMEffortFable,
 	} {
 		if v == "max" || v == "ultra" {
 			t.Errorf("%s = %q is outside the max exemption", name, v)
