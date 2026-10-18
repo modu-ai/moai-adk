@@ -55,7 +55,7 @@ When the git pre-commit hook runs the heavy gate (`gate.pre_commit.enabled: true
 
 ### REQ-PAS-001 — Affected-only test scope (Event-driven)
 
-When the Go toolchain's test step runs in the pre-commit context with the heavy gate opted in and `gate.pre_commit.test_scope.mode` resolving to `affected`, the quality gate shall test only the affected package set rather than every package in the module.
+When the Go toolchain's test step runs in the pre-commit context with the heavy gate opted in and `gate.pre_commit.test_scope.mode` resolving to `affected`, the quality gate shall test only the affected package set rather than every package in the module, naming each selected package to the test runner as a module-root-relative directory pattern (for example `./a ./b`).
 
 ### REQ-PAS-002 — Definition of the affected set (Ubiquitous)
 
@@ -87,7 +87,7 @@ When the changed-file query fails, the package-graph query fails, or the package
 
 ### REQ-PAS-009 — Changed set is what the commit records (Ubiquitous)
 
-The changed-file set the gate uses shall be the set the commit will record, including commits made with `git commit -a`, with explicit paths, with `--amend`, and from a linked worktree.
+The changed-file set the gate uses shall be the set the commit will record, including commits made with `git commit -a`, with explicit paths, and from a linked worktree; for `git commit --amend` it shall be the changes newly staged in the index relative to the HEAD being amended, not the files the amended commit already carried (an accepted incremental check).
 
 ### REQ-PAS-010 — Context isolation (Ubiquitous)
 

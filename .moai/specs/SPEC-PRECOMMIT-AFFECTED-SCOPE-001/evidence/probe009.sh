@@ -4,6 +4,8 @@
 # gave it) and (b) the list in the form the gate's existing staged-file helper computes it
 # (git diff --cached --name-only with gitenv.RepoScopingVars removed from the environment).
 # Exits 1 when (b) differs from (a) in any of the three commit shapes.
+# IMMUTABLE RED-now WITNESS of the pre-change helper: (b) is hard-coded, so this script can never turn green and is
+# not a green condition. The green path for AC-PAS-009 is TestAffectedScope_ChangedSetMatchesCommit (real adapter).
 # Usage: PROBE_DIR=<scratch dir> sh probe009.sh
 set -u
 W="${PROBE_DIR:-/private/tmp/pas-probe}/p009"
