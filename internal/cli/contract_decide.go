@@ -21,6 +21,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 )
 
+// contractDecideJev is the decide command's Jev seam. Nil means the kickoff
+// package's own default client; tests install a fake, so no test contacts the
+// endpoint (the autoRankJevDoer pattern).
+var contractDecideJev kickoff.JevAsker
+
 func newContractDecideCmd() *cobra.Command {
 	var specID, judgement string
 	var asJSON bool
@@ -71,6 +76,7 @@ func runContractDecide(cmd *cobra.Command, card, specID, judgementPath string, a
 		RegistryRuleIDs:     env.ruleIDs,
 		RegistryFrozenFiles: env.frozenFiles,
 		DoctrineAmended:     kickoff.JevDoctrineAmended,
+		Jev:                 contractDecideJev,
 	})
 	switch {
 	case errors.Is(err, receipt.ErrIntegrity):
@@ -83,6 +89,7 @@ func runContractDecide(cmd *cobra.Command, card, specID, judgementPath string, a
 	case err != nil:
 		return contractUsageError(cmd, "decide: %v", err)
 	}
+	jevNotice(res.JevNotice)
 	out := cmd.OutOrStdout()
 	if asJSON {
 		enc := json.NewEncoder(out)
