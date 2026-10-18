@@ -1,7 +1,9 @@
 # Card t1859 — lane verdict (Class B, run → sync, no SPEC)
 
 verdict: PASS
-audited_sha: d724445389fe0a530e71714f067870a216621722
+audited_sha: 261aae8d19753351a82e9e2b3608bc6d0a4ef4a1
+
+Absorb update (lane-22): main 225bcb8fce was absorbed by a no-ff merge, HEAD 261aae8d1; the only conflict was CHANGELOG.md, resolved by keeping both sides' entries. The head-confirmation audit `.moai/reports/t1859/sync-audit-head-confirmation.md` is PASS at that head (codex required pass, receipt `rcpt-625e0d395d78e21402a2eec8`): the card's files are unchanged, the fix is intact, no conflict markers remain, and main's new changes in `internal/homestate` do not touch the audit-kickoff path the card's end-to-end test drives. That audit ran no tests, so the landing re-measure is the final-tree measurement. The paragraph below is the earlier verdict at `d72444538`, kept as the history it was.
 
 Result: PASS-WITH-GAPS (the lane's own verdict; the gaps below stay open). The fix is commit `1fd3fffda`; the audited head `d72444538` adds the progress record, the card-review, and the CHANGELOG entry. The independent sync audit (`.moai/reports/t1859/sync-audit.md`) returned PASS 0.93 with no blocking finding. This file is not the landing verdict: the landing re-measure runs on the leader's announced turn and goes into the landing record.
 
