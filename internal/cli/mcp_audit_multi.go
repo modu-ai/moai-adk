@@ -82,6 +82,18 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return toolErr(auditMultiToolName, rootErr), nil
 	}
 
+	// Card t1708: the optional delta scope, validated once before any backend
+	// runs. Like the unusable project_root above it is a caller input the caller
+	// can correct, so it is a hard error rather than a fallback to the full diff.
+	deltaRoot := projectRoot
+	if deltaRoot == "" && req.GetString("delta_base", "") != "" {
+		deltaRoot = resolveProjectDir()
+	}
+	deltaBase, deltaErr := readDeltaBase(deltaRoot, req.GetString("delta_base", ""), target)
+	if deltaErr != nil {
+		return toolErr(auditMultiToolName, deltaErr), nil
+	}
+
 	// SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-003/006: the audited tree's plan —
 	// resolved from its RAW workflow.audit section and the gates this call
 	// supplied — decides every backend's gate. A configured value outside the
@@ -121,6 +133,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		ProjectRoot:      projectRoot,
 		OriginProvider:   os.Getenv(config.EnvMoaiLaunchProvider),
 		CardID:           cardID,
+		DeltaBase:        deltaBase,
 		EnforcementGates: &enforcement,
 		EnforcementNote:  enforcementNote,
 	}
