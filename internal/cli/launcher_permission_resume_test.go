@@ -339,6 +339,11 @@ func TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved(t *testing.T) {
 		t.Fatal("precondition: a file could be created in the read-only .claude directory; this environment cannot reproduce the failed removal")
 	}
 
+	// A --continue resume starts its first child through exec.Command(...).Run(),
+	// not through the exec seam, so the seam alone cannot see a started session:
+	// the pinned stub claude binary records its own start in a marker file.
+	marker := pinMarkerClaude(t)
+
 	called := false
 	origExec := execOrSpawnClaudeFunc
 	t.Cleanup(func() { execOrSpawnClaudeFunc = origExec })
@@ -349,10 +354,14 @@ func TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved(t *testing.T) {
 
 	err = launchClaudeDefault("", []string{"--continue"})
 	if err == nil {
-		t.Fatal("GLM resume returned nil although the stale auto could not be removed")
-	}
-	if !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "auto") {
+		t.Error("GLM resume returned nil although the stale auto could not be removed")
+	} else if !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "auto") {
 		t.Errorf("error %q must name %s and say the stale auto could not be removed", err, path)
+	}
+	if _, statErr := os.Stat(marker); statErr == nil {
+		t.Error("the session was started (the claude binary ran) with a stale auto still on disk")
+	} else if !os.IsNotExist(statErr) {
+		t.Fatalf("stat marker: %v", statErr)
 	}
 	if called {
 		t.Error("the session was started (exec seam called) with a stale auto still on disk")
@@ -363,5 +372,62 @@ func TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved(t *testing.T) {
 	}
 	if string(after) != string(before) {
 		t.Errorf("settings.local.json changed: before %q, after %q", before, after)
+	}
+}
+
+// pinMarkerClaude pins a stub claude binary that touches a marker file when it
+// is started and exits 0. The marker lives in its own temp directory (never in
+// the project's .claude directory, which a test may make read-only). It returns
+// the marker path; the file exists only if the binary ran.
+func pinMarkerClaude(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "claude-started")
+	bin := filepath.Join(dir, "claude-marker-stub")
+	script := "#!/bin/sh\ntouch '" + marker + "'\nexit 0\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write marker stub: %v", err)
+	}
+	t.Setenv(config.EnvClaudeBin, bin)
+	return marker
+}
+
+// TestLaunch_GLMResumeWithoutAutoStartsTheClaudeBinary is the positive control
+// for TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved: a GLM resume whose
+// settings.local.json carries no auto (a different defaultMode, or no file at
+// all) does start the pinned stub, so the marker file exists. It proves the
+// marker mechanism observes a child start on the --continue path.
+func TestLaunch_GLMResumeWithoutAutoStartsTheClaudeBinary(t *testing.T) {
+	cases := []struct {
+		name string
+		seed func(t *testing.T, root string)
+	}{
+		{"defaultMode plan", func(t *testing.T, root string) {
+			writeSettingsDoc(t, root, map[string]any{"permissions": map[string]any{"defaultMode": "plan"}})
+		}},
+		{"no settings.local.json", func(t *testing.T, root string) {
+			if err := os.Remove(settingsLocalPathFor(root)); err != nil && !os.IsNotExist(err) {
+				t.Fatalf("remove settings.local.json: %v", err)
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := permissionProject(t)
+			setProjectBackend(t, root, true)
+			tc.seed(t, root)
+			marker := pinMarkerClaude(t)
+
+			origExec := execOrSpawnClaudeFunc
+			t.Cleanup(func() { execOrSpawnClaudeFunc = origExec })
+			execOrSpawnClaudeFunc = func(bin string, a, env []string) error { return nil }
+
+			if err := launchClaudeDefault("", []string{"--continue"}); err != nil {
+				t.Fatalf("GLM resume without auto: %v", err)
+			}
+			if _, err := os.Stat(marker); err != nil {
+				t.Errorf("the resume did not start the pinned claude binary (marker %s): %v", marker, err)
+			}
+		})
 	}
 }
