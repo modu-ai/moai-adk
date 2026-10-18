@@ -306,6 +306,98 @@ factory_nominate_test.go:1214: bare `factory next` transcript "arm-order" change
 - **Neighbors (anchored)**: `TestFactoryDispatchBodyCarriesRenewIntervalLinkage` → PASS (`ok … 0.371s`); config shipped-key pair `^TestWorkflowFactorySelfDispatchDefault$|^TestShippedConfigKeysHaveReaders$` → `ok github.com/modu-ai/moai-adk/internal/config 16.484s`. No template test asserts the self_dispatch block text (grep: 0 hits).
 - **Lesson recorded**: the t1808 lesson recurs — template-tree edits require the `internal/template` package tests; three audit rounds (including round-3's sweep of my own diff) missed this file because the sweep axes covered `internal/cli`/`internal/config` only. The template yaml was IN the plan §D file scope from M1; the leak gate simply was never run against it until round 4.
 
+### Round-6 repair — F14 (AC010 fixture), the re-sweep of the axes round 3-4 could not see, F15/F16 comparison — 2026-10-19 (tree `954e25f96` → round-6 commit)
+
+**F14 — `TestSD_AC010_MCPNextParentCheck` (RED-first, first-hand)**
+- Decision basis: REQ-CEP-001 (default OFF: arms (b)/(b2) lease nothing for an unowned card, a silent skip), D1 interpretation (ii) the kill switch, plan §D standing policy (a test whose vehicle is an ungated generic-arm lease is updated RED-first). The behavior is specified; the code stays; the fixture is repaired the way the F6 repairs armed their vehicles.
+- RED (HEAD `954e25f96`, tree clean, load average 29.55 at the run): `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli -run '^TestSD_AC010_MCPNextParentCheck$' -count=1` →
+  ```
+  --- FAIL: TestSD_AC010_MCPNextParentCheck (2.09s)
+      factory_m3_test.go:631: t1 = picked, want leased
+  FAIL	github.com/modu-ai/moai-adk/internal/cli	3.624s
+  ```
+- Fix (`internal/cli/factory_m3_test.go`): `cepSelfDispatchYAML(t, root, true)` + `cepSetSpecID(t, store, "t1", "SPEC-AC010-MCP-001")` (set after `fcQueue`, the ordering the round-3 note records). No assertion changed; the linked-worktree refusal assertions are kept.
+- GREEN: same command with `-v` → `--- PASS: TestSD_AC010_MCPNextParentCheck (2.56s)` / `ok  	github.com/modu-ai/moai-adk/internal/cli	3.696s`.
+- Mutation check (scratch overlay, source tree untouched — `git status --short` showed only the test file): the MCP handler's parent-checkout assertion broken to run on the factory root instead of the caller's tree (`factoryAssertParentCheckout(factoryRootOf(launch))`, the shape the handler's own comment names) → the repaired test fails: `factory_m3_test.go:626: factory_next on the linked worktree: err = <nil>, want a refusal naming …/002`. The parent-check subject is still detected.
+
+**Why rounds 3-4 missed it.** The sweep greps (`qasRunNext(t` / `runFactory(t, "next"` / `fbLeasedCard(` / `flRaceLanes(`) matched only the cobra-verb call shape. The lease entry `factoryNextLeaseOnceEligibility` has two more test-side forms: the MCP handler (`sdCallTool(t, handleFactoryNext, …)`) and direct Go calls (`factoryNextLeaseOnce` / `factoryNextLeaseOnceGated`). AC010 uses the first. The union now carries both axes (`sweep-union.txt` header, steps 6-7).
+
+**Round-6 re-sweep (F14)**
+- Method: `sweep-union.txt` regenerated from the commands in its header — 98 (verb axis, unchanged) + 22 new (20 from the MCP/direct-call grep, 2 from variable-arg verb calls) + 3 of this SPEC's own armed tests = **123 entries**; `go test -list '<123 anchored names>' ./internal/cli | grep -c '^Test'` → `123` (every name resolves to exactly one test; the swept set is not empty or short). Completeness argument and its residual are in the file header.
+- Classification by observation, not by reading: a behavior-neutral probe (scratch `go test -overlay`; `factory_card.go` copy with a one-line append-to-scratch-file call at the `!elig.active()` skips of arms (b)/(b2) and at the gate evaluation, tagged `DORMANT-b` / `DORMANT-b2` / `GATE-b` / `GATE-b2`, with the enclosing `Test` function read from the stack; the card tree carries none of it) ran over the 123 names in six batches, every batch `ok`:
+  `ok … 137.806s`, `ok … 89.311s`, `ok … 133.525s`, `ok … 129.765s`, `ok … 116.629s`, `ok … 81.115s` (the two timing tests excluded from the probe batches; see F15/F16). A test that logged `DORMANT-b*` has an unowned queue-picked candidate and no flag; one that logged `GATE-b*` is armed; one that logged neither never reaches arm (b)/(b2) with a candidate.
+- Result (probe log, de-duplicated):
+  - **Armed (flag ON + spec id; `GATE-*` observed)** — 23: `TestFactoryEligiblePullOnEligible`, `…OnGate`, `…RefusalGrammar`, `…Traceless` (ON half), `TestFactoryLeaseSectionRecordWritesPerArm`, `TestFactoryNextAfterGuardCountsOtherRunsMerges`, `TestFactoryNextMergedPRPredecessorReleasesFollower`, `TestFactoryNextBareUnchanged` (armed golden + the OFF golden), `TestQAS_AC008_ClaudeLaneHeldAtThreshold`, `TestQWR_AC008_SurfacesSeeWorktreeReading`, `TestQWR_AC010b_CliRootWithoutGitMetadata`, `TestReviewFindingMergedPRPredecessor`, `TestReviewFindingNoRecordArmSkipsBlockedCandidate`, `TestReviewNominatedCreationFollowsTheAfterRelation`, `TestReviewTwoHubCombinedCycle`, `TestReviewUnrecordedPickedHubWait`, `TestReviewWaitFollowsTheAfterRelation`, `TestSD_AC011_CardWorktreeCreateReuseRefuse`, `TestSD_AC014_MCPMatchesCLIWithProjectRoot`, plus the four repaired THIS round (below): `TestSD_AC010_MCPNextParentCheck`, `TestFactoryBundleKeepsSerialSlot`, `TestFactoryNextBundleSerialLane`, `TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms`.
+  - **Dormancy pinned by design (OFF default; `DORMANT-*` observed, expectation is the quiet skip)** — 3 + the OFF halves above: `TestFactoryEligiblePullOffDormancy`, `TestReviewUnrecordedPickedHubWaitOffDormancy`, `TestSD_AC008_NextSelectionOrderAndOutput` (flipped pair + preserved cells).
+  - **Unarmed dormant-hit, subject unaffected (recorded, not repaired)** — 1: `TestQAS_AC022_GateOffOrPressureOffOutputUnchanged` (`DORMANT-b` ×2, `DORMANT-b2` ×4 from the quota fixture's t2/t3; its subject is output equality gate-disabled vs gate-enabled-pressure-off, its control `off.exit != 0 || off.stdout == ""` still observes a lease — now through arm (c) — so the equality is still measured).
+  - **Not a generic-arm lease vehicle (assignment / own-bundle / promotion / nominated `--card` / quota hold / refusal-before-selection; probe logged no candidate-bearing `DORMANT-b*`/`GATE-b*`)** — the remaining 96, including the five whose probe tag was `DORMANT-b-notqueuepicked` (a record row at `picked` whose queue item is not `picked` — condition 1 refuses it in old and new code alike, never a lease vehicle: `TestFactoryNextQueuedAssignedCardPreservesHubHints`, `TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged`, `TestFactoryNextPickedOwnerlessRowReleasesSlot`, `TestReviewFindingBundleMultiHubMemberWaits`, `TestReviewPickedHubSkip`) and `TestFactoryLeaseQueueLockStallBounded` / `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits` (timing tests, F15/F16 below).
+  - **No other red.** F14 was the only fixture whose lease vehicle was ungated and asserted a lease. Goroutine-launched selections would have logged an unnamed `?` tag; none appeared.
+- **Three vacuous greens found by the probe and repaired in this commit (same family as F9)** — each asserts a NEGATIVE ("not leased / no card") that held only because arm (b)/(b2) was dormant, so the subject (the bundle skip, the serial slot as it binds the picked arms) never ran. Repair = arm the flag + spec ids on the vehicles; assertions untouched.
+  - `TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms` (`factory_serial_slot_stale_test.go`, t2 spec id), `TestFactoryNextBundleSerialLane` and `TestFactoryBundleKeepsSerialSlot` (`factory_bundle_test.go`, t3/t4 spec ids; scenario C of BundleSerialLane leases through arm (b-priority), which the flag never touches).
+  - Mutant evidence (scratch overlay on `factory_card.go`; the HEAD versions of the two test files extracted with `git archive` for the "before" side): mutant M-deps (arm (b)'s `disqualify` call passed `true` for depsMet instead of `!selectionSkips(c)`): HEAD versions of BundleSerialLane and BundleKeepsSerialSlot → `PASS` (vacuous); repaired versions → `FAIL` (`factory_bundle_test.go:136: lane lane-1 next: factory next: predecessor card not merged: t2 …`, `:196: lane lane-2 next: … t3 …`). Mutant M-slot (`modeEligible` always true): HEAD version of the serial-slot test → `PASS`; repaired → `FAIL` on both cells (`factory_serial_slot_stale_test.go:272: lane-2 took t2 through a picked arm while t1 is assigned and holds the serial slot`). A post-repair probe run showed the same candidate evaluations now tagged `GATE-b`/`GATE-b2` (2, 5/5, 12) where they were `DORMANT-*` before.
+- Real-tree pass over the 123 names (final tree, no overlay), per-batch results: see "Results of the real-tree pass" below.
+
+**Results of the real-tree pass (final tree = HEAD `954e25f96` + this round's test edits; `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli -run '^(<batch names>)$' -count=1 …`; batches partition `sweep-union.txt` = 20+20+20+20+20+21 + the two timing tests of F15/F16 = 123)**
+
+| Batch | Names | Flags | Load at launch | Result |
+|---|---|---|---|---|
+| 1 | TestFactoryAssignBundleHubChain … TestFactoryLeaseSerialBareLanesExactlyOne (20) | `-v` | 30.08 | `ok … 96.781s` |
+| 2 | TestFactoryLeaseSerialCrossProcessHelper … TestFactoryNextNominateCarriesWorktreeBindingAcrossRunReplacement (20) | `-v` | 24.59 | `ok … 83.137s` (the helper-process test prints `--- SKIP … helper process only`, its driver `TestFactoryLeaseSerialDistinctNomineesExactlyOne` passes) |
+| 3 | TestFactoryNextNominateClaimRefusedRollsBack … TestFactoryNextStillRefusedBehindADrivenRow (20) | `-v` | 26.78 | `ok … 131.064s` |
+| 4 | TestFactoryNominatedBusyRefusalCarriesTheClaimError … TestReviewNominatedLeaseDoesNotFillAnEmptyHint (20) | `-v` | 21.96 | `ok … 174.585s` |
+| 5 | TestReviewNominatedWaitsOnAllHubPredecessors … TestQAS_AC008b_MCPFactoryNextHeld (20) | `-json` | 31.18 | `ok … 157.270s`, exit 0, `"Action":"fail"` count 0, top-level pass events 20 |
+| 6 | TestMCPVerbParity_LaneLabel … TestFactoryEligiblePullRefusalGrammar (21) | `-json` | 31.53 | `ok … 124.277s`, exit 0, `"Action":"fail"` count 0, top-level pass events 21 |
+
+Limits of this record: batches 1-4 ran as `-v` text before the lane rule to run each scope once with `-json` arrived, so their raw output is the task capture, not JSONL (each ends in the verbatim `ok` line above, exit 0, no `--- FAIL`); batches 5-6 are raw JSONL under the session scratch task directory, which is machine-local and not a citation target (the lines above carry the deciding evidence). The `-list` fix (123 names ↔ 123 entries) was taken before batches 5-6. No batch was re-run to obtain more output.
+
+**F15 / F16 — card tree vs main under the same conditions (A/B, recorded loads)**
+- Setup: `git archive --format=tar -o <scratch>/main-03faddb705.tar main` + `tar -x -C <scratch>/mainsrc` (main = `03faddb705`, an ancestor of the card HEAD, outside the repository, deleted at the end); card tree = HEAD `954e25f96` plus this round's test edits; each test run alone, `-count=1`, `-json` (`go test -json ./internal/cli -run '^<name>$' -count=1` on the card tree, `go -C <scratch>/mainsrc test …` on main), alternating card / main, each run launched only after a recorded load average below 32 (the admission rule; several launches waited for it).
+- **F15 `TestFactoryLeaseQueueLockStallBounded`** (bound: B + 500 ms = 8.25 s + 0.5 s = 8.75 s on each of the two cells):
+
+  | Run | Tree | 1-min load before launch | Package wall time | nominated cell | bare cell | Result |
+  |---|---|---|---|---|---|---|
+  | 1 | card | 30.77 | 21.423s | 8.427s | 8.660s | PASS |
+  | 1 | main | 29.79 | 21.075s | 8.500s | 8.601s | PASS |
+  | 2 | card | 27.86 | 23.368s | 8.769s | 8.681s | **FAIL** (nominated 19 ms over: `factory_lease_bound_test.go:334: the nominated lease returned after 8.769148209s, want within 8.75s`) |
+  | 2 | main | 28.92 | 21.807s | 8.644s | 8.546s | PASS |
+  | 3 | card | 31.48 | 19.685s | 8.501s | 8.449s | PASS |
+  | 3 | main | 27.41 | 19.787s | 8.468s | 8.495s | PASS |
+  | 4 | card | 21.32 | 19.737s | 8.540s | 8.460s | PASS |
+  | 4 | main | 23.69 | 20.962s | 8.476s | 8.793s | **FAIL** (bare 43 ms over: `factory_lease_bound_test.go:357: the bare lease returned after 8.792984208s, want within 8.75s`) |
+
+  Verdict: the first three pairs (the brief's 3 runs each) had the card tree fail once and main never; the failing cell was the NOMINATED one, which the card's diff does not touch (`git diff main HEAD -- internal/cli/factory_card.go` changes only the bare selection arms, the eligibility form of the lease entry, the verb's no-card rendering and the new gate helpers; `factoryNextNominate` and the lock wait are unchanged). Because 1 of 3 left the question open, a fourth pair was run (the lane rule allows a re-run as a failure A/B): there MAIN failed (bare cell, 8.793 s) and the card passed. 8 runs, 1 fail each side, both fails 19-43 ms past a bound whose total headroom is 500 ms over a fixed 8.25 s wait; observed overheads over the 8.25 s budget span 177-519 ms (card) and 218-543 ms (main). That is a load flake in the test's timing margin and not a card defect: it fails on main under the same conditions. Not repaired (a timing bound is not widened). The F7 note of round 3 (fails isolated on the card tree, never compared with main) is superseded by this comparison.
+- **F16 `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits`** (bound: the verb returns within 500 ms after the lock release; figures are the two cells, nominated / bare):
+
+  | Run | Tree | 1-min load before launch | Package wall time | nominated / bare after release | Result |
+  |---|---|---|---|---|---|
+  | 1 | card | 25.85 | 7.853s | 201 ms / 181 ms | PASS |
+  | 1 | main | 28.92 | 8.615s | 202 ms / 207 ms | PASS |
+  | 2 | card | 30.78 | 7.631s | 222 ms / 106 ms | PASS |
+  | 2 | main | 29.63 | 7.765s | 179 ms / 110 ms | PASS |
+  | 3 | card | 26.51 | 7.907s | 174 ms / 168 ms | PASS |
+  | 3 | main | 23.55 | 7.870s | 201 ms / 231 ms | PASS |
+
+  Verdict: 6/6 PASS, distributions overlap (card 106-222 ms, main 110-231 ms against a 500 ms bound). The round-6 audit's single failure (509/543 ms) did not reproduce on either tree at loads 23-31; the earlier 548 ms (round 3) and 509/543 ms (round 6 audit, load about 33) point to load sensitivity, consistent with no card involvement. Recorded, not repaired.
+
+**Cross-check scope (the groups the round-6 audit could not finish; each its own invocation, `-json`, run once; lists fixed with `go test -list '<pattern>' ./internal/cli | grep -c '^Test'` first; no timeout, no shard)**
+
+| Group | Pattern | `-list` count | 1-min load at launch | Result |
+|---|---|---|---|---|
+| G1 | `TestSD_` | 32 | 27.88 | `ok … 95.208s`, exit 0, 0 `fail` events, 32 top-level pass events |
+| G2 | `EligiblePull\|SelfDispatch` | 6 | 29.72 | `ok … 20.771s`, exit 0, 0 `fail`, 6 pass |
+| G3 | `TestFactoryCard\|TestFactoryNext\|TestFactoryBundle\|TestFactoryNominate` | 70 | 27.77 | `ok … 256.335s`, exit 0, 0 `fail`, 70 pass |
+| G4 | `TestFactoryQuota\|TestFactoryLease\|TestFactoryM3\|TestFactoryT1533\|TestFactoryTwoHub\|TestReviewObservation\|TestMCPFactory` | 20 | 23.88 | `ok … 107.134s`, exit 0, 0 `fail`, 19 pass + 1 skip (`TestFactoryLeaseSerialCrossProcessHelper`, `helper process only`) |
+
+`go build ./...` → exit 0, no output. `go vet ./internal/cli ./internal/config` → exit 0, no output. `gofmt -l internal/cli internal/config` → no output. The whole-package `internal/cli` suite was NOT run (the landing re-measure owns it under the slot).
+
+**Round-6 Gaps / Residual-risk (what this record does not establish)**
+- The completeness of the 123-name union rests on the grep axes in `sweep-union.txt` plus the probe; a test reaching `factoryNextLeaseOnceEligibility` through a helper whose call shape matches none of those greps would be missed by both (the probe only classifies tests that are run). The production-caller argument (three entry forms) bounds that risk but is not a mechanical proof.
+- `TestQAS_AC022_GateOffOrPressureOffOutputUnchanged` is an unarmed dormant-hit test whose subject is unaffected; recorded, not repaired.
+- The F15 timing bound is load-sensitive on BOTH trees (1 failure each in 8 paired runs); this record neither widens it nor repairs it. The F16 bound did not fail in 6 runs.
+- Batches 1-4 of the sweep and the six probe batches are `-v` text, not JSONL; only batches 5-6, F15/F16 and G1-G4 are raw JSONL (machine-local scratch).
+- The probe overlay and the mutant overlays are scratch instrumentation outside the repository; they are not reproducible from the tree and their results are cited, not committed.
+- The package-wide `internal/cli` suite remains unrun locally; CI on the integration branch owns that verdict and it is PENDING at report time.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-18T01:55:00Z (2026-10-18 10:55 KST)
