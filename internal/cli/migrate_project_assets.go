@@ -16,6 +16,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -233,11 +234,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		ps.exclude = rc.runBackupDir
 	}
 	var candidates []removalCandidate
+	keysByDir := manifestKeysByDir(mgr)
 	env := ownershipEnv{
 		entry:    mgr.GetEntry,
 		evidence: evidence,
 		counterpartConfirmed: func(rel string) bool {
-			return userCounterpartConfirmed(userManifest, cat, embedded, homeDir, rel)
+			return counterpartConfirmedCaseAware(userManifest, cat, embedded, homeDir, rel)
 		},
 		notInCatalog:   func(rel string) bool { return skillNotInCatalog(cat, rel) },
 		profileMapped:  profileMapped,
@@ -246,6 +248,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		counterpartStatus: func(rel string) counterpartStatus {
 			return userCounterpartStatus(userManifest, cat, embedded, homeDir, rel)
 		},
+		// REQ-OWR-007: a path that is not a manifest key but names the same file as
+		// one (letter case only) takes that entry's verdict; nothing is renamed.
+		caseAlias: func(rel string) (string, bool) {
+			return resolveCaseAlias(hostCaseFS, projectRoot, rel, keysByDir[path.Dir(rel)])
+		},
+		shippedSpelling: func(rel string) string { return shippedCaseSpelling(embedded, rel) },
 	}
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
@@ -309,11 +317,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				// mark lives on a manifest entry, so an attested copy (no entry)
 				// is kept without one.
 				if v.attestation == nil {
-					if err := mgr.SetKeptBy(relSlash, manifest.KeptByProfileReach); err != nil {
-						return fmt.Errorf("mark profile-reach keep for %s: %w", relSlash, err)
+					key := v.manifestKey(relSlash)
+					if err := mgr.SetKeptBy(key, manifest.KeptByProfileReach); err != nil {
+						return fmt.Errorf("mark profile-reach keep for %s: %w", key, err)
 					}
 					if rc != nil {
-						rc.keptProfileReach = append(rc.keptProfileReach, relSlash)
+						rc.keptProfileReach = append(rc.keptProfileReach, key)
 					}
 				}
 				stayed++

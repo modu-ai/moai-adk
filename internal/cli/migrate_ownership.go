@@ -135,6 +135,9 @@ type remainingRow struct {
 	// side (always `not-checked` for a profile-mapped project).
 	Counterpart counterpartStatus
 	ProfileSide profileSideStatus
+	// CaseVariantOf is the registered or shipped spelling this path differs from
+	// only in letter case, or "" (REQ-OWR-007).
+	CaseVariantOf string
 }
 
 // ownershipEnv carries the inputs of a verdict. Every field is read-only
@@ -161,6 +164,13 @@ type ownershipEnv struct {
 	// (confirmed or unconfirmed). It never decides the disposition: that stays
 	// with counterpartConfirmed.
 	counterpartStatus func(rel string) counterpartStatus
+	// caseAlias resolves a walk path that is not a manifest key to the single key
+	// that differs from it only in letter case and names the same file
+	// (REQ-OWR-007, design.md D-4). Optional.
+	caseAlias func(rel string) (key string, ok bool)
+	// shippedSpelling returns the shipped template path that differs from rel only
+	// in letter case, or "". Optional.
+	shippedSpelling func(rel string) string
 }
 
 // counterpartOf reports the user-root counterpart state of rel for a row.
@@ -195,6 +205,21 @@ type ownershipVerdict struct {
 	// reached the counterpart question; profileSide is set for every verdict.
 	counterpart counterpartStatus
 	profileSide profileSideStatus
+	// key is the manifest key the verdict applies to when it differs from the
+	// walk path (a case alias); empty otherwise.
+	key string
+	// caseVariantOf is the spelling this path differs from only in letter case:
+	// the registered key of a case alias, else the shipped path.
+	caseVariantOf string
+}
+
+// manifestKey is the manifest key to act on for a walk path rel: the registered
+// spelling for a case alias, rel itself otherwise.
+func (v ownershipVerdict) manifestKey(rel string) string {
+	if v.key != "" {
+		return v.key
+	}
+	return rel
 }
 
 // row renders the verdict as a remaining-list row for rel. A state the verdict
@@ -202,7 +227,7 @@ type ownershipVerdict struct {
 func (v ownershipVerdict) row(rel string) remainingRow {
 	r := remainingRow{
 		Rel: rel, Class: v.class, Reason: v.keep, Missing: v.missing,
-		Counterpart: v.counterpart, ProfileSide: v.profileSide,
+		Counterpart: v.counterpart, ProfileSide: v.profileSide, CaseVariantOf: v.caseVariantOf,
 	}
 	if r.Counterpart == "" {
 		r.Counterpart = counterpartStatusNotApplicable
@@ -232,6 +257,9 @@ var classifyOwnershipFn = classifyOwnership
 // here reads a profile root (REQ-OWR-005).
 func classifyOwnership(env ownershipEnv, rel, abs string) ownershipVerdict {
 	v := classifyOwnershipCore(env, rel, abs)
+	if v.caseVariantOf == "" && env.shippedSpelling != nil {
+		v.caseVariantOf = env.shippedSpelling(rel)
+	}
 	if env.profileMapped {
 		v.profileSide = profileSideNotChecked
 	} else {
@@ -243,11 +271,25 @@ func classifyOwnership(env ownershipEnv, rel, abs string) ownershipVerdict {
 // classifyOwnershipCore is the class and disposition decision proper.
 func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 	entry, registered := env.entry(rel)
+	// The exact spelling is looked up first. Only a path the manifest does not
+	// know may be a case alias of a registered key, and only when the file system
+	// says both spellings are the same file; the file is never renamed.
+	key := rel
+	if (!registered || entry == nil) && env.caseAlias != nil {
+		if alias, ok := env.caseAlias(rel); ok {
+			if aliased, found := env.entry(alias); found && aliased != nil {
+				entry, registered, key = aliased, true, alias
+			}
+		}
+	}
 	if !registered || entry == nil {
 		return classifyUnregistered(env, rel, abs)
 	}
 
 	v := ownershipVerdict{provenance: entry.Provenance}
+	if key != rel {
+		v.key, v.caseVariantOf = key, key
+	}
 	if entry.Provenance == manifest.UserCreated {
 		v.class, v.keep = ownershipUserCreated, keepUserCreated
 		return v
@@ -272,7 +314,7 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 		return v
 	}
 	v.class = ownershipManaged
-	return disposition(env, v, rel, abs)
+	return disposition(env, v, key, abs)
 }
 
 // classifyUnregistered judges a file the manifest has no entry for. It is
@@ -342,6 +384,9 @@ func reasonTag(v ownershipVerdict) string {
 		}
 		tag += "; missing evidence: " + strings.Join(names, ", ")
 	}
+	if v.caseVariantOf != "" {
+		tag += "; case-variant of: " + v.caseVariantOf
+	}
 	return tag + "]"
 }
 
@@ -364,13 +409,13 @@ func userCounterpartLocation(projectRel string) (slug userassets.RootSlug, rest 
 }
 
 // userCounterpartStatus reports the state of projectRel's user-root counterpart
-// for a remaining row. It agrees with userCounterpartConfirmed on `confirmed`;
+// for a remaining row. It agrees with counterpartConfirmedCaseAware on `confirmed`;
 // for anything else it separates a counterpart that is not there (`absent`)
 // from one that is there but cannot be confirmed (`unconfirmed`: untracked,
 // differing bytes, or not this version's content), and answers `n/a` for a path
 // that has no installer source at all.
 func userCounterpartStatus(userManifest *userassets.Manifest, cat *template.Catalog, embedded fs.FS, homeDir, projectRel string) counterpartStatus {
-	if userCounterpartConfirmed(userManifest, cat, embedded, homeDir, projectRel) {
+	if counterpartConfirmedCaseAware(userManifest, cat, embedded, homeDir, projectRel) {
 		return counterpartStatusConfirmed
 	}
 	slug, rest, ok := userCounterpartLocation(projectRel)

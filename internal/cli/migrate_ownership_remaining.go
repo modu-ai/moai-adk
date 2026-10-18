@@ -119,6 +119,9 @@ func remainingDetailLines(rows []remainingRow) []string {
 		if r.ProfileSide != "" && r.ProfileSide != profileSideNotApplicable {
 			line += "; profile side: " + string(r.ProfileSide)
 		}
+		if r.CaseVariantOf != "" {
+			line += "; case-variant of: " + r.CaseVariantOf
+		}
 		lines = append(lines, line)
 	}
 	return lines
