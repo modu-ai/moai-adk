@@ -67,3 +67,33 @@ func TestAnchorContentFnSpawnsBoundedGitProcesses(t *testing.T) {
 		t.Fatalf("anchor reads spawned %d git processes, want at most 1 (shared reader)", spawns)
 	}
 }
+
+// A spec carrying a line break would split into two requests on the batch pipe
+// and desynchronize every later answer; it must be refused before the write.
+func TestAnchorBlobReaderRejectsLineBreakInSpec(t *testing.T) {
+	led := loadBindingLedger(t)
+	root, err := anchorGitWorktreeRoot()
+	if err != nil {
+		t.Skipf("no git worktree: %v", err)
+	}
+	r, err := startAnchorBlobReader(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(r.close)
+	member := memberTemplatePath(led.Head.LedgerScope.Members[0])
+	good := led.Head.AnchorSHA + ":" + member
+	want, err := r.read(good)
+	if err != nil {
+		t.Fatalf("baseline read of %s: %v", member, err)
+	}
+	for _, sep := range []string{"\n", "\r"} {
+		if data, err := r.read(good + sep + good); err == nil {
+			t.Errorf("spec with %q accepted, returned %d bytes", sep, len(data))
+		}
+	}
+	again, err := r.read(good)
+	if err != nil || string(again) != string(want) {
+		t.Fatalf("reader desynchronized after a rejected spec: err=%v, %d bytes vs %d", err, len(again), len(want))
+	}
+}

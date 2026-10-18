@@ -219,6 +219,11 @@ func startAnchorBlobReader(root string) (*anchorBlobReader, error) {
 // read returns the blob named by spec ("<sha>:<path>"); a missing object or a
 // non-blob is an error, never an empty success.
 func (r *anchorBlobReader) read(spec string) ([]byte, error) {
+	// A line break would split one request into two and desynchronize every
+	// later answer on the pipe.
+	if strings.ContainsAny(spec, "\r\n") {
+		return nil, fmt.Errorf("object spec %q contains a line break", spec)
+	}
 	if _, err := io.WriteString(r.in, spec+"\n"); err != nil {
 		return nil, err
 	}
