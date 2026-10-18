@@ -145,7 +145,7 @@ M0 aborts and the pairs are recomputed and re-audited.
 
 ### §C.2 The `AGENTS.local.md` §2.0 rewrite (lands with M2)
 
-Run-phase note: the committed text reads "The only hand-edited layer" on the Source row while the C1 row says C1 of the eight stays hand-edited; read the Source row as "for the generated agents". The pairs below are the text as committed (AC-AC4-012 compares against them); the file itself is user-owned and a wording fix is a follow-up outside this SPEC.
+Run-phase note: the first committed wording "The only hand-edited layer" contradicted the C1 row; the Source row and the line-101 sentence below are therefore qualified for the generated agents (leader ruling `d-20261018T091421Z-c432`, sync-audit iter1 F3, option (a)). The pairs below are the text AGENTS.local.md must carry (AC-AC4-012 compares against them).
 
 Exactly these eight lines of the file at the baseline change (line numbers are those at `06095bb8fa`;
 matching is by content). Line 98 becomes two lines. Everything else stays byte-identical:
@@ -170,7 +170,7 @@ generated agents (the carried four); the remaining agents join when piece 2 abso
 - line 98
 ```text
 - | C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
-+ | Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer** |
++ | Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer for the generated agents** |
 + | C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, **rendered from the agent source** |
 ```
 - line 99
@@ -181,7 +181,7 @@ generated agents (the carried four); the remaining agents join when piece 2 abso
 - line 101
 ```text
 - [HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
-+ [HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3.
++ [HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3 for the generated agents; C1 of the remaining agents is not rendered until piece 2.
 ```
 - line 103
 ```text

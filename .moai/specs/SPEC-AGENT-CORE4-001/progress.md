@@ -667,7 +667,7 @@ Sync close (manager-docs, 2026-10-18, branch `WT-3-3-10`, worktree `.moai/worktr
 From plan-audit iter7 (PASS-WITH-DEBT 0.90 at `c3e4ef3751`, plan_artifact_hash `dcda0ca6cc95b49410c34d2b86d441d5f32f21a8013b656926bea2ea8aaed860`). These are obligations of the run phase, not of this plan commit:
 
 1. **D2** — `acceptance.md` L35, AC-AC4-012 cell (e) names a check but no command: supply the command (the whole-line comparison of the spec §C.2 new lines with the file). AC-AC4-012(a) is unclassified in the header at L13-L15: classify it as a permanent release-blocking test.
-2. **D3** — `spec.md` L171 (the new Source row, "The only hand-edited layer") contradicts the L166 C1 row; qualify it with "for the generated agents".
+2. **D3** — `spec.md` L171 (the new Source row, "The only hand-edited layer") contradicts the L166 C1 row; qualify it with "for the generated agents". — disposed: qualified in spec §C.2 ("The only hand-edited layer for the generated agents", and the line-101 sentence) by leader ruling `d-20261018T091421Z-c432`; AGENTS.local.md re-rendered from it next.
 3. **D4** — `progress.md` L13/L19 stale text ("012(b-d)", revision 0.5.0): corrected in this same commit, because progress.md is outside the plan-artifact hash.
 4. **D5** — subtests named for a literal count of twelve (`acceptance.md` L24, L26: `twelve_sources_twelve_definitions`, `contract_rows_unchanged_for_twelve`) must not assert a literal 12, so they survive piece 2 retiring the eight.
 5. Edits to `acceptance.md` / `spec.md` for items 1, 2 and 4 change the plan-artifact hash; they are made in a run-phase manager-spec re-delegation with a re-pinned hash recorded here. Items on `progress.md` do not move it.
