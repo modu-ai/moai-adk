@@ -2819,18 +2819,24 @@ func canonicalWorktreePath(input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	result := abs
 	real, err := filepath.EvalSymlinks(abs)
-	if err != nil {
-		// The tree does not exist yet — nothing to resolve; store the Abs form.
-		return abs, nil
-	}
-	same, err := sameFilePath(abs, real)
-	if err != nil || !same {
-		// Could not confirm the resolution names the input — keep the Abs form
+	if err == nil {
+		same, err := sameFilePath(abs, real)
+		if err == nil && same {
+			result = real
+		}
+		// Unresolvable or not confirmed to name the input — keep the Abs form
 		// rather than storing a path that points elsewhere.
-		return abs, nil
 	}
-	return real, nil
+	// The persist layer (CardFields.apply) trims WorktreePath; storing a path
+	// whose canonical form is not trim-stable would break the SameFile
+	// guarantee this helper exists to provide. Refuse instead (card t1784
+	// sync-audit F2).
+	if strings.TrimSpace(result) != result {
+		return "", fmt.Errorf("worktree path %q is not trim-stable: the factory record trims stored paths, so this spelling cannot be stored without aliasing a different tree", input)
+	}
+	return result, nil
 }
 
 // sameFilePath reports whether two paths name the same file (os.SameFile on

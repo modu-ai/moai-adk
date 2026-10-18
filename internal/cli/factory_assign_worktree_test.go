@@ -3,6 +3,8 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -12,6 +14,9 @@ import (
 // filepath.Abs.
 func TestCanonicalWorktreePath(t *testing.T) {
 	t.Run("existing path via symlink normalizes to the real path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("os.Symlink requires privilege on windows")
+		}
 		base := t.TempDir()
 		real := filepath.Join(base, "real-tree")
 		if err := os.Mkdir(real, 0o755); err != nil {
@@ -64,6 +69,35 @@ func TestCanonicalWorktreePath(t *testing.T) {
 		}
 		if !filepath.IsAbs(got) {
 			t.Fatalf("got %q, want an absolute path", got)
+		}
+	})
+
+	t.Run("whitespace-padded input is refused (storage trims)", func(t *testing.T) {
+		input := " " + filepath.Join(t.TempDir(), "does-not-exist-yet") + " "
+		_, err := canonicalWorktreePath(input)
+		if err == nil {
+			t.Fatalf("canonicalWorktreePath(%q) accepted a non-trim-stable path; the persist layer (CardFields.apply) trims it, breaking the SameFile guarantee", input)
+		}
+	})
+
+	t.Run("canonical result with leading or trailing whitespace is refused", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("trailing-space directory names are not creatable on windows")
+		}
+		base := t.TempDir()
+		padded := filepath.Join(base, "padded ")
+		if err := os.Mkdir(padded, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		got, err := canonicalWorktreePath(padded)
+		if err == nil {
+			t.Fatalf("canonicalWorktreePath accepted %q whose canonical form is not trim-stable (got %q)", padded, got)
+		}
+		if got != "" {
+			t.Fatalf("refused path must not return a spelling, got %q", got)
+		}
+		if strings.TrimSpace(padded) == padded {
+			t.Fatalf("fixture broken: %q is trim-stable, the subtest exercises nothing", padded)
 		}
 	})
 }
