@@ -174,7 +174,8 @@ const priorManifestSiblingMax = 99
 // never written into. The sibling carries runDir's run marker, so retention
 // counts both directories as the one run it already counted. A sibling that
 // cannot be given its marker would be a directory retention never counts or
-// prunes, so it is removed again (it is still empty) and the claim fails. Failing
+// prunes, so it is removed again (with whatever part of the marker it holds) and
+// the claim fails. Failing
 // to find or make a free sibling is an error too: the caller then blocks every
 // removal.
 func claimPriorManifestDir(runDir string) (string, error) {
@@ -195,7 +196,11 @@ func claimPriorManifestDir(runDir string) (string, error) {
 			return "", fmt.Errorf("create run backup directory %s: %w", sibling, err)
 		}
 		if err := priorManifestMarkerCopy(runDir, sibling); err != nil {
-			_ = os.Remove(sibling) // best effort; os.Remove refuses a directory that is not empty
+			// The sibling was made by the Mkdir above, a moment ago, and holds at most
+			// the marker file the failed copy began to write: remove exactly that
+			// path (never the shared run directory), best effort. os.Remove would
+			// refuse a directory that already holds the half-written marker.
+			_ = os.RemoveAll(sibling)
 			return "", fmt.Errorf("give %s the run marker of %s: %w", sibling, runDir, err)
 		}
 		return sibling, nil

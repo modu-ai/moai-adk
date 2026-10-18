@@ -21,6 +21,7 @@ package cli
 
 import (
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -388,18 +389,83 @@ func pathLeavesRoot(rootResolved, abs string) bool {
 	return !withinRootBoundary(root, resolved)
 }
 
-// readWindowHook is called inside the unregistered file's read, in the window
-// between the boundary check and the read ("check-to-read"). It is a variable only
-// so a test can swap the target for a link at that point and prove no byte outside
-// the project is read; no production path replaces it.
+// readUnregisteredInsideRoot reads the file at abs through an os.Root on the
+// project root. It resolves abs fully, takes its path relative to the (resolved,
+// absolute) root, and opens that path in the Root: the Root follows links only
+// where they stay inside the root, so a link swapped in after the resolution is
+// refused instead of followed. errReadEscapesRoot means the resolved path, or a
+// link met on the way, leads outside; any other error is a failed read. The kind
+// of the file (a pipe, a socket, a device) was decided before this call.
+func readUnregisteredInsideRoot(rootResolved, abs string) ([]byte, error) {
+	if rootResolved == "" {
+		return nil, errReadEscapesRoot
+	}
+	root := rootResolved
+	if !filepath.IsAbs(root) {
+		absRoot, err := filepath.Abs(root)
+		if err != nil {
+			return nil, errReadEscapesRoot
+		}
+		if root, err = filepath.EvalSymlinks(absRoot); err != nil {
+			return nil, errReadEscapesRoot
+		}
+	}
+	target, err := filepath.Abs(abs)
+	if err != nil {
+		return nil, err
+	}
+	resolved, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		return nil, err
+	}
+	if !withinRootBoundary(root, resolved) {
+		return nil, errReadEscapesRoot
+	}
+	rel, err := filepath.Rel(root, resolved)
+	if err != nil {
+		return nil, errReadEscapesRoot
+	}
+	r, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = r.Close() }()
+	readWindowHook("resolve-to-open", abs)
+	f, err := r.Open(rel)
+	if err != nil {
+		// The standard library reports a link that leaves the root with an
+		// unexported error; its text is the only handle on it.
+		if strings.Contains(err.Error(), "path escapes from parent") {
+			return nil, errReadEscapesRoot
+		}
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return io.ReadAll(f)
+}
+
+// readWindowHook is called inside the unregistered file's read, in the two windows
+// that follow the boundary check: "check-to-read" (before the path is resolved
+// again) and "resolve-to-open" (after it was resolved, before it is opened). It is
+// a variable only so a test can swap the target for a link at that point and prove
+// no byte outside the project is read; no production path replaces it.
 var readWindowHook = func(stage, abs string) {}
 
+// errReadEscapesRoot says the file to read leads out of the project root.
+var errReadEscapesRoot = errors.New("the path escapes the project root")
+
 // classifyUnregistered judges a file the manifest has no entry for. It is
-// `unregistered` unless the prior generations prove all three evidence items.
+// `unregistered` unless the prior generations prove all three evidence items. The
+// bytes are read through an os.Root opened on the project root, so a link swapped
+// in after the boundary check cannot make the read land outside the project.
 func classifyUnregistered(env ownershipEnv, rel, abs string) ownershipVerdict {
 	v := ownershipVerdict{class: ownershipUnregistered}
 	readWindowHook("check-to-read", abs)
-	data, err := os.ReadFile(abs)
+	data, err := readUnregisteredInsideRoot(env.rootResolved, abs)
+	if errors.Is(err, errReadEscapesRoot) {
+		v.keep = keepSymlinkEscape
+		return v
+	}
 	if err != nil {
 		v.keep = keepReadFailed
 		return v
