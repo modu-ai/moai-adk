@@ -314,6 +314,133 @@ exit=1
 
 실패 이유: 증거 해석기·`priorGeneration`·`priorRecord`·`evidenceIncompleteReason` 가 없어 빌드 실패 (acceptance.md 가 예상한 이유: 증거 해석기가 없어 빌드 실패). 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
 
+### M1b — 배포 버전 기록, 이전 매니페스트 보존, 이전 세대 원천 (AC-OWR-06, -20, -21, -05 (h), run chunk 1)
+
+**커밋 A (시험 파일만)**: `f9206f5242` (시험 네 파일: `internal/manifest/manifest_deployed_version_test.go`, `internal/cli/update_prior_manifest_test.go`, `internal/cli/update_prior_manifest_io_test.go`, 그리고 M0 도우미가 M1b 시점까지 쓰이지 않던 부분을 다루는 `TestOwnershipHelperFixtureBuilders` 를 더한 `migrate_ownership_helpers_test.go`), 이어 `da53289c5f` (이름 충돌 수정만: 내 도우미 `keysOf` 가 `update_deny_migration_test.go` 의 기존 도우미와 겹쳐 `priorKeysOf` 로 바꿈 — 시험 파일만, 붉은 이유는 그대로). RED 는 이 두 커밋 뒤의 트리 `da53289c5f` 에서 쟀다. 모든 셀이 빌드 실패이며 (production 심볼이 없음) 같은 컴파일러 첫 줄들이 되풀이된다. 이 시점에서 cli 시험 패키지 전체가 빌드되지 않으므로 M1a 의 다섯 시험과 기준선도 함께 못 돈다 (C 커밋에서 다시 돈다).
+
+**AC-OWR-06 (a) — manifest 패키지 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/manifest/ -run '^TestManifestRecordsDeployedVersion$' -count=1 -v`; 트리 SHA: `da53289c5f2740bd0ff4ca990bc2bdaa98b36122`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/manifest [github.com/modu-ai/moai-adk/internal/manifest.test]
+internal/manifest/manifest_deployed_version_test.go:50:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:54:37: entryOf(t, mgr, "a.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:62:37: entryOf(t, mgr, "b.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:69:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:76:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:85:40: entryOf(t, mgr, "kept.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:88:42: entryOf(t, mgr, "legacy.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:94:41: entryOf(t, mgr, "fresh.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:101:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:105:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:105:7: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/manifest [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: `FileEntry.DeployedVersion` 와 `Manager.SetDeployingVersion` 이 아직 없어 manifest 시험 패키지가 빌드되지 않는다. 제로 매치 아님 (`[build failed]`).
+
+**AC-OWR-06 (b)(c) — cli 패키지 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestPriorManifestRetainedInRunBackup|TestPriorGenerationSourceBoundedAndTolerant)$' -count=1 -v`; 트리 SHA: `da53289c5f2740bd0ff4ca990bc2bdaa98b36122`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/update_prior_manifest_io_test.go:52:26: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:52:50: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:53:21: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:53:45: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:56:41: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:59:2: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:72:2: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:90:65: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:97:10: undefined: newPriorGenerationSource
+internal/cli/update_prior_manifest_io_test.go:115:13: undefined: writePriorManifest
+internal/cli/update_prior_manifest_io_test.go:115:13: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: `priorManifestName`, `priorManifestTempWrite`, `priorManifestRename`, `newPriorGenerationSource`, `priorManifestGenerations`, `priorManifestWriter` 가 아직 없어 빌드 실패 (acceptance.md 가 예상한 이유: 필드와 보존 단계와 원천이 없어 빌드 실패). 제로 매치 아님 (`[build failed]`).
+
+**AC-OWR-20 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestBackupFailureRemovesNothingThroughProductionPath$' -count=1 -v`; 트리 SHA: `da53289c5f2740bd0ff4ca990bc2bdaa98b36122`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/update_prior_manifest_io_test.go:52:26: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:52:50: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:53:21: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:53:45: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:56:41: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:59:2: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:72:2: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:90:65: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:97:10: undefined: newPriorGenerationSource
+internal/cli/update_prior_manifest_io_test.go:115:13: undefined: writePriorManifest
+internal/cli/update_prior_manifest_io_test.go:115:13: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 보존 단계·인계 (`priorManifestWriter`, `migrationRunContext.priorManifest`)·일괄 제거 구조가 없어 빌드 실패 (acceptance.md 가 예상한 이유와 같다). (b) 하위 사례가 단언 수준에서 붉을 이유는 현행 t1668 코드가 실패한 파일만 보존하고 나머지는 제거한다는 점이며, 이 시점에는 빌드가 막아 단언까지 도달하지 못한다. 제로 매치 아님 (`[build failed]`).
+
+**AC-OWR-21 (a)-(e) RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ ./internal/manifest/ -run '^(TestPriorManifestAtomicWriteFailures|TestPriorGenerationCorruptIsNoEvidence|TestLegacyManifestRoundTrip|TestDowngradeDropsEvidenceNotSafety|TestPriorGenerationsAreLookupBoundOnly)$' -count=1 -v`; 트리 SHA: `da53289c5f2740bd0ff4ca990bc2bdaa98b36122`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/manifest [github.com/modu-ai/moai-adk/internal/manifest.test]
+internal/manifest/manifest_deployed_version_test.go:50:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:54:37: entryOf(t, mgr, "a.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:62:37: entryOf(t, mgr, "b.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:69:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:76:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:85:40: entryOf(t, mgr, "kept.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:88:42: entryOf(t, mgr, "legacy.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:94:41: entryOf(t, mgr, "fresh.md").DeployedVersion undefined (type FileEntry has no field or method DeployedVersion)
+internal/manifest/manifest_deployed_version_test.go:101:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:105:7: mgr.SetDeployingVersion undefined (type Manager has no field or method SetDeployingVersion)
+internal/manifest/manifest_deployed_version_test.go:105:7: too many errors
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/update_prior_manifest_io_test.go:52:26: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:52:50: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:53:21: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:53:45: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:56:41: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:59:2: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:72:2: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:90:65: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:97:10: undefined: newPriorGenerationSource
+internal/cli/update_prior_manifest_io_test.go:115:13: undefined: writePriorManifest
+internal/cli/update_prior_manifest_io_test.go:115:13: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL	github.com/modu-ai/moai-adk/internal/manifest [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 원자적 쓰기 관측점 두 변수와 읽기 원천이 없어 두 패키지 모두 빌드 실패 (acceptance.md 가 예상한 이유: 원자적 쓰기·읽기 원천이 없어 빌드 실패). 제로 매치 아님 (`[build failed]`).
+
+**AC-OWR-05 (h) — 운영 원천 경유 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipAttestedManagedThroughOperatingSource$' -count=1 -v`; 트리 SHA: `da53289c5f2740bd0ff4ca990bc2bdaa98b36122`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/update_prior_manifest_io_test.go:52:26: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:52:50: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:53:21: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:53:45: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:56:41: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:59:2: undefined: priorManifestTempWrite
+internal/cli/update_prior_manifest_io_test.go:72:2: undefined: priorManifestRename
+internal/cli/update_prior_manifest_io_test.go:90:65: undefined: priorManifestName
+internal/cli/update_prior_manifest_io_test.go:97:10: undefined: newPriorGenerationSource
+internal/cli/update_prior_manifest_io_test.go:115:13: undefined: writePriorManifest
+internal/cli/update_prior_manifest_io_test.go:115:13: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 운영 쓰기 함수와 운영 이전 세대 원천이 아직 없어 빌드 실패 (plan.md § G.1: (h) 는 M1b 이후에만 도달 가능). 제로 매치 아님 (`[build failed]`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
