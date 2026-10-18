@@ -174,34 +174,44 @@ func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 
-	// End-to-end, tied to lock state rather than to a tight wall-clock slack: the
-	// observer fires once the busy wait is sized and schedules the lock release
-	// midway between the correct wait (at most (budget-gitDelay)/2) and the stale
-	// one (budget/2) — hundreds of ms on both sides. A wait sized from the
-	// remaining budget gives up with the lock still held; a wait that is stale,
-	// or that outlives its budget for any reason, only ends after the release.
+	// End-to-end, tied to lock state and to the caller's own deadline rather than
+	// to a timer midpoint: the lock is released only when the caller's context
+	// expires (budget, ~4 s after a correct open gives up). The opener runs on a
+	// goroutine and the order "opener result -> release signal" is checked by
+	// channel: a wait sized from the remaining budget gives up with the lock
+	// still held; a wait that ignores its budget, or stalls before SQLite init,
+	// only ends after the deadline-driven release (or returns a store).
 	releaseSignal := make(chan struct{})
-	var release *time.Timer
-	busy := int64(-1)
-	observe := func(ms int64) {
-		busy = ms
-		mid := time.Duration(ms+budget.Milliseconds()/2) * time.Millisecond / 2
-		release = time.AfterFunc(mid, func() {
-			close(releaseSignal)
-			_, _ = lockConn.ExecContext(context.Background(), "ROLLBACK")
-		})
+	releaserDone := make(chan struct{})
+	go func() {
+		defer close(releaserDone)
+		<-ctx.Done()
+		close(releaseSignal)
+		_, _ = lockConn.ExecContext(context.Background(), "ROLLBACK")
+	}()
+	// Registered after the lock cleanup, so it runs first: the deferred cancel
+	// has fired by then, and the releaser is finished before the connection closes.
+	t.Cleanup(func() { <-releaserDone })
+
+	type openResult struct {
+		store *Store
+		err   error
 	}
-	store, err := openWithContextObserved(ctx, root, "run-lock", budget, observe)
-	// Order check: the call must return before the release signal fires.
+	busy := int64(-1)
+	opened := make(chan openResult, 1)
+	go func() {
+		store, err := openWithContextObserved(ctx, root, "run-lock", budget, func(ms int64) { busy = ms })
+		opened <- openResult{store, err}
+	}()
+	res := <-opened
+	// Order check: the opener must have returned before the release signal fired.
 	heldAtReturn := true
 	select {
 	case <-releaseSignal:
 		heldAtReturn = false
 	default:
 	}
-	if release != nil {
-		release.Stop()
-	}
+	store, err := res.store, res.err
 	if store != nil {
 		_ = store.Close()
 		t.Fatal("locked path returned a store: the busy wait outlived the lock hold it was sized for")
