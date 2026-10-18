@@ -159,7 +159,12 @@ BUNDLE-G line 3: shared copy present + byte-identical; disk manifest KeptBy=prof
 - `gofmt -l internal/cli/` — 빈 목록 (clean).
 - `GOOS=windows GOARCH=amd64 go build ./...` — exit 0 (E2, syscall-free 변경 예상과 일치).
 - `golangci-lint` (moai gate 슬롯 보유 실행, `479b3c355` 시점): NEW 0 (run 중 발견된 errcheck 2건 — `verifyMigrationFinalState` 의 fmt.Fprintf 반환값 미점검 — 즉시 수리 반영; 최종 잔여 3건은 `internal/cli/factory_run_adopt.go` 의 기존 baseline, 본 카드 미접촉 파일).
-- `go test -cover ./internal/cli/` — **Gap 으로 종결 (측정 미취득, 부채 기록)**. 경위: 1차 시도(슬롯 보유, 2026-10-18)는 패키지 전체 커버리지 런타임이 go 기본 타임아웃을 넘어 `panic: test timed out after 10m0s` 로 중단(수치 미발행). `-timeout 30m` 재시도는 슬롯 확보가 막혀 실행 불가 — lane-17-t1839 점유 중 exit 3 거부 2회, ~20 분 재시도 루프 40회 전부 거부, 최종 1회 시도 시에는 lane-23 이 점유(exit 3). **재개 조건**: go-test-heavy 슬롯이 비는 시점에 `go test -cover -timeout 30m ./internal/cli/` 를 슬롯 보유 하에 실행해 이 항목과 §E.3 `coverage_cli_pct` 를 회수 반영(코디네이터 종결 지시: 추가 루프 없음). 변경 범위 테스트는 scoped 실행으로 전부 녹색(위 판정 기록)이므로 이 갭은 게이트 수치의 미관측이지 실패가 아니다.
+- `go test -cover ./internal/cli/` — **부분 커버리지 기록 + 전체 패키지 수치는 배치 CI 로 이월(리더 판정)**.
+  - **부분 커버리지(카드 계열만 실행, 분모는 패키지 전체)** — 85% 패키지 게이트의 판정 근거로 읽지 않는다:
+    - 명령: `go test ./internal/cli/ -run 'TestMigration|TestEmptiedSkillDirRemoved|TestIntegrityProbe|TestRunUpdate_CodexOnly|TestTallyCountsMigrationRemovals' -cover -count=1`
+    - 원문 출력 (2026-10-18, 이 트리 `6e2c12f5c`, 이번 실행 관측): `ok  	github.com/modu-ai/moai-adk/internal/cli	27.591s	coverage: 9.5% of statements` (코디네이터 전달 레인 관측과 수치 일치: `13.247s coverage: 9.5% of statements`)
+  - 경위: 전체 패키지 `-cover` 1차 시도(슬롯 보유, 2026-10-18)는 go 기본 타임아웃 초과로 `panic: test timed out after 10m0s` 중단(수치 미발행); 재시도 슬롯 확보는 lane-17-t1839·lane-23 점유로 exit 3 거부 연속.
+  - **리더 판정 (2026-10-18, 상석 규칙 35e9 준수)**: `-timeout` 상향 금지, internal/cli 전체 패키지 실행 금지 — 전체 패키지 커버리지는 **배치 CI 로 이월되는 Gap** 으로 확정. cli 외 패키지는 기본 타임아웃 그대로 `-cover` 가능하나 본 카드는 해당 사항 없음(터치 패키지 = internal/cli 단일).
 - 전체 스위트 참고: 1차 커버리지 실행에서 `TestCodexReviewGatePrimaryCheckoutSkip`·`TestCodexReviewGate_TreeScopeRequestShapeUnchanged`·`TestCodexReviewGate_StaleEnvKeepsTreeScope` 3건 FAIL — 기존·환경성(darwin `/private/var` TMPDIR 경로 해소 불일치, t1772 계열; 본 카드 커밋은 해당 파일 미접촉, scoped 재실행으로 동일 실패 재관측 — `FAIL github.com/modu-ai/moai-adk/internal/cli 1.474s`). 본 카드 변경 범위 테스트는 전부 녹색(위 판정·회귀 세트).
 
 ## §F Phase 4 Mode Selection
@@ -185,8 +190,8 @@ new_warnings_or_lints_introduced: 0 (2 NEW errcheck found during run were fixed 
 cross_platform_build:
   darwin: exit 0
   windows_amd64: exit 0
-coverage_cli_pct: pending-backfill
-coverage_note: GAP — package-wide go test -cover never produced a number; first slot-held attempt exceeded go's default 10m timeout (panic: test timed out), and every retry acquisition was refused exit-3 by live holders (lane-17-t1839, then lane-23; 40-attempt retry loop + coordinator-directed final attempt). Resume condition recorded in §E.2 M8 block; scoped change-coverage evidence is green (all judging + regression selectors).
+coverage_cli_pct: 9.5% (partial, card families only — full-package owed to batch CI)
+coverage_note: the 9.5% figure is PARTIAL coverage (card-family selectors only; denominator = the whole internal/cli package) and is NOT read against the 85% package gate. Full-package coverage is a Gap carried to batch CI per leader ruling 2026-10-18 (35e9: no -timeout raise, no full internal/cli run; the first slot-held full-package attempt exceeded go's default 10m timeout with no number emitted; outside-cli packages could run -cover at default timeout but none were touched by this card).
 total_run_phase_files: 5 (migrate_project_assets.go, update_template_sync.go, migrate_removal_backup_test.go [new], migrate_removal_switch_test.go, migrate_profile_reach_test.go)
 m1_to_mN_commit_strategy: per-milestone conventional commits (M1 479b3c355 / M2 2bab42c4a / M3 6adaca207 / M4 36ef7fc4a / transition 3da74a745 / M5+M6 verification-only records + this M8 record commit), no push
 ac_matrix:
@@ -199,7 +204,7 @@ ac_matrix:
 gaps:
   - G-01 open (operator terminal, M7)
   - G-02 closed (measured not-covered; closed by M1 per-file backup)
-  - coverage number pending-backfill (slot contention, wait recorded)
+  - full-package coverage owed to batch CI (leader ruling 2026-10-18, 35e9; partial 9.5% card-families figure recorded in §E.2)
 ```
 
 audit_ready: true
