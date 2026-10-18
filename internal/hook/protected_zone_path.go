@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -269,6 +270,12 @@ func resolveZoneTarget(root, raw string, listings ...map[string]*zoneNameIndex) 
 	}
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
+		// the operand's own spelling, named by the entries the OS holds (card
+		// t1804 F1): a final that is a link out of the zone leaves the physical
+		// arm below with no zone form at all
+		if canon := zoneLexicalCanon(root, rel, listingCache(listings)); canon != rel {
+			add(canon)
+		}
 	}
 	native := filepath.FromSlash(walk)
 	if root != "" && filepath.IsAbs(native) {
@@ -388,6 +395,9 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 	}
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
+		if canon := zoneLexicalCanon(root, rel, cache); canon != rel {
+			add(canon)
+		}
 	}
 	if root != "" && filepath.IsAbs(native) {
 		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
@@ -558,13 +568,41 @@ func (idx *zoneNameIndex) alias(name string) (string, bool) {
 	return "", false
 }
 
-// zoneCanonicalRel rewrites the non-ASCII components of an already-RESOLVED
-// relative path (card t1804) to the spelling the directory really lists. The
-// manifest fold is ASCII-only, so a parent spelled as a non-ASCII case
-// variant (`ä` for the protected `Ä`) reaches the zone on a case-insensitive
-// volume while every resolved form keeps the operand's spelling and misses
-// the entry. The input is the output of the physical walk — it holds no ".."
-// to pop and is never built from raw text. A component is substituted only
+// aliasByIdentity returns the listing entry that is the same file as the one
+// the OS names through dir/name (card t1804 F2). Go's simple folding is
+// narrower than a volume's own table (ß folds to SS there), so a spelling the
+// string tiers of alias miss is still decided by os.SameFile, never by a fold.
+// Entries are scanned in sorted order so a hard-linked file answers the same
+// way on every call.
+func (idx *zoneNameIndex) aliasByIdentity(dir, name string) (string, bool) {
+	named, err := os.Lstat(filepath.Join(dir, name))
+	if err != nil {
+		return "", false
+	}
+	entries := make([]string, 0, len(idx.exact))
+	for real := range idx.exact {
+		entries = append(entries, real)
+	}
+	sort.Strings(entries)
+	for _, real := range entries {
+		if fi, err := os.Lstat(filepath.Join(dir, real)); err == nil && os.SameFile(named, fi) {
+			return real, true
+		}
+	}
+	return "", false
+}
+
+// zoneCanonicalRel rewrites the components of a relative path (card t1804) to
+// the spelling the directory really lists, wherever the operand's spelling and
+// the listed one differ in non-ASCII text (ASCII-only case differences are the
+// manifest fold's own business). The input is either the output of the physical
+// walk or the operand's own cleaned lexical rel; a ".." ends the walk and is
+// never popped as text. The manifest fold is ASCII-only, so a parent spelled
+// as a non-ASCII case variant (`ä` for the protected `Ä`) reaches the zone on
+// a case-insensitive volume while every other form keeps the operand's
+// spelling and misses the entry. The entry is chosen by the NFC-equal name,
+// then by simple case folding, then by file identity (os.SameFile) where the
+// volume's folding is wider than Go's (ß/SS). A component is substituted only
 // when the OS demonstrably names an existing entry through it (Lstat succeeds
 // while the listing lacks the exact spelling), so a case-sensitive volume or a
 // nonexistent spelling stays untouched. The caller ADDS the result next to the
@@ -577,7 +615,7 @@ func zoneCanonicalRel(realRoot, rel string, listings map[string]*zoneNameIndex) 
 		if part == ".." {
 			break
 		}
-		if part == "" || part == "." || isASCII(part) {
+		if part == "" || part == "." {
 			dir = filepath.Join(dir, part)
 			continue
 		}
@@ -595,6 +633,11 @@ func zoneCanonicalRel(realRoot, rel string, listings map[string]*zoneNameIndex) 
 			}
 		}
 		if idx == nil {
+			if isASCII(part) {
+				// an unreadable ancestor: later components may still be named
+				dir = filepath.Join(dir, part)
+				continue
+			}
 			break
 		}
 		if !idx.has(part) {
@@ -603,11 +646,19 @@ func zoneCanonicalRel(realRoot, rel string, listings map[string]*zoneNameIndex) 
 			}
 			real, ok := idx.alias(part)
 			if !ok {
+				real, ok = idx.aliasByIdentity(dir, part)
+			}
+			if !ok {
 				break
 			}
-			parts[i] = real
-			changed = true
-			part = real
+			// an ASCII spelling of an ASCII entry is the manifest fold's own
+			// business (FoldZoneText lowers ASCII); only a spelling that crosses
+			// into or out of non-ASCII text needs the listing's name
+			if !isASCII(part) || !isASCII(real) {
+				parts[i] = real
+				changed = true
+				part = real
+			}
 		}
 		dir = filepath.Join(dir, part)
 	}
@@ -615,6 +666,23 @@ func zoneCanonicalRel(realRoot, rel string, listings map[string]*zoneNameIndex) 
 		return rel
 	}
 	return strings.Join(parts, "/")
+}
+
+// zoneLexicalCanon canonicalises the operand's own lexical rel against the
+// real project root (card t1804 F1). The lexical form is never followed through
+// a final symlink, so when that link leaves the zone the spelling the operand
+// typed is the only form the zone can still be matched on. The caller ADDS the
+// result next to rel.
+func zoneLexicalCanon(root, rel string, listings map[string]*zoneNameIndex) string {
+	nativeRoot := filepath.FromSlash(zoneNativeSlash(root))
+	if root == "" || !filepath.IsAbs(nativeRoot) {
+		return rel
+	}
+	realRoot, ok := zoneResolve(nativeRoot)
+	if !ok {
+		realRoot = nativeRoot
+	}
+	return zoneCanonicalRel(filepath.ToSlash(realRoot), rel, listings)
 }
 
 // isASCII reports whether s holds only ASCII bytes.
