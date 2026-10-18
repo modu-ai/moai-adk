@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: 026340b5e21cb60c7de55dc6e3c7560e4a1d7856
+audited_sha: 9e4de7c132c641627e295285ed1f799b88d0ec8b
 required_backend: codex pass
 convergence_overall: pass
 
@@ -16,9 +16,13 @@ The three `fmt.Fprintf(warn, ...)` calls at `internal/cli/factory_run_adopt.go` 
 - Scoped tests (implementer run): `go test ./internal/cli -run 'TestAdoptResumedLeaderRun|TestStrictResumeCarrierSeen|TestLeaderRunIDWasMinted' -count=1 -v` -> `ok ... internal/cli 5.960s`, seven tests PASS.
 - Sync audit (`.moai/reports/t1864/sync-audit.md`): `verdict: PASS` @026340b5e, required backend codex pass, receipts `rcpt-542faae67b11d116c0e195ad` and `rcpt-8df6302abb885e179d0f2641`, both `codex_verdict: pass`; one MINOR Gap (exit codes of lint/vet runs not captured by the auditor).
 - Card review (advisory): `.moai/reports/t1864/card-review.md`, verdict pass, no findings.
+- HEAD confirmation after absorbing main (`48bfe97af`, merge commit `ea5dd0be6`), two rounds, recorded as they happened:
+  - Round 1, `.moai/reports/t1864/sync-audit-head-confirmation.md`: `verdict: FAIL` @ea5dd0be6; the required codex backend returned a non-pass (`rcpt-86c0804f0d3fad176cfdb209`, `rcpt-e1f7b15447fa56d969e2cde4`, both `codex_verdict: fail`) solely because its sandbox could not load packages to run the acceptance command (`context loading failed: no go files to analyze`, exit 5); it named no code defect.
+  - Lane-observed acceptance run outside that sandbox (`/private/tmp/lxq/accept-r2.txt`, machine-local): location `.moai/worktrees/t1864`, head `9e4de7c132c641627e295285ed1f799b88d0ec8b`, clean tree, `golangci-lint run --enable-only errcheck ./internal/cli/` (v2.1.6, go1.26.8), start 2026-10-18T03:01:03Z end 03:01:16Z, `exit: 0`, `0 issues.` (two earlier attempts were blocked by another lane's golangci-lint lock, exit 3, and are not results).
+  - Round 2, `.moai/reports/t1864/sync-audit-head-confirmation-r2.md`: `verdict: PASS` @9e4de7c13, `audit_multi` called once with that evidence in its focus, receipt `rcpt-7f463ce25477394c7628b836`, `codex_verdict: pass`, no findings. The auditor's own run of the same command: `exit=0`, `0 issues.`.
 
 ## Baseline-attribution
-Audited commit `026340b5e21cb60c7de55dc6e3c7560e4a1d7856` (tree `.moai/worktrees/t1864`). Differences after it are confined to `.moai/reports/t1864/`. The landing re-measure runs against the committed tree and is keyed to it, so its command and result are not appended here (that would change the tree); they are in the lane's landing report to the leader and in the re-measure verb's own record.
+Audited commit `9e4de7c132c641627e295285ed1f799b88d0ec8b` (tree `.moai/worktrees/t1864`; it is `ea5dd0be6` plus evidence files under `.moai/reports/t1864/`). The original sync audit (PASS) read `026340b5e21cb60c7de55dc6e3c7560e4a1d7856`; the card's code is byte-identical in all three commits. Differences after the audited commit are confined to `.moai/reports/t1864/`. The landing re-measure runs against the committed tree and is keyed to it, so its command and result are not appended here (that would change the tree); they are in the lane's landing report to the leader and in the re-measure verb's own record.
 
 ## Gaps
 - Hosted CI has not run on this change; CI owns the repository-wide verdict.
