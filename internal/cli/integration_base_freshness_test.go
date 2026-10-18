@@ -602,3 +602,47 @@ func TestBaseFreshnessConfigLoadFailureIsUncertainty(t *testing.T) {
 		})
 	}
 }
+
+func TestBaseFreshnessConfigFailureNoticeDoesNotEchoConfigContent(t *testing.T) {
+	// Delta-audit finding: the cause line must be fixed and input-free. A parser
+	// or validator error can quote the offending value, and a notice is printed
+	// to a shared terminal and captured in logs.
+	const secret = "sk_SYNTHETIC_PRIVATE_VALUE_72b9"
+	cases := []struct {
+		name string
+		body string // "" = workflow.yaml is a directory (read failure)
+	}{
+		{"malformed YAML", "workflow:\n  base_freshness_gate:\n    enabled: *" + secret + "\n"},
+		{"wrong-type value", "workflow:\n  base_freshness_gate:\n    enabled: " + secret + "\n    max_behind_landings: " + secret + "\n"},
+		{"rejected tier token", "workflow:\n  agent_tiers:\n    classes:\n      lane: " + secret + "\n"},
+		{"read failure", ""},
+	}
+	args := []string{"--card", "t1", "--branch", "main", "--session", "sess-lane1"}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newBFCFixture(t)
+			f.writeRecord(f.base)
+			f.land(1)
+			if c.body == "" {
+				if err := os.MkdirAll(filepath.Join(f.root, ".moai", "config", "sections", "workflow.yaml"), 0o750); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				bfcWriteWorkflow(t, f.root, c.body)
+			}
+			stdout, stderr, err := f.acquire(args...)
+			if err != nil {
+				t.Fatalf("must admit: %v", err)
+			}
+			all := stdout + stderr + fmt.Sprint(err)
+			for _, leak := range []string{secret, "72b9", "SYNTHETIC"} {
+				if strings.Contains(all, leak) {
+					t.Fatalf("the output echoes config content %q:\n%s", leak, all)
+				}
+			}
+			if lines := freshnessLines(stderr); len(lines) != 1 || !strings.Contains(lines[0], "configuration unreadable") {
+				t.Fatalf("want one configuration-unreadable line, got %q", lines)
+			}
+		})
+	}
+}
