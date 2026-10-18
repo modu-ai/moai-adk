@@ -169,18 +169,23 @@ func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	// The budget is generous so a loaded machine's Git process startup cannot
 	// consume it before the busy-wait sizing is reached; what separates the correct
 	// sizing from the stale one is gitDelay/2, independent of the budget.
-	const gitDelay, budget = 2400 * time.Millisecond, 8 * time.Second
+	// Runtime is about 8 s: ~2.7 s of delayed Git plus the sized busy wait (~5 s).
+	const gitDelay, budget = 2400 * time.Millisecond, 13 * time.Second
 	slowBrokerGit(t, int(gitDelay/time.Millisecond))
 	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 
 	// End-to-end, tied to lock state and to the caller's own deadline rather than
 	// to a timer midpoint: the lock is released only when the caller's context
-	// expires (budget, ~4 s after a correct open gives up). The opener runs on a
-	// goroutine and the order "opener result -> release signal" is checked by
-	// channel: a wait sized from the remaining budget gives up with the lock
-	// still held; a wait that ignores its budget, or stalls before SQLite init,
-	// only ends after the deadline-driven release (or returns a store).
+	// expires (budget, ~5 s after a correct open gives up). The opener runs on a
+	// goroutine and the order "opener returned -> release signal" is recorded AT
+	// the event, in that goroutine right after the call returns, so a stall
+	// anywhere after the return cannot flip it. A wait sized from the remaining
+	// budget gives up with the lock still held; a wait that ignores its budget,
+	// or stalls before SQLite init, only ends after the deadline-driven release
+	// (or returns a store). A stale pre-path budget is caught by the busy_timeout
+	// state assertion below, not by this ordering (its wait still ends before the
+	// deadline).
 	releaseSignal := make(chan struct{})
 	releaserDone := make(chan struct{})
 	go func() {
@@ -194,23 +199,29 @@ func TestBrokerOpenContextRechecksBudgetAfterGit(t *testing.T) {
 	t.Cleanup(func() { <-releaserDone })
 
 	type openResult struct {
-		store *Store
-		err   error
+		store        *Store
+		err          error
+		heldAtReturn bool // release signal had not fired when the call returned
 	}
 	busy := int64(-1)
 	opened := make(chan openResult, 1)
 	go func() {
 		store, err := openWithContextObserved(ctx, root, "run-lock", budget, func(ms int64) { busy = ms })
-		opened <- openResult{store, err}
+		held := true
+		select {
+		case <-releaseSignal:
+			held = false
+		default:
+		}
+		opened <- openResult{store, err, held}
 	}()
-	res := <-opened
-	// Order check: the opener must have returned before the release signal fired.
-	heldAtReturn := true
+	var res openResult
 	select {
-	case <-releaseSignal:
-		heldAtReturn = false
-	default:
+	case res = <-opened:
+	case <-time.After(budget + 10*time.Second):
+		t.Fatal("opener ignored its budget: no result long after the caller deadline")
 	}
+	heldAtReturn := res.heldAtReturn
 	store, err := res.store, res.err
 	if store != nil {
 		_ = store.Close()
