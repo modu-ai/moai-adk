@@ -336,6 +336,8 @@ Mutant probes: each fix reverted alone, the matching test went red, the fix was 
 
 Delta re-audit P2 (non-disclosure): the `parse workflow.yaml` cause quoted the YAML parser error, and the loader's tier-validation error was passed through, so a secret-looking value reached the notice (reproduced for malformed YAML and a rejected tier token; wrong-type and read-failure cases did not leak). RED `d2f33e61d`, GREEN `8025a3253`: causes are now fixed text (`invalid YAML syntax`, `a value has the wrong type`, `workflow.yaml was rejected by validation`; the read cause names only the path). Test: `TestBaseFreshnessConfigFailureNoticeDoesNotEchoConfigContent`; both fixes mutant-probed red, restored byte-identical.
 
+Third sync audit (2 x P2, same class: untrusted text in gate output) - swept as a class. RED `b3e5df8ee`, GREEN `81054c29c`. Sites now bounded: git failures (4 operations + the unresolvable-branch cause) render as `git <op> failed (exit N)` / `could not run`; record validation renders from a fixed phrase set (`no re-measure record is stored for it`, `the stored re-measure record is unreadable`, `the record is incomplete or malformed`, `its command exited N`, `its structured test report is missing or empty`); the non-numeric rev-list count and the Getwd failure carry no text; the config causes (E.2.7 above) are fixed phrases; SHAs printed are validated full SHAs, branch and paths are operator- or tool-constructed. Test: `TestBaseFreshnessOutputNeverEchoesUntrustedInput` (8 sources x gate off/on). Outside this card, observed: the settings-drift UNDETERMINED line printed by acquire forwards git stderr verbatim; not changed here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-10-17T16:01:36Z
