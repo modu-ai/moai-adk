@@ -3,9 +3,9 @@ auditor-model: claude-sonnet-5-5
 # Sync audit, card t1856, round 3
 
 verdict: PASS
-audited_sha: a574521ea738350c2b87fc9e8fba5229f37ff1c1
+audited_sha: b234210fcd1f3e912a974032b8a5aa4b8e7bd3d4
 
-Result: PASS, score 0.93, confirmed by a procedural delta audit (round 4) at the recorded evidence commit a574521ea. The substantive round 3 audit read c4a7a79af; the only change between the two is this report file (observed, see round 4 below). Receipts: rcpt-d2a9b4966e2dbaa1b9fed034, rcpt-07a9a12af551f557c7cdd039, rcpt-0c2ec421e378917d492b537d.
+Result: PASS, score 0.93, confirmed by a delta audit (round 5) at b234210fc, the card branch after main (cards t1833, t1857) was absorbed by a no-ff merge. The substantive round 3 audit read c4a7a79af; round 4 (a574521ea) differed from it only in this report file; round 5 differs from round 4 only in absorbed main content (card code byte-identical, see round 5 below). Receipts: rcpt-d2a9b4966e2dbaa1b9fed034, rcpt-07a9a12af551f557c7cdd039, rcpt-0c2ec421e378917d492b537d, rcpt-df737a623bf63dfd835844b3, rcpt-5f37c4c6318745f3d228c890.
 
 Round 3 summary: PASS, score 0.93. N1 (the develop-appending mutant) is closed: all seven mutants the leader listed die when executed by the auditor, and the required codex backend returned `pass` with a receipt after observing a Linux run. No blocking finding remains. N2 is closed by reading and by codex's Linux observation; the auditor's own hostile-config probe was refused by the worktree guard (Gap). N3 and N4 are disposed in progress.md section 13. Landing re-measure and the full package remain owed, as Gaps and not as debt against this card.
 
@@ -18,6 +18,12 @@ Card: t1856, Class B defect fix, no SPEC. Tree: /Users/goos/MoAI/moai-adk-go/.mo
 - Repair commits since round 2: 3b4a99378 (test code: two added tests, `-c commit.gpgSign=false`, `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`) and c4a7a79af (progress.md section 13, CHANGELOG sentence). 530d5a803 and 5e8c07915 are records only.
 - Round 3 (read commit c4a7a79af4fa79362a0e869d496168dab2347d70): PASS 0.93. The seven mutants, the Linux observation through codex, and the record checks below were taken at that commit.
 - Round 4 (this file, audited_sha a574521ea738350c2b87fc9e8fba5229f37ff1c1): PASS 0.93, a procedural delta audit at the evidence commit the factory recorded, because the gate binds the recorded commit to `audited_sha`. Verification at a574521ea: `git rev-parse HEAD` printed a574521ea738350c2b87fc9e8fba5229f37ff1c1; `git status --porcelain` printed nothing; `git diff --name-only c4a7a79af a574521ea` printed only `.moai/reports/t1856/sync-audit.md`; `git diff c4a7a79af a574521ea --stat` printed `.moai/reports/t1856/sync-audit.md | 158 ++++++++++++++++++++------------------ / 1 file changed, 82 insertions(+), 76 deletions(-)`; `git diff c4a7a79af a574521ea -- internal/hook` printed nothing, so the resolver and both test files are byte-identical to c4a7a79af, and no code, test, CHANGELOG or progress record changed. The targeted selector was re-run (below) and the required codex audit re-run, receipt rcpt-0c2ec421e378917d492b537d (pass, no findings). The seven mutants were not re-run, by the coordinator's scope; the resolver bytes are unchanged, so the round 3 kills stand.
+
+- Round 5 (this file, audited_sha b234210fcd1f3e912a974032b8a5aa4b8e7bd3d4): PASS 0.93, a delta audit after the coordinator absorbed main (e4b747678 to f4bcd4f2c, cards t1833 and t1857) into the card branch because main moved before landing. No mutants and no edits other than this report, so the tree stays clean for the re-measure that follows. Verified at b234210fc: `git rev-parse HEAD` printed b234210fcd1f3e912a974032b8a5aa4b8e7bd3d4 and `git status --porcelain` printed nothing before I wrote; `git diff --name-only main...HEAD` printed exactly seven files: `.moai/reports/t1856/progress.md`, `.moai/reports/t1856/sync-audit.md`, `.moai/reports/t1856/verdict.md`, `CHANGELOG.md`, `internal/hook/commit_identity_guard.go`, `internal/hook/env_literal_diff_base_test.go`, `internal/hook/env_literal_diff_test.go`; `git diff a574521ea HEAD -- internal/hook` printed nothing (card code, including the resolver, byte-identical to round 4); `git diff a574521ea HEAD -- CHANGELOG.md` shows a single added line, the card t1833 `scripts/release.sh` CI-gate entry, inserted at the top of `### Changed`, with no other hunk, so the t1856 entry is untouched. The seven mutants were not repeated: the resolver bytes are unchanged, so the round 3 kills (seven of seven) stand.
+
+### Round 5 targeted run at b234210fc
+
+Same lane form, accepted by the guard. All six `TestSrlDiffBase*` tests, `TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration` and `TestNoNewEnvLiteralsInDiff` PASS, `ok … 4.465s`. The sweep line: `env-literal sweep: 2 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=f4bcd4f2cc65342559b505f1e5a29df80f992894, distinct literals=0`. The base is now the new main tip f4bcd4f2c and the swept count is still 2 (non-empty), which is the behaviour the card asked for on a tree where main has advanced. Required codex audit: pass, no findings, receipt rcpt-5f37c4c6318745f3d228c890 (build commit ee981a932, an ancestor of HEAD). This audit is not final until the orchestrator's convergence check passes.
 
 ### Round 4 targeted run at a574521ea
 
@@ -59,6 +65,8 @@ Weighted harmonic mean about 0.93. Both must-pass dimensions meet threshold; the
 | codex (adversarial, baseBranch), round 3 at c4a7a79af | required | pass, no findings | rcpt-d2a9b4966e2dbaa1b9fed034 |
 | codex (adversarial, baseBranch), round 3 confirmation at c4a7a79af | required | pass, no findings | rcpt-07a9a12af551f557c7cdd039 |
 | codex (adversarial, baseBranch), round 4 delta at a574521ea | required | pass, no findings | rcpt-0c2ec421e378917d492b537d |
+| codex (adversarial, baseBranch), round 4 re-run at a574521ea | required | pass, no findings | rcpt-df737a623bf63dfd835844b3 |
+| codex (adversarial, baseBranch), round 5 delta at b234210fc | required | pass, no findings | rcpt-5f37c4c6318745f3d228c890 |
 | claude | off | not run | none |
 | glm | off | not run | none |
 

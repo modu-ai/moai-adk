@@ -1,6 +1,9 @@
-# Card t1856 — lane run-exit verdict (Class B, no SPEC)
+# Card t1856 — lane verdict (Class B, no SPEC)
 
-Result: RUN-EXIT PASS-WITH-GAPS. This is the lane's own verdict at the end of the run stage; sync, the independent sync audit and the landing re-measure have NOT happened yet, and the card is not landable on this file alone.
+verdict: PASS
+audited_sha: b234210fcd1f3e912a974032b8a5aa4b8e7bd3d4
+
+Result: PASS at the audited head b234210fc (after absorbing main; the card's own code is byte-identical to the substantively audited c4a7a79af). Basis: the independent sync audit, round 5 (a read-only delta after the absorb), PASS 0.93 with the required codex backend pass, see `.moai/reports/t1856/sync-audit.md`; rounds 1 and 2 were FAIL, are preserved in git (6b97e64bc, 5e8c07915) and were closed by repairs the lane observed itself (mutants C, D, F executed by the lane). A first landing re-measure was valid on tree e711d0186175 before main moved; the re-measure on the final post-absorb tree runs right after this file is committed and is recorded in the landing record, not here, so this file alone is not the landing verdict.
 
 ## Claim
 1. Cause: `srlDiffBase` (internal/hook/env_literal_diff_test.go) resolved its diff base only through `develop` / `origin/develop`; `origin/develop` no longer exists and local `develop` is a stale branch, so the base became an old fork point and `TestNoNewEnvLiteralsInDiff` counted every `MOAI_KANBAN_*` literal that landed on main since then as "added by this card".
@@ -18,8 +21,10 @@ Result: RUN-EXIT PASS-WITH-GAPS. This is the lane's own verdict at the end of th
 - The pre-fix 13273-line / base `966f1b158` result is the same failure the lane measured independently on card t1837 (13256 lines, same base) and the earlier t1632 A/B; those two are corroboration, not this run's measurement.
 
 ## Gaps
-- Landing re-measure (b2cd scope: internal/hook plus direct importers, internal/cli per standing rule 35e9) has NOT run. Nothing here is a landing verdict.
-- Sync stage and the independent sync audit (required backend codex) have not run.
+- Landing re-measure (b2cd scope: internal/hook plus its five direct importers in full, internal/cli by rule 35e9 as `-run '^TestVersionStamp'`): valid once on tree e711d0186175 (both calls exit 0, test counts not shown by the verb), invalidated by main moving to f4bcd4f2c; the final-tree run has not happened at the time of writing. The rest of internal/cli is unobserved locally and carried to the next batch CI run.
+- The sync audit's Ubuntu CI run is not observed: codex observed a Linux/arm64 run of the six resolver tests only; the full internal/hook package and the CI matrix are not part of that observation.
+- The stage record's evidence SHAs predate the absorb (c2e633946 for sync, a574521ea for the audit) and cannot be re-stamped; the merge gates read this file, the audit file and the re-measure record against the current tree instead.
+- A receipt-refusal record (`sync-auditor--unknown-spec.json`, agent a0a03c32473b3e55c) was left in place by the leader because round 3 was PASS; cause "verdict line missing" is unexplained (each auditor's final message did end with a verdict line).
 - At HEAD the sweep is nearly empty (HEAD is close to its base), so a green `TestNoNewEnvLiteralsInDiff` here asserts little by itself; resolver behaviour is carried by the two new tests and the pre-fix RED.
 - The earlier record showed `0` swept lines at `d8428f9b6`'s base and this run shows `2`; the difference was not investigated.
 - Six package-own skips (`TestFactoryHookBenchmarkBudget`, `TestConsumerOnly_M0AndMxByteUnchanged`, `TestSessionStart_DriftCacheProbe`, `TestDriftFillBurstHelper`, `TestSessionStart_HandleStageProbe`, `TestScanWriteContent_SupportedExtension_ScannerNotAvailable`); no `-skip` flag was passed.
