@@ -747,12 +747,13 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
 		}
 	}
-	// A resume skips the sync above, so a launcher-written auto left by an earlier
-	// Claude launch would survive into a GLM session. Remove exactly that value;
-	// any other defaultMode, and every Claude-backend resume, is left alone.
+	// A resume skips the sync above, so a permissions.defaultMode: auto left on disk
+	// (by an earlier Claude launch or written by hand) would survive into a GLM
+	// session. Remove exactly that value; any other defaultMode, and every
+	// Claude-backend resume, is left alone. A failed removal stops the GLM launch.
 	if cont && permGLM && settingsLocalPath != "" {
 		if err := dropAutoDefaultModeFromSettingsLocal(settingsLocalPath); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to clear stale auto permission mode: %v\n", err)
+			return fmt.Errorf("GLM resume: the stale permissions.defaultMode auto in %s could not be removed: %w", settingsLocalPath, err)
 		}
 	}
 

@@ -111,3 +111,18 @@ Gaps remaining: no whole-package run of `internal/cli`, `internal/config`, `inte
 Note: the first fix spawn was refused with AUDIT_RECEIPT_VIOLATION and the leader removed that guard record after backing it up (board 6a81, backup directory `.moai/reports/t1866/backup-rejection-20261018T054836Z/`).
 
 Deviation: the run-phase implementation of this card was written directly by the lane session rather than by manager-develop.
+
+## Audit repair round 2
+
+Source: `.moai/reports/t1866/sync-audit-iter2.md` (FAIL, audited_sha bece378100; findings F7, F8). One commit; F6 stays out of scope.
+
+| Finding | Command and observed output |
+|---|---|
+| F7 failed stale-`auto` removal on a GLM resume only warned | RED: `go test ./internal/cli -run '^TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved$' -count=1` -> stderr `Warning: failed to clear stale auto permission mode: open settings lock file: open .../proj/.claude/settings.local.json.lock: permission denied`, `--- FAIL: TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved`, `launcher_permission_resume_test.go:352: GLM resume returned nil although the stale auto could not be removed`. GREEN: same test PASS; `go test ./internal/cli -run '^TestLaunch_' -count=1 -v` -> all `--- PASS`, `ok  github.com/modu-ai/moai-adk/internal/cli  1.977s`. Fix: in `runLaunchClaude`, when `cont && permGLM && settingsLocalPath != ""` a failed `dropAutoDefaultModeFromSettingsLocal` returns `GLM resume: the stale permissions.defaultMode auto in <path> could not be removed: <cause>`; the session is not started. Claude-backend resume and the fresh-launch sync stay warn-only/unchanged. Induction: `.claude` made `chmod 0555` as uid 501 (`id -u` -> `501`); a probe file creation in that directory must fail, otherwise the test fails (never skips). The test asserts the error names the file and says `auto`, `execOrSpawnClaudeFunc` was not called, and the file is byte-unchanged; permissions restored in cleanup. |
+| F8 "launcher-written" wording | Comment above the drop call in `launcher.go` and the t1866 CHANGELOG sentence now say a `permissions.defaultMode: auto` is removed on a GLM resume; the CHANGELOG sentence also says a failed removal stops the GLM launch with an error. Text only. |
+
+GREEN tail: `go test ./internal/settings ./internal/cli/wizard ./internal/core/project -count=1` -> `ok .../settings 0.940s`, `ok .../wizard 6.802s`, `ok .../core/project 3.706s`; `gofmt -l internal/cli internal/core/project internal/settings` printed nothing.
+
+Gaps remaining: no whole-package run of `internal/cli`, `internal/config`, `internal/template`, `internal/web`; the failure was induced by a read-only directory (lock-file creation refused), not by a real unwritable user config; the built binary was not run; the delta re-audit has not run; F6 untouched.
+
+Note: the second fix spawn was refused with AUDIT_RECEIPT_VIOLATION (unknown-spec) and the leader removed that guard record after backing it up (board 6a81, backup directory `.moai/reports/t1866/backup-rejection-20261018T060040Z/`).

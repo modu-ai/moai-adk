@@ -309,3 +309,59 @@ func TestLaunch_GLMLaunchWithUnwritableConfigDoesNotReceiveAuto(t *testing.T) {
 		t.Errorf("settings.local.json carries defaultMode auto after a GLM launch: %v", doc)
 	}
 }
+
+// TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved: a GLM resume whose stale
+// permissions.defaultMode: auto cannot be removed (read-only .claude directory)
+// must not start the session. The launch returns an error naming the file, the
+// exec seam is never reached, and the file is byte-unchanged (card t1866 F7).
+func TestLaunch_GLMResumeFailsWhenStaleAutoCannotBeRemoved(t *testing.T) {
+	root := permissionProject(t)
+	setProjectBackend(t, root, true)
+	writeSettingsDoc(t, root, map[string]any{"permissions": map[string]any{"defaultMode": "auto"}})
+
+	path := settingsLocalPathFor(root)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read settings.local.json: %v", err)
+	}
+
+	dir := filepath.Dir(path)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatalf("chmod .claude read-only: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	// The induction must take effect: a probe write into the directory has to fail
+	// (it does not for root, which ignores directory permissions).
+	probe := filepath.Join(dir, "induction-probe")
+	if f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+		_ = f.Close()
+		_ = os.Remove(probe)
+		t.Fatal("precondition: a file could be created in the read-only .claude directory; this environment cannot reproduce the failed removal")
+	}
+
+	called := false
+	origExec := execOrSpawnClaudeFunc
+	t.Cleanup(func() { execOrSpawnClaudeFunc = origExec })
+	execOrSpawnClaudeFunc = func(bin string, a, env []string) error {
+		called = true
+		return nil
+	}
+
+	err = launchClaudeDefault("", []string{"--continue"})
+	if err == nil {
+		t.Fatal("GLM resume returned nil although the stale auto could not be removed")
+	}
+	if !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "auto") {
+		t.Errorf("error %q must name %s and say the stale auto could not be removed", err, path)
+	}
+	if called {
+		t.Error("the session was started (exec seam called) with a stale auto still on disk")
+	}
+	after, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read settings.local.json after launch: %v", readErr)
+	}
+	if string(after) != string(before) {
+		t.Errorf("settings.local.json changed: before %q, after %q", before, after)
+	}
+}
