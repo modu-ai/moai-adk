@@ -3739,11 +3739,213 @@ rc=1
 
 붉은 이유: 올바른 이유다. 어긋난 일곱 행: 접두사 디렉터리 둘 (N1), 최상위 `..hidden` 이름 둘 (`withinRootBoundary` 의 `HasPrefix(rel, "..")`), 상대 뿌리 `.` 에서 절대 경로 대상의 프로젝트 안 링크 셋 (경로 해석 도우미, 심볼릭 링크로 된 작업 디렉터리, 업데이트 형태 걷기 — 걷기에서는 `symlink-escape` 로 읽혀 `no-provenance-record` 가 아님). 나머지 표 행(경계 위반 형제 디렉터리, 모든 심볼릭 링크 행, 종류 행, 빈 뿌리)은 수정 전에도 기대와 같다 — 바뀌면 안 되는 것의 고정이다.
 
+#### Chunk 11 GREEN 기록과 정직한 회계
+
+수정 커밋: N1 `dcbafe568c`, N2 `90296319b4`, 경계 표 `1003a9edd4`. 시험 커밋: N1 `ef45c82cc9`, N2 `2cd11e520e`, 표 `d122d6794e`; 기록 `5aa3de1348`.
+
+#### N1 — 수정 C `dcbafe568c`
+
+`IsPriorManifestBookkeeping` 이 상대 경로에 구분자가 있으면 (`filepath.ToSlash` 뒤 `/` 포함) 거짓을 돌려준다. 루트 수준의 최종 이름과 임시 접두사 이름만 일치한다. 연속 5회 (`n1-green-1..5.txt`: 복원 네 진입점 + 단위 표, PASS 5):
+
+```text
+run1: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.497s | PASS=5 FAIL=0 SKIP=0
+run2: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.282s | PASS=5 FAIL=0 SKIP=0
+run3: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.272s | PASS=5 FAIL=0 SKIP=0
+run4: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.264s | PASS=5 FAIL=0 SKIP=0
+run5: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.256s | PASS=5 FAIL=0 SKIP=0
+```
+
+실제 코드 변이 (구분자 검사를 지움; `cmp` 복원 확인):
+
+```text
+--- FAIL: TestRestoreLegacySkipsPriorManifestTemporaryFile (0.00s)
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifestTemporaryFile (0.00s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifestTemporaryFile (0.00s)
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifestTemporaryFile (0.01s)
+--- FAIL: TestIsPriorManifestBookkeeping (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.417s
+FAIL
+rc=1
+RESTORED-IDENTICAL
+```
+
+붉은 이유: 올바른 이유다 — 접두사 디렉터리 복원 두 진입점과 단위 표가 붉어진다.
+
+#### N2 — 수정 C `90296319b4`
+
+`copyRunMarker` 가 오류를 돌려준다. 원본에 표지가 **없으면** (없음, 일반 파일이 아님) 복사할 것이 없으므로 오류가 아니고 형제는 종전처럼 표지 없이 만들어진다 (이 동작은 시험이 고정한다: `NoMarkerToCopyKeepsTheBehaviourItAlwaysHad`). 표지가 있으나 읽거나 쓸 수 없으면 오류이고, `claimPriorManifestDir` 가 방금 만든 (아직 빈) 형제를 `os.Remove` 로 지운 뒤 (최선 노력) 실패를 돌려준다 → 상태 `priorManifestFailed`, 그 실행은 아무것도 제거하지 않는다. 복사 이음매 `priorManifestMarkerCopy` 는 다른 `priorManifest*` 이음매와 같은 방식 (변수, 시험만 바꿈). 같은 커밋이 `claimPriorManifestDir` 첫 줄에 `filepath.Clean` 을 더했다 (끝에 구분자가 붙은 경로의 형제 문제, 자체 검토 RED).
+
+연속 5회 (`n2-green-1..5.txt`: `TestMarkerCopyFailureFailsClosedWithoutResidue` + chunk 9 의 `TestPriorManifestOfAnEarlierRunSurvivesALaterRun`, PASS 14):
+
+```text
+run1: ok  	github.com/modu-ai/moai-adk/internal/cli	3.136s | PASS=14 FAIL=0 SKIP=0
+run2: ok  	github.com/modu-ai/moai-adk/internal/cli	3.640s | PASS=14 FAIL=0 SKIP=0
+run3: ok  	github.com/modu-ai/moai-adk/internal/cli	2.941s | PASS=14 FAIL=0 SKIP=0
+run4: ok  	github.com/modu-ai/moai-adk/internal/cli	2.379s | PASS=14 FAIL=0 SKIP=0
+run5: ok  	github.com/modu-ai/moai-adk/internal/cli	3.232s | PASS=14 FAIL=0 SKIP=0
+```
+
+실제 코드 변이 셋 (각각 `cmp` 로 복원 확인; 저장 파일 `n2-mutant-*.txt`):
+
+```text
+-- 변이 1 (오류 무시):
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (1.42s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/NoSiblingIsLeftAndTheEarlierCopyIsUntouched (0.02s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/TheRunRemovesNothing (1.34s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.429s
+FAIL
+rc=1
+RESTORED-IDENTICAL-ignoreError
+-- 변이 2 (형제를 지우지 않음):
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (1.63s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/NoSiblingIsLeftAndTheEarlierCopyIsUntouched (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.858s
+FAIL
+rc=1
+RESTORED-IDENTICAL-keepSibling
+-- 변이 3 (Clean 제거):
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (1.72s)
+    --- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue/ABackupPathWithATrailingSeparatorStillGetsASibling (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.802s
+FAIL
+rc=1
+RESTORED-IDENTICAL-noClean
+```
+
+붉은 이유: 올바른 이유다 — 변이 1 은 실패한 복사에도 형제가 성공으로 남아 그 실행이 제거했고, 변이 2 는 형제 잔여물이 남았고, 변이 3 은 끝 구분자 경로의 형제가 디렉터리 안에 만들어졌다.
+
+#### 경계 표 수정 C `1003a9edd4`
+
+(1) `withinRootBoundary` 가 `filepath.Rel` 결과의 **첫 요소**가 `..` 인지로 판정한다 (`rel == ".."` 또는 `../` 접두사). 종전의 `HasPrefix(rel, "..")` 는 최상위 이름 `..hidden` 을 밖으로 보았다 (과잉 거부). (2) `pathLeavesRoot` 가 상대 뿌리 (`"."`) 를 절대·해석된 형태로 바꾸고 경로도 절대로 만든 뒤 `EvalSymlinks` 로 푼다. 업데이트 명령은 뿌리 `"."` 를 넘기므로 (`update_template_sync.go:230`) 종전에는 절대 경로 대상의 프로젝트 안 링크가 `Rel(".", 절대경로)` 오류로 밖으로 읽혔다 (읽지 않는 쪽이라 안전하지만 기준 커밋과 다른 운영 동작). 빈 뿌리는 명시적으로 닫힌 쪽 (밖으로 봄). 등록된 파일의 `disposition` 은 바꾸지 않았다: 그쪽의 같은 상대 뿌리 동작은 기준 시점부터 있었고, 바꾸면 절대 경로 대상의 프로젝트 안 링크가 제거 가능으로 바뀔 수 있어 AC-OWR-01 의 고정 기대와 제거 범위를 건드린다 (N16 계열 부채로 기록).
+
+연속 5회 (`table-green-1..5.txt`, `TestPathBoundaryCounterexamples`, 43행 + 부모 = PASS 44):
+
+```text
+run1: ok  	github.com/modu-ai/moai-adk/internal/cli	2.436s | PASS=44 FAIL=0 SKIP=0 rows=43
+run2: ok  	github.com/modu-ai/moai-adk/internal/cli	1.846s | PASS=44 FAIL=0 SKIP=0 rows=43
+run3: ok  	github.com/modu-ai/moai-adk/internal/cli	2.506s | PASS=44 FAIL=0 SKIP=0 rows=43
+run4: ok  	github.com/modu-ai/moai-adk/internal/cli	2.056s | PASS=44 FAIL=0 SKIP=0 rows=43
+run5: ok  	github.com/modu-ai/moai-adk/internal/cli	2.631s | PASS=44 FAIL=0 SKIP=0 rows=43
+```
+
+실제 코드 변이 둘 (`cmp` 복원 확인; 저장 파일 `c3-mutant-*.txt`):
+
+```text
+-- 변이 1 (HasPrefix(rel, "..") 로 되돌림):
+    migrate_ownership_boundary_table_test.go:454: withinRootBoundary: top-level entry whose name starts with two dots is inside: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: pathLeavesRoot: file in a top-level directory named '..hidden': observed "outside", want "inside"
+RESTORED-IDENTICAL-dotdotPrefix
+-- 변이 2 (상대 뿌리 정규화를 끔):
+    migrate_ownership_boundary_table_test.go:454: root '.' (the update command's shape): relative in-project file: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: root '.': in-project symlink whose target is an ABSOLUTE in-project path: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: root '.' reached through a symlinked working directory: in-project absolute link target: observed "outside", want "inside"
+    migrate_ownership_boundary_table_test.go:454: update-shaped run (root '.'): in-project symlink with an absolute target: observed "class=unregistered reason=symlink-escape removed=1", want "class=unregistered reason=n
+RESTORED-IDENTICAL-rawRelativeRoot
+```
+
+#### 경계 반례 표 — 수정 뒤 관측 (`table-green-1.txt` 의 `TABLE|` 줄, 그대로)
+
+형식: `그룹|경우|expected|observed`. 모든 행에서 expected 와 observed 가 같다 (같지 않으면 시험이 실패한다).
+
+```text
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|manifest.prior.json.tmp-notes/keep.txt|expected: restored|observed: restored
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|manifest.prior.json.d/x|expected: restored|observed: restored
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|manifest.prior.json.tmp-notes/manifest.prior.json|expected: restored|observed: restored
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|manifest.prior.json|expected: skipped|observed: skipped
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|manifest.prior.json.tmp-4242|expected: skipped|observed: skipped
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|notes/manifest.prior.json|expected: restored|observed: restored
+    migrate_ownership_boundary_table_test.go:452: TABLE|restore|notes/manifest.prior.json.tmp-4242|expected: restored|observed: restored
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: sibling named root+'-evil' is outside|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: sibling named root+'2' is outside|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: a file under the root is inside|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: the root itself is inside|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: parent of the root is outside|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: '..' escape through the root is outside|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|withinRootBoundary: top-level entry whose name starts with two dots is inside|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|pathLeavesRoot: real file in the sibling 'proj-xxx-evil'|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|pathLeavesRoot: in-project link to the sibling 'proj-xxx2'|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|pathLeavesRoot: regular file in the project|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|pathLeavesRoot: file in a top-level directory named '..hidden'|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|root '.' (the update command's shape): relative in-project file|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|root '.': in-project symlink whose target is an ABSOLUTE in-project path|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|root '.' reached through a symlinked working directory: in-project absolute link target|expected: inside|observed: inside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|root '.': symlink to an outside absolute path|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|boundary|root '.': symlink to an outside relative path|expected: outside|observed: outside
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|symlink to an in-project file: judged by its target's bytes|expected: class=unregistered keep=no-provenance-record read=content|observed: class=unregistered keep=no-provenance-record read=content
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|symlink to an outside file: kept unread|expected: class=unregistered keep=symlink-escape read=none|observed: class=unregistered keep=symlink-escape read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|symlinked ancestor directory outside: kept unread|expected: class=unregistered keep=symlink-escape read=none|observed: class=unregistered keep=symlink-escape read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|symlinked ancestor directory inside: judged by content|expected: class=unregistered keep=no-provenance-record read=content|observed: class=unregistered keep=no-provenance-record read=content
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|chain of links ending outside: kept unread|expected: class=unregistered keep=symlink-escape read=none|observed: class=unregistered keep=symlink-escape read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|chain of links staying inside: judged by content|expected: class=unregistered keep=no-provenance-record read=content|observed: class=unregistered keep=no-provenance-record read=content
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|dangling link: read-failed, nothing read|expected: class=unregistered keep=read-failed read=none|observed: class=unregistered keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|link loop (ELOOP): read-failed, nothing read|expected: class=unregistered keep=read-failed read=none|observed: class=unregistered keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|a regular file used as a directory component (ENOTDIR): read-failed|expected: class=unregistered keep=read-failed read=none|observed: class=unregistered keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|file that does not exist: read-failed|expected: class=unregistered keep=read-failed read=none|observed: class=unregistered keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|symlink|ordinary file: judged by content|expected: class=unregistered keep=no-provenance-record read=content|observed: class=unregistered keep=no-provenance-record read=content
+    migrate_ownership_boundary_table_test.go:452: TABLE|flow|update-shaped run (root '.'): in-project symlink with an absolute target|expected: class=unregistered reason=no-provenance-record removed=1|observed: class=unregistered reason=no-provenance-record removed=1
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|FIFO at an unregistered project path|expected: class=unregistered keep=non-regular-file read=none|observed: class=unregistered keep=non-regular-file read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|FIFO at a registered path|expected: class=user-modified keep=non-regular-file read=none|observed: class=user-modified keep=non-regular-file read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|link to a FIFO inside the project|expected: class=unregistered keep=non-regular-file read=none|observed: class=unregistered keep=non-regular-file read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|directory where an unregistered file was expected|expected: class=unregistered keep=read-failed read=none|observed: class=unregistered keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|directory where a registered file was expected|expected: class=user-modified keep=read-failed read=none|observed: class=user-modified keep=read-failed read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|kind|FIFO as the user-root counterpart of a registered managed file|expected: keep=counterpart-unconfirmed counterpart=unconfirmed removable=false|observed: keep=counterpart-unconfirmed counterpart=unconfirmed removable=false
+    migrate_ownership_boundary_table_test.go:452: TABLE|emptyroot|unregistered ordinary file, rootResolved empty: fail closed|expected: class=unregistered keep=symlink-escape read=none|observed: class=unregistered keep=symlink-escape read=none
+    migrate_ownership_boundary_table_test.go:452: TABLE|emptyroot|registered ordinary file, rootResolved empty: never removable|expected: class=managed keep=symlink-escape read=content|observed: class=managed keep=symlink-escape read=content
+```
+
+#### 회귀와 점검 (저장 파일 `reg-*.txt`, `v-*.txt`)
+
+변경된 시험 파일 (`git diff --name-only cdd72a814..HEAD -- '*_test.go'`, 32개) 의 최상위 시험 이름 집합을 패키지별로 도출했다: `internal/cli` 57, `internal/cli/update/backup` 9, `internal/manifest` 1. 앵커 선택자로 실행:
+
+```text
+reg-cli: ok  	github.com/modu-ai/moai-adk/internal/cli	148.255s rc=0  top-level PASS=57 FAIL=0 SKIP=0
+reg-internal_manifest: ok  	github.com/modu-ai/moai-adk/internal/manifest	0.464s rc=0  top-level PASS=1 FAIL=0 SKIP=0
+reg-internal_cli_update_backup: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.586s rc=0  top-level PASS=9 FAIL=0 SKIP=0
+--- v-build:
+rc=0
+--- v-winbuild:
+rc=0
+--- v-vet (host):
+rc=0
+--- v-winvet:
+rc=0
+--- v-lint (golangci-lint run --new-from-rev=d116f05f44 ./internal/cli/ ./internal/cli/update/backup/):
+0 issues.
+rc=0
+--- invariants:
+$ git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+invariant-exit=0
+$ removalEnabled assignments (non-test)
+internal/cli/migrate_project_assets.go:40:var removalEnabled = false
+$ skip grep over the changed test files (t.Skip / SkipNow / testing.Short)
+internal/cli/migrate_ownership_helpers_test.go:1008:	t.Logf("force=false run=1 skipped=%v", first.Skipped)
+internal/cli/migrate_ownership_helpers_test.go:1009:	if first.Skipped {
+internal/cli/migrate_ownership_symlink_test.go:8:// platform without symlinks; a t.Skip would sweep nothing and read as a pass. A
+$ gofmt -l internal/cli
+gofmt-exit=0
+untracked=0
+```
+
+(스킵 grep 의 세 줄은 이전 chunk 와 같다: `first.Skipped` 결과 필드를 쓰는 두 줄과 `t.Skip` 을 설명하는 주석 한 줄이며 `t.Skip`·`SkipNow`·`testing.Short` 호출은 없다.)
+
+**이번 chunk 의 한계 (정직한 회계).**
+
+1. 회귀는 변경된 시험 파일의 이름 집합이며 패키지 전체 시험이 아니다. 패키지 전체 시험·커버리지·`-race`·Windows 시험 실행은 CI 와 착지 재측정 몫이다 (Windows 는 빌드와 vet 만; 경로 구분자 처리는 `filepath.ToSlash` 로 코드 읽기로만 확인).
+2. 표지의 첫 줄이 실행 id 로 해석되지 않는 경우 (손상된 표지) 는 그대로 복사되고 형제는 비관리 항목이 된다. 원본도 이름으로 센 독립 실행이라 새 위험은 아니며, 해석 규칙이 백업 패키지의 비공개 함수여서 이번에 넓히지 않았다.
+3. `EvalSymlinks` 와 읽기, 종류 확인과 읽기 사이의 경합은 이전 chunk 에서 공개한 한계 그대로다. 권한 오류 (`EACCES`) 가 읽기로 이어지지 않는다는 판단은 root 실행에서 재현할 수 없어 추론이다 (같은 경로 해석이 같은 이유로 실패).
+4. 등록된 파일 경로의 읽기가 경계 검사보다 앞서는 부채와, `disposition` 의 상대 뿌리 동작은 기준 시점부터 있었고 그대로다 (N3, N16 계열). 본 chunk 의 상대 뿌리 정규화는 미등록 경로의 가드에만 적용했다.
+5. 임시 파일 제거와 형제 제거는 최선 노력이다 (비어 있지 않은 디렉터리는 `os.Remove` 가 지우지 않는다).
+6. 코덱스·감사의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다. N4 (E.4 caveat 문구) 는 N1 수정으로 서술이 사실과 일치하게 되었으나 E.4 는 manager-docs 몫이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: d8a5f75053  # code-verification baseline: the last test/code commit (chunk 10 card-review round 4: (B) fix d8a5f75053, (A) fix 848bbc4707; chunk 9 fa26fcaf17); the evidence commit that carries this block follows it
+run_commit_sha: 1003a9edd4  # code-verification baseline: the last test/code commit (chunk 11 delta-audit repair: boundary fix 1003a9edd4, N2 fix 90296319b4, N1 fix dcbafe568c; chunk 10 d8a5f75053); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -3753,8 +3955,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 46  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 30 test files, 15 Go sources, 1 data file (chunk 9 added 3 test files; chunk 10 added 3 test files and edited 3 Go sources already counted)
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56
+total_run_phase_files: 48  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 32 test files, 15 Go sources, 1 data file (chunk 11 added 2 test files and edited 4 Go sources already counted)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56; chunk 11 delta-audit repair: N1 A ef45c82cc9, C dcbafe568c; N2 A 2cd11e520e, C 90296319b4; boundary table A d122d6794e, C 1003a9edd4; record 5aa3de1348
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
@@ -3790,7 +3992,7 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 | N4 잔여 (전체 트리 동일 요구 철회 뒤 센티널이 못 보는 것) | **처분됨 (시험이 닿는 데까지), 못 보는 것은 공개** | M8 기록 관측 3: E 안의 차이는 복원 영역 R (매니페스트) 의 바이트 비교, 실행 백업 배치 비교 (통제 실행 + 정확히 제거 자산 사본), 로그/상태 경로 집합 비교로, 파일 모드는 스냅샷 서술자와 R 의 `(i-mode)`, `(iii-mode)` 로 닫았다. 못 보는 것: 로그/상태 안의 내용 차이, 디렉터리 mtime·xattr·소유자, 프로젝트 밖 쓰기. 시험 안 변이 열여섯과 운영 코드 변이 넷으로 붉음을 관측 |
 | N14 세대 간 우선순위 | 처분됨 (chunk 1) | 레코드를 가진 가장 새 세대가 결정한다 (보존 방향). 시험 `n14-newest-incomplete-older-complete` + 변이 `older-gen-outvotes` |
 | N15 `DeployedHash` 일치 허용 | 처분됨 (chunk 1, 리더 승인) | 비교를 `TemplateHash` 하나로 좁혔다 (등록 경로와 같게). design.md D-2 의 「(또는 DeployedHash)」 문구보다 엄격한 편차로 이미 보고 |
-| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 이 부채는 상위 디렉터리가 링크인 형태에도 똑같이 적용된다 (chunk 10 (A) 가 등록 안 된 경로의 상위 링크 형태를 `pathLeavesRoot` 로 닫았다). 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
+| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 이 부채는 상위 디렉터리가 링크인 형태에도 똑같이 적용된다 (chunk 10 (A) 가 등록 안 된 경로의 상위 링크 형태를 `pathLeavesRoot` 로 닫았다). 같은 부채가 업데이트 명령의 상대 뿌리 `"."` 에서 절대 경로 대상 링크의 `disposition` 해석에도 적용된다 (chunk 11 은 미등록 경로의 가드에만 상대 뿌리 정규화를 적용했다). 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
 | N17 「트리 해시」 가 내용만임을 밝히지 않음 | **처분됨** | AC-OWR-15/-17/-18 시험 파일 머리 주석 (AC-OWR-17/-18 은 시험 로그 첫 줄에도) 이 비교하는 해시를 내용만 (경로, 바이트, 모드, 디렉터리 존재) 이라고 밝히고, 디렉터리 mtime·시계 값은 비교하지 않으며 서로 다른 두 실행을 비교할 때 `deployed_at` 만 가린다고 적었다 |
 | N18 AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음 | **처분됨 (SPEC 문구 결함으로 공개, 본문 미수정)** | (a) 는 새 `manifest.prior.json` 이 실패하는 사례이므로 조건 (ii) 가 구조상 성립할 수 없다. 시험 `a-prior-manifest-copy-fails` 는 조건 (i)(iii) 에 해당하는 것으로 쓰기 대역이 정확히 한 번 불림 (Backup 단계 도달) 과 후보별 `backup-failed` 행을 단언하고, `b-candidate-bytes-copy-fails` 는 `rc.priorManifest == priorManifestWritten` 으로 (ii) 를 단언한다. 의도는 When 절의 괄호가 담는다 |
 | N19 `.moai/config` 가 없을 때 사본 위치 | 처분됨 (chunk 1) | `preservePriorManifest` 가 설정 백업이 디렉터리를 만들지 않았으면 새 실행 디렉터리를 만든다. 시험 「a fresh run directory when the config backup made none」 |
