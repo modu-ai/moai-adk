@@ -19,39 +19,39 @@ P-PRO = 'docs-site/content/*/advanced/profile-matrix.md'
 ### A.2 Command form
 
 - Every command runs from the card worktree root. `git` stands at the head of a plain pipeline or of a `&&` / `||` chain, never inside `$(...)` or `<(...)`, because the worktree-session guard refuses those forms.
-- A verdict word (`MATCH` / `NOMATCH`, `UNCHANGED` / `CHANGED`) comes from `&& echo ... || echo ...`, because the Bash tool does not display the exit status of a command that prints nothing. A count or a path list is read directly.
+- A quiet check (`git grep -q`, `git diff --quiet`) is followed by `; echo "exit=$?"`, because the Bash tool does not display the exit status of a command that prints nothing. The three outcomes stay distinct: `exit=0` means a match (or a difference), `exit=1` means none, and `exit=128` or any other value means git failed. A failure is never read as "no match". A count or a path list is read directly.
 - Commands live in fenced blocks, never in table cells, so an alternation `|` is a regex alternation.
 - The left end `main` in `main...HEAD` is deliberately not pinned: the claim is about this card's own contribution, so the left end is the merge-base with the absorbed local `main`, recomputed at read time. It cannot be used after the card has merged into `main`.
 
 ### A.3 Classification
 
-AC-PRC-001-001 and AC-PRC-001-002 are release-blocking and flip from red to green. AC-PRC-001-003 to AC-PRC-001-005 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known historical input that turns the same form red.
+AC-PRC-001-001 is release-blocking and flips from red to green. AC-PRC-001-002 is release-blocking under branch (a), where it flips from red to green, and a regression-guard under branch (b), where it is true at the pin. AC-PRC-001-003 and AC-PRC-001-004 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known historical input that turns the same form red. AC-PRC-001-005 mixes both: its FLAG and factory-mode checks are preservation, while its bas-navigator bound (non-empty edit within the unit) and dangling-step check flip from red to green at M2 and carry their controls.
 
 ## B. Acceptance criteria
 
 | AC | Requirement | Depends on | Class | RED-now or control | Green path |
 |----|-------------|------------|-------|--------------------|------------|
 | AC-PRC-001-001 | REQ-PRC-001-001 | Q13, Q17 | release-blocking | E-SWA-2, E-SWA-3 (4 matches, RED) | M2 |
-| AC-PRC-001-002 | REQ-PRC-001-002 | Q-SWA-1, Q13, Q17 | release-blocking | E-SWA-2, E-SWA-3 (8 matches, RED under branch a); E-SWA-11 (control, branch b) | M3 |
+| AC-PRC-001-002 | REQ-PRC-001-002 | Q-SWA-1, Q13, Q17 | release-blocking under (a); regression-guard under (b) | E-SWA-2, E-SWA-3 (8 matches, RED under branch a); E-SWA-11 (control, branch b) | M3 |
 | AC-PRC-001-003 | REQ-PRC-001-003 | Q17 | preservation | E-SWA-12 (control) | M2, M3 |
 | AC-PRC-001-004 | REQ-PRC-001-004 | none | preservation | E-SWA-7 (control) | M5 |
-| AC-PRC-001-005 | REQ-PRC-001-004 | none | preservation | E-SWA-13 (control) | M4, M5 |
+| AC-PRC-001-005 | REQ-PRC-001-004 | Q-SWA-1 (bounds on the Class N files) | preservation and release-blocking | E-SWA-13, E-SWA-14 (controls) | M2, M3, M4, M5 |
 
 ### AC-PRC-001-001 — the Class C lines are gone
 
 AC-PRC-001-001 maps REQ-PRC-001-001.
 
-- **Given** the sweep tip is `HEAD` of the card branch and Q13 carries a verdict,
+- **Given** the sweep tip is `HEAD` of the card branch and Q13 carries an operator verdict,
 - **When** these three commands run,
-- **Then** the first two print `NOMATCH` and the third prints exactly four paths.
+- **Then** the first two print `exit=1` and the third prints exactly four paths.
 
 ```
-git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md' && echo MATCH || echo NOMATCH
-git grep -q -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md' && echo MATCH || echo NOMATCH
+git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'; echo "exit=$?"
+git grep -q -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'; echo "exit=$?"
 git ls-files -- 'docs-site/content/*/advanced/bas-navigator.md'
 ```
 
-The third command is the swept-set control: a pass over an empty set asserts nothing, and deleting the files would otherwise satisfy the first two. RED-now at the pin: E-SWA-2 prints four `bas-navigator.md` lines ending `:1`, and E-SWA-4 prints `MATCH`.
+The third command is the swept-set control: a pass over an empty set asserts nothing. It does not stop a page from being emptied; the per-file bounds of AC-PRC-001-005 do. RED-now at the pin: E-SWA-2 prints four `bas-navigator.md` lines ending `:1`, and E-SWA-4 prints `exit=0`.
 
 ### AC-PRC-001-002 — the Class N lines match the Q-SWA-1 verdict
 
@@ -59,13 +59,13 @@ AC-PRC-001-002 maps REQ-PRC-001-002.
 
 **Branch (a): Q-SWA-1 treats the eight lines as stale citations.**
 
-- **Given** the verdict is (a),
+- **Given** the verdict is (a) (a1 or a2),
 - **When** these three commands run,
-- **Then** the first two print `NOMATCH` and the third prints exactly eight paths.
+- **Then** the first two print `exit=1` and the third prints exactly eight paths.
 
 ```
-git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md' && echo MATCH || echo NOMATCH
-git grep -q -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md' && echo MATCH || echo NOMATCH
+git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"
+git grep -q -E "(^|[^/])moai[[:space:]]+(cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"
 git ls-files -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'
 ```
 
@@ -75,14 +75,14 @@ RED-now at the pin: E-SWA-2 prints eight lines for these two pages, each ending 
 
 - **Given** the verdict is (b),
 - **When** these two commands run,
-- **Then** the first prints exactly eight lines, each ending `:1`, and the second prints `UNCHANGED`.
+- **Then** the first prints exactly eight lines, each ending `:1`, and the second prints `exit=0` (no difference).
 
 ```
 git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'
-git diff --quiet main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md' && echo UNCHANGED || echo CHANGED
+git diff --quiet main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"
 ```
 
-Branch (b) is true at the pin. E-SWA-11 is its control: the second command prints `CHANGED` on a commit that does change these pages.
+Branch (b) is true at the pin. E-SWA-11 is its control: the second command prints `exit=1` on a commit that does change these pages. Under (a), AC-PRC-001-005 bounds how much of each file may change.
 
 ### AC-PRC-001-003 — the three pages change in all four locales or in none
 
@@ -114,26 +114,30 @@ git diff --name-only main...HEAD -- . ':!docs-site/content/*/advanced/bas-naviga
 
 Control (E-SWA-7): the same exclusion form over the range of commit 84f9387535 prints nine paths, so the form does print when something outside the list changes. At plan time the command prints nothing, which is the expected state before any edit.
 
-### AC-PRC-001-005 — no line owned by another card is touched
+### AC-PRC-001-005 — every change stays inside its edit unit
 
-AC-PRC-001-005 maps REQ-PRC-001-004.
+AC-PRC-001-005 maps REQ-PRC-001-004. The edit units and their bounds are the table in plan.md §A.2; this criterion measures them for all twelve files, so a page cannot be emptied, and deleting only the target rows cannot pass.
 
-- **Given** the sweep tip,
-- **When** these four commands run,
-- **Then** the first prints nothing; the second prints nothing under Q-SWA-1 (b) or `4` under (a); the third prints nothing under (b) or four numstat lines whose second column is `1` under (a); the fourth prints nothing under (b) or `4` under (a).
+- **Given** the sweep tip and the Q-SWA-1 verdict,
+- **When** these commands run (the last one once per locale: ko, en, ja, zh),
+- **Then** command 1 prints nothing; command 2 prints four numstat lines, one per locale, each with removed in 2 to 4 and added in 0 to 3 (empty output is red: the Class C pair must be gone); command 3 prints nothing under Q-SWA-1 (b), or under (a) four lines each with removed `1` and added `0` or `1`; command 4 prints nothing under (b), or under (a) four lines each with removed in 1 to 4 and added in 0 to 4; command 5 prints nothing under (b) or `4` under (a); command 6 prints a line that does not begin with `# 3)`.
 
 ```
 git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^[-+].*(--factory-run|--clear-policy)"
-git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^@@"
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'
 git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md'
-git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^-[^-]"
+git diff --numstat main...HEAD -- 'docs-site/content/*/advanced/profile-matrix.md'
+git diff -U0 main...HEAD -- 'docs-site/content/*/advanced/factory-mode.md' | rg -c "^@@"
+git show HEAD:docs-site/content/<locale>/advanced/bas-navigator.md | awk '/^```bash/ && !b {b=1; next} b && /^```/ {print last; exit} b && NF {last=$0}'
 ```
 
-The first command keeps the sweep off the `--factory-run` and `--clear-policy` lines that card t1726 owns. The other three confine the sweep's edit to the one "Refused forms" row per locale, which is what keeps it clear of the lines card t1863 adds next to it. Controls (E-SWA-13): over the range of commit 84f9387535 the first command prints `8`; over the range of commit 449b1c9931 the hunk count prints `8`, the numstat prints `2 2` per file, and the removed-line count prints `8`.
+Command 1 keeps the sweep off the `--factory-run` and `--clear-policy` lines that card t1726 owns. Commands 3 and 5 confine the factory-mode edit to the one "Refused forms" row per locale, which keeps it clear of the lines card t1863 adds next to it. Commands 2 to 4 are the per-file bounds. Command 6 prints the last non-blank line of the page's first bash block; a step-3 comment left without its command prints `# 3) ...` and fails, while a deleted or replaced pair does not. Mutants this closes: blanking any of the twelve pages exceeds the removed-line bound; deleting only the target lines in `bas-navigator.md` removes the comment or the command alone, which leaves `# 3)` last in the block; leaving a page untouched fails command 2 (bas-navigator) or the AC-PRC-001-002 absence check. Reading the line-65 sentence stays a reviewer read.
+
+Controls (E-SWA-13, E-SWA-14): over the range of commit 84f9387535 command 1 prints `8`; over the range of commit 449b1c9931 command 5 prints `8` and command 3 prints `2 2` per file (outside the bound); over the range of commit 948a565e8f command 2 prints `1 1` per file (below the lower bound, so empty and one-line edits are red); over the range of commit 5f4f199efd command 4 prints `113 131`, `38 111`, `79 101`, `38 111` (above the upper bound); fed a block whose last line is a bare step-3 comment, command 6 prints that comment.
 
 ## C. Evidence ledger
 
-Each entry gives the command, the observed output (verbatim unless marked), and the tree it read. "No failure shown" means the Bash tool displayed no error status, which on a command that prints nothing does not distinguish exit 0 from exit 1; where that matters, the entry uses a verdict-word wrapper.
+Each entry gives the command, the observed output (verbatim unless marked), and the tree it read. "No failure shown" means the Bash tool displayed no error status, which on a command that prints nothing does not distinguish exit 0 from exit 1; where that matters, the entry uses the explicit `; echo "exit=$?"` form of §A.2 (E-SWA-0 and E-SWA-8 were run earlier with an `&& echo ... || echo ...` wrapper and are unchanged).
 
 ### E-SWA-0 — pin and tool provenance
 
@@ -179,11 +183,11 @@ Command: the same as E-SWA-2 with `W01` in place of `E01`. Output: the same twel
 
 ### E-SWA-4 — RED-now verdict word for AC-PRC-001-001
 
-Command: `git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" 2bcce5d9dc -- 'docs-site/content/*/advanced/bas-navigator.md' && echo MATCH || echo NOMATCH`. Output: `MATCH`.
+Command: `git grep -q -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" 2bcce5d9dc -- 'docs-site/content/*/advanced/bas-navigator.md'; echo "exit=$?"`. Output: `exit=0` (a match).
 
 ### E-SWA-5 — the other umbrella families are silent on the twelve files
 
-Command: `git grep -q -E "(^|[^/])moai (codex (job|task|setup)|todo (rename|pick)|spec list)|(^|[^/])moai (run|sync) SPEC-ID|/moai[: ](design|issue|bug|fb|init|brain|relationship)([^[:alnum:]-]|$)" 2bcce5d9dc -- 'docs-site/content/*/advanced/bas-navigator.md' 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md' && echo MATCH || echo NOMATCH`. Output: `NOMATCH`. Control, the same pattern over `docs-site/content/en/guides/mcp-server.md` at the same tree: `MATCH`, so the combined pattern fires where the families do occur.
+Command: `git grep -q -E "(^|[^/])moai (codex (job|task|setup)|todo (rename|pick)|spec list)|(^|[^/])moai (run|sync) SPEC-ID|/moai[: ](design|issue|bug|fb|init|brain|relationship)([^[:alnum:]-]|$)" 2bcce5d9dc -- 'docs-site/content/*/advanced/bas-navigator.md' 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"`. Output: `exit=1` (no match). Control, the E-02 part of the same pattern over `docs-site/content/en/guides/mcp-server.md` at the same tree: `exit=0`, so the combined pattern fires where the families do occur.
 
 ### E-SWA-6 — CLI surface and source corroboration
 
@@ -250,7 +254,7 @@ Commands: `moai decision read --scope card:t1655 --project-root /Users/goos/MoAI
 
 ### E-SWA-11 — control for AC-PRC-001-002 branch (b)
 
-Command: `git diff --quiet 84f9387535~1 84f9387535 -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md' && echo UNCHANGED || echo CHANGED`. Output: `CHANGED`. The same form over `main...HEAD` at plan time prints `UNCHANGED`.
+Command: `git diff --quiet 84f9387535~1 84f9387535 -- 'docs-site/content/*/advanced/factory-mode.md' 'docs-site/content/*/advanced/profile-matrix.md'; echo "exit=$?"`. Output: `exit=1` (the pages differ). The same form over `main...HEAD` at plan time prints `exit=0`.
 
 ### E-SWA-12 — control for AC-PRC-001-003
 
@@ -266,6 +270,18 @@ git diff -U0 449b1c9931~1 449b1c9931 -- 'docs-site/content/*/advanced/factory-mo
 ```
 
 At plan time the same four commands over `main...HEAD` print nothing, the expected state before any edit.
+
+### E-SWA-14 — controls for the per-file bounds and the dangling-step check
+
+```
+git diff --numstat 948a565e8f~1 948a565e8f -- 'docs-site/content/*/advanced/bas-navigator.md'   -> 1 1 <path>   (one line per locale; below the 2-to-4 removed bound)
+git diff --numstat 5f4f199efd~1 5f4f199efd -- 'docs-site/content/*/advanced/profile-matrix.md'   -> 113 131 en, 38 111 ja, 79 101 ko, 38 111 zh   (above the 1-to-4 bound)
+git show HEAD:docs-site/content/en/advanced/bas-navigator.md | awk '<command 6 of AC-PRC-001-005>'   -> moai codemaps   (at the plan-time tree, last line of the first bash block)
+printf '```bash\n# 2) x\ncmd\n\n# 3) Rebuild the graph\n```\n' | awk '<command 6>'   -> # 3) Rebuild the graph   (a dangling step comment is printed)
+git grep -n -E "^# 3\)" HEAD -- 'docs-site/content/*/advanced/bas-navigator.md'   -> 12 lines: line 74, 97, 135 in each locale (`# 3)` also opens later blocks, so the check is scoped to the first block)
+```
+
+At plan time commands 2 to 4 of AC-PRC-001-005 over `main...HEAD` print nothing, which is red for command 2 by design and the expected state for commands 3 and 4 before any edit.
 
 ## D. Gaps and residual risk
 
@@ -283,6 +299,6 @@ At plan time the same four commands over `main...HEAD` print nothing, the expect
 ## E. Definition of Done
 
 - AC-PRC-001-001 and AC-PRC-001-002 print their expected output at the sweep tip, and their results are carried into `.moai/reports/t1721/verdict.md` with the command and the deciding lines.
-- AC-PRC-001-003 to AC-PRC-001-005 print their expected output at the sweep tip.
-- Q17 and Q-SWA-1 carry an operator verdict, and Q13 carries its verdict, before the first file edit.
+- AC-PRC-001-003 to AC-PRC-001-005 print their expected output at the sweep tip, including the per-file bounds and the dangling-step check of AC-PRC-001-005.
+- Q13, Q17, and Q-SWA-1 each carry an operator verdict before the first file edit (the gate set is stated in decision-index.md, Gate).
 - The umbrella's closing measurement is not part of this Definition of Done; it is the umbrella's M6.

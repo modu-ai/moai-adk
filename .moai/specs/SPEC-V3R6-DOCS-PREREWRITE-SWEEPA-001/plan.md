@@ -28,6 +28,16 @@ Per-line inventory. The `Context` column is what the run phase must read before 
 
 Totals: per page 4, 4, 4; per locale 3, 3, 3, 3; Class C 4, Class N 8. Line numbers are coordinates at the pin and move (R1); a hit is identified by its content.
 
+**Edit units.** The hit is the trigger, the edit unit is what may change. This table is the single statement of the allowed edit; spec.md Scope and REQ-PRC-001-004 point here, and the per-file numstat bounds in acceptance.md AC-PRC-001-005 are derived from it.
+
+| Page | Edit unit per locale (lines at the pin) | Removed lines | Added lines |
+|------|------------------------------------------|---------------|-------------|
+| bas-navigator | The step-3 comment (line 74) and the `moai codemaps` command (line 75), as a pair: both deleted, or both replaced. May also remove the blank line 73 before the step and reword the one sentence at line 65 that announces the rebuild. No other line. | 2 to 4 | 0 to 3 |
+| factory-mode | The one "Refused forms" table row (line 56): deleted, or reworded in place. | exactly 1 | 0 or 1 |
+| profile-matrix | The sentence that holds the match (en 95 to 98, ko 88 to 90, ja 53, zh 53): reworded, or the clause deleted. | 1 to 4 | 0 to 4 |
+
+For bas-navigator the line-74 and line-75 pair must leave together. A step comment without its command, or a command without its comment, is the dangling remainder that AC-PRC-001-005 catches. The profile-matrix and factory-mode rows apply only under Q-SWA-1 option (a); under option (b) those eight files do not change.
+
 ### A.3 CLI surface check of each cited form
 
 Probes use the installed build (A.4). Source corroboration reads the tree at the pin.
@@ -54,17 +64,17 @@ The installed `moai` reports `moai_cp/20261007_195927-1888-g7705b365e2`, built 2
 
 ## B. Milestones (ordered by likelihood of change; mechanical steps last)
 
-- **M1 (Priority High): close the decision gate.** Q17 and Q-SWA-1 need operator verdicts; Q13 already carries its default (decision-index.md, verdict-state table). No file changes before M1 closes. M3 waits on Q-SWA-1 only.
-- **M2 (Priority High): Class C edit.** Apply the Q13 disposition to the four `bas-navigator.md` files, one disposition in all four locales (Q17). Read the prose sentence at line 65 and the lines around the edit in each locale, and keep the page coherent after the step is gone or replaced (R2).
-- **M3 (Priority Medium): Class N edit, or none.** If Q-SWA-1 brings the eight lines in scope, apply Q13 to the `factory-mode.md` row and the `profile-matrix.md` clause in all four locales. Rewording in ko, ja, and zh follows the native-idiom rule inline; these are clause-level edits, not a heavy artifact. If Q-SWA-1 retains them, no file changes in this milestone and acceptance.md lists the eight lines.
+- **M1 (Priority High): close the decision gate.** Done when Q13, Q17, and Q-SWA-1 each carry an operator verdict; the gate set is stated in decision-index.md (Gate) and not here. No tracked file outside this SPEC directory changes before M1 closes.
+- **M2 (Priority High): Class C edit.** Edit the four `bas-navigator.md` files within their edit unit (§A.2), one disposition in all four locales. Read the sentence at line 65 and the lines around the pair in each locale, and keep the page coherent after the step is gone or replaced (R2).
+- **M3 (Priority Medium): Class N edit, or none.** If the Q-SWA-1 verdict is option (a), edit the `factory-mode.md` row and the `profile-matrix.md` sentence in all four locales within their edit units, reworded or deleted as the verdict states. Rewording in ko, ja, and zh follows the native-idiom rule inline; these are clause-level edits, not a heavy artifact. Q13 does not govern these lines. If the verdict is option (b), no file changes in this milestone and acceptance.md lists the eight lines.
 - **M4 (Priority High before landing): sequencing re-verification.** Re-run the ancestry probes of acceptance.md E-SWA-8 against current `main`. If commit 84f9387535 has landed, re-run AC-PRC-001-005 on the merged tree. If card t1726 has landed, re-read the surrounding lines of `factory-mode.md` by content.
 - **M5 (Priority Medium): verification.** Run the AC commands of acceptance.md §B from the card worktree root and carry the deciding output into the verdict file (`.moai/reports/t1721/verdict.md`), not into scratch.
 
 ## C. Risks
 
 - **R1, moving coordinates.** Among the 25 most recent commits touching these three pages, 18 changed `factory-mode.md`, 5 changed `profile-matrix.md`, none changed `bas-navigator.md`, and 3 were merges listing no file (E-SWA-8). Line 56 can move before the run phase starts. Every check keys on content.
-- **R2, prose adjacency in bas-navigator.** Line 65 announces the rebuild in all four locales. Removing step 3 leaves that sentence promising something the block no longer shows; the edit must keep the page coherent without adding new prose beyond the mechanical need.
-- **R3, information lost by deleting a Class N line.** The factory row is where that page tells the reader that GPT models run through `moai codex`; deleting the row removes that sentence from the page. Rewording keeps it.
+- **R2, prose adjacency in bas-navigator.** Line 65 announces the rebuild in all four locales. Removing step 3 leaves that sentence promising something the block no longer shows. The edit unit (§A.2) therefore includes that one sentence, so the edit may reword it; it may add no new prose beyond the mechanical need. The dangling comment is machine-checked (AC-PRC-001-005); the sentence is a reviewer read.
+- **R3, information lost by deleting a Class N line.** Deleting the factory row removes the only sentence on the en page (the other locales were not checked) that tells the reader that GPT models run through `moai codex`; rewording keeps it, together with the `moai migrate cg` pointer. The choice between the two is an explicit option of Q-SWA-1.
 - **R4, the umbrella's closing check.** If Q-SWA-1 is answered "retained", the umbrella's closing check (E-01 exits 1 with empty stdout) and the GATE checker must admit the same eight lines. That is an amendment outside this SPEC.
 - **R5, installed-build lag.** The CLI probes rest on a build 48 commits behind the tree (A.4).
 - **R6, merge with card t1863.** The two ranges are disjoint with one unchanged blank line between them (E-SWA-8). No trial merge was made, so a clean merge is expected, not observed.

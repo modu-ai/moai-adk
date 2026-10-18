@@ -5,10 +5,11 @@ Card t1721, child SWEEPA of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001. Only §E.1 ca
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-18T17:38:13Z
+plan_complete_at: 2026-10-18T17:57:30Z
+plan_revision: 0.2.0 (after plan audit iteration 1, FAIL 0.69 on c751694272)
 measured_tree: 2bcce5d9dc4c5f57bb98bcfa553e0061fa373681
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M)
-open_decision_rows: see decision-index.md (verdict-state table)
+open_decision_rows: Q13, Q17, Q-SWA-1 (decision-index.md, Gate)
 
 ## §E.2 Run-phase Evidence
 
