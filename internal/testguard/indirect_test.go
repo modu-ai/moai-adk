@@ -328,6 +328,101 @@ func TestIndirect_RawStringGlobalFlagIsASink(t *testing.T) {
 	wantFlagged(t, indirectScan(t, prod, map[string]string{"x_test.go": test}), test, "TestRuns")
 }
 
+// restoreFixture runs body inside a test that reaches materialize, which
+// reaches both global seams of indirectProd.
+func restoreFixture(body string) string {
+	return "package fx\n\nimport \"testing\"\n\nfunc TestRestoreShape(t *testing.T) {\n" + body + "\n\t_, _ = materialize(\"x\", nil)\n}\n"
+}
+
+// TestIndirect_RestoresOutsideCleanupAreNotSwaps (F1): a deferred restore, a
+// self-assignment, and a restore of a captured original replace nothing.
+func TestIndirect_RestoresOutsideCleanupAreNotSwaps(t *testing.T) {
+	cases := map[string]string{
+		"defer_restore": "\toldAdd, oldGet := safeDirAdd, globalGet\n\tdefer func() { safeDirAdd = oldAdd; globalGet = oldGet }()",
+		"self_assign":   "\tsafeDirAdd = safeDirAdd\n\tglobalGet = globalGet",
+		"captured":      "\toldAdd := safeDirAdd\n\toldGet := globalGet\n\tsafeDirAdd = oldAdd\n\tglobalGet = oldGet",
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			src := restoreFixture(body)
+			wantFlagged(t, indirectScan(t, indirectProd, map[string]string{"x_test.go": src}), src, "TestRestoreShape")
+		})
+	}
+	// A real replacement with a deferred restore is still a swap.
+	ok := restoreFixture("\toldAdd, oldGet := safeDirAdd, globalGet\n\tdefer func() { safeDirAdd = oldAdd; globalGet = oldGet }()\n" +
+		"\tsafeDirAdd = func(string) error { return nil }\n\tglobalGet = func(string) string { return \"\" }")
+	if vs := indirectScan(t, indirectProd, map[string]string{"x_test.go": ok}); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: both seams are replaced", vs)
+	}
+}
+
+// TestIndirect_FieldMustReachTheHelperCall (F2): a literal that sets a field is
+// credited only when it is the helper call's argument, directly or through a
+// local variable. An unrelated literal elsewhere in the test is not.
+func TestIndirect_FieldMustReachTheHelperCall(t *testing.T) {
+	stub := "func(string) error { return nil }"
+	get := "func(string) string { return \"\" }"
+	both := "seamArgs{safeDirAdd: " + stub + ", globalGet: " + get + "}"
+	scan := func(body string) []Violation {
+		return indirectScan(t, indirectProd, map[string]string{"x_test.go": restoreFixture(body), "helper_test.go": swapArgsHelperSrc})
+	}
+	unrelated := scan("\tswapSeams(t, seamArgs{})\n\t_ = seamArgs{safeDirAdd: " + stub + ", globalGet: " + get + "}")
+	wantFlagged(t, unrelated, restoreFixture("\tswapSeams(t, seamArgs{})\n\t_ = seamArgs{safeDirAdd: "+stub+", globalGet: "+get+"}"), "TestRestoreShape")
+	if vs := scan("\tswapSeams(t, " + both + ")"); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: the literal is the call argument", vs)
+	}
+	if vs := scan("\targs := " + both + "\n\tswapSeams(t, args)"); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: the literal reaches the call through a local", vs)
+	}
+}
+
+// TestIndirect_IsolationWalkHonorsTheDispatchBound (F3): a helper that only a
+// dispatch table references does not isolate a test that never calls it.
+func TestIndirect_IsolationWalkHonorsTheDispatchBound(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package fx\n\nimport \"testing\"\n\nfunc isolateAll(t *testing.T) {\n\tsafeDirAdd = func(string) error { return nil }\n\tglobalGet = func(string) string { return \"\" }\n}\n\n")
+	b.WriteString("var table = []func(*testing.T){\n\tisolateAll,\n")
+	for i := 0; i < dispatchFanOut+1; i++ {
+		fmt.Fprintf(&b, "\tfiller%d,\n", i)
+	}
+	b.WriteString("}\n\n")
+	for i := 0; i < dispatchFanOut+1; i++ {
+		fmt.Fprintf(&b, "func filler%d(*testing.T) {}\n", i)
+	}
+	b.WriteString("\nfunc TestUsesTable(t *testing.T) {\n\t_ = table\n\t_, _ = materialize(\"x\", nil)\n}\n")
+	src := b.String()
+	wantFlagged(t, indirectScan(t, indirectProd, map[string]string{"x_test.go": src}), src, "TestUsesTable")
+}
+
+// TestIndirect_EscapedGlobalFlagIsASink (F4): the flag spelled with escapes
+// still holds the value --global, so the package is scanned.
+func TestIndirect_EscapedGlobalFlagIsASink(t *testing.T) {
+	test := "package fx\n\nimport \"testing\"\n\nfunc TestRuns(t *testing.T) { _ = run() }\n"
+	for name, lit := range map[string]string{"hex": `"\x2d-global"`, "all_escaped": `"\x2d\x2d\x67lobal"`} {
+		t.Run(name, func(t *testing.T) {
+			prod := "package fx\n\nimport \"os/exec\"\n\nfunc run() error { return exec.Command(\"git\", \"config\", " + lit + ", \"--list\").Run() }\n"
+			wantFlagged(t, indirectScan(t, prod, map[string]string{"x_test.go": test}), test, "TestRuns")
+		})
+	}
+}
+
+// TestIndirect_OnlyGitIsASink (F5): another program given the same words is not
+// a git config write; a path whose base is git is.
+func TestIndirect_OnlyGitIsASink(t *testing.T) {
+	test := "package fx\n\nimport \"testing\"\n\nfunc TestRuns(t *testing.T) { _ = run() }\n"
+	prodFor := func(call string) string {
+		return "package fx\n\nimport (\n\t\"context\"\n\t\"os/exec\"\n)\n\nvar _ = context.Background\n\nfunc run() error { return " + call + ".Run() }\n"
+	}
+	if vs := indirectScan(t, prodFor("exec.Command(\"echo\", \"config\", \"--global\")"), map[string]string{"x_test.go": test}); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: echo is not git", vs)
+	}
+	if vs := indirectScan(t, prodFor("exec.CommandContext(context.Background(), \"echo\", \"config\", \"--global\")"), map[string]string{"x_test.go": test}); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: echo is not git (CommandContext)", vs)
+	}
+	wantFlagged(t, indirectScan(t, prodFor("exec.Command(\"/usr/bin/git\", \"config\", \"--global\")"), map[string]string{"x_test.go": test}), test, "TestRuns")
+	wantFlagged(t, indirectScan(t, prodFor("exec.CommandContext(context.Background(), \"git\", \"config\", \"--global\")"), map[string]string{"x_test.go": test}), test, "TestRuns")
+}
+
 // dispatchProd builds a command tree of n handlers; the first one reaches the
 // global git config sink and the others do nothing.
 func dispatchProd(n int) string {

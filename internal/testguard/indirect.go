@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/scanner"
 	"go/token"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -55,10 +57,11 @@ type gnode struct {
 	refs    map[string]bool
 	assigns map[string]bool // names assigned a replacement in this body; test files only
 	// guarded maps a seam to the parameter fields it is assigned from
-	// (seam = s.field); passes holds the struct fields this body sets to a
-	// non-nil value in a composite literal. Test files only.
+	// (seam = s.field); calls maps a called function name to the struct fields
+	// set to a non-nil value in a composite literal that is an argument of that
+	// call. Test files only.
 	guarded  map[string]map[string]bool
-	passes   map[string]bool
+	calls    map[string]map[string]bool
 	sink     bool
 	varLike  bool
 	isolates bool // test files only
@@ -69,7 +72,7 @@ type pkgGraph struct{ nodes map[string]*gnode }
 func (g *pkgGraph) node(name string) *gnode {
 	n := g.nodes[name]
 	if n == nil {
-		n = &gnode{refs: map[string]bool{}, assigns: map[string]bool{}, guarded: map[string]map[string]bool{}, passes: map[string]bool{}}
+		n = &gnode{refs: map[string]bool{}, assigns: map[string]bool{}, guarded: map[string]map[string]bool{}, calls: map[string]map[string]bool{}}
 		g.nodes[name] = n
 	}
 	return n
@@ -115,6 +118,27 @@ func hasStringArg(call *ast.CallExpr, want string) bool {
 		}
 	}
 	return false
+}
+
+// gitProgram reports whether call, a Command (ctxArg false) or CommandContext
+// (ctxArg true), runs a program whose literal name has the base git.
+func gitProgram(call *ast.CallExpr, ctxArg bool) bool {
+	i := 0
+	if ctxArg {
+		i = 1
+	}
+	if len(call.Args) <= i {
+		return false
+	}
+	lit, ok := call.Args[i].(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return false
+	}
+	s, err := strconv.Unquote(lit.Value)
+	if err != nil {
+		return false
+	}
+	return strings.TrimSuffix(path.Base(strings.ReplaceAll(s, `\`, "/")), ".exe") == "git"
 }
 
 // scanIndirect builds the name graph of one package directory (file name to
@@ -169,16 +193,22 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 		file := parsed[name]
 		isTest := strings.HasSuffix(name, "_test.go")
 		imports := importNames(file)
-		// cleanups holds the extent of every closure handed to a Cleanup call.
+		// cleanups holds the extent of every closure handed to a Cleanup call
+		// and of every closure a defer statement runs.
 		var cleanups [][2]token.Pos
 		ast.Inspect(file, func(n ast.Node) bool {
-			if call, ok := n.(*ast.CallExpr); ok {
-				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Cleanup" {
-					for _, a := range call.Args {
+			switch x := n.(type) {
+			case *ast.CallExpr:
+				if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Cleanup" {
+					for _, a := range x.Args {
 						if lit, ok := a.(*ast.FuncLit); ok {
 							cleanups = append(cleanups, [2]token.Pos{lit.Pos(), lit.End()})
 						}
 					}
+				}
+			case *ast.DeferStmt:
+				if lit, ok := x.Call.Fun.(*ast.FuncLit); ok {
+					cleanups = append(cleanups, [2]token.Pos{lit.Pos(), lit.End()})
 				}
 			}
 			return true
@@ -235,6 +265,92 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				}
 				return ""
 			}
+			// restore reports whether storing rhs into seam puts back a value the
+			// seam already held: the seam itself, or a local captured from a
+			// package variable.
+			restore := func(seam string, rhs ast.Expr) bool {
+				id, ok := rhs.(*ast.Ident)
+				if !ok {
+					return false
+				}
+				if id.Name == seam {
+					return true
+				}
+				if id.Obj == nil || !local(id) {
+					return false
+				}
+				var lhs, vals []ast.Expr
+				switch d := id.Obj.Decl.(type) {
+				case *ast.AssignStmt:
+					lhs, vals = d.Lhs, d.Rhs
+				case *ast.ValueSpec:
+					for _, nm := range d.Names {
+						lhs = append(lhs, nm)
+					}
+					vals = d.Values
+				}
+				if len(lhs) != len(vals) {
+					return false
+				}
+				for j, l := range lhs {
+					if li, ok := l.(*ast.Ident); ok && li.Obj == id.Obj {
+						src, ok := vals[j].(*ast.Ident)
+						return ok && pkgVars[src.Name]
+					}
+				}
+				return false
+			}
+			// literalFields returns the fields a composite literal sets to a
+			// non-nil value, for a literal written in place or held in a local
+			// variable. A package variable as a value is the capture of a seam's
+			// current value, not a replacement.
+			var literalFields func(e ast.Expr) []string
+			literalFields = func(e ast.Expr) []string {
+				switch v := e.(type) {
+				case *ast.UnaryExpr:
+					return literalFields(v.X)
+				case *ast.CompositeLit:
+					var out []string
+					for _, el := range v.Elts {
+						kv, ok := el.(*ast.KeyValueExpr)
+						if !ok {
+							continue
+						}
+						key, ok := kv.Key.(*ast.Ident)
+						if !ok {
+							continue
+						}
+						if val, ok := kv.Value.(*ast.Ident); ok && (val.Name == "nil" || pkgVars[val.Name]) {
+							continue
+						}
+						out = append(out, key.Name)
+					}
+					return out
+				case *ast.Ident:
+					if v.Obj == nil || !local(v) {
+						return nil
+					}
+					switch d := v.Obj.Decl.(type) {
+					case *ast.AssignStmt:
+						if len(d.Lhs) == len(d.Rhs) {
+							for j, l := range d.Lhs {
+								if li, ok := l.(*ast.Ident); ok && li.Obj == v.Obj {
+									return literalFields(d.Rhs[j])
+								}
+							}
+						}
+					case *ast.ValueSpec:
+						if len(d.Names) == len(d.Values) {
+							for j, nm := range d.Names {
+								if nm.Obj == v.Obj {
+									return literalFields(d.Values[j])
+								}
+							}
+						}
+					}
+				}
+				return nil
+			}
 			var visit func(ast.Node) bool
 			visit = func(n ast.Node) bool {
 				switch x := n.(type) {
@@ -257,15 +373,8 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 					return false
 				case *ast.KeyValueExpr:
 					// A struct field key is a field name, not a reference.
-					if key, isIdent := x.Key.(*ast.Ident); !isIdent {
+					if _, isIdent := x.Key.(*ast.Ident); !isIdent {
 						ast.Inspect(x.Key, visit)
-					} else if isTest {
-						// nil passes nothing, and a package variable as the value is
-						// the capture of a seam's current value for a later restore.
-						v, isIdent := x.Value.(*ast.Ident)
-						if !isIdent || (v.Name != "nil" && !pkgVars[v.Name]) {
-							owner.passes[key.Name] = true
-						}
 					}
 					ast.Inspect(x.Value, visit)
 					return false
@@ -273,11 +382,22 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 					if sel, ok := x.Fun.(*ast.SelectorExpr); ok {
 						if id, ok := sel.X.(*ast.Ident); ok && id.Obj == nil && imports[id.Name] == "os/exec" &&
 							(sel.Sel.Name == "Command" || sel.Sel.Name == "CommandContext") &&
+							gitProgram(x, sel.Sel.Name == "CommandContext") &&
 							hasStringArg(x, "config") && hasStringArg(x, "--global") {
 							owner.sink = true
 						}
 						if isTest && sel.Sel.Name == "Setenv" && hasStringArg(x, gitGlobalConfigEnv) {
 							owner.isolates = true
+						}
+					}
+					if fn, ok := x.Fun.(*ast.Ident); ok && isTest {
+						for _, a := range x.Args {
+							for _, f := range literalFields(a) {
+								if owner.calls[fn.Name] == nil {
+									owner.calls[fn.Name] = map[string]bool{}
+								}
+								owner.calls[fn.Name][f] = true
+							}
 						}
 					}
 				case *ast.AssignStmt:
@@ -303,6 +423,7 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 							switch {
 							case inCleanup(x.Pos()):
 								// A restore to the original value swaps nothing.
+							case len(x.Rhs) == len(x.Lhs) && restore(assigned, x.Rhs[i]):
 							case paramField(x, i) != "":
 								if owner.guarded[assigned] == nil {
 									owner.guarded[assigned] = map[string]bool{}
@@ -373,10 +494,23 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 // sink needs that literal, so a directory without it has nothing to report and
 // is not parsed again.
 func mentionsGlobalFlag(files map[string][]byte) bool {
+	fset := token.NewFileSet()
 	for _, src := range files {
-		s := string(src)
-		if strings.Contains(s, `"--global"`) || strings.Contains(s, "`--global`") {
-			return true
+		var sc scanner.Scanner
+		sc.Init(fset.AddFile("", fset.Base(), len(src)), src, nil, 0)
+		for {
+			_, tok, lit := sc.Scan()
+			if tok == token.EOF {
+				break
+			}
+			if tok != token.STRING {
+				continue
+			}
+			// Unquote exactly as hasStringArg does, so an escaped or raw spelling
+			// of the flag is found too.
+			if s, err := strconv.Unquote(lit); err == nil && s == "--global" {
+				return true
+			}
 		}
 	}
 	return false
@@ -402,28 +536,32 @@ func (g *pkgGraph) exposed(start string) bool {
 	// Everything the test can reach decides what it swaps and whether it
 	// redirects the global config.
 	swapped := map[string]bool{}
-	passed := map[string]bool{}
-	guarded := map[string]map[string]bool{}
+	called := map[string]map[string]bool{} // helper name -> fields passed to it
+	reached := map[string]*gnode{}
 	seen := map[string]bool{start: true}
 	for stack := []string{start}; len(stack) > 0; {
-		n := g.nodes[stack[len(stack)-1]]
+		name := stack[len(stack)-1]
+		n := g.nodes[name]
 		stack = stack[:len(stack)-1]
 		if n.isolates {
 			return false
 		}
+		reached[name] = n
 		for a := range n.assigns {
 			swapped[a] = true
 		}
-		for k := range n.passes {
-			passed[k] = true
-		}
-		for seam, fields := range n.guarded {
-			if guarded[seam] == nil {
-				guarded[seam] = map[string]bool{}
+		for fn, fields := range n.calls {
+			if called[fn] == nil {
+				called[fn] = map[string]bool{}
 			}
 			for f := range fields {
-				guarded[seam][f] = true
+				called[fn][f] = true
 			}
+		}
+		// A dispatch table is not expanded: a helper only it references is not
+		// something this test calls.
+		if n != root && g.fanOut(n) > dispatchFanOut {
+			continue
 		}
 		for r := range n.refs {
 			if g.nodes[r] != nil && !seen[r] {
@@ -433,11 +571,14 @@ func (g *pkgGraph) exposed(start string) bool {
 		}
 	}
 	// A seam a helper replaces only when its parameter field is set counts only
-	// when some reachable test code passes that field.
-	for seam, fields := range guarded {
-		for f := range fields {
-			if passed[f] {
-				swapped[seam] = true
+	// when reachable test code passes that field in a literal that is an
+	// argument of a call to that helper.
+	for name, n := range reached {
+		for seam, fields := range n.guarded {
+			for f := range fields {
+				if called[name][f] {
+					swapped[seam] = true
+				}
 			}
 		}
 	}
