@@ -676,7 +676,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
 		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
 		// moving it 287→288. Same doc mention, no added line is a comparison.
-		"integration.go:288": true,
+		// Re-measured at card t1680: the common-root rule moved to
+		// factory.IntegrationCommonRoot (shared with the PreToolUse guard) and the
+		// card's remaining integrationLockRoot edit nets thirty lines fewer above
+		// this doc comment, moving it 288→258. Same doc mention, no added line is
+		// a comparison. (The card's earlier in-file rule had moved it to :334 and
+		// left this sweep red; the move out of the file is what restores a
+		// coordinate near the baseline.)
+		"integration.go:258": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
