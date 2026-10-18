@@ -292,6 +292,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	plManifest.Done("Manifest loaded")
+	// The manifest exactly as the run loaded it: the Backup stage keeps it
+	// byte for byte as this run's manifest.prior.json (REQ-OWR-015).
+	startManifest := readStartManifest(projectRoot)
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
@@ -638,7 +641,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					userValues,
 				)
 
-				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
+				// The deploy window: every template_managed entry the deployer
+				// tracks now is stamped with the version of the binary writing it.
+				mgr.SetDeployingVersion(version.GetVersion())
+				deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut)
+				mgr.SetDeployingVersion("")
+				if deployErr != nil {
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					captureTemplateDeployFailure(deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
@@ -670,6 +678,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// the deploy's tracking here, before the merge/restore steps
 				// rewrite their files (those retrack separately below).
 				recordTemplateTree(mgr, errOut)
+				recordManifestDeployedVersion(mgr, version.GetVersion())
 				if saveErr := mgr.Save(); saveErr != nil {
 					_, _ = fmt.Fprintf(errOut, "  manifest save after deploy: %v\n", saveErr)
 				}
@@ -810,10 +819,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// KeptBy marks (plan-audit-iter2 R1's reproduction). The
 			// removals ride migrationRun for the outcome tally and the
 			// post-flow final-state verification.
+			// REQ-OWR-015/-016: the manifest as this run loaded it is kept in
+			// the run backup before anything is removed. A failure is handed to
+			// the migration, which then removes no file this run.
+			priorRunDir, priorState, priorErr := preservePriorManifest(projectRoot, configBackupPath, startManifest)
+			if priorState == priorManifestFailed {
+				updateLedger.requiref(sevWarn, "the prior manifest could not be kept in the run backup (%v) — this run removes no file", priorErr)
+			}
 			if migrationRun != nil {
+				migrationRun.priorManifest, migrationRun.priorManifestErr = priorState, priorErr
 				if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 					migrationRun.mgr = mgr
-					migrationRun.runBackupDir = configBackupPath
+					migrationRun.runBackupDir = priorRunDir
 					_, migErr := migrateProjectCommonAssets(projectRoot, homeDir, migrationRun.userAssetsInstalled, nil, func(format string, args ...interface{}) {
 						_, _ = fmt.Fprintf(out, format+"\n", args...)
 					}, migrationRun)

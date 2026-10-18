@@ -110,6 +110,13 @@ type FileEntry struct {
 	// KeptBy records why a shipped copy stays project-side instead of being
 	// removed. Empty when the copy was not kept. See KeptByProfileReach.
 	KeptBy string `json:"kept_by,omitempty"`
+	// DeployedVersion is the moai binary version that deployed this entry's
+	// bytes (SPEC-UPDATE-OWNERSHIP-REPAIR-001, REQ-OWR-015). It is stamped only
+	// on an entry a run deployed, never back-filled or guessed for one it did
+	// not, and an older manifest without the key loads unchanged. A prior
+	// manifest generation carrying it is one of the three evidence items an
+	// unregistered file needs before it may be judged managed.
+	DeployedVersion string `json:"deployed_version,omitempty"`
 }
 
 // KeptByProfileReach is the FileEntry.KeptBy value for a shipped copy kept

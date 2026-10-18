@@ -70,6 +70,11 @@ type migrationRunContext struct {
 	// common-asset roots (REQ-OWR-009): path, ownership class, keep reason, and
 	// the evidence items an unregistered file lacks.
 	remaining []remainingRow
+	// priorManifest and priorManifestErr are the Backup stage's hand-off: whether
+	// the start-of-run manifest copy reached the run backup (REQ-OWR-015). A
+	// failed copy blocks every removal of the run (REQ-OWR-016).
+	priorManifest    priorManifestState
+	priorManifestErr error
 }
 
 // migrationBackupSubdir names the run-backup subdirectory holding the
@@ -105,6 +110,41 @@ func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash st
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
 	return nil
+}
+
+// removalCandidate is a file the verdict function marked removal-eligible: the
+// walk collects them, the run backup must hold every one before any is removed.
+type removalCandidate struct {
+	rel  string
+	abs  string
+	data []byte
+	row  remainingRow
+}
+
+// backUpRemovalCandidates writes the byte copy of every candidate into the run
+// backup, after the prior-manifest copy is confirmed (REQ-OWR-010, -016). It
+// returns the reason the whole batch is blocked, or "" when every copy is in
+// place. When any copy fails, the copies this attempt wrote are taken back out:
+// nothing is removed, so no removed-assets entry may claim otherwise.
+func backUpRemovalCandidates(projectRoot string, rc *migrationRunContext, cands []removalCandidate) string {
+	if rc != nil && rc.priorManifest == priorManifestFailed {
+		return fmt.Sprintf("the prior-manifest copy could not be written: %v", rc.priorManifestErr)
+	}
+	var written []string
+	for _, c := range cands {
+		if err := backupRemovedAsset(projectRoot, rc, c.rel, c.data); err != nil {
+			if rc != nil {
+				for _, dst := range written {
+					_ = os.Remove(dst)
+				}
+			}
+			return fmt.Sprintf("the byte copy of %s could not be written: %v", c.rel, err)
+		}
+		if rc != nil {
+			written = append(written, filepath.Join(rc.runBackupDir, migrationBackupSubdir, filepath.FromSlash(c.rel)))
+		}
+	}
+	return ""
 }
 
 // migrateProjectCommonAssets removes template-managed common skills and
@@ -187,9 +227,15 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		return nil, fmt.Errorf("resolve project root: %w", absErr)
 	}
 	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
+	evidence := newProvenanceSource(projectRoot)
+	if ps, ok := evidence.(*priorGenerationSource); ok && rc != nil {
+		// The current run's own copy is the start-of-run manifest, not a prior generation.
+		ps.exclude = rc.runBackupDir
+	}
+	var candidates []removalCandidate
 	env := ownershipEnv{
 		entry:    mgr.GetEntry,
-		evidence: newProvenanceSource(projectRoot),
+		evidence: evidence,
 		counterpartConfirmed: func(rel string) bool {
 			return userCounterpartConfirmed(userManifest, cat, embedded, homeDir, rel)
 		},
@@ -295,47 +341,63 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				report("  migration: kept project-side (removal is not enabled yet)%s: %s", tag, relSlash)
 				return nil
 			}
-			// REQ-RC30-004 (U-02, AC-RC30-03, card t1668 M1): a byte copy of
-			// the file lands in the run backup BEFORE os.Remove. A removal
-			// whose backup copy cannot be written is not a removal — the
-			// file stays project-side, reported.
-			if bErr := backupRemovedAsset(projectRoot, rc, relSlash, v.data); bErr != nil {
-				stayed++
-				migrationPreservedProjectFiles[p] = true
-				if rc != nil {
-					rc.remaining = append(rc.remaining, remainingRow{Rel: relSlash, Class: v.class, Reason: keepBackupFailed})
-				}
-				report("  migration: removal refused (the run-backup copy failed) [reason: %s]: %s: %v", keepBackupFailed, relSlash, bErr)
-				return nil
-			}
-			if err := os.Remove(p); err != nil {
-				report("  migration: removal failed: %s: %v", relSlash, err)
-				return nil
-			}
-			removed++
-			// Gate round 12 (§2.3 full-deletion-list rule): the removal is
-			// NAMED, and the path rides back to the outcome tally — the old
-			// body only bumped the counter, and the reconcile can no longer
-			// see an already-removed file, so the deletion vanished from
-			// every list.
-			removedPaths = append(removedPaths, relSlash)
-			if rc != nil {
-				rc.removed = append(rc.removed, relSlash)
-			}
-			report("  migration: removed: %s", relSlash)
-			// REQ-RC30-004 (U-10, AC-RC30-11, card t1668 M2): the skill
-			// directory that held this file goes with it when the removal
-			// emptied it. A directory still holding content (the user's own
-			// files) stays.
-			if pruned, pErr := pruneEmptiedSkillDir(projectRoot, rootResolved, p); pErr != nil {
-				report("  migration: emptied-directory prune failed: %s: %v", relSlash, pErr)
-			} else if pruned {
-				report("  migration: removed empty skill directory: %s", filepath.ToSlash(filepath.Dir(relSlash)))
-			}
+			// removal-eligible: collected here, removed only after the run
+			// backup holds the byte copy of EVERY candidate and the
+			// prior-manifest copy (REQ-OWR-016) — see the batch step below.
+			candidates = append(candidates, removalCandidate{
+				rel: relSlash, abs: p, data: v.data,
+				row: remainingRow{Rel: relSlash, Class: v.class, Reason: keepBackupFailed},
+			})
 			return nil
 		})
 		if err != nil && !os.IsNotExist(err) {
 			return nil, fmt.Errorf("walk %s: %w", rootRel, err)
+		}
+	}
+
+	// REQ-RC30-004 (U-02, AC-RC30-03, card t1668 M1) + REQ-OWR-010/-016: a byte
+	// copy of every candidate lands in the run backup BEFORE the first
+	// os.Remove, and the prior-manifest copy must be in place too. If any of
+	// them cannot be written the run removes nothing: the candidates stay,
+	// each listed as kept with the reason that the backup failed.
+	if len(candidates) > 0 {
+		if why := backUpRemovalCandidates(projectRoot, rc, candidates); why != "" {
+			report("migration: the run backup could not hold every copy — this run removes no file (%s)", why)
+			for _, c := range candidates {
+				stayed++
+				migrationPreservedProjectFiles[c.abs] = true
+				if rc != nil {
+					rc.remaining = append(rc.remaining, c.row)
+				}
+				report("  migration: removal refused (the run backup failed) [reason: %s]: %s", keepBackupFailed, c.rel)
+			}
+		} else {
+			for _, c := range candidates {
+				if err := os.Remove(c.abs); err != nil {
+					report("  migration: removal failed: %s: %v", c.rel, err)
+					continue
+				}
+				removed++
+				// Gate round 12 (§2.3 full-deletion-list rule): the removal is
+				// NAMED, and the path rides back to the outcome tally — the old
+				// body only bumped the counter, and the reconcile can no longer
+				// see an already-removed file, so the deletion vanished from
+				// every list.
+				removedPaths = append(removedPaths, c.rel)
+				if rc != nil {
+					rc.removed = append(rc.removed, c.rel)
+				}
+				report("  migration: removed: %s", c.rel)
+				// REQ-RC30-004 (U-10, AC-RC30-11, card t1668 M2): the skill
+				// directory that held this file goes with it when the removal
+				// emptied it. A directory still holding content (the user's own
+				// files) stays.
+				if pruned, pErr := pruneEmptiedSkillDir(projectRoot, rootResolved, c.abs); pErr != nil {
+					report("  migration: emptied-directory prune failed: %s: %v", c.rel, pErr)
+				} else if pruned {
+					report("  migration: removed empty skill directory: %s", filepath.ToSlash(filepath.Dir(c.rel)))
+				}
+			}
 		}
 	}
 

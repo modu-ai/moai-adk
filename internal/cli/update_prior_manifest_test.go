@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -249,7 +250,11 @@ func TestPriorManifestRetainedInRunBackup(t *testing.T) {
 	assertNoTempResidue(t, filepath.Dir(run2.NewPriorManifest))
 	after2 := readManifestBytes(t, root)
 
-	// Run 3 (--force, the SAME version): the manifest bytes do not move.
+	// Run 3 (--force, the SAME version): the manifest bytes do not move. The
+	// timestamp has one-second resolution, so wait it out: an implementation
+	// that refreshes DeployedAt on every run would otherwise hide inside the
+	// same second as run 2.
+	time.Sleep(1100 * time.Millisecond)
 	run3 := runUpdateFlowForced(t, root)
 	if !bytes.Equal(run3.StartManifest, after2) {
 		t.Fatalf("test bug: run 3 started from different bytes than run 2 left")

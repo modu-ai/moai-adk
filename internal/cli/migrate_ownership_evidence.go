@@ -74,7 +74,7 @@ func (noEvidenceSource) generations() []priorGeneration { return nil }
 // to supply generations directly, and t.Cleanup restores it. No production code
 // path replaces it with a test value.
 var newProvenanceSource = func(projectRoot string) provenanceSource {
-	return noEvidenceSource{}
+	return newPriorGenerationSource(projectRoot, "")
 }
 
 // attestation records the evidence an attested managed verdict rests on.

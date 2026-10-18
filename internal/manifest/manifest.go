@@ -46,6 +46,13 @@ type Manager interface {
 	// Only that field changes, so the provenance and hashes stay as they are.
 	// It returns ErrEntryNotFound when path has no entry.
 	SetKeptBy(path, by string) error
+
+	// SetDeployingVersion opens (non-empty) or closes (empty) the deploy window:
+	// while it is open, Track stamps FileEntry.DeployedVersion with the given
+	// binary version on every template_managed entry it records. Outside the
+	// window Track neither stamps nor clears the field, so a re-track of an
+	// entry the run did not deploy keeps what it had.
+	SetDeployingVersion(version string)
 }
 
 // manifestManager is the concrete implementation of Manager.
@@ -53,6 +60,9 @@ type manifestManager struct {
 	projectRoot  string
 	manifest     *Manifest
 	manifestPath string
+	// deployingVersion is the binary version of an open deploy window; empty
+	// when no deploy is running (see Manager.SetDeployingVersion).
+	deployingVersion string
 }
 
 // @MX:ANCHOR: [AUTO] File provenance tracking manager factory - entry point depended on by 6 or more callers
@@ -143,14 +153,29 @@ func (m *manifestManager) Track(path string, provenance Provenance, templateHash
 		return fmt.Errorf("manifest track hash: %w", err)
 	}
 
-	m.manifest.Files[path] = FileEntry{
+	entry := FileEntry{
 		Provenance:   provenance,
 		TemplateHash: templateHash,
 		DeployedHash: currentHash,
 		CurrentHash:  currentHash,
 	}
+	switch prev, had := m.manifest.Files[path]; {
+	case provenance == TemplateManaged && m.deployingVersion != "":
+		// The deploy path: this binary just wrote the bytes. A file the deployer
+		// skipped (recorded user_created) was not written by it and is not stamped.
+		entry.DeployedVersion = m.deployingVersion
+	case had:
+		// Any other re-track keeps what the entry already recorded.
+		entry.DeployedVersion = prev.DeployedVersion
+	}
+	m.manifest.Files[path] = entry
 
 	return nil
+}
+
+// SetDeployingVersion opens or closes the deploy window (see Manager).
+func (m *manifestManager) SetDeployingVersion(version string) {
+	m.deployingVersion = version
 }
 
 // GetEntry retrieves a file entry by relative path.
