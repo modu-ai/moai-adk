@@ -22,9 +22,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// Resolver seams: the production values are the very resolvers the owning verbs
-// use. Tests replace them to simulate an unresolvable moai home; the command
-// never computes a project key or joins path segments of its own.
+// Resolver seams: the production values are the home-state resolvers the todo
+// and factory verbs use once the project root is fixed. The root itself is
+// resolved by this command (CLAUDE_PROJECT_DIR first, then the launch
+// directory); moai factory runs and recover-resume use the working directory,
+// so the two agree only when CLAUDE_PROJECT_DIR names the working directory's
+// project. Tests replace the seams to simulate an unresolvable moai home; the
+// command never computes a project key or joins path segments of its own.
 var (
 	pathsProjectDir    = homestate.ProjectDir
 	pathsFactoryDBPath = homestate.FactoryDBPath
@@ -77,8 +81,11 @@ type pathsReport struct {
 }
 
 // newPathsCmd builds `moai paths`: a read-only report of the project key and
-// the queue, factory, and broker database paths, obtained from the resolvers
-// the owning verbs use (SPEC-MOAI-DB-PATHS-001, card t1827).
+// the queue, factory, and broker database paths. Once the project root is
+// fixed (CLAUDE_PROJECT_DIR first, then the launch directory) the paths come
+// from the home-state resolvers the owning verbs use; moai factory runs and
+// recover-resume fix the root from the working directory instead
+// (SPEC-MOAI-DB-PATHS-001, card t1827).
 func newPathsCmd() *cobra.Command {
 	var jsonOutput bool
 	var field, run string
@@ -86,7 +93,10 @@ func newPathsCmd() *cobra.Command {
 		Use:   "paths",
 		Short: "Print the confirmed database paths of this project",
 		Long: `Print the project key and the confirmed paths of the queue, factory, and
-broker databases, as the verbs that own them resolve them.
+broker databases. The project root is CLAUDE_PROJECT_DIR first, then the
+launch directory; moai todo and the factory card root use the same rule, while
+moai factory runs and moai factory recover-resume use the working directory and
+agree only when CLAUDE_PROJECT_DIR names that project.
 
 Use this command instead of guessing a database path: opening a missing file
 with sqlite3 creates an empty one. The command only reads: it creates no file,
@@ -180,10 +190,10 @@ func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, ru
 	}
 
 	// An invalid --run id reports nothing, even when the home cannot be
-	// resolved; BrokerPath checks the id before it resolves anything.
+	// resolved; the id shape is checked before anything is resolved.
 	if runSet {
-		if _, err := factorymsg.BrokerPath(root, runID); errors.Is(err, factorymsg.ErrInvalidRunID) {
-			return rep, fmt.Errorf("paths: %w", err), nil
+		if !factorymsg.ValidRunID(runID) {
+			return rep, fmt.Errorf("paths: invalid factory run id %q", runID), nil
 		}
 	}
 
