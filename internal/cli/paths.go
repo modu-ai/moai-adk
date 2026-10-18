@@ -25,10 +25,11 @@ import (
 // Resolver seams: the production values are the home-state resolvers the todo
 // and factory verbs use once the project root is fixed. The root itself is
 // resolved by this command (CLAUDE_PROJECT_DIR first, then the launch
-// directory); moai factory runs and recover-resume use the working directory,
-// so the two agree only when CLAUDE_PROJECT_DIR names the working directory's
-// project. Tests replace the seams to simulate an unresolvable moai home; the
-// command never computes a project key or joins path segments of its own.
+// directory); moai factory runs and moai factory handoff recover-resume use
+// the working directory, so the two agree only when CLAUDE_PROJECT_DIR names
+// the working directory's project. Tests replace the seams to simulate an
+// unresolvable moai home; the command never computes a project key or joins
+// path segments of its own.
 var (
 	pathsProjectDir    = homestate.ProjectDir
 	pathsFactoryDBPath = homestate.FactoryDBPath
@@ -84,8 +85,8 @@ type pathsReport struct {
 // the queue, factory, and broker database paths. Once the project root is
 // fixed (CLAUDE_PROJECT_DIR first, then the launch directory) the paths come
 // from the home-state resolvers the owning verbs use; moai factory runs and
-// recover-resume fix the root from the working directory instead
-// (SPEC-MOAI-DB-PATHS-001, card t1827).
+// moai factory handoff recover-resume fix the root from the working directory
+// instead (SPEC-MOAI-DB-PATHS-001, card t1827).
 func newPathsCmd() *cobra.Command {
 	var jsonOutput bool
 	var field, run string
@@ -95,8 +96,8 @@ func newPathsCmd() *cobra.Command {
 		Long: `Print the project key and the confirmed paths of the queue, factory, and
 broker databases. The project root is CLAUDE_PROJECT_DIR first, then the
 launch directory; moai todo and the factory card root use the same rule, while
-moai factory runs and moai factory recover-resume use the working directory and
-agree only when CLAUDE_PROJECT_DIR names that project.
+moai factory runs and moai factory handoff recover-resume use the working
+directory and agree only when CLAUDE_PROJECT_DIR names that project.
 
 Use this command instead of guessing a database path: opening a missing file
 with sqlite3 creates an empty one. The command only reads: it creates no file,
