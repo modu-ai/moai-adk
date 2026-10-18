@@ -1,4 +1,4 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — design (plan phase, piece A2, v0.10.0)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — design (plan phase, piece A2, v0.11.0)
 
 Design intent only; identifiers are proposals, the observable contracts are `spec.md` §3 and `acceptance.md`. Code evidence: `research.md` (§12 is the independence proof). Scope per boards `9dbe`, `0577`, `470c`, `5d4d`, `4812` and `d20e`. The design of the completeness gate (manifest, attempts, verifier, GOFLAGS rule, zero-Go cards) is preserved at commit `9713b6757d` (`design.md`) and moved with piece A1.
 

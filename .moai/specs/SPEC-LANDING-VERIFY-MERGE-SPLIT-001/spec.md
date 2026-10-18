@@ -1,7 +1,7 @@
 ---
 id: SPEC-LANDING-VERIFY-MERGE-SPLIT-001
 title: "Landing audit binding: SHA-bound audit receipts, the sync-audit verdict and its receipt bound to the card's current HEAD at complete, a committed-branch gate switch, and the ordered enable (piece A2)"
-version: "0.10.0"
+version: "0.11.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-19
@@ -33,6 +33,7 @@ Card t1872 (Class C, P0), **piece A2** after the split ruled by board `d20e`: th
 | 0.8.0 | 2026-10-19 | Rulings of board `6404`, ids and counts unchanged: the key is switched on only after A2 and A1 have both landed (Q27; spec §2, C3, C10, REQ-LVM-012 wording); the audit binding stays in `complete` only and the direct merge path binding is an acceptance requirement of A1 (Q28; §7 row 12, §8, design R6). |
 | 0.9.0 | 2026-10-19 | Plan-audit A2 round 1 (FAIL 0.81, `plan-audit-a2.md`) and board `9b0e`, ids and counts unchanged (7 REQ / 7 AC): the characterization test of today's `complete` lands in the M0 commit, ahead of the commit that edits `factoryCompleteCard` (AC-LVM-007, AC-LVM-012 graph legs); the gate-state reader resolves `refs/heads/<branch>^{commit}` once so a same-named tag cannot shadow the branch (REQ-LVM-017, new test `TestSameNamedTagDoesNotShadowBranch`); the audit row has a named sink; M4 regenerates the Codex agent copy with `make agents-emit`; the REQ id gap is waived by an explicit clause (§3, row Q30); terms "audited tree" and abbreviated `audited_sha` defined; the hand-off gains three inherited obligations. |
 | 0.10.0 | 2026-10-19 | Plan-audit A2 round 2 (FAIL 0.81, `plan-audit-a2-iter2.md`) and board `7c5c`, ids and counts unchanged (7 REQ / 7 AC): `complete` carries the SHA it bound and re-reads `refs/heads/<card-branch>` immediately before adoption and before the merge step, refusing with `audit_binding_card_moved` (REQ-LVM-008, two new tests, 57 named tests); the merge step's own pin stays a window that A1 closes (C12, §7 row 13, design R8); M4 regenerates and commits `internal/template/catalog.yaml`; the absent-path mechanism and the audit-row event literal are fixed (REQ-LVM-017). |
+| 0.11.0 | 2026-10-19 | Plan-audit A2 round 3 (FAIL 0.81, `plan-audit-a2-iter3.md`) and the leader's rule C ruling (`9e76`), ids and counts unchanged (7 REQ / 7 AC, 57 named tests): D1 the Definition of Done, plan, research table and row Q28 now state the three edit sites of `factoryCompleteCard` that REQ-LVM-008 requires, with the re-measure record decision and the merge step as the protected surface (C9 unchanged); D2 each of the two re-reads is pinned by one test with its own injection point (`TestCompleteRefusesWhenCardMovedBeforeAdoption` at `factoryCompleteAcquireHook`, `TestCompleteRefusesWhenCardMovedBeforeMergeStep` through one new seam before `RunMergeStep`) and two single-deletion mutant rows; D3 the regeneration guard of `catalog.yaml` is `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE`), not `TestClaudeAuditTemplateSurfacesAndCatalogHash`. No requirement wording changed. |
 
 ## 1. Problem
 
