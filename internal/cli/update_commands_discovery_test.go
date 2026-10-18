@@ -197,8 +197,34 @@ func cmdRenderControl(t *testing.T, harness string) cmdControl {
 	if len(got) != len(want) {
 		t.Fatalf("control: %s holds %d files, the template carries %d", cmdDir, len(got), len(want))
 	}
-	if len(c.userFiles) == 0 {
-		t.Fatalf("control: the user-asset phase installed no agent under %v", cmdUserAgentDirs)
+	// The control is only an oracle if it is itself complete: a break in the
+	// installer would show in the control and in every variant alike. So the
+	// premise names the agents the catalog's core tier must install, and the bytes
+	// the installer must write for a Claude agent (a plain copy of the template).
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	if len(cat.Catalog.Core.Agents) == 0 {
+		t.Fatalf("control: the catalog's core tier lists no agent; the premise would be vacuous")
+	}
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("load embedded templates: %v", err)
+	}
+	for _, e := range cat.Catalog.Core.Agents {
+		rel := ".claude/agents/" + e.Name + ".md"
+		got, ok := c.userFiles[rel]
+		if !ok {
+			t.Fatalf("control: the core agent %s was not installed at ~/%s", e.Name, rel)
+		}
+		tpl, err := fs.ReadFile(embedded, ".claude/agents/moai/"+e.Name+".md")
+		if err != nil {
+			t.Fatalf("control: embedded template of core agent %s: %v", e.Name, err)
+		}
+		if !bytes.Equal(got, tpl) {
+			t.Fatalf("control: ~/%s is not a byte copy of the template", rel)
+		}
 	}
 	return c
 }
