@@ -538,7 +538,14 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, cat *template.C
 	if dir == "" {
 		return false
 	}
-	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
+	counterpart := filepath.Join(dir, filepath.FromSlash(rel))
+	// A counterpart that is a pipe, socket or device (or a link to one) is never
+	// opened: the read would wait for a writer and hang the update. It is not a
+	// confirmation either (sync-audit finding F3).
+	if unreadableKind(counterpart) {
+		return false
+	}
+	data, err := os.ReadFile(counterpart)
 	if err != nil {
 		return false
 	}
