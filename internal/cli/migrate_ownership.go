@@ -69,6 +69,9 @@ const (
 	keepNoTemplateHash         keepReason = "no-template-hash"
 	keepEmptyDirNoProvenance   keepReason = "empty-dir-no-provenance"
 	keepBackupFailed           keepReason = "backup-failed"
+	// keepNonRegularFile: the path is a FIFO, socket, device or a link to one. It is
+	// kept without ever being opened, because reading such a file can block forever.
+	keepNonRegularFile keepReason = "non-regular-file"
 )
 
 // evidenceIncompletePrefix prefixes the parameterised reason that names which
@@ -87,7 +90,7 @@ func isKnownKeepReason(r keepReason) bool {
 	case keepUserModified, keepUserCreated, keepNoProvenanceRecord, keepRecordHashMismatch,
 		keepProfileReach, keepCounterpartUnconfirmed, keepNonCatalog, keepRemovalGateOff,
 		keepSymlinkEscape, keepReadFailed, keepNoTemplateHash, keepEmptyDirNoProvenance,
-		keepBackupFailed:
+		keepBackupFailed, keepNonRegularFile:
 		return true
 	}
 	if item, ok := strings.CutPrefix(string(r), evidenceIncompletePrefix); ok {
@@ -283,6 +286,11 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 		}
 	}
 	if !registered || entry == nil {
+		// The kind of the file is decided before anything reads it: a FIFO would
+		// block the read until a writer appears.
+		if unreadableKind(abs) {
+			return ownershipVerdict{class: ownershipUnregistered, keep: keepNonRegularFile}
+		}
 		return classifyUnregistered(env, rel, abs)
 	}
 
@@ -292,6 +300,10 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 	}
 	if entry.Provenance == manifest.UserCreated {
 		v.class, v.keep = ownershipUserCreated, keepUserCreated
+		return v
+	}
+	if unreadableKind(abs) {
+		v.class, v.keep = ownershipUserModified, keepNonRegularFile
 		return v
 	}
 
@@ -315,6 +327,20 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 	}
 	v.class = ownershipManaged
 	return disposition(env, v, key, abs)
+}
+
+// unreadableKind reports whether abs is a FIFO, socket, device or irregular file,
+// or a symlink whose target is one. It asks the file system for the kind without
+// opening the path (os.Stat follows links, as the later os.ReadFile does), so it
+// cannot block. A directory, a dangling link and a path that cannot be examined
+// are NOT reported here: they keep failing the read the way they always did
+// (`read-failed`), so a symlink to a regular file or to nothing behaves as before.
+func unreadableKind(abs string) bool {
+	info, err := os.Stat(abs)
+	if err != nil {
+		return false
+	}
+	return info.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice|os.ModeIrregular) != 0
 }
 
 // classifyUnregistered judges a file the manifest has no entry for. It is

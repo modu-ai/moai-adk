@@ -335,6 +335,8 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				preserved++
 				migrationPreservedProjectFiles[p] = true
 				switch v.keep {
+				case keepNonRegularFile:
+					report("  migration: preserved (not a regular file — a pipe, socket, device or a link to one is never opened)%s: %s", tag, relSlash)
 				case keepReadFailed, keepNoTemplateHash:
 					report("  migration: preserved (cannot verify against the template — read failed or no template hash)%s: %s", tag, relSlash)
 				default:
