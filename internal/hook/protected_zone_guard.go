@@ -203,6 +203,8 @@ func (h *preToolHandler) checkProtectedZone(agentID, toolName, rawPath string) (
 		})
 		return "", ""
 	}
+	// the identity backstop (card t1804): extra forms only, never fewer
+	forms = newZoneIdentity(root, load.Zone).add(forms, false)
 	for _, form := range forms {
 		for i := range load.Zone.Entries {
 			entry := load.Zone.Entries[i]

@@ -2407,8 +2407,10 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	// sharing a resolved parent read that parent's directory listing once —
 	// never carried across guard calls.
 	listings := make(map[string]*zoneNameIndex)
+	// the identity backstop (card t1804): one per guard call, like the listings
+	identity := newZoneIdentity(root, load.Zone)
 	for _, cand := range w.cands {
-		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneTarget(root, cand, listings)); reason != "" {
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, identity.add(resolveZoneTarget(root, cand, listings), false)); reason != "" {
 			return reason
 		}
 	}
@@ -2416,7 +2418,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		// card t1712: the link-own candidates resolve with the final
 		// component unfollowed — the link's own path is all the judgment
 		// sees, so a link outside the zone pointing at a zone file passes.
-		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneLinkTarget(root, cand, listings)); reason != "" {
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, identity.add(resolveZoneLinkTarget(root, cand, listings), true)); reason != "" {
 			return reason
 		}
 	}
