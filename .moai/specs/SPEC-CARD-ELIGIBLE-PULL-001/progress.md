@@ -203,6 +203,21 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
   - E2 cross-platform (delegation-sanctioned, slot-gated, recorded above): `GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/config/` — exit 0.
 - **Updated existing tests, final ledger** (each with RED observed pre-fix): `TestSD_AC008` subtests ×2 (expectation flips), `TestFactoryNextAfterGuardCountsOtherRunsMerges` (flag armed), `TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_next_leases_identically` (flag armed). Every other existing test file byte-identical to base `e43b3eea2`.
 
+### Sync-audit round-1 F2 repair + behavior-based re-sweep — 2026-10-18 (tree `5cc25a21d` → F2 commit)
+
+- **F2 RED (auditor's observation, cited verbatim from `.moai/reports/t1839/sync-audit.md` — not re-derived)**: `go test ./internal/cli/ -run '^TestFactoryLeaseSectionRecordWritesPerArm$' -count=1 -v` → `--- FAIL: TestFactoryLeaseSectionRecordWritesPerArm (23.71s)` / `--- FAIL: .../arm-b` / `--- FAIL: .../arm-b2` (`factory_lease_section_test.go:201: next: factory next: no card is available`). The lease-atomicity table's two generic-arm rows lease unowned picked cards via `qasRunNext`/`nmBase` — a verb-driven vehicle the run phase's call-site-and-name sweep could not see.
+- **F2 repair**: `flArmCase` gains `selfDispatch`; rows `arm-b` (picked row) and `arm-b2` (rowless picked item) arm `cepSelfDispatchYAML(t, root, true)` — the atomicity subject (record writes under the lease-section lock) keeps its coverage behind the gate. GREEN: `go test ./internal/cli/ -run '^TestFactoryLeaseSectionRecordWritesPerArm$' -count=1 -v` — 8/8 subtests PASS (`ok … 28.071s`).
+- **F3 process correction (behavior-based sweep method)**: the §C.3/M2 enumeration axis (lease-once call sites + picked-fixture names) is falsified by F2 — it cannot see verb-driven vehicles. Corrected method: enumerate EVERY `next`-verb invocation in `internal/cli/*_test.go` (`qasRunNext` / `runFactory(t, "next"…)`), intersect with fixtures whose leased target is an unowned picked row or a rowless picked item, and inspect each hit's enclosing test. Sweep result: exactly one further at-risk vehicle outside the already-updated set —
+- **Sweep finding RED (own observation, pre-fix)**: `go test ./internal/cli/ -run '^TestReviewFindingMergedPRPredecessor$' -count=1 -v` →
+  ```
+      review_observation_test.go:44: predecessor=merged-pr; factory next leased=""
+      review_observation_test.go:46: merged-pr predecessor still blocks t2
+  --- FAIL: TestReviewFindingMergedPRPredecessor (2.22s)
+  ```
+  Bare `fbLeasedCard` + t2 unowned picked row = arm-(b) vehicle. Repair: fixture arms the flag — the subject (merged-pr predecessor must not block the successor) now rides the gate's condition 4. GREEN: `--- PASS: TestReviewFindingMergedPRPredecessor (4.40s)` (`ok … 5.981s`).
+- **All other sweep hits cleared by inspection** (nominated `--card` or arm-(a)/(c) vehicles, out of gate scope): quota t1516 wait shape (assigned row), lease-operator held-assigned (no-card expected), m4/launcher codex-env (launcher must NOT lease; child leases nominated), lease-bound stall rows (nominated + bare arm (c) queued), lane-join-guard (`--card` nominated), review sibling tests (`--card`), nominate family (`--card`), t1533/quota-worktrees/carry/claim-deadline/harness (no bare-next picked vehicles).
+- **F2 repair verification (anchored, one selector)**: `go test ./internal/cli/ -run '^TestFactoryEligiblePull.*$|^TestFactoryLeaseSectionRecordWritesPerArm$|^TestReviewFindingMergedPRPredecessor$|^TestSD_AC008_NextSelectionOrderAndOutput$|^TestFactoryNextAfterGuardCountsOtherRunsMerges$|^TestSD_AC014_MCPMatchesCLIWithProjectRoot$' -count=1` — `ok github.com/modu-ai/moai-adk/internal/cli 168.104s`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-18T01:55:00Z (2026-10-18 10:55 KST)

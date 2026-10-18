@@ -33,6 +33,12 @@ import (
 
 func TestReviewFindingMergedPRPredecessor(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update: this arm-(b) lease is the test's
+	// vehicle; the self-dispatch flag is armed so the subject (a merged-pr
+	// predecessor must not block its successor) keeps its coverage behind
+	// the gate — the gate's condition 4 carries it (a merged-pr predecessor
+	// reads as merged, so depsMet holds and the lease proceeds).
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
