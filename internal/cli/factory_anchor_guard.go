@@ -94,15 +94,16 @@ func shortWorktreeRoot(root string) string {
 }
 
 // resolveWorktreeLaunchTarget maps a worktree option value to the tree path the
-// backend would launch into: an absolute path names the tree directly; a short
-// name resolves under the launch project root's .claude/worktrees/. A value
+// guard inspects: absolute paths retain the existing MoAI path contract; native
+// names replace slashes with plus signs, as Claude does, before resolving under
+// the launch project root's .claude/worktrees/. A value
 // naming no existing tree cannot be an anchor — anchorBranchOfTree reads it as
 // empty.
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
 	}
-	return filepath.Join(shortWorktreeRoot(root), ".claude", "worktrees", value)
+	return filepath.Join(shortWorktreeRoot(root), ".claude", "worktrees", strings.ReplaceAll(value, "/", "+"))
 }
 
 // leaderLaunchDir is the directory a leader backend starts in: the process
