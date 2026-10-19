@@ -1,199 +1,169 @@
+auditor-model: claude-sonnet-5-5
 verdict: FAIL
-audited_sha: aba63b148319b25ec44080c89071a2b99462a8bd
+audited_sha: 4a625be15622eeb610df317807831d51e4257e36
 required_backend: codex fail
+required_backend_fail: codex
 convergence_overall: fail
 
-auditor-model: claude-sonnet-5-5
+# Sync audit round 5 (final audit of the tree after the chunk 13 shrink) - SPEC-UPDATE-OWNERSHIP-REPAIR-001, card t1865
 
-# Sync audit round 4 (delta, last round before the rule C hold) - SPEC-UPDATE-OWNERSHIP-REPAIR-001, card t1865
+The previous content of this file (round 4, HEAD aba63b1483) is preserved as `.moai/reports/t1865/sync-audit-r4.md`.
 
-Rounds 1-3 are preserved byte-identical as sync-audit-r1.md, sync-audit-r2.md, sync-audit-r3.md. This file replaces the round-3 file as the current verdict.
+SPEC: SPEC-UPDATE-OWNERSHIP-REPAIR-001
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865`, branch WT-update-ownership-repair, audited HEAD `4a625be15622eeb610df317807831d51e4257e36`, `git status --short` empty.
+Diff base: `48bfe97afa4b78cb1c1ff2c98f1a5680b1441309..HEAD` (77 files, 22836 insertions, 167 deletions).
+Judging build: the moai MCP server `build_commit` field of the audit_multi result is `7705b365e2` (the server banner says the same). That commit is a valid commit, not an ancestor of HEAD (`git merge-base --is-ancestor 7705b365e2 HEAD` exit 1; merge-base with HEAD is `48bfe97afa`; 144 commits in HEAD not in the build, 129 in the build not in HEAD). It is therefore not a strict ancestor of the tree's HEAD (verification-claim-integrity.md section 2.2), but it also does not contain this card's code: the backend judged the diff text, not a build of this tree.
+Overall Verdict: FAIL
 
-## Overall
+Verdict basis: the required codex backend returned `fail` (`overall_verdict: fail`, `residual_risk_note: required-backend FAIL: codex`). Independently of that gate, I read the code and found the same two P2 defects in the shrink surface (F1 and F2 below). The shrink did close every round 4 finding (N-A root path swap, N-B over-broad RemoveAll, N-C absolute in-project link) as designed, and all tests I ran are green.
 
-FAIL. Both round-3 findings (F-A, F-B) are fixed in the code and their tests pass in my own run. The required codex backend nevertheless returned `fail` with two new P2 findings, and I reproduced BOTH by execution in this run (a scratch test through `-overlay`, nothing written in the tree). One of them (N-A) is a residue of the same check-then-use class as F-A: the repair confines the read to an `os.Root`, but the Root is opened from the project-root path STRING after the boundary check, so replacing the root path in that window makes the Root point outside. The codex failure is substantive; it is not the "no go files to analyze" sandbox reason. A required-backend fail forces FAIL.
+## audit_multi result digest (for the orchestrator's convergence check)
 
-## Claim
+- overall_verdict: fail
+- gate_unmet: not present in the result (no key returned)
+- plan_source: config
+- build_commit: 7705b365e2
+- participant_count: 1, disagreement_flag: null, fail_open_backends: []
+- per_backend_verdicts: backend=codex, gate=required, verdict=fail
+- audit_receipt: `rcpt-e012674ec01973db90b4bb52`
+- Plan read first: `moai verify audit-plan --project-root <toplevel>` returned `config_status: ok`, `cross_model_active: true`, `enforced_required: ["codex"]`; claude and glm gates `off`, codex gate `required`. `audit_multi` was called exactly once, with `project_root` set to the toplevel, `target: baseBranch`, no `gates` argument.
+- This verdict is not final until the orchestrator writes these members to `<toplevel>/.moai/state/audit-plan-result.json` and `moai verify audit-plan --result-file` passes; `convergence_check.ok: false` is an unmet gate named by backend.
 
-1. F-A is fixed in the code: an unregistered file is read through `os.OpenRoot(root).Open(rel)`. The two post-check windows the lane targeted (before the path is resolved again, after it is resolved and before it is opened) are closed; the race rows are green and the lane's mutants show each window red without the fix.
-2. F-B is fixed in the code: `claimPriorManifestDir` removes the sibling it created (with `os.RemoveAll`) when the marker copy fails after the marker file exists; the new subtest is green. (The removal is broader than needed: see N-B.)
-3. NEW N-A [SHOULD-FIX]: the Root is opened from a path string after the boundary check, so a swap of the project root path in that window reads a file outside the project. Reproduced by me (1 outside read in 2079 attempts).
-4. NEW N-B [MINOR]: `os.RemoveAll(sibling)` also deletes content a foreign process put into the freshly created sibling. Reproduced by me with a seam that simulates the foreign write.
-5. The hard invariants hold at HEAD, the documents match the code, and no new defect was found in the other helpers (class check below).
+Raw required-backend text (codex, translated from Korean only in the one-line titles below; the file/line cites are verbatim):
 
-## Evidence
+- [P2] a regular file swapped for a FIFO right after the kind check makes update wait forever - internal/cli/migrate_ownership.go:427
+- [P2] the symlink check really reaches an outside profile root - internal/cli/migrate_ownership.go:414
+- [P3] a file name can poison the root-escape error test - internal/cli/migrate_ownership.go:363
 
-### Tree and plan
+## Dimension scores
 
-`git rev-parse HEAD` printed `aba63b148319b25ec44080c89071a2b99462a8bd` (equal to the requested SHA). `git rev-parse --show-toplevel` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865`. `git status --short` printed nothing (0 lines) at the start and at the end.
+| Dimension | Score | Verdict | Evidence |
+|---|---|---|---|
+| Functionality (40%) | 80/100 | PASS (on the ACs run) | 101 + 100 + 14 test passes, 0 fail, 0 skip on the selectors below; AC-OWR-09..15 not run here (Gaps) |
+| Security (25%) | 55/100 | FAIL (must-pass) | F1 (REQ-OWR-005 stat through a project link), F2 (unbounded block on a swapped FIFO) |
+| Craft (20%) | 80/100 | UNVERIFIED | `go vet` exit 0, `gofmt -l` empty; coverage, lint and `-race` not run (Gaps) |
+| Consistency (15%) | 85/100 | PASS | closed vocabulary test green, existing seams and naming used |
 
-`moai verify audit-plan --project-root <toplevel>`: `config_status: ok`, `model: codex`, `cross_model_active: true`, `cross_model_required: true`, `enforced_required: ["codex"]`; claude gate off, codex gate required, glm gate off.
-
-### Tests I ran (each in its own call through a wrapper that waits for the admission rule and re-checks after 30 seconds)
-
-Admission values at each Go call (load1 / free memory / slot / lane script processes, wall clock UTC). Before the first call I waited because the lane's own `c12b-verify.sh` was running Go commands (processes found by `pgrep`, last Go step finished 17:21:45Z) and the landing slot was held by lane-32 under "landing"/"remeasure" commands until it freed at about 17:18Z.
-
-```
-main     BEFORE load=12.59 free=83% slot=held (not landing/remeasure at the check) lane-script-pids=0 17:22:48Z   AFTER load=30.07 17:23:14Z
-scratch  BEFORE load=27.94 free=83% slot=free lane-script-pids=0 17:25:23Z   AFTER load=26.08
-scratch2 BEFORE load=28.48 free=83% slot=free lane-script-pids=0 17:26:17Z   AFTER load=23.48
-backup   BEFORE load=18.74 free=83% slot=free lane-script-pids=0 17:27:07Z   AFTER load=19.48
-manifest BEFORE load=13.74 free=83% slot=free lane-script-pids=0 17:27:41Z   AFTER load=13.74
-build    BEFORE load=25.81 free=83% slot=free lane-script-pids=0 17:28:15Z   AFTER load=54.32 (others' load, after my build had ended)
-winbuild BEFORE load=25.08 free=83% slot=held lane-script-pids=0 17:30:10Z   AFTER load=25.07
-vet      BEFORE load=23.08 free=83% slot=held lane-script-pids=0 17:30:47Z   AFTER load=22.28
-scratch3 BEFORE load=28.26 free=83% slot=held lane-script-pids=0 17:41:02Z   AFTER load=27.45
-```
-The slot, when shown as `held` at my checks, was held by lane-22 with the command "t1868 M5 mutant run plus final-HEAD scoped test, vet, build (window 2, board e1b8)" (read at 17:30Z and again after the last call), which contains neither "landing" nor "remeasure"; condition (c) held as written. The `build` and `winbuild` calls were issued in one turn but ran one after another (start times 17:27:41Z/17:28:15Z, 17:30:10Z): one Go call at a time. I did not take a slot and did not use `moai slot acquire`. No failure carried a timeout or a load-dependent cause.
-
-Anchored tests, run from this tree with `TMPDIR=/private/tmp/own-fixture-d1`:
-```
-go test ./internal/cli/ -run '^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue|TestUnregisteredFileBelowASymlinkedAncestorIsNotRead|TestUnregisteredSymlinkOutsideProjectIsNotRead|TestCounterpartFifoIsNotOpened|TestNonRegularFilesAreKeptWithoutBeingRead|TestPriorManifestOfAnEarlierRunSurvivesALaterRun)$' -count=1 -v
---- PASS: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead (5.82s)
---- PASS: TestPathBoundaryCounterexamples (2.87s)
---- PASS: TestCounterpartFifoIsNotOpened (1.79s)
---- PASS: TestNonRegularFilesAreKeptWithoutBeingRead (1.56s)
---- PASS: TestUnregisteredSymlinkOutsideProjectIsNotRead (3.01s)
---- PASS: TestPriorManifestOfAnEarlierRunSurvivesALaterRun (0.48s)
---- PASS: TestMarkerCopyFailureFailsClosedWithoutResidue (3.38s)
-PASS
-ok  	github.com/modu-ai/moai-adk/internal/cli	20.168s
-rc=0
-```
-(7 top-level PASS, 0 FAIL, 0 SKIP; the table printed 46 `TABLE|` rows.) The race rows, verbatim from that run:
-```
-TABLE|race|target swapped for a link to an outside file between the boundary check and the read|expected: class=unregistered keep=symlink-escape read=none swapped=true|observed: class=unregistered keep=symlink-escape read=none swapped=true
-TABLE|race|target swapped for a link to an outside file after the path was resolved, before it is opened|expected: class=unregistered keep=symlink-escape read=none swapped=true|observed: class=unregistered keep=symlink-escape read=none swapped=true
-TABLE|race|control: target swapped for a link to ANOTHER INSIDE file is still judged by content|expected: class=unregistered keep=no-provenance-record read=other-bytes swapped=true|observed: class=unregistered keep=no-provenance-record read=other-bytes swapped=true
-```
-The F-B subtest `TestMarkerCopyFailureFailsClosedWithoutResidue/FailureAfterTheMarkerFileWasCreatedLeavesNoSibling` printed `--- PASS` (0.07s).
-
-```
-go test ./internal/cli/update/backup/ -count=1   ->  ok  github.com/modu-ai/moai-adk/internal/cli/update/backup	0.698s   rc=0
-go test ./internal/manifest/ -count=1            ->  ok  github.com/modu-ai/moai-adk/internal/manifest	0.437s       rc=0
-go build ./...                                   ->  rc=0 (no output)
-GOOS=windows go build ./...                      ->  rc=0 (no output)
-go vet ./internal/cli/ ./internal/cli/update/backup/  ->  rc=0 (no output; 2 s, build cache)
-```
-
-### Scratch reproductions (my own, through `-overlay`; sources in the audit scratchpad `zz_r4_test.go` and `zz_r4b_test.go`; `git status --short` printed nothing afterwards)
-
-Class check over `readUnregisteredInsideRoot` and the classifier (`go test ./internal/cli/ -overlay ... -run '^TestR4AuditClasses$' -count=1 -v`):
-```
-T1 symlinked project root: class=unregistered keep=no-provenance-record read=content
-T2 relative root: class=unregistered keep=no-provenance-record read=content
-T3 directory: class=unregistered keep=read-failed read=none
-T4 odd names (space, non-ASCII, "..hidden.md"): class=unregistered keep=no-provenance-record read=content
-T5 in-project ancestor link: class=unregistered keep=no-provenance-record read=content
-T6 absolute in-project final link: class=unregistered keep=no-provenance-record read=content
-T7 fds before=5 after=5   (800 verdicts: 400 normal + 400 escaping)
-T9 abs in-project swap at resolve-to-open: class=unregistered keep=symlink-escape read=none
---- PASS: TestR4AuditClasses (0.04s)
-```
-(A first run failed only because my own descriptor-counting helper used `/dev/fd`; the T1-T6 lines were identical. The second run is the one quoted.) T9 is a fail-closed false positive: `os.Root` refuses an ABSOLUTE symlink even when it points inside the root, so a race swap to such a link is kept as `symlink-escape` instead of being judged by content. Race-only, nothing is read, nothing removed.
-
-New-defect reproductions (`go test ./internal/cli/ -overlay ... -run '^TestR4Audit(F1ForeignDataInSibling|F2RootSwapRace)$' -count=1 -v`):
-```
-zz_r4b_test.go:34: AF1 claim err=true foreign-data-exists=false
---- PASS: TestR4AuditF1ForeignDataInSibling (0.00s)
-zz_r4b_test.go:78: AF2 attempts=2079 outside-reads=1
---- PASS: TestR4AuditF2RootSwapRace (0.14s)
-ok  	github.com/modu-ai/moai-adk/internal/cli	1.256s
-```
-AF2 flips the project-root path between the real directory and a link to an outside directory in a goroutine and calls `readUnregisteredInsideRoot(root, abs)` in a loop; the loop stops at the first outside read, which came at attempt 2079 (`data == "OUTSIDE"`, `err == nil`). AF1 uses the `priorManifestMarkerCopy` seam to create `user-data/keep.txt` inside the new sibling and then fail; `claimPriorManifestDir` returned an error and the foreign file was gone.
-
-### Hard invariants (this run, HEAD aba63b1483)
-
-```
-git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
-inv=0
-```
-`removalEnabled` in non-test code: the only assignment is `internal/cli/migrate_project_assets.go:40:var removalEnabled = false`. `t.Skip|SkipNow|testing.Short` over the card's changed `_test.go` files (`git diff --name-only cdd72a814 HEAD -- '*_test.go' | xargs grep`): only `migrate_ownership_helpers_test.go:1008` and `:1009` (the run-result field `first.Skipped`) and `migrate_ownership_symlink_test.go:8` (a comment); no call. `git ls-files --others --exclude-standard` printed nothing; `gofmt -l internal/cli internal/cli/update/backup` printed nothing. No added code opens a profile root: the added `os.OpenRoot` is on the project root, the counterpart read in `userCounterpartConfirmed` stays behind `unreadableKind`.
-
-### Code read at HEAD (delta `git diff 1d9b06a737 HEAD`: 5 files, 164 insertions, 5 deletions, non-`.moai`)
-
-- `readUnregisteredInsideRoot` (`internal/cli/migrate_ownership.go:399-445`): normalises the root (absolute, EvalSymlinks), `filepath.Abs` + `EvalSymlinks` of the target, `withinRootBoundary`, `filepath.Rel`, then `os.OpenRoot(root)` (line 428) and `r.Open(rel)` (line 434), `io.ReadAll`; both handles closed by `defer`. The Root is opened from the root STRING after the boundary check: this is N-A.
-- Error text: the stdlib text is `errPathEscapes = errors.New("path escapes from parent")` (`os/file.go:421` in toolchain go1.26.8, read); the code matches it by `strings.Contains`. Disclosed limit; not re-reported.
-- `claimPriorManifestDir` (`update_prior_manifest.go:177-208`): `os.RemoveAll(sibling)` at line 203: N-B.
-- Unchanged and re-read: `IsPriorManifestBookkeeping` (root-level names only), `withinRootBoundary` (element-wise), `pathLeavesRoot`, `unreadableKind`, `userCounterpartConfirmed` (kind check before open), `copyRunMarker` (absent or non-regular marker is nothing to copy; CRLF), `writePriorManifest` (removes the temporary file on failure).
-- The test seam `readWindowHook` is a package variable replaced by a test only; the race rows run without `t.Parallel`, set it before the goroutine starts and restore it with `t.Cleanup`, so no data race in the rows.
-
-### audit_multi (required backend gate)
-
-Call: `mcp__moai__audit_multi` with `project_root=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1865`, `target=baseBranch`, a focus restating the delta, no `gates` argument. Verbatim result members:
-- `per_backend_verdicts[0]`: `backend: "codex"`, `gate: "required"`, `verdict: "fail"`
-- `overall_verdict: "fail"`; `disagreement_flag: null`; `participant_count: 1`; `residual_risk_note: "required-backend FAIL: codex"`; `fail_open_backends: []`
-- `plan_source: "config"`; no `gate_unmet` member in the returned object
-- `audit_receipt: "rcpt-bc15a518bfe20c055b8f4bda"`
-- `build_commit: "ee981a932"` with `build_lag` reporting the installed binary as an ancestor of tree HEAD `aba63b148`.
-
-The codex failure is two substantive P2 findings, NOT the "no go files to analyze" sandbox reason (codex ran helper-level reproductions). Codex also said its full classification-path reproduction could not run (Go build cache blocked in its sandbox); its evidence is limited to direct helper calls. I reproduced both findings myself (above). This verdict is not final until the orchestrator's convergence check passes: the orchestrator writes `overall_verdict: fail`, `gate_unmet` (absent), `plan_source: config`, and codex/required/fail to `<toplevel>/.moai/state/audit-plan-result.json` and runs `moai verify audit-plan --project-root <toplevel> --result-file <that path>`. I do not write that file.
-
-## Baseline-attribution
-
-- All test, build, vet and scratch measurements above were made in this run against tree HEAD `aba63b148319b25ec44080c89071a2b99462a8bd`, built and run from this worktree's sources. The installed `moai` CLI was not used as a measuring tool for any code claim.
-- Judging build for the MCP/CLI calls (`audit-plan`, `audit_multi`): commit `ee981a932`, a strict ancestor of the tree HEAD (the tool reported `build_lag`). The plan and the codex dispatch therefore come from older code; the codex review read this tree's diff.
-- Diff base for the card: `cdd72a814`. Delta base: `1d9b06a737`. The lane's E.2 chunk 12 figures (RED cells, five green runs, two mutants, 57+9+1 regression names, lint "0 issues") were read from progress.md; I re-observed the anchored selectors, the two packages, build, Windows build and vet, but not the mutants, the five-run repetition, the 57-name regression set or golangci-lint.
-
-## RED/arrival cells and test honesty
-
-- Chunk 12 RED (progress.md "시험 먼저"): two F-A race rows red before the fix (first row red for the right reason: `read=other-bytes`; second row red because the window did not exist before the fix, `swapped=false`: a weak RED, disclosed in the record), and the F-B subtest red for the right reason (`[…153045 …153045-02] remain`, `unmanaged=1`). The lane's mutants (plain `os.ReadFile`; `os.Open(filepath.Join(root, rel))` instead of `Root.Open`; `RemoveAll` -> `Remove`) are recorded red for the stated reasons with `cmp` restore checks. I did not re-run these mutants.
-- Blind spot of the F-A rows, found by this audit: every race row swaps the FILE; none swaps the PROJECT ROOT path, and there is no seam before `os.OpenRoot`. The window N-A lives in is therefore untested.
-- Blind spot of the F-B subtest: it makes the failure come after a marker FILE exists; it does not create a foreign entry in the sibling, so it cannot see N-B.
-
-## Binding run conditions (12: N4-remainder, N14-N24)
-
-Re-read in progress.md E.3 ("Binding run conditions 의 처분"): every item still carries a disposition and evidence pointer; N16 is open and disclosed (now noting that chunk 12 moved the unregistered read to `os.Root` and that the registered path is untouched), N24 is a confirmed limit, N18/N21/N22 are SPEC-wording debts. I did not re-measure any cell of this table in this round (see Gaps). Undisposed conditions: none found by reading.
-
-## Documents versus code
-
-- CHANGELOG entry: `final run code commit dc32a94c9e` equals the last non-test Go change (`git log -3 -- '*.go'` lists `dc32a94c9e`, `714adcc444` (tests), `1003a9edd4`); the new sentence "an unregistered file is read through a root-confined open so a link swapped after the check cannot make the read leave the project" is overstated by N-A (the root path is re-opened by name). Counts (17 REQ, 21 AC) agree with the E.3 matrix (14 release-blocking + 7 regression-guard = 21).
-- progress.md E.4: caveat 6 (EvalSymlinks-to-read race on the unregistered read closed by `os.OpenRoot`; FIFO swap and registered read open), caveat 9 (error-text dependence) and caveat 10 (F-C) match the code. Caveat 6 shares the N-A overstatement. `sync_commit_sha: e99a990296dc8d84b48891a9d916b8379b9f4f3b` is consistent with the history (the spec.md `completed` transition is in that commit). The SPEC-body edit set is design.md D-1 by `0a33265120` only, as stated.
-- The "Honest gaps" bullet about Go commands run without a slot check is present and accurate for the lane's earlier calls.
+Must-pass firewall: Security (a built-in must-pass dimension) does not meet its threshold, so the overall verdict is FAIL whatever the other scores are. The required codex gate fails independently.
 
 ## Findings
 
-- **N-A [SHOULD-FIX] [blocking for the required gate]** `internal/cli/migrate_ownership.go:428` (`readUnregisteredInsideRoot`). The Root is created with `os.OpenRoot(root)` from the root path string AFTER `EvalSymlinks`/`withinRootBoundary` has accepted the target. If the project root path (or an ancestor of it) is replaced by a link to an outside directory in that window, the Root pins the OUTSIDE directory and `Root.Open(rel)` reads the same relative name there. Reproduced: `AF2 attempts=2079 outside-reads=1`. Attacker model: a process that can rename entries in the parent directory of the project root while `moai update` runs (strictly narrower than F-A, which needed write access only inside the project). The bytes are hashed for provenance, never removed (removal disabled). Introduced by this card (the F-A repair is incomplete); at base there was no guard at all. Required fix: open the Root once on the verified project root when the environment is built (or at the start of the walk, and re-verify with `os.SameFile`/an fstat of the handle against the resolved root), and reuse that handle for every read; do not re-open the root by name after the check. Add a root-swap row to the race group. Alternatively disclose this window with the attacker model in E.4 and the CHANGELOG and soften the "so a link swapped after the check cannot make the read leave the project" sentence.
-- **N-B [MINOR]** `internal/cli/update_prior_manifest.go:203`. `os.RemoveAll(sibling)` removes anything under the new sibling, including content a foreign process created there between `Mkdir` and the cleanup (reproduced with the marker-copy seam: `foreign-data-exists=false`). The lane's comment says the sibling "holds at most the marker file", which is not enforced. Introduced by this card (F-B repair; my round-3 recommendation was to remove the marker file and then the directory, which would not delete foreign content). Likelihood is very low (a foreign process must guess the new name within microseconds). Required fix: remove `sibling/.moai-run` (a single file) and then `os.Remove(sibling)`; if the directory is not empty, keep it and report the cleanup error.
-- **N-C [MINOR, optional]** `readUnregisteredInsideRoot`: a link swapped in at the second window that is ABSOLUTE and points inside the project is kept as `symlink-escape` (T9), because `os.Root` rejects absolute links. Fail closed, race-only. No fix needed; mention in E.4 if N-A is documented.
-- No other new defect found in `pathLeavesRoot`, `withinRootBoundary`, `IsPriorManifestBookkeeping`, `copyRunMarker`, `unreadableKind`, `userCounterpartConfirmed`, `writePriorManifest`: symlinked project root (T1), relative root (T2), directory where a file was expected (T3, `read-failed` as at base), odd names (T4), in-project ancestor and absolute links (T5, T6), no descriptor growth over 800 verdicts (T7). Windows could not be run (build only, rc=0); Windows separators in `IsPriorManifestBookkeeping` are handled by `filepath.ToSlash`.
-- F-C (case-insensitive file system) remains a disclosed limit, not re-reported.
+- F1 [P2 / BLOCKING] `internal/cli/migrate_ownership.go:414` - `readUnregistered`, when a path component is a symlink, calls `os.Stat(abs)` only to choose between the reasons `read-failed` and `symlink-escape`. `os.Stat` follows the link, so a project link whose target is a profile root file (for example a link into a profile configuration directory's `skills/`) makes the update stat that profile path. REQ-OWR-005 says the update shall not "open, read, enumerate, stat, walk, supply, or write any profile root". The call is outside the AC-OWR-08 source scan (the scan freezes call sites of profile symbols, and this is an `os` call on a project path), and the differential canary has no project symlink into a profile root, so no test sees it. The stat is gratuitous: the SPEC decision is that every link is kept unread; the only thing the stat changes is a reason label. Codex reproduced it: flipping only the existence of the outside target changed the result from `read-failed` to `symlink-escape`. I did not execute that reproduction (Gaps). Required fix: remove the `os.Stat(abs)` call; for a symlink component that cannot be examined inside the Root, keep the file unread with `symlink-escape` (or, if the dangling-link `read-failed` baseline must stay, decide it from `root.Lstat`/`Root` readlink-style metadata that never leaves the root), then add a differential test whose project link points into a fake profile root and asserts that root's metadata is never touched, and extend AC-OWR-08 with that row. Related residual, not new in the shrink: `unreadableKind(abs)` (`migrate_ownership.go:345`) and `os.ReadFile(abs)` (`:320`) follow links of REGISTERED files by path; progress.md already discloses the registered-file read as debt (N16 family), so I rank it MINOR and mention it so F1's fix is not mistaken for the whole link surface.
+- F2 [P2 / SHOULD-FIX] `internal/cli/migrate_ownership.go:427` - `root.Open(...)` runs after the kind check; a regular file swapped for a FIFO between `root.Lstat` (`:402`) and `root.Open` makes the open block until a writer appears, so `moai update` hangs even with `removalEnabled=false`. The code comment on `keepNonRegularFile` (`:73`) states the design intent "kept without ever being opened, because reading such a file can block forever", and the race leaves a window where that does not hold. progress.md caveat 6 discloses it ("a regular file swapped for a FIFO between the kind check and the read" is still uncovered), and the race needs a local writer inside the project during the run, so it is a disclosed residual, but it is reproduced as a hang by the required backend. Required fix: open without blocking (for example `root.OpenFile` with `O_NONBLOCK` on unix, via a build-tagged helper, or open then `f.Stat()` and read only a regular file), re-check the kind on the opened handle, and add a `lstat-to-open` race row that swaps in a FIFO (the `readWindowHook` seam already supports it).
+- F3 [P3 / MINOR / optional] `internal/cli/migrate_ownership.go:363` - `escapesRoot` matches the substring `path escapes from parent` in `err.Error()`, and a `PathError` message contains the user's file name, so a missing file named `path escapes from parent.md` is reported `symlink-escape` instead of `read-failed`. Both outcomes keep the file unread, so only a reason label and a per-reason tally are wrong. Required fix if taken: compare the unwrapped cause (`errors.Unwrap`/`*fs.PathError.Err`) text instead of the full string. The stdlib-text dependence itself is real (`errPathEscapes` is unexported in `os/file.go:421` of the toolchain in use) but fails closed: a changed text yields `read-failed`, nothing is read, and the race rows in `TestPathBoundaryCounterexamples` expecting `symlink-escape` would turn red, so it is pinned.
+- F4 [MINOR / optional, observation] `pruneManagedEmptyDirs` (REQ-OWR-008) is not gated by `priorManifestFailed`, while REQ-OWR-016 says the run "shall remove no file". It removes only empty directories and never a file, so the requirement text holds; recorded so nobody reads AC-OWR-20 as "no filesystem change at all" when the prior-manifest copy failed.
 
-## Score (flat weighted model, must-pass firewall)
+Classification note: F1 is blocking because REQ-OWR-005 is a requirement the SPEC states; F2 is a correctness defect with a disclosed residual; F3 and F4 are optional and must not by themselves convert a PASS into a FAIL. The FAIL verdict is driven by the required-backend gate and by F1 plus the must-pass Security score.
 
-| Dimension | Score | Verdict | Basis |
-|---|---|---|---|
-| Functionality (40%) | 84/100 | PASS (by score) | F-A and F-B fixed and green, 7 anchored tests, 2 packages, builds and vet clean; no AC failure found |
-| Security (25%) | 72/100 | FAIL (gate) | N-A reproduced by execution: a root-path swap reads outside the project; required codex backend failed on it |
-| Craft (20%) | 80/100 | PASS | gofmt, vet, builds clean; race rows do not cover the root swap; cleanup broader than needed (N-B) |
-| Consistency (15%) | 86/100 | PASS | style matches; documents match the code except the "link swapped after the check" overstatement |
+## What I probed on the shrink and found sound
 
-Overall FAIL, driven by the required codex backend gate (unmet) and the reproduced N-A, not by a score collapse. Without the gate the code-level picture would be PASS-WITH-DEBT at best, with N-A as the item to fix first.
+- Same-second claim: `preservePriorManifest` (`update_prior_manifest.go:139-161`) refuses when `manifest.prior.json` already exists in the target directory (Lstat), returns `priorManifestFailed`, creates no sibling directory, runs no `RemoveAll`; `backUpRemovalCandidates` (`migrate_project_assets.go:143-146`) returns the blocking reason before any copy. `TestSecondClaimInTheSameDirectoryFailsClosed` (4 sub-tests) passes. The sibling scheme, `copyRunMarker`, `priorManifestMarkerCopy`, `priorManifestSiblingMax` are gone (grep of the non-test sources finds no use).
+- One open per run: `newOwnershipEnv` opens the root once (`migrate_project_assets.go:204`), `defer env.closeRoot()` (`:306`), preview `defer verdicts.close()` (`update_dryrun_preview.go:74`); `TestMigrationOpensTheProjectRootOnce` and `TestPreviewVerdictsCloseTheRootTheyOpened` pass. Root-path swap row (N-A) passes: the read lands on the original project, not the swapped path.
+- Per-component `Lstat` through the Root, any symlink component kept unread as `symlink-escape`, dangling or looping link `read-failed`, FIFO/socket/device decided before any open: code at `:377-440`, rows in `TestPathBoundaryCounterexamples` pass.
+- Path boundary: `withinRootBoundary` (`migrate_project_assets.go:641-649`) compares path elements (`rel == "."`, `rel != ".."`, no `../` prefix), not string prefixes; a name starting with two dots is inside; the 7 pure rows plus the update-shaped (`.`) rows pass.
+- Keep-reason vocabulary: closed set of 14 plus the `evidence-incomplete:<item>` family in `isKnownKeepReason` (`:88-105`); `TestKeepReasonVocabularyIsClosed` and `TestVocabularyGuardControls` pass; the shrink added no reason.
+- `removalEnabled`: single non-test assignment `var removalEnabled = false` (`migrate_project_assets.go:44`); `grep -rn 'removalEnabled *= *true' internal/cli --include='*.go'` minus tests prints nothing; `TestRemovalSwitchStaysOffInProduction`, `TestMigrationRemovalGate`, `TestMigrationDefaultKeepsConfirmedProjectCopy`, `TestPreviewOmitsRemovalCandidateWhileSwitchOff` pass.
+- Protected files: `git diff 48bfe97afa..HEAD --name-only -- internal/config/protected_zone.go internal/config/userroots.go internal/profile` lists 0 files.
+- Dry run: no update lock and no binary self-update under `--dry-run` (`update.go` diff); `TestUpdateDryRun_ZeroMutation` and `TestDryRunChangesNothingAndMatchesVerdict` pass.
+- No skipped test: the only `Skip` hits in the card's test files are a comment and an unrelated `first.Skipped` field; the runs show SKIP=0.
 
-## Gaps (not observed)
+## Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
 
-- Not run by me: package-wide `internal/cli` tests, coverage, `-race`, golangci-lint, the 57-name regression set, the lane's five-run repetition and its mutants (the mutants' red/green claims rest on the lane's record).
-- Windows: build only (`GOOS=windows go build ./...` rc=0); no execution, so `os.Root` behaviour on Windows (reserved names, junctions, short names) is unobserved.
-- Case-insensitive file system behaviour (F-C) and a case-sensitive branch of `TestCaseVariantOnHostFilesystem` were not exercised.
-- The 12 binding conditions were re-read, not re-measured cell by cell; the frozen call-site baseline row set was not re-counted.
-- The root-swap race was observed once in a scratch loop (2079 attempts to the first hit); the rate is not characterised, and it ran on a loaded machine (load about 28).
-- I did not verify the codex "4,782nd attempt" figure; my own run is the evidence for N-A. I reproduced N-B with a seam that simulates the foreign write, not with a second real process creating a `.moai-run` directory.
-- The installed `moai` binary lags HEAD (`ee981a932` is an ancestor), so `audit-plan` and the `audit_multi` dispatch are served by older code.
-- Slot status was read at my checks; the exact holder at the instant of each admission check between 17:30Z and 17:41Z was read at 17:30Z and 17:41Z only (lane-22, not landing or remeasure).
-- No refused tool call occurred; no `.moai/state` file was edited or deleted by me.
+### Claim 1: the shrink's guarded behaviour holds on the selectors the lane named
 
-## Residual-risk
+Evidence, command (cwd = the audited tree, `TMPDIR=/private/tmp/lxq/aud/tmp`):
 
-- The defect class "a read of a project path ends up outside the project" has now been closed for the file component (F1, F-A) but each repair has left the next-outer component (symlinked ancestor, then root path string) to the next round; the registered-file read-before-boundary is still open at base (N16 family). A round 5 after N-A may find another edge in the newest helper.
-- All open items fail closed or only hash bytes (removal is disabled: `removalEnabled` false), so no data-loss path was found; the exposure is a provenance read of an outside file by a local attacker who already controls the project root's parent directory.
-- N-B can delete foreign data only inside a directory this run created moments earlier.
+```
+timeout 600 go test ./internal/cli/ -run '^(TestSecondClaimInTheSameDirectoryFailsClosed|TestMigrationOpensTheProjectRootOnce|TestPathBoundaryCounterexamples|TestUnregisteredSymlinkOutsideProjectIsNotRead|TestUnregisteredFileBelowASymlinkedAncestorIsNotRead|TestNonRegularFilesAreKeptWithoutBeingRead|TestInterruptedMigrationRecoversAndConverges|TestRepeatedUpdateIsIdempotent|TestPreviewVerdictsCloseTheRootTheyOpened)$' -count=1 -v > /private/tmp/lxq/aud/run1.txt 2>&1
+```
+
+Observed: `exit=0`; tail of the output file:
+
+```
+    --- PASS: TestSecondClaimInTheSameDirectoryFailsClosed/TheLaterRunRemovesNothingAndSaysWhy (0.79s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	20.090s
+PASS=101 FAIL=0 SKIP=0
+```
+
+(counts are `grep -c -- '--- PASS|FAIL|SKIP'` over the saved file; the swept set is 101, not empty.)
+
+### Claim 2: the acceptance criteria outside the shrink surface that I judged still pass
+
+Command: `timeout 600 go test ./internal/cli/ ./internal/manifest/ ./internal/cli/update/backup/ -run '^(TestOwnershipVerdictClasses|TestMigrationClassifiesUnregisteredMirrorCopy|TestOwnershipPreserveByteEqualUserFile|TestOwnershipUnregisteredUnknownOriginKeptWithReason|TestOwnershipAttestedManagedOnlyWithFullEvidence|TestPriorGenerationSourceBoundedAndTolerant|TestPriorManifestRetainedInRunBackup|TestNoProfileRootAccessInUpdateSources|TestProfileEnvDoesNotReachProfileRoot|TestProfileScanCatchesMutants|TestDryRunChangesNothingAndMatchesVerdict|TestPreviewOmitsRemovalCandidateWhileSwitchOff|TestUpdateDryRun_ZeroMutation|TestMigrationDefaultKeepsConfirmedProjectCopy|TestMigrationRemovalGate|TestRemovalSwitchStaysOffInProduction|TestBackupFailureRemovesNothingThroughProductionPath|TestPriorManifestAtomicWriteFailures|TestPriorGenerationCorruptIsNoEvidence|TestManifestRecordsDeployedVersion|TestKeepReasonVocabulary.*|TestVocabulary.*)$' -count=1 -v`
+
+Observed: `exit=0`
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	19.449s
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.258s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.313s [no tests to run]
+PASS=100 FAIL=0 SKIP=0
+```
+
+The `[no tests to run]` for the backup package is the empty-sweep token (that selector names no test of that package); I did not read it as a pass for that package and ran the backup selectors separately (Claim 3). Passing tests seen by name: TestBackupFailureRemovesNothingThroughProductionPath, TestDryRunChangesNothingAndMatchesVerdict, TestKeepReasonVocabularyIsClosed, TestManifestRecordsDeployedVersion, TestMigrationClassifiesUnregisteredMirrorCopy, TestMigrationDefaultKeepsConfirmedProjectCopy, TestMigrationRemovalGate, TestNoProfileRootAccessInUpdateSources, TestOwnershipAttestedManagedOnlyWithFullEvidence, TestOwnershipPreserveByteEqualUserFile, TestOwnershipUnregisteredUnknownOriginKeptWithReason, TestOwnershipVerdictClasses, TestPreviewOmitsRemovalCandidateWhileSwitchOff, TestPriorGenerationCorruptIsNoEvidence, TestPriorGenerationSourceBoundedAndTolerant, TestPriorManifestAtomicWriteFailures, TestPriorManifestRetainedInRunBackup, TestProfileEnvDoesNotReachProfileRoot, TestProfileScanCatchesMutants, TestRemovalSwitchStaysOffInProduction, TestUpdateDryRun_ZeroMutation, TestVocabularyGuardControls.
+
+### Claim 3: the restore walks and the manifest version stamp
+
+Command: `timeout 600 go test ./internal/cli/update/backup/ ./internal/manifest/ -run '^(TestRestore.*PriorManifest.*|TestIsPriorManifestBookkeeping|TestManifestRecordsDeployedVersion)$' -count=1 -v`
+
+Observed: `exit=0`, `ok  github.com/modu-ai/moai-adk/internal/cli/update/backup 0.181s`, `ok  github.com/modu-ai/moai-adk/internal/manifest 0.085s`, `PASS=14 FAIL=0 SKIP=0`.
+
+### Claim 4: static checks
+
+Commands and observations: `gofmt -l internal/cli internal/manifest` printed nothing, `gofmt-exit=0`. `timeout 600 go vet ./internal/cli/ ./internal/manifest/ ./internal/cli/update/backup/` printed nothing, `vet-exit=0`. `git rev-parse HEAD` printed `4a625be15622eeb610df317807831d51e4257e36`; `git status --short` printed nothing.
+
+### Baseline-attribution
+
+All test and static results above were produced in this run against the tree at HEAD `4a625be15622eeb610df317807831d51e4257e36` (clean), using the installed `go` of the toolchain pinned by go.mod (`go1.26.8 darwin/arm64`). The tests are built from the tree; the moai binary was not used to produce any of them. The audit_multi result names `build_commit: 7705b365e2` as the judging build (see the header for its relation to HEAD). Output files: `/private/tmp/lxq/aud/run1.txt`, `run2.txt`, `run3.txt`, `vet.txt` (machine-local scratch, not citation targets; the deciding lines are quoted above).
+
+Admission record for every Go call (read before the call, in this run):
+
+| Go call | reading time (UTC) | load average 1-min | free memory | go-test-heavy slot holder |
+|---|---|---|---|---|
+| Claim 1 selectors | 2026-10-19T01:31:52Z (after a 30 s stagger from the 01:31:20Z reading) | 14.45 | 81% | lane-35, "t1791 D2 correction" (development, not a landing or remeasure record) |
+| Claim 2 selectors | 01:32:49Z | 11.91 | 81% | lane-45, command "(not given)", since 01:32:26Z |
+| Claim 3 selectors | 01:33:21Z | 11.69 | 81% | lane-45, command "(not given)" |
+| gofmt then go vet | 01:33:57Z | 13.48 | 81% | lane-45, command "(not given)" |
+
+The first reading (01:31:20Z) showed load 18.77. One Go call ran at a time, each under `timeout 600`, output redirected to a file, `TMPDIR` under `/private/tmp/lxq/aud/tmp`, no card id in any temp path, nothing killed, no command refused by a guard.
+
+### Gaps (explicitly NOT observed)
+
+1. The full `internal/cli` package suite, coverage measurement, `-race`, and Windows test execution were not run (landing remeasure's job per the brief). Craft is therefore UNVERIFIED, not PASS.
+2. `golangci-lint` was not run; the lane's record of `--new-from-rev=aba63b1483` 0 issues was not re-observed.
+3. Acceptance criteria AC-OWR-09 to -15 (commands/agents, case variants, empty directories, remaining list, backup/restore bytes) were not run by me; the shrink did not change those code paths (progress.md section E.2 chunk 13 scope guard), but that is the lane's statement, not my observation.
+4. F1 and F2 are established by reading the code lines cited and by the required backend's reproduction; I did not execute either reproduction, because writing a scratch test into the tree is outside my allowed write set and a test outside the package cannot reach the unexported functions. The F3 mechanism was confirmed by reading the code and the `os.PathError` message form, not by execution.
+5. Windows behaviour of `os.Root` on junctions and reparse points was not observed.
+6. The slot holder's command for three of the four calls read "(not given)"; I could not tell from the slot record whether it was a landing or remeasure session. I treated "(not given)" as not a landing record and recorded it here.
+7. The `.moai/lessons-inbox.jsonl` was not consulted for refused tool calls; no tool call was refused in this run.
+8. Plan-phase binding run conditions (`Binding run conditions` heading in progress.md) were not re-read item by item in this round; the FAIL verdict does not depend on them.
+
+### Residual-risk
+
+- A local writer inside the project during a run can still hang the update through the FIFO swap (F2), and a project link into a profile root still gets its target stat'ed (F1) until fixed.
+- The registered-file read (`os.ReadFile(abs)`, `unreadableKind`) still follows links by path; disclosed debt, bytes never leave memory unless the path is removal-eligible, which needs the boundary check and the switch that is off.
+- Reason labels can be wrong for file names containing the stdlib escape text (F3).
+- The escape detection by the stdlib error text stays a documented limit; it fails closed.
+- Coverage and the whole-package result are unmeasured here; a regression outside the selected tests would not be seen.
 
 ## Iteration history
 
-- Round 1 (`dfd7c40fb2`): FAIL, codex fail, receipt `rcpt-7770ccadc2f78594b050e777`; F1 BLOCKING, F2/F3 SHOULD-FIX.
-- Round 2 (`38c8ca5376`): FAIL, codex fail, receipt `rcpt-aeb48f1d567c915a06f7b90f`; F1-F3 fixed; N1 SHOULD-FIX, N2 MINOR.
-- Round 3 (`1d9b06a737`): FAIL, codex fail, receipt `rcpt-665b06f8d214d9a97633b90c`; F-A, F-B SHOULD-FIX, F-C MINOR (tests not run by the auditor).
-- Round 4 (this file, HEAD `aba63b1483`): FAIL, codex fail, receipt `rcpt-bc15a518bfe20c055b8f4bda`; F-A and F-B verified fixed with tests run by me; new N-A SHOULD-FIX (reproduced), N-B MINOR (reproduced), N-C MINOR optional.
-- Path forward: fix N-A (one Root opened on the verified project root and reused, with a root-swap row) and N-B (remove the marker file, then a non-recursive directory remove), or disclose N-A with its attacker model and soften the two sentences; then a delta re-audit scoped to N-A and N-B. Under the factory's rule C this is the hold point.
+| Round | HEAD | Result | Findings |
+|---|---|---|---|
+| 1 | dfd7c40fb2 | FAIL (codex) | F1 unregistered symlink read before the boundary check; F2, F3 |
+| 2 | 38c8ca5376 | FAIL (codex) | temp-name filter, sibling retention, boundary fixes |
+| 3 | 1d9b06a737 | FAIL (codex) | link swapped between check and read; leaked sibling directory |
+| 4 | aba63b1483 | FAIL (codex) | N-A root path swap, N-B over-broad RemoveAll, N-C absolute in-project link |
+| 5 (this file) | 4a625be156 | FAIL (codex) | N-A, N-B, N-C closed by the shrink; new P2 x2 (stat through a link, FIFO race) and P3 (file name in error text) |
 
-AUDIT-VERDICT: FAIL spec=SPEC-UPDATE-OWNERSHIP-REPAIR-001 receipts=rcpt-bc15a518bfe20c055b8f4bda
+Round 5 is a from-scratch judgment of the final tree, not a delta. Between round 4 and round 5 the shrink commits `b2ad99d068`, `36f3315244`, `7c3abe0e0d`, the progress record `6e28a19a97`, the SPEC wording `701adc3edd` and the docs `4a625be156` landed.
+
+## Recommendations
+
+- Fix F1 first (one call removed, plus the differential row); it is the only finding that touches a stated requirement.
+- Fix F2 in the same change (non-blocking open plus a handle-kind re-check, plus a FIFO swap race row).
+- F3 and F4 are optional.
+- A confirming re-audit after the fix should be scoped to F1, F2 and the lines they touch, with the required codex gate called once.
+
+AUDIT-VERDICT: FAIL spec=SPEC-UPDATE-OWNERSHIP-REPAIR-001 receipts=rcpt-e012674ec01973db90b4bb52
