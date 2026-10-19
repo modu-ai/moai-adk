@@ -2,7 +2,7 @@
 id: SPEC-CI-RELEASE-VERIFY-SHARD-001
 title: "Release Verify sharding — split the 3-OS race run into ci.yml's six shards so no leg reaches the job timeout"
 version: "0.1.6"
-status: in-progress
+status: completed
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec

@@ -293,7 +293,36 @@ go_budget: slot go-test-heavy (lane-55) 13:18:30Z-13:58:30Z; Go work finished ~1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete (3-phase close — plan → run → sync, this commit)
+sync_complete_at: 2026-10-19
+sync_commit_sha: "pending-backfill-sync"
+close_summary: "Release Verify sharded 6 shards x 3 OS (18 legs, gate aggregation unchanged), scripts/release.sh --require-matrix-run resolves the sharded legs; the CHANGELOG entry, the spec.md status transition, and this signal land in the single sync commit; sync_commit_sha is backfilled in the next commit (a commit cannot cite its own hash)."
+changelog_entry_position: CHANGELOG.md [Unreleased] § Changed, first entry
+frontmatter_status_transitions:
+  - "spec.md status: in-progress -> completed (this single sync commit; the intermediate implemented step consolidated per the Status Transition Ownership Matrix close row)"
+updated_field_refresh: "spec.md updated: already 2026-10-19 — no byte change; plan.md / acceptance.md optional updated: refresh skipped per dispatch; spec.md / plan.md / acceptance.md body content untouched"
+b12_self_test_a: >-
+  pre-emission grep -c 'SPEC-CI-RELEASE-VERIFY-SHARD-001' CHANGELOG.md -> 0
+  (halt condition not triggered)
+b12_self_test_b: >-
+  AC count match — moai-ac counter over acceptance.md (tier M, ac_source
+  .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/acceptance.md, resolved and
+  non-empty): default-AC grammar live=17 = 16 declared criteria
+  (AC-RVS-001..016) + 1 cross-namespace citation AC-CI-011 (line 54, cites
+  SPEC-CI-VERDICT-INTEGRITY-001; the [REF] exclusion token cannot be written
+  by this agent — acceptance.md body is forbidden to manager-docs); scoped to
+  the file's declared AC-RVS namespace: live=16 excluded=0 ambiguous=0,
+  exit 0; the CHANGELOG entry cites 16 (AC-RVS-001..016), matching the
+  declared count
+b12_self_test_c: >-
+  file path verification — every path cited in the CHANGELOG entry confirmed
+  present in this tree by ls (release-pr-multi-os.yml, scripts/release.sh,
+  internal/template/release_verify_shard_parity_test.go,
+  internal/template/release_script_test.go, SPEC spec.md and progress.md)
+mx_tag_scan: "run-phase code surface = 2 Go test files (internal/template/release_script_test.go, internal/template/release_verify_shard_parity_test.go) + scripts/release.sh (shell) + workflow YAML (release-pr-multi-os.yml); no new exported production Go identifier; @MX:NOTE/@MX:ANCHOR obligations: none; @MX:WARN candidates (goroutine, complexity >=15): none; scan result: no MX tag needed (expected none)"
+docs_publication: "docs-site / README 4-locale: no update needed — CI-internal change (release pipeline internals + the maintainer-only --require-matrix-run leg resolution); no shard or leg-name surface exists in public docs; judgment: unchanged, nothing edited"
+```
 
 ## §G Override and Refusal Record
 
