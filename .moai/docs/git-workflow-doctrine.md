@@ -2,6 +2,8 @@
 
 > Externalized verbatim from CLAUDE.local.md §18 on 2026-05-20 (v2.20.0-rc1 release-readiness consolidation). Original section authored v2.14.0 onward.
 
+> **[HARD] 현재 정책 고지 (2026-10-19, SPEC-AGENTS-CONTRACT-REVISE-001).** 현재 카드 인도 정책은 `AGENTS.local.md` §4.0(카드별 draft-PR 플로)과 `.claude/rules/local/repo-local-pr-policy.md`다. 이 문서의 카드-PR 금지, 리더 일괄 push/병합, 리더 직접 구현·시험 절차는 **역사 기록**이며 현재 카드 인도에 집행 권한이 없다. 필수 게이트(리뷰 게이트·CI·보존)는 여전히 구속력을 가진다. 아래의 branch-protection 변경 예시, stash/reset 복구 절차, 훅 우회 대안은 **역사 기록(historical record)**이다 — 실행 지시가 아니며, 승인 거부 뒤의 우회 수단으로 사용하지 않는다. **과거 보호 접수증(historical protection receipt)은 현재 원격 설정의 증거가 아니며, 그 설정을 변경할 권한도 부여하지 않는다** — 현재 설정은 필요할 때 `gh api repos/modu-ai/moai-adk/branches/main/protection` 으로 새로 조회한다. ADK의 조건부 auto-merge는 검증된 연결 사용자 본인의 비포크·비봇 PR에만 허용되며(현재 head 게이트 유지), 타인·포크·봇 PR은 auto-merge 비활성 + 사용자 테스트 확인과 명시 승인이 **모두** 필요하다. 저장소는 공개로 유지하고 본인 PR을 포함해 자동 브랜치 삭제를 금지한다. 이 로컬 선택은 관리 설정 변경 승인이 아니다. 기존 변경물은 보존하고 복구·구현은 공식 담당 worker에게 인계한다 — 긴급이나 worker 부재도 리더의 구현·수리·시험 예외가 아니다.
+
 > **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 이 리포는 git-flow로 전환했다. 새 모델의 정본은 `CLAUDE.local.md` §4.1(모델·근거)과 `.claude/rules/local/gitflow-lane-protocol.md`(레인 운영 규칙)다.
 >
 > - **초과분(superseded)**: 이 문서가 전제하는 "`develop` 없는 Enhanced GitHub Flow" 자체 — 즉 feature 브랜치가 `main`에서 분기해 `main`으로 PR을 낸다는 전제. 이제 카드 워크트리는 `develop`에서 분기하고, 카드 단위 PR은 없으며, 통합은 `origin/develop`에서 CI로 판정된다. 서두의 "Gitflow 기각" 판단도 이 전환으로 뒤집혔다.
@@ -250,6 +252,8 @@ gh pr merge <PR> --merge --delete-branch
 - `Test (macos-latest)` — Tier 2 (release PR) 로 이전
 - `Test (windows-latest)` — Tier 2 (release PR) 로 이전
 
+> **[Historical record — 2026-07-20 설정 이벤트의 기록. 집행 권한 없음.]** 아래의 `gh api` 호출들은 2026-07-20 보호 설정 변경의 역사 기록이다. 실행 절차가 아니며, 다음을 위해 사용하지 않는다: 승인 거부 우회, 현재 설정 단정, 보호 설정 재적용. 과거 보호 접수증은 현재 원격 설정의 증거가 아니다 — 현재 설정은 새로 조회해 확인한다.
+
 [HARD] `main` 브랜치 보호 설정 — **적용 완료 (2026-07-20): `enforce_admins: true`로 PR-mandatory 체제 전환. admin 포함 누구도 main direct push 불가; self-merge는 `required_approving_review_count: 0`으로 허용. 종전 Hybrid Trunk main-direct 정책은 RETIRED** (`.moai/docs/git-local-workflow-doctrine.md` §23.2 참조):
 
 ```bash
@@ -304,7 +308,7 @@ brew install lefthook
 lefthook install      # .git/hooks/pre-push 자동 등록
 ```
 
-검증: `make preflight` 직접 실행 시 1-2분 내 통과 → push 후 CI 실패율 95%+ 감소. 임시 우회 (긴급 hotfix 등): `LEFTHOOK=0 git push ...`. SPEC-V3R4-CI-FASTTRACK-001 REQ-CIFT-005 + lessons #19 (1인 개발 CI 3-tier 패턴).
+검증: `make preflight` 직접 실행 시 1-2분 내 통과 → push 후 CI 실패율 95%+ 감소. `LEFTHOOK=0 git push ...` 로 표기된 우회는 **[Historical record — 사고 당시 임시 우회 사례의 기록. 실행 지시 아님]** — 승인 거부 뒤 훅 우회는 금지된다. SPEC-V3R4-CI-FASTTRACK-001 REQ-CIFT-005 + lessons #19 (1인 개발 CI 3-tier 패턴).
 
 ### §18.8 Release 프로세스
 
@@ -365,6 +369,8 @@ git checkout main && git pull
 - **Changesets (대안)**: CHANGELOG 관리 자동화 심화 — 현재 Release Drafter로 충분
 
 ### §18.10 [HARD] 공식 위반 금지 사항
+
+> **[Historical record — develop 체인 시절의 금지 목록.]** 아래 항목 중 develop 분기점·카드 단위 PR 부재 서술은 2026-10-05 GitHub Flow 전환, 다시 2026-10-19 카드별 draft-PR 정책(`AGENTS.local.md` §4.0)으로 대체된 역사이다. 현재 유효한 금지는: `main` 직접 push 금지, release PR merge commit 필수, 수동 tag push 금지, force-push 금지, CI fail 상태 병합 금지.
 
 - ❌ `main`에 직접 push (반드시 PR 경유)
 - ❌ `main`에서 따서 카드 작업 시작 (분기점은 `develop`) · 카드 단위 PR은 존재하지 않는다 — 통합은 로컬 `develop` 병합(`git merge --no-ff`)이다

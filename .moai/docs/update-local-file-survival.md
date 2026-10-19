@@ -1,7 +1,7 @@
 # moai update와 로컬 전용 파일 — 관리 대상 삭제의 실측과 생존 규칙
 
 > CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 main 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용 — 2026-10-05 GitHub Flow 전환 후 분기 트리는 `main` 이다) — 갱신은 카드 워크트리에서 한 뒤 main 으로 PR을 낸다.
-> CLAUDE.local.md 쪽에는 이 요지만 남는다: `CleanMoaiManagedPaths` 가 관리 대상 뿌리를 통째로 삭제하며 보호 목록이 없다는 사실, 로컬 전용 파일 배치 [HARD], update 후 검증·git-strategy 재적용 [HARD].
+> CLAUDE.local.md 쪽에는 이 요지만 남는다: **현재 보존 계약은 아래 분류·병합 절과 `AGENTS.local.md` §2.3을 따른다.** 예전 wipe·설정 일괄 재적용 절차는 사고 기록(incident record)이며 현재 실행 지시가 아니다. 명시적 사용자 설정과 로컬 factory override를 보존하고 update 후 결과를 확인한다.
 
 ---
 
@@ -29,6 +29,10 @@
 5. **`git status --porcelain | grep '^ D'` 검증은 이제 통과가 기본이다** — 통과해도 관리 뿌리 밖 실수는 잡지 못한다. `--dry-run`이 분류 예정표(refresh/merge/preserve/stale)를 미리 보여 주므로 큰 update 전에 본다.
 
 ---
+
+## 과거 wipe 경로와 복구 기록 — 실행 금지 (사고 기록)
+
+> **[Historical record — 아래 구역은 2026-08-15 사고와 구(舊) 절차의 기록이다. 집행 권한 없음.]** 이 구역의 일괄 wipe 서술과 `git restore` 복구 블록은 당시 사고의 기록이며 현재 공유 체크아웃에 대한 실행 지시가 아니다. 변경과 소유자를 먼저 보존하고 복구는 공식 담당 worker에게 인계한다(`AGENTS.local.md` §4.0 항목 8). 현재 계약은 이 문서 상단의 분류·병합 절(card t1547)이다.
 
 **위 Local-Only 목록에 적혀 있다는 사실만으로는 파일이 보호되지 않는다.** 2026-08-15 `moai update --yes` 실행에서 이 목록에 명시된 파일 12개가 실제로 삭제됐다 — 목록은 사람과 AI가 읽는 문서일 뿐, 삭제를 수행하는 Go 코드는 이 파일을 읽지 않는다.
 

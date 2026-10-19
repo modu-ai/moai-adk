@@ -2,6 +2,8 @@
 
 > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
 
+> **[HARD] 현행 고지 (2026-10-19, SPEC-AGENTS-CONTRACT-REVISE-001).** 현재 설치 위치와 보존 동작은 `internal/cli/user_asset_phase.go`, `internal/template/deployer_mode.go`, `internal/cli/update_reconcile.go`와 `.moai/docs/update-local-file-survival.md`의 현행 절(분류·병합 계약, card t1547)을 함께 읽는다. 아래 §24.4의 "삭제 후 신규 설치" 표는 이전 배포 구조의 **사고 기록(historical record)**이며 현재 실행 지시가 아니다 — 이를 근거로 HOME 공통 자산이나 사용자 수정본을 삭제하지 않는다. 로컬 factory 설정을 범용 템플릿에 복사하지 않는다.
+
 ## 24. Harness Namespace 분리 정책
 
 [HARD] Skills + Agents의 namespace는 **"범용 배포"** vs **"사용자 생성"** 으로 명확히 분리한다.

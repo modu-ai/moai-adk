@@ -2,6 +2,8 @@
 
 > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
 
+> **[HARD] 현재 정책 고지 (2026-10-19, SPEC-AGENTS-CONTRACT-REVISE-001).** 현재 카드 인도 정책은 `AGENTS.local.md` §4.0(카드별 draft-PR 플로)과 `.claude/rules/local/repo-local-pr-policy.md`다. 이 문서의 카드-PR 금지·리더 일괄 push·리더 직접 구현/시험 서술은 **역사 기록**이며 현재 카드 인도에 집행 권한이 없다. 필수 게이트(리뷰 게이트·CI·보존)는 유지된다. §23.3-§23.6의 stash/reset 복구 절차와 훅 우회 대안은 **히스토리컬 인시던트 기록**이다 — 실행 지시가 아니며, 승인 거부 뒤의 우회 수단으로 사용하지 않는다. **과거 보호 접수증(historical protection receipt)은 현재 원격 설정의 증거가 아니며 그 설정을 변경할 권한도 부여하지 않는다** — 현재 설정은 `gh api repos/modu-ai/moai-adk/branches/main/protection` 으로 새로 조회한다. ADK의 조건부 auto-merge는 검증된 연결 사용자 본인의 비포크·비봇 PR에만 허용되고(현재 head 게이트 유지), 타인·포크·봇 PR은 auto-merge 비활성 + 사용자 테스트 확인과 명시 승인이 **모두** 필요하다. 저장소는 공개로 유지하며 본인 PR을 포함한 자동 브랜치 삭제는 금지다. 기존 변경물은 보존하고 복구·구현은 공식 담당 worker에게 인계한다 — 긴급이나 worker 부재도 리더 구현·수리·시험의 예외가 아니다.
+
 > **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 카드 작업은 `develop`에서 분기하고 카드 단위 PR 없이 `develop`으로 직접 병합되며, `origin/develop`의 CI가 통합을 판정한다. 정본: `CLAUDE.local.md` §4.1 + `.claude/rules/local/gitflow-lane-protocol.md`.
 >
 > - **초과분(superseded)**: 이 문서의 "모든 변경은 **`main`으로 향하는** PR을 경유한다"는 적용 대상 — 일상 카드 작업은 이제 `main` PR을 내지 않는다. §23.9의 tier별 PR ceremony도 카드 단위로는 발생하지 않는다.
@@ -73,7 +75,9 @@ echo "refs/heads/feat/test 0000 refs/heads/feat/test 0000" | .git/hooks/pre-push
 
 **tag push는 branch protection 대상 아님**: `vX.Y.Z` 태그 push (`scripts/release.sh`)는 branch protection이 적용되지 않으므로 릴리스 tag flow는 이 변경의 영향을 받지 않는다.
 
-조정 필요 시: `gh api -X PATCH repos/modu-ai/moai-adk/branches/main/protection ...`
+> **[Historical record — §23.3-§23.6은 운영 장애(A4-A6)의 사고 기록이다. 집행 권한 없음.]** 아래 절차 블록들은 당시 장애를 처리한 기록이며 현재의 실행 지시가 아니다. 공유 primary 체크아웃에서 재실행하지 않는다 — 복구는 inventory → preservation → 명시적 인계 계획 순으로 공식 담당 worker에게 위임한다(`AGENTS.local.md` §4.0 항목 8). 과거 보호 접수증(`gh api` 결과)은 현재 원격 설정의 증거가 아니다.
+
+~~조정 필요 시: `gh api -X PATCH repos/modu-ai/moai-adk/branches/main/protection ...`~~ [Historical — 2026-07-20 당시의 보호 조정 명령 기록. 실행 지시 아님; 보호 설정은 운영자 승인 절차 없이 변경하지 않는다.]
 
 ### §23.3 운영 패턴 — A4: `gh pr merge --delete-branch` fatal
 

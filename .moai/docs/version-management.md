@@ -102,11 +102,15 @@ build, while every version-string comparison says the reverse. Read `BUILD_ID`
 (and the embedded commit SHA) to decide which binary is newer; never order builds
 by version string.
 
-**`moai update` resets `git-strategy.yaml`.** The
-`.moai/config/sections/git-strategy.yaml` keys — `rc_version_format: vX.Y.Z-rc.N`
-among them, with `workflow: git-flow` and the develop/release branch keys — are
-reset to template defaults by every `moai update` and must be re-applied after
-each update (re-application procedure: CLAUDE.local.md §2.3).
+**Preserve operator-set git strategy during update.** The former wipe-and-reapply
+procedure (every `moai update` resetting the `.moai/config/sections/git-strategy.yaml`
+keys and CLAUDE.local.md §2.3 re-application) is a historical incident record, not a
+current procedure. Use the current classification and preservation contract in
+`.moai/docs/update-local-file-survival.md`: operator-set values (such as
+`rc_version_format: vX.Y.Z-rc.N` and `worktree_base_branch`) and the local factory
+override survive by code (SPEC-UPDATE-MIGRATION-001) — verify the operator's explicit
+values and the local factory override after updating, and never restore the shared
+config wholesale merely because it differs from shipped manual defaults.
 
 The clean-reinstall runbook (`rm -f` + `cp`, `scripts/verify-local-install.sh`, and
 the exit-137 guard) is owned by `.claude/rules/local/gitflow-lane-protocol.md`
