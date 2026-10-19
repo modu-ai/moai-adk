@@ -61,12 +61,39 @@ func TestFactoryNextIgnoresDriverlessPickedRow(t *testing.T) {
 	}
 }
 
+// flSeedDrivenQueueItem backs the t1453 driven row with a queue item carrying
+// an explicit serial classification (SPEC-FACTORY-DEFAULT-MODE-001
+// REQ-FDM-001): a row's serial-ness reads through the queue, so a driven row
+// whose id names no queue item derives the absent-read default
+// (parallelizable) and no longer holds the slot. Both t1513 control tests
+// seed the item so their subject — the DRIVEN row's hold — survives the
+// default flip instead of passing on the concurrent serial lease's
+// contribution.
+func flSeedDrivenQueueItem(t *testing.T, store *factory.BacklogStore) {
+	t.Helper()
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
+			ID:      "t1453",
+			Text:    "driven row card",
+			AddedAt: "2026-09-26T00:00:00Z",
+			State:   factory.BacklogStatePicked,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed t1453: %v", err)
+	}
+	fcClassify(t, store, "t1453", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+}
+
 // TestFactoryNextStillRefusedBehindADrivenRow — the control arm: with an
 // owned serial row in flight (no lease, owner recorded), the slot still holds
-// and `factory next` is refused serial-slot.
+// and `factory next` is refused serial-slot. The driven row is serial through
+// its queue item's explicit classification (flSeedDrivenQueueItem) — the
+// flip's queue-absent rows read parallelizable and release the slot.
 func TestFactoryNextStillRefusedBehindADrivenRow(t *testing.T) {
-	root, _ := flSerialPair(t)
+	root, store := flSerialPair(t)
 	nmIsolatedWorktrees(t, "t1", "t2")
+	flSeedDrivenQueueItem(t, store)
 	fcPlace(t, root, homestate.Card{CardID: "t1453", State: homestate.CardPicked, OwnerLabel: "lane-2"})
 	nmLaneEnv(t, "lane-1", "")
 	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
@@ -83,8 +110,9 @@ func TestFactoryNextStillRefusedBehindADrivenRow(t *testing.T) {
 // row releases the slot and a lease goes through; a later T2 assign sets the
 // owner and the row holds the slot again.
 func TestFactoryNextRefusesAgainAfterLaterAssign(t *testing.T) {
-	root, _ := flSerialPair(t)
+	root, store := flSerialPair(t)
 	nmIsolatedWorktrees(t, "t1", "t2")
+	flSeedDrivenQueueItem(t, store)
 	ctx := context.Background()
 	now := time.Now()
 

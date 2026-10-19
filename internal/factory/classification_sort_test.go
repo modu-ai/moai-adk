@@ -135,19 +135,28 @@ func TestQueuedPositionAfterSort(t *testing.T) {
 	}
 }
 
-// TestDefaultCardDeciderIsDeterministic — REQ-TCD-012: the shipped default
-// implementation always answers with the fail-safe defaults and never
-// errors; it is a judgment (decider default), not a failure.
+// TestDefaultCardDeciderIsDeterministic — REQ-TCD-012 (as re-valued by
+// SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-002): the shipped default
+// implementation always answers with the absent-read default —
+// parallelizable under decider default, a reason naming the deterministic
+// default — and never errors; it is a judgment, not a failure. The
+// decider-FAILURE fail-safe is the separate serial DefaultCardClassification
+// the add path's fallback branch promotes (REQ-FDM-003), pinned in the same
+// breath so the two defaults cannot silently re-merge.
 func TestDefaultCardDeciderIsDeterministic(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		c, err := DefaultCardDecider{}.Classify("any text")
 		if err != nil {
 			t.Fatalf("default decider errored: %v", err)
 		}
-		want := DefaultCardClassification()
-		if c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode || c.Decider != want.Decider {
-			t.Errorf("default decider produced %+v, want the fail-safe defaults %+v", c, want)
+		want := AbsentCardClassification()
+		want.Reason = "deterministic default: no classification judgment supplied"
+		if c != want {
+			t.Errorf("default decider produced %+v, want the absent-read defaults %+v", c, want)
 		}
+	}
+	if failsafe := DefaultCardClassification(); failsafe.Mode != ClassModeSerial {
+		t.Errorf("fail-safe default mode = %q, want serial (the fail-safe stays a separate value from the absent-read default)", failsafe.Mode)
 	}
 }
 
