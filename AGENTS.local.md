@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local moai-adk-go development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-09-29
+> **Last Updated**: 2026-10-20
 
 ---
 
@@ -47,7 +47,7 @@ This migration passed through develop and reached `main` with the 2026-10-05 tra
 
 ## 1. Quick Start
 
-See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. The core in one line: edit templates in `internal/template/templates/` and regenerate them with `make build`; commit in a card worktree (the primary checkout is prohibited — AGENTS.md §2·§3).
+See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. The core in one line: edit templates in `internal/template/templates/`, regenerate derived artifacts with the explicit emit targets (`make agents-emit`, `make commands-emit`, `make embed-manifest`), and use `make build` to check drift and embed the result; commit in a card worktree (the primary checkout is prohibited — AGENTS.md §2·§3).
 
 ---
 
@@ -67,7 +67,7 @@ See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make b
 internal/template/templates/.claude/
 internal/template/templates/.moai/
 # (The .agency/ template root has been removed — legacy archive; [2026-08-27 audit correction])
-internal/template/templates/CLAUDE.md
+internal/template/templates/AGENTS.md.tmpl
 ```
 
 ### [HARD] Template-First Rule
@@ -88,35 +88,9 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
-### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
+### [HARD] §2.0 Three copies of the agent definitions — full text moved
 
-Agent definitions exist in three copies, but **only one of them is not a hand-edit target.**
-
-| Copy | Path | Nature |
-|---|---|---|
-| C1 | `.claude/agents/moai/*.md` | Local dogfooding, hand-edited |
-| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
-| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-emitted from C2** (`internal/template/agentemit`) |
-
-[HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
-
-[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix C2 and regenerate.
-
-Where a miss gets caught — three checkpoints each look at a different axis:
-
-| Check | What it examines | When |
-|---|---|---|
-| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output emitted from `.md` | Every local build. **Read-only — does not regenerate** |
-| `go test ./internal/template/agentemit/...` | The same axis | Every CI run |
-| `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **Embed axis**: the bytes actually embedded in an already-built binary vs. the committed copy | Manual. `BIN=<path>` can also target the installed binary |
-
-The reason the third checkpoint exists separately: `go test` recompiles the test binary every time, and `//go:embed` reads the committed copy as of that moment, so a source-to-source comparison **cannot, in principle, see a stale binary**. That is why `make embed-check` does not have `build` as a prerequisite — a freshly built binary matches by definition, so a check that runs only right after a build is a tautology. For the same reason, it is not attached to the CI build job either (CI builds from the commit it checks).
-
-Regeneration happens **only through the explicit verb `make agents-emit`**. If the build silently overwrote, the very fact that a hand edit existed would disappear.
-
-**§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8) and excludes the FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references), enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). The canonical C1-C8 acceptable-vs-forbidden content-class catalogue lives in `.moai/docs/template-internal-isolation-doctrine.md §25.1` (cross-referenced by **§25 (Template Internal-Content Isolation)** of this file, now a stub). This keeps the template neutral across the 16 supported **programming languages** (§15) and free of moai-adk internal development state. Distinct axis: user-facing locales (ko/en/ja/zh) are governed by the §8 Localization Contract in the active output style — see §15's disambiguation note.
-
-**Pre-PR Verification (template contributor-checklist)** — before opening a PR that touches `internal/template/templates/**`, run the canonical 5-item pre-commit self-check (the CI guard `template-neutrality-check.yaml` is the safety net). See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-item checklist and §25.1 for the forbidden/allowed content-class catalogue (C1-C8). (C3 dates + C7 commit-hashes are owned by the sibling `internal_content_leak_test.go` per §25, not this neutrality checklist.)
+The three-copies table (C1 local / C2 template source / C3 machine-emitted), the `make agents-emit` obligation, the do-not-hand-edit-C3 rule, the three emission checkpoints, and the §2.1 template-content-neutrality paragraph moved to `.claude/rules/local/agents-local-detail.md` §C (paths:-scoped — it loads when `internal/template/**` or the other claimed paths are touched). Essentials, still [HARD]: edit C2 (`internal/template/templates/.claude/agents/moai/*.md`), run `make agents-emit` afterward — never hand-edit C3 (`templates/.codex/agents/moai/*.toml`, machine-emitted); the canonical neutrality catalogue is `.moai/docs/template-internal-isolation-doctrine.md` §25.1.
 
 ### Local-Only Files (Never in Templates)
 
@@ -146,7 +120,7 @@ Do NOT use `t.Setenv` with OTEL environment variables (`OTEL_EXPORTER_*`, `OTEL_
 
 ### Embedded Template System · Command-to-Skill Publication
 
-The full text has been moved to `.moai/docs/local-dev-guide.md` § 2b·2c (card t1303). Summary: `internal/template/embed.go` compiles `//go:embed all:templates` + `catalog.yaml` into the binary, so `make build` is required after editing a template; the codex skill emission of the 16 `/moai` commands is regenerated only through the explicit verb `make commands-emit`, and the emitted copies (`.agents/skills/moai-*/SKILL.md`) are not hand-edited.
+The full text is in `.moai/docs/local-dev-guide.md` § 2b·2c. The tracked per-file embed allowlist in `internal/template/embed_manifest_gen.go` carries the templates and catalog; `internal/template/embed.go` exposes that filesystem. Use the explicit `make agents-emit`, `make commands-emit`, and `make embed-manifest` targets when their inputs change, then let `make build` check drift and compile — `make build` does not regenerate agent or command outputs. Never hand-edit the generated agent or command artifacts; the command count is derived from the emitter inputs rather than maintained here.
 
 ---
 
@@ -179,114 +153,80 @@ The language policy is defined in `.claude/rules/moai/development/coding-standar
 
 Conventional Commits — `<type>(<scope>): <description>` + an optional body/footer. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. For examples and the full format, see `.moai/docs/local-dev-guide.md` § 4a.
 
-### §4.0 Default development flow (local-main integration)
+### §4.0 Current card policy — draft PR, review gate, and safe handoff
 
-`main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+This section is the operator-approved card-delivery policy (2026-10-19). It supersedes the local-main batch/card-PR model for card delivery — the superseded clauses are preserved as history in §4.0-H and `.claude/rules/local/agents-local-detail.md` §A·§B without execution authority over current card delivery. It states required behavior, not a claim that the installed tooling implements every step: where a step has no landed implementation it is named as an in-progress task or limitation, and the operative path is the manual command named here.
 
-**[HARD] 1. Branch base**
+**[HARD] 1. Leader boundary.** A session assigned as leader or coordinator coordinates, delegates, reads evidence, and supervises. It never directly implements, repairs, builds, or runs tests in any worktree. There is no emergency, trivial-change, worker-absence, or explicit-request exception. Preserve an existing diff, its base, paths, and evidence before handing it to the officially assigned worker; never overwrite or appropriate another writer's work. If no worker is available, report the assignment blocker.
 
-Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change. A card worktree is created only through `moai factory next` or `moai worktree new`. When the configured base (`git_strategy.worktree_base_branch`, `main` here) resolves, it branches from the named ref `main` and not from HEAD; when the base is empty or does not resolve, creation falls back to the invoking tree's HEAD. Claude Code's default `--worktree` (remote default branch) is not used for card work. After creation, confirm that the new tree's HEAD equals `main`; that confirmation, not the creation path, is the check.
+**[HARD] 2. Card worktree and draft PR.** Use a fresh, short-lived card worktree from the verified configured base, one writer, with the three traceability carriers (the dispatch `card:` field, the card id in every commit message, the evidence path). Finish the required scoped local checks, then open a draft PR for the exact verified head with `gh pr create --draft`. The manual draft-PR path is the operative delivery path: `moai factory complete` currently opens a non-draft PR and requests auto-merge, and the draft/auto-merge separation is an in-progress implementation task — until it lands, do not describe the tool as opening draft PRs. Keep required CI, E2E, typecheck, and security gates; external PR code must not receive secrets.
 
-**[HARD] 2. Merge landing**
+**[HARD] 3. Review gate (incident-derived; approved policy).** A merge is allowed only after confirming the **current** head SHA's `codex-review-state` two legs — `code_review` AND `security_review` — are both `completed` with zero unresolved findings. The state set includes `Failed` (execution failure): any state other than `completed` is not a pass and is a re-request target. **When** the head SHA changed after the review, the review shall be re-requested before merge; a completed review stays valid while the head SHA is unchanged (a same-SHA re-push neither refreshes nor invalidates it). An unprotected integration base is no exception to any of the above. The leader is coordination/supervision only — it does not implement or test — and the #1841 merge-before-review-completion violation is the concrete failure this rule prevents (merge 05:13:31Z preceded both review completions 05:14:11Z / 05:15:04Z; evidence: `inputs/REPORT.md` and `inputs/native-codex-rest-comment.json` under `.moai/specs/SPEC-AGENTS-CONTRACT-REVISE-001/`).
 
-- The landing surface is the integration worktree that holds `main`; the tool refuses when no tree holds it. `workflow.local_main_integration.enabled` is `true` today, so the tool accepts the primary as holder; changing it is planned in t1847.
-- Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
-- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
+This gate is approved policy plus an in-progress implementation task (card t1868, in progress): no sentence here presents the gate as already-implemented tooling. Observed triggers and re-review behavior (PR-level observations, 2026-10-19): the ready transition started the review (#1841); an `@codex review` comment started the review (#1831, #1832, #1834 — #1832 and #1834 have recorded results), so manual triggering is an observed trigger as well and manual triggering from draft is not asserted impossible; the head changed after ready with no automatic re-review observed (#1836, #1842). Official Codex review triggers, per the Codex summary comment on PR #1844 (observed 2026-10-19T06:05Z): (i) opening a PR for review, (ii) changing a draft to ready, (iii) an `@codex review` comment, (iv) an `@codex security review` comment; an in-progress review shows 👀 and finishing without findings shows 👍.
 
-**[HARD] 3. Clean-tree rule**
+**[HARD] 4. Auto-merge conditions and mechanism accuracy.** The repository's auto-merge mechanism (`.github/workflows/auto-merge.yml`) is measured as: a `workflow_run` trigger on CI completion (L7-10); a job condition of `event == 'pull_request' && conclusion == 'success'` (L23-26) — no draft filter, no configuration gate; the merge call carries `--match-head-commit` and `--delete-branch` (L355). Conditions (approved policy): conditional auto-merge applies only to a non-fork, non-bot PR authored by the verified connected GitHub user — identity looked up from the actual connected account, never a hardcoded product login. Other-author, fork, and bot PRs must not have auto-merge enabled and require BOTH the user's test verification confirmed AND explicit approval — both together, never one alone. Eligible own PRs still keep latest-SHA required CI, real Codex review, resolved findings, protection rules, and any third-party approvals. The repository stays public and automatic branch deletion is forbidden, own PRs included — the active `--delete-branch` behavior mismatches this policy and is recorded as a limitation. The conditional own-PR setting is a local operation choice, not a change to the product-wide manual default. Stranded-arm limitation: once auto-merge is requested, the arm persists on the PR (`gh pr view --json autoMergeRequest`); before retrying a gated pr-open PR, check that stranded `auto_merge:on` state and cancel it (`gh pr merge --disable-auto`) or account for it.
 
-A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
+**[HARD] 5. Safe handoff and receiver confirmation.** A handoff records: the card id, base and head SHA, the PR, scoped verification evidence, the review/repair owner and next action, and the owned lease/resource disposition (integration window, test slots). The worker takes the next independent card in a fresh worktree only after receiver-side confirmation of that handoff — the receiver (leader or designated reviewer) has read the recorded evidence. Opening the PR is not card completion: closure requires the confirmed remote merge and the required completion evidence, and the original branch/worktree stays recoverable until that boundary. A preservation push of a card branch by its assigned worker is in-scope delivery, not a protocol violation.
 
-**[HARD] 4. Resynchronization**
+**[HARD] 6. Review-fix return path.** When review findings arrive on an open PR, the recorded repair owner returns to the work: re-enter the card worktree (`ExitWorktree` to the primary checkout, then `EnterWorktree(<card-tree>)` — never a second lease), push fixes as new commits to the same PR branch (never force-push), and re-request the review — the new head SHA obliges the re-request. If the card holds the integration window or a merge-ready slot when findings arrive, release it first (`moai integration release`; verify with `moai integration status`) — a pr-open card holds no window; only the merge verb takes one. Release owned test/resource slots at their documented boundary (`moai slot release --resource <name>`) before stepping away. The card record's state (merge-ready / pr-open / failed / abandoned) and the leases it still holds are read from the record — a holder string or PR existence alone is not evidence that leases were returned.
 
-When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal. `moai integration resync` refuses when another tree holds `main` and no moai verb moves the primary checkout to the current local `main` tip; both are planned in t1847.
+**7. Wait only on real dependencies.** Only actual code or acceptance dependencies block a successor; a failed card blocks its affected dependants, not the entire backlog. Isolate failures; end active work before releasing owned leases.
 
-- (1) Take the window, and confirm that HEAD points at `main` and that the tree being updated is clean.
-- (2) Run `git fetch origin main` and check its exit status. Pin the `origin/main` value obtained as the baseline, and make every later remote comparison against this value.
-- (3) Read the ancestry relation between HEAD and the baseline. If HEAD is behind the baseline, check for ignored-file overwrites, then fast-forward. If the baseline is an ancestor of HEAD, or the two values are the same, report that no update is needed and leave HEAD where it is. If neither is an ancestor of the other, the histories have diverged: refuse, and HEAD does not move.
-- (4) After the move, re-read HEAD to confirm that it equals the baseline and still points at `main`; then report the old and new SHAs and release the window.
+**[HARD] 8. Primary-main preservation.** Recovery of the shared primary checkout requires inventory → preservation → an explicit handoff plan → delegation to the officially assigned worker. Do not run `git checkout` / `git reset` / `git stash` / force-checkout to align the primary with `main`. A clean dedicated main tree is not proof the shared primary is safe to move.
 
-The handling of the diverged case is set by operator decision Q2 (`.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`).
+**9. Policy vs implementation.** Deployment policy: manual-by-default with staged independent opt-in for issuance, dispatch/execution, push/PR creation, review repair, merge, and release/deploy — enabling one never enables another; automatic PR creation does not authorize automatic merge or deployment. Code-side default values for this policy are a separate implementation task (in progress); this text states the policy, not the current shipped state. Preserve explicit operator choices and the local factory override during update and migration. The conditional own-PR auto-merge setting approved for this repository is a local operation choice — not a change to the product-wide default. This policy does not authorize implementing or switching to Kanban mode, and a Kanban simulation is never treated as implementation approval.
 
-**[HARD] 5. Closing and worktree disposal**
+**10. Command forms.** The automated card-dispatch forms are: the CLI shell command `moai todo --auto`; the slash-skill commands `/moai todo --auto-lane` (lane session) and `/moai todo --auto-leader` (leader session). `moai todo --auto-lane` is never a shell form. Code-side occurrences of these strings (SessionStart hook, codex launcher) are card t1695's delegated scope.
 
-- Closing a card merged on the local `main` surface does not push, and does not wait for a release batch.
-- Disposing of a card worktree waits until the batch carrying that merge has landed on origin. Until then the card branch has no remote copy, so the worktree is the only copy of the work.
-- The closing conditions are as follows. The merge commit must have two parents, its tree must equal the tree of the second parent, and it must be reachable from the integration branch. A re-measurement record keyed by that tree must pass verification. The decider is a human, and the leader's approval receipt must be verified. An evidence file produced by a lane cannot substitute for the re-measurement record.
-- Implementation of this rule is owned by the follow-up card t1621. Until t1621 opens the done transition, merged cards cannot reach done.
+### §4.0-R Release-path procedure — retained until #1830 processing
 
-**[HARD] 6. Batch release procedure**
-
-`origin/main` advances only through release PRs and is never pushed to directly.
+**[HARD] Batch release procedure.** The batch release procedure remains the current release-path procedure until issue #1830 is processed. `origin/main` advances only through release PRs and is never pushed to directly.
 
 - (1) Push local `main` to the `release/main-batch-YYYYMMDD` branch on origin. `YYYYMMDD` is the date of the batch. The command is `git push origin main:refs/heads/release/main-batch-YYYYMMDD`.
 - (2) Open a pull request from that branch to `main`.
 - (3) Merge it with a merge commit.
-- (4) When the merge is complete, fast-forward local `main` to `origin/main` through the resynchronization of item 4.
-- The merge method does not use squash (no squash).
+- (4) When the merge is complete, fast-forward local `main` to `origin/main` through the resynchronization procedure (`.claude/rules/local/agents-local-detail.md` §A item 4 — the criterion is the `origin/main` rev-list comparison; diverged histories refuse).
+- Merge-flag rule (every merge-flag statement matches this): a `release/*` OR `hotfix/*` branch merges with `--merge`; every other branch merges with `--squash` (measured: `.github/workflows/auto-merge.yml:341-345`). The batch release PR itself (a `release/*` branch) therefore merges with a merge commit.
 
 The pre-push hook's verdict on pushes of `main:release/*` has not yet been measured (OQ-10).
 
-**[HARD] 7. Batch-closing rule**
+**[HARD] Batch-closing rule.**
 
-- The timing of closing a batch is set by the count trigger. When `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the leader closes the batch and starts the procedure of item 6. The source of the threshold is `.moai/config/sections/git-strategy.yaml`.
+- The timing of closing a batch is set by the count trigger. When `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the leader closes the batch and starts the §4.0-R procedure. The source of the threshold is `.moai/config/sections/git-strategy.yaml`.
 - The trigger is evaluated only after the integration window has closed.
 - The green condition takes precedence over the count trigger. Every card merge must pass the merge-tree re-measurement in the integration window, and while the `origin/main` CI of the most recently landed batch is red, the next batch is held. If that CI verdict does not yet exist, it is not a reason to hold.
 - If the threshold is 0 or the key is absent, the trigger is off, and the leader decides when to close a batch. This is not an error condition.
 
-Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+### §4.0-H Historical local-main batch integration — not the current card procedure
 
-### §4.1 Integration chain (main)
+> **Transition-scoped record (superseded for card delivery, 2026-10-19).** The clauses below
+> were the card-delivery procedure before the per-card draft-PR policy (§4.0): card worktrees
+> branching from local `main` as both card base AND landing surface, tool-path merge landing
+> through `moai integration merge --card`, and card closing gated on the batch landing. They
+> are preserved as history and carry NO execution authority over current card delivery. The
+> full historical text is `.claude/rules/local/agents-local-detail.md` §A. Preservation,
+> one-writer, ownership, and resource-lease safeguards remain binding.
 
-This closes the gap where each card is verified and merged on its own, but **no one checks the combined state**. On 2026-08-15, 12 PRs each entered main with a green check, and only after they converged did it come to light that `moai update` deletes local-only files. With the 2026-10-05 GitHub Flow transition (M2), the integration base is `main` — the chain below is the post-transition standard, and the develop chain remains as history, marked [SUPERSEDED] below.
+- [HARD] (historical) Branch base: card worktrees branched from local `main` — the base discipline survives in §4.0 item 2 (fresh worktree from the verified configured base); landing on local `main` is superseded by the draft-PR path.
+- [HARD] (historical) Merge landing through `moai integration merge --card` in the integration window — superseded for card delivery; the verb and window remain the mechanism behind the retained §4.0-R resynchronization.
+- [HARD] (historical) Clean-tree rule — STILL BINDING as a safeguard: a landing or merge tree must be clean (`git status --porcelain` empty); never stash to clean it.
+- [HARD] (historical) Resynchronization after a batch lands — retained under §4.0-R item 4 (fast-forward-only, inside the integration window, never from the operator's terminal).
+- [HARD] (historical) Card closing waited for the batch landing — superseded: closure requires the confirmed remote merge of the card's PR plus the completion evidence (§4.0 item 5).
 
-**[SUPERSEDED by §4.0]** **[HARD] Standard chain — GitHub Flow transition (operator instruction, M2 landed 2026-10-05)**
+Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1) — historical basis of the superseded model.
 
-```
-origin/main
-   ↓ fetch
-local/main  ← default branch. Base of card branches
-   ↓ branch
-worktree (per card, WT-<slug>)
-   ↓ PR (base: main)  ← on card completion — through the integration window (serial); the leader merges
-origin/main  ← CI issues the integration verdict
-   ↓ fetch
-local/main
-```
+### §4.1 Integration chain (main) — historical
 
-**[HARD] Rules**
-
-1. **[SUPERSEDED by §4.0]** **Card branches are cut from `main`.** When a card finishes, it is applied to `main` through a card PR (base `main`). `develop` is legacy — do not use it as the base of a new card.
-2. **[SUPERSEDED by §4.0]** **`main` is the remote default branch.** The CI on its head produces the integration verdict. Merges and pushes are performed **in bulk by the leader** (2026-09-02 — lanes do not push; the only exception is the candidate path (`ci/<card-id>`), which the 'candidate-path exception' below substitutes for this prohibition).
-3. **The integration window is serial.** `moai integration acquire --card <card-id>` → merge → `release` — the push is outside the window (leader bulk, 2026-09-02). A lock is a device for serializing merges, not for serializing repairs, so if repairs remain, take the window only once they are ready.
-4. **The verdict is CI.** A local pass is only an early signal — it is neither a clean environment nor the darwin/windows matrix. Do not reuse pre-merge verification as post-merge evidence: either measure again on the merge tree, or show that `git rev-parse <merge>^{tree}` of the merge commit equals the tree that was re-measured.
-5. **[SUPERSEDED by §4.0]** **Local `main` is commit-dead (SPEC-MAIN-COMMIT-BAN-001, card t1337).** No session commits inside `main` in the primary checkout — `git commit` / `git revert` / `git cherry-pick` are refused by the BranchGuard (`workflow.branch_guard.deny_commits_on: [main]`), and commits are made only in card worktrees branched from `main`. The leader's push to `main` is closed by the batch trigger — when `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the batch is closed (the count comment in the configuration file still points at `origin/develop..develop` — drift). The source of the current value is the configuration file, and this rule only names the key and the count command. Pushes follow the green condition — per-card re-measurement of the merge tree in the integration window is the pre-gate for each card merge, and while the `origin/main` CI of the last push is red, the next push is held. Details: `.claude/rules/local/gitflow-lane-protocol.md` §4 (that rule still describes develop — drift).
-
-**[SUPERSEDED by the chain above — 2026-10-05]** The develop GitFlow chain of 2026-08-29 to 2026-10-05 (cards branched from develop and merged back to develop with `--no-ff`, with only release PRs to main), and the regime before it (develop not pushed to the remote · a main PR per card · a disposable develop), were all discarded. The record of the discard and its reasons exists so that two documents do not issue contradictory instructions; the full text of the develop chain is in `.moai/docs/gitflow-integration-chain.md`.
-
-**[HARD] Post-transition drift — the procedure document set.** `.moai/docs/git-workflow-doctrine.md`·`.moai/docs/git-local-workflow-doctrine.md`·`.moai/docs/gitflow-integration-chain.md`·`.claude/rules/local/gitflow-lane-protocol.md` still describe the develop chain. The canonical source of post-transition norms is this §4.1 together with the transition rules (`.claude/rules/moai/**`, card t1522), and when you open those documents, read them under this notice.
-
-**Related document pointers (SPEC-RC-TESTBED-001)** — the procedure text is not kept here (as with the delivery.md delegation in rule 4 above, two copies diverge the moment they exist):
-
-- The `rc.N` numbering policy, the untagged principle, and `BUILD_ID` build identification for local rc builds: `.moai/docs/version-management.md` — the **Local RC Numbering** section
-- Updating local `main` after a merge (criterion and the BranchGuard-safe path): `.claude/rules/local/gitflow-lane-protocol.md` — the **develop update** section (that section still describes develop — drift; it cross-references the §9 rc runbook)
-
-**[HARD] Lane obligations in -f / -l mode**
-
-In Factory mode (leader `moai cc -f` · lane `moai cc -l`), when a lane finishes its card work it **must request that the leader apply the change to `main`.** A lane does not take the merge window on its own.
-
-- **Self-dispatch lane exception — merge window.** A lane of a Claude self-dispatch factory run does not make the request above — through the integration procedure of `moai factory complete`, which calls `moai integration merge --card`, it takes the integration window itself and applies its own card to `main` (OD-2). Codex lanes are not covered by this exception: they stop at merge-ready (REQ-SD-025). This exception also does not change the prohibitions above on other queue changes (`add`, `drop`, `done`, `edit`, etc.) and on `moai contract sign` (only card leasing with `moai factory next` is allowed — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
-- Contents of the completion report: card id · branch and HEAD · local merge SHA · number of unpushed commits · evidence path (whether it was moved out of the primary) · re-measurement scope
-- **[SUPERSEDED by §4.0]** `moai integration status` showing `free` is **not an approval.** Under the open policy, a lane promoted to the front of the queue that holds the window merges without a leader nomination.
-- **Lanes do not git-merge into `main` by hand; they merge only with moai integration merge --card, or with moai factory complete, which calls it.** The queue schedules the window, and the leader sets only the policy with `moai integration policy open|hold` (to receive the window, the lane queues via acquire --wait — re-measurement happens before waiting; inside the window, only the merge).
-- **[SUPERSEDED by §4.0]** When the window is granted: `moai integration acquire --name <lane> --card <card-id>` → absorb `git merge main` in your own worktree (the target is the **local** `main` — not the remote; before absorbing, first check whether that local main is up to date — the criterion and update path are in `.claude/rules/local/gitflow-lane-protocol.md` §11, which still describes develop — drift) → **re-measure on the merge tree** → enter the integration worktree → apply to `main` (merge the card PR with base `main`, or a `--no-ff` merge — the migration document sets the detailed form) → `moai integration release` → `ExitWorktree keep` → completion report (report the applied SHA to the leader — the push and the merge are done in bulk by the leader)
-- **[SUPERSEDED by §4.0]** **[HARD] The card PR (base `main`) is the only public path (revised with the 2026-10-05 transition).** When a card closes, the lane pushes the card branch and opens a PR (base `main`), but **does not merge it directly** — the merge and push are performed in bulk by the leader, and the lane is not the party that does so. A lane also does not directly request or re-request CI, such as `gh run rerun` or `workflow dispatch` — it leaves the CI verdict to the run triggered by the application to `main`, and reading the verdict is the leader's job. (The former prohibition — operator instruction 2026-09-01, the WT-branch push ban and the develop batch-push regime — became history together with the develop chain; this clause was added in response to a precedent: lane-2 pushed `WT-version-stamp-predicate` to origin that same day.)
-- **[HARD] Candidate-path exception — operator approval 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>` is the path that pushes a candidate commit to `ci/<card-id>` to receive a CI verdict before landing. For this one path only, it replaces `WT push · CI request prohibited`. The landing gate requires a green verdict for that candidate. Pushing the integration branch and merging remain a bulk action by the leader, and the candidate verb does not take the integration window. The same intent is recorded in `.claude/rules/local/gitflow-lane-protocol.md` §2·§4 and in three documents under `.moai/docs/`, and the develop descriptions and drift notices in those documents remain as they are.
-- **[HARD] `acquire` verifies the caller's tree before it records the window.** It checks whether the working copy of the tracked `.claude/settings.json` has been modified, using `git --no-optional-locks status --porcelain -- .claude/settings.json`. On a hit, it preserves that copy under `.moai/state/settings-drift/` in the primary checkout, appends one line to `ledger.jsonl` in the same place, and prints the preserved path and sha256. **Detection, preservation, and the ledger run every time regardless of configuration** (the problem was that nobody looked for 9 days, not that nothing blocked it). Only refusal is opt-in (`workflow.settings_drift_gate.enabled`; this repository turns it on), and the bypass is `--allow-settings-drift` — `--force` belongs to a different axis, taking the window away from a live holder, so it is not used as a bypass. To check by hand regardless of the window, use `moai integration preflight [path]`. **Never restore automatically under any circumstances** — the file is written by the runtime and can contain tokens, absolute paths, and tmux pane ids, so automatic restoration would itself destroy data. When a hit is reported, the leader decides the disposition.
-- Do not dispose of a worktree until its remote merge has been confirmed. The worktree of an unpushed branch is the only copy of its work.
-- sync is finished **before** merging, inside the worktree. If you close only run and merge, the SPEC reaches `main` as `in-progress`, and the window must be taken again (a real case on 2026-08-29, t342).
-
-**The operating procedures below have been moved to `.moai/docs/gitflow-integration-chain.md` (card t750) — the bash that executes the window (entering the integration worktree, absorbing, re-measuring, merging), the leader's bulk push procedure, the record of rejecting local CI, the friction from over-matching BranchGuard queries, and a caution about the docs-site Vercel binding. The procedure text in that document still describes the develop chain — when executing, read it under the transition notice above.** As long as the [HARD] rules above and the lane obligations stay unchanged, this summary is sufficient; when you execute a procedure, open the migration document.
+> **Transition-scoped record (superseded for card delivery, 2026-10-19).** The integration
+> chain that stood here — the 2026-10-05 GitHub Flow chain, the develop GitFlow chain before
+> it, and the lane obligations around the local-landing window — is retained for provenance in
+> `.claude/rules/local/agents-local-detail.md` §B. It is not authority to bypass the current
+> draft-PR, review, role, or preservation gates (§4.0). Two [HARD] items remain binding as
+> ordering and safety discipline outside their superseded delivery model:
+>
+> - [HARD] Complete run AND sync before the PR merges — a card merged with run only leaves its SPEC `in-progress` on `main`, and the landing has to be taken again (a real case on 2026-08-29, t342).
+> - [HARD] `acquire` verifies the caller's tree before it records the window — detection, preservation, and the ledger run every time; automatic restore of `.claude/settings.json` is prohibited under any circumstances (full text: companion §B).
 
 ---
 
@@ -443,7 +383,7 @@ Detailed lessons: `lessons.md` #5 in the global project memory — how to read i
 ### [HARD] Four self-check questions (required before starting a complex task)
 
 1. Is this task the exclusive domain of a specialist agent?
-2. Does that specialist agent exist in the catalogue? (CLAUDE.md Section 4)
+2. Does that specialist agent exist in the catalogue? (`.moai/config/sections/delegation.yaml` and the current agent definitions under `.claude/agents/moai/`)
 3. Is delegation more advantageous than direct execution for quality, independence, and bias prevention?
 4. Can part of this task be decomposed into a parallel spawn of read-only sub-agents? (Anthropic "Exploration-First Pattern": analyze with WebFetch + Explore subagent → synthesize in the main agent)
 
@@ -455,9 +395,9 @@ Detailed lessons: `lessons.md` #5 in the global project memory — how to read i
 - New Go code of **500+ LOC** → `manager-develop` (cycle_type=tdd, domain context: backend) is mandatory — the former `expert-backend` is archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001
 - Creating **3+** agents/skills → `builder-harness` is mandatory
 
-### Permitted direct execution
+### Leader boundary and assigned-worker execution
 
-Typo/format fixes, editing one config setting, explicit user requests, absence of a delegation target, orchestration itself, git operations, and `/tmp` work.
+A session assigned as leader or coordinator may coordinate, delegate, read evidence, and prepare handoff reports. It shall not implement, repair, build, or run tests directly in any worktree — and it never directly implements under any framing of the work. Trivial edits, urgency, explicit requests for completion, and missing workers do not create an exception. Preserve existing changes and their provenance and delegate them to the officially assigned worker; if none is available, report the assignment blocker. The volume-based triggers above never relax this role boundary. An assigned worker performs the bounded work within its own delegated scope.
 
 ### Order: Rule 5 → §16 → Rule 1
 
@@ -481,20 +421,7 @@ The details of the docs-site Claude Warm Editorial [HARD] rules (icon shortcode 
 
 ## References
 
-Sections §18-27 were consolidated into external `.moai/docs/` files to reduce launch-time context. Each entry below is the authoritative location for its domain.
-
-- **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
-- **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
-- **§18 Git Workflow** (the Enhanced GitHub Flow body, plus the parent-model note for the [2026-08-27] git-flow transition — the canonical source is §4.1 (`main`-based, 2026-10-05 transition); this document still describes develop — drift; branch protection `enforce_admins: true`; Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
-- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, revised to the default autonomous transition): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (the default form of plan→run entry is audit-cross evidence — plan-auditor PASS + audit-ready + hash integrity + no blocking issues — plus a decision record; the three keep-set categories [environment-impossible / operator-held / irreversible external-shared] keep the operator's direct answer)
-- **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
-- **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
-- **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
-- **§23 Local Git Workflows** (PR-mandatory, 1-person OSS, all tiers via PR — the release-PR path; [2026-08-27] transition to git-flow `develop`, then [2026-10-05] GitHub Flow transition returning to a `main` base — the canonical source is §4.1; this document still describes develop · drift): `.moai/docs/git-local-workflow-doctrine.md`
-- **§24 Harness Namespace** (template-managed vs user-owned separation): `.moai/docs/harness-namespace-doctrine.md`
-- **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
-- **§26 Linear integration** (local-only): `.moai/docs/local-linear-integration.md`
-- **§27 Agent-Skill Architecture** [HARD]: every agent gets ≥1 skill set (4 elements: workflow skill + knowhow reference + scripts + trigger); all skill bodies in English; `/moai:<sub>` slash-wrapping maintained; `/moai:harness` meta-harness (v4 Builder); Analyze-First execution plan before any work
+The consolidated §18-27 document index moved to `.claude/rules/local/agents-local-detail.md` §D (paths:-scoped — loads for the SPEC, local-rules, docs, workflow, CLI/hook/template, and CI-workflow paths it claims). The pointed-to documents remain authoritative at their `.moai/docs/` locations; §19's canonical SSOTs remain `.claude/rules/moai/core/askuser-protocol.md` and `.claude/rules/moai/workflow/auto-semantics.md` §9.1.
 
 ---
 
