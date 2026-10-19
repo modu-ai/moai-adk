@@ -33,20 +33,32 @@ changed is listed here with an id; text elsewhere that restates a listed clause 
 | Δ25 | spec REQ-CCR-020 and REQ-CCR-021 (new), REQ-CCR-011 and REQ-CCR-012 (reworded), §3 terms, §5 G9, §6 exclusions; design §5 (step `author`, `T-CHAIN` rows A1 to A3, the merge call, the allow-list), §6, §11; acceptance AC-CCR-006, 011, 012, 019 (rows added to existing criteria); decision-index Q26, Q27 | The workflow merged a pull request of any author, a bot and a fork-derived one included, and its merge call passed `--delete-branch` (E45); the closed text said bot pull requests are withheld unless the native review reviews them | Only a pull request authored by GoosLab (id 6458969, type User, all three together), from a branch of the base repository, is ever merged by automation, and only through every other gate; every other pull request (fork, bot, another author) needs the user's test confirmation and explicit approval and is never merged by automation; the workflow enforces this through a step `author` that records `eligible`, and the tests pin it. The merge call carries no `--delete-branch` and no step deletes a ref; `delete_branch_on_merge` stays an operator decision (G9) | leader addition 2 (policy alignment) |
 | Δ26 | research E44; spec §5 DS-3; design provenance and reader rows 32 to 35; acceptance AC-CCR-001, 002, 004, 005 (subtests added) | Markers of one comment were assumed to agree; the effect of `@codex review` was unobserved | One re-request on #1842 was observed (read at 05:36Z): the state comment was edited in place, only the code leg moved to the new head, a marker-less receipt comment was added, the security leg stayed `completed` with a null commit, and the security marker kept the old head with status `running`: not a pass (stale). The receipt is ignored (no marker), a second comment carrying the marker still refuses. #1833 is a real findings case on the current head | leader addition (re-request observation) |
 
+**Correction of revision 8 (plan audit iteration 1 of revision 7, FAIL 0.69; each defect verified against the text and the raw files).** D1: REQ-CCR-001 now says once
+that a review object or review comment can only refuse (REQ-CCR-005, term, AC-CCR-005, Q23 already said so). D2: AC-CCR-019 splits its fixtures by job result (gate
+refusals and recheck races: failure; author policy: `eligible=false`, job success; merge-step guards: job success). D3 and D11: the class lists of acceptance.md are
+re-derived from the cells that reproduce on this tree; cells R1 to R17 are history (ledger status); new live cells R24 to R27. D4: the recheck re-lists the issue comments
+and compares the issue-comment count and the comment's id, `updated_at`, and markers, and fails on any difference (§5; Q25 restated; the "next pass" rationale is withdrawn).
+D5: REQ-CCR-012 is scoped to `files` and `review`. D6: the #1842 move is worded as observed (the code leg named the new head at 05:29:23Z; the move was observed by the
+05:32:18Z re-check); `F-moved-head` is labelled as a composed fixture. D7: the running #1841 snapshot is on disk at `/tmp/adk-resume-20261019-0510/pr1841-check.json`
+(outside the directories the audit searched) and carries a running security marker; a running comment without a security marker was not observed, and the reader now
+waits in that case (steps 6, 10, 13; an AC row). D8: stale old-contract text rewritten (§6 row, plan §A, §B, §G, decision-index Q19). D9: AC-CCR-019 states the `gh pr checks` stub and
+pins the Q27 consequence. D10: DoD renumbered, gates G1-G9. D12: `related_specs` kept and annotated (the manager-spec agent definition lists it; the schema table does not), the REQ
+order is by section and stated in spec §3.
+
 **Real-sample provenance.** Raw REST objects of five pull requests, read 2026-10-19, and the coordinator's audit (`research.md` E37 to E45; machine-local,
 gitignored, public GitHub data). Only marker lines and table rows are quoted anywhere in the SPEC.
 
 | Fixture family | Modelled on | Taken from the sample | Synthetic |
 |----------------|-------------|-----------------------|-----------|
 | clean pass (`F-clean`) | #1835 comment 6259114985, #1837 comment 6259113921, #1838 comment 6259347980, #1841 comment 6260188619 | author fields (login `chatgpt-codex-connector[bot]`, id 199175422, type Bot), the three marker lines in the leading block, both legs `completed`, `commit_sha` equal to the head, flags `false`, security marker `completed` with `headSha` | the head is the sample's head; the table rows are copied in shape only |
-| running (`F-running`) | #1841, saved snapshot of 2026-10-19T05:13:48Z (a GraphQL object; the REST comment later carries id 6260188619) | both legs `running`, `commit_sha` set, `has_any_findings` and `has_unresolved_findings` null, security marker `running` | the author object is the REST one of the clean samples |
+| running (`F-running`) | #1841, the saved GraphQL snapshot `/tmp/adk-resume-20261019-0510/pr1841-check.json` (machine-local, outside the card tree; the time 05:13:48Z comes from the observer's report, the file carries none; the REST comment later carries id 6260188619) | both legs `running`, `commit_sha` set, `has_any_findings` and `has_unresolved_findings` null, security marker `running` and present | the author object is the REST one of the clean samples; a variant with no security marker is synthetic (never observed, D7) |
 | unresolved finding (`F-unresolved`) | #1836 comment 6259116571 | code_review `has_unresolved_findings` true, security_review false, both legs `completed`, `commit_sha` `e657c6b0401a3d5c3e92204c8382d9080c617f50` (head set equal to it) | none |
 | stale (`F-stale`) | the same #1836 comment against the saved pull head `4cee5eea1ca9de02c6a7aef7409fbd2db80a2353` | stale-by-commit: both legs bound to `e657c6b040`, head `4cee5eea1c` | none |
 | corroborating finding (`F-corrob`) | #1836 review 5566687300 (COMMENTED, body marker `codex-review-receipt:v1`) and review comment 4310160416 (commit_id equals original_commit_id `e657c6b040`) | author fields, state, commit binding | the head is set to `e657c6b0401a3d5c3e92204c8382d9080c617f50` to make them bound |
 | completed leg with null fields (`F-null-leg`) | #1842 comment 6260255148 (REST id relayed; snapshot `pr1842-0526.json`), head `45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5` | code_review `completed` bound to the head, flags false; security_review `completed` with `commit_sha`, `has_any_findings`, `has_unresolved_findings` null; security marker `running` | none |
 | both running (`F-running-both`) | #1833 comment 6260252011, head `4bbd2ed113485c5bed3ea92299ff9b9754ca55d1` (read in the coordinator's audit, E43) | both legs `running`, unresolved null | none |
 | security leg all null (`F-null-security-leg`) | #1839 comment 6259931511 and #1840 comment 6259960025 (E43) | code_review `completed` bound to the head, flags false; security_review `commit_sha`, `status`, and `has_unresolved_findings` all null | the security marker is set to `completed` for the head to isolate the refusal (it is not stated in the audit) |
-| moved head (`F-moved-head`) | #1842 comment 6260255148 recorded for `45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5`, head read as `e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21` (E43) | code leg bound to the old head, security leg null, security marker `running` with `headSha` the old head | the head under review is the new SHA |
+| moved head (`F-moved-head`, a composed fixture) | #1842 comment 6260255148 as read at 05:24Z (code leg bound to `45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5`) combined with the head `e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21` observed by the 05:32:18Z re-check (E43); the comment itself was never read in that combination | code leg bound to the old head, security leg null, security marker `running` with `headSha` the old head | the head under review is the new SHA |
 | mixed SHAs after a re-request (`F-mixed-sha`) | #1842 comment 6260255148 as read at 05:36Z (E44), head `e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21` | code leg bound to the new head, security leg `completed` with null `commit_sha`, security marker `headSha` `45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5` with status `running` | none |
 | receipt comment (`F-receipt`) | #1842 comment 6260377784 (same author, no state marker; body not read) | author fields, absence of both markers | the body is synthetic prose; a variant that quotes the state marker prefix is synthetic |
 | findings on the current head (`F-findings-1833`) | #1833 comment 6260252011 (E44) and the COMMENTED review 5567280902 of the identity bound to the head | code leg `completed`, bound to the head, `has_unresolved_findings` true; security leg and security marker clean for the head; the review's author fields, state, and commit binding | none |
@@ -243,7 +255,8 @@ Checked in this order; the first matching step decides:
 6. **Parse the markers** of the single candidate. State marker: the prefix must occur exactly once in the body, else exit 1
    `state-marker-duplicated`; that occurrence must be a whole line of the leading block, else exit 1 `state-marker-misplaced`; the text between the
    prefix and the closing ` -->` must be one JSON object with object-valued `code_review` and `security_review`, else exit 1
-   `state-marker-malformed`. Security marker: zero occurrences → exit 1 `security-marker-missing`; two or more → `security-marker-duplicated`; one
+   `state-marker-malformed`. Security marker: zero occurrences → recorded as absent, decided at steps 10 and 13 (a leg still `running` waits; otherwise exit 1
+   `security-marker-missing`); two or more → `security-marker-duplicated`; one
    outside the leading block → `security-marker-misplaced`; not one JSON object → `security-marker-malformed`.
 7. **Stale.** Any leg whose `commit_sha` is a non-null string that is not equal to `S`, or a security marker whose `headSha` is a non-null string
    that is not equal to `S`, → exit 1 `stale-review:<commit prefix>` (REQ-CCR-002; a comment exists, so this is a failure and never pending
@@ -255,17 +268,19 @@ Checked in this order; the first matching step decides:
    ignored. No review or review comment can pass anything (REQ-CCR-005).
 9. **Unresolved findings reported by the marker.** A leg with `has_unresolved_findings` equal to `true` → exit 1
    `finding:unresolved:<leg>` (checked before the pending rule so a known finding refuses at once).
-10. **Pending.** Any leg `status` equal to `running`, or the security marker `status` equal to `running`: `--wait-closed false` → exit 10
+10. **Pending.** Any leg `status` equal to `running`, or the security marker `status` equal to `running` (a security marker that is not present yet does not stop the wait
+    while a leg is `running`: the order is wait, never refuse, because a pending state cannot pass and the marker may be written later; a running comment without the
+    security marker was never observed, so this is a decision, not a measurement): `--wait-closed false` → exit 10
     `pending:running`; `--wait-closed true` → exit 1 `review-not-complete:running`. A `completed` leg with null fields beside a `running` security
     marker (E42) lands here, never at a pass.
 11. **Status.** A leg `status` other than `completed` (any other string, null, or missing) → exit 1 `review-not-complete:<leg>:<status>`.
 12. **Binding of a completed leg.** A leg whose `commit_sha` is null → exit 1 `review-not-bound:<leg>`; a leg whose `has_unresolved_findings` is not
     a boolean (null included; null is not false) → exit 1 `review-entry-invalid:<leg>:has_unresolved_findings`.
-13. **Security marker agrees.** `status` other than `completed` (a running one was handled in step 10) → exit 1 `security-marker-disagrees:<status>`;
+13. **Security marker agrees.** A security marker recorded as absent at step 6 → exit 1 `security-marker-missing` (reached only when no leg is `running`); `status` other than `completed` (a running one was handled in step 10) → exit 1 `security-marker-disagrees:<status>`;
     a null `headSha` → exit 1 `security-marker-disagrees:no-head`.
 14. Otherwise exit 0 and print `native-review-clean: comment <id> updated <updated_at> code_review:<S prefix>:completed:unresolved=false
-    security_review:<S prefix>:completed:unresolved=false security-marker:<S prefix>:completed head <S prefix>`; the recheck of §5 compares this
-    line byte for byte.
+    security_review:<S prefix>:completed:unresolved=false security-marker:<S prefix>:completed head <S prefix> markers <compact JSON of the state marker>
+    <compact JSON of the security marker>`; the recheck of §5 compares this line byte for byte.
 
 **The one rule, in a sentence.** The result is clean only when the identity's single state comment shows both legs `completed`, each bound to the
 head, each `has_unresolved_findings` exactly false, and the security marker agrees, with no corroborating finding; the decision reads author,
@@ -297,8 +312,9 @@ result, and the outputs is `T-CHAIN` of §5):
 | 19 | a user's comment (login lookalike, same login with id other than 199175422, type `User`, user null) carrying a clean marker, no real comment | window open: exit 10; closed: exit 11 | `pending:no-state-comment` / `not-run:review-absent` |
 | 20 | the same user comment beside a real `running` comment | exit 10 | the user's comment is never a candidate |
 | 21 | a user's comment carrying a clean marker beside a real stale comment | exit 1 | `stale-review:<O prefix>` (the forgery fills nothing) |
-| 22 | security marker missing, duplicated, misplaced, or malformed | exit 1 | `security-marker-missing` / `-duplicated` / `-misplaced` / `-malformed` |
+| 22 | security marker duplicated, misplaced, or malformed; or missing while no leg is `running` | exit 1 | `security-marker-duplicated` / `-misplaced` / `-malformed` / `security-marker-missing` |
 | 23 | security marker `completed` while a leg reads running | exit 10 | `pending:running` |
+| 23a | a leg `running` and the security marker not present (never observed; the order of steps 6 and 10), window open / closed | exit 10 / exit 1 | `pending:running` / `review-not-complete:running` |
 | 24 | clean comment plus a review comment of the identity bound to H, or a COMMENTED or CHANGES_REQUESTED review of the identity bound to H (`F-corrob`) | exit 1 | `finding:<id>` / `finding-review:<id>` |
 | 25 | clean comment plus an APPROVED, DISMISSED, or PENDING review of the identity, or a finding bound to O only | exit 0 | review objects and old findings neither pass nor refuse |
 | 26 | clean comment, no `reviews` and no review comments (the four clean real pull requests) | exit 0 | the normal case |
@@ -429,7 +445,7 @@ corrected design draws:
   | 2a | Stale: a leg or the security marker bound to another commit (reader rows 8 to 10, 21) | 1 `stale-review:<prefix>` | 1 | failure | `false` | `fail` | `::error::native review gate: <reason> - merge withheld` |
   | 2b | Findings: `has_unresolved_findings` true; a corroborating review comment or COMMENTED or CHANGES_REQUESTED review (rows 11, 24) | 1 `finding:unresolved:<leg>`, `finding:<id>`, `finding-unbound:<id>`, `finding-review:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2c | Not complete or not bound: a leg `status` other than `completed` (failed, unknown, null, missing); a completed leg with a null `commit_sha`; a non-boolean `has_unresolved_findings` (rows 7, 12, 13) | 1 `review-not-complete:<leg>:<status>`, `review-not-bound:<leg>`, `review-entry-invalid:<leg>:<field>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
-  | 2d | Tampered or malformed: marker JSON altered, a leg missing, a marker duplicated or outside its position, a security marker missing, malformed, duplicated, or misplaced (rows 14 to 17, 22) | 1 `state-marker-malformed`, `-duplicated`, `-misplaced`; `security-marker-missing`, `-malformed`, `-duplicated`, `-misplaced` | 1 | failure | `false` | `fail` | `::error::` with the reason |
+  | 2d | Tampered or malformed: marker JSON altered, a leg missing, a marker duplicated or outside its position, a security marker malformed, duplicated, or misplaced, or missing while no leg is `running` (rows 14 to 17, 22) | 1 `state-marker-malformed`, `-duplicated`, `-misplaced`; `security-marker-missing`, `-malformed`, `-duplicated`, `-misplaced` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2e | Marker disagreement: the security marker reads another status than `completed` while the legs are completed and nothing is running | 1 `security-marker-disagrees:<status>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2f | More than one state comment of the identity, or an identity candidate without an `id` or `updated_at` (row 18) | 1 `state-comment-duplicated:<ids>`, `state-comment-invalid:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2g | A leg or the security marker still `running` on the last pass (row 4) | 1 `review-not-complete:running` | 1 | failure | `false` | `fail` | `::error::native review gate: review-not-complete:running - merge withheld` |
@@ -438,7 +454,7 @@ corrected design draws:
   | 4 | Non-draft, no state comment of the identity when the window ends (reader row 5) | 11 (`not-run:review-absent`) | 1 | failure | `false` | `fail` | `::error::native review gate: not-run:review-absent - no state comment observed for the pull request` |
   | 5 | Draft pull request | 11 (`not-run:draft`) | 11 | failure; never success (decision-index Q21) | `false` | `not-run:draft` | `::notice::NOT RUN: draft - not a review result and never a pass; the merge is withheld` |
   | 6 | The head or the review-comment count moved before or during the list reads (`head-moved`, `head-moved-during-read`, `review-comments-moved-during-read`) | not reached | 1 | failure | `false` | `fail` | `::error::` with the reason |
-  | 7 | The pre-merge recheck differs (`recheck-unreadable`, `head-moved-before-merge`, `review-comments-moved-before-merge`, `review-changed-before-merge` (the summary line differs: comment id, `updated_at`, or any field, a `running` result included), `selected-review-changed-before-merge` (another state comment is selected)) | 0, then another exit or a different summary | 1 | failure | `false` | `fail` | `::error::` with the reason |
+  | 7 | The pre-merge recheck differs (`recheck-unreadable`, `head-moved-before-merge`, `review-comments-moved-before-merge`, `issue-comments-moved-before-merge` (the issue-comment count differs between the recheck's two reads, or the re-listed issue comments disagree with it), `review-changed-before-merge` (the summary line differs: comment id, `updated_at`, or any field, a `running` result included), `selected-review-changed-before-merge` (another state comment is selected)) | 0, then another exit or a different summary | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 8 | A list is unreadable on the last pass, so the loop ends with no stop (`review-unreadable`) | not reached or `fetch-pages` refused | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 9 | The gate script is missing (`gate-script-missing`) | not run | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | — | Gate exit 10 with the window open (not a terminating path): `pending:no-state-comment`, `pending:running`; or an issue-comment count that moved between the two reads of one pass (note `issue-comments-moved`, decision-index Q25) | 10 | none: sleep 15 seconds, next pass | — | not recorded | not recorded | `native review not observed yet (n/60)` or `native review running (n/60)` |
@@ -527,13 +543,14 @@ corrected design draws:
      (REQ-CCR-010), never a pass. A leg still `running` on the 60th pass is gate exit 1
      `review-not-complete:running`, produced by the script, and absence on the 60th pass is gate exit 11
      `not-run:review-absent`, produced by the script and not by the loop, so there is one place where each
-     is decided. **The recheck (REQ-CCR-012; revision 7, because the bot edits the comment in place).** Before
-     `ok=true`, the step reads the pull request object, re-collects the issue comments, the reviews, and the
-     review comments (each with its count proof), reads the pull request object once more, and runs
-     `read-native-review` again with `--wait-closed false`: it requires the same head, the same
-     `review_comments` count, and the identical summary line of exit 0 (comment id, `updated_at`, the parsed
-     fields), so a comment edited or replaced in the interval, a new state comment, or a result that is no longer
-     clean ends the step as a failure (`T-CHAIN` row 7). The issue-comment count is not compared at the recheck.
+     is decided. **The recheck (REQ-CCR-012; revisions 7 and 8, because the bot edits the comment in place and a second state comment can appear inside the interval).**
+     Before `ok=true`, the step reads the pull request object (its `comments` and `review_comments` counts and its head), re-lists the issue comments, the
+     reviews, and the review comments (the issue-comment and review-comment lists each count-proofed against that first read), reads the pull request object
+     once more, and runs `read-native-review` again with `--wait-closed false`. It requires, and fails the step on any difference (`T-CHAIN` row 7): the same head
+     in both reads, the same `comments` count in both reads (so a comment added after the list collection is caught by the second read, and one added before
+     it by the count proof), the same `review_comments` count, and the identical summary line of exit 0 (comment id, `updated_at`, and the compact JSON of both
+     markers), so a comment edited or replaced in the interval, a second state comment, or a result that is no longer clean ends the step as a failure. The
+     loop's own passes still retry a moved issue-comment count (Q25); only the recheck refuses it, because there is no later pass.
 - **The merge step reads the head again immediately before the merge call** (`gh pr view ... headRefOid`, unchanged since the
   closed SPEC) and withholds the merge when it differs from the verified head; `--match-head-commit` then pins the call itself. Every
   leg's `commit_sha` and the security marker's `headSha` were compared with that same verified head, so they equal the head read right
@@ -602,7 +619,7 @@ corrected design draws:
 | **A list API fails mid-pagination, is truncated, or shifts between pages** | A partial list read as complete | A page error refuses and removes the output; count proof for files and review comments; a repeated entry refuses; the step records `ok=true` only on exit 0 | AC-CCR-010, AC-CCR-012 |
 | **The consumer calls the guard and ignores the result, or never calls it** | The guard exists but binds nothing | Structural test of the real step order, exit-code handling, and merge condition, with mutants | AC-CCR-012 |
 | **The merge step never merges, or merges past a refusal** | A `&& false` in the merge condition, an early `exit 0`, an unbounded deadline, or a dropped term in the condition goes unnoticed | The chain from the head step to the merge step runs on fixtures; `gh pr merge` is called once, pinned to the verified head, on the clean fixture and zero times on every refusal | AC-CCR-019 |
-| **The gate is pointed at another data source** | A verdict read from an issue comment, a check run, or a status | The workflow's `gh` calls are an exact allow-list; `fetch-pages` accepts only the files, reviews, and comments listings of a pull request | AC-CCR-006 |
+| **The gate is pointed at another data source** | A verdict read from a check run, a status, a label, a reaction, a review object, or prose | The workflow's `gh` calls are an exact allow-list; `fetch-pages` accepts only the files, reviews, review-comments, and issue-comments listings of a pull request, and the one verdict carrier is the state marker of the identity's comment (the issue-comment listing exists for that marker only) | AC-CCR-006 |
 | Draft pull request | A work-in-progress merged, or a draft observation read as a review result or as a green job | Exit 11 at once, whatever artifacts exist: state `not-run:draft`, step exit 11, job result never success; the message says gate path only | AC-CCR-008, AC-CCR-022 |
 | **Elapsed time or the absence of a review read as success** | A review that never came is treated as "nothing to fix" | Time only bounds a wait; the end of the window is a failed step `not-run:review-absent` (gate exit 11) or `review-unreadable`, never a pass; the expiry fixtures assert that no merge happens | AC-CCR-007, AC-CCR-008, AC-CCR-019, AC-CCR-021 |
 | Label, check run, commit status, reaction, or review object read as a verdict | Pass the consumer without a state comment | The consumer reads only the four listings; labels, statuses, check runs, and reactions are never read (census) | AC-CCR-006 |
@@ -636,7 +653,7 @@ corrected design draws:
    not the review gate; widening the guard is a separate decision (follow-up FU-11).
 6. The human merge path is as unguarded as it is today (E6: no review check in protection) — gates G3 and G4
    are the lever and stay with the operator.
-7. A few seconds remain between the review step's pre-merge recheck and the merge call itself: a review state
+7. A few seconds remain between the recheck's second pull request read and the merge call itself: a review state
    change in that window, with the head unchanged, is not detected (the merge is pinned to the head with
    `--match-head-commit`, so the code under review cannot change in it); a dismissal also leaves no count
    on the pull request object, so only the re-collected reviews list can show it.

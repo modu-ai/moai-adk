@@ -387,7 +387,7 @@ Class: implementation-level
 Authority anchor: none
 Why unresolved: the native review's form is not observed (research E29, U2, U5); the gate must choose between
 recognising several guessed forms and recognising one documented form
-Default: recognise exactly one form — a pull-request review by the Codex identity bound by `commit_id`, counted
+Default (superseded in revision 7, see the restatement below): recognise exactly one form — a pull-request review by the Codex identity bound by `commit_id`, counted
 clean only in state APPROVED (Q20) — and fail closed on everything else; DS-1 observes the real form and any
 mismatch becomes a follow-up (rule:
 excluded before ranking: parsing issue-comment or review-body text, which has no documented commit binding and
@@ -450,7 +450,7 @@ Class: implementation-level
 Authority anchor: none
 Why unresolved: the first draft of revision 7 left it unread; the sample of #1842 (research E42, E44) shows the state marker's security leg reading `completed` (with null fields) while the
 security marker reads `running`, and after a re-request the security marker still named the OLD head
-Default: read it for `status` and `headSha` only; it must stand once in the leading block, read `completed`, and carry the head in `headSha`; `running` is pending, any other disagreement refuses, a
+Default: read it for `status` and `headSha` only (order, revision 8: a security marker that is absent while a leg is `running` waits, any other missing, malformed, duplicated, or misplaced one refuses; a running comment without the marker was never observed); it must stand once in the leading block, read `completed`, and carry the head in `headSha`; `running` is pending, any other disagreement refuses, a
 headSha of another commit is stale (excluded before ranking: leaving it unread, which passes an unfinished security review; among the rest, two fields are the smaller surface)
 Alternate: also compare `pullRequestNumber` and `repository` with the pull request — rejected here: no mismatch was ever observed and a copied comment is already excluded by the author binding
 Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
@@ -461,9 +461,9 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: none
 Why unresolved: the existing rule fails a pass when the review-comment count moves during the read; issue comments are written constantly by other bots (3 or 4 per measured pull request, research E37)
-Default: a moved issue-comment count between the two reads of one pass retries the pass (pending note `issue-comments-moved`) and is not compared at the recheck; the list's own count proof and the comparison of the state comment's id and `updated_at` carry the decision
-(rule: smaller user-visible surface — fewer red jobs with no verdict risk, since a second state comment is seen on the next pass)
-Alternate: fail the step like `review-comments-moved-during-read` — consistent with the existing rule, but turns ordinary bot traffic into red jobs
+Default: a moved issue-comment count between the two reads of one pass retries the pass (pending note `issue-comments-moved`); at the pre-merge recheck, which is the last read before the merge step and has no later pass, the issue-comment count is compared and any difference (count, comment id, `updated_at`, markers) ends the step in failure (revision 8: the earlier "next pass" rationale is withdrawn, plan audit D4)
+(rule: smaller user-visible surface — retried passes cost no red job, and the recheck is the one place a second state comment must not slip through)
+Alternate: fail the step like `review-comments-moved-during-read` on every pass — consistent with the existing rule, but turns ordinary bot traffic into red jobs. Cost accepted at the recheck: a comment by another bot inside its few seconds fails the step; the next run of auto-merge retries
 Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
 
 ### Q26: What does the `author` step do to the job, and how is an ineligible pull request shown?

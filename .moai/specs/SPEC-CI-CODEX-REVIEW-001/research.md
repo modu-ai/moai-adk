@@ -791,7 +791,7 @@ non-draft was read. The two legs finish at different times on every pull request
 ```
 status "completed": both legs, final comment of all five pull requests
 status "running":   both legs, with has_any_findings null and has_unresolved_findings null, in a saved snapshot of #1841
-                    taken at 2026-10-19T05:13:48Z (a `gh pr view` GraphQL object: the author login there reads
+                    taken at 2026-10-19T05:13:48Z per the observer's report (the file `/tmp/adk-resume-20261019-0510/pr1841-check.json` carries no time; a `gh pr view` GraphQL object: the author login there reads
                     chatgpt-codex-connector, without the [bot] suffix; the same comment later read through REST has
                     id 6260188619 and the identity of E37)
 #1841 state marker at the snapshot, verbatim: <!-- codex-review-state:v1 {"code_review":{"commit_sha":"d4ea064178412c0d8c1dc149fc83d4ff81470511","has_any_findings":null,"has_unresolved_findings":null,"status":"running"},"security_review":{"commit_sha":"d4ea064178412c0d8c1dc149fc83d4ff81470511","has_any_findings":null,"has_unresolved_findings":null,"status":"running"}} -->
@@ -866,8 +866,8 @@ branch protection of the base release/main-batch-20261019:  protected false, req
 #1833  base release/main-batch-20261019  head 4bbd2ed113485c5bed3ea92299ff9b9754ca55d1  Codex comment 6260252011: both legs running, unresolved null (read 05:24Z; E44 reads it completed at 05:36Z)
 #1839, #1840  (dependabot)  code_review completed, bound to the head, unresolved false; security_review: commit_sha, status, and unresolved all null
                 (comments 6259931511 and 6259960025)
-#1842  base release/main-batch-20261019  head moved 45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5 -> e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21 at the 05:32:18Z re-check;
-       comment 6260255148 was recorded for the old head (code completed bound to 45b2dbf682..., security_review commit_sha null, status completed,
+#1842  base release/main-batch-20261019  head observed moved 45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5 -> e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21 by the 05:32:18Z re-check;
+       comment 6260255148, as read at 05:24Z, was recorded for the old head (code completed bound to 45b2dbf682..., security_review commit_sha null, status completed,
        unresolved null; the separate security marker `running`, headSha 45b2dbf682...)
 #1842  a CodeRabbit COMMENTED review 5567249506 and one inline comment, author coderabbitai[bot] id 136622811, type Bot (another author: ignored by the gate)
 #1841  merged 2026-10-19T05:13:31Z, code review completed 05:14:11.601517Z, security review completed 05:15:04.074765Z, comment 6260188619, head d4ea064178...

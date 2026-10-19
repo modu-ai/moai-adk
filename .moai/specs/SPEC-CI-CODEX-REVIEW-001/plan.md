@@ -34,10 +34,9 @@ contract guards come last.
   (ceiling 25), 19 criteria (ceiling 25). Revision 7: 21 requirements, 25 criteria (both at or under the ceiling of 25; no criterion is added).
 - Reviewer (design correction, operator-confirmed; **revision 7 replaces the review-object reading below with the state-comment reading of design §3 and research E37**): the ChatGPT subscription's native Codex GitHub review,
   automatic, on pull-request open, for modu-ai/moai-adk and modu-ai/mo.ai.kr; no key, no secret, no workflow
-  of our own. The gate reads a pull-request review by the Codex app identity (E27) bound to the head commit and
-  counts only an APPROVED review as clean. Whether and how the native review leaves that artifact is
-  UNVERIFIED (E29, U2, and the dated DS-1 observation of `spec.md` §5: no Codex trace on a pull request about
-  47 minutes after it opened); the gate fails closed, treats no review as NOT RUN and never as a pass, uses
+  of our own. The gate reads the state comment of the Codex app identity (E27, E37) with both legs completed and bound to the head and passes on
+  nothing else (revision 7 withdraws the review-object reading of revisions 3 to 6). The form was read on real pull requests (E37 to E45); DS-2 and the
+  effect of re-requests stay open; the gate fails closed, treats no state comment as NOT RUN and never as a pass, uses
   time only as a bound that withholds, and the deferred steps DS-1 to DS-3 observe the form.
 - Boundary (leader ruling (b), 2026-10-18): workflows, the review-gate script and its tests, `.coderabbit.yaml`,
   the `required-checks.yml` guard (the file is never edited), and the liveness manifest lines with the tests
@@ -79,12 +78,9 @@ contract guards come last.
 6. **Heavy-run slot.** Use name-exact `-run` selectors for every milestone. A whole-package run of
    `internal/template` takes the heavy-run slot first (`.claude/rules/moai/workflow/resource-slot-lease.md`);
    the plan phase took none.
-7. **(superseded in part by rev 7, items 18 and 19) The native review's artifact is unverified** (E29, U2, U5, E32). The fixtures of M1 and M2 are synthetic,
-   in the documented REST shape of a review and a review comment (E23); no test or report may claim that the
-   live native review produces them. The gate passes a real pull request only on an APPROVED review by the
-   identity bound to the head; nothing has been observed to produce one, so nothing passes until DS-1 shows the
-   form. That is the stated fact, not a defect, and no milestone may widen the clean state to make a real pull
-   request pass (COMMENTED is never clean; FU-10 owns any adaptation).
+7. **(rewritten in rev 7; items 18 and 19) The native review's artifact was read, not assumed** (E37 to E45): one state comment of the identity. Fixtures are inline and
+   modelled on the real samples; no test or report may claim that the reader has run on a real pull request (it has not); the gate passes a pull request only on the
+   comment contract of REQ-CCR-001, and no milestone may widen it (a review object, `completed` alone, or marker text in another author's comment never passes).
 8. **(still open in rev 7) Whether the native review runs on a draft, or at the ready-for-review transition, is unconfirmed** (U4; the trigger "Draft marked ready" is measured, E38).
    Nothing in M1-M4 depends on it: a draft is NOT RUN at the gate whatever exists (AC-CCR-008).
 9. **`workflow_run` runs the default-branch copy of `auto-merge.yml`**: the introducing pull request cannot
@@ -210,7 +206,7 @@ Gaps, Residual-risk) and carries:
 Notation: files are new (N), edited (E), or deleted (D). "Re-measure" names the tests run at the milestone's
 close; the landing re-measure is the union in § Landing scope.
 
-### M1 — Native review reading (Priority High)
+### M1 — Native review reading (Priority High; landed with the revision-6 reader, replaced by M6 for the comment contract)
 
 REQ/AC: REQ-CCR-001..005, REQ-CCR-008 (script half) / AC-CCR-001..005, AC-CCR-007 (script rows), AC-CCR-008
 (script rows). Files (2, about 620 lines): N `scripts/ci/codex-review-gate.sh` (`read-native-review` only,
@@ -299,10 +295,10 @@ is added (25 criteria). Files (5, about 1500 changed lines, tests dominating): E
 `--expect-count comments`; the `running` note; the recheck of the same comment; the issue-comment-moved retry; the merge call without `--delete-branch`; the terminating function and `T-CHAIN`
 unchanged), E `internal/template/codex_review_gate_test.go`, E `internal/template/codex_review_paging_test.go`, E `internal/template/auto_merge_codex_test.go` (the real-sample fixtures of the provenance
 table; the base matrix; the author, fork, bot, lookalike, and branch-deletion rows). RED first: write the rewritten rows against the tree at `b2af3db9a1` and quote the failures, whose stated reasons are
-R18 to R23 (a RED that fails only because a helper is missing does not count). GREEN: edit the gate script and the workflow. Exit: every named subtest of the criteria above swept (`-v` lists each
+R18 to R27 (cells R1 to R17 no longer reproduce and bind nothing; a RED that fails only because a helper is missing does not count). GREEN: edit the gate script and the workflow. Exit: every named subtest of the criteria above swept (`-v` lists each
 `--- PASS`); `TestAutoMergeRequiredChecks` still lists its 16 rows; `actionlint` exit 0; mutants recorded with verbatim reds: the revision-6 reader, a status-alone pass, null read as false, the
 code leg alone, the newest of two comments, a whole-body marker scan, the security marker ignored, a recheck on the head only, a merge `if` naming a base, a merge step that does not re-read the head, a
-state recorded for the old head counted, an `author` step matching the login only, no head-repository comparison, `eligible=true` for an unreadable object, a merge call with `--delete-branch`, and
+state recorded for the old head counted, a recheck that does not compare the issue-comment count, a running comment with no security marker refused at once instead of waited on, an `author` step matching the login only, no head-repository comparison, `eligible=true` for an unreadable object, a merge call with `--delete-branch`, and
 the MF-shaped mutant for the `eligible` term (the lone drop from the merge `if` is an equivalent mutant pinned structurally). The single writer of this milestone is the card's lane; this plan
 revision writes none of it. Affected packages: `internal/template` (tests only); no non-test Go file and no template file changes. Re-measure: the seven reader selectors, the three paging selectors,
 and the twelve auto-merge selectors of M1 to M5. State at exit: landed locally is claimed only after the merge; the real run of the revision-7 reader on a pull request, DS-2, the `running` to `completed`
@@ -323,13 +319,12 @@ lane" (acceptance §6, §7). The sync exit says the same two things in the same 
 
 ## §G Anti-patterns
 
-- Reading a draft as anything but NOT RUN, or a draft's gate-path observation as a review result (AC-CCR-008);
-  reading a missing review as a pass, as a failure, or as pending forever instead of NOT RUN
-  `review-absent` at the end of the window (AC-CCR-007, AC-CCR-008); reading an issue comment, check run,
-  status, or review body text as a verdict (AC-CCR-003, AC-CCR-006).
-- Counting a COMMENTED review as clean, or deciding a CHANGES_REQUESTED review by the newest review alone
-  (AC-CCR-004); reading the review body in either direction (AC-CCR-001); letting elapsed time produce a pass
-  (AC-CCR-007, AC-CCR-019).
+- Reading a draft as anything but NOT RUN, or a draft's gate-path observation as a review result (AC-CCR-008); reading a missing state comment as a pass, as a failure, or as
+  pending forever instead of NOT RUN `review-absent` at the end of the window (AC-CCR-007, AC-CCR-008); reading a check run, a commit status, a reaction, a review object,
+  or prose or a table row of any comment as a verdict, or a marker string in another author's comment as a state (AC-CCR-003, AC-CCR-006). The one verdict carrier is the
+  state marker of the identity's single issue comment.
+- Counting a review object (APPROVED included) as a pass, or letting a review object or review comment do anything but refuse (AC-CCR-001, AC-CCR-005); choosing among state
+  comments by recency (AC-CCR-004); reading the body of any artifact but the identity's comments (AC-CCR-001); letting elapsed time produce a pass (AC-CCR-007, AC-CCR-019).
 - Judging a changed-file list that is not bound to the verified head, or reading the head only once
   (AC-CCR-009, AC-CCR-012); a merge step that no criterion executes (AC-CCR-019).
 - Matching the Codex identity by login alone or by id alone (AC-CCR-003); comparing the review's `commit_id` by
