@@ -50,6 +50,7 @@
 - When `moai todo list --json --compact` runs
 - Then stdout is at most 2048 bytes and carries six rows.
 - Test: `TestTodoListCompactByteBound` in `internal/cli/lane_read_compact_test.go`.
+- Long-input cell (out-of-scope behavior; observed at the audited sha baa30f9b49 by plan-audit iter1, receipt `rcpt-9aaec51f93f1b122971c9d8a`, `.moai/reports/t1810/plan-audit-iter1.md`): a store whose live rows carry identifiers wider than the CLI's generator emits — the audit's overlay rendered six live rows with 202-byte identifiers — yields a `--compact` output of 3,039 bytes, above the 2048 bound. This cell exists so the criterion cannot read as "the bound holds for all store content": REQ-LRC-003 scopes the bound to CLI-default content, and this state is out of its premise. The store enforces no identifier length (`cardIDPattern`, `internal/homestate/card_evidence_readers.go:19`); adding store-level caps is explicitly out of this SPEC's scope.
 
 
 ### AC-LRC-004 — lane-facing reads name the compact form (REQ-LRC-004)
@@ -78,6 +79,7 @@
 - When `moai factory status --json` runs without flags
 - Then stdout is at most 2048 bytes and carries three rows, `withheld` 7, two candidates, each rendered as `&&` (the first two labels in label order, cut to 12 encoded bytes), and `candidates_withheld` 3; and a second check encodes, through the encoder the command uses, a report value assembled at the declared maxima of REQ-LRC-006 (counts of six digits, which no fixture of this size reaches) and asserts at most 2048 bytes. The planning figure for that report value is 1,899 bytes (ledger L-13).
 - Test: `TestFactoryStatusDefaultBoundedBytes` in `internal/cli/lane_read_compact_test.go`.
+- Long-input cell (out-of-scope behavior; observed at the audited sha baa30f9b49 by plan-audit iter1, receipt `rcpt-9aaec51f93f1b122971c9d8a`, `.moai/reports/t1810/plan-audit-iter1.md`): a store whose run identifier is set through the operator's `MOAI_KANBAN_ID` beyond the default six characters — the audit's overlay used a 600-character run id — yields a factory default output of 2,571 bytes, above the 2048 bound. This cell exists so the criterion cannot read as "the bound holds for all store content": REQ-LRC-006 scopes the bound to CLI-default content, and this state is out of its premise. `RecordRun` (`internal/homestate/runtime.go:28`) validates no run-identifier length and the store enforces no card-identifier cap (`cardIDPattern`, `internal/homestate/card_evidence_readers.go:19`); adding store-level caps is explicitly out of this SPEC's scope.
 
 
 ### AC-LRC-007 — `--run` keeps its pre-change output, and `--full` is byte-identical (REQ-LRC-007)
