@@ -104,7 +104,12 @@ All requirements use GEARS notation. Requirement IDs are stable; no renumbering 
   picked card, the verb shall record the human judgment — decider `human`, the given mode, the
   given reason verbatim, a fresh classified-at stamp — in exactly one locked queue write
   (one `Mutate` acquisition), leaving the card's priority and blocked fields and every other
-  queue item untouched.
+  queue item untouched; and **when** the target card is in flight (picked) and the requested
+  mode is `serial` while another distinct in-flight card holds the serial slot (the selection
+  gate's own read: slot-held ∧ mode `serial`, `factory_card.go:324-340`), the verb shall
+  refuse with a recovery-naming message and write nothing — a reclassification shall never
+  leave two distinct in-flight cards in serial mode at once (round-2 D2: the unserialized
+  overlap reproduced on the plan-close tree is foreclosed at the verb; decision-index Q6).
 
 - **REQ-FDM-005** — **When** a card already recorded in the factory record is reclassified,
   every factory-side mode reader — selection, nominated validation, and the status view — shall
@@ -144,9 +149,10 @@ All requirements use GEARS notation. Requirement IDs are stable; no renumbering 
 
 ## §D Acceptance Criteria
 
-Acceptance criteria live in `acceptance.md` (Tier M): AC-FDM-001 … AC-FDM-010, each
-Given-When-Then, mapped 1:1 onto REQ-FDM-001 … REQ-FDM-007 with the refusal matrix and the
-factory-side observation covered explicitly.
+Acceptance criteria live in `acceptance.md` (Tier M): AC-FDM-001 … AC-FDM-011, each
+Given-When-Then, mapped onto REQ-FDM-001 … REQ-FDM-007 with the refusal matrix (including the
+serial-slot conflict refusal of REQ-FDM-004, AC-FDM-011) and the factory-side observation
+covered explicitly.
 
 ## §E Exclusions and Out of Scope
 
@@ -169,6 +175,11 @@ factory-side observation covered explicitly.
 - Domain slots, the record-schema V7 migration, and domain measurement belong to
   SPEC-FACTORY-CONFLICT-DOMAIN-001 (t1735, skipped by operator exception). This SPEC performs no
   schema change (C4) and precludes nothing C1 may later add.
+- SPEC-FACTORY-CONFLICT-SLOTS-001, carried in frontmatter `related_specs` as lineage context
+  (parent index), has no committed SPEC on this lineage: the proposed slots split was never
+  executed here — the naming artifact is the t1714 split proposal (read-only reference material
+  under another card's tree). The reference is disposition-only lineage context, not a
+  dependency; this SPEC requires nothing from it (round-2 D3).
 
 ### Out of Scope — decider automation changes
 
@@ -182,7 +193,9 @@ factory-side observation covered explicitly.
    a fresh no-judgment admission records it (AC-FDM-003).
 2. The fail-safe stays `serial` with exactly one notice (AC-FDM-004).
 3. The verb records a human judgment in one locked write, refuses everything else
-   byte-identically, and factory-side readers observe it (AC-FDM-005 … -008).
+   byte-identically — including an in-flight serial reclassification that would overlap a
+   live serial slot holder (AC-FDM-011) — and factory-side readers observe it
+   (AC-FDM-005 … -008, -011).
 4. Serial exclusivity and recorded-judgment stability are regression-guarded
    (AC-FDM-009, -010).
 5. `moai spec lint --strict SPEC-FACTORY-DEFAULT-MODE-001` passes.

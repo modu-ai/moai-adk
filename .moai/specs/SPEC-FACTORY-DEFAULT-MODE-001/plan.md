@@ -80,7 +80,12 @@ parallelizable cards file-domain separation and further shrink this residual.
   store exists to reconcile; introducing one would be new machinery this SPEC does not need.
 - **D4 — The verb follows the hold-verb contract.** `store.Mutate` callback, refusal by early
   return (nothing written, file byte-identical), `human` decider fixed (C6), reason required,
-  closed-set mode, target states queued|picked with recovery advice in the refusal message.
+  closed-set mode, target states queued|picked with recovery advice in the refusal message. An
+  in-flight (picked) target requested `serial` while another distinct in-flight card holds the
+  serial slot is refused the same way — the slot-conflict refusal of REQ-FDM-004 / AC-FDM-011
+  (decision-index Q6, DEFAULT-APPLIED), reusing the selection gate's own predicate
+  (`factorySerialInFlightExcluding`, `factory_card.go:324-340`) so the verb adds no second
+  serial-overlap policy.
 
 ## §B Known Issues
 
@@ -94,7 +99,11 @@ parallelizable cards file-domain separation and further shrink this residual.
 ## §C Pre-flight
 
 - P1 — Confirm at run entry that no `classify` subcommand appeared on main since HEAD
-  `74ad197380` (`grep -rn '"classify"' internal/cli/*.go` returns only the seam files' comments).
+  `74ad197380` (`grep -rn '"classify"' internal/cli/*.go` returns zero hits — no classify
+  subcommand is wired; measured at `f6742080a6`: no output, exit 1. Corroborating:
+  `newTodoClassifyCmd` is absent from `internal/cli/todo.go` (exit 1), and the installed
+  binary answers `Unknown command "classify" for "moai todo"` with exit 1. The run-entry check
+  re-measures in case main moved).
 - P2 — Confirm the parent SPEC's completed tests still pass before the flip
   (`go test ./internal/factory -run Classification` and `go test ./internal/cli -run
   TodoClassify`) — these name the baseline the split intentionally changes; the run updates the
@@ -140,16 +149,20 @@ change-likelihood, widest reader surface) first; mechanical registration and doc
   derivation currently returns `serial`). GREEN: implement D1/D2 in `classification.go` +
   `todo_classify.go`; update the affected parent-SPEC assertions to the new rule (recorded
   judgments unchanged assertions stay).
-- **M2 (RED→GREEN) — the classify verb (REQ-FDM-004/006; AC-FDM-005…007).**
-  RED: `TestTodoClassifyQueuedCard`, `TestTodoClassifyPickedCard`, `TestTodoClassifyRefusals`
-  (verb absent at HEAD — red because the command does not exist). GREEN:
-  `todo_classify_cmd.go` + registry line at `todo.go:342`; hold-verb refusal contract; human
-  decider fixed; reason required; closed-set mode.
-- **M3 (RED→GREEN) — factory-side observation and the exclusivity guard (REQ-FDM-005/007;
-  AC-FDM-008…010).** RED: selection-honors-reclassified-mode test, serial exclusivity test,
-  recorded-judgment-stability test. GREEN: only if a gap appears — expected green-by-construction
-  once M1/M2 land, since readers already derive through the seam; any fix here is a bug fix, not
-  new machinery.
+- **M2 (RED→GREEN) — the classify verb (REQ-FDM-004/006; AC-FDM-005…007, -011).**
+  RED: `TestTodoClassifyQueuedCard`, `TestTodoClassifyPickedCard`, `TestTodoClassifyRefusals`,
+  `TestTodoClassifySerialSlotConflictRefusal` (verb absent at HEAD — red because the command
+  does not exist). GREEN: `todo_classify_cmd.go` + registry line at `todo.go:342`; hold-verb
+  refusal contract; human decider fixed; reason required; closed-set mode; the slot-conflict
+  refusal (REQ-FDM-004's in-flight serial clause, decision-index Q6).
+- **M3 (guard-addition — green-now cells kept green; no RED phase) — factory-side observation
+  and the exclusivity guard (REQ-FDM-005/007; AC-FDM-008…010).** Adds the tests without a RED
+  stage: the selection-honors-reclassified-mode test (AC-FDM-008, release-blocking; its
+  subject event cannot occur until M2's verb exists, and once it can the behavior is expected
+  green-by-construction since readers already derive through the seam), plus the serial
+  exclusivity (AC-FDM-009) and recorded-judgment-stability (AC-FDM-010) guards that are
+  green-now and stay green through the flip. Any fix needed here is a bug fix, not new
+  machinery.
 - **M4 — docs and close-out.** CHANGELOG entry; MX tag review on the touched seam (the
   `EffectiveCardClassification` ANCHOR's reason text mentions the serial default — refresh the
   comment text, not the tag); `moai spec lint --strict` clean; progress.md §E.2/§E.3 evidence.
@@ -173,5 +186,6 @@ change-likelihood, widest reader surface) first; mechanical registration and doc
 - Operator records: board `d-20261019T015400Z-02f4` (t1737 ruling), board
   `d-20261019T014804Z-a672` (measured wedge), board `d-20261019T020637Z-0c51` (issuance rule).
 - Split proposal: `.moai/worktrees/t1714/.moai/reports/t1714/split-proposal.md` §1 (read-only).
-- Sibling: SPEC-FACTORY-CONFLICT-SLOTS-001 (parent index), SPEC-FACTORY-CONFLICT-DOMAIN-001
+- Sibling: SPEC-FACTORY-CONFLICT-SLOTS-001 (parent index; proposed split not executed on this
+  lineage — disposition-only reference, see spec.md §E), SPEC-FACTORY-CONFLICT-DOMAIN-001
   (C1, skipped by exception), SPEC-TCD-LLM-DECIDER-001 (LLM decider, untouched).

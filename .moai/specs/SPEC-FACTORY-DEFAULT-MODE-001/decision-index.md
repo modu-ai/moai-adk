@@ -74,3 +74,24 @@ prefix of that line.
 - Default: queued and picked only (rule: the option with the smaller user-visible surface)
 - Alternate: all non-terminal queue states (hold, dropped, …)
 - Operator verdict:
+
+### Q6: When an in-flight (picked) card is reclassified to `serial` while another serial card is in flight, does the verb refuse the write or record an operator-acknowledged overlap? (round-2 D2)
+
+- Label: FOUNDER
+- Class: implementation-level
+- Why unresolved: the round-1 audit measured that the verb as specified admits the unserialized
+  overlap — the codex required backend reproduced two factory-recorded serial cards in
+  run/leased coexisting after a conforming locked write (receipt
+  `rcpt-c9f6d2f8c1f45eb7e134711c`, tree `f6742080a6`). No committed register artifact settles
+  the verb's conflict behavior: the operator rulings cited in Q4 scope the verb's existence and
+  the issuance discipline, not this edge, so the row fails closed to the register; the default
+  below is applied per the published Default rule so the plan can close.
+- Default: refuse with a recovery-naming message and write nothing (rule: the option that
+  preserves current behavior — the serial-slot exclusivity already refuses a second concurrent
+  serial lease at the selection gate (`factory_card.go:943`) and the nominated lease
+  (`:1406`), so refusal extends the existing invariant instead of adding a bypass flag; it is
+  also the option with the smaller user-visible surface — no new flag)
+- Alternate: record the reclassification and let both serial cards run, gated by an explicit
+  operator-acknowledged flag (`--allow-overlap`)
+- Operator verdict: DEFAULT-APPLIED 2026-10-19T03:28:48Z manager-spec (card t1737, worktree
+  .moai/worktrees/t1737)
