@@ -26,7 +26,7 @@
 | `internal/config/stage_policy.go` (신규) | 해석기: 여섯 단계, 판정 표(설계 §4), 출처, revision, 기본값 상수, 정지 표식 읽기 | M2 |
 | `internal/config/stage_policy_test.go` (신규) | AC-DSO-001–005, 015 의 시험 | M2, M3 |
 | `internal/template/templates/.moai/config/sections/workflow.yaml` | 단계 블록을 **주석으로만** 추가(값 0개, L48) | M2 |
-| `.moai/config/sections/workflow.yaml` | 같은 주석 블록. 저장소 자신의 값 이전(Q8)은 M6 의 별도 커밋 | M2, M6 |
+| `.moai/config/sections/workflow.yaml` | 같은 주석 블록. 저장소 자신의 값 이전(Q8)은 M6 의 별도 커밋 — 운영자 승인 게이트 단계(리더 재정 2026-10-19; 승인 전에는 쓰지 않는다) | M2, M6 |
 | `internal/template/stage_policy_template_test.go` (신규) | AC-DSO-015 (a) | M2 |
 | `internal/cli/doctor_stages.go` + 시험 (신규, Q12) | 산문 소비자용 읽기 동사 | M2 |
 | `internal/cli/factory_card_pr.go` | 전달 본체 네 지점에 단계 판정(L03, L54). t1882 착지 뒤 기준 | M3 |
@@ -110,7 +110,7 @@
 ### M6 — 템플릿 일치, 읽지 않는 키 제거(Q7)와 이 저장소 설정 이전 (우선순위 Medium, 기계적)
 
 - 요구: REQ-DSO-018, REQ-DSO-014(보존). 인수 기준: AC-DSO-015(c).
-- 내용: (1) `make build` 로 내장 템플릿을 재생성하고, 변경한 `.claude/` 아래 파일의 사본을 일치시킨다. (2) Q7=(c): `AutomationConfig` 의 `AutoPR`·`AutoPush` 필드(`internal/config/types.go:58`)와 템플릿 프로필의 `auto_push`·`auto_pr` 값을 제거하고 구조체 대칭 시험과 산문 네 파일을 맞춘다. 기존 사용자 파일의 키는 update 가 보존한다(REQ-DSO-014). (3) 이 저장소 자신의 승인된 로컬 factory 설정(Q8=(a), OPERATOR-HELD — 리더 거부권 대기)은 템플릿 변경과 **별도 커밋**으로 project 계층(`.moai/config/sections/workflow.yaml`)에 명시 `auto` 를 적는다. Q3=(a) 와 맞물려 `review_repair: auto` 도 그 키 가운데 하나로 적는다(review gate 를 켠 현재 운영 유지). 이 커밋은 운영자 확인 없이 만들지 않는다.
+- 내용: (1) `make build` 로 내장 템플릿을 재생성하고, 변경한 `.claude/` 아래 파일의 사본을 일치시킨다. (2) Q7=(c): `AutomationConfig` 의 `AutoPR`·`AutoPush` 필드(`internal/config/types.go:58`)와 템플릿 프로필의 `auto_push`·`auto_pr` 값을 제거하고 구조체 대칭 시험과 산문 네 파일을 맞춘다. 기존 사용자 파일의 키는 update 가 보존한다(REQ-DSO-014). (3) 이 저장소 자신의 승인된 로컬 factory 설정(Q8=(a), OPERATOR-HELD)은 템플릿 변경과 **별도 커밋**으로 project 계층(`.moai/config/sections/workflow.yaml`)에 명시 `auto` 를 적는다. Q3=(a) 와 맞물려 `review_repair: auto` 도 그 키 가운데 하나로 적는다(review gate 를 켠 현재 운영 유지). **(3) 은 게이트 단계다(리더 재정 2026-10-19): 실제 설정 파일 쓰기는 운영자 keep-set 이며 별도 운영자 승인을 받은 뒤에만 실행한다 — 조건 없는 run 단계 단계가 아니다.** 승인이 없으면 (3) 을 건너뛴 채 (1)(2) 로 M6 을 끝내고 보고한다. 그때부터 이 저장소의 레인 전달은 수동 경계에서 멈춘다(§F 위험 2).
 - 종료 명령: 변경 템플릿 파일 목록에 대한 `diff -q <template> <mirror>` 단일 호출들이 종료 코드 0. config 섹션 파일은 주석 블록 헤더 `grep -c` 가 양쪽 1. Q7 제거 뒤 기존 대칭 시험이 무변경 통과한다: `go test -count=1 -run '^(TestGitStrategyConfig_NestedRoundTrip|TestGitStrategyConfig_ZeroValueSafety|TestGitStrategyConfig_ActiveModeProfile)$' ./internal/config` — PASS 3.
 - RED 단계 없음(회귀 가드).
 
@@ -131,7 +131,7 @@ release/deploy 단계의 선언과 새 게시 호출 게이트(REQ-DSO-017, AC-D
 ## §F 위험
 
 1. **t1882 의 형태가 정해지기 전에 M3 를 설계한 위험.** AC-DSO-008 의 대상이 바뀐다. M1 이 착지 뒤 재측정을 요구한다.
-2. **이 저장소 자신의 레인 전달 중단.** 키가 없으면 수동이다. M6 의 별도 커밋 전까지 이 저장소의 `moai factory complete` 는 push 앞에서 멈춘다. M3 와 M6 의 착지 사이에 레인이 걸린다. Q8=(a) 판정이 OPERATOR-HELD(리더 거부권 대기)이므로 거부권이 행사되지 않으면 M6 의 별도 커밋이 project 계층에 명시 `auto` 를 적는다. Q8 확정과 M6 를 M3 와 같은 착지 묶음에 두는 것이 리더의 선택지다.
+2. **이 저장소 자신의 레인 전달 중단.** 키가 없으면 수동이다. M6 의 별도 커밋 전까지 이 저장소의 `moai factory complete` 는 push 앞에서 멈춘다. M3 와 M6 의 착지 사이에 레인이 걸린다. Q8=(a) 판정은 유효하되 실제 설정 파일 쓰기는 운영자 keep-set 이며 별도 운영자 승인 게이트가 있다(리더 재정 2026-10-19) — 승인이 늦어질수록 이 저장소의 레인 전달 멈춤이 길어진다. 승인 요청과 M6 를 M3 와 같은 착지 묶음에 두는 것이 리더의 선택지다.
 3. **웹 템플릿 생성물.** `.templ` 변경은 생성 파일을 함께 갱신해야 한다. R 이 컴파일되도록 생성물을 R 에 함께 둔다.
 4. **local 계층 경로 해석.** 기존 해석기의 local 경로는 CWD 상대다(L40). 새 해석기는 프로젝트 루트 기준이다. 두 읽기가 어긋나면 doctor 가 보여 주는 값과 달라질 수 있다. doctor 는 단계 판정에 쓰지 않는다.
 5. **감사 기록 쓰기 실패.** 저장은 막지 않되 경고를 싣는다(설계 §7). 경고가 조용히 사라지지 않는지 시험(`TestSave_WritesAuditRecord` 의 실패 변형)이 필요하다. 이 변형은 같은 시험 함수의 서브테스트로 둔다.

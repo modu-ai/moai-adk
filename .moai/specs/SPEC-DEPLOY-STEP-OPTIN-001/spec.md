@@ -1,7 +1,7 @@
 ---
 id: SPEC-DEPLOY-STEP-OPTIN-001
 title: "배포본 자동화 단계별 명시 opt-in — 기본은 모두 수동, 설정은 하나의 해석기가 판정하고 MoAI Web이 보여 주고 검증한다"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -21,6 +21,7 @@ related_specs: [SPEC-REVIEW-GATE-REPAIR-001, SPEC-PROJECT-CONTINUATION-KEY-001, 
 
 ## HISTORY
 
+- 2026-10-19 · v0.2.1 · manager-spec · Q8 경계 재정 반영: 판정(project 계층, 명시 `auto`)은 유효하되 실제 설정 파일 쓰기(`.moai/config/sections/workflow.yaml`)는 운영자 keep-set 으로 별도 운영자 승인을 게이트로 요구한다(spec §D.1 · plan M6 (3)·§C·§F · design §6 · decision-index Q8).
 - 2026-10-19 · v0.2.0 · manager-spec · 제품 결정 행 판정 기록과 일관성 스윕. Q1–Q9, Q14 판정(운영자 상시 규칙 — Jev, 불충분 시 Codex 교차; 리더 run tn564n 중계)을 decision-index 에 기록했다. Q4=(b) 로 REQ-DSO-017 · AC-DSO-021 · M7 을 빼 여섯 단계 SPEC 이 되었다(017·021 은 결번). Q5=(a) 로 단계별 fallback 확정. Q7=(c) 로 읽지 않는 `auto_push`/`auto_pr` 제거를 M6 에 둔다. Q8=(a) OPERATOR-HELD(리더 거부권 대기). Q9=(b) 로 즉시 중지를 `.moai/state/` 정지 표식으로 바꿨다. Q11 은 열려 있다.
 - 2026-10-19 · v0.1.1 · manager-spec · 1회차 plan-audit(FAIL 0.85, `.moai/reports/t1895/plan-audit.md`) 개정. D1: REQ-DSO-016 을 쓰기+알림으로 정렬(결정 Q15, DECIDED). D2: REQ-DSO-010 의 게이트 지점을 공유 임대 이음매로 확장. D3: M2 의 Q3·Q4 재범위 기록. D4: AC-DSO-021 순서·결과 사용. D5: 완료 정의 (2) 재진술. D6 은 수정 없음.
 - 2026-10-19 · v0.1.0 · manager-spec · 최초 작성(draft). 입력 메모(`.moai/reports/t1895/OPTIN-DESIGN.md`, ADK 읽기 전용 조사, main `74ad197380` 기준)는 가설 원천으로만 쓰고, 모든 전제를 이 트리에서 다시 측정했다(research.md 증거 원장 L01–L63). 메모와 달라진 전제는 research.md §3 에 모았다. 제품 수준 결정(Q1–Q9, Q14)과 증거 대기 결정(Q11)은 decision-index.md 에 열린 채로 두었고, 구현 수준 결정(Q10, Q12, Q13)은 규칙 적용 결과로 채웠다. 이 행은 감사 결과를 주장하지 않는다.
@@ -179,7 +180,7 @@ The shipped templates shall carry the stage keys only as commented documentation
 1. 결정 색인의 행 가운데 각 마일스톤을 막는 행의 `Operator verdict` 가 채워져야 그 마일스톤이 시작한다(plan.md M1). 2026-10-19 개정 2 기준: M2 의 Q1·Q2·Q5, M3 의 Q3·Q6·Q14, M4 의 Q9, M5·M6 의 Q7·Q8 이 판정되었고, M3 의 Q11(EVIDENCE-NEEDED)만 열려 t1882 착지까지 M3 을 막는다. M7 은 Q4=(b) 판정으로 철회되었다. M2 는 Q3·Q4 판정을 기다리지 않고 모델을 만들며, 판정이 M2 뒤에 떨어지면 재범위(re-scope) 기록으로 진행한다(plan.md M1) — Q4=(b) 재범위는 개정 2에서 이 기록대로 실행되었다.
 2. run 은 t1882 가 착지한 뒤에 시작한다. 착지한 트리에서 AC-DSO-006–008 의 RED-now 셀을 다시 측정하고 다시 고정한다(verification-completeness §4).
 3. 각 마일스톤의 RED 선행은 커밋 그래프로 검증한다(plan.md §D 마일스톤 순서 조항). SPEC 도구에 순서 검증 동사는 없다(research.md L43, L44).
-4. 이 저장소 자신의 승인된 로컬 factory 설정을 새 단계 키로 옮기는 일(M6)은 템플릿 변경과 별도 커밋이며 운영자 확인 대상이다(결정 Q8).
+4. 이 저장소 자신의 승인된 로컬 factory 설정을 새 단계 키로 옮기는 일(M6 (3))은 템플릿 변경과 별도 커밋이며 **운영자 keep-set 게이트 단계다** — 별도 운영자 승인을 받은 뒤에만 실행하고, 승인 전에는 건너뛰고 보고한다(결정 Q8, 리더 재정 2026-10-19).
 
 ---
 
@@ -210,4 +211,4 @@ The shipped templates shall carry the stage keys only as commented documentation
 - **F1** 웹 화면의 영향 설명 문구(ko/en)는 run 단계에서 i18n 키로 만든다. 문구 자체의 번역 품질 검토는 sync 감사 몫이다.
 - **F2** `git_strategy.<mode>.automation.auto_push/auto_pr` 은 읽는 코드가 없다(L20). Q7=(c) 판정(2026-10-19): 구조체와 템플릿에서 제거하고(M6), 기존 사용자 파일의 키는 update 가 보존한다(REQ-DSO-014).
 - **F3** `dispatch` 단계가 막는 것은 자가 배차(인자 없는 `moai factory next`, MCP `factory_next`, `--auto-lane` 임대와 안내문·규칙 선택)다. 리더가 `--card` 로 지명하는 배차는 운영자 행위다. Q14=(a) 판정(2026-10-19)으로 확정되었다.
-- **F4** 이 저장소의 승인된 로컬 factory 설정(L25, L53)은 새 해석기에서 키가 없으므로 수동으로 읽힌다. 현행 동작을 유지하려면 명시 `auto` 를 적어야 한다. Q8=(a) 판정(OPERATOR-HELD, 리더 거부권 대기): project 계층에 적는다(M6).
+- **F4** 이 저장소의 승인된 로컬 factory 설정(L25, L53)은 새 해석기에서 키가 없으므로 수동으로 읽힌다. 현행 동작을 유지하려면 명시 `auto` 를 적어야 한다. Q8=(a) 판정(OPERATOR-HELD): project 계층에 적는다(M6). 판정은 유효하되 실제 설정 파일 쓰기는 운영자 keep-set 이며 별도 운영자 승인을 게이트로 요구한다(리더 재정 2026-10-19).

@@ -13,7 +13,7 @@
 | Q5 | 잘못된 값 하나가 지우는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | DECIDED (2026-10-19) |
 | Q6 | project.continuation 과 todo_creation 의 관계 | FOUNDER | product-level | (a) (rule: 순위 1) | DECIDED (2026-10-19) |
 | Q7 | team 프로필 `auto_push: true` 와 읽는 코드 없는 automation 키 | FOUNDER | product-level | (a) (rule: 순위 1) | DECIDED (2026-10-19) |
-| Q8 | 이 저장소의 승인된 로컬 factory 설정을 새 키로 옮기는 방법 | FOUNDER | product-level | (a) (rule: 순위 2) | DECIDED — OPERATOR-HELD (2026-10-19) |
+| Q8 | 이 저장소의 승인된 로컬 factory 설정을 새 키로 옮기는 방법 | FOUNDER | product-level | (a) (rule: 순위 2) | DECIDED — OPERATOR-HELD (2026-10-19; 설정 파일 쓰기는 운영자 승인 게이트) |
 | Q9 | 웹 즉시 중지의 의미 | FOUNDER | product-level | (a) (rule: 순위 3) | DECIDED (2026-10-19) |
 | Q10 | 감사 기록의 위치와 필드 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
 | Q11 | t1882 의 결과와 merge 단계의 관계 | EVIDENCE-NEEDED | product-level | 없음 (자료가 아직 없음) | 열림 |
@@ -22,7 +22,7 @@
 | Q14 | dispatch 단계가 막는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | DECIDED (2026-10-19) |
 | Q15 | local override 가 고정한 단계에 대한 웹 저장의 처리 | FOUNDER | product-level | 해당 없음 (감사 발견 갈림) | DECIDED (2026-10-19) |
 
-**런을 막는 행(판정 후 상태, 2026-10-19 개정 2).** M2 를 막던 Q1·Q2·Q5, M3 를 막던 Q3·Q6·Q14, M4 의 Q9, M5·M6 의 Q7·Q8 은 판정을 가진다. M3 의 Q11(EVIDENCE-NEEDED)만 열려 t1882 착지까지 M3 을 막는다. M7 은 Q4=(b) 로 철회되었다(마일스톤은 M1–M6). Q8 은 OPERATOR-HELD — 리더 거부권이 행사되면 M6 의 이전 커밋이 그에 맞춰 바뀐다. Q15 는 어떤 마일스톤도 막지 않는다. M2 와 Q3·Q4 의 순서 관계와 재범위 기록은 plan.md M1 을 본다.
+**런을 막는 행(판정 후 상태, 2026-10-19 개정 2).** M2 를 막던 Q1·Q2·Q5, M3 를 막던 Q3·Q6·Q14, M4 의 Q9, M5·M6 의 Q7·Q8 은 판정을 가진다. M3 의 Q11(EVIDENCE-NEEDED)만 열려 t1882 착지까지 M3 을 막는다. M7 은 Q4=(b) 로 철회되었다(마일스톤은 M1–M6). Q8 은 OPERATOR-HELD — 판정(project 계층, 명시 `auto`)은 유효하되 실제 설정 파일 쓰기는 운영자 keep-set 으로 별도 운영자 승인을 게이트로 요구한다(리더 재정 2026-10-19). 승인 전에는 M6 의 (1)(2) 만 진행한다. Q15 는 어떤 마일스톤도 막지 않는다. M2 와 Q3·Q4 의 순서 관계와 재범위 기록은 plan.md M1 을 본다.
 
 **권한 등록부 검토 결과.** DECIDED 와 POLICY-COVERED 로 라우팅할 수 있는 행이 없다.
 
@@ -134,7 +134,7 @@ Options:
 - (c) 적지 않는다. run 이후 레인 전달은 운영자가 단계별로 켜기 전까지 멈춘다.
 Default: (a) (rule: 순위 2, 이 SPEC 커밋 하나의 되돌리기). 순위 1 은 (a)(b) 를 가르지 못하고 (c) 만 현재 동작을 바꾼다. 이 기본값은 추천이 아니며 이 행은 운영자 보유 변경이므로 자율 판정 대상이 아니다.
 Alternate: (b).
-Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) project 계층에 명시 `auto` — **OPERATOR-HELD**, 리더 거부권 대기(거부 시 이 행을 다시 연다); jev-1.13.0 p=0.95. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) project 계층에 명시 `auto` — **OPERATOR-HELD**(행 자체 선언) + 리더 재정(2026-10-19): 판정 내용은 유효하되 실제 project 계층 설정 파일 쓰기(`.moai/config/sections/workflow.yaml`)는 운영자 keep-set 이며 별도 운영자 승인을 게이트로 요구한다. jev-1.13.0 p=0.95. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q9: 웹의 즉시 중지는 무엇을 하는가?
 
