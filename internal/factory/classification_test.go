@@ -74,16 +74,17 @@ func TestParseCardClassificationJSON(t *testing.T) {
 	}
 }
 
-// TestEffectiveCardClassificationDerivesAbsentDefaults — REQ-TCD-014: the
-// absent-field READ default is positive derivation (normal / false / serial /
-// default), never a hidden fourth priority or third mode. AC-TCD-002's read
-// half rests on the same derivation.
+// TestEffectiveCardClassificationDerivesAbsentDefaults — REQ-TCD-014 (as
+// re-valued by SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-001, operator ruling
+// 2026-10-19): the absent-field READ default is positive derivation (normal /
+// false / parallelizable / default), never a hidden fourth priority or third
+// mode. AC-TCD-002's read half rests on the same derivation.
 func TestEffectiveCardClassificationDerivesAbsentDefaults(t *testing.T) {
 	got := EffectiveCardClassification(BacklogItem{ID: "t1"})
 	want := CardClassification{
 		Priority: ClassPriorityNormal,
 		Blocked:  false,
-		Mode:     ClassModeSerial,
+		Mode:     ClassModeParallelizable,
 		Decider:  DeciderIdentityDefault,
 	}
 	if got.Priority != want.Priority || got.Blocked != want.Blocked || got.Mode != want.Mode || got.Decider != want.Decider {
