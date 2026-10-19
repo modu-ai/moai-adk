@@ -201,12 +201,6 @@ main:
           zh: /moai sync
         ref: /workflow-commands/moai-sync
       - name:
-          ko: /moai design
-          en: /moai design
-          ja: /moai design
-          zh: /moai design
-        ref: /workflow-commands/moai-design
-      - name:
           ko: /moai harness
           en: /moai harness
           ja: /moai harness
