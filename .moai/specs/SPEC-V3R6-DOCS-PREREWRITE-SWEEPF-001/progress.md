@@ -350,7 +350,7 @@ repository_wide_test_verdict: PENDING on the CI run on the project's integration
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-19
-sync_commit_sha: pending-backfill
+sync_commit_sha: 40b6cfdec2c353500cc4a80e3c963a482f8a14fd
 changelog_entry_position: CHANGELOG.md `[Unreleased]` / `### Changed`, first entry (B12 pre-emission grep for the SPEC id printed 0 before emission)
 b12_ac_count: acceptance.md counter printed 9 (live=9 excluded=0 ambiguous=0, no reserved tokens in the file); the entry cites 9 numbered with AC-SWF-006 superseded (8 live per acceptance.md prose)
 frontmatter_status_transitions: spec.md `in-progress` to `completed` on this single sync commit (`updated: 2026-10-19` already held that value)
