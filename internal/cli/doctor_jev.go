@@ -110,7 +110,7 @@ func checkJev(root string, verbose bool) DiagnosticCheck {
 		check.Status = uikit.CheckWarn
 	}
 	if verbose {
-		detail := fmt.Sprintf("model %s; endpoint %s; readiness only — no judgment request is sent by this check",
+		detail := fmt.Sprintf("request model %s (alias sent; the interpreted version is recorded per answered call and is not probed here); endpoint %s; readiness only — no judgment request is sent by this check",
 			jev.ModelID, jev.EndpointURL)
 		if probeErr != nil {
 			detail += "; probe: " + probeErr.Error()

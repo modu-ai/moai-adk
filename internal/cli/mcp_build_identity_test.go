@@ -673,7 +673,17 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// rev-parse closure), moving it 277→287. The line is the same doc mention
 		// of the primitive, and no line added above it is a comparison — same
 		// count, only the coordinate moved.
-		"integration.go:287": true,
+		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
+		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
+		// moving it 287→288. Same doc mention, no added line is a comparison.
+		// Re-measured at card t1680: the common-root rule moved to
+		// factory.IntegrationCommonRoot (shared with the PreToolUse guard) and the
+		// card's remaining integrationLockRoot edit nets thirty lines fewer above
+		// this doc comment, moving it 288→258. Same doc mention, no added line is
+		// a comparison. (The card's earlier in-file rule had moved it to :334 and
+		// left this sweep red; the move out of the file is what restores a
+		// coordinate near the baseline.)
+		"integration.go:258": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -781,8 +791,28 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the call itself. Both are branch-ancestry questions about two
 		// revisions, not a comparison of the running binary against its
 		// source, so binlag.Evaluate does not own them.
-		"local_main_resync.go:414": true,
-		"local_main_resync.go:417": true,
+		// Re-measured at card t1823: card t1619 (first seen in merge cd19e5494)
+		// added 21 lines above the helper — the localMainResyncBeforeFastForward
+		// test seam (+6) and the one-mutation-section rewrite of the
+		// revalidate-and-fast-forward step (+15) — moving the doc mention
+		// 414→435 and the call 417→438. Same two hits, same count; no added line
+		// is an ancestry comparison.
+		// Re-measured at card t1670: the localMainResyncAfterRevalidate test
+		// seam (+8) and its call at the end of localMainResyncRevalidate (+1)
+		// added 9 lines above the helper, moving the doc mention 435→444 and
+		// the call 438→447. Same two hits, same count; no added line is an
+		// ancestry comparison.
+		// Re-measured at card t1670, iteration 4: the localMainResyncReadWindow
+		// ownership-read seam (+7) added 7 lines above the helper, moving the doc
+		// mention 444→451 and the call 447→454. Same two hits, same count; no
+		// added line is an ancestry comparison.
+		// Re-measured at card t1670, iteration 6: the localMainResyncFastForward
+		// fast-forward seam (+11) added above the helper, and the call-site comment
+		// shrunk from two lines to one (-1), moved the doc mention 451→461 and the
+		// call 454→464. Same two hits, same count; no added line is an ancestry
+		// comparison.
+		"local_main_resync.go:461": true,
+		"local_main_resync.go:464": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

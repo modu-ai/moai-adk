@@ -8,6 +8,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/spf13/cobra"
 )
 
 // codexAddDirValue returns the value following --add-dir in argv, or "" when
@@ -117,5 +118,56 @@ func TestCodexLaneLaunch_AddsMoaiHomeWritableDir(t *testing.T) {
 	}
 	if argv[len(argv)-1] != codexLaneAutoPrompt {
 		t.Errorf("lane argv last = %q, want the auto directive", argv[len(argv)-1])
+	}
+}
+
+// pinCodexMoaiHomeAddDir makes the --add-dir seam return a fixed pair so the
+// tests below do not depend on the real MOAI_HOME existing.
+func pinCodexMoaiHomeAddDir(t *testing.T, dir string) {
+	t.Helper()
+	prev := codexMoaiHomeAddDirArgs
+	codexMoaiHomeAddDirArgs = func() []string { return []string{"--add-dir", dir} }
+	t.Cleanup(func() { codexMoaiHomeAddDirArgs = prev })
+}
+
+// TestCodexLaunch_ManagedDivertCarriesNoAddDir — the managed owner's option
+// parser is headless and refuses every flag but -c/--config and -m/--model, so
+// the launcher-injected moai-home --add-dir must stay off the argv handed to
+// it, while the operator tail still rides along (card t1823).
+func TestCodexLaunch_ManagedDivertCarriesNoAddDir(t *testing.T) {
+	_, managed := withManagedCodexWiring(t)
+	factoryLaneEnv(t)
+	managedOptIn(t)
+	pinCodexMoaiHomeAddDir(t, t.TempDir())
+
+	c := &cobra.Command{Use: "codex"}
+	if err := runCodex(c, []string{"cli", "--", "--model", "m1"}); err != nil {
+		t.Fatalf("factory codex launch: %v", err)
+	}
+	if managed.calls != 1 {
+		t.Fatalf("managed codex owner calls = %d, want 1", managed.calls)
+	}
+	if slices.Contains(managed.args, "--add-dir") {
+		t.Errorf("managed argv = %q, must not carry --add-dir", managed.args)
+	}
+	if !slices.Contains(managed.args, "--model") {
+		t.Errorf("managed argv = %q, lost the operator tail", managed.args)
+	}
+}
+
+// TestCodexLaunch_DirectDoorKeepsAddDirWhenNotDiverted — the same launch
+// without the managed opt-in reaches the direct door with the --add-dir intact.
+func TestCodexLaunch_DirectDoorKeepsAddDirWhenNotDiverted(t *testing.T) {
+	cap := withCodexLaunchCapture(t)
+	withCodexProjectRoot(t, t.TempDir())
+	dir := t.TempDir()
+	pinCodexMoaiHomeAddDir(t, dir)
+
+	if _, _, err := runCodexCmd(t, "cli", "--", "--model", "m1"); err != nil {
+		t.Fatalf("cli: %v", err)
+	}
+	argv := codexOnlyRecord(t, cap).Argv[1:]
+	if got := codexAddDirValue(argv); got != dir {
+		t.Errorf("direct argv = %q, want --add-dir %q", argv, dir)
 	}
 }

@@ -936,8 +936,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				}
 				if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
 					emitSeverityLine(errOut, sevWarn, resolveTheme(), "skipped old backup pruning: the old backup root or the namespace backup root is a symbolic link or leads outside the project")
-				} else if deletedCount := backup.CleanupOldBackups(projectRoot, 5); deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
+				} else {
+					// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an
+					// older run that holds the last copy of a past file version
+					// within the state.backup_past_versions_keep budget is kept, and
+					// every removed or retained run is named in the ledger.
+					rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+					if rep.Removed > 0 {
+						_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), rep.Removed)
+					}
+					for _, line := range backupRetentionReportLines(rep, projectRoot) {
+						updateLedger.referencef("%s", line)
+					}
 				}
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge

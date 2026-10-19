@@ -4,8 +4,9 @@
 //
 // It implements an APPARATUS, not a result. No consumer lives here: this
 // package decides whether a consumer is ALLOWED to exist, by measuring it
-// against its own constant-answer baseline in two language arms under a pinned
-// model id. The consumers themselves are a later SPEC's work.
+// against its own constant-answer baseline in two language arms, requested
+// through the model alias (jev-latest) and citing the interpreted model id
+// recorded from the response. The consumers themselves are a later SPEC's work.
 //
 // Two things make that gate meaningful rather than ceremonial:
 //

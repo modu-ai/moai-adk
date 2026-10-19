@@ -771,13 +771,20 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 	name, err := uniqueWorktreeBranchName(slug, func(ref string) bool {
 		// rev-parse --verify --quiet exits non-zero when the ref is absent;
 		// every failure reads as absent, and the rename below reports a real
-		// clash loudly if one remains.
-		return exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref).Run() == nil
+		// clash loudly if one remains. The scrub keeps an inherited GIT_DIR
+		// from checking another repository's refs (card t1710).
+		probe := exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref)
+		probe.Env = gitenv.Env()
+		return probe.Run() == nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("name the card worktree branch: %w", err)
 	}
+	// The worktree names the branch being renamed; an inherited GIT_DIR /
+	// GIT_WORK_TREE would redirect the rename into the caller's repository —
+	// the GH #1691 write shape (card t1710, t1589's scrub).
 	rename := exec.Command("git", "-C", wt, "branch", "-m", name)
+	rename.Env = gitenv.Env()
 	if outb, err := rename.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
 	}
@@ -2030,7 +2037,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
 		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
@@ -2984,9 +2991,9 @@ func newFactoryAssignCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned); with --reassign, the lane that takes over an assigned card")
+	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned); with --reassign, the lane that takes over the card")
 	cmd.Flags().BoolVar(&reassign, "reassign", false,
-		"move an assigned card to --to's registered lane (the leader path for a card whose owner lane is gone; refuses a live lease and every other field)")
+		"move an assigned or decision-waiting (kickoff, needs-decision) card to --to's registered lane (the leader path for a card whose owner lane is gone; refuses a live lease and every other field)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
 	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")

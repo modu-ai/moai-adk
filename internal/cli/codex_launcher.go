@@ -1225,7 +1225,11 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 				return &exitCodeError{code: 1}
 			}
 		}
-		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ(), req.Dir)
+		// The managed owner is headless and refuses every flag but -c/-m, so it
+		// gets the argv without the launcher's moai-home --add-dir (card t1823).
+		// Clone first: childArgs aliases localArgs.
+		managedArgs := append(slices.Clone(localArgs), codexChildArgs(kind, tail)...)
+		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, managedArgs...), os.Environ(), req.Dir)
 	}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {

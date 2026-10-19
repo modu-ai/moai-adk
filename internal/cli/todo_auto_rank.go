@@ -62,6 +62,7 @@ const (
 	autoRankReasonOversize         = "jev-oversize"
 	autoRankReasonSecretDetected   = "jev-secret-detected"
 	autoRankReasonMalformed        = "jev-malformed"
+	autoRankReasonUnattributed     = "jev-unattributed"
 	autoRankReasonIncompleteAnswer = "jev-incomplete-answer"
 )
 
@@ -555,6 +556,8 @@ func autoFallbackReason(a jev.Availability) string {
 		return autoRankReasonSecretDetected
 	case jev.Malformed:
 		return autoRankReasonMalformed
+	case jev.Unattributed:
+		return autoRankReasonUnattributed
 	default:
 		return autoRankReasonUnreachable
 	}

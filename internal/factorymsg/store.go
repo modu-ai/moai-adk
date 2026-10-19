@@ -420,7 +420,7 @@ func describeRunOwners(owners []homestate.RunOwner) string {
 			detail += fmt.Sprintf(", leader pid %d", o.LeadPID)
 		}
 		if o.CreatedAt != "" {
-			detail += fmt.Sprintf(", started %s", o.CreatedAt)
+			detail += fmt.Sprintf(", started %s", FormatKST(o.CreatedAt))
 		}
 		detail += ")"
 		parts = append(parts, detail)
@@ -723,7 +723,93 @@ func (s *Store) ResolveLane(ctx context.Context, slot string) (Peer, error) {
 	if isLaunchPendingSession(p.SessionUUID) {
 		return Peer{}, ErrEndpointLaunchPending
 	}
+	if slot == leaderSlot && !s.ownerCurrent(p.PID, p.ProcessStart) {
+		return s.rebindDeadLeader(ctx, p)
+	}
 	return p, nil
+}
+
+// leaderSlot is the logical slot a lane addresses to reach the run's leader.
+const leaderSlot = "leader"
+
+// ErrLeaderOwnerDead reports that the leader slot's owner is not live and the
+// run has no other live leader to rebind it to. The send is refused rather than
+// queued for a session that cannot read it (t1772).
+var ErrLeaderOwnerDead = errors.New("leader slot owner is not live and the run has no live leader")
+
+// errLeaderSlotMoved reports that another writer re-pointed the leader slot
+// between the read and the rebind; the send is retried by the caller.
+var errLeaderSlotMoved = errors.New("leader slot changed during rebind; retry the send")
+
+// rebindDeadLeader re-points the leader slot at the run's current lead when the
+// slot's owner is dead (t1772). The rebind is a compare-and-set on the dead
+// row, so a concurrent writer wins or loses as a whole.
+func (s *Store) rebindDeadLeader(ctx context.Context, dead Peer) (Peer, error) {
+	lead, err := s.runLead(ctx)
+	if err != nil {
+		return Peer{}, err
+	}
+	// A resume keeps the session the previous leader left on the run row, so a
+	// live pid does not prove that the row's session is that process's session.
+	// Refuse an unknown session and the dead one; the leader's own turn
+	// registration re-binds the slot once its live session is known (t1772 review).
+	if lead.SessionUUID == "" || lead.SessionUUID == dead.SessionUUID || !s.ownerCurrent(lead.PID, lead.ProcessStart) {
+		return Peer{}, ErrLeaderOwnerDead
+	}
+	bound := dead
+	bound.Backend = lead.Backend
+	bound.SessionUUID = lead.SessionUUID
+	bound.Generation = dead.Generation + 1
+	bound.PID = lead.PID
+	bound.ProcessStart = lead.ProcessStart
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Peer{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE peers SET backend=?,session_uuid=?,generation=?,pid=?,process_start=?,updated_at=?
+		WHERE slot=? AND project_key=? AND run_id=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`,
+		bound.Backend, bound.SessionUUID, bound.Generation, bound.PID, bound.ProcessStart, s.now().UTC().Format(time.RFC3339Nano),
+		dead.Slot, dead.ProjectKey, dead.RunID, dead.SessionUUID, dead.Generation, dead.PID, dead.ProcessStart,
+	)
+	if err != nil {
+		return Peer{}, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return Peer{}, err
+	}
+	if rows != 1 {
+		return Peer{}, errLeaderSlotMoved
+	}
+	if err := tx.Commit(); err != nil {
+		return Peer{}, err
+	}
+	return bound, nil
+}
+
+// runLead reads the active run's current lead from the factory run row, the
+// same record ValidateActiveRun reads. A missing or inactive run has no lead.
+func (s *Store) runLead(ctx context.Context) (Peer, error) {
+	path, err := homestate.FactoryDBPath(s.root)
+	if err != nil {
+		return Peer{}, err
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	if err != nil {
+		return Peer{}, err
+	}
+	defer func() { _ = db.Close() }()
+	var lead Peer
+	var status string
+	err = db.QueryRowContext(ctx, `SELECT status,lead_session_id,lead_backend,lead_pid,lead_process_start FROM runs WHERE run_id=?`, s.runID).Scan(&status, &lead.SessionUUID, &lead.Backend, &lead.PID, &lead.ProcessStart)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && status != "active") {
+		return Peer{}, ErrLeaderOwnerDead
+	}
+	if err != nil {
+		return Peer{}, err
+	}
+	return lead, nil
 }
 
 func (s *Store) PeerByOwner(ctx context.Context, pid int, processStart string) (Peer, error) {

@@ -36,6 +36,13 @@ const (
 // destructiveFuncs are the irreversible os operations the registry tracks.
 var destructiveFuncs = map[string]bool{"RemoveAll": true, "Rename": true}
 
+// rootDestructiveFuncs are the operations the registry tracks on an os.Root handle.
+// A handle's Remove is tracked as well, because the root-bound rename in skillresidue
+// drops names through it and there is no os.Remove row to carry that site. Without this
+// the scan sees no call there at all and a registry row for it reads as stale
+// (SPEC-UPDATE-BACKUP-RETENTION-001 AC-UBR-20, the F22 shape).
+var rootDestructiveFuncs = map[string]bool{"Remove": true, "RemoveAll": true, "Rename": true}
+
 func TestDestructiveTargetRegistry_CoversAllSites(t *testing.T) {
 	root := moduleRootForScan(t)
 	scanned := scanDestructiveSites(t, root)
@@ -114,32 +121,36 @@ func scanDestructiveSites(t *testing.T, root string) map[string]int {
 		}
 		rel = filepath.ToSlash(rel)
 
-		inFuncs := 0
+		outside := 0
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
+				outside += countDestructiveCalls(decl)
 				continue
 			}
-			if n := countDestructiveCalls(fn.Body); n > 0 {
+			// The whole declaration, not only its body: an os.Root handle is usually
+			// a parameter, which sits in the signature.
+			if n := countDestructiveCalls(fn); n > 0 {
 				counts[rel+" "+fn.Name.Name] += n
-				inFuncs += n
 			}
 		}
 
 		// A destructive call outside any function declaration (a package-level
 		// var initializer, say) would be silently invisible to the per-function
 		// tally above, so the registry could never cover it. Fail loudly.
-		if total := countDestructiveCalls(file); total != inFuncs {
-			t.Fatalf("%s: %d destructive call site(s) found, but only %d are inside a function declaration", rel, total, inFuncs)
+		if outside > 0 {
+			t.Fatalf("%s: %d destructive call site(s) found outside a function declaration", rel, outside)
 		}
 	}
 
 	return counts
 }
 
-// countDestructiveCalls reports how many os.RemoveAll / os.Rename calls appear
-// anywhere within n, including inside nested function literals.
+// countDestructiveCalls reports how many os.RemoveAll / os.Rename calls, and how many
+// Remove / RemoveAll / Rename calls on an os.Root handle, appear anywhere within n,
+// including inside nested function literals.
 func countDestructiveCalls(n ast.Node) int {
+	roots := rootHandleNames(n)
 	count := 0
 	ast.Inspect(n, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
@@ -150,16 +161,70 @@ func countDestructiveCalls(n ast.Node) int {
 		if !ok {
 			return true
 		}
-		pkg, ok := sel.X.(*ast.Ident)
-		if !ok || pkg.Name != "os" {
+		recv, ok := sel.X.(*ast.Ident)
+		if !ok {
 			return true
 		}
-		if destructiveFuncs[sel.Sel.Name] {
+		switch {
+		case recv.Name == "os" && destructiveFuncs[sel.Sel.Name]:
+			count++
+		case roots[recv.Name] && rootDestructiveFuncs[sel.Sel.Name]:
 			count++
 		}
 		return true
 	})
 	return count
+}
+
+// rootHandleNames returns the identifiers within n that hold an os.Root: a parameter or
+// field declared *os.Root, and a variable assigned from os.OpenRoot. It is syntactic, as
+// the whole scan is, so an alias of a handle is not followed; the pin test of the
+// skillresidue package counts references to the named steps for that reason.
+func rootHandleNames(n ast.Node) map[string]bool {
+	isOSRootPtr := func(e ast.Expr) bool {
+		star, ok := e.(*ast.StarExpr)
+		if !ok {
+			return false
+		}
+		sel, ok := star.X.(*ast.SelectorExpr)
+		if !ok {
+			return false
+		}
+		pkg, ok := sel.X.(*ast.Ident)
+		return ok && pkg.Name == "os" && sel.Sel.Name == "Root"
+	}
+	isOpenRoot := func(e ast.Expr) bool {
+		call, ok := e.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return false
+		}
+		pkg, ok := sel.X.(*ast.Ident)
+		return ok && pkg.Name == "os" && sel.Sel.Name == "OpenRoot"
+	}
+
+	roots := map[string]bool{}
+	ast.Inspect(n, func(node ast.Node) bool {
+		switch v := node.(type) {
+		case *ast.Field:
+			if isOSRootPtr(v.Type) {
+				for _, id := range v.Names {
+					roots[id.Name] = true
+				}
+			}
+		case *ast.AssignStmt:
+			if len(v.Rhs) == 1 && isOpenRoot(v.Rhs[0]) {
+				if id, ok := v.Lhs[0].(*ast.Ident); ok {
+					roots[id.Name] = true
+				}
+			}
+		}
+		return true
+	})
+	return roots
 }
 
 // destructiveScanFiles returns the absolute paths of every non-test Go file in

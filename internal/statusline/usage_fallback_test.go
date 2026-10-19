@@ -392,7 +392,7 @@ func TestRenderQuotaSegment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := renderQuotaSegment("5H:", tt.reading, 10, true, tt.relReset)
+			got := renderQuotaSegment("5H:", tt.reading, 10, nil, tt.relReset)
 			for _, want := range tt.wantContain {
 				if !strings.Contains(got, want) {
 					t.Errorf("%q should contain %q, got %q", tt.name, want, got)

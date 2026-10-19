@@ -13,27 +13,33 @@ func abs(x int) int {
 	return x
 }
 
-// TestInterpolateGradientColor verifies RGB gradient interpolation by block position.
-// Checks Green(0,255,0) → Yellow(255,255,0) → Red(255,0,0) path.
+// TestInterpolateGradientColor verifies interpolation across the theme's
+// palette stops (card t1822: pastel Catppuccin stops replaced the pure-RGB
+// Green(0,255,0) → Yellow(255,255,0) → Red(255,0,0) path).
 func TestInterpolateGradientColor(t *testing.T) {
+	mocha := barGradientStops(NewTheme("catppuccin-mocha"))
+	latte := barGradientStops(NewTheme("catppuccin-latte"))
 	tests := []struct {
-		name     string
-		blockPct float64 // 0.0 to 1.0
-		wantR    int
-		wantG    int
-		wantB    int
+		name                string
+		stops               []string
+		blockPct            float64 // 0.0 to 1.0
+		wantR, wantG, wantB int
 	}{
-		{"start (green)", 0.0, 0, 255, 0},
-		{"quarter (mid green-yellow)", 0.25, 128, 255, 0}, // approx
-		{"mid (yellow)", 0.5, 255, 255, 0},
-		{"three-quarter (mid yellow-red)", 0.75, 255, 128, 0}, // approx
-		{"end (red)", 1.0, 255, 0, 0},
+		{"mocha start (green #a6e3a1)", mocha, 0.0, 0xa6, 0xe3, 0xa1},
+		{"mocha 1/3 (yellow #f9e2af)", mocha, 1.0 / 3, 0xf9, 0xe2, 0xaf},
+		{"mocha 2/3 (peach #fab387)", mocha, 2.0 / 3, 0xfa, 0xb3, 0x87},
+		{"mocha end (red #f38ba8)", mocha, 1.0, 0xf3, 0x8b, 0xa8},
+		{"mocha 1/6 (mid green-yellow)", mocha, 1.0 / 6, 208, 227, 168},
+		{"latte start (green #40a02b)", latte, 0.0, 0x40, 0xa0, 0x2b},
+		{"latte 1/3 (yellow #df8e1d)", latte, 1.0 / 3, 0xdf, 0x8e, 0x1d},
+		{"latte 2/3 (peach #fe640b)", latte, 2.0 / 3, 0xfe, 0x64, 0x0b},
+		{"latte end (red #d20f39)", latte, 1.0, 0xd2, 0x0f, 0x39},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, g, b := interpolateGradientColor(tt.blockPct)
-			// Allow ±2 tolerance (rounding)
-			if abs(r-tt.wantR) > 2 || abs(g-tt.wantG) > 2 || abs(b-tt.wantB) > 2 {
+			r, g, b := interpolateGradientColor(tt.stops, tt.blockPct)
+			// Allow ±1 tolerance (rounding)
+			if abs(r-tt.wantR) > 1 || abs(g-tt.wantG) > 1 || abs(b-tt.wantB) > 1 {
 				t.Errorf("interpolateGradientColor(%f) = (%d,%d,%d), want ~(%d,%d,%d)",
 					tt.blockPct, r, g, b, tt.wantR, tt.wantG, tt.wantB)
 			}
@@ -43,16 +49,17 @@ func TestInterpolateGradientColor(t *testing.T) {
 
 // TestInterpolateGradientColor_Clamp verifies clamping for out-of-range inputs.
 func TestInterpolateGradientColor_Clamp(t *testing.T) {
-	// Below 0 returns Green
-	r, g, b := interpolateGradientColor(-0.5)
-	if r != 0 || g != 255 || b != 0 {
-		t.Errorf("clamp below 0: got (%d,%d,%d), want (0,255,0)", r, g, b)
+	mocha := barGradientStops(NewTheme("catppuccin-mocha"))
+	// Below 0 returns the first stop (green)
+	r, g, b := interpolateGradientColor(mocha, -0.5)
+	if r != 0xa6 || g != 0xe3 || b != 0xa1 {
+		t.Errorf("clamp below 0: got (%d,%d,%d), want (166,227,161)", r, g, b)
 	}
 
-	// Above 1 returns Red
-	r, g, b = interpolateGradientColor(1.5)
-	if r != 255 || g != 0 || b != 0 {
-		t.Errorf("clamp above 1: got (%d,%d,%d), want (255,0,0)", r, g, b)
+	// Above 1 returns the last stop (red)
+	r, g, b = interpolateGradientColor(mocha, 1.5)
+	if r != 0xf3 || g != 0x8b || b != 0xa8 {
+		t.Errorf("clamp above 1: got (%d,%d,%d), want (243,139,168)", r, g, b)
 	}
 }
 

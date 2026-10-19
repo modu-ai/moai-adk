@@ -556,8 +556,18 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// leads outside the project is refused, and nothing is pruned.
 		if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
 			_, _ = fmt.Fprintln(out, "[clean-reinstall] skipped old config backup pruning: the backup root is a symbolic link or leads outside the project")
-		} else if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
-			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
+		} else {
+			// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an older run
+			// that holds the last copy of a past file version within the
+			// state.backup_past_versions_keep budget is kept, and every removed or
+			// retained run is named.
+			rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+			if rep.Removed > 0 {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", rep.Removed)
+			}
+			for _, line := range backupRetentionReportLines(rep, projectRoot) {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", line)
+			}
 		}
 	}
 	// MergeUserFiles preserves the user's version on any merge failure, so a

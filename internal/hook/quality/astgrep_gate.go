@@ -40,7 +40,18 @@ const (
 	// from the scanner-skip reasons above and from a clean scan ("").
 	astGrepReasonRulesDirUnconfigured = "ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); " +
 		"set it in .moai/config/sections/gate.yaml to enable the scan"
+
+	// astGrepReasonRulesetLoadPrefix opens the pass reason for a ruleset that sg
+	// refused to load. sg's first stderr line follows it in parentheses. Distinct
+	// from the scanner-skip and degraded reasons, and from a clean scan ("").
+	astGrepReasonRulesetLoadPrefix = "ast-grep scan skipped: ruleset failed to load ("
 )
+
+// astGrepRulesetLoadReason builds the ruleset-load skip reason from sg's first
+// stderr line (astgrep.RulesetLoadError.Detail).
+func astGrepRulesetLoadReason(detail string) string {
+	return astGrepReasonRulesetLoadPrefix + detail + ")"
+}
 
 // ResolveRulesDirPath resolves a configured ast-grep rules directory against
 // the project root: empty stays empty ("not configured"), an absolute path
@@ -116,6 +127,12 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 		// indistinguishable from scanned-and-clean.
 		if errors.Is(err, astgrep.ErrScannerUnavailable) {
 			return true, astGrepReasonScannerUnavailable
+		}
+		// The ruleset did not load: still fail-open, but the skip names the
+		// cause and never reads as a clean scan (GH #1824).
+		var rulesetErr *astgrep.RulesetLoadError
+		if errors.As(err, &rulesetErr) {
+			return true, astGrepRulesetLoadReason(rulesetErr.Detail)
 		}
 		return true, astGrepReasonScanDegraded
 	}
@@ -354,17 +371,33 @@ func checkSuppressionPairing(filePath string) []SuppressionViolation {
 
 // walkSourceFiles recursively walks source files under projectDir.
 // Returns only files for which commentPrefix is non-empty.
-// Suppression policy checks apply to production code, so *_test.go and common exclusion paths are skipped.
+// Suppression policy checks apply to production code, so *_test.go and common exclusion paths
+// are skipped. testdata directories are skipped too, mirroring the findings-side exclusion
+// (astGrepExcludedPathPatterns "/testdata/"): shipped fixtures place @MX:REASON BEFORE the
+// ast-grep-ignore marker (ast-grep attaches suppression to the line immediately preceding the
+// target code), so sweeping them would misread every correctly-suppressed fixture as unpaired.
+//
+// The exclusion names are matched against segments of the path RELATIVE to
+// projectDir only: ancestors above the project root that happen to carry an
+// excluded name (e.g. /tmp/testdata/proj) must never exclude anything (card
+// t1689 — the absolute-path form returned 0 files for such projects and the
+// suppression-pairing check passed vacuously).
 func walkSourceFiles(projectDir string) []string {
 	var files []string
 	_ = filepath.WalkDir(projectDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		// Exclude vendor, .git, node_modules, etc.
-		parts := strings.Split(filepath.ToSlash(path), "/")
+		// Exclude vendor, .git, node_modules, testdata, etc. — relative segments only.
+		// Paths come from WalkDir(projectDir, ...) so Rel cannot fail by construction;
+		// if it ever does, do not exclude the file — fail toward more checking, not less.
+		rel, relErr := filepath.Rel(projectDir, path)
+		if relErr != nil {
+			rel = path
+		}
+		parts := strings.Split(filepath.ToSlash(rel), "/")
 		for _, part := range parts {
-			if part == "vendor" || part == ".git" || part == "node_modules" || part == "__pycache__" {
+			if part == "vendor" || part == ".git" || part == "node_modules" || part == "__pycache__" || part == "testdata" {
 				return nil
 			}
 		}

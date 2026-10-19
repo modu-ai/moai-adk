@@ -468,7 +468,6 @@ const (
 	DefaultProfileProjectsRetentionDays = 180
 	DefaultProfileDebugRetentionDays    = 30
 	DefaultProfileUnusedDays            = 90
-	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
 	// ProfileCapAdvisoryTimeout bounds the SessionStart profile-cap advisory
 	// check (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): the check walks the
@@ -512,6 +511,15 @@ const (
 	// reader needs history older than any live run could be. An explicit 0
 	// in state.yaml disables the sweep.
 	DefaultSessionRecordRetentionDays = 30
+
+	// DefaultBackupPastVersionsKeep is the shipped default for the
+	// project-tier `state.backup_past_versions_keep` key
+	// (SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-007): how many past versions
+	// of each backed-up file the update's backup pruning protects. It is
+	// declared here and nowhere else; the backup package falls back to it
+	// when handed a budget below 1, which would otherwise disable the
+	// protection of user files copied into pre-clean/.
+	DefaultBackupPastVersionsKeep = 3
 
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
@@ -1047,6 +1055,13 @@ const DefaultFactoryLanes = 8
 // (REQ-004) — and the claim engine reads the record; this constant is the
 // fallback where a run carries no record or a capacity-open one.
 const DefaultFactoryLeaderLanes = 1
+
+// DefaultLeaderAnchorAuditRelPath is the override audit log of the leader
+// launch anchor guard (SPEC-LAUNCHER-ARGV-001 REQ-LA-005), relative to the
+// project root: one row per --allow-card-anchor bypass (backend, tree, branch),
+// following the BranchGuard `.moai/logs/` audit precedent. A bypass that cannot
+// be recorded here is refused, so the path is part of the guard's contract.
+const DefaultLeaderAnchorAuditRelPath = ".moai/logs/leader-anchor-audit.log"
 
 // DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
 // codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
@@ -1726,7 +1741,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // literal in internal/cli/state.go and internal/worktree/state_guard.go is the SSOT.
 func NewDefaultStateConfig() StateConfig {
 	days := DefaultSessionRecordRetentionDays
-	return StateConfig{SessionRecordRetentionDays: &days}
+	return StateConfig{
+		SessionRecordRetentionDays: &days,
+		BackupPastVersionsKeep:     DefaultBackupPastVersionsKeep,
+	}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
