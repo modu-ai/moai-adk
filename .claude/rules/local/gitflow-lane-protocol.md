@@ -1,9 +1,35 @@
 ---
-description: "git-flow lane protocol (repo-local) — card worktrees branch from local main, lanes land through the integration verb on local main, origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
+description: "git-flow lane protocol (repo-local) — current card delivery is the per-card draft-PR flow (AGENTS.local.md §4.0); the local-main landing sections below are the retained release-path mechanism and historical record"
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,AGENTS.local.md,internal/cli/**,internal/hook/**"
 ---
 
 # git-flow Lane Protocol (moai-adk-go, local-only)
+
+## 0. Current policy and historical scope (2026-10-19)
+
+**Current card delivery is the per-card draft-PR flow of `AGENTS.local.md` §4.0**: an officially
+assigned worker, a fresh card worktree, scoped local verification, a prompt draft PR for the
+verified head (`gh pr create --draft` — the manual path is operative; the delivery verb's
+draft/auto-merge separation is an in-progress implementation task), the current-head review
+gate (both `codex-review-state` legs `completed`, zero unresolved findings; re-request on head
+change; any other state — `Failed` included — is a re-request target), and a safe handoff with
+receiver-side confirmation before the next independent card. Opening the PR is not card
+completion. A preservation push of a card branch by its assigned worker is in-scope delivery —
+the historical "lanes never push" rule no longer governs card delivery. Conditional auto-merge
+applies only to the verified connected user's own non-fork, non-bot PR; other-author, fork,
+and bot PRs must not have auto-merge enabled and require BOTH the user's test verification
+confirmed AND explicit approval. The leader never implements, repairs, builds, or executes
+tests in any worktree — urgency and worker absence are not exceptions. Full policy:
+`AGENTS.local.md` §4.0; the retained release-path (batch) procedure: `AGENTS.local.md` §4.0-R.
+
+**The sections below preserve mechanics and evidence.** Where they describe the superseded
+delivery model — landing cards on local `main` through the integration verb, the leader's bulk
+push, wait-until-batch dispatch, local-only closure — they are transition-scoped records, not
+procedures for current card delivery; the marked sections say so. One-writer, preservation,
+ownership, and resource-lease safeguards remain binding in every section. Do not replay
+historical commands to bypass a current refusal, and do not change the shared primary checkout
+to align it with `main` — recovery requires inventory, preservation, and an explicit handoff
+to the official worker first.
 
 > **2026-08-27, operator instruction.** This repository switched from GitHub Flow to git-flow. It deliberately reverses the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The model and its rationale are in `AGENTS.local.md` §4.1; this file is the **operating rule** that lanes and the factory leader follow as written.
 >
@@ -33,6 +59,11 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 - [HARD] A lane session starts inside its card worktree and stays there. Between cards a Claude Code lane moves only by the in-session transition (`ExitWorktree(keep)`, `moai factory next` from the primary checkout, `EnterWorktree` of the leased tree, verify the toplevel); no operator clear is involved. The canonical source for this transition is the Lane card transition and Isolation sections of the distributed rule `.claude/rules/moai/workflow/factory-dispatch.md`, and it is not restated here. Returning to the primary checkout (`ExitWorktree`, §6) is outside the scope of this prohibition.
 
 ## 2. Integration surface — the dedicated integration worktree (`main`)
+
+> **[Transition scope — 2026-10-19.]** Card delivery no longer lands on local `main`;
+> `AGENTS.local.md` §4.0 governs. This section's landing mechanics remain current ONLY as the
+> mechanism behind the retained release-path resynchronization (`AGENTS.local.md` §4.0-R); its
+> one-writer, clean-tree, and window safeguards stay binding.
 
 [HARD] `main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build of §9: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. That worktree is the landing surface (§4.0 §2). A lane does not check out `main` in its own card tree (git checks out a given branch in only one worktree).
 
@@ -80,9 +111,17 @@ git branch --show-current
 
 If either differs from what you assumed, do not proceed; report the divergence.
 
-## 4. Push — the leader does it in bulk; lanes never push
+## 4. Push — historical batch-push model (superseded for card delivery, 2026-10-19)
 
-**Lanes do not push `main`.** This rule is the current form of the 2026-09-02 operator instruction (at that time it covered develop). A lane's responsibility ends at the local merge: it passes the merge commit SHA (including the card id) to the leader in its completion report, and nothing further. The leader performs batch releases in **bulk**: it collects the merge SHAs from completion reports, closes the batch, and pushes to `release/main-batch-YYYYMMDD` by the procedure in §4.0 §6.
+> **[Transition scope — 2026-10-19.]** The no-push rule below was the batch-push model's lane
+> boundary; under the per-card draft-PR flow (`AGENTS.local.md` §4.0) a preservation push of
+> the card branch by its assigned worker is in-scope delivery, and the review-fix return path
+> pushes fixes to the same PR branch. The record is preserved for provenance. What remains
+> current here: the integration branch (`release/main-batch-*`) bulk push stays a
+> leader-executed release-path act (§4.0-R), and the candidate-path exception below stands as
+> written for pre-landing CI verdicts.
+
+**Historical rule (no execution authority over current card delivery): Lanes did not push `main`.** This rule was the form of the 2026-09-02 operator instruction (at that time it covered develop). A lane's responsibility ended at the local merge: it passed the merge commit SHA (including the card id) to the leader in its completion report, and nothing further. The leader performed batch releases in **bulk**: it collected the merge SHAs from completion reports, closed the batch, and pushed to `release/main-batch-YYYYMMDD` by the release-path procedure (`AGENTS.local.md` §4.0-R).
 
 **Candidate-path exception — operator approval 2026-10-03 (REQ-CCI-016).** For this one path only, this replaces `WT push · CI request prohibited`. A lane may push a candidate commit made by `moai integration candidate --card <card-id>` to `ci/<card-id>` to receive a CI verdict before landing, and the landing gate requires a green verdict for that candidate. Pushing the integration branch remains, as before, a bulk action by the leader. The remaining rules of this section (landing verification, batch trigger, green condition) do not change, and this section's develop descriptions are to be read under the transition notice (drift) in AGENTS.local.md §4.1.
 

@@ -143,7 +143,12 @@ file the completion report names:
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
    (its title carries the card id — the traceability carrier), and requests
-   auto-merge; a re-run after the PR merges records `merged-pr`. The
+   auto-merge; a re-run after the PR merges records `merged-pr`. The verb
+   opens a non-draft PR and requests auto-merge as shipped; the
+   draft/auto-merge separation is owned by a separate implementation task —
+   until it lands in the installed tool, a repository whose flow policy
+   mandates draft PRs delivers through the manual `gh pr create --draft`
+   path of that policy. The
    git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
@@ -156,7 +161,10 @@ file the completion report names:
    read from `gh pr checks`): the combined commit-status API must show
    `state == "success"` with description `Review completed`, AND a
    `Merge Risk:` line whose commit prefix matches the current
-   `headRefOid`. Anything else is a gap.
+   `headRefOid`. Anything else is a gap. The review gate is the
+   repository's flow policy: the review is read on the PR's current head
+   from the configured producer, and a head change after review obliges a
+   re-request.
 6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
    disposes the card tree (owner check, dirty trees skipped — the
    `worktree-integration.md` disposal contract).
