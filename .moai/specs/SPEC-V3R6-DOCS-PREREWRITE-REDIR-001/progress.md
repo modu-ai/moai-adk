@@ -122,7 +122,7 @@ spec_status_transition: not performed (the run instruction forbids editing spec.
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-19T00:17Z
-sync_commit_sha: pending-backfill
+sync_commit_sha: c8e10fa2c40975f1b31cec9367a1827460c1fe3d
 base_head_at_sync_start: b58a46ac9653d35c1876ab12ec2c30b62cdfa6b2 (branch WT-id-spec-v3r6, tree clean)
 changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed`, first bullet (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001); the sync-phase decision was that a docs-site redirect and page change gets an entry because the project records each SPEC close in [Unreleased] and the change alters what adk.mo.ai.kr serves.
 b12_self_test_a: pre-emission `grep -c 'SPEC-V3R6-DOCS-PREREWRITE-REDIR-001' CHANGELOG.md` printed 0 before the edit (1 after it, the entry itself).
