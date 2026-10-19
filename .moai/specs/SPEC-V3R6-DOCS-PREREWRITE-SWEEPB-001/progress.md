@@ -55,4 +55,11 @@ m1_to_mN_commit_strategy: one commit for M1 to M3 (evidence-only run)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: audit-ready
+audit_ready: true
+sync_complete_at: 2026-10-19T00:14:19Z
+sync_commit_sha: pending-backfill
+measured_tree: 8da67df219357fab3d1a4cec5e85344a23c1c0d3
+frontmatter_status_transitions: in-progress -> completed (spec.md, merged into the single sync commit; updated: 2026-10-19)
+changelog_entry_position: none (grep -c 'SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001' CHANGELOG.md = 0; grep -c 'PREREWRITE' CHANGELOG.md = 0; no sibling child has an entry)
+sync_scope_note: no docs page, no code, and no CHANGELOG or README claim was added; the run changed zero pages (ruling Q-SWB-1 (b)), so sync closes the SPEC records only; MX tag validation and docs-site sync do not apply
