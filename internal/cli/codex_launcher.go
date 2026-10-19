@@ -1116,7 +1116,7 @@ func runCodexReadout(cmd *cobra.Command) error {
 // nothing without debug, so the debug-off lane wiring below records exactly
 // its t1378 step set (REQ-015's freeze). The dump prints before the platform
 // exec seam (REQ-009).
-func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg, factoryEntry factoryFlagParse, debug bool) error {
+func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg, factoryEntry factoryFlagParse, debug bool) (launchErr error) {
 	// The slow-launch timing covers a codex LANE launch (REQ-012,
 	// SPEC-CODEX-LANE-SLOTS-001) and — under debug mode — every launch; the
 	// phase runs from the first recorded step through the exec handoff, and
@@ -1272,6 +1272,14 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 			return ferr
 		}
 		defer restore()
+		if leader {
+			runID := os.Getenv(config.EnvFactoryRunID)
+			defer func() {
+				if launchErr != nil {
+					launchErr = errors.Join(launchErr, clearFactoryRunOwner(projectRoot, runID))
+				}
+			}()
+		}
 		req.FactoryEnv = codexFactoryEnv(factoryEntry)
 		// Explicit leader identity is authoritative even when the operator's
 		// shell policy carries stamps from an earlier lane or run.

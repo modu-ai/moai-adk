@@ -141,7 +141,7 @@
 | `internal/cli/memory_fold.go` | `normalizeFoldCardID` · `newMemoryFoldCmd` · `buildFoldPlan` · `applyFold` · `applyFoldLocked` · `verifyArchiveEffectiveState` |
 | `internal/cli/migrate_project_assets.go` | `migrateProjectCommonAssets` · `userCounterpartConfirmed` · `skillSourceRel` · `skillNotInCatalog` · `withinRootBoundary` |
 | `internal/cli/root.go` | `Execute` · `executeRoot` · `isTrivialCommand` · `init` |
-| `internal/cli/session_worktree.go` | `enterSessionWorktree` · `sessionWorktreeBranchName` · `materializeSessionWorktree` · `gitWorktreeAddArgs` · `gitWorktreeAddReal` · `inGitWorktreeReal` |
+| CLI의 worktree 진입 (세션 부모 설명에 포함) | `enterSessionWorktree` · `sessionWorktreeBranchName` · `materializeSessionWorktree` · `gitWorktreeAddArgs` · `gitWorktreeAddReal` · `inGitWorktreeReal` |
 | `internal/cli/statusline.go` | `init` · `runStatusline` · `dirExists` · `readStdinWithTimeout` · `renderSimpleFallback` · `loadStatuslineFileConfig` |
 | `internal/cli/todo.go` | `init` · `todoBacklogPath` · `resolveTodoQueueRoot` · `warnTempOriginQueueRefusal` · `newTodoStore` · `newTodoReadStore` |
 | `internal/cli/todo_auto.go` | `autoEvidencePath` · `newAutoLiveness` · `autoOwnerWorktrees` · `autoInsideTree` · `ownerAlive` · `autoQueuedCandidates` |

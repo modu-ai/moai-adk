@@ -52,12 +52,6 @@ entries:
     measure: fired-at-all
 
   - kind: github-workflow
-    locator: .github/workflows/claude-code-review.yml
-    events: [pull_request]
-    window: 30d
-    measure: fired-at-all
-
-  - kind: github-workflow
     locator: .github/workflows/codeql.yml
     events: [push, pull_request, schedule]
     window: 14d
@@ -147,13 +141,6 @@ entries:
     # Tag-triggered. Between releases its silence is the expected observation,
     # not an anomaly — this is the declaration that keeps it out of STALE.
     expected_when: release-cycle
-
-  - kind: github-workflow
-    locator: .github/workflows/review-quality-gate.yml
-    events: [check_run]
-    window: 14d
-    # Fires whenever a review check run completes and filters at job level.
-    measure: fired-at-all
 
   - kind: github-workflow
     locator: .github/workflows/spec-lint.yml

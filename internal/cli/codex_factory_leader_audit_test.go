@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 func TestCodexFactoryLeaderNativeCWDRefusedBeforeEffects(t *testing.T) {
@@ -113,5 +115,77 @@ func TestCodexFactoryLeaderSpawnPrimitiveFailureClearsOwner(t *testing.T) {
 func TestCodexFactoryLeaderHelpNamesEntry(t *testing.T) {
 	if !strings.Contains(codexCmd.Long, "-f, --factory") {
 		t.Fatal("Codex help omits factory leader entry")
+	}
+}
+
+func TestCodexFactoryLeaderPreHandoffFailureClearsOwner(t *testing.T) {
+	for _, failure := range []string{"direct-instruction-size", "spawn-instruction-size", "anchor-lock-race"} {
+		t.Run(failure, func(t *testing.T) {
+			root, _ := fcFixture(t)
+			t.Chdir(root)
+			netScrubLaneEnv(t)
+			cap := withCodexLaunchCapture(t)
+			withCodexProjectRoot(t, root)
+			if err := recordFactoryRunStart(root, "existing-run", factory.BackendClaude, "", 0); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv(config.EnvFactoryRunID, "existing-run")
+			before := factoryMarkerEnv()
+			args := []string{"-f"}
+			wantError := "ceiling"
+			if failure == "anchor-lock-race" {
+				tree := filepath.Join(root, ".claude", "worktrees", "plain")
+				if err := os.MkdirAll(tree, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				args = append(args, "-w", tree)
+				wantError = "anchor claimed after preflight"
+				codexWorktreeAnchorLock = func(string, int, string) error { return errors.New(wantError) }
+			} else {
+				if err := os.WriteFile(filepath.Join(root, codexLocalInstructionName), []byte(strings.Repeat("x", config.DefaultCodexInstructionArgBytes)), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if failure == "spawn-instruction-size" {
+					args = append(args, "--spawn")
+					oldTmux, oldLook := inTmuxFn, spawnLookPath
+					t.Cleanup(func() { inTmuxFn, spawnLookPath = oldTmux, oldLook })
+					inTmuxFn = func() bool { return true }
+					spawnLookPath = func(s string) (string, error) { return "/sentinel/" + s, nil }
+				}
+			}
+			_, stderr, err := runCodexCmd(t, args...)
+			if err == nil || !strings.Contains(err.Error()+stderr, wantError) || cap.count() != 0 {
+				t.Fatalf("pre-handoff error=%v stderr=%s launches=%d", err, stderr, cap.count())
+			}
+			db := fcOpen(t, root)
+			var id string
+			if err := db.DB.QueryRow("SELECT run_id FROM runs WHERE lead_backend=?", BackendCodex).Scan(&id); err != nil {
+				t.Fatalf("fresh run was not recorded before failure: %v", err)
+			}
+			if pid, start := runOwnerStamp(t, root, id); pid != 0 || start != "" {
+				t.Errorf("pre-handoff failure retained owner=%d %q", pid, start)
+			}
+			if pid, _ := runOwnerStamp(t, root, "existing-run"); pid != os.Getpid() {
+				t.Errorf("existing owner changed: %d", pid)
+			}
+			if !reflect.DeepEqual(before, factoryMarkerEnv()) {
+				t.Error("pre-handoff failure did not restore outer identity")
+			}
+		})
+	}
+}
+
+func TestCodexFactoryLeaderSuccessfulHandoffKeepsOwner(t *testing.T) {
+	root, _ := fcFixture(t)
+	t.Chdir(root)
+	netScrubLaneEnv(t)
+	cap := withCodexLaunchCapture(t)
+	withCodexProjectRoot(t, root)
+	if _, _, err := runCodexCmd(t, "-f"); err != nil {
+		t.Fatal(err)
+	}
+	id := launchEnvValue(codexOnlyRecord(t, cap).Env, config.EnvFactoryRunID)
+	if pid, start := runOwnerStamp(t, root, id); pid != os.Getpid() || start != homestate.CurrentProcessFingerprint() {
+		t.Fatalf("successful handoff lost owner=%d %q", pid, start)
 	}
 }
