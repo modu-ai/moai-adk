@@ -347,7 +347,7 @@ reach are in E19.
 (`deployed_rule_section_refs_test.go:338`), `TestInjectedCoreCarriesObligationElements`
 (`internal/hook/role_core_elements_test.go:17`), `TestNoHardcodedContexts`
 (`internal/config/required_checks_test.go:81`), `TestRequiredChecks_ReleaseGateSubsetOfMain`
-(`internal/config/required_checks_release_gate_test.go:10`).
+(`internal/config/required_checks_release_gate_test.go:10`; present only where the ReleaseGate field exists on the tree, absent from the remote base).
 
 ### E16 — sibling cards (read with `moai todo show`)
 
@@ -409,7 +409,7 @@ $ grep -rln --include='*_test.go' -e '\.coderabbit' . (same exclusions)
 | `.github/workflows/workflow-parse-guard.yaml` | parses `.claude/workflows/*.js` scripts (paths filter lines 16-20), not GitHub workflow files | nothing | None needed |
 | `.github/workflows/template-neutrality-check.yaml` | runs `TestTemplateNeutralityAudit` and the leak guards over `internal/template/templates/**` | nothing: no template file is edited, and the new test files sit outside `templates/` | None needed |
 | `internal/template/branch_protection_parity_test.go` `TestBranchProtectionParity` | `branch-protection.json.gtmpl` and its mirror | nothing: both stay byte-unchanged (AC-CCR-016; formerly AC-CCR-018 in revision 2) | Re-measured by name at landing |
-| `internal/config/required_checks_test.go` `TestNoHardcodedContexts`, `required_checks_release_gate_test.go` `TestRequiredChecks_ReleaseGateSubsetOfMain` | `.github/required-checks.yml` | nothing: byte-unchanged | Re-measured by name at M4 (formerly M5 in revision 2) |
+| `internal/config/required_checks_test.go` `TestNoHardcodedContexts`, `required_checks_release_gate_test.go` `TestRequiredChecks_ReleaseGateSubsetOfMain` (conditional: only where the ReleaseGate field exists on the tree; it is absent from the remote base, where the guard reads the optional release_gate YAML key directly through the helper readReleaseGate in internal/config/required_checks_review_guard_test.go and the rows not_in_release_gate and control_release_gate_reader_reads_the_key carry the same forbidden condition) | `.github/required-checks.yml` | nothing: byte-unchanged | Re-measured by name at M4 (formerly M5 in revision 2) |
 
 Revision 3 (no new workflow, no `MOAI_*` switch to re-measure): the `codex_live_axis_declaration_test.go`
 row no longer applies, and the census row applies to the removals only. The `auto_merge_checks_test.go` row

@@ -849,8 +849,7 @@ and by a mutant that a weaker implementation would satisfy.
 - `moai spec lint SPEC-CI-CODEX-REVIEW-001` and `--strict` exit 0 at plan close.
 - Existing tests re-measured, name-exact, because a milestone's edits can reach them (research E19):
   `^TestAutoMergeRequiredChecks$` (`internal/template`, M3); the three `TestCensus_*` tests
-  (`internal/guardstate`, M4); `^TestNoHardcodedContexts$` and `^TestRequiredChecks_ReleaseGateSubsetOfMain$`
-  (`internal/config`, M4). A baseline-red among them is recorded at pre-flight and never counted as new.
+  (`internal/guardstate`, M4); `^TestNoHardcodedContexts$` (`internal/config`, M4); `^TestRequiredChecks_ReleaseGateSubsetOfMain$` is run only where the ReleaseGate field exists on the tree; it is absent from the remote base, where the guard reads the optional release_gate YAML key directly through the helper readReleaseGate in internal/config/required_checks_review_guard_test.go and the rows not_in_release_gate and control_release_gate_reader_reads_the_key carry the same forbidden condition. A baseline-red among them is recorded at pre-flight and never counted as new.
 
 ## 6. Definition of Done — two states, never merged
 

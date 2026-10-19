@@ -135,7 +135,7 @@ or a named field is absent from the re-read objects, or a non-removed changed-fi
 its `contents_url`, that is a blocker too. Baseline-red check: run these
 existing tests once, name-exact, and record any pre-existing red as baseline so it is never counted as new:
 `TestAutoMergeRequiredChecks` (`internal/template`); the three `TestCensus_*` tests (`internal/guardstate`);
-`TestNoHardcodedContexts` and `TestRequiredChecks_ReleaseGateSubsetOfMain` (`internal/config`).
+`TestNoHardcodedContexts` (`internal/config`); `TestRequiredChecks_ReleaseGateSubsetOfMain` is run only where the ReleaseGate field exists on the tree; it is absent from the remote base, where the guard reads the optional release_gate YAML key directly through the helper readReleaseGate in internal/config/required_checks_review_guard_test.go and the rows not_in_release_gate and control_release_gate_reader_reads_the_key carry the same forbidden condition.
 
 ## §D Constraints (do not violate)
 
@@ -247,7 +247,7 @@ one commit (§B.1). RED first (R7, R8, R10, R11 are the stated reasons). Exit: s
 census tests pass. State at exit: landed locally; remote verified is not reached by this lane. Affected
 packages: `internal/template`, `internal/config`, `internal/guardstate` (tests only; `required_checks*.go`
 unchanged). Re-measure: the new selectors plus the three census tests, `^TestNoHardcodedContexts$`, and
-`^TestRequiredChecks_ReleaseGateSubsetOfMain$`.
+`^TestRequiredChecks_ReleaseGateSubsetOfMain$` (only where the ReleaseGate field exists on the tree; it is absent from the remote base, where the guard reads the optional release_gate YAML key directly through the helper readReleaseGate in internal/config/required_checks_review_guard_test.go and the rows not_in_release_gate and control_release_gate_reader_reads_the_key carry the same forbidden condition).
 
 ### M5 — Step and job conclusion (rev 6, Priority High)
 
