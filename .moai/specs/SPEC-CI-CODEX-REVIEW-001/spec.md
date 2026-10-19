@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.10.1"
+version: "0.10.2"
 status: in-progress
 created: 2026-10-18
 updated: 2026-10-20
@@ -33,8 +33,15 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.9.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 9, the correction after plan audit iteration 2 of revision 7 (revision 8 audited: FAIL 0.88, receipt rcpt-cba480b75217f40e0e5cf040, verdict file `.moai/reports/t1868/plan-audit-rev8.md`, local only) and one new real sample. (N1) AC-CCR-022 is reclassified as a regression-guard (its draft behaviour is already implemented and tested; the renamed row is a test addition, not a flip): 12 release-blocking, 13 regression-guard. (N2) AC-CCR-019 group E and design residual 7 state the exact timing of the recheck: an in-place edit after the recheck's last list read is not detectable. (New input) PR #1844, comment 6260734432, observed 2026-10-19T06:14:10Z: a leg whose `status` is `failed` is a review run that failed, neither a pass nor a finding; REQ-CCR-004 and REQ-CCR-005 name it, the reader refuses it with `review-failed:<leg>` before any finding flag is interpreted (design §3.2 step 7a, T-CHAIN row 2i), and the fixture `F-failed` and the criteria rows pin it. No new requirement and no new criterion. Counts: 21 requirements, 25 criteria, contiguous. |
 | 0.10.0 | 2026-10-20 | t1868 run-phase writer | Correction from the exact-head #1828 code review finding 4315924745 on `18d2a6d176d4a7ba544e2f58760ff5ba3c0f4778`: a current-head security marker still reading `running` after both state legs read `completed` is pending, as already stated by design §3.2 step 10 and AC-CCR-007, not a marker disagreement. REQ-CCR-004 and REQ-CCR-007 now state this transition explicitly. The follow-up found that a malformed SHA on a completed leg could reach pending first; the gate now refuses that shape before pending without weakening stale, failed, or unresolved checks. No requirement or criterion identifiers added; counts remain 21 requirements and 25 criteria. |
 | 0.10.1 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 finding 4316243010 and the upper contract in `AGENTS.md` §4: completed state legs must report both `has_any_findings: false` and `has_unresolved_findings: false`. The gate previously accepted `has_any_findings: true` when unresolved was false. REQ-CCR-001, 004, and 005, the reader design, and AC-CCR-001/005 now agree; three per-leg/both-leg controls refuse and a completed finding is not hidden by a running peer. Counts remain 21 requirements and 25 criteria. |
+| 0.10.2 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 security finding 4316515155: a pre-merge recheck no longer rejects an otherwise clean review solely because ordinary issue comments were added after the earlier clean pass. It snapshots the fresh PR issue-comment count, proves the complete paginated list against that count, checks the same count and head after collection, and reruns the trusted native-review gate; review-comment count, trusted identity, marker/state integrity, and clean summary equality remain enforced. Counts remain 21 requirements and 25 criteria. |
 
 ## Amendments
+
+### Amendment 5 — unrelated issue comments do not block the pre-merge recheck (plan revision 12)
+
+- rationale: exact-head security finding #4316515155 on `8989b7ebe83ffb1d0a1d922b3ee61d205c126783` showed that the recheck compared the current total issue-comment count with the count captured during the earlier clean pass. An unrelated external comment therefore withheld a merge before the trusted Codex artifacts were re-evaluated.
+- scope: REQ-CCR-012, AC-CCR-012, design §3.2 and T-CHAIN row 7, decision-index Q25, and the M6 verification notes now use the fresh recheck PR count as the completeness anchor. The full paginated issue-comment list must match that count and the second PR read must still match it; the verified head and review-comment count remain fixed, and `read-native-review` must reproduce the same clean trusted summary. A count increase since the earlier clean pass alone is not a refusal. No identifiers or counts change.
+- evidence: the exact 8989 recheck reproduction with issue comments 3→4 failed before the change with `RECHECK_REFUSED: issue-comments-moved-before-merge`; `TestAutoMergeReviewRecheckBeforeMerge/unrelated_issue_comment_added_before_recheck_does_not_block` passes after the change, `issue_comment_count_moved_during_recheck_not_ok` still refuses movement between the fresh count read and the second PR read, and missing/non-numeric R3 counts fail closed.
 
 ### Amendment 4 — completed legs cannot report findings (plan revision 11)
 
@@ -341,10 +348,13 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   each record a passing result only when the corresponding gate-script call exits 0, and shall each treat any other exit, including one
   they do not recognise, as a withheld merge and a failed step (REQ-CCR-018); the `author` step is governed by REQ-CCR-020 alone (one
   read of the pull request object, no gate-script call, exit status 0); the `review` step shall recheck a clean pass before recording it,
-  by re-listing the issue comments, the reviews, and the review comments between two further reads of the pull request and requiring the
-  same head, the same issue-comment count and review-comment count, and the same clean verdict of the same state comment (its id, its
-  `updated_at`, and the compact JSON of both markers), and shall end as a failed step on any difference, because the bot edits that
-  comment in place and a second state comment can appear inside the interval; and the merge step shall run only when the `author`
+  by taking the issue-comment count from the first pull-request read of that recheck, re-listing the complete issue-comment list, the reviews,
+  and the review comments, then requiring the same head, that fresh issue-comment count, the unchanged review-comment count, and the same clean
+  verdict of the same state comment (its id, its `updated_at`, and the compact JSON of both markers) from the second pull-request read and a
+  repeated gate evaluation; shall end as a failed step on an unreadable or changing list, a changed head or review-comment count, or a changed
+  trusted clean verdict. It shall not fail solely because the fresh issue-comment count differs from the earlier clean pass, because unrelated
+  issue comments do not grant or refuse a Codex verdict; the complete list and trusted artifacts are still re-read before merge. The merge step
+  shall run only when the `author`
   step recorded `eligible` true and both guard steps recorded a passing result, shall read the head commit again immediately before the
   merge call, and shall withhold the merge when that head differs from the verified head.
 - **REQ-CCR-013** (Ubiquitous) The auto-merge workflow shall use the `workflow_run` trigger alone, shall
@@ -353,7 +363,8 @@ reports for the `review` step and its job; **a pass** is the one case where the 
 - **REQ-CCR-018** (Event-driven) When either guard step this SPEC adds (`files`, `review`) ends any way other
   than its pass — the gate script refuses (exit 1), exits 11, or exits a code the step does not recognise; the
   pull request is unreadable or its head or count moved during or after the read; the `review` step's
-  pre-merge recheck differs from the clean pass; a list stays unreadable to the end of the window; or the gate
+  pre-merge recheck detects an incomplete/changing list, changed head or review-comment count, or a different trusted clean verdict;
+  a list stays unreadable to the end of the window; or the gate
   script is missing — that step shall end with a non-zero exit status, so that the step conclusion and the job
   conclusion are failures and the later steps, the merge step included, do not run, and shall end with exit
   status 0 only on its pass; the mapping from the gate script's exit code to the step's exit status, the job

@@ -1669,6 +1669,9 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 	H := cgHead
 	p0 := amPullWithIssueComments(H, false, 2, 0, 3)
 	p1 := amPullWithIssueComments(H, false, 2, 1, 3)
+	p2 := amPullWithIssueComments(H, false, 2, 0, 4)
+	p2MissingIssueCount := strings.Replace(p2, `,"comments":4`, ``, 1)
+	p2MalformedIssueCount := strings.Replace(p2, `"comments":4`, `"comments":"four"`, 1)
 	// The author step and files step read the pull object three times before the review pass. The review
 	// pass reads twice, followed by the pre-merge recheck's two reads.
 	chainPulls := func(review ...string) []string { return append([]string{p0, p0, p0}, review...) }
@@ -1690,6 +1693,36 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 			issues[0].(map[string]any)["updated_at"] = "2026-10-19T23:00:00Z"
 			amSetGen(t, r, "issues", 2, issues...)
 		}, "review-changed-before-merge"},
+		{"unrelated_issue_comment_added_before_recheck_does_not_block", func(t *testing.T, r *amRig) {
+			issues := cgNativeIssueComments(t, H)
+			issues = append(issues, cgEntry{
+				"id":         9999999999,
+				"user":       map[string]any{"id": 90000001, "login": "external-user", "type": "User"},
+				"body":       "Unrelated question about this pull request.",
+				"created_at": "2026-10-19T23:00:00Z",
+				"updated_at": "2026-10-19T23:00:00Z",
+			})
+			amSetGen(t, r, "issues", 2, issues...)
+			r.setPulls(chainPulls(p0, p0, p2)...)
+		}, ""},
+		{"missing_issue_comment_count_on_recheck_not_ok", func(t *testing.T, r *amRig) {
+			r.setPulls(chainPulls(p0, p0, p2MissingIssueCount)...)
+		}, "issue-comments-unreadable-before-merge"},
+		{"malformed_issue_comment_count_on_recheck_not_ok", func(t *testing.T, r *amRig) {
+			r.setPulls(chainPulls(p0, p0, p2MalformedIssueCount)...)
+		}, "issue-comments-unreadable-before-merge"},
+		{"issue_comment_count_moved_during_recheck_not_ok", func(t *testing.T, r *amRig) {
+			issues := cgNativeIssueComments(t, H)
+			issues = append(issues, cgEntry{
+				"id":         9999999999,
+				"user":       map[string]any{"id": 90000001, "login": "external-user", "type": "User"},
+				"body":       "Unrelated question about this pull request.",
+				"created_at": "2026-10-19T23:00:00Z",
+				"updated_at": "2026-10-19T23:00:00Z",
+			})
+			amSetGen(t, r, "issues", 2, issues...)
+			r.setPulls(chainPulls(p0, p0, p2, p0)...)
+		}, "issue-comments-moved-before-merge"},
 		{"later_changes_requested_on_recheck_not_ok", func(t *testing.T, r *amRig) {
 			amSetGen(t, r, "reviews", 2, cgReview(10, H, "APPROVED"), cgReview(11, H, "CHANGES_REQUESTED"))
 		}, "review-changed-before-merge:changes-requested"},

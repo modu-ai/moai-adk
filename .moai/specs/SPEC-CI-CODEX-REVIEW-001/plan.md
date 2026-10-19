@@ -300,11 +300,19 @@ table; the base matrix; the author, fork, bot, lookalike, and branch-deletion ro
 R18 to R24, R26, and R27 (R25 is a test-addition cell outside the class claim; cells R1 to R17 no longer reproduce and bind nothing; a RED that fails only because a helper is missing does not count). GREEN: edit the gate script and the workflow. Exit: every named subtest of the criteria above swept (`-v` lists each
 `--- PASS`); `TestAutoMergeRequiredChecks` still lists its 16 rows; `actionlint` exit 0; mutants recorded with verbatim reds: the revision-6 reader, a status-alone pass, null read as false, the
 code leg alone, the newest of two comments, a whole-body marker scan, the security marker ignored, a recheck on the head only, a merge `if` naming a base, a merge step that does not re-read the head, a
-state recorded for the old head counted, a recheck that does not compare the issue-comment count, a reader that reads the flags of a `failed` leg as findings or waits on it, a running comment with no security marker refused at once instead of waited on, an `author` step matching the login only, no head-repository comparison, `eligible=true` for an unreadable object, a merge call with `--delete-branch`, and
+  state recorded for the old head counted, a recheck that does not verify the complete issue-comment page list against the fresh R3 count or does not compare that count with R4, a reader that reads the flags of a `failed` leg as findings or waits on it, a running comment with no security marker refused at once instead of waited on, an `author` step matching the login only, no head-repository comparison, `eligible=true` for an unreadable object, a merge call with `--delete-branch`, and
 the MF-shaped mutant for the `eligible` term (the lone drop from the merge `if` is an equivalent mutant pinned structurally). The single writer of this milestone is the card's lane; this plan
 revision writes none of it. Affected packages: `internal/template` (tests only); no non-test Go file and no template file changes. Re-measure: the seven reader selectors, the three paging selectors,
 and the twelve auto-merge selectors of M1 to M5. State at exit: landed locally is claimed only after the merge; the real run of the revision-7 reader on a pull request, DS-2, the `running` to `completed`
 transition, and whether `CI` fires for a pull request into a `release/*` base stay UNOBSERVED, and the remote state of the amended workflow is "unverified".
+
+**Run-phase follow-up (plan revision 12; exact-head #1828 security finding #4316515155).** The pre-merge recheck
+uses its fresh R3 `comments` count to prove the complete paginated issue-comment list and requires R4 to retain
+that count and the verified head. It keeps the prior review-comment count fixed and reruns the trusted native gate;
+ordinary comments added before R3 alone do not block, while list movement, missing pages, or changed trusted review
+artifacts still fail closed. RED is preserved at `after-8989/p3-unrelated-comment-red.log`; GREEN is recorded at
+`after-8989/p3-unrelated-comment-green.log`. The scoped run includes both the positive 3→4 unrelated-comment case
+and the negative count-movement, finding, duplicate-state, metadata-change, and review-comment-count cases.
 
 ### Landing scope (plan §F rule: changed packages plus direct importers plus readers of changed non-Go files)
 

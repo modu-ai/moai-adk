@@ -461,10 +461,10 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: none
 Why unresolved: the existing rule fails a pass when the review-comment count moves during the read; issue comments are written constantly by other bots (3 or 4 per measured pull request, research E37)
-Default: a moved issue-comment count between the two reads of one pass retries the pass (pending note `issue-comments-moved`); at the pre-merge recheck, which is the last read before the merge step and has no later pass, the issue-comment count is compared and any difference (count, comment id, `updated_at`, markers) ends the step in failure (revision 8: the earlier "next pass" rationale is withdrawn, plan audit D4)
-(rule: smaller user-visible surface — retried passes cost no red job, and the recheck is the one place a second state comment must not slip through)
-Alternate: fail the step like `review-comments-moved-during-read` on every pass — consistent with the existing rule, but turns ordinary bot traffic into red jobs. Cost accepted at the recheck: a comment by another bot inside its few seconds fails the step; the next run of auto-merge retries
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+Default: a moved issue-comment count between the two reads of one review pass retries the pass (pending note `issue-comments-moved`). At the pre-merge recheck, R3 supplies a fresh valid issue-comment count; the complete paginated issue-comment list must match it, and R4 must retain that same count and the verified head. The gate then re-evaluates trusted artifacts and must return the identical clean summary. A count increase between the earlier clean pass and R3 alone is allowed because ordinary comments do not grant or refuse a Codex verdict. A count/list mismatch, movement between R3 and R4, or any change to trusted state remains a failure.
+(rule: keep list completeness and the final observation window bound while ensuring unrelated comments do not block a clean review; a second or changed trusted state comment is still rejected by the gate and summary comparison)
+Alternate: compare R3 with the earlier clean-pass issue-comment count — rejected because an unrelated external comment then blocks auto-merge before the trusted artifacts are re-read, as reproduced in finding #4316515155.
+Operator verdict: APPLIED 2026-10-20, explicit follow-up to exact-head finding #4316515155; supersedes the 2026-10-19 pre-merge count-equality default. The within-pass retry behavior remains unchanged.
 
 ### Q26: What does the `author` step do to the job, and how is an ineligible pull request shown?
 

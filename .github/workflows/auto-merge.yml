@@ -320,26 +320,30 @@ jobs:
             if [ "$WAIT" -lt "$MAX_WAIT" ]; then sleep 15; fi
           }
           # Pre-merge recheck, run once a pass is clean ($1 is that pass's state-marker summary line). The
-          # lists are collected again between two reads of the pull request object; the head and the
-          # review-comment count must still equal the verified head and the first collection's count,
-          # and the gate script must again exit 0 with the same state comment and marker fields. Any change ends the
-          # step as a failure; a few seconds remain between this read and the merge call itself.
+          # lists are collected again between two reads of the pull request object. The issue-comment
+          # count is refreshed at the start of this observation, used to verify the complete page
+          # collection, then checked again with the head before the gate re-reads trusted artifacts.
+          # Ordinary comments added since the clean pass do not change that pass's verdict; a changed
+          # trusted artifact still changes or refuses the gate result. A few seconds remain before merge.
           recheck() {
             R3="$(read_pr)" || withhold "recheck-unreadable"
             if [ "$(field "$R3" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
             if [ "$(field "$R3" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
-            if [ "$(field "$R3" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
+            IC_RECHECK_COUNT="$(field "$R3" '.comments // empty')"
+            case "$IC_RECHECK_COUNT" in
+              '' | *[!0-9]*) withhold "issue-comments-unreadable-before-merge" ;;
+            esac
             rc=0
             OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/reviews" --out "$REVIEWS" 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
             OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/comments" --out "$COMMENTS" --expect-count "$RC_COUNT" 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
-            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_COUNT" 2>&1)" || rc=$?
+            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_RECHECK_COUNT" 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
             R4="$(read_pr)" || withhold "recheck-unreadable"
             if [ "$(field "$R4" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
             if [ "$(field "$R4" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
-            if [ "$(field "$R4" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
+            if [ "$(field "$R4" '.comments // empty')" != "$IC_RECHECK_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
             OUT2="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed true 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "review-changed-before-merge:$(reason "$OUT2")"; fi
             if [ "$OUT2" != "$1" ]; then withhold "selected-review-changed-before-merge"; fi

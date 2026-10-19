@@ -14,6 +14,9 @@ stub): still 25 criteria for 21 requirements. The
 iteration-1 identifiers map to the new ones
 in `.moai/reports/t1868/progress.md`; the keyed-action criteria (key presence, workflow triggers, pins,
 verdict job, fork notice job, check-run binding) no longer exist because no such workflow is built.
+**Plan revision 12** (the run-phase correction for exact-head security finding #4316515155; delta in `design.md`) updates
+AC-CCR-012's recheck contract without adding or removing criteria: the fresh PR issue-comment count anchors the
+complete recheck list and its closing PR read, while a count increase since the earlier clean pass alone is allowed.
 
 **Document pin.** Every RED-now observation below was re-measured on tree `e11af67632` (full
 `e11af676320604bb1f7cf07f14aa457b3437a9ec`, branch `WT-ci-codex-review`, clean) on 2026-10-18 and binds every
@@ -511,9 +514,13 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   runs `fetch-pages` on the issue comments, the reviews, and the review comments, reads the pull request object again after those list reads
   (a head other than the verified SHA ends the step with `ok=false` `state=fail` and the lists are never
   judged), then runs `read-native-review` with the verified head SHA of step `head` and the `draft` flag, and
-  writes `ok=true` only on exit 0 and after a recheck that re-lists the issue comments, reviews, and review comments and reads the same head, the same
-  issue-comment and review-comment counts, and the identical clean summary (comment id, `updated_at`, and the compact JSON of both markers), and ends as a
-  failed step on any difference (a second state comment or one more issue comment inside the recheck included); every other exit — 1, 11, and an exit the
+  writes `ok=true` only on exit 0 and after a recheck that reads a fresh PR object, requires its head to equal the verified SHA and its
+  `review_comments` count to equal the count observed during the clean pass, captures its valid nonnegative `comments` count as the recheck
+  anchor, re-lists the complete issue comments, reviews, and review comments with the lists count-proofed against that anchor, then reads the PR
+  object again and requires the same head, the same anchored `comments` count, and the unchanged `review_comments` count; it reruns
+  `read-native-review` over those complete lists and requires exit 0 with the identical clean summary (comment id, `updated_at`, and compact JSON
+  of both markers). An issue-comment count increase since the earlier clean pass alone does not fail, but an incomplete or changing recheck list,
+  a changed head or review-comment count, a second state comment, or any changed trusted verdict does; every other exit — 1, 11, and an exit the
   step does not recognise — leaves `ok` not `true` and ends the step with a non-zero exit status (REQ-CCR-018;
   the same holds for every non-pass path of the `files` step, including a missing script); a head other than the verified SHA ends either step with
   `ok=false`; the `review` step is skipped unless `files` passed; the merge step's `if` requires both
@@ -547,7 +554,8 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `fork_head_repo_id_differs_eligible_false`, `head_repo_null_eligible_false`, `pr_object_unreadable_author_unreadable_eligible_false`,
   `author_output_recorded_once`,
   `review_step_recheck_requires_same_comment_id_and_updated_at`, `review_step_issue_comments_moved_counts_pending`,
-  `review_step_issue_comments_moved_between_recheck_reads_step_exit_nonzero`, `review_step_second_state_comment_in_recheck_step_exit_nonzero`. **Revision 6:** each `files_step_*_not_ok` and `review_step_*_not_ok`
+  `review_step_issue_comments_moved_between_recheck_reads_step_exit_nonzero`, `review_step_second_state_comment_in_recheck_step_exit_nonzero`,
+  `unrelated_issue_comment_added_before_recheck_does_not_block`, `missing_issue_comment_count_on_recheck_not_ok`, `malformed_issue_comment_count_on_recheck_not_ok`, `issue_comment_count_moved_during_recheck_not_ok`. The unrelated-comment row proves that a fresh count of 4 is accepted after the earlier pass read 3; the missing/malformed rows fail closed and the movement row proves R3/list/R4 count disagreement still fails. **Revision 6:** each `files_step_*_not_ok` and `review_step_*_not_ok`
   row also asserts a non-zero step exit status, and each `*_ok_true` row asserts exit status 0 (the full step
   and job assertions are AC-CCR-020 to AC-CCR-025).
 - Mutant: deleting the `files` step turns `files_step_present` red; a `files` step that discards the exit code
@@ -556,10 +564,12 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   reads the head again turns `files_step_head_moved_during_read_not_ok` red; a `review` step that reads the
   head only before its list reads and never again after them turns
   `review_step_head_moved_during_read_not_ok` red (on that fixture it would pass the clean lists to the
-  script, exit 0, and write `ok=true`); a `review` step that ignores the
+  script, exit 0, and write `ok=true`); a recheck that does not use the fresh R3 count to verify the full issue-comment page list, or that
+  fails to compare the R3 and R4 counts, turns the unrelated-comment and count-movement rows red; a `review` step that ignores the
   exit code turns `review_step_exit_1_not_ok_state_fail` red; a recheck that compares only the head (not the comment id and `updated_at`)
-  turns `review_step_recheck_requires_same_comment_id_and_updated_at` red; a recheck that does not compare the issue-comment count turns the two
-  recheck-race rows red (the loop's own pass keeps retrying a moved count, `issue_comments_moved_counts_pending_not_failure`); an `author` step that matches the login only turns
+  turns `review_step_recheck_requires_same_comment_id_and_updated_at` red; a recheck that does not use the fresh R3 count to prove the full page list,
+  or does not require R4 to retain the R3 count, turns the unrelated-comment and count-movement rows red (the loop's own pass keeps retrying a moved
+  count, `issue_comments_moved_counts_pending_not_failure`); an `author` step that matches the login only turns
   `author_lookalike_goosLab_other_id_eligible_false` red, one that skips the head repository comparison turns
   `fork_head_repo_id_differs_eligible_false` red, one that reads `eligible=true` for an unreadable object turns
   `pr_object_unreadable_author_unreadable_eligible_false` red; dropping the `eligible` term from any of the four `if` turns
@@ -740,7 +750,7 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   mutant) and is pinned structurally by AC-CCR-012; dropping `--match-head-commit` or pinning it to another variable turns `clean_fixture_merges_once_with_head_pin` red; a merge `if` that
   names a base branch and skips the review terms on `release/*` turns `release_base_running_zero_merge_calls` red; a merge step that does not re-read the head before the call turns
   `head_moves_between_recheck_and_merge_call_zero_merge_calls` red; a reader that counts a state recorded for the old head turns `old_head_state_zero_merge_calls_f_moved_head` red, and one
-  that reads the code leg alone turns `mixed_sha_f_mixed_sha_zero_merge_calls` red; a recheck that does not compare the issue-comment count turns the two `recheck_*` race rows red;
+  that reads the code leg alone turns `mixed_sha_f_mixed_sha_zero_merge_calls` red; a recheck that does not prove the complete issue-comment list against fresh R3 or does not compare R3 to R4 turns the unrelated-comment and count-movement rows red;
   dropping the `eligible` term from the merge `if` alone is an equivalent mutant by behaviour (the skipped guard steps leave the `files` and `review` outputs empty) and is pinned
   structurally by AC-CCR-012; a mutant that drops it from `checks`, `files`, `review`, and the merge `if` and leads them with `always()` (the shape of mutant MF) turns the `author_*`
   rows and the fork rows red; a merge call with `--delete-branch` turns `merge_call_has_no_delete_branch_flag` red; an `author` step that ends non-zero for an ineligible author turns
@@ -958,6 +968,9 @@ and by a mutant that a weaker implementation would satisfy.
 - A gate-path edit past the first 100 changed files, a list API failure mid-pagination, a truncated or shifted list, a collected count
   different from the pull request's own count, and an entry of a head that moved: the merge is withheld (AC-CCR-010, AC-CCR-009,
   AC-CCR-012). A moved issue-comment count inside one pass is retried, never a failure (AC-CCR-007).
+- An ordinary issue comment added between a clean pass and the pre-merge recheck does not alone withhold the merge: the complete page list
+  must match the fresh R3 count and R4 must retain that same count. Movement during the recheck, a truncated list, or a changed trusted Codex
+  artifact still withholds it (AC-CCR-012, REQ-CCR-012).
 - A pull request that adds or changes any workflow file or the gate script: withheld for a human (AC-CCR-009).
 - Draft pull request: `not-run:draft`, step exit 11, job result never success, withheld at once, whatever artifacts exist; its
   observation is `remote observed: gate path NOT RUN (not-run:draft)` at most, never `remote verified` (AC-CCR-008, AC-CCR-022, design

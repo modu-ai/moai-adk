@@ -1,5 +1,21 @@
 # design.md — SPEC-CI-CODEX-REVIEW-001
 
+## Delta of plan revision 12 (read this first)
+
+Exact-head security finding #4316515155 on 8989 showed that the pre-merge recheck rejected an unrelated issue comment
+added after the earlier clean pass, before it re-evaluated the trusted Codex artifacts. The recheck now treats its
+first PR read (R3) as the fresh issue-comment count anchor, requires the complete paginated list to match that count,
+and requires the closing PR read (R4) to retain it. The verified head and previously observed review-comment count
+remain fixed; `read-native-review` is rerun on the re-collected lists and its clean summary must exactly match the
+earlier pass. This allows ordinary comment-count growth between the clean pass and R3 while still refusing page
+truncation, movement during R3/list/R4, head movement, changed review comments, duplicate or changed trusted state,
+and any non-clean gate result. No identifiers or criterion counts change. RED: the preserved independent 8989
+reproduction exited 1 with `RECHECK_REFUSED: issue-comments-moved-before-merge` for a 3→4 ordinary-comment change.
+GREEN: the positive unrelated-comment test merges once after the fresh recheck; the R3/R4 movement, missing and
+malformed R3 counts, finding, duplicate-state, metadata-change, and review-comment-count regressions still refuse.
+Logs are recorded under
+`/tmp/adk-issues-prs-20261019/after-8989/`.
+
 ## Delta of plan revision 11 (read this first)
 
 Exact-head #1828 code review finding 4316243010 exposed a mismatch with `AGENTS.md` §4: the clean reader accepted
@@ -480,7 +496,7 @@ corrected design draws:
 
   | # | Comment state / terminating path | Gate exit (reason) | Step exit | Job result | `ok` | `state` | Annotation |
   |---|-----------------------------------|--------------------|-----------|------------|------|---------|------------|
-  | 1 | Clean state comment (reader rows 1, 2, 26 of §3.2): both legs `completed`, bound to the head, `has_any_findings` and `has_unresolved_findings` false, security marker `completed` for the head, no corroborating finding; and the pre-merge recheck re-reads the comments and reads the same comment id, `updated_at`, fields, head, and review-comment count | 0, then 0 with the same summary line | 0 | success; the merge step may run | `true` | `pass` | none beyond the clean summary line |
+  | 1 | Clean state comment (reader rows 1, 2, 26 of §3.2): both legs `completed`, bound to the head, `has_any_findings` and `has_unresolved_findings` false, security marker `completed` for the head, no corroborating finding; and the pre-merge recheck re-reads the comments, proves the full issue-comment list against a fresh R3 count retained by R4, and reads the same trusted comment id, `updated_at`, fields, head, and review-comment count | 0, then 0 with the same summary line | 0 | success; the merge step may run | `true` | `pass` | none beyond the clean summary line |
   | 2a | Stale: a leg or the security marker bound to another commit (reader rows 8 to 10, 21) | 1 `stale-review:<prefix>` | 1 | failure | `false` | `fail` | `::error::native review gate: <reason> - merge withheld` |
   | 2b | Findings: a completed leg's `has_any_findings` true, a leg's `has_unresolved_findings` true, or a corroborating review comment or COMMENTED or CHANGES_REQUESTED review (rows 11, 24, 41 to 44) | 1 `finding:reported:<leg>`, `finding:unresolved:<leg>`, `finding:<id>`, `finding-unbound:<id>`, `finding-review:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2c | Not complete or not bound: a leg `status` other than `completed` and other than `failed` (unknown, null, missing); a completed leg with a missing, null, or non-40-hex `commit_sha`; a missing, null, or non-boolean `has_any_findings` or `has_unresolved_findings` (rows 7, 12, 13) | 1 `review-not-complete:<leg>:<status>`, `review-not-complete:<leg>:commit_sha`, `review-not-bound:<leg>`, `review-not-complete:<leg>:<field>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
@@ -494,7 +510,7 @@ corrected design draws:
   | 4 | Non-draft, no state comment of the identity when the window ends (reader row 5) | 11 (`not-run:review-absent`) | 1 | failure | `false` | `fail` | `::error::native review gate: not-run:review-absent - no state comment observed for the pull request` |
   | 5 | Draft pull request | 11 (`not-run:draft`) | 11 | failure; never success (decision-index Q21) | `false` | `not-run:draft` | `::notice::NOT RUN: draft - not a review result and never a pass; the merge is withheld` |
   | 6 | The head or the review-comment count moved before or during the list reads (`head-moved`, `head-moved-during-read`, `review-comments-moved-during-read`) | not reached | 1 | failure | `false` | `fail` | `::error::` with the reason |
-  | 7 | The pre-merge recheck differs (`recheck-unreadable`, `head-moved-before-merge`, `review-comments-moved-before-merge`, `issue-comments-moved-before-merge` (the issue-comment count differs between the recheck's two reads, or the re-listed issue comments disagree with it), `review-changed-before-merge` (the summary line differs: comment id, `updated_at`, or any field, a `running` result included), `selected-review-changed-before-merge` (another state comment is selected)) | 0, then another exit or a different summary | 1 | failure | `false` | `fail` | `::error::` with the reason |
+  | 7 | The pre-merge recheck differs (`recheck-unreadable`, `head-moved-before-merge`, `review-comments-moved-before-merge`, `issue-comments-moved-before-merge` (the full issue-comment list disagrees with R3's fresh count, or R4 no longer has that count), `review-changed-before-merge` (the summary line differs: comment id, `updated_at`, or any field, a `running` result included), `selected-review-changed-before-merge` (another state comment is selected)) | 0, then another exit or a different summary | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 8 | A list is unreadable on the last pass, so the loop ends with no stop (`review-unreadable`) | not reached or `fetch-pages` refused | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 9 | The gate script is missing (`gate-script-missing`) | not run | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | — | Gate exit 10 with the window open (not a terminating path): `pending:no-state-comment`, `pending:running`; or an issue-comment count that moved between the two reads of one pass (note `issue-comments-moved`, decision-index Q25) | 10 | none: sleep 15 seconds, next pass | — | not recorded | not recorded | `native review not observed yet (n/60)` or `native review running (n/60)` |
@@ -584,13 +600,14 @@ corrected design draws:
      `review-not-complete:running`, produced by the script, and absence on the 60th pass is gate exit 11
      `not-run:review-absent`, produced by the script and not by the loop, so there is one place where each
      is decided. **The recheck (REQ-CCR-012; revisions 7 and 8, because the bot edits the comment in place and a second state comment can appear inside the interval).**
-     Before `ok=true`, the step reads the pull request object (its `comments` and `review_comments` counts and its head), re-lists the issue comments, the
-     reviews, and the review comments (the issue-comment and review-comment lists each count-proofed against that first read), reads the pull request object
-     once more, and runs `read-native-review` again with `--wait-closed false`. It requires, and fails the step on any difference (`T-CHAIN` row 7): the same head
-     in both reads, the same `comments` count in both reads (so a comment added after the list collection is caught by the second read, and one added before
-     it by the count proof), the same `review_comments` count, and the identical summary line of exit 0 (comment id, `updated_at`, and the compact JSON of both
-     markers), so a comment edited or replaced in the interval, a second state comment, or a result that is no longer clean ends the step as a failure. The
-     loop's own passes still retry a moved issue-comment count (Q25); only the recheck refuses it, because there is no later pass.
+     Before `ok=true`, the step reads R3 and validates its head and `review_comments` count, then captures its valid nonnegative `comments`
+     count as `IC_RECHECK_COUNT`. It re-lists the issue comments, reviews, and review comments; the complete issue-comment and review-comment
+     lists are count-proofed against `IC_RECHECK_COUNT` and the unchanged review-comment count. It reads R4 and requires the same head, the same
+     `IC_RECHECK_COUNT`, and the unchanged review-comment count, then runs `read-native-review` again with `--wait-closed false`. It requires
+     the identical clean summary line (comment id, `updated_at`, and compact JSON of both markers). A count increase between the earlier clean
+     pass and R3 alone does not fail: an ordinary comment does not grant or refuse a Codex verdict. A comment added after R3 is caught by the
+     complete-list count proof or R4; a trusted comment edit, a second state comment, or a result that is no longer clean still fails. The loop's
+     own passes still retry a moved issue-comment count between their two reads (Q25).
 - **The merge step reads the head again immediately before the merge call** (`gh pr view ... headRefOid`, unchanged since the
   closed SPEC) and withholds the merge when it differs from the verified head; `--match-head-commit` then pins the call itself. Every
   leg's `commit_sha` and the security marker's `headSha` were compared with that same verified head, so they equal the head read right
