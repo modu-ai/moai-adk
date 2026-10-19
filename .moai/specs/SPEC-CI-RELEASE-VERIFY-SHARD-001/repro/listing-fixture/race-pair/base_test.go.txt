@@ -1,0 +1,12 @@
+package gl
+
+import "testing"
+
+// Clean base: nothing here trips either guard under a PLAIN listing.
+// TestReal matches internal/cli selector 3 (^Test[J-R]); Benchmark names are ignored;
+// Fuzzhelper and ExampleAlpha are not listed by the go tool at all.
+// There is deliberately NO bare Test, Fuzz or Example and no output-bearing example.
+func TestReal(t *testing.T)      {}
+func BenchmarkB(b *testing.B)    {}
+func Fuzzhelper(s string) string { return s }
+func ExampleAlpha()              {}

@@ -257,6 +257,8 @@ Evidence available:
 - **G6** — PR #1830's `pull_request` run uses the workflow file at its merge ref; whether the change reaches that ref (and how) is a leader/landing matter, outside the lane.
 
 - **G7** — compile weight of the guard test's nested `go test -race -list` (two packages) on the remainder shard and `Test (ubuntu-latest)`: unmeasured; run-phase measurement item.
+- **N1** — race-only names: none exist today in `internal/cli` or the rosterguard package; the plan-audit (iter4/iter5) grep for `//go:build race` test files found only testdata fixtures. A statement about this tree, not a requirement; the guard exists for future files.
+- **G7b** — `internal/cli`'s `TestMain` setup probably runs on every nested `go test -race -list` (the tool executes the test binary to list); inference, unmeasured; folded into the G7 run-phase measurement item.
 - **G8** — the `-race` listing of the real packages (and of `repro/listing-fixture/`) has not been run; only a plain listing of a scratch package (L-E20) was.
 
 ## §E Residual risk
