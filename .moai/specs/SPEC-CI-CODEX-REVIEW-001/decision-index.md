@@ -498,6 +498,16 @@ Resolution: only a pull request authored by GoosLab (id 6458969, type User, all 
 Alternate: keep merging bot pull requests once they have a clean native review (the closed text of design §11) — withdrawn by the policy
 Operator verdict: OPERATOR-SETTLED 2026-10-19 leader's relayed current policy (author, fork, bot, and branch-deletion rules), transcribed from the leader's message
 
+### Q29: How is a leg whose `status` is `failed` classed?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: PR #1844 (research E46) shows a code leg `failed` with both finding flags true and the head bound; the generic refusal `review-not-complete:<leg>:failed` would be reached only after the flags were read as findings
+Default: a distinct refusal `review-failed:<leg>`, a gate refusal (step exit 1, job failure), checked right after the stale check and before any finding flag is read, also while the other leg is `running` and also when `commit_sha` is null; the annotation names the re-request (`@codex review` for `code_review`, `@codex security review` for `security_review`) (rule: excluded before ranking: reading the flags of a failed leg as findings, which reports a failed run as a finding, and treating `failed` as pending, which waits for a comment that cannot pass without a new run; among the rest, one reason and one row is the smaller surface)
+Alternate: leave `failed` to the generic `review-not-complete:<leg>:<status>` — the same exit and job result, but the operator reads no re-request and a flags-first reader can misreport a finding
+Operator verdict: DEFAULT-APPLIED 2026-10-19T06:19:40Z manager-spec (card t1868, lane-22, plan revision 9)
+
 ## Follow-up candidates (recorded, not issued)
 
 Revision 3 records these as candidates only; no card is issued by this plan. Each row names the files and the
@@ -559,6 +569,6 @@ depends on any of them.
 
 | Step | Observes | Coordinator | Status |
 |------|----------|-------------|--------|
-| DS-1 | The artifact form the native review leaves on a pull request | Leader | OBSERVED on #1835, #1836, #1837, #1838, #1841 and the samples of #1842, #1833, #1839, #1840 (research E37 to E45): one issue comment of the identity with the state marker; NOT observed on #1828 itself (a draft, silent) and not observed on a draft under a controlled read; the held fact is the DS-1 row of `spec.md` §5 |
+| DS-1 | The artifact form the native review leaves on a pull request | Leader | OBSERVED on #1835, #1836, #1837, #1838, #1841 and the samples of #1842, #1833, #1839, #1840 (research E37 to E46): one issue comment of the identity with the state marker; NOT observed on #1828 itself (a draft, silent) and not observed on a draft under a controlled read; the held fact is the DS-1 row of `spec.md` §5 |
 | DS-2 | Whether a Codex review runs again after a push. Settings relayed from the leader's read-only observation: automatic review on for all pull requests, thorough review on, automatic security review on, minimum reported severity High (research E33) | Leader | Open observation; no automatic re-review on a push was observed (#1836 stayed at the older head; one sample), U6 |
 | DS-3 | How a fresh review is requested for a head that moved after the review started: the leader's `@codex review` comment | Leader or operator, outside this lane | One re-request observed on #1842 (read at 05:36Z, research E44): the state comment was edited in place (only the code leg moved), a marker-less receipt comment was added, the security leg and marker stayed behind; U13. Never a deliverable |

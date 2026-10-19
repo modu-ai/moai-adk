@@ -26,7 +26,7 @@ cross-references of revision 2 in E5, E11, and E19 were relabelled to the revisi
 identifiers (marked "formerly" where an identifier no longer exists). Commands and outputs of E31 and E32 are
 recorded in `.moai/reports/t1868/progress.md`; E31 and E32 read no committed file under `.moai/reports/`.
 
-Plan revision 7 (2026-10-19, an in-place amendment, spec `## Amendments` Amendment 2): entries E37 to E45 and premises U13 to U16 were added from the lane's saved raw REST objects of five real pull requests and the observer's report of the same day (all read-only; no remote call was made by this plan revision); U2, U4, and U5 are answered or narrowed and marked in place; the options table rows for the verdict carrier, clean state, findings, and window end were rewritten. E1 to E36 keep their text (E29 and E32 stay true as dated readings of 2026-10-18; E34 to E36 describe the shipped steps).
+Plan revision 7 (2026-10-19, an in-place amendment, spec `## Amendments` Amendment 2): entries E37 to E46 and premises U13 to U16 were added from the lane's saved raw REST objects of five real pull requests and the observer's report of the same day (all read-only; no remote call was made by this plan revision); U2, U4, and U5 are answered or narrowed and marked in place; the options table rows for the verdict carrier, clean state, findings, and window end were rewritten. E1 to E36 keep their text (E29 and E32 stay true as dated readings of 2026-10-18; E34 to E36 describe the shipped steps).
 
 **Motivating incident (revision 7).** PR #1841 was merged at 2026-10-19T05:13:31Z, while its Codex code review
 completed at 05:14:11Z and its security review at 05:15:04Z (the reviews started at 05:13:37Z and 05:13:38Z after the
@@ -59,7 +59,7 @@ sources: E41.
 | U11 | What the workflow platform reports on a runner for the amended `files` and `review` steps and their job: a non-zero step status as a failed step and a failed job, the later steps skipped through the implied `success()`, and a draft's `review` step as a non-success job | Platform behavior recalled, not observed: the amended workflow has never run on a runner, and the G6 draft pull request cannot run it (`workflow_run` runs the default branch's copy) | The local criteria assert the step exit status and a job result derived from the step statuses (AC-CCR-020 to AC-CCR-025); nothing claims the remote conclusion, and the remote state is "unverified" until a pull request after landing is observed (spec §5, G6 acceptance condition) |
 | U12 | Re-running a failed Auto Merge job re-reads a review that arrived after the window | Platform behavior recalled, not observed; a failed job offers a re-run, a green one did not | The gate withholds either way; the re-trigger is an operator action outside this lane (AL-1) |
 | U13 | **[Partly answered in revision 7 by E44: one re-request on #1842 edited the existing state comment in place and added a separate receipt comment without a state marker.]** Whether `@codex review` after a head change **edits the existing state comment in place** or creates a second state comment | One sample only (E44) | If it edits, the gate reads the new head and may pass; if it creates a second comment, the gate fails closed on more than one state comment (REQ-CCR-004) and the pull request is withheld for a human merge; the ruling forbids choosing the newest by assumption |
-| U14 | The value set of `status` (observed: `running`, `completed`) and of the marker `v1` shape for a cancelled, failed, rate-limited, or skipped review | Only two values were read, and `running` only in a saved snapshot (E39) | Any other value, a missing `status`, or another marker version refuses (REQ-CCR-004); nothing passes by default |
+| U14 | The value set of `status` (observed: `running`, `completed`, `failed`) and of the marker `v1` shape for a cancelled, failed, rate-limited, or skipped review | Only two values were read, and `running` only in a saved snapshot (E39) | Any other value, a missing `status`, or another marker version refuses (REQ-CCR-004); nothing passes by default |
 | U15 | Whether a `commit_sha` can change in place, and which other mixed leg states exist | The per-leg completion times differ in all five comments (E38); one mixed state was read (E42: a leg `completed` with null `commit_sha` and null flags, beside a security marker that reads `running`); whether a `commit_sha` is rewritten in place was not read | A leg passes only with `completed`, `commit_sha` equal to the head, and `has_unresolved_findings` exactly false (REQ-CCR-001); a non-completed leg is pending (REQ-CCR-007); a leg bound to another commit is stale (REQ-CCR-002) |
 | U16 | That the `codex-security-review:v1` marker always agrees with the `codex-review-state:v1` marker | Disagreement was read once (E42: state marker security leg `completed`, security marker `running`); agreement on five completed comments and on the running snapshot | The reader requires the security marker to be present once, to read `completed`, and to carry the head in `headSha`; any other state refuses (REQ-CCR-004, decision-index Q24); a user with write access who edits both markers consistently is not detected (design §6, residual 8) |
 
@@ -927,6 +927,30 @@ repository fields; the eligibility step of REQ-CCR-020 therefore reads the pull 
 `gh pr checks --required` exits 1 with `no required checks reported` (E43), and the shipped `checks` step reads a non-zero, non-8 exit as a lookup failure
 (`required-checks lookup failed (gh exit <rc>) - withholding auto-merge`, lines 110 to 115 of the workflow): on such a base the shipped step withholds
 before the review gate is reached (decision-index Q27).
+
+### E46 — a failed review run: PR #1844, code_review `failed` with true finding flags (capture observed 2026-10-19T06:14:10Z)
+
+Source: the capture `pr1844-comments.json` (a `gh api repos/modu-ai/moai-adk/issues/1844/comments --paginate` capture, exit 0, `at` 2026-10-19T06:14:10.277Z, `completed_at`
+2026-10-19T06:14:10.790Z; machine-local, gitignored; the comment list is in its nested `stdout` string), read by the lane. The observation time is 06:14:10Z. The leader quoted 06:13:28Z,
+which is the state comment's own `updated_at`, not the time the capture was taken. Head `16d3d25ebfa5e235845babeea7c4c1b6e174ebe0`. Deciding facts:
+
+```
+state comment 6260734432  author id 199175422 / chatgpt-codex-connector[bot] / Bot   created 2026-10-19T05:59:15Z   updated_at 2026-10-19T06:13:28Z
+<!-- codex-review-state:v1 {"code_review":{"commit_sha":"16d3d25ebfa5e235845babeea7c4c1b6e174ebe0","has_any_findings":true,"has_unresolved_findings":true,"status":"failed"},"security_review":{"commit_sha":"16d3d25ebfa5e235845babeea7c4c1b6e174ebe0","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}} -->
+<!-- codex-security-review:v1 {"blockingSeverityThreshold":"P0","headSha":"16d3d25ebfa5e235845babeea7c4c1b6e174ebe0","mergeGateEnabled":false,"pullRequestNumber":1844,"repository":"modu-ai/moai-adk","status":"completed"} -->
+| 📝 **Code Review** | ⚠️ **Failed** ...06:13:27.772193Z | `16d3d25` | Manual request |
+| 🔒 **Security Review** | ✅ **Completed** ...06:13:18.969640Z | `16d3d25` | Draft marked ready |
+other comments: GoosLab 6458969 / User comment 6260907316 created 06:12:30Z (the text `@codex review`); the identity's own comment 6260920127 created 06:13:27Z with no marker
+(a notice that the review went wrong; paraphrased, not quoted)
+```
+
+So a leg can be `failed` while its finding flags read true and both legs name the head: the flags of a failed leg are not findings of a completed review. The code leg's failed row carries the trigger "Manual
+request": it is the run started by the `@codex review` comment, and the identity answered with a marker-less notice at the same second. The leader also reported an earlier read of the same comment with
+"Failed 2026-10-19T06:05:25Z" and the security review `running`; that read was not captured, so the composite (code `failed`, security `running`) is a synthetic fixture. The comment's own text (paraphrased) names the
+triggers: opening a pull request for review, marking a draft ready, a `@codex review` comment, and a `@codex security review` comment; a 👀 reaction while a review runs and a 👍 when reviews finish without findings. These are
+research facts only: the gate reads none of them, and the reactions were not read on the comment object. Consequences used by the design: a `failed` leg is refused as `review-failed:<leg>` before any finding flag is
+interpreted (design §3.2 step 7a), the gate does not wait for the other leg, and the refusal names the re-request. Not observed: whether a re-request after a failure recovers the leg, whether
+`@codex security review` re-runs the security leg, and the value set of `status` beyond `running`, `completed`, and `failed` (U14).
 
 ## 4. Options weighed
 
