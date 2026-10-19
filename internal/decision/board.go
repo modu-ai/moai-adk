@@ -66,11 +66,19 @@ type Record struct {
 	Cards        []string `json:"cards,omitempty"`
 }
 
+// escapeLine neutralizes the line-break and tab bytes of one record field so
+// the rendered one-line form stays one physical line: a field value cannot
+// split the row or forge a detail line after it.
+func escapeLine(s string) string {
+	return strings.NewReplacer("\n", "\\n", "\r", "\\r", "\t", "\\t").Replace(s)
+}
+
 // Line renders the record in the one-line decision-record form so existing
 // greps over decision records keep working.
 func (r Record) Line() string {
 	return fmt.Sprintf("decision record: decided_by=%s evidence_refs=%s ladder_path=%s id=%s scope=%s kind=%s",
-		r.DecidedBy, r.EvidenceRefs, r.LadderPath, r.ID, r.Scope, r.Kind)
+		escapeLine(r.DecidedBy), escapeLine(r.EvidenceRefs), escapeLine(r.LadderPath),
+		escapeLine(r.ID), escapeLine(r.Scope), escapeLine(r.Kind))
 }
 
 // Digest returns the 12-hex-character prefix of the SHA-256 over the

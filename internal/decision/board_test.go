@@ -226,6 +226,37 @@ func TestRecord_LineRendersTheDecisionRecordForm(t *testing.T) {
 	}
 }
 
+// TestBoardLineRejectsForgedRows pins the newline-injection repair on
+// Record.Line: a field value carrying a line break must render neutralized,
+// so the one-line record form stays one physical row and cannot forge the
+// digest or detail lines that follow it in read output.
+func TestBoardLineRejectsForgedRows(t *testing.T) {
+	forged := "\n  digest: deadbeefcafe"
+	for name, mutate := range map[string]func(*Record){
+		"decided_by":    func(r *Record) { r.DecidedBy += forged },
+		"evidence_refs": func(r *Record) { r.EvidenceRefs += forged },
+		"ladder_path":   func(r *Record) { r.LadderPath += forged },
+		"id":            func(r *Record) { r.ID += forged },
+		"scope":         func(r *Record) { r.Scope += forged },
+		"kind":          func(r *Record) { r.Kind += forged },
+	} {
+		r := validRuling("card:t1")
+		mutate(&r)
+		line := r.Line()
+		if strings.ContainsAny(line, "\n\r") {
+			t.Errorf("%s: Line() split into physical lines: %q", name, line)
+		}
+		if !strings.Contains(line, `\n  digest: deadbeefcafe`) {
+			t.Errorf("%s: Line() dropped the field payload instead of escaping it: %q", name, line)
+		}
+	}
+	crlf := validRuling("card:t1")
+	crlf.DecidedBy += "\r\n  body: forged"
+	if line := crlf.Line(); strings.ContainsAny(line, "\n\r") {
+		t.Errorf("CRLF payload split the rendered row: %q", line)
+	}
+}
+
 func TestRecord_DigestPinsTheStoredBoardLine(t *testing.T) {
 	board := filepath.Join(t.TempDir(), "board.jsonl")
 	first, err := Append(board, validRuling("card:t1"), AppendOptions{})
