@@ -568,7 +568,7 @@ func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 	t.Parallel()
 	const pullObject = `"repos/$REPO/pulls/$PR_NUMBER"`
 	scriptApi := regexp.MustCompile(`^"\$\{?endpoint\}?\?per_page=(100|\$\{?PER_PAGE\}?)&page=\$\{?page\}?"$`)
-	forbidden := []string{ "/status", "statuses", "check-runs", "check_runs", "labels", "CodeRabbit", "Merge Risk", "AUTOMERGE_MAX_MERGE_RISK"}
+	forbidden := []string{"/status", "statuses", "check-runs", "check_runs", "labels", "CodeRabbit", "Merge Risk", "AUTOMERGE_MAX_MERGE_RISK"}
 	sub := func(name string, fn func(t *testing.T, wf string, gate string)) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
