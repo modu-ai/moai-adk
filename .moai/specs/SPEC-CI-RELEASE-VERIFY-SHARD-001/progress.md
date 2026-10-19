@@ -277,6 +277,21 @@ gh run view <run-id> --json jobs --jq '.jobs[] | {name, conclusion, startedAt, c
 - D9 flag (leader's call, unchanged from §E.1): an optional pre-landing measurement via `workflow_dispatch` of the release workflow on the candidate ref; one added run, results attach to the PR.
 - Current reference state (not a pass): L-E4 — run 39180942620 all legs `cancelled`, gate `failure`, per-OS shard durations nonexistent (gap G2).
 
+### Sync-audit iteration 1 repair (F1)
+
+Sync-audit iter1 verdict FAIL (audited tree `f840d9bd83`, codex required backend fail, receipt `rcpt-78cc77259609a3885957bea7`, report `.moai/reports/t1892/sync-audit-iter1.md`): one blocking finding F1 — the ASCII-only `rvsIdentRe` (`^[A-Za-z_][A-Za-z0-9_]*$`, `internal/template/release_verify_shard_parity_test.go:110`, used in `rvsClassify` at :396) silently dropped valid Unicode Go identifiers from the classified listing, so the REQ-RVS-016 discovery guard could not catch a Unicode fuzz target (e.g. `FuzzΣ`) that `go test -race -list` prints and no `^Test` selector runs. F2 (job display-name template not pinned) stayed discretionary and was NOT taken (over-engineering guard; same judgment as gap G-P).
+
+Two-cell repair (slot `go-test-heavy` lane-55 17:38:21Z-18:07:36Z; load 1-min 7.46 / memory free 82% at the first call; one Go call at a time, `-p 1 -count=1`):
+
+- RED — commit `4fd23f7356` `test(SPEC-...): RED unicode fuzz-target classification hole in the shard parity guard (card t1892)`: mutant `v_injected_unicode_FuzzSigma` (injected `FuzzΣ`, want `lists "FuzzΣ"`) added to `mutants_must_fail`. Observed once, verbatim decisive lines of `go test -count=1 -p 1 -run '^TestReleaseVerifyShardParity$' -v ./internal/template/` (exit 1):
+  - `    --- FAIL: TestReleaseVerifyShardParity/mutants_must_fail/v_injected_unicode_FuzzSigma (0.01s)`
+  - `        release_verify_shard_parity_test.go:988: mutant v_injected_unicode_FuzzSigma was NOT detected: the check cannot fail on this input`
+  - every other subtest PASS (`repository_state`, both controls, the 16 other mutants, `x_race_only_name_pair`) — the hole is isolated to Unicode names.
+- GREEN — commit `0b4d311eb9` `fix(SPEC-...): classify unicode identifiers with go/token.IsIdentifier in the shard parity guard (card t1892)`: `rvsIdentRe` deleted; `rvsClassify` now discriminates with `go/token.IsIdentifier` (Unicode-aware, stdlib). ASCII behavior identical (letter/underscore start, then letter/digit/underscore — the same language the regex expressed); the explicit `ok`/`FAIL`/`PASS` line skips stay; the trailing `ok <pkg> <time>` listing line still fails the identifier test on its internal tabs. Observed once, verbatim: `go test -count=1 -p 1 -run '^TestReleaseVerifyShardParity$' ./internal/template/` -> `ok  	github.com/modu-ai/moai-adk/internal/template	15.487s`, exit 0 — the RED subtest's mutant is now detected (`mutants_must_fail` would fail with NOT detected otherwise). `gofmt -l` clean; `go vet ./internal/template/` silent.
+- Cosmetic flaw disclosed: the GREEN commit message body carries a stray editing artifact ("FuzzSigma — wait, FuzzΣ"); the character under discussion is `Σ` (U+03A3). No amend (prohibited); this note is the clean-of-record statement.
+
+Boundary: both repair commits touch `internal/template/release_verify_shard_parity_test.go` only (RED +9, GREEN +9/−4). `go vet` on the package silent after GREEN.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
