@@ -23,7 +23,7 @@
 
 **2등급 — 모델이 초안, 리드가 확정.** `triage.sh` 의 `[auto]` 판정, 근접 중복 의심, PR 귀속 모호. 리드가 **증거를 직접 읽고** 확정한 뒤 진행한다. 모델 답은 어디를 먼저 볼지 정하는 데만 쓴다.
 
-**3등급 — 절대 위임하지 않는다.** 완료 판정(`FINAL VERDICT`), 병합 승인(`LEAD-MERGE-APPROVED`), 큐 변경(`moai todo` add/next/done/drop/edit), 운영자 게이트, 사용자 표면 동작 변경, CodeRabbit 슬롯 대기 판정. `route.sh` 가 `ASK-OPERATOR` 를 내거나 owner confidence < 0.50 이면 **그 자체로 3등급**이다.
+**3등급 — 절대 위임하지 않는다.** 완료 판정(`FINAL VERDICT`), 병합 승인(`LEAD-MERGE-APPROVED`), 큐 변경(`moai todo` add/next/done/drop/edit), 운영자 게이트, 사용자 표면 동작 변경. `route.sh` 가 `ASK-OPERATOR` 를 내거나 owner confidence < 0.50 이면 **그 자체로 3등급**이다.
 
 ### [HARD] 되돌릴 수 없는 판정은 모델 답을 입력으로도 쓰지 않는다
 
