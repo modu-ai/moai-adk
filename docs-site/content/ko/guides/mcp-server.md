@@ -127,7 +127,7 @@ flowchart TD
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__spec_progress` | SPEC 문서 목록 + frontmatter 조회 | manager-spec, manager-docs | `moai spec list` |
+| `mcp__moai__spec_progress` | SPEC 문서 목록 + frontmatter 조회 | manager-spec, manager-docs | — |
 | `mcp__moai__spec_audit` | SPEC 라이프사이클 감사 (시대 분류 + 드리프트) | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
 | `mcp__moai__spec_drift` | 현대 시대 V3R6 드리프트 발견 | manager-spec, plan-auditor | `moai spec audit` (drift 뷰) |
 
@@ -160,7 +160,7 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | `mcp__moai__claude_audit` | Claude 구독 백엔드 단독 감사 (`claude -p`, 읽기 전용 격리, 구조화 출력) | plan-auditor, sync-auditor, GPT·GLM 세션에서는 `audit_multi`가 자동 호출 | — |
 | `mcp__moai__codex_audit` | codex 백엔드 단일 감사 (네이티브/적대적) | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) 백엔드 단일 감사 | plan-auditor, sync-auditor | — |
-| `mcp__moai__audit_cache` | plan-audit PASS 캐시 (compute_hash / lookup / store, 프로세스 간 공유) | sync-auditor | `moai audit cache` |
+| `mcp__moai__audit_cache` | plan-audit PASS 캐시 (compute_hash / lookup / store, 프로세스 간 공유) | sync-auditor | — |
 
 단일 백엔드 감사 모드는 프로젝트의 `audit_model` 설정으로 결정합니다: `codex+glm`(기본값, `audit_multi`로 수렴) | `glm` | `codex` | `none`(Claude 단독, 백엔드 호출 없음). 모든 백엔드는 fail-open입니다 — 사용 불가 백엔드는 `inconclusive`를 반환하며, Go error가 아닙니다.
 
@@ -179,11 +179,11 @@ GLM은 파일 시스템이 없어서, 런타임 관리 경로를 뺀 diff를 요
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 코딩/조사 작업을 codex에 위임 (동기 또는 백그라운드) | manager-develop, super-advisor | `moai codex task` |
-| `mcp__moai__codex_setup` | 로컬 codex 설치 탐지 (LookPath + 버전 + 인증) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | 백그라운드 codex 작업 상태/기록 읽기 | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | 백그라운드 codex 작업 출력 읽기 | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | manager-develop, super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_task` | 코딩/조사 작업을 codex에 위임 (동기 또는 백그라운드) | manager-develop, super-advisor | — |
+| `mcp__moai__codex_setup` | 로컬 codex 설치 탐지 (LookPath + 버전 + 인증) | super-advisor | — |
+| `mcp__moai__codex_job_status` | 백그라운드 codex 작업 상태/기록 읽기 | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_result` | 백그라운드 codex 작업 출력 읽기 | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | manager-develop, super-advisor | — |
 
 codex 위임 도구군은 super-advisor와 manager-develop에 배선되어 있습니다. 수시 고추론 자문 에이전트인 super-advisor는 백그라운드 교차 모델 위임의 자연스러운 소비자입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. manager-develop은 `codex_setup`을 뺀 나머지를 가지며, 범위가 좁은 기계적 하위 작업을 맡길 때에만, 그것도 run 워크플로의 `External Model Delegation` 절이 허용하는 범위에서 `codex_task`를 씁니다. 위임된 codex 턴은 읽기 전용으로 남습니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
 
