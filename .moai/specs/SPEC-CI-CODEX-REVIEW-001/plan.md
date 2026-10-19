@@ -1,9 +1,11 @@
 # plan.md — SPEC-CI-CODEX-REVIEW-001
 
-**Plan revision 7 (amendment 2, 2026-10-19).** The native Codex review is an issue-comment state protocol, not a pull-request review object (`research.md` E37 to E46), and the
+**Plan revision 11 (amendment 4, 2026-10-20; incorporating corrections through revision 10).** The native Codex review is an issue-comment state protocol, not a pull-request review object (`research.md` E37 to E46), and the
 leader's policy adds an author, fork, and bot rule and forbids automatic branch deletion. The amendment adds one milestone, **M6** (§F), which changes the gate script,
 `auto-merge.yml`, and their tests, and nothing else; the delta is in `design.md` "Delta of plan revision 7" (Δ12 to Δ26). Revision-7 items that bind the run phase are marked
 "rev 7" below. The text of §A to §G that describes an APPROVED review object is superseded where it conflicts with `design.md` §3.1, §3.2, and `T-CHAIN`.
+
+**Revision-11 correction to M6.** The committed upper contract requires each completed leg to report both `has_any_findings: false` and `has_unresolved_findings: false`. The gate now refuses a completed leg with `has_any_findings: true` before a running peer can defer the verdict; failed-leg flags remain unread, and running remains pending unless another refusal applies. No requirement or criterion identifiers are added. `TestCodexNative1828ReceiptTypesAndHeadBinding` covers code-only, security-only, and both-leg reported findings, and `TestCodexNativeRunningSecurityLegWaits` covers refusal before a running security wait.
 
 **Plan revision 6 (amendment).** M1 to M4 are complete on the card branch (HEAD `0955fb9058`); the amendment
 under the leader's rulings (board records d-20261018T152011Z-8447 (supersedes d-20261018T151824Z-db98; ruling and scope unchanged) and d-20261018T155527Z-4e9e (a delegated Codex observer run, not a new approval)) adds one
@@ -351,6 +353,7 @@ lane" (acceptance §6, §7). The sync exit says the same two things in the same 
 - (rev 7) Reading `completed` alone, or both legs reading `completed`, as a pass; reading null as false; letting a state recorded for another head count; merging while a review is `running` or
   absent, on any base (AC-CCR-002, 004, 007, 019).
 - (rev 9) Reading the finding flags of a `failed` leg as findings, treating `failed` as pending, or letting a failed leg pass beside a completed one (AC-CCR-004, AC-CCR-005, AC-CCR-019).
+- (rev 11) Treating a completed leg with `has_any_findings: true` and `has_unresolved_findings: false` as clean, or letting a running peer defer that completed finding (REQ-CCR-001, REQ-CCR-005, AC-CCR-005).
 - (rev 7) Documenting the author, fork, and bot rule or the no-branch-deletion rule without the workflow enforcing it and the tests pinning it; touching `delete_branch_on_merge` (REQ-CCR-020,
   REQ-CCR-021, G9).
 - Writing "complete" for a local landing, or claiming remote verification without the remote data of that SHA

@@ -250,6 +250,62 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 		reason string
 	}{
 		{name: "security_receipt_newest_actual_clean_text", want: 0, reason: "native-review-clean"},
+		{name: "completed_code_reported_finding_with_unresolved_false", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false`, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":true`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "finding:reported:code_review"},
+		{name: "completed_security_reported_finding_with_unresolved_false", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false`, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":true`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "finding:reported:security_review"},
+		{name: "completed_both_legs_report_findings_with_unresolved_false", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.ReplaceAll(body, `"has_any_findings":false,"has_unresolved_findings":false`, `"has_any_findings":true,"has_unresolved_findings":false`)
+				}
+			}
+			return v
+		}, want: 1, reason: "finding:reported:code_review"},
+		{name: "completed_code_missing_has_any_findings_refused", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false,`, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f",`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "review-not-complete:code_review:has_any_findings"},
+		{name: "completed_security_missing_has_any_findings_refused", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false,`, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f",`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "completed_code_null_has_any_findings_refused", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false`, `"code_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":null`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "review-not-complete:code_review:has_any_findings"},
+		{name: "completed_security_nonboolean_has_any_findings_refused", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if body, ok := entry["body"].(string); ok && strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					entry["body"] = strings.Replace(body, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":false`, `"security_review":{"commit_sha":"ab609cafbf8f421164100c626db93048f888655f","has_any_findings":"false"`, 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
 		{name: "code_receipt_newest_actual_clean_text", edit: func(v []cgEntry) []cgEntry {
 			for _, entry := range v {
 				if entry["id"] == float64(6267776147) {
@@ -469,6 +525,7 @@ func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 		name              string
 		waitClosed        string
 		unresolved        bool
+		reportedFinding   bool
 		currentFinding    bool
 		historicalReceipt bool
 		malformed         bool
@@ -482,6 +539,7 @@ func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 		{name: "running_without_receipt_at_window_end_fails", waitClosed: "true", wantCode: 1, wantText: "review-not-complete:running"},
 		{name: "running_with_old_security_receipt_at_window_end_fails", waitClosed: "true", historicalReceipt: true, wantCode: 1, wantText: "review-not-complete:running"},
 		{name: "running_unresolved_still_fails", waitClosed: "false", unresolved: true, wantCode: 1, wantText: "finding:unresolved:security_review"},
+		{name: "completed_code_finding_refuses_before_running_security_wait", waitClosed: "false", reportedFinding: true, wantCode: 1, wantText: "finding:reported:code_review"},
 		{name: "running_current_finding_still_fails", waitClosed: "false", currentFinding: true, wantCode: 1, wantText: "finding:"},
 		{name: "running_malformed_summary_still_fails", waitClosed: "false", malformed: true, wantCode: 1, wantText: "review-not-complete:security_review:has_unresolved_findings"},
 		{name: "running_stale_summary_still_fails", waitClosed: "false", stale: true, wantCode: 1, wantText: "stale-review:"},
@@ -509,6 +567,9 @@ func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 						body = strings.Replace(body,
 							`"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`,
 							`"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"failed"}`, 1)
+					}
+					if tc.reportedFinding {
+						body = strings.Replace(body, `"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false`, `"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":true`, 1)
 					}
 					entry["body"] = body
 				}

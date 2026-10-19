@@ -186,11 +186,11 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
 **AC-CCR-001** — REQ-CCR-001 — release-blocking
 - Given the issue comments, reviews, and review comments of a pull request in which the identity's single state comment carries, in
   the leading block, a state marker with both legs `completed`, each `commit_sha` equal to the head, each
-  `has_unresolved_findings` the boolean `false`, and a security marker `completed` with `headSha` equal to the head (`F-clean`,
+  `has_any_findings` and `has_unresolved_findings` both the boolean `false`, and a security marker `completed` with `headSha` equal to the head (`F-clean`,
   modelled on #1835, #1837, #1838, #1841), and no corroborating finding; and noise around it: comments of other authors
   (`vercel[bot]`, `coderabbitai[bot]`, `github-actions[bot]`, a human) carrying any text, a copy of a clean marker among them; an
   APPROVED, DISMISSED, or PENDING review of the identity; a finding bound only to an older head; prose and table rows saying
-  anything; the summary marker absent or altered; `has_any_findings` set to any boolean,
+  anything; the summary marker absent or altered,
 - When `read-native-review` runs with `--draft false` and either `--wait-closed` value,
 - Then it exits 0 and prints `native-review-clean: comment <id> updated <updated_at> ...` (design §3.2 step 14); the noise changes
   nothing, because the decision reads the author, the marker position, the marker fields, and the corroborating artifacts only.
@@ -249,7 +249,8 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   missing; a leg `status` of `failed` (a review run that failed) with `has_unresolved_findings` true or false and the other leg completed, `running`, or
   failed, bound to the head, bound to an older head, or with a null `commit_sha` (`F-failed`, modelled on #1844; and the composite code `failed` with the
   security leg and marker `running`); a security leg whose `status`, `commit_sha`, and flags are all null beside a completed code leg (`F-null-security-leg`, modelled
-  on #1839 and #1840); the `code_review` leg or the `security_review` leg missing; a completed leg whose `has_unresolved_findings` is null
+  on #1839 and #1840); the `code_review` leg or the `security_review` leg missing; a completed leg whose `has_any_findings` is null,
+  missing, the string `"false"`, or `0`; a completed leg whose `has_unresolved_findings` is null
   (the #1842 form), missing, the string `"false"`, or `0`; a completed leg whose `commit_sha` is null beside a security marker that
   reads `completed` (the #1842 form with the security marker `completed`); a security marker missing while no leg is `running`, duplicated, outside the
   leading block, or malformed, and one that reads a status other than `completed` while the legs are completed; marker JSON altered
@@ -257,16 +258,18 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   identity's own prose beside the real one, and in the prose only; two comments of the identity carrying the marker, one of them clean;
   a candidate without an `id`; a missing input file; and a line that is not an object,
 - When `read-native-review` runs with `--wait-closed false` and `true`,
-- Then every row exits 1 with its own named reason (design §3.2) and none exits 0: `review-failed:<leg>` (checked before any finding flag is read, so a failed leg's true flags never read as `finding:unresolved`), `review-not-complete:<leg>:<status>`,
-  `review-entry-invalid:<leg>:has_unresolved_findings`, `review-not-bound:<leg>`, `security-marker-missing`, `-duplicated`,
+- Then every row exits 1 with its own named reason (design §3.2) and none exits 0: `review-failed:<leg>` (checked before any finding flag is read, so a failed leg's true flags never read as `finding:unresolved`), `review-not-complete:<leg>:<status>` and `review-not-complete:<leg>:<field>`,
+  `review-not-bound:<leg>`, `security-marker-missing`, `-duplicated`,
   `-misplaced`, `-malformed`, `security-marker-disagrees:<status>`, `state-marker-malformed`, `state-marker-duplicated`,
   `state-marker-misplaced`, `state-comment-duplicated:<ids>`, `state-comment-invalid:<id>`, `input-invalid`. The gate never chooses
   between two state comments by recency, and `completed` alone, or both legs reading `completed`, never passes.
-- Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewRefusesIncomplete$' ./internal/template/` lists `--- PASS` for
+- Verify: `go test -count=1 -v -run '^(TestCodexGateReadNativeReviewRefusesIncomplete|TestCodexNative1828ReceiptTypesAndHeadBinding)$' ./internal/template/` lists `--- PASS` for
   `status_failed_review_failed_reason_f_failed`, `status_failed_security_running_refused_at_once`, `status_failed_security_leg_review_failed`,
   `status_failed_null_commit_sha_review_failed`, `status_failed_older_head_stale`, `status_failed_never_read_as_finding_nor_pass`, `status_cancelled_refused`, `status_unknown_string_refused`, `status_null_refused`, `status_missing_refused`, `security_leg_all_null_refused_f_null_security_leg`,
   `code_review_leg_missing_refused`, `security_review_leg_missing_refused`, `completed_with_has_unresolved_null_refused`,
   `completed_with_has_unresolved_missing_refused`, `completed_with_has_unresolved_string_false_refused`,
+  `completed_code_missing_has_any_findings_refused`, `completed_security_missing_has_any_findings_refused`,
+  `completed_code_null_has_any_findings_refused`, `completed_security_nonboolean_has_any_findings_refused`,
   `completed_leg_commit_sha_null_security_marker_completed_refused`, `completed_legs_without_security_marker_refused`,
   `security_marker_duplicated_refused`, `security_marker_misplaced_refused`, `security_marker_malformed_refused`,
   `security_marker_disagrees_legs_completed_marker_failed_refused`, `marker_json_truncated_refused`,
@@ -285,24 +288,30 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
 - RED-now: R18 and R20. Green path: M6.
 
 **AC-CCR-005** — REQ-CCR-005 — release-blocking
-- Given a clean state comment of the identity plus, in turn: a leg with `has_unresolved_findings` true (`F-unresolved`, modelled on
+- Given a clean state comment of the identity plus, in turn: a completed leg with `has_any_findings` true and
+  `has_unresolved_findings` false (`F-reported`, for code, security, and both legs); a leg with
+  `has_unresolved_findings` true (`F-unresolved`, modelled on
   #1836), a review comment of the identity whose `commit_id` equals the head, whose `original_commit_id` equals the head, or that
   carries neither field, a COMMENTED review of the identity bound to the head (`F-corrob`, modelled on #1836 review 5566687300), and a
   CHANGES_REQUESTED review of the identity bound to the head; and, as controls, a comment of another author on the head, a review
   comment or review bound only to an older head, an APPROVED, DISMISSED, or PENDING review of the identity, and empty lists,
 - When `read-native-review` runs,
-- Then the first group exits 1 with `finding:unresolved:<leg>`, `finding:<id>`, `finding-unbound:<id>`, or `finding-review:<id>`,
-  also while the state comment is still `running`; the controls leave a clean comment at exit 0; and no review or review comment can
+- Then the first group exits 1 with `finding:reported:<leg>`, `finding:unresolved:<leg>`, `finding:<id>`,
+  `finding-unbound:<id>`, or `finding-review:<id>`; a completed reported finding refuses before a pending peer leg,
+  and unresolved findings still refuse while the state comment is running; the controls leave a clean comment at exit 0; and no review or review comment can
   turn a refusal into a pass.
-- Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewRefusesFinding$' ./internal/template/` lists `--- PASS` for
+- Verify: `go test -count=1 -v -run '^(TestCodexGateReadNativeReviewRefusesFinding|TestCodexNative1828ReceiptTypesAndHeadBinding|TestCodexNativeRunningSecurityLegWaits)$' ./internal/template/` lists `--- PASS` for
   `unresolved_code_leg_refused_f_unresolved`, `unresolved_security_leg_refused`, `failed_leg_true_flags_are_not_a_finding`, `review_comment_commit_id_equals_head_refused`,
   `review_comment_original_commit_id_equals_head_refused`, `review_comment_without_any_commit_field_refused`,
   `commented_review_bound_to_head_refused_f_corrob`, `changes_requested_review_bound_to_head_refused`,
   `finding_refused_while_running`, `findings_f_findings_1833_refused` (the real #1833 state with the COMMENTED review 5567280902 bound to the
-  head), `review_comment_by_other_author_ignored`, `finding_bound_to_older_head_ignored`,
+  head), `completed_code_reported_finding_with_unresolved_false`,
+  `completed_security_reported_finding_with_unresolved_false`,
+  `completed_both_legs_report_findings_with_unresolved_false`,
+  `completed_code_finding_refuses_before_running_security_wait`, `review_comment_by_other_author_ignored`, `finding_bound_to_older_head_ignored`,
   `approved_dismissed_pending_review_neither_pass_nor_refuse`, `comments_and_reviews_files_empty_clean`.
 - Mutant: a script that never reads the review comments or reviews, counts artifacts of any author, treats an unbound comment as no
-  finding, or reads `has_unresolved_findings` true as clean turns the matching row red.
+  finding, or reads `has_any_findings` true or `has_unresolved_findings` true as clean turns the matching row red.
 - RED-now: R18 and R20. Green path: M6.
 
 ### 2.2 Auto-merge consumer (M2, M3)
@@ -923,8 +932,8 @@ and by a mutant that a weaker implementation would satisfy.
 | Condition | Observable verdict | Pinned by | Mutant that turns it red |
 |-----------|--------------------|-----------|--------------------------|
 | Missing review | `read-native-review` exits 10 (`pending:no-state-comment`) while the window is open, never 0; at window close it exits 11 `not-run:review-absent` (the script's NOT RUN class; the `review` step ends in failure on it, never success, AC-CCR-021); the merge is withheld and never authorized | AC-CCR-007 (`empty_comments_pending`, `expiry_never_merges`), AC-CCR-008 (`review_absent_window_closed_exit_11`, `not_run_message_review_absent_names_cause`), AC-CCR-003 (forged artifacts do not fill the gap), AC-CCR-019 (`review_absent_expiry_zero_merge_calls`, `release_base_absent_zero_merge_calls`) | A script that reads an empty list as clean; a loop that merges on expiry; an absent comment left at 10 or read as success |
-| Missing output | A leg or the `security_review` object missing; a leg `status` missing or null; a completed leg with a null `commit_sha` or a null, missing, or non-boolean `has_unresolved_findings` (the #1842 and #1839 forms); a security marker missing: exit 1; a missing input file: `input-invalid`; a list that cannot be read at the end of the window: failure `review-unreadable` | AC-CCR-004 (`code_review_leg_missing_refused`, `security_review_leg_missing_refused`, `status_null_refused`, `completed_with_has_unresolved_null_refused`, `completed_leg_commit_sha_null_security_marker_completed_refused`, `security_leg_all_null_refused_f_null_security_leg`, `completed_legs_without_security_marker_refused`, `input_files_missing_refused`), AC-CCR-007 (`unreadable_to_end_of_window_fails_review_unreadable`) | A script that treats null as false, a missing field as pass, or reads only one leg |
-| Failed review | A leg `has_unresolved_findings` true, a status other than `completed` (`failed`, `cancelled`, unknown), a corroborating review comment or COMMENTED or CHANGES_REQUESTED review on the head: exit 1 | AC-CCR-004, AC-CCR-005 | A script that reads `completed` alone as a pass, or ignores the review comments |
+| Missing output | A leg or the `security_review` object missing; a leg `status` missing or null; a completed leg with a null `commit_sha` or a null, missing, or non-boolean `has_any_findings` or `has_unresolved_findings` (the #1842 and #1839 forms); a security marker missing: exit 1; a missing input file: `input-invalid`; a list that cannot be read at the end of the window: failure `review-unreadable` | AC-CCR-004 (`code_review_leg_missing_refused`, `security_review_leg_missing_refused`, `status_null_refused`, `completed_with_has_unresolved_null_refused`, `completed_code_missing_has_any_findings_refused`, `completed_security_missing_has_any_findings_refused`, `completed_code_null_has_any_findings_refused`, `completed_security_nonboolean_has_any_findings_refused`, `completed_leg_commit_sha_null_security_marker_completed_refused`, `security_leg_all_null_refused_f_null_security_leg`, `completed_legs_without_security_marker_refused`, `input_files_missing_refused`), AC-CCR-007 (`unreadable_to_end_of_window_fails_review_unreadable`) | A script that treats null as false, a missing field as pass, or reads only one leg |
+| Failed review | A completed leg reports `has_any_findings` true even when `has_unresolved_findings` is false; a leg reports `has_unresolved_findings` true; a status other than `completed` (`failed`, `cancelled`, unknown); or a corroborating review comment or COMMENTED or CHANGES_REQUESTED review on the head: exit 1 | AC-CCR-004, AC-CCR-005 | A script that reads `completed` alone as a pass, treats reported findings as clean, or ignores the review comments |
 | Stale SHA | Either leg or the security marker's `headSha` is bound to a commit other than the head (a push after the review started, the #1842 move): exit 1 `stale-review`, also when the stale state is still `running` | AC-CCR-002 (`both_legs_bound_to_older_head_f_stale`, `old_head_state_never_counts_for_new_head_f_moved_head`), AC-CCR-019 (`old_head_state_zero_merge_calls_f_moved_head`) | A script that ignores `commit_sha`, compares a prefix, checks only the code leg, or reads the security marker's `headSha` as optional |
 | Running | A leg or the security marker reads `running`: exit 10 while the window is open, exit 1 `review-not-complete:running` on the last pass; never a pass, on any base | AC-CCR-007 (`running_both_legs_pending_f_running`, `running_window_closed_exit_1_not_complete`, `running_on_last_pass_fails_review_not_complete_running`), AC-CCR-019 (`review_running_last_pass_zero_merge_calls`, `release_base_running_zero_merge_calls`) | A loop that merges while running; a running state read as NOT RUN or as a pass |
 | Tampered, duplicated, or misplaced marker | Marker JSON altered, the marker twice, the marker in the identity's prose or table, two state comments, a security marker that disagrees: exit 1 | AC-CCR-004 (`marker_json_truncated_refused`, `state_marker_duplicated_in_one_body_refused`, `state_marker_in_identity_prose_only_refused`, `two_state_comments_one_clean_refused`, `security_marker_disagrees_legs_completed_marker_failed_refused`) | A reader that scans the whole body without a position, picks the newest comment, or ignores the security marker |

@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.10.0"
+version: "0.10.1"
 status: in-progress
 created: 2026-10-18
 updated: 2026-10-20
@@ -32,8 +32,15 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.8.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 8, the correction commit after plan audit iteration 1 of revision 7 (FAIL 0.69, receipt rcpt-218b45ffecb9ec590f621e17, verdict file `.moai/reports/t1868/plan-audit-rev7.md`, local only). No new contract beyond the audit's required fixes: (D1) REQ-CCR-001 states once that a review object or review comment can only refuse; (D5) REQ-CCR-012 is scoped to the `files` and `review` steps and leaves `author` to REQ-CCR-020; (D4) the recheck re-lists the issue comments and compares the issue-comment count and the comment's id, `updated_at`, and markers, and fails on any difference; (D7) a `running` comment waits even when the security marker is not yet present; (D6) the #1842 move is worded as the evidence shows; AC-CCR-019 splits its job-result groups (D2), states the `gh pr checks` stub (D9), and the class lists are re-derived from the cells that reproduce on this tree (D3, D11). The delta is in `design.md` "Correction of revision 8". Counts: 21 requirements, 25 criteria, contiguous. |
 | 0.9.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 9, the correction after plan audit iteration 2 of revision 7 (revision 8 audited: FAIL 0.88, receipt rcpt-cba480b75217f40e0e5cf040, verdict file `.moai/reports/t1868/plan-audit-rev8.md`, local only) and one new real sample. (N1) AC-CCR-022 is reclassified as a regression-guard (its draft behaviour is already implemented and tested; the renamed row is a test addition, not a flip): 12 release-blocking, 13 regression-guard. (N2) AC-CCR-019 group E and design residual 7 state the exact timing of the recheck: an in-place edit after the recheck's last list read is not detectable. (New input) PR #1844, comment 6260734432, observed 2026-10-19T06:14:10Z: a leg whose `status` is `failed` is a review run that failed, neither a pass nor a finding; REQ-CCR-004 and REQ-CCR-005 name it, the reader refuses it with `review-failed:<leg>` before any finding flag is interpreted (design §3.2 step 7a, T-CHAIN row 2i), and the fixture `F-failed` and the criteria rows pin it. No new requirement and no new criterion. Counts: 21 requirements, 25 criteria, contiguous. |
 | 0.10.0 | 2026-10-20 | t1868 run-phase writer | Correction from the exact-head #1828 code review finding 4315924745 on `18d2a6d176d4a7ba544e2f58760ff5ba3c0f4778`: a current-head security marker still reading `running` after both state legs read `completed` is pending, as already stated by design §3.2 step 10 and AC-CCR-007, not a marker disagreement. REQ-CCR-004 and REQ-CCR-007 now state this transition explicitly. The follow-up found that a malformed SHA on a completed leg could reach pending first; the gate now refuses that shape before pending without weakening stale, failed, or unresolved checks. No requirement or criterion identifiers added; counts remain 21 requirements and 25 criteria. |
+| 0.10.1 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 finding 4316243010 and the upper contract in `AGENTS.md` §4: completed state legs must report both `has_any_findings: false` and `has_unresolved_findings: false`. The gate previously accepted `has_any_findings: true` when unresolved was false. REQ-CCR-001, 004, and 005, the reader design, and AC-CCR-001/005 now agree; three per-leg/both-leg controls refuse and a completed finding is not hidden by a running peer. Counts remain 21 requirements and 25 criteria. |
 
 ## Amendments
+
+### Amendment 4 — completed legs cannot report findings (plan revision 11)
+
+- rationale: exact-head code review finding #4316243010 on 9a22ef21ba948e40125034094994b281575230c7 identified that a completed state leg with `has_any_findings: true` and `has_unresolved_findings: false` could pass beside clean receipts. The committed upper contract in `AGENTS.md` §4 requires completed code review to report no findings or unresolved findings.
+- scope: REQ-CCR-001, REQ-CCR-004, and REQ-CCR-005 plus design and AC-CCR-001/005 now require both completed-leg flags to be well-formed booleans and false for a clean result. A completed leg reporting findings refuses before a pending peer; failed-leg flags retain their existing precedence, and running legs remain pending unless another refusal applies. No identifiers or counts change.
+- evidence: the preserved exact-9a22 three-case reproduction returned exit 0 before the fix; RED failed the code-only, security-only, and both-leg assertions. After the gate change, `TestCodexNative1828ReceiptTypesAndHeadBinding` refuses all three with `finding:reported:<leg>`, and `TestCodexNativeRunningSecurityLegWaits/completed_code_finding_refuses_before_running_security_wait` refuses the completed finding before pending.
 
 ### Amendment 3 — a current running security marker remains pending (plan revision 10)
 
@@ -228,13 +235,13 @@ Terms: the **gate script** is the repository's single review-verdict checker; th
 the account with login `chatgpt-codex-connector[bot]`, numeric user id 199175422, and account type Bot (an
 artifact is by the identity only when all three match); the **native review** is what that identity leaves on
 the pull request, and its verdict carrier is the **state comment**: an issue comment authored by the identity
-whose body carries the **state marker**, the single line `<!-- codex-review-state:v1 {JSON} -->` standing in
-the leading block of the body (the run of lines from the first line on that each begin with `<!--` and end
-with `-->`); the JSON has two **legs**, `code_review` and `security_review`, each read for its `status`,
-`commit_sha`, and `has_unresolved_findings` and for nothing else; the **security marker** is the line
+  whose body carries the **state marker**, the single line `<!-- codex-review-state:v1 {JSON} -->` standing in
+  the leading block of the body (the run of lines from the first line on that each begin with `<!--` and end
+  with `-->`); the JSON has two **legs**, `code_review` and `security_review`, each read for its `status`,
+  `commit_sha`, `has_any_findings`, and `has_unresolved_findings` and for nothing else; the **security marker** is the line
 `<!-- codex-security-review:v1 {JSON} -->` in the same leading block, read for its `status` and `headSha`
 only; a leg is **bound** to a commit when its `commit_sha` equals that commit (a null `commit_sha` is bound
-to nothing, and a null `has_unresolved_findings` is not `false`); a **corroborating finding** is a review comment of the identity bound to the
+to nothing, and a null `has_any_findings` or `has_unresolved_findings` is not `false`); a **corroborating finding** is a review comment of the identity bound to the
 head commit, or a review object of the identity bound to the head commit in state COMMENTED or
 CHANGES_REQUESTED, and it can only refuse, never pass; the **eligible author** is the account with login `GoosLab`, numeric user id 6458969, and account type User (all three must
 match), and an **eligible pull request** is one it authored whose head repository is the base repository (compared by repository id; a
@@ -252,8 +259,9 @@ reports for the `review` step and its job; **a pass** is the one case where the 
 - **REQ-CCR-001** (Ubiquitous) The gate script shall report a pull request's native review as clean only when
   exactly one state comment of the Codex app identity exists on the pull request, its state marker parses as
   one JSON object, and for each of the two legs the `status` is `completed`, the `commit_sha` equals the
-  exact head commit under review, and `has_unresolved_findings` is the boolean `false` (a `completed`
-  status alone, or both legs reading `completed`, is never enough, and null is not `false`), the
+  exact head commit under review, and both `has_any_findings` and `has_unresolved_findings` are the boolean
+  `false` (a `completed` status alone, or both legs reading `completed`, is never enough, and null is not
+  `false`), the
   security marker stands once, reads `completed`, and carries the head commit in `headSha`, and no
   corroborating finding exists on that commit; the gate script shall take this decision from the author of
   each artifact, the marker's three fields per leg, the security marker's two fields, and the
@@ -270,8 +278,8 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   shall read the body of one artifact kind only, the issue comments of the identity, and of such a body only
   the state marker (REQ-CCR-001).
 - **REQ-CCR-004** (Event-driven) When the state comment is not clean — a leg `status` other than `completed`
-  (`running` is pending, REQ-CCR-007; `failed` is a review run that failed, which is neither a pass nor a finding: the gate script refuses it with the reason `review-failed:<leg>`, as a gate refusal that fails the step and the job, before it interprets any finding flag of that leg, so the flags of a failed leg are never read as findings, and the reason names the re-request that starts a new run; any other value, a missing or null `status`, a missing leg, a missing,
-  null, or non-boolean `has_unresolved_findings`, or a `commit_sha` that is not 40 hexadecimal characters
+  (`running` is pending, REQ-CCR-007; `failed` is a review run that failed, which is neither a pass nor a finding: the gate script refuses it with the reason `review-failed:<leg>`, as a gate refusal that fails the step and the job, before it interprets any finding flag of that leg, so the flags of a failed leg are never read as findings, and the reason names the re-request that starts a new run; any other value, a missing or null `status`, a missing leg, or a completed leg with a missing,
+  null, or non-boolean `has_any_findings` or `has_unresolved_findings`, or a `commit_sha` that is not 40 hexadecimal characters
   refuses), a marker whose JSON is malformed or altered so that it no longer parses to the required shape, a
   marker string that stands outside the marker position of a comment of the identity, a body that carries the
   state marker or the security marker twice, a malformed or misplaced security marker, a security marker that is missing
@@ -281,10 +289,11 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   than one state comment of the identity on the pull request — the gate script shall
   refuse and name the reason; no later comment, no prose, no review object, and no elapsed time clears it,
   and the gate script shall not choose among duplicates by recency.
-- **REQ-CCR-005** (Event-driven) When a leg whose run did not fail reports `has_unresolved_findings` true, or a corroborating finding
-  exists on the head commit, the gate script shall refuse and name it; when neither exists, the findings
-  check shall pass. A review or review comment of the identity can only add a refusal and never grants a
-  pass.
+- **REQ-CCR-005** (Event-driven) When a completed leg reports `has_any_findings` true, or a leg whose run did not fail
+  reports `has_unresolved_findings` true, or a corroborating finding exists on the head commit, the gate script
+  shall refuse and name it; when none exists, the findings check shall pass. A completed reported finding
+  refuses even when `has_unresolved_findings` is false and before a pending peer leg can defer the decision.
+  A review or review comment of the identity can only add a refusal and never grants a pass.
 
 ### 3.2 Auto-merge consumer
 
@@ -443,7 +452,7 @@ keys, new app OAuth, persistent access, admin or security settings, branch-prote
 not approved and are never a deliverable of this card.
 
 **Stated fact.** The gate passes only when the Codex app identity's single state comment reports both legs
-`completed`, each bound to the head commit, each with `has_unresolved_findings` false, and no corroborating
+`completed`, each bound to the head commit, each with `has_any_findings` and `has_unresolved_findings` false, and no corroborating
 finding of the identity exists on that commit. No pull-request review object (an APPROVED one included), no
 prose, no absence of a comment, a `running` leg, and no elapsed time is ever a pass. The form was read on
 five real pull requests (DS-1, below), so the contract no longer rests on an unobserved artifact; what stays

@@ -1,5 +1,15 @@
 # design.md — SPEC-CI-CODEX-REVIEW-001
 
+## Delta of plan revision 11 (read this first)
+
+Exact-head #1828 code review finding 4316243010 exposed a mismatch with `AGENTS.md` §4: the clean reader accepted
+a completed leg whose `has_any_findings` was true when `has_unresolved_findings` was false. A completed leg is
+clean only when both booleans are false. The gate refuses `has_any_findings: true` as
+`finding:reported:<leg>` before a running peer can defer the decision. `failed` retains its earlier refusal
+before finding flags are interpreted, and a `running` leg with no other refusal remains pending. No identifiers
+or acceptance counts change. The exact 9a22 code-only, security-only, and both-leg reproductions failed RED;
+the 1828 fixture regressions and the completed-finding-versus-running-peer case pass after the fix.
+
 ## Delta of plan revision 7 (read this first; a delta auditor needs only this section)
 
 Plan revision 7 is an in-place amendment (spec.md `## Amendments`, Amendment 2, version 0.6.0 to 0.7.0). Authority:
@@ -97,7 +107,7 @@ that moves during one pass is retried, not a failure, because other bots post co
 base, an unprotected integration base included) meets the shipped `checks` step, which reads `gh pr checks --required` exiting 1 on an unprotected base as
 a lookup failure and withholds (E43, E45): the SPEC keeps that step unchanged (Q22) and records the consequence, and Q27 names the alternate for
 the leader. (j) The leader's author policy is not in the shipped workflow at all (E45); it is a new requirement, REQ-CCR-020, not a restatement.
-(k) The leader's wording "unresolved 0" is read as `has_unresolved_findings` exactly `false` on both legs.
+(k) The leader's wording "unresolved 0" maps only to `has_unresolved_findings` exactly `false`; it does not replace the upper contract's separate `has_any_findings: false` requirement on both completed legs.
 
 ## Delta of plan revision 6 (read this first; a delta auditor needs only this section)
 
@@ -172,8 +182,8 @@ review starts (open for review, draft marked ready, or an `@codex review` commen
         (every line below is the gate script's result; the step's own exit status, job result, and outputs for
          each are the one table T-CHAIN of section 5)
         draft                                             -> exit 11 not-run:draft: state not-run:draft, step exit 11
-        exactly one state comment of the identity, both legs completed, bound to H, has_unresolved_findings
-        exactly false, security marker completed for H, no corroborating finding on H
+        exactly one state comment of the identity, both legs completed, bound to H, has_any_findings and
+        has_unresolved_findings exactly false, security marker completed for H, no corroborating finding on H
                                                           -> exit 0, then the pre-merge recheck of the SAME comment:
                                                              step exit 0; the merge step reads the head again before the call
         no state comment of the identity, window open     -> wait (exit 10), not a terminating path
@@ -230,8 +240,8 @@ exit, the draft cause keeps its own state, and the review-absent cause is a fail
 | State marker | the literal prefix `<!-- codex-review-state:v1 ` on a whole line of the leading block, closed by ` -->` at the end of that line, between them one JSON object | E37 |
 | Security marker | the literal prefix `<!-- codex-security-review:v1 ` on a whole line of the leading block, closed by ` -->`, one JSON object | E37, E42 |
 | Leading block | the run of lines from line 0 of the body on that each begin with `<!--` and end with `-->` (observed: lines 0 to 2) | E37 |
-| Fields read | state marker: `code_review` and `security_review`, each `status`, `commit_sha`, `has_unresolved_findings`; security marker: `status`, `headSha`; comment: `id`, `user.login`, `user.id`, `user.type`, `body`, `updated_at`. Nothing else: `has_any_findings`, `blockingSeverityThreshold`, `mergeGateEnabled`, `pullRequestNumber`, `repository`, the summary marker, the table, the prose, and the reactions are never read | E37, E42 |
-| Pass | both legs: `status` `completed`, `commit_sha` equals the head (40 hex, case-insensitive), `has_unresolved_findings` is the boolean `false`; the security marker `completed` with `headSha` equal to the head; exactly one state comment; no corroborating finding | ruling; E42 |
+| Fields read | state marker: `code_review` and `security_review`, each `status`, `commit_sha`, `has_any_findings`, `has_unresolved_findings`; security marker: `status`, `headSha`; comment: `id`, `user.login`, `user.id`, `user.type`, `body`, `updated_at`. Nothing else: `blockingSeverityThreshold`, `mergeGateEnabled`, `pullRequestNumber`, `repository`, the summary marker, the table, the prose, and the reactions are never read | E37, E42 |
+| Pass | both legs: `status` `completed`, `commit_sha` equals the head (40 hex, case-insensitive), `has_any_findings` and `has_unresolved_findings` are the boolean `false`; the security marker `completed` with `headSha` equal to the head; exactly one state comment; no corroborating finding | AGENTS.md §4; exact-head finding 4316243010 |
 | Failed run | any leg with `status` `failed` (a review run that failed): refused as `review-failed:<leg>` right after the stale check, before any finding flag is read; the flags of a failed leg are never interpreted | E46 |
 | Pending | any leg or the security marker with `status` `running` (the observed null fields while running are not an error) | ruling; E39 |
 | Corroborating finding | a review comment of the identity whose `commit_id` or `original_commit_id` equals the head (or carries neither field), or a review of the identity bound to the head (`commit_id` equals the head) in state COMMENTED or CHANGES_REQUESTED; it can only refuse | ruling ("may only corroborate"); Q23 |
@@ -281,8 +291,9 @@ Checked in this order; the first matching step decides:
    `finding:<id>`; one carrying neither field → exit 1 `finding-unbound:<id>`; a review of the identity with `commit_id` equal to `S` in state
    COMMENTED or CHANGES_REQUESTED → exit 1 `finding-review:<id>`. Artifacts bound only to another commit are stale findings of an older head and are
    ignored. No review or review comment can pass anything (REQ-CCR-005).
-9. **Unresolved findings reported by the marker** (a `failed` leg never reaches this step, step 7a). A leg with `has_unresolved_findings` equal to `true` → exit 1
-   `finding:unresolved:<leg>` (checked before the pending rule so a known finding refuses at once).
+9. **Findings reported by the marker** (a `failed` leg never reaches this step, step 7a). A leg with `has_unresolved_findings` equal to `true` → exit 1
+   `finding:unresolved:<leg>`. A `completed` leg with `has_any_findings` equal to `true`, even when unresolved is `false` → exit 1
+   `finding:reported:<leg>`. Both checks precede pending so a completed finding refuses at once rather than being deferred by a running peer.
 9a. **Completed-leg SHA shape.** A leg whose `status` is `completed` but whose `commit_sha` is missing, null, or not 40 hexadecimal characters → exit 1
    `review-not-complete:<leg>:commit_sha`. Stale but well-formed SHAs already refuse at step 7. This check precedes the pending rule.
 10. **Pending.** Any leg `status` equal to `running`, or the security marker `status` equal to `running` (a security marker that is not present yet does not stop the wait
@@ -291,8 +302,8 @@ Checked in this order; the first matching step decides:
     `pending:running`; `--wait-closed true` → exit 1 `review-not-complete:running`. A `completed` leg with null fields beside a `running` security
     marker (E42) lands here, never at a pass.
 11. **Status.** A leg `status` other than `completed` (any other string, null, or missing) → exit 1 `review-not-complete:<leg>:<status>`.
-12. **Binding of a completed leg.** A leg whose `commit_sha` is null → exit 1 `review-not-bound:<leg>`; a leg whose `has_unresolved_findings` is not
-    a boolean (null included; null is not false) → exit 1 `review-entry-invalid:<leg>:has_unresolved_findings`.
+12. **Binding of a completed leg.** A leg whose `commit_sha` is null → exit 1 `review-not-bound:<leg>`; a leg whose `has_any_findings` or
+    `has_unresolved_findings` is missing, null, or not a boolean → exit 1 `review-not-complete:<leg>:<field>`.
 13. **Security marker agrees.** A security marker recorded as absent at step 6 → exit 1 `security-marker-missing` (reached only when no leg is `running`); `status` other than `completed` (a running one was handled in step 10) → exit 1 `security-marker-disagrees:<status>`;
     a null `headSha` → exit 1 `security-marker-disagrees:no-head`.
 14. Otherwise exit 0 and print `native-review-clean: comment <id> updated <updated_at> code_review:<S prefix>:completed:unresolved=false
@@ -300,7 +311,7 @@ Checked in this order; the first matching step decides:
     <compact JSON of the security marker>`; the recheck of §5 compares this line byte for byte.
 
 **The one rule, in a sentence.** The result is clean only when the identity's single state comment shows both legs `completed`, each bound to the
-head, each `has_unresolved_findings` exactly false, and the security marker agrees, with no corroborating finding; the decision reads author,
+head, each `has_any_findings` and `has_unresolved_findings` exactly false, and the security marker agrees, with no corroborating finding; the decision reads author,
 marker position, marker fields, and the corroborating artifacts, never the prose, the table, the reactions, or any review object as a pass.
 
 **Reader decision table** (H is the head, O another commit; "window" is the `--wait-closed` value; the full chain from each row to the step exit, the job
@@ -319,7 +330,7 @@ result, and the outputs is `T-CHAIN` of §5):
 | 9 | one leg bound to H, the other to O | exit 1 | `stale-review:<O prefix>` |
 | 10 | security marker `headSha` O, legs bound to H | exit 1 | `stale-review:<O prefix>` |
 | 11 | a leg `has_unresolved_findings` true, bound to H (`F-unresolved`) | exit 1 | `finding:unresolved:code_review` |
-| 12 | a leg completed with `has_unresolved_findings` null | exit 1 | `review-entry-invalid:<leg>:has_unresolved_findings` |
+| 12 | a leg completed with `has_any_findings` or `has_unresolved_findings` missing, null, or non-boolean | exit 1 | `review-not-complete:<leg>:<field>` |
 | 13 | a leg `status` `cancelled`, an unknown string, null, or missing | exit 1 | `review-not-complete:<leg>:<status>` |
 | 14 | a leg object missing (`code_review` or `security_review`) | exit 1 | `state-marker-malformed` |
 | 15 | marker JSON altered: truncated, trailing text, a key of the wrong type | exit 1 | `state-marker-malformed` |
@@ -351,8 +362,12 @@ result, and the outputs is `T-CHAIN` of §5):
 | 38 | security leg `failed`, code leg completed and clean | exit 1 | `review-failed:security_review` |
 | 39 | a leg `failed` with a null `commit_sha` | exit 1 | `review-failed:<leg>` |
 | 40 | a leg `failed` bound to O (the head moved) | exit 1 | `stale-review:<O prefix>` (stale precedes the failed check) |
+| 41 | a completed code leg reports `has_any_findings` true with `has_unresolved_findings` false; security is clean | exit 1 | `finding:reported:code_review` |
+| 42 | a completed security leg reports `has_any_findings` true with `has_unresolved_findings` false; code is clean | exit 1 | `finding:reported:security_review` |
+| 43 | both completed legs report `has_any_findings` true with `has_unresolved_findings` false | exit 1 | `finding:reported:code_review` (code checked first) |
+| 44 | the completed code leg reports `has_any_findings` true with unresolved false while the security leg is running | exit 1 | `finding:reported:code_review` (a completed finding precedes pending) |
 
-Rows 1 to 27 and 30 to 40 are fixtures of AC-CCR-001 to AC-CCR-005 and AC-CCR-008; row 28 is AC-CCR-007 and AC-CCR-010; row 29 is stated, not tested. Exit
+Rows 1 to 27 and 30 to 44 are fixtures of AC-CCR-001 to AC-CCR-005 and AC-CCR-008; row 28 is AC-CCR-007 and AC-CCR-010; row 29 is stated, not tested. Exit
 classes: 0 pass, 1 fail, 10 pending, 11 NOT RUN; pairwise distinct. The conditions the operator named map as follows, each never a pass: **missing
 review** → exit 10 while the window is open, then exit 11 `not-run:review-absent`; **running** → exit 10 while the window is open, then exit 1
 `review-not-complete:running`; **missing output** (a missing leg, a null or missing field, a missing security marker) → exit 1; **failed review**
@@ -465,10 +480,10 @@ corrected design draws:
 
   | # | Comment state / terminating path | Gate exit (reason) | Step exit | Job result | `ok` | `state` | Annotation |
   |---|-----------------------------------|--------------------|-----------|------------|------|---------|------------|
-  | 1 | Clean state comment (reader rows 1, 2, 26 of §3.2): both legs `completed`, bound to the head, `has_unresolved_findings` false, security marker `completed` for the head, no corroborating finding; and the pre-merge recheck re-reads the comments and reads the same comment id, `updated_at`, fields, head, and review-comment count | 0, then 0 with the same summary line | 0 | success; the merge step may run | `true` | `pass` | none beyond the clean summary line |
+  | 1 | Clean state comment (reader rows 1, 2, 26 of §3.2): both legs `completed`, bound to the head, `has_any_findings` and `has_unresolved_findings` false, security marker `completed` for the head, no corroborating finding; and the pre-merge recheck re-reads the comments and reads the same comment id, `updated_at`, fields, head, and review-comment count | 0, then 0 with the same summary line | 0 | success; the merge step may run | `true` | `pass` | none beyond the clean summary line |
   | 2a | Stale: a leg or the security marker bound to another commit (reader rows 8 to 10, 21) | 1 `stale-review:<prefix>` | 1 | failure | `false` | `fail` | `::error::native review gate: <reason> - merge withheld` |
-  | 2b | Findings: `has_unresolved_findings` true; a corroborating review comment or COMMENTED or CHANGES_REQUESTED review (rows 11, 24) | 1 `finding:unresolved:<leg>`, `finding:<id>`, `finding-unbound:<id>`, `finding-review:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
-  | 2c | Not complete or not bound: a leg `status` other than `completed` and other than `failed` (unknown, null, missing); a completed leg with a missing, null, or non-40-hex `commit_sha`; a non-boolean `has_unresolved_findings` (rows 7, 12, 13) | 1 `review-not-complete:<leg>:<status>`, `review-not-complete:<leg>:commit_sha`, `review-not-bound:<leg>`, `review-entry-invalid:<leg>:<field>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
+  | 2b | Findings: a completed leg's `has_any_findings` true, a leg's `has_unresolved_findings` true, or a corroborating review comment or COMMENTED or CHANGES_REQUESTED review (rows 11, 24, 41 to 44) | 1 `finding:reported:<leg>`, `finding:unresolved:<leg>`, `finding:<id>`, `finding-unbound:<id>`, `finding-review:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
+  | 2c | Not complete or not bound: a leg `status` other than `completed` and other than `failed` (unknown, null, missing); a completed leg with a missing, null, or non-40-hex `commit_sha`; a missing, null, or non-boolean `has_any_findings` or `has_unresolved_findings` (rows 7, 12, 13) | 1 `review-not-complete:<leg>:<status>`, `review-not-complete:<leg>:commit_sha`, `review-not-bound:<leg>`, `review-not-complete:<leg>:<field>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2d | Tampered or malformed: marker JSON altered, a leg missing, a marker duplicated or outside its position, a security marker malformed, duplicated, or misplaced, or missing while no leg is `running` (rows 14 to 17, 22) | 1 `state-marker-malformed`, `-duplicated`, `-misplaced`; `security-marker-missing`, `-malformed`, `-duplicated`, `-misplaced` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2e | Marker disagreement: the security marker reads a status other than `completed` or `running` while the legs are completed and neither leg nor the current-head marker is running | 1 `security-marker-disagrees:<status>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
   | 2f | More than one state comment of the identity, or an identity candidate without an `id` or `updated_at` (row 18) | 1 `state-comment-duplicated:<ids>`, `state-comment-invalid:<id>` | 1 | failure | `false` | `fail` | `::error::` with the reason |
@@ -632,12 +647,12 @@ corrected design draws:
 | **A state comment bound to another commit** (older head, prefix only, empty, null) | Pass a review written for earlier code | The `commit_sha` of each leg and the `headSha` of the security marker must equal the full head; a non-null other value is `stale-review`; null is bound to nothing | AC-CCR-002 |
 | **A push after the review started** (no automatic re-review on a push was observed, DS-2) | The old state reads as current | Same binding: the moved head has no bound state → `stale-review`, withheld at once; fresh review is DS-3 | AC-CCR-002, AC-CCR-007 |
 | **A marker altered, duplicated, or planted in the identity's own prose or table; two state comments** | A tampered or ambiguous state read as clean | One state marker on a whole line of the leading block, parsing to the required shape; a second occurrence, a misplaced one, or a second state comment refuses, and no recency is used | AC-CCR-004 |
-| **A leg `completed` with null fields, a security marker that disagrees, an unknown `status`** (E42) | `completed` alone, or two legs reading `completed`, read as a pass | Each leg needs `completed`, a `commit_sha` equal to the head, and `has_unresolved_findings` exactly false; the security marker must read `completed` for the head; a running state waits and fails on the last pass | AC-CCR-004 |
+| **A leg `completed` with null fields, a security marker that disagrees, an unknown `status`** (E42) | `completed` alone, or two legs reading `completed`, read as a pass | Each leg needs `completed`, a `commit_sha` equal to the head, and both `has_any_findings` and `has_unresolved_findings` exactly false; the security marker must read `completed` for the head; a running state waits and fails on the last pass | AC-CCR-004 |
 | **A review `running` or absent when the merge is attempted** (the incident of E41) | A merge over an unfinished review, on any base | `running` waits and fails on the last pass; absence waits and ends exit 11; the merge step re-reads the head before the call; no base is exempt | AC-CCR-007, AC-CCR-008, AC-CCR-019, AC-CCR-021 |
 | **A pull request of a bot, a fork, or another author** (dependabot, a fork-derived branch, someone else) | Automation merges a change that only the user's test confirmation and explicit approval may merge (E45: the shipped workflow had no author rule) | Step `author` records `eligible=true` only for GoosLab (id 6458969, type User) with a head repository equal to the base repository; every later step and the merge `if` require it | AC-CCR-012, AC-CCR-019 |
 | **Automatic branch deletion** | A merge that deletes a branch the operator did not decide to delete | The merge call carries no `--delete-branch` and no step deletes a ref; the repository setting stays an operator decision (G9) | AC-CCR-006, AC-CCR-011, AC-CCR-019 |
 | **Markers of one comment carrying different SHAs** (the #1842 re-request, E44) | The code leg for the new head passes while the security marker still names the old head | Every leg's `commit_sha` and the security marker's `headSha` must equal the head; any other value is `stale-review`; a null security `commit_sha` is never bound | AC-CCR-002, AC-CCR-004 |
-| A finding: `has_unresolved_findings` true, or a review comment or a COMMENTED or CHANGES_REQUESTED review of the Codex identity on the head | Merge past a reported problem | Refuse; severity is not parsed; a review object or review comment can only refuse | AC-CCR-005 |
+| A finding: completed `has_any_findings` true, `has_unresolved_findings` true, or a review comment or a COMMENTED or CHANGES_REQUESTED review of the Codex identity on the head | Merge past a reported problem | Refuse; severity is not parsed; a review object or review comment can only refuse | AC-CCR-005 |
 | **PR adds or edits any workflow, or the gate script** | The PR changes the gate for itself, or adds a workflow that merges itself or acts with the workflow token | Tamper guard withholds on ANY file under `.github/workflows/` and on the gate script; the consumer runs from the default branch, never the PR ref | AC-CCR-009, AC-CCR-011 |
 | **A gate-path edit past the first page of the changed-file list** | The edit on page 2 or later is never read (default page size 30, E22) | `fetch-pages` collects every page at 100 per page, requires the collected count to equal `changed_files`, refuses at the 3000 ceiling | AC-CCR-010 |
 | **The head flips from H to T and back while the changed-file list is read** | The list of T (a safe change) is judged and H (a workflow change) is merged | Entries that are not removals must carry `ref` = the verified head SHA in `contents_url`; the head is read before and after the list and must equal the verified SHA | AC-CCR-009, AC-CCR-012 |

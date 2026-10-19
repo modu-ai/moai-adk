@@ -184,6 +184,8 @@ def leading_block:
     elif $security.status != "running" and ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
     elif $code.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:code_review"}
     elif $security.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:security_review"}
+    elif $code.status == "completed" and $code.has_any_findings == true then {c: 1, r: "finding:reported:code_review"}
+    elif $security.status == "completed" and $security.has_any_findings == true then {c: 1, r: "finding:reported:security_review"}
     elif $code.status == "completed" and ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
     elif $security.status == "completed" and ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
     elif $security_occurrences == 0 and ($code.status != "running" and $security.status != "running") then {c: 1, r: "security-marker-missing"}
