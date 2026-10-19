@@ -65,6 +65,23 @@ E-02·E-05의 stdout 본문은 acceptance.md E-02·E-05 장부 항목과 바이�
 
 Go 빌드·테스트·커버리지·golangci-lint: N/A — 변경이 Go 코드에 닿지 않음을 AC-DPF-006 음(-) 검증(두 명령 빈 출력)이 보장한다(plan §A.3·§E). B1 크로스 플랫폼 빌드 해당 없음.
 
+### 수리 라운드 추가 증거 — sync-audit F1·F2 수리 (2026-10-20, 트리 0511ff72bc + 미커밋 수리 편집)
+
+sync-audit FAIL 0.80(rcpt-bee9202cab50d56ca8ff0fc4, `.moai/reports/t1726/sync-audit-t1726.md`)의 차단 결함 2건을 8문서 문구 수리로 정정했다. F1: factory-mode `{ko,en,ja,zh}` `:77` relaunch 셀 — 카드별 소비의 통합 `moai todo --auto` 엔진 이전 서술에 더해, relaunch 정책 선택 시 카드 종료 후의 세션 종료 분기가 살아 있음(`internal/cli/factory_card.go:2537-2539` — "clear policy relaunch: end this session; the supervising launcher starts the next card's session")을 함께 서술하도록 보강(코드 원문 열람 — 편집 아님). F2: factory-mode ×4 `:134` + README ×4 `:87` — 임대 전환(`ExitWorktree(keep)` → `moai factory next` → `EnterWorktree`)을 자가 배차(기본값) 경로로 한정하고, 수동 배차 모드(`--no-auto-dispatch`)에서는 `ExitWorktree(keep)`으로 나간 뒤 리더의 다음 배차를 기다린다는 예외를 추가(`internal/cli/factory_card.go:2544-2548` — "card transition (policy %s, manual dispatch): ExitWorktree(keep), then wait for the leader's next dispatch"). 두 수리 모두 살아 있는 `--clear-policy` 인용을 유지하고 Q17 동일 구조 변화(로캘별 같은 위치·같은 줄수)를 따른다.
+
+수리 후 재검증(커밋 전 워킹 트리, 2026-10-20 실측 — 명령·원문 출력·exit):
+
+| 검사 | 명령 | 관측 | exit |
+|---|---|---|---|
+| E-01 (AC-DPF-001 유지) | `grep -c -- "--clear-policy relaunch" README.md README.ko.md README.ja.md README.zh.md` | `README.md:0` `README.zh.md:0` `README.ko.md:0` `README.ja.md:0` — 수리 문구가 README에 relaunch 소비 인용을 재도입하지 않음 | 1 |
+| E-02 (AC-DPF-002 유지) | E-02 명령 그대로 | 출력 없음 — 보강 문구("다음 카드의 세션" 등)가 교차 로캘 정규식에 재적중하지 않음 | 1 |
+| E-03 (AC-DPF-003 유지) | E-03 명령 그대로 | factory-mode ×4 = 각 2, launchers ×4 = 각 1, README ×4 = 각 2 — baseline과 동일(`--factory-run` 미추가·미삭제) | 0 |
+| E-04 (AC-DPF-004 유지) | E-04 명령 그대로 | factory-mode ×4 = 각 2, launchers ×4 = 각 1, README ×4 = 각 1 — baseline과 동일(두 수리 줄 모두 `--clear-policy` 인용 유지) | 0 |
+| E-05 (AC-DPF-007 유지) | E-05 12-패턴 명령 그대로 | 출력 없음 — 수리 추가 문구가 12개 교차 문구 어느 쪽도 재적중하지 않음 | 1 |
+| AC-DPF-006 (범위 유지) | `git diff --name-only` | 문서 8파일 + `progress.md`만 — `internal/`·`cmd/` 무변경 | 0 |
+
+Gaps: Hugo 재빌드는 이 수리 라운드에서 재실행하지 않음(선택 항목 — 수리 편집은 M2와 같은 종류의 기존 페이지 안 문장 수준 변경이며, 페이지·헤딩 구조는 무변경).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
@@ -129,3 +146,19 @@ Justification: a single implementer (manager-develop, effort high per Class C) e
 - Leader `factory decide t1726 --gate kickoff --choice approve --run tn564n --decider audit` → observed `t1726: run (v8)`. The plan→run Kickoff gate is met (operator form satisfied by the Q18 verdict + iter-5 PASS evidence).
 - Score CORRECTION per leader direct read: iter-5 = **PASS 0.98** (rcpt-127827c1, hash 75e8f73f… match) — earlier reports' "1.0" was a transcription error, recorded here as corrected.
 - Run scope: M2 (STALE-1/2/3 citation replacements across 12 files per Q18 (a)) + M3 (grep sweeps, 4-locale parity, byte-diff). Implementer: manager-develop (Class C, effort high).
+
+## Sync phase complete + sync-audit entry (2026-10-20T02:2xZ)
+
+- manager-docs sync commit `0511ff72bc` (verified on disk: CHANGELOG entry as the first [Unreleased]→Added bullet with B12 self-tests a/b/c all passing; spec.md status draft → **completed** (3-phase close, merged transitions on the single sync commit) + updated 2026-10-20; §E.4 with sync_commit_sha pending-backfill-sync placeholder (D3 convention — backfill commit follows after the audit); plan/acceptance stateless-untoouched; MX scan 0). Tree clean.
+- Stage: run → **sync-audit v10** (evidence 0511ff72bc…:spec.md).
+- sync-auditor spawned from this tree anchor (subjects: AC-DPF-001..007 re-execution, replacement faithfulness, sync close integrity, regression; codex required; delta base d82d74d905). Verdict target: sync-audit-t1726.md.
+- Pending after audit: §E.4 SHA backfill commit (manager-docs), then stage merge-ready → branch push → draft PR (per the c58f flow; the branch carries the 7 unpushed commits from 26ab9ea589..HEAD).
+
+## Sync-audit iter-1 verdict + repair round (2026-10-20T03:0xZ)
+
+- sync-audit verdict: FAIL 0.80 (Functionality 0.75/Craft 0.75/Consistency 0.75, Security 1.00) — blocking 2, receipt rcpt-bee9202cab50d56ca8ff0fc4 (codex required FAIL, gate answered). All 7 ACs re-executed green by the auditor first-hand (the run implementation's core is sound); the blockers are DOC-CODE divergences the M2 wording introduced:
+  - F1: factory-mode ×4 :77 relaunch cell omits the still-live end-session branch (factory_card.go:2537-2539).
+  - F2: factory-mode ×4 :134 + README ×4 :87 instruct every lane to self-lease, missing the manual-dispatch leader-wait branch (:2544-2548).
+  - Non-blocking: O1 allowlist-literal (sanctioned), O2 CHANGELOG :12 phrasing, O3 lane uncommitted records.
+- Repair spawned (manager-develop): F1 both-facts wording + F2 manual-dispatch exception, 8 docs files + §E.2 addendum, guard re-checks (E-01/E-05 stay 0; 003/004 counts unchanged).
+- After repair: sync-audit delta round 2 → merge-ready path.

@@ -74,7 +74,7 @@ These options attach to a lane on `moai cc -l` and `moai glm -l`. Codex lanes ta
 
 | Option | Effect |
 |--------|--------|
-| `--clear-policy <value>` | Decides how the lane clears its context after finishing a card. `clear-each` (the default, moves to the next card inside the session — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — no `/clear` is requested), `clear-when-full` (asks only when context usage reaches the model-specific handoff threshold), `relaunch` (superseded as a per-card cycle: the supervising launcher starts one lane session, and that session consumes cards through the unified `moai todo --auto` queue engine) |
+| `--clear-policy <value>` | Decides how the lane clears its context after finishing a card. `clear-each` (the default, moves to the next card inside the session — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — no `/clear` is requested), `clear-when-full` (asks only when context usage reaches the model-specific handoff threshold), `relaunch` (superseded as a per-card cycle: the supervising launcher starts one lane session, and that session consumes cards through the unified `moai todo --auto` queue engine. Selecting this policy still ends the lane session after a card — the code asks you to end the session, and the supervising launcher starts the next card's session) |
 | `--no-auto-dispatch` | Starts the lane in manual mode. The default is a **self-dispatch** lane, which does not wait for the leader and leases the next queued card itself with `moai factory next`. With this option the lane takes only the cards the leader sends |
 
 ## How a card flows
@@ -131,7 +131,7 @@ A factory session raises the consecutive Stop-hook block cap to `CLAUDE_CODE_STO
 
 - **The delegation channel is the queue on disk.** A dispatch is a pointer, not a copy, and a message is only a nudge, never the delegation itself.
 - **Completion is judged only on evidence that was read.** A card moves on because the progress record was read, not because a lane replied. The final PASS/FAIL verdict is always the leader's, and a lane judging its own output is not allowed.
-- **The boundary between cards is the in-session card transition.** Once a card reaches `done`, the lane moves to the next card inside the session — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — no `/clear` is requested (changeable with `--clear-policy`).
+- **The boundary between cards is the in-session card transition.** Once a card reaches `done`, the lane moves to the next card inside the session — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — no `/clear` is requested (changeable with `--clear-policy`). That is the self-dispatch (default) path; in manual-dispatch mode (`--no-auto-dispatch`) the lane leaves with `ExitWorktree(keep)` and waits for the leader's next dispatch instead of leasing a card.
 - **A card's worktree is not discarded until the remote merge is done.** If the branch is not yet merged, the worktree is the only copy of the work.
 - **One card, one worktree.** A new card starts in a new worktree, and a lane session starts inside its card's worktree and stays there.
 

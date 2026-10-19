@@ -74,7 +74,7 @@ lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。
 
 | 选项 | 作用 |
 |------|------|
-| `--clear-policy <值>` | 决定 lane 做完一张卡片后如何清理上下文。`clear-each`（默认，在会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`）、`clear-when-full`（上下文用量达到按模型而定的交接阈值时才请求）、`relaunch`（作为逐卡循环已被取代：监督启动器只拉起一个泳道会话，该会话通过统一的 `moai todo --auto` 队列引擎消费卡片） |
+| `--clear-policy <值>` | 决定 lane 做完一张卡片后如何清理上下文。`clear-each`（默认，在会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`）、`clear-when-full`（上下文用量达到按模型而定的交接阈值时才请求）、`relaunch`（作为逐卡循环已被取代：监督启动器只拉起一个泳道会话，该会话通过统一的 `moai todo --auto` 队列引擎消费卡片。选定这一策略后，卡片结束时的泳道会话收尾仍然保留 —— 代码会请求结束该会话，由监督启动器拉起下一张卡片的会话） |
 | `--no-auto-dispatch` | 以手动模式启动 lane。默认是**自主派单**的 lane：不等主导会话分配，自己用 `moai factory next` 租用队列里的下一张卡片。加上此选项后，lane 只接收主导会话发来的卡片 |
 
 ## 卡片如何流动
@@ -131,7 +131,7 @@ lane 在 `run` 结束、进入集成之前，还要走一个 `card-review` 阶�
 
 - **委派通道是磁盘上的队列。** 派单是指针而不是副本，消息只是催促，本身不构成委派。
 - **完成与否，只以读过的证据判定。** 卡片能否往前走，看的是进度记录有没有被读过，而不是 lane 回没回复。最终的 PASS/FAIL 判定始终属于主导会话，不允许产出工作的 lane 自己审查自己的输出。
-- **卡片之间的边界是会话内的卡片切换。** 卡片到达 `done` 后，lane 在会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`（可用 `--clear-policy` 调整）。
+- **卡片之间的边界是会话内的卡片切换。** 卡片到达 `done` 后，lane 在会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`（可用 `--clear-policy` 调整）。这是自主派单（默认）的路径；手动派单模式（`--no-auto-dispatch`）下，lane 用 `ExitWorktree(keep)` 退出后，不租用卡片，而是等待主导会话的下一次派单。
 - **卡片的 worktree 在远端合并完成之前不会被丢弃。** 分支若还没合并，这个 worktree 就是这项工作唯一的副本。
 - **一张卡片，一个 worktree。** 新卡片在新的 worktree 中开始，lane 会话在自己卡片的 worktree 里启动并一直留在那里。
 

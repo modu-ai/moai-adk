@@ -84,7 +84,7 @@ moai codex -l                 # Codex 레인
 
 `/moai gtd`가 정식 작업 관리 표면입니다. `/moai todo`는 같은 SQLite 대기열, 카드 ID, 순서, 보관·복원 동작을 쓰는 호환 이름으로 남습니다. `moai gtd capture|clarify|organize|reflect|engage`는 승인된 일이 기존 `backlog → plan → run → sync → done` 개발 흐름에 들어가기 전에 Capture → Clarify → Organize → Reflect → Engage를 실제 SQLite 상태로 이어 갑니다. 작업 receipt와 실제 상태 재확인이 중간 종료 뒤 발행·선택·배차의 중복을 막습니다.
 
-팩토리를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 레인의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 카드가 끝나면 레인은 같은 세션 안에서 다음 카드로 넘어간다 — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear`를 요청하지 않는다. 이전 카드들의 대화 맥락은 권위가 없다(`--clear-policy`로 바꿀 수 있다).
+팩토리를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 레인의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 카드가 끝나면 레인은 같은 세션 안에서 다음 카드로 넘어간다 — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear`를 요청하지 않는다. 이전 카드들의 대화 맥락은 권위가 없다(`--clear-policy`로 바꿀 수 있다). 이는 기본값인 자가 배차 경로이고, 수동 배차 모드(`--no-auto-dispatch`)에서는 레인이 `ExitWorktree(keep)`으로 나간 뒤 리더의 다음 배차를 기다린다.
 
 ### 팩토리가 쓰는 말
 

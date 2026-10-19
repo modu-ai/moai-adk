@@ -84,7 +84,7 @@ run が死んだり入れ替わったりしても、レーンのセッション�
 
 `/moai gtd` が正式なタスク管理入口です。`/moai todo` は同じ SQLite キュー、カード ID、並び順、アーカイブ・復元動作を使う互換名として残ります。`moai gtd capture|clarify|organize|reflect|engage` は、承認済みの仕事が従来の `backlog → plan → run → sync → done` 開発フローへ入る前に Capture → Clarify → Organize → Reflect → Engage を実際の SQLite 状態として引き継ぎます。操作 receipt と実状態の再確認が、中断後の発行・選択・配車の重複を防ぎます。
 
-ファクトリーを正直に保つルールが 2 つある。リーダーはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める。レーンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてカードが終わると、レーンは同じセッションの中で次のカードへ移る — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear` を求めない。前のカードの会話文脈は権威を持たない（`--clear-policy` で変えられる）。
+ファクトリーを正直に保つルールが 2 つある。リーダーはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める。レーンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてカードが終わると、レーンは同じセッションの中で次のカードへ移る — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear` を求めない。前のカードの会話文脈は権威を持たない（`--clear-policy` で変えられる）。これは既定の自己配車の経路で、手動配車モード(`--no-auto-dispatch`)では、レーンは `ExitWorktree(keep)` で退席したあとリーダーの次の配車を待つ。
 
 ### ファクトリーが使う言葉
 

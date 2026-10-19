@@ -84,7 +84,7 @@ run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的�
 
 `/moai gtd` 是正式的任务管理入口。`/moai todo` 作为兼容名称继续保留，两者共用同一 SQLite 队列、卡片 ID、顺序以及归档和恢复行为。`moai gtd capture|clarify|organize|reflect|engage` 会把 Capture → Clarify → Organize → Reflect → Engage 保存为连续的 SQLite 状态，再让获准工作进入原有 `backlog → plan → run → sync → done` 开发流程。操作 receipt 与权威状态回读会防止中断恢复后重复发布、选择或调度。
 
-有两条规则让工厂保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭泳道的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一张卡片做完后，泳道在同一个会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`，此前卡片的会话上下文不具权威性（可用 `--clear-policy` 改变这一行为）。
+有两条规则让工厂保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭泳道的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一张卡片做完后，泳道在同一个会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`，此前卡片的会话上下文不具权威性（可用 `--clear-policy` 改变这一行为）。这是默认的自主派单路径；手动派单模式（`--no-auto-dispatch`）下，泳道用 `ExitWorktree(keep)` 退出后等待主导会话的下一次派单。
 
 ### 工厂里的常用词
 
