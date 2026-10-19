@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-RELEASE-VERIFY-SHARD-001
 title: "Release Verify sharding — split the 3-OS race run into ci.yml's six shards so no leg reaches the job timeout"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -24,17 +24,19 @@ related_specs: [SPEC-CI-VERDICT-INTEGRITY-001, SPEC-CANDIDATE-CI-001, SPEC-CI-FL
 | 0.1.0 | 2026-10-19 | manager-spec | Initial draft. Card t1892 (lane-40, run tn1p4e, Class C, P0). Every premise measured on tree `74ad197380` (PR #1830 head); evidence ledger in research.md, adoption cells in acceptance.md. |
 | 0.1.1 | 2026-10-19 | manager-spec | Plan-audit iter1 fixes (FAIL 0.78, `.moai/reports/t1892/plan-audit-iter1.md`): REQ-RVS-011 pinned to the exact six shards per OS; REQ-RVS-003 parser edges and Example/Fuzz guard; REQ-RVS-014 added (remainder exclusion asserted); AC-RVS-016 added (shard weight, post-landing); WHY under its own heading; F.4 reworded. |
 
+| 0.1.2 | 2026-10-19 | manager-spec | Plan-audit iter2 fixes (FAIL 0.84, codex gate fail, `.moai/reports/t1892/plan-audit-iter2.md`): REQ-RVS-001 pins the final leg set (no `exclude`, no duplicate `include`); REQ-RVS-003 split into 003 (divergence), 015 (zero/two-match cover) and 016 (Go-discovery guard replacing the over-broad name-prefix ban); section C wording; ledger exit codes. |
+
 ## A.1 Why this SPEC exists
 
 Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `Release Verify` legs (ubuntu, macos, windows) ended `cancelled` at the job-level `timeout-minutes: 40` while inside the single step `Run tests with race detector` (`go test -json -race -timeout 35m ./...`), 00:29Z to 01:09Z. A cancelled leg makes `Release PR Multi-OS Gate` — a required check on `main` — fail, so the release PR cannot merge. The same shape already failed on two earlier `workflow_dispatch` runs (38363720321 on 2026-10-13, 37861821414 on 2026-10-09), and a ubuntu leg that passed on 2026-10-09 did so in 38.2 of its 40 minutes: the margin was never real. `ci.yml` already runs the identical race suite as six independent shards (internal/cli 1-4 of 4, rosterguard, remainder), none of which approaches its ceiling. Release Verify never adopted that split.
 
 ## B. Requirements (GEARS)
 
-- **REQ-RVS-001** — **When** the Release Verify job runs, the workflow shall execute the race-detector suite on each of `ubuntu-latest`, `macos-latest`, and `windows-latest` as the same six shards `ci.yml` defines — internal/cli 1 of 4, 2 of 4, 3 of 4, 4 of 4, the rosterguard package, and the remainder packages — so that every test `ci.yml`'s race run covers also runs on every OS.
+- **REQ-RVS-001** — **When** the Release Verify job runs, the workflow shall execute the race-detector suite on each of `ubuntu-latest`, `macos-latest`, and `windows-latest` as the same six shards `ci.yml` defines — internal/cli 1 of 4, 2 of 4, 3 of 4, 4 of 4, the rosterguard package, and the remainder packages — so that every test `ci.yml`'s race run covers also runs on every OS. The final leg set shall be exactly the 18 pairs of the three OS values and the six shards, each once: the matrix shall carry no `exclude` entry and no duplicate `include` entry.
 
 - **REQ-RVS-002** — The shard selectors shall partition the top-level test names of `internal/cli` exactly: every name matches exactly one of the four selectors, and the remainder shard shall run every package other than `internal/cli` and the rosterguard package exactly once. No test is excluded and none runs twice on one OS.
 
-- **REQ-RVS-003** — **When** a shard selector or the remainder exclusion list in `ci.yml` differs from the one in the release workflow, a repository test shall fail and name the divergence; the same test shall fail, naming the test, when a top-level `internal/cli` test name matches zero or more than one selector. The test reads only top-level functions named `Test` plus an optional suffix not beginning with a lowercase letter, whose parameter is `*testing.T` (so the bare name `Test` is read, and helpers with other signatures are not); it shall also fail when an `Example*` or `Fuzz*` function exists in `internal/cli` or the rosterguard package, because the `^Test` selectors would not run it.
+- **REQ-RVS-003** — **When** a shard selector or the remainder exclusion list in `ci.yml` differs from the one in the release workflow, a repository test shall fail and name the divergence.
 
 - **REQ-RVS-004** — **When** a shard's test stream contains no test event, that shard shall fail; a selector that matches nothing shall never read as a pass.
 
@@ -58,9 +60,13 @@ Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `R
 
 - **REQ-RVS-014** — **When** the remainder shard builds its package list, it shall fail if the list still contains `internal/cli` or the rosterguard package, in addition to failing on an empty list, so a listing that did not remove the two excluded packages cannot run them a second time unnoticed.
 
+- **REQ-RVS-015** — **When** a top-level `internal/cli` test name matches zero or more than one of the four internal/cli selectors, a repository test shall fail and name the test and the selectors involved. (Which functions count as a top-level test is defined in plan.md M3 and acceptance.md §C.)
+
+- **REQ-RVS-016** — **When** `internal/cli` or the rosterguard package contains a function that `go test` itself would run but the `^Test` selectors would not select — a fuzz target (name `Fuzz` plus a suffix not beginning with a lowercase letter, parameter `*testing.F`) or an example that carries an `// Output:` or `// Unordered output:` comment — a repository test shall fail and name the function. A lowercase-suffixed `Fuzz...` helper and an `Example...` without an output comment are not run by `go test` and shall not fail the test.
+
 ## C. Acceptance Criteria
 
-Tier M — the Given-When-Then set lives in `acceptance.md` (16 criteria, AC-RVS-001..AC-RVS-016). Each carries a RED-now cell pinned to tree `74ad197380` and a green-path cell naming the milestone that flips it; the evidence ledger the RED cells cite is research.md §B.
+Tier M — the Given-When-Then set lives in `acceptance.md` (16 criteria, AC-RVS-001..AC-RVS-016). Each release-blocking criterion carries a RED-now cell pinned to tree `74ad197380` and a green-path cell naming the milestone that flips it; regression-guard criteria carry a baseline (green now) and post-landing criteria a reference observation. The evidence ledger the RED cells cite is research.md §B.
 
 ## D. Constraints
 

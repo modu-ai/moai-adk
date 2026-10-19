@@ -10,12 +10,12 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 
 - **Given** the release workflow at the run-phase tree,
 - **When** its `full-matrix-test` job is read with `yq`,
-- **Then** `strategy.matrix.os` has the three runner labels, `strategy.matrix.shard` has exactly six ids (`cli-1`..`cli-4`, `rosterguard`, `remainder`), `strategy.fail-fast` is `false`, and the job id is still `full-matrix-test`.
-- RED-now: L-E14a (`yq '.jobs.full-matrix-test.strategy.matrix.shard | length'` -> `0`, exit 0) and L-E14b (matrix keys: `os` only), tree 74ad197380 — red because no shard dimension exists.
-- Green path: M1 — the matrix gains the shard dimension and per-shard `include` entries; the length query returns `6`.
-- Mutant probe: a five-shard matrix (dropping `remainder`) satisfies "a shard dimension exists" but not the `== 6` and id-set assertion; AC-RVS-002/003 independently catch a dropped shard's lost tests.
+- **Then** `strategy.matrix.os` has the three runner labels, `strategy.matrix.shard` has exactly six ids (`cli-1`..`cli-4`, `rosterguard`, `remainder`), `strategy.fail-fast` is `false`, and the job id is still `full-matrix-test`. **The matrix has no `exclude` key and exactly six `include` entries, each keyed by `shard` alone (no `os` key), one per declared shard id.** The leg set computed with `include` and `exclude` applied (the parity test's matrix expander, M3) is exactly 18 legs: 18 distinct `(os, shard)` pairs, each OS x shard pair once.
+- RED-now: L-E14a (`yq '.jobs.full-matrix-test.strategy.matrix.shard | length'` -> `0`, exit 0), L-E14b (matrix keys: `os` only, exit 0) and L-E17 (`yq '.jobs.full-matrix-test.strategy.matrix.include | length'` -> `0`, exit 0; `has("exclude")` -> `false`, exit 0), tree 74ad197380 — red because no shard dimension and no shard-keyed `include` entries exist. (`has("exclude") == false` is already true at base and stays true: that half is a guard, not a flip.)
+- Green path: M1 defines the matrix (shard dimension, six shard-keyed `include` entries); M3's expander asserts the leg set. The length queries return `6` and `6`.
+- Mutant probe: a five-shard matrix (dropping `remainder`) fails the `== 6` and id-set assertion. **An `exclude: [{os: ubuntu-latest, shard: remainder}]` entry** leaves three OS values, six shard ids and a clean cross product, but fails the no-`exclude` assertion and the expander's 18-leg count (17 legs). **A duplicated `include` entry** (two `shard: cli-1` entries) fails the exactly-six-entries assertion and the expander's distinct-pair count. Both mutants must be seen failing in the run-phase evidence; AC-RVS-002/003 also catch a dropped shard's lost tests.
 
-### AC-RVS-002 — Selector identity with ci.yml is enforced by a failing test (RB; maps REQ-RVS-003)
+### AC-RVS-002 — Selector identity with ci.yml is enforced by a failing test (RB; maps REQ-RVS-003, REQ-RVS-015, REQ-RVS-016)
 
 - **Given** `ci.yml` and the release workflow,
 - **When** the parity test runs and a shard selector or the remainder exclusion list is altered in either file,
@@ -23,10 +23,10 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 - **And Given** an in-memory name set for `internal/cli` containing one name that matches no selector (the bare name `Test`, which no ci.yml selector matches) and one that matches two selectors (a `TestFa...` name once shard 2 is widened to `[F-I]`, so it matches shards 1 and 2),
 - **When** the parity test's cover check runs over that set,
 - **Then** it fails once per offending name, naming the test and the selectors involved (zero selectors for the first, both selector ids for the second); over the real parsed test names it passes.
-- **And Given** an `Example*` or `Fuzz*` function present in a copy of the `internal/cli` test sources, **Then** the test fails naming the function.
+- **And Given** (REQ-RVS-016, Go's own discovery rule) a copy of the `internal/cli` test sources containing a fuzz target `func FuzzX(f *testing.F)` or an example `func ExampleX()` that ends in an `// Output:` comment, **Then** the test fails naming the function; **and Given** a lowercase-suffixed helper `func Fuzzhelper(s string) string` or an `ExampleAlpha()` with no output comment (neither is run or listed by `go test`), **Then** the test passes — the guard fires only on what `go test` would run and the `^Test` selectors would skip.
 - RED-now: L-E14d (`ls internal/template/release_verify_shard_parity_test.go` -> not found, exit 1), tree 74ad197380 — the guard does not exist. The zero/two-match failure modes are RED by the same absence; their discriminating power is shown by the checker-level evidence L-E15 (a script-level mutant: the same two failure shapes make `shard-cover.sh` exit 1).
-- Green path: M3 — the test exists and passes on the run-phase tree; its in-test mutation table is executed and recorded: (i) selector `[J-R]` -> `[J-Q]` fails naming shard 3; (ii) one remainder exclusion removed fails; (iii) injected name `Test` fails with zero matches; (iv) shard 2 widened to `[F-I]` fails with `TestFa...` matching two selectors; (v) injected `ExampleX` fails.
-- Mutant probe: a test that only checks "the file parses" passes all five mutants; a test that checks selector string equality but not cover passes (iii) and (iv); a cover check that tests only "at least one match" passes (iv). Each of (i)-(v) must be seen failing (verification-completeness §1.1).
+- Green path: M3 — the test exists and passes on the run-phase tree; its in-test mutation table is executed and recorded: (i) selector `[J-R]` -> `[J-Q]` fails naming shard 3; (ii) one remainder exclusion removed fails; (iii) injected name `Test` fails with zero matches; (iv) shard 2 widened to `[F-I]` fails with `TestFa...` matching two selectors; (v) an injected `FuzzX(f *testing.F)` or output-bearing `ExampleX` fails; and two must-PASS cases: (vi) a lowercase-suffixed `Fuzzhelper` and (vii) an output-less `ExampleAlpha` do not fail.
+- Mutant probe: a test that only checks "the file parses" passes all of the failing mutants; a test that checks selector string equality but not cover passes (iii) and (iv); a cover check that tests only "at least one match" passes (iv); a name-prefix ban on `Example*`/`Fuzz*` fails the must-pass cases (vi) and (vii). Each of (i)-(v) must be seen failing and each of (vi)-(vii) seen passing (verification-completeness §1.1).
 
 ### AC-RVS-003 — The four internal/cli selectors are an exact cover of the real test list (RB; maps REQ-RVS-002)
 
@@ -66,10 +66,10 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 - **Given** the 18 legs of one run,
 - **When** the `Upload test event stream` step's `with.name` is evaluated per leg,
 - **Then** the 18 names are pairwise distinct and each contains the OS and the shard id.
-- Evaluator (D7): the parity test expands the name template over the cross product `matrix.os` x `matrix.shard` (substituting both `${{ matrix.* }}` references) and asserts 18 strings, all distinct, each containing its OS and shard; `yq` alone reads the template, not the expansion, and the required-checks validator expands job display names, not step `with.name`, so neither is the evaluator.
+- Evaluator (D7): the parity test computes the **final leg list with `include` and `exclude` applied** (not the plain `os` x `shard` product), asserts exactly 18 legs with 18 distinct `(os, shard)` pairs, substitutes each leg's values into the name template, and asserts 18 distinct strings each containing its OS and shard; it fails on any `exclude` key and on any duplicate `include` entry. `yq` alone reads the template, not the expansion, and the required-checks validator expands job display names, not step `with.name`, so neither is the evaluator.
 - RED-now: L-E14c (`test-stream-release-verify-${{ matrix.os }}` — no shard component, exit 0), tree 74ad197380; with six shards per OS the names would collide.
 - Green path: M1 + M3 — the name template carries both `matrix.os` and `matrix.shard`; the parity test's expansion yields 18 distinct strings.
-- Mutant probe: a name carrying only `matrix.shard` collides across OS; one carrying only `matrix.os` collides across shards — both fail the pairwise-distinct check.
+- Mutant probe: a name carrying only `matrix.shard` collides across OS; one carrying only `matrix.os` collides across shards — both fail the pairwise-distinct check. A matrix with `exclude: [{os: ubuntu-latest, shard: remainder}]` leaves 17 legs and 17 names (the plain-product check would still say 18) and fails the leg-count assertion; a duplicated `include` entry yields 19 legs but 18 distinct pairs and fails the distinct-pair assertion.
 
 ### AC-RVS-008 — Existing steps are preserved (RG; maps REQ-RVS-010, REQ-RVS-012)
 
@@ -115,14 +115,16 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 - Green path: M1 + M4 — `grep -c SHARD_RUN` on the workflow is non-zero; the local run under `/bin/bash` is recorded verbatim; `grep -n '\${{ matrix\.' ` over the `run:` block returns nothing.
 - Mutant probe: a body that interpolates the selector into shell text passes the matching run but fails the grep; a body using a bash-4-only construct fails the `/bin/bash` 3.2 run.
 
-### AC-RVS-013 — No duplicate runs: vet once per OS, six shards, each test once (RG; maps REQ-RVS-008, REQ-RVS-014)
+### AC-RVS-013 — No duplicate runs: vet once per OS, six shards, each test once (RB for the shard-count, partition and remainder-guard parts; RG for the vet-once part; maps REQ-RVS-008, REQ-RVS-014)
 
 - **Given** the 18-leg matrix,
 - **When** the legs that run `go vet ./...` are counted, and the package partition (internal/cli, rosterguard, remainder) is counted against `go list ./...`,
 - **Then** exactly 3 legs run vet (one per OS), the shard count is 6, and the three package sets sum to `go list ./...` with no package in two of them (176 packages on tree 74ad197380); the remainder step additionally fails when its list still contains `internal/cli` or the rosterguard package (REQ-RVS-014), shown by one local run with a deliberately unfiltered listing.
-- Evaluator (D7): the parity test expands `include` over `matrix.os` x `matrix.shard` and counts legs whose merged entry has `vet: true` — it must equal the number of OS values (3), with exactly one `vet: true` include entry; the command-only form is `yq '[.jobs.full-matrix-test.strategy.matrix.include[] | select(.vet == true)] | length' .github/workflows/release-pr-multi-os.yml` -> `1` (times 3 OS = 3 legs). The partition identity is computed from `go list ./...` against the two exclusions and the remainder count (174).
-- Baseline (green now): the base runs vet once per OS (L-E1b, one `Run go vet` step per leg of a 3-leg matrix) and the partition holds on `ci.yml` (L-E9; `go list ./...` count 176 measured at this tree).
-- Mutant probe: a `go vet` step with no shard condition runs 18 times and fails the count; a remainder exclusion list missing the rosterguard package runs it twice and fails the partition identity.
+- Evaluator (D7): the parity test computes the final leg list with `include` and `exclude` applied (as in AC-RVS-007) and counts legs whose merged entry has `vet: true` — it must equal the number of OS values (3), with exactly one `vet: true` include entry; the command-only form is `yq '[.jobs.full-matrix-test.strategy.matrix.include[] | select(.vet == true)] | length' .github/workflows/release-pr-multi-os.yml` -> `1` (times 3 OS = 3 legs). The partition identity is computed from `go list ./...` against the two exclusions and the remainder count (174).
+- Baseline (vet-once part, RG, green now): the base runs vet once per OS (L-E1b, one `Run go vet` step per leg of a 3-leg matrix).
+- RED-now (shard-count, partition and remainder-guard parts): L-E14a (shard length `0`, exit 0) and L-E18 (`grep -c 'internal/harness/rosterguard' .github/workflows/release-pr-multi-os.yml` -> `0`, exit 1), tree 74ad197380 — red because the release workflow has no shard dimension, no package partition, and no remainder step that names the excluded packages. Reference measurement of the partition on `ci.yml` (not the file under change): L-E9, `go list ./...` count 176.
+- Green path: M1 defines the six shards, the partition and the remainder guard; M3's expander and partition identity assert them; M4 records the unfiltered-listing run showing the guard fires.
+- Mutant probe: a `go vet` step with no shard condition runs 18 times and fails the count; a remainder exclusion list missing the rosterguard package runs it twice and fails the partition identity; a remainder step without the REQ-RVS-014 guard passes the unfiltered-listing run and is rejected by it.
 
 ### AC-RVS-014 — Post-landing: PR #1830 re-run shows every shard green and the gate green (PL; maps REQ-RVS-013)
 
@@ -132,15 +134,6 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 - Class: post-landing observation, **not closable by the lane** — undecidable offline, so it loses release-blocking eligibility by the verification-completeness §2.1 disposition and is not recorded as a pass until the leader records it. RED reference: L-E4 (run 39180942620: all legs `cancelled`, gate `failure`).
 - Green path: leader observation after landing; the per-OS shard durations it reveals close gap G2 and feed any rebalance card.
 
-### AC-RVS-016 — Post-landing: per-shard durations on macOS and Windows are recorded and an overrun has a named next step (PL; maps REQ-RVS-013, spec.md §G)
-
-- **Given** the first full 18-leg run of the sharded workflow (AC-RVS-014's run),
-- **When** the leader reads each shard job's `startedAt`/`completedAt` with `gh run view <id> --json jobs`,
-- **Then** the 18 durations are recorded on the card; each shard finished well inside its 40-minute job budget (none within 5 minutes of it, none `cancelled`); and if any macOS or Windows shard failed on the 35-minute test ceiling or finished within 5 minutes of the job budget, a rebalance card (split that shard by selector) is opened — no timeout is raised.
-- Class: post-landing observation, not closable by the lane (undecidable offline; not recorded as a pass until the leader records it). RED reference: L-E4/L-E5 — no per-OS shard duration exists, and the one passing leg used 38 min 10 s of 40.
-- Green path: leader observation after landing; closes gap G2 and feeds decision-index Q8.
-- Flagged for the leader (D9): whether to take one measurement before landing (a `workflow_dispatch` of the release workflow on the candidate ref: one added run, not a duplicate matrix) is the leader's call; the SPEC neither requires nor forbids it.
-
 ### AC-RVS-015 — The plan phase wrote only inside the SPEC directory (RG; maps constraint D.5)
 
 - **Given** the plan-phase commit,
@@ -149,14 +142,23 @@ Classification: **RB** release-blocking (RED re-executable on this tree and flip
 - Baseline: recorded in progress.md §E.1 with the observed command output.
 - Mutant probe: a stray edit to a workflow file appears as a path outside the prefix and fails the check.
 
+### AC-RVS-016 — Post-landing: per-shard durations on macOS and Windows are recorded and an overrun has a named next step (PL; maps REQ-RVS-013, spec.md §G)
+
+- **Given** the first full 18-leg run of the sharded workflow (AC-RVS-014's run),
+- **When** the leader reads each shard job's `startedAt`/`completedAt` with `gh run view <id> --json jobs`,
+- **Then** the 18 durations are recorded on the card; each shard finished well inside its 40-minute job budget (none within 5 minutes of it, none `cancelled`); and if any macOS or Windows shard failed on the 35-minute test ceiling or finished within 5 minutes of the job budget, a rebalance card (split that shard by selector) is opened — no timeout is raised.
+- Class: post-landing observation, not closable by the lane (undecidable offline; not recorded as a pass until the leader records it). Reference observation: L-E4/L-E5 — no per-OS shard duration exists, and the one passing leg used 38 min 10 s of 40.
+- Green path: leader observation after landing; closes gap G2 and feeds decision-index Q8.
+- Flagged for the leader (D9): whether to take one measurement before landing (a `workflow_dispatch` of the release workflow on the candidate ref: one added run, not a duplicate matrix) is the leader's call; the SPEC neither requires nor forbids it.
+
 ## §C. Edge cases
 
 - **Docs-only release PR**: `detect-release` reports `go_code == 'false'`; the matrix job is skipped as a whole (all 18 legs), the gate names the `docs-only-release-pr` exclusion exactly as today (L-E1; gate unchanged, AC-RVS-004).
 - **`workflow_dispatch`**: always runs the matrix (existing condition, untouched); `scripts/release.sh --require-matrix-run` reads dispatched runs only (AC-RVS-011).
 - **One shard cancelled by a runner loss**: `needs.full-matrix-test.result` aggregates to `cancelled`/`failure`; the gate fails; `fail-fast: false` keeps the other shards reporting.
 - **macOS concurrency queue**: a queued shard starts later; no correctness effect (research.md §C.5).
-- **Future test names**: a new top-level `internal/cli` test is covered by the first-letter selectors without editing them, with one exception — the bare function name `Test` (no suffix) is valid Go, matches none of the four ci.yml selectors (measured by the plan auditor with Go `regexp`: `Test` -> no shard; `TestF` -> 2, `TestFa` -> 1, `Test_x`/`Test1` -> shard 4), and would be silently unrun by both workflows. None exists today (`^Test$` count 0, research L-E9). The parity test reads the bare name and fails on it (AC-RVS-002); `Example*`/`Fuzz*` functions in `internal/cli` or rosterguard are likewise unselected by `^Test` and fail the parity test; none exist today (`grep -lE '^func (Example|Fuzz)'` over both packages' test files printed nothing).
-- **Parser edges (parity test)**: only top-level functions with a `*testing.T` parameter and a name of `Test` plus an optional suffix not starting with a lowercase letter are parsed; methods, helpers with other signatures, and lowercase-suffixed `Testfoo` are skipped; build-tagged files are included (a superset is safe for a per-name cover property).
+- **Future test names**: a new top-level `internal/cli` test is covered by the first-letter selectors without editing them, with one exception — the bare function name `Test` (no suffix) is valid Go, matches none of the four ci.yml selectors (measured by the plan auditor with Go `regexp`: `Test` -> no shard; `TestF` -> 2, `TestFa` -> 1, `Test_x`/`Test1` -> shard 4), and would be silently unrun by both workflows. None exists today (`^Test$` count 0, research L-E9). The parity test reads the bare name and fails on it (AC-RVS-002); a fuzz target (`FuzzX(f *testing.F)`) or an example with an `// Output:` / `// Unordered output:` comment in `internal/cli` or rosterguard is run by `go test` but unselected by `^Test`, and fails the parity test (REQ-RVS-016); a lowercase-suffixed `Fuzz...` helper and an output-less `Example...` are not run by Go and do not fail it. None of either kind exists today (`grep -lE '^func (Example|Fuzz)'` over both packages' test files printed nothing).
+- **Parser edges (parity test; REQ-RVS-015/016)**: top-level tests are functions (no receiver) with a `*testing.T` parameter and a name of `Test` plus an optional suffix not starting with a lowercase letter; methods, helpers with other signatures, and lowercase-suffixed `Testfoo` are skipped. Fuzz targets are functions with a `*testing.F` parameter and the same suffix rule on `Fuzz`; examples are functions with no parameters, the same suffix rule on `Example`, and an output comment in the body. Build-tagged files are included (a superset is safe for a per-name cover property).
 
 ## §D. Quality gate criteria and Definition of Done
 

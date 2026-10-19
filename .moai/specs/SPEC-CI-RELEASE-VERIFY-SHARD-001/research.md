@@ -28,7 +28,7 @@ Card t1892 · plan-phase tree pin: **`74ad197380`** (`git rev-parse --short HEAD
 | E11 | Runner image tooling (jq, yq, bash, Git Bash) | WebFetch of runner-images Windows2025 / macos-15-arm64 readmes | n/a | remote docs 2026-10-19 |
 | E12 | No bash-4-only constructs in the helper scripts | `grep -nE 'declare -A\|mapfile\|readarray\|<<<\|...' scripts/ci/retry-flaky.sh scripts/ci-census/test-census.sh` | 1 (no match) | 74ad197380 |
 | E13 | Baseline: actionlint clean, validator green, template tests green | `actionlint .github/workflows/release-pr-multi-os.yml`; `sh scripts/ci-mirror/validate-required-checks.sh`; `go test -count=1 -run 'TestReleaseScriptMatrixGate\|TestTestInput' ./internal/template/` | 0 / 0 / 0 | 74ad197380 |
-| E14 | RED-now shape cells (matrix, artifact, parity test, empty-sweep, -count) | see ledger blocks L-E14a..e | mixed | 74ad197380 |
+| E14 | RED-now shape cells (matrix, artifact, parity test, empty-sweep, -count) | see ledger blocks L-E14a..f, L-E17, L-E18 | L-E14a 0; L-E14b 0; L-E14c 0; L-E14d 1; L-E14e 1 and 1; L-E14f 9; L-E17 0 and 0; L-E18 1 | 74ad197380 |
 | E15 | `shard-cover.sh` falsifiers (iter1 fix D5): print-then-fail stub `go` (old script reads it as success, fixed script fails), overlap mutant | see L-E15 | 0 old / 1 fixed / 1 | 74ad197380 + stub/mutation |
 | E16 | RED-now for the local-bash step-body criterion: no step passes the selector through `SHARD_RUN` | `grep -c SHARD_RUN .github/workflows/release-pr-multi-os.yml` | 1 | 74ad197380 |
 
@@ -136,11 +136,11 @@ L-E12 | grep -nE 'declare -A|mapfile|readarray|<<<|\$\{[A-Za-z_]+(,,|\^\^)\}|&>>
 L-E13 | actionlint -version -> v1.7.10 (built from source, go1.25.6); actionlint .github/workflows/release-pr-multi-os.yml -> (no output); sh scripts/ci-mirror/validate-required-checks.sh -> "✅ All validations passed" (incl. "[main] Release PR Multi-OS Gate is publishable"); go test -list 'TestReleaseScriptMatrixGate|TestTestInput' ./internal/template/ -> TestReleaseScriptMatrixGate, TestTestInputFiltersSingleSource, TestTestInputFiltersCoversGoTestInputs (3 names: the sweep is not empty); go test -count=1 -run ... ./internal/template/ -> "ok  github.com/modu-ai/moai-adk/internal/template  17.983s"
 
 L-E14a | yq '.jobs.full-matrix-test.strategy.matrix.shard | length' .github/workflows/release-pr-multi-os.yml
-0
+0        (exit 0)
 L-E14b | yq '.jobs.full-matrix-test.strategy.matrix | keys' .github/workflows/release-pr-multi-os.yml
-- os
+- os        (exit 0)
 L-E14c | yq '.jobs.full-matrix-test.steps[] | select(.name == "Upload test event stream") | .with.name' .github/workflows/release-pr-multi-os.yml
-test-stream-release-verify-${{ matrix.os }}
+test-stream-release-verify-${{ matrix.os }}        (exit 0)
 L-E14d | ls internal/template/release_verify_shard_parity_test.go
 ls: internal/template/release_verify_shard_parity_test.go: No such file or directory        (exit 1)
 L-E14e | grep -c 'empty sweep' .github/workflows/release-pr-multi-os.yml  -> 0  (exit 1);  grep -c -e '-count=1' .github/workflows/release-pr-multi-os.yml -> 0  (exit 1)
@@ -173,7 +173,15 @@ extracted awk prog  : $1 == leg {print "found|" $2; exit}
 exact job name        -> found|success
 shard-suffixed names  -> <no leg>
 RED: the lookup finds no leg among shard-suffixed job names        exit 0
-      | Example/Fuzz presence: grep -lE '^func (Example|Fuzz)' internal/cli/*_test.go internal/harness/rosterguard/*_test.go -> (no output)
+      | Example/Fuzz presence: grep -lE '^func (Example|Fuzz)' internal/cli/*_test.go internal/harness/rosterguard/*_test.go -> (no output); none exist today. The run-phase guard (REQ-RVS-016) follows Go's discovery rule, not a name-prefix ban: a fuzz target (`*testing.F`) or an example with an output comment is run by go test; a lowercase-suffixed `Fuzz...` helper or an output-less example is not (plan-audit-iter2.md D2, codex fixture; not re-run here).
+
+L-E17 | yq '.jobs.full-matrix-test.strategy.matrix.include | length' .github/workflows/release-pr-multi-os.yml
+0        (exit 0)
+      | yq '.jobs.full-matrix-test.strategy.matrix | has("exclude")' .github/workflows/release-pr-multi-os.yml
+false    (exit 0)
+
+L-E18 | grep -c 'internal/harness/rosterguard' .github/workflows/release-pr-multi-os.yml
+0        (exit 1)
       | bare `Test` regexp semantics: measured by the plan auditor with Go regexp (plan-audit-iter1.md evidence row 11): `Test` matches no ci.yml selector; `TestF` matches 2; `TestFa` 1; `Test_x`/`Test1`/`TestÀ` shard 4 — cited, not re-run here.
 ```
 
