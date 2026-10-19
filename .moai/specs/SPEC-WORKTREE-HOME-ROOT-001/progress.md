@@ -231,6 +231,101 @@ None. All ten cells (and the two supplementary AC-WHR-025 cells) reproduced the 
 
 **Residual-risk.** The grep red cells prove the literals are absent, not that a differently spelled implementation will satisfy the green path (acceptance.md states this per cell, and each green path carries a Go test). The `moai worktree list --json` cell was produced by a build older than the tree; the source cross-check (`root.go:41-53`) closes that for this tree. Exit codes derived from stdout hold only while the harness behavior stated in acceptance.md (§B header) holds. The `.moai/reports/*` files of M-1 are gitignored and local, so the tracked `progress.md` is the only carrier of these cells.
 
+### M1 — RED (test-compilation-order cells)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M1, card t1640. The RED is the test-compilation-order RED of plan.md §C: test files that name M1 symbols are committed before M1's first production commit, so each affected package fails to compile, and that compile failure — not any test failure — is the red. Two narrowed calls, one per affected package, each started only after both resource gates held (1-minute load ≤ 32 on `uptime`, memory free ≥ 50% on `memory_pressure`); no production file was created, `spec.md` was not touched, and no test was skipped. Work-state note: two earlier attempts of this task died on provider rate limits before committing; the four test files as committed here were finished from that attempt's partial edits and verified `gofmt -l`-clean (empty output, exit 0) before the calls below.
+
+Tree SHA for every cell of this subsection (the PARENT commit of the RED commit that carries these lines, never the carrying commit): `440cbbd68931b57debd6df41947f011dd1f74cf7`. Exit codes: both observed (the harness printed `Exit code 1`). Both packages report undefined-symbol errors; the "no non-test Go files" shape did not appear — the test-only package's build compiles its `_test.go` files directly and names the undefined M1 symbols.
+
+The first call was blocked once: at 21:47 KST the 1-minute load read 34.34 (> 32, memory free 86%), the gate failed, the call was stopped (not looped), and the miss was reported. The lane then authorized up to 5 re-gates ~60s apart; the first re-gate passed (21:51:50 KST, load 19.99, memory free 86%) and the second call ran. Call 1 itself ran on the earlier pass (21:46 KST, load 26.26, memory free 85%).
+
+#### AC-WHR-002b (clauses 1-3) — stability: a key never changes once assigned
+
+- command: `go test -run '^$' -p 1 -count=1 ./internal/worktreeroot/`
+- gates at start: 21:46 KST, 1-minute load 26.26, memory free 85%
+- exit: 1 (observed)
+- stdout (verbatim, this run, this tree):
+```
+# github.com/modu-ai/moai-adk/internal/worktreeroot [github.com/modu-ai/moai-adk/internal/worktreeroot.test]
+internal/worktreeroot/worktreeroot_test.go:145:12: undefined: Key
+internal/worktreeroot/worktreeroot_test.go:154:12: undefined: Root
+internal/worktreeroot/worktreeroot_test.go:201:15: undefined: PathFor
+internal/worktreeroot/worktreeroot_test.go:226:15: undefined: PathFor
+internal/worktreeroot/worktreeroot_test.go:240:15: undefined: PathFor
+internal/worktreeroot/worktreeroot_test.go:496:12: undefined: Resolve
+internal/worktreeroot/worktreeroot_test.go:503:16: undefined: PathFor
+internal/worktreeroot/worktreeroot_test.go:535:15: undefined: Resolve
+internal/worktreeroot/worktreeroot_test.go:542:19: undefined: PathFor
+internal/worktreeroot/worktreeroot_test.go:587:15: undefined: Resolve
+internal/worktreeroot/worktreeroot_test.go:587:15: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/worktreeroot [build failed]
+FAIL
+```
+- tree SHA: 440cbbd68931b57debd6df41947f011dd1f74cf7
+- red because: the clause tests (`TestWorktreeRoot_Key_StableAcrossResolutionMoveAndRename`, `TestWorktreeRoot_Key_RecordedKeySurvivesMoaiHomeRelocation`) cannot compile — the resolver functions they call (`Key`, `Root`, `PathFor`, `Resolve`) do not exist, so no assignment record can be read or kept and every clause is untestable (green path M1 GREEN).
+- vs acceptance.md: the RB* row defers clauses (1)-(3) to "the RED commit of M1 ... (needs a Go test)" — this is that record; the "no assignment record exists" premise is M0's AC-WHR-002a grep cell.
+
+#### AC-WHR-003a — case-insensitive collision between two repositories
+
+- command, gates, exit, run: identical to the AC-WHR-002b cell (one invocation, `./internal/worktreeroot/`, exit 1); the verbatim stdout above is this cell's evidence.
+- tree SHA: 440cbbd68931b57debd6df41947f011dd1f74cf7
+- red because: `TestWorktreeRoot_Key_CaseInsensitiveCollisionSuffix` cannot compile on the same undefined resolver symbols; no collision logic or home layout exists to test (the acceptance.md premise "grep -rln --exclude='*_test.go' 'worktrees/projects' internal prints nothing" is M0's AC-WHR-001 cell).
+- vs acceptance.md: the RB* row defers to the RED commit of M1 — recorded here.
+
+#### AC-WHR-003b — third-owner and unreadable-marker refusal
+
+- command, gates, exit, run: identical to the AC-WHR-002b cell; the verbatim stdout above is this cell's evidence.
+- tree SHA: 440cbbd68931b57debd6df41947f011dd1f74cf7
+- red because: the refusal tests (`TestWorktreeRoot_Key_RefusesWhenTheSuffixedFolderHasAThirdOwner` at `worktreeroot_test.go:496` calling the undefined `Resolve`, `...RefusesAnUnreadableMarker` at `:535`) cannot compile; refusal over a third-owned or unreadable marker is unreachable (green path M1 GREEN).
+- vs acceptance.md: the RB* row defers to the RED commit of M1 — recorded here.
+
+#### AC-WHR-023 — spelling-safe equality, resolver `Same` clause
+
+- command, gates, exit, run: identical to the AC-WHR-002b cell; the verbatim stdout above is this cell's evidence.
+- tree SHA: 440cbbd68931b57debd6df41947f011dd1f74cf7
+- red because: the package build fails on undefined resolver symbols and therefore `TestWorktreeRoot_Same_SpellingSafeEquality` cannot compile; `Same` is not in the printed error list because the compiler stopped at 10 errors (`too many errors` at `worktreeroot_test.go:587`) — its undefined status past the cap is a file-read observation (defined at `:737`, referenced from `:753`), not observed compiler output. The compile failure itself is the red (plan.md §C).
+- vs acceptance.md: the RB* ownership of 023's `Same` clause at M1 is plan.md §C M1; the acceptance row's other equality sites are later milestones' cells (`isL1WorktreePath` M3, `internal/session/anchor.go` M6, per research.md §R13).
+
+#### Second observation — `internal/cli/worktree` (classifier and move-list readers; no RB* cell of this commit)
+
+- command: `go test -run '^$' -p 1 -count=1 ./internal/cli/worktree/`
+- gates at start: 21:51:50 KST, 1-minute load 19.99, memory free 86%
+- exit: 1 (observed)
+- stdout (verbatim, this run, this tree):
+```
+# github.com/modu-ai/moai-adk/internal/cli/worktree [github.com/modu-ai/moai-adk/internal/cli/worktree.test]
+internal/cli/worktree/classify_test.go:79:33: undefined: ClassifyContext
+internal/cli/worktree/classify_test.go:97:10: undefined: ClassifyContext
+internal/cli/worktree/classify_test.go:109:58: undefined: WorktreeRecord
+internal/cli/worktree/classify_test.go:112:9: undefined: WorktreeRecord
+internal/cli/worktree/classify_test.go:168:11: undefined: Classify
+internal/cli/worktree/classify_test.go:185:12: undefined: WorktreeRecord
+internal/cli/worktree/classify_test.go:195:6: undefined: Classify
+internal/cli/worktree/classify_test.go:216:9: undefined: ClassifyContext
+internal/cli/worktree/movelist_test.go:197:51: undefined: MoveRequester
+internal/cli/worktree/movelist_test.go:219:25: undefined: MoveRequester
+internal/cli/worktree/classify_test.go:216:9: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree [build failed]
+FAIL
+```
+- tree SHA: 440cbbd68931b57debd6df41947f011dd1f74cf7
+- red because: the classifier and move-list reader tests cannot compile — `ClassifyContext`, `WorktreeRecord`, `Classify` (classify.go) and `MoveRequester` are undefined; past the compiler's cap (`ParseWorktreeList`, `TreeIdentity`, `TreeIdent`, `EnsureInstanceToken`, `MovedTo`, `MovedBy`) the same holds by file-read, not by observed output. This observation owns no RB* cell here: AC-WHR-013's and 012b's observed cells are M0's greps, AC-WHR-014b is recorded at M3's RED (research.md §R13, M1 row).
+- vs acceptance.md: consistent with the M0 grep cells (classifier file absent, move-list code absent) — this is the compile-level red of the same green path.
+
+Coverage note (one line per the milestone plan): the RED files also carry test coverage for AC-WHR-001 (`PathFor` home-root form), 002a (key derivation and owner marker), 003 (the collision-and-refusal family), 004 (operator pin), 022 (`Candidates` across three roots) and the non-`Same` clauses of 023 (`Candidates` two-spelling collapse, classifier spelling-safety, case-sensitive distinctness); their green path is the M1 GREEN production commit, and AC-WHR-022's own observed cell is recorded at M3 per research.md §R13.
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) The four RB* cells M1 owns (AC-WHR-002b clauses 1-3, 003a, 003b, 023 `Same`) are red on the pre-production tree: each affected package fails to compile solely on undefined M1 symbols, observed verbatim above. (2) The `internal/cli/worktree` observation red is the same shape for the classifier and move-list readers. (3) No production file, `spec.md`, or other SPEC body was touched by this RED commit; the four test files are `gofmt`-clean and 39 test functions strong (1 + 12 + 7 + 19).
+
+**Evidence.** The two command invocations and their verbatim stdout above, each run as its own single invocation in this run against tree `440cbbd68931b57debd6df41947f011dd1f74cf7`; both exit codes observed (`Exit code 1`); gate readings recorded per call; the 21:47 gate miss and the lane's re-gate authorization recorded in the preamble.
+
+**Baseline-attribution.** Measured in this run, in this worktree (`/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`), against HEAD `440cbbd68931b57debd6df41947f011dd1f74cf7` — the parent of the commit carrying these lines (plan.md §C pin rule). No tool build is involved (the `go` toolchain is external tooling, not a tree-built measurement tool; verification-claim-integrity §2.2 does not bind it).
+
+**Gaps.** (a) The compiler caps each package's error list at 10 (`too many errors`), so identifiers past the cap — `Same`, `Candidates`, `Candidate` in the resolver package; `ParseWorktreeList`, `TreeIdentity`, `TreeIdent`, `EnsureInstanceToken`, `MovedTo`, `MovedBy` in `internal/cli/worktree` — are not individually observed as errors; their undefined status rests on file reads (surface headers and reference sites) and will be re-observed at the M1 GREEN compile. (b) `-run '^$'` ran no tests in either package (the build failed before any test binary); no test behavior, only compilation, is claimed. (c) No `go build`/`go vet` was run (dispatch constraint), so package-level buildability beyond the two named packages is carried by M0's "nothing changed" baseline plus the commit diff, not re-observed here. (d) The M1 RED commit leaves the `spec.md` `draft -> in-progress` flip to M1's first production commit (plan.md §C), so the flip is not observed here by design.
+
+**Residual-risk.** An undefined symbol hiding past the 10-error cap that is NOT an M1 symbol would make the red wider than "solely M1 symbols"; the static collision scan (production-file grep for every surface name; helper-name scan across the package's existing 30 test files) found none, but that scan is a read, not a compile. The RED proves absence of the M1 surface, not that the tests themselves compile once the surface exists — first proof of test correctness is the M1 GREEN run, and any latent test defect surfaces there, not here.
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
