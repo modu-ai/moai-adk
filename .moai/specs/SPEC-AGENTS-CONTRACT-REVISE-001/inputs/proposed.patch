@@ -1,0 +1,528 @@
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -7,7 +7,14 @@
+ 
+ ## 0. Core identity and capabilities
+ 
+-You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly.
++You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding.
++
++**Leader role boundary.** A session assigned as leader or coordinator coordinates, delegates,
++reads evidence, and supervises. It never directly implements, repairs, builds, or runs tests in
++any worktree. There is no emergency, trivial-change, or unavailable-worker exception. Preserve
++existing changes and their provenance, then hand them to the officially assigned worker. If no
++worker is available, report the assignment blocker and continue independent read-only review.
++An assigned worker performs only the scope and paths delegated to that worker.
+ 
+ **Budget warning.** Codex charges its instruction byte budget against
+ project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
+@@ -31,7 +38,7 @@
+ | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
+ | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
+ | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+-| agent-spawning | `Agent(...)` sub-agents | Do the bounded work inline |
++| agent-spawning | `Agent(...)` sub-agents | A leader reports an assignment blocker; an assigned worker stays within its delegated scope |
+ | output-style | Claude output styles | Follow this contract directly |
+ | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
+ | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
+@@ -86,8 +93,11 @@
+ `git branch` (same, plus an unexpected branch); `git reset --hard` / `git checkout -- <path>`
+ (discards work of unknown provenance); `git stash` (repository-global — absorbs another session's
+ uncommitted changes); `git rebase` / `git merge` onto the checked-out branch (rewrites or advances
+-shared history mid-operation). Read-only inspection, `git fetch`, and pushing the
+-already-checked-out branch are permitted. Commits to the already-checked-out branch are permitted
++shared history mid-operation). Read-only inspection and `git fetch` are permitted. An authorized
++worker may push the already-checked-out card branch only through the verified delivery policy;
++never push card changes directly to main, the remote default branch, or a protected integration
++branch. Use the authorized PR path without weakening branch protection. Commits to the
++already-checked-out branch are permitted only within the assigned worker scope
+ except on a branch the workflow declares commit-protected (the git-strategy mode decides which;
+ when the BranchGuard is opted in, `workflow.branch_guard.deny_commits_on` names those branches and
+ the guard refuses commit-creating commands on them in the primary checkout).
+@@ -152,8 +162,17 @@
+ from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
+ `git worktree remove`.
+ 
+-**A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
+-worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
++**Keep a card's work recoverable.** A pushed branch does not make an unmerged card done.
++Dispose of no worktree — L1 or L2 — until its remote merge and required evidence are confirmed,
++and every local change has been preserved.
++
++**Handoff before the next independent card.** When PR delivery is authorized, finish the scoped
++local verification and open a draft PR promptly. Record its head, evidence, review/repair owner,
++and lease handoff before taking an independent card in a fresh worktree. Opening the PR is not
++done; closure requires the confirmed merge and the configured completion evidence. Wait only for
++actual code or acceptance dependencies. Isolate failures to affected cards and dependants, and
++release owned card/resource leases at their documented boundaries after active work has stopped.
++Do not erase leases or bypass locking to make a lane appear free.
+ 
+ **Start a new card in a new worktree.** A Claude Code session exits its previous worktree first;
+ a Codex lane starts a new session in the new card tree. Create the fresh tree from the remote
+@@ -197,12 +216,12 @@
+ from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
+ not a Claim — and a claim that needs verbatim output runs the command directly.
+ 
+-**A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
+-`success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
+-(1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
+-`state == "success"` and description `Review completed`; (2) a `Merge Risk:` line exists whose
+-commit prefix matches the current `headRefOid`. Anything else is a gap, not a pass; `Review rate
+-limited` means the review never started.
++**Required Codex PR review must be observed on the current PR head.** Record the repository,
++PR, exact head SHA, configured review producer, completed review result, and its evidence URL.
++A generic green check, a request comment, an old-head review, or an empty result is insufficient.
++Missing, skipped, failed, cancelled, rate-limited, or unverified review is a gap and blocks the
++required review gate. Preserve the functional CI gates and the established review contract;
++never invent a success result or substitute an advisory for a required review.
+ 
+ ---
+ 
+@@ -328,6 +347,17 @@
+ Project configuration lives in `.moai/config/sections/*.yaml`. Harness, TRUST 5, and phase LSP
+ thresholds come from `harness.yaml`, `quality.yaml`, `lsp.yaml`, and evaluator profiles; never
+ duplicate those values inline.
++
++**Distributed automation policy.** A new or unconfigured project starts with manual operation.
++TODO/card issuance, dispatch/execution, push/PR creation, review repair, merge, and release/deploy
++are independent opt-ins. Enabling one never enables another; automatic PR creation does not
++authorize automatic merge or deployment. Missing, invalid, or partial configuration leaves every
++unspecified stage manual and reports invalid settings. Preserve explicit user choices and local
++factory overrides during init, update, and migration; never copy maintainer automation into the
++shipped defaults. Until a stage has a verified implementation, keep it manual and report the gap.
++Where web settings are offered, display their effective value, source and override, and use the
++same validated configuration as the runtime, including authorization, audit, stop propagation,
++and safe application to in-flight work. Unsupported behavior remains a separate implementation task.
+ 
+ ## 11. moai CLI Verbs
+ 
+--- a/internal/template/templates/AGENTS.md.tmpl
++++ b/internal/template/templates/AGENTS.md.tmpl
+@@ -7,7 +7,14 @@
+ 
+ ## 0. Core identity and capabilities
+ 
+-You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly.
++You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding.
++
++**Leader role boundary.** A session assigned as leader or coordinator coordinates, delegates,
++reads evidence, and supervises. It never directly implements, repairs, builds, or runs tests in
++any worktree. There is no emergency, trivial-change, or unavailable-worker exception. Preserve
++existing changes and their provenance, then hand them to the officially assigned worker. If no
++worker is available, report the assignment blocker and continue independent read-only review.
++An assigned worker performs only the scope and paths delegated to that worker.
+ 
+ **Budget warning.** Codex charges its instruction byte budget against
+ project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
+@@ -32,7 +39,7 @@
+ | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
+ | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
+ | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+-| agent-spawning | `Agent(...)` sub-agents | Do the bounded work inline |
++| agent-spawning | `Agent(...)` sub-agents | A leader reports an assignment blocker; an assigned worker stays within its delegated scope |
+ | output-style | Claude output styles | Follow this contract directly |
+ | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
+ | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
+@@ -88,8 +95,11 @@
+ `git branch` (same, plus an unexpected branch); `git reset --hard` / `git checkout -- <path>`
+ (discards work of unknown provenance); `git stash` (repository-global — absorbs another session's
+ uncommitted changes); `git rebase` / `git merge` onto the checked-out branch (rewrites or advances
+-shared history mid-operation). Read-only inspection, `git fetch`, and pushing the
+-already-checked-out branch are permitted. Commits to the already-checked-out branch are permitted
++shared history mid-operation). Read-only inspection and `git fetch` are permitted. An authorized
++worker may push the already-checked-out card branch only through the verified delivery policy;
++never push card changes directly to main, the remote default branch, or a protected integration
++branch. Use the authorized PR path without weakening branch protection. Commits to the
++already-checked-out branch are permitted only within the assigned worker scope
+ except on a branch the workflow declares commit-protected (the git-strategy mode decides which;
+ when the BranchGuard is opted in, `workflow.branch_guard.deny_commits_on` names those branches and
+ the guard refuses commit-creating commands on them in the primary checkout).
+@@ -154,8 +164,17 @@
+ from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
+ `git worktree remove`.
+ 
+-**A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
+-worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
++**Keep a card's work recoverable.** A pushed branch does not make an unmerged card done.
++Dispose of no worktree — L1 or L2 — until its remote merge and required evidence are confirmed,
++and every local change has been preserved.
++
++**Handoff before the next independent card.** When PR delivery is authorized, finish the scoped
++local verification and open a draft PR promptly. Record its head, evidence, review/repair owner,
++and lease handoff before taking an independent card in a fresh worktree. Opening the PR is not
++done; closure requires the confirmed merge and the configured completion evidence. Wait only for
++actual code or acceptance dependencies. Isolate failures to affected cards and dependants, and
++release owned card/resource leases at their documented boundaries after active work has stopped.
++Do not erase leases or bypass locking to make a lane appear free.
+ 
+ **Start a new card in a new worktree.** A Claude Code session exits its previous worktree first;
+ a Codex lane starts a new session in the new card tree. Create the fresh tree from the remote
+@@ -199,12 +218,12 @@
+ from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
+ not a Claim — and a claim that needs verbatim output runs the command directly.
+ 
+-**A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
+-`success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
+-(1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
+-`state == "success"` and description `Review completed`; (2) a `Merge Risk:` line exists whose
+-commit prefix matches the current `headRefOid`. Anything else is a gap, not a pass; `Review rate
+-limited` means the review never started.
++**Required Codex PR review must be observed on the current PR head.** Record the repository,
++PR, exact head SHA, configured review producer, completed review result, and its evidence URL.
++A generic green check, a request comment, an old-head review, or an empty result is insufficient.
++Missing, skipped, failed, cancelled, rate-limited, or unverified review is a gap and blocks the
++required review gate. Preserve the functional CI gates and the established review contract;
++never invent a success result or substitute an advisory for a required review.
+ 
+ ---
+ 
+@@ -327,6 +346,17 @@
+ Project configuration lives in `.moai/config/sections/*.yaml`. Harness, TRUST 5, and phase LSP
+ thresholds come from `harness.yaml`, `quality.yaml`, `lsp.yaml`, and evaluator profiles; never
+ duplicate those values inline.
++
++**Distributed automation policy.** A new or unconfigured project starts with manual operation.
++TODO/card issuance, dispatch/execution, push/PR creation, review repair, merge, and release/deploy
++are independent opt-ins. Enabling one never enables another; automatic PR creation does not
++authorize automatic merge or deployment. Missing, invalid, or partial configuration leaves every
++unspecified stage manual and reports invalid settings. Preserve explicit user choices and local
++factory overrides during init, update, and migration; never copy maintainer automation into the
++shipped defaults. Until a stage has a verified implementation, keep it manual and report the gap.
++Where web settings are offered, display their effective value, source and override, and use the
++same validated configuration as the runtime, including authorization, audit, stop propagation,
++and safe application to in-flight work. Unsupported behavior remains a separate implementation task.
+ 
+ ## 11. moai CLI Verbs
+ 
+--- a/AGENTS.local.md
++++ b/AGENTS.local.md
+@@ -47,7 +47,7 @@
+ 
+ ## 1. Quick Start
+ 
+-See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. The core in one line: edit templates in `internal/template/templates/` and regenerate them with `make build`; commit in a card worktree (the primary checkout is prohibited — AGENTS.md §2·§3).
++See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. The core in one line: edit templates in `internal/template/templates/`, regenerate derived artifacts with the explicit emit targets, and use `make build` to check drift and embed the result; commit in a card worktree (the primary checkout is prohibited — AGENTS.md §2·§3).
+ 
+ ---
+ 
+@@ -67,7 +67,7 @@
+ internal/template/templates/.claude/
+ internal/template/templates/.moai/
+ # (The .agency/ template root has been removed — legacy archive; [2026-08-27 audit correction])
+-internal/template/templates/CLAUDE.md
++internal/template/templates/AGENTS.md.tmpl
+ ```
+ 
+ ### [HARD] Template-First Rule
+@@ -146,7 +146,7 @@
+ 
+ ### Embedded Template System · Command-to-Skill Publication
+ 
+-The full text has been moved to `.moai/docs/local-dev-guide.md` § 2b·2c (card t1303). Summary: `internal/template/embed.go` compiles `//go:embed all:templates` + `catalog.yaml` into the binary, so `make build` is required after editing a template; the codex skill emission of the 16 `/moai` commands is regenerated only through the explicit verb `make commands-emit`, and the emitted copies (`.agents/skills/moai-*/SKILL.md`) are not hand-edited.
++The full text is in `.moai/docs/local-dev-guide.md` § 2b·2c. The tracked per-file allowlist in `internal/template/embed_manifest_gen.go` embeds the templates and catalog; `internal/template/embed.go` exposes that filesystem. Use the explicit `make agents-emit`, `make commands-emit`, and `make embed-manifest` targets when their inputs change, then let `make build` check drift and compile. Never hand-edit generated agent or command artifacts. The command count is derived from the emitter inputs rather than maintained here.
+ 
+ ---
+ 
+@@ -179,7 +179,61 @@
+ 
+ Conventional Commits — `<type>(<scope>): <description>` + an optional body/footer. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. For examples and the full format, see `.moai/docs/local-dev-guide.md` § 4a.
+ 
+-### §4.0 Default development flow (local-main integration)
++### §4.0 Current card policy — draft PR and safe handoff
++
++This operator-approved policy supersedes the local-main batch/card-PR prohibitions in §4.0-H,
++§4.1, and the linked historical Git runbooks. It defines the required behavior, not a claim that
++an installed binary already implements every step. Verify the executable and current source
++before delivery; assign unsupported steps to the existing implementation owner without bypassing
++a gate or silently changing configuration.
++
++1. The leader only coordinates and supervises. Implementation, repair, build, and test execution
++   always belong to an officially assigned worker, in that worker's card worktree. There is no
++   emergency or unavailable-worker exception. Preserve any existing diff, its base, paths, and
++   evidence before handing it to that worker; do not overwrite or appropriate another writer's work.
++2. Use a fresh, short-lived card worktree from the verified configured base, with one writer and
++   the card/commit/evidence traceability carriers. Finish the required scoped local checks, then
++   open a draft PR promptly and obtain the configured Codex review for its exact current head.
++   Keep E2E, typecheck, security and other applicable functional gates. Missing or failed review
++   never counts as success; external PR code must not receive secrets.
++3. This ADK repository permits conditional auto-merge only for a non-fork, non-bot PR authored
++   by the verified connected GitHub user. Resolve that identity from the authorized connection;
++   never hard-code a maintainer login in the product. Unknown or mismatched authorship is not
++   eligible. Other-author, fork, and bot PRs must not have auto-merge enabled and require the
++   user's test confirmation and explicit approval before merge; both are required. For eligible own PRs, preserve the latest
++   head's required CI, actual Codex review, resolved findings, protection rules, and any required
++   approval by another person. PR creation alone grants no merge permission. Keep the repository
++   public and do not automatically delete branches, including for eligible own PRs. Release/deploy needs separate authorization.
++   Direct push to main remains prohibited. This policy does not authorize management-setting,
++   visibility, or protection changes. Do not change
++   branch protection, credentials, API keys, persistent app access, or cost commitments as part
++   of a documentation or review migration without the separately required approval.
++4. A safe handoff records the PR/head, scoped test evidence, review/repair owner and next action,
++   and the owned lease/resource disposition. A worker may then take the next independent card.
++   A PR is not done: confirm remote merge and the required completion evidence before closure.
++   Keep the original branch/worktree recoverable until that boundary.
++5. Only actual code or acceptance dependencies block a successor. A failed card blocks its
++   affected dependants, not the entire backlog. End active work before releasing its owned card
++   and test/resource leases through the documented lifecycle; never edit the DB or clear another
++   holder's lease to bypass a refusal. A serial slot and a test/resource slot are separate controls.
++6. Primary-main recovery requires preservation and an explicit handoff plan first. Do not switch,
++   reset, stash, or force-checkout the shared primary to make it match main. Inventory tracked,
++   untracked and relevant ignored changes and their owners, preserve them recoverably, and delegate
++   the approved recovery to its official worker. A clean dedicated main tree does not prove the
++   shared primary is safe to move.
++7. This repository's explicitly approved factory settings stay local. Shipped defaults are
++   manual with independent opt-ins for issuance, dispatch/execution, push/PR, review repair,
++   merge, and release/deploy. Preserve existing operator choices during updates. The scoped
++   own-author ADK choice above is local, not a distributed default. Web controls and
++   runtime must share effective settings; unsupported controls remain separately owned work.
++   This policy does not authorize implementing or switching to Kanban mode.
++
++### §4.0-H Historical local-main batch integration — not the current card procedure
++
++The following record preserves earlier decisions and evidence. Its card-PR prohibition, local-only
++closure, leader push/testing duties, and batch delivery steps are superseded by §4.0. It is not an
++executable migration or recovery recipe. Preservation and the shared-checkout safeguards remain
++binding; do not replay historical commands to bypass a current refusal.
+ 
+ `main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+ 
+@@ -236,7 +290,10 @@
+ 
+ Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+ 
+-### §4.1 Integration chain (main)
++### §4.1 Historical integration chain (main)
++
++Current card delivery is governed by §4.0. The older delivery sequence below is retained for
++provenance, not as authority to bypass the current draft-PR, review, role, or preservation gates.
+ 
+ This closes the gap where each card is verified and merged on its own, but **no one checks the combined state**. On 2026-08-15, 12 PRs each entered main with a green check, and only after they converged did it come to light that `moai update` deletes local-only files. With the 2026-10-05 GitHub Flow transition (M2), the integration base is `main` — the chain below is the post-transition standard, and the develop chain remains as history, marked [SUPERSEDED] below.
+ 
+@@ -443,7 +500,7 @@
+ ### [HARD] Four self-check questions (required before starting a complex task)
+ 
+ 1. Is this task the exclusive domain of a specialist agent?
+-2. Does that specialist agent exist in the catalogue? (CLAUDE.md Section 4)
++2. Does that specialist agent exist in the catalogue? (.moai/config/sections/delegation.yaml and the current agent definitions)
+ 3. Is delegation more advantageous than direct execution for quality, independence, and bias prevention?
+ 4. Can part of this task be decomposed into a parallel spawn of read-only sub-agents? (Anthropic "Exploration-First Pattern": analyze with WebFetch + Explore subagent → synthesize in the main agent)
+ 
+@@ -455,9 +512,14 @@
+ - New Go code of **500+ LOC** → `manager-develop` (cycle_type=tdd, domain context: backend) is mandatory — the former `expert-backend` is archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001
+ - Creating **3+** agents/skills → `builder-harness` is mandatory
+ 
+-### Permitted direct execution
+-
+-Typo/format fixes, editing one config setting, explicit user requests, absence of a delegation target, orchestration itself, git operations, and `/tmp` work.
++### Leader boundary and assigned-worker execution
++
++The leader may coordinate, read, review evidence, and prepare handoff reports. It must never
++implement, repair, build, or execute tests directly in any worktree. Trivial edits, urgency,
++explicit requests for completion, and missing workers do not create an exception. Preserve
++existing changes and delegate them to the officially assigned worker; if none is available,
++report that assignment blocker. The volume-based triggers above never relax this role boundary.
++Assigned workers may perform the bounded work within their own delegated scope.
+ 
+ ### Order: Rule 5 → §16 → Rule 1
+ 
+--- a/.claude/rules/local/repo-local-pr-policy.md
++++ b/.claude/rules/local/repo-local-pr-policy.md
+@@ -1,20 +1,35 @@
+ ---
+-description: "Repo-local policy override — moai-adk-go lands card work on local main (AGENTS.local.md §4.0): card work branches from local main and merges there with NO card-level PR; main direct push remains prohibited"
++description: "Repo-local card delivery — scoped local verification, prompt draft PR, current-head Codex review, independent work after safe handoff; direct main push prohibited"
+ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/skills/moai/workflows/moai.md"
+ ---
+ 
+ # Repo-Local Branch Policy (moai-adk-go maintainer override)
+ 
+-[HARD] In THIS repository, direct push to `main` is DISABLED. `main` is protected with `enforce_admins: true` + required PR (verified via `gh api repos/modu-ai/moai-adk/branches/main/protection`), so a direct push to `main` is rejected even for admins. `main` advances ONLY through release pull requests (`release/vX.Y.Z` → `main`, merge-commit strategy; self-merge allowed at 0 required approvals once the required status checks pass).
++[HARD] The current policy is `AGENTS.local.md` §4.0. An officially assigned worker uses a fresh
++card worktree, performs scoped local verification, opens a draft PR promptly, and hands off
++current-head Codex review and repair with evidence. A safe handoff permits the next independent
++card; opening a PR does not complete the first card. Confirm remote merge and the required
++completion evidence before closing it or disposing of its preserved worktree.
+ 
+-[HARD] Card workflow (git-flow transition 2026-08-27; model: AGENTS.local.md §4.1; flow: AGENTS.local.md §4.0; rules: .claude/rules/local/gitflow-lane-protocol.md):
+-- Card worktrees branch from local `main` (never `origin/main`).
+-- Completed cards land on LOCAL `main` through the integration verb (`moai integration merge --card`; AGENTS.local.md §4.0 §2), never through a typed `git merge`. There are NO card-level PRs. Remote CI on `origin/main` is the verdict surface; lanes report their local merge SHA and do NOT push — the factory leader collects lane merge SHAs and closes the batch (`release/main-batch-YYYYMMDD` PR, AGENTS.local.md §4.0 §6–§7).
+-- The orchestrator MUST NOT instruct lane agents (`manager-develop` / `manager-docs` / per-spawn workers) to open card PRs against `main`, regardless of Tier.
+-- PR-based ceremony (spec-workflow Route B tier routing) applies ONLY to the release path above.
++[HARD] Conditional auto-merge is allowed only for a non-fork, non-bot PR authored by the verified
++connected GitHub user. Resolve identity from the authorized connection; never hard-code a login.
++Unknown or mismatched authorship is ineligible. Other-author, fork and bot PRs must not have
++auto-merge enabled and require both the user's test confirmation and explicit approval before merge. Eligible
++own PRs still require latest-head CI, actual Codex review, findings resolved, protection rules,
++and any required approval by another person. PR creation alone grants no merge authority.
++Keep the repository public; do not automatically delete branches, including for eligible own PRs,
++or change management settings.
++Direct push to main remains prohibited. Release/deploy requires its own authorization.
++Repository protection claims require fresh remote evidence; historical API receipts are not
++proof of current settings and do not authorize changing those settings.
+ 
+-> ~~Prior policy (2026-07-20 → superseded 2026-08-26): ALL tiers (S / M / L) use Route B (PR): work lands on a feature branch and merges via PR~~ [RETIRED 2026-08-27 — replaced by the git-flow transition]
++[HARD] The leader coordinates and supervises only. It never implements, repairs, builds, or runs
++tests in any worktree, including emergencies or worker unavailability. Preserve an existing diff
++and its provenance before handing it to the official worker. Do not fall back to leader execution.
+ 
+-- This is a repo-local addendum (local-only, NOT mirrored to `internal/template/templates/`). The distributed template keeps the generic Route A / Route B choice for downstream users who have no branch protection.
++This repo-local policy is not copied into distributed templates. Preserve explicitly approved
++local factory settings; downstream projects start manual and opt in to each automatic stage.
++Older card-PR prohibitions and leader-batch instructions in linked Git documents are historical.
++Unsupported runtime steps remain separately owned implementation work, not claims of completion.
+ 
+-Cross-reference: AGENTS.local.md §4.1; `.claude/rules/local/gitflow-lane-protocol.md`; `.moai/docs/git-workflow-doctrine.md` §18 / `.moai/docs/git-local-workflow-doctrine.md` §23 (header notices carry the transition framing).
++Cross-reference: `AGENTS.local.md` §4.0; `.claude/rules/local/gitflow-lane-protocol.md`.
+--- a/.claude/rules/local/gitflow-lane-protocol.md
++++ b/.claude/rules/local/gitflow-lane-protocol.md
+@@ -1,9 +1,27 @@
+ ---
+-description: "git-flow lane protocol (repo-local) — card worktrees branch from local main, lanes land through the integration verb on local main, origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
++description: "Repo-local lane protocol — current draft-PR policy in AGENTS.local.md §4.0; historical integration mechanics retained with scope limits"
+ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,AGENTS.local.md,internal/cli/**,internal/hook/**"
+ ---
+ 
+ # git-flow Lane Protocol (moai-adk-go, local-only)
++
++## Current policy and historical scope
++
++`AGENTS.local.md` §4.0 governs current card delivery: official worker, short card worktree,
++scoped local verification, prompt draft PR, current-head Codex review, and safe handoff before
++independent next work. PR is not done. Only the verified connected user's own non-fork, non-bot
++PR may use conditional auto-merge, with all latest-head review, CI, findings, protection and
++required independent-approval gates intact. Other-author, fork and bot PRs must not have
++auto-merge enabled and require both user test confirmation and explicit approval. Keep the repository public,
++do not automatically delete branches even for eligible own PRs, and keep release/deploy separately authorized.
++The leader never implements, repairs, builds, or executes tests in any worktree; urgency and
++worker absence are not exceptions. Preserve existing diffs before official-worker handoff.
++
++The older sections below preserve mechanics and evidence, not the superseded delivery model.
++Their no-card-PR rule, leader bulk push, wait-until-merge dispatch, local-only closure, and any
++leader build/test duty do not apply. Keep one-writer, preservation, ownership and resource-lease
++safeguards. Use only implemented and verified lifecycle verbs; record unsupported steps as gaps.
++Do not change the shared primary or replay historical recovery commands without preservation.
+ 
+ > **2026-08-27, operator instruction.** This repository switched from GitHub Flow to git-flow. It deliberately reverses the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The model and its rationale are in `AGENTS.local.md` §4.1; this file is the **operating rule** that lanes and the factory leader follow as written.
+ >
+--- a/.moai/docs/git-workflow-doctrine.md
++++ b/.moai/docs/git-workflow-doctrine.md
+@@ -1,4 +1,17 @@
+ # Git Workflow Doctrine — git-flow (2026-08-27 전환; 종전 모델: Enhanced GitHub Flow)
++
++> **Current policy:** `AGENTS.local.md` §4.0 and `repo-local-pr-policy.md` govern card delivery.
++> The older no-card-PR, leader batch/push, and direct leader implementation/test procedures below
++> are historical. Required gates and preservation still apply. A prior protection receipt is not
++> proof of current remote settings. Do not execute the historical branch-protection mutations,
++> stash/reset recovery recipes, hook bypasses, or alternative commands after an approval denial.
++> ADK permits conditional auto-merge only for the verified connected user's own non-fork, non-bot
++> PR, with all current-head gates intact. Other-author, fork and bot PRs require both user test
++> confirmation and explicit approval and must not have auto-merge enabled. Keep the repository public
++> and do not automatically delete branches, including for eligible own PRs. This local choice does
++> not authorize changing management settings.
++> Preserve existing work and hand recovery or implementation to the officially assigned worker.
++> No emergency or unavailable-worker exception permits leader implementation, repair, or tests.
+ 
+ > Externalized verbatim from CLAUDE.local.md §18 on 2026-05-20 (v2.20.0-rc1 release-readiness consolidation). Original section authored v2.14.0 onward.
+ 
+--- a/.moai/docs/git-local-workflow-doctrine.md
++++ b/.moai/docs/git-local-workflow-doctrine.md
+@@ -1,4 +1,17 @@
+ # Local Git Workflow Doctrine (PR-mandatory 1-person OSS) — extracted from CLAUDE.local.md §23
++
++> **Current policy:** `AGENTS.local.md` §4.0 and `repo-local-pr-policy.md` govern card delivery.
++> The older no-card-PR, leader batch/push, and direct leader implementation/test procedures below
++> are historical. Required gates and preservation still apply. A prior protection receipt is not
++> proof of current remote settings. Do not execute the historical branch-protection mutations,
++> stash/reset recovery recipes, hook bypasses, or alternative commands after an approval denial.
++> ADK permits conditional auto-merge only for the verified connected user's own non-fork, non-bot
++> PR, with all current-head gates intact. Other-author, fork and bot PRs require both user test
++> confirmation and explicit approval and must not have auto-merge enabled. Keep the repository public
++> and do not automatically delete branches, including for eligible own PRs. This local choice does
++> not authorize changing management settings.
++> Preserve existing work and hand recovery or implementation to the officially assigned worker.
++> No emergency or unavailable-worker exception permits leader implementation, repair, or tests.
+ 
+ > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
+ 
+--- a/.moai/docs/local-dev-guide.md
++++ b/.moai/docs/local-dev-guide.md
+@@ -112,17 +112,17 @@
+ 
+ moai-adk-go uses Go's `go:embed` directive:
+ - **Source**: `internal/template/templates/` (edit here — this is the source of truth)
+-- **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
++- **Embed mechanism**: `internal/template/embed_manifest_gen.go` is the generated, tracked per-file embed allowlist; `internal/template/embed.go` exposes its filesystem. Update the allowlist through `make embed-manifest` when the tracked template set changes. `make build` checks drift before compiling; it does not regenerate agent or command outputs.
+ - **Build**: Run `make build` after editing templates (recompiles the binary)
+ 
+ ## 2c. Command-to-Skill Publication (SPEC-CODEX-COMMAND-SKILLS-001)
+ 
+-`internal/template/commandemit` publishes the 16 `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
++`internal/template/commandemit` publishes the configured `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
+ 
+ - **Regenerate** (after editing any command source or the emitter): `make commands-emit`
+ - **Drift check**: `make commands-emit-check` — read-only, wired ahead of `build` (same position as `agents-emit-check`); it never writes
+ - **Boundary**: bodies publish VERBATIM from the command sources, including their Claude-only `Skill("moai")` dispatcher line — the emitter flags this per skill and never repairs it (repair is the command-body layer's concern, sibling card t497). Do not hand-edit the emitted SKILL.md files; edit the command sources and regenerate.
+-- **gitignore coupling**: the 16 published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
++- **gitignore coupling**: the published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
+ 
+ ## 4a. Commit Message Format
+ ```
+--- a/.moai/docs/update-local-file-survival.md
++++ b/.moai/docs/update-local-file-survival.md
+@@ -1,7 +1,7 @@
+ # moai update와 로컬 전용 파일 — 관리 대상 삭제의 실측과 생존 규칙
+ 
+ > CLAUDE.local.md §2.3 에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜를 포함하므로 템플릿 중립성 §25 의 금지 클래스에 해당). 이 문서의 정본은 main 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용 — 2026-10-05 GitHub Flow 전환 후 분기 트리는 `main` 이다) — 갱신은 카드 워크트리에서 한 뒤 main 으로 PR을 낸다.
+-> CLAUDE.local.md 쪽에는 이 요지만 남는다: `CleanMoaiManagedPaths` 가 관리 대상 뿌리를 통째로 삭제하며 보호 목록이 없다는 사실, 로컬 전용 파일 배치 [HARD], update 후 검증·git-strategy 재적용 [HARD].
++> 현재 보존 계약은 아래 분류·병합 절과 `AGENTS.local.md`를 따른다. 예전 wipe·설정 재적용 절차는 사고 기록이며 현재 실행 지시가 아니다. 명시적 사용자 설정과 로컬 factory override를 보존하고 결과를 확인한다.
+ 
+ ---
+ 
+@@ -29,6 +29,10 @@
+ 5. **`git status --porcelain | grep '^ D'` 검증은 이제 통과가 기본이다** — 통과해도 관리 뿌리 밖 실수는 잡지 못한다. `--dry-run`이 분류 예정표(refresh/merge/preserve/stale)를 미리 보여 주므로 큰 update 전에 본다.
+ 
+ ---
++
++## 과거 wipe 경로와 복구 기록 — 실행 금지
++
++이 절의 일괄 restore·설정 덮어쓰기는 당시 사고 기록이다. 현재 공유 체크아웃에 재실행하지 않는다. 변경과 소유자를 먼저 보존하고 공식 담당자에게 복구를 인계한다.
+ 
+ **위 Local-Only 목록에 적혀 있다는 사실만으로는 파일이 보호되지 않는다.** 2026-08-15 `moai update --yes` 실행에서 이 목록에 명시된 파일 12개가 실제로 삭제됐다 — 목록은 사람과 AI가 읽는 문서일 뿐, 삭제를 수행하는 Go 코드는 이 파일을 읽지 않는다.
+ 
+@@ -79,6 +83,8 @@
+ 
+ 히스토리: 2026-08-27~2026-10-05 의 develop GitFlow 체인에서는 `manual.workflow: git-flow` + `develop_branch: develop` 등 다섯 키를 매 update 후 재적용했다. 2026-10-05 GitHub Flow 전환(card t1522)으로 그 키들은 폐기됐고, 이 절의 구 지시(`--source=develop`, `worktree_base_branch: develop`)는 card t1564 가 main 기준으로 갱신했다.
+ 
++## 현행 별도 관측 의무
++
+ **[HARD] AC 스냅숏 커밋 가드의 무장 상태는 세션 시작마다 읽는다 (card t1161).** t1150 이
+ 넣은 가드(`git config hook.ac-baseline-guard.{event,command}` + `scripts/ac-baseline/check-staged.sh`)는
+ **꺼져도 조용하다** — 키 삭제·git < 2.54·체커 부재 세 경우 모두 커밋이 그냥 통과하고, 그 통과는
+--- a/.moai/docs/harness-namespace-doctrine.md
++++ b/.moai/docs/harness-namespace-doctrine.md
+@@ -1,4 +1,6 @@
+ # Harness Namespace Separation Doctrine — extracted from CLAUDE.local.md §24
++
++> 현재 설치 위치와 보존 동작은 `internal/cli/user_asset_phase.go`, `internal/template/deployer_mode.go`, `internal/cli/update_reconcile.go`와 `.moai/docs/update-local-file-survival.md`의 현행 절을 함께 읽는다. 아래의 프로젝트 공통 자산 삭제 후 재설치 표는 이전 배포 구조의 기록이다. 이를 근거로 HOME 공통 자산이나 사용자 수정본을 삭제하지 않는다. 로컬 factory 설정을 범용 템플릿에 복사하지 않는다.
+ 
+ > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
+ 
+--- a/.moai/docs/version-management.md
++++ b/.moai/docs/version-management.md
+@@ -102,11 +102,11 @@
+ (and the embedded commit SHA) to decide which binary is newer; never order builds
+ by version string.
+ 
+-**`moai update` resets `git-strategy.yaml`.** The
+-`.moai/config/sections/git-strategy.yaml` keys — `rc_version_format: vX.Y.Z-rc.N`
+-among them, with `workflow: git-flow` and the develop/release branch keys — are
+-reset to template defaults by every `moai update` and must be re-applied after
+-each update (re-application procedure: CLAUDE.local.md §2.3).
++**Preserve operator-set git strategy during update.** The former wipe-and-reapply
++procedure is historical. Use the current classification and preservation contract in
++`.moai/docs/update-local-file-survival.md`; verify the operator's explicit values and
++local factory override after updating. Never restore the shared config wholesale merely
++because it differs from shipped manual defaults.
+ 
+ The clean-reinstall runbook (`rm -f` + `cp`, `scripts/verify-local-install.sh`, and
+ the exit-137 guard) is owned by `.claude/rules/local/gitflow-lane-protocol.md`
