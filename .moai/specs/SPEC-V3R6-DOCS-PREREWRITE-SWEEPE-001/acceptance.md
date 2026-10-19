@@ -13,10 +13,10 @@
 
 | AC | REQ | Cell(s) | RED-now? | Class |
 |----|-----|---------|----------|-------|
-| AC-PRC-001a | REQ-PRC-001, -002 | S-01 | red (18 matching lines in 10 files) | release-blocking |
-| AC-PRC-001b | REQ-PRC-001, -002 | S-02, S-06a | red (18 lines in 10 files; 1 `moai brain`) | release-blocking |
+| AC-PRC-001a | REQ-PRC-001, REQ-PRC-001-002 | S-01 | red (18 matching lines in 10 files) | release-blocking |
+| AC-PRC-001b | REQ-PRC-001, REQ-PRC-001-002 | S-02, S-06a | red (18 lines in 10 files; 1 `moai brain`) | release-blocking |
 | AC-PRC-001c | REQ-PRC-001 | S-05 | green (0) | regression-guard |
-| AC-PRC-001d | REQ-PRC-001-003, -002 | S-11, S-12 | red (no replacement present) | release-blocking |
+| AC-PRC-001d | REQ-PRC-001-003, REQ-PRC-001-002 | S-11, S-12 | red (no replacement present) | release-blocking |
 | AC-PRC-001e | REQ-PRC-001-005 | S-10 | green | regression-guard |
 | AC-PRC-001f | REQ-PRC-001-004 | S-13 (run time) | n/a before edits | release-blocking |
 | AC-PRC-001g | REQ-PRC-001-001 | S-03 | green for markers (0 at pin) | release-blocking |
@@ -25,6 +25,8 @@
 
 ### AC-PRC-001a — no closing-pattern line remains in the ten files
 
+Covers REQ-PRC-001 and REQ-PRC-001-002 (a flagged citation is replaced or deleted).
+
 - Given the ten page files at the run-phase HEAD,
 - When the closing pattern (cell S-01's command, with the run-phase HEAD in place of the pin) is run,
 - Then it prints nothing and exits 1, except for any line that carries a valid example marker; at the planner defaults no marker is added, so the output is empty.
@@ -32,6 +34,8 @@
 - Mutant probe: replacing `/moai fb` with a new unresolved word such as `/moai fbk` passes this AC; AC-PRC-001b catches it.
 
 ### AC-PRC-001b — no unresolved slash word and no `moai brain` remain
+
+Covers REQ-PRC-001 and REQ-PRC-001-002 (no unresolved citation survives the replace-or-delete sweep).
 
 - Given the ten page files at the run-phase HEAD,
 - When the complement command (cell S-02) and the `moai brain` command (cell S-06a) are run with the run-phase HEAD in place of the pin,
@@ -46,6 +50,8 @@
 - Green now (precondition). Guards against a replacement that introduces an absent CLI verb.
 
 ### AC-PRC-001d — four-locale parity of the replacement (Q13 and Q17 rulings)
+
+Covers REQ-PRC-001-003 and REQ-PRC-001-002 (the replacement is present in every locale).
 
 - Given operator ruling d-20261019T015908Z-220a (replace where an equivalent exists, otherwise delete; all four locales in the same change),
 - When the replacement-presence cells run with the run-phase HEAD (S-11 for the four feedback pages, S-12 for the four FAQ pages),

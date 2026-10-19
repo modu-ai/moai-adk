@@ -29,8 +29,8 @@ Child: SWEEPE
 Operator verdict: exempt only narrative examples that carry an explicit example marker; lines without a marker are fixed — operator, d-20261014T060405Z-0fcd (2026-10-14T06:04:05Z)
 
 ### QE-1: How are the three feedback alias lines handled?
-Label: DECIDED (by Q13 above; the row records the residual wording choice)
-Authority anchor: operator record d-20261019T015908Z-220a (standing ruling, Q13)
+Label: FOUNDER
+Authority anchor: none in the committed tree; operator record d-20261019T015908Z-220a (standing ruling, Q13, decision board). The ruling sets the rule; the row records the residual wording choice
 Why unresolved: `fb` resolves only as a router alias; `bug` and `issue` do not resolve. The ruling requires replace-where-an-equivalent-exists; `/moai:feedback` is the registered equivalent for all three. Choice left: delete instead of replace.
 Class: implementation-level
 Default: replace with `> /moai:feedback` (rule: the Q13 ruling)
