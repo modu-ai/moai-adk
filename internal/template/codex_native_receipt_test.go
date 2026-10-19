@@ -24,7 +24,7 @@ func cgNativeIssueComments(t *testing.T, head string) []any {
 	return comments
 }
 
-// Captured native issue-comment artifacts; no formal APPROVED review exists.
+// Native issue-comment fixture with current code and security receipts; no formal APPROVED review exists.
 func TestCodexNativeReceipt(t *testing.T) {
 	cgTools(t)
 	raw, err := os.ReadFile(filepath.Join(findProjectRootForMirrorTest(t), "internal/template/testdata/codex-native-clean.json"))
@@ -141,7 +141,7 @@ func TestCodexNativeReceipt(t *testing.T) {
 				x["user"] = map[string]any{"id": 1, "login": cgBotLogin, "type": "Bot"}
 			}
 			return v
-		}, 11},
+		}, 1},
 		{"stale_receipt_refuses", func(v []cgEntry) []cgEntry {
 			v[1]["body"] = strings.ReplaceAll(v[1]["body"].(string), head[:10], cgOther[:10])
 			return v
@@ -168,6 +168,190 @@ func TestCodexNativeReceipt(t *testing.T) {
 			if got.code != tc.want {
 				t.Fatalf("exit=%d want=%d: %s", got.code, tc.want, got.all())
 			}
+		})
+	}
+}
+
+func cgLoadNative1828Fixture(t *testing.T, name string) []cgEntry {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(findProjectRootForMirrorTest(t), "internal/template/testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var entries []cgEntry
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
+func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
+	cgTools(t)
+	unresolved := cgLoadNative1828Fixture(t, "codex-native-1828-unresolved.json")
+	clean := cgLoadNative1828Fixture(t, "codex-native-1828-clean.json")
+
+	run := func(t *testing.T, entries []cgEntry, wantCode int, wantText string) {
+		t.Helper()
+		dir := t.TempDir()
+		var issueEntries []any
+		for _, entry := range entries {
+			issueEntries = append(issueEntries, entry)
+		}
+		issues := cgWriteList(t, dir, "issues", issueEntries...)
+		reviews := cgWriteList(t, dir, "reviews")
+		comments := cgWriteList(t, dir, "comments")
+		args := append(cgReadArgs(reviews, comments, "ab609cafbf8f421164100c626db93048f888655f", "false", "true"), "--issue-comments", issues)
+		got := cgExec(t, cgScriptPath(t), nil, args...)
+		if got.code != wantCode || !strings.Contains(got.all(), wantText) {
+			t.Fatalf("exit=%d want=%d output=%s; want text %q", got.code, wantCode, got.all(), wantText)
+		}
+	}
+
+	t.Run("actual_unresolved_review_remains_blocked", func(t *testing.T) {
+		run(t, unresolved, 1, "finding:unresolved:code_review")
+	})
+
+	for _, tc := range []struct {
+		name   string
+		edit   func([]cgEntry) []cgEntry
+		want   int
+		reason string
+	}{
+		{name: "security_receipt_newest_actual_clean_text", want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_newest_actual_clean_text", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["id"] = float64(6267807386)
+				} else if entry["id"] == float64(6267807385) {
+					entry["id"] = float64(6267807385)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "legacy_code_clean_text_security_newest", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. :+1:", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_actual_bravo_clean_text", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. Bravo.", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_actual_bravo_clean_text_code_newest", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["id"] = float64(6267807386)
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. Bravo.", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "legacy_code_clean_text_code_newest", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["id"] = float64(6267807386)
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. :+1:", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "duplicate_current_code_receipt_is_ambiguous", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					duplicate := make(cgEntry, len(entry))
+					for key, value := range entry {
+						duplicate[key] = value
+					}
+					duplicate["id"] = float64(6267807386)
+					return append(v, duplicate)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-ambiguous:code_review"},
+		{name: "code_receipt_with_security_type_cue_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review:", "### Codex Security Review\nCodex Review:", 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-type-ambiguous"},
+		{name: "unknown_receipt_type_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review:", "Code review completed:", 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-type-unknown"},
+		{name: "missing_security_receipt_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			filtered := v[:0]
+			for _, entry := range v {
+				if entry["id"] != float64(6266869543) && entry["id"] != float64(6267807385) {
+					filtered = append(filtered, entry)
+				}
+			}
+			return filtered
+		}, want: 1, reason: "native-receipt-missing:security_review"},
+		{name: "forged_code_receipt_identity_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["user"] = map[string]any{"id": 42, "login": "chatgpt-codex-connector[bot]", "type": "Bot"}
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-author-invalid"},
+		{name: "forged_receipt_with_valid_receipt_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					forged := make(cgEntry, len(entry))
+					for key, value := range entry {
+						forged[key] = value
+					}
+					forged["id"] = float64(6267807391)
+					forged["user"] = map[string]any{"id": 42, "login": "chatgpt-codex-connector[bot]", "type": "Bot"}
+					return append(v, forged)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-author-invalid"},
+		{name: "stale_code_receipt_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "ab609cafbf", cgOther[:10], 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "stale-review:"},
+		{name: "security_receipt_must_have_its_own_clean_text", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267807385) {
+					entry["body"] = strings.Replace(entry["body"].(string), "No security issues were found", "Security issues were found", 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-not-clean:security_review"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var entries []cgEntry
+			for _, entry := range clean {
+				clone := make(cgEntry, len(entry))
+				for key, value := range entry {
+					clone[key] = value
+				}
+				entries = append(entries, clone)
+			}
+			if tc.edit != nil {
+				entries = tc.edit(entries)
+			}
+			run(t, entries, tc.want, tc.reason)
 		})
 	}
 }
@@ -235,7 +419,7 @@ func TestAutoMergeNativeReceiptRecheck(t *testing.T) {
 			r := newAMRig(t, "real")
 			r.e.setPages("files", cgBenignFiles(2, cgHead))
 			r.e.setPages("issues", entries)
-			pull := strings.ReplaceAll(amPull(cgHead, false, 2, 0), `"comments":0`, `"comments":2`)
+			pull := strings.ReplaceAll(amPull(cgHead, false, 2, 0), `"comments":0`, `"comments":3`)
 			r.setPulls(pull)
 			if tc.change {
 				var v []any

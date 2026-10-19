@@ -1,6 +1,14 @@
 # 아키텍처 개요
 
-## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
+## PR #1828 후보 트리 스냅샷 — `ab609caf` 기반
+
+이 스냅샷은 t1868 작업트리에서 원격 PR head `ab609cafbf8f421164100c626db93048f888655f`에 현재 lane의 소스 수리를 반영해 측정했다. `find internal cmd pkg -type f -name '*.go'`에서 Go 파일 5112개(비테스트 1725·테스트 3387), `go list ./...`에서 패키지 176개를 측정했다. 최상위 디렉터리는 90개(`internal` 86·`cmd` 2·`pkg` 2), 내부 import 쌍은 519개, 최상위로 접고 self-edge를 뺀 쌍은 325개, embedded template 파일은 624개다. CLI의 literal `AddCommand(` 줄은 258개, `rootCmd.AddCommand(` 줄은 69개이며 이는 명령 실행 가능 수가 아니다. 이 수치는 해당 후보 트리의 측정값이며 merge 결과를 뜻하지 않는다.
+
+현재 구조에서 PR #1828은 CI의 두 제어면을 연결한다. `.github/required-checks.yml`을 `internal/config/required_checks.go`가 읽고 후보 run 판정과 release gate가 이를 사용한다. 별도로 `.github/workflows/auto-merge.yml`은 native Codex code/security 결과를 `scripts/ci/codex-review-gate.sh`로 판정한다. GitHub 원격 main의 2026-10-19 13:54 UTC `required_status_checks`는 `Test (ubuntu-latest)`, `Lint`, `Build (linux/amd64)`, `Analyze (Go) (go)`, `Release PR Multi-OS Gate` 다섯 항목이며 `strict=false`, app id `15368`이다. Codex는 이 목록의 branch-protection context가 아니라 auto-merge workflow의 별도 차단 계약이다. 같은 시점의 `rules/branches/main` 조회는 빈 배열이었다.
+
+Factory lane 시작 안내는 `internal/hook/session_start_factory_i18n.go`의 네 로케일 메시지로 만들어지고 `session_start_factory.go`가 startup에 주입한다. 영어 문장을 압축해도 운영자 승인 임대, 재시작 종료 조건, current-head native review 원칙과 GLM/GPT 동작을 보존한다. 이 절은 저장소 구조와 원격 설정 조회 스냅샷이며, 다른 OS에서의 실행이나 merge 가능성을 뜻하지 않는다.
+
+## 이전 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.
 

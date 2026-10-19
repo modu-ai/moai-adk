@@ -46,6 +46,42 @@ def timestamp: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[
 def idtext: if (.id | type) == "number" then (.id | tostring) else "?" end;
 def is_head($v): ($v | type) == "string" and ($v | ascii_downcase) == $head;
 def full_sha: type == "string" and test("^[0-9A-Fa-f]{40}$");
+def receipt_head_lines:
+  (.body // "") | split("\n") | map(select(startswith("**Reviewed commit:** ")));
+def receipt_head:
+  receipt_head_lines as $lines
+  | if ($lines | length) == 1 then ($lines[0] | ltrimstr("**Reviewed commit:** `") | rtrimstr("`")) else "" end;
+def receipt_prefix_matches:
+  . as $v
+  | ($v | type) == "string" and ($v | test("^[0-9A-Fa-f]{10,40}$")) and ($head | startswith($v | ascii_downcase));
+def receipt_kind:
+  (.body // "") as $body
+  | (($body | split("\n") | any(startswith("Codex Review:")))) as $code
+  | (($body | contains("Codex Security Review")) or ($body | contains("Security review completed."))) as $security
+  | if $code and $security then "ambiguous"
+    elif $code then "code"
+    elif $security then "security"
+    else "unknown" end;
+def receipt_check($kind):
+  . as $all
+  | ($all | map(select(.kind == $kind))) as $items
+  | ($items | if length == 0 then null else max_by(.id) end) as $latest
+  | ($items | map(select(.reviewed_head | receipt_prefix_matches)) | length) as $current_count
+  | ($latest.body // "") as $body
+  | ($body | split("\n")) as $lines
+  | [$lines[] | select(startswith("**Reviewed commit:** "))] as $head_lines
+  | ($latest | receipt_head) as $reviewed_head
+  | (if $kind == "code"
+     then [$lines[] | select(. == "Codex Review: Didn\u0027t find any major issues. :+1:" or . == "Codex Review: Didn\u0027t find any major issues. Chef\u0027s kiss." or . == "Codex Review: Didn\u0027t find any major issues. Bravo.")] | length
+     else [$lines[] | select(. == "Security review completed. No security issues were found in this pull request.")] | length
+     end) as $clean_count
+  | if $latest == null then "native-receipt-missing:\($kind)_review"
+    elif $current_count > 1 then "native-receipt-ambiguous:\($kind)_review"
+    elif ($body | [scan("<!-- codex-review-receipt:v1 -->")] | length) != 1 or $lines[0] != "<!-- codex-review-receipt:v1 -->" then "native-receipt-malformed:\($kind)_review"
+    elif ($head_lines | length) != 1 or ($reviewed_head | test("^[0-9A-Fa-f]{10,40}$") | not) then "native-receipt-malformed:\($kind)_review"
+    elif ($reviewed_head | receipt_prefix_matches | not) then ("stale-review:" + $reviewed_head[0:10])
+    elif $clean_count != 1 then "native-receipt-not-clean:\($kind)_review"
+    else null end;
 def leading_block:
   split("\n")
   | reduce .[] as $line ([true, []];
@@ -54,7 +90,8 @@ def leading_block:
       else . end)
   | .[1] | join("\n");
 # Only whole marker lines in the initial HTML-comment block are eligible. A marker elsewhere is tampering.
-($issues | map(select(ident))) as $native
+($issues | map(select((.body // "") | contains("<!-- codex-review-receipt:v1 -->")))) as $claimed_receipts
+| ($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
 | ($native | map(select((.body // "") | contains("<!-- codex-review-receipt:v1 -->")))) as $receipts
 | ($states[0] // null) as $state_comment
@@ -72,14 +109,12 @@ def leading_block:
 | ($states | map(.id) | group_by(.) | map(select(length > 1)) | length) as $state_id_dups
 | ($receipts | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $receipt_bad
 | ($receipts | map(.id) | group_by(.) | map(select(length > 1)) | length) as $receipt_id_dups
-| ($receipts | map(select((.id | type) == "number")) | max_by(.id)) as $receipt
-| ($receipt.body // "") as $receipt_body
-| ($receipt_body | [scan("<!-- codex-review-receipt:v1 -->")] | length) as $receipt_marker_count
-| ($receipt_body | split("\n") | .[0]) as $receipt_first_line
-| ($receipt_body | split("\n") | map(select(startswith("**Reviewed commit:** ")))) as $receipt_head_lines
-| (if ($receipt_head_lines | length) == 1 then ($receipt_head_lines[0] | ltrimstr("**Reviewed commit:** `") | rtrimstr("`")) else "" end) as $receipt_head
-| ($receipt_body | split("\n") | map(select(. == "Codex Review: Didn\u0027t find any major issues. :+1:")) | length) as $receipt_clean_count
-| (($receipt_head | test("^[0-9A-Fa-f]{10,40}$")) and ($head | startswith($receipt_head | ascii_downcase))) as $receipt_head_matches
+| ($receipts | map(. + {kind: receipt_kind, reviewed_head: receipt_head})) as $typed_receipts
+| (($claimed_receipts | map(select(ident)) | length) != ($claimed_receipts | length)) as $receipt_author_invalid
+| ($typed_receipts | map(select(.kind == "ambiguous")) | length) as $receipt_type_ambiguous
+| ($typed_receipts | map(select(.kind == "unknown")) | length) as $receipt_type_unknown
+| ($typed_receipts | receipt_check("code")) as $code_receipt_error
+| ($typed_receipts | receipt_check("security")) as $security_receipt_error
 | ($reviews | map(select(ident))) as $cand
 | ($cand | map(select(((.id | type) != "number") or ((.id | floor) != .id) or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
 | ($cand | map(select((.id | type) == "number")) | group_by(.id) | map(select(length > 1)) | .[0]) as $dup
@@ -97,6 +132,7 @@ def leading_block:
   elif $dup != null then {c: 1, r: ("review-entry-invalid:duplicate-id:" + ($dup[0] | idtext))}
   elif $state_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
   elif $receipt_bad > 0 or $receipt_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
+  elif $receipt_author_invalid then {c: 1, r: "native-receipt-author-invalid"}
   elif ($states | length) > 1 then {c: 1, r: ("state-comment-duplicated:" + ($states | map(.id | tostring) | join(",")))}
   elif $state_comment != null and $state_bad > 0 then {c: 1, r: "state-comment-invalid"}
   elif $state_comment != null then
@@ -111,11 +147,10 @@ def leading_block:
     elif $security_occurrences == 1 and ($security_marker | type) != "object" then {c: 1, r: "security-marker-malformed"}
     elif $security_occurrences == 1 and (($security_marker.status | type) != "string" or ($security_marker.headSha | full_sha | not)) then {c: 1, r: "security-marker-malformed"}
     elif $security_occurrences == 1 and ($security_marker.headSha | full_sha) and (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
-    elif $receipt == null then {c: 1, r: "native-receipt-missing"}
-    elif $receipt_marker_count != 1 or $receipt_first_line != "<!-- codex-review-receipt:v1 -->" then {c: 1, r: "native-receipt-malformed"}
-    elif $receipt_clean_count != 1 then {c: 1, r: "native-receipt-not-clean"}
-    elif ($receipt_head_lines | length) != 1 or ($receipt_head | test("^[0-9A-Fa-f]{10,40}$") | not) then {c: 1, r: "native-receipt-malformed"}
-    elif ($receipt_head_matches | not) then {c: 1, r: ("stale-review:" + $receipt_head[0:10])}
+    elif $receipt_type_ambiguous > 0 then {c: 1, r: "native-receipt-type-ambiguous"}
+    elif $receipt_type_unknown > 0 then {c: 1, r: "native-receipt-type-unknown"}
+    elif $code_receipt_error != null then {c: 1, r: $code_receipt_error}
+    elif $security_receipt_error != null then {c: 1, r: $security_receipt_error}
     elif $code.status == "failed" then {c: 1, r: "review-failed:code_review"}
     elif $security.status == "failed" then {c: 1, r: "review-failed:security_review"}
     elif $find != null then {c: 1, r: ("finding:" + $find.id)}

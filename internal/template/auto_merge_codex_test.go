@@ -1429,7 +1429,7 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 		r := newAMRig(t, script)
 		r.e.setPages("files", cgBenignFiles(2, cgHead))
 		r.e.setPages("issues", cgNativeIssueComments(t, cgHead))
-		r.setPulls(amPullWithIssueComments(cgHead, false, 2, 0, 2))
+		r.setPulls(amPullWithIssueComments(cgHead, false, 2, 0, 3))
 		return r
 	}
 	noMerge := func(t *testing.T, r *amRig) {
@@ -1667,8 +1667,8 @@ func amSetGen(t *testing.T, r *amRig, kind string, gen int, entries ...any) {
 func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 	t.Parallel()
 	H := cgHead
-	p0 := amPullWithIssueComments(H, false, 2, 0, 2)
-	p1 := amPullWithIssueComments(H, false, 2, 1, 2)
+	p0 := amPullWithIssueComments(H, false, 2, 0, 3)
+	p1 := amPullWithIssueComments(H, false, 2, 1, 3)
 	// The author step and files step read the pull object three times before the review pass. The review
 	// pass reads twice, followed by the pre-merge recheck's two reads.
 	chainPulls := func(review ...string) []string { return append([]string{p0, p0, p0}, review...) }
@@ -1751,8 +1751,8 @@ func TestAutoMergeRetriesIssueCommentCountRaceDuringReviewWait(t *testing.T) {
 	t.Parallel()
 	cgTools(t)
 	H := cgHead
-	p2 := amPullWithIssueComments(H, false, 2, 0, 2)
-	p3 := amPullWithIssueComments(H, false, 2, 0, 3)
+	p2 := amPullWithIssueComments(H, false, 2, 0, 3)
+	p3 := amPullWithIssueComments(H, false, 2, 0, 4)
 	r := newAMRig(t, "real")
 	r.e.setPages("files", cgBenignFiles(2, H))
 	r.e.setPages("reviews", []any{})
@@ -1802,8 +1802,8 @@ func TestAutoMergeRetriesIssueCommentCountRaceDuringReviewWait(t *testing.T) {
 // ---------------------------------------------------------------------------------------------
 
 var (
-	amP0     = amPullWithIssueComments(cgHead, false, 2, 0, 2)
-	amP1     = amPullWithIssueComments(cgHead, false, 2, 1, 2)
+	amP0     = amPullWithIssueComments(cgHead, false, 2, 0, 3)
+	amP1     = amPullWithIssueComments(cgHead, false, 2, 1, 3)
 	amPOther = amPull(cgOther, false, 2, 0)
 	amPDraft = amPull(cgHead, true, 2, 0)
 )
