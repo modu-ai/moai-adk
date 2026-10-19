@@ -85,21 +85,6 @@
       "permanent": true
     },
     {
-      "source": "/:locale(ko|en|ja|zh)/agency/:path*",
-      "destination": "/:locale/design/:path*",
-      "permanent": true
-    },
-    {
-      "source": "/:locale(ko|en|ja|zh)/agency",
-      "destination": "/:locale/design",
-      "permanent": true
-    },
-    {
-      "source": "/agency/:path*",
-      "destination": "/design/:path*",
-      "permanent": true
-    },
-    {
       "source": "/:locale(ko|en|ja|zh)/book",
       "destination": "/:locale/core-concepts/book",
       "permanent": true
@@ -157,11 +142,6 @@
     {
       "source": "/quality-commands/moai-review",
       "destination": "/ko/utility-commands",
-      "permanent": true
-    },
-    {
-      "source": "/:locale(ko|en|ja|zh)/utility-commands/moai-mx",
-      "destination": "/:locale/utility-commands",
       "permanent": true
     },
     {
