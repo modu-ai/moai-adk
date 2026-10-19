@@ -10,12 +10,13 @@
 moai integration backup
 ```
 
-로컬 `refs/heads/main`을 origin의 `refs/heads/sync/main`에 밀어넣는다 — `.github/workflows/`의 그 어떤 workflow도 반응하지 않는 ref(동일성은 Go 회귀 테스트 `internal/cli/workflow_sync_ref_guard_test.go`가 지킨다). push argv는 소스 상수다:
+로컬 `refs/heads/main`을 origin의 `refs/heads/sync/main`에 밀어넣는다 — `.github/workflows/`의 그 어떤 workflow도 반응하지 않는 ref(동일성은 Go 회귀 테스트 `internal/cli/workflow_sync_ref_guard_test.go`가 지킨다). push argv의 플래그·원격·대상 ref는 소스 상수고, refspec의 소스측은 실행 시작에 한 번 해석해 고정한 SHA다:
 
 ```
-push --force --no-follow-tags --no-recurse-submodules origin refs/heads/main:refs/heads/sync/main
+push --force --no-follow-tags --no-recurse-submodules origin <sha>:refs/heads/sync/main
 ```
 
+- refspec의 `<sha>`는 verb가 실행 시작에 한 번 해석한 로컬 `main`의 전체 SHA다(고정 refspec — sync-audit round 2 R2-F1/R2-F2). 전송된 커밋과 성공 줄이 출력하는 SHA는 항상 동일하다: `remote.origin.pushurl`이 fetch url과 달라도 출력이 바뀌지 않고, push 뒤에 경쟁 writer가 `sync/main`을 덮어써도 이번 실행의 보고는 바뀌지 않는다. push 뒤의 원격 조회는 존재하지 않는다.
 - `--force`는 이 refspec에만, 구성으로 스코프된다(REQ-TBS-002). 다른 어떤 remote ref도 갱신하지 않는다.
 - `--no-follow-tags`는 호출자의 `push.followTags=true` 설정에도 항상 유지된다 — 어노테이션 태그가 push에 실려 `release.yml`을 켜는 일이 없다.
 - `--no-recurse-submodules`는 호출자의 `push.recurseSubmodules` 설정에도 항상 유지된다(sync-audit round 1 S1) — `only` 설정에서 이 flag가 없으면 push가 종료 코드 0으로 조용한 no-op가 되고 remote에는 아무 ref도 생기지 않으며, `on-demand`에서는 서브모듈 remote라는 두 번째 remote 면이 열린다.
@@ -44,7 +45,7 @@ push --force --no-follow-tags --no-recurse-submodules origin refs/heads/main:ref
 
 - `origin/main`은 여전히 `release/main-batch-YYYYMMDD` PR로만 앞선다(필수 PR, `enforce_admins: true` — `.claude/rules/local/repo-local-pr-policy.md`).
 - 브랜치 보호 규칙·가드·훅 설정·분산 템플릿(`internal/template/templates/**`)은 이 SPEC이 아무것도 건드리지 않았다(REQ-TBS-009).
-- `sync/main` 이외의 어떤 ref에도 force-push가 허용되지 않는다. 에이전트 세션의 `git push --force` 확인 규율은 그대로다 — 이 verb의 상수 refspec이 카드가 승인한 유일한 예외다.
+- `sync/main` 이외의 어떤 ref에도 force-push가 허용되지 않는다. 에이전트 세션의 `git push --force` 확인 규율은 그대로다 — 이 verb의 고정 refspec(`<sha>:refs/heads/sync/main`)이 카드가 승인한 유일한 예외다.
 
 ## 6. guard 유지 보수
 

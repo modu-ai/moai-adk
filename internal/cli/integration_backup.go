@@ -8,7 +8,9 @@
 // copies the candidate verb's runner shape (scrubbed env, GitExitError,
 // force-push of an explicit refspec; sibling exceptions, not a shared
 // mechanism — SPEC-CANDIDATE-CI-001 REQ-CCI-016 is the precedent) and differs
-// in the one way that matters: its refspec is a source constant, pinned here.
+// in the one way that matters: its push is the pinned refspec
+// `<sha>:refs/heads/sync/main` — flags, remote, and target ref are source
+// constants, and the transmitted commit is the printed one.
 package cli
 
 import (
@@ -24,23 +26,27 @@ import (
 
 // @MX:NOTE: [AUTO] The backup push is this constant argv, nothing else.
 // @MX:SPEC: SPEC-TRUNK-BACKUP-SYNC-001
-// REQ-TBS-002: the refspec, the force flag, --no-follow-tags, and
-// --no-recurse-submodules are source constants — never computed from flags,
-// configuration, or the environment. --force is scoped by construction to
-// exactly this refspec; --no-follow-tags holds even under a caller's
-// push.followTags=true, so no annotated tag reachable from main rides the
-// push (a tag ref would update a second remote ref and can fire release.yml);
-// --no-recurse-submodules holds even under a caller's push.recurseSubmodules
-// — under `only` the argv without it exits 0 as a silent no-op while the
-// remote gains no refs/heads/sync/main, and under `on-demand` the push
-// reaches submodule remotes, a second remote surface (sync-audit round 1,
-// S1). Provisional while operator decisions Q1-Q3 are open: a verdict
-// selecting another surface, ref name, or force semantics is a one-commit
-// amendment of these constants, the tests, and the runbook together.
+// REQ-TBS-002: the target-side ref name, the force flag, --no-follow-tags,
+// and --no-recurse-submodules are source constants — never computed from
+// flags, configuration, or the environment. --force is scoped by
+// construction to exactly this refspec; --no-follow-tags holds even under a
+// caller's push.followTags=true, so no annotated tag reachable from main
+// rides the push (a tag ref would update a second remote ref and can fire
+// release.yml); --no-recurse-submodules holds even under a caller's
+// push.recurseSubmodules — under `only` the argv without it exits 0 as a
+// silent no-op while the remote gains no refs/heads/sync/main, and under
+// `on-demand` the push reaches submodule remotes, a second remote surface
+// (sync-audit round 1, S1). The refspec's source side is the PINNED SHA
+// resolved once by the rev-parse below (sync-audit round 2, R2-F1/R2-F2):
+// <sha>:refs/heads/sync/main transmits exactly the commit the success line
+// prints — identical under any remote.origin.pushurl divergence, and no
+// post-push remote read exists to rename the report. Provisional while
+// operator decisions Q1-Q3 are open: a verdict selecting another surface,
+// ref name, or force semantics is a one-commit amendment of these
+// constants, the tests, and the runbook together.
 const (
 	backupTargetRef = "refs/heads/sync/main"
 	backupSourceRef = "refs/heads/main"
-	backupRefspec   = "refs/heads/main:refs/heads/sync/main"
 	backupRemote    = "origin"
 )
 
@@ -68,7 +74,8 @@ func (s *integrationBackupSeams) gitRunner() func(dir string, args ...string) (s
 // BEFORE any push attempt — a refusal names the missing ref and the constant
 // target and exits non-zero having issued no push. On a push failure
 // (REQ-TBS-004) both captured streams are printed and no further git command
-// runs. On success the pushed SHA and the target ref are printed.
+// runs. On success the pinned SHA — the commit the refspec transmitted —
+// and the target ref are printed.
 func runIntegrationBackup(dir string, seams integrationBackupSeams, out io.Writer) error {
 	git := seams.gitRunner()
 
@@ -78,7 +85,16 @@ func runIntegrationBackup(dir string, seams integrationBackupSeams, out io.Write
 	}
 	sha = strings.TrimSpace(sha)
 
-	if _, err := git(dir, "push", "--force", "--no-follow-tags", "--no-recurse-submodules", backupRemote, backupRefspec); err != nil {
+	// R2-F1/R2-F2 (sync-audit round 2): the refspec PINS the resolved SHA —
+	// <sha>:refs/heads/sync/main — so the transmitted commit IS the printed
+	// one: identical under any remote.origin.pushurl divergence from the
+	// fetch url (R2-F1), and no post-push remote read exists to observe a
+	// competitor (R2-F2; the round-1 S3 ls-remote lookup and its
+	// silent-downgrade path — R2-F3 — are deleted with it). If main advances
+	// between this rev-parse and the push, this backup carries the pinned
+	// commit; accuracy of the report is the requirement (REQ-TBS-001), and
+	// the next run catches up the rest.
+	if _, err := git(dir, "push", "--force", "--no-follow-tags", "--no-recurse-submodules", backupRemote, sha+":"+backupTargetRef); err != nil {
 		var exitErr *factorylane.GitExitError
 		if errors.As(err, &exitErr) {
 			return fmt.Errorf("integration backup: push to %s failed (git exit %d) — no further git command was issued\npush stdout:\n%s\npush stderr:\n%s", backupTargetRef, exitErr.ExitCode, exitErr.Stdout, exitErr.Stderr)
@@ -86,23 +102,7 @@ func runIntegrationBackup(dir string, seams integrationBackupSeams, out io.Write
 		return fmt.Errorf("integration backup: push to %s failed: %v — no further git command was issued", backupTargetRef, err)
 	}
 
-	// S3 (sync-audit round 1): report the SHA git ACTUALLY pushed, read from
-	// the post-push remote state — never the pre-push rev-parse value, which
-	// names a SHA that can be superseded between the two calls. The pinned
-	// argv carries no --porcelain, so the push's human status table rides
-	// stderr, which the runner discards on success; ls-remote answers the
-	// question directly, full-length, without updating anything. It is a
-	// READ: REQ-TBS-002's invariant binds commands that update remote refs,
-	// and REQ-TBS-004's no-further-command rule binds the FAILURE path — the
-	// push has succeeded here. A read failure degrades to the rev-parse
-	// value rather than failing a push that landed.
-	pushed := sha
-	if remoteRef, err := git(dir, "ls-remote", backupRemote, backupTargetRef); err == nil {
-		if fields := strings.Fields(strings.TrimSpace(remoteRef)); len(fields) == 2 && fields[1] == backupTargetRef && fields[0] != "" {
-			pushed = fields[0]
-		}
-	}
-	_, _ = fmt.Fprintf(out, "integration backup: pushed %s to %s on %s\n", pushed, backupTargetRef, backupRemote)
+	_, _ = fmt.Fprintf(out, "integration backup: pushed %s to %s on %s\n", sha, backupTargetRef, backupRemote)
 	return nil
 }
 
@@ -116,9 +116,11 @@ Between release batches, local main is the only copy of landed work. This
 verb mirrors it onto refs/heads/sync/main — a ref no workflow under
 .github/workflows reacts to (the exclusion is regression-guarded by the Go
 test suite) — so a second copy exists at origin. The push is the constant
-argv ` + "`push --force --no-follow-tags --no-recurse-submodules origin refs/heads/main:refs/heads/sync/main`" + `:
-force is scoped by construction to exactly that refspec, no tag rides the
-push, and no submodule remote is reached.
+argv ` + "`push --force --no-follow-tags --no-recurse-submodules origin <sha>:refs/heads/sync/main`" + `, where the
+refspec pins the local main SHA resolved at invocation start — the printed
+SHA is exactly the commit transmitted. Force is scoped by construction to
+exactly that refspec, no tag rides the push, and no submodule remote is
+reached.
 
 sync/main is a redundancy copy only: it never lands, is never merged into
 any branch, and never substitutes for the release/main-batch-YYYYMMDD

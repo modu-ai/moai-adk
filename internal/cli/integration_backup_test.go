@@ -17,12 +17,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
+
+// backupPinnedRefspecPattern matches the PINNED refspec form the verb pushes
+// (sync-audit round 2, R2-F1/R2-F2): the source side is the full SHA the verb
+// resolved at invocation start, the target side the constant sync ref.
+var backupPinnedRefspecPattern = regexp.MustCompile(`^[0-9a-f]{40}:` + regexp.QuoteMeta(backupTargetRef) + `$`)
 
 // backupGit runs one git command under the fixture's isolation envelope.
 func backupGit(t *testing.T, dir string, args ...string) string {
@@ -105,16 +111,22 @@ func backupRemoteRefs(origin string) map[string]string {
 }
 
 // assertBackupCapture enforces the invariants that ride EVERY verb run
-// (REQ-TBS-002 + REQ-TBS-006): each push is exactly the constant argv —
-// force flag and --no-follow-tags never appear on any other command — and
-// every push's remote operand resolves under the test's temporary root.
+// (REQ-TBS-002 + REQ-TBS-006): each push is exactly the constant flags and
+// remote plus the PINNED refspec `<sha>:refs/heads/sync/main` (sync-audit
+// round 2 — the transmitted commit is the printed one), the force flag never
+// appears on any other command, and every push's remote operand resolves
+// under the test's temporary root.
 func assertBackupCapture(t *testing.T, base string, rec *backupRecorder) {
 	t.Helper()
-	constantPush := []string{"push", "--force", "--no-follow-tags", "--no-recurse-submodules", "origin", backupRefspec}
+	constantPushPrefix := []string{"push", "--force", "--no-follow-tags", "--no-recurse-submodules", "origin"}
 	for _, call := range rec.calls {
 		if len(call.Args) > 0 && call.Args[0] == "push" {
-			if !reflect.DeepEqual(call.Args, constantPush) {
-				t.Errorf("captured push argv %v, want exactly %v (REQ-TBS-002: the refspec, force flag, and --no-follow-tags are constants)", call.Args, constantPush)
+			if len(call.Args) != len(constantPushPrefix)+1 || !reflect.DeepEqual(call.Args[:len(constantPushPrefix)], constantPushPrefix) {
+				t.Errorf("captured push argv %v, want exactly %v <sha>:refs/heads/sync/main (REQ-TBS-002: the force flag, --no-follow-tags, and --no-recurse-submodules are constants)", call.Args, constantPushPrefix)
+				continue
+			}
+			if !backupPinnedRefspecPattern.MatchString(call.Args[len(call.Args)-1]) {
+				t.Errorf("push refspec %q does not match the pinned form <sha>:%s (REQ-TBS-001: the refspec pins the resolved SHA — never the bare branch refspec)", call.Args[len(call.Args)-1], backupTargetRef)
 			}
 			url := backupGit(t, call.Dir, "remote", "get-url", "origin")
 			if !strings.HasPrefix(url, base) {
@@ -124,7 +136,7 @@ func assertBackupCapture(t *testing.T, base string, rec *backupRecorder) {
 		}
 		for _, a := range call.Args {
 			if a == "--force" || a == "-f" {
-				t.Errorf("force flag rides a non-push command %v (REQ-TBS-002: --force only ever accompanies the constant refspec)", call.Args)
+				t.Errorf("force flag rides a non-push command %v (REQ-TBS-002: --force only ever accompanies the pinned refspec)", call.Args)
 			}
 		}
 	}
@@ -365,25 +377,27 @@ func TestIntegrationBackupRecursionHazard(t *testing.T) {
 	assertBackupCapture(t, base, rec)
 }
 
-// TestIntegrationBackupReportsPushedSHA — S3 (sync-audit round 1, P2): the
-// success line names the SHA git ACTUALLY pushed, derived from the push's own
-// remote-tracking output — never the pre-push rev-parse value. The fixture
-// advances main between the verb's resolution call and its push (seam-level:
-// the recording seam commits on the clone the moment rev-parse answers), so
-// the two SHAs differ and the printed one is falsifiable.
+// TestIntegrationBackupReportsPushedSHA — S3 (sync-audit round 1) as amended
+// by round 2 (R2-F1/R2-F2): the verb PINS the SHA at the source — it pushes
+// the pinned refspec `<sha>:refs/heads/sync/main` — so when main advances
+// between the verb's resolution and its push, the backup carries (and the
+// success line names) the PINNED commit, never the post-advance tip, and no
+// post-push remote read can rename the report. The fixture advances main the
+// moment rev-parse answers (seam-level), so the pinned and advanced SHAs
+// differ and the printed one is falsifiable.
 func TestIntegrationBackupReportsPushedSHA(t *testing.T) {
 	t.Parallel()
 
 	base, origin, clone := backupFixture(t)
 	rec := &backupRecorder{}
-	stale := ""
+	pinned := ""
 	seam := integrationBackupSeams{Git: func(dir string, args ...string) (string, error) {
 		rec.calls = append(rec.calls, backupGitCall{Dir: dir, Args: append([]string(nil), args...)})
 		if len(args) > 0 && args[0] == "rev-parse" {
-			stale = backupGit(t, clone, "rev-parse", "refs/heads/main")
-			// main advances AFTER the verb resolved it, BEFORE the push.
+			pinned = backupGit(t, clone, "rev-parse", "refs/heads/main")
+			// main advances AFTER the verb pinned it, BEFORE the push.
 			backupGit(t, clone, "commit", "-q", "--allow-empty", "-m", "advanced mid-flight")
-			return stale, nil
+			return pinned, nil
 		}
 		return candidateScrubbedGit(dir, args...)
 	}}
@@ -392,18 +406,18 @@ func TestIntegrationBackupReportsPushedSHA(t *testing.T) {
 	if err := runIntegrationBackup(clone, seam, &out); err != nil {
 		t.Fatalf("verb: %v", err)
 	}
-	pushed := backupGit(t, clone, "rev-parse", "refs/heads/main")
-	if remote := backupRemoteRefs(origin)["refs/heads/sync/main"]; remote != pushed {
-		t.Fatalf("fixture guard: remote sync/main = %s, want the advanced tip %s", remote, pushed)
+	advanced := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	if pinned == advanced {
+		t.Fatal("fixture failed: main did not advance between pinning and push")
 	}
-	if stale == pushed {
-		t.Fatal("fixture failed: main did not advance between resolution and push")
+	if remote := backupRemoteRefs(origin)["refs/heads/sync/main"]; remote != pinned {
+		t.Errorf("remote sync/main = %s, want the PINNED tip %s — the pinned refspec transmits the pinned commit even though main advanced to %s mid-flight", remote, pinned, advanced)
 	}
-	if !strings.Contains(out.String(), pushed) {
-		t.Errorf("success line %q: want the ACTUALLY-pushed SHA %s (git pushed the advanced tip; the pre-push rev-parse value %s is stale)", out.String(), pushed, stale)
+	if !strings.Contains(out.String(), pinned) {
+		t.Errorf("success line %q: want the PINNED transmitted SHA %s (REQ-TBS-001: the printed SHA is the pinned transmitted SHA)", out.String(), pinned)
 	}
-	if strings.Contains(out.String(), stale) {
-		t.Errorf("success line %q: names the stale pre-push SHA %s", out.String(), stale)
+	if strings.Contains(out.String(), advanced) {
+		t.Errorf("success line %q: names the post-advance tip %s, which this run never transmitted", out.String(), advanced)
 	}
 	assertBackupCapture(t, base, rec)
 }
@@ -438,4 +452,134 @@ func TestIntegrationBackupScrubbedEnv(t *testing.T) {
 	if _, ok := foreignRefs["refs/heads/sync/main"]; ok {
 		t.Errorf("foreign repository gained refs/heads/sync/main (%v) — the scrub failed and the push landed in the wrong repository", foreignRefs)
 	}
+}
+
+// TestIntegrationBackupPushURLDivergence — R2-F1 (sync-audit round 2, P2):
+// with `remote.origin.pushurl` differing from the fetch url, the pushed-to
+// repository and the queried one diverge — so a success line derived from a
+// POST-PUSH remote read names a SHA that was never pushed (ls-remote queries
+// the fetch url). The fixture gives origin a separate pushurl bare repo and
+// pre-loads the fetch repo's sync/main with an older copy of main; the verb
+// must report the SHA THIS RUN pinned (== the local main tip it resolved),
+// not whatever the fetch repo's sync/main holds.
+func TestIntegrationBackupPushURLDivergence(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fetchRepo := filepath.Join(base, "fetch.git")
+	pushRepo := filepath.Join(base, "push.git")
+	clone := filepath.Join(base, "clone")
+	backupGit(t, base, "init", "-q", "--bare", fetchRepo)
+	backupGit(t, base, "init", "-q", "--bare", pushRepo)
+	backupGit(t, base, "init", "-q", clone)
+	backupGit(t, clone, "config", "user.email", "t@example.com")
+	backupGit(t, clone, "config", "user.name", "t")
+	backupGit(t, clone, "checkout", "-q", "-b", "main")
+	backupGit(t, clone, "commit", "-q", "--allow-empty", "-m", "seed")
+	backupGit(t, clone, "remote", "add", "origin", fetchRepo)
+	// The fetch repo's sync/main holds an older copy of main.
+	backupGit(t, clone, "push", "-q", fetchRepo, "refs/heads/main:refs/heads/sync/main")
+	oldFetchSHA := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	// main advances past the fetch repo's copy, and the pushurl diverges.
+	backupGit(t, clone, "commit", "-q", "--allow-empty", "-m", "second")
+	backupGit(t, clone, "remote", "set-url", "--push", "origin", pushRepo)
+	pinned := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	if pinned == oldFetchSHA {
+		t.Fatal("fixture failed: the fetch repo's copy did not diverge from main")
+	}
+
+	rec := &backupRecorder{}
+	var out strings.Builder
+	if err := runIntegrationBackup(clone, rec.seam(), &out); err != nil {
+		t.Fatalf("verb: %v", err)
+	}
+	if got := backupRemoteRefs(pushRepo)["refs/heads/sync/main"]; got != pinned {
+		t.Errorf("pushurl repo's sync/main = %s, want the pinned tip %s", got, pinned)
+	}
+	if got := backupRemoteRefs(fetchRepo)["refs/heads/sync/main"]; got != oldFetchSHA {
+		t.Errorf("fetch repo's sync/main = %s, want the untouched older copy %s (the verb pushes via the pushurl)", got, oldFetchSHA)
+	}
+	if !strings.Contains(out.String(), pinned) {
+		t.Errorf("success line %q: want THIS run's pinned SHA %s — under a divergent pushurl the report must name the transmitted commit, never a post-push read of the fetch url", out.String(), pinned)
+	}
+	if strings.Contains(out.String(), oldFetchSHA) {
+		t.Errorf("success line %q: names the fetch repo's stale sync/main SHA %s, which this run never pushed", out.String(), oldFetchSHA)
+	}
+	assertBackupCapture(t, base, rec)
+}
+
+// TestIntegrationBackupCompetitorPostPush — R2-F2 (sync-audit round 2, P2):
+// a competing writer force-pushes sync/main immediately AFTER this verb's
+// push (seam-level: the recording seam performs the competitor push the
+// moment the verb's push returns). The verb's success line must still name
+// THIS run's pinned SHA — reporting someone else's push is a false report.
+func TestIntegrationBackupCompetitorPostPush(t *testing.T) {
+	t.Parallel()
+
+	base, origin, clone := backupFixture(t)
+	rec := &backupRecorder{}
+	pinned, competitor := "", ""
+	seam := integrationBackupSeams{Git: func(dir string, args ...string) (string, error) {
+		rec.calls = append(rec.calls, backupGitCall{Dir: dir, Args: append([]string(nil), args...)})
+		if len(args) > 0 && args[0] == "rev-parse" {
+			pinned = backupGit(t, clone, "rev-parse", "refs/heads/main")
+		}
+		outStr, err := candidateScrubbedGit(dir, args...)
+		if len(args) > 0 && args[0] == "push" && err == nil {
+			// The competitor lands strictly after this verb's push returned.
+			backupGit(t, clone, "commit", "-q", "--allow-empty", "-m", "competitor commit")
+			competitor = backupGit(t, clone, "rev-parse", "refs/heads/main")
+			backupGit(t, clone, "push", "-q", "--force", origin, "refs/heads/main:refs/heads/sync/main")
+		}
+		return outStr, err
+	}}
+
+	var out strings.Builder
+	if err := runIntegrationBackup(clone, seam, &out); err != nil {
+		t.Fatalf("verb: %v", err)
+	}
+	if competitor == "" || competitor == pinned {
+		t.Fatal("fixture failed: the competitor did not produce a different SHA")
+	}
+	if remote := backupRemoteRefs(origin)["refs/heads/sync/main"]; remote != competitor {
+		t.Fatalf("fixture guard: remote sync/main = %s, want the competitor's %s", remote, competitor)
+	}
+	if !strings.Contains(out.String(), pinned) {
+		t.Errorf("success line %q: want THIS run's pinned SHA %s — a competitor that overwrites sync/main after the push must not rename the verb's report", out.String(), pinned)
+	}
+	if strings.Contains(out.String(), competitor) {
+		t.Errorf("success line %q: names the competitor's SHA %s, which this verb never pushed", out.String(), competitor)
+	}
+	assertBackupCapture(t, base, rec)
+}
+
+// TestIntegrationBackupPinnedRefspecArgv — R2 regression (sync-audit round
+// 2): the push argv reaches git with the exact pinned refspec form
+// `<sha>:refs/heads/sync/main`, where <sha> is the local main tip resolved
+// before the verb ran — never the bare branch refspec.
+func TestIntegrationBackupPinnedRefspecArgv(t *testing.T) {
+	t.Parallel()
+
+	base, origin, clone := backupFixture(t)
+	pinned := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	rec := &backupRecorder{}
+	if err := runIntegrationBackup(clone, rec.seam(), &strings.Builder{}); err != nil {
+		t.Fatalf("verb: %v", err)
+	}
+	var pushRefspecs []string
+	for _, call := range rec.calls {
+		if len(call.Args) > 0 && call.Args[0] == "push" {
+			pushRefspecs = append(pushRefspecs, call.Args[len(call.Args)-1])
+		}
+	}
+	if len(pushRefspecs) != 1 {
+		t.Fatalf("captured %d push commands, want exactly 1", len(pushRefspecs))
+	}
+	if pushRefspecs[0] != pinned+":"+backupTargetRef {
+		t.Errorf("push refspec %q, want the exact pinned form %q", pushRefspecs[0], pinned+":"+backupTargetRef)
+	}
+	if refs := backupRemoteRefs(origin); refs["refs/heads/sync/main"] != pinned {
+		t.Errorf("remote refs = %v, want refs/heads/sync/main at the pinned %s", refs, pinned)
+	}
+	assertBackupCapture(t, base, rec)
 }
