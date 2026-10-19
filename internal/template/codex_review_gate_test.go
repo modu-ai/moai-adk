@@ -421,6 +421,108 @@ func TestCodexGateReadNativeReviewPending(t *testing.T) {
 		{name: "empty_reviews_pending", comments: []any{cgComment(1, cgHead, cgHead, cgHuman)}, closed: "false", wantCode: 10, wantText: "pending:no-review"},
 		{name: "empty_reviews_and_comments_pending", closed: "false", wantCode: 10, wantText: "pending:no-review"},
 	})
+	for _, tc := range []struct {
+		name       string
+		closed     string
+		marker     string
+		wantCode   int
+		wantReason string
+	}{
+		{name: "security_marker_running_legs_completed_pending", closed: "false", marker: "running", wantCode: 10, wantReason: "pending:running"},
+		{name: "security_marker_running_legs_completed_window_closed_fails", closed: "true", marker: "running", wantCode: 1, wantReason: "review-not-complete:running"},
+		{name: "security_marker_failed_legs_completed_refused", closed: "false", marker: "failed", wantCode: 1, wantReason: "security-marker-disagrees:failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			entries := cgNativeIssueComments(t, cgHead)
+			mutated := 0
+			for _, raw := range entries {
+				entry, ok := raw.(map[string]any)
+				if !ok {
+					t.Fatalf("issue comment is %T, want object", raw)
+				}
+				body, ok := entry["body"].(string)
+				if !ok || !strings.Contains(body, "<!-- codex-security-review:v1 ") {
+					continue
+				}
+				before := body
+				body = strings.Replace(body, `"status":"completed"} -->`, `"status":"`+tc.marker+`"} -->`, 1)
+				if before == body {
+					t.Fatal("security marker status was not mutated")
+				}
+				entry["body"] = body
+				mutated++
+			}
+			if mutated != 1 {
+				t.Fatalf("mutated %d security markers, want exactly one", mutated)
+			}
+			dir := t.TempDir()
+			issues := cgWriteList(t, dir, "issues", entries...)
+			reviews := cgWriteList(t, dir, "reviews")
+			comments := cgWriteList(t, dir, "review-comments")
+			args := append(cgReadArgs(reviews, comments, cgHead, "false", tc.closed), "--issue-comments", issues)
+			got := cgExec(t, cgScriptPath(t), nil, args...)
+			if got.code != tc.wantCode || !strings.Contains(got.all(), tc.wantReason) {
+				t.Fatalf("exit=%d want=%d output=%s; want reason %q", got.code, tc.wantCode, got.all(), tc.wantReason)
+			}
+		})
+	}
+}
+
+func TestCodexGateReadNativeReviewPendingRefusesMalformedCompletedSHA(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name        string
+		codeSHAJSON string
+	}{
+		{name: "null", codeSHAJSON: "null"},
+		{name: "short", codeSHAJSON: `"ab609cafbf"`},
+		{name: "non_hex_full_length", codeSHAJSON: `"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			entries := cgNativeIssueComments(t, cgHead)
+			mutated := 0
+			for _, raw := range entries {
+				entry, ok := raw.(map[string]any)
+				if !ok {
+					t.Fatalf("issue comment is %T, want object", raw)
+				}
+				body, ok := entry["body"].(string)
+				if !ok || !strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					continue
+				}
+				before := body
+				body = strings.Replace(body, `"code_review":{"commit_sha":"`+cgHead+`"`, `"code_review":{"commit_sha":`+tc.codeSHAJSON, 1)
+				body = strings.Replace(body, `"status":"completed"} -->`, `"status":"running"} -->`, 1)
+				if before == body {
+					t.Fatal("state SHA and security marker were not mutated")
+				}
+				if !strings.Contains(body, `"code_review":{"commit_sha":`+tc.codeSHAJSON) {
+					t.Fatal("completed code SHA was not mutated")
+				}
+				if !strings.Contains(body, `"status":"running"} -->`) {
+					t.Fatal("security marker status was not mutated")
+				}
+				entry["body"] = body
+				mutated++
+			}
+			if mutated != 1 {
+				t.Fatalf("mutated %d state comments, want exactly one", mutated)
+			}
+			dir := t.TempDir()
+			issues := cgWriteList(t, dir, "issues", entries...)
+			reviews := cgWriteList(t, dir, "reviews")
+			comments := cgWriteList(t, dir, "review-comments")
+			args := append(cgReadArgs(reviews, comments, cgHead, "false", "false"), "--issue-comments", issues)
+			got := cgExec(t, cgScriptPath(t), nil, args...)
+			if got.code != 1 || !strings.Contains(got.all(), "review-not-complete:code_review:commit_sha") {
+				t.Fatalf("exit=%d want=1 output=%s; want malformed completed code SHA refusal", got.code, got.all())
+			}
+		})
+	}
 }
 
 // AC-CCR-008 (script rows) — NOT RUN is one named result for a draft and for a review absent at window close.

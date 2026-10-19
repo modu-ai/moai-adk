@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.9.0"
+version: "0.10.0"
 status: in-progress
 created: 2026-10-18
-updated: 2026-10-19
+updated: 2026-10-20
 author: "Goos Kim"
 priority: P1
 phase: "v3.2.0 target"
@@ -31,8 +31,15 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.7.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 7, an in-place amendment (see `## Amendments`, Amendment 2) under the leader's rulings and operator follow-up of 2026-10-19 (board and messages relayed by the leader). The delta is in `design.md` "Delta of plan revision 7" (Δ12 to Δ26). **The native Codex review is an issue-comment state protocol, not a pull-request review object** (measured on five real pull requests, `research.md` E37 to E46): one issue comment by the identity (login `chatgpt-codex-connector[bot]`, id 199175422, type Bot), created when a review starts and edited in place until it ends, carrying the marker `<!-- codex-review-state:v1 {...} -->` with a `code_review` and a `security_review` leg; the `reviews` list stays empty unless there are findings. (Δ12) REQ-CCR-001 to 005 are replaced by the comment contract: pass only when both legs are `completed`, bound to the head, with `has_unresolved_findings` exactly false and the security marker `completed` for the head (null is not false; #1842 shows why); `running` is pending; everything else, malformed or duplicated markers, a marker outside its position, and more than one state comment fail closed; an APPROVED review object no longer passes anything, and a review or review comment of the identity can only refuse. (Δ13) REQ-CCR-006, 007, 008, 010, 012 follow (listings, pending, recheck of the same comment). (Δ14) The gate applies to every merge base, an unprotected integration base such as `release/main-batch-YYYYMMDD` included. (Δ15) AC rows rewritten to the real-sample fixtures; identifiers unchanged, the criterion count stays 25. (Δ16) DS-1 observed on other pull requests, not on #1828; DS-2 open; Q20 and FU-10 closed. (Δ17) Motivating incident: PR #1841 merged before its Codex review finished. (Δ25) Auto-merge policy alignment: REQ-CCR-020 (only a pull request authored by GoosLab, user id 6458969, type User, non-fork, non-bot is ever merged by automation) and REQ-CCR-021 (no automatic branch deletion, no `--delete-branch`) are new, enforced in the workflow and pinned by rows of existing criteria. (Δ26) The re-request observation (#1842: the state comment edited in place, a receipt comment added, markers carrying different SHAs) and the findings case of #1833 are fixtures. Counts: 21 requirements, 25 criteria, contiguous (ceilings 25 and 25). |
 | 0.8.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 8, the correction commit after plan audit iteration 1 of revision 7 (FAIL 0.69, receipt rcpt-218b45ffecb9ec590f621e17, verdict file `.moai/reports/t1868/plan-audit-rev7.md`, local only). No new contract beyond the audit's required fixes: (D1) REQ-CCR-001 states once that a review object or review comment can only refuse; (D5) REQ-CCR-012 is scoped to the `files` and `review` steps and leaves `author` to REQ-CCR-020; (D4) the recheck re-lists the issue comments and compares the issue-comment count and the comment's id, `updated_at`, and markers, and fails on any difference; (D7) a `running` comment waits even when the security marker is not yet present; (D6) the #1842 move is worded as the evidence shows; AC-CCR-019 splits its job-result groups (D2), states the `gh pr checks` stub (D9), and the class lists are re-derived from the cells that reproduce on this tree (D3, D11). The delta is in `design.md` "Correction of revision 8". Counts: 21 requirements, 25 criteria, contiguous. |
 | 0.9.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 9, the correction after plan audit iteration 2 of revision 7 (revision 8 audited: FAIL 0.88, receipt rcpt-cba480b75217f40e0e5cf040, verdict file `.moai/reports/t1868/plan-audit-rev8.md`, local only) and one new real sample. (N1) AC-CCR-022 is reclassified as a regression-guard (its draft behaviour is already implemented and tested; the renamed row is a test addition, not a flip): 12 release-blocking, 13 regression-guard. (N2) AC-CCR-019 group E and design residual 7 state the exact timing of the recheck: an in-place edit after the recheck's last list read is not detectable. (New input) PR #1844, comment 6260734432, observed 2026-10-19T06:14:10Z: a leg whose `status` is `failed` is a review run that failed, neither a pass nor a finding; REQ-CCR-004 and REQ-CCR-005 name it, the reader refuses it with `review-failed:<leg>` before any finding flag is interpreted (design §3.2 step 7a, T-CHAIN row 2i), and the fixture `F-failed` and the criteria rows pin it. No new requirement and no new criterion. Counts: 21 requirements, 25 criteria, contiguous. |
+| 0.10.0 | 2026-10-20 | t1868 run-phase writer | Correction from the exact-head #1828 code review finding 4315924745 on `18d2a6d176d4a7ba544e2f58760ff5ba3c0f4778`: a current-head security marker still reading `running` after both state legs read `completed` is pending, as already stated by design §3.2 step 10 and AC-CCR-007, not a marker disagreement. REQ-CCR-004 and REQ-CCR-007 now state this transition explicitly. The follow-up found that a malformed SHA on a completed leg could reach pending first; the gate now refuses that shape before pending without weakening stale, failed, or unresolved checks. No requirement or criterion identifiers added; counts remain 21 requirements and 25 criteria. |
 
 ## Amendments
+
+### Amendment 3 — a current running security marker remains pending (plan revision 10)
+
+- rationale: exact-head Codex code review finding 4315924745 on `18d2a6d176d4a7ba544e2f58760ff5ba3c0f4778` reproduced an exit-1 refusal when both state legs were completed and the current-head security marker alone still read `running`. Design §3.2 step 10 and AC-CCR-007 already say a current security marker in `running` waits; REQ-CCR-004 and REQ-CCR-007 did not state that case consistently.
+- scope: clarify REQ-CCR-004 and REQ-CCR-007; no identifier or acceptance-count change. The gate returns exit 10 while the wait window is open and exit 1 `review-not-complete:running` on the last pass. Stale heads, malformed/failed states, unresolved findings, and missing completed-leg receipts remain refusals.
+- evidence: the exact clean-state mutation failed before the fix with `security-marker-disagrees:running`; the new regression case is `TestCodexGateReadNativeReviewPending/security_marker_running_legs_completed_pending`. The supplied malformed-SHA controls for `null`, 10-character, and 40-character non-hex values initially returned `pending:running`; `TestCodexGateReadNativeReviewPendingRefusesMalformedCompletedSHA` now requires each to refuse with `review-not-complete:code_review:commit_sha`.
 
 ### Amendment 2 — the native review is read from its issue comment (plan revision 7)
 
@@ -268,8 +275,9 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   refuses), a marker whose JSON is malformed or altered so that it no longer parses to the required shape, a
   marker string that stands outside the marker position of a comment of the identity, a body that carries the
   state marker or the security marker twice, a malformed or misplaced security marker, a security marker that is missing
-  while no leg is `running` (a leg still `running` waits, REQ-CCR-007), a security marker
-  that does not read `completed` or whose `headSha` is not the head (the two markers disagree), or more
+  while no leg is `running` (a leg still `running` waits, REQ-CCR-007), a current-head security marker whose status is
+  `running` (pending even if both legs already read `completed`, REQ-CCR-007), a security marker whose status is neither
+  `completed` nor `running`, or a security marker whose `headSha` is not the head (the two markers disagree), or more
   than one state comment of the identity on the pull request — the gate script shall
   refuse and name the reason; no later comment, no prose, no review object, and no elapsed time clears it,
   and the gate script shall not choose among duplicates by recency.
@@ -288,11 +296,12 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   that exit status alone, and shall read, for that verdict, only the pull request object and its
   changed-file, issue-comment, review, and review-comment listings; the `gh` calls the workflow and the gate
   script make shall be exactly the allow-list of `acceptance.md` AC-CCR-006.
-- **REQ-CCR-007** (Event-driven) When no state comment is recognised yet, or the state comment reports a leg
-  `running` (whether or not the security marker is present yet), auto-merge shall keep waiting inside a bounded window (at most 60 passes of 15 seconds; time
+- **REQ-CCR-007** (Event-driven) When no state comment is recognised yet, a state leg reports `running`, or the
+  current-head security marker reports `running` (including when both state legs already read `completed`), auto-merge
+  shall keep waiting inside a bounded window (at most 60 passes of 15 seconds; time
   appears only as this bound, and no elapsed time is ever a pass); when the read refuses, auto-merge shall
-  withhold the merge at once and end the `review` step as a failure (REQ-CCR-018); when a leg is still
-  `running` on the last pass, auto-merge shall report a failure named `review-not-complete:running`, a failed
+  withhold the merge at once and end the `review` step as a failure (REQ-CCR-018); when a leg or the current-head
+  security marker is still `running` on the last pass, auto-merge shall report a failure named `review-not-complete:running`, a failed
   step and a failed job, never NOT RUN and never a pass; when a list the verdict needs stays unreadable to
   the end of the window, auto-merge shall withhold the merge and report a failure named
   `review-unreadable`, a failed step and a failed job, never NOT RUN. A review that finishes after the window

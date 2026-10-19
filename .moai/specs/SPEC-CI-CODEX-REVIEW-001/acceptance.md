@@ -345,14 +345,17 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
 **AC-CCR-007** — REQ-CCR-007 — release-blocking
 - Given a state comment with both legs `running` (`F-running`, modelled on #1841; also the both-running shape of #1833), a comment
   that stays `running` on every pass, a comment that is `running` and turns `completed` on pass k, the #1842 form (a completed leg
-  with null fields beside a running security marker, `F-null-leg`), a non-draft pull request whose state comment never appears, a stale
-  state, a refusing read, a list fetch that fails on every pass, a review that finishes only after the last pass, the head moving
+  with null fields beside a running security marker, `F-null-leg`), both state legs completed clean while the current-head security
+  marker still reads `running`, that state with a malformed completed code SHA (null, 10-character, or 40-character non-hex), a non-draft pull request whose state comment never appears, a stale state, a refusing read, a list
+  fetch that fails on every pass, a review that finishes only after the last pass, the head moving
   during the loop, an issue-comment count that moves between the two reads of one pass, and an APPROVED review of the identity beside
   a running comment,
 - When the auto-merge review step's loop is read and run against a stub `gh` and a no-op `sleep`,
-- Then the loop runs at most 60 passes and does not sleep after the last; `running` and absent keep waiting; the last pass passes
-  `--wait-closed true` and every earlier pass `false`; a leg still `running` on the last pass ends as a failure named
-  `review-not-complete:running` (step exit status non-zero, job failure, REQ-CCR-018); a refusal (including `stale-review`)
+- Then the loop runs at most 60 passes and does not sleep after the last; a `running` leg or current-head security marker and an absent
+  state comment keep waiting; the last pass passes `--wait-closed true` and every earlier pass `false`; a leg or marker still `running`
+  on the last pass ends as a failure named
+  `review-not-complete:running` (step exit status non-zero, job failure, REQ-CCR-018); malformed SHA shape on a completed leg still refuses with
+  `review-not-complete:<leg>:commit_sha` before the running-marker pending result; a refusal (including `stale-review`)
   withholds at once; a failing fetch counts as pending, and a list unreadable on every pass ends as a failure named
   `review-unreadable`, never as NOT RUN and never as success; a moved issue-comment count retries the pass and is never a failure; an
   APPROVED review never completes a running comment; a comment that turns `completed` is merged over only after the gate exits 0 and
@@ -360,20 +363,26 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   half: no state comment yet is exit 10, and a `running` comment is exit 10 while the window is open and exit 1 when it is closed,
   never 0.
 - Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewPending$' ./internal/template/` lists `--- PASS` for
-  `empty_comments_pending`, `running_both_legs_pending_f_running`, `running_both_legs_f_running_both_pending`,
-  `null_leg_completed_security_marker_running_pending_f_null_leg`, `security_marker_running_legs_completed_pending`,
-  `running_without_security_marker_pending_exit_10`, `running_without_security_marker_window_closed_exit_1_not_complete`,
-  `running_window_closed_exit_1_not_complete`, `approved_review_never_completes_running_comment`; and `go test -count=1 -v -run
+  `empty_reviews_pending`, `empty_reviews_and_comments_pending`, `security_marker_running_legs_completed_pending`,
+  `security_marker_running_legs_completed_window_closed_fails`, `security_marker_failed_legs_completed_refused`; and
+  `go test -count=1 -v -run '^TestCodexGateReadNativeReviewPendingRefusesMalformedCompletedSHA$' ./internal/template/` lists `--- PASS` for
+  `null`, `short`, and `non_hex_full_length`; and
+  `go test -count=1 -v -run '^TestCodexNativeRunningSecurityLegWaits$' ./internal/template/` lists `--- PASS` for
+  `running_without_receipt_waits`, `running_with_old_security_receipt_waits`,
+  `running_without_receipt_at_window_end_fails`, `running_with_old_security_receipt_at_window_end_fails`,
+  `running_unresolved_still_fails`, `running_current_finding_still_fails`, `running_malformed_summary_still_fails`,
+  `running_stale_summary_still_fails`, `running_peer_failure_still_fails`; and `go test -count=1 -v -run
   '^TestAutoMergeWaitLoopIsBounded$' ./internal/template/` lists `--- PASS` for `loop_bound_at_most_60`, `pending_keeps_waiting`,
-  `running_keeps_waiting`, `running_to_completed_on_pass_k_passes_then_rechecks`, `last_pass_passes_wait_closed_true`,
-  `no_sleep_after_last_pass`, `exit_one_withholds_at_once`, `stale_withholds_at_once`, `fetch_failure_counts_pending`,
-  `issue_comments_moved_counts_pending_not_failure`, `unreadable_to_end_of_window_fails_review_unreadable`,
-  `running_on_last_pass_fails_review_not_complete_running`, `review_finishing_after_window_not_read`, `expiry_never_merges`.
-- Mutant: a `running` comment whose security marker is not present yet refused at once instead of waited on (the order is wait, because a pending state cannot pass; never observed, a decision of design §3.2 step 10), a `running` or absent state read as success, expiry that authorizes a merge (`expiry_never_merges` red), a refusal read as
+  `last_pass_passes_wait_closed_true`, `no_sleep_after_last_pass`, `exit_one_withholds_at_once`, `stale_withholds_at_once`,
+  `fetch_failure_counts_pending`, `unreadable_to_end_of_window_fails_review_unreadable`, `review_arriving_after_window_not_read`,
+  `expiry_never_merges`.
+- Mutant: a current-head security marker still `running` while both legs read `completed` is refused at once instead of waited on (`security_marker_running_legs_completed_pending` red); a malformed completed code SHA is treated as pending (`TestCodexGateReadNativeReviewPendingRefusesMalformedCompletedSHA` red); a `running` comment whose security marker is not present yet refused at once instead of waited on (the order is wait, because a pending state cannot pass; never observed, a decision of design §3.2 step 10), a `running` or absent state read as success, expiry that authorizes a merge (`expiry_never_merges` red), a refusal read as
   pending, a stale state waited on for the whole window, an unbounded `while true`, a last pass that does not pass `--wait-closed true`,
   a running comment at the window end reported as NOT RUN or as a pass, an unreadable list at expiry reported as NOT RUN, or a
   moved issue-comment count that fails the step turns the matching row red.
 - RED-now: R18 (and R20: the shipped reader has no `running` class). Green path: M6.
+- Run-phase regression on `18d2a6d176d4a7ba544e2f58760ff5ba3c0f4778`: `GOMAXPROCS=2 TMPDIR=/tmp go test -count=1 -run '^TestCodexGateReadNativeReviewPending$' ./internal/template` failed on the current-head running-marker case (`exit 1`, `security-marker-disagrees:running`, expected exit 10) and on the closed-window reason (`security-marker-disagrees:running`, expected `review-not-complete:running`). The repaired selector passes both cases; exact output is in `/tmp/adk-issues-prs-20261019/new-lane-progress.md`.
+- Additional run-phase regression: the supplied command in `/tmp/adk-issues-prs-20261019/after-18d2/working-running-marker-malformed-reproduction.json` returned exit 10 `pending:running` for code SHA `null`, 10-character `ab609cafbf`, and 40-character non-hex `z` repeated. `TestCodexGateReadNativeReviewPendingRefusesMalformedCompletedSHA` now pins all three as exit 1 `review-not-complete:code_review:commit_sha`; valid completed SHA with a running security marker still returns exit 10 while open and exit 1 on the closed pass.
 
 **AC-CCR-008** — REQ-CCR-008 — release-blocking
 - Given a draft pull request — with no state comment, with a clean state comment bound to the head, and with no input files at all —

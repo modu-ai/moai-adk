@@ -184,15 +184,17 @@ def leading_block:
     elif $security.status != "running" and ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
     elif $code.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:code_review"}
     elif $security.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:security_review"}
+    elif $code.status == "completed" and ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
+    elif $security.status == "completed" and ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
     elif $security_occurrences == 0 and ($code.status != "running" and $security.status != "running") then {c: 1, r: "security-marker-missing"}
+    elif $security_occurrences == 1 and $security_marker.status == "running" then
+      (if $closed then {c: 1, r: "review-not-complete:running"} else {c: 10, r: "pending:running"} end)
     elif $security_occurrences == 1 and ($code.status != "running" and $security.status != "running") and $security_marker.status != "completed" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
     elif $security_occurrences == 1 and ($code.status == "running" or $security.status == "running") and $security_marker.status != "completed" and $security_marker.status != "running" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
     elif ($code.status == "running" or $security.status == "running") then
       (if $closed then {c: 1, r: "review-not-complete:running"} else {c: 10, r: "pending:running"} end)
     elif ($code.status != "completed") then {c: 1, r: ("review-not-complete:code_review:" + $code.status)}
     elif ($security.status != "completed") then {c: 1, r: ("review-not-complete:security_review:" + $security.status)}
-    elif ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
-    elif ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
     elif (is_head($code.commit_sha) | not) or (is_head($security.commit_sha) | not) then {c: 1, r: "native-summary-stale"}
     elif $security_occurrences == 0 and ($security_lines | length) == 0 then {c: 1, r: "security-marker-missing"}
     elif $security_marker.status != "completed" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
