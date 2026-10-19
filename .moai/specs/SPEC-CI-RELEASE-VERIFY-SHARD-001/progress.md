@@ -199,6 +199,84 @@ Residual risk (M3):
 - The `internal/cli` `TestMain` runs on each nested listing (measured effect: the listing takes about 6s warm; whether it prints to stdout is covered by `rvsClassify` ignoring non-identifier lines, and by the discovery guard if such a line looked like a name; run 4 reported `+0 other`).
 - Text-level mutants depend on the literal anchor text `run: '^Test[J-R]'` (release workflow) and `-run '^Test[J-R]' ./internal/cli/` (ci.yml); `rvsReplaceOnce` fails loudly (not silently) if either is reformatted.
 
+### M4 — evidence and boundary (spawn 4 of the run phase; evidence-only, no source/workflow/test-file change)
+
+Evidence commit only: this progress.md edit (staged by explicit pathspec). HEAD before it `285f133e91` (the M3 evidence commit), tree clean at spawn start and at commit time. Slot `go-test-heavy` held by lane-55 `13:18:30Z`-`13:58:30Z`; every Go call below ran inside it, ONE AT A TIME, `-p 1` and `-count=1` on every test invocation, no `-skip`, no timeout change, no background load. Before the first `go` invocation: `uptime` -> `load averages: 20.79 22.24 17.82` (1-min 20.79 < 32) and `memory_pressure | tail -1` -> `System-wide memory free percentage: 86%` (> 50%). Total Go wall-time this spawn: about 2.5 minutes (well inside the 35-minute bound). Scratch (two stub `go` binaries, two selector-mutant workflow copies, the filter-deleted remainder body, the tiny fixture) lived under `/tmp/t1892-m4/` and the gitignored `temp/` dir; all deleted after the runs (the fixture dir removed file-by-file after an `rm -rf` was denied by the permission system — the narrow removals succeeded). Every command below was run by this agent; outputs are verbatim. As in M1-M3, the harness reports an exit code only for failures (`Exit code N`); for exit-0 commands the decisive output line stands in.
+
+#### M4 item results
+
+Pre-flight set (plan §C):
+
+| Item | Command | Observed output | Exit | Verdict |
+|---|---|---|---|---|
+| HEAD/branch | `git rev-parse --short HEAD` / `git branch --show-current` | `285f133e91` / `WT-release-verify-os` | 0/0 | matches the handoff premise |
+| actionlint | `actionlint <root>/.github/workflows/release-pr-multi-os.yml` (plain single command, absolute path) | no output (clean) | 0 | PASS |
+| validator | `sh scripts/ci-mirror/validate-required-checks.sh` | `✅ All validations passed` incl. `✓ [main] Release PR Multi-OS Gate is publishable` | 0 | PASS |
+| verifier suite | `python3 scripts/ci-mirror/test/verifier-fail-closed_test.py` | `Ran 5 tests in 6.609s` / `OK` | 0 | PASS |
+
+Note on actionlint: the worktree guard did NOT refuse the plain single-command form this time (the M1 lane re-check refusal was of a compound construct; the plain form used here passes the guard), so the M1 gap G-actionlint is closed by this observation: actionlint clean on the sharded workflow at `285f133e91`.
+
+AC-RVS-009 swept count (item 1): `go test -count=1 -p 1 -list '^(TestReleaseScriptMatrixGate|TestTestInputFiltersSingleSource|TestTestInputFiltersCoversGoTestInputs|TestReleaseVerifyShardParity)$' ./internal/template/` printed exactly the four names `TestReleaseScriptMatrixGate`, `TestReleaseVerifyShardParity`, `TestTestInputFiltersSingleSource`, `TestTestInputFiltersCoversGoTestInputs` then `ok  	github.com/modu-ai/moai-adk/internal/template	0.383s`. Four names (three at base + the new parity test): PASS.
+
+AC-RVS-009 run half (item 9): `go test -count=1 -p 1 -run '^(TestReleaseScriptMatrixGate|TestTestInputFiltersSingleSource|TestTestInputFiltersCoversGoTestInputs|TestReleaseVerifyShardParity)$' ./internal/template/` -> `ok  	github.com/modu-ai/moai-adk/internal/template	32.874s`, exit 0. PASS.
+
+AC-RVS-010 stub-`go` print-then-fail (item 2): stub `go` at `/tmp/t1892-m4/bin/failgo/go` prints four `TestFake*` names to stdout then exits 42; `PATH=/tmp/t1892-m4/bin/failgo:$PATH` shard-cover.sh against the release workflow -> `Exit code 1`, `FAIL: go test -list exited 42 on the full listing (a failed listing is not evidence)`. The printed names were refused: PASS (FAIL-as-expected). (The env-prefix compound form was refused by the worktree guard — refusal quoted under Refusals — so the run went through a scratch runner wrapper `bash /tmp/t1892-m4/run-failgo.sh`, the B-8-sanctioned script form.)
+
+AC-RVS-013 remainder guard, unfiltered listing (item 3): the step body was extracted verbatim with `yq '.jobs.full-matrix-test.steps[] \| select(.name == "Run tests with race detector") \| .run'` to `/tmp/t1892-m4/step-body.sh`; a scratch copy with ONLY the `| grep -v -x -e 'github.com/modu-ai/moai-adk/internal/cli' -e 'github.com/modu-ai/moai-adk/internal/harness/rosterguard'` filter deleted from the `pkgs=` assignment (`diff` of the two shows exactly that one line); stub `go` (`/tmp/t1892-m4/bin/unfiltered/go`) answers `list ./...` with a four-package listing INCLUDING both excluded packages and exits 99 on any other subcommand. Run under the Actions shell shape (`bash --noprofile --norc -e -o pipefail`) via the wrapper -> `Exit code 1`, `FAIL: remainder package list still contains an excluded package (2 found); it would run twice`; the stub's exit-99 trap was never reached, i.e. `go test` was never invoked. PASS (FAIL-as-expected).
+
+AC-RVS-003 exact cover (item 5), each a single run, five `go test -list` invocations per script run:
+- vs `ci.yml`: `bash .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/repro/shard-cover.sh <root> /tmp/t1892-m4/out/ci .github/workflows/ci.yml` -> selectors `2111 / 862 / 1851 / 1157` names, `full=5981 union=5981 union_unique=5981`, `EXACT COVER: full list == union of the four selectors (no gap, no overlap)`, exit 0. PASS (the L-E9 baseline reproduces on this tree).
+- vs the release workflow (matrix `include` extraction path): same four counts, `full=5981 union=5981 union_unique=5981`, `EXACT COVER`, exit 0. PASS.
+- narrowed mutant (`^Test[J-R]` -> `^Test[J-Q]`, scratch copy `/tmp/t1892-m4/mutants/release-narrowed.yml`): `Exit code 1`, selector 3 -> `1042 names`, `full=5981 union=5172`, `NOT AN EXACT COVER` with `TestR1_...`/`TestR...` names in the diff — 809 names dropped, exactly the L-E10 figure. PASS (FAIL-as-expected).
+- widened mutant (shard 2 `[G-I]` -> `[G-J]`, `/tmp/t1892-m4/mutants/release-widened.yml`): `Exit code 1`, selector 2 -> `898 names`, `full=5981 union=6017 union_unique=5981` — 36 `TestJev...`/`TestJ...` names matched two selectors; `NOT AN EXACT COVER`. The no-overlap mutant fails too: PASS (FAIL-as-expected).
+
+AC-RVS-010/012 step body under `/bin/bash` 3.2.57 with REAL Go (item 10): the same extracted body run verbatim under `bash --noprofile --norc -e -o pipefail`, tiny fixture package `temp/t1892-tiny` (gitignored, in-module so the real go tool resolves it; one test `TestTinyMatches`; deleted after):
+- FIRST sited the fixture OUTSIDE the module (`/tmp/t1892-m4/fixture/tiny`): the body correctly refused it — census printed `BUILD FAILED  /tmp/t1892-m4/fixture/tiny` / `directory ... outside main module or its selected dependencies`, `=== totals: packages=1 passed=0 ... build-failed=1 ===`, then `FAIL: shard ran no test (empty sweep)`, exit 1. Recorded because it shows the body refuses a build-failed sweep too; a fixture-siting error on my side, not a body defect. Re-sited in-module; the two listed runs below are each a single run:
+- matching selector `SHARD_RUN='^Test'`: exit 0, census `=== totals: packages=1 passed=1 skipped=0 nothing-ran=0 failed=0 build-failed=0 ===`. PASS (AC-RVS-012 local half; `test-stream.json` was written non-empty — the body's own `grep -q '"Test":"'` guard passed).
+- non-matching selector `SHARD_RUN='^NoSuchTest$'`: `Exit code 1`, census `packages=1 passed=0 ... `, `FAIL: shard ran no test (empty sweep)`. PASS (FAIL-as-expected; AC-RVS-010).
+- no-interpolation grep (AC-RVS-012): `grep -n -F '${{' /tmp/t1892-m4/step-body.sh` -> no output; `grep -c SHARD_RUN <wf>` -> `3`. PASS.
+
+yq assertions (item 11), workflow at `285f133e91`:
+- AC-RVS-001: `yq -o=json -I=0 '.jobs.full-matrix-test.strategy.matrix \| {"os": .os, "shard": .shard, "has_exclude": has("exclude"), "include_len": (.include \| length), "include_keys": [.include[] \| keys \| join(",")]}'` -> `{"os":["ubuntu-latest","macos-latest","windows-latest"],"shard":["cli-1","cli-2","cli-3","cli-4","rosterguard","remainder"],"has_exclude":false,"include_len":6,"include_keys":["shard,pkg,run","shard,pkg,run,vet","shard,pkg,run","shard,pkg,run","shard,pkg,run","shard,pkg,run"]}`; `yq '.jobs.full-matrix-test.strategy."fail-fast"'` -> `false` (an earlier compound form quoted `."fail-fast"` inside the matrix context and printed `null` — wrong path, fail-fast sits under `strategy`, corrected above). The 18-leg expansion, 18 distinct pairs and 18 distinct artifact names are the M3 parity test's assertions (recorded there).
+- AC-RVS-004: `git show 74ad197380:.github/workflows/release-pr-multi-os.yml` -> scratch; `yq '.jobs.release-pr-gate'` extracted from base and from the working tree; `diff` -> no output; `shasum -a 256` both `068c049bd7a2df013f69c1af8fd3b7b8dc622719652cec04b93a4d711228c1d5` (the same digest M1 recorded); `grep -n "needs:"` on the extraction -> `needs: [full-matrix-test, detect-release]`. PASS.
+- AC-RVS-006: `grep -n -e "-timeout" -e "timeout-minutes" -e "-skip" -e "continue-on-error" -e "retry-flaky" <wf>` -> job `timeout-minutes: 40` (line 121), both `go test` at lines 300/302 carry `-timeout 35m`, no `-skip` and no `retry-flaky` anywhere; `continue-on-error` hits are the pre-existing detect-release step (line 64) and comments (57, 103, 156). PASS.
+- AC-RVS-007: `yq '.jobs.full-matrix-test.steps[] \| select(.name == "Upload test event stream") \| .with.name'` -> `test-stream-release-verify-${{ matrix.os }}-${{ matrix.shard }}`. PASS (18 distinct names asserted by M3).
+- AC-RVS-008: `yq '.jobs.full-matrix-test.steps[].name'` -> the same eleven names as M1, same order (Checkout code, Setup Go, Download dependencies, Install ast-grep (provides `sg`), Verify `sg` resolves to ast-grep, Run go vet, Diagnose ancestor .moai (pre-test), Run tests with race detector, Compress test event stream, Upload test event stream, Diagnose ancestor .moai (post-test)). PASS.
+- AC-RVS-013 (vet-once): `yq '[.jobs.full-matrix-test.strategy.matrix.include[] \| select(.vet == true)] \| length'` -> `1` (x 3 OS = 3 legs); `yq '.jobs.full-matrix-test.steps[] \| select(.name == "Run go vet") \| .if'` -> `matrix.vet == true`. PASS.
+
+AC-RVS-015 plan-boundary diff (item 12): `git diff --name-only 74ad197380 658c8e6cae` (74ad197380 = plan-phase base tree; 658c8e6cae = the last plan-phase commit, the audit-ready signal) -> 14 paths, every one starting `.moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/` (acceptance.md, decision-index.md, plan.md, progress.md, repro/leg-match-probe.sh, repro/listing-fixture/README.md, repro/listing-fixture/behaviour/{a_test.go.txt,go.mod.txt}, repro/listing-fixture/race-pair/{base_test.go.txt,go.mod.txt,race_only_test.go.txt}, repro/shard-cover.sh, research.md, spec.md); nothing under `.github/`, `scripts/`, `internal/`, `.moai/reports/`. PASS.
+
+Refusals (named per verification-claim-integrity §3.1): the worktree guard refused the env-prefix compound `PATH=... SHARD_PKG=remainder SHARD_RUN= bash --noprofile --norc -e -o pipefail /tmp/t1892-m4/step-body-unfiltered.sh` with `this command runs bash inside a construct too complex to verify; what it reads or is handed as shell text cannot be shown not to run git`. Remedy: the runner-wrapper form (`bash /tmp/t1892-m4/run-remainder-guard.sh`, env set inside the script), which is the plan's own B-8 prescription for multi-step runs; the measurement is the script's, unchanged. The permission system also denied `rm -rf` of the temp fixture dir; narrow per-file removals succeeded and the tree is clean.
+
+Boundary (M4 scope): evidence-only — `git status --short` clean before this edit; the only file this spawn modifies is this progress.md. No source, workflow, test, or template-mirror file touched.
+
+Baseline attribution: tree = branch WT-release-verify-os, HEAD `285f133e91` for every command above; this run, this machine. Judging builds: actionlint (installed, clean run; version recorded at plan time as v1.7.10), yq v4.x (`/opt/homebrew/bin/yq`), go1.26.8 darwin/arm64 (unchanged since M3; go.mod toolchain equal), python3 (system), the repro scripts as committed at `658c8e6cae` content (unchanged since; `git status` clean).
+
+Gaps (M4):
+- G-A (carried): live `main` protection contexts (AC-RVS-005 read-only GET) — still no `gh api` call this spawn; the validator's static dimensions re-passed, the live-context read remains the leader's.
+- G-E (carried): AC-RVS-012 windows half, AC-RVS-014, AC-RVS-016 — post-landing leader observations; nothing observed.
+- G-G (carried): GitHub's acceptance of `if: matrix.vet == true` and the include-merge as expanded remains read from actionlint's type model + the test expander; the first live run confirms.
+- The stub-`go` runs (item 2) and the remainder-guard run (item 3) observe the scripts' control flow, not Go's behaviour; the real-Go cover is item 5 and M3 rows 1-2.
+- AC-RVS-013's partition identity (176 = 2 + 174) is the M3 measurement (row 8); not re-run at M4 (same-HEAD single-run discipline; the task list does not re-list it).
+
+Residual risk (M4):
+- The narrowed/widened mutants were authored by me (scratch copies, single-line replacements; `diff`-verified) — the same self-authored-mutant caveat as M2's G-J.
+- `temp/` (gitignored) held the fixture during item 10 and is now removed; if the directory is reused by another session concurrently, the census output above could in principle have been polluted — the census lines read `packages=1`, consistent with the fixture alone.
+- The M4 exit-0 commands have no harness-reported exit code (M1-M3 harness limitation); the decisive output lines are the evidence.
+
+#### AC-RVS-014 / AC-RVS-016 leader handoff (post-landing; not closable by the lane)
+
+AC-RVS-014 (PL): after the change reaches PR #1830's head ref (or its successor release PR) and the run completes, run:
+
+```
+gh run view <run-id> --json jobs --jq '.jobs[] | {name, conclusion, startedAt, completedAt}'
+```
+
+- PASS condition: all 18 `Release Verify (<os>, <shard>)` jobs `conclusion == "success"` (none `cancelled`), and `Release PR Multi-OS Gate` `success`. Record the verdict in this file (or the card verdict) with the verbatim output.
+- AC-RVS-016 (same run): each shard job's `startedAt`/`completedAt` gives the 18 durations; record all 18 on the card. Any shard over 35 minutes of test time or within 5 minutes of the 40-minute job budget (or `cancelled`) opens a rebalance card (split that shard by selector) — never a timeout raise.
+- D9 flag (leader's call, unchanged from §E.1): an optional pre-landing measurement via `workflow_dispatch` of the release workflow on the candidate ref; one added run, results attach to the PR.
+- Current reference state (not a pass): L-E4 — run 39180942620 all legs `cancelled`, gate `failure`, per-OS shard durations nonexistent (gap G2).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
