@@ -138,9 +138,213 @@ INFO      OwnershipTransitionUnmeasured  .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-S
 
 Baseline-attribution: run on the working tree with the two edits above, before the M1 commit; judging build is the installed `moai_cp/20261007_195927` (commit `7705b365e2`, a strict ancestor of HEAD, 72 commits behind), so this lint line is a gap under verification-claim-integrity §2.2, not a tree-built measurement. The one INFO finding concerns the first plan commit's missing trailer and is pre-existing; Info does not change the exit status. Gap: the status transition owner check will first measure the M1 commit (trailer `Authored-By-Agent: manager-develop`) after it lands.
 
+### M2, M3, M4 — closing evidence
+
+Closing commit (content): `bcf1e3ac29` (parent `ac415b5817`, the M1 commit; plan base `74ad197380`). Baseline for every row below: `git rev-parse --short HEAD` printed `bcf1e3ac29`, `git branch --show-current` printed `WT-workflow-cmd-index`, `git status --short` printed nothing, all before and after the measurements (this run, this tree). M2 and M3 landed in the one commit `bcf1e3ac29` (plan.md M2/M3 allow one commit), so `<M2-closing-sha>` = `<M3-closing-sha>` = `<closing-sha>` = `bcf1e3ac29` and the M2-narrowed C-5 and the whole-set C-5 are both run on it. Per the closing-run convention each git cell is the acceptance.md command with `bcf1e3ac29` substituted for `74ad197380`; the cells that read the working tree (C-3, C-12, R-8, R-9) were run on this tree. Exit-code convention as in M1: output printed means exit 0; no output on `git grep` means exit 1 by git grep semantics, not displayed (G-1); `git diff` without `--exit-code` and `yq` with an empty selection print nothing and are not shown to fail.
+
+#### Claim 4 — AC-PRC-001, AC-SWF-002, AC-SWF-005 hold at the closing commit
+
+Evidence:
+
+C-1 — `git grep -c -E "/moai[: ]design([^[:alnum:]-]|$)" bcf1e3ac29 -- ':(glob)docs-site/content/*/workflow-commands/_index.md' ':(glob)docs-site/content/*/workflow-commands/_meta.yaml' ':(glob)docs-site/content/*/workflow-commands/moai-design.md'` — no output; exit 1 by git grep semantics, not displayed. Expected: nothing. Match. (Positive control: the same command on `74ad197380` printed the 12 lines recorded under Claim 1.)
+
+C-2 — `git grep -c -P "/moai[: ](?!(clean|codemaps|e2e|feedback|fix|gate|goal|gtd|harness|loop|mx|plan|project|review|run|sync|todo)(?![a-z0-9-]))[a-z][a-z0-9-]*" bcf1e3ac29 -- <same three globs>` — no output; exit 1 by git grep semantics, not displayed. Expected: nothing. Match.
+
+C-3 — `git ls-files -- <same three globs>` — exit 0, working tree; 8 paths (expected 8, the four `_index.md` and four `_meta.yaml`; no `moai-design.md`):
+
+```
+docs-site/content/en/workflow-commands/_index.md
+docs-site/content/en/workflow-commands/_meta.yaml
+docs-site/content/ja/workflow-commands/_index.md
+docs-site/content/ja/workflow-commands/_meta.yaml
+docs-site/content/ko/workflow-commands/_index.md
+docs-site/content/ko/workflow-commands/_meta.yaml
+docs-site/content/zh/workflow-commands/_index.md
+docs-site/content/zh/workflow-commands/_meta.yaml
+```
+
+C-5 (whole set) — `git grep -n -E "moai-design" bcf1e3ac29 -- docs-site/content docs-site/data README.md README.ko.md README.ja.md README.zh.md` — no output; exit 1 by git grep semantics, not displayed. Expected: nothing. Match.
+
+C-5 narrowed to the M2 files — `git grep -n -E "moai-design" bcf1e3ac29 -- ':(glob)docs-site/content/*/workflow-commands/_meta.yaml' ':(glob)docs-site/content/*/workflow-commands/moai-design.md' docs-site/data` — no output; exit 1 by git grep semantics, not displayed. Expected: nothing. Match.
+
+R-5 — `yq 'keys'` on the four `_meta.yaml` files, each exit 0; every locale printed the same key list: `index`, `"moai-project"`, `"moai-plan"`, `"moai-run"`, `"moai-sync"`, `"moai-harness"`, `"moai-goal"`, the comment line(s), `new_items` (ko carries one extra comment line; no `moai-design`). `git ls-files docs-site/content/{ko,en,ja,zh}/workflow-commands` printed, per locale, `_index.md`, `_meta.yaml`, and `moai-goal`, `moai-harness`, `moai-plan`, `moai-project`, `moai-run`, `moai-sync` `.md` (8 files per locale, 32 lines). Every key other than `index` and `new_items` names an existing `<key>.md`, and every page has a key. Match.
+
+Baseline-attribution: all commands run this run against `bcf1e3ac29`; C-3 and R-5 read the working tree, equal to that commit (`git status --short` empty).
+
+#### Claim 5 — AC-SWF-003 and AC-SWF-007 hold at the closing commit
+
+Evidence:
+
+C-4 — `git grep -c -E "^\| \[.?/moai " bcf1e3ac29 -- ':(glob)docs-site/content/*/workflow-commands/_index.md'` — exit 0:
+
+```
+bcf1e3ac29:docs-site/content/en/workflow-commands/_index.md:20
+bcf1e3ac29:docs-site/content/ja/workflow-commands/_index.md:20
+bcf1e3ac29:docs-site/content/ko/workflow-commands/_index.md:21
+bcf1e3ac29:docs-site/content/zh/workflow-commands/_index.md:20
+```
+
+Expected en 20, ja 20, ko 21, zh 20. Match.
+
+C-12 — `awk '/^## /{s=($0 ~ /^## (All subcommands|全サブコマンド|전체 서브커맨드|全部子命令)/)} s && /^\| \[/{n[FILENAME]++} END{print n[ARGV[1]]+0, n[ARGV[2]]+0, n[ARGV[3]]+0, n[ARGV[4]]+0}' docs-site/content/en/workflow-commands/_index.md docs-site/content/ja/workflow-commands/_index.md docs-site/content/ko/workflow-commands/_index.md docs-site/content/zh/workflow-commands/_index.md` — exit 0 (working tree): `15 15 15 15`. Expected `15 15 15 15`. Match.
+
+C-11 probe for 15 — `git grep -c -E "\(15\)|\(15 個\)|\(15개\)|\(15 个\)|routes 15 subcommands|15 個のサブコマンド|15개 서브커맨드|15 个子命令" bcf1e3ac29 -- ':(glob)docs-site/content/*/workflow-commands/_index.md'` — exit 0:
+
+```
+bcf1e3ac29:docs-site/content/en/workflow-commands/_index.md:2
+bcf1e3ac29:docs-site/content/ja/workflow-commands/_index.md:2
+bcf1e3ac29:docs-site/content/ko/workflow-commands/_index.md:2
+bcf1e3ac29:docs-site/content/zh/workflow-commands/_index.md:2
+```
+
+Expected `:2` for each of the four files. Match. (The probe for 16 was not re-run at the closing commit; the heading and sentence edits are visible in the diff below.)
+
+R-3 — `git show --stat --format= bcf1e3ac29` — exit 0: 14 files changed, 8 insertions(+), 468 deletions(-); lists all four `_index.md` paths in the one commit (`_index.md` en 5, ja 5, ko 6, zh 5 changed lines), the four `_meta.yaml` (2 deletions each), the four `moai-design.md` (121, 99, 121, 99 deletions), `docs-site/data/menu/main.yaml` (6 deletions), `docs-site/.locale-parity-baseline` (1 deletion). Match.
+
+`_index.md` diff (`git diff 74ad197380 bcf1e3ac29 -- <four _index.md>`, exit 0, read in full): each locale deletes the one design row of the "All subcommands" table and changes `16` to `15` in the heading and in the sentence; ko additionally deletes the summary-table design row (`조건부`); the ko `/moai goal` summary row and every other row are unchanged; no row or sentence naming the command was added.
+
+Baseline-attribution: this run, `bcf1e3ac29`; C-12 reads the working tree.
+
+#### Claim 6 — AC-SWF-008 and AC-SWF-009 hold at the closing commit
+
+Evidence:
+
+C-13 — `git grep -n -E "/moai[: ]design([^[:alnum:]-]|$)" bcf1e3ac29 -- docs-site/data/menu/main.yaml` — no output; exit 1 by git grep semantics, not displayed. Expected nothing. Match.
+
+C-14 — `git grep -n -E "moai-design" bcf1e3ac29 -- docs-site/.locale-parity-baseline` — no output; exit 1 by git grep semantics, not displayed. Expected nothing. Match.
+
+R-8 — `yq '.main[] | select(.ref == "/workflow-commands") | .sub[] | select(.ref == "/workflow-commands/moai-design") | .name' docs-site/data/menu/main.yaml` — no output (working tree). Expected nothing. Match.
+
+R-9 — `yq '.main[] | select(.ref == "/workflow-commands") | .sub | length' docs-site/data/menu/main.yaml` — exit 0 (working tree): `6`. Expected `6`. Match.
+
+R-10 — `git diff --numstat 74ad197380 bcf1e3ac29 -- docs-site/.locale-parity-baseline` — exit 0: `0	1	docs-site/.locale-parity-baseline`. Expected that line. Match. The `main.yaml` hunk (`git diff 74ad197380 bcf1e3ac29 -- docs-site/data/menu/main.yaml`) removes exactly the six lines of the entry (`- name:`, four name-map lines, `ref`); the baseline hunk removes exactly line `workflow-commands/moai-design.md`.
+
+Baseline-attribution: this run, `bcf1e3ac29`; R-8 and R-9 read the working tree.
+
+#### Claim 7 — AC-SWF-004 (guard): the changed set is exactly the fourteen Scope paths and nothing else
+
+Evidence:
+
+R-4 — `git diff --name-status 74ad197380 bcf1e3ac29 -- docs-site README.md README.ko.md README.ja.md README.zh.md` — exit 0, 14 lines:
+
+```
+M	docs-site/.locale-parity-baseline
+M	docs-site/content/en/workflow-commands/_index.md
+M	docs-site/content/en/workflow-commands/_meta.yaml
+D	docs-site/content/en/workflow-commands/moai-design.md
+M	docs-site/content/ja/workflow-commands/_index.md
+M	docs-site/content/ja/workflow-commands/_meta.yaml
+D	docs-site/content/ja/workflow-commands/moai-design.md
+M	docs-site/content/ko/workflow-commands/_index.md
+M	docs-site/content/ko/workflow-commands/_meta.yaml
+D	docs-site/content/ko/workflow-commands/moai-design.md
+M	docs-site/content/zh/workflow-commands/_index.md
+M	docs-site/content/zh/workflow-commands/_meta.yaml
+D	docs-site/content/zh/workflow-commands/moai-design.md
+M	docs-site/data/menu/main.yaml
+```
+
+Ten modified, four deleted; none of the six other workflow-commands pages per locale, `docs-site/vercel.json`, `docs-site/layouts/`, `docs-site/static/`, or the four READMEs appears. Match.
+
+R-4 companion — `git diff --name-status 74ad197380 bcf1e3ac29 -- .claude .moai/docs .moai/config scripts internal cmd` — no output (exit 0, `git diff` without `--exit-code`). Expected nothing. Match. Control that the form can print: the acceptance.md control (`git diff --name-only 74ad197380 HEAD -- .moai/config .moai/specs` prints the SPEC files) was not re-run in this pass (see Gaps).
+
+AC-SWF-009 numstat — `git diff --numstat 74ad197380 bcf1e3ac29 -- docs-site README.md README.ko.md README.ja.md README.zh.md` — exit 0:
+
+```
+0	1	docs-site/.locale-parity-baseline
+2	3	docs-site/content/en/workflow-commands/_index.md
+0	2	docs-site/content/en/workflow-commands/_meta.yaml
+0	121	docs-site/content/en/workflow-commands/moai-design.md
+2	3	docs-site/content/ja/workflow-commands/_index.md
+0	2	docs-site/content/ja/workflow-commands/_meta.yaml
+0	99	docs-site/content/ja/workflow-commands/moai-design.md
+2	4	docs-site/content/ko/workflow-commands/_index.md
+0	2	docs-site/content/ko/workflow-commands/_meta.yaml
+0	121	docs-site/content/ko/workflow-commands/moai-design.md
+2	3	docs-site/content/zh/workflow-commands/_index.md
+0	2	docs-site/content/zh/workflow-commands/_meta.yaml
+0	99	docs-site/content/zh/workflow-commands/moai-design.md
+0	6	docs-site/data/menu/main.yaml
+```
+
+The baseline file is `0	1` (one deleted line, none added). Match.
+
+Baseline-attribution: this run, diffs between `74ad197380` and `bcf1e3ac29`.
+
+#### Claim 8 — bounded sweep: no tracked reference to the deleted page remains outside the Scope, except the recorded open item
+
+Evidence:
+
+`git grep -n -E "workflow-commands/moai-design|/moai design|moai:design" bcf1e3ac29 -- docs-site README.md README.ko.md README.ja.md README.zh.md` — no output; exit 1 by git grep semantics, not displayed.
+
+`git grep -n -E "workflow-commands/moai-design|/moai design|moai:design" bcf1e3ac29 -- .moai/config` — exit 0:
+
+```
+bcf1e3ac29:.moai/config/sections/design.yaml:2:# Controls /moai design workflow, GAN loop, Claude Design integration, and brand context.
+bcf1e3ac29:.moai/config/sections/design.yaml:36:  # Claude Design integration (path A of /moai design)
+```
+
+Both hits are the already-recorded open item O-5 (comment lines of `.moai/config/sections/design.yaml`), outside the fourteen Scope paths and unchanged by this SPEC (REQ-SWF-007; the R-4 companion above printed nothing for `.moai/config`). `docs-site/vercel.json` carries no match of this pattern (its `/design` redirects are REDIR's, Q15, a different pattern). No unaccounted hit.
+
+Baseline-attribution: this run, `bcf1e3ac29`; pattern sweep, not a parse (acceptance.md G-9).
+
+#### Claim 9 — the SPEC directory lints clean
+
+Evidence: `moai spec lint --strict .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001` — exit 0, stdout (the tool reported no failure):
+
+```
+✓ No findings — all SPEC documents are valid
+```
+
+Tool provenance: the installed `moai` build is `moai_cp/20261007_195927`, commit `7705b365e2`; `git rev-list --count --left-right 7705b365e2...bcf1e3ac29` printed `0	74`, so that commit is a strict ancestor of HEAD (74 commits behind) and the lint was not run by a build made from this tree (verification-claim-integrity §2.2: a gap under tool provenance, not a tree-built measurement). The M1-time lint printed one INFO finding (OwnershipTransitionUnmeasured on the first plan commit); this run printed none; no cause for the difference was investigated.
+
+#### Claim 10 — Hugo build of the edited site is warning-free (reproduced by this run)
+
+Evidence: `hugo --minify --gc --source docs-site --destination /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/94352e8a-6862-42bf-bba5-b9cfa0b1a4b4/scratchpad/hugo-out-t1727` — exit 0 (the tool reported no failure), stdout (summary):
+
+```
+hugo v0.160.1+extended+withdeploy darwin/arm64 BuildDate=2026-04-08T14:02:42Z VendorInfo=Homebrew
+ Pages        │ 186 │ 184 │ 184 │ 184   (KO / EN / JA / ZH)
+ Total in 7299 ms
+```
+
+No `WARN` or `ERROR` line was printed. `git status --short` printed nothing after the build (the output went outside the repository). This matches the curator report (Hugo v0.160.1, pages KO 186, EN 184, JA 184, ZH 184). Baseline-attribution: this run, working tree equal to `bcf1e3ac29`.
+
+#### Gaps
+
+- G-1 (carried): no-output `git grep` cells take exit 1 from git semantics, not displayed; `yq` and `git diff` no-output cells show no failure but their exit code is not displayed either.
+- The `hns-oss-docs-verify` recipe (URL blacklist, Mermaid direction, 4-locale parity script, README parity, body-emoji scan) was not run.
+- Rendered output was not inspected: the sidebar and the previous/next chain were verified by the Hugo build passing and the `main.yaml` hunk, not by reading the generated HTML (acceptance.md G-4).
+- The R-4 control (`.moai/config .moai/specs` pathspec printing the SPEC files) and the probe for 16 at the closing commit were not re-run.
+- The three board records were cited as given, not opened; the specialists' own run reports (curator, content author, translators) were not re-read beyond the Hugo figures they reported.
+- The lint line is not a tree-built measurement (installed build `7705b365e2` is 74 commits behind HEAD).
+- Pattern sweeps (C-1, C-2, C-5, the Claim 8 sweep) do not cover a spelling they do not match (acceptance.md G-9).
+
+#### Residual-risk
+
+- Inbound links to `/<locale>/workflow-commands/moai-design` return 404 until REDIR (Q15) or another card adds a redirect.
+- "All subcommands (15)" is a true row count but an inexact "All": `/moai gtd` and `/moai todo` have pages and no row (O-6).
+- The `.moai/config/sections/design.yaml` comments still name `/moai design` (O-5), outside this change set by REQ-SWF-007.
+- The CI-side docs checks (the "Validate 4-locale parity" step, the full Hugo build in CI) have not run on this commit; this lane's Hugo build and grep cells are local observations.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase (manager-develop)_
+run_status: audit-ready
+run_complete_at: 2026-10-19
+run_commit_sha: bcf1e3ac29
+run_milestones: M1 `ac415b5817` (pre-flight, draft to in-progress); M2 and M3 `bcf1e3ac29` (page, navigation, baseline deletions and `_index.md` rows and counts, one commit); M4 closing evidence in the commit that carries this section
+ac_pass_count: 7 (AC-PRC-001, AC-SWF-002, AC-SWF-003, AC-SWF-005, AC-SWF-007, AC-SWF-008, AC-SWF-009; each Then-clause matched in Claims 4 to 6)
+ac_guard_count: 1 (AC-SWF-004 guard held, Claim 7)
+ac_fail_count: 0
+ac_superseded: AC-SWF-006 (not applicable, Q14 verdict)
+total_run_phase_files: 14 content paths (10 modified, 4 deleted) plus this progress.md and spec.md status
+preserve_list_post_run_count: 0 unintended changes (R-4 and its companion, Claim 7)
+new_warnings_or_lints_introduced: none observed (`moai spec lint --strict` printed no findings; Hugo build printed no WARN or ERROR)
+cross_platform_build: not applicable (documentation-only change, no Go source touched)
+l44_pre_commit_fetch: not run (no fetch was issued by this milestone; the lane's push and sync state stay with the operator)
+l44_post_push_fetch: not applicable (no push by this lane)
+m1_to_mN_commit_strategy: M1 own commit; M2 and M3 one commit; M4 evidence one commit; no push, no PR, no amend, no force
+repository_wide_test_verdict: PENDING on the CI run on the project's integration branch (not owned by this run)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
