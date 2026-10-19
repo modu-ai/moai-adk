@@ -1982,17 +1982,21 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	// the only serial row still leases (card t1407's unwedge), so it must
 	// still query.
 	for _, it := range rec.Items {
-		if it.State != factory.BacklogStateQueued && it.State != factory.BacklogStatePicked {
-			continue
-		}
-		if it.State == factory.BacklogStateQueued && (factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked) {
-			continue
-		}
-		if it.State == factory.BacklogStatePicked {
-			row, hasRow := rowByID[it.ID]
-			if hasRow && !(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+		// REQ-THS-012 positive enumeration: the two leasable states are
+		// named as cases; a state added later falls to default and is
+		// skipped, never silently included.
+		switch it.State {
+		case factory.BacklogStateQueued:
+			if factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked {
 				continue
 			}
+		case factory.BacklogStatePicked:
+			if row, hasRow := rowByID[it.ID]; hasRow &&
+				!(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+				continue
+			}
+		default:
+			continue
 		}
 		// The selection skips, mirrored per candidate from the arm that would
 		// take it: a recorded row answers to the full predicate (arms (b) and
