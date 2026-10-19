@@ -15,7 +15,7 @@
 
 - Confirm acceptance.md S-00 prints nothing and exits 0: the docs-site, `.claude`, `internal`, `cmd`, and `scripts` trees are unchanged since `74ad197380a0`. The scope fence base is that commit; no baseline variable is captured at run time.
 - Re-run the RED-now cells with `HEAD` in place of the pin and confirm their values: S-01 ten rows, S-02 ten rows, S-06a one row, S-06b one row, S-11 empty (exit 1), the four S-12a-xx empty (exit 1), S-12b four rows, S-13a empty, S-13b empty, the four S-16-xx empty (exit 0), S-17 the twelve unedited blob ids, the three S-14-xx empty (exit 1), S-15 empty (exit 1), the four S-18-xx empty (exit 1). If a value differs, stop and return a blocker report; the tree moved.
-- Confirm the plan is audited and the Kickoff gate is met. Decision rows QE-1 to QE-6 were adopted as written by the leader ruling recorded on the decision board as d-20261019T033214Z-032b (scope card:t1725, 2026-10-19T03:32:14Z).
+- Confirm the plan is audited and the Kickoff gate is met. Decision rows QE-1 to QE-5 carry `DEFAULT-APPLIED`; proceed on the defaults.
 
 ### M1 — replacement text in the eight user-visible pages (most likely to change after review)
 
