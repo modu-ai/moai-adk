@@ -18,6 +18,33 @@ Detection rule: repo-tracked session surfaces; a `.claude/rules/**/*.md` file co
 
 Gaps of this table: session-side stores (auto-memory `MEMORY.md`), static-preloaded skill bodies, and conditional (`paths:`-scoped) rules are outside the repo-tracked measurement; t1887's actual delta is unknown here and enters the projection as a required-savings bound, not a measurement.
 
+### Close-time evidence row (run phase, card t1900 — never overwrites the baseline row above nor enters the projection)
+
+Measured with `wc -m` in this tree, this run (HEAD `072e858752` + M5 evidence commit):
+
+| Surface | Chars (`wc -m`) |
+|---|---|
+| `AGENTS.local.md` pre-card — the PIN (`9b1dcde024`), baseline row above unchanged | 50,579 |
+| `AGENTS.local.md` post-card (this tree) | 41,735 |
+| `AGENTS.local.md` reduction (PIN − post-card) | 8,844 |
+| `.claude/rules/local/agents-local-detail.md` (NEW companion — `paths:`-scoped conditional; NOT an always-loaded surface) | 26,203 |
+| `AGENTS.md` post-card (was 23,680 at the PIN; M2 added the leader-boundary, review-contract, and automation-policy blocks) | 25,629 |
+
+Projection (computed from the PIN per plan §E3): 252,650 (pre-card total @ `9b1dcde024`) − 8,844 (this card's AGENTS.local.md reduction) − t1887 core-rules share ≤ 140,000 ⟹ **required t1887 share ≥ 103,806** chars of the 117,503-char rules block (≈ 88%). Honest-bound note: this card also grew `AGENTS.md` by +1,949 (M2 policy blocks are required always-loaded policy content), so the all-surfaces net reduction is 6,895 and the strict bound is t1887 ≥ 105,755; the E3 formula names only the AGENTS.local.md reduction, and both figures are recorded here. The four named chunks moved unconditionally (below); the withdrawn ≤12,000 figure appears nowhere as a target.
+
+### Moved-clause reconciliation table (AC-ACR-009; rows = pointer citations found by `grep -n "agents-local-detail.md" AGENTS.local.md`)
+
+| # | Pointer (AGENTS.local.md line) | Moved content | New location |
+|---|---|---|---|
+| 1 | L93 | §2.0 three-copies table, `make agents-emit` obligation, no-hand-edit-C3 rule, emission checkpoints + §2.1 template-content-neutrality paragraph | companion §C |
+| 2 | L158 | §4.0 superseded-model scope (the local-main batch/card-PR clauses) | companion §A·§B |
+| 3 | L189 | §4.0 item 4 resynchronization detail (criterion + diverged-histories refusal) | companion §A item 4 |
+| 4 | L208 | §4.0 items 1-5 full historical text (branch base, merge landing, clean-tree, resync, closing/disposal) | companion §A |
+| 5 | L224 | §4.1 integration chain (GitHub Flow chain, develop chain, lane obligations, candidate path, acquire assertion) | companion §B |
+| 6 | L424 | References §18-27 consolidated document index | companion §D |
+
+[HARD] inventory: 47 [HARD] occurrences in AGENTS.local.md at M1 start (pre-card) → 46 in AGENTS.local.md + 19 in the companion = 65 after the move; every moved clause carries a one-line pointer or essence at its origin (table above) and no obligation was deleted or weakened. Companion `paths:` glob load check: 13 claimed (file, glob) pairs exercised with the repo's `internal/contract.MatchGlob` semantics (verbatim copy at `/tmp/globcheck-scratch/main.go`, this run) — 13 PASS / 0 FAIL, including `AGENTS.local.md`, both local-rule siblings, the SPEC dir, the three git docs, run/sync workflows, `internal/cli/**`, `internal/hook/**`, `internal/template/**`, `.github/workflows/**`.
+
 ### Q1: Which copy of AGENTS.local.md is the diet baseline, and what target governs?
 
 Label: FOUNDER
