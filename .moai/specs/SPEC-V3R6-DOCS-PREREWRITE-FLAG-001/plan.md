@@ -65,11 +65,11 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 
 ## E. Self-Verification deliverables (manager-develop §E 보고 형식)
 
-- **E1** AC PASS/FAIL 매트릭스 (AC-DPF-001~006, 각 행에 명령+실측 출력).
-- **E2** grep 스윕 결과: STALE 문구 0 확인(AC-DPF-001·002 명령), 보존 카운트(AC-DPF-003·004).
+- **E1** AC PASS/FAIL 매트릭스 (AC-DPF-001~007, 각 행에 명령+실측 출력).
+- **E2** grep 스윕 결과: STALE 문구 0 확인(AC-DPF-001·002·007 명령), 보존 카운트(AC-DPF-003·004).
 - **E3** 4 로캘 패리티 카운트 대칭 (AC-DPF-005).
 - **E4** 음(-) 검증(다중 상태, iter-1 D3 강화): 두 단일 명령으로 네 상태를 전부 열거한다 — `git diff --name-only <base>..HEAD -- internal/ cmd/`(커밋된 변경)와 `git status --porcelain -- internal/ cmd/`(스테이지·작업 트리 수정·언트래킹) 모두 빈 출력 (AC-DPF-006). `<base>`는 판정 시점의 감사 대상 커밋으로 재핀하고 그 SHA를 증거 행에 기록한다.
-- **E5** diff 범위 확인(허용 목록 대조): 변경 경로 전체 집합(커밋+스테이지+작업 트리+언트래킹 — E4의 두 명령과 전체 `git status --porcelain`)이 §D의 12개 허용 파일 안에 있다. 목록 밖 경로 하나라도 있으면 FAIL.
+- **E5** diff 범위 확인(허용 목록 대조, iter-2 D8 확대): 변경 경로 전체 집합(커밋+스테이지+작업 트리+언트래킹 — E4의 두 명령, 전체 `git status --porcelain`, 그리고 경로스펙 없는 `git diff --name-only <base>..HEAD` — internal/·cmd/ 밖의 커밋된 변경도 보인다)이 §D의 12개 허용 파일 안에 있다. 목록 밖 경로 하나라도 있으면 FAIL.
 - **E6** 커밋 상태: 단일 런 페이즈 커밋(Q17 허용), Conventional Commits + `Authored-By-Agent` 트레일러.
 - Go 커버리지/빌드/린트 항목은 문서 전용이라 해당 없음 — E 항목에서 "N/A (docs-only)"로 명시한다.
 
@@ -90,10 +90,11 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 - factory-mode 4 로캘 77행(STALE-2+3): `relaunch` 셀의 "카드마다 새 세션 기동" 서술을 현재 소비(엔진이 레인 세션 하나를 띄우고 그 세션이 큐를 소비)로, `clear-each` 셀의 "카드마다 `/clear`를 요청" 서술을 현재 동작(세션 안 카드 전환 — clear 지시 없음)으로 치환. `--clear-policy <값>` 행 자체와 `clear-when-full` 셀(임계치 조건)은 유지.
 - README 4종 87행·factory-mode 4 로캘 134행(STALE-3): 레인 `/clear` 안내를 현재 카드 전환 서술로 치환(Q13). 치환 문장은 `--clear-policy`를 계속 이름 붙인다(문서군별 플래그 카운트 유지).
 - 그 외 줄 무변경. 74행의 README 본문 중 `moai factory relaunch` 설명, 65/67/36/37/72/99행 전부 무변경.
+- 이 변경 세트가 AC-DPF-007(iter-2 D7, release-blocking)을 뒤집는다: 편집 후 E-05의 12개 STALE-3 문구가 0(출력 없음, exit 1)이 되고, 치환 줄은 `--clear-policy` 인용을 유지한다(AC-DPF-004의 E-04 카운트). factory-mode 100행 mermaid 라벨은 범위표 밖이라 무변경이다.
 
 ### F.3 M3 — 검증 (Priority High)
 
-- AC-DPF-001~006 실행(acceptance.md의 명령과 기대 출력 그대로).
+- AC-DPF-001~007 실행(acceptance.md의 명령과 기대 출력 그대로).
 - 치환 문장 대조: 편집된 문장을 `internal/cli/factory_card.go` `factoryRelaunchSupersededNote` 취지와 대조.
 - 선택: Hugo 툴체인이 환경에 있으면 문서 빌드 경고 확인(oss-docs 검증 레시피). 없으면 Gaps에 명시(침묵 생략 금지).
 
