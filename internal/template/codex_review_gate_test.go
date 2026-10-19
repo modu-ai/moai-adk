@@ -273,7 +273,7 @@ func TestCodexGateReadNativeReviewAccepts(t *testing.T) {
 			wantCode: 0, wantText: "native-review-clean",
 		},
 	})
-	t.Run("script_never_references_body_field", func(t *testing.T) {
+	t.Run("formal_verdict_does_not_read_review_body", func(t *testing.T) {
 		t.Parallel()
 		cgTools(t)
 		raw, err := os.ReadFile(cgScriptPath(t))
@@ -281,7 +281,8 @@ func TestCodexGateReadNativeReviewAccepts(t *testing.T) {
 			t.Fatal(err)
 		}
 		body := regexp.MustCompile(`\bbody\b`)
-		for i, line := range strings.Split(string(raw), "\n") {
+		formal := strings.SplitN(strings.SplitN(string(raw), "| ($reviews | map(select(ident))) as $cand", 2)[1], "| if ($bad", 2)[0]
+		for i, line := range strings.Split(formal, "\n") {
 			if strings.HasPrefix(strings.TrimSpace(line), "#") {
 				continue
 			}

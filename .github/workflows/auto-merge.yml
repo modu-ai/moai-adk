@@ -265,6 +265,7 @@ jobs:
           GATE=scripts/ci/codex-review-gate.sh
           REVIEWS="${RUNNER_TEMP:-/tmp}/codex-gate-reviews.ndjson"
           COMMENTS="${RUNNER_TEMP:-/tmp}/codex-gate-comments.ndjson"
+          ISSUES="${RUNNER_TEMP:-/tmp}/codex-gate-issues.ndjson"
           # At most 60 passes of 15s (15 minutes). The window is bounded by the 17-minute overall
           # deadline; a long earlier checks wait, or the 20-minute job timeout, can shorten it, in
           # which case the merge is withheld.
@@ -302,15 +303,19 @@ jobs:
             R3="$(read_pr)" || withhold "recheck-unreadable"
             if [ "$(field "$R3" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
             if [ "$(field "$R3" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
+            if [ "$(field "$R3" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
             rc=0
             OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/reviews" --out "$REVIEWS" 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
             OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/comments" --out "$COMMENTS" --expect-count "$RC_COUNT" 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
+            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_COUNT" 2>&1)" || rc=$?
+            if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
             R4="$(read_pr)" || withhold "recheck-unreadable"
             if [ "$(field "$R4" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
             if [ "$(field "$R4" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
-            OUT2="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --head-sha "$VERIFIED_SHA" --draft false --wait-closed true 2>&1)" || rc=$?
+            if [ "$(field "$R4" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
+            OUT2="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed true 2>&1)" || rc=$?
             if [ "$rc" -ne 0 ]; then withhold "review-changed-before-merge:$(reason "$OUT2")"; fi
             if [ "$OUT2" != "$1" ]; then withhold "selected-review-changed-before-merge"; fi
           }
@@ -329,6 +334,7 @@ jobs:
             DRAFT="$(field "$PR_JSON" '.draft')"
             HEAD1="$(field "$PR_JSON" '.head.sha // empty')"
             RC_COUNT="$(field "$PR_JSON" '.review_comments // empty')"
+            IC_COUNT="$(field "$PR_JSON" '.comments // empty')"
             case "$DRAFT" in
               true | false) ;;
               *) NOTE="unreadable"; wait_next; continue ;;
@@ -339,10 +345,12 @@ jobs:
               OUT="$(bash "$GATE" read-native-review --head-sha "$VERIFIED_SHA" --draft true --wait-closed "$CLOSED" 2>&1)" || rc=$?
             else
               if [ "$HEAD1" != "$VERIFIED_SHA" ]; then withhold "head-moved:${HEAD1:0:10}"; fi
-              if [ -z "$RC_COUNT" ]; then NOTE="unreadable"; wait_next; continue; fi
+              if [ -z "$RC_COUNT" ] || [ -z "$IC_COUNT" ]; then NOTE="unreadable"; wait_next; continue; fi
               OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/reviews" --out "$REVIEWS" 2>&1)" || rc=$?
               if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
               OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/comments" --out "$COMMENTS" --expect-count "$RC_COUNT" 2>&1)" || rc=$?
+              if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
+              OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_COUNT" 2>&1)" || rc=$?
               if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
               # The head is read again after the list reads; lists of another head are never judged.
               SECOND="$(read_pr)" || { NOTE="unreadable"; wait_next; continue; }
@@ -351,7 +359,8 @@ jobs:
               if [ -z "$HEAD2" ] || [ -z "$RC2" ]; then NOTE="unreadable"; wait_next; continue; fi
               if [ "$HEAD2" != "$VERIFIED_SHA" ]; then withhold "head-moved-during-read"; fi
               if [ "$RC2" != "$RC_COUNT" ]; then withhold "review-comments-moved-during-read"; fi
-              OUT="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --head-sha "$VERIFIED_SHA" --draft false --wait-closed "$CLOSED" 2>&1)" || rc=$?
+              if [ "$(field "$SECOND" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-during-read"; fi
+              OUT="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed "$CLOSED" 2>&1)" || rc=$?
             fi
 
             case "$rc" in

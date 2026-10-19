@@ -220,7 +220,7 @@ const (
 var amPassChecks = `[{"name":"Lint","state":"SUCCESS","bucket":"pass"}]`
 
 func amPull(head string, draft bool, changed, reviewComments int) string {
-	return fmt.Sprintf(`{"head":{"sha":%q},"draft":%t,"changed_files":%d,"review_comments":%d}`, head, draft, changed, reviewComments)
+	return fmt.Sprintf(`{"head":{"sha":%q},"draft":%t,"changed_files":%d,"review_comments":%d,"comments":0}`, head, draft, changed, reviewComments)
 }
 
 func newAMRig(t *testing.T, script string) *amRig {
@@ -561,14 +561,14 @@ func amReadRepoFile(t *testing.T, rel string) string {
 }
 
 // AC-CCR-006 (workflow rows, REQ-CCR-006) — the gh calls are an exact allow-list; no comment, status,
-// check-run, or label is read.
+// check-run, or label is read; native issue-comment artifacts are explicitly allowed.
 // Mutants: a comment-parse fallback, a status read, a `gh pr comment`, a `gh api` of any other path;
 // a scan that matches nothing.
-func TestAutoMergeReadsNoCommentOrStatusVerdict(t *testing.T) {
+func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 	t.Parallel()
 	const pullObject = `"repos/$REPO/pulls/$PR_NUMBER"`
 	scriptApi := regexp.MustCompile(`^"\$\{?endpoint\}?\?per_page=(100|\$\{?PER_PAGE\}?)&page=\$\{?page\}?"$`)
-	forbidden := []string{"issues/", "/status", "statuses", "check-runs", "check_runs", "labels", "CodeRabbit", "Merge Risk", "AUTOMERGE_MAX_MERGE_RISK"}
+	forbidden := []string{ "/status", "statuses", "check-runs", "check_runs", "labels", "CodeRabbit", "Merge Risk", "AUTOMERGE_MAX_MERGE_RISK"}
 	sub := func(name string, fn func(t *testing.T, wf string, gate string)) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -1272,8 +1272,8 @@ func TestAutoMergeWiresGuardAndGate(t *testing.T) {
 					t.Fatalf("read-native-review ran (call %d) although the head moved during the list read: %v", i, calls)
 				}
 			}
-			if pullReads != 2 || secondRead < 0 || fetches != 2 {
-				t.Fatalf("pull reads=%d fetches=%d, want 2 and 2: %v", pullReads, fetches, calls)
+			if pullReads != 2 || secondRead < 0 || fetches != 3 {
+				t.Fatalf("pull reads=%d fetches=%d, want 2 and 3: %v", pullReads, fetches, calls)
 			}
 		}},
 		{"review_step_forged_review_never_ok", func(t *testing.T) {

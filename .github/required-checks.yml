@@ -55,6 +55,11 @@ branches:
     # the published set for release-base PRs is empty. Trigger expansion is
     # the release-pipeline scope (t1536); revisit this list if that lands.
     contexts: []
+# Main-push check floor; every entry must also be required on main.
+release_gate:
+  - Lint
+  - "Test (ubuntu-latest)"
+  - "Build (linux/amd64)"
 # Auxiliary checks run on PRs but DO NOT block merge (advisory only).
 # Wave 2 watch loop reads this list to discriminate failures.
 auxiliary:

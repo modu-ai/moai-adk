@@ -1,0 +1,24 @@
+[
+  {
+    "id": 6260255148,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"45b2dbf682515dd8f4d8d67ce0ae7ac2fa8328a5\",\"mergeGateEnabled\":false,\"pullRequestNumber\":1842,\"repository\":\"modu-ai/moai-adk\",\"status\":\"running\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-19T05:29:22.928019Z\">2026-10-19T05:29:22.928019Z</relative-time> | `e7cceb2` | Manual request |\n| \ud83d\udd12 **Security Review** | \u2705 **Completed** <relative-time datetime=\"2026-10-19T05:23:33.200772Z\">2026-10-19T05:23:33.200772Z</relative-time> | \u2014 | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+    "created_at": "2026-10-19T05:19:14Z",
+    "updated_at": "2026-10-19T05:29:23Z"
+  },
+  {
+    "id": 6260377784,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. :+1:\n\n**Reviewed commit:** `e7cceb2cb5`\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+    "created_at": "2026-10-19T05:29:21Z",
+    "updated_at": "2026-10-19T05:29:21Z"
+  }
+]

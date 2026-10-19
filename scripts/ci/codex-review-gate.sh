@@ -3,17 +3,16 @@
 #
 # SPEC-CI-CODEX-REVIEW-001. The reviewer is the ChatGPT subscription's native Codex GitHub
 # review; this script only reads what that review leaves on a pull request and refuses
-# everything it cannot recognise. It holds no key, posts nothing, and reads no text of any
-# artifact: the verdict derives from review state, commit binding, author identity, and
-# finding comments alone.
+# everything it cannot recognise. It holds no key and posts nothing. The native
+# issue-comment summary and receipt are checked alongside formal reviews and findings.
 #
 # Subcommands:
-#   read-native-review --reviews F --comments G --head-sha S --draft true|false [--wait-closed true|false]
+#   read-native-review --reviews F --comments G [--issue-comments I] --head-sha S --draft true|false [--wait-closed true|false]
 #   fetch-pages --endpoint E --out F [--expect-count N]
 #   gate-files-changed --file FILES --head-sha S
 #
 # Exit classes (pairwise distinct; a caller treats any exit it does not recognise as a refusal):
-#   0  pass      the newest native review bound to the head is APPROVED, no finding exists
+#   0  pass      trusted current-head native artifacts are clean, no finding exists
 #   1  fail      a named refusal
 #   10 pending   no native review yet and the caller's wait window is open
 #   11 NOT RUN   a draft pull request, or no native review when the wait window has ended;
@@ -43,10 +42,21 @@ DECIDE_JQ='
 def ident:
   (.user | type) == "object"
   and .user.login == $login and .user.id == $uid and .user.type == $utype;
+def timestamp: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$");
 def idtext: if (.id | type) == "number" then (.id | tostring) else "?" end;
 def is_head($v): ($v | type) == "string" and ($v | ascii_downcase) == $head;
 def has_sha($v): ($v | type) == "string" and ($v | length) > 0;
-($reviews | map(select(ident))) as $cand
+# Native GitHub reviews publish a mutable full-SHA summary and a clean receipt.
+# Neither receipt prose nor a short SHA is sufficient on its own.
+($issues | map(select(ident))) as $native
+| ($native | map(select((.body // "") | contains("<!-- codex-pull-request-review-summary -->"))) | sort_by(.updated_at, .id)) as $summaries
+| ($native | map(select((.body // "") | startswith("<!-- codex-review-receipt:v1 -->"))) | sort_by(.created_at, .id)) as $receipts
+| ($summaries[-1] // null) as $summary
+| ($receipts[-1] // null) as $receipt
+| (try ($summary.body | capture("<!-- codex-review-state:v1 (?<state>[^\\n]+) -->") | .state | fromjson | .code_review) catch null) as $state
+| ($native | group_by(.id) | map(select(length > 1)) | length) as $native_dups
+| ($native | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $native_bad
+| ($reviews | map(select(ident))) as $cand
 | ($cand | map(select(
       ((.id | type) != "number") or ((.id | floor) != .id)
       or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
@@ -63,6 +73,19 @@ def has_sha($v): ($v | type) == "string" and ($v | length) > 0;
 | ($cand | max_by(.id)) as $newest
 | if ($bad | length) > 0 then {c: 1, r: ("review-entry-invalid:" + ($bad[0] | idtext))}
   elif $dup != null then {c: 1, r: ("review-entry-invalid:duplicate-id:" + ($dup[0] | idtext))}
+  elif $native_dups > 0 or $native_bad > 0 then {c: 1, r: "native-artifact-invalid"}
+  elif ($summaries | length) > 0 or ($receipts | length) > 0 then
+    if $find != null then {c: 1, r: ("finding:" + $find.id)}
+    elif $cr != null and ($ap == null or $cr > $ap) then {c: 1, r: "changes-requested"}
+    elif $summary == null or $receipt == null then {c: 1, r: "native-artifact-incomplete"}
+    elif ($state | type) != "object" then {c: 1, r: "native-summary-invalid"}
+    elif (is_head($state.commit_sha) | not) then {c: 1, r: "native-summary-stale"}
+    elif $state.status != "completed" then {c: 1, r: "native-review-not-complete"}
+    elif $state.has_any_findings != false or $state.has_unresolved_findings != false then {c: 1, r: "native-findings-or-unknown"}
+    elif ($receipt.body | contains("Codex Review: Didn\u0027t find any major issues. :+1:")) | not then {c: 1, r: "native-receipt-not-clean"}
+    elif ($receipt.body | contains("**Reviewed commit:** `" + $head[0:10] + "`")) | not then {c: 1, r: "native-receipt-stale"}
+    else {c: 0, r: ("native-review-clean: issue-summary " + ($summary.id | tostring) + " receipt " + ($receipt.id | tostring) + " bound to " + $head + " artifacts " + ([$summary | {id,updated_at,body}, $receipt | {id,updated_at,body}] | tojson | @base64))}
+    end
   elif ($cand | length) == 0 then
     (if $closed then {c: 11, r: "not-run:review-absent"} else {c: 10, r: "pending:no-review"} end)
   elif ($bound | length) == 0 then {c: 1, r: ("stale-review:" + ($newest.commit_id | .[0:10]))}
@@ -79,9 +102,10 @@ def has_sha($v): ($v | type) == "string" and ($v | length) > 0;
 '
 
 cmd_read_native_review() {
-  local reviews="" comments="" head="" draft="" closed="false"
+  local reviews="" comments="" issues="" head="" draft="" closed="false"
   while [ $# -gt 0 ]; do
     case "$1" in
+      --issue-comments) issues="${2-}"; shift 2 || refuse 1 'usage:--issue-comments' ;;
       --reviews)     reviews="${2-}";  shift 2 || refuse 1 'usage:--reviews' ;;
       --comments)    comments="${2-}"; shift 2 || refuse 1 'usage:--comments' ;;
       --head-sha)    head="${2-}";     shift 2 || refuse 1 'usage:--head-sha' ;;
@@ -109,9 +133,17 @@ cmd_read_native_review() {
     if ! jq -e -s 'all(.[]; type == "object")' "$f" >/dev/null 2>&1; then refuse 1 'input-invalid'; fi
   done
 
+  # Optional only for compatibility with callers reading formal reviews. The workflow
+  # always supplies the complete, count-bound issue-comment list.
+  if [ -n "$issues" ]; then
+    [ -f "$issues" ] || refuse 1 'input-invalid'
+    jq -e -s 'all(.[]; type == "object")' "$issues" >/dev/null 2>&1 || refuse 1 'input-invalid'
+  else
+    issues=/dev/null
+  fi
   local lower_head result code reason
   lower_head="$(printf '%s' "$head" | tr 'A-F' 'a-f')"
-  result="$(jq -n -r --slurpfile reviews "$reviews" --slurpfile comments "$comments" \
+  result="$(jq -n -r --slurpfile reviews "$reviews" --slurpfile comments "$comments" --slurpfile issues "$issues" \
     --arg head "$lower_head" --arg login "$IDENT_LOGIN" --argjson uid "$IDENT_ID" \
     --arg utype "$IDENT_TYPE" --argjson closed "$closed" "$DECIDE_JQ" 2>/dev/null)" \
     || refuse 1 'input-invalid'
@@ -132,7 +164,7 @@ EOF
 # The only subcommand that reads from the API, and the only place pagination lives. An explicit
 # loop over the documented per_page and page parameters is used instead of a piped --paginate: a
 # piped call hides a mid-pagination failure, and a test cannot reproduce its behaviour.
-ENDPOINT_RE='^repos/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pulls/[0-9]+/(files|reviews|comments)$'
+ENDPOINT_RE='^repos/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/(pulls/[0-9]+/(files|reviews|comments)|issues/[0-9]+/comments)$'
 PER_PAGE=100
 MAX_PAGE=30   # 30 x 100 = 3000, the files listing's own limit; a full 30th page is never complete
 

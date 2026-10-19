@@ -37,8 +37,9 @@ case "${1:-}" in
     query=""
     case "$ep" in *\?*) query="${ep#*\?}" ;; esac
     case "$path" in
-      repos/*/*/pulls/*/files | repos/*/*/pulls/*/reviews | repos/*/*/pulls/*/comments)
+      repos/*/*/pulls/*/files | repos/*/*/pulls/*/reviews | repos/*/*/pulls/*/comments | repos/*/*/issues/*/comments)
         kind="${path##*/}"
+        case "$path" in */issues/*/comments) kind=issues ;; esac
         page="${query##*page=}"
         if [ "${FAIL_PAGE:-}" = "$kind:$page" ] || [ "${FAIL_KIND:-}" = "$kind" ]; then
           echo "stub gh: forced failure for $kind page $page" >&2
@@ -437,7 +438,7 @@ func TestCodexGateFetchPagesRefusesDisallowedEndpoint(t *testing.T) {
 		}
 	}
 	cgRunSubs(t, []cgSub{
-		{"issue_comments_endpoint_refused", refused("repos/modu-ai/moai-adk/issues/7/comments")},
+		{"issue_events_endpoint_refused", refused("repos/modu-ai/moai-adk/issues/7/events")},
 		{"check_runs_endpoint_refused", refused("repos/modu-ai/moai-adk/commits/" + cgHead + "/check-runs")},
 		{"commit_status_endpoint_refused", refused("repos/modu-ai/moai-adk/commits/" + cgHead + "/status")},
 		{"path_with_extra_segment_refused", func(t *testing.T, e *cgEnvT) {

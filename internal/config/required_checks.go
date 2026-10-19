@@ -25,6 +25,8 @@ type RequiredChecks struct {
 	Version int `yaml:"version"`
 	// Branches maps branch name/glob to BranchChecks (used for branch protection JSON).
 	Branches map[string]BranchChecks `yaml:"branches"`
+	// ReleaseGate pins the main-push check names required by the release gate.
+	ReleaseGate []string `yaml:"release_gate,omitempty"`
 	// Auxiliary lists check context names that run on PRs but do NOT block merge.
 	// Consumed by Round 2 CI watch loop to discriminate required vs advisory failures.
 	Auxiliary []string `yaml:"auxiliary,omitempty"`

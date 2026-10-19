@@ -1,17 +1,15 @@
 ---
-description: "Gate-measurement companion for factory-dispatch.md — the CodeRabbit endpoint measurement, review lens selection table, the pre-merge settings-drift assertion, and the verification-load incident record"
+description: "Gate-measurement companion for factory-dispatch.md — the native Codex artifact contract, review lens selection table, the pre-merge settings-drift assertion, and the verification-load incident record"
 paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
 ---
 
 # Factory Dispatch — Sync-Gate and Integration Measurements
 
-> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the gate measurements behind the stub's review and integration clauses: why the CodeRabbit read uses the combined endpoint, how the leader picks review lenses, what `acquire` asserts about the caller's tree, and the verification-load incident record. Load when choosing review lenses for a dispatch, running the settings-drift assertion, or reviewing a lane's verification recipe. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-cards.md` (card lifecycle and traceability).
+> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the gate measurements behind the stub's review and integration clauses: how native Codex artifacts bind the current head, how the leader picks review lenses, what `acquire` asserts about the caller's tree, and the verification-load incident record. Load when choosing review lenses for a dispatch, running the settings-drift assertion, or reviewing a lane's verification recipe. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-cards.md` (card lifecycle and traceability).
 
-## CodeRabbit endpoint measurement
+## Native Codex review evidence
 
-The CodeRabbit predicate in the stub assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
-
-Branch protection is not the lever: the status state is `success` precisely in the failing case, so adding CodeRabbit to the required contexts admits the unreviewed pull request just as readily. The distinction lives in the description — which is why an automated merge gate closing this hole does not close the path a human merges by hand.
+**Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
 
 ## Review lens selection
 
