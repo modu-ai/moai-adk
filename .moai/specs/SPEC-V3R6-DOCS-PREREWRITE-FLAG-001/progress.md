@@ -28,3 +28,17 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier=M · scope=12 docs files (4-locale pages + 4 READMEs) · domain count=1 (docs only) · file language mix=100% markdown · concurrency benefit=LOW (one uniform edit class per STALE set, inter-file parity coupling via Q17) · worktrees n/a (lane tree).
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | not selected | 12-file multi-locale edit set exceeds single-response scope |
+| serial | **selected** | docs edits with parity coupling across locales; one implementer, sequential milestones M1→M2→M3 |
+| fanout | not selected | concurrency benefit LOW; coding-heavy-equivalent (docs parity) work per the Anthropic caveat |
+| sweep | not selected | <30 files, not mechanical-uniform (locale-specific wording) |
+
+Decision: serial
+Justification: a single implementer (manager-develop, effort high per Class C) edits the STALE sets across 4 locales in one change set (Q17), with M3's grep verification local to the same tree; no parallelism benefit exists, and parity errors from split edits would cost more than sequential work.
