@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPD-001
 title: "Docs Pre-Rewrite Cleanup — stale CLI citations on three pages (child SWEEPD, card t1724)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
