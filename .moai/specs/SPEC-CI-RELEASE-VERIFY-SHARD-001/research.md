@@ -182,6 +182,26 @@ false    (exit 0)
 
 L-E18 | grep -c 'internal/harness/rosterguard' .github/workflows/release-pr-multi-os.yml
 0        (exit 1)
+
+L-E19 | duplicate-include mutant (scratch matrix with two `shard: cli-1` include entries, six shard ids, three OS)
+      | yq '.jobs.full-matrix-test.strategy.matrix.include | length' <scratch mutant>
+7        (exit 0; expected 6 -> the structural assertion fails)
+      | yq '[.jobs.full-matrix-test.strategy.matrix.include[].shard] | unique | length' <scratch mutant>
+6        (exit 0; 7 entries over 6 distinct shard ids -> a repeat)
+      | leg count is NOT changed by the repeat: a shard-keyed include entry overwrites no original matrix value, so the second copy merges into the same combinations (GitHub include rule; `scripts/ci-mirror/validate-required-checks.sh` GATE-6/GATE-7 comment block, lines ~389-397) — cited from the plan-audit iter3 finding and the script's comment, not re-run through the expander.
+
+L-E20 | what `go test -list` enumerates (scratch package in the session scratchpad, 8 functions + 1 helper; run once before the quiet window, not repeated): `go -C <scratch> test -vet=off -list '.*' ./...`
+TestReal
+Test
+BenchmarkB
+Fuzz
+FuzzReal
+Example
+ExampleLower
+ExampleBlock
+ExampleUnordered
+ok  	gl	0.291s        (exit 0)
+      | source had: bare `Test`, bare `Fuzz`, bare `Example` (with an empty `// Output:`), `Fuzzhelper(s string) string`, `ExampleAlpha()` with no output comment, `ExampleLower` with `// output: x`, `ExampleBlock` with `/* Output: */`, `ExampleUnordered` with `// Unordered output:`. Not listed: `Fuzzhelper`, `ExampleAlpha`. Listed: every other one, including bare names and the lower-case and block-comment output markers. (Without `-vet=off`, `go test` fails the build on the vet "tests" analyzer's unknown-identifier complaints for `ExampleAlpha` etc.; the run-phase guard must call `go test -list` the way ci.yml's race legs do and not depend on this scratch flag.)
       | bare `Test` regexp semantics: measured by the plan auditor with Go regexp (plan-audit-iter1.md evidence row 11): `Test` matches no ci.yml selector; `TestF` matches 2; `TestFa` 1; `Test_x`/`Test1`/`TestÀ` shard 4 — cited, not re-run here.
 ```
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-RELEASE-VERIFY-SHARD-001
 title: "Release Verify sharding — split the 3-OS race run into ci.yml's six shards so no leg reaches the job timeout"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -23,8 +23,8 @@ related_specs: [SPEC-CI-VERDICT-INTEGRITY-001, SPEC-CANDIDATE-CI-001, SPEC-CI-FL
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-19 | manager-spec | Initial draft. Card t1892 (lane-40, run tn1p4e, Class C, P0). Every premise measured on tree `74ad197380` (PR #1830 head); evidence ledger in research.md, adoption cells in acceptance.md. |
 | 0.1.1 | 2026-10-19 | manager-spec | Plan-audit iter1 fixes (FAIL 0.78, `.moai/reports/t1892/plan-audit-iter1.md`): REQ-RVS-011 pinned to the exact six shards per OS; REQ-RVS-003 parser edges and Example/Fuzz guard; REQ-RVS-014 added (remainder exclusion asserted); AC-RVS-016 added (shard weight, post-landing); WHY under its own heading; F.4 reworded. |
-
 | 0.1.2 | 2026-10-19 | manager-spec | Plan-audit iter2 fixes (FAIL 0.84, codex gate fail, `.moai/reports/t1892/plan-audit-iter2.md`): REQ-RVS-001 pins the final leg set (no `exclude`, no duplicate `include`); REQ-RVS-003 split into 003 (divergence), 015 (zero/two-match cover) and 016 (Go-discovery guard replacing the over-broad name-prefix ban); section C wording; ledger exit codes. |
+| 0.1.3 | 2026-10-19 | manager-spec | Plan-audit iter3 fixes (FAIL 0.84, codex fail, `.moai/reports/t1892/plan-audit-iter3.md`): the cover and discovery checks run over the names `go test -list` prints instead of a re-implemented Go rule; duplicate-include mutant prediction corrected (caught structurally, not by leg count); REQ-RVS-015 defines its own term; constraint D.3 names the guard's REQs. |
 
 ## A.1 Why this SPEC exists
 
@@ -60,9 +60,9 @@ Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `R
 
 - **REQ-RVS-014** — **When** the remainder shard builds its package list, it shall fail if the list still contains `internal/cli` or the rosterguard package, in addition to failing on an empty list, so a listing that did not remove the two excluded packages cannot run them a second time unnoticed.
 
-- **REQ-RVS-015** — **When** a top-level `internal/cli` test name matches zero or more than one of the four internal/cli selectors, a repository test shall fail and name the test and the selectors involved. (Which functions count as a top-level test is defined in plan.md M3 and acceptance.md §C.)
+- **REQ-RVS-015** — **When** a top-level `internal/cli` test name matches zero or more than one of the four internal/cli selectors, a repository test shall fail and name the test and the selectors involved. A "top-level `internal/cli` test name" is a name printed by `go test -list '.*' ./internal/cli/`, excluding `Benchmark...` names (benchmarks do not run without `-bench`); the bare name `Test` is such a name and matches none of the four selectors.
 
-- **REQ-RVS-016** — **When** `internal/cli` or the rosterguard package contains a function that `go test` itself would run but the `^Test` selectors would not select — a fuzz target (name `Fuzz` plus a suffix not beginning with a lowercase letter, parameter `*testing.F`) or an example that carries an `// Output:` or `// Unordered output:` comment — a repository test shall fail and name the function. A lowercase-suffixed `Fuzz...` helper and an `Example...` without an output comment are not run by `go test` and shall not fail the test.
+- **REQ-RVS-016** — **When** the go tool lists, for `internal/cli` or the rosterguard package, a fuzz target or an example (a name the tool enumerates that is neither a `Test...` nor a `Benchmark...` name), a repository test shall fail and name it, because no `^Test` selector would run it. The set of names is whatever `go test -list '.*'` prints for the package; the SPEC does not restate Go's rules for what counts as a runnable test, fuzz target or example, so a function Go does not list (a lowercase-suffixed `Fuzz...` helper, an example without an output comment) cannot fail the test, and one Go does list (a bare `Fuzz`, a bare `Example`, an example whose output marker is lower-case or in a block comment) cannot be missed.
 
 ## C. Acceptance Criteria
 
@@ -72,7 +72,7 @@ Tier M — the Given-When-Then set lives in `acceptance.md` (16 criteria, AC-RVS
 
 1. **No timeout increase, no test exclusion, no gate relaxation, no required-check change** (operator directive for card t1892). Each is a testable requirement above (REQ-RVS-005/006/007) and an acceptance criterion.
 2. **Cost.** Shard count equals `ci.yml`'s (six). The organization stated a 10 USD/month Actions budget; the repository is public (research.md E3), so hosted standard-runner minutes are not billed — recorded as a discrepancy for the leader, not as a licence to add shards or duplicate runs.
-3. **Implementation scope (run phase).** `.github/workflows/release-pr-multi-os.yml`; `scripts/release.sh` and `internal/template/release_script_test.go` (leg lookup, REQ-RVS-011); one new guard test under `internal/template/` (REQ-RVS-003). `.github/workflows/ci.yml` is read, never edited. Repository-local only; no template-tree mirror is involved (none of these files has one).
+3. **Implementation scope (run phase).** `.github/workflows/release-pr-multi-os.yml`; `scripts/release.sh` and `internal/template/release_script_test.go` (leg lookup, REQ-RVS-011); one new guard test under `internal/template/` (REQ-RVS-003, 015, 016 and the matrix-shape, artifact-name and vet-leg assertions of AC-RVS-001, 007, 013). `.github/workflows/ci.yml` is read, never edited. Repository-local only; no template-tree mirror is involved (none of these files has one).
 4. **Windows and macOS legs are unmeasured for shard weight.** Per-shard proxies exist for ubuntu only (`ci.yml` comment, run 37861953651). The first full run of the new structure is the measurement (REQ-RVS-013); the SPEC does not pre-assert a per-OS duration.
 5. **Plan-phase boundary.** This phase writes only `.moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/`. No workflow, script, or test file is touched here.
 
