@@ -4,7 +4,7 @@
 
 plan_status: audit-ready
 audit_ready: true
-plan_revision: 0.1.1
+plan_revision: 0.1.2
 plan_complete_at: 2026-10-19T02:14:25Z
 tier: M
 requirement_count: 8 live (10 numbered; REQ-SWF-005 and REQ-SWF-006 superseded)
@@ -14,6 +14,8 @@ tree_pin: 74ad197380a0711cdb9816d4e37c94d29af730ea
 spec_lint_strict: `moai spec lint --strict .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001` printed one INFO finding (OwnershipTransitionUnmeasured on the 0.1.0 plan commit, which has no Authored-By-Agent trailer; Info never changes the exit status) and `0 error(s), 0 warning(s)`. Judging build: installed `moai_cp/20261007_195927-1888-g7705b365e2`; `git rev-list --count --left-right 7705b365e2...HEAD` printed `0	69`, so that commit is a strict ancestor of HEAD (69 commits behind) and the lint was not run by a build made from this tree (verification-claim-integrity §2.2: a gap, not a tree-built measurement)
 plan_audit_verdict_files: .moai/reports/t1727/plan-audit.md
 plan_artifact_hash: pending
+
+Repair 0.1.2 (after plan-audit iteration 1, MP-9): D1 M2 check scoped to the M2 files, D2 guard pathspec adds `.moai/config`, D3 `new_items` exempt in AC-SWF-005, D4 C-12 after M3; no REQ/AC added. The lint line above was re-run at 0.1.2 (see the repair report).
 
 The plan is ready for the independent plan audit; it is not approved. The artifact hash is recorded by the lane from the runtime value after the audit.
 

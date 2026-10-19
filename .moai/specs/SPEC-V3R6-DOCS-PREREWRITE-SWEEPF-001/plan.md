@@ -1,4 +1,4 @@
-# SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 — Implementation Plan (revision 0.1.1)
+# SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 — Implementation Plan (revision 0.1.2)
 
 Methodology: documentation edits verified by the RED-now and green cells of acceptance.md §C (no code, so no test-first cycle; the grep cells are the red state and the green check). Milestones are ordered by decision reversibility: the page, navigation, and baseline deletions (the user-visible change) come first in the section order, and the mechanical row edits after. Execution order is the dependency order in § B. No time estimates are given.
 
@@ -6,7 +6,7 @@ Methodology: documentation edits verified by the RED-now and green cells of acce
 
 - **Card and branch.** Factory card t1727 (Class C, docs only), branch `WT-workflow-cmd-index`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1727`, base `74ad197380a0711cdb9816d4e37c94d29af730ea` (local `main`). Child 11 of 11 of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001.
 - **Artifacts.** spec.md, plan.md, acceptance.md (Tier M), plus decision-index.md and progress.md. Measurements are the ledger cells of acceptance.md §C.
-- **Rulings applied (revision 0.1.1).** Operator verdicts of record `d-20261019T015908Z-220a` (Q13 replace where an equivalent exists, delete where none exists; Q17 all four locales in the same change) and `d-20261019T021508Z-258e` (Q14: delete the `moai-design` page in all four locales, remove the `main.yaml` entry and baseline line 51, delete the `_index.md` design rows; relayed by the dispatching coordinator, acceptance.md G-10). Leader ruling `d-20261019T020706Z-1c58` (decided by the leader, session `d1aa9eb6`, under operator delegation, ladder path 6): O-1 = (a), O-2 = include `main.yaml:204-208`, O-3 = update the parity baseline line, O-4 = correct the "All subcommands (16)" count to the actual row count. The leader ruling is not an operator verdict. No decision row is open.
+- **Rulings applied (revision 0.1.2).** Operator verdicts of record `d-20261019T015908Z-220a` (Q13 replace where an equivalent exists, delete where none exists; Q17 all four locales in the same change) and `d-20261019T021508Z-258e` (Q14: delete the `moai-design` page in all four locales, remove the `main.yaml` entry and baseline line 51, delete the `_index.md` design rows; relayed by the dispatching coordinator, acceptance.md G-10). Leader ruling `d-20261019T020706Z-1c58` (decided by the leader, session `d1aa9eb6`, under operator delegation, ladder path 6): O-1 = (a), O-2 = include `main.yaml:204-208`, O-3 = update the parity baseline line, O-4 = correct the "All subcommands (16)" count to the actual row count. The leader ruling is not an operator verdict. No decision row is open.
 - **Change set.** Fourteen paths: ten files edited (four `_index.md`, four `_meta.yaml`, `main.yaml`, `.locale-parity-baseline`) and four pages deleted (spec.md § Scope).
 
 ### A.1 Who edits what in the run phase (ruling O-1 = (a))
@@ -45,7 +45,7 @@ Order inside M2:
 1. Content author: delete the ko page and baseline line 51 (delete only; add no line).
 2. Translators: delete the en page, then the ja and zh pages in parallel.
 3. Curator, one pass: remove the `moai-design` key and its `title` from the four `_meta.yaml` files, and delete `main.yaml` lines 203 to 208 as one block (the `- name:` line, the four name-map lines, and the `ref` line). Never delete the name-map lines and leave the `ref`.
-4. Run C-5 (expect no output), C-13 (expect no output), C-14 (expect no output), R-5, R-8 (no output), R-9 (`6`), R-10 (`0	1	docs-site/.locale-parity-baseline`).
+4. Run C-5 narrowed to the M2 files (`git grep -n -E "moai-design" 74ad197380 -- ':(glob)docs-site/content/*/workflow-commands/_meta.yaml' ':(glob)docs-site/content/*/workflow-commands/moai-design.md' docs-site/data`, expect no output at the closing commit of M2; the whole-set C-5 still prints the five `_index.md` lines until M3 lands and is expected to print nothing only after M3), C-13 (expect no output), C-14 (expect no output), R-5, R-8 (no output), R-9 (`6`), R-10 (`0	1	docs-site/.locale-parity-baseline`).
 
 ### M3 — Priority High: `_index.md` design rows and count statements in four locales (REQ-PRC-001, REQ-SWF-002, -003, -008)
 
@@ -79,7 +79,7 @@ M2 and M3 may land as two commits or one; all four locales of each land together
 ## D. PRESERVE list and its check
 
 - Byte-unchanged (REQ-SWF-007): the six other `workflow-commands` pages in each locale (`moai-goal`, `moai-harness`, `moai-plan`, `moai-project`, `moai-run`, `moai-sync`), every other page of `docs-site/content/`, `docs-site/vercel.json`, `docs-site/layouts/`, `docs-site/static/`, the four READMEs, `.moai/config/sections/design.yaml`, and everything under `.claude/`, `internal/`, `cmd/`, `scripts/`. `docs-site/.locale-parity-baseline` changes by exactly one deleted line.
-- Check: acceptance.md R-4 on the closing commit against `74ad197380` (a pathspec of `docs-site` and the four READMEs prints only the Scope paths; the pathspec `.claude .moai/docs scripts internal cmd` prints nothing), plus the numstat of AC-SWF-009. This is a guard criterion (AC-SWF-004) with named mutants.
+- Check: acceptance.md R-4 on the closing commit against `74ad197380` (a pathspec of `docs-site` and the four READMEs prints only the Scope paths; the pathspec `.claude .moai/docs .moai/config scripts internal cmd` prints nothing, which covers `.moai/config/sections/design.yaml`), plus the numstat of AC-SWF-009. This is a guard criterion (AC-SWF-004) with named mutants.
 - The ko `/moai goal` summary row (line 41), the `new_items` list in each `_meta.yaml`, and every other `main.yaml` entry stay as they are.
 
 ## E. Constraints

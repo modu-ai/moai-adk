@@ -1,4 +1,4 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 (revision 0.1.1)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 (revision 0.1.2)
 
 ## A. Pin and conventions
 
@@ -76,10 +76,10 @@ Every live REQ has an AC and every live AC maps to a REQ (8 of 8; REQ-SWF-005, -
 - **When** the whole change is committed,
 - **Then**
   1. The R-4 command (`git diff --name-only 74ad197380 <closing-sha> -- docs-site README.md README.ko.md README.ja.md README.zh.md`) prints exactly the fourteen paths of § Scope of spec.md (eight modified content files, `docs-site/data/menu/main.yaml`, `docs-site/.locale-parity-baseline`, and four deleted pages). It prints none of: `docs-site/vercel.json`, `docs-site/layouts/…`, `docs-site/static/…`, any `workflow-commands/moai-<goal|harness|plan|project|run|sync>.md`.
-  2. The same command with the pathspec `.claude .moai/docs scripts internal cmd` prints nothing.
+  2. The same command with the pathspec `.claude .moai/docs .moai/config scripts internal cmd` prints nothing (`.moai/config` covers `.moai/config/sections/design.yaml`, which REQ-SWF-007 and plan.md §D keep unchanged).
   3. The edit to the baseline file is exactly one deleted line (AC-SWF-009 Then 2).
 - **RED-now cells:** none. Green today by construction (no edit exists); the criterion is a guard. Its failure is shown by the mutants in R-4.
-- **Mutant probe (recipe R-4):** touching `docs-site/vercel.json`, any of the other six pages, or `docs-site/layouts/_default/baseof.html` makes Then 1 print an extra path; leaving the baseline file untouched makes Then 1 print thirteen paths (a short sweep is a failure).
+- **Mutant probe (recipe R-4):** touching `docs-site/vercel.json`, any of the other six pages, or `docs-site/layouts/_default/baseof.html` makes Then 1 print an extra path; leaving the baseline file untouched makes Then 1 print thirteen paths (a short sweep is a failure); editing a comment line of `.moai/config/sections/design.yaml` makes Then 2 print that path. Cells on `74ad197380` against HEAD, verbatim: `git diff --name-only 74ad197380 HEAD -- .claude .moai/docs .moai/config scripts internal cmd` printed nothing (exit 0, green today); the control `git diff --name-only 74ad197380 HEAD -- .moai/config .moai/specs` printed the five SPEC files, so the form prints a path when a path in its pathspec changes.
 - **Gate:** none (O-2 and O-3 are closed by the leader ruling; the larger set is stated here).
 - **Done when:** Then 1 to 3 hold on the committed tree.
 
@@ -88,8 +88,8 @@ Every live REQ has an AC and every live AC maps to a REQ (8 of 8; REQ-SWF-005, -
 - **Given** the page is linked from the four `_index.md` files, registered in the four `_meta.yaml` files, and listed in `docs-site/data/menu/main.yaml` (C-5: ten lines).
 - **When** the Q14 verdict (remove) is applied and M2 deletes the four pages, the four `_meta.yaml` entries, and the `main.yaml` entry,
 - **Then**
-  1. The C-5 command run on the closing commit prints nothing and exits 1: no line under `docs-site/content` and none in `docs-site/data`.
-  2. Each `_meta.yaml` still parses and lists only keys that name an existing page or `index` (recipe R-5: `yq 'keys'` on each file, compared with the page file names of the same directory).
+  1. The C-5 command run on the closing commit (after M3) prints nothing and exits 1: no line under `docs-site/content` and none in `docs-site/data`. After M2 alone the whole-set C-5 still prints the five `_index.md` lines (M3 deletes them); the M2 check is C-5 narrowed to the `_meta.yaml`, page, and `docs-site/data` paths (plan.md §B M2 step 4), which prints nothing.
+  2. Each `_meta.yaml` still parses and lists only keys that name an existing page, `index`, or `new_items` (the exempt non-page key; recipe R-5: `yq 'keys'` on each file, compared with the page file names of the same directory).
 - **RED-now cells:** C-5. Red because 10 lines name the page today (4 `_index.md` rows, with ko holding 2, 4 `_meta.yaml` keys, and `main.yaml:208`).
 - **Green path:** M3 flips the five `_index.md` lines; M2 flips the four `_meta.yaml` keys and the `main.yaml` line.
 - **Mutant probe:** deleting the pages and leaving the `_meta.yaml` key fails Then 1 and Then 2; deleting the key and leaving the page fails AC-SWF-004 only if the page is not in the deleted set, so Then 2 compares the two sets directly; deleting the `main.yaml` name-map lines and leaving the `ref` line fails Then 1 (see AC-SWF-008).
@@ -321,7 +321,7 @@ docs-site/content/zh/workflow-commands/moai-design.md
 
 - Command (probe for 15): `git grep -c -E "\(15\)|\(15 個\)|\(15개\)|\(15 个\)|routes 15 subcommands|15 個のサブコマンド|15개 서브커맨드|15 个子命令" 74ad197380 -- ':(glob)docs-site/content/*/workflow-commands/_index.md'`
 - Exit code: 1 by git grep semantics (no match; not displayed by the tool, gap G-1). Tree: `74ad197380`. Stdout: no output.
-- Red because the heading and the sentence state 16 today and the closing row count is 15 (C-12 after M2).
+- Red because the heading and the sentence state 16 today and the closing row count is 15 (C-12 after M3).
 - Control (same form for 16), exit code 0, stdout verbatim:
 
 ```
@@ -475,7 +475,7 @@ docs-site/content/en/utility-commands/moai-todo.md
 
 - **R-1, R-6, R-7** are retired with the rewrite and marker branches (Q14 verdict); the numbers are kept so references do not move.
 - **R-3 (same change).** `git show --stat --format= <closing-sha>` lists the four `_index.md` paths in one commit.
-- **R-4 (preservation guard).** `git diff --name-only 74ad197380 <closing-sha> -- docs-site README.md README.ko.md README.ja.md README.zh.md` expected to print only the paths of spec.md § Scope. Mutants: append a line to `docs-site/vercel.json`, to `docs-site/layouts/_default/baseof.html`, or to `docs-site/content/en/workflow-commands/moai-run.md`, in a scratch copy of the commit; the command prints the extra path.
+- **R-4 (preservation guard).** `git diff --name-only 74ad197380 <closing-sha> -- docs-site README.md README.ko.md README.ja.md README.zh.md` expected to print only the paths of spec.md § Scope; the companion pathspec `.claude .moai/docs .moai/config scripts internal cmd` expected to print nothing. Mutants: append a line to `docs-site/vercel.json`, to `docs-site/layouts/_default/baseof.html`, or to `docs-site/content/en/workflow-commands/moai-run.md`, in a scratch copy of the commit; the command prints the extra path.
 - **R-5 (`_meta.yaml` parse and key set).** For each locale: `yq 'keys' docs-site/content/<L>/workflow-commands/_meta.yaml`, compared with `git ls-files docs-site/content/<L>/workflow-commands`; every key except `index` and `new_items` must name an `<key>.md` that exists. (Base: `yq 'keys'` on the ko file prints the eight page keys, the two comment lines, and `new_items`.)
 - **R-8 (sidebar name map).** `yq '.main[] | select(.ref == "/workflow-commands") | .sub[] | select(.ref == "/workflow-commands/moai-design") | .name' docs-site/data/menu/main.yaml`. Base (exit 0), verbatim: `ko: /moai design`, `en: /moai design`, `ja: /moai design`, `zh: /moai design`. Closing: no output.
 - **R-9 (sidebar entry count).** `yq '.main[] | select(.ref == "/workflow-commands") | .sub | length' docs-site/data/menu/main.yaml`. Base (exit 0): `7`. Closing: `6`.
