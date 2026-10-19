@@ -41,11 +41,63 @@ open_decisions: see decision-index.md. Q13, Q17, and Q24 carry operator verdicts
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase (manager-develop)_
+Run agent: manager-develop (cycle_type tdd adapted to docs: RED cells, edits, GREEN cells). Base tree for the RED run: HEAD bdb77bdb0b (clean). Edits committed in 8f86c6bece (full 8f86c6bece4195f52897d4049297ddbd00c7fefc), which also carries the `draft -> in-progress` transition on spec.md (`status:` only; `updated:` already 2026-10-19). Every GREEN cell ran with `HEAD` = 8f86c6bece after that commit, in this worktree, against this tree. Pin for the fence cells: 74ad197380a0. Every cell below is one `git` invocation followed by `; echo "exit=$?"` outside the cell; stdout is verbatim.
+
+Pre-flight S-00 (`git diff --stat 74ad197380a0 HEAD -- docs-site .claude internal cmd scripts`): stdout empty, exit 0 (no docs-site, .claude, internal, cmd, or scripts change since the pin).
+
+| Cell | RED (before edits, HEAD bdb77bdb0b) | GREEN (HEAD 8f86c6bece) | Status |
+|------|-------------------------------------|--------------------------|--------|
+| S-01 closing pattern, 12 files | 10 rows (en foundations 1, en vci 1, faq x4 1 each, feedback x4 3 each), exit 0 | stdout empty, exit 1 | PASS |
+| S-02 complement `-P` | the same 10 rows, exit 0 | stdout empty, exit 1 | PASS |
+| S-03 no `slash-example` marker | (not run RED; precondition green at the pin) | stdout empty, exit 1 | PASS |
+| S-05a / S-05b / S-05c CLI families | (precondition green at the pin) | each stdout empty, exit 1 | PASS |
+| S-06a `moai brain` | `HEAD:docs-site/content/en/core-concepts/verification-claim-integrity.md:1`, exit 0 | stdout empty, exit 1 | PASS |
+| S-06b first-level verb outside the set | `HEAD:docs-site/content/en/core-concepts/verification-claim-integrity.md:1`, exit 0 | stdout empty, exit 1 | PASS |
+| S-06c parent-keyed sub-verb | (precondition green at the pin) | stdout empty, exit 1 | PASS |
+| S-11 `> /moai:feedback` at its position | stdout empty, exit 1 | four rows, `HEAD:docs-site/content/{en,ja,ko,zh}/utility-commands/moai-feedback.md:32:> /moai:feedback`, exit 0 | PASS |
+| S-12a-en / -ja / -zh pinned FAQ line | each stdout empty, exit 1 | one row each at line 24 with the pinned line, exit 0 | PASS |
+| S-12a-ko pinned FAQ line | stdout empty, exit 1 | one row at line 28 with the pinned line, exit 0 | PASS |
+| S-12b false claim banned | four rows (`faq.md:1` in en, ja, ko, zh), exit 0 | stdout empty, exit 1 | PASS |
+| S-14-en pinned foundations row | stdout empty, exit 1 | `HEAD:docs-site/content/en/claude-code/foundations/_index.md:39:` + pinned row, exit 0 | PASS |
+| S-14-ja / S-14-zh pinned row | each stdout empty, exit 1 | one row each at line 40 with the pinned row, exit 0 | PASS |
+| S-15 retained fragment | stdout empty, exit 1 | `HEAD:docs-site/content/en/core-concepts/verification-claim-integrity.md:1`, exit 0 | PASS |
+| S-18-en / -ja / -ko / -zh pinned label | each stdout empty, exit 1 | one row each at line 31 (`# Direct slash command`, `# 直接スラッシュコマンド`, `# 직접 슬래시 명령`, `# 直接斜杠命令`), exit 0 | PASS |
+| S-13a names (`git diff --name-only 74ad197380a0 HEAD -- . ':!<SPEC dir>' ':!.moai/reports/t1725'`) | stdout empty, exit 0 | exactly the twelve page paths in the AC-PRC-001f order, exit 0 | PASS |
+| S-13b numstat (same pathspec) | stdout empty, exit 0 | exactly the twelve rows of AC-PRC-001f (`1 1` x8, `2 4` x4 for the feedback pages), exit 0 | PASS |
+| S-16-en/-ja/-ko/-zh whole-line diff | stdout empty, exit 0 | the four pinned blocks verbatim (one hunk `@@ -31,4 +31,2 @@` each; new blob ids 2bd283a9d1a3, 15386d1976fe, 27c00aab4302, dbc9b9f89eb6), exit 0 (run as one invocation over the four paths) | PASS |
+| S-17 blob ids of the twelve page files | the twelve unedited ids (d7d6bdc523c9..., 1223289b8580..., 62fd34466239..., a74cfdaac50b..., 94c5b7edf351..., 1e0a41308691..., 87ac8379f286..., e8df4954906e..., bc6086e4c65d..., efd8920f97a9..., 7293a1c812d1..., e542d848c744...), exit 0 | the twelve pinned ids, in order: 99b8de197d71ff79c0a9f827e9bbdc1404f919cf, 62c87efeaf51e300860e9c1ed7c1c3961dd5ccf3, e7de4ec667bf81235612c50acaa5f31d1eb54fe7, 2bd283a9d1a3ab5dd64b170a7115f20bc03fede3, f6fe617f76157513b1df8ff9cf6e3de59d575d19, a137a94f2cbe66f7172efdcc66cc83a67b082af5, 15386d1976fecb9509a3ae481ebd7620cd27d53f, 42ef2ea422f35066220b7700cab58b6a347260d1, 27c00aab43024fe9126e8c219600c327967a8de9, 8d10d0cfef812cc65289d8b8d5d75c56d62b25c4, 26a422462ea47b4fbbed38867fe03966433ac500, dbc9b9f89eb65728dadccee5417c0e200c156c5d, exit 0 | PASS |
+| S-10 `DOCS_I18N_STRICT=1 scripts/docs-i18n-check.sh` (plain bash script, no Go invoked) | (precondition green at the pin) | `Errors:   0`, `Warnings: 0`, `OK: all 4 locales pass parity, frontmatter, H1, and glossary checks.`, exit 0 | PASS |
+
+Acceptance-criterion roll-up: AC-PRC-001a (S-01) PASS; b (S-02) PASS; c (S-05a to S-05c) PASS; d (S-11, S-18-xx) PASS; e (S-10) PASS; f (S-13a, S-13b, S-16-xx, S-17) PASS; g (S-03) PASS; h (S-06a to S-06c) PASS; i (S-12a-xx, S-12b) PASS; j (S-14-xx) PASS; k (S-15) PASS. No deviation from the pinned text was needed.
+
+Gaps (not observed in this run):
+- S-06d-1 to S-06d-5 (tree-build verb surface) were not re-run: heavy Go execution was frozen by the leader (no `go build`), and no moai binary built from this tree was used; the verified verb sets of S-06b and S-06c rest on the plan-phase observation of S-06d (acceptance.md § D).
+- Hugo was not built; the rendered output of the replacement lines was not observed.
+- The ja, ko, and zh pinned prose (including the new labels) was not reviewed by a native reviewer (acceptance.md G-8); S-10 checks parity, frontmatter, H1, and glossary only, not register.
+- Tool provenance (verification-claim-integrity 2.2): the git cells use the installed `git`; S-10 is a shell script run from this tree. No moai build was invoked, so no judging-build commit applies.
+- The sibling FAQ bullet about `moai plan` ("does nothing") stays untouched by decision QE-5; recorded as a follow-up observation only.
+- Whole verbatim stdout and exit codes of every cell are in `.moai/reports/t1725/run-evidence.md` (gitignored, machine-local); the table above carries the deciding lines.
+
+Residual risk: the ja and zh foundations rows now say "位置づけ" and "定位" while their linked pages' headings still say "関係" and "关系" (accepted residual, decision QE-4). The CI run on the project's integration branch owns the repository-wide test verdict; it is PENDING at report time.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase (manager-develop)_
+```yaml
+run_complete_at: 2026-10-19
+run_commit_sha: 8f86c6bece4195f52897d4049297ddbd00c7fefc
+run_status: audit-ready
+ac_pass_count: 11
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run (docs-only card; no fetch performed, HEAD read before commit: bdb77bdb0b on WT-getting-started-faq)
+l44_post_push_fetch: not-applicable (no push; lanes do not push)
+new_warnings_or_lints_introduced: 0 (S-10 strict: Errors 0, Warnings 0)
+cross_platform_build:
+  linux: not-applicable (docs-only)
+  windows: not-applicable (docs-only)
+total_run_phase_files: 12 page files + spec.md status line + this progress.md
+m1_to_mN_commit_strategy: single combined commit for M1 and M2 (8f86c6bece), then this evidence commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
