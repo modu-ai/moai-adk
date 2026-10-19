@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,61 @@ import (
 // warning line (REQ-CAA-002), the no-write invariant (REQ-CAA-007), and the
 // future-commit validity rule on the real status surface (REQ-CAA-004, iter1
 // D2).
+
+// caaFixtureHelperMain returns the main.go source of the compiled fixture
+// helper that replaces the PR-#1844-era #!/bin/sh scripts. mode picks the
+// behavior; marker is baked into the source because the ext:: transport and
+// gpg.program carry no portable environment:
+//
+//	trap        append "run" to marker, exit 1 — the lazy-fetch trap: the
+//	            fetch must fail fast after executing repo-designated code.
+//	gpg         append "run" to marker, emit the dummy signature on stdout and
+//	            the GNUPG success line on stderr, exit 0 — the gpg.program
+//	            stand-in for signatureTrap repos.
+//	gitsleep    truncate-write "ran" to marker, sleep 2s, exit 0 — the fake git
+//	            of the caller-cancellation test: the marker must appear before
+//	            the 300ms context expires, the sleep bounds the broken
+//	            implementation that leaves a descendant holding the pipe.
+func caaFixtureHelperMain(marker, mode string) string {
+	body := ""
+	switch mode {
+	case "trap":
+		body = fmt.Sprintf("f, _ := os.OpenFile(%q, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)\n\tf.WriteString(\"run\\n\")\n\tf.Close()\n\tos.Exit(1)", marker)
+	case "gpg":
+		body = fmt.Sprintf("f, _ := os.OpenFile(%q, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)\n\tf.WriteString(\"run\\n\")\n\tf.Close()\n\tos.Stdout.WriteString(\"-----BEGIN PGP SIGNATURE-----\\n\\niHUEABYIAB0WIQTdummy\\n=abcd\\n-----END PGP SIGNATURE-----\\n\")\n\tos.Stderr.WriteString(\"[GNUPG:] SIG_CREATED 0 0 17 0 0 0\\n\")\n\tos.Exit(0)", marker)
+	case "gitsleep":
+		body = fmt.Sprintf("os.WriteFile(%q, []byte(\"ran\\n\"), 0o600)\n\ttime.Sleep(2 * time.Second)\n\tos.Exit(0)", marker)
+	}
+	return "package main\n\nimport (\n\t\"os\"\n" +
+		func() string {
+			if mode == "gitsleep" {
+				return "\t\"time\"\n"
+			}
+			return ""
+		}() + ")\n\nfunc main() {\n\t" + body + "\n}\n"
+}
+
+// caaBuildFixtureHelper compiles the fixture helper (the fakeGh pattern: a
+// real executable, not a shell script, so the windows-latest release leg runs
+// it too) and returns its path. dir receives the source and binary; name is
+// the .exe-suffixed base name on windows.
+func caaBuildFixtureHelper(t *testing.T, dir, marker, mode string) string {
+	t.Helper()
+	src := filepath.Join(dir, "caahelper_"+mode+"_main.go")
+	if err := os.WriteFile(src, []byte(caaFixtureHelperMain(marker, mode)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	name := "caahelper-" + mode
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	bin := filepath.Join(dir, name)
+	build := exec.Command("go", "build", "-o", bin, src)
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build caa fixture helper (%s): %v\n%s", mode, err, out)
+	}
+	return bin
+}
 
 // caaEnableAlarm writes a workflow.yaml enabling the alarm; body may override
 // the bands.
@@ -479,14 +535,8 @@ func caaDatedRepo(t *testing.T, at time.Time, signatureTrap bool) (dir, marker s
 	}
 	git("add", "a.txt")
 	if signatureTrap {
-		gpg := filepath.Join(root, "fake-gpg.sh")
-		script := fmt.Sprintf("#!/bin/sh\necho run >> %q\ncat > /dev/null\n"+
-			"printf -- '-----BEGIN PGP SIGNATURE-----\\n\\niHUEABYIAB0WIQTdummy\\n=abcd\\n-----END PGP SIGNATURE-----\\n'\n"+
-			"echo '[GNUPG:] SIG_CREATED 0 0 17 0 0 0' >&2\nexit 0\n", marker)
-		if err := os.WriteFile(gpg, []byte(script), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		git("config", "gpg.program", gpg)
+		gpg := caaBuildFixtureHelper(t, root, marker, "gpg")
+		git("config", "gpg.program", filepath.ToSlash(gpg))
 		git("config", "user.signingkey", "DEADBEEF")
 		git("config", "log.showSignature", "true")
 		git("commit", "-q", "-S", "-m", "dated commit")
@@ -541,21 +591,17 @@ func caaLazyFetchTrapRepo(t *testing.T, at time.Time) (dir, marker string) {
 			t.Fatal(err)
 		}
 	}
-	helper := filepath.Join(root, "fake-ext-helper.sh")
-	script := fmt.Sprintf("#!/bin/sh\necho run >> %q\nexit 1\n", marker)
-	if err := os.WriteFile(helper, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	git("config", "remote.origin.url", "ext::"+helper)
+	helper := caaBuildFixtureHelper(t, root, marker, "trap")
+	git("config", "remote.origin.url", "ext::"+filepath.ToSlash(helper))
 	git("config", "protocol.ext.allow", "always")
 	git("config", "extensions.partialClone", "origin")
-	// Premise control: the helper script itself runs and leaves the marker,
+	// Premise control: the helper binary itself runs and leaves the marker,
 	// so the marker mechanism is proven before the read's absence is read as
-	// isolation (the F2 pattern). The script exits 1 by design — a lazy fetch
+	// isolation (the F2 pattern). The helper exits 1 by design — a lazy fetch
 	// must fail fast — so the marker, not the exit code, is the premise. The
 	// lazy-fetch invocation of the helper is pinned by the leg failing on the
 	// pre-fix code — the RED run observes it.
-	_ = exec.Command("/bin/sh", helper).Run()
+	_ = exec.Command(helper).Run()
 	if _, err := os.Stat(marker); err != nil {
 		t.Fatalf("premise control: the ext helper ran but left no marker (%s): the marker mechanism is broken", marker)
 	}
@@ -784,9 +830,17 @@ func TestFactoryAgeAlarmCallerCancellation(t *testing.T) {
 	db := fcOpen(t, root)
 	bin := t.TempDir()
 	marker := filepath.Join(bin, "started")
-	// exec replaces the shell, so cancellation cannot leave a descendant
-	// holding Output's pipe. sleep also bounds the broken implementation.
-	if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\necho ran > '"+marker+"'\nexec /bin/sleep 2\n"), 0o755); err != nil {
+	// The compiled fake git writes the marker, then sleeps 2s: the marker
+	// proves the fake ran inside the 300ms window, and the sleep bounds the
+	// broken implementation that leaves a descendant holding Output's pipe.
+	// A compiled binary (the fakeGh pattern) runs on every release-leg OS —
+	// a #!/bin/sh script does not.
+	fakeGit := caaBuildFixtureHelper(t, bin, marker, "gitsleep")
+	renamed := filepath.Join(bin, "git")
+	if runtime.GOOS == "windows" {
+		renamed += ".exe"
+	}
+	if err := os.Rename(fakeGit, renamed); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
