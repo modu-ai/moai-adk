@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-RELEASE-VERIFY-SHARD-001
 title: "Release Verify sharding — split the 3-OS race run into ci.yml's six shards so no leg reaches the job timeout"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -22,6 +22,9 @@ related_specs: [SPEC-CI-VERDICT-INTEGRITY-001, SPEC-CANDIDATE-CI-001, SPEC-CI-FL
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-19 | manager-spec | Initial draft. Card t1892 (lane-40, run tn1p4e, Class C, P0). Every premise measured on tree `74ad197380` (PR #1830 head); evidence ledger in research.md, adoption cells in acceptance.md. |
+| 0.1.1 | 2026-10-19 | manager-spec | Plan-audit iter1 fixes (FAIL 0.78, `.moai/reports/t1892/plan-audit-iter1.md`): REQ-RVS-011 pinned to the exact six shards per OS; REQ-RVS-003 parser edges and Example/Fuzz guard; REQ-RVS-014 added (remainder exclusion asserted); AC-RVS-016 added (shard weight, post-landing); WHY under its own heading; F.4 reworded. |
+
+## A.1 Why this SPEC exists
 
 Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `Release Verify` legs (ubuntu, macos, windows) ended `cancelled` at the job-level `timeout-minutes: 40` while inside the single step `Run tests with race detector` (`go test -json -race -timeout 35m ./...`), 00:29Z to 01:09Z. A cancelled leg makes `Release PR Multi-OS Gate` — a required check on `main` — fail, so the release PR cannot merge. The same shape already failed on two earlier `workflow_dispatch` runs (38363720321 on 2026-10-13, 37861821414 on 2026-10-09), and a ubuntu leg that passed on 2026-10-09 did so in 38.2 of its 40 minutes: the margin was never real. `ci.yml` already runs the identical race suite as six independent shards (internal/cli 1-4 of 4, rosterguard, remainder), none of which approaches its ceiling. Release Verify never adopted that split.
 
@@ -31,7 +34,7 @@ Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `R
 
 - **REQ-RVS-002** — The shard selectors shall partition the top-level test names of `internal/cli` exactly: every name matches exactly one of the four selectors, and the remainder shard shall run every package other than `internal/cli` and the rosterguard package exactly once. No test is excluded and none runs twice on one OS.
 
-- **REQ-RVS-003** — **When** a shard selector or the remainder exclusion list in `ci.yml` differs from the one in the release workflow, a repository test shall fail and name the divergence; the same test shall fail when a top-level `internal/cli` test name matches zero or more than one selector.
+- **REQ-RVS-003** — **When** a shard selector or the remainder exclusion list in `ci.yml` differs from the one in the release workflow, a repository test shall fail and name the divergence; the same test shall fail, naming the test, when a top-level `internal/cli` test name matches zero or more than one selector. The test reads only top-level functions named `Test` plus an optional suffix not beginning with a lowercase letter, whose parameter is `*testing.T` (so the bare name `Test` is read, and helpers with other signatures are not); it shall also fail when an `Example*` or `Fuzz*` function exists in `internal/cli` or the rosterguard package, because the `^Test` selectors would not run it.
 
 - **REQ-RVS-004** — **When** a shard's test stream contains no test event, that shard shall fail; a selector that matches nothing shall never read as a pass.
 
@@ -47,15 +50,17 @@ Problem statement: on PR #1830 (head `74ad197380`, run 39180942620) all three `R
 
 - **REQ-RVS-010** — The workflow shall preserve the `sg` (ast-grep) install and identity check, `go vet`, the windows-only ancestor-`.moai` diagnostic steps before and after the tests, the per-test census, and the compressed test-event-stream upload; the uploaded artifact name shall be unique for every shard and OS combination.
 
-- **REQ-RVS-011** — **When** `scripts/release.sh --require-matrix-run` evaluates a dispatched Release Verify run, it shall accept the sharded leg names: for each of the three OS values at least one shard job must exist, every shard job of that OS must have concluded `success`, and the set of shards found shall be identical across the three OS values; a missing or non-success shard shall withhold the release gate with a reason naming the OS and shard.
+- **REQ-RVS-011** — **When** `scripts/release.sh --require-matrix-run` evaluates a dispatched Release Verify run, it shall accept the sharded leg names: each of the three OS values must carry exactly the six declared shard ids (`cli-1`, `cli-2`, `cli-3`, `cli-4`, `rosterguard`, `remainder`), once each, every one concluded `success`; a missing shard (on one OS or on all three), an unknown shard name, a duplicated shard job, or a non-success shard shall withhold the release gate with a reason naming the OS and shard.
 
 - **REQ-RVS-012** — The shard command shall run under `bash` on all three OS runners, shall receive its test selector through an environment variable rather than by interpolating it into shell text, and shall keep the existing rule that a missing test-stream artifact on windows is an error.
 
 - **REQ-RVS-013** — **When** the release PR (#1830) is re-run with the change on its head, every Release Verify shard on every OS shall conclude `success` and `Release PR Multi-OS Gate` shall conclude `success` — a post-landing observation made by the leader, not by the lane.
 
+- **REQ-RVS-014** — **When** the remainder shard builds its package list, it shall fail if the list still contains `internal/cli` or the rosterguard package, in addition to failing on an empty list, so a listing that did not remove the two excluded packages cannot run them a second time unnoticed.
+
 ## C. Acceptance Criteria
 
-Tier M — the Given-When-Then set lives in `acceptance.md` (15 criteria, AC-RVS-001..AC-RVS-015). Each carries a RED-now cell pinned to tree `74ad197380` and a green-path cell naming the milestone that flips it; the evidence ledger the RED cells cite is research.md §B.
+Tier M — the Given-When-Then set lives in `acceptance.md` (16 criteria, AC-RVS-001..AC-RVS-016). Each carries a RED-now cell pinned to tree `74ad197380` and a green-path cell naming the milestone that flips it; the evidence ledger the RED cells cite is research.md §B.
 
 ## D. Constraints
 
@@ -71,6 +76,7 @@ Tier M — the Given-When-Then set lives in `acceptance.md` (15 criteria, AC-RVS
 
 - `.github/workflows/ci.yml` is read as the source of the shard configuration and is not modified; deduplicating selectors into a shared source consumed by both workflows is a follow-up (decision-index Q3).
 - The `Test (ubuntu-latest)` job and the guard-family run in `ci.yml` are unrelated to the race shards and are untouched.
+- The comment at `ci.yml` ~L265-267 says release PRs run `go test -race ./...` through the release workflow's ubuntu leg; it goes stale after this split (the leg runs the race suite as shards). Recorded as a follow-up for the card that edits `ci.yml`; not fixed here.
 
 ### Out of Scope — required checks and the gate
 
@@ -91,4 +97,8 @@ Tier M — the Given-When-Then set lives in `acceptance.md` (15 criteria, AC-RVS
 1. The Release Verify structure runs 18 shard legs (3 OS x 6 shards) and every test `ci.yml` covers runs once on each OS, shown by the exact-cover listing, the parity test, and the empty-sweep refusal flipping from their RED cells.
 2. The gate job, the required-check names, and every timeout are byte-for-byte or value-for-value unchanged against base `74ad197380`.
 3. `actionlint` and the required-checks validator stay clean; `scripts/release.sh --require-matrix-run` passes its extended scenario table.
-4. After landing, the leader's re-run of PR #1830 shows every shard green and the gate green (REQ-RVS-013) — the only criterion that cannot be closed inside the lane.
+4. After landing, the leader's re-run of PR #1830 shows every shard green and the gate green (REQ-RVS-013), and the per-shard durations are recorded (AC-RVS-016). These post-landing observations (AC-RVS-014, AC-RVS-016, and the windows half of AC-RVS-012) cannot be closed inside the lane.
+
+## G. Residual risk (explicit)
+
+macOS and Windows shard weight is unmeasured. By this SPEC's own arithmetic (research.md §C.3) the heaviest shard (rosterguard, 782 s on ubuntu) lands at roughly 26-39 minutes on a 2x-3x slower OS against the unchanged 35-minute test ceiling, so the first live run can still fail for the same reason as the original incident. The SPEC does not change shard count or ceilings in response. An overrun is handled by a rebalance card (split the overrunning shard by selector), never a timeout raise (decision-index Q8); the first live run is the measurement (AC-RVS-016). Flagged for the leader.

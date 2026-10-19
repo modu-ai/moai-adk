@@ -8,7 +8,10 @@
 # workflow after the run phase.
 #
 # Usage: bash shard-cover.sh <worktree-root> <outdir> [workflow-file]
-# Exit:  0 exact cover; 1 gap/overlap or empty sweep; 9 usage/extraction error.
+# Exit:  0 exact cover; 1 gap/overlap, empty sweep, or a failed `go test -list`;
+#        9 usage/extraction error.
+# Falsifiers (observed): a stub `go` that prints names then exits 42 -> exit 1;
+#        a one-letter selector mutant -> exit 1 (research.md L-E10, L-E15).
 set -u
 root="${1:-}"; out="${2:-}"; wf="${3:-.github/workflows/ci.yml}"
 [ -n "$root" ] && [ -n "$out" ] || { echo "usage: shard-cover.sh <root> <outdir> [workflow]" >&2; exit 9; }
@@ -29,7 +32,13 @@ if [ "$n" -eq 0 ] && command -v yq >/dev/null 2>&1; then
 fi
 [ "$n" -eq 4 ] || { echo "FAIL: expected 4 internal/cli selectors in $wf, found $n" >&2; exit 9; }
 
-go test -list '.*' ./internal/cli/ 2> "$out/full.err" | grep '^Test' | sort > "$out/full.sorted"
+# Each `go test -list` writes to a file FIRST and its own exit status is checked:
+# a pipeline returns the status of its last filter, so a go that prints names and
+# then fails (build error, panic) would otherwise read as a listing success.
+go test -list '.*' ./internal/cli/ > "$out/full.raw" 2> "$out/full.err"
+st=$?
+[ "$st" -eq 0 ] || { echo "FAIL: go test -list exited $st on the full listing (a failed listing is not evidence)"; exit 1; }
+grep '^Test' "$out/full.raw" | sort > "$out/full.sorted"
 total=$(wc -l < "$out/full.sorted" | tr -d ' ')
 [ "$total" -gt 0 ] || { echo "FAIL: empty full listing (empty sweep asserts nothing)"; exit 1; }
 
@@ -37,7 +46,10 @@ total=$(wc -l < "$out/full.sorted" | tr -d ' ')
 i=0
 while IFS= read -r sel; do
   i=$((i+1))
-  go test -list "$sel" ./internal/cli/ 2>> "$out/full.err" | grep '^Test' > "$out/s$i.txt"
+  go test -list "$sel" ./internal/cli/ > "$out/s$i.raw" 2>> "$out/full.err"
+  st=$?
+  [ "$st" -eq 0 ] || { echo "FAIL: go test -list exited $st on selector $i ($sel)"; exit 1; }
+  grep '^Test' "$out/s$i.raw" > "$out/s$i.txt"
   echo "selector $i  $sel  -> $(wc -l < "$out/s$i.txt" | tr -d ' ') names"
   cat "$out/s$i.txt" >> "$out/union.raw"
 done < "$out/selectors.txt"

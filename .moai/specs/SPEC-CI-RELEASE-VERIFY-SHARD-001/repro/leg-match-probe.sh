@@ -2,24 +2,36 @@
 # leg-match-probe.sh — does scripts/release.sh's per-OS leg lookup find a
 # shard-suffixed Release Verify job?
 #
-# Extracts the REAL awk lookup expression from scripts/release.sh (the line that
-# tests `$1 == leg`) and feeds it job names in `name|conclusion` form, exactly as
-# `gh run view --json jobs --jq` renders them in the script.
+# FIDELITY, stated plainly: this probe does NOT run scripts/release.sh. It reads
+# the real file, extracts (a) the `for leg in ...` list line and (b) the awk
+# program text of the lookup from the non-comment `awk -F'|' -v leg=` line, and
+# runs THAT extracted program over fixture job lists. It therefore follows edits
+# to the real lookup (a rewritten lookup that no longer has that shape makes the
+# extraction fail, exit 9), but it is a probe of the extracted expression, not
+# of the whole script. The whole-script RED/green pair is the sharded all-green
+# scenario added to matrixScenarios() in internal/template/release_script_test.go
+# (plan.md M2, AC-RVS-011): run through the existing gh double, it is refused by
+# the current script and allowed by the repaired one.
 #
 # Usage: bash leg-match-probe.sh <worktree-root>
-# Output: one `case -> result` line per case, then a verdict line.
-# Exit:  0 = every case behaved as the CURRENT script is expected to behave
-#            (exact leg found; shard-suffixed leg NOT found -> the RED state);
-#        1 = the shard-suffixed leg WAS found (the repaired state);
-#        9 = extraction failure (the awk line is no longer present).
+# Exit:  0 = RED state (exact leg found; shard-suffixed leg NOT found);
+#        1 = the shard-suffixed leg WAS found (the lookup changed);
+#        9 = extraction failure (the lookup no longer has the exact-name shape).
 set -u
 root="${1:-}"
 [ -n "$root" ] || { echo "usage: leg-match-probe.sh <worktree-root>" >&2; exit 9; }
 src="$root/scripts/release.sh"
-grep -q "\$1 == leg" "$src" || { echo "FAIL: release.sh no longer contains the \$1 == leg lookup (extraction)" >&2; exit 9; }
+
+legs_line="$(grep -n '^[[:space:]]*for leg in "Release Verify (' "$src" | head -1)"
+awk_line="$(grep -v '^[[:space:]]*#' "$src" | grep -F "awk -F'|' -v leg=" | head -1)"
+[ -n "$legs_line" ] && [ -n "$awk_line" ] || { echo "FAIL: exact-name lookup shape not found in $src (extraction)" >&2; exit 9; }
+prog="$(printf '%s\n' "$awk_line" | sed -n "s/.*-v leg=\"\\\$leg\" '\\([^']*\\)'.*/\\1/p")"
+[ -n "$prog" ] || { echo "FAIL: awk program text not extractable from: $awk_line" >&2; exit 9; }
+echo "extracted legs line : ${legs_line%%$'\n'*}"
+echo "extracted awk prog  : $prog"
 
 lookup() { # lookup <leg> <jobs-text>
-  printf '%s\n' "$2" | awk -F'|' -v leg="$1" '$1 == leg {print "found|" $2; exit}'
+  printf '%s\n' "$2" | awk -F'|' -v leg="$1" "$prog"
 }
 
 exact='Release Verify (ubuntu-latest)|success'

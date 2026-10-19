@@ -32,7 +32,7 @@ Why unresolved: the script finds each leg by exact name (`Release Verify (ubuntu
 
 Authority anchor: none in the committed register.
 
-Default: for each of the three OS values require at least one shard job, every shard job of that OS `success`, and an identical shard set across the three OS values; extend the Go gh-double scenario table with the sharded all-green case and four partial cases (rule: preserves current behavior — the contract "no release unless every leg of all three OS succeeded on the dispatched commit" is kept, and only the name matching widens)
+Default: for each of the three OS values require exactly the six declared shard ids, once each, all `success` (missing on one or all OS, unknown name, duplicate, or non-success withholds the gate); extend the Go gh-double scenario table with the sharded all-green case and the partial cases (rule: preserves current behavior — the contract "no release unless every leg of all three OS succeeded on the dispatched commit" is kept, and only the name matching widens)
 
 Alternate: leave `release.sh` unchanged and let `--require-matrix-run` fail closed on sharded names until a follow-up card repairs it
 
@@ -129,3 +129,21 @@ Alternate: restrict them to a single windows shard to cut log volume
 Justification: the failing test (internal/hook, internal/cli) can land on any shard, so the diagnostic must be present wherever it can fail; the output volume is a bounded 60-line listing per step.
 
 Operator verdict: DEFAULT-APPLIED 2026-10-19T02:12Z lane-40/manager-spec
+
+### Q8: If a macOS or Windows shard overruns its ceiling on the first live run, what is the response?
+
+Label: FOUNDER
+
+Class: implementation-level
+
+Why unresolved: per-shard macOS and Windows durations are unmeasured (research.md gap G2). By the SPEC's own arithmetic the heaviest shard (rosterguard, 782 s on ubuntu) could land at roughly 26-39 minutes on a 2x-3x slower OS against the unchanged 35-minute test ceiling and 40-minute job limit, so the first live run can still fail for the reason the SPEC exists to remove. The operator fixed shard count and forbade a timeout increase, so the response to an overrun is the open choice.
+
+Authority anchor: none in the committed register.
+
+Default: record the overrun and open a rebalance card that splits the overrunning shard by selector; shard count and ceilings stay as shipped and no timeout is raised (rule: preserves current behavior — the operator-fixed shard count and ceilings are unchanged)
+
+Alternate: take one measurement before landing with a `workflow_dispatch` of the release workflow on the candidate ref (one added run, not a duplicate matrix) and pre-split the heaviest shard if it shows an overrun
+
+Justification: the Default follows the operator constraints as written and uses the first live run as the measurement (AC-RVS-016). The Alternate trades one extra run for earlier knowledge; whether to take it is flagged for the leader and is not a SPEC edit.
+
+Operator verdict: DEFAULT-APPLIED 2026-10-19T02:35Z lane-40/manager-spec

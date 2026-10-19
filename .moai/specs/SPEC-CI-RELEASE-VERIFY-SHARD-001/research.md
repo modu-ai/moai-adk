@@ -29,6 +29,8 @@ Card t1892 · plan-phase tree pin: **`74ad197380`** (`git rev-parse --short HEAD
 | E12 | No bash-4-only constructs in the helper scripts | `grep -nE 'declare -A\|mapfile\|readarray\|<<<\|...' scripts/ci/retry-flaky.sh scripts/ci-census/test-census.sh` | 1 (no match) | 74ad197380 |
 | E13 | Baseline: actionlint clean, validator green, template tests green | `actionlint .github/workflows/release-pr-multi-os.yml`; `sh scripts/ci-mirror/validate-required-checks.sh`; `go test -count=1 -run 'TestReleaseScriptMatrixGate\|TestTestInput' ./internal/template/` | 0 / 0 / 0 | 74ad197380 |
 | E14 | RED-now shape cells (matrix, artifact, parity test, empty-sweep, -count) | see ledger blocks L-E14a..e | mixed | 74ad197380 |
+| E15 | `shard-cover.sh` falsifiers (iter1 fix D5): print-then-fail stub `go` (old script reads it as success, fixed script fails), overlap mutant | see L-E15 | 0 old / 1 fixed / 1 | 74ad197380 + stub/mutation |
+| E16 | RED-now for the local-bash step-body criterion: no step passes the selector through `SHARD_RUN` | `grep -c SHARD_RUN .github/workflows/release-pr-multi-os.yml` | 1 | 74ad197380 |
 
 ### Verbatim ledger
 
@@ -92,7 +94,7 @@ Release Verify (macos-latest)   failure   23:53:08Z -> 00:32:57Z failedsteps=Run
 L-E6  | gh api repos/modu-ai/moai-adk/branches/main/protection --jq '{contexts: ..., checks: ..., strict: ...}'
 {"checks":[{"app_id":15368,"context":"Test (ubuntu-latest)"},{"app_id":15368,"context":"Lint"},{"app_id":15368,"context":"Build (linux/amd64)"},{"app_id":15368,"context":"Analyze (Go) (go)"},{"app_id":15368,"context":"Release PR Multi-OS Gate"}],"contexts":["Test (ubuntu-latest)","Lint","Build (linux/amd64)","Analyze (Go) (go)","Release PR Multi-OS Gate"],"strict":false}
 
-L-E7  | bash .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/repro/leg-match-probe.sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892   (exit 0 = RED state as designed)
+L-E7  | bash .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/repro/leg-match-probe.sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892   (exit 0 = RED state as designed; as first committed this probe ran a hard-coded copy of the lookup — the version in the L-E16 block extracts the program text from the real file; it still probes the extracted expression, not the whole script)
 exact job name        -> found|success
 shard-suffixed names  -> <no leg>
 RED: the lookup finds no leg among shard-suffixed job names
@@ -144,6 +146,35 @@ ls: internal/template/release_verify_shard_parity_test.go: No such file or direc
 L-E14e | grep -c 'empty sweep' .github/workflows/release-pr-multi-os.yml  -> 0  (exit 1);  grep -c -e '-count=1' .github/workflows/release-pr-multi-os.yml -> 0  (exit 1)
 L-E14f | bash .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/repro/shard-cover.sh <worktree-root> <scratch> .github/workflows/release-pr-multi-os.yml
 FAIL: expected 4 internal/cli selectors in .github/workflows/release-pr-multi-os.yml, found 0        (exit 9)
+```
+
+```text
+L-E15 | stub go (scratch bin/go: answers `go test -list REGEX pkg` from names TestAlpha TestFoo TestJk TestSz, prints an ok line, then exits 42) put first on PATH
+  OLD shard-cover.sh (as committed in f6f502a84c; pipelines return grep's status):
+selector 1  ^Test([A-E]|Fa)  -> 1 names
+selector 2  ^Test(F([^a]|$)|[G-I])  -> 1 names
+selector 3  ^Test[J-R]  -> 1 names
+selector 4  ^Test([S-Z]|[^A-Za-z])  -> 1 names
+full=4 union=4 union_unique=4
+EXACT COVER: full list == union of the four selectors (no gap, no overlap)        exit 0   <- report-not-verdict defect (D5)
+  FIXED shard-cover.sh (status of each go test -list captured before filtering):
+FAIL: go test -list exited 42 on the full listing (a failed listing is not evidence)        exit 1
+  FIXED script, real go, ci.yml: selectors 2111 / 862 / 1851 / 1157, full=5981 union=5981 union_unique=5981, EXACT COVER, exit 0
+  FIXED script, overlap mutant (ci.yml copy with shard 2 `|[G-I])` -> `|[F-I])`):
+selector 2  ^Test(F([^a]|$)|[F-I])  -> 1130 names
+full=5981 union=6249 union_unique=5981
+NOT AN EXACT COVER (first differences): ...        exit 1   (268 names selected twice; output bounded)
+
+L-E16 | grep -c SHARD_RUN .github/workflows/release-pr-multi-os.yml
+0        (exit 1)
+      | leg-match-probe.sh (iter1 fix D6) now extracts the awk program text from the real scripts/release.sh and runs it:
+extracted legs line : 360:            for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"; do
+extracted awk prog  : $1 == leg {print "found|" $2; exit}
+exact job name        -> found|success
+shard-suffixed names  -> <no leg>
+RED: the lookup finds no leg among shard-suffixed job names        exit 0
+      | Example/Fuzz presence: grep -lE '^func (Example|Fuzz)' internal/cli/*_test.go internal/harness/rosterguard/*_test.go -> (no output)
+      | bare `Test` regexp semantics: measured by the plan auditor with Go regexp (plan-audit-iter1.md evidence row 11): `Test` matches no ci.yml selector; `TestF` matches 2; `TestFa` 1; `Test_x`/`Test1`/`TestÀ` shard 4 — cited, not re-run here.
 ```
 
 ## §C Required analyses

@@ -29,6 +29,7 @@ Read-only inputs: `.github/workflows/ci.yml` (selector source), `scripts/ci-cens
 - **B-5 Selector quoting.** Selectors contain `|`, `$`, `^`, `[^…]`. Pass them through `env:` (`SHARD_RUN`) and reference `"$SHARD_RUN"` in the script; never interpolate `${{ matrix.run }}` into `run:` text (REQ-RVS-012). `-run` splits on `/`; none of the selectors contains one.
 - **B-6 Empty remainder risk.** The remainder leg's package list comes from `go list ./...` through `grep -v -x`; refuse an empty list and refuse an empty stream, as `ci.yml` does.
 - **B-7 Windows artifact rule.** Keep `if-no-files-found: ${{ runner.os == 'Windows' && 'error' || 'warn' }}`.
+- **B-9 Shard weight on macOS/Windows is unmeasured** (spec.md §G, decision-index Q8). Do not change shard count or ceilings in the run phase; the first live run measures (AC-RVS-016).
 - **B-8 Worktree guard.** AC verification commands use plain single-command forms (no `cd &&`, no compound `;` chains); use `bash <script>` forms for anything multi-step (the repro scripts already do).
 
 ## §C Pre-flight (run-phase entry checks)
@@ -53,7 +54,7 @@ Record the base values (clean actionlint, validator pass, 5 verifier tests OK = 
 
 ## §E Self-Verification (run-phase deliverable shape)
 
-Report per AC-RVS-001..013 and 015 in the 5-section evidence form (Claim / Evidence = command + verbatim output / Baseline-attribution = this run, this tree, HEAD SHA / Gaps / Residual-risk). AC-RVS-014 is listed as a leader post-landing observation with the exact `gh run view` command to run. Gaps to carry: windows step execution (G1), per-OS shard timing (G2).
+Report per AC-RVS-001..013 and 015 in the 5-section evidence form (Claim / Evidence = command + verbatim output / Baseline-attribution = this run, this tree, HEAD SHA / Gaps / Residual-risk). AC-RVS-014 and AC-RVS-016 are listed as leader post-landing observations with the exact `gh run view` command to run. Gaps to carry: windows step execution (G1), per-OS shard timing (G2).
 
 ## §F Milestones (priority order; highest change-likelihood first)
 
@@ -76,7 +77,7 @@ Edit `.github/workflows/release-pr-multi-os.yml`, job `full-matrix-test` only:
   (selectors copied verbatim from `ci.yml` at the run-phase base; the table is the Q3 Default.)
 - Keep `fail-fast: false`, `timeout-minutes: 40`, `needs`, and `if` unchanged.
 - `Run go vet` gets `if: matrix.vet == true` (Q6). Everything else — checkout, setup-go, `go mod download`, `sg` install and identity check, both windows diagnostic steps — unchanged (Q7).
-- Replace the test step with one `shell: bash` step: `env: { SHARD_RUN: ${{ matrix.run }}, SHARD_PKG: ${{ matrix.pkg }} }`; body keeps the `|| rc=$?` form and the `test-census.sh` call, runs `go test -json -race -count=1 -timeout 35m` either as `-run "$SHARD_RUN" "$SHARD_PKG"` (cli/rosterguard) or over the `go list ./... | grep -v -x -e …/internal/cli -e …/internal/harness/rosterguard` list (remainder; refuse an empty list), writes `test-stream.json`, refuses an empty stream (`grep -q '"Test":"' test-stream.json || …`), then `exit $rc`. No `retry-flaky.sh` (Q5).
+- Replace the test step with one `shell: bash` step: `env: { SHARD_RUN: ${{ matrix.run }}, SHARD_PKG: ${{ matrix.pkg }} }`; body keeps the `|| rc=$?` form and the `test-census.sh` call, runs `go test -json -race -count=1 -timeout 35m` either as `-run "$SHARD_RUN" "$SHARD_PKG"` (cli/rosterguard) or over the `go list ./... | grep -v -x -e …/internal/cli -e …/internal/harness/rosterguard` list (remainder; refuse an empty list, and refuse a list that still contains either excluded package: `printf '%s\n' "$pkgs" | grep -c -x -e …/internal/cli -e …/internal/harness/rosterguard` must be 0 — REQ-RVS-014), writes `test-stream.json`, refuses an empty stream (`grep -q '"Test":"' test-stream.json || …`), then `exit $rc`. No `retry-flaky.sh` (Q5).
 - Upload artifact name: `test-stream-release-verify-${{ matrix.os }}-${{ matrix.shard }}`.
 - Update the comment block above the job so the explanation of the split, the 38-minute margin, and the unchanged ceilings is stated once, with the Q-row pointers.
 
@@ -84,25 +85,27 @@ Flip evidence: AC-RVS-001, 004, 005, 006, 007, 008, 009, 013. Reversibility: a s
 
 ### M2 — release.sh leg lookup and its test (Priority High; ships with M1)
 
-Replace the exact-name loop at `scripts/release.sh` ~L360 by: for each of the three OS values, collect the jobs whose name begins with `Release Verify (<os>,`; require at least one; require all to be `success`; require the set of shard suffixes to be equal across the three OS values; each failure sets `run_problem` naming the OS and shard (existing `run_problem` / reason plumbing). Extend `matrixScenarios()` in `release_script_test.go`: sharded all-green; one shard `failure`; one shard `skipped`; a shard absent on one OS; an OS with no shard job. Keep the seven existing scenarios (rewritten to sharded fixtures where they name legs) so each still discriminates. Keep `bash` 3.2-safe constructs (the script already targets macOS).
+Replace the exact-name loop at `scripts/release.sh` ~L360 by: for each of the three OS values and each of the six declared shard ids (`cli-1`..`cli-4`, `rosterguard`, `remainder`), require exactly one job named `Release Verify (<os>, <shard>)` and require it to be `success`; zero such jobs is "missing", two is "duplicate"; then reject any job whose name starts with `Release Verify (` but is not one of the 18 expected names ("unknown shard"). Each failure sets `run_problem` naming the OS and shard (existing `run_problem` / reason plumbing). The declared shard list is a constant in the script, mirrored in the workflow matrix and asserted equal by the parity test (M3), so the two cannot drift silently.
 
-Flip evidence: AC-RVS-011. Mutants (any-one-shard, no cross-OS compare) must be shown failing against a deliberately weakened copy.
+Extend `matrixScenarios()` in `release_script_test.go`. **Order matters (two-cell pair):** first add the sharded all-green scenario and run it against the unmodified script, recording the refusal (the whole-script RED; `repro/leg-match-probe.sh` is only an extracted-expression probe, D6); then edit `release.sh`. Scenarios: sharded all-green (passes); one shard `failure`; one shard `skipped`; a shard absent on one OS; **the same shard absent on all three OS**; **an unknown shard name**; **a duplicated shard job**; an OS with no shard job. Keep the seven existing scenarios (rewritten to sharded fixtures where they name legs) so each still discriminates. Keep `bash` 3.2-safe constructs (the script already targets macOS).
+
+Flip evidence: AC-RVS-011. Mutants (any-one-shard; cross-OS compare without the declared six; repeats tolerated) must each be shown failing against a deliberately weakened copy.
 
 ### M3 — Drift and exact-cover guard (Priority High)
 
 New `internal/template/release_verify_shard_parity_test.go` holding `TestReleaseVerifyShardParity` (uses `t.TempDir()` only where it writes; reads both workflow files with the module's existing YAML dependency):
 
 - Extract the four internal/cli `-run` selectors, the rosterguard selector, and the remainder exclusion list from `ci.yml`'s race steps; extract the same from the release workflow's `include` entries and remainder step; assert equality shard by shard, naming the shard on mismatch.
-- Parse the top-level `Test*` function names from `internal/cli/*_test.go` with `go/parser`; assert every name matches exactly one of the four selectors under `regexp` (the engine `go test -run` uses); a name matching zero or two fails with the name.
-- Assert the release matrix has exactly the six shard ids and that `vet: true` is set on exactly one shard.
-- Mutation table inside the test (selector edits applied to in-memory copies) proving each failure mode fires — the observed-failure completion act (verification-completeness §1.1).
+- Parse top-level function names from `internal/cli/*_test.go` (and the rosterguard package) with `go/parser`. Parsed set: functions (no receiver) with one `*testing.T` parameter whose name is `Test` plus an optional suffix not starting with a lowercase letter — so the bare name `Test` is parsed, and methods, `Testfoo`, and helpers with other signatures are skipped. Build-tagged files are included (superset is safe for a per-name property). Assert every parsed `internal/cli` name matches exactly one of the four selectors under `regexp` (the engine `go test -run` uses); a name matching zero or two fails naming the test and the selectors. Fail also when any `Example*` or `Fuzz*` function exists in either package (`^Test` selectors would not run it).
+- Assert the release matrix has exactly the six shard ids, that the shard-id list equals the constant list in `scripts/release.sh`, and expand the matrix in the test: `os` x `shard` into the artifact-name template gives 18 pairwise-distinct names (AC-RVS-007), and the legs whose merged `include` entry has `vet: true` number exactly the OS count, 3 (AC-RVS-013).
+- Mutation table inside the test (edits applied to in-memory copies) proving each failure mode fires — the observed-failure completion act (verification-completeness §1.1): (i) selector `[J-R]`->`[J-Q]`; (ii) a remainder exclusion removed; (iii) injected name `Test` (zero matches); (iv) shard 2 widened to `[F-I]` (a `TestFa...` name matches two); (v) injected `ExampleX`; (vi) artifact-name template without `matrix.shard`; (vii) a second `vet: true` include. A sanity assertion that the swept set is non-empty (parsed name count > 0, 4 selectors found) guards against a vacuous pass.
 - The `ci.yml` go-code filter already lists both workflow files (`requiredGoCodeRoots` in `test_input_filter_parity_test.go`), so the test runs whenever either file changes — the continued-firing answer (§1.3).
 
 Flip evidence: AC-RVS-002, AC-RVS-003 (test half). Reversibility: new file; revert deletes it.
 
 ### M4 — Evidence and boundary (Priority Medium)
 
-Run and record in progress.md §E.2, verbatim: the pre-flight set; `shard-cover.sh` against both workflows (and the two mutants: narrowed and widened selector); `actionlint`; the validator; the verifier suite; the targeted `internal/template` tests; the step body under `/bin/bash` 3.2 for one tiny package with a matching selector (exit 0, census printed) and a non-matching one (exit non-zero, empty-sweep message); the `yq` assertions for AC-RVS-001/004/006/007/008/013; the plan-boundary diff for AC-RVS-015. Write the leader handoff item for AC-RVS-014 (post-landing).
+Run and record in progress.md §E.2, verbatim: the AC-RVS-009 swept count (`go test -list` on the anchored regex prints four names); the stub-`go` print-then-fail run of `shard-cover.sh` (must exit 1); the remainder-step guard run with an unfiltered listing (must fail); the pre-flight set; `shard-cover.sh` against both workflows (and the two mutants: narrowed and widened selector); `actionlint`; the validator; the verifier suite; the targeted `internal/template` tests; the step body under `/bin/bash` 3.2 for one tiny package with a matching selector (exit 0, census printed) and a non-matching one (exit non-zero, empty-sweep message); the `yq` assertions for AC-RVS-001/004/006/007/008/013; the plan-boundary diff for AC-RVS-015. Write the leader handoff item for AC-RVS-014 (post-landing).
 
 ## §G Anti-Patterns
 

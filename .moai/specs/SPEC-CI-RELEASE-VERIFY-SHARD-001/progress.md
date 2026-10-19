@@ -4,11 +4,12 @@ Card: t1892 · Lane: lane-40 (run tn1p4e) · Branch: WT-release-verify-os · Pla
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-ready (pending independent plan audit; not yet audited)
+- plan_status: audit-ready (iter1 FAIL 0.78 on f6f502a84c fixed in the iter1-fix commit; pending re-audit)
+- iter1 fix record: D1-D11 addressed per `.moai/reports/t1892/plan-audit-iter1.md`; spec 0.1.1 (14 REQ), acceptance 16 AC, decision-index 8 rows; stale hash b42f05fe…c6b3 superseded by the value below.
 - plan_complete_at: 2026-10-19
 - tier: M (spec.md + plan.md + acceptance.md; research.md and decision-index.md alongside; repro/ holds two committed probe scripts)
-- artifacts: spec.md (13 REQ), plan.md (4 milestones), acceptance.md (15 AC), research.md (ledger E1-E14), decision-index.md (7 rows, all FOUNDER / implementation-level / DEFAULT-APPLIED)
-- plan_artifact_hash: b42f05fe846c933cf2c089dd3d526fabee1ba23f0dba80c11416a375be91c6b3 (SHA-256 per the `internal/runtime/audit_cache.go` `ComputeHash` rule — `name:len\0` + bytes + `\0` over acceptance.md, decision-index.md, plan.md, research.md, spec.md, in that order — recomputed by an independent script after the final edit; the `moai` hash verb was not used, so re-derive with the product on the audit side)
+- artifacts: spec.md (14 REQ), plan.md (4 milestones), acceptance.md (16 AC), research.md (ledger E1-E16), decision-index.md (8 rows, all FOUNDER / implementation-level / DEFAULT-APPLIED), repro/ (shard-cover.sh fixed to fail on a non-zero `go test`; leg-match-probe.sh extracts the real lookup)
+- plan_artifact_hash: 9ace1c4dfb49c8cb151e32c2a1eee42d39c3b5b41378de42d921fbbe710e3c0b (SHA-256 per the `internal/runtime/audit_cache.go` `ComputeHash` rule over acceptance.md, decision-index.md, plan.md, research.md, spec.md, computed by `python3 -I /private/tmp/landing-record-lane40/computehash.py <SPEC dir>` after the final edit)
 - spec lint: `moai spec lint .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/spec.md` and `--strict` -> "No findings" (after anchoring two `-run` patterns the first pass flagged)
 - spec id check: `ID="SPEC-CI-RELEASE-VERIFY-SHARD-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` -> PASS; uniqueness: `ls .moai/specs | grep -c "SPEC-CI-RELEASE-VERIFY"` -> 0 before authoring
 - AC-RVS-015 baseline (observed before the plan commit, staged by explicit pathspec): `git diff --cached --name-only` listed only paths under `.moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/` — acceptance.md, decision-index.md, plan.md, progress.md, repro/leg-match-probe.sh, repro/shard-cover.sh, research.md, spec.md; nothing under `.github/`, `scripts/`, `internal/`, or `.moai/reports/`.
