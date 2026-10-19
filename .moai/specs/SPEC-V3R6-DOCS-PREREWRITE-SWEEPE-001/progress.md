@@ -105,7 +105,7 @@ m1_to_mN_commit_strategy: single combined commit for M1 and M2 (8f86c6bece), the
 audit_ready: true
 sync_status: complete
 sync_complete_at: 2026-10-19
-sync_commit_sha: pending-backfill
+sync_commit_sha: cfb72c131d291114f482a6c55e9eebf96656fdcd
 ac_source: .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001/acceptance.md
 tier: M
 ac_count: 11
