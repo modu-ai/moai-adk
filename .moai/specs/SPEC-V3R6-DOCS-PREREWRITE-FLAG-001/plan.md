@@ -14,8 +14,8 @@ Q18(제품 수준)은 decision-index.md의 열린 행이다. 이 계획은 기�
 
 - `--factory-run`: LIVE. 파서 `internal/cli/factory.go:153-163`(RunID 선택자 :126), 재개 검증 `internal/cli/lane_resume.go:61`. 12개 표면의 모든 `--factory-run` 인용은 선택자·합류·이어받기라는 살아 있는 동작을 서술한다 → 전부 유지.
 - `--clear-policy`: LIVE(레인 전용 선택, REQ-SD-020 — `internal/cli/factory.go:75`, `:127`, `:836`, `lane_resume.go:62`). 그러나 relaunch 값의 **소비**는 카드 t1554로 대체됐다(`internal/cli/factory_card.go:2484-2485`, `factoryRelaunchSupersededNote`: 카드 소비는 통합 `moai todo --auto` 엔진으로, 런처는 레인 세션 하나를 띄운다).
-- 따라서 STALE은 두 부류뿐이다: **STALE-1** README 4종 74행의 "카드를 순회하는 `--clear-policy relaunch` 루프" 인용, **STALE-2** factory-mode 4 로캘 77행 `relaunch` 셀의 카드별 새 세션 기동 서술. 나머지 `--clear-policy` 인용(값 나열, 정책 변경 가능 서술)은 LIVE → 유지.
-- Q13(운영자 결정 d-20261019T015908Z-220a): 교체 대상이 존재하면 치환, 없으면 삭제. 두 STALE 부류 모두 현재 교체 대상(단일 레인 세션이 `moai todo --auto` 큐를 소비)이 존재하므로 기본 처분은 **치환**이다.
+- 따라서 STALE은 세 부류이다(iter-1 D2 원문 대조 판정 반영): **STALE-1** README 4종 74행의 "카드를 순회하는 `--clear-policy relaunch` 루프" 인용, **STALE-2** factory-mode 4 로캘 77행 `relaunch` 셀의 카드별 새 세션 기동 서술, **STALE-3** 레인 `/clear` 안내 서술 — factory-mode 77행 `clear-each` 셀("카드마다 `/clear`를 요청")·134행("그 레인을 `/clear`합니다"), README 4종 87행("the lane asks for a `/clear`"). STALE-3 판정 근거: `factoryPrintClearPolicyLine`(`internal/cli/factory_card.go:2527-2551`)은 clear-each에 세션 안 카드 전환(`ExitWorktree(keep)` → `moai factory next` → `EnterWorktree`)을 출력하고 godoc이 "No value instructs a session clear"로 끝나며, `TestSD_AC020_ClearPolicies`(`internal/cli/factory_m6_test.go:74-76`)가 complete 출력의 `/clear` 지시를 금한다. launchers 37행의 값 나열과 `clear-when-full`의 임계치 조건 서술은 LIVE → 유지(AC020은 complete 출력의 clear 지시를 금할 뿐 문서의 값 나열을 금하지 않는다).
+- Q13(운영자 결정 d-20261019T015908Z-220a): 교체 대상이 존재하면 치환, 없으면 삭제. 세 STALE 부류 모두 현재 교체 대상이 존재하므로 기본 처분은 **치환**이다 — STALE-1·2는 단일 레인 세션이 `moai todo --auto` 큐를 소비한다는 현재 소비 서술로, STALE-3는 세션 안 카드 전환(`ExitWorktree(keep)` → 임대 → `EnterWorktree`; 이전 카드 대화 맥락은 비권위) 서술로 치환한다. 치환 문장은 `--clear-policy` 플래그를 계속 이름 붙인다.
 - Q17(같은 결정): 4 로캘을 같은 변경 세트로 함께 수정. 로캘별 분산 편집 금지, 단일 커밋 허용.
 - Q18이 운영자 판정으로 기본값에서 벗어나면(예: (b) 전면 제거) M1의 처분표가 판정에 맞춰 다시 쓰이고 M2 분량만 늘어난다 — 인벤토리와 검증 명령은 재사용 가능하다.
 
@@ -68,8 +68,8 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 - **E1** AC PASS/FAIL 매트릭스 (AC-DPF-001~006, 각 행에 명령+실측 출력).
 - **E2** grep 스윕 결과: STALE 문구 0 확인(AC-DPF-001·002 명령), 보존 카운트(AC-DPF-003·004).
 - **E3** 4 로캘 패리티 카운트 대칭 (AC-DPF-005).
-- **E4** 음(-) 검증: `git diff --name-only <plan-commit>..HEAD -- internal/ cmd/` 빈 출력 (AC-DPF-006).
-- **E5** diff 범위 확인: `git diff --stat`이 12개 허용 파일만 가리킨다.
+- **E4** 음(-) 검증(다중 상태, iter-1 D3 강화): 두 단일 명령으로 네 상태를 전부 열거한다 — `git diff --name-only <base>..HEAD -- internal/ cmd/`(커밋된 변경)와 `git status --porcelain -- internal/ cmd/`(스테이지·작업 트리 수정·언트래킹) 모두 빈 출력 (AC-DPF-006). `<base>`는 판정 시점의 감사 대상 커밋으로 재핀하고 그 SHA를 증거 행에 기록한다.
+- **E5** diff 범위 확인(허용 목록 대조): 변경 경로 전체 집합(커밋+스테이지+작업 트리+언트래킹 — E4의 두 명령과 전체 `git status --porcelain`)이 §D의 12개 허용 파일 안에 있다. 목록 밖 경로 하나라도 있으면 FAIL.
 - **E6** 커밋 상태: 단일 런 페이즈 커밋(Q17 허용), Conventional Commits + `Authored-By-Agent` 트레일러.
 - Go 커버리지/빌드/린트 항목은 문서 전용이라 해당 없음 — E 항목에서 "N/A (docs-only)"로 명시한다.
 
@@ -77,17 +77,19 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 
 ### F.1 M1 — Q18 인용 분류 확정 + 파일/줄 인벤토리 (Priority High)
 
+- **진입 선결 조건(Q18, iter-1 D1)**: Q18 운영자 판정이 도착해 있어야 M1(런 페이즈)을 시작한다. 판정은 리더가 운영자에게 라우팅한다(decision-index Q18 행 — FOUNDER·product-level·`Operator verdict:` 공석, 이 행이 채워질 때까지 자율 Kickoff는 막힌다). planner 기본값 (a)는 이 계획의 잠정 입력일 뿐이며 자율 진입 승인이 아니므로, 판정 없이 기본값으로 진행하는 경로는 없다.
+- 판정이 (a)이면 아래 분류가 그대로 처분표가 되고, (a)와 다르면(예: (b) 전면 제거) 처분표를 판정에 맞춰 갱신한다(행은 판정으로 닫힌다).
 - 현재 HEAD에서 §A.2 분류표를 재측정해 일치 확인(acceptance.md E-01~E-04 재실행).
-- Q13 처분표 작성: 줄별로 REPLACE/DELETE와, REPLACE의 경우 현재 메커니즘 문구(단일 레인 세션이 `moai todo --auto` 큐를 소비)를 기록. 기본값에서는 8행(로캘 복제 포함 실질 12줄: STALE-1 ×4, STALE-2 ×4)이 REPLACE.
-- Q18 운영자 판정이 도착해 있으면 처분표를 판정에 맞춰 갱신. 없으면 기본값 (a)로 진행(행은 열린 채).
+- Q13 처분표 작성: 줄별로 REPLACE/DELETE와, REPLACE의 경우 현재 메커니즘 문구(STALE-1·2: 단일 레인 세션이 `moai todo --auto` 큐를 소비 / STALE-3: 세션 안 카드 전환)를 기록. 기본값 (a)의 REPLACE 집합: README 74 ×4(STALE-1), factory-mode 77 ×4(STALE-2 relaunch 셀 + STALE-3 clear-each 셀 — 같은 줄), factory-mode 134 ×4, README 87 ×4(STALE-3) — 실질 16줄.
 - 산출물: 처분표(이 SPEC 디렉터리 내 기록 또는 커밋 메시지 본문).
 
 ### F.2 M2 — 4 로캘 + README 4종 편집 (Priority High)
 
 - **하나의 변경 세트**로 12개 파일을 함께 편집한다(Q17; 단일 커밋 허용).
 - README 4종 74행(STALE-1): `--clear-policy relaunch` 루프 인용을 현재 메커니즘 서술로 치환(Q13). `moai factory relaunch`(일회성 명령) 본문은 유지하고 대비절만 고친다. 로캘 간 동일 의미.
-- factory-mode 4 로캘 77행(STALE-2): `relaunch` 셀의 "카드마다 새 세션 기동" 서술을 현재 소비(엔진이 레인 세션 하나를 띄우고 그 세션이 큐를 소비)로 치환. `--clear-policy <값>` 행 자체와 다른 두 값(clear-each·clear-when-full)의 서술은 유지.
-- 그 외 줄 무변경. 74행의 README 본문 중 `moai factory relaunch` 설명, 65/67/134/36/37/72/87/99행 전부 무변경.
+- factory-mode 4 로캘 77행(STALE-2+3): `relaunch` 셀의 "카드마다 새 세션 기동" 서술을 현재 소비(엔진이 레인 세션 하나를 띄우고 그 세션이 큐를 소비)로, `clear-each` 셀의 "카드마다 `/clear`를 요청" 서술을 현재 동작(세션 안 카드 전환 — clear 지시 없음)으로 치환. `--clear-policy <값>` 행 자체와 `clear-when-full` 셀(임계치 조건)은 유지.
+- README 4종 87행·factory-mode 4 로캘 134행(STALE-3): 레인 `/clear` 안내를 현재 카드 전환 서술로 치환(Q13). 치환 문장은 `--clear-policy`를 계속 이름 붙인다(문서군별 플래그 카운트 유지).
+- 그 외 줄 무변경. 74행의 README 본문 중 `moai factory relaunch` 설명, 65/67/36/37/72/99행 전부 무변경.
 
 ### F.3 M3 — 검증 (Priority High)
 
@@ -106,7 +108,7 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 ## H. Cross-References
 
 - 부모 인덱스: `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/` (decision-index Q13·Q17·Q18, Appendix A FLAG 행).
-- 형제: GATE(SPEC-V3R6-DOCS-PREREWRITE-GATE-001, Q18 입력), SWEEPA(t1721, factory-mode.md 공유), README 자식(t1720, README 공유).
+- 형제: GATE(card t1717, Q18 입력 — SPEC-V3R6-DOCS-PREREWRITE-GATE-001은 계획 전, `.moai/specs/` 미존재, 그 플랜 페이즈가 이 참조를 소유한다), SWEEPA(t1721, factory-mode.md 공유), README 자식(t1720, README 공유).
 - 코드 근거: `internal/cli/factory.go`, `internal/cli/lane_resume.go`, `internal/cli/factory_card.go`(`factoryRelaunchSupersededNote`).
 - 전제 기록: `.moai/reports/t1726/progress.md`.
 - 규칙: `.claude/rules/moai/development/verification-completeness.md`(두 칸 채택), `.claude/rules/moai/core/verification-claim-integrity.md`, `.moai/docs/docs-site-i18n-rules.md`(참고 사실 — Q17 운영자 결정이 로캘 의무의 근거다).

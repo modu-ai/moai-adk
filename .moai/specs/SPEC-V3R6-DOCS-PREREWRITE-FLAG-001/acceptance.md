@@ -38,13 +38,15 @@ tree: 74ad197380
 ```
 command: grep -nE "다음 카드용 새 세션|fresh session for the next card|次のカード用に新しいセッション|为下一张卡片拉起全新会话" docs-site/content/ko/advanced/factory-mode.md docs-site/content/en/advanced/factory-mode.md docs-site/content/ja/advanced/factory-mode.md docs-site/content/zh/advanced/factory-mode.md
 stdout:
-docs-site/content/ja/advanced/factory-mode.md:77:| `--clear-policy <値>` | カードを終えたあと、レーンがコンテキストをどう空けるかを決めます。`clear-each` (既定値。カードごとに `/clear` を求める)、`clear-when-full` (コンテキスト使用量がモデルごとの引き継ぎ閾値に届いたときだけ求める)、`relaunch` (セッションの終了を求め、監督ランチャーが次のカード用に新しいセッションを起動する) |
-docs-site/content/en/advanced/factory-mode.md:77:| `--clear-policy <value>` | Decides how the lane clears its context after finishing a card. `clear-each` (the default, asks for `/clear` after every card), `clear-when-full` (asks only when context usage reaches the model-specific handoff threshold), `relaunch` (asks you to end the session, and the supervising launcher starts a fresh session for the next card) |
 docs-site/content/ko/advanced/factory-mode.md:77:| `--clear-policy <값>` | 카드를 끝낸 뒤 레인이 컨텍스트를 어떻게 비울지 정합니다. `clear-each`(기본값, 카드마다 `/clear`를 요청), `clear-when-full`(컨텍스트 사용량이 모델별 인수인계 임계치에 닿을 때만 요청), `relaunch`(세션 종료를 요청하고 감독 런처가 다음 카드용 새 세션을 띄움) |
 docs-site/content/zh/advanced/factory-mode.md:77:| `--clear-policy <值>` | 决定 lane 做完一张卡片后如何清理上下文。`clear-each`（默认，每张卡片后请求 `/clear`）、`clear-when-full`（上下文用量达到按模型而定的交接阈值时才请求）、`relaunch`（请求结束会话，由监督启动器为下一张卡片拉起全新会话） |
+docs-site/content/en/advanced/factory-mode.md:77:| `--clear-policy <value>` | Decides how the lane clears its context after finishing a card. `clear-each` (the default, asks for `/clear` after every card), `clear-when-full` (asks only when context usage reaches the model-specific handoff threshold), `relaunch` (asks you to end the session, and the supervising launcher starts a fresh session for the next card) |
+docs-site/content/ja/advanced/factory-mode.md:77:| `--clear-policy <値>` | カードを終えたあと、レーンがコンテキストをどう空けるかを決めます。`clear-each` (既定値。カードごとに `/clear` を求める)、`clear-when-full` (コンテキスト使用量がモデルごとの引き継ぎ閾値に届いたときだけ求める)、`relaunch` (セッションの終了を求め、監督ランチャーが次のカード用に新しいセッションを起動する) |
 exit: 0
-tree: 74ad197380
+tree: 13cfafa454c50effb777b693483b30287e2c7b83
 ```
+
+재기록 사유(iter-1 D4): 초판 장부가 임의 순서(ja·en·ko·zh)를 기록했다. 이 트리에서 같은 명령을 재실행해 실측 순서(ko·zh·en·ja)를 원문 그대로 기록했다. 실행 바이너리: 이 셸의 `grep`은 ugrep 7.8.4 래퍼(zsh 함수, `ARGV0=ugrep`)로 다중 파일 출력 순서가 인수 순서가 아니며 실행마다 달라진다(연속 2회 실측: ko·zh·en·ja → en·ja·ko·zh). 네 줄의 내용은 실행과 트리에 걸쳐 바이트 동일하다 — 74ad197380 핀 대비 docs 바이트 무변경을 `git diff --name-only 74ad197380..HEAD`가 5개 SPEC 아티팩트 파일만 가리키는 것으로 확인했고, iter-1 감사(MP-8)도 74ad197380 재실행에서 네 줄이 내용 동일함을 확인했다. AC-DPF-002의 판정(출력 없음, exit 1)은 순서와 무관하다.
 
 ### E-03 — `--factory-run` 보존 baseline (verification; RED 셀 아님)
 
@@ -74,7 +76,7 @@ tree: 74ad197380
 
 ### AC-DPF-002 — factory-mode 4 로캘의 relaunch 셀 서술이 정리됐다 (REQ-DPF-002·003) — release-blocking
 
-- **RED-now** (E-02, 트리 74ad197380): 네 로캘 77행 `relaunch` 셀이 "감독 런처가 카드마다 다음 카드용 새 세션을 띄운다"를 현재 의미로 서술한다(대체된 카드별 순환). 빨간 이유: 동일 — 구현 전 실측.
+- **RED-now** (E-02, 재측정 트리 13cfafa454 — 74ad197380 핀 대비 docs 바이트 무변경 확인): 네 로캘 77행 `relaunch` 셀이 "감독 런처가 카드마다 다음 카드용 새 세션을 띄운다"를 현재 의미로 서술한다(대체된 카드별 순환). 빨간 이유: 동일 — 구현 전 실측.
 - **Green path** (M2): E-02의 명령 → 출력 없음, exit 1. `--clear-policy <값>` 행과 clear-each·clear-when-full 서술은 유지되고, `relaunch` 셀은 현재 소비 서술로 치환된다(Q13).
 - 로캘별 문구가 달라도 검사는 의미 조각(각 로캘의 "카드마다 새 세션" 절)을 때린다 — E-02의 교차 로캘 정규식이 그 역할을 한다.
 
@@ -86,8 +88,8 @@ tree: 74ad197380
 
 ### AC-DPF-004 — `--clear-policy` 선택 인용 보존 (REQ-DPF-005) — regression-guard
 
-- **Green path** (M3): E-04 명령 재실행 → factory-mode 각 2 이상(77·134행 유지), launchers 각 1(37행 유지), README 각 1 이상(87행 유지; 74행 치환으로 카운트가 2→1이 될 수 있다). exit 0.
-- launchers 37행의 값 나열과 factory-mode 134행·README 87행의 정책 변경 서술은 LIVE이므로 무변경이 원칙이다.
+- **Green path** (M3): E-04 명령 재실행 → factory-mode 각 2 이상, launchers 각 1, README 각 1 이상. exit 0. 카운트는 치환 문장이 살아 있는 `--clear-policy`를 계속 이름 붙이므로 유지된다(README는 74행 치환으로 2→1이 될 수 있다).
+- launchers 37행의 값 나열과 `clear-when-full`의 임계치 조건 서술은 LIVE — 무변경. factory-mode 77행의 `clear-each` 셀·134행과 README 87행의 레인 `/clear` 안내는 STALE-3(iter-1 D2 재분류)으로 REQ-DPF-003 치환 대상이며, 이 AC가 보존하는 것은 그 줄의 플래그 인용 존재다.
 
 ### AC-DPF-005 — 4 로캘 패리티, 단일 변경 세트 (REQ-DPF-004, Q17) — regression-guard
 
@@ -97,7 +99,12 @@ tree: 74ad197380
 ### AC-DPF-006 — internal/·cmd/ 무변경 (REQ-DPF-006) — regression-guard
 
 - 음(-) 검증: 변경이 일어나기 전에는 공집합이라 RED-now가 불가능하다 — help-text 추가(Out of Scope)가 코드로 새는 것을 막는 범위 가드다.
-- **Green path** (M3): `git diff --name-only 74ad197380..HEAD -- internal/ cmd/` → 출력 없음, exit 0. (플랜 페이즈 아티팩트 커밋이 범위에 끼더라도 경로스펙이 internal/·cmd/만 검사하므로 판정은 유효하다.)
+- **Green path** (M3, iter-1 D3 강화 — 네 상태 전부 열거): 검증자가 판정하는 트리 상태를 두 단일 명령으로 검사한다.
+  1. `git diff --name-only <base>..HEAD -- internal/ cmd/` → 출력 없음, exit 0 — 커밋된 변경 없음.
+  2. `git status --porcelain -- internal/ cmd/` → 출력 없음, exit 0 — 스테이지된 변경·작업 트리 수정·추적되지 않는 새 파일 전부 없음(커밋 전 트리에서도 판정 유효 — 스테이지만 한 변경도 이 명령에 잡힌다).
+- **재핀 규칙**(verification-completeness §4): `<base>`는 판정 시점의 감사 대상 커밋 — 런 페이즈 변경 세트 이전의 HEAD SHA — 이며 이동 브랜치명이 아니다. 플랜 페이즈 측정 핀은 74ad197380이고, 런 페이즈는 실제 판정 기준 커밋으로 재핀해 그 SHA를 증거 행에 기록한다.
+- **허용 목록 대조**: E4의 두 명령과 전체 `git status --porcelain`의 합집합(변경 경로 전체)은 plan.md §D의 12개 허용 파일 안에 있어야 한다 — 목록 밖 경로 하나라도 있으면 이 AC는 FAIL이다.
+- 뮤턴트 폐쇄(iter-1 D3): 초판의 단일 커밋 범위 diff는 (i) 스테이지만 한 금지 변경과 (ii) 언트래킹 신규 파일을 놓쳤다 — 명령 2가 둘 다 닫고, 허용 목록 대조가 범위 밖 커밋 경로를 닫는다.
 
 ## D. Quality gates / Definition of Done
 
