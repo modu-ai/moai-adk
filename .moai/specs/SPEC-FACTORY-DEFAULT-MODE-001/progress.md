@@ -138,9 +138,11 @@ release-blocking AC's named `--- PASS:` line was observed (swept-set guard satis
 | AC-FDM-010 | PASS (regression-guard) | `--- PASS: TestRecordedClassificationNotRewritten (0.07s)` |
 | AC-FDM-011 | PASS | `--- PASS: TestTodoClassifySerialSlotConflictRefusal (3.27s)` (3 subtests PASS) |
 
-### E2 — full package suites
+### E2 — full package suites (single final record)
 
-First combined run (`go test -timeout 30m ./internal/cli ./internal/factory`, concurrent
+Run chronology, all observed this run on this tree:
+
+1. First combined run (`go test -timeout 30m ./internal/cli ./internal/factory`, concurrent
 packages) observed 4 failures — three baselines the flip moves, updated per plan §C P2 and
 committed (`d9ae56471b`; `TestDefaultCardDeciderIsDeterministic`,
 `TestFactoryNextStillRefusedBehindADrivenRow`,
@@ -149,15 +151,19 @@ card progress record), plus one load-jitter timing failure
 (`TestFactoryLeaseQueueLockStallBounded`, 8.81s against an 8.75s wall-clock bound under the
 concurrent two-package run) that passes in isolation (`--- PASS: TestFactoryLeaseQueueLockStallBounded (19.62s)`,
 both subtests). The pre-existing `TestCodexSpecFiles_ExecPrimitivesCodexOnly` failure
-(recorded above, present before any change) also appears. The re-run executes the packages
-SERIALLY to remove the cross-package contention variable:
-
-- `go test -timeout 20m ./internal/factory` → `ok  	github.com/modu-ai/moai-adk/internal/factory	358.945s`, exit 0.
-- `go test -timeout 30m ./internal/cli` → PENDING (running; recorded on completion).
-
-### E3 — coverage on touched packages
-
-### E2 — full package suites
+(recorded below, present before any change) also appears.
+2. Serial re-run to remove the cross-package contention variable —
+`go test -timeout 20m ./internal/factory` → `ok  	github.com/modu-ai/moai-adk/internal/factory	358.945s`, exit 0.
+3. Cli suite, first attempt — `go test -timeout 30m ./internal/cli` → **exit=1, FAIL 1801.021s**
+(verbatim tail: `FAIL github.com/modu-ai/moai-adk/internal/cli 1801.021s` / `exit=1`): the
+package hit the 30m wall under measured load — `panic: test timed out after 30m0s` with
+`TestQAS_AC012_StatusQuotaBlockOnlyWhenGateEnabledWithData` (8s in flight) at the alarm — plus
+one real assertion failure, `--- FAIL: TestCodexSpecFiles_ExecPrimitivesCodexOnly (0.01s)`.
+This attempt is COMPLETED (not pending); its timeout original text is preserved here and the
+run is superseded by entry 4.
+4. Authoritative sweep — `go test -v -timeout 75m ./internal/cli` → completed
+`FAIL github.com/modu-ai/moai-adk/internal/cli 2604.562s`, exit=1, exactly **6 top-level
+FAILs**, all dispositioned in §E.3 `known_dispositioned_failures` and below:
 
 - `go test -timeout 20m ./internal/factory` (serial) → `ok  	github.com/modu-ai/moai-adk/internal/factory	358.945s`, exit 0 — clean.
 - `go test -v -timeout 75m ./internal/cli` (serial) → COMPLETED in 2604.562s, exit 1, final
@@ -279,14 +285,14 @@ verified `--- PASS` in the completed verbose suite after the isolated verificati
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-10-20T07:50:00Z (UTC)
+run_complete_at: 2026-10-19T22:52:00Z (UTC)
 run_commit_sha: "8d302004ed"
 run_status: complete
 ac_pass_count: 11
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: "not-run (lane worktree, no shared-checkout commit; branch WT-spec-factory-default is card-local)"
-l44_post_push_fetch: "not-run (lane does not push — the batch push is the leader's bulk action)"
+l44_post_push_fetch: "preservation push of WT-spec-factory-default to origin executed after this commit per the operator end-coordination directive (no force); remote SHA recorded in .moai/reports/t1737/handoff.md — the routine batch push remains the leader's bulk action"
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_local: "pass (compilation via go vet + every go test run in this report; GOOS=windows matrix owned by CI)"
