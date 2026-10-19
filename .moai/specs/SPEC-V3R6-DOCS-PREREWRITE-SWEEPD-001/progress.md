@@ -55,7 +55,7 @@ total_run_phase_files: 8 docs-site files, spec.md (status only), progress.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill
+sync_commit_sha: 8ff2573fab94eb4c5141c9b5f0c163b56499efd7
 sync_complete_at: 2026-10-19T03:25:55Z
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] ### Fixed, first bullet
