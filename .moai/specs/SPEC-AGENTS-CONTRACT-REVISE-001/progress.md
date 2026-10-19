@@ -69,7 +69,7 @@ notes: spec.md status transition carried the docs-card exception trailer (record
 
 sync_status: complete
 sync_complete_at: 2026-10-20
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: aa2a4ef0e0
 b12_self_test_a: pre-emission `grep -c 'SPEC-AGENTS-CONTRACT-REVISE-001' CHANGELOG.md` → 0 (exit 1; no duplicate entry, emission cleared)
 b12_self_test_b: AC live count 16 (awk counter on acceptance.md: `live=16 excluded=0 ambiguous=0`; no [RETIRED]/[REF] tokens in the file) == CHANGELOG entry AC count 16
 b12_self_test_c: all 18 claimed file paths verified via `ls` (15 diff-list documents + 3 template mirrors) — 18 OK, 0 MISSING
