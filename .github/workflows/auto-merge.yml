@@ -87,8 +87,32 @@ jobs:
           echo "sha=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
+      - name: Check eligible PR author and same-repository head
+        id: author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR_JSON="$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null || true)"
+          ELIGIBLE=false
+          if [ -n "$PR_JSON" ] && printf '%s' "$PR_JSON" | jq -e '
+            .user.login == "GoosLab" and
+            .user.id == 6458969 and
+            .user.type == "User" and
+            (.head.repo.id | type) == "number" and
+            (.base.repo.id | type) == "number" and
+            .head.repo.id == .base.repo.id
+          ' >/dev/null 2>&1; then
+            ELIGIBLE=true
+          fi
+          echo "eligible=$ELIGIBLE" >> "$GITHUB_OUTPUT"
+          if [ "$ELIGIBLE" != "true" ]; then
+            echo "::notice::PR author or head repository is not eligible for auto-merge; it requires the user's test confirmation and explicit approval"
+          fi
+
       - name: Check all required CI checks passed
-        if: steps.head.outputs.ok == 'true'
+        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true'
         id: checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -181,7 +205,7 @@ jobs:
       # step runs; only the pass exits 0.
       - name: Collect and check the changed-file list
         id: files
-        if: steps.head.outputs.ok == 'true' && steps.checks.outputs.should_merge == 'true'
+        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true' && steps.checks.outputs.should_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERIFIED_SHA: ${{ steps.head.outputs.sha }}
@@ -240,11 +264,11 @@ jobs:
           conclude true pass 0
 
       # Guard (c) - native Codex review gate (SPEC-CI-CODEX-REVIEW-001).
-      # The reviewer is the native Codex GitHub review of the pull request; this step only reads what
-      # it left. The merge proceeds only when the gate script exits 0 for the verified head commit:
-      # the newest review of the Codex app identity bound to that commit is APPROVED and no finding
-      # exists on it. Time appears only as the bound of the wait: no elapsed time, and no absence of
-      # a review, is ever a pass. Exit classes: 0 pass; 1 fail; 10 not yet observed, keep waiting;
+      # The gate reads the Codex identity's single issue-comment state marker, both review legs,
+      # the security marker, and corroborating review findings. Only a clean result bound to the
+      # verified head can pass. A formal APPROVED review alone is never a pass. Time appears only
+      # as the bound of the wait: no elapsed time, and no absence of a review, is ever a pass.
+      # Exit classes: 0 pass; 1 fail; 10 not yet observed or still running, keep waiting;
       # 11 NOT RUN: a draft ends as the state not-run:draft with step exit 11 (never success, never
       # a review result), and no review when the window ends on a non-draft pull request is a
       # failure. Every other exit is a refusal. Every path but the clean pass ends the step
@@ -254,6 +278,7 @@ jobs:
         id: review
         if: >
           steps.head.outputs.ok == 'true' &&
+          steps.author.outputs.eligible == 'true' &&
           steps.checks.outputs.should_merge == 'true' &&
           steps.files.outputs.ok == 'true'
         env:
@@ -294,10 +319,10 @@ jobs:
           wait_next() {
             if [ "$WAIT" -lt "$MAX_WAIT" ]; then sleep 15; fi
           }
-          # Pre-merge recheck, run once a pass is clean ($1 is that pass's clean summary line). The
+          # Pre-merge recheck, run once a pass is clean ($1 is that pass's state-marker summary line). The
           # lists are collected again between two reads of the pull request object; the head and the
           # review-comment count must still equal the verified head and the first collection's count,
-          # and the gate script must again exit 0 with the same selected review. Any change ends the
+          # and the gate script must again exit 0 with the same state comment and marker fields. Any change ends the
           # step as a failure; a few seconds remain between this read and the merge call itself.
           recheck() {
             R3="$(read_pr)" || withhold "recheck-unreadable"
@@ -356,10 +381,12 @@ jobs:
               SECOND="$(read_pr)" || { NOTE="unreadable"; wait_next; continue; }
               HEAD2="$(field "$SECOND" '.head.sha // empty')"
               RC2="$(field "$SECOND" '.review_comments // empty')"
+              IC2="$(field "$SECOND" '.comments // empty')"
               if [ -z "$HEAD2" ] || [ -z "$RC2" ]; then NOTE="unreadable"; wait_next; continue; fi
               if [ "$HEAD2" != "$VERIFIED_SHA" ]; then withhold "head-moved-during-read"; fi
               if [ "$RC2" != "$RC_COUNT" ]; then withhold "review-comments-moved-during-read"; fi
-              if [ "$(field "$SECOND" '.comments // empty')" != "$IC_COUNT" ]; then withhold "issue-comments-moved-during-read"; fi
+              if [ -z "$IC2" ]; then NOTE="unreadable"; wait_next; continue; fi
+              if [ "$IC2" != "$IC_COUNT" ]; then NOTE="issue-comments-moved-during-read"; wait_next; continue; fi
               OUT="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed "$CLOSED" 2>&1)" || rc=$?
             fi
 
@@ -394,6 +421,7 @@ jobs:
       - name: Auto merge PR
         if: >
           steps.checks.outputs.should_merge == 'true' &&
+          steps.author.outputs.eligible == 'true' &&
           steps.head.outputs.ok == 'true' &&
           steps.files.outputs.ok == 'true' &&
           steps.review.outputs.ok == 'true'
@@ -452,7 +480,7 @@ jobs:
           # --match-head-commit makes the merge fail server-side if the head
           # moved in the window between the re-check above and GitHub applying
           # the merge (the pinned AC-CI-003 precondition).
-          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA" --delete-branch; then
+          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA"; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"

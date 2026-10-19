@@ -3,7 +3,7 @@
 > **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `cross-session-messaging.md` through the SessionStart hook (sources startup, clear, compact). The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read the full body at `workflow/factory-dispatch.md`. This stub holds the rule's non-role-core blocks; the full body keeps the role-core regions and every procedure body.
 
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the native Codex artifact contract, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md` owns the dispatch cycle and coordination rationale; `factory-dispatch-cards.md` owns classification and traceability; `factory-dispatch-gates.md` owns native Codex review and integration gates; `factory-dispatch-mechanics.md` owns worktree and landing procedures. Load as needed.
 
 ## Scope — when this rule is live
 
@@ -45,7 +45,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ### Native Codex review evidence
 
-[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
+[HARD] **Native Codex review evidence.** The trusted Codex summary and clean receipt must agree on the full head SHA and show no findings or unresolved findings. Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration. Keep functional and security checks separate.
 
 ## Lane card transition
 

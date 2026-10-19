@@ -356,16 +356,16 @@ func TestCodexGateFetchPagesCompleteness(t *testing.T) {
 			cgExpect(t, e.fetch("comments", out, "5"), 1, "count-mismatch:6:5")
 			cgMustNotExist(t, out)
 		}},
-		{"codex_review_on_page_2_is_read", func(t *testing.T, e *cgEnvT) {
+		{"codex_changes_requested_on_page_2_is_read", func(t *testing.T, e *cgEnvT) {
 			reviews := cgReviewList(100, cgRabbit)
-			reviews = append(reviews, cgReview(101, cgHead, "APPROVED"))
+			reviews = append(reviews, cgReview(101, cgHead, "CHANGES_REQUESTED"))
 			e.setPages("reviews", reviews)
 			rp := filepath.Join(e.dir, "reviews.ndjson")
 			cp := filepath.Join(e.dir, "comments.ndjson")
 			cgExpect(t, e.fetch("reviews", rp, ""), 0, "fetched:101")
 			cgExpect(t, e.fetch("comments", cp, "0"), 0, "fetched:0")
 			res := cgExec(t, cgScriptPath(t), e.env(), cgReadArgs(rp, cp, cgHead, "false", "false")...)
-			cgExpect(t, res, 0, "native-review-clean")
+			cgExpect(t, res, 1, "changes-requested")
 		}},
 		{"finding_comment_on_page_3_refused", func(t *testing.T, e *cgEnvT) {
 			e.setPages("reviews", []any{cgReview(1, cgHead, "APPROVED")})

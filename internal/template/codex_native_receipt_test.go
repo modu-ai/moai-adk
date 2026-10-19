@@ -8,6 +8,22 @@ import (
 	"testing"
 )
 
+func cgNativeIssueComments(t *testing.T, head string) []any {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(findProjectRootForMirrorTest(t), "internal/template/testdata/codex-native-clean.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const fixtureHead = "e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21"
+	text := strings.ReplaceAll(string(raw), fixtureHead, head)
+	text = strings.ReplaceAll(text, fixtureHead[:10], head[:10])
+	var comments []any
+	if err := json.Unmarshal([]byte(text), &comments); err != nil {
+		t.Fatal(err)
+	}
+	return comments
+}
+
 // Captured native issue-comment artifacts; no formal APPROVED review exists.
 func TestCodexNativeReceipt(t *testing.T) {
 	cgTools(t)
@@ -43,7 +59,7 @@ func TestCodexNativeReceipt(t *testing.T) {
 			n["body"] = strings.ReplaceAll(n["body"].(string), `"status":"completed"`, `"status":"error"`)
 			return append(v, n)
 		}, 1},
-		{"newer_stale_receipt", func(v []cgEntry) []cgEntry {
+		{"newer_stale_receipt_is_not_verdict", func(v []cgEntry) []cgEntry {
 			var n cgEntry
 			b, _ := json.Marshal(v[1])
 			_ = json.Unmarshal(b, &n)
@@ -51,8 +67,16 @@ func TestCodexNativeReceipt(t *testing.T) {
 			n["created_at"] = "2026-10-19T23:00:00Z"
 			n["body"] = strings.ReplaceAll(n["body"].(string), head[:10], cgOther[:10])
 			return append(v, n)
+		}, 0},
+		{"duplicate_summary", func(v []cgEntry) []cgEntry {
+			var n cgEntry
+			b, _ := json.Marshal(v[0])
+			_ = json.Unmarshal(b, &n)
+			n["id"] = 9999999999
+			n["created_at"] = "2026-10-19T23:00:00Z"
+			n["updated_at"] = "2026-10-19T23:00:00Z"
+			return append(v, n)
 		}, 1},
-		{"duplicate_summary", func(v []cgEntry) []cgEntry { return append(v, v[0]) }, 1},
 		{"missing_status", func(v []cgEntry) []cgEntry {
 			v[0]["body"] = strings.ReplaceAll(v[0]["body"].(string), `"status":"completed"`, `"other":"completed"`)
 			return v
@@ -62,8 +86,24 @@ func TestCodexNativeReceipt(t *testing.T) {
 			return v
 		}, 1},
 		{"absent", func(v []cgEntry) []cgEntry { return nil }, 11},
-		{"summary_only", func(v []cgEntry) []cgEntry { return v[:1] }, 1},
-		{"receipt_only", func(v []cgEntry) []cgEntry { return v[1:] }, 1},
+		{"summary_only", func(v []cgEntry) []cgEntry { return v[:1] }, 0},
+		{"receipt_only", func(v []cgEntry) []cgEntry { return v[1:] }, 11},
+		{"missing_security_marker", func(v []cgEntry) []cgEntry {
+			v[0]["body"] = strings.Replace(v[0]["body"].(string), "<!-- codex-security-review:v1 ", "<!-- missing-security-marker ", 1)
+			return v
+		}, 1},
+		{"stale_security_leg", func(v []cgEntry) []cgEntry {
+			v[0]["body"] = strings.Replace(v[0]["body"].(string), `"security_review":{"commit_sha":"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21"`, `"security_review":{"commit_sha":"`+cgOther+`"`, 1)
+			return v
+		}, 1},
+		{"unresolved_security_finding", func(v []cgEntry) []cgEntry {
+			v[0]["body"] = strings.Replace(v[0]["body"].(string), `"security_review":{"commit_sha":"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21","has_any_findings":false,"has_unresolved_findings":false`, `"security_review":{"commit_sha":"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21","has_any_findings":false,"has_unresolved_findings":true`, 1)
+			return v
+		}, 1},
+		{"security_leg_running_waits", func(v []cgEntry) []cgEntry {
+			v[0]["body"] = strings.Replace(v[0]["body"].(string), `"security_review":{"commit_sha":"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`, `"security_review":{"commit_sha":"e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21","has_any_findings":false,"has_unresolved_findings":false,"status":"running"}`, 1)
+			return v
+		}, 1},
 		{"stale", func(v []cgEntry) []cgEntry {
 			v[0]["body"] = strings.ReplaceAll(v[0]["body"].(string), head, cgOther)
 			return v
@@ -90,10 +130,10 @@ func TestCodexNativeReceipt(t *testing.T) {
 			}
 			return v
 		}, 11},
-		{"stale_receipt", func(v []cgEntry) []cgEntry {
+		{"stale_receipt_is_not_verdict", func(v []cgEntry) []cgEntry {
 			v[1]["body"] = strings.ReplaceAll(v[1]["body"].(string), head[:10], cgOther[:10])
 			return v
-		}, 1},
+		}, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var v []cgEntry
@@ -117,6 +157,24 @@ func TestCodexNativeReceipt(t *testing.T) {
 				t.Fatalf("exit=%d want=%d: %s", got.code, tc.want, got.all())
 			}
 		})
+	}
+}
+
+func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
+	cgTools(t)
+	comments := cgNativeIssueComments(t, cgHead)
+	state := comments[0].(map[string]any)
+	body := state["body"].(string)
+	body = strings.Replace(body, `"security_review":{"commit_sha":"`+cgHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`, `"security_review":{"commit_sha":"`+cgHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"running"}`, 1)
+	state["body"] = strings.ReplaceAll(body, "<!-- codex-security-review:v1 "+`{"blockingSeverityThreshold":"P0","headSha":"`+cgHead+`","mergeGateEnabled":false,"pullRequestNumber":1842,"repository":"modu-ai/moai-adk","status":"completed"} -->`+"\n", "")
+	dir := t.TempDir()
+	issues := cgWriteList(t, dir, "issues", comments...)
+	reviews := cgWriteList(t, dir, "reviews")
+	reviewComments := cgWriteList(t, dir, "review-comments")
+	args := append(cgReadArgs(reviews, reviewComments, cgHead, "false", "false"), "--issue-comments", issues)
+	got := cgExec(t, cgScriptPath(t), nil, args...)
+	if got.code != 10 || !strings.Contains(got.all(), "pending:running") {
+		t.Fatalf("running security leg must wait for the bounded review window: exit=%d output=%s", got.code, got.all())
 	}
 }
 

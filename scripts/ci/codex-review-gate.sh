@@ -45,61 +45,99 @@ def ident:
 def timestamp: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$");
 def idtext: if (.id | type) == "number" then (.id | tostring) else "?" end;
 def is_head($v): ($v | type) == "string" and ($v | ascii_downcase) == $head;
-def has_sha($v): ($v | type) == "string" and ($v | length) > 0;
-# Native GitHub reviews publish a mutable full-SHA summary and a clean receipt.
-# Neither receipt prose nor a short SHA is sufficient on its own.
+def full_sha: type == "string" and test("^[0-9A-Fa-f]{40}$");
+def leading_block:
+  split("\n")
+  | reduce .[] as $line ([true, []];
+      if .[0] and ($line | startswith("<!--") and endswith("-->")) then [true, .[1] + [$line]]
+      elif .[0] then [false, .[1]]
+      else . end)
+  | .[1] | join("\n");
+# Only whole marker lines in the initial HTML-comment block are eligible. A marker elsewhere is tampering.
 ($issues | map(select(ident))) as $native
-| ($native | map(select((.body // "") | contains("<!-- codex-pull-request-review-summary -->"))) | sort_by(.updated_at, .id)) as $summaries
-| ($native | map(select((.body // "") | startswith("<!-- codex-review-receipt:v1 -->"))) | sort_by(.created_at, .id)) as $receipts
-| ($summaries[-1] // null) as $summary
-| ($receipts[-1] // null) as $receipt
-| (try ($summary.body | capture("<!-- codex-review-state:v1 (?<state>[^\\n]+) -->") | .state | fromjson | .code_review) catch null) as $state
-| ($native | group_by(.id) | map(select(length > 1)) | length) as $native_dups
-| ($native | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $native_bad
+| ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
+| ($states[0] // null) as $state_comment
+| ($state_comment.body // "") as $body
+| ($body | leading_block) as $lead
+| [$lead | split("\n")[] | select(startswith("<!-- codex-review-state:v1"))] as $state_lines
+| [$lead | split("\n")[] | select(startswith("<!-- codex-security-review:v1"))] as $security_lines
+| ($body | [scan("<!-- codex-review-state:v1")] | length) as $state_occurrences
+| ($body | [scan("<!-- codex-security-review:v1")] | length) as $security_occurrences
+| (try ($state_lines[0] | capture("^<!-- codex-review-state:v1 (?<json>\\{.*\\}) -->$").json | fromjson) catch null) as $state
+| (try ($security_lines[0] | capture("^<!-- codex-security-review:v1 (?<json>\\{.*\\}) -->$").json | fromjson) catch null) as $security_marker
+| ($state.code_review // null) as $code
+| ($state.security_review // null) as $security
+| ($states | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $state_bad
+| ($states | map(.id) | group_by(.) | map(select(length > 1)) | length) as $state_id_dups
 | ($reviews | map(select(ident))) as $cand
-| ($cand | map(select(
-      ((.id | type) != "number") or ((.id | floor) != .id)
-      or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
+| ($cand | map(select(((.id | type) != "number") or ((.id | floor) != .id) or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
 | ($cand | map(select((.id | type) == "number")) | group_by(.id) | map(select(length > 1)) | .[0]) as $dup
 | ($cand | map(select(is_head(.commit_id)))) as $bound
 | ($bound | map(select(.state == "CHANGES_REQUESTED") | .id) | max) as $cr
-| ($bound | map(select(.state == "APPROVED") | .id) | max) as $ap
+| ($bound | map(select(.state == "COMMENTED") | .id) | max) as $commented
+| ($bound | max_by(.id)) as $n
+| ($cand | map(select((.id | type) == "number")) | max_by(.id)) as $newest
 | ($comments | map(select(ident)
     | {bound: (is_head(.commit_id) or is_head(.original_commit_id)),
-       unbound: ((has_sha(.commit_id) or has_sha(.original_commit_id)) | not),
+       unbound: (((.commit_id | type) != "string" or .commit_id == "") and ((.original_commit_id | type) != "string" or .original_commit_id == "")),
        id: idtext})
     | map(select(.bound or .unbound)) | .[0]) as $find
-| ($bound | max_by(.id)) as $n
-| ($cand | max_by(.id)) as $newest
 | if ($bad | length) > 0 then {c: 1, r: ("review-entry-invalid:" + ($bad[0] | idtext))}
   elif $dup != null then {c: 1, r: ("review-entry-invalid:duplicate-id:" + ($dup[0] | idtext))}
-  elif $native_dups > 0 or $native_bad > 0 then {c: 1, r: "native-artifact-invalid"}
-  elif ($summaries | length) > 0 or ($receipts | length) > 0 then
-    if $find != null then {c: 1, r: ("finding:" + $find.id)}
-    elif $cr != null and ($ap == null or $cr > $ap) then {c: 1, r: "changes-requested"}
-    elif $summary == null or $receipt == null then {c: 1, r: "native-artifact-incomplete"}
-    elif ($state | type) != "object" then {c: 1, r: "native-summary-invalid"}
-    elif (is_head($state.commit_sha) | not) then {c: 1, r: "native-summary-stale"}
-    elif $state.status != "completed" then {c: 1, r: "native-review-not-complete"}
-    elif $state.has_any_findings != false or $state.has_unresolved_findings != false then {c: 1, r: "native-findings-or-unknown"}
-    elif ($receipt.body | contains("Codex Review: Didn\u0027t find any major issues. :+1:")) | not then {c: 1, r: "native-receipt-not-clean"}
-    elif ($receipt.body | contains("**Reviewed commit:** `" + $head[0:10] + "`")) | not then {c: 1, r: "native-receipt-stale"}
-    else {c: 0, r: ("native-review-clean: issue-summary " + ($summary.id | tostring) + " receipt " + ($receipt.id | tostring) + " bound to " + $head + " artifacts " + ([$summary | {id,updated_at,body}, $receipt | {id,updated_at,body}] | tojson | @base64))}
+  elif $state_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
+  elif ($states | length) > 1 then {c: 1, r: ("state-comment-duplicated:" + ($states | map(.id | tostring) | join(",")))}
+  elif $state_comment != null and $state_bad > 0 then {c: 1, r: "state-comment-invalid"}
+  elif $state_comment != null then
+    if $state_occurrences > 1 then {c: 1, r: "state-marker-duplicated"}
+    elif ($state_lines | length) != 1 then {c: 1, r: "state-marker-misplaced"}
+    elif ($state | type) != "object" or ($code | type) != "object" or ($security | type) != "object" then {c: 1, r: "state-marker-malformed"}
+    elif ($code.status | type) != "string" or ($security.status | type) != "string" then {c: 1, r: "state-marker-malformed"}
+    elif ($code.commit_sha | type) == "string" and ($code.commit_sha | full_sha) and (is_head($code.commit_sha) | not) then {c: 1, r: ("stale-review:" + $code.commit_sha[0:10])}
+    elif ($security.commit_sha | type) == "string" and ($security.commit_sha | full_sha) and (is_head($security.commit_sha) | not) then {c: 1, r: ("stale-review:" + $security.commit_sha[0:10])}
+    elif ($security_occurrences > 1) then {c: 1, r: "security-marker-duplicated"}
+    elif $security_occurrences == 1 and (($security_lines | length) != 1) then {c: 1, r: "security-marker-misplaced"}
+    elif $security_occurrences == 1 and ($security_marker | type) != "object" then {c: 1, r: "security-marker-malformed"}
+    elif $security_occurrences == 1 and (($security_marker.status | type) != "string" or ($security_marker.headSha | full_sha | not)) then {c: 1, r: "security-marker-malformed"}
+    elif $security_occurrences == 1 and ($security_marker.headSha | full_sha) and (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
+    elif $code.status == "failed" then {c: 1, r: "review-failed:code_review"}
+    elif $security.status == "failed" then {c: 1, r: "review-failed:security_review"}
+    elif $find != null then {c: 1, r: ("finding:" + $find.id)}
+    elif $cr != null then {c: 1, r: "changes-requested"}
+    elif $commented != null then {c: 1, r: "review-not-conclusive:COMMENTED"}
+    elif ($cand | length) > 0 and ($bound | length) == 0 then {c: 1, r: ("stale-review:" + ($newest.commit_id | .[0:10]))}
+    elif ($code.status == "running" or $security.status == "running") then
+      (if $closed then {c: 1, r: "review-not-complete:running"} else {c: 10, r: "pending:running"} end)
+    elif ($code.status != "completed") then {c: 1, r: ("review-not-complete:code_review:" + $code.status)}
+    elif ($security.status != "completed") then {c: 1, r: ("review-not-complete:security_review:" + $security.status)}
+    elif ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
+    elif ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
+    elif (is_head($code.commit_sha) | not) or (is_head($security.commit_sha) | not) then {c: 1, r: "native-summary-stale"}
+    elif ($code.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
+    elif ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
+    elif $code.has_unresolved_findings then {c: 1, r: "finding:unresolved:code_review"}
+    elif $security.has_unresolved_findings then {c: 1, r: "finding:unresolved:security_review"}
+    elif $security_occurrences == 0 and ($security_lines | length) == 0 then {c: 1, r: "security-marker-missing"}
+    elif $security_marker.status != "completed" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
+    elif ($security_marker.headSha | full_sha | not) then {c: 1, r: "security-marker-malformed"}
+    elif (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
+    else
+      {c: 0, r: ("native-review-clean: state-comment " + ($state_comment.id | tostring) + " updated " + $state_comment.updated_at + " markers " + ([{code_review: {status: $code.status, commit_sha: $code.commit_sha, has_unresolved_findings: $code.has_unresolved_findings}, security_review: {status: $security.status, commit_sha: $security.commit_sha, has_unresolved_findings: $security.has_unresolved_findings}, security_marker: {status: $security_marker.status, headSha: $security_marker.headSha}}] | tojson | @base64))}
     end
+  elif $find != null then
+    {c: 1, r: ((if $find.bound then "finding:" else "finding-unbound:" end) + $find.id)}
+  elif $cr != null then {c: 1, r: "changes-requested"}
+  elif $commented != null then {c: 1, r: "review-not-conclusive:COMMENTED"}
   elif ($cand | length) == 0 then
     (if $closed then {c: 11, r: "not-run:review-absent"} else {c: 10, r: "pending:no-review"} end)
   elif ($bound | length) == 0 then {c: 1, r: ("stale-review:" + ($newest.commit_id | .[0:10]))}
-  elif $cr != null and ($ap == null or $cr > $ap) then {c: 1, r: "changes-requested"}
-  elif $find != null then
-    {c: 1, r: ((if $find.bound then "finding:" else "finding-unbound:" end) + $find.id)}
-  elif $n.state == "COMMENTED" then {c: 1, r: "review-not-conclusive:COMMENTED"}
   elif $n.state != "APPROVED" then {c: 1, r: ("review-not-complete:" + $n.state)}
-  elif (($n.submitted_at | type) != "string") or (($n.submitted_at | length) == 0) then
-    {c: 1, r: "review-not-complete:no-submitted-at"}
-  else {c: 0, r: ("native-review-clean: review " + ($n.id | tostring) + " state APPROVED bound to " + $head[0:10])}
+  elif (($n.submitted_at | type) != "string") or (($n.submitted_at | length) == 0) then {c: 1, r: "review-not-complete:no-submitted-at"}
+  elif $closed then {c: 11, r: "not-run:review-absent"}
+  else {c: 10, r: "pending:no-state-comment"}
   end
 | "\(.c)\t\(.r)"
 '
+
 
 cmd_read_native_review() {
   local reviews="" comments="" issues="" head="" draft="" closed="false"

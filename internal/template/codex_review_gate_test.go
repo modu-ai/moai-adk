@@ -3,9 +3,8 @@ package template_test
 // SPEC-CI-CODEX-REVIEW-001 M1 — the native Codex review reader.
 //
 // These tests drive `scripts/ci/codex-review-gate.sh read-native-review` with
-// synthetic fixtures in the documented REST shape of a pull-request review and a
-// review comment (research E23). No test claims that the live native review
-// produces these objects: the artifact form is unverified (research E29, U2).
+// synthetic native issue-comment markers plus pull-request review and review-comment
+// objects. Formal reviews can refuse a clean state comment but can never grant a pass.
 //
 // The same file owns the helpers the M2 and M3 test files reuse (cg* names).
 // The tests run offline: bash and jq are required and their absence fails the
@@ -241,15 +240,15 @@ var (
 	cgRabbit = cgBy("coderabbitai[bot]", 136622811, "Bot")
 )
 
-// AC-CCR-001 (REQ-CCR-001) — the clean reading; noise changes nothing.
+// AC-CCR-003 (REQ-CCR-003) — author identity filters formal-review noise; no review object grants a pass.
 // Mutants: an unconditional exit 0 (also fails AC-CCR-002..005); an always-refusing script;
-// no supersession of CHANGES_REQUESTED; a reader that consults review body text.
-func TestCodexGateReadNativeReviewAccepts(t *testing.T) {
+// no state-comment requirement; a reader that consults review body text.
+func TestCodexGateFormalReviewNoiseDoesNotGrantPass(t *testing.T) {
 	t.Parallel()
 	H, O := cgHead, cgOther
 	cgRunCases(t, []cgCase{
-		{name: "approved_bound_clean", reviews: []any{cgReview(10, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "uppercase_sha_bound_clean", reviews: []any{cgReview(10, strings.ToUpper(H), "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
+		{name: "approved_bound_clean", reviews: []any{cgReview(10, H, "APPROVED")}, wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "uppercase_sha_bound_clean", reviews: []any{cgReview(10, strings.ToUpper(H), "APPROVED")}, wantCode: 10, wantText: "pending:no-state-comment"},
 		{
 			name: "other_authors_noise_ignored",
 			reviews: []any{
@@ -260,17 +259,17 @@ func TestCodexGateReadNativeReviewAccepts(t *testing.T) {
 				cgReview(14, H, "COMMENTED", cgHuman),
 			},
 			comments: []any{cgComment(1, H, H, cgHuman), cgComment(2, H, H, cgRabbit)},
-			wantCode: 0, wantText: "native-review-clean",
+			wantCode: 10, wantText: "pending:no-state-comment",
 		},
-		{name: "stale_review_then_current_approved_clean", reviews: []any{cgReview(9, O, "APPROVED"), cgReview(10, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "stale_finding_older_head_ignored", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(1, O, O)}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "latest_bound_review_decides_approved", reviews: []any{cgReview(9, H, "COMMENTED"), cgReview(10, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "changes_requested_then_approved_clean", reviews: []any{cgReview(10, H, "CHANGES_REQUESTED"), cgReview(11, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "dismissed_then_approved_clean", reviews: []any{cgReview(10, H, "DISMISSED"), cgReview(11, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
+		{name: "stale_review_then_current_approved_without_state_waits", reviews: []any{cgReview(9, O, "APPROVED"), cgReview(10, H, "APPROVED")}, wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "stale_finding_older_head_ignored_but_state_still_needed", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(1, O, O)}, wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "commented_review_can_only_refuse", reviews: []any{cgReview(9, H, "COMMENTED"), cgReview(10, H, "APPROVED")}, wantCode: 1, wantText: "review-not-conclusive:COMMENTED"},
+		{name: "changes_requested_review_can_only_refuse", reviews: []any{cgReview(10, H, "CHANGES_REQUESTED"), cgReview(11, H, "APPROVED")}, wantCode: 1, wantText: "changes-requested"},
+		{name: "dismissed_then_approved_without_state_waits", reviews: []any{cgReview(10, H, "DISMISSED"), cgReview(11, H, "APPROVED")}, wantCode: 10, wantText: "pending:no-state-comment"},
 		{
 			name:     "approved_body_text_never_read",
 			reviews:  []any{cgReview(10, H, "APPROVED", cgBody("I could not review this change; the usage limit was reached. Do not merge."))},
-			wantCode: 0, wantText: "native-review-clean",
+			wantCode: 10, wantText: "pending:no-state-comment",
 		},
 	})
 	t.Run("formal_verdict_does_not_read_review_body", func(t *testing.T) {
@@ -290,6 +289,14 @@ func TestCodexGateReadNativeReviewAccepts(t *testing.T) {
 				t.Fatalf("%s:%d names the body field outside a comment: %s", cgScriptRel, i+1, line)
 			}
 		}
+	})
+}
+
+func TestCodexGateFormalApprovalCannotGrantPass(t *testing.T) {
+	t.Parallel()
+	cgRunCases(t, []cgCase{
+		{name: "approval_without_state_comment_waits", reviews: []any{cgReview(10, cgHead, "APPROVED")}, closed: "false", wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "approval_without_state_comment_window_closed_is_not_run", reviews: []any{cgReview(10, cgHead, "APPROVED")}, closed: "true", wantCode: 11, wantText: "not-run:review-absent"},
 	})
 }
 
@@ -335,7 +342,7 @@ func TestCodexGateReadNativeReviewIgnoresForged(t *testing.T) {
 		{
 			name:     "identity_approved_beside_other_login_changes_requested_clean",
 			reviews:  []any{cgReview(10, H, "APPROVED"), cgReview(11, H, "CHANGES_REQUESTED", cgHuman)},
-			wantCode: 0, wantText: "native-review-clean",
+			wantCode: 10, wantText: "pending:no-state-comment",
 		},
 		{
 			name:     "other_login_commented_never_completes_identity_review",
@@ -345,7 +352,7 @@ func TestCodexGateReadNativeReviewIgnoresForged(t *testing.T) {
 		{
 			name:     "identity_approved_body_says_approved_not_excluded",
 			reviews:  []any{cgReview(10, H, "APPROVED", cgBody("approved")), cgReview(11, H, "APPROVED", cgHuman, cgBody("approved"))},
-			wantCode: 0, wantText: "native-review-clean",
+			wantCode: 10, wantText: "pending:no-state-comment",
 		},
 	})
 }
@@ -398,9 +405,9 @@ func TestCodexGateReadNativeReviewRefusesFinding(t *testing.T) {
 		{name: "finding_commit_id_equals_head", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(77, H, O)}, wantCode: 1, wantText: "finding:77"},
 		{name: "finding_original_commit_id_equals_head", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(78, O, H)}, wantCode: 1, wantText: "finding:78"},
 		{name: "finding_without_any_commit_field", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(79, "", "", cgDrop("commit_id", "original_commit_id"))}, wantCode: 1, wantText: "finding-unbound:79"},
-		{name: "finding_by_other_author_ignored", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(80, H, H, cgRabbit), cgComment(81, H, H, cgHuman)}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "finding_bound_to_older_head_ignored", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(82, O, O)}, wantCode: 0, wantText: "native-review-clean"},
-		{name: "comments_file_empty_clean", reviews: []any{cgReview(10, H, "APPROVED")}, wantCode: 0, wantText: "native-review-clean"},
+		{name: "finding_by_other_author_ignored", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(80, H, H, cgRabbit), cgComment(81, H, H, cgHuman)}, wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "finding_bound_to_older_head_ignored", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(82, O, O)}, wantCode: 10, wantText: "pending:no-state-comment"},
+		{name: "comments_file_empty_clean", reviews: []any{cgReview(10, H, "APPROVED")}, wantCode: 10, wantText: "pending:no-state-comment"},
 		{name: "approved_review_with_finding_refused", reviews: []any{cgReview(10, H, "APPROVED")}, comments: []any{cgComment(83, H, H)}, wantCode: 1, wantText: "finding:83"},
 		{name: "commented_review_with_inline_finding_refused", reviews: []any{cgReview(10, H, "COMMENTED")}, comments: []any{cgComment(84, H, H)}, wantCode: 1, wantText: "finding:84"},
 	})
@@ -426,7 +433,7 @@ func TestCodexGateReadNativeReviewDraftNotRun(t *testing.T) {
 		{name: "draft_true_exit_11", draft: "true", closed: "false", wantCode: 11, wantText: "not-run:draft"},
 		{name: "draft_true_with_clean_bound_review_still_11", draft: "true", reviews: []any{cgReview(10, H, "APPROVED")}, closed: "false", wantCode: 11, wantText: "not-run:draft"},
 		{name: "draft_true_without_input_files_still_11", draft: "true", noFileFlags: true, closed: "false", wantCode: 11, wantText: "not-run:draft"},
-		{name: "draft_false_approved_exit_0", draft: "false", reviews: []any{cgReview(10, H, "APPROVED")}, closed: "true", wantCode: 0, wantText: "native-review-clean"},
+		{name: "formal_approval_without_state_is_not_run", draft: "false", reviews: []any{cgReview(10, H, "APPROVED")}, closed: "true", wantCode: 11, wantText: "not-run:review-absent"},
 		{name: "draft_flag_invalid_exit_1", draft: "maybe", closed: "false", wantCode: 1, wantText: "draft-flag-unusable"},
 		{name: "wait_closed_flag_invalid_exit_1", draft: "false", closed: "perhaps", wantCode: 1, wantText: "wait-closed-flag-unusable"},
 		{name: "review_absent_window_open_exit_10", draft: "false", closed: "false", wantCode: 10, wantText: "pending:no-review"},
@@ -439,15 +446,25 @@ func TestCodexGateReadNativeReviewDraftNotRun(t *testing.T) {
 		cgTools(t)
 		script := cgScriptPath(t)
 		rows := []cgCase{
-			{reviews: []any{cgReview(10, H, "APPROVED")}, closed: "true"},          // pass
+			{closed: "true"}, // clean native state comment
 			{reviews: []any{cgReview(10, H, "CHANGES_REQUESTED")}, closed: "true"}, // fail
 			{closed: "false"}, // pending
 			{draft: "true", closed: "false", noFileFlags: true}, // NOT RUN
 		}
 		seen := map[int]bool{}
 		var codes []int
-		for _, row := range rows {
-			res := cgRunRow(t, script, row, row.closed)
+		for i, row := range rows {
+			var res cgResult
+			if i == 0 {
+				dir := t.TempDir()
+				issues := cgWriteList(t, dir, "issues", cgNativeIssueComments(t, H)...)
+				reviews := cgWriteList(t, dir, "reviews")
+				comments := cgWriteList(t, dir, "comments")
+				args := append(cgReadArgs(reviews, comments, H, "false", row.closed), "--issue-comments", issues)
+				res = cgExec(t, script, nil, args...)
+			} else {
+				res = cgRunRow(t, script, row, row.closed)
+			}
 			codes = append(codes, res.code)
 			seen[res.code] = true
 		}

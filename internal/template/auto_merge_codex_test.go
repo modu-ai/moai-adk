@@ -220,7 +220,11 @@ const (
 var amPassChecks = `[{"name":"Lint","state":"SUCCESS","bucket":"pass"}]`
 
 func amPull(head string, draft bool, changed, reviewComments int) string {
-	return fmt.Sprintf(`{"head":{"sha":%q},"draft":%t,"changed_files":%d,"review_comments":%d,"comments":0}`, head, draft, changed, reviewComments)
+	return fmt.Sprintf(`{"head":{"sha":%q,"repo":{"id":1}},"base":{"repo":{"id":1}},"user":{"login":"GoosLab","id":6458969,"type":"User"},"draft":%t,"changed_files":%d,"review_comments":%d,"comments":0}`, head, draft, changed, reviewComments)
+}
+
+func amPullWithIssueComments(head string, draft bool, changed, reviewComments, issueComments int) string {
+	return strings.Replace(amPull(head, draft, changed, reviewComments), `"comments":0`, fmt.Sprintf(`"comments":%d`, issueComments), 1)
 }
 
 func newAMRig(t *testing.T, script string) *amRig {
@@ -456,7 +460,7 @@ func (r *amRig) runChain() amChainResult {
 	var res amChainResult
 	failed := false
 	for _, s := range r.wf.steps() {
-		inChain := s.ID == "head" || s.ID == "checks" || s.ID == "files" || s.ID == "review" || s.Name == amMergeName
+		inChain := s.ID == "head" || s.ID == "author" || s.ID == "checks" || s.ID == "files" || s.ID == "review" || s.Name == amMergeName
 		if !inChain {
 			continue
 		}
@@ -588,7 +592,7 @@ func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 					t.Errorf("workflow gh pr checks is not the required-checks form: %s", inv.line)
 				}
 			case inv.group == "pr" && inv.sub == "merge":
-				if !strings.Contains(inv.line, "--match-head-commit") || !strings.Contains(inv.line, "--delete-branch") {
+				if !strings.Contains(inv.line, "--match-head-commit") || strings.Contains(inv.line, "--delete-branch") {
 					t.Errorf("workflow gh pr merge is not the head-pinned form: %s", inv.line)
 				}
 			case inv.group == "api" && inv.sub == pullObject:
@@ -1339,6 +1343,74 @@ func TestAutoMergeAddsNoSecretTriggerOrArtifact(t *testing.T) {
 	})
 }
 
+func TestAutoMergeAuthorEligibility(t *testing.T) {
+	t.Parallel()
+	cgTools(t)
+	raw, _ := amLoad(t)
+	idx := func(id string) int { return raw.indexOf(func(s amStep) bool { return s.ID == id }) }
+	merge, ok := raw.merge()
+	if !ok || idx("author") < 0 || idx("author") >= idx("checks") || idx("checks") >= idx("files") || idx("files") >= idx("review") || idx("review") >= raw.indexOf(func(s amStep) bool { return s.Name == amMergeName }) {
+		t.Fatalf("author/check/files/review/merge order is incomplete: author=%d checks=%d files=%d review=%d merge=%d", idx("author"), idx("checks"), idx("files"), idx("review"), raw.indexOf(func(s amStep) bool { return s.Name == amMergeName }))
+	}
+	for _, id := range []string{"checks", "files", "review"} {
+		s, _ := raw.byID(id)
+		if !strings.Contains(s.If, "steps.author.outputs.eligible == 'true'") {
+			t.Errorf("%s step does not require eligible author: %s", id, s.If)
+		}
+	}
+	if !strings.Contains(merge.If, "steps.author.outputs.eligible == 'true'") {
+		t.Errorf("merge step does not require eligible author: %s", merge.If)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		mutate func(string) string
+		fail   bool
+	}{
+		{name: "eligible_same_repository_author"},
+		{name: "wrong_login", mutate: func(s string) string { return strings.Replace(s, `"login":"GoosLab"`, `"login":"other"`, 1) }, fail: true},
+		{name: "wrong_id", mutate: func(s string) string { return strings.Replace(s, `"id":6458969`, `"id":7`, 1) }, fail: true},
+		{name: "bot_author", mutate: func(s string) string { return strings.Replace(s, `"type":"User"`, `"type":"Bot"`, 1) }, fail: true},
+		{name: "fork_head", mutate: func(s string) string {
+			return strings.Replace(s, `"base":{"repo":{"id":1}}`, `"base":{"repo":{"id":2}}`, 1)
+		}, fail: true},
+		{name: "unreadable_pull", fail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := newAMRig(t, "stub")
+			pull := amPull(cgHead, false, 2, 0)
+			if tc.mutate != nil {
+				pull = tc.mutate(pull)
+			}
+			if tc.name == "unreadable_pull" {
+				r.setPulls("FAIL")
+			} else {
+				r.setPulls(pull)
+			}
+			result := r.runChain()
+			got := r.ctx.outputs["author"]["eligible"]
+			if tc.fail {
+				if got != "false" || len(r.mergeCalls()) != 0 {
+					t.Fatalf("ineligible pull: eligible=%q merges=%v", got, r.mergeCalls())
+				}
+				for _, step := range []string{"checks", "files", "review", "merge"} {
+					if _, ran := result.executed(step); ran {
+						t.Errorf("%s ran for ineligible pull", step)
+					}
+				}
+				if !strings.Contains(r.results["author"].stdout+r.results["author"].stderr, "test confirmation and explicit approval") {
+					t.Errorf("ineligible pull lacks operator notice: %s%s", r.results["author"].stdout, r.results["author"].stderr)
+				}
+				return
+			}
+			if got != "true" || len(r.mergeCalls()) != 1 {
+				t.Fatalf("eligible pull: eligible=%q merges=%v, want exactly one", got, r.mergeCalls())
+			}
+		})
+	}
+}
+
 // AC-CCR-019 (REQ-CCR-012) — the merge decision path: head, checks, files, review, merge condition, merge step.
 // Mutants (each applied to the committed workflow): `&& false` in the merge if; an exit 0 before gh pr merge;
 // merge_deadline assigned inside the merge step; the review term dropped from the merge if; the files
@@ -1351,12 +1423,13 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 		run  func(t *testing.T)
 	}
 	// clean builds the fixture on which the whole chain merges: two benign files bound to the head, a clean
-	// APPROVED review of the identity bound to the head, no finding, passing checks, the head stable.
+	// native state comment bound to the head, no corroborating finding, passing checks, the head stable.
 	clean := func(t *testing.T, script string) *amRig {
 		t.Helper()
 		r := newAMRig(t, script)
 		r.e.setPages("files", cgBenignFiles(2, cgHead))
-		r.e.setPages("reviews", []any{cgReview(10, cgHead, "APPROVED")})
+		r.e.setPages("issues", cgNativeIssueComments(t, cgHead))
+		r.setPulls(amPullWithIssueComments(cgHead, false, 2, 0, 2))
 		return r
 	}
 	noMerge := func(t *testing.T, r *amRig) {
@@ -1375,8 +1448,8 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 				t.Fatalf("gh pr merge called %d times, want exactly 1: %v\n%v", len(calls), calls, r.e.calls())
 			}
 			c := calls[0]
-			if amFlagValue(c, "--match-head-commit") != cgHead || !strings.Contains(c, "--delete-branch") || !strings.Contains(c, "--squash") || strings.Contains(c, "--merge") {
-				t.Fatalf("merge call %q: want --squash, --delete-branch, --match-head-commit %s", c, cgHead)
+			if amFlagValue(c, "--match-head-commit") != cgHead || strings.Contains(c, "--delete-branch") || !strings.Contains(c, "--squash") || strings.Contains(c, "--merge") {
+				t.Fatalf("merge call %q: want --squash, no branch deletion, --match-head-commit %s", c, cgHead)
 			}
 		}},
 		{"release_branch_clean_fixture_uses_merge_flag", func(t *testing.T) {
@@ -1591,11 +1664,11 @@ func amSetGen(t *testing.T, r *amRig, kind string, gen int, entries ...any) {
 func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 	t.Parallel()
 	H := cgHead
-	p0 := amPull(H, false, 2, 0)
-	p1 := amPull(H, false, 2, 1)
-	// The files step reads the pull request object twice before the review step does; reviewPulls are the
-	// review step's reads in order: first read, second read, recheck read before, recheck read after.
-	chainPulls := func(review ...string) []string { return append([]string{p0, p0}, review...) }
+	p0 := amPullWithIssueComments(H, false, 2, 0, 2)
+	p1 := amPullWithIssueComments(H, false, 2, 1, 2)
+	// The author step and files step read the pull object three times before the review pass. The review
+	// pass reads twice, followed by the pre-merge recheck's two reads.
+	chainPulls := func(review ...string) []string { return append([]string{p0, p0, p0}, review...) }
 	type sub struct {
 		name   string
 		setup  func(t *testing.T, r *amRig)
@@ -1609,22 +1682,32 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 		{"recheck_review_comments_count_differs_not_ok", func(t *testing.T, r *amRig) {
 			r.setPulls(chainPulls(p0, p0, p1)...)
 		}, "review-comments-moved-before-merge"},
-		{"approval_dismissed_on_recheck_not_ok", func(t *testing.T, r *amRig) {
-			amSetGen(t, r, "reviews", 2, cgReview(10, H, "DISMISSED"))
-		}, "review-changed-before-merge:review-not-complete:DISMISSED"},
+		{"state_comment_updated_on_recheck_not_ok", func(t *testing.T, r *amRig) {
+			issues := cgNativeIssueComments(t, H)
+			issues[0].(map[string]any)["updated_at"] = "2026-10-19T23:00:00Z"
+			amSetGen(t, r, "issues", 2, issues...)
+		}, "review-changed-before-merge"},
 		{"later_changes_requested_on_recheck_not_ok", func(t *testing.T, r *amRig) {
 			amSetGen(t, r, "reviews", 2, cgReview(10, H, "APPROVED"), cgReview(11, H, "CHANGES_REQUESTED"))
 		}, "review-changed-before-merge:changes-requested"},
 		{"new_finding_comment_on_recheck_not_ok", func(t *testing.T, r *amRig) {
 			// One comment before and one after, so the count proof still agrees: a human comment is replaced
 			// by a finding of the identity bound to the head.
-			r.setPulls(chainPulls(p1)...)
+			r.setPulls(chainPulls(p1, p1, p1, p1)...)
 			r.e.setPages("comments", []any{cgComment(1, H, H, cgHuman)})
 			amSetGen(t, r, "comments", 2, cgComment(2, H, H))
 		}, "review-changed-before-merge:finding:2"},
-		{"selected_approval_replaced_on_recheck_not_ok", func(t *testing.T, r *amRig) {
-			amSetGen(t, r, "reviews", 2, cgReview(10, H, "APPROVED"), cgReview(11, H, "APPROVED"))
-		}, "selected-review-changed-before-merge"},
+		{"second_state_comment_on_recheck_not_ok", func(t *testing.T, r *amRig) {
+			issues := cgNativeIssueComments(t, H)
+			duplicate := issues[0].(map[string]any)
+			copy := make(map[string]any, len(duplicate))
+			for k, v := range duplicate {
+				copy[k] = v
+			}
+			copy["id"] = 9999999999
+			issues[1] = copy
+			amSetGen(t, r, "issues", 2, issues...)
+		}, "review-changed-before-merge:state-comment-duplicated"},
 	}
 	for _, s := range subs {
 		t.Run(s.name, func(t *testing.T) {
@@ -1632,7 +1715,10 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 			cgTools(t)
 			r := newAMRig(t, "real")
 			r.e.setPages("files", cgBenignFiles(2, H))
-			r.e.setPages("reviews", []any{cgReview(10, H, "APPROVED")})
+			r.e.setPages("reviews", []any{})
+			r.e.setPages("comments", []any{})
+			r.e.setPages("issues", cgNativeIssueComments(t, H))
+			r.setPulls(chainPulls(p0, p0, p0, p0)...)
 			s.setup(t, r)
 			r.runChain()
 			merges := r.mergeCalls()
@@ -1658,6 +1744,49 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 	}
 }
 
+func TestAutoMergeRetriesIssueCommentCountRaceDuringReviewWait(t *testing.T) {
+	t.Parallel()
+	cgTools(t)
+	H := cgHead
+	p2 := amPullWithIssueComments(H, false, 2, 0, 2)
+	p3 := amPullWithIssueComments(H, false, 2, 0, 3)
+	r := newAMRig(t, "real")
+	r.e.setPages("files", cgBenignFiles(2, H))
+	r.e.setPages("reviews", []any{})
+	r.e.setPages("comments", []any{})
+	initial := cgNativeIssueComments(t, H)
+	withReceipt := append(cgNativeIssueComments(t, H), cgEntry{
+		"id":         6269999999,
+		"user":       map[string]any{"id": cgBotID, "login": cgBotLogin, "type": "Bot"},
+		"body":       "markerless review receipt",
+		"created_at": "2026-10-19T23:00:00Z",
+		"updated_at": "2026-10-19T23:00:00Z",
+	})
+	amSetGen(t, r, "issues", 1, initial...)
+	amSetGen(t, r, "issues", 2, withReceipt...)
+	amSetGen(t, r, "issues", 3, withReceipt...)
+	// author + two files reads, then the first review pass observes 2 -> 3 comments;
+	// the second review pass and final recheck observe the stable 3-comment list.
+	r.setPulls([]string{p2, p2, p2, p2, p3, p3, p3, p3, p3}...)
+	result := r.runChain()
+	if result.job != "success" || len(r.mergeCalls()) != 1 || r.sleeps() != 1 {
+		review := r.results["review"]
+		t.Fatalf("comment-count race should retry once then merge: job=%s merges=%v sleeps=%d review=%q/%q err=%s calls=%v", result.job, r.mergeCalls(), r.sleeps(), r.ctx.outputs["review"]["ok"], r.ctx.outputs["review"]["state"], review.stdout+review.stderr, r.e.calls())
+	}
+	if !strings.Contains(r.results["review"].stdout, "native-review-clean") {
+		t.Fatalf("review step did not record the clean native result: %s%s", r.results["review"].stdout, r.results["review"].stderr)
+	}
+	issueReads := 0
+	for _, call := range r.e.calls() {
+		if strings.HasPrefix(call, "gh api repos/modu-ai/moai-adk/issues/7/comments?") {
+			issueReads++
+		}
+	}
+	if issueReads != 3 {
+		t.Fatalf("issue-comment list collections=%d, want retry pass plus clean pass and recheck: %v", issueReads, r.e.calls())
+	}
+}
+
 // ---------------------------------------------------------------------------------------------
 // Plan revision 6, M5 (REQ-CCR-018, REQ-CCR-019; AC-CCR-020 to AC-CCR-025): a failure in the files step or the
 // review step ends that step AND the job as not-success; a draft is the single state not-run:draft with exit 11;
@@ -1670,14 +1799,14 @@ func TestAutoMergeReviewRecheckBeforeMerge(t *testing.T) {
 // ---------------------------------------------------------------------------------------------
 
 var (
-	amP0     = amPull(cgHead, false, 2, 0)
-	amP1     = amPull(cgHead, false, 2, 1)
+	amP0     = amPullWithIssueComments(cgHead, false, 2, 0, 2)
+	amP1     = amPullWithIssueComments(cgHead, false, 2, 1, 2)
 	amPOther = amPull(cgOther, false, 2, 0)
 	amPDraft = amPull(cgHead, true, 2, 0)
 )
 
 // amChainPulls is the pull-object sequence of a whole chain: the files step reads it twice before the review step.
-func amChainPulls(review ...string) []string { return append([]string{amP0, amP0}, review...) }
+func amChainPulls(review ...string) []string { return append([]string{amP0, amP0, amP0}, review...) }
 
 // amCleanRig is the fixture on which the whole chain merges.
 func amCleanRig(t *testing.T, script string) *amRig {
@@ -1685,6 +1814,8 @@ func amCleanRig(t *testing.T, script string) *amRig {
 	r := newAMRig(t, script)
 	r.e.setPages("files", cgBenignFiles(2, cgHead))
 	r.e.setPages("reviews", []any{cgReview(10, cgHead, "APPROVED")})
+	r.e.setPages("issues", cgNativeIssueComments(t, cgHead))
+	r.setPulls(amP0)
 	return r
 }
 
@@ -1823,7 +1954,7 @@ func TestAutoMergeReviewFailureFailsStepAndJob(t *testing.T) {
 		}},
 		{"recheck_mismatch_step_exit_nonzero", "review-changed-before-merge", func(t *testing.T) *amRig {
 			r := amCleanRig(t, "real")
-			amSetGen(t, r, "reviews", 2, cgReview(10, H, "DISMISSED"))
+			amSetGen(t, r, "reviews", 2, cgReview(10, H, "CHANGES_REQUESTED"))
 			return r
 		}},
 		{"unreadable_to_end_of_window_step_exit_nonzero", "review-unreadable", func(t *testing.T) *amRig {
@@ -2142,8 +2273,8 @@ func TestAutoMergeStepHarnessObservesExitAndJobResult(t *testing.T) {
 		cgTools(t)
 		r := amCleanRig(t, "real")
 		ch := r.runChain()
-		if len(ch.ran) != 5 {
-			t.Fatalf("the clean chain ran %d steps, want 5 (head, checks, files, review, merge): %+v", len(ch.ran), ch.ran)
+		if len(ch.ran) != 6 {
+			t.Fatalf("the clean chain ran %d steps, want 6 (head, author, checks, files, review, merge): %+v", len(ch.ran), ch.ran)
 		}
 		for _, e := range ch.ran {
 			res, ok := r.results[e.key]
@@ -2245,7 +2376,7 @@ func TestAutoMergeFilesStepFailureFailsStepAndJob(t *testing.T) {
 		}},
 		{"pr_unreadable_step_exit_nonzero", "files-unreadable", func(t *testing.T) *amRig {
 			r := amCleanRig(t, "real")
-			r.setPulls("FAIL")
+			r.setPulls(amP0, "FAIL")
 			return r
 		}},
 		{"head_moved_before_read_step_exit_nonzero", "head-moved:", func(t *testing.T) *amRig {
@@ -2255,12 +2386,12 @@ func TestAutoMergeFilesStepFailureFailsStepAndJob(t *testing.T) {
 		}},
 		{"head_moved_during_read_step_exit_nonzero", "head-moved-during-read", func(t *testing.T) *amRig {
 			r := amCleanRig(t, "real")
-			r.setPulls(amP0, amPOther)
+			r.setPulls(amP0, amP0, amPOther)
 			return r
 		}},
 		{"count_moved_during_read_step_exit_nonzero", "count-moved-during-read", func(t *testing.T) *amRig {
 			r := amCleanRig(t, "real")
-			r.setPulls(amPull(cgHead, false, 2, 0), amPull(cgHead, false, 3, 0))
+			r.setPulls(amPull(cgHead, false, 2, 0), amPull(cgHead, false, 2, 0), amPull(cgHead, false, 3, 0))
 			return r
 		}},
 		{"unknown_gate_exit_step_exit_nonzero", "gate-exit-7", func(t *testing.T) *amRig {
@@ -2330,8 +2461,8 @@ func TestAutoMergeFilesStepFailureFailsStepAndJob(t *testing.T) {
 				t.Fatalf("step %s exited %d on the clean chain: %+v", e.key, e.code, ch.ran)
 			}
 		}
-		if len(ch.ran) != 5 || ch.job != "success" || len(r.mergeCalls()) != 1 {
-			t.Fatalf("steps=%d job=%q merges=%v, want 5, success, one merge: %+v", len(ch.ran), ch.job, r.mergeCalls(), ch.ran)
+		if len(ch.ran) != 6 || ch.job != "success" || len(r.mergeCalls()) != 1 {
+			t.Fatalf("steps=%d job=%q merges=%v, want 6, success, one merge: %+v", len(ch.ran), ch.job, r.mergeCalls(), ch.ran)
 		}
 	})
 }
