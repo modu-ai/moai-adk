@@ -15,6 +15,8 @@
 - `moai todo list --json`에서 t1774 전체 본문과 결정 id를 확인했다.
 - `internal/cli/codex_launcher.go`의 리더 거부와 `internal/cli/codex_factory.go`의 기존 리더 분기를 읽었다. 기존 run 등록·환경 전달·anchor 경로를 활용한다.
 - t1745의 반려 문서 두 개만 `git show a9f53c169:<path>`로 복사한다. 코드·다른 기록은 병합하지 않는다.
+- 저장 형식 명확화: `gtd.go`의 `RecordFactoryCardAssignment` 호출과 `todo_runtime.go`의 큐 SQLite 기록, `factory_mirror.go`의 팩토리 SQLite 배차 mirror를 소스로 확인했다. 카드의 “dispatch 파일”은 기존 SQLite 파일에 저장된 배차 기록을 뜻한다. 새 sidecar writer는 추가하지 않는다. 검증은 launcher → 실제 `todo engage --dispatch` → 두 저장소 재열기 → 실제 저장 상태 조회로 연결한다.
+- 레인 완료 범위: 기존 `factory next`·`factory stage` 경로와 정당한 검증 증거로 저장된 `merge-ready`를 리더가 읽는다. 큐 `CardDone`이나 실제 병합·착지는 요구하지 않으며, 더 넓은 t1645의 착지 동작은 제외한다.
 - 이번 기준의 실행 테스트·실제 모델 실행·전체 CI는 아직 관측하지 않았다. 정적 확인과 실행 증거를 구분한다.
 - 카드 임대는 별도 운영 상태다. SPEC 작성과 유효한 작업트리 존재를 큐 임대·완료 증거로 해석하지 않는다.
 
@@ -35,7 +37,7 @@
 ## §E 자체 검증과 위험
 
 - malformed 형태는 상태 생성 전에 거부되어야 한다. 허용 분기만 넓혀 legacy 값까지 통과시키는 회귀를 검사한다.
-- launcher stub은 child 경계만 대체한다. 큐 조회·dispatch 쓰기·저장 완료 기록 읽기는 실제 경로를 실행한다.
+- launcher stub은 child 경계만 대체한다. 큐 조회·기존 SQLite dispatch 저장·저장 완료 기록 읽기는 실제 경로를 실행하고 두 저장소를 다시 열어 확인한다.
 - model·effort는 설정 상수를 재사용하고 plain 세션에 리더 기본값이 새지 않는지 검사한다.
 - 살아 있는/판별 불가능한 writer를 anchor가 계속 거부하는지 확인한다.
 - Codex의 PermissionRequest·PreCompact 부재와 메시지 nudge 부재를 운영 안내에 명시한다.

@@ -10,7 +10,9 @@
 
 ### AC-CFL-002 — 실제 큐의 dispatch와 완료 조회 (REQ-CFL-003, REQ-CFL-004)
 
-**Given** launcher가 만든 Codex 리더 런과 실제 임시 큐의 발행·선택 가능한 카드, 검증된 레인 식별자 및 child launcher stub, **When** 메시징 nudge를 비활성화한 상태에서 stub이 리더에게 안내된 기존 큐 배차 작업을 실행하고 레인이 진행·완료 기록을 저장한 뒤 리더의 기존 기록 조회 작업을 실행하면, **Then** 해당 카드의 런·레인 식별자와 일치하는 dispatch 파일이 디스크에 생기고 조회 결과가 같은 카드의 저장 상태를 반환한다. child launch 이전에 만든 fixture dispatch·fixture 출력은 인정하지 않는다. nudge는 한 번도 필요하지 않다.
+이 기준의 레인 완료는 `merge-ready`와 저장된 작업 완료 증거다. 실제 `factory next`·`factory stage` 경로로 정당한 검증 증거를 갖추어 이 상태를 저장하고 리더가 기존 상태 조회로 읽는다. 큐 `CardDone`을 fixture로 만들어 대체하거나 실제 병합·착지를 요구하지 않는다.
+
+**Given** launcher가 만든 Codex 리더 런과 실제 임시 큐의 발행·선택 가능한 카드, 검증된 레인 식별자 및 child launcher stub, **When** 메시징 nudge를 비활성화한 상태에서 stub이 실제 `moai todo engage --dispatch` 경로로 배차하고 레인이 진행·완료 기록을 저장한 뒤 큐·팩토리 저장소를 모두 다시 열어 기존 상태 조회 경로를 실행하면, **Then** 기존 큐 SQLite 파일의 `todo_runtime_assignments`·`todo_dispatch_current`와 팩토리 SQLite 파일의 `card_dispatch`에 같은 카드·런·레인 식별자가 저장되어 있고 조회 결과가 같은 카드의 저장 상태를 반환한다. child launch 이전에 만든 fixture dispatch·fixture 출력과 저장소를 다시 열지 않은 메모리 값은 인정하지 않는다. 별도 dispatch sidecar 파일을 추가하지 않으며 nudge는 한 번도 필요하지 않다.
 
 ### AC-CFL-003 — malformed 입력의 무부작용 (REQ-CFL-005)
 
@@ -43,7 +45,7 @@
 ## §B 검증 기준
 
 - 정상/오류/회귀 시나리오를 실제 launcher 경계에서 검사한다.
-- AC-CFL-002는 launcher → 실제 큐 → dispatch 파일 → 저장 완료 조회를 하나의 실행 경로로 검증한다.
+- AC-CFL-002는 launcher → 실제 todo engage --dispatch → 두 SQLite 저장소 재열기 → 저장 완료 상태 조회를 하나의 실행 경로로 검증한다.
 - 변경 범위의 focused tests·vet·독립 감사 결과와 실행하지 않은 전체 CI·실제 모델 검증을 구분한다.
 - Definition of Done: 필수 AC가 관측한 증거로 통과하고 동기화·운영자가 요청한 로컬 RC 설치 검증을 완료한다.
 

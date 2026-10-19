@@ -2,7 +2,7 @@
 id: SPEC-CODEX-FACTORY-LEADER-001
 title: "Codex 팩토리 리더 진입 허용"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
@@ -27,6 +27,8 @@ t1745의 반려 기록 `a9f53c169`에 있는 SPEC-FACTORY-CODEX-LEADER-RESUME-00
 
 현재 카드의 기능은 **새 Codex 리더 런의 명시적 시작**이다. 기존 레인 진입, 기본 리더 선택, 메시징 전송 계층은 변경하지 않는다. 실행 완료를 메시지 도착으로 판단하지 않고 저장된 진행·완료 기록으로 확인한다.
 
+여기서 레인 완료는 기존 Codex 레인의 `merge-ready` 상태와 저장된 작업 완료 증거를 리더가 읽는 것을 뜻한다. 큐의 `CardDone` 전이 또는 실제 병합·착지를 이번 수용 범위에 포함하지 않는다.
+
 ## §A 목표
 
 운영자가 `moai codex -f`로 Codex 리더를 시작하고 기존 큐와 dispatch 기록으로 팩토리를 운영할 수 있어야 한다. Codex에 없는 PermissionRequest·PreCompact 훅과 비동기 메시징 nudge에 기대지 않아야 한다.
@@ -35,7 +37,7 @@ t1745의 반려 기록 `a9f53c169`에 있는 SPEC-FACTORY-CODEX-LEADER-RESUME-00
 
 - **REQ-CFL-001** — 운영자가 Codex CLI의 bare `-f` 또는 `--factory` 리더 진입을 요청할 때(When), 런처는 새 팩토리 런의 리더로 Codex를 한 번 실행하고 리더 역할과 런 식별자를 전달해야 한다(shall).
 - **REQ-CFL-002** — Codex 리더가 시작될 때(When), 팩토리는 리더 백엔드를 `codex`로 기록하고 기존 리더 런의 수명주기와 용량 정책을 적용해야 한다(shall).
-- **REQ-CFL-003** — 메시징 nudge를 사용할 수 없는 동안에도(While), 리더는 기존 큐에서 배차 대상 카드를 읽고 런·레인·카드에 귀속된 dispatch 파일을 생성하며 레인의 저장된 진행·완료 기록을 읽어 후속 처리를 판단할 수 있어야 한다(shall).
+- **REQ-CFL-003** — 메시징 nudge를 사용할 수 없는 동안에도(While), 리더는 기존 큐에서 배차 대상 카드를 읽고 기존 큐·팩토리 SQLite 파일에 런·레인·카드에 귀속된 dispatch 기록을 저장하며 레인의 저장된 진행·완료 기록을 읽어 후속 처리를 판단할 수 있어야 한다(shall).
 - **REQ-CFL-004** — Codex 리더 안내는 기존 manager-lead 책임에 대응하는 큐 조회·배차·저장 기록 확인 절차와 Codex의 훅 제약을 명시해야 한다(shall).
 - **REQ-CFL-005** — 값이 붙은 리더 형태, 숫자·옛 역할 토큰, 충돌한 리더·레인 옵션 또는 CLI 이외의 factory 진입을 받을 때(When), 런처는 child 실행·런 등록·레인 claim·작업트리 생성 전에 명확한 오류로 거부해야 한다(shall).
 - **REQ-CFL-006** — 런처는 기존 `moai codex -l` 레인 진입과 plain Codex의 인수·모델 동작, Claude/GLM 리더 동작을 유지해야 한다(shall).
