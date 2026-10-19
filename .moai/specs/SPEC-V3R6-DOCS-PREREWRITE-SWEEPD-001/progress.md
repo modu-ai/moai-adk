@@ -55,7 +55,12 @@ total_run_phase_files: 8 docs-site files, spec.md (status only), progress.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_commit_sha: pending-backfill
+sync_complete_at: 2026-10-19T03:25:55Z
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] ### Fixed, first bullet
+frontmatter_status_transitions: spec.md in-progress -> implemented -> completed on this single sync commit; updated 2026-10-19
+audit_ready: true
 
 ## §F Phase 4 Mode Selection
 
