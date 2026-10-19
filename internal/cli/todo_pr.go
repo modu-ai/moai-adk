@@ -212,7 +212,17 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 // must equal what `todo pr` reports for the same card (REQ-SD-008, plan B9),
 // which one shared computation guarantees by construction.
 func computeTodoPRRows(errW io.Writer, rec *factory.BacklogRecord, only string) []todoPRRow {
-	prs, saturated, ghErr := fetchOpenPRs()
+	return computeTodoPRRowsFrom(errW, rec, only, prefetchOpenPRs())
+}
+
+// computeTodoPRRowsFrom is computeTodoPRRows over an open-PR query that already
+// ran (prefetchOpenPRs). The factory next output path takes its query before the
+// queue lock is released, so its rows come from that outcome and no network call
+// runs after the release (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (vii)). The
+// degradation notes are still written here, to errW, so they appear on the
+// output path only.
+func computeTodoPRRowsFrom(errW io.Writer, rec *factory.BacklogRecord, only string, openPRs openPRQuery) []todoPRRow {
+	prs, saturated, ghErr := openPRs.prs, openPRs.saturated, openPRs.err
 	lookup := ""
 	if saturated {
 		// The page filled exactly. A pull request past the ceiling is invisible
@@ -394,4 +404,20 @@ func fetchOpenPRs() (prs []factory.PRRecord, saturated bool, err error) {
 		return nil, false, fmt.Errorf("parsing gh pr list output: %w", err)
 	}
 	return prs, len(prs) >= todoPROpenPRLimit, nil
+}
+
+// openPRQuery is the outcome of one open-PR query (fetchOpenPRs) kept whole, so
+// that it can be taken ahead of the output that reports it.
+type openPRQuery struct {
+	prs       []factory.PRRecord
+	saturated bool
+	err       error
+}
+
+// prefetchOpenPRs runs THE open-PR query once and returns its outcome whole. A
+// caller that prints later passes the outcome on instead of issuing a second
+// query after a queue lock is released.
+func prefetchOpenPRs() openPRQuery {
+	prs, saturated, err := fetchOpenPRs()
+	return openPRQuery{prs: prs, saturated: saturated, err: err}
 }
