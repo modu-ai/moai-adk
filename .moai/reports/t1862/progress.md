@@ -131,3 +131,29 @@ continues every cron fire until the turn arrives.
   Risk read → landing record.
 - t1641 stays HOLD (round-3 FAIL, operator disposition pending) — not affected by this
   landing flow change.
+
+## PR #1833 Codex-review P2 repairs (2026-10-19, head `74134e24f1`)
+
+Leader relayed two P2 findings from the PR's Codex code_review (merge on hold):
+
+- **P2-1** (`factory_handoff_recover.go`, both verbs): with CLAUDE_PROJECT_DIR unset and the
+  working directory deleted, `resolveProjectDir()` returned "" and my earlier
+  `factoryCardRoot()` swap fed `OpenFactory("")` — a stray factory DB under the home-state
+  layout. Measured deeper than the review's premise: on darwin `os.Getwd` can SUCCEED with
+  a deleted cwd, so `OpenFactory` recreated the deleted tree and the verb "succeeded" with
+  an empty listing (the RED run shows exactly that). Fix: a shared `verifyWorkingDir(dir)`
+  helper — Stat the resolved dir; on failure return the underlying working-directory error
+  as-is (the review's ask), covering both the "" branch and the deleted-path branch.
+- **P2-2** (`factory_relaunch.go` `relaunchRetireFromRun`): still rooted at the raw working
+  directory (os.Getwd → FactoryDBPath → ProbeRunStateAt → OpenFactory), contradicting the
+  new `moai paths` help guarantee. Fix: the same resolution + `verifyWorkingDir` +
+  `factoryRootOf(dir)`.
+
+Verification: RED for both (`TestFactoryRunsAndRecoverRefuseUnresolvableRoot` — runs
+succeeded with an unresolvable root; `TestRelaunchRetireFromRunOpensMoaiPathsRoot` —
+"unknown (no such run)"), then GREEN (both + the original boundary pair, ok 3.444s), then
+on the absorbed tree `4bbd2ed113` with slot go-test-heavy: recover/resume ok 2.021s,
+runs+retire ok 6.744s, paths ok 12.509s, template db-paths ok 0.851s, gofmt clean, vet
+exit 0, build exit 0. Admission: load 11.56, mem 82%, one Go call at a time.
+
+Pushed `4bbd2ed113..74134e24f1` → PR #1833 head. Slot released immediately.
