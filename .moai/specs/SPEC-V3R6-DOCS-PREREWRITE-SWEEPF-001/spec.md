@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001
 title: "Docs Pre-Rewrite Cleanup — workflow-commands index sweep: stale design-family slash citations in 3 pages x 4 locales, the sidebar map, and the count statements (card t1727)"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
