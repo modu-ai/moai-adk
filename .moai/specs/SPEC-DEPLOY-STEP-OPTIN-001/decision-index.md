@@ -1,28 +1,28 @@
 # 결정 색인 — SPEC-DEPLOY-STEP-OPTIN-001
 
-> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행은 Detect → Explain → Ask 를 따르며, 판단이 필요한 행은 선호 답을 싣지 않는다. `Default:` 줄은 게시된 Default 규칙(1 현행 동작 보존, 2 이 SPEC 커밋 하나의 되돌리기, 3 사용자에게 보이는 표면이 작은 것)을 순서대로 적용한 정책 결과이며 추천이 아니다. 규칙이 선택지를 가르지 못하는 행에는 `Default:` 가 없다. 이 색인은 plan 단계(spec v0.1.0)에서 작성되었고 Q1–Q14 의 제품 수준 행은 판정이 비어 있다. Q15 는 1회차 plan-audit 개정(2026-10-19, spec v0.1.1)에서 감사 발견 갈림을 기록하려 더해진 행으로 판정이 채워져 있다.
+> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행은 Detect → Explain → Ask 를 따르며, 판단이 필요한 행은 선호 답을 싣지 않는다. `Default:` 줄은 게시된 Default 규칙(1 현행 동작 보존, 2 이 SPEC 커밋 하나의 되돌리기, 3 사용자에게 보이는 표면이 작은 것)을 순서대로 적용한 정책 결과이며 추천이 아니다. 규칙이 선택지를 가르지 못하는 행에는 `Default:` 가 없다. 이 색인은 plan 단계(spec v0.1.0)에서 작성되었다. 2026-10-19 개정 2(spec v0.2.0)에서 Q1–Q9, Q14, Q15 의 판정이 채워졌다(각 행의 `Operator verdict`). Q11 은 증거 대기로 열려 있다. 판정이 `Default:` 와 다른 쪽을 택하면 판정이 이긴다.
 
 ## 개요
 
 | 번호 | 질문 | 라벨 | 분류 | 기본값 (규칙 적용 결과) | 판정 |
 |---|---|---|---|---|---|
-| Q1 | 단계 키의 이름과 위치 | FOUNDER | product-level | (a) (rule: 순위 3) | 열림 |
-| Q2 | 단계 값의 형태 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | 열림 |
-| Q3 | review_repair 의 기본값 | FOUNDER | product-level | (b) (rule: 순위 1) | 열림 |
-| Q4 | release/deploy 를 첫 조각에 넣을지 | FOUNDER | product-level | (b) (rule: 순위 3) | 열림 |
-| Q5 | 잘못된 값 하나가 지우는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | 열림 |
-| Q6 | project.continuation 과 todo_creation 의 관계 | FOUNDER | product-level | (a) (rule: 순위 1) | 열림 |
-| Q7 | team 프로필 `auto_push: true` 와 읽는 코드 없는 automation 키 | FOUNDER | product-level | (a) (rule: 순위 1) | 열림 |
-| Q8 | 이 저장소의 승인된 로컬 factory 설정을 새 키로 옮기는 방법 | FOUNDER | product-level | (a) (rule: 순위 2) | 열림 |
-| Q9 | 웹 즉시 중지의 의미 | FOUNDER | product-level | (a) (rule: 순위 3) | 열림 |
+| Q1 | 단계 키의 이름과 위치 | FOUNDER | product-level | (a) (rule: 순위 3) | DECIDED (2026-10-19) |
+| Q2 | 단계 값의 형태 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | DECIDED (2026-10-19) |
+| Q3 | review_repair 의 기본값 | FOUNDER | product-level | (b) (rule: 순위 1) | DECIDED (2026-10-19) |
+| Q4 | release/deploy 를 첫 조각에 넣을지 | FOUNDER | product-level | (b) (rule: 순위 3) | DECIDED (2026-10-19) |
+| Q5 | 잘못된 값 하나가 지우는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | DECIDED (2026-10-19) |
+| Q6 | project.continuation 과 todo_creation 의 관계 | FOUNDER | product-level | (a) (rule: 순위 1) | DECIDED (2026-10-19) |
+| Q7 | team 프로필 `auto_push: true` 와 읽는 코드 없는 automation 키 | FOUNDER | product-level | (a) (rule: 순위 1) | DECIDED (2026-10-19) |
+| Q8 | 이 저장소의 승인된 로컬 factory 설정을 새 키로 옮기는 방법 | FOUNDER | product-level | (a) (rule: 순위 2) | DECIDED — OPERATOR-HELD (2026-10-19) |
+| Q9 | 웹 즉시 중지의 의미 | FOUNDER | product-level | (a) (rule: 순위 3) | DECIDED (2026-10-19) |
 | Q10 | 감사 기록의 위치와 필드 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
 | Q11 | t1882 의 결과와 merge 단계의 관계 | EVIDENCE-NEEDED | product-level | 없음 (자료가 아직 없음) | 열림 |
 | Q12 | 산문 소비자용 해석기 읽기 동사 이름 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
 | Q13 | policy revision 의 형태 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
-| Q14 | dispatch 단계가 막는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | 열림 |
+| Q14 | dispatch 단계가 막는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | DECIDED (2026-10-19) |
 | Q15 | local override 가 고정한 단계에 대한 웹 저장의 처리 | FOUNDER | product-level | 해당 없음 (감사 발견 갈림) | DECIDED (2026-10-19) |
 
-**런을 막는 행.** M2 를 막는 행: Q1, Q2, Q5. M3 를 막는 행: Q3, Q6, Q11, Q14. M4 를 막는 행: Q9. M5·M6 을 막는 행: Q7, Q8. M7 을 막는 행: Q4. 막는 행의 `Operator verdict` 가 비어 있으면 그 마일스톤의 자율 Kickoff 는 열리지 않고 운영자에게 올라간다. Q15 는 어떤 마일스톤도 막지 않는다(감사 개정에서 판정됨). M2 와 Q3·Q4 의 순서 관계와 재범위 기록은 plan.md M1 을 본다.
+**런을 막는 행(판정 후 상태, 2026-10-19 개정 2).** M2 를 막던 Q1·Q2·Q5, M3 를 막던 Q3·Q6·Q14, M4 의 Q9, M5·M6 의 Q7·Q8 은 판정을 가진다. M3 의 Q11(EVIDENCE-NEEDED)만 열려 t1882 착지까지 M3 을 막는다. M7 은 Q4=(b) 로 철회되었다(마일스톤은 M1–M6). Q8 은 OPERATOR-HELD — 리더 거부권이 행사되면 M6 의 이전 커밋이 그에 맞춰 바뀐다. Q15 는 어떤 마일스톤도 막지 않는다. M2 와 Q3·Q4 의 순서 관계와 재범위 기록은 plan.md M1 을 본다.
 
 **권한 등록부 검토 결과.** DECIDED 와 POLICY-COVERED 로 라우팅할 수 있는 행이 없다.
 
@@ -44,7 +44,7 @@ Options:
 - (c) 새 섹션 파일(`automation.yaml`)을 만든다. 로더와 구조체 대칭 시험, 웹 스키마 섹션이 함께 늘어난다.
 Default: (a) (rule: 순위 3, 사용자에게 보이는 표면이 작은 것). 순위 1: 세 선택지 모두 현재 동작을 바꾸지 않는 키 추가이므로 가르지 못한다. 순위 2: 세 선택지 모두 이 SPEC 의 커밋 되돌리기로 원상복구된다. 순위 3: (a) 는 기존 파일에 블록 하나, (b) 는 세 프로필에 일곱 키씩, (c) 는 새 파일과 로더·스키마 섹션이다. 이 기본값은 추천이 아니다.
 Alternate: (b).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) `workflow.automation.stages.<stage>`; jev-1.13.0 p=0.94. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q2: 단계 값은 어떤 형태인가?
 
@@ -55,7 +55,7 @@ Why unresolved: 값의 형태는 fail-closed 판정의 폭을 정한다. 이웃 
 Options:
 - (a) 닫힌 문자열 `manual` / `auto`. 불리언이 아닌 값, 오타, 대소문자 차이가 모두 닫힌 쪽(수동)으로 풀린다. 웹이 두 값을 라디오로 보인다.
 - (b) 불리언 `enabled: true|false` 형태(단계마다 하위 키). YAML 불리언 표기(`yes`, `on`)의 해석이 파서마다 달라 오타와 구별이 어렵다.
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) 닫힌 문자열 `manual`/`auto`; jev-1.13.0 p=0.98. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q3: review_repair 의 기본값과 범위는 무엇인가?
 
@@ -68,7 +68,7 @@ Options:
 - (b) 단계 키가 없을 때에 한해 `codex.review_gate.enabled: true` 를 수리 요청의 동의로 읽는다. 게이트를 켠 기존 배포의 동작이 그대로이고 웹에는 출처 `derived` 가 나온다. 단계의 독립성이 한 곳에서 깨진다.
 Default: (b) (rule: 순위 1, 현재 동작 보존). 게이트를 켠 배포에서 (b) 만 현재의 차단을 유지한다. 이 기본값은 추천이 아니다.
 Alternate: (a).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) 기본 수동(`derived` 출처 없음). 이 저장소의 현재 운영은 Q8=(a) 로 project 계층에 `review_repair: auto` 를 적어 유지한다(M6); jev-1.13.0 p=0.94. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q4: release/deploy 단계를 첫 조각에 넣는가?
 
@@ -81,7 +81,7 @@ Options:
 - (b) 넣지 않는다. 이 SPEC 은 여섯 단계로 끝내고 release/deploy 는 게시 경로가 생길 때 후속 SPEC 이 정한다. AC-DSO-021, REQ-DSO-017, M7 이 이 SPEC 에서 빠진다.
 Default: (b) (rule: 순위 3, 사용자에게 보이는 표면이 작은 것). 순위 1·2 는 두 선택지를 가르지 못한다. 이 기본값은 추천이 아니다.
 Alternate: (a).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (b) release/deploy 단계 제외, 이 SPEC 은 여섯 단계(REQ-DSO-017 · AC-DSO-021 · M7 철회, 후속 SPEC); jev-1.13.0 lean 0.69 → Codex 교차 p=0.90 로 확인. 경로: 운영자 상시 규칙(Jev 판정, 불충분 시 Codex 교차; 리더 run tn564n 중계 2026-10-19).
 
 ### Q5: 잘못된 값 하나는 어디까지 수동으로 만드는가?
 
@@ -92,7 +92,7 @@ Why unresolved: 카드는 "누락·잘못된·부분 설정은 지정되지 않�
 Options:
 - (a) 잘못된 값이 있는 단계만 수동이고 유효한 형제 단계는 그대로 읽는다. 이유 코드가 단계마다 붙는다.
 - (b) 블록에 잘못된 값이 하나라도 있으면 일곱 단계 모두 수동이다.
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) 단계별 fallback(잘못된 단계만 수동, 단계별 이유 코드; 블록 전체 수동은 블록 자체를 읽지 못할 때만); Codex p=0.93(Jev 0.54/0.46 동요 → Codex 교차로 결정). 경로: 운영자 상시 규칙(Jev 판정, 불충분 시 Codex 교차; 리더 run tn564n 중계 2026-10-19).
 
 ### Q6: project.continuation 과 todo_creation 은 어떤 관계인가?
 
@@ -106,7 +106,7 @@ Options:
 - (c) `continuation` 의 `card`/`pipeline` 값이 곧 카드 발급 동의라고 보고 `todo_creation` 을 따로 두지 않는다. 일곱 단계가 여섯이 된다.
 Default: (a) (rule: 순위 1, 현재 동작 보존). (b) 는 템플릿 기본값을 바꾸고 (c) 는 단계 수를 바꾼다. 이 기본값은 추천이 아니다.
 Alternate: (b).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) `todo_creation` 이 발급 여부를 정하고 `continuation` 은 표현 키로 유지; jev-1.13.0 p=0.94. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q7: team 프로필의 `auto_push: true` 와 읽는 코드 없는 automation 키는 어떻게 하는가?
 
@@ -120,7 +120,7 @@ Options:
 - (c) 읽는 코드 없는 `auto_push`·`auto_pr` 키를 구조체와 템플릿에서 제거한다. 기존 사용자 파일의 키는 update 가 보존하지만 구조체 대칭 시험과 웹 스키마 정리가 따른다.
 Default: (a) (rule: 순위 1, 현재 동작 보존). 이 기본값은 추천이 아니다.
 Alternate: (b).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (c) 읽는 코드 없는 `auto_push`·`auto_pr` 을 구조체와 템플릿에서 제거; 기존 사용자 파일의 키는 update 가 보존(REQ-DSO-014); jev-1.13.0 p=0.95. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q8: 이 저장소의 승인된 로컬 factory 설정은 새 키로 어떻게 옮기는가?
 
@@ -134,7 +134,7 @@ Options:
 - (c) 적지 않는다. run 이후 레인 전달은 운영자가 단계별로 켜기 전까지 멈춘다.
 Default: (a) (rule: 순위 2, 이 SPEC 커밋 하나의 되돌리기). 순위 1 은 (a)(b) 를 가르지 못하고 (c) 만 현재 동작을 바꾼다. 이 기본값은 추천이 아니며 이 행은 운영자 보유 변경이므로 자율 판정 대상이 아니다.
 Alternate: (b).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) project 계층에 명시 `auto` — **OPERATOR-HELD**, 리더 거부권 대기(거부 시 이 행을 다시 연다); jev-1.13.0 p=0.95. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q9: 웹의 즉시 중지는 무엇을 하는가?
 
@@ -148,7 +148,7 @@ Options:
 - (c) (a) 와 (b) 를 함께 한다.
 Default: (a) (rule: 순위 3, 사용자에게 보이는 표면이 작은 것). 이 기본값은 추천이 아니다.
 Alternate: (b).
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (b) 설정 없는 정지 표식(`.moai/state/` 아래, 모든 경계가 확인하며 local override 도 이긴다; release·만료 규칙은 design §5·§7); jev-1.13.0 p=0.85. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q10: 웹 저장 감사 기록은 어디에 어떤 필드로 남기는가?
 
@@ -211,7 +211,7 @@ Options:
 - (a) 자가 배차(인자 없는 `moai factory next`, 레인 시작 스탬프, 세션 시작 규칙 선택)만 막고 `--card` 지명은 운영자 행위로 허용한다.
 - (b) 지명까지 막는다. `manual` 이면 레인은 어떤 임대도 스스로 하지 않는다.
 - (c) 세션 시작 규칙과 스탬프만 바꾸고 `moai factory next` 는 그대로 둔다. 안내문만 바뀌고 강제는 없다.
-Operator verdict:
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (개정 2) — (a) 자가 배차만 차단(CLI `next`·MCP `factory_next`·`--auto-lane` 임대, 스탬프·세션 시작 규칙), `--card` 지명은 운영자 행위로 허용; jev-1.13.0 p=0.96. 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19).
 
 ### Q15: local override 가 고정한 단계에 대한 웹 저장은 거부인가 기록인가?
 
@@ -230,3 +230,5 @@ Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (plan-audit 
 ## 계획 닫음 처리
 
 plan 닫음 시점(2026-10-19T06:05:24Z)에 `implementation-level` 분류이면서 `Default:` 가 있고 판정이 비어 있던 Q10, Q12, Q13 에 `DEFAULT-APPLIED` 를 기록했다. 제품 수준 행(Q1–Q9, Q14)과 EVIDENCE-NEEDED 행(Q11)은 비어 있으며 `DEFAULT-APPLIED` 를 쓰지 않았다.
+
+2026-10-19T12:47:02Z 개정 2(spec v0.2.0): Q1–Q9, Q14 의 판정을 운영자 상시 규칙(이 세션은 Jev 로 판정하고 불충분하면 Codex 로 교차, 리더 run tn564n 이 중계, 2026-10-19)으로 기록했다. 각 행의 `Operator verdict` 가 모델·선택·확률을 운반한다. Q4=(b) 에 따라 REQ-DSO-017 · AC-DSO-021 · 마일스톤 M7 을 이 SPEC 에서 빼는 재범위를 실행했고 Q9=(b) 에 따라 즉시 중지를 정지 표식 설계로 바꿨다. Q11 은 열려 있다. Q15 는 개정 1에서 더해진 행이다(감사 발견 갈림, DECIDED).

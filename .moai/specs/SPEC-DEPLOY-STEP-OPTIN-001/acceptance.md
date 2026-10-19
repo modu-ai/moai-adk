@@ -34,20 +34,19 @@
 | AC-DSO-018 | REQ-DSO-015 | RB | L29, L30 | M4 |
 | AC-DSO-019 | REQ-DSO-015, REQ-DSO-013 | RB | L47 | M4 |
 | AC-DSO-020 | REQ-DSO-016 | RB 일부 + RG 일부 | L47 / L26–L28 | M4 |
-| AC-DSO-021 | REQ-DSO-017 | RG | (RED 불가, 아래) | M7 |
 | AC-DSO-022 | REQ-DSO-007, REQ-DSO-008, REQ-DSO-009, REQ-DSO-015 | RB | L03, L08, L47 | M4 이후 |
 
-요구 18개, 인수 기준 22개(Tier L 상한 각 25).
+요구 17개(REQ-DSO-017 은 Q4=(b) 판정으로 철회된 결번), 인수 기준 21개(AC-DSO-021 도 같은 판정으로 철회된 결번). Tier L 상한은 각 25.
 
 ## §C AC 상세
 
 각 항목은 Given-When-Then, RED-now 셀(원장 인용과 이유), 녹색 경로 셀(마일스톤과 통과 출력), 변이체 탐침으로 구성된다.
 
-### AC-DSO-001 — 설정이 없는 프로젝트는 일곱 단계가 모두 수동이다 (REQ-DSO-001, REQ-DSO-002, REQ-DSO-018)
+### AC-DSO-001 — 설정이 없는 프로젝트는 여섯 단계가 모두 수동이다 (REQ-DSO-001, REQ-DSO-002, REQ-DSO-018)
 
 - **Given** `.moai` 트리가 없거나, `workflow.yaml` 이 없거나, 파일은 있으나 단계 블록이 없는 프로젝트가 있다.
 - **When** 해석기가 프로젝트 루트로 불린다.
-- **Then** 일곱 단계가 모두 `manual`, 출처 `default`, 이유 `absent` 다. 새로 `moai init` 한 프로젝트(원격 있음·없음 각각)도 같다.
+- **Then** 여섯 단계가 모두 `manual`, 출처 `default`, 이유 `absent` 다. 새로 `moai init` 한 프로젝트(원격 있음·없음 각각)도 같다.
 - **RED-now** L47: 해석기도 단계 키도 비테스트 Go 코드 어디에도 없다(`grep` 종료 코드 1, stdout 비어 있음). 이유: 해석기가 없다. 양성 대조 L14 가 같은 `internal` 트리에서 기존 토큰을 찾는다(스윕 범위가 비어 있지 않다).
 - **녹색 경로** M2: `go test -count=1 -v -run '^TestStagePolicy_DefaultsAllManual$' ./internal/config` 가 서브테스트 합계 5개(`no-moai-dir`, `no-workflow-file`, `no-stage-block`, `init-with-remote`, `init-without-remote`)를 `--- PASS` 로 보고하고 `ok` 로 끝난다.
 - **변이체 탐침** "파일이 없으면 auto" 변이체는 `no-workflow-file` 에서 빨개진다. "항상 manual" 변이체는 AC-DSO-003 의 양성 사례에서 빨개진다. `init-with-remote` 는 원격 유무로 `auto` 를 고르는 변이체를 잡는다(L21).
@@ -56,25 +55,25 @@
 
 - **Given** 표 형태 입력: 단계 블록 없음, 블록이 매핑이 아님, 단계 값이 null·`true`·`yes`·`1`·`"Auto"`·`"auto "`·빈 문자열·알 수 없는 단어, 알 수 없는 단계 이름, 같은 단계 키가 두 번, YAML 파싱 불가 파일, 읽기 불가 파일, 그리고 유효한 `push: auto` 옆에 잘못된 `merge: yes`.
 - **When** 해석기가 불린다.
-- **Then** 잘못된 단계는 서로 다른 이유 코드와 함께 `manual` 이고, 유효한 `auto` 는 그대로 `auto` 이며(부분 설정), 매핑이 아니거나 파싱 불가한 경우 일곱 단계가 모두 `manual` 이다. 알 수 없는 단계 이름은 무시되고 이유가 보고된다.
+- **Then** 잘못된 단계는 서로 다른 이유 코드와 함께 `manual` 이고, 유효한 `auto` 는 그대로 `auto` 이며(부분 설정), 매핑이 아니거나 파싱 불가한 경우 여섯 단계가 모두 `manual` 이다. 알 수 없는 단계 이름은 무시되고 이유가 보고된다.
 - **RED-now** L47: 해석기가 없다. 이유: 같은 이유로 빨갛다. 현재 이웃 키는 반대로 열린 쪽으로 푼다(L13: 값이 틀려도 `card`, L17: 읽기 실패에도 켜짐).
 - **녹색 경로** M2: `TestStagePolicy_FailClosedMatrix` 가 15개 서브테스트 `--- PASS`(위 Given 의 열거 순서대로 15개).
-- **변이체 탐침** truthy 문자열(`true`, `yes`, `1`)을 `auto` 로 읽는 변이체, 잘못된 값 하나가 형제 단계의 유효한 `auto` 까지 지우는 변이체(결정 Q5 가 블록 전체 수동으로 정해지면 기대값이 뒤집히며 그때는 이 항목을 Q5 판정에 맞춰 고친다), 파싱 실패에서 패닉하는 변이체가 모두 각자의 서브테스트에서 빨개진다.
+- **변이체 탐침** truthy 문자열(`true`, `yes`, `1`)을 `auto` 로 읽는 변이체, 잘못된 값 하나가 형제 단계의 유효한 `auto` 까지 지우는 변이체(Q5=(a) 판정 — 형제 보존 단언에서 빨개진다), 파싱 실패에서 패닉하는 변이체가 모두 각자의 서브테스트에서 빨개진다.
 
 ### AC-DSO-003 — 단계는 서로 독립이다 (REQ-DSO-001, REQ-DSO-004)
 
-- **Given** 일곱 단계 중 하나만 `auto` 인 설정이 일곱 가지(단계마다 하나).
+- **Given** 여섯 단계 중 하나만 `auto` 인 설정이 여섯 가지(단계마다 하나).
 - **When** 해석기가 불린다.
-- **Then** 지정한 단계만 `auto` 이고 나머지 여섯은 `manual` 이다.
+- **Then** 지정한 단계만 `auto` 이고 나머지 다섯은 `manual` 이다.
 - **RED-now** L47. 이유: 해석기가 없다.
-- **녹색 경로** M2: `TestStagePolicy_EachStageIndependent` 가 7개 서브테스트 `--- PASS`.
+- **녹색 경로** M2: `TestStagePolicy_EachStageIndependent` 가 6개 서브테스트 `--- PASS`.
 - **변이체 탐침** `pr_creation: auto` 가 `push` 를 함께 여는 변이체(상위 단계 암묵 허용)는 `pr_creation` 서브테스트에서 `push` 가 `auto` 로 나와 빨개진다. "첫 auto 가 이후 모든 단계를 연다"는 변이체도 같다.
 
 ### AC-DSO-004 — 출처·override·revision 을 돌려준다 (REQ-DSO-005)
 
 - **Given** (a) 설정 없음, (b) project 계층(`workflow.yaml`)만 `push: auto`, (c) project 가 `push: auto` 이고 local 계층이 `push: manual`, (d) (c) 에서 project 의 무관한 키만 바뀜, (e) (b) 에서 `push` 값이 `manual` 로 바뀜, (f) project 파일이 파싱 불가이고 local 계층이 `push: auto`.
 - **When** 해석기가 각 입력으로 불린다.
-- **Then** (a) 출처 `default`. (b) 출처 `project`, 값 `auto`. (c) 값 `manual`, 출처 `local-override`, project 값도 함께 반환된다. (d) revision 이 변하지 않는다. (e) revision 이 바뀐다. (f) `push` 는 `auto`(출처 `local-override`), 나머지 여섯은 `manual`(project 쪽 이유 `file-unparseable`).
+- **Then** (a) 출처 `default`. (b) 출처 `project`, 값 `auto`. (c) 값 `manual`, 출처 `local-override`, project 값도 함께 반환된다. (d) revision 이 변하지 않는다. (e) revision 이 바뀐다. (f) `push` 는 `auto`(출처 `local-override`), 나머지 다섯은 `manual`(project 쪽 이유 `file-unparseable`).
 - **RED-now** L59: 전환·기록·해석 어디에도 policy revision 이 없다(종료 코드 1, 빈 stdout). L41: 기존 8단 해석기의 호출자는 doctor 하나뿐이고 local 경로를 CWD 상대로 읽는다(L40). 이유: 이 작업이 만드는 해석기에만 있는 출력이다.
 - **녹색 경로** M2: `TestStagePolicy_SourceAndRevision` 이 6개 서브테스트 `--- PASS`.
 - **변이체 탐침** revision 이 상수인 변이체는 (e) 에서, project 계층만으로 계산하는 변이체는 (c) 변형(local 만 바뀜)에서, 단계와 무관한 키까지 해시에 넣는 변이체는 (d) 에서 빨개진다.
@@ -164,7 +163,7 @@
 
 - **Given** 낡은 `workflow.yaml`: (a) 단계 블록 없음, (b) `push: auto` 와 같은 줄 주석·알 수 없는 키·`manual` 로 명시한 단계, (c) project 와 local 계층에 서로 다른 값. 새 템플릿은 주석 블록만 싣는다.
 - **When** update 병합과 배치 복원이 실행된다.
-- **Then** (a) 병합 뒤에도 일곱 단계가 모두 `manual`, 출처 `default`. (b) 값·주석·알 수 없는 키·명시 `manual` 이 그대로이며 출처 `project`. (c) local 계층 파일이 바이트 단위로 같고 값은 `local-override`.
+- **Then** (a) 병합 뒤에도 여섯 단계가 모두 `manual`, 출처 `default`. (b) 값·주석·알 수 없는 키·명시 `manual` 이 그대로이며 출처 `project`. (c) local 계층 파일이 바이트 단위로 같고 값은 `local-override`.
 - **분류 RG.** 현재 트리에서 이미 GREEN 이다. 템플릿에 없는 사용자 키는 모두 보존된다(L34). 이 기준은 새 작업이 만들어내는 동작이 아니라 새 작업이 깨뜨리면 안 되는 동작이므로 RED-now 가 없고 통과로 기록하지 않는다.
 - **녹색 경로** M5: `TestUpdate_KeepsExplicitStageValuesCommentsUnknownKeys`, `TestUpdate_AbsentStageBlockStaysManual`, `TestUpdate_LocalTierUntouched` 가 `--- PASS` 3개.
 - **변이체 탐침** 템플릿이 단계 값을 싣고 base 와 같은 사용자 값을 새 값으로 바꾸는 변이체(L33 의 규칙이 그대로 작동하는 경우)는 (b) 의 명시 `manual` 항목을 다른 값으로 바꾼 템플릿 변형에서 빨개진다. 이 변이체는 AC-DSO-015 도 함께 깨뜨린다.
@@ -173,7 +172,7 @@
 
 - **Given** 템플릿의 `workflow.yaml`·git-strategy 템플릿·변경된 스킬/규칙/문서 파일과 그 프로젝트 사본.
 - **When** 정적 시험과 diff 가 실행된다.
-- **Then** (a) 템플릿 워크플로 파일의 단계 블록은 모두 주석이다(단계 값 0개). (b) 해석기 코드 기본값이 일곱 단계 모두 `manual` 이다. (c) `.claude/`·`.agents/`·`.codex/` 아래 변경된 템플릿 파일은 프로젝트 사본과 바이트 단위로 같다(`diff -q` 종료 코드 0). `.moai/config/sections/*.yaml` 은 운영자 자신의 파일이라 다르며(L56) 대신 주석 블록의 존재(헤더 줄 1회)를 양쪽에서 확인한다.
+- **Then** (a) 템플릿 워크플로 파일의 단계 블록은 모두 주석이다(단계 값 0개). (b) 해석기 코드 기본값이 여섯 단계 모두 `manual` 이다. (c) `.claude/`·`.agents/`·`.codex/` 아래 변경된 템플릿 파일은 프로젝트 사본과 바이트 단위로 같다(`diff -q` 종료 코드 0). `.moai/config/sections/*.yaml` 은 운영자 자신의 파일이라 다르며(L56) 대신 주석 블록의 존재(헤더 줄 1회)를 양쪽에서 확인한다.
 - **분류 RG.** (a) 는 오늘 이미 참이다(L48 빈 스윕, 단계 키 0). (c) 는 변경이 없는 지금 참이다(L55). RED-now 를 만들 수 없는 전방 가드이므로 통과로 기록하지 않는다.
 - **녹색 경로** M2(a)(b), M6(c): `TestTemplateWorkflowShipsNoStageValues`, `TestStagePolicy_CodeDefaultsAllManual`, 그리고 변경 파일 목록에 대한 `diff -q` 단일 호출이 종료 코드 0.
 - **변이체 탐침** 템플릿이 `push: manual` 한 줄을 싣는 변이체, 코드 기본값 하나가 `auto` 인 변이체, 사본 한 파일에 공백 하나를 더한 변이체가 각각 빨개진다.
@@ -182,9 +181,9 @@
 
 - **Given** project 가 `push: auto`, local 계층이 `push: manual`, 나머지 단계는 기본.
 - **When** `GET /settings` 가 루프백 Host 로 불린다.
-- **Then** 일곱 단계 행이 각각 효력(`auto`/`manual`), 출처 라벨(기본/프로젝트/로컬 override), override 표시(project 값과 효력이 다르면 표시), 영향 설명 문구, 페이지 하나의 정책 revision 을 보여 준다. 읽기 모델이 같은 해석기 출력을 쓴다.
+- **Then** 여섯 단계 행이 각각 효력(`auto`/`manual`), 출처 라벨(기본/프로젝트/로컬 override), override 표시(project 값과 효력이 다르면 표시), 영향 설명 문구, 페이지 하나의 정책 revision 을 보여 준다. 읽기 모델이 같은 해석기 출력을 쓴다.
 - **RED-now** L31: 웹 읽기 모델은 문자열 스칼라 맵만 돌려주고 출처·override 가 없다. L47: 단계 필드가 스키마에 없다. 이유: 보여 줄 모델이 없다.
-- **녹색 경로** M4: `TestStageFields_SchemaCarriesSevenStages`(settings), `TestSettingsPage_ShowsStageEffectiveSourceOverrideImpact`(web) 가 `--- PASS` 2개.
+- **녹색 경로** M4: `TestStageFields_SchemaCarriesStageSet`(settings), `TestSettingsPage_ShowsStageEffectiveSourceOverrideImpact`(web) 가 `--- PASS` 2개.
 - **변이체 탐침** 디스크 스칼라를 그대로 보여 줘 override 를 숨기는 변이체는 효력 `manual` 단언에서 빨개진다. 영향 설명이 비어 있는 변이체도 빨개진다.
 
 ### AC-DSO-017 — 저장 전 검증이 잘못된 입력을 원자적으로 거부한다 (REQ-DSO-015, REQ-DSO-016)
@@ -200,19 +199,19 @@
 
 - **Given** 정상 저장 폼: `push: auto` 로 변경.
 - **When** `POST /save` 가 처리된다.
-- **Then** 응답이 디스크에서 다시 읽은 일곱 단계의 효력·출처와 새 revision 을 담는다(요청에서 되돌려 준 값이 아니다). 감사 기록 한 줄이 추가된다: 시각, 채널(`web`), 호출 주체, 단계별 변경 전후 값, 결과(`saved`/`rejected`), 새 revision. 거부된 저장도 `rejected` 와 이유로 기록된다.
+- **Then** 응답이 디스크에서 다시 읽은 여섯 단계의 효력·출처와 새 revision 을 담는다(요청에서 되돌려 준 값이 아니다). 감사 기록 한 줄이 추가된다: 시각, 채널(`web`), 호출 주체, 단계별 변경 전후 값, 결과(`saved`/`rejected`), 새 revision. 거부된 저장도 `rejected` 와 이유로 기록된다.
 - **RED-now** L29: revision 개념이 없다. L30: 저장 감사 기록을 쓰는 코드가 없다. 이유: 두 가지 모두 이 작업이 만든다.
 - **녹색 경로** M4: `TestSave_ResponseCarriesReReadPolicyAndRevision`, `TestSave_WritesAuditRecord`, `TestSave_RejectedSaveIsAudited` 가 `--- PASS` 3개.
 - **변이체 탐침** 요청값을 그대로 응답하는 변이체(디스크 재조회 아님)는 저장 직후 외부에서 파일을 바꾼 시험 변형에서 빨개진다. 변경 전 값을 기록하지 않는 변이체, 거부를 기록하지 않는 변이체가 각각 빨개진다.
 
-### AC-DSO-019 — 즉시 중지는 모든 단계를 수동으로 쓰고 진행 중 작업은 건드리지 않는다 (REQ-DSO-015, REQ-DSO-013)
+### AC-DSO-019 — 즉시 중지는 정지 표식을 쓰고 경계가 모두 따른다 (REQ-DSO-015, REQ-DSO-013)
 
-- **Given** 여러 단계가 `auto` 이고 전달 본체가 실행 중이다(시험 이음매).
-- **When** 웹의 stop-all 동작이 실행된다.
-- **Then** project 계층의 일곱 단계가 한 번의 원자적 쓰기로 `manual` 이 되고 감사 기록 한 줄이 남는다. 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다(AC-DSO-012). local override 가 `auto` 인 단계는 효력이 여전히 `auto` 이며 화면이 그 사실을 알린다 — project 값은 REQ-DSO-016 과 같은 쓰기+알림 규칙으로 쓰인다.
-- **RED-now** L47. 이유: stop-all 동작이 없다.
-- **녹색 경로** M4: `TestStopAll_SetsAllManualAndAudits`, `TestStopAll_LocalOverrideStillWinsAndIsDisclosed` 가 `--- PASS` 2개.
-- **변이체 탐침** 일곱 중 일부만 쓰는 변이체, 쓰기를 여러 번 나눠 중간 상태가 보이는 변이체, 실행 중 프로세스를 종료하는 변이체가 각각 빨개진다.
+- **Given** 여러 단계가 `auto` 이고 그중 하나는 local override 가 `auto` 로 이긴 프로젝트이며, 전달 본체가 실행 중이다(시험 이음매).
+- **When** 웹의 stop 동작이 실행된다.
+- **Then** `.moai/state/` 아래 정지 표식이 한 번의 원자적 쓰기로 생기고 감사 기록 한 줄이 남는다. 표식이 서 있는 동안 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다 — local override 로 `auto` 인 단계도 포함된다(표식이 세 계층을 모두 이긴다, Q9=(b)). 웹 화면은 표식 상태와 멈추기 전의 단계별 효력·출처를 알린다. release 동작은 표식을 지우고 감사 기록 한 줄을 남기며, 경계는 다시 계층 값을 따른다. 표식은 조용히 만료되지 않는다(명시적 release 만 지운다).
+- **RED-now** L47. 이유: stop·release 동작과 표식 읽기가 없다.
+- **녹색 경로** M4: `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed`(internal/web), `TestStopMarker_BoundariesStopWhileMarkerStands`(internal/cli) 가 `--- PASS` 3개.
+- **변이체 탐침** 표식 대신 설정 값을 쓰는 변이체는 표식 파일 부재 단언에서 빨개진다. 표식이 local override 을 이기지 못하는 변이체는 override 단계의 정지 단언에서 빨개진다. 표식을 쓰지만 경계가 읽지 않는 변이체는 `TestStopMarker_BoundariesStopWhileMarkerStands` 에서 빨개진다. 실행 중 프로세스를 종료하는 변이체는 보존 단언에서 빨개진다. release 를 감사하지 않는 변이체도 빨개진다.
 
 ### AC-DSO-020 — 웹 저장의 안전 경계 (REQ-DSO-016)
 
@@ -223,14 +222,7 @@
 - **녹색 경로** M4: `TestSave_NonLoopbackHostDeniedForStageForm`, `TestSave_CrossSiteDeniedForStageForm`, `TestSave_ProjectWriteUnderLocalOverrideIsDisclosed`, `TestSave_ConcurrentStageSavesSerialized`, `TestSave_CannotWriteLocalTier` 가 `--- PASS` 5개.
 - **변이체 탐침** 단계 저장을 게이트 앞 경로로 노출하는 변이체, local 값을 덮어쓰는 변이체, 직렬화 잠금을 빼는 변이체가 각각 빨개진다.
 
-### AC-DSO-021 — release/deploy 단계는 선언되고 새 게시 호출은 게이트를 거친다 (REQ-DSO-017)
-
-- **Given** 비테스트 Go 코드 전체.
-- **When** 정적 검사가 `gh release create|upload|edit`, 태그 생성(`git tag -a|-s`), 배포 도구 호출 지점을 센다.
-- **Then** 모든 게시 지점은 같은 함수 안에서 게시 호출 **앞에** 해석기의 `release_deploy` 확인을 부르고(확인 → 게시 순서), 그 결과를 사용한다 — 판정이 `auto` 가 아니면 게시를 하지 않고 이유를 기록한다. 확인 호출의 함수 내 배치만으로는 충분하지 않다. 현재는 지점이 0개다.
-- **분류 RG.** 오늘의 배포본 Go 코드에 게시 호출이 없으므로(L51, 주석 두 줄만) 검사는 빈 스윕으로 통과한다. RED-now 를 만들 수 없다. 통과로 기록하지 않는다.
-- **녹색 경로** M7: `TestNoUngatedPublishCallSites` 와 양성 대조 `TestNoUngatedPublishCallSites_FlagsSeededCallSite` 가 `--- PASS` 2개. 결정 Q4 가 첫 조각 제외로 정해지면 이 기준과 M7 은 후속 SPEC 으로 옮긴다.
-- **변이체 탐침** 검사기가 호출 패턴을 못 찾는 변이체는 양성 대조에서 빨개진다. 확인을 게시 뒤에 두는 순서 뒤집기 변이체는 순서 단언에서 빨개진다. 확인을 부르고 그 결과를 무시하는 변이체(결과를 쓰지 않고 게시를 계속한다)는 `manual` 판정 아래에서 게시가 나가는 단언에서 빨개진다.
+> AC-DSO-021 은 Q4=(b) 판정(2026-10-19)으로 철회되었다. release/deploy 단계의 선언과 새 게시 호출 게이트(순서·결과 사용 조건 포함)는 게시 경로가 생길 때 후속 SPEC 이 정의한다.
 
 ### AC-DSO-022 — 웹 저장에서 런타임 효력까지 끝에서 끝으로 이어진다 (REQ-DSO-007, REQ-DSO-008, REQ-DSO-009, REQ-DSO-015)
 
@@ -247,10 +239,10 @@
 |---|---|---|---|
 | `TestStagePolicy_DefaultsAllManual` | `internal/config/stage_policy_test.go` | 001 | 5 |
 | `TestStagePolicy_FailClosedMatrix` | 같은 파일 | 002 | 15 |
-| `TestStagePolicy_EachStageIndependent` | 같은 파일 | 003 | 7 |
+| `TestStagePolicy_EachStageIndependent` | 같은 파일 | 003 | 6 |
 | `TestStagePolicy_SourceAndRevision` | 같은 파일 | 004 | 6 |
 | `TestStagePolicy_NoDirectReaders`, `TestStagePolicy_NoDirectReaders_FlagsSeededReader` | 같은 파일 | 005 | 1+1 |
-| `TestStagePolicy_CodeDefaultsAllManual` | 같은 파일 | 015 | 7 |
+| `TestStagePolicy_CodeDefaultsAllManual` | 같은 파일 | 015 | 6 |
 | `TestTemplateWorkflowShipsNoStageValues` | `internal/template/stage_policy_template_test.go` | 015 | 1 |
 | `TestFactoryDeliverByPR_PushManualStopsBeforePush`, `..._PushAutoStillPushes` | `internal/cli/factory_card_pr_stage_test.go` | 006 | 1+1 |
 | `TestFactoryDeliverByPR_PRManualStopsAfterPush`, `..._PRAutoWithPushManualRefuses` | 같은 파일 | 007 | 1+1 |
@@ -265,16 +257,15 @@
 | `TestProjectPhase14_DocGatesCardOnTodoCreationStage` | `internal/template/project_phase14_stage_test.go` | 010 | 1 |
 | `TestReviewGate_RepairManualAllowsWithStateMessage`, `TestReviewGate_RepairAutoBlocksAsBefore` | `internal/cli/codex_review_gate_stage_test.go` | 011 | 1+1 |
 | `TestUpdate_KeepsExplicitStageValuesCommentsUnknownKeys`, `TestUpdate_AbsentStageBlockStaysManual`, `TestUpdate_LocalTierUntouched` | `internal/cli/update/backup/stage_policy_merge_test.go` | 014 | 1+1+1 |
-| `TestStageFields_SchemaCarriesSevenStages` | `internal/settings/stage_fields_test.go` | 016 | 1 |
+| `TestStageFields_SchemaCarriesStageSet` | `internal/settings/stage_fields_test.go` | 016 | 1 |
 | `TestSettingsPage_ShowsStageEffectiveSourceOverrideImpact` | `internal/web/stage_policy_handler_test.go` | 016 | 1 |
 | `TestSave_RejectsInvalidStageValueAtomically`, `TestSave_UnknownOrDuplicateStageRejected` | 같은 파일 | 017 | 2+2 |
 | `TestSave_ResponseCarriesReReadPolicyAndRevision`, `TestSave_WritesAuditRecord`, `TestSave_RejectedSaveIsAudited` | 같은 파일 | 018 | 1+1+1 |
-| `TestStopAll_SetsAllManualAndAudits`, `TestStopAll_LocalOverrideStillWinsAndIsDisclosed` | 같은 파일 | 019 | 1+1 |
+| `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed` | 같은 파일 | 019 | 1+1 |
 | `TestSave_NonLoopbackHostDeniedForStageForm`, `TestSave_CrossSiteDeniedForStageForm`, `TestSave_ProjectWriteUnderLocalOverrideIsDisclosed`, `TestSave_ConcurrentStageSavesSerialized`, `TestSave_CannotWriteLocalTier` | 같은 파일 | 020 | 1+1+1+1+1 |
-| `TestNoUngatedPublishCallSites`, `..._FlagsSeededCallSite` | `internal/config/stage_policy_publish_scan_test.go` | 021 | 1+1 |
-| `TestStagePolicy_WebSaveToRuntimeEndToEnd` | `internal/cli/stage_policy_e2e_test.go` | 022 | 1 |
+| `TestStagePolicy_WebSaveToRuntimeEndToEnd`, `TestStopMarker_BoundariesStopWhileMarkerStands` | `internal/cli/stage_policy_e2e_test.go` | 022, 019 | 1+1 |
 
-최상위 시험 함수는 49개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
+최상위 시험 함수는 48개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
 
 ## §E 입력 메모의 후보 기준과의 대응
 
@@ -290,7 +281,7 @@
 | AC-06 비허용 Host/origin, 중복·잘못된 필드, 동시 저장 | AC-DSO-017, 020 |
 | AC-07 웹→저장 API→디스크→런타임 유효값, PR 만 허용 시 merge/tag/deploy 0회 | AC-DSO-022 |
 
-메모에 없던 기준: AC-DSO-005(단일 읽기 지점), AC-DSO-021(release/deploy 선언과 정적 검사).
+메모에 없던 기준: AC-DSO-005(단일 읽기 지점). AC-DSO-021(release/deploy 선언과 정적 검사)은 Q4=(b) 판정으로 철회되었다.
 
 ## §F 엣지 케이스와 완료 정의
 

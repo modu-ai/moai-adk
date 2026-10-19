@@ -1,7 +1,7 @@
 ---
 id: SPEC-DEPLOY-STEP-OPTIN-001
 title: "배포본 자동화 단계별 명시 opt-in — 기본은 모두 수동, 설정은 하나의 해석기가 판정하고 MoAI Web이 보여 주고 검증한다"
-version: "0.1.1"
+version: "0.2.0"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -21,6 +21,7 @@ related_specs: [SPEC-REVIEW-GATE-REPAIR-001, SPEC-PROJECT-CONTINUATION-KEY-001, 
 
 ## HISTORY
 
+- 2026-10-19 · v0.2.0 · manager-spec · 제품 결정 행 판정 기록과 일관성 스윕. Q1–Q9, Q14 판정(운영자 상시 규칙 — Jev, 불충분 시 Codex 교차; 리더 run tn564n 중계)을 decision-index 에 기록했다. Q4=(b) 로 REQ-DSO-017 · AC-DSO-021 · M7 을 빼 여섯 단계 SPEC 이 되었다(017·021 은 결번). Q5=(a) 로 단계별 fallback 확정. Q7=(c) 로 읽지 않는 `auto_push`/`auto_pr` 제거를 M6 에 둔다. Q8=(a) OPERATOR-HELD(리더 거부권 대기). Q9=(b) 로 즉시 중지를 `.moai/state/` 정지 표식으로 바꿨다. Q11 은 열려 있다.
 - 2026-10-19 · v0.1.1 · manager-spec · 1회차 plan-audit(FAIL 0.85, `.moai/reports/t1895/plan-audit.md`) 개정. D1: REQ-DSO-016 을 쓰기+알림으로 정렬(결정 Q15, DECIDED). D2: REQ-DSO-010 의 게이트 지점을 공유 임대 이음매로 확장. D3: M2 의 Q3·Q4 재범위 기록. D4: AC-DSO-021 순서·결과 사용. D5: 완료 정의 (2) 재진술. D6 은 수정 없음.
 - 2026-10-19 · v0.1.0 · manager-spec · 최초 작성(draft). 입력 메모(`.moai/reports/t1895/OPTIN-DESIGN.md`, ADK 읽기 전용 조사, main `74ad197380` 기준)는 가설 원천으로만 쓰고, 모든 전제를 이 트리에서 다시 측정했다(research.md 증거 원장 L01–L63). 메모와 달라진 전제는 research.md §3 에 모았다. 제품 수준 결정(Q1–Q9, Q14)과 증거 대기 결정(Q11)은 decision-index.md 에 열린 채로 두었고, 구현 수준 결정(Q10, Q12, Q13)은 규칙 적용 결과로 채웠다. 이 행은 감사 결과를 주장하지 않는다.
 
@@ -71,11 +72,11 @@ related_specs: [SPEC-REVIEW-GATE-REPAIR-001, SPEC-PROJECT-CONTINUATION-KEY-001, 
 
 ## §B 요구사항 (GEARS)
 
-단계 이름과 키 위치는 결정 Q1 이 열려 있다. 이 SPEC 은 작업 이름 `todo_creation` / `dispatch` / `push` / `pr_creation` / `review_repair` / `merge` / `release_deploy` 를 쓰고, 값은 `manual` / `auto` 두 가지로 둔다(Q2).
+단계 이름과 키 위치는 Q1 판정(`workflow.automation.stages.<stage>`), 값 형태는 Q2 판정(닫힌 문자열 `manual`/`auto`)으로 확정되어 더 이상 작업 이름이 아니다. 이 SPEC 은 여섯 단계 `todo_creation` / `dispatch` / `push` / `pr_creation` / `review_repair` / `merge` 를 다룬다. release/deploy 단계는 Q4=(b) 판정(2026-10-19)으로 이 SPEC 의 범위에서 빠졌다(§E).
 
-### REQ-DSO-001 — 일곱 단계는 서로 독립이다 (Ubiquitous, M2)
+### REQ-DSO-001 — 여섯 단계는 서로 독립이다 (Ubiquitous, M2)
 
-The stage-policy resolver shall define exactly seven automation stages — `todo_creation`, `dispatch`, `push`, `pr_creation`, `review_repair`, `merge`, `release_deploy` — and shall resolve each stage to exactly one of `manual` or `auto`.
+The stage-policy resolver shall define exactly six automation stages — `todo_creation`, `dispatch`, `push`, `pr_creation`, `review_repair`, `merge` — and shall resolve each stage to exactly one of `manual` or `auto`.
 
 ### REQ-DSO-002 — 명시한 유효한 auto 만 auto 다 (Ubiquitous, M2)
 
@@ -85,7 +86,7 @@ The stage-policy resolver shall resolve a stage as `manual` unless a valid `auto
 
 When a stage's value is absent, null, of the wrong type, outside the domain or duplicated, or when the stage block or the whole file is absent, unreadable or not a mapping, the stage-policy resolver shall resolve each affected stage as `manual` with a reason code and shall resolve every other stage by its own explicit valid value.
 
-잘못된 값 하나가 다른 단계의 유효한 `auto` 를 지우는지 여부는 결정 Q5 다. 이 SPEC 의 작업 해석은 "지정되지 않은 단계만 수동"이다(카드 문언). 블록 전체를 읽지 못하면 지정된 단계가 없으므로 일곱 단계가 모두 수동이다.
+잘못된 값 하나가 지우는 범위는 Q5=(a) 판정(2026-10-19)으로 정해졌다: 잘못된 값이 있는 단계만 수동이고 유효한 형제 단계는 그대로 읽는다. 블록 전체가 수동이 되는 경우는 블록 자체를 읽지 못할 때뿐이며, 그때는 지정된 단계가 없으므로 여섯 단계가 모두 수동이다.
 
 ### REQ-DSO-004 — 한 단계의 auto 는 다른 단계를 열지 않는다 (Ubiquitous, M2·M3)
 
@@ -95,9 +96,9 @@ The stage-policy resolver shall treat the seven stages independently, and an aut
 
 ### REQ-DSO-005 — 판정은 값·출처·이유·revision 을 함께 돌려준다 (Ubiquitous, M2)
 
-The stage-policy resolver shall return, for each stage, the effective value, the source (`default`, `project` or `local-override`), the reason code, and one policy revision that changes if and only if a stage-relevant input of any tier changes.
+The stage-policy resolver shall return, for each stage, the effective value, the source (`default`, `project`, `local-override` or `stop-marker`), the reason code, and one policy revision that changes if and only if a stage-relevant input of any tier changes.
 
-`local-override` 가 `project` 를 이긴다. 출처는 값이 실제로 어느 계층에서 왔는지를 뜻한다. 키가 없으면 `default` 다.
+`local-override` 가 `project` 를 이긴다. 출처는 값이 실제로 어느 계층에서 왔는지를 뜻한다. 키가 없으면 `default` 다. 정지 표식이 서면 그것이 모든 계층을 이긴다(REQ-DSO-015, 결정 Q9).
 
 ### REQ-DSO-006 — 판정은 한 곳에서만 난다 (Ubiquitous, M2·M3)
 
@@ -129,7 +130,7 @@ When a lane session would pick its next card by itself, the lane launch, the ses
 
 When an automatic producer asks the todo queue to create a card, the card-creation verb shall create it only if the `todo_creation` stage resolves to `auto`, and an explicit operator `moai todo add` shall never be gated.
 
-`workflow.project.continuation` 은 표현 선택 키로 남고 카드 발급 여부는 이 단계가 정한다(결정 Q6).
+`workflow.project.continuation` 은 표현 선택 키로 남고 카드 발급 여부는 이 단계가 정한다(Q6=(a) 판정, 2026-10-19).
 
 ### REQ-DSO-012 — 리뷰 지적 수리 요청은 review_repair 가 auto 일 때만 한다 (event-driven, M3)
 
@@ -147,7 +148,9 @@ The update path shall preserve explicit stage values, including values equal to 
 
 ### REQ-DSO-015 — 웹은 단계별 효력·출처·영향을 보여 주고 저장 시 검증하며 기록을 남긴다 (Ubiquitous, M4)
 
-The web settings view shall show for each stage the effective value, the source, an override marker, a plain-language impact statement and the policy revision, shall validate a save before writing, shall answer a save with the re-read policy and revision, shall record each save in an audit record, and shall offer a stop-all-automation action that sets every stage to `manual`.
+The web settings view shall show for each stage the effective value, the source, an override marker, a plain-language impact statement and the policy revision, shall validate a save before writing, shall answer a save with the re-read policy and revision, shall record each save in an audit record, and shall offer a stop action that writes the stop marker and a release action that removes it; while the marker stands every boundary shall treat every stage as `manual` regardless of tier values, and the view shall show the marker state.
+
+즉시 중지는 설정 값을 쓰지 않는다(Q9=(b) 판정, 2026-10-19). 표식은 `.moai/state/` 아래 파일이고, 명시적 release 로만 지워지며 조용히 만료되지 않는다(잊힌 표식이 모든 것을 수동으로 두는 쪽이 안전하다). 표식은 local override 도 이긴다.
 
 ### REQ-DSO-016 — 웹 저장은 안전 경계 안에서만 쓴다 (Unwanted, M4)
 
@@ -155,13 +158,7 @@ When a stage save arrives from a non-loopback Host, a cross-site origin, or with
 
 When a stage save targets a stage pinned by the local override tier, the web server shall write the new project-tier value, shall leave the stage's effective value and the override untouched while the override stands, and shall disclose that fact (`overridden-by-local`) in the save response and the audit record.
 
-로컬이 고정한 단계의 저장을 거부하지 않는 이유: 세 계층 모델에서 project 계층의 쓰기는 local override 를 이길 수 없으므로 "override 를 덮어쓰지 않는다"는 규칙은 그대로 지켜진다. 거부하면 override 가 사라진 뒤에 적용될 운영자의 의사가 기록되지 않는다. AC-DSO-019 의 즉시 중지가 local override 아래에서 project 값을 쓰고 그 사실을 알리는 것과 같은 규칙이다(결정 Q15).
-
-### REQ-DSO-017 — release/deploy 단계는 선언되고 게이트가 지켜진다 (Ubiquitous, M7)
-
-The stage-policy resolver shall declare the `release_deploy` stage with the same fail-closed semantics, and any shipped code path that publishes a release, a tag or a deployment shall consult it before the external change.
-
-현재 배포본 Go 코드에는 그런 호출이 없다(L51). 이 요구는 새로 생길 호출을 막는 정적 검사로 지킨다. 첫 조각에 포함할지는 결정 Q4 다.
+로컬이 고정한 단계의 저장을 거부하지 않는 이유: 세 계층 모델에서 project 계층의 쓰기는 local override 를 이길 수 없으므로 "override 를 덮어쓰지 않는다"는 규칙은 그대로 지켜진다. 거부하면 override 가 사라진 뒤에 적용될 운영자의 의사가 기록되지 않는다. 즉시 중지가 모든 계층 위에서 표식으로 작동하는 것(REQ-DSO-015)과 별개의 규칙이며, 저장과 표식은 서로를 대체하지 않는다(결정 Q15, Q9).
 
 ### REQ-DSO-018 — 템플릿은 단계 값을 싣지 않고 기본값은 코드에서 수동이다 (Ubiquitous, M2·M6)
 
@@ -173,13 +170,13 @@ The shipped templates shall carry the stage keys only as commented documentation
 
 ## §C AC 와 검증 구속
 
-- 모든 인수 기준은 acceptance.md 에 있다(AC-DSO-001–022). 요구와 1:1 이상 연결되고 고아 기준은 없다.
+- 모든 인수 기준은 acceptance.md 에 있다(AC-DSO-001–020, 022 — 021 은 Q4=(b) 판정으로 철회된 결번이다). 요구와 1:1 이상 연결되고 고아 기준은 없다.
 - 이 SPEC 은 plan 시점에 구현 테스트를 갖지 않는다. 각 기준의 RED-now 셀은 현재 트리의 결함이나 부재를 보이는 증거 원장 항목을 가리킨다(원장 항목은 명령, 원문 stdout, 종료 코드, 트리 SHA 네 요소를 모두 가진다). RED-now 를 만들 수 없는 기준은 회귀 가드로 분류하고 통과로 기록하지 않는다.
 - 검증 명령은 작업 트리 루트에서 단일 호출로 실행하며, 실행된 테스트 수를 함께 기록한다. 0개는 측정 불가다.
 
 ## §D 실행 순서 구속
 
-1. 결정 색인의 열린 행 가운데 각 마일스톤을 막는 행의 `Operator verdict` 가 채워져야 그 마일스톤이 시작한다: M2 는 Q1·Q2·Q5, M3 는 Q3·Q6·Q11·Q14, M4 는 Q9, M5·M6 은 Q7·Q8, M7 은 Q4(plan.md M1). M2 는 Q3·Q4 판정을 기다리지 않고 일곱 단계 모델을 만든다. Q3(b)·Q4(b) 판정은 이미 끝난 마일스톤을 조용히 고치는 것이 아니라 해석기와 이후 마일스톤의 재범위(re-scope)로 기록되어 진행된다(decision-index.md 개요, plan.md M1).
+1. 결정 색인의 행 가운데 각 마일스톤을 막는 행의 `Operator verdict` 가 채워져야 그 마일스톤이 시작한다(plan.md M1). 2026-10-19 개정 2 기준: M2 의 Q1·Q2·Q5, M3 의 Q3·Q6·Q14, M4 의 Q9, M5·M6 의 Q7·Q8 이 판정되었고, M3 의 Q11(EVIDENCE-NEEDED)만 열려 t1882 착지까지 M3 을 막는다. M7 은 Q4=(b) 판정으로 철회되었다. M2 는 Q3·Q4 판정을 기다리지 않고 모델을 만들며, 판정이 M2 뒤에 떨어지면 재범위(re-scope) 기록으로 진행한다(plan.md M1) — Q4=(b) 재범위는 개정 2에서 이 기록대로 실행되었다.
 2. run 은 t1882 가 착지한 뒤에 시작한다. 착지한 트리에서 AC-DSO-006–008 의 RED-now 셀을 다시 측정하고 다시 고정한다(verification-completeness §4).
 3. 각 마일스톤의 RED 선행은 커밋 그래프로 검증한다(plan.md §D 마일스톤 순서 조항). SPEC 도구에 순서 검증 동사는 없다(research.md L43, L44).
 4. 이 저장소 자신의 승인된 로컬 factory 설정을 새 단계 키로 옮기는 일(M6)은 템플릿 변경과 별도 커밋이며 운영자 확인 대상이다(결정 Q8).
@@ -193,8 +190,8 @@ The shipped templates shall carry the stage keys only as commented documentation
 - 사용자·역할별 접근 제어(ACL)와 신원 확인. 웹은 기존 루프백 Host·same-origin 검사 안에서 동작하며, 감사 기록의 호출 주체는 그 채널에서 얻을 수 있는 값(운영체제 사용자, 채널 이름)까지다(결정 Q10, 구현 수준).
 - 웹에서 local override 계층을 쓰는 기능. 웹은 project 계층만 쓰고 local 계층은 읽기 전용으로 표시한다.
 - 실행 중인 명령·세션·lease·워크트리를 강제로 끝내는 기능. 끄는 일은 다음 경계에서 효력이 난다.
-- 실제 release/deploy 자동화 구현. 배포본에는 그런 경로가 없다(L51). 이 SPEC 은 게이트를 선언하고 새 호출을 막는 검사만 둔다.
-- 로컬 commit(`auto_commit`)의 정책화. 일곱 단계는 외부로 나가는 변경과 자동 진행을 뜻하며 로컬 commit 은 포함하지 않는다.
+- release/deploy 단계의 선언과 게이트, 새 게시 호출을 막는 정적 검사. Q4=(b) 판정(2026-10-19)으로 REQ-DSO-017 · AC-DSO-021 · 마일스톤 M7 을 이 SPEC 에서 빼고 후속 SPEC 이 가져간다. 배포본에 게시 경로가 생길 때 그때 정의한다(배포본에는 그런 경로가 없다, L51).
+- 로컬 commit(`auto_commit`)의 정책화. 여섯 단계는 외부로 나가는 변경과 자동 진행을 뜻하며 로컬 commit 은 포함하지 않는다.
 - 기존 github-flow 사용자의 동작을 update 가 조용히 auto 로 옮겨 주는 migration. 새 단계 키의 부재는 수동이다.
 - `AGENTS.local.md`·`CLAUDE.local.md` 의 배포 또는 수정. 두 파일은 배포 템플릿에 없다(L35).
 
@@ -211,6 +208,6 @@ The shipped templates shall carry the stage keys only as commented documentation
 ## §F 후속·잔여 위험
 
 - **F1** 웹 화면의 영향 설명 문구(ko/en)는 run 단계에서 i18n 키로 만든다. 문구 자체의 번역 품질 검토는 sync 감사 몫이다.
-- **F2** `git_strategy.<mode>.automation.auto_push/auto_pr` 은 읽는 코드가 없다(L20). 템플릿 team 프로필의 `auto_push: true` 를 어떻게 할지는 결정 Q7 이다. 결정 전에는 건드리지 않는다.
-- **F3** `dispatch` 단계가 막는 것은 자가 배차(인자 없는 `moai factory next`와 안내문 선택)다. 리더가 `--card` 로 지명하는 배차는 운영자 행위로 본다(REQ-DSO-010). 이 해석은 카드 문언("dispatch/execution")의 작업 해석이며 결정 Q14 가 열려 있다.
-- **F4** 이 저장소의 승인된 로컬 factory 설정(L25, L53)은 새 해석기에서 키가 없으므로 수동으로 읽힌다. 현행 동작을 유지하려면 명시 `auto` 를 적어야 한다. 시점과 계층은 결정 Q8 이다.
+- **F2** `git_strategy.<mode>.automation.auto_push/auto_pr` 은 읽는 코드가 없다(L20). Q7=(c) 판정(2026-10-19): 구조체와 템플릿에서 제거하고(M6), 기존 사용자 파일의 키는 update 가 보존한다(REQ-DSO-014).
+- **F3** `dispatch` 단계가 막는 것은 자가 배차(인자 없는 `moai factory next`, MCP `factory_next`, `--auto-lane` 임대와 안내문·규칙 선택)다. 리더가 `--card` 로 지명하는 배차는 운영자 행위다. Q14=(a) 판정(2026-10-19)으로 확정되었다.
+- **F4** 이 저장소의 승인된 로컬 factory 설정(L25, L53)은 새 해석기에서 키가 없으므로 수동으로 읽힌다. 현행 동작을 유지하려면 명시 `auto` 를 적어야 한다. Q8=(a) 판정(OPERATOR-HELD, 리더 거부권 대기): project 계층에 적는다(M6).
