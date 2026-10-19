@@ -125,6 +125,6 @@ Gaps carried over from the run phase (not observed in the sync phase either):
 - Hugo was not built; the rendered output of the replacement lines was not observed.
 - The ja, ko, and zh pinned prose (including the new labels) had no native-register review.
 - The sync phase ran no new page cell; it relies on the run-phase GREEN cells at HEAD 8f86c6bece, and the sync commit changes no docs-site file.
-- `sync_commit_sha` holds the `pending-backfill` placeholder because a commit cannot cite its own hash; the real SHA is owed to a following commit.
+- `sync_commit_sha` was backfilled in 793c3c043d (real value cfb72c131d291114f482a6c55e9eebf96656fdcd); a commit cannot cite its own hash, so the backfill landed in the following commit.
 
 Residual risk: as recorded in §E.2 (ja and zh foundations row wording versus the linked `commands.md` headings, accepted under decision QE-4). The CI verdict on the integration branch is not part of this evidence. The plan-artifact hash input changes with this commit because `spec.md` carries the new status line; the iteration-3 audit hash `aa66a04ecd01b76ee264ead4c52fc42d152f8a33fe24725f12f39396041aca81` therefore no longer matches, which is expected for the close.

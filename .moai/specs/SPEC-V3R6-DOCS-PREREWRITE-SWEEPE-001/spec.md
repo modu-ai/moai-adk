@@ -157,7 +157,7 @@ Why unresolved: `fb` resolves only as a router alias; `bug` and `issue` do not r
 Class: implementation-level
 Default: replace with `> /moai:feedback` (rule: the Q13 ruling)
 Alternate: delete the lines (and, with them, the block label line under decision QE-6) and keep only the standard form; the pinned block, cells S-16, S-17, and S-18, and the AC-PRC-001f rows would then be re-derived
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: the Q13 ruling d-20261019T015908Z-220a
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ### QE-2: Does verification-claim-integrity line 84 stay fixed, or gain an example marker?
 Label: FOUNDER
@@ -166,7 +166,7 @@ Why unresolved: the line sits under the heading "Worked Example — Retention-Cl
 Class: implementation-level
 Default: fix without a marker, deleting the `/moai brain` and `moai brain` list items (rule: the option the Q24 verdict and Q13 ruling both name)
 Alternate: keep the paragraph and add `<!-- slash-example: retired-feature incident narrative -->` on the line above line 84. The alternate carries its own criteria (acceptance.md § H): the release-blocking set of this SPEC at the default does not depend on it.
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: the option the Q24 verdict and Q13 ruling both name
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ### QE-3: Is the closing check stricter than resolution?
 Label: FOUNDER
@@ -175,7 +175,7 @@ Why unresolved: the umbrella pattern also matches the router aliases `fb` and `i
 Class: implementation-level
 Default: keep the umbrella pattern unchanged (rule: preserves the umbrella's closing check)
 Alternate: amend the umbrella pattern to exclude router aliases, then keep `/moai fb`. That is an umbrella amendment; this SPEC's criteria a, b, d, and i would be re-derived and re-audited at that point.
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: preserves the umbrella's closing check
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ### QE-4: Do the ja and zh foundations index rows change with the en row?
 Label: FOUNDER
@@ -184,7 +184,7 @@ Why unresolved: the ja and zh rows translate the clause "and the /moai relations
 Class: implementation-level
 Default: change both rows to the "position" wording (`/moai の位置づけ`, `/moai 的定位`) (rule: the Q17 ruling)
 Alternate: leave the ja and zh rows unchanged (ten page files); they would then read as a translation of the old English wording and the three locales would no longer say the same thing
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: the Q17 ruling d-20261019T015908Z-220a
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ### QE-5: Is the sibling FAQ bullet about `moai plan` in scope?
 Label: FOUNDER
@@ -193,7 +193,7 @@ Why unresolved: "Running `moai plan` in the terminal does nothing" is an adjacen
 Class: implementation-level
 Default: out of scope; the line stays byte-identical and is recorded as a follow-up observation (rule: the card scope is the line flagged by the closing pattern)
 Alternate: correct it in this change; that adds a line to the flagged set by decision, a new pinned text, and criteria of its own
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: smaller footprint, undo is one revert
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ### QE-6: Does the block label line change with the alias lines it labels?
 Label: FOUNDER
@@ -202,7 +202,7 @@ Why unresolved: line 31 of each moai-feedback page (`# Short aliases` and its tr
 Class: implementation-level
 Default: replace the label line with the pinned label meaning "Direct slash command", inside the edit set (rule: the Q13 ruling — the aliases the label introduces are replaced, so the label would be false)
 Alternate: keep the label line byte-identical and drop it from the edit plan; the page would then read `# Short aliases` above the single line `> /moai:feedback`. REQ-SWEEPE-002 and -004, the pinned block, and the numstat rows `2 4` would become `1 3`, with cells S-16, S-17, and S-18 re-derived
-Operator verdict: DEFAULT-APPLIED 2026-10-19T02:51:00Z manager-spec (planner, revision 2), rule: the Q13 ruling d-20261019T015908Z-220a
+Operator verdict: default adopted as written — leader ruling under operator delegation, d-20261019T033214Z-032b (scope=card:t1725, kind ruling, ladder_path 6, 2026-10-19T03:32:14Z)
 
 ## 7. Out of Scope
 
