@@ -6,14 +6,41 @@
 
 plan_status: audit-ready
 audit_ready: true
-plan_complete_at: 2026-10-19T02:53:18Z
+plan_complete_at: 2026-10-19T05:17:41Z
 tier: L
-artifacts: spec.md v0.1.1 (REQ 17) · plan.md (M1-M5) · acceptance.md (AC 19: R 11, G 7, O 1) · design.md (D-1..D-10, D-8a) · research.md (§1-§10) · decision-index.md (Q1-Q6; Q3 met) · progress.md
-measured_tree: 74ad197380a0711cdb9816d4e37c94d29af730ea (branch WT-fail-safe-serial, base 74ad197380, clean, unpushed) for the original measurements; correction_round_tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc for the §10 sweep, the new criteria and every entry that carries its own `tree:` field (the document trees are identical between the two pins)
-open_clarifications: 0 — decision-index Q3 was met by the operator ruling d-20261019T023441Z-d314 (decided_by=operator, AskUserQuestion 10-19; verdict recorded in the row). Q1, Q2, Q4, Q5 carry `DEFAULT-APPLIED`; Q6 is POLICY-COVERED. No FOUNDER row has an empty verdict; no requirement, criterion or milestone waits on a decision.
-spec_lint: `moai spec lint --strict .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/spec.md` → `0 error(s), 0 warning(s)`, exit 0, one INFO `OwnershipTransitionUnmeasured` (the plan-phase commit 55d4f1486a carries no `Authored-By-Agent` trailer; Info never changes the exit status). Judged by the installed build moai_cp/20261007_195927, which predates this tree's HEAD; run on the working tree after all edits of the correction round, before the commit.
+artifacts: spec.md v0.1.2 (REQ 17) · plan.md (M1-M5) · acceptance.md (AC 19: 42 ledger entries) · design.md (D-1..D-10, D-8a) · research.md (§1-§12) · decision-index.md (Q1-Q7) · progress.md
+measured_tree: b7b44433c312da73de9f329ab08c8fa6c5aa4de0 (branch WT-fail-safe-serial, unpushed) for correction round 1; earlier pins 74ad197380a0711cdb9816d4e37c94d29af730ea and 55d4f1486a454ff446be6f0f0645d4cea76bf0cc (the document trees are identical between the three pins)
+open_clarifications: 1 — decision-index Q7 (FOUNDER, product-level, empty verdict): what establishes "the operator has delegated dispatch" (spec R-5). It blocks the autonomous Kickoff by the decision-index rule and goes to the operator. Q3 was met by the operator ruling d-20261019T023441Z-d314 and is unchanged. Q1, Q2, Q4, Q5 carry `DEFAULT-APPLIED`; Q6 is FOUNDER implementation-level with `DEFAULT-APPLIED 2026-10-19T03:35:14Z` (Tier L). No requirement, criterion or milestone depends on Q7; it gates only the Kickoff form.
+spec_lint: NOT RUN in the final state of correction round 1 — the Bash tool refused every command late in the round ("working directory resolved to the shared checkout"), including a bare `cd`, `git -C` and `echo`. The last lint result (`0 error(s), 0 warning(s)`, exit 0, one INFO) predates the correction round and does not describe spec.md v0.1.2. See Gap G-16.
 spec_audit: `mcp__moai__spec_audit` (filter SPEC-CARD-MODE-JUDGMENT-001, project_root = this worktree), run in the correction round: one INFO `EraAutoDetected` with `heuristic_matched` "H-5 (modern phase or created date)", `era` V3R6, `modern_era_clean` 1, no drift finding.
 plan_artifact_hash: not recomputed here — the earlier plan audit was stopped before it wrote a verdict, so no hash covers any version of these files; the lane recomputes the hash after the correction commit.
+
+### Correction round 1 (after plan audit iteration 0, FAIL 0.65, defects D1-D9)
+
+Each defect, its evidence command before and after (all cells re-run on `b7b44433c3` except where stated; the "after" values were observed on a scratch simulation of the post-run text, G-15, and on the real tree for the RED-now cells):
+
+| Defect | Before | After |
+|---|---|---|
+| D1 commit ordering (Template-First unverifiable in one commit) | REQ-MJ-013 claimed an edit order the commit graph cannot witness | REQ-MJ-013 claims only per-milestone-commit coherence; both stub edits, catalog hashes and ledger rows ride the commit that changes what they pin; AC-MJ-011 adds a `git diff-tree` check (run-phase) |
+| D2 AC-MJ-006 scan | printed `9 9` on the good copy and on all three escape mutants | bounded by the next `^## `, end marker required, 8 whole lines pinned, stem scan outside the subsection; prints `8 8 1 1`; 16 of 17 mutants red (N9, a stem-less Routing widening, is caught by AC-MJ-005) |
+| D3 unscoped cron statements | 7 unscoped keep/arm lines per tree (K:28, F:119, F:122, A:117, A:118, A:396, W:244) | ten sites enumerated (research.md §11, REQ-MJ-010); AC-MJ-008 sweep (a) + per-site fragment counts K1/F2/A2/W1 + renewal wording + `when the lane stops executing the card` |
+| D4 predicate narrowing | `shared state` only in the spec.md quote | REQ-MJ-002/-003 and the AC-MJ-001 token restored to "same files or shared state" (6 tokens) |
+| D5 traceability | trace verb printed UNCOVERED for REQ-MJ-002, -003, -009 | full REQ ids in every AC header; re-run: `COLLECTED 17`, no UNCOVERED line |
+| D6 vacuous checks | three mutants passed the old checks | AC-MJ-004 whole lines, AC-MJ-008 site fragments, AC-MJ-009 pinned scope line; each mutant observed red |
+| D7 REQ-MJ-007 | nine lines, one a non-limit | exactly the seven limits of d314 plus a labelled consequence = eight pinned lines |
+| D8 leader-duty enumeration | the M table of retained duties would disagree with the new subsection | REQ-MJ-017 (d), AC-MJ-018 (e): one row by pointer; research.md §12 |
+| D9 card-id guard | diff-based `-G` fired on a harmless re-wrap | AC-MJ-013 uses a portable working-tree ERE excluding the five baselined ids; positive control prints 8; mutant `t1500` fires |
+
+Stub measurement: before `OK 9999`; after the planned wording (K:28 tail +4, K:20 clause −6) `OK 9997`; mutants: pointer form `OVER 10162`, K:20 edit omitted `OVER 10003`, marker phrase pasted `OVER 10027` (all on the scratch simulation).
+
+Optional defects D10-D15:
+
+- **D10** added decision-index Q7 (FOUNDER, product-level, empty verdict) — flagged above, blocks the autonomous Kickoff.
+- **D11** Q6 relabelled FOUNDER implementation-level with `DEFAULT-APPLIED 2026-10-19T03:35:14Z` (Tier L); the table it cited is guidance, not an operator setting.
+- **D12** consequences of the Q2 and Q5 defaults written into the rows and into residual risks R-7 and R-2.
+- **D13** R-6 now records that a later card folds the exception into the pinned Go doctrine tests.
+- **D14** every `-P` and `\b` removed; AC-MJ-012 exits 1 on OVER; the `Tools` convention line added.
+- **D15** only board ids are cited; 02f4 is quoted verbatim (checked as a substring of the saved board file); the scope items are listed in §1; REQ-MJ-004 is a `shall` clause; the `card:` frontmatter key was dropped (the card id stays in `tags`).
 
 ### Correction round (before the first plan audit; a second commit, not an amendment)
 
@@ -52,7 +79,7 @@ Rows the ruling affects, listed and not decided here:
 
 - Mirror and sync mechanism: Template-First; `*-check` make targets are read-only drift detectors; the real parity guards are `TestRuleTemplateMirrorDrift`, `TestAutoPickMirrorParity`, `TestReviewOwnership_CardReviewDoctrine`, `TestTodoSkillDocumentsClassification`. The `.moai/policies/**` and `.moai/workflows/gtd.md` copies are stale deploy-time projections, not guards.
 - Pinning tests that constrain the wording: the binding ledger (rows ALB-0254, -0265, -0268, -0276, -0304 touch the target lines), the renew-interval token test, `TestLaneRecheckDoctrine`, `TestLaneWatchdogRenewsFirst` / `…RecordsRefusalAndMeasures`, the card-id/internal-content leak tests, the AC-ALB-021(2) fragment rule.
-- Budget: `factory-dispatch-core.md` measures 9,999 UTF-16 units against 10,000 — one unit of headroom; the marker-form rewrite is +9 and needs an 8-unit offset.
+- Budget: `factory-dispatch-core.md` measures 9,999 UTF-16 units against 10,000 — one unit of headroom; the two planned stub edits (K:28 +4, K:20 −6) net −2 (`OK 9997` simulated), so no offset trim is needed.
 - Catalog: skill-directory hashes in `internal/template/catalog.yaml` change for `moai` (it contains `workflows/gtd.md`) and `moai-lane-watchdog`.
 - Sweep for "no statement relies on the serial default when issuing": violating sentence V defined once (research.md §7); fires on exactly `gtd.md:52`; positive control observed on the base commit.
 
@@ -64,11 +91,13 @@ Rows the ruling affects, listed and not decided here:
 - **G-4** The worktree-isolation guard refused several read-only invocations during this phase: a loop that mixed `cmp` with a piped `git ls-files`, two `sed`/`grep` calls whose path was a shell variable, and three `git diff -G` calls whose pattern carried `{n}` quantifiers ("a form too complex to verify"). Each was re-issued as a plain command (one `git`, literal paths) or with the quantifier written out without braces. Recorded here per `verification-claim-integrity.md` §3.1; no result was inferred from a refused command. The same refusal will apply to a run-phase author who writes the AC-MJ-013 pattern with `{n}`.
 - **G-5** Every `moai` CLI observation (`decision read`, `todo next --help`, `factory status`, `spec lint`) was judged by the installed build `moai_cp/20261007_195927`, which predates HEAD; `spec lint` in particular was not run from a build made from this tree.
 - **G-6** "Class C `--spec` cannot be added after assign" is board 0c51's statement; this plan saw `--spec` on `moai todo next` and not on `add`, and did not read the assign path in code.
-- **G-7** Which core lines are safe to trim for the 8-unit offset was measured only against the binding ledger (uncovered lines 3, 26, 28, 48, 54, 62, 64, 84); other pinning tests (for example `role_entry_points_test.go`) were not read.
+- **G-7** (superseded by correction round 1: the stub edits net −2, so no trim is planned) Which core lines were safe to trim was measured only against the binding ledger; other pinning tests (for example `role_entry_points_test.go`) were not read.
 - **G-8** The Go SessionStart notice was read from source (`session_start_factory_i18n.go`), not observed at a live join.
 - **G-9** `grep -c` printed per-file lines in an order different from the argument order; the acceptance expectations are therefore stated as sets.
 - **G-10** `TestAutoPickMirrorParity` and `TestRuleTemplateMirrorDrift` were read in the regions that name the target files, not end to end.
 - **G-11** (correction round) The `internal/cli` doctrine tests that pin the old operator-only sentences were read, not run: `todo_auto_doc_test.go` lines 85-420 and `todo_auto_pick_doc_test.go` lines 1-150. The bodies of `TestAutoPickDocDoctrine` and `TestAutoPickMirrorParity` (from line 181 and 279) were not read; their `contain` / `absent` / parity literals come from the surface table at lines 40-150 and from `research.md` §6. Of `binding_ledger_test.go` only lines 470-540, 815-892 and 985-1075 were read (row coverage, after-text presence, the AC-ALB-021(2) sweep): the claim that a `rule-body:` row (ALB-0256) is checked by `after_text` presence only, and that an `always:` row (ALB-0257) is checked by `after_text` presence in the deployed stub, rests on those lines; the mutation fixtures further down (lines 1196-1500) were not read.
+- **G-15** (correction round 1) The green paths, positive controls and mutants were observed on a scratch simulation of the post-run text (eight documents plus a mutation harness under the session scratchpad). The simulation is evidence that the criteria are satisfiable and that each listed mutant is red; it is not evidence about the real tree after the run. Scratch files are not cited and are named here as a known loss.
+- **G-16** (correction round 1) Late in the round the Bash tool refused every command (message: working directory resolved to the shared checkout), including `cd`, `git -C <worktree> rev-parse` and `echo`. Consequences, none inferred as passed: `moai spec lint --strict` was not run on spec.md v0.1.2; the final `git status`, the HEAD/branch re-read and the commit could not be made; `plan_complete_at` is the `audited_at` clock reading of `mcp__moai__spec_audit` (one INFO `EraAutoDetected`, `modern_era_clean` 1, no drift finding), the only clock source left; the final repo-wide sweeps for stale "nine lines" / "Template-First order" / "9,999" wording were done by reading design.md, research.md, progress.md and the spec artifacts, not by `grep`.
 - **G-12** (correction round) The AC-MJ-006 positive control and its six mutants were observed against scratch copies of the pinned subsection, under `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/3485ddff-4832-470a-9a17-ee4dac7ad178/scratchpad/ac6/` (`good.md`, `mut_held.md`, `mut_nocond.md`, `mut_serial.md`, `mut_append.md`, `mut_dup.md`, `mut_extra.md`). Those files are scratch, not cited as evidence; they are named here as a known loss. They are reproducible from the nine lines of `acceptance.md` E-006. The RED-now cell itself runs on the real files.
 - **G-13** (correction round) The worktree-isolation guard refused one compound command (a `cd` into the scratch directory followed by a heredoc and several `sed` calls). It was re-issued as separate plain commands and the `Write` tool; no result was inferred from the refused command (`verification-claim-integrity.md` §3.1).
 - **G-14** (correction round) `moai decision read` and `moai spec lint` were judged by the installed build `moai_cp/20261007_195927`, which predates HEAD (`moai version` printed that build); the board record is data, so the lag does not change what was read, but `spec lint` was not run from a build made from this tree.
