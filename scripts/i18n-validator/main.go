@@ -420,6 +420,12 @@ func checkAllFiles(ls *Lockset) []Violation {
 // @MX:WARN: [AUTO] Uses goroutine + channel for cancellation.
 // @MX:REASON: Budget enforcement requires concurrent timeout; cancel channel prevents goroutine leak.
 func runWithBudget(root string, budget time.Duration) BudgetResult {
+	return runWithBudgetAfter(root, budget, time.After)
+}
+
+// runWithBudgetAfter runs the scan with an injectable timer source. Tests use
+// this to force the scan-result arm without relying on scheduler timing.
+func runWithBudgetAfter(root string, budget time.Duration, after func(time.Duration) <-chan time.Time) BudgetResult {
 	type scanResult struct {
 		violations []Violation
 		// stderr はゴルーチン内でのみ書き込まれ、channel 経由で返される。
@@ -428,6 +434,8 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 		stderr string
 	}
 
+	const budgetMessage = "validator exceeded 30s budget, consider scoping to changed files only"
+	start := time.Now()
 	done := make(chan scanResult, 1)
 
 	go func() {
@@ -443,6 +451,10 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 
 	select {
 	case result := <-done:
+		// The scan may win after the deadline before the timer is scheduled.
+		if time.Since(start) > budget {
+			return BudgetResult{ExitCode: 4, Stderr: budgetMessage}
+		}
 		if len(result.violations) > 0 {
 			return BudgetResult{
 				Violations: result.violations,
@@ -451,12 +463,11 @@ func runWithBudget(root string, budget time.Duration) BudgetResult {
 			}
 		}
 		return BudgetResult{ExitCode: 0, Stderr: result.stderr}
-	case <-time.After(budget):
-		msg := "validator exceeded 30s budget, consider scoping to changed files only"
+	case <-after(budget):
 		return BudgetResult{
 			ExitCode: 4,
 			// stderr from the goroutine is not safe to read here — omit partial output.
-			Stderr: msg,
+			Stderr: budgetMessage,
 		}
 	}
 }

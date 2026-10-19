@@ -62,11 +62,17 @@ def receipt_kind:
     elif $code then "code"
     elif $security then "security"
     else "unknown" end;
-# The clean signal is the exact first sentence; keep later sign-off text out of the protocol grammar.
+# Require the exact clean first sentence at line start; sign-off prose after that sentence is not part of the protocol.
 # Identity, type, full-head state, both completed legs, and corroborating findings remain separate gates.
 def code_clean_declaration:
   . == "Codex Review: Didn\u0027t find any major issues."
   or startswith("Codex Review: Didn\u0027t find any major issues. ");
+def receipt_pending_for_running_leg($kind; $status; $error):
+  $status == "running"
+  and (
+    $error == ("native-receipt-missing:" + $kind + "_review")
+    or (($error | type) == "string" and ($error | startswith("stale-review:")))
+  );
 def receipt_check($kind):
   . as $all
   | ($all | map(select(.kind == $kind))) as $items
@@ -160,8 +166,8 @@ def leading_block:
     elif $find != null then {c: 1, r: ("finding:" + $find.id)}
     elif $cr != null then {c: 1, r: "changes-requested"}
     elif $commented != null then {c: 1, r: "review-not-conclusive:COMMENTED"}
-    elif $code_receipt_error != null and ($code.status != "running" or $code_receipt_error != "native-receipt-missing:code_review") then {c: 1, r: $code_receipt_error}
-    elif $security_receipt_error != null and ($security.status != "running" or $security_receipt_error != "native-receipt-missing:security_review") then {c: 1, r: $security_receipt_error}
+    elif $code_receipt_error != null and (receipt_pending_for_running_leg("code"; $code.status; $code_receipt_error) | not) then {c: 1, r: $code_receipt_error}
+    elif $security_receipt_error != null and (receipt_pending_for_running_leg("security"; $security.status; $security_receipt_error) | not) then {c: 1, r: $security_receipt_error}
     elif $code.status == "running" and ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
     elif $security.status == "running" and ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
     elif ($code | has("has_any_findings") | not) then {c: 1, r: "review-not-complete:code_review:has_any_findings"}

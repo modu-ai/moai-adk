@@ -3,10 +3,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -495,37 +493,11 @@ func TestIsExcluded_MatchesRootRelativePath(t *testing.T) {
 
 // TestBudget_TimeoutExitOnExcess は deadline 超過時に exit code 4 と正しいメッセージを検証します。
 func TestBudget_TimeoutExitOnExcess(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// Windows에서는 runWithBudget의 select(scan-done vs time.After(1ns)) goroutine
-		// scheduling이 비결정적이어서 100 file scan이 budget 위반 검출 전에 종료되는
-		// 케이스가 발생 (exit 0, expected 4). Linux/macOS는 안정적. Windows-specific
-		// budget timing 안정화는 별도 SPEC(예: SPEC-V3R3-WIN-FLAKY-001)에서 다룬다.
-		t.Skip("Windows goroutine scheduling이 1ns budget enforcement보다 빠름 — Linux/macOS에서만 검증")
-	}
 	t.Parallel()
 
-	// Create a synthetic corpus with many files to trigger timeout.
-	// Use unique filenames so all 100 files are written (previous "i%10"
-	// pattern caused name collisions and only 10 unique files were emitted,
-	// which left the 1ns budget able to finish in time on fast runners).
 	dir := t.TempDir()
-	for i := range 100 {
-		name := filepath.Join(dir, fmt.Sprintf("file_%03d_test.go", i))
-		_ = os.WriteFile(name, []byte(`package foobar_test
-
-import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-)
-
-func TestX(t *testing.T) {
-	assert.Equal(t, "msg", "msg")
-}
-`), 0o644)
-	}
-
-	// Run with a near-zero budget to force timeout
-	result := runWithBudget(dir, 1*time.Nanosecond)
+	neverFires := func(time.Duration) <-chan time.Time { return nil }
+	result := runWithBudgetAfter(dir, 1*time.Nanosecond, neverFires)
 	if result.ExitCode != 4 {
 		t.Errorf("expected exit code 4 for budget exceeded, got %d", result.ExitCode)
 	}

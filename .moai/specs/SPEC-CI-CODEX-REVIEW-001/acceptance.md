@@ -194,18 +194,12 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
 - When `read-native-review` runs with `--draft false` and either `--wait-closed` value,
 - Then it exits 0 and prints `native-review-clean: comment <id> updated <updated_at> ...` (design §3.2 step 14); the noise changes
   nothing, because the decision reads the author, the marker position, the marker fields, and the corroborating artifacts only.
-- Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewAccepts$' ./internal/template/` lists `--- PASS` for
-  `clean_state_comment_f_clean`, `uppercase_head_sha_bound_clean`, `other_authors_noise_ignored`,
-  `identity_comment_without_marker_ignored`, `receipt_comment_beside_clean_state_comment_not_duplicate_exit_0` (the marker-less receipt 6260377784 of #1842),
-  `approved_review_object_neither_passes_nor_refuses`, `old_head_finding_ignored`,
-  `prose_and_table_never_read`, `summary_marker_absent_still_clean`, `has_any_findings_true_with_unresolved_false_clean`,
-  `clean_without_reviews_or_review_comments`, `script_reads_body_only_of_identity_comments` (the last reads the script text: `.body`
-  occurs only in the jq filter applied after the author filter, and the text `codex-pull-request-review-summary` occurs nowhere).
-- Mutant: a script that exits 0 unconditionally passes this criterion and fails AC-CCR-002 to AC-CCR-005; a script that always
-  refuses fails this one; the pair makes both directions observable. A reader that looks for an APPROVED review object (the
-  revision-6 reader) turns `clean_state_comment_f_clean` red; one that reads prose or table rows for "Completed" turns
-  `prose_and_table_never_read` red; any `.body` reference outside the identity filter turns
-  `script_reads_body_only_of_identity_comments` red.
+- Verify: `set -o pipefail && go test -count=1 -v -run '^TestCodexNative1828ReceiptTypesAndHeadBinding$' ./internal/template/ | grep -F -- '--- PASS: TestCodexNative1828ReceiptTypesAndHeadBinding '` must print the selected test's top-level PASS; Go's zero-test warning alone cannot satisfy this check.
+  The selected test exercises current-head code/security receipt pairing, observed clean declarations, unresolved-summary refusal, untrusted marker handling, and malformed, stale, missing, wrong-type, duplicate, and ambiguous receipt rejection.
+- Mutant: an unconditional pass is rejected by `actual_unresolved_review_remains_blocked`, `missing_security_receipt_is_rejected`,
+  and `forged_code_receipt_identity_is_rejected`; an unconditional refusal is rejected by `security_receipt_newest_actual_clean_text`
+  and `untrusted_marker_only_does_not_block_valid_native_receipts`. The selected clean path runs with empty formal-review and
+  review-comment inputs, so an APPROVED review object cannot grant a pass.
 - RED-now: R18 and R20 (tree `b2af3db9a1`): the shipped reader knows no state marker and requires APPROVED. Green path: M6 flips
   them; the new reader passes `F-clean`.
 

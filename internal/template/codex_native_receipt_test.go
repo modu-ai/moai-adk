@@ -365,6 +365,15 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 			}
 			return filtered
 		}, want: 1, reason: "native-receipt-missing:security_review"},
+		{name: "stale_security_receipt_cannot_satisfy_completed_state", edit: func(v []cgEntry) []cgEntry {
+			filtered := v[:0]
+			for _, entry := range v {
+				if entry["id"] != float64(6267807385) {
+					filtered = append(filtered, entry)
+				}
+			}
+			return filtered
+		}, want: 1, reason: "stale-review:c6aa8406ad"},
 		{name: "forged_code_receipt_identity_is_rejected", edit: func(v []cgEntry) []cgEntry {
 			for _, entry := range v {
 				if entry["id"] == float64(6267776147) {
@@ -457,18 +466,21 @@ func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 	cgTools(t)
 	const fixtureHead = "ab609cafbf8f421164100c626db93048f888655f"
 	for _, tc := range []struct {
-		name           string
-		waitClosed     string
-		unresolved     bool
-		currentFinding bool
-		malformed      bool
-		stale          bool
-		failed         bool
-		wantCode       int
-		wantText       string
+		name              string
+		waitClosed        string
+		unresolved        bool
+		currentFinding    bool
+		historicalReceipt bool
+		malformed         bool
+		stale             bool
+		failed            bool
+		wantCode          int
+		wantText          string
 	}{
 		{name: "running_without_receipt_waits", waitClosed: "false", wantCode: 10, wantText: "pending:running"},
+		{name: "running_with_old_security_receipt_waits", waitClosed: "false", historicalReceipt: true, wantCode: 10, wantText: "pending:running"},
 		{name: "running_without_receipt_at_window_end_fails", waitClosed: "true", wantCode: 1, wantText: "review-not-complete:running"},
+		{name: "running_with_old_security_receipt_at_window_end_fails", waitClosed: "true", historicalReceipt: true, wantCode: 1, wantText: "review-not-complete:running"},
 		{name: "running_unresolved_still_fails", waitClosed: "false", unresolved: true, wantCode: 1, wantText: "finding:unresolved:security_review"},
 		{name: "running_current_finding_still_fails", waitClosed: "false", currentFinding: true, wantCode: 1, wantText: "finding:"},
 		{name: "running_malformed_summary_still_fails", waitClosed: "false", malformed: true, wantCode: 1, wantText: "review-not-complete:security_review:has_unresolved_findings"},
@@ -505,7 +517,9 @@ func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 			for _, entry := range entries {
 				body, _ := entry["body"].(string)
 				if strings.Contains(body, "Codex Security Review") || strings.Contains(body, "Security review completed.") {
-					continue
+					if !tc.historicalReceipt || !strings.Contains(body, "**Reviewed commit:** `c6aa8406ad`") {
+						continue
+					}
 				}
 				kept = append(kept, entry)
 			}
