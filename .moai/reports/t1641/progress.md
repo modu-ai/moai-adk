@@ -290,3 +290,84 @@ server is reconnected in this lane session. Per standing rule bc8c the audit pro
 automatically: the lane runs the t1641 round-3 (final) delta audit directly through its own
 plan-auditor spawn with in-session `audit_multi` (codex required), and t1862's landing can
 use the MCP `factory_complete` when its turn arrives.
+
+## Final repair revision 7 (2026-10-19, manager-spec)
+
+Authority: the leader's final repair ruling of 10-19 on the round-2 proxy audit — receipt
+`rcpt-03225d18a7dc4a018105dc3d`, bound to HEAD `a286e02696`, verdict FAIL 0.80, blocking D1-D3
+(`plan-audit-delta2.md` § "Defects Found" and § "Recommendation") — as restated in the dispatch:
+round 3 of the 94a7 counter, the LAST; a FAIL at the next audit holds the card. Scope: the
+auditor's drafted fixes verbatim, no more — spec.md, plan.md, acceptance.md, decision-index.md
+revised in place; no code or template touched; no `plan-audit*.md` written (the round-3 delta
+audit is the auditor's, run after this commit). Start state: HEAD `f2ba34cdff`, branch
+`WT-todo-unify`, clean (`git status --short` empty before editing). Mid-round, the concurrent
+record commit `060f568e48` (this record file only — a 10-line MCP-reconnection note) landed on
+the branch; `git diff --name-only f2ba34cdff 060f568e48` printed only
+`.moai/reports/t1641/progress.md`, so the four SPEC artifacts are byte-identical between the two
+and every measurement below stands against both. This section is committed by the revision-7
+commit itself; the commit sha is read from the branch log after it lands (a commit cannot carry
+its own sha — the same convention as the revision-4, revision-5, and revision-6 records, which
+record their start HEAD).
+
+### Per-fix file:line (working tree at this commit)
+
+- **D1 — the M6 seam keeps one unit (plan.md:115, the seam sentence rewritten).** The first unit
+  keeps, together, the workflow-document rename in its three locations, the
+  `TestWorkflowRulePathsPinned` rewrite, the five rule `paths:` keys with their deployed mirrors,
+  the `factory-dispatch-mechanics.md` cross-reference, the two document-test path rewrites, and
+  the embed-manifest regeneration; M6b carries ONLY the slash-command, router-skill, and
+  published-skills edits, landing immediately after the first unit and before M7; the golden test
+  is red until M6b closes it; neither M7 nor M8 starts before M6b. plan.md:114 (M6 GREEN) carries
+  the matching split note; acceptance.md:111 (§3 edge case) carries the revision-7 note that the
+  same-milestone clause holds unchanged on the split branch; the auditor's D1 fallback (green at
+  M6b's close + an amended acceptance clause) was not needed — one unit was feasible.
+- **D2 — the namespace test planned in M5 with both collisions named (plan.md:105 RED item 5,
+  :106 GREEN, :107 Files, :108 Packages, :109 name-exact selection).** File
+  `internal/factory/card_uuid_namespace_test.go` — outside the `gtd_*.go` glob AC-TU-011's diff
+  pin guards; package `internal/factory`; selector `TestGTDCardUUIDNamespaceInvariant` (created
+  green, class G, not an expected red); expected literal assembled non-contiguously
+  (`"moai:" + "gtd-card:"`) or compared against bytes read from `gtd_engage.go`. Acceptance side:
+  acceptance.md:91 (AC-TU-011's revision-7 sentence) and :92 (the green cell names the file).
+- **D3 — the residual test's self-collision removed (acceptance.md:65, AC-TU-010's revision-7
+  constraints + the confirming row; plan.md:130, M8 RED).** The test source assembles its
+  four-pattern alternation from non-contiguous parts (no line of its file matches any pattern);
+  its planted-mutant fixture is written into a temporary directory at run time — no tracked
+  fixture; the completion judgment adds the grep's re-run over the test's own file
+  (`internal/template/no_residual_gtd_spelling_test.go`, the path plan.md M8 names) expecting
+  nothing printed and exit 1. acceptance.md:66 (green cell) names the test file.
+- **Bookkeeping.** spec.md:4 version `0.7.0`, spec.md:38 the HISTORY row (15 and 15, no
+  identifier change); decision-index.md:3 header (a twelfth), :19 the Revision 7 paragraph, :168
+  the Q12 row (decided_by leader 10-19, evidence `rcpt-03225d18a7dc4a018105dc3d`, final repair
+  before the counter's last round); `updated:` stays 2026-10-19 (correct); `status:` untouched
+  (draft); plan.md:195 §K names Q11 and Q12. Optional D4/D5/D6 were NOT applied (the
+  Recommendation marks them optional; the dispatch scoped this round to D1-D3).
+
+### Verification this round (commands run, output seen; working tree = the revision; HEAD `f2ba34cdff` at round start and `060f568e48` at the batch — the four SPEC artifacts byte-identical across both, see the start-state note)
+
+- `moai spec lint SPEC-TODO-UNIFY-001` (installed binary): one INFO row — `INFO
+  OwnershipTransitionUnmeasured ... commit 63829fe20a0f13fa93e974fe9331bb455ccb1009
+  (docs(t1641): SPEC-TODO-UNIFY-001 plan artifacts (card t1641)) has no Authored-By-Agent trailer
+  — ownership transition unmeasured` — and `0 error(s), 0 warning(s)`, `lint-exit=0`;
+  `moai spec lint --strict SPEC-TODO-UNIFY-001` printed the same INFO and `0 error(s), 0
+  warning(s)`, `strict-exit=0`.
+- Marker and counts: `grep -rn 'NEEDS CLARIFICATION' plan.md research.md` printed nothing,
+  exit 1; `grep -c 'lane-judgment, leader-confirmed 10-18 (conditional)' decision-index.md`
+  printed 1, and the line's md5 is identical at HEAD and in the working tree
+  (`dadaf7ac41457efd0ace3ff487698a1e` both) — byte-identical exactly once;
+  `grep -c -E '^\*\*REQ-TU-[0-9]+ ' spec.md` printed 15; `grep -c -E '^\*\*AC-TU-[0-9]+ '
+  acceptance.md` printed 15.
+- Scope: only the four SPEC artifacts and this record are staged; `git status --short` before
+  staging listed exactly them.
+
+### Gaps (not observed)
+
+- The round-3 delta audit with codex required is not this session's to run; no `plan-audit*.md`
+  was written. A FAIL there holds the card.
+- The confirming row and both construction constraints are named criteria, not executions: no
+  `go test` was run (card constraint) — `TestGTDCardUUIDNamespaceInvariant` and
+  `TestNoResidualGTDSpelling` remain class G/B criteria whose evidence is M5/M8's to record.
+- Lint is attributed to the installed ancestor build (research.md §R.1 lineage), per the
+  dispatch's rule — the SPEC's DoD re-lints from a tree build at run time.
+- The commit sha of this revision is not in this section's text (a commit cannot carry its own
+  sha); it is read from the branch log after this commit lands — the child of `060f568e48` on
+  `WT-todo-unify`.
