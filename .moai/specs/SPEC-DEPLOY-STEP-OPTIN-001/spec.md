@@ -1,7 +1,7 @@
 ---
 id: SPEC-DEPLOY-STEP-OPTIN-001
 title: "배포본 자동화 단계별 명시 opt-in — 기본은 모두 수동, 설정은 하나의 해석기가 판정하고 MoAI Web이 보여 주고 검증한다"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -21,6 +21,7 @@ related_specs: [SPEC-REVIEW-GATE-REPAIR-001, SPEC-PROJECT-CONTINUATION-KEY-001, 
 
 ## HISTORY
 
+- 2026-10-19 · v0.1.1 · manager-spec · 1회차 plan-audit(FAIL 0.85, `.moai/reports/t1895/plan-audit.md`) 개정. D1: REQ-DSO-016 을 쓰기+알림으로 정렬(결정 Q15, DECIDED). D2: REQ-DSO-010 의 게이트 지점을 공유 임대 이음매로 확장. D3: M2 의 Q3·Q4 재범위 기록. D4: AC-DSO-021 순서·결과 사용. D5: 완료 정의 (2) 재진술. D6 은 수정 없음.
 - 2026-10-19 · v0.1.0 · manager-spec · 최초 작성(draft). 입력 메모(`.moai/reports/t1895/OPTIN-DESIGN.md`, ADK 읽기 전용 조사, main `74ad197380` 기준)는 가설 원천으로만 쓰고, 모든 전제를 이 트리에서 다시 측정했다(research.md 증거 원장 L01–L63). 메모와 달라진 전제는 research.md §3 에 모았다. 제품 수준 결정(Q1–Q9, Q14)과 증거 대기 결정(Q11)은 decision-index.md 에 열린 채로 두었고, 구현 수준 결정(Q10, Q12, Q13)은 규칙 적용 결과로 채웠다. 이 행은 감사 결과를 주장하지 않는다.
 
 ---
@@ -118,7 +119,9 @@ t1882 가 착지하면 이 요구의 대상 호출이 바뀐다. 요구는 호�
 
 ### REQ-DSO-010 — 자가 배차는 dispatch 가 auto 일 때만 한다 (event-driven, M3)
 
-When a lane session would pick its next card by itself, the lane launch, the session-start lane rule and the bare `moai factory next` shall treat the `dispatch` stage as the gate, a stage that is not `auto` shall make them take the manual-dispatch path, and a nominated `moai factory next --card <id>` shall remain allowed.
+When a lane session would pick its next card by itself, the lane launch, the session-start lane rule, and every self-dispatch entry that leases through the shared card-lease seam — the bare `moai factory next` verb, the MCP `factory_next` verb, and the `todo --auto-lane` lease path — shall treat the `dispatch` stage as the gate at that shared seam, a stage that is not `auto` shall make each entry take the manual-dispatch path, and a nominated `moai factory next --card <id>` shall remain allowed.
+
+게이트는 진입마다 따로 두지 않고 세 진입이 함께 거치는 공유 임대 이음매 한 곳에 둔다. 이음매 뒤의 새 자가 배차 진입도 같은 게이트를 거친다.
 
 `--no-auto-dispatch` 는 계속 수동으로만 좁힌다. auto 로 넓히는 실행 옵션은 두지 않는다.
 
@@ -148,7 +151,11 @@ The web settings view shall show for each stage the effective value, the source,
 
 ### REQ-DSO-016 — 웹 저장은 안전 경계 안에서만 쓴다 (Unwanted, M4)
 
-When a stage save arrives from a non-loopback Host, a cross-site origin, with an invalid, duplicate or unknown stage, or against a stage pinned by the local override tier, the web server shall reject it without writing, and concurrent saves shall be serialized.
+When a stage save arrives from a non-loopback Host, a cross-site origin, or with an invalid, duplicate or unknown stage, the web server shall reject it without writing, and concurrent saves shall be serialized.
+
+When a stage save targets a stage pinned by the local override tier, the web server shall write the new project-tier value, shall leave the stage's effective value and the override untouched while the override stands, and shall disclose that fact (`overridden-by-local`) in the save response and the audit record.
+
+로컬이 고정한 단계의 저장을 거부하지 않는 이유: 세 계층 모델에서 project 계층의 쓰기는 local override 를 이길 수 없으므로 "override 를 덮어쓰지 않는다"는 규칙은 그대로 지켜진다. 거부하면 override 가 사라진 뒤에 적용될 운영자의 의사가 기록되지 않는다. AC-DSO-019 의 즉시 중지가 local override 아래에서 project 값을 쓰고 그 사실을 알리는 것과 같은 규칙이다(결정 Q15).
 
 ### REQ-DSO-017 — release/deploy 단계는 선언되고 게이트가 지켜진다 (Ubiquitous, M7)
 
@@ -172,7 +179,7 @@ The shipped templates shall carry the stage keys only as commented documentation
 
 ## §D 실행 순서 구속
 
-1. 결정 색인의 열린 행 가운데 각 마일스톤을 막는 행의 `Operator verdict` 가 채워져야 그 마일스톤이 시작한다: M2 는 Q1·Q2·Q5, M3 는 Q3·Q6·Q11·Q14, M4 는 Q9, M5·M6 은 Q7·Q8, M7 은 Q4(plan.md M1).
+1. 결정 색인의 열린 행 가운데 각 마일스톤을 막는 행의 `Operator verdict` 가 채워져야 그 마일스톤이 시작한다: M2 는 Q1·Q2·Q5, M3 는 Q3·Q6·Q11·Q14, M4 는 Q9, M5·M6 은 Q7·Q8, M7 은 Q4(plan.md M1). M2 는 Q3·Q4 판정을 기다리지 않고 일곱 단계 모델을 만든다. Q3(b)·Q4(b) 판정은 이미 끝난 마일스톤을 조용히 고치는 것이 아니라 해석기와 이후 마일스톤의 재범위(re-scope)로 기록되어 진행된다(decision-index.md 개요, plan.md M1).
 2. run 은 t1882 가 착지한 뒤에 시작한다. 착지한 트리에서 AC-DSO-006–008 의 RED-now 셀을 다시 측정하고 다시 고정한다(verification-completeness §4).
 3. 각 마일스톤의 RED 선행은 커밋 그래프로 검증한다(plan.md §D 마일스톤 순서 조항). SPEC 도구에 순서 검증 동사는 없다(research.md L43, L44).
 4. 이 저장소 자신의 승인된 로컬 factory 설정을 새 단계 키로 옮기는 일(M6)은 템플릿 변경과 별도 커밋이며 운영자 확인 대상이다(결정 Q8).

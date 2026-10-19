@@ -117,12 +117,12 @@
 
 ### AC-DSO-009 — 자가 배차는 dispatch 가 auto 일 때만 한다 (REQ-DSO-010)
 
-- **Given** (a) 설정 없음. (b) `dispatch: auto`. (c) `dispatch: auto` 와 `--no-auto-dispatch`. (d) `dispatch: manual` 인 프로젝트에서 레인 세션이 인자 없이 `moai factory next`, 같은 세션이 `moai factory next --card <id>`.
-- **When** 레인 실행 선택(`laneDispatchSelection`), 세션 시작 레인 규칙 선택, `factory next` 가 실행된다.
-- **Then** (a) 수동 스탬프·수동 규칙. (b) 자동 스탬프·다음 카드 규칙. (c) 수동. (d) 인자 없는 호출은 `refused dispatch-manual` 한 줄과 종료 코드 4 로 거절되고 `--card` 지명은 허용된다.
+- **Given** (a) 설정 없음. (b) `dispatch: auto`. (c) `dispatch: auto` 와 `--no-auto-dispatch`. (d) `dispatch: manual` 인 프로젝트에서 레인 세션이 인자 없이 `moai factory next`, 같은 세션이 `moai factory next --card <id>`. (e) 같은 (d) 프로젝트에서 MCP `factory_next` 동사의 자가 임대 호출. (f) 같은 (d) 프로젝트에서 `todo --auto-lane` 의 카드 임대 시도.
+- **When** 레인 실행 선택(`laneDispatchSelection`), 세션 시작 레인 규칙 선택, `factory next` CLI 동사, MCP `factory_next` 진입, `--auto-lane` 진입이 실행된다.
+- **Then** (a) 수동 스탬프·수동 규칙. (b) 자동 스탬프·다음 카드 규칙. (c) 수동. (d) 인자 없는 호출은 `refused dispatch-manual` 한 줄과 종료 코드 4 로 거절되고 `--card` 지명은 허용된다. (e)(f) 세 진입이 함께 거치는 공유 임대 이음매(`factoryNextLeaseOnceGated`)에서 게이트되어 같은 `dispatch-manual` 거절(수동 배차 경로)을 받는다. 각 진입은 자기 표면의 거절 형태를 쓴다(CLI 종료 코드 4, MCP 도구 응답, `--auto-lane` 메시지).
 - **RED-now** L11: 선택 함수가 `--no-auto-dispatch` 가 없으면 항상 auto 를 돌려준다(`:323`). L12: 기본값이 코드에 박혀 있고 설정 키가 아니다. L45: 인자 없는 `factory next` 는 우선순위 순서로 집는다. L46: 스탬프를 읽는 두 곳은 안내문 선택일 뿐이다. 이유: 설정과 이어진 판정이 없다.
-- **녹색 경로** M3: `TestLaneDispatchSelection_FollowsStagePolicy`(3개 서브테스트: (a)(b)(c)), `TestFactoryNext_BareRefusedWhenDispatchManual`, `TestFactoryNext_NominatedAllowedWhenDispatchManual`, `TestSessionStartLaneRule_ManualWhenStageManual` 가 `--- PASS`.
-- **변이체 탐침** 스탬프만 바꾸고 `factory next` 를 막지 않는 변이체는 (d) 에서 빨개진다. `--card` 지명까지 막는 변이체도 (d) 의 두 번째 호출에서 빨개진다(결정 Q14 가 달라지면 기대값을 그에 맞춘다).
+- **녹색 경로** M3: `TestLaneDispatchSelection_FollowsStagePolicy`(3개 서브테스트: (a)(b)(c)), `TestFactoryNext_BareRefusedWhenDispatchManual`, `TestFactoryNext_NominatedAllowedWhenDispatchManual`, `TestFactoryNext_MCPEntryRefusedWhenDispatchManual`, `TestFactoryNext_AutoLaneEntryRefusedWhenDispatchManual`, `TestSessionStartLaneRule_ManualWhenStageManual` 가 `--- PASS`.
+- **변이체 탐침** 스탬프만 바꾸고 `factory next` 를 막지 않는 변이체는 (d) 에서 빨개진다. `--card` 지명까지 막는 변이체도 (d) 의 두 번째 호출에서 빨개진다(결정 Q14 가 달라지면 기대값을 그에 맞춘다). 게이트를 CLI `next` 동사에만 두고 공유 임대 이음매를 건너뛰는 변이체는 (e) 의 MCP 진입 시험과 (f) 의 `--auto-lane` 진입 시험에서 각각 빨개진다 — CLI 동사만 게이트한 변이체가 통과하는 일이 없다.
 
 ### AC-DSO-010 — 자동 카드 생성은 todo_creation 이 auto 일 때만 한다 (REQ-DSO-011)
 
@@ -209,7 +209,7 @@
 
 - **Given** 여러 단계가 `auto` 이고 전달 본체가 실행 중이다(시험 이음매).
 - **When** 웹의 stop-all 동작이 실행된다.
-- **Then** project 계층의 일곱 단계가 한 번의 원자적 쓰기로 `manual` 이 되고 감사 기록 한 줄이 남는다. 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다(AC-DSO-012). local override 가 `auto` 인 단계는 효력이 여전히 `auto` 이며 화면이 그 사실을 알린다.
+- **Then** project 계층의 일곱 단계가 한 번의 원자적 쓰기로 `manual` 이 되고 감사 기록 한 줄이 남는다. 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다(AC-DSO-012). local override 가 `auto` 인 단계는 효력이 여전히 `auto` 이며 화면이 그 사실을 알린다 — project 값은 REQ-DSO-016 과 같은 쓰기+알림 규칙으로 쓰인다.
 - **RED-now** L47. 이유: stop-all 동작이 없다.
 - **녹색 경로** M4: `TestStopAll_SetsAllManualAndAudits`, `TestStopAll_LocalOverrideStillWinsAndIsDisclosed` 가 `--- PASS` 2개.
 - **변이체 탐침** 일곱 중 일부만 쓰는 변이체, 쓰기를 여러 번 나눠 중간 상태가 보이는 변이체, 실행 중 프로세스를 종료하는 변이체가 각각 빨개진다.
@@ -218,7 +218,7 @@
 
 - **Given** 단계 저장 폼.
 - **When** (a) 비루프백 Host, (b) `Sec-Fetch-Site: cross-site`, (c) local override 가 고정한 단계를 project 에서 바꾸려는 저장, (d) 동시에 두 저장, (e) local 계층 파일을 쓰려는 요청이 도착한다.
-- **Then** (a)(b) 는 403 으로 거부되고 디스크 불변. (c) 저장은 project 값만 쓰고 효력은 local 값 그대로이며 응답이 그 사실(`overridden-by-local`)을 알린다. (d) 두 저장이 직렬화되어 하나의 최종 상태와 두 개의 감사 기록이 남고 어느 쪽도 다른 쪽의 쓰기를 되돌리지 않는다. (e) 웹에는 local 계층을 쓰는 경로가 없다.
+- **Then** (a)(b) 는 403 으로 거부되고 디스크 불변. (c) 저장은 project 값만 쓰고(override 가 사라진 뒤 적용될 운영자 의사가 기록된다) 효력은 local 값 그대로이며 응답이 그 사실(`overridden-by-local`)을 알린다 — REQ-DSO-016 과 같은 쓰기+알림 규칙이다. (d) 두 저장이 직렬화되어 하나의 최종 상태와 두 개의 감사 기록이 남고 어느 쪽도 다른 쪽의 쓰기를 되돌리지 않는다. (e) 웹에는 local 계층을 쓰는 경로가 없다.
 - **분류** (a)(b)(d) 는 기존 동작의 회귀 가드다(L26–L28: 게이트와 직렬화가 이미 있고 `host_gate_test.go`, `save_serialization_test.go` 가 있다). (c)(e) 는 RB 이며 RED-now 는 L47(단계 필드가 없고 local 계층 개념이 웹에 없다, L41·L42).
 - **녹색 경로** M4: `TestSave_NonLoopbackHostDeniedForStageForm`, `TestSave_CrossSiteDeniedForStageForm`, `TestSave_ProjectWriteUnderLocalOverrideIsDisclosed`, `TestSave_ConcurrentStageSavesSerialized`, `TestSave_CannotWriteLocalTier` 가 `--- PASS` 5개.
 - **변이체 탐침** 단계 저장을 게이트 앞 경로로 노출하는 변이체, local 값을 덮어쓰는 변이체, 직렬화 잠금을 빼는 변이체가 각각 빨개진다.
@@ -227,10 +227,10 @@
 
 - **Given** 비테스트 Go 코드 전체.
 - **When** 정적 검사가 `gh release create|upload|edit`, 태그 생성(`git tag -a|-s`), 배포 도구 호출 지점을 센다.
-- **Then** 모든 지점이 해석기의 `release_deploy` 확인 호출과 같은 함수 안에 있다. 현재는 지점이 0개다.
+- **Then** 모든 게시 지점은 같은 함수 안에서 게시 호출 **앞에** 해석기의 `release_deploy` 확인을 부르고(확인 → 게시 순서), 그 결과를 사용한다 — 판정이 `auto` 가 아니면 게시를 하지 않고 이유를 기록한다. 확인 호출의 함수 내 배치만으로는 충분하지 않다. 현재는 지점이 0개다.
 - **분류 RG.** 오늘의 배포본 Go 코드에 게시 호출이 없으므로(L51, 주석 두 줄만) 검사는 빈 스윕으로 통과한다. RED-now 를 만들 수 없다. 통과로 기록하지 않는다.
 - **녹색 경로** M7: `TestNoUngatedPublishCallSites` 와 양성 대조 `TestNoUngatedPublishCallSites_FlagsSeededCallSite` 가 `--- PASS` 2개. 결정 Q4 가 첫 조각 제외로 정해지면 이 기준과 M7 은 후속 SPEC 으로 옮긴다.
-- **변이체 탐침** 검사기가 호출 패턴을 못 찾는 변이체는 양성 대조에서 빨개진다.
+- **변이체 탐침** 검사기가 호출 패턴을 못 찾는 변이체는 양성 대조에서 빨개진다. 확인을 게시 뒤에 두는 순서 뒤집기 변이체는 순서 단언에서 빨개진다. 확인을 부르고 그 결과를 무시하는 변이체(결과를 쓰지 않고 게시를 계속한다)는 `manual` 판정 아래에서 게시가 나가는 단언에서 빨개진다.
 
 ### AC-DSO-022 — 웹 저장에서 런타임 효력까지 끝에서 끝으로 이어진다 (REQ-DSO-007, REQ-DSO-008, REQ-DSO-009, REQ-DSO-015)
 
@@ -259,7 +259,7 @@
 | `TestFactoryDeliverByPR_FlipToAutoDoesNotReplayCompletedSteps` | 같은 파일 | 013 | 1 |
 | `TestFactoryTransition_RecordsAuthorizingPolicyRevision` | `internal/homestate/card_transition_policy_test.go` | 013 | 1 |
 | `TestLaneDispatchSelection_FollowsStagePolicy` | `internal/cli/factory_stage_dispatch_test.go` | 009 | 3 |
-| `TestFactoryNext_BareRefusedWhenDispatchManual`, `TestFactoryNext_NominatedAllowedWhenDispatchManual` | 같은 파일 | 009 | 1+1 |
+| `TestFactoryNext_BareRefusedWhenDispatchManual`, `TestFactoryNext_NominatedAllowedWhenDispatchManual`, `TestFactoryNext_MCPEntryRefusedWhenDispatchManual`, `TestFactoryNext_AutoLaneEntryRefusedWhenDispatchManual` | 같은 파일 | 009 | 1+1+1+1 |
 | `TestSessionStartLaneRule_ManualWhenStageManual` | `internal/hook/session_start_factory_stage_test.go` | 009 | 1 |
 | `TestTodoAdd_AutoSourceRefusedWhenStageManual`, `..._AutoSourceAllowedWhenStageAuto`, `TestTodoAdd_OperatorAddIsNeverGated` | `internal/cli/todo_stage_test.go` | 010 | 1+1+1 |
 | `TestProjectPhase14_DocGatesCardOnTodoCreationStage` | `internal/template/project_phase14_stage_test.go` | 010 | 1 |
@@ -274,7 +274,7 @@
 | `TestNoUngatedPublishCallSites`, `..._FlagsSeededCallSite` | `internal/config/stage_policy_publish_scan_test.go` | 021 | 1+1 |
 | `TestStagePolicy_WebSaveToRuntimeEndToEnd` | `internal/cli/stage_policy_e2e_test.go` | 022 | 1 |
 
-최상위 시험 함수는 47개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
+최상위 시험 함수는 49개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
 
 ## §E 입력 메모의 후보 기준과의 대응
 
@@ -298,4 +298,4 @@
 
 품질 게이트: 변경 패키지 단위 커버리지 85% 이상, `gofmt`, `golangci-lint` 변경 패키지 범위, `GOOS=windows GOARCH=amd64 go build` 는 CI 에서(plan 단계에서 실행하지 않았다).
 
-완료 정의: (1) §D 의 모든 시험이 `--- PASS` 로 기대 개수를 채웠고 0건 스윕이 없다. (2) RB 기준마다 원장 RED-now 명령이 녹색 경로의 새 출력으로 바뀐 것을 같은 명령으로 관측했다. (3) 변이체 탐침마다 변이체를 실제로 만들어 빨개지는 것을 한 번 관측했다(progress.md §E.2). (4) 템플릿-사본 비교가 종료 코드 0. (5) 제품 수준 결정 행이 모두 열려 있지 않다(decision-index.md).
+완료 정의: (1) §D 의 모든 시험이 `--- PASS` 로 기대 개수를 채웠고 0건 스윕이 없다. (2) RB 기준마다 flip 판정은 행동 시험 PASS 다 — 녹색 경로 시험이 §D 의 기대 개수로 통과하면 그 기준은 뒤집힌 것이다. 원장 RED-now 명령을 같은 명령으로 다시 실행해 보는 것은 보조 증거다: 명령 출력이 바뀌면 함께 기록하되, 토큰이 구현 뒤에도 남을 수 있어(예: L52 의 `hook.DecisionBlock` 은 `review_repair: auto` 경로에 남고, L03 의 호출 지점은 게이트 뒤에 남는다) 출력이 그대로여도 flip 판정을 바꾸지 않는다(research.md §6). (3) 변이체 탐침마다 변이체를 실제로 만들어 빨개지는 것을 한 번 관측했다(progress.md §E.2). (4) 템플릿-사본 비교가 종료 코드 0. (5) 제품 수준 결정 행이 모두 열려 있지 않다(decision-index.md).

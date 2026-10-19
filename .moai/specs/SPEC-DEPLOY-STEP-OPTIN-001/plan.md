@@ -2,7 +2,7 @@
 
 ## §A 맥락
 
-- **Tier L 판정(측정).** 변경 표면이 여섯 서브시스템에 걸친다: 설정 해석(`internal/config`), 카드 전달·배차(`internal/cli/factory*.go`), 세션 시작 훅(`internal/hook`), 리뷰 게이트(`internal/cli/codex_review_gate.go`), 웹 설정(`internal/settings`, `internal/web`), update 병합 시험. §C 의 파일 지도는 신규 약 16개와 수정 약 12개로 28개 안팎이다(Tier L 기준 15개 초과). 요구 18개, 인수 기준 22개(각각 상한 25). 새 설정 표면과 외부 변경 게이트라는 헌법적 성격도 있다. 리서치(research.md)와 설계(design.md)가 필요하므로 다섯 산출물을 둔다. 여기에 progress.md 와 decision-index.md 를 더한다(decision_gate 가 `on`).
+- **Tier L 판정(측정).** 변경 표면이 여섯 서브시스템에 걸친다: 설정 해석(`internal/config`), 카드 전달·배차(`internal/cli/factory*.go`), 세션 시작 훅(`internal/hook`), 리뷰 게이트(`internal/cli/codex_review_gate.go`), 웹 설정(`internal/settings`, `internal/web`), update 병합 시험. §C 의 파일 지도는 신규 약 16개와 수정 약 14개로 30개 안팎이다(Tier L 기준 15개 초과). 요구 18개, 인수 기준 22개(각각 상한 25). 새 설정 표면과 외부 변경 게이트라는 헌법적 성격도 있다. 리서치(research.md)와 설계(design.md)가 필요하므로 다섯 산출물을 둔다. 여기에 progress.md 와 decision-index.md 를 더한다(decision_gate 가 `on`).
 - **현재 상태.** plan 단계 산출물만 있다. 구현 코드는 건드리지 않았다. 제품 수준 결정 행(Q1–Q9, Q14)과 EVIDENCE-NEEDED 행(Q11)은 열려 있다. 입력 메모는 가설 원천으로만 썼고 모든 전제를 이 트리(`8249bff8c3`)에서 다시 측정했다(research.md).
 - **이 계획이 하지 않는 것.** 구현, 템플릿 변경, 이 저장소 자신의 로컬 설정 변경은 run 단계의 몫이다. t1882·t1752·t1644·t1900 의 범위는 건드리지 않는다.
 
@@ -33,7 +33,9 @@
 | `internal/cli/factory_card_pr_stage_test.go` (신규) | AC-DSO-006–008, 012, 013 | M3 |
 | `internal/cli/factory_card_pr_test.go` | 기존 시험 설비에 "정책 auto" 준비 추가(기대값 변경, 승인) | M3 |
 | `internal/cli/factory.go` (`laneDispatchSelection`, :319) | 스탬프를 정책에서 도출 | M3 |
-| `internal/cli/factory_card.go` (`next`, :1702; 안내문 :2766) | 인자 없는 `next` 게이트 | M3 |
+| `internal/cli/factory_card.go` (`next`, :1702; 공유 임대 이음매 `factoryNextLeaseOnceGated` :386; 안내문 :2766) | 세 자가 배차 진입이 함께 거치는 이음매에서 게이트 | M3 |
+| `internal/cli/mcp_factory_card.go` (`factory_next`, :181) | MCP 자가 배차 진입도 같은 이음매를 거치게 한다 | M3 |
+| `internal/cli/todo_auto_lane.go` (:155, :166) | `--auto-lane` 임대 진입도 같은 이음매를 거치게 한다 | M3 |
 | `internal/hook/session_start_factory.go` (:154) + 시험 (신규) | 규칙 선택을 정책에서 도출 | M3 |
 | `internal/cli/factory_stage_dispatch_test.go` (신규) | AC-DSO-009 | M3 |
 | `internal/cli/todo.go` (`add`, :848) + `todo_stage_test.go` (신규) | `--auto-source` 표지와 거절(수동 플래그 파싱) | M3 |
@@ -59,6 +61,7 @@
 ### M1 — 결정 확인 (우선순위 High, 차단 게이트)
 
 - 내용: 결정 행의 `Operator verdict` 가 채워졌는지 읽어 확인한다. M2 를 막는 행은 Q1·Q2·Q5, M3 는 Q3·Q6·Q11·Q14, M4 는 Q9, M5·M6 은 Q7·Q8, M7 은 Q4 다.
+- 순서와 재범위 기록(D3, 1회차 감사 개정): M2 는 Q3·Q4 판정을 기다리지 않고 일곱 단계 모델을 만든다. Q3(b) 판정은 M2 해석기에 `derived` 출처를 더하는 재범위가 되고, Q4(b) 판정은 단계 집합을 줄이는 재범위가 된다. 어느 쪽이든 판정이 M2 뒤에 떨어지면 그 결과를 plan 재개정(재범위 기록)으로 반영해 진행하며, 이미 끝난 마일스톤을 조용히 고치지 않는다.
 - 종료 조건: 해당 마일스톤의 막는 행이 모두 판정을 가진다. 비어 있는 행이 있으면 그 마일스톤은 시작하지 않고 보고한다.
 - 또 하나의 전제: t1882 착지. 착지한 트리에서 research.md L03–L08 의 명령을 다시 실행해 AC-DSO-006–008 의 RED-now 셀을 새 SHA 로 다시 고정한다(verification-completeness §4: 리베이스는 다시 측정하고 다시 고정). Q11 이 이 확인의 결과로 채워진다.
 - RED 단계 없음(문서 확인 마일스톤).
@@ -76,10 +79,10 @@
 - 선행: M2, 결정 Q3·Q6·Q11·Q14, t1882 착지.
 - 요구: REQ-DSO-007–013. 인수 기준: AC-DSO-005–013.
 - RED(커밋 R): 각 게이트 시험은 R 의 트리에서 `EXPECTED_RED`. 기존 `factory_card_pr_test.go` 설비가 기본 수동에서 막히지 않도록 "정책 auto" 준비 코드를 더하는 기대값 변경도 R 에 둔다. 이 변경만으로는 R 에서 기존 시험이 계속 통과해야 한다(준비 코드가 현재 코드에 무해).
-- GREEN: 전달 본체의 네 지점에 판정을 넣는다(`push` 는 전이 앞에서 한 번 더). `laneDispatchSelection`·세션 시작 규칙·인자 없는 `next`, `todo add --auto-source`, 리뷰 게이트의 수리 요청, 전환 기록의 revision 을 구현한다. 문서 Phase 14 를 읽기 동사로 연결한다.
+- GREEN: 전달 본체의 네 지점에 판정을 넣는다(`push` 는 전이 앞에서 한 번 더). `laneDispatchSelection`·세션 시작 규칙·인자 없는 `next` — 게이트는 세 진입(CLI `next`, MCP `factory_next`, `todo --auto-lane`)이 함께 거치는 공유 임대 이음매(`factoryNextLeaseOnceGated`) 한 곳에 둔다 —, `todo add --auto-source`, 리뷰 게이트의 수리 요청, 전환 기록의 revision 을 구현한다. 문서 Phase 14 를 읽기 동사로 연결한다.
 - 종료 명령(패키지별 단일 호출 다섯 개, 자원 규칙 §G). 모든 `-run` 선택자는 이름을 모두 적고 양 끝을 고정한다. 기대값은 최상위 `--- PASS` 줄 수다.
   1. `./internal/config`: `-run '^(TestStagePolicy_NoDirectReaders|TestStagePolicy_NoDirectReaders_FlagsSeededReader)$'` — 2.
-  2. `./internal/cli`: `-run '^(TestFactoryDeliverByPR_PushManualStopsBeforePush|TestFactoryDeliverByPR_PushAutoStillPushes|TestFactoryDeliverByPR_PRManualStopsAfterPush|TestFactoryDeliverByPR_PRAutoWithPushManualRefuses|TestFactoryDeliverByPR_MergeManualRequestsNoAutoMerge|TestFactoryDeliverByPR_MergeAutoPinsVerifiedTip|TestFactoryDeliverByPR_FlipToManualBetweenStepsStopsAtNextBoundary|TestFactoryDeliverByPR_FlipToAutoDoesNotReplayCompletedSteps|TestLaneDispatchSelection_FollowsStagePolicy|TestFactoryNext_BareRefusedWhenDispatchManual|TestFactoryNext_NominatedAllowedWhenDispatchManual|TestTodoAdd_AutoSourceRefusedWhenStageManual|TestTodoAdd_AutoSourceAllowedWhenStageAuto|TestTodoAdd_OperatorAddIsNeverGated|TestReviewGate_RepairManualAllowsWithStateMessage|TestReviewGate_RepairAutoBlocksAsBefore)$'` — 16.
+  2. `./internal/cli`: `-run '^(TestFactoryDeliverByPR_PushManualStopsBeforePush|TestFactoryDeliverByPR_PushAutoStillPushes|TestFactoryDeliverByPR_PRManualStopsAfterPush|TestFactoryDeliverByPR_PRAutoWithPushManualRefuses|TestFactoryDeliverByPR_MergeManualRequestsNoAutoMerge|TestFactoryDeliverByPR_MergeAutoPinsVerifiedTip|TestFactoryDeliverByPR_FlipToManualBetweenStepsStopsAtNextBoundary|TestFactoryDeliverByPR_FlipToAutoDoesNotReplayCompletedSteps|TestLaneDispatchSelection_FollowsStagePolicy|TestFactoryNext_BareRefusedWhenDispatchManual|TestFactoryNext_NominatedAllowedWhenDispatchManual|TestFactoryNext_MCPEntryRefusedWhenDispatchManual|TestFactoryNext_AutoLaneEntryRefusedWhenDispatchManual|TestTodoAdd_AutoSourceRefusedWhenStageManual|TestTodoAdd_AutoSourceAllowedWhenStageAuto|TestTodoAdd_OperatorAddIsNeverGated|TestReviewGate_RepairManualAllowsWithStateMessage|TestReviewGate_RepairAutoBlocksAsBefore)$'` — 18.
   3. `./internal/homestate`: `-run '^TestFactoryTransition_RecordsAuthorizingPolicyRevision$'` — 1.
   4. `./internal/hook`: `-run '^TestSessionStartLaneRule_ManualWhenStageManual$'` — 1.
   5. `./internal/template`: `-run '^TestProjectPhase14_DocGatesCardOnTodoCreationStage$'` — 1.

@@ -1,6 +1,6 @@
 # 결정 색인 — SPEC-DEPLOY-STEP-OPTIN-001
 
-> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행은 Detect → Explain → Ask 를 따르며, 판단이 필요한 행은 선호 답을 싣지 않는다. `Default:` 줄은 게시된 Default 규칙(1 현행 동작 보존, 2 이 SPEC 커밋 하나의 되돌리기, 3 사용자에게 보이는 표면이 작은 것)을 순서대로 적용한 정책 결과이며 추천이 아니다. 규칙이 선택지를 가르지 못하는 행에는 `Default:` 가 없다. 이 색인은 plan 단계(spec v0.1.0)에서 작성되었고 제품 수준 행은 모두 판정이 비어 있다.
+> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행은 Detect → Explain → Ask 를 따르며, 판단이 필요한 행은 선호 답을 싣지 않는다. `Default:` 줄은 게시된 Default 규칙(1 현행 동작 보존, 2 이 SPEC 커밋 하나의 되돌리기, 3 사용자에게 보이는 표면이 작은 것)을 순서대로 적용한 정책 결과이며 추천이 아니다. 규칙이 선택지를 가르지 못하는 행에는 `Default:` 가 없다. 이 색인은 plan 단계(spec v0.1.0)에서 작성되었고 Q1–Q14 의 제품 수준 행은 판정이 비어 있다. Q15 는 1회차 plan-audit 개정(2026-10-19, spec v0.1.1)에서 감사 발견 갈림을 기록하려 더해진 행으로 판정이 채워져 있다.
 
 ## 개요
 
@@ -20,8 +20,9 @@
 | Q12 | 산문 소비자용 해석기 읽기 동사 이름 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
 | Q13 | policy revision 의 형태 | FOUNDER | implementation-level | (a) (rule: 순위 3) | DEFAULT-APPLIED |
 | Q14 | dispatch 단계가 막는 범위 | FOUNDER | product-level | 없음 (규칙이 가르지 못함) | 열림 |
+| Q15 | local override 가 고정한 단계에 대한 웹 저장의 처리 | FOUNDER | product-level | 해당 없음 (감사 발견 갈림) | DECIDED (2026-10-19) |
 
-**런을 막는 행.** M2 를 막는 행: Q1, Q2, Q5. M3 를 막는 행: Q3, Q6, Q11, Q14. M4 를 막는 행: Q9. M5·M6 을 막는 행: Q7, Q8. M7 을 막는 행: Q4. 막는 행의 `Operator verdict` 가 비어 있으면 그 마일스톤의 자율 Kickoff 는 열리지 않고 운영자에게 올라간다.
+**런을 막는 행.** M2 를 막는 행: Q1, Q2, Q5. M3 를 막는 행: Q3, Q6, Q11, Q14. M4 를 막는 행: Q9. M5·M6 을 막는 행: Q7, Q8. M7 을 막는 행: Q4. 막는 행의 `Operator verdict` 가 비어 있으면 그 마일스톤의 자율 Kickoff 는 열리지 않고 운영자에게 올라간다. Q15 는 어떤 마일스톤도 막지 않는다(감사 개정에서 판정됨). M2 와 Q3·Q4 의 순서 관계와 재범위 기록은 plan.md M1 을 본다.
 
 **권한 등록부 검토 결과.** DECIDED 와 POLICY-COVERED 로 라우팅할 수 있는 행이 없다.
 
@@ -211,6 +212,18 @@ Options:
 - (b) 지명까지 막는다. `manual` 이면 레인은 어떤 임대도 스스로 하지 않는다.
 - (c) 세션 시작 규칙과 스탬프만 바꾸고 `moai factory next` 는 그대로 둔다. 안내문만 바뀌고 강제는 없다.
 Operator verdict:
+
+### Q15: local override 가 고정한 단계에 대한 웹 저장은 거부인가 기록인가?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: 없음 (FOUNDER)
+Why recorded: 1회차 plan-audit(FAIL 0.85, `.moai/reports/t1895/plan-audit.md` D1)이 REQ-DSO-016(거부)과 AC-DSO-020(c)(쓰기+알림)이 같은 입력 — local override 가 고정한 단계에 대한 웹 저장 — 에 반대 결과를 요구하는 미표기 갈림을 발견했다. 원래 14행 어디에도 이 갈림을 묻는 행이 없었다.
+Options:
+- (a) 거부한다. 쓰기 없이 거절 응답으로 끝낸다.
+- (b) 쓰고 알린다. project 값만 쓰고 효력은 local 값 그대로이며, 응답과 감사 기록이 `overridden-by-local` 을 알린다.
+Verdict: DECIDED (b) — 쓰기+알림. 판정 경로: 운영자 상시 규칙(이 세션은 Jev 로 판정한다)에 따라 리더 run tn564n 이 중계했다(2026-10-19). Jev 모델 `jev-1.13.0` 의 (b) 답변 확률 0.89. 리더는 개정 전에 1회차 판정문(FAIL)을 통보받았다. 근거: 세 계층 모델에서 project 계층의 쓰기는 local override 를 이길 수 없으므로 never-overwrite 규칙이 보존되고, 거부는 override 해제 뒤 적용될 운영자 의사를 기록하지 못한다. design.md §7 과 AC-DSO-019(즉시 중지의 쓰기+알림)와 같은 규칙이 된다.
+Operator verdict: DECIDED 2026-10-19T12:47:02Z lane-52 manager-spec (plan-audit round-1 revision) — (b) 쓰기+알림; 경로: 운영자 상시 규칙(Jev 판정, 리더 run tn564n 중계 2026-10-19); jev-1.13.0 p=0.89
 
 ---
 

@@ -15,7 +15,7 @@
 | 단계 | 경계(재판정 지점) | 소비자 (이 트리의 호출 지점, 근거) | 거부 시 동작 | 물리적 선행 |
 |---|---|---|---|---|
 | `todo_creation` | 자동 생산자의 카드 생성 요청 | `moai todo add --auto-source <producer>` (새 표지, `add` 는 수동 플래그 파싱 L58, 표지 없음 L57). 호출자: `/moai project` Phase 14 산문 | `refused todo-creation-manual` 한 줄, 큐 불변 | 없음 |
-| `dispatch` | 카드 임대, 레인 시작, 세션 시작 규칙 선택 | `moai factory next`(인자 없음, L45), `laneDispatchSelection`(`factory.go:319-323`, L11), `session_start_factory.go:154`·`factory_card.go:2766`(L46) | 인자 없는 `next` 는 `refused dispatch-manual` 종료 코드 4, `--card` 는 허용(Q14 (a)), 스탬프·규칙은 수동 | 없음 |
+| `dispatch` | 카드 임대, 레인 시작, 세션 시작 규칙 선택 | 공유 임대 이음매 `factoryNextLeaseOnceGated`(`factory_card.go:386`) — CLI `next`(`factory_card.go:1702`, :375 경유), MCP `factory_next`(`mcp_factory_card.go:181`), `todo --auto-lane`(`todo_auto_lane.go:155`, `:166`). 그 외 `laneDispatchSelection`(`factory.go:319-323`, L11), `session_start_factory.go:154`·`factory_card.go:2766`(L46) | 이음매에서 게이트: 인자 없는 `next` 는 `refused dispatch-manual` 종료 코드 4, MCP 진입과 `--auto-lane` 임대는 같은 이음매에서 수동 배차 경로로, `--card` 는 허용(Q14 (a)), 스탬프·규칙은 수동 | 없음 |
 | `push` | 원격 push 직전, 상태 전이 전 | `factory_card_pr.go:395` (L03) | 상태 불변으로 멈춤, 메시지에 단계 이름과 수동 push 방법 | 준비 검사 통과 |
 | `pr_creation` | PR 생성 직전 | `factory_card_pr.go:410` (L03) | push 가 수동이고 원격에 브랜치가 없으면 `push` 를 대며 멈춤. 있으면 PR 없이 멈춤 | 원격 브랜치 |
 | `review_repair` | 턴을 잇는 차단 직전 | `codex_review_gate.go:426` (L52) | 차단 대신 허용, systemMessage 에 상태 이름 `수리 요청 꺼짐` | 검토가 돌았음 |
@@ -87,7 +87,7 @@
 - **스키마.** 일곱 단계를 `workflow` 섹션 아래 닫힌 집합 라디오 필드로 정의한다(`project.continuation` 이 쓰는 `closedSeam` 과 같은 패턴, L16). 영문 옵션 라벨은 그대로 두고 옵션 설명과 영향 설명은 로케일을 따른다.
 - **읽기 모델.** 기존 `SchemaCurrentValues` 는 문자열 스칼라 맵이다(L31). 단계 필드는 이 맵 대신 해석기 출력(`effective`, `source`, `project_value`, `local_value`, `reason`)과 페이지 단위 `revision` 을 담는 별도 뷰 구조로 렌더한다. 화면의 어떤 값도 디스크 스칼라를 직접 읽지 않는다.
 - **표시.** 단계마다 효력, 출처 라벨, override 표시(local 이 project 와 다른 효력을 만들면), 영향 설명(아래), revision. 영향 설명은 "이 단계가 auto 이면 무엇이 사람 확인 없이 일어나는지"와 "수동일 때 대신 무엇을 직접 해야 하는지"를 한 문장씩 담는다. 예: `push` auto — 레인이 준비 검사를 통과한 카드 브랜치를 원격에 올린다 / 수동 — `git push origin <branch>` 를 직접 한다.
-- **저장.** 기존 `POST /save` 흐름에 단계 필드를 더한다. 검증 실패는 기존 방식대로 쓰기를 모두 멈춘다(L28): 단계 값은 닫힌 집합, 중복 필드 거부, 알 수 없는 단계 이름 거부. 쓰기는 project 계층의 한 파일에 대한 YAML 패치(임시 파일 후 rename, L32)이므로 여러 파일에 걸친 부분 실패가 없다. 직렬화는 기존 `saveMu`(L28)가 맡는다.
+- **저장.** 기존 `POST /save` 흐름에 단계 필드를 더한다. 검증 실패는 기존 방식대로 쓰기를 모두 멈춘다(L28): 단계 값은 닫힌 집합, 중복 필드 거부, 알 수 없는 단계 이름 거부. 쓰기는 project 계층의 한 파일에 대한 YAML 패치(임시 파일 후 rename, L32)이므로 여러 파일에 걸친 부분 실패가 없다. 직렬화는 기존 `saveMu`(L28)가 맡는다. local override 가 고정한 단계에 대한 저장은 거부하지 않는다(REQ-DSO-016, 결정 Q15): project 값만 쓰고 효력은 local 이 그대로이며, 응답과 감사 기록이 `overridden-by-local` 을 알린다. 세 계층 모델에서 project 쓰기는 local 을 이길 수 없으므로 never-overwrite 는 보존되고, 거부하면 override 해제 뒤 적용될 운영자 의사가 기록되지 않는다.
 - **응답.** 저장 직후 디스크에서 해석기를 다시 호출해 일곱 단계와 revision 을 응답에 싣는다. 요청 값을 되돌려 주지 않는다.
 - **감사 기록.** 추가 전용 한 줄 JSON(Q10 (a)): `ts`, `channel`(`web`), `actor`(운영체제 사용자), `changes`(단계별 `before`/`after`), `result`(`saved`/`rejected`), `reason`, `revision`. 거부도 기록한다. 단일 `write` 로 줄 하나를 쓴다. 기록 실패는 저장을 막지 않지만 응답 배너에 경고를 싣는다(감사 부재를 침묵시키지 않는다).
 - **즉시 중지.** project 계층의 일곱 단계를 한 번의 YAML 패치로 `manual` 로 쓴다(Q9 (a)). POST 전용 경로를 `routes()` 에 두어 Host·same-origin 미들웨어가 감싸게 한다(L27). local override 가 `auto` 인 단계는 효력이 그대로이며 화면이 그 단계 목록을 알린다.
