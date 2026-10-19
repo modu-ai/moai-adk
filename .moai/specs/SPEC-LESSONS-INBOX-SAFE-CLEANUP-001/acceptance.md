@@ -9,6 +9,7 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 - **Document-level tree pin: `8249bff8c3`** (the base; `git rev-parse --short HEAD` at measurement, ledger EL-B). Source files under test are unchanged between the pin and the measurement; the only untracked files are under this SPEC directory (`repro/`). That pin binds every criterion carrying no pin of its own.
 - RED kinds: **behavioral** (a synthetic fixture shows the defect) and **absent-component** (the component the criterion names does not exist yet; the cell shows the absence and the green path flips it by creating the component). Absent-component RED is lexical by nature; each such criterion therefore also names mutants that a lexical check could not catch.
 - Exit codes of cells that wrap a command in `repro/exit-of.sh` are the wrapper's final `exit=N` line (the single-invocation form forbids `; echo $?`); `git grep` no-match is documented exit 1. `repro/conditions.sh` always exits 0 when the harness completed; the observation lines are the verdict.
+- Failure and race injection uses the named seams of `design.md` §2.6 (`LSEL_HOOK_DIR`), never a patch of an implementation detail. Every GREEN cell that uses a seam asserts `hook_reached=true` (written by the consumer into `hook-trace.log`), so it cannot pass if the seam was not reached. The legacy shim fixtures 6-9 are RED observations of the legacy code only.
 - Fixture root: `mktemp -d` (honours `TMPDIR`); measurements here ran with the plain form and, for the first pass, with `TMPDIR` set to the session scratch directory; outputs are path-free and identical.
 - Go-test green cells require a non-empty swept set: the output must show at least the stated number of `--- PASS` lines and must not show `[no tests to run]` or `[no test files]`.
 - **Closing check names the closing commit, not the base SHA.** At run-phase close each RED cell is re-run at the closing commit (recorded in `progress.md` §E.3 as `closing_commit`) and must show the GREEN output. The base-SHA form in §C is only the labelled RED control.
@@ -19,22 +20,22 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 ### Consumer (M1, M2)
 
 **AC-LIS-001 — Offset beyond the file is a named state, nothing consumed, nothing reset** (REQ-LIS-001, -002) RB
-- Given a checkpoint offset of 5 and an inbox of 3 complete lines (fixture 2), When the consumer runs, then two lines are appended and it runs again (fixture 3), then two more and again (fixture 4), Then every run reports `OFFSET_BEYOND_FILE`, the checkpoint file is byte-unchanged, no clusters file is written, and lines 4-5 are not silently skipped by a later run.
+- Given a checkpoint offset of 5 and an inbox of 3 complete lines (fixture 2), When the consumer runs, then two lines are appended and it runs again (fixture 3), then two more and again (fixture 4), Then every run reports `OFFSET_BEYOND_FILE`, the checkpoint file is byte-unchanged, no clusters file is written, and lines 4-5 are not silently skipped by a later run. The blocked state is persistent: in fixture 4 the inbox (7 lines) has grown past the stored offset (5) and the state is still `OFFSET_BEYOND_FILE`; growth never clears it, only an explicit verified bind does (AC-LIS-020). A legacy checkpoint is adopted only if it was never observed blocked, so the real checkpoint (beyond the file today, EL-R2 context) cannot be adopted when the inbox later passes 23339 rows.
 - RED-now: EL-C02, EL-C03, EL-C04. Red because: the run reports a plain no-op (`status_state=absent`, `read=0`), writes a clusters file that claims `clusters_offset_after=5`, and in fixture 4 lines 4-5 are lost for good (`lines_4_5_key_in_candidates=false`).
-- GREEN (M1): `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/conditions.sh 2` prints `exit=3`, `clusters=absent`, `checkpoint_offset=5`, `status_state=OFFSET_BEYOND_FILE`; fixtures 3 and 4 print the same three state lines (`checkpoint_offset=5`, `clusters=absent` or `n/a (no clusters.json)` for the lines-4-5 row).
-- Mutants that must be rejected: auto-reset to 0 (`checkpoint_offset=0`), reset to the line count (`checkpoint_offset=3`), the current silent no-op (`status_state=absent`). A criterion asserting only `read=0` would pass the silent no-op; the state line is therefore asserted.
+- GREEN (M1): `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/conditions.sh 2` prints `exit=3`, `clusters=absent`, `checkpoint_offset=5`, `status_state=OFFSET_BEYOND_FILE`; fixtures 3 and 4 print the same state lines (`checkpoint_offset=5`, `status_state=OFFSET_BEYOND_FILE`, `clusters=absent`; fixture 4 prints `inbox_lines=7` and `lines_4_5_key_in_candidates=n/a (no clusters.json)`). Fixture 4 is the sequential persistence test: it runs with the file already longer than the offset.
+- Mutants that must be rejected: auto-reset to 0 (`checkpoint_offset=0`), reset to the line count (`checkpoint_offset=3`), the current silent no-op (`status_state=absent`), and **adopt-after-observation** — a consumer that treats a beyond-file checkpoint as a plain legacy checkpoint once the file is long enough (fixture 4 would print `status_state=OK` with `checkpoint_offset=7` and rows 4-5 skipped, i.e. the RED defect itself). A criterion asserting only `read=0` would pass the silent no-op; the state line is therefore asserted.
 
-**AC-LIS-002 — One fixed boundary: rows clustered equal the offset advance** (REQ-LIS-003) RB
-- Given a consumer that counts lines and then reads, When a row is appended between the count and the read (fixture 6, deterministic shim) or while repeated drains run under a continuous appender (fixture 11), Then the number of rows clustered equals the saved offset, and no row is read twice or skipped.
-- RED-now: EL-C06 (`read=3`, `checkpoint_offset=2`), EL-C07 (`run2_read=1`, `run2_singletons_discarded=1`: the last row re-read and dropped), EL-C11 (`sum_read=233` against 220 final lines, `invariant_sum_eq_offset_eq_lines=false`; two further runs gave 232 and 233, all red). Red because the count and the read are two separate opens.
-- GREEN (M1): fixture 6 `run1_read` equals `run1_checkpoint_offset`; fixture 7 `run2_singletons_discarded=0` and `run1_read + run2_read` equals `run2_checkpoint_offset`; fixture 11 prints `invariant_sum_eq_offset_eq_lines=true` on three consecutive runs.
-- Mutant: keep the separate count (offset 2 with read 3, caught by fixture 6); take a snapshot but compute the offset from a second count (caught by fixture 11, which does not depend on which tool the implementation uses).
+**AC-LIS-002 — One fixed boundary; GENERATION_CHANGED and NOOP_AT_TAIL are asserted outputs** (REQ-LIS-003, REQ-LIS-001) RB
+- Given a consumer that reads the inbox, When a row is appended right after the snapshot copy (fixture 13, through the `after-snapshot-copy` seam), or repeated drains run under a continuous appender (fixture 11), Then the number of rows clustered equals the saved offset and no row is read twice or skipped: the appended row is not in run 1 and is read exactly once by run 2. When the inbox file is swapped between the copy and the post-check (fixture 16), Then the run reports `GENERATION_CHANGED`, commits nothing, and the checkpoint and clusters stay as before. When a lineage-verified inbox is fully drained and drained again (fixture 17), Then the second run reports `NOOP_AT_TAIL`.
+- RED-now: EL-C06 (`read=3`, `checkpoint_offset=2`), EL-C07 (`run2_read=1`, `run2_singletons_discarded=1`: the last row re-read and dropped), EL-C11 (`sum_read=233` against 220 final lines, `invariant_sum_eq_offset_eq_lines=false`; two further runs gave 232 and 233, a later audit run 234, all red). Red because the count and the read are two separate opens. Fixtures 6 and 7 are RED observations of the legacy code only: their `wc` shim cannot fire in a conforming implementation, so they are never a GREEN cell. Fixtures 13, 16 and 17 are RED on this tree for the stated reason that the seam and the states do not exist: EL-C13 `run1_hook_reached=false`, EL-C16 `hook_reached=false` and `status_state=absent`, EL-C17 `run2_status_state=absent`.
+- GREEN (M1), non-vacuous by construction: fixture 13 prints `run1_hook_reached=true`, `run1_read=2`, `run1_checkpoint_offset=2`, `run2_read=1`, `run2_checkpoint_offset=3`, `inbox_lines=3` (the third row appeared during the run, because the seam fired, and was consumed exactly once); fixture 11 prints `invariant_sum_eq_offset_eq_lines=true` on three consecutive runs; fixture 16 prints `hook_reached=true`, `status_state=GENERATION_CHANGED`, `checkpoint_offset=3` and `swapped_file_keys_in_candidates=false`; fixture 17 prints `run1_status_state=OK` and `run2_status_state=NOOP_AT_TAIL`.
+- Mutants: keep the separate count (offset 2 with read 3; caught by fixture 11 and by the seam fixture 13, whose `run1_read` would differ from `run1_checkpoint_offset`); snapshot but compute the offset from a second count (fixture 11); skip the post-read generation check and consume the torn snapshot (fixture 16 prints `status_state=OK` and `swapped_file_keys_in_candidates=true`); report `NOOP_AT_TAIL` for a mismatching lineage (fixtures 2 and 10 print the mismatch states, never NOOP_AT_TAIL). A consumer that never reaches the seam is rejected by `hook_reached=true`. The consumer-versus-replacer half of the lock contract is exercised by fixture 16 (a swap during the read) and by the Go case in AC-LIS-017 (a consumer snapshot overlapping a real cutover).
 
-**AC-LIS-003 — Clusters and checkpoint commit as one pair; an interruption never leaves a zero-byte or half-advanced state** (REQ-LIS-005) RB
-- Given a checkpoint write that fails after the clusters were produced (fixture 8), and an interruption injected at each step of the commit, Then no zero-byte final file exists, the checkpoint does not advance past clusters it does not describe, the next run finishes or abandons the pair deterministically, and `consumer-status.json` says `COMMIT_FAILED` for the failed run.
-- RED-now: EL-C08. Red because: `run1_checkpoint=EMPTY-FILE`, `run1_read=3` is recorded in clusters while the checkpoint still is 0 bytes, and the wrapper hid it with exit 0.
-- GREEN (M2): fixture 8 prints no `EMPTY-FILE`, `run1_status_state=COMMIT_FAILED`, `run1_checkpoint_bytes` is not `0` or the checkpoint is `absent`, and `run1_clusters` does not claim a read the checkpoint lacks (`run1_clusters=absent`); the named crash-matrix test in `session_drain_test.sh` (`commit_crash_matrix`) injects a failure at each of at least 6 enumerated boundaries and prints `ok` for each, with the final state either wholly old or wholly new.
-- Mutants: write the checkpoint before the clusters (a boundary case leaves the checkpoint ahead); skip the verification step (a malformed temporary is renamed into place); redirect straight over the final file (the current behavior, caught by fixture 8).
+**AC-LIS-003 — Clusters and checkpoint commit as one pair; at every crash point the manifest decides and the pair is wholly old or wholly new before anything is consumed** (REQ-LIS-005) RB
+- Given a failure injected at the rename boundary (fixture 14) and a SIGKILL of the consumer at each of five named points (fixture 15: `temps-written`, `after-prepared`, `between-renames`, `after-renames`, `after-committed`), Then no zero-byte final file exists, the checkpoint is never ahead of the clusters it describes in any interrupted state, a non-crash failure reports `COMMIT_FAILED` and restores the previous pair, and the next clean run completes or restores the pair per the recovery table of `design.md` §2.4 and ends with a coherent pair at offset 3.
+- RED-now: EL-C08 (legacy behavior: `run1_checkpoint=EMPTY-FILE` while `run1_read=3` is recorded in clusters, wrapper exit 0 hiding it) and EL-C14, EL-C15 (the seam is absent: `hook_reached=false` and `crash_hook_reached=false`, so a conforming implementation cannot pass without reaching the seam). Fixtures 8 and 9 inject by matching the legacy `jq` program text and are RED observations only; they are not GREEN cells.
+- GREEN (M2): fixture 14 prints `hook_reached=true`, `status_state=COMMIT_FAILED`, `checkpoint_zero_byte=false`, `checkpoint_ahead_of_clusters=false`, `zero_byte_final=false` and, after the failure, `clusters_offset=absent` with `checkpoint_offset=absent` (previous pair restored; no prior pair existed). Fixture 15 prints for each of the five points `crash_hook_reached=true`, `crash_zero_byte_final=false`, `crash_checkpoint_ahead_of_clusters=false`, and after the recovery run `recovered_pair_consistent=true`, `recovered_checkpoint_offset=3`, `recovered_zero_byte_final=false`, `recovered_rows_accounted=true`; at `between-renames` the crash state itself is `crash_clusters_offset=3` with `crash_checkpoint_offset=absent` (the checkpoint behind the clusters, never ahead), and the recovery rolls forward. The five-point matrix passes only if all five lines of each block hold.
+- Mutants: write the checkpoint before the clusters (`crash_checkpoint_ahead_of_clusters=true` at `between-renames`); roll back after the first rename without restoring the clusters (the `between-renames` block ends with clusters ahead and checkpoint behind, `recovered_pair_consistent=false`); skip the verification step (a malformed temporary is renamed into place; `crash_zero_byte_final=true` or a failed recovery); redirect straight over the final file (the legacy behavior, caught by EL-C08's shape in fixture 14: `zero_byte_final=true`).
 
 **AC-LIS-004 — An empty or unparseable checkpoint is a named state and destroys nothing** (REQ-LIS-006) RB
 - Given staged candidates in `clusters.json` and a checkpoint that became a zero-byte file (fixture 12), When the consumer runs with one new row, Then the state is `CHECKPOINT_CORRUPT`, `clusters.json` is byte-identical to before, and the previous committed checkpoint is available as a restorable copy.
@@ -51,7 +52,7 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 **AC-LIS-006 — A replaced file of at least the checkpoint length is detected as a different lineage; a legacy checkpoint is adopted once, flagged** (REQ-LIS-004) RB
 - Given a checkpoint taken against file A and the inbox replaced by a different file B with at least as many lines (fixture 10), Then the consumer reports `LINEAGE_MISMATCH` and consumes nothing; Given a legacy offset-only checkpoint within the file, the consumer adopts it once, records `checkpoint_unverified: true` in the status record, and binds the lineage.
 - RED-now: EL-C10. Red because: `run2_read=2` from the new file, `run2_candidate_keys` holds the new file's key, `run2_lineage_check=none-performed`.
-- GREEN (M1): fixture 10 prints `run2_status_state=LINEAGE_MISMATCH`, `run2_checkpoint_offset=3`, and `run2_candidate_keys` still equals run 1's (the new file's key `tool_failure:Write:PermissionDenied` absent); the test `legacy_v1_adopt` prints `ok` and the status record contains `"checkpoint_unverified":true` once, then `false`.
+- GREEN (M1): fixture 10 prints `run2_status_state=LINEAGE_MISMATCH`, `run2_checkpoint_offset=3`, and `run2_candidate_keys` still equals run 1's (the new file's key `tool_failure:Write:PermissionDenied` absent); the test `legacy_v1_adopt` prints `ok` and the status record contains `"checkpoint_unverified":true` once, then `false`; the test `no_adopt_after_blocked` (a checkpoint recorded OFFSET_BEYOND_FILE, then the file grown past the offset, then a run) prints `ok` with the state still blocked and the checkpoint unchanged.
 - Mutants: compare only line counts (fixture 10 alone does not kill it when B is longer, so the test `lineage_window_swap` uses a file B that shares A's first line and length but differs in the last window and must report the mismatch); compare only the first line (killed by that same case, because B shares A's first line).
 
 ### Identity and shared lock (M3)
@@ -64,15 +65,15 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 
 **AC-LIS-008 — Every legacy row has a deterministic identity; same-content rows stay distinct** (REQ-LIS-009) RB
 - Given a frozen file with byte-identical rows at different positions, When the manifest is built twice, Then identities are equal across builds, pairwise distinct across the identical rows, and the row count equals the line count.
-- RED-now: EL-R2 (real read-only: `with_id` 0, `distinct_row_bytes` below `rows`, so byte-identical duplicates exist and nothing distinguishes them); absent-component for the manifest.
+- RED-now: EL-D11 (`ls internal/inboxsafe` exits 1: the package that builds the manifest does not exist; absent-component, and it flips when M3 creates the package). The real-data counts of EL-R2 (`with_id` 0, `distinct_row_bytes` below `rows`: byte-identical duplicate rows exist and nothing distinguishes them) are context for why the criterion matters, not a cell: old rows are immutable by design (REQ-LIS-008), so that observation never flips and is not used as a RED.
 - GREEN (M3): `go test -v -run '^TestInboxSafe_Manifest$' ./internal/inboxsafe/...` shows at least 3 `--- PASS`.
 - Mutant: identity = row hash only (merges the duplicates; the distinctness case fails).
 
 **AC-LIS-009 — The producer loses no event and does not block while an exclusive replacer holds the lock** (REQ-LIS-010) RB
-- Given an exclusive holder, When producers append, Then each producer returns within the fixed bound, the events are held in a spool, and after the holder releases every event is present exactly once in the new generation.
-- RED-now: EL-R3 (no lock token in the producer path, exit 1); absent-component.
-- GREEN (M3): `go test -v -run '^TestInboxSafe_ProducerSpool$' ./internal/inboxsafe/...` shows at least 3 `--- PASS` (no loss, bound honoured, exactly once).
-- Mutant: producer blocks until release (the bound case fails); producer drops on contention (the no-loss case fails); spool merged twice (the exactly-once case fails).
+- Given an exclusive holder, When producers append, Then each producer returns within the fixed bound, the events are held in a spool, and after the holder releases every event is present exactly once. Given a producer that waits for the lock and is released by a gate in the lock helper exactly between the replacer's final spool merge and its release (the deterministic race), Then its event is written to a fresh spool after the atomic close, is not stranded, and is merged exactly once by the next lock holder. Given the lock and spool paths the code uses, Then the repository `.gitignore` and the distributed template `.gitignore` both ignore them.
+- RED-now: EL-R3 (no lock token in the producer path, exit 1) and EL-D10 (a spool or lock placed beside the inbox is matched by no ignore rule: `git check-ignore -v` exits 1); absent-component for the lock/spool, behavioral for the ignore hazard.
+- GREEN (M3): `go test -v -run '^TestInboxSafe_ProducerSpool$' ./internal/inboxsafe/...` shows at least 5 `--- PASS` (no loss, bound honoured, exactly once, after-final-merge handoff through the gate, closed-spool recovery after a crash between close and merge); `go test -v -run '^TestTemplateGitignoreIgnoresLocalArtifacts$' ./internal/template/...` shows `--- PASS` with the two new rows (path constants of `internal/inboxsafe`) present in its table, and `git check-ignore -v` on both paths exits 0.
+- Mutants: producer blocks until release (the bound case fails); producer drops on contention (the no-loss case fails); spool merged twice (the exactly-once case fails); replacer releases without a final merge or closes the spool before the last merge (the after-final-merge case fails: the event is stranded or duplicated); lock/spool constants pointing beside the inbox (the extended gitignore test fails).
 
 **AC-LIS-010 — Rotation runs under the same exclusive lock with unchanged policy** (REQ-LIS-011) RB
 - Given appenders racing a rotation, When the chain rotates, Then no appended row is lost across the rename, and the generation count and size cap are as before.
@@ -103,8 +104,8 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 **AC-LIS-020 — The bind primitive accepts explicit verified values only** (REQ-LIS-020) RB
 - Given a file and a claimed generation, offset, and window hash, When the bind runs, Then it succeeds only if all three verify, writes atomically, and any call without explicit values or with a reset-style flag is refused.
 - RED-now: EL-R6 (no `checkpoint` verb); absent-component.
-- GREEN (M4): `go test -v -run '^TestInboxSafe_Bind$' ./internal/cli/...` at least 4 `--- PASS` (verified bind; wrong window refused; missing value refused; `--reset`/`--to-tail` unknown flag refused).
-- Mutant: a default offset of 0 when none is given (the missing-value case fails).
+- GREEN (M4): `go test -v -run '^TestInboxSafe_Bind$' ./internal/cli/...` at least 5 `--- PASS` (verified bind; wrong window refused; missing value refused; `--reset`/`--to-tail` unknown flag refused; a verified bind removes the persistent blocked record in the same atomic step, and nothing else — file growth, a later consumer run — clears it).
+- Mutants: a default offset of 0 when none is given (the missing-value case fails); a bind that leaves the blocked record in place (the next consumer run stays blocked after a verified bind); a consumer path that clears the blocked record on its own (the growth case fails).
 
 ### Proof, archive, cutover, ledger (M5)
 
@@ -129,7 +130,7 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 **AC-LIS-017 — Cutover is atomic, appends survive it, the checkpoint is mapped exactly or preserved** (REQ-LIS-019) RB
 - Given producers appending during a cutover, When it completes, Then every appended row is present once in order, the live path never shows a partial file, the verified checkpoint advances by exactly the number of removed rows before it (and the next consumer run neither re-reads nor skips), and a checkpoint in a mismatch state is preserved verbatim with the state still reported.
 - RED-now: EL-R6 (no `cutover` verb); absent-component.
-- GREEN (M5): `go test -v -run '^TestInboxSafe_Cutover$' ./internal/inboxsafe/...` at least 5 `--- PASS`.
+- GREEN (M5): `go test -v -run '^TestInboxSafe_Cutover$' ./internal/inboxsafe/...` at least 6 `--- PASS`, including the case that a consumer snapshot overlapping the cutover (triggered through the consumer seam `after-snapshot-copy`) ends `GENERATION_CHANGED` with nothing committed.
 - Mutant: remap by percentage or by clamping to the new length (the exact-mapping case fails); cutover that resets a mismatching checkpoint (the preserved-verbatim case fails).
 
 **AC-LIS-018 — Any failure rolls back to the old generation byte-identical** (REQ-LIS-019) RB
@@ -141,7 +142,7 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 **AC-LIS-019 — The three forbidden patterns are guarded** (REQ-LIS-022) RB
 - Given the tooling, Then (a) no code path truncates the inbox using a checkpoint value, (b) no code path unlinks an inbox row source, the backed-up original, or the archive (the only permitted removal is the superseded temporary file of the same operation), (c) the tooling output never contains a whole-log validity verdict and unparseable rows are counted individually and preserved.
 - RED-now: EL-R7 (no `TestInboxSafe_` tests exist, exit 1); absent-component.
-- GREEN (M5): `go test -v -run '^TestInboxSafe_Forbidden$' ./internal/inboxsafe/...` at least 3 `--- PASS`: a behavioral case per pattern plus a source scan that fails on `os.Remove`/`os.Truncate`/`> $INBOX` outside the allowlisted temporary-file cleanup.
+- GREEN (M5): `go test -v -run '^TestInboxSafe_Forbidden$' ./internal/inboxsafe/...` at least 3 `--- PASS`: a behavioral case per pattern plus a source scan that fails on `os.Remove`, `os.RemoveAll`, `os.Truncate`, `O_TRUNC`, a shell `>` or `: >` redirect onto the inbox or checkpoint path, and a rename over the original generation outside the cutover, anywhere outside the allowlisted temporary-file cleanup.
 - Named mutants (each must fail its case): `truncate-with-old-offset` (an implementation that truncates the inbox to the checkpoint offset), `delete-original` (an implementation that unlinks the backup after a successful cutover), `whole-log-invalid` (a report field `log_valid:false` after one bad row).
 
 **AC-LIS-021 — The ledger is append-only, hash-chained, and gives every removed item a resolvable trail** (REQ-LIS-021) RB
@@ -151,10 +152,10 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 - Mutant: an unchained ledger (the tamper case fails).
 
 **AC-LIS-024 — A pinned item stays active until its dependencies have landed and been independently verified** (REQ-LIS-016) RB
-- Given a synthetic item standing for the PR1841 case (a premerge-review violation resolved only by a guideline card and a code-gate card) with those two dependencies unlanded or unverified, When the proof gate and the cutover run, Then the item is reported `PINNED_UNPROCESSED`, is excluded from the removal set, stays in the active generation, and a ledger entry records the pin with its dependency list. When only one dependency is landed and verified, it is still pinned. When both are landed and verified (commit reachable, verification record resolves), it becomes eligible.
-- RED-now: EL-R10 (no pin concept in the inbox CLI, exit 1); absent-component.
-- GREEN (M5): `go test -v -run '^TestInboxSafe_Pin$' ./internal/inboxsafe/...` at least 4 `--- PASS` (neither landed; one landed; both landed but one unverified; both landed and verified).
-- **Named mutant `remove-before-t1900-t1868`:** a removal criterion that ignores the dependency list (or treats a landed-but-unverified dependency as satisfied) removes the item before both are verified; the case "both landed, one unverified" must fail for it. This is the PR1841 worked example (`design.md` §6).
+- Given a synthetic item standing for the PR1841 case (a premerge-review violation resolved only by a guideline card and a code-gate card) with those two dependencies unlanded or unverified, When the proof gate and the cutover run, Then the item is reported `PINNED_UNPROCESSED`, is excluded from the removal set, stays in the active generation, and a ledger entry records the pin with its dependency list. When only one dependency is satisfied, it is still pinned. It becomes eligible only when, for each of t1900 and t1868, all five checks of `design.md` §6 hold: a landing commit carrying the card id is reachable from the cutover base; the verification record names that same commit; its verdict is `pass` (and `verified:true` for an apply-ledger-style row); its verifier differs from the author of the commit and from the card's own self-check; its artifact exists and re-hashes to the recorded value.
+- RED-now: EL-R10 (no pin concept in the inbox CLI or package, exit 1); absent-component.
+- GREEN (M5): `go test -v -run '^TestInboxSafe_Pin$' ./internal/inboxsafe/...` at least 9 `--- PASS`, one per case: neither landed; one landed and verified, one not landed; both landed, one with no verification record; both landed, one record with a failing verdict (`verified:false`); both landed, one record for a different commit than the landing commit; both landed, one record that is the card's own self-check or names the commit author as verifier; both landed, one record whose artifact hash does not match; both landed and every check passing (eligible); and the pin survives a hand-edited recorded state `independently_verified`.
+- **Named mutant `remove-before-t1900-t1868`** and its bypass family, each of which must fail its own case: ignore `requires` entirely; accept landed-but-unverified; accept a failing verdict; accept a record for another commit; accept the card's own self-check as independent verification; accept a record whose artifact hash mismatches; release on a hand-edited state. This is the PR1841 worked example (`design.md` §6).
 
 ### Proof runs (M6, M7)
 
@@ -165,10 +166,11 @@ Verification layer. Requirement obligations (GEARS) live in `spec.md` §2; this 
 - Mutant: a proof gate that accepts the item with `verified:false` in the apply ledger (the preserved-failed case fails).
 
 **AC-LIS-023 — Real safe path: gated steps, zero removal is a valid result, live files keep their frozen prefix** (REQ-LIS-024) RB
-- Given the real inbox and checkpoint, When steps R0-R3 run (and R4-R5 only if the removal set is non-empty), Then each step leaves its evidence file, the frozen copy's hash equals the hash of the live file's first N bytes after every step, the live checkpoint is byte-identical to its frozen copy unless a verified mapping was applied, and the recorded outcome states the number of removed items (which may be 0) with the evidence behind each preserved state.
+- Given the real inbox and checkpoint, When steps R0-R3b run (and R4-R5's cutover branch only if the removal set is non-empty), Then each step leaves its evidence file and refuses to start without the previous step's ledger row; the PR1841 case is recorded as a pinned item in the provenance ledger (step R3b, before any cutover) citing the re-hashed sha256 of the two case files; and the recorded outcome states the number of removed items (which may be 0) with the evidence behind each preserved state. Verification at R5 depends on the run: **no cutover occurred** (zero removals, the expected outcome) — the first N bytes of the live inbox hash to the frozen copy's recorded hash and the live checkpoint is byte-identical to its frozen copy; **a cutover occurred** — the multiset equation (before plus appended equals new active plus archive plus pending spool) holds, the new generation's sha256 equals the commit manifest's, the archive row count and hash equal the ledger's, and the checkpoint is either exactly mapped or preserved verbatim; the prefix-byte check is not applied after a cutover because removing rows legitimately changes the prefix.
 - RED-now: EL-R9 (the cleanup state directory does not exist, exit 1); absent-component. Real-state context: EL-R11 (the primary LSEL state holds no proposals directory and no apply ledger).
-- GREEN (M7): `r5-post.md` records, via the tool's `verify` output, `prefix_hash_equal: true`, `checkpoint_equal_or_mapped: true`, `ledger_chain: ok`, `removed_items: <n>` with `n` equal to the cutover record (or `zero_removal`).
-- Mutants: a run that writes the live inbox before the frozen copy is verified (the ordering is witnessed by separate commits of the evidence files and the ledger sequence, verification-claim-integrity §2.3); a cutover performed with an empty removal set.
+- GREEN (M7): `r5-post.md` records, via the tool's `verify` output, `mode: no_cutover` with `prefix_hash_equal: true` and `checkpoint_byte_identical: true`, or `mode: cutover` with `equation_balanced: true`, `generation_hash_matches_manifest: true`, `archive_count_matches_ledger: true`, `checkpoint_mapped_or_preserved: true`; in both modes `ledger_chain: ok`, `pin_recorded: true` (R3b, with the two case-file hashes equal to `spec.md` §1.2) and `removed_items: <n>` equal to the cutover record (or `zero_removal`).
+- Ordering witness (verification-claim-integrity §2.3): `.moai/reports/` and `.moai/state/` are gitignored, so the commit graph cannot witness the real-world order of real steps from them. The criterion therefore claims only what can be verified: (1) mechanically, each step refuses to start without the previous step's ledger row with its hash (freeze before inventory, archive before cutover); (2) in the tracked record, after each step the lane commits one `progress.md` §E.2 line (step id, evidence-file sha256, ledger sequence number) in its own commit, and the closing check reads the graph order of those commits (`git log --format=%H -- progress.md`, one commit per step, in step order).
+- Mutants: a run that writes the live inbox before the frozen copy is verified (the mechanical refusal fails it: the freeze row is absent); a step record committed together with the next step's record (the graph shows two steps in one commit; the closing check fails); a cutover performed with an empty removal set; applying the prefix-byte check after a non-empty cutover (a correct run would fail it — the criterion forbids this form); a R3b that pins from a case file whose hash differs from `spec.md` §1.2 without recording `evidence_missing`.
 
 ## §C Evidence ledger (RED-now observations)
 
@@ -394,14 +396,112 @@ clusters_unchanged_across_run2=false
 clusters_bytes_after_run2=0
 ```
 
-**EL-L** — `jq -s -c '{n: length, categories: (group_by(.event_key | split(":") | last) | map({k: (.[0].event_key | split(":") | last), n: length}) | sort_by(-.n)), kinds: (group_by(.event_key | split(":") | first) | map({k: (.[0].event_key | split(":") | first), n: length})), ts_min: (map(.timestamp) | min), ts_max: (map(.timestamp) | max)}' <real inbox, read-only>`, exit 0:
+**EL-C13** (seam race; RED because the seam does not exist) — `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/conditions.sh 13`, exit 0:
+```
+condition=13
+run1_hook_reached=false
+run1_read=2
+run1_clusters_offset=2
+run1_checkpoint_offset=2
+run1_pair_consistent=true
+run1_checkpoint_ahead_of_clusters=false
+run1_zero_byte_final=false
+run2_read=0
+run2_clusters_offset=2
+run2_checkpoint_offset=2
+run2_pair_consistent=true
+run2_checkpoint_ahead_of_clusters=false
+run2_zero_byte_final=false
+run2_status_state=absent
+inbox_lines=2
+```
+
+**EL-C14** (commit failure through the seam; RED because the seam does not exist) — `... conditions.sh 14`, exit 0:
+```
+condition=14
+hook_reached=false
+wrapper_exit=0
+clusters_offset=3
+checkpoint_offset=3
+pair_consistent=true
+checkpoint_ahead_of_clusters=false
+zero_byte_final=false
+status_state=absent
+checkpoint_zero_byte=false
+```
+
+**EL-C15** (crash matrix; one of five points shown — the other four, `temps-written`, `after-prepared`, `after-renames`, `after-committed`, printed the identical block on this tree) — `... conditions.sh 15 between-renames`, exit 0:
+```
+condition=15
+crash_hook_reached=false
+crash_clusters_offset=3
+crash_checkpoint_offset=3
+crash_pair_consistent=true
+crash_checkpoint_ahead_of_clusters=false
+crash_zero_byte_final=false
+recovered_clusters_offset=3
+recovered_checkpoint_offset=3
+recovered_pair_consistent=true
+recovered_checkpoint_ahead_of_clusters=false
+recovered_zero_byte_final=false
+recovered_status_state=absent
+recovered_rows_accounted=true
+```
+
+**EL-C16** (swap during read; RED because neither the seam nor `GENERATION_CHANGED` exists) — `... conditions.sh 16`, exit 0:
+```
+condition=16
+hook_reached=false
+status_state=absent
+clusters_offset=5
+checkpoint_offset=5
+pair_consistent=true
+checkpoint_ahead_of_clusters=false
+zero_byte_final=false
+swapped_file_keys_in_candidates=false
+```
+
+**EL-C17** (`NOOP_AT_TAIL`; RED because the state does not exist) — `... conditions.sh 17`, exit 0:
+```
+condition=17
+run1_exit=0
+run1_read=3
+run1_candidates=1
+run1_candidate_keys=["tool_failure:Bash:ExitError"]
+run1_singletons_discarded=0
+run1_clusters_offset_after=3
+run1_checkpoint_offset=3
+run1_status_state=absent
+run1_inbox_lines=3
+run1_stderr=drain: read 3 stubs (offset 0→3) — discarded 0 noise + 0 singletons; 1 candidate cluster(s) emitted to clusters.json|
+run2_exit=0
+run2_read=0
+run2_candidates=0
+run2_candidate_keys=[]
+run2_singletons_discarded=0
+run2_clusters_offset_after=3
+run2_checkpoint_offset=3
+run2_status_state=absent
+run2_inbox_lines=3
+run2_stderr=drain: no-op (offset=3, inbox=3 lines) — nothing new to drain|
+```
+
+**EL-D10** (a lock or spool placed beside the inbox is unignored) — `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/exit-of.sh git check-ignore -v .moai/lessons-inbox.lock .moai/lessons-inbox.spool.jsonl`: stdout `exit=1` (no ignore rule matches either path). Supporting reads: `git grep -n lessons-inbox -- .gitignore internal/template/templates/.gitignore` printed `.gitignore:311:.moai/lessons-inbox.jsonl` and `internal/template/templates/.gitignore:302:.moai/lessons-inbox.jsonl`; `git check-ignore -v .moai/state/lessons-cleanup/ledger.jsonl` printed `.gitignore:401:.moai/state/`; `git grep -n -E "^\.moai/state/" -- internal/template/templates/.gitignore` printed `242:.moai/state/`.
+
+**EL-D11** (the package that builds the manifest is absent) — `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/exit-of.sh ls internal/inboxsafe`:
+```
+ls: internal/inboxsafe: No such file or directory
+exit=1
+```
+
+**EL-L** — `jq -s -c '{n: length, categories: (group_by(.event_key | split(":") | last) | map({k: (.[0].event_key | split(":") | last), n: length}) | sort_by(-.n)), kinds: (group_by(.event_key | split(":") | first) | map({k: (.[0].event_key | split(":") | first), n: length})), ts_min: (map(.timestamp) | min), ts_max: (map(.timestamp) | max)}' /Users/goos/MoAI/moai-adk-go/.moai/lessons-inbox.jsonl` (read-only), exit 0:
 ```
 {"n":23047,"categories":[{"k":"UnknownFailure","n":13778},{"k":"WorktreeGuardRefusal","n":8435},{"k":"TimeoutError","n":210},{"k":"OOMKilled","n":183},{"k":"ExitError","n":148},{"k":"SandboxViolation","n":130},{"k":"PermissionDenied","n":113},{"k":"ContextCancelled","n":50}],"kinds":[{"k":"tool_failure","n":23047}],"ts_min":"2026-07-10T09:43:18Z","ts_max":"2026-10-19T05:20:37Z"}
 ```
 
 **EL-R1** — `bash .moai/specs/SPEC-LESSONS-INBOX-SAFE-CLEANUP-001/repro/exit-of.sh git grep --count json:.id. -- internal/hook/failure_observer.go`: stdout `exit=1`.
 
-**EL-R2** — `jq -s -c '{rows: length, with_id: (map(select(has("id"))) | length), distinct_row_bytes: (map(tojson) | unique | length)}' <real inbox, read-only>`, exit 0 (the harness surfaced no error):
+**EL-R2** — `jq -s -c '{rows: length, with_id: (map(select(has("id"))) | length), distinct_row_bytes: (map(tojson) | unique | length)}' /Users/goos/MoAI/moai-adk-go/.moai/lessons-inbox.jsonl` (read-only), exit 0 (the harness surfaced no error):
 ```
 {"rows":23051,"with_id":0,"distinct_row_bytes":22667}
 ```
@@ -414,9 +514,9 @@ internal/hook/inbox_lifecycle.go:136:	if err := os.Rename(inboxPath, inboxGenPat
 exit=0
 ```
 
-**EL-R5** — `bash .../repro/exit-of.sh git grep -n -i classif -- internal/cli/inbox.go`: stdout `exit=1`.
+**EL-R5** — `bash .../repro/exit-of.sh git grep -n -i classif -- internal/cli/inbox.go internal/cli/inbox_*.go internal/inboxsafe`: stdout `exit=1`.
 
-**EL-R6** — `bash .../repro/exit-of.sh git grep --count -E "Use:[[:space:]]+.(backup|inventory|prove|archive|cutover|rollback|ledger|checkpoint)." -- internal/cli/inbox.go`: stdout `exit=1`.
+**EL-R6** — `bash .../repro/exit-of.sh git grep --count -E "Use:[[:space:]]+.(backup|inventory|classify|prove|archive|cutover|rollback|ledger|checkpoint|pin)." -- internal/cli/inbox.go internal/cli/inbox_*.go internal/inboxsafe`: stdout `exit=1`.
 
 **EL-R7** — `bash .../repro/exit-of.sh git grep --count TestInboxSafe_ -- internal`: stdout `exit=1`.
 
@@ -433,7 +533,7 @@ ls: /Users/goos/MoAI/moai-adk-go/.moai/state/lessons-cleanup: No such file or di
 exit=1
 ```
 
-**EL-R10** — `bash .../repro/exit-of.sh git grep --count -i pinned -- internal/cli/inbox.go`: stdout `exit=1`.
+**EL-R10** — `bash .../repro/exit-of.sh git grep --count -i pinned -- internal/cli/inbox.go internal/cli/inbox_*.go internal/inboxsafe`: stdout `exit=1`.
 
 **EL-R11** — `bash .../repro/exit-of.sh find /Users/goos/MoAI/moai-adk-go/.moai/state/lsel -maxdepth 1` (read-only), exit 0 wrapper-recorded:
 ```
@@ -505,5 +605,5 @@ exit=0
 - Tested: changed Go packages at or above 85% statement coverage (`go test -cover` scoped to the touched packages); every cell above quoted verbatim in the run-phase `progress.md` §E.2.
 - Readable/Unified: gofmt clean; `golangci-lint run --timeout=2m` baseline-only on the touched packages; shell passes `bash -n` and `shellcheck` where installed.
 - Secured: backups and ledger owner-only; no secret is written; row text (up to 200 runes of raw failure output) is never copied into reports, only counts, hashes, and identities.
-- Trackable: conventional commits with card id t1901 in every message; evidence files and ledger committed separately from the implementation they measure (ordering attribution).
+- Trackable: conventional commits with card id t1901 in every message; the tracked baselines and step records (`progress.md` §E.2 lines, RED observations) are committed separately from the implementation they measure, in the order the claim needs (verification-claim-integrity §2.3). The gitignored evidence files and the ledger cannot witness order in the commit graph; they are cited by sha256 from the tracked records.
 - Done when: all 24 criteria are green at the closing commit; RG-1..3 hold; R5 evidence exists; the real-path outcome is recorded as either a verified cutover or `zero_removal`; the provenance ledger verifies; `decision-index.md` has no open row that blocks the autonomous Kickoff.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# conditions.sh <N> — synthetic reproduction of drain failure condition N (1..12) on the LSEL drain pair
+# conditions.sh <N> — synthetic reproduction of drain failure condition N (1..17) on the LSEL drain pair
 # (drain.sh + session_drain.sh). SPEC-LESSONS-INBOX-SAFE-CLEANUP-001 RED/GREEN cell driver.
 #
 # Conditions 1..9 are the nine ADK conditions (card t1901 body); 10 is this SPEC's own addition
@@ -16,7 +16,7 @@
 set -uo pipefail
 
 N="${1:-}"
-case "$N" in 1|2|3|4|5|6|7|8|9|10|11|12) ;; *) echo "usage: conditions.sh <1..12>" >&2; exit 64;; esac
+case "$N" in 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17) ;; *) echo "usage: conditions.sh <1..17> [crash-point for 15]" >&2; exit 64;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CUR="${CURATOR_DIR:-$HERE/../../../../.claude/skills/hns-lsel-curator}"
@@ -77,6 +77,40 @@ report() { # report <prefix>
 }
 
 seed_checkpoint() { printf '{"offset":%s,"updated":"2026-10-15T04:30:35Z"}\n' "$1" >"$SD/drain-offset.json"; }
+
+# --- named test seams (fixtures 13..17) ---------------------------------------------------------
+# The consumer contract (design.md section 2.6) defines named points. When LSEL_HOOK_DIR is set and
+# $LSEL_HOOK_DIR/<point> is executable, the consumer appends <point> to <state-dir>/hook-trace.log and
+# runs it: exit 0 continues, exit 1 fails that step, exit 99 makes the consumer SIGKILL itself. The
+# trace is written by the consumer, not by the hook, so "the boundary was reached" is observed
+# independently of what the hook does. Points: after-snapshot-copy, temps-written, after-prepared,
+# between-renames, after-renames, after-committed. A tree without the seam never reaches any point.
+mkhook() { # mkhook <point> <body line>
+  mkdir -p "$FIX/hooks"
+  printf '%s\n' '#!/bin/bash' "$2" >"$FIX/hooks/$1"
+  chmod +x "$FIX/hooks/$1"
+  export LSEL_HOOK_DIR="$FIX/hooks"
+}
+trace_of() { # trace_of <prefix> <point>
+  if [[ -s "$SD/hook-trace.log" ]] && grep -qx "$2" "$SD/hook-trace.log"; then echo "${1}hook_reached=true"; else echo "${1}hook_reached=false"; fi
+}
+pair_state() { # pair_state <prefix> — are clusters and checkpoint a coherent pair?
+  local c="absent" k="absent"
+  if [[ -s "$SD/clusters.json" ]]; then c="$("$REAL_JQ" -r '.offset_after' "$SD/clusters.json")"; elif [[ -e "$SD/clusters.json" ]]; then c="EMPTY"; fi
+  if [[ -s "$SD/drain-offset.json" ]]; then k="$("$REAL_JQ" -r '(.offset_lines // .offset)' "$SD/drain-offset.json")"; elif [[ -e "$SD/drain-offset.json" ]]; then k="EMPTY"; fi
+  local ahead=false
+  if [[ "$k" =~ ^[0-9]+$ ]]; then
+    if [[ ! "$c" =~ ^[0-9]+$ ]] || (( k > c )); then ahead=true; fi
+  fi
+  echo "${1}clusters_offset=$c"
+  echo "${1}checkpoint_offset=$k"
+  echo "${1}pair_consistent=$([[ "$c" == "$k" ]] && echo true || echo false)"
+  echo "${1}checkpoint_ahead_of_clusters=$ahead"
+  echo "${1}zero_byte_final=$([[ "$c" == "EMPTY" || "$k" == "EMPTY" ]] && echo true || echo false)"
+}
+status_of() { # status_of <prefix>
+  if [[ -s "$SD/consumer-status.json" ]]; then echo "${1}status_state=$("$REAL_JQ" -r '.state' "$SD/consumer-status.json")"; else echo "${1}status_state=absent"; fi
+}
 
 echo "condition=$N"
 case "$N" in
@@ -163,5 +197,41 @@ case "$N" in
     CL_AFTER="absent"; [[ -e "$SD/clusters.json" ]] && CL_AFTER="$(shasum -a 256 "$SD/clusters.json" | cut -d' ' -f1)"
     echo "clusters_unchanged_across_run2=$([[ "$CL_BEFORE" == "$CL_AFTER" ]] && echo true || echo false)"
     echo "clusters_bytes_after_run2=$([[ -e "$SD/clusters.json" ]] && "$REAL_WC" -c <"$SD/clusters.json" | tr -d ' ' || echo absent)";;
+  13) # race through the seam: a row is appended right after the snapshot copy.
+      # Non-vacuous GREEN: hook_reached=true AND run1 clusters exactly the 2 rows copied AND run2 picks up the third.
+    add "$INBOX" "$KA" 1 2
+    export HOOK_MARK="$FIX/hook.mark" HOOK_INBOX="$INBOX"
+    export HOOK_LINE='{"timestamp":"2026-10-19T00:00:03Z","event_key":"tool_failure:Bash:ExitError","summary":"s3","source":"tool:X","v":1}'
+    mkhook after-snapshot-copy 'if [[ ! -e "$HOOK_MARK" ]]; then : >"$HOOK_MARK"; printf "%s\n" "$HOOK_LINE" >>"$HOOK_INBOX"; fi'
+    run_drain; trace_of "run1_" after-snapshot-copy; echo "run1_read=$([[ -s "$SD/clusters.json" ]] && "$REAL_JQ" -r '.total_read' "$SD/clusters.json" || echo none)"; pair_state "run1_"
+    run_drain; echo "run2_read=$([[ -s "$SD/clusters.json" ]] && "$REAL_JQ" -r '.total_read' "$SD/clusters.json" || echo none)"; pair_state "run2_"; status_of "run2_"
+    echo "inbox_lines=$("$REAL_WC" -l <"$INBOX" | tr -d ' ')";;
+  14) # commit failure at the rename boundary (the hook fails the between-renames step)
+    add "$INBOX" "$KA" 1 3
+    mkhook between-renames 'exit 1'
+    run_wrapper; trace_of "" between-renames; echo "wrapper_exit=$RC"; pair_state ""; status_of ""
+    echo "checkpoint_zero_byte=$([[ -e "$SD/drain-offset.json" && ! -s "$SD/drain-offset.json" ]] && echo true || echo false)";;
+  15) # crash matrix: the consumer is SIGKILLed at the named point, then a clean run recovers
+    POINT="${2:-}"
+    case "$POINT" in temps-written|after-prepared|between-renames|after-renames|after-committed) ;; *) echo "usage: conditions.sh 15 <temps-written|after-prepared|between-renames|after-renames|after-committed>" >&2; exit 64;; esac
+    add "$INBOX" "$KA" 1 3
+    mkhook "$POINT" 'exit 99'
+    run_wrapper; trace_of "crash_" "$POINT"; pair_state "crash_"
+    unset LSEL_HOOK_DIR
+    run_wrapper; pair_state "recovered_"; status_of "recovered_"
+    echo "recovered_rows_accounted=$([[ "$(cat "$SD/clusters.json" 2>/dev/null | "$REAL_JQ" -r '.offset_after' 2>/dev/null)" == "3" ]] && echo true || echo false)";;
+  16) # the inbox is swapped between the snapshot copy and the post-check
+    add "$INBOX" "$KA" 1 3
+    run_drain
+    add "$INBOX" "$KB" 4 5
+    NEW="$FIX/inbox.swap"; add "$NEW" "$KC" 1 6
+    export HOOK_MARK="$FIX/hook.mark" HOOK_INBOX="$INBOX" HOOK_NEW="$NEW"
+    mkhook after-snapshot-copy 'if [[ ! -e "$HOOK_MARK" ]]; then : >"$HOOK_MARK"; mv "$HOOK_NEW" "$HOOK_INBOX"; fi'
+    run_wrapper; trace_of "" after-snapshot-copy; status_of ""; pair_state ""
+    echo "swapped_file_keys_in_candidates=$([[ -s "$SD/clusters.json" ]] && "$REAL_JQ" -r --arg k "$KC" '[.candidates[].event_key] | index($k) != null' "$SD/clusters.json" || echo n/a)";;
+  17) # a fully drained, lineage-verified inbox: the next run is NOOP_AT_TAIL
+    add "$INBOX" "$KA" 1 3
+    run_drain; report "run1_"
+    run_drain; report "run2_";;
 esac
 exit 0

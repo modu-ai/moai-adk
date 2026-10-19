@@ -43,7 +43,7 @@ The curator inbox is never rotated, so a prefix hash costs the whole file at eve
 
 ## 6. Template mirror and namespace
 
-`find internal/template/templates -iname "*lsel*"` is empty and `namespace_protection_audit_test.go` forbids `hns-*` skills in the template FS (user-owned namespace). `internal/hook`, `internal/cli`, and the new package have no template mirror. No Template-First step. One lexical mention of the inbox exists in a distributed template (`navigator-audit.sh` comment) and is not touched.
+`find internal/template/templates -iname "*lsel*"` is empty and `namespace_protection_audit_test.go` forbids `hns-*` skills in the template FS (user-owned namespace). `internal/hook`, `internal/cli`, and the new package have no template mirror. That conclusion holds for source files only. The new runtime files do touch the template: `.gitignore:311` and `internal/template/templates/.gitignore:302` ignore only the exact inbox filename, `git check-ignore -v .moai/lessons-inbox.lock .moai/lessons-inbox.spool.jsonl` exits 1 (EL-D10), and the spool holds raw failure text. Both trees ignore `.moai/state/` (`.gitignore:401`, template `.gitignore:242`), so the files are placed under `.moai/state/lessons-inbox/` and the existing `TestTemplateGitignoreIgnoresLocalArtifacts` (one test function whose table lists path, expectation, reason) is extended with rows built from the exported path constants; that is the Template-First step. One lexical mention of the inbox exists in a distributed template (`navigator-audit.sh` comment) and is not touched.
 
 ## 7. Open measurement gaps carried into the plan
 

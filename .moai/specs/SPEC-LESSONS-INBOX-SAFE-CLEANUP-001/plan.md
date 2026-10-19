@@ -18,7 +18,7 @@ Card t1653 is live and in state hold (`moai todo show t1653`, 2026-10-19). Rule 
 | 8 | Offset protection (REQ-CAP-005) | The requirement itself | Strengthened: a mismatching offset is reported, never silently skipped, never auto-changed | Cited by REQ-LIS-002/-020 |
 | 9 | Item state judgment (`triaged`, `proposed`, `approved`) | Who judges and when | Recording the evidence chain and mechanically resolving it (REQ-LIS-015) | The mechanism never advances an item by itself: state comes from resolvable evidence supplied by the judging owner |
 
-File ownership for blockers: t1901 edits `.claude/skills/hns-lsel-curator/{drain.sh,session_drain.sh,*_test.sh}`, `internal/hook/{failure_observer.go,inbox_lifecycle.go}` and their tests, a new `internal/inboxsafe` package, `internal/cli/inbox.go` plus new inbox verb files, and this SPEC. t1653 owns `.claude/skills/hns-lsel-applier/**`, `.moai/hooks/lsel-apply.sh`, `internal/harness/**`, `internal/hook/post_tool_failure.go`, and `.moai/harness/**`. A needed edit across the line is a blocker report to the leader, never a quiet edit. Closing guard RG-2: `git diff --name-only <base>..<closing-commit>` intersected with the t1653-owned list is empty.
+File ownership for blockers: t1901 edits `.claude/skills/hns-lsel-curator/{drain.sh,session_drain.sh,*_test.sh}`, `internal/hook/{failure_observer.go,inbox_lifecycle.go}` and their tests, a new `internal/inboxsafe` package, `internal/cli/inbox.go` plus new `internal/cli/inbox_*.go` verb files, the existing test `internal/template/gitignore_local_artifacts_test.go` (rows only, Template-First), and this SPEC. t1653 owns `.claude/skills/hns-lsel-applier/**`, `.moai/hooks/lsel-apply.sh`, `internal/harness/**`, `internal/hook/post_tool_failure.go`, and `.moai/harness/**`. A needed edit across the line is a blocker report to the leader, never a quiet edit. Closing guard RG-2: `git diff --name-only <base>..<closing-commit>` intersected with the t1653-owned list is empty.
 
 ## §B Decisions most likely to change (review these first)
 
@@ -32,9 +32,9 @@ Delegation: `manager-develop` owns run phase, one milestone per spawn, TDD (RED 
 
 | M | Scope | Language | Flips | Depends on |
 |---|-------|----------|-------|------------|
-| M1 | Consumer core: fixed-boundary snapshot, named states and `consumer-status.json`, v2 checkpoint with lineage binding, v1 adoption, distinct exit codes for `drain.sh`; the jq filter program stays byte-identical | shell + jq | AC-LIS-001, 002, 004, 006 | none |
+| M1 | Consumer core: fixed-boundary snapshot, named states and `consumer-status.json`, persistent blocked state, v2 checkpoint with lineage binding, v1 adoption (never of a blocked checkpoint), distinct exit codes for `drain.sh`, the named seams of `design.md` §2.6; the jq filter program stays byte-identical | shell + jq | AC-LIS-001, 002, 004, 006 | none |
 | M2 | Consumer commit and lock: commit manifest pair, same-dir temp, verify, flush, rename, restart recovery; lock owner record, dead-owner reap, `LOCK_HELD`; wrapper stays fail-open and now emits a notice on state change | shell + jq | AC-LIS-003, 005 | M1 |
-| M3 | Identity and producer lock: new-row `id`, generation manifest builder, shared exclusive/shared lock plus spool, rotation under the exclusive lock | Go (`internal/inboxsafe`, `internal/hook`) | AC-LIS-007, 008, 009, 010 | M2 contract text (lock order) |
+| M3 | Identity and producer lock: new-row `id`, generation manifest builder, shared exclusive/shared lock plus spool with the final-merge handoff, lock and spool under the ignored `.moai/state/lessons-inbox/` with `TestTemplateGitignoreIgnoresLocalArtifacts` extended, rotation under the exclusive lock | Go (`internal/inboxsafe`, `internal/hook`) | AC-LIS-007, 008, 009, 010 | M2 contract text (lock order) |
 | M4 | Backup, inventory, classification, bind primitive: `moai inbox backup`, `inventory`, `classify`, `checkpoint bind` | Go | AC-LIS-011, 012, 013, 020 | M3 |
 | M5 | Proof and cutover: `prove` (evidence resolution and retention hold), `archive`, multiset equation, `cutover`, `rollback`, hash-chained ledger, forbidden-pattern guards | Go | AC-LIS-014, 015, 016, 017, 018, 019, 021, 024 | M3, M4 |
 | M6 | Synthetic end-to-end through the existing applier and verify scripts | shell + Go | AC-LIS-022 | M5 |
@@ -48,8 +48,11 @@ Delegation: `manager-develop` owns run phase, one milestone per spawn, TDD (RED 
 | R1 | Freeze: take the consumer lock, copy the complete-line prefix and the checkpoint, hash, read back, release | backup verified (REQ-LIS-013) | `r1-freeze.md` |
 | R2 | Read-only inventory and classification of the frozen copy only | row count equals frozen line count | `r2-inventory.md` |
 | R3 | Proof gate over the inventory | gate output file exists; counts per state | `r3-prove.md` |
+| R3b | Record the pinned PR1841 item in the provenance ledger (requires t1900 and t1868), citing the re-hashed sha256 of the two case files; runs before any cutover and also on a zero-removal run | both hashes equal `spec.md` §1.2, else `evidence_missing`; the pin row exists | `r3b-pin.md` |
 | R4 | Only if the removal set is non-empty: archive, then preview, then cutover (Q6) | archive verified; equation balanced; exclusive lock held | `r4-cutover.md` |
-| R5 | Post-verify: prefix property, checkpoint unchanged or mapped, ledger chain verifies | all green | `r5-post.md` |
+| R5 | Post-verify. No cutover: prefix property to the end (first N bytes of the live inbox equal the frozen copy), checkpoint byte-identical. After a cutover: multiset equation, new-generation hash against the manifest, archive count and hash against the ledger, checkpoint mapping or verbatim preservation. Both cases: ledger chain verifies | all green | `r5-post.md` |
+
+Ordering witness (verification-claim-integrity §2.3): `.moai/reports/` and `.moai/state/` are gitignored, so they cannot carry the order. Each step refuses to start without the previous step's ledger row (mechanical), and after each step the lane commits one `progress.md` §E.2 line (step id, evidence-file sha256, ledger sequence number) in its own commit (tracked), so the commit graph orders the records.
 
 If R3 proves zero eligible rows, R4 does not run and R5 records `zero_removal`. That is an acceptable, complete outcome of the card. If the real checkpoint is still beyond the file at cutover, it is preserved verbatim and the mismatch state stays reported (REQ-LIS-019).
 

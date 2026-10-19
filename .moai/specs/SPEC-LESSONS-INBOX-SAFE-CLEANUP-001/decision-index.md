@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-LESSONS-INBOX-SAFE-CLEANUP-001
 
-Authored at plan phase per the decision gate. One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` is the output of the published Default rule (preserve current behavior; else single-revert undo; else smaller user-visible surface), not a preference. No operator verdict is invented: the only verdicts filled are `DEFAULT-APPLIED` on implementation-level rows that carry a Default, as the plan-close procedure prescribes.
+Authored at plan phase per the decision gate. One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` is the output of the published Default rule (preserve current behavior; else single-revert undo; else smaller user-visible surface), not a preference. No operator verdict is invented: rows whose Default was applied by the planner at plan close read `Operator verdict: none (planner default applied)` (2026-10-19T05:34:08Z, manager-spec, implementation-level rows only), so the field cannot be read as an operator answer; an operator answer at kickoff supersedes the default and the affected REQ/AC set is re-audited.
 
 ## Keep-set notes (not decisions of this SPEC)
 
@@ -12,11 +12,11 @@ Authored at plan phase per the decision gate. One row per decision surfaced duri
 
 Label: FOUNDER
 Authority anchor: (none — no committed operator setting or completed SPEC decides adoption of unverifiable legacy checkpoints; the drain-stall SPEC predates the lineage idea)
-Why unresolved: Adopting keeps every existing machine draining but may bind a wrong lineage once, exactly as today; refusing is stricter but stalls draining on every machine until someone binds, which is the silent-stall shape the drain-stall SPEC was written against. Changes REQ-LIS-004 and AC-LIS-006.
+Why unresolved: Adopting keeps every existing machine draining but may bind a wrong lineage once, exactly as today; refusing is stricter but stalls draining on every machine until someone binds, which is the silent-stall shape the drain-stall SPEC was written against. Adoption applies only to a checkpoint never observed blocked: a checkpoint recorded OFFSET_BEYOND_FILE, LINEAGE_MISMATCH or CHECKPOINT_CORRUPT is never adopted, however the file grows (REQ-LIS-002, REQ-LIS-004, AC-LIS-001). Changes REQ-LIS-004 and AC-LIS-006.
 Class: implementation-level
 Default: adopt once, flagged `checkpoint_unverified` (rule: preserves current behavior)
 Alternate: refuse with `LINEAGE_MISMATCH` until IC-2 binds
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
 
 ### Q2: Does the consumer stay shell with the store verbs in Go, or does the consumer move to Go?
 
@@ -26,7 +26,7 @@ Why unresolved: A shell consumer never depends on the installed `moai` build (wh
 Class: implementation-level
 Default: consumer stays shell; store verbs in Go (rule: preserves current behavior)
 Alternate: consumer moves to Go behind a capability probe
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
 
 ### Q3: Does adding the stable `id` field bump the row schema version `v`?
 
@@ -36,7 +36,7 @@ Why unresolved: Not bumping keeps `v` at 1 and readers distinguish by the presen
 Class: implementation-level
 Default: no bump; `v` stays 1 (rule: preserves current behavior)
 Alternate: bump to 2
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
 
 ### Q4: How is the PR1841 premerge-review case recorded — as an items/ledger entry that references the case report hashes, or as an inbox row appended through the producer mechanism?
 
@@ -46,7 +46,7 @@ Why unresolved: A ledger entry leaves the inbox byte-untouched and carries the p
 Class: implementation-level
 Default: items/ledger entry referencing the two input hashes (rule: preserves current behavior — the inbox gains no new row kind)
 Alternate: inbox row written by the mechanism's append path
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
 
 ### Q5: Is a second copy of the frozen backup kept outside the repository tree?
 
@@ -56,7 +56,7 @@ Why unresolved: The first copy lives under the project root's `.moai/state/lesso
 Class: implementation-level
 Default: single copy under the project root's state directory (rule: smaller user-visible surface)
 Alternate: add a second owner-only copy under `~/.moai/`
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
 
 ### Q6: Does the real cutover (M7 step R4, only if the removal set is non-empty) wait for a recorded confirmation of the removal-set preview?
 
@@ -66,4 +66,14 @@ Why unresolved: The cutover is reversible by rollback and by the retained origin
 Class: implementation-level
 Default: R4 waits for a leader confirmation recorded on the preview (rule: smaller user-visible surface — nothing changes in the shared file before the preview is read)
 Alternate: R4 proceeds on the gate result alone
-Operator verdict: DEFAULT-APPLIED 2026-10-19T05:34:08Z manager-spec+plan-owner
+Operator verdict: none (planner default applied)
+
+### Q7: Is a minimal non-sensitive evidence summary of the PR1841 case tracked under the SPEC directory, or does the case rest on the gitignored local copies plus the hashes in the provenance ledger?
+
+Label: FOUNDER
+Authority anchor: (none — the operator follow-up asks that the case be preserved as evidence for this card and does not name a durable location; the relayed message is not a committed artifact)
+Why unresolved: The two case files exist only under the gitignored `.moai/reports/t1901/inputs/` of this lane's worktree, which is removed with the worktree after the batch lands; the ledger lives in the gitignored state directory. Not tracking leaves the hashes as the only durable trace and no tracked file records the facts. Tracking a short summary (case id, the labelled third-party facts of `spec.md` §1.3, the two sha256, the two required cards) gives a reviewable record in the repository but adds a tracked file carrying third-party claims; the full reports are copied in neither option. Changes `design.md` §6 (real-path realization) and the file list of M7.
+Class: implementation-level
+Default: no tracked summary; the ledger pin row and `spec.md` §1.2/§1.3 carry the hashes and the labelled facts (rule: preserves current behavior — no new tracked file)
+Alternate: a tracked summary file `evidence/pr1841-summary.md` under the SPEC directory with the facts and hashes only
+Operator verdict: none (planner default applied)
