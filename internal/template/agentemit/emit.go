@@ -37,6 +37,11 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 			return nil
 		}
 		if strings.HasSuffix(p, ".md") {
+			// The walk never follows links; a symlinked entry is refused here
+			// rather than read through later.
+			if !d.Type().IsRegular() {
+				return fmt.Errorf("agentemit: agent source %s is not a regular file — refusing to follow a symlink or other non-regular entry", p)
+			}
 			files = append(files, p)
 		}
 		return nil

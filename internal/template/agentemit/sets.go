@@ -119,9 +119,9 @@ func sortedPaths(files map[string][]byte) []string {
 
 // Check renders the sets in memory and compares them with the files under
 // root. It never writes. Every difference — a missing file, a file whose bytes
-// differ from a fresh render, and (for a set that covers every source) a file
-// with no agent source — is listed in Summary.Diffs, and the error names the
-// first one.
+// differ from a fresh render, a generated path that runs through a symlink,
+// and (for a set that covers every source) a file with no agent source — is
+// listed in Summary.Diffs, and the error names the first one.
 func Check(root string, lay Layout, man Manifest) (Summary, error) {
 	files, specs, err := renderTargets(root, lay, man)
 	sum := Summary{Specs: specs, Copies: len(lay.Targets)}
@@ -129,6 +129,13 @@ func Check(root string, lay Layout, man Manifest) (Summary, error) {
 		return sum, err
 	}
 	for _, p := range sortedPaths(files) {
+		// A partial set skips the orphan walk below, so every expected path is
+		// link-checked the same way Update checks it before writing: reading
+		// through a symlink would compare bytes the tree does not hold.
+		if lerr := refuseLinks(root, p); lerr != nil {
+			sum.Diffs = append(sum.Diffs, p+": "+strings.TrimPrefix(lerr.Error(), "agentemit: "))
+			continue
+		}
 		got, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 		switch {
 		case errors.Is(rerr, fs.ErrNotExist):
@@ -189,10 +196,14 @@ func orphans(root string, tg Target, ext string, files map[string][]byte) []stri
 	return out
 }
 
-// Update renders the sets and writes the files under root. Rendering and the
-// symlink check finish before the first write, so a source that cannot be
-// rendered, or a target path that runs through a symlink, leaves root
+// Update renders the sets and writes the files under root. Rendering, the
+// symlink check and the stale-copy verification finish before the first
+// write, so a source that cannot be rendered, a target path that runs through
+// a symlink, or a stale copy that cannot be removed safely leaves root
 // untouched. A file that already holds the rendered bytes is not rewritten.
+// A full set is regenerated as a whole, so a rendered copy whose agent source
+// no longer exists is removed; partial sets sit beside hand-managed
+// definitions and are never pruned.
 func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	files, specs, err := renderTargets(root, lay, man)
 	sum := Summary{Specs: specs, Copies: len(lay.Targets)}
@@ -203,6 +214,52 @@ func Update(root string, lay Layout, man Manifest) (Summary, error) {
 	for _, p := range paths {
 		if err := refuseLinks(root, p); err != nil {
 			return sum, err
+		}
+	}
+	// Stale copies of deleted sources: every file a full set's directory
+	// holds under a rendered name but no source renders any more. The
+	// candidate paths are built from the directory listing of tg.Dir itself,
+	// so each one lies inside the set's own output tree by construction.
+	var stale []string
+	for _, tg := range lay.Targets {
+		if len(tg.Only) > 0 {
+			continue
+		}
+		ext := ".md"
+		if tg.Codex {
+			ext = ".toml"
+		}
+		entries, rerr := os.ReadDir(filepath.Join(root, filepath.FromSlash(tg.Dir)))
+		if rerr != nil {
+			if errors.Is(rerr, fs.ErrNotExist) {
+				continue
+			}
+			return sum, fmt.Errorf("agentemit: %w", rerr)
+		}
+		for _, e := range entries {
+			if !strings.HasSuffix(e.Name(), ext) {
+				continue
+			}
+			rel := tg.Dir + "/" + e.Name()
+			if _, rendered := files[rel]; !rendered {
+				stale = append(stale, rel)
+			}
+		}
+	}
+	for _, rel := range stale {
+		if err := verifyRemovable(root, rel); err != nil {
+			return sum, err
+		}
+	}
+	for _, rel := range stale {
+		// Re-verify immediately before the removal, so a path that turned
+		// into a link (or otherwise non-regular) since the pre-flight is
+		// refused rather than removed through.
+		if err := verifyRemovable(root, rel); err != nil {
+			return sum, err
+		}
+		if err := os.Remove(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			return sum, fmt.Errorf("agentemit: removing stale copy %s: %w", rel, err)
 		}
 	}
 	for _, p := range paths {
@@ -246,6 +303,27 @@ func refuseLinks(root, rel string) error {
 		case i < len(parts)-1 && !fi.IsDir():
 			return fmt.Errorf("agentemit: %s is not a directory (target %s)", shown, rel)
 		}
+	}
+	return nil
+}
+
+// verifyRemovable refuses to remove rel (slash-separated, below root) unless
+// it is a regular file: a symlink is never removed through, a directory (or
+// anything else non-regular) is not an obsolete rendered copy, and an absent
+// path needs no removal.
+func verifyRemovable(root, rel string) error {
+	fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("agentemit: %w", err)
+	}
+	switch {
+	case fi.Mode()&os.ModeSymlink != 0:
+		return fmt.Errorf("agentemit: refusing to remove stale copy %s through a symlink", rel)
+	case !fi.Mode().IsRegular():
+		return fmt.Errorf("agentemit: refusing to remove non-regular stale copy %s", rel)
 	}
 	return nil
 }
