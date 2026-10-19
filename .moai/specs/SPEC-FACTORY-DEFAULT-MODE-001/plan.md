@@ -111,8 +111,9 @@ parallelizable cards file-domain separation and further shrink this residual.
 - P3 — Fallback-path closure check (card scope item 3): after M2, the leader's correction path
   for a fail-safe admission is the verb itself — exercised by AC-FDM-006's picked-card scenario
   (a fail-safe-admitted card that was leased is exactly a picked card).
-- P4 — No `[NEEDS CLARIFICATION]` markers remain in this plan (decision-index rows Q1–Q5 carry
-  the only open judgments; Q5 rides the kickoff gate per the decision gate being on).
+- P4 — No `[NEEDS CLARIFICATION]` markers remain in this plan (decision-index rows Q1–Q6 carry
+  the only open judgments; Q6 is DEFAULT-APPLIED, Q5 rides the kickoff gate per the decision
+  gate being on).
 
 ## §D Constraints
 

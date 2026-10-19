@@ -48,6 +48,14 @@ Round-1 cold plan-audit: FAIL, overall 0.875, MP-8 must-pass failure (verdict:
 - REQ/AC ids otherwise unchanged (no renumbering, no renaming); all other content kept stable
   for the round-2 delta re-audit (scope: acceptance.md#two-cell-adoption-state,
   spec.md#req-fdm-004, plus the AC-FDM-011 addition).
+- **Round-2 repair (delta FAIL 0.9375, receipt `rcpt-ed1e059d6960d148efbfb510`, audited_sha
+  `67ac361675`)** — R2-D1: EV-FDM-05/-06/-07/-09/-10/-15 re-observed with complete stdout at
+  `67ac361675` (`internal/` byte-identical across all three trees); R2-D2: AC-FDM-001 bullet +
+  EV-FDM-12 note reworded to the expected-green/PENDING form; R2-D3: new EV-FDM-A2 (attributed
+  overlap reproduction, receipt `rcpt-c9f6d2f8c1f45eb7e134711c`) with AC-FDM-011 citations
+  repointed from EV-FDM-A1; R2-D4: EV-FDM-13/-14 recording path corrected to plan §E E2;
+  R2-D5: plan §C P4 enumeration extended to Q1–Q6. Single new id EV-FDM-A2; all REQ/AC/entry
+  ids otherwise unchanged.
 
 ## §E.2 Run-phase Evidence
 

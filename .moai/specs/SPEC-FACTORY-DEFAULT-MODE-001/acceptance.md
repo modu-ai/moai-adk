@@ -35,9 +35,12 @@ tool-provenance attribution, §2.2); (b) tree grep / file read on this worktree;
 verbatim from the round-1 audit verdict `.moai/reports/t1737/plan-audit-cold.md` — receipt
 `rcpt-c9f6d2f8c1f45eb7e134711c`, `audited_sha f6742080a6`.
 
-Tree equivalence: every entry below was observed at `f6742080a6`, whose `internal/` code is
-byte-identical to the plan-close tree `74ad197380` — `git diff --name-only 74ad197380..HEAD`
-lists the five plan artifacts only (observed this session).
+Tree equivalence: `internal/` is byte-identical across `74ad197380` (plan close) → `f6742080a6`
+(round-1 repair) → `67ac361675` (round-2 repair) — each diff range lists exactly the five plan
+artifacts (measured this session; the round-2 verdict's Baseline-attribution concurs). Entries
+EV-FDM-05/-06/-07/-09/-10/-15 were re-observed with complete stdout at `67ac361675` (round-2
+R2-D1 repair); their original `f6742080a6` observations read the identical bytes. All other
+entries were observed at `f6742080a6` and remain true on this tree.
 
 **Swept-set guard (binds every release-blocking AC's green).** A green result requires the
 target test to actually execute: the verification command is `go test -v -run <Name> ./<pkg>`
@@ -115,8 +118,10 @@ then on.
 103-		Decider:  DeciderIdentityDefault,
 104-	}
 105-}
+106-
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-06 — the queue-absent factory-card read falls through the same seam
 
@@ -139,8 +144,10 @@ then on.
 358-	}
 359-	return factory.DefaultCardClassification()
 360-}
+361-
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-07 — the default decider records mode `serial` at admission
 
@@ -152,8 +159,11 @@ then on.
 258-	c.Reason = "deterministic default: no classification judgment supplied"
 259-	return c, nil
 260-}
+261-
+262-// StaticCardDecider carries one pre-validated supplied judgment — the
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-08 — the fail-safe notice names `mode=serial` (green-now baseline)
 
@@ -169,11 +179,18 @@ then on.
 - Command: `grep -n -B 2 -A 6 "func factorySerialSlotHeld" internal/cli/factory_card.go`
 - stdout (verbatim):
 ```
+293-// --lane` or the nominate arm sets the owner and the row holds again, so
+294-// only genuinely driverless rows release.
 295:func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 296-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
 297-}
+298-
+299-// factorySerialInFlightExcluding reports whether a serial card OTHER than
+300-// cardID sits in the record in a state that still holds the serial slot at
+301-// now. The candidate's own row is excluded by identity: the exclusivity holds
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-10 — the other-serial-in-flight predicate (slot-conflict grounding)
 
@@ -197,8 +214,10 @@ then on.
 338-	}
 339-	return false
 340-}
+341-
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-11 — the serial-slot gating read sites
 
@@ -220,9 +239,10 @@ then on.
 ```
 - exit code: `0` · tree `f6742080a6` · channel (b), this session. Its assertion body
   (classification_test.go:82-91, read this session) wants `Mode: ClassModeSerial` for an
-  absent field — this passing run is the observed baseline the flip breaks. Its verbatim
-  passing output is **PENDING-observation** (Go-restraint window active at repair time); the
-  command `go test -v ./internal/factory -run TestEffectiveCardClassificationDerivesAbsentDefaults`
+  absent field — the test is expected to pass today, and that passing run is the baseline the
+  flip breaks. The run is unobserved at repair time: its verbatim passing output is
+  **PENDING-observation** (Go-restraint window active); the command
+  `go test -v ./internal/factory -run TestEffectiveCardClassificationDerivesAbsentDefaults`
   is recorded for run entry alongside plan §C P2.
 
 ### EV-FDM-13 — the parent-SPEC test pinning the fail-safe fallback (AC-FDM-004 baseline)
@@ -233,7 +253,9 @@ then on.
 109:func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
 ```
 - exit code: `0` · tree `f6742080a6` · channel (b), this session. Passing output
-  **PENDING-observation** (same window); recorded at run entry with plan §C P2.
+  **PENDING-observation** (same window); recorded at run entry via plan §E E2 — the full
+  package suite `go test ./internal/cli` runs it (§C P2's `-run TodoClassify` selector does
+  not match this test name).
 
 ### EV-FDM-14 — the existing parallelizable-beside-serial test (AC-FDM-009 baseline)
 
@@ -243,7 +265,9 @@ then on.
 303:func TestFactoryNextParallelizableLeasesBesideLiveSerial(t *testing.T) {
 ```
 - exit code: `0` · tree `f6742080a6` · channel (b), this session. Passing output
-  **PENDING-observation** (same window); recorded at run entry with plan §C P2.
+  **PENDING-observation** (same window); recorded at run entry via plan §E E2 — the full
+  package suite `go test ./internal/cli` runs it (§C P2's `-run` selectors match neither this
+  test's name nor its package).
 
 ### EV-FDM-15 — the derivation seam's recorded-field branch (AC-FDM-010 baseline)
 
@@ -256,8 +280,14 @@ then on.
 151-	}
 152-	return DefaultCardClassification()
 153-}
+154-
+155-// CardClassificationValue renders a classification for its SQLite TEXT
+156-// column: nil for absence (SQL NULL — the REQ-TLE-006 discipline), the
+157-// canonical JSON encoding for a present record. The classified_at stamp and
+158-// reason may be empty; the value-set fields may not — a write of an invalid
 ```
-- exit code: `0` · tree `f6742080a6` · channel (b), this session
+- exit code: `0` · tree `67ac361675` · channel (b), this session (round-2 re-observation —
+  complete stdout; `internal/` byte-identical to the `f6742080a6` pin)
 
 ### EV-FDM-A1 — attributed: the cited selectors sweep zero tests (channel c)
 
@@ -271,19 +301,35 @@ backend under receipt `rcpt-c9f6d2f8c1f45eb7e134711c` on tree `f6742080a6`:
 This is the observed proof of the swept-set hazard the guard above forecloses: a zero-test
 sweep reports success.
 
+### EV-FDM-A2 — attributed: the unserialized serial overlap reproduced on the plan-close tree (channel c)
+
+Not self-run — attributed from the round-1 audit verdict
+(`.moai/reports/t1737/plan-audit-cold.md`, defect D2), produced by the required codex backend
+under receipt `rcpt-c9f6d2f8c1f45eb7e134711c` on tree `f6742080a6`. This is an **indirect
+attribution without a four-element record**: the verdict narrates the reproduction but records
+no command, stdout, or exit code for it. Quoted from the verdict:
+
+> "Codex (required backend, receipt rcpt-c9f6d2f8c1f45eb7e134711c) reproduced the unserialized
+> overlap with a temporary Go overlay fixture at f6742080a6: two factory-recorded cards (states
+> run/leased, mode serial, live slot) coexist after a conforming locked write."
+
+Reading: the overlap state AC-FDM-011 forecloses is reachable on the plan-close tree; the
+four-element RED evidence for AC-FDM-011 itself remains the verb absence (EV-FDM-03/-04).
+
 ## Two-cell adoption state (plan-close tree `74ad197380`)
 
-Observations recorded 2026-10-19 at repair time on HEAD `f6742080a6` — byte-identical to the
-plan-close tree on `internal/` (see §D.0). Each RED-now cell cites §D.0 ledger entries; each
-green path cell names its milestone (plan.md §F) and the exact green output required under the
-swept-set guard.
+Observations recorded 2026-10-19 (round-1 repair at HEAD `f6742080a6`; round-2 re-observation
+at `67ac361675`) — `internal/` byte-identical across plan-close `74ad197380`, `f6742080a6`, and
+`67ac361675` (see §D.0). Each RED-now cell cites §D.0 ledger entries; each green path cell
+names its milestone (plan.md §F) and the exact green output required under the swept-set guard.
 
 - **AC-FDM-001 — RED-now.** The absent-read derivation returns mode `serial` on this tree:
   the seam's default constructor is `Mode: ClassModeSerial` (EV-FDM-05). The cited test is
   absent (EV-FDM-01). The parent test pinning the current rule —
   `TestEffectiveCardClassificationDerivesAbsentDefaults`, wanting `Mode: ClassModeSerial` for
-  an absent field (EV-FDM-12) — passes today; that passing run is the observed baseline the
-  flip breaks. Green path: M1 — `--- PASS: TestEffectiveClassificationAbsentDefaultsParallelizable`.
+  an absent field (EV-FDM-12) — is expected to pass today; its passing run is the baseline the
+  flip breaks and is unobserved at repair time (PENDING-observation, recorded at run entry per
+  EV-FDM-12). Green path: M1 — `--- PASS: TestEffectiveClassificationAbsentDefaultsParallelizable`.
 - **AC-FDM-002 — RED-now.** The queue-absent factory-card read returns
   `factory.DefaultCardClassification()` on both the nil-record and id-absent branches
   (EV-FDM-06) — mode `serial` today, `parallelizable` only after M1 flips the seam. Test
@@ -295,7 +341,8 @@ swept-set guard.
 - **AC-FDM-004 — regression-guard (demoted; green-now; no RED recorded).** The fail-safe
   promotion already lands serial with exactly one notice naming `mode=serial` (EV-FDM-08;
   promotion branch `todo_classify.go:81-89`), pinned today by
-  `TestTodoAddDeciderFailureFallsBackWithNotice` (EV-FDM-13, passing output PENDING with P2).
+  `TestTodoAddDeciderFailureFallsBackWithNotice` (EV-FDM-13, passing output PENDING, recorded
+  via §E E2).
   Per the undecidable disposition no RED is claimed. Green path: M1 guard-addition — the
   guard asserts the value stays `serial` and the notice count stays exactly one after the
   absent-read default flips (separation clause observable from then on).
@@ -314,7 +361,7 @@ swept-set guard.
   `--- PASS: TestFactorySelectionReadsReclassifiedMode`.
 - **AC-FDM-009 — regression-guard (green-now).** Serial exclusivity holds today and is pinned
   by the existing `TestFactoryNextParallelizableLeasesBesideLiveSerial`
-  (factory_serial_slot_stale_test.go:303, EV-FDM-14; passing output PENDING with P2). M3 adds
+  (factory_serial_slot_stale_test.go:303, EV-FDM-14; passing output PENDING, recorded via §E E2). M3 adds
   `TestSerialExclusivityAfterDefaultFlip` as the named guard — absent today (EV-FDM-01);
   green requires it to exist and carry its `--- PASS:` line.
 - **AC-FDM-010 — regression-guard (green-now).** Recorded judgments return verbatim through
@@ -324,7 +371,8 @@ swept-set guard.
   green requires its `--- PASS:` line.
 - **AC-FDM-011 — RED-now (new, round-2 D2).** The verb does not exist (EV-FDM-03/-04); the
   unserialized overlap this AC forecloses was reproduced on the plan-close tree by the codex
-  required backend (EV-FDM-A1), and the refusal predicate it will reuse already exists on the
+  required backend (EV-FDM-A2 — indirect attribution, see that entry), and the refusal
+  predicate it will reuse already exists on the
   tree (EV-FDM-09/-10/-11). Green path: M2 —
   `--- PASS: TestTodoClassifySerialSlotConflictRefusal` under the swept-set guard.
 
@@ -417,7 +465,8 @@ swept-set guard.
   `--mode parallelizable`, or with `--mode serial` while no other serial card is in flight,
   **Then** the one-locked-write recording of AC-FDM-005 lands normally.
 - Red reason at plan close: the verb does not exist (EV-FDM-03/-04) — the unserialized overlap
-  codex reproduced on the plan-close tree (EV-FDM-A1) is exactly the state this refusal
+  codex reproduced on the plan-close tree (EV-FDM-A2 — indirect attribution, see that entry)
+  is exactly the state this refusal
   forecloses; the predicate it reuses exists on the tree (EV-FDM-09/-10/-11). Swept-set guard
   applies: green requires `--- PASS: TestTodoClassifySerialSlotConflictRefusal`.
 - Verification: `go test -v ./internal/cli -run TestTodoClassifySerialSlotConflictRefusal`
