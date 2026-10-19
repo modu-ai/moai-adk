@@ -62,6 +62,11 @@ def receipt_kind:
     elif $code then "code"
     elif $security then "security"
     else "unknown" end;
+# The clean signal is the exact first sentence; keep later sign-off text out of the protocol grammar.
+# Identity, type, full-head state, both completed legs, and corroborating findings remain separate gates.
+def code_clean_declaration:
+  . == "Codex Review: Didn\u0027t find any major issues."
+  or startswith("Codex Review: Didn\u0027t find any major issues. ");
 def receipt_check($kind):
   . as $all
   | ($all | map(select(.kind == $kind))) as $items
@@ -69,14 +74,16 @@ def receipt_check($kind):
   | ($items | map(select(.reviewed_head | receipt_prefix_matches)) | length) as $current_count
   | ($latest.body // "") as $body
   | ($body | split("\n")) as $lines
+  | ([$lines[] | select(startswith("Codex Review:"))] | length) as $code_line_count
   | [$lines[] | select(startswith("**Reviewed commit:** "))] as $head_lines
   | ($latest | receipt_head) as $reviewed_head
   | (if $kind == "code"
-     then [$lines[] | select(. == "Codex Review: Didn\u0027t find any major issues. :+1:" or . == "Codex Review: Didn\u0027t find any major issues. Chef\u0027s kiss." or . == "Codex Review: Didn\u0027t find any major issues. Bravo.")] | length
+     then [$lines[] | select(code_clean_declaration)] | length
      else [$lines[] | select(. == "Security review completed. No security issues were found in this pull request.")] | length
      end) as $clean_count
   | if $latest == null then "native-receipt-missing:\($kind)_review"
     elif $current_count > 1 then "native-receipt-ambiguous:\($kind)_review"
+    elif $kind == "code" and $code_line_count != 1 then "native-receipt-ambiguous:\($kind)_review"
     elif ($body | [scan("<!-- codex-review-receipt:v1 -->")] | length) != 1 or $lines[0] != "<!-- codex-review-receipt:v1 -->" then "native-receipt-malformed:\($kind)_review"
     elif ($head_lines | length) != 1 or ($reviewed_head | test("^[0-9A-Fa-f]{10,40}$") | not) then "native-receipt-malformed:\($kind)_review"
     elif ($reviewed_head | receipt_prefix_matches | not) then ("stale-review:" + $reviewed_head[0:10])
@@ -89,9 +96,8 @@ def leading_block:
       elif .[0] then [false, .[1]]
       else . end)
   | .[1] | join("\n");
-# Only whole marker lines in the initial HTML-comment block are eligible. A marker elsewhere is tampering.
-($issues | map(select((.body // "") | contains("<!-- codex-review-receipt:v1 -->")))) as $claimed_receipts
-| ($issues | map(select(ident))) as $native
+# Only trusted Codex issue comments are candidates; untrusted marker text is not parsed.
+($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
 | ($native | map(select((.body // "") | contains("<!-- codex-review-receipt:v1 -->")))) as $receipts
 | ($states[0] // null) as $state_comment
@@ -110,7 +116,6 @@ def leading_block:
 | ($receipts | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $receipt_bad
 | ($receipts | map(.id) | group_by(.) | map(select(length > 1)) | length) as $receipt_id_dups
 | ($receipts | map(. + {kind: receipt_kind, reviewed_head: receipt_head})) as $typed_receipts
-| (($claimed_receipts | map(select(ident)) | length) != ($claimed_receipts | length)) as $receipt_author_invalid
 | ($typed_receipts | map(select(.kind == "ambiguous")) | length) as $receipt_type_ambiguous
 | ($typed_receipts | map(select(.kind == "unknown")) | length) as $receipt_type_unknown
 | ($typed_receipts | receipt_check("code")) as $code_receipt_error
@@ -132,7 +137,6 @@ def leading_block:
   elif $dup != null then {c: 1, r: ("review-entry-invalid:duplicate-id:" + ($dup[0] | idtext))}
   elif $state_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
   elif $receipt_bad > 0 or $receipt_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
-  elif $receipt_author_invalid then {c: 1, r: "native-receipt-author-invalid"}
   elif ($states | length) > 1 then {c: 1, r: ("state-comment-duplicated:" + ($states | map(.id | tostring) | join(",")))}
   elif $state_comment != null and $state_bad > 0 then {c: 1, r: "state-comment-invalid"}
   elif $state_comment != null then
@@ -149,13 +153,34 @@ def leading_block:
     elif $security_occurrences == 1 and ($security_marker.headSha | full_sha) and (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
     elif $receipt_type_ambiguous > 0 then {c: 1, r: "native-receipt-type-ambiguous"}
     elif $receipt_type_unknown > 0 then {c: 1, r: "native-receipt-type-unknown"}
-    elif $code_receipt_error != null then {c: 1, r: $code_receipt_error}
-    elif $security_receipt_error != null then {c: 1, r: $security_receipt_error}
     elif $code.status == "failed" then {c: 1, r: "review-failed:code_review"}
     elif $security.status == "failed" then {c: 1, r: "review-failed:security_review"}
+    elif $code.status != "completed" and $code.status != "running" then {c: 1, r: ("review-not-complete:code_review:" + $code.status)}
+    elif $security.status != "completed" and $security.status != "running" then {c: 1, r: ("review-not-complete:security_review:" + $security.status)}
     elif $find != null then {c: 1, r: ("finding:" + $find.id)}
     elif $cr != null then {c: 1, r: "changes-requested"}
     elif $commented != null then {c: 1, r: "review-not-conclusive:COMMENTED"}
+    elif $code_receipt_error != null and ($code.status != "running" or $code_receipt_error != "native-receipt-missing:code_review") then {c: 1, r: $code_receipt_error}
+    elif $security_receipt_error != null and ($security.status != "running" or $security_receipt_error != "native-receipt-missing:security_review") then {c: 1, r: $security_receipt_error}
+    elif $code.status == "running" and ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
+    elif $security.status == "running" and ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
+    elif ($code | has("has_any_findings") | not) then {c: 1, r: "review-not-complete:code_review:has_any_findings"}
+    elif ($security | has("has_any_findings") | not) then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
+    elif ($code.has_any_findings != null and ($code.has_any_findings | type) != "boolean") then {c: 1, r: "review-not-complete:code_review:has_any_findings"}
+    elif ($security.has_any_findings != null and ($security.has_any_findings | type) != "boolean") then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
+    elif ($code | has("has_unresolved_findings") | not) then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
+    elif ($security | has("has_unresolved_findings") | not) then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
+    elif ($code.has_unresolved_findings != null and ($code.has_unresolved_findings | type) != "boolean") then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
+    elif ($security.has_unresolved_findings != null and ($security.has_unresolved_findings | type) != "boolean") then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
+    elif $code.status != "running" and ($code.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_any_findings"}
+    elif $security.status != "running" and ($security.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
+    elif $code.status != "running" and ($code.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
+    elif $security.status != "running" and ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
+    elif $code.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:code_review"}
+    elif $security.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:security_review"}
+    elif $security_occurrences == 0 and ($code.status != "running" and $security.status != "running") then {c: 1, r: "security-marker-missing"}
+    elif $security_occurrences == 1 and ($code.status != "running" and $security.status != "running") and $security_marker.status != "completed" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
+    elif $security_occurrences == 1 and ($code.status == "running" or $security.status == "running") and $security_marker.status != "completed" and $security_marker.status != "running" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
     elif ($code.status == "running" or $security.status == "running") then
       (if $closed then {c: 1, r: "review-not-complete:running"} else {c: 10, r: "pending:running"} end)
     elif ($code.status != "completed") then {c: 1, r: ("review-not-complete:code_review:" + $code.status)}
@@ -163,10 +188,6 @@ def leading_block:
     elif ($code.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:code_review:commit_sha"}
     elif ($security.commit_sha | full_sha | not) then {c: 1, r: "review-not-complete:security_review:commit_sha"}
     elif (is_head($code.commit_sha) | not) or (is_head($security.commit_sha) | not) then {c: 1, r: "native-summary-stale"}
-    elif ($code.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
-    elif ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
-    elif $code.has_unresolved_findings then {c: 1, r: "finding:unresolved:code_review"}
-    elif $security.has_unresolved_findings then {c: 1, r: "finding:unresolved:security_review"}
     elif $security_occurrences == 0 and ($security_lines | length) == 0 then {c: 1, r: "security-marker-missing"}
     elif $security_marker.status != "completed" then {c: 1, r: ("security-marker-disagrees:" + ($security_marker.status // "null"))}
     elif ($security_marker.headSha | full_sha | not) then {c: 1, r: "security-marker-malformed"}

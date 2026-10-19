@@ -141,7 +141,7 @@ func TestCodexNativeReceipt(t *testing.T) {
 				x["user"] = map[string]any{"id": 1, "login": cgBotLogin, "type": "Bot"}
 			}
 			return v
-		}, 1},
+		}, 11},
 		{"stale_receipt_refuses", func(v []cgEntry) []cgEntry {
 			v[1]["body"] = strings.ReplaceAll(v[1]["body"].(string), head[:10], cgOther[:10])
 			return v
@@ -210,6 +210,38 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 	t.Run("actual_unresolved_review_remains_blocked", func(t *testing.T) {
 		run(t, unresolved, 1, "finding:unresolved:code_review")
 	})
+	t.Run("actual_unresolved_review_stays_blocked_with_keep_it_up_receipt", func(t *testing.T) {
+		entries := make([]cgEntry, 0, len(unresolved))
+		for _, entry := range unresolved {
+			clone := make(cgEntry, len(entry))
+			for key, value := range entry {
+				clone[key] = value
+			}
+			if body, ok := clone["body"].(string); ok {
+				clone["body"] = strings.Replace(body, "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. Keep it up!", 1)
+			}
+			entries = append(entries, clone)
+		}
+		run(t, entries, 1, "finding:unresolved:code_review")
+	})
+	t.Run("untrusted_marker_only_does_not_block_valid_native_receipts", func(t *testing.T) {
+		entries := make([]cgEntry, 0, len(clean)+1)
+		for _, entry := range clean {
+			clone := make(cgEntry, len(entry))
+			for key, value := range entry {
+				clone[key] = value
+			}
+			entries = append(entries, clone)
+		}
+		entries = append(entries, cgEntry{
+			"id":         9999999999,
+			"user":       map[string]any{"id": 90000001, "login": "untrusted-test-user", "type": "User"},
+			"body":       "<!-- codex-review-receipt:v1 -->",
+			"created_at": "2026-10-19T14:40:00Z",
+			"updated_at": "2026-10-19T14:40:00Z",
+		})
+		run(t, entries, 0, "native-review-clean")
+	})
 
 	for _, tc := range []struct {
 		name   string
@@ -244,6 +276,39 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 			}
 			return v
 		}, want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_actual_keep_it_up_clean_text_security_newest", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. Keep it up!", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_actual_keep_it_up_clean_text_code_newest", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["id"] = float64(6267807386)
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Codex Review: Didn't find any major issues. Keep it up!", 1)
+				}
+			}
+			return v
+		}, want: 0, reason: "native-review-clean"},
+		{name: "code_receipt_requires_exact_clean_declaration_at_line_start", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "Codex Review: Didn't find any major issues. Chef's kiss.", "Context: Codex Review: Didn't find any major issues. Chef's kiss.", 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-type-unknown"},
+		{name: "code_receipt_duplicate_declaration_lines_are_ambiguous", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267776147) {
+					entry["body"] = strings.Replace(entry["body"].(string), "**Reviewed commit:**", "Codex Review: Found major issues.\n**Reviewed commit:**", 1)
+				}
+			}
+			return v
+		}, want: 1, reason: "native-receipt-ambiguous:code_review"},
 		{name: "code_receipt_actual_bravo_clean_text_code_newest", edit: func(v []cgEntry) []cgEntry {
 			for _, entry := range v {
 				if entry["id"] == float64(6267776147) {
@@ -307,8 +372,16 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 				}
 			}
 			return v
-		}, want: 1, reason: "native-receipt-author-invalid"},
-		{name: "forged_receipt_with_valid_receipt_is_rejected", edit: func(v []cgEntry) []cgEntry {
+		}, want: 1, reason: "native-receipt-missing:code_review"},
+		{name: "forged_security_receipt_identity_is_rejected", edit: func(v []cgEntry) []cgEntry {
+			for _, entry := range v {
+				if entry["id"] == float64(6267807385) {
+					entry["user"] = map[string]any{"id": 42, "login": "chatgpt-codex-connector[bot]", "type": "Bot"}
+				}
+			}
+			return v
+		}, want: 1, reason: "stale-review:"},
+		{name: "forged_duplicate_receipt_does_not_override_valid_receipt", edit: func(v []cgEntry) []cgEntry {
 			for _, entry := range v {
 				if entry["id"] == float64(6267776147) {
 					forged := make(cgEntry, len(entry))
@@ -321,7 +394,7 @@ func TestCodexNative1828ReceiptTypesAndHeadBinding(t *testing.T) {
 				}
 			}
 			return v
-		}, want: 1, reason: "native-receipt-author-invalid"},
+		}, want: 0, reason: "native-review-clean"},
 		{name: "stale_code_receipt_is_rejected", edit: func(v []cgEntry) []cgEntry {
 			for _, entry := range v {
 				if entry["id"] == float64(6267776147) {
@@ -382,19 +455,77 @@ func TestCodexNativeOldReviewObjectsDoNotBlockCurrentCleanReceipt(t *testing.T) 
 
 func TestCodexNativeRunningSecurityLegWaits(t *testing.T) {
 	cgTools(t)
-	comments := cgNativeIssueComments(t, cgHead)
-	state := comments[0].(map[string]any)
-	body := state["body"].(string)
-	body = strings.Replace(body, `"security_review":{"commit_sha":"`+cgHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`, `"security_review":{"commit_sha":"`+cgHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"running"}`, 1)
-	state["body"] = strings.ReplaceAll(body, "<!-- codex-security-review:v1 "+`{"blockingSeverityThreshold":"P0","headSha":"`+cgHead+`","mergeGateEnabled":false,"pullRequestNumber":1842,"repository":"modu-ai/moai-adk","status":"completed"} -->`+"\n", "")
-	dir := t.TempDir()
-	issues := cgWriteList(t, dir, "issues", comments...)
-	reviews := cgWriteList(t, dir, "reviews")
-	reviewComments := cgWriteList(t, dir, "review-comments")
-	args := append(cgReadArgs(reviews, reviewComments, cgHead, "false", "false"), "--issue-comments", issues)
-	got := cgExec(t, cgScriptPath(t), nil, args...)
-	if got.code != 10 || !strings.Contains(got.all(), "pending:running") {
-		t.Fatalf("running security leg must wait for the bounded review window: exit=%d output=%s", got.code, got.all())
+	const fixtureHead = "ab609cafbf8f421164100c626db93048f888655f"
+	for _, tc := range []struct {
+		name           string
+		waitClosed     string
+		unresolved     bool
+		currentFinding bool
+		malformed      bool
+		stale          bool
+		failed         bool
+		wantCode       int
+		wantText       string
+	}{
+		{name: "running_without_receipt_waits", waitClosed: "false", wantCode: 10, wantText: "pending:running"},
+		{name: "running_without_receipt_at_window_end_fails", waitClosed: "true", wantCode: 1, wantText: "review-not-complete:running"},
+		{name: "running_unresolved_still_fails", waitClosed: "false", unresolved: true, wantCode: 1, wantText: "finding:unresolved:security_review"},
+		{name: "running_current_finding_still_fails", waitClosed: "false", currentFinding: true, wantCode: 1, wantText: "finding:"},
+		{name: "running_malformed_summary_still_fails", waitClosed: "false", malformed: true, wantCode: 1, wantText: "review-not-complete:security_review:has_unresolved_findings"},
+		{name: "running_stale_summary_still_fails", waitClosed: "false", stale: true, wantCode: 1, wantText: "stale-review:"},
+		{name: "running_peer_failure_still_fails", waitClosed: "false", failed: true, wantCode: 1, wantText: "review-failed:code_review"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			entries := cgLoadNative1828Fixture(t, "codex-native-1828-clean.json")
+			for _, entry := range entries {
+				body, _ := entry["body"].(string)
+				if strings.Contains(body, "<!-- codex-review-state:v1 ") {
+					body = strings.Replace(body,
+						`"security_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`,
+						`"security_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":null,"has_unresolved_findings":null,"status":"running"}`, 1)
+					body = strings.Replace(body, `"status":"completed"} -->`, `"status":"running"} -->`, 1)
+					if tc.unresolved {
+						body = strings.Replace(body, `"has_any_findings":null,"has_unresolved_findings":null,"status":"running"`, `"has_any_findings":true,"has_unresolved_findings":true,"status":"running"`, 1)
+					}
+					if tc.malformed {
+						body = strings.Replace(body, `"has_any_findings":null,"has_unresolved_findings":null,"status":"running"`, `"has_any_findings":null,"has_unresolved_findings":"unknown","status":"running"`, 1)
+					}
+					if tc.stale {
+						body = strings.Replace(body, `"security_review":{"commit_sha":"`+fixtureHead+`"`, `"security_review":{"commit_sha":"`+cgOther+`"`, 1)
+					}
+					if tc.failed {
+						body = strings.Replace(body,
+							`"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}`,
+							`"code_review":{"commit_sha":"`+fixtureHead+`","has_any_findings":false,"has_unresolved_findings":false,"status":"failed"}`, 1)
+					}
+					entry["body"] = body
+				}
+			}
+			kept := entries[:0]
+			for _, entry := range entries {
+				body, _ := entry["body"].(string)
+				if strings.Contains(body, "Codex Security Review") || strings.Contains(body, "Security review completed.") {
+					continue
+				}
+				kept = append(kept, entry)
+			}
+			dir := t.TempDir()
+			var issueEntries []any
+			for _, entry := range kept {
+				issueEntries = append(issueEntries, entry)
+			}
+			issues := cgWriteList(t, dir, "issues", issueEntries...)
+			reviews := cgWriteList(t, dir, "reviews")
+			reviewComments := cgWriteList(t, dir, "review-comments")
+			if tc.currentFinding {
+				reviewComments = cgWriteList(t, dir, "review-comments", cgComment(77, fixtureHead, fixtureHead))
+			}
+			args := append(cgReadArgs(reviews, reviewComments, fixtureHead, "false", tc.waitClosed), "--issue-comments", issues)
+			got := cgExec(t, cgScriptPath(t), nil, args...)
+			if got.code != tc.wantCode || !strings.Contains(got.all(), tc.wantText) {
+				t.Fatalf("exit=%d want=%d output=%s; want text %q", got.code, tc.wantCode, got.all(), tc.wantText)
+			}
+		})
 	}
 }
 
