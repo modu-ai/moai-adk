@@ -3,6 +3,7 @@
 ## A. Tree Pin, Attribution, and Carriers
 
 - Document-level tree pin: **b0a37f759**. The cells carried from `SPEC-LANE-READ-VERBS-001` keep their own pins and observation times; their ids are renumbered (plan § A). L-05 is new to this SPEC.
+- Re-anchored 2026-10-19 at tree **a3e8d1409c** (card t1810 plan-phase premise refresh): the carried cells' pins are unchanged; the line references in AC-LRC-004 were re-pinned by content after main's four days of drift (210→218, 253→261, 254→262, 455→475, plus a fifth naming line at `:47` added by card t1827), and the operative size premises were re-measured as L-14, L-15, and L-16. The parent's `measure-caps.py` is not on this card tree (`SPEC-LANE-READ-VERBS-001` rides the t1777 branch); byte-identity of this SPEC's copy was re-verified against the parent's copy at 9cf21f079, its latest recorded state (`cmp` exit 0, 7,488 bytes each).
 - Judging binaries: `<BIN>` is the parent's judging binary (`SPEC-LANE-READ-VERBS-001` acceptance § A); `<BIN2>` is the attested build named in `SPEC-LANE-READ-VERBS-001` ledger L-06.
 - The cells L-12 and L-13 name this SPEC's copy of `measure-caps.py`, which is byte-identical to the parent's copy (`cmp` exit 0); their outputs were recorded with the parent's copy.
 - Carrier form: each RED cell is one read-only invocation; where stdout and the exit code are read together, a one-process Python carrier runs the command unmodified.
@@ -56,7 +57,7 @@
 - Maps REQ-LRC-004.
 - Given the five lane-facing surfaces: the three copies of `factory-dispatch.md` (under `.claude/rules/moai/workflow/`, `internal/template/templates/.claude/rules/moai/workflow/`, and `.moai/policies/workflow/`), `.claude/skills/moai/workflows/gtd.md`, and its template copy
 - When the test scans every line that names `moai todo list --json` in those surfaces
-- Then (a) each of the five surfaces carries at least one line naming `moai todo list --json --compact`; and (b) every line naming `moai todo list --json` without `--compact` is one of the four documented full-form lines of each `gtd.md` copy, and no other such line exists. The four lines, at tree b0a37f759: the record description (`gtd.md:210`, "`moai todo list --json` emits the file's records:"), whose JSON block `TestTodoListJSONShapeMatchesDoc` compares with the default output; the two `jq` shape examples (`gtd.md:253` and `:254`), whose subject is the top-level object of the default record; and the standing-source duplicate check (`gtd.md:455`, § Not stacking duplicates), which compares card text that a compact row does not carry; and (c) the paragraph of § Not stacking duplicates that names the full form contains, in each `gtd.md` copy, the literal `40-rune prefix`, the reason plan § D.4 names. The test matches the first three lines by their text and the fourth by its section, so the compact paragraph that plan § D.4 inserts above them does not move the check. This reading is the one plan § D.4 follows.
+- Then (a) each of the five surfaces carries at least one line naming `moai todo list --json --compact`; and (b) every line naming `moai todo list --json` without `--compact` is one of the four documented full-form lines of each `gtd.md` copy, and no other such line exists. The four lines, re-anchored 2026-10-19 at tree a3e8d1409c (the line numbers of tree b0a37f759 moved with main's drift: 210→218, 253→261, 254→262, 455→475): the record description (`gtd.md:218`, "`moai todo list --json` emits the file's records:"), whose JSON block `TestTodoListJSONShapeMatchesDoc` compares with the default output; the two `jq` shape examples (`gtd.md:261` and `:262`), whose subject is the top-level object of the default record; and the standing-source duplicate check (`gtd.md:475`, § Not stacking duplicates, whose heading is at `:470`), which compares card text that a compact row does not carry. The fifth naming line on this tree, the database-paths preference bullet (`gtd.md:47` in each copy, added by card t1827), is a read instruction and changes to name `--compact` (plan § D.4), so it is not a full-form line; and (c) the paragraph of § Not stacking duplicates that names the full form contains, in each `gtd.md` copy, the literal `40-rune prefix`, the reason plan § D.4 names. The test matches the first three lines by their text and the fourth by its section, so the compact paragraph that plan § D.4 inserts above them does not move the check. This reading is the one plan § D.4 follows.
 - Test: `TestLaneQueueReadsDefaultCompact` in `internal/cli/lane_read_compact_test.go`.
 
 
@@ -366,9 +367,29 @@ stdout (verbatim):
   quota as live                                    1338 bytes  PASS
   live windows, pressure on, 2 candidate lanes     1557 bytes  PASS
 measured exit code: 0 (read-only: the only commands it runs are the four read verbs of measure-caps.py)
-worst-case widths: run_id 6 characters; card_id 8; state needs-decision (14, the longest of the 21 card states, internal/homestate/card_record.go:59-64); stage merge-ready (11); mode parallelizable (14) and priority normal (6), internal/factory/classification.go:34-39; lease_holder and candidate labels at 16 encoded bytes; counts of 6 digits; durations of 12 characters; run at 6 characters (an over-count, because the default leaves run empty); both windows fresh with every optional field set, used_percentage at the 25-byte longest float64 encoding (emulated by a 25-digit integer), three 20-character timestamps, and holds_claude_lane false; candidates_withheld and unknown_lanes at 6 digits. The live rows copy the live holders, which are at most 7 bytes, so no cut applies to them.
+worst-case widths: run_id 6 characters; card_id 8; state needs-decision (14, the longest of the 21 card states, internal/homestate/card_record.go:59-64 at the observation tree; :62-67 after the 2026-10-19 re-anchor); stage merge-ready (11); mode parallelizable (14) and priority normal (6), internal/factory/classification.go:34-39; lease_holder and candidate labels at 16 encoded bytes; counts of 6 digits; durations of 12 characters; run at 6 characters (an over-count, because the default leaves run empty); both windows fresh with every optional field set, used_percentage at the 25-byte longest float64 encoding (emulated by a 25-digit integer), three 20-character timestamps, and holds_claude_lane false; candidates_withheld and unknown_lanes at 6 digits. The live rows copy the live holders, which are at most 7 bytes, so no cut applies to them.
 binary: <BIN2> (see SPEC-LANE-READ-VERBS-001 ledger L-06)
 tree: 9cf21f079 (code byte-identical to b0a37f759) · observed: 2026-10-15, run ending 08:07:12Z
+```
+
+```
+L-14 · premise re-measured 2026-10-19 (AC-LRC-001; refreshes the operative figure of L-02): the full todo default
+command: the L-02 command form (`<BIN> todo list --json`, stdout byte count)
+observed: 2,897,435 bytes (L-02 carried 2,629,774 on 2026-10-15; about +10% in four days)
+tree: 74ad197380 · observed: 2026-10-19 by the card lane under the resource rules, carried into this ledger through the card dispatch record. Gap: the command's carrier print and exit code are not carried in that record, so this row cites the byte count only; the L-02 verbatim carrier print remains the pinned historical form.
+```
+
+```
+L-15 · premise re-measured 2026-10-19 (AC-LRC-005, AC-LRC-006; refreshes the operative figure of L-03): the factory status default
+command: the L-03 command form (`<BIN> factory status --json`; stdout byte count, card count, distinct run ids)
+observed: 201,400 bytes · 368 cards · 15 run ids (L-03 carried 117,251 · 218 · 14 on 2026-10-15; about +72% in bytes in four days)
+tree: 74ad197380 · observed: 2026-10-19 by the card lane under the resource rules, carried into this ledger through the card dispatch record. Gap: the command's carrier print and exit code are not carried in that record, so this row cites the counts only; the L-03 verbatim carrier print remains the pinned historical form.
+```
+
+```
+L-16 · premise re-measured 2026-10-19 (AC-LRC-002, AC-LRC-003, AC-LRC-007; re-asserts the L-01 and L-04 RED premises): the new flags are still absent
+observed: `moai todo list --json --compact` and `moai factory status --json --full` each still refuse with `Unknown flag` — the L-01 and L-04 red reason holds on today's tree
+tree: 74ad197380 · observed: 2026-10-19 by the card lane under the resource rules, carried into this ledger through the card dispatch record. Gap: the verbatim refusal text of this run is not carried in that record; the L-01 and L-04 verbatim outputs remain the pinned forms.
 ```
 
 ## E. Edge Cases

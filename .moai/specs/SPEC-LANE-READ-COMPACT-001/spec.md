@@ -1,10 +1,10 @@
 ---
 id: SPEC-LANE-READ-COMPACT-001
 title: "Lane read verbs, part (a) — todo compact form and factory status default bound"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-19
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -22,10 +22,11 @@ related_specs: [SPEC-LANE-READ-VERBS-001, SPEC-LANE-READ-SESSION-001, SPEC-TODO-
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-15 | manager-spec | Split from `SPEC-LANE-READ-VERBS-001` (card t1777) by board ruling `d-20261015T122748Z-6d6b`: this SPEC is part (a), card t1810, the low-risk half. It carries the todo compact form (Q1, Q2), the factory status default (Q3, Q8), their lane-facing consumer reads, and the queue-and-factory doctrine sentence. It carries no session list and no Windows content; those are `SPEC-LANE-READ-SESSION-001` (card t1811). Requirements and criteria are renumbered from 001; the parent ids are listed in plan § A. 10 requirements and 11 criteria; Tier M. |
+| 0.2.0 | 2026-10-19 | manager-spec | Card t1810 plan-phase premise refresh (no requirement, criterion, decision, or bound changed): the carried size premises were re-measured on tree 74ad197380 (todo default 2,897,435 bytes, about +10%; factory status 201,400 bytes · 368 cards · 15 run ids, about +72%; `--compact` and `--full` still absent), recorded as ledger rows L-14 to L-16, and the plan's line references were re-anchored by content to tree a3e8d1409c after four days of main drift — the `gtd.md` full-form lines moved to 218/261/262/475 and card t1827 added a fifth naming line at `:47`, which joins the compact change; the `factory_card.go` and `todo.go` anchors moved by roughly 100 lines. |
 
 ## B. Background
 
-Card t1777 reported that a Codex lane reached 72% of its context before its card was dispatched, because the read verbs a lane calls emit their full records by default. This SPEC bounds two of those verbs: `moai todo list` gains an opt-in `--compact` JSON form, and the default `moai factory status --json` becomes a bounded, active-run-only listing. The measurements are carried from the parent and recorded in `acceptance.md` § D.
+Card t1777 reported that a Codex lane reached 72% of its context before its card was dispatched, because the read verbs a lane calls emit their full records by default. This SPEC bounds two of those verbs: `moai todo list` gains an opt-in `--compact` JSON form, and the default `moai factory status --json` becomes a bounded, active-run-only listing. The measurements are carried from the parent and recorded in `acceptance.md` § D; they were re-measured on 2026-10-19 at tree 74ad197380 as ledger rows L-14 to L-16, and the problem definition they carry strengthened in the four days between.
 
 The decisions it rests on are listed once here: REQ-LRC-001 to REQ-LRC-004 rest on Q1, and REQ-LRC-002 and REQ-LRC-003 also on Q2; REQ-LRC-005 to REQ-LRC-007 rest on Q3, and REQ-LRC-007 also on Q8; REQ-LRC-008 rests on Q7, and Q6 decides at run phase whether its placement holds; the todo and factory half of the scope change Q9 covers REQ-LRC-001, REQ-LRC-003, and REQ-LRC-006. Q1 is DECIDED on board record dfd8, Q2, Q3, Q7, Q8, and Q9 on board record 6f23 (the anchor is the board id under the operator-proxy standing), and Q6 is EVIDENCE-NEEDED. REQ-LRC-009 and REQ-LRC-010 rest on no row of their own.
 
