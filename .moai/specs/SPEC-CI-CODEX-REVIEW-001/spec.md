@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.6.0"
+version: "0.7.0"
 status: in-progress
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 author: "Goos Kim"
 priority: P1
 phase: "v3.2.0 target"
@@ -28,8 +28,30 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.4.0 | 2026-10-18 | manager-spec (card t1868, lane-22) | Plan revision 4 after plan audit iteration 2 (FAIL 0.81, receipts rcpt-df0227b9e68727bfeefccd65 and rcpt-196d8f94f5876f4814d6e5de), the last normal round. Changes are in the review reader, not in the design direction. (1) **What counts as clean** is one rule: the newest native review bound to the head must be in state APPROVED with a submission time, no finding may exist, and a CHANGES_REQUESTED review is superseded only by a later APPROVED; COMMENTED (with or without inline comments, whatever its body says), DISMISSED and PENDING are never clean and review body text is never read (D12, D13; REQ-CCR-001, 004). (2) **NOT RUN is one named result** with two causes, a draft and a review absent at the end of the wait window; an unreadable list at expiry is a failure, not NOT RUN (D17; REQ-CCR-007, 008). (3) Changed-file entries are bound to the verified head commit and the head is read before and after the list (D14; REQ-CCR-010, 012); the merge decision path is a criterion of its own (D15; AC-CCR-019); the `gh` allow-list is exact (D16; REQ-CCR-006). (4) REQ-CCR-003, 013, 014, 015 are restated in positive form (D22). (5) AL-1 is an unverified expectation (D18); CI-input files outside the tamper guard are named residual risk (D19); a repeated list entry refuses (D20); stale research cross-references corrected (D21); the dated DS-1 observation of 2026-10-18 is recorded in the DS-1 row (D23). Counts: 17 requirements, 19 criteria, contiguous. |
 | 0.5.0 | 2026-10-18 | manager-spec (card t1868, lane-22) | Plan revision 5, the post-ceiling correction under the leader's standing rule C (one correction commit, one delta audit) after plan audit iteration 3 (FAIL 0.85, receipts rcpt-44d9b0e5a5829de2c78400bd and rcpt-8b713fb407597f85c325b2fe). Three local fixes, no design change, identifier sets unchanged: (D24) REQ-CCR-003 no longer excludes a review by its body text; an artifact is excluded because of its author and the gate reads no body text of any artifact. (D25) The `review` step reads the pull request's head after its list reads on every pass, so REQ-CCR-012, design §5, and AC-CCR-012 say the same thing. (D26) The `files` term of the merge `if` is pinned structurally by AC-CCR-012, and AC-CCR-019 names a non-equivalent mutant in its place. Counts: 17 requirements, 19 criteria, contiguous. |
 | 0.6.0 | 2026-10-18 | manager-spec (card t1868, lane-22) | Plan revision 6, an in-place amendment of the closed SPEC (see `## Amendments`) under the leader's ruling, board record d-20261018T152011Z-8447 (supersedes d-20261018T151824Z-db98; ruling and scope unchanged), after the delegated Codex observer's reproduction of the `review` step: a review failure ended the step with exit status 0 and only wrote `ok=false` / `state=fail` to the outputs, and a draft wrote the key `state` twice. The delta is in `design.md` "Delta of plan revision 6" (Δ1 to Δ10). (Δ1, Δ11) REQ-CCR-018, new: every path of the `files` and `review` steps other than their pass ends non-zero, so the step and the job fail; one table maps gate exit code to step exit, job result, and outputs (`design.md` §5). (Δ2) REQ-CCR-008 and the NOT RUN term split by cause at the consumer: a draft keeps the state `not-run:draft` with a job result that is not success; a non-draft pull request with no review at the end of the window is a failure. (Δ3) REQ-CCR-019, new: one value per output key. (Δ4) REQ-CCR-007 and REQ-CCR-012 aligned. (Δ6) the remote conclusion of the job is UNOBSERVED and the G6 acceptance condition says why a draft pull request cannot show it. (Δ7) DS-1 and DS-2 restated with the leader's observation items. (Δ8) KD-1 transferred to card t1874. (Δ10) two exclusions. Identifiers REQ-CCR-018, REQ-CCR-019, and AC-CCR-020 to AC-CCR-025 are new; the same-numbered identifiers named in the 0.2.0 row belong to the superseded revision-1/2 numbering. Counts: 19 requirements, 25 criteria, contiguous (ceilings 25 and 25). The leader's scope addition (board record d-20261018T155527Z-4e9e, a delegated Codex observer run, not an operator run and not a new approval) was folded in before audit: the rule covers both added steps and the chain (Δ11, AC-CCR-025). |
+| 0.7.0 | 2026-10-19 | manager-spec (card t1868, lane-22) | Plan revision 7, an in-place amendment (see `## Amendments`, Amendment 2) under the leader's rulings and operator follow-up of 2026-10-19 (board and messages relayed by the leader). The delta is in `design.md` "Delta of plan revision 7" (Δ12 to Δ26). **The native Codex review is an issue-comment state protocol, not a pull-request review object** (measured on five real pull requests, `research.md` E37 to E45): one issue comment by the identity (login `chatgpt-codex-connector[bot]`, id 199175422, type Bot), created when a review starts and edited in place until it ends, carrying the marker `<!-- codex-review-state:v1 {...} -->` with a `code_review` and a `security_review` leg; the `reviews` list stays empty unless there are findings. (Δ12) REQ-CCR-001 to 005 are replaced by the comment contract: pass only when both legs are `completed`, bound to the head, with `has_unresolved_findings` exactly false and the security marker `completed` for the head (null is not false; #1842 shows why); `running` is pending; everything else, malformed or duplicated markers, a marker outside its position, and more than one state comment fail closed; an APPROVED review object no longer passes anything, and a review or review comment of the identity can only refuse. (Δ13) REQ-CCR-006, 007, 008, 010, 012 follow (listings, pending, recheck of the same comment). (Δ14) The gate applies to every merge base, an unprotected integration base such as `release/main-batch-YYYYMMDD` included. (Δ15) AC rows rewritten to the real-sample fixtures; identifiers unchanged, the criterion count stays 25. (Δ16) DS-1 observed on other pull requests, not on #1828; DS-2 open; Q20 and FU-10 closed. (Δ17) Motivating incident: PR #1841 merged before its Codex review finished. (Δ25) Auto-merge policy alignment: REQ-CCR-020 (only a pull request authored by GoosLab, user id 6458969, type User, non-fork, non-bot is ever merged by automation) and REQ-CCR-021 (no automatic branch deletion, no `--delete-branch`) are new, enforced in the workflow and pinned by rows of existing criteria. (Δ26) The re-request observation (#1842: the state comment edited in place, a receipt comment added, markers carrying different SHAs) and the findings case of #1833 are fixtures. Counts: 21 requirements, 25 criteria, contiguous (ceilings 25 and 25). |
 
 ## Amendments
+
+### Amendment 2 — the native review is read from its issue comment (plan revision 7)
+
+- prior_completed_version: 0.6.0
+- prior_completed_sha: pending-backfill   # a commit cannot cite its own hash (spec-workflow Sync (close)); backfilled with the real SHA in a following commit
+  (the value `sync_commit_sha` still holds in `progress.md` §E.4; the revision-6 amendment did not re-close the SPEC, so the prior close is the same)
+- rationale: the closed SPEC, and revision 6 after it, recognised the native review as a pull-request review
+  object in state APPROVED. Measured on real pull requests (#1835, #1836, #1837, #1838, #1841; `research.md` E37 to E45) that object does not exist for a clean review: the review is one issue comment by the same bot identity,
+  edited in place until it ends, and the `reviews` list stays empty. With the shipped reader every real non-draft
+  pull request would end NOT RUN and every automated merge would be withheld for good. The motivating incident is
+  PR #1841, merged while both Codex reviews were still running (`research.md` E41). The leader's ruling of
+  2026-10-19 redesigns the contract around the comment protocol.
+- scope: REQ-CCR-001 to 005 replaced; REQ-CCR-006, 007, 008, 010, 011, 012 reworded; REQ-CCR-020 and REQ-CCR-021 added;
+  REQ-CCR-018, 019 and the remaining requirements untouched in meaning; the criteria AC-CCR-001 to 008, 010, 012, 019 to 023 rewritten
+  to the new fixtures with unchanged identifiers (25 criteria, no new one); the §3 terms, §5 stated fact, DS-1,
+  DS-2, DS-3, and §6 review-feature exclusions restated; Q20 and FU-10 closed, Q23 and Q24 added. The gate
+  script, its tests, and `auto-merge.yml` as landed still implement the revision-6 reader; the code and test
+  changes this amendment calls for are a run-phase milestone (`plan.md` M6), and so are the author and fork rule and the removal of `--delete-branch`, which the workflow must enforce and the
+  tests must pin (a documented limit does not complete them). Not changed: the exit classes
+  0, 1, 10, 11 and their mapping (T-CHAIN), the files step, the tamper guard, one value per output key,
+  KD-1 (card t1874), the deferred gates.
 
 ### Amendment 1 — a review failure fails the `review` step and the job (plan revision 6)
 
@@ -64,7 +86,9 @@ measured at HEAD `ae494aedb2`, and the revision-4 facts E31-E32 and the RED-now 
 both differ from the base only under this SPEC directory and `.moai/reports/t1868/`) or by read-only GET on
 2026-10-18; every one carries its evidence id from `research.md` §3. The revision-6 facts E33 to E35 were
 measured, or relayed and labelled as relayed, at HEAD `0955fb9058` (the run and sync phases landed on the card
-branch; no merged-local SHA exists).
+branch; no merged-local SHA exists). The revision-7 facts E37 to E45 were read from the lane's saved raw REST
+objects of 2026-10-19 (`.moai/reports/t1868/codex-samples/`, machine-local and gitignored, read-only; the bodies are public GitHub data) and
+from the observer's report of the same day, with the publication tree at HEAD `b2af3db9a1`.
 
 - `auto-merge.yml` withholds a merge unless a CodeRabbit commit status reaches `success` and a
   `Merge Risk:` comment line names the current head commit (E3). CodeRabbit skipped the large batch
@@ -84,13 +108,40 @@ branch; no merged-local SHA exists).
   `chatgpt-codex-connector` (owner `openai`, id 1144995) exists, that its bot account is
   `chatgpt-codex-connector[bot]` with user id 199175422 and type Bot (E27), and that it is installed on
   the `modu-ai` organisation for all repositories and not suspended (E28).
-- **The artifact is unverified.** None of the 120 most recent pull requests of the two repositories (60
-  each) carries a review, a review comment, or an issue comment authored by the Codex app, or by any login
-  naming codex, chatgpt, or openai (E29). Which artifact the native review leaves on a pull request, whether
-  it runs on a draft, and what it leaves for a clean result are therefore UNVERIFIED (U2, U4, U5); a later
-  dated observation (§5, DS-1, 2026-10-18) also found no Codex trace on a pull request about 47 minutes after
-  it opened. The gate recognises exactly one form — a pull-request review — counts one state of it as clean
-  (APPROVED), and fails closed on every other (§3.1).
+- **The artifact (measured, revision 7).** Revisions 3 to 6 designed the reader before any native review had
+  been seen (the 120 pull requests of 2026-10-18 carried none, E29, and a pull request 47 and 82 minutes old
+  still had none, E32), and recognised a pull-request review object in state APPROVED. On 2026-10-19 the lane
+  read the raw REST objects of five real pull requests (#1835, #1836, #1837, #1838, #1841; E37): the native
+  review is **one issue comment** by the identity (login `chatgpt-codex-connector[bot]`, user id 199175422,
+  type Bot), created when a review starts and edited in place until it ends; it carries the machine markers
+  `<!-- codex-pull-request-review-summary -->`, `<!-- codex-review-state:v1 {...} -->` (a `code_review` and a
+  `security_review` leg, each with `commit_sha`, `has_any_findings`, `has_unresolved_findings`, `status`), and
+  `<!-- codex-security-review:v1 {...} -->`. The `reviews` list is empty on the four clean pull requests; a
+  review object exists only beside findings (#1836: one COMMENTED review and one inline review comment of the
+  identity). The values `running` and `completed` of `status` were read (E38, E39); what other values exist is
+  unknown. The gate therefore recognises exactly one carrier for a verdict, the state comment, passes on one
+  condition (both legs `completed`, bound to the head, no unresolved finding), and fails closed on every
+  other state (§3.1). One further sample shows why `completed` alone is not a pass: on #1842 the
+  security leg reads `completed` with a null `commit_sha` and null finding fields while the security marker
+  reads `running` (E42). Not observed: a pull request opened non-draft (all triggers read "Draft marked
+  ready"), the whole `running` to `completed` transition (E39), a review after a push, and the behavior of a
+  `@codex review` re-request (DS-2, DS-3).
+- **Motivating incident (revision 7).** PR #1841 was merged at 2026-10-19T05:13:31Z; its Codex code review
+  completed at 05:14:11Z and its security review at 05:15:04Z (the reviews started at 05:13:37Z and
+  05:13:38Z after the draft was marked ready). The merge preceded the review, and it is not retroactively read
+  as a pass. The automated merge must therefore never happen while a native review is `running` or absent for
+  the head, on any base (`research.md` E41).
+- **The author policy (relayed by the leader, 2026-10-19).** Only a pull request authored by GoosLab (user id 6458969, type User), from a
+  branch of the base repository, and not by a bot, is ever merged by automation, and only conditionally: current-head CI, both review legs
+  clean and bound to the head, no unresolved finding, the base's required checks satisfied. Every other pull request (a fork, a bot such as
+  dependabot, id 49699333, type Bot, or another author) needs the user's test confirmation and explicit approval and is never merged
+  by automation. Automation never deletes a branch. The repository setting `delete_branch_on_merge` is a security setting that stays an
+  operator decision (G9). The shipped workflow enforces none of the author, fork, or bot rule and passes `--delete-branch`; REQ-CCR-020
+  and REQ-CCR-021 make the workflow enforce them and the tests pin them (`research.md` E43, E45).
+- **The gate has a base-branch scope, and it is every base.** All five measured pull requests have the base
+  `release/main-batch-20261019`, an integration base without branch protection (`protected: false`, no rules; E40, E43); the review
+  gate is the only enforcement point on it. A state recorded for an old head never counts for a new one: the #1842 head moved at
+  05:32:18Z while its comment still named the old head (E43). No base is exempt (REQ-CCR-006).
 - **The trigger and the settings (relayed, revision 6).** The leader relayed a read-only observation of the
   native review's settings for this repository: the review trigger is "when a pull request is opened"; automatic
   review is on for all pull requests; thorough review is on; automatic security review is on; the minimum
@@ -125,41 +176,61 @@ hook lane notice, the binding ledger, and every other `Merge Risk` wording are n
 
 After the run phase lands locally and the leader's draft pull request is merged by its owner:
 
-1. For a non-draft pull request, `auto-merge.yml` merges only when the pull request carries a native Codex
-   review — a pull-request review authored by the Codex app identity, bound to the exact head commit, in
-   state APPROVED and newest among the identity's reviews of that commit, with no finding comment on that
-   commit — in addition to the unchanged CI observations. No issue comment, label, review body text,
-   third-party status, or review by any other author is a verdict, and no elapsed time is a pass.
+1. For a non-draft pull request authored by the one eligible author (REQ-CCR-020), on every merge base (an unprotected integration base such as
+   `release/main-batch-YYYYMMDD` included), `auto-merge.yml` merges only when the pull request carries a
+   finished native Codex review — exactly one state comment authored by the Codex app identity whose marker
+   reports both legs `completed`, bound to the exact head commit, with no unresolved finding, and no
+   corroborating finding of the identity on that commit — in addition to the unchanged CI observations. A
+   review that is `running` or absent for the head is never merged over. No comment, label, or review of any
+   other author, no prose outside the marker, no review object of the identity, no third-party status is a
+   verdict, and no elapsed time is a pass.
 2. No CodeRabbit, Claude review, or `@claude` responder surface remains in the repository's workflows or
    under `scripts/ci/`, except the historical and fixture text named in §6. Doctrine surfaces are not changed
    by this card and are carried as known debt KD-1 (§7).
-3. Every state the gate cannot verify — no recognisable review, a review of another commit, a review that is
-   not APPROVED, a finding, an unreadable or unprovably complete list — leaves the merge withheld with a
-   named reason; nothing is ever read as a pass by absence or by the passing of time.
+3. Every state the gate cannot verify — no state comment, a review of another commit, a leg that is not
+   `completed`, an unresolved finding, a malformed, duplicated, or misplaced marker, more than one state
+   comment, an unreadable or unprovably complete list — leaves the merge withheld with a named reason (a
+   review still `running` is waited on inside the window); nothing is ever read as a pass by absence or by
+   the passing of time.
 4. A draft pull request is reported `not-run:draft` — a state of its own that is never a pass — and the
    `review` step and the job do not end in success; a non-draft pull request with no native review observed
    for its head commit when the wait window ends is a failure of the step and the job (cause
    `not-run:review-absent`). Auto-merge withholds the merge on both; a draft report verifies the gate path
-   only. Whether the native review runs on a draft, whether a clean result is an APPROVED review, and whether
-   a review runs again after the ready-for-review transition or a push are items to confirm by observation
-   (§5, DS-1, DS-2).
+   only. The leader's ruling is that a draft pull request gets no native review (a review starts on
+   open-for-review, on draft-marked-ready, or on an `@codex review` comment: the trigger list the bot's own
+   comment states, E37, together with the silence of #1828; no draft was observed being reviewed or not
+   reviewed under a controlled read), and whether a review runs again after a push is an item to confirm by
+   observation (§5, DS-1, DS-2).
 5. A failure in either guard step this SPEC adds is a failure of that step and of the job: every path of the
    `files` and `review` steps other than their pass — a missing gate script included — ends with a non-zero
    exit status, so the later steps and the merge do not run and no failed gate reads as a green job
    (REQ-CCR-018). The remote conclusion of that job is UNOBSERVED until the leader-coordinated flow after
    landing (§4, §5 G6).
+6. Automation merges only a pull request authored by GoosLab (user id 6458969, type User) from a branch of the base repository; a fork,
+   bot, or other author's pull request needs the user's test confirmation and explicit approval and is never merged by automation, and
+   automation never deletes a branch (REQ-CCR-020, REQ-CCR-021). The workflow enforces both rules and the tests pin them.
 
 ## 3. Requirements (GEARS)
 
 Notation: GEARS. Behavior is stated; file, script, and function names live in `design.md`.
 Terms: the **gate script** is the repository's single review-verdict checker; the **Codex app identity** is
-the account with login `chatgpt-codex-connector[bot]`, numeric user id 199175422, and account type Bot; a
-**native review** is a pull-request review authored by that identity; it is **bound** to a commit when its
-`commit_id` equals that commit; the **newest** native review bound to a commit is the one with the highest
-numeric review `id`; a **finding** is a review comment authored by that identity and bound to the head
-commit; the **gate paths** are every file under the workflows directory and the gate script; **clean** is
-the one state REQ-CCR-001 defines; **NOT RUN** is the gate script's exit class 11, with exactly two causes: a
-draft pull request, or no native review observed for the head commit when the wait window ends. At the
+the account with login `chatgpt-codex-connector[bot]`, numeric user id 199175422, and account type Bot (an
+artifact is by the identity only when all three match); the **native review** is what that identity leaves on
+the pull request, and its verdict carrier is the **state comment**: an issue comment authored by the identity
+whose body carries the **state marker**, the single line `<!-- codex-review-state:v1 {JSON} -->` standing in
+the leading block of the body (the run of lines from the first line on that each begin with `<!--` and end
+with `-->`); the JSON has two **legs**, `code_review` and `security_review`, each read for its `status`,
+`commit_sha`, and `has_unresolved_findings` and for nothing else; the **security marker** is the line
+`<!-- codex-security-review:v1 {JSON} -->` in the same leading block, read for its `status` and `headSha`
+only; a leg is **bound** to a commit when its `commit_sha` equals that commit (a null `commit_sha` is bound
+to nothing, and a null `has_unresolved_findings` is not `false`); a **corroborating finding** is a review comment of the identity bound to the
+head commit, or a review object of the identity bound to the head commit in state COMMENTED or
+CHANGES_REQUESTED, and it can only refuse, never pass; the **eligible author** is the account with login `GoosLab`, numeric user id 6458969, and account type User (all three must
+match), and an **eligible pull request** is one it authored whose head repository is the base repository (compared by repository id; a
+missing head repository is a fork); the **gate paths** are every file under the workflows
+directory and the gate script; **clean** is the one state REQ-CCR-001 defines; **pending** is a state
+comment with a leg `running`; **NOT RUN** is the gate script's exit class 11, with exactly two causes: a
+draft pull request, or no state comment observed for the head commit when the wait window ends. At the
 consumer the two causes are not one result: a draft is the recorded state `not-run:draft` with a job result
 that is never success, and a non-draft pull request whose window ended with no review is a failure
 (REQ-CCR-008, REQ-CCR-018). The **step exit status** and the **job result** are what the workflow platform
@@ -168,69 +239,91 @@ reports for the `review` step and its job; **a pass** is the one case where the 
 ### 3.1 Native review verification
 
 - **REQ-CCR-001** (Ubiquitous) The gate script shall report a pull request's native review as clean only when
-  the newest native review bound to the exact head commit under review is in state APPROVED and carries a
-  submission time, and no finding exists on that commit; the gate script shall take this decision from review
-  state, binding, and finding comments alone, so that review body text, in either direction, changes no
-  verdict.
-- **REQ-CCR-002** (Event-driven) When every native review of the pull request is bound to a commit other
-  than the head commit under review — including a head that moved after the pull request opened — the gate
-  script shall refuse and name the stale commit.
-- **REQ-CCR-003** (Event-driven) When a review, review comment, or issue comment is authored by any login, any
+  exactly one state comment of the Codex app identity exists on the pull request, its state marker parses as
+  one JSON object, and for each of the two legs the `status` is `completed`, the `commit_sha` equals the
+  exact head commit under review, and `has_unresolved_findings` is the boolean `false` (a `completed`
+  status alone, or both legs reading `completed`, is never enough, and null is not `false`), the
+  security marker stands once, reads `completed`, and carries the head commit in `headSha`, and no
+  corroborating finding exists on that commit; the gate script shall take this decision from the author of
+  each artifact, the marker's three fields per leg, the security marker's two fields, and the
+  corroborating artifacts alone, so that prose, table rows, the summary marker, reactions, and review
+  objects of any state, in either direction, change no pass.
+- **REQ-CCR-002** (Event-driven) When either leg of the state comment is bound to a commit other than the head
+  commit under review — including a head that moved after the review started — the gate script shall refuse
+  and name the stale commit, never read it as pending and never as NOT RUN.
+- **REQ-CCR-003** (Event-driven) When a comment, review, or review comment is authored by any login, any
   numeric id, or an account type other than the Codex app identity's, the gate script shall exclude it from
-  the verdict because of its author, in every state and whatever its body text says, so that the verdict
-  derives only from reviews and review comments of the Codex app identity; the gate script shall read no body
-  text of any artifact, so that a review of the Codex app identity is neither excluded nor demoted by what its
-  body says (REQ-CCR-001).
-- **REQ-CCR-004** (Event-driven) When the newest native review bound to the head commit is in any state other
-  than APPROVED — COMMENTED (with or without inline comments, whatever its body says), CHANGES_REQUESTED,
-  DISMISSED, PENDING, or an unknown state — or lacks a submission time or a required field, or when a native
-  review in state CHANGES_REQUESTED is bound to the head commit and no later native review in state APPROVED
-  is bound to the same commit, the gate script shall refuse and name the reason. A CHANGES_REQUESTED review is
-  superseded only by a later APPROVED native review bound to the same commit; no other state, no body text,
-  and no elapsed time supersedes it.
-- **REQ-CCR-005** (Event-driven) When a finding exists on the head commit, the gate script shall refuse and
-  name it; when none exists, the findings check shall pass.
+  the verdict because of its author, in every state and whatever its body text says — a marker string inside
+  it included — so that the verdict derives only from artifacts of the Codex app identity; the gate script
+  shall read the body of one artifact kind only, the issue comments of the identity, and of such a body only
+  the state marker (REQ-CCR-001).
+- **REQ-CCR-004** (Event-driven) When the state comment is not clean — a leg `status` other than `completed`
+  (`running` is pending, REQ-CCR-007; any other value, a missing or null `status`, a missing leg, a missing,
+  null, or non-boolean `has_unresolved_findings`, or a `commit_sha` that is not 40 hexadecimal characters
+  refuses), a marker whose JSON is malformed or altered so that it no longer parses to the required shape, a
+  marker string that stands outside the marker position of a comment of the identity, a body that carries the
+  state marker or the security marker twice, a missing or malformed security marker, a security marker
+  that does not read `completed` or whose `headSha` is not the head (the two markers disagree), or more
+  than one state comment of the identity on the pull request — the gate script shall
+  refuse and name the reason; no later comment, no prose, no review object, and no elapsed time clears it,
+  and the gate script shall not choose among duplicates by recency.
+- **REQ-CCR-005** (Event-driven) When a leg reports `has_unresolved_findings` true, or a corroborating finding
+  exists on the head commit, the gate script shall refuse and name it; when neither exists, the findings
+  check shall pass. A review or review comment of the identity can only add a refusal and never grants a
+  pass.
 
 ### 3.2 Auto-merge consumer
 
 - **REQ-CCR-006** (Ubiquitous) Auto-merge shall authorize a merge only when the gate script's read of the
   pull request's native review exits 0 for the exact head commit, in addition to the unchanged CI
-  observations, shall take the review verdict from that exit status alone, and shall read, for that verdict,
-  only the pull request object and its changed-file, review, and review-comment listings; the `gh` calls the
-  workflow and the gate script make shall be exactly the allow-list of `acceptance.md` AC-CCR-006.
-- **REQ-CCR-007** (Event-driven) When no native review is recognised yet, auto-merge shall keep waiting inside
-  a bounded window (at most 60 passes of 15 seconds; time appears only as this bound, and no elapsed time is
-  ever a pass); when the read refuses, auto-merge shall withhold the merge at once and end the `review` step
-  as a failure (REQ-CCR-018); when a list the verdict needs stays unreadable to the end of the window,
-  auto-merge shall withhold the merge and report a failure named `review-unreadable`, a failed step and a
-  failed job, never NOT RUN. A review that arrives after the window expired is read only when auto-merge next
-  runs (§7, AL-1).
+  observations, on every merge base of a pull request — a base without branch protection, such as an
+  integration branch `release/main-batch-YYYYMMDD`, included, so that no base is exempt and a review that is
+  `running` or absent for the head is never merged over on any base; it shall take the review verdict from
+  that exit status alone, and shall read, for that verdict, only the pull request object and its
+  changed-file, issue-comment, review, and review-comment listings; the `gh` calls the workflow and the gate
+  script make shall be exactly the allow-list of `acceptance.md` AC-CCR-006.
+- **REQ-CCR-007** (Event-driven) When no state comment is recognised yet, or the state comment reports a leg
+  `running`, auto-merge shall keep waiting inside a bounded window (at most 60 passes of 15 seconds; time
+  appears only as this bound, and no elapsed time is ever a pass); when the read refuses, auto-merge shall
+  withhold the merge at once and end the `review` step as a failure (REQ-CCR-018); when a leg is still
+  `running` on the last pass, auto-merge shall report a failure named `review-not-complete:running`, a failed
+  step and a failed job, never NOT RUN and never a pass; when a list the verdict needs stays unreadable to
+  the end of the window, auto-merge shall withhold the merge and report a failure named
+  `review-unreadable`, a failed step and a failed job, never NOT RUN. A review that finishes after the window
+  expired is read only when auto-merge next runs (§7, AL-1).
 - **REQ-CCR-008** (Event-driven) When the pull request is a draft, auto-merge shall record the single state
   `not-run:draft` — distinct in gate exit class (11), annotation, and recorded state from pass and from
   failure — shall withhold the merge, and shall end the `review` step with a non-zero exit status so that the
-  job result is never success, whether or not any review exists on a draft; when the pull request is not a
-  draft and the wait window ends with no native review observed for the head commit (gate exit class 11, cause
+  job result is never success, whether or not any state comment exists on a draft; when the pull request is not
+  a draft and the wait window ends with no state comment observed (gate exit class 11, cause
   `not-run:review-absent`), auto-merge shall report a failure — a failed step and a failed job — naming that
   cause, and shall withhold the merge; a draft report verifies the gate path only and is not a review result.
 - **REQ-CCR-009** (Event-driven) When a pull request adds, changes, deletes, or renames any gate path,
   auto-merge shall withhold the merge for human decision.
-- **REQ-CCR-010** (Event-driven) When a list the gate script decides on — changed files, reviews, or review
-  comments — cannot be proven complete and bound (a page cannot be read, the collected count differs from the
+- **REQ-CCR-010** (Event-driven) When a list the gate script decides on — changed files, issue comments,
+  reviews, or review comments — cannot be proven complete and bound (a page cannot be read, the collected
+  count differs from the
   pull request's own count where one exists, an entry repeats, the API's page ceiling is reached, the
   changed-file list is empty, or a changed-file entry that is not a removal is not bound to the verified head
   commit), the gate script shall refuse and, where the refusal comes from collecting a list, remove its output
   list.
 - **REQ-CCR-011** (Ubiquitous) Auto-merge shall check out the default branch alone (a pull-request ref is
   never checked out) and shall keep unchanged its head-commit re-verification, required-check observation,
-  overall deadline, and head-pinned merge call.
+  overall deadline, and head-pinned merge call, which requests no branch deletion (REQ-CCR-021).
 - **REQ-CCR-012** (Ubiquitous) The auto-merge workflow shall run, in this order and before its merge step, a
-  step that collects and checks the pull request's changed-file list and a step that reads the native review;
+  step that decides author eligibility (REQ-CCR-020), a step that collects and checks the pull request's changed-file list, and a step
+  that reads the native review;
   each step shall read the pull request's head commit before and after its list reads (the review step on
   every pass that reads lists) and record a failing result when that head differs from the verified head
   commit; each shall record a passing result only when
   the corresponding gate-script call exits 0; each shall treat any other exit, including one it does not
-  recognise, as a withheld merge (and each guard step, as a failed step, REQ-CCR-018); and the merge step
-  shall run only when both steps recorded a passing result.
+  recognise, as a withheld merge (and each guard step, as a failed step, REQ-CCR-018); the `review` step
+  shall recheck a clean pass before recording it, by re-collecting the issue-comment, review, and
+  review-comment lists between two further reads of the pull request and requiring the same head, the
+  same review-comment count, and the same clean verdict of the same state comment (its id, its `updated_at`, and its
+  parsed fields), because the bot edits that comment in place; and the merge step shall run only when both
+  steps recorded a passing result, shall read the head commit again immediately before the merge call, and
+  shall withhold the merge when that head differs from the verified head.
 - **REQ-CCR-013** (Ubiquitous) The auto-merge workflow shall use the `workflow_run` trigger alone, shall
   reference the workflow token as its only secret, and shall carry only steps that neither upload, download,
   nor cache an artifact; this SPEC's commits shall add zero workflow files.
@@ -248,6 +341,17 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   output keys at most once, on its single terminating path, so that every key of a step's output carries
   exactly one value: `ok` is `true` or `false`; `state` is `pass` or `fail` for the `files` step and `pass`,
   `fail`, or `not-run:draft` for the `review` step; a key the step never recorded reads as not-pass.
+- **REQ-CCR-020** (Event-driven) When a pull request is not authored by the eligible author (login `GoosLab`, user id 6458969, type
+  User, all three together), or its head repository is missing or is not the base repository, or its author's account type is Bot,
+  auto-merge shall not merge it: a step that reads the pull request object once and records the single output `eligible` (`true` only when
+  every condition holds, `false` on any other result, an unreadable object included) shall run before the check, `files`, and `review`
+  steps, those steps and the merge step shall require `eligible` to be `true`, and the withheld pull request shall be annotated as needing
+  the user's test confirmation and explicit approval; the step ends with exit status 0 like the `pr`, `head`, and `checks` steps (decision-index
+  Q26). The author is bound by login, id, and type together, and an eligible pull request still merges only through every other gate of
+  this SPEC: current-head CI and the required checks of its base, both review legs clean and bound to the head, no unresolved finding.
+- **REQ-CCR-021** (Ubiquitous) The auto-merge workflow shall never delete a branch: its merge call shall carry no `--delete-branch` flag
+  and no step shall delete a ref. The repository setting `delete_branch_on_merge` is a security setting that remains an operator decision
+  (§5, G9) and is not changed by this SPEC.
 
 ### 3.3 Retirement of the earlier reviewers
 
@@ -279,8 +383,9 @@ reports for the `review` step and its job; **a pass** is the one case where the 
 - **Two states, worded separately.** *Landed locally* means this SPEC's commits are merged on local `main`
   (a merged-local SHA exists) and every criterion passes on that tree. *Remote verified* means both facts
   hold for one head commit `H` of a non-draft pull request, read by GET after the leader's coordination: a
-  native review authored by the Codex app identity and bound to `H` was observed (the gate script's own
-  read of the fetched lists exits 0, or the findings are reported), AND the CI of `H` is green. A real
+  finished native review — the state comment of the Codex app identity, both legs bound to `H` — was
+  observed (the gate script's own read of the fetched lists exits 0, or the findings are reported), AND the
+  CI of `H` is green. A comment still `running` is not a finished review. A real
   review alone, or CI alone, is never "remote verified", and nothing is called complete before both are
   confirmed. This lane produces only the first state: no report of this lane says "complete", and
   "remote verified" is claimed only by the actor that read the remote data (`acceptance.md` §6 and §7).
@@ -323,18 +428,17 @@ review gate fails closed (merges withheld, never widened). Gate detail, confirme
 keys, new app OAuth, persistent access, admin or security settings, branch-protection changes, and cost are
 not approved and are never a deliverable of this card.
 
-**Stated fact.** The gate passes only when the Codex app identity has submitted a pull-request review in
-state APPROVED, bound to the head commit and newest among the identity's reviews of that commit, with no
-finding on that commit; a CHANGES_REQUESTED review is superseded only by a later APPROVED. No other review
-state (COMMENTED with or without inline comments, DISMISSED, PENDING), no review body text, no absence of a
-review, and no elapsed time is ever a pass; this rule does not depend on the answer of DS-1 or on any
-review's body. The native review has not been observed to submit any review on any pull request (the dated
-DS-1 observation below), so until a real APPROVED review by the identity is observed every merge by
-automation is withheld, and human merges are unaffected. If the native review's clean result is another form
-(for example a COMMENTED review with no inline comment, or a comment), the gate keeps withholding until
-follow-up FU-10 adapts the recognition contract after DS-1; that is a change of this contract, never a
-runtime option. The pull request that introduces the gate cannot exercise it either: `workflow_run` runs the
-workflow file of the default branch, which does not yet carry the new gate (design §11).
+**Stated fact.** The gate passes only when the Codex app identity's single state comment reports both legs
+`completed`, each bound to the head commit, each with `has_unresolved_findings` false, and no corroborating
+finding of the identity exists on that commit. No pull-request review object (an APPROVED one included), no
+prose, no absence of a comment, a `running` leg, and no elapsed time is ever a pass. The form was read on
+five real pull requests (DS-1, below), so the contract no longer rests on an unobserved artifact; what stays
+unobserved is listed under DS-1 to DS-3 and in `research.md` E39. Until a pull request shows a state comment
+that this reader passes, every merge by automation is withheld, and human merges are unaffected. Where a
+later observation shows another `status` value or another marker version, the gate withholds until the
+recognition contract is amended; that is a change of this contract, never a runtime option. The pull request
+that introduces the gate cannot exercise it either: `workflow_run` runs the workflow file of the default
+branch, which does not yet carry the new gate (design §11).
 
 | Gate | Needs | Interim state |
 |------|-------|---------------|
@@ -346,6 +450,7 @@ workflow file of the default branch, which does not yet carry the new gate (desi
 | G6 | Apply this change remotely as a leader-coordinated draft pull request, including deletion of the remote-only `claude-code-review.yml` | A census test (AC-CCR-014) turns red if that file survives the merge; the G6 acceptance condition below says what that draft pull request can and cannot show |
 | G7 | Delete the repository variable `AUTOMERGE_MAX_MERGE_RISK` | Unreferenced after the change; harmless |
 | G8 | Delete the `CLAUDE_CODE_OAUTH_TOKEN` secret | Unreferenced after the change; harmless |
+| G9 | Decide the repository setting `delete_branch_on_merge` (relayed by the leader as `true`; not read by this lane). It is a security setting and an operator decision item: this SPEC does not change it. While it is `true`, GitHub itself deletes a head branch after a merge, so removing `--delete-branch` from the workflow's own call (REQ-CCR-021) does not by itself stop deletion | Not changed; the workflow requests no deletion; an operator decision item, never a deliverable |
 
 **G6 acceptance condition (the gap, stated once).** Auto-merge runs through the `workflow_run` trigger and
 checks out the default branch, so it is the default branch's copy of `auto-merge.yml` that runs for any pull
@@ -361,9 +466,9 @@ depends on the observation (its local criteria are AC-CCR-001 to AC-CCR-025 on t
 
 | Step | What it observes (read-only GET; the lane never writes) | Status |
 |------|--------------------------------------------------------|--------|
-| DS-1 | The artifact the native review leaves on a pull request: which form (pull-request review, review comment, issue comment, or check run), under which author login, numeric id, and type, bound to which commit; whether it matches the recognition contract of §3.1; and, from the leader's revision-6 wording, whether the review actually runs on a draft and whether a clean result stays as an APPROVED pull-request review (with the relayed minimum reported severity High, E33, a pull request with nothing at that level may leave a different form). A mismatch is a follow-up (adapt the contract, FU-10), never a change to this card. The Codex app's behavior does not depend on this SPEC's workflow, so it can be read on the G6 draft pull request itself | **UNCONFIRMED; no observation has found a review. DS-1 remains unobserved, which is not success.** Dated fact (observer: the leader, read-only `gh api` GETs on 2026-10-18 at 12:05Z, relayed to this lane; command shape: the pull request object, its `reviews`, its `issues/<N>/comments`, its `issues/<N>/timeline`, and `commits/<head>/check-runs`): modu-ai/mo.ai.kr#435 was created 2026-10-18T11:17:58Z, is not a draft, head 386f0d6c9c; about 47 minutes after creation there is no Codex trace — reviews 0, issue comments only from vercel[bot] and coderabbitai[bot], 0 codex, chatgpt, or openai actors in the timeline, head check runs only vercel and github-actions. The iteration-2 plan auditor re-censused 15 pull requests per repository, including mo.ai.kr#435 and #436, and found no Codex artifact. This lane re-read #435 (age 82 minutes) and #436 (created 11:54:19Z, age 45 minutes) at 2026-10-18T12:40:08Z with the same result. So the operator's "automatic review ON when a pull request opens" has not been observed to produce a review on that pull request (a delay is possible); the form stays UNCONFIRMED and is confirmed only when a real review is observed. The gate treats the lack of an observation as a failure (`not-run:review-absent`, REQ-CCR-008) and never as a pass; no setting is changed and no retry is made by the lane. Holder of this fact: this row; command-level record: `.moai/reports/t1868/progress.md` § DS-1 observation. U2, U5 |
-| DS-2 | **Whether a Codex review runs again after the ready-for-review transition or after a push** (the leader's item). The repository's trigger is "when a pull request is opened"; the settings relayed by the leader from a read-only observation (this lane did not observe them): automatic review on for all pull requests, thorough review on, automatic security review on, minimum reported severity High (E33). Read-only GETs after the transition and after a later push: the pull request's reviews and review comments, each artifact's author login, numeric id, type, and `commit_id`, and which GET shows it (`design.md` §12). If no review appears bound to the new head, that is the stated consequence (AL-2) and DS-3 is the path to ask for one | **Open observation, not run.** U4, U6 |
-| DS-3 | How a fresh review would be requested for a head that moved after the pull request opened (the review runs only at open; per-push review is excluded): an operator or leader action on the remote, outside this lane. Until then a moved head is withheld as stale | Not run; U6; a leader-coordinated request, never a deliverable |
+| DS-1 | The artifact the native review leaves on a pull request: which form, under which author login, numeric id, and type, bound to which commit; whether it matches the recognition contract of §3.1; whether a draft is reviewed; what a clean result looks like. A mismatch is an amendment of the contract, never a runtime option. | **OBSERVED on other pull requests (revision 7), NOT observed on #1828 itself, and not observed on a draft.** Dated fact (the lane's read of the raw REST objects saved on 2026-10-19, `research.md` E37 to E45; observer's report of the same day): on #1835, #1836, #1837, #1838, and #1841 the native review is one issue comment by login `chatgpt-codex-connector[bot]`, user id 199175422, type Bot, carrying the state marker; `created_at` is earlier than `updated_at` on all five (edited in place); the `reviews` list is empty on #1835, #1837, #1838, #1841; #1836 has one COMMENTED review of the identity (body marker `codex-review-receipt:v1`) and one inline review comment, and its state comment reports `has_unresolved_findings` true on the code leg. The final comment of each pull request reads both legs `completed`; on the four clean ones `commit_sha` equals the saved pull request head, on #1836 it is `e657c6b040` while the saved head is `4cee5eea1c`. All five trigger rows read "Draft marked ready"; a pull request opened non-draft was not observed. **Also read:** #1842 (E42), whose security leg reads `completed` with null fields while the security marker reads `running`; #1833 is reported by the leader as a both-`running` sample (not read by the lane). **Still unobserved:** the review on #1828 itself (draft; silent), a draft being reviewed or not under a controlled read, the whole `running` to `completed` transition (E39), the value set of `status`, and the effect of `@codex review` (DS-3). U2, U4, U5 |
+| DS-2 | **Whether a Codex review runs again after a push** (the leader's item). The comment states three triggers (open for review, draft marked ready, an `@codex review` comment); the settings relayed by the leader: automatic review on for all pull requests, thorough review on, automatic security review on, minimum reported severity High (E33). Read-only GETs after a later push: the state comment's id, `updated_at`, and the `commit_sha` of each leg against the new head | **Open observation; no automatic re-review on push was observed.** The one sample with a moved head, #1836, keeps `commit_sha` `e657c6b040` in its state comment (last edit 2026-10-19T03:48:59Z) while another reviewer's review at 03:46:01Z is bound to the final head `4cee5eea1c` (E40). One sample is not a proof of absence. U6 |
+| DS-3 | How a fresh review is requested for a head that moved after the review started: the leader re-requests with an `@codex review` comment (a remote write by the leader, outside this lane, never a deliverable). | **One re-request observed (#1842, read at 2026-10-19T05:36Z per the files' own `observed_at`; `research.md` E44).** After `@codex review` the existing state comment 6260255148 was edited in place: only `code_review.commit_sha` moved to the new head `e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21`; a separate receipt comment 6260377784 of the same author was added, carrying no state marker; the `security_review` leg stayed `completed` with a null `commit_sha`, and the separate security marker still named the OLD head `45b2dbf682` with status `running`. That state is not a pass (REQ-CCR-001, REQ-CCR-002). Still unobserved: whether a later security review finishes for the new head, and a re-request that creates a second state comment (which the gate refuses, REQ-CCR-004). One sample. U13 |
 
 ## 6. Exclusions
 
@@ -407,16 +512,33 @@ depends on the observation (its local criteria are AC-CCR-001 to AC-CCR-025 on t
 
 ### Out of Scope — review features not built now
 
-- Reading the review from an issue comment, a check run, or a commit status, or from review body text: the
-  recognised form is a pull-request review only, until DS-1 shows otherwise.
-- Counting a COMMENTED review, with or without inline comments, or any non-review form as a clean result:
-  APPROVED is the only clean state until DS-1 shows what a clean native review looks like (FU-10).
+- Reading the review from a check run, a commit status, a reaction (the thumbs-up of a clean review was not
+  measured on the comment object), a pull-request review object, or any prose or table row of the comment:
+  the verdict carrier is the state marker of the identity's state comment, cross-checked by the security
+  marker, which can only refuse (revision 7, decision-index Q24). The `codex-pull-request-review-summary`
+  marker is not read.
+- Counting a pull-request review object of the identity in any state, an APPROVED one included, as a clean
+  result: a review object or review comment can only refuse (REQ-CCR-005).
+- Choosing among several state comments by recency, or reading a state comment that stands outside the
+  marker position: both refuse (REQ-CCR-004).
+- Checking the signature or provenance of the comment's text beyond the author binding: the body of a
+  comment can be edited by a user with write access, which the gate cannot tell from the bot's own edit
+  (design §6, residual risk 8).
 - Parsing finding severity from a review comment: any finding withholds the merge for a human.
 - Requesting a fresh review, re-running the native review, or any per-push review (DS-3, G2).
 - Chunked or multi-pass review of very large diffs; whatever the native review does with a large pull
   request, the gate reads only what it leaves.
 - Attesting the publisher of every other check run or comment in the repository; only the Codex app
   identity is bound.
+
+### Out of Scope — what the author policy does not do
+
+- Changing the repository setting `delete_branch_on_merge`, branch protection, a ruleset, or CODEOWNERS to express the author rule: the
+  enforcement is the workflow's `eligible` output (REQ-CCR-020), and the setting is an operator decision item (G9).
+- Collecting, recording, or checking the user's test confirmation or explicit approval for a fork, bot, or other author's pull request:
+  that is the user's act outside the workflow; the workflow only never merges such a pull request.
+- Changing how the `checks` step reads the required checks of an unprotected base (decision-index Q27): on a base with no required
+  checks the shipped step withholds (E43), and this SPEC leaves that step as it is.
 
 ### Out of Scope — step conclusions other than the review step
 
@@ -468,9 +590,10 @@ goes stale until t1874 lands; they are its input, not this card's work.
 
 ### Accepted limitations (all fail closed; none is a defect to repair in this card)
 
-**AL-1 — a late review is not picked up.** Unverified expectation, not a fact: that the native review arrives
-some time after the pull request opens (neither whether it arrives at all nor its delay has been observed;
-DS-1). If it arrives after the wait window, the consequence is this: auto-merge waits at most 60 polls of 15
+**AL-1 — a late review is not picked up.** On the five measured pull requests the state comment was last
+edited between 1 minute 14 seconds and 10 minutes 44 seconds after it was created (E39); on four of them
+the comment was created 4 to 13 seconds after the pull request had already been merged (E41). That is five
+observations, not a bound. If a review finishes after the wait window, the consequence is this: auto-merge waits at most 60 polls of 15
 seconds (15 minutes) inside its 17-minute deadline and starts only when a `CI` run completes, so a review
 that arrives after the window leaves the merge withheld and the `review` step failed (`not-run:review-absent`,
 a failed job since revision 6) until auto-merge next runs. Re-trigger paths (operator actions outside this
@@ -479,10 +602,10 @@ re-run fires auto-merge again, or re-reads the late review, is UNVERIFIED (resea
 unaffected. The withholding itself is pinned by AC-CCR-008 (`review_absent_window_closed_exit_11`),
 AC-CCR-021 (`review_absent_window_closed_step_exit_1_job_failure`), and AC-CCR-007 (`expiry_never_merges`).
 
-**AL-2 — a head that moved after the pull request opened, and pull requests opened before the review was
-switched on.** The review runs only when a pull request opens (the operator-confirmed contract), so a push
-after the open leaves no review bound to the new head, and a pull request opened before the contract has
-none at all. The gate withholds as stale (`stale-review`) or as a failed `review` step (`not-run:review-absent`). A fresh review is
+**AL-2 — a head that moved after the review started, and pull requests opened before the review was
+switched on.** A review starts on open-for-review, on draft-marked-ready, or on an `@codex review` comment;
+no automatic review on a push was observed (DS-2), so a push after the review leaves no state comment bound to
+the new head until the leader re-requests one, and a pull request opened before the contract has none at all. The gate withholds as stale (`stale-review`) or as a failed `review` step (`not-run:review-absent`). A fresh review is
 requested only through the leader-coordinated step DS-3, never by this card. This is the common case for
 any pull request that receives a later push; it is a stated consequence of the contract, and human merges
 are unaffected.

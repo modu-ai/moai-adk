@@ -14,6 +14,10 @@ the leader's rulings of board records d-20261018T152011Z-8447 (supersedes d-2026
 restated Q9 and Q15 for the consumer's split of NOT RUN, restated DS-1 and DS-2, and transferred KD-1 to card
 t1874; the delta is in `design.md` "Delta of plan revision 6".
 
+**Revision 7** (2026-10-19, an in-place amendment, Amendment 2) closed Q20 and FU-10, restated Q6 and Q19, and added Q23 to Q28 (corroboration, the security
+marker, issue-comment noise, the `author` step's exit convention, the unprotected base, the author policy and branch deletion); DS-1, DS-2, DS-3 restated, G9 added; the
+delta is in `design.md` "Delta of plan revision 7".
+
 How to read this file. The card text, the operator-confirmed contract, and the repository settled most
 questions; each settled one is a `### Q` row with its evidence and the rejected alternate. A product-level
 row whose answer is the operator order recorded in the card or the correction relayed by the leader carries
@@ -130,6 +134,9 @@ commit binding: the review object carries `commit_id` (research E23, measured on
 Alternate: read an issue comment from the Codex bot — rejected until DS-1 shows that form; adding it would
 need a commit marker the lane cannot verify
 Operator verdict: DEFAULT-APPLIED 2026-10-18T11:53:23Z manager-spec (lane-22, card t1868)
+Revision 7 (restated): the measured form (research E37) is the former alternate. The verdict carrier is the state marker of the identity's single issue comment;
+the commit binding is the marker's `commit_sha` fields and the security marker's `headSha`, compared with the head, not a text guess; a review object is not a
+carrier (it does not exist for a clean review) and can only refuse (Q23). The author binding of the first default (login, id, type) is unchanged.
 
 ### Q7: What privilege does the Codex step run with? — SUPERSEDED
 
@@ -388,6 +395,8 @@ would be pass-by-guess; among the rest, one form is the smaller surface)
 Alternate: also accept an issue comment of the bot that names the head SHA — rejected until DS-1 shows that form
 exists and what it names
 Operator verdict: DEFAULT-APPLIED 2026-10-18T11:53:23Z manager-spec (lane-22, card t1868)
+Revision 7 (restated): DS-1 showed the form on five real pull requests (E37 to E39). The gate recognises exactly one carrier, the state comment of the identity, and
+fails closed on everything else, including a `status` value, a marker version, or a field the reader does not know (U14).
 
 ### Q20: Which state of the native review counts as clean until DS-1 shows what a clean native review looks like, and what supersedes a change request?
 
@@ -416,6 +425,78 @@ COMMENTED review, a comment, or a check run), the gate withholds every automated
 adapts the recognition contract after DS-1; human merges are unaffected. Body text is never read in either
 direction, so an APPROVED review whose body says otherwise passes (design §6, residual 1)
 Operator verdict: DEFAULT-APPLIED 2026-10-18T12:54:54Z manager-spec (lane-22, card t1868)
+Revision 7: CLOSED, superseded by the comment contract (REQ-CCR-001, REQ-CCR-004). DS-1 showed what a clean native review looks like (research E37): a state comment, not a
+review object; options (a), (b), and (c) all concern review objects and no longer apply. The consequence stated above (the gate withholds until FU-10 adapts the
+contract) is discharged by this amendment.
+
+### Q23: How do review objects and review comments of the identity count now that the state comment decides?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the leader's ruling says a COMMENTED review or an inline comment "may only corroborate findings, never grant a pass"; it does not say whether the
+reviews listing is still read, or which review states refuse. A real review object exists only beside findings (#1836, #1833: COMMENTED, with an inline comment on #1836)
+Default: keep the review-comment and review listings as refusal-only inputs: a review comment of the identity bound to the head, or a COMMENTED or CHANGES_REQUESTED review
+of the identity bound to the head, refuses (`finding`, `finding-review`); an APPROVED, DISMISSED, or PENDING review neither passes nor refuses; nothing here ever grants a pass
+(rule: preserves current behavior — the shipped reader already read both listings and refused on review comments and CHANGES_REQUESTED; undo is a single revert in every option)
+Alternate: drop the reviews listing and read only review comments — a smaller surface, one endpoint fewer, but a COMMENTED review bound to the head with no inline comment would no longer corroborate
+Alternate: read neither listing and trust the marker alone — the smallest surface; rejected as the default because it removes the only independent check on a marker that reads clean while a finding exists on the head
+Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+
+### Q24: Is the `codex-security-review:v1` marker read?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the first draft of revision 7 left it unread; the sample of #1842 (research E42, E44) shows the state marker's security leg reading `completed` (with null fields) while the
+security marker reads `running`, and after a re-request the security marker still named the OLD head
+Default: read it for `status` and `headSha` only; it must stand once in the leading block, read `completed`, and carry the head in `headSha`; `running` is pending, any other disagreement refuses, a
+headSha of another commit is stale (excluded before ranking: leaving it unread, which passes an unfinished security review; among the rest, two fields are the smaller surface)
+Alternate: also compare `pullRequestNumber` and `repository` with the pull request — rejected here: no mismatch was ever observed and a copied comment is already excluded by the author binding
+Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+
+### Q25: Does a moving issue-comment count fail a pass?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the existing rule fails a pass when the review-comment count moves during the read; issue comments are written constantly by other bots (3 or 4 per measured pull request, research E37)
+Default: a moved issue-comment count between the two reads of one pass retries the pass (pending note `issue-comments-moved`) and is not compared at the recheck; the list's own count proof and the comparison of the state comment's id and `updated_at` carry the decision
+(rule: smaller user-visible surface — fewer red jobs with no verdict risk, since a second state comment is seen on the next pass)
+Alternate: fail the step like `review-comments-moved-during-read` — consistent with the existing rule, but turns ordinary bot traffic into red jobs
+Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+
+### Q26: What does the `author` step do to the job, and how is an ineligible pull request shown?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: REQ-CCR-020 fixes who may be auto-merged (Q28) and leaves open how the step ends for everyone else
+Default: the step ends with exit 0, records `eligible=false` once, and annotates with a notice that the pull request needs the user's test confirmation and explicit approval; the later steps are skipped through their `if`, and the job stays green
+(rule: preserves current behavior — the steps `pr`, `head`, `checks` withhold with exit 0, Q22; an ineligible pull request is a routing decision, not a gate failure)
+Alternate: end the step non-zero — every dependabot, fork, or other-author pull request would show a red `Auto Merge` job, which reads as a failed gate when nothing failed
+Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+
+### Q27: What does the gate do on a base without branch protection, given the shipped `checks` step?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the leader's addition says the gate applies on every base (an unprotected `release/*` base included); the coordinator's audit records `gh pr checks --required` exiting 1 with `no required checks reported` on such a base (research E43) and the shipped `checks` step reads that as a lookup failure and withholds (E45), so no pull request into such a base is auto-merged today
+Default: leave the `checks` step unchanged; the review gate, the `author` step, and the merge path apply to every base whenever the `checks` step passes (rule: preserves current behavior; Q22 keeps the earlier steps as they are)
+Alternate: change the `checks` step to treat `no required checks reported` on a base with no protection as an empty requirement and rely on the triggering CI conclusion plus the review gate — a change to which merges the automation makes; a product-level decision for the leader, not taken here
+Operator verdict: DEFAULT-APPLIED 2026-10-19T05:46:35Z manager-spec (card t1868, lane-22, plan revision 7)
+
+### Q28: Which pull requests does auto-merge merge, and does it delete branches?
+
+Label: FOUNDER
+Class: product-level (changes a shipped command's default behavior: bot and other-author pull requests stop being merged by automation, and the merge no longer deletes the head branch)
+Authority anchor: none in the committed register — the settlement is the leader's relayed current policy of 2026-10-19 (a message, not a committed artifact)
+Why unresolved: the shipped workflow merges any author's pull request and passes `--delete-branch` (research E45)
+Default: not applied (settled by the relayed policy)
+Resolution: only a pull request authored by GoosLab (id 6458969, type User, all three), from a branch of the base repository, and not by a bot, is merged by automation, and only through every other gate; every other pull request needs the user's test confirmation and explicit approval and is never auto-merged; automatic branch deletion is forbidden (no `--delete-branch`, no ref-deleting step); the repository setting `delete_branch_on_merge` stays an operator decision (gate G9)
+Alternate: keep merging bot pull requests once they have a clean native review (the closed text of design §11) — withdrawn by the policy
+Operator verdict: OPERATOR-SETTLED 2026-10-19 leader's relayed current policy (author, fork, bot, and branch-deletion rules), transcribed from the leader's message
 
 ## Follow-up candidates (recorded, not issued)
 
@@ -438,7 +519,7 @@ observed on the G6 draft pull request. This SPEC does not edit them.
 | FU-7 | The four-locale lane notice `internal/hook/session_start_factory_i18n.go` (lines 140, 200, 260, 319) and any hook test added for it | always-loaded surface and template defaults; the operator's boundary was related docs, not role rules |
 | FU-8 | Every other `Merge Risk` wording correction in the E13 census not listed above | always-loaded surface and template defaults; the operator's boundary was related docs, not role rules |
 | FU-9 | The cutover runbook `.moai/docs/codex-review-cutover-runbook.md` and a test that it covers every gate (the former REQ-CCR-021) | not named by the ruling's audited-scope list and part of the out-of-card milestone M10; it changes neither the always-loaded surface nor a template default, so the leader may re-admit it into this card by a one-line ruling. The gates and deferred steps stay fully specified in `spec.md` §5 and the table below |
-| FU-10 | After DS-1: adapt the recognition contract (`scripts/ci/codex-review-gate.sh` constants and, if the form differs, the reader) to the artifact the native review actually leaves — in particular what a clean result is when it is not an APPROVED pull-request review (Q20) | arises only if DS-1 shows a form other than an APPROVED pull-request review; a follow-up, never a change to this card |
+| FU-10 | CLOSED by revision 7: DS-1 showed the artifact the native review leaves (an issue comment with a state marker, research E37), and the recognition contract was rewritten to it (REQ-CCR-001 to 005). Nothing remains of the follow-up | answered by the amendment, not by a separate card |
 | FU-11 | Widen the tamper guard to the CI-input files outside `.github/workflows/`: `.github/test-input-filters.yml` (read by the pinned paths-filter step, `ci.yml:76-79`; its `go_code` output gates the test jobs, `ci.yml:106`), `scripts/ci/retry-flaky.sh` and `scripts/ci-census/test-census.sh` (process the test results, `ci.yml:222-226`) | a pull request can reduce what the required checks verify without touching a gate path; a pre-existing CI-integrity limit outside the review gate (design §6, residual 5), and widening the guard is a separate decision that changes which pull requests auto-merge can merge |
 
 Exit of the group: the census command of research E13 reports no `Merge Risk` hit outside the historical
@@ -469,6 +550,7 @@ settings, branch-protection changes, and cost are not approved; local Claude and
 | G6 | Apply this change remotely as a leader-coordinated draft pull request, including `git rm` of the remote-only `claude-code-review.yml` | Leader opens it; the operator or the leader's batch process merges it | Nothing is pushed by the lane; AC-CCR-014 turns red if the file survives the merge | Close the draft |
 | G7 | Delete the repository variable `AUTOMERGE_MAX_MERGE_RISK` | Repository admin (operator) | Unreferenced after M3 | None needed |
 | G8 | Delete the secret `CLAUDE_CODE_OAUTH_TOKEN` | Repository admin (operator) | Unreferenced after M4 | Recreate the secret |
+| G9 | Decide the repository setting `delete_branch_on_merge` (relayed as `true`; not read by the lane): a security setting, an operator decision item; this SPEC records it and does not change it. While it is `true` GitHub deletes the head branch itself after a merge, so the workflow's removal of `--delete-branch` (REQ-CCR-021) does not stop deletion by itself | Repository admin (operator) | Not changed; the workflow requests no deletion | Revert the setting |
 
 ### Deferred observation steps (read-only on the remote; the lane never writes)
 
@@ -477,6 +559,6 @@ depends on any of them.
 
 | Step | Observes | Coordinator | Status |
 |------|----------|-------------|--------|
-| DS-1 | The artifact form the native review leaves on a pull request (review, review comment, issue comment, or check run), its author login, numeric id, and type, and the commit it is bound to; confirms or refutes the recognition contract (design §3.1) | Leader | UNCONFIRMED: no review observed. The dated fact (2026-10-18, mo.ai.kr#435 and #436: no Codex trace after 47 and 82 minutes) is held by the DS-1 row of `spec.md` §5; command-level record in `.moai/reports/t1868/progress.md` (research U2, U5, E29, E32) |
-| DS-2 | Whether a Codex review runs again after the ready-for-review transition or after a push (the leader's item). The trigger is "when a pull request is opened"; settings relayed from the leader's read-only observation: automatic review on for all pull requests, thorough review on, automatic security review on, minimum reported severity High (research E33). The draft-gate half of the closed SPEC's DS-2 moved to the post-landing job observation (spec §5, G6 acceptance condition; design §12 step B) | Leader (the ready-for-review transition is a remote write by the leader) | Open observation, not run (U4, U6) |
-| DS-3 | How a fresh review would be requested for a head that moved after the pull request opened | Leader or operator, outside this lane | Not run (U6); never a deliverable |
+| DS-1 | The artifact form the native review leaves on a pull request | Leader | OBSERVED on #1835, #1836, #1837, #1838, #1841 and the samples of #1842, #1833, #1839, #1840 (research E37 to E45): one issue comment of the identity with the state marker; NOT observed on #1828 itself (a draft, silent) and not observed on a draft under a controlled read; the held fact is the DS-1 row of `spec.md` §5 |
+| DS-2 | Whether a Codex review runs again after a push. Settings relayed from the leader's read-only observation: automatic review on for all pull requests, thorough review on, automatic security review on, minimum reported severity High (research E33) | Leader | Open observation; no automatic re-review on a push was observed (#1836 stayed at the older head; one sample), U6 |
+| DS-3 | How a fresh review is requested for a head that moved after the review started: the leader's `@codex review` comment | Leader or operator, outside this lane | One re-request observed on #1842 (read at 05:36Z, research E44): the state comment was edited in place (only the code leg moved), a marker-less receipt comment was added, the security leg and marker stayed behind; U13. Never a deliverable |

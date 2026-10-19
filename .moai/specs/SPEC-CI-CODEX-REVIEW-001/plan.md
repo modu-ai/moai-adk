@@ -1,5 +1,10 @@
 # plan.md — SPEC-CI-CODEX-REVIEW-001
 
+**Plan revision 7 (amendment 2, 2026-10-19).** The native Codex review is an issue-comment state protocol, not a pull-request review object (`research.md` E37 to E45), and the
+leader's policy adds an author, fork, and bot rule and forbids automatic branch deletion. The amendment adds one milestone, **M6** (§F), which changes the gate script,
+`auto-merge.yml`, and their tests, and nothing else; the delta is in `design.md` "Delta of plan revision 7" (Δ12 to Δ26). Revision-7 items that bind the run phase are marked
+"rev 7" below. The text of §A to §G that describes an APPROVED review object is superseded where it conflicts with `design.md` §3.1, §3.2, and `T-CHAIN`.
+
 **Plan revision 6 (amendment).** M1 to M4 are complete on the card branch (HEAD `0955fb9058`); the amendment
 under the leader's rulings (board records d-20261018T152011Z-8447 (supersedes d-20261018T151824Z-db98; ruling and scope unchanged) and d-20261018T155527Z-4e9e (a delegated Codex observer run, not a new approval)) adds one
 milestone, **M5** (§F), which changes only `auto-merge.yml` and the auto-merge tests. The delta is in
@@ -26,8 +31,8 @@ contract guards come last.
   dominating (over 1300), and it replaces the only enforcement point for pull-request review, a
   security-sensitive surface. It touches 12 files: 7 new (the gate script and six test files), 3 edited
   (`auto-merge.yml`, `.coderabbit.yaml`, `liveness.yaml`), 2 deleted. The ceilings hold: 17 requirements
-  (ceiling 25), 19 criteria (ceiling 25).
-- Reviewer (design correction, operator-confirmed): the ChatGPT subscription's native Codex GitHub review,
+  (ceiling 25), 19 criteria (ceiling 25). Revision 7: 21 requirements, 25 criteria (both at or under the ceiling of 25; no criterion is added).
+- Reviewer (design correction, operator-confirmed; **revision 7 replaces the review-object reading below with the state-comment reading of design §3 and research E37**): the ChatGPT subscription's native Codex GitHub review,
   automatic, on pull-request open, for modu-ai/moai-adk and modu-ai/mo.ai.kr; no key, no secret, no workflow
   of our own. The gate reads a pull-request review by the Codex app identity (E27) bound to the head commit and
   counts only an APPROVED review as clean. Whether and how the native review leaves that artifact is
@@ -74,18 +79,18 @@ contract guards come last.
 6. **Heavy-run slot.** Use name-exact `-run` selectors for every milestone. A whole-package run of
    `internal/template` takes the heavy-run slot first (`.claude/rules/moai/workflow/resource-slot-lease.md`);
    the plan phase took none.
-7. **The native review's artifact is unverified** (E29, U2, U5, E32). The fixtures of M1 and M2 are synthetic,
+7. **(superseded in part by rev 7, items 18 and 19) The native review's artifact is unverified** (E29, U2, U5, E32). The fixtures of M1 and M2 are synthetic,
    in the documented REST shape of a review and a review comment (E23); no test or report may claim that the
    live native review produces them. The gate passes a real pull request only on an APPROVED review by the
    identity bound to the head; nothing has been observed to produce one, so nothing passes until DS-1 shows the
    form. That is the stated fact, not a defect, and no milestone may widen the clean state to make a real pull
    request pass (COMMENTED is never clean; FU-10 owns any adaptation).
-8. **Whether the native review runs on a draft, or at the ready-for-review transition, is unconfirmed** (U4).
+8. **(still open in rev 7) Whether the native review runs on a draft, or at the ready-for-review transition, is unconfirmed** (U4; the trigger "Draft marked ready" is measured, E38).
    Nothing in M1-M4 depends on it: a draft is NOT RUN at the gate whatever exists (AC-CCR-008).
 9. **`workflow_run` runs the default-branch copy of `auto-merge.yml`**: the introducing pull request cannot
    exercise the new gate, and a test cannot take a live `sleep 15` loop. The step tests put a stub `gh` and a
    no-op `sleep` first on `PATH`.
-10. **The review runs only when a pull request opens** (operator-confirmed contract, per-push excluded): a moved
+10. **(rev 7: a review starts on open-for-review, draft-marked-ready, or an `@codex review` comment; DS-2, DS-3) The review runs only when a pull request opens** (operator-confirmed contract, per-push excluded): a moved
     head is `stale-review` by design. The run phase never requests a review, comments, or re-opens anything
     (spec §4); a fresh review is the leader-coordinated step DS-3.
 11. **Changed-file entry binding rests on a measured field** (E31, U10): for non-removed entries the
@@ -115,6 +120,19 @@ contract guards come last.
 17. **(rev 6) Do not widen.** The steps `pr`, `head`, `checks`, and the merge step keep their exit-0 convention
     (decision-index Q22); the draft's job result is "failure, never success" with one job (Q21); the gate
     script is untouched. A need to change any of these returns as a blocker.
+18. **(rev 7) The reader decides from the state comment.** `body` is read only for comments of the identity and only the marker lines of the leading block; never the prose, the
+    table, the summary marker, or a reaction. Stale precedes pending in the reader order (design §3.2, step 7 before step 10); changing the order changes the contract.
+19. **(rev 7) Fixtures are inline and modelled on the real samples** (design "Real-sample provenance"): author fields from the real objects (login `chatgpt-codex-connector[bot]`, id
+    199175422, type Bot), marker lines and table rows only; the lane's sample files are machine-local and gitignored, so a test carries its fixture inline and never reads them.
+20. **(rev 7) The author, fork, and bot rule and the removal of `--delete-branch` are enforced by the workflow and pinned by tests** (REQ-CCR-020, REQ-CCR-021; AC-CCR-006, 012, 019). A
+    sentence in a document that states the rule does not complete the card. The repository setting `delete_branch_on_merge` (G9) is an operator decision item and is not touched.
+21. **(rev 7) On an unprotected base the shipped `checks` step withholds** (E43, E45; decision-index Q27). Do not change the step to make a pull request pass; record the consequence
+    in the run evidence. The review gate, the `author` step, and the merge path are written and tested for every base (AC-CCR-019 base rows).
+22. **(rev 7) `eligible` is one value, recorded once** (REQ-CCR-019 by analogy), and the `author` step ends with exit 0 in every case (Q26); the four later `if` carry the term.
+23. **(rev 7) The sync phase of this amendment owes the CHANGELOG correction.** The entry of the publication tree describes the shipped (revision-6) reader; this plan did not re-read it
+    for the correction and does not edit `CHANGELOG.md`.
+24. **(rev 7) A moved head, a re-request, and mixed SHAs.** Every leg's `commit_sha` and the security marker's `headSha` must equal the head; the state of #1842 after its re-request is
+    the fixture (`F-mixed-sha`). The merge step re-reads the head immediately before the call.
 
 ## §C Pre-flight (run once, before M1)
 
@@ -128,6 +146,10 @@ gh api "repos/modu-ai/moai-adk/pulls/1823/reviews"               # re-read the r
 gh api "repos/modu-ai/moai-adk/pulls/1823/comments"              # re-read the review comment fields: commit_id, original_commit_id, user.* (E23)
 gh api "repos/modu-ai/moai-adk/pulls/1823/files"                 # re-read status and contents_url: non-removed entries carry ?ref=<head sha> (E31)
 ```
+
+**(rev 7) Pre-flight for M6.** Re-read, by `gh api` GET: one issue comment of the identity on a pull request that has one (for example `repos/modu-ai/moai-adk/issues/1841/comments`): the author's login, id
+199175422, type Bot, and the leading block with the three marker lines (E37); and the pull request object of a pull request of the eligible author: `user.login` `GoosLab`, `user.id` 6458969,
+`user.type` `User`, and `head.repo.id` against `base.repo.id` (E43). If a re-read differs, that is a blocker.
 
 If a `gh api` GET is refused or unavailable, stop with a blocker report: the recognition constants must not
 carry an identity that was not re-read, and E27 and E23 are 2026-10-18 readings. If the bot id or type differs,
@@ -269,6 +291,23 @@ Re-measure: the twelve auto-merge and paging selectors of the ruling-B round, pl
 exit: landed locally is claimed only after the merge; the remote conclusion of the job is UNOBSERVED and the
 remote state "unverified" (spec §4, §5).
 
+### M6 — The comment contract and the author policy (rev 7, Priority High)
+
+REQ/AC: REQ-CCR-001 to 008, 010, 011, 012 (reworded), REQ-CCR-020, REQ-CCR-021 (new) / AC-CCR-001 to 008, 010, 012, 019 to 023 rewritten and the new rows of AC-CCR-006, 012, and 019; no criterion
+is added (25 criteria). Files (5, about 1500 changed lines, tests dominating): E `scripts/ci/codex-review-gate.sh` (the reader of design §3.1 and §3.2 with `--issue-comments`, the
+`issues/N/comments` endpoint in `fetch-pages`), E `.github/workflows/auto-merge.yml` (the `author` step and the `eligible` term in the `if` of `checks`, `files`, `review`, and the merge step; the issue-comment collection with
+`--expect-count comments`; the `running` note; the recheck of the same comment; the issue-comment-moved retry; the merge call without `--delete-branch`; the terminating function and `T-CHAIN`
+unchanged), E `internal/template/codex_review_gate_test.go`, E `internal/template/codex_review_paging_test.go`, E `internal/template/auto_merge_codex_test.go` (the real-sample fixtures of the provenance
+table; the base matrix; the author, fork, bot, lookalike, and branch-deletion rows). RED first: write the rewritten rows against the tree at `b2af3db9a1` and quote the failures, whose stated reasons are
+R18 to R23 (a RED that fails only because a helper is missing does not count). GREEN: edit the gate script and the workflow. Exit: every named subtest of the criteria above swept (`-v` lists each
+`--- PASS`); `TestAutoMergeRequiredChecks` still lists its 16 rows; `actionlint` exit 0; mutants recorded with verbatim reds: the revision-6 reader, a status-alone pass, null read as false, the
+code leg alone, the newest of two comments, a whole-body marker scan, the security marker ignored, a recheck on the head only, a merge `if` naming a base, a merge step that does not re-read the head, a
+state recorded for the old head counted, an `author` step matching the login only, no head-repository comparison, `eligible=true` for an unreadable object, a merge call with `--delete-branch`, and
+the MF-shaped mutant for the `eligible` term (the lone drop from the merge `if` is an equivalent mutant pinned structurally). The single writer of this milestone is the card's lane; this plan
+revision writes none of it. Affected packages: `internal/template` (tests only); no non-test Go file and no template file changes. Re-measure: the seven reader selectors, the three paging selectors,
+and the twelve auto-merge selectors of M1 to M5. State at exit: landed locally is claimed only after the merge; the real run of the revision-7 reader on a pull request, DS-2, the `running` to `completed`
+transition, and whether `CI` fires for a pull request into a `release/*` base stay UNOBSERVED, and the remote state of the amended workflow is "unverified".
+
 ### Landing scope (plan §F rule: changed packages plus direct importers plus readers of changed non-Go files)
 
 | Group | Packages | How |
@@ -314,6 +353,10 @@ lane" (acceptance §6, §7). The sync exit says the same two things in the same 
   default output first and appending the terminal value (AC-CCR-020 to AC-CCR-025).
 - (rev 6) Reporting the remote conclusion of the job, or "active" or "passing" for the amended workflow, from the
   G6 draft pull request's CI (spec §5, G6 acceptance condition).
+- (rev 7) Reading `completed` alone, or both legs reading `completed`, as a pass; reading null as false; letting a state recorded for another head count; merging while a review is `running` or
+  absent, on any base (AC-CCR-002, 004, 007, 019).
+- (rev 7) Documenting the author, fork, and bot rule or the no-branch-deletion rule without the workflow enforcing it and the tests pinning it; touching `delete_branch_on_merge` (REQ-CCR-020,
+  REQ-CCR-021, G9).
 - Writing "complete" for a local landing, or claiming remote verification without the remote data of that SHA
   (§D State wording).
 - Deleting `.coderabbit.yaml` instead of disabling its two flags (AC-CCR-015).
