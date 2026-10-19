@@ -29,4 +29,4 @@ Options: (a) 대체된 `--clear-policy relaunch` 카드별 소비를 서술하�
 Planner default applied: (a) — 잠정값이며 판정이 아니다
 Default: (a) (rule: 더 작은 사용자 가시 표면 — 살아 있는 두 플래그의 정확한 인용을 모두 보존하고 죽은 정책의 서술만 없앤다; 되돌리기는 이 SPEC 자체 문서 커밋의 단일 revert로 끝난다)
 Alternate: (b)
-Operator verdict:
+Operator verdict: (a) — 운영자 판정 (보드 d-20261019T051752Z-34a8, 2026-10-19): 대체된 --clear-policy relaunch 카드별 소비를 서술하는 인용만 정리하고, 살아 있는 동작을 서술하는 --factory-run·--clear-policy 인용은 모두 유지. help 텍스트 변경은 이 SPEC 범위 밖. GATE(t1717)가 이 답을 입력으로 받음.
