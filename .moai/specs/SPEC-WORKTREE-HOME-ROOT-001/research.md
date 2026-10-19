@@ -116,6 +116,56 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 - R-5 The lowercase-spelling alias could also affect the recorded `worktree_path` of cards created through the lowercase spelling; the rebind compares via spelling-safe equality (REQ-WHR-023).
 - R-6 A lane holds a pre-move path after the routine update moved a parked tree. Mitigation: card record rebind first, move list second (REQ-WHR-011/012); the move-list file is machine-local (gitignored), so a reader on another machine has no copy of it; that case is not designed for here.
 
+## §R15. Measurements for the plan-audit iteration 6 correction (version 0.8.0; tree `6f63a1494b11469cb8109caf0917e87b5a5ceb2f`)
+
+All by read-only commands, no Go command. Judging build for the one CLI cell: `moai version` printed `moai_cp/20261007_195927-1888-g7705b365e2`; `git merge-base --is-ancestor 7705b365e2 HEAD` exited 0 (no output), so that build is a strict ancestor of the tree and its CLI result describes older code; every other cell is a grep, `ls` or `wc`, independent of that binary. As in §R13, the harness prints no status line for a `grep` that exits 1, so those codes are derived from the stdout. The first run of the four `--exclude` grep cells with the pattern unquoted failed on a zsh glob (`no matches found`), not on the worktree guard; they were re-run with the pattern quoted, and the table shows those runs. `git diff --stat 49951ae514 6f63a1494b` listed the five SPEC artifacts only (103 insertions, 46 deletions), so the document pin of acceptance.md moved from `49951ae514` to this tree with only SPEC files differing.
+
+| AC | Command | Observed stdout | Exit |
+|----|---------|-----------------|------|
+| 001 | `grep -rln --exclude='*_test.go' 'worktrees/projects' internal` | (empty) | 1 |
+| 002a | `grep -rln --exclude='*_test.go' 'moai-project.json' internal` | (empty) | 1 |
+| 004 | `grep -rn --exclude='*_test.go' 'worktree_project_key' internal .moai/config` | (empty) | 1 |
+| 005a | `grep -n 'destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)' internal/cli/session_worktree.go` | `223:	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)` | 0 |
+| 005b | `grep -n 'filepath.Join(projectRoot, ".claude", "worktrees", name)' internal/cli/worktree_branch_flag.go` | `109:	treePath := filepath.Join(projectRoot, ".claude", "worktrees", name)` | 0 |
+| 010 | `moai worktree list --json` | `ERROR  Unknown flag: --json.  Try --help for usage.` | 1 |
+| 012b | `grep -rln --exclude='*_test.go' "move-list\|movelist\|move_list" internal` | (empty) | 1 |
+| 013 | `ls internal/cli/worktree/classify.go` | `ls: internal/cli/worktree/classify.go: No such file or directory` | 1 |
+| 019 | `grep -c 'Join(root, sessionWorktreeSubdir)' internal/cli/update_worktree_migration.go` | `1` | 0 |
+| 021 | `ls .moai/reports/t1640/pre-kickoff-measurements.md` | `ls: .moai/reports/t1640/pre-kickoff-measurements.md: No such file or directory` | 1 |
+| 025 | `grep -c 'worktrees/projects' AGENTS.md` | `0` | 1 |
+| 025 baseline | `wc -c AGENTS.md` | `23780 AGENTS.md` | 0 |
+| 025 template | `grep -c 'worktrees/projects' internal/template/templates/AGENTS.md.tmpl` | `0` | 1 |
+| 024 (RG) | `grep -n 'WorktreeCreate' .claude/settings.json` | (empty) | 1 |
+
+Every cell reproduces the §R14 value, and the plan-audit iteration 6 report's MP-8 table (same commands, same tree).
+
+Kickoff precondition (D2): `internal/homestate/card_audit_kickoff.go:31-38` was read: the factory Kickoff edge calls `auditReadyRecorded(<spec dir>/progress.md)`, which cuts the file at `## §E.1`, reads that section up to the next `\n## ` and accepts only a bare `audit_ready: true` line (a look-alike key is named in the refusal), so the edge refuses without the file. `ls .moai/specs/SPEC-WORKTREE-HOME-ROOT-001` printed `acceptance.md design.md plan.md research.md spec.md`: `progress.md` is absent at this tree. The schema section map (`spec-frontmatter-schema.md`) gives `§E.1` to the plan owner and `§E.2` to the run-phase specialist, which fixes who writes what: the plan owner emits the file at the plan-audit PASS, M0 appends `§E.2` (plan §B, §C). The earlier sentence that M0 creates the file is withdrawn (edited in place in §R14).
+
+Gate check, iteration 6 shape (D4). The first character of COMMAND, OUTPUT and TOOLS is `[^[:space:];]` in place of `[^ ]`: it rejects a tab and a lone `;`, and unlike `[[:alnum:]]` it keeps a pointer such as `@PM-1c-output` (fixture g03, PM-1c) valid. Two fixtures added next to g01 to g14 in `…/scratchpad/gate5/`: `g15-tab.md` (fixture (iii) with the command, output and tool-version fields of `PM-1b` each a single tab; `grep -c -E` of a tab character printed `1`, and a `[[:space:]]+` form of the `PM-1b` line printed `1`, so the tab bytes are in the file) and `g16-semicolon.md` (the same fields of `PM-1c` each a lone `;`). Red observed on a known failing input: the iteration 5 form (first character `[^ ]`) printed `1` for the `PM-1b` complete-record count on g15 and `1` for the `PM-1c` count on g16, so it passes both. The new form, run as separate plain commands over all sixteen fixtures (one command per id), printed these complete-record counts (fixture: 1a 1b 1c 1d 2 3):
+
+| Fixture | 1a | 1b | 1c | 1d | 2 | 3 |
+|---------|----|----|----|----|---|---|
+| g01 all GAP | 0 | 0 | 0 | 0 | 0 | 0 |
+| g02 one GAP (1c) | 1 | 1 | 0 | 1 | 1 | 1 |
+| g03 valid | 1 | 1 | 1 | 1 | 1 | 1 |
+| g04 six identical 1a | 6 | 0 | 0 | 0 | 0 | 0 |
+| g05 2 twice, no 3 | 1 | 1 | 1 | 1 | 2 | 0 |
+| g06 1a PASS and FAIL, no 1b | 2 | 0 | 1 | 1 | 1 | 1 |
+| g07 valid + PM-4 GAP | 1 | 1 | 1 | 1 | 1 | 1 |
+| g08 valid + 1a ERROR | 1 | 1 | 1 | 1 | 1 | 1 |
+| g09 1c ERROR only | 1 | 1 | 0 | 1 | 1 | 1 |
+| g10 six bare lines | 0 | 0 | 0 | 0 | 0 | 0 |
+| g11 1b command blank | 1 | 0 | 1 | 1 | 1 | 1 |
+| g12 1c other SHA | 1 | 1 | 0 | 1 | 1 | 1 |
+| g13 2 output blank | 1 | 1 | 1 | 1 | 0 | 1 |
+| g14 3 exit absent | 1 | 1 | 1 | 1 | 1 | 0 |
+| g15 1b tabs | 1 | 0 | 1 | 1 | 1 | 1 |
+| g16 1c lone `;` | 1 | 1 | 0 | 1 | 1 | 1 |
+
+Reading: g15 and g16 each fail exactly the id they damage (`0`), the fourteen earlier fixtures give the values of §R14 (g03 and g07 pass with every count `1`; g08's second line shows only in the all-lines count of `PM-1a`, `2`), and the tab and the lone `;` are no longer passable. The all-lines counts (unchanged form) were re-run on g15 and g16 for `PM-1b` and `PM-1c` only (`1` each); they were not re-run on the other fourteen fixtures, whose files and counts are unchanged since §R14 (Gap). Residual: the shape proves that each of the five fields is present and does not start with whitespace or `;`, not that it is true; a value such as `-` passes, and the Kickoff reader still reads the record (spec.md §F, plan §B). The residual of §R14 about a lone `;` no longer holds.
+
+By-hand ordering check, re-done for version 0.8.0 (the table of §R13 below was edited in place for M1). Additions and the milestone each is built in, with the milestone whose tests first name it: `MovedBy` decided from the tree's latest location line, with the `pending` and `refused` cases (built M1; named by the M1 fixtures, which are hand-written move-list lines and trees, and by the M3 cleanup-guard tests for `worker-pending`, `worker-refused`, `worker-premove`; the M6 writer that emits those lines is built later and no earlier test names it); the no-token lookup clause (reader built M1; named by M1 fixtures); `progress.md` with `§E.1`, emitted by the plan owner before the Kickoff, and `§E.2` appended from M0 (a documentation file, no symbol); the `spec.md` `draft -> in-progress` flip in the first production-file commit of M1 (a frontmatter edit, no symbol; M0 and M1's RED commit leave `spec.md` untouched); the regenerated `internal/template/catalog.yaml` hashes in M7 (generated, consumed by the repository's mirror test at M7's exit); the gate regex (M-1, before any milestone). No test names a symbol built in a later milestone, M0 still commits no Go file and touches `progress.md` only, and every milestone still ends GREEN on its own. Result: no ordering conflict found.
+
 ## §R14. Measurements for the plan-audit iteration 5 correction (version 0.7.0; tree `49951ae51488544f109be7805ea804c4319c6c79`)
 
 All by read-only commands, no Go command. Judging build for the one CLI cell: `moai version` printed `moai_cp/20261007_195927-1888-g7705b365e2`; `git merge-base --is-ancestor 7705b365e2 HEAD` exited 0 (no output), so that build is a strict ancestor of the tree and its CLI result describes older code; every other cell is a grep, `ls` or `wc`, independent of that binary. As in §R13, the harness prints no status line for a `grep` that exits 1, so those codes are derived from the stdout; the `ls` and `moai` cells showed `Exit code 1` themselves.
@@ -137,9 +187,9 @@ All by read-only commands, no Go command. Judging build for the one CLI cell: `m
 | 025 template | `grep -c 'worktrees/projects' internal/template/templates/AGENTS.md.tmpl` | `0` | 1 |
 | 024 (RG) | `grep -n 'WorktreeCreate' .claude/settings.json` | (empty) | 1 |
 
-Every cell reproduces the §R13 value (the plan-audit iteration 5 report re-executed the same cells on this tree). Document pin of acceptance.md moved from `090b7d51f9` to this tree; only SPEC files differ between the two.
+Every cell reproduces the §R13 value (the plan-audit iteration 5 report re-executed the same cells on this tree). Document pin of acceptance.md moved from `090b7d51f9` to this tree; only SPEC files differ between the two (it moved on to `6f63a1494b` in the iteration 6 round, §R15).
 
-Baseline carrier (D9): `git check-ignore -v .moai/reports/t1640/pre-kickoff-measurements.md` printed `.gitignore:235:.moai/reports/*	.moai/reports/t1640/pre-kickoff-measurements.md`, so card reports are not tracked; `git check-ignore -v .moai/specs/SPEC-WORKTREE-HOME-ROOT-001/progress.md` printed nothing and exited 1, so `progress.md` is tracked-eligible. The file itself does not exist in the SPEC directory at this tree (the plan-phase skeleton was not emitted); M0 creates it, and the plan names it as the carrier (plan §C).
+Baseline carrier (D9): `git check-ignore -v .moai/reports/t1640/pre-kickoff-measurements.md` printed `.gitignore:235:.moai/reports/*	.moai/reports/t1640/pre-kickoff-measurements.md`, so card reports are not tracked; `git check-ignore -v .moai/specs/SPEC-WORKTREE-HOME-ROOT-001/progress.md` printed nothing and exited 1, so `progress.md` is tracked-eligible. The file itself does not exist in the SPEC directory at this tree; the plan owner emits it with `§E.1` at the plan-audit PASS, before the Kickoff, and M0 appends the `§E.2` lines to it (this round first wrote "M0 creates it"; the factory Kickoff edge reads `§E.1`, so that was withdrawn in §R15; plan §B, §C).
 
 Gate check, iteration 5 shape (D4). Fixtures `g01` to `g14` in the session scratch area `…/scratchpad/gate5/`, one per fixture of AC-WHR-021 ((i) to (xiv)); `<audited>` is the sha written in them, `49951ae51488544f109be7805ea804c4319c6c79`. Check forms: all-lines `grep -c '^RESULT PM-1a:' <f>`; complete record `grep -c -E '^RESULT PM-1a: (PASS|FAIL) ;; COMMAND: [^ ].* ;; OUTPUT: [^ ].* ;; EXIT: [0-9]+ ;; TOOLS: [^ ].* ;; TREE: <audited>$' <f>`. On `g03` (fixture (iii)) all twelve counts were run as separate commands and each printed `1`. On the other fixtures the per-id counts were read from an id listing (`grep -o -E '^RESULT PM-[0-9a-d]+:'` for all lines; the same `grep -o -E` with the complete-record shape for complete records) plus the targeted counts named; the twelve separate counts were not run on each of them (Gap).
 
@@ -160,7 +210,7 @@ Gate check, iteration 5 shape (D4). Fixtures `g01` to `g14` in the session scrat
 | g13 (xiii) `PM-2` output blank | complete-record `PM-2` `0`; the other five ids listed once |
 | g14 (xiv) `PM-3` exit field absent | all-lines `PM-3` `1`; complete-record `PM-3` `0` |
 
-Reading: the bare-line record (g10) passes every check of iteration 5 (the audit's D4) and fails the complete-record count for all six ids; each of the four single-field mutants fails exactly the id it damages. Residual: the shape proves the five fields are present and non-blank, not that they are true, and a blank-looking value that starts with a non-space character (for example a lone `;`) passes; the Kickoff reader reads the record.
+Reading: the bare-line record (g10) passes every check of iteration 5 (the audit's D4) and fails the complete-record count for all six ids; each of the four single-field mutants fails exactly the id it damages. Residual of that round: the shape proved the five fields present and non-blank, not true; its first-character class `[^ ]` passed a tab and a lone `;`, which §R15 closes with `[^[:space:];]`.
 
 Package-name search (iteration 5 M1): pattern `sys[c]all` (the bracketed letter keeps this sentence from matching itself), `grep -c 'sys[c]all' <file>` over spec.md, plan.md, acceptance.md, design.md and research.md after the edits: `0` for each of the five, and the same search with the letter unbracketed (the form the plan-audit report uses) printed `0` for each (no section of the SPEC names the package, so no section needs a `//go:build` split; the §R13 sentence that printed `1` for research.md was this file's own report of the search).
 
@@ -197,7 +247,7 @@ Launcher path (D2), `internal/cli/worktree_branch_flag.go`: `:23-24` states the 
 
 A search of the five artifacts for the OS-call package name found no use of it in the SPEC body; the exact counts are in §R14 (the sentence that first reported this one counted itself, plan-audit iteration 5 M1).
 
-### By-hand ordering check (D1; milestones in plan order, all five artifacts re-read; table and per-AC list kept current through version 0.7.0, re-done in §R14)
+### By-hand ordering check (D1; milestones in plan order, all five artifacts re-read; table and per-AC list kept current through version 0.8.0, re-done in §R14 and §R15)
 
 Rule under test: no milestone's tests name a symbol first built in a later milestone; `go build` of every package, tests excluded, stays green at every commit; every milestone ends GREEN. "RED commit" = the test-only commit that opens the milestone.
 
@@ -205,7 +255,7 @@ Rule under test: no milestone's tests name a symbol first built in a later miles
 |-----------|-------------------|------------------------------|----------------------------------|----------------------------------|---------------------|
 | M-1 | no Go; the measurement record | — | AC-021 (record) | — | no |
 | M0 | no Go file; evidence only | — (no test) | observed cells: AC-001, 002a, 004, 005a, 005b, 010, 012b, 013, 019 (first), 025 | every package as before (nothing changed) | no |
-| M1 | `internal/worktreeroot`, `classify.go`, key assignment and marker, `git_strategy.worktree_project_key`, `movelist*.go` reader (`TreeIdent`, token writer, `MovedTo` taking the requester's identity, `MovedBy` keyed on the tree's own `ident`) | M1 symbols; git, config, session registry (existing) | AC-002b (1-3), 003a, 003b, 023 (`Same`) | `internal/worktreeroot`, `internal/config`, `internal/cli/worktree` | no; move-list fixtures are hand-written lines, not the M6 writer |
+| M1 | `internal/worktreeroot`, `classify.go`, key assignment and marker, `git_strategy.worktree_project_key`, `movelist*.go` reader (`TreeIdent`, token writer, `MovedTo` taking the requester's identity, `MovedBy` keyed on the tree's own `ident` and its latest location line: `moved`, `pending` or `refused` at the path, released by `restored` or `reversed`) | M1 symbols; git, config, session registry (existing) | AC-002b (1-3), 003a, 003b, 023 (`Same`) | `internal/worktreeroot`, `internal/config`, `internal/cli/worktree` | no; move-list fixtures are hand-written lines, not the M6 writer |
 | M2 | destination swap in `session_worktree.go`, `worktree_branch_flag.go`, `launcher.go` | resolver (M1); existing materializer and `RegisterLauncherWorktree` | AC-006 | `internal/cli` | no |
 | M3 | reader changes (`internal/hook`, `internal/cli`, `internal/factory`, `done.go`, `sweep.go`), cleanup guard | resolver, classifier, `MovedBy` (M1); existing readers | AC-007, 008, 009, 014b, 022 | `internal/hook`, `internal/cli`, `internal/factory`, `internal/cli/worktree` | no |
 | M4 | `list.go`, registration in `root.go` | classifier, `Same` (M1) | (AC-010 Go clauses; its observed cell is M0's) | `internal/cli/worktree` | no |
