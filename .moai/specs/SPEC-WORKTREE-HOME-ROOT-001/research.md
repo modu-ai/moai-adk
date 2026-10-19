@@ -1,6 +1,6 @@
 # research.md — SPEC-WORKTREE-HOME-ROOT-001
 
-> Evidence record. Everything here was observed in this planning session (re-read at HEAD `e5950b354f` in the first correction round and at `40c2e127bf` in the operator-decision correction, §R10) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
+> Evidence record. Everything here was observed in this planning session (re-read at HEAD `e5950b354f` in the first correction round at `40c2e127bf` in the operator-decision correction, §R10, and at `bf78f5541a` in the plan-audit iteration 2 correction, §R11 — placed above §R10 as the newest block) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
 
 ## §R1. Where trees live now (measured)
 
@@ -113,6 +113,16 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 - R-4 The classifier leaves `audit-gate-async-worktree-doc` unclassified (one known tree). Operator may reclassify by hand.
 - R-5 The lowercase-spelling alias could also affect the recorded `worktree_path` of cards created through the lowercase spelling; the rebind compares via spelling-safe equality (REQ-WHR-023).
 - R-6 A lane holds a pre-move path after the routine update moved a parked tree. Mitigation: card record rebind first, move list second (REQ-WHR-011/012); the move-list file is machine-local (gitignored), so a reader on another machine has no copy of it; that case is not designed for here.
+
+## §R11. Measurements for the plan-audit iteration 2 correction (version 0.4.0; tree `bf78f5541af77860230364a8f3db655f1d1b88fb`)
+
+All by read-only commands, no Go command. Installed `moai` build for the one CLI cell: `moai_cp/20261007_195927-1888-g7705b365e2` (`moai version`), an ancestor of the tree HEAD; every other cell is a grep or `ls`, independent of that binary.
+
+- State-file write (D4): `grep -n 'worktreeMu\|func saveWorktreeEntries\|func loadWorktreeEntries\|os.WriteFile' internal/hook/worktree_registry.go` printed `22:var worktreeMu sync.Mutex`, the `Lock` calls at `:30` and `:72`, `95:func loadWorktreeEntries`, `122:func saveWorktreeEntries`, `137:	if err := os.WriteFile(path, data, 0o644); err != nil {` — a package mutex (one process) and a truncating write. The plan-audit report read `loadWorktreeEntries` returning an empty slice on a parse error at `:109-115`.
+- Live-session containment (D5): `grep -n 'func pathWithinTree\|func LiveAnchoredSessionsForProject' internal/session/anchor.go` printed `55:func LiveAnchoredSessionsForProject` and `141:func pathWithinTree`.
+- Template source of the guidance (D10): `grep -n -i 'worktrees' internal/template/templates/AGENTS.md.tmpl` printed lines 130 (`## 3. Worktrees`), 133 and 153; `grep -c 'worktrees/projects' internal/template/templates/AGENTS.md.tmpl` printed `0` (exit 1), and the same count on `AGENTS.md` printed `0` (exit 1); `wc -c AGENTS.md` printed `23780`.
+- Gate-check mutants (D9), fixtures in the session scratch area, six lines or fewer each. The old single-count check `grep -c '^RESULT PM-\(1a\|1b\|1c\|1d\|2\|3\): \(PASS\|FAIL\)$'` printed 6 on all three of: six identical `PM-1a: PASS` lines; five distinct ids plus `PM-2` twice and no `PM-3`; a `PM-1a` PASS/FAIL pair with `PM-1b` absent — each a Gap that passes. The per-id counts printed: duplicate fixture `PM-1a` 6 and `PM-1b` 0; missing fixture `PM-3` 0 (`PM-2` 2); conflict fixture `PM-1a` 2 and `PM-1b` 0; a valid six-id fixture (plus a non-gating `PM-4: GAP`) printed 1 for each of the six ids and 0 for the gating GAP count.
+- RED-now cells re-observed with exit codes are in acceptance.md; the `moai worktree list --json` run printed `Unknown flag: --json.` with exit 1 on the installed build.
 
 ## §R10. Measurements for the operator-decision correction (version 0.3.0; tree `40c2e127bf`)
 
