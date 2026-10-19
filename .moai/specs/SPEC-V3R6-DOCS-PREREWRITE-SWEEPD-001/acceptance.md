@@ -37,7 +37,7 @@ PC   = 'docs-site/content/*/cost-optimization/prompt-caching.md'
 
 ### A.3 Classification
 
-AC-PRC-001-001 to AC-PRC-001-004 are release-blocking and flip from red to green. AC-PRC-001-005 and AC-PRC-001-006 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known input that turns the same form red. AC-PRC-001-003 and AC-PRC-001-002 each hold a preservation part inside the release-blocking criterion (the row count, the literal-prefix commands, and the `B[34]` count are green at the pin and must stay green); the criterion as a whole is red at the pin and each preservation part has a mutant that turns it red (E-SWD-15). Each decision row has one planned branch, stated in the table; the alternates are not planned.
+AC-PRC-001-001 to AC-PRC-001-004 are release-blocking and flip from red to green. AC-PRC-001-005 and AC-PRC-001-006 are preservation criteria: green at the pin by construction, so each carries a control, a command run on a known input that turns the same form red. AC-PRC-001-003 and AC-PRC-001-002 each hold a preservation part inside the release-blocking criterion (the row count, the literal-prefix commands, the row-position command, and the `B[34]` count are green at the pin and must stay green); the criterion as a whole is red at the pin and each preservation part has a mutant that turns it red (E-SWD-15). Each decision row has one planned branch, stated in the table; the alternates are not planned.
 
 | Decision row | Planned branch | Effect on the criteria |
 |--------------|----------------|------------------------|
@@ -58,7 +58,7 @@ AC-PRC-001-001 to AC-PRC-001-004 are release-blocking and flip from red to green
 |----|-------------|------------|-------|---------|-------------|------------|
 | AC-PRC-001-001 | REQ-PRC-001-001, REQ-PRC-001-004 | Q13, Q17 | release-blocking | E-SWD-2, E-SWD-3 | each of the four `mcp-server.md` files carries 7 lines that match `U` and `UW` | M3 |
 | AC-PRC-001-002 | REQ-PRC-001-002, REQ-PRC-001-004 | Q13, Q17 | release-blocking | E-SWD-4 (commands 1, 2); E-SWD-5 (commands 3, 5, 6 red; command 4 preserved) | each of the four `worktree/_index.md` files carries 2 lines that match `E03`; no file carries the slash forms on B3 and B4, so commands 3, 5, and 6 print nothing | M2 |
-| AC-PRC-001-003 | REQ-PRC-001-001, REQ-PRC-001-004, REQ-PRC-001-005 | Q13, Q17 | release-blocking | E-SWD-6, E-SWD-6a, E-SWD-6b | no edit exists, so the numstat is empty and the exact-form patterns match none of the seven rows; the row count and the literal prefixes are green and preserved | M3 |
+| AC-PRC-001-003 | REQ-PRC-001-001, REQ-PRC-001-004, REQ-PRC-001-005 | Q13, Q17 | release-blocking | E-SWD-6, E-SWD-6a, E-SWD-6b, E-SWD-6c | no edit exists, so the numstat is empty and the exact-form patterns match none of the seven rows; the row count, the literal prefixes, and the row positions are green and preserved | M3 |
 | AC-PRC-001-004 | REQ-PRC-001-002, REQ-PRC-001-005 | Q13, Q17 | release-blocking | E-SWD-7 | no edit exists, so the numstat is empty | M2 |
 | AC-PRC-001-005 | REQ-PRC-001-003 | Q-SWD-1 (retain) | preservation | control E-SWD-8 | green at the pin; red only when a retirement line is deleted or a `prompt-caching.md` file is touched | M5 |
 | AC-PRC-001-006 | REQ-PRC-001-005 | none | preservation | control E-SWD-9 | green at the pin; red only when a path outside the swept files changes | M5 |
@@ -100,13 +100,13 @@ Status at the pin, per command. Commands 1 and 2 (E-SWD-4): four lines `:2`, exi
 
 Commands 5 and 6 are the label check: command 3 and command 4 count slash-form labels and `B3`/`B4` nodes but cannot tell which command sits on which node. Command 5 requires B3 to carry `/moai run SPEC-ID` and command 6 requires B4 to carry `/moai sync SPEC-ID`, each as the whole line, so a swap, a duplicate, and trailing text after the closing bracket all fail them. Mutants, each observed on a scratch fixture of the ko page (E-SWD-15): B3 and B4 swapped passes commands 1 to 4 and prints nothing for commands 5 and 6; both labels set to `/moai run` passes commands 1 to 4 and prints nothing for command 6; trailing text after the B3 label passes commands 1 to 4 and prints nothing for command 5.
 
-### AC-PRC-001-003 — the seven `mcp-server.md` cells change to the marker, the rest of the row stays, and the locales agree
+### AC-PRC-001-003 — the seven `mcp-server.md` cells change to the marker, the rest of the row stays, each row keeps its place, and the locales agree
 
-AC-PRC-001-003 maps REQ-PRC-001-001, REQ-PRC-001-004, and REQ-PRC-001-005. The edit unit and its bounds are the table in plan.md §A.3. This criterion measures three things separately, because the line bound alone cannot tell which cell of a row changed: the fourth cell of each row (exact form), the first three cells of each row (literal prefix), and the agreement of the four locales (per-row compare).
+AC-PRC-001-003 maps REQ-PRC-001-001, REQ-PRC-001-004, and REQ-PRC-001-005. The edit unit and its bounds are the table in plan.md §A.3. This criterion measures four things separately, because the line bound alone cannot tell which cell of a row changed or where a row sits: the fourth cell of each row (exact form), the first three cells of each row (literal prefix), the line at which each row sits (position), and the agreement of the four locales (per-row compare).
 
 - **Given** the sweep tip and the recorded answers for Q13,
 - **When** the commands of the three blocks below run,
-- **Then** the cell-form block prints: command 1 four numstat lines, one per locale, each `7` added and `7` removed; command 2 four lines ending `:7`. The per-row block prints, for each of its seven commands, four lines ending `:1` (one per locale). The rest-of-row block prints: command 10 four lines ending `:41`; commands 11 to 14 one line each, ending `:7`, for ko, en, ja, and zh in that order.
+- **Then** the cell-form block prints: command 1 four numstat lines, one per locale, each `7` added and `7` removed; command 2 four lines ending `:7`. The per-row block prints, for each of its seven commands, four lines ending `:1` (one per locale). The rest-of-row block prints: command 10 four lines ending `:41`; commands 11 to 14 one line each, ending `:7`, for ko, en, ja, and zh in that order. The position block prints: command 15 twenty-eight lines, exit 0, the seven rows at lines 130, 163, and 182 to 186 in each of en, ja, ko, and zh (listed below the command).
 
 Cell form (commands 1 and 2):
 
@@ -137,9 +137,19 @@ git grep -c -F -e "| \`mcp__moai__spec_progress\` | SPEC 文書リスト + front
 git grep -c -F -e "| \`mcp__moai__spec_progress\` | SPEC 文档列表 + frontmatter 查询 | manager-spec, manager-docs | " -e "| \`mcp__moai__audit_cache\` | plan-audit PASS 缓存（compute_hash / lookup / store，进程间共享） | sync-auditor | " -e "| \`mcp__moai__codex_task\` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | " -e "| \`mcp__moai__codex_setup\` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | " -e "| \`mcp__moai__codex_job_status\` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | " -e "| \`mcp__moai__codex_job_result\` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | " -e "| \`mcp__moai__codex_job_cancel\` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | " HEAD -- 'docs-site/content/zh/guides/mcp-server.md'
 ```
 
-RED-now at the pin: command 1 prints nothing, exit 0 (E-SWD-6); command 2 and commands 3 to 9 print nothing, exit 1 (E-SWD-6, E-SWD-6a). Commands 10 to 14 are green at the pin and are the preservation part of this criterion: command 10 prints four lines `:41` (the tool table keeps all its rows), and commands 11 to 14 print `:7` each (E-SWD-6, E-SWD-6b). Why red: no edit has been made, so no cell holds the marker yet. The preservation part exists because the line bound of command 1 is a count of lines and does not see which cell of a row changed.
+Position of the seven rows (command 15). The dot in the pattern stands for the backtick that closes and opens the row id; it keeps the command runnable under the worktree guard, which refuses a backtick. The pattern stops before the fourth cell, so its output is the same at the pin and at the sweep tip when the edit is line for line:
+
+```
+git grep -n -o -E "^\| .mcp__moai__(spec_progress|audit_cache|codex_task|codex_setup|codex_job_status|codex_job_result|codex_job_cancel). \|" HEAD -- 'docs-site/content/*/guides/mcp-server.md'
+```
+
+Expected stdout, exit 0: 28 lines, locales in the order en, ja, ko, zh (git sorts by path), and in each locale these seven in this order, each as ``HEAD:docs-site/content/<locale>/guides/mcp-server.md:<line>:| `mcp__moai__<id>` |``: line 130 `spec_progress`, 163 `audit_cache`, 182 `codex_task`, 183 `codex_setup`, 184 `codex_job_status`, 185 `codex_job_result`, 186 `codex_job_cancel`. Any other line number, any other id at a line, or any missing line is a failure; the exit code is 0 whenever any row matches and is not the verdict.
+
+RED-now at the pin: command 1 prints nothing, exit 0 (E-SWD-6); command 2 and commands 3 to 9 print nothing, exit 1 (E-SWD-6, E-SWD-6a). Commands 10 to 15 are green at the pin and are the preservation part of this criterion, a regression guard rather than a RED-now cell: command 10 prints four lines `:41` (the page still carries 41 tool-row lines; the count does not see where a row sits), commands 11 to 14 print `:7` each (E-SWD-6, E-SWD-6b), and command 15 prints the 28 lines above (E-SWD-6c). Command 15 is green at the pin by construction, because the pin is where the line numbers were measured; the edit changes only the fourth cell of each row, which the pattern does not read, so it stays green through M3 and no milestone flips it. It is proved by its mutants (E-SWD-15), not by a red arrival. Why the criterion as a whole is red: no edit has been made, so no cell holds the marker yet. The preservation part exists because the line bound of command 1 is a count of lines and does not see which cell of a row changed, and neither the line bound, the row count, `M`, nor the literal prefixes sees where a row sits.
 
 Mutants this closes, each observed on a scratch fixture (E-SWD-15): a cell followed by text after the marker (`— ; run ...`) leaves 6 of 7 rows in command 2 and passes AC-PRC-001-001; blanking a cell, a typo such as `moai spec lst`, a registered command in a cell (the stale-row candidates `moai codex status` and `moai spec status --list` included), and a stale form left in one cell each leave 6 of 7 rows; overwriting the purpose or agents cell of a row while setting its CLI cell correctly passes commands 1 and 2 (the line bound is still `7	7`) and prints `6` in the matching prefix command; blanking the page or deleting a row breaks command 1 or command 10; editing three locales instead of four leaves a file with no numstat line and a per-row command with three lines; one locale carrying a different disposition for a row prints three lines for that row. Because `M` admits one cell form, four per-row lines of `:1` and four per-file lines of `:7` mean that all 28 cells have the same disposition. The reviewer's read of the edited lines is no longer the only guard for the pairing of a replacement to a row: no replacement other than the marker passes.
+
+Mutants that move a row, each observed on a scratch fixture (E-SWD-15): a row deleted from the table and appended after the last line of the page, two adjacent `codex_*` rows swapped, two `codex_*` rows far apart swapped, and a row moved up or down by one line each pass commands 1 to 14 (the line bound stays `7 7`, `M` stays 7, every per-row command prints `:1`, the literal prefixes stay 7, the row count stays 41) and each prints different lines from command 15. What the commands now measure about position: with command 1 reading `7 7` per file against the pin, AC-PRC-001-001 showing that no stale row remains (so the seven removed lines are the seven stale rows), command 2 and commands 3 to 9 showing that exactly seven lines hold the marker form, and command 15 showing that those seven rows sit at lines 130, 163, and 182 to 186, the seven added lines are the seven rows at their pinned lines and every other line of each file is the line the pin has at the same position. Within a file this leaves no row, target or not, that can have moved: moving a non-target row adds one removed and one added line, which command 1 reads as `8 8` (observed on the non-target pair swap, E-SWD-15). The one remainder is stated in G12.
 
 ### AC-PRC-001-004 — the Mermaid labels change within their edit unit
 
@@ -186,7 +196,7 @@ Green at the pin (E-SWD-9). The four `prompt-caching.md` files are deliberately 
 
 ## C. Evidence ledger
 
-Each entry gives the command, the observed output (verbatim unless marked), the exit code as its own field, and the tree it read. Entries that pin no tree of their own read the document-level pin 26834dd17d. The entries E-SWD-10, E-SWD-11, E-SWD-14, and E-SWD-16 carry their own pin 74ad197380 and were not re-run for revision 0.2.0.
+Each entry gives the command, the observed output (verbatim unless marked), the exit code as its own field, and the tree it read. Entries that pin no tree of their own read the document-level pin 26834dd17d. The entries E-SWD-10, E-SWD-11, E-SWD-14, and E-SWD-16 carry their own pin 74ad197380 and were not re-run for revision 0.2.0. The entry E-SWD-6c (revision 0.2.1) carries its own pin e11f08f6a7b07e8f878b3e7d2a456a60aacdfd97, the HEAD it was measured on, whose docs-site tree equals that of 26834dd17d.
 
 ### E-SWD-0 — pin and tool provenance
 
@@ -290,6 +300,49 @@ HEAD:docs-site/content/zh/guides/mcp-server.md:7
 ```
 
 Reading: green and preserved. Each pattern is the first three cells of one of the seven rows with their separators, copied from the pin; the count is the number of lines that match any of the seven, so it is 7 only when all seven rows still carry their tool id, purpose, and agents cells byte-identical. The patterns read the pin's text, so they are valid at the pin and at the sweep tip and at no point depend on a moving ref.
+
+### E-SWD-6c — AC-PRC-001-003 (command 15, the position of the seven rows)
+
+Revision 0.2.1. Pin e11f08f6a7b07e8f878b3e7d2a456a60aacdfd97 (HEAD at measurement; `git rev-parse HEAD` printed it, exit 0). The docs-site tree equals both earlier pins: `git diff --stat 26834dd17d HEAD -- docs-site` and `git diff --stat 74ad197380 HEAD -- docs-site` each printed nothing, exit 0.
+
+Command: the one in AC-PRC-001-003 under "Position of the seven rows", run unmodified (it carries no backtick, so cell and run are the same text). Exit code: 0. Stdout, 28 lines:
+
+```
+HEAD:docs-site/content/en/guides/mcp-server.md:130:| `mcp__moai__spec_progress` |
+HEAD:docs-site/content/en/guides/mcp-server.md:163:| `mcp__moai__audit_cache` |
+HEAD:docs-site/content/en/guides/mcp-server.md:182:| `mcp__moai__codex_task` |
+HEAD:docs-site/content/en/guides/mcp-server.md:183:| `mcp__moai__codex_setup` |
+HEAD:docs-site/content/en/guides/mcp-server.md:184:| `mcp__moai__codex_job_status` |
+HEAD:docs-site/content/en/guides/mcp-server.md:185:| `mcp__moai__codex_job_result` |
+HEAD:docs-site/content/en/guides/mcp-server.md:186:| `mcp__moai__codex_job_cancel` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:130:| `mcp__moai__spec_progress` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:163:| `mcp__moai__audit_cache` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:182:| `mcp__moai__codex_task` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:183:| `mcp__moai__codex_setup` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:184:| `mcp__moai__codex_job_status` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:185:| `mcp__moai__codex_job_result` |
+HEAD:docs-site/content/ja/guides/mcp-server.md:186:| `mcp__moai__codex_job_cancel` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:130:| `mcp__moai__spec_progress` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:163:| `mcp__moai__audit_cache` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:182:| `mcp__moai__codex_task` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:183:| `mcp__moai__codex_setup` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:184:| `mcp__moai__codex_job_status` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:185:| `mcp__moai__codex_job_result` |
+HEAD:docs-site/content/ko/guides/mcp-server.md:186:| `mcp__moai__codex_job_cancel` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:130:| `mcp__moai__spec_progress` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:163:| `mcp__moai__audit_cache` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:182:| `mcp__moai__codex_task` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:183:| `mcp__moai__codex_setup` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:184:| `mcp__moai__codex_job_status` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:185:| `mcp__moai__codex_job_result` |
+HEAD:docs-site/content/zh/guides/mcp-server.md:186:| `mcp__moai__codex_job_cancel` |
+```
+
+The exit code was read by running the command with its output redirected to a file and the status echoed in a wrapper script (`exit=0`, 28 lines counted); the wrapper is the measurement harness and is not part of the cited command.
+
+Why this is not red now, and what it is: this command asserts the positions the rows already hold, so it is green at the pin by construction. It is a preservation (regression-guard) part of AC-PRC-001-003, like commands 10 to 14, not a RED-now cell; its red is the output differing from the 28 lines above, observed on the mutants of E-SWD-15 and not on the repository. Green path: M3 edits the fourth cell of each row on its own line and the pattern stops before that cell, so the output is the same 28 lines at the sweep tip, and M5 re-runs it. No milestone flips it.
+
+Moving-coordinate classification (verification-claim-integrity-detail.md, Moving-ref predicate). Test 1: replacing the coordinates by the commit they were measured on keeps the sentence "at e11f08f6a7 the rows sit at these lines" true for a later reader, so the class is ANCHOR. Test 3: re-run next week on the same base with no work in between, the same output is expected. Remedy R1: the literal line numbers, with the tree and date they were measured on (e11f08f6a7, 2026-10-19). They are valid only while the card branch's base is the one measured. If another card shifts these pages above line 130 and the branch absorbs it, command 15 reads red for a correct edit; that is the M4 re-pin trigger (plan.md M4, R1), where the coordinates are re-measured on the new base, not a failure of the sweep.
 
 ### E-SWD-7 — RED-now, AC-PRC-001-004
 
@@ -407,6 +460,15 @@ Fixtures were made with `sed` from the en and ko `mcp-server.md`, the ko `worktr
 | D4 trailing text | worktree R with `%% x` after the B3 label | `SL` 2 and `B[34]` 2 (pass), `B3L` 0 (red), `B4L` 1 |
 | worktree removed (D) | the two ko lines deleted | `E03` 0, `SL` 0, `B[34]` 0, `B3L` 0, `B4L` 0: red under R, which is the alternate D that is not planned |
 | retire line deleted | the en `prompt-caching.md` with its `moai cg` sentence deleted | `CG` prints nothing, exit 1 (the pin copy prints 1) |
+| green, position (mcp, en and ko) | the green fixture of the first row, read by command 15 | stdout equals the pristine copy's output (7 lines per locale), exit 0: green |
+| relocation (mcp, en and ko) | green, the `spec_progress` row deleted from line 130 and appended after the last line (line 320) | passes every other command: `U` 0, `M` 7, each `MID` 1, literal prefixes 7 (en), `ROW` 41, line bound 7 removed and 7 added. Command 15 red: `audit_cache` at 162, `codex_task` to `codex_job_cancel` at 181 to 185, `spec_progress` at 320 |
+| reorder, adjacent (mcp, en and ko) | green, lines 182 and 183 swapped (`codex_task` and `codex_setup`) | passes every other command, same figures as the relocation row. Command 15 red: `codex_setup` at 182, `codex_task` at 183 |
+| reorder, far (mcp, en) | green, lines 182 and 186 swapped (`codex_task` and `codex_job_cancel`) | passes every other command. Command 15 red: `codex_job_cancel` at 182, `codex_task` at 186 |
+| shift down by one (mcp, en and ko) | green, lines 130 and 131 swapped (`spec_progress` moves below `spec_audit`) | passes every other command. Command 15 red: `spec_progress` at 131 |
+| shift up by one (mcp, en) | green, lines 162 and 163 swapped (`audit_cache` moves above its neighbour) | passes every other command. Command 15 red: `audit_cache` at 162 |
+| non-target pair swap (mcp, en) | green, lines 131 and 132 swapped (`spec_audit` and `spec_drift`) | command 15 prints the expected output (green); the line bound reads 8 removed and 8 added (red): a moved non-target row is caught by command 1, not by position |
+
+Position fixtures, revision 0.2.1. The en and ko `mcp-server.md` were copied with `cp` from the working tree at e11f08f6a7 (clean, equal to HEAD; E-SWD-6c). A script run with `python3 -I` replaced the last cell of lines 130, 163, and 182 to 186 by the bare marker to make the green fixture, then built each mutant from it by deleting, appending, or swapping whole lines at the stated line numbers. Each fixture was read with `grep -c -E` for `U`, `M`, the seven `MID`, and `ROW`; `grep -c -F -e` with the seven en prefixes of command 12 (en only); `diff` against the pristine copy, counting removed and added lines, as the stand-in for the numstat of command 1; and `grep -n -o -E` with the pattern of command 15. Command 15's exit code was 0 on every fixture, because rows matched on each, so its verdict is the stdout compared with the pristine copy's. "Every other command" in the mutant rows means commands 1 to 14 of this revision. The relocation, the adjacent reorder, and the shift down were built on en and ko; the far reorder, the shift up, and the non-target swap on en only. The fixtures were read with `grep` and `diff`, not `git grep` and `git diff --numstat` (the same limit as G10).
 
 ### E-SWD-16 — sequencing and churn
 
@@ -431,7 +493,7 @@ Revision 0.2.0, 2026-10-19. Command: `moai decision read --scope standing --proj
 - **G9: GATE card state.** The lane's brief says card t1717 is on plan-audit hold. That state was not re-measured, and nothing in this SPEC depends on it.
 - **G10: no green run on the repository.** Nothing has been edited, so every green output in this file other than the preservation criteria and the preservation parts comes from a scratch fixture (E-SWD-15). The fixtures were read with `grep`, not `git grep`; the engine is the same POSIX ERE, and the two agreed on the repository for the pattern `M` (zero matches on the unedited page) and for the control `MC`, but the mutant results are not a `git grep` run on a committed tree.
 - **G11: the literal prefixes are copied text.** The four prefix commands carry 28 strings copied from the pin; a copy error would show as a count below 7 at the pin, and each printed 7 (E-SWD-6b). The strings include the purpose and agents cells and so break on any later edit of those cells by another card, which is the intended behavior and also a re-pin trigger (plan.md M4, R1).
-- **G12: the mutant set is the set tried.** The mutants above are the ones the audit of iteration 1 named plus the blank, typo, and removal cases; the exact-form and literal-prefix checks leave open a change that keeps every compared byte and moves the row elsewhere in the table (the row count and the line bound do not see a pure reorder of rows within the bound).
+- **G12: the mutant set is the set tried, and position is read at a pinned coordinate.** The mutants are the ones the audits of iterations 1 and 2 named plus the blank, typo, removal, relocation, reorder, and shift cases. Before revision 0.2.1 this gap read as a move "elsewhere in the table"; the audit of iteration 2 observed it wider: a row deleted from the table and appended after the last line of the page, or the five `codex_*` rows reordered, passed every command. Command 15 now measures position; the relocation, reorder, and shift mutants print different lines from it (E-SWD-15). What stays open: (a) the expected line numbers are coordinates measured at e11f08f6a7 (E-SWD-6c); if the card branch absorbs a change that shifts these pages above line 130, command 15 reads red for a correct edit and the coordinates are re-measured at M4; (b) the statement that no row of the page can have moved rests on a derivation from commands 1, 2, and 15 and from AC-PRC-001-001, written out in AC-PRC-001-003 under the mutants that move a row, observed on the position mutants above and not tried against every permutation; (c) the dot in command 15 matches any one character where a row id carries a backtick, so a look-alike character in place of the backtick passes command 15 and is caught by `M` and the literal prefixes; (d) the fixtures were read with `grep` and `diff`, not `git grep` and `git diff --numstat`, and no mutant was run on a committed tree; (e) the order of rows as rendered in the browser is not measured (plan.md R2).
 
 **Residual risk:** a green `U`, `UW`, `E03`, `E03W`, `M`, the literal prefixes, `B3L`, and `B4L` over the swept files proves the matched spellings and cells are as specified, not that the page still reads coherently (plan.md R2, R7), that a respelling outside the patterns is absent, or that a cell holding only the bare marker explains itself to a reader (plan.md R3). The reviewer reads the edited lines in all four locales.
 
