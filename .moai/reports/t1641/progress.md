@@ -403,3 +403,14 @@ FAIL above; the audit cycle stops — no round 4 without a recorded leader/opera
 whom: leader. recheck: each cron wake reads the leader's reply and the decision board; the
 lane revises nothing and opens no audit round without a ruling. t1862 (merge-ready, sync
 v11) is unaffected and keeps its landing-line wait.
+
+## Session closure (2026-10-19, leader tn564n operator directive)
+
+lane-38 closes. State at close: the card is on **HOLD** — the 94a7 audit counter's round 3
+returned FAIL 0.79 (`plan-audit-delta3.md`, receipt `rcpt-3c7c7f0408bbb32ba6149de2`), and
+per the leader's standing rule a further audit or revision needs a recorded leader/operator
+ruling. The lane leaves: revision 7 landed at `e10b7123ef` (all round-2 blockers repaired
+and verified by the round-3 audit), branch `WT-todo-unify` pushed to origin at `e68f6d8fca`
+(preservation), stage plan-audit v24 with a soon-expiring lease — the next session recovers
+through standing rule 8859 if it resumes work. No audit rounds were opened after the hold;
+the cron watch is removed with the session.
