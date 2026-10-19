@@ -1,6 +1,6 @@
 # research.md — SPEC-WORKTREE-HOME-ROOT-001
 
-> Evidence record. Everything here was observed in this planning session in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
+> Evidence record. Everything here was observed in this planning session (and re-read at HEAD `e5950b354f` in the correction round) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
 
 ## §R1. Where trees live now (measured)
 
@@ -40,11 +40,12 @@ Same filesystem device: `stat -f '%d' . ~/.moai/worktrees /Users/goos/MoAI/moai-
 | 5 | `internal/cli/launch_chain.go:60-72`, `internal/cli/factory_anchor_guard.go:98-106`, `internal/cli/codex_hooks_seed.go:61-75`, `internal/cli/session_worktree.go:1010-1033` (`ccWorktreeWriterPrecheck`) | short name → `<root>/.claude/worktrees/<name>` | short name never resolves to a home-root tree |
 | 6 | `internal/cli/codex_launcher.go:474-519` `resolveCodexWorktreeDir` | two in-repo candidates `.moai/worktrees` and `.claude/worktrees`; ambiguity message for both | `moai codex -w <name>` cannot find a home-root tree by name |
 | 7 | `internal/cli/launcher.go:940-972` `validateWorktreeL2Value` | accepted absolute prefixes: `paths.WorktreesDir()` plus two in-repo roots | home-root path is under `WorktreesDir()` and is accepted — but the error text names the old prefixes |
-| 8 | `internal/cli/launcher.go:449-537` `cleanupMoaiWorktrees` | each direct child of `~/.moai/worktrees` is a base; removes `worker-*` trees without `--force` | `projects` becomes the "base"; the real project directory is one level too deep, so `worker-*` trees are not found |
+| 8 | `internal/cli/launcher.go:449-537` `cleanupMoaiWorktrees` | each direct child of `~/.moai/worktrees` is a base; removes `worker-*` trees by non-force `git worktree remove` (`removeWorktree`, `:553-556`, called `:518`) on every `moai cc` launch; the match is `filepath.Rel(base, worktreePath)` rejecting only `..` (`:505-518`) | `projects` becomes a base, and a nested path `projects/<key>/worker-x` **is accepted** (corrects the first draft, which said it would not be found); a migrated `worker-*` tree with unpushed commits and a clean state would be removed on the next launch. Today `git worktree list` shows 0 `/worker-` trees (measured at `e5950b354f`), so no present exposure |
 | 9 | `internal/cli/worktree/done.go:230-247` `isL1WorktreePath`; `internal/cli/worktree/sweep.go:574-580` `sweepTierOf` | L1 = under `<main>/.claude/worktrees` or `<main>/.moai/worktrees`, else L2 | a moved session tree is classified L2 (disposal-eligible class); `done` would accept it |
 | 10 | `internal/cli/update_worktree_migration.go:87,105-108` | selects every registered tree under `<root>/.claude/worktrees`; `grep -n 'agent-' internal/cli/update_worktree_migration.go` printed nothing, i.e. no agent exclusion | conflicts with dab5 (moves `agent-*` trees); destination is `<root>/.moai/worktrees` (`:88`) |
 | 11 | `internal/homestate/card_worktree.go:19-60` `RecordCardWorktree` (store `internal/homestate/factory.go:66` `worktree_path TEXT`) | refuses any change of a recorded path (`:42-44`) | a moved tree leaves the card record naming the old path; readers `verifyPushed(ctx, cur.WorktreePath, …)` etc. (`card_transition.go:614,708,716,726,751`, `card_pr_states.go:68,74,78,82`, `card_evidence_readers.go:188,194,203,222`, `card_audit_kickoff.go:24,31`) operate on the old path |
 | 12 | `internal/homestate/card_worktree.go:73-92` `PreviousCardWorktree` | newest binding from another run | stale path carried into a replacement run unless every run row is rebound |
+| 13 | `internal/cli/factory_card.go:499` `factoryCardWorktreeDir`; consumers `factoryRefuseForeignWorktree` (`:512`), `factoryCarryPreviousWorktree` (`:528`); callers `factoryNextClaim` (`:1152`, `:1162`) and `factoryNextValidate` (`:1450`, `:1455`) | landing directory = `<root>/.moai/worktrees/<card>` (via `sessionWorktreeSubdir`) | a home-root tree of the card is neither refused as foreign nor carried into a replacement run (t1521); found by plan-audit iteration 1 (D4) |
 
 Not affected (checked): `internal/hook/post_tool_worktree.go:24-60` (`handleWorktreeMove` re-stamps from the new cwd), `internal/session/registry.go:44-60` (registry anchored to the primary via git common dir), `internal/statusline/quota_dirs.go:30-70` (reads `<common>/worktrees/*/gitdir`), `internal/cli/mcp_worktree_root.go:60-93` (accepts a linked worktree by git facts, not prefix), `internal/hook/branch_guard.go:1001` (`isPrimaryCheckout` by git-dir vs common-dir).
 
@@ -91,7 +92,7 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 
 | Id | Not measured | Where handled |
 |----|--------------|---------------|
-| G-1 | `EnterWorktree` into a home-root tree (primary / in-worktree; default / bypass) | PM-1 |
+| G-1 | `EnterWorktree` into a home-root tree (primary / in-worktree; default / bypass) | PM-1a..PM-1d (pre-kickoff gate) |
 | G-2 | Codex `/cd` into a home-root tree on 0.163.0 | PM-2 |
 | G-3 | `.moai design §8.5` — document not found in this tree | OQ list; the plan does not rely on it |
 | G-4 | Master upgrade plan HTML §2 stage 2 — file not present in this tree | the card text is the scope source |
