@@ -361,6 +361,47 @@ Notes. `-run TestClassify` necessarily subsumes the Listing, SpellingSafe and Ca
 
 **Residual-risk.** The narrowed families exercised the tests by name; a test accidentally excluded from every family would be unexercised here — the family set was derived from the test-function inventory (38 names mapped to 10 patterns) and cross-checked against the counts, but the derivation is a read, not a mechanical proof; the deferred package-wide run closes it. The RED-to-GREEN path was single-pass, so no mutation testing of the new production logic occurred; the sync audit's independent verification is the second pair of eyes.
 
+### M2 — RED (AC-WHR-006 cell and supporting behavioral reds)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M2, card t1640. **Branch Y of D-5 is the selected arm**: measurement PM-3 recorded FAIL (operator ruling bd72 authorized lane execution; the one-line record with verbatim stderr is at `.moai/reports/t1640/pre-kickoff-measurements.md` — claude 2.1.303 rejects the absolute home-root path at argument validation, `Invalid worktree name`, exit 1 — and the tracked selector copy the tests parse is `internal/cli/testdata/pm3-record-t1640.md`). Per REQ-WHR-006 branch Y, a launcher short name with no existing tree passes through unchanged and creates nothing; an existing tree is entered.
+
+The red here is BEHAVIORAL, not a compile failure: M2's tests name only M1 and existing symbols (research §R13, M2 row — "tests name: resolver (M1); existing materializer and RegisterLauncherWorktree"), so the package compiles and the tests fail on their assertions against the pre-change tree — the same red the plan §C rule exists to guarantee, one step later in the toolchain. Five tests fail; two pass by design and pin branch Y's pass-through against a branch-X drift. Tree SHA for every cell: `5d4817f2eda7e1a1b6b4c712fd87c28afe5eba69` (the parent of the M2 RED commit). Every call gated (1-minute load ≤ 32, memory free ≥ 50%); exit codes observed (`Exit code 1`).
+
+#### AC-WHR-006 — launcher short name, branch-Y arm and both-branches clause (RB*)
+
+- command: `go test -p 1 -count=1 -run 'TestLauncherShortName' ./internal/cli/`
+- gates at first run: 23:06:58 KST, load 15.08, memory free 82%; re-run after two fixture defects in the new tests were fixed (a legacy-tree fixture colliding with its own created-nothing assertion; the glm path's missing API-key guard — `config.DefaultGLMEnvVar` set): 23:08:20 KST, load 12.71, memory free 82%
+- exit: 1 (observed)
+- stdout (verbatim, decisive failures of the re-run):
+```
+--- FAIL: TestLauncherShortName_HomeRootTree_IsEntered (0.11s)
+    m2_launcher_short_name_test.go:138: backend argv "--worktree t1" does not name the existing home-root tree /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLauncherShortName_HomeRootTree_IsEntered2841815811/002/worktrees/projects/repo/t1; the launcher must enter it
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.694s
+FAIL
+```
+- red because: a short name that names an existing home-root tree is passed through as the bare short name, so the backend resolves it against `.claude/worktrees/<name>` and would create a duplicate there (launcher.go:913's comment is the current contract) — that fails AC-WHR-006's both-branches clause ("with a tree already present at the home root ... the launcher enters that tree"). The branch-Y no-tree arm passes and is kept as the pin: the backend receives the short name unchanged and the launcher creates nothing, which branch Y preserves (green path M2 GREEN).
+- vs acceptance.md: the RB* row defers to the RED commit of M2 with a stub backend — this is that record; the test selects its branch from the recorded PM-3 line (`FAIL`, cited to bd72 above) and fails on an absent or GAP line.
+
+Supporting behavioral reds observed in the same run set (each `Exit code 1`, gates recorded, one call per family):
+
+- command: `go test -p 1 -count=1 -run 'TestMaterializeSessionWorktree_CreatesAtHomeRoot' ./internal/cli/` — 23:05:28 KST, load 23.60, mem 81% — `destination = ".../repo/.moai/worktrees/WT-m2a", want the home root ".../worktrees/projects/repo/WT-m2a"` plus the in-repo-tree, registration and safe.directory clauses (AC-WHR-005a's Go clause; its M0 grep cell is the recorded RED-now).
+- command: `go test -p 1 -count=1 -run 'TestWorktreeNew_PathReachesTheSharedMaterializer' ./internal/cli/` — 23:05:58 KST, load 20.21, mem 82% — `moai worktree new created ".../repo/.moai/worktrees/WT-m2new", want the home root` (AC-WHR-005a's second entry path through the shared seam).
+- command: `go test -p 1 -count=1 -run 'TestLauncherBranchMaterialize_HomeRootBranchAndHead' ./internal/cli/` — 23:06:22 KST, load 15.92, mem 82% — `tree missing at the home root .../worktrees/projects/repo/m2b` (AC-WHR-005b's Go clause; its M0 grep cell is the recorded RED-now).
+- command: `go test -p 1 -count=1 -run 'TestM2_NoLegacyDestinationConstructions' ./internal/cli/` — 23:06:43 KST, load 15.11, mem 82% — the count-first scan printed the expected-site list, then: `worktree_branch_flag.go constructs ".claude", "worktrees" 1 time(s)`, and both destination functions read `sessionWorktreeSubdir` / the literal pair instead of `worktreeroot.PathFor`.
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) The AC-WHR-006 RB* cell is red for the stated reason: the existing-home-root-tree entry clause fails against the pre-change tree, while the branch-Y no-tree pass-through holds and is pinned. (2) The AC-WHR-005a/005b Go clauses are red (their M0 grep cells stay the recorded RED-now observations; these are the behavioral companions whose green the M2 GREEN commit delivers). (3) The tests carry no M2-built symbol references, so the red is behavioral per research §R13's M2 row; spec.md needed no frontmatter change (already in-progress).
+
+**Evidence.** The five narrowed invocations above with verbatim decisive output and per-call gate readings; the selector parse fixed to the tracked PM-3 copy citing bd72; the glm key and fixture-collision corrections are recorded as the specialist's own attempt-1 defects (attempt 2 of the 3-attempt bound).
+
+**Baseline-attribution.** Measured in this run, this worktree, against HEAD `5d4817f2eda7e1a1b6b4c712fd87c28afe5eba69` — the parent of the M2 RED commit. The `go` toolchain is external tooling (§2.2 does not bind it).
+
+**Gaps.** (a) `TestLauncherShortName_NoExistingTree_PassesThrough`, `..._LegacyTree_PassesThrough` and `..._Glm_NoExistingTree_PassesThrough` PASSED in the RED run — by design: they pin branch Y's preserved pass-through and would fail against a branch-X implementation; they are regression pins, not red cells. (b) The stub-backend assertion is on argv and created-nothing, not on the real backend's acceptance of absolute paths — PM-3 measured that acceptance as FAIL, and entry strategy for the real backend is REQ-WHR-025/t1879's domain. (c) No package-wide run (go-test-heavy discipline continues).
+
+**Residual-risk.** The scan-based 005a clause reads function bodies by name; a rename would silently empty it (the plan's own grep cells at M0/M3 carry the count-first form). The AC-006 selector depends on the tracked testdata copy staying in sync with the gitignored source record — the copy cites bd72 and its source, and the §E.2 citation here ties them; a divergence would surface as the tests' own selector failing on a malformed line.
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
