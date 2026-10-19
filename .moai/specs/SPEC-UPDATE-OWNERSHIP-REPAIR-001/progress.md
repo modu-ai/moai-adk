@@ -4219,11 +4219,104 @@ rc=1
 
 **주의 (정직한 회계).** 이 RED 실행의 `PriorManifestCollided` 는 첫 판본의 단언을 쓰고 있었다: 심은 모든 디렉터리에 앞 사본이 남아 있어야 한다고 단언했는데 실행 끝의 백업 보존 (기존 별개 경로) 이 오래된 실행 디렉터리를 정리해 대부분이 사라졌다 (그래서 「earlier copy … changed」 줄이 많다). 커밋하기 전에 단언을 「남은 디렉터리만 판정: 하나 이상 남음, 모두 심은 이름, 모두 앞 사본이 바이트 그대로」 로 고쳤다. 고친 단언은 아직 새 코드로 실행하지 않았다 — 수정 뒤 초록 실행이 그 첫 실행이다.
 
+### Chunk 13 (shrink) — GREEN record
+
+**커밋.** RED 시험 A `544c071c9e`, 기록 시작 `661bf4be08`, 구현 C1 `b2ad99d068` (형제 방식 삭제, 같은 초 충돌은 닫힌 실패), 구현 C2 `36f3315244` (미등록 읽기: 경로에 링크가 없을 때만, 루트 핸들 한 번 열기, 미리보기도 닫기), 시험 수정 C3 `7c3abe0e0d` (한 초 렌더링 사례). 이 기록 커밋은 그 뒤.
+
+**이어받은 미검증 diff 에서 바꾼 것 (이유와 함께).** 이전 에이전트의 미커밋 diff (사본: `/private/tmp/own-fixture-d1/c13b/inherited-step-c.patch`) 는 빌드는 되었으나 세 가지가 맞지 않았다. (1) 커밋된 RED 시험 두 파일 (`migrate_ownership_ancestorlink_test.go`, `migrate_ownership_boundary_table_test.go`) 의 기대를 구현에 맞춰 고쳐 놓았다 (절대 경로 링크 대상을 상대 경로로 바꾸고 「끊어진 링크 + 절대 대상」 의 기대를 `read-failed` 에서 `symlink-escape` 로 바꿈). 시험을 구현에 맞추는 것은 허용되지 않아 그 시험 편집을 되돌렸고 (`git checkout`), 구현을 커밋된 기대에 맞췄다. (2) 링크를 만났을 때 이유를 가르는 확인이 `Root.Stat` 이었다. `Root` 는 절대 대상 링크를 평가하지 못해 끊어진 절대 링크가 `symlink-escape` 로 새었다. 메타데이터 확인 `os.Stat(abs)` (열지도 읽지도 않음, 바꿔치기가 바꾸는 것은 이유 하나뿐) 로 바꿔 커밋된 기대 (`read-failed`) 와 맞췄다. (3) 미리보기 환경 (`previewVerdicts`) 은 핸들을 열고 닫지 않았다: `previewVerdicts.close` 와 `defer verdicts.close()` 한 줄 (`update_dryrun_preview.go`) 을 더하고 시험 `TestPreviewVerdictsCloseTheRootTheyOpened` (파일 `migrate_ownership_previewclose_test.go`) 를 더했다. 나머지 (`readUnregistered` 의 구성 요소별 `Lstat`, `escapesRoot`, `newOwnershipEnv` 의 한 번 열기, `defer env.closeRoot()`, `preservePriorManifest` 의 닫힌 실패) 는 그대로 받았고 아래 시험으로 검증했다.
+
+**전체 회귀가 찾은 것 (C3).** 변경된 시험 파일 이름 집합 전체를 돌리니 `TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond` 가 붉었다 (이전 에이전트의 선택 시험 집합에는 없었다). 이 사례는 한 초 충돌을 쓰기 이음매 모사로 흉내냈으나 시계를 기다리지 않아, 실제로 같은 초에 시작한 둘째 실행이 새 규칙대로 닫힌 실패를 만났다 (사본 없음, 첫 실행의 사본만 남음). 제품 결함이 아니라 시험의 전제였다. 두 사례 모두 다음 초까지 기다리고 (`awaitClockSecondAfter`) 모사는 청구 뒤 쓰기 이음매에서만 한다. 단언은 약해지지 않았다.
+
+**닫히지 않은 것을 닫은 확인.** 위 RED 기록의 「고친 `PriorManifestCollided` 단언은 아직 새 코드로 실행하지 않았다」 에 대한 답: 수정 뒤 첫 실행 (green-1) 에서 `TestInterruptedMigrationRecoversAndConverges` (하위 `PriorManifestCollided/DistinctRunDirectories` 포함) 가 초록이었고 세 번 반복에서도 같다.
+
+**바뀌는 함수 (범위 증명).** 제품 코드 diff `661bf4be08..HEAD` 의 함수: `classifyOwnershipCore` (미등록 가지의 두 확인 제거), `classifyUnregistered`, 새 `readUnregistered`, 새 `escapesRoot`, `readWindowHook` (단계 이름 바뀜), `newOwnershipEnv` (루트 한 번 열기), `migrateProjectCommonAssets` (`defer`), `preservePriorManifest`, 새 `previewVerdicts.close`, `previewReconciliation` (`defer` 한 줄). 삭제: `pathLeavesRoot`, `readUnregisteredInsideRoot`, `errReadEscapesRoot`, `claimPriorManifestDir`, `copyRunMarker`, 이음매 `priorManifestMarkerCopy`, 상수 `priorManifestSiblingMax`, `os.RemoveAll` 정리. `unreadableKind` 는 그대로 있고 등록된 파일 가지만 쓴다 (등록된 읽기·`disposition`·걷기·빈 디렉터리 정리·복원·manifest/types 는 건드리지 않음). `git diff --stat 661bf4be08 HEAD`: 7 files, 160 insertions, 197 deletions.
+
+**삭제한 시험과 이음매의 처분.** RED 기록의 표 그대로 (이번 구현이 바꾼 것은 없음): `TestPriorManifestOfAnEarlierRunSurvivesALaterRun` 과 `TestMarkerCopyFailureFailsClosedWithoutResidue` (파일 `update_prior_manifest_markercopy_test.go` 포함) 는 형제와 표지 복사가 사라져 삭제, 이음매 `priorManifestMarkerCopy` 삭제, `readWindowHook` 유지.
+
+**바뀐 기준선 (결정에 의한).** 프로젝트 안 일반 파일을 가리키는 심볼릭 링크 (직접, 상위 디렉터리, 사슬, 상대·절대 대상, 업데이트 형태 걷기의 상대 뿌리 `.`) 는 이제 바이트를 읽지 않고 `symlink-escape` 로 남는다 (chunk 6 의 「대상의 바이트로 판정」 이 바뀜). 프로젝트 안 파이프를 가리키는 링크의 이유는 `non-regular-file` 에서 `symlink-escape`. 끊어지거나 순환하는 링크는 종전대로 `read-failed`, 일반 파일은 종전대로 내용으로 판정한다.
+
+**F-C 는 건드리지 않았다.** 대소문자를 구분하지 않는 파일 시스템 한계 (감사 F-C, 공개된 한계) 는 그대로이고 이번 chunk 의 코드·시험·기록에서 바뀐 것이 없다.
+
+**GREEN 셀 (저장 파일에서 스크립트로 옮김; 파일은 `/private/tmp/own-fixture-d1/c13b/`).**
+
+```text
+green-1: rc=0  ok  	github.com/modu-ai/moai-adk/internal/cli	29.481s  PASS=101 FAIL=0 SKIP=0
+green-2: rc=0  ok  	github.com/modu-ai/moai-adk/internal/cli	28.639s  PASS=101 FAIL=0 SKIP=0
+green-3: rc=0  ok  	github.com/modu-ai/moai-adk/internal/cli	24.991s  PASS=101 FAIL=0 SKIP=0
+selectors: ^(TestSecondClaimInTheSameDirectoryFailsClosed|TestMigrationOpensTheProjectRootOnce|TestPathBoundaryCounterexamples|TestUnregisteredSymlinkOutsideProjectIsNotRead|TestUnregisteredFileBelowASymlinkedAncestorIsNotRead|TestNonRegularFilesAreKeptWithoutBeingRead|TestInterruptedMigrationRecoversAndConverges|TestRepeatedUpdateIsIdempotent|TestPreviewVerdictsCloseTheRootTheyOpened)$
+```
+
+**변이 (복원은 모두 `cmp` 동일, 변이 뒤 트리 깨끗).**
+
+```text
+restore overwrites (claim check disabled): rc=1; red test(s): --- FAIL: TestSecondClaimInTheSameDirectoryFailsClosed (0.82s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+in-project symlink read allowed (link branch disabled): rc=1; red test(s): --- FAIL: TestPathBoundaryCounterexamples (3.84s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+per-file OpenRoot by string, opened BEFORE the check (fallback every file): rc=1; red test(s): --- FAIL: TestMigrationOpensTheProjectRootOnce (0.34s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+per-file OpenRoot by string, opened AFTER the check hook (the N-A shape): rc=1; red test(s): --- FAIL: TestPathBoundaryCounterexamples (1.52s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+migration never closes the root (defer removed): rc=1; red test(s): --- FAIL: TestMigrationOpensTheProjectRootOnce (1.39s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+preview never closes the root: rc=1; red test(s): --- FAIL: TestPreviewVerdictsCloseTheRootTheyOpened (0.60s); RESTORED-IDENTICAL, TREE-CLEAN-AFTER-RESTORE
+```
+
+변이 3 은 처음에 핸들 가져오기를 검사 전에 두어서 루트 바꿔치기 행이 붉어지지 않고 열기 횟수 시험만 붉었다. 바꿔치기가 일어나는 `check-to-read` 이음매 뒤에서 문자열로 여는 변이 4 를 더해 루트 바꿔치기 행 (`the project root path swapped ... read=other-bytes`: 밖의 바이트를 읽음) 이 붉음을 관측했다.
+
+**회귀와 확인 (변경된 시험 파일 이름 집합, 패키지 전체 시험은 CI/착지 재측정 몫).**
+
+```text
+first changed-file regression of internal/cli (before the remaining-test fix): rc=1, PASS=347 FAIL=2 (--- FAIL: TestRemainingListKeeps313UnregisteredCopies (8.89s), --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (1.76s))
+final changed-file regression of internal/cli (after the fix): rc=0, ok  	github.com/modu-ai/moai-adk/internal/cli	75.372s, PASS=349 FAIL=0 SKIP=0
+internal/manifest: rc=0, ok  	github.com/modu-ai/moai-adk/internal/manifest	0.260s, PASS=5 FAIL=0 SKIP=0
+internal/cli/update/backup: rc=0, ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.422s, PASS=9 FAIL=0 SKIP=0
+go build ./... : rc=0
+GOOS=windows go build ./... : rc=0
+go vet (cli, backup, manifest) host : rc=0
+GOOS=windows go vet (same) : rc=0
+golangci-lint run --new-from-rev=aba63b1483 (cli, backup, manifest): 0 issues. rc=0
+$ gofmt -l internal/cli internal/manifest
+gofmt-exit=0
+$ git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+invariant-exit=0
+$ grep -rn "removalEnabled\s*=" internal --include=*.go (non-test)
+internal/cli/migrate_project_assets.go:44:var removalEnabled = false
+$ skip-grep over the card test files
+skip-grep-exit=1
+$ git status --short (untracked)
+untracked=0
+```
+
+**자원 입장 기록 (`admit.log`, 호출마다 시각·1분 부하·여유 메모리·슬롯 상태; 슬롯은 한 번도 잡지 않음).** 첫 `go build` 호출은 슬롯을 잡은 착지 재측정 세션 (`lane-36`) 때문에 입장이 오래 걸렸다 (입장 대기 중 도구 시간 제한으로 배경으로 넘어간 `admit.sh` PID 62479 를 내가 기록한 PID 로 직접 종료하고 대기 스크립트로 다시 시작했다; 그 사이 Go 호출은 없었다). `held-other` 는 착지·재측정 세션이 아닌 다른 세션의 점유.
+
+```text
+2026-10-18T22:53:51Z go build ./... load1=7.63 free=83% slot=free
+2026-10-18T22:54:37Z green-1: go test new/changed selectors load1=13.11 free=83% slot=free
+2026-10-18T22:55:54Z green-2: go test new/changed selectors load1=18.56 free=83% slot=free
+2026-10-18T22:56:58Z green-3: go test new/changed selectors load1=15.41 free=82% slot=free
+2026-10-18T22:58:21Z mutant-restoreOverwrite: go test ^TestSecondClaimInTheSameDirectoryFailsClosed$ load1=12.63 free=83% slot=free
+2026-10-18T22:59:09Z mutant-allowInProjectLink: go test ^TestPathBoundaryCounterexamples$ load1=9.81 free=82% slot=free
+2026-10-18T23:53:40Z mutant-perFileOpenByString: go test ^(TestPathBoundaryCounterexamples|TestMigrationOpensTheProjectRootOnce)$ load1=14.86 free=80% slot=free
+2026-10-18T23:54:35Z mutant-migrationRootNeverClosed: go test ^TestMigrationOpensTheProjectRootOnce$ load1=15.02 free=80% slot=free
+2026-10-19T01:00:18Z mutant-previewRootNeverClosed: go test ^TestPreviewVerdictsCloseTheRootTheyOpened$ load1=11.07 free=81% slot=free
+2026-10-19T01:01:14Z regression internal/cli load1=17.80 free=80% slot=free
+2026-10-19T01:03:15Z regression internal/manifest load1=13.29 free=81% slot=held-other
+2026-10-19T01:03:46Z regression internal/cli/update/backup load1=13.72 free=80% slot=held-other
+2026-10-19T01:04:18Z go build ./... load1=15.29 free=81% slot=held-other
+2026-10-19T01:04:57Z GOOS=windows go build ./... load1=15.14 free=81% slot=held-other
+2026-10-19T01:05:35Z go vet host load1=15.73 free=81% slot=held-other
+2026-10-19T01:06:09Z GOOS=windows go vet load1=15.45 free=81% slot=held-other
+2026-10-19T01:06:53Z golangci-lint --new-from-rev=aba63b1483 load1=12.67 free=81% slot=held-other
+2026-10-19T01:09:32Z mutant-perFileOpenByStringAfterCheck: go test ^TestPathBoundaryCounterexamples$ load1=14.90 free=81% slot=held-other
+2026-10-19T01:10:15Z final regression internal/cli (after the remaining-test fix) load1=14.44 free=81% slot=held-other
+2026-10-19T01:12:17Z final go vet host load1=8.13 free=81% slot=held-other
+2026-10-19T01:12:50Z final GOOS=windows go vet load1=8.16 free=81% slot=held-other
+2026-10-19T01:13:29Z final golangci-lint --new-from-rev=aba63b1483 load1=7.41 free=81% slot=held-other
+```
+
+**정직한 회계.** (1) 회귀는 변경된 시험 파일의 이름 집합이다. 패키지 전체 시험·커버리지·`-race`·Windows 시험 실행은 CI 와 착지 재측정 몫이다 (Windows 는 빌드와 vet 만). (2) `go build ./...` 와 `GOOS=windows go build ./...` 는 C3 (시험 한 파일 수정) 이전의 트리에서 돌렸다; C3 는 `_test.go` 하나라서 빌드에 영향이 없고 vet·lint·전체 회귀는 C3 뒤에 다시 돌렸다. (3) 같은 호출들 중 일부 (`regression internal/manifest` 부터 `golangci-lint` 첫 실행까지, 그리고 C3 뒤 마지막 묶음) 는 `go-test-heavy` 슬롯이 다른 세션에 잡힌 채로 시작했다 (착지·재측정 세션은 아님, 규칙 충족). (4) `Root` 의 뿌리 이탈 오류는 여전히 문구로 식별한다 (chunk 12 의 한계 그대로). (5) 끊어짐/순환 판별은 `os.Stat(abs)` 메타데이터 확인이라 확인과 열기 사이 바꿔치기는 이유(`read-failed` 대 `symlink-escape`)만 바꾸고 바이트를 읽는 길을 열지 않는다. (6) 이 기록 뒤 감사는 레인 몫이다; 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: dc32a94c9e  # code-verification baseline: the last test/code commit (chunk 12 audit round 3 repair: F-A/F-B fix dc32a94c9e; chunk 11 1003a9edd4); the evidence commit that carries this block follows it
+run_commit_sha: 7c3abe0e0d  # code-verification baseline: the last test/code commit (chunk 13 shrink: C1 b2ad99d068, C2 36f3315244, test fix 7c3abe0e0d; chunk 12 dc32a94c9e); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -4233,8 +4326,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 48  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 32 test files, 15 Go sources, 1 data file (chunk 11 added 2 test files and edited 4 Go sources already counted) (chunk 12 edited 2 Go sources and 2 test files, all already counted)
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56; chunk 11 delta-audit repair: N1 A ef45c82cc9, C dcbafe568c; N2 A 2cd11e520e, C 90296319b4; boundary table A d122d6794e, C 1003a9edd4; record 5aa3de1348; chunk 12 audit round 3 repair: F-A/F-B A 714adcc444, C dc32a94c9e; record 53a6c88b09
+total_run_phase_files: 49  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 33 test files, 15 Go sources, 1 data file (chunk 13 added 2 test files, rootonce and previewclose, deleted 1, markercopy, and edited Go sources already counted)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56; chunk 11 delta-audit repair: N1 A ef45c82cc9, C dcbafe568c; N2 A 2cd11e520e, C 90296319b4; boundary table A d122d6794e, C 1003a9edd4; record 5aa3de1348; chunk 12 audit round 3 repair: F-A/F-B A 714adcc444, C dc32a94c9e; record 53a6c88b09; chunk 13 shrink: A 544c071c9e, record start 661bf4be08, C1 b2ad99d068, C2 36f3315244, test fix 7c3abe0e0d, GREEN record follows
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
