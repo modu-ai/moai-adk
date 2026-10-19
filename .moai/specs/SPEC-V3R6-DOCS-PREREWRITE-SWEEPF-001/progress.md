@@ -348,4 +348,10 @@ repository_wide_test_verdict: PENDING on the CI run on the project's integration
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+sync_status: audit-ready
+sync_complete_at: 2026-10-19
+sync_commit_sha: pending-backfill
+changelog_entry_position: CHANGELOG.md `[Unreleased]` / `### Changed`, first entry (B12 pre-emission grep for the SPEC id printed 0 before emission)
+b12_ac_count: acceptance.md counter printed 9 (live=9 excluded=0 ambiguous=0, no reserved tokens in the file); the entry cites 9 numbered with AC-SWF-006 superseded (8 live per acceptance.md prose)
+frontmatter_status_transitions: spec.md `in-progress` to `completed` on this single sync commit (`updated: 2026-10-19` already held that value)
+readme_check: `git grep -n -E "moai[ :]design" HEAD -- README.md README.ko.md README.ja.md README.zh.md` printed nothing; READMEs untouched
