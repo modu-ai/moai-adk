@@ -7,13 +7,24 @@ Card: t1892 · Lane: lane-40 (run tn1p4e) · Branch: WT-release-verify-os · Pla
 - plan_status: audit-ready (iter1 FAIL 0.78 on f6f502a84c fixed in the iter1-fix commit; pending re-audit)
 - iter1 fix record: D1-D11 addressed per `.moai/reports/t1892/plan-audit-iter1.md`; spec 0.1.1 (14 REQ), acceptance 16 AC, decision-index 8 rows; stale hash b42f05fe…c6b3 superseded by the value below.
 - plan_complete_at: 2026-10-19
+
+plan_status: audit-ready
+plan_complete_at: 2026-10-19
+audit_ready: true
+audited_sha: c31c261141ff5aa007c9895f710972db4a6b5dd6
+audit_verdict: PASS
+audit_score: 0.93
+audit_verdict_path: .moai/reports/t1892/plan-audit-iter7.md
+audit_receipt: rcpt-cb4d28b10d0523a1aa212c47
+plan_artifact_hash: 744a64e834de8b964f3d2e676039aac8ac12d1f74d2a63623effd235d4c6912a
+
 - tier: M (spec.md + plan.md + acceptance.md; research.md and decision-index.md alongside; repro/ holds two committed probe scripts)
 - iter2 fix record: plan-audit iter2 (FAIL 0.84, codex fail) D1-D7 addressed per `.moai/reports/t1892/plan-audit-iter2.md`; spec 0.1.2 (16 REQ: 003 split into 003/015/016).
 - artifacts: spec.md (16 REQ), plan.md (4 milestones), acceptance.md (16 AC), research.md (ledger E1-E16), decision-index.md (8 rows, all FOUNDER / implementation-level / DEFAULT-APPLIED), repro/ (shard-cover.sh fixed to fail on a non-zero `go test`; leg-match-probe.sh extracts the real lookup)
 - iter3 fix record: plan-audit iter3 (FAIL 0.84, codex fail) D1-D8 addressed per `.moai/reports/t1892/plan-audit-iter3.md`; spec 0.1.3 (still 16 REQ / 16 AC). Cover and discovery checks now run over `go test -list` names; no heavy Go re-run was made after the leader's quiet-window notice (run-phase re-check of the listing and the scratch behaviours L-E20 is an open run-phase item).
 - iter4 fix record: plan-audit iter4 (FAIL 0.88, codex fail) D1-D5 addressed per `.moai/reports/t1892/plan-audit-iter4.md`; spec 0.1.4 (still 16 REQ / 16 AC). Name listing taken under `-race` (race-only-name mutant (x) specified, not run); nested-list compile weight recorded as residual risk (spec §G, research G7/G8); `repro/listing-fixture/` preserves the scratch package. No Go execution during the quiet window.
 - iter5 fix record: plan-audit iter5 (label-only FAIL 0.90, codex fail) D1-D3 addressed per `.moai/reports/t1892/plan-audit-iter5.md`; spec 0.1.5 (still 16 REQ / 16 AC). Mutant (x) now needs a paired plain/`-race` run on one clean-base fixture (`repro/listing-fixture/race-pair/`, race-only `FuzzRaceOnly`); expected outcomes written down, not observed. No Go execution.
-- iter6 fix record: plan-audit iter6 (FAIL 0.91, codex fail) D1 addressed per `.moai/reports/t1892/plan-audit-iter6.md`; spec 0.1.6 (still 16 REQ / 16 AC). `ExampleAlpha` removed from `race-pair/` (vet `tests` analyzer: "refers to unknown identifier"); no `-vet=off` on race-pair commands; run 1 must exit 0. Vet-analyzer scan of the fixtures is from reading `cmd/vendor/golang.org/x/tools/go/analysis/passes/tests/tests.go` (Go 1.26.0 on this machine), not execution. No Go execution.
+- iter6 fix record: plan-audit iter6 (FAIL 0.91, codex fail) D1 addressed per `.moai/reports/t1892/plan-audit-iter6.md`; spec 0.1.6 (still 16 REQ / 16 AC). `ExampleAlpha` removed from `race-pair/` (vet `tests` analyzer: "refers to unknown identifier"); no `-vet=off` on race-pair commands; run 1 must exit 0. Vet-analyzer scan of the fixtures is from reading `cmd/vendor/golang.org/x/tools/go/analysis/passes/tests/tests.go` (go1.26.8, the toolchain `go.mod` requires; the source was read from the 1.26.0 install present on this machine, not from a 1.26.8 tree), not execution. No Go execution.
 - plan_artifact_hash: 744a64e834de8b964f3d2e676039aac8ac12d1f74d2a63623effd235d4c6912a (iter6-fix; supersedes 40e8f1ed…; SHA-256 per the `internal/runtime/audit_cache.go` `ComputeHash` rule over acceptance.md, decision-index.md, plan.md, research.md, spec.md, computed by `python3 -I /private/tmp/landing-record-lane40/computehash.py <SPEC dir>` after the final edit)
 - spec lint: `moai spec lint .moai/specs/SPEC-CI-RELEASE-VERIFY-SHARD-001/spec.md` and `--strict` -> at iter3 the actual output of `--strict` is one INFO finding (`OwnershipTransitionUnmeasured`, the first plan commit has no `Authored-By-Agent` trailer) followed by `0 error(s), 0 warning(s)`, exit 0 (the first pass had flagged two unanchored `-run` patterns, since anchored)
 - spec id check: `ID="SPEC-CI-RELEASE-VERIFY-SHARD-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` -> PASS; uniqueness: `ls .moai/specs | grep -c "SPEC-CI-RELEASE-VERIFY"` -> 0 before authoring
@@ -35,3 +46,8 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-19T03:41:18Z SPEC-CI-RELEASE-VERIFY-SHARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 7 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter7.md
+- 2026-10-19T03:41:24Z SPEC-CI-RELEASE-VERIFY-SHARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 7 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1892/.moai/reports/t1892/plan-audit-iter7.md
