@@ -101,7 +101,7 @@ m1_to_mN_commit_strategy: 2커밋 — 커밋 1 = M2 문서 편집 8파일(Q17 �
 
 sync_status: complete
 sync_complete_at: 2026-10-20
-sync_commit_sha: pending-backfill-sync (커밋은 자신의 SHA를 모르므로 플레이스홀더 — §E.1·§E.3의 선례와 같이 후속 기록으로만 채운다)
+sync_commit_sha: 0511ff72bc4ebcccdfefc343999efac831ff9406
 sync_summary: 단일 싱크 커밋 — CHANGELOG `[Unreleased]` `### Added` 첫 항목 추가, `spec.md` 상태 전이(draft → completed, 3-phase close 병합; run 페이즈가 status를 건드리지 않기로 위임받아 draft에서 직행) + `updated: 2026-10-20`, 본 §E.4 기록. 문서 본문 편집은 없다 — 16줄 편집은 런 페이즈 M2 커밋 `3097ece24a`가 완료했다.
 changelog_entry: SPEC-V3R6-DOCS-PREREWRITE-FLAG-001 — stale flag citation 정리(`--clear-policy relaunch` 카드별 소비 → 통합 `moai todo --auto` 엔진, 레인 `/clear` 안내 → 세션 안 카드 전환 ExitWorktree(keep) → moai factory next → EnterWorktree), 살아 있는 `--factory-run`·`--clear-policy` 인용 보존 명시
 changelog_entry_position: [Unreleased] → ### Added → 첫 불릿(파일 관례 최신순)
@@ -162,3 +162,15 @@ Justification: a single implementer (manager-develop, effort high per Class C) e
   - Non-blocking: O1 allowlist-literal (sanctioned), O2 CHANGELOG :12 phrasing, O3 lane uncommitted records.
 - Repair spawned (manager-develop): F1 both-facts wording + F2 manual-dispatch exception, 8 docs files + §E.2 addendum, guard re-checks (E-01/E-05 stay 0; 003/004 counts unchanged).
 - After repair: sync-audit delta round 2 → merge-ready path.
+
+## F1+F2 repair + sync-audit delta round 2 entry (2026-10-20T03:4xZ)
+
+- manager-develop repair commit `f1101a69343e9c216cec1559f2871527beeb8044` (verified: 9 files 45+/12−; F1 both-facts relaunch wording + F2 manual-dispatch exception; guard re-checks all green — E-01 0×4, E-05 0, E-03/E-04 baseline, AC-DPF-006 empty, Q17 parity; tree clean).
+- sync-audit delta round 2 spawned from this tree anchor (verdict target sync-audit-t1726-delta2.md; subjects: F1/F2 resolution vs factory_card.go truth + regression guards + scope; codex required, delta base 0511ff72bc).
+- On PASS: §E.4 backfill commit (manager-docs) → stage merge-ready → branch push → draft PR (c58f flow; the branch carries the unpushed commits from 26ab9ea589..HEAD).
+
+## Sync-audit delta round 2: PASS (2026-10-20T03:5xZ) — audit sequence CLOSED
+
+- sync-audit-delta2 verdict: **PASS 0.99** (audited f1101a693, blocking 0, must_pass 0, convergence pass — codex pass). F1/F2 resolutions verified against factory_card.go truth; regression guards re-executed green; scope clean. Verdict file: sync-audit-t1726-delta2.md.
+- Sequence: sync-audit round 1 FAIL 0.80 (F1+F2) → repair f1101a693 → delta2 PASS 0.99. Closed.
+- Next: §E.4 sync_commit_sha backfill commit (0511ff72bc4ebccc… — manager-docs, D3 convention) → stage merge-ready → branch push → draft PR (c58f flow) → leader merge queue.
