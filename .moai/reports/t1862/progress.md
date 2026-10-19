@@ -119,3 +119,15 @@ re-measure (rule 35e9) → `factory complete`. Pre-verified here: the audited tr
 sync-audit verdict was HEAD `e707bdf806` (fix + tests); the verdict-file commit `0a752d2c9a`
 adds reports only, so the audited code is unchanged by the record commit. Lease renewal
 continues every cron fire until the turn arrives.
+
+## Handoff memo — draft PR landing (board c58f/14a6, 2026-10-19)
+
+- Draft PR: **#1833** (https://github.com/modu-ai/moai-adk/pull/1833), head
+  `WT-factory-cardroot-align` @ `54be77d2fd`, base `release/main-batch-20261019`
+  (`a3fcc98114` at creation). Preservation push done at PR creation (first push of the
+  branch); no re-push — the same-PR repeat-push ban holds.
+- Next (after the leader merges): card-tree ff to the merged state → scoped re-measure
+  (rule 35e9) → `factory_complete` (MCP, in-session) → CodeRabbit commit-status + Merge
+  Risk read → landing record.
+- t1641 stays HOLD (round-3 FAIL, operator disposition pending) — not affected by this
+  landing flow change.
