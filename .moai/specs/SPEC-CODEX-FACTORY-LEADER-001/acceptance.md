@@ -48,4 +48,3 @@
 - AC-CFL-002는 launcher → 실제 todo engage --dispatch → 두 SQLite 저장소 재열기 → 저장 완료 상태 조회를 하나의 실행 경로로 검증한다.
 - 변경 범위의 focused tests·vet·독립 감사 결과와 실행하지 않은 전체 CI·실제 모델 검증을 구분한다.
 - Definition of Done: 필수 AC가 관측한 증거로 통과하고 동기화·운영자가 요청한 로컬 RC 설치 검증을 완료한다.
-

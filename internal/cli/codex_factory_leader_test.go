@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/oklog/ulid/v2"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/oklog/ulid/v2"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -338,7 +339,7 @@ func TestCodexFactoryLeaderQueueRoundTripWithoutNudge(t *testing.T) {
 		t.Fatal(err)
 	}
 	if calls != 1 {
-		t.Fatal(fmt.Sprintf("leader launches=%d", calls))
+		t.Fatalf("leader launches=%d", calls)
 	}
 }
 

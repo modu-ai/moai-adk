@@ -362,7 +362,10 @@ func factorySkillProblems(t *testing.T, root, text string, named map[string][]st
 			add("forbidden text %q: %s", loc, f.reason)
 		}
 	}
-	if loc := removedFormPattern.FindString(text); loc != "" {
+	// Entry rows already replay the launcher, including intentional refusals.
+	// Apply the removed-form prose ban outside that independently checked table.
+	prose := entryRowPattern.ReplaceAllString(text, "")
+	if loc := removedFormPattern.FindString(prose); loc != "" {
 		add("names the removed entry form %q", loc)
 	}
 	return problems
@@ -444,6 +447,18 @@ var factorySkillMutants = []struct {
 			return strings.Replace(s, "| accepted | `moai codex --factory`", "| refused | `moai codex --factory`", 1)
 		},
 		want: "documented as refused but the codex head classifier does not refuse it",
+	},
+	{
+		name: "a refused valued Codex entry documented as accepted",
+		mutate: func(s string) string {
+			return strings.Replace(s, "| refused | `moai codex -f 2`", "| accepted | `moai codex -f 2`", 1)
+		},
+		want: "documented as a codex",
+	},
+	{
+		name:   "a removed valued entry taught in prose",
+		mutate: func(s string) string { return s + "\nStart a leader with `moai codex -f 2`.\n" },
+		want:   "names the removed entry form",
 	},
 	{
 		name: "the old record path",

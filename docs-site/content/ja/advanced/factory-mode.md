@@ -22,11 +22,11 @@ added_in: "v3.2"
 
 | やりたいこと | コマンド | 役割 |
 |--------------|----------|------|
-| ファクトリーリーダーを開く | `moai cc -f` · `moai glm -f` (長い形 `--factory`) | リーダー |
+| ファクトリーリーダーを開く | `moai cc -f` · `moai glm -f` · `moai codex -f` (長い形 `--factory`) | リーダー |
 | 稼働中のファクトリーにレーンとして合流する | `moai cc -l` · `moai glm -l` · `moai codex -l` (長い形 `--lane`) | レーン |
 
 - `-l` は稼働中のファクトリーに合流し、**次のレーン番号を自動で**受け取ります。番号は運用者が選ぶものではなく、生きているレーンの最大番号の次が割り当てられます。稼働中のファクトリーがなければ、合流は拒否されます。
-- `moai codex` にリーダーの進入はありません。レーンとしてだけ合流でき、リーダーは `moai cc -f` か `moai glm -f` で開きます。
+- `moai codex -f`（または `moai codex --factory`）は新しい Codex CLI リーダーを起動する。`moai codex -l` の既存のレーン参加方法は変わらない。
 - 1回の起動に付けられる進入トークンは1つだけです。`-f` と `-l` を同時に付けるとエラーになります。
 
 ```bash
@@ -50,10 +50,16 @@ $ moai codex -l    # Codex のレーン
 |--------------|------|
 | `moai cc -f <値>` (SPEC ID、数字、レーンのラベル) | `-f` は引数を取りません。リーダーは `-f` だけで開き、レーンは `-l` で合流します |
 | `moai cc -l <値>` (`lane-2` のような名前) | レーンは自分で名前を決めません。番号は自動で割り当てられます |
-| `moai codex` の `-f` | Codex にリーダーの進入はありません (`moai cc -f` か `moai glm -f` を使います) |
+| `moai codex -f cli`、`-f worker`、`-f 2`、`-f --factory-run <run-id>` | Codex リーダーは値なしの `-f` で新しい CLI run を開始します。値の指定と既存リーダー run の引き継ぎは拒否されます |
 | `-f` と `-l` を同時に指定 | 進入トークンは1つしか許されません |
 | 廃止された `-k` 進入 | かつてのマルチセッションボードのモードは削除されました。エラー文が `-f` と `-l` を案内します |
 | `moai cg`、`moai gpt` | `moai cg` は廃止済みで、移行案内を出して終了します (`moai migrate cg` でプレビュー)。`moai gpt` は存在せず、GPT モデルは `moai codex` で動かします |
+
+### Codex リーダー
+
+Codex リーダーは、小文字26文字の ULID を識別子とする新しい run を開始する。Claude・GLM・Codex のレーンが同じ run に参加できる。`-f` は値を取らず、`-f cli`、`-f worker`、`-f 2` は拒否される。`--factory-run` や Codex ネイティブの resume による既存リーダー run の再開・引き継ぎはサポートしない。
+
+`moai todo list --json` でキューを読み、承認済みのカードを既存のキュー手順で割り当てる。`moai factory status --run <run-id> --json` とカードの `progress.md` で同じ run の保存記録を確認する。割り当てとレーンの進捗は SQLite に保存され、メッセージは確認を促す任意の通知にすぎない。Codex レーンの `merge-ready` はレーンの作業完了を表し、マージやカードの終了を意味しない。Codex には `PermissionRequest` と `PreCompact` フックがないため、リーダーは両フックに頼らず保存記録を確認する。
 
 ## 実行が複数生きているとき
 

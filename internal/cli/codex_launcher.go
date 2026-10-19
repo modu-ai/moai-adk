@@ -292,6 +292,9 @@ func defaultCodexSpawnLaunch(dir, program string, args, factoryEnv []string) err
 	}
 	paneID, err := tmuxSpawnFn(dir, command)
 	if err != nil {
+		if codexExplicitFactoryEnv(factoryEnv) && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" {
+			err = errors.Join(err, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvFactoryRunID)))
+		}
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
 	if codexSpawnAnchorFn != nil || codexExplicitFactoryEnv(factoryEnv) {
@@ -663,6 +666,7 @@ var codexCmd = &cobra.Command{
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
 		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
+		"  -f, --factory         start a fresh Codex factory leader (CLI only)\n" +
 		"  -l, --lane            join the active factory as the next lane (CLI only)\n" +
 		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
@@ -1146,6 +1150,9 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 
 	leader := factoryEntry.Enabled && !factoryEntry.LaneRole && factoryEntry.LaneNumber == 0
 	if leader {
+		if codexTailHasOption(tail, func(name, _ string) bool { return name == "--cd" }) {
+			return errors.New("factory leader native -C/--cd override is unsupported; use moai codex -f -w <existing-worktree> instead")
+		}
 		anchorDir := projectRoot
 		if worktree.present {
 			resolved, err := resolveCodexWorktreeDir(projectRoot, worktree.value)

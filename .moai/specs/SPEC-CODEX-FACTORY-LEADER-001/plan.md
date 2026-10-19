@@ -72,4 +72,3 @@
 - spec.md §0·§B·§E, acceptance.md, progress.md.
 - 선행 SPEC 두 개의 개정 HISTORY와 보존한 SPEC-FACTORY-CODEX-LEADER-RESUME-001.
 - AGENTS.md·AGENTS.local.md, `.moai/docs/version-management.md`.
-

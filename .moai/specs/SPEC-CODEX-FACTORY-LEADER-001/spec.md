@@ -70,4 +70,3 @@ t1745의 반려 기록 `a9f53c169`에 있는 SPEC-FACTORY-CODEX-LEADER-RESUME-00
 ## §F 추적성
 
 요구사항과 수용 기준의 대응은 acceptance.md에 있다. 실행 증거는 progress.md §E.2, 실행 감사 준비는 §E.3, 문서·설치 검증은 §E.4에서 각 소유자가 기록한다.
-

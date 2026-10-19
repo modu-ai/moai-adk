@@ -53,7 +53,13 @@ moai glm -l                   # GLM 백엔드로 띄운 레인
 moai codex -l                 # Codex 레인
 ```
 
-`-f`(긴 형태 `--factory`)가 리더를 열고, `-l`(긴 형태 `--lane`)이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. `moai codex`에는 리더 진입이 없어 레인으로만 합류할 수 있다.
+`-f`(긴 형태 `--factory`)가 리더를 열고, `-l`(긴 형태 `--lane`)이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. `moai codex -f`(또는 `moai codex --factory`)는 새 Codex CLI 리더를 시작한다. `moai codex -l`의 기존 레인 합류 방식은 그대로다.
+
+### Codex 리더
+
+Codex 리더는 소문자 26자 ULID를 식별자로 쓰는 새 런을 시작한다. Claude·GLM·Codex 레인이 같은 런에 합류할 수 있다. `-f`는 값을 받지 않아 `-f cli`, `-f worker`, `-f 2`는 거부된다. `--factory-run`이나 Codex 네이티브 resume으로 기존 리더 런을 재개하거나 인수하는 기능은 지원하지 않는다.
+
+`moai todo list --json`으로 큐를 읽고, 승인된 카드는 기존 큐 절차로 배차한다. `moai factory status --run <run-id> --json`과 카드의 `progress.md`에서 같은 런의 저장 기록을 확인한다. 배차와 레인 진행 상태는 SQLite에 저장되며, 메시지는 확인을 재촉하는 선택적 알림일 뿐이다. Codex 레인의 `merge-ready`는 레인 작업이 끝났다는 뜻이며, 병합이나 카드 종료를 뜻하지 않는다. Codex에는 `PermissionRequest`·`PreCompact` 훅이 없으므로 리더는 두 훅에 기대지 않고 저장 기록을 직접 확인한다.
 
 한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었고, `moai cg`는 이전 안내를 띄우고 종료한다(`moai migrate cg`로 먼저 확인). `moai gpt`는 없으며 GPT 모델은 `moai codex`로 돌린다.
 

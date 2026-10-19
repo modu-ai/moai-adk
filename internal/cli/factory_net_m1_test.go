@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -498,33 +497,24 @@ func TestFactoryEntryMatrix(t *testing.T) {
 			t.Errorf("codex lane child %s = %q, want %q", config.EnvFactoryBackend, got, factory.BackendGPT)
 		}
 	})
-	t.Run("codex leader refused", func(t *testing.T) {
+	t.Run("codex leader", func(t *testing.T) {
 		root := pinCodexRefusalRoot(t)
+		t.Chdir(root)
 		netScrubLaneEnv(t)
-		prevDirect, prevSpawn := codexDirectLaunchFn, codexSpawnLaunchFn
-		launches := 0
-		codexDirectLaunchFn = func(*exec.Cmd) error { launches++; return nil }
-		codexSpawnLaunchFn = func(string, string, []string, []string) error { launches++; return nil }
-		prevLook := codexLookPath
-		codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
-		t.Cleanup(func() { codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook })
-
+		cap := withCodexLaunchCapture(t)
 		_, stderr, err := runCodexCmd(t, "-f")
-		code, ok := ResolveExitCode(err)
-		if !ok || code != 1 {
-			t.Errorf("codex -f: exit code = (%d, %v), want (1, true); err=%v", code, ok, err)
+		if err != nil {
+			t.Fatalf("codex -f: %v stderr=%s", err, stderr)
 		}
-		if lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n"); len(lines) != 1 || lines[0] == "" {
-			t.Errorf("codex -f: stderr = %q, want exactly one refusal line", stderr)
+		child := codexOnlyRecord(t, cap)
+		if launchEnvValue(child.Env, config.EnvFactoryRole) != factory.RoleLeader || launchEnvValue(child.Env, config.EnvFactoryBackend) != BackendCodex || launchEnvValue(child.Env, config.EnvFactoryRunID) == "" {
+			t.Fatalf("Codex leader identity=%q", child.Env)
 		}
-		if launches != 0 {
-			t.Errorf("codex -f launched %d child(ren); the refusal must start none", launches)
-		}
-		if record, loadErr := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure(); loadErr == nil && len(record.Runtime.Runs) != 0 {
-			t.Errorf("codex -f recorded %d run(s): %+v", len(record.Runtime.Runs), record.Runtime.Runs)
+		if record, loadErr := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure(); loadErr != nil || len(record.Runtime.Runs) != 1 {
+			t.Fatalf("leader run record=%+v err=%v", record.Runtime.Runs, loadErr)
 		}
 		if reg := loadFactoryRegistry(factoryRegistryPath(root)); len(reg) != 0 {
-			t.Errorf("codex -f wrote lane claims: %v", reg)
+			t.Errorf("leader wrote lane claims: %v", reg)
 		}
 	})
 }

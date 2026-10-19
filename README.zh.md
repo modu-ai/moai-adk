@@ -53,7 +53,13 @@ moai glm -l                   # GLM 后端的泳道
 moai codex -l                 # Codex 泳道
 ```
 
-`-f`（长形式 `--factory`）打开主导，`-l`（长形式 `--lane`）以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。`moai codex` 没有主导入口，只能以泳道身份加入。
+`-f`（长形式 `--factory`）打开主导，`-l`（长形式 `--lane`）以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。`moai codex -f`（或 `moai codex --factory`）启动新的 Codex CLI 主导会话；`moai codex -l` 保持原有的泳道加入方式。
+
+### Codex 主导会话
+
+Codex 主导会话会启动新的 run，以26位小写 ULID 作为标识。Claude、GLM 和 Codex 泳道都可以加入同一个 run。`-f` 不接受值，因此 `-f cli`、`-f worker` 和 `-f 2` 均会被拒绝。不支持通过 `--factory-run` 或 Codex 原生 resume 恢复或接管已有的主导 run。
+
+用 `moai todo list --json` 读取队列，按现有队列流程分配已获批准的卡片。通过 `moai factory status --run <run-id> --json` 和卡片的 `progress.md` 核对同一 run 的保存记录。分配与泳道进度保存在 SQLite 中，消息只是可选的提醒。Codex 泳道达到 `merge-ready` 只表示泳道工作完成，不表示已经合并或关闭卡片。Codex 没有 `PermissionRequest` 和 `PreCompact` 钩子，主导会话必须直接检查保存记录，不能依赖这两个钩子。
 
 一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除；`moai cg` 会显示迁移提示后退出（可先用 `moai migrate cg` 预览）。`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行。
 

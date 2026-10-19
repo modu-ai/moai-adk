@@ -22,11 +22,11 @@ There are only two entry tokens, and neither takes an argument. `-f` opens the l
 
 | What you want | Command | Role |
 |---------------|---------|------|
-| Open the factory leader | `moai cc -f` · `moai glm -f` (long form `--factory`) | Leader |
+| Open the factory leader | `moai cc -f` · `moai glm -f` · `moai codex -f` (long form `--factory`) | Leader |
 | Join the running factory as a lane | `moai cc -l` · `moai glm -l` · `moai codex -l` (long form `--lane`) | Lane |
 
 - `-l` joins the running factory and takes the **next lane number automatically**. You do not pick the number; it is one past the highest live lane. If no factory is running, the join is refused.
-- `moai codex` has no leader entry. It can only join as a lane; open the leader with `moai cc -f` or `moai glm -f`.
+- `moai codex -f` (or `moai codex --factory`) starts a fresh Codex CLI leader; `moai codex -l` keeps its existing lane-join behavior.
 - A launch carries at most one entry token. `-f` together with `-l` is an error.
 
 ```bash
@@ -50,10 +50,16 @@ An entry carrying a value is refused with a one-line error. The message names th
 |--------------|-----|
 | `moai cc -f <value>` (a SPEC ID, a number, a lane label) | `-f` takes no argument. Open the leader with `-f` alone and join lanes with `-l` |
 | `moai cc -l <value>` (a name such as `lane-2`) | A lane does not name itself. The number is assigned automatically |
-| `-f` on `moai codex` | Codex has no leader entry (use `moai cc -f` or `moai glm -f`) |
+| `moai codex -f cli`, `-f worker`, `-f 2`, `-f --factory-run <run-id>` | A Codex leader starts a fresh CLI run with bare `-f`; values and leader-run adoption are refused |
 | `-f` and `-l` in one launch | Only one entry token is allowed |
 | The retired `-k` entry | The old multi-session board mode was removed. The error message points to `-f` and `-l` |
 | `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist; GPT models run through `moai codex` |
+
+### Codex leader
+
+A Codex leader starts a new run with a lowercase, 26-character ULID. Claude, GLM, and Codex lanes can join that run. Bare `-f` takes no value: `-f cli`, `-f worker`, and `-f 2` are refused. Resuming or adopting an existing leader run with `--factory-run` or native Codex resume is not supported.
+
+Read the queue with `moai todo list --json`, dispatch approved cards through the existing queue workflow, and inspect the same run with `moai factory status --run <run-id> --json` plus the card’s `progress.md`. Dispatch and lane progress are persisted in SQLite; a message is only an optional nudge. A Codex lane reaching `merge-ready` has finished its work but has not merged or closed the card. Codex has no `PermissionRequest` or `PreCompact` hook, so the leader must check the stored records without relying on either hook.
 
 ## When several runs are alive
 

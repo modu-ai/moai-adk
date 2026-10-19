@@ -22,11 +22,11 @@ added_in: "v3.2"
 
 | 하려는 일 | 명령 | 역할 |
 |-----------|------|------|
-| 팩토리 리더 열기 | `moai cc -f` · `moai glm -f` (긴 형태 `--factory`) | 리더 |
+| 팩토리 리더 열기 | `moai cc -f` · `moai glm -f` · `moai codex -f` (긴 형태 `--factory`) | 리더 |
 | 실행 중인 팩토리에 레인으로 합류 | `moai cc -l` · `moai glm -l` · `moai codex -l` (긴 형태 `--lane`) | 레인 |
 
 - `-l`은 실행 중인 팩토리에 합류해 **다음 레인 번호를 자동으로** 받습니다. 번호는 운영자가 고르지 않으며, 살아 있는 레인 가운데 가장 큰 번호의 다음 번호가 배정됩니다. 실행 중인 팩토리가 없으면 합류는 거부됩니다.
-- `moai codex`에는 리더 진입이 없습니다. 레인으로만 합류할 수 있으며, 리더는 `moai cc -f` 또는 `moai glm -f`로 엽니다.
+- `moai codex -f`(또는 `moai codex --factory`)는 새 Codex CLI 리더를 시작합니다. `moai codex -l`의 기존 레인 합류 방식은 그대로입니다.
 - 한 번의 실행에는 진입 토큰이 하나만 붙습니다. `-f`와 `-l`을 함께 쓰면 오류입니다.
 
 ```bash
@@ -50,10 +50,16 @@ $ moai codex -l    # Codex 레인
 |---------------|------|
 | `moai cc -f <값>` (SPEC ID, 숫자, 레인 라벨) | `-f`는 인자를 받지 않습니다. 리더는 `-f`만으로 열고, 레인은 `-l`로 합류합니다 |
 | `moai cc -l <값>` (`lane-2` 같은 이름) | 레인은 스스로 이름을 고르지 않습니다. 번호는 자동 배정입니다 |
-| `moai codex`의 `-f` | Codex에는 리더 진입이 없습니다 (`moai cc -f`나 `moai glm -f` 사용) |
+| `moai codex -f cli`, `-f worker`, `-f 2`, `-f --factory-run <run-id>` | Codex 리더는 값 없는 `-f`로 새 CLI 런을 시작합니다. 값 지정과 기존 리더 런 인수는 거부됩니다 |
 | `-f`와 `-l`을 한 번에 | 진입 토큰은 하나만 허용됩니다 |
 | 폐기된 `-k` 진입 | 예전 다중 세션 보드 모드는 제거되었습니다. 오류 문구가 `-f`와 `-l`을 안내합니다 |
 | `moai cg`, `moai gpt` | `moai cg`는 폐기되었고 이전 안내와 함께 종료합니다 (`moai migrate cg`로 미리보기). `moai gpt`는 없으며 GPT 모델은 `moai codex`로 돌립니다 |
+
+### Codex 리더
+
+Codex 리더는 소문자 26자 ULID를 식별자로 쓰는 새 런을 시작합니다. Claude·GLM·Codex 레인이 같은 런에 합류할 수 있습니다. `-f`는 값을 받지 않아 `-f cli`, `-f worker`, `-f 2`는 거부됩니다. `--factory-run`이나 Codex 네이티브 resume으로 기존 리더 런을 재개하거나 인수하는 기능은 지원하지 않습니다.
+
+`moai todo list --json`으로 큐를 읽고, 승인된 카드는 기존 큐 절차로 배차합니다. `moai factory status --run <run-id> --json`과 카드의 `progress.md`에서 같은 런의 저장 기록을 확인합니다. 배차와 레인 진행 상태는 SQLite에 저장되며, 메시지는 확인을 재촉하는 선택적 알림일 뿐입니다. Codex 레인의 `merge-ready`는 레인 작업이 끝났다는 뜻이며, 병합이나 카드 종료를 뜻하지 않습니다. Codex에는 `PermissionRequest`·`PreCompact` 훅이 없으므로 리더는 두 훅에 기대지 않고 저장 기록을 직접 확인합니다.
 
 ## 실행이 여럿 살아 있을 때
 

@@ -161,9 +161,8 @@ func factorySessionClaudeEffort(env []string, root string) (string, bool) {
 var codexSessionDefaultArgsFn = codexSessionDefaultArgs
 
 // codexSessionDefaultArgs returns the -m / -c model_reasoning_effort argv a
-// `moai codex` launch prepends for role (lane = `moai codex -l`; the leader
-// pair is reserved for a future `moai codex -f`), skipping each half the
-// operator already supplied in tail. A rejected llm.yaml cell is warned about
+// `moai codex` factory launch prepends for its leader or lane role, skipping
+// each half the operator already supplied in tail. A rejected llm.yaml cell is warned about
 // and replaced by the built-in default.
 func codexSessionDefaultArgs(root, role string, tail []string) []string {
 	me, rejected, ok := sessionLLMConfig(root).ResolveSessionDefaultChecked(config.SessionBackendCodex, role)
@@ -182,24 +181,55 @@ func codexSessionDefaultArgs(root, role string, tail []string) []string {
 }
 
 func codexTailHasModel(tail []string) bool {
-	for _, a := range tail {
-		if a == "-m" || a == "--model" || strings.HasPrefix(a, "--model=") || strings.HasPrefix(a, "-m=") {
-			return true
-		}
-	}
-	return false
+	return codexTailHasOption(tail, func(name, _ string) bool { return name == "--model" })
 }
 
 func codexTailHasEffort(tail []string) bool {
-	for i, a := range tail {
-		v := ""
-		switch {
-		case (a == "-c" || a == "--config") && i+1 < len(tail):
-			v = tail[i+1]
-		case strings.HasPrefix(a, "--config="):
-			v = strings.TrimPrefix(a, "--config=")
+	return codexTailHasOption(tail, func(name, value string) bool {
+		return name == "--config" && strings.HasPrefix(strings.TrimSpace(value), "model_reasoning_effort")
+	})
+}
+
+// codexTailHasOption walks native options, preserving option-value boundaries.
+// Short value options accept both -m value and -mvalue; -- ends option parsing.
+func codexTailHasOption(tail []string, match func(name, value string) bool) bool {
+	for i := 0; i < len(tail); i++ {
+		token := tail[i]
+		if token == "--" {
+			return false
 		}
-		if strings.HasPrefix(strings.TrimSpace(v), "model_reasoning_effort") {
+		if !strings.HasPrefix(token, "-") || token == "-" {
+			continue
+		}
+		name, value, attached := strings.Cut(token, "=")
+		if !strings.HasPrefix(token, "--") && len(token) > 2 {
+			name, value, attached = token[:2], strings.TrimPrefix(token[2:], "="), true
+		}
+		switch name {
+		case "-m":
+			name = "--model"
+		case "-c":
+			name = "--config"
+		case "-C":
+			name = "--cd"
+		case "-i":
+			name = "--image"
+		case "-p":
+			name = "--profile"
+		case "-s":
+			name = "--sandbox"
+		case "-a":
+			name = "--ask-for-approval"
+		}
+		switch name {
+		case "--model", "--config", "--cd", "--image", "--profile", "--sandbox", "--ask-for-approval",
+			"--enable", "--disable", "--remote", "--remote-auth-token-env", "--local-provider", "--add-dir":
+			if !attached && i+1 < len(tail) {
+				i++
+				value = tail[i]
+			}
+		}
+		if match(name, value) {
 			return true
 		}
 	}
