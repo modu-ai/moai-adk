@@ -1,6 +1,9 @@
 package decision
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -220,6 +223,52 @@ func TestRecord_LineRendersTheDecisionRecordForm(t *testing.T) {
 	want := "decision record: decided_by=claude+leader evidence_refs=.moai/reports/t1/plan-audit-iter3.md ladder_path=②"
 	if !strings.HasPrefix(line, want) {
 		t.Fatalf("Line() = %q, want prefix %q", line, want)
+	}
+}
+
+func TestRecord_DigestPinsTheStoredBoardLine(t *testing.T) {
+	board := filepath.Join(t.TempDir(), "board.jsonl")
+	first, err := Append(board, validRuling("card:t1"), AppendOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRec := validRuling("card:t1")
+	secondRec.Body = "a different body"
+	second, err := Append(board, secondRec, AppendOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(board)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimRight(line, "\n")
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var rec Record
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("board line %q: %v", line, err)
+		}
+		sum := sha256.Sum256([]byte(line))
+		stored[rec.ID] = hex.EncodeToString(sum[:6])
+	}
+	for _, rec := range []Record{first, second} {
+		got := rec.Digest()
+		if got != stored[rec.ID] {
+			t.Fatalf("Digest()=%q for id %s, want the sha256 prefix %q over the stored board line", got, rec.ID, stored[rec.ID])
+		}
+		if len(got) != 12 || got != strings.ToLower(got) {
+			t.Fatalf("Digest()=%q, want 12 lowercase hex characters", got)
+		}
+		if again := rec.Digest(); again != got {
+			t.Fatalf("Digest() is not stable across calls: %q then %q", got, again)
+		}
+	}
+	if first.Digest() == second.Digest() {
+		t.Fatalf("records with different bodies share the digest %q", first.Digest())
 	}
 }
 
