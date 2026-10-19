@@ -850,6 +850,15 @@ func rvsMutants() []rvsMutant {
 		{id: "v_injected_bare_Fuzz", apply: injectCLI("Fuzz"), want: []string{`lists "Fuzz"`}},
 		{id: "v_injected_bare_Example", apply: injectCLI("Example"), want: []string{`lists "Example"`}},
 		{
+			// A Unicode fuzz target is a real Go identifier (sync-audit F1):
+			// `go test -race -list` prints it, no ^Test selector runs it, so
+			// the discovery guard must name it. If classification drops the
+			// name, this mutant goes undetected and the subtest fails.
+			id:    "v_injected_unicode_FuzzSigma",
+			apply: injectCLI("FuzzΣ"),
+			want:  []string{`lists "FuzzΣ"`},
+		},
+		{
 			id:    "v_injected_FuzzX_in_rosterguard",
 			apply: func(_ *testing.T, in *rvsInputs) { in.rosterRaw = append(in.rosterRaw, "FuzzR") },
 			want:  []string{`lists "FuzzR"`},
