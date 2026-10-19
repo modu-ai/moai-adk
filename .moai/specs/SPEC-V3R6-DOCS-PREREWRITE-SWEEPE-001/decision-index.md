@@ -1,6 +1,6 @@
 # Decision Index — SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001
 
-Revision 0.2.0 (2026-10-19). Each row states one decision the operator does not settle in the interview. The rows mirror spec.md § 6 field for field and carry the same `Operator verdict:` values; this index adds no verdict of its own. No row carries a recommendation. A `Default:` is a policy application, not a recommendation, and a `DEFAULT-APPLIED` verdict records that application; the leader records it on the decision board before Kickoff. This index follows the umbrella's convention (`.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/decision-index.md`); no sibling child carries a decision index yet.
+Revision 0.3.0 (2026-10-19; adds QE-6, extends the QE-1 alternate and the QE-4 reasoning). Each row states one decision the operator does not settle in the interview. The rows mirror spec.md § 6 field for field and carry the same `Operator verdict:` values; this index adds no verdict of its own. No row carries a recommendation. A `Default:` is a policy application, not a recommendation, and a `DEFAULT-APPLIED` verdict records that application; the leader records it on the decision board before Kickoff. This index follows the umbrella's convention (`.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/decision-index.md`); no sibling child carries a decision index yet.
 
 Operator records read through `moai decision read --scope card:t1725`: d-20261019T015908Z-220a (Q13, Q17) and d-20261014T060405Z-0fcd (Q24, from the umbrella).
 
@@ -34,7 +34,7 @@ Authority anchor: none in the committed tree; operator record d-20261019T015908Z
 Why unresolved: `fb` resolves only as a router alias; `bug` and `issue` do not resolve. The ruling requires replace-where-an-equivalent-exists; `/moai:feedback` is the registered equivalent for all three. Choice left: delete instead of replace.
 Class: implementation-level
 Default: replace with `> /moai:feedback` (rule: the Q13 ruling)
-Alternate: delete the lines and keep only the standard form
+Alternate: delete the lines (and, with them, the block label line under decision QE-6) and keep only the standard form; the pinned block, cells S-16, S-17, and S-18, and the AC-PRC-001f rows would then be re-derived
 Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: the Q13 ruling d-20261019T015908Z-220a
 
 ### QE-2: Does verification-claim-integrity line 84 stay fixed, or gain an example marker?
@@ -58,7 +58,7 @@ Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, re
 ### QE-4: Do the ja and zh foundations index rows change with the en row?
 Label: FOUNDER
 Authority anchor: none in the committed tree; operator record d-20261019T015908Z-220a (Q17, decision board)
-Why unresolved: the ja and zh rows translate the clause "and the /moai relationship" and are not closing-pattern matches; their linked pages' section headings still say "関係" and "关系". The Q17 ruling asks that locales carrying the same sentence change in the same change.
+Why unresolved: the ja and zh rows translate the clause "and the /moai relationship" and are not closing-pattern matches; their linked pages' section headings still say "関係" and "关系". The Q17 ruling asks that locales carrying the same sentence change in the same change. Measured headings of the linked `claude-code/foundations/commands.md` pages at 74ad197380a0: en line 238 "Where the /moai Command Sits", ko line 238 "/moai 명령은 어디에 얹혀 있나", ja line 178 "MoAI-ADK の /moai コマンドとの関係", zh line 178 "与 MoAI-ADK 的 /moai 命令的关系". No wording is shared by all four, and aligning the headings would edit four unflagged pages outside the twelve page files, so the heading is not added to the edit set; the divergence between the ja and zh rows and their linked headings is accepted residual risk (acceptance.md § G).
 Class: implementation-level
 Default: change both rows to the "position" wording (`/moai の位置づけ`, `/moai 的定位`) (rule: the Q17 ruling)
 Alternate: leave the ja and zh rows unchanged (ten page files); they would then read as a translation of the old English wording and the three locales would no longer say the same thing
@@ -72,3 +72,12 @@ Class: implementation-level
 Default: out of scope; the line stays byte-identical and is recorded as a follow-up observation (rule: the card scope is the line flagged by the closing pattern)
 Alternate: correct it in this change; that adds a line to the flagged set by decision, a new pinned text, and criteria of its own
 Operator verdict: DEFAULT-APPLIED 2026-10-19T02:27:27Z manager-spec (planner, revision 1), rule: smaller footprint, undo is one revert
+
+### QE-6: Does the block label line change with the alias lines it labels?
+Label: FOUNDER
+Authority anchor: none in the committed tree; operator record d-20261019T015908Z-220a (Q13, decision board)
+Why unresolved: line 31 of each moai-feedback page (`# Short aliases` and its translations) is not a closing-pattern match, but it labels exactly the three flagged lines 32 to 34. After the Q13 replacement the label would introduce nothing it names. REQ-SWEEPE-004 (iteration 2, defect D-N1) must either allow the label line into the edit set or leave it byte-identical.
+Class: implementation-level
+Default: replace the label line with the pinned label meaning "Direct slash command", inside the edit set (rule: the Q13 ruling — the aliases the label introduces are replaced, so the label would be false)
+Alternate: keep the label line byte-identical and drop it from the edit plan; the page would then read `# Short aliases` above the single line `> /moai:feedback`. REQ-SWEEPE-002 and -004, the pinned block, and the numstat rows `2 4` would become `1 3`, with cells S-16, S-17, and S-18 re-derived
+Operator verdict: DEFAULT-APPLIED 2026-10-19T02:51:00Z manager-spec (planner, revision 2), rule: the Q13 ruling d-20261019T015908Z-220a
