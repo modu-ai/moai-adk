@@ -1,6 +1,6 @@
 # research.md — SPEC-WORKTREE-HOME-ROOT-001
 
-> Evidence record. Everything here was observed in this planning session (re-read at HEAD `e5950b354f` in the first correction round at `40c2e127bf` in the operator-decision correction, §R10, at `bf78f5541a` in the plan-audit iteration 2 correction, §R11, and at `9495566efa` in the plan-audit iteration 3 correction, §R12 — §R12 and §R11 are placed above §R10 as the newest blocks) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
+> Evidence record. Everything here was observed in this planning session (re-read at HEAD `e5950b354f` in the first correction round at `40c2e127bf` in the operator-decision correction, §R10, at `bf78f5541a` in the plan-audit iteration 2 correction, §R11, at `9495566efa` in the plan-audit iteration 3 correction, §R12, and at `090b7d51f9` in the plan-audit iteration 4 correction, §R13 — §R13, §R12 and §R11 are placed above §R10 as the newest blocks) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
 
 ## §R1. Where trees live now (measured)
 
@@ -104,6 +104,8 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 | G-10 | Whether `todo --auto`, lease renewal or other lane machinery reads a tree path from a source not found by the sweep in §R3 | standing grep sweep AC-WHR-007; Residual-risk R-1 |
 | G-11 | Callers of the consolidation — traced in the 0.3.0 correction: `runUpdateWorktreeMigration` is called at `update.go:366` (`dryRun=true`, inside the `--dry-run` branch) and `update.go:410` (`dryRun=false`, after the dry-run return and under the update lock) | closed; see §R10 |
 | G-12 | Whether any running Claude Code lane's project-memory key survives a tree move | PM-6 |
+| G-13 | That git deletes a worktree's administrative directory, and the instance token file in it, when it removes or prunes the tree, and that it reuses the admin id for the next tree of that name (the premise of REQ-WHR-012 / design D-11 identity); not run — a scratch repository sits outside this tree, and AGENTS.md §3 records that the guard refuses git against any path outside it (not attempted here) | AC-WHR-012b step (9d) asserts both at M1/M6; if git kept the directory, the token would match a recreated tree and the run phase returns a blocker |
+| G-14 | Cross-process behavior of `internal/lockfile` on Windows (a process-local mutex there) and the bounded wait under a stalled holder | OQ-4; AC-WHR-017b step (7) on the platforms that provide the lock |
 
 ## §R9. Residual-risk summary
 
@@ -113,6 +115,56 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 - R-4 The classifier leaves `audit-gate-async-worktree-doc` unclassified (one known tree). Operator may reclassify by hand.
 - R-5 The lowercase-spelling alias could also affect the recorded `worktree_path` of cards created through the lowercase spelling; the rebind compares via spelling-safe equality (REQ-WHR-023).
 - R-6 A lane holds a pre-move path after the routine update moved a parked tree. Mitigation: card record rebind first, move list second (REQ-WHR-011/012); the move-list file is machine-local (gitignored), so a reader on another machine has no copy of it; that case is not designed for here.
+
+## §R13. Measurements for the plan-audit iteration 4 correction (version 0.6.0; tree `090b7d51f945f7ce78c753f39312d68f93829e55`)
+
+All by read-only commands, no Go command. The harness prints no status line for a command that exits 1 when it also prints nothing or a bare count (`grep`); those codes below are derived from the stdout, as in §R12, while the `ls` and `moai` cells showed `Exit code 1` themselves. Judging build for the one CLI cell: `moai version` printed `moai_cp/20261007_195927-1888-g7705b365e2`; `git merge-base --is-ancestor 7705b365e2 HEAD` exited 0 (no output), so the build is a strict ancestor of the tree and its CLI result describes older code; every other cell is a grep, `ls` or `wc`, independent of that binary.
+
+| AC | Command | Observed stdout | Exit |
+|----|---------|-----------------|------|
+| 001 | `grep -rln --exclude='*_test.go' 'worktrees/projects' internal` | (empty) | 1 |
+| 002a | `grep -rln --exclude='*_test.go' 'moai-project.json' internal` | (empty) | 1 |
+| 004 | `grep -rn --exclude='*_test.go' 'worktree_project_key' internal .moai/config` | (empty) | 1 |
+| 005b | `grep -n 'filepath.Join(projectRoot, ".claude", "worktrees", name)' internal/cli/worktree_branch_flag.go` | `109:	treePath := filepath.Join(projectRoot, ".claude", "worktrees", name)` | 0 |
+| 005a (new cell) | `grep -n 'destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)' internal/cli/session_worktree.go` | `223:	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)` | 0 |
+| 010 | `moai worktree list --json` | `ERROR  Unknown flag: --json.  Try --help for usage.` | 1 |
+| 012b | `grep -rln --exclude='*_test.go' "move-list\|movelist\|move_list" internal` | (empty) | 1 |
+| 013 | `ls internal/cli/worktree/classify.go` | `ls: internal/cli/worktree/classify.go: No such file or directory` | 1 |
+| 019 | `grep -c 'Join(root, sessionWorktreeSubdir)' internal/cli/update_worktree_migration.go` | `1` | 0 |
+| 021 | `ls .moai/reports/t1640/pre-kickoff-measurements.md` | `ls: .moai/reports/t1640/pre-kickoff-measurements.md: No such file or directory` | 1 |
+| 025 | `grep -c 'worktrees/projects' AGENTS.md` | `0` | 1 |
+| 025 baseline | `wc -c AGENTS.md` | `23780 AGENTS.md` | 0 |
+| 024 (RG) | `grep -n 'WorktreeCreate' .claude/settings.json` | (empty) | 1 |
+| 019 context | `grep -n 'runUpdateWorktreeMigration' internal/cli/update.go` | `366:		if migrationErr := runUpdateWorktreeMigration(lockRoot, true, out); migrationErr != nil {` and `410:	if migrationErr := runUpdateWorktreeMigration(lockRoot, false, out); migrationErr != nil {` | 0 |
+| 019 | `grep -n 'sessionWorktreeSubdir' internal/cli/update_worktree_migration.go` | `88:	newRoot := filepath.Join(root, sessionWorktreeSubdir)` | 0 |
+| 025 template | `grep -c 'worktrees/projects' internal/template/templates/AGENTS.md.tmpl` | `0` | 1 |
+
+Every cell reproduces the previous round's value. The AC-WHR-005 cell split in 0.6.0: the launcher cell (005b) is the earlier cell unchanged; the 005a cell is new, with the same expected-green direction (exit 1, empty stdout once the destination comes from the resolver).
+
+Lock primitive (D11): `ls internal/lockfile` printed `lockfile_contract_test.go lockfile_unix.go lockfile_unix_test.go lockfile_windows.go`. Read: `lockfile_unix.go` `Lock(f)` is a blocking exclusive `flock` (`LOCK_EX`, no non-blocking flag) and `Unlock(f)` releases it; `lockfile_windows.go` `Lock(f)` takes a process-local mutex keyed by file name and states "Multi-process locking is not supported", `Unlock` releases it. Neither file offers a try-acquire or a timeout, so the try-and-end migration lock and the 5-second bounded state-file wait need one added non-blocking `TryLock` per platform file (design D-12); `Lock`/`Unlock` stay as they are.
+
+Launcher path (D2), `internal/cli/worktree_branch_flag.go`: `:23-24` states the branch must exist and the flag "never" creates one; `:109` builds `treePath` under `.claude/worktrees`; `:116` is `gitcore.NewWorktreeManager(projectRoot).Add(treePath, branch)`; `:122` is `hook.RegisterLauncherWorktree(...)`. The materializer's `WT-` rename, configured base and hook seeding are in `session_worktree.go:213-266`, not here.
+
+`grep -c syscall` over the five artifacts printed `0` for each after the edit (MP-6 D8-4).
+
+### By-hand ordering check (D1; milestones in plan order, all five artifacts re-read)
+
+Rule under test: no milestone's tests name a symbol first built in a later milestone; `go build` of every package, tests excluded, stays green at every commit; every milestone ends GREEN. "RED commit" = the test-only commit that opens the milestone.
+
+| Milestone | Builds (non-test) | Tests in its RED commit name | Cells recorded in the RED commit | Packages that must pass at exit | Later symbol named? |
+|-----------|-------------------|------------------------------|----------------------------------|----------------------------------|---------------------|
+| M-1 | no Go; the measurement record | — | AC-021 (record) | — | no |
+| M0 | no Go file; evidence only | — (no test) | observed cells: AC-001, 002a, 004, 005a, 005b, 010, 012b, 013, 019 (first), 025 | every package as before (nothing changed) | no |
+| M1 | `internal/worktreeroot`, `classify.go`, key assignment and marker, `git_strategy.worktree_project_key`, `movelist*.go` reader (`TreeIdent`, token writer, `MovedTo`, `MovedBy`) | M1 symbols; git, config, session registry (existing) | AC-002b (1-3), 003a, 003b, 023 (`Same`) | `internal/worktreeroot`, `internal/config`, `internal/cli/worktree` | no; move-list fixtures are hand-written lines, not the M6 writer |
+| M2 | destination swap in `session_worktree.go`, `worktree_branch_flag.go`, `launcher.go` | resolver (M1); existing materializer and `RegisterLauncherWorktree` | AC-006 | `internal/cli` | no |
+| M3 | reader changes (`internal/hook`, `internal/cli`, `internal/factory`, `done.go`, `sweep.go`), cleanup guard | resolver, classifier, `MovedBy` (M1); existing readers | AC-007, 008, 009, 014b, 022 | `internal/hook`, `internal/cli`, `internal/factory`, `internal/cli/worktree` | no |
+| M4 | `list.go`, registration in `root.go` | classifier, `Same` (M1) | (AC-010 Go clauses; its observed cell is M0's) | `internal/cli/worktree` | no |
+| M5 | card rebind (`internal/homestate`), state-file lock, atomic write, re-key (`internal/hook`), `TryLock` (`internal/lockfile`) | M5 symbols only | AC-011, 012a (re-key), 017b (state-file clauses) | `internal/homestate`, `internal/hook`, `internal/lockfile` | no |
+| M6 | `migrate*.go`, move-list writer, `update_worktree_migration.go`, `internal/session/anchor.go` | M1 (classifier, `TreeIdent`, token writer), M5 (rebind, re-key, `TryLock`) and M6 symbols | AC-002b (4), 012a (journal), 014a, 015, 016, 017a, 017b (migration-lock and reversal halves), 018, 019 (second), 023 (anchor) | `internal/cli/worktree`, `internal/cli`, `internal/session` | no |
+| M7 | `retire*.go`, guidance text | M6 engine package (earlier); no new symbol after it | AC-020 | `internal/cli/worktree`, template mirror test | no |
+| M8 | nothing | — | — | scoped runs, `GOOS=windows` build, lint | — |
+
+Per-AC check, RED point then Green path (every RED point is at or before the first milestone on the Green path line, and no AC names a symbol of a milestone after its RED point): 001 M0/M1; 002a M0/M1; 002b M1+M6/M1,M6; 003a, 003b M1/M1; 004 M0/M1; 005a, 005b M0/M2; 006 M2/M2; 007, 008 M3/M3; 009 M3/M3; 010 M0/M4; 011 M5/M5; 012a M5+M6/M5,M6; 012b M0 (+ reader clauses in M1's tests, writer clauses in M6's)/M1,M6; 013 M0/M1,M3,M4,M6; 014a M6/M6; 014b M3/M1,M3,M6; 015, 016, 017a M6/M6; 017b M5+M6/M5,M6; 018 M6/M6; 019 M0+M6/M6; 020 M7/M7; 021 M-1/M-1; 022 M3/M3; 023 M1+M6/M1,M3-M6; 024 (RG)/M6; 025 M0/M7. One finding of the check, fixed in this round: AC-WHR-017b clauses (6) and (7) mix a file-unchanged half (M5) and a tree-reversal half (M6), so those cells split by half; AC-WHR-012a's journal clause is M6's. Cross-milestone consumers (the M1 classifier in M3, M4 and M6; `TreeIdent` and `MovedBy` in M3 and M6; the M5 rebind and re-key in M6 only; the resolver in M2 and M3) all consume a symbol from an earlier milestone.
 
 ## §R12. Measurements for the plan-audit iteration 3 correction (version 0.5.0; tree `9495566efa15331f10135469d86313e8b1c1733c`)
 
