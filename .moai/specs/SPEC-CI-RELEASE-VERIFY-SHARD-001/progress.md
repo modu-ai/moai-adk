@@ -279,7 +279,17 @@ gh run view <run-id> --json jobs --jq '.jobs[] | {name, conclusion, startedAt, c
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-10-19
+run_commit_sha: 3c52f2d150 (the M4 evidence commit; this §E.3 edit itself lands in a later commit by the self-reference rule)
+run_milestone_commits: ea831e5ec4 + e95e795219 (M1 status flip + workflow), 68f741f807 + f0c55db330 (M2 test RED then script, commit-graph ordered), a6fb9edf4f (M3 parity test), 5dbc39a3a0 / 0efa543e71 / 285f133e91 / 3c52f2d150 (M1-M4 evidence records)
+ac_pass_count: 14
+ac_fail_count: 0
+ac_post_landing_pl: 2 (AC-RVS-014, AC-RVS-016 — plus the windows half of AC-RVS-012; leader observations, handoff written at M4)
+m4_items: 13/13 PASS (swept count, stub-go print-then-fail, remainder guard unfiltered listing, pre-flight set, shard-cover both workflows + narrowed/widened mutants, actionlint, validator, verifier suite, targeted internal/template run, real-Go step body matching + non-matching under /bin/bash 3.2, yq assertions, AC-RVS-015 plan-boundary diff, AC-RVS-014/016 leader handoff)
+m4_refusals_recorded_as_gaps: worktree-guard refusal of the env-prefix compound (remedy: scratch runner wrappers, B-8 script form); permission-system denial of `rm -rf` (remedy: narrow per-file removals)
+carried_gaps: G-A (live main-protection contexts not re-read at run phase — validator dimensions pass, `gh api` read remains with the leader), G-E (AC-RVS-012 windows half, AC-RVS-014, AC-RVS-016 — post-landing), G-G (GitHub include-merge + `if: matrix.vet == true` confirmed only by actionlint's type model and the test expander until the first live run), stub-`go` runs observe control flow not Go behaviour, AC-RVS-013 partition identity (176 = 2 + 174) cited from the M3 measurement (not re-run at M4)
+go_budget: slot go-test-heavy (lane-55) 13:18:30Z-13:58:30Z; Go work finished ~13:31Z; load 1-min 20.79 / memory free 86% at the first `go` call; every Go call one at a time, `-p 1 -count=1`, no `-skip`, no timeout change
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
