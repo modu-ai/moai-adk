@@ -331,6 +331,26 @@ func Registry() []Site {
 
 		// ── Subsets by design ──────────────────────────────────────────────
 		{
+			ID:   "agent-common-protocol-role-defaults-mirror",
+			Path: "internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md",
+			Axis: AxisSubsetByDesign,
+			Note: "Template mirror of the role-defaults table above; same partial listing.",
+		},
+		{
+			ID:   "agentemit-golden-fixtures",
+			Path: "internal/template/agentemit/golden_test.go",
+			Axis: AxisSubsetByDesign,
+			Note: "Golden fixtures for the agent emitter pick the agents whose emitted " +
+				"frontmatter is pinned; the set is a test selection, not a roster claim.",
+		},
+		{
+			ID:   "always-loaded-binding-ledger-fixture",
+			Path: "internal/template/testdata/binding_ledger.json",
+			Axis: AxisSubsetByDesign,
+			Note: "The always-loaded budget binding ledger quotes rule text that happens " +
+				"to name agents; its rows are before/after text pins, not a roster claim.",
+		},
+		{
 			ID:   "catalog-user-install-default-flow-fixtures",
 			Path: "internal/template/catalog_user_install_view_test.go",
 			Axis: AxisSubsetByDesign,
@@ -579,6 +599,17 @@ func Registry() []Site {
 			sites = append(sites, site)
 		}
 	}
+	// Appended after the mirror loop on purpose: the .moai/policies copy of
+	// this rule carries no role-defaults table, so a mirrored row would name a
+	// listing the sweep cannot reach.
+	sites = append(sites, Site{
+		ID:   "agent-common-protocol-role-defaults",
+		Path: ".claude/rules/moai/core/agent-common-protocol.md",
+		Axis: AxisSubsetByDesign,
+		Note: "The Subagent Model and Effort table maps phase roles to their default " +
+			"model and effort; it names the roles that carry a default, not the " +
+			"retained roster, and claims neither a count nor a membership.",
+	})
 	return sites
 }
 

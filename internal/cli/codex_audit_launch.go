@@ -618,7 +618,7 @@ func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]stri
 	defer cancel()
 	cmd := exec.CommandContext(lctx, program, "mcp", "list", "--json")
 	cmd.Dir = root
-	cmd.Env = codexChildEnv()
+	cmd.Env = codexAuditChildEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	configureClaudeAuditProcess(cmd)
@@ -705,7 +705,7 @@ func codexAuditExec(ctx context.Context, program string, argv []string, root str
 	defer cancel()
 	cmd := exec.CommandContext(ectx, program, argv...)
 	cmd.Dir = root
-	cmd.Env = codexChildEnv()
+	cmd.Env = codexAuditChildEnv()
 	cmd.Stdin = task
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout

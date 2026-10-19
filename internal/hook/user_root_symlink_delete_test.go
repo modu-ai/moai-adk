@@ -88,7 +88,7 @@ categories:
 	h := &preToolHandler{policy: DefaultSecurityPolicy(), projectDir: root}
 	shellDenied := func(command string) bool {
 		t.Helper()
-		raw, err := json.Marshal(map[string]string{"command": command})
+		raw, err := json.Marshal(map[string]string{"command": zoneBashText(command)})
 		if err != nil {
 			t.Fatal(err)
 		}

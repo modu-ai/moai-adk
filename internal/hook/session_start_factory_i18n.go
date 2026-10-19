@@ -142,7 +142,7 @@ var factoryLocales = map[string]factoryMessages{
 			"Tasks: `TaskCreate` the card's stages before the first, `TaskUpdate` at each transition; record completion only when the list shows the end state, or say why not. " +
 			"MCP tools (CLI): `todo_add` (`moai todo add`), `todo_list` (`moai todo`), `factory_next` (`moai factory next`), `factory_stage` (`moai factory stage`), " +
 			"`factory_complete` (`moai factory complete`), `factory_decide` (`moai factory decide`).",
-		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in MOAI_KANBAN_CARD — " +
+		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in %[2]s — " +
 			"and works in the current worktree. Carry that card to merge-ready: register the card's stages with `TaskCreate` at intake, " +
 			"keep the list current with `TaskUpdate` at each stage transition, record each stage with `moai factory stage`, " +
 			"and finish with `moai factory complete` only while the task list reflects the end state — or state explicitly why it does not. " +
@@ -203,7 +203,7 @@ var factoryLocales = map[string]factoryMessages{
 			"목록이 종결 상태를 반영할 때만 완료를 기록합니다 — 반영하지 않는다면 그 이유를 명시합니다. " +
 			"도구와 CLI 등가물: `todo_add`(`moai todo add`), `todo_list`(`moai todo`), `factory_next`(`moai factory next`), " +
 			"`factory_stage`(`moai factory stage`), `factory_complete`(`moai factory complete`), `factory_decide`(`moai factory decide`).",
-		laneOwnedCardRule: "팩토리 레인 담당 카드 규칙: 이 세션은 카드 %[1]s — MOAI_KANBAN_CARD 에 기록된 id — 를 담당하며 현재 워크트리에서 작업합니다. " +
+		laneOwnedCardRule: "팩토리 레인 담당 카드 규칙: 이 세션은 카드 %[1]s — %[2]s 에 기록된 id — 를 담당하며 현재 워크트리에서 작업합니다. " +
 			"그 카드를 merge-ready 까지 진행하세요. 카드 인계 시 실행 단계를 `TaskCreate` 로 등록하고, 단계가 바뀔 때마다 `TaskUpdate` 로 목록을 현재 상태로 유지하며, " +
 			"각 단계를 `moai factory stage` 로 기록하고, 태스크 목록이 종결 상태를 반영할 때만 `moai factory complete` 로 마칩니다 — 반영하지 않는다면 그 이유를 명시합니다. " +
 			"그런 다음 이 세션을 종료합니다. 다른 카드를 가져오거나 임대하지 않습니다.",
@@ -263,7 +263,7 @@ var factoryLocales = map[string]factoryMessages{
 			"一覧が終了状態を反映しているときにだけ完了を記録します — 反映していない場合はその理由を明示します。 " +
 			"ツールと CLI の対応: `todo_add`(`moai todo add`)、`todo_list`(`moai todo`)、`factory_next`(`moai factory next`)、 " +
 			"`factory_stage`(`moai factory stage`)、`factory_complete`(`moai factory complete`)、`factory_decide`(`moai factory decide`)。",
-		laneOwnedCardRule: "ファクトリーレーン担当カード規則: このセッションはカード %[1]s — MOAI_KANBAN_CARD に記録された id — を担当し、現在のワークツリーで作業します。 " +
+		laneOwnedCardRule: "ファクトリーレーン担当カード規則: このセッションはカード %[1]s — %[2]s に記録された id — を担当し、現在のワークツリーで作業します。 " +
 			"そのカードを merge-ready まで進めます。カードの引き受け時に実行段階を `TaskCreate` で登録し、段階が移るたびに `TaskUpdate` で一覧を現在の状態に保ち、 " +
 			"各段階を `moai factory stage` で記録し、タスク一覧が終了状態を反映しているときにだけ `moai factory complete` で締めます — 反映していない場合はその理由を明示します。 " +
 			"その後、このセッションを終了してください。他のカードを取得したりリースしたりしません。",
@@ -322,7 +322,7 @@ var factoryLocales = map[string]factoryMessages{
 			"仅当列表已反映结束状态时才记录完成 — 否则明确说明原因。 " +
 			"工具及其 CLI 等价物：`todo_add`（`moai todo add`）、`todo_list`（`moai todo`）、`factory_next`（`moai factory next`）、 " +
 			"`factory_stage`（`moai factory stage`）、`factory_complete`（`moai factory complete`）、`factory_decide`（`moai factory decide`）。",
-		laneOwnedCardRule: "工厂泳道负责卡规则：本会话负责卡片 %[1]s — MOAI_KANBAN_CARD 中记录的 id — 并在当前工作树中工作。 " +
+		laneOwnedCardRule: "工厂泳道负责卡规则：本会话负责卡片 %[1]s — %[2]s 中记录的 id — 并在当前工作树中工作。 " +
 			"把该卡推进到 merge-ready：接手卡片时用 `TaskCreate` 登记执行阶段，每次阶段切换时用 `TaskUpdate` 保持列表反映当前状态， " +
 			"用 `moai factory stage` 记录各阶段，仅当任务列表已反映结束状态时才用 `moai factory complete` 收尾 — 否则明确说明原因。 " +
 			"然后结束本会话；不要领取或租用其他卡片。",
