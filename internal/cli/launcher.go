@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // --- Unified Launch ---
@@ -905,21 +906,29 @@ func parseProfileFlag(args []string) (string, []string, error) {
 // launch_view.go; resolveWorktreeL2Path derives it from raw args for callers
 // outside the cc / glm launch paths). It runs BEFORE normalizeWorktreeFlag.
 //
-// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010). The launcher's -w flag
-// accepts three kinds of values:
+// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010); accepted prefixes
+// updated by SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005) to the home root
+// plus the legacy roots. The launcher's -w flag accepts these kinds of
+// values:
 //
 //  1. A short name (e.g. "feat-login"). normalizeWorktreeFlag rewrites it into
 //     the canonical "--worktree <name>" two-token form for claude pass-through;
 //     claude then resolves the name against .claude/worktrees/<name>. This
-//     step MUST NOT interfere with short-name inputs.
-//  2. An absolute path under ~/.moai/worktrees/<project>/... (an L2 persistent
-//     worktree created by `moai worktree new` or the auto-isolation
-//     procedure). claude accepts an absolute --worktree value and uses it
-//     directly, so this step accepts the path and leaves args unchanged.
+//     step MUST NOT interfere with short-name inputs; the M2 entry rewrite
+//     for short names naming an existing home-root tree lives in
+//     rewriteExistingWorktreeShortName (REQ-WHR-006).
+//  2. An absolute path under the home-level root
+//     <MoaiHome>/worktrees/projects/<project-key>/<name> (the M2 home-root
+//     form) or under the legacy ~/.moai/worktrees/... (an L2 persistent
+//     worktree). Measurement PM-3 (operator ruling bd72) recorded that
+//     claude 2.1.303 REJECTS absolute --worktree values at argument
+//     validation — the real backend's acceptance is the entry measurement's
+//     domain (REQ-WHR-025); this step's launcher-side prefix validation is
+//     unchanged and leaves accepted args unchanged.
 //  3. An absolute path under <project>/.claude/worktrees/... (an L1
 //     Claude-native worktree). Treated the same as case 2.
 //
-// An absolute path NOT under either accepted prefix is REJECTED with a clear
+// An absolute path NOT under an accepted prefix is REJECTED with a clear
 // error so the launcher does not silently fall through to creating a new
 // worktree under either prefix (AC-WES-010c).
 //
@@ -947,8 +956,13 @@ func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
 		// Short name: defer to normalizeWorktreeFlag + claude resolution.
 		return nil
 	}
-	// Absolute path: must be under an accepted worktree prefix.
+	// Absolute path: must be under an accepted worktree prefix — the home
+	// root (<MoaiHome>/worktrees/projects, the M2 form) plus the legacy
+	// roots.
 	var acceptedPrefixes []string
+	if home, err := paths.MoaiHome(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(home, "worktrees", "projects"))
+	}
 	if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
 	}
@@ -964,11 +978,57 @@ func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
 	}
 	return fmt.Errorf(
 		"worktree path %q is not under an accepted worktree prefix\n"+
-			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
+			"  accepted prefixes: <MoaiHome>/worktrees/projects/ (home root), ~/.moai/worktrees/ (L2 legacy),\n"+
+			"  .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
 			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,
 	)
+}
+
+// rewriteExistingWorktreeShortName implements REQ-WHR-006's entry clause on
+// the normalized launch argv: a -w short name that names exactly one
+// existing tree under the HOME root is rewritten to that tree's absolute
+// path, so the backend re-enters the tree instead of creating a duplicate
+// under .claude/worktrees. A legacy-root match passes through unchanged —
+// claude re-enters legacy short names natively — and so does no match at
+// all: under branch Y of D-5 (PM-3 recorded FAIL, operator ruling bd72) the
+// launcher creates nothing, and the short-name-without-existing-tree
+// pass-through is the single documented exception to "no creation path
+// names a legacy root" (REQ-WHR-006 branch Y, REQ-WHR-020). An ambiguous
+// name (two or more roots) also passes through unchanged; the ambiguity
+// report belongs to the callers that enumerate candidates (REQ-WHR-022).
+// Applied after the view is built and before the argv is handed to the
+// launch seam (cc.go / glm.go); the stage reads keep the value as typed.
+func rewriteExistingWorktreeShortName(args []string) []string {
+	read := readFirstWorktree(args)
+	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+		return args
+	}
+	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
+		return args
+	}
+	root, err := findProjectRootFn()
+	if err != nil {
+		return args
+	}
+	cands, err := worktreeroot.Candidates(root, read.Value)
+	if err != nil || len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
+		return args
+	}
+	rewritten := make([]string, len(args))
+	copy(rewritten, args)
+	for i := 1; i < len(rewritten); i++ {
+		switch {
+		case rewritten[i] == read.Value && (rewritten[i-1] == "--worktree" || rewritten[i-1] == "-w"):
+			rewritten[i] = cands[0].Path
+			return rewritten
+		case rewritten[i] == "--worktree="+read.Value:
+			rewritten[i] = "--worktree=" + cands[0].Path
+			return rewritten
+		}
+	}
+	return args
 }
 
 // isUnderWorktreePrefix reports whether path is contained within prefix.

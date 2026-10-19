@@ -372,7 +372,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	filteredArgs = view.LaunchArgs
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006): see cc.go — the same
+	// short-name entry rewrite applies to the glm launch path.
+	filteredArgs = rewriteExistingWorktreeShortName(view.LaunchArgs)
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: see cc.go — the dump precedes the launch.

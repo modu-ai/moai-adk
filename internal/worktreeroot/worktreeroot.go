@@ -246,7 +246,16 @@ func claim(home, candidate, canonical string, pinned bool, base string) (string,
 	markerPath := filepath.Join(projects, folder, markerName)
 	owner, err := readMarkerOwner(markerPath)
 	if err != nil {
-		return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder, markerPath, err)
+		// A folder with NO marker is unowned, not refused: claim it.
+		// AC-WHR-003b refuses a marker that exists but cannot be read or
+		// parsed, never an absent one.
+		if !os.IsNotExist(err) {
+			return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder, markerPath, err)
+		}
+		if werr := writeMarker(filepath.Join(projects, folder), canonical); werr != nil {
+			return "", werr
+		}
+		return folder, nil
 	}
 	if strings.EqualFold(owner, canonical) {
 		return folder, nil

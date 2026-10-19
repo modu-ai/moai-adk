@@ -182,7 +182,11 @@ func TestLauncherBranchMaterialize_HomeRootBranchAndHead(t *testing.T) {
 
 	m2Git(t, repo, "branch", "existing-b")
 	head := m2Git(t, repo, "rev-parse", "existing-b")
-	branchesBefore := m2Git(t, repo, "branch", "--list")
+	// The name set, not the annotated `branch --list` output: checking the
+	// branch out in the new tree (which this criterion requires) marks it
+	// with the worktree-checkout "+" annotation, so byte equality of the
+	// annotated form would contradict the checkout clause itself.
+	branchesBefore := m2Git(t, repo, "for-each-ref", "refs/heads", "--format=%(refname:short)")
 
 	var notices bytes.Buffer
 	if err := launcherWorktreeMaterializeReal(repo, "m2b", "existing-b", &notices); err != nil {
@@ -201,8 +205,8 @@ func TestLauncherBranchMaterialize_HomeRootBranchAndHead(t *testing.T) {
 	if got := m2Git(t, want, "rev-parse", "HEAD"); got != head {
 		t.Errorf("HEAD = %q, want the branch's pre-materialization %q", got, head)
 	}
-	if after := m2Git(t, repo, "branch", "--list"); after != branchesBefore {
-		t.Errorf("branch list changed:\nbefore:\n%s\nafter:\n%s", branchesBefore, after)
+	if after := m2Git(t, repo, "for-each-ref", "refs/heads", "--format=%(refname:short)"); after != branchesBefore {
+		t.Errorf("branch name set changed:\nbefore:\n%s\nafter:\n%s", branchesBefore, after)
 	}
 	state, err := os.ReadFile(filepath.Join(repo, ".moai", "state", "worktrees.json"))
 	if err != nil {

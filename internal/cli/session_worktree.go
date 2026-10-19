@@ -30,6 +30,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 	"github.com/spf13/cobra"
 )
 
@@ -220,7 +221,14 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// common dir itself, but moai init/profile/web operate inside a working
 	// tree, so the parent is correct.
 	projectRoot := filepath.Dir(commonDir)
-	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the destination comes
+	// from the resolver — <MoaiHome>/worktrees/projects/<project-key>/<branch>
+	// — not from the in-repo .moai/worktrees root. The existence guard, the
+	// base-branch cut and every later step are unchanged.
+	destDir, err := worktreeroot.PathFor(projectRoot, branch)
+	if err != nil {
+		return "", fmt.Errorf("resolve home-root destination: %w", err)
+	}
 	if _, statErr := os.Lstat(destDir); statErr == nil {
 		return "", fmt.Errorf("worktree %q already exists at %s", branch, destDir)
 	} else if !os.IsNotExist(statErr) {

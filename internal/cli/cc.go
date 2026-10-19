@@ -318,7 +318,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// the tree untouched (audit F0, sync-audit-opus.md).
 	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	filteredArgs = view.LaunchArgs
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006): a short name naming an
+	// existing home-root tree is entered by rewriting it to the tree's
+	// absolute path; every other short name passes through unchanged
+	// (branch Y — the launcher creates nothing).
+	filteredArgs = rewriteExistingWorktreeShortName(view.LaunchArgs)
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: the backend launch replaces this process
