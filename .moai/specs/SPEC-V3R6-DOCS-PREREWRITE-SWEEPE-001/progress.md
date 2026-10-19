@@ -2,7 +2,9 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-audit-pending
+plan_status: audited-pass
+audit_ready: true
+plan_audit_iteration_3: PASS 0.91, verdict file `.moai/reports/t1725/plan-audit-verdict-iter3.md`, audited_sha ed1512b869a820c8ff33eb248eab447a0119a402, plan_artifact_hash aa66a04ecd01b76ee264ead4c52fc42d152f8a33fe24725f12f39396041aca81, receipt rcpt-e182b42500cf048189d6bdbd (re-runs rcpt-ef41fab8f889725087eb1f75, rcpt-34eef81c2d33487bc250a9c0)
 plan_revision: 0.3.0
 plan_commit: 6d335cd483 (feat(SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001): plan-phase artifacts (tier M, 3 artifacts), card t1725)
 plan_followup_commits: b28da6f891 (progress.md and decision-index.md), bb7d928f68 (cite REQ in ACs, QE-1 relabel)
