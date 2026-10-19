@@ -1,7 +1,7 @@
 ---
 id: SPEC-DEPLOY-STEP-OPTIN-001
 title: "배포본 자동화 단계별 명시 opt-in — 기본은 모두 수동, 설정은 하나의 해석기가 판정하고 MoAI Web이 보여 주고 검증한다"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -21,6 +21,7 @@ related_specs: [SPEC-REVIEW-GATE-REPAIR-001, SPEC-PROJECT-CONTINUATION-KEY-001, 
 
 ## HISTORY
 
+- 2026-10-19 · v0.2.2 · manager-spec · 2회차 plan-audit(FAIL 0.90, `.moai/reports/t1895/plan-audit-iter2.md`) 개정. R2-D1: REQ-DSO-004 영문 본문의 seven 을 six 로(재범위 누락 표면). R2-D2: Q7=(c) 제거 plan 이 컴파일·통과 가능해지도록 defaults.go(:1354/1367/1383 리터럴)·defaults_test.go(:258) 를 M6 파일 목록에 더하고 종료 명령을 "제거가 고치는 시험 파일" 기준으로 재진술. R2-D3: 표식 아래 "멈추기 전" 표시 입력을 `project_value`/`local_value` 계층 우선순위 도출로 명명 + 서버 시작 시 표식 사례 시험 추가. R2-D4: research.md §6·§7 을 판정 후 상태로 스윕.
 - 2026-10-19 · v0.2.1 · manager-spec · Q8 경계 재정 반영: 판정(project 계층, 명시 `auto`)은 유효하되 실제 설정 파일 쓰기(`.moai/config/sections/workflow.yaml`)는 운영자 keep-set 으로 별도 운영자 승인을 게이트로 요구한다(spec §D.1 · plan M6 (3)·§C·§F · design §6 · decision-index Q8).
 - 2026-10-19 · v0.2.0 · manager-spec · 제품 결정 행 판정 기록과 일관성 스윕. Q1–Q9, Q14 판정(운영자 상시 규칙 — Jev, 불충분 시 Codex 교차; 리더 run tn564n 중계)을 decision-index 에 기록했다. Q4=(b) 로 REQ-DSO-017 · AC-DSO-021 · M7 을 빼 여섯 단계 SPEC 이 되었다(017·021 은 결번). Q5=(a) 로 단계별 fallback 확정. Q7=(c) 로 읽지 않는 `auto_push`/`auto_pr` 제거를 M6 에 둔다. Q8=(a) OPERATOR-HELD(리더 거부권 대기). Q9=(b) 로 즉시 중지를 `.moai/state/` 정지 표식으로 바꿨다. Q11 은 열려 있다.
 - 2026-10-19 · v0.1.1 · manager-spec · 1회차 plan-audit(FAIL 0.85, `.moai/reports/t1895/plan-audit.md`) 개정. D1: REQ-DSO-016 을 쓰기+알림으로 정렬(결정 Q15, DECIDED). D2: REQ-DSO-010 의 게이트 지점을 공유 임대 이음매로 확장. D3: M2 의 Q3·Q4 재범위 기록. D4: AC-DSO-021 순서·결과 사용. D5: 완료 정의 (2) 재진술. D6 은 수정 없음.
@@ -91,7 +92,7 @@ When a stage's value is absent, null, of the wrong type, outside the domain or d
 
 ### REQ-DSO-004 — 한 단계의 auto 는 다른 단계를 열지 않는다 (Ubiquitous, M2·M3)
 
-The stage-policy resolver shall treat the seven stages independently, and an automatic stage shall not perform, imply or enable any earlier or later stage.
+The stage-policy resolver shall treat the six stages independently, and an automatic stage shall not perform, imply or enable any earlier or later stage.
 
 물리적으로 앞 단계가 있어야 하는 단계(PR 생성은 원격 브랜치가, merge 요청은 열린 PR이 필요하다)는 앞 단계를 대신 수행하지 않고, 수동인 앞 단계의 이름을 대며 멈춘다(REQ-DSO-008, REQ-DSO-009).
 

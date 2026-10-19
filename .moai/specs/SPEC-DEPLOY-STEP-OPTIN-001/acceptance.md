@@ -208,10 +208,10 @@
 
 - **Given** 여러 단계가 `auto` 이고 그중 하나는 local override 가 `auto` 로 이긴 프로젝트이며, 전달 본체가 실행 중이다(시험 이음매).
 - **When** 웹의 stop 동작이 실행된다.
-- **Then** `.moai/state/` 아래 정지 표식이 한 번의 원자적 쓰기로 생기고 감사 기록 한 줄이 남는다. 표식이 서 있는 동안 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다 — local override 로 `auto` 인 단계도 포함된다(표식이 세 계층을 모두 이긴다, Q9=(b)). 웹 화면은 표식 상태와 멈추기 전의 단계별 효력·출처를 알린다. release 동작은 표식을 지우고 감사 기록 한 줄을 남기며, 경계는 다시 계층 값을 따른다. 표식은 조용히 만료되지 않는다(명시적 release 만 지운다).
+- **Then** `.moai/state/` 아래 정지 표식이 한 번의 원자적 쓰기로 생기고 감사 기록 한 줄이 남는다. 표식이 서 있는 동안 실행 중이던 본체는 죽지 않고 다음 경계에서 멈춘다 — local override 로 `auto` 인 단계도 포함된다(표식이 세 계층을 모두 이긴다, Q9=(b)). 웹 화면은 표식 상태와 멈추기 전의 단계별 효력·출처를 알린다(멈추기 전 값은 표식이 서 있어도 해석기가 돌려주는 `project_value`/`local_value` 에 계층 우선순위를 적용해 도출한다 — 별도 저장 입력 없음, design §3). release 동작은 표식을 지우고 감사 기록 한 줄을 남기며, 경계는 다시 계층 값을 따른다. 표식은 조용히 만료되지 않는다(명시적 release 만 지운다).
 - **RED-now** L47. 이유: stop·release 동작과 표식 읽기가 없다.
-- **녹색 경로** M4: `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed`(internal/web), `TestStopMarker_BoundariesStopWhileMarkerStands`(internal/cli) 가 `--- PASS` 3개.
-- **변이체 탐침** 표식 대신 설정 값을 쓰는 변이체는 표식 파일 부재 단언에서 빨개진다. 표식이 local override 을 이기지 못하는 변이체는 override 단계의 정지 단언에서 빨개진다. 표식을 쓰지만 경계가 읽지 않는 변이체는 `TestStopMarker_BoundariesStopWhileMarkerStands` 에서 빨개진다. 실행 중 프로세스를 종료하는 변이체는 보존 단언에서 빨개진다. release 를 감사하지 않는 변이체도 빨개진다.
+- **녹색 경로** M4: `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed`, `TestStopMarker_ServerStartWithExistingMarkerShowsState`(internal/web), `TestStopMarker_BoundariesStopWhileMarkerStands`(internal/cli) 가 `--- PASS` 4개.
+- **변이체 탐침** 표식 대신 설정 값을 쓰는 변이체는 표식 파일 부재 단언에서 빨개진다. 표식이 local override 을 이기지 못하는 변이체는 override 단계의 정지 단언에서 빨개진다. 표식을 쓰지만 경계가 읽지 않는 변이체는 `TestStopMarker_BoundariesStopWhileMarkerStands` 에서 빨개진다. 서버 시작 시 이미 있는 표식을 화면이 숨기는 변이체는 `TestStopMarker_ServerStartWithExistingMarkerShowsState` 에서 빨개진다. 실행 중 프로세스를 종료하는 변이체는 보존 단언에서 빨개진다. release 를 감사하지 않는 변이체도 빨개진다.
 
 ### AC-DSO-020 — 웹 저장의 안전 경계 (REQ-DSO-016)
 
@@ -261,11 +261,11 @@
 | `TestSettingsPage_ShowsStageEffectiveSourceOverrideImpact` | `internal/web/stage_policy_handler_test.go` | 016 | 1 |
 | `TestSave_RejectsInvalidStageValueAtomically`, `TestSave_UnknownOrDuplicateStageRejected` | 같은 파일 | 017 | 2+2 |
 | `TestSave_ResponseCarriesReReadPolicyAndRevision`, `TestSave_WritesAuditRecord`, `TestSave_RejectedSaveIsAudited` | 같은 파일 | 018 | 1+1+1 |
-| `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed` | 같은 파일 | 019 | 1+1 |
+| `TestStopAll_WritesStopMarkerAndAudits`, `TestStopAll_MarkerBeatsLocalOverrideAndIsDisclosed`, `TestStopMarker_ServerStartWithExistingMarkerShowsState` | 같은 파일 | 019 | 1+1+1 |
 | `TestSave_NonLoopbackHostDeniedForStageForm`, `TestSave_CrossSiteDeniedForStageForm`, `TestSave_ProjectWriteUnderLocalOverrideIsDisclosed`, `TestSave_ConcurrentStageSavesSerialized`, `TestSave_CannotWriteLocalTier` | 같은 파일 | 020 | 1+1+1+1+1 |
 | `TestStagePolicy_WebSaveToRuntimeEndToEnd`, `TestStopMarker_BoundariesStopWhileMarkerStands` | `internal/cli/stage_policy_e2e_test.go` | 022, 019 | 1+1 |
 
-최상위 시험 함수는 48개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
+최상위 시험 함수는 49개다(위 표의 함수 이름을 하나씩 센 값). 위 표에 없는 시험 이름은 만들지 않는다. 기존 시험은 이 작업이 기대값을 바꾸지 않고 통과해야 한다: `internal/cli/factory_card_pr_test.go`(전체), `internal/cli/factory_autodispatch_test.go`, `internal/config/project_continuation_test.go`, `internal/config/todo_enabled_test.go`, `internal/web/host_gate_test.go`, `internal/settings/write_safety_test.go`, `internal/cli/init_quiet_wizard_test.go`, `internal/cli/update/backup/node_merge_test.go`. 단 `factory_card_pr_test.go` 는 push/PR/merge 가 기본 수동이 된 결과 정책을 `auto` 로 두는 준비 코드를 더해야 하며, 그 기대값 변경은 M3 의 승인 파일 목록에 있다(plan.md §C).
 
 ## §E 입력 메모의 후보 기준과의 대응
 
