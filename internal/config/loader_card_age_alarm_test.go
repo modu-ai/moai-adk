@@ -2,12 +2,15 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // SPEC-CARD-AGE-ALARM-001 (card t1838), milestone M1: the workflow.card_age_alarm
@@ -150,11 +153,8 @@ func TestCardAgeAlarmTemplateCarriesBlock(t *testing.T) {
 		t.Fatalf("read template workflow.yaml: %v", err)
 	}
 	body := string(raw)
-	if !strings.Contains(body, "card_age_alarm:") {
-		t.Fatal("template workflow.yaml carries no card_age_alarm block")
-	}
-	if !strings.Contains(body, "enabled: false") {
-		t.Fatal("template card_age_alarm block does not show the OFF flag")
+	if err := caaTemplateAlarmOff(raw); err != nil {
+		t.Fatal(err)
 	}
 	for _, pair := range []struct {
 		key  string
@@ -229,5 +229,40 @@ func TestCardAgeAlarmTypeErrorIsolated(t *testing.T) {
 	}
 	if !strings.Contains(logs.String(), "workflow.card_age_alarm") {
 		t.Fatalf("the warning does not name the key path workflow.card_age_alarm:\n%s", logs.String())
+	}
+}
+
+// caaTemplateAlarmOff checks the exact typed key, including block presence.
+func caaTemplateAlarmOff(raw []byte) error {
+	var shipped struct {
+		Workflow struct {
+			CardAgeAlarm *struct {
+				Enabled *bool `yaml:"enabled"`
+			} `yaml:"card_age_alarm"`
+		} `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal(raw, &shipped); err != nil {
+		return err
+	}
+	if shipped.Workflow.CardAgeAlarm == nil {
+		return fmt.Errorf("template carries no workflow.card_age_alarm block")
+	}
+	if shipped.Workflow.CardAgeAlarm.Enabled == nil || *shipped.Workflow.CardAgeAlarm.Enabled {
+		return fmt.Errorf("template workflow.card_age_alarm.enabled must be false")
+	}
+	return nil
+}
+
+// A sibling OFF flag must not mask an enabled alarm in the shipped template.
+func TestCardAgeAlarmTemplateTypedFlagDiscriminator(t *testing.T) {
+	for _, body := range []string{
+		"workflow:\n  sibling:\n    enabled: false\n  card_age_alarm:\n    enabled: true\n",
+		"workflow:\n  sibling:\n    enabled: false\n",
+		"workflow:\n  card_age_alarm: {}\n",
+		"workflow:\n  card_age_alarm:\n    enabled: null\n",
+	} {
+		if err := caaTemplateAlarmOff([]byte(body)); err == nil {
+			t.Fatalf("template validator accepted mutant: %s", body)
+		}
 	}
 }

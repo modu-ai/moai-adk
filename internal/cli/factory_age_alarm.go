@@ -75,7 +75,17 @@ func computeFactoryAgeAlarms(ctx context.Context, root, runID string, db *homest
 		if class == "" {
 			continue
 		}
-		ages := homestate.ComputeCardAges(c, byCard[[2]string{c.RunID, c.CardID}], factoryAgeAlarmCommitAt, now)
+		cardEvents := byCard[[2]string{c.RunID, c.CardID}]
+		ages := homestate.ComputeCardAges(c, cardEvents, nil, now)
+		// A real non-commit basis can only become newer with a commit.
+		// The no-events updated_at fallback is different: a valid commit
+		// replaces it, even when older, so it must still be read.
+		if class == homestate.AgeClassNoProgress && len(cardEvents) > 0 && ages.NoProgress.Known && ages.NoProgress.Age < bands.StallWarn {
+			continue
+		}
+		ages = homestate.ComputeCardAges(c, cardEvents, func(path string) (time.Time, bool) {
+			return factoryAgeAlarmCommitAt(ctx, path)
+		}, now)
 		if row, ok := bandAgeAlarm(c, class, ages, bands); ok {
 			rows = append(rows, row)
 		}
@@ -154,8 +164,8 @@ func writeFactoryAgeAlarmText(w io.Writer, rows []factoryAgeAlarmView, warning s
 // unreadable worktree, a failed or timed-out invocation, and an unparseable
 // stamp all render unknown — never a fabricated value, never a failed status
 // command.
-func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), factoryAgeAlarmGitTimeout)
+func factoryAgeAlarmCommitAt(parent context.Context, worktreePath string) (time.Time, bool) {
+	ctx, cancel := context.WithTimeout(parent, factoryAgeAlarmGitTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "-C", worktreePath, "-c", "log.showSignature=false", "log", "-1", "--format=%cI")
 	cmd.Env = ageAlarmChildEnv()

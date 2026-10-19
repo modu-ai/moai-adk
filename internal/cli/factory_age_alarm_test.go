@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -337,7 +338,7 @@ func caaFutureCommitRepo(t *testing.T) string {
 	git := func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(gitenv.Env(),
 			"GIT_COMMITTER_DATE="+fcNow.Add(24*time.Hour).Format(time.RFC3339),
 			"GIT_AUTHOR_DATE="+fcNow.Add(-48*time.Hour).Format(time.RFC3339),
 		)
@@ -430,7 +431,7 @@ func caaDatedRepo(t *testing.T, at time.Time, signatureTrap bool) (dir, marker s
 	git := func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(gitenv.Env(),
 			"GIT_COMMITTER_DATE="+at.Format(time.RFC3339),
 			"GIT_AUTHOR_DATE="+at.Format(time.RFC3339),
 		)
@@ -484,7 +485,7 @@ func caaLazyFetchTrapRepo(t *testing.T, at time.Time) (dir, marker string) {
 	git := func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(gitenv.Env(),
 			"GIT_COMMITTER_DATE="+at.Format(time.RFC3339),
 			"GIT_AUTHOR_DATE="+at.Format(time.RFC3339),
 		)
@@ -676,5 +677,133 @@ func TestFactoryAgeAlarmChildEnvProtocolPin(t *testing.T) {
 	}
 	if v, ok := values["GIT_TERMINAL_PROMPT"]; !ok || v != "0" {
 		t.Errorf("GIT_TERMINAL_PROMPT = present=%v value=%q, want present with \"0\" (iter1 F1 pin regressed)", ok, v)
+	}
+}
+
+func TestFactoryAgeAlarmFreshCardSkipsGit(t *testing.T) {
+	_, _ = fcFixture(t)
+	root := factoryCardRoot()
+	caaEnableAlarm(t, root, "")
+	db := fcOpen(t, root)
+	bin := t.TempDir()
+	marker := filepath.Join(bin, "git-ran")
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\necho ran >> '"+marker+"'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if _, err := db.RecordPicked(context.Background(), fcRun, "fresh", homestate.CardFields{}, "op", fcNow.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	c := homestate.Card{CardID: "fresh", RunID: fcRun, State: homestate.CardRun, WorktreePath: root, UpdatedAt: fcNow.Add(-time.Minute).Format(time.RFC3339)}
+	rows, warning := computeFactoryAgeAlarms(context.Background(), root, fcRun, db, []homestate.Card{c}, fcNow)
+	if warning != "" || len(rows) != 0 {
+		t.Fatalf("rows=%v warning=%q", rows, warning)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("fresh card invoked git: %v", err)
+	}
+}
+
+func TestFactoryAgeAlarmFixturesIgnoreInheritedGitDir(t *testing.T) {
+	_, _ = fcFixture(t)
+	foreign, _ := caaDatedRepo(t, fcNow.Add(-time.Hour), false)
+	head := exec.Command("git", "-C", foreign, "rev-parse", "HEAD")
+	head.Env = gitenv.Env()
+	before, err := head.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := map[string][]byte{}
+	for _, name := range []string{"config", "index", "refs/heads/main"} {
+		raw, err := os.ReadFile(filepath.Join(foreign, ".git", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		metadata[name] = raw
+	}
+	t.Setenv("GIT_DIR", filepath.Join(foreign, ".git"))
+	t.Setenv("GIT_WORK_TREE", foreign)
+	_ = caaFutureCommitRepo(t)
+	_, _ = caaDatedRepo(t, fcNow, false)
+	_, _ = caaLazyFetchTrapRepo(t, fcNow)
+	head = exec.Command("git", "-C", foreign, "rev-parse", "HEAD")
+	head.Env = gitenv.Env()
+	after, err := head.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatalf("fixture changed foreign HEAD: %s -> %s", before, after)
+	}
+	for name, before := range metadata {
+		after, err := os.ReadFile(filepath.Join(foreign, ".git", name))
+		if err != nil || string(before) != string(after) {
+			t.Fatalf("fixture changed foreign %s: err=%v", name, err)
+		}
+	}
+}
+
+func TestFactoryAgeAlarmCallerCancellation(t *testing.T) {
+	_, _ = fcFixture(t)
+	root := factoryCardRoot()
+	caaEnableAlarm(t, root, "")
+	db := fcOpen(t, root)
+	bin := t.TempDir()
+	marker := filepath.Join(bin, "started")
+	// exec replaces the shell, so cancellation cannot leave a descendant
+	// holding Output's pipe. sleep also bounds the broken implementation.
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\necho ran > '"+marker+"'\nexec /bin/sleep 2\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	c := homestate.Card{CardID: "stalled", RunID: fcRun, State: homestate.CardRun, WorktreePath: root, UpdatedAt: fcNow.Add(-24 * time.Hour).Format(time.RFC3339)}
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, _ = computeFactoryAgeAlarms(ctx, root, fcRun, db, []homestate.Card{c}, fcNow)
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("caller cancellation did not stop git: elapsed=%s", elapsed)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("in-flight control: git never started: %v", err)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel = context.WithCancel(context.Background())
+	cancel()
+	if _, known := factoryAgeAlarmCommitAt(ctx, root); known {
+		t.Fatal("canceled commit read returned a known stamp")
+	}
+	_, _ = computeFactoryAgeAlarms(ctx, root, fcRun, db, []homestate.Card{c}, fcNow)
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("canceled caller started git: %v", err)
+	}
+}
+
+func TestFactoryAgeAlarmGitLookupPreservesBands(t *testing.T) {
+	_, _ = fcFixture(t)
+	root := factoryCardRoot()
+	caaEnableAlarm(t, root, "")
+	db := fcOpen(t, root)
+	repo, _ := caaDatedRepo(t, fcNow.Add(-10*time.Hour), false)
+	cards := []homestate.Card{
+		{CardID: "fallback", RunID: fcRun, State: homestate.CardRun, WorktreePath: repo, UpdatedAt: fcNow.Add(-time.Minute).Format(time.RFC3339)},
+		{CardID: "gate", RunID: fcRun, State: homestate.CardBlocked, WorktreePath: repo, UpdatedAt: fcNow.Add(-12 * time.Hour).Format(time.RFC3339)},
+	}
+	rows, warning := computeFactoryAgeAlarms(context.Background(), root, fcRun, db, cards, fcNow)
+	if warning != "" || len(rows) != 2 {
+		t.Fatalf("rows=%+v warning=%q", rows, warning)
+	}
+	for _, row := range rows {
+		if row.Commit != "10h0m0s" {
+			t.Fatalf("commit display lost: %+v", row)
+		}
+		if row.Card == "fallback" && (row.Age != "10h0m0s" || row.Band != "alert") {
+			t.Fatalf("fallback semantics changed: %+v", row)
+		}
+		if row.Card == "gate" && (row.Age != "12h0m0s" || row.Band != "warn") {
+			t.Fatalf("gate semantics changed: %+v", row)
+		}
 	}
 }
