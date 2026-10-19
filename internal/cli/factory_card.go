@@ -49,6 +49,12 @@ var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
 // or the queue. The default is inert.
 var factoryLeaseAtPassEntry = func() {}
 
+// factoryLeaseWaitStart is the test seam of a lease call's first queue-lock wait
+// (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-007 (c)). factoryLeaseSection calls it once
+// per lease call with the clock read taken immediately before that wait. It is
+// inert: it writes no log and no record, and only tests consume the value.
+var factoryLeaseWaitStart = func(time.Time) {}
+
 // The lease path's claim bound and the worktree step's lock wait
 // (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3; deadline resized by card
 // t1696). The claim wait cap is the sum of the claim's context deadline and
@@ -393,7 +399,8 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 			leased, raced bool
 			passErr       error
 		)
-		ran, lockErr := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
+		// Only the first attempt is the lease call's queue-lock wait; a retry adds no clock read.
+		ran, lockErr := factoryLeaseSection(store, attempt == 0, func(l *factory.LockedBacklog) {
 			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)
 		})
 		if !ran {
@@ -428,10 +435,19 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // it is false err is the lock's acquisition failure, and when it is true err is
 // at most the lock's release failure.
 //
+// leaseWait marks the section that opens a lease call's first queue-lock wait:
+// the nominated lease passes true, the bare form passes true on its first attempt
+// only, and the bundle load (not a lease call) passes false. A marked wait reads
+// the clock once for the factoryLeaseWaitStart seam, so each lease call reads it
+// exactly once, immediately before the wait.
+//
 // @MX:WARN: [AUTO] the lease section holds the queue lock across a factory-record write, so its worst hold is the claim wait cap plus one promotion and one restore
 // @MX:REASON: inside fn the queue is read and written only through the handle (a public Mutate waits out the whole budget on the section's own descriptor), and nothing here may start a git process or create a worktree (REQ-FAL-007)
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
-func factoryLeaseSection(store *factory.BacklogStore, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+func factoryLeaseSection(store *factory.BacklogStore, leaseWait bool, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+	if leaseWait {
+		factoryLeaseWaitStart(factoryCardNow())
+	}
 	err = store.WithLock(func(l *factory.LockedBacklog) error {
 		ran = true
 		fn(l)
@@ -1503,7 +1519,7 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 		card    homestate.Card
 		outcome error
 	)
-	ran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *factory.LockedBacklog) {
+	ran, lockErr := factoryLeaseSection(todoStoreAt(root), true, func(l *factory.LockedBacklog) {
 		card, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)
 	})
 	switch {
@@ -1730,6 +1746,10 @@ func newFactoryNextCommand() *cobra.Command {
 			quotaLatch := &factoryQuotaLatch{}
 			for {
 				held, holdLine := quotaLatch.evaluate(root)
+				// The open-PR query of this attempt runs here, ahead of the attempt's queue
+				// lock, so a wait never prints a result older than the attempt that leases
+				// (factoryNextPRSnapshot).
+				openPRs := factoryNextPRSnapshot(ctx, root, runID, lane, nominee, held)
 				var card homestate.Card
 				leased := false
 				if nominee != "" {
@@ -1769,7 +1789,7 @@ func newFactoryNextCommand() *cobra.Command {
 						return fmt.Errorf("factory next: %s was leased (the lease stands in the record; do not re-run next for it — settle the worktree step instead): %w", card.CardID, err)
 					}
 					card.WorktreePath = wt
-					return factoryNextPrint(cmd, card)
+					return factoryNextPrint(cmd, card, openPRs)
 				}
 				if !wait || !factoryCardNow().Before(deadline) {
 					if held {
@@ -1798,17 +1818,219 @@ func newFactoryNextCommand() *cobra.Command {
 
 // factoryNextPrint reports the leased card (REQ-SD-008, plan B9) on the
 // command's streams; the writer form is what the MCP factory_next handler
-// shares (design.md §3 — one implementation per verb).
-func factoryNextPrint(cmd *cobra.Command, card homestate.Card) error {
-	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card)
+// shares (design.md §3 — one implementation per verb). openPRs is the open-PR
+// query the verb ran before the lease attempt that leased (factoryNextPRSnapshot).
+func factoryNextPrint(cmd *cobra.Command, card homestate.Card, openPRs openPRQuery) error {
+	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card, openPRs)
+}
+
+// errFactoryNextPRNotTaken is the outcome of an attempt that took no open-PR query
+// because no lease was reachable; the output reports it as an unavailable query.
+var errFactoryNextPRNotTaken = errors.New("no open-PR query was taken: no lease was reachable at the attempt")
+
+// factoryNextPRSnapshot takes the open-PR query of one lease attempt (the `next`
+// verb and the factory_next MCP handler call it once per attempt, before the
+// attempt's lease call). It runs ahead of the queue lock, so no network call lies
+// inside the lease section or after its release (SPEC-FACTORY-ATOMIC-LEASE-001
+// AC-FAL-015 (vii)), and an attempt that cannot lease takes none. The output path
+// prints the outcome and issues no query of its own.
+func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee string, held bool) openPRQuery {
+	// A cancelled request never reaches the output path, so its query is not
+	// taken either — the peek would otherwise fail open on the cancelled
+	// context's ListCards error and run a bounded gh subprocess for a caller
+	// that is already gone.
+	if ctx.Err() != nil {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
+	if !factoryNextMayLease(ctx, root, runID, lane, nominee, held) {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
+	return prefetchOpenPRs()
+}
+
+// factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
+// attempt can succeed. It over-approximates: false only when the queue and the
+// record show no card the attempt could take (an empty queue; an unknown,
+// keep-set, or serial-blocked nominee; a quota hold that leaves only the
+// lane's assigned card; an assigned card arm (a) itself would skip — its
+// queue item excluded, its selection skip, or its self-excluding serial read
+// busy; or a bare attempt whose every candidate is queued-excluded —
+// hold-marked, blocked, or one of the selection skips the un-nominated arms
+// apply: another lane's bundle member, an unmerged after-hint predecessor, an
+// unmerged hub predecessor (card t1746) — or a serial candidate whose own
+// self-excluding slot read is busy), and true whenever a read fails or the
+// answer needs the section's own checks. The serial read is the same
+// factorySerialInFlightExcluding the lease arms run, over the rows this peek
+// already loads. A lease that wins a race the peek could not see prints the
+// query as unavailable.
+func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string, held bool) bool {
+	rec, err := todoStoreAt(root).LoadPure()
+	if err != nil {
+		return true
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return true
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return true
+	}
+	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(rec, id) }
+	now := factoryCardNow()
+	rowByID := make(map[string]homestate.Card, len(rows))
+	for _, c := range rows {
+		rowByID[c.CardID] = c
+	}
+	if nominee != "" {
+		var row *homestate.Card
+		for i := range rows {
+			if rows[i].CardID == nominee {
+				row = &rows[i]
+				break
+			}
+		}
+		for _, it := range rec.Items {
+			if it.ID != nominee {
+				continue
+			}
+			// The serial read mirrors factoryNextValidate: only a serial
+			// nominee is blocked by the slot, and a lane nominating its own
+			// assigned card ignores sibling assigned rows (card t1542).
+			ownAssigned := row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane
+			serialHeld := classOf(nominee).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned)
+			if factoryKeepSetRefusal(it, row, lane, serialHeld) != nil {
+				return false
+			}
+			return !held || (row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane)
+		}
+		return false
+	}
+	// The selection skips, mirrored from the un-nominated arms over the rows
+	// this peek already loads (card t1746): another lane's bundle member, a
+	// candidate whose after-hint predecessor is unmerged, and a candidate with
+	// an unmerged sharer on any of its hub paths lease on no arm, so they are
+	// no candidate here either — answering true for one re-queried gh on every
+	// --wait poll. mergedLocal reads every run, the same set the selector's
+	// skip reads (card t1454); a read failure fails open like the reads above.
+	bundleLane := make(map[string]string, len(rows))
+	for _, c := range rows {
+		if c.BundleID != "" && strings.TrimSpace(c.OwnerLabel) != "" {
+			if _, seen := bundleLane[c.BundleID]; !seen {
+				bundleLane[c.BundleID] = strings.TrimSpace(c.OwnerLabel)
+			}
+		}
+	}
+	allRuns, err := db.ListCards(ctx, "")
+	if err != nil {
+		return true
+	}
+	mergedLocal := factoryMergedCards(allRuns)
+	hubWaitUnmerged := func(cardID string) (string, bool) {
+		return factoryHubWaitUnmerged(rec, rows, mergedLocal, cardID)
+	}
+	selectionSkips := func(c homestate.Card) bool {
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				return true
+			}
+		}
+		if c.HintAfter != "" && !mergedLocal[c.HintAfter] {
+			return true
+		}
+		_, wait := hubWaitUnmerged(c.CardID)
+		return wait
+	}
+	// Arm (a) mirror: an assigned-to-this-lane row is a candidate only past
+	// the same gates the lease edge applies — the queue item's keep-set
+	// refusal, the selection skips, and the self-excluding serial read with
+	// sibling assigned rows ignored (card t1542). An excluded, skipped, or
+	// serial-blocked assigned card leaves the attempt to the bare arms below.
+	for i := range rows {
+		c := rows[i]
+		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
+			continue
+		}
+		if it, inQueue := queueItemIn(rec, c.CardID); inQueue {
+			if factoryKeepSetRefusal(it, &rows[i], lane, false) != nil {
+				continue
+			}
+		}
+		if selectionSkips(c) {
+			continue
+		}
+		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
+			continue
+		}
+		return true
+	}
+	if held {
+		return false
+	}
+	// The bare path takes a NEW card, so sibling rows hold against it
+	// (ignoreAssigned=false). A candidate the selector itself skips is no
+	// candidate here either — each skip mirrors the arm that applies it: the
+	// hold marker and the blocked classification park only a QUEUED candidate
+	// (the promotion arm's predicates, and factoryQueuedHoldMarked's own
+	// state check); a PICKED candidate is leasable only through the
+	// operator-picked arms — (b2) with no record row, (b) with a picked row
+	// no lane owns — and a row in any other shape (an assigned row the arm
+	// (a) mirror above already judged, an in-flight row) holds the card out
+	// of the bare arms here too. The serial read is per candidate and
+	// self-excluding — arm (c)'s shape: a serial candidate whose own row is
+	// the only serial row still leases (card t1407's unwedge), so it must
+	// still query.
+	for _, it := range rec.Items {
+		// REQ-THS-012 positive enumeration: the two leasable states are
+		// named as cases; a state added later falls to default and is
+		// skipped, never silently included.
+		switch it.State {
+		case factory.BacklogStateQueued:
+			if factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked {
+				continue
+			}
+		case factory.BacklogStatePicked:
+			if row, hasRow := rowByID[it.ID]; hasRow &&
+				!(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+				continue
+			}
+		default:
+			continue
+		}
+		// The selection skips, mirrored per candidate from the arm that would
+		// take it: a recorded row answers to the full predicate (arms (b) and
+		// (c)), a rowless queued candidate to the generated hub hint and the
+		// hub wait arm (c) checks at promotion, and a rowless picked card to
+		// the hub wait of (b2) alone (card t1746).
+		if row, ok := rowByID[it.ID]; ok {
+			if selectionSkips(row) {
+				continue
+			}
+		} else if it.State == factory.BacklogStateQueued {
+			if hf := factoryHubChainFields(rec, rows, it.ID, nil); hf.HintAfter != nil && !mergedLocal[*hf.HintAfter] {
+				continue
+			} else if _, wait := hubWaitUnmerged(it.ID); wait {
+				continue
+			}
+		} else if _, wait := hubWaitUnmerged(it.ID); wait {
+			continue
+		}
+		if classOf(it.ID).Mode != factory.ClassModeSerial || !factorySerialInFlightExcluding(rows, classOf, it.ID, now, false) {
+			return true
+		}
+	}
+	return false
 }
 
 // factoryNextWriteOutput reports the leased card: its id, its stage, its
 // worktree name, and its pull-request and landed state exactly as
 // `moai todo pr` prints them — the pre-dispatch cross-check the leader
 // performs, reported by the lane itself for a self-dispatched card. The
-// queue read is anchored at root, the tree the verb resolved.
-func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.Card) error {
+// queue read is anchored at root, the tree the verb resolved. openPRs was taken
+// before the lease, so this output issues no open-PR query of its own
+// (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (vii)).
+func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.Card, openPRs openPRQuery) error {
 	wtName := dash("")
 	if p := strings.TrimSpace(card.WorktreePath); p != "" {
 		wtName = filepath.Base(p)
@@ -1818,7 +2040,7 @@ func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.C
 	if err != nil {
 		return fmt.Errorf("factory next: read the queue for the pr line: %w", err)
 	}
-	rows := computeTodoPRRows(errOut, rec, card.CardID)
+	rows := computeTodoPRRowsFrom(errOut, rec, card.CardID, openPRs)
 	writeTodoPRRows(out, rec, rows)
 	return nil
 }

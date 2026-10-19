@@ -21,7 +21,7 @@ MoAI-ADK 使用中によくある質問と回答です。
 | **例** | `moai init my-project` | `/moai plan "認証機能"` |
 
 - ターミナルで `moai plan` を実行しても動作しません — `/moai plan` は Claude Code の中でのみ有効です。
-- Claude Code で `/moai init` と入力しても動作しません — `moai init` はターミナルコマンドです。
+- `moai init` はプロジェクトを設定するターミナルコマンドで、Claude Code の中では `/moai project` でプロジェクト文書を生成します。
 
 ---
 
