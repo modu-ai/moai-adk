@@ -77,7 +77,7 @@ HEAD가 74ad197380에서 움직였으면(흡수 병합) RED-now 셀을 새 트�
 
 ### F.1 M1 — Q18 인용 분류 확정 + 파일/줄 인벤토리 (Priority High)
 
-- **진입 선결 조건(Q18, iter-1 D1)**: Q18 운영자 판정이 도착해 있어야 M1(런 페이즈)을 시작한다. 판정은 리더가 운영자에게 라우팅한다(decision-index Q18 행 — FOUNDER·product-level·`Operator verdict:` 공석, 이 행이 채워질 때까지 자율 Kickoff는 막힌다). planner 기본값 (a)는 이 계획의 잠정 입력일 뿐이며 자율 진입 승인이 아니므로, 판정 없이 기본값으로 진행하는 경로는 없다.
+- **진입 선결 조건(Q18, iter-1 D1) — 충족**: Q18 운영자 판정이 도착해 있어야 M1(런 페이즈)을 시작한다 — 진입 전제 충족: Q18 판정 (a) 도착 (d-20261019T051752Z-34a8, 운영자, 2026-10-19), decision-index Q18 행 참조. planner 기본값 (a)는 이 계획의 잠정 입력이었으며 그 잠정값이 운영자 판정으로 확정됐다.
 - 판정이 (a)이면 아래 분류가 그대로 처분표가 되고, (a)와 다르면(예: (b) 전면 제거) 처분표를 판정에 맞춰 갱신한다(행은 판정으로 닫힌다).
 - 현재 HEAD에서 §A.2 분류표를 재측정해 일치 확인(acceptance.md E-01~E-04 재실행).
 - Q13 처분표 작성: 줄별로 REPLACE/DELETE와, REPLACE의 경우 현재 메커니즘 문구(STALE-1·2: 단일 레인 세션이 `moai todo --auto` 큐를 소비 / STALE-3: 세션 안 카드 전환)를 기록. 기본값 (a)의 REPLACE 집합: README 74 ×4(STALE-1), factory-mode 77 ×4(STALE-2 relaunch 셀 + STALE-3 clear-each 셀 — 같은 줄), factory-mode 134 ×4, README 87 ×4(STALE-3) — 실질 16줄.

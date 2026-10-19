@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-FLAG-001
 title: "Docs Pre-Rewrite Flag Citations — --factory-run / --clear-policy citation cleanup (card t1726)"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001]
 | 2026-10-19 | 0.1.0 | manager-spec | 플랜 페이즈 최초 작성 (card t1726, Class C, docs-only). 모든 계수와 RED-now 셀은 이 트리 74ad197380에서 이 실행에 직접 측정했다(레인 전제 기록 `.moai/reports/t1726/progress.md`와 일치 재확인). 운영자 결정 기록 d-20261019T015908Z-220a(2026-10-19)에 따라 Q13(치환/삭제 판별 규칙)과 Q17(4 로캘 한 번에)을 decision-index에 적용본으로 수록했다. Q18은 이 결정으로 정해지지 않은 별개 열린 행이다(기본값 (a)는 planner 잠정값). REQ·AC는 모두 신규 id(부모 AC-PRC-001 범위 밖, verdict D3)를 쓴다. |
 | 2026-10-19 | 0.1.1 | manager-spec | 플랜 감사 1차(iter-1) 차반 결함 수리 — verdict FAIL 0.94, receipt rcpt-25df35500d7f88da2fabbf8d. D1: plan.md F.1 M1에 Q18 운영자 판정(리더 경유)을 런 페이즈 진입 선결 조건으로 명시하고 planner 기본값 (a)를 잠정 계획 입력으로 한정(자율 진입 승인 아님). D2: 원문 대조 판정 — `factoryPrintClearPolicyLine`("No value instructs a session clear")과 `TestSD_AC020_ClearPolicies`가 레인 `/clear` 안내가 대체됐음을 확인하여 factory-mode 77행 clear-each 셀·134행, README 87행을 STALE-3으로 재분류하고 REQ-DPF-005의 보존 범위를 살아 있는 선택자·값 인용으로 축소(launchers 37행 값 나열은 LIVE 유지 — AC020은 complete 출력의 clear 지시를 금할 뿐 문서의 값 나열을 금하지 않음). D3: AC-DPF-006을 커밋+스테이지+작업트리+언트래킹 다중 상태 열거로 강화하고 재핀 규칙 명시. D4: E-02를 실측 원문 stdout(ugrep 7.8.4, 트리 13cfafa454)으로 재기록. D5: "세 로캘" 계수 문구 정정. D6: 미존재 GATE-001 참조에 계획 전 SPEC 표기. REQ·AC 식별자 불변. |
 | 2026-10-19 | 0.1.2 | manager-spec | 플랜 감사 2차(iter-2) 차반 결함 수리 — verdict FAIL 0.88(점수 회귀 STOP; D1~D6은 재확인 해소, 재오픈 안 함), receipt rcpt-454d40d50ba7205d6fdcec4d. D7: AC-DPF-002 green path의 keep-절을 범위표·plan.md M2와 일치하게 수정(`--clear-policy <값>` 행 자체와 `clear-when-full` 셀 서술은 유지, `relaunch` 셀과 `clear-each` 셀의 `/clear` 요청 서술은 치환 — `clear-each`는 세션 안 카드 전환 서술로)하고, STALE-3 부재를 검증하는 release-blocking AC-DPF-007을 RED-now 셀 E-05(현재 HEAD b484ecacce에서 12줄 실측, exit 0)와 짝으로 신설하며 §A.1 매트릭스 행을 추가했다. D8(선택): AC-DPF-006 허용 목록 대조의 합집합에 경로스펙 없는 `git diff --name-only <base>..HEAD`를 추가. plan.md F.2 M2·F.3 M3·E1·E2·E5가 AC-DPF-007을 참조한다. REQ-DPF-001~006 식별자 불변, 기존 AC-DPF-001~006 재번호 없음, Q18 행 무변경. |
+| 2026-10-19 | 0.1.3 | manager-spec | 플랜 감사 4차(iter-4) 차단 결함 수리 — verdict FAIL 0.95(필수 백엔드 codex leg 수렴 경로, 점수 아님), receipt rcpt-6f1b70044b7092ec7604e058. D1(Q18STATE-STALE-001): Q18 판정 (a)(보드 d-20261019T051752Z-34a8) 도착 후 네 곳에 남은 열림-상태 기록을 판정 도착 서술로 동기 — progress.md §E.1 open_decisions, spec.md Decision Inputs Q18 항목, plan.md F.1 M1 진입 선결 조건, decision-index Q18 Why unresolved(이력 보존 + 판정 도착 표기). D2(AUDIT-READY-SIGNAL-TOKEN-001): progress.md §E.1에 기계 소비자(internal/homestate/card_audit_kickoff.go auditReadyRecorded)가 요구하는 리터럴 `audit_ready: true` 라인 추가(`plan_status: audit-ready` 병존). REQ·AC 식별자 불변, Q18 판정값 (a)·Label 규칙 불변, acceptance·plan 검증 내용 불변. |
 
 ## Overview (WHY)
 
@@ -64,7 +65,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001]
 
 ## Decision Inputs
 
-- **Q18**(제품 수준, 열림): decision-index.md의 완전한 행이 소유한다. planner 기본값 (a)는 잠정 계획 입력일 뿐 운영자 판정이 아니며 자율 진입 승인도 아니고, 행의 `Operator verdict:`는 비어 있다 — 런 페이즈 진입(킥오프)은 리더 경유 운영자 판정을 기다린다. GATE 자식 SPEC(card t1717, 계획 전 — `.moai/specs/`에 아직 없다)이 이 답을 입력으로 받는다.
+- **Q18**(제품 수준): decision-index.md의 완전한 행이 소유한다. 판정 도착 (a) (보드 d-20261019T051752Z-34a8, 운영자, 2026-10-19) — decision-index Q18 행의 `Operator verdict:` 참조. planner 기본값 (a)는 잠정 계획 입력이었으며 그 잠정값이 운영자 판정으로 확정됐다. GATE 자식 SPEC(card t1717, 계획 전 — `.moai/specs/`에 아직 없다)이 이 답을 입력으로 받는다.
 - **Q13·Q17**(운영자 결정 기록 d-20261019T015908Z-220a, 2026-10-19): 각각 치환/삭제 판별 규칙과 4 로캘 동시 변경. decision-index.md에 이 SPEC 적용본 행으로 수록됐고 REQ-DPF-003·REQ-DPF-004에 반영됐다.
 
 ## Out of Scope

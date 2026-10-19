@@ -23,7 +23,7 @@ Operator verdict: ko/en/ja/zh 네 로캘을 같은 카드·같은 변경으로 �
 ### Q18: 각 `--factory-run`·`--clear-policy` 인용을 유지하되 help에 플래그를 추가하는가, 제거하는가?
 Label: FOUNDER
 Authority anchor: 커밋된 트리에 없음
-Why unresolved: 부모 revision 0.3.0에서 이 SPEC으로 넘어온 행(원문 commit bdb7b764). help-text 추가 선택지는 `internal/`·`cmd/`를 바꾸므로 이 문서 전용 SPEC의 범위 밖이고 별도 SPEC이 필요하다. 운영자 결정 d-20261019T015908Z-220a는 Q13과 Q17만 정한다 — Q18은 이 결정으로 정해지지 않았으며 이 행은 열려 있다. 이 행의 `Operator verdict:`가 채워질 때까지 자율 Kickoff는 막힌다 — 판정은 리더가 운영자에게 라우팅하며, planner 기본값 (a)는 잠정 계획 입력일 뿐 자율 진입 승인이 아니다(iter-1 D1, plan.md F.1 M1 선결 조건과 동일 문구). GATE(card t1717, 계획 전 — SPEC-V3R6-DOCS-PREREWRITE-GATE-001은 `.moai/specs/`에 아직 없고 그 플랜 페이즈가 이 참조를 소유한다)가 이 답을 입력으로 받는다(iter-1 D6 표기).
+Why unresolved: 부모 revision 0.3.0에서 이 SPEC으로 넘어온 행(원문 commit bdb7b764). help-text 추가 선택지는 `internal/`·`cmd/`를 바꾸므로 이 문서 전용 SPEC의 범위 밖이고 별도 SPEC이 필요하다. 운영자 결정 d-20261019T015908Z-220a는 Q13과 Q17만 정한다 — Q18은 이 결정으로 정해지지 않았으며 이 행은 열려 있다. 이 행의 `Operator verdict:`가 채워질 때까지 자율 Kickoff는 막힌다 — 판정은 리더가 운영자에게 라우팅하며, planner 기본값 (a)는 잠정 계획 입력일 뿐 자율 진입 승인이 아니다(iter-1 D1, plan.md F.1 M1 선결 조건과 동일 문구). GATE(card t1717, 계획 전 — SPEC-V3R6-DOCS-PREREWRITE-GATE-001은 `.moai/specs/`에 아직 없고 그 플랜 페이즈가 이 참조를 소유한다)가 이 답을 입력으로 받는다(iter-1 D6 표기). (판정 도착: (a), d-20261019T051752Z-34a8 — 아래 Operator verdict 참조)
 Class: product-level
 Options: (a) 대체된 `--clear-policy relaunch` 카드별 소비를 서술하는 인용만 정리하고 살아 있는 동작을 서술하는 인용은 모두 유지한다; (b) 두 플래그의 인용을 살아 있는 것까지 모두 제거한다; (c) 인용을 모두 유지하고 help 텍스트에 플래그를 추가한다(이 SPEC 범위 밖 — 별도 SPEC).
 Planner default applied: (a) — 잠정값이며 판정이 아니다
