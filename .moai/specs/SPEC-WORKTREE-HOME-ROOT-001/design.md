@@ -12,7 +12,7 @@ create:  moai worktree new / factory next / session auto-entry / launcher -w <n>
                   └── destDir = resolver.PathFor(primaryRoot, name)      [was: <root>/.moai/worktrees/<name>]
 lookup:  name or card id ── resolver.Candidates (home, legacy-moai, legacy-claude)  ◄── recorded worktree_path wins
 classify: tree ── classifier (creation class, not path prefix) ── L1 / L2 / claude-native / integration / unclassified
-move:    classifier ── safety planner ── manifest ── git worktree move ── manifest ── card rebind ── journal
+move:    classifier ── safety planner ── manifest ── git worktree move ── manifest ── card rebind ── journal ── move list
 ```
 
 ## §2. Decisions
@@ -78,9 +78,15 @@ Claude Code creates `.claude/worktrees/<name>` itself when `claude --worktree <n
 
 **Effect on `.worktreeinclude`:** the file is processed by Claude for natively created trees; a MoAI-materialized tree does not get it. This is already true of `moai worktree new` trees and is not a regression; the shared materializer applies git identity, safe.directory and Codex hook seeding instead (`session_worktree.go:251-264`). Whether a `.worktreeinclude` equivalent should be added to the materializer is not decided here (not in scope).
 
-### D-6 / D-7 Migration trigger and live apply (DECIDED, lane judgment under auto-semantics §6; the operator may override before kickoff)
+### D-6 / D-7 Migration trigger and who applies (DECIDED BY THE OPERATOR; ruling relayed by the leader 2026-10-19)
 
-Two separate questions. **Trigger:** the card (and `ef12`) read as "the `moai update` consolidation changes destination". Decided: `moai update` **previews** — it prints the plan (destination is the home root), the exact `moai worktree migrate --apply` command, and moves nothing; the explicit verb moves. **This is a behavior change.** Today the non-dry-run path of `moai update` applies the consolidation (`internal/cli/update.go:410`, `runUpdateWorktreeMigration(lockRoot, false, out)`; the dry-run path at `update.go:366` previews). Reason: the non-destructive invariant — an automatic update must not move trees that hold the only copy of unpushed work, and the migration now has a non-git side effect (card rebind, state re-key) at a scale of ~200 trees on machines with live lanes. Rejected: `update` applies (the ef12 literal reading; a one-line change in the caller). **Who applies to the real repository:** the leader, once, after landing, with lanes quiescent; the lane delivers the tool, the scratch-repository rehearsal and the real-repository dry-run listing only. Rationale: the skip rules would skip any tree with a live anchor so a loaded machine yields a partial migration, and "one writer per tree" is violated by a lane reaching into another lane's tree. Rejected: lane applies at landing.
+The lane's earlier judgment — `moai update` only previews, and the leader applies the live migration through the explicit verb — is reversed. **Decided:** `moai update` keeps applying the consolidation as it does today (`internal/cli/update.go:410`, `runUpdateWorktreeMigration(lockRoot, false, out)`); the call at `update.go:366` stays the preview that `moai update --dry-run` runs (the flag is defined at `update.go:85`). What changes is the destination — the home root instead of `<root>/.moai/worktrees` (`update_worktree_migration.go:88`) — and the selection — the classifier of REQ-WHR-013, so `agent-*` trees (dab5) and unclassified trees are no longer selected. The explicit verb stays for rehearsal, inspection and recovery: `moai worktree migrate` previews by default, `--apply` moves, `--verify` and `--rollback` remain.
+
+**Why the non-destructive invariant still holds.** It is met by the devices on each move, not by withholding the move: (a) a move is `git worktree move` only — never a delete, never a bare filesystem move; (b) a tree with an active process or a live session is skipped (existing causes at `update_worktree_migration.go:118-139`); (c) a destination collision skips that tree, is reported and never overwrites; (d) the before/after manifest (HEAD, branch, unpushed commits, status hash, content digest) is compared for every move and a mismatch reverses it. Skipped trees stay usable at their old path, and the update's own retry (`update.go:407-409`) lets a later update take them. A failure in the consolidation is reported through the update ledger and does not fail the update (`update.go:410-414`).
+
+**Who applies.** `moai update` applies the live migration; there is no separate applier and no gate in front of it. The leader's part is the scratch-repository rehearsal check (plan M6) and a confirmation of the move list after the first real run — an acceptance observation (acceptance.md O-1), not a gate.
+
+**Rejected by the operator: a preview-only update with a leader-operated apply after landing.** Its two reasons — a partial migration on a loaded machine, and "one writer per tree" — are answered by the skip devices (a loaded tree is skipped, not moved) and by the retry on the next update. **Also rejected:** lane applies at landing.
 
 ### D-8 Config surface (Operator decision)
 
@@ -96,6 +102,24 @@ Two separate questions. **Trigger:** the card (and `ef12`) read as "the `moai up
 - The factory lease semantics: a card never moves to another tree (`card_worktree.go:42-44`) — the rebind is a new, narrow operation, not a relaxation of that rule.
 - Disposal: `done`, `sweep`, `clean`, `remove` predicates and the hoist-before-dispose obligation.
 
+### D-11 Move-list record (new with the operator's D-6/D-7 ruling)
+
+**Problem.** Once `moai update` moves trees on its own, a lane that remembers a tree's old path (a dispatch pointer, a card note, a resumed session) needs a way to learn the new one. The factory card record's rebound `worktree_path` (REQ-WHR-011) is the primary pointer, updated in the journaled step order; it exists only for trees bound to a card. The move list is the fallback for the rest and the audit trail for all.
+
+**Location.** `<primary>/.moai/state/worktree-migrate/move-list.jsonl`, beside the journals the engine keeps in `.moai/state/worktree-migrate/` (plan M6). The primary checkout's state area is the one place every tree of the repository can reach — a linked tree has its own `.moai/state/` (this tree's holds `.gitkeep` and runtime directories), which would hide the file — and it is machine-local (`.gitignore:401` ignores `.moai/state/`). A lane derives the primary root from `git rev-parse --path-format=absolute --git-common-dir`.
+
+**Format.** JSON Lines, one object per line: `schema`, `ts`, `run`, `trigger` (`update` | `migrate` | `rollback`), `tree`, `card`, `old_path`, `new_path`, `result` (`moved` | `skipped` | `failed` | `reversed` | `restored` | `refused`), `reason`. For a move `old_path` is the source and `new_path` the destination; for a skip, the source and the planned destination; for `reversed` and `restored`, the path the tree left and the path it arrived at. Example line:
+
+```
+{"schema":1,"ts":"2026-10-19T12:00:00Z","run":"20261019T120000Z","trigger":"update","tree":"t1821","card":"t1821","old_path":"/r/.moai/worktrees/t1821","new_path":"/h/.moai/worktrees/projects/r/t1821","result":"moved","reason":""}
+```
+
+**Idempotence and survival.** Append-only, one write per line, never rewritten or truncated; a line equal in `old_path`, `new_path`, `result` and `reason` to the latest entry of the same `old_path` is not appended, so an identical re-run adds nothing; rollback and automatic reversal append reverse entries, so a rollback does not erase history; a dry run writes nothing.
+
+**How a lane reads it.** Scan from the end for the latest `moved`, `restored` or `reversed` entry whose `old_path` equals the lane's path (spelling-safe equality), follow `new_path` through strictly later entries of those kinds, and accept the final path only if `git worktree list` registers it. A torn final line is ignored. The card record is read first.
+
+**Rejected alternatives.** *A symlink at the old path* (the D-4 cost list). *One JSON map rewritten per run* (a half-written file loses history, and a rollback would have to edit it). *A home-level file* (it would mix repositories; the project's own state area travels with the repository's tooling). *The card record alone* (trees without a card — the four non-`WT-` trees, `worker-*` trees — have none).
+
 ## §3. Hook and guard impact (summary; evidence in research.md §R4)
 
 | Surface | Impact | Handling |
@@ -110,6 +134,7 @@ Two separate questions. **Trigger:** the card (and `ef12`) read as "the `moai up
 | Chain ledger | Stores `worktree_path` as history | Untouched by migration; history is not rewritten |
 | Factory landing directory (`factoryCardWorktreeDir` and its consumers `factoryRefuseForeignWorktree`, `factoryCarryPreviousWorktree`, `factory_card.go:499-540`) | Builds `<root>/.moai/worktrees/<card>`; after migration the REQ-SD-011 refusal and the t1521 carry-over would look at the legacy path and neither refuse nor reuse a home-root tree | Reader update in M3, REQ-WHR-007, AC-WHR-007 |
 | Codex launcher | `resolveCodexWorktreeDir` resolves names against two in-repo roots; absolute paths go through `resolveWorktreeL2Path` | M3 adds the home-root candidate; PM-2 and PM-5 gate guidance |
+| A lane holding only an old path after the routine update moved its tree | The old directory no longer exists | Card record rebind first (REQ-WHR-011), move list second (REQ-WHR-012, D-11) |
 
 ## §4. Failure modes designed for
 
@@ -118,6 +143,7 @@ Two separate questions. **Trigger:** the card (and `ef12`) read as "the `moai up
 3. **Reader missed.** Recorded path precedence limits the blast radius; the grep sweep (AC-WHR-007) is a standing check, not a one-time audit.
 4. **Entry behavior differs from assumption.** PM gate before run; every guidance sentence traced to a line of the record.
 5. **Case-insensitive volumes.** Spelling-safe equality is a requirement, not a nicety: 25 of 192 trees are registered under the lowercase spelling today.
+6. **A lane does not know its tree moved.** The routine update skips a tree with an active process or a live session, so a running lane's own tree stays where it is; a parked lane finds the new path through the rebound card record or the move list; a rolled-back move appends a reverse entry, so the chain resolves back to the original path.
 
 ## §5. Rejected scope expansions (for the record)
 

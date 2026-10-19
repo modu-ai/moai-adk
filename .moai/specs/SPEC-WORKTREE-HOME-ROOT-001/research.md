@@ -1,6 +1,6 @@
 # research.md — SPEC-WORKTREE-HOME-ROOT-001
 
-> Evidence record. Everything here was observed in this planning session (and re-read at HEAD `e5950b354f` in the correction round) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
+> Evidence record. Everything here was observed in this planning session (re-read at HEAD `e5950b354f` in the first correction round and at `40c2e127bf` in the operator-decision correction, §R10) in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, branch `WT-d2-moai-worktrees`, HEAD `74ad197380`, with read-only commands and file reads; no Go command was run. Items not observed are listed in §R8. Counts that move (worktree totals) are dated 2026-10-19 and re-measured at run-phase M0.
 
 ## §R1. Where trees live now (measured)
 
@@ -102,13 +102,22 @@ Counted with `grep -rl` over this tree (files, not occurrences; a file may be a 
 | G-8 | Windows behavior of the resolver, marker and move | OQ-4 |
 | G-9 | Whether each of the 238 in-repo trees' branches exists on a remote (the "only copy" claim is the operator's invariant, not re-counted here) | M0 dry-run listing records `unpushed commit count` per tree; the plan relies on the invariant, not on a count |
 | G-10 | Whether `todo --auto`, lease renewal or other lane machinery reads a tree path from a source not found by the sweep in §R3 | standing grep sweep AC-WHR-007; Residual-risk R-1 |
-| G-11 | `moai update` caller name/location for the consolidation (`runUpdateWorktreeMigration` is the function; its caller was not traced) | plan §D marks `internal/cli/update*.go` "to be confirmed" |
+| G-11 | Callers of the consolidation — traced in the 0.3.0 correction: `runUpdateWorktreeMigration` is called at `update.go:366` (`dryRun=true`, inside the `--dry-run` branch) and `update.go:410` (`dryRun=false`, after the dry-run return and under the update lock) | closed; see §R10 |
 | G-12 | Whether any running Claude Code lane's project-memory key survives a tree move | PM-6 |
 
 ## §R9. Residual-risk summary
 
 - R-1 A reader not found by §R3 exists. Mitigation: standing sweep, recorded-path precedence, dual-read.
-- R-2 The apply step meets a live tree (skip) so the migration is partial on a busy machine. Mitigation: leader-operated, repeatable, per-tree.
+- R-2 The routine update meets live trees and skips them, so the migration is partial on a busy machine. Mitigation: a skipped tree stays usable at its old path, a later update retries it (`update.go:407-409`), and the move list records each skip with its reason.
 - R-3 `EnterWorktree`/`/cd` differ from the plan's assumption. Mitigation: PM gate and stated branches.
 - R-4 The classifier leaves `audit-gate-async-worktree-doc` unclassified (one known tree). Operator may reclassify by hand.
 - R-5 The lowercase-spelling alias could also affect the recorded `worktree_path` of cards created through the lowercase spelling; the rebind compares via spelling-safe equality (REQ-WHR-023).
+- R-6 A lane holds a pre-move path after the routine update moved a parked tree. Mitigation: card record rebind first, move list second (REQ-WHR-011/012); the move-list file is machine-local (gitignored), so a reader on another machine has no copy of it; that case is not designed for here.
+
+## §R10. Measurements for the operator-decision correction (version 0.3.0; tree `40c2e127bf`)
+
+- `grep -n "runUpdateWorktreeMigration" internal/cli/update.go` printed line 366 (`..., true, out)`) and line 410 (`..., false, out)`). Lines 360-366 sit in the `if getBoolFlag(cmd, "dry-run")` branch; lines 398-414 follow its return. `grep -n "dry-run" internal/cli/update.go` printed the flag definition at line 85 (`Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")`).
+- Failure handling of the apply path (read at `update.go:405-414`): `updateLedger.referencef("worktree migration failed: %v", migrationErr)` — reported, not returned. The comment at 407-409 states the call also runs when template sync is version-matched, "so a later update can retry trees that were locked or active on an earlier pass".
+- Existing skip causes (read at `update_worktree_migration.go:118-139`): prunable, locked, current process inside the tree, an active process inside, unreadable session registry, an active session anchored in the tree, source missing or not a directory, destination already exists, destination cannot be inspected. The destination root is `newRoot := filepath.Join(root, sessionWorktreeSubdir)` at line 88 (`grep -n "newRoot := "` printed exactly that line); the selection is the `claudeNativeWorktreeSubdir` prefix at lines 87 and 105-108.
+- State area: `ls .moai/state` in this tree printed `.gitkeep audit-multi audit-receipts context-usage github landed` (each tree has its own `.moai/state/`); `git check-ignore -v .moai/state/worktree-migrate/move-list.jsonl` printed `.gitignore:401:.moai/state/	.moai/state/worktree-migrate/move-list.jsonl` — machine-local.
+- `grep -rln "move-list\|movelist\|move_list" internal` printed nothing (exit status not echoed; a no-match `grep` exits 1) — no move-list code exists today.
