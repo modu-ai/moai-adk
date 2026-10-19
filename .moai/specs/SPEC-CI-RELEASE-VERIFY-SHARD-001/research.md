@@ -31,6 +31,10 @@ Card t1892 · plan-phase tree pin: **`74ad197380`** (`git rev-parse --short HEAD
 | E14 | RED-now shape cells (matrix, artifact, parity test, empty-sweep, -count) | see ledger blocks L-E14a..f, L-E17, L-E18 | L-E14a 0; L-E14b 0; L-E14c 0; L-E14d 1; L-E14e 1 and 1; L-E14f 9; L-E17 0 and 0; L-E18 1 | 74ad197380 |
 | E15 | `shard-cover.sh` falsifiers (iter1 fix D5): print-then-fail stub `go` (old script reads it as success, fixed script fails), overlap mutant | see L-E15 | 0 old / 1 fixed / 1 | 74ad197380 + stub/mutation |
 | E16 | RED-now for the local-bash step-body criterion: no step passes the selector through `SHARD_RUN` | `grep -c SHARD_RUN .github/workflows/release-pr-multi-os.yml` | 1 | 74ad197380 |
+| E17 | Matrix shape at base: no `include`, no `exclude` | `yq '.jobs.full-matrix-test.strategy.matrix.include \| length'`; `yq '... \| has("exclude")'` | 0 / 0 | 74ad197380 |
+| E18 | Release workflow does not name the rosterguard package | `grep -c 'internal/harness/rosterguard' .github/workflows/release-pr-multi-os.yml` | 1 | 74ad197380 |
+| E19 | Duplicate-include mutant is caught structurally (7 vs 6 entries), not by leg count | `yq '... include \| length'` on a scratch mutant | 0 | scratch |
+| E20 | What `go test -list` enumerates (bare names, output markers, helpers); fixture preserved at `repro/listing-fixture/`, re-check is a run-phase item | `go -C <scratch> test -vet=off -list '.*' ./...` (run once, pre-quiet-window, plain listing; the `-race` listing is not yet measured) | 0 | scratch |
 
 ### Verbatim ledger
 
@@ -222,6 +226,7 @@ Required contexts of `main` (L-E6, read-only GET, permitted in this session): `T
 Evidence available:
 - Ubuntu, single serial leg: 38 min 10 s (success) on 2026-10-09, cancelled at 40 min on 2026-10-13 and 2026-10-19 (L-E5, L-E4). The leg had no slack.
 - Ubuntu per-shard proxies (from `ci.yml`'s comment, run 37861953651, measured before several later test additions): cli-1 605 s, cli-2 408 s, cli-3 532 s, cli-4 496 s, rosterguard 782 s, remainder's largest package 383 s. Each is far under 35 min.
+- Parity-test overhead: the guard test shells out to `go test -race -list '.*'` for two packages (two race test-binary compiles) inside the `remainder` shard on every OS; unmeasured, listed as a residual risk in spec.md §G (gap G7).
 - macos and windows: **no per-shard measurement exists** (gap G2). Both legs were cancelled at 40 minutes in every recent full run (L-E4, L-E5), so only a lower bound is known. A 2x-3x slowdown on the heaviest shard (rosterguard, 782 s on ubuntu) would still land at roughly 26-39 minutes — inside the unchanged 35 min test ceiling only at the low end. This is a real residual risk, owned by the first live run (REQ-RVS-013), and the response if it materialises is a rebalance card, never a timeout raise.
 
 ### C.4 Options
@@ -250,6 +255,9 @@ Evidence available:
 - **G4** — whether `release.sh --require-matrix-run` is exercised by any currently open release flow: not queried; the update is required regardless because the flag fails closed on sharded names (L-E7).
 - **G5** — the `Test` bare-name / non-letter-first edge: confirmed empty on this tree (L-E9 side observation); not a guarantee for future names — the parity test (not this count) is the continued-firing answer (verification-completeness §1.3).
 - **G6** — PR #1830's `pull_request` run uses the workflow file at its merge ref; whether the change reaches that ref (and how) is a leader/landing matter, outside the lane.
+
+- **G7** — compile weight of the guard test's nested `go test -race -list` (two packages) on the remainder shard and `Test (ubuntu-latest)`: unmeasured; run-phase measurement item.
+- **G8** — the `-race` listing of the real packages (and of `repro/listing-fixture/`) has not been run; only a plain listing of a scratch package (L-E20) was.
 
 ## §E Residual risk
 

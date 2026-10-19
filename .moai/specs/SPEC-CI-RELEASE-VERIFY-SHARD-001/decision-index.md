@@ -50,7 +50,7 @@ Why unresolved: the selectors exist today only in `ci.yml`. The release workflow
 
 Authority anchor: none in the committed register.
 
-Default: selectors inline in the release workflow's matrix `include` entries; `ci.yml` untouched; a new repository test under `internal/template/` compares the two workflows' selectors and remainder exclusion list and checks exact cover over the real `internal/cli` top-level test names parsed from source (rule: preserves current behavior — `ci.yml` is not edited and no shared runtime surface is added)
+Default: selectors inline in the release workflow's matrix `include` entries; `ci.yml` untouched; a new repository test under `internal/template/` compares the two workflows' selectors and remainder exclusion list and checks exact cover over the real `internal/cli` top-level test names the go tool lists under the shards' build conditions (`go test -race -list`) (rule: preserves current behavior — `ci.yml` is not edited and no shared runtime surface is added)
 
 Alternate: extract the selector table into one shared script or composite action used by both workflows, keeping the same parity test as a guard
 
