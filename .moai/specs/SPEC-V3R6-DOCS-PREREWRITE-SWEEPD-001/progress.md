@@ -14,11 +14,44 @@ open_decision_rows: none (Q13 and Q17 carry the operator verdict of board record
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+Measured on tree a20676443ec7eb7da29ded533a0461e7acb7e754 (M2 1a3b71fc61, M3 a20676443e), base of the range checks 26834dd17d. Deciding command output, exit codes, Gaps and Residual-risk per AC are in `.moai/reports/t1724/verdict.md` (local, gitignored; not a tracked file). Each command ran as `git -C <worktree root> ...` with the exit read from `echo "exit=$?"`.
+
+| AC / invariant | Status | Actual Output (verbatim, deciding lines) |
+|----------------|--------|------------------------------------------|
+| AC-PRC-001-001 cmd 1 (U) | PASS | empty stdout, exit=1 |
+| AC-PRC-001-001 cmd 2 (UW) | PASS | empty stdout, exit=1 |
+| AC-PRC-001-001 cmd 3 (swept set) | PASS | four paths `docs-site/content/{en,ja,ko,zh}/guides/mcp-server.md`, exit=0 |
+| AC-PRC-001-002 cmd 1 (E03) | PASS | empty stdout, exit=1 |
+| AC-PRC-001-002 cmd 2 (E03W) | PASS | empty stdout, exit=1 |
+| AC-PRC-001-002 cmd 3 (SL) | PASS | `HEAD:docs-site/content/{en,ja,ko,zh}/worktree/_index.md:2`, exit=0 |
+| AC-PRC-001-002 cmd 4 (B[34] count) | PASS | `...worktree/_index.md:2` for each locale, exit=0 |
+| AC-PRC-001-002 cmd 5 (B3L) | PASS | `...worktree/_index.md:1` for each locale, exit=0 |
+| AC-PRC-001-002 cmd 6 (B4L) | PASS | `...worktree/_index.md:1` for each locale, exit=0 |
+| AC-PRC-001-003 cmd 1 (numstat) | PASS | `7	7	docs-site/content/{en,ja,ko,zh}/guides/mcp-server.md`, exit=0 |
+| AC-PRC-001-003 cmd 2 (M) | PASS | `...mcp-server.md:7` for each locale, exit=0 (dot spelling, see Gaps in verdict.md) |
+| AC-PRC-001-003 cmds 3-9 (MID x7) | PASS | each of the seven ids prints four lines `...mcp-server.md:1`, exit=0 |
+| AC-PRC-001-003 cmd 10 (row count) | PASS | `...mcp-server.md:41` for each locale, exit=0 |
+| AC-PRC-001-003 cmds 11-14 (prefixes) | PASS | ko `:7`, en `:7`, ja `:7`, zh `:7`, exit=0 each (pattern-file form, see Gaps in verdict.md) |
+| AC-PRC-001-003 cmd 15 (position) | PASS | 28 lines identical to E-SWD-6c (130, 163, 182-186 in en, ja, ko, zh), exit=0 |
+| AC-PRC-001-004 (numstat) | PASS | `2	2	docs-site/content/{en,ja,ko,zh}/worktree/_index.md`, exit=0 |
+| AC-PRC-001-005 cmd 1 | PASS | `...prompt-caching.md:1` for each locale, exit=0 |
+| AC-PRC-001-005 cmd 2 | PASS | empty stdout, exit=0 |
+| AC-PRC-001-006 | PASS | empty stdout, exit=0 |
+| M4 sequencing (E-SWD-16 probes vs main dbf62d9d4e) | PASS | `git log 74ad197380..main -- <three pages>` empty, `git diff --stat 74ad197380 main -- docs-site` empty; no other card changed the pages |
+| M5 `bash scripts/docs-i18n-check.sh` | PASS | exit=0, `Errors:   0`, `Warnings: 0`, ko/en/ja/zh 153 files each |
+| M5 `moai spec lint` on the SPEC dir | PASS | exit=0, `✓ No findings — all SPEC documents are valid` (judging build 7705b365e2, a strict ancestor of the tree) |
+
+No site build was run; Mermaid rendering is unmeasured.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+audit_ready: true
+run_complete_at: 2026-10-19
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+run_commits: 1a3b71fc61 (M2), a20676443e (M3)
+total_run_phase_files: 8 docs-site files, spec.md (status only), progress.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
