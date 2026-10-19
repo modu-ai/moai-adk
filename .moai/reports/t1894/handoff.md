@@ -1,4 +1,21 @@
-# t1894 — handoff (lane-31, 2026-10-19)
+# t1894 — handoff (lane-31, 2026-10-19; lane-54 exit update 2026-10-19/20)
+
+## Lane-54 exit handoff (the current one; the sections below are lane-31's, superseded where they differ)
+
+Written under the operator's terminal-cleanup instruction relayed by the leader (lane-54 is an exit candidate; the remaining lanes are 11, 18, 32, 44, 55, 56). This is an explicitly BLOCKED handoff — the 8108 contract is ENDED, not satisfied:
+
+| Field | Value |
+|---|---|
+| Card state | FINAL HOLD at the plan stage. The 8108 exception round was executed (commit `a0bcb8d8`) and its single final audit returned FAIL: iteration 3, 0.89, one blocking defect **D28** (joint fence+predecessor move bypasses the fifth number), required codex gate failed, receipt `rcpt-d02259fabfe1b100e4d83659`, audited `a0bcb8d8`. By the 8108 contract (FAIL = hold) the lane made no further correction and no further audit. |
+| Evidence | `.moai/reports/t1894/plan-audit-iter3.md` (verdict), `.moai/reports/t1894/plan-hold-final.md` (hold record + the three disposition options for the operator). Score trend 0.65 → 0.79 → 0.88 → 0.89; every round's new blocker was an edge of the previous fix's surface. |
+| HEAD / remote | `e304d169ce` = `origin/WT-fail-safe-serial` (preservation push under board 18ba, no PR; verified `f80aef625e..e304d169ce`). Tree clean. |
+| Who decides next | The operator (relayed by the leader): (i) one more exception round, (ii) split per `plan-hold.md` option B, (iii) accept the residual with a codex-gate waiver. **Follow-up owner: the leader**, who executes the disposition with the lane per `plan-hold-final.md` — re-lease with the 8859 sequence using `--run tn564n` (mandatory; two runs exist) and `factory next` from the parent checkout or MCP with project_root = primary. |
+| Lease / cron | The lane deleted its renewal cron and stopped renewing at the exit; the lease lapses (board a672: harmless, stage stays `plan`). Slot never held; no Go command was run for this card. |
+| Running work | None — all spawned agents have returned (manager-spec exception round, plan-auditor iteration 3). |
+| Other cards on this lane | None. t1865 and t1723 belonged to lane-31, not lane-54 (see the lane-31 section below for their preserved state). |
+
+Nothing here is a completion: nothing is merged, no PR exists, the plan has not passed audit.
+
 
 Written under the operator's standing rules f28a and a919 (finish the executing card, stop only new-card selection, hand off with a named follow-up owner) and the leader's safe-handoff criteria. This is a HOLD handoff at the plan stage, not a completion: nothing is merged, no PR exists, the plan has not passed audit.
 
