@@ -111,7 +111,7 @@ hotfix/vX.Y.Z-description (main의 tag에서 분기 → main 대상 PR)
 | 머지 유형 | 전략 | gh 명령어 | 이유 |
 |-----------|------|-----------|------|
 | ~~feature/fix/chore/docs → main~~ **[RETIRED 2026-08-27 — 카드는 main PR을 내지 않는다]** | ~~squash~~ | — | 종전 체제의 역사 기록 |
-| release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | 릴리스 마일스톤 + 개별 SPEC commit 보존 |
+| release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | 릴리스 마일스톤 + 개별 SPEC commit 보존. 병합 플래그 규칙(전체 규칙): `release/*` OR `hotfix/*` → `--merge`, 그 외 → `--squash` (측정원: `.github/workflows/auto-merge.yml:341-345`) |
 | hotfix/* → main | **merge commit** | `gh pr merge N --merge` | 긴급 변경 이력 명확성 |
 | plan/* → main | **squash** | `gh pr merge N --squash` | 초안 commit 정리 |
 | dependabot/* → main | **squash** | (auto-merge) | 단순 버전 bump |

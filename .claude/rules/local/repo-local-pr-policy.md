@@ -16,7 +16,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 officially assigned worker uses a fresh card worktree, finishes scoped local verification,
 opens a draft PR for the exact verified head — `gh pr create --draft` is the operative
 delivery path; the draft/auto-merge separation in `moai factory complete` is an in-progress
-implementation task and is not described here as shipped — and records a safe handoff (head
+implementation task (card t1882, not landed) and is not described here as shipped — and records a safe handoff (head
 SHA, evidence, review/repair owner, lease and test-slot disposition). The next independent
 card follows only after receiver-side confirmation of that handoff. Opening the PR is not card
 completion: closure requires the confirmed remote merge and the required completion evidence.
