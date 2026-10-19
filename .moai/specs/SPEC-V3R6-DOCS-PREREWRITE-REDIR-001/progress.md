@@ -120,7 +120,19 @@ spec_status_transition: not performed (the run instruction forbids editing spec.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+sync_status: audit-ready
+sync_complete_at: 2026-10-19T00:17Z
+sync_commit_sha: pending-backfill
+base_head_at_sync_start: b58a46ac9653d35c1876ab12ec2c30b62cdfa6b2 (branch WT-id-spec-v3r6, tree clean)
+changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed`, first bullet (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001); the sync-phase decision was that a docs-site redirect and page change gets an entry because the project records each SPEC close in [Unreleased] and the change alters what adk.mo.ai.kr serves.
+b12_self_test_a: pre-emission `grep -c 'SPEC-V3R6-DOCS-PREREWRITE-REDIR-001' CHANGELOG.md` printed 0 before the edit (1 after it, the entry itself).
+b12_self_test_b: ac_source=.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-REDIR-001/acceptance.md, tier M, resolved (non-empty). The B12 counter printed 6 (stderr `live=6 excluded=0 ambiguous=0`, exit 0). One of the six is `AC-REDIR-00n`, a prose suffix placeholder on acceptance.md line 23 ("AC-REDIR-00n verifies REQ-REDIR-00n"), matched by the identifier pattern because of its trailing `n`; it declares no criterion. The five declared criteria are the `### AC-` headings at lines 29, 48, 64, 75, 87 (`grep -c '^### AC-'` printed 5): AC-PRC-011, AC-PRC-010, AC-REDIR-001, AC-REDIR-002, AC-REDIR-003. The CHANGELOG entry states 5. The counter was not softened and acceptance.md was not edited (body is manager-spec's); marking line 23 `[REF]` would make the counter print 5.
+b12_self_test_c: every path named in the entry exists or is verified absent as intended: `ls docs-site/vercel.json` and `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-REDIR-001/spec.md` present; `ls docs-site/content/{ko,en,ja,zh}/changelog` reported "No such file or directory" for all four (the deleted pages); `git cat-file -t 15b596315b` and `dc5b1f2f42` each printed `commit`.
+frontmatter_status_transitions: spec.md `status: in-progress -> completed` on this single sync commit (the implemented step is merged into the same commit per the 3-phase close); `updated:` already read 2026-10-19 (the sync date) and was left as is. plan.md, acceptance.md, and decision-index.md carry no frontmatter block, so no `updated:` refresh applies. No other spec.md line changed.
+lint: `moai spec lint .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 --strict` printed `0 error(s), 0 warning(s)` and exited 0, with one INFO `OwnershipTransitionUnmeasured` (the draft to in-progress transition commit b58a46ac96 has no Authored-By-Agent trailer). Judging build: `moai version` printed `moai-adk moai_cp/20261007_195927`; commit 7705b365e2 (named by the moai MCP server banner) is an ancestor of the tree HEAD (`git merge-base --is-ancestor 7705b365e2 HEAD` exit 0). That the installed CLI build is exactly that commit was not read from `moai version` in this run.
+canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests).
+scope_findings: docs-site README/content/layout/data scan (`git grep` for changelog-page and `/agency` references outside vercel.json and SPEC/report paths) found no statement made false by the deleted pages or removed rules; the one hit is `.claude/agents/harness/hns-release-specialist.md` line 195, a stale pointer to the four deleted pages that the SPEC already names under Out of Scope with an owner; it was not edited here.
+not_run: Hugo build, `scripts/docs-i18n-check.sh`, and the redirect-check instrument were not re-run in the sync phase; their results are the run-phase observations in §E.2 (M3) against HEAD dc5b1f2f42. No Go build or test ran (no Go code changed).
 
 ## §G Override and Refusal Record
 
