@@ -4713,7 +4713,7 @@
     "start_line": 13
    },
    "before_text": "This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.",
-   "after_text": "This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.",
+   "after_text": "This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the optional stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "scope-of-live definition"
@@ -5451,7 +5451,7 @@
     "start_line": 94
    },
    "before_text": "[HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via `TaskCreate` before beginning the first stage; at every stage transition it keeps the list current via `TaskUpdate` so the list always shows the stage in flight; and it reports completion only while the list reflects the end state — or carries an explicit annotation naming why it does not. A task list that contradicts its completion report is the same gap as a missing evidence file (§ Completion is read, never trusted).",
-   "after_text": "[HARD] A lane `TaskCreate`s its stages at intake, `TaskUpdate`s every transition, reports done only when the list shows the end state (or says why not); a contradicting list is a missing-evidence gap.",
+   "after_text": "A lane MAY track its stages in the task list; when it does, it deletes the previous card's tasks at card transition. The card's state of record is the factory record and progress.md — the task list is never completion evidence.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5488,7 +5488,7 @@
     "start_line": 96
    },
    "before_text": "The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list through the card's whole run, one `TaskCreate` per stage at intake and one `TaskUpdate` per transition. The clause above is the rule; that card is its evidence, not an instance list to extend.",
-   "after_text": "The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The clause above is the rule; a run that kept the list current is its evidence, not an instance list to extend.",
+   "after_text": "The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The tracking is optional per the stub clause; the card's state of record is the factory record and progress.md. A lane that keeps the list current still has that history as evidence when it is used.",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "measured precedent record"
