@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-HOME-ROOT-001
 title: "Unify MoAI worktree storage under a home-level project root (~/.moai/worktrees/projects/<project-name>/<card>) with a non-destructive migration of MoAI-made trees"
 version: "0.8.1"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec (card t1640)
