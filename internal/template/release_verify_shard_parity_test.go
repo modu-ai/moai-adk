@@ -43,6 +43,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go/token"
 	"maps"
 	"os"
 	"os/exec"
@@ -105,9 +106,6 @@ var (
 	rvsRunSelRe = regexp.MustCompile(`-run '([^']*)' (\./[^\s>]+)`)
 	// rvsExclRe reads the -e '<package>' arguments of one grep line.
 	rvsExclRe = regexp.MustCompile(`-e '([^']*)'`)
-	// rvsIdentRe is the shape of a name `go test -list` prints; the trailing
-	// `ok  <pkg>  <time>` line has spaces and is not one.
-	rvsIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	// rvsMatrixRefRe matches ${{ matrix.<key> }} in an Actions expression.
 	rvsMatrixRefRe = regexp.MustCompile(`\$\{\{\s*matrix\.([A-Za-z_][A-Za-z0-9_-]*)\s*\}\}`)
 	rvsModuleRe    = regexp.MustCompile(`(?m)^module\s+(\S+)`)
@@ -393,7 +391,14 @@ func rvsClassify(lines []string) rvsNames {
 	var n rvsNames
 	for _, l := range lines {
 		l = strings.TrimSpace(l)
-		if l == "" || l == "ok" || l == "FAIL" || l == "PASS" || !rvsIdentRe.MatchString(l) {
+		// go/token.IsIdentifier decides what a name is, not a hand-rolled
+		// ASCII regex: Go identifiers are Unicode, and `go test -list` can
+		// print a name like FuzzΣ that the tool would run but no ^Test
+		// selector selects — exactly what the discovery guard exists to
+		// catch (REQ-RVS-016; sync-audit F1). Identical to the previous
+		// ASCII regex on ASCII names; the trailing `ok  <pkg>  <time>`
+		// listing line has internal tabs/spaces and is not an identifier.
+		if l == "" || l == "ok" || l == "FAIL" || l == "PASS" || !token.IsIdentifier(l) {
 			continue
 		}
 		switch {
