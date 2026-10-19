@@ -296,7 +296,7 @@ go_budget: slot go-test-heavy (lane-55) 13:18:30Z-13:58:30Z; Go work finished ~1
 ```yaml
 sync_status: complete (3-phase close — plan → run → sync, this commit)
 sync_complete_at: 2026-10-19
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: c9f31e8097
 close_summary: "Release Verify sharded 6 shards x 3 OS (18 legs, gate aggregation unchanged), scripts/release.sh --require-matrix-run resolves the sharded legs; the CHANGELOG entry, the spec.md status transition, and this signal land in the single sync commit; sync_commit_sha is backfilled in the next commit (a commit cannot cite its own hash)."
 changelog_entry_position: CHANGELOG.md [Unreleased] § Changed, first entry
 frontmatter_status_transitions:
