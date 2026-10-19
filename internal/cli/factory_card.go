@@ -1852,7 +1852,7 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 	if ctx.Err() != nil {
 		return openPRQuery{err: errFactoryNextPRNotTaken}
 	}
-	return prefetchOpenPRs()
+	return prefetchOpenPRsContext(ctx)
 }
 
 // factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
@@ -1890,6 +1890,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	for _, c := range rows {
 		rowByID[c.CardID] = c
 	}
+	skipForBackend := factoryNextSkipForBackend()
 	if nominee != "" {
 		var row *homestate.Card
 		for i := range rows {
@@ -1897,6 +1898,9 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				row = &rows[i]
 				break
 			}
+		}
+		if row != nil && skipForBackend(*row) {
+			return false
 		}
 		for _, it := range rec.Items {
 			if it.ID != nominee {
@@ -1954,7 +1958,6 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	// refusal, the selection skips, and the self-excluding serial read with
 	// sibling assigned rows ignored (card t1542). An excluded, skipped, or
 	// serial-blocked assigned card leaves the attempt to the bare arms below.
-	skipForBackend := factoryNextSkipForBackend()
 	for i := range rows {
 		c := rows[i]
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
