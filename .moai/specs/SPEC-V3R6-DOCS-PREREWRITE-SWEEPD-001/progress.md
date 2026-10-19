@@ -6,6 +6,7 @@ Card t1724, child SWEEPD of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001. Only §E.1 ca
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-19T02:32:40Z
+audit_ready: true
 plan_revision: 0.2.1 (corrects plan-audit iteration 2, FAIL 0.94, defect D1; 0.2.0 revised iteration 1, FAIL 0.75, defects D1 to D5)
 measured_tree: e11f08f6a7b07e8f878b3e7d2a456a60aacdfd97 (position cell E-SWD-6c; its docs-site tree equals 26834dd17d3eb9597cde0366a5d4f01130417172, the document-level pin of the other cells)
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M)
