@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -165,6 +167,25 @@ func TestCodexFactoryLeaderPreHandoffFailureClearsOwner(t *testing.T) {
 			if pid, start := runOwnerStamp(t, root, id); pid != 0 || start != "" {
 				t.Errorf("pre-handoff failure retained owner=%d %q", pid, start)
 			}
+			var status string
+			if err := db.DB.QueryRow("SELECT status FROM runs WHERE run_id=?", id).Scan(&status); err != nil {
+				t.Fatal(err)
+			}
+			if status != "retired" {
+				t.Errorf("failed launch status=%q, want retired", status)
+			}
+			owners, err := db.ReconcileActiveRuns(context.Background(), homestate.ReconcileOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, owner := range owners.Remaining {
+				if owner.RunID == id {
+					t.Error("failed launch remains a join candidate")
+				}
+			}
+			if got, err := factorymsg.ResolveActiveRun(context.Background(), root, ""); err != nil || got != "existing-run" {
+				t.Errorf("failed launch disturbed run selection: %q %v", got, err)
+			}
 			if pid, _ := runOwnerStamp(t, root, "existing-run"); pid != os.Getpid() {
 				t.Errorf("existing owner changed: %d", pid)
 			}
@@ -187,5 +208,34 @@ func TestCodexFactoryLeaderSuccessfulHandoffKeepsOwner(t *testing.T) {
 	id := launchEnvValue(codexOnlyRecord(t, cap).Env, config.EnvFactoryRunID)
 	if pid, start := runOwnerStamp(t, root, id); pid != os.Getpid() || start != homestate.CurrentProcessFingerprint() {
 		t.Fatalf("successful handoff lost owner=%d %q", pid, start)
+	}
+}
+
+func TestCodexFactoryLeaderRetriesAfterFailedLaunch(t *testing.T) {
+	root, _ := fcFixture(t)
+	t.Chdir(root)
+	netScrubLaneEnv(t)
+	cap := withCodexLaunchCapture(t)
+	withCodexProjectRoot(t, root)
+	path := filepath.Join(root, codexLocalInstructionName)
+	if err := os.WriteFile(path, []byte(strings.Repeat("x", config.DefaultCodexInstructionArgBytes)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runCodexCmd(t, "-f"); err == nil {
+		t.Fatal("oversized launch unexpectedly succeeded")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runCodexCmd(t, "-f"); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	id := launchEnvValue(codexOnlyRecord(t, cap).Env, config.EnvFactoryRunID)
+	result, err := fcOpen(t, root).ReconcileActiveRuns(context.Background(), homestate.ReconcileOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Remaining) != 1 || result.Remaining[0].RunID != id {
+		t.Fatalf("retry left ambiguous active runs: %+v", result.Remaining)
 	}
 }

@@ -482,3 +482,49 @@ func (f *FactoryDB) ClearRunOwner(ctx context.Context, runID string) error {
 	_, err := f.DB.ExecContext(ctx, `UPDATE runs SET lead_pid=0, lead_process_start='', updated_at=? WHERE run_id=?`, now, runID)
 	return err
 }
+
+// AbortRunStart rolls back a newly allocated run after its launcher fails.
+// Unlike dead-owner reconciliation, this records an observed launch failure;
+// it does not assert that the calling launcher has died. The caller must own
+// the fresh run ID. A different owner or any card/worker record proves the
+// run is no longer an unused launch and prevents retirement. An empty stamp
+// is accepted because launch doors can clear it before returning their error.
+func (f *FactoryDB) AbortRunStart(ctx context.Context, runID string, pid int, processStart string) error {
+	if strings.TrimSpace(runID) == "" || pid < 1 || strings.TrimSpace(processStart) == "" {
+		return errors.New("factory launch rollback requires a run and launcher identity")
+	}
+	tx, err := f.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', lead_pid=0, lead_process_start='', updated_at=?
+WHERE run_id=? AND status='active'
+AND ((lead_pid=? AND lead_process_start=?) OR (lead_pid=0 AND lead_process_start=''))
+AND NOT EXISTS(SELECT 1 FROM cards WHERE run_id=?)
+AND NOT EXISTS(SELECT 1 FROM workers WHERE run_id=?)`, now, runID, pid, processStart, runID, runID)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		var alreadyAborted bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM runs WHERE run_id=? AND status='retired')
+AND EXISTS(SELECT 1 FROM events WHERE run_id=? AND kind='run.launch_failed')`, runID, runID).Scan(&alreadyAborted); err != nil {
+			return err
+		}
+		if alreadyAborted {
+			return nil
+		}
+		return fmt.Errorf("factory run %s is not an unused launch owned by this launcher", runID)
+	}
+	payload := fmt.Sprintf(`{"launcher_pid":%d,"launcher_process_start":%q}`, pid, processStart)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.launch_failed',?,?)`, runID, payload, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

@@ -1276,7 +1276,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 			runID := os.Getenv(config.EnvFactoryRunID)
 			defer func() {
 				if launchErr != nil {
-					launchErr = errors.Join(launchErr, clearFactoryRunOwner(projectRoot, runID))
+					launchErr = errors.Join(launchErr, abortFactoryRunStart(projectRoot, runID))
 				}
 			}()
 		}
