@@ -371,3 +371,35 @@ record their start HEAD).
 - The commit sha of this revision is not in this section's text (a commit cannot carry its own
   sha); it is read from the branch log after this commit lands — the child of `060f568e48` on
   `WT-todo-unify`.
+
+## Round-3 (final) audit FAIL — card holds (2026-10-19)
+
+`plan-audit-delta3.md`: **verdict FAIL, score 0.79**, must_pass_failed 1, blocking 4,
+required codex leg **pass** (rcpt-3c7c7f0408bbb32ba6149de2 — cross-model disagreement
+recorded; the lane verdict rests on pinned re-runnable grep evidence), audited_sha
+`e10b7123ef…`, plan_artifact_hash `c8c9298939db077702e35012cafbd2fa191af856df540cfc716f0511e42c326b`
+(MCP audit_cache). Precondition verified: D1/D2/D3 repairs all hold; identifiers 15/15; Q5
+marker intact; RED-now reproduces (397/101 four-exclusion, 396/100 five-exclusion).
+
+Why FAIL — the same D2/D3 collision class (artifacts whose own source must contain the
+residual patterns, defeating AC-TU-010's exit-1) reappears in 4 blocking instances the
+round-2 fix did not cover:
+- B1 `scripts/gtd-to-todo-substitute.sh` — its S1/S2 class tokens force `moai gtd`/`moai:gtd`
+  into the script source; no exclusion/constraint; the script also lands in its own input set
+  (breaks M8 set-equality).
+- B2 `TestGTDToTodoSubstitute` fixture content — patterns as source literals or tracked
+  fixtures either way.
+- B3 `TestAgentsMDTodoRowWording` — must detect the literal to work.
+- B4 systematic — the `gtd\.md` alternative is broader than any stated class token: bare
+  `gtd.md` prose measured in 30+ lines across 7 surviving `internal/cli` test files + the
+  `doc-generation.md` pair (fix anchor: plan.md:122 class table / plan.md:115 M6 Files).
+
+The auditor also recorded three admission-refused lint runs under the resource-admission
+rules (mem free 43.3/42.5/42.0%, load 11.12/19.24/47.48 — the last over 32) with frontmatter
+judged by field read; Gaps carry them.
+
+**HOLD (the 94a7 counter's third FAIL — the leader's standing rule).** reason = round-3
+FAIL above; the audit cycle stops — no round 4 without a recorded leader/operator act.
+whom: leader. recheck: each cron wake reads the leader's reply and the decision board; the
+lane revises nothing and opens no audit round without a ruling. t1862 (merge-ready, sync
+v11) is unaffected and keeps its landing-line wait.
