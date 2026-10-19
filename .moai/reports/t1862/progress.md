@@ -157,3 +157,12 @@ runs+retire ok 6.744s, paths ok 12.509s, template db-paths ok 0.851s, gofmt clea
 exit 0, build exit 0. Admission: load 11.56, mem 82%, one Go call at a time.
 
 Pushed `4bbd2ed113..74134e24f1` → PR #1833 head. Slot released immediately.
+
+## Session closure (2026-10-19, leader tn564n operator directive)
+
+lane-38 closes. State at close: HEAD `a3d25aef1f` on `WT-factory-cardroot-align` (pushed,
+PR #1833 OPEN, head observed by the leader), factory record merge-ready — merge is HELD on
+the operator constraint (@codex review re-request + merge queued by the leader). The
+post-merge record (PR number · merge commit · head SHA) will be written by the LEADER per
+board 21f2; the lane does not act further. Card work complete: both Codex-review P2 repairs
+landed and verified; sync-audit PASS stands (receipt rcpt-887168f33117a07a6c6f2161).
