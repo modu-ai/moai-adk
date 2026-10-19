@@ -344,6 +344,7 @@ with sqlite3 creates an empty one.`,
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(), newTodoMergeCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
+		newTodoClassifyCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(), newTodoTraceCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoShowCmd(), newTodoTriageCmd())
