@@ -1845,6 +1845,13 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 	if !factoryNextMayLease(ctx, root, runID, lane, nominee, held) {
 		return openPRQuery{err: errFactoryNextPRNotTaken}
 	}
+	// The peek can run long enough for the request to cancel inside it — its
+	// record reads fail open to true on a canceled context's errors — so
+	// recheck before starting the subprocess: a canceled caller gets no query
+	// either (PR #1832 post-merge review ③).
+	if ctx.Err() != nil {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
 	return prefetchOpenPRs()
 }
 
@@ -1947,6 +1954,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	// refusal, the selection skips, and the self-excluding serial read with
 	// sibling assigned rows ignored (card t1542). An excluded, skipped, or
 	// serial-blocked assigned card leaves the attempt to the bare arms below.
+	skipForBackend := factoryNextSkipForBackend()
 	for i := range rows {
 		c := rows[i]
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
@@ -1958,6 +1966,12 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			}
 		}
 		if selectionSkips(c) {
+			continue
+		}
+		// The backend skip is the lease path's own refusal (a row recorded at
+		// merge-ready or later on a GPT lane); a row it would refuse is no
+		// candidate for the wait loop either (PR #1832 post-merge review ①).
+		if skipForBackend(c) {
 			continue
 		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
@@ -2004,7 +2018,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		// hub wait arm (c) checks at promotion, and a rowless picked card to
 		// the hub wait of (b2) alone (card t1746).
 		if row, ok := rowByID[it.ID]; ok {
-			if selectionSkips(row) {
+			// Row-backed candidates answer to the backend skip too: the lease
+			// path refuses any recorded row at or past merge-ready on a GPT
+			// lane, recorded or bare (PR #1832 post-merge review ①).
+			if skipForBackend(row) || selectionSkips(row) {
 				continue
 			}
 		} else if it.State == factory.BacklogStateQueued {
