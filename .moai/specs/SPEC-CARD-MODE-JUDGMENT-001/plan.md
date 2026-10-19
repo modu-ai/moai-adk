@@ -5,7 +5,7 @@ Documents-only change, Template-First, Tier L. Milestones are ordered by decisio
 ## A. Technical approach
 
 1. **Edit order inside every milestone: template side first, then the identical edit on the deployed side** (`.claude/...`), then run the milestone's read-only checks. Never the reverse; a deployed-only edit is a Template-First violation and AC-MJ-001..009 read both sides.
-2. **One home per rule.** M1 writes C's `### Mode judgment`; M2 writes M's `### Lease renewal`; M3 writes D's Routing bullet. Other sites receive a marker or a pointer, not the rule (REQ-MJ-012, `design.md` §D-2).
+2. **One home per rule.** M1 writes C's `### Mode judgment`; M2 writes M's `### Lease renewal`; M3 writes D's Routing bullet and `### Delegated-dispatch promotion`. Other sites receive a marker or a pointer, not the rule (REQ-MJ-012, `design.md` §D-2).
 3. **Do not edit a ledger-pinned line that has no reason to change** (`design.md` §D-3): F:30, K:32/36/68 stay verbatim. Lines whose scope must change (F:119, F:122, K:28, A §5.1, W §0a, M:26, D:133) are rewritten, and each ledger row whose `after_text` is rewritten (at least ALB-0276) is updated in the same commit.
 4. **Worded fresh.** New text copies no ledger-covered line of ≥ 40 units into a `paths:`-scoped file (AC-ALB-021(2)), and carries no card id, board id, SPEC id, date, or long hex run (AC-MJ-013).
 5. **Class vs mode.** Say once, in C, that class (A/B/C) names the stages and mode names whether a card may run beside others; the two axes are independent.
@@ -28,35 +28,40 @@ Open items touching M1: none blocking. Q1 default (agents untouched) and Q2 defa
 Files (template, then deployed): M, K, F, A, W, plus `internal/template/testdata/binding_ledger.json` rows.
 
 1. M: add `### Lease renewal — only the card being executed` under `## Factory Mode mechanics` with the tokens of AC-MJ-007; rewrite line 26 to point at it (the `moai factory renew` verb and `factory_lease.duration` text stay). Define *executing* once (`spec.md` §3).
-2. K line 28: marker form (`design.md` §D-4); keep ``every renewal period of `workflow.factory_lease.renew_interval` `` on that line; net ≤ 0 units against the 9,999 baseline after an offsetting trim of ≥ 8 units from a non-ledger-covered core line (verify with `git grep` that no test pins the line first).
+2. K line 28: marker form (`design.md` §D-4); keep ``every renewal period of `workflow.factory_lease.renew_interval` `` on that line. Budget: the marker form is +9 units, M3's clause edit at K:20 is −6, so the stub nets +3 against the 9,999 baseline and needs an offsetting trim of ≥ 2 units from a non-ledger-covered core line (verify with `git grep` that no test pins the line first); measure with AC-MJ-012's command after both edits.
 3. F line 119 (the ledger-pinned compressed line) and line 122 (the pinned long paragraph): add the marker; update ledger row ALB-0276's `after_text` to the new line in the same commit. Keep the `### Lane waits are explicit, and stalls are watched` tokens (`CronCreate`, `recurring`, `disk evidence`).
 4. A §5.1 (lines 113-146): scope "armed once … and kept until the completion report" and "Each fire runs the watchdog's renewal first" to the executing card; keep the §5 tokens of `design.md` §D-3; reflow so the marker shares a physical line with each `kept`/`keeps` phrase (the per-line trap).
 5. W §0a: add the scope clause; keep heading word `Renew`, `moai factory renew`, the closed `renew_result` set, "does not end the pass", and order (Renew before Measure). A pass that does not renew carries the previous `renew_result` forward.
 6. Check: AC-MJ-007, -008, -009, -012 green. If the ledger row edit is needed, `TestBindingLedgerIntegrity` is the proof (M5).
 
-### M3 — Free lane and assignment input (Priority Medium; the assignment-input sentence is held for Q3)
+### M3 — Free lane, delegated-dispatch promotion, and the sentences that called promotion the operator's alone (Priority Medium; nothing is held: the operator ruling d314 settled Q3)
 
-Files (template, then deployed): D.
+Files (template, then deployed): D, F, K, G, plus `internal/template/testdata/binding_ledger.json` (row ALB-0257).
 
 1. D line 133 (Routing bullet): replace "free means the lane's previous card reached `done`…" with the executing-card definition (token `no card is actually executing`), the merge-ready / held / serial-waiting inclusion, and the one-sentence separation from the live-session condition citing M § Boundaries and carrying the phrase `not a free lane` (REQ-MJ-006, AC-MJ-005c). Line 35 (the diagram) keeps the term unchanged.
-2. **Held for verdict Q3** — write the `assignment input` sentence (REQ-MJ-007, token `assignment input`) only after the operator's verdict. Under the default reading the sentence names a candidate set and leaves promotion to the existing clauses; under the Alternate, REQ-MJ-007 and AC-MJ-006 are amended first.
-3. Check: AC-MJ-005 green; AC-MJ-006 green only after Q3.
+2. D: add `### Delegated-dispatch promotion` after the last bullet of `## Factory in-lane 3-stage` and before `## The card-review stage` (line 140), consisting of exactly the nine lines pinned in `acceptance.md` E-006 (REQ-MJ-007, AC-MJ-006) — copy them from the ledger, do not re-word: AC-MJ-006 compares whole lines. Re-measure D's size afterwards (27,611 units today; the per-file figure that applies is 40,000).
+3. Pointers and the one rewritten clause (REQ-MJ-017, AC-MJ-018, AC-MJ-019), template first:
+   a. F: insert the exact pointer line of E-018a directly after F:40, as its own paragraph. Leave F:38 and F:40 verbatim.
+   b. F:44 and K:20: replace `The one reconciliation is named, not excepted:` with `A reconciliation is named, not excepted:`; change nothing else in the paragraph. Update ledger row ALB-0257's `after_text` to the new K:20 text in the same commit.
+   c. G: add the exact pointer paragraph of E-018d, as one physical line (the criterion matches whole lines, so it is not hard-wrapped like its neighbours), after the [HARD] pick rule — the paragraph at `gtd.md:307-310` whose last words are `invent work.`. Leave that paragraph verbatim.
+   d. New text must avoid the strings `Promotion is the operator's act, always.` and `The leader never picks for the operator`, and must carry no SPEC id, REQ token, date, board or card id, or hex run (the neutrality tests).
+4. Check: AC-MJ-005, -006, -016, -017, -018, -019 green; AC-MJ-012 after the K edits of M2 and M3 together.
 
 ### M4 — Mechanical sync of generated and fixture files (Priority Medium; mechanical, last)
 
 1. `internal/template/catalog.yaml`: recompute the stored hashes for the entries whose skill directory changed — `moai` (contains `workflows/gtd.md`) and `moai-lane-watchdog` — with `go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai` and `--entry moai-lane-watchdog`. (`moai-factory-foreman` is untouched by default.)
-2. `binding_ledger.json`: confirm every rewritten covered line has its row updated (M2 step 3) and no row's `before_text`/`after_text` absence remains.
+2. `binding_ledger.json`: confirm every rewritten covered line has its row updated (M2 step 3: ALB-0276; M3 step 3b: ALB-0257) and no row's `before_text`/`after_text` absence remains.
 3. Re-run AC-MJ-013 (`E-013a` command) now that a diff exists; a non-empty stat names a leaking file.
 4. Agent files are not edited by default, so `make agents-emit` and the `.codex` TOMLs are untouched; if Q1 flips to include them, run `make agents-emit` and re-run the emit check.
 
 ### M5 — Verification and evidence (Priority High; the gate)
 
-Read-only checks first, in one parallel batch (AC-MJ-001..013, -016, -017 commands from `acceptance.md`), outputs redirected to files under the card's scratch directory with the exit code and a bounded tail surfaced; the lines that decide each claim go into `.moai/reports/t1894/verdict.md`.
+Read-only checks first, in one parallel batch (AC-MJ-001..013, -016, -017, -018, -019 commands from `acceptance.md`), outputs redirected to files under the card's scratch directory with the exit code and a bounded tail surfaced; the lines that decide each claim go into `.moai/reports/t1894/verdict.md`.
 
 Then the **scoped Go checks** (AC-MJ-014). Never `go test ./...`:
 
 - `internal/template`, one invocation: `go test ./internal/template -count=1 -run '^(TestBindingLedgerIntegrity|TestRoleCoreStubGate|TestDeployedAlwaysLoadedCharBudget|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestReviewOwnership_CardReviewDoctrine|TestFactoryDispatchBodyCarriesRenewIntervalLinkage|TestLaneRecheckDoctrine|TestLaneWatchdogRenewsFirst|TestLaneWatchdogRecordsRefusalAndMeasures|TestWorkflowRulePathsPinned|TestTemplateNoInternalContentLeak|TestCatalogHashCoversSkillSubfiles)$'`
-- `internal/cli`, one invocation: `go test ./internal/cli -count=1 -run '^(TestAutoPickMirrorParity|TestAutoPickDocDoctrine|TestTodoSkillDocumentsClassification)$'`
+- `internal/cli`, one invocation: `go test ./internal/cli -count=1 -run '^(TestAutoPickMirrorParity|TestAutoPickDocDoctrine|TestTodoSkillDocumentsClassification|TestAutoRankDoctrineAmendment|TestAutoRankMirrorParity|TestAutoRankMarkerDisclosure)$'`
 
 Record, per verdict, the empty-sweep check (each `-run` must report a non-zero test count — `[no tests to run]` is a failure, `verification-completeness.md` §1.1) and the judging build (build from this tree and invoke it by path, or state that the installed build is not a strict ancestor — `verification-claim-integrity.md` §2.2).
 
@@ -64,13 +69,16 @@ Record, per verdict, the empty-sweep check (each `-run` must report a non-zero t
 
 ## C. Order and dependencies
 
-M1 → M2 → M3 → M4 → M5, with M3 step 2 waiting on Q3 and M5 running after M4. M1 and M2 are independent of Q3. A run phase that cannot proceed on Q3 delivers M1, M2, M3 step 1, M4, M5 and reports AC-MJ-006 as blocked rather than green.
+M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on a decision: Q3 is met by the operator ruling d314 (decision-index), Q1, Q2, Q4, Q5 carry their stamps. M2 and M3 both edit K, so the stub-size check (AC-MJ-012) is taken after M3, not after M2 alone.
 
 ## D. Risks
 
 | Risk | Where it shows | Mitigation |
 |---|---|---|
-| Core stub over 10,000 units | AC-MJ-012; `TestRoleCoreStubGate` | marker form (+9) plus an 8-unit offset; never the pointer form in K |
+| Core stub over 10,000 units | AC-MJ-012; `TestRoleCoreStubGate` | marker form (+9), the K:20 clause (−6) and an offset of ≥ 2 units; never the pointer form in K |
+| A pinned old sentence folded into the exception | AC-MJ-019; `TestAutoRankDoctrineAmendment`, `TestAutoPickDocDoctrine` | edit F:38, F:40 and the pinned clauses of F:44 / K:20 not at all; the exception is the pointer line plus home D |
+| A widening of the exception in the home subsection | AC-MJ-006 (whole-line equality, line count) | copy the nine lines from `acceptance.md` E-006; amend the criterion with any wording change |
+| An unstated delegation treated as given | spec R-5 | the documents carry the ruling's words and no mechanism; the sync audit reads for invented ones |
 | Ledger row left stale | `TestBindingLedgerIntegrity` "obligation lost" | update the row in the same commit as the line |
 | A pinned token lost in a scoped rewrite | `TestLaneRecheckDoctrine`, renew-interval test, watchdog tests | `design.md` §D-3 token list checked line by line |
 | Unscoped tail line in hard-wrapped A | AC-MJ-008(a) | reflow so marker and `kept` share a line |

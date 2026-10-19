@@ -4,7 +4,7 @@ The verification layer. Requirements (GEARS) are in `spec.md` §4; this file hol
 
 ## 0. Conventions
 
-- **Document-level pin** (binds every ledger entry that carries no pin of its own, `verification-completeness.md` §2.1): tree SHA `74ad197380a0711cdb9816d4e37c94d29af730ea`, branch `WT-fail-safe-serial` (clean, unpushed). Every command ran with cwd `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894`; the judging `moai` build for CLI observations is `moai_cp/20261007_195927`. No Go command ran in this phase.
+- **Document-level pin** (binds every ledger entry that carries no pin of its own, `verification-completeness.md` §2.1): tree SHA `74ad197380a0711cdb9816d4e37c94d29af730ea`, branch `WT-fail-safe-serial` (clean, unpushed). Every command ran with cwd `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894`; the judging `moai` build for CLI observations is `moai_cp/20261007_195927`. No Go command ran in this phase. Entries added or re-measured by the correction round (E-006, E-016, E-018a-d, E-019a-c) carry a criterion-level pin of their own, tree `55d4f1486a454ff446be6f0f0645d4cea76bf0cc`, which wins over the document-level pin; the template and deployed document trees are identical between the two pins (`research.md` header).
 - **Carrier**: fenced evidence-ledger entries `E-nnn`, cited by the criteria. Each entry carries `command`, `stdout` (verbatim as printed), `exit` (its own field), and, where it differs from the document pin, `tree`.
 - **Classes**: `R` release-blocking (has a RED-now cell that is red now for the stated reason, a green-path cell naming the milestone that flips it, and a mutant probe); `G` regression-guard (green by design now; it records a *known failing input* on which the instrument was observed red, so the green is interpretable — `verification-completeness.md` §1.1); `O` operational (undecidable by a command; recorded, never counted as a pass by this SPEC).
 - **Both trees**: every `R` criterion reads the template side and the deployed side in one invocation, so an edit to one side only leaves one operand red. `AC-MJ-011` additionally holds byte equality (`cmp`) for the seven fully-mirrored pairs and `AC-MJ-017` holds the one declared fork.
@@ -65,13 +65,17 @@ V is defined once: a non-table line (`^(?!\|)`) containing `moai todo add "` or 
 - Green path: M3 rewrites the Routing bullet on both sides.
 - Mutants tried: add the new sentence and keep the old (b stays `1`); delete the term "free" altogether (a fails); define free in M instead (a fails; AC-MJ-016 lists M).
 
-### AC-MJ-006 — The assignment input is defined, subject to verdict Q3 (R; REQ-MJ-007; blocked on decision-index row Q3)
+### AC-MJ-006 — The delegated-dispatch promotion is stated once, with every limit of the operator ruling and no other (R; REQ-MJ-007)
 
-**Given** D on both sides, **When** the literal `assignment input` is counted, **Then** each copy reports `1`.
+**Given** the detail companion D on both sides,
+**When** the subsection `### Delegated-dispatch promotion` is scanned and each non-empty line of it is compared, as a whole line, with the nine lines pinned in `E-006` — the command prints `<distinct subsection lines equal to a pinned line> <non-empty subsection lines>` once per file —
+**Then** each copy reports `9 9`.
 
-- RED-now: `E-006` (`:0`, `:0`, exit 1). Red because no document defines the input to assignment.
-- Green path: M3, *after* the operator verdict for Q3 — the sentence is not written under a planner default. If the verdict is the Alternate (the leader may promote queued parallelizable cards), this criterion and REQ-MJ-007 are rewritten by amendment before M3 runs; they are not silently satisfied.
-- Mutants tried: the term in a comment (passes; read by the audit); the sentence stating that the leader promotes queued cards without the verdict (passes the command, violates the open item — caught by the Q3 row staying empty).
+- RED-now: `E-006` (`0 0` for the template copy, `0 0` for the deployed copy; exit 0; tree `55d4f1486a`). Red because D has no such subsection — its `##` headings run from `## Design intent` to `## Cross-references` and none is this one (`research.md` S12, S20). This work can flip it: M3 adds the subsection to the template copy and then the deployed copy.
+- Green path: M3 step 2 → `9 9` and `9 9`. The nine lines are the ruling's limits in a fixed wording: the delegation condition (line 1), where (line 2), which cards (line 3), what is never promoted (line 4), serial cards (line 5), order (line 6), the leader's act (line 7), what is unchanged (line 8), and the assignment input (line 9). Positive control: pasting those nine lines under the heading into any markdown file and running the same command on it prints `9 9`.
+- Why whole lines, not tokens: every limit of the ruling is a restriction or a negation, and a token check cannot see a limit reversed inside a sentence that still carries the token. Whole-line equality plus the line count makes a widening visible however it is written — a reworded limit changes a line, an added limit adds a line, a dropped limit removes one.
+- Mutants tried — each observed once against a scratch copy of the pinned subsection (the scratch files are not cited; see Residual-risk in `progress.md`): remove "a held card" from the never-promoted line → `8 9`; remove the delegation condition from the first line → `8 9`; replace the serial line with "serial cards are promoted too" → `8 9`; append ", and held cards too" to the first line → `8 9`; replace the leader's-act line by a copy of the order line → `8 9`; add a bullet "Held cards may also be promoted." → `9 10`. Renaming the heading, or moving the lines into another section → `0 0`. Each is red.
+- Evades, stated: the same widening written in a second file under a paraphrase that carries none of the six home tokens (AC-MJ-016 lists any file carrying one; a pure paraphrase evades — read by the audit). A wording improvement to a pinned line fails the command by design; the criterion is amended with the wording, the same strictness as AC-MJ-002's deliberate false positive.
 
 ### AC-MJ-007 — The renewal rule has one home and states its five facts (R; REQ-MJ-008, -009)
 
@@ -129,7 +133,7 @@ V is defined once: a non-table line (`^(?!\|)`) containing `moai todo add "` or 
 **When** its UTF-16 code-unit count is compared with 10,000,
 **Then** the command prints `OK <n>` with `n ≤ 10000`.
 
-- Evidence now: `E-012a` prints `OK 9999` (headroom 1). This is not vacuous: the work must edit this file (site S10) and the candidate wording adds 9 units (`design.md` §D-4).
+- Evidence now: `E-012a` prints `OK 9999` (headroom 1; re-measured on tree `55d4f1486a`, exit 0, `cmp` of the two stub copies silent, exit 0). This is not vacuous: the work must edit this file twice — site S10 (marker form, +9 units) and site S19 (the opening clause, −6 units) — so the net before any offsetting trim is +3 and the criterion is red unless a trim of at least 2 units from an uncovered core line (or a tighter S10 wording) lands with them (`design.md` §D-4).
 - Known failing input: `E-012b` — the same command on `factory-dispatch.md` prints `OVER 25803`.
 - Mutants tried: pointer-form wording (+115) → `OVER 10114`; a trim that removes a ledger-covered line (this criterion passes; `TestBindingLedgerIntegrity` fails, run-phase).
 - Limit: the measurement is a UTF-16 count of the file as stored; the Go gate renders the template first. The two agree for this file (no template directives); the Go gate is authoritative.
@@ -151,7 +155,7 @@ V is defined once: a non-table line (`^(?!\|)`) containing `moai todo add "` or 
 **When** the scoped Go checks of `plan.md` §Verification run (one invocation per package; no `go test ./...`),
 **Then** every test named below passes and each log is cited from the verdict file.
 
-`internal/template`: `TestBindingLedgerIntegrity`, `TestRoleCoreStubGate`, `TestDeployedAlwaysLoadedCharBudget`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks`, `TestReviewOwnership_CardReviewDoctrine`, `TestFactoryDispatchBodyCarriesRenewIntervalLinkage`, `TestLaneRecheckDoctrine`, `TestLaneWatchdogRenewsFirst`, `TestLaneWatchdogRecordsRefusalAndMeasures`, `TestWorkflowRulePathsPinned`, `TestTemplateNoInternalContentLeak`, the catalog hash audit (`TestCatalogHashCoversSkillSubfiles` and its neighbours in `catalog_tier_audit_test.go`). `internal/cli`: `TestAutoPickMirrorParity`, `TestAutoPickDocDoctrine`, `TestTodoSkillDocumentsClassification`.
+`internal/template`: `TestBindingLedgerIntegrity`, `TestRoleCoreStubGate`, `TestDeployedAlwaysLoadedCharBudget`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks`, `TestReviewOwnership_CardReviewDoctrine`, `TestFactoryDispatchBodyCarriesRenewIntervalLinkage`, `TestLaneRecheckDoctrine`, `TestLaneWatchdogRenewsFirst`, `TestLaneWatchdogRecordsRefusalAndMeasures`, `TestWorkflowRulePathsPinned`, `TestTemplateNoInternalContentLeak`, the catalog hash audit (`TestCatalogHashCoversSkillSubfiles` and its neighbours in `catalog_tier_audit_test.go`). `internal/cli`: `TestAutoPickMirrorParity`, `TestAutoPickDocDoctrine`, `TestTodoSkillDocumentsClassification`, `TestAutoRankDoctrineAmendment`, `TestAutoRankMirrorParity`, `TestAutoRankMarkerDisclosure` (the last three are the guards that pin the old operator-only sentences and the passage the new pointer line sits in — `research.md` §6, §10).
 
 - Disposition: not re-executable now (a Go run is not a single read-only invocation and none is allowed in this phase). It takes the undecidable disposition: it is a regression-guard, **not recorded as a pass** by this plan. Its RED is observable by the mutants above (for example the pointer-form K edit turns `TestRoleCoreStubGate` red).
 
@@ -164,12 +168,12 @@ V is defined once: a non-table line (`^(?!\|)`) containing `moai todo add "` or 
 ### AC-MJ-016 — Each rule has exactly one home (R; REQ-MJ-012)
 
 **Given** the eight changed template files,
-**When** the files are listed that contain any of the five home tokens `slot-gated surface`, `no card is actually executing`, `only the card the lane is actually executing`, `expiry is harmless`, `cannot be added after assign`,
+**When** the files are listed that contain any of the six home tokens `slot-gated surface`, `no card is actually executing`, `only the card the lane is actually executing`, `expiry is harmless`, `cannot be added after assign`, `while the operator has delegated dispatch`,
 **Then** exactly `factory-dispatch-cards.md`, `factory-dispatch-detail.md` and `factory-dispatch-mechanics.md` are listed.
 
-- RED-now: `E-016` (no file listed, exit 1). Red because none of the home sentences exists yet (the set is empty, not the right three).
+- RED-now: `E-016` (no file listed, exit 1; tree `55d4f1486a`). Red because none of the home sentences exists yet (the set is empty, not the right three).
 - Green path: M1-M3 → the three homes.
-- Mutants tried: restate a home token in F or K (the extra file is listed → red); paraphrase a rule into a second file (evades — residual, read by the audit); put all rules in one file (only one listed → red).
+- Mutants tried: restate a home token in F, K or G — including the delegation condition in the new pointer lines (the extra file is listed → red); paraphrase a rule into a second file (evades — residual, read by the audit); put all rules in one file (only one listed → red).
 
 ### AC-MJ-017 — The declared fork of `factory-dispatch.md` stays exactly one differing line (G; REQ-MJ-013)
 
@@ -179,6 +183,28 @@ V is defined once: a non-table line (`^(?!\|)`) containing `moai todo add "` or 
 
 - Evidence now: `E-017`. The `1 insertion, 1 deletion` figure is a baseline measured on the pinned tree, not an absolute law: the criterion is "unchanged from the baseline measured at the start of the run phase". If another landing resolves the fork before this SPEC runs (the Go guard `TestAutoPickMirrorParity` would change with it), re-measure with the `E-017` command and re-pin before M1 (`verification-completeness.md` §4); never re-quote this number. Known failing input: any edit to one copy only changes the counts (observed by construction: the pair already differs by the worktree-sweep line).
 - Mutants tried: apply the same edit to both → still `1/1` (correct); edit one side only → `2/2` or more (red).
+
+### AC-MJ-018 — Each sentence that called promotion the operator's alone now carries the exception by pointer, and none restates it (R; REQ-MJ-017)
+
+**Given** the leader's body F and the core stub K on both sides, and the todo skill G on both sides,
+**When** (a) the exact pointer line of F is counted as a whole line, (b) the opening clause `The one reconciliation is named` is counted in F and K, (c) the replacement clause `A reconciliation is named, not excepted:` is counted in F and K, and (d) the exact pointer line of G is counted as a whole line,
+**Then** (a) reports `1` per copy of F, (b) reports `0` for each of the four copies, (c) reports `1` for each of the four copies, and (d) reports `1` per copy of G.
+
+- RED-now: `E-018a` (`:0`, `:0`, exit 1), `E-018b` (`:1` ×4, exit 0), `E-018c` (`:0` ×4, exit 1), `E-018d` (`:0`, `:0`, exit 1); tree `55d4f1486a`. Red because neither pointer line exists and the paragraph at F:44 / K:20 still opens by claiming a single reconciliation (`research.md` §10, P2-P6).
+- Green path: M3 step 3 edits F (the pointer line after F:40; the clause at F:44), K (the clause at K:20; the size is AC-MJ-012's) and G (the pointer paragraph after the [HARD] pick rule), each template first → (a) `1`/`1`, (b) `0` ×4, (c) `1` ×4, (d) `1`/`1`.
+- Mutants tried: pointer line in the template only → (a) `1`/`0`; pointer added but the clause left → (b) `1`; the clause edited in F and not in K → (b) `0`,`0`,`1`,`1` and (c) `1`,`1`,`0`,`0` (red; also `TestAutoRankMirrorParity`); the paragraph deleted instead of reworded → (c) `0` (red); a pointer line that restates the limits → (a) `0`, because the line differs, and `E-016` lists F when the restatement carries a home token; the pointer moved into K → (a) `0`, and AC-MJ-012 goes red on size.
+- Does not establish: that no other sentence in the tree says the same thing in other words — `research.md` §10 is the measured list, and the sync audit reads for a paraphrase.
+
+### AC-MJ-019 — The sentences the doctrine guards pin are still present (G; REQ-MJ-016, REQ-MJ-017)
+
+**Given** F on both sides,
+**When** the pinned prohibition sentence ("Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.") and the pinned admission sentence ("queue ADMISSION (production) stays the operator's.") are counted,
+**Then** each reports `1` per copy.
+
+- Evidence now: `E-019a` (`:1`, `:1`, exit 0) and `E-019c` (`:1`, `:1`, exit 0) on tree `55d4f1486a`. Green by design before any edit; it guards the run, because the natural wrong edit is to fold the exception into these sentences.
+- Known failing input: `E-019b` — the prohibition pattern over the core stub, which does not carry that sentence, prints `0` (exit 1): the instrument goes red when the sentence is missing.
+- Mutants tried: reword the sentence to carry the exception ("Outside an --auto authorization or while dispatch is delegated …") → `0` (red) and the Go doctrine tests of AC-MJ-014 go red too; delete it → `0`; move it to the detail companion → `0`.
+- Does not establish: the two `absent` strings of `TestAutoPickDocDoctrine` ("Promotion is the operator's act, always.", "The leader never picks for the operator") stay absent. No command here carries a live control for an absence check, so that guard is left to AC-MJ-014's Go run (undecidable now).
 
 ## 2. Evidence ledger
 
@@ -275,12 +301,13 @@ exit: 0
 ```
 
 ```text
-E-006
-command: grep -c -F "assignment input" internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md .claude/rules/moai/workflow/factory-dispatch-detail.md
+E-006   (the nine pinned lines are the g[1]..g[9] strings of the command; `\047` is the apostrophe of "leader's")
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: awk 'BEGIN{ g[1]="Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once."; g[2]="- Where: only to a free live lane, as defined under Routing above."; g[3]="- Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment)."; g[4]="- Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3)."; g[5]="- Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader\047s remaining role)."; g[6]="- Order: queue priority and readiness first."; g[7]="- The leader acts by promotion to `picked` and assignment, nothing else."; g[8]="- Unchanged: lane self-dispatch through `moai factory next`."; g[9]="The assignment input of a free live lane is therefore the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards."; for(i=1;i<=9;i++) want[g[i]]=1 } FNR==1{ if(NR>1) print m" "n; m=n=0; f=0; split("",seen) } /^### Delegated-dispatch promotion$/{f=1;next} /^##/{f=0} f&&NF{ n++; if(($0 in want)&&!seen[$0]++) m++ } END{ print m" "n }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md .claude/rules/moai/workflow/factory-dispatch-detail.md
 stdout:
-.claude/rules/moai/workflow/factory-dispatch-detail.md:0
-internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md:0
-exit: 1
+0 0
+0 0
+exit: 0
 ```
 
 ```text
@@ -438,7 +465,8 @@ exit: 1
 
 ```text
 E-016
-command: grep -l -F -e "slot-gated surface" -e "no card is actually executing" -e "only the card the lane is actually executing" -e "expiry is harmless" -e "cannot be added after assign" internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -l -F -e "slot-gated surface" -e "no card is actually executing" -e "only the card the lane is actually executing" -e "expiry is harmless" -e "cannot be added after assign" -e "while the operator has delegated dispatch" internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md
 stdout: (empty)
 exit: 1
 ```
@@ -451,19 +479,93 @@ stdout:
 exit: 1
 ```
 
+```text
+E-018a   (the F pointer line, whole-line match; the line is the one F:42 will carry)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -x -F '[HARD] **The delegated-dispatch exception.** Besides the `--auto` batch approval, the leader may promote queued cards in exactly one further case, stated once in `factory-dispatch-detail.md` § Delegated-dispatch promotion with the limits given there and no others; nothing in this section widens it.' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md
+stdout:
+.claude/rules/moai/workflow/factory-dispatch.md:0
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:0
+exit: 1
+```
+
+```text
+E-018b   (the old opening clause, F and K, both trees)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -F 'The one reconciliation is named' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md .claude/rules/moai/workflow/factory-dispatch-core.md
+stdout:
+.claude/rules/moai/workflow/factory-dispatch.md:1
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:1
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md:1
+.claude/rules/moai/workflow/factory-dispatch-core.md:1
+exit: 0
+```
+
+```text
+E-018c   (the replacement clause, F and K, both trees)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -F 'A reconciliation is named, not excepted:' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md .claude/rules/moai/workflow/factory-dispatch-core.md
+stdout:
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:0
+.claude/rules/moai/workflow/factory-dispatch-core.md:0
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md:0
+.claude/rules/moai/workflow/factory-dispatch.md:0
+exit: 1
+```
+
+```text
+E-018d   (the G pointer line, whole-line match)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -x -F 'Promotion by the leader without a pick is limited to the one case stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion; every pick the operator makes follows the rule above.' internal/template/templates/.claude/skills/moai/workflows/gtd.md .claude/skills/moai/workflows/gtd.md
+stdout:
+internal/template/templates/.claude/skills/moai/workflows/gtd.md:0
+.claude/skills/moai/workflows/gtd.md:0
+exit: 1
+```
+
+```text
+E-019a   (pinned prohibition sentence in F, both trees)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -F 'Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md
+stdout:
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:1
+.claude/rules/moai/workflow/factory-dispatch.md:1
+exit: 0
+```
+
+```text
+E-019b   (known failing input: the same sentence over the core stub, which does not carry it)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -F 'Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item.' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md
+stdout:
+0
+exit: 1
+```
+
+```text
+E-019c   (pinned admission sentence in F, both trees)
+tree: 55d4f1486a454ff446be6f0f0645d4cea76bf0cc
+command: grep -c -F "queue ADMISSION (production) stays the operator's." internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md
+stdout:
+internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:1
+.claude/rules/moai/workflow/factory-dispatch.md:1
+exit: 0
+```
+
 ## 3. Edge cases
 
 - **A ledger row is stale after the rewrite.** If M2 rewrites F:119 and leaves ALB-0276 untouched, `TestBindingLedgerIntegrity` reports "after-text absent … obligation lost"; the row's `after_text` is updated in the same commit (REQ-MJ-016).
-- **The core stub exceeds 10,000 units by a few characters.** AC-MJ-012 prints `OVER`; the marker-form wording plus an 8-unit offset resolves it (`design.md` §D-4).
-- **The operator's Q3 verdict is the Alternate.** AC-MJ-006 and REQ-MJ-007 are rewritten by amendment before M3 runs.
+- **The core stub exceeds 10,000 units by a few characters.** AC-MJ-012 prints `OVER`; the marker-form wording, the −6 clause edit and a trim of at least 2 units resolve it (`design.md` §D-4).
+- **The exception is folded into a pinned sentence.** Rewording F:38, F:40 or the K:20 / F:44 paragraph's pinned clauses to carry the exception turns AC-MJ-019 red and the Go doctrine tests of AC-MJ-014 red; the exception is added beside them, by pointer.
+- **A lane or leader treats an unstated delegation as given.** The ruling names no mechanism that establishes "the operator has delegated dispatch" (`spec.md` R-5); AC-MJ-006 pins the text and cannot see the practice.
 - **`factory-dispatch.md` edited identically in both trees but the declared fork line also moves.** AC-MJ-017 shows a count other than `1/1`.
 - **The per-line trap.** A scoped sentence whose physical tail line still reads "kept until the completion report" keeps AC-MJ-008(a) red; reflow the paragraph.
 
 ## 4. Quality gates and Definition of Done
 
-- All `R` criteria (AC-MJ-001..009, -016) have observed RED cells (above) and pass on the run-phase tree with the command output pasted into the verdict file `.moai/reports/t1894/verdict.md` (decision-bearing lines only, per the evidence-export obligation).
-- All `G` criteria (AC-MJ-010..014, -017) pass; AC-MJ-014's Go logs are cited from the verdict file.
+- All `R` criteria (AC-MJ-001..009, -016, -018) have observed RED cells (above) and pass on the run-phase tree with the command output pasted into the verdict file `.moai/reports/t1894/verdict.md` (decision-bearing lines only, per the evidence-export obligation).
+- All `G` criteria (AC-MJ-010..014, -017, -019) pass; AC-MJ-014's Go logs are cited from the verdict file.
 - AC-MJ-015 is recorded by the leader and is not a SPEC PASS.
-- Decision-index rows Q1, Q2, Q4, Q5 are stamped `DEFAULT-APPLIED`; Q3 carries the operator verdict before M3; Q6 is POLICY-COVERED.
+- Decision-index rows Q1, Q2, Q4, Q5 are stamped `DEFAULT-APPLIED`; Q3 is met by the operator ruling d314 (its verdict is recorded in the row); Q6 is POLICY-COVERED. No requirement or criterion is gated on a decision.
 - Template-First order held: every template edit precedes the deployed edit (visible in the commit order of M1-M3).
 - `moai spec lint --strict` on `spec.md` exits 0 (recorded in `progress.md` §E.1).

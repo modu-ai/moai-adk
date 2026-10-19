@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-MODE-JUDGMENT-001
 title: "Force the serial/parallel judgment at card design time — mode-judgment step, explicit classification at issuance, free-lane definition, executing-card-only lease renewal"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -21,10 +21,11 @@ related_specs: [SPEC-TODO-CLASSIFY-DISPATCH-001, SPEC-FACTORY-LEASE-RENEW-001, S
 ## HISTORY
 
 - 0.1.0 — 2026-10-19 — Plan-phase artifacts for card t1894 (Class C, P1, Template-First, operator instruction 10-19). Every figure below was measured on tree `74ad197380a0711cdb9816d4e37c94d29af730ea` (branch `WT-fail-safe-serial`, clean, unpushed) with the commands recorded in `research.md` and `progress.md` §E.1; nothing is carried from the card text. Code (the default mode and the reclassify verb) belongs to card t1737 and is not touched here.
+- 0.1.1 — 2026-10-19 — Correction round before the first plan audit (a second commit, not an amendment). The operator ruling `d-20261019T023441Z-d314` settled decision-index row Q3: the leader may itself promote queued `parallelizable` cards to `picked` and assign them while the operator has delegated dispatch, under stated limits. REQ-MJ-007 and AC-MJ-006 are rewritten to implement exactly that; REQ-MJ-017, AC-MJ-018 and AC-MJ-019 are added for the sentences that stated the old operator-only rule (measured in `research.md` §10); the Go SessionStart notice moves to card t1695 (Q4) and stays out of scope. An earlier plan audit was stopped before it wrote a verdict, so no audit hash covers the 0.1.0 text; the lane recomputes the plan-artifact hash after this commit.
 
 ## 1. Context and problem
 
-Cards added without an explicit classification fall on the fail-safe default (`mode=serial`, `decider=default`; the code constant is the notice text at `internal/cli/todo_classify.go:41`, the default decider is `factory.DefaultCardDecider{}` at line 36). On 2026-10-19 that default had piled up 29 cards on the single serial slot, and lanes ran lease-renewal loops in front of that one slot (board records a672, 02f4, 0c51 cite the counts). The guidance that tells the leader how to issue a card never asks for a serial/parallel judgment, and the lane guidance tells a lane to keep a recurring recheck cron armed "to the completion report" whatever state its card is in. This SPEC changes **documents only**: it forces the judgment at issuance and fixes the renewal and free-lane wording.
+Cards added without an explicit classification fall on the fail-safe default (`mode=serial`, `decider=default`; the code constant is the notice text at `internal/cli/todo_classify.go:41`, the default decider is `factory.DefaultCardDecider{}` at line 36). On 2026-10-19 that default had piled up 29 cards on the single serial slot, and lanes ran lease-renewal loops in front of that one slot (board records a672, 02f4, 0c51 cite the counts). The guidance that tells the leader how to issue a card never asks for a serial/parallel judgment, and the lane guidance tells a lane to keep a recurring recheck cron armed "to the completion report" whatever state its card is in. This SPEC changes **documents only**: it forces the judgment at issuance, fixes the renewal and free-lane wording, and states the one case in which the leader may promote queued cards without a per-card operator pick (the operator ruling d314 of §2).
 
 ## 2. Authorities (quoted, not paraphrased)
 
@@ -40,6 +41,10 @@ The operator's standing rule and the leader's standing rules are the policy. Thi
 
 **02f4** (`decided_by=operator`, `scope=card:t1737`): a one-time serial-slot exception for t1737 only. It sets no policy for this card and is cited only to bound the scope of code (t1737 owns the default and the reclassify verb).
 
+**d314** (`decided_by=operator (AskUserQuestion 10-19)`, `scope=card:t1894`, `kind=ruling`, `d-20261019T023441Z-d314`, `evidence_refs=lane-31 plan 55d4f1486a decision-index Q3; factory-dispatch.md:38`). Read with `moai decision read --scope card:t1894 --project-root /Users/goos/MoAI/moai-adk-go` (exit 0, `board=ok unparseable=0 records=141`) on tree `55d4f1486a454ff446be6f0f0645d4cea76bf0cc`, judged by the installed build `moai_cp/20261007_195927`:
+
+> t1894 Q3 = leader auto-promotion is stated explicitly: while the operator has delegated dispatch (operator-away / standing delegation), when a live lane is free (no actively executing card, per a672) the leader itself promotes queued cards classified parallelizable (explicit judgment per 0c51) to picked and assigns them, without a per-card operator pick. Ordering: queue priority/readiness first; keep-set, held and [보류-marked cards are never auto-promoted; serial cards follow the slot rules. Lane self-dispatch is unchanged. Q1 default (manager-todo untouched) and Q4 (laneRecheckRule moved to t1695) stand.
+
 ## 3. Definitions
 
 | Term | Meaning in this SPEC |
@@ -49,6 +54,10 @@ The operator's standing rule and the leader's standing rules are the policy. Thi
 | executing | The lane is carrying out a stage of the card — plan, run, sync, the card-review, or the landing sequence — and is not waiting on a slot, a trigger, or the operator. |
 | free lane | A lane on which no card is actually executing. A lane that holds only merge-ready, held (operator-wait), or serial-waiting cards is free. |
 | live session | A running session occupies the lane label. A different notion from *free*: a lane with no live session is a fault, not a free lane (`factory-dispatch-mechanics.md` § Boundaries, unchanged). |
+| free live lane | A lane that has a live session and on which no card is actually executing (d314: "a live lane is free (no actively executing card, per a672)"). |
+| delegated dispatch | The operator's state of having handed dispatch to the leader: "operator-away / standing delegation" in d314. The ruling names no mechanism that establishes it; the documents carry its words and invent none (residual risk R-5). |
+| promotion | A queued card becoming `picked`. Today it is the operator's act, in person or in advance, or the `--auto` batch approval, or a lane's own lease; d314 adds the one case of REQ-MJ-007. |
+| keep-set | The cards a session never takes on its own judgment, as `auto-semantics.md` §9.3 and the `--auto` section of `gtd.md` define them. The documents cite that definition and do not restate it. |
 | template side / deployed side | `internal/template/templates/.claude/...` is the source; `.claude/...` is the deployed copy of this repository (Template-First). |
 
 ## 4. Requirements (GEARS)
@@ -66,7 +75,7 @@ Home documents (each rule is stated once, in its home, and cited by section name
 ### 4.2 Free lane and assignment input (scope item 3)
 
 - **REQ-MJ-006** The documents shall define a free lane as a lane on which no card is actually executing, shall state that a lane holding only merge-ready, held, or serial-waiting cards is free, and shall keep that definition separate from the live-session condition; the sentence "free means the lane's previous card reached `done`" shall not remain.
-- **REQ-MJ-007** Where the assignment input is described, the documents shall define it as the picked cards plus the queued cards classified `parallelizable`, and shall leave promotion authority (the operator's pick, the `--auto` batch approval, a lane's lease) exactly as the existing clauses state it. *Held for the operator verdict of open item OI-3 before run-phase milestone M3 writes this sentence.*
+- **REQ-MJ-007** While the operator has delegated dispatch, the documents shall authorize the leader — and no other actor — to promote queued cards to `picked` and assign them, with no per-card operator pick, in one subsection of the detail companion (home D, `### Delegated-dispatch promotion`), which shall state every limit of d314 and no other: (a) only to a free live lane; (b) only queued cards carrying an explicit `parallelizable` classification; (c) never a keep-set card, a held card, or a `[보류`-marked card; (d) serial cards outside the case, left to the slot rules; (e) queue priority and readiness first; (f) the leader's act is promotion to `picked` and assignment, nothing else; (g) lane self-dispatch unchanged. The same subsection shall define the assignment input of a free live lane as the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards.
 
 ### 4.3 Lease renewal (scope item 4)
 
@@ -81,20 +90,25 @@ Home documents (each rule is stated once, in its home, and cited by section name
 - **REQ-MJ-013** Every changed document shall be edited on the template side first, and the deployed copy shall be byte-identical to it, except that the declared one-line fork of `factory-dispatch.md` (the worktree-sweep sentence) shall remain exactly one differing line.
 - **REQ-MJ-014** Where the always-loaded core stub is edited, it shall stay at or under 10,000 UTF-16 code units (measured today at 9,999) and the always-loaded rules subtotal under 150,000; no changed template document shall carry a card id, board record id, SPEC id, internal date, or commit SHA.
 - **REQ-MJ-015** The documents shall not describe a changed classification default or a reclassification verb as available, and shall not alter the factual default-decider sentence of the todo skill's verb reference (`gtd.md`, the `moai todo add` row).
-- **REQ-MJ-016** Where a guard test pins a changed sentence or token (the renew-interval wording, the binding ledger rows, the doctrine-section tokens, the watchdog first-step order, the mirror and neutrality tests), the change shall keep that guard green; a ledger row whose `after_text` is deliberately rewritten shall be updated in the same change.
+- **REQ-MJ-016** Where a guard test pins a changed sentence or token (the renew-interval wording, the binding ledger rows, the doctrine-section tokens, the watchdog first-step order, the `--auto` doctrine and mirror-parity tests, the neutrality tests), the change shall keep that guard green; a ledger row whose `after_text` is deliberately rewritten shall be updated in the same change.
+
+### 4.5 Sites of the operator-act promotion rule (scope item 3, continued)
+
+- **REQ-MJ-017** Where a document states that promotion is the operator's act, the documents shall carry the exception of REQ-MJ-007 by pointer to home D and not by restatement, and shall keep every sentence a doctrine guard pins exactly as pinned: (a) the leader's body (`factory-dispatch.md`) shall keep both forms of its promotion clause and gain one pointer line directly after them; (b) the clause that opens "The one reconciliation is named, not excepted" shall claim no exhaustiveness, with identical wording in the leader's body and in the always-loaded core stub (the stub's size stays governed by REQ-MJ-014); (c) the todo skill's pick rule (`gtd.md`) shall gain the same pointer and keep its pinned sentence; (d) the sites that `research.md` §10 decides to keep — agent files, the moai skill's index line, the `--auto` section, the pre-dispatch cross-check text, the lane watchdog's queue line, the card-pick gate of `auto-semantics.md` — shall stay unedited.
 
 ## 5. Out of scope
 
 ### Out of Scope — code and runtime
 
 - The default mode and the reclassify verb (card t1737, lane-18): no Go change, no new verb, no change to `factory.DefaultCardDecider`, and no description of either as available (REQ-MJ-015).
-- The SessionStart lane notice in `internal/hook/session_start_factory.go` / `session_start_factory_i18n.go` (`laneRecheckRule`), which injects the same "arm before the first stage, `CronDelete` at the completion report" rule in four locales and is pinned by `internal/hook/lane_renew_interval_test.go`. It is Go code; it keeps the unscoped wording until a follow-up card changes it (open item OI-4, residual risk R-1).
+- The SessionStart lane notice in `internal/hook/session_start_factory.go` / `session_start_factory_i18n.go` (`laneRecheckRule`), which injects the same "arm before the first stage, `CronDelete` at the completion report" rule in four locales and is pinned by `internal/hook/lane_renew_interval_test.go`. It is Go code; the operator ruling d314 moves it to card t1695, and it keeps the unscoped wording until that card changes it (decision-index row Q4, residual risk R-1).
+- Go source text that states the operator-pick rule — `internal/cli/todo.go` lines 6, 238 and 1576 (a package comment, the `moai todo` help text "picking the next card is the operator's act too (next <n>)", and a verb comment): code, not documents, and each concerns the operator's own `next` pick, which the ruling does not change (`research.md` §10, sites P12-P14).
 
 ### Out of Scope — documents deliberately left alone
 
 - `.moai/policies/**` and `.moai/workflows/gtd.md`: deploy-time projections of the rule tree (`internal/template/harness_fs.go` maps `.moai/policies` to `.claude/rules/moai`). Measured stale already on this tree (the card-size-ceiling section is absent from the policy copy of C), regenerated by the update path, not hand-edited.
 - `internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md:348` (a standing-source `[PROJECT]` card issued with a bare `moai gtd add`): outside the card's named scope; open item OI-2.
-- The agent files `manager-todo.md` and `manager-lead.md` and their Codex TOML emissions: measured to carry no issuance procedure (open item OI-1).
+- The agent files `manager-todo.md` and `manager-lead.md` and their Codex TOML emissions: measured to carry no issuance procedure (decision-index row Q1; the ruling d314 confirms "manager-todo untouched"). Their promotion wording — `manager-todo.md:54` "self-promotes, admits, drops, or edits cards" (the `--auto` cycle) and `manager-lead.md:235` (the deputy dispatches already-picked cards only) — stays: the ruling gives the leader the promotion, not the cycle and not the deputy.
 - `docs-site/**`, `AGENTS.md`, `AGENTS.local.md`, `.moai/docs/**`: no statement of the changed rules found there (`research.md` § Sweep).
 
 ### Out of Scope — policy not decided here
@@ -104,20 +118,22 @@ Home documents (each rule is stated once, in its home, and cited by section name
 
 ## 6. Open items (decision-index rows)
 
-The decisions this plan could not settle are rows Q1-Q6 in `decision-index.md`; none is decided by the planner except where the published Default rule ranks the options (stamped `DEFAULT-APPLIED`). Summary:
+The decisions the plan phase surfaced are rows Q1-Q6 in `decision-index.md`; none is decided by the planner except where the published Default rule ranks the options (stamped `DEFAULT-APPLIED`). Q3 is settled by the operator ruling quoted in §2. Summary:
 
 | Row | Question | Label | Default / state |
 |---|---|---|---|
 | Q1 / OI-1 | Do `manager-todo.md` / `manager-lead.md` get an issuance pointer? | FOUNDER, implementation-level | Default: no (measured: neither describes issuance) |
 | Q2 / OI-2 | Is the standing-source card of `doc-generation.md` in scope? | FOUNDER, implementation-level | Default: no |
-| Q3 / OI-3 | Does "assignment input = picked + queued parallelizable" change who promotes? | FOUNDER, product-level | Empty — blocks the autonomous Kickoff; gates REQ-MJ-007 only |
-| Q4 / OI-4 | Is the Go SessionStart lane notice in scope? | FOUNDER, implementation-level | Default: no (follow-up card) |
+| Q3 / OI-3 | Does "assignment input = picked + queued parallelizable" change who promotes? | FOUNDER, product-level | **Met** by the operator ruling d314 (leader promotion while dispatch is delegated, with limits); REQ-MJ-007 and REQ-MJ-017 implement it; nothing is gated on it |
+| Q4 / OI-4 | Is the Go SessionStart lane notice in scope? | FOUNDER, implementation-level | Default: no; d314 states it is moved to card t1695 |
 | Q5 / OI-5 | "In-flight" membership; paths of the three slot-gated surfaces | FOUNDER, implementation-level | Default: keep the board's words verbatim |
 | Q6 | Tier | POLICY-COVERED | Tier L by the files-affected column (`design.md` D-1) |
 
 ## 7. Known limits and residual risk
 
-- **R-1** Until OI-4 is acted on, a lane that reads its SessionStart notice is told to keep the recheck cron to the completion report whatever its card state; the scoped document wording and the injected notice disagree. Mitigation: the operational check AC-MJ-015 names the notice, and the follow-up card is proposed in the report.
+- **R-1** Until card t1695 changes the Go notice, a lane that reads its SessionStart notice is told to keep the recheck cron to the completion report whatever its card state; the scoped document wording and the injected notice disagree. Mitigation: the operational check AC-MJ-015 names the notice; the owner is card t1695 by the operator ruling d314.
 - **R-2** The mode judgment is a human/LLM judgment recorded in a reason field; no command here verifies that a stated file set is the card's real file set (`design.md` D-6).
 - **R-3** `moai todo next` / assign behaviour for Class C (`--spec` at pick) is taken from board 0c51 and from `moai todo next --help` (a `--spec` flag exists on `next`); the "cannot be added after assign" fact was not re-derived from code in this plan phase.
 - **R-4** The installed `moai` build (`moai_cp/20261007_195927`) predates this tree's HEAD; every CLI observation in `research.md` names it as the judging build (verification-claim-integrity §2.2).
+- **R-5** The ruling d314 does not say what establishes "the operator has delegated dispatch". The documents carry its words ("operator away, or a standing delegation") and define no mechanism, record format or expiry; an actor that treats an unstated delegation as given widens the exception in practice, and no command here can see that. AC-MJ-006 pins the text, not the practice.
+- **R-6** Two Go doctrine-test families pin the old operator-only sentences (`internal/cli/todo_auto_doc_test.go`, `internal/cli/todo_auto_pick_doc_test.go`); they were read, not run (progress.md G-2). The plan keeps the pinned sentences verbatim and adds the exception beside them, so those guards constrain the wording of this change and cannot be relaxed by it.
