@@ -193,6 +193,17 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		// SPEC-LAUNCHER-ARGV-001 REQ-LA-004: the anchor guard judges the launch
+		// view BEFORE any session mutation — the role marker, the run record, the
+		// settings preparation and the worktree materialization all wait behind
+		// it. The override flag is the launcher's own option, consumed here; the
+		// assignment (never :=) keeps the function-level filteredArgs the one the
+		// rest of the entry sees.
+		var anchorOverride bool
+		filteredArgs, anchorOverride = consumeAllowCardAnchor(filteredArgs)
+		if err := enforceLeaderAnchorGuard(backend, leaderLaunchDir(), launchProjectRoot(), resolveLaunchView(filteredArgs), anchorOverride, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		// The operator-supplied `leader-<run-id>` name is adopted (see
 		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
 		// commands the notice prints stay on one run.
@@ -273,35 +284,41 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
 		defer settingsCleanup()
 	}
+	// SPEC-LAUNCHER-ARGV-001: the launch argv is resolved ONCE here (launch_view.go).
+	// The readers below receive the stage values the view carries — none of them
+	// re-reads raw arguments — and the view's LaunchArgs is the argv handed to the
+	// launch seam.
+	view := resolveLaunchView(filteredArgs)
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
-	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
+	// BEFORE the token normalization so out-of-prefix paths are rejected with a
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
-	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
-	// token normalization (AC-WES-010b).
+	// (AC-WES-010a). The normalization stays the owner of short-name token
+	// rewriting (AC-WES-010b).
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
-	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
 		endWt()
 		return err
 	}
 	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
-	// the existing branch before launch; the flag tokens are stripped so the
-	// backend re-enters the tree that now exists. No-op without --branch.
-	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	// the existing branch before launch; the flag tokens are already stripped
+	// from the view's LaunchArgs so the backend re-enters the tree that now
+	// exists. No-op without --branch.
+	err = view.materializeBranch(cmd.ErrOrStderr())
 	endWt()
 	if err != nil {
 		return err
 	}
 	// A tree another live session is anchored in gets no second writer. The
 	// check only reads; Claude Code writes its own lock on entry.
-	if err := ccWorktreeWriterPrecheck(filteredArgs); err != nil {
+	if err := ccWorktreeWriterPrecheck(view.StageB); err != nil {
 		return err
 	}
 	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill — applied
 	// only now that the admission above succeeded, so a refused launch leaves
 	// the tree untouched (audit F0, sync-audit-opus.md).
-	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
+	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	filteredArgs = view.LaunchArgs
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: the backend launch replaces this process

@@ -264,6 +264,23 @@ echo "$*" >> "${GH_STUB_LOG:?}"
 sub="${1:-} ${2:-}"
 case "$sub" in
   "api "*|"api")
+    case "$*" in
+      *check-runs*)
+        # The CI gate's read (card t1833): answer from a canned page with the
+        # --jq the caller passed, or fail the way a broken gh api call does.
+        if [ -n "${GH_STUB_API_FAIL:-}" ]; then echo "gh stub: simulated api failure" >&2; exit 1; fi
+        shift
+        jqexpr="."
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --jq|-q) jqexpr="$2"; shift 2 ;;
+            *) shift ;;
+          esac
+        done
+        jq -r "$jqexpr" "${GH_STUB_CHECKRUNS:?}"
+        exit 0
+        ;;
+    esac
     echo "success"
     exit 0
     ;;
@@ -317,10 +334,18 @@ type rlsStub struct {
 	log     string
 	runs    string
 	jobsDir string
+	// checkRuns is the canned check-runs page the CI gate reads (card t1833).
+	checkRuns string
 }
 
 func rlsNewStub(t *testing.T) *rlsStub {
 	t.Helper()
+	// The stub answers `gh api --jq` and `gh run list` through jq (card t1833 fix
+	// round 2): without it every gh call fails, which is not what these tests
+	// measure, so they skip with the reason rather than fail.
+	if _, err := exec.LookPath("jq"); err != nil {
+		t.Skip("jq not available; the gh stub answers through jq")
+	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
@@ -339,11 +364,14 @@ func rlsNewStub(t *testing.T) *rlsStub {
 		t.Fatalf("create stub log: %v", err)
 	}
 	s.setRuns(t, "[]")
+	s.checkRuns = filepath.Join(dir, "check-runs.json")
+	s.setCheckRuns(t, rlsCheckRunsGreen)
 	s.env = rlsEnv(
 		"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"GH_STUB_LOG="+s.log,
 		"GH_STUB_RUNS="+s.runs,
 		"GH_STUB_JOBS_DIR="+s.jobsDir,
+		"GH_STUB_CHECKRUNS="+s.checkRuns,
 	)
 	return s
 }
