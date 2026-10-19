@@ -775,6 +775,267 @@ func TestGLMEntry_AttachedSpellingRefusedWhenRegistered(t *testing.T) {
 	}
 }
 
+// TestResolveMoaiWorktreeShortName_FormsJudgedOnNormalizedArgv is the
+// delta-D2 table (card t1791): the -w/--worktree spellings — attached, spaced,
+// and the = forms with the value both attached and EMPTY — against the three
+// .moai tree states, at the resolver and through the cc/glm entries. The
+// valueless `=` forms followed by a positional token (`-w= card`) are the D2
+// shapes: over the pre-normalization argv they read Has=false and escaped
+// judgment entirely, while normalizeWorktreeFlagFrom rewrites the pair into
+// `--worktree card` for the backend to honor unjudged.
+func TestResolveMoaiWorktreeShortName_FormsJudgedOnNormalizedArgv(t *testing.T) {
+	t.Run("resolver", func(t *testing.T) {
+		root := overrideFindRoot(t)
+		tree := filepath.Join(root, ".moai", "worktrees", "card")
+
+		tests := []struct {
+			name string
+			args []string
+			// state the seam answers about the judged name.
+			state moaiShortNameState
+			// kind is the expected outcome: "rewrite", "refuse", or
+			// "passthrough".
+			kind     string
+			wantArgs []string
+			// pinSeam turns wantSeamCalls into an exact seam-consultation
+			// assertion on a passthrough row; judging rows consult exactly
+			// once and assert that in their own branch.
+			pinSeam       bool
+			wantSeamCalls int
+		}{
+			{
+				name:     "spaced short registered rewrites in place",
+				args:     []string{"-w", "card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"-w", tree},
+			},
+			{
+				name:     "spaced long registered rewrites in place",
+				args:     []string{"--worktree", "card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"--worktree", tree},
+			},
+			{
+				name:     "short equals attached value rewrites the option token",
+				args:     []string{"-w=card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"-w=" + tree},
+			},
+			{
+				name:     "long equals attached value rewrites the option token",
+				args:     []string{"--worktree=card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"--worktree=" + tree},
+			},
+			{
+				// The D2 shape: `-w=` reads valueless over the raw argv, but
+				// the normalization makes card the honored value — the
+				// resolution must judge it and rewrite the positional.
+				name:     "valueless short equals judges the positional it shadows",
+				args:     []string{"-w=", "card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"-w=", tree},
+			},
+			{
+				name:     "valueless long equals judges the positional it shadows",
+				args:     []string{"--worktree=", "card"},
+				state:    moaiShortNameRegistered,
+				kind:     "rewrite",
+				wantArgs: []string{"--worktree=", tree},
+			},
+			{
+				name:  "attached spelling refused over registered",
+				args:  []string{"-wcard"},
+				state: moaiShortNameRegistered,
+				kind:  "refuse",
+			},
+			{
+				name:  "cluster spelling refused over registered",
+				args:  []string{"-cwcard"},
+				state: moaiShortNameRegistered,
+				kind:  "refuse",
+			},
+			{
+				name:  "valueless short equals conflict refuses",
+				args:  []string{"-w=", "card"},
+				state: moaiShortNameConflict,
+				kind:  "refuse",
+			},
+			{
+				name:  "valueless long equals conflict refuses",
+				args:  []string{"--worktree=", "card"},
+				state: moaiShortNameConflict,
+				kind:  "refuse",
+			},
+			{
+				name:  "spaced short conflict refuses",
+				args:  []string{"-w", "card"},
+				state: moaiShortNameConflict,
+				kind:  "refuse",
+			},
+			{
+				name:  "valueless short equals absent passes through",
+				args:  []string{"-w=", "card"},
+				state: moaiShortNameAbsent,
+				kind:  "passthrough",
+			},
+			{
+				// A valueless = form with nothing after it stays valueless
+				// under the normalization too: no judgment, no seam call.
+				name:          "valueless equals at argv end stays valueless",
+				args:          []string{"-w="},
+				state:         moaiShortNameRegistered,
+				kind:          "passthrough",
+				pinSeam:       true,
+				wantSeamCalls: 0,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				rec := &moaiStateRecorder{state: tt.state}
+				overrideMoaiStateSeam(t, rec)
+				var warn strings.Builder
+
+				got, err := resolveMoaiWorktreeShortName(tt.args, &warn)
+				switch tt.kind {
+				case "rewrite":
+					if err != nil {
+						t.Fatalf("unexpected error: %v", err)
+					}
+					if strings.Join(got, "\x00") != strings.Join(tt.wantArgs, "\x00") {
+						t.Fatalf("args = %v, want %v", got, tt.wantArgs)
+					}
+					if len(rec.calls) != 1 {
+						t.Fatalf("state seam consulted %d times, want 1", len(rec.calls))
+					}
+					// What the resolver judged is what selectBackendWorktree
+					// picks from the rewritten argv.
+					view := resolveLaunchView(got)
+					if !view.Selection.HasValue || view.Selection.Value != tree {
+						t.Fatalf("backend selection = %+v, want the .moai tree %q", view.Selection, tree)
+					}
+				case "refuse":
+					if err == nil {
+						t.Fatalf("args %v: expected a refusal", tt.args)
+					}
+					if got != nil {
+						t.Fatalf("args = %v on refusal, want nil", got)
+					}
+					if len(rec.calls) != 1 {
+						t.Fatalf("state seam consulted %d times, want 1", len(rec.calls))
+					}
+					if !strings.Contains(warn.String(), "card") {
+						t.Fatalf("warning %q does not name the judged value", warn.String())
+					}
+				case "passthrough":
+					if err != nil {
+						t.Fatalf("unexpected error: %v", err)
+					}
+					if strings.Join(got, "\x00") != strings.Join(tt.args, "\x00") {
+						t.Fatalf("args = %v, want unchanged %v", got, tt.args)
+					}
+					if warn.Len() != 0 {
+						t.Fatalf("warning written on the pass-through path: %q", warn.String())
+					}
+				}
+				if tt.pinSeam && len(rec.calls) != tt.wantSeamCalls {
+					t.Fatalf("state seam consulted %d times, want %d", len(rec.calls), tt.wantSeamCalls)
+				}
+			})
+		}
+	})
+
+	// The entry level runs the real state classifier over a throwaway
+	// repository (registered feat-login, conflict plain-dir, absent
+	// fresh-name) and reads the verdict off the argv the launch seam
+	// receives.
+	t.Run("entry", func(t *testing.T) {
+		_, treePath, _ := setupRegisteredTreeRepo(t, "feat-login")
+		rec := &wiringLaunchRecorder{}
+		overrideUnifiedLaunch(t, rec)
+
+		tests := []struct {
+			name  string
+			entry func(args []string) error
+			args  []string
+			// want is the worktree value the launched backend argv carries;
+			// refuse rows expect an error and no launch.
+			want   string
+			refuse bool
+		}{
+			{
+				name:  "cc valueless short equals enters the registered tree",
+				entry: func(args []string) error { return ccCmd.RunE(ccCmd, args) },
+				args:  []string{"-w=", "feat-login"},
+				want:  treePath,
+			},
+			{
+				name:  "glm valueless long equals enters the registered tree",
+				entry: func(args []string) error { return runGLM(glmCmd, args) },
+				args:  []string{"--worktree=", "feat-login"},
+				want:  treePath,
+			},
+			{
+				name:  "cc short equals attached value enters the registered tree",
+				entry: func(args []string) error { return ccCmd.RunE(ccCmd, args) },
+				args:  []string{"-w=feat-login"},
+				want:  treePath,
+			},
+			{
+				name:   "cc valueless short equals over a conflict refuses",
+				entry:  func(args []string) error { return ccCmd.RunE(ccCmd, args) },
+				args:   []string{"-w=", "plain-dir"},
+				refuse: true,
+			},
+			{
+				name:  "cc valueless short equals absent keeps the short name",
+				entry: func(args []string) error { return ccCmd.RunE(ccCmd, args) },
+				args:  []string{"-w=", "fresh-name"},
+				want:  "fresh-name",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				rec.args = nil
+				buf := new(strings.Builder)
+				ccCmd.SetOut(buf)
+				ccCmd.SetErr(buf)
+				glmCmd.SetOut(buf)
+				glmCmd.SetErr(buf)
+
+				err := tt.entry(tt.args)
+				if tt.refuse {
+					if err == nil {
+						t.Fatalf("args %v: expected a refusal; launched %v", tt.args, rec.args)
+					}
+					if rec.args != nil {
+						t.Fatalf("launch seam ran despite the refusal: %v", rec.args)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("entry: %v", err)
+				}
+				if rec.args == nil {
+					t.Fatal("launch seam never ran")
+				}
+				got, ok := backendWorktreeValue(rec.args)
+				if !ok {
+					t.Fatalf("no --worktree option in the launched argv %v", rec.args)
+				}
+				if got != tt.want {
+					t.Fatalf("backend worktree value = %q, want %q", got, tt.want)
+				}
+			})
+		}
+	})
+}
+
 // TestCCEntry_AbsentNameKeepsShortName pins scenario (c) end to end: with no
 // same-named .moai tree the backend still receives the short name and creates
 // .claude/worktrees/<name> itself.

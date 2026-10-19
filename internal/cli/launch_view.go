@@ -789,38 +789,75 @@ type moaiWorktreeOccurrence struct {
 }
 
 // readBackendSelectedWorktree reads raw launch args the way the backend
-// selects a worktree from the argv it receives. The launcher consumption runs
-// FIRST — walkLaunchArgs removes the launcher-owned options (-b, -c, --model,
-// --permission-mode, each value option with its next token) and the first
-// "--", and PassThrough is the argv the backend reads — and the selection walk
-// runs over THAT output with selectBackendWorktree, the same walk
-// resolveOwning's Selection takes over FinalArgv. The honored occurrence is
-// mapped back through the walk's origin indices to the raw entry for the
-// in-place rewrite. Walking the raw argv instead diverges wherever a launcher-owned
-// token sits next to a value-consuming option: the launcher REMOVES the token
-// while an in-place skip only hides it, so the two adjacencies differ
-// (sync-audit delta D1: `-w card --append-system-prompt -c -w fresh` and
-// `-w -c card`). For a single -w the read agrees with worktreeFlagValue; when
-// several stand, this — not the first match — is the value the collision
-// resolution must judge (sync-audit F1).
+// selects a worktree from the argv it receives. The worktree normalization
+// runs FIRST — normalizeWorktreeFlagFrom rewrites every -w/--worktree spelling
+// into the canonical two-token form, and a valueless `=` form followed by a
+// positional token (`-w= card`) reads Has=false over the pre-normalization
+// argv while the rewrite makes card the value the backend honors (sync-audit
+// delta D2) — then the launcher consumption (walkLaunchArgs) removes the
+// launcher-owned options (-b, -c, --model, --permission-mode, each value
+// option with its next token) and the first "--", and the selection walk runs
+// over PassThrough — the argv the backend reads — with selectBackendWorktree,
+// the same walk resolveOwning's Selection takes over FinalArgv. The honored
+// occurrence is mapped back through the walk's origin indices and the
+// normalization's origins to the raw entry for the in-place rewrite; a value
+// the normalization split out of an `=` form has origin -1, and the rewrite
+// touches the `=`-form option token instead. Walking the pre-normalization
+// argv instead diverges wherever a launcher-owned token sits next to a
+// value-consuming option: the launcher REMOVES the token while an in-place
+// skip only hides it, so the two adjacencies differ (sync-audit delta D1:
+// `-w card --append-system-prompt -c -w fresh` and `-w -c card`). For a
+// single -w the read agrees with worktreeFlagValue; when several stand, this
+// — not the first match — is the value the collision resolution must judge
+// (sync-audit F1).
 func readBackendSelectedWorktree(args []string) moaiWorktreeOccurrence {
-	c, _, origin := walkLaunchArgs(args, nil, "")
+	normalized, normOrigin := normalizeWorktreeFlagFrom(args)
+	c, _, passOrigin := walkLaunchArgs(normalized, nil, "")
 	sel := selectBackendWorktree(c.PassThrough)
-	if !sel.Present || sel.Index < 0 || sel.Index >= len(origin) {
+	if !sel.Present || sel.Index < 0 || sel.Index >= len(passOrigin) {
 		return moaiWorktreeOccurrence{}
+	}
+	// rawIndex maps a PassThrough position to the raw argv through both origin
+	// hops, -1 where the token is not of the raw argv at all.
+	rawIndex := func(k int) int {
+		at := passOrigin[k]
+		if at < 0 || at >= len(normOrigin) {
+			return -1
+		}
+		return normOrigin[at]
+	}
+	optIndex := rawIndex(sel.Index)
+	if optIndex < 0 {
+		// The selection landed on a token the normalization synthesized out of
+		// an `=` form — a flag-shaped `=` value the backend's optional-value
+		// rule skips past. The rewrite targets the `=`-form token that parent
+		// belongs to: the nearest preceding raw token.
+		for j := passOrigin[sel.Index] - 1; j >= 0; j-- {
+			if j < len(normOrigin) && normOrigin[j] >= 0 {
+				optIndex = normOrigin[j]
+				break
+			}
+		}
+		if optIndex < 0 {
+			return moaiWorktreeOccurrence{}
+		}
 	}
 	occ := moaiWorktreeOccurrence{
 		Has:        sel.HasValue,
 		Value:      sel.Value,
 		Attached:   sel.Spelling == spellingAttached || sel.Spelling == spellingCluster,
-		OptIndex:   origin[sel.Index],
+		OptIndex:   optIndex,
 		ValueIndex: -1,
 	}
 	// The two-token spellings (and a cluster whose w ends the token) take the
 	// next PassThrough token as their value; the option step reports that span.
-	// Its raw position comes from the same origin mapping.
-	if _, span := backendOptionStep(c.PassThrough, sel.Index, worktreeSelection{}); span == 1 && sel.Index+1 < len(origin) {
-		occ.ValueIndex = origin[sel.Index+1]
+	// Its raw position comes from the same two-hop mapping — a value the
+	// normalization synthesized out of an `=` form maps to -1, and the rewrite
+	// touches the `=`-form option token instead.
+	if _, span := backendOptionStep(c.PassThrough, sel.Index, worktreeSelection{}); span == 1 && sel.Index+1 < len(passOrigin) {
+		if valueIndex := rawIndex(sel.Index + 1); valueIndex >= 0 {
+			occ.ValueIndex = valueIndex
+		}
 	}
 	return occ
 }
