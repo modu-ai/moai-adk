@@ -12,7 +12,7 @@
 
 이 기준의 레인 완료는 `merge-ready`와 저장된 작업 완료 증거다. 실제 `factory next`·`factory stage` 경로로 정당한 검증 증거를 갖추어 이 상태를 저장하고 리더가 기존 상태 조회로 읽는다. 큐 `CardDone`을 fixture로 만들어 대체하거나 실제 병합·착지를 요구하지 않는다.
 
-**Given** launcher가 만든 Codex 리더 런과 실제 임시 큐의 발행·선택 가능한 카드, 검증된 레인 식별자 및 child launcher stub, **When** 메시징 nudge를 비활성화한 상태에서 stub이 실제 `moai todo engage --dispatch` 경로로 배차하고 레인이 진행·완료 기록을 저장한 뒤 큐·팩토리 저장소를 모두 다시 열어 기존 상태 조회 경로를 실행하면, **Then** 기존 큐 SQLite 파일의 `todo_runtime_assignments`·`todo_dispatch_current`와 팩토리 SQLite 파일의 `card_dispatch`에 같은 카드·런·레인 식별자가 저장되어 있고 조회 결과가 같은 카드의 저장 상태를 반환한다. child launch 이전에 만든 fixture dispatch·fixture 출력과 저장소를 다시 열지 않은 메모리 값은 인정하지 않는다. 별도 dispatch sidecar 파일을 추가하지 않으며 nudge는 한 번도 필요하지 않다.
+**Given** launcher가 만든 Codex 리더 런과 실제 임시 큐의 발행·선택 가능한 카드, 검증된 레인 식별자 및 child launcher stub, **When** 메시징 nudge를 비활성화한 상태에서 stub이 실제 `moai todo engage --dispatch` 경로로 배차하고 레인이 진행·완료 기록을 저장한 뒤 큐·팩토리 저장소를 모두 다시 열어 기존 상태 조회 경로를 실행하면, **Then** 기존 큐 SQLite 파일의 `todo_runtime_assignments`·`todo_dispatch_current`에 저장된 카드·런·레인 식별자가 팩토리 SQLite 파일의 `card_dispatch`에 저장된 `card_id`·`run_id` 및 같은 두 키로 연결한 `cards.owner_label`과 일치하고 조회 결과가 같은 카드의 저장 상태를 반환한다. child launch 이전에 만든 fixture dispatch·fixture 출력과 저장소를 다시 열지 않은 메모리 값은 인정하지 않는다. 별도 dispatch sidecar 파일을 추가하지 않으며 nudge는 한 번도 필요하지 않다.
 
 ### AC-CFL-003 — malformed 입력의 무부작용 (REQ-CFL-005)
 
