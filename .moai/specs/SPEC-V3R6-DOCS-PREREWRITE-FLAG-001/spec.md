@@ -2,9 +2,9 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-FLAG-001
 title: "Docs Pre-Rewrite Flag Citations — --factory-run / --clear-policy citation cleanup (card t1726)"
 version: "0.1.3"
-status: draft
+status: completed
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 author: Goos Kim
 priority: P1
 phase: "v3.2.0"

@@ -82,7 +82,19 @@ m1_to_mN_commit_strategy: 2커밋 — 커밋 1 = M2 문서 편집 8파일(Q17 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-10-20
+sync_commit_sha: pending-backfill-sync (커밋은 자신의 SHA를 모르므로 플레이스홀더 — §E.1·§E.3의 선례와 같이 후속 기록으로만 채운다)
+sync_summary: 단일 싱크 커밋 — CHANGELOG `[Unreleased]` `### Added` 첫 항목 추가, `spec.md` 상태 전이(draft → completed, 3-phase close 병합; run 페이즈가 status를 건드리지 않기로 위임받아 draft에서 직행) + `updated: 2026-10-20`, 본 §E.4 기록. 문서 본문 편집은 없다 — 16줄 편집은 런 페이즈 M2 커밋 `3097ece24a`가 완료했다.
+changelog_entry: SPEC-V3R6-DOCS-PREREWRITE-FLAG-001 — stale flag citation 정리(`--clear-policy relaunch` 카드별 소비 → 통합 `moai todo --auto` 엔진, 레인 `/clear` 안내 → 세션 안 카드 전환 ExitWorktree(keep) → moai factory next → EnterWorktree), 살아 있는 `--factory-run`·`--clear-policy` 인용 보존 명시
+changelog_entry_position: [Unreleased] → ### Added → 첫 불릿(파일 관례 최신순)
+b12_self_test_a: pre-emission `grep -c 'SPEC-V3R6-DOCS-PREREWRITE-FLAG-001' CHANGELOG.md` → `0`, exit 1 — 중복 항목 없음(발행 전 이 실행 실측)
+b12_self_test_b: AC counter(acceptance.md, 기본 prefix AC) → `live=7 excluded=0 ambiguous=0`, exit 0 — CHANGELOG 항목의 "7 acceptance criteria AC-DPF-001..007"과 일치
+b12_self_test_c: 파일 경로 검증 — 항목·plan §D가 가리키는 12개 문서 경로 `ls` 실측 12/12 OK
+mx_tag_scan: 0 annotations needed — 편집 대상 16줄이 전부 markdown 산문이고 Go 심볼(exported 함수·goroutine·복잡도 대상)이 없다. 8개 편집 파일의 `@MX` grep은 편집 줄 밖의 기존 설명 산문만 적중(태그 부착 대상 0) — MX Tag 검증 싱크 하위 단계 실측
+frontmatter_status_transitions: draft → in-progress → implemented → completed (3-phase close — 세 전이 모두 이 단일 싱크 커밋에 병합, 소유자 manager-docs; 직전 값은 draft)
+frontmatter_updated_refresh: spec.md `updated:` 2026-10-19 → 2026-10-20. plan.md·acceptance.md는 프런트매터 블록 자체가 없어(Artifact Statelessness — 선택) 갱신할 `updated:` 필드가 없음 — 무변경
+canary_compliance_check: n/a (문서 전용 SPEC — 이 SPEC 자신이 정의하는 선행 정책이 없어 카나리아 검사 대상 아님)
 
 ## §F Phase 4 Mode Selection
 
