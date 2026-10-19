@@ -232,6 +232,29 @@ func TestCardAgeAlarmTypeErrorIsolated(t *testing.T) {
 	}
 }
 
+func TestWorkflowConfigCardAgeAlarmTypeErrorPreservesOtherSettings(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	root := t.TempDir()
+	caaWriteWorkflow(t, root, "workflow:\n  execution_mode: team\n  branch_guard:\n    enabled: true\n    deny_commits_on: [main]\n  factory_lease:\n    duration: 45m\n    renew_interval: 10m\n  card_age_alarm:\n    enabled: true\n    gate_warn_after: [6h]\n")
+
+	cfg, err := NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil {
+		t.Fatalf("load workflow config: %v", err)
+	}
+	if cfg.Workflow.ExecutionMode != "team" {
+		t.Fatalf("execution_mode = %q, want team; malformed alarm block must not replace the workflow section", cfg.Workflow.ExecutionMode)
+	}
+	if !cfg.Workflow.BranchGuard.Enabled || len(cfg.Workflow.BranchGuard.DenyCommitsOn) != 1 || cfg.Workflow.BranchGuard.DenyCommitsOn[0] != "main" {
+		t.Fatalf("branch_guard = %+v, want enabled with deny_commits_on [main]; malformed alarm block must not disable protection", cfg.Workflow.BranchGuard)
+	}
+	if want := (FactoryLeaseConfig{Duration: "45m", RenewInterval: "10m"}); cfg.Workflow.FactoryLease != want {
+		t.Fatalf("factory_lease = %+v, want %+v", cfg.Workflow.FactoryLease, want)
+	}
+	if want := NewDefaultWorkflowConfig().CardAgeAlarm; cfg.Workflow.CardAgeAlarm != want {
+		t.Fatalf("card_age_alarm = %+v, want block defaults %+v", cfg.Workflow.CardAgeAlarm, want)
+	}
+}
+
 // caaTemplateAlarmOff checks the exact typed key, including block presence.
 func caaTemplateAlarmOff(raw []byte) error {
 	var shipped struct {

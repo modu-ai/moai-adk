@@ -3367,6 +3367,8 @@ func newFactoryStatusCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
 			}
+			alarmSettings, alarmWarning := resolveFactoryAgeAlarm(root)
+			report.AgeAlarmWarning = alarmWarning
 			// The classification snapshot for the mode/priority cells
 			// (REQ-TCD-010): one pure queue read; a failed read degrades the
 			// cells to the derived defaults rather than failing the whole
@@ -3389,7 +3391,9 @@ func newFactoryStatusCommand() *cobra.Command {
 				// the still-open handle; it writes nothing (REQ-CAA-007) and
 				// costs nothing beyond the flag read while disabled
 				// (REQ-CAA-001).
-				report.AgeAlarms, report.AgeAlarmWarning = computeFactoryAgeAlarms(ctx, root, report.Run, db, cards, now)
+				if alarmSettings.Enabled && alarmWarning == "" {
+					report.AgeAlarms, report.AgeAlarmWarning = computeFactoryAgeAlarmsWithSettings(ctx, report.Run, db, cards, now, alarmSettings)
+				}
 				_ = db.Close()
 				for _, c := range cards {
 					cls := factory.DefaultCardClassification()

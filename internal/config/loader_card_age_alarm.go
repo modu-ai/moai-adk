@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // The key paths a bound refusal names (REQ-CAA-002: the status command prints
@@ -30,6 +32,29 @@ type cardAgeAlarmFile struct {
 	Workflow struct {
 		CardAgeAlarm CardAgeAlarmConfig `yaml:"card_age_alarm"`
 	} `yaml:"workflow"`
+}
+
+type cardAgeAlarmConfigDecode CardAgeAlarmConfig
+
+// UnmarshalYAML confines a type error in workflow.card_age_alarm to that
+// block. WorkflowConfig is decoded as one section, so returning the field
+// error would discard unrelated safety settings with the section fallback.
+func (c *CardAgeAlarmConfig) UnmarshalYAML(node *yaml.Node) error {
+	defaults := NewDefaultWorkflowConfig().CardAgeAlarm
+	*c = defaults
+	if node.Kind != yaml.MappingNode {
+		slog.Warn("failed to decode card age alarm block, using defaults",
+			"key", "workflow.card_age_alarm", "error", "expected a mapping")
+		return nil
+	}
+	decoded := cardAgeAlarmConfigDecode(defaults)
+	if err := node.Decode(&decoded); err != nil {
+		slog.Warn("failed to decode card age alarm block, using defaults",
+			"key", "workflow.card_age_alarm", "error", err)
+		return nil
+	}
+	*c = CardAgeAlarmConfig(decoded)
+	return nil
 }
 
 // LoadCardAgeAlarm returns the workflow.card_age_alarm keys of projectRoot as

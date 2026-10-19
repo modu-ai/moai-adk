@@ -240,6 +240,40 @@ func TestFactoryStatusAgeAlarmRefusedKey(t *testing.T) {
 	}
 }
 
+func TestFactoryStatusNoDatabaseStillRefusesInvalidAgeAlarm(t *testing.T) {
+	root, _ := fcFixture(t)
+	caaEnableAlarm(t, root, "workflow:\n  card_age_alarm:\n    enabled: true\n    gate_warn_after: invalid\n")
+
+	out, _, err := runFactory(t, "status")
+	if err != nil {
+		t.Fatalf("factory status without a factory database: %v", err)
+	}
+	if !strings.Contains(out, "no factory card records") || !strings.Contains(out, "age-alarm warning: workflow.card_age_alarm.gate_warn_after") {
+		t.Fatalf("text status omitted the invalid threshold warning without a database:\n%s", out)
+	}
+
+	outJSON, _, err := runFactory(t, "status", "--json")
+	if err != nil {
+		t.Fatalf("factory status --json without a factory database: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(outJSON), &got); err != nil {
+		t.Fatalf("status output is not JSON: %v", err)
+	}
+	warning, _ := got["age_alarm_warning"].(string)
+	if warning == "" || !strings.Contains(warning, "workflow.card_age_alarm.gate_warn_after") {
+		t.Fatalf("JSON status omitted the invalid threshold warning without a database:\n%s", outJSON)
+	}
+
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatalf("resolve factory database path: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("status created a factory database: %v", err)
+	}
+}
+
 // TestFactoryStatusAgeAlarmWarnBoundary pins the warn-band admission edge of
 // sync-audit iter1 F5: a card whose class age equals its class's warn band
 // exactly crosses the threshold (the SPEC's "crosses" read as >=) and alarms

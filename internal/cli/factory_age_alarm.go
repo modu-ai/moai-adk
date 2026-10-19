@@ -52,14 +52,26 @@ type factoryAgeAlarmView struct {
 // and ages every covered card, bands them, and sorts oldest-first. It writes
 // nothing.
 func computeFactoryAgeAlarms(ctx context.Context, root, runID string, db *homestate.FactoryDB, cards []homestate.Card, now time.Time) ([]factoryAgeAlarmView, string) {
+	bands, warning := resolveFactoryAgeAlarm(root)
+	if warning != "" || !bands.Enabled {
+		return nil, warning
+	}
+	return computeFactoryAgeAlarmsWithSettings(ctx, runID, db, cards, now, bands)
+}
+
+func resolveFactoryAgeAlarm(root string) (config.CardAgeAlarmSettings, string) {
 	keys := config.LoadCardAgeAlarm(root)
 	if !keys.Enabled {
-		return nil, ""
+		return config.CardAgeAlarmSettings{}, ""
 	}
 	bands, err := config.ResolveCardAgeAlarm(keys)
 	if err != nil {
-		return nil, fmt.Sprintf("age-alarm warning: %v", err)
+		return config.CardAgeAlarmSettings{}, fmt.Sprintf("age-alarm warning: %v", err)
 	}
+	return bands, ""
+}
+
+func computeFactoryAgeAlarmsWithSettings(ctx context.Context, runID string, db *homestate.FactoryDB, cards []homestate.Card, now time.Time, bands config.CardAgeAlarmSettings) ([]factoryAgeAlarmView, string) {
 	events, err := db.LoadCardEvents(ctx, runID)
 	if err != nil {
 		return nil, fmt.Sprintf("age-alarm warning: events read failed: %v", err)
