@@ -67,7 +67,18 @@ notes: spec.md status transition carried the docs-card exception trailer (record
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (owner: manager-docs sync commit)_
+sync_status: complete
+sync_complete_at: 2026-10-20
+sync_commit_sha: pending-backfill-sync
+b12_self_test_a: pre-emission `grep -c 'SPEC-AGENTS-CONTRACT-REVISE-001' CHANGELOG.md` → 0 (exit 1; no duplicate entry, emission cleared)
+b12_self_test_b: AC live count 16 (awk counter on acceptance.md: `live=16 excluded=0 ambiguous=0`; no [RETIRED]/[REF] tokens in the file) == CHANGELOG entry AC count 16
+b12_self_test_c: all 18 claimed file paths verified via `ls` (15 diff-list documents + 3 template mirrors) — 18 OK, 0 MISSING
+changelog_entry_position: [Unreleased] > Changed (top entry)
+frontmatter_status_transitions: spec.md `status: in-progress → completed` on this single sync commit (the implemented intermediate merged per the 3-phase close, manager-docs); `updated: 2026-10-20` already current, unchanged; plan.md / acceptance.md carry no frontmatter (§ Artifact Statelessness) — no `updated:` refresh surface exists
+canary_compliance_check: n/a — docs card; this SPEC defines no forward-looking policy with its own sync-test canaries
+mx_scan: `grep -n "@MX:"` over the 16 touched surfaces (AGENTS.md, AGENTS.local.md, companion, 2 local rules, 3 factory-dispatch + 3 mirrors, AGENTS.md.tmpl, 6 .moai/docs) → 0 hits (docs card, no exported-code surfaces; expected minimal, recorded)
+d7_residual: disposed in sync — unit attribution of record added to decision-index.md (four-chunk figures are awk byte-lengths, C-locale `length()`, not `wc -m` counts); the spec.md:69 MF-6 evidence-cell label "awk char-length" is left as the documented cosmetic residue (spec body content is manager-docs-forbidden; verdict rules it imprecise-not-false; the same row's finding column already carries the precise unit — a literal cell relabel would require manager-spec re-delegation)
+notes: the `OwnershipTransitionInvalid` lint warning, if emitted for the run-phase `draft → in-progress` transition (commit b4067ef526, trailer manager-docs), is the documented docs-card exception (§E.2) — known, not new.
 
 ## §F Phase 4 Mode Selection
 

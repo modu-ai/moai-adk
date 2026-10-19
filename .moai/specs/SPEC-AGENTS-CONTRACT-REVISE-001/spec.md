@@ -2,7 +2,7 @@
 id: SPEC-AGENTS-CONTRACT-REVISE-001
 title: "Agent-instruction contract revision — per-card PR flow, leader boundary, review gate, size diet"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-19
 updated: 2026-10-20
 author: manager-spec
