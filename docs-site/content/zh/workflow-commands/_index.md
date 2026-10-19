@@ -47,9 +47,9 @@ flowchart TD
 `/moai harness` 是用于管理挽具学习子系统的辅助命令 — 它监控 CLAUDE.md 的变更,并提出基于层级的自动更新建议。
 {{< /callout >}}
 
-## 全部子命令(16 个)
+## 全部子命令(15 个)
 
-`/moai` 编排器路由 16 个子命令。本节(工作流)讲解 SPEC 3-Phase 生命周期命令,[实用命令](/zh/utility-commands/)一节讲解自动化·修复循环·代码管理·反馈命令。
+`/moai` 编排器路由 15 个子命令。本节(工作流)讲解 SPEC 3-Phase 生命周期命令,[实用命令](/zh/utility-commands/)一节讲解自动化·修复循环·代码管理·反馈命令。
 
 **工作流命令(本节)：**
 
@@ -59,7 +59,6 @@ flowchart TD
 | [`/moai run`](./moai-run) | DDD/TDD 实现 |
 | [`/moai sync`](./moai-sync) | 文档同步与 PR |
 | [`/moai project`](./moai-project) | 生成项目文档 |
-| [`/moai design`](./moai-design) | 设计阶段协作(manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | 挽具生成与学习生命周期 |
 
 **实用命令（[实用命令一节](/zh/utility-commands/)）：**
