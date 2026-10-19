@@ -7,7 +7,7 @@ plan_revision: 0.3.0
 plan_commit: 6d335cd483 (feat(SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001): plan-phase artifacts (tier M, 3 artifacts), card t1725)
 plan_followup_commits: b28da6f891 (progress.md and decision-index.md), bb7d928f68 (cite REQ in ACs, QE-1 relabel)
 revision_1_commit: e85847fd33 (fix(SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001): plan revision 1 after audit FAIL 0.69 (D1-D12), card t1725)
-revision_commit: pending-backfill (revision 2, audit FAIL 0.84 D-N1..D-N7; a commit cannot cite its own hash, so the SHA is backfilled by the follow-up commit)
+revision_commit: c9ec672020 (revision 2, fix(SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001): plan revision 2 after audit FAIL 0.84 (D-N1..D-N7), card t1725; full c9ec672020afdb5300408fa58fe5ace443fe1f4e; backfilled by the follow-up commit because a commit cannot cite its own hash)
 card: t1725 (Class C, docs-only), lane-26, run tn1p4e
 parent: SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (child row SWEEPE; decisions Q13, Q17, Q24/N2)
 measurement_pin: 74ad197380a0 (the tree the plan-phase counts were taken on; full 74ad197380a0711cdb9816d4e37c94d29af730ea; docs-site, .claude, internal, cmd, and scripts are identical to HEAD e85847fd33, acceptance.md S-00)
