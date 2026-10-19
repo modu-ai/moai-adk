@@ -56,6 +56,7 @@ def leading_block:
 # Only whole marker lines in the initial HTML-comment block are eligible. A marker elsewhere is tampering.
 ($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
+| ($native | map(select((.body // "") | contains("<!-- codex-review-receipt:v1 -->")))) as $receipts
 | ($states[0] // null) as $state_comment
 | ($state_comment.body // "") as $body
 | ($body | leading_block) as $lead
@@ -69,6 +70,16 @@ def leading_block:
 | ($state.security_review // null) as $security
 | ($states | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $state_bad
 | ($states | map(.id) | group_by(.) | map(select(length > 1)) | length) as $state_id_dups
+| ($receipts | map(select((.id | type) != "number" or (.id | floor) != .id or (.body | type) != "string" or (.created_at | timestamp | not) or (.updated_at | timestamp | not))) | length) as $receipt_bad
+| ($receipts | map(.id) | group_by(.) | map(select(length > 1)) | length) as $receipt_id_dups
+| ($receipts | map(select((.id | type) == "number")) | max_by(.id)) as $receipt
+| ($receipt.body // "") as $receipt_body
+| ($receipt_body | [scan("<!-- codex-review-receipt:v1 -->")] | length) as $receipt_marker_count
+| ($receipt_body | split("\n") | .[0]) as $receipt_first_line
+| ($receipt_body | split("\n") | map(select(startswith("**Reviewed commit:** ")))) as $receipt_head_lines
+| (if ($receipt_head_lines | length) == 1 then ($receipt_head_lines[0] | ltrimstr("**Reviewed commit:** `") | rtrimstr("`")) else "" end) as $receipt_head
+| ($receipt_body | split("\n") | map(select(. == "Codex Review: Didn\u0027t find any major issues. :+1:")) | length) as $receipt_clean_count
+| (($receipt_head | test("^[0-9A-Fa-f]{10,40}$")) and ($head | startswith($receipt_head | ascii_downcase))) as $receipt_head_matches
 | ($reviews | map(select(ident))) as $cand
 | ($cand | map(select(((.id | type) != "number") or ((.id | floor) != .id) or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
 | ($cand | map(select((.id | type) == "number")) | group_by(.id) | map(select(length > 1)) | .[0]) as $dup
@@ -85,6 +96,7 @@ def leading_block:
 | if ($bad | length) > 0 then {c: 1, r: ("review-entry-invalid:" + ($bad[0] | idtext))}
   elif $dup != null then {c: 1, r: ("review-entry-invalid:duplicate-id:" + ($dup[0] | idtext))}
   elif $state_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
+  elif $receipt_bad > 0 or $receipt_id_dups > 0 then {c: 1, r: "native-artifact-invalid"}
   elif ($states | length) > 1 then {c: 1, r: ("state-comment-duplicated:" + ($states | map(.id | tostring) | join(",")))}
   elif $state_comment != null and $state_bad > 0 then {c: 1, r: "state-comment-invalid"}
   elif $state_comment != null then
@@ -99,12 +111,16 @@ def leading_block:
     elif $security_occurrences == 1 and ($security_marker | type) != "object" then {c: 1, r: "security-marker-malformed"}
     elif $security_occurrences == 1 and (($security_marker.status | type) != "string" or ($security_marker.headSha | full_sha | not)) then {c: 1, r: "security-marker-malformed"}
     elif $security_occurrences == 1 and ($security_marker.headSha | full_sha) and (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
+    elif $receipt == null then {c: 1, r: "native-receipt-missing"}
+    elif $receipt_marker_count != 1 or $receipt_first_line != "<!-- codex-review-receipt:v1 -->" then {c: 1, r: "native-receipt-malformed"}
+    elif $receipt_clean_count != 1 then {c: 1, r: "native-receipt-not-clean"}
+    elif ($receipt_head_lines | length) != 1 or ($receipt_head | test("^[0-9A-Fa-f]{10,40}$") | not) then {c: 1, r: "native-receipt-malformed"}
+    elif ($receipt_head_matches | not) then {c: 1, r: ("stale-review:" + $receipt_head[0:10])}
     elif $code.status == "failed" then {c: 1, r: "review-failed:code_review"}
     elif $security.status == "failed" then {c: 1, r: "review-failed:security_review"}
     elif $find != null then {c: 1, r: ("finding:" + $find.id)}
     elif $cr != null then {c: 1, r: "changes-requested"}
     elif $commented != null then {c: 1, r: "review-not-conclusive:COMMENTED"}
-    elif ($cand | length) > 0 and ($bound | length) == 0 then {c: 1, r: ("stale-review:" + ($newest.commit_id | .[0:10]))}
     elif ($code.status == "running" or $security.status == "running") then
       (if $closed then {c: 1, r: "review-not-complete:running"} else {c: 10, r: "pending:running"} end)
     elif ($code.status != "completed") then {c: 1, r: ("review-not-complete:code_review:" + $code.status)}

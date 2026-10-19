@@ -59,7 +59,7 @@ func TestCodexNativeReceipt(t *testing.T) {
 			n["body"] = strings.ReplaceAll(n["body"].(string), `"status":"completed"`, `"status":"error"`)
 			return append(v, n)
 		}, 1},
-		{"newer_stale_receipt_is_not_verdict", func(v []cgEntry) []cgEntry {
+		{"newer_stale_receipt_refuses", func(v []cgEntry) []cgEntry {
 			var n cgEntry
 			b, _ := json.Marshal(v[1])
 			_ = json.Unmarshal(b, &n)
@@ -67,7 +67,7 @@ func TestCodexNativeReceipt(t *testing.T) {
 			n["created_at"] = "2026-10-19T23:00:00Z"
 			n["body"] = strings.ReplaceAll(n["body"].(string), head[:10], cgOther[:10])
 			return append(v, n)
-		}, 0},
+		}, 1},
 		{"duplicate_summary", func(v []cgEntry) []cgEntry {
 			var n cgEntry
 			b, _ := json.Marshal(v[0])
@@ -86,8 +86,20 @@ func TestCodexNativeReceipt(t *testing.T) {
 			return v
 		}, 1},
 		{"absent", func(v []cgEntry) []cgEntry { return nil }, 11},
-		{"summary_only", func(v []cgEntry) []cgEntry { return v[:1] }, 0},
+		{"summary_only", func(v []cgEntry) []cgEntry { return v[:1] }, 1},
 		{"receipt_only", func(v []cgEntry) []cgEntry { return v[1:] }, 11},
+		{"receipt_wrong_head", func(v []cgEntry) []cgEntry {
+			v[1]["body"] = strings.ReplaceAll(v[1]["body"].(string), head[:10], cgOther[:10])
+			return v
+		}, 1},
+		{"receipt_not_clean", func(v []cgEntry) []cgEntry {
+			v[1]["body"] = strings.Replace(v[1]["body"].(string), "Didn't find any major issues.", "Found major issues.", 1)
+			return v
+		}, 1},
+		{"receipt_marker_missing", func(v []cgEntry) []cgEntry {
+			v[1]["body"] = strings.Replace(v[1]["body"].(string), "<!-- codex-review-receipt:v1 -->", "<!-- other-marker -->", 1)
+			return v
+		}, 1},
 		{"missing_security_marker", func(v []cgEntry) []cgEntry {
 			v[0]["body"] = strings.Replace(v[0]["body"].(string), "<!-- codex-security-review:v1 ", "<!-- missing-security-marker ", 1)
 			return v
@@ -130,10 +142,10 @@ func TestCodexNativeReceipt(t *testing.T) {
 			}
 			return v
 		}, 11},
-		{"stale_receipt_is_not_verdict", func(v []cgEntry) []cgEntry {
+		{"stale_receipt_refuses", func(v []cgEntry) []cgEntry {
 			v[1]["body"] = strings.ReplaceAll(v[1]["body"].(string), head[:10], cgOther[:10])
 			return v
-		}, 0},
+		}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var v []cgEntry
@@ -153,6 +165,30 @@ func TestCodexNativeReceipt(t *testing.T) {
 			comments := cgWriteList(t, dir, "comments")
 			args := append(cgReadArgs(reviews, comments, head, "false", "true"), "--issue-comments", issues)
 			got := cgExec(t, cgScriptPath(t), nil, args...)
+			if got.code != tc.want {
+				t.Fatalf("exit=%d want=%d: %s", got.code, tc.want, got.all())
+			}
+		})
+	}
+}
+
+func TestCodexNativeOldReviewObjectsDoNotBlockCurrentCleanReceipt(t *testing.T) {
+	cgTools(t)
+	for _, tc := range []struct {
+		name  string
+		head  string
+		state string
+		want  int
+	}{
+		{name: "old_comment_does_not_block", head: cgOther, state: "COMMENTED", want: 0},
+		{name: "current_comment_still_blocks", head: cgHead, state: "COMMENTED", want: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			issues := cgWriteList(t, dir, "issues", cgNativeIssueComments(t, cgHead)...)
+			reviews := cgWriteList(t, dir, "reviews", cgReview(7, tc.head, tc.state))
+			comments := cgWriteList(t, dir, "comments")
+			got := cgExec(t, cgScriptPath(t), nil, append(cgReadArgs(reviews, comments, cgHead, "false", "true"), "--issue-comments", issues)...)
 			if got.code != tc.want {
 				t.Fatalf("exit=%d want=%d: %s", got.code, tc.want, got.all())
 			}

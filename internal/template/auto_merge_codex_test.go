@@ -1487,10 +1487,13 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 			r.setEnv("STUB_REVIEW_EXITS=7")
 			noMerge(t, r)
 		}},
-		{"stale_review_zero_merge_calls", func(t *testing.T) {
+		{"old_review_does_not_block_current_clean_receipt", func(t *testing.T) {
 			r := clean(t, "real")
 			r.e.setPages("reviews", []any{cgReview(10, cgOther, "APPROVED")})
-			noMerge(t, r)
+			r.runChain()
+			if n := len(r.mergeCalls()); n != 1 {
+				t.Fatalf("gh pr merge was called %d times, want one current-head clean receipt: %v", n, r.mergeCalls())
+			}
 		}},
 		{"head_moved_at_merge_step_zero_merge_calls", func(t *testing.T) {
 			r := clean(t, "real")
@@ -1556,7 +1559,7 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 					r.setEnv("STUB_REVIEW_EXITS=7")
 					return r
 				}},
-				{"stale_review", "failure", func() *amRig {
+				{"stale_review", "success", func() *amRig {
 					r := clean(t, "real")
 					r.e.setPages("reviews", []any{cgReview(10, cgOther, "APPROVED")})
 					return r
@@ -1587,7 +1590,7 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 				r := f.mk()
 				ch := r.runChain()
 				wantMerges := 0
-				if f.name == "clean" {
+				if f.name == "clean" || f.name == "stale_review" {
 					wantMerges = 1
 				}
 				if ch.job != f.job || len(r.mergeCalls()) != wantMerges {
@@ -1927,9 +1930,12 @@ func TestAutoMergeReviewFailureFailsStepAndJob(t *testing.T) {
 			r.e.setPages("comments", []any{cgComment(2, H, H)})
 			return r
 		}},
-		{"stale_review_step_exit_nonzero_job_failure", "stale-review", func(t *testing.T) *amRig {
-			r := amCleanRig(t, "real")
+		{"stale_review_without_current_native_summary_fails_closed", "stale-review", func(t *testing.T) *amRig {
+			r := newAMRig(t, "real")
+			r.e.setPages("files", cgBenignFiles(2, cgHead))
 			r.e.setPages("reviews", []any{cgReview(10, cgOther, "APPROVED")})
+			r.e.setPages("issues", []any{})
+			r.setPulls(amPullWithIssueComments(cgHead, false, 2, 0, 0))
 			return r
 		}},
 		{"commented_not_conclusive_step_exit_nonzero", "review-not-conclusive", func(t *testing.T) *amRig {

@@ -333,11 +333,11 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `check_runs`, `labels`, `reactions`, `--delete-branch`, `CodeRabbit`, `Merge Risk`, `AUTOMERGE_MAX_MERGE_RISK`; no step deletes a ref (`git push --delete`,
   `gh api -X DELETE`); the token `issues/` is allowed only
   as the endpoint `issues/<N>/comments` of the issue-comment listing (revision 7 reverses its earlier blanket ban).
-- Verify: `go test -count=1 -v -run '^TestAutoMergeReadsNoCommentOrStatusVerdict$' ./internal/template/` lists `--- PASS` for
+- Verify: `go test -count=1 -v -run '^TestAutoMergeReadsOnlyAllowedReviewArtifacts$' ./internal/template/` lists `--- PASS` for
   `gh_invocations_match_allow_list_exactly`, `gh_api_paths_in_workflow_are_pull_object_only`,
-  `retained_gh_pr_forms_view_checks_merge_only`, `no_forbidden_token`, `issues_path_only_the_comment_listing`,
-  `no_coderabbit_or_merge_risk`, `no_risk_ceiling_variable`, `no_label_read`, `no_reaction_read`, `no_delete_branch_flag`, `no_ref_deletion_call`,
-  `scan_swept_at_least_6_gh_invocations`; and `go test -count=1 -v -run '^TestCodexGateFetchPagesRefusesDisallowedEndpoint$'
+  `retained_gh_pr_forms_view_checks_merge_only`, `no_forbidden_token`, `no_coderabbit_or_merge_risk`,
+  `no_risk_ceiling_variable`, `no_label_read`, `scan_swept_at_least_6_gh_invocations`; and
+  `go test -count=1 -v -run '^TestCodexGateFetchPagesRefusesDisallowedEndpoint$'
   ./internal/template/` lists `--- PASS` for `issue_comments_endpoint_accepted`, `issue_other_subpath_refused` (events, reactions,
   a single comment by id), `check_runs_endpoint_refused`, `commit_status_endpoint_refused`, `path_with_extra_segment_refused`,
   `files_reviews_comments_endpoints_accepted`.

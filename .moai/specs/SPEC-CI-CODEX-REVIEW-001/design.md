@@ -727,14 +727,14 @@ not scan them.
 |------|-------|
 | `internal/template/codex_review_gate_test.go` | `TestCodexGateReadNativeReviewAccepts`, `TestCodexGateReadNativeReviewRefusesStale`, `TestCodexGateReadNativeReviewIgnoresForged`, `TestCodexGateReadNativeReviewRefusesIncomplete`, `TestCodexGateReadNativeReviewRefusesFinding`, `TestCodexGateReadNativeReviewPending`, `TestCodexGateReadNativeReviewDraftNotRun` |
 | `internal/template/codex_review_paging_test.go` | `TestCodexGateFetchPagesCompleteness`, `TestCodexGateFetchPagesRefusesDisallowedEndpoint`, `TestCodexGateFilesChangedRefusals` |
-| `internal/template/auto_merge_codex_test.go` | `TestAutoMergeReadsNoCommentOrStatusVerdict`, `TestAutoMergeWaitLoopIsBounded`, `TestAutoMergeNotRunWithholds`, `TestAutoMergeCheckoutAndGuardsUnchanged`, `TestAutoMergeWiresGuardAndGate`, `TestAutoMergeAddsNoSecretTriggerOrArtifact`, `TestAutoMergeMergeDecisionPath`; revision 6 adds `TestAutoMergeReviewFailureFailsStepAndJob`, `TestAutoMergeReviewAbsentIsFailure`, `TestAutoMergeDraftIsNotRunNeverSuccess`, `TestAutoMergeGuardStepsOutputOneValuePerKey`, `TestAutoMergeStepHarnessObservesExitAndJobResult` |
+| `internal/template/auto_merge_codex_test.go` | `TestAutoMergeReadsOnlyAllowedReviewArtifacts`, `TestAutoMergeWaitLoopIsBounded`, `TestAutoMergeNotRunWithholds`, `TestAutoMergeCheckoutAndGuardsUnchanged`, `TestAutoMergeWiresGuardAndGate`, `TestAutoMergeAddsNoSecretTriggerOrArtifact`, `TestAutoMergeMergeDecisionPath`; revision 6 adds `TestAutoMergeReviewFailureFailsStepAndJob`, `TestAutoMergeReviewAbsentIsFailure`, `TestAutoMergeDraftIsNotRunNeverSuccess`, `TestAutoMergeGuardStepsOutputOneValuePerKey`, `TestAutoMergeStepHarnessObservesExitAndJobResult` |
 | `internal/template/review_retirement_test.go` | `TestNoClaudeReviewWorkflows`, `TestCodeRabbitDisabledAndUnread` |
 | `internal/config/required_checks_review_guard_test.go` | `TestRequiredChecksCarryNoCodexReviewCheckUntilConfirmed` |
 | `internal/guardstate/census_review_test.go` | `TestCensusOmitsRetiredReviewWorkflows` |
 
 Fixtures are inline strings and `t.TempDir()` files built in the shape of the real REST issue-comment object (E37, the
-provenance table of the Delta) and the documented review and review-comment objects (E23); the test function names are
-unchanged in revision 7 and the subtests are those of `acceptance.md`; the tests copy the real script and run it with `bash`. The tests that exercise
+provenance table of the Delta) and the documented review and review-comment objects (E23); the test function names and
+subtests are listed in `acceptance.md`; the tests copy the real script and run it with `bash`. The tests that exercise
 `fetch-pages` and the two auto-merge steps put a stub `gh` first on `PATH` that serves fixture pages by the
 `page` parameter, can fail a chosen page, and a no-op `sleep`, the pattern `TestAutoMergeRequiredChecks`
 already uses. `TestAutoMergeMergeDecisionPath` additionally records every `gh` call of the stub, evaluates

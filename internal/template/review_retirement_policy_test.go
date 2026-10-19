@@ -24,4 +24,16 @@ func TestReviewRetirementActivePolicies(t *testing.T) {
 			t.Errorf("retired review policy remains: %s", rel)
 		}
 	}
+	runtimePolicy, err := os.ReadFile(filepath.Join(root, "internal/hook/session_start_factory_i18n.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, retired := range []string{"CodeRabbit", "Merge Risk", "commit-status API"} {
+		if strings.Contains(string(runtimePolicy), retired) {
+			t.Errorf("retired review wait remains in active factory runtime guidance: %q", retired)
+		}
+	}
+	if got := strings.Count(string(runtimePolicy), "codex-review-receipt:v1"); got != 4 {
+		t.Errorf("native Codex receipt guidance appears in %d locales, want 4", got)
+	}
 }
