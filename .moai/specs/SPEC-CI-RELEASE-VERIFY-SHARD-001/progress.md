@@ -103,6 +103,51 @@ Residual risk:
 - macOS/Windows shard weight stays unmeasured (spec §G); remainder shard compile weight will grow once M3 adds the nested `go test -race -list` inside `internal/template`.
 - The remainder shard on Windows runs `go list ./... | grep ...` under Git Bash; the quoting is unexercised there.
 
+### M2 — release.sh leg lookup and its test (spawn 2 of the run phase; M3, M4 NOT started)
+
+Commits (branch WT-release-verify-os, no push, staged by explicit pathspec): `68f741f807` test-only RED commit (`internal/template/release_script_test.go`); `f0c55db330` the `scripts/release.sh` lookup change. Test commit precedes the implementation commit, so the commit graph witnesses the order (verification-claim-integrity §2.3). Cycle: TDD. Resource rules kept: one Go call at a time, `-p 1`, `-run` narrowing to `^TestReleaseScript...`, no exclusions, no timeout change, no background load; machine load recorded per run. The bash that ran the script in the tests is `/bin/bash` (`command -v bash`), 3.2.57.
+
+Go runs (one at a time; `uptime` taken immediately before; all in package `./internal/template/`, `-count=1 -p 1`):
+
+| # | Command (`go test -count=1 -p 1 ... ./internal/template/`) | Script under test | Load (1m) before | Result |
+|---|---|---|---|---|
+| 1 | `-run '^TestReleaseScriptMatrixGate$/switch_on'` | unmodified (HEAD `5dbc39a3a0`), test = first draft | 17.35 (uptime 15:00) | exit 1, 9 `switch_on` scenarios FAIL (RED) |
+| 2 | `-v -run '^TestReleaseScript'` | edited | 16.66 (15:01) | exit 0; all 9 `TestReleaseScript*` PASS, `ok 45.792s` |
+| 3 | `-v -run '^TestReleaseScriptMatrixGate$'` | edited (final) | 17.94 (15:02) | exit 0; `--- PASS: TestReleaseScriptMatrixGate (17.99s)`, 30 subtests PASS (15 scenarios x 2 switch states) |
+| 4-6 | `-run '^TestReleaseScriptMatrixGate$/switch_on'` | weakened copies m1, m2, m3 (below) | 17.43 / 16.54 / 19.06 | each exit 1 (see mutants) |
+| 7 | `-v -run '^TestReleaseScript'` | final (content identical to the two commits; run before they were made) | 18.84 (15:04) | exit 0; 9 `TestReleaseScript*` PASS, `ok 47.395s`; `grep -c` of `MatrixGate` subtests = 30 |
+| 8 | `-run '^TestReleaseScriptMatrixGate$/switch_on'` | unmodified (re-measured with the committed final test, HEAD `68f741f807`) | 16.53 (15:06) | exit 1, 10 `switch_on` scenarios FAIL (RED, exact) |
+
+No run executed under load above 32 (peak seen 19.06), so no result needed re-running for load.
+
+RED-now (AC-RVS-011, whole-script, tree `68f741f807` = test commit on the unmodified `scripts/release.sh`), run 8, verbatim FAIL lines:
+`--- FAIL: TestReleaseScriptMatrixGate/switch_on/a_sharded_legs_all_green_on_the_target_sha`, `.../f_run_success_but_one_shard_skipped`, `.../h_run_success_but_one_shard_failed`, `.../i_one_shard_absent_on_a_single_os`, `.../j_the_same_shard_absent_on_all_three_os`, `.../k_an_unknown_shard_name_on_every_os_alongside_all_eighteen`, `.../o_an_unknown_shard_name_on_a_single_os_alongside_all_eighteen`, `.../l_a_duplicated_shard_job`, `.../m_an_os_with_no_shard_job`, `.../n_only_the_pre_shard_unsuffixed_leg_names`. The sharded all-green run is refused by the unmodified script: `[FAIL] Matrix gate: run 101 has no leg 'Release Verify (ubuntu-latest)'.` (exit=1, harness line `switch on, green run: exit code = 1, want 0`). Scenario n (only the pre-shard unsuffixed names) was ACCEPTED by the unmodified script (`switch on: exit code = 0, want 1`), i.e. the old lookup is exactly the exact-name shape. Correction of record: the `68f741f807` commit message says nine scenarios fail; run 1 (first-draft test) had nine, the committed test has ten (the unknown-shard scenario was split in two before the commit); the `f0c55db330` message carries the correction.
+
+Green (run 3 and run 7): all 30 `TestReleaseScriptMatrixGate` subtests PASS, including `switch_on/a_sharded_legs_all_green_on_the_target_sha` with the acceptance line `[OK]   Matrix gate: run 101 of release-pr-multi-os.yml is green on all three OS legs (6 shards each) for 1bcab3f768a9` and the 14 refusal scenarios each refusing with the reason substring asserted: `leg 'Release Verify (windows-latest, cli-3)' is skipped`, `leg 'Release Verify (macos-latest, rosterguard)' is failure`, `has no leg 'Release Verify (macos-latest, remainder)'`, `has no leg 'Release Verify (ubuntu-latest, cli-4)'` (cli-4 missing on all three OS), `unknown Release Verify leg 'Release Verify (ubuntu-latest, cli-5)'` and `... (windows-latest, cli-5)'`, `has 2 jobs named 'Release Verify (macos-latest, cli-2)'`, `has no leg 'Release Verify (windows-latest, cli-1)'` (an OS with no shard job), `has no leg 'Release Verify (ubuntu-latest, cli-1)'` (only the pre-shard names). `switch_off` stays green for all 15 (no `gh run` call logged), and `TestReleaseScriptCharacterization`, `HeadAdmission`, `RcChangelogSkip`, `CIGate*`, `TagsTheVerifiedCommit` stay green.
+
+Mutants (AC-RVS-011 mutant probe), each a deliberately weakened copy of the final `scripts/release.sh` built in scratch by `python3 -I mkmutants.py`, copied over `scripts/release.sh` for one `switch_on` run, then the final script restored (`cmp` against the saved copy -> no difference; `git status` clean afterwards):
+- m1 "any one shard success per OS": runs 4; wrongly ACCEPTS (`exit code = 0, want 1`) f_skipped, h_failed, i_absent_on_one_os, j_same_shard_absent_on_all_three, k_unknown_on_every_os, o_unknown_on_one_os, l_duplicate. Correctly refused: m (an OS with no shard job), n (pre-shard names), a passes.
+- m2 "compare shard sets across OS (all success) without the declared six": wrongly ACCEPTS j_same_shard_absent_on_all_three, k_unknown_on_every_os, l_duplicate (set semantics). Single-OS scenarios f/h/i/m/n/o stay refused, exactly the shape the AC predicts (passes every single-OS scenario, fails "same shard absent on all three OS" and "unknown shard").
+- m3 "repeats tolerated" (the duplicate branch disabled): only `l_a_duplicated_shard_job` fails (accepted, `exit code = 0, want 1`).
+The `FAIL` lines for m1-m3 also include reason-text mismatches where a mutant refuses with its own wording; the acceptance counts above are taken from the `exit code = 0, want 1` lines only.
+
+`bash -n scripts/release.sh` and `/bin/bash -n scripts/release.sh` -> no output. `gofmt -l internal/template/release_script_test.go` -> no output. `repro/leg-match-probe.sh` against the edited script -> `Exit code 9`, `FAIL: exact-name lookup shape not found in .../scripts/release.sh (extraction)`: by its own contract exit 9 means the lookup no longer has the exact-name shape (it exited 0 on the base); the probe is intentionally NOT edited (plan-phase artifact, and its job was the RED-now cell of AC-RVS-011, now superseded by the whole-script scenario in run 8).
+
+Boundary (M2 scope): `git diff --name-only 5dbc39a3a0 HEAD` -> `internal/template/release_script_test.go`, `scripts/release.sh` (plus this progress.md edit in the evidence commit). Workflow, `ci.yml`, `.moai/reports/` untouched. No template mirror exists for either file.
+
+Baseline attribution: tree = branch WT-release-verify-os; code HEAD `f0c55db330` (script) on `68f741f807` (test); this run, this machine, Go toolchain as installed (not version-compared with the module's `go.mod` toolchain line; `go version` not recorded).
+
+Gaps (M2):
+- G-H: `golangci-lint` and `go vet ./internal/template/` were NOT run (kept to the scoped `-run` tests under the slot rules); `gofmt -l` is the only static check on the Go file, and `bash -n` on the script.
+- G-I: the shard-id list in `scripts/release.sh` (`MATRIX_SHARDS=(...)`, one line, plus `MATRIX_OSES`) is asserted equal to the workflow matrix only by reading; the equality assertion is the M3 parity test (not started).
+- G-J: the weakened copies are deviations I wrote myself, not an independent mutation tool; three mutants cover the three AC-named weakenings only.
+- G-K: `release.sh` was exercised through the stubbed `gh` (the existing double) only; no real `gh run view` output was read, so the job-name format `Release Verify (<os>, <shard>)` is the one the M1 workflow edit produces, not an observed live run (AC-RVS-014 stays a post-landing observation).
+- G-A..G-G from M1 are unchanged.
+
+Residual risk (M2):
+- The expected-name list is joined with `|` and passed to awk with `-v`; a job name containing `|` would also break the pre-existing `name|conclusion` record format (unchanged assumption).
+- A SPEC-conform shard rename must edit `MATRIX_SHARDS`, the workflow matrix and the test tables together; only M3 makes that mechanical.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
