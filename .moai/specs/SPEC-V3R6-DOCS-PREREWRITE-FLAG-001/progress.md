@@ -4,9 +4,10 @@ Status: draft (plan-phase artifacts authored 2026-10-19, card t1726)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: iter2-defect-repaired-pending-re-audit
+plan_status: audit-ready
 plan_revision: 0.1.2
-plan_complete_at: 2026-10-19T03:44:13Z (0.1.2 iter-2 D7 수리 2026-10-19)
+plan_complete_at: 2026-10-19
+plan_audit: iter-3 PASS 1.0 @ 26ab9ea589 (rcpt-b16f8f6aa7d0e990b7355e02; sequence iter-1 FAIL 0.94 → iter-2 FAIL 0.88 → iter-3 PASS 1.0)
 plan_commit_sha: pending-backfill-plan (커밋은 자기 SHA를 모르므로 플레이스홀더 — 커밋 후 이 SPEC 디렉터리를 건드리지 않는 후속 기록으로만 채운다)
 iter1_audit: FAIL 0.94, blocking 4, receipt rcpt-25df35500d7f88da2fabbf8d (.moai/reports/t1726/plan-audit-iter1.md) — D1~D6 수리(b484ecacce), iter-2에서 재확인 해소.
 iter2_audit: FAIL 0.88(점수 회귀 STOP), blocking 1 (D7), receipt rcpt-454d40d50ba7205d6fdcec4d (.moai/reports/t1726/plan-audit-iter2.md) — D7 수리 완료: AC-DPF-002 green path keep-절 수정 + STALE-3 부재 검증용 release-blocking AC-DPF-007 신설(RED-now 셀 E-05) + D8 확대(AC-DPF-006 허용 목록 합집합에 무pathspec committed diff 추가). REQ·기존 AC 식별자 불변, Q18 행 무변경. 재감사 대기.
