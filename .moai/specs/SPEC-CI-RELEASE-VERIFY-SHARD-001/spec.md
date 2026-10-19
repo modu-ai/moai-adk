@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-RELEASE-VERIFY-SHARD-001
 title: "Release Verify sharding — split the 3-OS race run into ci.yml's six shards so no leg reaches the job timeout"
-version: "0.1.5"
+version: "0.1.6"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -27,6 +27,7 @@ related_specs: [SPEC-CI-VERDICT-INTEGRITY-001, SPEC-CANDIDATE-CI-001, SPEC-CI-FL
 | 0.1.3 | 2026-10-19 | manager-spec | Plan-audit iter3 fixes (FAIL 0.84, codex fail, `.moai/reports/t1892/plan-audit-iter3.md`): the cover and discovery checks run over the names `go test -list` prints instead of a re-implemented Go rule; duplicate-include mutant prediction corrected (caught structurally, not by leg count); REQ-RVS-015 defines its own term; constraint D.3 names the guard's REQs. |
 | 0.1.4 | 2026-10-19 | manager-spec | Plan-audit iter4 fixes (FAIL 0.88, codex fail, `.moai/reports/t1892/plan-audit-iter4.md`): the name listing is taken under the shards' build conditions (`go test -race -list`), with a race-only-name mutant; stale "parsed from source" wording aligned; nested-list compile weight recorded as residual risk; listing fixture preserved under repro/. |
 | 0.1.5 | 2026-10-19 | manager-spec | Plan-audit iter5 fixes (label-only FAIL 0.90, codex fail, `.moai/reports/t1892/plan-audit-iter5.md`): mutant (x) requires a paired plain/`-race` run on one clean-base fixture (race-only name `FuzzRaceOnly`); the "none exists today" aside moved to research.md; `TestMain` listing cost noted. |
+| 0.1.6 | 2026-10-19 | manager-spec | Plan-audit iter6 fix (FAIL 0.91, codex fail, `.moai/reports/t1892/plan-audit-iter6.md`): race-pair base no longer contains `ExampleAlpha` (vet `tests` analyzer would fail the build); no `-vet=off` on the race-pair commands; run 1 must exit 0. |
 
 ## A.1 Why this SPEC exists
 

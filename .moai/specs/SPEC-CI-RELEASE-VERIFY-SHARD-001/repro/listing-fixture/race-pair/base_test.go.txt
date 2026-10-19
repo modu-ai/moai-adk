@@ -2,11 +2,13 @@ package gl
 
 import "testing"
 
-// Clean base: nothing here trips either guard under a PLAIN listing.
-// TestReal matches internal/cli selector 3 (^Test[J-R]); Benchmark names are ignored;
-// Fuzzhelper and ExampleAlpha are not listed by the go tool at all.
-// There is deliberately NO bare Test, Fuzz or Example and no output-bearing example.
+// Clean base: nothing here trips either guard under a PLAIN listing, and nothing
+// here is flagged by go vet's `tests` analyzer (which `go test` runs by default).
+// TestReal matches internal/cli selector 3 (^Test[J-R]); Benchmark names are
+// ignored; Fuzzhelper has a lowercase suffix and a result, so the go tool does not
+// list it and vet does not check it. There is deliberately NO bare Test, Fuzz or
+// Example, and NO Example... function (an Example name must refer to an identifier
+// that exists in the package, or vet fails the build before any name prints).
 func TestReal(t *testing.T)      {}
 func BenchmarkB(b *testing.B)    {}
 func Fuzzhelper(s string) string { return s }
-func ExampleAlpha()              {}
