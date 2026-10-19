@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# conditions.sh <N> — synthetic reproduction of drain failure condition N (1..17) on the LSEL drain pair
+# conditions.sh <N> — synthetic reproduction of drain failure condition N (1..18) on the LSEL drain pair
 # (drain.sh + session_drain.sh). SPEC-LESSONS-INBOX-SAFE-CLEANUP-001 RED/GREEN cell driver.
 #
 # Conditions 1..9 are the nine ADK conditions (card t1901 body); 10 is this SPEC's own addition
@@ -16,7 +16,7 @@
 set -uo pipefail
 
 N="${1:-}"
-case "$N" in 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17) ;; *) echo "usage: conditions.sh <1..17> [crash-point for 15]" >&2; exit 64;; esac
+case "$N" in 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18) ;; *) echo "usage: conditions.sh <1..18> [crash-point [lost|tamper]] for 15" >&2; exit 64;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CUR="${CURATOR_DIR:-$HERE/../../../../.claude/skills/hns-lsel-curator}"
@@ -211,15 +211,43 @@ case "$N" in
     mkhook between-renames 'exit 1'
     run_wrapper; trace_of "" between-renames; echo "wrapper_exit=$RC"; pair_state ""; status_of ""
     echo "checkpoint_zero_byte=$([[ -e "$SD/drain-offset.json" && ! -s "$SD/drain-offset.json" ]] && echo true || echo false)";;
-  15) # crash matrix: the consumer is SIGKILLed at the named point, then a clean run recovers
-    POINT="${2:-}"
-    case "$POINT" in temps-written|after-prepared|between-renames|after-renames|after-committed) ;; *) echo "usage: conditions.sh 15 <temps-written|after-prepared|between-renames|after-renames|after-committed>" >&2; exit 64;; esac
+  15) # crash matrix with an existing committed pair. A first clean run commits the pair at offset 3, rows
+      # 4-6 arrive, the consumer is SIGKILLed at the named point while committing offset 6, then a clean
+      # run recovers. Optional third argument: lost | tamper (the checkpoint temporary is deleted or
+      # altered by the crash hook before the kill). The seam after-recovery fires between recovery and
+      # consumption, so the pair is observed BEFORE anything is consumed again.
+    POINT="${2:-}"; MODE="${3:-plain}"
+    case "$POINT" in temps-written|after-prepared|between-renames|after-renames|after-committed) ;; *) echo "usage: conditions.sh 15 <temps-written|after-prepared|between-renames|after-renames|after-committed> [lost|tamper]" >&2; exit 64;; esac
+    case "$MODE" in plain|lost|tamper) ;; *) echo "usage: third argument plain|lost|tamper" >&2; exit 64;; esac
     add "$INBOX" "$KA" 1 3
-    mkhook "$POINT" 'exit 99'
+    run_wrapper
+    add "$INBOX" "$KB" 4 6
+    export HOOK_REC="$FIX/at-recovery.txt"
+    # The hook observes the pair as recovery left it (line 1) and compares the recovery record's
+    # recorded `after` hashes against the files actually present at the seam (line 2) — recovery
+    # wrote the record immediately before this seam, and the inbox has not been read yet.
+    mkhook after-recovery 'printf "clusters=%s checkpoint=%s\n" "$(jq -r .offset_after "$2/clusters.json" 2>/dev/null || echo absent)" "$(jq -r "(.offset_lines // .offset)" "$2/drain-offset.json" 2>/dev/null || echo absent)" >"$HOOK_REC"; h="$2/recovery-record.json"; if [[ -s "$h" ]]; then c="$(jq -r ".after.clusters_sha256 // empty" "$h" 2>/dev/null)"; k="$(jq -r ".after.checkpoint_sha256 // empty" "$h" 2>/dev/null)"; a="$(shasum -a 256 "$2/clusters.json" 2>/dev/null | cut -d" " -f1)"; b="$(shasum -a 256 "$2/drain-offset.json" 2>/dev/null | cut -d" " -f1)"; if [[ -n "$c" && "$c" == "$a" && -n "$k" && "$k" == "$b" ]]; then echo "recovery_hashes_match=true" >>"$HOOK_REC"; else echo "recovery_hashes_match=false" >>"$HOOK_REC"; fi; else echo "recovery_hashes_match=absent" >>"$HOOK_REC"; fi'
+    case "$MODE" in
+      plain)  CRASH_BODY='exit 99';;
+      lost)   CRASH_BODY='rm -f "$2"/drain-offset.json.*.tmp; exit 99';;
+      tamper) CRASH_BODY='for f in "$2"/drain-offset.json.*.tmp; do printf "x" >>"$f"; done; exit 99';;
+    esac
+    mkhook "$POINT" "$CRASH_BODY"
     run_wrapper; trace_of "crash_" "$POINT"; pair_state "crash_"
-    unset LSEL_HOOK_DIR
-    run_wrapper; pair_state "recovered_"; status_of "recovered_"
-    echo "recovered_rows_accounted=$([[ "$(cat "$SD/clusters.json" 2>/dev/null | "$REAL_JQ" -r '.offset_after' 2>/dev/null)" == "3" ]] && echo true || echo false)";;
+    rm -f "$FIX/hooks/$POINT"
+    run_wrapper
+    echo "after_recovery_seam_count=$([[ -s "$SD/hook-trace.log" ]] && grep -cx after-recovery "$SD/hook-trace.log" || echo 0)"
+    echo "at_recovery=$([[ -s "$HOOK_REC" ]] && head -n 1 "$HOOK_REC" || echo none)"
+    echo "recovery_hashes_match=$([[ -s "$HOOK_REC" ]] && sed -n 2p "$HOOK_REC" || echo none)"
+    echo "recovery_branch=$([[ -s "$SD/recovery-record.json" ]] && "$REAL_JQ" -r '.branch' "$SD/recovery-record.json" || echo none)"
+    pair_state "final_"; status_of "final_"
+    if [[ -s "$SD/commits.jsonl" ]]; then
+      echo "slices=$("$REAL_JQ" -s -r 'map("\(.from)-\(.to)") | join(",")' "$SD/commits.jsonl")"
+      echo "slices_tile=$("$REAL_JQ" -s -r 'reduce .[] as $r ({e:0,ok:true}; if $r.from == .e then .e = $r.to else .ok = false end) | "\(.ok) end=\(.e)"' "$SD/commits.jsonl")"
+    else
+      echo "slices=none"
+      echo "slices_tile=none"
+    fi;;
   16) # the inbox is swapped between the snapshot copy and the post-check
     add "$INBOX" "$KA" 1 3
     run_drain
@@ -233,5 +261,13 @@ case "$N" in
     add "$INBOX" "$KA" 1 3
     run_drain; report "run1_"
     run_drain; report "run2_";;
+  18) # a legacy offset-only checkpoint (offset 5) meets its FIRST consumer run only after the inbox has
+      # already grown past the offset (7 lines): no earlier run ever observed a mismatch.
+    add "$INBOX" "$KA" 1 3
+    add "$INBOX" "$KB" 4 5
+    seed_checkpoint 5
+    add "$INBOX" "$KC" 6 7
+    run_drain; report ""
+    echo "rows_6_7_key_in_candidates=$([[ -s "$SD/clusters.json" ]] && "$REAL_JQ" -r --arg k "$KC" '[.candidates[].event_key] | index($k) != null' "$SD/clusters.json" || echo n/a)";;
 esac
 exit 0

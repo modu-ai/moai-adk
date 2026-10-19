@@ -24,7 +24,7 @@ File ownership for blockers: t1901 edits `.claude/skills/hns-lsel-curator/{drain
 
 1. Public contracts that other cards read: the status record, the v2 checkpoint, the `moai inbox` verb family (names and flags), and the lock contract. Fix these in M1/M2 before any Go code consumes them.
 2. Whether the consumer stays shell (planner default) and the store verbs are Go: decision-index Q2.
-3. v1 checkpoint adoption (Q1), `id` without a schema-version bump (Q3), where the PR1841 case is recorded (Q4), second backup copy outside the repository tree (Q5), preview before real cutover (Q6).
+3. v1 checkpoint handling (Q1), `id` without a schema-version bump (Q3), where the PR1841 case is recorded (Q4), second backup copy outside the repository tree (Q5), preview before real cutover (Q6).
 
 ## §C Milestones (dependency order)
 
@@ -32,9 +32,9 @@ Delegation: `manager-develop` owns run phase, one milestone per spawn, TDD (RED 
 
 | M | Scope | Language | Flips | Depends on |
 |---|-------|----------|-------|------------|
-| M1 | Consumer core: fixed-boundary snapshot, named states and `consumer-status.json`, persistent blocked state, v2 checkpoint with lineage binding, v1 adoption (never of a blocked checkpoint), distinct exit codes for `drain.sh`, the named seams of `design.md` §2.6; the jq filter program stays byte-identical | shell + jq | AC-LIS-001, 002, 004, 006 | none |
+| M1 | Consumer core: fixed-boundary snapshot, named states and `consumer-status.json`, persistent blocked state, v2 checkpoint with lineage binding, LEGACY_UNBOUND for any nonzero v1 offset (never auto-adopted), recovery record and the `after-recovery` seam, distinct exit codes for `drain.sh`, the named seams of `design.md` §2.6; the jq filter program stays byte-identical | shell + jq | AC-LIS-001, 002, 004, 006 | none |
 | M2 | Consumer commit and lock: commit manifest pair, same-dir temp, verify, flush, rename, restart recovery; lock owner record, dead-owner reap, `LOCK_HELD`; wrapper stays fail-open and now emits a notice on state change | shell + jq | AC-LIS-003, 005 | M1 |
-| M3 | Identity and producer lock: new-row `id`, generation manifest builder, shared exclusive/shared lock plus spool with the final-merge handoff, lock and spool under the ignored `.moai/state/lessons-inbox/` with `TestTemplateGitignoreIgnoresLocalArtifacts` extended, rotation under the exclusive lock | Go (`internal/inboxsafe`, `internal/hook`) | AC-LIS-007, 008, 009, 010 | M2 contract text (lock order) |
+| M3 | Identity and producer lock: new-row `id`, generation manifest builder, shared exclusive/shared lock plus the per-event spool (list under the lock, merge with id idempotency, merged ids recorded in the commit manifest, unlink only after that commit), lock and spool under the ignored `.moai/state/lessons-inbox/` with `TestTemplateGitignoreIgnoresLocalArtifacts` extended, rotation under the exclusive lock | Go (`internal/inboxsafe`, `internal/hook`) | AC-LIS-007, 008, 009, 010 | M2 contract text (lock order) |
 | M4 | Backup, inventory, classification, bind primitive: `moai inbox backup`, `inventory`, `classify`, `checkpoint bind` | Go | AC-LIS-011, 012, 013, 020 | M3 |
 | M5 | Proof and cutover: `prove` (evidence resolution and retention hold), `archive`, multiset equation, `cutover`, `rollback`, hash-chained ledger, forbidden-pattern guards | Go | AC-LIS-014, 015, 016, 017, 018, 019, 021, 024 | M3, M4 |
 | M6 | Synthetic end-to-end through the existing applier and verify scripts | shell + Go | AC-LIS-022 | M5 |
@@ -44,7 +44,7 @@ Delegation: `manager-develop` owns run phase, one milestone per spawn, TDD (RED 
 
 | Step | Action | Gate to proceed | Evidence file |
 |------|--------|-----------------|---------------|
-| R0 | Confirm the lane is the sole maintenance writer; record the other consumers (session-start drains in other sessions also write `clusters.json`); build the Go binary from the tree and invoke it by path | leader confirmation recorded; build commit equals tree HEAD | `r0-preconditions.md` |
+| R0 | Confirm the lane is the sole maintenance writer; record the other consumers (session-start drains in other sessions also write `clusters.json`); build the Go binary from the tree and invoke it by path; record the sha256 of the real checkpoint and re-check it before every later step (consumers in other sessions may still run the legacy code; a change stops the run with a report and is never repaired by re-binding) | leader confirmation recorded; build commit equals tree HEAD; checkpoint hash recorded | `r0-preconditions.md` |
 | R1 | Freeze: take the consumer lock, copy the complete-line prefix and the checkpoint, hash, read back, release | backup verified (REQ-LIS-013) | `r1-freeze.md` |
 | R2 | Read-only inventory and classification of the frozen copy only | row count equals frozen line count | `r2-inventory.md` |
 | R3 | Proof gate over the inventory | gate output file exists; counts per state | `r3-prove.md` |
@@ -74,6 +74,8 @@ If R3 proves zero eligible rows, R4 does not run and R5 records `zero_removal`. 
 | Producer lock adds latency to every failure hook | Shared lock, bounded wait, spool on timeout (REQ-LIS-010); the bound is measured in AC-LIS-009 |
 | Real cutover hits a checkpoint that cannot be mapped | Preserved verbatim; no mapping invented |
 | Two different files agree on the first line, byte offset, and last 8 consumed lines (undetected lineage swap) | Accepted residual risk: second-resolution timestamps make it negligible for these rows; the window width is a constant that can widen without a schema change |
+| After M1 lands, every machine with a legacy offset-only checkpoint (the real one included) reports LEGACY_UNBOUND and drains nothing until a verified bind (IC-2) | Deliberate: the alternative adopts an unverifiable offset (fixture 18 shows rows skipped). The notice prints on state change only; the bind is the owner's act; decision-index Q1 states the default and its alternate |
+| Which copy of `session_drain.sh` the other sessions run (primary or a worktree copy) is not measured | Gap G6; R0 re-checks the checkpoint hash before every step, so interference is detected whichever copy runs |
 | A synthetic proof passes while a real item is mis-proven | Gate re-resolves evidence mechanically; mutants in AC-LIS-014 and AC-LIS-024 |
 
 ## §F Pre-flight (run phase, before M1)

@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-LESSONS-INBOX-SAFE-CLEANUP-001
 
-Authored at plan phase per the decision gate. One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` is the output of the published Default rule (preserve current behavior; else single-revert undo; else smaller user-visible surface), not a preference. No operator verdict is invented: rows whose Default was applied by the planner at plan close read `Operator verdict: none (planner default applied)` (2026-10-19T05:34:08Z, manager-spec, implementation-level rows only), so the field cannot be read as an operator answer; an operator answer at kickoff supersedes the default and the affected REQ/AC set is re-audited.
+Authored at plan phase per the decision gate. One row per decision surfaced during assembly that the operator has not settled. Labels: `DECIDED` / `POLICY-COVERED` / `EVIDENCE-NEEDED` / `FOUNDER`. No row carries a recommendation; a `Default:` is the output of the published Default rule (preserve current behavior; else single-revert undo; else smaller user-visible surface), not a preference. No operator verdict is invented: rows whose Default was applied by the planner at plan close read `Operator verdict: none (planner default applied)` (2026-10-19T05:34:08Z, manager-spec, implementation-level rows only), so the field cannot be read as an operator answer; an operator answer at kickoff supersedes the default and the affected REQ/AC set is re-audited. Q1 is the one open product-level row (no Default, empty verdict): it blocks the autonomous Kickoff form and goes to the operator; the SPEC text (never adopt) stands until answered.
 
 ## Keep-set notes (not decisions of this SPEC)
 
@@ -8,15 +8,15 @@ Authored at plan phase per the decision gate. One row per decision surfaced duri
 - Any push, pull request, release, or settings change stays with the leader or operator.
 - Planner scope decisions already taken (lane instruction: decide in-scope versus follow-up card): the PermissionDenied advice rewrite (`post_tool_failure.go:219`, EL-P) is a follow-up card, not part of this SPEC; the classifier lists it as a disposition. Recorded in `spec.md` §4; reversible by re-scoping before kickoff.
 
-### Q1: Is a legacy offset-only checkpoint that lies within the file adopted once (flagged unverified) or refused until an owner binds it?
+### Q1: Is a legacy offset-only checkpoint (nonzero offset, no lineage evidence) ever adopted automatically, or does it stay blocked until an explicit verified bind?
 
 Label: FOUNDER
 Authority anchor: (none — no committed operator setting or completed SPEC decides adoption of unverifiable legacy checkpoints; the drain-stall SPEC predates the lineage idea)
-Why unresolved: Adopting keeps every existing machine draining but may bind a wrong lineage once, exactly as today; refusing is stricter but stalls draining on every machine until someone binds, which is the silent-stall shape the drain-stall SPEC was written against. Adoption applies only to a checkpoint never observed blocked: a checkpoint recorded OFFSET_BEYOND_FILE, LINEAGE_MISMATCH or CHECKPOINT_CORRUPT is never adopted, however the file grows (REQ-LIS-002, REQ-LIS-004, AC-LIS-001). Changes REQ-LIS-004 and AC-LIS-006.
-Class: implementation-level
-Default: adopt once, flagged `checkpoint_unverified` (rule: preserves current behavior)
-Alternate: refuse with `LINEAGE_MISMATCH` until IC-2 binds
-Operator verdict: none (planner default applied)
+Why unresolved: Adopting keeps every existing machine draining, but a legacy offset carries no evidence of which file it counted. The plan audit (round 2) showed the failure is independent of when the consumer first runs: the real inbox gains rows daily and sits 288 rows short of the stored offset, so a first run after it crosses the offset finds an in-range offset and would consume from a position nobody verified (fixture 18 reproduces this on the legacy code: `read=2`, rows before the offset never examined). Never adopting is stricter: every machine with a legacy checkpoint (the real one included) reports LEGACY_UNBOUND and drains nothing until an owner supplies a verified bind (IC-2), which is the silent-stall shape the drain-stall SPEC was written against, but loud (status record, notice on state change) instead of silent. An absent checkpoint or offset 0 is not affected. Changes REQ-LIS-001, REQ-LIS-004, AC-LIS-001, AC-LIS-006, fixture 18, and plan risk E.
+Class: product-level (fail-closed: it changes the default behavior of the drain on every existing machine; a row of this kind is not auto-filled)
+Default: none. The published Default rule's first step (preserve current behavior) would rank "adopt", but adopting is exactly the consumption from an unverified position that REQ-LIS-002 forbids and that fixture 18 shows. Because no rule-derived default is consistent with the SPEC's own invariant, the planner states its SPEC position instead of a Default: **never adopt** (REQ-LIS-004 as written), justified by the verification rule (a claim of "this offset is a valid position in this file" needs evidence), and leaves the choice to the operator.
+Alternate: adopt once, flagged `checkpoint_unverified`, only for a checkpoint never observed blocked (this was the 0.2.0 text; its first-run-after-growth hole is fixture 18)
+Operator verdict:
 
 ### Q2: Does the consumer stay shell with the store verbs in Go, or does the consumer move to Go?
 
