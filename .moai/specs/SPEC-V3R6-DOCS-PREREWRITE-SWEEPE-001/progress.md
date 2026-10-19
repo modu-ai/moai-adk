@@ -101,4 +101,30 @@ m1_to_mN_commit_strategy: single combined commit for M1 and M2 (8f86c6bece), the
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+```yaml
+audit_ready: true
+sync_status: complete
+sync_complete_at: 2026-10-19
+sync_commit_sha: pending-backfill
+ac_source: .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001/acceptance.md
+tier: M
+ac_count: 11
+changelog_entry_position: "[Unreleased] ### Changed, first entry"
+frontmatter_status_transitions: in-progress -> implemented -> completed (spec.md, single sync commit; updated: stays 2026-10-19)
+b12_self_test_a: pass (grep -c SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001 CHANGELOG.md returned 0 before emission)
+b12_self_test_b: pass by grep reading (11 distinct identifiers AC-PRC-001a..k, 0 reserved tokens, 0 ambiguous, live=11 matches the run-phase ac_pass_count 11); the canonical awk counter was not run because the worktree guard refused `awk -f`
+b12_self_test_c: pass (the twelve page paths named in the entry are the twelve names in git diff --name-only 74ad197380a0 8f86c6bece, all present at HEAD)
+```
+
+What was synced: one CHANGELOG bullet (`CHANGELOG.md` `[Unreleased]` `### Changed`, first entry) and the 3-phase close (`spec.md` `status:` in-progress to completed). No README or docs-site change was made in the sync commit: the twelve page edits are the run-phase deliverable (commit 8f86c6bece), and this SPEC's docs obligation ends there. No `spec.md` HISTORY row was added, matching the closed siblings SPEC-FACTORY-RETIRE-GUARD-001 and SPEC-LANE-JOIN-RUN-SELECT-001, and no SPEC body text was touched.
+
+Evidence paths: run-phase cells in §E.2 above; run-phase audit signal in §E.3; whole verbatim cell output in `.moai/reports/t1725/run-evidence.md` (gitignored, machine-local, not citable); plan audit verdict `.moai/reports/t1725/plan-audit-verdict-iter3.md`.
+
+Gaps carried over from the run phase (not observed in the sync phase either):
+- S-06d-1 to S-06d-5 (tree-build verb surface) were not run: heavy Go execution is frozen by the leader.
+- Hugo was not built; the rendered output of the replacement lines was not observed.
+- The ja, ko, and zh pinned prose (including the new labels) had no native-register review.
+- The sync phase ran no new page cell; it relies on the run-phase GREEN cells at HEAD 8f86c6bece, and the sync commit changes no docs-site file.
+- `sync_commit_sha` holds the `pending-backfill` placeholder because a commit cannot cite its own hash; the real SHA is owed to a following commit.
+
+Residual risk: as recorded in §E.2 (ja and zh foundations row wording versus the linked `commands.md` headings, accepted under decision QE-4). The CI verdict on the integration branch is not part of this evidence. The plan-artifact hash input changes with this commit because `spec.md` carries the new status line; the iteration-3 audit hash `aa66a04ecd01b76ee264ead4c52fc42d152f8a33fe24725f12f39396041aca81` therefore no longer matches, which is expected for the close.

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001
 title: "Docs Pre-Rewrite Sweep E — stale slash citations in the FAQ, feedback, foundations, and verification-claim pages (card t1725)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
