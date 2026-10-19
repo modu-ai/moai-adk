@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001
 title: "Docs Pre-Rewrite Cleanup — stale CLI citations on tokenomics-overview and two multi-llm pages (child SWEEPB, card t1722)"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
