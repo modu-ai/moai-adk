@@ -37,7 +37,7 @@ flowchart TD
 | [機能ひとめぐり](/ja/claude-code/foundations/features-overview) | 機能カタログ全体と学習パス |
 | [対話モード](/ja/claude-code/foundations/interactive-mode) | REPL・ショートカット・権限モード |
 | [権限と Plan モード](/ja/claude-code/foundations/permissions) | 権限ルール・モードと計画承認 |
-| [スラッシュコマンド](/ja/claude-code/foundations/commands) | 組み込み・カスタムコマンドと /moai の関係 |
+| [スラッシュコマンド](/ja/claude-code/foundations/commands) | 組み込み・カスタムコマンドと /moai の位置づけ |
 | [ツールリファレンス](/ja/claude-code/foundations/tools-reference) | 組み込みツールと権限 |
 | [.claude ディレクトリ](/ja/claude-code/foundations/claude-directory) | 設定ディレクトリの構造とスコープ |
 
