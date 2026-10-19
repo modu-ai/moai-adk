@@ -118,7 +118,9 @@ func TestLauncherShortName_NoExistingTree_PassesThrough(t *testing.T) {
 // TestLauncherShortName_HomeRootTree_IsEntered pins the both-branches clause
 // for the home root: a short name that names an existing home-root tree is
 // entered by handing the backend that tree's absolute path, and nothing is
-// created under the legacy root.
+// created under the legacy root. The fixture registers a REAL worktree:
+// the M3 writer precheck reads the resolved tree's lock state, which needs
+// a registered tree, not a bare directory.
 func TestLauncherShortName_HomeRootTree_IsEntered(t *testing.T) {
 	repo := m2Repo(t)
 	home := m2Real(t, t.TempDir())
@@ -126,9 +128,10 @@ func TestLauncherShortName_HomeRootTree_IsEntered(t *testing.T) {
 	gotArgs := m2LaunchFixture(t, repo)
 
 	tree := filepath.Join(home, "worktrees", "projects", filepath.Base(repo), "t1")
-	if err := os.MkdirAll(tree, 0o755); err != nil {
-		t.Fatalf("mkdir home-root tree: %v", err)
+	if err := os.MkdirAll(filepath.Dir(tree), 0o755); err != nil {
+		t.Fatalf("mkdir home projects: %v", err)
 	}
+	m3Gitf(t, repo, "worktree", "add", "-q", "-b", "WT-t1", "--", tree)
 
 	if err := ccCmd.RunE(ccCmd, []string{"-w", "t1"}); err != nil {
 		t.Fatalf("moai cc -w t1: %v", err)

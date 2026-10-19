@@ -57,6 +57,16 @@ func m3SeedRepo(t *testing.T, name string) string {
 	}
 	m3Gitf(t, repo, "add", "README.md")
 	m3Gitf(t, repo, "commit", "-q", "-m", "seed")
+	// The landing predicate reads the configured integration target from
+	// the repository's git-strategy.yaml; the fixture configures main.
+	cfgDir := filepath.Join(repo, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	cfg := "git_strategy:\n  mode: manual\n  manual:\n    workflow: git-flow\n    develop_branch: main\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
 	remote := filepath.Join(filepath.Dir(repo), name+"-remote.git")
 	m3Gitf(t, repo, "init", "-q", "--bare", remote)
 	m3Gitf(t, repo, "remote", "add", "origin", remote)
@@ -165,29 +175,27 @@ func TestM3CleanupGuard_RemovesOnlyIntegratedLandedUnmoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("token worker-refused: %v", err)
 	}
-	m3AppendMoveLine(t, repo, "refused", refusedPath, filepath.Join(homeRoot, "worker-refused-new"), rid.Ident())
+	// D-11's refused orientation: the recorded source, then the destination
+	// where the tree stands — new_path names the tree's current path.
+	m3AppendMoveLine(t, repo, "refused", filepath.Join(homeRoot, "worker-refused-old"), refusedPath, rid.Ident())
+	// worker-landed: legacy root, integrated AND landed, not moved —
+	// today's removal is kept. Created BEFORE worker-integrated: its main
+	// push must not carry worker-integrated's commit into origin/main.
+	landedPath := filepath.Join(repo, ".claude", "worktrees", "worker-landed")
+	landedBranch := m3Worker(t, repo, landedPath)
+	m3CommitInTree(t, landedPath, "landed-work")
+	m3Gitf(t, repo, "merge", "-q", "--no-ff", "-m", "integrate landed", landedBranch)
+	m3Gitf(t, repo, "push", "-q", "origin", "main")
 	// worker-pushed: legacy root, pushed to its own remote-tracking ref,
 	// not integrated.
 	pushedPath := filepath.Join(repo, ".claude", "worktrees", "worker-pushed")
 	pushedBranch := m3Worker(t, repo, pushedPath)
 	m3CommitInTree(t, pushedPath, "pushed-work")
 	m3Gitf(t, repo, "push", "-q", "origin", pushedBranch)
-	// worker-integrated: legacy root, integrated into main, present on no
-	// remote.
-	integratedPath := filepath.Join(repo, ".claude", "worktrees", "worker-integrated")
-	integratedBranch := m3Worker(t, repo, integratedPath)
-	m3CommitInTree(t, integratedPath, "integrated-work")
-	m3Gitf(t, repo, "merge", "-q", "--no-ff", "-m", "integrate", integratedBranch)
-	// worker-landed: legacy root, integrated AND landed, not moved —
-	// today's removal is kept.
-	landedPath := filepath.Join(repo, ".claude", "worktrees", "worker-landed")
-	landedBranch := m3Worker(t, repo, landedPath)
-	m3CommitInTree(t, landedPath, "landed-work")
-	m3Gitf(t, repo, "merge", "-q", "--no-ff", "-m", "integrate landed", landedBranch)
-	m3Gitf(t, repo, "push", "-q", "origin", "main")
 	// worker-premove: legacy root, integrated and landed, its own latest
 	// line a pending whose move was never made (the tree stands at the
-	// old_path) — today's removal is kept.
+	// old_path) — today's removal is kept. Its main push runs BEFORE
+	// worker-integrated exists, so the later merge never lands.
 	premovePath := filepath.Join(repo, ".claude", "worktrees", "worker-premove")
 	premoveBranch := m3Worker(t, repo, premovePath)
 	m3CommitInTree(t, premovePath, "premove-work")
@@ -198,8 +206,24 @@ func TestM3CleanupGuard_RemovesOnlyIntegratedLandedUnmoved(t *testing.T) {
 		t.Fatalf("token worker-premove: %v", err)
 	}
 	m3AppendMoveLine(t, repo, "pending", premovePath, filepath.Join(homeRoot, "worker-premove-new"), premoveID.Ident())
+	// worker-integrated: legacy root, integrated into main, present on no
+	// remote — created and merged LAST, after every main push, so no push
+	// lands its commit.
+	integratedPath := filepath.Join(repo, ".claude", "worktrees", "worker-integrated")
+	integratedBranch := m3Worker(t, repo, integratedPath)
+	m3CommitInTree(t, integratedPath, "integrated-work")
+	m3Gitf(t, repo, "merge", "-q", "--no-ff", "-m", "integrate", integratedBranch)
 
-	cleanupMoaiWorktrees(repo)
+	report := cleanupMoaiWorktrees(repo)
+	t.Logf("cleanup report: %s", report)
+
+	// AC-WHR-014b's reporting clause: every kept tree is reported as
+	// skipped, with its reason.
+	for _, name := range []string{"worker-review", "worker-moved", "worker-pending", "worker-refused", "worker-pushed", "worker-integrated"} {
+		if !strings.Contains(report, name) {
+			t.Errorf("the cleanup report does not account for kept tree %s:\n%s", name, report)
+		}
+	}
 
 	// The seven protected trees survive, registered, with their branches.
 	for _, p := range []string{
@@ -230,14 +254,14 @@ func TestM3CleanupGuard_RemovesOnlyIntegratedLandedUnmoved(t *testing.T) {
 }
 
 // TestM3CleanupGuard_FailedRemoteCheckKeepsTree pins worker-unchecked in a
-// fixture whose remote cannot be read: integrated, but the landing
-// predicate's remote check fails, so the tree is kept.
+// fixture whose remote-tracking integration ref cannot be read: integrated,
+// but the landing predicate's remote check fails, so the tree is kept.
 func TestM3CleanupGuard_FailedRemoteCheckKeepsTree(t *testing.T) {
 	home := m2Real(t, t.TempDir())
 	t.Setenv(paths.EnvHome, home)
 	repo := m3SeedRepo(t, "unchecked")
-	// Break the remote: the remote-tracking refs cannot be read.
-	m3Gitf(t, repo, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "no-such-remote.git"))
+	// Break the remote check: the integration ref cannot be read.
+	m3Gitf(t, repo, "update-ref", "-d", "refs/remotes/origin/main")
 
 	unchekedPath := filepath.Join(repo, ".claude", "worktrees", "worker-unchecked")
 	branch := m3Worker(t, repo, unchekedPath)

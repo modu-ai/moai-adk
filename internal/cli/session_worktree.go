@@ -1032,7 +1032,10 @@ func ccWorktreeWriterPrecheck(read worktreeRead) error {
 				return nil
 			}
 		}
-		tree = filepath.Join(root, claudeNativeWorktreeSubdir, value)
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): the short name
+		// resolves across the three roots; a name at no tree keeps the
+		// legacy spelling.
+		tree = resolveShortWorktreeTree(root, value)
 	}
 	if info, err := os.Stat(tree); err != nil || !info.IsDir() {
 		return nil // Claude Code creates it; there is no writer to collide with

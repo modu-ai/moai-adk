@@ -438,6 +438,19 @@ func Candidates(repoDir, name string) ([]Candidate, error) {
 	return out, nil
 }
 
+// OwnerMarkerOf returns the owner identity recorded in projectDir's owner
+// marker, with ok=false when the marker is absent or unreadable — the
+// classifier contexts' data source for the home-root marker witness
+// (SPEC-WORKTREE-HOME-ROOT-001 M3; the marker format itself stays owned by
+// this package).
+func OwnerMarkerOf(projectDir string) (string, bool) {
+	owner, err := readMarkerOwner(filepath.Join(projectDir, markerName))
+	if err != nil {
+		return "", false
+	}
+	return owner, true
+}
+
 // Same reports whether two path spellings denote one directory:
 // spelling-safe equality (REQ-WHR-023). Existing paths compare by resolved
 // identity (symlinks, case-aliased directories on case-insensitive volumes);

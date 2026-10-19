@@ -57,6 +57,11 @@ type WorktreeBases struct {
 	Claude string
 	// MoAI is the persistent user-level base (<home>/.moai/worktrees).
 	MoAI string
+	// Home is the home-level projects base
+	// (<MoaiHome>/worktrees/projects), scanned at its two-segment depth
+	// <key>/<card> (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Empty
+	// when MoaiHome cannot be resolved: the legacy bases then stand alone.
+	Home string
 }
 
 // DefaultWorktreeBases resolves the scanned bases for production callers.
@@ -64,6 +69,9 @@ func DefaultWorktreeBases(primaryRoot string) WorktreeBases {
 	bases := WorktreeBases{Claude: filepath.Join(primaryRoot, ".claude", "worktrees")}
 	if moaiBase, err := paths.WorktreesDir(); err == nil {
 		bases.MoAI = moaiBase
+	}
+	if home, err := paths.MoaiHome(); err == nil {
+		bases.Home = filepath.Join(home, "worktrees", "projects")
 	}
 	return bases
 }
@@ -115,11 +123,24 @@ func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatu
 	// The live-worktree observation, over both scanned bases. The path's
 	// final segment is the card's identity, so the candidate worktree for a
 	// card is deterministic; its REPORTED branch decides the source.
+	// The live-worktree candidates, home root first: the home projects
+	// directory is scanned at its two-segment depth
+	// <MoaiHome>/worktrees/projects/<key>/<specID>
+	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007), then the two legacy
+	// bases at their flat depth.
+	var scanPaths []string
+	if bases.Home != "" {
+		if matches, err := filepath.Glob(filepath.Join(bases.Home, "*", specID)); err == nil {
+			scanPaths = append(scanPaths, matches...)
+		}
+	}
 	for _, base := range []string{bases.MoAI, bases.Claude} {
 		if base == "" {
 			continue
 		}
-		wtPath := filepath.Join(base, specID)
+		scanPaths = append(scanPaths, filepath.Join(base, specID))
+	}
+	for _, wtPath := range scanPaths {
 		if !isGitWorktreeDir(wtPath) {
 			continue
 		}

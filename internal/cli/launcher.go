@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	worktreepkg "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -489,16 +490,15 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	var cleanedWorktrees []string
 	var skippedWorktrees []string
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if !strings.HasPrefix(line, "worktree ") {
-			continue
-		}
-		rawPath := strings.TrimPrefix(line, "worktree ")
+	records, err := worktreepkg.ParseWorktreeList(output)
+	if err != nil {
+		return ""
+	}
+	for _, rec := range records {
 		// Normalize path separators: git on Windows returns forward-slash paths
 		// (e.g. C:/Users/...) while filepath.Join produces backslash paths.
 		// filepath.FromSlash converts to OS-native separators for correct comparison.
-		worktreePath := filepath.FromSlash(rawPath)
+		worktreePath := filepath.FromSlash(rec.Path)
 		workerName := filepath.Base(worktreePath)
 		if !strings.HasPrefix(workerName, "worker-") {
 			continue
@@ -511,15 +511,43 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 				continue
 			}
+			// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-014): a worker tree is
+			// removed only when its branch is integrated and landed on a
+			// remote by the disposal verbs' predicate and the migration did
+			// not move it (the M1 reverse lookup). Everything else is kept
+			// with its reason: a branch pushed but not integrated, a branch
+			// integrated locally but present on no remote, a branch whose
+			// remote check fails, and any tree the migration moved —
+			// whatever the tree's location or name.
+			keepReason := ""
+			switch {
+			case rec.Branch == "":
+				keepReason = "detached or bare: no branch to confirm a landing for"
+			default:
+				landed, lerr := gitBranchLandedReal(worktreePath)
+				switch {
+				case lerr != nil:
+					keepReason = fmt.Sprintf("landing check failed (%v)", lerr)
+				case !landed:
+					keepReason = "branch is not landed on the remote integration ref"
+				}
+			}
+			if keepReason == "" && worktreepkg.MovedBy(projectRoot, worktreePath) {
+				keepReason = "moved by the migration"
+			}
+			if keepReason != "" {
+				skippedWorktrees = append(skippedWorktrees, fmt.Sprintf("%s (%s)", workerName, keepReason))
+				break
+			}
 			// Use the full path so git can locate the worktree regardless
-			// of whether it is under .claude/worktrees/ or ~/.moai/worktrees/.
-			// Non-force removal: git refuses when the worktree still holds
-			// uncommitted or untracked work, so a failure here means "kept",
-			// not "broken". See removeWorktree.
+			// of whether it is under .claude/worktrees/, ~/.moai/worktrees/
+			// or the home root. Non-force removal: git refuses when the
+			// worktree still holds uncommitted or untracked work, so a
+			// failure here means "kept", not "broken". See removeWorktree.
 			if err := removeWorktree(projectRoot, worktreePath); err == nil {
 				cleanedWorktrees = append(cleanedWorktrees, workerName)
 			} else {
-				skippedWorktrees = append(skippedWorktrees, workerName)
+				skippedWorktrees = append(skippedWorktrees, fmt.Sprintf("%s (git refused: %v)", workerName, err))
 			}
 			break
 		}

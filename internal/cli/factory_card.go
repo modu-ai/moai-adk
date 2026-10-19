@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // factoryCardNow is the clock the factory card commands read; tests replace it
@@ -493,10 +494,17 @@ func factoryClaimFailure(claimCtx context.Context, err error) error {
 	}
 }
 
-// factoryCardWorktreeDir is the card's landing directory under the shared
-// materializer root — the leaf the REQ-SD-011 refusal and the carry-over both
-// read.
+// factoryCardWorktreeDir is the card's landing directory — the leaf the
+// REQ-SD-011 refusal and the carry-over both read.
+//
+// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): the landing directory comes
+// from the resolver (<MoaiHome>/worktrees/projects/<project-key>/<cardID>);
+// when the resolver cannot run the pre-M2 in-repo spelling is the fallback,
+// preserving this reader's behavior where it cannot know the home root.
 func factoryCardWorktreeDir(root, cardID string) string {
+	if p, err := worktreeroot.PathFor(root, cardID); err == nil {
+		return p
+	}
 	return filepath.Join(root, sessionWorktreeSubdir, cardID)
 }
 

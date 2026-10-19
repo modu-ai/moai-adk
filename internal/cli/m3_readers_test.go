@@ -168,19 +168,19 @@ func TestM3SeedAdmittedWorktreeHooksFor_HomeRoot(t *testing.T) {
 }
 
 // TestM3CCWorktreeWriterPrecheck_HomeRoot pins the concurrent-writer
-// precheck on the new depth: the short name resolves to the home-root tree,
-// so a seed written there is visible to the precheck's tree lookup (the
-// precheck answers on the resolved tree, not the legacy spelling).
+// precheck on the new depth: the short name resolves to the home-root tree
+// and the precheck reads THAT tree's lock state — observable because a
+// real registered worktree with no anchored session answers nil, while a
+// mis-resolved location would fail its git lock read.
 func TestM3CCWorktreeWriterPrecheck_HomeRoot(t *testing.T) {
 	w := m3NewWorld(t)
-	if _, err := os.Lstat(w.homeT7); err != nil {
-		t.Fatalf("fixture tree missing: %v", err)
+	// Replace the plain fixture directory with a real registered worktree:
+	// the precheck's lock-state read runs git inside the resolved tree.
+	if err := os.RemoveAll(w.homeT7); err != nil {
+		t.Fatalf("clear fixture dir: %v", err)
 	}
-	// No anchored session: the precheck must find the tree and decline to
-	// treat it as creatable — observable as no error and no panic, with the
-	// resolution proven by the seed test above. The clause this pins is the
-	// resolution itself: precheck must consult the home-root path, which the
-	// anchored-session refusal would exercise.
+	m3Gitf(t, w.repo, "worktree", "add", "-q", "-b", "WT-t7", "--", w.homeT7)
+	// No anchored session: the precheck answers nil for an unanchored tree.
 	if err := ccWorktreeWriterPrecheck(worktreeRead{Value: "t7", Has: true}); err != nil {
 		t.Errorf("ccWorktreeWriterPrecheck on an unanchored home-root tree = %v, want nil", err)
 	}
@@ -206,20 +206,39 @@ func TestM3AutoOwnerWorktrees_IncludesHomeRoot(t *testing.T) {
 
 // ---------------------------------------------------- AC-WHR-022 ambiguity
 
-// TestM3ResolveCodexWorktreeDir_ThreeRoots pins the transition resolver:
-// three-root candidate lookup, single-tree names resolve, two-tree names
-// are ambiguous with both candidates named and an absolute-path
-// instruction, and a name at no root is refused rather than guessed.
+// TestM3ResolveCodexWorktreeDir_ThreeRoots pins the transition resolver on
+// AC-WHR-022's own fixture shape: t7 at the home root AND at
+// .moai/worktrees (two different trees, one name), t6 at both legacy roots
+// (the GH #1813 shape), t5 at the home root under one directory, t8 at one
+// root. Single-tree names resolve; two-tree names are ambiguous with both
+// candidates named and an absolute-path instruction; no root is preferred;
+// a name at no root is refused rather than guessed.
 func TestM3ResolveCodexWorktreeDir_ThreeRoots(t *testing.T) {
-	w := m3NewWorld(t)
-	legacyMoaiT7 := filepath.Join(w.repo, ".moai", "worktrees", "t7")
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
+	key := filepath.Base(repo)
+	homeT7 := filepath.Join(home, "worktrees", "projects", key, "t7")
+	homeT5 := filepath.Join(home, "worktrees", "projects", key, "t5")
+	homeT8 := filepath.Join(home, "worktrees", "projects", key, "t8")
+	moaiT7 := filepath.Join(repo, ".moai", "worktrees", "t7")
+	moaiT6 := filepath.Join(repo, ".moai", "worktrees", "t6")
+	claudeT6 := filepath.Join(repo, ".claude", "worktrees", "t6")
+	for _, d := range []string{homeT7, homeT5, homeT8, moaiT7, moaiT6, claudeT6} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return repo, nil }
+	t.Cleanup(func() { findProjectRootFn = origFn })
 
 	// Single-tree names resolve to their one tree.
 	for _, c := range []struct{ name, want string }{
-		{"t5", w.homeT5},
-		{"t8", w.homeT8},
+		{"t5", homeT5},
+		{"t8", homeT8},
 	} {
-		got, err := resolveCodexWorktreeDir(w.repo, c.name)
+		got, err := resolveCodexWorktreeDir(repo, c.name)
 		if err != nil {
 			t.Errorf("resolveCodexWorktreeDir(%q): %v", c.name, err)
 			continue
@@ -232,10 +251,10 @@ func TestM3ResolveCodexWorktreeDir_ThreeRoots(t *testing.T) {
 	// Two-tree names are ambiguous, naming both candidates and instructing
 	// an absolute path; no root is preferred.
 	for _, c := range []struct{ name, first, second string }{
-		{"t7", w.homeT7, legacyMoaiT7},
-		{"t6", w.moaiT6, w.claudeT6},
+		{"t7", homeT7, moaiT7},
+		{"t6", moaiT6, claudeT6},
 	} {
-		got, err := resolveCodexWorktreeDir(w.repo, c.name)
+		got, err := resolveCodexWorktreeDir(repo, c.name)
 		if err == nil {
 			t.Errorf("resolveCodexWorktreeDir(%q) = %q; a name at two roots must be reported ambiguous", c.name, got)
 			continue
@@ -249,7 +268,7 @@ func TestM3ResolveCodexWorktreeDir_ThreeRoots(t *testing.T) {
 	}
 
 	// A name at no root is refused, never guessed.
-	if _, err := resolveCodexWorktreeDir(w.repo, "t9"); err == nil {
+	if _, err := resolveCodexWorktreeDir(repo, "t9"); err == nil {
 		t.Error("resolveCodexWorktreeDir(t9) succeeded; a name at no root must be refused")
 	}
 }

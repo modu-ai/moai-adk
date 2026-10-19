@@ -52,7 +52,9 @@ func m3BaseFixture(t *testing.T) (repo, homeTree string) {
 	if err := os.MkdirAll(filepath.Dir(homeTree), 0o755); err != nil {
 		t.Fatalf("mkdir home projects: %v", err)
 	}
-	git(repo, "worktree", "add", "-q", "-b", "WT-t7", "--", homeTree)
+	// The branch names the card per REQ-KW-003's recognition rule (the
+	// segment after its type prefix is the SPEC id): feature/t7, not WT-t7.
+	git(repo, "worktree", "add", "-q", "-b", "feature/t7", "--", homeTree)
 	return repo, homeTree
 }
 
@@ -79,8 +81,8 @@ func TestReadCardStatus_FindsHomeRootWorktree(t *testing.T) {
 	if status.WorktreePath != homeTree {
 		t.Errorf("WorktreePath = %q, want the home-root worktree %q", status.WorktreePath, homeTree)
 	}
-	if status.WorktreeBranch != "WT-t7" {
-		t.Errorf("WorktreeBranch = %q, want WT-t7", status.WorktreeBranch)
+	if status.WorktreeBranch != "feature/t7" {
+		t.Errorf("WorktreeBranch = %q, want feature/t7", status.WorktreeBranch)
 	}
 	if status.Status == "unresolved" {
 		t.Errorf("status = unresolved with candidates %v; the home-root worktree must resolve", status.Candidates)
