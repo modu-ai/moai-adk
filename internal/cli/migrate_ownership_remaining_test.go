@@ -486,13 +486,15 @@ func renderedFlowCase(t *testing.T, shareRunDirectory bool) {
 	// so the run is forced and its reach is asserted (rule 7).
 	updateLedger.reset()
 	updateVerboseMode = true
+	// Run backup directories are named to the second. Run 2 must start in a later
+	// second than run 1's backup in BOTH cases: since chunk 13 a run that finds an
+	// earlier run's manifest.prior.json in its own directory fails closed, so a real
+	// same-second start would leave run 2 without a copy of its own. The shared
+	// directory of the one-second case is therefore only simulated, through the
+	// writer seam, after the claim has been made.
+	awaitClockSecondAfter(t, filepath.Base(filepath.Dir(run1.NewPriorManifest)))
 	if shareRunDirectory {
 		shareRunDirectoryWithRun1(t, run1)
-	} else {
-		// Run backup directories are named to the second. Run 2 must start in a
-		// later second than run 1's backup, or the two share one directory and
-		// run 1's generation is replaced (RenderedByTheUpdateFlowInOneSecond).
-		awaitClockSecondAfter(t, filepath.Base(filepath.Dir(run1.NewPriorManifest)))
 	}
 	run2 := runUpdateFlowForced(t, root)
 	if run2.NewPriorManifest == "" {
