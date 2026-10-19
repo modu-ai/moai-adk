@@ -63,14 +63,15 @@ After the merge the range is empty by construction; post-merge evidence is tree 
 **Then** each exits 1, stderr is exactly one line containing
 `KANBAN_MODE_UNSUPPORTED_BACKEND` and `moai cc -k`, and stdout is empty.
 
-### AC-CFR-002 — `moai codex -f` is refused (maps REQ-CFR-002, REQ-CFR-005)
+### AC-CFR-002 — invalid factory forms are refused (maps REQ-CFR-002, REQ-CFR-005)
 
 **Given** `<bin>`,
-**When** each of `codex -f`, `codex --factory`, `codex -f worker`, `codex -f worker-2`,
+**When** each of `codex -f worker`, `codex -f worker-2`,
 `codex -f agent`, `codex -f lane-3`, `codex --factory=worker`, `codex -f=worker-1`,
 `codex --factory-run r1`, `codex -f app`, `codex -f status` is run,
-**Then** each exits 1, stderr is exactly one line containing
-`FACTORY_MODE_UNSUPPORTED_BACKEND`, `moai cc -f` and `moai glm -f`, and stdout is empty.
+**Then** each exits non-zero with its canonical invalid-form diagnostic and no child starts.
+Bare `-f` / `--factory` is accepted under SPEC-CODEX-FACTORY-LEADER-001 AC-CFL-001
+(t1774, decision `d-20261015T000351Z-0dfd`).
 
 ### AC-CFR-003 — refusal has no state effect (maps REQ-CFR-003)
 
@@ -123,14 +124,13 @@ shared helper `registerFactoryLaunchPending` directly (`factory_mixed_test.go:18
 so it proves the **shared helper still registers** under a lane environment; it does not
 exercise the cc launcher path, and its run fixture's backend is an opaque string (D4).
 
-### AC-CFR-008 — joining a codex run is refused (maps REQ-CFR-010)
+### AC-CFR-008 — lanes may join a Codex run (maps REQ-CFR-010)
 
 **Given** exactly one active run `rc` with `lead_backend = 'codex'`,
-**When** `moai cc -f worker`, `moai cc -f worker-2` and `moai glm -f worker` entries are
-driven through their launch seams,
-**Then** each returns a non-zero exit, the message contains `rc`, `codex` and
-`moai factory runs --retire`, the worker registry file hashes identically before and
-after, and no launch is captured.
+**When** valid Claude/GLM/Codex lane entries are driven through their launch seams,
+**Then** each follows existing lane validation and joins `rc` without changing its leader backend
+or owner. This supersedes the original worker refusal per t1774 decision
+`d-20261015T000351Z-0dfd`; see AC-CFL-006 for current executable acceptance.
 
 ### AC-CFR-009 — non-codex runs are joined and led as before (maps REQ-CFR-011)
 
@@ -145,7 +145,8 @@ refused, captures exactly one launch, and leaves the `runs` row for `rc` with
 
 **Given** the AC-CFR-008 run `rc`,
 **When** `moai cc -f --factory-run rc` is driven through the launch seams,
-**Then** the entry is refused with the AC-CFR-008 message, and
+**Then** the entry is refused with a message naming `rc`, `codex`, and
+`moai factory runs --retire rc`, and
 `SELECT lead_backend, lead_pid FROM runs WHERE run_id='rc'` returns the values
 recorded before the call.
 
@@ -166,23 +167,28 @@ is set leaves shape (b) at 1 and fails.
 
 ### M2 — dead entry code
 
-### AC-CFR-011 — codex entry code is gone (maps REQ-CFR-012)
+### AC-CFR-011 — retired entry code stays removed (maps REQ-CFR-012)
 
 **Given** the tree under test,
-**When** `grep -rnwE 'stripCodexKanbanFlag|applyCodexKanbanEntry|codexKanbanEntry|codexKanbanUsageDiag|stripCodexFactoryFlag|applyCodexFactoryEntry|codexFactoryBackend' internal cmd pkg --include='*.go'`
-and `ls internal/cli/codex_kanban.go internal/cli/codex_factory.go` run,
-**Then** the grep prints 0 lines and `ls` reports both files missing; the same pattern
-through `git grep -nwE '<pattern>' 553e224f3 -- internal` prints ≥ 1 line (positive
-control).
+**When** the retired kanban entry symbols and `internal/cli/codex_kanban.go` are checked,
+**Then** the retired symbols and file remain absent, with their presence at `553e224f3`
+as the positive control. `codex_factory.go` and shared factory entry helpers may remain
+only for the existing `-l` lane path and bare `-f` / `--factory` leader path; their
+presence is no longer a failure. The separate removal checks for retired kanban,
+handoff, and managed components still apply. This is the narrow t1774 exception,
+decision `d-20261015T000351Z-0dfd`.
 
-### AC-CFR-012 — codex launch files hold no factory calls (maps REQ-CFR-008, REQ-CFR-012)
+### AC-CFR-012 — factory calls stay within explicit entries (maps REQ-CFR-008, REQ-CFR-012)
 
 **Given** the tree under test,
-**When** `grep -nE 'registerFactoryLaunchPending|rollbackFactoryLaunchPending|stampFactoryRunOwner|clearFactoryRunOwner|recordFactoryRunStart|enterSelectedFactoryRun|factoryLaunchEnabled|stripFactoryRunFlag' internal/cli/codex_launcher.go internal/cli/codex_direct_posix.go internal/cli/codex_direct_windows.go`
-runs,
-**Then** it prints 0 lines, and
-`grep -c registerFactoryLaunchPending internal/cli/launch_exec_posix.go` prints ≥ 1
-(positive control: the shared path survives).
+**When** launcher capture tests exercise plain Codex and explicit factory entries,
+**Then** plain Codex creates no run-owner or launch-pending identity, while the existing
+`-l` lane and bare `-f` / `--factory` leader entries may call the shared registration,
+rollback, owner-stamping, cleanup, and run-selection helpers. AC-CFL-001/004/009 verify
+the allowed paths and their cleanup. The shared Claude/GLM helper path remains present
+as a positive control. No retired kanban, handoff, or managed component is restored.
+This replaces the former zero-reference assertion only for the t1774 explicit-entry
+exception, decision `d-20261015T000351Z-0dfd`.
 
 ### AC-CFR-013 — kept codex surfaces are unchanged (maps REQ-CFR-016)
 

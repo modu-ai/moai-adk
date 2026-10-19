@@ -4,7 +4,7 @@ title: "Harness-neutral factory F2 — self-dispatching lane"
 version: "0.5.1"
 status: completed
 created: 2026-09-27
-updated: 2026-09-29
+updated: 2026-10-19
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -23,6 +23,7 @@ related_specs: [SPEC-FACTORY-RECORD-001, SPEC-AUTONOMY-PRECONDITION-001, SPEC-CO
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.5.1 amendment | 2026-10-19 | manager-spec | t1774, 운영자 결정 `d-20261015T000351Z-0dfd`: SPEC-CODEX-FACTORY-LEADER-001이 bare Codex 리더 금지를 부분 대체한다. REQ-SD-004·관련 제외·AC를 개정한다. 기존 상태와 나머지 범위는 유지한다. |
 | 0.1.0 | 2026-09-27 | manager-spec | Initial plan-phase draft for card t1240 on `WT-factory-self-dispatch` at base develop `ed506740b` (includes F1 t1239, t1242, t1245). Written in the vocabulary of SPEC-ROLE-NAMING-CODE-001 (card t1256, still unlanded; read at branch `WT-role-naming-code` `d39a1dc09`). |
 | 0.2.0 | 2026-09-27 | manager-spec | Plan-audit iteration 1 (FAIL 0.66, `.moai/reports/t1240/plan-audit-iter1.md`) resolved. D1 Codex lanes never re-lease a card they cannot advance (REQ-SD-025). D2 integration through the hold and the integration worktree; parent checkout never changes branch (REQ-SD-023). D3 lane `startup` always injects the rule (REQ-SD-019). D4 MCP tools resolve the caller's tree from `project_root` (REQ-SD-024). D5 one lane predicate (REQ-SD-015). D6 harness identified by `MOAI_KANBAN_BACKEND`; Codex merge edges refused on every path (REQ-SD-025). D7 queue guard is a read-only allowlist. D8/D12 reconciliation rows and t1257 hand-off list (§E); `next` reports PR/landed state. D9 one wording source for Codex refusals. D10/D11 AC coverage. O3 `depends_on` narrowed to F1; t1256 gated by REQ-SD-001 only. AC count 27 → 25. |
 | 0.3.0 | 2026-09-27 | manager-spec | Plan-audit iteration 2 (FAIL 0.79, `.moai/reports/t1240/plan-audit-iter2.md`), narrow fix only. N1: refusal predicate widened to lane label or Codex backend (both in the frozen allowlist); admission stays on the marker (REQ-SD-015/016/017). N2: `complete` refuses a window whose branch source is the caller's own tree; github-flow parent constraint recorded (REQ-SD-023, §E.1). N3: REQ-SD-019 split by harness; Codex sessions receive their card through `MOAI_KANBAN_CARD` (REQ-SD-003). N4: cc backend citations corrected. REQ and AC counts unchanged (25 / 25). |
@@ -99,11 +100,11 @@ so document order is not numeric order.
   backend value that identifies the Codex harness, and the leased card's id in the card-identifier
   variable (`MOAI_KANBAN_CARD`, `config.EnvMoaiKanbanCard`), which is how the session learns which card
   it owns (REQ-SD-019).
-- **REQ-SD-004** (Ubiquitous) — `moai codex` shall refuse every other factory entry shape — bare `-f`,
-  `--factory`, `--factory-run`, and a numbered lane label — with one line, defined once, that carries
-  `FACTORY_MODE_UNSUPPORTED_BACKEND`, names `moai codex -f lane` as the only Codex factory entry and
-  `moai cc -f` / `moai glm -f` for the leader, and exits with code 1; legacy role tokens follow
-  REQ-SD-021 instead.
+- **REQ-SD-004** (Event-driven) — When `moai codex` receives a malformed or legacy factory entry,
+  the launcher shall refuse before launch or state changes with a canonical diagnostic; legacy
+  role tokens follow REQ-SD-021. Bare `-f` / `--factory` shall start a Codex leader under
+  SPEC-CODEX-FACTORY-LEADER-001 (t1774, decision `d-20261015T000351Z-0dfd`). The existing `-l`
+  lane entry remains supported; leader values and leader `--factory-run` remain refused.
 - **REQ-SD-005** (Event-driven) — When a lane launch runs outside a git working tree, the launcher shall
   exit non-zero with one line saying a git repository is required, and write no registry, factory, or
   queue record.
@@ -256,9 +257,11 @@ Traceability: every REQ-SD-0NN maps to at least one AC-SD-0NN (matrix in `accept
 
 ### Out of Scope — leader-side surfaces
 
-- A Codex leader (`moai codex -f` without the lane token) — stays refused (REQ-SD-004).
+- Codex leader implementation is owned by SPEC-CODEX-FACTORY-LEADER-001; bare `moai codex -f`
+  is allowed by decision `d-20261015T000351Z-0dfd`, replacing the former refusal.
 - Provisioning the integration worktree; the leader provisions it (REQ-SD-023 refuses without it).
-- Reversing the codex-led-run join refusal of SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-010.
+- Codex leader resume re-adoption remains outside this SPEC; mixed-backend lane joins are
+  governed by the revised SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-010.
 
 ### Out of Scope — vocabulary and documentation
 

@@ -98,10 +98,10 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 - Verify: `go test ./internal/cli -run '^TestSD_AC003_CodexRelaunchPerCard$' -count=1 -v`
 
 ### AC-SD-004 — other Codex factory shapes
-- **Given** each of `-f`, `--factory`, `--factory-run x`, `-f lane-2`, **When** passed to `moai codex`,
-  **Then** stderr is exactly the one refusal line defined once for REQ-SD-004 (it carries
-  `FACTORY_MODE_UNSUPPORTED_BACKEND` and names `moai codex -f lane`), the exit code is 1, and no child is
-  started.
+- **Given** each of `--factory-run x`, `-f lane-2`, `-f=2`, **When** passed to `moai codex`,
+  **Then** the entry refuses with its canonical diagnostic before child launch or state changes.
+  Bare `-f` / `--factory` leader acceptance is now AC-CFL-001 of
+  SPEC-CODEX-FACTORY-LEADER-001, per t1774 decision `d-20261015T000351Z-0dfd`.
 - Verify: `go test ./internal/cli -run '^TestSD_AC004_CodexOtherFactoryShapesRefused$' -count=1 -v`
 
 ### AC-SD-005 — git repository required

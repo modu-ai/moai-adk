@@ -4,7 +4,7 @@ title: "Retire the interactive-TUI codex factory path (moai codex -k / -f)"
 version: "0.3.0"
 status: completed
 created: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-19
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -14,12 +14,19 @@ tags: "codex, factory, kanban, retirement, lane-env, handoff, launcher"
 tier: L
 card: t1242
 related_specs: [SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001, SPEC-FACTORY-RUN-RETIRE-001, SPEC-CODEX-LOCALMD-001]
-partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001]
+partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001, SPEC-CODEX-FACTORY-LEADER-001]
 ---
 
 # SPEC-CODEX-FACTORY-RETIRE-001 — retire the interactive-TUI codex factory path
 
 ## HISTORY
+
+- 2026-10-19 · t1774 · manager-spec · 운영자 결정 `d-20261015T000351Z-0dfd`에 따라
+  SPEC-CODEX-FACTORY-LEADER-001이 bare Codex 리더 거부를 부분 대체한다. REQ-CFR-002의
+  허용 예외와 REQ-CFR-010의 혼합 레인 합류를 명시하고 관련 AC·제외 문장을 개정한다.
+  REQ-CFR-012와 AC-CFR-011/012의 제거 의무에서도 bare 리더와 기존 `-l` 경로에 필요한
+  factory 파일·공유 helper 재사용을 예외로 둔다. Claude/GLM 리더의 Codex 런 인수 금지와
+  제거된 kanban·handoff·managed 구성요소의 제거 의무는 유지한다.
 
 - 2026-09-26 · v0.1.0 · manager-spec · Initial authoring from card t1242 (class C),
   "SPEC A" of the lead's two-SPEC design (retirement only; the headless
@@ -135,6 +142,9 @@ config, docs), not by net growth.
   `--factory-run`), the launcher shall print one dedicated refusal line on stderr that
   carries the sentinel `FACTORY_MODE_UNSUPPORTED_BACKEND` and names `moai cc -f` and
   `moai glm -f`, exit with code 1, and start no child process.
+  This historical blanket refusal is narrowed by SPEC-FACTORY-SELF-DISPATCH-001 for the lane
+  entry and by SPEC-CODEX-FACTORY-LEADER-001 for bare `-f` / `--factory` leader entry
+  (t1774, operator decision `d-20261015T000351Z-0dfd`). Only the remaining invalid forms refuse.
 - **REQ-CFR-003** — When either refusal fires, the launcher shall not have written a
   factory run row, claimed a worker-registry slot, exported a kanban or factory
   environment variable, or created a worktree.
@@ -168,20 +178,24 @@ config, docs), not by net growth.
 
 ### B.3 Codex-run join refusal (Milestone M1)
 
-- **REQ-CFR-010** — When a `moai cc` or `moai glm` factory entry (worker join, or a lead
-  with `--factory-run`) selects an active factory run whose recorded lead backend is
-  `codex`, the entry shall refuse before any registry claim or run-row write, exit
-  non-zero, and name the run id and `moai factory runs --retire <run-id>` in its
-  message.
+- **REQ-CFR-010** — When a `moai cc` or `moai glm` leader entry selects an active run
+  whose recorded leader backend is `codex`, the entry shall refuse before registry claims or
+  run-row writes, exit non-zero, and name the run id and `moai factory runs --retire <run-id>`.
+  When a valid Claude, GLM, or Codex lane joins that run, the factory shall apply the existing
+  run and lane validation without rejecting the lane solely for its leader's `codex` backend.
+  This narrowing follows t1774, operator decision `d-20261015T000351Z-0dfd`.
 - **REQ-CFR-011** — When the selected run's lead backend is anything other than
   `codex`, the join and lead paths shall behave exactly as before this SPEC.
 
 ### B.4 Dead code and shared-core preservation (Milestones M2, M3)
 
-- **REQ-CFR-012** — The production tree shall contain no codex kanban or codex factory
-  entry code: no `codex_kanban.go`, no `codex_factory.go`, and no reference from the
-  codex launch files to the factory run-owner, launch-pending, or run-selection
-  helpers.
+- **REQ-CFR-012** — The production tree shall contain no retired Codex kanban entry
+  code, including `codex_kanban.go`. The former prohibition on `codex_factory.go` and
+  factory run-owner, launch-pending, and run-selection helper references is narrowed:
+  the existing `-l` lane path and bare `-f` / `--factory` leader path may retain and
+  reuse those files and shared helpers under SPEC-CODEX-FACTORY-LEADER-001 (t1774,
+  decision `d-20261015T000351Z-0dfd`). This exception shall not restore the retired
+  kanban, lane-handoff, or managed components covered by the remaining removal requirements.
 - **REQ-CFR-013** — The production tree shall contain no lane-handoff preparation,
   switch, headless-bind, or recovery CLI code and no codex thread-relocation client.
 - **REQ-CFR-014** — The shared factory core shall stay intact: `factory.go`,
@@ -259,6 +273,9 @@ Enumerated in `acceptance.md` (AC-CFR-001 … AC-CFR-025).
 
 ### Out of Scope — the rebuild
 
+- Bare Codex leader implementation belongs to SPEC-CODEX-FACTORY-LEADER-001 and is allowed
+  by decision `d-20261015T000351Z-0dfd`; the former leader prohibition no longer applies.
+- Native Codex leader resume re-adoption remains excluded; t1745's rejected record is preserved.
 - The headless `codex exec` factory worker (`moai codex -f agent` rebuild, card F2).
 - A queue `assign` field or any dispatch-model change.
 
