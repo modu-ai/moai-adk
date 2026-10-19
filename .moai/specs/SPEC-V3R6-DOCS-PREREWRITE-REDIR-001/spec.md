@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-REDIR-001
 title: "Docs Pre-Rewrite Cleanup — redirect repair (child 2 of 11 under SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, card t1718)"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-19
 author: manager-spec
