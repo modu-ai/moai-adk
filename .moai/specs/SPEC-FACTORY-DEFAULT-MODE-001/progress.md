@@ -5,6 +5,7 @@ decision-index.md). This file is lane-owned for §E.2–§E.4; manager-spec popu
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- audit_ready: true
 - plan_status: audit-ready
 - plan_complete_at: 2026-10-19T03:20:00Z (UTC)
 - artifacts: spec.md (7 REQ), acceptance.md (11 AC: 8 release-blocking, 3 regression-guard),
