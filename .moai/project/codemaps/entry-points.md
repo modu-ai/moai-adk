@@ -6,7 +6,7 @@
 
 - `.github/workflows/auto-merge.yml`은 `CI` workflow run 완료 이벤트에서 시작한다. open 상태와 pull request event를 확인하고, CI가 본 SHA와 현재 PR head가 같은지 확인한 다음 required-check와 native review 판정으로 이어진다.
 - `scripts/ci/codex-review-gate.sh read-native-review`는 review·review-comment·issue-comment 목록, 현재 full head SHA, draft 상태와 wait-closed 조건을 받는다. `fetch-pages`는 GitHub 목록을 페이지 끝까지 수집하고 `gate-files-changed`는 auto-merge 보호 파일 diff를 판단한다.
-- `internal/config.LoadRequiredChecks`가 `.github/required-checks.yml`을 읽는다. `internal/cli/integration_candidate.go`는 관측한 run/attempt의 job 목록을 branch별 set과 비교한다. `internal/cli/branch_protection.go`는 같은 RequiredChecks 모델을 branch-protection JSON 생성에 사용한다.
+- `internal/config/required_checks.go` (`LoadRequiredChecks`)가 `.github/required-checks.yml`을 읽는다. `internal/cli/integration_candidate.go`는 관측한 run/attempt의 job 목록을 branch별 set과 비교한다. `internal/cli/branch_protection.go`는 같은 RequiredChecks 모델을 branch-protection JSON 생성에 사용한다.
 - `moai graph check`는 codemaps, MX index, edges, positive path citations를 읽는다. codemap 본문을 실제 갱신한 뒤 `moai graph stamp codemaps`로 해당 source tree provenance를 기록한다.
 - `internal/hook/session_start_factory.go`는 `factoryMessagesFor(lang).laneNextCardRule`을 startup context에 싣고, 네 로케일 문자열은 `session_start_factory_i18n.go`가 소유한다.
 

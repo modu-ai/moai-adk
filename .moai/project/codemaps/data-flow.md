@@ -4,7 +4,7 @@
 
 측정 기준은 당시 PR #1828 remote HEAD `ab609cafbf8f421164100c626db93048f888655f`에 lane 수리를 반영한 후보 트리다. 다음은 호출·입력·판정 순서이며 원격 merge가 완료됐다는 뜻이 아니다.
 
-1. `.github/required-checks.yml` → `internal/config.LoadRequiredChecks` → target branch contexts와 `ReleaseGate` → `internal/cli/integration_candidate.go`가 고정한 run attempt의 jobs를 판정한다. 성공은 현재 관측한 run 안에서 각 이름이 확인된 경우에만 기록된다.
+1. `.github/required-checks.yml` → `internal/config/required_checks.go` (`LoadRequiredChecks`) → target branch contexts와 `ReleaseGate` → `internal/cli/integration_candidate.go`가 고정한 run attempt의 jobs를 판정한다. 성공은 현재 관측한 run 안에서 각 이름이 확인된 경우에만 기록된다.
 2. 성공한 `CI` workflow run → `.github/workflows/auto-merge.yml` → PR 작성자·head 저장소 eligibility → 테스트 SHA와 현재 PR SHA 대조 → required status 확인으로 이어진다. 불일치나 불확실한 입력은 병합 대기로 남는다.
 3. 동일한 workflow의 native-review 단계는 현재 PR SHA에 대한 formal reviews, review comments, 전체 issue comments를 모은다. `scripts/ci/codex-review-gate.sh`는 공식 connector bot의 id/login/type, summary marker와 full SHA, `code_review`와 `security_review` 각각의 completed/clean 상태, 유형별 receipt marker·SHA prefix·정확한 clean line, 미해결 finding을 검증한다. Code receipt는 `:+1:`, `Chef's kiss.`, `Bravo.`로 끝나는 세 관측 clean line만 허용하고 security receipt는 security 전용 clean line을 요구한다. 누락·stale·위조·running·실패·중복·미해결 상태는 pass가 아니다.
 4. workflow가 위 조건의 모든 재확인을 통과할 때만 기존 auto-merge API 호출 경로로 이어진다. Codex receipt는 branch-protection status context를 대체하지 않는다.
