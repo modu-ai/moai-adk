@@ -71,7 +71,7 @@ moai codex -l                 # Codex 泳道
 
 工厂 run 会记录持有它的会话的进程标识，因此主导已经死掉的 run，会在下一条泳道加入时自动退役，那次加入不会卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役，而主导会话还活着，加入会先验证该主导（pid 加进程启动指纹，目标用长形式 `--leader <名称>` 指定，默认 `leader`），恢复其运行记录后照常加入。验证通过的主导有两个或更多时，逐一点名候选并失败关闭。`--leader` 是只能与 `-l`/`--lane` 搭配的选择器，不是任何进入令牌的短形式。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run。属主没有真正死掉会被拒绝，run 里还有处于完成、失败、放弃之外状态的卡片时同样会被拒绝，并列出这些卡片和可以改用的办法（用 `moai cc -l --factory-run <run-id>` 加入，用 `moai cc -f --factory-run <run-id>` 接管，或对每张卡片执行 `moai factory decide <卡片> --choice abandon --run <run-id>`）。加入和接管只在 run 处于活动状态时有效，放弃卡片无法撤销。没有强制退役的标志。对已经退役的 run 再次执行，只报告结果而不再写入，并列出仍滞留的卡片。仍有此类卡片的活动 run，`moai factory relaunch --from-run` 同样让它保持活动状态，并报告 `left active (N in-progress cards)`；已经退役的 run 则原样不动（`not active (retired), left untouched`）。
 
-run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run。这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -l`、`moai glm -l`，Codex 只有 `moai codex -l`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`-l` 不带参数，所以给了 `--lane` 也不会带到加入行上：命令会在 stderr 里说明，泳道按下一个空号加入。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，有别于在同一个 run 里逐张处理卡片的 `--clear-policy relaunch` 循环。stale-run 提示也不再是一段文字，而是直接打印填好参数的这条命令。
+run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run。这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -l`、`moai glm -l`，Codex 只有 `moai codex -l`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`-l` 不带参数，所以给了 `--lane` 也不会带到加入行上：命令会在 stderr 里说明，泳道按下一个空号加入。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，与卡片消费本身无关：同一个 run 里的卡片消费由统一的 `moai todo --auto` 队列引擎在单个泳道会话中完成。stale-run 提示也不再是一段文字，而是直接打印填好参数的这条命令。
 
 > 详见：[工厂模式](https://adk.mo.ai.kr/zh/advanced/factory-mode)
 
@@ -84,7 +84,7 @@ run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的�
 
 `/moai gtd` 是正式的任务管理入口。`/moai todo` 作为兼容名称继续保留，两者共用同一 SQLite 队列、卡片 ID、顺序以及归档和恢复行为。`moai gtd capture|clarify|organize|reflect|engage` 会把 Capture → Clarify → Organize → Reflect → Engage 保存为连续的 SQLite 状态，再让获准工作进入原有 `backlog → plan → run → sync → done` 开发流程。操作 receipt 与权威状态回读会防止中断恢复后重复发布、选择或调度。
 
-有两条规则让工厂保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭泳道的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一张卡片做完后，泳道会请你 `/clear`。`/clear` 是用户亲手敲的命令，无法当作指令发送（可用 `--clear-policy` 改变这一行为）。
+有两条规则让工厂保持诚实。主导**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭泳道的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一张卡片做完后，泳道在同一个会话内切换到下一张卡片 —— `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` —— 不请求 `/clear`，此前卡片的会话上下文不具权威性（可用 `--clear-policy` 改变这一行为）。
 
 ### 工厂里的常用词
 

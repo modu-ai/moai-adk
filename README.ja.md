@@ -71,7 +71,7 @@ moai codex -l                 # Codex のレーン
 
 ファクトリー run は、自分を所有するセッションのプロセス識別を記録する。リーダーが死んだ run は、次にレーンが合流した時点で自動的に retire されるので、その合流が `AMBIGUOUS_FACTORY` で止まることはない。逆も防がれている。レーンが合流するとき run の記録が欠落または退役済みで、リーダー・セッションが生きていれば、合流はそのリーダーを検証し（pid とプロセス開始フィンガープリント、対象は長い形の `--leader <名前>` で指定、既定値は `leader`）、run の記録を復元してそのまま合流する。検証済みリーダーが二人以上なら、候補を全員名指してフェイルクローズする。`--leader` は `-l`/`--lane` とだけ組み合わせるセレクターで、進入トークンの短縮形ではない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否され、完了・失敗・中止のいずれでもないカードが残っている run も拒否される。拒否時にはそのカードの一覧と代わりに使える手段（`moai cc -l --factory-run <run-id>` で合流、`moai cc -f --factory-run <run-id>` で引き継ぎ、カードごとに `moai factory decide <カード> --choice abandon --run <run-id>`）が表示される。合流と引き継ぎは run が有効な間だけ使え、カードの中止は取り消せない。強制的に retire するフラグはない。すでに retire 済みの run を指定すると、書き込みなしで結果を知らせ、残っているカードを並べる。そのようなカードが残る有効な run は `moai factory relaunch --from-run` でも有効なまま残され、`left active (N in-progress cards)` と報告される。retire 済みの run には手を付けない（`not active (retired), left untouched`）。
 
-run が死んだり入れ替わったりしても、レーンのセッションは環境に固定された古い run を指し続ける。そのレーンは `moai factory relaunch` で生きている run に付け直す。このコマンドはプロバイダー自身のレーン合流行（`moai cc -l`、`moai glm -l`、Codex は `moai codex -l` のみ）をそのまま再実行し、オプションは `--provider`・`--lane`・`--run`・`--from-run <run-id>`・`--dry-run` だ。`-l` は引数を取らないので、`--lane` を渡しても合流行には載らない。コマンドが stderr でそう知らせ、レーンは次の空き番号で合流する。`--from-run` はその run が有効で所有者が死んでいる場合に限って先に retire し、`--dry-run` は実行行を表示するだけで何も変えない。1 つの run の中でカードを順に回す `--clear-policy relaunch` ループとは別の、1 回限りのコマンドである。stale-run の案内文も、文章の代わりにこのコマンドを埋めた行を表示する。
+run が死んだり入れ替わったりしても、レーンのセッションは環境に固定された古い run を指し続ける。そのレーンは `moai factory relaunch` で生きている run に付け直す。このコマンドはプロバイダー自身のレーン合流行（`moai cc -l`、`moai glm -l`、Codex は `moai codex -l` のみ）をそのまま再実行し、オプションは `--provider`・`--lane`・`--run`・`--from-run <run-id>`・`--dry-run` だ。`-l` は引数を取らないので、`--lane` を渡しても合流行には載らない。コマンドが stderr でそう知らせ、レーンは次の空き番号で合流する。`--from-run` はその run が有効で所有者が死んでいる場合に限って先に retire し、`--dry-run` は実行行を表示するだけで何も変えない。1 回限りのコマンドであり、カード消費そのものとは別だ。1 つの run 内のカード消費は、統合 `moai todo --auto` キューエンジンが 1 つのレーンセッションで担う。stale-run の案内文も、文章の代わりにこのコマンドを埋めた行を表示する。
 
 > 詳しくは: [ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/factory-mode)
 
@@ -84,7 +84,7 @@ run が死んだり入れ替わったりしても、レーンのセッション�
 
 `/moai gtd` が正式なタスク管理入口です。`/moai todo` は同じ SQLite キュー、カード ID、並び順、アーカイブ・復元動作を使う互換名として残ります。`moai gtd capture|clarify|organize|reflect|engage` は、承認済みの仕事が従来の `backlog → plan → run → sync → done` 開発フローへ入る前に Capture → Clarify → Organize → Reflect → Engage を実際の SQLite 状態として引き継ぎます。操作 receipt と実状態の再確認が、中断後の発行・選択・配車の重複を防ぎます。
 
-ファクトリーを正直に保つルールが 2 つある。リーダーはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める。レーンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてカードが終わると、レーンが `/clear` を依頼する。`/clear` は人が直接打つコマンドなので、指示としては送れない（`--clear-policy` で変えられる）。
+ファクトリーを正直に保つルールが 2 つある。リーダーはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める。レーンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてカードが終わると、レーンは同じセッションの中で次のカードへ移る — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear` を求めない。前のカードの会話文脈は権威を持たない（`--clear-policy` で変えられる）。
 
 ### ファクトリーが使う言葉
 

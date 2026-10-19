@@ -71,7 +71,7 @@ moai codex -l                 # Codex 레인
 
 팩토리 런은 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, 대상은 긴 형태 `--leader <이름>`으로 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `--leader`는 `-l`/`--lane`과만 함께 쓰는 선택자이고 진입 토큰의 짧은 형태가 아니다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절하고, 완료·실패·종료 상태가 아닌 카드가 남아 있는 런도 거절하면서 그 카드 목록과 대신 쓸 방법(`moai cc -l --factory-run <run-id>`로 합류, `moai cc -f --factory-run <run-id>`로 이어받기, 카드별 `moai factory decide <카드> --choice abandon --run <run-id>`)을 보여준다. 합류와 이어받기는 런이 활성인 동안만 통하고, 카드 종료는 되돌릴 수 없다. 강제로 회수하는 플래그는 없다. 이미 회수된 런을 다시 지목하면 쓰기 없이 결과를 알리고 남은 카드를 나열한다. 이런 카드가 남은 활성 런은 `moai factory relaunch --from-run`도 활성 상태로 두고 `left active (N in-progress cards)`로 알리며, 이미 회수된 런은 건드리지 않는다(`not active (retired), left untouched`).
 
-런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -l`, `moai glm -l`, Codex는 `moai codex -l`)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `-l`은 인자를 받지 않으므로 `--lane`을 줘도 합류 줄에는 실리지 않는다. 명령이 stderr로 그렇게 알리고, 레인은 다음 빈 번호로 합류한다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 한 런 안에서 카드를 돌며 도는 `--clear-policy relaunch` 루프와는 별개의 일회성 명령이다. stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다.
+런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -l`, `moai glm -l`, Codex는 `moai codex -l`)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `-l`은 인자를 받지 않으므로 `--lane`을 줘도 합류 줄에는 실리지 않는다. 명령이 stderr로 그렇게 알리고, 레인은 다음 빈 번호로 합류한다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 일회성 명령이며, 카드 소비 자체와는 별개다. 한 런 안의 카드 소비는 통합 `moai todo --auto` 큐 엔진이 레인 세션 하나에서 맡는다. stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다.
 
 > 자세히: [팩토리 모드](https://adk.mo.ai.kr/ko/advanced/factory-mode)
 
@@ -84,7 +84,7 @@ moai codex -l                 # Codex 레인
 
 `/moai gtd`가 정식 작업 관리 표면입니다. `/moai todo`는 같은 SQLite 대기열, 카드 ID, 순서, 보관·복원 동작을 쓰는 호환 이름으로 남습니다. `moai gtd capture|clarify|organize|reflect|engage`는 승인된 일이 기존 `backlog → plan → run → sync → done` 개발 흐름에 들어가기 전에 Capture → Clarify → Organize → Reflect → Engage를 실제 SQLite 상태로 이어 갑니다. 작업 receipt와 실제 상태 재확인이 중간 종료 뒤 발행·선택·배차의 중복을 막습니다.
 
-팩토리를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 레인의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 카드가 끝나면 레인이 `/clear`를 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다(`--clear-policy`로 바꿀 수 있다).
+팩토리를 정직하게 유지하는 규칙이 둘 있다. 리더는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 레인의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 카드가 끝나면 레인은 같은 세션 안에서 다음 카드로 넘어간다 — `ExitWorktree(keep)` → `moai factory next` → `EnterWorktree` — `/clear`를 요청하지 않는다. 이전 카드들의 대화 맥락은 권위가 없다(`--clear-policy`로 바꿀 수 있다).
 
 ### 팩토리가 쓰는 말
 
