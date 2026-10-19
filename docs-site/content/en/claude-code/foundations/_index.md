@@ -36,7 +36,7 @@ First get the big picture with How It Works, then scan the feature map to see wh
 | [How It Works](/en/claude-code/foundations/how-claude-code-works) | The agentic loop and core components |
 | [Features at a Glance](/en/claude-code/foundations/features-overview) | Full feature catalog and learning path |
 | [Interactive Mode](/en/claude-code/foundations/interactive-mode) | REPL, shortcuts, permission modes |
-| [Slash Commands](/en/claude-code/foundations/commands) | Built-in and custom commands, and the /moai relationship |
+| [Slash Commands](/en/claude-code/foundations/commands) | Built-in and custom commands, and where `/moai` sits |
 | [Tools Reference](/en/claude-code/foundations/tools-reference) | Built-in tools and permissions |
 | [.claude Directory](/en/claude-code/foundations/claude-directory) | Settings directory structure and scopes |
 | [Permissions and Plan Mode](/en/claude-code/foundations/permissions) | Allow/ask/deny rules, permission modes, plan mode |
