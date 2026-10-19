@@ -350,7 +350,7 @@ Fixtures were made with `sed` from the en `mcp-server.md` and the ko `worktree/_
 
 ### E-SWD-17 — decision-board check
 
-Command: `moai decision read --scope card:t1724 --project-root /Users/goos/MoAI/moai-adk-go`, output saved to a scratch file; exit 0. `rg -c "Q13|Q17|c26e|7f98"` on it prints `1`, and the one line is a record about card t1721 (a direct ledger restamp and the operator's answer), not an answer to Q13, Q17, or the Class N question. `rg -c "id=d-20261018T170912Z-14f9|record"` prints `202`, so the file was read; that second count is a weak liveness check (the word "record" is common), and no known record id for this scope was available as a stronger control. No board record answers Q13 or Q17 for this card.
+Command: `moai decision read --scope card:t1724 --project-root /Users/goos/MoAI/moai-adk-go`, output saved to a scratch file; exit 0. `rg -c "Q13|Q17|c26e|7f98"` on it prints `1`, and the one line is a record about card t1721 (a direct ledger restamp and the operator's answer), not an answer to Q13, Q17, or the Class N question. `rg -c "id=d-20261018T170912Z-14f9|record"` prints `202`, so the file was read; that second count is a weak liveness check (the word "record" is common), and no known record id for this scope was available as a stronger control. At that read no board record answered Q13 or Q17 for this card. Board record `d-20261019T015908Z-220a` (operator ruling 10-19 on Q13 and Q17) came afterwards, was reported by the leader, and was not re-read from the board in this pass; no board record answers Q-SWD-1 or Q-SWD-2.
 
 ## D. Gaps and residual risk
 

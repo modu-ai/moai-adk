@@ -2,11 +2,11 @@
 
 Revision 0.1.0 (2026-10-19). This child carries copies of the umbrella rows Q13 and Q17 with the umbrella's numbering unchanged, and owns the new rows Q-SWD-1 and Q-SWD-2. The umbrella is SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001; its decision-index.md holds stubs for Q13 and Q17. `interview.decision_gate` is `on` (`.moai/config/sections/interview.yaml`, line 6), so this file is part of the artifact set and every row routes with one of the four labels. The new rows use the prefix `Q-SWD-` so they cannot collide with the umbrella's Q1 to Q24 or with another child's new rows.
 
-Labels: DECIDED and POLICY-COVERED need an authority anchor in the committed tree (product.md, a completed SPEC's HISTORY or Amendments row, `.moai/config/sections/*.yaml`, or the constitution). None of the rows below has one, so every row is FOUNDER. `.moai/docs/docs-site-i18n-rules.md` is a committed document outside the authority register; the rows cite it as a fact, not as authority. No row carries a recommendation. The `Default:` lines are proposals ranked by the published Default rule, not recommendations and not verdicts; every row's `Operator verdict:` is empty at authoring.
+Labels: DECIDED and POLICY-COVERED need an authority anchor in the committed tree (product.md, a completed SPEC's HISTORY or Amendments row, `.moai/config/sections/*.yaml`, or the constitution). None of the rows below has one, so every row is FOUNDER. `.moai/docs/docs-site-i18n-rules.md` is a committed document outside the authority register; the rows cite it as a fact, not as authority. No row carries a recommendation. The `Default:` lines are proposals ranked by the published Default rule, not recommendations and not verdicts; every row's `Operator verdict:` was empty at authoring, and Q13 and Q17 were filled afterwards from board record `d-20261019T015908Z-220a` (see Board check).
 
-**Gate (stated once; every other file points here by row id).** Q13, Q17, Q-SWD-1, and Q-SWD-2 are open. Until each of the four carries an operator verdict or an explicit leader ruling, no tracked file outside this SPEC directory is edited, which holds M2 and M3 of plan.md together. Q13 is needed by M2 and M3, Q17 by M2 and M3, and Q-SWD-1 and Q-SWD-2 by the boundary of both; the four are gated as one set so that no file states a partial order of its own. A planner default is not a verdict (umbrella plan.md §B).
+**Gate (stated once; every other file points here by row id).** Q13 and Q17 now carry the operator verdict recorded below (board record `d-20261019T015908Z-220a`); Q-SWD-1 and Q-SWD-2 are open. Until each of the four carries an operator verdict or an explicit leader ruling, no tracked file outside this SPEC directory is edited, which holds M2 and M3 of plan.md together. Q13 is needed by M2 and M3, Q17 by M2 and M3, and Q-SWD-1 and Q-SWD-2 by the boundary of both; the four are gated as one set so that no file states a partial order of its own. A planner default is not a verdict (umbrella plan.md §B).
 
-Board check (2026-10-19): `moai decision read --scope card:t1724` was read and searched for `Q13`, `Q17`, and the ruling ids cited by the sibling SPECs; the one match is a record about card t1721, not an answer to these rows (acceptance.md E-SWD-17). No board record answers any of the four rows for this card.
+Board check (2026-10-19): `moai decision read --scope card:t1724` was read and searched for `Q13`, `Q17`, and the ruling ids cited by the sibling SPECs; the one match is a record about card t1721, not an answer to these rows (acceptance.md E-SWD-17). That read found no record for these rows. Afterwards board record `d-20261019T015908Z-220a` (decided_by=operator via AskUserQuestion, 10-19, kind=ruling, scope=standing, umbrella rows Q13 and Q17) was reported by the leader and is recorded in the Q13 and Q17 rows; this pass did not re-read it from the board. No board record answers Q-SWD-1 or Q-SWD-2.
 
 Evidence references (E-SWD-n) point to acceptance.md §C, measured at tree commit 74ad197380.
 
@@ -20,18 +20,19 @@ Child: SWEEPD (SPEC-V3R6-DOCS-PREREWRITE-SWEEPD-001), decision row Q13; the umbr
 Default: per form. For each of the seven `mcp-server.md` cells, delete the stale citation and keep the row by setting the cell to the page's no-CLI marker `—` (rule: smaller user-visible surface; the marker is already used on the same page, E-SWD-9a). For the two Mermaid labels, replace them with the registered slash forms `/moai run SPEC-ID` and `/moai sync SPEC-ID` (rule: preserves current behavior; the diagram keeps its four steps and the page body already uses these forms)
 Alternate: replace a cell with the current equivalent where the operator names one for that row (candidates: `moai spec status --list` for `spec_progress`, `moai codex status` for `codex_setup`; no candidate was found for the other five), or remove the two Mermaid label lines together (branch D of AC-PRC-001-002 and AC-PRC-001-004)
 Scope: Q13 governs the 36 Class C lines only. It does not govern the four Class N lines in `prompt-caching.md`; their disposition is Q-SWD-1.
-Operator verdict:
+Operator verdict: where a current document or command exists to replace the stale citation, replace it; where none exists, delete that line. Source: board record d-20261019T015908Z-220a, decided_by=operator via AskUserQuestion, operator ruling 10-19, kind=ruling, scope=standing, umbrella rows Q13/Q17.
+Lane reading (not an operator verdict): "delete that line" is applied to the stale citation inside its `mcp-server.md` cell, leaving the cell as the no-CLI marker `—`; the table row is kept, because each row documents a registered MCP tool whose only stale part is the CLI-equivalent cell. The two partial-overlap candidates (`moai spec status --list`, `moai codex status`) do not count as "a current command exists" unless the operator names them. For `worktree/_index.md` the slash forms `/moai run SPEC-ID` and `/moai sync SPEC-ID` exist, so the replace branch applies. If the operator meant deleting the table row, the SPEC needs a plan-phase revision of REQ-PRC-001-001 and the A.5 table.
 
 ### Q17: Do the same edits land in en, ja, and zh in the same change? (cross-cutting; SWEEPD copy)
 Label: FOUNDER
 Authority anchor: none in the authority register. The four-locale same-PR obligation is stated in `.moai/docs/docs-site-i18n-rules.md` lines 61 and 65, as the umbrella cites it; that document was not re-read in this pass and is outside the authority register, so it cannot support a DECIDED or POLICY-COVERED label.
-Why unresolved: for this child the question has one live shape. `mcp-server.md` and `worktree/_index.md` exist in all four locales and carry the same lines in each (E-SWD-2, E-SWD-4), so the candidate change is a same-disposition edit in eight files. The parity baseline holds today: `bash scripts/docs-i18n-check.sh` on tree 74ad197380 exits 0 and prints `Errors:   0` and `Warnings: 0` (E-SWD-14). The card text states the four-locale rule ("all four locales (ko, en, ja, zh) are fixed in the same PR (Q17)"); that is the card's premise, not a recorded verdict, because no board record names Q17 for this card (E-SWD-17). Whether the obligation binds this child's edits is the operator's call, since the document is not an authority.
+Why unresolved: for this child the question has one live shape. `mcp-server.md` and `worktree/_index.md` exist in all four locales and carry the same lines in each (E-SWD-2, E-SWD-4), so the candidate change is a same-disposition edit in eight files. The parity baseline holds today: `bash scripts/docs-i18n-check.sh` on tree 74ad197380 exits 0 and prints `Errors:   0` and `Warnings: 0` (E-SWD-14). The card text states the four-locale rule ("all four locales (ko, en, ja, zh) are fixed in the same PR (Q17)"); at the E-SWD-17 read no board record named Q17 for this card, and the operator verdict recorded below came afterwards. Whether the obligation binds this child's edits was the operator's call, since the document is not an authority.
 Requirement: REQ-PRC-001-004
 Class: implementation-level
 Child: cross-cutting (README, REDIR, SWEEPA to SWEEPF, FLAG); SWEEPD copy
 Default: edit all four locales in one change (rule: preserves current behavior; the four locales are in parity today)
 Alternate: edit the ko copy in this change and the en, ja, and zh copies in a later change. This SPEC does not plan that branch: AC-PRC-001-001 to AC-PRC-001-004 read four locales, and a verdict for the alternate returns the SPEC to the plan phase
-Operator verdict:
+Operator verdict: fix all four locales (ko, en, ja, zh) in the same card and the same change. Source: board record d-20261019T015908Z-220a, decided_by=operator via AskUserQuestion, operator ruling 10-19, kind=ruling, scope=standing, umbrella rows Q13/Q17.
 
 ### Q-SWD-1: Do the four `prompt-caching.md` retirement statements count as stale citations?
 Label: FOUNDER
@@ -60,9 +61,9 @@ Operator verdict:
 
 | Row | Class | Default | Operator verdict |
 |-----|-------|---------|------------------|
-| Q13 | implementation-level | proposed, per form: `—` for the seven CLI cells, slash form for the two Mermaid labels | empty (open) |
-| Q17 | implementation-level | proposed: all four locales in one change | empty (open) |
+| Q13 | implementation-level | proposed, per form: `—` for the seven CLI cells, slash form for the two Mermaid labels | recorded: replace where a current command or document exists, else delete that line (board 220a, operator ruling 10-19) |
+| Q17 | implementation-level | proposed: all four locales in one change | recorded: all four locales in the same card and change (board 220a, operator ruling 10-19) |
 | Q-SWD-1 | implementation-level | proposed: (b) retain | empty (open) |
 | Q-SWD-2 | implementation-level | proposed: leave the 20 labels | empty (open) |
 
-All four rows are in the Gate set above.
+All four rows are in the Gate set above; the Gate still waits for Q-SWD-1 and Q-SWD-2.
