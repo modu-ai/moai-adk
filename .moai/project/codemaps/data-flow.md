@@ -1,5 +1,25 @@
 # 데이터 흐름
 
+## t1774 PR 후보의 현재 구조
+
+현재 흐름은 CLI 조합, 카드 기록, 감사·통합, 배포 보존을 나눠 읽는다. 아래는 소스의 연결 구조이며 운영 카드의 상태를 변경하거나 완료를 증명하는 기록이 아니다.
+
+1. **런처 입력 → 실제 실행 대상.** Claude/GLM에서는 `internal/cli/launch_view.go`가 런처 소비 단계와 최종 argv를 산출하고 `internal/cli/factory_anchor_guard.go`가 마지막 worktree 선택과 실제 launch cwd를 검사한다. Codex의 `internal/cli/codex_launcher.go`는 native cwd override를 사전 거부하고 기존 worktree 경로와 writer를 검사한 뒤 anchor 디렉터리를 넘긴다. `internal/cli/codex_factory.go`는 새 ULID 생성, 상속한 factory identity 제거, 새 run·role·backend 환경 구성 후 run 시작 기록을 수행하고 실패하면 복원한다. Claude/GLM의 기존 run 승계와는 별도다. 세션 기본값은 `internal/config/session_defaults.go`에서 해석하며, 시작 안내는 `internal/hook/session_start_factory_i18n.go`의 4개 로케일 출력으로 이어진다.
+2. **배차·임대 → 카드 전이.** CLI는 `internal/homestate/card_record.go`·`internal/homestate/card_transition.go`의 닫힌 상태 집합과 전이 API를 사용한다. 재배정·run 복구·승인은 각각 `internal/homestate/card_reassign.go`·`internal/homestate/factory_run_adopt.go`·`internal/homestate/leader_approval.go`에 분리된다. 승인과 dispatch binding은 run/card 식별자·버전·hash·소유자에 결합된다. `internal/factory`의 dispatch-current 갱신은 큐와 현재 배차 기록을 맞춘다. `internal/factorymsg/store.go`의 run 범위 endpoint 재결합은 카드 전이와 별개다.
+3. **감사 결과 → 영수증 → 후보 착지 판정.** `internal/auditreceipt/store.go`는 실제 감사 영수증과 제한된 실패 진단을 보존한다. 후보 기록은 `internal/factory/candidate_record.go`, 실제 merge 대상과 녹색 후보의 결합 검사는 `internal/factory/candidate_landing_check.go`, 통합 뒤 재측정 검증은 `internal/factory/integration_remeasure.go`에 있다. Codex 레인의 merge-ready 관측은 독립된 병합 권한을 부여하지 않는다. 구조 설명과 현재 HEAD의 실제 감사·CI 증거는 구분한다.
+4. **설정·update → 사용자 자산 보존.** `internal/config/llm_save.go`와 `internal/settings/yamlpatch`는 기존 YAML의 미모델링 키·주석을 보존하는 부분 저장 경로다. `internal/manifest`는 profile 도달성에 따른 보존 근거를 기록한다. `internal/cli/update/skillresidue`는 skill 잔재와 지연 rename을 처리한다. `internal/userassets/journal.go`는 모르는 journal schema를 덮지 않고 오류로 반환하고 `internal/userassets/lock.go`는 사용자 단위 설치의 read-modify-write 구간을 직렬화한다. 오류 스풀의 세대 갱신에는 `internal/bugreport/spool.go`에서 context가 전달되고 `internal/feedback/outbox/drain.go`도 그 취소를 공유한다.
+5. **agent 원본 → 방출·임베드.** `internal/template/agentemit`는 중립 원본의 모델·effort와 sandbox·permission 요구를 Codex의 강제 가능한 축에 대조한다. `internal/template/harness_fs.go`는 harness에 맞는 배포 파일 집합을 제공한다. `internal/testguard`는 이러한 제품 흐름 바깥에서 테스트 홈 경로·Git 전역 설정 오염을 점검한다.
+
+진행 기록의 Darwin 메타데이터 보존 경로는 이번에 한계 설명이 확장됐으며 새 경쟁 조건 해결로 기록하지 않는다. 상태 표시의 현재 사용량 fallback은 `internal/statusline/usage_fallback.go`와 `internal/statusline/renderer.go`가 담당한다.
+
+> `internal/statusline/usage.go`는 삭제된 과거 구현이며 현재 흐름의 진입점이 아니다.
+
+현재 그래프는 darwin/arm64의 정적 import와 플랫폼별 소스 AST를 근거로 한다. 이 문서만으로 실제 새 리더·혼합 레인 운용, 다른 OS의 실행, 전체 CI 통과를 주장하지 않는다.
+
+---
+
+아래는 이전 갱신의 기록이다. 현재 수치와 변경된 책임은 위 절을 기준으로 읽고, 아래의 과거 커밋별 설명은 이력으로 보존한다.
+
 ## 현재 최종 통합 트리의 흐름 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.

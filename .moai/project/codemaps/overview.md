@@ -1,5 +1,30 @@
 # 아키텍처 개요
 
+## t1774 PR 후보의 현재 구조
+
+소스 기준은 `25a7ea9a2f7f3bf052334a5c823c7e1b4167e950`이다. 현재 파일 시스템과 Go 1.26.8의 `go list -e -deps -json ./...`, 변경 파일의 Go AST 및 기존 앵커 `db0c514d3b0ce16befa5a6d35126a35b6b0f73d0`와의 diff를 대조했다. 패키지 조회 오류는 0개다. 이번 갱신은 상위 main에서 누적된 변경과 t1748·t1774의 런처 변경을 함께 설명한다.
+
+| 측정 범위 | 현재 값 |
+|---|---:|
+| `internal`·`cmd`·`pkg`의 비테스트 Go 파일 / 테스트 Go 파일 | 1729 / 3393 |
+| 위 세 루트의 최상위 디렉터리 | 90 (`internal` 86, `cmd` 2, `pkg` 2) |
+| 현재 darwin/arm64에서 선택된 저장소 패키지 | 176 (세 루트 173, 스크립트 3) |
+| 저장소 패키지 사이 직접 import / 최상위로 접은 import | 519 / 325 |
+| 임베드 원본 파일 | 624 |
+| 이전 문서 앵커 이후 설명 대상 소스 변경 | 235 (수정 165, 추가 69, 삭제 1) |
+
+명령 조합과 백엔드 실행 인수의 해석은 `internal/cli/launch_view.go`에 모였다. `internal/cli/factory_anchor_guard.go`는 이 해석 결과로 최종 작업 디렉터리와 worktree를 판정한다. `internal/cli/codex_factory.go`는 Codex의 새 리더 진입을 담당한다. 새 `-f`는 기존 run을 승계하는 동사가 아니며, 레인 합류와 run 복구는 별도 경로다.
+
+명령 계층 아래에서 `internal/config`가 설정과 세션 기본값을 해석하고, `internal/homestate`가 카드·임대·승인·배차 결합을 저장한다. `internal/factory`는 후보 CI와 실제 착지 대상을 묶어 통합 조건을 검증한다. `internal/factorymsg`의 run 범위 통신은 카드 저장 계층과 구분된다. 도구 표면은 `internal/mcp`, 세션 안내와 실행 전 검사는 `internal/hook`이 담당한다.
+
+새 하위 패키지 `internal/cli/update/skillresidue`는 update 중 skill 잔재 정리와 지연 rename을 담당한다. `internal/testguard`는 테스트의 홈 경로·전역 Git 설정 격리를 돕는 도구이며 제품 실행 경로로 추가된 기능이 아니다. agent 방출·사용자 asset 설치·설정 부분 저장도 아래 모듈 표에 반영했다. 현재 설정 section 파일은 `.moai/config/sections/`의 YAML 33개이며 모델·effort·임대 기간의 기본값은 코드맵에 복제하지 않는다.
+
+이 수치는 정적 구조 측정이다. 실제 Codex 리더·혼합 레인의 LLM 운용, 다른 OS의 빌드, 전체 CI 통과를 의미하지 않는다. `go doc` 조회는 오프라인 module lookup 오류로 실패했으므로 API 근거에는 사용하지 않았고 현재 파일의 AST 선언을 사용했다.
+
+---
+
+아래는 이전 갱신의 기록이다. 현재 수치와 변경된 책임은 위 절을 기준으로 읽고, 아래의 과거 커밋별 설명은 이력으로 보존한다.
+
 ## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.

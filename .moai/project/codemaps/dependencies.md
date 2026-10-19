@@ -1,5 +1,136 @@
 # 의존성 그래프
 
+## t1774 PR 후보의 현재 구조
+
+`go list`의 현재 darwin/arm64 선택 결과에서 저장소 패키지 176개와 직접 import 519쌍을 관측했다. 최상위 모듈로 접고 self-edge를 뺀 관계는 325쌍이다. 파일별 AST는 플랫폼 전용 파일도 읽었지만 이 import 그래프가 모든 플랫폼의 합집합이라는 뜻은 아니다.
+
+### 변경 모듈의 직접 의존 방향
+
+행은 소유 모듈이고 오른쪽은 그 모듈의 패키지들이 직접 import하는 저장소 모듈이다. 같은 모듈 안의 하위 패키지 관계는 이 표에서 접었다. 화살표는 호출이나 상태 전이의 증명이 아닌 Go import 방향이다.
+
+| 소유 모듈 | 직접 import 대상 |
+|---|---|
+| `internal/astgrep` | `internal/foundation` |
+| `internal/atomicfile` |  |
+| `internal/auditreceipt` | `internal/config` |
+| `internal/bugreport` | `internal/atomicfile`, `internal/config`, `internal/paths`, `pkg/version` |
+| `internal/cli` | `internal/astgrep`, `internal/atomicfile`, `internal/auditreceipt`, `internal/auditverdict`, `internal/binlag`, `internal/bugreport`, `internal/chain`, `internal/civerdict`, `internal/ciwatch`, `internal/closure`, `internal/codexadapter`, `internal/codexwiring`, `internal/config`, `internal/constitution`, `internal/contract`, `internal/core`, `internal/decision`, `internal/defs`, `internal/discovery`, `internal/epic`, `internal/escalation`, `internal/execerr`, `internal/factory`, `internal/factorylane`, `internal/factorymsg`, `internal/feedback`, `internal/foundation`, `internal/git`, `internal/gitenv`, `internal/github`, `internal/glmcred`, `internal/goal`, `internal/graph`, `internal/harness`, `internal/homestate`, `internal/hook`, `internal/hygiene`, `internal/jev`, `internal/jevcred`, `internal/lockfile`, `internal/loop`, `internal/lsp`, `internal/manifest`, `internal/mcp`, `internal/merge`, `internal/migration`, `internal/mirrornotice`, `internal/mission`, `internal/mx`, `internal/navigator`, `internal/paths`, `internal/permission`, `internal/profile`, `internal/ralph`, `internal/report`, `internal/resilience`, `internal/runtime`, `internal/sandbox`, `internal/session`, `internal/sessionmsg`, `internal/settings`, `internal/shell`, `internal/spec`, `internal/stateanchor`, `internal/statusline`, `internal/telemetry`, `internal/template`, `internal/tmux`, `internal/tui`, `internal/update`, `internal/userassets`, `internal/verify`, `internal/web`, `internal/workflow`, `internal/worktree`, `pkg/models`, `pkg/version` |
+| `internal/config` | `internal/defs`, `internal/paths`, `internal/settings`, `pkg/models` |
+| `internal/contract` | `internal/atomicfile`, `internal/auditverdict`, `internal/escalation`, `internal/gitenv`, `internal/jev`, `internal/jevcred`, `internal/lockfile`, `internal/mission`, `internal/paths`, `internal/runtime` |
+| `internal/factory` | `internal/atomicfile`, `internal/cli`, `internal/config`, `internal/core`, `internal/factorylane`, `internal/gitenv`, `internal/homestate`, `internal/paths`, `internal/spec`, `pkg/version` |
+| `internal/factorylane` | `internal/atomicfile`, `internal/auditverdict`, `internal/config`, `internal/gitenv`, `internal/sessionmsg` |
+| `internal/factorymsg` | `internal/factory`, `internal/homestate` |
+| `internal/feedback` | `internal/atomicfile`, `internal/bugreport`, `internal/config`, `internal/defs`, `internal/github`, `internal/hook`, `internal/paths`, `internal/sandbox`, `pkg/version` |
+| `internal/harness` | `internal/atomicfile`, `internal/config`, `internal/lockfile`, `internal/measure`, `internal/spec` |
+| `internal/homestate` | `internal/auditverdict`, `internal/config`, `internal/core`, `internal/gitenv`, `internal/paths`, `internal/runtime` |
+| `internal/hook` | `internal/astgrep`, `internal/atomicfile`, `internal/auditreceipt`, `internal/binlag`, `internal/bugreport`, `internal/chain`, `internal/cli`, `internal/closure`, `internal/config`, `internal/constitution`, `internal/core`, `internal/defs`, `internal/escalation`, `internal/evolution`, `internal/factory`, `internal/factorymsg`, `internal/gitenv`, `internal/glmcred`, `internal/goal`, `internal/graph`, `internal/guardliveness`, `internal/guardstate`, `internal/harness`, `internal/homestate`, `internal/hygiene`, `internal/lockfile`, `internal/loop`, `internal/lsp`, `internal/merge`, `internal/migration`, `internal/mx`, `internal/navigator`, `internal/paths`, `internal/session`, `internal/spec`, `internal/statusline`, `internal/telemetry`, `internal/template`, `internal/tmux`, `internal/workflow`, `pkg/version` |
+| `internal/hygiene` | `internal/config`, `internal/defs`, `internal/paths` |
+| `internal/jev` |  |
+| `internal/jevmeasure` | `internal/jev` |
+| `internal/manifest` | `internal/defs` |
+| `internal/mcp` |  |
+| `internal/merge` |  |
+| `internal/runtime` | `internal/auditreceipt`, `internal/auditverdict`, `internal/config` |
+| `internal/settings` | `internal/config`, `internal/harness`, `internal/mcp`, `internal/profile`, `internal/statusline`, `internal/template`, `pkg/models` |
+| `internal/spec` | `internal/atomicfile`, `internal/config`, `internal/constitution`, `internal/execerr` |
+| `internal/statusline` | `internal/config`, `internal/core`, `internal/defs`, `internal/factory`, `internal/paths`, `internal/stateanchor`, `internal/tui`, `pkg/version` |
+| `internal/template` | `internal/config`, `internal/manifest`, `pkg/models` |
+| `internal/testguard` |  |
+| `internal/userassets` | `internal/template` |
+| `internal/web` | `internal/config`, `internal/factory`, `internal/glmcred`, `internal/goal`, `internal/harness`, `internal/homestate`, `internal/jevcred`, `internal/mcp`, `internal/profile`, `internal/session`, `internal/settings`, `internal/spec`, `internal/statusline`, `internal/template`, `internal/verify`, `pkg/models` |
+
+### 선택된 외부 모듈
+
+현재 Go 패키지 그래프에 포함된 외부 모듈은 79개다. 아래 버전은 이번 조회 결과이며 설정 기본값이 아니다. 개발 전용 도구 전체의 목록이나 다른 플랫폼의 전체 의존성으로 확대하지 않는다.
+
+| 모듈 | 버전 | 선택된 패키지 수 |
+|---|---|---:|
+| `charm.land/bubbles/v2` | `v2.2.1` | 11 |
+| `charm.land/bubbletea/v2` | `v2.1.0` | 1 |
+| `charm.land/fang/v2` | `v2.0.1` | 1 |
+| `charm.land/huh/v2` | `v2.0.3` | 4 |
+| `charm.land/lipgloss/v2` | `v2.0.6` | 1 |
+| `github.com/a-h/templ` | `v0.3.1070` | 3 |
+| `github.com/alecthomas/chroma/v2` | `v2.27.0` | 7 |
+| `github.com/atotto/clipboard` | `v0.1.4` | 1 |
+| `github.com/aymanbagabas/go-osc52/v2` | `v2.0.1` | 1 |
+| `github.com/aymerick/douceur` | `v0.2.0` | 2 |
+| `github.com/catppuccin/go` | `v0.3.0` | 1 |
+| `github.com/charmbracelet/colorprofile` | `v0.4.3` | 1 |
+| `github.com/charmbracelet/glamour` | `v1.0.0` | 4 |
+| `github.com/charmbracelet/lipgloss` | `v1.1.1-0.20250404203927-76690c660834` | 2 |
+| `github.com/charmbracelet/ultraviolet` | `v0.0.0-20261008173134-6b8d4baf91b4` | 1 |
+| `github.com/charmbracelet/x/ansi` | `v0.11.9` | 3 |
+| `github.com/charmbracelet/x/cellbuf` | `v0.0.15` | 1 |
+| `github.com/charmbracelet/x/exp/charmtone` | `v0.0.0-20260720091843-3eef36eaaa28` | 1 |
+| `github.com/charmbracelet/x/exp/ordered` | `v0.1.0` | 1 |
+| `github.com/charmbracelet/x/exp/slice` | `v0.0.0-20260720091843-3eef36eaaa28` | 1 |
+| `github.com/charmbracelet/x/exp/strings` | `v0.1.0` | 1 |
+| `github.com/charmbracelet/x/powernap` | `v0.1.6` | 1 |
+| `github.com/charmbracelet/x/term` | `v0.2.2` | 1 |
+| `github.com/charmbracelet/x/termios` | `v0.1.1` | 1 |
+| `github.com/charmbracelet/x/windows` | `v0.2.2` | 1 |
+| `github.com/clipperhouse/displaywidth` | `v0.11.0` | 1 |
+| `github.com/clipperhouse/uax29/v2` | `v2.7.0` | 1 |
+| `github.com/dlclark/regexp2/v2` | `v2.5.2` | 3 |
+| `github.com/dustin/go-humanize` | `v1.0.1` | 1 |
+| `github.com/fsnotify/fsnotify` | `v1.10.1` | 2 |
+| `github.com/gabriel-vasile/mimetype` | `v1.4.15` | 9 |
+| `github.com/go-playground/locales` | `v0.14.1` | 2 |
+| `github.com/go-playground/universal-translator` | `v0.18.1` | 1 |
+| `github.com/go-playground/validator/v10` | `v10.30.5` | 1 |
+| `github.com/google/jsonschema-go` | `v0.4.2` | 1 |
+| `github.com/google/uuid` | `v1.6.0` | 1 |
+| `github.com/gorilla/css` | `v1.0.1` | 1 |
+| `github.com/gorilla/websocket` | `v1.5.3` | 1 |
+| `github.com/leodido/go-urn` | `v1.5.0` | 2 |
+| `github.com/lucasb-eyer/go-colorful` | `v1.4.1` | 1 |
+| `github.com/mark3labs/mcp-go` | `v1.2.1` | 3 |
+| `github.com/mattn/go-isatty` | `v0.0.24` | 1 |
+| `github.com/mattn/go-runewidth` | `v0.0.31` | 1 |
+| `github.com/microcosm-cc/bluemonday` | `v1.0.27` | 2 |
+| `github.com/mitchellh/hashstructure/v2` | `v2.0.2` | 1 |
+| `github.com/muesli/cancelreader` | `v0.2.2` | 1 |
+| `github.com/muesli/mango` | `v0.2.0` | 1 |
+| `github.com/muesli/mango-cobra` | `v1.3.0` | 1 |
+| `github.com/muesli/mango-pflag` | `v0.2.0` | 1 |
+| `github.com/muesli/reflow` | `v0.3.0` | 4 |
+| `github.com/muesli/roff` | `v0.1.0` | 1 |
+| `github.com/muesli/termenv` | `v0.16.0` | 1 |
+| `github.com/ncruces/go-strftime` | `v1.0.0` | 1 |
+| `github.com/oklog/ulid/v2` | `v2.1.2` | 1 |
+| `github.com/remyoudompheng/bigfft` | `v0.0.0-20230129092748-24d4a6f8daec` | 1 |
+| `github.com/rivo/uniseg` | `v0.4.7` | 1 |
+| `github.com/santhosh-tekuri/jsonschema/v6` | `v6.0.3` | 2 |
+| `github.com/smacker/go-tree-sitter` | `v0.0.0-20240827094217-dd81d9e9be82` | 15 |
+| `github.com/sourcegraph/jsonrpc2` | `v0.2.1` | 1 |
+| `github.com/spf13/cast` | `v1.7.1` | 1 |
+| `github.com/spf13/cobra` | `v1.10.2` | 1 |
+| `github.com/spf13/pflag` | `v1.0.10` | 1 |
+| `github.com/xo/terminfo` | `v1.0.0` | 1 |
+| `github.com/yosida95/uritemplate/v3` | `v3.0.2` | 1 |
+| `github.com/yuin/goldmark` | `v1.8.4` | 9 |
+| `github.com/yuin/goldmark-emoji` | `v1.0.6` | 3 |
+| `golang.org/x/crypto` | `v0.57.0` | 1 |
+| `golang.org/x/mod` | `v0.41.0` | 1 |
+| `golang.org/x/net` | `v0.60.0` | 2 |
+| `golang.org/x/sync` | `v0.24.0` | 2 |
+| `golang.org/x/sys` | `v0.49.0` | 2 |
+| `golang.org/x/term` | `v0.46.0` | 1 |
+| `golang.org/x/text` | `v0.42.0` | 15 |
+| `gopkg.in/yaml.v3` | `v3.0.1` | 1 |
+| `modernc.org/libc` | `v1.77.1` | 25 |
+| `modernc.org/mathutil` | `v1.7.1` | 1 |
+| `modernc.org/memory` | `v1.12.1` | 1 |
+| `modernc.org/sqlite` | `v1.60.1` | 3 |
+| `mvdan.cc/sh/v3` | `v3.14.1` | 2 |
+
+루트 `go.mod`와 `go.sum`이 의존성 선언·검증의 원천이다. CLI는 상태 저장·설정·hook·템플릿 계층을 조합하는 진입 계층이며, 홈 경로 격리 테스트 도구를 프로덕션 의존으로 간주하지 않는다. 이번 조회는 빌드 선택 결과의 의존 그래프이며 전체 플랫폼의 순환 부재나 고립 모듈 부재를 별도로 단정하지 않는다.
+
+---
+
+아래는 이전 갱신의 기록이다. 현재 수치와 변경된 책임은 위 절을 기준으로 읽고, 아래의 과거 커밋별 설명은 이력으로 보존한다.
+
 ## t1469 판의 의존성 — main 흡수 병합 트리
 
 기준은 카드 t1469 병합 트리(HEAD `77e296541`, origin/main 흡수 `1f3606d0f` 직후)다. `go list -deps -json ./...`에서 모듈 패키지 174개, 내부 import 512쌍, 최상위 집계 320쌍을 측정했다. 앵커 `e65b3b469`의 170/481/306 대비 패키지 +4(`internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`), 엣지 +31/+14다. 새 의존성은 피드백 참여 파이프라인이 연다 — `internal/bugreport`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/outbox`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/publish`는 `internal/config`를 새로 import 한다(민감정보 마스킹은 기존 `internal/feedback` 스크러버 재사용). `internal/atomicfile`의 신규 bootid·owner·section 파일은 기존 소비자 관계를 바꾸지 않는다. 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다(이번 판의 최상위 fan-in 최상위는 `internal/config` 48·`internal/harness` 25·`internal/cli` 24, fan-out 최상위는 `internal/cli` 167·`internal/hook` 64다).
