@@ -1,13 +1,13 @@
 # plan.md — SPEC-CARD-MODE-JUDGMENT-001
 
-Documents-only change, Template-First, Tier L. Milestones are ordered by decision reversibility — the wording most likely to be disputed first, the mechanical confirmation last — and by priority, never by duration. Requirements: `spec.md` §4. Criteria: `acceptance.md`. Constraints and candidate wording: `design.md`. Measurements and line numbers: `research.md`.
+Documents-only change, Template-First, Tier L. Milestones are ordered by decision reversibility — the wording most likely to be disputed first, the mechanical confirmation last — and by priority, never by duration. Requirements: `spec.md` §4. Criteria: `acceptance.md`. Constraints and rationale: `design.md`. Exact wording of every added line: `closed-world-manifest.txt`. Measurements and line numbers: `research.md`.
 
 ## A. Technical approach
 
 1. **Template-First is an authoring discipline, and the commit graph cannot witness it.** Edit the template side, then bring the deployed copy (`.claude/...`) to the same bytes, inside one milestone. Which of the two was edited first cannot be read from a commit that carries both (`verification-claim-integrity.md` §2.3), so no criterion claims it. What the graph does show, and what AC-MJ-011 checks, is that every milestone commit carries a changed template document **together with** its deployed twin. A deployed-only edit still fails AC-MJ-001..009, which read both sides.
 2. **One home per rule.** M1 writes C's `### Mode judgment`; M2 writes M's `### Lease renewal`; M3 writes D's Routing sub-bullets and `### Delegated-dispatch promotion`. Other sites receive a marker or a pointer, not the rule (REQ-MJ-012, `design.md` §D-2).
 3. **Do not edit a ledger-pinned line that has no reason to change** (`design.md` §D-3): F:30, K:32/36/68 stay verbatim. Lines whose scope must change (F:119, F:122, K:28, A §5.1 and §14, W:244, M:26, the K:20/F:44 clause) are rewritten, and each ledger row whose `after_text` is rewritten (ALB-0276 for F:119; ALB-0257 for K:20) is updated in the same commit. The card-id literals `t1393`/`t1339` (A), `t133`/`t224` (D), `t696` (G) stay: `TestCardIDBaselineHasNoStaleEntries` fails when one leaves its file.
-4. **Worded fresh.** New text copies no ledger-covered line of ≥ 40 units into a `paths:`-scoped file (AC-ALB-021(2)), and carries no card id, board id, SPEC id, date, or long hex run (AC-MJ-013). Pinned whole lines (AC-MJ-004, -005, -006, -007, -009, -018) are copied from `acceptance.md`, not re-worded, and each sits on one physical line.
+4. **Worded fresh.** New text copies no ledger-covered line of ≥ 40 units into a `paths:`-scoped file (AC-ALB-021(2)), and carries no card id, board id, SPEC id, date, or long hex run (AC-MJ-013). Pinned whole lines (AC-MJ-004, -005, -006, -007, -009, -018) are copied from `acceptance.md`, not re-worded, and each sits on one physical line. **Every line the run adds or removes is a row of `closed-world-manifest.txt`** (AC-MJ-020; the manifest also carries the free-wording lines of C, K, F, A, G, W and M, which were generated from the planned text): copy the rows, with their line breaks, and add nothing. The run phase does not edit the manifest; a wording change is a blocker report for manager-spec.
 5. **Class vs mode.** Say once, in C, that class (A/B/C) names the stages and mode names whether a card may run beside others; the two axes are independent.
 
 ## B. Milestones
@@ -16,10 +16,10 @@ Documents-only change, Template-First, Tier L. Milestones are ordered by decisio
 
 Files (template and deployed in one commit): C, G, F, plus the `moai` entry of `internal/template/catalog.yaml` (G lives in that skill directory: `go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai`).
 
-1. C: add `### Mode judgment — serial or parallelizable` after the parallelism paragraph (line 34), before `## Card size ceiling`. Content per `design.md` §D-9: file-set predicate with "the same files or shared state", the slot-gated-surface trigger, reason format, explicit `--classification-file` (decider `human`), reissue-not-default, and the Class C `--spec` sentence containing `cannot be added after assign`.
+1. C: add `### Mode judgment — serial or parallelizable` after the parallelism paragraph (line 34), before `## Card size ceiling`. Content: the two rows of manifest section C (the heading and the one paragraph), which carry the file-set predicate with "the same files or shared state", the slot-gated-surface trigger, the reason format, the explicit `--classification-file` (decider `human`), the reissue sentence and the Class C `--spec` sentence containing `cannot be added after assign` (`design.md` §D-9 gives the rationale, not the wording).
 2. G: rewrite line 52 so the issuance instruction sits on one physical line carrying `--classification-file <path|->` and citing `factory-dispatch-cards.md` § Mode judgment; rewrite the `spec_id` bullet (lines 266-271) and the pick step (lines 328-329) to the pinned lines of AC-MJ-004 (c) and (e). Leave line 56's factual sentence and the `--force` row alone (REQ-MJ-015).
 3. F: add one new [HARD] line directly after line 30 (the explicit-classification obligation, citing C). Leave line 30 verbatim.
-4. Check: AC-MJ-001, -002, -003, -004 green; AC-MJ-010, -011, -013 and -017 still green. `TestTodoSkillDocumentsClassification` neutrality: no SPEC id / date / hex in G.
+4. Check: AC-MJ-001, -002, -003, -004 green; AC-MJ-010, -011, -013 and -017 still green; AC-MJ-020 (a) shows `0` in its first and third column for every file and `0 0 0 0` for C (the rows of G and F that belong to M2 and M3 are still missing, so their second and fourth columns are not yet `0`); the `pairs` command on the M1 commit prints `pairs 3 unpaired 0` (C, G, F). `TestTodoSkillDocumentsClassification` neutrality: no SPEC id / date / hex in G.
 
 Open items touching M1: none blocking. Q1 default (agents untouched) and Q2 default (`doc-generation.md` untouched) apply; Q5 default keeps the board's words verbatim.
 
@@ -32,7 +32,7 @@ Files (template and deployed in one commit): M, K, F, A, W, plus `internal/templ
 3. F: line 119 (the ledger-pinned compressed line) takes `kept while the lane executes the card;`, line 122 takes `keeps it while the lane executes the card:`, line 44 takes the same clause edit as K:20; update ledger rows ALB-0276 (`after_text` = the new line 119) and ALB-0257 (`after_text` = the new K:20 text) in this commit. Keep the `### Lane waits are explicit, and stalls are watched` tokens (`CronCreate`, `recurring`, `disk evidence`).
 4. A: rewrite on single physical lines the §5.1 intro (`kept while the lane executes the card.`), the fire-and-renew sentence (renews the lease of the card the lane is executing), the Keep bullet (takeover also at resumed execution; `Delete it … when the lane stops executing the card, and at the latest when the completion report is sent`), and the §14 carrier sentence (`is kept only while the lane executes the card`). Leave A:103 and A:201 (they only name the cron) and the one-shot wait recheck of §14. Keep the §5 tokens of `design.md` §D-3 and the lines that carry `t1393` / `t1339`.
 5. W: the §5 constraint bullet takes `armed at card intake and kept while the lane executes the card` on one physical line; §0a gains the pinned scope line of AC-MJ-009, keeping the heading word `Renew`, `moai factory renew`, the closed `renew_result` set, "does not end the pass", and order (Renew before Measure). A pass that does not renew carries the previous `renew_result` forward.
-6. Check: AC-MJ-007, -008, -009, -012 green; AC-MJ-018 (b) and (c) green; AC-MJ-011 and -013 still green. Ledger and catalog rows are in this commit, so `TestBindingLedgerIntegrity` and the catalog hash audit can be run on it.
+6. Check: AC-MJ-007, -008 (a)-(f), -009, -012 green; AC-MJ-020 (a) first and third column `0` for every file; the `pairs` command on the M2 commit prints `pairs 5 unpaired 0` (M, K, F, A, W); AC-MJ-018 (b) and (c) green; AC-MJ-011 and -013 still green. Ledger and catalog rows are in this commit, so `TestBindingLedgerIntegrity` and the catalog hash audit can be run on it.
 
 ### M3 — Free lane, delegated-dispatch promotion, and the pointers to it (Priority Medium; nothing is held: the operator ruling d314 settled Q3)
 
@@ -45,7 +45,7 @@ Files (template and deployed in one commit): D, F, G, M, plus the `moai` entry o
    b. G: add the exact pointer paragraph of E-018d as one physical line after the [HARD] pick rule (the paragraph at `gtd.md:307-310` whose last words are `invent work.`). Leave that paragraph verbatim.
    c. M: add the exact enumeration row of E-018e after the `Serial-slot policy` row of `## The leader's remaining role`.
    d. New text avoids the strings `Promotion is the operator's act, always.` and `The leader never picks for the operator`, and carries no SPEC id, REQ token, date, board or card id, or hex run (the neutrality tests).
-4. Check: AC-MJ-005, -006, -016, -017, -018, -019 green; AC-MJ-011 and -013 still green.
+4. Check: AC-MJ-005, -006, -016, -017, -018, -019 green; AC-MJ-020 (a) `0 0 0 0` on every file and (b) `unexpected-paths 0` (the whole manifest is applied after M3); the `pairs` command on the M3 commit prints `pairs 4 unpaired 0` (D, F, G, M); AC-MJ-011 and -013 still green.
 
 ### M4 — Confirmation pass (Priority Medium; expected to produce no commit)
 
@@ -55,7 +55,7 @@ Files (template and deployed in one commit): D, F, G, M, plus the `moai` entry o
 
 ### M5 — Verification and evidence (Priority High; the gate)
 
-Read-only checks first, in one parallel batch (AC-MJ-001..013, -016, -017, -018, -019 commands from `acceptance.md`), outputs redirected to files under the card's scratch directory with the exit code and a bounded tail surfaced; the lines that decide each claim go into `.moai/reports/t1894/verdict.md`.
+Read-only checks first, in one parallel batch (AC-MJ-001..013, -016, -017, -018, -019, -020 commands from `acceptance.md`), outputs redirected to files under the card's scratch directory with the exit code and a bounded tail surfaced; the lines that decide each claim go into `.moai/reports/t1894/verdict.md`.
 
 Then the **scoped Go checks** (AC-MJ-014). Never `go test ./...`:
 
@@ -68,7 +68,7 @@ Record, per verdict, the empty-sweep check (each `-run` must report a non-zero t
 
 ## C. Order and dependencies
 
-M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on a decision: Q3 is met by the operator ruling d314, Q1, Q2, Q4, Q5, Q6 carry their stamps, and Q7 (open) gates no text. The two stub edits both land in M2, so the stub is within budget at every commit; M3 does not touch K.
+M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on a decision: Q3 is met by the operator ruling d314, and Q1, Q2, Q4, Q5, Q6 carry their stamps. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition. The two stub edits both land in M2, so the stub is within budget at every commit; M3 does not touch K.
 
 ## D. Risks
 
@@ -77,7 +77,7 @@ M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on 
 | Core stub over 10,000 units | AC-MJ-012; `TestRoleCoreStubGate` | the `is kept while the lane executes the card.` tail (+4) and the K:20 clause (−6) in one commit, net −2; never the pointer form in K |
 | A pinned old sentence folded into the exception | AC-MJ-019; `TestAutoRankDoctrineAmendment`, `TestAutoPickDocDoctrine` | edit F:38, F:40 and the pinned clauses of F:44 / K:20 not at all beyond the one clause; the exception is the pointer line plus home D |
 | A widening of the exception in the home subsection | AC-MJ-006 (whole-line equality, line count, end marker, stem scan) | copy the eight lines from `acceptance.md` E-006; amend the criterion with any wording change |
-| A widening in the Routing bullet | AC-MJ-005 (d) pins its three lines; AC-MJ-006 stem scan | copy the pinned lines |
+| A widening in the Routing bullet, or any other added line | AC-MJ-005 (d) pins its three lines (it cannot see an added fourth); AC-MJ-006 stem scan (it cannot see a stem-less line); AC-MJ-020 lists every allowed added and removed line of the eight documents and reports any other | copy the pinned lines and the manifest rows, add nothing |
 | An unstated delegation treated as given | spec R-5, decision-index Q7 | the documents carry the ruling's words and no mechanism; the sync audit reads for invented ones |
 | Ledger row left stale | `TestBindingLedgerIntegrity` "obligation lost" | update the row in the same commit as the line |
 | Catalog hash left stale | catalog hash audit | regenerate the changed skill entry in the commit that changes the skill directory |
@@ -92,4 +92,4 @@ M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on 
 
 One commit per milestone M1, M2, M3, each naming the card id in its message, explicit pathspecs only (the primary-checkout sweep prohibition applies in spirit inside the worktree too). **Each of those commits carries every changed template document together with its deployed twin** — never a template-only commit followed by a deployed-only one — so the template-vs-deployed mirror guards are never asked to pass over a half-applied state. `catalog.yaml` and `binding_ledger.json` ride in the commit that changes what they pin (M1: the `moai` hash; M2: ALB-0276, ALB-0257 and the `moai-lane-watchdog` hash; M3: the `moai` hash again). M4 and M5 produce no commit unless a corrective one is needed.
 
-How each commit stays coherent without running the Go guards per commit (they run once, at M5, on the final tree): the pairs are paired; a ledger row and a catalog hash are updated with the line they describe; both stub edits share a commit; and the read-only cells of the milestone (AC-MJ-001..013 as listed in each milestone's check step) are run on the commit before the next milestone starts. A shared-tree guard failure in an intermediate commit is therefore a mistake in that commit, not an expected state. The commit-graph evidence for this shape is the run-phase obligation of AC-MJ-011. The plan-phase commits carry only `.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/*`.
+How each commit stays coherent without running the Go guards per commit (they run once, at M5, on the final tree): the pairs are paired; a ledger row and a catalog hash are updated with the line they describe; both stub edits share a commit; and the read-only cells of the milestone (AC-MJ-001..013 as listed in each milestone's check step) are run on the commit before the next milestone starts. A shared-tree guard failure in an intermediate commit is therefore a mistake in that commit, not an expected state. The commit-graph evidence for this shape is the run-phase obligation of AC-MJ-011 (the `pairs` command, one call per milestone commit with its expected pair count). The allowed lines are fixed before the first document commit: `closed-world-manifest.txt` is written and frozen by the plan phase, so the commit graph orders the list of allowed lines ahead of the lines themselves (`verification-claim-integrity.md` §2.3). The plan-phase commits carry only `.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/*`.

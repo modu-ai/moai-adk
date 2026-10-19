@@ -4,28 +4,30 @@ The verification layer. Requirements (GEARS) are in `spec.md` §4; this file hol
 
 ## 0. Conventions
 
-- **Document-level pin** (binds every ledger entry that carries no pin of its own, `verification-completeness.md` §2.1): tree SHA `b7b44433c312da73de9f329ab08c8fa6c5aa4de0`, read with `git rev-parse HEAD` at the time of the measurement (branch `WT-fail-safe-serial`, clean, unpushed). Every command ran with cwd `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894`; the judging `moai` build for CLI observations is `moai_cp/20261007_195927`. No Go command ran in this phase. The template and deployed document trees are identical between this pin, the earlier pins `74ad197380a0711cdb9816d4e37c94d29af730ea` and `55d4f1486a454ff446be6f0f0645d4cea76bf0cc`, and the audited tree `cc109a75b6bf9c06ce86d811a8f0068551f02484` (`git diff --stat 74ad197380a0711cdb9816d4e37c94d29af730ea b7b44433c312da73de9f329ab08c8fa6c5aa4de0 -- internal .claude .agents .codex` printed nothing). Every entry below was re-run on the document-level pin in correction round 1; none is carried forward from an earlier round.
+- **Document-level pin** (binds every ledger entry that carries no pin of its own, `verification-completeness.md` §2.1): tree SHA `d31fb64239a688c053e455000cc9fe37f540b790`, read with `git rev-parse HEAD` at the time of the measurement in correction round 2 (branch `WT-fail-safe-serial`, clean, unpushed). Every command ran with cwd `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894`; the judging `moai` build for CLI observations is `moai_cp/20261007_195927`. No Go command ran in this phase. The template and deployed document trees are identical between this pin, the earlier pins `b7b44433c312da73de9f329ab08c8fa6c5aa4de0`, `74ad197380a0711cdb9816d4e37c94d29af730ea` and `55d4f1486a454ff446be6f0f0645d4cea76bf0cc`, and the audited tree `cc109a75b6bf9c06ce86d811a8f0068551f02484` (`git diff --stat b7b44433c312da73de9f329ab08c8fa6c5aa4de0 d31fb64239a688c053e455000cc9fe37f540b790 -- internal .claude .agents .codex` printed nothing in round 2; the pair `74ad197380a0711cdb9816d4e37c94d29af730ea` / `b7b44433c312da73de9f329ab08c8fa6c5aa4de0` printed nothing in round 1). Every entry below was re-run on the document-level pin in correction round 2; none is carried forward from an earlier round.
 - **Carrier**: fenced evidence-ledger entries `E-nnn`, cited by the criteria. Each entry carries `command`, `stdout` (verbatim as printed), and `exit` (its own field).
 - **Exit status**: for a command that is not `git`, the run appended `echo "exit=$?"` outside the cell, so the exact status is the recorded one. The worktree guard refuses a trailing `$?` after a `git` command, so for the three `git` cells (E-002b, E-002c, E-017) the exit is stated from what git guarantees and what the run observed, in the entry. Where a command prints nothing, its exit is still recorded (a zero-hit grep exits 1).
-- **Tools**: `sh`, `awk`, `grep` (only `-c -E -F -x -l -r -e`), `cmp`, `git` (`grep` with `--and`/`--not`, `ls-files`, `diff --no-index`), `python3`. No cell uses PCRE (`grep -P` is not portable: the system `grep` printed `invalid option -- P` for the former E-008a/E-008d), no `\b` (git's regex on this machine matched nothing for `\bt1393\b` on a file holding two such lines), no `{n}` quantifier (the worktree guard refuses it). Cells were run through `sh`, so the system `grep` judged them, not a shell function.
+- **Tools**: `sh`, `awk`, `grep` (only `-c -E -F -x -l -r -e`), `cmp`, `git` (`grep` with `--and`/`--not`, `ls-files`, `diff --no-index`), `python3` (`-I`, including the read-only `closed-world-check.py` of this SPEC directory, which calls `git show`, `git diff --name-only`, `git ls-files` and `git diff-tree` itself). **Awk and the worktree guard**: the guard refuses an awk program that carries a `|` after a `print`/`printf`, so no ledger awk program contains one — every alternation is passed as `-v re='a|b'` and matched with `$0 ~ re` (the cells E-002a, E-006 and E-009 were refused as written by the iteration 1 audit and were rewritten in this form; each was run through the guard in round 2 and printed the RED values recorded below). No cell uses PCRE (`grep -P` is not portable: the system `grep` printed `invalid option -- P` for the former E-008a/E-008d), no `\b` (git's regex on this machine matched nothing for `\bt1393\b` on a file holding two such lines), no `{n}` quantifier (the worktree guard refuses it). Cells were run through `sh`, so the system `grep` judged them, not a shell function.
 - **Classes**: `R` release-blocking (has a RED-now cell that is red now for the stated reason, a green-path cell naming the milestone that flips it, and a mutant probe); `G` regression-guard (green by design now; it records a *known failing input* on which the instrument was observed red, so the green is interpretable — `verification-completeness.md` §1.1); `O` operational (undecidable by a command; recorded, never counted as a pass by this SPEC).
 - **Verdict by exit**: where a cell used to print a number and always exit 0, it now exits 1 unless the printed numbers equal the expected ones (`verification-completeness.md` §1.1, report-not-verdict).
 - **Both trees**: every `R` criterion reads the template side and the deployed side in one invocation, so an edit to one side only leaves one operand red. `AC-MJ-011` additionally holds byte equality (`cmp`) for the seven fully-mirrored pairs and `AC-MJ-017` holds the one declared fork.
 - **`grep -c` over several files** prints one `path:count` line per file; the order of those lines is not part of the expectation, so green outputs below are stated as sets.
-- **Green paths and mutants** were observed on a scratch simulation of the post-run text (the planned wording applied to copies of the eight documents outside the repository; `progress.md` G-15). That simulation is not evidence about the real tree after the run; it is evidence that the criteria are satisfiable by the planned wording and that each mutant listed is red. The RED-now cells run on the real tree.
+- **Green paths and mutants** were observed on a scratch simulation of the post-run text (the planned wording applied to copies of the eight documents outside the repository; `progress.md` G-15). That simulation is not evidence about the real tree after the run; it is evidence that the criteria are satisfiable by the planned wording and that each mutant listed is red. The RED-now cells run on the real tree. The planned wording is pinned in full by `closed-world-manifest.txt` (AC-MJ-020): its rows were generated from the line difference between the simulation and the base commit, and the simulation prints `0 0 0 0` on all sixteen files against it, so the pinned cells and the manifest cannot disagree about a line.
 - Milestones M1-M5 are those of `plan.md`.
 
 ## 1. Criteria
 
-### AC-MJ-001 — The mode-judgment step exists on both sides with its six contract tokens (R; REQ-MJ-001, REQ-MJ-002, REQ-MJ-003)
+### AC-MJ-001 — The mode-judgment step exists on both sides with its eight contract tokens (R; REQ-MJ-001, REQ-MJ-002, REQ-MJ-003, REQ-MJ-004)
 
 **Given** the cards companion `factory-dispatch-cards.md` on the template side and the deployed side,
-**When** each file is scanned for a `### Mode judgment` subsection and the tokens `expected file set`, `in-flight card`, `same files or shared state`, `slot-gated surface`, `conflict check`, `--classification-file` are counted *inside that subsection only*,
-**Then** the scan prints `6` for the template copy and `6` for the deployed copy and exits 0 (it exits 1 when any count differs from 6).
+**When** each file is scanned for a `### Mode judgment` subsection and the tokens `expected file set`, `in-flight card`, `same files or shared state`, `slot-gated surface`, `conflict check`, `--classification-file`, `names the conflicting card`, `reissued with an explicit classification` are counted *inside that subsection only*,
+**Then** the scan prints `8` for the template copy and `8` for the deployed copy and exits 0 (it exits 1 when any count differs from 8).
+
+The last two tokens verify the two halves of the requirements that the first six do not see: the recorded reason names the conflicting card of a `serial` card (REQ-MJ-003), and a card that reached the queue on the default is reissued with an explicit classification (REQ-MJ-004).
 
 - RED-now: `E-001` (`0`, `0`, exit 1). Red because neither copy has a `### Mode judgment` heading; the card-classes section ends at the parallelism paragraph (`research.md` S1).
-- Green path: M1 adds the subsection to the template and the deployed copy in one commit → `6` / `6`, exit 0.
-- Mutants tried (observed): heading renamed → `0`/`0`; the predicate narrowed from "same files or shared state" to "same files" (the board-narrowing defect) → `5`/`5`; subsection broken in the deployed copy only → `6`/`0`. Residual: all six tokens present but the predicate semantically reversed (spec R-2, read by the audit).
+- Green path: M1 adds the subsection to the template and the deployed copy in one commit → `8` / `8`, exit 0.
+- Mutants tried (observed, round 2): heading renamed → `0`/`0`; the predicate narrowed from "same files or shared state" to "same files" (the board-narrowing defect) → `7`/`7`; the clause that names the conflicting card deleted → `7`/`7`; the reissue sentence deleted → `7`/`7`; subsection broken in the deployed copy only → `8`/`0`. Residual: all eight tokens present but the predicate semantically reversed (spec R-2, read by the audit); an extra sentence inside the subsection is not seen here and is bounded by AC-MJ-020.
 
 ### AC-MJ-002 — No issuance instruction in sweep set R relies on the default decider (R; REQ-MJ-004)
 
@@ -71,7 +73,8 @@ The sub-bullet that carries the inclusion clause reads: a free lane is a lane on
 
 - RED-now: `E-005a` (`:0`, `:0`, exit 1), `E-005b` (`:1`, `:1`, exit 0), `E-005c` (`:0`, `:0`, exit 1), `E-005d` (`:0`, `:0`, exit 1). Red because D:133 still defines free as "the lane's previous card reached `done`" and says nothing about merge-ready, held or serial-waiting cards or about the live-session condition.
 - Green path: M3 rewrites the Routing bullet on both sides in one commit → (a) `:1`, (b) `:0`, (c) `:1`, (d) `:3`.
-- Mutants tried (observed): the inclusion clause reversed ("is not a free lane") → (c) and (d) change; a sentence added to the Routing parent line with none of the promotion stems → (d) falls below `3`; the old definition appended again → (b) `:1` and (d) change. Not observed: define free in M instead (a fails; AC-MJ-016 lists M).
+- Mutants tried (observed): the inclusion clause reversed ("is not a free lane") → (c) and (d) change; a sentence added *to* (edited into) the Routing parent line with none of the promotion stems → (d) falls below `3` (the edited line no longer equals the pinned line); the old definition appended again → (b) `:1` and (d) change. Not observed: define free in M instead (a fails; AC-MJ-016 lists M).
+- Does not see, stated (observed in round 2): a line *added* beside the three pinned lines leaves (d) at `3`, because (d) counts the pinned lines that are present and an extra line is not one of them — an extra stem-less sub-bullet in the Routing bullet (two wordings), a sentence in the card-review section and a sentence before the subsection heading all printed `3`. Bounding every added line is AC-MJ-020's work (all four mutants are red there).
 
 ### AC-MJ-006 — The delegated-dispatch promotion is stated once, with every limit of the operator ruling and no other (R; REQ-MJ-007)
 
@@ -85,8 +88,8 @@ The fourth number is `1` today and stays `1`: the one line outside the subsectio
 - Green path: M3 step 2 → `8 8 1 1` and `8 8 1 1`, exit 0. The eight pinned lines are the ruling's seven limits and one labelled consequence, in the ruling's order: the delegation condition with the statement of the case (line 1), where (line 2), which cards (line 3), order (line 4), what is never promoted (line 5), serial cards (line 6), what is unchanged (line 7), and the consequence for the assignment input (line 8). Positive control: the same command on a file that holds the planned text prints `8 8 1 1`.
 - Why whole lines, not tokens: every limit of the ruling is a restriction or a negation, and a token check cannot see a limit reversed inside a sentence that still carries the token. Whole-line equality plus the line count makes a widening visible however it is written — a reworded limit changes a line, an added limit adds a line, a dropped limit removes one.
 - Why the end marker and the stem scan: the former scan ended at any `^##` line, so a `####` sub-heading, a separate `###` heading or a Routing-bullet sentence placed after the nine lines printed `9 9` (observed before this correction). The scan now ends at the next `^## ` line, requires that line to be the card-review heading, and counts stems outside the subsection.
-- Mutants tried (observed, each on a scratch copy, with the numbers and the exit the command printed): good copy `8 8 1 1` exit 0; "a held card," removed `7 8 1 1` exit 1; delegation condition removed `7 8 1 1` exit 1; serial line replaced by "promoted too" `7 8 1 1` exit 1; trailing space on the order line `7 8 1 1` exit 1; a pinned line duplicated `8 9 1 1` exit 1; a `####` sub-heading carrying a widening `8 10 1 1` exit 1; a separate `###` heading carrying a widening `8 10 1 1` exit 1; a widening with a stem in the Routing bullet `8 8 1 2` exit 1; a widening with a stem in a Routing sub-bullet `8 8 1 2` exit 1; a widening appended to line 1 `7 8 1 1` exit 1; an extra bullet `8 9 1 1` exit 1; an extra `##` heading before the card-review heading `8 8 0 2` exit 1; heading renamed `0 0 0 6` exit 1; heading deleted `0 0 0 5` exit 1; end marker renamed `8 8 0 1` exit 1; the consequence line relabelled a limit `7 8 1 1` exit 1.
-- Evades, stated: a widening with none of the three stems written in D outside the subsection and outside the Routing bullet (the Routing bullet's three lines are pinned by AC-MJ-005, where the same kind of sentence was observed red); a pure paraphrase in a second file (AC-MJ-016 lists any file carrying one of the six home tokens; a paraphrase without them evades — spec R-8, read by the audit). A wording improvement to a pinned line fails the command by design; the criterion is amended with the wording.
+- Mutants tried (observed, each on a scratch copy, with the numbers and the exit the command printed): good copy `8 8 1 1` exit 0; "a held card," removed `7 8 1 1` exit 1; delegation condition removed `7 8 1 1` exit 1; serial line replaced by "promoted too" `7 8 1 1` exit 1; trailing space on the order line `7 8 1 1` exit 1; a pinned line duplicated `8 9 1 1` exit 1; a `####` sub-heading carrying a widening `8 10 1 1` exit 1; a separate `###` heading carrying a widening `8 10 1 1` exit 1; a widening with a stem in the Routing bullet `8 8 1 2` exit 1; a widening with a stem in a Routing sub-bullet `8 8 1 2` exit 1; a widening appended to line 1 `7 8 1 1` exit 1; an extra bullet `8 9 1 1` exit 1; an extra `##` heading before the card-review heading `8 8 0 2` exit 1; heading renamed `0 0 0 6` exit 1; heading deleted `0 0 0 5` exit 1; end marker renamed `8 8 0 1` exit 1; the consequence line relabelled a limit `7 8 1 1` exit 1. Not caught here, and listed under *Evades* below: the four stem-less added lines (`8 8 1 1`, exit 0).
+- Evades, stated (observed in round 2 on the good copy plus one added line, each printing `8 8 1 1` and exit 0): a widening with none of the three stems, written as a line *added* anywhere in D outside the subsection — an extra sub-bullet in the Routing bullet (two wordings), a sentence in the card-review section, a sentence before the subsection heading. Neither this command nor AC-MJ-005 (d), which counts the pinned Routing lines that are present, sees an added line. AC-MJ-020 does: it lists the lines the run may add to and remove from D and reports any other line, with or without a stem (all four mutants observed red there). A paraphrase of the exception written as an added line in any of the eight documents is reported by AC-MJ-020, and one written in any other file is an unexpected path there. What no command sees is the manifest's own wording, which the audit reads (spec R-8). A wording improvement to a pinned line fails the command by design; the criterion and the manifest are amended with the wording.
 
 ### AC-MJ-007 — The renewal rule has one home, states its facts as pinned lines, and nothing else sits in it (R; REQ-MJ-008, REQ-MJ-009)
 
@@ -103,16 +106,16 @@ The four pinned lines carry: the definition of *executing* (once, here); the rul
 ### AC-MJ-008 — Every statement that arms or keeps the standing cron is scoped to the executing card, site by site, and none is deleted (R; REQ-MJ-010)
 
 **Given** K, F, A, W and M on both sides,
-**When** (a) lines are listed that carry a keep-word (`kept`, `keeps`, `keep it`, `stays armed`, `stay armed`, `armed`) and a cron-context word (`completion report`, `standing recheck`, `standing carrier`, `recheck cron`, `CronCreate`, `**standing**`, `standing wake`) and do **not** carry `while the lane executes the card` (version-history lines `^Version:` excluded); (b) lines are counted that carry one of the six site fragments — `is kept while the lane executes the card.` (K), `recheck armed before the first stage, kept while the lane executes the card;` (F), `keeps it while the lane executes the card:` (F), `and kept while the lane executes the card.` (A), `is kept only while the lane executes the card` (A), `armed at card intake and kept while the lane executes the card` (W); (c) the wording ``every renewal period of `workflow.factory_lease.renew_interval` `` is counted in K and F; (d) the literal `when the lane stops executing the card` is counted in A,
-**Then** (a) prints nothing and exits 0; (b) reports K `1`, F `2`, A `2`, W `1` on both trees; (c) reports `1` for each of K and F on both trees; (d) reports `1` for A on both trees.
+**When** (a) lines are listed that carry a keep-word (`kept`, `keeps`, `keep it`, `stays armed`, `stay armed`, `armed`) and a cron-context word (`completion report`, `standing recheck`, `standing carrier`, `recheck cron`, `CronCreate`, `**standing**`, `standing wake`) and do **not** carry `while the lane executes the card` (version-history lines `^Version:` excluded); (b) lines are counted that carry one of the six site fragments — `is kept while the lane executes the card.` (K), `recheck armed before the first stage, kept while the lane executes the card;` (F), `keeps it while the lane executes the card:` (F), `and kept while the lane executes the card.` (A), `is kept only while the lane executes the card` (A), `armed at card intake and kept while the lane executes the card` (W); (c) the wording ``every renewal period of `workflow.factory_lease.renew_interval` `` is counted in K and F; (d) the literal `when the lane stops executing the card` is counted in A; (e) the two whole physical lines that carry the fire-and-renew sentence of A §5.1 (`  first (§0a of the watchdog skill), which renews the lease of the card the lane` and `  is executing, so the renewal period is also the cadence at which that lease`) are counted in A; (f) the opening ``While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` `` of the renew paragraph is counted in M,
+**Then** (a) prints nothing and exits 0; (b) reports K `1`, F `2`, A `2`, W `1` on both trees; (c) reports `1` for each of K and F on both trees; (d) reports `1` for A on both trees; (e) reports `2` for A on both trees; (f) reports `1` for M on both trees.
 
-M's own site (the cron sentence of `### Lease renewal`) is verified by AC-MJ-007's pinned line.
+M's own site (the cron sentence of `### Lease renewal`) is verified by AC-MJ-007's pinned line. (e) and (f) cover the two sites of REQ-MJ-010 that carry no keep-word and so cannot appear in (a)'s list: the fire-and-renew sentence of A §5.1 (it scopes the renewal to the card being executed, and is not the `when the lane stops executing the card` delete sentence that (d) pins) and the renew paragraph of M (`factory-dispatch-mechanics.md` line 26, which AC-MJ-007 does not read because it scans the `### Lease renewal` subsection only). (e) and (f) exit 1 unless every printed count is the expected one.
 
 The sites, measured (`research.md` §11): K:28; F:119 and F:122; A §5.1 intro, fire-and-renew sentence, delete sentence, and the §14 carrier sentence; W:244 (constraint bullet) and W §0a (AC-MJ-009); M:26 and M's `### Lease renewal`. Kept unedited because they only name the cron: A:103 and A:201.
 
-- RED-now: `E-008a` (fourteen lines — K:28, F:119, F:122, A:117, A:118, A:396, W:244 on each tree — exit 1), `E-008b` (all eight `:0`, exit 1), `E-008d` (`:0`, `:0`, exit 1). `E-008c` is a regression-guard cell, `1` ×4 today, and must stay so. Red because those seven lines state "stays armed / kept / keeps … completion report" or "armed at card intake" with no scope.
-- Green path: M2 → (a) empty/exit 0, (b) K `1`, F `2`, A `2`, W `1`, (c) unchanged, (d) `1`/`1`.
-- Mutants tried (observed): K reverted to "stays armed to the completion report." → (a) fires and (b) K `0`; a marker phrase pasted in parentheses onto an otherwise unscoped sentence → (a) passes, (b) K `0` (red; the former marker-count check passed this); A intro, W:244, A §14 and F:122 each reverted → (a) fires and (b) drops; F:119's scope clause deleted → (a) fires and (b) F `1`; the "completion report" words deleted from the unscoped sentences while a marker phrase stays elsewhere in each file → (b) K `0`, F `0`, A `0` (the former checks — PCRE sweep, marker count, wording count — all passed this mutant, observed before this correction).
+- RED-now: `E-008a` (fourteen lines — K:28, F:119, F:122, A:117, A:118, A:396, W:244 on each tree — exit 1), `E-008b` (all eight `:0`, exit 1), `E-008d` (`:0`, `:0`, exit 1), `E-008e` (`:0`, `:0`, exit 1), `E-008f` (`:0`, `:0`, exit 1). `E-008c` is a regression-guard cell, `1` ×4 today, and must stay so. Red because those seven lines state "stays armed / kept / keeps … completion report" or "armed at card intake" with no scope, and because the fire-and-renew sentence and the renew paragraph still read as they did before the work.
+- Green path: M2 → (a) empty/exit 0, (b) K `1`, F `2`, A `2`, W `1`, (c) unchanged, (d) `1`/`1`, (e) `2`/`2`, (f) `1`/`1`.
+- Mutants tried (observed): K reverted to "stays armed to the completion report." → (a) fires and (b) K `0`; a marker phrase pasted in parentheses onto an otherwise unscoped sentence → (a) passes, (b) K `0` (red; the former marker-count check passed this); A intro, W:244, A §14 and F:122 each reverted → (a) fires and (b) drops; F:119's scope clause deleted → (a) fires and (b) F `1`; the fire-and-renew sentence of A §5.1 left in its present wording with everything else as planned → (e) `0` while AC-MJ-007 (`4 4 1`) and (a)-(d) stay green (the unchecked-site defect of the iteration 1 audit, observed with the old cells and again with the new ones); M:26 left unedited → (f) `0` with every other cell green (same observation); one of the two lines of the fire-and-renew sentence reworded → (e) `1`, exit 1; the "completion report" words deleted from the unscoped sentences while a marker phrase stays elsewhere in each file → (b) K `0`, F `0`, A `0` (the former checks — PCRE sweep, marker count, wording count — all passed this mutant, observed before this correction).
 - Limit: a sentence that carries a site fragment and also contradicts it evades every lexical check (spec R-8).
 
 ### AC-MJ-009 — The watchdog's first-step renewal is scoped to the executing card by a pinned line (R; REQ-MJ-011)
@@ -145,8 +148,9 @@ The pinned scope line says that the step renews the card the lane is executing a
 
 - Evidence now: `E-011` (seven exit-0 results). This is green before any edit (premise P1) and is **only** meaningful together with AC-MJ-001..009, which read both sides and are red now; it cannot be satisfied by "edit neither" because those criteria then stay red.
 - Known failing input: `E-011f` — `cmp` on the `factory-dispatch.md` pair exits `1` (`differ: char 23127, line 222`); the instrument reports a difference when one exists. That pair is the declared fork and is excluded here and covered by AC-MJ-017.
-- Run-phase obligation (commit shape; takes the undecidable disposition now, because no milestone commit exists yet, and is not recorded as a pass by this plan): for each of M1, M2 and M3, `git diff-tree --no-commit-id --name-only -r <milestone-sha>` lists every changed template document together with its deployed twin, and no document of the seven pairs appears on one side only. The commit graph shows that both sides land together; it does not show which was edited first, and this SPEC does not claim that (`verification-claim-integrity.md` §2.3).
-- Mutants tried (by construction): edit the template only → one cmp exits 1 and the matching `R` criterion shows `:0` on the deployed operand; edit both sides to different wording → cmp exits 1; a milestone commit that carries a template document without its twin → the `git diff-tree` listing shows one side only.
+- Run-phase obligation (commit shape; takes the undecidable disposition now, because no milestone commit exists yet, and is not recorded as a pass by this plan): for each of M1, M2 and M3, `python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py pairs .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt <milestone-sha>:<n>` — `<n>` is `3` for M1 (C, G, F), `5` for M2 (M, K, F, A, W) and `4` for M3 (D, F, G, M) — prints `<sha> pairs <n> unpaired 0 expected <n>` and exits 0; it exits 1 when any document of the manifest appears on one side only in that commit, or when the number of two-sided pairs differs from `<n>`. The commit graph shows that both sides land together; it does not show which was edited first, and this SPEC does not claim that (`verification-claim-integrity.md` §2.3). The earlier form of this obligation, a bare `git diff-tree --no-commit-id --name-only -r <milestone-sha>` listing, exited 0 whatever it listed and decided nothing.
+- Instrument observed on known inputs (round 2, history of this repository): `E-011g` — a deployed-only commit prints `pairs 0 unpaired 7` and exits 1; `E-011h` — a commit that changed two pairs on both sides, given the expected count `2`, prints `pairs 2 unpaired 0 expected 2` and exits 0.
+- Mutants tried (observed on the historical commits above and, by construction, for a milestone): edit the template only → one cmp exits 1 and the matching `R` criterion shows `:0` on the deployed operand; edit both sides to different wording → cmp exits 1; a milestone commit that carries a template document without its twin → `unpaired` is at least `1` and the command exits 1; a commit that carries the right pairs but a different number of them than planned → exit 1 on the `:<n>` comparison.
 
 ### AC-MJ-012 — The always-loaded core stub stays within 10,000 UTF-16 code units (G; REQ-MJ-014)
 
@@ -232,11 +236,27 @@ The pointer lines say that the leader's promotion without a pick is the case sta
 - Mutants tried (observed on the simulation): reword the sentence to carry the exception ("Outside an --auto authorization or while dispatch is delegated …") → `0` (red), and the Go doctrine tests of AC-MJ-014 go red too. By construction: delete it → `0`; move it to the detail companion → `0`.
 - Does not establish: the two `absent` strings of `TestAutoPickDocDoctrine` ("Promotion is the operator's act, always.", "The leader never picks for the operator") stay absent. No command here carries a live control for an absence check, so that guard is left to AC-MJ-014's Go run (undecidable now).
 
+### AC-MJ-020 — Every line the run adds to or removes from the eight changed document pairs is a line the SPEC lists, and no other path changes (R; REQ-MJ-006, REQ-MJ-007, REQ-MJ-012, REQ-MJ-017)
+
+**Given** the eight changed template documents C, K, F, D, M, A, G, W, their eight deployed twins, and the manifest `closed-world-manifest.txt` of this SPEC directory (the complete list of lines to add and to remove, per file, pinned to the base commit `d31fb64239a688c053e455000cc9fe37f540b790`),
+**When** (a) `closed-world-check.py lines` compares, for every file and on each side, the non-blank lines of the working copy with the non-blank lines of the same path at the base commit as multisets, and prints four numbers per side — added lines the manifest does not list, listed lines that were not added, removed lines the manifest does not list, listed removals that were not made — (b) `closed-world-check.py paths` lists every changed or new path outside `.moai/` that the manifest does not name, and (c) the SHA-256 of the manifest and of the check are compared with the two values pinned in `E-020d`,
+**Then** (a) prints `0 0 0 0` for the template side and `0 0 0 0` for the deployed side of every file and exits 0; (b) prints `unexpected-paths 0` and exits 0; (c) prints `same same` and exits 0. Each command exits 1 on any other number.
+
+What this closes. AC-MJ-005 (d) and AC-MJ-006 are open-world: they look for known lines and known stems. Four stem-less additions passed both in the iteration 1 audit and again here (`E-005d` printed `3` and `E-006` printed `8 8 1 1`, exit 0): an extra sub-bullet in the Routing bullet (two wordings), a sentence in the card-review section, a sentence before the subsection heading. This criterion is closed-world: a line is allowed only if the manifest lists it, so one more line anywhere in any of the sixteen files — with or without a stem, in a heading, a table row or prose — turns the first number (or, for a deleted or rewritten line, the third) non-zero. A rewritten line is one listed removal and one listed addition, each by whole line; a line moved without change is not seen (the comparison ignores order) and a blank-line change is not seen. A line present once and written twice is an added line (the comparison counts).
+
+The manifest is a SPEC artifact in the ownership class of this file: the plan phase wrote every row from the planned post-run text, the run phase does not edit it, and a wording change the run phase needs is a blocker report that manager-spec answers by amending the manifest together with the pinned cells that carry the same lines (E-004c/e, E-005d, E-006, E-007, E-009, E-018a/d/e). It is frozen in the plan-phase commit, so the list of allowed lines is fixed by the party that does not write the documents and before the first document commit (`verification-claim-integrity.md` §2.3). `catalog.yaml` and `binding_ledger.json` are named by `also:` rows and are bounded by the Go guards of AC-MJ-014, not by line content. Neither the manifest nor the check belongs to the plan-artifact hash subject set (`spec-workflow-detail.md` § Report Persistence), so an edit to either would leave a cached audit verdict valid; their SHA-256 values are therefore pinned in `E-020d`, in this file, which is hashed: changing either file requires a matching change here.
+
+- RED-now: `E-020a` (eight rows, exit 1). Red for the stated reason: every row's second number is non-zero (the listed additions have not been made: C 2, K 2, F 5, D 12, M 7, A 8, G 10, W 2 on each side) and the fourth is non-zero where the work rewrites a line (K 2, F 3, D 1, M 1, A 8, G 8, W 2); the first and third numbers are `0` today, so no unlisted line exists on the unedited tree and the red cannot come from anything but the work not having been done.
+- Green path: M1-M3 apply the manifest rows to both sides. After every milestone commit the first and third numbers are `0` for every file (nothing outside the list was touched) and the second and fourth numbers fall to `0` for the files whose rows that milestone has finished; after M3 all four are `0` on every row and the command exits 0. The simulation of the planned text prints `0 0 0 0` on all sixteen files (observed, round 2).
+- The path cell: `E-020b` (`unexpected-paths 0`, exit 0 — green by design before any edit, so it is a regression-guard cell) and its known failing input `E-020c` (the same command against an old base commit: `unexpected-paths 175`, exit 1). The hash cell: `E-020d` (`same same`, exit 0, green by design) and its known failing input `E-020e` (one hex digit of the manifest value changed: `DIFFERENT same`, exit 1).
+- Mutants tried (observed, round 2, each on a copy of the simulated post-run text with both sides changed unless noted; every one exits 1 and shows a non-zero first, second, third or fourth number): the 21 mutants of the AC-MJ-006 / AC-MJ-005 family of the iteration 1 audit (the author's 16, the stem-less edit of the Routing parent line, and the four stem-less additions above); the 37 mutants of the earlier cross-criterion list (one or more per criterion AC-MJ-001 to -019); and 16 further ones — one extra line in each of C, K, F, M, G, W and A, an extra stem-less line before the card-review heading of D, a reworded heading in D, a reworded sentence in C's new paragraph, a listed line deleted, an unrelated base line deleted, an unrelated base line written twice, a trailing space added to a base line, a template-only edit and a deployed-only edit (both flag the side that differs). 74 distinct mutants in all; 74 red.
+- Does not establish: that a listed line is the right wording (the audit reads the manifest); anything about a line that is moved without change; that the two non-document files are right (AC-MJ-014). The check compares the working tree, so it also reports an uncommitted edit.
+
 ## 2. Evidence ledger
 
 ```text
-E-001   (AC-MJ-001: six tokens inside the Mode judgment subsection, both trees)
-command: awk 'FNR==1{ if(NR>1){ print a+b+c+d+e+g+0; if(a+b+c+d+e+g!=6) bad=1 } a=b=c=d=e=g=0; f=0 } /^### Mode judgment/{f=1;next} /^##/{f=0} f&&/expected file set/{a=1} f&&/in-flight card/{b=1} f&&/same files or shared state/{c=1} f&&/slot-gated surface/{d=1} f&&/conflict check/{e=1} f&&/classification-file/{g=1} END{ print a+b+c+d+e+g+0; if(a+b+c+d+e+g!=6) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md .claude/rules/moai/workflow/factory-dispatch-cards.md
+E-001   (AC-MJ-001: eight tokens inside the Mode judgment subsection, both trees)
+command: awk 'FNR==1{ if(NR>1){ s=a+b+c+d+e+g+h+i; print s; if(s!=8) bad=1 } a=b=c=d=e=g=h=i=0; f=0 } /^### Mode judgment/{f=1;next} /^##/{f=0} f&&/expected file set/{a=1} f&&/in-flight card/{b=1} f&&/same files or shared state/{c=1} f&&/slot-gated surface/{d=1} f&&/conflict check/{e=1} f&&/classification-file/{g=1} f&&/names the conflicting card/{h=1} f&&/reissued with an explicit classification/{i=1} END{ s=a+b+c+d+e+g+h+i; print s; if(s!=8) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md .claude/rules/moai/workflow/factory-dispatch-cards.md
 stdout:
 0
 0
@@ -245,7 +265,7 @@ exit: 1
 
 ```text
 E-002a   (AC-MJ-002 c1: violating-sentence sweep V over sweep set R (exit 1 when it prints a line))
-command: awk '/^[^|]/ && /moai (todo|gtd) add "/ && !/--classification-file/ { print FILENAME ":" FNR ":" $0; bad=1 } END{ exit bad }' internal/template/templates/.claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md internal/template/templates/.claude/agents/moai/manager-todo.md internal/template/templates/.claude/agents/moai/manager-lead.md internal/template/templates/.claude/skills/moai-factory-foreman/SKILL.md
+command: awk -v re='moai (todo|gtd) add "' '/^[^|]/ && $0 ~ re && !/--classification-file/ { print FILENAME ":" FNR ":" $0; bad=1 } END{ exit bad }' internal/template/templates/.claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md internal/template/templates/.claude/agents/moai/manager-todo.md internal/template/templates/.claude/agents/moai/manager-lead.md internal/template/templates/.claude/skills/moai-factory-foreman/SKILL.md
 stdout:
 internal/template/templates/.claude/skills/moai/workflows/gtd.md:52:`moai todo add "<description>"`; a bare `/moai todo` runs `moai todo list`.
 exit: 1
@@ -372,8 +392,8 @@ exit: 1
 ```
 
 ```text
-E-006   (AC-MJ-006: the eight pinned lines of the delegated-dispatch subsection, its end marker, and the stem scan (exit 1 unless 8 8 1 1 per file))
-command: awk 'BEGIN{ g[1]="Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once."; g[2]="- Where: only to a free live lane, as defined under Routing above."; g[3]="- Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment)."; g[4]="- Order: queue priority and readiness first."; g[5]="- Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3)."; g[6]="- Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader\047s remaining role)."; g[7]="- Unchanged: lane self-dispatch through `moai factory next`."; g[8]="Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards."; for(i=1;i<=8;i++) want[g[i]]=1 } FNR==1{ if(NR>1){ print m" "n" "e" "k; if(!(m==8&&n==8&&e==1&&k==1)) bad=1 } m=n=e=k=0; f=0; split("",seen) } /^### Delegated-dispatch promotion$/{f=1;next} f&&/^## /{ f=0; e=($0=="## The card-review stage") } f&&NF{ n++; if(($0 in want)&&!seen[$0]++) m++; next } !f&&tolower($0)~/promot|queued|parallelizable/{ k++ } END{ print m" "n" "e" "k; if(!(m==8&&n==8&&e==1&&k==1)) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md .claude/rules/moai/workflow/factory-dispatch-detail.md
+E-006   (AC-MJ-006: the eight pinned lines of the delegated-dispatch subsection, its end marker, and the stem scan (exit 1 unless 8 8 1 1 per file; the alternation is passed with -v re=, see §0 Tools))
+command: awk -v re='promot|queued|parallelizable' 'BEGIN{ g[1]="Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once."; g[2]="- Where: only to a free live lane, as defined under Routing above."; g[3]="- Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment)."; g[4]="- Order: queue priority and readiness first."; g[5]="- Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3)."; g[6]="- Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader\047s remaining role)."; g[7]="- Unchanged: lane self-dispatch through `moai factory next`."; g[8]="Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards."; for(i=1;i<=8;i++) want[g[i]]=1 } FNR==1{ if(NR>1){ print m" "n" "e" "k; if(!(m==8&&n==8&&e==1&&k==1)) bad=1 } m=n=e=k=0; f=0; split("",seen) } /^### Delegated-dispatch promotion$/{f=1;next} f&&/^## /{ f=0; e=($0=="## The card-review stage") } f&&NF{ n++; if(($0 in want)&&!seen[$0]++) m++; next } !f&&tolower($0)~re{ k++ } END{ print m" "n" "e" "k; if(!(m==8&&n==8&&e==1&&k==1)) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md .claude/rules/moai/workflow/factory-dispatch-detail.md
 stdout:
 0 0 0 1
 0 0 0 1
@@ -446,8 +466,26 @@ exit: 1
 ```
 
 ```text
-E-009   (AC-MJ-009: pinned scope line, renew call, and "every card" count inside section 0a (exit 1 unless 1 >=1 0 per file))
-command: awk 'BEGIN{ w="This step renews the card the lane is executing and no other card: a lane whose cards are all merge-ready, held, or waiting for the serial slot does not renew in that pass, and the pass carries the previous `renew_result` forward." } FNR==1{ if(NR>1){ print p" "r" "q; if(!(p==1&&r>=1&&q==0)) bad=1 } p=r=q=0; f=0 } /^## 0a/{f=1;next} /^## /{f=0} f&&$0==w{p++} f&&/moai factory renew/{r++} f&&/every card|each card/{q++} END{ print p" "r" "q; if(!(p==1&&r>=1&&q==0)) bad=1; exit bad }' internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md .claude/skills/moai-lane-watchdog/SKILL.md
+E-008e   (AC-MJ-008 (e): the two whole lines of the fire-and-renew sentence in A (exit 1 unless 2 per file))
+command: awk -v a='  first (§0a of the watchdog skill), which renews the lease of the card the lane' -v b='  is executing, so the renewal period is also the cadence at which that lease' 'FNR==1{ if(NR>1){ print n; if(n!=2) bad=1 } n=0 } { n += ($0==a) + ($0==b) } END{ print n; if(n!=2) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md .claude/rules/moai/workflow/auto-semantics.md
+stdout:
+0
+0
+exit: 1
+```
+
+```text
+E-008f   (AC-MJ-008 (f): the opening of the renew paragraph in M (exit 1 unless 1 per file))
+command: awk -v s='While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>`' 'FNR==1{ if(NR>1){ print n; if(n!=1) bad=1 } n=0 } index($0,s){ n++ } END{ print n; if(n!=1) bad=1; exit bad }' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+stdout:
+0
+0
+exit: 1
+```
+
+```text
+E-009   (AC-MJ-009: pinned scope line, renew call, and "every card" count inside section 0a (exit 1 unless 1 >=1 0 per file; the alternation is passed with -v re=))
+command: awk -v re='every card|each card' 'BEGIN{ w="This step renews the card the lane is executing and no other card: a lane whose cards are all merge-ready, held, or waiting for the serial slot does not renew in that pass, and the pass carries the previous `renew_result` forward." } FNR==1{ if(NR>1){ print p" "r" "q; if(!(p==1&&r>=1&&q==0)) bad=1 } p=r=q=0; f=0 } /^## 0a/{f=1;next} /^## /{f=0} f&&$0==w{p++} f&&/moai factory renew/{r++} f&&$0~re{q++} END{ print p" "r" "q; if(!(p==1&&r>=1&&q==0)) bad=1; exit bad }' internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md .claude/skills/moai-lane-watchdog/SKILL.md
 stdout:
 0 1 0
 0 1 0
@@ -498,6 +536,29 @@ command: cmp internal/template/templates/.claude/rules/moai/workflow/factory-dis
 stdout:
 internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md .claude/rules/moai/workflow/factory-dispatch.md differ: char 23127, line 222
 exit: 1
+```
+
+```text
+E-011g   (AC-MJ-011: known failing input for the pair instrument — a historical commit that changed one side only)
+command: python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py pairs .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt 957967601351fccb7723713625b41f4d6e05b386
+stdout:
+9579676013 pairs 0 unpaired 7
+  .claude/rules/moai/workflow/factory-dispatch-cards.md
+  .claude/rules/moai/workflow/factory-dispatch-core.md
+  .claude/rules/moai/workflow/factory-dispatch.md
+  .claude/rules/moai/workflow/factory-dispatch-detail.md
+  .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+  .claude/rules/moai/workflow/auto-semantics.md
+  .claude/skills/moai/workflows/gtd.md
+exit: 1
+```
+
+```text
+E-011h   (AC-MJ-011: known passing input for the pair instrument — a historical commit that changed two pairs on both sides, expected count 2)
+command: python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py pairs .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt 1969709ce693dc4975754a3b1ad1447e56b4ccc5:2
+stdout:
+1969709ce6 pairs 2 unpaired 0 expected 2
+exit: 0
 ```
 
 ```text
@@ -639,6 +700,61 @@ internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:1
 exit: 0
 ```
 
+```text
+E-020a   (AC-MJ-020 (a): added and removed lines against the manifest, per file and per side (exit 1 unless every number is 0))
+command: python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py lines .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt
+stdout:
+C template 0 2 0 0 deployed 0 2 0 0
+K template 0 2 0 2 deployed 0 2 0 2
+F template 0 5 0 3 deployed 0 5 0 3
+D template 0 12 0 1 deployed 0 12 0 1
+M template 0 7 0 1 deployed 0 7 0 1
+A template 0 8 0 8 deployed 0 8 0 8
+G template 0 10 0 8 deployed 0 10 0 8
+W template 0 2 0 2 deployed 0 2 0 2
+exit: 1
+```
+
+```text
+E-020b   (AC-MJ-020 (b): changed or new paths outside .moai/ that the manifest does not name)
+command: python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py paths .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt
+stdout:
+unexpected-paths 0
+exit: 0
+```
+
+```text
+E-020c   (AC-MJ-020 (b): known failing input — the same command against an old base commit)
+command: python3 -I .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py paths .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt 3642a3a9b9cf101863656153d2d99b69fcb66a05
+stdout:
+unexpected-paths 175
+.claude/agents/moai/manager-git.md
+.claude/agents/moai/manager-todo.md
+.claude/rules/local/gitflow-lane-protocol.md
+.claude/rules/moai/workflow/delivery-policy.md
+.claude/rules/moai/workflow/spec-workflow.md
+.claude/rules/moai/workflow/worktree-integration-ops.md
+.claude/rules/moai/workflow/worktree-integration.md
+.claude/skills/moai-factory-foreman/SKILL.md
+exit: 1
+```
+
+```text
+E-020d   (AC-MJ-020 (c): the manifest and the check are the files the plan phase froze (SHA-256 pinned here because neither is in the plan-artifact hash subject set))
+command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','c2b0ef170297e49d191712e6e433cd16fb856e2da5abbe2eb0b6f444c28a2c08'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','c82828d4daef1b3df2787b30069d3615e12418ab64c4eb3ca74cb0fb44645b63')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
+stdout:
+same same
+exit: 0
+```
+
+```text
+E-020e   (AC-MJ-020 (c): known failing input — one hex digit of the manifest value changed)
+command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','c2b0ef170297e49d191712e6e433cd16fb856e2da5abbe2eb0b6f444c28a2c07'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','c82828d4daef1b3df2787b30069d3615e12418ab64c4eb3ca74cb0fb44645b63')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
+stdout:
+DIFFERENT same
+exit: 1
+```
+
 ## 3. Edge cases
 
 - **A ledger row is stale after the rewrite.** If M2 rewrites F:119 and leaves ALB-0276 untouched, `TestBindingLedgerIntegrity` reports "after-text absent … obligation lost"; the row's `after_text` is updated in the same commit (REQ-MJ-016). The same holds for ALB-0257 and the K:20 / F:44 clause.
@@ -648,12 +764,15 @@ exit: 0
 - **`factory-dispatch.md` edited identically in both trees but the declared fork line also moves.** AC-MJ-017 shows a count other than `1/1`.
 - **The per-line trap.** A scoped sentence whose physical tail line still reads "kept until the completion report" keeps AC-MJ-008(a) red; reflow the paragraph so a scoped sentence sits on one physical line. The same holds for every pinned whole line: write it on one physical line, with the leading spaces shown.
 - **The card-id baseline.** `auto-semantics.md` §5.1 carries `t1393` and `t1339`; deleting either sentence fails `TestCardIDBaselineHasNoStaleEntries`, and re-wrapping them is safe for AC-MJ-013.
+- **A line is added that no stem or token catches.** AC-MJ-005 (d) and AC-MJ-006 print their green numbers (`3`, `8 8 1 1`) with an extra sub-bullet, an extra sentence in the card-review section or an extra sentence before the subsection heading; AC-MJ-020's first number is `1` for the file and the command exits 1. Remove the line, or return a blocker report so that manager-spec decides whether the manifest gains the row.
+- **A wording improvement during the run.** The pinned cells and the manifest carry the same lines; the run phase never edits either. The improvement is a blocker report, and manager-spec amends the manifest and the cells in one commit (mid-run authority, D-NEW-1).
+- **A reflow that moves a listed line.** The comparison counts physical lines: a hard-wrapped paragraph of `auto-semantics.md` re-wrapped differently from the manifest shows a non-zero first and second number, even when the words are unchanged. Reproduce the manifest rows' line breaks exactly.
 
 ## 4. Quality gates and Definition of Done
 
-- All `R` criteria (AC-MJ-001..009, -016, -018) have observed RED cells (above) and pass on the run-phase tree with the command output pasted into the verdict file `.moai/reports/t1894/verdict.md` (decision-bearing lines only, per the evidence-export obligation).
+- All `R` criteria (AC-MJ-001..009, -016, -018, -020) have observed RED cells (above) and pass on the run-phase tree with the command output pasted into the verdict file `.moai/reports/t1894/verdict.md` (decision-bearing lines only, per the evidence-export obligation).
 - All `G` criteria (AC-MJ-010..014, -017, -019) pass; AC-MJ-014's Go logs are cited from the verdict file.
 - AC-MJ-015 is recorded by the leader and is not a SPEC PASS.
-- Decision-index rows Q1, Q2, Q4, Q5, Q6 are stamped `DEFAULT-APPLIED`; Q3 is met by the operator ruling d314 (its verdict is recorded in the row); Q7 is open and goes to the operator. No requirement or criterion is gated on a decision.
-- Commit shape (graph-verifiable, replaces the former ordering clause): each of M1, M2 and M3 lands a changed template document together with its deployed twin in one commit, with the ledger rows and the catalog hash entry of what it changes in the same commit (AC-MJ-011, run-phase obligation). Template-First (edit the template side, then bring the deployed copy to the same bytes) is the authoring discipline the repository asks for; the commit graph cannot show the order of two edits inside one commit, so this SPEC does not make it a criterion.
+- Decision-index rows Q1, Q2, Q4, Q5, Q6 are stamped `DEFAULT-APPLIED`; Q3 is met by the operator ruling d314 (its verdict is recorded in the row); Q7 is open. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
+- Commit shape (graph-verifiable, replaces the former ordering clause): each of M1, M2 and M3 lands a changed template document together with its deployed twin in one commit, with the ledger rows and the catalog hash entry of what it changes in the same commit (AC-MJ-011, run-phase obligation; the `pairs` command decides it and takes the expected pair count of each milestone). Template-First (edit the template side, then bring the deployed copy to the same bytes) is the authoring discipline the repository asks for; the commit graph cannot show the order of two edits inside one commit, so this SPEC does not make it a criterion.
 - `moai spec lint --strict` on `spec.md` exits 0 (recorded in `progress.md` §E.1).

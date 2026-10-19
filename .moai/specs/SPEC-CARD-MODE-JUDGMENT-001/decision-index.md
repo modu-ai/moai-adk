@@ -69,7 +69,7 @@ Consequence of the default (stated, not hidden): with "in flight" undefined, two
 Label: FOUNDER
 Class: implementation-level
 Authority anchor: (none — `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier is a rule-table guidance whose own text says the Tier is judged by a Socratic question; it is not an operator setting in `.moai/config/sections/*.yaml` or a constitution clause, so it does not cover the question as written and this row does not claim policy coverage)
-Why unresolved: The table is guidance on file count, and whether deployed mirrors and generated files count as affected files is the plan author's reading. Counted without discounting (8 template documents + 8 deployed mirrors + `catalog.yaml` + `binding_ledger.json` = 18) the "Files affected" column gives Tier L; counting only the eight source documents gives Tier M. The operator Tier question of `spec-assembly.md` could not be asked from a subagent. A fact that bounds the options, read from the same table: the SPEC carries 17 requirements and 19 acceptance criteria, which exceed the Tier M ceilings of 16 and 16, so Tier M is reachable only by cutting content.
+Why unresolved: The table is guidance on file count, and whether deployed mirrors and generated files count as affected files is the plan author's reading. Counted without discounting (8 template documents + 8 deployed mirrors + `catalog.yaml` + `binding_ledger.json` = 18) the "Files affected" column gives Tier L; counting only the eight source documents gives Tier M. The operator Tier question of `spec-assembly.md` could not be asked from a subagent. A fact that bounds the options, read from the same table: the SPEC carries 17 requirements and 20 acceptance criteria, which exceed the Tier M ceilings of 16 and 16, so Tier M is reachable only by cutting content.
 Default: Tier L (rule: preserves current behavior — the SPEC is already authored, measured and audited as Tier L)
 Alternate: Tier M, after cutting the requirements and the criteria to the Tier M ceilings (3 artifacts)
 Operator verdict: DEFAULT-APPLIED 2026-10-19T03:35:14Z lane-31 manager-spec (plan author)
@@ -81,7 +81,7 @@ Class: product-level
 Authority anchor: (none — the ruling d-20261019T023441Z-d314 conditions the leader's promotion on "while the operator has delegated dispatch (operator-away / standing delegation)" and names no mechanism, record, or expiry; no committed clause decides it)
 Why unresolved: The documents carry the ruling's words (`(operator away, or a standing delegation)`) and, by design, no mechanism. An actor that treats an unstated delegation as given widens the exception in practice, and no command in this SPEC can see that (spec R-5). Which signal counts — nothing beyond the operator's own words in the session, a decision-board record the leader cites, a configuration key, or a time-bounded delegation — changes who may dispatch and when, and so changes a shipped coordination behavior. The options visible to the planner are listed unranked; the published Default rule does not rank them, because each one changes the user-visible behavior differently.
 Operator verdict:
-Gate note: no requirement, criterion or milestone waits on this row (REQ-MJ-007 carries the ruling's words exactly). Per the decision-gate rule an empty FOUNDER row goes to the operator, so it blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
+Gate note: No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
 
 ## Gate (state after correction round 1)
 
@@ -93,9 +93,9 @@ Gate note: no requirement, criterion or milestone waits on this row (REQ-MJ-007 
 | Q4 | FOUNDER / implementation-level | `DEFAULT-APPLIED`; the same ruling moves the notice to card t1695 |
 | Q5 | FOUNDER / implementation-level | `DEFAULT-APPLIED` (unchanged); consequence now stated (R-2) |
 | Q6 | FOUNDER / implementation-level | `DEFAULT-APPLIED` (re-labelled from POLICY-COVERED, which the cited anchor did not support) |
-| Q7 | FOUNDER / product-level | **open**, empty verdict; goes to the operator and blocks the autonomous Kickoff |
+| Q7 | FOUNDER / product-level | **open**, empty verdict; goes to the operator and blocks the autonomous form of the Kickoff; no requirement, criterion or milestone waits on it |
 
-One FOUNDER row (Q7) carries an empty verdict. No requirement or criterion is gated on it.
+One FOUNDER row (Q7) carries an empty verdict. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
 
 ## Milestone-to-row map
 
@@ -103,6 +103,6 @@ One FOUNDER row (Q7) carries an empty verdict. No requirement or criterion is ga
 |---|---|---|
 | M1 mode judgment and issuance | Q1 (agents untouched), Q2 (`doc-generation.md` untouched), Q5 (board words verbatim) | all defaults |
 | M2 lease renewal and scoped standing cron | Q4 (Go notice is card t1695's; residual risk R-1) | nothing to decide here |
-| M3 free lane and delegated-dispatch promotion | Q3 (met), Q7 (open; no text waits on it) | REQ-MJ-006, REQ-MJ-007, REQ-MJ-017 are written against the ruling, not against a planner default |
+| M3 free lane and delegated-dispatch promotion | Q3 (met), Q7 (open; no text waits on it, the autonomous Kickoff form does) | REQ-MJ-006, REQ-MJ-007, REQ-MJ-017 are written against the ruling, not against a planner default |
 | M4 confirmation pass | Q1 (if flipped: agent emission) | defaults hold |
 | M5 verification | none | |

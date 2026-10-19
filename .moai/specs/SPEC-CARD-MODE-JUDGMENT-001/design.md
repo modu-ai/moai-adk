@@ -1,6 +1,6 @@
 # design.md — SPEC-CARD-MODE-JUDGMENT-001
 
-The HOW layer for a documents-only change. Everything here is a measured constraint or a candidate wording; the normative text is `spec.md`, the observable checks are `acceptance.md`. Site ids S1-S17 and the guard names are defined in `research.md` §4 and §6.
+The HOW layer for a documents-only change. Everything here is a measured constraint or a rationale; the normative text is `spec.md`, the observable checks are `acceptance.md`, and the exact wording of every added line is `closed-world-manifest.txt`. Site ids S1-S17 and the guard names are defined in `research.md` §4 and §6.
 
 ## D-1 Tier L, and why the count is honest
 
@@ -13,9 +13,9 @@ The HOW layer for a documents-only change. Everything here is a measured constra
 | Generated or fixture files that must move with them | 2 | `internal/template/catalog.yaml` (two stored sha256 values: `moai`, `moai-lane-watchdog`) and `internal/template/testdata/binding_ledger.json` (rows whose `after_text` is rewritten, at least ALB-0276) |
 | **Total** | **18** | > 15 |
 
-Counting only the eight source documents gives 8-10 files (Tier M). The mirrors and fixtures are files the author must edit and a guard test reads, so they count; Tier L follows from the table, and `design.md` + `research.md` are not ceremony here — the pinning map (§D-3), the budget arithmetic (§D-4) and the sweep definition (`research.md` §7) are decisions a reviewer needs to see. Recorded as decision-index row Q6 (FOUNDER, implementation-level, `DEFAULT-APPLIED` Tier L; the cited rule table is guidance, not an operator setting, so no policy coverage is claimed). The Tier judgment question that `spec-assembly.md` poses to the operator could not be asked from this subagent; that is Gap G-1 in `progress.md`. A fact from the same table bounds the options: 17 requirements and 19 criteria exceed the Tier M ceilings of 16 and 16.
+Counting only the eight source documents gives 8-10 files (Tier M). The mirrors and fixtures are files the author must edit and a guard test reads, so they count; Tier L follows from the table, and `design.md` + `research.md` are not ceremony here — the pinning map (§D-3), the budget arithmetic (§D-4) and the sweep definition (`research.md` §7) are decisions a reviewer needs to see. Recorded as decision-index row Q6 (FOUNDER, implementation-level, `DEFAULT-APPLIED` Tier L; the cited rule table is guidance, not an operator setting, so no policy coverage is claimed). The Tier judgment question that `spec-assembly.md` poses to the operator could not be asked from this subagent; that is Gap G-1 in `progress.md`. A fact from the same table bounds the options: 17 requirements and 20 criteria exceed the Tier M ceilings of 16 and 16.
 
-LOC is small (well under 300 added lines of prose); the tier is driven by file count and by the pinning-test density, not by size. The REQ ceiling (25) and AC ceiling (25) are respected: 17 REQ, 19 AC (sub-criteria `a`/`b`/`c`/`d` of one AC are counted once). The correction round added REQ-MJ-017 and AC-MJ-018 / AC-MJ-019 and changed no file count: the same eight template documents, their eight deployed mirrors, `catalog.yaml` and `binding_ledger.json` (now with rows ALB-0276 and ALB-0257 rewritten).
+LOC is small (well under 300 added lines of prose); the tier is driven by file count and by the pinning-test density, not by size. The REQ ceiling (25) and AC ceiling (25) are respected: 17 REQ, 20 AC (sub-criteria `a`/`b`/`c`/`d`/`e`/`f` of one AC are counted once). The first correction round added REQ-MJ-017 and AC-MJ-018 / AC-MJ-019, the second added AC-MJ-020 (a closed-world check; no new requirement), and neither changed a file count of the product change (the SPEC directory gained `closed-world-manifest.txt` and `closed-world-check.py`): the same eight template documents, their eight deployed mirrors, `catalog.yaml` and `binding_ledger.json` (now with rows ALB-0276 and ALB-0257 rewritten).
 
 ## D-2 Single homes (REQ-MJ-012)
 
@@ -92,15 +92,13 @@ The card's phrase "assignment input = picked + queued parallelizable" read two w
 
 Not decided here, and not invented: what establishes "the operator has delegated dispatch" (R-5). The subsection carries the ruling's words, `(operator away, or a standing delegation)`, and nothing more.
 
-## D-9 Candidate wording (not normative; the anchor tokens and constraints above are)
+## D-9 The wording is pinned in the manifest
 
-Mode judgment, for C (neutral, no ids):
+Since correction round 2 the wording of every line the run adds is pinned in `closed-world-manifest.txt` (AC-MJ-020). It was generated from the planned text and is not repeated here: a second copy would drift (the candidate paragraph for C that this section carried before round 2 had already drifted from the text the criteria were observed against). What this file keeps is the rationale.
 
-> ### Mode judgment — serial or parallelizable
->
-> Class names the stages a card needs; mode names whether it may run beside other cards. Decide the mode at design time, from the card's expected file set — never from the queue's default. A card is `serial` only when it touches the same files or shared state as an in-flight card, or lies on a slot-gated surface (factory/todo core, release pipeline, shared migrations); every other card is `parallelizable`. The reason recorded with the classification states the file set and the conflict check, and for a `serial` card names the conflicting card or surface. Supply the judgment with `--classification-file` (decider `human`). A card that reached the queue on the fail-safe default is reissued with an explicit classification. For a Class C card, give `--spec` when the card is picked: it cannot be added after assign.
-
-Leader line for F after line 30, G:52, M `### Lease renewal`, D Routing bullet: wording in `plan.md` M1-M3 steps. The renewal home must contain the tokens `only the card the lane is actually executing`, `merge-ready`, `held`, `serial-waiting`, `expiry is harmless`, `notice`, `factory next --card`, and the marker `while the lane executes the card`. D's Routing bullet must contain `no card is actually executing` and `not a free lane`. The delegated-dispatch subsection of D is **not** candidate wording: its eight lines are pinned verbatim by `acceptance.md` E-006, the F pointer line by E-018a and the G pointer paragraph by E-018d; this file does not repeat them (one copy, so no drift).
+- **C `### Mode judgment`** is one heading and one paragraph. It says that class names the stages and mode names whether a card may run beside others; derives the mode from the expected file set; assigns `serial` only for the same files or shared state as an in-flight card, or a slot-gated surface; requires the reason to state the file set and the conflict check and, for a `serial` card, to name the conflicting card; requires `--classification-file` (decider `human`); says a card that reached the queue on the default is reissued; and carries the Class C `--spec` sentence containing `cannot be added after assign`.
+- **M `### Lease renewal`** carries the tokens `only the card the lane is actually executing`, `merge-ready`, `held`, `serial-waiting`, `expiry is harmless`, `notice`, `factory next --card` and the marker `while the lane executes the card`. **D's Routing bullet** carries `no card is actually executing` and `not a free lane`.
+- **The delegated-dispatch subsection of D, the F pointer line, the G pointer paragraph and the M row** are pinned a second time by `acceptance.md` E-006, E-018a, E-018d and E-018e. The manifest and those cells come from the same text; both are green on the same simulation (`0 0 0 0` for the manifest, the green numbers for the cells).
 
 ## D-10 What the acceptance family can see, and what it cannot
 
@@ -113,7 +111,23 @@ Leader line for F after line 30, G:52, M `### Lease renewal`, D Routing bullet: 
 | The exception written in another file under a paraphrase that carries no home token | AC-MJ-016 and AC-MJ-018 match verbatim tokens and whole lines; the sync audit reads for it |
 | An actor treating an unstated delegation as given | the ruling names no mechanism (R-5); AC-MJ-006 pins text, not practice |
 | The 0-hit absence checks of `TestAutoPickDocDoctrine` (`absent` strings) | no live control exists in a single read-only command; left to the Go run of AC-MJ-014 |
-| Wording drift between template and deployed | AC-MJ-011 (`cmp`, plus the per-milestone `git diff-tree` coherence check) and the Go parity guards, run-phase |
-| A stem-less widening of the Routing bullet (no `promot`/`queued`/`parallelizable` word) | caught by AC-MJ-005 (E-005d pins the three Routing lines), not by AC-MJ-006 (mutant N9, recorded in `progress.md`) |
+| Wording drift between template and deployed | AC-MJ-011 (`cmp`, plus the per-milestone `pairs` command with the expected pair count) and the Go parity guards, run-phase; AC-MJ-020 applies the same manifest rows to both sides |
+| Wording of the manifest rows themselves | the sync audit reads the manifest; no command judges a listed line |
+| A line moved without change, or a blank-line change | AC-MJ-020 compares non-blank lines as multisets and ignores order; a moved line in a mirrored file is seen only if the twin differs |
+| A changed path outside the eight documents, `catalog.yaml` and `binding_ledger.json` | AC-MJ-020 (b) lists it; the base-commit pin keeps the comparison stable |
+| A stem-less line *added* to the Routing bullet, to the card-review section, or before the subsection heading (no `promot`/`queued`/`parallelizable` word) | **not** caught by AC-MJ-005 (d) — it counts the pinned Routing lines that are present, and an added fourth line is not one of them — and **not** caught by AC-MJ-006, whose stem scan needs a stem: four such mutants printed `3` and `8 8 1 1` with exit 0 (iteration 1 audit, reproduced in round 2). Caught by AC-MJ-020 (observed red, first column `1`). A stem-less *edit* of a pinned Routing line (mutant N9) does fall below `3` in AC-MJ-005 (d), and is red in AC-MJ-020 as well |
 | A sentence contradicting a pinned line while also carrying the marker phrase | per-site fragment counts in E-008b bound the marker to the six named sites; a contradiction elsewhere is read by the audit |
 | The simulated post-run text used to prove the checks red/green | it is not evidence about the real tree (Gap G-15); the run-phase repeats each RED-now/green pair on the real tree |
+
+## D-11 The closed-world check (AC-MJ-020)
+
+The per-criterion cells are open-world: each looks for known tokens or pinned lines, so a line added where they do not look is invisible (four stem-less additions passed AC-MJ-005 (d) and AC-MJ-006). The remedy is a check whose unit is the file, not the claim.
+
+- **Unit.** For each of the eight documents, on the template side and on the deployed side, the multiset of non-blank lines of the working copy is compared with the multiset of non-blank lines of the same path at a pinned base commit. A surplus line is an added line; a missing line is a removed line. Four numbers per side are printed — added-not-listed, listed-not-added, removed-not-listed, listed-not-removed — and the command decides by exit status.
+- **Allowlist.** `closed-world-manifest.txt`, a plain-text file in this directory: one `file:` row per document and one `+ ` or `- ` row per allowed whole line. The plan phase writes it and freezes it, from the planned post-run text. A list filled in by the run phase would let the party the check constrains write its own allowlist; a wording change the run phase wants is a blocker report instead (the pinned cells already work this way).
+- **Why the RED-now cell is red for the right reason.** Today the working copy equals the base, so the first and third numbers are `0` (no unlisted line exists) and the second and fourth are positive (the listed additions and removals have not happened). The cell flips only by the work being done: deleting files or editing unrelated ones turns the first or third number positive instead.
+- **Other paths.** `paths` lists the changed or new paths outside `.moai/` that the manifest does not name (the sixteen documents plus the two `also:` files), so an agent file, the `.codex` emission, `docs-site` or a Go file cannot be touched unseen. The known failing input is an old base commit.
+- **Freezing.** Neither the manifest nor the check is in the plan-artifact hash subject set, so their SHA-256 values are pinned in `acceptance.md` E-020d (a hashed file): any change to either file changes the plan-artifact hash through acceptance.md.
+- **Commit shape.** `pairs` decides the run-phase obligation of AC-MJ-011: both sides of every pair in the same milestone commit, with the expected number of pairs.
+- **Tooling.** One read-only Python file, called as `python3 -I <file> <mode> <manifest> [...]`. It runs the needed read-only git queries itself, so each ledger cell is a single invocation the worktree guard accepts, with no pipe, redirection or shell variable.
+- **Limits.** Order and blank lines are not compared; nothing here judges whether a listed line is right (the audit reads the manifest). Tested on 74 mutants, all red (`acceptance.md` AC-MJ-020).

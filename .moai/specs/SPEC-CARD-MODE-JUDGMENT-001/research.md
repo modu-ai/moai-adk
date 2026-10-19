@@ -210,7 +210,7 @@ Lines 51-52 sit in the test's `absent` list: the strings `Promotion is the opera
 
 ## 11. Standing-cron statements (REQ-MJ-010): the ten sites
 
-Pin: tree `b7b44433c312da73de9f329ab08c8fa6c5aa4de0`. Source of the line numbers: the sweep of `acceptance.md` E-008a (keep-word plus cron-context word, marker phrase absent) and the site map S7, S8, S10, S13-S15 above; both trees carry the same lines. The ten sites, each of which makes a claim about when the cron is armed or kept and is scoped to `while the lane executes the card`:
+Pin: tree `b7b44433c312da73de9f329ab08c8fa6c5aa4de0` (the document trees are identical at `d31fb64239a688c053e455000cc9fe37f540b790`, the pin of correction round 2). Source of the line numbers: the sweep of `acceptance.md` E-008a (keep-word plus cron-context word, marker phrase absent) and the site map S7, S8, S10, S13-S15 above; both trees carry the same lines. The ten sites, each of which makes a claim about when the cron is armed or kept and is scoped to `while the lane executes the card`:
 
 | # | Site | Location | Today | Fragment pinned by AC-MJ-008 (b) |
 |---|---|---|---|---|
@@ -218,14 +218,14 @@ Pin: tree `b7b44433c312da73de9f329ab08c8fa6c5aa4de0`. Source of the line numbers
 | 2 | F, compressed lane-wait clause | F:119 | "… armed before the first stage, kept to the completion report; …" | `recheck armed before the first stage, kept while the lane executes the card;` |
 | 3 | F, long-form lane-wait paragraph | F:122 | "… keeps it until its completion report …" | `keeps it while the lane executes the card:` |
 | 4 | A §5.1, intake sentence | A:115-118 (keep-word line 117, tail 118) | "armed once at card intake, before the first stage, and kept until the completion report" | `and kept while the lane executes the card.` |
-| 5 | A §5.1, fire-and-renew sentence | A:127-129 | "Each fire runs the watchdog's renewal first …" | (scoped by the count of `when the lane stops executing the card`, E-008d) |
+| 5 | A §5.1, fire-and-renew sentence | A:127-129 | "Each fire runs the watchdog's renewal first …" | the two whole lines `  first (§0a of the watchdog skill), which renews the lease of the card the lane` and `  is executing, so the renewal period is also the cadence at which that lease` (E-008e, added in correction round 2: the sentence carries no keep-word and `when the lane stops executing the card` pins row 6, not this row) |
 | 6 | A §5.1, delete sentence | A:130-135 (Keep paragraph) | the cron is deleted at the completion report | `when the lane stops executing the card` (E-008d) |
 | 7 | A §14, explicit-wait carrier sentence | A:392-396 | "the standing carrier of §5.1 stays armed" during a wait on the leader | `is kept only while the lane executes the card` |
 | 8 | W, constraint bullet | W:244 | "armed at card intake and kept to the completion report" | `armed at card intake and kept while the lane executes the card` |
-| 9 | M, renew paragraph | M:26 | "A lane renews its own card lease at the start of each watchdog pass …" | pointer to `### Lease renewal` (the pinned line of AC-MJ-007) |
+| 9 | M, renew paragraph | M:26 | "A lane renews its own card lease at the start of each watchdog pass …" | the opening ``While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` `` (E-008f, added in correction round 2: AC-MJ-007 scans the `### Lease renewal` subsection only and does not read M:26) |
 | 10 | M, `### Lease renewal` cron sentence | new subsection, fourth pinned line | — | AC-MJ-007 |
 
-Kept unedited because they only name the cron and make no claim about when it is armed or kept: A:103 (§5 prompt introduction) and A:201 (§8 runner row). The one-shot wait recheck of A §14 (a different mechanism) stays; residual risk R-9. Rows 5 and 6 carry no keep-word on the line the sweep reads, which is why E-008a lists seven lines per tree and the other three sites are held by E-008b/E-008d counts.
+Kept unedited because they only name the cron and make no claim about when it is armed or kept: A:103 (§5 prompt introduction) and A:201 (§8 runner row). The one-shot wait recheck of A §14 (a different mechanism) stays; residual risk R-9. Rows 5 and 6 carry no keep-word on the line the sweep reads, which is why E-008a lists seven lines per tree and the other sites are held by the E-008b and E-008d counts, by E-008e (row 5) and E-008f (row 9), and by AC-MJ-007 (row 10).
 
 ## 12. The leader-duty enumeration (REQ-MJ-017 (d))
 
