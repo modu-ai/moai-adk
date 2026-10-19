@@ -85,3 +85,61 @@ func TestRecoverResumeOpensMoaiPathsRootNotCwd(t *testing.T) {
 		t.Fatalf("recover-resume read the cwd factory, not the moai-paths root (card t1862): %v", err)
 	}
 }
+
+// Codex PR #1833 review P2-1: with CLAUDE_PROJECT_DIR unset and the working
+// directory deleted, resolveProjectDir() returns "" and factoryCardRoot() fed
+// OpenFactory("") — which creates a stray factory DB under the scrubbed home
+// instead of failing. Both verbs must return the working-directory error and
+// create nothing.
+func TestFactoryRunsAndRecoverRefuseUnresolvableRoot(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("MOAI_HOME", filepath.Join(home, ".moai"))
+	t.Setenv("MOAI_CLAUDE_BIN", filepath.Join(home, "bin", "claude"))
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	gone := filepath.Join(t.TempDir(), "gone")
+	if err := os.MkdirAll(gone, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(gone)
+	if err := os.Remove(gone); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runFactoryCommand(t, "runs")
+	if err == nil {
+		t.Fatalf("factory runs succeeded with an unresolvable working directory: output %q", out)
+	}
+	out, err = runFactoryCommand(t, "handoff", "recover-resume", "--id", "1", "--expected-token", "x", "--decision", "fail")
+	if err == nil {
+		t.Fatalf("recover-resume succeeded with an unresolvable working directory: output %q", out)
+	}
+	var stray []string
+	_ = filepath.Walk(home, func(p string, info os.FileInfo, walkErr error) error {
+		if walkErr == nil && !info.IsDir() && strings.HasSuffix(p, ".db") {
+			stray = append(stray, p)
+		}
+		return nil
+	})
+	if len(stray) != 0 {
+		t.Fatalf("a factory DB appeared under the scrubbed home: %v", stray)
+	}
+}
+
+// Codex PR #1833 review P2-2: relaunchRetireFromRun still rooted at the raw
+// working directory, so with CLAUDE_PROJECT_DIR naming project A and the cwd
+// naming project B it probed B's factory and reported A's run unknown. It must
+// apply the same factory-root rule and retire A's dead-owner run.
+func TestRelaunchRetireFromRunOpensMoaiPathsRoot(t *testing.T) {
+	pathsRoot, cwd := rootAlignmentSandbox(t)
+	deadPID, deadStart := deadOwnerIdentity(t)
+	seedRun(t, pathsRoot, "run-relaunch-dead", deadPID, deadStart)
+	t.Setenv("CLAUDE_PROJECT_DIR", pathsRoot)
+	t.Chdir(cwd)
+	outcome := relaunchRetireFromRun(context.Background(), "run-relaunch-dead")
+	if strings.Contains(outcome, "unknown (no such run)") {
+		t.Fatalf("relaunch probed the cwd factory, not the moai-paths root: %q", outcome)
+	}
+	if !strings.Contains(outcome, "retired (owner dead)") {
+		t.Fatalf("the dead-owner run at the moai-paths root was not retired: %q", outcome)
+	}
+}
