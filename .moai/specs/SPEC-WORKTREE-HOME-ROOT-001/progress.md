@@ -326,6 +326,41 @@ Coverage note (one line per the milestone plan): the RED files also carry test c
 
 **Residual-risk.** An undefined symbol hiding past the 10-error cap that is NOT an M1 symbol would make the red wider than "solely M1 symbols"; the static collision scan (production-file grep for every surface name; helper-name scan across the package's existing 30 test files) found none, but that scan is a read, not a compile. The RED proves absence of the M1 surface, not that the tests themselves compile once the surface exists — first proof of test correctness is the M1 GREEN run, and any latent test defect surfaces there, not here.
 
+### M1 — GREEN (exit evidence)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M1, card t1640. The M1 exit evidence of plan.md §C (the test-compilation-order rule): `go build` of every package the milestone touched, tests excluded, green; then `go test` of the touched packages compiling and passing. Every call below ran as its own single invocation from the worktree root, each started only after both resource gates held (1-minute load ≤ 32 on `uptime`, memory free ≥ 50% on `memory_pressure`); one gate failure (22:35:20 KST, load 37.14) stopped the sequence under the lane's bounded-patience authorization and passed on re-gate 1 at 22:35:42 KST (load 28.26).
+
+Tree SHA for every cell of this subsection: `9663d75c98` (the M1 production commit; the measurements ran on the working tree carrying exactly that content immediately before the commit landed — no file changed between the last call and the staging).
+
+- command: `go build ./internal/worktreeroot/ ./internal/cli/worktree/`
+- gates: 22:25:27 KST, load 15.88, memory free 86%
+- exit: 0 (observed, second attempt; attempt 1 failed on a `const` initialized from `filepath.Join` — the specialist's own defect, fixed, no behavior change)
+- command: `go test -p 1 -count=1 -run Key ./internal/worktreeroot/` — exit 0, `ok ... 12.500s` (22:33:31, load 19.28, mem 86%)
+- command: `go test -p 1 -count=1 -run PathFor ./internal/worktreeroot/` — exit 0, `ok ... 0.450s` (22:33:59, load 29.79, mem 86%)
+- command: `go test -p 1 -count=1 -run Candidates ./internal/worktreeroot/` — exit 0, `ok ... 0.497s` (22:34:20, load 27.25, mem 86%)
+- command: `go test -p 1 -count=1 -run Same ./internal/worktreeroot/` — exit 0, `ok ... 0.083s` (22:34:33, load 23.04, mem 86%)
+- command: `go test -p 1 -count=1 -run TestClassify ./internal/cli/worktree/` — exit 0, `ok ... 0.592s` (22:34:46, load 28.19, mem 86%)
+- command: `go test -p 1 -count=1 -run ParseWorktreeList ./internal/cli/worktree/` — exit 0, `ok ... 0.461s` (22:35:42, load 28.26, mem 85%)
+- command: `go test -p 1 -count=1 -run TestTreeIdent ./internal/cli/worktree/` — exit 0, `ok ... 0.766s` (22:35:55, load 25.64, mem 85%)
+- command: `go test -p 1 -count=1 -run TestEnsureInstanceToken ./internal/cli/worktree/` — exit 0, `ok ... 0.965s` (22:36:10, load 21.30, mem 86%)
+- command: `go test -p 1 -count=1 -run TestMovedTo ./internal/cli/worktree/` — exit 0, `ok ... 4.810s` (22:36:23, load 19.79, mem 86%)
+- command: `go test -p 1 -count=1 -run TestMovedBy ./internal/cli/worktree/` — exit 0, `ok ... 4.275s` (22:36:47, load 24.78, mem 86%)
+- command: `go test -p 1 -count=1 ./internal/config/` — exit 1 first run: the REQ-CKH-008 shipped-key anti-rot guard failed on the new `git_strategy.worktree_project_key` missing from the triage inventory; the inventory entry was added (841 -> 842, class W, evidence the two readers) and the re-run passed — exit 0, `ok ... 7.679s` (22:38:44, load 14.58, mem 86%)
+
+Notes. `-run TestClassify` necessarily subsumes the Listing, SpellingSafe and CaseDiffering families (Go's prefix matching; the no-pipe constraint forbade alternation), so the ten calls cover all 38 RED test functions plus TestMain. The M1 tests passed with ZERO corrections: the RED files were satisfied exactly as committed. One non-test fix rode the same commit: the production loader file is named `loader_worktree_project.go` because the credentials gitignore pattern `*_key.*` (`.gitignore:199`) would have silently excluded the literal name `loader_worktree_project_key.go` from the commit.
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) M1 exits GREEN: both packages build (tests excluded) and all 38 M1 tests pass, with `internal/config` (field, loader, inventory) green on its own suite. (2) The spec.md `draft -> in-progress` flip landed in this first production commit of M1. (3) No test was weakened, skipped or corrected; no production behavior was relaxed to pass a test.
+
+**Evidence.** The twelve command invocations above with their verbatim one-line `ok` results and gate readings, this run, each gated before start; the build's failed first attempt is recorded beside its fix.
+
+**Baseline-attribution.** Measured against tree `9663d75c98` (content-identical working tree immediately pre-commit), in worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640`, 2026-10-19 22:25-22:39 KST. The `go` toolchain is external tooling (verification-claim-integrity §2.2 does not bind it).
+
+**Gaps.** (a) The package-wide `go test` of the two packages did NOT run: the `go-test-heavy` slot was held (lane-55, card t1892, bound to 2026-10-19T13:58:30Z, no `--force` taken), so the verification ran as the ten narrowed family calls above; the package-wide run is deferred to the 35e9 landing re-measure per the lane's instruction. (b) `golangci-lint` and coverage were not run at this milestone (not part of the M1 exit contract of plan.md §C; CI owns the repository-wide verdict, PENDING at report time). (c) `internal/template`'s suite was not run; the template edit's safety rests on two reads — the embed manifest is a file-set allowlist (same file, new content) and `catalog.yaml` carries zero git-strategy entries — CI re-verifies. (d) The `-run` families overlap as noted (TestClassify covers five), which the record states rather than hides.
+
+**Residual-risk.** The narrowed families exercised the tests by name; a test accidentally excluded from every family would be unexercised here — the family set was derived from the test-function inventory (38 names mapped to 10 patterns) and cross-checked against the counts, but the derivation is a read, not a mechanical proof; the deferred package-wide run closes it. The RED-to-GREEN path was single-pass, so no mutation testing of the new production logic occurred; the sync audit's independent verification is the second pair of eyes.
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
