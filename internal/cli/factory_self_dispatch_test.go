@@ -373,19 +373,23 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 	// args fails the test, so a subcommand added later is covered without
 	// editing the walk.
 	verbArgs := map[string][]string{
-		"add":         {"lane card"},
-		"list":        nil,
-		"done":        {"t1"},
-		"next":        {"1"},
-		"claim":       nil,
-		"unpick":      {"t1"},
-		"edit":        {"1", "text"},
-		"move":        {"1"},
-		"drop":        {"1", "reason"},
-		"undone":      {"t1"},
-		"undrop":      {"1"},
-		"hold":        {"1"},
-		"unhold":      {"1"},
+		"add":    {"lane card"},
+		"list":   nil,
+		"done":   {"t1"},
+		"next":   {"1"},
+		"claim":  nil,
+		"unpick": {"t1"},
+		"edit":   {"1", "text"},
+		"move":   {"1"},
+		"drop":   {"1", "reason"},
+		"undone": {"t1"},
+		"undrop": {"1"},
+		"hold":   {"1"},
+		"unhold": {"1"},
+		// classify — SPEC-FACTORY-DEFAULT-MODE-001 M2: a queue-mutation verb
+		// the lane guard refuses like every other write; the args match the
+		// verb's flag surface (id, --mode, --reason).
+		"classify":    {"t1", "--mode", "serial", "--reason", "lane walk judgment"},
 		"analyze":     nil,
 		"relate":      {"t1", "t2"},
 		"unrelate":    {"1"},
