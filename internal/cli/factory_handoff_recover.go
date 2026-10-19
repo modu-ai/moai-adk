@@ -24,18 +24,32 @@ var abandonLaneProbe = homestate.ProbeProcessIdentity
 // working directory, and OpenFactory would then recreate the tree under
 // it instead of failing (Codex PR #1833 review P2-1, card t1862).
 func verifyWorkingDir(dir string) error {
-	if info, err := os.Stat(dir); err == nil && info.IsDir() {
-		return nil
-	}
-	_, wdErr := os.Getwd()
-	if wdErr == nil {
-		if dir == "" {
-			wdErr = fmt.Errorf("project directory unresolved")
-		} else {
-			wdErr = fmt.Errorf("working directory %s is unavailable", dir)
+	if dir == "" {
+		if _, err := os.Getwd(); err != nil {
+			return err
 		}
+		return fmt.Errorf("project directory unresolved")
 	}
-	return wdErr
+	info, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("working directory %s is unavailable: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("working directory %s is not a directory", dir)
+	}
+	return nil
+}
+
+// checkedFactoryRoot validates the launch directory before applying the shared
+// queue-root rule, so maintenance verbs cannot open a fabricated factory root.
+// @MX:ANCHOR: [AUTO] Checked root resolution for factory maintenance verbs.
+// @MX:REASON: Recovery, run listing, and relaunch must share validation and mapping.
+func checkedFactoryRoot() (string, error) {
+	dir, _ := resolveProjectDirWithSource()
+	if err := verifyWorkingDir(dir); err != nil {
+		return "", err
+	}
+	return factoryRootOf(dir), nil
 }
 
 func newFactoryCommand() *cobra.Command {
@@ -47,11 +61,10 @@ func newFactoryCommand() *cobra.Command {
 		if id <= 0 || token == "" || (decision != "requeue" && decision != "fail") {
 			return fmt.Errorf("--id, --expected-token, and --decision requeue|fail are required")
 		}
-		dir, _ := resolveProjectDirWithSource()
-		if err := verifyWorkingDir(dir); err != nil {
+		root, err := checkedFactoryRoot()
+		if err != nil {
 			return err
 		}
-		root := factoryRootOf(dir)
 		db, err := homestate.OpenFactory(root)
 		if err != nil {
 			return err
@@ -105,11 +118,10 @@ func newFactoryRunsCommand() *cobra.Command {
 		Use:   "runs",
 		Short: "Report factory runs with their owner liveness, and retire a dead-owner run",
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
-			dir, _ := resolveProjectDirWithSource()
-			if err := verifyWorkingDir(dir); err != nil {
+			root, err := checkedFactoryRoot()
+			if err != nil {
 				return err
 			}
-			root := factoryRootOf(dir)
 			db, err := homestate.OpenFactory(root)
 			if err != nil {
 				return err

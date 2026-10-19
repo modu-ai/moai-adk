@@ -2,9 +2,11 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -92,37 +94,122 @@ func TestRecoverResumeOpensMoaiPathsRootNotCwd(t *testing.T) {
 // instead of failing. Both verbs must return the working-directory error and
 // create nothing.
 func TestFactoryRunsAndRecoverRefuseUnresolvableRoot(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("MOAI_HOME", filepath.Join(home, ".moai"))
-	t.Setenv("MOAI_CLAUDE_BIN", filepath.Join(home, "bin", "claude"))
-	t.Setenv("CLAUDE_PROJECT_DIR", "")
-	gone := filepath.Join(t.TempDir(), "gone")
-	if err := os.MkdirAll(gone, 0o700); err != nil {
-		t.Fatal(err)
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot remove the current working directory (PR #1833)")
 	}
-	t.Chdir(gone)
-	if err := os.Remove(gone); err != nil {
-		t.Fatal(err)
+	for name, args := range map[string][]string{
+		"runs":    {"runs"},
+		"recover": {"handoff", "recover-resume", "--id", "1", "--expected-token", "x", "--decision", "fail"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, cwd := rootAlignmentSandbox(t)
+			t.Setenv("CLAUDE_PROJECT_DIR", "")
+			t.Chdir(cwd)
+			if err := os.Remove(cwd); err != nil {
+				t.Fatal(err)
+			}
+			out, err := runFactoryCommand(t, args...)
+			if err == nil {
+				t.Fatalf("command succeeded with deleted cwd: output %q", out)
+			}
+			if !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("error lost deleted cwd cause: %v", err)
+			}
+			assertRootAlignmentNoDB(t)
+		})
 	}
-	out, err := runFactoryCommand(t, "runs")
-	if err == nil {
-		t.Fatalf("factory runs succeeded with an unresolvable working directory: output %q", out)
-	}
-	out, err = runFactoryCommand(t, "handoff", "recover-resume", "--id", "1", "--expected-token", "x", "--decision", "fail")
-	if err == nil {
-		t.Fatalf("recover-resume succeeded with an unresolvable working directory: output %q", out)
-	}
-	var stray []string
-	_ = filepath.Walk(home, func(p string, info os.FileInfo, walkErr error) error {
-		if walkErr == nil && !info.IsDir() && strings.HasSuffix(p, ".db") {
-			stray = append(stray, p)
+}
+
+func assertRootAlignmentNoDB(t *testing.T) {
+	t.Helper()
+	err := filepath.Walk(os.Getenv("HOME"), func(p string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !info.IsDir() && strings.HasSuffix(p, ".db") {
+			t.Errorf("unexpected factory DB: %s", p)
 		}
 		return nil
 	})
-	if len(stray) != 0 {
-		t.Fatalf("a factory DB appeared under the scrubbed home: %v", stray)
+	if err != nil {
+		t.Fatalf("walk sandbox home: %v", err)
 	}
+}
+
+// Preserve the pre-existing unresolved-directory refusal even when cwd is valid.
+func TestVerifyWorkingDirRejectsUnresolvedDirectory(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := verifyWorkingDir(""); err == nil || !strings.Contains(err.Error(), "project directory unresolved") {
+		t.Fatalf("verifyWorkingDir(empty) = %v, want unresolved-directory refusal", err)
+	}
+}
+
+func TestVerifyWorkingDirPreservesStatError(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	err := verifyWorkingDir(missing)
+	var pathErr *os.PathError
+	if !errors.Is(err, os.ErrNotExist) || !errors.As(err, &pathErr) || pathErr.Path != missing {
+		t.Fatalf("verifyWorkingDir(%q) = %v, want wrapped stat PathError", missing, err)
+	}
+}
+
+func TestVerifyWorkingDirRejectsFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyWorkingDir(file); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("verifyWorkingDir(file) = %v, want non-directory error", err)
+	}
+}
+
+func TestFactoryRootCommandsRejectInvalidProjectDir(t *testing.T) {
+	for _, kind := range []string{"missing", "file"} {
+		for name, args := range map[string][]string{
+			"runs":    {"runs"},
+			"recover": {"handoff", "recover-resume", "--id", "1", "--expected-token", "x", "--decision", "fail"},
+		} {
+			t.Run(kind+"/"+name, func(t *testing.T) {
+				_, cwd := rootAlignmentSandbox(t)
+				dir := filepath.Join(t.TempDir(), kind)
+				if kind == "file" {
+					if err := os.WriteFile(dir, nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				t.Setenv("CLAUDE_PROJECT_DIR", dir)
+				t.Chdir(cwd)
+				_, err := runFactoryCommand(t, args...)
+				if err == nil {
+					t.Fatal("invalid project directory accepted")
+				}
+				if kind == "missing" && !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("missing path cause lost: %v", err)
+				}
+				if kind == "file" && !strings.Contains(err.Error(), "not a directory") {
+					t.Errorf("non-directory cause lost: %v", err)
+				}
+				assertRootAlignmentNoDB(t)
+			})
+		}
+	}
+}
+
+func TestRelaunchRetireFromRunRefusesDeletedCwd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot remove the current working directory (PR #1833)")
+	}
+	_, cwd := rootAlignmentSandbox(t)
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	t.Chdir(cwd)
+	if err := os.Remove(cwd); err != nil {
+		t.Fatal(err)
+	}
+	out := relaunchRetireFromRun(context.Background(), "run-deleted")
+	if !strings.Contains(out, "working directory unavailable") || !strings.Contains(out, "left untouched") {
+		t.Fatalf("unexpected relaunch outcome: %q", out)
+	}
+	assertRootAlignmentNoDB(t)
 }
 
 // Codex PR #1833 review P2-2: relaunchRetireFromRun still rooted at the raw
