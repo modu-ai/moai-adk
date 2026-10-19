@@ -1,9 +1,10 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 (revision 0.1.2)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 (revision 0.1.3)
 
 ## A. Pin and conventions
 
 - **Document-level pin.** Tree commit `74ad197380a0711cdb9816d4e37c94d29af730ea` (branch `WT-workflow-cmd-index`, equal to local `main`). Every `git` cell names the commit in its command (`git grep … 74ad197380`, `git ls-tree … 74ad197380`), so the pin is in the cell. Measured on 2026-10-19; every cell of revision 0.1.0 was re-run in revision 0.1.1 and printed the same output.
 - **Working-tree cells.** C-3, C-12, R-8, and R-9 read working-tree files, not a git object. The working tree is at `5d16c25af8e250491104f25b6e3f73e6268d4001`, the plan commit, which adds only files under `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001/`. Evidence that `docs-site`, `.claude`, the READMEs, `scripts`, and `.github` equal `74ad197380`: `git diff --stat 74ad197380 HEAD -- docs-site .claude README.md README.ko.md README.ja.md README.zh.md scripts .github` printed nothing, and `git status --short` printed nothing, both before and after the measurements.
+- **Closing runs.** The ledger commands name `74ad197380`, so as typed they read the pre-change tree: that is the RED-now or control form. A "closing commit" check in section B runs the same command with the closing commit substituted for `74ad197380` (plan.md §B, closing-run convention); a `74ad197380` form is never evidence of the closing state.
 - **Cell form (verification-completeness §2.1).** A RED-now cell is one read-only invocation with no pipe, redirection, chaining, or subshell. Its verbatim stdout, its exit code, and the tree are separate fields. The shell tool displays no status for a command with no output; a zero-match cell therefore says `no output` and gives the exit code git defines for it (1), marked `by git grep semantics, not displayed` (gap G-1). Cells that print output state exit code 0 because the tool reported no failure.
 - **Pathspec.** Every cell addressing the twelve files uses three glob pathspecs: `':(glob)docs-site/content/*/workflow-commands/_index.md'`, `…/_meta.yaml'`, and `…/moai-design.md'`. C-3 prints the twelve paths these select, so an empty or short sweep is visible.
 - **Classes.** `release-blocking (gated)`: re-executable on the tree; counts toward the completion verdict once its gate rows carry a verdict. `guard`: green today; its failure is shown by a named mutant. `unadopted`: no RED-now cell can be measured until a decision row has a verdict.
@@ -18,7 +19,7 @@
 | AC-SWF-002 | REQ-PRC-001, REQ-SWF-002 | none | release-blocking | C-2 (C-8 list, C-3 sweep) | M2, M3 |
 | AC-SWF-003 | REQ-SWF-002, REQ-SWF-003 | none (Q13, Q17 decided) | release-blocking | C-4 | M3 |
 | AC-SWF-004 | REQ-SWF-007 | none | guard | none (green today; mutants in recipe R-4) | M4 |
-| AC-SWF-005 | REQ-SWF-004 | none (Q14 decided: remove) | release-blocking | C-5 | M2 |
+| AC-SWF-005 | REQ-SWF-004 | none (Q14 decided: remove) | release-blocking | C-5 | M2, M3 |
 | AC-SWF-006 | REQ-SWF-005, REQ-SWF-006 (both superseded) | — | SUPERSEDED by the Q14 verdict; not applicable | none | none |
 | AC-SWF-007 | REQ-SWF-008 | none (leader ruling O-4; Q13 decided) | release-blocking | C-11 (controls C-10, C-12) | M3 |
 | AC-SWF-008 | REQ-SWF-009 | none (Q14 decided: remove) | release-blocking | C-13 (C-5, C-18) | M2 |
@@ -88,7 +89,7 @@ Every live REQ has an AC and every live AC maps to a REQ (8 of 8; REQ-SWF-005, -
 - **Given** the page is linked from the four `_index.md` files, registered in the four `_meta.yaml` files, and listed in `docs-site/data/menu/main.yaml` (C-5: ten lines).
 - **When** the Q14 verdict (remove) is applied and M2 deletes the four pages, the four `_meta.yaml` entries, and the `main.yaml` entry,
 - **Then**
-  1. The C-5 command run on the closing commit (after M3) prints nothing and exits 1: no line under `docs-site/content` and none in `docs-site/data`. After M2 alone the whole-set C-5 still prints the five `_index.md` lines (M3 deletes them); the M2 check is C-5 narrowed to the `_meta.yaml`, page, and `docs-site/data` paths (plan.md §B M2 step 4), which prints nothing.
+  1. The C-5 command run on the closing commit (after M3) prints nothing and exits 1: no line under `docs-site/content` and none in `docs-site/data`. After M2 alone the whole-set C-5 still prints the five `_index.md` lines (M3 deletes them); the M2 check is C-5 narrowed to the `_meta.yaml`, page, and `docs-site/data` paths (plan.md §B M2 step 4), run against `<M2-closing-sha>`, which prints nothing. Both closing forms substitute the closing commit for `74ad197380`; the `74ad197380` form reads the pre-change tree and is the RED-now control (the narrowed form prints 5 lines there).
   2. Each `_meta.yaml` still parses and lists only keys that name an existing page, `index`, or `new_items` (the exempt non-page key; recipe R-5: `yq 'keys'` on each file, compared with the page file names of the same directory).
 - **RED-now cells:** C-5. Red because 10 lines name the page today (4 `_index.md` rows, with ko holding 2, 4 `_meta.yaml` keys, and `main.yaml:208`).
 - **Green path:** M3 flips the five `_index.md` lines; M2 flips the four `_meta.yaml` keys and the `main.yaml` line.

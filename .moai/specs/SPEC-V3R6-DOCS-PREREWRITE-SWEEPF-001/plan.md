@@ -1,4 +1,4 @@
-# SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 — Implementation Plan (revision 0.1.2)
+# SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 — Implementation Plan (revision 0.1.3)
 
 Methodology: documentation edits verified by the RED-now and green cells of acceptance.md §C (no code, so no test-first cycle; the grep cells are the red state and the green check). Milestones are ordered by decision reversibility: the page, navigation, and baseline deletions (the user-visible change) come first in the section order, and the mechanical row edits after. Execution order is the dependency order in § B. No time estimates are given.
 
@@ -6,7 +6,7 @@ Methodology: documentation edits verified by the RED-now and green cells of acce
 
 - **Card and branch.** Factory card t1727 (Class C, docs only), branch `WT-workflow-cmd-index`, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1727`, base `74ad197380a0711cdb9816d4e37c94d29af730ea` (local `main`). Child 11 of 11 of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001.
 - **Artifacts.** spec.md, plan.md, acceptance.md (Tier M), plus decision-index.md and progress.md. Measurements are the ledger cells of acceptance.md §C.
-- **Rulings applied (revision 0.1.2).** Operator verdicts of record `d-20261019T015908Z-220a` (Q13 replace where an equivalent exists, delete where none exists; Q17 all four locales in the same change) and `d-20261019T021508Z-258e` (Q14: delete the `moai-design` page in all four locales, remove the `main.yaml` entry and baseline line 51, delete the `_index.md` design rows; relayed by the dispatching coordinator, acceptance.md G-10). Leader ruling `d-20261019T020706Z-1c58` (decided by the leader, session `d1aa9eb6`, under operator delegation, ladder path 6): O-1 = (a), O-2 = include `main.yaml:204-208`, O-3 = update the parity baseline line, O-4 = correct the "All subcommands (16)" count to the actual row count. The leader ruling is not an operator verdict. No decision row is open.
+- **Rulings applied (revision 0.1.3).** Operator verdicts of record `d-20261019T015908Z-220a` (Q13 replace where an equivalent exists, delete where none exists; Q17 all four locales in the same change) and `d-20261019T021508Z-258e` (Q14: delete the `moai-design` page in all four locales, remove the `main.yaml` entry and baseline line 51, delete the `_index.md` design rows; relayed by the dispatching coordinator, acceptance.md G-10). Leader ruling `d-20261019T020706Z-1c58` (decided by the leader, session `d1aa9eb6`, under operator delegation, ladder path 6): O-1 = (a), O-2 = include `main.yaml:204-208`, O-3 = update the parity baseline line, O-4 = correct the "All subcommands (16)" count to the actual row count. The leader ruling is not an operator verdict. No decision row is open.
 - **Change set.** Fourteen paths: ten files edited (four `_index.md`, four `_meta.yaml`, `main.yaml`, `.locale-parity-baseline`) and four pages deleted (spec.md § Scope).
 
 ### A.1 Who edits what in the run phase (ruling O-1 = (a))
@@ -32,6 +32,8 @@ Rules this table fixes:
 
 ## B. Milestones (dependency order)
 
+**Closing-run convention.** Every ledger cell of acceptance.md §C is written against `74ad197380`, so as typed it reads the pre-change tree and is the RED-now (or control) form. A closing check at any milestone runs the same command with the milestone's closing commit (`<M2-closing-sha>`, `<M3-closing-sha>`, `<closing-sha>`) in place of `74ad197380`; the expected outputs below and in acceptance.md are for that substitution. The cells that read the working tree (C-3, C-12, R-8, R-9) are run on the tree of the closing commit.
+
 ### M1 — Priority High: pre-flight and the Q13 determination
 
 1. Confirm HEAD is `74ad197380` or a descendant that leaves acceptance.md cells C-1 to C-14 unchanged (re-run C-1, C-2, C-4, C-8, C-11, C-12, C-13, C-14; compare); if any differs, stop and report the drift.
@@ -45,7 +47,7 @@ Order inside M2:
 1. Content author: delete the ko page and baseline line 51 (delete only; add no line).
 2. Translators: delete the en page, then the ja and zh pages in parallel.
 3. Curator, one pass: remove the `moai-design` key and its `title` from the four `_meta.yaml` files, and delete `main.yaml` lines 203 to 208 as one block (the `- name:` line, the four name-map lines, and the `ref` line). Never delete the name-map lines and leave the `ref`.
-4. Run C-5 narrowed to the M2 files (`git grep -n -E "moai-design" 74ad197380 -- ':(glob)docs-site/content/*/workflow-commands/_meta.yaml' ':(glob)docs-site/content/*/workflow-commands/moai-design.md' docs-site/data`, expect no output at the closing commit of M2; the whole-set C-5 still prints the five `_index.md` lines until M3 lands and is expected to print nothing only after M3), C-13 (expect no output), C-14 (expect no output), R-5, R-8 (no output), R-9 (`6`), R-10 (`0	1	docs-site/.locale-parity-baseline`).
+4. Run, with `<M2-closing-sha>` (the commit that closes M2) in place of `74ad197380`: C-5 narrowed to the M2 files (`git grep -n -E "moai-design" <M2-closing-sha> -- ':(glob)docs-site/content/*/workflow-commands/_meta.yaml' ':(glob)docs-site/content/*/workflow-commands/moai-design.md' docs-site/data`, expect no output, exit 1). The same command with `74ad197380` is the pre-deletion control only: it reads the pre-change tree and prints 5 lines (four `_meta.yaml:12:"moai-design":` and `docs-site/data/menu/main.yaml:208`) however correct M2 is. The whole-set C-5 still prints the five `_index.md` lines until M3 lands and is expected to print nothing only after M3 (run with `<closing-sha>`). Also C-13 (expect no output) and C-14 (expect no output), each with `<M2-closing-sha>`, R-5, R-8 (no output), R-9 (`6`), R-10 (`0	1	docs-site/.locale-parity-baseline`).
 
 ### M3 — Priority High: `_index.md` design rows and count statements in four locales (REQ-PRC-001, REQ-SWF-002, -003, -008)
 

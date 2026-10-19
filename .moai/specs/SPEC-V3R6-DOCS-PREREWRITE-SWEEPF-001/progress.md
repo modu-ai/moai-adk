@@ -4,7 +4,7 @@
 
 plan_status: audit-ready
 audit_ready: true
-plan_revision: 0.1.2
+plan_revision: 0.1.3
 plan_complete_at: 2026-10-19T02:14:25Z
 tier: M
 requirement_count: 8 live (10 numbered; REQ-SWF-005 and REQ-SWF-006 superseded)
@@ -16,6 +16,8 @@ plan_audit_verdict_files: .moai/reports/t1727/plan-audit.md
 plan_artifact_hash: pending
 
 Repair 0.1.2 (after plan-audit iteration 1, MP-9): D1 M2 check scoped to the M2 files, D2 guard pathspec adds `.moai/config`, D3 `new_items` exempt in AC-SWF-005, D4 C-12 after M3; no REQ/AC added. The lint line above was re-run at 0.1.2 (see the repair report).
+
+Repair 0.1.3 (delta audit iteration 2, D7): the M2-closing C-5 targets `<M2-closing-sha>`, the `74ad197380` form is the pre-deletion control, and a closing-run convention covers sibling cells; AC-SWF-005 green path reads M2, M3.
 
 The plan is ready for the independent plan audit; it is not approved. The artifact hash is recorded by the lane from the runtime value after the audit.
 
