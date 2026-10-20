@@ -673,7 +673,7 @@ Measured by the run-phase specialist (manager-develop, cycle_type tdd), mileston
 
 ```yaml
 run_complete_at: "2026-10-20T15:56:50Z"
-run_commit_sha: "pending-backfill-run"   # the M8 evidence commit lands with this placeholder; backfilled per the D3 exemption
+run_commit_sha: "12024a7ded"   # the M8 evidence commit (the run phase's final commit); backfilled per the D3 exemption; the repairs ride 829591841a
 run_status: audit-ready
 ac_pass_count: 25   # every base AC-WHR-001..025 identifier carries recorded green cells in §E.2 (22 named per-cell across M0-M7; 015, 016, 018 pinned through M6's five engine tests per M6's vs-acceptance.md paragraph); checkable by reading §E.2
 ac_fail_count: 0    # no AC cell records FAIL at run close; the pre-existing t1869 guard failure is not an AC cell of this SPEC
