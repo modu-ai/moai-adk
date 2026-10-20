@@ -591,6 +591,7 @@ func flFirstGhCall(t *testing.T, answer func() (string, error)) func() time.Time
 		once  sync.Once
 	)
 	prevRun := todoRunCommand
+	prevContextRun := todoRunCommandContext
 	todoRunCommand = func(name string, args ...string) (string, error) {
 		if name != "gh" {
 			return prevRun(name, args...)
@@ -598,7 +599,14 @@ func flFirstGhCall(t *testing.T, answer func() (string, error)) func() time.Time
 		once.Do(func() { first.Store(time.Now()) })
 		return answer()
 	}
-	t.Cleanup(func() { todoRunCommand = prevRun })
+
+	todoRunCommandContext = func(ctx context.Context, name string, args ...string) (string, error) {
+		if name != "gh" {
+			return prevContextRun(ctx, name, args...)
+		}
+		return todoRunCommand(name, args...)
+	}
+	t.Cleanup(func() { todoRunCommand = prevRun; todoRunCommandContext = prevContextRun })
 	return func() time.Time {
 		at, _ := first.Load().(time.Time)
 		return at
@@ -708,7 +716,7 @@ func flAssertMarkAfterRelease(t *testing.T, released, marked time.Time) {
 // cannot precede the release; a verb that returns with the lock still held
 // skipped the wait. The mark itself must be observed, which the mark watch
 // bounds at flCommitWatchLimit as a hang guard, not a measurement; elapsed times
-// are logged for diagnostics only. For each form the verb exits 0, the card is
+// are also bounded by B + 500 ms. For each form the verb exits 0, the card is
 // leased with its worktree recorded, the open-PR query ran before the release,
 // and the run's unreconciled count is then 0 with exactly one record.drift event
 // for the entry.
