@@ -133,7 +133,7 @@ func TestSaveWorktreeEntries_CreatesFile(t *testing.T) {
 		},
 	}
 
-	saveWorktreeEntries(statePath, entries)
+	saveWorktreeEntriesAtomic(statePath, entries)
 
 	// Verify file was created.
 	data, err := os.ReadFile(statePath)
@@ -152,7 +152,7 @@ func TestSaveWorktreeEntries_EmptySlice(t *testing.T) {
 	dir := t.TempDir()
 	statePath := filepath.Join(dir, "worktrees.json")
 
-	saveWorktreeEntries(statePath, []WorktreeEntry{})
+	saveWorktreeEntriesAtomic(statePath, []WorktreeEntry{})
 
 	data, err := os.ReadFile(statePath)
 	if err != nil {
@@ -180,8 +180,8 @@ func TestSaveWorktreeEntries_LoadRoundtrip(t *testing.T) {
 		},
 	}
 
-	saveWorktreeEntries(statePath, entries)
-	loaded := loadWorktreeEntries(statePath)
+	saveWorktreeEntriesAtomic(statePath, entries)
+	loaded, _ := loadWorktreeEntriesStrict(statePath)
 
 	if len(loaded) != 1 {
 		t.Fatalf("loaded %d entries, want 1", len(loaded))

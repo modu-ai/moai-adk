@@ -18,6 +18,7 @@ package hook
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -214,7 +215,7 @@ func TestWorktreeRegistry_TwoWritersAcrossProcessesLoseNeitherEntry(t *testing.T
 		}
 	}
 	go run("m5-register", "/repo/.claude/worktrees/t7")
-	run("m5-rekey", "", "") // re-keys t6 to t6-moved inside the child
+	run("m5-rekey", "/repo/.claude/worktrees/t6") // re-keys t6 inside the child
 
 	time.Sleep(200 * time.Millisecond) // let both children finish their sections
 
@@ -242,18 +243,34 @@ func TestWorktreeRegistry_HeldLockPastLoweredBoundLapses(t *testing.T) {
 	lockPath := stateFile + ".lock"
 
 	// A live child the test started holds the state-file lock for 2s and
-	// exits on its own (no kill needed).
+	// exits on its own (no kill needed). It signals readiness by creating
+	// the ready file after the lock is held, so the parent's write cannot
+	// race ahead of the acquisition.
+	readyFile := lockPath + ".ready"
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestM5HelperProcess")
 	cmd.Env = append(os.Environ(),
 		"M5_HELPER=hold-lock",
 		"M5_LOCK_PATH="+lockPath,
+		"M5_READY_FILE="+readyFile,
 	)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start holder child: %v", err)
 	}
 	t.Cleanup(func() { _ = cmd.Wait() })
+	t.Cleanup(func() { _ = os.Remove(readyFile) })
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(readyFile); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the holder child never signaled readiness")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 
 	// Lower the wait bound through the seam for this run only.
 	origBudget := stateLockWaitBudget
@@ -267,7 +284,7 @@ func TestWorktreeRegistry_HeldLockPastLoweredBoundLapses(t *testing.T) {
 	if err == nil {
 		t.Fatal("the write succeeded while the lock was held past the bound")
 	}
-	if !strings.Contains(err.Error(), "state lock") {
+	if !errors.Is(err, ErrStateLockWaitLapsed) {
 		t.Errorf("error %v is not the distinct lapse error", err)
 	}
 	if elapsed < 50*time.Millisecond {
@@ -308,12 +325,16 @@ func TestM5HelperProcess(t *testing.T) {
 		_ = RekeyWorktreeEntry(projectDir, oldPath, oldPath+"-moved")
 	case "hold-lock":
 		lockPath := os.Getenv("M5_LOCK_PATH")
+		readyFile := os.Getenv("M5_READY_FILE")
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
 		if err != nil {
 			os.Exit(3)
 		}
 		if err := lockfile.Lock(f); err != nil {
 			os.Exit(4)
+		}
+		if readyFile != "" {
+			_ = os.WriteFile(readyFile, []byte("held"), 0o644)
 		}
 		time.Sleep(2 * time.Second)
 		_ = lockfile.Unlock(f)

@@ -58,10 +58,15 @@ func rebindOpen(t *testing.T) *FactoryDB {
 // PreviousCardWorktree answers P_new for the other run.
 func TestRebindCardWorktree_RebindsEveryRunRowOfTheCard(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := "/repo/.moai/worktrees/t7"
-	pNew := "/home/worktrees/projects/repo/t7"
+	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
+	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
 	rebindPick(t, db, "run-a", "t7", pOld)
 	rebindPick(t, db, "run-b", "t7", pOld)
+	// The migration moved the tree to P_new before rebinding: the target is
+	// a registered worktree (the probe's default mechanical check).
+	if err := os.MkdirAll(filepath.Join(pNew, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir moved-tree .git: %v", err)
+	}
 
 	rows, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pNew, "rebind-test", rebindNow)
 	if err != nil {
@@ -110,8 +115,8 @@ func rebindCard(t *testing.T, db *FactoryDB, runID, cardID string) Card {
 // changes nothing.
 func TestRebindCardWorktree_StaleOldPathIsRefused(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := "/repo/.moai/worktrees/t7"
-	pNew := "/home/worktrees/projects/repo/t7"
+	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
+	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
 	rebindPick(t, db, "run-a", "t7", pOld)
 
 	if _, err := db.RebindCardWorktree(context.Background(), "t7", "/some/other/old", pNew, "rebind-test", rebindNow); err == nil {
@@ -127,7 +132,7 @@ func TestRebindCardWorktree_StaleOldPathIsRefused(t *testing.T) {
 // is not a registered worktree is refused; a registered target passes.
 func TestRebindCardWorktree_TargetMustBeRegistered(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := "/repo/.moai/worktrees/t7"
+	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
 	pRegistered := "/repo/.moai/worktrees/t7-moved"
 	pUnregistered := "/nowhere/t7-moved"
 	rebindPick(t, db, "run-a", "t7", pOld)
@@ -152,8 +157,8 @@ func TestRebindCardWorktree_TargetMustBeRegistered(t *testing.T) {
 // path — the probe accepts both leaves.
 func TestRebindCardWorktree_ReverseRebindAfterReverseMove(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := "/repo/.moai/worktrees/t7"
-	pNew := "/home/worktrees/projects/repo/t7"
+	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
+	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
 	rebindPick(t, db, "run-a", "t7", pOld)
 
 	orig := cardWorktreeTargetProbe
@@ -178,7 +183,7 @@ func TestRebindCardWorktree_ReverseRebindAfterReverseMove(t *testing.T) {
 // arrival (AC-WHR-011's last clause).
 func TestRecordCardWorktree_StillRefusesPathChange(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := "/repo/.moai/worktrees/t7"
+	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
 	rebindPick(t, db, "run-a", "t7", pOld)
 
 	if _, err := db.RecordCardWorktree(context.Background(), "run-a", "t7", "/elsewhere/t7", "rebind-test", rebindNow); err == nil {
