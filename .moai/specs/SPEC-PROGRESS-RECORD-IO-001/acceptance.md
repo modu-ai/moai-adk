@@ -47,7 +47,7 @@ branches.
   Given the held family is promoted verbatim into `internal/runtime` (darwin tag) and the seeder
   is UNCHANGED, When the family runs, Then it FAILS because the exec-based seeder cannot run with
   `PATH=""`.
-  Command: `go test -run TestAppendProgressRecordPreservesAllMetadataAxes ./internal/runtime/`
+  Command: `go test -run '^TestAppendProgressRecordPreservesAllMetadataAxes$' ./internal/runtime/`
   (on the pre-fix tree)
   Expected: exit 1, FAIL output naming the exec/PATH failure. Verbatim stdout + exit code + tree
   SHA recorded in `progress.md` §E.2 at M2 entry — RED observed, not inferred
@@ -77,13 +77,13 @@ branches.
   `TestAppendProgressRecordSwapKeepsForeignFile` (F15, `audit_ceiling_replace_test.go:220`), the
   close-hygiene probe `TestAppendProgressRecordSeedCloseHygiene` (F16 — see below), and the
   ACL/xattr per-axis tests.
-  Command: `go test -race -count=2 -v -run '^TestAppendProgressRecord' ./internal/runtime/`
+  Command: `go test -race -count=2 -v -run '^(TestAppendProgressRecordPreservesACL|TestAppendProgressRecordAclExactlyOriginal|TestAppendProgressRecordPreservesXattr|TestAppendProgressRecordSeedCloseHygiene|TestAppendProgressRecordSkipsHeadingInsideFence|TestAppendProgressRecordStartHeadingSkipsFence|TestAppendProgressRecordGateInputsSingleSectionG|TestAppendProgressRecordStartHeadingSkipsListFence|TestAppendProgressRecordClosesOrderedListFence|TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock|TestAppendProgressRecordWriteDeniedKeepsFile|TestAppendProgressRecordSeedFailureAborts|TestAppendProgressRecordPreservesOwnership|TestAppendProgressRecordTempSwapFailsClosed|TestAppendProgressRecordSwapKeepsForeignFile|TestAppendProgressRecordPreservesHardlink|TestAppendProgressRecordLandsInUnwritableDir|TestAppendProgressRecordWritesThroughSymlink|TestAppendProgressRecordWritesThroughDanglingSymlink|TestAppendProgressRecordWritesThroughSymlinkChain|TestAppendProgressRecordResolvesDotDotThroughSymlink|TestAppendProgressRecordPopsResolvedPosition|TestAppendProgressRecordMidComponentAbsenceFailsClosed|TestAppendProgressRecordConcurrentSurvival|TestAppendProgressRecordInsertsAtSectionEnd|TestAppendProgressRecordNewFileModeAppliesUmask|TestAppendProgressRecordExistingFileModePreserved)$' ./internal/runtime/`
   Expected: exit 0, `ok` line, and **zero `SKIP` lines**. A SKIP (e.g. the ACL-axis `Skipf` at
   `audit_ceiling_acl_test.go:65` on an inherited-ACL-restricted environment) is a non-decisive
   observation, never evidence: a run with any SKIP does not satisfy this AC — the decisive run
   re-executes on a capable environment before close (the fallback is recorded in §E.2 as
   non-decisive, never as a pass).
-  **Route-(ii) anchor (N3)**: under route (ii) the `-run '^TestAppendProgressRecord'` anchor
+  **Route-(ii) anchor (N3)**: under route (ii) the AC-PRI-005 `-run` anchor
   must not select the promoted RED family — the invocation carries
   `-skip '^TestAppendProgressRecordPreservesAllMetadataAxes$'` (the kept exec seeder cannot pass
   the PATH-stripped family); the F15/F16 guards stay covered.
@@ -144,7 +144,7 @@ branches.
   shape) — follows the symlink and clobbers the victim, which this AC detects. Unlike
   `TestAppendProgressRecordTempSwapFailsClosed` (`audit_ceiling_replace_test.go:174-182`), which
   stubs the seeder and observes none of this, this AC exercises the real implementation.
-  Command: `go test -race -count=2 -run TestAppendProgressRecordRealSeedMidSwap
+  Command: `go test -race -count=2 -run '^TestAppendProgressRecordRealSeedMidSwap$'
   ./internal/runtime/` (darwin)
   Expected: exit 0, `ok`. Characterization posture: it passes on the current seeder (the
   pre-check rejects the symlink) and MUST keep passing post-fix — wired into M2's GREEN gate and
