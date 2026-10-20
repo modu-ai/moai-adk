@@ -2009,7 +2009,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			}
 		case factory.BacklogStatePicked:
 			if row, hasRow := rowByID[it.ID]; hasRow &&
-				!(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}
 		default:
