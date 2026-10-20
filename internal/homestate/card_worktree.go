@@ -182,6 +182,23 @@ func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, new
 	return rebound, nil
 }
 
+// CardRecordingPath returns the card id of the run row that records the
+// given worktree path (SPEC-WORKTREE-HOME-ROOT-001 M6: the migration's
+// rebind finds the card bound to the moved tree). ok is false when no run
+// row records the path. It never writes.
+func (f *FactoryDB) CardRecordingPath(ctx context.Context, path string) (string, bool, error) {
+	const query = `SELECT card_id FROM cards WHERE worktree_path = ? ORDER BY updated_at DESC LIMIT 1`
+	var cardID string
+	err := f.DB.QueryRowContext(ctx, query, path).Scan(&cardID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return cardID, true, nil
+}
+
 // PreviousCardWorktree reads the newest worktree binding recorded for cardID
 // in a run other than excludeRunID — the binding a run replacement may carry
 // into the new run's row (card t1521). Card rows are keyed per run, so a

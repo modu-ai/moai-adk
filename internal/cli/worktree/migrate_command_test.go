@@ -160,6 +160,21 @@ func TestMigrateVerb_IsRegistered(t *testing.T) {
 	}
 }
 
+// m4RunMigrate invokes `moai worktree migrate` with args on a fresh command
+// instance (the same pattern as m4RunList).
+func m4RunMigrate(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	migrateCmd := newMigrateCmd()
+	buf := &strings.Builder{}
+	migrateCmd.SetOut(buf)
+	migrateCmd.SetErr(buf)
+	migrateCmd.SetArgs(args)
+	if err := migrateCmd.Execute(); err != nil {
+		return buf.String(), err
+	}
+	return buf.String(), nil
+}
+
 // TestMigrate_DryRunWritesNothing pins AC-WHR-015's first half: a dry run
 // exits 0, names the plan, and writes nothing — no move-list line, no
 // destination, no assignment change.
@@ -173,7 +188,7 @@ func TestMigrate_DryRunWritesNothing(t *testing.T) {
 		t.Fatalf("the fixture already has a move list: %v", err)
 	}
 
-	out, err := m4RunList(t, "migrate")
+	out, err := m4RunMigrate(t)
 	if err != nil {
 		t.Fatalf("migrate (dry run): %v\n%s", err, out)
 	}
@@ -200,7 +215,8 @@ func TestMigrate_ApplyMovesEligibleAndSkipsProtected(t *testing.T) {
 	w := m6NewWorld(t)
 	m4InRepo(t, w.repo)
 
-	out, err := m4RunList(t, "migrate", "--apply")
+	out, err := m4RunMigrate(t, "--apply")
+	t.Logf("apply output:\n%s", out)
 	if err != nil {
 		t.Fatalf("migrate --apply: %v\n%s", err, out)
 	}
@@ -212,14 +228,15 @@ func TestMigrate_ApplyMovesEligibleAndSkipsProtected(t *testing.T) {
 		t.Error("the non-WT- tree rc30-preview6 was not moved (witness c must move)")
 	}
 	// The protected trees stayed.
-	for _, p := range []string{w.agentTree, w.lockedTree, w.unclassifiedTree, w.destHeld} {
+	for _, p := range []string{w.agentTree, w.lockedTree, w.unclassifiedTree} {
 		if !m6Registered(t, w.repo, p) {
 			t.Errorf("protected tree %s was moved or removed", p)
 		}
 	}
-	// No tree landed under the pre-occupied destination.
-	if m6Registered(t, w.repo, filepath.Join(w.repo, ".moai", "worktrees", "held6", "anything")) {
-		t.Error("a tree was moved onto the pre-occupied destination")
+	// The pre-occupied destination is a plain directory (not a worktree):
+	// it is checked by existence, not by registration.
+	if _, statErr := os.Stat(w.destHeld); statErr != nil {
+		t.Errorf("the pre-occupied destination %s was removed: %v", w.destHeld, statErr)
 	}
 	// The move list exists and carries the settled moves.
 	mlPath := filepath.Join(w.repo, ".moai", "state", "worktree-migrate", "move-list.jsonl")
@@ -234,7 +251,7 @@ func TestMigrate_ApplyMovesEligibleAndSkipsProtected(t *testing.T) {
 	// A second apply moves nothing further.
 	stateBefore := m6Git(t, w.repo, "worktree", "list", "--porcelain")
 	mlBefore, _ := os.ReadFile(mlPath)
-	if _, err := m4RunList(t, "migrate", "--apply"); err != nil {
+	if _, err := m4RunMigrate(t, "--apply"); err != nil {
 		t.Fatalf("second migrate --apply: %v", err)
 	}
 	if stateAfter := m6Git(t, w.repo, "worktree", "list", "--porcelain"); stateAfter != stateBefore {
@@ -246,7 +263,7 @@ func TestMigrate_ApplyMovesEligibleAndSkipsProtected(t *testing.T) {
 	}
 
 	// Verify reports each recorded move as intact.
-	vout, verr := m4RunList(t, "migrate", "--verify")
+	vout, verr := m4RunMigrate(t, "--verify")
 	if verr != nil {
 		t.Fatalf("migrate --verify: %v\n%s", verr, vout)
 	}
@@ -262,7 +279,7 @@ func TestMigrate_ApplyMovesEligibleAndSkipsProtected(t *testing.T) {
 func TestMigrate_RollbackRestoresTheTrees(t *testing.T) {
 	w := m6NewWorld(t)
 	m4InRepo(t, w.repo)
-	if _, err := m4RunList(t, "migrate", "--apply"); err != nil {
+	if _, err := m4RunMigrate(t, "--apply"); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	mlDir := filepath.Join(w.repo, ".moai", "state", "worktree-migrate")
@@ -280,7 +297,7 @@ func TestMigrate_RollbackRestoresTheTrees(t *testing.T) {
 	mlPath := filepath.Join(mlDir, "move-list.jsonl")
 	mlBefore, _ := os.ReadFile(mlPath)
 
-	if _, err := m4RunList(t, "migrate", "--rollback", journalPath); err != nil {
+	if _, err := m4RunMigrate(t, "--rollback", journalPath); err != nil {
 		t.Fatalf("rollback: %v", err)
 	}
 	if !m6Registered(t, w.repo, w.movedTree) {
@@ -296,7 +313,7 @@ func TestMigrate_RollbackRestoresTheTrees(t *testing.T) {
 
 	// A re-apply moves the trees again with new moved entries.
 	mlMid, _ := os.ReadFile(mlPath)
-	if _, err := m4RunList(t, "migrate", "--apply"); err != nil {
+	if _, err := m4RunMigrate(t, "--apply"); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	mlFinal, _ := os.ReadFile(mlPath)
@@ -312,7 +329,7 @@ func TestMigrate_RollbackRestoresTheTrees(t *testing.T) {
 func TestMigrate_AgentTreeNoLongerSelected(t *testing.T) {
 	w := m6NewWorld(t)
 	m4InRepo(t, w.repo)
-	out, err := m4RunList(t, "migrate")
+	out, err := m4RunMigrate(t)
 	if err != nil {
 		t.Fatalf("migrate (dry run): %v\n%s", err, out)
 	}

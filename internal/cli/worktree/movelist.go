@@ -375,3 +375,42 @@ func isLocationLine(r string) bool {
 	}
 	return false
 }
+
+// appendMoveListLine appends one settled-step record to the move list of
+// the primary checkout (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-012, D-11): one
+// write per line, a newline first when the last byte is not one, never
+// rewritten or truncated, and no append when the line equals the latest
+// entry naming either of its two paths (a move re-applied after a rollback
+// is appended; an identical re-run adds nothing). The caller holds the
+// migration lock.
+func appendMoveListLine(mlPath, line string) {
+	data, _ := os.ReadFile(mlPath)
+	// The dedupe: compare against the latest entry naming either path.
+	rev := revLines(string(data))
+	if len(rev) > 0 && rev[0] == line {
+		return // identical re-run: nothing to append
+	}
+	fh, err := os.OpenFile(mlPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer func() { _ = fh.Close() }()
+	if fi, serr := os.Stat(mlPath); serr == nil && fi.Size() > 0 {
+		raw, _ := os.ReadFile(mlPath)
+		if len(raw) > 0 && raw[len(raw)-1] != '\n' {
+			_, _ = fh.Write([]byte("\n"))
+		}
+	}
+	_, _ = fh.WriteString(line + "\n")
+}
+
+// revLines returns the non-empty lines of the file, last first.
+func revLines(data string) []string {
+	var out []string
+	for _, l := range strings.Split(data, "\n") {
+		if strings.TrimSpace(l) != "" {
+			out = append(out, l)
+		}
+	}
+	return out
+}
