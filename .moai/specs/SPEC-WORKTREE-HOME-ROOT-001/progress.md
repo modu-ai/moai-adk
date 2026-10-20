@@ -783,6 +783,33 @@ total_run_phase_files: 121   # 84 committed across M0-M7 + 11 in the M8 commits 
 m1_to_mN_commit_strategy: "per-milestone paired commits — each Mx lands RED (test) then GREEN (feat) then evidence (docs), observed in git log from M1 through M7; M8 lands evidence + repairs in one commit"
 ```
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: "2026-10-20T20:27:26Z"
+sync_commit_sha: "pending-backfill"   # canonical D3 placeholder — a commit cannot cite its own hash; the real SHA is backfilled in the follow-up commit
+sync_status: "PASS-WITH-DEBT 0.88"
+sync_audit: "iter2 PASS-WITH-DEBT 0.88 (receipt rcpt-8870d60b4cde43e9a3eb3841, convergence ok) — verdict .moai/reports/t1640/sync-audit-iter2.md; iter1 FAIL 0.62 (.moai/reports/t1640/sync-audit-iter1.md): findings F1-F11 repaired and re-verified, F6 disposed at card level by the bd72 operator ruling citation (disposition record 2026-10-21 05:03 KST, leader-approved)"
+b12_self_test_a: "pass — grep -c 'SPEC-WORKTREE-HOME-ROOT-001' CHANGELOG.md → stdout 0, exit 1 immediately before emission (no duplicate entry from a parallel BATCH-SYNC session)"
+b12_self_test_b: "pass — LIVE AC count 32 (MOAI-AC-COUNTER over acceptance.md: live=32 excluded=0 ambiguous=0; 25 parent criteria AC-WHR-001..025 with the sub-lettered a/b cells counted as their own identifiers); the CHANGELOG entry references the same count"
+b12_self_test_c: "pass — every implementation path named in the CHANGELOG entry verified present by ls/reads before commit (internal/worktreeroot/, internal/cli/worktree/classify.go, movelist.go, list.go, retire.go, migrate.go, new.go, internal/homestate/card_worktree.go, internal/hook/worktree_registry.go, internal/lockfile/, internal/session/anchor.go, internal/cli/launch_view.go, cc.go, glm.go, update_worktree_migration.go)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, first bullet"
+frontmatter_status_transitions.spec_md: "in-progress → completed (the merged 3-phase close rides this sync commit; updated: 2026-10-21; NO body edits)"
+frontmatter_status_transitions.plan_acceptance: "no-op recorded — plan.md and acceptance.md carry no frontmatter block (grep '^---$' → no match in either file), so there is no updated: field to refresh; authoring new frontmatter is out of sync-phase scope"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests depend on"
+mx_tag_validation: "sync sub-step — observed on the final tree: @MX:ANCHOR on the worktreeroot resolver entry and lockfile Lock/TryLock/Unlock, @MX:NOTE on RetireEmptyLegacyDir and the worktree parent command; no dangling @MX:TODO on the new exported surface"
+debts:
+  - "D1 [P1, hard trigger] the F1 repair dropped the legacy per-move live recheck — a per-tree re-probe (or single-source re-plan) MUST land in migrateOneTree, or the operator records explicit acceptance, BEFORE the first real moai update application (sync-audit-iter2.md D1)"
+  - "D2 rollback reverses an empty-ident journal step unconditionally — fail-open, reachable only from a hand-repaired/truncated journal (migrate.go:810)"
+  - "D3 journalWrite non-atomic — a torn flush destroys the settled-step recovery record (migrate.go:597-599)"
+  - "D4 rollback retry after a partial reversal skips the step on a stat hit, reporting restored 0 exit 0 (migrate.go:806-807)"
+  - "D5 manifest git diff honors diff.external/textconv — nondeterministic under a user-configured external diff (migrate.go:956-957)"
+  - "t1869 pre-existing C-region red (TestCodexSpecFiles_ExecPrimitivesCodexOnly) — not this card's defect; operator disposition pending"
+  - "AC-WHR-021 letter-parity — the bd72 operator ruling disposes the PM measurement gate at card level; the acceptance letter stays unamended; an optional manager-spec amendment (spec.md HISTORY ## Amendments) remains available to the operator"
+  - "M6 rehearsal battery deferred to the landing remeasure"
+  - "worktreeroot.Plan planned-suffix advisory — a first-time repository's dry-run key may differ from the apply-time claim if the home root changes between plan and apply (read-only planning, recorded on the function)"
+```
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
