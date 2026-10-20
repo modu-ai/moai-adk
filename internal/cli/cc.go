@@ -38,7 +38,9 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -c, --continue                Continue previous session
   -m, --model <model>           Override model selection
-  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/
+                                when created new; an existing tree of the same name under
+                                <MoaiHome>/worktrees/projects/<project-key> is re-entered);
                                 name omitted = auto-generated (same as claude --worktree)
       --branch <existing>         With -w <name>: create the worktree checked out at an
                                 EXISTING branch (e.g. moai cc -w develop --branch develop

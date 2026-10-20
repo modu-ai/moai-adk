@@ -65,7 +65,7 @@ Completion Support:
 - Tab completion for the live `moai worktree` subcommands (`done`, `clean`, `remove`) using the binary's built-in help
 
 Prompt Customization:
-- Detect if current directory is within a worktree (`.claude/worktrees/` or `~/.moai/worktrees/`)
+- Detect if current directory is within a worktree (`.claude/worktrees/`, `<MoaiHome>/worktrees/projects/`, or `~/.moai/worktrees/`)
 - Display SPEC ID in prompt when in worktree context
 - Color coding for worktree status
 

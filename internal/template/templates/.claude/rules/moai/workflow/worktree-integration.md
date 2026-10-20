@@ -10,9 +10,10 @@ Integration guide for MoAI Worktree and Claude Code Native Worktree systems.
 
 MoAI-ADK supports two complementary worktree systems:
 
-`moai worktree new <name>` creates a project-local L1 tree at
-`.moai/worktrees/<name>`. Claude Code's native worktrees continue to use
-`.claude/worktrees/`; the global L2 registry remains under `~/.moai/worktrees/`.
+`moai worktree new <name>` creates an L1 tree at
+`<MoaiHome>/worktrees/projects/<project-key>/<name>` (the home projects root).
+Claude Code's native worktrees continue to use `.claude/worktrees/`; the global
+L2 registry remains under `~/.moai/worktrees/`.
 
 **Claude Code Native Worktree** (`.claude/worktrees/`): ephemeral, session-scoped isolation with automatic cleanup; subagent isolation via `isolation: worktree` (v2.1.49+); CLI access `claude --worktree` / `claude -w`.
 
@@ -22,7 +23,7 @@ MoAI-ADK supports two complementary worktree systems:
 
 | Feature | Claude Native | MoAI |
 |---------|--------------|------|
-| **Path** | `.claude/worktrees/<name>/` | `~/.moai/worktrees/{Project}/{SPEC}/` |
+| **Path** | `.claude/worktrees/<name>/` | `<MoaiHome>/worktrees/projects/<project-key>/<name>/` (L1); `~/.moai/worktrees/{Project}/{SPEC}/` (L2) |
 | **Lifetime** | Ephemeral (session-scoped) | Persistent |
 | **Purpose** | Session isolation for subagents | SPEC development, PR creation |
 | **CLI** | `claude -w` / `isolation: worktree` | `moai cc -w <name>` enter; `moai worktree clean/done/remove` dispose |
@@ -38,12 +39,12 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Session worktree | Session-scoped isolation created by `moai worktree new <name>`, a Claude launcher/tool, or an isolated subagent. Claude short-name `-w` resolves the native root; Codex `-w` an existing tree in either root. | `.moai/worktrees/<name>/` for MoAI creation; `.claude/worktrees/<name>/` for Claude-native creation. Factory/team card branches use `WT-<slug>`. | Session-scoped; disposed after the session ends and the branch integrates — session-end prompt, or `git worktree unlock` + `git worktree remove` | Creating harness or MoAI shared materializer. L1 trees are not in the L2 lifecycle registry, so `done` refuses them |
+| **L1** | Session worktree | Session-scoped isolation created by `moai worktree new <name>`, a Claude launcher/tool, or an isolated subagent. Claude short-name `-w` resolves the native root; Codex `-w` an existing tree in either root. | `<MoaiHome>/worktrees/projects/<project-key>/<name>/` for MoAI creation; `.claude/worktrees/<name>/` for Claude-native creation. Factory/team card branches use `WT-<slug>`. | Session-scoped; disposed after the session ends and the branch integrates — session-end prompt, or `git worktree unlock` + `git worktree remove` | Creating harness or MoAI shared materializer. L1 trees are not in the L2 lifecycle registry, so `done` refuses them |
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** (`moai cc -w ~/.moai/worktrees/<project>/<SPEC>`); run + sync phases reuse the same tree. | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`/`remove`/`clean`/`recover`/`done` + guards `snapshot`/`verify`/`restore`); disposed only via `moai worktree done SPEC-XXX` after both PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
-- `moai worktree new <name>` creates an **L1** tree at `.moai/worktrees/<name>`, returns its absolute path, never enters it, and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. Enter it from a new Codex CLI session with `codex -C <absolute-path>` or from Claude with `moai cc -w <absolute-path>` (short-name `-w` still resolves `.claude/worktrees/<name>`; `moai cc -w <name> --branch <existing>` remains the existing-branch path for the gitflow integration worktree).
-- `moai update` (primary checkout) moves registered legacy `.claude/worktrees/` trees to `.moai/worktrees/` via `git worktree move` (`--dry-run` lists planned moves only). Trees that are locked, session-anchored, process-occupied, or collision-blocked stay put with a reason — rerun after resolving it; if process working directories cannot be inspected, no tree moves; a linked-worktree launch leaves sibling trees in place. Modified, untracked, and ignored files move with their tree. Never copy a worktree directory by hand.
+- `moai worktree new <name>` creates an **L1** tree at `<MoaiHome>/worktrees/projects/<project-key>/<name>`, returns its absolute path, never enters it, and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. Enter it from a new Codex CLI session with `codex -C <absolute-path>` or from Claude with `moai cc -w <absolute-path>` (short-name `-w` still resolves `.claude/worktrees/<name>`; `moai cc -w <name> --branch <existing>` remains the existing-branch path for the gitflow integration worktree).
+- `moai update` (primary checkout) moves eligible moai-made legacy trees to `<MoaiHome>/worktrees/projects/<project-key>/` via the shared migration engine (`--dry-run` lists planned moves only). Trees that are locked, session-anchored, process-occupied, or collision-blocked stay put with a reason — rerun after resolving it; if process working directories cannot be inspected, no tree moves; a linked-worktree launch leaves sibling trees in place. Modified, untracked, and ignored files move with their tree. Never copy a worktree directory by hand.
 - An **L1** ephemeral worktree is materialized autonomously by the runtime for an isolated subagent; independent of L2, it may occur inside the main checkout or an L2 worktree.
 - Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
@@ -56,7 +57,7 @@ Relationships:
 
 [HARD] **Factory/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
 
-[HARD] **The slug describes the change; the card id stays out of the branch name.** At most 3 hyphen-separated tokens, at most 24 characters, lowercase `a-z0-9-` — `WT-branch-naming`, not `WT-t0`. The **worktree directory** still carries the card id (`.moai/worktrees/<card-id>` for new MoAI trees; `.claude/worktrees/<card-id>` for Claude-native trees), so the id is never lost. Traceability moves onto the dispatch `card:` field, the commit messages, and the evidence path; the full contract is `factory-dispatch.md` § Isolation is provisioned by MoAI, then entered through a launcher.
+[HARD] **The slug describes the change; the card id stays out of the branch name.** At most 3 hyphen-separated tokens, at most 24 characters, lowercase `a-z0-9-` — `WT-branch-naming`, not `WT-t0`. The **worktree directory** still carries the card id (`<MoaiHome>/worktrees/projects/<project-key>/<card-id>` for new MoAI trees; `.claude/worktrees/<card-id>` for Claude-native trees), so the id is never lost. Traceability moves onto the dispatch `card:` field, the commit messages, and the evidence path; the full contract is `factory-dispatch.md` § Isolation is provisioned by MoAI, then entered through a launcher.
 
 Nothing reads a card id back out of a branch name: `internal/cli/session_worktree_prmerge.go` matches the `WT-` prefix only (`strings.HasPrefix`), never the remainder. The prefix is load-bearing; the suffix is for humans.
 

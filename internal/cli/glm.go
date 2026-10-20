@@ -58,7 +58,9 @@ Flags:
                                 as 'moai glm setup <key>')
   --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, bypassPermissions, dontAsk)
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
-  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/
+                                when created new; an existing tree of the same name under
+                                <MoaiHome>/worktrees/projects/<project-key> is re-entered);
                                 name omitted = auto-generated (same as claude --worktree)
       --branch <existing>         With -w <name>: check out an EXISTING branch in the
                                 new worktree (see moai cc --help)
