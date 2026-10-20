@@ -77,6 +77,10 @@ const (
 	tuiRunWait = 20 * time.Second
 	// tuiQuiet is the "exactly once / nothing happens" window.
 	tuiQuiet = 500 * time.Millisecond
+	// tuiDriveReapWait bounds the wait for the drive goroutine to end after
+	// cleanup released it (card t1915: the Run A goroutine census caught one
+	// parked forever per unreleased drive caller).
+	tuiDriveReapWait = 2 * time.Second
 	// tuiResumeHelpFixture is the vendored `codex resume --help` text of
 	// codex-cli 0.162.1 (byte-identical to the 0.161.0 capture).
 	tuiResumeHelpFixture = "testdata/codex-0.162.1/resume-help.txt"
@@ -826,8 +830,70 @@ func (f *tuiFake) drive(sess managedSession, claims *tuiClaims) <-chan error {
 		}
 	}()
 	ch := make(chan error, 1)
-	go func() { ch <- driveManagedFactorySession(sess, f.stdinR, idle, claims.claim, claims.prompt) }()
+	ended := make(chan struct{})
+	go func() {
+		defer close(ended)
+		ch <- driveManagedFactorySession(sess, f.stdinR, idle, claims.claim, claims.prompt)
+	}()
+	// The reaping cleanup (registered after close(stop), so the LIFO order
+	// runs it first — the ticker still ticks while the driver is released)
+	// releases and reaps the driver: closing stop alone cannot unblock
+	// driveManagedFactorySession, which parks in its idle select forever
+	// once the ticker stops (card t1915, Run A census goroutine 942371).
+	// The release is the real shutdown's own: the end-of-session lines
+	// finish() writes end an attached fake TUI on its own, whose done
+	// returns the driver. A TUI the test stopped with stopTUI never
+	// delivers done (stopping suppresses finish), so the production
+	// end-of-TUI delivery (finish) releases that one. A driver that still
+	// will not end is a leak: the cleanup fails the test instead of
+	// parking past the parent.
+	f.t.Cleanup(func() {
+		_, _ = f.stdinW.WriteString("bye\n/exit\n")
+		select {
+		case <-ended:
+			return
+		case <-time.After(tuiQuiet):
+		}
+		if s, ok := sess.(*managedCodexSession); ok && s.tui != nil {
+			s.tui.finish(nil)
+		}
+		select {
+		case <-ended:
+		case <-time.After(tuiDriveReapWait):
+			f.t.Errorf("the tuiFake drive goroutine leaked: still parked %s after cleanup (Run A census, goroutine 942371)", tuiDriveReapWait)
+		}
+	})
 	return ch
+}
+
+// TestTuiFakeDriveTerminatesAfterCleanup pins the Run A goroutine-leak
+// repair (card t1915): a parent test that ends while its drive goroutine is
+// still parked must not leak it — the drive cleanup has to release the
+// driver the way a real shutdown would and reap it before returning. The
+// assertion cleanup is registered before drive() so the LIFO order runs it
+// after drive's own cleanups; the driver's result channel is the
+// goroutine-liveness witness, bounded by tuiDriveReapWait.
+func TestTuiFakeDriveTerminatesAfterCleanup(t *testing.T) {
+	f := newTUIFake(t, "tui-drive-reap")
+	sess := f.newSession()
+	ended := make(chan error, 1)
+	var done <-chan error = ended
+	t.Cleanup(func() {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Logf("the drive goroutine returned: %v", err)
+			}
+		case <-time.After(tuiDriveReapWait):
+			t.Errorf("the drive goroutine leaked: still parked %s after cleanup (Run A census, goroutine 942371)", tuiDriveReapWait)
+		}
+	})
+	claims := &tuiClaims{}
+	done = f.drive(sess, claims)
+	if !f.waitLog("tui-start", tuiAttachWait) {
+		t.Errorf("the TUI never started within %s", tuiAttachWait)
+	}
+	// Ends without releasing — the shape of the leaking callers.
 }
 
 func tuiTurnFrame(method, turn string) string {
