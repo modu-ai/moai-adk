@@ -155,6 +155,9 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	// The same quota gate as the CLI verb, through the same shared evaluation.
 	held, holdLine := (&factoryQuotaLatch{}).evaluate(root)
+	// The open-PR query runs before the lease, as in the CLI verb, so the output
+	// below issues no query after the queue lock is released (AC-FAL-015 (vii)).
+	openPRs := factoryNextPRSnapshot(ctx, root, runID, lane, nominee, held)
 	var card homestate.Card
 	leased := false
 	if nominee != "" {
@@ -195,7 +198,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	card.WorktreePath = wt
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := factoryNextWriteOutput(out, errOut, root, card); err != nil {
+	if err := factoryNextWriteOutput(out, errOut, root, card, openPRs); err != nil {
 		return toolErr("factory_next", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
