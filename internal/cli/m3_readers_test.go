@@ -84,7 +84,7 @@ func TestM3FactoryRefuseForeignWorktree_HomeRoot(t *testing.T) {
 	if err := os.MkdirAll(w.homeT7, 0o755); err != nil {
 		t.Fatalf("mkdir foreign dir: %v", err)
 	}
-	err := factoryRefuseForeignWorktree(w.repo, "t7")
+	err := factoryRefuseForeignWorktree(withFactoryLandingBase(context.Background(), w.repo), w.repo, "t7")
 	if err == nil {
 		t.Fatal("a foreign directory at the home-root landing path was not refused")
 	}
@@ -111,7 +111,7 @@ func TestM3FactoryCarryPreviousWorktree_HomeRoot(t *testing.T) {
 	if _, err := db.RecordPicked(context.Background(), "run-prev", "t7", homestate.CardFields{WorktreePath: &wt}, "m3-carry", time.Now().UTC()); err != nil {
 		t.Fatalf("record picked: %v", err)
 	}
-	got, err := factoryCarryPreviousWorktree(context.Background(), db, w.repo, "run-new", "t7")
+	got, err := factoryCarryPreviousWorktree(withFactoryLandingBase(context.Background(), w.repo), db, w.repo, "run-new", "t7")
 	if err != nil {
 		t.Fatalf("factoryCarryPreviousWorktree: %v", err)
 	}

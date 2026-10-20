@@ -34,6 +34,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // sdMoaiFixture is a factory fixture whose root is a MoAI project root (the
@@ -104,7 +105,14 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("next: %v\nstderr: %s", err, out)
 		}
-		wt := filepath.Join(sdWorktreesDir(root), "t1")
+		// SPEC-WORKTREE-HOME-ROOT-001 M2: the materializer's actual landing
+		// directory is the resolver's home-root path — the assertions
+		// evaluate the actual landing directory (the file's t1292 note).
+		homeRoot, rerr := worktreeroot.Root(root)
+		if rerr != nil {
+			t.Fatalf("resolve home root: %v", rerr)
+		}
+		wt := filepath.Join(homeRoot, "t1")
 		info, statErr := os.Stat(wt)
 		if statErr != nil || !info.IsDir() {
 			t.Fatalf("card worktree %s does not exist: %v", wt, statErr)
@@ -329,8 +337,14 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		if a.State != b.State || a.Version != b.Version || a.LeaseHolder != b.LeaseHolder || a.OwnerLabel != b.OwnerLabel {
 			t.Errorf("leased rows diverge: cli %+v vs mcp %+v", a, b)
 		}
-		if filepath.Base(b.WorktreePath) != "t1" || filepath.Dir(b.WorktreePath) != sdWorktreesDir(rootB) {
-			t.Errorf("mcp worktree path = %q, want the landing directory leaf t1", b.WorktreePath)
+		// SPEC-WORKTREE-HOME-ROOT-001 M2: the actual landing directory is
+		// the resolver's home-root path; the leaf stays the card id.
+		homeRootB, rerr := worktreeroot.Root(rootB)
+		if rerr != nil {
+			t.Fatalf("resolve home root: %v", rerr)
+		}
+		if filepath.Base(b.WorktreePath) != "t1" || filepath.Dir(b.WorktreePath) != homeRootB {
+			t.Errorf("mcp worktree path = %q, want the landing directory leaf t1 under %s", b.WorktreePath, homeRootB)
 		}
 
 		// Refusal twin: label-only is not a lane, on either surface.

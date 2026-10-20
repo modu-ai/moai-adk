@@ -137,7 +137,9 @@ func m4ListWorld(t *testing.T) (repo string, expect []m4Row) {
 	}
 
 	expect = []m4Row{
-		{Name: "list-repo", Path: m4Real(t, repo), Root: "other", Class: "primary", Branch: "dev"},
+		// The primary row is dirty: the fixture writes its untracked
+		// git-strategy.yaml into the checkout.
+		{Name: "list-repo", Path: m4Real(t, repo), Root: "other", Class: "primary", Branch: "dev", Dirty: true},
 		{Name: "home4", Path: homeTree, Root: "home", Class: "moai-made", Branch: "WT-home4", Dirty: true},
 		{Name: "lm4", Path: lmTree, Root: "legacy-moai", Class: "moai-made", Branch: "WT-lm4", Unpushed: 1},
 		{Name: "release-v314", Path: relTree, Root: "legacy-moai", Class: "moai-made", Branch: "release/v3.1.4"},
@@ -155,18 +157,26 @@ func m4ListWorld(t *testing.T) (repo string, expect []m4Row) {
 	return repo, expect
 }
 
-// m4RunList invokes `moai worktree list` with args through the registered
-// command tree and returns the command's combined behavior.
+// TestWorktreeList_IsRegistered pins the registration clause: the list
+// verb is part of the worktree command tree.
+func TestWorktreeList_IsRegistered(t *testing.T) {
+	if _, _, err := WorktreeCmd.Find([]string{"list"}); err != nil {
+		t.Errorf("the list verb is not registered: %v", err)
+	}
+}
+
+// m4RunList invokes `moai worktree list` with args on a fresh command
+// instance. Execute on a registered child delegates to the root and
+// re-parses os.Args (the go-test flags), so the harness builds an
+// unattached instance and scopes SetArgs to this invocation.
 func m4RunList(t *testing.T, args ...string) (string, error) {
 	t.Helper()
-	cmd, _, err := WorktreeCmd.Find(append([]string{"list"}, args...))
-	if err != nil {
-		return "", err
-	}
+	listCmd := newListCmd()
 	buf := &strings.Builder{}
-	cmd.SetOut(buf)
-	cmd.SetErr(buf)
-	if err := cmd.Execute(); err != nil {
+	listCmd.SetOut(buf)
+	listCmd.SetErr(buf)
+	listCmd.SetArgs(args)
+	if err := listCmd.Execute(); err != nil {
 		return buf.String(), err
 	}
 	return buf.String(), nil

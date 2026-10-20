@@ -758,10 +758,15 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 	// difference between A and B, so B's call proves A's non-call is the guard's
 	// doing, not a stale seam).
 	addCallsB := 0
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: real repository + sandboxed MOAI_HOME
+	// for the resolver inside the materializer.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add: func(string, string, string) (string, error) {
 			addCallsB++
 			return "/repo/.claude/worktrees/WT-abcdef12-web", nil

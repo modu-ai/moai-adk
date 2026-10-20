@@ -47,6 +47,7 @@ func init() {
 		newRecoverCmd(),
 		newDoneCmd(),
 		newHoistCmd(),
+		newListCmd(),
 		newGuardSnapshotCmd(),
 		newGuardVerifyCmd(),
 		newGuardRestoreCmd(),
