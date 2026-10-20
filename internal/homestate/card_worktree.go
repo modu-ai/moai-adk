@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -59,6 +60,126 @@ func (f *FactoryDB) RecordCardWorktree(ctx context.Context, runID, cardID, path,
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// cardWorktreeTargetProbe is the registered-target check of the rebind
+// operation (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-011(b)): it verifies at
+// call time that the target path is a registered worktree. The default
+// probe is mechanical — a directory carrying a .git entry is registered —
+// and the migration engine's journal carries the authoritative same-HEAD-
+// and-branch identity (design.md D-12).
+var cardWorktreeTargetProbe = defaultCardWorktreeTargetProbe
+
+// defaultCardWorktreeTargetProbe reports whether path names a registered
+// worktree: a directory holding a .git entry (file for a linked tree, dir
+// for a checkout).
+func defaultCardWorktreeTargetProbe(path string) (bool, error) {
+	info, err := os.Stat(filepath.Join(path, ".git"))
+	if err != nil || !info.IsDir() && !info.Mode().IsRegular() {
+		return false, nil
+	}
+	return true, nil
+}
+
+// RebindCardWorktree moves every run row of cardID that records oldPath onto
+// newPath in one transaction (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-011) — the
+// recorded-path rebind the migration performs after `git worktree move`. It
+// is version-checked like every record write, appends one card.fields event
+// per rebound row recording both paths, and returns the number of rows
+// rebound.
+//
+// Refusals: when no run row of the card records oldPath (a stale old path),
+// or when the registered-target probe refuses newPath — the check runs at
+// call time, so the migration's reverse rebind is exercised after the
+// reverse move has re-registered the pre-move path. RecordCardWorktree's
+// never-moves-a-card refusal is unchanged and stands beside this operation.
+//
+// @MX:ANCHOR: [AUTO] rebind — the recorded-path move the migration rebinds cards through
+// @MX:REASON: M6's engine consumes this operation for forward and reverse moves; a rebind that dropped a run row would strand that run's card pointer on the pre-move path (REQ-WHR-011)
+func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, newPath, actor string, now time.Time) (int, error) {
+	if !ValidCardID(cardID) {
+		return 0, fmt.Errorf("%w: a valid card id is required", ErrInvalidCardInput)
+	}
+	if oldPath == "" || !filepath.IsAbs(oldPath) || newPath == "" || !filepath.IsAbs(newPath) {
+		return 0, fmt.Errorf("%w: rebind paths must be absolute (old %q, new %q)", ErrInvalidCardInput, oldPath, newPath)
+	}
+	if oldPath == newPath {
+		return 0, fmt.Errorf("%w: a rebind with equal old and new paths is a no-op", ErrInvalidCardInput)
+	}
+	registered, err := cardWorktreeTargetProbe(newPath)
+	if err != nil {
+		return 0, fmt.Errorf("rebind: registered-target check for %s: %w", newPath, err)
+	}
+	if !registered {
+		return 0, fmt.Errorf("%w: rebind target %s is not a registered worktree", ErrIllegalTransition, newPath)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	now = now.UTC()
+	rebound := 0
+	err = f.withCardTx(ctx, cardID, func(tx *sql.Tx) (func(), error) {
+		rows, err := tx.QueryContext(ctx, `SELECT run_id, version FROM cards WHERE card_id = ? AND worktree_path = ?`, cardID, oldPath)
+		if err != nil {
+			return nil, err
+		}
+		var targets []struct {
+			runID   string
+			version int
+		}
+		for rows.Next() {
+			var runID string
+			var version int
+			if err := rows.Scan(&runID, &version); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			targets = append(targets, struct {
+				runID   string
+				version int
+			}{runID, version})
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		if len(targets) == 0 {
+			return nil, fmt.Errorf("%w: no run row of card %s records the worktree %s; the rebind's old path is stale", ErrIllegalTransition, cardID, oldPath)
+		}
+		for _, tgt := range targets {
+			cur, err := loadCard(ctx, tx, tgt.runID, cardID)
+			if err != nil {
+				return nil, err
+			}
+			if cur.WorktreePath != oldPath {
+				// Raced with another writer between the query and the
+				// update: this row no longer carries the old path.
+				continue
+			}
+			next := cur
+			next.WorktreePath = newPath
+			next.Version = cur.Version + 1
+			next.UpdatedAt = now.Format(time.RFC3339Nano)
+			if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+				return nil, err
+			}
+			if err := appendEvent(ctx, tx, tgt.runID, "card.fields", map[string]any{
+				"card_id":           cardID,
+				"version":           next.Version,
+				"actor":             actor,
+				"worktree":          newPath,
+				"previous_worktree": oldPath,
+			}, now); err != nil {
+				return nil, err
+			}
+			rebound++
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return rebound, nil
 }
 
 // PreviousCardWorktree reads the newest worktree binding recorded for cardID
