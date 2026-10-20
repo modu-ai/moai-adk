@@ -612,6 +612,12 @@ Tree SHA for every cell of this subsection: `8901665b84` (the M6 production comm
 
 **Residual-risk.** The rollback's identity check reads `TreeIdent(s.NewPath)` — if the journal's ident was recorded before a token existed (an M5-era tree), the ident mismatch refuses the reverse move; this is the correct conservative behavior per D-12. The process-CWD skip cause in `planMigrationFor` uses the injectable `activeProcessCWDProbe` seam (default: the conservative lsof scan); the cli-package wiring (which overrides this via the update-time apply) must set the same probe to keep the skip causes consistent.
 
+### M7 — RED (AC-WHR-020's cell; AC-WHR-025's observed cell is M0's)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M7, card t1640. The red is COMPILE-FAILURE order (plan §C; research §R13's M7 row): the retirement function does not exist. Tree SHA: `939472773b5472df3f48d20a8db6b07e875c0a2d` (the parent of the M7 RED commit).
+
+- command: `go test -run '^$' -p 1 -count=1 ./internal/cli/worktree/` — exit 1: `undefined: RetireEmptyLegacyDir` (×2 — the empty-removal and non-empty-stays tests).
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
