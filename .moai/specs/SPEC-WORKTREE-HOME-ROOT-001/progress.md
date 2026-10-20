@@ -539,6 +539,25 @@ Named test corrections (SPEC-mandated or fixture-level; no assertion relaxed): (
 
 **Residual-risk.** The list command's Codex pool root derives from `paths.Home()` — on hosts where HOME is set but the codex pool lives elsewhere the codex-managed rows would go unseen; REQ-WHR-010's fixture covers the HOME-standard layout only. The lease-section hoist means the landing base is resolved once per next/nominate invocation: a repository whose home-root assignment changes mid-invocation (impossible short of concurrent `moai init`) would see a stale base.
 
+### M5 — RED (AC-WHR-011, AC-WHR-012a re-key clause, AC-WHR-017b state-file clauses)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M5, card t1640. The red is COMPILE-FAILURE order (plan §C; research §R13's M5 row — the tests name the M5 symbols the milestone builds): both target packages fail to compile solely on undefined M5 symbols, observed in two gated calls. Tree SHA for every cell: `9607491341f00b0df8193e5b08872eadf119eaef` (the parent of the M5 RED commit). Exit codes observed.
+
+- command: `go test -run '^$' -p 1 -count=1 ./internal/homestate/` — 14:13 KST, load 15.40, mem 84% — exit 1: `db.RebindCardWorktree undefined`, `undefined: cardWorktreeTargetProbe` (×7+) — the rebind operation and the registered-target probe do not exist (AC-WHR-011).
+- command: `go test -run '^$' -p 1 -count=1 ./internal/hook/` — 14:13 KST, load 15.40, mem 84% — exit 1: `undefined: RekeyWorktreeEntry` (×4), `undefined: RekeyWorktreeEntryInverse`, `undefined: worktreeAtomicFault`, `undefined: errM5Injected`, `undefined: marshalWorktreeEntries` — the re-key, its inverse, the atomic-write fault seam and the strict marshal helper do not exist (AC-WHR-012a re-key clause; AC-WHR-017b state-file clauses).
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) The M5 RB* cells (AC-WHR-011; AC-WHR-012a's re-key clause; AC-WHR-017b's state-file clauses (2), (4), and the file-unchanged halves of (6) and (7)) are red: the tests that pin them name rebind, re-key, lock, lapse and atomic-write symbols that do not exist on this tree. (2) The covered exit tests pin: rebind updates every run row + one card.fields event per row recording both paths + PreviousCardWorktree answering P_new + stale-old refusal + registered-target refusal through an injectable probe + reverse rebind after a reverse move + RecordCardWorktree's refusal unchanged; re-key + inverse + missing-entry failure; atomic fault between temp write and rename leaves the previous file intact; invalid JSON fails all four writers byte-identical; a two-writer cross-process race loses no entry; a live holder past the lowered bound lapses with the distinct error and an unchanged file; and the StateLockLapseBudget constant is 1.
+
+**Evidence.** The two compile-failure invocations above with their verbatim undefined-symbol lists and gate readings, this run, this tree.
+
+**Baseline-attribution.** Measured against HEAD `9607491341f00b0df8193e5b08872eadf119eaef` (the parent of the M5 RED commit), 2026-10-20 14:13 KST.
+
+**Gaps.** (a) The cross-process race and held-lock tests execute only after GREEN (they need the lock and re-key symbols to compile); their RED-state absence is the compile failure itself. (b) The M6 migration-lock clauses of AC-WHR-017b ((1), (3), (5), (8), the tree-reversal halves) are explicitly not M5's.
+
+**Residual-risk.** The registered-target probe's default (a .git entry under the path) is a mechanical approximation of registration; the authoritative check remains the caller's journal identity (M6).
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
