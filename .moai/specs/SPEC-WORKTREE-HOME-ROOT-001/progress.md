@@ -769,7 +769,7 @@ Measured by the run-phase specialist (manager-develop, cycle_type tdd), card t16
 
 ```yaml
 run_complete_at: "2026-10-20T15:56:50Z"
-run_commit_sha: "pending-backfill-run3"   # the M8S evidence commit is the run phase's final commit; backfilled per the D3 exemption
+run_commit_sha: "cea16be11f"   # the M8S evidence commit (the run phase's final commit); backfilled per the D3 exemption; repairs ride 4665ed72a0
 run_status: audit-ready
 ac_pass_count: 25   # every base AC-WHR-001..025 identifier carries recorded green cells in §E.2 (22 named per-cell across M0-M7; 015, 016, 018 pinned through M6's five engine tests per M6's vs-acceptance.md paragraph); AC-WHR-019's cells were re-recorded at M8S after the sync audit found the first green claim unsupported (F1) — the route + grep + destination cells now stand on the repaired tree; checkable by reading §E.2
 ac_fail_count: 0    # no AC cell records FAIL at run close; the pre-existing t1869 guard failure is not an AC cell of this SPEC; F6's five unmet measurement ids are a Kickoff-gate letter dispute carried as a BLOCKER, not an AC cell of this run
