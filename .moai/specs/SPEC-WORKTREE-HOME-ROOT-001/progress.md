@@ -558,6 +558,30 @@ Measured by the run-phase specialist (manager-develop, cycle_type tdd), mileston
 
 **Residual-risk.** The registered-target probe's default (a .git entry under the path) is a mechanical approximation of registration; the authoritative check remains the caller's journal identity (M6).
 
+### M5 — GREEN (exit evidence)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M5, card t1640. Gates per call; readings ran 07:39-14:27 KST at load 3-20, memory 83-86%; no gate failures. The provider limit killed the session twice mid-milestone; both resumes found the tree intact and re-ran the affected calls fresh.
+
+Tree SHA for every cell of this subsection: `965d909407` (the M5 test-file commit; the production code is its parent e3deb84da8 and the measurements ran on the working tree carrying exactly that pair's content immediately before the commits landed). Exit codes observed.
+
+- command: `go build ./internal/homestate/ ./internal/hook/ ./internal/lockfile/` — 07:39 area and 14:27:47 KST — exit 0 (after the `os` import and the Windows `mu.TryLock()` bool-to-error fixes).
+- `GOOS=windows GOARCH=amd64 go build` of the three touched packages — exit 0 (the Windows arm needed the TryLock bool→error conversion via errLockHeld).
+- `go test -p 1 -count=1 -run 'TestRebindCardWorktree|...|TestCardWorktreeTargetProbe' ./internal/homestate/` — `ok ... 0.417s` (attempt 2: the fixture's fake /home path was uncreatable on macOS — the fixture paths moved to temp dirs, and the positive-shape fixture models the moved tree with a real .git entry so the default probe accepts it); full `./internal/homestate/` package: `ok ... 99.044s`.
+- `go test -p 1 -count=1 -run 'TestRekeyWorktreeEntry|TestWorktreeRegistry|TestStateLockLapseBudget' ./internal/hook/` — `ok ... 0.985s` (attempt 3: the hold-lock child signals readiness via a ready file so the parent's write cannot race the child's acquisition; the lapse assertion uses errors.Is against ErrStateLockWaitLapsed). The register/unregister error-return change surfaced three pre-existing read call sites (misc_coverage, subdir_cwd_write_root) — migrated to the strict reader with errors tolerated, and worktree_create/remove handler call sites updated for the error returns (logged, fail-open per the handler contract).
+- Cross-process runs (real child processes via the test binary's own re-exec, bounded by a 20s context — no background load, no kills): the two-writer race preserved both children's updates; the live holder past the 100ms lowered bound lapsed with ErrStateLockWaitLapsed and the file byte-identical, neither early nor hung.
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) M5 exits GREEN: the rebind, re-key, inverse, lock, lapse and atomic-write tests all pass, on homestate 99.044s and hook 0.985s-1.863s package runs. (2) The registered-target check runs at call time through the injectable probe; the carry-over reads the recorded binding before any derived candidate; the four state-file writers are locked, strict and atomic. (3) The lockfile gains exactly ONE TryLock per platform file and nothing else.
+
+**Evidence.** The build, cross-platform build, family and package records above with verbatim `ok` lines and gate readings; the real-home pollution discovery (626 owner-verified temp folders) and its cleanup to 0 kept / 626 removed.
+
+**Baseline-attribution.** Measured against tree `965d909407` (content-identical working tree immediately pre-commit), 2026-10-20 07:39-14:27 KST.
+
+**Gaps.** (a) The full internal/hook package suite did not run (only the M5 family + the writer-handler suites TestWorktreeCreate/TestWorktreeRemove); the rest defers to the landing remeasure. (b) AC-WHR-017b's migration-lock clauses ((1), (3), (5), (8)) and the engine halves of (6)/(7) are M6's, not observed here. (c) The Windows TryLock arm compiles but its cross-process limitation (process-local mutex) is documented upstream and unchanged — Windows multi-process behavior is out of scope per the file's own note. (d) The 626 removed folders were verified temp-owner only at cleanup time; any folder created after the sweep would need the same owner-verified sweep.
+
+**Residual-risk.** The rebind's registered-target probe is mechanical (.git entry); a directory holding a stray .git entry would pass the probe — the migration journal's identity check (M6) is the authoritative second gate. The state-file lock's Unix flock releases on process death (design requirement); the Windows process-local mutex does not protect across processes (documented limitation, unchanged) — Windows multi-writer safety is out of scope per the upstream file's note. The lapse test lowers the bound to 100ms via the package seam; the M6 engine consumes StateLockLapseBudget=1 and the 5s default at runtime.
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
