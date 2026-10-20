@@ -25,6 +25,7 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 	t.Helper()
 	var calls atomic.Int64
 	prevRun := todoRunCommand
+	prevContextRun := todoRunCommandContext
 	todoRunCommand = func(name string, args ...string) (string, error) {
 		if name != "gh" {
 			return prevRun(name, args...)
@@ -32,7 +33,14 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 		calls.Add(1)
 		return answer()
 	}
-	t.Cleanup(func() { todoRunCommand = prevRun })
+
+	todoRunCommandContext = func(ctx context.Context, name string, args ...string) (string, error) {
+		if name != "gh" {
+			return prevContextRun(ctx, name, args...)
+		}
+		return todoRunCommand(name, args...)
+	}
+	t.Cleanup(func() { todoRunCommand = prevRun; todoRunCommandContext = prevContextRun })
 	return func() int { return int(calls.Load()) }
 }
 
