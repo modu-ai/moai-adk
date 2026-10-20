@@ -787,7 +787,7 @@ m1_to_mN_commit_strategy: "per-milestone paired commits — each Mx lands RED (t
 
 ```yaml
 sync_complete_at: "2026-10-20T20:27:26Z"
-sync_commit_sha: "pending-backfill"   # canonical D3 placeholder — a commit cannot cite its own hash; the real SHA is backfilled in the follow-up commit
+sync_commit_sha: "a4807bb57c"   # backfilled from the sync commit (placeholder pending-backfill replaced per the D3 exemption; a commit cannot cite its own hash)
 sync_status: "PASS-WITH-DEBT 0.88"
 sync_audit: "iter2 PASS-WITH-DEBT 0.88 (receipt rcpt-8870d60b4cde43e9a3eb3841, convergence ok) — verdict .moai/reports/t1640/sync-audit-iter2.md; iter1 FAIL 0.62 (.moai/reports/t1640/sync-audit-iter1.md): findings F1-F11 repaired and re-verified, F6 disposed at card level by the bd72 operator ruling citation (disposition record 2026-10-21 05:03 KST, leader-approved)"
 b12_self_test_a: "pass — grep -c 'SPEC-WORKTREE-HOME-ROOT-001' CHANGELOG.md → stdout 0, exit 1 immediately before emission (no duplicate entry from a parallel BATCH-SYNC session)"
