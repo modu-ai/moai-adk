@@ -590,6 +590,28 @@ Measured by the run-phase specialist (manager-develop, cycle_type tdd), mileston
 - red because: `moai worktree migrate` prints the parent help text (the verb is unregistered), so none of the engine behaviors — dry-run planning, eligible-tree moves to the home root, protected-tree skips, the move list, verify, rollback — exist.
 - vs acceptance.md: the cells named in plan §C M6's RED list — AC-WHR-002b clause 4 (the second migration changes no assignment), 012a journal clause, 014a, 015, 016, 017a identity clause, 018 identity entries, the migration-lock clauses of 017b, the writer clauses of 012b, the destination cell of 019, and 023's containment clause — are all pinned by these five tests through the engine's surface; they will pass when the M6 production commit lands.
 
+### M6 — GREEN (exit evidence)
+
+Measured by the run-phase specialist (manager-develop, cycle_type tdd), milestone M6, card t1640. Gates per call; readings 14:13-14:40 KST at load 12-16, memory 82-85%; no gate failures.
+
+Tree SHA for every cell of this subsection: `8901665b84` (the M6 production commit; measurements ran on the working tree carrying exactly that content immediately before the commit landed). Exit codes observed.
+
+- command: `go build ./internal/cli/worktree/ ./internal/homestate/` — exit 0 (first attempt).
+- `go test -p 1 -count=1 -run 'TestMigrate' ./internal/cli/worktree/` — `ok ... 7.944s` (the harness `m4RunMigrate` was corrected to call `newMigrateCmd()` on an unattached instance, the same cobra Execute-delegates-to-root pattern as M4's list harness).
+- `go test -p 1 -count=1 ./internal/cli/worktree/` — `ok ... 64.095s` (the full worktree package including all M1-M5 suites; two pre-existing registration pins updated: the subcommand count 12 → 13 and the long help text naming migrate).
+
+#### Five-section summary (verification-claim-integrity §3)
+
+**Claim.** (1) M6 exits GREEN: the migration engine's five tests pass and the full worktree package suite (including all M1-M5 suites) passes. (2) The migration lock, journal, manifest, move-list writer, update integration and destination swap are implemented per plan §C M6 and design D-6/D-7/D-12.
+
+**Evidence.** The build and test records above, this run, this tree.
+
+**Baseline-attribution.** Measured against tree `8901665b84` (content-identical working tree immediately pre-commit), 2026-10-20 14:40 KST.
+
+**Gaps.** (a) The rehearsal battery arms from plan §C M6 (committed-unpushed tree, dirty tree, case-aliased session, killed holder, two movers over different trees) are partially covered by the M5 lock tests and the M6 apply/rollback/verify tests; the full rehearsal battery defers to the landing remeasure. (b) The update-time apply (`runUpdateWorktreeMigration`) selection/destination change is structural (the engine routes through the same classifier); the integration test is the landing remeasure's. (c) `internal/template` remains unrun (the M1-M5 note stands).
+
+**Residual-risk.** The rollback's identity check reads `TreeIdent(s.NewPath)` — if the journal's ident was recorded before a token existed (an M5-era tree), the ident mismatch refuses the reverse move; this is the correct conservative behavior per D-12. The process-CWD skip cause in `planMigrationFor` uses the injectable `activeProcessCWDProbe` seam (default: the conservative lsof scan); the cli-package wiring (which overrides this via the update-time apply) must set the same probe to keep the skip causes consistent.
+
 ## §G Override and Refusal Record
 
 - 2026-10-19T03:29:15Z SPEC-WORKTREE-HOME-ROOT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 8 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640/.moai/reports/t1640/plan-audit-iter8.md
