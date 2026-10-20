@@ -205,53 +205,65 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
-// rewriteExistingWorktreeShortName implements REQ-WHR-006's entry clause on
-// the normalized launch argv: a -w short name that names exactly one
-// existing tree under the HOME root is rewritten to that tree's absolute
-// path, so the backend re-enters the tree instead of creating a duplicate
-// under .claude/worktrees. A legacy-root match passes through unchanged —
-// claude re-enters legacy short names natively — and so does no match at
-// all: under branch Y of D-5 (PM-3 recorded FAIL, operator ruling bd72) the
+// existingWorktreeEntryDir reports the single existing home-root tree the
+// launch argv's first -w short name names, or "" (REQ-WHR-006's entry
+// clause, card t1640 review P1-2). The entry is BY DIRECTORY: the launcher
+// starts the backend inside the tree and hands it no worktree selection —
+// PM-3 measured claude 2.1.303 rejecting absolute --worktree values at
+// argument validation (operator ruling bd72), so the absolute-path argv
+// rewrite this used to be handed the backend a value it exits 1 on. A
+// legacy-root match answers "" — claude re-enters legacy short names
+// natively — and so does no match at all: under branch Y of D-5 the
 // launcher creates nothing, and the short-name-without-existing-tree
 // pass-through is the single documented exception to "no creation path
 // names a legacy root" (REQ-WHR-006 branch Y, REQ-WHR-020). An ambiguous
-// name (two or more roots) also passes through unchanged; the ambiguity
-// report belongs to the callers that enumerate candidates (REQ-WHR-022).
-// Applied after the view is built and before the argv is handed to the
-// launch seam (cc.go / glm.go); the stage reads keep the value as typed.
+// name (two or more roots) also answers ""; the ambiguity report belongs
+// to the callers that enumerate candidates (REQ-WHR-022).
 //
 // Defined here next to the resolver walk helpers it reuses: worktree
 // selection is derived in ONE file (launch_view.go) and every reader on the
 // launch path receives values (TestLaunchViewSingleParse).
-func rewriteExistingWorktreeShortName(args []string) []string {
+func existingWorktreeEntryDir(args []string) string {
 	read := readFirstWorktree(args)
 	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
-		return args
+		return ""
 	}
 	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
-		return args
+		return ""
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
-		return args
+		return ""
 	}
 	cands, err := worktreeroot.Candidates(root, read.Value)
 	if err != nil || len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
+		return ""
+	}
+	return cands[0].Path
+}
+
+// stripWorktreeSelection removes the argv's first -w selection (both
+// spellings, its value included): the entry-by-directory form starts the
+// backend inside the tree, so the backend must receive no worktree
+// selection at all — a surviving short name would resolve against the
+// tree's own .claude/worktrees and create a duplicate inside it.
+func stripWorktreeSelection(args []string) []string {
+	read := readFirstWorktree(args)
+	if !read.Has || read.Value == "" {
 		return args
 	}
-	rewritten := make([]string, len(args))
-	copy(rewritten, args)
-	for i := 1; i < len(rewritten); i++ {
-		switch {
-		case rewritten[i] == read.Value && (rewritten[i-1] == "--worktree" || rewritten[i-1] == "-w"):
-			rewritten[i] = cands[0].Path
-			return rewritten
-		case rewritten[i] == "--worktree="+read.Value:
-			rewritten[i] = "--worktree=" + cands[0].Path
-			return rewritten
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--worktree="+read.Value {
+			continue // the equals form carries its value
 		}
+		if (args[i] == "--worktree" || args[i] == "-w") && i+1 < len(args) && args[i+1] == read.Value {
+			i++ // the two-token form: skip the flag and its value
+			continue
+		}
+		out = append(out, args[i])
 	}
-	return args
+	return out
 }
 
 // consumeLaunchArgs is runLaunchClaude's consumption loop: the launcher eats

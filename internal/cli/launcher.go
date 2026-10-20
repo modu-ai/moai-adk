@@ -941,9 +941,9 @@ func parseProfileFlag(args []string) (string, []string, error) {
 //  1. A short name (e.g. "feat-login"). normalizeWorktreeFlag rewrites it into
 //     the canonical "--worktree <name>" two-token form for claude pass-through;
 //     claude then resolves the name against .claude/worktrees/<name>. This
-//     step MUST NOT interfere with short-name inputs; the M2 entry rewrite
+//     step MUST NOT interfere with short-name inputs; the M2 entry clause
 //     for short names naming an existing home-root tree lives in
-//     rewriteExistingWorktreeShortName (REQ-WHR-006).
+//     existingWorktreeEntryDir (launch_view.go, REQ-WHR-006).
 //  2. An absolute path under the home-level root
 //     <MoaiHome>/worktrees/projects/<project-key>/<name> (the M2 home-root
 //     form) or under the legacy ~/.moai/worktrees/... (an L2 persistent

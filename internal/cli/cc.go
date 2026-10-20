@@ -320,11 +320,26 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// the tree untouched (audit F0, sync-audit-opus.md).
 	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006): a short name naming an
-	// existing home-root tree is entered by rewriting it to the tree's
-	// absolute path; every other short name passes through unchanged
-	// (branch Y — the launcher creates nothing).
-	filteredArgs = rewriteExistingWorktreeShortName(view.LaunchArgs)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006), entry form repaired by
+	// M8R (card t1640 review P1-2): a short name naming an existing home-root
+	// tree ENTERS that tree — the launcher starts the backend inside it and
+	// hands it no worktree selection. The argv rewrite this used to be is
+	// measured-rejected: PM-3 (operator ruling bd72) recorded claude 2.1.303
+	// exiting 1 on absolute --worktree values at argument validation. Every
+	// other short name passes through unchanged (branch Y — the launcher
+	// creates nothing).
+	// The view owns the launch argv (SPEC-LAUNCHER-ARGV-001): what the exec
+	// boundary receives is the view's normalized LaunchArgs, exactly as the
+	// old unconditional rewrite assignment delivered.
+	filteredArgs = view.LaunchArgs
+	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
+		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
+		if cherr := os.Chdir(entryDir); cherr != nil {
+			endHandoff()
+			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)
+		}
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: entering the existing worktree %s\n", entryDir)
+	}
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: the backend launch replaces this process

@@ -117,10 +117,14 @@ func TestLauncherShortName_NoExistingTree_PassesThrough(t *testing.T) {
 
 // TestLauncherShortName_HomeRootTree_IsEntered pins the both-branches clause
 // for the home root: a short name that names an existing home-root tree is
-// entered by handing the backend that tree's absolute path, and nothing is
-// created under the legacy root. The fixture registers a REAL worktree:
-// the M3 writer precheck reads the resolved tree's lock state, which needs
-// a registered tree, not a bare directory.
+// ENTERED — the launcher starts the backend inside the tree (the process
+// working directory) and hands it NO worktree selection. The argv-rewrite
+// form this test used to pin is the one PM-3 measured failing: claude 2.1.303
+// exits 1 on absolute --worktree values (card t1640 review P1-2; M2's own
+// Gaps (b) recorded the real-backend entry strategy as the open domain).
+// Nothing is created under the legacy root. The fixture registers a REAL
+// worktree: the M3 writer precheck reads the resolved tree's lock state,
+// which needs a registered tree, not a bare directory.
 func TestLauncherShortName_HomeRootTree_IsEntered(t *testing.T) {
 	repo := m2Repo(t)
 	home := m2Real(t, t.TempDir())
@@ -133,12 +137,24 @@ func TestLauncherShortName_HomeRootTree_IsEntered(t *testing.T) {
 	}
 	m3Gitf(t, repo, "worktree", "add", "-q", "-b", "WT-t1", "--", tree)
 
+	wdBefore, werr := os.Getwd()
+	if werr != nil {
+		t.Fatalf("getwd: %v", werr)
+	}
+	t.Cleanup(func() { _ = os.Chdir(wdBefore) })
+
 	if err := ccCmd.RunE(ccCmd, []string{"-w", "t1"}); err != nil {
 		t.Fatalf("moai cc -w t1: %v", err)
 	}
 	joined := strings.Join(*gotArgs, " ")
-	if !strings.Contains(joined, tree) {
-		t.Errorf("backend argv %q does not name the existing home-root tree %s; the launcher must enter it", joined, tree)
+	if strings.Contains(joined, tree) {
+		t.Errorf("backend argv %q names the absolute tree path; PM-3 measured claude rejecting it (exit 1 at argument validation)", joined)
+	}
+	if strings.Contains(joined, "-w") {
+		t.Errorf("backend argv %q still carries a worktree selection; the entry-by-directory form hands the backend none", joined)
+	}
+	if wdAfter, _ := os.Getwd(); wdAfter != tree {
+		t.Errorf("the launcher did not enter the tree: cwd %q, want %q", wdAfter, tree)
 	}
 	if _, err := os.Lstat(filepath.Join(repo, ".claude", "worktrees", "t1")); !os.IsNotExist(err) {
 		t.Errorf("a duplicate was created under .claude/worktrees (lstat err=%v)", err)

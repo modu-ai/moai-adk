@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // m3BaseFixture creates a scratch repository and a registered home-root
@@ -55,6 +56,13 @@ func m3BaseFixture(t *testing.T) (repo, homeTree string) {
 	// The branch names the card per REQ-KW-003's recognition rule (the
 	// segment after its type prefix is the SPEC id): feature/t7, not WT-t7.
 	git(repo, "worktree", "add", "-q", "-b", "feature/t7", "--", homeTree)
+	// The fixture's project folder is claimed the production way (the
+	// resolver's owner marker + repository-side record): trees under the
+	// home root in production always arrive through a resolver path, and
+	// the M8R key-scoped scan (card t1640 review P1-5) reads that record.
+	if _, err := worktreeroot.Resolve(repo); err != nil {
+		t.Fatalf("resolve the repository's key: %v", err)
+	}
 	return repo, homeTree
 }
 
@@ -105,5 +113,48 @@ func TestDefaultWorktreeBases_LegacyBasesPinned(t *testing.T) {
 	}
 	if bases.MoAI != moaiBase {
 		t.Errorf("bases.MoAI = %q, want %q", bases.MoAI, moaiBase)
+	}
+}
+
+// TestReadCardStatus_HomeScanIsKeyScoped — card t1640 review P1-5: the
+// home-root scan of a repository WITH a recorded key is scoped to that
+// key's project folder; another project folder carrying the same specID —
+// even one sorting first — is never selected (the home root is cross-
+// project and the specID alone does not name a tree).
+func TestReadCardStatus_HomeScanIsKeyScoped(t *testing.T) {
+	repo, homeTree := m3BaseFixture(t)
+	home := filepath.Dir(filepath.Dir(homeTree)) // .../worktrees/projects
+	// The fixture created the project folder by hand; give the repository
+	// its real recorded assignment (the resolver claims the same base name
+	// and writes the marker and the record).
+	if _, err := worktreeroot.Resolve(repo); err != nil {
+		t.Fatalf("resolve the repository's key: %v", err)
+	}
+	// The decoy: a project folder that sorts FIRST and carries the same
+	// specID on a token-matching branch — another repository's tree in the
+	// shared root.
+	decoy := filepath.Join(home, "000aaa", "t7")
+	if err := os.MkdirAll(filepath.Dir(decoy), 0o755); err != nil {
+		t.Fatalf("mkdir decoy: %v", err)
+	}
+	git := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v in %s: %v\n%s", args, dir, err, out)
+		}
+	}
+	git(repo, "worktree", "add", "-q", "-b", "feature/t7-decoy", "--", decoy)
+
+	status, err := ReadCardStatus(repo, "t7", DefaultWorktreeBases(repo))
+	if err != nil {
+		t.Fatalf("ReadCardStatus: %v", err)
+	}
+	if status.WorktreePath != homeTree {
+		t.Errorf("WorktreePath = %q, want this repository's tree %q; the scan selected a foreign project folder", status.WorktreePath, homeTree)
+	}
+	if status.WorktreeBranch != "feature/t7" {
+		t.Errorf("WorktreeBranch = %q, want feature/t7 (the decoy's branch leaked in)", status.WorktreeBranch)
 	}
 }

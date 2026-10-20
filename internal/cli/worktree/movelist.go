@@ -382,26 +382,34 @@ func isLocationLine(r string) bool {
 // rewritten or truncated, and no append when the line equals the latest
 // entry naming either of its two paths (a move re-applied after a rollback
 // is appended; an identical re-run adds nothing). The caller holds the
-// migration lock.
-func appendMoveListLine(mlPath, line string) {
+// migration lock. The write error is returned: a caller whose move depends
+// on the line being recorded (the intent line before a move, REQ-WHR-012b
+// step 9) must abort; a caller recording an already-made change surfaces the
+// failure to the run's exit.
+func appendMoveListLine(mlPath, line string) error {
 	data, _ := os.ReadFile(mlPath)
 	// The dedupe: compare against the latest entry naming either path.
 	rev := revLines(string(data))
 	if len(rev) > 0 && rev[0] == line {
-		return // identical re-run: nothing to append
+		return nil // identical re-run: nothing to append
 	}
 	fh, err := os.OpenFile(mlPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return
+		return fmt.Errorf("append the move list %s: %w", mlPath, err)
 	}
 	defer func() { _ = fh.Close() }()
 	if fi, serr := os.Stat(mlPath); serr == nil && fi.Size() > 0 {
 		raw, _ := os.ReadFile(mlPath)
 		if len(raw) > 0 && raw[len(raw)-1] != '\n' {
-			_, _ = fh.Write([]byte("\n"))
+			if _, werr := fh.Write([]byte("\n")); werr != nil {
+				return fmt.Errorf("append the move list %s: %w", mlPath, werr)
+			}
 		}
 	}
-	_, _ = fh.WriteString(line + "\n")
+	if _, werr := fh.WriteString(line + "\n"); werr != nil {
+		return fmt.Errorf("append the move list %s: %w", mlPath, werr)
+	}
+	return nil
 }
 
 // revLines returns the non-empty lines of the file, last first.

@@ -124,6 +124,82 @@ func PathFor(repoDir, name string) (string, error) {
 	return filepath.Join(res.Root, name), nil
 }
 
+// Plan answers the landing path of name for repoDir WITHOUT writing
+// anything: no project folder, no owner marker, no repository-side record
+// (card t1640 review P2i — the migration's dry run resolves destinations
+// for its plan and must leave the repository and MOAI_HOME byte-identical,
+// AC-WHR-015). The recorded key wins exactly as resolve() does; a
+// first-time assignment computes the key the writing resolver WOULD claim —
+// the folded candidate, or its AC-WHR-003a collision suffix — without
+// claiming it, so a plan naming a suffixed key is a plan, not a promise:
+// the real claim may suffix differently if the home root changed between
+// the plan and the apply. An existing folder owned by another repository
+// is an error here, the same answer the writing claim gives.
+func Plan(repoDir, name string) (string, error) {
+	home, err := paths.MoaiHome()
+	if err != nil {
+		return "", err
+	}
+	common, err := gitCommonDir(repoDir)
+	if err != nil {
+		return "", err
+	}
+	primary := filepath.Dir(common)
+	canonical, err := filepath.EvalSymlinks(primary)
+	if err != nil {
+		return "", fmt.Errorf("resolving primary root %s: %w", primary, err)
+	}
+	projects := filepath.Join(home, projectsSubdir)
+
+	// The recorded key wins over everything (design.md, Stability) — read
+	// only: ensureProjectDir is resolve()'s write and is skipped here.
+	if k := readRecord(common); k != "" {
+		return filepath.Join(projectDir(home, k), name), nil
+	}
+
+	pin, err := readPin(primary)
+	if err != nil {
+		return "", err
+	}
+	candidate := sanitize(filepath.Base(canonical))
+	if pin != "" {
+		candidate = pin
+	}
+	if folder := foldFind(projects, candidate); folder == "" {
+		return filepath.Join(projectDir(home, candidate), name), nil
+	} else if owner, oerr := readMarkerOwner(filepath.Join(projects, folder, markerName)); oerr != nil {
+		return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder, filepath.Join(projects, folder, markerName), oerr)
+	} else if strings.EqualFold(owner, canonical) {
+		return filepath.Join(projectDir(home, folder), name), nil
+	} else if pin != "" {
+		return "", fmt.Errorf("git_strategy.worktree_project_key pin %q names project folder %q owned by another repository (owner marker %s); refusing without suffixing", candidate, folder, filepath.Join(projects, folder, markerName))
+	} else {
+		suffixed := candidate + "-" + suffixHash(canonical)
+		if folder2 := foldFind(projects, suffixed); folder2 == "" {
+			return filepath.Join(projectDir(home, suffixed), name), nil
+		} else if owner2, oerr := readMarkerOwner(filepath.Join(projects, folder2, markerName)); oerr != nil {
+			return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder2, filepath.Join(projects, folder2, markerName), oerr)
+		} else if !strings.EqualFold(owner2, canonical) {
+			return "", fmt.Errorf("project folder %q is already owned by another repository (owner marker %s); refusing", folder2, filepath.Join(projects, folder2, markerName))
+		} else {
+			return filepath.Join(projectDir(home, folder2), name), nil
+		}
+	}
+}
+
+// RecordedKey returns the repository-side key record of repoDir — a
+// read-only observation that writes nothing and reports "" when the
+// repository has no recorded assignment (card t1640 review P1-5: a reader
+// that scans the whole home root cannot tell this repository's trees from
+// another repository's; the recorded key scopes the scan).
+func RecordedKey(repoDir string) string {
+	common, err := gitCommonDir(repoDir)
+	if err != nil {
+		return ""
+	}
+	return readRecord(common)
+}
+
 // resolve runs the full resolution: primary-root discovery, pin read and
 // validation, record-first key lookup, first-time assignment with the owner
 // marker and the repository-side record, and the collision suffix.

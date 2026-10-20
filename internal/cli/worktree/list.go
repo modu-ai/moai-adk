@@ -105,6 +105,15 @@ func buildListRows(root string) ([]listRow, error) {
 		CodexWorktreesDir: codexWorktreesDir(),
 		MarkerOwners:      homeMarkerOwners(homeProjectsDir()),
 	}
+	// Witness (c) — a home-root tree whose project-folder marker is ours —
+	// needs THIS repository's owner identity; without it every moved non-WT-
+	// tree lists as unclassified (card t1640 review P2d). The recorded key
+	// scopes the marker read; a repository with no record owns nothing.
+	if key := worktreeroot.RecordedKey(primary); key != "" {
+		if owner, ok := worktreeroot.OwnerMarkerOf(filepath.Join(homeProjectsDir(), key)); ok {
+			ctx.OwnerID = owner
+		}
+	}
 	now := time.Now()
 	var rows []listRow
 	for _, rec := range records {

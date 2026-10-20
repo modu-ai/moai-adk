@@ -34,6 +34,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // branchProbe is the package-level indirection over exec.Command used by
@@ -127,11 +128,17 @@ func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatu
 	// directory is scanned at its two-segment depth
 	// <MoaiHome>/worktrees/projects/<key>/<specID>
 	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007), then the two legacy
-	// bases at their flat depth.
+	// bases at their flat depth. The scan is scoped to THIS repository's
+	// recorded key (card t1640 review P1-5): the home root is cross-project,
+	// and a whole-home `*` sweep can pre-select another repository's tree
+	// that happens to carry the same specID. A repository with no recorded
+	// key has no home-root trees of its own; the legacy bases stand alone.
 	var scanPaths []string
 	if bases.Home != "" {
-		if matches, err := filepath.Glob(filepath.Join(bases.Home, "*", specID)); err == nil {
-			scanPaths = append(scanPaths, matches...)
+		if key := worktreeroot.RecordedKey(primaryRoot); key != "" {
+			if matches, err := filepath.Glob(filepath.Join(bases.Home, key, specID)); err == nil {
+				scanPaths = append(scanPaths, matches...)
+			}
 		}
 	}
 	for _, base := range []string{bases.MoAI, bases.Claude} {

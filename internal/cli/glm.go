@@ -374,9 +374,21 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006): see cc.go — the same
-	// short-name entry rewrite applies to the glm launch path.
-	filteredArgs = rewriteExistingWorktreeShortName(view.LaunchArgs)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006), entry form repaired by
+	// M8R (card t1640 review P1-2): see cc.go — the existing home-root tree
+	// is entered by directory (the backend starts inside it, no worktree
+	// selection handed over); every other short name passes through.
+	// The view owns the launch argv (see cc.go): always take the normalized
+	// LaunchArgs, then strip the selection when entering by directory.
+	filteredArgs = view.LaunchArgs
+	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
+		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
+		if cherr := os.Chdir(entryDir); cherr != nil {
+			endHandoff()
+			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)
+		}
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: entering the existing worktree %s\n", entryDir)
+	}
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: see cc.go — the dump precedes the launch.

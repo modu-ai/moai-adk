@@ -280,3 +280,41 @@ func m4InRepo(t *testing.T, repo string) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(old) })
 }
+
+// TestWorktreeList_OwnedHomeRootTreeWithoutWTPrefixIsMoaiMade — card t1640
+// review P2d: witness (c) needs THIS repository's owner identity on the
+// classify context; a home-root tree whose branch carries no WT- prefix is
+// moai-made when the project-folder marker is ours (the post-migration
+// shape of a moved non-WT- tree), not unclassified.
+func TestWorktreeList_OwnedHomeRootTreeWithoutWTPrefixIsMoaiMade(t *testing.T) {
+	repo, _ := m4ListWorld(t)
+	m4InRepo(t, repo)
+
+	homeRoot, err := worktreeroot.Root(repo)
+	if err != nil {
+		t.Fatalf("resolve home root: %v", err)
+	}
+	owned := filepath.Join(homeRoot, "release4")
+	if err := os.MkdirAll(filepath.Dir(owned), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	m4Git(t, repo, "worktree", "add", "-q", "-b", "release/v3.0.9", "--", owned)
+
+	out, err := m4RunList(t, "--json")
+	if err != nil {
+		t.Fatalf("list --json: %v\n%s", err, out)
+	}
+	var rows []m4Row
+	if jerr := json.Unmarshal([]byte(out), &rows); jerr != nil {
+		t.Fatalf("parse the list rows: %v\n%s", jerr, out)
+	}
+	for _, r := range rows {
+		if r.Name == "release4" {
+			if r.Class != "moai-made" {
+				t.Errorf("the owned home-root tree classifies as %q, want moai-made (row: %+v)", r.Class, r)
+			}
+			return
+		}
+	}
+	t.Fatalf("the list carries no row for the owned home-root tree:\n%s", out)
+}
