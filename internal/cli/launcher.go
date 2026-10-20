@@ -20,7 +20,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
-	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // --- Unified Launch ---
@@ -520,8 +519,8 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 			// remote check fails, and any tree the migration moved —
 			// whatever the tree's location or name.
 			keepReason := ""
-			switch {
-			case rec.Branch == "":
+			switch rec.Branch {
+			case "":
 				keepReason = "detached or bare: no branch to confirm a landing for"
 			default:
 				landed, lerr := gitBranchLandedReal(worktreePath)
@@ -1012,51 +1011,6 @@ func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,
 	)
-}
-
-// rewriteExistingWorktreeShortName implements REQ-WHR-006's entry clause on
-// the normalized launch argv: a -w short name that names exactly one
-// existing tree under the HOME root is rewritten to that tree's absolute
-// path, so the backend re-enters the tree instead of creating a duplicate
-// under .claude/worktrees. A legacy-root match passes through unchanged —
-// claude re-enters legacy short names natively — and so does no match at
-// all: under branch Y of D-5 (PM-3 recorded FAIL, operator ruling bd72) the
-// launcher creates nothing, and the short-name-without-existing-tree
-// pass-through is the single documented exception to "no creation path
-// names a legacy root" (REQ-WHR-006 branch Y, REQ-WHR-020). An ambiguous
-// name (two or more roots) also passes through unchanged; the ambiguity
-// report belongs to the callers that enumerate candidates (REQ-WHR-022).
-// Applied after the view is built and before the argv is handed to the
-// launch seam (cc.go / glm.go); the stage reads keep the value as typed.
-func rewriteExistingWorktreeShortName(args []string) []string {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
-		return args
-	}
-	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
-		return args
-	}
-	root, err := findProjectRootFn()
-	if err != nil {
-		return args
-	}
-	cands, err := worktreeroot.Candidates(root, read.Value)
-	if err != nil || len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
-		return args
-	}
-	rewritten := make([]string, len(args))
-	copy(rewritten, args)
-	for i := 1; i < len(rewritten); i++ {
-		switch {
-		case rewritten[i] == read.Value && (rewritten[i-1] == "--worktree" || rewritten[i-1] == "-w"):
-			rewritten[i] = cands[0].Path
-			return rewritten
-		case rewritten[i] == "--worktree="+read.Value:
-			rewritten[i] = "--worktree=" + cands[0].Path
-			return rewritten
-		}
-	}
-	return args
 }
 
 // isUnderWorktreePrefix reports whether path is contained within prefix.

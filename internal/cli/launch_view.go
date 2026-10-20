@@ -38,7 +38,10 @@ package cli
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // worktreeRead is one first-match -w / --worktree read: the value and whether a
@@ -200,6 +203,55 @@ func (v launchView) materializeBranch(warn io.Writer) error {
 func readFirstWorktree(args []string) worktreeRead {
 	value, ok := worktreeFlagValue(args)
 	return worktreeRead{Value: value, Has: ok}
+}
+
+// rewriteExistingWorktreeShortName implements REQ-WHR-006's entry clause on
+// the normalized launch argv: a -w short name that names exactly one
+// existing tree under the HOME root is rewritten to that tree's absolute
+// path, so the backend re-enters the tree instead of creating a duplicate
+// under .claude/worktrees. A legacy-root match passes through unchanged —
+// claude re-enters legacy short names natively — and so does no match at
+// all: under branch Y of D-5 (PM-3 recorded FAIL, operator ruling bd72) the
+// launcher creates nothing, and the short-name-without-existing-tree
+// pass-through is the single documented exception to "no creation path
+// names a legacy root" (REQ-WHR-006 branch Y, REQ-WHR-020). An ambiguous
+// name (two or more roots) also passes through unchanged; the ambiguity
+// report belongs to the callers that enumerate candidates (REQ-WHR-022).
+// Applied after the view is built and before the argv is handed to the
+// launch seam (cc.go / glm.go); the stage reads keep the value as typed.
+//
+// Defined here next to the resolver walk helpers it reuses: worktree
+// selection is derived in ONE file (launch_view.go) and every reader on the
+// launch path receives values (TestLaunchViewSingleParse).
+func rewriteExistingWorktreeShortName(args []string) []string {
+	read := readFirstWorktree(args)
+	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+		return args
+	}
+	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
+		return args
+	}
+	root, err := findProjectRootFn()
+	if err != nil {
+		return args
+	}
+	cands, err := worktreeroot.Candidates(root, read.Value)
+	if err != nil || len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
+		return args
+	}
+	rewritten := make([]string, len(args))
+	copy(rewritten, args)
+	for i := 1; i < len(rewritten); i++ {
+		switch {
+		case rewritten[i] == read.Value && (rewritten[i-1] == "--worktree" || rewritten[i-1] == "-w"):
+			rewritten[i] = cands[0].Path
+			return rewritten
+		case rewritten[i] == "--worktree="+read.Value:
+			rewritten[i] = "--worktree=" + cands[0].Path
+			return rewritten
+		}
+	}
+	return args
 }
 
 // consumeLaunchArgs is runLaunchClaude's consumption loop: the launcher eats

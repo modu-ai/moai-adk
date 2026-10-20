@@ -176,7 +176,7 @@ func (f *mlFix) appendRaw(text string) {
 	if err != nil {
 		f.t.Fatalf("open move list: %v", err)
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 	if _, err := fh.WriteString(text); err != nil {
 		f.t.Fatalf("append move list: %v", err)
 	}

@@ -106,7 +106,7 @@ func TestM3FactoryCarryPreviousWorktree_HomeRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open factory db: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	wt := w.homeT7
 	if _, err := db.RecordPicked(context.Background(), "run-prev", "t7", homestate.CardFields{WorktreePath: &wt}, "m3-carry", time.Now().UTC()); err != nil {
 		t.Fatalf("record picked: %v", err)

@@ -122,16 +122,16 @@ func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) 
 			if jerr != nil {
 				return jerr
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), string(body))
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
 		} else {
 			for _, r := range report.rows {
 				line := fmt.Sprintf("%s\t%s → %s\t[%s]", r.class, r.source, r.destination, r.outcome)
 				if r.skipReason != "" {
 					line += " (" + r.skipReason + ")"
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), line)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "moved %d, skipped %d, failed %d, reversed %d\n",
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "moved %d, skipped %d, failed %d, reversed %d\n",
 				report.moved, report.skipped, report.failed, report.reversed)
 		}
 		if report.reversed > 0 || report.failed > 0 {
@@ -472,12 +472,12 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 		}
 		for _, s := range journal.Steps {
 			if _, err := os.Stat(s.NewPath); err == nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "intact\t%s → %s\n", s.OldPath, s.NewPath)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "intact\t%s → %s\n", s.OldPath, s.NewPath)
 				intact++
 			}
 		}
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%d recorded move(s) intact\n", intact)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%d recorded move(s) intact\n", intact)
 	return nil
 }
 
@@ -516,7 +516,7 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 			appendMoveListLine(mlPath, m6MoveLine("restored", s.NewPath, s.OldPath, s.Ident))
 			restored++
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s)\n", restored)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s)\n", restored)
 		return nil
 	})
 }

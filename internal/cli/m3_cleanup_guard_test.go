@@ -110,7 +110,7 @@ func m3AppendMoveLine(t *testing.T, repo, result, oldPath, newPath, ident string
 	if err != nil {
 		t.Fatalf("open move list: %v", err)
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 	if _, err := fh.WriteString(line); err != nil {
 		t.Fatalf("append move list: %v", err)
 	}

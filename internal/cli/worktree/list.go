@@ -71,11 +71,11 @@ func runList(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(body))
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
 		return nil
 	}
 	for _, r := range rows {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\t%s\t%s\tdirty=%v unpushed=%d anchored=%v\n",
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\t%s\t%s\tdirty=%v unpushed=%d anchored=%v\n",
 			r.Name, r.Class, r.Root, r.Branch, r.Head, r.Path, r.Dirty, r.Unpushed, r.Anchored)
 	}
 	return nil
@@ -178,7 +178,7 @@ func listUnpushedCount(path string) int {
 		return 0
 	}
 	n := 0
-	fmt.Sscanf(out, "%d", &n)
+	_, _ = fmt.Sscanf(out, "%d", &n)
 	return n
 }
 

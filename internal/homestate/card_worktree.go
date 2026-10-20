@@ -131,7 +131,7 @@ func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, new
 			var runID string
 			var version int
 			if err := rows.Scan(&runID, &version); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return nil, err
 			}
 			targets = append(targets, struct {
@@ -139,7 +139,7 @@ func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, new
 				version int
 			}{runID, version})
 		}
-		rows.Close()
+		_ = rows.Close()
 		if err := rows.Err(); err != nil {
 			return nil, err
 		}
