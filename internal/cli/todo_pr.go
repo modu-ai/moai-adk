@@ -69,17 +69,23 @@ const todoPRLandingAbbrev = 7
 // whole listing over one corrupt row whichever way that lands.
 const todoPRLandingMarkerMalformed = "malformed"
 
-// todoRunCommand is the process seam every subprocess in the todo surface
-// goes through. It exists so the subprocess-census tests can COUNT
-// invocations: AC-009 asserts `todo list` spawns zero, and AC-014 asserts
+// todoRunCommand is the background-context process seam for the todo surface.
+// Factory request-bound queries use its todoRunCommandContext counterpart.
+// These seams let the subprocess-census tests count invocations: AC-009 asserts `todo list` spawns zero, and AC-014 asserts
 // `todo pr` spawns exactly one `gh` regardless of queue length.
 //
 // Package-level rather than plumbed, because the assertion is about the whole
 // command surface — a second, unrouted exec call is precisely the regression
-// the census is there to catch, and it would be invisible to a seam only the
-// routed path knows about.
+// the census is there to catch. Factory query spies cover the contextual seam
+// as well, so request-bound queries remain visible to their census.
 var todoRunCommand factory.CommandRunner = func(name string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), todoPRSubprocessTimeout)
+	return todoRunCommandContext(context.Background(), name, args...)
+}
+
+// todoRunCommandContext binds subprocess lifetime to the request while retaining
+// the same timeout, checkout attribution, and environment as todo commands.
+var todoRunCommandContext = func(parent context.Context, name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(parent, todoPRSubprocessTimeout)
 	defer cancel()
 	child := exec.CommandContext(ctx, name, args...)
 	// Queue storage may live under the home state directory. Execute against
@@ -393,7 +399,11 @@ func formatPRLinks(prs []int) string {
 // never saw. It is reported rather than paged around, because a second page
 // means a second `gh` process.
 func fetchOpenPRs() (prs []factory.PRRecord, saturated bool, err error) {
-	out, err := todoRunCommand("gh", "pr", "list",
+	return fetchOpenPRsWithRunner(todoRunCommand)
+}
+
+func fetchOpenPRsWithRunner(run factory.CommandRunner) (prs []factory.PRRecord, saturated bool, err error) {
+	out, err := run("gh", "pr", "list",
 		"--state", "open",
 		"--limit", strconv.Itoa(todoPROpenPRLimit),
 		"--json", "number,title,body,state")
@@ -419,5 +429,14 @@ type openPRQuery struct {
 // query after a queue lock is released.
 func prefetchOpenPRs() openPRQuery {
 	prs, saturated, err := fetchOpenPRs()
+	return openPRQuery{prs: prs, saturated: saturated, err: err}
+}
+
+// prefetchOpenPRsContext preserves request cancellation through process start
+// and execution; other todo consumers retain their background-bound behavior.
+func prefetchOpenPRsContext(ctx context.Context) openPRQuery {
+	prs, saturated, err := fetchOpenPRsWithRunner(func(name string, args ...string) (string, error) {
+		return todoRunCommandContext(ctx, name, args...)
+	})
 	return openPRQuery{prs: prs, saturated: saturated, err: err}
 }
