@@ -796,7 +796,12 @@ func TestMovedBy_IdentKeyedAcrossAllLines(t *testing.T) {
 		a := f.add(f.old("t7"))
 		x := f.ident(a)
 		f.append(mlMk("pending", "t7", "t7", a, f.nw("t7"), x))
-		f.wantBy("source", a, false)
+		// M8S (card t1640 review F5): a pending line is an UNSETTLED move —
+		// the tree may stand at either of its two paths, and the cleanup
+		// protection covers whichever end is registered until a later
+		// restored or reversed line releases it. A kill BEFORE the move
+		// leaves the tree at its old path, still protected.
+		f.wantBy("source", a, true)
 	})
 
 	t.Run("the tree's own later pending line does not drop the protection", func(t *testing.T) {

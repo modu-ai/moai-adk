@@ -281,9 +281,27 @@ func saveWorktreeEntriesAtomic(path string, entries []WorktreeEntry) error {
 	if err != nil {
 		return fmt.Errorf("worktree registry: marshal entries: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return fmt.Errorf("worktree registry: write %s: %w", tmp, err)
+	// The temp file gets an unpredictable name in the same directory (card
+	// t1640 review F10 / CWE-59): a fixed `path + ".tmp"` is a
+	// link-following target for anything that watches the state file.
+	tmpf, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-")
+	if err != nil {
+		return fmt.Errorf("worktree registry: create temp file: %w", err)
+	}
+	tmp := tmpf.Name()
+	if _, werr := tmpf.Write(data); werr != nil {
+		_ = tmpf.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("worktree registry: write %s: %w", tmp, werr)
+	}
+	if cherr := tmpf.Chmod(0o644); cherr != nil {
+		_ = tmpf.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("worktree registry: chmod %s: %w", tmp, cherr)
+	}
+	if cerr := tmpf.Close(); cerr != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("worktree registry: close %s: %w", tmp, cerr)
 	}
 	if worktreeAtomicFault != nil {
 		if ferr := worktreeAtomicFault(); ferr != nil {

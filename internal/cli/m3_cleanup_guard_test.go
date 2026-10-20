@@ -218,19 +218,24 @@ func TestM3CleanupGuard_RemovesOnlyIntegratedLandedUnmoved(t *testing.T) {
 	t.Logf("cleanup report: %s", report)
 
 	// AC-WHR-014b's reporting clause: every kept tree is reported as
-	// skipped, with its reason.
-	for _, name := range []string{"worker-review", "worker-moved", "worker-pending", "worker-refused", "worker-pushed", "worker-integrated"} {
+	// skipped, with its reason. worker-premove joins the kept set under the
+	// M8S pending-protection semantics (card t1640 review F5): its latest
+	// line is an unsettled pending whose tree stands at the line's old
+	// path, and the protection window covers whichever end is registered
+	// until a later restored or reversed line releases it.
+	for _, name := range []string{"worker-review", "worker-moved", "worker-pending", "worker-refused", "worker-pushed", "worker-integrated", "worker-premove"} {
 		if !strings.Contains(report, name) {
 			t.Errorf("the cleanup report does not account for kept tree %s:\n%s", name, report)
 		}
 	}
 
-	// The seven protected trees survive, registered, with their branches.
+	// The eight protected trees survive, registered, with their branches.
 	for _, p := range []string{
 		filepath.Join(homeRoot, "worker-review"),
 		filepath.Join(homeRoot, "worker-moved"),
 		filepath.Join(homeRoot, "worker-pending"),
 		filepath.Join(homeRoot, "worker-refused"),
+		premovePath,
 		pushedPath,
 		integratedPath,
 	} {
@@ -238,11 +243,9 @@ func TestM3CleanupGuard_RemovesOnlyIntegratedLandedUnmoved(t *testing.T) {
 			t.Errorf("protected tree %s was removed; the cleanup guard must keep it", p)
 		}
 	}
-	// The two removal clauses keep today's behavior.
-	for _, p := range []string{landedPath, premovePath} {
-		if m3Registered(t, repo, p) {
-			t.Errorf("unprotected tree %s was kept; integrated+landed+unmoved worker trees are still removed", p)
-		}
+	// The removal clause keeps today's behavior for the settled case.
+	if m3Registered(t, repo, landedPath) {
+		t.Errorf("unprotected tree %s was kept; integrated+landed+unmoved worker trees are still removed", landedPath)
 	}
 	// Their branches survive in the branch list (removal never deletes a
 	// branch).

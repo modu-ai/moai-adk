@@ -353,7 +353,21 @@ func MovedBy(primary, path string) bool {
 	case "restored", "reversed":
 		// Only a later restored or reversed line releases the protection.
 		return false
-	case "moved", "pending", "refused":
+	case "pending":
+		// A pending line is an UNSETTLED move: the tree may stand at either
+		// of its two paths (a failed reverse move records pending with the
+		// destination as the line's old path — card t1640 review F5). The
+		// protection covers whichever end the tree is registered at, until
+		// a later restored or reversed line releases it.
+		if !worktreeroot.Same(rec.NewPath, path) && !worktreeroot.Same(rec.OldPath, path) {
+			return false
+		}
+		registrations, err := registeredWorktreePaths(primary)
+		if err != nil {
+			return false
+		}
+		return isRegistered(registrations, path)
+	case "moved", "refused":
 		if !worktreeroot.Same(rec.NewPath, path) {
 			return false
 		}

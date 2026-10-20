@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,7 +142,7 @@ func withMigrationLock(root string, fn func() error) error {
 // writer gate (AC-WHR-017b), not a reader's.
 func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) error {
 	run := func() error {
-		report, err := runMigrationEngine(root, apply)
+		report, err := runMigrationEngine(root, apply, "migrate")
 		if err != nil {
 			return err
 		}
@@ -237,9 +238,18 @@ func processUsesWorktree(directories []string, tree string) bool {
 }
 
 // worktreeRegistryProbe is the injectable seam for the session-registry
-// readability skip cause; the default accepts (the update-time apply wires
-// the same probe the old planner used).
+// readability skip cause. The default reads the registry the way the
+// session package does (card t1640 review F8: a registry that cannot be
+// read is a skip cause — fail-closed, I-1 — never a silently-voided probe;
+// an absent registry file reads as empty, the session package's own
+// semantics, so repositories without a registry are unaffected).
 var worktreeRegistryProbe = func(root, tree string) error {
+	for _, base := range []string{root, tree} {
+		registry := session.NewRegistry(filepath.Join(base, session.DefaultRegistryPath), nil)
+		if _, err := registry.Query(""); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -349,16 +359,93 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 
 // migrationReport builders
 
+// journalStep is one tree's entry of the migration journal: pending from
+// the moment it is written (BEFORE the tree's move, REQ-WHR-017 / card
+// t1640 review F3), settled with the step's verdict after it. The manifest
+// digest rides the settled entry so a rollback can apply the
+// settled-moves-only manifest precondition (REQ-WHR-018's fifth entry).
+type journalStep struct {
+	OldPath  string `json:"old_path"`
+	NewPath  string `json:"new_path"`
+	Outcome  string `json:"outcome"`
+	Ident    string `json:"ident"`
+	Reason   string `json:"reason,omitempty"`
+	Manifest string `json:"manifest,omitempty"`
+}
+
+// migrationJournal is one apply run's journal file: every tree is appended
+// as pending before its move and settled afterwards, and the whole file is
+// rewritten on every change — a kill mid-run leaves the journal naming
+// every tree whose move may have started (card t1640 review F3).
+type migrationJournal struct {
+	path    string
+	trigger string
+	steps   []journalStep
+}
+
+func (j *migrationJournal) flush() error {
+	if j == nil || j.path == "" {
+		return nil
+	}
+	data, err := json.MarshalIndent(map[string]any{
+		"steps": j.steps, "trigger": j.trigger,
+		"created": time.Now().UTC().Format(time.RFC3339),
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("journal: %w", err)
+	}
+	if err := journalWrite(j.path, data); err != nil {
+		return fmt.Errorf("journal: %w", err)
+	}
+	return nil
+}
+
+// pending records a tree whose move is about to start.
+func (j *migrationJournal) pending(oldPath, newPath, ident string) error {
+	if j == nil {
+		return nil
+	}
+	j.steps = append(j.steps, journalStep{
+		OldPath: oldPath, NewPath: newPath, Outcome: "pending", Ident: ident,
+	})
+	return j.flush()
+}
+
+// settle records the step's verdict for the tree's pending entry.
+func (j *migrationJournal) settle(ident, outcome, reason, manifest string) error {
+	if j == nil {
+		return nil
+	}
+	for i := range j.steps {
+		if j.steps[i].Ident == ident && j.steps[i].Outcome == "pending" {
+			j.steps[i].Outcome = outcome
+			j.steps[i].Reason = reason
+			j.steps[i].Manifest = manifest
+			break
+		}
+	}
+	return j.flush()
+}
+
 // runMigrationEngine plans and (when apply is set) executes the migration.
 // The dry run and the apply both list every registered tree with its class;
 // only moai-made trees are moved. Non-moai-made trees are reported as
-// skipped with their class as the reason.
-func runMigrationEngine(root string, apply bool) (*migrationReport, error) {
+// skipped with their class as the reason. The trigger names the caller in
+// the move list ("migrate" for the verb, "update" for the consolidation —
+// AC-WHR-019(g)).
+func runMigrationEngine(root string, apply bool, trigger string) (*migrationReport, error) {
 	report := &migrationReport{}
 	plans := planMigrationFor(root, time.Now(), apply)
 	mlPath := moveListPath(root)
 
-	var journalSteps []map[string]any
+	var journal *migrationJournal
+	if apply {
+		journal = &migrationJournal{
+			path:    filepath.Join(filepath.Dir(moveListPath(root)), time.Now().UTC().Format("20060102T150405")+".json"),
+			trigger: trigger,
+		}
+	}
+
 	var writeErrs []string
 	for _, p := range plans {
 		row := migrationRow{
@@ -382,14 +469,9 @@ func runMigrationEngine(root string, apply bool) (*migrationReport, error) {
 		}
 		// The apply: the row's outcome is the engine's verdict for this tree
 		// (card t1640 review P2h — the placeholder never survives the run).
-		var mlErr error
-		var m6ident string
-		row.Outcome, row.SkipReason, m6ident, mlErr = migrateOneTree(root, p, mlPath)
-		journalSteps = append(journalSteps, map[string]any{
-			"old_path": p.source, "new_path": p.destination, "outcome": row.Outcome,
-			"ident": m6ident, "reason": row.SkipReason,
-		})
-		if mlErr != nil {
+		out := migrateOneTree(root, p, mlPath, trigger, journal)
+		row.Outcome, row.SkipReason = out.Outcome, out.Reason
+		if mlErr := out.MLErr; mlErr != nil {
 			writeErrs = append(writeErrs, fmt.Sprintf("%s: %v", p.source, mlErr))
 		}
 		switch row.Outcome {
@@ -403,20 +485,8 @@ func runMigrationEngine(root string, apply bool) (*migrationReport, error) {
 			report.skipped++
 		}
 		report.rows = append(report.rows, row)
-	}
-
-	// The journal: one file per apply, the rollback's and --verify's input.
-	// Each step carries the paths, the outcome, the tree's ident (D-12 —
-	// only ident tells two trees apart) and the reason.
-	if len(journalSteps) > 0 && apply {
-		if jerr := os.MkdirAll(filepath.Dir(moveListPath(root)), 0o755); jerr == nil {
-			journalData, jerr := json.MarshalIndent(map[string]any{
-				"steps": journalSteps, "created": time.Now().UTC().Format(time.RFC3339),
-			}, "", "  ")
-			if jerr == nil {
-				journalPath := filepath.Join(filepath.Dir(moveListPath(root)), time.Now().UTC().Format("20060102T150405")+".json")
-				_ = os.WriteFile(journalPath, journalData, 0o644)
-			}
+		if jerr := journal.settle(out.Ident, out.Outcome, out.Reason, out.Manifest); jerr != nil {
+			return report, jerr
 		}
 	}
 	if len(writeErrs) > 0 {
@@ -425,32 +495,44 @@ func runMigrationEngine(root string, apply bool) (*migrationReport, error) {
 	return report, nil
 }
 
+// treeOutcome is migrateOneTree's verdict for one tree.
+type treeOutcome struct {
+	Outcome  string // moved | reversed | failed | skipped
+	Reason   string
+	Ident    string
+	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
+	MLErr    error  // a move-list write error that outlives a successful move
+}
+
 // migrateOneTree moves one tree through the journaled step order —
-// manifest, intent line (the instance token first), git worktree move,
-// state re-key, card rebind, manifest comparison — and, on any failure, the
-// one reverse order (move back, re-key back, rebind back). Every reverse
-// move first compares the tree's identity with the journal's and refuses a
-// mismatch with a `refused` line (REQ-WHR-017/018). It returns the outcome
-// (moved | reversed | failed), the reason, the tree's ident, and a
-// move-list write error that outlives a successful move (card t1640 review
-// P1-3: an intent-line failure aborts the move BEFORE anything moves).
-func migrateOneTree(root string, p migratePlan, mlPath string) (string, string, string, error) {
+// manifest, journal-pending (F3: before the move), intent line (the
+// instance token first), git worktree move, state re-key, card rebind,
+// manifest comparison — and, on any failure, the one reverse order (move
+// back, re-key back, rebind back). Every reverse move first compares the
+// tree's identity with the journal's and refuses a mismatch with a
+// `refused` line (REQ-WHR-017/018).
+func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal) treeOutcome {
 	digest := captureManifest(p.source)
 
 	id, err := EnsureInstanceToken(p.source)
 	if err != nil {
-		return "skipped", fmt.Sprintf("identity unavailable: %v", err), "", nil
+		return treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("identity unavailable: %v", err)}
 	}
-	// The intent line precedes the move (REQ-WHR-012b step 9): a write
-	// failure here leaves the lane with no pointer, so the move must not
-	// start (P1-3).
-	if ierr := appendMoveListLine(mlPath, m6MoveLine("pending", p.source, p.destination, id.Ident())); ierr != nil {
-		return "failed", fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), id.Ident(), nil
+	// The journal's pending entry precedes the move (REQ-WHR-017, review
+	// F3): a kill mid-move leaves the journal naming the tree whose move
+	// may have started, and --rollback converges from it. The move-list
+	// intent line does the same for the lane pointer (REQ-WHR-012b step 9);
+	// either write failing aborts the move before anything moves.
+	if jerr := journal.pending(p.source, p.destination, id.Ident()); jerr != nil {
+		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("journal pending entry not recorded; moved nothing (%v)", jerr), Ident: id.Ident()}
+	}
+	if ierr := appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "pending", p.source, p.destination, id.Ident())); ierr != nil {
+		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), Ident: id.Ident(), Manifest: digest}
 	}
 
 	if _, err := listGitOutput(root, "worktree", "move", p.source, p.destination); err != nil {
-		_ = appendMoveListLine(mlPath, m6MoveLine("failed", p.source, p.destination, id.Ident()))
-		return "failed", fmt.Sprintf("git worktree move: %v", err), id.Ident(), nil
+		_ = appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "failed", p.source, p.destination, id.Ident()))
+		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("git worktree move: %v", err), Ident: id.Ident(), Manifest: digest}
 	}
 
 	if rerr := hook.RekeyWorktreeEntry(root, p.source, p.destination); rerr != nil {
@@ -458,24 +540,24 @@ func migrateOneTree(root string, p migratePlan, mlPath string) (string, string, 
 			// No state-file entry for the old path: the re-key is a no-op
 			// (the tree was never registered in the state file).
 		} else {
-			return reverseAfterFailure(root, p, id, mlPath, fmt.Sprintf("re-key failed: %v", rerr))
+			return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("re-key failed: %v", rerr))
 		}
 	}
 
 	if rerr := rebindCardForPath(root, p.source, p.destination); rerr != nil {
-		return reverseAfterFailure(root, p, id, mlPath, fmt.Sprintf("card rebind failed: %v", rerr))
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("card rebind failed: %v", rerr))
 	}
 
 	if after := captureManifest(p.destination); after != digest {
-		return reverseAfterFailure(root, p, id, mlPath, "manifest mismatch after the move")
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, "manifest mismatch after the move")
 	}
 
-	if merr := appendMoveListLine(mlPath, m6MoveLine("moved", p.source, p.destination, id.Ident())); merr != nil {
+	if merr := appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "moved", p.source, p.destination, id.Ident())); merr != nil {
 		// The move stands; the settling-line failure surfaces at the run's
 		// exit (the intent line already names the tree, REQ-WHR-012b step 9).
-		return "moved", "", id.Ident(), merr
+		return treeOutcome{Outcome: "moved", Ident: id.Ident(), Manifest: digest, MLErr: merr}
 	}
-	return "moved", "", id.Ident(), nil
+	return treeOutcome{Outcome: "moved", Ident: id.Ident(), Manifest: digest}
 }
 
 // reverseAfterFailure runs the one reverse order after a failed step and
@@ -484,22 +566,93 @@ func migrateOneTree(root string, p migratePlan, mlPath string) (string, string, 
 // reverse move leaves the tree standing at the destination with its re-key
 // and rebind intact (they name the location the tree really sits at),
 // records pending, and fails the tree.
-func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, reason string) (string, string, string, error) {
-	movedBack, mlErr := m6ReverseMove(root, p, id, mlPath)
+func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, trigger, digest, reason string) treeOutcome {
+	movedBack, mlErr := m6ReverseMove(root, p, id, mlPath, trigger)
+	out := treeOutcome{Ident: id.Ident(), Manifest: digest}
 	if movedBack {
-		return "reversed", reason, id.Ident(), mlErr
+		out.Outcome, out.Reason = "reversed", reason
+	} else {
+		out.Outcome = "failed"
+		if mlErr != nil {
+			out.Reason = fmt.Sprintf("%s; the reverse move failed and the pending line could not be written (%v)", reason, mlErr)
+		} else {
+			out.Reason = fmt.Sprintf("%s; the reverse move failed, the tree stands at %s (pending)", reason, p.destination)
+		}
 	}
-	if mlErr != nil {
-		return "failed", fmt.Sprintf("%s; the reverse move failed and the pending line could not be written (%v)", reason, mlErr), id.Ident(), nil
-	}
-	return "failed", fmt.Sprintf("%s; the reverse move failed, the tree stands at %s (pending)", reason, p.destination), id.Ident(), nil
+	out.MLErr = mlErr
+	return out
 }
 
+// reverseAfterFailure runs the one reverse order after a failed step and
+// translates its result into the outcome (card t1640 review P1-4): the tree
 // reverseGitMove is the injectable seam for the reverse `git worktree move`
 // (the fault-injection point of AC-WHR-017a's reverse-step failure clause).
 var reverseGitMove = func(root, from, to string) error {
 	_, err := listGitOutput(root, "worktree", "move", from, to)
 	return err
+}
+
+// journalWrite is the injectable seam for the journal file write (the
+// fault-injection point of the REQ-WHR-017 journal clause).
+var journalWrite = func(path string, data []byte) error {
+	return os.WriteFile(path, data, 0o644)
+}
+
+// RunUpdateConsolidation is the exported update-time entry into the
+// migration engine: internal/cli's update consolidation delegates here
+// (card t1640 review F1 — the route AC-WHR-019 requires).
+func RunUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
+	return runUpdateConsolidation(root, dryRun, out)
+}
+
+// runUpdateConsolidation is the update-time entry into the migration
+// engine — the route AC-WHR-019 requires (card t1640 review F1): the same
+// classifier selection (agent-*, unclassified, integration, codex-managed
+// and primary trees are never moved), the same home-root destination from
+// the resolver, the same migration lock, journal, state re-key, card
+// rebind and manifest comparison as the `migrate` verb, with the move-list
+// trigger `update`. The dry run writes nothing (AC-WHR-015/AC-WHR-019(h):
+// the plan only). The update passes its own lock state through: a held
+// migration lock fails the consolidation and the update degrades it to a
+// warning (AC-WHR-019(j)).
+func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
+	run := func() error {
+		report, err := runMigrationEngine(root, !dryRun, "update")
+		if err != nil {
+			return err
+		}
+		moved := report.moved
+		if dryRun {
+			for _, r := range report.rows {
+				switch r.Outcome {
+				case "planned":
+					_, _ = fmt.Fprintf(out, "Worktree migration planned %s -> %s\n", r.Source, r.Destination)
+				case "skipped":
+					_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
+				}
+			}
+			return nil
+		}
+		for _, r := range report.rows {
+			switch r.Outcome {
+			case "skipped":
+				_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
+			case "failed", "reversed":
+				// A reversed move is a tree that is NOT migrated: the
+				// engine moved it back (AC-WHR-019(f)).
+				_, _ = fmt.Fprintf(out, "Worktree migration failed %s: %s\n", r.Source, r.SkipReason)
+			case "moved":
+				_, _ = fmt.Fprintf(out, "Worktree migration moved %s -> %s\n", r.Source, r.Destination)
+			}
+		}
+		_, _ = fmt.Fprintf(out, "Worktree migration: %d moved, %d skipped, %d failed\n",
+			moved, report.skipped, report.failed+report.reversed)
+		return nil
+	}
+	if dryRun {
+		return run()
+	}
+	return withMigrationLock(root, run)
 }
 
 // m6ReverseMove runs the one reverse order — move back, re-key back, rebind
@@ -508,21 +661,24 @@ var reverseGitMove = func(root, from, to string) error {
 // (REQ-WHR-017/018, design.md D-12: only ident tells two trees apart). It
 // reports whether the tree actually moved back (card t1640 review P1-4) and
 // the move-list write error, if any.
-func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath string) (bool, error) {
+func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger string) (bool, error) {
 	destIdent, err := TreeIdent(p.destination)
 	if err == nil && destIdent.Ident() != id.Ident() {
-		return false, appendMoveListLine(mlPath, m6MoveLine("refused", p.destination, p.source, id.Ident()))
+		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
 	}
 	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil {
 		// The tree stands at the destination: the re-key and the rebind stay
 		// pointing at it — reverting them would name a location the tree
-		// does not occupy. The pending line is the convergence record.
-		return false, appendMoveListLine(mlPath, m6MoveLineReason("pending", p.destination, p.source, id.Ident(),
+		// does not occupy. The pending line is the convergence record; it
+		// names the destination as the line's OLD path (the orientation the
+		// reverse order travels), and MovedBy reads both ends of a pending
+		// line (card t1640 review F5).
+		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
 			fmt.Sprintf("reverse move failed: %v", rerr)))
 	}
 	_ = hook.RekeyWorktreeEntryInverse(root, p.destination, p.source)
 	_ = rebindCardForPath(root, p.destination, p.source)
-	return true, appendMoveListLine(mlPath, m6MoveLine("reversed", p.destination, p.source, id.Ident()))
+	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
 }
 
 // rebindCardForPath rebinds the card record bound to oldPath onto newPath
@@ -619,6 +775,17 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 // runMigrateRollback reverses each journaled move: move back, re-key back,
 // rebind back, restored lines appended. The identity check before every
 // reverse move compares the tree's ident with the journal's (D-12).
+// runMigrateRollback reverses each journaled move: move back, re-key back,
+// rebind back, restored lines appended. The identity check before every
+// reverse move compares the tree's ident with the journal's (D-12); a tree
+// standing at the destination under a DIFFERENT identity is refused with a
+// `refused` line (reason `identity mismatch`) and fails the run — never a
+// silent skip (card t1640 review F2). The manifest precondition applies to
+// settled moves only (the journal's `moved` steps carrying a manifest
+// digest): a pending step — a kill mid-move — reverses unconditionally so
+// the re-run converges (REQ-WHR-018's fifth entry). Reverse-step errors
+// propagate: a failed re-key or rebind records the step pending (no
+// `restored` line) and fails the run for the next rollback to converge.
 func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON bool) error {
 	return withMigrationLock(root, func() error {
 		data, err := os.ReadFile(journalPath)
@@ -626,34 +793,73 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 			return fmt.Errorf("read the journal: %w", err)
 		}
 		var journal struct {
-			Steps []struct {
-				OldPath string `json:"old_path"`
-				NewPath string `json:"new_path"`
-				Ident   string `json:"ident"`
-			} `json:"steps"`
+			Steps []journalStep `json:"steps"`
 		}
 		if err := json.Unmarshal(data, &journal); err != nil {
 			return fmt.Errorf("parse the journal: %w", err)
 		}
 		mlPath := moveListPath(root)
-		restored := 0
+		restored, refused, failed := 0, 0, 0
+		var problems []string
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
+			if _, serr := os.Stat(s.NewPath); serr != nil {
+				continue // the tree never reached its destination: nothing to reverse
+			}
 			destIdent, terr := TreeIdent(s.NewPath)
-			if terr != nil || destIdent.Ident() != s.Ident {
+			if terr != nil || (s.Ident != "" && destIdent.Ident() != s.Ident) {
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "identity mismatch")); lerr != nil {
+					return lerr
+				}
+				problems = append(problems, fmt.Sprintf("%s: identity mismatch; the tree stays where it is", s.NewPath))
+				refused++
 				continue
 			}
-			if _, merr := listGitOutput(root, "worktree", "move", s.NewPath, s.OldPath); merr != nil {
-				return fmt.Errorf("reverse move %s → %s: %w", s.NewPath, s.OldPath, merr)
+			// The manifest-match precondition belongs to the ordinary
+			// rollback of a settled move; a pending step reverses
+			// unconditionally (REQ-WHR-018's fifth entry).
+			if s.Outcome == "moved" && s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
+					return lerr
+				}
+				problems = append(problems, fmt.Sprintf("%s: manifest mismatch; the step stays pending", s.NewPath))
+				refused++
+				continue
 			}
-			_ = hook.RekeyWorktreeEntryInverse(root, s.NewPath, s.OldPath)
-			_ = rebindCardForPath(root, s.NewPath, s.OldPath)
+			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil {
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, fmt.Sprintf("reverse move failed: %v", merr))); lerr != nil {
+					return lerr
+				}
+				problems = append(problems, fmt.Sprintf("%s: reverse move failed (%v)", s.NewPath, merr))
+				failed++
+				continue
+			}
+			if rerr := hook.RekeyWorktreeEntryInverse(root, s.NewPath, s.OldPath); rerr != nil {
+				if strings.Contains(rerr.Error(), "no entry keyed to") {
+					// No state-file entry keyed to the new path: the forward
+					// re-key was a no-op (the tree was never registered in
+					// the state file) — the reverse is the same no-op, the
+					// same symmetry migrateOneTree applies forward.
+				} else {
+					problems = append(problems, fmt.Sprintf("%s: reverse re-key failed (%v)", s.OldPath, rerr))
+					failed++
+					continue
+				}
+			}
+			if rerr := rebindCardForPath(root, s.NewPath, s.OldPath); rerr != nil {
+				problems = append(problems, fmt.Sprintf("%s: reverse card rebind failed (%v)", s.OldPath, rerr))
+				failed++
+				continue
+			}
 			if lerr := appendMoveListLine(mlPath, m6MoveLine("restored", s.NewPath, s.OldPath, s.Ident)); lerr != nil {
 				return lerr
 			}
 			restored++
 		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s)\n", restored)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s), %d refused, %d pending\n", restored, refused, failed)
+		if len(problems) > 0 {
+			return fmt.Errorf("rollback: %s", strings.Join(problems, "; "))
+		}
 		return nil
 	})
 }
@@ -676,14 +882,26 @@ func listGitOutput(dir string, args ...string) (string, error) {
 
 // m6MoveLine builds one move-list record in the D-11 field list.
 func m6MoveLine(result, oldPath, newPath, ident string) string {
-	return m6MoveLineReason(result, oldPath, newPath, ident, "")
+	return m6MoveLineTriggerReason("migrate", result, oldPath, newPath, ident, "")
+}
+
+// m6MoveLineTrigger is m6MoveLine with the D-11 trigger field set (the
+// engine's caller: "migrate" for the verb, "update" for the routine
+// consolidation — AC-WHR-019(g)).
+func m6MoveLineTrigger(trigger, result, oldPath, newPath, ident string) string {
+	return m6MoveLineTriggerReason(trigger, result, oldPath, newPath, ident, "")
 }
 
 // m6MoveLineReason is m6MoveLine with the D-11 reason field set.
 func m6MoveLineReason(result, oldPath, newPath, ident, reason string) string {
+	return m6MoveLineTriggerReason("migrate", result, oldPath, newPath, ident, reason)
+}
+
+// m6MoveLineTriggerReason is the full D-11 record builder.
+func m6MoveLineTriggerReason(trigger, result, oldPath, newPath, ident, reason string) string {
 	b, _ := json.Marshal(map[string]any{
 		"schema": 1, "ts": time.Now().UTC().Format(time.RFC3339),
-		"run": "", "trigger": "migrate", "tree": filepath.Base(oldPath),
+		"run": "", "trigger": trigger, "tree": filepath.Base(oldPath),
 		"card": "", "old_path": oldPath, "new_path": newPath,
 		"result": result, "reason": reason, "ident": ident,
 	})
@@ -701,6 +919,7 @@ type treeManifest struct {
 	Branch        string
 	Unpushed      string
 	Status        string
+	Diff          string
 	IgnoredCount  int
 	ReportsCount  int
 	ContentDigest string
@@ -730,6 +949,13 @@ func captureTreeManifest(tree string) treeManifest {
 	m.Branch = strings.TrimSpace(m.Branch)
 	m.Unpushed, _ = listGitOutput(tree, "rev-list", "HEAD", "--not", "--remotes")
 	m.Status, _ = listGitOutput(tree, "status", "--porcelain")
+	// The tracked-change content (REQ-WHR-017's content digest over the
+	// tracked-change diff — card t1640 review F7): a content mutation that
+	// preserves the status shape must change the manifest. Both the
+	// unstaged and the staged forms ride the manifest.
+	staged, _ := listGitOutput(tree, "diff", "--cached")
+	unstaged, _ := listGitOutput(tree, "diff")
+	m.Diff = staged + unstaged
 
 	var untracked, ignored []string
 	if out, err := listGitOutput(tree, "ls-files", "--others", "-z"); err == nil {
@@ -755,8 +981,28 @@ func captureTreeManifest(tree string) treeManifest {
 	for _, p := range paths {
 		_, _ = digest.Write([]byte(p))
 		_, _ = digest.Write([]byte{0})
-		if body, err := os.ReadFile(filepath.Join(tree, filepath.FromSlash(p))); err == nil {
-			_, _ = digest.Write(body)
+		full := filepath.Join(tree, filepath.FromSlash(p))
+		if info, lerr := os.Lstat(full); lerr == nil {
+			// Symlinks hash their TARGET (card t1640 review F11): os.ReadFile
+			// would follow the link, and a FIFO or device would block the
+			// apply while the migration lock is held. Only regular files are
+			// read; everything else hashes its type marker.
+			switch {
+			case info.Mode()&os.ModeSymlink != 0:
+				if target, rerr := os.Readlink(full); rerr == nil {
+					_, _ = digest.Write([]byte("link:" + target))
+				} else {
+					_, _ = digest.Write([]byte("\x00unreadable-link"))
+				}
+			case info.Mode().IsRegular():
+				if body, rerr := os.ReadFile(full); rerr == nil {
+					_, _ = digest.Write(body)
+				} else {
+					_, _ = digest.Write([]byte("\x00unreadable"))
+				}
+			default:
+				_, _ = digest.Write([]byte("special:" + info.Mode().String()))
+			}
 		} else {
 			_, _ = digest.Write([]byte("\x00unreadable"))
 		}
