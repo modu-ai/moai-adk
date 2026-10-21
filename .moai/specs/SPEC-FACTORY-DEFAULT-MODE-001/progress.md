@@ -311,7 +311,7 @@ Evidence files (machine-local scratch, quoted verbatim where deciding):
 
 - sync_status: complete (manager-docs sync-phase)
 - sync_complete_at: 2026-10-21
-- sync_commit_sha: pending-backfill (backfilled in the follow-up chore commit — a SHA cannot name its own commit, per the SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 pattern)
+- sync_commit_sha: 8d51b4b167 (backfilled in this follow-up chore commit — the sync commit cannot name its own SHA, per the SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 pattern)
 - sync_audit: round-2 PASS, codex required backend pass zero findings, receipt rcpt-23db213137e8f126aaa6f24f, verdict .moai/reports/t1737/sync-audit-cold-r2.md (lane-local, gitignored); round-1 FAIL F1/F2 repaired in commit 4ed732d927
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-FACTORY-DEFAULT-MODE-001 entry
 - frontmatter_status_transitions:
