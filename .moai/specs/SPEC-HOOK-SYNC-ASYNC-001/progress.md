@@ -45,6 +45,47 @@ Registration|Codex|HookSync' -count=1` = `ok ... 0.455s`; `go test ./internal/cl
 'Codex' -count=1` = `ok ... 226.440s`; `grep -c 'AskUserQuestion\|mcp__askuser'` over the
 new test and both wrappers = 0.
 
+### M4 + M5 — async conversions (2026-10-21, commits 603ad65bb9 + a29a17cbeb + 4a0fa991ed)
+
+TDD order observed: RED captured before each implementation commit. M4 RED — the
+updated shape tests failed with the old emission shape (`SystemMessage = "TimeoutError: ..."
+want empty (async hooks deliver additionalContext only)` + `HookSpecificOutput is nil`),
+three registry cases failed (`HookSpecificOutput is nil, want non-nil`), and the new
+registration test failed (`PostToolUseFailure handle-post-tool-failure.sh carries no async
+key` on BOTH surfaces). M5 RED — the registration test failed for ConfigChange and
+chain-event on both surfaces, and TestHookEntryParity_ChainEventRegistered failed with
+`chain-event.sh must carry async=true`.
+
+Commit 603ad65bb9 (M3 follow-up): the identity-guard list gained the `t@fixture` literal
+the M3 commit (3483d65726) introduced — `TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration`
+failed on the M3 tip (baseline evidence: the fixture test file is identical to
+7addd36d15 and `git show 7addd36d15:internal/hook/commit_identity_guard.go | grep -c
+'"t@fixture"'` = 0); list count 62 -> 63, test and predicate unweakened.
+
+| AC | Status | Verification command | Actual output (this run, tree 4a0fa991ed) |
+|----|--------|----------------------|--------------------------------------------|
+| AC-HSA-001 | PASS | `go test ./internal/template/ -run 'TestHookSyncAsyncRegistrationFlags' -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 0.443s` (ConfigChange row async=true in live + rendered template) |
+| AC-HSA-002 | PASS | same run | live settings.json ConfigChange row: `grep -A 3 'handle-config-change.sh"'` then `grep -c '"async": true'` = 1 |
+| AC-HSA-003 | PASS | same run + `go test ./internal/cli/ -run 'TestHookEntryParity' -count=1` | `ok ... internal/template 0.443s`; `ok ... internal/cli 1.369s` (3/3 parity subtests; chain-event async=true both surfaces, timeout 5 unchanged) |
+| AC-HSA-004 | PASS | `TestHookSyncAsyncRegistrationFlags` (M4 commit run) | `ok ... internal/template 0.361s` (PostToolUseFailure row async=true both surfaces; per-entry grep = 1/1) |
+| AC-HSA-005 | PASS | `go test ./internal/hook/ -run 'TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage' -count=1 -v` | `--- PASS: TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage (0.00s)` (additionalContext present with category prefix, systemMessage absent, hookEventName PostToolUseFailure) |
+
+Async-count ledger (AC-HSA-009 progression): baseline 11/11 (E-L09) -> 12/12 at the M4
+commit (12 = `git show a29a17cbeb:.claude/settings.json | grep -c '"async": true'`; the
+same form on the template also prints 12) -> **14/14** at the M5 tip (`grep -c
+'"async": true'` = 14 live, 14 template) — exactly baseline + 3, no keep-sync
+registration touched.
+
+Companion evidence: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...`
+exit 0; `go vet ./internal/hook/... ./internal/template/... ./internal/cli/...` exit 0;
+`gofmt -l` empty on touched dirs; `golangci-lint run --timeout=2m` = the same 2
+pre-existing staticcheck findings in internal/cli/paths.go (ST1008, file untouched by
+this SPEC), 0 new; full `go test ./internal/hook/ -count=1` = `ok ... 282.669s`;
+`go test ./internal/template/ -run 'HookSyncAsync|HookEntries|SettingsTemplate|Registration|ReviewGate'
+-count=1` = `ok ... 0.320s`; boundary grep over every touched Go file = 0 matches; the
+hooks-system.md PostToolUseFailure stdout row edit is byte-identical across the live and
+template mirrors (`cmp` exit 0).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
