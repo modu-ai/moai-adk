@@ -1,8 +1,8 @@
 ---
 id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Hook sync/async cleanup: three async conversions, codex-review-entry gate-ON shell fast path, timeout doctrine correction, and the sync-hook measurement protocol"
-version: "1.0.3"
-status: completed
+version: "1.0.4"
+status: in-progress
 created: 2026-10-15
 updated: 2026-10-22
 author: manager-spec
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "hooks, async, timeout, template-first, performance, measurement"
 tier: M
 related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARNESS-RATCHET-REWIRE-001, SPEC-CODEX-GATE-SCOPE-001, SPEC-CODEX-REVIEW-OWNERSHIP-001, SPEC-CODEX-GATE-SCOPING-001]
+amendment_of: SPEC-HOOK-SYNC-ASYNC-001
 ---
 
 # SPEC-HOOK-SYNC-ASYNC-001
@@ -25,6 +26,17 @@ related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARN
 | 2026-10-15 | 1.0.1 | Plan-audit r1 repairs (verdict `.moai/reports/t1780/plan-audit.md`, FAIL 0.8125 on D1-D4 blocking): REQ-HSA-006 kick narrowed to cache-miss states only — fresh pass/inconclusive exits 0 WITHOUT kicking, mirroring `codex_review_gate.go:234-244` (D1); tree-scope/primary-scope skip policy added to the REQ-HSA-006 Where-clause (D2); REQ-HSA-003 gains the `hooks-system.md` PostToolUseFailure stdout-row refresh (D7). AC-HSA-017 added per audit D6 (only AC-set addition; every existing REQ/AC id unchanged). |
 | 2026-10-15 | 1.0.2 | Plan-audit r2 repairs (delta FAIL, r1 fixes verified resolved): REQ-HSA-006(a) early kick now carries the two kick-region preconditions — binary-age (decidable-behind suppresses, binlag leniency) and nothing-reviewable (change presence + config-only narrowing), shell-carried where judgeable, ALLOW-without-early-kick otherwise (R2-D3); REQ-HSA-007 corrected — an unreadable/unparseable snapshot is receipt-ABSENT (the shared `verify.LoadReceipt` reading) and takes the REQ-HSA-006(a) miss arm, removed from the fall-through enumeration (R2-D2, Go authority read). Id sets unchanged. |
 | 2026-10-15 | 1.0.3 | Plan-audit r3 repairs (delta FAIL, r2 fixes verified resolved; ceiling-policy auto-delta): REQ-HSA-006(a) binary-age gains the HEAD-match pre-check FIRST — a binary commit matching HEAD is StatusFresh (`binlag.go:139-141`), the early kick proceeds; only a non-matching ancestor-hit is behind (`merge-base --is-ancestor` succeeds on equality and would mis-class the exactly-current binary) (R3-D1); AC-HSA-015's exactly-one bound scoped to the same kick bucket, with the bucket-roll case recorded as designed behavior (R3-D2); §D.6 TTL-boundary corrected — exactly-24h is FRESH under the strict `>` comparison (R3-O3). Id sets unchanged. |
+
+### Amendments
+
+| Field | Value |
+|-------|-------|
+| Date / version | 2026-10-22 / 1.0.4, in-progress |
+| Prior completed version | 1.0.3 |
+| prior_completed_sha | `8b48246f072c482ab7e7dac2f1f13247ebe861dc` |
+| Rationale | Cloud reproduction on mawk 1.3.4 (20250131) showed that `srand()` returns a nanosecond-scale random seed, not Unix seconds. The seed made fresh receipts appear stale and entry/Stop kick buckets disagree. |
+| Scope / authority | Cloud CI repair `ci-repair-20261022`, card t1913: clarify REQ-HSA-008 and plan D3 to allow the existing system `date +%s` clock, require validated decimal Unix seconds, and preserve Go fall-through when the clock cannot be read. No receipt binding, freshness boundary, verdict rule, or exactly-one kick assertion changes. |
+| Evidence boundary | The prior close and its evidence remain historical. This amendment is open; implementation, final-head CI, review, and audit results have not been asserted here. |
 
 ## 1. Overview
 
@@ -153,9 +165,12 @@ handler that exists, not toward a block the handler deliberately does not perfor
   an ALLOW state; uncertainty always falls through.
 
 - **REQ-HSA-008** — The shell fast path shall introduce no new shared failure mode per
-  `hook-independence.md` §7 (authoring checklist): new dependencies limited to `git` and one
-  sha256 tool (`shasum` or `openssl`), every absent dependency degrading per REQ-HSA-007, and the
-  shell-computed receipt key pinned equal to the Go `verify.Key` output by a test.
+  `hook-independence.md` §7 (authoring checklist): probe dependencies limited to `git`, one
+  sha256 tool (`shasum` or `openssl`), the existing `awk` parser, and the system `date +%s`
+  clock. The clock shall supply validated decimal Unix seconds for both receipt age and the
+  shared kick bucket; a random seed shall not substitute for wall time. Every absent or failing
+  dependency, including a missing or invalid clock result, shall degrade per REQ-HSA-007, and
+  the shell-computed receipt key shall remain pinned equal to the Go `verify.Key` output by a test.
 
 ### Keep-sync invariants
 

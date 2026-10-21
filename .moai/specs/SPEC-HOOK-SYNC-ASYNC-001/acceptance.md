@@ -28,7 +28,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-004 | Given both settings surfaces, When the PostToolUseFailure entry is inspected, Then it carries `"async": true` | REQ-HSA-003 | release-blocking | E-L04 | M4 |
 | AC-HSA-005 | Given the Go handler, When a PostToolUseFailure event is handled, Then the output carries `additionalContext` and no `systemMessage` | REQ-HSA-003 | release-blocking | E-L05 | M4 |
 | AC-HSA-006 | Given the gate enabled and tree scope, When the wrapper runs, Then the shell receipt probe exists in BOTH wrapper surfaces and resolves ALLOW states without the synchronous handler invocation | REQ-HSA-006 | release-blocking | E-L06 | M3 |
-| AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt on a reviewable tree (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT a synchronous `hook codex-review-entry` invocation (argv-probe count 0 for that argv; the cache-miss background kick `verify codex-review` is allowed and expected on this state); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007 | release-blocking | E-L07 | M3 |
+| AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt on a reviewable tree (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT a synchronous `hook codex-review-entry` invocation (argv-probe count 0 for that argv; the cache-miss background kick `verify codex-review` is allowed and expected on this state); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007, REQ-HSA-008 | release-blocking | E-L07 | M3 |
 | AC-HSA-008 | Given a fixture tree, When the shell key computation is compared with Go `verify.Key`, Then the outputs are byte-equal (parity test green on `shasum` and `openssl` paths) | REQ-HSA-008 | release-blocking | E-L08 | M3 |
 | AC-HSA-009 | Given the keep-sync table, When the settings are re-inventoried after M7, Then the async-true count is exactly baseline 11 + 3 = 14 and no keep-sync registration changed sync state or decision semantics | REQ-HSA-009 | release-blocking | E-L09 | M7 |
 | AC-HSA-010 | Given the live `hooks-system.md`, When the timeout section is read, Then 30s is documented as the official DEFAULT with no documented per-event maximum, and the ceiling bullet no longer states a 30s cap | REQ-HSA-010 | release-blocking | E-L10 | M6 |
@@ -36,7 +36,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-012 | Given both settings surfaces, When the two UserPromptSubmit entries are inspected, Then each carries `timeout: 30` | REQ-HSA-011 | release-blocking | E-L12 | M6 |
 | AC-HSA-013 | Given M1 executed, When `.moai/reports/t1780/hook-sync-timings.md` is read, Then it carries 10 per-run timings for every synchronous registration and the fixed prescription-order statement | REQ-HSA-012 | release-blocking | E-L13 | M1 |
 | AC-HSA-014 | Given real multi-lane load, When UserPromptSubmit hooks run, Then the hard-timeout count observed in the run log is 0 | REQ-HSA-012 | **regression-guard** | E-L14 | M7 observation |
-| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state within the SAME kick bucket (marker bucket = epoch/900), Then exactly one background review was kicked (shared kick marker honored; observed via the argv-recording stub's `verify codex-review` line count across entry+Stop for the same tree state and bucket); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
+| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state within the SAME kick bucket (marker bucket = epoch/900), Then exactly one background review was kicked (shared kick marker honored; observed via the argv-recording stub's `verify codex-review` line count across entry+Stop for the same tree state and bucket); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b), REQ-HSA-008 | release-blocking | E-L15 | M3 |
 | AC-HSA-016 | Given a card-scope session (`WT-` branch), When the wrapper runs with the gate ON, Then it retains today's behavior — the shell probe is not consulted (no key computation, no snapshot read, no kick) and the Go handler is reached exactly once per prompt | REQ-HSA-007, plan D5 | regression-guard | E-L16 | M3 probe matrix |
 | AC-HSA-017 | Given the review gate OFF (or unreadable), When the wrapper runs, Then it exits 0 with no binary resolution | REQ-HSA-005 | regression-guard | E-L18 | M3 probe matrix |
 
@@ -61,7 +61,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 REQ-HSA-001→AC-HSA-001/002; REQ-HSA-002→AC-HSA-003; REQ-HSA-003→AC-HSA-004/005;
 REQ-HSA-004→AC-HSA-009 (the count sweep asserts the entry's sync state unchanged);
 REQ-HSA-005→AC-HSA-017 (dedicated AC, added at audit r1 per D6); REQ-HSA-006→AC-HSA-006/007/015;
-REQ-HSA-007→AC-HSA-007/016; REQ-HSA-008→AC-HSA-008; REQ-HSA-009→AC-HSA-009;
+REQ-HSA-007→AC-HSA-007/016; REQ-HSA-008→AC-HSA-007/008/015; REQ-HSA-009→AC-HSA-009;
 REQ-HSA-010→AC-HSA-010/011; REQ-HSA-011→AC-HSA-012; REQ-HSA-012→AC-HSA-013/014. Every REQ has at
 least one AC; no AC lacks a REQ. AC-HSA-017 is the only id-set addition (audit r1 D6); every
 round-0 REQ/AC id is unchanged (delta re-audit eligibility).
@@ -89,6 +89,16 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
 
 ## §D.6 Edge cases
 
+- Clock portability (AC-HSA-008/015): Given an awk implementation whose `srand()` seed is
+  nanosecond-scale, When the wrapper reads an actual fresh receipt or an existing Stop-arm
+  marker, Then it uses validated system Unix seconds and retains the existing fresh-verdict
+  behavior and exactly-one kick bound within the same epoch/900 bucket. The random seed
+  cannot make a fresh receipt stale or create a different bucket.
+- Clock unavailable (AC-HSA-007): Given the system `date +%s` probe is missing, fails, or
+  returns a non-decimal value, When the gate-ON tree-scope wrapper runs, Then the Go handler
+  is reached under REQ-HSA-007; the shell emits no synthetic verdict and does not infer time
+  from an awk seed. These cases extend the probe-failure preservation clause, not the set of
+  states allowed to skip enforcement.
 - Snapshot file present but truncated/unparseable → receipt-ABSENT by the shared store's own
   reading (`verify.LoadReceipt`, `receipt.go:113-117` — every read failure is absence, never an
   error or a valid/failing verdict) → the REQ-HSA-006(a) MISS arm (ALLOW + kick, kick-region

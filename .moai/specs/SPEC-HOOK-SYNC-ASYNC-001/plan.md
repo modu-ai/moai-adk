@@ -68,7 +68,12 @@ Code facts verified at plan phase (all on tree `e04ebd5ca6bc441b380c1072d5a1dff8
 - D2: Live + template edits land as commit pairs (Template-First). The run phase MUST NOT commit
   a live edit whose template mirror is absent from the same push.
 - D3: The shell fast path's dependency set is `git` + one sha256 tool (`shasum -a 256` on macOS,
-  `openssl dgst -sha256` fallback) + `awk` (already used by the gate-OFF path). Nothing else.
+  `openssl dgst -sha256` fallback) + `awk` (already used by the gate-OFF path) + the system
+  `date +%s` clock. The clock is the only addition in the 2026-10-22 portability amendment:
+  GNU and BSD `date` provide Unix seconds, while an awk random seed has no portable time unit.
+  Validate the clock as decimal Unix seconds before either receipt-age arithmetic or
+  epoch/900 bucket selection. A missing, failing, or invalid clock falls through to Go under
+  REQ-HSA-007; it never turns uncertainty into ALLOW or a synthetic receipt. Nothing else is added.
 - D4: The shell key computation must reproduce `verify.Key` byte-for-byte: hash
   porcelain-v2 output, one 0x00 byte, `git diff HEAD` output, then each untracked file's content
   digest exactly as `key.go` chains them (read `key.go:40-90` in full before implementing; the
