@@ -330,6 +330,73 @@ commit carries (byte-identical to this commit's tree).
 | AC-PRI-008 | PASS | Source-level predicates met: stale token 0 (was 1); fd-verify / kauth_filesec / delete-denied / route (ii) / victim-overwrite (LIVE) all ≥1 in source (verbatim re-measurement); §E.2 pinned note stands |
 | AC-PRI-009 | NOT-EVIDENCE (dispositioned) | Q2 record |
 
+### AC-CI-007 landing-flow CI evidence follow-up (2026-10-21; manager-develop, t1598)
+
+This is an appended observation for the existing M4 recording rule. The earlier PENDING cells and
+audit/receipt citations above remain historical records. No audit verdict or receipt is authored here.
+
+- Actual CI subject: `release/cloud-ci-repair-20261022`, head `2c6e2a446af349aafe0bc2d4316f39b0ace84e0d`,
+  [Release PR Multi-OS Verification run 39688724176](https://github.com/modu-ai/moai-adk/actions/runs/39688724176), release PR #1871.
+- Source identity: this evidence-recording branch starts at `501007d808176ad1464cafbd8b1dc0394d213a1a` (normal merge of main `bf0a35f10` and common repair `670b1e9ed`).
+  `git rev-parse <CI-head>:internal/runtime` and `<recording-base>:internal/runtime` both return `ec3bb9ca800abaeb4cc422628f77c311058d0efc`.
+  The entire runtime tree, including family definitions and GOOS tags, is byte-identical; the counts below
+  apply to that measured tree. This is not a new execution on the later documentation commit.
+- Linter identity: `internal/spec` tree `c62b7cad664dc2cd72442e80dc01e4b84261ad7e` and CLI `spec*.go` sources match the
+  prebuilt main `bf0a35f10` binary used for scoped lint. No Go build/run was invoked for this follow-up.
+
+| Platform / remainder job | Explicit parent PASS | Explicit nested PASS | Family SKIP / FAIL / missing |
+|---|---:|---:|---|
+| [Linux job 119529412225](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412225) | 25/25 | 5/5 | 0 / 0 / 0 |
+| [Darwin job 119529412181](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412181) | 27/27 | 5/5 | 0 / 0 / 0 |
+| [Windows job 119529412230](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412230) | 8/8 | 3/3 | 0 / 0 / 0 |
+
+Expected sets were enumerated from test definitions/build tags at the CI head, not inferred from
+whatever happened to run. The eight Windows parents are:
+
+- `TestAppendProgressRecordClosesOrderedListFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordConcurrentSurvival` — explicit `Action: pass`.
+- `TestAppendProgressRecordGateInputsSingleSectionG` — explicit `Action: pass`.
+- `TestAppendProgressRecordInsertsAtSectionEnd` — explicit `Action: pass`.
+- `TestAppendProgressRecordSkipsHeadingInsideFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsListFence` — explicit `Action: pass`.
+
+The Windows `GateInputsSingleSectionG` nested cases are `backtick_info_string_with_backtick_is_inline_code`,
+`inline_triple_backtick_code_is_not_a_fence_open`, and `closed_list_item_fence`; all three have explicit pass Actions.
+F9 and 6d have explicit Linux PASS; 6b has explicit Linux/Darwin PASS; F10 has explicit PASS on all three OSes.
+Windows-only 6c `TestResolveProgressPathWindowsVolumeRoot` has explicit PASS, with no subcases. Its runner
+uses a temp volume path: no UNC runtime exercise is claimed. POSIX/Darwin-only members absent on Windows
+are compilation exclusions, not skipped test results.
+
+| Artifact | ZIP SHA256 | JSONL SHA256 |
+|---|---|---|
+| ubuntu `12388466541` | `dbe90c065e008cdb2915ee32ca7204f234faf821b47c87c84330289916dfeac4` | `49351eb6e86b61525b854a3ff260127cb554d765a7191278db17b67185c79e02` |
+| macos `12388747730` | `0c2a2ce2e5725cd44c282d0032bfb00884644495ab9b474c92e1ae5d3d6a8151` | `a24e3b8314d451cf2f5f1278affddaa0ce5d4da02f64af742cbfb6008b596edc` |
+| windows `12388794672` | `4df5387704cf4a5f05db62ff19ae49e78139bc75bd72c029a8deb546ddd10ea7` | `5e41e6151aa8b24d07713399d573dd5f18b925f962414b37f641f28959bf8689` |
+
+Verbatim runtime package terminal JSON lines from those raw streams (each package exit is 0):
+
+```json
+{"Time":"2026-10-21T22:51:08.808925014Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":2.356}
+{"Time":"2026-10-21T22:59:29.696422Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":5.409}
+{"Time":"2026-10-21T23:05:20.4735224Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":7.49}
+```
+
+Verbatim Windows 6c terminal Action:
+
+```json
+{"Time":"2026-10-21T23:05:18.2394579Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Test":"TestResolveProgressPathWindowsVolumeRoot","Elapsed":0}
+```
+
+Execution-evidence verdict for AC-CI-007: the applicable three-OS families are decisive-PASS under
+acceptance.md lines 112-115 (every expected test has an explicit pass; no family skip/fail/missing).
+The Windows runtime package has one unrelated skip, `TestCountAuditRoundsDoesNotBlockOnFifoEvidence`;
+it was not counted as family PASS. The Windows remainder stream contains failures outside runtime,
+and the release workflow is not green. No PR-ready/merge or current-head independent audit claim follows
+from this family evidence. SPEC close eligibility is separately evaluated in §E.4; the retained
+route-(ii) residual risks and historical independent-audit/receipt claims are not replaced by this record.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete (route (ii) adopted; substance commits 3f1f942b4 + e6eb6da2f —
