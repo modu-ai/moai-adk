@@ -141,7 +141,7 @@ m1_to_mN_commit_strategy: per-milestone commits — M3 (772b9a1590 feat + 3483d6
 ```yaml
 sync_phase: complete
 sync_complete_at: 2026-10-22T00:00:00+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8b48246f072c482ab7e7dac2f1f13247ebe861dc
 sync_status: complete
 ac_source: .moai/specs/SPEC-HOOK-SYNC-ASYNC-001/acceptance.md (tier: M)
 b12_self_test_a: pass (grep -c 'SPEC-HOOK-SYNC-ASYNC-001' CHANGELOG.md = 0 before emission — no duplicate entry)
@@ -153,9 +153,10 @@ frontmatter_status_transitions.plan_acceptance: stateless — no status field; u
 canary_compliance_check.mx_tags: sync sub-step — MX Tag validation folded into this close per the 3-phase close doctrine (no separate Mx-phase commit)
 ```
 
-> Backfill note: `sync_commit_sha` carries the canonical `pending-backfill-sync` placeholder in
-> the sync commit itself (a commit cannot cite its own hash); the real SHA is backfilled in a
-> follow-up commit by the lane.
+> Backfill note: `sync_commit_sha` carried the canonical `pending-backfill-sync` placeholder in
+> the sync commit itself (a commit cannot cite its own hash); the real SHA `8b48246f07` was
+> backfilled in the follow-up lane commit (D3 placeholder completion, spec-frontmatter-schema.md
+> § SHA placeholder backfill exemption).
 
 ## §F Phase 4 Mode Selection
 
