@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -70,6 +71,19 @@ type Record struct {
 func (r Record) Line() string {
 	return fmt.Sprintf("decision record: decided_by=%s evidence_refs=%s ladder_path=%s id=%s scope=%s kind=%s",
 		r.DecidedBy, r.EvidenceRefs, r.LadderPath, r.ID, r.Scope, r.Kind)
+}
+
+// Digest returns the 12-hex-character prefix of the SHA-256 over the
+// record's canonical JSON form — the same bytes Append writes — so a
+// decision-index row can cite this record digest-pinned.
+func (r Record) Digest() string {
+	b, err := json.Marshal(r)
+	if err != nil {
+		// Record holds only strings and []string; Marshal cannot fail here.
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:6])
 }
 
 // AppendOptions carries the inputs Append cannot derive itself.

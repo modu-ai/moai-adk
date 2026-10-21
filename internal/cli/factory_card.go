@@ -2011,7 +2011,14 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 	if !factoryNextMayLease(ctx, root, runID, lane, nominee, held) {
 		return openPRQuery{err: errFactoryNextPRNotTaken}
 	}
-	return prefetchOpenPRs()
+	// The peek can run long enough for the request to cancel inside it — its
+	// record reads fail open to true on a canceled context's errors — so
+	// recheck before starting the subprocess: a canceled caller gets no query
+	// either (PR #1832 post-merge review ③).
+	if ctx.Err() != nil {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
+	return prefetchOpenPRsContext(ctx)
 }
 
 // factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
@@ -2049,6 +2056,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	for _, c := range rows {
 		rowByID[c.CardID] = c
 	}
+	skipForBackend := factoryNextSkipForBackend()
 	if nominee != "" {
 		var row *homestate.Card
 		for i := range rows {
@@ -2056,6 +2064,9 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				row = &rows[i]
 				break
 			}
+		}
+		if row != nil && skipForBackend(*row) {
+			return false
 		}
 		for _, it := range rec.Items {
 			if it.ID != nominee {
@@ -2126,6 +2137,12 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		if selectionSkips(c) {
 			continue
 		}
+		// The backend skip is the lease path's own refusal (a row recorded at
+		// merge-ready or later on a GPT lane); a row it would refuse is no
+		// candidate for the wait loop either (PR #1832 post-merge review ①).
+		if skipForBackend(c) {
+			continue
+		}
 		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
 			continue
 		}
@@ -2158,7 +2175,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			}
 		case factory.BacklogStatePicked:
 			if row, hasRow := rowByID[it.ID]; hasRow &&
-				!(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}
 		default:
@@ -2170,7 +2187,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		// hub wait arm (c) checks at promotion, and a rowless picked card to
 		// the hub wait of (b2) alone (card t1746).
 		if row, ok := rowByID[it.ID]; ok {
-			if selectionSkips(row) {
+			// Row-backed candidates answer to the backend skip too: the lease
+			// path refuses any recorded row at or past merge-ready on a GPT
+			// lane, recorded or bare (PR #1832 post-merge review ①).
+			if skipForBackend(row) || selectionSkips(row) {
 				continue
 			}
 		} else if it.State == factory.BacklogStateQueued {
