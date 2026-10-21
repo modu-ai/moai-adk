@@ -1,6 +1,8 @@
 package mission
 
 import (
+	"github.com/modu-ai/moai-adk/internal/privatefile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,8 +18,8 @@ func TestCompletionReceiptBindsLineageEvidenceAndAncestry(t *testing.T) {
 	if err := WriteCompletionReceipt(root, path, base); err != nil {
 		t.Fatal(err)
 	}
-	if info, _ := os.Stat(path); info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode=%o", info.Mode().Perm())
+	if err := privatefile.Check(path); err != nil {
+		t.Fatalf("receipt must have native owner-only access: %v", err)
 	}
 	if _, err := LoadCompletionReceipt(root, path, exp); err != nil {
 		t.Fatal(err)
@@ -67,13 +69,11 @@ func TestCompletionReceiptRefusesUnsafeAndMalformedInputs(t *testing.T) {
 	if err := WriteCompletionReceipt(root, path, base); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(path, 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testguard.MakeFilePublic(t, path)
 	if _, err := LoadCompletionReceipt(root, path, exp); err == nil {
 		t.Fatal("weak receipt accepted")
 	}
-	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
+	if err := privatefile.WriteFile(path, []byte("{")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LoadCompletionReceipt(root, path, exp); err == nil {

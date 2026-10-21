@@ -1,6 +1,8 @@
 package jevcred
 
 import (
+	"github.com/modu-ai/moai-adk/internal/privatefile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -42,19 +44,12 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 
 // AC-JEVC-010: a fresh credential write lands at 0600.
 func TestSave_FileMode0600(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not enforce POSIX permission bits; the 0600 assertion holds on unix only")
-	}
 	withTempHome(t)
 	if err := Save("mode-test-key"); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	info, err := os.Stat(Path())
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("file mode = %o, want 0600", perm)
+	if err := privatefile.Check(Path()); err != nil {
+		t.Fatalf("credential must have native owner-only access: %v", err)
 	}
 }
 
@@ -63,9 +58,6 @@ func TestSave_FileMode0600(t *testing.T) {
 // Save leaves it at 0644 — the latent defect internal/glmcred closes with an
 // explicit Chmod and this package inherits if it forgets.
 func TestSave_NarrowsExisting0644to0600(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows cannot create the wide-mode pre-existing file, so the narrowing is unobservable there")
-	}
 	dir := withTempHome(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
@@ -74,15 +66,15 @@ func TestSave_NarrowsExisting0644to0600(t *testing.T) {
 	if err := os.WriteFile(envPath, []byte(`TYPESAFE_API_KEY="stale"`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	testguard.MakeFilePublic(t, envPath)
+	if err := privatefile.Check(envPath); err == nil {
+		t.Fatal("fixture must begin publicly readable")
+	}
 	if err := Save("new-key-after-0644"); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	info, err := os.Stat(envPath)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("file mode = %o, want 0600 after rewrite of pre-existing wide-mode file", perm)
+	if err := privatefile.Check(envPath); err != nil {
+		t.Fatalf("credential must have native owner-only access: %v", err)
 	}
 	if got := Load(); got != "new-key-after-0644" {
 		t.Fatalf("Load() = %q, want new-key-after-0644", got)

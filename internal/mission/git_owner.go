@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +28,7 @@ func WriteIntegrationLease(path string, lease IntegrationLease) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o600)
+	return privatefile.WriteFile(path, data)
 }
 
 type GitEffect struct {
@@ -153,7 +154,7 @@ func (o GitOwnerAdapter) validateLease(repo string) error {
 		return errors.New("git owner: lease outside repository")
 	}
 	info, err := os.Lstat(leasePath)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || privatefile.Check(leasePath) != nil {
 		return errors.New("git owner: lease missing or unsafe")
 	}
 	raw, err := os.ReadFile(leasePath)

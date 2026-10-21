@@ -1,6 +1,7 @@
 package mission
 
 import (
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,13 +75,11 @@ func TestLoadGovernanceReceiptsRejectsUnsafeMissingStaleAndFailed(t *testing.T) 
 	if err := WriteGovernanceReceipt(root, auditPath, audit); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(decisionPath, 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testguard.MakeFilePublic(t, decisionPath)
 	if _, err := LoadGovernanceReceipts(root, decisionPath, auditPath, expect); err == nil || !strings.Contains(err.Error(), "unsafe") {
 		t.Fatalf("weak mode err=%v", err)
 	}
-	if err := os.Chmod(decisionPath, 0o600); err != nil {
+	if err := WriteGovernanceReceipt(root, decisionPath, decision); err != nil {
 		t.Fatal(err)
 	}
 	outsideRoot := t.TempDir()
@@ -188,7 +187,7 @@ func TestLoadGovernanceReceiptsRejectsEverySignedLineageAndStatusMutant(t *testi
 	if err := os.Mkdir(lockedDir, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(lockedDir, 0o700) })
+	testguard.MakeDirReadOnly(t, lockedDir)
 	if err := WriteGovernanceReceipt(root, filepath.Join(lockedDir, "receipt.json"), validDecision); err == nil {
 		t.Fatal("unwritable receipt directory accepted")
 	}

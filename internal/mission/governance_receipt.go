@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 type GovernanceReceiptKind string
@@ -174,14 +175,14 @@ func WriteGovernanceReceipt(root, path string, receipt GovernanceReceipt) error 
 	// hexadecimal string cannot introduce a JSON encoding failure, so a second
 	// defensive branch would be unreachable and would obscure the invariant.
 	raw, _ := marshalGovernanceReceipt(receipt)
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".governance-*.tmp")
+	tmp, err := privatefile.CreateTemp(filepath.Dir(path), ".governance-")
 	if err != nil {
 		return err
 	}
 	name := tmp.Name()
 	defer func() { _ = os.Remove(name) }()
-	// os.CreateTemp creates the file with mode 0600; avoid reopening it so the
-	// write remains portable to Windows sharing semantics.
+	// The native owner-only policy is installed before writing any receipt bytes.
+	// Keep this handle open through the write for Windows sharing semantics.
 	if _, err := tmp.Write(raw); err != nil {
 		_ = tmp.Close()
 		return err
@@ -192,7 +193,7 @@ func WriteGovernanceReceipt(root, path string, receipt GovernanceReceipt) error 
 	if err := atomicfile.Replace(name, path); err != nil {
 		return err
 	}
-	return os.Chmod(path, 0o600)
+	return privatefile.Check(path)
 }
 
 func readGovernanceReceipt(root, path string) (GovernanceReceipt, error) {
@@ -204,7 +205,7 @@ func readGovernanceReceipt(root, path string) (GovernanceReceipt, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return GovernanceReceipt{}, errors.New("mission governance: receipt_missing")
 	}
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || privatefile.Check(path) != nil {
 		return GovernanceReceipt{}, errors.New("mission governance: receipt_unsafe")
 	}
 	resolved, err := filepath.EvalSymlinks(path)

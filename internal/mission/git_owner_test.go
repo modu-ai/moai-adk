@@ -2,6 +2,7 @@ package mission
 
 import (
 	"context"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -138,9 +139,7 @@ func TestGitOwnerSafetyMutants(t *testing.T) {
 	if err := WriteIntegrationLease(leasePath, IntegrationLease{SessionID: session, BaseSHA: "base"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(leasePath, 0644); err != nil {
-		t.Fatal(err)
-	}
+	testguard.MakeFilePublic(t, leasePath)
 	owner := GitOwnerAdapter{Effect: GitEffect{Action: ActionLocalMerge, Repository: repo, IntegrationWorktree: repo, WorktreeBranch: "WT-card", CardSHA: "card", BaseSHA: "base", LeasePath: leasePath, SessionID: session}}
 	if err := owner.ValidateIntegrationLease(); err == nil {
 		t.Fatal("weak lease mode accepted")
