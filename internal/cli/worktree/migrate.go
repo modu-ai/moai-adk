@@ -287,6 +287,11 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 		PrimaryRoot:       root,
 		IntegrationBranch: config.LoadGitFlowIntegrationConfig(root).IntegrationTarget,
 		HomeProjectsDir:   homeBase,
+		CodexWorktreesDir: codexWorktreesDir(),
+		MarkerOwners:      homeMarkerOwners(homeBase),
+	}
+	if key := worktreeroot.RecordedKey(root); key != "" {
+		ctx.OwnerID, _ = worktreeroot.OwnerMarkerOf(filepath.Join(homeBase, key))
 	}
 	cwd, _ := os.Getwd()
 	var plans []migratePlan
@@ -297,10 +302,6 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 		if rec.Bare {
 			continue
 		}
-		if !strings.Contains(filepath.ToSlash(rec.Path), "/.moai/worktrees/") &&
-			!strings.Contains(filepath.ToSlash(rec.Path), "/.claude/worktrees/") {
-			continue // primary and unrelated trees are not the migration's
-		}
 		cls := Classify(WorktreeRecord{Path: rec.Path, Branch: rec.Branch}, ctx)
 		// The plan lists every tree with its classification; only moai-made
 		// trees are selected for moving (the classifier's selection: agent-*,
@@ -310,6 +311,13 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 			head:   rec.Head,
 			branch: rec.Branch,
 			class:  string(cls.Class),
+		}
+		legacy := underPath(rec.Path, filepath.Join(root, ".moai", "worktrees")) ||
+			underPath(rec.Path, filepath.Join(root, ".claude", "worktrees"))
+		if cls.Class != ClassMoaiMade || !legacy {
+			p.skip = "outside the legacy roots selected for migration"
+			plans = append(plans, p)
+			continue
 		}
 		// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the destination is
 		// the resolver's home-root landing path for this tree.
@@ -449,7 +457,11 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 	}
 
 	var writeErrs []string
+	stateLockLapses := 0
 	for _, p := range plans {
+		if stateLockLapses >= hook.StateLockLapseBudget && p.class == string(ClassMoaiMade) && p.skip == "" {
+			p.skip = "state-file lock lapse budget spent; remaining trees await the next run"
+		}
 		row := migrationRow{
 			Class: p.class, Source: p.source, Destination: p.destination,
 			Outcome: "planned", SkipReason: p.skip,
@@ -463,6 +475,18 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 		if row.Outcome == "skipped" {
 			report.skipped++
 			report.rows = append(report.rows, row)
+			// Inventory includes already-migrated home trees. Their existing
+			// receipt is the outcome; an unchanged rerun must not append a
+			// second event merely because they are no longer legacy sources.
+			if apply && (p.destination != "" || !MovedBy(root, p.source)) {
+				ident := ""
+				if id, err := TreeIdent(p.source); err == nil && id.Token != "" {
+					ident = id.Ident()
+				}
+				if err := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "skipped", p.source, p.destination, ident, row.SkipReason)); err != nil {
+					return report, err
+				}
+			}
 			continue
 		}
 		if !apply {
@@ -472,6 +496,9 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 		// The apply: the row's outcome is the engine's verdict for this tree
 		// (card t1640 review P2h — the placeholder never survives the run).
 		out := migrateOneTree(root, p, mlPath, trigger, journal)
+		if errors.Is(out.Cause, hook.ErrStateLockWaitLapsed) {
+			stateLockLapses++
+		}
 		row.Outcome, row.SkipReason = out.Outcome, out.Reason
 		if mlErr := out.MLErr; mlErr != nil {
 			writeErrs = append(writeErrs, fmt.Sprintf("%s: %v", p.source, mlErr))
@@ -494,6 +521,21 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 	if len(writeErrs) > 0 {
 		return report, fmt.Errorf("migration recovery or audit writes failed: %s", strings.Join(writeErrs, "; "))
 	}
+	if stateLockLapses >= hook.StateLockLapseBudget {
+		return report, fmt.Errorf("migration stopped after %d state-lock lapse(s): %w", stateLockLapses, hook.ErrStateLockWaitLapsed)
+	}
+	if apply {
+		legacy := filepath.Join(root, ".moai", "worktrees")
+		entries, err := os.ReadDir(legacy)
+		if err != nil && !os.IsNotExist(err) {
+			return report, err
+		}
+		if err == nil && len(entries) == 0 {
+			if err := RetireEmptyLegacyDir(root); err != nil {
+				return report, err
+			}
+		}
+	}
 	return report, nil
 }
 
@@ -504,6 +546,7 @@ type treeOutcome struct {
 	Ident    string
 	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
 	MLErr    error  // a persistence or reverse-metadata error requiring recovery
+	Cause    error  // the original failure, retaining typed state-lock lapses
 }
 
 // migrateOneTree moves one tree through the journaled step order —
@@ -542,16 +585,16 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 			// No state-file entry for the old path: the re-key is a no-op
 			// (the tree was never registered in the state file).
 		} else {
-			return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("re-key failed: %v", rerr))
+			return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Errorf("re-key failed: %w", rerr))
 		}
 	}
 
 	if rerr := rebindCardForPath(root, p.source, p.destination); rerr != nil {
-		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("card rebind failed: %v", rerr))
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Errorf("card rebind failed: %w", rerr))
 	}
 
 	if after := captureManifest(p.destination); after != digest {
-		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, "manifest mismatch after the move")
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, errors.New("manifest mismatch after the move"))
 	}
 
 	if merr := appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "moved", p.source, p.destination, id.Ident())); merr != nil {
@@ -568,9 +611,14 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 // reverse move leaves the tree standing at the destination with its re-key
 // and rebind intact (they name the location the tree really sits at),
 // records pending, and fails the tree.
-func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, trigger, digest, reason string) treeOutcome {
-	movedBack, reverseErr := m6ReverseMove(root, p, id, mlPath, trigger)
-	out := treeOutcome{Ident: id.Ident(), Manifest: digest}
+func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, trigger, digest string, cause error) treeOutcome {
+	// A lock acquisition lapse made no metadata changes. Reversing git is
+	// sufficient in that case; waiting for the same lock again cannot undo
+	// an applied step and would spend another budget unnecessarily.
+	restoreMetadata := !errors.Is(cause, hook.ErrStateLockWaitLapsed)
+	movedBack, reverseErr := reverseMigrationTree(root, p, id, mlPath, trigger, restoreMetadata)
+	out := treeOutcome{Ident: id.Ident(), Manifest: digest, Cause: cause}
+	reason := cause.Error()
 	if movedBack && reverseErr == nil {
 		out.Outcome, out.Reason = "reversed", reason
 	} else {
@@ -703,6 +751,10 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 // reports whether the tree actually moved back (card t1640 review P1-4) and
 // the move-list write error, if any.
 func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger string) (bool, error) {
+	return reverseMigrationTree(root, p, id, mlPath, trigger, true)
+}
+
+func reverseMigrationTree(root string, p migratePlan, id TreeIdentity, mlPath, trigger string, restoreMetadata bool) (bool, error) {
 	destIdent, err := TreeIdent(p.destination)
 	if err == nil && destIdent.Ident() != id.Ident() {
 		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
@@ -717,10 +769,12 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
 			fmt.Sprintf("reverse move failed: %v", rerr)))
 	}
-	if rerr := reverseMigrationMetadata(root, p.destination, p.source); rerr != nil {
-		lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
-			fmt.Sprintf("reverse metadata failed: %v", rerr)))
-		return true, errors.Join(rerr, lineErr)
+	if restoreMetadata {
+		if rerr := reverseMigrationMetadata(root, p.destination, p.source); rerr != nil {
+			lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+				fmt.Sprintf("reverse metadata failed: %v", rerr)))
+			return true, errors.Join(rerr, lineErr)
+		}
 	}
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
 }
@@ -1064,8 +1118,12 @@ func captureTreeManifest(tree string) treeManifest {
 					_, _ = digest.Write([]byte("\x00unreadable-link"))
 				}
 			case info.Mode().IsRegular():
-				if body, rerr := os.ReadFile(full); rerr == nil {
-					_, _ = digest.Write(body)
+				if file, rerr := os.Open(full); rerr == nil {
+					_, copyErr := io.Copy(digest, file)
+					closeErr := file.Close()
+					if copyErr != nil || closeErr != nil {
+						_, _ = digest.Write([]byte("\x00unreadable"))
+					}
 				} else {
 					_, _ = digest.Write([]byte("\x00unreadable"))
 				}

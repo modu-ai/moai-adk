@@ -415,6 +415,7 @@ func appendMoveListLine(mlPath, line string) error {
 		Trigger string `json:"trigger"`
 		Card    string `json:"card"`
 		Tree    string `json:"tree"`
+		Run     string `json:"run"`
 	}
 	var next semanticRecord
 	if err := json.Unmarshal([]byte(line), &next); err != nil {
@@ -426,8 +427,9 @@ func appendMoveListLine(mlPath, line string) error {
 		if json.Unmarshal([]byte(previous), &prior) != nil {
 			continue
 		}
-		if prior.OldPath != next.OldPath && prior.NewPath != next.OldPath &&
-			prior.OldPath != next.NewPath && prior.NewPath != next.NewPath {
+		related := next.OldPath != "" && (prior.OldPath == next.OldPath || prior.NewPath == next.OldPath) ||
+			next.NewPath != "" && (prior.OldPath == next.NewPath || prior.NewPath == next.NewPath)
+		if !related {
 			continue
 		}
 		if prior == next {
