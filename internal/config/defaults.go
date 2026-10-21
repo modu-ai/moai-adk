@@ -1056,6 +1056,13 @@ const DefaultFactoryLanes = 8
 // fallback where a run carries no record or a capacity-open one.
 const DefaultFactoryLeaderLanes = 1
 
+// DefaultLeaderAnchorAuditRelPath is the override audit log of the leader
+// launch anchor guard (SPEC-LAUNCHER-ARGV-001 REQ-LA-005), relative to the
+// project root: one row per --allow-card-anchor bypass (backend, tree, branch),
+// following the BranchGuard `.moai/logs/` audit precedent. A bypass that cannot
+// be recorded here is refused, so the path is part of the guard's contract.
+const DefaultLeaderAnchorAuditRelPath = ".moai/logs/leader-anchor-audit.log"
+
 // DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
 // codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
 // when the phase exceeds it, the launcher prints one timing line per
@@ -1454,6 +1461,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		FactoryLease: FactoryLeaseConfig{
 			Duration:      DefaultFactoryLeaseDuration.String(),
 			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
+		},
+		// SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007: the self-dispatch
+		// kill-switch ships default-OFF — the generic selection arms stay
+		// dormant for unowned cards, so the distributed behavior is exactly
+		// the incident t1780 posture minus the hazard. The entry is
+		// load-bearing the same way BranchGuard's is: without it the zero
+		// value would also read false, but the explicit false keeps the
+		// default readable from the constructor and lets the parity test
+		// pin it against both shipped workflow.yaml surfaces.
+		Factory: FactoryConfig{
+			SelfDispatch: false,
 		},
 		DefaultMode: "",
 		// "auto" (not "team") aligns with the template SSOT

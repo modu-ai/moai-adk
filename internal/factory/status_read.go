@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
@@ -176,13 +177,15 @@ func branchNamesSpec(branch, specID string) bool {
 // for a detached HEAD. An unreadable HEAD reference is an error.
 func reportedBranch(wtPath string) (string, error) {
 	cmd := branchProbe("git", "-C", wtPath, "symbolic-ref", "--quiet", "--short", "HEAD")
-	// Pin the C locale: git localizes its messages through gettext when
-	// catalogs are installed, and the no-file classification below matches
-	// git's phrasing — a localized message would invert it. LC_ALL=C forces
-	// the canonical English output regardless of the host locale (re-review
-	// ITEM 2; a described mechanism, not a reproduced defect — this host
-	// ships no catalogs).
-	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	// The worktree names the repository; an inherited GIT_DIR / GIT_WORK_TREE
+	// would outrank -C and answer about the caller's repository (card t1710,
+	// t1589's scrub). LC_ALL=C is pinned on top: git localizes its messages
+	// through gettext when catalogs are installed, and the no-file
+	// classification below matches git's phrasing — a localized message would
+	// invert it. LC_ALL=C forces the canonical English output regardless of
+	// the host locale (re-review ITEM 2; a described mechanism, not a
+	// reproduced defect — this host ships no catalogs).
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -217,9 +220,12 @@ func isExitStatusOne(err error) bool {
 func readBranchStatus(primaryRoot, specID, branch, wtPath string) (*CardStatus, error) {
 	rel := fmt.Sprintf(".moai/specs/%s/spec.md", specID)
 	cmd := exec.Command("git", "-C", primaryRoot, "show", fmt.Sprintf("%s:%s", branch, rel))
-	// Same locale pin as reportedBranch: isNoSuchPath matches git's English
-	// phrasing, so the classification must not depend on the host locale.
-	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	// The primary root names the repository and the locale pin matches
+	// reportedBranch: isNoSuchPath matches git's English phrasing, so the
+	// classification must not depend on the host locale — and the scrub keeps
+	// an inherited GIT_DIR from redirecting the read to another repository
+	// (card t1710).
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

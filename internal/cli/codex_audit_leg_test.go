@@ -34,9 +34,12 @@ func TestCodexLegMarkerDoesNotLeakToParent(t *testing.T) {
 
 // The codex child command carries the marker only when a leg spawns it.
 func TestCodexChildCmdCarriesMarkerOnlyInLeg(t *testing.T) {
+	unsetenvForTest(t, codexAuditLegEnv) // hermetic: ambient values are covered in codex_child_orca_env_test.go
 	ordinary := codexChildCmd(context.Background(), "codex", []string{"app-server"})
-	if ordinary.Env != nil {
-		t.Fatalf("ordinary codex child must keep the inherited environment, got %d entries", len(ordinary.Env))
+	// t1869: the ordinary child carries the parent environment minus the Orca
+	// pane-owned keys, so Env is set; what stays true is that it has no marker.
+	if slices.Contains(ordinary.Env, codexAuditLegEnv+"=1") {
+		t.Fatalf("ordinary codex child must not carry %s=1", codexAuditLegEnv)
 	}
 	leg := codexChildCmd(withCodexAuditLeg(context.Background()), "codex", []string{"app-server"})
 	if !slices.Contains(leg.Env, codexAuditLegEnv+"=1") {

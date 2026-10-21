@@ -127,7 +127,7 @@ The tools exposed by `moai mcp-server` are summarized below by family. At call t
 
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
-| `mcp__moai__spec_progress` | List SPEC documents + frontmatter | manager-spec, manager-docs | `moai spec list` |
+| `mcp__moai__spec_progress` | List SPEC documents + frontmatter | manager-spec, manager-docs | — |
 | `mcp__moai__spec_audit` | SPEC lifecycle audit (era classification + drift) | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
 | `mcp__moai__spec_drift` | Modern-era V3R6 drift findings | manager-spec, plan-auditor | `moai spec audit` (drift view) |
 
@@ -160,7 +160,7 @@ Used by manager-develop during run-phase self-verification (attribution seam §E
 | `mcp__moai__claude_audit` | Single Claude-subscription backend audit (`claude -p`, read-only isolation, structured output) | plan-auditor, sync-auditor; called automatically by `audit_multi` in GPT/GLM sessions | — |
 | `mcp__moai__codex_audit` | codex backend single audit (native/adversarial) | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) backend single audit | plan-auditor, sync-auditor | — |
-| `mcp__moai__audit_cache` | plan-audit PASS cache (compute_hash / lookup / store, process-shared) | sync-auditor | `moai audit cache` |
+| `mcp__moai__audit_cache` | plan-audit PASS cache (compute_hash / lookup / store, process-shared) | sync-auditor | — |
 
 The single-backend audit mode is determined by the project's `audit_model` setting: `codex+glm` (default, converges via `audit_multi`) | `glm` | `codex` | `none` (Claude-only, no backend call). All backends are fail-open — an unavailable backend returns `inconclusive`, never a Go error.
 
@@ -179,11 +179,11 @@ GLM has no filesystem, so the request carries a diff with the runtime-managed pa
 
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | `moai codex task` |
-| `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | — |
+| `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | — |
+| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | — |
 
 The codex delegation family is wired into super-advisor and manager-develop. super-advisor, the on-demand high-reasoning consultation agent, is the natural consumer of background cross-model delegation: it delegates a task with `codex_task`, polls completion with `codex_job_status` / `codex_job_result`, and cancels with `codex_job_cancel`. manager-develop carries the family except `codex_setup`; it delegates bounded mechanical subtasks with `codex_task` only as the External Model Delegation section of the run workflow allows, and a delegated codex turn stays read-only. codex is optional — if it is missing or unavailable, it returns fail-open `inconclusive`, never a hard error.
 
