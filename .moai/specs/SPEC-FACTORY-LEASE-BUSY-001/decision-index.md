@@ -41,7 +41,7 @@ Why unresolved: nothing — settled by the operator setting; recorded so the kic
 routing (TDD, RED-GREEN-REFACTOR).
 Operator verdict:
 
-### Q4: Is the queue-lock-held `raced` refusal (`factory_card.go` 1527-1528, tests 443/464) reclassified in this SPEC?
+### Q4: Is the queue-lock-held `raced` refusal (`factory_card.go` 1527-1528, `TestFactoryLeaseQueueLockStallBounded` and its subtests) reclassified in this SPEC?
 
 Label: FOUNDER
 Class: implementation-level

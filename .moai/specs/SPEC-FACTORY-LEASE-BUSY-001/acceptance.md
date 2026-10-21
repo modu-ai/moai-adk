@@ -58,8 +58,12 @@ criteria below are authored now and verified only after the hold lifts.
   over-approximating serial read whose store-read failures fail open (`factoryNextMayLease`,
   `factory_card.go` 1868-1878) — when the lease path renders each site's outcome (the slot-hold
   refusal, and a peek exercised under a forced store-read failure), then the slot-hold refusal
-  keeps its `serial-slot` token and text unchanged, and no rendered line of either outcome carries
-  a race claim (`raced` token or "another lane" wording).
+  keeps its `serial-slot` token and text unchanged, and neither site's own outcome is attributed
+  to a race loss: no rendered line names this serial-slot outcome — the slot hold or the
+  failed-open read — as the cause of a `raced` refusal (`raced` token or "another lane" wording
+  keyed to the slot/read outcome). A genuine race lost downstream of the opened peek (a competitor
+  the Given admits but does not force) is REQ-FLB-002's own mandated `raced` outcome and does not
+  violate this criterion.
 - **AC-FLB-008** (REQ-FLB-011) Baseline ordering (attribution witness).
   Given the status read-path change, when the branch's commit graph is read, then the baseline
   artifact `.moai/reports/t1916/status-latency-baseline.md` (N ≥ 20 samples, recipe, host 1-minute
@@ -67,11 +71,12 @@ criteria below are authored now and verified only after the hold lifts.
   modifying the read path.
 - **AC-FLB-009** (REQ-FLB-012) Latency outcome.
   Given the AC-FLB-008 baseline and a post-change measurement taken with the same recipe under the
-  same load condition, when the 95th percentiles are compared, then exactly one recorded outcome
-  holds: post-change p95 ≤ 50% of baseline p95 (defect fixed), or the baseline record shows
-  baseline p95 < 200 ms (defect not reproduced; no improvement claimed) and the post-change p95 is
-  recorded at or below max(2× baseline p95, 200 ms) — the not-reproduced arm carries its own
-  post-change ceiling, so a latency regression cannot pass inside it.
+  same load condition, when the 95th percentiles are compared, then the recorded outcome is
+  selected by the baseline first: when baseline p95 < 200 ms the outcome is "defect not
+  reproduced" (no improvement claimed), with the post-change p95 recorded at or below
+  max(2× baseline p95, 200 ms) — the not-reproduced arm carries its own post-change ceiling, so a
+  latency regression cannot pass inside it; otherwise (baseline p95 ≥ 200 ms) the outcome is
+  "defect fixed" when post-change p95 ≤ 50% of baseline p95.
 - **AC-FLB-010** (regression) Scoped suite + builds.
   Given the updated lease-path tests, when
   `go test ./internal/cli/ -run 'TestFactoryLease|TestFactoryNext|TestFactoryNominate' -count=1 -v`

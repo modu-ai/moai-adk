@@ -33,7 +33,7 @@ related_specs: [SPEC-FACTORY-LEASE-RENEW-001, SPEC-TODO-AUTO-PICK-001]
   (leader directive):** run-phase implementation is HELD until PR #1859 lands — both this fix and
   #1859 touch `internal/cli/factory_card.go` (FILE overlap, no hunk collision today; the survey
   records the measured hunk map). The hold is a sequencing precondition, not a scope reduction; the
-  leader coordinates the resume. Requirement count 12, criterion count 10 (Tier M ceilings 16 / 16).
+  leader coordinates the resume. Requirement count 12, criterion count 11 (Tier M ceilings 16 / 16).
 
 ## Background
 
@@ -133,10 +133,11 @@ The requirements use GEARS notation. Each active requirement maps to at least on
   comparable; the baseline artifact shall be committed before the first commit that modifies the
   read path.
 - **REQ-FLB-012** When the post-change measurement is taken, the `factory status` read path shall
-  satisfy one of the two recorded outcomes: the post-change 95th-percentile latency is at or below
-  one half of the baseline 95th percentile (defect fixed), or the baseline record itself shows a
-  95th percentile below 200 ms (defect not reproduced; recorded with the baseline as evidence, and
-  no improvement claimed).
+  satisfy the outcome the baseline selects: when the baseline 95th percentile is below 200 ms, the
+  outcome is "defect not reproduced" (recorded with the baseline as evidence, no improvement
+  claimed, and the post-change 95th percentile recorded at or below max(2× the baseline 95th
+  percentile, 200 ms)); otherwise the outcome is "defect fixed", with the post-change
+  95th-percentile latency at or below one half of the baseline 95th percentile.
 
 ## Out of Scope
 

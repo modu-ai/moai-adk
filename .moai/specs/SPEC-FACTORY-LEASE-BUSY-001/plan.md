@@ -79,7 +79,7 @@ true`.
 ## §E Self-Verification deliverables
 
 Per `manager-develop-prompt-template.md` §E and the verification-claim-integrity 5-section format:
-E1 AC PASS/FAIL matrix (all ten AC-FLB ids, command + verbatim output + HEAD per row); E2
+E1 AC PASS/FAIL matrix (all eleven AC-FLB ids, command + verbatim output + HEAD per row); E2
 cross-platform build (`go build ./...`, `GOOS=windows GOARCH=amd64 go build ./...`); E3 coverage on
 the touched packages (`go test -cover ./internal/cli/...` and any `internal/homestate` touch)
 against the 85% target; E4 subagent-boundary grep on touched dirs; E5 lint status (NEW vs baseline);
@@ -122,12 +122,18 @@ read-path change commit — git is the only sequencing witness.
   p50/p95 — committed in its own commit BEFORE any read-path change. The recipe is executable end
   to end and identical across revisions: (1) **binary** — built per revision from the tree under
   measurement (`go build -o <scratch>/moai-<revision> ./cmd/moai`) and invoked by that path, never
-  the installed `moai` (whose build lags this tree); (2) **isolated root** — a fresh `mktemp -d`
-  project directory as the factory root for every run, never the primary checkout's live store;
-  (3) **fixed fixture** — the seeded factory record the setup step creates once in that root
-  (fixed card/run set), reused byte-identically by both runs; (4) **exact command** — the full
-  invocation line recorded verbatim in the baseline artifact and reissued verbatim, unchanged, for
-  the post-change measurement. Profile the read path
+  the installed `moai` (whose build lags this tree); (2) **isolated root** — one fresh `mktemp -d`
+  project directory serves both runs (`FACTORY_ROOT="$(mktemp -d)"`), never the primary checkout's
+  live store (`factory status` is read-only, so one root keeps the fixture and the measurement
+  comparable); (3) **fixed fixture** — seeded once into that root by the real seed verbs before the
+  first run: `moai todo add <fixture-card>` then `moai factory assign <fixture-card> --run
+  <fixture-run>` (executed with the baseline binary against the isolated root; the exact seed
+  command lines, including flags, are recorded verbatim in the baseline artifact and reissued
+  unchanged for the post-change run); (4) **exact command** — the invocation line is recorded
+  verbatim in the baseline artifact and reissued verbatim for the post-change measurement with
+  exactly one token changed: the binary path, the sole revision-varying measurement parameter —
+  every other argument, environment variable, and fixture input is byte-identical across the two
+  runs. Profile the read path
   (`EffectiveFactoryLease` / `LoadPure` / `OpenFactory`+`ListCards` / `ReadRecordUnavailable`) and
   name the dominant cost. Priority High.
 - **M5 — Status read-path fix + improvement measurement.** Remove or restructure the dominant cost;
@@ -147,7 +153,7 @@ read-path change commit — git is the only sequencing witness.
 
 ## §H Cross-references
 
-- `spec.md` REQ-FLB-001..012; `acceptance.md` AC-FLB-001..010 and the REQ→AC traceability table.
+- `spec.md` REQ-FLB-001..012; `acceptance.md` AC-FLB-001..011 and the REQ→AC traceability table.
 - `decision-index.md` Q1-Q4; `.moai/reports/t1916/file-map-survey.md` (§A.3 sequencing evidence).
 - SPEC-FACTORY-ATOMIC-LEASE-001 (claim machinery, AC-FAL-007), SPEC-TODO-AUTO-PICK-001 §C.2
   (`raced` definition), SPEC-FACTORY-LEASE-RENEW-001 (status lease fields).
