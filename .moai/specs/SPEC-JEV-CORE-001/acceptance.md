@@ -26,9 +26,17 @@ Given-When-Then is the verification layer's format; the GEARS requirement wordin
 
 ## §C. Credential handling
 
-**AC-JEVC-010** — Given a fresh credential write, When the file mode of `~/.moai/.env.typesafe` is read, Then it is 0600.
+**AC-JEVC-010** — Given a fresh credential write, When native access to `~/.moai/.env.typesafe` is inspected, Then Unix mode is exactly 0600; on Windows the current user is the file owner and the protected, non-inheriting DACL has exactly one explicit owner access grant. The replacement is private before receiving credential bytes, and native published-file readback confirms the same policy.
 
-**AC-JEVC-011** — Given a pre-existing credential file at mode 0644, When a new credential is written, Then the resulting mode is 0600.
+**AC-JEVC-011** — Given a pre-existing credential file with Unix mode 0644 or a broad/inheriting Windows DACL, When a new credential is written, Then Unix mode becomes exactly 0600 and Windows native readback proves the protected owner-only policy of AC-JEVC-010. The replacement is private before new credential bytes are written; the credential round-trips through the single owner and its location is unchanged.
+
+For both criteria, actual Windows checks independently read the native owner
+and DACL, reject null/broad/inherited/unknown policies, and require readback
+failure to surface as a save error. A Windows `Mode().Perm()` value is not
+privacy evidence. Existing Unix 0644-to-0600 assertions and the short-key
+redaction tests remain required; no test is skipped or weakened by this
+platform distinction. All new validation remains pending until executed on
+the implementation tree.
 
 **AC-JEVC-012** — Given `settings.AllFields()`, When it is enumerated, Then no entry names the Jev credential. Method: a regression test in the shape of `TestGLMKeyField_AbsentFromSchema`.
 

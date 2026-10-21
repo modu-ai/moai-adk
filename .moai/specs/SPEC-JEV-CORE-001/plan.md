@@ -24,7 +24,7 @@ Verified tree facts (measured in this worktree at `fd75cf692`):
 
 **B2 — The credential is out of the settings schema.** Modelled on `internal/glmcred` and `internal/web/glmkey.go`: a dedicated package, mode 0600 with the existing wider-mode tightening, a hand-built parse/validate/view path, and absence from `settings.AllFields()` enforced by a regression test in the shape of `TestGLMKeyField_AbsentFromSchema`. The four-character disclosure floor is inherited verbatim: a key of four characters or fewer discloses nothing but `Configured`.
 
-**B3 — Package boundary.** `internal/jev` depends only on the standard library and stdlib-only internal leaf packages (`internal/paths`, `internal/defs`), exactly as `internal/glmcred` does, so it can be imported by both `internal/cli` and `internal/web` without creating a cycle. The credential reader lives in a sibling `internal/jevcred`, closer to the existing precedent than folding it into `internal/jev`.
+**B3 — Package boundary.** The credential reader/writer remains in sibling `internal/jevcred`, below `internal/jev`, `internal/cli` and `internal/web`. Shared low-level leaves (`paths`, `defs`, and native private-file storage) are permitted; the private-file Windows implementation may use existing `golang.org/x/sys/windows` for filesystem security. It must not import the credential owners or application/configuration layers. Acyclic downward dependencies, rather than a stdlib-only assertion about all transitive imports, preserve composition. Credential format and disclosure remain owned by `jevcred`.
 
 ## §C. Interface decisions
 
@@ -53,7 +53,15 @@ Report per the 5-section evidence format (Claim / Evidence / Baseline-attributio
 
 **M1a — Package skeleton.** Request/response types, `Availability`, pinned model id, size bounds, batching shape. No transport yet.
 
-**M1b — Credential.** `internal/jevcred`: path resolution through `internal/paths`, 0600 write with wider-mode tightening, read, the four-character disclosure helper, absence from `settings.AllFields()` plus its regression test.
+**M1b — Credential.** `internal/jevcred`: path resolution through `internal/paths`, native owner-only write with broader-access narrowing, read, the four-character disclosure helper, absence from `settings.AllFields()` plus its regression test.
+
+The v0.6.0 privacy amendment retains exact Unix 0600 and requires protected
+owner-only Windows DACL creation before credential bytes reach a replacement.
+Independent native owner/DACL readback must verify fresh and replaced files;
+broad/null/inherited or unreadable policies fail closed. Actual Windows
+execution and the unchanged Unix narrowing regression are pending; a
+permission-bit check, skipped test or helper-only result cannot substitute
+for the credential save/readback integration checks.
 
 **M1c — Config gate.** `workflow.jev.enabled` in `defaults.go`, local `workflow.yaml`, template block.
 
