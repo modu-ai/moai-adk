@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // t1589 — the gh call of the github-flow delivery edge must not hand an
@@ -70,4 +72,31 @@ func t1589Git(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// t1834 iter12 F2 — `rev-parse --abbrev-ref HEAD` prints heads/<branch> when a
+// tag shares the branch's name, and the caller's refs/heads/<branch> lookups
+// then name a branch that does not exist: complete refused a healthy candidate
+// with "candidate tree cannot be read". The branch read must be symbolic-ref's
+// full ref with only the refs/heads/ prefix stripped.
+func TestFactoryBranchOfWorktreeWithSameNameTag(t *testing.T) {
+	wt := t1589Repo(t, "card worktree tip", "WT-card-branch")
+	t1589Git(t, wt, "tag", "WT-card-branch", "HEAD")
+
+	t.Run("resolution returns the plain branch name", func(t *testing.T) {
+		if branch := factoryBranchOfWorktree(wt); branch != "WT-card-branch" {
+			t.Errorf("factoryBranchOfWorktree() = %q, want %q (a tag sharing the branch's name must not distort the read)", branch, "WT-card-branch")
+		}
+	})
+	t.Run("a same-name tag on the card branch keeps complete healthy", func(t *testing.T) {
+		root, _, cardWT := mwq19Fixture(t)
+		t1589Git(t, cardWT.wt, "tag", cardWT.branch, "HEAD")
+		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("a tag sharing the card branch's name must not break complete: %v", err)
+		}
+		if card := fcCard(t, root, "t1"); card.State != homestate.CardMergedLocal {
+			t.Fatalf("the card must land merged-local, got %q", card.State)
+		}
+	})
 }
