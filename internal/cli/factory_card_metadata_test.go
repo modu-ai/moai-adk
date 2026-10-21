@@ -621,6 +621,77 @@ func TestSetSpec_FailureMatrix(t *testing.T) {
 	})
 }
 
+// TestSetSpec_CatchUpAdmission is the sync-audit round-1 B1 regression
+// table: the direction-6 catch-up admission reads BOTH stores. The
+// queue-side comparison alone admitted a queue-converged/record-stale state
+// (the assign-without-spec blank this SPEC §A exists to close): it exited
+// zero on a record it never wrote and attested a transition that never
+// landed. The heal rows fall through to the write path — the record lands
+// the commanded value with a bumped version, the queue keeps its value, and
+// the audit row's old value is the record's true prior (the store that
+// actually moves). The first row is the direction-6 control: both stores
+// converged still takes the no-store-mutation catch-up.
+func TestSetSpec_CatchUpAdmission(t *testing.T) {
+	spec := "SPEC-FOO-001"
+	for _, tc := range []struct {
+		name       string
+		recordSpec string // the seeded record spec_id; "" is the assign-without-spec blank
+		recordVer  int64
+		wantMoved  bool   // the record must land the commanded value with a bumped version
+		wantOld    string // the audit row's old value
+	}{
+		{"direction6_both_converged_still_catches_up", spec, 2, false, ""},
+		{"queue_converged_record_blank_heals", "", 1, true, ""},
+		{"queue_converged_record_stale_value_heals", "SPEC-OLD-009", 1, true, "SPEC-OLD-009"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, store := mdPickedFixture(t)
+			mdEnableFlag(t, root)
+			mdQueueSpec(t, store, "t1", &spec)
+			if tc.recordSpec != "" {
+				mdSetRecordSpec(t, root, "t1", tc.recordSpec, tc.recordVer)
+			}
+			cardsBefore := mdCardsDump(t, root)
+			out, _, err := runFactory(t, "set-spec", "t1", "--spec", spec, "--reason", "converge", "--run", fcRun)
+			if err != nil {
+				t.Fatalf("set-spec: %v", err)
+			}
+			if !strings.Contains(out, spec) {
+				t.Fatalf("output does not name the spec: %q", out)
+			}
+			// The record post-state: the heal rows write the commanded value
+			// and bump the version; the catch-up row re-mutates nothing.
+			if tc.wantMoved {
+				card := fcCard(t, root, "t1")
+				if card.SpecID != spec {
+					t.Fatalf("record spec = %q, want %q written to the record", card.SpecID, spec)
+				}
+				if card.Version != tc.recordVer+1 {
+					t.Fatalf("record version = %d, want %d (the write bumps it)", card.Version, tc.recordVer+1)
+				}
+			} else if got := mdCardsDump(t, root); got != cardsBefore {
+				t.Fatalf("catch-up re-mutated the record:\n got %s\nwant %s", got, cardsBefore)
+			}
+			// The queue post-state: converged on the commanded value, still picked.
+			rec, err := store.LoadPure()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rec.Items[0].SpecID == nil || *rec.Items[0].SpecID != spec || rec.Items[0].State != factory.BacklogStatePicked {
+				t.Fatalf("queue item = (%s, %v), want (picked, %s)", rec.Items[0].State, rec.Items[0].SpecID, spec)
+			}
+			// Exactly one audit row carrying the honest transition.
+			rows := mdAuditRows(t, root, "t1")
+			if len(rows) != 1 {
+				t.Fatalf("audit rows = %d, want exactly 1", len(rows))
+			}
+			if rows[0].Old != tc.wantOld || rows[0].New != spec || rows[0].Reason != "converge" {
+				t.Fatalf("audit row = (%q → %q, reason %q), want (%q → %q, reason converge)", rows[0].Old, rows[0].New, rows[0].Reason, tc.wantOld, spec)
+			}
+		})
+	}
+}
+
 func TestSetSpec_ReasonValidation(t *testing.T) {
 	root, store := mdPickedFixture(t)
 	mdEnableFlag(t, root)
