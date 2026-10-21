@@ -173,14 +173,28 @@ func runFactorySetSpec(cmd *cobra.Command, cardID, spec, reason, run string) err
 	if err != nil {
 		return err
 	}
+	// REQ-CMV-003 gate (b): the factory record must exist. The record layer
+	// creates no row and invents no run identity for a never-assigned card —
+	// the operator assigns first, then sets the spec. The existence probe
+	// precedes the store open (sync-audit-1 D-B, the accessor convention the
+	// lease gate set at SPEC-FACTORY-LEASE-RENEW-001: a refused open leaves
+	// no database behind): OpenFactory migrates on open, so refusing after it
+	// would materialize an empty store — the database file plus its meta row
+	// — as a side effect of a read that found nothing. When the store file is
+	// absent no record can exist, so the verb refuses there; a present store
+	// is opened as before and the row-level LoadCard gate decides.
+	fdbPath, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return err
+	}
+	if _, serr := os.Stat(fdbPath); serr != nil {
+		return fmt.Errorf("card %s has no factory record — assign it first (the cards table is keyed (run_id, card_id)); set-spec creates no record", cardID)
+	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = db.Close() }()
-	// REQ-CMV-003 gate (b): the factory record must exist. The record layer
-	// creates no row and invents no run identity for a never-assigned card —
-	// the operator assigns first, then sets the spec.
 	card, err := db.LoadCard(ctx, runID, cardID)
 	if errors.Is(err, homestate.ErrCardNotFound) {
 		return fmt.Errorf("card %s has no factory record — assign it first (the cards table is keyed (run_id, card_id)); set-spec creates no record", cardID)
