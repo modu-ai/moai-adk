@@ -70,6 +70,27 @@ emission (gate/codex-review, method/review/start, target/uncommittedChanges) has
 gofmt clean; golangci-lint = the same 2 pre-existing paths.go findings, 0 new; template
 registration suite `ok ... 0.582s`; wrapper pair `cmp` byte-identical.
 
+### Repair round 2 — C1/C2/F7 (2026-10-22, commits 842f700c79 + 3bc8887dfa)
+
+Sources: `.moai/reports/t1913/sync-audit-r2.md` (FAIL 8.47/10, rcpt-bc107ed5130bc23aac87c767;
+round-1 F1-F4 verified REPAIRED; new C1/C2) + `.moai/reports/t1913/card-review.md` review 2
+(F7). RED-first — all four new probe cases observed failing on the pre-repair wrapper
+(post-WaitDelay runner, verbatim): FIFO `the wrapper blocked past the 30s hook budget`;
+escaped tool_version `(forward=0 kick=1) != want (forward=1 kick=0)`; truncated snapshot and
+stored-key mismatch `(forward=0 kick=0) != want (forward=0 kick=1)` both.
+
+| # | Repair | GREEN observation (this run, tree 3bc8887dfa) |
+|---|--------|------------------------------------------------|
+| F7 | Receipt awk restructured to the verify.Load mirror: full-document validation (checks array closed, document closed) + stored `key` == the shell-computed key; truncated or mismatched snapshots read receipt-ABSENT (cache-miss), never fresh | `truncated_snapshot: cache-miss, one kick` → `forward=0 kick=1`; `stored_key_mismatch: cache-miss, one kick` → `forward=0 kick=1`; producer-written receipts unaffected (all prior receipt cases still GREEN) |
+| C2 | The R6 binding declines stored values carrying JSON escapes (backslash in the raw text): a multi-line reviewer version stored as `1.0\n2` can no longer mis-class a valid fresh FAIL as a cache miss — the Go handler, which JSON-decodes before comparing, delivers it | `escaped_tool_version: the binding declines, Go decides` → `forward=1 kick=0`, exit 0 |
+| C1 | Non-regular log paths rejected before the R4 open-probe (`[ ! -e ] || [ -f ]` guard): a FIFO no longer blocks the wrapper in the foreground (sync-audit repro exit 124); missing paths still probe-create, directories/FIFOs take the /dev/null arm | `FIFO_log_path: no blocking, the kick still fires` → `forward=0 kick=1`, exit 0, no hang (30s CommandContext + WaitDelay bound in the runner) |
+
+Probe matrix 28 subtests, all green: `go test ./internal/cli/ -run 'TestCodexEntryFastpath'
+-count=1` → `ok ... 19.566s`, exit 0 (post-commit, tree 3bc8887dfa). Companion: builds
+(native + GOOS=windows) exit 0; vet exit 0; gofmt clean; golangci-lint = the same 2
+pre-existing paths.go findings, 0 new; template registration `ok ... 0.498s`; wrapper pair
+`cmp` byte-identical; boundary grep 0.
+
 ### M4 + M5 — async conversions (2026-10-21, commits 603ad65bb9 + a29a17cbeb + 4a0fa991ed)
 
 TDD order observed: RED captured before each implementation commit. M4 RED — the
