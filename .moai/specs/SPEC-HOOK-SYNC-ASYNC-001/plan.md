@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Implementation plan — hook sync/async cleanup"
-version: "1.0.0"
+version: "1.0.5"
 created: 2026-10-15
 updated: 2026-10-22
 author: manager-spec
@@ -13,9 +13,10 @@ tier: M
 ## §A Context
 
 Card t1780 (Class C, Template-First, P1, operator directive 2026-10-15). The hook layer carries
-~30 real registrations; the leader's survey decided three async conversions, one decided-stays-sync
-registration that gains a gate-ON shell fast path, a timeout doctrine correction, and a
-measurement protocol over every synchronous hook.
+~30 real registrations; the original survey decided three async conversions. The v1.0.5
+follow-up retains ConfigChange and PostToolUseFailure async and keeps chain-event synchronous
+for foreground completion-edge durability. The decided synchronous entry fast path, timeout
+doctrine correction and measurement protocol remain unchanged.
 
 Code facts verified at plan phase (all on tree `e04ebd5ca6bc441b380c1072d5a1dff8431459ba`):
 
@@ -51,13 +52,22 @@ Code facts verified at plan phase (all on tree `e04ebd5ca6bc441b380c1072d5a1dff8
   no-wait property is preserved because the kick is detached, and double-kick safety rides the
   existing shared marker, not a new protocol.
 
+- K4 (v1.0.5): the official async lifecycle cancels running hooks at `claude -p` teardown.
+  `chain-event.sh` invokes its append in the foreground without detaching, so async registration
+  can lose a valid final-child completion edge. A missing in-turn decision output is not enough
+  to make this persistence safe to defer. Both vendor async message fields are delivered on the
+  next turn; the failure handler's additionalContext-only choice remains application policy.
+
 ## §C Pre-flight
 
 - P1: `go test ./internal/hook ./internal/cli ./internal/template -count=1` green on the absorbed
   base before M3 begins.
-- P2: Re-run the inventory probe (`grep -c "async.: true" .claude/settings.json` → expect 11) and
-  the timeout probes on the absorbed tree; a moved baseline re-pins the ledger (per
-  `verification-completeness.md` §4, re-measure on rebase).
+- P2: Re-run the live/template inventory and timeout probes on the actual amendment tree.
+  The original plan baseline was 11; source inspection at `08b87f504ff8688affe82d468e14b93cccac51ba`
+  now finds 14 async command registrations on each surface, including exactly one chain-event.
+  Removing only that async property must yield exactly 13 (baseline 11 + the two retained
+  conversions). Preserve every other registration and timeout; a moved baseline re-pins the
+  ledger per `verification-completeness.md` §4.
 - P3: Confirm `.moai/reports/t1780/hook-sync-timings.md` from M1 exists and carries 10 runs per
   synchronous hook before M3 prescribes any further change.
 
@@ -93,8 +103,10 @@ The run phase (manager-develop) owns §E evidence; this plan pre-declares the ch
 - E1: AC matrix in acceptance.md all GREEN with ledger citations re-measured on the landing tree.
 - E2: `go test ./internal/hook ./internal/cli ./internal/template -count=1` output carried in the
   completion report.
-- E3: Template-registration tests assert: three async flags present in `.tmpl`; both UPS entries
-  at 30 in `.tmpl`; keep-sync registrations unchanged.
+- E3: Live/template registration tests assert the two retained async conversions, synchronous
+  chain-event, strict async count13, both UPS entries at30 and all other keep-sync invariants.
+  A final-child lifecycle regression also proves the foreground completion edge exists before
+  hook return/teardown with a writable store; no detached writer or synthetic edge substitutes.
 - E4: Subagent-boundary: no cross-tree writes; all edits inside this worktree.
 - E5: `gofmt`/`go vet` on touched Go packages.
 - E6: The key-parity test green on both macOS (`shasum`) and the `openssl` fallback path.
@@ -122,7 +134,7 @@ unblocked and its evidence feeds everything downstream.
   MUST be exercised under isolation only, never 10x against the live tree. The zero-side-effect
   wrappers (the pure-shell gate-OFF fast paths) may run live and are marked as such in the table.
   Prescriptions from the table follow
-  the fixed order (fast-path → timeout raise → async); only the three decided conversions and
+  the fixed order (fast-path → timeout raise → async); only the two retained conversions and
   the codex-review-entry fast path are IN scope — other findings become follow-up cards.
   Acceptance: AC-HSA-013.
 - **M2 — t1775 landing gate + absorb (P0 gate).**
@@ -191,11 +203,18 @@ unblocked and its evidence feeds everything downstream.
   the `hooks-system.md` PostToolUseFailure stdout row (systemMessage →
   hookSpecificOutput.additionalContext), live + template mirrors (audit r1 D7), so the doctrine
   does not go stale against the converted handler. The flag and the Go change
-  land in the same commit pair — flag without the Go change silently drops the message, and vice
-  versa on the sync path. Acceptance: AC-HSA-004, AC-HSA-005.
-- **M5 — ConfigChange + SubagentStop chain-event async flags (P2, mechanical).** `async: true` on
-  the two entries in live settings + template; template-registration tests assert both flags.
-  Acceptance: AC-HSA-001, AC-HSA-002, AC-HSA-003 (flag cells).
+  land in the same commit pair to preserve the chosen output contract. The vendor supports
+  both message fields on async hooks; claiming that `systemMessage` is unsupported is forbidden.
+  General async doctrine must state next-turn delivery of both fields and no user-UI display,
+  while this handler continues to emit only additionalContext. Acceptance: AC-HSA-004, AC-HSA-005.
+- **M5 — ConfigChange async and synchronous chain-event durability (P2).** Keep ConfigChange
+  async on both surfaces and remove only chain-event's async property in both live/template
+  settings. Keep its existing timeout, fail-open behavior and foreground append path; no
+  detachment is introduced. Registration tests must reject an async chain-event, and a lifecycle
+  test with a valid node/writable ledger must schedule final-child shutdown while the append is
+  held, then prove the hook does not return until the persisted completion edge is observable.
+  An unavailable context/store or append error must remain fail-open without forging an edge.
+  Acceptance: AC-HSA-001, AC-HSA-002, AC-HSA-003.
 - **M6 — Timeout doctrine correction + alignment (P2).**
   `hooks-system.md` (live + template): rewrite the table row
   (`UserPromptSubmit | 30s | default 30s, no documented per-event maximum (general hook ceiling
@@ -205,9 +224,12 @@ unblocked and its evidence feeds everything downstream.
   primary checkout already at 30 (leader-raised; verify, do not touch). Acceptance: AC-HSA-010,
   AC-HSA-011, AC-HSA-012.
 - **M7 — Verification close (P1).** Full AC sweep with ledger re-measure (green cells); keep-sync
-  regression sweep — async count 11 → 14 exactly, no keep-sync registration altered; E1-E7
-  evidence; measurement table finalized + committed; acceptance.md ledger closed with GREEN
-  observations pinned to the landing tree SHA. Acceptance: AC-HSA-009, AC-HSA-014, AC-HSA-015.
+  regression sweep — strict async count13 after removing only chain-event from the current14,
+  with the two retained conversions and every other keep-sync registration unchanged; E1-E7
+  evidence. Include the now-synchronous chain-event in the existing10-run measurement protocol.
+  Historical GREEN cells/count14 do not close the changed durability or inventory criteria;
+  current registration/lifecycle results, final-head CI, review and audit remain to be observed.
+  Acceptance: AC-HSA-009, AC-HSA-014, AC-HSA-015.
 
 ## §G Anti-Patterns
 

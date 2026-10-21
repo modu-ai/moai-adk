@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Acceptance criteria and evidence ledger — hook sync/async cleanup"
-version: "1.0.0"
+version: "1.0.5"
 created: 2026-10-15
 updated: 2026-10-22
 author: manager-spec
@@ -24,13 +24,13 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 |----|----------------------------------|-----|-------|------------|------------|
 | AC-HSA-001 | Given the template settings, When the ConfigChange entry is inspected, Then it carries `"async": true` | REQ-HSA-001 | release-blocking | E-L01 | M5 |
 | AC-HSA-002 | Given the live settings, When the ConfigChange entry is inspected, Then it carries `"async": true` | REQ-HSA-001 | release-blocking | E-L02 | M5 |
-| AC-HSA-003 | Given both settings surfaces, When the SubagentStop chain-event entry is inspected, Then it carries `"async": true` | REQ-HSA-002 | release-blocking | E-L03 | M5 |
+| AC-HSA-003 | Given both settings surfaces, When the SubagentStop chain-event entry is inspected, Then it is synchronous (`async` absent or false) and, with a valid chain node/writable store, the foreground completion edge is persisted before hook return or final-child session teardown; failure retains fail-open without a synthetic edge | REQ-HSA-002 | release-blocking | E-L03 | M5 |
 | AC-HSA-004 | Given both settings surfaces, When the PostToolUseFailure entry is inspected, Then it carries `"async": true` | REQ-HSA-003 | release-blocking | E-L04 | M4 |
 | AC-HSA-005 | Given the Go handler, When a PostToolUseFailure event is handled, Then the output carries `additionalContext` and no `systemMessage` | REQ-HSA-003 | release-blocking | E-L05 | M4 |
 | AC-HSA-006 | Given the gate enabled and tree scope, When the wrapper runs, Then the shell receipt probe exists in BOTH wrapper surfaces and resolves ALLOW states without the synchronous handler invocation | REQ-HSA-006 | release-blocking | E-L06 | M3 |
 | AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt on a reviewable tree (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT a synchronous `hook codex-review-entry` invocation (argv-probe count 0 for that argv; the cache-miss background kick `verify codex-review` is allowed and expected on this state); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007, REQ-HSA-008 | release-blocking | E-L07 | M3 |
 | AC-HSA-008 | Given a fixture tree, When the shell key computation is compared with Go `verify.Key`, Then the outputs are byte-equal (parity test green on `shasum` and `openssl` paths) | REQ-HSA-008 | release-blocking | E-L08 | M3 |
-| AC-HSA-009 | Given the keep-sync table, When the settings are re-inventoried after M7, Then the async-true count is exactly baseline 11 + 3 = 14 and no keep-sync registration changed sync state or decision semantics | REQ-HSA-009 | release-blocking | E-L09 | M7 |
+| AC-HSA-009 | Given the keep-sync table, When the settings are re-inventoried after M7, Then the async-true count is exactly baseline 11 + 2 = 13 on both surfaces, only chain-event has returned to sync relative to the prior14, and every other keep-sync registration retains its sync state/decision semantics | REQ-HSA-009 | release-blocking | E-L09 | M7 |
 | AC-HSA-010 | Given the live `hooks-system.md`, When the timeout section is read, Then 30s is documented as the official DEFAULT with no documented per-event maximum, and the ceiling bullet no longer states a 30s cap | REQ-HSA-010 | release-blocking | E-L10 | M6 |
 | AC-HSA-011 | Given the template mirror `hooks-system.md`, When the same section is read, Then it matches AC-HSA-010's corrected wording | REQ-HSA-010 | release-blocking | E-L11 | M6 |
 | AC-HSA-012 | Given both settings surfaces, When the two UserPromptSubmit entries are inspected, Then each carries `timeout: 30` | REQ-HSA-011 | release-blocking | E-L12 | M6 |
@@ -42,13 +42,14 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 
 ## §D.1 Severity classification
 
-- **S1 (release-blocking, fail the sync gate)**: AC-HSA-005, AC-HSA-006, AC-HSA-007, AC-HSA-008,
-  AC-HSA-015. Rationale: a wrong output shape silently drops
-  the failure message (async delivers only additionalContext); a wrong probe direction either
+- **S1 (release-blocking, fail the sync gate)**: AC-HSA-003, AC-HSA-005, AC-HSA-006, AC-HSA-007,
+  AC-HSA-008, AC-HSA-015. Rationale: returning before the foreground chain append can lose a
+  durable completion edge at teardown; a wrong output shape violates the handler's chosen
+  additionalContext-only message contract (the vendor also supports systemMessage); a wrong probe direction either
   loses REQ-GBN-002's enforcement (ALLOW on a fresh FAIL), kicks where the Go design suppresses
   (fresh pass / skip-policy states), or pays the cold start anyway; a
   near-miss key silently kills the kick arm; a double-kick wastes a 900s review budget.
-- **S2 (release-blocking, functional)**: AC-HSA-001..004, AC-HSA-009..013.
+- **S2 (release-blocking, functional)**: AC-HSA-001, AC-HSA-002, AC-HSA-004, AC-HSA-009..013.
 - **Regression-guard (per §2.1)**: AC-HSA-014 (RED not re-executable — historical incident);
   AC-HSA-016 (preservation: the criterion pins behavior M3 must not change, so no red delta can
   exist pre-M3 — audit r1 D4's vacuous-red route); AC-HSA-017 (added at audit r1 per D6, same
@@ -72,7 +73,9 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
   state across entry+Stop triggers rather than parsing marker contents.
 - The async delivery contract is upstream; AC-HSA-005 verifies the emitted JSON shape (the part
   this codebase owns), and the M4 completion report names the upstream delivery semantics as a
-  documented dependency, not a locally verifiable claim.
+  documented dependency, not a locally verifiable claim. The upstream contract includes both
+  additionalContext and systemMessage next-turn delivery, with no user-UI display of either;
+  AC-HSA-005 intentionally keeps this handler's additionalContext-only JSON shape.
 
 ## §D.4 Closure gates
 
@@ -88,6 +91,17 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
   cards citing the table row; they do not reopen this SPEC's scope.
 
 ## §D.6 Edge cases
+
+- Final child/no next turn (AC-HSA-003): Given a valid chain node and writable ledger, When
+  the final SubagentStop is immediately followed by non-interactive teardown while an append
+  is pending, Then the synchronous hook waits for that foreground append and the completion
+  edge is observable before return. An async registration must fail this lifecycle check.
+- Chain append failure (AC-HSA-003): Given missing context or an unavailable/erroring store,
+  When the synchronous wrapper returns, Then its existing fail-open disposition remains and
+  no completion edge is invented. This exception does not waive waiting for a successful append.
+- Async messages (AC-HSA-005): The vendor accepts both supported message fields for next-turn
+  delivery and displays neither to the user. This handler still emits additionalContext and
+  no systemMessage; correcting the rationale must not weaken its JSON-shape regression pin.
 
 - Clock portability (AC-HSA-008/015): Given an awk implementation whose `srand()` seed is
   nanosecond-scale, When the wrapper reads an actual fresh receipt or an existing Stop-arm
@@ -124,9 +138,23 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
 
 - `go test ./internal/hook ./internal/cli ./internal/template -count=1` green (E-level evidence
   in the run-phase §E.2).
-- Template-registration tests assert the three async flags, the two UPS timeouts, and the
-  keep-sync invariance.
+- Live/template registration tests assert the two retained async flags, synchronous chain-event,
+  strict async count13, both UPS timeouts and every other keep-sync invariant. The lifecycle
+  regression must also observe the final-child completion edge before return/teardown.
 - The M3 behavioral probe matrix (§F M3 list) green on macOS; the `openssl` fallback leg green.
+
+## §D.8 v1.0.5 evidence boundary
+
+The dated ledger below is retained as the original1.0.0–1.0.3 observation
+history. In particular, E-L03/E-L09's async-chain/count14 GREEN cells do not
+satisfy the current synchronous-durability/count13 criteria. The amendment
+requires new RED/GREEN registration and lifecycle evidence on its final tree.
+E-L05's additionalContext-only shape remains the application contract; its
+old rationale must not be used to deny vendor-supported systemMessage
+output elsewhere. The open1.0.4 clock cases and prior audit/close record are
+preserved. Current follow-up implementation, final-head CI, code/security
+review and independent audit are unmeasured here; no existing PASS is
+promoted to those results.
 
 ## §E Evidence Ledger (RED-now, observed 2026-10-15, tree `e04ebd5ca6bc441b380c1072d5a1dff8431459ba`)
 
@@ -671,3 +699,4 @@ M7-run additions (2026-10-22, tree `703654daca`):
 2. M1 measurement table committed at `.moai/reports/t1780/hook-sync-timings.md`.
 3. Live/template pairs land together (C2); t1775 gate recorded before M3 (C1).
 4. Run-phase §E evidence complete (E1-E7 of plan.md §E).
+5. Current v1.0.5 synchronous-chain lifecycle and strict13-registration evidence is re-measured; historical async-chain/count14 GREEN cells alone cannot close the amendment, and final-head CI/review/audit results are recorded by their owners.

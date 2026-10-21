@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-SYNC-ASYNC-001
-title: "Hook sync/async cleanup: three async conversions, codex-review-entry gate-ON shell fast path, timeout doctrine correction, and the sync-hook measurement protocol"
-version: "1.0.4"
+title: "Hook sync/async cleanup: two async conversions, durable synchronous chain completion, codex-review-entry fast path, and timeout measurement"
+version: "1.0.5"
 status: in-progress
 created: 2026-10-15
 updated: 2026-10-22
@@ -22,12 +22,15 @@ amendment_of: SPEC-HOOK-SYNC-ASYNC-001
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-10-22 | 1.0.5 | Follow-up to the open clock amendment: keep chain-event synchronous so its foreground completion-edge append is not cancelled by non-interactive teardown; correct the vendor async message contract while retaining this handler's additionalContext-only output choice. Existing IDs, prior completion and audit history remain unchanged; status stays in-progress. |
 | 2026-10-15 | 1.0.0 | Initial draft. Authored at plan phase for card t1780 (operator directive 2026-10-15, Class C, Template-First, P1). Carries board decisions d-20261015T030xx (codex-review-entry stays synchronous) and d-20261015T024551Z-78aa (measure every synchronous hook 10x, table under .moai/reports/t1780/). |
 | 2026-10-15 | 1.0.1 | Plan-audit r1 repairs (verdict `.moai/reports/t1780/plan-audit.md`, FAIL 0.8125 on D1-D4 blocking): REQ-HSA-006 kick narrowed to cache-miss states only — fresh pass/inconclusive exits 0 WITHOUT kicking, mirroring `codex_review_gate.go:234-244` (D1); tree-scope/primary-scope skip policy added to the REQ-HSA-006 Where-clause (D2); REQ-HSA-003 gains the `hooks-system.md` PostToolUseFailure stdout-row refresh (D7). AC-HSA-017 added per audit D6 (only AC-set addition; every existing REQ/AC id unchanged). |
 | 2026-10-15 | 1.0.2 | Plan-audit r2 repairs (delta FAIL, r1 fixes verified resolved): REQ-HSA-006(a) early kick now carries the two kick-region preconditions — binary-age (decidable-behind suppresses, binlag leniency) and nothing-reviewable (change presence + config-only narrowing), shell-carried where judgeable, ALLOW-without-early-kick otherwise (R2-D3); REQ-HSA-007 corrected — an unreadable/unparseable snapshot is receipt-ABSENT (the shared `verify.LoadReceipt` reading) and takes the REQ-HSA-006(a) miss arm, removed from the fall-through enumeration (R2-D2, Go authority read). Id sets unchanged. |
 | 2026-10-15 | 1.0.3 | Plan-audit r3 repairs (delta FAIL, r2 fixes verified resolved; ceiling-policy auto-delta): REQ-HSA-006(a) binary-age gains the HEAD-match pre-check FIRST — a binary commit matching HEAD is StatusFresh (`binlag.go:139-141`), the early kick proceeds; only a non-matching ancestor-hit is behind (`merge-base --is-ancestor` succeeds on equality and would mis-class the exactly-current binary) (R3-D1); AC-HSA-015's exactly-one bound scoped to the same kick bucket, with the bucket-roll case recorded as designed behavior (R3-D2); §D.6 TTL-boundary corrected — exactly-24h is FRESH under the strict `>` comparison (R3-O3). Id sets unchanged. |
 
 ### Amendments
+
+#### v1.0.4 clock portability — retained open amendment
 
 | Field | Value |
 |-------|-------|
@@ -38,19 +41,42 @@ amendment_of: SPEC-HOOK-SYNC-ASYNC-001
 | Scope / authority | Cloud CI repair `ci-repair-20261022`, card t1913: clarify REQ-HSA-008 and plan D3 to allow the existing system `date +%s` clock, require validated decimal Unix seconds, and preserve Go fall-through when the clock cannot be read. No receipt binding, freshness boundary, verdict rule, or exactly-one kick assertion changes. |
 | Evidence boundary | The prior close and its evidence remain historical. This amendment is open; implementation, final-head CI, review, and audit results have not been asserted here. |
 
+
+#### v1.0.5 foreground completion durability and async messages
+
+| Field | Value |
+|-------|-------|
+| Date / version | 2026-10-22 / 1.0.5, in-progress; follows the already open 1.0.4 amendment without a lifecycle cycle |
+| Prior completed version / SHA | 1.0.3 / `8b48246f072c482ab7e7dac2f1f13247ebe861dc`, unchanged |
+| Authority and rationale | Cloud CI repair `ci-repair-20261022`, actual PR #1870 review findings. The official hooks reference states that non-interactive `claude -p` teardown cancels still-running async hooks, and that both `additionalContext` and `systemMessage` are delivered to Claude on the next turn without user-UI display. The current chain wrapper waits for its foreground append and does not detach. |
+| Scope | Keep the SubagentStop completion-edge registration synchronous; retain ConfigChange and PostToolUseFailure async conversion; correct the vendor message explanation while retaining the chosen additionalContext-only handler output. Live/template strict async inventory becomes 13 rather than the historical 14. Clock portability, receipt binding, kick deduplication, timeouts, fail-open behavior and all other keep-sync semantics are unchanged. |
+| Evidence boundary | The current source inventory is 14 async registrations on each surface; removing only chain-event's async property yields the target 13. Implementation, lifecycle regression, final-head CI, code/security review and independent audit for this follow-up remain pending. Historical E-L03/E-L09 GREEN cells and the prior close are not proof of the changed criteria. No progress or audit signal is rewritten. |
+
+Upstream contract: [Claude Code hooks reference](https://code.claude.com/docs/en/hooks#configure-an-async-hook)
+and [async execution](https://code.claude.com/docs/en/hooks#how-async-hooks-execute).
+The saved HTTP-200 source was inspected for this amendment; these are documented
+runtime dependencies, not a locally executed vendor-session result.
+
 ## 1. Overview
 
-The leader's full survey of `.claude/settings.json` (41 command-hook registrations including the
-statusLine offset, ~30 real hook entries) decided a sync/async cleanup of the hook layer. Three
-registrations convert to `async: true` — their results only need to reach the next turn as
-`additionalContext`, so paying a synchronous slot for them is waste:
+The original survey of `.claude/settings.json` (41 command-hook registrations including the
+statusLine offset, ~30 real hook entries) selected three async conversions. The v1.0.5 follow-up
+retains two advisory conversions whose output need not make an in-turn decision:
 
 1. **ConfigChange** (`handle-config-change.sh`, timeout 5, no handler output).
-2. **SubagentStop** (`chain-event.sh`, timeout 5, ledger append only, fail-open).
-3. **PostToolUseFailure** (`handle-post-tool-failure.sh`, timeout 5, failure record +
-   SystemMessage — the SystemMessage emission lives at `internal/hook/post_tool_failure.go:108-110`).
-   This one converts **AND** moves its message to `additionalContext`, because an async hook
-   delivers ONLY `additionalContext`; it cannot deliver `systemMessage`.
+2. **PostToolUseFailure** (`handle-post-tool-failure.sh`, timeout 5, failure record +
+   classified message). This handler deliberately emits the message through
+   `hookSpecificOutput.additionalContext`, with no `systemMessage`. That is this handler's
+   output contract, not a vendor restriction: async hooks can deliver either message field to
+   Claude on the next turn, and neither is displayed in the user UI.
+
+**SubagentStop `chain-event.sh` remains synchronous** with its existing timeout and fail-open
+error disposition. Its foreground `moai hook chain-event` call appends a completion edge; there
+is no detached writer. With a valid chain context and writable store, the append must finish
+before the hook returns and session teardown can cancel outstanding async work. Fail-open
+means a storage/context failure does not block the user; it does not make a successful append
+safe to defer until a next turn that may never occur. The completion-edge persistence contract
+therefore takes precedence over converting this one registration to async.
 
 One registration stays synchronous by decision: **UserPromptSubmit
 `handle-codex-review-entry.sh`** (board decision d-20261015T030xx — decision item ④, closed; this
@@ -89,15 +115,22 @@ handler that exists, not toward a block the handler deliberately does not perfor
   `"async": true` in both the live settings and the template settings, so the handler's
   continue-only, empty-output behavior costs no synchronous turn time.
 
-- **REQ-HSA-002** — The SubagentStop registration of `chain-event.sh` shall carry `"async": true`
-  in both settings surfaces; the chain-ledger append is fail-open and emits no decision output,
-  so next-turn `additionalContext` delivery loses nothing.
+- **REQ-HSA-002** — The SubagentStop registration of `chain-event.sh` shall remain synchronous
+  in both settings surfaces (`async` absent or false). Given a valid chain node and writable
+  ledger, the existing foreground handler shall finish its completion-edge append before
+  returning, including when the last subagent ends immediately before non-interactive session
+  teardown and no next conversation turn occurs. The wrapper shall not detach or defer this
+  append. Missing context or an append error retains the current fail-open result and must not
+  fabricate a completion edge; the existing timeout and handler decision semantics remain unchanged.
 
 - **REQ-HSA-003** — The PostToolUseFailure registration of `handle-post-tool-failure.sh` shall
   carry `"async": true` in both settings surfaces, **and** the Go handler
   (`internal/hook/post_tool_failure.go`) shall emit the classified failure message as
   `additionalContext` (via `hookSpecificOutput.additionalContext`) instead of `systemMessage`,
-  because an async hook delivers only `additionalContext`. The REQ-HRR-001
+  as this handler's chosen JSON shape. The upstream async contract delivers both supported
+  message fields to Claude on the next turn and shows neither in the user UI; async decision
+  output cannot provide an in-turn blocking decision. This choice does not prohibit valid
+  `systemMessage` output from other async handlers. The REQ-HRR-001
   `tool_failure:<tool>:<category>` usage-log recording and the contract-mode escalation
   observation shall remain unchanged, and the `hooks-system.md` stdin/stdout reference row for
   PostToolUseFailure (live and template mirrors) shall be updated to the new output field in the
@@ -183,6 +216,7 @@ handler that exists, not toward a block the handler deliberately does not perfor
 | permission handlers | PermissionRequest, PermissionDenied | allow/deny/`{retry:true}` decisions consumed in-turn |
 | Stop-family blocking gates (`handle-stop.sh`, `sync-phase-quality-gate.sh`) | Stop | turn-end blocking decisions; block-cap semantics are synchronous |
 | `handle-subagent-stop.sh` | SubagentStop | decision output consumed this turn |
+| `chain-event.sh` | SubagentStop | foreground completion-edge append must finish before session teardown; no detached writer |
 | `handle-user-prompt-submit.sh` | UserPromptSubmit | blocking + `sessionTitle` + inbox `additionalContext` needed this turn |
 | session-start wrappers (2 kinds) | SessionStart | bootstrap context must arrive this session; async delivery lands next turn, useless |
 | `handle-compact.sh` | PreCompact | memo save must complete BEFORE compaction runs |
@@ -265,16 +299,19 @@ adoptions, and the evidence ledger (per `verification-completeness.md` §2) live
 - No timeout value changes without the measurement table's evidence; raises beyond the corrected
   doctrine's per-event defaults are prescribed only by the fixed prescription order.
 
-### Out of Scope — async conversions beyond the three decided
+### Out of Scope — async conversions beyond the two retained
 
-- Every registration not named in REQ-HSA-001..003 stays synchronous; the keep-sync table is the
-  boundary. New async candidates discovered by the measurement table become follow-up cards, not
-  scope growth here.
+- The two retained conversions in REQ-HSA-001..003 are the complete conversion scope;
+  chain-event follows its explicit synchronous durability requirement. Every other
+  registration retains its pre-SPEC sync/async state, including the already-async baseline.
+  The keep-sync table is the boundary. New candidates become follow-up cards rather than scope growth.
 
 ### Out of Scope — runtime async-delivery mechanism changes
 
-- Claude Code's async hook delivery contract (additionalContext-only, next turn) is upstream
-  behavior; this SPEC adapts handlers to it and does not modify or document around it.
+- Claude Code's async hook delivery contract is upstream behavior: both additionalContext
+  and systemMessage reach Claude on the next turn and neither is displayed in the user UI;
+  running async hooks are cancelled at non-interactive teardown. This SPEC aligns its
+  explanation and handler choices with that contract without changing the vendor runtime.
 
 ## 6. Cross-references
 
