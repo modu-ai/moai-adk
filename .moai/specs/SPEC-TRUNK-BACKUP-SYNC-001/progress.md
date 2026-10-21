@@ -129,8 +129,10 @@ m1_to_mN_commit_strategy: per-milestone conventional commits, card id + Authored
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: 2026-10-18
-sync_commit_sha: af478d813   # backfilled from the D3 placeholder — the sync commit cannot cite its own hash
+sync_complete_at: 2026-10-21
+sync_commit_sha: 12830b0cb5
+# prior close superseded by the v0.3.3 amendment reopen: sync_complete_at 2026-10-18, sync_commit_sha af478d813 (D3-backfill)
+# re-close audited by sync-audit round 3 PASS (audited_sha 776965cfe0); prose record at the bullet below
 sync_status: complete
 ac_source: .moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/acceptance.md   # tier M → acceptance.md is the AC source (resolved, non-empty)
 b12_self_test_a: "pass — grep -c 'SPEC-TRUNK-BACKUP-SYNC-001' CHANGELOG.md returned 0 before emission (no duplicate entry)"
