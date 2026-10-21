@@ -11,13 +11,42 @@ status: draft (SSOT is the `spec.md` frontmatter)
   — its repair batch D11-D15 applied across spec.md / plan.md / acceptance.md / decision-index.md
   (all five verified RESOLVED by iter3). Plan audit iter3: FAIL 0.97 (2 blocking D16/D17, both
   confined to plan.md §F M4 clause (3); `.moai/reports/t1916/plan-audit-iter3.md`) — its
-  single-clause repair (pick-marked seed issuance + seed-once semantics) applied —
-  `plan_status: repaired-pending-ceiling-release`. The audit ceiling is exhausted at iter3 of 3:
-  the confirming audit requires the operator's authorization via the leader; no audit-ready claim
-  is made here.
-- Open gates carried to the kickoff review: decision-index Q1 (FOUNDER, product-level) and Q2
-  (EVIDENCE-NEEDED) await operator disposition; the run-phase implementation hold (PR #1859
-  landing, plan.md §A.3 / §F M0) applies regardless of the audit verdict.
+  single-clause repair applied in 8a2f6683eb. Ceiling release + confirming-audit authorization
+  recorded in §G. Plan audit iter4 (scoped-delta confirming round): **PASS 1.00** at
+  017bd3f3158ae2ccb361968b3862d47cae156af7 (`.moai/reports/t1916/plan-audit-iter4.md`, receipt
+  `rcpt-050c5f674d104c5287e12f3d`, convergence ok; D16/D17 RESOLVED, D1-D15 standing) —
+  `plan_status: audit-ready`.
+- Open gates disposition at kickoff: decision-index Q1 default (exit 4 for every class) is
+  encoded in the requirement layer (REQ-FLB-002/003/004/007) per the iter1 routing assessment —
+  operator disposition remains open to close (DoD #3), non-blocking. Q2 resolves in-card (M4
+  baseline, AC-FLB-009 baseline-relative), dispositioned by close. M0 hold LIFTED: PR #1859
+  merged (17a3b98de2 in main history); the leader's card dispatch (2026-10-21, run tn8rpj) is
+  the resume signal.
+
+## §F Phase 4 Mode Selection
+
+Input parameters: Tier M; run-phase scope ~8 files (plan.md §C: factory_card.go + test files,
+todo store read path); 1 domain (Go CLI/factory); language mix Go-only; concurrency benefit LOW
+(coding-heavy, single-domain); Agent Teams prereqs not requested.
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | semantic multi-file change |
+| serial | **yes** | coding-heavy single-domain work per the Anthropic caveat; per-milestone manager-develop delegation (M1-M5 in order, M4 baseline before M5) |
+| fanout | no | no research fan-out need; intra-card write serialization |
+| sweep | no | not mechanical-uniform; < 30 files |
+
+Decision: serial
+Justification: the change is one cohesive behavior reclassification across a lease path and its
+tests; milestones share state and ordering constraints (M4's baseline must precede M5), so a
+single sequential implementer with per-milestone commits is both the safe default and the
+cheapest envelope. Kickoff gate met in autonomous form: plan-audit iter4 PASS 1.00 (≥ Tier M
+0.80, zero blocking, receipt rcpt-050c5f674d104c5287e12f3d), plan artifacts unchanged since the
+verdict (audited_sha 017bd3f315... = current HEAD at audit; the only later commits are this
+progress record and the verdict file), M0 lifted, no open blocker (§G ceiling authorization
+recorded). Decision record: §G ceiling-outcome entry + this section; the sync audit re-reads
+both.
+
 
 ## §E.2 Run-phase Evidence
 
