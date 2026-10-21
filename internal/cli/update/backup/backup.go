@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -207,8 +208,10 @@ type BackupMetadata struct {
 	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
-// CleanupOldBackups prunes old backup runs and returns the number of backup
-// directories it removed. A negative keepCount deletes nothing.
+// CleanupOldBackups prunes old backup runs with the shipped past-version budget
+// and returns the number of backup directories it removed. It is PruneBackups
+// without the report, for callers that only need the count; the update flows call
+// PruneBackups with the configured budget and report each decision.
 //
 // Retention counts runs, not directories, across both backup roots: the config
 // root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set
@@ -218,37 +221,16 @@ type BackupMetadata struct {
 // configBackupName and namespaceBackupName); any other unmarked name is neither
 // counted nor deleted. Runs are ordered newest first: a marked run by its run id,
 // an unmarked run by its directory's modification time, and ties by path
-// ascending. The newest keepCount runs are kept, and every directory of every
-// older run is removed. A missing root contributes no runs and is not an error.
+// ascending. The newest keepCount runs are kept whole. An older run is removed
+// whole unless it holds a past version of a file the budget protects (see
+// selectRetention). A negative keepCount deletes nothing and keepCount 0 deletes
+// every run. A missing root contributes no runs and is not an error.
 //
 // A backup root that is a symbolic link or leads outside projectRoot is refused,
 // and nothing is removed from either root (see OldBackupRootRefused and
 // NamespaceBackupRootRefused).
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	if keepCount < 0 {
-		return 0
-	}
-	if OldBackupRootRefused(projectRoot) || NamespaceBackupRootRefused(projectRoot) {
-		return 0
-	}
-	runs := collectBackupRuns(projectRoot)
-	if len(runs) <= keepCount {
-		return 0
-	}
-
-	deletedCount := 0
-	for _, run := range runs[keepCount:] {
-		for _, dir := range run.dirs {
-			if err := os.RemoveAll(dir); err != nil {
-				// Log error but continue with other backups
-				fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", dir, err)
-			} else {
-				deletedCount++
-			}
-		}
-	}
-
-	return deletedCount
+	return PruneBackups(projectRoot, keepCount, config.DefaultBackupPastVersionsKeep).Removed
 }
 
 // backupRun is one retention unit: the backup directories that share one run

@@ -47,8 +47,9 @@ type profileCapYAML struct {
 // are returned as errors so callers choose their degradation.
 //
 // @MX:NOTE: [AUTO] No-compiled-fallback contract: an absent key returns
-// ok=false and callers must NOT substitute config.DefaultProfileMaxBytes —
-// a compiled fallback would warn on projects that never configured a cap.
+// ok=false and callers must NOT substitute a compiled cap (the former
+// config.DefaultProfileMaxBytes was removed, card t1665) — a compiled
+// fallback would warn on projects that never configured a cap.
 // @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 func LoadProfileCapMaxBytes(projectDir string) (capBytes int64, ok bool, err error) {
 	// HOME tier first — semantics unchanged from the home-only loader.

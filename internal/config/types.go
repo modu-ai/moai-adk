@@ -445,9 +445,27 @@ type FactoryLeaseConfig struct {
 	RenewInterval string `yaml:"renew_interval"`
 }
 
+// FactoryConfig is the workflow.factory block: the self-dispatch policy for
+// bare `factory next` card selection (SPEC-CARD-ELIGIBLE-PULL-001). Sibling
+// of BranchGuard / factory_lease — same snake_case block scheme.
+type FactoryConfig struct {
+	// SelfDispatch arms the generic selection arms (b)/(b2) behind the
+	// eligibility gate (workflow.factory.self_dispatch). Default false —
+	// the kill-switch reading of the Q1 ruling: OFF leaves the generic arms
+	// fully dormant for unowned cards (no lease, no record, no reason line),
+	// so a lane running bare `next` can never pick up an operator-picked card
+	// waiting for another consumer (incident t1780). ON activates the arms
+	// behind the five-condition eligibility predicate; an operator opting a
+	// deployment in (the t1240 self-dispatch shape) sets it in that
+	// deployment's local config.
+	SelfDispatch bool `yaml:"self_dispatch"`
+}
+
 type WorkflowConfig struct {
 	// FactoryLease carries workflow.factory_lease.* (see FactoryLeaseConfig).
 	FactoryLease FactoryLeaseConfig `yaml:"factory_lease"`
+	// Factory carries workflow.factory.* (see FactoryConfig).
+	Factory FactoryConfig `yaml:"factory"`
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
 	AutoClear     AutoClearConfig `yaml:"auto_clear"`
 	DefaultMode   string          `yaml:"default_mode"`
@@ -1142,6 +1160,12 @@ type StateConfig struct {
 	// Consumed by the SessionStart prune path via a targeted state.yaml read
 	// (the clean.go precedent), not through the full config load.
 	SessionRecordRetentionDays *int `yaml:"session_record_retention_days"`
+
+	// BackupPastVersionsKeep is the per-file budget of past versions the update's
+	// backup pruning protects (SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-007).
+	// A value below 1 is read as DefaultBackupPastVersionsKeep by the pruner, so
+	// an explicit 0 or a negative number cannot disable the protection.
+	BackupPastVersionsKeep int `yaml:"backup_past_versions_keep"`
 }
 
 // SessionConfig holds session state management configuration.

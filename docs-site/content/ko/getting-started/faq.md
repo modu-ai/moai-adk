@@ -25,7 +25,7 @@ MoAI-ADK 의 설계는 "세 가지 핵심(토크노믹스 · 에이전틱 루프
 | **예시** | `moai init my-project` | `/moai plan "인증 기능"` |
 
 - 터미널에서 `moai plan`을 실행하면 동작하지 않습니다 — `/moai plan`은 Claude Code 안에서만 유효합니다.
-- Claude Code에서 `/moai init`을 입력해도 동작하지 않습니다 — `moai init`은 터미널 명령입니다.
+- `moai init`은 프로젝트를 설정하는 터미널 명령이고, Claude Code 안에서는 `/moai project`로 프로젝트 문서를 생성합니다.
 
 ---
 

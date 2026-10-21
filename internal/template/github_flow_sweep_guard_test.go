@@ -71,12 +71,21 @@ var sweepExpectedSubtrees = []string{"agents", "codemaps", "docs-site", "moai-do
 var sweepGuardAllow = []sweepAllow{}
 
 // sweepGuardCeilings are the ratchet ceilings (plan-audit D18 and design D-9's P-C family).
-// They were read off the real tree at this card's M4 step 1 (HEAD f33d1f19e plus the guard
-// files; the armed demonstration printed marker-exempted lines=11 (H1 0) and P-C lines=131)
-// and may only fall: a marker that silences more live text than the baseline, a document-wide
-// H1 marker, or a new token-less live sentence fails the armed run. M4/M5 tighten them to
-// the swept tree's values at the armed run; raising one needs a decision row in design.md.
-var sweepGuardCeilings = sweepCeilings{MarkerLines: 11, MarkerH1Lines: 0, PCLines: 131}
+// MarkerLines/MarkerH1Lines keep their M4 step 1 values (HEAD f33d1f19e plus the guard
+// files; the armed demonstration printed marker-exempted lines=11 (H1 0)); their current
+// overage (18 > 11) is adjacent F8-family debt, outside card t1709's scope. PCLines was
+// re-read off the real tree at card t1709 (HEAD 48bfe97af; the MOAI_SWEEP_GUARD_REPORT run
+// printed marker-exempted lines=18 (H1 0) and P-C lines=164) and raised 131 -> 164 to the
+// exact measurement, authorized by design D-31: growth over the t1453 M4 baseline 131 is
+// +33 net: +12 contributed by the sanctioned t1698 Korean->English local-doc translation
+// (audit F9 measured 130 -> 142 — English wording matches the P-C heuristic where Korean
+// did not; an unrelated -1 of drift had moved the tree 131 -> 130 since the baseline, so
+// the translation-era net increase reads +11) and +22 of subsequent legitimate doc growth
+// on main (142 -> 164, card t1709 re-measurement). Ceilings may only fall: a marker that silences
+// more live text than the baseline, a document-wide H1 marker, or a new token-less live
+// sentence fails the armed run. M4/M5 tighten them to the swept tree's values at the armed
+// run; raising one needs a decision row in design.md.
+var sweepGuardCeilings = sweepCeilings{MarkerLines: 11, MarkerH1Lines: 0, PCLines: 164}
 
 // sweepRun is one walk over the surface.
 type sweepRun struct {

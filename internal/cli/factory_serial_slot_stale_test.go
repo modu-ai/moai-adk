@@ -246,7 +246,15 @@ func TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := fcFixture(t)
+			// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit round 6, F14 re-sweep):
+			// this cell's subject is the serial slot as it binds the generic picked
+			// arms (b)/(b2). With the default-OFF kill switch both arms are dormant
+			// and the "not leased" assertion would hold without the slot check ever
+			// running, so the flag is armed and t2 carries a spec id (condition 2
+			// is fail-closed): the refusal now has to come from the slot.
+			cepSelfDispatchYAML(t, root, true)
 			fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+			cepSetSpecID(t, store, "t2", "SPEC-SLOT-PICKED-001")
 			fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 			fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 			rows := []homestate.Card{{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"}}
