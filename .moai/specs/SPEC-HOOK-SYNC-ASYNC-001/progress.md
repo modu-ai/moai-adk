@@ -138,7 +138,24 @@ m1_to_mN_commit_strategy: per-milestone commits — M3 (772b9a1590 feat + 3483d6
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_phase: complete
+sync_complete_at: 2026-10-22T00:00:00+09:00
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+ac_source: .moai/specs/SPEC-HOOK-SYNC-ASYNC-001/acceptance.md (tier: M)
+b12_self_test_a: pass (grep -c 'SPEC-HOOK-SYNC-ASYNC-001' CHANGELOG.md = 0 before emission — no duplicate entry)
+b12_self_test_b: pass (MOAI-AC-COUNTER on acceptance.md: live=17 excluded=0 ambiguous=0 — matches the 17 ACs, AC-HSA-014 per its regression-guard closure rule)
+b12_self_test_c: pass (all paths named in the CHANGELOG entry verified against the tree: internal/hook/post_tool_failure.go, .claude/hooks/moai/handle-codex-review-entry.sh, internal/template/templates/.claude/hooks/moai/handle-codex-review-entry.sh (byte-identical to the wrapper), .claude/settings.json and internal/template/templates/.claude/settings.json.tmpl (14 async flags each), both hooks-system.md surfaces)
+changelog_entry_position: [Unreleased] > Changed (last entry of the subsection)
+frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged, rides the single sync commit)
+frontmatter_status_transitions.plan_acceptance: stateless — no status field; updated: 2026-10-22 refresh only
+canary_compliance_check.mx_tags: sync sub-step — MX Tag validation folded into this close per the 3-phase close doctrine (no separate Mx-phase commit)
+```
+
+> Backfill note: `sync_commit_sha` carries the canonical `pending-backfill-sync` placeholder in
+> the sync commit itself (a commit cannot cite its own hash); the real SHA is backfilled in a
+> follow-up commit by the lane.
 
 ## §F Phase 4 Mode Selection
 

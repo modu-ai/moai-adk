@@ -3,6 +3,7 @@ id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Implementation plan — hook sync/async cleanup"
 version: "1.0.0"
 created: 2026-10-15
+updated: 2026-10-22
 author: manager-spec
 tier: M
 ---
