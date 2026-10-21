@@ -2466,6 +2466,12 @@
 - path: "workflow.audit.glm.model"
   class: W
   evidence: reader
+- path: "workflow.base_freshness_gate.enabled"
+  class: W
+  evidence: "reader: internal/cli baseFreshnessGateConfig (SPEC-INTEGRATION-STALE-BASE-001); gates only the refusal layer of the pre-window base-freshness check"
+- path: "workflow.base_freshness_gate.max_behind_landings"
+  class: W
+  evidence: "reader: internal/cli baseFreshnessGateConfig (SPEC-INTEGRATION-STALE-BASE-001); the tolerance K the check measures landings behind against"
 - path: "workflow.branch_guard.deny_commits_on"
   class: W
   evidence: "reader: internal/hook preToolHandler.protectedCommitDenyList + checkProtectedCommit (SPEC-MAIN-COMMIT-BAN-001); empty list short-circuits before any subprocess"

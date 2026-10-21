@@ -47,7 +47,11 @@ import (
 // Bumped to 12 when QuotaGateConfig gained MaxScanDirs
 // (workflow.quota_gate.max_scan_dirs, SPEC-QUOTA-RECORD-WORKTREES-001): an older
 // cache would serve a zero bound over a workflow.yaml that sets or relies on it.
-const configCacheSchemaVersion = 12
+// Bumped to 13 when WorkflowConfig gained BaseFreshnessGate
+// (workflow.base_freshness_gate.*, SPEC-INTEGRATION-STALE-BASE-001): an older
+// cache would serve a zero gate over a workflow.yaml that opts the gate in or
+// sets its tolerance.
+const configCacheSchemaVersion = 13
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

@@ -943,15 +943,24 @@ func ResolveCardBranch(cardWorktree, cardID string) (string, error) {
 // dispatch § Isolation). The card worktree path is the read the card gate
 // handed over — the REQ-CCI-004 contract resolves the tree, this resolves
 // its branch.
+//
+// The read is `git symbolic-ref --quiet HEAD`, not `rev-parse --abbrev-ref
+// HEAD`: when a tag shares the branch's name, --abbrev-ref disambiguates to
+// `heads/<branch>` and the WT- prefix check refused a healthy tree (card
+// t1920; the same class t1834 fixed in factory_card.go). Only the
+// refs/heads/ prefix is stripped. On a detached HEAD symbolic-ref exits
+// non-zero (the old --abbrev-ref read exited 0 printing the literal
+// "HEAD"), so this function takes its existing read-error path: the refusal
+// "card <id>: read the branch of <tree>: ..." names the card and the tree.
 func resolveCardBranch(cardWorktree, cardID string) (string, error) {
 	if strings.TrimSpace(cardWorktree) == "" {
 		return "", fmt.Errorf("card %s records no worktree, so its WT- branch cannot be resolved", cardID)
 	}
-	out, err := execGitIn(cardWorktree, "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := execGitIn(cardWorktree, "symbolic-ref", "--quiet", "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("card %s: read the branch of %s: %v", cardID, cardWorktree, err)
 	}
-	branch := strings.TrimSpace(out)
+	branch := strings.TrimPrefix(strings.TrimSpace(out), "refs/heads/")
 	if !strings.HasPrefix(branch, "WT-") {
 		return "", fmt.Errorf("card %s's tree %s is on %q, not a WT- branch", cardID, cardWorktree, branch)
 	}

@@ -258,8 +258,14 @@ coordination signal without enabling refusal.`,
 // base died with `merge-base ..HEAD … exit status 128`; IntegrationTarget
 // carries the git-flow DevelopBranch unchanged and resolves github-flow to
 // main.
+//
+// The configuration is read from integrationLockRoot, the root acquire, complete
+// and the base-freshness gate read it from. Reading CLAUDE_PROJECT_DIR as given
+// instead let a variable naming a linked worktree with its own git-strategy.yaml
+// record the re-measure against one branch while the gate measured landings
+// behind another (card t1834, sync-audit iter8 F2).
 func configuredIntegrationBranch() string {
-	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).IntegrationTarget
+	return config.LoadGitFlowIntegrationConfig(integrationLockRoot()).IntegrationTarget
 }
 
 func newIntegrationStatusCmd() *cobra.Command {
@@ -434,6 +440,22 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// git-flow at all — the latter only decides the warning below.
 			gitFlow := config.LoadGitFlowIntegrationConfig(root)
 			branch, wt, source := resolveIntegrationTarget(branchFlag, gitFlow.DevelopBranch)
+			// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): a
+			// candidate too far behind the integration branch, or carrying no
+			// re-measure record for its current tree, is refused BEFORE the
+			// window record is written and before any --wait ticket is
+			// enqueued. Its refusal layer is gated on
+			// workflow.base_freshness_gate.enabled; an uncertain verdict admits.
+			// The gate measures the configured integration target only: the window
+			// record above may fall back to the caller's branch, the measurement
+			// never does, and an explicit --branch naming another branch is the
+			// gate's to refuse (card t1834, sync-audit iter10 H1). Without --branch
+			// the window resolves to the configured target only where a develop
+			// branch is configured (git-flow); elsewhere it records the caller's
+			// branch, which shapes the wording of the refusal's remedy.
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, gitFlow.IntegrationTarget, branchFlag, gitFlow.DevelopBranch != ""); freshErr != nil {
+				return freshErr
+			}
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
 			// before any reader probes it — recording it made every window read

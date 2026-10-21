@@ -50,21 +50,21 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // factory_renew (the lane's card lease renewal, REQ-FLR-002).
 func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
-		"goal_arm":             true,
-		"verify_snapshot":      true,
-		"codex_task":           true,
-		"codex_job_cancel":     true,
-		"codex_role_audit":     true,
-		"glm_task":             true,
-		"glm_job_cancel":       true,
-		"codex_audit":          true,
-		"audit_multi":          true,
-		"todo_add":             true,
-		"factory_next":         true,
-		"factory_stage":        true,
-		"factory_complete":     true,
-		"factory_decide":       true,
-		"factory_renew":        true,
+		"goal_arm":         true,
+		"verify_snapshot":  true,
+		"codex_task":       true,
+		"codex_job_cancel": true,
+		"codex_role_audit": true,
+		"glm_task":         true,
+		"glm_job_cancel":   true,
+		"codex_audit":      true,
+		"audit_multi":      true,
+		"todo_add":         true,
+		"factory_next":     true,
+		"factory_stage":    true,
+		"factory_complete": true,
+		"factory_decide":   true,
+		"factory_renew":    true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {
