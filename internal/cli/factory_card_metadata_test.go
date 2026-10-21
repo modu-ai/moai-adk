@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -991,4 +992,80 @@ func TestReclassify_AuditWindowCatchUp(t *testing.T) {
 		t.Fatalf("audit rows = %d after the landed retry, want 1", n)
 	}
 	_ = store3
+}
+
+// SPEC-CARD-METADATA-VERBS-001 M4: the actor capture layer, the lane
+// boundary, and the consumer integration — pinning tests for the wiring the
+// verbs' audit rows already ride (the capture-layer function shipped with
+// the M2 verb seam; these tests observe it GREEN at arrival and the
+// lane-boundary red is observed through the mutant probe recorded in
+// progress.md §E.2).
+
+func TestMetadataActor_Resolution(t *testing.T) {
+	// The lane marker set → the lane label (REQ-CMV-011, the
+	// factory-decide capture pattern).
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-9")
+	actor, _ := metadataActor()
+	if actor != "lane-9" {
+		t.Fatalf("actor with the lane marker set = %q, want lane-9", actor)
+	}
+	// The marker unset → operator.
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	actor, _ = metadataActor()
+	if actor != "operator" {
+		t.Fatalf("actor with the marker unset = %q, want operator", actor)
+	}
+	// The session UUID rides the existing session-identity capture when one
+	// is resolvable.
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-uuid-1")
+	_, session := metadataActor()
+	if session != "sess-uuid-1" {
+		t.Fatalf("session = %q, want the resolvable UUID sess-uuid-1", session)
+	}
+}
+
+func TestMetadataVerbs_LaneBoundary_Refused(t *testing.T) {
+	// REQ-CMV-015 (decision-index Q2, Default applied): in a lane session
+	// both verbs refuse with the lane-boundary sentinel — and because the
+	// boundary check runs ahead of the flag gate, the refusal is the lane
+	// sentinel even though no local config enables the verbs.
+	root, store := mdPickedFixture(t)
+	queueBefore, cardsBefore := mdQueueDump(t, store), mdCardsDump(t, root)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-9")
+	for _, args := range [][]string{
+		{"set-spec", "t1", "--spec", "SPEC-L-001", "--reason", "r", "--run", fcRun},
+		{"reclassify", "t1", "--priority", "high", "--reason", "r"},
+	} {
+		_, _, err := runFactory(t, args...)
+		if err == nil {
+			t.Fatalf("%s was admitted in a lane session", args[0])
+		}
+		if !strings.Contains(err.Error(), "lane boundary") {
+			t.Fatalf("%s refusal lacks the lane-boundary sentinel (the boundary check must run ahead of the flag gate): %v", args[0], err)
+		}
+	}
+	// Nothing written: both stores row-unchanged and no audit row.
+	if got := mdQueueDump(t, store); got != queueBefore {
+		t.Fatalf("queue moved in a lane session:\n got %s\nwant %s", got, queueBefore)
+	}
+	if got := mdCardsDump(t, root); got != cardsBefore {
+		t.Fatalf("record moved in a lane session:\n got %s\nwant %s", got, cardsBefore)
+	}
+	if n := mdAuditCount(t, root); n != 0 {
+		t.Fatalf("audit rows = %d in a lane session, want 0", n)
+	}
+}
+
+func TestSetSpec_ConsumerResolves(t *testing.T) {
+	// REQ-CMV-006: the contract-report resolution path (cardToSpecID, the
+	// store cardToSpecID reads) resolves the new spec id after set-spec.
+	root, _ := mdPickedFixture(t)
+	mdEnableFlag(t, root)
+	if _, _, err := runFactory(t, "set-spec", "t1", "--spec", "SPEC-CMV-777", "--reason", "r", "--run", fcRun); err != nil {
+		t.Fatalf("set-spec: %v", err)
+	}
+	specID, cause := cardToSpecID("t1")
+	if specID != "SPEC-CMV-777" {
+		t.Fatalf("cardToSpecID = (%q, %q), want (SPEC-CMV-777, \"\")", specID, cause)
+	}
 }
