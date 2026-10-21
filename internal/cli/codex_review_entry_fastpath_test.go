@@ -695,6 +695,33 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 		t.Helper()
 		return handWrittenReceipt(t, at, codexEntryRealToolVersion(t), "mismatchedtreehead000:0000000000000000")
 	}
+	// duplicateReceipt builds the D1 shape: TWO entries for the review
+	// command in one document — fresh PASS first (what Go's FindCommand
+	// reads), fresh FAIL last (what a last-match shell reader would act on).
+	duplicateReceipt := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		entry := func(verdict, exitCode string) string {
+			return `    {
+      "check_id": "codex-review",
+      "command": "moai verify codex-review",
+      "exit_code": ` + exitCode + `,
+      "recorded_at": "` + at.Format(time.RFC3339Nano) + `",
+      "duration_ms": 0,
+      "config_digest": "` + verify.ConfigDigest(codexEntryStateConfigMap()) + `",
+      "tool_version": "` + codexEntryRealToolVersion(t) + `",
+      "verdict": "` + verdict + `"
+    }`
+		}
+		return `{
+  "key": "PLACEHOLDER",
+  "recorded_at": "` + at.Format(time.RFC3339Nano) + `",
+  "checks": [
+` + entry("pass", "0") + `,
+` + entry("fail", "2") + `
+  ]
+}
+`
+	}
 	// reviewableKickable is a miss-state reviewable fixture whose stub stamp
 	// carries the HEAD commit (StatusFresh), so the binary-age precondition
 	// proceeds and the expected kick is reached on every post-R5 path.
@@ -898,6 +925,57 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
 				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
 				o.receiptRaw = mismatchedKeyReceipt(t, now)
+			}),
+			wantKick: 1,
+		},
+		{
+			// F8: the skip policy normalizes like
+			// NormalizeCodexReviewGateTreeScope — EqualFold(TrimSpace(v)) —
+			// so SKIP and quoted-space variants suppress exactly like the
+			// lowercase literal. The kick-capable stamp keeps the case
+			// meaningful: pre-fix the shell proceeds and kicks; post-fix it
+			// falls through at eligibility.
+			name: "tree_scope SKIP variant: fall through to the Go handler",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.treeScope = "SKIP"
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "tree_scope quoted-space variant: fall through to the Go handler",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.treeScope = `" skip "`
+			}),
+			wantFwd: 1,
+		},
+		{
+			// F8's sibling key: primary_scope normalizes the same way — an
+			// uppercase REVIEW on a primary-checkout fixture restores the
+			// fast path and the kick proceeds.
+			name: "primary_scope REVIEW variant: restored, the kick proceeds",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.primaryScope = "REVIEW"
+			}),
+			wantKick: 1,
+		},
+		{
+			// F9: an empty cwd does NOT end the session-dir chain —
+			// reviewScopeSessionDir falls through to project_dir, and a
+			// diverging project_dir still invalidates the shell's tree.
+			name:    "empty cwd defers to a diverging project_dir: fall through",
+			opts:    reviewableKickable(nil),
+			wantFwd: 1,
+			stdin:   `{"cwd":"","project_dir":"/tmp/t1913-empty-cwd-other-tree"}`,
+		},
+		{
+			// D1: a document carrying TWO review-command entries is not read
+			// last-wins — the shell treats duplicates as receipt-ABSENT
+			// (cache-miss) instead of acting on the entry Go's FindCommand
+			// would not have chosen.
+			name: "duplicate command entries: receipt-absent, one kick",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
+				o.receiptRaw = duplicateReceipt(t, now)
 			}),
 			wantKick: 1,
 		},
