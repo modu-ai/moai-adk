@@ -108,8 +108,10 @@ jobs:
       # The runtime verification the gate exists for: real `go test` on the
       # OS-sensitive packages (REQ-GFC-009, AC-GFC-009 (e)). A cross-compile
       # build does NOT stand in for this (REQ-GFC-012).
+      # Stream per-test events so a job cancellation still identifies the
+      # running tests; package-buffered output otherwise hides all progress.
       - name: Run go test
-        run: go test -timeout 25m ./internal/hook/... ./internal/cli/worktree/...
+        run: go test -json -timeout 25m ./internal/hook/... ./internal/cli/worktree/...
 
   # ---------------------------------------------------------------------------
   # The single aggregate check branch protection registers (REQ-GFC-010).
