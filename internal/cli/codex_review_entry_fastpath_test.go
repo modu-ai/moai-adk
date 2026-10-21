@@ -77,6 +77,7 @@ type codexEntryFixtureOpts struct {
 	receipt      *codexEntryReceiptSpec // nil = no snapshot store entry
 	receiptRaw   string                 // raw snapshot JSON body (overrides receipt; the R6 unbound-fields shape)
 	logFileDir   bool                   // plant .moai/logs/codex-review-bg.log as a DIRECTORY (the R4 unopenable-log shape)
+	logFileFifo  bool                   // plant the log path as a FIFO (the C1 foreground-block shape)
 	corruptSnap  bool                   // overwrite the snapshot with garbage
 }
 
@@ -238,6 +239,17 @@ func newCodexEntryFixture(t *testing.T, opts codexEntryFixtureOpts) *codexEntryF
 			t.Fatal(err)
 		}
 	}
+	if opts.logFileFifo {
+		// The C1 foreground-block shape: a FIFO at the log path — opening it
+		// for write blocks until a reader appears. The wrapper must reject
+		// non-regular log paths before the probe.
+		if err := os.MkdirAll(filepath.Join(dir, ".moai", "logs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := exec.Command("mkfifo", filepath.Join(dir, ".moai", "logs", "codex-review-bg.log")).Run(); err != nil {
+			t.Skipf("mkfifo unavailable: %v", err)
+		}
+	}
 	if opts.receipt != nil || opts.receiptRaw != "" || opts.corruptSnap {
 		key, err := verify.Key(context.Background(), dir)
 		if err != nil {
@@ -273,7 +285,11 @@ func newCodexEntryFixture(t *testing.T, opts codexEntryFixtureOpts) *codexEntryF
 			}
 		}
 		if opts.receiptRaw != "" {
-			if err := os.WriteFile(verify.SnapshotPath(dir, key), []byte(opts.receiptRaw), 0o644); err != nil {
+			// PLACEHOLDER stands in for the fixture's real key — the F7
+			// key-mismatch case writes a divergent literal instead and stays
+			// unreplaced.
+			body := strings.ReplaceAll(opts.receiptRaw, "PLACEHOLDER", key)
+			if err := os.WriteFile(verify.SnapshotPath(dir, key), []byte(body), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -332,7 +348,16 @@ func runCodexEntryWrapperStdin(t *testing.T, f *codexEntryFixture, stdin string)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("bash", wrapper)
+	// The hook runs on a 30s UserPromptSubmit budget; a wrapper that blocks
+	// past this bound is a defect (the C1 shape) and must fail the test, not
+	// hang the suite.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", wrapper)
+	// A blocking child (the C1 FIFO shape) survives the context kill and
+	// holds the inherited stdout/stderr pipes open; WaitDelay bounds Wait so
+	// the deadline is actually observed.
+	cmd.WaitDelay = 3 * time.Second
 	cmd.Dir = f.dir
 	cmd.Env = []string{
 		"CLAUDE_PROJECT_DIR=" + f.dir,
@@ -344,6 +369,9 @@ func runCodexEntryWrapperStdin(t *testing.T, f *codexEntryFixture, stdin string)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		t.Fatalf("the wrapper blocked past the 30s hook budget (foreground blocking probe?)\nstderr:\n%s", stderr.String())
+	}
 	code := 0
 	if runErr != nil {
 		ee, ok := runErr.(*exec.ExitError)
@@ -617,6 +645,56 @@ func TestCodexEntryFastpath_GoldenPrefixes(t *testing.T) {
 // plus the expected kick-or-fall-through observation.
 func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 	now := time.Now()
+
+	// handWrittenReceipt builds a raw snapshot body the way verify.Save's
+	// MarshalIndent output is shaped; the PLACEHOLDER key is replaced with
+	// the fixture's real key by newCodexEntryFixture. `toolVersion` and
+	// `storedKey` are inserted verbatim (the C2/F7 fixtures need escapes and
+	// divergent keys the producer would never write).
+	handWrittenReceipt := func(t *testing.T, at time.Time, toolVersion, storedKey string) string {
+		t.Helper()
+		return `{
+  "key": "` + storedKey + `",
+  "recorded_at": "` + at.Format(time.RFC3339Nano) + `",
+  "checks": [
+    {
+      "check_id": "codex-review",
+      "command": "moai verify codex-review",
+      "exit_code": 0,
+      "recorded_at": "` + at.Format(time.RFC3339Nano) + `",
+      "duration_ms": 0,
+      "config_digest": "` + verify.ConfigDigest(codexEntryStateConfigMap()) + `",
+      "tool_version": "` + toolVersion + `",
+      "verdict": "pass"
+    }
+  ]
+}
+`
+	}
+	escapedToolReceipt := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		// A FAIL receipt whose stored tool_version carries a JSON-escaped
+		// newline (the C2 shape: a multi-line reviewer version); the exit
+		// code 2 mirrors the producer's inconclusive-failure convention for
+		// a recorded fail.
+		body := handWrittenReceipt(t, at, `1.0\n2`, "PLACEHOLDER")
+		return strings.Replace(body, `"exit_code": 0`, `"exit_code": 2`, 1)
+	}
+	truncatedReceipt := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		body := handWrittenReceipt(t, at, codexEntryRealToolVersion(t), "PLACEHOLDER")
+		// Cut the document right after the review entry's closing brace —
+		// the F7 shape the round-1 awk parser accepted as a fresh pass.
+		idx := strings.LastIndex(body, "  ]")
+		if idx < 0 {
+			t.Fatal("receipt body has no checks-array close")
+		}
+		return body[:idx]
+	}
+	mismatchedKeyReceipt := func(t *testing.T, at time.Time) string {
+		t.Helper()
+		return handWrittenReceipt(t, at, codexEntryRealToolVersion(t), "mismatchedtreehead000:0000000000000000")
+	}
 	// reviewableKickable is a miss-state reviewable fixture whose stub stamp
 	// carries the HEAD commit (StatusFresh), so the binary-age precondition
 	// proceeds and the expected kick is reached on every post-R5 path.
@@ -774,6 +852,52 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 			name: "unopenable log path: the kick still fires",
 			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
 				o.logFileDir = true
+			}),
+			wantKick: 1,
+		},
+		{
+			// C1: a FIFO at the log path blocks a foreground `>>` probe until
+			// a reader appears (repro exit 124) — the wrapper must reject
+			// non-regular log paths before the probe and still kick.
+			name: "FIFO log path: no blocking, the kick still fires",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.logFileFifo = true
+			}),
+			wantKick: 1,
+		},
+		{
+			// C2: a stored tool_version carrying JSON escapes (backslash in
+			// the raw text — multi-line reviewer versions) cannot be decoded
+			// byte-exactly in the shell; the binding must decline so the Go
+			// handler — which JSON-decodes before comparing — delivers the
+			// valid fresh FAIL instead of the shell mis-classing it as a
+			// cache miss (delivery skipped, re-kick every bucket).
+			name: "escaped tool_version: the binding declines, Go decides",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.receipt = &codexEntryReceiptSpec{verdict: "fail", recordedAt: now}
+				o.receiptRaw = escapedToolReceipt(t, now)
+			}),
+			wantFwd: 1,
+		},
+		{
+			// F7: a snapshot TRUNCATED right after the review entry's closing
+			// brace is not a parsable JSON document — verify.Load would
+			// return absent, so the shell must not read it as a fresh pass.
+			name: "truncated snapshot: cache-miss, one kick",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
+				o.receiptRaw = truncatedReceipt(t, now)
+			}),
+			wantKick: 1,
+		},
+		{
+			// F7's second leg: verify.Load treats a STORED-KEY MISMATCH as
+			// absent (the filename-collision defense) — the shell must
+			// compare the stored key against the key it computed.
+			name: "stored key mismatch: cache-miss, one kick",
+			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
+				o.receiptRaw = mismatchedKeyReceipt(t, now)
 			}),
 			wantKick: 1,
 		},
