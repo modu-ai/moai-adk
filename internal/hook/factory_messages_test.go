@@ -781,3 +781,98 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 		t.Fatalf("disabled=%v %s", cont, state)
 	}
 }
+
+// factoryMetadataFixture registers one claude lane receiver and one sender
+// with the requested backend and slot in a fresh run, delivers one message to
+// the receiver, and returns the run root, the receiver's hook input, and the
+// message id. The store is closed by cleanup.
+func factoryMetadataFixture(t *testing.T, senderBackend, senderSlot string) (string, *HookInput, string) {
+	t.Helper()
+	root := t.TempDir()
+	run := "run-meta"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvFactoryRunID, run)
+	t.Setenv(config.EnvMoaiFactoryWorker, "agent-1")
+	t.Setenv(config.EnvFactoryBackend, "claude")
+	s, e := factorymsg.Open(root, run)
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	receiver := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "lane", Slot: "lane-1", SessionUUID: "meta-receiver", Generation: 1, PID: os.Getpid(), ProcessStart: "meta-start"}
+	sender := receiver
+	sender.Backend = senderBackend
+	sender.Slot = senderSlot
+	sender.SessionUUID = "meta-sender"
+	sender, e = s.RegisterPeer(context.Background(), sender)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if receiver, e = s.RegisterPeer(context.Background(), receiver); e != nil {
+		t.Fatal(e)
+	}
+	msg, e := s.Send(context.Background(), factorymsg.SendRequest{From: sender, To: receiver, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "meta-1", TaskRef: "t1902", CorrelationID: "c-meta", TTL: time.Hour, Payload: []byte("body")})
+	if e != nil {
+		t.Fatal(e)
+	}
+	in := &HookInput{SessionID: receiver.SessionUUID, ProjectDir: root, PermissionMode: PermissionModeAcceptEdits}
+	return root, in, msg.ID
+}
+
+// TestFactoryHookMetadataShowsSenderLaneAndHarness pins the card t1902
+// metadata contract: each inbox metadata line names the sender endpoint's
+// registered lane label and harness verbatim from its peers record, and an
+// endpoint with no registration record renders unknown on both fields.
+func TestFactoryHookMetadataShowsSenderLaneAndHarness(t *testing.T) {
+	metadataLine := func(t *testing.T, ctx, msgID string) string {
+		t.Helper()
+		for _, l := range strings.Split(ctx, "\n") {
+			if strings.HasPrefix(l, msgID+" ") {
+				return l
+			}
+		}
+		t.Fatalf("metadata line for %s not found in %q", msgID, ctx)
+		return ""
+	}
+	assertLine := func(t *testing.T, in *HookInput, msgID, want string) {
+		t.Helper()
+		got, _, state := factoryHookBatch(context.Background(), in, EventStop)
+		if !strings.Contains(got, "Factory inbox run=") {
+			t.Fatalf("precondition: no inbox claim: state=%s ctx=%q", state, got)
+		}
+		if l := metadataLine(t, got, msgID); !strings.HasPrefix(l, want) {
+			t.Fatalf("metadata line mismatch:\n got: %s\nwant prefix: %s", l, want)
+		}
+	}
+
+	t.Run("registered codex sender", func(t *testing.T) {
+		_, in, msgID := factoryMetadataFixture(t, "codex", "lane-46")
+		assertLine(t, in, msgID, msgID+" kind="+factorymsg.KindStatusRequest+" from=meta-sender lane=lane-46 harness=codex generation=1 token=")
+	})
+
+	t.Run("registered claude sender", func(t *testing.T) {
+		_, in, msgID := factoryMetadataFixture(t, "claude", "lane-7")
+		assertLine(t, in, msgID, msgID+" kind="+factorymsg.KindStatusRequest+" from=meta-sender lane=lane-7 harness=claude generation=1 token=")
+	})
+
+	t.Run("unregistered sender", func(t *testing.T) {
+		root, in, msgID := factoryMetadataFixture(t, "claude", "lane-7")
+		path, err := factorymsg.BrokerPath(root, os.Getenv(config.EnvFactoryRunID))
+		if err != nil {
+			t.Fatal(err)
+		}
+		db, err := sql.Open("sqlite", "file:"+path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		res, err := db.Exec(`DELETE FROM peers WHERE session_uuid='meta-sender'`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n, _ := res.RowsAffected(); n != 1 {
+			t.Fatalf("precondition: sender deregistration removed %d rows", n)
+		}
+		assertLine(t, in, msgID, msgID+" kind="+factorymsg.KindStatusRequest+" from=meta-sender lane=unknown harness=unknown generation=1 token=")
+	})
+}

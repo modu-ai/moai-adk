@@ -270,8 +270,16 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 		return "", false, "degraded: " + err.Error()
 	}
 	ids := make([]string, 0, len(claims))
+	// One registration lookup per unique sender in the batch: senders are few,
+	// and each claim line needs the same record fields.
+	senderInfo := make(map[string]factorySenderInfo, len(claims))
 	for _, c := range claims {
-		ids = append(ids, fmt.Sprintf("%s kind=%s from=%s generation=%d token=%s", c.ID, c.Kind, c.SenderSession, c.RecipientGeneration, c.ClaimToken))
+		meta, seen := senderInfo[c.SenderSession]
+		if !seen {
+			meta = factoryHookSenderInfo(ctx, s, c.SenderSession)
+			senderInfo[c.SenderSession] = meta
+		}
+		ids = append(ids, fmt.Sprintf("%s kind=%s from=%s lane=%s harness=%s generation=%d token=%s", c.ID, c.Kind, c.SenderSession, meta.lane, meta.harness, c.RecipientGeneration, c.ClaimToken))
 	}
 	if len(ids) == 0 {
 		return "", false, "empty-or-receipt-only"
@@ -282,4 +290,42 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 		msg = msg[:factoryHookContextLimit]
 	}
 	return msg, event == EventStop, "pending-at-turn-boundary"
+}
+
+// factoryUnknownSender is the metadata value rendered when the sender's lane
+// label or harness is absent: only values present in the sender endpoint's
+// registration record are printed, never inferred (card t1902).
+const factoryUnknownSender = "unknown"
+
+// factorySenderInfo carries the sender endpoint's registration-record fields
+// rendered on an inbox metadata line.
+type factorySenderInfo struct{ lane, harness string }
+
+// factoryHookSenderInfo reads the sender endpoint's registration record — the
+// peers row keyed by session UUID, through the same Store.Peer accessor the
+// recipient bind uses — and returns its slot and backend verbatim. A missing
+// row (the endpoint never registered, or deregistered after sending) renders
+// unknown on both fields. Any other lookup failure also renders unknown — the
+// claim proceeds, because withholding a bound lane's inbox over a metadata
+// decoration would repeat the false-unbound defect class — and is logged at
+// debug so the divergence stays observable in the runtime log.
+//
+// @MX:NOTE: [AUTO] the unknown on lookup-failure is deliberate; record-present
+// values only (card t1902).
+func factoryHookSenderInfo(ctx context.Context, s *factorymsg.Store, senderSession string) factorySenderInfo {
+	p, err := s.Peer(ctx, senderSession)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Debug("factory hook: sender registration lookup failed", "sender", senderSession, "error", err)
+		}
+		return factorySenderInfo{lane: factoryUnknownSender, harness: factoryUnknownSender}
+	}
+	lane, harness := p.Slot, p.Backend
+	if lane == "" {
+		lane = factoryUnknownSender
+	}
+	if harness == "" {
+		harness = factoryUnknownSender
+	}
+	return factorySenderInfo{lane: lane, harness: harness}
 }
