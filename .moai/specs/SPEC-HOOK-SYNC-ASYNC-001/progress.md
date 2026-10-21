@@ -86,9 +86,55 @@ this SPEC), 0 new; full `go test ./internal/hook/ -count=1` = `ok ... 282.669s`;
 hooks-system.md PostToolUseFailure stdout row edit is byte-identical across the live and
 template mirrors (`cmp` exit 0).
 
+### M7 — verification close (2026-10-21/22, commit 703654daca + the ledger evidence commit)
+
+M6 re-pin: AC-HSA-010/011/012 re-observed on the landing tree (703654daca). Base archaeology —
+the M6 content rode the inherited base: `git show 8249bff8c3:...` already carries both UPS
+entries at `timeout: 30`, the corrected row-369 doctrine wording, and async count 11 (all
+observed this run), so the only settings deltas this SPEC adds are the three async flag pairs.
+
+Deferred doctrine touch-up landed as commit 703654daca: the Timeout Configuration table's
+"All other registered events" parenthetical now names all four async entry kinds (PostToolUse
+harness-observe, PostToolUseFailure, ConfigChange, SubagentStop chain-event); live + template
+pair, `cmp` byte-parity exit 0, TestRuleTemplateMirrorDrift green (0.499s).
+
+AC-HSA-013 finalization: the M1 table (gitignored path, cited not committed) carries 29 rows x
+exactly 10 per-run timings (awk count: 29 rows of 10) and gained the fixed prescription-order
+statement (fast-path → timeout raise → async) in an M7 finalization section.
+
+AC-HSA-014 observation (regression-guard, not a release-blocking pass): this tree's hook trace
+log shows 119 UserPromptSubmit executions, max duration 281ms vs the 30s registration, 0
+timeout/error records; coverage boundary (this worktree's sessions only) recorded as a Gap in
+the ledger green cell.
+
+| AC | Status | Verification command | Actual output (this run, tree 703654daca) |
+|----|--------|----------------------|--------------------------------------------|
+| AC-HSA-009 | PASS | `grep -c "async.: true"` both surfaces + `git diff 8249bff8c3..HEAD -- .claude/settings.json` | 14/14 (live/template) = baseline 11 + 3 exactly; diff = 3 hunks, 6+/3-, every added line an async pair — 0 keep-sync changes (ledger E-L09 GREEN) |
+| AC-HSA-010 | PASS | `sed -n '369p'` + `'373,375p'` live doctrine | corrected wording present, ceiling bullet restated as default (E-L10 GREEN) |
+| AC-HSA-011 | PASS | same on template mirror | byte-identical wording; `cmp` live↔template exit 0 (E-L11 GREEN) |
+| AC-HSA-012 | PASS | `awk NR==268 \|\| NR==274` both surfaces | `timeout: 30` both UPS entries, both surfaces (E-L12 GREEN) |
+| AC-HSA-013 | PASS | `ls` + awk run-count + grep prescription over the gitignored table | 29 rows x 10 runs; prescription-order statement present once (E-L13 GREEN) |
+| AC-HSA-014 | OBSERVED (regression-guard) | grep over `.moai/logs/trace-*.jsonl` | 119 executions, max 281ms, 0 timeout records; coverage Gap recorded (E-L14 GREEN) |
+
+Ledger sweep: E-L01..E-L16 + E-L18 GREEN cells closed in acceptance.md, each citing command +
+verbatim output + exit code + tree 703654daca. All AC-HSA-001..017 green; AC-HSA-014 per its
+regression-guard closure rule (§D.4). The ledger RED cells are untouched.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-22T00:20:00+09:00
+run_commit_sha: 703654daca (M7 observation tree; the ledger evidence commit follows this signal)
+run_status: complete
+ac_pass_count: 17 (AC-HSA-001..017; AC-HSA-014 per its regression-guard closure rule)
+ac_fail_count: 0
+preserve_list_post_run_count: 0 (keep-sync table untouched — E-L09 diff evidence; no PRESERVE violations)
+l44_pre_commit_fetch: not-applicable (card worktree; branch-local work, no push in this phase)
+l44_post_push_fetch: not-applicable (no push — dispatch constraint; landing is the leader's batch flow)
+new_warnings_or_lints_introduced: 0 on SPEC-touched files (golangci-lint = 2 staticcheck findings, both on files absent from the run-phase set: internal/cli/paths.go ST1008 pre-existing per M3/M4+M5 baselines; internal/cli/factory_card.go QF1001 first observed this M7 run, file byte-unchanged since f04b507365 — see acceptance.md Gaps)
+cross_platform_build.darwin: pass (`go build ./...` exit 0, this run)
+cross_platform_build.windows: pass (`GOOS=windows GOARCH=amd64 go build ./...` exit 0, this run)
+total_run_phase_files: 16 (git diff --name-only 410791e91c..HEAD — the absorb merge to the M7 tip)
+m1_to_mN_commit_strategy: per-milestone commits — M3 (772b9a1590 feat + 3483d65726 test + 7addd36d15 evidence), M4 (a29a17cbeb feat + 603ad65bb9 fix), M5 (4a0fa991ed feat + f04b507365 evidence), M7 (703654daca docs + ledger evidence commit)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
