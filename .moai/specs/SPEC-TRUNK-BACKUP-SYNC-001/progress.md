@@ -145,6 +145,8 @@ docs_scope: "CHANGELOG entry + this §E.4 signal; no README/docs-site 4-locale s
 repository_wide_ci: "PENDING — deferred to batch CI (carried Gap from §E.3, leader rule 35e9)"
 ```
 
+- 2026-10-21 re-close record — amendment S1/S2/S3 fixed and re-audited PASS (sync-audit round 3 verdict PASS, `.moai/reports/t1832/sync-audit-3.md`, audited_sha 776965cfe0 = this tree's HEAD 776965cfe02846505bbe30f577de65bd769e2eee); spec.md status re-transitioned in-progress → completed on the re-close sync commit per the 3-phase close contract; sync_commit_sha: pending-backfill
+
 ## §G Override and Refusal Record
 
 - 2026-10-17T16:00:24Z SPEC-TRUNK-BACKUP-SYNC-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1832/.moai/reports/t1832/plan-audit-1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1832/.moai/reports/t1832/plan-audit-2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1832/.moai/reports/t1832/plan-audit-3.md
