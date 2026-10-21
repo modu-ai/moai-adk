@@ -228,11 +228,17 @@ codex_entry_fastpath() {
 	local session_dir
 	session_dir=$(printf '%s' "$INPUT" | awk '
 {
+	# (F9) an EMPTY cwd does not end the chain: reviewScopeSessionDir falls
+	# through to project_dir, and a diverging project_dir still invalidates
+	# this shell tree the same way a diverging cwd does.
 	if (match($0, /"cwd"[[:space:]]*:[[:space:]]*"/)) {
 		rest = substr($0, RSTART + RLENGTH)
 		end = index(rest, "\"")
-		print (end > 1 ? substr(rest, 1, end - 1) : "")
-		exit
+		v = (end > 1 ? substr(rest, 1, end - 1) : "")
+		if (v != "") {
+			print v
+			exit
+		}
 	}
 	if (match($0, /"project_dir"[[:space:]]*:[[:space:]]*"/)) {
 		rest = substr($0, RSTART + RLENGTH)
@@ -281,6 +287,13 @@ codex_entry_fastpath() {
         q = sprintf("%c", 39)
         if (substr(v, 1, 1) == "\"" || substr(v, 1, 1) == q) v = substr(v, 2)
         if (substr(v, length(v), 1) == "\"" || substr(v, length(v), 1) == q) v = substr(v, 1, length(v) - 1)
+        # (F8) normalize like the Go readers: EqualFold(TrimSpace(v)) —
+        # SKIP, " skip " and friends must compare equal to the lowercase
+        # literal, or a policy value is mis-read and the shell kicks where
+        # the Go design allows (tree_scope) or stays suppressed
+        # (primary_scope).
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        v = tolower(v)
         print v
         exit
     }
@@ -308,6 +321,13 @@ codex_entry_fastpath() {
         q = sprintf("%c", 39)
         if (substr(v, 1, 1) == "\"" || substr(v, 1, 1) == q) v = substr(v, 2)
         if (substr(v, length(v), 1) == "\"" || substr(v, length(v), 1) == q) v = substr(v, 1, length(v) - 1)
+        # (F8) normalize like the Go readers: EqualFold(TrimSpace(v)) —
+        # SKIP, " skip " and friends must compare equal to the lowercase
+        # literal, or a policy value is mis-read and the shell kicks where
+        # the Go design allows (tree_scope) or stays suppressed
+        # (primary_scope).
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        v = tolower(v)
         print v
         exit
     }
@@ -410,6 +430,10 @@ ec == 1 && /^      "config_digest":/ { cfg = extract("config_digest") }
 ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 /^    \},?[[:space:]]*$/ {
 	if (ec) {
+		# (D1) FindCommand returns the FIRST matching entry; a document with
+		# TWO review-command entries is a shape this shell must not read
+		# last-wins — count the matches and require exactly one below.
+		matches++
 		gsub(/^[[:space:]]+|[[:space:]]+$/, "", verd)
 		verd = tolower(verd)
 		eps = rfc(rec)
@@ -421,7 +445,7 @@ ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 	}
 }
 END {
-	if (found && doc_closed && checks_closed && stored_key == wantkey)
+	if (found && matches == 1 && doc_closed && checks_closed && stored_key == wantkey)
 		print f_state " " f_verd " " f_cfg " " f_tl
 }
 ' "$snapshot" 2>/dev/null)
