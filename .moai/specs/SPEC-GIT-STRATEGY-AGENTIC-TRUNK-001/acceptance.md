@@ -6,11 +6,13 @@ Iteration 2 repair (version 0.3.0): the cells it re-observed carry the criterion
 
 Iteration 3 repair (version 0.3.1, defect D1 only): AC-AGT-020 Judge 6 and its two failing controls were re-observed on tree `45636352d8716b57b0284c24318ad0399d606309` (ledger E26); no other criterion changed.
 
+Rescope (version 0.4.0, 2026-10-21): AC-AGT-005, AC-AGT-006, AC-AGT-011, AC-AGT-016, AC-AGT-017, AC-AGT-018 (Judge 5) and AC-AGT-023 (Judge 2) were re-authored for the target-holder routing; their fresh RED-now cells were observed on tree `a6c69e154b62eb33763212a3034e505bd1046fe1` (branch `WT-agentic-trunk`, M0-M5 implemented, final pre-rescope HEAD) and are carried in ledger E27 to E32. All other criteria keep their original pins; the code, template, config and guidance observations they carry are unaffected by the rescope (the rescope edited SPEC artifacts only). AC-AGT-016 P4a and P4b are leader-time probes; this pass observed the worktree-side state only (E30) and the leader re-measures both from the primary checkout at cutover, as the criterion states.
+
 ## Conventions
 
 - A judge is a single invocation. A Go-test judge is `go test <pkg> -run '^(TestA|TestB)$' -count=1 -v`; it is green only when stdout carries each named `--- PASS:` line, exit is 0 and `[no tests to run]` is absent. A selector that matches nothing prints `ok ... [no tests to run]` with exit 0 (ledger E01), so exit 0 alone is never a verdict.
 - Each Go criterion has a flip judge that selects only NEW test names (red now: `[no tests to run]`; green: the named `--- PASS:` lines) and, where an existing test is in scope, a separate guard judge that selects only EXISTING names (green now, must stay green). A mixed selector is not used: a selector naming one existing and one new test prints a passing line today (observed in plan-audit iteration 1 for AC-AGT-001), so its red would be a missing second line, not a failing run.
-- Classes. Flip criteria are release-blocking and carry the four RED-now elements (command, verbatim stdout, exit code, tree SHA) either inline or as a cited ledger entry E01 to E25 (end of this file). Regression guards (AC-AGT-002, AC-AGT-010, the guard judges, AC-AGT-014 judge B, AC-AGT-021 judge A, AC-AGT-024) are green today by design and say so. AC-AGT-022 is judged in the sync phase. AC-AGT-016 is executed by the leader (below).
+- Classes. Flip criteria are release-blocking and carry the four RED-now elements (command, verbatim stdout, exit code, tree SHA) either inline or as a cited ledger entry E01 to E32 (end of this file). Regression guards (AC-AGT-002, AC-AGT-010, the guard judges, AC-AGT-014 judge B, AC-AGT-021 judge A, AC-AGT-024) are green today by design and say so. AC-AGT-022 is judged in the sync phase. AC-AGT-016 is executed by the leader (below).
 - Output order of a multi-file `grep -c` or `grep -l` is not stable on this machine; judges read the labeled per-file lines, never their order.
 - The doctor exits 0 whether a row is `ok` or `warn` (warnings are advisory, ledger E18), so a doctor-based judge reads the named row and never the exit code.
 - Quoted counts and rows are observations of the pinned tree; M0 re-checks the pinned paths against the run-phase start tree (`git diff --stat f4175587119b5cfeb8d8348fc74cada8764e89ed..HEAD -- internal .claude AGENTS.local.md docs-site .moai/config .moai/docs`) and re-observes only a selector whose package changed.
@@ -54,23 +56,25 @@ Then the local-integration predicate is true for the first two only, and the git
 
 ## B. Consumers (M2)
 
-### AC-AGT-005 (maps REQ-AGT-006)
-Given a project whose manual workflow is `agentic-trunk`, with a fake `gh` that records any call,
+### AC-AGT-005 (maps REQ-AGT-006; rescope 0.4.0: target-holder routing)
+Given a project whose manual workflow is `agentic-trunk`,
 When `factory complete` and `factory merge ready` run on a card that cleared the readiness triple,
-Then the integration window is taken and recorded, no `gh pr` call is made, and no pull request is opened.
-- Flip judge: `go test ./internal/cli -run '^(TestAgenticTrunkFactoryCompleteTakesWindow|TestAgenticTrunkMergeReadyTakesWindow)$' -count=1 -v`. Pass stdout: two `--- PASS:` lines; exit 0.
-- Guard judge (green now): `go test ./internal/cli -run '^TestFactoryCompleteWindowGitFlowUnchanged$' -count=1 -v`. Observed: `--- PASS: TestFactoryCompleteWindowGitFlowUnchanged (5.82s)`, `ok  github.com/modu-ai/moai-adk/internal/cli  7.257s`, exit 0.
-- RED-now (flip): ledger E09, exit 0, `[no tests to run]`. Why red: the two tests do not exist; `factoryGitHubFlow` is already false for the new value, so the behavior needs a pin, not a code change.
-- Green path: M2.
+Then the delivery routes by the target holder: where a worktree other than the primary checkout holds `main`, the integration window is taken and recorded, no `gh pr` call is made, and no pull request is opened; where only the primary checkout holds `main`, the card's pull request is opened, `pr-open` is recorded, and NO pull-request merge request of any kind is issued (no `--auto`; the leader merges, and a later completion run records `merged-pr`).
+- Pin judge A (dedicated-worktree route, implemented M2, green): `go test ./internal/cli -run '^(TestAgenticTrunkFactoryCompleteTakesWindow|TestAgenticTrunkMergeReadyTakesWindow)$' -count=1 -v`. Pass stdout: two `--- PASS:` lines; exit 0. The fixtures build a dedicated integration worktree holding `main`, so the routing keeps them on the local-merge path.
+- Guard judge (green): `go test ./internal/cli -run '^TestFactoryCompleteWindowGitFlowUnchanged$' -count=1 -v`. Observed green at M0 (progress record §E.2: `--- PASS: TestFactoryCompleteWindowGitFlowUnchanged (1.69s)`, exit 0); must stay green.
+- Flip judge (primary route, NEW tests, red now): `go test ./internal/cli -run '^(TestAgenticTrunkCompletePrimaryPrEdge|TestAgenticTrunkCompleteNoAutoMerge)$' -count=1 -v`. Pass stdout: two `--- PASS:` lines; exit 0.
+- RED-now (flip, tree a6c69e154b, ledger E31): exit 0, `[no tests to run]`. Why red: the two tests do not exist, and today the completed M2 code takes the local-merge route unconditionally for `agentic-trunk` — a primary-only project would refuse at the no-worktree-holds-main check instead of opening the card's pull request, and the pr-open call still carries `--auto` (observed verbatim at `internal/cli/factory_card_pr.go:444`: `factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", checkedTip)`).
+- Green path: M5b.
 
-### AC-AGT-006 (maps REQ-AGT-007)
+### AC-AGT-006 (maps REQ-AGT-007; rescope 0.4.0: primary route skips)
 Given session-exit auto-merge enabled and manual `agentic-trunk`,
 When a clean session exit has commits ahead of `main`,
-Then the branch merges into `main` under the same guards as manual git-flow; for a non-manual agentic-trunk project the skip notice names both workflows.
-- Flip judge: `go test ./internal/cli -run '^TestAgenticTrunkAutoMerge$' -count=1 -v`. Pass stdout: `--- PASS: TestAgenticTrunkAutoMerge (`; exit 0.
-- Guard judge (green now): `go test ./internal/cli -run '^(TestAutoMergeHappyPath|TestAutoMergeUnconfiguredTarget)$' -count=1 -v`. Observed: `--- PASS: TestAutoMergeHappyPath (1.21s)`, `--- PASS: TestAutoMergeUnconfiguredTarget (0.00s)`, `ok  github.com/modu-ai/moai-adk/internal/cli  2.472s`, exit 0. `TestAutoMergeUnconfiguredTarget` is updated in M2 if it pins the old notice string.
-- RED-now (flip): ledger E10, exit 0, `[no tests to run]`. Why red: the test does not exist and the gate `!IsGitFlow()` skips the new value.
-- Green path: M2.
+Then the branch merges into `main` under the same guards as manual git-flow where a worktree other than the primary checkout holds `main`; where only the primary checkout holds `main`, the auto-merge skips with a notice naming the missing dedicated landing surface; for a non-manual agentic-trunk project the skip notice names both workflows.
+- Flip judge A (dedicated-worktree route, implemented M2, green): `go test ./internal/cli -run '^TestAgenticTrunkAutoMerge$' -count=1 -v`. Pass stdout: `--- PASS: TestAgenticTrunkAutoMerge (`; exit 0.
+- Flip judge B (primary route, NEW test, red now): `go test ./internal/cli -run '^TestAgenticTrunkAutoMergeSkipsPrimaryTarget$' -count=1 -v`. Pass stdout: `--- PASS: TestAgenticTrunkAutoMergeSkipsPrimaryTarget (`; exit 0.
+- Guard judge (green): `go test ./internal/cli -run '^(TestAutoMergeHappyPath|TestAutoMergeUnconfiguredTarget)$' -count=1 -v`. Observed green at M0 (progress record §E.2); `TestAutoMergeUnconfiguredTarget` was updated in M2 if it pinned the old notice string.
+- RED-now (flip B, tree a6c69e154b, ledger E31): exit 0, `[no tests to run]`. Why red: the test does not exist and the M2 gate (`!UsesLocalIntegration() || DevelopBranch == ""`, `session_worktree_automerge.go:176`) merges into whatever worktree holds `main` — on the primary route it would write into the shared primary checkout's working tree.
+- Green path: M5b (judge B), M2 (judge A, already green).
 
 ### AC-AGT-007 (maps REQ-AGT-008)
 Given manual `agentic-trunk` and a worktree holding `main`,
@@ -80,6 +84,7 @@ Then the recorded window names the worktree holding `main`, stderr carries no ca
 - Guard judge (green now): `go test ./internal/cli -run '^(TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback|TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn)$' -count=1 -v`. Observed: both `--- PASS:` lines (0.18s, 0.21s), `ok  github.com/modu-ai/moai-adk/internal/cli  1.189s`, exit 0.
 - RED-now (flip): ledger E11, exit 0, `[no tests to run]`. Why red: the test does not exist.
 - Green path: M2.
+- Rescope 0.4.0 note: UNCHANGED. REQ-AGT-008's acquire behavior is the dedicated-worktree route; the re-aimed requirement's primary-route clause (no window in the primary's working tree) is exercised by the primary-route completion tests of AC-005 (a primary-route `factory complete` takes no window), so no separate judge is added.
 
 ### AC-AGT-008 (maps REQ-AGT-009)
 Given an invalid workflow value and a non-manual git-flow profile,
@@ -118,6 +123,7 @@ Then status is OK and the message contains `agentic-trunk`, `main`, `serial`, an
 - Guard judge (green now): `go test ./internal/cli -run '^TestDoctorGitStrategyWorkflow$' -count=1 -v`. Observed: `--- PASS: TestDoctorGitStrategyWorkflow (0.08s)`, `ok  github.com/modu-ai/moai-adk/internal/cli  1.470s`, exit 0.
 - RED-now (flip): ledger E13, exit 0, `[no tests to run]`. Why red: the test does not exist; the installed build prints a `warn` row for the value (E18).
 - Green path: M3. A cutover-time judgment by the installed binary is in AC-AGT-016 (P3).
+- Rescope 0.4.0 note (M5b): the standing-branch phrase is reworded holder-neutral (design.md section 2, `workflowStandingBranches` row) — cards land serially through the integration-window merge OR the card's pull request; a leader release batch per `lead_push_threshold` landings. The pinned tokens `agentic-trunk`, `main`, `serial`, `batch` stay in the message, so this judge's pass condition is unchanged; `TestAgenticTrunkDoctor` is updated to the new truth in M5b if it pins the full phrase, never skipped (REQ-AGT-024).
 
 ### AC-AGT-012 (maps REQ-AGT-013)
 Given a statusline render with a branch,
@@ -159,34 +165,34 @@ Then only the github-flow root arms it.
 
 ## E. Cutover (M6, executed by the leader)
 
-### AC-AGT-016 (maps REQ-AGT-017)
-Executed by the leader, with the operator's confirmation, in a window where no lane is mid-landing: replacing the installed binary affects every session on the machine. The precondition set below is the single list; REQ-AGT-017, plan.md M6 and design.md section 4 carry the same P1 to P5.
+### AC-AGT-016 (maps REQ-AGT-017; rescope 0.4.0: the bridge is the starting state)
+Executed by the leader, with the operator's confirmation, after t1831 lands and the rc build is installed: replacing the installed binary affects every session on the machine. The starting state of the flip is the bridge value `github-flow` (leader flip, 2026-10-21; the installed build `8249bff8c3` predates this branch and lacks the value). The precondition set below is the single list; REQ-AGT-017, plan.md M6 and design.md section 4 carry the same P1 to P5.
 
 Given the flip commit,
 When the commit graph, the installed binary and the running servers are inspected,
-Then P1 to P5 all hold.
-- P1, ancestry. Judges (five invocations, each exit 0, stdout empty): `git merge-base --is-ancestor <M1-sha> <flip-sha>` and the same for M2, M3, M4 and M5. The flip commit touches one path: `git diff-tree --no-commit-id --name-only -r <flip-sha>` prints `.moai/config/sections/git-strategy.yaml` only. Judge-form control, observed on this tree: `git merge-base --is-ancestor f4175587119b5cfeb8d8348fc74cada8764e89ed 6041c38a4` exits 1 and the reverse pair exits 0, so the form separates a wrong order from a right one.
+Then P1 to P5 all hold, with the flip changing the manual profile from the bridge `github-flow` to `agentic-trunk`.
+- P1, ancestry. Judges (one invocation per ancestor commit, each exit 0, stdout empty): `git merge-base --is-ancestor <Mx-sha> <flip-sha>` for each of M1, M2, M3, M4, M5 and M5b. The flip commit touches one path: `git diff-tree --no-commit-id --name-only -r <flip-sha>` prints `.moai/config/sections/git-strategy.yaml` only. Judge-form control, observed on this tree: `git merge-base --is-ancestor f4175587119b5cfeb8d8348fc74cada8764e89ed 6041c38a4` exits 1 and the reverse pair exits 0, so the form separates a wrong order from a right one.
 - P2, the installed binary is the tree build of the flip commit's parent. Judge: `sh scripts/verify-local-install.sh bin/moai /Users/goos/go/bin/moai <flip-parent-short-sha>`; pass: exit 0 and a final line `local-install-check: OK — /Users/goos/go/bin/moai is byte-identical to bin/moai and reports commit <flip-parent-short-sha>`.
 - P3, the installed binary understands the value. Judge: `moai doctor` (the installed binary by name, on purpose) with the working directory set to a fixture project whose only file is `.moai/config/sections/git-strategy.yaml` holding `git_strategy:` / `mode: manual` / `manual:` / `workflow: agentic-trunk` / `worktree_base_branch: main` (two-space indents). Pass: the `Git Strategy Workflow` row has status `ok` and its message contains `agentic-trunk`, `serial` and `batch`.
 - P4, no stale server anywhere on the machine. Two probes, because the doctor row reads only the records under one project directory (`<project>/.moai/state/mcp-server`, `internal/cli/mcp_server_runtime.go`) and a server recorded elsewhere, or none, is invisible to it.
-  - P4a, the recorded servers. Judge: `moai doctor --check "MCP Server Version"` with the working directory at the project root (the primary checkout). Pass: an `ok` row reading `N running MCP server(s) match the installed binary (<flip-parent-short-sha>)`; the stale state is a `warn` row `running MCP server is stale (...)`.
+  - P4a, the recorded servers. Judge (from the primary checkout): `moai doctor --check "MCP Server Version"`. Pass: an `ok` row reading `N running MCP server(s) match the installed binary (<flip-parent-short-sha>)`; the stale state is a `warn` row `running MCP server is stale (...)`.
   - P4b, every running server (recorded or not, any project directory). Three plain invocations, read in order: `pgrep -o -f '^moai mcp-server$'` prints the pid of the OLDEST running server (the anchors keep the invoking shell, whose command line also contains the words, out of the match); `ps -o pid=,lstart=,command= -p <that-pid>` prints its start time; `stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%S' /Users/goos/go/bin/moai` prints the install time. Pass: the oldest server's start time is later than the install time, so every server started on the new binary. When it is not, each older server is either reconnected, or, only for a server whose project directory differs from this repository (`ps eww -p <pid>` shows `CLAUDE_PROJECT_DIR=`), left running and named in the progress record with its pid and project directory; the accepted residual risk is in this criterion's Residual-risk line. The leader reconnects servers by the Claude Code `/mcp` reconnect or a session restart and records it in the progress record.
   - Known-failing input for P4b (so the probe is observed red, ledger E22): the same three reads with a reference time later than the oldest server's start (a file touched at observation time stands in for a reinstall) order the other way and fail the pass condition.
   - Residual-risk: a left-running server of another project that is later asked to act on this repository by an explicit `project_root` argument still runs the old reader and refuses `agentic-trunk`; the probe lists such servers, it does not reconnect them.
-- P5, execution condition. Judge: `moai integration status` prints `release-integration window: free`; the operator's confirmation is recorded in the progress record (a state witness, not a flip judge).
-- RED-now (tree f4175587, this machine, installed build `v3.2.0-rc.36-t1822c`, commit `ee981a932`): P1 no flip commit exists, `git log --format=%h -n 1 -S'workflow: agentic-trunk' -- .moai/config/sections/git-strategy.yaml` prints nothing, exit 0; P2 `sh scripts/verify-local-install.sh` prints `local-install-check: built binary is missing or not executable: bin/moai`, exit 1 (no tree build is installed); P3 ledger E18, the installed build prints a `warn` row for the fixture (the value is unknown to it) and exits 0; P4a ledger E19 (re-observed on tree c6e590507, 28 servers), the row reads `(ee981a932)`, which is not the flip parent's short SHA, so it is red for the right reason; P4b ledger E22: 32 `moai mcp-server` processes run, 28 of them recorded under the primary project directory and 4 under another project (`/Users/goos/MoAI/mo.ai.kr`, not in this repository's records), the oldest (pid 93989, another project) started `2026-10-17` and the install is `2026-10-16T06:56:39`, so against the CURRENT install the pass condition holds and the probe is red only against a later install, which is the state at cutover (the constructed known-failing input is recorded in E22); P5 ledger E20 (`free`, already satisfied, a witness).
-- Why this gate can show its hazard: P3 turns red on a build that lacks M1 to M4, P4a turns red on a recorded server that was not reconnected after the reinstall, and P4b turns red on any running server, recorded or not, that predates the reinstall. A flip before M2, M3 or M5, or with the old binary still installed, fails P1, P2 or P3.
+- P5, execution condition (rescope 0.4.0: the integration window no longer exists on the pull-request route). The leader records in the progress record: the operator's confirmation; an open-pull-request read of this repository showing no card pull request in `pr-open` awaiting the leader's merge; and that no `factory complete` run is mid-transition. A state witness, not a flip judge.
+- RED-now (tree a6c69e154b, observed 2026-10-21, this machine, installed build `v3.2.0-rc.37`, commit `8249bff8c3`, installed 2026-10-19T21:47:22; ledger E27 to E30): P1 no flip commit exists, `git log --format=%h -n 1 -S'workflow: agentic-trunk' -- .moai/config/sections/git-strategy.yaml` prints nothing, exit 0 (E27); P2 `sh scripts/verify-local-install.sh` prints `local-install-check: FAIL — installed binary differs from bin/moai`, exit 1 (E28; the tree build exists from the M0-M5 run and the installed bridge build differs — red for the right reason: the installed binary is not the flip parent's build, which does not exist yet); P3 (E29) the installed build's doctor, run on the fixture project, prints `warn    Git Strategy Workflow  git_strategy workflow = "agentic-trunk" is not one of the allowed flows (github-flow, git-flow, gitlab-flow, release-flow) — repair by editing .moai/config/sections/git-strategy.yaml` and exits 0 — red because the installed build predates the branch; P4a (E30) from this worktree the row reads `ok  MCP Server Version  no running moai MCP server recorded` (records resolve per project directory; the primary-side row is leader-time at cutover — a Gap of this pass, named in the rescope header); P4b leader-time (E22 holds the method and the constructed known-failing input); P5 leader-time (a witness).
+- Why this gate can show its hazard: P3 turns red on a build that lacks M1 to M5b (observed today, E29), P4a turns red on a recorded server that was not reconnected after the reinstall, and P4b turns red on any running server, recorded or not, that predates the reinstall. A flip before M5b, or with the bridge build still installed, fails P1, P2 or P3.
 - Green path: M6. The commit graph is the only ordering evidence (verification-claim-integrity section 2.3).
 
-### AC-AGT-017 (maps REQ-AGT-018)
+### AC-AGT-017 (maps REQ-AGT-018; rescope 0.4.0: the bridge is the starting state)
 Given the live yaml after the flip,
 When searched,
-Then the manual profile carries `workflow: agentic-trunk`, personal and team keep `github-flow`, `lead_push_threshold: 20` remains, and the three git-flow-only keys and the stale comment are gone.
+Then the manual profile carries `workflow: agentic-trunk`, personal and team keep `github-flow`, `lead_push_threshold: 20` remains, and the three git-flow-only keys and the standing-flow comment are gone.
 - Judge 1: `grep -c 'workflow: agentic-trunk' .moai/config/sections/git-strategy.yaml` (expect `1`).
-- Judge 2: `grep -c 'workflow: github-flow' .moai/config/sections/git-strategy.yaml` (expect `2`).
+- Judge 2: `grep -c 'workflow: github-flow' .moai/config/sections/git-strategy.yaml` (expect `2` — personal and team; the manual profile has left the bridge value).
 - Judge 3: `grep -c -E 'lead_push_threshold: 20' .moai/config/sections/git-strategy.yaml` (expect `1`).
-- Judge 4: `grep -c -E 'develop_branch:|release_branch_prefix:|rc_version_format:|stays git-flow' .moai/config/sections/git-strategy.yaml` (expect `0`, exit 1).
-- RED-now (tree f4175587, observed): Judge 1 stdout `0`, exit 1; Judge 2 stdout `2`, exit 0; Judge 3 stdout `1`, exit 0; Judge 4 stdout `4`, exit 0 (the three keys plus the line-28 comment `stays git-flow`). Why red: the value has not been flipped. Judges 2 and 3 are green now by design; they guard personal, team and the threshold against a careless edit.
+- Judge 4: `grep -c -E 'develop_branch:|release_branch_prefix:|rc_version_format:|stays git-flow|stays github-flow' .moai/config/sections/git-strategy.yaml` (expect `0`, exit 1 — the three keys, the pre-bridge stale comment, and any bridge-worded comment the leader's 2026-10-21 commit left).
+- RED-now (tree a6c69e154b, observed 2026-10-21, ledger E27): Judge 1 stdout `0`, exit 1; Judge 2 stdout `2`, exit 0 (personal and team; this tree's committed manual profile still reads `git-flow` — the leader's bridge flip is not yet a commit this tree can see, so the count will read 3 between the bridge commit landing and M6, then 2 after the flip); Judge 3 stdout `1`, exit 0; Judge 4 stdout `4`, exit 0 (the three keys plus the line-28 comment `stays git-flow`). Why red: the value has not been flipped. Judges 2 and 3 are green now by design; they guard personal, team and the threshold against a careless edit. Residual: an unpredicted bridge-comment wording is not in Judge 4's alternation; the M6 diff review reads the one-file commit, which is the second layer.
 - Green path: M6.
 
 ## F. Guidance (M5, M7, M8)
@@ -199,9 +205,9 @@ Then the protocol H1 and the AGENTS.local.md section 4.0 heading name `agentic-t
 - Judge 2: `grep -c -E 'git-flow Lane Protocol|switched from GitHub Flow to git-flow' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md` (expect `0` per file, exit 1).
 - Judge 3: `git ls-files .claude/rules/local/gitflow-lane-protocol.md` (prints the path, exit 0).
 - Judge 4: `grep -c -E '^### §4\.0 .*agentic-trunk' AGENTS.local.md` (expect `1`).
-- Judge 5 (the four-step statement, shared with AC-AGT-023): `grep -c -F 'agentic-trunk: lane worktree, serial local landing, batch pull request, tagged release' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md` (expect at least `1` per file).
+- Judge 5 (the four-step statement, rescope 0.4.0 sentinel, shared with AC-AGT-023): `grep -c -F 'agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md` (expect at least `1` per file). The pre-rescope sentinel (`serial local landing, batch pull request`) is retired with the dedicated-worktree-only model; the routing sentence that follows the sentinel in each file names the target-holder split.
 - Judge 6: `grep -c 'Card workflow (git-flow transition' .claude/rules/local/repo-local-pr-policy.md` (expect `0`) and `grep -c agentic-trunk .claude/rules/local/repo-local-pr-policy.md .moai/docs/git-workflow-doctrine.md .moai/docs/git-local-workflow-doctrine.md .moai/docs/gitflow-integration-chain.md` (expect at least `1` per file).
-- RED-now (tree f4175587, observed): Judge 1 stdout `0`, exit 1; Judge 2 stdout `.claude/rules/local/gitflow-lane-protocol.md:2` and `AGENTS.local.md:0`, exit 0 (the H1 `# git-flow Lane Protocol (moai-adk-go, local-only)` and the blockquote line match); Judge 3 prints the path, exit 0 (green now, must stay); Judge 4 stdout `0`, exit 1; Judge 5 stdout `...gitflow-lane-protocol.md:0` and `AGENTS.local.md:0`, exit 1; Judge 6 first command stdout `1`, exit 0, second command `0` for all four files, exit 1. Why red: the name has not been applied.
+- RED-now (Judge 5 re-observed on tree a6c69e154b for the 0.4.0 sentinel, ledger E32: both files `:0`, exit 1. Judges 1 to 4 and 6 keep their original pin-tree observations (tree f4175587, observed): Judge 1 stdout `0`, exit 1; Judge 2 stdout `.claude/rules/local/gitflow-lane-protocol.md:2` and `AGENTS.local.md:0`, exit 0 (the H1 `# git-flow Lane Protocol (moai-adk-go, local-only)` and the blockquote line match); Judge 3 prints the path, exit 0 (green now, must stay); Judge 4 stdout `0`, exit 1; Judge 6 first command stdout `1`, exit 0, second command `0` for all four files, exit 1. Why red: the name has not been applied.
 - Green path: M7.
 
 ### AC-AGT-019 (maps REQ-AGT-020)
@@ -256,12 +262,12 @@ Given SPEC-PRIMARY-LANDING-ONLY-001 and this SPEC both edit `AGENTS.local.md` an
 When the second one lands,
 Then both files carry this SPEC's four-step statement and the landing-surface rule, whichever SPEC landed first.
 - The criterion has no "not applicable" case. Two sentinel sets are judged in both files:
-  - S-A (this SPEC): Judge 1 `grep -c -E '^# agentic-trunk Lane Protocol' .claude/rules/local/gitflow-lane-protocol.md` (expect `1`); Judge 2 the four-step sentinel of AC-AGT-018 Judge 5, at least `1` per file.
+  - S-A (this SPEC): Judge 1 `grep -c -E '^# agentic-trunk Lane Protocol' .claude/rules/local/gitflow-lane-protocol.md` (expect `1`); Judge 2 the four-step sentinel of AC-AGT-018 Judge 5 (rescope 0.4.0 string), at least `1` per file.
   - S-B (the landing-surface rule, three judges, each counting a FIXED STRING and compared with a baseline recorded at M7 start, before any M7 edit, in the progress record). The old alternation `performs landing and resync only|Integration-Worktree Rule` is retired: it passed on the bare label alone, and its "at least N0" companion passed vacuously at `N0 = 0`.
     - Judge 3, the t1846 sentence: `grep -c -F 'performs landing and resync only' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md`. Record `N1` per file at M7 start; after M7 the count is at least `N1` per file.
     - Judge 4, the t1830 label and its body: `grep -c -F 'Integration-Worktree Rule' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md`. Record `N0` per file at M7 start; after M7 the count is at least `N0` per file. When `N0` is at least `1` for a file, the executor also copies ONE verbatim body fragment of at least 40 characters from that rule's statement into the progress record (`F2`), and after M7 `grep -c -F '<F2>' <file>` is at least `1`: this is the body sentinel, fixed from t1830's landed wording rather than guessed, and it fails when the second lander keeps the heading and drops the rule's text.
     - Judge 5, the non-vacuity precondition: at M7 start `N1 + N0` is at least `1` for each file. A file at `0 + 0` carries no landing-surface rule at all, and M7 stops with a blocker report instead of passing a comparison of zero against zero. After M7 each file's `N1' + N0'` is at least that file's start sum and each term is at least its own baseline.
-- RED-now (tree c6e590507, observed this repair, ledger E25): Judge 1 stdout `0`, exit 1; Judge 2 `...gitflow-lane-protocol.md:0` and `AGENTS.local.md:0`, exit 1; Judge 3 `...gitflow-lane-protocol.md:1` and `AGENTS.local.md:1`, exit 0 (green now: the t1846 sentence is landed, so `N1` is `1` for both files and this half is a guard); Judge 4 `...gitflow-lane-protocol.md:0` and `AGENTS.local.md:0`, exit 1 (`N0` is `0` for both: the label is absent, so SPEC-PRIMARY-LANDING-ONLY-001 has not landed on this tree; no `F2` exists to record); Judge 5 start sums `1 + 0 = 1` for both files (the precondition holds today because Judge 3 carries the rule, which is what makes the pair non-vacuous at `N0 = 0`). Why red: S-A is absent.
+- RED-now (tree c6e590507, observed this repair, ledger E25; Judge 2 re-observed for the 0.4.0 sentinel on tree a6c69e154b, ledger E32 — same shape, both files `:0`, exit 1): Judge 1 stdout `0`, exit 1; Judge 2 `...gitflow-lane-protocol.md:0` and `AGENTS.local.md:0`, exit 1; Judge 3 `...gitflow-lane-protocol.md:1` and `AGENTS.local.md:1`, exit 0 (green now: the t1846 sentence is landed, so `N1` is `1` for both files and this half is a guard); Judge 4 `...gitflow-lane-protocol.md:0` and `AGENTS.local.md:0`, exit 1 (`N0` is `0` for both: the label is absent, so SPEC-PRIMARY-LANDING-ONLY-001 has not landed on this tree; no `F2` exists to record); Judge 5 start sums `1 + 0 = 1` for both files (the precondition holds today because Judge 3 carries the rule, which is what makes the pair non-vacuous at `N0 = 0`). Why red: S-A is absent.
 - Mutant checks, observed on scratch copies of `AGENTS.local.md` (ledger E25): dropping the t1846 sentence prints Judge 3 `0` against `N1 = 1` and fails; the state after t1830 landed (t1846 sentence replaced, a labeled rule with a body paragraph added) prints Judge 4 `1` and the `F2` fragment `1`; the SAME state with the heading kept and the body paragraph deleted prints Judge 4 `1` (the label is still there) but the `F2` fragment `0`, so it fails, while the retired alternation prints `1` for that mutant and would have passed; a file with only the title passes Judge 1 and fails Judge 2.
 - Green path: M7, judged at the later of the two landings.
 
@@ -474,4 +480,66 @@ awk 'BEGIN{q=sprintf("%c",96); fence="^[ \t]*" q q q} /^##### Strategy: agentic-
 -- FAILING CONTROL (a), clean block plus "###### Delivery commands", a blank line and "git push origin main": block_lines=13 push_lines=1   (previous program f&&/^#+ /{f=0}: block_lines=11 push_lines=0, the leak)
 -- FAILING CONTROL (b), clean block plus a fenced snippet of "# deliver" and "git push origin main": block_lines=15 push_lines=1   (previous program: block_lines=12 push_lines=0, the leak)
 -- why a bare level cut is not enough: the audit's suggested fix (end the block at heading levels 1 to 5) repairs control (a) and leaves control (b), because "# deliver" is a level-1 heading by pattern; the fence state `g` is what keeps control (b) inside the block. The sibling blocks of the agentic-trunk heading are the level-5 "##### Strategy:" headings (delivery.md lines 238 and 268) and the next section is the level-4 "#### Step 3.3" (line 313), so levels 1 to 4 plus "##### Strategy:" end the block where the next sibling begins.
+```
+
+Rescope 0.4.0 entries (E27 to E32), observed 2026-10-21 on tree `a6c69e154b62eb33763212a3034e505bd1046fe1` unless the entry names otherwise:
+
+```
+E27  (AC-AGT-017 Judges 1 to 4, and AC-AGT-016 P1, this tree)
+grep -c 'workflow: agentic-trunk' .moai/config/sections/git-strategy.yaml      exit 1
+0
+grep -c 'workflow: github-flow' .moai/config/sections/git-strategy.yaml      exit 0
+2
+grep -c -E 'lead_push_threshold: 20' .moai/config/sections/git-strategy.yaml      exit 0
+1
+grep -c -E 'develop_branch:|release_branch_prefix:|rc_version_format:|stays git-flow' .moai/config/sections/git-strategy.yaml      exit 0
+4
+git log --format=%h -n 1 -S'workflow: agentic-trunk' -- .moai/config/sections/git-strategy.yaml      exit 0
+(no output — no flip commit exists)
+-- note: this tree's committed manual profile still reads `workflow: git-flow` (line 9); the leader's
+-- bridge flip (github-flow) is not yet a commit this tree can see. Judge 4's 0.4.0 alternation adds
+-- `stays github-flow`; the four-count above was observed with the pre-rescope alternation, and the
+-- added alternative cannot lower the count (it is a pure widening), so the observation holds for
+-- the rescoped judge.
+
+E28  (AC-AGT-016 P2, this tree)
+sh scripts/verify-local-install.sh      exit 1
+local-install-check: FAIL — installed binary differs from bin/moai
+-- red for the right reason: bin/moai exists (the M0-M5 run built it) and the installed bridge
+-- build (2026-10-19T21:47:22, v3.2.0-rc.37, commit 8249bff8c3) differs from it; the flip parent
+-- whose build P2 demands does not exist yet.
+
+E29  (AC-AGT-016 P3, installed build v3.2.0-rc.37, commit 8249bff8c3; working directory = the fixture
+project /tmp/t1831-fixture whose only file is .moai/config/sections/git-strategy.yaml with
+git_strategy / mode: manual / manual / workflow: agentic-trunk / worktree_base_branch: main)
+moai doctor      exit 0
+warn    Git Strategy Workflow  git_strategy workflow = "agentic-trunk" is not one of the allowed flows (github-flow, git-flow, gitlab-flow, release-flow) — repair by editing .moai/config/sections/git-strategy.yaml
+-- (the row verbatim; box borders and unrelated rows elided). Red because the installed build
+-- predates this branch and lacks the enum — the bridge's reason for existing.
+
+E30  (AC-AGT-016 P4a and P4b, worktree-side observation; the primary-side rows are leader-time)
+moai doctor --check "MCP Server Version"      exit 0   (working directory = this worktree)
+ok      MCP Server Version  no running moai MCP server recorded
+stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%S' /Users/goos/go/bin/moai
+2026-10-19T21:47:22
+-- the records the P4a row reads live under <project>/.moai/state/mcp-server of the project
+-- directory the doctor resolves; from this worktree it resolves none, so the row reports "no
+-- running server recorded". The leader re-measures P4a from the primary checkout and P4b over all
+-- processes at cutover, exactly as E19 and E22 recorded the method.
+
+E31  (AC-AGT-005 flip judge and AC-AGT-006 flip judge B, this tree)
+go test ./internal/cli -run '^(TestAgenticTrunkCompletePrimaryPrEdge|TestAgenticTrunkCompleteNoAutoMerge)$' -count=1 -v      exit 0
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.023s [no tests to run]
+go test ./internal/cli -run '^TestAgenticTrunkAutoMergeSkipsPrimaryTarget$' -count=1 -v      exit 0
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.960s [no tests to run]
+-- the observed code state behind the red: internal/cli/factory_card_pr.go:444 reads
+-- factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", checkedTip)
+
+E32  (AC-AGT-018 Judge 5 and AC-AGT-023 Judge 2, the 0.4.0 sentinel, this tree)
+grep -c -F 'agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release' .claude/rules/local/gitflow-lane-protocol.md AGENTS.local.md      exit 1
+.claude/rules/local/gitflow-lane-protocol.md:0   AGENTS.local.md:0
 ```
