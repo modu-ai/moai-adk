@@ -623,6 +623,36 @@ Verification batch (this tree, this run, at the r3 HEAD):
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r4 delta repair round — landing re-audit (card t1632, branch WT-3-2-0-2)
+
+Commit: `fix(t1632): lane-57 sync-audit r4 repairs — unconditional audit-child containment, hook skips delivered claims` (this round). Base: HEAD `b0d0592114` (the r3 repairs commit). Audit receipt: `rcpt-b63b85fc92766d8863970695` (STATIC codex_audit — it ran NO tests; each finding was verified honestly against the code before repair, both proved REAL).
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 [P1] an OMITTED project_root skips the audit child's MCP containment entirely (mcp_codex.go:949, openCodexSessionResolved) | REAL-FIXED — the containment block keyed on `params["cwd"]`, so the audit_multi codex leg with no named root spawned a child with NO foreign-server disable args (the child resolved the operator's own MCP servers, write tools included). Fixed per the auditor: containment is now UNCONDITIONAL — the anchor is the request's `cwd` when named, else the server's own project-root resolution (`projectDirResolver()`), and a server that cannot resolve ANY root refuses the spawn (fail-closed). The params map is untouched: an omitted root still reaches the thread as an omission (REQ-2 pass-through preserved — the fix changes CHILD-Spawn containment, not the root-validation policy for which trees may be audited) | `go test ./internal/cli -run 'TestCodexAudit_NoProjectRootStillContainsChild' -count=1` | RED→GREEN: `--- FAIL ... no-root audit child argv = [app-server -c sandbox_mode=read-only], want the foreign-server disable` → `ok internal/cli` |
+| F2 [P2] the hook re-claims already-delivered messages (internal/hook/factory_messages.go, the s.Claim call site) | REAL-FIXED — the store-level Claim still returns live claims (REQ-MN-017, the M5 contract built for the deleted MCP factory_msg_list surface), but the hook claims on EVERY inspection, so a message rendered at UserPromptSubmit was re-claimed and re-rendered at Stop (an extra forced turn, repeating until the lease expired). Fixed at the HOOK CALL SITE only: the hook now claims with `ClaimFresh`, which skips rows the endpoint still holds (the redelivery policy the managed-session driver already uses). grep verified the hook IS the only surviving production Claim caller post-t1908 (internal/cli/managed_factory_session.go uses ClaimFresh; todo_claim.go is a different type). The store-level M5 pin survives untouched: TestClaimFreshSkipsAHeldClaim asserts BOTH that Claim keeps REQ-MN-017 token stability AND that ClaimFresh skips a held claim — its premise is the store primitive, not the deleted tool | `go test ./internal/hook -run 'TestFactoryHookBatchSkipsDeliveredClaims' -count=1` | RED→GREEN: `--- FAIL ... the Stop inspection re-rendered the message UserPromptSubmit already delivered (state=pending-at-turn-boundary)` → `ok internal/hook` |
+
+E8 RED evidence (each pinning test run against the pre-fix code, both REAL):
+
+- F1 RED (`go test ./internal/cli -run 'TestCodexAudit_NoProjectRootStillContainsChild' -count=1`, exit 1):
+  `--- FAIL: TestCodexAudit_NoProjectRootStillContainsChild (0.00s)` / `codex_audit_sandbox_test.go:53: no-root audit child argv = [app-server -c sandbox_mode=read-only], want the foreign-server disable (REQ-MN-009 containment is unconditional)`
+- F2 RED (`go test ./internal/hook -run 'TestFactoryHookBatchSkipsDeliveredClaims' -count=1`, exit 1):
+  `--- FAIL: TestFactoryHookBatchSkipsDeliveredClaims (0.44s)` / `factory_messages_test.go:751: the Stop inspection re-rendered the message UserPromptSubmit already delivered (state=pending-at-turn-boundary): ctx="Factory inbox run=r4-delivered-skip metadata …86ae5145380939acbb1411856b78b38b kind=status_request from=r4-sender lane=lead harness=claude generation=1 token=5de6cdcf13d01d60976eb0ba02d6dacd"`
+
+Verification batch (this tree, this run, at the r4 HEAD):
+
+- Builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `go test ./internal/cli -run 'TestCodexAudit|TestCodexGateContainment|TestMCPGateExposure|TestAuditMulti' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 94.966s` (the existing containment family stays green).
+- `go test ./internal/factorymsg -count=1` (full) → `ok github.com/modu-ai/moai-adk/internal/factorymsg 67.584s` (the M5 pin included).
+- `go test ./internal/hook -run 'TestFactoryHook|TestFactoryMessages|TestFactory' -count=1` → `ok github.com/modu-ai/moai-adk/internal/hook 47.927s`.
+- `go test ./internal/cli -run 'TestCodexTask|TestGLMTask' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 16.489s` (the session-context neighbors).
+- `go vet ./internal/cli ./internal/hook ./internal/factorymsg` → clean (exit 0).
+- `golangci-lint run internal/cli/... internal/hook/... internal/factorymsg/...` → exactly the 1 pre-existing errcheck (`internal/cli/mcp_server_call_log.go:123`), ZERO new.
+- Full-suite note: the repository-wide test verdict is owned by the CI run on the project's integration branch and is PENDING at report time (lane-local targeted selectors only, per the standing batch surface).
+- Push state: nothing pushed (the lane owns push/landing).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true

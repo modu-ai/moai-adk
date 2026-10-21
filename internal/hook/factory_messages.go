@@ -265,7 +265,15 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 	if _, err = s.SettleReceiptControls(ctx, p); err != nil {
 		return "", false, "degraded: " + err.Error()
 	}
-	claims, err := s.Claim(ctx, p, factorymsg.MaxBatch, 30*time.Second)
+	// Card t1632 sync-audit r4: the hook claims FRESH only. The store-level
+	// Claim still re-delivers a live claim (REQ-MN-017, the M5 contract built
+	// for the MCP factory_msg_list tool), but since card t1908 removed the
+	// messaging tools this inspection is Claim's only production caller — and
+	// it runs on EVERY inspection — so the live-claim return made a message
+	// rendered at UserPromptSubmit re-claim and re-render at Stop, forcing an
+	// extra turn and repeating until the lease expired. ClaimFresh skips what
+	// the endpoint still holds and is the redelivery policy the hook renders.
+	claims, err := s.ClaimFresh(ctx, p, factorymsg.MaxBatch, 30*time.Second)
 	if err != nil {
 		return "", false, "degraded: " + err.Error()
 	}

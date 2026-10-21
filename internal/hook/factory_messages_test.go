@@ -709,6 +709,52 @@ func factoryMetadataFixture(t *testing.T, senderBackend, senderSlot string) (str
 	return root, in, msg.ID
 }
 
+// TestFactoryHookBatchSkipsDeliveredClaims (card t1632 sync-audit r4): a hook
+// inspection must not re-render a message an earlier inspection already
+// delivered. The store-level Claim still returns live claims (REQ-MN-017, the
+// M5 contract), but the hook — the only surviving Claim caller since card
+// t1908 removed the messaging tools — must claim fresh only: a message
+// rendered at UserPromptSubmit was re-claimed and re-rendered at Stop, forcing
+// an extra turn and repeating until the lease expired.
+func TestFactoryHookBatchSkipsDeliveredClaims(t *testing.T) {
+	root := t.TempDir()
+	run := "r4-delivered-skip"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvFactoryRunID, run)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFactoryHookStore(s)
+	receiver := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "lane", Slot: "lane-1", SessionUUID: "r4-receiver", Generation: 1, PID: os.Getpid(), ProcessStart: "r4-start"}
+	sender := receiver
+	sender.Slot = "lead"
+	sender.SessionUUID = "r4-sender"
+	if receiver, err = s.RegisterPeer(context.Background(), receiver); err != nil {
+		t.Fatal(err)
+	}
+	if sender, err = s.RegisterPeer(context.Background(), sender); err != nil {
+		t.Fatal(err)
+	}
+	sent, err := s.Send(context.Background(), factorymsg.SendRequest{From: sender, To: receiver, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "r4-1", TaskRef: "t1632", CorrelationID: "c-r4", TTL: time.Hour, Payload: []byte("body")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := &HookInput{SessionID: receiver.SessionUUID, ProjectDir: root}
+
+	first, _, state := factoryHookBatch(context.Background(), in, EventUserPromptSubmit)
+	if !strings.Contains(first, sent.ID) {
+		t.Fatalf("precondition: the first inspection did not deliver the message: state=%s ctx=%q", state, first)
+	}
+	second, _, state2 := factoryHookBatch(context.Background(), in, EventStop)
+	if strings.Contains(second, sent.ID) {
+		t.Errorf("the Stop inspection re-rendered the message UserPromptSubmit already delivered (state=%s): ctx=%q", state2, second)
+	}
+	if strings.HasPrefix(state2, "degraded:") {
+		t.Errorf("the second inspection degraded instead of claiming fresh: %s", state2)
+	}
+}
+
 // TestFactoryHookMetadataShowsSenderLaneAndHarness pins the card t1902
 // metadata contract: each inbox metadata line names the sender endpoint's
 // registered lane label and harness verbatim from its peers record, and an

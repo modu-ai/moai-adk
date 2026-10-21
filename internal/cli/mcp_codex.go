@@ -946,16 +946,33 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	// then sit out the listing's own WaitDelay anyway (r6 follow-through).
 	listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
 	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
-	if root, ok := params["cwd"].(string); ok && root != "" {
-		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
-		cancelList()
-		if err != nil {
-			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
-		}
-		argv = append(argv, containment...)
-	} else {
-		cancelList()
+	// Card t1632 sync-audit r4: containment is UNCONDITIONAL. Before this
+	// repair the block keyed on params["cwd"], so an audit path that named no
+	// project_root (the audit_multi codex leg's default) spawned a child with
+	// NO disable args — the child resolved the operator's own MCP servers,
+	// write tools included. The anchor is now the request's root when one was
+	// named and the server's own project-root resolution otherwise; only a
+	// server that cannot resolve ANY root refuses the spawn (fail-closed — an
+	// uncontained child is the defect this closes). The params map is
+	// untouched: an OMITTED root still reaches the thread as an omission
+	// (REQ-2 pass-through), only the child's process containment changes.
+	root, _ := params["cwd"].(string)
+	if strings.TrimSpace(root) == "" {
+		root = projectDirResolver()
 	}
+	if strings.TrimSpace(root) == "" {
+		cancelList()
+		return nil, &codexSessionError{
+			summary: "codex session containment failed: no project root to anchor the MCP server containment",
+			cause:   errors.New("project root unresolved"),
+		}
+	}
+	containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
+	cancelList()
+	if err != nil {
+		return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
+	}
+	argv = append(argv, containment...)
 	conn, err := codexSession.start(ctx, binaryPath, argv)
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
