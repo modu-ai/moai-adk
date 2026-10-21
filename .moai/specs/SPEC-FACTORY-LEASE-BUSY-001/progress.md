@@ -25,6 +25,8 @@ status: draft (SSOT is the `spec.md` frontmatter)
 
 ## §F Phase 4 Mode Selection
 
+Decision: serial (the evaluation table and justification follow).
+
 Input parameters: Tier M; run-phase scope ~8 files (plan.md §C: factory_card.go + test files,
 todo store read path); 1 domain (Go CLI/factory); language mix Go-only; concurrency benefit LOW
 (coding-heavy, single-domain); Agent Teams prereqs not requested.
