@@ -12,6 +12,13 @@
 
 2026-10-19 13:54 UTC 원격 main의 required status context는 다섯 항목(Test Ubuntu, Lint, Build linux/amd64, Analyze Go, Release PR Multi-OS Gate)이며 Codex review는 그 목록에 없다. 자동 병합 workflow의 Codex gate와 GitHub branch-protection required context는 별도 진입·차단 경로다.
 
+## 현재 진입점 보완 — bf0a35f10
+
+- `moai paths`는 프로젝트에 귀속된 실제 데이터베이스 경로를 출력한다. 경로를 추측해 저장소를 열지 않는다.
+- `moai factory set-spec <card>`와 `reclassify <card>`는 설정 게이트와 상태·호출자 검증 뒤 메타데이터를 변경하고 감사 이벤트를 남긴다. `approve`는 기존 승인 증거 검증 경로를 유지한다.
+- `moai integration candidate --card <id>`는 착지 전 후보를 게시하고, `--observe`는 실제 CI 결과를 관측·기록한다. `moai integration resync`는 원격 통합 기준을 확인한 뒤 허용된 fast-forward만 수행한다.
+- `moai mcp-server`의 현재 도구 수는 `internal/mcp/catalog.go`의 등록 항목 기준 39개다. `factory_renew`는 남아 있고 퇴역한 session/factory 메시징 도구는 공개하지 않는다. 아래 과거 판의 45·47·48개 기록은 당시 표면을 설명한다.
+
 ## 이전 최종 통합 트리의 진입점 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250개(78개 파일), `rootCmd.AddCommand(` 줄은 68개다. 앞선840826 이후 이 수는 변하지 않았다. 호출 줄 수를 실행 가능한 명령 개수로 취급하지 않는다.
