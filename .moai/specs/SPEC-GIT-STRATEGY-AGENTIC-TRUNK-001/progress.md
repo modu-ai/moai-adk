@@ -47,6 +47,8 @@ M6 round — P4 wait record (2026-10-22 00:3x KST, leader interim report relayed
 
 M7 pre-edit counts — taken early at the leader's request, 2026-10-22 00:3x KST, on tree b1806498fe (`grep -c` verbatim): N1 (`performs landing and resync only`) = 1 in `.claude/rules/local/gitflow-lane-protocol.md` and 1 in `AGENTS.local.md`; N0 (`Integration-Worktree Rule`) = 0 in both, and 0 in `.claude/rules/local/repo-local-pr-policy.md` (not in the counting pair); F2 not applicable (N0 = 0 everywhere — the t1830 label does not exist in the repo-local copies, so there is nothing to reconcile; the template copies keeping the label is expected). N1 + N0 ≥ 1 for both counted files — the plan's zero-against-zero blocker condition is not triggered.
 
+긴급 착지 절차 추가 — leader directive 2026-10-22 ~05:4x KST (auto-merge incident, operator merge hold in effect): EVERY pull request this lane opens is converted to draft immediately after creation (`gh pr ready <n> --undo`), neutralizing any auto-merge request; merges are the leader's alone. This applies to this card's landing (factory complete → PR) because the currently installed binary still carries the pre-M5b `--auto` request at factory_card_pr.go:444 — the M5b removal takes effect only after M6's rc install. The step is consistent with this SPEC's own design (the --auto removal) and stays in force until the leader lifts the hold.
+
 ## §E.2 Run-phase Evidence
 
 ### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
