@@ -90,7 +90,20 @@ residual_risk: TestFactoryLeaseQueueLockStallBounded is marginally timed for a l
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-10-22
+sync_commit_sha: pending-backfill
+sync_commit_subject: docs(SPEC-CARD-METADATA-VERBS-001): sync — changelog, E.4 signal, 3-phase close (card t1840)
+backfill_commit_subject: docs(SPEC-CARD-METADATA-VERBS-001): backfill sync_commit_sha (card t1840)
+ac_source: .moai/specs/SPEC-CARD-METADATA-VERBS-001/acceptance.md
+ac_source_tier: M
+b12_self_test_a: PASS — duplicate pre-check `grep -c 'SPEC-CARD-METADATA-VERBS-001' CHANGELOG.md` → 0 (exit 1) before emission; re-run after emission → 1 (the entry itself, no duplicate)
+b12_self_test_b: PASS — MOAI-AC-COUNTER (manager-docs.md §B12 awk) over acceptance.md → stdout `16`, stderr `live=16 excluded=0 ambiguous=0`; CHANGELOG entry cites 16 (AC-CMV-001..016)
+b12_self_test_c: PASS — `test -f` over the seven touched paths → all 7 EXIST: internal/cli/factory_card_metadata.go, internal/homestate/card_metadata.go, internal/config/defaults.go, internal/config/types.go, internal/template/templates/.moai/config/sections/workflow.yaml, internal/cli/factory_card_metadata_test.go, internal/homestate/card_metadata_test.go
+changelog_entry_position: [Unreleased] → ### Added → first entry (newest-first; no other entries reordered)
+frontmatter_status_transitions: {from: in-progress, via: implemented, to: completed, fields_touched: [status], body_edits: none, updated_note: 2026-10-22 already current from v0.4.0, unchanged}
+docs_scope: CHANGELOG.md [Unreleased] entry only — no README or docs-site edit (internal factory/todo tooling; no user-facing docs surface documents the verbs)
+repository_wide_ci: not re-run in the sync session — authoritative full-suite verdict is origin/main CI; lane-local scoped evidence is the run-phase §E.2 record (post-triage full re-run 2026-10-22 at HEAD 16775e5e4e)
 
 ## §G Override and Refusal Record
 
