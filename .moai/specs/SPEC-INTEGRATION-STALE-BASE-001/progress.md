@@ -322,6 +322,28 @@ Each mutant was applied to the working tree, the named test run, and the file re
 - The CLI tests run the verbs in-process with a changed working directory and a pinned `CLAUDE_PROJECT_DIR`; a lane whose real session environment names a different project root than its worktree was not reproduced.
 - Repository-wide test and build verdicts belong to the CI run on the project's integration branch and are PENDING at report time.
 
+### E.2.8 iter12 F1/F2 repair round (lane-6, 2026-10-21)
+
+Context: the leader re-dispatched the card to lane-6 (run tn8rpj) on 10-21 with completion instructions. Lane re-measured 103 first-parent landings behind local main, absorbed (merge 2439da8c90; re-measured 0 behind, `git merge-base --is-ancestor main HEAD` rc=0), then repaired the two P2 findings of sync-audit iter12. Fix lines verified on disk by the lane: factory_card.go:2889 (`record.Tree == tipTree` in `factoryAdoptedTip`) and factory_card.go:3047 (`git symbolic-ref --quiet HEAD`, `refs/heads/` stripped, in `factoryBranchOfWorktree`).
+
+| Commit | Content |
+|---|---|
+| 26dad7f9ef | RED F1 record-identity test (TestFactoryCompleteAdoptionRequiresRecordTreeIdentity) |
+| e9e95f4d40 | F1 fix: adoption exemption requires the record to name the tip tree |
+| 7891703291 | RED F2 same-name-tag test v1 (TestFactoryBranchOfWorktreeWithSameNameTag) |
+| 1eaf9bb649 | F2 end-to-end rescope to the adoption path (the merge-step path carries an out-of-scope defect, below) |
+| 1a16da10f6 | F2 fix: branch read is symbolic-ref with refs/heads/ stripped |
+
+Confirming scoped runs at 1a16da10f6 (manager-develop Section E, env-scrubbed): `go test ./internal/factory/ -run 'Freshness|Remeasure'` ok 12.654s; `go test ./internal/config/ -run 'BaseFreshness|ShippedConfigKeys'` ok 3.655s; `go test ./internal/cli/ -run 'Freshness|TestIntegrationAcquireRefusesStaleBase|TestFactoryComplete|TestAcquire|TestIntegration'` ok 109.710s. `gofmt -l internal/cli/` clean, `go vet ./internal/cli/` exit 0. RED-verbatim evidence for both fixes recorded in the manager-develop report (F1: adoption exemption fired on a forged record pre-fix; F2: `heads/WT-card-branch` read + complete failure on a same-named tag). Transparency disclosure carried: 26dad7f9ef was re-created via `git reset --soft HEAD~1` seconds after its first creation repaired a mangled trailer; no `--amend`, nothing pushed, nothing cited the broken form; commit-graph order (test commit before fix commit) witnesses RED-before-GREEN.
+
+Scope delta: the non-.moai diff against main is now 19 paths — iter12's 18 plus `internal/cli/factory_card_pr_gitenv_test.go` (the F2 regression test's home). All five commit bodies carry the `🗿 MoAI` marker and `card t1834`.
+
+New out-of-scope finding (observed live, NOT repaired — pre-existing on a non-card path): `internal/factory/integration_merge_step.go:950` reads the branch with `rev-parse --abbrev-ref HEAD`, the same class as F2; a tag sharing the card branch's name makes the merge step refuse ("is on heads/WT-alpha, not a WT- branch") on the non-adoption complete path. iter12's F3 named only `internal/cli/integration.go:126`. Left to separate routing (scope discipline; the card's plan-pin preserve check showed integration_merge_step.go untouched by this card).
+
+Decision record (§G continuation): the 10-21 leader re-dispatch with completion instructions is read as the renewed operator-side authorization after the d-20261018T222141Z-398b ceiling exception ended iter12's rounds; exactly ONE confirming audit (iter13, codex required) runs on this authorization. decided_by=lane-6 orchestrator; evidence_refs=.moai/reports/t1834/sync-audit-iter12.md, the dispatch message, iter12 Recommendations; ladder_path=① disk evidence.
+
+(Placement note: §E.2.8 above sits before §E.2.7 — the newest addendum was inserted at the section head; the pre-existing §E.2.7 body is preserved verbatim below.)
+
 ### E.2.7 Audit-fix round (sync-audit codex findings 1-3)
 
 Appended; no earlier evidence rewritten. RED `187e58c1b` + `da0e3e840`, GREEN `619402f00` (commit graph orders RED before GREEN).
