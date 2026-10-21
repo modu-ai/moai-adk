@@ -840,6 +840,50 @@ func TestSetSpec_OpaqueStatErrorDoesNotClaimMissingRecord(t *testing.T) {
 	}
 }
 
+// TestReclassify_RefusalSparesTheStore extends the no-materialization probe
+// family to reclassify (card-review round 2, CR2-2): on a project with no
+// factory database, reclassify's refusable inputs — an unknown card, an
+// invalid priority or mode — must refuse without opening the store (an open
+// that creates it). The queue-state and classification validation runs
+// inside the queue lock before the open; pre/post os.Stat pins the absence,
+// with --run omitted and explicit.
+func TestReclassify_RefusalSparesTheStore(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"unknown_card", []string{"reclassify", "tX", "--priority", "high", "--reason", "r"}},
+		{"invalid_priority", []string{"reclassify", "t1", "--priority", "urgent", "--reason", "r"}},
+		{"invalid_mode", []string{"reclassify", "t1", "--mode", "fast", "--reason", "r"}},
+	} {
+		for _, extra := range [][]string{nil, {"--run", fcRun}} {
+			name := tc.name
+			if extra != nil {
+				name += "/explicit_run"
+			}
+			t.Run(name, func(t *testing.T) {
+				root, store := fcFixture(t)
+				mdEnableFlag(t, root)
+				fcQueue(t, store, factory.BacklogStateQueued)
+				path, err := homestate.FactoryDBPath(root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, serr := os.Stat(path); serr == nil {
+					t.Fatal("precondition: the factory database already exists")
+				}
+				args := append(append([]string{}, tc.args...), extra...)
+				if _, _, rerr := runFactory(t, args...); rerr == nil {
+					t.Fatalf("%v was admitted", args)
+				}
+				if _, serr := os.Stat(path); serr == nil {
+					t.Fatalf("the refused reclassify materialized a factory database (CR2-2): %v", args)
+				}
+			})
+		}
+	}
+}
+
 // TestSetSpec_OmittedRunRefusalSparesTheStore pins the CR1 ordering
 // (card-review): the store-existence probe precedes the run resolution.
 // With --run omitted the shared resolver opens the store to list active

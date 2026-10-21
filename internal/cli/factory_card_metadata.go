@@ -468,22 +468,21 @@ func runFactoryReclassify(cmd *cobra.Command, cardID, mode, priority, reason str
 		ctx = context.Background()
 	}
 	// The homestate database is opened for the audit surface only — the
-	// classification write itself is a queue-layer write (REQ-CMV-009).
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
+	// classification write itself is a queue-layer write (REQ-CMV-009) — and
+	// it opens INSIDE the lock, after the queue-state and classification
+	// validation has admitted the input (card-review CR2-2, the CR1 ordering
+	// mirrored on this verb): an open CREATES the store, so a refusable
+	// input must never reach it.
 	actor, session := metadataActor()
 	now := factoryCardNow()
 	out := cmd.OutOrStdout()
 	return newTodoStore().WithLock(func(l *factory.LockedBacklog) error {
-		return reclassifyLocked(ctx, l, db, cardID, mode, priority, reason, cmd, actor, session, now, out)
+		return reclassifyLocked(ctx, l, root, cardID, mode, priority, reason, cmd, actor, session, now, out)
 	})
 }
 
 // reclassifyLocked is runFactoryReclassify's body under the held queue lock.
-func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, cardID, mode, priority, reason string, cmd *cobra.Command, actor, session string, now time.Time, out io.Writer) error {
+func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, root, cardID, mode, priority, reason string, cmd *cobra.Command, actor, session string, now time.Time, out io.Writer) error {
 	rec, err := l.LoadPure()
 	if err != nil {
 		return fmt.Errorf("read queue: %w", err)
@@ -527,6 +526,17 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homesta
 		return err
 	}
 	commanded := metadataAxesJSON(target)
+	// The store opens only for an input the validation admitted (card-review
+	// CR2-2): every refusal above is queue-side or validator-side, so a
+	// project without a factory database is not materialized by a refusal.
+	// The catch-up and append paths below need the audit surface; creating
+	// the store there is the verb doing its write, never a side effect of a
+	// read that found nothing.
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
 	// REQ-CMV-010: the LATEST-row duplicate test ahead of the write. The
 	// queue item already carrying the commanded axes splits two ways: a
 	// converged-AND-audited duplicate refuses, a converged-but-unaudited
