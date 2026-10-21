@@ -33,6 +33,14 @@ Binding run conditions (copied from the plan-audit debt, accepted at this kickof
 
 Scope boundary recorded at kickoff: this card's run covers M0-M5 and M7 (repo-local guidance, authored AFTER the leader's M6 so the ordering rule of plan.md M7 holds); M6 (cutover: installed-binary replacement with operator confirmation, P1-P5) is leader-executed per plan.md M6 and design.md section 4 — the lane does NOT flip `.moai/config/sections/git-strategy.yaml`; the live-value flip commit and the M7 commits follow it on this branch; M8 (docs-site) is sync-phase (manager-docs). The card's completion report names M6 as the remaining leader step with its P1-P5 list.
 
+run 중단·재개 — 2026-10-21 (lane-4, ledger closure per agent-common-protocol § Ledger Closure (a)): the M0-M5 delegation to manager-develop terminated early on API 429 usage limit (5-hour window; reset 2026-10-21 17:59:59 KST; request id 20261021153537976f8d9f38b34c2c, model glm-5.3-flash). It had committed M0 (8b00a111f9, baseline re-check) and M1 (27ebdd9aac, value set/disposition/reader), captured M2 RED verbatim, and its last stated step was the two M2 code changes (guidance fix strings, auto-merge gate/notice). Partial state left UNCOMMITTED in the tree and preserved untouched: M internal/config/agentic_trunk_test.go, M internal/config/integration_target_guidance.go, M internal/config/integration_target_guidance_test.go, ?? internal/cli/agentic_trunk_test.go, ?? internal/escalation/agentic_trunk_test.go, ?? internal/hook/agentic_trunk_test.go. The lane session was itself quota-blocked ~15:35-19:02 KST (queued cron firings drained at recovery). The card lease expired during the block and was restored by the recorded 8859 sequence: factory_stage refusal (expired) reset the lease state → `moai factory next --run tn8rpj --card t1831` from the parent checkout re-leased it with stage=run intact. The delegation was resumed via SendMessage to the same agent after the quota reset (19:05 KST); the delegate continues from its own transcript mid-M2 with the tree exactly as it left it. A second transient request-rate 429 hit mid-M2-GREEN (~19:12 KST, request id 20261021181226b3100bd5773c49e5) and the delegate was resumed again at 19:16 KST; M2 then landed (cba38dd548), followed by M3 (679e474fee) and M4 (9967c92b90).
+
+rescope — leader relay of the operator 10-19 github-flow transition, received 2026-10-21 ~19:4x KST mid-M5 (lane judgment recorded per auto-semantics.md §6; premises VERIFIED before acting per verification-claim-integrity.md §1.1 surface 4): the leader reported (i) the dedicated integration worktree is abolished and the PRIMARY checkout now holds `main` (shared surface, not a clean landing surface), (ii) the leader executed the operator's 10-19 github-flow flip today, and (iii) `factory_card_pr.go:444` requests `gh pr merge --auto`, in conflict with the operator's leader-only-merge principle. Verified in this tree, 2026-10-21: `git worktree list` row 1 reads `/Users/goos/MoAI/moai-adk-go 28b727065b [main]` and no dedicated main-integration worktree exists (premise i CONFIRMED); main's committed `.moai/config/sections/git-strategy.yaml` manual profile still reads `workflow: git-flow` at 28b727065b (the flip is leader-side, not yet in a commit this tree can see); `internal/cli/factory_card_pr.go:444` reads `factoryGHCall(wt, "pr", "merge", strconv.Itoa(pr.Number), "--auto", mergeFlag, "--match-head-commit", checkedTip)` (premise iii CONFIRMED); the operator 10-19 decision is recorded in lane memory (project_flow_transition_per_card_pr_1019: per-card PR flow, leader merges qualified PRs, config flip after sync PR then unblocked same day). Consequence accepted: the SPEC's agentic-trunk delivery model (UsesLocalIntegration → integration-window local merge into `main`, no PR) formalizes a structure this repository no longer has, and adopting it here would block all landings — the same wall the leader names.
+
+LANE DECISION (binding for this card's remaining work, subject to leader/operator override): ship the agentic-trunk VALUE, do not adopt it here. Concretely: (1) M1-M5 output SURVIVES — the value set, classifier, reader/target, local-integration predicate, display, guards, and the M5 rule/delivery sentences describe GENERIC product behavior for user projects that do carry a dedicated landing surface; they stay true and stay. (2) M6 as authored (this repository's live flip to agentic-trunk) is DROPPED — this repository's final live value is `github-flow` per the operator's 10-19 decision already executed by the leader; the M6 replacement is a small alignment commit only (the yaml manual profile records github-flow with an accurate comment; github-flow is a valid value in any running binary, so the installed-binary P1-P5 dependency does not apply). (3) M7 (repo-local guidance) is re-scoped to describe the CURRENT per-card PR flow; the t1830(F) shared-file sentinels are re-judged against the abolished integration worktree (the Integration-Worktree Rule label references a surface that no longer exists — reconcile with the structure, not the name). (4) Leader item ② (the `--auto` merge request vs leader-only merge) is recorded here as a SEPARATE finding, not folded into this card: it is pre-existing github-flow delivery behavior outside the card's value scope; the lane attaches the finding (factory_card_pr.go:444 verbatim above) and the queue's owner decides its routing. (5) The SPEC body rescope (REQ-AGT-017/-018 cutover requirements, AC-016/AC-017, goal wording) is manager-spec work, sequenced AFTER the current delegate returns (one writer per tree); the delegate is left to finish M5 + §E evidence as authored, since that work is delivery-agnostic.
+
+DECISION SUPERSEDED — operator clarification relayed by the leader, 2026-10-21 ~19:5x KST, ~10 minutes after the entry above: the operator confirmed verbatim "지금 사용하는 흐름은 agentic-trunk — 최근 추가된 워크플로우". The leader's earlier github-flow-readjustment framing is WITHDRAWN by its own sender. Corrected directive: (α) the SPEC's final value IS agentic-trunk — this repository ADOPTS it after the card lands; (β) the leader's current github-flow flip is a TEMPORARY BRIDGE only (the installed build 8249bff8c3 lacks the enum this card's M1 is adding — verifiable: the installed binary predates this branch); (γ) the rescope task REMAINS, re-aimed: agentic-trunk's authored delivery ("dedicated integration worktree serial local landing") conflicts with today's structure (no dedicated main tree; the primary checkout holds `main` as a shared, not-clean surface — the lane's verified premises above stand unchanged and are the CONSTRAINTS the redesign must satisfy); the manager-spec pass designs the serial landing surface FOR THE CURRENT STRUCTURE (or a PR-edge hybrid) and reflects the batch PR cycle (lead_push_threshold ≈ 20 landings) in the value definition; (δ) the `factory_card_pr.go:444 --auto` vs leader-only-merge review stays inside this card's rescope review. Operator intent per the leader: agentic-trunk is the main flow; the other values are transition support. The (1) point of the superseded entry still holds — M1-M5 value mechanics survive; the delivery-semantics layer (REQ-AGT-006..008 wiring, M6 cutover, M7 guidance) is what the rescope redesigns. Sequencing unchanged: delegate finishes M5 + §E → manager-spec rescope pass (design choice between serial-surface redesign and PR-edge hybrid belongs to that pass, under the verified structural constraints) → manager-develop applies the deltas → card-review → sync.
+
 ## §E.2 Run-phase Evidence
 
 ### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
@@ -152,9 +160,202 @@ measurement, not a judgment of this SPEC's changes — none of the 266 lines is 
 edits except `.claude/rules/local/gitflow-lane-protocol.md:196` (weak, already `[SUPERSEDED]`-marked)
 and template rule files whose develop-era text this SPEC does not touch (M5 adds sentences only).
 
+### M1 — Value set, disposition, reader (commit 27ebdd9aac, card t1831)
+
+RED-first. The RED state was captured twice: the acceptance.md ledger E01-E06 cells (`[no tests to
+run]`, re-confirmed at M0) and, on this tree, the compile failure of the new test file before the
+implementation existed (verbatim, exit reported by go as a build error):
+
+```
+internal/config/agentic_trunk_test.go:24:25: undefined: WorkflowAgenticTrunk
+internal/config/agentic_trunk_test.go:106:11: got.UsesLocalIntegration undefined (type GitFlowIntegrationConfig has no field or method UsesLocalIntegration)
+```
+
+GREEN (final run, HEAD ab639f9898):
+
+```
+$ go test ./internal/config -run '^(TestAgenticTrunkValueSet|TestAgenticTrunkTarget|TestAgenticTrunkLocalIntegrationPredicate|TestAgenticTrunkDevelopBranchProjection)$' -count=1 -v
+--- PASS: TestAgenticTrunkValueSet (0.00s)
+--- PASS: TestAgenticTrunkTarget (0.00s)
+--- PASS: TestAgenticTrunkLocalIntegrationPredicate (0.00s)
+--- PASS: TestAgenticTrunkDevelopBranchProjection (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.326s
+exit 0
+```
+
+Guard updates: `TestWorkflowDisposition` updated 4→5 (subtest now `allowed_set_is_exactly_five_flows`;
+`--- PASS: TestWorkflowDisposition (0.01s)`, exit 0 — an update to the new truth, never a skip).
+AC-002 compatibility pack stays green (final run: four top-level `--- PASS:` lines, exit 0).
+Implementation: `WorkflowAgenticTrunk = "agentic-trunk"` appended as the fifth value,
+`agenticTrunkFixedTarget = "main"` beside `githubFlowFixedTarget`, classifier takes the value as
+`DispositionValidNonGitFlow` (exact case-sensitive), `WorkflowIntegrationTarget` gains the case,
+`AgenticTrunkWorkflow` field + `DevelopBranch` projection to main under manual agentic-trunk
+(develop_branch ignored), new `UsesLocalIntegration()`; the second `git-flow` literal replaced by
+the `WorkflowGitFlow` constant. Every changed function 100% covered (per-function profile:
+`AllowedWorkflows`, `ClassifyWorkflowDisposition`, `WorkflowIntegrationTarget`,
+`LoadGitFlowIntegrationConfig`, `UsesLocalIntegration`, `IsGitFlow`, `LoadGitFlowDevelopBranch`
+all 100.0%).
+
+### M2 — Consumers (commit cba38dd548)
+
+RED captured verbatim before the two code changes (final RED run of the flip tests, exit 1):
+
+```
+$ go test ./internal/cli -run '^TestAgenticTrunkAutoMerge$' -count=1 -v
+    agentic_trunk_test.go:294: main HEAD is not a two-parent merge commit: [519d46e...] (notice: "moai: auto-merge: skipped (no integration target): the project is not manual git-flow or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch to enable session-exit auto-merge\n")
+--- FAIL: TestAgenticTrunkAutoMerge (0.56s)
+$ go test ./internal/config -run '^TestAgenticTrunkGuidance$' -count=1 -v
+--- FAIL: TestAgenticTrunkGuidance (0.00s)
+```
+
+Code changes: the session-exit auto-merge gate `!IsGitFlow()` → `!UsesLocalIntegration()` with the
+skip notice naming both workflows (`skipped (no integration target): the project is not manual
+git-flow or manual agentic-trunk, or git_strategy develop_branch is unset; set
+git_strategy.<mode>.develop_branch (git-flow) or git_strategy.<mode>.workflow: agentic-trunk in
+manual mode to enable session-exit auto-merge`); the two git-flow guidance fix strings now end
+"`github-flow (target main) or agentic-trunk (target main)`". Everything else is pinned by test —
+the factory delivery path, the acquire window-on-main projection, and the three develop-branch seam
+consumers (hook `integrationBranchFor`, escalation `cardBase`, contract push check) needed no code
+change because M1's projection already carries them. Final GREEN (final run): AC-005 both tests,
+`TestAgenticTrunkAutoMerge` (2 subtests), `TestAgenticTrunkIntegrationAcquire` (2 subtests),
+`TestAgenticTrunkIgnoredKeys`, `TestAgenticTrunkPushCheckIntegration` (2 subtests),
+`TestAgenticTrunkIntegrationBranchFor` (3 subtests), `TestAgenticTrunkCardBase` — all
+`--- PASS:`, exit 0; guards (`TestFactoryCompleteWindowGitFlowUnchanged`, auto-merge pair, acquire
+pair, doctor) stay green; AC-010 grep `exit 1` (no match) at final HEAD.
+
+### M3 — Display (commit 679e474fee)
+
+RED observed: `vet: internal/statusline/agentic_trunk_test.go:59:21: undefined: resolveWorkflowLabel`.
+GREEN (final run):
+
+```
+$ go test ./internal/statusline -run '^(TestAgenticTrunkStatuslineLabel|TestAgenticTrunkStatuslineAbsent|TestAgenticTrunkStatuslineNoExtraGit)$' -count=1 -v
+--- PASS: TestAgenticTrunkStatuslineLabel (0.00s)      (3 subtests)
+--- PASS: TestAgenticTrunkStatuslineAbsent (0.01s)     (6 subtests: github-flow, absent file, unreadable, invalid value, empty value, golden)
+--- PASS: TestAgenticTrunkStatuslineNoExtraGit (0.03s) (git shim logs zero invocations)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.374s    exit 0
+```
+
+Implementation: `workflow_provider.go` (`resolveWorkflowLabel` — valid non-github-flow only, one
+small yaml read, no git process), `StatusData.WorkflowLabel`, the branch segment appends
+` (<workflow>)` after the dirty count, the builder populates the label from the state-anchored root;
+doctor `workflowStandingBranches` gains the agentic-trunk case ("single trunk main; cards land
+serially in the integration worktree; one batch pull request per lead_push_threshold landings;
+tagged release"). `TestAgenticTrunkDoctor` `--- PASS:`, exit 0; guard `TestDoctorGitStrategyWorkflow`
+stays green; the full statusline package passes (`ok ... 17.564s`, exit 0) — REQ-PLO-009's
+byte-identity cases are pinned inside `TestAgenticTrunkStatuslineAbsent`.
+
+### M4 — Pins and guards (commit 9967c92b90)
+
+```
+$ go test ./internal/cli/update -run '^(TestAgenticTrunkValueSurvivesUpdate|TestUpdate_GitStrategyValuesSurvive)$' -count=1 -v
+--- PASS: TestAgenticTrunkValueSurvivesUpdate (0.01s)
+--- PASS: TestUpdate_GitStrategyValuesSurvive (0.01s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	0.355s    exit 0
+$ go test ./internal/config -run '^TestAgenticTrunkDistributedDefaultsUnchanged$' -count=1 -v   → --- PASS: (3 subtests), exit 0
+$ go test ./internal/template -run '^TestAgenticTrunkSweepGuardNotArmed$' -count=1 -v            → --- PASS: (4 subtests), exit 0
+$ grep -c 'workflow: agentic-trunk' internal/template/templates/.moai/config/sections/git-strategy.yaml.tmpl
+0
+exit 1
+```
+
+The OQ-2 armed finding count was pre-measured at M0 (266 live develop-base lines) and is recorded
+above; it is not zero, so no zero-count follow-up card opens from OQ-2.
+
+### M5 — Template guidance, Template-First (commit ab639f9898)
+
+Template sources edited first (`internal/template/templates/**`), then `make build` (exit 0, catalog
+regenerated), then the deployed projections of the eight pairs. Two sentence kinds per the iteration-2
+D2 repair: (a) the shared `WT-*` integration-route sentences in `worktree-integration.md`,
+`spec-workflow.md`, `delivery-policy.md` and `delivery.md`'s landing-surface paragraph now read
+"(the `WT-*` integration route shared by git-flow and agentic-trunk)"; (b) the git-flow
+per-version release-branch push sentences (`factory-dispatch.md` lines 219/222,
+`factory-dispatch-core.md` line 64, `factory-dispatch-mechanics.md` lines 142-149/243) stay
+git-flow ONLY and each file gained one sentence: "Under agentic-trunk the lane takes no
+`release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the
+integration-window local merge into `main`; the only push is the leader's batch pull request from
+`release/main-batch-YYYYMMDD`." — inserted into `factory-dispatch.md` line 222 after "leaves the
+batch pull request with the leader." and before "The full window procedure:". `delivery.md` gained
+the three-value domain line, the extended stop sentence (`neither `github-flow`, `git-flow` nor
+`agentic-trunk`` / `{github-flow, git-flow, agentic-trunk}`), a table row, and the
+`##### Strategy: agentic-trunk` block (git-flow route steps 1-5, exit/report, precondition; no
+push step; a non-WT branch reports the trunk state; block measured below). SKILL.md gained the
+agentic-trunk section; the template `workflow.yaml` comment now names both local-integration
+workflows.
+
+AC-020 judges (template delivery.md, final state):
+
+```
+Judge 1: 1 (exit 0)   Judge 2: 1 (exit 0)
+Judge 3: 239:##### Strategy: github-flow / 269:##### Strategy: git-flow / 279:6. Push the integration branch: ... / 314:##### Strategy: agentic-trunk  (four lines, in order)
+Judge 4: 0 and 0 (exit 1 each)   Judge 5: 1 and 1 (exit 0)
+Judge 6 (pipe-free re-statement of the acceptance program): block_lines=16 push_lines=0 (exit 0)
+  control on the git-flow block: block_lines=34 push_lines=8 (matches ledger E26)
+```
+
+AC-021 judges (final state):
+
+```
+Judge A: seven `cmp -s` pairs (factory-dispatch-mechanics, factory-dispatch-core,
+  worktree-integration, delivery-policy, spec-workflow, delivery.md, SKILL.md) all exit 0.
+Judge B(i):  git diff --no-index --numstat → "1	1	{internal/template/templates/.claude => .claude}/rules/moai/workflow/factory-dispatch.md", exit 1
+Judge B(ii): 'disposes remote-landing-confirmed trees' → template :0, deployed :1
+Judge B(iii): 'Under agentic-trunk the lane takes no' → :1/:1; 'git strategy names git-flow;' → :1/:1;
+              'names git-flow or agentic-trunk' → :0/:0 (exit 1)
+Judge B(iv): 26217 (template) / 26539 (deployed) — difference 322 bytes (unchanged)
+Judge C: coupling pattern over the three release-branch files (template + deployed, six lines) → all :0, exit 1
+```
+
+AC-019 judges: the nine template files each carry agentic-trunk (exit 0); github-flow counts
+(factory-dispatch.md:1, factory-dispatch-core.md:1, factory-dispatch-mechanics.md:2, delivery.md:12,
+others 0-or-more per the judge's own floor). Whole `internal/template` package run after the final
+build: only `TestBindingLedgerIntegrity` fails — 2 pre-existing failures (below).
+
+M5 divergences recorded:
+
+- **D-M5-1 (reconciliation, no rule weakened):** `factory-dispatch-core.md` (the always-loaded
+  stub) measured 9,999 UTF-16 units at HEAD — one unit under the REQ-RIB-005 10,000 budget — so the
+  required agentic-trunk sentence could not fit. The stub's non-[HARD] navigation prose was
+  compressed (the detail-companion paragraph's parentheticals and the duplicated `---` separator;
+  every [HARD] rule, every companion pointer, and the deployed/template byte-parity kept), landing
+  at 9,966 UTF-16 units. `TestRoleCoreStubGate` green both trees (verbatim: "9966 UTF-16 (budget
+  10000), role-core markers 0").
+- **D-M5-2 (pre-existing, outside this SPEC's scope):** `TestBindingLedgerIntegrity` fails with 2
+  rows (ALB-0139, ALB-0148): "after_text not at companion:.claude/rules/moai/core/
+  moai-mcp-tools-catalogue.md and before_text no longer in source .claude/rules/moai/core/
+  moai-mcp-tools.md (obligation lost)". The moai-mcp-tools files and the binding ledger are not in
+  this SPEC's file set and were changed by the absorb merge, not by this card. Same class as the
+  known t1858 red; needs its own repair card.
+- Line numbers quoted in the plan/acceptance for delivery.md (22/29) and factory-dispatch.md (219/222)
+  matched this tree exactly; no AC text was invalidated by the absorb merge.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-21 (M0-M5 delegation complete; the run PHASE is not complete — see run_status)
+run_commit_sha: ab639f9898 (last M5 code commit; the progress-record commit carrying this signal follows it, so its own SHA is unknowable until it lands — backfilled by the next progress-record commit if needed)
+run_status: partial — M0 (baseline re-check), M1 (value set/disposition/reader), M2 (consumers), M3 (display), M4 (pins/guards), M5 (template guidance) complete and green; M7 (repo-local guidance) is a later run-phase delegation per the §E.1 scope boundary; M6 (cutover, P1-P5) is the leader's step; M8 (docs-site) is sync-phase; M9 (close, AC-024) pending.
+ac_pass_count: 19 (AC-001..015, AC-019, AC-020, AC-021, AC-025 — every gate in this delegation's scope)
+ac_fail_count: 0 (two pre-existing template-package failures are recorded as divergences, not this SPEC's ACs: the armed-mode ratchet of the diagnostic sweep branch, and TestBindingLedgerIntegrity rows ALB-0139/0148 broken by the absorb merge — see D-M5-2)
+preserve_list_post_run_count: 0 files outside the delegation's scope touched; `.moai/config/sections/git-strategy.yaml`, `AGENTS.local.md`, `.claude/rules/local/gitflow-lane-protocol.md`, `git-strategy.yaml.tmpl`, `manager-git.md/.toml`, `auto-semantics.md`, `spec-workflow-detail.md`, `tab_schema.json`, docs-site, `.moai/harness/*`, `.moai/state/*` all untouched (verified by git status at each commit and by `git status --short .moai/config/sections/git-strategy.yaml` printing nothing after M5)
+l44_pre_commit_fetch: n/a (no push in this delegation; the lane handles landing — no fetch performed, none owed)
+l44_post_push_fetch: n/a (no push performed)
+new_warnings_or_lints_introduced: 0 (lint over all touched packages: "0 issues"; baseline was 1 pre-existing staticcheck finding in internal/discovery — unchanged, package untouched)
+cross_platform_build.darwin: go build ./... exit 0 at HEAD ab639f9898
+cross_platform_build.windows: GOOS=windows GOARCH=amd64 go build ./... exit 0 at HEAD ab639f9898
+total_run_phase_files: 24 (8 Go source, 13 Go test files incl. 6 new agentic_trunk test files, spec.md frontmatter, catalog.yaml, 9 template sources, 8 deployed projections — some files counted once across categories)
+m1_to_mN_commit_strategy: one commit per milestone (M0 8b00a111f9 docs, M1 27ebdd9aac feat, M2 cba38dd548 feat, M3 679e474fee feat, M4 9967c92b90 test, M5 ab639f9898 feat); the M0 baseline record precedes M1 per verification-claim-integrity §2.3; no push, no PR, no merge — the lane handles landing.
+
+Residual risks for the sync audit:
+
+- The red `internal/config` test `TestNoHardcodedContexts` (card t1858) and the red
+  `TestBindingLedgerIntegrity` rows (ALB-0139/0148, absorb-merge damage) remain red on this branch;
+  neither is caused by this SPEC's diff (both subject files untouched by it) and both have named
+  repair owners outside this card.
+- The factory-dispatch-core stub reconciliation (D-M5-1) compressed non-[HARD] navigation prose to
+  fit REQ-RIB-005; an audit wanting the fuller companion descriptions finds them on the companion
+  files themselves (the pointers were kept).
+- The OQ-2 armed finding count (266) is a snapshot of a moving repository; the residue-sweep card
+  should re-measure at its own start.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
