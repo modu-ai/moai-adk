@@ -34,10 +34,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -490,7 +492,7 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 		}
 	}
 	if len(writeErrs) > 0 {
-		return report, fmt.Errorf("move-list writes failed: %s", strings.Join(writeErrs, "; "))
+		return report, fmt.Errorf("migration recovery or audit writes failed: %s", strings.Join(writeErrs, "; "))
 	}
 	return report, nil
 }
@@ -501,7 +503,7 @@ type treeOutcome struct {
 	Reason   string
 	Ident    string
 	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
-	MLErr    error  // a move-list write error that outlives a successful move
+	MLErr    error  // a persistence or reverse-metadata error requiring recovery
 }
 
 // migrateOneTree moves one tree through the journaled step order —
@@ -567,19 +569,21 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 // and rebind intact (they name the location the tree really sits at),
 // records pending, and fails the tree.
 func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, trigger, digest, reason string) treeOutcome {
-	movedBack, mlErr := m6ReverseMove(root, p, id, mlPath, trigger)
+	movedBack, reverseErr := m6ReverseMove(root, p, id, mlPath, trigger)
 	out := treeOutcome{Ident: id.Ident(), Manifest: digest}
-	if movedBack {
+	if movedBack && reverseErr == nil {
 		out.Outcome, out.Reason = "reversed", reason
 	} else {
 		out.Outcome = "failed"
-		if mlErr != nil {
-			out.Reason = fmt.Sprintf("%s; the reverse move failed and the pending line could not be written (%v)", reason, mlErr)
+		if movedBack {
+			out.Reason = fmt.Sprintf("%s; the tree returned to %s but reverse metadata or audit remains pending (%v)", reason, p.source, reverseErr)
+		} else if reverseErr != nil {
+			out.Reason = fmt.Sprintf("%s; reverse remains pending at %s (%v)", reason, p.destination, reverseErr)
 		} else {
 			out.Reason = fmt.Sprintf("%s; the reverse move failed, the tree stands at %s (pending)", reason, p.destination)
 		}
 	}
-	out.MLErr = mlErr
+	out.MLErr = reverseErr
 	return out
 }
 
@@ -595,7 +599,44 @@ var reverseGitMove = func(root, from, to string) error {
 // journalWrite is the injectable seam for the journal file write (the
 // fault-injection point of the REQ-WHR-017 journal clause).
 var journalWrite = func(path string, data []byte) error {
-	return os.WriteFile(path, data, 0o644)
+	mode := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".migration-journal-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	defer func() { _ = tmp.Close() }()
+	if _, err := tmp.Write(data); err != nil {
+		return err
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := atomicfile.Replace(tmp.Name(), path); err != nil {
+		return err
+	}
+	// Flush the rename on platforms that support syncing directories.
+	// Windows flushes the file above; its directory handles do not support Sync.
+	if runtime.GOOS != "windows" {
+		dir, err := os.Open(filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = dir.Close() }()
+		return dir.Sync()
+	}
+	return nil
 }
 
 // RunUpdateConsolidation is the exported update-time entry into the
@@ -676,9 +717,22 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
 			fmt.Sprintf("reverse move failed: %v", rerr)))
 	}
-	_ = hook.RekeyWorktreeEntryInverse(root, p.destination, p.source)
-	_ = rebindCardForPath(root, p.destination, p.source)
+	if rerr := reverseMigrationMetadata(root, p.destination, p.source); rerr != nil {
+		lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+			fmt.Sprintf("reverse metadata failed: %v", rerr)))
+		return true, errors.Join(rerr, lineErr)
+	}
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
+}
+
+func reverseMigrationMetadata(root, from, to string) error {
+	if err := hook.RekeyWorktreeEntryInverse(root, from, to); err != nil && !strings.Contains(err.Error(), "no entry keyed to") {
+		return fmt.Errorf("reverse re-key failed: %w", err)
+	}
+	if err := rebindCardForPath(root, from, to); err != nil {
+		return fmt.Errorf("reverse card rebind failed: %w", err)
+	}
+	return nil
 }
 
 // rebindCardForPath rebinds the card record bound to oldPath onto newPath
@@ -736,10 +790,11 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 		}
 		var journal struct {
 			Steps []struct {
-				OldPath string `json:"old_path"`
-				NewPath string `json:"new_path"`
-				Outcome string `json:"outcome"`
-				Ident   string `json:"ident"`
+				OldPath  string `json:"old_path"`
+				NewPath  string `json:"new_path"`
+				Outcome  string `json:"outcome"`
+				Ident    string `json:"ident"`
+				Manifest string `json:"manifest"`
 			} `json:"steps"`
 		}
 		if json.Unmarshal(data, &journal) != nil {
@@ -760,6 +815,11 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 					mismatched++
 					continue
 				}
+			}
+			if s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\t%s → %s (manifest mismatch)\n", s.OldPath, s.NewPath)
+				mismatched++
+				continue
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "intact\t%s → %s\n", s.OldPath, s.NewPath)
 			intact++
@@ -803,11 +863,27 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		var problems []string
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
+			if s.Outcome == "reversed" || s.Outcome == "skipped" {
+				continue
+			}
+			atSource := false
 			if _, serr := os.Stat(s.NewPath); serr != nil {
-				continue // the tree never reached its destination: nothing to reverse
+				if !errors.Is(serr, os.ErrNotExist) {
+					problems = append(problems, fmt.Sprintf("inspect %s: %v", s.NewPath, serr))
+					failed++
+					continue
+				}
+				// A previous reverse may have completed git's move and then
+				// failed its metadata steps. Only the journal's exact instance
+				// at the source permits resuming those steps without moving it.
+				id, err := TreeIdent(s.OldPath)
+				if err != nil || s.Ident == "" || id.Ident() != s.Ident {
+					continue
+				}
+				atSource = true
 			}
 			destIdent, terr := TreeIdent(s.NewPath)
-			if terr != nil || (s.Ident != "" && destIdent.Ident() != s.Ident) {
+			if !atSource && (terr != nil || (s.Ident != "" && destIdent.Ident() != s.Ident)) {
 				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "identity mismatch")); lerr != nil {
 					return lerr
 				}
@@ -818,7 +894,7 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 			// The manifest-match precondition belongs to the ordinary
 			// rollback of a settled move; a pending step reverses
 			// unconditionally (REQ-WHR-018's fifth entry).
-			if s.Outcome == "moved" && s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
+			if !atSource && s.Outcome == "moved" && s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
 				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
 					return lerr
 				}
@@ -826,28 +902,21 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				refused++
 				continue
 			}
-			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil {
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, fmt.Sprintf("reverse move failed: %v", merr))); lerr != nil {
-					return lerr
-				}
-				problems = append(problems, fmt.Sprintf("%s: reverse move failed (%v)", s.NewPath, merr))
-				failed++
-				continue
-			}
-			if rerr := hook.RekeyWorktreeEntryInverse(root, s.NewPath, s.OldPath); rerr != nil {
-				if strings.Contains(rerr.Error(), "no entry keyed to") {
-					// No state-file entry keyed to the new path: the forward
-					// re-key was a no-op (the tree was never registered in
-					// the state file) — the reverse is the same no-op, the
-					// same symmetry migrateOneTree applies forward.
-				} else {
-					problems = append(problems, fmt.Sprintf("%s: reverse re-key failed (%v)", s.OldPath, rerr))
+			if !atSource {
+				if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil {
+					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, fmt.Sprintf("reverse move failed: %v", merr))); lerr != nil {
+						return lerr
+					}
+					problems = append(problems, fmt.Sprintf("%s: reverse move failed (%v)", s.NewPath, merr))
 					failed++
 					continue
 				}
 			}
-			if rerr := rebindCardForPath(root, s.NewPath, s.OldPath); rerr != nil {
-				problems = append(problems, fmt.Sprintf("%s: reverse card rebind failed (%v)", s.OldPath, rerr))
+			if rerr := reverseMigrationMetadata(root, s.NewPath, s.OldPath); rerr != nil {
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, rerr.Error())); lerr != nil {
+					return errors.Join(rerr, lerr)
+				}
+				problems = append(problems, fmt.Sprintf("%s: %v", s.OldPath, rerr))
 				failed++
 				continue
 			}

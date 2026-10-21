@@ -353,7 +353,7 @@ func MovedBy(primary, path string) bool {
 	case "restored", "reversed":
 		// Only a later restored or reversed line releases the protection.
 		return false
-	case "pending":
+	case "pending", "refused":
 		// A pending line is an UNSETTLED move: the tree may stand at either
 		// of its two paths (a failed reverse move records pending with the
 		// destination as the line's old path — card t1640 review F5). The
@@ -367,7 +367,7 @@ func MovedBy(primary, path string) bool {
 			return false
 		}
 		return isRegistered(registrations, path)
-	case "moved", "refused":
+	case "moved":
 		if !worktreeroot.Same(rec.NewPath, path) {
 			return false
 		}
@@ -401,20 +401,47 @@ func isLocationLine(r string) bool {
 // step 9) must abort; a caller recording an already-made change surfaces the
 // failure to the run's exit.
 func appendMoveListLine(mlPath, line string) error {
-	data, _ := os.ReadFile(mlPath)
+	data, err := os.ReadFile(mlPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read the move list %s: %w", mlPath, err)
+	}
+	type semanticRecord struct {
+		Schema  int    `json:"schema"`
+		OldPath string `json:"old_path"`
+		NewPath string `json:"new_path"`
+		Result  string `json:"result"`
+		Reason  string `json:"reason"`
+		Ident   string `json:"ident"`
+		Trigger string `json:"trigger"`
+		Card    string `json:"card"`
+		Tree    string `json:"tree"`
+	}
+	var next semanticRecord
+	if err := json.Unmarshal([]byte(line), &next); err != nil {
+		return fmt.Errorf("parse new move-list record: %w", err)
+	}
 	// The dedupe: compare against the latest entry naming either path.
-	rev := revLines(string(data))
-	if len(rev) > 0 && rev[0] == line {
-		return nil // identical re-run: nothing to append
+	for _, previous := range revLines(string(data)) {
+		var prior semanticRecord
+		if json.Unmarshal([]byte(previous), &prior) != nil {
+			continue
+		}
+		if prior.OldPath != next.OldPath && prior.NewPath != next.OldPath &&
+			prior.OldPath != next.NewPath && prior.NewPath != next.NewPath {
+			continue
+		}
+		if prior == next {
+			return nil // same transition; timestamps do not create another step
+		}
+		break
 	}
 	fh, err := os.OpenFile(mlPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("append the move list %s: %w", mlPath, err)
 	}
 	defer func() { _ = fh.Close() }()
-	if fi, serr := os.Stat(mlPath); serr == nil && fi.Size() > 0 {
-		raw, _ := os.ReadFile(mlPath)
-		if len(raw) > 0 && raw[len(raw)-1] != '\n' {
+	if len(data) > 0 {
+		if data[len(data)-1] != '\n' {
 			if _, werr := fh.Write([]byte("\n")); werr != nil {
 				return fmt.Errorf("append the move list %s: %w", mlPath, werr)
 			}
@@ -429,7 +456,9 @@ func appendMoveListLine(mlPath, line string) error {
 // revLines returns the non-empty lines of the file, last first.
 func revLines(data string) []string {
 	var out []string
-	for _, l := range strings.Split(data, "\n") {
+	lines := strings.Split(data, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := lines[i]
 		if strings.TrimSpace(l) != "" {
 			out = append(out, l)
 		}
