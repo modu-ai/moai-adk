@@ -570,6 +570,13 @@ func factoryLandingBaseFrom(ctx context.Context) string {
 	return base
 }
 
+func factoryLandingDirFromCtx(ctx context.Context, cardID string) string {
+	if base := factoryLandingBaseFrom(ctx); base != "" {
+		return filepath.Join(base, cardID)
+	}
+	return ""
+}
+
 // factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
 // directory already exists and no card record names it (the card itself
 // records no worktree), so `next` refuses before any claim edge and the card
@@ -580,7 +587,7 @@ func factoryLandingBaseFrom(ctx context.Context) string {
 // the SAME card recorded is that card's own tree, re-recorded rather than
 // refused (card t1521); every other shape lands here.
 func factoryRefuseForeignWorktree(ctx context.Context, root, cardID string) error {
-	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	landingDir := factoryLandingDirFromCtx(ctx, cardID)
 	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
 	return factoryRefuseForeignWorktreeAt(ctx, landingDir, legacyLeaf, cardID)
 }
@@ -611,7 +618,7 @@ func factoryRefuseForeignWorktreeAt(ctx context.Context, landingDir, legacyLeaf,
 // not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
 // materialization when no directory stands in the way) to the caller.
 func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) (string, error) {
-	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	landingDir := factoryLandingDirFromCtx(ctx, cardID)
 	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
 	return factoryCarryPreviousWorktreeAt(ctx, db, landingDir, legacyLeaf, runID, cardID)
 }

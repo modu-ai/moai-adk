@@ -291,6 +291,10 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// re-reads raw arguments — and the view's LaunchArgs is the argv handed to the
 	// launch seam.
 	view := resolveLaunchView(filteredArgs)
+	entryDir, err := existingWorktreeEntryDir(view.LaunchArgs)
+	if err != nil {
+		return err
+	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE the token normalization so out-of-prefix paths are rejected with a
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
@@ -309,6 +313,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	endWt()
 	if err != nil {
 		return err
+	}
+	if view.Branch.Present {
+		// Materialization may have created the home-root tree to enter.
+		entryDir, err = existingWorktreeEntryDir(view.LaunchArgs)
+		if err != nil {
+			return err
+		}
 	}
 	// A tree another live session is anchored in gets no second writer. The
 	// check only reads; Claude Code writes its own lock on entry.
@@ -332,7 +343,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// boundary receives is the view's normalized LaunchArgs, exactly as the
 	// old unconditional rewrite assignment delivered.
 	filteredArgs = view.LaunchArgs
-	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
+	if entryDir != "" {
 		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()

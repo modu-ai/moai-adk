@@ -340,6 +340,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	// SPEC-LAUNCHER-ARGV-001: see cc.go — one resolution, stage values to the readers.
 	view := resolveLaunchView(filteredArgs)
+	entryDir, err := existingWorktreeEntryDir(view.LaunchArgs)
+	if err != nil {
+		return err
+	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
@@ -351,6 +355,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	endWt()
 	if err != nil {
 		return err
+	}
+	if view.Branch.Present {
+		entryDir, err = existingWorktreeEntryDir(view.LaunchArgs)
+		if err != nil {
+			return err
+		}
 	}
 	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
 	// post-validation point the cc flow applies it after its writer precheck —
@@ -381,7 +391,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// The view owns the launch argv (see cc.go): always take the normalized
 	// LaunchArgs, then strip the selection when entering by directory.
 	filteredArgs = view.LaunchArgs
-	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
+	if entryDir != "" {
 		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()

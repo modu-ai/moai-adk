@@ -217,29 +217,39 @@ func readFirstWorktree(args []string) worktreeRead {
 // launcher creates nothing, and the short-name-without-existing-tree
 // pass-through is the single documented exception to "no creation path
 // names a legacy root" (REQ-WHR-006 branch Y, REQ-WHR-020). An ambiguous
-// name (two or more roots) also answers ""; the ambiguity report belongs
-// to the callers that enumerate candidates (REQ-WHR-022).
+// name (two or more roots) refuses entry before any candidate is seeded or
+// handed to the backend (REQ-WHR-022).
 //
 // Defined here next to the resolver walk helpers it reuses: worktree
 // selection is derived in ONE file (launch_view.go) and every reader on the
 // launch path receives values (TestLaunchViewSingleParse).
-func existingWorktreeEntryDir(args []string) string {
+func existingWorktreeEntryDir(args []string) (string, error) {
 	read := readFirstWorktree(args)
 	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
-		return ""
+		return "", nil
 	}
 	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
-		return ""
+		return "", nil
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	cands, err := worktreeroot.Candidates(root, read.Value)
-	if err != nil || len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
-		return ""
+	if err != nil {
+		return "", nil
 	}
-	return cands[0].Path
+	if len(cands) > 1 {
+		paths := make([]string, 0, len(cands))
+		for _, candidate := range cands {
+			paths = append(paths, candidate.Path)
+		}
+		return "", fmt.Errorf("worktree %q exists in %s; use an absolute path", read.Value, strings.Join(paths, " and "))
+	}
+	if len(cands) != 1 || cands[0].Kind != worktreeroot.KindHome {
+		return "", nil
+	}
+	return cands[0].Path, nil
 }
 
 // stripWorktreeSelection removes the argv's first -w selection (both

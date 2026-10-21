@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
@@ -115,6 +117,11 @@ func autoInsideTree(dir, tree string) bool {
 // the owner is reported alive (no takeover on an unmeasurable board).
 func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded bool, err error) {
 	trees := autoOwnerWorktrees(root, cardID)
+	recorded, err := autoRecordedOwnerWorktrees(root, cardID)
+	if err != nil {
+		return true, true, fmt.Errorf("cannot read recorded owner worktrees: %w", err)
+	}
+	trees = append(recorded, trees...)
 	registryLive := false
 	entries, regErr := lv.registryEntries()
 	if regErr == nil {
@@ -143,6 +150,40 @@ func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded boo
 		return true, degraded, regErr
 	}
 	return registryLive || processLive, degraded, nil
+}
+
+// Recorded paths take precedence over conventions: a migrated or operator-
+// named tree need not share the card's directory name. A failed record read
+// must hold the card rather than misclassify its owner as dead.
+func autoRecordedOwnerWorktrees(root, cardID string) ([]string, error) {
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	db, err := homestate.OpenFactoryReadonly(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = db.Close() }()
+	cards, err := db.ListCards(context.Background(), "")
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, card := range cards {
+		if card.CardID == cardID && card.WorktreePath != "" {
+			if !filepath.IsAbs(card.WorktreePath) {
+				return nil, fmt.Errorf("card %s records a non-absolute worktree path", cardID)
+			}
+			paths = append(paths, card.WorktreePath)
+		}
+	}
+	return paths, nil
 }
 
 // autoQueuedCandidates is the queued pickup arm both cycles share (the
