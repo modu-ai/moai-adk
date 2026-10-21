@@ -164,6 +164,15 @@ unmerged code, merge that branch inside the new worktree.
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
 name, and the worktree directory keeps the card id.
 
+**No main-variant worktree branches; local `main` stays synced.** Never create a `WT-*main*`
+branch or a worktree that holds `main` as an integration holder. `main` advances only through
+PR merges, and local `main` is re-synced with `origin/main` at every landing — a local `main`
+sitting ahead of the remote past a landing is a defect, not a buffer. Tooling must never detach
+the primary checkout's HEAD to take over a branch: a branch checked out in the primary is
+occupied, and the tool refuses rather than steals. (Incident 2026-10-21: a `main`-holding
+integration worktree silently detached the primary, which then sat 559 commits behind local
+`main` while runtime-state drift accumulated for four days.)
+
 **Three traceability carriers are then mandatory**, because the branch name no longer identifies
 the card: the dispatch's `card:` field, the card id in every commit message on the branch, and the
 card id in the evidence path (`.moai/reports/<card-id>/verdict.md`).

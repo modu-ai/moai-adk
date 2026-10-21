@@ -60,6 +60,10 @@ Relationships:
 
 Nothing reads a card id back out of a branch name: `internal/cli/session_worktree_prmerge.go` matches the `WT-` prefix only (`strings.HasPrefix`), never the remainder. The prefix is load-bearing; the suffix is for humans.
 
+[HARD] **No `WT-*main*` branches; `main` is never a worktree integration holder.** A worktree branch whose slug names `main` (`WT-main-red-class`, `WT-serial-slot-assigned-main`, …) is prohibited at creation, and no worktree may hold `main` as its checked-out integration branch. `main` is the shared default branch: it advances only through PR merges, and local `main` is re-synced with `origin/main` at every landing — a local `main` sitting ahead of the remote past a landing is a defect, not a buffer (2026-10-21 incident: 559 unpushed commits accumulated over four days while GitHub `main` sat frozen at PR #1826). Landing machinery advances its batch through the release-batch route; it never needs a `main`-named branch or worktree.
+
+[HARD] **Tooling never detaches the primary checkout to take a branch.** When a tool wants a branch that is checked out in the primary, git refuses the second checkout — and that refusal is the correct outcome, not an obstacle. Writing `.git/HEAD` directly (no reflog entry, no notice) strands every concurrent session on a stale commit while its runtime state keeps drifting against the moved branch. Sanctioned shapes only: work on a `WT-<slug>` branch and land through PR, or advance a held branch inside the worktree that already holds it after the primary has released it deliberately. A silent detach is a process defect even when the landing itself is correct. (Incident 2026-10-21: the primary sat detached at a 2026-10-11 commit while `main` advanced 559 commits underneath — no reflog entry ever recorded the detach.)
+
 The rename is also a disposal-path switch, and that is deliberate:
 
 - Left as `worktree-<name>`, the tree is **invisible to the PR-merge auto-cleanup sweep** — that sweep enumerates `git worktree list` and considers only `WT-` branches — so disposal stays manual: the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove`.
