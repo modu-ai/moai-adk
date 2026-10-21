@@ -409,9 +409,9 @@ operator_override: §G row-level ceiling override recorded at a2fcca6c3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_status: sync-ready-pending-CI (implemented held until AC-CI-007's landing-flow run URL +
-per-family counts are recorded; the completed transition re-lands via the follow-up
-manager-docs commit citing that evidence — sync-audit r1 F1 arm A, card t1598)
+sync_status: sync-blocked-pending-bound-review (AC-CI-007's actual three-OS family evidence is
+recorded in §E.2; implemented is retained while the cited historical audit export/hash binding
+and AC-PRI-008 close-phase reviewer condition cannot be established in this Cloud checkout)
 sync_complete_at: 2026-10-08T12:44:19Z (first close attempt, reverted 2026-10-09 per r1 F1)
 sync_commit_sha: 8d10007ca9804eeb58bcb0a34aca922989603198
 governing_audit: plan-audit-4 PASS-WITH-DEBT 0.94 (audited_sha 6abc63d30e4bb133fead8fc24b5b1013c00581a9, must_pass_failed=0, blocking_count=0) — re-affirmed unchanged by plan-audit-5 (receipt rcpt-5bbbb0b8650328de4d6b115f; the seven hash-subject paths carry a zero diff 6abc63d30..a2fcca6c3)
@@ -480,6 +480,49 @@ Open-items ledger (honest carry-forward at close):
 §G ceiling-release record: intact and untouched by this close — the 4 ceiling-refusal holds, the
 LEADER-RULING release (receipts rcpt-ce322e7663362a796bf14bde + rcpt-f8998a6b0b8f1acd2b23d016),
 and the OPERATOR row-level override row stand as recorded.
+
+### CI evidence follow-up close eligibility (2026-10-21; manager-docs, t1598)
+
+- Evidence-recording commit: `34ea177b0aa5cdf7aa3587186e0cbb1d7ec509d6` (`Authored-By-Agent: manager-develop`),
+  limited to §E.2. The explicit Linux 25+5 / Darwin 27+5 / Windows 8+3 pass Actions,
+  Windows 6c/F10 passes, run URL, CI head, package terminal output, and artifact digests are
+  now recorded. This resolves the missing CI execution-evidence input; it is not an independent audit.
+- The earlier `sync-ready-pending-CI` state, first close attempt, status-revert note, historical
+  receipts and audit verdict claims above are preserved as history. The follow-up closure arm is
+  still the recorded manager-docs path; no new SPEC-body/AC/plan wording is introduced here.
+- **Binding verification gap:** the cited audited SHA `6abc63d30e4bb133fead8fc24b5b1013c00581a9`
+  and re-affirmed `a2fcca6c3` have the same byte-exact plan-artifact hash
+  `5bf1a0e0d9f2cd35856f2b4a31f636c923c91da717f0fd43647c87f3ff0b550e`;
+  this checkout's corresponding hash is
+  `773c4ed79814c2fd3444401c115cc047a8b1bd448531026b31dc3aebcd5215e0`.
+  These were mechanically reproduced from `internal/runtime/audit_cache.go`'s ordered
+  `ComputeHash` algorithm, without running Go. Four of its seven optional subject names are
+  present. Compared with the cited audit, the existing acceptance.md and plan.md bodies differ
+  (4 and 2 replaced lines respectively, introduced before this follow-up); spec.md also has the
+  historical status/date change. Those user changes are preserved. This follow-up changes no
+  hash subject. The old zero-diff claim through `a2fcca6c3` is not relabeled as a current binding.
+- **Review evidence gap:** the referenced t1598 plan-audit-4/5 and sync-audit-1/2 exported report
+  files are unavailable in both this isolated checkout and the primary checkout. Their actual F1
+  arm-A verdict/metadata cannot be re-read here. The carried `ac-content-enforcement` item above
+  assigns AC-PRI-008's pinned-content review to the close-phase reviewer; this follow-up has no
+  new bound reviewer evidence for that condition. It does not revoke or rewrite the historical
+  verdict/receipt claims, and it does not manufacture replacement receipts.
+- The report-persistence doctrine (`spec-workflow-detail.md`, Report Persistence) requires the
+  final review stream plus matching plan-artifact hash metadata for reuse; it says a review file
+  without hash/score/version metadata is a cache miss. This probe establishes a verification gap,
+  not a new plan/run implementation or a claim that a fresh audit was performed. No
+  `codex_role_audit` launcher is exposed in this session's tool inventory; a generic agent was
+  not substituted for an independent reviewer.
+- **Close disposition: blocked, status remains implemented.** No `completed` transition,
+  `sync_complete_at` replacement, or new sync-commit placeholder/backfill is authored. The
+  existing sync SHA remains historical. Completing this follow-up requires the appropriate
+  owner/reviewer to establish the actual close review/binding and remaining standing-set
+  conditions; a parser warning is not a reason to invent completion.
+- Separately, the Windows workflow still has failures outside this runtime family, and no
+  latest-head independent audit or current-head required-CI success for this documentation
+  branch is claimed. PR-ready/draft promotion/merge remains prohibited. The per-family rule is
+  retained as written; whole-workflow success is not invented as an additional AC-CI-007 clause.
+  Darwin's retained exec-seeder residual and the unobserved UNC runtime case remain as recorded.
 
 ## §G Override and Refusal Record
 
