@@ -2,9 +2,9 @@
 id: SPEC-CARD-METADATA-VERBS-001
 title: "Card-metadata editing verbs — set-spec and reclassify with an actor+reason audit trail"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-17
-updated: 2026-10-18
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
