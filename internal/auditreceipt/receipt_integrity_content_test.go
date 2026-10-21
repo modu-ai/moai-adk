@@ -119,6 +119,77 @@ func TestTreeState_WhitespaceFilenameContentMovesDigest(t *testing.T) {
 	}
 }
 
+// TestTreeState_ChmodMovesUntrackedDigest pins the l57-r5 finding 2: the
+// untracked digest binds the file's MODE as well as its bytes. A chmod +x on
+// an untracked script changes nothing in the porcelain rows, the diff, or the
+// content — the path-only digest read both states as identical, and a PASS
+// receipt taken before the mode change stayed fresh across an executable
+// (a materially different judged state).
+func TestTreeState_ChmodMovesUntrackedDigest(t *testing.T) {
+	root := initContentRepo(t)
+	script := filepath.Join(root, "run.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest1, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v1: %v", err)
+	}
+
+	// The change: same path, same content, executable bit added.
+	if err := os.Chmod(script, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, digest2, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v2: %v", err)
+	}
+
+	if digest1 == digest2 {
+		t.Fatal("digest unchanged after chmod +x on an untracked script — a pre-change PASS receipt reads fresh across an executable file (l57-r5 finding 2)")
+	}
+}
+
+// TestTreeState_SymlinkReplacementMovesUntrackedDigest pins the symlink half
+// of the l57-r5 finding 2: replacing an untracked file with a SAME-CONTENT
+// symlink moves the digest. os.ReadFile follows the link, so the content-only
+// digest read the two states as identical; the file TYPE (lstat) and the link
+// target are part of the state the audit judged.
+func TestTreeState_SymlinkReplacementMovesUntrackedDigest(t *testing.T) {
+	root := initContentRepo(t)
+	payload := "payload\n"
+	script := filepath.Join(root, "run.sh")
+	if err := os.WriteFile(script, []byte(payload), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest1, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v1: %v", err)
+	}
+
+	// The replacement: a symlink whose target — OUTSIDE the tree, so the
+	// untracked path set itself is unchanged — carries the SAME bytes. The
+	// only state delta is the file's own type and its link target.
+	target := filepath.Join(t.TempDir(), "payload-source")
+	if err := os.WriteFile(target, []byte(payload), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(script); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, script); err != nil {
+		t.Fatal(err)
+	}
+	_, digest2, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v2: %v", err)
+	}
+
+	if digest1 == digest2 {
+		t.Fatal("digest unchanged after a same-content symlink replacement — a pre-change PASS receipt reads fresh (l57-r5 finding 2)")
+	}
+}
+
 // TestTreeState_UntrackedContentMovesDigest pins the untracked half: changing
 // the CONTENT of an untracked file (its porcelain row unchanged) moves the
 // digest.

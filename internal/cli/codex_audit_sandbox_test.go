@@ -54,6 +54,22 @@ func TestCodexAudit_NoProjectRootStillContainsChild(t *testing.T) {
 	}
 }
 
+// TestCodexAudit_SessionChildCwdMatchesListingRoot (card t1632 sync-audit
+// l57-r5 finding 1): the app-server child must run AT the root the containment
+// listing read. The disable list names the MCP servers configured at that
+// root; a child that inherits the SERVER process's cwd (A) while the request
+// named a different root (B) resolves A's config.toml instead, and a foreign
+// server registered only in A escapes the disable list and reaches the child.
+func TestCodexAudit_SessionChildCwdMatchesListingRoot(t *testing.T) {
+	root := newProbeProject(t, "SPEC-CHILD-CWD-943")
+	sess, _ := withCodexSessionArgs(t, codexSessionScript(realCleanReview))
+
+	_ = callToolCodexAudit(t, map[string]any{"project_root": root})
+	if sess.startDir != root {
+		t.Errorf("session child dir = %q, want the containment listing root %q — a child at another cwd resolves a different config.toml and escapes the disable list (l57-r5 finding 1)", sess.startDir, root)
+	}
+}
+
 // TestCodexReview_SessionSpawnsUnderReadOnlySandbox pins the same policy on
 // the review gate's session path (the Stop hook review leg).
 func TestCodexReview_SessionSpawnsUnderReadOnlySandbox(t *testing.T) {

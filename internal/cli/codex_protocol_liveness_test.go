@@ -171,7 +171,7 @@ func (c *stallingCodexConn) close() error {
 // does not own the transcript, because these conns are stateful.
 type fixedConnSessionRunner struct{ conn codexConn }
 
-func (r fixedConnSessionRunner) start(context.Context, string, []string) (codexConn, error) {
+func (r fixedConnSessionRunner) start(context.Context, string, []string, string) (codexConn, error) {
 	return r.conn, nil
 }
 

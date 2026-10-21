@@ -356,8 +356,8 @@ type recordingSessionRunner struct {
 	conns []codexConn
 }
 
-func (r *recordingSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
-	conn, err := r.inner.start(ctx, binaryPath, args)
+func (r *recordingSessionRunner) start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error) {
+	conn, err := r.inner.start(ctx, binaryPath, args, dir)
 	if err == nil {
 		r.mu.Lock()
 		r.conns = append(r.conns, conn)

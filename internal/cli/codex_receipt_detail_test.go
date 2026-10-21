@@ -97,7 +97,7 @@ func TestCodexConnCloseDoesNotWaitForOrphanedStderr(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the orphaned-grandchild shape needs a POSIX shell")
 	}
-	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo gc=$! >&2; echo ready >&2; read line"})
+	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo gc=$! >&2; echo ready >&2; read line"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -193,7 +193,7 @@ func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
 	// into the parent's pane.
 	t.Setenv(config.EnvOrcaPaneKey, "pane-under-scrub")
 
-	conn, err := realCodexSessionRunner{}.start(withCodexAuditLeg(context.Background()), script, nil)
+	conn, err := realCodexSessionRunner{}.start(withCodexAuditLeg(context.Background()), script, nil, "")
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -221,5 +221,44 @@ func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
 	}
 	if string(pane) != "" {
 		t.Fatalf("the session runner leaked %s=%q into the codex child — codexChildCmd's pane drop was discarded when cmd.Env was replaced (sync-audit r3 F2)", config.EnvOrcaPaneKey, string(pane))
+	}
+}
+
+// TestRealCodexSessionRunnerSpawnsChildAtWorkingDir (card t1632 sync-audit
+// l57-r5 finding 1): the real session runner sets cmd.Dir to the root it was
+// given, so the app-server child resolves the SAME config.toml the containment
+// listing read. Asserted through a real child process (the probe prints its
+// own cwd), so what is judged is the directory the child actually ran at —
+// not the value a field carries.
+func TestRealCodexSessionRunnerSpawnsChildAtWorkingDir(t *testing.T) {
+	dir := t.TempDir()
+	cwdOut := filepath.Join(dir, "cwd.txt")
+	probe := filepath.Join(dir, "probe.sh")
+	body := "#!/bin/sh\npwd > \"" + cwdOut + "\"\n"
+	if err := os.WriteFile(probe, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wantDir := t.TempDir()
+
+	conn, err := realCodexSessionRunner{}.start(context.Background(), probe, nil, wantDir)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if err := conn.close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	got, err := os.ReadFile(cwdOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// macOS hands out /var/... TempDirs while the child's pwd reports the
+	// physical /private/var/... — compare physical paths on BOTH sides.
+	wantReal, err := filepath.EvalSymlinks(wantDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotDir := strings.TrimSpace(string(got)); gotDir != wantReal {
+		t.Fatalf("the codex child ran at %q, want %q — the containment listing and the child's config resolution diverge (l57-r5 finding 1)", gotDir, wantReal)
 	}
 }

@@ -653,6 +653,38 @@ Verification batch (this tree, this run, at the r4 HEAD):
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r5 delta repair round — landing re-audit (card t1632, branch WT-3-2-0-2)
+
+Commit: `fix(t1632): lane-57 sync-audit r5 repairs — child cwd equals listing root, mode-aware untracked digest` (this round). Base: HEAD `71e857caf5` (the r4 repairs commit). Audit receipt: `rcpt-9de5e42dc597603ce97b0cf7` (STATIC review — it ran NO tests; each finding was verified honestly against the code before repair, both proved REAL).
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 [P1] the MCP listing's root and the child process's cwd diverge (internal/cli/mcp_codex.go:970, openCodexSessionResolved) | REAL-FIXED — after r4 the containment LISTING runs at the request's root (B), but the spawned app-server child inherited the SERVER process's cwd (A): MCP servers registered only in A's config.toml escaped the disable list and reached the audit child. Fixed per the auditor: the `codexSessionRunner` seam now carries `dir`; `realCodexSessionRunner` sets `cmd.Dir` to it; `openCodexSessionResolved` passes the SAME `root` the listing used (request `cwd` when named, else `projectDirResolver()` — unchanged r4 anchor, still fail-closed when unresolvable). The r4 pin TestCodexAudit_NoProjectRootStillContainsChild and the r1 pin TestRealCodexSessionRunnerScrubRetainsAuditLegMarker stay green; the ORCA env family stays green. A real-child pin (TestRealCodexSessionRunnerSpawnsChildAtWorkingDir) judges the directory the child actually ran at, not a field value | `go test ./internal/cli -run 'TestCodexAudit_SessionChildCwdMatchesListingRoot' -count=1` | RED→GREEN: `--- FAIL ... session child dir = "", want the containment listing root "/private/var/.../001" — a child at another cwd resolves a different config.toml and escapes the disable list (l57-r5 finding 1)` → `ok internal/cli` |
+| F2 [P2] the untracked-file digest ignores file mode and symlink-ness (internal/auditreceipt/store.go:243, TreeState) | REAL-FIXED — the digest bound path + os.ReadFile(content) only: chmod +x on an untracked script, or a same-content symlink replacement, left the digest unchanged and a pre-change PASS receipt read fresh. Fixed in the SAME untrackedContentPaths/TreeState machinery (no fork, r2 whitespace and -z history preserved): the digest now binds os.Lstat's mode bits (file type + permissions) and, for a symlink, the Readlink target, beside the bytes. Two REDs: chmod +x moves the digest; a same-content symlink replacement (target OUTSIDE the tree, so the untracked path set itself is unchanged) moves the digest | `go test ./internal/auditreceipt -run 'TestTreeState_ChmodMovesUntrackedDigest|TestTreeState_SymlinkReplacementMovesUntrackedDigest' -count=1` | RED→GREEN: `--- FAIL ... digest unchanged after chmod +x on an untracked script — a pre-change PASS receipt reads fresh across an executable file (l57-r5 finding 2)` and `--- FAIL ... digest unchanged after a same-content symlink replacement — a pre-change PASS receipt reads fresh (l57-r5 finding 2)` → `ok internal/auditreceipt` |
+
+E8 RED evidence (each pinning test run against the pre-fix code, all REAL):
+
+- F1 RED (`go test ./internal/cli -run 'TestCodexAudit_SessionChildCwdMatchesListingRoot' -count=1`, exit 1 — seam extended, wiring not yet passing `root`):
+  `--- FAIL: TestCodexAudit_SessionChildCwdMatchesListingRoot (0.17s)` / `codex_audit_sandbox_test.go:69: session child dir = "", want the containment listing root "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexAudit_SessionChildCwdMatchesListingRoot1501530198/001" — a child at another cwd resolves a different config.toml and escapes the disable list (l57-r5 finding 1)`
+- F2 RED-a (`go test ./internal/auditreceipt -run 'TestTreeState_ChmodMovesUntrackedDigest|TestTreeState_SymlinkReplacementMovesUntrackedDigest' -count=1`, exit 1):
+  `--- FAIL: TestTreeState_ChmodMovesUntrackedDigest (0.28s)` / `receipt_integrity_content_test.go:149: digest unchanged after chmod +x on an untracked script — a pre-change PASS receipt reads fresh across an executable file (l57-r5 finding 2)`
+- F2 RED-b (same command, exit 1):
+  `--- FAIL: TestTreeState_SymlinkReplacementMovesUntrackedDigest (0.32s)` / `receipt_integrity_content_test.go:189: digest unchanged after a same-content symlink replacement — a pre-change PASS receipt reads fresh (l57-r5 finding 2)`
+
+Verification batch (this tree, this run, at the r5 HEAD):
+
+- Builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `go test ./internal/cli -run 'TestCodexAudit|TestCodexTask|TestCodexGateContainment' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 82.866s`.
+- `go test ./internal/cli -run 'TestRealCodexSessionRunnerScrubRetainsAuditLegMarker|TestCodexAudit_NoProjectRootStillContainsChild|TestCodexAudit_SessionChildCwdMatchesListingRoot|TestRealCodexSessionRunnerSpawnsChildAtWorkingDir' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 2.493s` (the r1+r4 pins plus the two r5 tests).
+- `go test ./internal/cli -run 'TestCodexChild|OrcaEnv|TestRealCodexConn' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 1.586s` (the ORCA env family — its direct `realCodexSessionRunner.start` call site was a mechanical 4-arg update).
+- `go test ./internal/auditreceipt -count=1` (full) → `ok github.com/modu-ai/moai-adk/internal/auditreceipt 7.376s`.
+- `go vet ./internal/cli ./internal/auditreceipt` → clean (exit 0).
+- `golangci-lint run internal/cli/... internal/auditreceipt/...` → exactly the 1 pre-existing errcheck (`internal/cli/mcp_server_call_log.go:123`), ZERO new.
+- Full-suite note: the repository-wide test verdict is owned by the CI run on the project's integration branch and is PENDING at report time (lane-local targeted selectors only, per the standing batch surface).
+- Push state: nothing pushed (the lane owns push/landing).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true

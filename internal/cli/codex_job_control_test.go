@@ -52,7 +52,7 @@ func newHangingCodexSession(lines []string) *hangingCodexSession {
 	return &hangingCodexSession{lines: lines, block: make(chan struct{})}
 }
 
-func (s *hangingCodexSession) start(context.Context, string, []string) (codexConn, error) {
+func (s *hangingCodexSession) start(context.Context, string, []string, string) (codexConn, error) {
 	return &hangingCodexConn{s: s}, nil
 }
 

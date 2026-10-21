@@ -77,10 +77,12 @@ type fakeCodexSession struct {
 	sent      []string // recorded sent request lines (across the single session)
 	stderr    string   // backend stderr the fake process would have written
 	startArgs []string // the argv the session start received (REQ-MN-024)
+	startDir  string   // the working directory the session start received (l57-r5 finding 1)
 }
 
-func (f *fakeCodexSession) start(_ context.Context, _ string, args []string) (codexConn, error) {
+func (f *fakeCodexSession) start(_ context.Context, _ string, args []string, dir string) (codexConn, error) {
 	f.startArgs = append([]string(nil), args...)
+	f.startDir = dir
 	if f.startErr != nil {
 		return nil, f.startErr
 	}

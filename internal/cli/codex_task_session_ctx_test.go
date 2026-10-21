@@ -45,7 +45,7 @@ type ctxBoundCodexSession struct {
 	onStart func() // optional hook run inside start, after the ctx tie
 }
 
-func (s *ctxBoundCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+func (s *ctxBoundCodexSession) start(ctx context.Context, _ string, _ []string, _ string) (codexConn, error) {
 	c := &ctxBoundCodexConn{s: s, killed: make(chan struct{})}
 	// exec.CommandContext kills the child when ctx ends; readLoop stops too.
 	context.AfterFunc(ctx, c.kill)

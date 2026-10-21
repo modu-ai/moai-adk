@@ -429,7 +429,7 @@ func (b *selfReviewBlockingReviewer) wait(ctx context.Context) bool {
 // what a killed codex process looks like to the driver (stdout closes).
 type selfReviewBlockingCodexSession struct{ *selfReviewBlockingReviewer }
 
-func (s selfReviewBlockingCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+func (s selfReviewBlockingCodexSession) start(ctx context.Context, _ string, _ []string, _ string) (codexConn, error) {
 	return &selfReviewBlockingCodexConn{b: s.selfReviewBlockingReviewer, ctx: ctx}, nil
 }
 

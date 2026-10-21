@@ -577,9 +577,12 @@ func codexConnStderr(conn codexConn) string {
 // codexSessionRunner abstracts spawning the codex app-server subprocess so tests
 // inject a canned line exchange without spawning a process. The production
 // runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
-// concurrently into a buffered line channel.
+// concurrently into a buffered line channel. dir is the working directory the
+// child runs at (l57-r5 finding 1) — the SAME root the REQ-MN-009 containment
+// listing read, so the child resolves the config.toml whose MCP servers the
+// disable list actually names.
 type codexSessionRunner interface {
-	start(ctx context.Context, binaryPath string, args []string) (codexConn, error)
+	start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error)
 }
 
 // codexSession is the session-spawning seam. Tests swap it (with t.Cleanup).
@@ -588,8 +591,14 @@ var codexSession codexSessionRunner = realCodexSessionRunner{}
 // realCodexSessionRunner is the production session runner.
 type realCodexSessionRunner struct{}
 
-func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
+func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error) {
 	cmd := codexChildCmd(ctx, binaryPath, args)
+	// l57-r5 finding 1: the child runs at the SAME root the containment
+	// listing read. The disable list names the MCP servers configured at that
+	// root; a child that inherits this process's cwd instead resolves a
+	// different config.toml, and a foreign server registered only in the
+	// server's own tree escapes the disable list and reaches the child.
+	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("codex stdin pipe: %w", err)
@@ -973,7 +982,7 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 		return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
 	}
 	argv = append(argv, containment...)
-	conn, err := codexSession.start(ctx, binaryPath, argv)
+	conn, err := codexSession.start(ctx, binaryPath, argv, root)
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
 	}

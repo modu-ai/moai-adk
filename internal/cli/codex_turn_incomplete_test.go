@@ -73,7 +73,7 @@ type cancelOnItemSession struct {
 	sent     []string
 }
 
-func (s *cancelOnItemSession) start(context.Context, string, []string) (codexConn, error) {
+func (s *cancelOnItemSession) start(context.Context, string, []string, string) (codexConn, error) {
 	return &cancelOnItemConn{s: s}, nil
 }
 
@@ -153,7 +153,7 @@ type ctxHungCodexSession struct {
 	sent   []string
 }
 
-func (s *ctxHungCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+func (s *ctxHungCodexSession) start(ctx context.Context, _ string, _ []string, _ string) (codexConn, error) {
 	return &ctxHungCodexConn{s: s, ctx: ctx}, nil
 }
 

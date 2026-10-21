@@ -241,12 +241,29 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
 	for _, f := range untrackedContentPaths(treeRoot) {
-		data, rerr := os.ReadFile(filepath.Join(treeRoot, f))
+		full := filepath.Join(treeRoot, f)
+		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
+		// bytes — the file type and permission bits (a chmod +x on an untracked
+		// script is a materially different judged state), and for a symlink the
+		// link TARGET, since ReadFile follows the link and would otherwise bind
+		// only the same content a regular file carried.
+		info, lerr := os.Lstat(full)
+		if lerr != nil {
+			return "", "", lerr
+		}
+		data, rerr := os.ReadFile(full)
 		if rerr != nil {
 			return "", "", rerr
 		}
-		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00", f)
+		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00mode:%d", f, uint32(info.Mode()))
 		_, _ = h.Write(data)
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, lerr := os.Readlink(full)
+			if lerr != nil {
+				return "", "", lerr
+			}
+			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
+		}
 	}
 	return headOut, hex.EncodeToString(h.Sum(nil)), nil
 }
