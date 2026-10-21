@@ -411,3 +411,67 @@ func factoryPathOf(t *testing.T, root string) string {
 	}
 	return path
 }
+
+// The refusal branches of the mutation function: a legacy (pre-F1) row, an
+// invalid card id, and an empty run id — every input the version-fenced body
+// refuses before it touches a row.
+func TestSetCardSpec_RefusesLegacyRow_andInvalidInputs(t *testing.T) {
+	db := mdOpen(t)
+	if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,version,updated_at) VALUES('run-md','leg1','pre-f1-legacy-state',1,'2026-10-21T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "leg1", "SPEC-A-001", 1, mdNow); err == nil {
+		t.Fatal("a legacy (pre-F1 state) row was accepted")
+	} else if !strings.Contains(err.Error(), "pre-F1 state") {
+		t.Fatalf("refusal = %v, want the legacy-state refusal", err)
+	}
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "bad id!", "SPEC-A-001", 1, mdNow); err == nil {
+		t.Fatal("an invalid card id was accepted")
+	}
+	if _, err := db.SetCardSpec(context.Background(), "", "t1", "SPEC-A-001", 1, mdNow); err == nil {
+		t.Fatal("an empty run id was accepted")
+	}
+	// The legacy row is untouched by every refusal above.
+	var state, spec string
+	if err := db.DB.QueryRow(`SELECT state,spec_id FROM cards WHERE card_id='leg1'`).Scan(&state, &spec); err != nil || state != "pre-f1-legacy-state" || spec != "" {
+		t.Fatalf("legacy row moved: (%s, %q) err=%v", state, spec, err)
+	}
+}
+
+// TestLatestCardMetadataNewValue_CorruptPayload — an undecodable payload is
+// external corruption, surfaced with the bounded quote, never dropped.
+func TestLatestCardMetadataNewValue_CorruptPayload(t *testing.T) {
+	db := mdOpen(t)
+	if _, err := db.DB.Exec(`INSERT INTO card_metadata_events(card_id,kind,payload_json,created_at) VALUES('t1','set-spec','{not json','2026-10-21T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := db.LatestCardMetadataNewValue(context.Background(), "t1", "set-spec", "spec_id"); err == nil {
+		t.Fatal("a corrupt payload read as clean")
+	} else if !strings.Contains(err.Error(), "{not json") {
+		t.Fatalf("corrupt-payload error does not quote the value: %v", err)
+	}
+}
+
+// TestRecordCardMetadataEvent_RefusesBareRow — a row without the keys the
+// surface is keyed by is refused at the append, never landed half-keyed.
+func TestRecordCardMetadataEvent_RefusesBareRow(t *testing.T) {
+	db := mdOpen(t)
+	if err := db.RecordCardMetadataEvent(context.Background(), CardMetadataEvent{CardID: "t1", Field: "spec_id"}, mdNow); err == nil {
+		t.Fatal("a row without a kind was accepted")
+	}
+	if err := db.RecordCardMetadataCatchUp(context.Background(), CardMetadataEvent{Kind: "set-spec", Field: "spec_id"}, mdNow); err == nil {
+		t.Fatal("a row without a card id was accepted")
+	}
+	if n := mdEventCount(t, db); n != 0 {
+		t.Fatalf("rows = %d, want 0 after the bare-row refusals", n)
+	}
+}
+
+func mdEventCount(t *testing.T, db *FactoryDB) int {
+	t.Helper()
+	var n int
+	if err := db.DB.QueryRow(`SELECT count(*) FROM card_metadata_events`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
