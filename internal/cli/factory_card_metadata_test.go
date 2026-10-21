@@ -820,6 +820,10 @@ func TestSetSpec_CatchUpAppendRetry(t *testing.T) {
 	}
 	// Both attempts fail: the sentinel fires and nothing was mutated.
 	root, store, cardsBefore := seed(t)
+	// Captured BEFORE the run, so the no-mutation comparison below is real
+	// (sync-audit-2 D-E: a post-run capture compares post-run against
+	// post-run and is vacuous).
+	queueBefore := mdQueueDump(t, store)
 	attempts := 0
 	restore := metadataWriteFault
 	metadataWriteFault = func(stage string) error {
@@ -845,9 +849,8 @@ func TestSetSpec_CatchUpAppendRetry(t *testing.T) {
 	if got := mdCardsDump(t, root); got != cardsBefore {
 		t.Fatalf("catch-up failure re-mutated the record:\n got %s\nwant %s", got, cardsBefore)
 	}
-	queueBefore := mdQueueDump(t, store)
 	if got := mdQueueDump(t, store); got != queueBefore {
-		t.Fatalf("catch-up failure moved the queue")
+		t.Fatalf("catch-up failure moved the queue:\n got %s\nwant %s", got, queueBefore)
 	}
 	if n := mdAuditCount(t, root); n != 0 {
 		t.Fatalf("audit rows = %d after the catch-up sentinel, want 0", n)
@@ -885,6 +888,10 @@ func TestReclassify_CatchUpAppendRetry(t *testing.T) {
 	// converged-state catch-up.
 	root, store := mdClassifiedFixture(t)
 	queueBefore := mdQueueDump(t, store)
+	// The no-mutation assertion pins the CLASSIFICATION record itself — the
+	// field the verb mutates — stamp and reason included; the dump above
+	// renders id/state/spec only and cannot see it (sync-audit-2 D-F).
+	classBefore := *mdClass(t, store, "t1")
 	attempts := 0
 	restore := metadataWriteFault
 	metadataWriteFault = func(stage string) error {
@@ -909,6 +916,9 @@ func TestReclassify_CatchUpAppendRetry(t *testing.T) {
 	}
 	if got := mdQueueDump(t, store); got != queueBefore {
 		t.Fatalf("catch-up failure moved the queue:\n got %s\nwant %s", got, queueBefore)
+	}
+	if got := mdClass(t, store, "t1"); got == nil || *got != classBefore {
+		t.Fatalf("classification mutated by the failed catch-up:\n got %+v\nwant %+v", got, classBefore)
 	}
 	if n := mdAuditCount(t, root); n != 0 {
 		t.Fatalf("audit rows = %d after the catch-up sentinel, want 0", n)
