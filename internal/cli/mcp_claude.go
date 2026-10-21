@@ -107,7 +107,7 @@ func performClaudeAuditWith(ctx context.Context, req claudeAuditRequest, binary 
 	if target == "" {
 		target = codexTargetUncommitted
 	}
-	diff, err := collectReviewDiff(root, target)
+	diff, err := collectReviewDiffCtx(ctx, root, target)
 	if err != nil || strings.TrimSpace(diff) == "" {
 		return claudeInconclusive(claudeErrDiffUnavailable, "Claude audit has no reviewable change", req.Model, req.Effort)
 	}
@@ -322,6 +322,10 @@ func scrubClaudeAuditEnv(environ []string) []string {
 			continue
 		}
 		if _, scrub := claudeAuditScrubKeySet[key]; scrub {
+			continue
+		}
+		// t1869: a claude child must not report into the parent's Orca pane.
+		if isOrcaPaneOwnedEnvKey(key) {
 			continue
 		}
 		out = append(out, entry)

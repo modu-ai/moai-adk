@@ -127,7 +127,7 @@ flowchart TD
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__spec_progress` | SPEC 文档列表 + frontmatter 查询 | manager-spec, manager-docs | `moai spec list` |
+| `mcp__moai__spec_progress` | SPEC 文档列表 + frontmatter 查询 | manager-spec, manager-docs | — |
 | `mcp__moai__spec_audit` | SPEC 生命周期审计（时代分类 + 漂移） | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
 | `mcp__moai__spec_drift` | 现代时代 V3R6 漂移发现 | manager-spec, plan-auditor | `moai spec audit` (drift 视图) |
 
@@ -160,7 +160,7 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | `mcp__moai__claude_audit` | Claude 订阅后端单独审计（`claude -p`，只读隔离，结构化输出） | plan-auditor, sync-auditor；在 GPT/GLM 会话中由 `audit_multi` 自动调用 | — |
 | `mcp__moai__codex_audit` | codex 后端单一审计（原生/对抗式） | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) 后端单一审计 | plan-auditor, sync-auditor | — |
-| `mcp__moai__audit_cache` | plan-audit PASS 缓存（compute_hash / lookup / store，进程间共享） | sync-auditor | `moai audit cache` |
+| `mcp__moai__audit_cache` | plan-audit PASS 缓存（compute_hash / lookup / store，进程间共享） | sync-auditor | — |
 
 单一后端审计模式由项目的 `audit_model` 设置决定：`codex+glm`（默认值，通过 `audit_multi` 收敛）| `glm` | `codex` | `none`（Claude 独自，无后端调用）。所有后端都是 fail-open——不可用的后端返回 `inconclusive`，而非 Go error。
 
@@ -179,11 +179,11 @@ GLM 没有文件系统，所以请求中携带的是排除了运行时管理路�
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | `moai codex task` |
-| `mcp__moai__codex_setup` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | — |
+| `mcp__moai__codex_setup` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | — |
+| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | — |
 
 codex 委托工具族连线到 super-advisor 和 manager-develop。按需高推理咨询智能体 super-advisor 是后台跨模型委托的自然消费者：用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。manager-develop 持有除 `codex_setup` 之外的其余工具，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `codex_task` 委托范围有限的机械性子任务；被委托的 codex 轮次保持只读。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
 

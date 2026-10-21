@@ -35,10 +35,11 @@ import (
 // record — the primary checkout, shared by every linked worktree.
 //
 // CLAUDE_PROJECT_DIR is consulted FIRST, following this package's B7
-// convention. It also happens to be exactly right here: Claude Code sets it to
-// the PROJECT root even for a session working inside a worktree, which is the
-// measured behaviour SPEC-MCP-WORKTREE-ROOT-001 had to work around and is the
-// property this lock wants.
+// convention. Claude Code sets it to the PROJECT root even for a session working
+// inside a worktree (the measured behaviour SPEC-MCP-WORKTREE-ROOT-001 had to
+// work around), but nothing guarantees that, so the value is not returned as
+// written: factory.IntegrationCommonRoot resolves it to the repository common root, and
+// a variable naming a linked worktree answers the primary checkout (card t1680).
 //
 // The git fallback covers a plain shell with no Claude Code environment:
 // `git rev-parse --git-common-dir` answers `<primary>/.git` from inside a
@@ -48,7 +49,7 @@ import (
 // local answer, and the guard fails open on the same uncertainty.
 func integrationLockRoot() string {
 	if dir := strings.TrimSpace(os.Getenv("CLAUDE_PROJECT_DIR")); dir != "" {
-		return canonicalTreeSpelling(dir)
+		return factory.IntegrationCommonRoot(dir)
 	}
 	out, err := func() (string, error) {
 		// The root-resolution child runs with the repo-scoping environment
@@ -76,65 +77,6 @@ func integrationLockRoot() string {
 	return resolveProjectDir()
 }
 
-// integrationLockRootFor resolves the integration lock root for a NAMED tree
-// through the SAME git-common-dir interpretation the CLI verb applies
-// (SPEC-MCP-NEUTRALITY-001 REQ-MN-004, design §D8): the caller's project_root
-// becomes the lock root via git's own top-level spelling, so the MCP verb and
-// the CLI verb cannot disagree about which tree the lock belongs to. An empty
-// dir keeps the environment-driven resolution.
-func integrationLockRootFor(dir string) string {
-	if strings.TrimSpace(dir) == "" {
-		return integrationLockRoot()
-	}
-	return canonicalTreeSpelling(dir)
-}
-
-// canonicalTreeSpelling returns git's own spelling of dir's top level, and dir
-// verbatim whenever git cannot answer for it (card t766).
-//
-// The spelling matters because everything downstream JOINS onto this string —
-// the preserved copy's directory, and the `preserved_path` recorded beside it
-// — while the sibling fields `source_path` and `worktree` come from
-// `git rev-parse --show-toplevel`, which answers the on-disk spelling. One row
-// could therefore name a tree two different ways, and the real ledger does:
-// three rows from 2026-09-08 carry a `preserved_path` under `/Users/goos/moai/`
-// against a `source_path` under `/Users/goos/MoAI/`. On a case-insensitive
-// volume that is a record defect; on a case-sensitive one it is a second
-// directory tree, and a preserved copy filed where nobody will look for it.
-//
-// Two properties bound the repair, and neither is incidental:
-//
-//   - git is the source, not `filepath.EvalSymlinks`. EvalSymlinks does NOT
-//     correct case on macOS — it resolves links and returns whatever spelling
-//     it was handed — so it cannot see this defect at all.
-//
-//   - The answer is accepted only when it names the SAME DIRECTORY, compared
-//     by identity (os.SameFile) rather than by string. `--show-toplevel` walks
-//     UP: handed a plain subdirectory of some repository, it answers that
-//     repository's root, and relocating the lock root there would be a
-//     different and much larger change than fixing a spelling. A path that is
-//     not a repository, or is not its top level, keeps behaving exactly as it
-//     does today.
-func canonicalTreeSpelling(dir string) string {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = dir
-	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
-	out, err := cmd.Output()
-	if err != nil {
-		return dir
-	}
-	top := strings.TrimSpace(string(out))
-	if top == "" || top == dir {
-		return dir
-	}
-	given, givenErr := os.Stat(dir)
-	found, foundErr := os.Stat(top)
-	if givenErr != nil || foundErr != nil || !os.SameFile(given, found) {
-		return dir
-	}
-	return top
-}
-
 // integrationSessionID resolves the caller's own session id: the --session
 // flag wins, then the per-process env var Claude Code stamps into every
 // subprocess, then the side-channel file the SessionStart hook writes.
@@ -155,11 +97,26 @@ func integrationSessionID(explicit string) string {
 	if id := strings.TrimSpace(os.Getenv(config.EnvClaudeCodeSessionID)); id != "" {
 		return id
 	}
-	data, err := os.ReadFile(filepath.Join(integrationLockRoot(), session.CurrentSideChannelFile))
+	data, err := os.ReadFile(filepath.Join(integrationSidecarRoot(), session.CurrentSideChannelFile))
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(string(data))
+}
+
+// integrationSidecarRoot is the directory whose side-channel file integrationSessionID
+// reads: the one the SessionStart hook WROTE it to. The hook writes at the project
+// directory exactly as Claude Code names it (input.ProjectDir), so a CLAUDE_PROJECT_DIR
+// naming a linked worktree is read there as given — NOT at the repository common root that
+// integrationLockRoot answers for the lock record, which would adopt whichever session
+// last started at the primary checkout (card t1680, sync-audit iter3 R3-1). With the
+// variable unset there is no written-at location to follow, so the git-resolved
+// integrationLockRoot fallback stands as before.
+func integrationSidecarRoot() string {
+	if dir := strings.TrimSpace(os.Getenv("CLAUDE_PROJECT_DIR")); dir != "" {
+		return dir
+	}
+	return integrationLockRoot()
 }
 
 // currentBranch reports the checked-out branch of the caller's tree, for the

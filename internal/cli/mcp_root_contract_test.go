@@ -114,13 +114,13 @@ func TestMCPRootConfinement(t *testing.T) {
 // isError true and the pinned text — argument validation, deliberately
 // outside the five policy codes.
 func TestMCPRootRequiredForMutating(t *testing.T) {
-	res := mcpCallRaw(t, handleFactoryMsgSend, map[string]any{
-		"run_id": "run-x", "to_slot": "leader", "kind": "status_request", "idempotency_key": "k1", "body": "b",
+	res := mcpCallRaw(t, handleFactoryStage, map[string]any{
+		"card": "t1", "state": "planning",
 	})
 	if !res.IsError {
 		t.Fatalf("mutating family tool without project_root was accepted: %s", mcpTextOf(res))
 	}
-	want := "factory_msg_send: project_root is required for mutating calls"
+	want := "factory_stage: project_root is required — pass the tree to act on (your git rev-parse --show-toplevel)"
 	if got := mcpTextOf(res); got != want {
 		t.Errorf("wire text = %q, want %q", got, want)
 	}

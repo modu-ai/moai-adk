@@ -56,6 +56,7 @@ var trivialCommands = map[string]bool{
 	"cg":         true, // retired token: never initialize launch dependencies
 	"glm":        true, // launcher: exec's claude, discards the graph
 	"jev":        true, // deps-free: reads flags and the jevcred writer only (SPEC-GLM-JEV-KEY-001)
+	"paths":      true, // deps-free and read-only: flags plus the project-state resolvers (SPEC-MOAI-DB-PATHS-001)
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -287,4 +288,9 @@ func init() {
 	// half; these two manual verbs are the active half (REQ-IBX-010: no other
 	// scheduling or opportunistic surface exists).
 	rootCmd.AddCommand(newInboxCmd())
+
+	// SPEC-MOAI-DB-PATHS-001: register `moai paths`, the read-only report of the
+	// confirmed project key and database paths. It is the source of truth every
+	// instruction surface points at instead of a guessed path.
+	rootCmd.AddCommand(newPathsCmd())
 }

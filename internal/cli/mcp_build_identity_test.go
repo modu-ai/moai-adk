@@ -680,7 +680,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// additions above this doc comment moved it 288→301. Same doc mention
 		// of the primitive, no added line is a comparison — same count, only
 		// the coordinate moved.
-		"integration.go:301": true,
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// absorbed t1576 integration-branch resolution landed above this
+		// comparison, moving it 301→317. Same comparison, same count — only
+		// the coordinate moved.
+		"integration.go:317": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -693,7 +697,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured at card t1632 (merge of main c3aa6b057): the card's review
 		// material additions above this comparison moved it 175→210. Same single
 		// review-diff base measurement, same count — only the coordinate moved.
-		"mcp_review_material.go:210": true,
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// restored t1426 collectReviewDiffAt (17 lines) above this comparison
+		// moved it 210→227. Same single review-diff base measurement, same
+		// count — only the coordinate moved.
+		"mcp_review_material.go:227": true,
 		"todo_landed.go:231":         true,
 		// Re-measured at card t1502: M4's card-close wiring added three lines
 		// above this comparison, moving it from :349. Same single ancestry

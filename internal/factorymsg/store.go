@@ -268,6 +268,17 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 }
 
 func openWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	return openWithContextObserved(parent, projectRoot, runID, deadline, nil)
+}
+
+// openWithContextObserved is openWithContext plus a test seam: observeBusy, when
+// non-nil, receives the busy_timeout (milliseconds) chosen from the budget left
+// after path resolution, before SQLite is opened. It lets a test pin "the busy
+// wait is sized from the remaining budget" as state instead of as wall-clock
+// elapsed time, which under load measures scheduler overshoot (card t1807).
+//
+// @MX:NOTE: [AUTO] observeBusy is a test seam only; production passes nil.
+func openWithContextObserved(parent context.Context, projectRoot, runID string, deadline time.Duration, observeBusy func(busyMillis int64)) (*Store, error) {
 	if err := parent.Err(); err != nil {
 		return nil, err
 	}
@@ -309,6 +320,9 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 	busyMillis := deadline.Milliseconds() / 2
 	if busyMillis < 1 {
 		busyMillis = 1
+	}
+	if observeBusy != nil {
+		observeBusy(busyMillis)
 	}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")

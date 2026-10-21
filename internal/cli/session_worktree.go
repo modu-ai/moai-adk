@@ -1011,9 +1011,9 @@ func worktreeWriterRefusal(tree string) error {
 // -w <tree>` when the tree already exists. It never writes a lock: Claude
 // Code writes its own at EnterWorktree, and a lock written here would anchor
 // the tree to a launcher that is about to be replaced.
-func ccWorktreeWriterPrecheck(args []string) error {
-	value, ok := worktreeFlagValue(args)
-	if !ok || value == "" {
+func ccWorktreeWriterPrecheck(read worktreeRead) error {
+	value := read.Value
+	if !read.Has || value == "" {
 		return nil // bare -w creates a fresh tree; nothing to share yet
 	}
 	tree := value

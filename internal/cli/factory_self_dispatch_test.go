@@ -154,31 +154,37 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		sdAssertLeasedOutput(t, out, "t1", homestate.CardRun, "t1")
 	})
 
-	t.Run("unowned picked wins over older queued", func(t *testing.T) {
+	// SPEC-CARD-ELIGIBLE-PULL-001 update policy (plan §D): this subtest
+	// pinned the ungated (b) lease of an unowned picked card. Flipped to the
+	// dormancy contract — with self_dispatch OFF (the default), arm (b) is
+	// dormant for unowned cards, so the queued sibling is promoted by arm (c)
+	// instead and the picked row is untouched.
+	t.Run("unowned picked is dormant by default; queued sibling promoted instead", func(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+		before := fcCard(t, root, "t2")
 		sdLaneEnv(t, "lane-1", "")
 		t.Chdir(root)
 		out, _, err := runFactory(t, "next", "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v", err)
 		}
-		if c := fcCard(t, root, "t2"); c.State != homestate.CardLeased {
-			t.Fatalf("t2 = %s, want leased", c.State)
+		if c := fcCard(t, root, "t1"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+			t.Fatalf("t1 = %s holder=%q, want leased/lane-1 through arm (c)", c.State, c.LeaseHolder)
 		}
-		if fcHasCard(t, root, "t1") {
-			t.Fatalf("t1 gained a record row although a picked card existed")
+		if after := fcCard(t, root, "t2"); after.State != before.State || after.Version != before.Version {
+			t.Fatalf("dormant arm (b) left a trace on t2: %s v%d → %s v%d", before.State, before.Version, after.State, after.Version)
 		}
 		rec, err := store.LoadPure()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rec.Items[0].State != factory.BacklogStateQueued {
-			t.Errorf("queued card promoted although a picked card existed: %s", rec.Items[0].State)
+		if rec.Items[1].State != factory.BacklogStatePicked {
+			t.Errorf("t2 queue state = %s, want picked (no pick change)", rec.Items[1].State)
 		}
-		sdAssertLeasedOutput(t, out, "t2", "-", "t2")
+		sdAssertLeasedOutput(t, out, "t1", "-", "t1")
 	})
 
 	t.Run("card assigned to another lane is never taken; exit 3", func(t *testing.T) {
@@ -233,7 +239,13 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		}
 	})
 
-	t.Run("two lanes concurrently: exactly one leases the picked card", func(t *testing.T) {
+	// SPEC-CARD-ELIGIBLE-PULL-001 update policy (plan §D): this subtest
+	// pinned the ungated concurrent (b) lease of an unowned picked card.
+	// Flipped to the dormancy contract — with self_dispatch OFF, neither
+	// lane takes the picked card; exactly one lane leases the queued
+	// sibling through arm (c), which is where the exactly-once contention
+	// property now lives.
+	t.Run("two lanes concurrently: dormant picked card untouched, exactly one takes the queued sibling", func(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStatePicked)
 		sdRegisterLane(t, root, "lane-1")
@@ -254,9 +266,12 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 			}(lane)
 		}
 		wg.Wait()
-		c := fcCard(t, root, "t2")
-		if c.State != homestate.CardLeased || (c.LeaseHolder != "lane-1" && c.LeaseHolder != "lane-2") {
-			t.Fatalf("t2 = %s holder=%q, want leased by exactly one lane", c.State, c.LeaseHolder)
+		if c := fcCard(t, root, "t2"); c.State != homestate.CardPicked || c.LeaseHolder != "" {
+			t.Fatalf("t2 = %s holder=%q, want still picked and unleased — arm (b) is dormant", c.State, c.LeaseHolder)
+		}
+		c1 := fcCard(t, root, "t1")
+		if c1.State != homestate.CardLeased || (c1.LeaseHolder != "lane-1" && c1.LeaseHolder != "lane-2") {
+			t.Fatalf("t1 = %s holder=%q, want leased by exactly one lane through arm (c)", c1.State, c1.LeaseHolder)
 		}
 	})
 }

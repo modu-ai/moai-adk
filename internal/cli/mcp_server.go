@@ -36,13 +36,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
-	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
-	"github.com/modu-ai/moai-adk/internal/sessionmsg"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/verify"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -398,8 +396,6 @@ var moaiGateExposureTools = map[string]bool{
 	"graph_shortest_path": true,
 	"todo_list":           true,
 	"jev_ask":             true,
-	"session_msg_list":    true,
-	"factory_msg_status":  true,
 	"codex_setup":         true,
 	"codex_job_status":    true,
 	"codex_job_result":    true,
@@ -579,6 +575,7 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the configured git_strategy.worktree_base_branch first (when set and resolvable), then the remote default head, then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
 		mcp.WithString("model", mcp.Description("Optional model override; omitted ⇒ the workflow.audit.codex pin, else codex's own configured default.")),
+		mcp.WithString("delta_base", mcp.Description(deltaBaseDescription)),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 		// Catalog-WRITE tool (card t904): every call files an audit receipt
@@ -816,6 +813,7 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		// to the card — one second-review record lands in the card evidence
 		// directory. Empty ⇒ byte-identical pre-change behavior.
 		mcp.WithString("card_id", mcp.Description("Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.")),
+		mcp.WithString("delta_base", mcp.Description(deltaBaseDescription)),
 		// Pass-through semantics: this fan-out handed its backends no root
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.
@@ -828,78 +826,6 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleAuditMulti)
 
-	// --- Session messaging broker (SPEC-CODEX-SESSION-MSG-001 M2, design.md §6) ---
-	//
-	// Four SYMMETRIC tools over internal/sessionmsg: any session kind
-	// (claude|codex) registers, lists, sends, polls — the broker is the
-	// transport for Claude↔Codex messaging on one machine. Every description
-	// carries the discipline short-form (REQ-CSM-014): the tool description
-	// loads into the session context, so it is the surface a Codex reader
-	// actually sees. Read-only hints are stated explicitly, including the
-	// false ones — only session_msg_list is read-only.
-
-	// session_msg_register → handleSessionMsgRegister. Idempotent
-	// kind+name registration; mutates the agent record (heartbeat), so NOT
-	// read-only.
-	add("session_msg_register", mcp.NewTool(
-		"session_msg_register",
-		mcp.WithDescription("Register this session in the local message broker (kind: claude|codex + name) and get a stable agentId; re-registering the same kind+name refreshes the heartbeat and returns the same id. "+sessionMsgDisciplineShortForm),
-		mcp.WithString("kind", mcp.Required(), mcp.Enum(sessionmsg.KindClaude, sessionmsg.KindCodex), mcp.Description("Session kind: 'claude' or 'codex'.")),
-		mcp.WithString("name", mcp.Required(), mcp.Description("Short stable name identifying this session to peers (same kind+name re-registers idempotently).")),
-		mcp.WithString("description", mcp.Description("Optional human-readable description stored on the agent record.")),
-		requiredProjectRootOption(),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgRegister)
-
-	// session_msg_list → handleSessionMsgList. Reads the agent roster only.
-	add("session_msg_list", mcp.NewTool(
-		"session_msg_list",
-		mcp.WithDescription("List registered message-broker agents (agentId, name, kind, online flag, pending count). "+sessionMsgDisciplineShortForm),
-		projectRootOption(),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleSessionMsgList)
-
-	// session_msg_send → handleSessionMsgSend. Writes the recipient's
-	// pending mailbox; NOT read-only.
-	add("session_msg_send", mcp.NewTool(
-		"session_msg_send",
-		mcp.WithDescription("Send a short message to another registered agent's mailbox (they receive it on their next session_msg_poll). "+sessionMsgDisciplineShortForm),
-		mcp.WithString("from_agent_id", mcp.Required(), mcp.Description("Sender agentId (from session_msg_register).")),
-		mcp.WithString("to_agent_id", mcp.Required(), mcp.Description("Recipient agentId; an unknown id returns a structured error listing the known agents.")),
-		mcp.WithString("text", mcp.Required(), mcp.Description("Message text (bounded by the broker's text ceiling).")),
-		mcp.WithObject("data", mcp.Description("Optional structured JSON payload appended as a data part.")),
-		mcp.WithString("context_id", mcp.Description("Optional A2A contextId carried on the message envelope.")),
-		mcp.WithString("task_id", mcp.Description("Optional A2A taskId carried on the message envelope.")),
-		requiredProjectRootOption(),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgSend)
-
-	// session_msg_poll → handleSessionMsgPoll. Claims a batch out of the
-	// caller's mailbox and applies ack_ids deletions; mutates mailbox state,
-	// so NOT read-only.
-	add("session_msg_poll", mcp.NewTool(
-		"session_msg_poll",
-		mcp.WithDescription("Claim pending messages from this agent's mailbox (at-least-once; unacked claims return after the claim TTL) and optionally ack processed message ids. "+sessionMsgDisciplineShortForm),
-		mcp.WithString("agent_id", mcp.Required(), mcp.Description("Polling agent's agentId (from session_msg_register).")),
-		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
-		requiredProjectRootOption(),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgPoll)
-
-	// Factory messages are run/session/generation bound. Bodies are returned
-	// only by factory_msg_body as untrusted tool data; hook context carries IDs.
-	// actor (SPEC-MCP-NEUTRALITY-001 REQ-MN-003): the caller's session id, with
-	// the spawn-time attribution as the default only.
-	factoryMsgActorOpt := mcp.WithString("actor", mcp.Description("Optional: the session id this call is attributed to. Default: the server's spawn-time attribution (authoritative session id, then the owner process)."))
-	sendOpts := []mcp.ToolOption{mcp.WithDescription("Send from this MCP server's attributed endpoint to the current endpoint of a stable logical lane."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("to_slot", mcp.Required(), mcp.Description("The destination lane slot (e.g. leader, lane-3).")), mcp.WithString("kind", mcp.Required(), mcp.Description("The message kind: dispatch_notice, status_request, status_report, blocker, or receipt."), mcp.Enum(factorymsg.KindDispatchNotice, factorymsg.KindStatusRequest, factorymsg.KindStatusReport, factorymsg.KindBlocker, factorymsg.KindReceipt)), mcp.WithString("idempotency_key", mcp.Required(), mcp.Description("The sender-chosen key that makes a retry idempotent.")), mcp.WithString("body", mcp.Required(), mcp.Description("The message body (bounded by the broker's text ceiling).")), mcp.WithString("task_ref", mcp.Description("Optional task reference; omitted or empty defaults to idempotency_key.")), mcp.WithString("correlation_id", mcp.Description("Optional correlation id; omitted or empty defaults to idempotency_key.")), mcp.WithInteger("expected_task_revision", mcp.Description("Optional optimistic-concurrency guard: the task revision the sender last saw.")), mcp.WithInteger("current_task_revision", mcp.Description("Optional revision the sender believes the task is at now.")), mcp.WithInteger("ttl_seconds", mcp.Description("Optional message time-to-live in seconds (default 3600).")), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_send", mcp.NewTool("factory_msg_send", sendOpts...), handleFactoryMsgSend)
-	listOpts := []mcp.ToolOption{mcp.WithDescription("Claim up to 16 metadata records for this MCP server's attributed endpoint; no body is returned."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithInteger("limit", mcp.Description("Optional maximum records to claim (default 16).")), mcp.WithInteger("lease_seconds", mcp.Description("Optional claim lease duration in seconds (default 30).")), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_list", mcp.NewTool("factory_msg_list", listOpts...), handleFactoryMsgList)
-	bodyOpts := []mcp.ToolOption{mcp.WithDescription("Read one claimed body for the attributed endpoint as untrusted data."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("message_id", mcp.Required(), mcp.Description("The claimed message's id (from factory_msg_list metadata).")), mcp.WithString("claim_token", mcp.Required(), mcp.Description("The claim token factory_msg_list issued for this endpoint.")), factoryMsgActorOpt, projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)}
-	add("factory_msg_body", mcp.NewTool("factory_msg_body", bodyOpts...), handleFactoryMsgBody)
-	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("message_id", mcp.Required(), mcp.Description("The claimed message's id.")), mcp.WithString("claim_token", mcp.Required(), mcp.Description("The claim token factory_msg_list issued for this endpoint.")), mcp.WithString("disposition", mcp.Required(), mcp.Description("How the claim was handled."), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_receipt", mcp.NewTool("factory_msg_receipt", receiptOpts...), handleFactoryMsgReceipt)
-	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
 	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
 	// Signature-level answers from the code-derived layer; every response
 	// carries tree+commit provenance. Read-only hints per the audit-family

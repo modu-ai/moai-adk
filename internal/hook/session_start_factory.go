@@ -121,7 +121,7 @@ func factoryLaneRuleForSource(source, lang string) string {
 
 // factoryLaneRuleForSourceInDir is factoryLaneRuleForSource with the session
 // directory the card id may be derived from (card t1776 audit round-12: a
-// gpt lane standing in its card worktree without MOAI_KANBAN_CARD stamped
+// gpt lane standing in its card worktree without the card env (config.EnvFactoryCard) stamped
 // still carries a card — resolving it from the path keeps such a session on
 // the owned-card rule instead of misdirecting it at the parent-checkout
 // queue verb). dir may be empty; an empty dir resolves env-only.
@@ -178,7 +178,7 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 		// now; the operator-measured session burned 72% of its context on
 		// exactly that reading). The owned-card rule carries the precedence
 		// note so the two texts resolve instead of contradicting.
-		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID) +
+		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID, config.EnvFactoryCard) +
 			"\n\n" + codexLanePrecedenceNote
 	default:
 		return ""

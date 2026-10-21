@@ -104,8 +104,8 @@ func fcPlace(t *testing.T, root string, rows ...homestate.Card) {
 		if c.UpdatedAt == "" {
 			c.UpdatedAt = "2026-09-26T00:00:00Z"
 		}
-		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt, c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume, c.MergeSHA, c.WorktreePath, c.EvidenceSHA, c.HintAfter); err != nil {
+		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after,spec_id,bundle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt, c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume, c.MergeSHA, c.WorktreePath, c.EvidenceSHA, c.HintAfter, c.SpecID, c.BundleID); err != nil {
 			t.Fatalf("place %s: %v", c.CardID, err)
 		}
 	}

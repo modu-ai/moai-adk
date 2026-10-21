@@ -222,8 +222,16 @@ func dropDotSegments(rest string) string {
 
 // zoneIsAncestorOrSelf reports whether ancestor is child itself or one of child's
 // ancestors. The filesystem root contains every absolute path, so its trailing slash
-// is trimmed before the separator is appended.
+// is trimmed before the separator is appended. On Windows a volume-less root
+// ("/", which zoneResolve returns as `\`) names the root of a drive, while the
+// paths it must contain resolve to drive-lettered text ("c:/users/..."); the
+// volume-less root therefore contains a drive-lettered child too (card t1893) —
+// it cannot tell which drive it names, so it reads as the root of any of them,
+// the fail-closed direction.
 func zoneIsAncestorOrSelf(ancestor, child string) bool {
+	if ancestor == "/" && zoneIsAbs(child) {
+		return true
+	}
 	return ancestor == child || strings.HasPrefix(child, strings.TrimSuffix(ancestor, "/")+"/")
 }
 

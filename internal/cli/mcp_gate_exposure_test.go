@@ -26,7 +26,7 @@ var moaiGateExposureEnumerated = []string{
 	"spec_progress", "spec_audit", "spec_drift", "verify_trend",
 	"session_list", "audit_cache", "goal_status",
 	"graph_file_api", "graph_find_code", "graph_trace_calls", "graph_shortest_path",
-	"todo_list", "jev_ask", "session_msg_list", "factory_msg_status",
+	"todo_list", "jev_ask",
 	"codex_setup", "codex_job_status", "codex_job_result",
 	"glm_job_status", "glm_job_result",
 }
@@ -87,12 +87,18 @@ func TestMCPGateExposure_ServedSubsetEqualsEnumeration(t *testing.T) {
 // read ops stay served.
 func TestMCPGateExposure_AuditCacheStoreRefused(t *testing.T) {
 	c := gateExposureClient(t)
+	// The store op validates project_root (M2 root contract) BEFORE the gate
+	// check fires, so the refusal probe needs a root that passes validation —
+	// this server's own repository — and the pin asserts the GATE exclusion
+	// text, not the root text.
+	root := thisRepoRoot(t)
 	res, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{
 		Name: "audit_cache",
 		Arguments: map[string]any{
-			"op":      "store",
-			"spec_id": "SPEC-GATE-001",
-			"hash":    "abc",
+			"op":           "store",
+			"spec_id":      "SPEC-GATE-001",
+			"hash":         "abc",
+			"project_root": root,
 		},
 	}})
 	if err != nil {
@@ -243,8 +249,6 @@ func TestACMN003_GateCallSuccessRate(t *testing.T) {
 		"graph_shortest_path": {"from": "Run", "to": "Finish", "project_root": root},
 		"todo_list":           {"project_root": root},
 		"jev_ask":             {"project_root": root},
-		"session_msg_list":    {"project_root": root},
-		"factory_msg_status":  {"run_id": "gate-measure-run", "project_root": root},
 		"codex_job_status":    {"job_id": codexRec.ID, "project_root": root},
 		"codex_job_result":    {"job_id": codexRec.ID, "project_root": root},
 		"glm_job_status":      {"job_id": glmRec.ID, "project_root": root},

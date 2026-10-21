@@ -46,6 +46,19 @@ const (
 	// leg's own review.
 	EnvCodexAuditLeg = "MOAI_CODEX_AUDIT_LEG"
 
+	// Orca pane-ownership variables (t1869). Orca injects these into the shell of
+	// the pane it owns; its agent hook reads them to report state into that pane.
+	// A codex review/audit/task child that inherits them reports into the parent's
+	// pane, so the review path removes exactly these keys (never the whole ORCA_
+	// namespace: ORCA_APP_VERSION and similar are not pane-owned).
+	EnvOrcaPaneKey         = "ORCA_PANE_KEY"
+	EnvOrcaTabID           = "ORCA_TAB_ID"
+	EnvOrcaWorktreeID      = "ORCA_WORKTREE_ID"
+	EnvOrcaAgentLaunchTok  = "ORCA_AGENT_LAUNCH_TOKEN"
+	EnvOrcaAgentPane       = "ORCA_AGENT_PANE"
+	EnvOrcaTerminalHandle  = "ORCA_TERMINAL_HANDLE"
+	EnvOrcaAgentHookPrefix = "ORCA_AGENT_HOOK_"
+
 	// EnvDevelopmentMode overrides the development methodology (ddd or tdd).
 	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
 
