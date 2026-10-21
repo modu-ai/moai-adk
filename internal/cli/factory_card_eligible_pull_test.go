@@ -553,3 +553,66 @@ func anyContains(set map[string]bool, sub string) bool {
 	}
 	return false
 }
+
+// AC-CEP family, PR #1859 review follow-ups (card t1914): the record row's
+// spec id counts toward condition 2 (P2-a), another lane's bundle member is a
+// QUIET skip before the gate rather than a predecessor-unmerged refusal
+// (P2-b), and the wait loop's PR peek shares the self-dispatch gate so a
+// dormant bare path stops querying (P1).
+func TestFactoryEligiblePullRecordSpecAndBundle(t *testing.T) {
+	t.Run("record spec id passes condition 2 with an empty queue hint (P2-a)", func(t *testing.T) {
+		root, store := fcFixture(t)
+		cepSelfDispatchYAML(t, root, true)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		// factory assign --spec writes the record row only: the queue hint
+		// stays empty and the record's spec id is the one carrier.
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, SpecID: "SPEC-ASSIGN-001"})
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+		out, _, err := runFactory(t, "next", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("next: %v", err)
+		}
+		if c := fcCard(t, root, "t1"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+			t.Fatalf("t1 = %s holder=%q, want leased/lane-1 — the record's spec id must satisfy condition 2", c.State, c.LeaseHolder)
+		}
+		cepAssertNoRefusal(t, "record spec pass", out)
+	})
+
+	t.Run("another lane's bundle member is a quiet skip, not predecessor-unmerged (P2-b)", func(t *testing.T) {
+		root, store := fcFixture(t)
+		cepSelfDispatchYAML(t, root, true)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		sdRegisterLane(t, root, "lane-2")
+		// The candidate carries an unmerged after-hint — under the old
+		// depsMet=!selectionSkips(c) wiring the bundle ownership and the
+		// predecessor wait collapsed into one refusal printed as
+		// predecessor-unmerged. The bundle skip must fire BEFORE the gate
+		// and stay silent: the predecessor line would send an operator
+		// hunting a merge wait that is not the reason.
+		fcPlace(t, root,
+			homestate.Card{CardID: "t1", State: homestate.CardPicked, SpecID: "SPEC-BUNDLE-001", BundleID: "b1", HintAfter: "t0"},
+			homestate.Card{CardID: "t9", State: homestate.CardPicked, OwnerLabel: "lane-2", BundleID: "b1"},
+		)
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+		out := cepNoCard(t, root)
+		cepAssertNoRefusal(t, "bundle quiet skip", out)
+	})
+
+	t.Run("MayLease answers false for unowned picked when the flag is OFF (P1)", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+		t.Chdir(root)
+		if factoryNextMayLease(t.Context(), root, fcRun, "lane-1", "", false) {
+			t.Fatal("MayLease = true with the gate OFF and only unowned picked cards — the wait loop would run its full gh pr list budget against a selection that can only answer no-card")
+		}
+	})
+}

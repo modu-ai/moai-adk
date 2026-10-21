@@ -1022,11 +1022,26 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if skip(c) {
 			continue
 		}
+		// Another lane's bundle member is a quiet skip BEFORE the gate (PR
+		// #1859 review P2-b): feeding bundle ownership into depsMet
+		// misattributed the refusal as predecessor-unmerged and sent an
+		// operator hunting a merge wait that does not exist. Bundle
+		// ownership says "not this lane's candidate"; only the
+		// predecessor/hub predicates say "not leasable yet".
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				continue
+			}
+		}
 		if !elig.active() {
 			continue
 		}
 		it, inQueue := queueItemIn(queueRec, c.CardID)
-		if r := elig.disqualify(c.CardID, it, inQueue, !selectionSkips(c), modeEligible(c.CardID)); r != nil {
+		depsMet := c.HintAfter == "" || mergedLocal[c.HintAfter]
+		if _, wait := hubWaitUnmerged(c.CardID); wait {
+			depsMet = false
+		}
+		if r := elig.disqualify(c.CardID, it, inQueue, c.SpecID, depsMet, modeEligible(c.CardID)); r != nil {
 			elig.collect(*r)
 			continue
 		}
@@ -1057,7 +1072,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		// behind it. Skipped here, the card is neither recorded nor
 		// claimed, and selection reaches the ready cards.
 		_, wait := hubWaitUnmerged(it.ID)
-		if r := elig.disqualify(it.ID, it, true, !wait, modeEligible(it.ID)); r != nil {
+		if r := elig.disqualify(it.ID, it, true, "", !wait, modeEligible(it.ID)); r != nil {
 			elig.collect(*r)
 			continue
 		}
@@ -1386,12 +1401,13 @@ func (e *factoryEligibility) active() bool { return e != nil && e.enabled }
 
 // disqualify evaluates one unowned candidate against the five-condition
 // predicate (REQ-CEP-003) in the fixed order 1→5 and returns the FIRST
-// disqualifier, nil when the candidate passes. depsMet and slotFree carry
-// the caller's existing predicates (selectionSkips / modeEligible for a
-// recorded row, hubWaitUnmerged / modeEligible for a rowless item); the
+// disqualifier, nil when the candidate passes. rowSpecID carries the record
+// row's spec id (empty for the rowless (b2) arm); depsMet and slotFree carry
+// the caller's existing predicates (predecessor/hub wait / modeEligible —
+// bundle ownership is excluded BEFORE the gate, PR #1859 review P2-b); the
 // serial-slot read is read-only (D5) and every input here reuses the
 // pass's one queue snapshot.
-func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, inQueue bool, depsMet, slotFree bool) *factoryEligibleRefusal {
+func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, inQueue bool, rowSpecID string, depsMet, slotFree bool) *factoryEligibleRefusal {
 	refuse := func(token, detail string) *factoryEligibleRefusal {
 		return &factoryEligibleRefusal{Token: token, CardID: cardID, Detail: detail}
 	}
@@ -1406,11 +1422,13 @@ func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, i
 		return refuse(factoryEligibleNotAdmitted, "card "+cardID+" is not admitted: the queue item is "+state+", not picked")
 	}
 	// 2. spec exists — FAIL-CLOSED and classification-agnostic (amendment
-	// 0.3.0, the F1 ruling): a card with no spec id on the row or the queue
-	// hint is never leased through the generic arms, whatever its priority.
-	// The record row has no spec column; the queue hint is the one carrier.
-	if it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "" {
-		return refuse(factoryEligibleSpecMissing, "card "+cardID+" carries no spec id on the row or the queue hint")
+	// 0.3.0, the F1 ruling): a card with no spec id on the record row or the
+	// queue hint is never leased through the generic arms, whatever its
+	// priority. Both carriers count — `factory assign --spec` writes the
+	// record row only, so the queue hint alone would wrongly refuse (PR
+	// #1859 review P2-a).
+	if (it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "") && strings.TrimSpace(rowSpecID) == "" {
+		return refuse(factoryEligibleSpecMissing, "card "+cardID+" carries no spec id on the record row or the queue hint")
 	}
 	// 3. not held — the marker predicate is state-independent (D1): a picked
 	// card whose text opens with the marker is parked the same way a queued
@@ -2151,6 +2169,14 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if held {
 		return false
 	}
+	// The self-dispatch gate decides the bare path's picked candidates before
+	// any query runs (PR #1859 review P1): with the flag OFF, arms (b) and
+	// (b2) are dormant for unowned picked cards — the quiet skip — so a
+	// corpus holding only those would answer no-card on every pass, and a
+	// --wait loop fed the peek's stale "true" would run gh pr list every 5s
+	// for its whole budget (~180 calls/lane, enough to drain the shared rate
+	// limit). Queued candidates are arm (c)'s promotion and stay ungated.
+	selfDispatch := factorySelfDispatchEnabled(root)
 	// The bare path takes a NEW card, so sibling rows hold against it
 	// (ignoreAssigned=false). A candidate the selector itself skips is no
 	// candidate here either — each skip mirrors the arm that applies it: the
@@ -2174,6 +2200,9 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				continue
 			}
 		case factory.BacklogStatePicked:
+			if !selfDispatch {
+				continue
+			}
 			if row, hasRow := rowByID[it.ID]; hasRow &&
 				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
