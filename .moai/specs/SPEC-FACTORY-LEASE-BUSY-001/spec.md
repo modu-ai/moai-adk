@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-LEASE-BUSY-001
 title: "Cause-accurate lease refusal classification for `factory next` and `factory status` read latency (card t1916)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-22
 author: manager-spec (card t1916)
 priority: P1
 phase: "v3.2.0 target"

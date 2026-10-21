@@ -52,7 +52,70 @@ both.
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase (gated behind PR #1859 landing; the leader coordinates resume)_
+### M0 — hold gate
+
+LIFTED before this phase opened: PR #1859 merged (17a3b98de2 in main history); the leader's
+card dispatch (2026-10-21, run tn8rpj) is the resume signal (recorded in §E.1). No code, skipped
+per the dispatch.
+
+### M1 — RED: cause-class contract (test commit)
+
+- Pre-flight (2026-10-22, tree aaab995138, clean): `go build ./internal/cli/ ./internal/factory/`
+  exit 0; `go vet ./internal/cli/` exit 0; `golangci-lint run --timeout=2m ./internal/cli/` —
+  baseline 2 pre-existing staticcheck ST1008 findings in `internal/cli/paths.go` (untouched by
+  this SPEC); `grep -rn 'Retired\|superseded' internal/cli/factory_card.go internal/cli/todo.go`
+  — one unrelated `factoryRelaunchSupersededNote` constant (card t1554), no conflicts.
+- **AC-FLB-004 pre-change capture (AC evidence pair, REQ-FLB-007 text preservation).** Captured
+  2026-10-22 on the pre-change tree — production code identical to commit `aaab995138` (the
+  capture test file is the only addition) — via
+  `go test ./internal/cli/ -run TestFactoryLeaseRefusalTextCapture -count=1 -v` (PASS, 4/4
+  subtests). Verbatim rendered stderr lines:
+  - serial-slot: `factory next: refused serial-slot: another serial card is in flight and holds the serial slot`
+  - quota-hold: `factory next: refused quota-hold: quota hold: five_hour used=92.0% resets_at=2026-09-26T12:00:00Z`
+  - backend-skip: `factory next: refused backend-skip: a Codex lane cannot advance a card recorded at merge-ready`
+  - foreign-worktree: `factory next: refused foreign-worktree: the worktree directory <fixture-root>/.moai/worktrees/t1 already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)`
+    — the foreign-worktree line embeds the fixture root path (environment-derived, per-invocation
+    temp dir); its byte-freeze comparison normalizes that path prefix only.
+- **Class table (the M1 deliverable per plan.md §F M1; AC-FLB-001):**
+
+| cause class (REQ-FLB-001) | reason token | marking | detail names | wait-retryable | exit |
+|---|---|---|---|---|---|
+| race lost to another claimant (REQ-FLB-002) | `raced` | `homestate.ErrStaleVersion` / `ErrLeaseHolder` surviving the retries (unmarked) | the claimant lost the version-checked edge | yes (unchanged) | 4 |
+| record-write contention (REQ-FLB-003) | `record-busy` | `errFactoryRecordBusy` (existing sentinel, narrowed to live-deadline busy) | the record lock held past every retry | yes (new) | 4 |
+| claim-deadline expiry (REQ-FLB-004) | `claim-deadline` | `errFactoryClaimDeadline` (new; takes precedence over a joined busy error — spec § Constraints) | the expired claim deadline + the presence/absence of a concurrent busy error; neither a host-load-only nor a race-only cause asserted | yes (new) | 4 |
+| queue-lock-held (out of scope, Q4) | `raced` | — PRESERVED at factory_card.go 1527-1528 | the queue lock's wait budget | yes (unchanged) | 4 |
+
+  Bare-form leases keep their current exit (1) and plain-error surface; the marked error text
+  names the true class (AC-FLB-004 second clause).
+- **Verbatim RED output** (command: `go test ./internal/cli/ -run
+  'TestFactoryLeaseClaimClassesWaitRetryable|TestFactoryLeaseDeadlineClassRefusalToken|TestFactoryLeaseRecordContentionClassRefusalToken|TestFactoryLeaseClaimFailureMarksDistinctClasses'
+  -count=1 -v`; FAIL exit 1, all four tests red for the stated reason — the misclassification
+  this SPEC fixes, not an unrelated pre-existing failure):
+  - `waitable("record-busy") = false, want true` / `waitable("claim-deadline") = false, want true`
+  - deadline e2e: `stderr = "factory next: refused raced: t1 was not leased: the factory record
+    stayed busy — the claim deadline (2.2s) passed ... (SQLITE_BUSY); retry when the host is
+    quieter\n", want exactly one line "factory next: refused claim-deadline: "<detail>`
+  - contention e2e: `stderr = "factory next: refused raced: t1 was not leased: the factory record
+    stayed busy — another writer held the record past every retry: database is locked (5)
+    (SQLITE_BUSY); retry when the host is quieter\n", want exactly one line "factory next:
+    refused record-busy: "<detail>`
+  - marking seam: `the joined marking = the factory record stayed busy — the claim deadline
+    (2.2s) passed while a record write was still running: the host is under load, not a lock
+    race: database is locked (5) (SQLITE_BUSY), want its detail to name the concurrent busy
+    error's presence`
+- Sanctioned pin flips (the misclassification pins REQ-FLB-003/004 legitimately flip; plan §B):
+  `TestFactoryLeaseRecordStallBounded` (raced assertion + doc comment) and
+  `TestFactoryLeaseMidClaimStallBounded` (raced assertion + doc comment) — both arms produce the
+  joined deadline+busy error (the deadline is the outer bound), so they flip to `claim-deadline`.
+  Additionally, REQ-FLB-004's signal-naming detail mandate rewords the claim-deadline detail, so
+  two deadline-surface tests flip their phrase assertions:
+  `TestFactoryClaimDeadlineRefusalNamesTheDeadline` (bare-form detail phrase) and
+  `TestFactoryNominatedBusyRefusalCarriesTheClaimError` (token + detail phrase).
+  `TestFactoryLeaseClaimRespectsWaitCap`'s marking assertion widens to accept both non-race
+  markings (its invariant — the give-up is a hard busy refusal, not a race to retry — is
+  unchanged). `TestFactoryLeaseQueueLockStallBounded` (subtests `nominated` and `bare`) stays
+  untouched (AC-FLB-010's unchanged split).
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
