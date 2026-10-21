@@ -35,7 +35,122 @@ Scope boundary recorded at kickoff: this card's run covers M0-M5 and M7 (repo-lo
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
+
+M0 is a RE-CHECK, not a first measure: the RED-now cells in acceptance.md were authored on tree
+`f4175587119b5cfeb8d8348fc74cada8764e89ed` before the absorb merge `89996a6de5` (the branch was 341
+commits behind main and is now current with it). Commands, verbatim outputs and exit codes below are
+this run, this tree, HEAD `95e777a36e` (VCI §2 attribution triple).
+
+Pin-path diff (the acceptance.md §Conventions re-check command):
+
+```
+$ git diff --stat f4175587119b5cfeb8d8348fc74cada8764e89ed..HEAD -- internal .claude AGENTS.local.md docs-site .moai/config .moai/docs | tail -1
+ 267 files changed, 19076 insertions(+), 2904 deletions(-)
+```
+
+The absorb merge moved 155 files across internal/config, internal/cli, internal/statusline,
+internal/hook, internal/escalation and internal/cli/update, so every guard selector whose package
+changed was re-observed; the flip selectors (all naming only new tests) were re-observed as a
+population. Divergences found during M0 against the pinned observations are listed at the end.
+
+Pre-flight (Section C of the delegation):
+
+```
+$ git rev-parse --short HEAD && git branch --show-current      → 95e777a36e / WT-agentic-trunk
+$ go build ./...                                                → exit 0 (no output)
+$ GOOS=windows GOARCH=amd64 go build ./...                      → exit 0 (no output)
+$ golangci-lint run --timeout=2m 2>&1 | tail -5                 → exit 0
+  internal/discovery/leader_readers_darwin.go:93:31: SA1019: unix.SYS_PROC_INFO is deprecated:
+  Use libSystem wrappers instead of direct syscalls. (staticcheck)
+  1 issues:
+  * staticcheck: 1
+```
+
+Lint baseline: exactly 1 pre-existing finding (staticcheck SA1019 in internal/discovery, a package
+this SPEC does not touch). NEW findings during M1-M5 are reported against this baseline (E5).
+
+Cross-SPEC policy conflict grep (delegation Section C.4): all matches in
+`internal/config internal/cli internal/statusline internal/hook internal/escalation` are unrelated
+retired-CG-launcher comments and other SPECs' superseded markers; none touches the git-strategy
+workflow domain. No conflict.
+
+Guard judges re-observed (all previously green on the pin tree; must stay green):
+
+| Guard selector (command form `go test <pkg> -run '<sel>' -count=1 -v`) | exit | deciding lines (verbatim) |
+|---|---|---|
+| `./internal/config` `^TestWorkflowDisposition$` | 0 | `--- PASS: TestWorkflowDisposition (0.01s)` / `ok  github.com/modu-ai/moai-adk/internal/config	0.304s` |
+| `./internal/config` `^(TestWorkflowTargetResolution\|TestEmptyTargetGuidance\|TestEmptyTargetGuidanceResolvedTargetIsSilent\|TestTargetProvenance)$` (AC-002) | 0 | `--- PASS: TestEmptyTargetGuidance (0.01s)`, `--- PASS: TestEmptyTargetGuidanceResolvedTargetIsSilent (0.00s)`, `--- PASS: TestTargetProvenance (0.00s)`, `--- PASS: TestWorkflowTargetResolution (0.00s)` / `ok ... 0.137s` |
+| `./internal/cli` `^TestFactoryCompleteWindowGitFlowUnchanged$` (AC-005 guard) | 0 | `--- PASS: TestFactoryCompleteWindowGitFlowUnchanged (1.69s)` / `ok ... 2.561s` |
+| `./internal/cli` `^(TestAutoMergeHappyPath\|TestAutoMergeUnconfiguredTarget)$` (AC-006 guard) | 0 | `--- PASS: TestAutoMergeHappyPath (0.43s)`, `--- PASS: TestAutoMergeUnconfiguredTarget (0.00s)` / `ok ... 1.094s` |
+| `./internal/cli` `^(TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback\|TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn)$` (AC-007 guard) | 0 | `--- PASS: TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback (0.13s)`, `--- PASS: TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn (0.14s)` / `ok ... 0.931s` |
+| `./internal/cli` `^TestDoctorGitStrategyWorkflow$` (AC-011 guard) | 0 | `--- PASS: TestDoctorGitStrategyWorkflow (0.01s)` / `ok ... 0.688s` |
+| `./internal/cli/update` `^TestUpdate_GitStrategyValuesSurvive$` (AC-013 guard) | 0 | `--- PASS: TestUpdate_GitStrategyValuesSurvive (0.00s)` / `ok ... 0.357s` |
+| `./internal/template` `^TestGitHubFlowSweepGuard$` (AC-015 guard) | 0 | `--- PASS: TestGitHubFlowSweepGuard (2.53s)` with subtests `--- PASS: TestGitHubFlowSweepGuard/arming-switch (0.00s)`, `--- PASS: TestGitHubFlowSweepGuard/F-empty-walk (0.00s)` / `ok ... 2.874s` |
+
+AC-010 grep guard re-observed:
+
+```
+$ git grep -c -E 'LoadGitFlowIntegrationConfig|WorkflowGitFlow|WorkflowGitHubFlow|WorkflowAgenticTrunk|"agentic-trunk"' -- internal/cli/worktree
+(no output)
+$ echo $?
+1
+```
+
+Green by design (no workflow read in the landing checks); unchanged by the absorb merge.
+
+Flip-selector RED re-confirmation (every selector below printed `[no tests to run]` with exit 0 —
+the RED-now state of the acceptance.md ledger E01-E17 holds on this tree; the tail line is quoted
+verbatim, selector prefix elided):
+
+- `./internal/config` `^TestAgenticTrunkValueSet$` → `ok  github.com/modu-ai/moai-adk/internal/config	0.127s [no tests to run]`
+- `./internal/config` `^TestAgenticTrunkTarget$` → `ok ... 0.130s [no tests to run]`
+- `./internal/config` `^TestAgenticTrunkLocalIntegrationPredicate$` → `ok ... 0.126s [no tests to run]`
+- `./internal/config` `^TestAgenticTrunkGuidance$` → `ok ... 0.130s [no tests to run]`
+- `./internal/config` `^TestAgenticTrunkDistributedDefaultsUnchanged$` → `ok ... 0.130s [no tests to run]`
+- `./internal/config` `^TestAgenticTrunkDevelopBranchProjection$` → `ok ... 0.139s [no tests to run]`
+- `./internal/cli` `^(TestAgenticTrunkFactoryCompleteTakesWindow|TestAgenticTrunkMergeReadyTakesWindow)$` → `ok ... 0.692s [no tests to run]`
+- `./internal/cli` `^TestAgenticTrunkAutoMerge$` → `ok ... 0.683s [no tests to run]`
+- `./internal/cli` `^TestAgenticTrunkIntegrationAcquire$` → `ok ... 0.681s [no tests to run]`
+- `./internal/cli` `^TestAgenticTrunkIgnoredKeys$` → `ok ... 0.670s [no tests to run]`
+- `./internal/cli` `^TestAgenticTrunkDoctor$` → `ok ... 0.664s [no tests to run]`
+- `./internal/cli` `^TestAgenticTrunkPushCheckIntegration$` → `ok ... 0.803s [no tests to run]`
+- `./internal/statusline` `^(TestAgenticTrunkStatuslineLabel|TestAgenticTrunkStatuslineAbsent|TestAgenticTrunkStatuslineNoExtraGit)$` → `ok ... 0.322s [no tests to run]`
+- `./internal/cli/update` `^TestAgenticTrunkValueSurvivesUpdate$` → `ok ... 0.165s [no tests to run]`
+- `./internal/template` `^TestAgenticTrunkSweepGuardNotArmed$` → `ok ... 0.196s [no tests to run]`
+- `./internal/hook` `^TestAgenticTrunkIntegrationBranchFor$` → `ok ... 0.567s [no tests to run]`
+- `./internal/escalation` `^TestAgenticTrunkCardBase$` → `ok ... 0.451s [no tests to run]`
+
+M0 conclusion: every guard judge the acceptance.md pins as green-now is green on the run tree; every
+flip selector is still RED (`no tests to run`); the builds pass on darwin and windows; the lint
+baseline carries exactly one pre-existing finding. The absorb merge invalidated no RED-now cell —
+the RED cells name tests that still do not exist — and moved no guard to red. Line numbers quoted in
+acceptance.md/plan.md (e.g. delivery.md line 22/29, factory-dispatch.md line 222) are re-verified at
+the milestone that edits them; a moved line number is a recorded divergence, not a blocked AC.
+
+OQ-2 pre-measurement (plan M4 obligation, recorded here at M0 for the follow-up card):
+
+```
+$ MOAI_SWEEP_GUARD_ARMED=1 go test ./internal/template -run '^TestGitHubFlowSweepGuard$' -count=1 -v
+exit 1; deciding lines (verbatim):
+    github_flow_sweep_guard_test.go:225: sweep guard ARMED: forced by MOAI_SWEEP_GUARD_ARMED=1
+    github_flow_sweep_guard_test.go:233: weak hits: allowed=0 remaining=25; strong remaining=241; allow entries used=0/0 (cap 40)
+    github_flow_sweep_guard_test.go:337: 266 live develop-base line(s) remain (241 strong, 25 weak); first 40: ...
+    github_flow_sweep_guard_test.go:341: ratchet: marker-exempted lines = 18, ceiling 11 — a marker silenced more live text than the recorded baseline
+--- FAIL: TestGitHubFlowSweepGuard (2.59s)
+    --- PASS: TestGitHubFlowSweepGuard/arming-switch (0.00s)
+    --- PASS: TestGitHubFlowSweepGuard/F-empty-walk (0.00s)
+```
+
+Armed finding count for OQ-2: **266 live develop-base line(s) remain (241 strong, 25 weak)** —
+NOT zero, so per OQ-2's condition no follow-up card opens on a zero count; the count is recorded for
+the card that owns the residue sweep. Two observations about the armed mode itself: (1) the armed
+run fails on this tree through the marker-exempted ratchet (18 > ceiling 11) — a pre-existing state
+of the absorbed tree, independent of this SPEC's files (the un-armed run passes; the armed branch is
+diagnostic-only, `github_flow_sweep_guard_test.go:323-342`); (2) the count is a repository residue
+measurement, not a judgment of this SPEC's changes — none of the 266 lines is in a file this SPEC
+edits except `.claude/rules/local/gitflow-lane-protocol.md:196` (weak, already `[SUPERSEDED]`-marked)
+and template rule files whose develop-era text this SPEC does not touch (M5 adds sentences only).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
