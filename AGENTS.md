@@ -1,9 +1,7 @@
 # AGENTS.md — standing contract for agents in this repository
 
-Every clause here binds a turn regardless of which agent harness drives it. The file is
-**self-sufficient**: it does not depend on another instruction file. If a nested `AGENTS.md`
-exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
-the whole discovery chain.
+Every clause binds every turn under any harness. This file is **self-sufficient**. Codex adds any
+nested `AGENTS.md` as a more-specific contract; budget the whole discovery chain.
 
 ## 0. Core identity and capabilities
 
@@ -153,7 +151,7 @@ guard reading the command, not a runtime defect.
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
 `git worktree remove`.
 
-**A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
+**An unpushed card branch has its only copy in the worktree.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
 **Start a new card in a new worktree.** A Claude Code session exits its previous worktree first;
@@ -170,16 +168,13 @@ branch or a worktree that holds `main` as an integration holder. `main` advances
 PR merges, and local `main` is re-synced with `origin/main` at every landing — a local `main`
 sitting ahead of the remote past a landing is a defect, not a buffer. Tooling must never detach
 the primary checkout's HEAD to take over a branch: a branch checked out in the primary is
-occupied, and the tool refuses rather than steals. (Incident 2026-10-21: a `main`-holding
-integration worktree silently detached the primary, which then sat 559 commits behind local
-`main` while runtime-state drift accumulated for four days.)
+occupied, and the tool refuses rather than steals. (2026-10-21 incident: a `main` holder detached the primary, leaving it 559 commits behind.)
 
 **WT worktrees live only under `.moai/worktrees/`** — created by `moai worktree new`. `.claude/worktrees/`
 stays reserved for the Claude runtime's own ephemeral `agent-*` isolation trees (behavior unchanged); a
 runtime tree adopted for card work is renamed to `WT-` in place and stays where its creator put it.
 
-**Three traceability carriers are then mandatory**, because the branch name no longer identifies
-the card: the dispatch's `card:` field, the card id in every commit message on the branch, and the
+**Three traceability carriers are mandatory**: the dispatch's `card:` field, the card id in every commit message on the branch, and the
 card id in the evidence path (`.moai/reports/<card-id>/verdict.md`).
 
 ---
