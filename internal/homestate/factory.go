@@ -157,6 +157,17 @@ CREATE TABLE IF NOT EXISTS card_dispatch (
   run_id TEXT NOT NULL,
   recorded_at TEXT NOT NULL
 );
+-- card_metadata_events (SPEC-CARD-METADATA-VERBS-001, decision-index Q3
+-- Default): the card-keyed metadata audit surface, reusing the events
+-- table's shape (autoincrement seq, kind, JSON payload, created-at) keyed by
+-- the card id. Additive CREATE TABLE IF NOT EXISTS only — REQ-CMV-014.
+CREATE TABLE IF NOT EXISTS card_metadata_events (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
 `
 
 type FactoryDB struct {

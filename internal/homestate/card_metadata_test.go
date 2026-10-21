@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -183,7 +182,7 @@ func TestSetCardSpec_AnyState_Lands(t *testing.T) {
 		db := mdOpen(t)
 		cardID := "c" + strings.ReplaceAll(state, "-", "")
 		mdPlaceCard(t, db, "run-md", cardID, state, 3)
-		got, err := db.SetCardSpec(context.Background(), "run-md", cardID, "SPEC-LAND-001", 3, "operator", mdNow)
+		got, err := db.SetCardSpec(context.Background(), "run-md", cardID, "SPEC-LAND-001", 3, mdNow)
 		if err != nil {
 			t.Fatalf("SetCardSpec at state %s: %v", state, err)
 		}
@@ -234,15 +233,15 @@ func TestSetCardSpec_StaleVersion_Refused(t *testing.T) {
 	db := mdOpen(t)
 	mdPlaceCard(t, db, "run-md", "t1", CardRun, 2)
 	// Advance the row under the caller's feet: N → N+1.
-	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-NEW-001", 2, "operator", mdNow); err != nil {
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-NEW-001", 2, mdNow); err != nil {
 		t.Fatalf("first write: %v", err)
 	}
 	// The stale presentation of N refuses and writes nothing.
-	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-LATER-001", 2, "operator", mdNow); err == nil {
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-LATER-001", 2, mdNow); err == nil {
 		t.Fatal("stale expected version was accepted")
 	}
 	if !strings.Contains(func() string {
-		_, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-LATER-001", 2, "operator", mdNow)
+		_, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-LATER-001", 2, mdNow)
 		return err.Error()
 	}(), "stale card version") {
 		t.Fatal("refusal does not carry ErrStaleVersion's text")
@@ -256,9 +255,14 @@ func TestRestoreCardSpec_CompensatingEntry(t *testing.T) {
 	db := mdOpen(t)
 	mdPlaceCard(t, db, "run-md", "t1", CardRun, 2)
 	mdPlaceCard(t, db, "run-md", "t2", CardRun, 2)
+	// The direction-2 shape: the record write moved t1 to v3 (spec NEW), the
+	// compensation restores the prior value against that post-write version.
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "SPEC-NEW-001", 2, mdNow); err != nil {
+		t.Fatalf("advance t1: %v", err)
+	}
 	// A restore through the same version-fenced mutation puts the prior
 	// value back and bumps the version once.
-	got, err := db.RestoreCardSpec(context.Background(), "run-md", "t1", "SPEC-PRIOR-001", 3, "operator", mdNow)
+	got, err := db.RestoreCardSpec(context.Background(), "run-md", "t1", "SPEC-PRIOR-001", 3, mdNow)
 	if err != nil {
 		t.Fatalf("restore: %v", err)
 	}
@@ -266,12 +270,12 @@ func TestRestoreCardSpec_CompensatingEntry(t *testing.T) {
 		t.Fatalf("restored = (spec %q, v%d), want (SPEC-PRIOR-001, v4)", got.SpecID, got.Version)
 	}
 	// A stale expected version refuses the restore too (same fencing).
-	if _, err := db.RestoreCardSpec(context.Background(), "run-md", "t2", "SPEC-PRIOR-001", 9, "operator", mdNow); err == nil {
+	if _, err := db.RestoreCardSpec(context.Background(), "run-md", "t2", "SPEC-PRIOR-001", 9, mdNow); err == nil {
 		t.Fatal("stale restore was accepted")
 	}
 	// A missing card row is ErrCardNotFound, never a created row (REQ-CMV-003
 	// gate (b): the record layer creates nothing here).
-	if _, err := db.RestoreCardSpec(context.Background(), "run-md", "tX", "SPEC-PRIOR-001", 1, "operator", mdNow); err == nil {
+	if _, err := db.RestoreCardSpec(context.Background(), "run-md", "tX", "SPEC-PRIOR-001", 1, mdNow); err == nil {
 		t.Fatal("restore invented a card row")
 	}
 }
@@ -279,10 +283,10 @@ func TestRestoreCardSpec_CompensatingEntry(t *testing.T) {
 func TestSetCardSpec_RefusesInput_andLegacyRows(t *testing.T) {
 	db := mdOpen(t)
 	mdPlaceCard(t, db, "run-md", "t1", CardDone, 1)
-	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "", 1, "operator", mdNow); err == nil {
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "t1", "", 1, mdNow); err == nil {
 		t.Fatal("empty spec id accepted")
 	}
-	if _, err := db.SetCardSpec(context.Background(), "run-md", "missing", "SPEC-A-001", 1, "operator", mdNow); err != nil {
+	if _, err := db.SetCardSpec(context.Background(), "run-md", "missing", "SPEC-A-001", 1, mdNow); err != nil {
 		if err != ErrCardNotFound {
 			t.Fatalf("missing card error = %v, want ErrCardNotFound", err)
 		}
@@ -300,27 +304,20 @@ func TestCardMetadataSurface_RowPreserving(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	seed := map[string][][2]string{
-		"meta":             {{"schema_probe", "1"}},
-		"workers":          {{"INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES('w1',1,'2026-10-21T00:00:00Z','2026-10-21T00:00:00Z')", ""}},
-		"runs":             {{"INSERT INTO runs(run_id,status,created_at,updated_at) VALUES('r1','active','2026-10-21T00:00:00Z','2026-10-21T00:00:00Z')", ""}},
-		"cards":            {{"INSERT INTO cards(run_id,card_id,state,version,updated_at) VALUES('r1','t1','picked',1,'2026-10-21T00:00:00Z')", ""}},
-		"events":           {{"INSERT INTO events(run_id,kind,payload_json,created_at) VALUES('r1','card.transition','{}','2026-10-21T00:00:00Z')", ""}},
-		"dead_letters":     {{"INSERT INTO dead_letters(envelope_json,error,created_at) VALUES('{}','boom','2026-10-21T00:00:00Z')", ""}},
-		"resume_handoffs":  {{"INSERT INTO resume_handoffs(status,schema_version,saved_at,body,body_sha256) VALUES('pending',1,'2026-10-21T00:00:00Z','body','abc')", ""}},
-		"memory_handoffs":  {{"INSERT INTO memory_handoffs(status,sprint,spec,result_status,body,index_line,body_sha256,created_at) VALUES('pending','s','SPEC-X-001','ok','b','i','abc','2026-10-21T00:00:00Z')", ""}},
-		"handoff_events":   {{"INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,created_at) VALUES('resume',1,'','pending','2026-10-21T00:00:00Z')", ""}},
-		"leader_approvals": {{"INSERT INTO leader_approvals(card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at) VALUES('u1','r1','t1',1,'h','lead','leader','2026-10-21T00:00:00Z')", ""}},
-		"card_dispatch":    {{"INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES('t1','r1','2026-10-21T00:00:00Z')", ""}},
+	seed := map[string]string{
+		"meta":             `INSERT OR IGNORE INTO meta(key,value) VALUES('schema_probe','1')`,
+		"workers":          `INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES('w1',1,'2026-10-21T00:00:00Z','2026-10-21T00:00:00Z')`,
+		"runs":             `INSERT INTO runs(run_id,status,created_at,updated_at) VALUES('r1','active','2026-10-21T00:00:00Z','2026-10-21T00:00:00Z')`,
+		"cards":            `INSERT INTO cards(run_id,card_id,state,version,updated_at) VALUES('r1','t1','picked',1,'2026-10-21T00:00:00Z')`,
+		"events":           `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES('r1','card.transition','{}','2026-10-21T00:00:00Z')`,
+		"dead_letters":     `INSERT INTO dead_letters(envelope_json,error,created_at) VALUES('{}','boom','2026-10-21T00:00:00Z')`,
+		"resume_handoffs":  `INSERT INTO resume_handoffs(status,schema_version,saved_at,body,body_sha256) VALUES('pending',1,'2026-10-21T00:00:00Z','body','abc')`,
+		"memory_handoffs":  `INSERT INTO memory_handoffs(status,sprint,spec,result_status,body,index_line,body_sha256,created_at) VALUES('pending','s','SPEC-X-001','ok','b','i','abc','2026-10-21T00:00:00Z')`,
+		"handoff_events":   `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,created_at) VALUES('resume',1,'','pending','2026-10-21T00:00:00Z')`,
+		"leader_approvals": `INSERT INTO leader_approvals(card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at) VALUES('u1','r1','t1',1,'h','lead','leader','2026-10-21T00:00:00Z')`,
+		"card_dispatch":    `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES('t1','r1','2026-10-21T00:00:00Z')`,
 	}
-	for table := range seed {
-		if table == "meta" {
-			if _, err := db.DB.Exec(`INSERT OR IGNORE INTO meta(key,value) VALUES('schema_probe','1')`); err != nil {
-				t.Fatalf("seed meta: %v", err)
-			}
-			continue
-		}
-		stmt := seed[table][0][0]
+	for table, stmt := range seed {
 		if _, err := db.DB.Exec(stmt); err != nil {
 			t.Fatalf("seed %s: %v", table, err)
 		}
@@ -329,50 +326,19 @@ func TestCardMetadataSurface_RowPreserving(t *testing.T) {
 		t.Fatalf("close after seed: %v", err)
 	}
 
-	snapshot := func() map[string][]string {
-		t.Helper()
-		raw, err := sql.Open("sqlite", "file:"+filepath.ToSlash(factoryPathOf(t, root)))
-		if err != nil {
-			t.Fatalf("snapshot open: %v", err)
-		}
-		defer func() { _ = raw.Close() }()
-		out := map[string][]string{}
-		for table := range seed {
-			rows, err := raw.Query(`SELECT * FROM ` + table)
-			if err != nil {
-				t.Fatalf("dump %s: %v", table, err)
-			}
-			cols, _ := rows.Columns()
-			for rows.Next() {
-				vals := make([]sql.NullString, len(cols))
-				ptrs := make([]any, len(cols))
-				for i := range vals {
-					ptrs[i] = &vals[i]
-				}
-				if err := rows.Scan(ptrs...); err != nil {
-					t.Fatalf("scan %s: %v", table, err)
-				}
-				parts := make([]string, len(vals))
-				for i := range vals {
-					parts[i] = vals[i].String
-				}
-				out[table] = append(out[table], strings.Join(parts, "|"))
-			}
-			if err := rows.Err(); err != nil {
-				t.Fatalf("rows %s: %v", table, err)
-			}
-			_ = rows.Close()
-		}
-		return out
+	raw, err := sql.Open("sqlite", "file:"+filepath.ToSlash(factoryPathOf(t, root)))
+	if err != nil {
+		t.Fatalf("snapshot open: %v", err)
 	}
+	before := mdDumpAll(t, raw, seed)
+	_ = raw.Close()
 
-	before := snapshot()
 	// Re-open: the DDL (the migration) runs again over a populated store.
 	db2, err := OpenFactory(root)
 	if err != nil {
 		t.Fatalf("re-open with migration: %v", err)
 	}
-	after := snapshotFrom(t, db2.DB, seed)
+	after := mdDumpAll(t, db2.DB, seed)
 	for table := range seed {
 		if strings.Join(after[table], "\n") != strings.Join(before[table], "\n") {
 			t.Fatalf("%s rows changed by the migration:\n got %v\nwant %v", table, after[table], before[table])
@@ -392,16 +358,18 @@ func TestCardMetadataSurface_RowPreserving(t *testing.T) {
 		t.Fatalf("second re-open: %v", err)
 	}
 	defer func() { _ = db3.Close() }()
-	again := snapshotFrom(t, db3.DB, seed)
+	again := mdDumpAll(t, db3.DB, seed)
 	for table := range seed {
 		if strings.Join(again[table], "\n") != strings.Join(before[table], "\n") {
 			t.Fatalf("%s rows changed by the second migration run: %v", table, again[table])
 		}
 	}
-	_ = os.RemoveAll(root)
 }
 
-func snapshotFrom(t *testing.T, db *sql.DB, seed map[string][][2]string) map[string][]string {
+// mdDumpAll renders every row of every seeded table as joined column
+// strings — the row-level content comparison REQ-CMV-014 judges (file-byte
+// identity is not the criterion, acceptance.md §A).
+func mdDumpAll(t *testing.T, db *sql.DB, seed map[string]string) map[string][]string {
 	t.Helper()
 	out := map[string][]string{}
 	for table := range seed {
@@ -424,6 +392,9 @@ func snapshotFrom(t *testing.T, db *sql.DB, seed map[string][][2]string) map[str
 				parts[i] = vals[i].String
 			}
 			out[table] = append(out[table], strings.Join(parts, "|"))
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("rows %s: %v", table, err)
 		}
 		_ = rows.Close()
 	}
