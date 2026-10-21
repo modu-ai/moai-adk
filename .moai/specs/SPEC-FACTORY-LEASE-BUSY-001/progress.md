@@ -117,6 +117,36 @@ per the dispatch.
   untouched (AC-FLB-010's unchanged split).
 
 
+### Handover to the Codex Cloud single writer (2026-10-21, leader operational correction)
+
+The leader fixed this card's remaining repair work to a single Codex Cloud writer; the lane's
+manager-develop stopped at a clean commit boundary on the leader's order. State at handover:
+
+- HEAD `1db9114a83` on `WT-factory-next-raced`, tree clean, `main..HEAD` = 12 commits.
+- Done and committed: M1 RED `809cf96799` (4 cause-class contract tests, verbatim RED captured;
+  AC-FLB-004 pre-change refusal capture recorded above with tree SHA aaab995138; spec.md
+  `draft → in-progress` on the same commit), M2 GREEN `add8c7319d` (the record-contention /
+  claim-deadline tokens, `factoryClaimFailure` class split with deadline precedence, nominated
+  mapping, `waitable()` extension; Q4 queue-lock site and pre-claim classes untouched,
+  post-change capture byte-identical), M3 verification pin `1db9114a83` (serial-slot byte pins,
+  peek fail-open with no race claim).
+- NOT started: M4 status-latency baseline (zero artifacts; the first binary-build command was
+  refused by the worktree git-guard and never executed), M5 read-path fix, M6 regression sweep.
+  §E.3 is `_pending`. AC-FLB-001..007 are effectively verifiable green from the landed tests;
+  AC-FLB-008..011 depend on M4/M5.
+- M4 recipe per plan.md §F M4 stands: per-revision binary built from the measured tree invoked
+  by path, one fresh `mktemp -d` root, seed ONCE via `moai todo add --pick <fixture-card>` then
+  `moai factory assign <issued-id> --run <fixture-run>`, only the binary path varies between
+  runs. Baseline artifact: `.moai/reports/t1916/status-latency-baseline.md` (to be written by
+  the executor of M4).
+- Machine-local scratch (not committed): `/tmp/t1916_red_m1.log`, `/tmp/t1916_capture_pre.log`,
+  `/tmp/t1916_capture_post.log`.
+- One preserved judgment call: `TestFactoryLeaseClaimRespectsWaitCap`'s marking assertion was
+  widened (not flipped) to accept both non-race markings; its give-up-is-not-a-race invariant
+  is unchanged (rationale in §E.2).
+- The lane (lane-6) holds the lease and resumes orchestration when the leader's handover
+  manifest returns; no new implementation steps until then (leader order 2026-10-21).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
