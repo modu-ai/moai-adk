@@ -269,26 +269,94 @@ func mcpStalenessGuard(name string, handler server.ToolHandlerFunc) server.ToolH
 		guidance := fmt.Sprintf(
 			"stale_server: the serving moai build (%s) differs from the installed build (%s) — reconnect the moai MCP server (restart the host session) so the installed build serves",
 			info.Serving, info.Installed)
-		if mcpcat.IsWriteCapable(name) {
-			return toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance)), nil
+		if mcpCallIsWriteCapable(name, req) {
+			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance))
+			return addMCPStalenessMetadata(res, info, guidance), nil
 		}
 		res, err := handler(ctx, req)
-		if err != nil || res == nil {
+		if res == nil {
 			return res, err
 		}
-		if res.StructuredContent != nil {
-			if body, mErr := json.Marshal(res.StructuredContent); mErr == nil {
-				var obj map[string]any
-				if uErr := json.Unmarshal(body, &obj); uErr == nil && obj != nil {
-					obj["stale_server"] = true
-					obj["_server"] = map[string]any{"version": info.Version, "commit": info.Commit}
-					res.StructuredContent = obj
-				}
+		return addMCPStalenessMetadata(res, info, guidance), err
+	}
+}
+
+// mcpCallIsWriteCapable includes operation-level writes on tools whose
+// catalogue entry is read-only for its other operations.
+func mcpCallIsWriteCapable(name string, req mcp.CallToolRequest) bool {
+	if name == "audit_cache" {
+		return req.GetString("op", "") == "store"
+	}
+	return mcpcat.IsWriteCapable(name)
+}
+
+// addMCPStalenessMetadata mirrors stale-server identity into both MCP result
+// channels. A stale write refusal is an IsError result with a JSON text block;
+// successful stale reads keep their original structured payload and guidance.
+func addMCPStalenessMetadata(res *mcp.CallToolResult, info serverStaleness, guidance string) *mcp.CallToolResult {
+	if res == nil {
+		return nil
+	}
+	var payload map[string]any
+	if res.StructuredContent != nil {
+		if body, err := json.Marshal(res.StructuredContent); err == nil {
+			_ = json.Unmarshal(body, &payload)
+		}
+	}
+	if payload == nil {
+		payload = make(map[string]any)
+		for _, item := range res.Content {
+			block, ok := item.(mcp.TextContent)
+			if !ok {
+				continue
+			}
+			if err := json.Unmarshal([]byte(block.Text), &payload); err != nil || payload == nil {
+				payload = map[string]any{"error": block.Text}
+			}
+			break
+		}
+	}
+	payload["stale_server"] = true
+	payload["_server"] = map[string]any{"version": info.Version, "commit": info.Commit}
+	res.StructuredContent = payload
+
+	body, err := json.Marshal(payload)
+	if err == nil {
+		text := string(body)
+		updatedText := false
+		for i, item := range res.Content {
+			block, ok := item.(mcp.TextContent)
+			if !ok {
+				continue
+			}
+			var existing map[string]any
+			if json.Unmarshal([]byte(block.Text), &existing) == nil && existing != nil {
+				block.Text = text
+				res.Content[i] = block
+				updatedText = true
+				break
 			}
 		}
-		res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: guidance})
-		return res, nil
+		if !updatedText {
+			for i, item := range res.Content {
+				block, ok := item.(mcp.TextContent)
+				if !ok {
+					continue
+				}
+				block.Text = text
+				res.Content[i] = block
+				updatedText = true
+				break
+			}
+		}
+		if !updatedText {
+			res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: text})
+		}
 	}
+	if guidance != "" {
+		res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: guidance})
+	}
+	return res
 }
 
 // mcpCatalogueGate is the fail-closed check every registration runs
@@ -1231,14 +1299,18 @@ func stateAuditCacheFor(root string) *runtime.StateAuditCache {
 // process-shared moaiAuditCache. The store op lets a caller record a PASS
 // verdict that a later lookup (same moai mcp-server process) returns as a hit.
 func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	op := req.GetString("op", "")
+	resolveRoot := resolveToolProjectRootWithSource
+	if op == "store" {
+		resolveRoot = resolveRequiredToolProjectRoot
+	}
+	root, source, rootErr := resolveRoot(req)
 	if rootErr != nil {
 		return toolErr("audit_cache", rootErr), nil
 	}
 	// REQ-MN-020: the store is the project's own — entries persist under the
 	// named tree's state root, carrying verdict-file evidence.
 	cache := stateAuditCacheFor(root)
-	op := req.GetString("op", "")
 	// REQ-MN-009: under the gate exposure audit_cache is the READ member —
 	// its store operation is one of the mutating operations the exclusion
 	// names, and a gate session's server refuses it.
