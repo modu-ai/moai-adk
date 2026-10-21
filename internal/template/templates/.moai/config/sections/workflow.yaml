@@ -192,6 +192,15 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # card_metadata_verbs: the card-metadata editing verbs — `moai factory
+    # set-spec` (set a picked card's SPEC identifier after pick) and `moai
+    # factory reclassify` (re-designate a queued or picked card's mode
+    # and/or priority). Both verbs write the store with an actor+reason
+    # audit trail (the card_metadata_events surface), and a lane session can
+    # run neither — they are leader/operator acts. Ships OFF: uncomment and
+    # set enabled to true to turn them on.
+    # card_metadata_verbs:
+    #     enabled: true
     # quota_gate: steer the NEXT card away from a nearly exhausted Claude
     # account. The statusline records each Claude session's five-hour and
     # seven-day usage windows; while the gate is on and a window reads at or
