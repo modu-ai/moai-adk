@@ -69,3 +69,29 @@ func TestServerStaleness_UnchangedInstallReadsFresh(t *testing.T) {
 		t.Fatalf("an unchanged install read as stale: %+v", got)
 	}
 }
+
+// TestServerStaleness_SameBuildAtDifferentPathReadsFresh pins the identity
+// rule (t1632): staleness judges BUILD identity — size and mtime, the data
+// the start-time capture already carries — never the executable's PATH. The
+// same build bytes installed at a second PATH location are the same build;
+// judging them by path alone refused every write-capable call on a server
+// that was in fact current, and reconnecting with the same config reproduced
+// the refusal.
+func TestServerStaleness_SameBuildAtDifferentPathReadsFresh(t *testing.T) {
+	dir := t.TempDir()
+	installed := filepath.Join(dir, "moai-installed") // what LookPath resolves now
+	serving := filepath.Join(dir, "moai-serving")     // the build this process started with
+	startedAt := time.Now().Add(-time.Hour)
+	writeFileOfSize(t, installed, 4096, startedAt) // same build bytes, second location
+	writeFileOfSize(t, serving, 4096, startedAt)
+
+	prevCap, prevLook := servingBinaryIdentity, moaiLookPath
+	servingBinaryIdentity = binaryIdentity{Path: serving, Size: 4096, ModTime: startedAt, Captured: true}
+	moaiLookPath = func(string) (string, error) { return installed, nil }
+	t.Cleanup(func() { servingBinaryIdentity, moaiLookPath = prevCap, prevLook })
+
+	got := serverStalenessInfo()
+	if got.Stale {
+		t.Fatalf("an identical build at a different PATH location judged the current server stale: %+v", got)
+	}
+}

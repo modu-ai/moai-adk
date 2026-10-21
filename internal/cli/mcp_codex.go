@@ -603,6 +603,15 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	// identity keys and the lane's launch keys never reach the reviewer
 	// process (the same scrub the codex exec role path applies).
 	cmd.Env = codexChildEnv()
+	// t1632: codexChildCmd put the audit-leg marker in cmd.Env when a leg
+	// spawns this child, but the marker rides the leg's CONTEXT, not this
+	// process's environment — the scrub above cannot inherit it. Re-append it
+	// (last-wins, the same posture as CODEX_HOME in codexChildEnv): a leg
+	// child without the marker re-runs the Stop chain's verification members
+	// (the t1754 defect).
+	if ctx.Value(codexAuditLegCtxKey{}) != nil {
+		cmd.Env = append(cmd.Env, codexAuditLegEnv+"=1")
+	}
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}

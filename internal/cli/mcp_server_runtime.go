@@ -161,8 +161,10 @@ func captureExecutableIdentity() binaryIdentity {
 // would use the new one. Comparing against the START-TIME identity (not a
 // fresh stat of the serving path) is what an in-place reinstall cannot fool:
 // both end-of-call stats of the same path read the new file and would call a
-// stale server fresh (card-review P1-3). The check is INERT when no start-time
-// identity was captured.
+// stale server fresh (card-review P1-3). The judgment is BUILD identity
+// (size+mtime), not location (t1632): the same build installed at a second
+// PATH location is the same build — only a moved size or mtime is the skew.
+// The check is INERT when no start-time identity was captured.
 type serverStaleness struct {
 	Stale     bool   `json:"stale_server"`
 	Serving   string `json:"serving"`
@@ -190,8 +192,15 @@ func serverStalenessInfo() serverStaleness {
 	if err != nil {
 		return info
 	}
-	if installed == servingBinaryIdentity.Path &&
-		installedStat.Size() == servingBinaryIdentity.Size &&
+	// t1632: freshness is judged on content identity — size+mtime, the data
+	// the start-time capture already carries — never on the PATH alone. Why
+	// size+mtime and not a content hash or a build stamp: the identity is
+	// already captured at start (no extra binary read per call), it is the
+	// same signal the same-path case above always trusted, a hash would
+	// re-read the binary on every tool call, and a stamp would require
+	// executing the installed binary. An in-place reinstall still moves size
+	// or mtime, so the skew this check exists for stays detected.
+	if installedStat.Size() == servingBinaryIdentity.Size &&
 		installedStat.ModTime().Equal(servingBinaryIdentity.ModTime) {
 		return info
 	}

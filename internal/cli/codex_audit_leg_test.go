@@ -2,13 +2,16 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // The marker reaches only the codex child of an audit leg (t1788 brain ruling,
@@ -153,5 +156,53 @@ func TestAuditLegSkipSetEnumeratesVerifyMembers(t *testing.T) {
 		if got := codexAuditLegSkipped[n]; got != name {
 			t.Fatalf("skip set[%d] = %q, want %q", n, got, name)
 		}
+	}
+}
+
+// The audit_multi leg's app-server child runs on the SCRUBBED environment
+// (mcp_codex.go, REQ-MN-024), and that scrub must carry the leg marker
+// through (t1632): codexChildCmd puts the marker in cmd.Env from the leg's
+// CONTEXT, but the child's Stop chain reads it from its ENVIRONMENT. Asserted
+// through the real session runner with a real child process, so the
+// environment the child actually receives is what is judged — the scrub must
+// both preserve the marker and keep dropping identity keys.
+func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
+	dir := t.TempDir()
+	legOut := filepath.Join(dir, "leg.txt")
+	scrubOut := filepath.Join(dir, "scrub.txt")
+	script := filepath.Join(dir, "probe.sh")
+	body := "#!/bin/sh\n" +
+		fmt.Sprintf("printf '%%s' \"$%s\" > \"%s\"\n", codexAuditLegEnv, legOut) +
+		fmt.Sprintf("printf '%%s' \"${%s:+leaked}\" > \"%s\"\n", config.EnvClaudeCodeSessionID, scrubOut)
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// The marker rides the leg CONTEXT, not this process's environment: with
+	// the env var empty, any marker the child sees can only come from the ctx.
+	t.Setenv(codexAuditLegEnv, "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "session-under-scrub")
+
+	conn, err := realCodexSessionRunner{}.start(withCodexAuditLeg(context.Background()), script, nil)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if err := conn.close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	leg, err := os.ReadFile(legOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(leg) != "1" {
+		t.Fatalf("the scrubbed child environment lost the audit-leg marker (got %q, want \"1\") — the leg's Stop chain re-runs its verification members (t1754)", string(leg))
+	}
+	scrub, err := os.ReadFile(scrubOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(scrub) != "" {
+		t.Fatalf("the scrub leaked %s=%q into the leg child", config.EnvClaudeCodeSessionID, string(scrub))
 	}
 }

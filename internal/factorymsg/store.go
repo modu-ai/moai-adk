@@ -885,14 +885,18 @@ type PendingListEntry struct {
 // PendingList returns up to limit pending message ids and kinds for p WITHOUT
 // claiming them — the read-only observation the hook's inbox inspection uses
 // (SPEC-MCP-NEUTRALITY-001 REQ-MN-017: the hook observes counts; the MCP
-// factory_msg_list tool is the only claim surface). Decision-required kinds
-// (blocker, status_request) sort FIRST, so a rendered batch always carries
-// them when any exist — the Stop-side block decision reads the rendered list.
+// factory_msg_list tool is the only claim surface). Expired claims are
+// pending again (the same clause PendingCount applies, t1632): a session that
+// claimed a message and died must not hide it from the rendered inbox — only
+// a LIVE claim is excluded. Decision-required kinds (blocker, status_request)
+// sort FIRST, so a rendered batch always carries them when any exist — the
+// Stop-side block decision reads the rendered list.
 func (s *Store) PendingList(ctx context.Context, p Peer, limit int) ([]PendingListEntry, error) {
 	if limit < 1 || limit > MaxBatch {
 		limit = MaxBatch
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id,kind FROM messages WHERE recipient_session=? AND recipient_generation=? AND state='pending' AND kind<>? ORDER BY CASE WHEN kind IN ('blocker','status_request') THEN 0 ELSE 1 END, created_at LIMIT ?`, p.SessionUUID, p.Generation, KindReceipt, limit)
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,kind FROM messages WHERE recipient_session=? AND recipient_generation=? AND kind<>? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY CASE WHEN kind IN ('blocker','status_request') THEN 0 ELSE 1 END, created_at LIMIT ?`, p.SessionUUID, p.Generation, KindReceipt, now, limit)
 	if err != nil {
 		return nil, err
 	}

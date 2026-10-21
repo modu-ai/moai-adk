@@ -160,7 +160,6 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if glmErr != nil {
 		return toolErr(glmTaskToolName, glmErr), nil
 	}
-	_ = glmRoot
 	prompt := req.GetString("prompt", "")
 	background := req.GetBool("background", false)
 	token := extractProgressToken(req)
@@ -231,8 +230,11 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 
 	// Background: the record is created BEFORE the call is handed off, so an
 	// unwritable state directory is reported to the caller as a structured
-	// error rather than surfacing later as a job nobody can observe.
-	registry := newGLMJobRegistry(projectDirResolver())
+	// error rather than surfacing later as a job nobody can observe. The
+	// registry is rooted at the VALIDATED caller root (t1632): the job record
+	// belongs to the tree the request named, and the glm_job_* query/cancel
+	// surfaces read the same root.
+	registry := newGLMJobRegistry(glmRoot)
 	rec, err := registry.create(glmJobSpec{
 		Model:          model,
 		RequestSummary: prompt,

@@ -108,7 +108,7 @@ func handleGLMJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if rootErr != nil {
 		return toolErr(glmJobStatusToolName, rootErr), nil
 	}
-	rec, errResult := loadGLMJobFor(glmJobStatusToolName, req)
+	rec, errResult := loadGLMJobFor(glmJobStatusToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -125,7 +125,7 @@ func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if rootErr != nil {
 		return toolErr(glmJobResultToolName, rootErr), nil
 	}
-	rec, errResult := loadGLMJobFor(glmJobResultToolName, req)
+	rec, errResult := loadGLMJobFor(glmJobResultToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -157,7 +157,7 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if rootErr != nil {
 		return toolErr(glmJobCancelToolName, rootErr), nil
 	}
-	rec, errResult := loadGLMJobFor(glmJobCancelToolName, req)
+	rec, errResult := loadGLMJobFor(glmJobCancelToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -218,15 +218,18 @@ func currentGLMJobRegistry() *glmJobRegistry {
 	return newGLMJobRegistry(projectDirResolver())
 }
 
-// loadGLMJobFor reads the job named by the request's job_id argument. It
-// returns either the record or the structured error result the tool should
-// return verbatim — never both, and never a Go error.
-func loadGLMJobFor(tool string, req mcp.CallToolRequest) (GLMJobRecord, *mcp.CallToolResult) {
+// loadGLMJobFor reads the job named by the request's job_id argument from the
+// REQUEST's project root (t1632 / REQ-MN-004): glm_task creates the record
+// under the caller's tree, so the query/cancel surfaces read the caller's
+// tree too — producer and consumer resolve the same root rule. It returns
+// either the record or the structured error result the tool should return
+// verbatim — never both, and never a Go error.
+func loadGLMJobFor(tool string, req mcp.CallToolRequest, root string) (GLMJobRecord, *mcp.CallToolResult) {
 	jobID := req.GetString(glmJobIDArg, "")
 	if jobID == "" {
 		return GLMJobRecord{}, toolErr(tool, errGLMJobIDRequired)
 	}
-	rec, err := currentGLMJobRegistry().load(jobID)
+	rec, err := newGLMJobRegistry(root).load(jobID)
 	if err != nil {
 		if glmJobNotFound(err) {
 			return GLMJobRecord{}, toolErr(tool, fmt.Errorf("no job record for id %s", jobID))
