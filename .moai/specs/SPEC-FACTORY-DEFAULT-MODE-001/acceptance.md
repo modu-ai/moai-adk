@@ -3,7 +3,7 @@ id: SPEC-FACTORY-DEFAULT-MODE-001
 title: "Acceptance criteria — default-mode split and the todo classify verb"
 version: "0.1.0"
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-21
 author: manager-spec (card t1737)
 ---
 

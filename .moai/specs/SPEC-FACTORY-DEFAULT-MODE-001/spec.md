@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-DEFAULT-MODE-001
 title: "Absent card classification defaults to parallelizable, the decider-failure fail-safe stays serial, and the official `moai todo classify` reclassify verb"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-21
 author: manager-spec (card t1737)
 priority: P0
 phase: "v3.2.0 target"
