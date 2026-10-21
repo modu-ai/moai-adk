@@ -1060,7 +1060,12 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State != factory.BacklogStatePicked || recorded[it.ID] {
+		switch it.State {
+		case factory.BacklogStatePicked:
+		default:
+			continue
+		}
+		if recorded[it.ID] {
 			continue
 		}
 		if !elig.active() {
@@ -1414,7 +1419,8 @@ func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, i
 	// 1. admitted — the queue item exists and is picked. A held (or dropped,
 	// or absent) item never enters the generic pull: the hold STATE is
 	// absorbed here (D9), not given its own token.
-	if !inQueue || it.State != factory.BacklogStatePicked {
+	admitted := inQueue && it.State == factory.BacklogStatePicked
+	if !admitted {
 		state := "absent"
 		if inQueue {
 			state = string(it.State)
@@ -2200,10 +2206,15 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				continue
 			}
 		case factory.BacklogStatePicked:
-			if !selfDispatch {
+			row, hasRow := rowByID[it.ID]
+			bundleOwner, bundleHasOwner := bundleLane[row.BundleID]
+			ownBundle := hasRow && row.BundleID != "" && bundleHasOwner && bundleOwner == lane
+			// Arm (b-priority) continues this lane's own bundle with the
+			// generic self-dispatch arms OFF too (REQ-CEP-004).
+			if !selfDispatch && !ownBundle {
 				continue
 			}
-			if row, hasRow := rowByID[it.ID]; hasRow &&
+			if hasRow &&
 				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}

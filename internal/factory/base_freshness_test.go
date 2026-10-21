@@ -177,7 +177,8 @@ func TestLandingsBehindCountsFirstParent(t *testing.T) {
 	if res.Admit || !strings.Contains(res.Refusal, "3 landings behind") {
 		t.Fatalf("K=2 must refuse at 3 landings behind: %+v", res)
 	}
-	if strings.Contains(res.Refusal, "15") {
+	// Check the distance field: the unrelated tip SHA may also contain "15".
+	if strings.Contains(res.Refusal, total+" landings behind") {
 		t.Fatalf("the refusal must not report the plain commit count: %s", res.Refusal)
 	}
 
