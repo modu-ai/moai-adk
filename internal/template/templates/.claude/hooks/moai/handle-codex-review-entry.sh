@@ -2,19 +2,18 @@
 
 # MoAI Hook Wrapper - handle-codex-review-entry.sh
 # Forwards stdin JSON to `moai hook codex-review-entry` — the delayed review
-# block's NEXT-TURN-ENTRY enforcement handler (SPEC-GATE-BOTTLENECK-001
-# REQ-GBN-002). The Stop gate (handle-codex-review-gate.sh) allows the turn
+# block's NEXT-TURN-ENTRY enforcement handler. The Stop gate (handle-codex-review-gate.sh) allows the turn
 # and kicks a background review; this wrapper is the entry-side half: it reads
 # the receipt that review recorded and delivers a fresh FAIL's detail as
-# additional context — it never blocks a prompt (SPEC-REVIEW-GATE-REPAIR-001
-# REQ-RG-001). Composes with handle-user-prompt-submit.sh — it is a SEPARATE
+# additional context — it never blocks a prompt.
+# Composes with handle-user-prompt-submit.sh — it is a SEPARATE
 # entry reading the same stdin JSON independently. It never runs a review
 # synchronously; on a cache-MISS state the gate-ON shell fast path below fires
 # the same detached, marker-guarded background kick the Stop gate uses, then
 # allows.
 #
 # The handler is opt-in (workflow.codex.review_gate.enabled — the SAME flag
-# the Stop gate reads) and fail-open on every read path (AC-GBN-004).
+# the Stop gate reads) and fail-open on every read path.
 #
 # Capture stdin once (hooks may have multiple composited readers).
 INPUT=$(cat)
@@ -37,14 +36,14 @@ INPUT=$(cat)
 CODEX_GATE_PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 CODEX_GATE_WORKFLOW_YAML="$CODEX_GATE_PROJECT_ROOT/.moai/config/sections/workflow.yaml"
 
-# --- gate-ON shell fast-path helpers (SPEC-HOOK-SYNC-ASYNC-001 M3) ---
+# --- gate-ON shell fast-path helpers ---
 # Defined BEFORE the early exits below so a test can `source` this file with
 # the gate OFF and call them directly (the D4 key-parity gate).
 #
 # The fast path's dependency set is exactly git + one sha256 tool (shasum,
 # openssl fallback) + awk (D3) plus the fixture-stable coreutils the kick arm
 # shares with the Stop gate (mkdir/rm/cat). Every absent or failing probe
-# FALLS THROUGH to the binary below (REQ-HSA-007) — the shell may skip the
+# FALLS THROUGH to the binary below — the shell may skip the
 # binary only on positive evidence of an ALLOW state.
 
 # The runtime-config exclusion lists, mirrored from internal/cli
@@ -194,7 +193,7 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 # Gate off (or unreadable) ⇒ ALLOW with zero moai cold-start.
 [ "$CODEX_GATE_ENABLED" = "true" ] || exit 0
 
-# --- gate-ON shell fast path (SPEC-HOOK-SYNC-ASYNC-001 M3, plan §F) ---
+# --- gate-ON shell fast path ---
 # Resolves the common ALLOW states without the synchronous moai cold start:
 # (1) eligibility — a WT- branch (card scope) and either entry-side skip
 #     policy (tree_scope: skip; the primary-checkout primary_scope: skip
@@ -215,8 +214,8 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 #     (4c) both satisfied — exclusive-create the .kick-<epoch/900> marker
 #          (the shared Stop-arm marker), kick detached, exit 0;
 # (5) fresh pass/inconclusive → exit 0 WITHOUT kicking (codex_review_gate.go:234-244);
-# (6) fresh FAIL → fall through (the Go handler owns the REQ-RG-001 delivery);
-# (7) every failure → fall through (REQ-HSA-007).
+# (6) fresh FAIL → fall through (the Go handler owns fresh-failure delivery);
+# (7) every failure → fall through.
 codex_entry_fastpath() {
 	# --- (1) eligibility ---
 	# (R1) payload-cwd precedence: reviewScopeSessionDir (codex_review_scope.go)
@@ -256,7 +255,7 @@ codex_entry_fastpath() {
 	local branch
 	branch=$(git -C "$CODEX_GATE_PROJECT_ROOT" branch --show-current 2>/dev/null) || return 1
 	case "$branch" in
-		WT-*) return 1 ;; # card scope — the Go handler owns card sessions (D5, REQ-CRO-004)
+		WT-*) return 1 ;; # card scope — the Go handler owns card sessions
 	esac
 
 	# The two entry-side skip policies, read from the SAME workflow.yaml the
@@ -526,7 +525,7 @@ function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) re
 }
 END { exit found ? 0 : 1 }
 '; then
-		exit 0 # clean tree — nothing was kicked to enforce (REQ-GBN-002 preserved)
+		exit 0 # clean tree — nothing was kicked to enforce
 	fi
 	local pa
 	pa=$(git -C "$root" status --porcelain --untracked-files=all 2>/dev/null) || pa=""
@@ -579,7 +578,7 @@ END { exit (any && !bad) ? 0 : 1 }
 			moai_bin="$HOME/go/bin/moai"
 		fi
 	fi
-	[ -n "$moai_bin" ] || return 1 # unresolvable binary → fall through (REQ-HSA-007)
+	[ -n "$moai_bin" ] || return 1 # unresolvable binary → fall through
 
 	local ver_out bin_commit
 	ver_out=$("$moai_bin" version 2>/dev/null) || return 1
