@@ -764,6 +764,45 @@ func TestSetSpec_RefusalAtomicity(t *testing.T) {
 	}
 }
 
+// TestSetSpec_MissingRecordRefusalSparesTheStore pins the D-B alignment
+// (sync-audit round 1): the gate-(b) refusal precedes the store open. A
+// project whose factory database was never created must still have none
+// after the refusal (OpenFactory migrates on open — refusing after it would
+// materialize an empty store as a side effect of a read that found nothing,
+// the accessor convention the lease gate set: a refused open leaves no
+// database behind); with the store present but the row absent, the same
+// refusal stands.
+func TestSetSpec_MissingRecordRefusalSparesTheStore(t *testing.T) {
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, serr := os.Stat(path); serr == nil {
+		t.Fatal("precondition: the factory database already exists")
+	}
+	if _, _, rerr := runFactory(t, "set-spec", "t1", "--spec", "SPEC-DB-001", "--reason", "r", "--run", fcRun); rerr == nil {
+		t.Fatal("a never-assigned card was admitted")
+	} else if !strings.Contains(rerr.Error(), "has no factory record") {
+		t.Fatalf("refusal lacks the missing-record shape: %v", rerr)
+	}
+	if _, serr := os.Stat(path); serr == nil {
+		t.Fatal("the refusal materialized a factory database (sync-audit-1 D-B)")
+	}
+	// With the store present and the row absent, the same refusal stands.
+	fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
+	if _, _, rerr := runFactory(t, "set-spec", "t1", "--spec", "SPEC-DB-001", "--reason", "r", "--run", fcRun); rerr == nil {
+		t.Fatal("a record-less card was admitted on an existing store")
+	} else if !strings.Contains(rerr.Error(), "has no factory record") {
+		t.Fatalf("refusal lacks the missing-record shape on an existing store: %v", rerr)
+	}
+	if n := mdAuditCount(t, root); n != 0 {
+		t.Fatalf("audit rows = %d after the refusal pair, want 0", n)
+	}
+}
+
 // TestSetSpec_CatchUpAppendRetry pins the D-A alignment (sync-audit round
 // 1): the direction-6 catch-up append carries the write path's append
 // discipline — one retry, then the audit-loss sentinel, exit non-zero, with
