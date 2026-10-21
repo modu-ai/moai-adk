@@ -1,9 +1,9 @@
 ---
 id: SPEC-GLM-KEY-INPUT-001
 title: "Implementation Plan — GLM API Key Input Surface in the moai web Settings Console"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -32,8 +32,10 @@ no clarification markers are outstanding in this plan.
 
 `internal/web` cannot import `internal/cli`; the dependency already runs the
 other way (`internal/cli/web.go:12` imports `internal/web`). The writer moves
-to `internal/glmcred`, a new stdlib-only leaf package that both `internal/cli`
-and `internal/web` import.
+to `internal/glmcred`, a credential-owner package below both `internal/cli`
+and `internal/web`. The v0.3.0 amendment permits shared low-level internal
+leaves, including native private-file storage; its Windows implementation may
+use the existing `golang.org/x/sys/windows` dependency.
 
 `internal/config` was considered and rejected. It is already imported by both
 callers and already owns `EnvTestGLMKey`, so it would have worked mechanically
@@ -41,8 +43,10 @@ callers and already owns `EnvTestGLMKey`, so it would have worked mechanically
 different concern with a different file format (dotenv, not YAML), a different
 lifetime, and a different permission policy. A package that owns project
 configuration should not also own secret storage. `internal/glmcred` has a
-single responsibility and, importing nothing beyond stdlib, cannot participate
-in any future import cycle.
+single responsibility. Dependencies must stay below the credential owners
+and must not import `cli`, `web`, `settings`, `glmcred`, or `jevcred`; the
+shared private-file helper handles native access control without acquiring
+credential format, configuration or application authority.
 
 **D-2 — Persist route for the key field. RESOLVED: out-of-schema hand-built field.**
 
@@ -78,7 +82,7 @@ silently grow into a pattern.
 
 **D-3 — Mode tightening on the shared path. RESOLVED: it applies to both surfaces.**
 
-Because M1 makes `moai glm` and the console share one writer, the tightening
+On Unix, because M1 makes `moai glm` and the console share one writer, the tightening
 required by REQ-GKI-006-002 reaches the CLI path too. A user whose
 `~/.moai/.env.glm` is currently `0644` will find it `0600` after their next
 save from **either** surface. This is accepted and intended.
@@ -91,6 +95,12 @@ files match the policy that new files have always followed. It is recorded as
 a **silent correction, not a breaking change**: nothing a user can legitimately
 depend on is removed, since no supported workflow requires the credential file
 to be readable by other accounts.
+
+The v0.3.0 amendment applies the same owner-only invariant on Windows through
+a protected, non-inheriting owner DACL. The temporary replacement must be
+private before receiving secret bytes; native readback must reject broad,
+null, inherited, unknown or unreadable policies. No privilege is enabled or
+requested. This is stronger protection than accepting emulated `0600` bits.
 
 ### §A.2 Measured starting state
 
@@ -205,14 +215,24 @@ changes a live CLI path, and every later milestone depends on its interface.
 
 Files:
 
-- `internal/glmcred/glmcred.go` (new, stdlib-only) — receives `Path()`, `Save(key string) error`, `Load() string`, the dotenv escape/unescape helpers, and the injectable home-dir seam.
+- `internal/glmcred/glmcred.go` (credential owner; shared low-level leaves permitted by D-1) — receives `Path()`, `Save(key string) error`, `Load() string`, the dotenv escape/unescape helpers, and the injectable home-dir seam.
 - `internal/cli/glm.go` — `saveGLMKey` / `loadGLMKey` / `getGLMEnvPath` / `escapeDotenvValue` / `unescapeDotenvValue` become thin delegations, or are deleted with call sites repointed. Retain the `MOAI_TEST_GLM_KEY` override behaviour (C-4).
 - `internal/cli/glm_tools.go` — two `loadGLMKey` call sites repointed.
 - New package test file — mode-tightening, escaping, round-trip, and the pre-existing-`0644` case.
 
-Behaviour change in this milestone: `Save` explicitly asserts mode `0600`
-after writing, closing the §A.3 defect (REQ-GKI-006-002). Per D-3 this reaches
-the `moai glm` path as well as the console, by design.
+Behaviour required by the v0.3.0 amendment: `Save` creates a private replacement
+before writing secret bytes and verifies native access both before publication
+and on the published file. Unix remains exactly `0600`; Windows uses a
+protected owner-only DACL. A verification failure returns an error. Per D-3
+this reaches the `moai glm` path as well as the console. Existing path,
+dotenv escaping and redaction behavior stay in the credential owner.
+
+Amendment verification is pending: native Windows tests must independently
+read owner/DACL protection before the first payload write, reject broad/null/
+inherited ACL fixtures, and verify narrowing of existing broad-access files.
+Unix regressions must retain the exact `0644 → 0600` assertions. Both console
+and CLI save paths remain covered; native privacy evidence must not be
+replaced with permission-bit emulation or a skipped/no-tests execution.
 
 Requirements: REQ-GKI-002-001, REQ-GKI-002-002, REQ-GKI-002-003, REQ-GKI-006-001, REQ-GKI-006-002.
 

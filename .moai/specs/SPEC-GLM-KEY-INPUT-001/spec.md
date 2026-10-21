@@ -1,10 +1,10 @@
 ---
 id: SPEC-GLM-KEY-INPUT-001
 title: "GLM API Key Input Surface in the moai web Settings Console"
-version: "0.2.0"
-status: completed
+version: "0.3.0"
+status: in-progress
 created: 2026-07-25
-updated: 2026-07-30
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -12,14 +12,26 @@ module: "internal/web, internal/settings, internal/cli"
 lifecycle: spec-anchored
 tags: "web-console, glm, credential, secret-handling, file-mode, settings-schema"
 tier: M
+amendment_of: SPEC-GLM-KEY-INPUT-001
 ---
 
 ## HISTORY
 
 | Version | Date       | Author       | Change                          |
 |---------|------------|--------------|---------------------------------|
+| 0.3.0 | 2026-10-21 | manager-spec | In-place amendment: retain owner-only credential storage across Unix and Windows; permit the shared native private-file leaf without changing credential locations, routes or disclosure rules. |
 | 0.1.0   | 2026-07-25 | manager-spec | Initial plan-phase authoring.   |
 | 0.2.0   | 2026-07-25 | manager-spec | Plan-phase decisions resolved. D-1: credential writer extracts to new leaf package `internal/glmcred`. D-2: key field is out-of-schema hand-built, not a fifth `PersistKind`. D-3: mode tightening applies to both the console and `moai glm`. Scope change: the trailing-4-character disambiguation hint is now IN scope — REQ-GKI-004-002 rewritten, REQ-GKI-004-004 added for the short-key guard, §D exclusion narrowed. |
+
+
+### Amendments
+
+- Amendment: v0.3.0, `ci-repair-20261022`, in place; `completed → in-progress`.
+- Prior completed version: 0.2.0.
+- prior_completed_sha: d06771f07 (the unchanged `progress.md` §E.4 `sync_commit_sha`). This recorded pre-merge SHA does not resolve in this checkout; the reachable batch close is `2f449e189e6ddda6d61740aa8445386a9cb210e1`. The historical signal is preserved rather than replaced by a new receipt.
+- Rationale: Unix permission bits do not establish Windows DACL privacy. The owner-only credential contract requires native Windows enforcement before secret bytes are written and native readback verification; the former stdlib-only boundary prevents the existing Windows API dependency needed for that enforcement.
+- Scope: §A.4, the platform meaning of REQ-GKI-002-002 and REQ-GKI-006-002, C-6, plan D-1/D-3/M1, and the matching acceptance assertions. The shared low-level private-file helper may use the repository's existing `golang.org/x/sys/windows` dependency on Windows. Credential locations, dotenv format, the single writer, masking, prohibited persistence routes, requirement/AC IDs and prior audit signals remain unchanged.
+- Closure: pending implementation validation, actual Windows native-DACL checks, Unix 0600 regression evidence and final review/CI. This amendment makes no new PASS or completion claim and does not edit `progress.md`.
 
 ---
 
@@ -67,7 +79,7 @@ precisely the route that would write it into `llm.yaml`.
 Therefore the governing constraint of this SPEC: **the key input is rendered
 alongside profile-store- and config-backed fields but must not persist like
 them.** It persists only through the credential writer that owns
-`~/.moai/.env.glm` at mode `0600`.
+`~/.moai/.env.glm` with owner-only native access (`0600` on Unix; the protected owner-only Windows DACL defined by REQ-GKI-002-002).
 
 ### §A.4 Structural constraint discovered during authoring
 
@@ -81,7 +93,14 @@ mode policies and two escaping rules, which is the defect class this SPEC is
 written to avoid. The credential writer is therefore lifted into a new leaf
 package, `internal/glmcred`, which both `internal/cli` and `internal/web`
 import, with the CLI path delegating to it so exactly one implementation
-survives. The package is stdlib-only, so it is cycle-free by construction.
+survives. The package remains below both callers and may depend on shared
+low-level internal leaves (`defs`, `paths`, and the native private-file
+helper). The helper may use the existing `golang.org/x/sys/windows`
+dependency only for Windows filesystem access control. These dependencies
+must not import `cli`, `web`, `settings`, or either credential owner; the
+one-way package boundary, rather than a stdlib-only assertion, preserves
+acyclic composition. The credential owner still owns path/format/escaping;
+the helper owns only private-file creation, replacement and access checks.
 See `plan.md` §A.1 D-1 for the rationale and `plan.md` §F M1 for the work.
 
 ---
@@ -98,7 +117,7 @@ See `plan.md` §A.1 D-1 for the rationale and `plan.md` §F M1 for the work.
 ### §B.2 Credential-grade persistence
 
 - REQ-GKI-002-001: The console shall persist GLM API key material only to the GLM credential file at `~/.moai/.env.glm`, in the quoted `GLM_API_KEY` dotenv form the existing writer produces.
-- REQ-GKI-002-002: The GLM credential file written on behalf of the console shall carry file mode `0600`.
+- REQ-GKI-002-002: The GLM credential file written on behalf of the console shall have owner-only native access: exact file mode `0600` on Unix, and on Windows a protected, non-inheriting DACL granting access only to the current file owner. This protection shall be established before credential bytes are written and verified by native access-policy readback; an unknown, unreadable, inherited or broader policy shall fail the save rather than be reported as successful.
 - REQ-GKI-002-003: The console shall delegate the credential write to the shared writer rather than reimplementing dotenv escaping, path resolution, or file-mode selection.
 - REQ-GKI-002-004: While any submitted settings field is failing validation, the console shall not write the GLM API key to disk.
 - REQ-GKI-002-005: When the credential write fails, the console shall surface the failure to the operator and shall not present the save as successful.
@@ -125,7 +144,7 @@ See `plan.md` §A.1 D-1 for the rationale and `plan.md` §F M1 for the work.
 ### §B.6 Pre-existing credential file
 
 - REQ-GKI-006-001: When a GLM API key is submitted and the credential file already exists, the console shall replace the stored key value in place rather than creating a second credential location.
-- REQ-GKI-006-002: When the credential file already exists with a mode wider than `0600`, the shared credential writer shall tighten the mode to `0600` as part of the write, on both the console save path and the `moai glm` interactive save path.
+- REQ-GKI-006-002: When the credential file already exists with access broader than the owner-only policy of REQ-GKI-002-002, the shared credential writer shall replace it with owner-only storage as part of the write, on both the console save path and the `moai glm` interactive save path. Unix mode `0644` shall become exactly `0600`; a broad or inheriting Windows DACL shall become a protected owner-only DACL. The replacement shall be private before receiving credential bytes and verified after publication.
 - REQ-GKI-006-003: The console shall not delete or truncate the credential file when no GLM API key value is submitted.
 
 ---
@@ -137,7 +156,7 @@ See `plan.md` §A.1 D-1 for the rationale and `plan.md` §F M1 for the work.
 - C-3: `loadGLMKey`'s existing consumers (`internal/cli/glm.go` and `internal/cli/glm_tools.go`) must keep reading the same file in the same format. The dotenv shape is a compatibility surface, not an implementation detail.
 - C-4: The `MOAI_TEST_GLM_KEY` environment override that `loadGLMKey` honours is a test seam and must keep working after any extraction.
 - C-5: The console's existing atomic-reject contract holds: a validation failure anywhere in the submitted form leaves all persisted state unchanged, credential file included.
-- C-6: `os.WriteFile` does not narrow the mode of a file that already exists. Satisfying REQ-GKI-002-002 for a pre-existing wide-mode file therefore requires an explicit mode assertion, not a `perm` argument.
+- C-6: `os.WriteFile` does not narrow the mode of a file that already exists, and Windows permission-bit emulation does not establish an owner-only DACL. Satisfying REQ-GKI-002-002 therefore requires native owner-only protection before writing secret bytes and native readback checks, including for an existing broad-access file; a `perm` argument or a successful write alone is insufficient. The Windows path shall not request privilege elevation, a new credential, or a global permission/configuration change.
 - C-7: The four sibling `glm.models.*` fields keep their current `PersistTypedSection` route into `llm.yaml`. This SPEC does not move them.
 
 ---
