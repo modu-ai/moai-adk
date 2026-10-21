@@ -30,6 +30,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -170,7 +171,7 @@ func runFactorySetSpec(cmd *cobra.Command, cardID, spec, reason, run string) err
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	runID, err := resolveFactoryCardRun(ctx, root, run)
+	fdbPath, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return err
 	}
@@ -184,16 +185,21 @@ func runFactorySetSpec(cmd *cobra.Command, cardID, spec, reason, run string) err
 	// — as a side effect of a read that found nothing. When the store file is
 	// absent no record can exist, so the verb refuses there; a present store
 	// is opened as before and the row-level LoadCard gate decides.
-	fdbPath, err := homestate.FactoryDBPath(root)
-	if err != nil {
-		return err
-	}
 	// Only a truly absent store carries the missing-record refusal (sync-audit-2
 	// D-G): a stat error with any other cause — an untraversable path component
 	// around an existing store included — is not evidence about the record, so
 	// the probe falls through and the open's own error surfaces the real cause.
+	// The probe also precedes the RUN resolution (card-review CR1): the shared
+	// resolver's omitted form opens the store to list active runs — an open
+	// that CREATES it — and, on several active runs, reconciles (a runs-table
+	// write), so a verb that resolved first could mutate the store on a
+	// refused path.
 	if _, serr := os.Stat(fdbPath); errors.Is(serr, fs.ErrNotExist) {
 		return fmt.Errorf("card %s has no factory record — assign it first (the cards table is keyed (run_id, card_id)); set-spec creates no record", cardID)
+	}
+	runID, err := resolveSetSpecRun(ctx, fdbPath, run)
+	if err != nil {
+		return err
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -217,6 +223,32 @@ func runFactorySetSpec(cmd *cobra.Command, cardID, spec, reason, run string) err
 	return newTodoStore().WithLock(func(l *factory.LockedBacklog) error {
 		return setSpecLocked(ctx, l, db, runID, cardID, card, spec, reason, actor, session, now, out)
 	})
+}
+
+// resolveSetSpecRun is the metadata verb's run resolution (card-review CR1).
+// An explicit --run is used as given — the verb's own gates (queue-picked,
+// the record row keyed (run_id, card_id)) are its validation, matching the
+// shared resolver's explicit form. The omitted form resolves through the
+// read-only active-run listing (factorymsg.ActiveRunIDsAt), which never
+// creates the store and never retires runs — a validation-phase lookup must
+// not mutate the store it validates against — and surviving ambiguity is
+// real ambiguity: fail closed, pass --run.
+func resolveSetSpecRun(ctx context.Context, fdbPath, explicit string) (string, error) {
+	if run := strings.TrimSpace(explicit); run != "" {
+		return run, nil
+	}
+	ids, err := factorymsg.ActiveRunIDsAt(ctx, fdbPath)
+	if err != nil {
+		return "", err
+	}
+	switch len(ids) {
+	case 1:
+		return ids[0], nil
+	case 0:
+		return "", fmt.Errorf("no --run given and no active factory run")
+	default:
+		return "", fmt.Errorf("no --run given and %d active factory runs; pass --run", len(ids))
+	}
 }
 
 // setSpecLocked is runFactorySetSpec's body under the held queue lock.

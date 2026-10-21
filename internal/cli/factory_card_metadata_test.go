@@ -840,6 +840,36 @@ func TestSetSpec_OpaqueStatErrorDoesNotClaimMissingRecord(t *testing.T) {
 	}
 }
 
+// TestSetSpec_OmittedRunRefusalSparesTheStore pins the CR1 ordering
+// (card-review): the store-existence probe precedes the run resolution.
+// With --run omitted the shared resolver opens the store to list active
+// runs — an open that CREATES it — so a verb that resolves before probing
+// materializes a store on a refused path. The probe runs first; the
+// refusal below leaves the store as it found it: absent.
+func TestSetSpec_OmittedRunRefusalSparesTheStore(t *testing.T) {
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, serr := os.Stat(path); serr == nil {
+		t.Fatal("precondition: the factory database already exists")
+	}
+	if _, _, rerr := runFactory(t, "set-spec", "t1", "--spec", "SPEC-CR1-001", "--reason", "r"); rerr == nil {
+		t.Fatal("set-spec without --run was admitted on an absent store")
+	}
+	if _, serr := os.Stat(path); serr == nil {
+		t.Fatal("the refused run materialized a factory database (card-review CR1)")
+	}
+	// The probe, not the run resolution, answered the refusal: a resolver
+	// first would have named the missing active run instead.
+	if _, _, rerr := runFactory(t, "set-spec", "t1", "--spec", "SPEC-CR1-001", "--reason", "r"); rerr == nil || !strings.Contains(rerr.Error(), "has no factory record") {
+		t.Fatalf("refusal did not come from the existence probe: %v", rerr)
+	}
+}
+
 // TestSetSpec_CatchUpAppendRetry pins the D-A alignment (sync-audit round
 // 1): the direction-6 catch-up append carries the write path's append
 // discipline — one retry, then the audit-loss sentinel, exit non-zero, with
