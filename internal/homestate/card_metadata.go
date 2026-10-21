@@ -170,7 +170,7 @@ func truncateCardMetadata(s string) string {
 // @MX:REASON: the set-spec verb and its direction-2 compensating restore both route through this one version-fenced body; a second mutation path would fork the fencing contract and re-open the one-directional gap the failure matrix exists to close
 // @MX:SPEC: SPEC-CARD-METADATA-VERBS-001
 func (f *FactoryDB) SetCardSpec(ctx context.Context, runID, cardID, specID string, expectedVersion int64, now time.Time) (Card, error) {
-	return f.mutateCardSpec(ctx, runID, cardID, specID, expectedVersion, now)
+	return f.mutateCardSpec(ctx, runID, cardID, specID, expectedVersion, now, false)
 }
 
 // RestoreCardSpec is the compensating-restore entry point REQ-CMV-004
@@ -179,17 +179,20 @@ func (f *FactoryDB) SetCardSpec(ctx context.Context, runID, cardID, specID strin
 // queue. It is a named function rather than a second inline write so the
 // failure-matrix tests inject against the same seam the verb calls.
 func (f *FactoryDB) RestoreCardSpec(ctx context.Context, runID, cardID, priorSpecID string, expectedVersion int64, now time.Time) (Card, error) {
-	return f.mutateCardSpec(ctx, runID, cardID, priorSpecID, expectedVersion, now)
+	return f.mutateCardSpec(ctx, runID, cardID, priorSpecID, expectedVersion, now, true)
 }
 
 // mutateCardSpec is the shared version-fenced body of SetCardSpec and
-// RestoreCardSpec.
-func (f *FactoryDB) mutateCardSpec(ctx context.Context, runID, cardID, specID string, expectedVersion int64, now time.Time) (Card, error) {
+// RestoreCardSpec. allowEmpty admits the empty prior value the compensating
+// restore legitimately lands (a card whose spec id was blank before the
+// failed write — the blank-spec incident shape this SPEC exists to close);
+// the forward SetCardSpec path keeps refusing it.
+func (f *FactoryDB) mutateCardSpec(ctx context.Context, runID, cardID, specID string, expectedVersion int64, now time.Time, allowEmpty bool) (Card, error) {
 	if strings.TrimSpace(runID) == "" || !ValidCardID(cardID) {
 		return Card{}, fmt.Errorf("%w: run id and a valid card id are required", ErrInvalidCardInput)
 	}
 	value := strings.TrimSpace(specID)
-	if value == "" {
+	if value == "" && !allowEmpty {
 		return Card{}, fmt.Errorf("%w: spec id is required", ErrInvalidCardInput)
 	}
 	if now.IsZero() {

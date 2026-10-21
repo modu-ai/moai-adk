@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,8 +116,23 @@ func mdAuditRows(t *testing.T, root, cardID string) []homestate.CardMetadataEven
 		if err := rows.Scan(&ev.CardID, &ev.Kind, &payload); err != nil {
 			t.Fatal(err)
 		}
+		// Decode the payload column back into the event's fields (the same
+		// shape appendCardMetadataRow wrote).
+		var decoded struct {
+			Actor        string `json:"actor"`
+			Session      string `json:"session"`
+			Field        string `json:"field"`
+			Old          string `json:"old"`
+			New          string `json:"new"`
+			Reason       string `json:"reason"`
+			ClassifiedAt string `json:"classified_at"`
+		}
+		if err := json.Unmarshal([]byte(payload), &decoded); err != nil {
+			t.Fatalf("decode audit payload: %v", err)
+		}
+		ev.Actor, ev.Session, ev.Field = decoded.Actor, decoded.Session, decoded.Field
+		ev.Old, ev.New, ev.Reason, ev.ClassifiedAt = decoded.Old, decoded.New, decoded.Reason, decoded.ClassifiedAt
 		out = append(out, ev)
-		_ = payload
 	}
 	return out
 }
@@ -149,6 +165,21 @@ func mdSeedAudit(t *testing.T, root, cardID, oldValue, newValue string) {
 		Old: oldValue, New: newValue, Reason: "seed",
 	}, mdSpecNow); err != nil {
 		t.Fatalf("seed audit row: %v", err)
+	}
+}
+
+// mdSetRecordSpec updates the existing record row's spec and version in
+// place — a fixture edit for the seeded crash states (the row already
+// exists; re-placing it would collide on the (run_id, card_id) key).
+func mdSetRecordSpec(t *testing.T, root, cardID, spec string, version int64) {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.DB.Exec(`UPDATE cards SET spec_id=?, version=? WHERE card_id=?`, spec, version, cardID); err != nil {
+		t.Fatalf("seed record spec %s: %v", cardID, err)
 	}
 }
 
@@ -258,14 +289,24 @@ func TestSetSpec_ValidationGate(t *testing.T) {
 	}
 
 	// No-change gate (d): converged-AND-audited duplicate refuses; the
-	// audit surface keeps exactly its one seeded row.
+	// audit surface keeps exactly its one seeded row (this case's refusal
+	// assertion is "unchanged at 1", not 0 — the seed row is deliberate).
 	spec := "SPEC-FOO-001"
 	mdQueueSpec(t, store, "t1", &spec)
-	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, SpecID: "SPEC-FOO-001", Version: 2})
+	mdSetRecordSpec(t, root, "t1", "SPEC-FOO-001", 2)
 	mdSeedAudit(t, root, "t1", "", "SPEC-FOO-001")
-	refuse("converged-and-audited duplicate", "set-spec", "t1", "--spec", "SPEC-FOO-001", "--reason", "again", "--run", fcRun)
+	queueBefore, cardsBefore := mdQueueDump(t, store), mdCardsDump(t, root)
+	if _, _, err := runFactory(t, "set-spec", "t1", "--spec", "SPEC-FOO-001", "--reason", "again", "--run", fcRun); err == nil {
+		t.Fatal("the converged-and-audited duplicate was admitted")
+	}
+	if got := mdQueueDump(t, store); got != queueBefore {
+		t.Fatalf("duplicate refusal moved the queue:\n got %s\nwant %s", got, queueBefore)
+	}
+	if got := mdCardsDump(t, root); got != cardsBefore {
+		t.Fatalf("duplicate refusal moved the cards:\n got %s\nwant %s", got, cardsBefore)
+	}
 	if n := mdAuditCount(t, root); n != 1 {
-		t.Fatalf("audit rows = %d after the duplicate refusal, want 1", n)
+		t.Fatalf("audit rows = %d after the duplicate refusal, want exactly the seeded 1", n)
 	}
 }
 
@@ -486,7 +527,7 @@ func TestSetSpec_FailureMatrix(t *testing.T) {
 		mdEnableFlag(t, root)
 		spec := "SPEC-OLD-001"
 		mdQueueSpec(t, store, "t1", &spec)
-		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, SpecID: "SPEC-NEW-001", Version: 2})
+		mdSetRecordSpec(t, root, "t1", "SPEC-NEW-001", 2)
 		if _, _, err := runFactory(t, "set-spec", "t1", "--spec", "SPEC-NEW-001", "--reason", "heal", "--run", fcRun); err != nil {
 			t.Fatalf("direction-5 re-run refused: %v", err)
 		}
@@ -515,6 +556,9 @@ func TestSetSpec_FailureMatrix(t *testing.T) {
 		mdEnableFlag(t, root)
 		spec := "SPEC-D6-001"
 		mdQueueSpec(t, store, "t1", &spec)
+		// Direction 6's true crash state: BOTH stores committed the
+		// commanded value, then the process died before the append.
+		mdSetRecordSpec(t, root, "t1", "SPEC-D6-001", 2)
 		cardsBefore := mdCardsDump(t, root)
 		if _, _, err := runFactory(t, "set-spec", "t1", "--spec", "SPEC-D6-001", "--reason", "catch-up attestation", "--run", fcRun); err != nil {
 			t.Fatalf("direction-6 re-run refused: %v", err)
@@ -555,9 +599,9 @@ func TestSetSpec_FailureMatrix(t *testing.T) {
 		mdEnableFlag(t, root)
 		spec := "SPEC-ABA-001"
 		mdQueueSpec(t, store, "t1", &spec)
-		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, SpecID: "SPEC-ABA-001", Version: 2})
-		mdSeedAudit(t, root, "t1", "SPEC-X-001", "SPEC-ABA-001")        // X→A
-		mdSeedAudit(t, root, "t1", "SPEC-ABA-001", "SPEC-B-001")        // A→B
+		mdSetRecordSpec(t, root, "t1", "SPEC-ABA-001", 2)
+		mdSeedAudit(t, root, "t1", "SPEC-X-001", "SPEC-ABA-001") // X→A
+		mdSeedAudit(t, root, "t1", "SPEC-ABA-001", "SPEC-B-001") // A→B
 		cardsBefore := mdCardsDump(t, root)
 		if _, _, err := runFactory(t, "set-spec", "t1", "--spec", "SPEC-ABA-001", "--reason", "aba catch-up", "--run", fcRun); err != nil {
 			t.Fatalf("ABA re-run refused: %v", err)
