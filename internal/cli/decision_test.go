@@ -209,6 +209,30 @@ func TestDecisionCmd_ReadBodyCannotImpersonateTheDigestLine(t *testing.T) {
 	}
 }
 
+// TestOneLineIsSingleValued pins the single-valuedness repair on oneLine:
+// two distinct detail values must never render to the same physical line,
+// and a line-carrying value stays a single physical line.
+func TestOneLineIsSingleValued(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"a\nb", `a\nb`}, // a real LF vs the literal backslash-n sequence
+		{"a\rb", `a\rb`},
+		{"a\tb", `a\tb`},
+	} {
+		gx, gy := oneLine(pair[0]), oneLine(pair[1])
+		if gx == gy {
+			t.Errorf("oneLine collapsed %q and %q to %q", pair[0], pair[1], gx)
+		}
+		for in, got := range map[string]string{pair[0]: gx, pair[1]: gy} {
+			if strings.ContainsAny(got, "\n\r") {
+				t.Errorf("oneLine(%q) = %q is not a single physical line", in, got)
+			}
+		}
+	}
+	if got := oneLine("x\ny"); !strings.Contains(got, `x\ny`) {
+		t.Errorf("oneLine(%q) = %q, want the newline preserved in escaped form", "x\ny", got)
+	}
+}
+
 func TestDecisionCmd_LaneCannotRecordButCanRead(t *testing.T) {
 	root := decisionProject(t)
 	t.Setenv(config.EnvFactoryRole, "")
