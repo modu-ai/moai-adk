@@ -4,7 +4,7 @@ Card t1840 (factory lane-15, run tn1p4e) — stage E of the card-policy redesign
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-pending (artifacts authored 2026-10-17 by manager-spec; plan-auditor verdict not yet rendered)
+- plan_status: PASS-WITH-DEBT 0.88 (plan-audit iter6; ceiling pass-through admitted; receipt rcpt-f568333852af0bfa353f7974)
 - plan_complete_at: _<pending plan-audit>_
 audit_ready: true
 
