@@ -212,13 +212,17 @@ func callCodexJobTool(t *testing.T, fn func(context.Context, mcp.CallToolRequest
 }
 
 // startHangingBackgroundJob starts a background codex_task whose turn never
-// completes, and returns the job id plus the registry rooted at root.
+// completes, and returns the job id plus the registry rooted at root. The
+// l57-r6 contract keys the registry on the REQUEST root, so project_root and
+// the serving anchor are both this fixture's own repository — the record
+// never touches the real serving tree.
 func startHangingBackgroundJob(t *testing.T, root, turnID string) (string, *codexJobRegistry) {
 	t.Helper()
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	sess := withHangingCodexSession(t, hangingTaskScript(turnID))
 
-	res := callCodexTask(t, map[string]any{"prompt": "refactor the parser", "background": true})
+	res := callCodexTask(t, map[string]any{"prompt": "refactor the parser", "background": true, "project_root": root})
 	if res.IsError {
 		t.Fatalf("background codex_task returned IsError: %+v", res)
 	}

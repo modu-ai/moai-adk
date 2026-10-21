@@ -336,9 +336,11 @@ func TestCodexTask_ServedModelUnknown(t *testing.T) {
 
 	t.Run("c configured model — background record", func(t *testing.T) {
 		root := writeCodexLLMFixture(t, "gpt-5-codex", "high")
+		initGitRepo(t, root) // the root validation needs a repository (REQ-MN-005)
+		withCodexServingDir(t, root)
 		withCodexSession(t, codexTaskScript("trn-c", "done-c"))
 
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true, "model": "gpt-5-codex"}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true, "model": "gpt-5-codex", "project_root": root}))
 		jobID, _ := got["job_id"].(string)
 		if jobID == "" {
 			t.Fatalf("no job id: %v", got)
@@ -352,10 +354,12 @@ func TestCodexTask_ServedModelUnknown(t *testing.T) {
 	})
 
 	t.Run("d positive control — note observation reads real note text", func(t *testing.T) {
-		writeCodexLLMFixture(t, "gpt-5-codex", "high")
+		root := writeCodexLLMFixture(t, "gpt-5-codex", "high")
+		initGitRepo(t, root) // the root validation needs a repository (REQ-MN-005)
+		withCodexServingDir(t, root)
 		withCodexSession(t, codexTaskScript("trn-d", "done-d"))
 
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "model": "gpt-5-codex"}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "model": "gpt-5-codex", "project_root": root}))
 		note, _ := got["note"].(string)
 		if note == "" || !strings.Contains(note, codexTaskNoPriorThreadNote) {
 			t.Fatalf("note = %q, want it to carry codexTaskNoPriorThreadNote", note)

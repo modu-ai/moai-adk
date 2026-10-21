@@ -328,8 +328,10 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// checkout, because the server's own resolution names the primary even for
 	// a session working inside a worktree. The accepted root becomes the
 	// turn's cwd: codex works on the tree the caller presented. The job
-	// registry and the write opt-in stay bound to the serving project — the
-	// records remain server-scoped wherever the caller sits, and the opt-in
+	// registry is rooted at the VALIDATED caller root too (l57-r6 finding 2 /
+	// REQ-MN-004, the glm_task twin): the job record belongs to the tree the
+	// request named, and the codex_job_* query/cancel surfaces read the same
+	// root. Only the write opt-in stays bound to the serving project — it
 	// remains the serving project's policy.
 	raw := strings.TrimSpace(req.GetString("project_root", ""))
 	if raw == "" {
@@ -382,7 +384,10 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolJSON(codexTaskToolName, result), nil
 	}
 
-	registry := newCodexJobRegistry(projectDirResolver())
+	// The registry is rooted at the validated REQUEST root (l57-r6 finding 2):
+	// the job record lands under the tree the caller named, where the
+	// codex_job_* consumers reading the same request root will find it.
+	registry := newCodexJobRegistry(workRoot)
 
 	// Every refusal below is decided BEFORE the session opens, so a refused call
 	// starts no codex process (REQ-CRS-003/005/006).

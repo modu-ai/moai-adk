@@ -190,6 +190,51 @@ func TestTreeState_SymlinkReplacementMovesUntrackedDigest(t *testing.T) {
 	}
 }
 
+// TestTreeState_DanglingSymlinkComputesAndBindsLinkTarget pins the l57-r6
+// finding 1: an untracked symlink is bound as a LINK — its Readlink target
+// beside the lstat metadata — and is NEVER opened. os.ReadFile follows the
+// link, so binding its result bound the TARGET's content: a dangling symlink
+// (a target that does not exist) failed the read, the read failure failed the
+// whole TreeState, and the failed capture marked every receipt from that audit
+// BindCaptureFailed — all of them unusable; a FIFO- or device-backed target
+// could block the read instead. The r5 pins stay: a regular file keeps its
+// content read, and a symlink still moves the digest when re-pointed.
+func TestTreeState_DanglingSymlinkComputesAndBindsLinkTarget(t *testing.T) {
+	root := initContentRepo(t)
+	link := filepath.Join(root, "dangling")
+	if err := os.Symlink(filepath.Join(t.TempDir(), "no-such-target"), link); err != nil {
+		t.Fatal(err)
+	}
+
+	// THE PIN: TreeState computes over a dangling untracked symlink — no
+	// error, hence no BindCaptureFailed path on the receipt write.
+	_, digest1, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState failed on a dangling untracked symlink — ReadFile followed the link and bound the target's content (l57-r6 finding 1): %v", err)
+	}
+	if digest1 == "" {
+		t.Fatal("TreeState returned an empty digest for a state it could compute")
+	}
+
+	// The link TARGET is part of the bound state: re-pointing the link moves
+	// the digest even though the link's path, and its danglingness, are
+	// unchanged in the porcelain rows and the diff.
+	other := filepath.Join(t.TempDir(), "another-missing-target")
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(other, link); err != nil {
+		t.Fatal(err)
+	}
+	_, digest2, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v2: %v", err)
+	}
+	if digest1 == digest2 {
+		t.Fatal("digest unchanged after the symlink was re-pointed at another target — the link target is not bound (l57-r6 finding 1)")
+	}
+}
+
 // TestTreeState_UntrackedContentMovesDigest pins the untracked half: changing
 // the CONTENT of an untracked file (its porcelain row unchanged) moves the
 // digest.

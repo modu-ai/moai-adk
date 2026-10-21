@@ -116,14 +116,15 @@ func assertStrings(t *testing.T, what string, got, want []string) {
 // ─── AC-CRS-001 (REQ-CRS-002, 004) — the issue, closed by work_key ───
 
 func TestCodexTaskResumeScope_WorkKeyResumesOwnCardThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	seedCodexJob(t, reg, "thr-5", "card-A", "card A")
 	seedCodexJob(t, reg, "thr-6", "card-B", "card B")
 	sess := withCodexSession(t, codexTaskScriptEcho("thr-5", "trn-a", "work"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "continue card A", "resume_last": true, "work_key": "card-A"})
+	res := callCodexTask(t, map[string]any{"prompt": "continue card A", "resume_last": true, "work_key": "card-A", "project_root": root})
 	got := structuredMap(t, res)
 
 	if id := sentThreadResumeID(t, sess.sent); id != "thr-5" {
@@ -143,12 +144,13 @@ func TestCodexTaskResumeScope_WorkKeyResumesOwnCardThread(t *testing.T) {
 // ─── AC-CRS-002 (REQ-CRS-001) — the resume basis is reported ───
 
 func TestCodexTaskResumeScope_SoleThreadReportsBasis(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	seedCodexJob(t, newCodexJobRegistry(root), "tid-fake", "", "prior")
 	withCodexSession(t, codexTaskScript("trn-s", "work"))
 
-	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "continue", "resume_last": true}))
+	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "continue", "resume_last": true, "project_root": root}))
 
 	if got["resume_thread_id"] != "tid-fake" || got["thread_id"] != "tid-fake" {
 		t.Errorf("resume_thread_id/thread_id = %v/%v, want tid-fake/tid-fake", got["resume_thread_id"], got["thread_id"])
@@ -164,14 +166,15 @@ func TestCodexTaskResumeScope_SoleThreadReportsBasis(t *testing.T) {
 // ─── AC-CRS-003 (REQ-CRS-001, 003) — thread_id resumes exactly that thread ───
 
 func TestCodexTaskResumeScope_ThreadIDResumesExactThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	seedCodexJob(t, reg, "thr-5", "", "card A")
 	seedCodexJob(t, reg, "thr-6", "", "card B") // newer
 	sess := withCodexSession(t, codexTaskScriptEcho("thr-5", "trn-t", "work"))
 
-	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "thread_id": "thr-5"}))
+	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "thread_id": "thr-5", "project_root": root}))
 
 	if id := sentThreadResumeID(t, sess.sent); id != "thr-5" {
 		t.Errorf("thread/resume threadId = %q, want thr-5", id)
@@ -190,12 +193,13 @@ func TestCodexTaskResumeScope_ThreadIDResumesExactThread(t *testing.T) {
 // ─── AC-CRS-004 (REQ-CRS-003, 010) — an unrecorded thread_id is refused ───
 
 func TestCodexTaskResumeScope_UnrecordedThreadIDRefused(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	seedCodexJob(t, newCodexJobRegistry(root), "thr-5", "", "card A")
 	sess := withCodexSession(t, codexTaskScript("trn-x", "work"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "p", "thread_id": "thr-999"})
+	res := callCodexTask(t, map[string]any{"prompt": "p", "thread_id": "thr-999", "project_root": root})
 	got := assertRefusal(t, res, "thread_not_recorded")
 
 	raw, _ := json.Marshal(got)
@@ -210,14 +214,15 @@ func TestCodexTaskResumeScope_UnrecordedThreadIDRefused(t *testing.T) {
 // ─── AC-CRS-006 (REQ-CRS-002, 006, 010) — ambiguity is refused, not guessed ───
 
 func TestCodexTaskResumeScope_AmbiguousResumeLastRefused(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	seedCodexJob(t, reg, "thr-5", "", "card A")
 	seedCodexJob(t, reg, "thr-6", "", "card B")
 	sess := withCodexSession(t, codexTaskScript("trn-x", "work"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "continue card A", "resume_last": true})
+	res := callCodexTask(t, map[string]any{"prompt": "continue card A", "resume_last": true, "project_root": root})
 
 	if len(sess.sent) != 0 {
 		t.Errorf("fixture recorded %d sent messages, want 0 (neither thread/resume nor thread/start)", len(sess.sent))
@@ -240,15 +245,16 @@ func TestCodexTaskResumeScope_AmbiguousResumeLastRefused(t *testing.T) {
 // ─── AC-CRS-007 (REQ-CRS-001, 007) — records sharing a thread count once ───
 
 func TestCodexTaskResumeScope_SharedThreadRecordsCountOnce(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	for i := 0; i < 3; i++ {
 		seedCodexJob(t, reg, "thr-5", "", "same thread")
 	}
 	sess := withCodexSession(t, codexTaskScript("trn-s", "work"))
 
-	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}))
+	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root}))
 
 	if got["error_code"] != nil {
 		t.Errorf("error_code = %v, want none (one distinct thread is not ambiguous)", got["error_code"])
@@ -264,12 +270,13 @@ func TestCodexTaskResumeScope_SharedThreadRecordsCountOnce(t *testing.T) {
 // ─── AC-CRS-008 (REQ-CRS-004) — an unmatched work_key opens a new thread ───
 
 func TestCodexTaskResumeScope_UnmatchedWorkKeyOpensNewThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	seedCodexJob(t, newCodexJobRegistry(root), "thr-6", "card-B", "card B")
 	sess := withCodexSession(t, codexTaskScript("trn-n", "work"))
 
-	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "work_key": "card-A"}))
+	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "work_key": "card-A", "project_root": root}))
 
 	if n := countSentMethod(t, sess.sent, codexMethodThreadResume); n != 0 {
 		t.Errorf("thread/resume sent %d times, want 0", n)
@@ -292,11 +299,12 @@ func TestCodexTaskResumeScope_UnmatchedWorkKeyOpensNewThread(t *testing.T) {
 // ─── AC-CRS-009 (REQ-CRS-005) — a background record carries the work_key ───
 
 func TestCodexTaskResumeScope_BackgroundRecordsWorkKey(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	withCodexSession(t, codexTaskScript("trn-b", "bg work"))
 
-	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true, "work_key": "card-A"}))
+	got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true, "work_key": "card-A", "project_root": root}))
 	jobID, _ := got["job_id"].(string)
 	if jobID == "" {
 		t.Fatalf("background call returned no job_id: %v", got)
@@ -317,7 +325,7 @@ func TestCodexTaskResumeScope_BackgroundRecordsWorkKey(t *testing.T) {
 	}
 
 	status, err := handleCodexJobStatus(t.Context(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Arguments: map[string]any{codexJobIDArg: jobID}},
+		Params: mcp.CallToolParams{Arguments: map[string]any{codexJobIDArg: jobID, projectRootArg: root}},
 	})
 	if err != nil {
 		t.Fatalf("codex_job_status: %v", err)
@@ -353,8 +361,9 @@ func TestCodexTaskResumeScope_InvalidWorkKeyRefused(t *testing.T) {
 // ─── AC-CRS-011 (REQ-CRS-006) — the candidate list is bounded and stable ───
 
 func TestCodexTaskResumeScope_CandidatesBoundedAndOrdered(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 
 	// Twelve distinct threads, one record each, written directly so the
@@ -377,7 +386,7 @@ func TestCodexTaskResumeScope_CandidatesBoundedAndOrdered(t *testing.T) {
 
 	call := func() map[string]any {
 		sess := withCodexSession(t, codexTaskScript("trn-x", "work"))
-		res := callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true})
+		res := callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root})
 		if len(sess.sent) != 0 {
 			t.Errorf("fixture recorded %d sent messages, want 0", len(sess.sent))
 		}
@@ -397,13 +406,14 @@ func TestCodexTaskResumeScope_CandidatesBoundedAndOrdered(t *testing.T) {
 // ─── AC-CRS-012 (REQ-CRS-005, 008) — thread_id wins; unused selectors listed ───
 
 func TestCodexTaskResumeScope_ThreadIDPrecedenceAndUnusedSelectors(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	seedCodexJob(t, reg, "thr-5", "card-A", "card A")
 	seedCodexJob(t, reg, "thr-6", "card-B", "card B")
 	args := func(background bool) map[string]any {
-		return map[string]any{"prompt": "p", "thread_id": "thr-6", "resume_last": true, "work_key": "card-A", "background": background}
+		return map[string]any{"prompt": "p", "thread_id": "thr-6", "resume_last": true, "work_key": "card-A", "background": background, "project_root": root}
 	}
 	check := func(label string, got map[string]any, resumed string) {
 		t.Helper()
@@ -480,8 +490,9 @@ func TestCodexTaskResumeScope_SchemaDeclaresScoping(t *testing.T) {
 // ─── AC-CRS-014 (REQ-CRS-004, 006) — representative record across records ───
 
 func TestCodexTaskResumeScope_RepresentativeRecordAcrossRecords(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	seedCodexJob(t, reg, "thr-5", "card-A", "A first")
 	seedCodexJob(t, reg, "thr-6", "card-B", "B first")
@@ -490,7 +501,7 @@ func TestCodexTaskResumeScope_RepresentativeRecordAcrossRecords(t *testing.T) {
 
 	// (1) No selector: ambiguous, candidates from representative records.
 	sess := withCodexSession(t, codexTaskScript("trn-x", "work"))
-	got := assertRefusal(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}), "resume_ambiguous")
+	got := assertRefusal(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root}), "resume_ambiguous")
 	if len(sess.sent) != 0 {
 		t.Errorf("(1) fixture recorded %d sent messages, want 0", len(sess.sent))
 	}
@@ -516,7 +527,7 @@ func TestCodexTaskResumeScope_RepresentativeRecordAcrossRecords(t *testing.T) {
 	// (2) and (3): work_key selects per record, not per representative.
 	for _, key := range []string{"card-A", "card-C"} {
 		sess := withCodexSession(t, codexTaskScriptEcho("thr-5", "trn-w", "work"))
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "work_key": key}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "work_key": key, "project_root": root}))
 		if id := sentThreadResumeID(t, sess.sent); id != "thr-5" {
 			t.Errorf("work_key %s: thread/resume threadId = %q, want thr-5", key, id)
 		}
@@ -529,17 +540,19 @@ func TestCodexTaskResumeScope_RepresentativeRecordAcrossRecords(t *testing.T) {
 // ─── AC-CRS-015 (REQ-CRS-001) — the sent id is reported even when it did not take ───
 
 func TestCodexTaskResumeScope_ReportsSentIDOnMismatchAndAckError(t *testing.T) {
-	seed := func(t *testing.T) {
+	seed := func(t *testing.T) string {
 		t.Helper()
-		root := t.TempDir()
+		root := jobTestRoot(t)
 		withCodexProjectDir(t, root)
+		withCodexServingDir(t, root)
 		seedCodexJob(t, newCodexJobRegistry(root), "thr-5", "", "card A")
+		return root
 	}
 
 	t.Run("codex returned a different id", func(t *testing.T) {
-		seed(t)
+		root := seed(t)
 		withCodexSession(t, codexTaskScript("trn-m", "work"))
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root}))
 		if got["resume_thread_id"] != "thr-5" || got["resume_basis"] != "sole_thread" {
 			t.Errorf("resume_thread_id/resume_basis = %v/%v, want thr-5/sole_thread", got["resume_thread_id"], got["resume_basis"])
 		}
@@ -549,11 +562,11 @@ func TestCodexTaskResumeScope_ReportsSentIDOnMismatchAndAckError(t *testing.T) {
 	})
 
 	t.Run("thread ack rejected", func(t *testing.T) {
-		seed(t)
+		root := seed(t)
 		lines := codexTaskScript("trn-e", "work")
 		lines[1] = `{"id":2,"error":{"code":-32600,"message":"rejected by fake"}}`
 		withCodexSession(t, lines)
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root}))
 		if got["status"] != codexJobStatusFailed {
 			t.Errorf("status = %v, want failed", got["status"])
 		}
@@ -581,12 +594,13 @@ func TestCodexTaskResumeScope_PreSendFailureCarriesNoResumeFields(t *testing.T) 
 	}
 	for name, setup := range cases {
 		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
+			root := jobTestRoot(t)
 			withCodexProjectDir(t, root)
+			withCodexServingDir(t, root)
 			seedCodexJob(t, newCodexJobRegistry(root), "thr-5", "", "card A")
 			sess := setup(t)
 
-			got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}))
+			got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "project_root": root}))
 
 			if n := countSentMethod(t, sess.sent, codexMethodThreadResume); n != 0 {
 				t.Fatalf("precondition: thread/resume sent %d times, want 0 on a pre-send failure", n)

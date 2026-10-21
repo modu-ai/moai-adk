@@ -150,7 +150,7 @@ func handleCodexJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if rootErr != nil {
 		return toolErr(codexJobStatusToolName, rootErr), nil
 	}
-	rec, errResult := loadCodexJobFor(codexJobStatusToolName, req)
+	rec, errResult := loadCodexJobFor(codexJobStatusToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -167,7 +167,7 @@ func handleCodexJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if rootErr != nil {
 		return toolErr(codexJobResultToolName, rootErr), nil
 	}
-	rec, errResult := loadCodexJobFor(codexJobResultToolName, req)
+	rec, errResult := loadCodexJobFor(codexJobResultToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -201,7 +201,7 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if rootErr != nil {
 		return toolErr(codexJobCancelToolName, rootErr), nil
 	}
-	rec, errResult := loadCodexJobFor(codexJobCancelToolName, req)
+	rec, errResult := loadCodexJobFor(codexJobCancelToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -232,7 +232,10 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	// interrupt is in flight would otherwise write completed or failed over the
 	// cancel; runCodexBackgroundJob keeps a cancelled status untouched, and this
 	// ordering is what puts the status there in time for that guard to see it.
-	if updated, err := currentCodexJobRegistry().update(rec.ID, func(r *CodexJobRecord) {
+	// The update hits the REQUEST-resolved root — the same registry the record
+	// was just read from (l57-r6 finding 2: producer and consumer resolve the
+	// same root rule).
+	if updated, err := newCodexJobRegistry(root).update(rec.ID, func(r *CodexJobRecord) {
 		r.Status = codexJobStatusCancelled
 	}); err != nil {
 		out.Error = err.Error()
@@ -277,20 +280,20 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 
 // ─── shared helpers ───
 
-// currentCodexJobRegistry returns the registry rooted at the current project.
-func currentCodexJobRegistry() *codexJobRegistry {
-	return newCodexJobRegistry(projectDirResolver())
-}
-
-// loadCodexJobFor reads the job named by the request's job_id argument. It
-// returns either the record or the structured error result the tool should
-// return verbatim — never both, and never a Go error.
-func loadCodexJobFor(tool string, req mcp.CallToolRequest) (CodexJobRecord, *mcp.CallToolResult) {
+// loadCodexJobFor reads the job named by the request's job_id argument from
+// the REQUEST-resolved root (l57-r6 finding 2 / REQ-MN-004): codex_task
+// creates the record under the caller's tree, so the query/cancel surfaces
+// read the caller's tree too — producer and consumer resolve the same root
+// rule, or a cancel naming worktree B could cancel a job from tree A while
+// the result's _root block claims B. It returns either the record or the
+// structured error result the tool should return verbatim — never both, and
+// never a Go error.
+func loadCodexJobFor(tool string, req mcp.CallToolRequest, root string) (CodexJobRecord, *mcp.CallToolResult) {
 	jobID := req.GetString(codexJobIDArg, "")
 	if jobID == "" {
 		return CodexJobRecord{}, toolErr(tool, errCodexJobIDRequired)
 	}
-	rec, err := currentCodexJobRegistry().load(jobID)
+	rec, err := newCodexJobRegistry(root).load(jobID)
 	if err != nil {
 		if codexJobNotFound(err) {
 			return CodexJobRecord{}, toolErr(tool, fmt.Errorf("no job record for id %s", jobID))

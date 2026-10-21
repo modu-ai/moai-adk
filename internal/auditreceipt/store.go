@@ -245,25 +245,33 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
 		// bytes — the file type and permission bits (a chmod +x on an untracked
 		// script is a materially different judged state), and for a symlink the
-		// link TARGET, since ReadFile follows the link and would otherwise bind
-		// only the same content a regular file carried.
+		// link target (see below), since the content bytes of a link's target
+		// are not the link's own state.
 		info, lerr := os.Lstat(full)
 		if lerr != nil {
 			return "", "", lerr
 		}
-		data, rerr := os.ReadFile(full)
-		if rerr != nil {
-			return "", "", rerr
-		}
 		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00mode:%d", f, uint32(info.Mode()))
-		_, _ = h.Write(data)
+		// l57-r6 finding 1: a symlink is bound as a LINK — the Readlink target
+		// beside the lstat metadata — and is NEVER opened. os.ReadFile follows
+		// the link, so binding its result bound the target's content, not the
+		// link's state: a dangling untracked symlink failed the read, the read
+		// failure failed the whole TreeState, and the failed capture marked
+		// every receipt from that audit BindCaptureFailed (all unusable); a
+		// FIFO- or device-backed target could block the read outright.
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, lerr := os.Readlink(full)
 			if lerr != nil {
 				return "", "", lerr
 			}
 			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
+			continue
 		}
+		data, rerr := os.ReadFile(full)
+		if rerr != nil {
+			return "", "", rerr
+		}
+		_, _ = h.Write(data)
 	}
 	return headOut, hex.EncodeToString(h.Sum(nil)), nil
 }

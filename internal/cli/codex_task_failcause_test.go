@@ -116,8 +116,9 @@ func TestCodexTaskTurn_RealBoundExpiryStillReportsTimeout(t *testing.T) {
 // ─── root cause: a background job must outlive the request context ───
 
 func TestCodexTask_BackgroundJobSurvivesRequestContextEnd(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	withCodexSession(t, codexTaskScript("trn-bg-detached", "background work done"))
 
 	// The MCP host ends the request context when the handler returns — which,
@@ -125,7 +126,7 @@ func TestCodexTask_BackgroundJobSurvivesRequestContextEnd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{
-			"prompt": "audit the module", "background": true, "project_root": thisRepoRoot(t),
+			"prompt": "audit the module", "background": true, "project_root": root,
 		}},
 	})
 	cancel()

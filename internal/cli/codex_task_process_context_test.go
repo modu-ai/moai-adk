@@ -167,8 +167,9 @@ func mcpCodexJobID(t *testing.T, message map[string]json.RawMessage) string {
 // This fixture is an actual child process. Canned codexConn fixtures cannot
 // observe exec.CommandContext killing the app-server when an MCP request ends.
 func TestCodexTaskBackgroundOwnsProcessPastRequest(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	bin := filepath.Join(root, "codex-app-server")
 	script := `#!/bin/sh
 while IFS= read -r line; do
@@ -199,7 +200,7 @@ done
 
 	ctx, cancel := context.WithCancel(context.Background())
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{
-		Arguments: map[string]any{"prompt": "say ready", "background": true, "project_root": thisRepoRoot(t)},
+		Arguments: map[string]any{"prompt": "say ready", "background": true, "project_root": root},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -218,8 +219,9 @@ done
 }
 
 func TestCodexTaskServerExitStopsBackgroundProcess(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	withCodexTaskTimeout(t, 30*time.Second) // natural expiry cannot satisfy the 5s shutdown check
 	bin := filepath.Join(root, "codex-app-server")
 	pidFile := filepath.Join(root, "child.pid")
@@ -263,7 +265,7 @@ done
 	})
 
 	stdio.send(t, 2, "tools/call", map[string]any{
-		"name": "codex_task", "arguments": map[string]any{"prompt": "stall", "background": true, "project_root": thisRepoRoot(t)},
+		"name": "codex_task", "arguments": map[string]any{"prompt": "stall", "background": true, "project_root": root},
 	})
 	jobID := mcpCodexJobID(t, stdio.receive(t, 2))
 	_ = stdio.in.Close() // real MCP stdin EOF, not a direct call to the cleanup helper
@@ -285,8 +287,9 @@ done
 }
 
 func TestCodexTaskMCPEOFAbortsStalledHandshake(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	bin := filepath.Join(root, "codex-app-server")
 	pidFile := filepath.Join(root, "handshake-child.pid")
 	t.Setenv("MOAI_TEST_CHILD_PID_PATH", pidFile)
@@ -319,7 +322,7 @@ while IFS= read -r line; do :; done
 		}
 	})
 	stdio.send(t, 2, "tools/call", map[string]any{
-		"name": "codex_task", "arguments": map[string]any{"prompt": "stall handshake", "background": true, "project_root": thisRepoRoot(t)},
+		"name": "codex_task", "arguments": map[string]any{"prompt": "stall handshake", "background": true, "project_root": root},
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -483,8 +486,9 @@ func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 }
 
 func TestCodexTaskBackgroundProcessBound(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	withCodexTaskTimeout(t, 750*time.Millisecond)
 	bin := filepath.Join(root, "codex-app-server")
 	script := `#!/bin/sh
@@ -509,7 +513,7 @@ done
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 
 	res, err := handleCodexTask(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{
-		Arguments: map[string]any{"prompt": "stall", "background": true, "project_root": thisRepoRoot(t)},
+		Arguments: map[string]any{"prompt": "stall", "background": true, "project_root": root},
 	}})
 	if err != nil {
 		t.Fatal(err)

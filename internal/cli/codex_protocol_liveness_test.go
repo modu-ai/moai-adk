@@ -403,15 +403,16 @@ func TestCodexTask_ForegroundTurnBoundedByOwnDeadline(t *testing.T) {
 // background arm: the job record must reach a terminal status on expiry rather
 // than sitting at running forever.
 func TestCodexTask_BackgroundTurnTimeoutReachesTerminalStatus(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 
 	const bound = 300 * time.Millisecond
 	withCodexTaskTimeout(t, bound)
 	withCodexConn(t, newStallingCodexConn(codexHandshakeLines("trn-bg-stall")))
 
 	start := time.Now()
-	res := callCodexTask(t, map[string]any{"prompt": "hang forever", "background": true})
+	res := callCodexTask(t, map[string]any{"prompt": "hang forever", "background": true, "project_root": root})
 	out := structuredMap(t, res)
 	jobID, _ := out["job_id"].(string)
 	if jobID == "" {

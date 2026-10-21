@@ -34,6 +34,19 @@ func withCodexProjectDir(t *testing.T, root string) {
 	t.Cleanup(func() { projectDirResolver = prev })
 }
 
+// withCodexServingDir points the serving-anchor seam at root for the duration
+// of the test. codex_task validates project_root against the server's own
+// repository (REQ-MN-005), so a fixture that keys the job registry and
+// project_root on one temporary repository — the create/read parity the
+// l57-r6 finding 2 pins — needs the anchor stubbed to that same repository
+// (the startCtxBoundBackgroundJob isolation pattern).
+func withCodexServingDir(t *testing.T, root string) {
+	t.Helper()
+	prev := codexServingDir
+	codexServingDir = func() (string, error) { return root, nil }
+	t.Cleanup(func() { codexServingDir = prev })
+}
+
 // writeCodexWorkflowYAML writes .moai/config/sections/workflow.yaml with the
 // given body. An empty body writes no file at all (the absent-file state).
 func writeCodexWorkflowYAML(t *testing.T, root, body string) {
@@ -194,11 +207,12 @@ func TestCodexTask_ForegroundReturnsOutput(t *testing.T) {
 
 // Background: the result carries a job id that resolves to an existing record.
 func TestCodexTask_BackgroundReturnsJobIDResolvingToRecord(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	withCodexSession(t, codexTaskScript("trn-bg", "background work done"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "audit the module", "background": true})
+	res := callCodexTask(t, map[string]any{"prompt": "audit the module", "background": true, "project_root": root})
 	if res.IsError {
 		t.Fatalf("unexpected IsError result: %+v", res)
 	}
@@ -284,8 +298,9 @@ func TestCodexTask_WriteGateFailClosed(t *testing.T) {
 // ONE reused thread — turn 1 with write, turn 2 without — and turn 2 must
 // transmit readOnly explicitly rather than omitting the field.
 func TestCodexTask_SandboxPolicyResetOnReusedThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	writeCodexWorkflowYAML(t, root, allowWriteYAML("true"))
 
 	// A prior background job recorded the thread both turns will resume.
@@ -296,8 +311,8 @@ func TestCodexTask_SandboxPolicyResetOnReusedThread(t *testing.T) {
 
 	sess := withCodexSession(t, codexTaskScript("trn-x", "ok"))
 
-	callCodexTask(t, map[string]any{"prompt": "turn one", "write": true, "resume_last": true})
-	callCodexTask(t, map[string]any{"prompt": "turn two", "resume_last": true})
+	callCodexTask(t, map[string]any{"prompt": "turn one", "write": true, "resume_last": true, "project_root": root})
+	callCodexTask(t, map[string]any{"prompt": "turn two", "resume_last": true, "project_root": root})
 
 	if n := countSentMethod(t, sess.sent, codexMethodThreadStart); n != 0 {
 		t.Errorf("thread/start sent %d times, want 0 (both turns resume the recorded thread)", n)
@@ -411,15 +426,16 @@ func TestCodexTaskAllowWrite_DistributedDefaultIsFalse(t *testing.T) {
 // ─── AC-CX2-011 (REQ-CX2-008) — resume_last ───
 
 func TestCodexTask_ResumeLastReusesRecordedThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	reg := newCodexJobRegistry(root)
 	if _, err := reg.create(codexJobSpec{ThreadID: "tid-fake", Mode: codexTaskMode, RequestSummary: "prior"}); err != nil {
 		t.Fatalf("seed prior job: %v", err)
 	}
 	sess := withCodexSession(t, codexTaskScript("trn-r", "resumed work"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "continue", "resume_last": true})
+	res := callCodexTask(t, map[string]any{"prompt": "continue", "resume_last": true, "project_root": root})
 	got := structuredMap(t, res)
 	if got["resumed_thread"] != true {
 		t.Errorf("resumed_thread = %v, want true", got["resumed_thread"])
@@ -442,11 +458,12 @@ func TestCodexTask_ResumeLastReusesRecordedThread(t *testing.T) {
 }
 
 func TestCodexTask_ResumeLastWithNoRecordedThread(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
+	withCodexServingDir(t, root)
 	sess := withCodexSession(t, codexTaskScript("trn-n", "fresh work"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "start", "resume_last": true})
+	res := callCodexTask(t, map[string]any{"prompt": "start", "resume_last": true, "project_root": root})
 	got := structuredMap(t, res)
 	if got["resumed_thread"] != false {
 		t.Errorf("resumed_thread = %v, want false when nothing is recorded", got["resumed_thread"])
@@ -464,27 +481,26 @@ func TestCodexTask_ResumeLastWithNoRecordedThread(t *testing.T) {
 // With .moai/state occupied by a regular file the registry cannot write, the
 // TOOL returns a structured error result — the clause M2 could not close
 // because codex_task did not exist yet. The process does not panic and the
-// server serves the next call.
+// server serves the next call. (l57-r6: the registry keys on the REQUEST
+// root, so the occupied state path sits under the root the request names;
+// .moai itself stays a directory so the root validation accepts the tree.)
 func TestCodexTask_UnwritableStateDirStructuredError(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
-	moai := filepath.Join(root, ".moai")
-	if err := os.MkdirAll(moai, 0o755); err != nil {
-		t.Fatalf("mkdir .moai: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(moai, "state"), []byte("not a directory"), 0o600); err != nil {
+	withCodexServingDir(t, root)
+	if err := os.WriteFile(filepath.Join(root, ".moai", "state"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatalf("occupy state path: %v", err)
 	}
 	withCodexSession(t, codexTaskScript("trn-e", "unreachable"))
 
-	res := callCodexTask(t, map[string]any{"prompt": "do work", "background": true})
+	res := callCodexTask(t, map[string]any{"prompt": "do work", "background": true, "project_root": root})
 	if !res.IsError {
 		t.Fatalf("an unwritable state dir must yield a structured error result; got %+v", res)
 	}
 
 	// The server still serves the next call: a foreground task needs no record.
 	withCodexSession(t, codexTaskScript("trn-e2", "still serving"))
-	next := callCodexTask(t, map[string]any{"prompt": "do work"})
+	next := callCodexTask(t, map[string]any{"prompt": "do work", "project_root": root})
 	if next.IsError {
 		t.Errorf("the next tool call must still be served; got %+v", next)
 	}
