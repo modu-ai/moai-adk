@@ -45,6 +45,31 @@ Registration|Codex|HookSync' -count=1` = `ok ... 0.455s`; `go test ./internal/cl
 'Codex' -count=1` = `ok ... 226.440s`; `grep -c 'AskUserQuestion\|mcp__askuser'` over the
 new test and both wrappers = 0.
 
+### Repair round 1 — R1-R6 (2026-10-22, commits d09e0d6dbb + f823d6a953)
+
+Sources: `.moai/reports/t1913/card-review.md` (codex review 1, fail) + `.moai/reports/t1913/sync-audit.md`
+(FAIL 7.33/10, rcpt-7ba78473422dd10fc70c31d8) consolidated repair list. Every repair was
+RED-first — the new fixtures/cases were observed failing on the pre-repair wrapper before the
+fix landed (RED run: `10 FAIL` lines over KeyParity, KeyFallsThroughOnUntrackedDir → renamed
+KeyDeclinesUnreproducibleEntries, GoldenConfigDigest, and the 8 new/changed probe subtests).
+
+| R | Repair | RED observation (pre-repair) | GREEN observation (this run, tree f823d6a953) |
+|---|--------|------------------------------|------------------------------------------------|
+| R1 | payload cwd/project_dir precedence — diverging stdin session dir falls through | `payload_cwd_diverges... (forward=0 kick=1) != want (forward=1 kick=0)` | `forward=1 kick=0`, exit 0; same-root payloads still proceed |
+| R2 | untracked directory entries decline (embedded repo = ls-files dir entry; Go WalkDirs descendants) | KeyParity digest mismatch + `codex_entry_key succeeded on a tree whose untracked set contains a directory` | KeyDeclinesUnreproducibleEntries/untracked_directory_entry PASS (non-zero exit) |
+| R3 | symlink entries decline (os.Readlink bytes not portably readable; ln -s strips trailing newlines — fixtures built with os.Symlink) | KeyParity digest mismatch on the newline-symlink shape | plain + newline-target decline subtests PASS |
+| R4 | log file probed openable pre-spawn (/dev/null arm); pre-exec spawn death releases the marker | `unopenable_log_path (forward=0 kick=0) != want (forward=0 kick=1)` | `forward=0 kick=1`, exit 0 — the kick fires via the /dev/null arm |
+| R5 | stamp without a -g component falls through; Go owns the leniency | `no_commit_component... (forward=0 kick=1) != want (forward=1 kick=0)` | `forward=1 kick=0`, exit 0 |
+| R6 | receipt binding adds config_digest + tool_version (CheckReceipt :73/:75): unbound → fall through, mismatch → miss arm | all three new cases RED (`tool_version_mismatch (forward=0 kick=0) != want kick=1`, `config_digest_mismatch ...`, `receipt_without_bound_fields (forward=0 kick=0) != want (forward=1 kick=0)`) | mismatch cases kick (`forward=0 kick=1`); unbound falls through (`forward=1 kick=0`); fresh pass/inconclusive/fail retain their M3 dispositions with bound-field-matched fixture receipts |
+
+Golden pin: `TestCodexEntryFastpath_GoldenConfigDigest` — the shell's length-prefixed
+emission (gate/codex-review, method/review/start, target/uncommittedChanges) hashes to
+`verify.ConfigDigest`'s output byte-for-byte. Probe matrix now 24 subtests, all green:
+`go test ./internal/cli/ -run 'TestCodexEntryFastpath' -count=1` → `ok ... 27.687s`, exit 0
+(this run, tree f823d6a953). Companion: builds (native + GOOS=windows) exit 0; vet exit 0;
+gofmt clean; golangci-lint = the same 2 pre-existing paths.go findings, 0 new; template
+registration suite `ok ... 0.582s`; wrapper pair `cmp` byte-identical.
+
 ### M4 + M5 — async conversions (2026-10-21, commits 603ad65bb9 + a29a17cbeb + 4a0fa991ed)
 
 TDD order observed: RED captured before each implementation commit. M4 RED — the
