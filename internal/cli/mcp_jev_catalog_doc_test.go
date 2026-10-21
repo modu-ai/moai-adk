@@ -13,7 +13,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
@@ -53,21 +52,14 @@ func TestMCPToolCatalogueDocsStayMirrorIdentical(t *testing.T) {
 // registered tool set. The totals are read from the docs and compared against
 // len(MoaiMCPToolNames()), which the registration-equality guard already binds
 // to the live tools/list; the family-coverage figure is checked against the
-// registry's own family arithmetic (total minus the session-messaging family,
-// which the catalogue companion documents as following below the table).
+// registry's own family arithmetic (the family table covers the whole surface
+// since card t1908 removed the session-messaging family).
 func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 	names := mcpcat.MoaiMCPToolNames()
 	total := len(names)
-	sessionMsg := 0
-	for _, n := range names {
-		if strings.HasPrefix(n, "session_msg_") {
-			sessionMsg++
-		}
-	}
-	if sessionMsg == 0 {
-		t.Fatal("no session_msg_* tools in the registry — the family arithmetic this test checks is unverifiable")
-	}
-	familyCovered := total - sessionMsg
+	// Card t1908 removed the session-messaging family, so the catalogue's
+	// family table now covers the entire registered surface.
+	familyCovered := total
 
 	reTotal := regexp.MustCompile(`(\d+) tools exposed by the self-hosted`)
 	reFamily := regexp.MustCompile(`Tool families \((\d+) of the (\d+) tools`)
@@ -105,7 +97,7 @@ func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 			t.Fatalf("%s no longer carries the family-coverage header this test reads", pair[0])
 		}
 		if got, _ := strconv.Atoi(m[1]); got != familyCovered {
-			t.Errorf("%s family header covers %s tools; the registry's table-covered set is %d (total %d minus session-messaging %d)", pair[0], m[1], familyCovered, total, sessionMsg)
+			t.Errorf("%s family header covers %s tools; the registry's table-covered set is %d", pair[0], m[1], familyCovered)
 		}
 		if got, _ := strconv.Atoi(m[2]); got != total {
 			t.Errorf("%s family header says %q of its total; the registered set holds %d", pair[0], m[2], total)

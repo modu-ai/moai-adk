@@ -303,7 +303,7 @@ func TestProtectedZoneShellParsingMatrix(t *testing.T) {
 			// SPEC-ZONE-SHELL-CD-TRACKING-001 (REQ-ZSCD-005): {ROOT} in a cell command
 			// names the fixture root, so an in-project absolute destination is judged
 			// against the real root. No landed cell carries the placeholder.
-			tc.command = strings.ReplaceAll(tc.command, "{ROOT}", root)
+			tc.command = strings.ReplaceAll(tc.command, "{ROOT}", zoneBashText(root))
 
 			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command})
 			switch tc.want {
