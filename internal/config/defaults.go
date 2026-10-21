@@ -1645,6 +1645,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		AnchorRelocationGuard: AnchorRelocationGuardConfig{
 			Enabled: false,
 		},
+		// The card-metadata editing verbs ship OFF (SPEC-CARD-METADATA-VERBS-001
+		// REQ-CMV-002): both verbs refuse naming the flag key on the
+		// distributed default, and an operator opts in via local config.
+		// Template neutrality: the template key lands commented-out (plan.md
+		// §F M5) — no `enabled: true` anywhere under
+		// internal/template/templates/.
+		CardMetadataVerbs: CardMetadataVerbsConfig{
+			Enabled: false,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
 		// ships default-OFF. Distributed users get an inert Stop hook; a
 		// maintainer opts in via local config. Template neutrality (§25): no
