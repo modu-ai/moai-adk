@@ -2502,6 +2502,9 @@
 - path: "workflow.execution_mode"
   class: W
   evidence: reader
+- path: "workflow.factory.self_dispatch"
+  class: W
+  evidence: "reader: internal/cli factorySelfDispatchEnabled, read by factoryNextLeaseOnceEligibility (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-001/002)"
 - path: "workflow.factory_lease.duration"
   class: W
   evidence: reader
