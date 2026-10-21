@@ -112,6 +112,7 @@ type DecideResult struct {
 	RequestedDecider string                 `json:"requested_decider"`
 	EffectiveDecider string                 `json:"effective_decider,omitempty"`
 	FallbackReason   string                 `json:"fallback_reason,omitempty"`
+	JevNotice        string                 `json:"jev_notice,omitempty"`
 	ReceiptPath      string                 `json:"receipt_path,omitempty"`
 	ReceiptSHA256    string                 `json:"receipt_sha256,omitempty"`
 	Preconditions    []receipt.Precondition `json:"preconditions"`

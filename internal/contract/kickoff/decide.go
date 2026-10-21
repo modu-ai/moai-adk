@@ -170,6 +170,7 @@ func Decide(in DecideInput) (DecideResult, error) {
 		req, jres := askJev(in, c, j)
 		rd.JevRequest, _ = json.Marshal(req)
 		rd.JevResponse, _ = json.Marshal(jres)
+		res.JevNotice = jres.NoticeLine()
 		ja, fallback := jevVerdict(in, jres)
 		if fallback != "" {
 			rule = "R2"
