@@ -1462,6 +1462,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Duration:      DefaultFactoryLeaseDuration.String(),
 			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
 		},
+		// SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007: the self-dispatch
+		// kill-switch ships default-OFF — the generic selection arms stay
+		// dormant for unowned cards, so the distributed behavior is exactly
+		// the incident t1780 posture minus the hazard. The entry is
+		// load-bearing the same way BranchGuard's is: without it the zero
+		// value would also read false, but the explicit false keeps the
+		// default readable from the constructor and lets the parity test
+		// pin it against both shipped workflow.yaml surfaces.
+		Factory: FactoryConfig{
+			SelfDispatch: false,
+		},
 		DefaultMode: "",
 		// "auto" (not "team") aligns with the template SSOT
 		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
