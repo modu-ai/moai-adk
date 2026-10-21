@@ -109,3 +109,15 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
 - 정지 지점: merge-ready (factory complete 호출 금지, main 병합·push 금지 — 리더 지시 10-17)
 - 20:4xZ(10-18 05:4x KST) — **카드 종결**: T13 증거 매듭 해소(iter2 FAIL@4576923e7 재발행 → T12 v16 → T11 v17 증거 d208d9e37 재기록 → iter3 PASS-WITH-DEBT@d208d9e37 → **T13 merge-ready v18 착지**). 최종 docs 커밋 `564f57022`. 리더 완료 보고 발송(msg 8af8223e), 재점검 크론 삭제.
 - **세션 대기 기록**: 이유=다음 카드 배정 대기(리더 무중단 규칙: 배정분만 next --card), 대상=리더, 재점검점=리더 메시지 도착(세션 웨이크). t1828 merge-ready 정지·워크트리 보존·complete 미호출.
+
+## 재임대 세션 상태 (10-22, lane-5 / run tn8rpj)
+
+- 카드가 신규 run(tn8rpj) 큐에서 재배차되어 `factory next --card t1828` 임대(스테이지 표기 `-` —
+  구 run tn1p4e 기록의 merge-ready v18과 별개 행으로 보임). **재수행 불요 판정**: 선행 레인의
+  작업 체인 전부 본 브랜치 존재 확인(424605284·34212a4be·7b2e9cd2c·31be384b6·564f57022·
+  d208d9e37 전부 HEAD 조상, merge-base 실측) + 판정 파일 4종(sync-audit-cold/iter2/iter3 +
+  wait-boundary-report) 디스크 보존.
+- 착지 준비로 main 흡수 1회(28b727065b → 머지 커밋 264ec6296a, 카드 트레일러 포함, 충돌 없음).
+- **대기 기록**: 사유 = 완료 카드(merge-ready 실질)의 착지 처분, 대상 = 리더 tn8rpj, 선택지 =
+  (가) 레인이 착지 수행(준비성 삼중+re-measure+push+PR — t1913 절차 준용), (나) 리더 직접 처분,
+  (다) 흡수 후 트리에 대한 신규 감사 1회 후 착지. 재점검점 = 리더 응답.
