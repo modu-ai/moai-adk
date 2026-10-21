@@ -21,10 +21,10 @@ audit_receipt: rcpt-5fd438dcfae9026bf8fb0732
 build_commit: 8249bff8c3
 ```
 
-One line: `overall_verdict=pass gate_unmet=none plan_source=config codex/required/pass receipt=rcpt-5fd438dcfae9026bf8fb0732`.
+One line: `overall_verdict=pass gate_unmet=none plan_source=config codex/required/pass receipt=rcpt-674fe3203ae611fbda1573e7`.
 This verdict is not final until the orchestrator's `moai verify audit-plan --project-root <toplevel> --result-file` convergence check passes; the digest members above are what it reads. Plan read first: `moai verify audit-plan` printed `config_status: ok`, model `codex`, claude `off`, codex `required` (explicit), glm `off`, `cross_model_active: true`, `enforced_required: [codex]` — so audit_multi ran with no `gates` argument and the tree's own plan applied. The disagreement flag is `null`, not `false`: one participant, no observed divergence — an undetermined flag, not an agreement claim.
 
-Receipts of THIS audit (my own calls only): rcpt-5fd438dcfae9026bf8fb0732. The audit_multi call appended one second-review record into the card evidence directory (card_id t1834, head 1a16da10f6). Stale receipts from earlier rounds (rcpt-db0ad702d7de15f1c9f12afc, rcpt-6040618efd97e27498747772) are not evidence here and are not cited.
+Receipts of THIS audit (my own calls only): rcpt-674fe3203ae611fbda1573e7. The audit_multi calls appended second-review records into the card evidence directory (card_id t1834, head 1a16da10f6). A first call returned receipt rcpt-5fd438dcfae9026bf8fb0732, verdict pass, no findings; the stop-hook receipt corroboration refused it as predating this auditor's start, and per its remedy the identical audit_multi call was re-run — it returned rcpt-674fe3203ae611fbda1573e7, verdict pass, no findings, same build_commit 8249bff8c3. This verdict cites the corroborated second receipt; both calls judged the same HEAD. Stale receipts from earlier rounds (rcpt-db0ad702d7de15f1c9f12afc, rcpt-6040618efd97e27498747772) are not evidence here and are not cited.
 
 Judging build: the moai MCP server that served the codex leg reports build_commit 8249bff8c3; `git merge-base --is-ancestor 8249bff8c3 HEAD` exits 0, so it IS a strict ancestor of the tree HEAD 1a16da10f6 — the gate's own handling code predates the repairs and could not have run them. The codex review itself reads the diff and runs overlay tests against the tree, so its pass describes this tree; a pass under build lag is not discounted, but this attribution is stated per verification-claim-integrity §2.2.
 
@@ -144,11 +144,11 @@ Tree: /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834 at 1a16da10f6 in this r
 | 7-10 | see sync-audit-iter7..10.md | FAIL | F1; F2; G1/G2; H1/H2 |
 | 11 | rcpt-7784a17120108f86be26360c (+2) | FAIL | c3f96a52b134eba2f13307b8afdd688a194f2a38 |
 | 12 | rcpt-6040618efd97e27498747772 | FAIL | afce6d2f789b4296cd5cb3602e2502a07a61e10e |
-| 13 (this) | rcpt-5fd438dcfae9026bf8fb0732 | PASS-WITH-DEBT | 1a16da10f6edc7b78c22bdb8460908108ab220b9 |
+| 13 (this) | rcpt-674fe3203ae611fbda1573e7 (first call rcpt-5fd438dcfae9026bf8fb0732, refused by stop-hook corroboration) | PASS-WITH-DEBT | 1a16da10f6edc7b78c22bdb8460908108ab220b9 |
 
 ## Recommendations
 - Land on this verdict; the debts D1 (merge-step same-name-tag repair — already routed in §E.2.8, needs a card/routing owner) and D2 (one comment sentence + optionally the dead `== "HEAD"` disjunct at factory_card_pr.go:210) copy into the card's binding run conditions and are the next owner's, not a re-audit trigger for this card.
 - Commit the §E.2.8 progress.md record with the card's landing so the repair-round record enters the commit graph.
 - For the routing owner of D1: the fix shape is factory_card.go:3047's (symbolic-ref, refs/heads/ stripped), and integration.go:126 plus the four other --abbrev-ref readers deserve the same class sweep in that routing.
 
-AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-INTEGRATION-STALE-BASE-001 receipts=rcpt-5fd438dcfae9026bf8fb0732
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-INTEGRATION-STALE-BASE-001 receipts=rcpt-674fe3203ae611fbda1573e7
