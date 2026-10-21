@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -846,7 +847,11 @@ func TestFactoryHookMetadataShowsSenderLaneAndHarness(t *testing.T) {
 	}
 
 	t.Run("registered codex sender", func(t *testing.T) {
-		_, in, msgID := factoryMetadataFixture(t, "codex", "lane-46")
+		// The record stores the registry's real Codex vocabulary (gpt,
+		// internal/factory/factory_slots.go:184-186); the metadata line renders
+		// the ruled display token codex. This subtest is the mapping's
+		// regression witness.
+		_, in, msgID := factoryMetadataFixture(t, factory.BackendGPT, "lane-46")
 		assertLine(t, in, msgID, msgID+" kind="+factorymsg.KindStatusRequest+" from=meta-sender lane=lane-46 harness=codex generation=1 token=")
 	})
 

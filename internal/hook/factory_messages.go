@@ -294,8 +294,22 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 
 // factoryUnknownSender is the metadata value rendered when the sender's lane
 // label or harness is absent: only values present in the sender endpoint's
-// registration record are printed, never inferred (card t1902).
+// registration record are printed (card t1902).
 const factoryUnknownSender = "unknown"
+
+// factoryHarnessDisplay is the render-layer mapping from the registry's
+// recorded backend vocabulary to the display token the inbox reader expects.
+// The Codex launcher's token is deliberately recorded as gpt — the vocabulary
+// every other surface speaks (internal/factory/factory_slots.go:184-186; the
+// launcher exports config.EnvFactoryBackend=gpt,
+// internal/cli/codex_launcher.go) — but the leader ruling on card t1902
+// renders it back as codex, the card's announced output vocabulary, so a
+// Codex lane reads as one at a glance. The registration record itself is
+// unchanged: this is a display translation only, and every other recorded
+// value passes through.
+var factoryHarnessDisplay = map[string]string{
+	factory.BackendGPT: "codex",
+}
 
 // factorySenderInfo carries the sender endpoint's registration-record fields
 // rendered on an inbox metadata line.
@@ -303,15 +317,17 @@ type factorySenderInfo struct{ lane, harness string }
 
 // factoryHookSenderInfo reads the sender endpoint's registration record — the
 // peers row keyed by session UUID, through the same Store.Peer accessor the
-// recipient bind uses — and returns its slot and backend verbatim. A missing
-// row (the endpoint never registered, or deregistered after sending) renders
-// unknown on both fields. Any other lookup failure also renders unknown — the
-// claim proceeds, because withholding a bound lane's inbox over a metadata
-// decoration would repeat the false-unbound defect class — and is logged at
-// debug so the divergence stays observable in the runtime log.
+// recipient bind uses — and returns its slot and backend for display. The one
+// non-verbatim value is the ruled gpt→codex harness mapping
+// (factoryHarnessDisplay); everything else passes through as recorded. A
+// missing row (the endpoint never registered, or deregistered after sending)
+// renders unknown on both fields. Any other lookup failure also renders
+// unknown — the claim proceeds, because withholding a bound lane's inbox over
+// a metadata decoration would repeat the false-unbound defect class — and is
+// logged at debug so the divergence stays observable in the runtime log.
 //
 // @MX:NOTE: [AUTO] the unknown on lookup-failure is deliberate; record-present
-// values only (card t1902).
+// values only, plus the ruled gpt→codex display mapping (card t1902).
 func factoryHookSenderInfo(ctx context.Context, s *factorymsg.Store, senderSession string) factorySenderInfo {
 	p, err := s.Peer(ctx, senderSession)
 	if err != nil {
@@ -321,6 +337,9 @@ func factoryHookSenderInfo(ctx context.Context, s *factorymsg.Store, senderSessi
 		return factorySenderInfo{lane: factoryUnknownSender, harness: factoryUnknownSender}
 	}
 	lane, harness := p.Slot, p.Backend
+	if shown, mapped := factoryHarnessDisplay[harness]; mapped {
+		harness = shown
+	}
 	if lane == "" {
 		lane = factoryUnknownSender
 	}
