@@ -8,6 +8,8 @@ package config
 // (same package, the M2 owner-by-contract file).
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -270,6 +272,47 @@ func TestAgenticTrunkGuidance(t *testing.T) {
 		}
 		if !strings.Contains(msg, "agentic-trunk (target main)") {
 			t.Errorf("fix does not name agentic-trunk (target main): %q", msg)
+		}
+	})
+}
+
+// TestAgenticTrunkDistributedDefaultsUnchanged pins the shipped defaults
+// (REQ-AGT-015 / AC-AGT-014 Judge A): the built-in default configuration and
+// the template yaml carry github-flow for all three profiles, and neither
+// carries a workflow: agentic-trunk line — nothing deployed to user projects
+// changes a default.
+func TestAgenticTrunkDistributedDefaultsUnchanged(t *testing.T) {
+	t.Run("built-in defaults are github-flow in all three profiles", func(t *testing.T) {
+		gs := NewDefaultGitStrategyConfig()
+		for name, got := range map[string]string{
+			"manual":   gs.Manual.Workflow,
+			"personal": gs.Personal.Workflow,
+			"team":     gs.Team.Workflow,
+		} {
+			if got != WorkflowGitHubFlow {
+				t.Errorf("built-in default %s.workflow = %q, want %q", name, got, WorkflowGitHubFlow)
+			}
+		}
+	})
+
+	t.Run("template yaml is github-flow in all three profiles", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join("..", "template", "templates", ".moai", "config", "sections", "git-strategy.yaml.tmpl"))
+		if err != nil {
+			t.Fatalf("read the template git-strategy.yaml.tmpl: %v", err)
+		}
+		body := string(data)
+		if got := strings.Count(body, "workflow: github-flow"); got < 3 {
+			t.Errorf("template carries %d github-flow lines, want at least 3", got)
+		}
+		if strings.Contains(body, "workflow: agentic-trunk") {
+			t.Error("template yaml carries workflow: agentic-trunk — the shipped default must never change")
+		}
+	})
+
+	t.Run("built-in defaults name no agentic-trunk anywhere", func(t *testing.T) {
+		gs := NewDefaultGitStrategyConfig()
+		if gs.Manual.Workflow == WorkflowAgenticTrunk || gs.Personal.Workflow == WorkflowAgenticTrunk || gs.Team.Workflow == WorkflowAgenticTrunk {
+			t.Error("a built-in default profile carries agentic-trunk")
 		}
 	})
 }
