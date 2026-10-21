@@ -122,7 +122,7 @@ resolved is reported as null and the command exits non-zero.`,
 			if fieldSet && !pathsKnownField(field) {
 				return fmt.Errorf("paths: unknown --field %q (valid: %s)", field, strings.Join(pathsFields, ", "))
 			}
-			rep, runInvalid, unresolved := collectPaths(resolveProjectDir(), cmd.Flags().Changed("run"), run)
+			rep, unresolved, runInvalid := collectPaths(resolveProjectDir(), cmd.Flags().Changed("run"), run)
 			if runInvalid != nil {
 				return runInvalid
 			}
@@ -169,7 +169,7 @@ func pathsKnownField(name string) bool {
 // collectPaths resolves every reported path from launch. A non-nil runInvalid
 // is an invalid --run id: nothing may be reported for it. unresolved names the
 // fields that could not be resolved.
-func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, runInvalid error, unresolved []string) {
+func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, unresolved []string, runInvalid error) {
 	root := factory.ResolveTodoQueueRoot(launch)
 
 	key := homestate.ProjectKey(root)
@@ -194,14 +194,14 @@ func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, ru
 	// resolved; the id shape is checked before anything is resolved.
 	if runSet {
 		if !factorymsg.ValidRunID(runID) {
-			return rep, fmt.Errorf("paths: invalid factory run id %q", runID), nil
+			return rep, nil, fmt.Errorf("paths: invalid factory run id %q", runID)
 		}
 	}
 
 	factoryPath, err := pathsFactoryDBPath(root)
 	if err != nil {
 		unresolved = append(unresolved, "factory")
-		return rep, nil, append(unresolved, "broker")
+		return rep, append(unresolved, "broker"), nil
 	}
 	fdb := statPathsDB(factoryPath)
 	rep.Factory = &fdb
@@ -209,16 +209,16 @@ func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, ru
 	if runSet {
 		brokerPath, err := factorymsg.BrokerPath(root, runID)
 		if err != nil {
-			return rep, fmt.Errorf("paths: %w", err), nil
+			return rep, nil, fmt.Errorf("paths: %w", err)
 		}
 		rep.Broker = statPathsDB(brokerPath)
-		return rep, nil, unresolved
+		return rep, unresolved, nil
 	}
 	rep.Broker = brokerTemplate(root)
 	if rep.Broker == nil {
 		unresolved = append(unresolved, "broker")
 	}
-	return rep, nil, unresolved
+	return rep, unresolved, nil
 }
 
 // brokerTemplate renders the broker path with <run-id> in place of the run id
