@@ -3037,14 +3037,21 @@ func factoryBranchOfWorktree(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
 	}
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	// The FULL ref, only refs/heads/ stripped: `rev-parse --abbrev-ref HEAD`
+	// prints heads/<branch> when a tag shares the branch's name, and the
+	// caller's refs/heads/<branch> lookups then name a branch that does not
+	// exist (card t1834, sync-audit iter12 F2) — the same hazard the gate's
+	// own symbolic-ref read exists for. With --quiet a detached HEAD is exit 1
+	// with no output; like the former --abbrev-ref error path, it stays ""
+	// (best-effort), and no new semantics are invented for it.
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "HEAD")
 	cmd.Dir = dir
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // factoryWorktreeForBranchIn resolves the worktree holding branch, anchored
