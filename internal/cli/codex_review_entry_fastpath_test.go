@@ -1,0 +1,698 @@
+package cli
+
+// M3 acceptance tests for the codex-review-entry gate-ON shell fast path
+// (SPEC-HOOK-SYNC-ASYNC-001, plan §F M3). The wrapper
+// .claude/hooks/moai/handle-codex-review-entry.sh gains a shell-layer receipt
+// probe that resolves the common ALLOW states without the synchronous moai
+// cold start, and fires the same marker-guarded background kick the Stop gate
+// uses on cache-MISS states. These tests pin:
+//
+//   - the key parity (AC-HSA-008): the shell key computation must reproduce
+//     verify.Key byte-for-byte, on both the `shasum` and `openssl` tool paths;
+//   - the golden runtime-config prefix lists (plan M3 4a): the shell list is
+//     byte-pinned to the Go constants so the probe can only narrow, never
+//     widen, the nothing-reviewable detector's answer;
+//   - the behavioral probe matrix (plan §F M3 list): gate off / no receipt /
+//     stale receipt / unparseable snapshot / fresh pass / fresh inconclusive /
+//     fresh FAIL / clean tree / config-only-only tree / behind binary /
+//     HEAD-match binary / no-commit-metadata binary / missing git / missing
+//     shasum / WT- branch / tree_scope: skip / primary-checkout session —
+//     each asserting exit 0 plus the expected kick-or-fall-through observed
+//     through an argv-recording stub that distinguishes `hook
+//     codex-review-entry` (the synchronous handler, forbidden on ALLOW
+//     states) from `verify codex-review` (the permitted background kick);
+//   - the single-kick-per-bucket marker contract (AC-HSA-015);
+//   - the live/template mirror byte parity (AC-HSA-006: the probe exists in
+//     BOTH wrapper surfaces).
+//
+// The fixtures run the REAL wrapper under bash against a real git fixture
+// tree with a REAL receipt written through the domain's own producer
+// (verify.RecordReceipt), so the shell is judged against the artifacts the
+// Go side actually writes.
+
+import (
+	"bytes"
+	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/verify"
+)
+
+const (
+	codexEntryWrapperRel  = "../../.claude/hooks/moai/handle-codex-review-entry.sh"
+	codexEntryTemplateRel = "../../internal/template/templates/.claude/hooks/moai/handle-codex-review-entry.sh"
+
+	// Stub-version placeholders newCodexEntryFixture resolves: "@PREV@" names
+	// the first commit's short SHA (an ancestor of HEAD, not HEAD) and
+	// "@HEAD@" the current HEAD's — the behind-binary and HEAD-match
+	// fixtures of the M3 matrix.
+	codexEntryPrevPlaceholder = "@PREV@"
+	codexEntryHeadPlaceholder = "@HEAD@"
+)
+
+// codexEntryFullTools is the D3 dependency set the fast-path-eligible
+// fixtures put on PATH. The wrapper's PATH is masked to exactly this set, so
+// a probe removing an entry is the "missing <tool>" fixture of the M3 matrix.
+var codexEntryFullTools = []string{"git", "awk", "shasum", "mkdir", "rm", "cat", "readlink"}
+
+type codexEntryFixtureOpts struct {
+	enabled      bool   // workflow.codex.review_gate.enabled
+	treeScope    string // workflow.codex.review_gate.tree_scope ("" = key absent)
+	primaryScope string // workflow.codex.review_gate.primary_scope ("" = key absent)
+	branch       string // fixture branch name (WT- prefix ⇒ card scope)
+	dirty        bool   // uncommitted tracked modification (reviewable change)
+	configOnly   bool   // the ONLY change is .moai/config/ (config-only turn)
+	twoCommits   bool   // base + second commit, for the behind-binary fixture
+	stubVersion  string // what the stub `moai version` prints ("@PREV@"/"@HEAD@" resolved)
+	stubTools    []string
+	receipt      *codexEntryReceiptSpec // nil = no snapshot store entry
+	corruptSnap  bool                   // overwrite the snapshot with garbage
+}
+
+type codexEntryReceiptSpec struct {
+	verdict    string
+	recordedAt time.Time
+}
+
+type codexEntryFixture struct {
+	dir       string
+	toolsDir  string
+	headShort string
+	headFull  string
+	prevShort string // first commit when twoCommits, else the same commit
+}
+
+func codexEntryFixtureGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, stderr.String())
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func newCodexEntryFixture(t *testing.T, opts codexEntryFixtureOpts) *codexEntryFixture {
+	t.Helper()
+
+	for _, b := range []string{"bash", "git", "awk"} {
+		if _, err := exec.LookPath(b); err != nil {
+			t.Skipf("%s not available on this machine", b)
+		}
+	}
+
+	dir := t.TempDir()
+
+	// The stub binary, its argv record, the masked tools dir, and the
+	// receipt store live inside the fixture project; the committed
+	// .gitignore keeps them out of every porcelain/ls-files read so they
+	// never perturb the tree key — the / /.moai/state/ line mirrors every
+	// real MoAI project (the repo's own .gitignore carries **/.moai/state/),
+	// without it a written receipt would move the key it was written under.
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("/bin/\n/tools/\n/moai.argv\n/.moai/state/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	enabled := "true"
+	if !opts.enabled {
+		enabled = "false"
+	}
+	yaml := "# fixture workflow config\nworkflow:\n  codex:\n    review_gate:\n      enabled: " + enabled + "\n"
+	if opts.treeScope != "" {
+		yaml += "      tree_scope: " + opts.treeScope + "\n"
+	}
+	if opts.primaryScope != "" {
+		yaml += "      primary_scope: " + opts.primaryScope + "\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "sections", "workflow.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	branch := opts.branch
+	if branch == "" {
+		branch = "main"
+	}
+	codexEntryFixtureGit(t, dir, "init", "-b", branch)
+	codexEntryFixtureGit(t, dir, "add", ".")
+	codexEntryFixtureGit(t, dir, "-c", "user.email=t@fixture", "-c", "user.name=t", "commit", "-m", "base")
+	f := &codexEntryFixture{dir: dir}
+	f.headFull = codexEntryFixtureGit(t, dir, "rev-parse", "HEAD")
+	f.headShort = codexEntryFixtureGit(t, dir, "rev-parse", "--short", "HEAD")
+	f.prevShort = f.headShort
+
+	if opts.twoCommits {
+		if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("second\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		codexEntryFixtureGit(t, dir, "add", ".")
+		codexEntryFixtureGit(t, dir, "-c", "user.email=t@fixture", "-c", "user.name=t", "commit", "-m", "second")
+		f.headFull = codexEntryFixtureGit(t, dir, "rev-parse", "HEAD")
+		f.headShort = codexEntryFixtureGit(t, dir, "rev-parse", "--short", "HEAD")
+	}
+
+	switch {
+	case opts.configOnly:
+		// The tracked runtime-config file is the ONLY change: the tree-scope
+		// config-only narrowing must suppress the kick.
+		if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "sections", "workflow.yaml"), []byte(yaml+"# local edit\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	case opts.dirty:
+		if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("edited\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The argv-recording stub moai (the E-L07 fixture pattern): every
+	// invocation appends its joined argv, so the probe distinguishes the
+	// synchronous handler call (`hook codex-review-entry`, forbidden on
+	// ALLOW states post-M3) from the background kick (`verify codex-review`,
+	// expected there).
+	stubVersion := opts.stubVersion
+	stubVersion = strings.ReplaceAll(stubVersion, codexEntryPrevPlaceholder, f.prevShort)
+	stubVersion = strings.ReplaceAll(stubVersion, codexEntryHeadPlaceholder, f.headShort)
+	// The argv record path is baked in ABSOLUTE: the stub runs under the
+	// wrapper's masked PATH, where dirname/coreutils may not exist.
+	stub := "#!/bin/bash\nprintf '%s\\n' \"$*\" >> " + codexEntryQuoteShell(filepath.Join(dir, "moai.argv")) + "\n[ \"$1\" = \"version\" ] && printf '%s\\n' " + codexEntryQuoteShell(stubVersion) + "\nexit 0\n"
+	if err := os.MkdirAll(filepath.Join(dir, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bin", "moai"), []byte(stub), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	f.toolsDir = filepath.Join(dir, "tools")
+	if err := os.MkdirAll(f.toolsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tools := opts.stubTools
+	if tools == nil {
+		tools = codexEntryFullTools
+	}
+	for _, name := range tools {
+		real, err := exec.LookPath(name)
+		if err != nil {
+			t.Skipf("%s not available on this machine", name)
+		}
+		if err := os.Symlink(real, filepath.Join(f.toolsDir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if opts.receipt != nil || opts.corruptSnap {
+		key, err := verify.Key(context.Background(), dir)
+		if err != nil {
+			t.Fatalf("verify.Key over the fixture: %v", err)
+		}
+		if opts.receipt != nil {
+			head, digest, _ := strings.Cut(key, ":")
+			err = verify.RecordReceipt(dir, verify.Receipt{
+				CheckID:      "codex-review",
+				Head:         head,
+				TreeDigest:   digest,
+				ConfigDigest: "fixture-config-digest",
+				Command:      codexwiring.CodexReviewReceiptCommand,
+				ToolVersion:  "fixture-tool 1.0",
+				ExitCode:     0,
+				Verdict:      opts.receipt.verdict,
+				RecordedAt:   opts.receipt.recordedAt,
+			})
+			if err != nil {
+				t.Fatalf("verify.RecordReceipt: %v", err)
+			}
+		}
+		if opts.corruptSnap {
+			if err := os.WriteFile(verify.SnapshotPath(dir, key), []byte("}}} not json {{{"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return f
+}
+
+func codexEntryQuoteShell(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\'`+"'") + "'"
+}
+
+type codexEntryRun struct {
+	stdout   string
+	stderr   string
+	exitCode int
+}
+
+func runCodexEntryWrapper(t *testing.T, f *codexEntryFixture) codexEntryRun {
+	t.Helper()
+	wrapper, err := filepath.Abs(codexEntryWrapperRel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", wrapper)
+	cmd.Dir = f.dir
+	cmd.Env = []string{
+		"CLAUDE_PROJECT_DIR=" + f.dir,
+		"PATH=" + f.toolsDir,
+		"HOME=" + f.dir,
+	}
+	cmd.Stdin = strings.NewReader("{}")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	runErr := cmd.Run()
+	code := 0
+	if runErr != nil {
+		ee, ok := runErr.(*exec.ExitError)
+		if !ok {
+			t.Fatalf("running the wrapper: %v\nstderr:\n%s", runErr, stderr.String())
+		}
+		code = ee.ExitCode()
+	}
+	return codexEntryRun{stdout: stdout.String(), stderr: stderr.String(), exitCode: code}
+}
+
+// codexEntryArgvCounts reads the stub's argv record and counts the two
+// invocation classes the matrix distinguishes.
+func codexEntryArgvCounts(t *testing.T, f *codexEntryFixture) (forward, kick int, argv string) {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(f.dir, "moai.argv"))
+	if err != nil {
+		return 0, 0, ""
+	}
+	argv = string(b)
+	for _, line := range strings.Split(argv, "\n") {
+		switch {
+		case line == "hook codex-review-entry":
+			forward++
+		case strings.HasPrefix(line, "verify codex-review"):
+			kick++
+		}
+	}
+	return forward, kick, argv
+}
+
+// codexEntryAwaitArgv waits out the detached-kick race: the background review
+// child is async by design and may append its argv line after the wrapper
+// (and this test's exec) has returned. For expected invocations it polls up
+// to 2s for the counts to be reached; for a want-0 state it gives the child a
+// fixed settle window before the caller asserts absence.
+func codexEntryAwaitArgv(t *testing.T, f *codexEntryFixture, wantFwd, wantKick int) (int, int, string) {
+	t.Helper()
+	if wantFwd == 0 && wantKick == 0 {
+		time.Sleep(500 * time.Millisecond)
+		return codexEntryArgvCounts(t, f)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		fwd, kick, argv := codexEntryArgvCounts(t, f)
+		if fwd >= wantFwd && kick >= wantKick {
+			return fwd, kick, argv
+		}
+		if time.Now().After(deadline) {
+			return fwd, kick, argv
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestCodexEntryFastpath_KeyParity pins AC-HSA-008: the shell key computation
+// reproduces verify.Key byte-for-byte, on both sha256 tool paths (E6).
+func TestCodexEntryFastpath_KeyParity(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	codexEntryFixtureGit(t, dir, "init", "-b", "main")
+	write(".gitignore", "/ignored-dir/\n")
+	codexEntryFixtureGit(t, dir, "add", ".")
+	codexEntryFixtureGit(t, dir, "-c", "user.email=t@fixture", "-c", "user.name=t", "commit", "-m", "base")
+
+	// A rich untracked set: plain, nested, empty, binary (NUL bytes), a
+	// symlink, and an ignored path that must NOT enter the hash.
+	write("u.txt", "untracked\n")
+	write("sub/nested.txt", "nested\n")
+	write("empty.txt", "")
+	write("blob.bin", "bin\x00ary\xff bytes")
+	write("ignored-dir/x.txt", "must not enter the hash\n")
+	if err := os.Symlink(filepath.Join(dir, "u.txt"), filepath.Join(dir, "link.txt")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	// A dirty tracked file exercises the porcelain + diff legs.
+	write("a.txt", "edited\n")
+
+	goKey, err := verify.Key(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("verify.Key: %v", err)
+	}
+	goHead, goDigest, _ := strings.Cut(goKey, ":")
+
+	wrapper, err := filepath.Abs(codexEntryWrapperRel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Sourcing: CODEX_ENTRY_SOURCE_ONLY=1 makes the wrapper yield right after
+	// the helper definitions (its normal body exits — an executed hook always
+	// terminates), so the caller can invoke codex_entry_key directly.
+	gateHome := t.TempDir()
+	shellKey := func(shaPipeline string) string {
+		t.Helper()
+		script := `export CODEX_ENTRY_SOURCE_ONLY=1
+. "$1" </dev/null
+codex_entry_key "$2" ` + shaPipeline + ` | codex_entry_sha_extract`
+		cmd := exec.Command("bash", "-c", script, "bash", wrapper, dir)
+		cmd.Env = []string{"CLAUDE_PROJECT_DIR=" + gateHome, "PATH=" + os.Getenv("PATH"), "HOME=" + gateHome}
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("shell key computation failed: %v", err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	for _, tool := range []struct {
+		name     string
+		pipeline string
+	}{
+		{"shasum", "| shasum -a 256"},
+		{"openssl", "| openssl dgst -sha256"},
+	} {
+		hex := shellKey(tool.pipeline)
+		if len(hex) != 64 {
+			t.Fatalf("%s path: shell digest %q is not 64 hex chars", tool.name, hex)
+		}
+		if hex[:16] != goDigest {
+			t.Fatalf("%s path: key digest mismatch: shell %q vs go %q (full go key %q)", tool.name, hex[:16], goDigest, goKey)
+		}
+	}
+	if goHead == "" {
+		t.Fatal("go key carried an empty head")
+	}
+	if want := codexEntryFixtureGit(t, dir, "rev-parse", "HEAD"); goHead != want {
+		t.Fatalf("go key head %q != rev-parse HEAD %q", goHead, want)
+	}
+}
+
+// TestCodexEntryFastpath_GoldenPrefixes pins the shell runtime-config prefix
+// lists to the Go constants they mirror (plan M3 4a): the config-only probe
+// can only narrow the nothing-reviewable detector's answer, never widen it.
+func TestCodexEntryFastpath_GoldenPrefixes(t *testing.T) {
+	src, err := os.ReadFile(codexEntryWrapperRel)
+	if err != nil {
+		t.Fatalf("reading the live wrapper: %v", err)
+	}
+	extract := func(varName string) []string {
+		t.Helper()
+		re := regexp.MustCompile(`(?m)^` + varName + `="([^"]*)"$`)
+		m := re.FindSubmatch(src)
+		if m == nil {
+			t.Fatalf("the wrapper does not declare %s — the golden pin has nothing to bind", varName)
+		}
+		return strings.Fields(string(m[1]))
+	}
+	assertSameStrings := func(what string, got, want []string) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Fatalf("%s: shell carries %d entries (%v), Go constants carry %d (%v)", what, len(got), got, len(want), want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("%s: shell entry %d = %q, Go constant = %q", what, i, got[i], want[i])
+			}
+		}
+	}
+	assertSameStrings("runtime prefixes", extract("CODEX_ENTRY_RUNTIME_PREFIXES"), reviewGateRuntimePrefixes)
+	assertSameStrings("config exact paths", extract("CODEX_ENTRY_CONFIG_EXACT"), reviewGateTreeConfigExactPaths)
+	assertSameStrings("config dir prefixes", extract("CODEX_ENTRY_CONFIG_DIR"), reviewGateTreeConfigDirPrefixes)
+}
+
+// TestCodexEntryFastpath_ProbeMatrix walks the plan §F M3 behavioral probe
+// list. Every state asserts exit 0 (the entry hook NEVER blocks — REQ-RG-001)
+// plus the expected kick-or-fall-through observation.
+func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
+	now := time.Now()
+	reviewableMiss := func(mut func(*codexEntryFixtureOpts)) codexEntryFixtureOpts {
+		opts := codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true}
+		if mut != nil {
+			mut(&opts)
+		}
+		return opts
+	}
+	cases := []struct {
+		name     string
+		opts     codexEntryFixtureOpts
+		wantKick int
+		wantFwd  int
+	}{
+		{
+			name: "gate off exits 0 with no binary resolution",
+			opts: codexEntryFixtureOpts{enabled: false},
+		},
+		{
+			name:     "no receipt on a reviewable tree: ALLOW with one kick, no forward",
+			opts:     reviewableMiss(func(o *codexEntryFixtureOpts) { o.stubVersion = "moai-adk v3.2.0 no commit metadata" }),
+			wantKick: 1,
+		},
+		{
+			name: "stale receipt: miss arm, one kick",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0 no commit metadata"
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now.Add(-25 * time.Hour)}
+			}),
+			wantKick: 1,
+		},
+		{
+			name: "unparseable snapshot: receipt-absent, miss arm, one kick",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0 no commit metadata"
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
+				o.corruptSnap = true
+			}),
+			wantKick: 1,
+		},
+		{
+			name: "fresh pass: exit 0, no kick, no forward",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0 no commit metadata"
+				o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: now}
+			}),
+		},
+		{
+			name: "fresh inconclusive: exit 0, no kick, no forward",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0 no commit metadata"
+				o.receipt = &codexEntryReceiptSpec{verdict: "inconclusive", recordedAt: now}
+			}),
+		},
+		{
+			name: "fresh FAIL: fall through to the synchronous handler",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0 no commit metadata"
+				o.receipt = &codexEntryReceiptSpec{verdict: "fail", recordedAt: now}
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "clean tree: nothing reviewable, no kick, no forward",
+			opts: codexEntryFixtureOpts{enabled: true, primaryScope: "review", stubVersion: "v"},
+		},
+		{
+			name: "config-only-only tree: no kick, no forward",
+			opts: codexEntryFixtureOpts{enabled: true, primaryScope: "review", configOnly: true, stubVersion: "v"},
+		},
+		{
+			name: "behind binary: decidable ancestor-hit suppresses the early kick",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.twoCommits = true
+				o.stubVersion = "moai-adk v3.2.0-1-g" + codexEntryPrevPlaceholder + "-dirty"
+			}),
+		},
+		{
+			name: "HEAD-match binary: StatusFresh, the kick proceeds",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder
+			}),
+			wantKick: 1,
+		},
+		{
+			name:     "binary with no commit metadata: leniency, the kick proceeds",
+			opts:     reviewableMiss(func(o *codexEntryFixtureOpts) { o.stubVersion = "moai-adk v3.2.0 (tag only)" }),
+			wantKick: 1,
+		},
+		{
+			name: "missing git: probe failure falls through",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "v"
+				o.stubTools = []string{"awk", "shasum", "mkdir", "rm", "cat", "readlink"}
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "missing shasum: the openssl fallback still kicks",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "v"
+				o.stubTools = []string{"git", "awk", "openssl", "mkdir", "rm", "cat", "readlink"}
+			}),
+			wantKick: 1,
+		},
+		{
+			name: "both sha256 tools absent: fall through",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.stubVersion = "v"
+				o.stubTools = []string{"git", "awk", "mkdir", "rm", "cat", "readlink"}
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "WT- branch: card scope reaches the Go handler once",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.branch = "WT-fixture-card"
+				o.stubVersion = "v"
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "tree_scope skip config: fall through to the Go handler",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.treeScope = "skip"
+				o.stubVersion = "v"
+			}),
+			wantFwd: 1,
+		},
+		{
+			name: "primary-checkout session under the skip default: fall through",
+			opts: reviewableMiss(func(o *codexEntryFixtureOpts) {
+				o.primaryScope = "" // the skip default; the fixture IS the primary working tree
+				o.stubVersion = "v"
+			}),
+			wantFwd: 1,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCodexEntryFixture(t, tc.opts)
+			run := runCodexEntryWrapper(t, f)
+			if run.exitCode != 0 {
+				t.Fatalf("exit = %d, want 0 (the entry hook never blocks)\nstderr:\n%s", run.exitCode, run.stderr)
+			}
+			fwd, kick, argv := codexEntryAwaitArgv(t, f, tc.wantFwd, tc.wantKick)
+			if fwd != tc.wantFwd || kick != tc.wantKick {
+				t.Fatalf("argv counts (forward=%d kick=%d) != want (forward=%d kick=%d)\nargv:\n%s\nstderr:\n%s", fwd, kick, tc.wantFwd, tc.wantKick, argv, run.stderr)
+			}
+		})
+	}
+}
+
+// TestCodexEntryFastpath_SingleKickPerBucket pins AC-HSA-015: the entry-side
+// kick honors the shared kick marker — two entries (or an entry after the
+// Stop arm's kick) over the same tree state in the same bucket kick exactly
+// one background review; and a fresh-pass receipt produces NO kick at all.
+func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
+	base := func(mut func(*codexEntryFixtureOpts)) codexEntryFixtureOpts {
+		opts := codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
+			stubVersion: "moai-adk v3.2.0 no commit metadata"}
+		if mut != nil {
+			mut(&opts)
+		}
+		return opts
+	}
+
+	t.Run("two entries in one bucket kick once", func(t *testing.T) {
+		f := newCodexEntryFixture(t, base(nil))
+		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
+			t.Fatalf("first run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		}
+		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
+			t.Fatalf("second run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		}
+		_, kick, argv := codexEntryAwaitArgv(t, f, 0, 1)
+		if kick != 1 {
+			t.Fatalf("kick count = %d, want exactly 1 across both entries\nargv:\n%s", kick, argv)
+		}
+	})
+
+	t.Run("a pre-existing Stop-arm marker suppresses the entry kick", func(t *testing.T) {
+		f := newCodexEntryFixture(t, base(nil))
+		key, err := verify.Key(context.Background(), f.dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		head, digest, _ := strings.Cut(key, ":")
+		bucket := time.Now().Unix() / 900
+		marker := filepath.Join(f.dir, ".moai", "state", "verify", "codex-review",
+			head+"-"+digest+".kick-"+strconv.FormatInt(bucket, 10))
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(marker, []byte("stop-arm"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
+			t.Fatalf("exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		}
+		_, kick, argv := codexEntryAwaitArgv(t, f, 0, 0)
+		if kick != 0 {
+			t.Fatalf("kick count = %d, want 0 with the Stop arm's marker in flight\nargv:\n%s", kick, argv)
+		}
+	})
+
+	t.Run("fresh pass kicks nothing", func(t *testing.T) {
+		f := newCodexEntryFixture(t, base(func(o *codexEntryFixtureOpts) {
+			o.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: time.Now()}
+		}))
+		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
+			t.Fatalf("exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		}
+		fwd, kick, argv := codexEntryAwaitArgv(t, f, 0, 0)
+		if kick != 0 || fwd != 0 {
+			t.Fatalf("fresh pass produced forward=%d kick=%d, want 0/0\nargv:\n%s", fwd, kick, argv)
+		}
+	})
+}
+
+// TestCodexEntryFastpath_BothSurfacesCarryProbe pins AC-HSA-006's both-
+// surfaces clause: the shell receipt probe exists in the live wrapper AND its
+// template mirror, and the two surfaces carry the SAME bytes (the Template-
+// First pair, C2).
+func TestCodexEntryFastpath_BothSurfacesCarryProbe(t *testing.T) {
+	live, err := os.ReadFile(codexEntryWrapperRel)
+	if err != nil {
+		t.Fatalf("reading the live wrapper: %v", err)
+	}
+	tmpl, err := os.ReadFile(codexEntryTemplateRel)
+	if err != nil {
+		t.Fatalf("reading the template wrapper: %v", err)
+	}
+	for _, probe := range []string{"snapshots", "codex_entry_key", "codex_entry_fastpath"} {
+		if !strings.Contains(string(live), probe) {
+			t.Fatalf("the live wrapper carries no %q — the shell receipt probe is missing", probe)
+		}
+		if !strings.Contains(string(tmpl), probe) {
+			t.Fatalf("the template wrapper carries no %q — the shell receipt probe is missing from the mirror", probe)
+		}
+	}
+	if !bytes.Equal(live, tmpl) {
+		t.Fatalf("live and template wrappers diverged: live %d bytes vs template %d bytes (Template-First pair must be byte-identical)", len(live), len(tmpl))
+	}
+}
