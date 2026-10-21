@@ -88,15 +88,26 @@ func TestFactoryBranchOfWorktreeWithSameNameTag(t *testing.T) {
 			t.Errorf("factoryBranchOfWorktree() = %q, want %q (a tag sharing the branch's name must not distort the read)", branch, "WT-card-branch")
 		}
 	})
-	t.Run("a same-name tag on the card branch keeps complete healthy", func(t *testing.T) {
-		root, _, cardWT := mwq19Fixture(t)
+	t.Run("a same-name tag on the card branch keeps the adoption path healthy", func(t *testing.T) {
+		// The adoption path (REQ-MWQ-019 step 2): the lane already merged
+		// through the merge verb, so complete records merged-local from the
+		// pre-made merge and never reaches the merge step. The card branch
+		// read is the exemption's second lookup — the one this finding broke.
+		root, integ, cardWT := mwq19Fixture(t)
+		bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+		fcGit(t, integ, "merge", "-q", "--no-ff", "-m", "M t1", cardWT.branch)
+		merge := fcGit(t, integ, "rev-parse", "HEAD")
 		t1589Git(t, cardWT.wt, "tag", cardWT.branch, "HEAD")
-		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
 		if err != nil {
-			t.Fatalf("a tag sharing the card branch's name must not break complete: %v", err)
+			t.Fatalf("a tag sharing the card branch's name must not break the adoption: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
-		if card := fcCard(t, root, "t1"); card.State != homestate.CardMergedLocal {
-			t.Fatalf("the card must land merged-local, got %q", card.State)
+		if strings.Contains(stdout+stderr, bfcSentinel) {
+			t.Fatalf("no sentinel on an adoption\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+		card := fcCard(t, root, "t1")
+		if card.State != homestate.CardMergedLocal || card.MergeSHA != merge {
+			t.Fatalf("the card must land merged-local on the pre-made merge %s, got %s %s", merge, card.State, card.MergeSHA)
 		}
 	})
 }
