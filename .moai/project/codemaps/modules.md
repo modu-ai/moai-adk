@@ -1,5 +1,412 @@
 # 패키지 모듈 상세
 
+## t1774 PR 후보의 현재 구조
+
+소스 기준과 측정 방법은 overview의 t1774 절과 같다. 변경된 28개 최상위 모듈의 책임을 아래에 정리했다. 전체 변경 경로는 235개이며, 아래 경로 표에서는 기존 fold 판정 대상의 세부 파일명을 부모 책임에 흡수한다.
+
+| 모듈 | 변경 파일 수 | 현재 책임과 달라진 부분 |
+|---|---:|---|
+| `internal/astgrep` | 1 | 선택적 정적 검사 실행에서 규칙집 로드 실패를 도구 미설치·일반 실행 실패와 구분한다. RulesetLoadError가 첫 유효 진단을 전달한다. |
+| `internal/atomicfile` | 1 | 원자적 기록과 소유권 기반 잠금 책임을 유지하며, 잠금 회수 시 읽기·재시도 범위를 제한하고 비정규 파일과 소유권 변화에는 기록을 거부한다. 개별 구현 파일은 fold 판정에 따라 본문에서 생략한다. |
+| `internal/auditreceipt` | 1 | 감사 영수증에 CodexError 필드를 추가해 inconclusive의 원인과 제한된 자식 stderr 진단을 보존한다. |
+| `internal/bugreport` | 2 | 오류 스풀 세대 갱신에 context를 전달하며, 직렬 잠금 대기 중 취소를 반영한다. 레지스트리의 복구 분류도 갱신한다. |
+| `internal/cli` | 117 | 명령 계층의 주된 변화다. LaunchView가 런처 소비 단계와 백엔드 최종 argv를 함께 산출하며 anchor guard는 실제 launch cwd/최종 worktree 선택을 판정한다. Codex bare -f는 독립된 새 leader run을 기록하고 -l은 기존 run에 합류한다. 세션 기본값은 backend×role별로 해석한다. 나머지 변화는 감사 자식/대기/영수증, lease 갱신·배차·리더 승인, 후보 CI·로컬 main 재동기화, init 재개·update 보존 및 skill 잔재 처리다. |
+| `internal/config` | 18 | 설정 계층은 backend×leader/lane 세션 기본 모델·effort, factory lease 기간·갱신 주기, bounded regular-file 설정 읽기와 protected user-root 분류를 제공한다. LLM 설정의 부분 저장과 tool-policy 잠금/권한 렌더링도 포함한다. 기본값 숫자·모델은 map에 복제하지 않고 설정 함수에 연결한다. |
+| `internal/contract` | 1 | 킥오프 결정 영수증의 Jev cross-check 이유는 요청 alias 대신 응답 Usage.Model을 기록한다. 결정 권한 모델을 새로 바꾼 변경은 아니다. |
+| `internal/factory` | 19 | 큐·런타임 배차와 통합 창의 기록 계층이다. dispatch-current 갱신, 완료 시 runtime 보관, candidate 기록/플랫폼 잠금/판정 관찰과 실제 착지 대상 검증, 통합 mutation·재측정·대기 제어를 담당한다. |
+| `internal/factorylane` | 1 | Git 실행 어댑터가 저장소 위치를 바꾸는 상속 환경변수를 제거한다. 실제 nonzero exit만 GitExitError로 감싸고 시작·대기 실패에는 가짜 exit code를 만들지 않는다. |
+| `internal/factorymsg` | 1 | 메시지 라우터는 죽은 leader endpoint를 재결합할 때 현재 leader row의 PID·세션 fingerprint를 확인한다. 알려지지 않은 주체를 임의 승계하지 않는다. |
+| `internal/feedback` | 1 | outbox drain이 오류 스풀 세대 갱신에도 호출 context를 전달해 취소를 공유한다. |
+| `internal/harness` | 1 | roster registry에서 역할별 기본값 표와 테스트용 부분 목록을 subset-by-design으로 분류한다. 런타임 역할 추가가 아니라 전체 명단 주장과 부분 표를 구분하는 검사 메타데이터다. |
+| `internal/homestate` | 10 | SQLite 기록 계층에 lease 설정, 카드 재배정, 죽은 run 소유자의 조건부 검색·승계, 승인 영수증과 dispatch binding 검증을 더한다. 승인과 상태 전이는 run/card UUID/version/hash/owner에 묶인다. |
+| `internal/hook` | 17 | 공통 hook dispatcher와 SessionStart 안내를 유지하면서 role-core/user-root 읽기를 제한된 정규 파일로 검증하고 보호 경로·shell 구문·lane spawn 권한을 처리한다. factory 진입 안내에는 Codex leader가 4개 로케일로 추가되며 자동 lane 부팅 우선순위도 처리한다. |
+| `internal/hygiene` | 1 | profile cap 계산이 user-tier 설정을 먼저 보고 project 설정을 fallback으로 사용한다. 이 경계의 출력은 경고이며 설정 자동 수정은 아니다. |
+| `internal/jev` | 1 | 요청 model alias와 응답에서 확인한 실제 model을 구분하고 Usage.Model 형식을 검증한다. 모델 측정은 결정 권한을 부여하지 않는다. |
+| `internal/jevmeasure` | 2 | 측정 결과에 응답의 실제 해석 모델을 기록하고 서로 다른 모델이 섞인 측정을 거부한다. 응답 본문이 없는 실패에서도 관측된 모델 정보를 유지한다. |
+| `internal/manifest` | 2 | 관리 파일 manifest에 kept_by provenance를 추가해 profile reach로 보존된 파일을 명시한다. |
+| `internal/mcp` | 1 | MCP 도구 catalog가 factory_renew를 write-capable로 등록한다. 자신의 카드 lease와 heartbeat를 연장하는 동사이며 거부 시 기록하지 않는 계약이다. |
+| `internal/merge` | 1 | 설정 병합에서 일반 retired 배열과 permissions의 특수 병합 의미를 구분한다. 내부 전략 구현 파일은 fold 판정에 따라 본문에 노출하지 않는다. |
+| `internal/runtime` | 1 | 진행 기록 파일의 Darwin 메타데이터 보존 구현은 바뀌지 않았으며, cp -p 기반 ACL 보존 경로와 경로 교체 경쟁·delete-denied rename의 잔여 한계 설명을 확장했다. 구현의 안전성이 새로 개선된 변경은 아니다. |
+| `internal/settings` | 2 | 설정 스키마의 GLM effort 기본값을 공통 상수와 연결하며 YAML patch 계층에 명시적 권한 모드로 빈 문서도 원자적으로 패치하는 경로를 둔다. fold된 개별 파일명은 본문에 노출하지 않는다. |
+| `internal/spec` | 3 | SPEC lint의 flat-form skip 문법, Haiku frontmatter model 행 예외와 비실행 assertion 인식의 shell·apostrophe 처리를 조정한다. |
+| `internal/statusline` | 7 | 사용량 수집의 기존 파일을 fallback 구현으로 교체해 계정 quota와 저장된 context snapshot을 조합한다. renderer는 24-bit 색·pastel gradient 배치를 처리한다. 삭제된 구현을 현재 entry로 설명하지 않는다. |
+| `internal/template` | 5 | 중립 agent 정의를 Codex로 방출할 때 sandbox/permission 요구를 실제 강제 가능한 축과 대조하고 모델·effort 매핑을 검증한다. embedded manifest와 harness별 배포 FS도 동기화한다. |
+| `internal/testguard` | 2 | 새 Go 패키지다. 테스트의 홈 경로와 config pin을 격리·점검하는 standard-library 도구로 RedirectHome/RealHome/ScanTree를 제공한다. 프로덕션 실행 경로와는 구분된다. |
+| `internal/userassets` | 7 | 사용자 asset journal의 알 수 없는 schema는 보존 후 typed error로 거부하고, user lock은 소유자·정규 파일·열린 handle을 검증한다. 설치·복구·번들 정리는 내용과 ownership을 함께 보존하며 플랫폼별 guard marker를 처리한다. |
+| `internal/web` | 9 | agent frontmatter 목록을 이름으로 중복 제거한다. 나머지 8개 변화는 templ 생성 view의 재생성으로, 별도 신규 도메인 기능으로 묶지 않는다. fold된 생성 파일명은 본문에 노출하지 않는다. |
+
+### 현재 변경 파일과 선언
+
+각 행은 현재 파일의 AST에서 추출한 선언의 일부다. 내부 함수도 포함하며 함수가 없는 파일은 타입·상수 또는 생성 선언을 표시한다. 이 목록은 실행 성공이나 안전성 판정이 아니다. 나열하지 않은 fold 파일의 변화도 위 부모 책임과 파일 수에 포함했다.
+
+#### `internal/astgrep`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/astgrep/scanner.go` | `DefaultScannerConfig` · `IsError` · `IsWarning` · `IsInfo` · `String` · `HasErrors` |
+
+#### `internal/atomicfile`의 현재 변경 경로
+
+세부 구현은 위 부모 모듈의 책임 설명에 포함했다.
+
+#### `internal/auditreceipt`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/auditreceipt/store.go` | `SpecIDFromText` · `StartMarkerKey` · `IsDerivedMarkerKey` · `ledgerPath` · `lockLedger` · `newRandomToken` |
+
+#### `internal/bugreport`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/bugreport/register.go` | `KindRegister` · `AllowlistedRecoverSites` |
+| `internal/bugreport/spool.go` | `SpoolPath` · `marshalSpoolEntry` · `ReadSpool` · `ReadSpoolConsumable` · `parseSpoolLines` · `ConsumeSpoolPrefix` |
+
+#### `internal/cli`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/cli/astgrep.go` | `NewAstGrepCmd` · `resolveRulesDir` · `runAstGrep` · `runDryMode` · `outputText` · `outputJSON` |
+| `internal/cli/bundle.go` | `init` · `newBundleTestCmd` · `runBundleAdd` · `runBundleRemove` · `runBundleList` · `renderBundleAddHelp` |
+| `internal/cli/cc.go` | `init` · `runCC` · `runClaudeEntry` |
+| `internal/cli/clean_home.go` | `isCarvedOut` · `loadHomeRetentionDays` · `profileCleanupAllowed` · `scanHomeCleanable` · `activeClaudeProfile` · `claudeProfileProtection` |
+| `internal/cli/codex_audit_launch.go` | `runCodexAudit` · `prepareCodexAudit` · `run` · `codexAuditValidateRoot` · `codexAuditValidateDest` · `codexAuditHasGitComponent` |
+| `internal/cli/codex_audit_leg.go` | `withCodexAuditLeg` · `codexLegChildEnv` · `codexChildCmd` · `inCodexAuditLeg` · `auditLegSkipsMember` · `auditLegSkipOutcome` |
+| `internal/cli/codex_audit_wait.go` | `codexAuditWaitTimeoutForLoad` · `codexAuditWaitTimeout` |
+| `internal/cli/codex_audit_wait_load_darwin.go` | `loadAverage1` |
+| `internal/cli/codex_audit_wait_load_linux.go` | `loadAverage1` |
+| `internal/cli/codex_audit_wait_load_other.go` | `loadAverage1` |
+| `internal/cli/codex_factory.go` | `parseCodexFactoryEntry` · `enterCodexFactory` · `factoryJoinLaneBound` · `recordedFactoryLaneCapacity` · `codexFactoryEnv` · `codexShellEnvSetArgs` |
+| `internal/cli/codex_hooks_seed.go` | `seedCodexHooksReal` · `seedWorktreeEntryHooks` · `seedAdmittedWorktreeHooksFor` |
+| `internal/cli/codex_lane_precondition.go` | `codexLaneLaunchDir` · `codexLaneParentCheckout` · `codexLaneJoinError` · `codexLaneChildEnv` |
+| `internal/cli/codex_launcher.go` | `codexChildArgs` · `codexMoaiHomeAddDir` · `codexLocalDeveloperInstructionArgs` · `codexLocalDeveloperInstructions` · `codexHasDeveloperOverride` · `checkCodexInstructionSize` |
+| `internal/cli/codex_receipt_detail.go` | `Write` · `tail` · `codexErrorDetail` · `codexReceiptErrorFromVerdicts` |
+| `internal/cli/codex_review_delay.go` | `kickCodexBackgroundReview` · `codexReviewKickMarkerPath` · `kickInFlight` · `codexReviewDeliveryPath` · `codexReviewClaimDelivery` · `HandleCodexReviewEntry` |
+| `internal/cli/codex_review_gate.go` | `HandleCodexReviewGate` · `isBlockVerdict` · `isPassVerdict` · `codexGateAllowed` · `codexReviewBlockLockPath` · `acquireCodexBlockLock` |
+| `internal/cli/codex_skills_disable.go` | `userInstallSkillFaces` · `resolveCodexSkillMirrorPath` · `upsertCodexSkillDisable` · `setEnabledFalseInExtent` · `reshapeLike` · `appendDisableEntry` |
+| `internal/cli/codex_stop_chain.go` | `newCodexStopChain` · `resolveCodexStopRoot` · `stopMemberSpec` · `stopChainDeadline` · `currentKey` · `sessionID` |
+| `internal/cli/doctor.go` | `init` · `runDoctor` · `countFailedChecks` · `doctorExitStatus` · `checkStatusToTUI` · `runGroupedChecks` |
+| `internal/cli/doctor_harness.go` | `runHarnessCheck` · `workflowRootHasRequiredFiles` · `checkLayer1Triggers` · `checkLayer2Workflow` · `checkLayer3Marker` · `checkLayer4ImportLines` |
+| `internal/cli/doctor_jev.go` | `dialJevEndpoint` · `checkJev` · `jevEnabled` |
+| `internal/cli/doctor_lock_markers.go` | `shellSingleQuoted` · `checkUserLockMarkers` |
+| `internal/cli/doctor_user_install.go` | `checkUserInstallIntegrity` · `countUntrackedUserFiles` · `splitManifestKeyUser` · `checkProjectVsLock` · `checkPluginMigrationAdvisory` |
+| `internal/cli/doctor_windows_hook_shell.go` | `checkHookShellWindows` · `countBashExecHooks` · `hookShellWindowsDefault` |
+| `internal/cli/factory.go` | `parseFactoryFlag` · `laneDispatchSelection` · `refuseLegacyEntryNames` · `parseLauncherEntry` · `refuseBadEntryBeforeSpawn` · `insertBeforePassthrough` |
+| `internal/cli/factory_anchor_guard.go` | `anchorBranchOfTree` · `shortWorktreeRoot` · `resolveWorktreeLaunchTarget` · `leaderLaunchDir` · `judgeLeaderAnchor` · `openLeaderAnchorAuditLog` |
+| `internal/cli/factory_audit_decide.go` | `factoryAuditDecideCards` · `factoryQueueHold` |
+| `internal/cli/factory_audit_nofollow_other.go` | 타입·상수 또는 생성 선언 |
+| `internal/cli/factory_audit_nofollow_unix.go` | 타입·상수 또는 생성 선언 |
+| `internal/cli/factory_bundle.go` | `newFactoryBundleCommand` · `runFactoryBundle` · `runFactoryBundleLocked` · `factoryRefuseForeignChain` · `factoryHubChainFields` · `factoryGeneratedHubFields` |
+| `internal/cli/factory_card.go` | `factoryCardRoot` · `factoryRootOf` · `factoryLaneAdmission` · `factoryLaneRefusal` · `factoryNotALaneError` · `factoryLaneLabelFromEnv` |
+| `internal/cli/factory_card_pr.go` | `factoryGHEnv` · `factoryGitHubFlow` · `factoryPRMergeFlag` · `factoryGHCall` · `factoryReadPR` · `factoryGitRead` |
+| `internal/cli/factory_handoff_recover.go` | `newFactoryCommand` · `newFactoryRunsCommand` · `init` · `newAbandonLaneCommand` |
+| `internal/cli/factory_merge.go` | `newFactoryMergeCommand` · `newFactoryMergeReadyCommand` · `newFactoryMergeGateCommand` · `printMergeChecks` · `remeasureRecordFailed` · `emitFactoryMergeVerdict` |
+| `internal/cli/factory_mirror.go` | `writeFactoryAssignment` · `mirrorFactoryAssignment` |
+| `internal/cli/factory_relaunch.go` | `buildRelaunchCommand` · `relaunchRetireFromRun` · `relaunchLaneIgnoredNote` · `newFactoryRelaunchCommand` |
+| `internal/cli/factory_run_adopt.go` | `leaderRunIDWasMinted` · `adoptResumedLeaderRun` · `strictResumeCarrierSeen` · `leaderEntryRunAdoption` · `recordLeaderRunStart` |
+| `internal/cli/factory_settings.go` | `operatorSuppliedSettings` · `prepareFactorySettings` · `writeTransientSettingsFile` |
+| `internal/cli/fold_store_lock_unix.go` | `newFoldStoreLock` · `tryAcquire` · `acquire` · `acquireUntil` · `release` |
+| `internal/cli/fold_store_lock_windows.go` | `newFoldStoreLock` · `tryAcquire` · `acquire` · `acquireUntil` · `release` |
+| `internal/cli/gate_lock_unix.go` | `release` · `acquireGateLockImpl` · `acquireGateLockNoFollowImpl` · `ClearStaleGateLock` |
+| `internal/cli/gate_lock_windows.go` | `isEmptyLockArtifact` · `release` · `acquireGateLockImpl` · `acquireGateLockNoFollowImpl` · `ClearStaleGateLock` |
+| `internal/cli/glm.go` | `init` · `init` · `runGLM` · `containsPermissionMode` · `glmAutoCompactWindow` · `glmMaxContextTokens` |
+| `internal/cli/goal.go` | `parseCondition` · `mechanicalCondition` · `NewAutoMissionCommand` · `loadRequiredAutoMission` · `runGoalMissionApprove` · `autoSnapshotHash` |
+| `internal/cli/gtd.go` | `Readback` · `Apply` · `DispatchReconcileIdentifiers` · `printGTD` · `requireGTDID` · `NewGTDCommand` |
+| `internal/cli/hook.go` | `init` · `runHookEvent` · `writeHookOutput` · `runHookList` · `runAgentHook` · `agentActionEvent` |
+| `internal/cli/hook_harness_codex.go` | `harnessModeIsCodex` · `codexHarnessScrubsLaneEnv` · `unsetLaneEnvForCodexHook` · `validateCodexHarnessEvent` · `writeHookOutputCodex` · `isPermissionRequestDeny` |
+| `internal/cli/init.go` | `emitSlimModeNotice` · `init` · `normalizeAgentWiring` · `resolveAgentWiring` · `wireCodexUnlessClaude` · `wireCodex` |
+| `internal/cli/init_profile_sync.go` | `syncInitProfile` |
+| `internal/cli/init_resume.go` | `userHomeDirOrEmpty` · `resumeInitializedProject` · `deployedWiringIsGPT` · `legacyLayoutSpeaks` · `refuseResumeHarnessChange` · `resumeHarnessRefusal` |
+| `internal/cli/init_resume_read_unix.go` | `readManifestRecord` |
+| `internal/cli/init_resume_read_windows.go` | `readManifestRecord` |
+| `internal/cli/init_update_notice.go` | `startDeferredUpdateNotice` · `defaultDeferredUpdateCheck` |
+| `internal/cli/integration.go` | `integrationLockRoot` · `canonicalTreeSpelling` · `integrationSessionID` · `currentBranch` · `resolveIntegrationTarget` · `integrationFallbackWarning` |
+| `internal/cli/integration_candidate.go` | `gitRunner` · `candidateScrubbedGit` · `now` · `newIntegrationCandidateCmd` · `candidateGuardBundleRequired` · `runCandidateObservation` |
+| `internal/cli/integration_merge.go` | `newIntegrationMergeCmd` · `integrationMergeWorktree` · `localMainIntegrationEnabled` · `integrationReadMergeCardForRun` · `candidateCIEnabled` |
+| `internal/cli/integration_remeasure.go` | `newIntegrationRemeasureCmd` · `shellJoinArgs` · `isShellName` · `shellQuoteArg` · `remeasureWorktreeDir` · `remeasureVerdictError` |
+| `internal/cli/integration_wait.go` | `parseAcquireWait` · `integrationLeaseDuration` · `integrationLeaseMinutes` · `initWindowLeaseOverride` · `integrationWaitInQueue` · `waiterDropReason` |
+| `internal/cli/jev.go` | `init` · `runJev` |
+| `internal/cli/lane_resume_model.go` | `refreshActiveClaudeOptionModel` · `applyClaudeOptionModel` · `parseClaudeOptionModel` · `claudeHelpSynopsisSegment` |
+| `internal/cli/launch_chain.go` | `injectChainNodeForTarget` · `resolveLaunchWorktreePath` · `warnChainPopulationFailure` · `replaceEnvValue` |
+| `internal/cli/launch_effort_settings.go` | `applyLaunchEffort` · `applyLaunchEffortValue` · `operatorSuppliedEffort` · `launchEffortArgs` · `buildEnvForClaudeLaunch` |
+| `internal/cli/launch_session_defaults.go` | `factorySessionRole` · `sessionLLMConfig` · `warnSessionRejections` · `factorySessionDefault` · `factorySessionDefaultChecked` · `factorySessionModel` |
+| `internal/cli/launch_view.go` | `resolveLaunchView` · `resolveOwning` · `materializeBranch` · `readFirstWorktree` · `consumeLaunchArgs` · `walkLaunchArgs` |
+| `internal/cli/launcher.go` | `unifiedLaunch` · `resolveMode` · `isNamedProfile` · `warnNoModelResolved` · `warnFreshProfile` · `unifiedLaunchDefault` |
+| `internal/cli/leader_approval_gate.go` | `holdDoneApprovalGate` · `verifyForClose` · `refreshDoneApprovalGate` · `release` · `todoCardUUID` · `scanApprovalStates` |
+| `internal/cli/local_main_resync.go` | `newIntegrationResyncCmd` · `runLocalMainResync` · `localMainResyncInWindow` · `localMainResyncRevalidate` · `localMainResyncNoHolder` · `localMainResyncFailed` |
+| `internal/cli/mcp_audit_receipt.go` | `receiptTarget` · `recordAuditReceipt` · `recordAuditReceiptAt` |
+| `internal/cli/mcp_codex.go` | `codexServableModel` · `resolveCodexModelEffort` · `resolveCodexAuditModelEffort` · `inconclusiveReview` · `inconclusiveReviewWithSummary` · `blankReviewInconclusive` |
+| `internal/cli/mcp_convergence.go` | `converge` · `filterRequired` · `filterVerdict` · `countParticipants` · `allPass` · `distinctVerdicts` |
+| `internal/cli/mcp_factory_card.go` | `registerFactoryCardMCPTools` · `requiredProjectRootOption` · `mcpRequiredProjectRoot` · `handleFactoryNext` · `handleFactoryStage` · `handleFactoryComplete` |
+| `internal/cli/memory_fold.go` | `normalizeFoldCardID` · `newMemoryFoldCmd` · `buildFoldPlan` · `applyFold` · `applyFoldLocked` · `verifyArchiveEffectiveState` |
+| `internal/cli/migrate_project_assets.go` | `migrateProjectCommonAssets` · `userCounterpartConfirmed` · `skillSourceRel` · `skillNotInCatalog` · `withinRootBoundary` |
+| `internal/cli/root.go` | `Execute` · `executeRoot` · `isTrivialCommand` · `init` |
+| CLI의 worktree 진입 (세션 부모 설명에 포함) | `enterSessionWorktree` · `sessionWorktreeBranchName` · `materializeSessionWorktree` · `gitWorktreeAddArgs` · `gitWorktreeAddReal` · `inGitWorktreeReal` |
+| `internal/cli/statusline.go` | `init` · `runStatusline` · `dirExists` · `readStdinWithTimeout` · `renderSimpleFallback` · `loadStatuslineFileConfig` |
+| `internal/cli/todo.go` | `init` · `todoBacklogPath` · `resolveTodoQueueRoot` · `warnTempOriginQueueRefusal` · `newTodoStore` · `newTodoReadStore` |
+| `internal/cli/todo_auto.go` | `autoEvidencePath` · `newAutoLiveness` · `autoOwnerWorktrees` · `autoInsideTree` · `ownerAlive` · `autoQueuedCandidates` |
+| `internal/cli/todo_auto_lane.go` | `runAutoLaneCycle` · `autoLaneVerb` · `autoLeaseRanked` · `autoAssignedItem` · `autoLaneDispatchOnly` · `autoLaneHandoffLine` |
+| `internal/cli/todo_auto_rank.go` | `poor` · `autoRankHoldMarked` · `autoRankNearDuplicate` · `autoRankPartition` · `autoRankCandidates` · `autoRankOrderFallback` |
+| `internal/cli/todo_autodone.go` | `newTodoAutoDoneCmd` · `todoAutoDoneLong` · `runTodoAutoDone` · `splitLandedRefForFetch` · `planAutoDone` · `todoAutoDoneSHAReachable` |
+| `internal/cli/todo_claim.go` | `newTodoClaimCmd` · `todoJSONProjection` · `todoLeaseCell` · `claimStrOr` · `todoLeaseCells` · `todoClaimHolder` |
+| `internal/cli/update.go` | `validateUpdateFlags` · `init` · `runUpdate` · `emitDryRunReinstallPlan` · `shouldSkipBinaryUpdate` · `reexecPassActive` |
+| `internal/cli/update/backup/backup.go` | `BackupMoaiConfig` · `SaveTemplateDefaults` · `CleanupOldBackups` · `backupRoots` · `collectBackupRuns` · `listBackupDirs` |
+| `internal/cli/update/backup/node_merge.go` | `SetRetainedKeySinkForTest` · `retainedKeyAdvisoryLine` · `newRetainedKeyNotes` · `emit` · `encodeNode` · `emptyMappingNode` |
+| `internal/cli/update/backup/restore.go` | `RestoreMoaiConfig` · `RestoreMoaiConfigRetained` · `RestoreMoaiConfigLegacy` |
+| `internal/cli/update/backup/restore_unmanaged.go` | `RestoreUnmanagedConfigDirs` · `RestoreUnmanagedConfigDirsSkipping` · `restoreUnmanagedFile` · `writeNewFile` |
+| `internal/cli/update/backup/run_marker.go` | `NewRunID` · `WriteRunMarker` · `readRunID` |
+| `internal/cli/update/backup/run_marker_open_unix.go` | `openRunMarker` |
+| `internal/cli/update/backup/run_marker_open_windows.go` | `openRunMarker` |
+| `internal/cli/update/backup/run_marker_read.go` | `readRunMarker` |
+| `internal/cli/update/preview_fallback.go` | `countByClass` · `displayWidth` · `padRight` · `renderCard` · `renderFallback` · `renderFallbackToStdout` |
+| `internal/cli/update/preview_path.go` | `previewFileColumnWidth` · `elidePath` |
+| `internal/cli/update/preview_tui.go` | `newPreviewModel` · `isMonochrome` · `paint` · `displayRank` · `classRoleToken` · `previewTableStyles` |
+| `internal/cli/update/report/outcome.go` | `String` · `RenderOutcome` · `RenderReconciliation` |
+| `internal/cli/update/skillresidue/residue.go` | `shipped` · `Clean` · `entryNames` · `userFile` · `retiredLinkPresent` · `moveOne` |
+| `internal/cli/update_archive.go` | `archiveSkill` · `validateSkillID` · `checkArchiveDrift` · `computeDirHashes` · `hashFile` · `copyDirAll` |
+| `internal/cli/update_clean_install.go` | `runCleanReinstall` · `expandDeprecatedBackupTargets` · `resolveV2BackupDir` |
+| `internal/cli/update_destructive_registry.go` | `key` |
+| `internal/cli/update_disk_backup.go` | `inMemoryOnlyBackupTargets` · `ensureRunBackupDir` · `backupInMemoryOnlyFiles` · `guardFirstDestructiveStep` · `runMarkerWarning` |
+| `internal/cli/update_dryrun_preview.go` | `previewReconciliation` · `migrationRemovalCandidate` |
+| `internal/cli/update_integrity_probe.go` | `appliesTo` · `damageReason` · `readProbeFile` · `runManagedSurfaceIntegrityProbe` |
+| `internal/cli/update_migrate.go` | `computeRunCleanTargets` · `isCommonAssetCleanTarget` · `runUpdateMigrationTrigger` · `stampMigrationDeployMode` · `migrationArchiveExists` · `archiveMigrationFile` |
+| `internal/cli/update_model_key_strip.go` | `stripRetiredModelConfig` · `withoutStrippedKeys` · `updateSkippedOnVersionMatch` · `stripRetiredModelConfigOnVersionMatch` · `writeRetainedKeyAdvisoryLines` |
+| `internal/cli/update_restore.go` | `checkProjectMarker` · `runUpdateRestore` · `reportUncoveredRestorePaths` |
+| `internal/cli/update_state_residue.go` | `removeStateResidue` · `walSidecarPresent` · `updateProjectRoot` · `runUpdateHousekeepingLocked` · `runUpdateHousekeeping` · `runUpdateHousekeepingDeferRenames` |
+| `internal/cli/update_template_sync.go` | `resolveUpdateDeployMode` · `mergeableFilePaths` · `runTemplateSync` · `managedRedeployCount` · `presentArchiveDriftRoots` · `newArchiveDriftRoots` |
+| `internal/cli/update_template_sync_guard.go` | `embeddedTemplateTreeHash` · `recordTemplateTree` · `versionMatchSkipsSync` · `probeManifest` · `warnStampSkew` |
+| `internal/cli/update_tux.go` | `paintToken` · `deployStepStateIcon` · `renderIdentityBand` · `classifyUpdateCounts` · `renderClassificationSummary` · `renderDeployProgress` |
+| `internal/cli/update_uncommitted_notice.go` | `uncommittedTemplateNotice` · `mergeAnalysisPaths` |
+| `internal/cli/update_unmanaged_restore.go` | `unmanagedRestoreMessages` |
+| `internal/cli/update_version_skew.go` | `parseSemver` · `compareSemver` · `comparePreIdent` · `versionSkewWarning` |
+| `internal/cli/user_asset_phase.go` | `ensureUserAssetsLocked` · `newUserAssetInstaller` · `writeInstallSummary` · `runUserAssetUpdatePhase` · `announceUnselectedOptionalPacks` · `userCodexInstallPresent` |
+| `internal/cli/wizard/questions.go` | `DefaultQuestions` · `GitQuestions` · `ReconfigureQuestions` · `userParticipationDefault` · `InitQuestions` · `InitQuestionsWithAgentWiring` |
+| `internal/cli/wizard/wizard.go` | `Run` · `RunWithDefaults` · `RunWithAgentWiringDefault` · `prefillLocaleDefault` · `prefillIdentityDefaults` · `prefillAgentWiringDefault` |
+| `internal/cli/worktree_branch_flag.go` | `materializeWorktreeBranch` · `shortWorktreeNameOf` · `launcherWorktreeMaterializeReal` · `branchRefExists` |
+
+#### `internal/config`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/config/closed_sets.go` | `ValidExecutionModePins` · `ValidExecutionModes` · `ValidWorkflowDefaultModes` · `ValidGLMModels` · `ValidAuditModels` · `CodexAgentModel` |
+| `internal/config/defaults.go` | `NormalizeCodexReviewGateTreeScope` · `NormalizeCodexReviewGatePrimaryScope` · `NewDefaultConfig` · `DefaultPlanAuditTierCeilings` · `DefaultPlanAuditCeilingPolicy` · `NewDefaultFeedbackConfig` |
+| `internal/config/llm_save.go` | `saveLLM` · `LLMSectionEdits` · `llmBaselineOf` · `llmSectionEditsFrom` · `llmMappingOf` · `diffLLMNodes` |
+| `internal/config/loader_factory_lease.go` | `LoadFactoryLease` |
+| `internal/config/loader_worktree_base.go` | `LoadWorktreeBaseBranch` |
+| `internal/config/manager.go` | `NewConfigManager` · `resetSectionDirtyLocked` · `Load` · `LoadRaw` · `Get` · `GetSection` |
+| `internal/config/protected_zone.go` | `FoldZoneText` · `Match` · `ParseProtectedZone` · `validateZoneCategoryName` · `parseZoneCategory` · `parseZoneEntry` |
+| `internal/config/read_regular_unix.go` | `readNonBlockingRegularFile` |
+| `internal/config/read_regular_windows.go` | `readNonBlockingRegularFile` |
+| `internal/config/role_markers.go` | `RoleMarkerRegistry` · `DetectRoleMarker` · `ExtractRoleCoreRegions` |
+| `internal/config/session_defaults.go` | `defaultSessionDefaults` · `pair` · `role` · `ResolveSessionDefault` · `ResolveSessionDefaultChecked` · `trimSessionModel` |
+| `internal/config/toolpolicy/codegen.go` | `BuildPermissions` · `RenderSettingsJSON` · `RenderSettingsTmpl` · `PermissionsRegionHasDirective` · `AssertPermissionBlockNoTemplate` · `truncateForError` |
+| `internal/config/toolpolicy/record_lock_probe_unix.go` | `pidProvablyDead` |
+| `internal/config/toolpolicy/record_lock_probe_windows.go` | `pidProvablyDead` |
+| `internal/config/toolpolicy/tier_render.go` | `RenderTierPermissions` · `managedAllowLockPath` · `acquireProjectRecordLock` · `takeoverStaleRecordLock` · `parseRecordLockPid` · `managedAllowRecordPath` |
+| `internal/config/types.go` | `ActiveModeProfile` · `VetTimeoutDuration` · `LintTimeoutDuration` · `TestTimeoutDuration` · `TypecheckTimeoutDuration` · `LockWaitDuration` |
+| `internal/config/validation.go` | `Validate` · `validateGLMBaseURL` · `validateDevelopmentMode` · `validateQualityConfig` · `ValidateQualitySection` · `ValidateGitConventionSection` |
+
+#### `internal/contract`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/contract/kickoff/decide.go` | `Decide` · `llmOutcome` · `nonDeciding` · `deciding` · `parseJudgement` · `preconditions` |
+
+#### `internal/factory`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/factory/autodone_scan.go` | `AutoDoneSkipReasons` · `AutoDoneDecide` · `receiptGated` · `AutoDoneDistinctTexts` · `LandedScanArgs` · `ScanLandedSubjects` |
+| `internal/factory/backlog_store.go` | `IssuanceOriginValid` · `Names` · `WaitsOnOf` · `FindingsBlocking` · `WaitsOnClosesCycle` · `waitsOnReaches` |
+| `internal/factory/candidate_landing_check.go` | `candidateCIRequired` · `git` · `CandidateLandingCheck` · `shortSHAFull` · `orUnset` |
+| `internal/factory/candidate_mutation_lock.go` | `candidateMutationLockPath` · `WithCandidateMutation` · `acquireCandidateMutationLock` |
+| `internal/factory/candidate_mutation_lock_unix.go` | `clearWedgedCandidateMutationLock` |
+| `internal/factory/candidate_mutation_lock_windows.go` | `clearWedgedCandidateMutationLock` |
+| `internal/factory/candidate_record.go` | `candidateDir` · `candidateRecordPath` · `validCandidateKeyPart` · `WriteCandidateRecord` · `candidateStoreRealPath` · `ReadCandidateRecord` |
+| `internal/factory/candidate_record_unix.go` | `openCandidateRecordFile` |
+| `internal/factory/candidate_record_windows.go` | `openCandidateRecordFile` |
+| `internal/factory/factory_runtime.go` | `RecordFactoryRunStart` · `captureFactoryProvenance` · `RecordFactoryCardAssignment` · `RecordFactoryCardState` |
+| `internal/factory/gtd_operation.go` | `validGTDOperation` · `gtdDispatchReconcileIdentifiers` · `scanGTDOperation` · `LoadGTDOperation` · `PrepareGTDOperation` · `markGTDOperationState` |
+| `internal/factory/integration_lock.go` | `IsIntegrationLockHeld` · `IsIntegrationLockNotHeld` · `IsIntegrationLockForeign` · `Held` · `Stale` · `integrationLockPath` |
+| `internal/factory/integration_lock_mutation.go` | `IsIntegrationLockBusy` · `integrationMutationLockPath` · `withIntegrationLockMutation` · `RunIntegrationMutation` · `acquireIntegrationMutationLock` |
+| `internal/factory/integration_merge_step.go` | `Error` · `ExitCode` · `MergeExitCode` · `mergeStepErr` · `gitRunner` · `now` |
+| `internal/factory/integration_remeasure.go` | `remeasureDir` · `WriteRemeasureRecord` · `ReadRemeasureRecord` · `readFileNoRename` · `ValidateRemeasureRecord` · `isFullSHA` |
+| `internal/factory/integration_window_ops.go` | `holderOwnerGone` · `ticketOwnerGone` · `refreshQueue` · `ticketLabel` · `heartbeatStale` · `promoteFirst` |
+| `internal/factory/state_lock_wait.go` | `stateLockRetryWait` |
+| `internal/factory/todo_dispatch_current.go` | `RefreshDispatchCurrent` · `RefreshDispatchCurrentLockHeld` |
+| `internal/factory/todo_runtime.go` | `MarshalJSON` · `runtimeVersion` · `readRuntime` · `copyRuntime` · `ArchiveOnRuntimeCompletion` · `recordRuntime` |
+
+#### `internal/factorylane`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/factorylane/merge.go` | `Error` · `Git` · `EvaluateMergeTriple` · `checkSyncAudit` · `syncStatusFromE4` · `checkConflictFree` |
+
+#### `internal/factorymsg`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/factorymsg/store.go` | `Error` · `IsLiveOwnerRefusal` · `BrokerPath` · `projectKeyFromBrokerPath` · `brokerDSN` · `Open` |
+
+#### `internal/feedback`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/feedback/outbox/drain.go` | `storeDir` · `StorePath` · `AppendOutbox` · `SetClockForTest` · `RenderReport` · `RenderReportWithSummary` |
+
+#### `internal/harness`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/harness/rosterguard/registry.go` | `Registry` · `indexCatalogStale` · `agentCatalogSizeSite` · `readmeSite` · `NumeralExemptions` |
+
+#### `internal/homestate`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/homestate/card_picked.go` | `ParseContractRef` · `Validate` · `empty` · `validate` · `apply` · `RecordPicked` |
+| `internal/homestate/card_reassign.go` | `ReassignCard` |
+| `internal/homestate/card_record.go` | `CardStates` · `IsCardState` · `IsLeaseHoldingState` · `IsTerminalCardState` · `isResumableStage` · `Legacy` |
+| `internal/homestate/card_transition.go` | `buildTransitionTable` · `TransitionEdges` · `findEdge` · `isReservedEdge` · `resumeTarget` · `ResumeTarget` |
+| `internal/homestate/factory.go` | `OpenFactory` · `OpenFactoryBounded` · `OpenFactoryPath` · `OpenFactoryReadonly` · `FactoryTablePresent` · `openFactoryPathBusy` |
+| `internal/homestate/factory_lease.go` | `loadFactoryLease` · `resolveFactoryLease` · `EffectiveFactoryLease` · `refuseFactoryLease` · `CardLeaseDuration` · `RenewInterval` |
+| `internal/homestate/factory_run_adopt.go` | `runHasLiveRecords` · `FindResumableRun` · `AdoptRun` |
+| `internal/homestate/factory_run_resume.go` | `ResumeRun` |
+| `internal/homestate/factory_run_retire.go` | `SystemBootTime` · `classifier` · `batchProbe` · `DefaultOwnerClassifier` · `ClassifyOwnerWith` · `retirable` |
+| `internal/homestate/leader_approval.go` | `CanonicalApprovalOwnerLabel` · `VerifyBinding` · `IssueLeaderApproval` · `scanLeaderApproval` · `FindLeaderApproval` · `findLeaderApprovalForCardTx` |
+
+#### `internal/hook`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/hook/lane_spawn_authority.go` | 타입·상수 또는 생성 선언 |
+| `internal/hook/protected_zone_guard.go` | `isZoneIdentity` · `zoneDenyReason` · `zoneAppendAudit` · `recordZoneAudit` · `loadZone` · `checkProtectedZone` |
+| `internal/hook/protected_zone_path.go` | `zoneSlash` · `zoneNativeSlash` · `zoneIsAbs` · `zoneLexicalRel` · `zoneResolve` · `zoneResolveDepth` |
+| `internal/hook/protected_zone_shell.go` | `zoneUnlinkLinkOwn` · `hasShortNameShape` · `zoneParse` · `zoneUnescapeLit` · `zoneUnescapeDbl` · `zoneUnescapeAnsiC` |
+| `internal/hook/quality/astgrep_gate.go` | `astGrepRulesetLoadReason` · `ResolveRulesDirPath` · `RunAstGrepGateV2` · `DefaultAstGrepGateConfig` · `filterExcludedPaths` · `isExcludedPath` |
+| `internal/hook/registry.go` | `NewRegistry` · `NewRegistryWithTimeout` · `Register` · `Dispatch` · `runAlwaysRunTail` · `mergeHandlerOutput` |
+| `internal/hook/role_rules.go` | `assembleInjectionComposite` · `roleRulePoliciesRel` · `roleRuleDeployRel` · `buildRoleCore` · `roleCoreFromContent` · `embeddedRoleCore` |
+| `internal/hook/role_rules_read_unix.go` | `readRuleFileBytes` · `readRuleFileBytesBounded` |
+| `internal/hook/role_rules_read_windows.go` | `readRuleFileBytes` · `readRuleFileBytesBounded` |
+| `internal/hook/session_start.go` | `FinalizeSessionStartOutput` · `WithSynchronousDeferredScans` · `NewSessionStartHandler` · `asyncDeferredScans` · `EventType` · `Handle` |
+| `internal/hook/session_start_factory.go` | `factoryBootstrapNotice` · `factoryBootstrapNoticeLang` · `factoryBootstrapNoticeForSource` · `factoryLaneRuleForSource` · `factoryLaneRuleForSourceInDir` · `laneArmExpression` |
+| `internal/hook/session_start_factory_i18n.go` | `factoryMessagesFor` |
+| `internal/hook/session_start_hygiene.go` | `runSessionHygiene` · `runProfileCapAdvisoryAsync` · `runProfileCapAdvisory` |
+| `internal/hook/session_start_lang.go` | `operatorLang` |
+| `internal/hook/user_root_zone.go` | `userRootZoneForms` · `userRootManagedKeys` · `hasDotDotSegment` · `dropDotSegments` · `zoneIsAncestorOrSelf` · `userRootKey` |
+| `internal/hook/zone_user_read_unix.go` | `readRegularFile` |
+| `internal/hook/zone_user_read_windows.go` | `readRegularFile` |
+
+#### `internal/hygiene`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/hygiene/profile_cap.go` | `LoadProfileCapMaxBytes` · `readProfileCapTier` · `ProfileCapAdvisories` · `profileSizeWithDeadline` |
+
+#### `internal/jev`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/jev/jev.go` | `ValidInterpretedModel` · `Label` · `OK` · `NoticeLine` · `New` · `UsageLog` |
+
+#### `internal/jevmeasure`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/jevmeasure/measure.go` | `Arms` · `ConstantBaseline` · `BestArm` · `Verdict` · `Validate` · `Render` |
+| `internal/jevmeasure/request.go` | `NewState` · `Set` · `Names` · `JSON` · `BuildRequest` · `hasNoMatch` |
+
+#### `internal/manifest`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/manifest/manifest.go` | `NewManager` · `Manifest` · `Load` · `Save` · `Track` · `GetEntry` |
+| `internal/manifest/types.go` | `IsValid` · `NewManifest` |
+
+#### `internal/mcp`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/mcp/catalog.go` | `MoaiMCPTools` · `MoaiMCPToolNames` |
+
+#### `internal/merge`의 현재 변경 경로
+
+세부 구현은 위 부모 모듈의 책임 설명에 포함했다.
+
+#### `internal/runtime`의 현재 변경 경로
+
+세부 구현은 위 부모 모듈의 책임 설명에 포함했다.
+
+#### `internal/settings`의 현재 변경 경로
+
+세부 구현은 위 부모 모듈의 책임 설명에 포함했다.
+
+#### `internal/spec`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/spec/lint.go` | `HasErrors` · `ToJSON` · `ToSARIF` · `projectRootFromBaseDir` · `NewLinter` · `Lint` |
+| `internal/spec/lint_haiku_residual.go` | `Code` · `Check` · `CheckAll` · `scanAgentFrontmatter` · `scanClaudeModelsBlock` · `scanFilesForHaiku` |
+| `internal/spec/lint_vacuous_assertion.go` | `Code` · `Check` · `vacuousAdvisory` · `vacuousLineMessages` · `runPatterns` · `escaped` |
+
+#### `internal/statusline`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/statusline/builder.go` | `New` · `Build` · `getMode` · `SetMode` · `parseStdin` · `collectAll` |
+| `internal/statusline/color.go` | `statuslineColorProfile` · `newForcedColorRenderer` · `foregroundSequence` · `applyBaseColor` · `newBarStyle` · `placeholderBar` |
+| `internal/statusline/gradient.go` | `barGradientStops` · `interpolateGradientColor` · `hexRGB` · `BuildGradientBar` · `buildGradientBar` · `BatteryIcon` |
+| `internal/statusline/renderer.go` | `NewRenderer` · `Render` · `filterEmpty` · `SetTodoEnabled` · `isTodoEnabled` · `isSegmentEnabled` |
+| `internal/statusline/types.go` | `NormalizeMode` · `UnmarshalJSON` |
+> 삭제된 경로: `internal/statusline/usage.go`. 현재 책임은 `internal/statusline/usage_fallback.go`와 renderer의 설명을 따른다.
+| `internal/statusline/usage_fallback.go` | `primaryRepoRoot` · `quotaScanStateDirs` · `collectQuotaSnapshot` · `quotaWindowReading` |
+
+#### `internal/template`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/template/agentemit/manifest.go` | `rejectedEffort` · `LoadManifest` · `ParseManifest` |
+| `internal/template/agentemit/permission.go` | `validateContract` · `ContractSandbox` · `RoleRequirements` · `roleVerdicts` · `BuildPermissionReport` |
+| `internal/template/agentemit/writer.go` | `basicStringSafe` · `literalString` · `classifyToken` · `renderTOML` |
+| `internal/template/embed_manifest_gen.go` | 타입·상수 또는 생성 선언 |
+| `internal/template/harness_fs.go` | `newHarnessFS` · `newProfileHarnessFS` · `isHidden` · `SharedDeploySource` · `SharedDeployTargets` · `sharedSource` |
+
+#### `internal/testguard`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/testguard/homeguard.go` | `RealHome` · `accountHomeDir` · `sandboxTargets` · `RedirectHome` · `redirectHomeAt` · `judgeSandbox` |
+| `internal/testguard/scan.go` | `Keys` · `ScanSource` · `osImportNames` · `lineAt` · `ScanTree` |
+
+#### `internal/userassets`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/userassets/install.go` | `srcPath` · `InstallPreserveSelection` · `Install` · `now` · `resolveRoot` · `sha256Hex` |
+| `internal/userassets/journal.go` | `WriteJournal` · `Error` · `AsJournalSchemaError` · `LoadJournal` · `ClearJournal` · `dirOf` |
+| `internal/userassets/lock.go` | `AcquireUserLock` · `acquireUserLockStale` · `Release` · `lockOwnerGone` · `ownerRecordGone` · `guardMarkerDead` |
+| `internal/userassets/lock_guard_unix.go` | `acquireGuard` · `classifyPidlessMarker` · `readLockRecord` |
+| `internal/userassets/lock_guard_windows.go` | `acquireGuard` · `lockWindowsExclusive` · `unlockWindows` · `readLockRecord` · `classifyPidlessMarker` |
+| `internal/userassets/paths.go` | `ResolveRoots` · `RootBySlugDir` · `RootBySlug` · `MoaiHome` · `ManifestPath` · `JournalPath` |
+| `internal/userassets/remove.go` | `PruneUnselected` · `owningEntryName` · `lookupEntry` · `removeManifestKey` · `RemoveBundle` · `removeKeys` |
+
+#### `internal/web`의 현재 변경 경로
+
+| 파일 | 선언 예시 |
+|---|---|
+| `internal/web/agentfm.go` | `agentFMModelValues` · `agentFMEffortValues` · `parsePerfTierForm` · `applyPerfTierEdits` · `agentDirsFor` · `agentGroupRank` |
+| `internal/web/fieldsets_templ.go` | `panelDensity` · `settingsPanel` · `sectionCount` · `fieldsetIdentity` · `fieldsetLanguage` · `fieldsetLaunch` |
+| `internal/web/icons_templ.go` | `iconSVG` · `icon` · `iconAt` · `iconPath` · `brandMark` |
+| `internal/web/page_templ.go` | `fieldErrorMsg` · `hasFieldError` · `langSelect` · `fieldHead` · `fieldErr` · `langOptionTags` |
+| `internal/web/root_templ.go` | `saveAction` · `bannerClass` · `page` · `settingsPageHeader` · `profileModifiable` · `profileDeleteAction` |
+| `internal/web/screens_templ.go` | `Overview` · `specRowLink` · `Factory` · `Todo` · `TodoGraph` · `todoGraphNode` |
+| `internal/web/shell_templ.go` | `Shell` · `rail` · `navRow` · `topbar` · `liveState` · `saveCluster` |
+| `internal/web/widgets_templ.go` | `panel` · `noteBanner` · `stateMark` · `backendBadge` · `stageMark` · `stageInner` |
+
+---
+
+아래는 이전 갱신의 기록이다. 현재 수치와 변경된 책임은 위 절을 기준으로 읽고, 아래의 과거 커밋별 설명은 이력으로 보존한다.
+
 ## 현재 최종 통합 트리의 책임 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 앞선840826의 소스34개 수정 설명에 외부 main의 Go13경로 변화를 대조했다. 이번 창에서 비테스트 파일7개가 바뀌었고(수정6·추가1), 새 패키지는 없다. 추가된 비테스트 파일은 codex_review_cache.go다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.

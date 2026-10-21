@@ -106,12 +106,11 @@ func TestCodexLaneEntryStartsParentSession(t *testing.T) {
 	}
 }
 
-// TestCodexFactoryFlagRefusals — AC-007: `moai codex -f`, in every shape, is
+// TestCodexFactoryFlagRefusals — invalid valued `moai codex -f` forms are
 // refused with one line naming `moai codex -l` for a lane and `moai cc -f` /
 // `moai glm -f` for a leader; nothing is leased, claimed, or written.
 func TestCodexFactoryFlagRefusals(t *testing.T) {
 	for _, args := range [][]string{
-		{"-f"},
 		{"-f", "lane"},
 		{"-f", "lane-2"},
 		{"-f", "3"},

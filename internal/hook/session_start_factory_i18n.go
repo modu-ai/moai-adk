@@ -111,7 +111,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderIdentity: "This session is named %s. It carries no run id: a second leader launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
 		leaderManual: "This session dispatches cards to lanes over cross-session messages.\n" +
 			"A session cannot launch another session, so to start a lane, enter `moai cc -l` (or `moai glm -l`, `moai codex -l`) in a new terminal.",
-		entryGuide: "Entry points: `moai cc -f` starts a Claude factory leader and `moai glm -f` a GLM leader — " +
+		entryGuide: "Entry points: `moai cc -f` starts a Claude factory leader and `moai glm -f` a GLM leader; `moai codex -f` starts a fresh Codex leader — " +
 			"the launcher picks the backend, `-f` the factory.",
 		agentFanout:  "Every lane can run up to 10 agents concurrently in parallel.",
 		leaderSocket: "Leader socket: %s",
@@ -168,7 +168,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
 		leaderManual: "이 세션이 세션 간 메시지로 카드를 레인에 배분합니다.\n" +
 			"세션은 다른 세션을 띄울 수 없으므로 레인은 새 터미널에서 `moai cc -l`(또는 `moai glm -l`, `moai codex -l`)을 실행해 시작하세요.",
-		entryGuide: "진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. " +
+		entryGuide: "진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. `moai codex -f`는 Codex 리더를 새 런으로 시작합니다. " +
 			"런처가 백엔드를, `-f` 가 팩토리를 정합니다.",
 		agentFanout:  "각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.",
 		leaderSocket: "리더 소켓: %s",
@@ -228,7 +228,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。",
 		leaderManual: "このセッションが、セッション間メッセージでカードをレーンに割り振ります。\n" +
 			"セッションから別のセッションは起動できないため、レーンは新しいターミナルで `moai cc -l`(または `moai glm -l`、`moai codex -l`)を実行して始めてください。",
-		entryGuide: "起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。" +
+		entryGuide: "起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。`moai codex -f` は新しいランで Codex リーダーを起動します。" +
 			"ランチャーがバックエンドを、`-f` がファクトリーを決めます。",
 		agentFanout:  "各レーンは最大 10 個のエージェントを同時に並列実行できます。",
 		leaderSocket: "リーダーソケット: %s",
@@ -288,7 +288,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。",
 		leaderManual: "本会话通过跨会话消息把卡片分发给各条泳道。\n" +
 			"会话无法启动另一个会话，需要在新终端中运行 `moai cc -l`（或 `moai glm -l`、`moai codex -l`）来启动泳道。",
-		entryGuide: "启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。" +
+		entryGuide: "启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。`moai codex -f` 启动新运行的 Codex 主导会话。" +
 			"启动器决定后端，`-f` 决定工厂。",
 		agentFanout:  "每条泳道最多可同时并行运行 10 个代理。",
 		leaderSocket: "主导会话套接字：%s",

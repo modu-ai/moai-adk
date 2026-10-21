@@ -33,9 +33,9 @@ The factory is a multi-lane run: one **leader** session routes queue cards to **
 
 Two entry tokens exist, and neither takes an argument.
 
-- `-f` / `--factory` starts the factory leader. It is available on `moai cc` and `moai glm`.
+- `-f` / `--factory` starts the factory leader. It is available on `moai cc`, `moai glm`, and `moai codex`.
 - `-l` / `--lane` joins the running factory as a lane. It is available on `moai cc`, `moai glm`, and `moai codex`.
-- `moai codex` has no leader entry: any `-f` shape on it is refused with a line naming `moai cc -f` and `moai glm -f`.
+- `moai codex -f` / `--factory` starts a fresh Codex CLI leader run with a lowercase 26-character ULID. Existing leader-run adoption via `--factory-run` and native Codex resume are not supported; `moai codex -l` retains its lane-join behavior. Claude, GLM, and Codex lanes may join the Codex-led run.
 - A launch carries at most one entry token, and no other entry token exists.
 
 Each row below is replayed against the launcher's entry parse by the document-versus-behavior test, so a row that disagrees with the launcher fails the build. The third column names the role an accepted entry takes.
@@ -53,7 +53,9 @@ Each row below is replayed against the launcher's entry parse by the document-ve
 | refused | `moai cc -l lane-2` | |
 | refused | `moai glm --lane lane-2` | |
 | refused | `moai codex -l lane-2` | |
-| refused | `moai codex --factory` | |
+| accepted | `moai codex -f` | leader |
+| accepted | `moai codex --factory` | leader |
+| refused | `moai codex -f 2` | |
 | retired | `moai cg` | |
 | retired | `moai gpt` | |
 

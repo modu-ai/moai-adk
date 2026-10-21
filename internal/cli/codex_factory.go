@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,16 +10,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oklog/ulid/v2"
+
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// parseCodexFactoryEntry consumes only MoAI's tokens before --: the lane entry
-// `-l` / `--lane` (it takes no argument, so the next Codex verb stays in place),
-// `--leader`, and `--factory-run`. `-f` / `--factory` is no Codex entry; the
-// classification (codexFactoryEntryClassify) refuses every shape of it before
-// this parse runs, so the parse leaves those tokens in the rest.
+// parseCodexFactoryEntry consumes validated MoAI entry tokens before --.
+// Bare -f / --factory starts a fresh leader; -l / --lane joins a run.
+// --leader and --factory-run select only a lane's existing run.
 func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagParse, err error) {
 	rest = make([]string, 0, len(head))
 	for i := 0; i < len(head); i++ {
@@ -63,6 +64,10 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 			}
 			continue
 		}
+		if token == factoryFlagShort || token == factoryFlagLong {
+			entry.Enabled = true
+			continue
+		}
 		// The lane entry: it names the role and takes no argument (the
 		// classification refused any argument or second entry token already).
 		if token == laneFlagShort || token == laneFlagLong {
@@ -71,7 +76,7 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 		}
 		rest = append(rest, token)
 	}
-	if entry.RunID != "" && !entry.Enabled {
+	if entry.RunID != "" && !entry.LaneRole {
 		return nil, entry, fmt.Errorf("--factory-run requires -l/--lane")
 	}
 	if entry.Lead != "" && entry.RunID != "" {
@@ -91,6 +96,36 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunchTiming) (func(), error) {
 	if !entry.Enabled {
 		return func() {}, nil
+	}
+	if !entry.LaneRole && entry.LaneNumber == 0 {
+		// A fresh Codex leader never adopts identity inherited from an outer
+		// lane or leader. The shared cc/glm resume contract stays unchanged.
+		id, err := ulid.New(ulid.Timestamp(time.Now()), rand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("allocate Codex factory run id: %w", err)
+		}
+		var restores []func()
+		for _, key := range codexLaneLaunchEnvKeys {
+			restores = append(restores, captureEnvState(key))
+			_ = os.Unsetenv(key)
+		}
+		restoreEnv := func() {
+			for i := len(restores) - 1; i >= 0; i-- {
+				restores[i]()
+			}
+		}
+		// Publish only our fresh value after clearing the outer identity.
+		// The shared mode helper can never adopt the caller's run here.
+		_ = os.Setenv(config.EnvFactoryRunID, strings.ToLower(id.String()))
+		restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")
+		restoreFacts := exportFactoryLaunchFacts("", BackendCodex)
+		_ = os.Setenv(config.EnvFactoryRole, factory.RoleLeader)
+		restore := func() { restoreFacts(); restoreMode(); restoreEnv() }
+		if err := recordFactoryRunStart(root, os.Getenv(config.EnvFactoryRunID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
+			restore()
+			return nil, fmt.Errorf("record Codex factory run: %w", err)
+		}
+		return restore, nil
 	}
 	lane := entry.LaneRole || entry.LaneNumber > 0
 	var restoreRun func()
@@ -129,16 +164,7 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 		restoreMode := enterFactoryLaneMode(claim.Label, 0, "", config.FactoryDispatchAuto)
 		return func() { restoreMode(); restore() }, nil
 	}
-	restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")
-	// The codex leader carries no count form (bare -f): its runs record the
-	// derived-capacity marker, never a declared bound
-	// (SPEC-CODEX-LANE-SLOTS-001 REQ-004).
-	if err := recordFactoryRunStart(root, os.Getenv(config.EnvFactoryRunID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
-		restoreMode()
-		restore()
-		return nil, fmt.Errorf("record Codex factory run: %w", err)
-	}
-	return func() { restoreMode(); restore() }, nil
+	return restore, nil
 }
 
 // factoryJoinLaneBound resolves the launcher-side join bound for a codex
@@ -185,7 +211,7 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 		// so this is additive-only for the child's env.
 		keys = append(keys, config.EnvFactoryLeadName)
 	} else {
-		keys = append(keys, config.EnvFactoryLeadAddr)
+		keys = append(keys, config.EnvFactoryLeadAddr, config.EnvFactoryRole)
 	}
 	env := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -195,6 +221,10 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 	}
 	if entry.LaneRole || entry.LaneNumber > 0 {
 		env = append(env, config.EnvFactoryRole+"="+config.FactoryRoleLane)
+	}
+	if !entry.LaneRole && entry.LaneNumber == 0 {
+		// Empty identity stamps also override inherited shell configuration.
+		env = append(env, config.EnvMoaiFactoryWorker+"=", config.EnvFactoryCard+"=", config.EnvFactoryLeadName+"=")
 	}
 	return env
 }

@@ -1,5 +1,32 @@
 # 진입점
 
+## t1774 PR 후보의 현재 구조
+
+현재 Go AST에서 확인한 `main` 함수는 다음 6개다. 줄 번호는 갱신 기준 소스의 위치이며 실행 여부를 표시하지 않는다.
+
+| 경로 | main 줄 | 진입 범위 |
+|---|---:|---|
+| `cmd/moai/main.go` | 14 | 제품 CLI 진입 |
+| `cmd/t657-merge/main.go` | 99 | 저장소의 별도 통합 보조 도구 |
+| `internal/template/scripts/gen-catalog-hashes.go` | 197 | 템플릿 catalog hash 생성 도구 |
+| `scripts/convert-nextra-to-hextra/main.go` | 62 | 문서 변환 보조 스크립트 |
+| `scripts/docs-version-snapshot/main.go` | 325 | 문서 버전 snapshot 도구 |
+| `scripts/i18n-validator/main.go` | 508 | 문서 로케일 검증 도구 |
+
+### Factory 런처 진입
+
+`internal/cli/codex_factory.go`의 `parseCodexFactoryEntry`는 Codex factory/lane 옵션을 해석하고 `enterCodexFactory`가 새 리더 run 진입을 수행한다. bare `moai codex -f`는 독립된 새 리더를 만들며 기존 run의 복구·승계와 구분된다. `moai codex -l`은 기존 run에 합류하는 레인 경로다. `internal/cli/cc.go`와 `internal/cli/glm.go`는 다른 백엔드 진입이고 공통 인수 해석은 `internal/cli/launch_view.go`를 통한다.
+
+Claude/GLM의 `resolveLaunchView`는 런처가 먼저 소비하는 인수와 최종 백엔드 argv를 단계별로 구한다. `selectBackendWorktree`는 최종 인수에서 마지막 worktree 선택을 읽는다. 선택적 값 판정에서 단독 `-`는 값으로 소비된다. `internal/cli/factory_anchor_guard.go`의 `resolveWorktreeLaunchTarget`은 상대 worktree 이름의 `/`를 `+`로 정규화하고 기존 절대 경로 계약은 유지한다. `judgeLeaderAnchor`와 `enforceLeaderAnchorGuard`는 이렇게 구한 실제 launch 대상을 검사한다. Codex의 `internal/cli/codex_launcher.go`는 리더 진입에서 native `-C`·`--cd`를 거부하고 MoAI `-w`의 기존 경로와 writer 검사를 먼저 수행한 뒤 확정한 anchor 디렉터리를 guard에 전달한다. 이 경로는 Claude argv 해석과 구분된다.
+
+새 프로세스의 모델·effort 기본값은 `internal/config/session_defaults.go`의 `ResolveSessionDefaultChecked`에서 backend와 leader/lane 역할에 맞춰 읽는다. 명시적으로 지정한 백엔드 인수와 `--` 이후 인수는 런처 선택값과 구분한다. MCP 진입은 `internal/cli/mcp_server.go`와 `internal/mcp/catalog.go`의 도구 선언으로 연결되고 세션 hook 진입은 `internal/hook/registry.go`가 맡는다.
+
+위 진입은 현재 소스와 AST에서 확인했다. 실제 계정으로 새 LLM 리더를 띄운 기록이나 레인 작업 완료 증거는 이 구조 지도에 포함하지 않는다.
+
+---
+
+아래는 이전 갱신의 기록이다. 현재 수치와 변경된 책임은 위 절을 기준으로 읽고, 아래의 과거 커밋별 설명은 이력으로 보존한다.
+
 ## 현재 최종 통합 트리의 진입점 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 비테스트 소스에서 literal `AddCommand(` 호출 줄은 250개(78개 파일), `rootCmd.AddCommand(` 줄은 68개다. 앞선840826 이후 이 수는 변하지 않았다. 호출 줄 수를 실행 가능한 명령 개수로 취급하지 않는다.

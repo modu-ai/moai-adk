@@ -53,7 +53,13 @@ moai glm -l                   # a lane on the GLM backend
 moai codex -l                 # a Codex lane
 ```
 
-`-f` (long form `--factory`) opens the leader, and `-l` (long form `--lane`) joins the running factory as a lane. Neither takes an argument. The operator never picks a lane number; it is assigned automatically. Lanes are launched **by hand, one fresh terminal each**, because a session cannot launch another session. `moai codex` has no leader entry and can only join as a lane.
+`-f` (long form `--factory`) opens the leader, and `-l` (long form `--lane`) joins the running factory as a lane. Neither takes an argument. The operator never picks a lane number; it is assigned automatically. Lanes are launched **by hand, one fresh terminal each**, because a session cannot launch another session. `moai codex -f` (or `moai codex --factory`) starts a fresh Codex CLI leader; `moai codex -l` keeps its existing lane-join behavior.
+
+### Codex leader
+
+A Codex leader starts a new run with a lowercase, 26-character ULID. Claude, GLM, and Codex lanes can join that run. Bare `-f` takes no value: `-f cli`, `-f worker`, and `-f 2` are refused. Resuming or adopting an existing leader run with `--factory-run` or native Codex resume is not supported.
+
+Read the queue with `moai todo list --json`, dispatch approved cards through the existing queue workflow, and inspect the same run with `moai factory status --run <run-id> --json` plus the card’s `progress.md`. Dispatch and lane progress are persisted in SQLite; a message is only an optional nudge. A Codex lane reaching `merge-ready` has finished its work but has not merged or closed the card. Codex has no `PermissionRequest` or `PreCompact` hook, so the leader must check the stored records without relying on either hook.
 
 A launch carries one entry token, so `-f` together with `-l` is an error. A value after either token (`moai cc -f <value>`, `moai cc -l lane-2`) is refused with a one-line error that names the correct form. The `-k` entry of the former multi-session board mode is removed, and `moai cg` exits with a migration notice (preview it with `moai migrate cg`). `moai gpt` does not exist: GPT models run through `moai codex`.
 

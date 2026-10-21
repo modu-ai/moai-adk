@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -49,4 +50,15 @@ func clearFactoryRunOwner(root, runID string) (err error) {
 	}
 	defer closeFactoryInto(&err, db, "factory state")
 	return db.ClearRunOwner(context.Background(), runID)
+}
+
+// abortFactoryRunStart is only for a fresh run allocated by this launcher.
+// Existing runs and successful handoffs must never use launch rollback.
+func abortFactoryRunStart(root, runID string) (err error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	return db.AbortRunStart(context.Background(), runID, os.Getpid(), homestate.CurrentProcessFingerprint())
 }

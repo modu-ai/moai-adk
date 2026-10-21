@@ -64,7 +64,7 @@ var factorySkillForbidden = []struct {
 	{regexp.MustCompile(`FACTORY_MODE_UNSUPPORTED_BACKEND`), "names the moai cg sentinel; moai cg is retired and refuses with its retirement error"},
 	{regexp.MustCompile(`(?i)chain head`), "names a plan-phase chain head no code implements"},
 	{regexp.MustCompile(`(?i)SPEC identifier (may|can) follow|targeted SPEC|targets that SPEC`), "presents -f as taking a SPEC argument"},
-	{regexp.MustCompile(`(?i)kanban|moai (cc|glm) -k\b|codex -f\b`), "names a removed entry form"},
+	{regexp.MustCompile(`(?i)kanban|moai (cc|glm) -k\b`), "names a removed entry form"},
 }
 
 // factorySkillDependentForbidden is what the four dependents may no longer say.
@@ -130,11 +130,11 @@ func entryShape(row entryRow) string {
 // factorySkillRequiredShapes is the minimum the table must cover so that no
 // launcher, entry token, or accepted/refused polarity goes unreplayed.
 var factorySkillRequiredShapes = []string{
-	"accepted:cc:f", "accepted:glm:f",
+	"accepted:cc:f", "accepted:glm:f", "accepted:codex:f",
 	"accepted:cc:l", "accepted:glm:l", "accepted:codex:l",
 	"refused:cc:f-arg", "refused:glm:f-arg",
 	"refused:cc:l-arg", "refused:glm:l-arg", "refused:codex:l-arg",
-	"refused:codex:f",
+	"refused:codex:f-arg",
 	"retired:cg", "retired:gpt",
 }
 
@@ -175,8 +175,12 @@ func checkEntryRow(row entryRow) string {
 		class, diag := codexFactoryEntryClassify(row.args)
 		switch row.verdict {
 		case "accepted":
-			if class != codexFactoryEntryLane || diag != "" || row.role != "lane" {
-				return "documented as a codex lane entry but the head classifier disagrees (class=" + strconv.Itoa(int(class)) + " diag=" + strconv.Quote(diag) + ")"
+			want := codexFactoryEntryLane
+			if row.role == "leader" {
+				want = codexFactoryEntryLeader
+			}
+			if class != want || diag != "" || (row.role != "lane" && row.role != "leader") {
+				return "documented as a codex " + row.role + " entry but the head classifier disagrees (class=" + strconv.Itoa(int(class)) + " diag=" + strconv.Quote(diag) + ")"
 			}
 		case "refused":
 			if class != codexFactoryEntryOther || diag == "" {
@@ -358,7 +362,10 @@ func factorySkillProblems(t *testing.T, root, text string, named map[string][]st
 			add("forbidden text %q: %s", loc, f.reason)
 		}
 	}
-	if loc := removedFormPattern.FindString(text); loc != "" {
+	// Entry rows already replay the launcher, including intentional refusals.
+	// Apply the removed-form prose ban outside that independently checked table.
+	prose := entryRowPattern.ReplaceAllString(text, "")
+	if loc := removedFormPattern.FindString(prose); loc != "" {
 		add("names the removed entry form %q", loc)
 	}
 	return problems
@@ -435,11 +442,23 @@ var factorySkillMutants = []struct {
 		want: "documented as refused but the launcher accepts it",
 	},
 	{
-		name: "a codex leader entry documented as accepted",
+		name: "a codex leader entry documented as refused",
 		mutate: func(s string) string {
-			return strings.Replace(s, "| refused | `moai codex --factory`", "| accepted | `moai codex --factory`", 1)
+			return strings.Replace(s, "| accepted | `moai codex --factory`", "| refused | `moai codex --factory`", 1)
 		},
-		want: "documented as a codex lane entry but the head classifier disagrees",
+		want: "documented as refused but the codex head classifier does not refuse it",
+	},
+	{
+		name: "a refused valued Codex entry documented as accepted",
+		mutate: func(s string) string {
+			return strings.Replace(s, "| refused | `moai codex -f 2`", "| accepted | `moai codex -f 2`", 1)
+		},
+		want: "documented as a codex",
+	},
+	{
+		name:   "a removed valued entry taught in prose",
+		mutate: func(s string) string { return s + "\nStart a leader with `moai codex -f 2`.\n" },
+		want:   "names the removed entry form",
 	},
 	{
 		name: "the old record path",

@@ -10,7 +10,7 @@ import (
 // TestFactoryGuideNamesWorkerJoinInEveryLocale pins the lane-join guidance of
 // the factory notice tables (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009): in every
 // locale the lane-start sentence names the three `-l` entries and the entry
-// guide names the two `-f` leader entries, and neither teaches the removed
+// guide names the three `-f` leader entries, and neither teaches the removed
 // `-f lane` / `-f lane-<n>` forms.
 func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 	for lang, m := range factoryLocales {
@@ -19,7 +19,7 @@ func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 				t.Errorf("%s leaderManual missing %q:\n%s", lang, want, m.leaderManual)
 			}
 		}
-		for _, want := range []string{"`moai cc -f`", "`moai glm -f`"} {
+		for _, want := range []string{"`moai cc -f`", "`moai glm -f`", "`moai codex -f`"} {
 			if !strings.Contains(m.entryGuide, want) {
 				t.Errorf("%s entryGuide missing %q:\n%s", lang, want, m.entryGuide)
 			}

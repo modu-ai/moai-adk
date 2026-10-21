@@ -347,7 +347,7 @@ func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
 // `--worktree=v`, `-w v`, attached `-wv`) and a short-option cluster in which a
 // boolean precedes the value option (`-pwv`: `p` is a boolean, `w` takes the
 // rest as its value). An optional-value option's value is the next token unless
-// that token starts with `-` or is `--`; a `--` ends option parsing (everything
+// that token is flag-shaped (a lone `-` is a value); a `--` ends option parsing (everything
 // after it is positional) unless it is the VALUE of a required-value option —
 // a required-value option takes the next token even when it is flag-shaped or
 // `--` (measured on claude 2.1.302: `claude --append-system-prompt -- --version`
@@ -402,10 +402,14 @@ func backendOptionStep(argv []string, i int, cur worktreeSelection) (worktreeSel
 }
 
 // optionalValueAfter returns the token after argv[i] when it can be an
-// optional-value option's value: present, not `--`, not flag-shaped.
+// optional-value option's value: present and not flag-shaped. A lone `-` is a
+// value in the backend parser, rather than an option.
 func optionalValueAfter(argv []string, i int) (string, bool) {
-	if i+1 < len(argv) && argv[i+1] != argSeparator && !strings.HasPrefix(argv[i+1], "-") {
-		return argv[i+1], true
+	if i+1 < len(argv) {
+		value := argv[i+1]
+		if value == "-" || !strings.HasPrefix(value, "-") {
+			return value, true
+		}
 	}
 	return "", false
 }

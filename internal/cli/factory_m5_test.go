@@ -179,8 +179,6 @@ func containsPair(argv []string, flag, value string) bool {
 // re-pinned the line: `-f` is no Codex entry in any shape, `-f lane` included.
 func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 	for _, shape := range [][]string{
-		{"-f"},
-		{"--factory"},
 		// {"--factory-run", "x"} left this table (card t1444 ②): the token is
 		// no longer classified as an other-factory shape — it travels to
 		// parseCodexFactoryEntry, whose "--factory-run requires -l/--lane"

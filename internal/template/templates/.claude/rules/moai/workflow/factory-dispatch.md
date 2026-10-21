@@ -15,13 +15,22 @@ paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claud
 
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("Scope — when this rule is live").
 
-Factory Mode is entered with `moai cc -f` (or `moai glm -f`), which elects one leader; lane sessions join one at a time with `moai cc -l` (or `moai glm -l`) and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.
+Factory Mode is entered with `moai cc -f`, `moai glm -f`, or `moai codex -f` (long form `--factory`), which starts one leader; lane sessions join one at a time with `moai cc -l`, `moai glm -l`, or `moai codex -l` and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.
 
 A lane carries its card from dispatch to landing autonomously: its in-card judgments are its own (the ladder ends at the lane's judgment, `auto-semantics.md` §6), the landing sequence is the lane's to run, and the lane closes its own card at completion. What the leader keeps is enumerated, not inherited: `factory-dispatch-mechanics.md` § The leader's remaining role. The standard landing every deployed lane runs: `factory-dispatch-mechanics.md` § The lane's standard landing.
 
 The leader session works through the `manager-lead` agent: it holds the operator dialogue (the session's `AskUserQuestion` stays the user channel) while dispatching parallel work in the background — neither blocks the other. Lead and lane sessions orchestrate only; real work runs in sub-agents (design intent + spawn rules: `factory-dispatch-detail.md` § Design intent, § The leader works through manager-lead).
 
 One boundary: nudge delivery rides on cross-session messaging, absent on native Windows and off under some providers, versions, and flags (`cross-session-messaging.md` § Availability constraints) — an absent channel fails quietly; the leader surfaces it, and the queue keeps working without it.
+
+
+### Codex leader: a fresh run and persisted evidence
+
+`moai codex -f` or `moai codex --factory` starts a fresh Codex CLI leader with a lowercase 26-character ULID. Claude, GLM, and Codex lanes may join that run through their existing `-l` entry. The leader flag takes no value: `-f cli`, `-f worker`, and `-f 2` are refused, as are `-f --factory-run <run-id>` and native resume as leader-run adoption. Plain Codex and lane joins keep their existing behavior; this entry does not change the default leader backend.
+
+The Codex leader carries the same queue and evidence-reading responsibilities as `manager-lead`: read `moai todo list --json`, dispatch only operator-authorized cards through the existing queue workflow to a registered lane, and read `moai factory status --run <run-id> --json` together with the card's `progress.md` before acting on progress. Dispatch is persisted in the queue SQLite records `todo_runtime_assignments` and `todo_dispatch_current`. In the factory database, `card_dispatch` stores only `card_id`, `run_id`, and `recorded_at`; the lane owner is `cards.owner_label`. Correlate those factory records by matching both `card_id` and `run_id`, then compare the lane owner with the queue's assignment records. Use the existing CLI workflow, never hand-write those tables. Match the run, card, and lane across the records. An absent card or failed dispatch is not success.
+
+Messages are optional nudges. If no nudge channel is available, read the persisted queue, dispatch, and progress records directly. Codex lane work completion is `merge-ready`, not a merge or final card closure. Codex provides no `PermissionRequest` or `PreCompact` event; neither event nor message delivery may be a prerequisite for observing saved progress or completion.
 
 ## Entry into the queue is an operator act
 
@@ -224,7 +233,7 @@ The leader session itself is cleared between cards: at `done` the operator is as
 
 ## Factory Mode — the card travels whole
 
-`moai cc -f` launches the leader and lane sessions join with `moai cc -l`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.
+`moai cc -f`, `moai glm -f`, or `moai codex -f` launches the leader and lane sessions join with `moai cc -l`, `moai glm -l`, or `moai codex -l`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
 **Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it — the canonical English sentence for the `en` locale and localized per `conversation_language` for the others, with the Status Transition Ownership Matrix pointer path (.claude/rules/moai/development/spec-frontmatter-schema.md) verbatim in every locale), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a leader's approval can neither grant nor revoke what the bootstrap already grants — the leader is not the lane's user.
 

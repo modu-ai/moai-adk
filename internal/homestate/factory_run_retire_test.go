@@ -61,6 +61,81 @@ func fixedClassifier(c OwnerClassification) OwnerClassifier {
 	return func(int, string) OwnerClassification { return c }
 }
 
+func TestAbortRunStartPreservesHandoffsAndRecords(t *testing.T) {
+	for _, shape := range []string{"launcher", "cleared", "other-pid", "other-start", "card", "worker"} {
+		t.Run(shape, func(t *testing.T) {
+			db := openSandboxFactory(t)
+			ctx := context.Background()
+			mustRecordRun(t, db, FactoryRun{RunID: "fresh", LeadPID: 42, LeadProcessStart: "launcher"})
+			mustRecordRun(t, db, FactoryRun{RunID: "existing", LeadPID: 43, LeadProcessStart: "existing"})
+			var err error
+			switch shape {
+			case "cleared":
+				err = db.ClearRunOwner(ctx, "fresh")
+			case "other-pid":
+				err = db.StampRunOwner(ctx, "fresh", 44, "launcher")
+			case "other-start":
+				err = db.StampRunOwner(ctx, "fresh", 42, "replacement")
+			case "card":
+				_, err = db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,updated_at) VALUES('fresh','card','done','now')`)
+			case "worker":
+				_, err = db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES('worker',42,'fresh','now','now')`)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = db.AbortRunStart(ctx, "fresh", 42, "launcher")
+			allowed := shape == "launcher" || shape == "cleared"
+			if (err == nil) != allowed {
+				t.Fatalf("abort error=%v, allowed=%v", err, allowed)
+			}
+			wantStatus, wantEvents := "active", 0
+			if allowed {
+				wantStatus, wantEvents = "retired", 1
+				if err := db.AbortRunStart(ctx, "fresh", 42, "launcher"); err != nil {
+					t.Fatalf("repeated rollback: %v", err)
+				}
+				var pid int
+				var start string
+				if err := db.DB.QueryRow(`SELECT lead_pid,lead_process_start FROM runs WHERE run_id='fresh'`).Scan(&pid, &start); err != nil {
+					t.Fatal(err)
+				}
+				if pid != 0 || start != "" {
+					t.Fatalf("failed launch retained owner %d %q", pid, start)
+				}
+			}
+			if got := runStatus(t, db, "fresh"); got != wantStatus {
+				t.Fatalf("fresh status=%s, want %s", got, wantStatus)
+			}
+			if got := runStatus(t, db, "existing"); got != "active" {
+				t.Fatalf("existing run status=%s", got)
+			}
+			var events int
+			if err := db.DB.QueryRow(`SELECT count(*) FROM events WHERE run_id='fresh' AND kind='run.launch_failed'`).Scan(&events); err != nil {
+				t.Fatal(err)
+			}
+			if events != wantEvents {
+				t.Fatalf("launch failure events=%d, want %d", events, wantEvents)
+			}
+		})
+	}
+}
+
+func TestAbortRunStartRollsBackWhenEventFails(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "fresh", LeadPID: 42, LeadProcessStart: "launcher"})
+	if _, err := db.DB.Exec(`CREATE TRIGGER reject_launch_failure BEFORE INSERT ON events
+WHEN NEW.kind='run.launch_failed' BEGIN SELECT RAISE(ABORT,'event unavailable'); END`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AbortRunStart(context.Background(), "fresh", 42, "launcher"); err == nil {
+		t.Fatal("event failure was ignored")
+	}
+	if got := runStatus(t, db, "fresh"); got != "active" {
+		t.Fatalf("partially retired run: %s", got)
+	}
+}
+
 // AC-001 — a recorded run carries a non-zero owner pid and a non-empty
 // process-start fingerprint, and the database reports schema version 3.
 func TestRecordRunStampsSessionOwnerIdentity(t *testing.T) {
