@@ -19,14 +19,15 @@ Resolve the delivery strategy from `.moai/config/sections/git-strategy.yaml`:
 1. Read `git_strategy.mode` — the name of the active profile.
 2. Read `git_strategy.{mode}.workflow` — this value, and only this value, selects the delivery strategy.
 
-The canonical value domain is exactly `github-flow` and `git-flow`.
+The canonical value domain is exactly `github-flow`, `git-flow` and `agentic-trunk`.
 
 | Strategy | Branch Model | PR Behavior | Best For |
 |----------|-------------|-------------|----------|
 | github-flow | Feature branches off the main branch | Auto-create PR to the main branch | Team/OSS projects |
 | git-flow | develop/release/hotfix/worktree branches | PR to the appropriate base, or integration-worktree merge | Enterprise and multi-lane projects |
+| agentic-trunk | main plus WT-* branches | integration-worktree merge, no PR | multi-lane projects landing locally with batch pull requests |
 
-**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value is neither `github-flow` nor `git-flow`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
+**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value is neither `github-flow`, `git-flow` nor `agentic-trunk`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow, agentic-trunk}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
 
 Branch handling is a separate axis and is not read from this key: whether each SPEC gets its own branch is governed by `git_strategy.{mode}.automation.auto_branch` and the `branch_creation` settings.
 
@@ -279,7 +280,7 @@ Detect current branch type and route accordingly. The route list is normative an
 7. Exit the integration worktree and report the branch name, merge commit, and evidence path
 8. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
 
-Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 
 **feature/* branch** → PR to `develop`:
 1. Push branch: `git push -u origin <branch>`
@@ -308,6 +309,29 @@ Where the integration branch is held by a dedicated worktree (the git-flow `WT-*
 **Any other branch** → stop and report:
 - A branch matching none of `WT-*`, `feature/*`, `release/*`, `hotfix/*`, `develop`, or the main branch matches no defined route for this strategy
 - Report the branch name together with that route list; create no pull request and push nothing
+- Do not improvise a route and do not fall back to another strategy's behavior
+
+##### Strategy: agentic-trunk
+
+Detect current branch type and route accordingly. The route list is normative and evaluated in the order given, so a branch matching more than one pattern takes the first match.
+
+**WT-* branch** (checked FIRST) → integration-worktree merge, no pull request:
+1. Create no pull request for this branch
+2. Coordinate the merge window with the coordinating session before entering the integration worktree, so exactly one session integrates at a time
+3. Enter the designated integration worktree (the integration branch is checked out in exactly one worktree; never check it out in the current worktree)
+4. Merge the branch there: `git merge --no-ff <branch>`
+5. Resolve any conflicts the merge raises; an unresolvable conflict is reported back to the coordinating session rather than forced
+6. Exit the integration worktree and report the branch name, merge commit, and evidence path. The landings reach the remote in the coordinating session's batch pull request from `release/main-batch-YYYYMMDD` — the lane's responsibility ends at the local merge
+7. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
+
+Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+
+**main branch** → direct work context:
+- The session works on the trunk itself; report the branch state and continue with the sync record — no per-card pull request exists in this model
+
+**Any other branch** → stop and report:
+- A branch matching none of `WT-*` or the trunk branch matches no defined route for this strategy
+- Report the branch name together with that route list; create no pull request and publish nothing to the remote
 - Do not improvise a route and do not fall back to another strategy's behavior
 
 #### Step 3.3: PR Ready Transition (Team Mode)

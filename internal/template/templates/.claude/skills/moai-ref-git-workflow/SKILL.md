@@ -57,6 +57,21 @@ main ─────────────────────────
         └── release/v1.2.0 ────── PR ──→ main + develop
 ```
 
+### Agentic-Trunk (Local Batch Landing)
+
+`git_strategy.manual.workflow: agentic-trunk` names the model MoAI-ADK's own factory runs on:
+
+```
+main ──────────────────────────────────────────
+  └── WT-card-slug ── integration-worktree merge ──→ batch PR (release/main-batch-YYYYMMDD) ──→ tagged release
+```
+
+Rules:
+- One standing trunk `main`; card worktrees branch from it
+- Cards land serially in the integration worktree (`--no-ff`, no per-card PR)
+- The leader opens one batch pull request per `lead_push_threshold` landings
+- Lanes take no per-version release branch and run no lane push
+
 ### Trunk-Based (CI/CD Heavy)
 
 ```

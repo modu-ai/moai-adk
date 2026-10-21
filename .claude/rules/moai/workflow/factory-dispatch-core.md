@@ -3,7 +3,7 @@
 > **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `cross-session-messaging.md` through the SessionStart hook (sources startup, clear, compact). The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read the full body at `workflow/factory-dispatch.md`. This stub holds the rule's non-role-core blocks; the full body keeps the role-core regions and every procedure body.
 
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale. Sibling companions: `factory-dispatch-cards.md` (card lifecycle and traceability) and `factory-dispatch-gates.md` (gate measurements). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
 ## Scope — when this rule is live
 
@@ -19,7 +19,7 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
 
-A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same whole-card routing follows.
+A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, and the same whole-card routing follows.
 
 ## The dispatch cycle
 
@@ -61,7 +61,7 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 
 [HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves in-session (`ExitWorktree(keep)`, lease, `EnterWorktree`); the integration-tree merge entry keeps its own re-entry rule.
 
-[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
+[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader. Under agentic-trunk the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`; the only push is the leader's batch PR from `release/main-batch-YYYYMMDD`.
 
 ## Factory Mode — the card travels whole
 
@@ -75,9 +75,6 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 - **No question delegation.** Lane sessions return blocker reports; the operator is asked by the leader, through `AskUserQuestion`.
 
 ## Cross-references
-
----
-
 
 ---
 
