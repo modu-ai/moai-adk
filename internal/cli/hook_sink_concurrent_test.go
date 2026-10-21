@@ -84,6 +84,7 @@ func TestHookSinkConcurrentAppendIsIntact(t *testing.T) {
 			// Each goroutine resolves its own sink, as a separate hook process
 			// would: its own handle on the same path.
 			d := resolveLoggingDecision([]string{"hook", "pre-tool"})
+			closeTestHookSink(t, d.dest)
 			log := slog.New(slog.NewTextHandler(d.dest, &slog.HandlerOptions{Level: d.level}))
 			start.Wait()
 			for seq := range perWriter {

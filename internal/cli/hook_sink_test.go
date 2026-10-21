@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ func TestHookPathWarnRecordReachesSink(t *testing.T) {
 	const msg = "hook-sink-reachability-probe"
 
 	d := resolveLoggingDecision([]string{"hook", "pre-tool"})
+	closeTestHookSink(t, d.dest)
 	slog.New(slog.NewTextHandler(d.dest, &slog.HandlerOptions{Level: d.level})).
 		Warn(msg, "probe", "guard-1")
 
@@ -53,4 +55,21 @@ func TestHookPathWarnRecordReachesSink(t *testing.T) {
 		t.Errorf("hook sink %s holds %d line(s) carrying %q, want exactly 1\nfile contents:\n%s",
 			sink, hits, msg, raw)
 	}
+}
+
+// Production hook processes relinquish their handles at process exit. These
+// in-process fixtures must release their own handles before TempDir cleanup.
+func closeTestHookSink(t *testing.T, writer io.Writer) {
+	t.Helper()
+	sink, ok := writer.(*hookSink)
+	if !ok {
+		t.Fatalf("hook writer = %T, want *hookSink", writer)
+	}
+	t.Cleanup(func() {
+		if sink.file != nil {
+			if err := sink.file.Close(); err != nil {
+				t.Errorf("close fixture hook sink: %v", err)
+			}
+		}
+	})
 }

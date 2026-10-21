@@ -67,6 +67,7 @@ func TestHookSinkIsNotCreatedWithoutRecords(t *testing.T) {
 
 	// Phase 1 — installed, nothing emitted.
 	d := resolveLoggingDecision([]string{"hook", "pre-tool"})
+	closeTestHookSink(t, d.dest)
 	log := slog.New(slog.NewTextHandler(d.dest, &slog.HandlerOptions{Level: d.level}))
 	assertAbsent("no record emitted")
 

@@ -183,7 +183,7 @@ func prepareSafeInitHome(t *testing.T) (fakeHome string, spy *shellSeamSpy) {
 	if err != nil {
 		t.Fatalf("home guard: resolve seam home: %v", err)
 	}
-	if err := testguard.CheckSeamHomes(realHome, []string{seamHome, profile.GetBaseDir(), os.Getenv("MOAI_HOME")}); err != nil {
+	if err := testguard.CheckSandboxHomes(realHome, fakeHome, []string{seamHome, profile.GetBaseDir(), os.Getenv("MOAI_HOME")}); err != nil {
 		t.Fatalf("%v; refusing to run init", err)
 	}
 

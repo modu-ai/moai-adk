@@ -164,7 +164,7 @@ func TestHandleGraphShortestPath_HopCap(t *testing.T) {
 	if found.Cap != 8 {
 		t.Errorf("cap must be named as 8, got %d", found.Cap)
 	}
-	if !strings.Contains(body, root8) {
+	if !jsonBodyNamesTree(body, root8) {
 		t.Errorf("provenance must name the tree: %s", body)
 	}
 

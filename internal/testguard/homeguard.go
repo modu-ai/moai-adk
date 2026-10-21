@@ -158,6 +158,13 @@ func redirectHomeAt(t testing.TB, root string) string {
 // gitGlobalConfigEnv names the variable that moves git's global config.
 const gitGlobalConfigEnv = "GIT_CONFIG_GLOBAL"
 
+// CheckSandboxHomes applies the same bounded temporary-sandbox policy as
+// RedirectHome without changing environment or creating directories. The
+// strict CheckSeamHomes decision remains available for arbitrary paths.
+func CheckSandboxHomes(realHome, root string, seams []string) error {
+	return judgeSandbox(realHome, root, seams)
+}
+
 // judgeSandbox is the refusal decision for a redirect whose sandbox lives at
 // root. It applies CheckSeamHomes, with one exemption for platforms whose
 // default temp dir lies under the real home (Windows): a seam inside the sandbox

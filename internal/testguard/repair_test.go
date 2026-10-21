@@ -305,3 +305,22 @@ func TestScanSource_MarkerInsideStringLiteralDoesNotExempt(t *testing.T) {
 		t.Fatalf("a real comment must exempt: %+v, %v", vs, err)
 	}
 }
+
+// The init fixture uses the same bounded policy without changing HOME. Keep
+// its public entry point subject to the same refusal cases as RedirectHome.
+func TestCheckSandboxHomesKeepsTemporaryExemptionBounded(t *testing.T) {
+	home, tmp := fakeHomeWithTemp(t)
+	root := filepath.Join(tmp, "init-sandbox")
+	inside := filepath.Join(root, "home")
+	if err := CheckSandboxHomes(home, root, []string{inside}); err != nil {
+		t.Fatal(err)
+	}
+	for _, seam := range []string{home, filepath.Join(home, ".codex"), "", filepath.Join(root, "..", "escape")} {
+		if err := CheckSandboxHomes(home, root, []string{inside, seam}); err == nil {
+			t.Fatalf("unsafe seam %q accepted", seam)
+		}
+	}
+	if err := CheckSeamHomes(home, []string{inside}); err == nil {
+		t.Fatal("strict home policy was weakened")
+	}
+}
