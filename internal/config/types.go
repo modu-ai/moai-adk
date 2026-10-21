@@ -638,6 +638,17 @@ type WorkflowConfig struct {
 	// default-OFF neutrality.
 	CommitIdentityGuard CommitIdentityGuardConfig `yaml:"commit_identity_guard"`
 
+	// CardMetadataVerbs gates the card-metadata editing verbs
+	// (SPEC-CARD-METADATA-VERBS-001 REQ-CMV-001/002): `moai factory
+	// set-spec` and `moai factory reclassify`. Default false — both verbs
+	// ship INERT and refuse naming this flag key, writing neither store and
+	// no audit row, until an operator opts in via local config. Sibling of
+	// BranchGuard / AgentStopGuard — same opt-in shape, same default-OFF
+	// neutrality. Template neutrality: the template key lands commented-out
+	// (plan.md §F M5), and the flag's absence is not a defect — `moai
+	// doctor` stays silent about it.
+	CardMetadataVerbs CardMetadataVerbsConfig `yaml:"card_metadata_verbs"`
+
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
 	// Default false: the capability ships INERT, and while it is off the
 	// package constructs no request and makes no network call at all
@@ -995,6 +1006,15 @@ type AnchorRelocationGuardConfig struct {
 type CommitIdentityGuardConfig struct {
 	Enabled    bool     `yaml:"enabled"`
 	DenyEmails []string `yaml:"deny_emails"`
+}
+
+// CardMetadataVerbsConfig mirrors workflow.card_metadata_verbs.* — the
+// opt-in gate of the card-metadata editing verbs (SPEC-CARD-METADATA-VERBS-001
+// REQ-CMV-001/002). When Enabled is false (the distributed default), both
+// `moai factory set-spec` and `moai factory reclassify` refuse with a
+// refusal naming this flag key, writing neither store and no audit row.
+type CardMetadataVerbsConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
