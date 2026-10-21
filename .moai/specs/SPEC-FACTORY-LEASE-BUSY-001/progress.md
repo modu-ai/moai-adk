@@ -30,3 +30,9 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §G Override and Refusal Record
+
+- 2026-10-21T12:25:00Z SPEC-FACTORY-LEASE-BUSY-001 ceiling-outcome outcome=operator-authorized-confirming-audit reasons="the plan-audit ceiling is exhausted at iter3 of 3 (score trajectory 0.69→0.90→0.97, monotonic, no STOP; must-pass 0 failed; iter2 defects D11-D15 all verified RESOLVED by iter3). The residual blocking pair D16/D17 is confined to one clause (plan.md §F M4 (3) seed recipe) with the auditor-prescribed fix applied in commit 8a2f6683eb. The leader — under operator delegation (+Jev, p=0.74), citing the t1834 iter13 and t1831 iter6 precedents — authorized exactly ONE scoped-delta confirming audit (iter4) after the repair. Terms: iter4 PASS (≥0.80 Tier M, zero blocking) admits the M0/kickoff review; an iter4 miss records a hold with no further rounds and re-requests." evidence=".moai/reports/t1916/plan-audit-iter3.md (rcpt-c010efb4f9d4c78c7b1e6ce8), leader ceiling-grant cross-session message 2026-10-21, repair commit 8a2f6683eb" decided_by=leader under operator delegation relayed-by=lane-6 ladder_path=gate boundary (operator-held ceiling release)
+
+
