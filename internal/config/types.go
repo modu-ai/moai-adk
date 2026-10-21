@@ -561,6 +561,15 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// BaseFreshnessGate gates the REFUSAL layer of the base-freshness check run
+	// before the release-integration window is taken (`moai integration
+	// acquire`, and `moai factory complete` when it acquires the window itself),
+	// and carries the tolerance K the check measures against. Default off: the
+	// check still measures and prints one advisory line when it would have
+	// refused, and only the refusal is opt-in. Sibling of SettingsDriftGate —
+	// same opt-in shape, same default-OFF neutrality.
+	BaseFreshnessGate BaseFreshnessGateConfig `yaml:"base_freshness_gate"`
+
 	// CandidateCI carries the pre-landing candidate-CI settings
 	// (SPEC-CANDIDATE-CI-001). Enabled gates the `moai integration candidate`
 	// verb and the merge step's shared landing check; default false ships the
@@ -850,6 +859,20 @@ type IntegrationLockConfig struct {
 // the default-OFF posture was chosen for, and would pass every other check.
 type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// BaseFreshnessGateConfig mirrors workflow.base_freshness_gate.* — the opt-in
+// gate that refuses entry to the release-integration window when the candidate
+// is more than MaxBehindLandings landings behind the local integration branch,
+// or carries no re-measure record keyed to its current tree. When Enabled is
+// false (the distributed default) the check still measures and prints one
+// advisory line when it would have refused, and refuses nothing. The tolerance
+// lives here and nowhere else: the gate's decision code holds no threshold
+// literal. A negative value reads as "cannot determine" and admits with a
+// notice.
+type BaseFreshnessGateConfig struct {
+	Enabled           bool `yaml:"enabled"`
+	MaxBehindLandings int  `yaml:"max_behind_landings"`
 }
 
 // CandidateCIConfig mirrors workflow.candidate_ci.* (SPEC-CANDIDATE-CI-001,
