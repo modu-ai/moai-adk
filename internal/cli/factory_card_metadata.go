@@ -583,6 +583,14 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homesta
 			}
 			value := target
 			rec.Items[i].Classification = &value
+			// The reclassify is a classification write that may change the
+			// rank — the same locked write re-establishes the queue's
+			// classification order (REQ-TCD-005), as every add does
+			// (backlog_store.go's append). Stable sort: a rank-preserving
+			// write re-sorts to the order it found. Selection reads stored
+			// order as priority order, so an unsorted queue makes every
+			// position-reading consumer lie (card-review CR2-1).
+			rec.SortByClassification()
 			return nil
 		}
 		return fmt.Errorf("no backlog item %s", cardID)

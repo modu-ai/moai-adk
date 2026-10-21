@@ -1013,6 +1013,50 @@ func TestReclassify_CatchUpAppendRetry(t *testing.T) {
 	}
 }
 
+// TestReclassify_PriorityResortsQueue pins the CR2-1 guarantee (card-review
+// round 2): a reclassify is a classification WRITE, so the same locked write
+// re-establishes the queue's classification order (REQ-TCD-005) exactly as
+// every add does. Without the re-sort the stored order stays insertion
+// order — and selection reads stored order as priority order, so a later
+// card promoted to high still loses the next lease to the earlier card.
+func TestReclassify_PriorityResortsQueue(t *testing.T) {
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+	// The reclassify runs BEFORE the lane env is set: the metadata verbs are
+	// leader/operator acts (REQ-CMV-015) and refuse in a lane session, while
+	// the `next` lease below needs one.
+	// t2 ranks later in insertion order; the reclassify promotes it to high.
+	if _, _, err := runFactory(t, "reclassify", "t2", "--priority", "high", "--reason", "escalate"); err != nil {
+		t.Fatalf("reclassify: %v", err)
+	}
+	sdRegisterLane(t, root, "lane-1")
+	sdLaneEnv(t, "lane-1", "")
+	t.Chdir(root)
+	// The stored order moved: the promoted card precedes the earlier one.
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Items[0].ID != "t2" || rec.Items[1].ID != "t1" {
+		t.Fatalf("queue order = [%s, %s], want [t2, t1] after promoting t2", rec.Items[0].ID, rec.Items[1].ID)
+	}
+	// And the next lease takes the promoted card, not the earlier one.
+	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
+		t.Fatalf("next: %v", err)
+	}
+	if c := fcCard(t, root, "t2"); c.State != homestate.CardLeased {
+		t.Fatalf("t2 = %s, want the promoted card leased first", c.State)
+	}
+	// An unleased card has no factory row (the lease creates it) — absence is
+	// the not-leased proof here.
+	if fcHasCard(t, root, "t1") {
+		if c := fcCard(t, root, "t1"); c.State == homestate.CardLeased {
+			t.Fatal("t1 leased ahead of the promoted t2 — the stored order was not re-sorted")
+		}
+	}
+}
+
 // SPEC-CARD-METADATA-VERBS-001 M3: the `moai factory reclassify` verb —
 // admission gate (positive enumeration), closed sets through the real
 // validator, axis preservation, write semantics, and the reclassify
