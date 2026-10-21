@@ -231,23 +231,45 @@ func setSpecLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.
 	// store cardToSpecID reads — never the factory record alone, so a
 	// direction-5 divergence is admitted for convergence rather than refused.
 	// A converged-AND-audited duplicate refuses; a converged-but-unaudited
-	// item is the REQ-CMV-004 direction-6 converged-state audit completion.
+	// item is the REQ-CMV-004 direction-6 converged-state audit completion —
+	// whose given is BOTH stores carrying the commanded value, so the record
+	// is re-read under the lock before the branch is taken (sync-audit-1 B1):
+	// a queue-converged/record-stale state (the assign-without-spec blank
+	// this SPEC §A exists to close) is not direction 6 — it falls through to
+	// the write path below, which converges the record and lands the
+	// transition row anchored on the record's true prior.
+	auditOld := current
 	if current == spec {
-		if audited && latest == spec {
-			return fmt.Errorf("card %s already carries spec id %q and the audit surface's latest row already records it (converged-and-audited duplicate)", cardID, spec)
+		recordNow, err := db.LoadCard(ctx, runID, cardID)
+		if errors.Is(err, homestate.ErrCardNotFound) {
+			return fmt.Errorf("card %s has no factory record — assign it first (the cards table is keyed (run_id, card_id)); set-spec creates no record", cardID)
 		}
-		old := ""
-		if audited {
-			old = latest
-		}
-		if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
-			CardID: cardID, Kind: metadataKindSetSpec, Actor: actor, Session: session,
-			Field: metadataFieldSpecID, Old: old, New: spec, Reason: reason,
-		}, now); err != nil {
+		if err != nil {
 			return err
 		}
-		_, _ = fmt.Fprintf(out, "%s spec %s (attested; both stores already converged, no store re-mutated)\n", cardID, spec)
-		return nil
+		if recordPrior := strings.TrimSpace(recordNow.SpecID); recordPrior == spec {
+			if audited && latest == spec {
+				return fmt.Errorf("card %s already carries spec id %q and the audit surface's latest row already records it (converged-and-audited duplicate)", cardID, spec)
+			}
+			old := ""
+			if audited {
+				old = latest
+			}
+			if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
+				CardID: cardID, Kind: metadataKindSetSpec, Actor: actor, Session: session,
+				Field: metadataFieldSpecID, Old: old, New: spec, Reason: reason,
+			}, now); err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(out, "%s spec %s (attested; both stores already converged, no store re-mutated)\n", cardID, spec)
+			return nil
+		}
+		// The record is stale: the write path below runs on the re-read state
+		// — the version fence and the compensating restore anchor on what the
+		// lock actually observed — and the transition row's old value is the
+		// record's prior, the store that actually moves.
+		card = recordNow
+		auditOld = strings.TrimSpace(recordNow.SpecID)
 	}
 	// Write sequence (REQ-CMV-004): the factory-record write first.
 	if err := metadataFault("record-set"); err != nil {
@@ -283,9 +305,9 @@ func setSpecLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.
 		if aerr := metadataFault("audit-append"); aerr == nil {
 			if aerr = db.RecordCardMetadataEvent(ctx, homestate.CardMetadataEvent{
 				CardID: cardID, Kind: metadataKindSetSpec, Actor: actor, Session: session,
-				Field: metadataFieldSpecID, Old: current, New: spec, Reason: reason,
+				Field: metadataFieldSpecID, Old: auditOld, New: spec, Reason: reason,
 			}, now); aerr == nil {
-				_, _ = fmt.Fprintf(out, "%s spec %s (was %s)\n", cardID, spec, dash(current))
+				_, _ = fmt.Fprintf(out, "%s spec %s (was %s)\n", cardID, spec, dash(auditOld))
 				return nil
 			}
 		}
