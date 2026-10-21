@@ -265,7 +265,9 @@ func setSpecLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.
 			if it.SpecID != nil {
 				current = strings.TrimSpace(*it.SpecID)
 			}
-			if it.State != factory.BacklogStatePicked {
+			switch it.State {
+			case factory.BacklogStatePicked:
+			default:
 				return fmt.Errorf("queue item %s is %s, not picked", cardID, it.State)
 			}
 			break
@@ -383,7 +385,9 @@ func writeQueueSpec(l *factory.LockedBacklog, cardID, spec string) error {
 			if rec.Items[i].ID != cardID {
 				continue
 			}
-			if rec.Items[i].State != factory.BacklogStatePicked {
+			switch rec.Items[i].State {
+			case factory.BacklogStatePicked:
+			default:
 				return fmt.Errorf("queue item %s is %s, not picked", cardID, rec.Items[i].State)
 			}
 			value := spec
