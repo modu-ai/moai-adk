@@ -1,7 +1,7 @@
 # Verdict — card t1920 (integration_merge_step same-name-tag repair)
 
 verdict: PASS
-audited_sha: 3bcdac02d8c41eab42e286d9a48b2b3272e4368b
+audited_sha: fc1c4349fa7661c0523200c599b247150f359c52
 
 The lane's evidence-bearing completion verdict (class B card, no SPEC link — the factory
 delivery reads this file). Written by lane-6 on 2026-10-22.
@@ -34,7 +34,7 @@ delivery reads this file). Written by lane-6 on 2026-10-22.
 ## Baseline-attribution
 
 Tree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1920 at
-3bcdac02d8c41eab42e286d9a48b2b3272e4368b (clean), branch base 28b727065b. Full detail:
+fc1c4349fa7661c0523200c599b247150f359c52 (clean), branch base 28b727065b. Full detail:
 sync-audit.md beside this file.
 
 ## Gaps

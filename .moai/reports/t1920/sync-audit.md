@@ -3,7 +3,7 @@ auditor-model: lane-6 (orchestrator verification; class B card — no SPEC, lane
 # Sync audit — card t1920 (integration_merge_step same-name-tag repair)
 
 verdict: PASS
-audited_sha: 3bcdac02d8c41eab42e286d9a48b2b3272e4368b
+audited_sha: fc1c4349fa7661c0523200c599b247150f359c52
 
 Scope: the card body's completion verdict is the same-name-tag reproduction RED→GREEN; this
 record pins it plus the regression and preservation evidence, all observed by the lane in this
@@ -39,7 +39,7 @@ RED `--- FAIL: TestResolveCardBranchSurvivesTagSharingTheBranchName ... is on "h
 gofmt clean, go vet exit 0, golangci-lint 0 issues.
 
 ### Baseline-attribution
-Tree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1920 at 3bcdac02d8c41eab42e286d9a48b2b3272e4368b,
+Tree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1920 at fc1c4349fa7661c0523200c599b247150f359c52,
 this run. Branch base 28b727065b (local main). The card's diff is exactly
 internal/factory/integration_merge_step.go + integration_merge_step_test.go.
 
