@@ -691,3 +691,304 @@ func TestSetSpec_RefusalAtomicity(t *testing.T) {
 		})
 	}
 }
+
+// SPEC-CARD-METADATA-VERBS-001 M3: the `moai factory reclassify` verb —
+// admission gate (positive enumeration), closed sets through the real
+// validator, axis preservation, write semantics, and the reclassify
+// audit-window reconciliation of REQ-CMV-010.
+
+// mdQueueClass pins a queue item's classification (nil clears it).
+func mdQueueClass(t *testing.T, store *factory.BacklogStore, cardID string, class *factory.CardClassification) {
+	t.Helper()
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == cardID {
+				r.Items[i].Classification = class
+				return nil
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("set queue classification: %v", err)
+	}
+}
+
+// mdClass reads one queue item's classification pointer back.
+func mdClass(t *testing.T, store *factory.BacklogStore, cardID string) *factory.CardClassification {
+	t.Helper()
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range rec.Items {
+		if it.ID == cardID {
+			return it.Classification
+		}
+	}
+	t.Fatalf("no queue item %s", cardID)
+	return nil
+}
+
+// mdClassifiedFixture is a queued card carrying the AC-CMV-010 classification.
+func mdClassifiedFixture(t *testing.T) (string, *factory.BacklogStore) {
+	t.Helper()
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStateQueued)
+	mdQueueClass(t, store, "t1", &factory.CardClassification{
+		Priority: factory.ClassPriorityHigh, Blocked: true, Mode: factory.ClassModeSerial,
+		Decider: factory.DeciderIdentityDefault, ClassifiedAt: "2026-10-20T00:00:00Z", Reason: "add-time judgment",
+	})
+	return root, store
+}
+
+func TestReclassify_ValidationGate(t *testing.T) {
+	// Admission refusals, positively enumerated: dropped, hold, and a
+	// missing item refuse; queued and picked are the admitted states.
+	for _, tc := range []struct {
+		state    factory.BacklogState
+		admitted bool
+	}{
+		{factory.BacklogStateQueued, true},
+		{factory.BacklogStatePicked, true},
+		{factory.BacklogStateDropped, false},
+		{factory.BacklogStateHold, false},
+	} {
+		root, store := fcFixture(t)
+		mdEnableFlag(t, root)
+		fcQueue(t, store, tc.state)
+		before := mdQueueDump(t, store)
+		_, _, err := runFactory(t, "reclassify", "t1", "--priority", "high", "--reason", "r", "--run", fcRun)
+		if tc.admitted {
+			if err != nil {
+				t.Fatalf("admission state %s was refused: %v", tc.state, err)
+			}
+			continue
+		}
+		if err == nil {
+			t.Fatalf("admission state %s was admitted", tc.state)
+		}
+		if got := mdQueueDump(t, store); got != before {
+			t.Fatalf("state %s: queue changed on refusal", tc.state)
+		}
+	}
+	// A missing item refuses.
+	root, store := mdClassifiedFixture(t)
+	if _, _, err := runFactory(t, "reclassify", "tX", "--priority", "high", "--reason", "r", "--run", fcRun); err == nil {
+		t.Fatal("a missing item was admitted")
+	}
+	_ = store
+
+	// Closed sets go through the REAL validator — every out-of-set value is
+	// refused and the refusal quotes it.
+	for _, bad := range []string{"fast", "", "SERIAL", "parallel"} {
+		_, _, err := runFactory(t, "reclassify", "t1", "--mode", bad, "--reason", "r", "--run", fcRun)
+		if err == nil {
+			t.Fatalf("mode %q was admitted", bad)
+		}
+		if !strings.Contains(err.Error(), `"`+bad+`"`) {
+			t.Fatalf("mode refusal does not quote %q: %v", bad, err)
+		}
+	}
+	for _, bad := range []string{"urgent", "", "HIGH", "normal-"} {
+		_, _, err := runFactory(t, "reclassify", "t1", "--priority", bad, "--reason", "r", "--run", fcRun)
+		if err == nil {
+			t.Fatalf("priority %q was admitted", bad)
+		}
+		if !strings.Contains(err.Error(), `"`+bad+`"`) {
+			t.Fatalf("priority refusal does not quote %q: %v", bad, err)
+		}
+	}
+
+	// No axis: a usage refusal — neither --mode nor --priority supplied.
+	if _, _, err := runFactory(t, "reclassify", "t1", "--reason", "r", "--run", fcRun); err == nil {
+		t.Fatal("an axis-less reclassify was admitted")
+	}
+
+	// Every refusal above wrote no audit row.
+	if n := mdAuditCount(t, root); n != 0 {
+		t.Fatalf("audit rows = %d after the refusal table, want 0", n)
+	}
+}
+
+func TestReclassify_UnspecifiedAxisPreserved(t *testing.T) {
+	_, store := mdClassifiedFixture(t)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "lower it", "--run", fcRun); err != nil {
+		t.Fatalf("reclassify: %v", err)
+	}
+	got := mdClass(t, store, "t1")
+	if got == nil {
+		t.Fatal("classification vanished")
+	}
+	if got.Priority != factory.ClassPriorityLow {
+		t.Fatalf("priority = %q, want low", got.Priority)
+	}
+	if got.Mode != factory.ClassModeSerial {
+		t.Fatalf("mode = %q, want serial preserved (REQ-CMV-008)", got.Mode)
+	}
+	if !got.Blocked {
+		t.Fatal("blocked = false, want true preserved")
+	}
+}
+
+func TestReclassify_BlockedUntouched(t *testing.T) {
+	_, store := mdClassifiedFixture(t)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "parallel work", "--run", fcRun); err != nil {
+		t.Fatalf("reclassify: %v", err)
+	}
+	got := mdClass(t, store, "t1")
+	if !got.Blocked {
+		t.Fatal("the reclassify write altered the blocked axis (REQ-CMV-008 forbids it)")
+	}
+	if got.Mode != factory.ClassModeParallelizable || got.Priority != factory.ClassPriorityHigh {
+		t.Fatalf("axes = (mode %q, priority %q), want (parallelizable, high)", got.Mode, got.Priority)
+	}
+}
+
+func TestReclassify_WriteSemantics(t *testing.T) {
+	// First-time classification acquires the nullable field additively: the
+	// derived priority, decider human, a fresh stamp, and the caller reason.
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStateQueued)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "first judgment", "--run", fcRun); err != nil {
+		t.Fatalf("first-time reclassify: %v", err)
+	}
+	got := mdClass(t, store, "t1")
+	if got == nil {
+		t.Fatal("the classification field was not acquired")
+	}
+	if got.Priority != factory.ClassPriorityNormal {
+		t.Fatalf("derived priority = %q, want normal", got.Priority)
+	}
+	if got.Mode != factory.ClassModeParallelizable {
+		t.Fatalf("mode = %q, want parallelizable", got.Mode)
+	}
+	if got.Decider != factory.DeciderIdentityHuman {
+		t.Fatalf("decider = %q, want human (REQ-CMV-009)", got.Decider)
+	}
+	if got.ClassifiedAt == "" || got.ClassifiedAt == "2026-10-20T00:00:00Z" {
+		t.Fatalf("classified_at = %q, want a fresh stamp", got.ClassifiedAt)
+	}
+	if got.Reason != "first judgment" {
+		t.Fatalf("reason = %q, want the caller reason verbatim", got.Reason)
+	}
+	// Exactly one audit row carrying the value transition.
+	rows := mdAuditRows(t, root, "t1")
+	if len(rows) != 1 {
+		t.Fatalf("audit rows = %d, want 1", len(rows))
+	}
+	if rows[0].Kind != metadataKindReclassify || rows[0].Field != metadataFieldClassific {
+		t.Fatalf("row = (%s/%s), want (reclassify/classification)", rows[0].Kind, rows[0].Field)
+	}
+	if rows[0].Old != `{"blocked":false,"mode":"serial","priority":"normal"}` {
+		t.Fatalf("old = %q, want the derived-default axes", rows[0].Old)
+	}
+	if rows[0].New != `{"blocked":false,"mode":"parallelizable","priority":"normal"}` {
+		t.Fatalf("new = %q, want the commanded axes", rows[0].New)
+	}
+
+	// A reclassify on a card that HAD a classification re-stamps it.
+	_, store2 := mdClassifiedFixture(t)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "re-judged", "--run", fcRun); err != nil {
+		t.Fatalf("reclassify on classified card: %v", err)
+	}
+	got2 := mdClass(t, store2, "t1")
+	if got2.Decider != factory.DeciderIdentityHuman || got2.Reason != "re-judged" {
+		t.Fatalf("re-stamped = (decider %q, reason %q), want (human, re-judged)", got2.Decider, got2.Reason)
+	}
+	if got2.ClassifiedAt == "2026-10-20T00:00:00Z" {
+		t.Fatalf("classified_at = %q, want a fresh stamp", got2.ClassifiedAt)
+	}
+}
+
+func TestReclassify_AuditWindowCatchUp(t *testing.T) {
+	// The queue-commit→append crash window (REQ-CMV-010): seeded
+	// converged-but-unaudited — the queue write committed, the append never
+	// ran. The re-run commanding the converged value is admitted as the
+	// converged-state audit completion: exactly the owed row, no store
+	// mutation, exit zero.
+	root, store := mdClassifiedFixture(t)
+	seed := *mdClass(t, store, "t1")
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "catch-up attestation", "--run", fcRun); err != nil {
+		t.Fatalf("converged-but-unaudited re-run refused: %v", err)
+	}
+	rows := mdAuditRows(t, root, "t1")
+	if len(rows) != 1 {
+		t.Fatalf("audit rows = %d, want exactly the owed row", len(rows))
+	}
+	if rows[0].Old != "" || rows[0].New != `{"blocked":true,"mode":"serial","priority":"high"}` || rows[0].Reason != "catch-up attestation" {
+		t.Fatalf("catch-up row = %+v, want old=\"\" with the commanded axes and the re-run's reason", rows[0])
+	}
+	// No store mutation: the classification is exactly as the crashed run
+	// left it — stamp and reason included.
+	got := mdClass(t, store, "t1")
+	if got == nil || *got != seed {
+		t.Fatalf("classification re-mutated by the catch-up:\n got %+v\nwant %+v", got, seed)
+	}
+
+	// The converged-and-audited duplicate re-run refuses with no second row.
+	queueBefore := mdQueueDump(t, store)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "again", "--run", fcRun); err == nil {
+		t.Fatal("the converged-and-audited duplicate was admitted")
+	}
+	if n := len(mdAuditRows(t, root, "t1")); n != 1 {
+		t.Fatalf("audit rows = %d after the duplicate refusal, want 1", n)
+	}
+	if got := mdQueueDump(t, store); got != queueBefore {
+		t.Fatalf("duplicate refusal moved the queue")
+	}
+
+	// An append failure after the queue commit retries once, then exits
+	// non-zero with the audit-loss sentinel, the queue write left in place.
+	root2, store2 := mdClassifiedFixture(t)
+	attempts := 0
+	restore := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts++
+			if attempts <= 2 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore })
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r", "--run", fcRun); err == nil {
+		t.Fatal("the audit-loss sentinel did not fire")
+	} else if !strings.Contains(err.Error(), "card metadata audit row lost") {
+		t.Fatalf("error lacks the audit-loss sentinel: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("append attempts = %d, want the first attempt plus exactly one retry", attempts)
+	}
+	got2 := mdClass(t, store2, "t1")
+	if got2 == nil || got2.Priority != factory.ClassPriorityLow {
+		t.Fatalf("queue write not left in place: %+v", got2)
+	}
+	if n := mdAuditCount(t, root2); n != 0 {
+		t.Fatalf("audit rows = %d after the audit-loss sentinel, want 0", n)
+	}
+
+	// The retry landing: one failed attempt, the retry succeeds, one row.
+	root3, store3 := mdClassifiedFixture(t)
+	attempts3 := 0
+	restore3 := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts3++
+			if attempts3 == 1 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore3 })
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r", "--run", fcRun); err != nil {
+		t.Fatalf("retrying reclassify append: %v", err)
+	}
+	if n := len(mdAuditRows(t, root3, "t1")); n != 1 {
+		t.Fatalf("audit rows = %d after the landed retry, want 1", n)
+	}
+	_ = store3
+}
