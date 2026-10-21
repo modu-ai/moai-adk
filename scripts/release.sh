@@ -8,12 +8,13 @@
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
 #   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
 #   scripts/release.sh v3.2.0 --require-matrix-run   # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 꺼짐)
+#   scripts/release.sh v3.2.0 --skip-ci-check        # CI 게이트 우회 (origin 의 CI 통과 확인 없이 태그; 요약에 OVERRIDDEN 기록)
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
 #   - CHANGELOG.md 에 해당 버전 섹션 존재 (-rc.N 태그는 예외)
 #   - main 브랜치 checkout + origin/main 과 동기화
 #     (origin/main 과 같은 커밋을 가리키는 detached HEAD 도 허용)
-#   - 모든 CI 통과
+#   - 태그할 커밋의 origin CI(check run) 전부 완료·통과 (없음/진행 중/실패/gh 없음 = 거부; --skip-ci-check 로만 우회)
 #   - 작업 트리 clean
 #
 # 흐름:
@@ -28,6 +29,10 @@
 #   - 수동 `gh release create`는 GoReleaser와 충돌 가능하므로 사용 금지
 
 set -euo pipefail
+
+# Locate this script's own directory now: validation 3 changes the working
+# directory, and the required-checks SSoT is resolved relative to the script.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ─── Color helpers ─────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -57,7 +62,7 @@ while [[ $# -gt 0 ]]; do
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
         --require-matrix-run) REQUIRE_MATRIX_RUN=true; shift ;;
         -h|--help)
-            sed -n '2,23p' "$0"
+            sed -n '2,24p' "$0"
             exit 0
             ;;
         -*)
@@ -218,36 +223,97 @@ else
     log_ok "Pre-release $VERSION: no CHANGELOG.md section required (skipped)"
 fi
 
-# ─── Validation 9: CI status on HEAD (optional) ────────────────────────────
-if [[ "$SKIP_CI_CHECK" != true ]]; then
-    if command -v gh >/dev/null 2>&1; then
-        CI_STATE="$(gh pr list --head "$CURRENT_BRANCH" --state merged --limit 1 --json number --jq '.[0].number // ""' 2>/dev/null || echo "")"
-
-        # 직접 HEAD commit의 check suite 상태 조회 (main push 이후 CI)
-        HEAD_CHECKS="$(gh api "/repos/modu-ai/moai-adk/commits/$LOCAL_SHA/status" --jq '.state' 2>/dev/null || echo "unknown")"
-
-        case "$HEAD_CHECKS" in
-            success)
-                log_ok "CI status on HEAD: success"
-                ;;
-            pending)
-                log_warn "CI status on HEAD: pending (in progress)"
-                echo -n "  Proceed anyway? [y/N] "
-                read -r reply
-                [[ "$reply" =~ ^[Yy]$ ]] || die "Aborted by user"
-                ;;
-            failure|error)
-                die "CI status on HEAD: $HEAD_CHECKS. Fix CI before releasing."
-                ;;
-            *)
-                log_warn "CI status on HEAD: $HEAD_CHECKS (unable to verify)"
-                ;;
-        esac
-    else
-        log_warn "gh CLI not available — skipping CI status check"
-    fi
+# ─── Validation 9: CI verdict on the commit to be tagged ───────────────────
+# A pushed v* tag cannot be deleted or moved, so a tag is placed only on a commit
+# whose CI has passed on origin. HEAD equals origin's tip here (validation 6), so
+# the check runs read from GitHub for $LOCAL_SHA are the CI of the commit that
+# will be tagged. The verdict is read from the check-runs endpoint: the combined
+# status endpoint lists commit statuses only, and a green third-party status
+# (CodeRabbit) answers "success" while the Actions jobs are red or still running.
+# Passes only when every check run on the commit is completed and concluded
+# success, neutral or skipped, AND the repository's own CI workflow reported:
+# each name in the release_gate list of .github/required-checks.yml must be present among them, published by
+# the GitHub Actions app (a check run of the right name from another app does
+# not count). Absent,
+# pending, failed, unreadable and "only somebody else's checks" are all
+# refusals. gh missing is a refusal too. The one way past is --skip-ci-check,
+# which is announced here and recorded in the release summary.
+#
+# CI_REQUIRED_CHECKS: the check-run names the CI workflow (.github/workflows/
+# ci.yml, `name: CI`) publishes on a push to main. A check run is named after
+# its JOB. The names are read from the release_gate block of the required-checks
+# SSoT (.github/required-checks.yml), the one place check names are kept; a
+# renamed job or a changed matrix is a one-place edit there, never here.
+CI_REQUIRED_CHECKS=()
+CI_GATE="verified"
+if [[ "$SKIP_CI_CHECK" == true ]]; then
+    CI_GATE="OVERRIDDEN (--skip-ci-check)"
+    log_warn "CI gate OVERRIDDEN (--skip-ci-check): $VERSION would be tagged on ${LOCAL_SHA:0:12} with NO verified passing CI on origin"
 else
-    log_warn "CI check skipped (--skip-ci-check)"
+    command -v gh >/dev/null 2>&1 || die "CI gate: the gh CLI is not available, so the CI verdict of ${LOCAL_SHA:0:12} on origin cannot be read. Install gh, or pass --skip-ci-check to override (recorded in the release summary)."
+
+    # Read the required check names from the SSoT's top-level release_gate list
+    # (POSIX awk, runs on BSD awk). Fail closed: a missing file or an empty list
+    # would leave the gate demanding nothing, so either one is a refusal.
+    CI_CHECKS_FILE="$SCRIPT_DIR/../.github/required-checks.yml"
+    [[ -f "$CI_CHECKS_FILE" ]] || die "CI gate: the required-checks file $CI_CHECKS_FILE is missing, so the checks to demand cannot be read. Restore it, or pass --skip-ci-check to override (recorded in the release summary)."
+    # A malformed list (empty or space-padded entry, trailing comment, single
+    # quote, unrecognized line, duplicate name or key) is refused here with its
+    # own message instead of surfacing later as a misleading "not reported", and
+    # no entry is dropped without a decision. The awk prints the reason and exits 1.
+    CI_GATE_NAMES="$(awk '
+        { sub(/\r$/, "") }
+        /^release_gate:/ { if (seen_key++) { print "duplicate release_gate key"; exit 1 } inblock = 1; next }
+        inblock && /^[^ \t#]/ { inblock = 0 }
+        inblock && /^[ \t]*(#.*)?$/ { next }
+        inblock && /^[ \t]+-([ \t]|$)/ {
+            sub(/^[ \t]+-[ \t]*/, ""); sub(/[ \t]+$/, "")
+            if ($0 ~ /[ \t]#/) { print "entry with a trailing comment: " $0; exit 1 }
+            if (substr($0, 1, 1) == "\047") { print "single-quoted entry (use plain or double quotes): " $0; exit 1 }
+            if ($0 ~ /^".*"$/ && length($0) >= 2) {
+                $0 = substr($0, 2, length($0) - 2)
+                if ($0 ~ /^[ \t]|[ \t]$/ && $0 !~ /^[ \t]*$/) { print "space-padded name: \"" $0 "\""; exit 1 }
+            }
+            if ($0 ~ /^[ \t]*$/) { print "empty entry"; exit 1 }
+            if (names[$0]++) { print "duplicate name: " $0; exit 1 }
+            print
+            next
+        }
+        inblock { print "unrecognized line: " $0; exit 1 }' "$CI_CHECKS_FILE")" \
+        || die "CI gate: malformed release_gate in $CI_CHECKS_FILE: $CI_GATE_NAMES. Fix the list there, or pass --skip-ci-check to override (recorded in the release summary)."
+    [[ -n "$CI_GATE_NAMES" ]] || die "CI gate: no release_gate check names could be read from $CI_CHECKS_FILE, so the gate would demand nothing. Fix the release_gate list there, or pass --skip-ci-check to override (recorded in the release summary)."
+    while IFS= read -r check_name; do
+        CI_REQUIRED_CHECKS+=("$check_name")
+    done <<< "$CI_GATE_NAMES"
+
+    # One line per check run: "<name><TAB><status><TAB><conclusion><TAB><app slug>".
+    CI_RUNS="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
+        --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "")\t\(.app.slug // "")"')" \
+        || die "CI gate: could not read the check runs of ${LOCAL_SHA:0:12} (gh api failed). Fix gh access, or pass --skip-ci-check to override (recorded in the release summary)."
+    # Counts: total, not completed, completed but not success|neutral|skipped.
+    read -r CI_TOTAL CI_PENDING CI_FAILED < <(printf '%s\n' "$CI_RUNS" | awk -F'\t' 'NF >= 2 {t++; if ($2 != "completed") p++; else if ($3 != "success" && $3 != "neutral" && $3 != "skipped") f++} END {printf "%d %d %d\n", t, p, f}')
+
+    if (( CI_TOTAL == 0 )); then
+        die "CI gate: no check runs found for ${LOCAL_SHA:0:12} on origin. Wait for CI to start on this commit (or push it), then release again."
+    elif (( CI_FAILED > 0 )); then
+        die "CI gate: $CI_FAILED of $CI_TOTAL check run(s) on ${LOCAL_SHA:0:12} did not succeed. Fix CI before releasing."
+    elif (( CI_PENDING > 0 )); then
+        die "CI gate: $CI_PENDING of $CI_TOTAL check run(s) on ${LOCAL_SHA:0:12} are not completed. Wait for CI to finish, then release again."
+    fi
+
+    # Every run is completed and green; now require the CI workflow's own runs
+    # by exact name AND publishing app, so neither a green run from an unrelated
+    # app nor a run that borrows a required name can satisfy the gate.
+    CI_APP="github-actions"
+    CI_MISSING=""
+    for expected in "${CI_REQUIRED_CHECKS[@]}"; do
+        printf '%s\n' "$CI_RUNS" | awk -F'\t' -v n="$expected" -v a="$CI_APP" '$1 == n && $4 == a {found=1} END {exit !found}' \
+            || CI_MISSING="${CI_MISSING:+$CI_MISSING; }$expected"
+    done
+    if [[ -n "$CI_MISSING" ]]; then
+        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin (by name, from the $CI_APP app): $CI_MISSING. The release_gate checks of .github/required-checks.yml have not all run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
+    fi
+    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green; CI workflow checks present from $CI_APP: ${CI_REQUIRED_CHECKS[*]})"
 fi
 
 # ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
@@ -262,10 +328,18 @@ fi
 # A run counts only when ALL of these hold: it belongs to that workflow, it ran
 # on exactly this commit, workflow_dispatch started it (on a pull_request event
 # a leg can be skipped by the docs-only filter), it is completed with conclusion
-# success, AND each of the three OS legs itself concluded success (a run-level
-# success is not enough: a skipped leg leaves it green).
+# success, AND every leg itself concluded success (a run-level success is not
+# enough: a skipped leg leaves it green). The legs are the sharded Release Verify
+# jobs: each of the three OS values must carry exactly the six declared shards,
+# once each. A missing shard (on one OS or on all three), an unknown shard name
+# and a duplicated shard job are all refusals naming the OS and shard.
 if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
     MATRIX_WORKFLOW="release-pr-multi-os.yml"
+    # The legs of the Release Verify matrix: job `Release Verify (<os>, <shard>)`,
+    # three OS values x six shards. Mirrors strategy.matrix of $MATRIX_WORKFLOW
+    # (SPEC-CI-RELEASE-VERIFY-SHARD-001); a drift test compares the two lists.
+    MATRIX_OSES=(ubuntu-latest macos-latest windows-latest)
+    MATRIX_SHARDS=(cli-1 cli-2 cli-3 cli-4 rosterguard remainder)
     command -v gh >/dev/null 2>&1 || die "Matrix gate: --require-matrix-run needs the gh CLI to read the $MATRIX_WORKFLOW run, and gh is not available."
 
     MATRIX_RUNS="$(gh run list --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
@@ -291,16 +365,38 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
         else
             RUN_JOBS="$(gh run view "$run_id" --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
                 || die "Matrix gate: could not read the jobs of run $run_id (gh run view failed)."
-            for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"; do
-                leg_line="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print "found|" $2; exit}')"
-                if [[ -z "$leg_line" ]]; then
-                    run_problem="run $run_id has no leg '$leg'."
-                    break
-                elif [[ "${leg_line#found|}" != "success" ]]; then
-                    run_problem="run $run_id leg '$leg' is ${leg_line#found|}, not success."
-                    break
-                fi
+            # Each of the three OS values must carry each of the six declared shards
+            # exactly once, every one success (REQ-RVS-011). The names are matched
+            # whole: zero jobs of a name is "no leg", two is a duplicate.
+            expected_legs=""
+            for leg_os in "${MATRIX_OSES[@]}"; do
+                for leg_shard in "${MATRIX_SHARDS[@]}"; do
+                    leg="Release Verify ($leg_os, $leg_shard)"
+                    expected_legs="${expected_legs:+$expected_legs|}$leg"
+                    leg_count="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {n++} END {print n + 0}')"
+                    if [[ -z "$run_problem" ]]; then
+                        if (( leg_count == 0 )); then
+                            run_problem="run $run_id has no leg '$leg'."
+                        elif (( leg_count > 1 )); then
+                            run_problem="run $run_id has $leg_count jobs named '$leg' (a duplicated shard job)."
+                        else
+                            leg_result="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print $2; exit}')"
+                            if [[ "$leg_result" != "success" ]]; then
+                                run_problem="run $run_id leg '$leg' is ${leg_result:-unknown}, not success."
+                            fi
+                        fi
+                    fi
+                done
             done
+            # A Release Verify job outside the 3 x 6 expected names is an unknown shard.
+            if [[ -z "$run_problem" ]]; then
+                unknown_leg="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v want="$expected_legs" '
+                    BEGIN { n = split(want, names, "|"); for (i = 1; i <= n; i++) ok[names[i]] = 1 }
+                    index($1, "Release Verify (") == 1 && !($1 in ok) { print $1; exit }')"
+                if [[ -n "$unknown_leg" ]]; then
+                    run_problem="run $run_id has an unknown Release Verify leg '$unknown_leg' (not one of the declared OS x shard legs)."
+                fi
+            fi
         fi
 
         if [[ -z "$run_problem" ]]; then
@@ -318,7 +414,7 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
         fi
         die "Matrix gate: $MATRIX_REASON"
     fi
-    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs for ${LOCAL_SHA:0:12}"
+    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs (${#MATRIX_SHARDS[@]} shards each) for ${LOCAL_SHA:0:12}"
 fi
 
 # ─── Validation 10: SPEC status 확인 (optional, informational) ───────────────
@@ -388,6 +484,7 @@ else
     echo "  Branch:      $CURRENT_BRANCH"
 fi
 echo "  HEAD SHA:    ${LOCAL_SHA:0:12}"
+echo "  CI gate:     $CI_GATE"
 if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
     echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
 else
@@ -412,9 +509,14 @@ read -r confirm
 [[ "$confirm" =~ ^[Yy]$ ]] || die "Aborted by user"
 
 # ─── Create + push annotated tag ───────────────────────────────────────────
+# The CI verdict above belongs to $LOCAL_SHA. The tag names that commit
+# explicitly, so it lands on the verified commit by construction; the HEAD
+# check stays as an early refusal when the tree moved during the prompt.
+[[ "$(git rev-parse HEAD)" == "$LOCAL_SHA" ]] || die "HEAD moved from ${LOCAL_SHA:0:12} after the CI gate; refusing to tag a commit whose CI was not checked."
+
 log_info "Creating annotated tag $VERSION..."
-git tag -a "$VERSION" -F "$TMP_NOTES"
-log_ok "Tag $VERSION created locally"
+git tag -a "$VERSION" -F "$TMP_NOTES" "$LOCAL_SHA"
+log_ok "Tag $VERSION created locally on ${LOCAL_SHA:0:12}"
 
 log_info "Pushing tag to origin (triggers GoReleaser)..."
 git push origin "$VERSION"

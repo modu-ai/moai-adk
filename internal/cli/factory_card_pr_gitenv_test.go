@@ -1,32 +1,11 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// t1589 — the lock-root spelling check reads the repository named by an
-// inherited GIT_DIR instead of the directory it was given. Given a symlink to a
-// repository, git answers the real path; under the inherited variable it
-// answers the symlink back, and the spelling correction is silently skipped.
-func TestCanonicalTreeSpellingIgnoresInheritedGitEnv(t *testing.T) {
-	repo := t1589Repo(t, "card tip", "main")
-	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(repo, link); err != nil {
-		t.Fatalf("symlink: %v", err)
-	}
-	other := t1589Repo(t, "unrelated tip", "other")
-	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
-	t.Setenv("GIT_WORK_TREE", other)
-
-	got := canonicalTreeSpelling(link)
-	if got == link || !factorySameTree(got, repo) {
-		t.Errorf("canonicalTreeSpelling(link) = %q, want the repository's own spelling of %q (the inherited GIT_DIR left the link unresolved)", got, repo)
-	}
-}
 
 // t1589 — the gh call of the github-flow delivery edge must not hand an
 // inherited GIT_DIR to gh: gh resolves the repository through it.

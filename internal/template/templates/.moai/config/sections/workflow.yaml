@@ -26,6 +26,17 @@ workflow:
     factory_lease:
         duration: 15m
         renew_interval: 5m
+    # factory: bare `moai factory next` self-dispatch policy. self_dispatch
+    # arms the generic selection arms — cards picked by the operator but
+    # owned by no lane — behind an eligibility gate. Default false is the
+    # kill-switch: OFF leaves those arms fully dormant for cards not assigned
+    # to this lane (silent skip — no lease, no record, no reason line), so a
+    # bare next can never take an operator-picked card waiting for another
+    # consumer. A deployment whose lanes rely on unowned-card leasing opts in
+    # by setting this key true at the changeover; the assigned path,
+    # own-bundle members, and queued promotion are never gated by this flag.
+    factory:
+        self_dispatch: false
     # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
     # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
     # precedence documented ceiling surface for the diagnostic fix-loop). The

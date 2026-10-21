@@ -98,7 +98,7 @@ func TestCIVerdictFromJSON(t *testing.T) {
 func TestCIVerdictFetch(t *testing.T) {
 	root := t.TempDir()
 	var gotArgs []string
-	runner := func(args ...string) ([]byte, error) {
+	runner := func(root string, args ...string) ([]byte, error) {
 		gotArgs = args
 		return []byte(`[{"conclusion":"failure","databaseId":4242}]`), nil
 	}
@@ -133,16 +133,16 @@ func TestCIVerdictDegradation(t *testing.T) {
 		runner ghRunner
 		want   string
 	}{
-		{"gh-absent", func(args ...string) ([]byte, error) {
+		{"gh-absent", func(root string, args ...string) ([]byte, error) {
 			return nil, exec.ErrNotFound
 		}, "gh not found"},
-		{"gh-fails", func(args ...string) ([]byte, error) {
+		{"gh-fails", func(root string, args ...string) ([]byte, error) {
 			return nil, errors.New("exit status 4: auth required")
 		}, "gh query failed"},
-		{"gh-unparseable", func(args ...string) ([]byte, error) {
+		{"gh-unparseable", func(root string, args ...string) ([]byte, error) {
 			return []byte("not json at all"), nil
 		}, "unparseable"},
-		{"no-run-for-head", func(args ...string) ([]byte, error) {
+		{"no-run-for-head", func(root string, args ...string) ([]byte, error) {
 			return []byte(`[]`), nil
 		}, "no CI run"},
 	}

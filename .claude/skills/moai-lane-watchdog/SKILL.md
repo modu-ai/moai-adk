@@ -193,9 +193,9 @@ its work.
   judgments ONLY from disk. A view is never the SSOT; a long-form plan
   document is never the board.
 - **Codex step ⑤**: no session-messaging tool exists there — cross-harness
-  notice rides the broker (`session_msg_register` / `session_msg_send` +
-  poll) and the queue-on-disk delegation channel; the wait reason is
-  recorded on disk either way.
+  notice rides the queue-on-disk delegation channel (the moai MCP broker
+  tools were removed in card t1908); the wait reason is recorded on disk
+  either way.
 
 ## 5. Decision records
 

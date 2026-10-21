@@ -134,6 +134,11 @@ file the completion report names:
    The card-review stage). The receipt the review returns is the mechanical
    basis of the lane's own completion verdict — a completion carrying
    neither a review receipt nor a recorded reason for its absence is a gap.
+2b. **Workflow-file check** — runs before Deliver. A branch changing
+   `.github/workflows/**` is "operator review required before landing": the
+   lane stops here (no `moai factory complete`, no PR) and reports to the
+   leader (`factory-dispatch-cards.md` § Workflow-file changes need operator
+   review).
 3. **Deliver** — `moai factory complete`: under github-flow (the
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
@@ -174,6 +179,7 @@ a duty not listed is a lane's:
 | Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+| Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 
 Everything that used to sit with the leader per card — the completion
 verdict, the merge approval, the `todo done`, the stage advancement — is
@@ -210,7 +216,7 @@ How the **leader** session of Factory Mode moves a card through the queue: what 
 ### Scope — when this rule is live
 
 
-This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
+This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the optional stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
 
 
 ### Entry into the queue is an operator act
@@ -222,7 +228,7 @@ This rule binds a session whose SessionStart context declares **Factory Mode**. 
 ### The lane's task list carries the card's stages
 
 
-The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The clause above is the rule; a run that kept the list current is its evidence, not an instance list to extend.
+The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The tracking is optional per the stub clause; the card's state of record is the factory record and progress.md. A lane that keeps the list current still has that history as evidence when it is used.
 
 
 ### The env-isolated verification form
