@@ -91,7 +91,7 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | UserPromptSubmit | `prompt` | `additionalContext`, `reason`, `decision:{block,reason}`, `sessionTitle`, `suppressOriginalPrompt` | Exit 2 blocks prompt; JSON `decision:"block"` also available |
 | PermissionRequest | `toolName`, `toolInput` | `reason`, `decision.behavior`, `updatedInput`, `updatedPermissions` | Exit 0 = allow, exit 2 = deny; JSON `decision.behavior` (allow/deny/ask) also available |
 | PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
-| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
+| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `hookSpecificOutput`: `additionalContext` | Non-blocking. Registered `async: true`: the classified failure message arrives as `additionalContext` on the next turn (async hooks deliver only `additionalContext`) |
 | Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — background-agent notifications; handler is a generic pass-through, no Go change) |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
 | InstructionsLoaded | `files`, `source` | - | Lists loaded instruction files (v2.1.69+) |
