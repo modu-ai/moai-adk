@@ -2874,16 +2874,19 @@ func cliGitIn(dir string, args ...string) (string, error) {
 
 // factoryAdoptedTip returns the integration tip when it is an adoption in the
 // sense of REQ-MWQ-019 step 2 — a merge commit whose second parent is the card
-// branch's CURRENT tip and whose tree a VALID re-measure record keys — and ""
-// otherwise. complete's adoption path and the base-freshness gate's exemption
-// (SPEC-INTEGRATION-STALE-BASE-001, REQ-ISB-016) both ask this one question, so
-// the two cannot drift.
+// branch's CURRENT tip and whose tree a VALID re-measure record that NAMES that
+// tree keys — and "" otherwise. The reader returns the tree field as written,
+// so a stored file whose tree names another SHA is not a record for the tip
+// tree and must not exempt the gate (sync-audit iter12 F1: the identity
+// comparison the gate's own verdict makes, mirrored here). complete's adoption
+// path and the base-freshness gate's exemption (SPEC-INTEGRATION-STALE-BASE-001,
+// REQ-ISB-016) both ask this one question, so the two cannot drift.
 func factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch string) string {
 	tip := factoryBranchTip(integTree, branch)
 	cardTip := factoryBranchTip(cardTree, cardBranch)
 	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
 		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
-			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil && record.Tree == tipTree {
 				return tip
 			}
 		}
