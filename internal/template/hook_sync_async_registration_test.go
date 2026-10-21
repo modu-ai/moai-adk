@@ -16,14 +16,16 @@ import (
 )
 
 // hookSyncAsyncConverted enumerates the entries this SPEC converts to async.
-// M4 pins the PostToolUseFailure row (REQ-HSA-003); the M5 commit extends this
-// table with the mechanical ConfigChange and SubagentStop chain-event rows
-// (REQ-HSA-001/002).
+// M4 pinned the PostToolUseFailure row (REQ-HSA-003); M5 adds the mechanical
+// ConfigChange and SubagentStop chain-event rows (REQ-HSA-001/002) — both are
+// continue-only / ledger-append entries with no handler output to deliver.
 var hookSyncAsyncConverted = []struct {
 	event  string
 	script string
 }{
 	{event: "PostToolUseFailure", script: "handle-post-tool-failure.sh"},
+	{event: "ConfigChange", script: "handle-config-change.sh"},
+	{event: "SubagentStop", script: "chain-event.sh"},
 }
 
 // TestHookSyncAsyncRegistrationFlags asserts every converted entry parses with
