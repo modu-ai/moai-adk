@@ -123,3 +123,27 @@ func TestEnforceRequiredGateUnmet_CouldNotRunNotConvergedToFail(t *testing.T) {
 		t.Error("gate_unmet is empty — the unmet required gate must still be named")
 	}
 }
+
+// TestEnforceRequiredGateUnmet_KeepsAReportedRequiredFail pins the l57-r2
+// audit finding: a required backend that REPORTED fail is a reviewed failure,
+// not a could-not-run — a second required leg left inconclusive must NOT
+// overwrite the converged FAIL with the not-converged outcome (that would
+// reclassify a found defect as never-run). The unmet leg is still named.
+func TestEnforceRequiredGateUnmet_KeepsAReportedRequiredFail(t *testing.T) {
+	gates := config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired}
+	verdicts := []PerBackendVerdict{
+		{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "fail"},
+		{Backend: BackendCodex, Gate: config.AuditGateRequired, Verdict: VerdictInconclusive},
+	}
+	r := converge(verdicts)
+	if r.OverallVerdict != overallVerdictFail {
+		t.Fatalf("precondition: converge overall = %q, want fail (pinned by TestConverge_RequiredFailWithInconclusive_Case2)", r.OverallVerdict)
+	}
+	got := enforceRequiredGateUnmet(r, verdicts, gates)
+	if got.OverallVerdict != overallVerdictFail {
+		t.Errorf("overall = %q, want the reported FAIL kept — a required-inconclusive leg reclassified a found failure as not-run (l57-r2 finding 2)", got.OverallVerdict)
+	}
+	if !strings.Contains(got.GateUnmet, BackendCodex) {
+		t.Errorf("gate_unmet = %q, want it to name the inconclusive codex leg", got.GateUnmet)
+	}
+}

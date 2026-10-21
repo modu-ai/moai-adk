@@ -257,14 +257,20 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 // citation does not forge a state change that the judged diff never saw.
 func untrackedContentPaths(treeRoot string) []string {
 	// -z (card t1632 sync-audit F3): no C-quoting, NUL-separated — non-ASCII
-	// filenames survive intact.
-	out, err := gitIn(treeRoot, "ls-files", "--others", "--exclude-standard", "-z")
-	if err != nil || strings.TrimSpace(out) == "" {
+	// filenames survive intact. The RAW gitIn variant (l57-r2 finding 1): the
+	// output BEGINS with the first path, so gitIn's whole-output trim stripped
+	// a leading space that is part of that filename.
+	out, err := gitInRaw(treeRoot, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil || out == "" {
 		return nil
 	}
 	var kept []string
 	for _, line := range strings.Split(out, "\x00") {
-		line = strings.TrimSpace(line)
+		// l57-r2 finding 1: a -z path is taken VERBATIM — a leading/trailing
+		// space is part of the filename, and trimming it made the content read
+		// collide with the trimmed name (the tracked a.go), so an edit to the
+		// whitespace-named untracked file moved nothing and an earlier PASS
+		// receipt stayed fresh. Only the empty split tail skips.
 		if line == "" || isRuntimeManagedStatePath(line) {
 			continue
 		}
@@ -1053,6 +1059,17 @@ func NewReceiptID() (string, error) {
 // missing binding is tolerable (receipt writes tolerate it; a reuse
 // comparison is skipped rather than invented).
 func gitIn(treeRoot string, args ...string) (string, error) {
+	out, err := gitInRaw(treeRoot, args...)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// gitInRaw is gitIn without the whole-output trim (l57-r2 finding 1): a -z
+// path list begins with its first filename, so a leading space that is part
+// of that name must survive byte-for-byte. Everything else about gitIn holds.
+func gitInRaw(treeRoot string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"-C", treeRoot}, args...)...)
 	// Card t1632 sync-audit F4: scrub the inherited git-redirect variables —
 	// the same environment storeroot.go applies to its store-root inspections.
@@ -1063,7 +1080,7 @@ func gitIn(treeRoot string, args ...string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("git %s in %s: %w", strings.Join(args, " "), treeRoot, err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	return string(out), nil
 }
 
 // WriteReceipt stores a receipt, filling ReceiptID and CreatedAt when unset,

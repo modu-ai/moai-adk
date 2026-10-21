@@ -41,19 +41,27 @@ func claudeSummaryArgs(model, effort string) []string {
 }
 
 // claudeParticipationEnv builds the summarizer's subprocess environment:
-// the CALLER'S real environment through the same audit scrubber the audit
-// path uses — the base env (HOME, PATH, the auth store's lookup path)
-// survives, the risky keys (ANTHROPIC_*, CLAUDECODE_*, the audit scrub set)
-// are dropped (review-gate finding 6: the nil-environ construction built an
-// EMPTY env, leaving the claude child without HOME or PATH). CLAUDE_CONFIG_DIR
-// is then pinned to the subscription directory, as the audit env validator
-// requires (SPEC-MCP-NEUTRALITY-001 REQ-MN-012): an ambient value is replaced,
-// never inherited.
+// the CALLER'S real environment through the audit scrubber — the base env
+// (HOME, PATH, the auth store's lookup path) survives, the risky keys
+// (ANTHROPIC_*, CLAUDECODE_*, the audit scrub set) are dropped (review-gate
+// finding 6: the nil-environ construction built an EMPTY env, leaving the
+// claude child without HOME or PATH). The proxy family the audit env
+// validator rejects is dropped too (l57-r2 finding 3): the audit path's
+// allowlist never lets a proxy through, but this denylist path kept one, and
+// Summarize then died at its own validation before summarizing. The
+// validator's wording is mirrored exactly (NO_PROXY, any *_PROXY suffix).
+// CLAUDE_CONFIG_DIR is then pinned to the subscription directory, as the
+// audit env validator requires (SPEC-MCP-NEUTRALITY-001 REQ-MN-012): an
+// ambient value is replaced, never inherited.
 func claudeParticipationEnv() []string {
 	scrubbed := scrubClaudeAuditEnv(os.Environ())
 	env := make([]string, 0, len(scrubbed)+1)
 	for _, entry := range scrubbed {
-		if key, _, _ := strings.Cut(entry, "="); key != "CLAUDE_CONFIG_DIR" {
+		key, _, _ := strings.Cut(entry, "=")
+		if key == "NO_PROXY" || strings.HasSuffix(key, "_PROXY") {
+			continue
+		}
+		if key != "CLAUDE_CONFIG_DIR" {
 			env = append(env, entry)
 		}
 	}

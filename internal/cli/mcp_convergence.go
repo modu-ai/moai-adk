@@ -1083,7 +1083,13 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 	// REQ-MN-021: could-not-run stays not-performed — the overall stays at the
 	// distinct not-converged outcome (inconclusive), never a converged fail,
 	// and never the pass the claude-anchor fall-through would have produced.
-	r.OverallVerdict = VerdictInconclusive
+	// l57-r2 finding 2: the downgrade applies only to an overall that does not
+	// itself carry a required FAIL — a converged FAIL is a failure a backend
+	// REPORTED, and reclassifying it as not-run would erase a found defect.
+	// The unmet leg is named either way.
+	if r.OverallVerdict != overallVerdictFail {
+		r.OverallVerdict = VerdictInconclusive
+	}
 	r.GateUnmet = strings.Join(unmet, ",")
 	note := "required gate unmet (explicitly configured required, could-not-run, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {

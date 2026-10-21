@@ -554,6 +554,40 @@ Verification batch (this tree, this run — run on the working tree whose staged
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r2 delta repair round — landing re-audit (card t1632, branch WT-3-2-0-2)
+
+Commit: `fix(t1632): lane-57 sync-audit r2 repairs — receipt digest whitespace, convergence FAIL retention, summarizer env hardening` (this round). Base: HEAD `e80010e89c` (the absorb merge of release head 6a523191ea). Audit receipt: `rcpt-56d5695de1452b970e181315` (static codex_audit on the merged tree — it ran NO tests; each finding was verified honestly before repair, all 3 proved REAL).
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 [P1] receipt tree digest loses whitespace filenames (store.go:267) | REAL-FIXED — TWO layers: (a) the `untrackedContentPaths` TrimSpace on the split -z path (the auditor's named site), and (b) deeper, `gitIn`'s WHOLE-output TrimSpace strips the leading space of the FIRST ls-files entry (` a.go\x00` → `a.go\x00`); fixed by a new `gitInRaw` variant (untrimmed) that `untrackedContentPaths` now uses. The porcelain status read keeps `gitIn` (its output begins `XY `, never whitespace) | `go test ./internal/auditreceipt -run 'TestTreeState_WhitespaceFilenameContentMovesDigest' -count=1` | RED→GREEN: `--- FAIL ... digest unchanged after a leading-space untracked file's content changed` → `ok github.com/modu-ai/moai-adk/internal/auditreceipt` |
+| F2 [P2] required FAIL overwritten by required-inconclusive (mcp_convergence.go:1086) | REAL-FIXED — `enforceRequiredGateUnmet` now downgrades to inconclusive ONLY when the overall does not itself carry a required FAIL; a converged FAIL (a failure a backend REPORTED) is kept, and `gate_unmet` still names the inconclusive leg. `TestConverge_RequiredFailWithInconclusive_Case2` (pure converge) was already pinned; the loss was at the enforcement layer, unpinned | `go test ./internal/cli -run 'TestEnforceRequiredGateUnmet_KeepsAReportedRequiredFail' -count=1` | RED→GREEN: `--- FAIL ... overall = "inconclusive", want the reported FAIL kept` → `ok internal/cli` |
+| F3 [P2] participation summarizer env keeps proxy variables (mcp_claude.go:352) | REAL-FIXED — `claudeParticipationEnv` (denylist scrub) kept HTTPS_PROXY while `Summarize` then validated its own env, dying at `proxy variable HTTPS_PROXY must not reach the claude audit child` before summarizing. The audit path's allowlist (`claudeAuditAllowlistEnv`) never lets a proxy through; the denylist path now drops the same family the validator rejects (`NO_PROXY`, any `*_PROXY`). The allowlist switch was NOT taken — the existing pin `TestParticipationSummarizerEnvCarriesTheBaseEnvironment` requires HOME in the env, which the allowlist drops | `go test ./internal/cli -run 'TestParticipationSummarizerEnvDropsProxyVariables' -count=1` | RED→GREEN: `--- FAIL ... the summarizer environment carries HTTPS_PROXY` → `ok internal/cli` |
+
+E8 RED evidence (each pinning test run against the pre-fix code, all three REAL):
+
+- F1 RED (`go test ./internal/auditreceipt -run 'TestTreeState_WhitespaceFilenameContentMovesDigest' -count=1`, exit 1):
+  `--- FAIL: TestTreeState_WhitespaceFilenameContentMovesDigest (0.78s)` / `receipt_integrity_content_test.go:93: digest unchanged after a leading-space untracked file's content changed — the trimmed path read the tracked a.go instead (l57-r2 finding 1)`
+- F2 RED (`go test ./internal/cli -run 'TestEnforceRequiredGateUnmet_KeepsAReportedRequiredFail|TestParticipationSummarizerEnvDropsProxyVariables' -count=1`, exit 1):
+  `--- FAIL: TestEnforceRequiredGateUnmet_KeepsAReportedRequiredFail (0.00s)` / `codex_audit_could_not_run_test.go:144: overall = "inconclusive", want the reported FAIL kept — a required-inconclusive leg reclassified a found failure as not-run (l57-r2 finding 2)`
+- F3 RED (same run, exit 1):
+  `--- FAIL: TestParticipationSummarizerEnvDropsProxyVariables (0.00s)` / `feedback_participation_model_test.go:89: the summarizer environment carries HTTPS_PROXY — the audit env validator rejects proxy variables, so Summarize dies before summarizing (l57-r2 finding 3)`
+
+GREEN: F1 `go test ./internal/auditreceipt -run 'TestTreeState|TestCheckCitedReceipts' -count=1` → `ok ... 1.331s`; F2+F3 `go test ./internal/cli -run 'TestEnforceRequiredGateUnmet|TestParticipationSummarizer|TestFlushWiresClaudeSummarizer' -count=1` → `ok internal/cli 1.381s`.
+
+Verification batch (this tree, this run, at the r2 HEAD):
+
+- Builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `go test ./internal/auditreceipt -count=1` (full) → `ok github.com/modu-ai/moai-adk/internal/auditreceipt 4.509s`.
+- `go test ./internal/cli -run 'TestConverge|TestEnforceRequiredGateUnmet|TestRunMultiAudit' -count=1` → `ok internal/cli 3.856s`.
+- `go test ./internal/cli -run 'TestClaudeAudit' -count=1` → `ok internal/cli 2.073s`.
+- `go vet ./internal/cli ./internal/auditreceipt` → clean (exit 0).
+- `golangci-lint run ./internal/cli/... ./internal/auditreceipt/...` → exactly the 1 pre-existing errcheck (`internal/cli/mcp_server_call_log.go:123`), ZERO new.
+- Full-suite note: the repository-wide test verdict is owned by the CI run on the project's integration branch and is PENDING at report time (lane-local targeted selectors only, per the standing batch surface).
+- Push state: nothing pushed (the lane owns push/landing).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
