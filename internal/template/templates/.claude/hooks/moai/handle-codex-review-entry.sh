@@ -358,7 +358,7 @@ codex_entry_fastpath() {
 	# --- (3) the receipt probe ---
 	local now receipt state verdict
 	now=$(awk 'BEGIN { srand(); print srand() }') || return 1
-	receipt=$(awk -v cmd="moai verify codex-review" -v now="$now" -v ttl=86400 '
+	receipt=$(awk -v cmd="moai verify codex-review" -v now="$now" -v ttl=86400 -v wantkey="$head:$digest" '
 function dc(y, m, d,    yy, era, yoe, doy, doe) {
 	yy = y
 	if (m <= 2) yy -= 1
@@ -392,6 +392,16 @@ function extract(name,    v) {
 	sub("\"[[:space:]]*,?[[:space:]]*$", "", v)
 	return v
 }
+# (F7) document-level validation, the verify.Load mirror: a parsable receipt
+# requires the WHOLE document — the checks array closed and the document
+# closed — AND the stored key equal to the key this shell computed (the
+# filename-collision defense). A truncated or mismatched file reads as
+# receipt-ABSENT (cache-miss), never as a fresh verdict.
+/^\{$/ { doc_open = 1 }
+doc_open && /^  "key":/ { stored_key = extract("key") }
+doc_open && /^  "checks": \[/ { checks_open = 1 }
+/^  \],?[[:space:]]*$/ { checks_closed = 1 }
+/^\},?[[:space:]]*$/ { doc_closed = 1 }
 /^    \{/ { ec = 0; rec = ""; verd = ""; cfg = ""; tl = "" }
 ec == 0 && /^      "command":/ { if (extract("command") == cmd) ec = 1 }
 ec == 1 && /^      "recorded_at":/ { rec = extract("recorded_at") }
@@ -403,9 +413,16 @@ ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 		gsub(/^[[:space:]]+|[[:space:]]+$/, "", verd)
 		verd = tolower(verd)
 		eps = rfc(rec)
-		print ((now - eps) > ttl ? "stale " : "fresh ") verd " " cfg " " tl
-		exit
+		f_state = ((now - eps) > ttl ? "stale" : "fresh")
+		f_verd = verd
+		f_cfg = cfg
+		f_tl = tl
+		found = 1
 	}
+}
+END {
+	if (found && doc_closed && checks_closed && stored_key == wantkey)
+		print f_state " " f_verd " " f_cfg " " f_tl
 }
 ' "$snapshot" 2>/dev/null)
 	# receipt: "fresh <verdict> <config_digest> <tool_version>" | "stale ..."
@@ -428,6 +445,16 @@ ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 		if [ -z "$stored_cfg" ] || [ -z "$stored_tool" ]; then
 			return 1
 		fi
+		# (C2) a stored value carrying JSON escapes (a backslash in the raw
+		# text — a multi-line reviewer version, an HTML-escaped character)
+		# cannot be decoded byte-exactly in this awk; comparing it against the
+		# Go-decoded current value diverges and would mis-class a VALID fresh
+		# FAIL as a cache miss (delivery skipped, re-kick every bucket, no
+		# self-healing). Decline the binding — the Go handler JSON-decodes
+		# before comparing and owns the state.
+		case "$stored_tool$stored_cfg" in
+			*\\*) return 1 ;;
+		esac
 		local cur_cfg cur_tool
 		cur_cfg=$(codex_entry_config_digest | $sha_bin 2>/dev/null | codex_entry_sha_extract) || return 1
 		[ "${#cur_cfg}" -eq 64 ] || return 1
@@ -583,10 +610,16 @@ END { exit (any && !bad) ? 0 : 1 }
 	# command before exec and strands the marker for the whole bucket with no
 	# review behind it. An unopenable log routes through the /dev/null arm —
 	# the Go kick's log failure is best-effort and never stops the kick.
-	local log_dir="$root/.moai/logs"
+	# (C1) non-regular log paths are rejected BEFORE the probe: opening a
+	# FIFO for write blocks in the foreground until a reader appears (repro
+	# exit 124) — the hook would hang to its 30s budget with the marker
+	# stranded. A missing path passes (the probe creates it); directories and
+	# FIFOs take the /dev/null arm.
+	local log_dir="$root/.moai/logs" log_target
+	log_target="$log_dir/codex-review-bg.log"
 	mkdir -p "$log_dir" 2>/dev/null
-	if ( : >>"$log_dir/codex-review-bg.log" ) 2>/dev/null; then
-		"$moai_bin" verify codex-review --project-root "$root" >>"$log_dir/codex-review-bg.log" 2>&1 &
+	if { [ ! -e "$log_target" ] || [ -f "$log_target" ]; } && ( : >>"$log_target" ) 2>/dev/null; then
+		"$moai_bin" verify codex-review --project-root "$root" >>"$log_target" 2>&1 &
 	else
 		"$moai_bin" verify codex-review --project-root "$root" >/dev/null 2>&1 &
 	fi
