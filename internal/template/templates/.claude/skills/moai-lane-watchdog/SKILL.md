@@ -194,7 +194,7 @@ its work.
   document is never the board.
 - **Codex step ⑤**: no session-messaging tool exists there — cross-harness
   notice rides the queue-on-disk delegation channel (the moai MCP broker
-  tools were removed in card t1908); the wait reason is recorded on disk
+  tools were removed); the wait reason is recorded on disk
   either way.
 
 ## 5. Decision records
