@@ -145,7 +145,7 @@ docs_scope: "CHANGELOG entry + this §E.4 signal; no README/docs-site 4-locale s
 repository_wide_ci: "PENDING — deferred to batch CI (carried Gap from §E.3, leader rule 35e9)"
 ```
 
-- 2026-10-21 re-close record — amendment S1/S2/S3 fixed and re-audited PASS (sync-audit round 3 verdict PASS, `.moai/reports/t1832/sync-audit-3.md`, audited_sha 776965cfe0 = this tree's HEAD 776965cfe02846505bbe30f577de65bd769e2eee); spec.md status re-transitioned in-progress → completed on the re-close sync commit per the 3-phase close contract; sync_commit_sha: pending-backfill
+- 2026-10-21 re-close record — amendment S1/S2/S3 fixed and re-audited PASS (sync-audit round 3 verdict PASS, `.moai/reports/t1832/sync-audit-3.md`, audited_sha 776965cfe0 = this tree's HEAD 776965cfe02846505bbe30f577de65bd769e2eee); spec.md status re-transitioned in-progress → completed on the re-close sync commit per the 3-phase close contract; sync_commit_sha: 12830b0cb5   # backfilled from the D3 placeholder — the re-close sync commit cannot cite its own hash
 
 ## §G Override and Refusal Record
 
