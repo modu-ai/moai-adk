@@ -11,26 +11,35 @@ package config
 
 import "strings"
 
-// The allowed workflow values (REQ-GWS-001). Exactly four; `trunk-based` is
-// deliberately EXCLUDED by operator decision — a user who sets it gets the
-// invalid-value diagnostic, which is where they discover the exclusion.
+// The allowed workflow values (REQ-GWS-001; agentic-trunk appended by
+// SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 REQ-AGT-001). Exactly five;
+// `trunk-based` is deliberately EXCLUDED by operator decision — a user who
+// sets it gets the invalid-value diagnostic, which is where they discover
+// the exclusion.
 const (
-	WorkflowGitHubFlow  = "github-flow"
-	WorkflowGitFlow     = "git-flow"
-	WorkflowGitLabFlow  = "gitlab-flow"
-	WorkflowReleaseFlow = "release-flow"
+	WorkflowGitHubFlow   = "github-flow"
+	WorkflowGitFlow      = "git-flow"
+	WorkflowGitLabFlow   = "gitlab-flow"
+	WorkflowReleaseFlow  = "release-flow"
+	WorkflowAgenticTrunk = "agentic-trunk"
 )
 
 // githubFlowFixedTarget is github-flow's integration target: the fixed
 // default main. github-flow reads no config key for its target.
 const githubFlowFixedTarget = "main"
 
-// AllowedWorkflows returns the exactly-four allowed workflow values, in
+// agenticTrunkFixedTarget is agentic-trunk's integration target: the fixed
+// default main (REQ-AGT-003). Like github-flow it reads no config key — the
+// develop_branch, environment, release_branch_prefix and main_branch keys
+// change nothing.
+const agenticTrunkFixedTarget = "main"
+
+// AllowedWorkflows returns the exactly-five allowed workflow values, in
 // their canonical order. Consumers must classify through
 // ClassifyWorkflowDisposition rather than re-deriving membership from this
 // slice, so validation has one source of truth.
 func AllowedWorkflows() []string {
-	return []string{WorkflowGitHubFlow, WorkflowGitFlow, WorkflowGitLabFlow, WorkflowReleaseFlow}
+	return []string{WorkflowGitHubFlow, WorkflowGitFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAgenticTrunk}
 }
 
 // WorkflowDisposition is the three-way classification of a
@@ -54,10 +63,10 @@ const (
 
 // ClassifyWorkflowDisposition classifies a raw workflow value. Matching is
 // exact and case-sensitive — the pre-existing git-flow discriminator was
-// case-sensitive, and generalizing to the allowed set keeps that contract.
-// An empty string classifies invalid (an empty value present), but the
-// loader only calls this when an active profile exists, so the zero
-// disposition stays reserved for "unknown".
+// case-sensitive, and generalizing to the allowed set keeps that contract
+// (agentic-trunk included, REQ-AGT-002). An empty string classifies invalid
+// (an empty value present), but the loader only calls this when an active
+// profile exists, so the zero disposition stays reserved for "unknown".
 //
 // @MX:NOTE: [AUTO] the 3-way disposition SSOT — every consumer of
 // git_strategy.<mode>.workflow classifies through here, never by re-matching
@@ -66,7 +75,7 @@ func ClassifyWorkflowDisposition(value string) WorkflowDisposition {
 	switch value {
 	case WorkflowGitFlow:
 		return DispositionGitFlow
-	case WorkflowGitHubFlow, WorkflowGitLabFlow, WorkflowReleaseFlow:
+	case WorkflowGitHubFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAgenticTrunk:
 		return DispositionValidNonGitFlow
 	default:
 		return DispositionInvalid
@@ -91,6 +100,8 @@ func WorkflowIntegrationTarget(workflow string, profile ModeProfile) string {
 	switch workflow {
 	case WorkflowGitHubFlow:
 		return githubFlowFixedTarget
+	case WorkflowAgenticTrunk:
+		return agenticTrunkFixedTarget
 	case WorkflowGitFlow:
 		return strings.TrimSpace(profile.DevelopBranch)
 	case WorkflowGitLabFlow:

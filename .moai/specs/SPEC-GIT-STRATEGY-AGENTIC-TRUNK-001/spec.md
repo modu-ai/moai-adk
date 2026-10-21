@@ -2,9 +2,9 @@
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial local landing -> batch PR -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
