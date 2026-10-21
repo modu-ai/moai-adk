@@ -11,10 +11,13 @@ package cli
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -155,6 +158,88 @@ func TestFactoryLeaseRecordContentionClassRefusalToken(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "held the record") {
 		t.Errorf("the refusal detail does not name the record lock: %q", stderr)
+	}
+}
+
+// TestFactoryLeaseSerialSlotRefusalLineByteStable — AC-FLB-005 and AC-FLB-007
+// (slot-hold arm): the serial-slot decision site — the in-memory slot check
+// (factorySerialInFlightExcluding) — keeps its `serial-slot` token, its
+// byte-identical line, exit 4, and attributes no race loss to the outcome (no
+// `raced` token, no "another lane" wording).
+func TestFactoryLeaseSerialSlotRefusalLineByteStable(t *testing.T) {
+	c := nmCaseByName(t, "serial-slot")[0]
+	root, store, nominee := c.prepare(t)
+	before := nmSnapshot(t, root, store)
+	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", nominee)
+	nmAssertRefused(t, "", stderr, err, "serial-slot")
+	want := "factory next: refused serial-slot: another serial card is in flight and holds the serial slot"
+	if strings.TrimSpace(stderr) != want {
+		t.Errorf("the serial-slot refusal line drifted:\n got %q\nwant %q", strings.TrimSpace(stderr), want)
+	}
+	if strings.Contains(stderr, "raced") || strings.Contains(stderr, "another lane") {
+		t.Errorf("the serial-slot outcome carries a race claim: %q", stderr)
+	}
+	if after := nmSnapshot(t, root, store); after != before {
+		t.Errorf("the refused nomination changed the store state (before %q, after %q)", before, after)
+	}
+}
+
+// TestFactoryLeasePreservedRefusalLinesByteStable — AC-FLB-004: the preserved
+// refusal classes' rendered lines are byte-identical to the pre-change capture
+// recorded in progress.md §E.2 (tree aaab995138; the foreign-worktree line's
+// embedded fixture-root path is normalized — the only environment-derived
+// segment). quota-hold's detail carries fixture-fixed values (usage and reset
+// timestamp), so the whole line is stable.
+func TestFactoryLeasePreservedRefusalLinesByteStable(t *testing.T) {
+	for _, tc := range []struct{ name, want string }{
+		{"quota-hold", "factory next: refused quota-hold: quota hold: five_hour used=92.0% resets_at=2026-09-26T12:00:00Z"},
+		{"backend-skip", "factory next: refused backend-skip: a Codex lane cannot advance a card recorded at merge-ready"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := nmCaseByName(t, tc.name)[0]
+			_, _, nominee := c.prepare(t)
+			_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", nominee)
+			nmAssertRefused(t, "", stderr, err, tc.name)
+			if got := strings.TrimSpace(stderr); got != tc.want {
+				t.Errorf("the %s refusal line drifted:\n got %q\nwant %q", tc.name, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestFactoryNextPeekReadFailureClaimsNoRace — AC-FLB-007 (peek arm): the
+// peek's store-read failures fail open (factoryNextMayLease answers true), and
+// the verb's rendered lines for the attempt claim no race loss for that
+// outcome — no `raced` token, no "another lane" wording (the plain read error
+// is not a refusal and carries no race attribution).
+func TestFactoryNextPeekReadFailureClaimsNoRace(t *testing.T) {
+	root, _ := nmQueuedNominee(t)
+	nmIsolatedWorktrees(t, "t1")
+	// Corrupt the queue store's SQLite artifact so the peek's LoadPure read
+	// fails (the record store is a separate database and stays healthy). The
+	// artifact sits beside the queue file the store resolves for the root.
+	queuePath := factory.BacklogPathForRoot(root)
+	queueDB := filepath.Join(filepath.Dir(queuePath), strings.TrimSuffix(filepath.Base(queuePath), ".json")+".db")
+	if err := os.WriteFile(queueDB, []byte("not a database"), 0o644); err != nil {
+		t.Fatalf("corrupt the queue store: %v", err)
+	}
+	// Precondition: the read failure is real — the peek's own read errors.
+	if _, err := todoStoreAt(root).LoadPure(); err == nil {
+		t.Fatal("the queue read under the corrupt store returned nil, the fixture did not force the peek's read failure")
+	}
+	if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "t1", false) {
+		t.Fatal("the peek answered false under a failed store read, want the fail-open true")
+	}
+	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
+	t.Logf("the attempt under the failed-open peek: err=%v stderr=%q", err, stderr)
+	if err == nil {
+		t.Fatal("the lease succeeded with a corrupt queue store, want a plain read failure")
+	}
+	combined := stderr + err.Error()
+	for _, claim := range []string{"refused raced", "another lane", "claim-deadline", "record-busy"} {
+		if strings.Contains(combined, claim) {
+			t.Errorf("the failed-open peek's outcome carries a race or class claim (%q): %q", claim, combined)
+		}
 	}
 }
 
