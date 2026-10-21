@@ -63,3 +63,16 @@ The operational references to the removed tools in the doctrine/skill/hook surfa
 - The four-locale `operationalStatus` strings changed shape (tool call → run-id caveat); any downstream consumer matching the old leading tool-call syntax verbatim would miss — none found in the test sweep.
 - The managed codex inbox flow remains functionally broken-by-design (claims render, model cannot settle) until the leader rules on the listed item.
 
+---
+
+# Run-A repair addendum — lsel-leak-guard CI failure 39534939821
+
+**Supersession note**: the earlier "all gates re-pass" statements in this verdict measured the tree through `5400c3043c` only; remote CI then FAILED at that head — the lsel-leak-guard (`TestTemplateNoInternalContentLeak`, GitHub run 39534939821) flagged 2 `t1908` card-id occurrences in the template mirrors the chain commit had cleaned the `.claude` copies of but left provenance tokens in. That local-green/remote-red divergence is recorded here; the repair below supersedes the green claim for the template surface.
+
+**Repair** (commit `056e6b97c3`): the two provenance tokens stripped from `internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md` (line 31) and `internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md` (§4); the `.claude` copies keep their card ids per the sanitized-pair fork rules; no baseline entries or allowlist additions. The same commit also removes the stale broker-reading table the chain commit had left only in the detail mirror (12 lines still carrying removed-tool instructions, and the asymmetry that failed `TestSanitizedPairParity` with net one-sided=-9).
+
+**Post-repair verification** (this run): `TestTemplateNoInternalContentLeak` PASS, `TestCardIDBaselineHasNoStaleEntries` PASS, `TestSanitizedPairParity` PASS (`internal/template`, `-count=1`; the parity test first FAILED on the leftover table and went green only after the mirror's stale block was removed — the local red was observed, not assumed).
+
+**Process defect recorded**: the chain commit's mirror edit was incomplete (paragraph replaced, table left), and no `internal/template` test ran before pushing — the local verification batch covered `internal/cli`, `internal/mcp`, and `internal/hook` only. The red surfaced remotely; recurrence guard for this lane: any edit under `internal/template/templates/` runs the `internal/template` suite before commit.
+
+
