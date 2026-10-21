@@ -717,6 +717,17 @@ Verification batch (this tree, this run, at the r6 base HEAD with the repair sou
 
 Authored-By-Agent: manager-develop
 
+#### r6b follow-through — glm_job_cancel update path follows the request root
+
+The r6 report flagged a residual asymmetry in the glm twin: glm_job_cancel READ the record from the request root (l57-r1) but wrote the cancelled-status update through currentGLMJobRegistry() (server-rooted, glm_job_control.go:191) — a cancel naming worktree B updated a server-tree record while _root claimed B. Fixed as the codex F2 mirror: the update hits `newGLMJobRegistry(root)` (the request-resolved root) and the now-unused currentGLMJobRegistry helper is removed.
+
+- RED pin (TestGLMJobCancelUpdatesTheNamedRoot, glm_task_root_test.go — job record under fixture W, cancel naming W): `--- FAIL: TestGLMJobCancelUpdatesTheNamedRoot (0.50s)` / `result status = "running", want "cancelled" — the cancelled-status update must land in the registry the request names` and `record at the named root = "failed", want "cancelled" — the cancel's status update wrote somewhere other than the request root (REQ-MN-004)`. The record read "failed" because the server-rooted update never landed the cancelled guard at W, so the revoked call's goroutine wrote its own terminal status — exactly the un-cancelled-cancel shape the finding predicts.
+- GREEN: `go test ./internal/cli -run 'TestGLMJobCancelUpdatesTheNamedRoot' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli`.
+- Batch (this tree, this run, r6b sources): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/cli -run 'TestGLMJob|TestGLMTask' -count=1` → ok 10.296s; `go test ./internal/cli -run 'TestCodexJob|TestCodexTask|TestCodexRoleAudit' -count=1` → ok 15.477s; `go test ./internal/auditreceipt -count=1` → ok 3.981s; `go vet ./internal/cli` → clean; `golangci-lint run internal/cli/... internal/auditreceipt/...` → exactly the 1 pre-existing errcheck (mcp_server_call_log.go:123), zero new; the six r6+r6b pin selectors (TreeState dangling-symlink, codex producer/consumer root, glm producer/consumer root, glm cancel update) in one run → ok.
+- Full-suite note: repository-wide verdict owned by the integration-branch CI run, PENDING at report time. Push state: nothing pushed.
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true

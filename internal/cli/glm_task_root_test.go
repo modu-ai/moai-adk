@@ -9,6 +9,7 @@ package cli
 
 import (
 	"testing"
+	"time"
 )
 
 // The fixture needs a repository: the caller's root must be a registered
@@ -57,5 +58,43 @@ func TestGLMJobStatusReadsTheNamedRoot(t *testing.T) {
 	res := callGLMJobTool(t, handleGLMJobStatus, map[string]any{"job_id": jobID, "project_root": fx.W})
 	if res.IsError {
 		t.Fatalf("glm_job_status could not read the job record at the root glm_task wrote it to: %s", resultText(res))
+	}
+}
+
+// TestGLMJobCancelUpdatesTheNamedRoot pins the cancel's WRITE half of the same
+// rule (r6b): the cancelled-status update must land in the registry the
+// request names — the same one the record was read from. A cancel naming
+// worktree B whose update routes to the server's tree P leaves the record at B
+// uncancelled while _root claims B (the defect shape r6 fixed for the codex
+// family's update path).
+func TestGLMJobCancelUpdatesTheNamedRoot(t *testing.T) {
+	fx := newUntrackedFixture(t, wtWorkflowNoGate)
+	doer := newBlockingGLMDoer()
+	withGLMTaskSeams(t, "k", doer)
+	withCodexProjectDir(t, fx.P) // stamped last: the server is rooted at P
+	withShortGLMCancelGrace(t, 5*time.Second)
+
+	// The record lives under W — the root the request named (the producer half
+	// is pinned above).
+	jobID := startBackgroundGLMJobWithEndedRequest(t, fx.W, "cancel parity probe")
+	t.Cleanup(func() {
+		doer.unblock()
+		waitForGLMJobToStop(t, jobID)
+	})
+
+	res := callGLMJobTool(t, handleGLMJobCancel, map[string]any{"job_id": jobID, "project_root": fx.W})
+	if res.IsError {
+		t.Fatalf("cancelling a running job this server owns must not error: %s", resultText(res))
+	}
+	got := structuredMap(t, res)
+	if st, _ := got["status"].(string); st != glmJobStatusCancelled {
+		t.Errorf("result status = %q, want %q — the cancelled-status update must land in the registry the request names", st, glmJobStatusCancelled)
+	}
+	rec, err := newGLMJobRegistry(fx.W).load(jobID)
+	if err != nil {
+		t.Fatalf("load the record under the named root: %v", err)
+	}
+	if rec.Status != glmJobStatusCancelled {
+		t.Errorf("record at the named root = %q, want %q — the cancel's status update wrote somewhere other than the request root (REQ-MN-004)", rec.Status, glmJobStatusCancelled)
 	}
 }

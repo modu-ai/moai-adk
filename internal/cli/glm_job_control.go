@@ -187,8 +187,11 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// while the cancellation is in flight would otherwise write completed or
 	// failed over the cancel; runGLMBackgroundJob keeps a cancelled status
 	// untouched, and this ordering is what puts the status there in time for
-	// that guard to see it.
-	if updated, err := currentGLMJobRegistry().update(rec.ID, func(r *GLMJobRecord) {
+	// that guard to see it. The update hits the REQUEST-resolved root — the
+	// same registry the record was just read from (r6b: producer and consumer
+	// resolve the same root rule; a server-rooted update left the record at the
+	// named root uncancelled while _root claimed it).
+	if updated, err := newGLMJobRegistry(root).update(rec.ID, func(r *GLMJobRecord) {
 		r.Status = glmJobStatusCancelled
 	}); err != nil {
 		out.Error = err.Error()
@@ -212,11 +215,6 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 }
 
 // ─── shared helpers ───
-
-// currentGLMJobRegistry returns the registry rooted at the current project.
-func currentGLMJobRegistry() *glmJobRegistry {
-	return newGLMJobRegistry(projectDirResolver())
-}
 
 // loadGLMJobFor reads the job named by the request's job_id argument from the
 // REQUEST's project root (t1632 / REQ-MN-004): glm_task creates the record
