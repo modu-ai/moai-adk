@@ -700,3 +700,19 @@ func TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically(t *te
 			controlLock.Branch, controlLock.BranchSource, lock.Branch, lock.BranchSource)
 	}
 }
+
+// TestCurrentBranchSurvivesTagSharingTheBranchName — card t1928. With a tag
+// named like the checked-out branch, `rev-parse --abbrev-ref HEAD`
+// disambiguates to heads/<branch>: the acquire fallback would record a branch
+// that names no refs/heads/ entry, and the `factory merge ready` fallback
+// feeds the value into the merge-readiness triple's conflict and
+// tree-identity checks (card t1834's F3). The read must be the branch itself.
+func TestCurrentBranchSurvivesTagSharingTheBranchName(t *testing.T) {
+	repo, _ := scratchRepo(t)
+	gitRun(t, repo, "tag", "main") // a tag shadowing the checked-out branch's name
+	chdirRepo(t, repo)
+
+	if branch := currentBranch(); branch != "main" {
+		t.Fatalf("currentBranch = %q, want main (heads/main is the --abbrev-ref disambiguation this read must not carry)", branch)
+	}
+}
