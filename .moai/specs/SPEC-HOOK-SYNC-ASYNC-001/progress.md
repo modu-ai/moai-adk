@@ -91,6 +91,28 @@ Probe matrix 28 subtests, all green: `go test ./internal/cli/ -run 'TestCodexEnt
 pre-existing paths.go findings, 0 new; template registration `ok ... 0.498s`; wrapper pair
 `cmp` byte-identical; boundary grep 0.
 
+### Repair round 3 (final) — F8/F9/D1 (2026-10-22, commits d9eac8ba09 + d749cc7256)
+
+Sources: `.moai/reports/t1913/card-review.md` review 3 (F8/F9 — codex re-review ceiling
+reached) + `.moai/reports/t1913/sync-audit-r3.md` (FAIL 9.00/10 — round-2 C1/C2/F7 verified
+REPAIRED, zero blocking; D1 [P3] the required gate's new finding). RED-first — all five new
+probe cases observed failing on the pre-repair wrapper. Fixture note: the two SKIP cases
+initially carried a no-`-g` stub stamp whose R5 fall-through made them vacuous; corrected to
+the kick-capable `-g<HEAD>` stamp before the RED observation (the RED below is the
+corrected fixture's).
+
+| # | Repair | RED (pre-repair, tree 8141159e36) | GREEN (this run, tree d749cc7256) |
+|---|--------|-----------------------------------|------------------------------------|
+| F8 | tree_scope/primary_scope values normalize like the Go readers — EqualFold(TrimSpace) — before the literal compare | `tree_scope_SKIP (forward=0 kick=1) != want (forward=1 kick=0)`; `quoted-space (forward=0 kick=1) != want (forward=1 kick=0)`; `primary_scope_REVIEW (forward=1 kick=0) != want (forward=0 kick=1)` | all three: exit 0 with the Go-mirrored disposition (variants fall through; the restored primary kicks) |
+| F9 | an empty cwd no longer ends the session-dir chain — project_dir is still consulted (reviewScopeSessionDir chain complete) | `empty_cwd (forward=0 kick=1) != want (forward=1 kick=0)` — the shell proceeded on the wrong tree | `forward=1 kick=0`, exit 0 |
+| D1 | the F7 awk counts review-command entries and requires EXACTLY ONE in its END predicate — a duplicate-command document reads receipt-ABSENT (cache-miss) instead of last-match-wins (Go FindCommand reads the FIRST) | `duplicate_command_entries (forward=1 kick=0) != want (forward=0 kick=1)` — the shell read the LAST (fail) entry | `forward=0 kick=1`, exit 0 |
+
+Probe matrix 33 subtests, all green: `go test ./internal/cli/ -run 'TestCodexEntryFastpath'
+-count=1` → `ok ... 24.778s`, exit 0 (post-commit, tree d749cc7256). Companion: builds
+(native + GOOS=windows) exit 0; vet exit 0; gofmt clean; golangci-lint = the same 2
+pre-existing paths.go findings, 0 new; template registration `ok ... 0.465s`; wrapper pair
+`cmp` byte-identical; boundary grep 0.
+
 ### M4 + M5 — async conversions (2026-10-21, commits 603ad65bb9 + a29a17cbeb + 4a0fa991ed)
 
 TDD order observed: RED captured before each implementation commit. M4 RED — the
