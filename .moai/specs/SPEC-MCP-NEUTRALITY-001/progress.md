@@ -515,6 +515,45 @@ Verification batch at HEAD 8f22e6401 (this tree, this run):
 
 Authored-By-Agent: manager-develop
 
+### Lane-57 sync-audit r1 repair round — l57-r1 F1–F4 (card t1632, branch WT-3-2-0-2)
+
+Commit: `64f8ce1fd6` (fix(t1632): lane-57 sync-audit r1 repairs — audit-leg env marker, glm job root, expired-claim inbox, path-based staleness). Base: the r9 evidence head `b094733f97`. Audit receipt: `rcpt-99ea6bee74f2473b25362a18` (`.moai/reports/t1632/sync-audit-l57-r1.md`, codex_audit target=baseBranch mode=native, FAIL 4건). Note: the WIP of an interrupted session carried most of these repairs already; this round completed F2's three consumer call sites and captured the honest RED evidence per finding.
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 [P1] audit-leg env marker lost through the scrub (mcp_codex.go) | FIXED — `realCodexSessionRunner.start` re-appends `MOAI_CODEX_AUDIT_LEG=1` from the leg CONTEXT after the `codexChildEnv()` scrub; identity keys stay dropped | `go test ./internal/cli -run '^TestRealCodexSessionRunnerScrubRetainsAuditLegMarker$' -count=1 -timeout 120s` | GREEN: `--- PASS ... (0.22s)` / `ok internal/cli` |
+| F2 [P2] glm job family ignored the requested project_root (glm_task.go + glm_job_control.go) | FIXED — producer roots the background job registry at the validated `glmRoot`; the three consumers (`glm_job_status`/`result`/`cancel`) pass the request-resolved root into `loadGLMJobFor` (REQ-MN-004 create/read parity) | `go test ./internal/cli -run '^(TestGLMTaskBackgroundJobRecordLandsUnderNamedRoot\|TestGLMJobStatusReadsTheNamedRoot)$' -count=1` | GREEN: both `--- PASS`, `ok internal/cli` |
+| F3 [P2] expired-claim messages invisible in PendingList (factorymsg/store.go) | FIXED — the query now renders `state='pending' OR (state='claimed' AND claim_expires_at<=now)`; a LIVE claim stays excluded (PendingCount parity, REQ-MN-011) | `go test ./internal/factorymsg -run '^TestPendingListIncludesExpiredClaim$' -count=1` and full package `go test ./internal/factorymsg -count=1` | GREEN: `--- PASS` / full package `ok ... 52.185s` |
+| F4 [P2] staleness judged by executable PATH (mcp_server_runtime.go) | FIXED — freshness judges build identity (size+mtime from the start-time capture), never the PATH; an in-place reinstall still moves size or mtime | `go test ./internal/cli -run '^TestServerStaleness_SameBuildAtDifferentPathReadsFresh$' -count=1` | GREEN: `--- PASS` / `ok internal/cli` |
+
+E8 RED evidence (each pinning test run against its pre-fix code; the single implementation file reverted to HEAD with the WIP copy backed up and restored byte-identically after capture, `git diff --stat` verified before/after):
+
+- F1 RED (`go test ./internal/cli -run '^TestRealCodexSessionRunnerScrubRetainsAuditLegMarker$' -count=1 -timeout 120s`, mcp_codex.go at HEAD, exit 1):
+  `--- FAIL: TestRealCodexSessionRunnerScrubRetainsAuditLegMarker (0.22s)` / `codex_audit_leg_test.go:199: the scrubbed child environment lost the audit-leg marker (got "", want "1") — the leg's Stop chain re-runs its verification members (t1754)`
+- F2 producer RED (glm_task.go + glm_job_control.go at HEAD, `go test ./internal/cli -run '^TestGLMTaskBackgroundJobRecordLandsUnderNamedRoot$|^TestGLMJobStatusReadsTheNamedRoot$' -count=1 -timeout 120s`; exit code not separately captured — output was piped through `tee`, the package FAIL is in the verbatim output):
+  `--- FAIL: TestGLMTaskBackgroundJobRecordLandsUnderNamedRoot (0.21s)` / `glm_task_root_test.go:34: background glm_task with project_root=/private/var/.../002/W wrote no job record under the named root: glm job not found: job-20261021T065825Z-73da2b5c`
+  (TestGLMJobStatusReadsTheNamedRoot alone does NOT go red on the full pre-fix pair — pre-fix producer and consumer both used the server tree, so the pair agreed wrongly; the test comment states this.)
+- F2 consumer RED (producer fixed, glm_job_control.go at HEAD, `go test ./internal/cli -run '^TestGLMJobStatusReadsTheNamedRoot$' -count=1 -timeout 120s`, exit 1):
+  `--- FAIL: TestGLMJobStatusReadsTheNamedRoot (0.23s)` / `glm_task_root_test.go:59: glm_job_status could not read the job record at the root glm_task wrote it to: glm_job_status: no job record for id job-20261021T065911Z-fe8542d3`
+- F3 RED (store.go at HEAD, `go test ./internal/factorymsg -run '^TestPendingListIncludesExpiredClaim$' -count=1 -timeout 120s`, exit 1):
+  `--- FAIL: TestPendingListIncludesExpiredClaim (0.03s)` / `pending_list_test.go:54: PendingList after the claim lease = []; want the expired-claim row rendered as pending (the hook's empty-inbox path hid a redeliverable message)`
+- F4 RED (mcp_server_runtime.go at HEAD, `go test ./internal/cli -run '^TestServerStaleness_SameBuildAtDifferentPathReadsFresh$' -count=1 -timeout 120s`, exit 1):
+  `--- FAIL: TestServerStaleness_SameBuildAtDifferentPathReadsFresh (0.00s)` / `mcp_server_staleness_test.go:95: an identical build at a different PATH location judged the current server stale: {Stale:true Serving:.../moai-serving Installed:.../moai-installed Version:v3.1.3 Commit:none}`
+
+GREEN (the four pinning tests, one selector run): `go test ./internal/cli -run '^(TestRealCodexSessionRunnerScrubRetainsAuditLegMarker|TestGLMTaskBackgroundJobRecordLandsUnderNamedRoot|TestGLMJobStatusReadsTheNamedRoot|TestServerStaleness_SameBuildAtDifferentPathReadsFresh)$' -count=1 -timeout 180s -v` → exit 0, 4/4 `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 2.090s`.
+
+Verification batch (this tree, this run — run on the working tree whose staged content is commit `64f8ce1fd6`, no source file changed between the last test run and the commit):
+
+- Builds: `go build ./...` → `NATIVE_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WINDOWS_BUILD_EXIT=0`.
+- Affected families, all `-count=1` exit 0: `^TestCodexTask` → `ok internal/cli 11.550s`; `TestGLMTask|TestGLMJob` → `ok internal/cli 8.318s`; `TestServerStaleness|TestMCPServerRuntimeDir|TestCodexAuditEnvAllowlist` → `ok internal/cli 1.154s`; `TestAuditLeg` → `ok internal/cli 0.889s`; `^TestCodexAudit` → `ok internal/cli 25.130s`; `./internal/factorymsg` full package → `ok ... 52.185s`.
+- `go vet ./internal/cli ./internal/factorymsg` → clean (`VET_CLEAN_EXIT=0`).
+- `golangci-lint run ./internal/cli/... ./internal/factorymsg/...` → exit 1 with exactly the 4 pre-existing errcheck in internal/cli (factory_run_adopt.go:79/91/103, mcp_server_call_log.go:123) — `4 issues: errcheck: 4`, ZERO new.
+- No timing-sensitive flake observed in any run; no re-run needed.
+- Full-suite note: the repository-wide test verdict is owned by the CI run on the project's integration branch and is PENDING at report time (lane-local targeted selectors only, per the standing batch surface).
+- Push state: nothing pushed (the lane owns push). progress.md evidence block follows the prior rounds' separate docs-commit pattern (fix commit → `docs(...): E.2` evidence commit).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
