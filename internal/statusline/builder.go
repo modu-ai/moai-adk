@@ -294,6 +294,13 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		// the anchored root, so a session that cd'd elsewhere still sees the
 		// project's goal state.
 		data.GoalArmed = resolveGoalArmed(resolveStateAnchor(input), input.SessionID)
+
+		// The workflow label (card t1831, REQ-AGT-013) reads the same
+		// anchored root — config follows state, the same rule the config-root
+		// seam states — through the validated reader. One small yaml read, no
+		// git process; an empty answer withholds the label and the render
+		// stays byte-identical.
+		data.WorkflowLabel = resolveWorkflowLabel(resolveStateAnchor(input))
 	}
 
 	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)

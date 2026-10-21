@@ -332,6 +332,14 @@ type StatusData struct {
 	// the directive text is omitted. Default false → markers shown (backward
 	// compat). Populated by the builder from the goal state file.
 	GoalArmed bool
+
+	// WorkflowLabel is the git-strategy workflow the active profile reads at
+	// the state-anchored root, shown in parentheses after the branch segment
+	// (card t1831, REQ-AGT-013). Empty — the label withheld — for github-flow,
+	// an absent or unreadable config, and an invalid value, so those renders
+	// stay byte-identical to the pre-label bar. One small yaml read; the
+	// provider spawns no git process.
+	WorkflowLabel string
 }
 
 // WorkspaceData mirrors the subset of stdin workspace.* fields that the

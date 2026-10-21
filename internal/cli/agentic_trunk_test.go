@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/closure/closuretest"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -525,4 +526,27 @@ func TestAgenticTrunkPushCheckIntegration(t *testing.T) {
 			t.Fatalf("out = %q, want the evaluated SPEC named", out)
 		}
 	})
+}
+
+// ─── REQ-AGT-012 — the doctor row (AC-AGT-011) ───
+
+// TestAgenticTrunkDoctor is AC-AGT-011: the doctor check "Git Strategy
+// Workflow" reports OK for manual agentic-trunk and its message names the
+// flow, the integration target main, and the standing-branch interpretation
+// (serial, batch).
+func TestAgenticTrunkDoctor(t *testing.T) {
+	root := t.TempDir()
+	writeGitStrategyBody(t, root, "git_strategy:\n    mode: manual\n    worktree_base_branch: main\n    manual:\n        workflow: agentic-trunk\n")
+	check := checkGitStrategyWorkflow(root, false)
+	if check.Status != uikit.CheckOK {
+		t.Fatalf("status = %v, want OK (message %q)", check.Status, check.Message)
+	}
+	for _, token := range []string{"agentic-trunk", "main", "serial", "batch"} {
+		if !strings.Contains(check.Message, token) {
+			t.Errorf("doctor message does not name %q: %q", token, check.Message)
+		}
+	}
+	if !strings.Contains(check.Message, "integration target: main") {
+		t.Errorf("doctor message does not name the resolved target: %q", check.Message)
+	}
 }
