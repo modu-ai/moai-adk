@@ -92,7 +92,7 @@ residual_risk: TestFactoryLeaseQueueLockStallBounded is marginally timed for a l
 
 sync_status: complete
 sync_complete_at: 2026-10-22
-sync_commit_sha: pending-backfill
+sync_commit_sha: 441d84ade3
 sync_commit_subject: docs(SPEC-CARD-METADATA-VERBS-001): sync — changelog, E.4 signal, 3-phase close (card t1840)
 backfill_commit_subject: docs(SPEC-CARD-METADATA-VERBS-001): backfill sync_commit_sha (card t1840)
 ac_source: .moai/specs/SPEC-CARD-METADATA-VERBS-001/acceptance.md
