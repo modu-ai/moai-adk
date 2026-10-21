@@ -173,6 +173,10 @@ occupied, and the tool refuses rather than steals. (Incident 2026-10-21: a `main
 integration worktree silently detached the primary, which then sat 559 commits behind local
 `main` while runtime-state drift accumulated for four days.)
 
+**WT worktrees live only under `.moai/worktrees/`** — created by `moai worktree new`. `.claude/worktrees/`
+stays reserved for the Claude runtime's own ephemeral `agent-*` isolation trees (behavior unchanged); a
+runtime tree adopted for card work is renamed to `WT-` in place and stays where its creator put it.
+
 **Three traceability carriers are then mandatory**, because the branch name no longer identifies
 the card: the dispatch's `card:` field, the card id in every commit message on the branch, and the
 card id in the evidence path (`.moai/reports/<card-id>/verdict.md`).
