@@ -49,6 +49,8 @@ M7 pre-edit counts — taken early at the leader's request, 2026-10-22 00:3x KST
 
 긴급 착지 절차 추가 — leader directive 2026-10-22 ~05:4x KST (auto-merge incident, operator merge hold in effect): EVERY pull request this lane opens is converted to draft immediately after creation (`gh pr ready <n> --undo`), neutralizing any auto-merge request; merges are the leader's alone. This applies to this card's landing (factory complete → PR) because the currently installed binary still carries the pre-M5b `--auto` request at factory_card_pr.go:444 — the M5b removal takes effect only after M6's rc install. The step is consistent with this SPEC's own design (the --auto removal) and stays in force until the leader lifts the hold.
 
+[방침 갱신, 이전 지시 대체] — leader directive 2026-10-22 ~05:5x KST: the draft-undo step cannot guarantee blocking before the auto-merge request is issued, so the COMPLETE/LANDING STEP ITSELF is SUSPENDED — the old-build `complete` hardcodes `--auto` (factory_card_pr.go:444) and cannot be split. Permitted during the hold: repairs, tests, push, and creating pull requests as draft FROM THE START. FORBIDDEN: any call of the old-build `moai factory complete` until the hold lifts. Effect on this card: the lane's landing step is deferred — consistent with the existing M6-signal wait (M7/card-review/sync precede landing anyway); when the hold lifts, the landing runs either under the M6-installed rc.38+ binary (where the M5b code path issues NO merge request) or under an explicit leader authorization.
+
 ## §E.2 Run-phase Evidence
 
 ### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
