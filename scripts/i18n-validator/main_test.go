@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -496,28 +495,9 @@ func TestIsExcluded_MatchesRootRelativePath(t *testing.T) {
 func TestBudget_TimeoutExitOnExcess(t *testing.T) {
 	t.Parallel()
 
-	// Create a synthetic corpus with many files to trigger timeout.
-	// Use unique filenames so all 100 files are written (previous "i%10"
-	// pattern caused name collisions and only 10 unique files were emitted,
-	// which left the 1ns budget able to finish in time on fast runners).
 	dir := t.TempDir()
-	for i := range 100 {
-		name := filepath.Join(dir, fmt.Sprintf("file_%03d_test.go", i))
-		_ = os.WriteFile(name, []byte(`package foobar_test
-
-import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-)
-
-func TestX(t *testing.T) {
-	assert.Equal(t, "msg", "msg")
-}
-`), 0o644)
-	}
-
-	// Run with a near-zero budget to force timeout
-	result := runWithBudget(dir, 1*time.Nanosecond)
+	neverFires := func(time.Duration) <-chan time.Time { return nil }
+	result := runWithBudgetAfter(dir, 1*time.Nanosecond, neverFires)
 	if result.ExitCode != 4 {
 		t.Errorf("expected exit code 4 for budget exceeded, got %d", result.ExitCode)
 	}

@@ -1,6 +1,19 @@
 # 패키지 모듈 상세
 
-## 현재 최종 통합 트리의 책임 — e65b3b
+## PR #1828 후보 트리의 모듈 책임
+
+측정 기준은 당시 remote HEAD `ab609cafbf8f421164100c626db93048f888655f`와 t1868 작업트리에 반영된 lane 수리다. 아래 책임은 소스에서 확인했으며 실제 GitHub 자동 병합 성공을 주장하지 않는다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/config/required_checks.go` | `LoadRequiredChecks`가 `.github/required-checks.yml`을 읽어 branch별 contexts, release-gate subset, auxiliary contexts를 제공한다. `IsAuxiliary`는 advisory context 분류를 맡는다. |
+| `internal/cli/integration_candidate.go` | 후보 branch에 맞는 required-check SSoT를 읽고 관측한 단일 run과 attempt의 jobs만 판정한다. 누락 context·읽기 오류는 green으로 만들지 않는다. |
+| `internal/hook/session_start_factory_i18n.go` · `internal/hook/session_start_factory.go` | self-dispatch lane의 다음 카드 규칙을 네 로케일로 제공하고 startup에 주입한다. Claude/GLM 규칙은 유지하고 GPT owned-card 규칙과 겹치는 재개·임대 설명을 반복하지 않는다. |
+| `.github/workflows/auto-merge.yml` · `scripts/ci/codex-review-gate.sh` | 성공한 CI workflow run에서 PR head를 다시 확인한 뒤 전체 native review 입력을 읽는다. gate는 공식 Codex bot 신원, exact-head summary, 유형별 code/security receipt, 완료·clean 상태와 미해결 finding을 별도로 판정한다. |
+
+이 PR의 Go 변경은 기존 `internal/config`와 `internal/hook` 패키지 안에 머문다. 모듈 패키지나 외부 dependency를 추가하지 않았다. 전체 측정치는 `.moai/project/codemaps/overview.md`의 현재 측정 트리를 따른다.
+
+## 이전 최종 통합 트리의 책임 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 앞선840826의 소스34개 수정 설명에 외부 main의 Go13경로 변화를 대조했다. 이번 창에서 비테스트 파일7개가 바뀌었고(수정6·추가1), 새 패키지는 없다. 추가된 비테스트 파일은 codex_review_cache.go다. 다음 표는 소스 책임을 설명하며 런타임 보장으로 확대하지 않는다.
 

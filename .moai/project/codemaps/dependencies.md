@@ -1,6 +1,12 @@
 # 의존성 그래프
 
-## t1469 판의 의존성 — main 흡수 병합 트리
+## PR #1828 후보 트리 스냅샷의 의존성
+
+`go list -deps -json ./...`를 t1868 후보 작업트리에서 읽었다. 저장소 내부 package import 쌍은 519개이고 최상위 모듈 경계로 접어 self-edge를 뺀 고유 쌍은 325개다. 이 snapshot은 176개 package와 90개 최상위 디렉터리(`internal` 86·`cmd` 2·`pkg` 2)를 포함한다. 이전 t1469의 174/512/320과 파일 inventory를 현재치로 혼용하지 않는다.
+
+PR #1828의 Go diff는 `internal/config/required_checks.go`에 `ReleaseGate` 데이터 필드를 더하고 `internal/hook/session_start_factory_i18n.go`의 메시지를 갱신한다. 둘 다 기존 package에 머물고 import 문을 추가하지 않는다. `scripts/ci/codex-review-gate.sh`와 `.github/workflows/auto-merge.yml`은 Go package graph 밖의 CI 실행 경로이며 Go dependency edge를 만들지 않는다. 파일·package 수와 호출 관계는 overview/modules의 현재 작업트리 기준이며, 이 import census만으로 runtime 또는 platform 성공을 추론하지 않는다.
+
+## 이전 t1469 판의 의존성 — main 흡수 병합 트리
 
 기준은 카드 t1469 병합 트리(HEAD `77e296541`, origin/main 흡수 `1f3606d0f` 직후)다. `go list -deps -json ./...`에서 모듈 패키지 174개, 내부 import 512쌍, 최상위 집계 320쌍을 측정했다. 앵커 `e65b3b469`의 170/481/306 대비 패키지 +4(`internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`), 엣지 +31/+14다. 새 의존성은 피드백 참여 파이프라인이 연다 — `internal/bugreport`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/outbox`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/publish`는 `internal/config`를 새로 import 한다(민감정보 마스킹은 기존 `internal/feedback` 스크러버 재사용). `internal/atomicfile`의 신규 bootid·owner·section 파일은 기존 소비자 관계를 바꾸지 않는다. 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다(이번 판의 최상위 fan-in 최상위는 `internal/config` 48·`internal/harness` 25·`internal/cli` 24, fan-out 최상위는 `internal/cli` 167·`internal/hook` 64다).
 

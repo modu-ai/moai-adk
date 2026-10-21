@@ -131,17 +131,7 @@ var factoryLocales = map[string]factoryMessages{
 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		laneJoin:          "Factory Mode: joined the leader's %[2]d-lane run as %[1]s.",
 		laneJoinNoCount:   "Factory Mode: joined the leader's factory run as %[1]s.",
-		laneNextCardRule: "Factory lane next-card rule: this session is a self-dispatch lane. " +
-			"Never remove a card worktree; leave kept ones as they are. " +
-			"From the parent checkout run `moai factory next` (operator-authorized queue promotion); for a card assigned to you, `moai factory next --card <id>` even while sibling assignments sit (t1542). " +
-			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then make the in-session card transition: `ExitWorktree(keep)`, request the next card with `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree path>)`, verify the toplevel, and treat earlier cards' conversation context as non-authoritative; when the completion output tells you to end the session (the relaunch clear policy), end the session instead. " +
-			"Judgments are yours (t1542): `jev_ask` when workflow.jev.enabled is true, else judge from disk evidence and record the decision in the card's progress record — never ask the leader and wait (ladder: .claude/rules/moai/workflow/auto-semantics.md §6). " +
-			"Landing is yours (auto-semantics.md §13, mechanics § The lane's standard landing): verify lane-locally, card-review via `codex_review` scope=card, `moai factory complete` (push, PR, merge observation), " +
-			"CodeRabbit via the commit-status API plus the Merge Risk line, `moai worktree sweep` once remote landing is confirmed; merged-pr closes your queue card. " +
-			"The leader keeps only queue production, dispatch, cross-lane conflicts, slot policy, keep-set gate relay. " +
-			"Tasks: `TaskCreate` the card's stages before the first, `TaskUpdate` at each transition; record completion only when the list shows the end state, or say why not. " +
-			"MCP tools (CLI): `todo_add` (`moai todo add`), `todo_list` (`moai todo`), `factory_next` (`moai factory next`), `factory_stage` (`moai factory stage`), " +
-			"`factory_complete` (`moai factory complete`), `factory_decide` (`moai factory decide`).",
+		laneNextCardRule:  "Factory lane: self-dispatch only. Lease via operator-authorized `moai factory next` from primary; use `--card <id>` for your assignment with siblings pending (t1542). Never remove a card worktree. Plan→run→sync in that tree; integrate, verify locally, run `codex_review` scope=card, then `moai factory complete` (push, PR, observe merge). Trusted native Codex code/security reviews must be complete and current-head bound (full summary SHA, typed `codex-review-receipt:v1` clean receipts matching prefix); unresolved findings or CI-only rows block. Sweep after remote landing. For another card, `ExitWorktree(keep)`, lease from primary, `EnterWorktree(<leased worktree path>)`, verify top-level; prior context is non-authoritative. When completion tells you to end the session for relaunch-clear, end the session. Judge via `jev_ask` if workflow.jev.enabled, else disk evidence; record decisions and do not wait for the leader (auto-semantics §6). Leader retains queue production, dispatch, cross-lane conflicts, slot policy, keep-set relay. Use `TaskCreate` before the first stage and `TaskUpdate` each transition; report completion only at end state. MCP CLI: `todo_add`=moai todo add; `todo_list`=moai todo; `factory_next`=moai factory next; `factory_stage`=moai factory stage; `factory_complete`=moai factory complete; `factory_decide`=moai factory decide.",
 		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in %[2]s — " +
 			"and works in the current worktree. Carry that card to merge-ready: register the card's stages with `TaskCreate` at intake, " +
 			"keep the list current with `TaskUpdate` at each stage transition, record each stage with `moai factory stage`, " +
@@ -197,7 +187,7 @@ var factoryLocales = map[string]factoryMessages{
 			"카드 진행 기록에 결정 기록을 남깁니다. 리더에게 묻고 기다리지 않습니다. 사다리는 .claude/rules/moai/workflow/auto-semantics.md §6 에 있습니다. " +
 			"착지도 레인이 실행합니다(auto-semantics.md §13, mechanics § The lane's standard landing): " +
 			"레인 로컬 검증 → `codex_review` scope=card 카드 리뷰 → `moai factory complete`(push·PR·머지 관측) → " +
-			"CodeRabbit 읽기는 커밋상태 API + Merge Risk 문면 → 원격 착지 확인 후 `moai worktree sweep`. " +
+			"native Codex 리뷰 증거를 확인합니다. 최신 상태 요약과 `codex-review-receipt:v1`이 현재 head를 가리켜야 합니다(요약은 full SHA, receipt는 일치하는 SHA prefix). 코드·보안 리뷰가 모두 완료되고 미해결 finding이 없어야 하며 CI 상태 행만으로 통과 처리하지 않습니다. 원격 착지 확인 후 `moai worktree sweep`을 실행합니다. " +
 			"merged-pr 가 자기 큐 카드를 닫습니다. 리더는 큐 생산·배차·레인 간 충돌·슬롯 정책·keep-set 게이트 전달만 남습니다. " +
 			"태스크 규율: 첫 단계를 시작하기 전에 카드의 실행 단계를 `TaskCreate` 로 등록하고, 단계가 바뀔 때마다 `TaskUpdate` 로 목록을 현재 상태로 유지하며, " +
 			"목록이 종결 상태를 반영할 때만 완료를 기록합니다 — 반영하지 않는다면 그 이유를 명시합니다. " +
@@ -257,7 +247,7 @@ var factoryLocales = map[string]factoryMessages{
 			"カードの進捗記録に決定記録を書きます。リーダーに尋ねて待つことはしません。 ラダーは .claude/rules/moai/workflow/auto-semantics.md §6 にあります。 " +
 			"ランディングもレーンが実行します(auto-semantics.md §13、mechanics § The lane's standard landing): " +
 			"レーンローカル検証 → `codex_review` scope=card のカードレビュー → `moai factory complete`(push・PR・マージ観測) → " +
-			"CodeRabbit の読みはコミットステータス API + Merge Risk 行 → リモート着地確認後に `moai worktree sweep`。 " +
+			"native Codex レビューの証拠を確認します。最新の状態サマリーと `codex-review-receipt:v1` が現在の head を示す必要があります（サマリーは full SHA、receipt は一致する SHA prefix）。コードレビューとセキュリティレビューの両方が完了し、未解決の指摘がないことを確認します。CI のステータス行だけではレビュー通過と判断しません。リモートへの反映を確認した後に `moai worktree sweep` を実行します。 " +
 			"merged-pr が自分のキューカードを閉じます。 リーダーはキュー生産・ディスパッチ・レーン間衝突・スロットポリシー・keep-set ゲート中継のみを保持します。 " +
 			"タスク規律: 最初の段階を始める前にカードの実行段階を `TaskCreate` で登録し、段階が移るたびに `TaskUpdate` で一覧を現在の状態に保ち、 " +
 			"一覧が終了状態を反映しているときにだけ完了を記録します — 反映していない場合はその理由を明示します。 " +
@@ -316,7 +306,7 @@ var factoryLocales = map[string]factoryMessages{
 			"并把决定记录写入卡片进度记录；绝不询问主导会话并等待。 阶梯见 .claude/rules/moai/workflow/auto-semantics.md §6。 " +
 			"落地也由泳道执行（auto-semantics.md §13、mechanics § The lane's standard landing）： " +
 			"泳道本地验证 → `codex_review` scope=card 卡片评审 → `moai factory complete`（push、PR、合并观测） → " +
-			"CodeRabbit 读取用提交状态 API + Merge Risk 行 → 远程落地确认后 `moai worktree sweep`。 " +
+			"请核对 native Codex 评审证据：最新状态摘要和 `codex-review-receipt:v1` 都必须对应当前 head（摘要须有完整 SHA，receipt 的 SHA 前缀须匹配）；代码评审与安全评审都已完成且没有未解决发现。仅凭 CI 状态行不能判定评审通过。确认远程落地后运行 `moai worktree sweep`。 " +
 			"merged-pr 会关闭自己的队列卡。 主导会话只保留队列生产、分发、泳道间冲突、槽位策略与 keep-set 门转发。 " +
 			"任务纪律：在开始第一阶段前用 `TaskCreate` 登记卡片的执行阶段，每次阶段切换时用 `TaskUpdate` 保持列表反映当前状态； " +
 			"仅当列表已反映结束状态时才记录完成 — 否则明确说明原因。 " +

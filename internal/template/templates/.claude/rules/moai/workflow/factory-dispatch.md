@@ -9,7 +9,7 @@ paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claud
 
 > **Loading scope**: Role-gated — delivered by injection, not session-start loading. Factory leader and lane sessions receive this rule's role core through the SessionStart hook (sources startup, clear, compact); the unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive for this full body. The always-loaded stub is `factory-dispatch-core.md`; the top-level `paths:` key is a non-delivery placement.
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the native Codex artifact contract, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
 ## Scope — when this rule is live
 
@@ -129,7 +129,7 @@ With `tree_scope: skip` configured for the leader's checkout, the leader session
 [HARD] Completion reports arrive as `RECOMMEND:` summaries — occupancy moves; the leader's evidence read does not.
 <!-- moai:role-core-end -->
 
-[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.
+[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, native review evidence adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.
 
 ## Completion is read, never trusted
 
@@ -143,11 +143,9 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 **The final PASS/FAIL verdict is the leader's**, read from the evidence on disk and never delegated to the lane that produced the work. Why the division is structural: `factory-dispatch-detail.md` § The verdict's home.
 
-### CodeRabbit is not read from `gh pr checks`
+### Native Codex review evidence
 
-[HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.
-
-Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
+[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
 
 ## Lane card transition — in-session, no clear
 
