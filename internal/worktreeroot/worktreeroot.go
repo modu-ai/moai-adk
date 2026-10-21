@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"gopkg.in/yaml.v3"
 )
 
 // RootKind names which root a candidate tree was found under.
@@ -430,23 +431,15 @@ func readPin(primary string) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	inGit := false
-	for _, line := range strings.Split(string(body), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
-			inGit = strings.HasPrefix(trimmed, "git_strategy:")
-			continue
-		}
-		if inGit && strings.HasPrefix(trimmed, pinKey+":") {
-			v := strings.TrimSpace(strings.TrimPrefix(trimmed, pinKey+":"))
-			v = strings.Trim(v, `"'`)
-			return strings.TrimSpace(v), nil
-		}
+	var document struct {
+		GitStrategy struct {
+			WorktreeProjectKey string `yaml:"worktree_project_key"`
+		} `yaml:"git_strategy"`
 	}
-	return "", nil
+	if err := yaml.Unmarshal(body, &document); err != nil {
+		return "", fmt.Errorf("read worktree project pin in %s: %w", path, err)
+	}
+	return strings.TrimSpace(document.GitStrategy.WorktreeProjectKey), nil
 }
 
 // ensureProjectDir creates the project folder and its owner marker under the
