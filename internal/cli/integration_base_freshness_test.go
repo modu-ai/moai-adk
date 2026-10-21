@@ -15,6 +15,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -458,6 +459,69 @@ func TestFactoryCompleteAdoptionNotRefusedByBaseFreshness(t *testing.T) {
 		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
 		requireFreshnessRefusal(t, err)
 		sdCardUnchanged(t, "non-adoption refusal", root, "t1", before)
+	})
+}
+
+func TestFactoryCompleteAdoptionRequiresRecordTreeIdentity(t *testing.T) {
+	// iter12 F1: the adoption exemption asked only ReadRemeasureRecord +
+	// ValidateRemeasureRecord, so a record file KEYED to the tip tree whose
+	// `tree` field names another valid SHA exempted the gate and complete
+	// finished merged-local without the gate ever judging the candidate. The
+	// exemption must require the record to NAME the tree it is stored for —
+	// the same identity comparison the gate's own verdict makes.
+	setup := func(t *testing.T) (root, integ string, cardWT sdCardTree, merge, tipTree string) {
+		t.Helper()
+		root, integ, cardWT = mwq19Fixture(t)
+		bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+		fcGit(t, integ, "merge", "-q", "--no-ff", "-m", "M t1", cardWT.branch)
+		merge = fcGit(t, integ, "rev-parse", "HEAD")
+		tipTree = fcGit(t, integ, "rev-parse", "HEAD^{tree}")
+		return root, integ, cardWT, merge, tipTree
+	}
+	forgeTreeField := func(t *testing.T, root, keyTree, treeField string) {
+		t.Helper()
+		rec, err := factory.ReadRemeasureRecord(root, keyTree)
+		if err != nil || factory.ValidateRemeasureRecord(rec) != nil {
+			t.Fatalf("fixture sanity: a valid record must key the tree before the forge: %v", err)
+		}
+		rec.Tree = treeField // the forge: stored under keyTree, naming treeField
+		data, err := json.Marshal(rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".moai", "state", "remeasure", keyTree+".json"), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Run("a record stored for the tip tree but naming another tree is not adopted", func(t *testing.T) {
+		root, integ, _, merge, tipTree := setup(t)
+		other := fcGit(t, integ, "rev-parse", merge+"^1^{tree}")
+		if other == tipTree {
+			t.Fatalf("fixture sanity: the first parent's tree must differ from the merged tree, or the forge is no forge")
+		}
+		forgeTreeField(t, root, tipTree, other)
+		before := fcCard(t, root, "t1")
+		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		requireFreshnessRefusal(t, err)
+		sdCardUnchanged(t, "forged-record refusal", root, "t1", before)
+	})
+	t.Run("a healthy record naming its key tree is still adopted", func(t *testing.T) {
+		root, _, _, merge, tipTree := setup(t)
+		rec, err := factory.ReadRemeasureRecord(root, tipTree)
+		if err != nil || factory.ValidateRemeasureRecord(rec) != nil || rec.Tree != tipTree {
+			t.Fatalf("fixture sanity: the merged tree must key a valid record naming it: %v", err)
+		}
+		stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("a healthy adoption must complete: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout+stderr, bfcSentinel) {
+			t.Fatalf("no sentinel on a healthy adoption\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+		card := fcCard(t, root, "t1")
+		if card.State != homestate.CardMergedLocal || card.MergeSHA != merge {
+			t.Fatalf("the card must land merged-local on the pre-made merge %s, got %s %s", merge, card.State, card.MergeSHA)
+		}
 	})
 }
 
