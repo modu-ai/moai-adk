@@ -125,11 +125,13 @@ read-path change commit — git is the only sequencing witness.
   the installed `moai` (whose build lags this tree); (2) **isolated root** — one fresh `mktemp -d`
   project directory serves both runs (`FACTORY_ROOT="$(mktemp -d)"`), never the primary checkout's
   live store (`factory status` is read-only, so one root keeps the fixture and the measurement
-  comparable); (3) **fixed fixture** — seeded once into that root by the real seed verbs before the
-  first run: `moai todo add <fixture-card>` then `moai factory assign <fixture-card> --run
-  <fixture-run>` (executed with the baseline binary against the isolated root; the exact seed
-  command lines, including flags, are recorded verbatim in the baseline artifact and reissued
-  unchanged for the post-change run); (4) **exact command** — the invocation line is recorded
+  comparable); (3) **fixed fixture** — seeded exactly once into that root before the first run,
+  with the pick-marked issuance (`factory assign` refuses a queued item): `moai todo add --pick
+  <fixture-card>` then `moai factory assign <issued-id> --run <fixture-run>`, executed with the
+  baseline binary against the isolated root; the issued card id and the exact seed command lines,
+  including flags, are recorded verbatim in the baseline artifact for reproducibility — the seed
+  is executed once and never re-executed: the post-change measurement reuses the already-seeded
+  root unchanged, changing only the binary path (clause 4); (4) **exact command** — the invocation line is recorded
   verbatim in the baseline artifact and reissued verbatim for the post-change measurement with
   exactly one token changed: the binary path, the sole revision-varying measurement parameter —
   every other argument, environment variable, and fixture input is byte-identical across the two
