@@ -759,9 +759,16 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// same doc-mention family as the t1453 844 precedent). Same single
 		// comparison plus one doc mention — same count of actual ancestry
 		// comparisons.
-		"session_worktree.go:839": true,
-		"session_worktree.go:845": true,
-		"session_worktree.go:879": true,
+		// Re-measured at card t1640 (SPEC-WORKTREE-HOME-ROOT-001 M3): the
+		// ccWorktreeWriterPrecheck short-name resolution (+2, REQ-WHR-007)
+		// and the M2 launcher-handoff insertions above the predicate added
+		// 8 lines over the three hits, moving the arm-(i) comment 839→847,
+		// the doc mention 845→853 and the comparison 879→887. Same two hits
+		// and one mention — same count of actual ancestry comparisons; no
+		// added line is an ancestry comparison.
+		"session_worktree.go:847": true,
+		"session_worktree.go:853": true,
+		"session_worktree.go:887": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch

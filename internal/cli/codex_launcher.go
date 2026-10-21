@@ -50,6 +50,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 	"github.com/spf13/cobra"
 )
 
@@ -488,21 +489,44 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 		if value == "." || value == ".." || filepath.Base(value) != value || strings.ContainsAny(value, `/\\`) {
 			return "", fmt.Errorf("invalid worktree name %q", value)
 		}
-		modern := filepath.Join(projectRoot, sessionWorktreeSubdir, value)
-		legacy := filepath.Join(projectRoot, claudeNativeWorktreeSubdir, value)
-		_, modernErr := os.Lstat(modern)
-		_, legacyErr := os.Lstat(legacy)
-		if modernErr == nil && legacyErr == nil {
-			return "", fmt.Errorf("worktree %q exists in both %s and %s; use an absolute path", value, modern, legacy)
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-022): the candidate set is
+		// all three roots — the home root, the legacy-moai root and the
+		// legacy-claude root — via the resolver; one tree resolves, two or
+		// more are reported ambiguous naming every candidate and
+		// instructing an absolute path, and none is ever guessed. Where the
+		// resolver cannot run (a non-git project root), the pre-M3 two-root
+		// lookup below still answers.
+		handled := false
+		if cands, err := worktreeroot.Candidates(projectRoot, value); err == nil {
+			handled = true
+			switch {
+			case len(cands) == 1:
+				path = cands[0].Path
+			case len(cands) > 1:
+				paths := make([]string, 0, len(cands))
+				for _, c := range cands {
+					paths = append(paths, c.Path)
+				}
+				return "", fmt.Errorf("worktree %q exists in %s; use an absolute path", value, strings.Join(paths, " and "))
+			}
 		}
-		if modernErr == nil {
-			path = modern
-		} else if legacyErr == nil {
-			path = legacy
-		} else if errors.Is(modernErr, os.ErrNotExist) && errors.Is(legacyErr, os.ErrNotExist) {
-			return "", fmt.Errorf("worktree %q does not exist at %s or %s; create it before launching Codex", value, modern, legacy)
-		} else {
-			return "", fmt.Errorf("inspect worktree %q: %w", value, errors.Join(modernErr, legacyErr))
+		if !handled || path == value {
+			modern := filepath.Join(projectRoot, sessionWorktreeSubdir, value)
+			legacy := filepath.Join(projectRoot, claudeNativeWorktreeSubdir, value)
+			_, modernErr := os.Lstat(modern)
+			_, legacyErr := os.Lstat(legacy)
+			if modernErr == nil && legacyErr == nil {
+				return "", fmt.Errorf("worktree %q exists in both %s and %s; use an absolute path", value, modern, legacy)
+			}
+			if modernErr == nil {
+				path = modern
+			} else if legacyErr == nil {
+				path = legacy
+			} else if errors.Is(modernErr, os.ErrNotExist) && errors.Is(legacyErr, os.ErrNotExist) {
+				return "", fmt.Errorf("worktree %q does not exist at %s or %s; create it before launching Codex", value, modern, legacy)
+			} else {
+				return "", fmt.Errorf("inspect worktree %q: %w", value, errors.Join(modernErr, legacyErr))
+			}
 		}
 	}
 

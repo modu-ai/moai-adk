@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // sessionWorktreeSeedCodexHooks is the seam over the real seeding call so
@@ -70,7 +71,21 @@ func seedAdmittedWorktreeHooksFor(read worktreeRead, warn io.Writer) {
 		if err != nil || root == "" {
 			return
 		}
-		tree = filepath.Join(root, ".claude", "worktrees", value)
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): a short name naming
+		// a single existing tree resolves to that tree; a name at no tree
+		// keeps the legacy .claude spelling.
+		tree = resolveShortWorktreeTree(root, value)
 	}
 	seedWorktreeEntryHooks(tree, warn)
+}
+
+// resolveShortWorktreeTree maps a launcher short name onto the tree it
+// names: the single tree across the three roots when one exists, otherwise
+// the legacy .claude spelling (the branch-Y pass-through default). Shared
+// by the readers that resolve an already-validated short name.
+func resolveShortWorktreeTree(root, value string) string {
+	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
+		return cands[0].Path
+	}
+	return filepath.Join(root, ".claude", "worktrees", value)
 }

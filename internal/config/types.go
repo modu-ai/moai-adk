@@ -185,6 +185,17 @@ type GitStrategyConfig struct {
 	// downstream projects.
 	WorktreeBaseBranch string `yaml:"worktree_base_branch"`
 
+	// WorktreeProjectKey pins the project-folder key under the home-level
+	// worktree root for this repository (SPEC-WORKTREE-HOME-ROOT-001
+	// REQ-WHR-004). It names the first-assigned key only: on an assigned
+	// repository the recorded key is kept and a differing pin is noticed,
+	// never applied. The empty string is the neutral default and means the
+	// key is derived from the primary checkout's directory name. A value
+	// that is not one safe path segment (a separator, ".", "..") is
+	// rejected, and a pin naming a folder owned by another repository
+	// refuses creation without suffixing.
+	WorktreeProjectKey string `yaml:"worktree_project_key"`
+
 	// Mode profile forward-compat scaffolds.
 	Manual   ModeProfile `yaml:"manual"`
 	Personal ModeProfile `yaml:"personal"`

@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/chain"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // injectChainNodeForTarget records the worktree spawn boundary on the chain
@@ -52,11 +53,13 @@ func injectChainNodeForTarget(target string, env []string, warn io.Writer) []str
 }
 
 // resolveLaunchWorktreePath resolves a --worktree value to the filesystem path
-// the chain ledger should record. Short names follow the launcher's own
-// resolution rule (claude resolves them against .claude/worktrees/<name>,
-// launcher.go) — the same path the launcher validated in
-// resolveWorktreeL2Path. Absolute values (L1 in-repo or L2 ~/.moai/worktrees/
-// paths) are used as-is. An empty target resolves to false.
+// the chain ledger should record. Absolute values (L1 in-repo, L2, or the
+// home root) are used as-is. A short name resolves across the three roots
+// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007): a single tree is recorded
+// at its actual location, and an ambiguous name records nothing rather than
+// guessing (REQ-WHR-022); a name with no tree keeps the legacy .claude
+// spelling — branch Y's pass-through default. An empty target resolves to
+// false.
 func resolveLaunchWorktreePath(target string) (string, bool) {
 	if target == "" {
 		return "", false
@@ -67,6 +70,14 @@ func resolveLaunchWorktreePath(target string) (string, bool) {
 	root, err := findProjectRootFn()
 	if err != nil {
 		return "", false
+	}
+	if cands, err := worktreeroot.Candidates(root, target); err == nil {
+		if len(cands) == 1 {
+			return cands[0].Path, true
+		}
+		if len(cands) > 1 {
+			return "", false
+		}
 	}
 	return filepath.Join(root, ".claude", "worktrees", target), true
 }
