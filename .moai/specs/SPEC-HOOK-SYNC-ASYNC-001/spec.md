@@ -2,9 +2,9 @@
 id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Hook sync/async cleanup: three async conversions, codex-review-entry gate-ON shell fast path, timeout doctrine correction, and the sync-hook measurement protocol"
 version: "1.0.3"
-status: draft
+status: in-progress
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0"
