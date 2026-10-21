@@ -173,11 +173,14 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 
 	root := autoMergeLockRoot()
 	gitFlow := autoMergeLoadGitFlow(root)
-	if !gitFlow.IsGitFlow() || gitFlow.DevelopBranch == "" {
-		// REQ-WKW-003: the integration target is inert when the project is
-		// not manual git-flow, develop_branch is empty, or the file is
-		// unreadable (the loader yields the zero value on every failure).
-		autoMergeNoticef(out, "skipped (no integration target): the project is not manual git-flow or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch to enable session-exit auto-merge")
+	if !gitFlow.UsesLocalIntegration() || gitFlow.DevelopBranch == "" {
+		// REQ-WKW-003: the integration target is inert when the project runs
+		// neither local-integration workflow (manual git-flow or manual
+		// agentic-trunk, card t1831 REQ-AGT-007), the develop branch is empty
+		// (unset, or non-manual agentic-trunk's empty seam), or the file is
+		// unreadable (the loader yields the zero value on every failure). The
+		// notice names both workflows that DO merge.
+		autoMergeNoticef(out, "skipped (no integration target): the project is not manual git-flow or manual agentic-trunk, or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch (git-flow) or git_strategy.<mode>.workflow: agentic-trunk in manual mode to enable session-exit auto-merge")
 		return
 	}
 	develop := gitFlow.DevelopBranch

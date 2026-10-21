@@ -8,6 +8,7 @@ package config
 // (same package, the M2 owner-by-contract file).
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -227,6 +228,48 @@ func TestAgenticTrunkDevelopBranchProjection(t *testing.T) {
 		got := LoadGitFlowIntegrationConfig(root)
 		if got.DevelopBranch != "develop" {
 			t.Errorf("DevelopBranch = %q, want develop under git-flow (unchanged)", got.DevelopBranch)
+		}
+	})
+}
+
+// TestAgenticTrunkGuidance pins the diagnostic surfaces (REQ-AGT-009 /
+// AC-AGT-008): the invalid-value allowed-set listing carries all five
+// values, and every git-flow fix suggestion that names
+// `github-flow (target main)` also names `agentic-trunk (target main)`.
+func TestAgenticTrunkGuidance(t *testing.T) {
+	t.Run("invalid-value listing carries all five values", func(t *testing.T) {
+		root := t.TempDir()
+		dispositionWrite(t, root, gitStrategyBody("manual", "svn-flow", ""))
+		got := LoadGitFlowIntegrationConfig(root)
+		msg := got.EmptyTargetGuidance(root, "")
+		if want := strings.Join(AllowedWorkflows(), ", "); !strings.Contains(msg, want) {
+			t.Errorf("invalid-value guidance %q does not list the allowed set %q", msg, want)
+		}
+	})
+
+	t.Run("git-flow outside manual mode fix names both flows", func(t *testing.T) {
+		root := t.TempDir()
+		dispositionWrite(t, root, "git_strategy:\n    mode: personal\n    personal:\n        workflow: git-flow\n        develop_branch: develop\n")
+		got := LoadGitFlowIntegrationConfig(root)
+		msg := got.EmptyTargetGuidance(root, "")
+		if !strings.Contains(msg, "github-flow (target main)") {
+			t.Errorf("fix no longer names github-flow (target main): %q", msg)
+		}
+		if !strings.Contains(msg, "agentic-trunk (target main)") {
+			t.Errorf("fix does not name agentic-trunk (target main): %q", msg)
+		}
+	})
+
+	t.Run("empty develop_branch fix names both flows", func(t *testing.T) {
+		root := t.TempDir()
+		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowGitFlow, "        develop_branch: \"\"\n"))
+		got := LoadGitFlowIntegrationConfig(root)
+		msg := got.EmptyTargetGuidance(root, "")
+		if !strings.Contains(msg, "github-flow (target main)") {
+			t.Errorf("fix no longer names github-flow (target main): %q", msg)
+		}
+		if !strings.Contains(msg, "agentic-trunk (target main)") {
+			t.Errorf("fix does not name agentic-trunk (target main): %q", msg)
 		}
 	})
 }
