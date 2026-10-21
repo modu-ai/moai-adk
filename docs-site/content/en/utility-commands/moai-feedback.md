@@ -28,10 +28,8 @@ Use this command when you find a bug while using MoAI-ADK, need a new feature, o
 # Standard form
 > /moai feedback
 
-# Short aliases
-> /moai fb
-> /moai bug
-> /moai issue
+# Direct slash command
+> /moai:feedback
 ```
 
 Running the command guides you through choosing the feedback type and entering the content.

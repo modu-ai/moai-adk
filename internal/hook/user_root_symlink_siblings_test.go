@@ -103,6 +103,7 @@ categories:
 	scratchSkill := filepath.Join(skillsDir, "scratch-skill")
 
 	shellRow := func(id, command string, want bool) siblingRow {
+		command = zoneBashText(command)
 		return siblingRow{id: id, subject: command, command: command, want: want}
 	}
 	fileRow := func(id, tool, file string, want bool) siblingRow {

@@ -86,9 +86,36 @@ jobs:
   # ubuntu leg here is the only ubuntu race run that can stop a release.
   # Dropping it would silently demote ubuntu race coverage to advisory at
   # exactly the moment it matters most.
+  #
+  # SHARDED RACE RUN (SPEC-CI-RELEASE-VERIFY-SHARD-001, card t1892). The race
+  # suite used to be one `go test -race ./...` step per OS. On release PR #1830
+  # (run 39180942620) all three legs were cancelled at this job's 40-minute
+  # timeout inside that single step, and the one earlier leg that passed did so
+  # in 38 min 10 s of the 40: the margin was never real. The suite now runs as
+  # the same six shards ci.yml's Race Test legs use, on every OS: internal/cli in
+  # four first-letter slices, the rosterguard package, and every other package
+  # once (the remainder). That is 3 OS x 6 shards = 18 legs inside this one job
+  # id, so `Release PR Multi-OS Gate` below still aggregates them through
+  # `needs.full-matrix-test.result` and its text is unchanged (decision-index Q1).
+  #
+  # What did NOT change, on purpose: every `go test` keeps `-timeout 35m` and
+  # this job keeps `timeout-minutes: 40` (no ceiling raised), no test is skipped
+  # or excluded, no continue-on-error, no retry wrapper (Q5), and no required
+  # status-check context of main is touched. The leg names are not required
+  # contexts; `scripts/release.sh --require-matrix-run` reads them and was
+  # changed in step with this matrix (Q2).
+  #
+  # The selectors below are copies of ci.yml's. They are kept equal, and every
+  # internal/cli test name is kept covered exactly once, by
+  # internal/template/release_verify_shard_parity_test.go (Q3). Edit a selector
+  # here and in ci.yml together, or that test fails.
+  #
+  # macOS and Windows shard weights are unmeasured; the first full run is the
+  # measurement. A shard that overruns its 35-minute ceiling is rebalanced by
+  # selector, never given a longer timeout (Q8).
   # ---------------------------------------------------------------------------
   full-matrix-test:
-    name: Release Verify (${{ matrix.os }})
+    name: Release Verify (${{ matrix.os }}, ${{ matrix.shard }})
     needs: detect-release
     if: needs.detect-release.outputs.proceed == 'true' && (github.event_name == 'workflow_dispatch' || needs.detect-release.outputs.go_code != 'false')
     timeout-minutes: 40
@@ -96,6 +123,34 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        shard: [cli-1, cli-2, cli-3, cli-4, rosterguard, remainder]
+        # Exactly one include entry per shard, keyed by `shard` alone. Such an
+        # entry only ADDS keys (pkg, run, vet) to the three combinations that
+        # already carry that shard value; it overwrites nothing and creates no
+        # extra leg. There is deliberately no `exclude`: the final leg set is
+        # the full 18 pairs. `pkg: remainder` is a sentinel meaning "every
+        # package except internal/cli and the rosterguard package".
+        include:
+          - shard: cli-1
+            pkg: ./internal/cli/
+            run: '^Test([A-E]|Fa)'
+          # vet runs once per OS, on this shard's leg only (Q6).
+          - shard: cli-2
+            pkg: ./internal/cli/
+            run: '^Test(F([^a]|$)|[G-I])'
+            vet: true
+          - shard: cli-3
+            pkg: ./internal/cli/
+            run: '^Test[J-R]'
+          - shard: cli-4
+            pkg: ./internal/cli/
+            run: '^Test([S-Z]|[^A-Za-z])'
+          - shard: rosterguard
+            pkg: ./internal/harness/rosterguard/
+            run: '^Test'
+          - shard: remainder
+            pkg: remainder
+            run: ''
     runs-on: ${{ matrix.os }}
     # Every OS leg blocks the release gate. The windows leg was previously
     # pinned to continue-on-error while it carried 71 known failures across
@@ -149,7 +204,11 @@ jobs:
           fi
           echo "PASS: $(sg --version)"
 
+      # `go vet ./...` covers the whole module, so it runs once per OS (on the
+      # cli-2 leg, the only include entry carrying `vet: true`), not once per
+      # shard. Every other leg skips it rather than repeat the same analysis.
       - name: Run go vet
+        if: matrix.vet == true
         run: go vet ./...
 
       # -timeout raised above Go's 10m per-package default. internal/cli spends
@@ -202,20 +261,49 @@ jobs:
       # The two forms are indistinguishable on a green run.
       #
       # stdout ONLY — `2>&1` would corrupt the stream.
-      # 3-OS matrix: the artifact name carries matrix.os or the legs collide.
+      # 3-OS x 6-shard matrix: the artifact name below carries both matrix.os
+      # and matrix.shard, or the eighteen legs collide.
+      #
+      # The shard's selector and package reach the script ONLY through the
+      # SHARD_RUN and SHARD_PKG environment variables. The selectors contain
+      # `|`, `$`, `^` and `[^...]`; interpolating them into the script text would
+      # have the shell re-parse those metacharacters.
       - name: Run tests with race detector
         shell: bash
+        env:
+          SHARD_RUN: ${{ matrix.run }}
+          SHARD_PKG: ${{ matrix.pkg }}
         run: |
           rc=0
           # -timeout is per test binary, not per job. internal/cli under -race
           # was 1128s on the last green develop run (37135148076) and hit a 20m
           # cap on run 37161322193 (the same 3883 tests took 716s then 1024s,
-          # +43%, on the same hosted runner class). This leg runs the same
-          # `go test -race ./...`, so it gets the same ceiling as ci.yml: 35m,
-          # inside this job's timeout-minutes: 40 budget. Applies to every
-          # matrix leg; the value is only an upper bound.
-          go test -json -race -timeout 35m ./... > test-stream.json || rc=$?
+          # +43%, on the same hosted runner class). Each shard keeps the ceiling
+          # the former single `go test -race ./...` step had: 35m, inside this
+          # job's timeout-minutes: 40 budget. It is NOT raised. The value is only
+          # an upper bound; -count=1 keeps a cached result from standing in for
+          # an observation made in this run.
+          if [ "$SHARD_PKG" = "remainder" ]; then
+            # Every package except internal/cli (the four cli shards) and the
+            # rosterguard package (its own shard), so each package runs exactly
+            # once per OS. Same exclusion list as ci.yml's remainder leg.
+            # The guard is attached to the assignment itself: under -e -o
+            # pipefail a failing `go list`, or a listing the filter emptied
+            # (grep -v exits 1 on no output), would otherwise abort the step
+            # silently before any message is printed.
+            pkgs="$(go list ./... | grep -v -x -e 'github.com/modu-ai/moai-adk/internal/cli' -e 'github.com/modu-ai/moai-adk/internal/harness/rosterguard')" || { echo "FAIL: remainder package listing failed or came back empty (a bad listing is not evidence)"; exit 1; }
+            # A listing that still contains an excluded package would run it a
+            # second time unnoticed. grep -c prints 0 and exits 1 on no match,
+            # so `|| true` keeps the count without tripping -e.
+            leftover="$(printf '%s\n' "$pkgs" | grep -c -x -e 'github.com/modu-ai/moai-adk/internal/cli' -e 'github.com/modu-ai/moai-adk/internal/harness/rosterguard' || true)"
+            test "$leftover" = "0" || { echo "FAIL: remainder package list still contains an excluded package ($leftover found); it would run twice"; exit 1; }
+            go test -json -race -count=1 -timeout 35m $pkgs > test-stream.json || rc=$?
+          else
+            go test -json -race -count=1 -timeout 35m -run "$SHARD_RUN" "$SHARD_PKG" > test-stream.json || rc=$?
+          fi
           bash scripts/ci-census/test-census.sh test-stream.json
+          # A shard that ran no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream.json || { echo "FAIL: shard ran no test (empty sweep)"; rc=1; }
           exit $rc
 
       - name: Compress test event stream
@@ -228,7 +316,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-stream-release-verify-${{ matrix.os }}
+          name: test-stream-release-verify-${{ matrix.os }}-${{ matrix.shard }}
           path: test-stream.json.gz
           retention-days: 7
           if-no-files-found: ${{ runner.os == 'Windows' && 'error' || 'warn' }}

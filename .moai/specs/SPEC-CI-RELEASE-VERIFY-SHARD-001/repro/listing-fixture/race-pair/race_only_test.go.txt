@@ -1,0 +1,10 @@
+//go:build race
+
+package gl
+
+import "testing"
+
+// Exists only under -race. A fuzz target name matches no ^Test selector, so the
+// discovery guard (REQ-RVS-016) must FAIL when this name is listed. A plain
+// `go test -list` does not print it (no `race` tag), so a plain listing PASSES.
+func FuzzRaceOnly(f *testing.F) { f.Add(1); f.Fuzz(func(t *testing.T, n int) {}) }

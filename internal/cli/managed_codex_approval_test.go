@@ -17,15 +17,17 @@ import (
 )
 
 // TestMoAIMCPApprovalArgsOnlyTargetMoAI asserts every approval argument is a
-// `-c` override addressed to mcp_servers.moai, that the two broker tools are
-// approved individually, and that the owned App Server command line carries
-// them while a general launch path has no such argument.
+// `-c` override addressed to mcp_servers.moai, and that the owned App Server
+// command line carries it while a general launch path has no such argument.
+// The individual factory_msg_send / factory_msg_receipt overrides died with
+// the messaging tools (card t1908) — the default approve mode is the only
+// override left.
 func TestMoAIMCPApprovalArgsOnlyTargetMoAI(t *testing.T) {
 	args := factoryMoAIMCPApprovalArgs()
 	if len(args) == 0 || len(args)%2 != 0 {
 		t.Fatalf("approval args must be -c/value pairs, got %v", args)
 	}
-	var sawDefault, sawSend, sawReceipt bool
+	var sawDefault bool
 	for i := 0; i < len(args); i += 2 {
 		if args[i] != "-c" {
 			t.Fatalf("args[%d]=%q, want -c", i, args[i])
@@ -37,17 +39,15 @@ func TestMoAIMCPApprovalArgsOnlyTargetMoAI(t *testing.T) {
 		if !strings.HasSuffix(v, `="approve"`) {
 			t.Errorf("override %q does not set approve", v)
 		}
-		switch {
-		case v == `mcp_servers.moai.default_tools_approval_mode="approve"`:
+		if strings.Contains(v, ".tools.factory_msg") {
+			t.Errorf("override %q names a messaging tool removed in card t1908", v)
+		}
+		if v == `mcp_servers.moai.default_tools_approval_mode="approve"` {
 			sawDefault = true
-		case strings.Contains(v, ".tools.factory_msg_send."):
-			sawSend = true
-		case strings.Contains(v, ".tools.factory_msg_receipt."):
-			sawReceipt = true
 		}
 	}
-	if !sawDefault || !sawSend || !sawReceipt {
-		t.Errorf("default=%v send=%v receipt=%v, want all three", sawDefault, sawSend, sawReceipt)
+	if !sawDefault {
+		t.Errorf("default approve-mode override missing from %v", args)
 	}
 
 	server := managedCodexAppServerArgs("ws://127.0.0.1:1", "/tmp/tok", []string{"-c", "x.y=z"})

@@ -672,16 +672,15 @@ func managedCodexOptions(args []string) (appArgs []string, model string, err err
 }
 
 // factoryMoAIMCPApprovalArgs are the config overrides that let the owned
-// App Server take MoAI broker tool calls without an approval dialog
-// (REQ-MS-009, D-5). Every override addresses mcp_servers.moai only, and the
-// two broker tools are approved individually. They ride the owned process
-// command line and never reach the project config, whose generated
-// default_tools_approval_mode stays "writes".
+// App Server take MoAI MCP tool writes without an approval dialog
+// (REQ-MS-009, D-5). The override addresses mcp_servers.moai only. It rides
+// the owned process command line and never reaches the project config, whose
+// generated default_tools_approval_mode stays "writes". The two individual
+// factory_msg_send / factory_msg_receipt overrides were removed with the
+// messaging tools themselves (card t1908).
 func factoryMoAIMCPApprovalArgs() []string {
 	return []string{
 		"-c", `mcp_servers.moai.default_tools_approval_mode="approve"`,
-		"-c", `mcp_servers.moai.tools.factory_msg_send.approval_mode="approve"`,
-		"-c", `mcp_servers.moai.tools.factory_msg_receipt.approval_mode="approve"`,
 	}
 }
 

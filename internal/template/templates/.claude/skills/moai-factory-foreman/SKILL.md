@@ -106,18 +106,10 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
-     # The queue directory, resolved the way factory.StateDirForRoot does for a
-     # standard git-repository project: <moai-home>/db/<project-key>/todo,
-     # keyed by the repository's canonical (primary-checkout) root.
-     mh=${MOAI_HOME:-$HOME/.moai}
-     root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
-     top=$(git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -n 1)
-     [ -n "$top" ] && root=$top
-     root=$(cd "$root" && pwd -P)
-     key=$(basename "$root"); key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9._-' '-')
-     sum=$(printf '%s' "$root" | sha256sum 2>/dev/null | cut -c1-8)
-     [ -n "$sum" ] || sum=$(printf '%s' "$root" | shasum -a 256 | cut -c1-8)
-     d=$mh/db/$key-$sum/todo
+     # The queue directory, exactly as the project reports it: the canonical
+     # location the adopting moai todo verbs leave the queue in. No fallback
+     # path is computed; a failure stops the watch loudly.
+     d=$(moai paths --field todo-dir) || { echo "queue watch stopped: moai paths failed"; exit 1; }
      last=init
      while true; do
        cur=$(cksum "$d"/backlog.db "$d"/backlog.db-wal 2>/dev/null)
@@ -144,12 +136,12 @@ not something this loop can do for itself.
    input schema, so treat a shorter-than-requested expiry there as expected
    rather than as a fault.
 
-   The watch resolves the queue directory the way `factory.StateDirForRoot`
-   does for a standard git-repository project — a project-keyed directory
-   under the moai home (`MOAI_HOME` when that is set to an absolute path,
-   otherwise `~/.moai`), keyed by the primary checkout's root — so a linked
-   worktree watches the primary checkout's queue, not a directory local to
-   its own tree. The queue is the database, and a `backlog.json` beside it is an export or
+   The watch takes the queue directory from `moai paths`, the confirmed source
+   of the project's database locations, so a linked worktree watches the
+   primary checkout's queue, not a directory local to its own tree, and the
+   directory stays the same after a legacy queue is adopted. When that command
+   fails the watch stops with a visible message instead of falling back to a
+   path of its own. The queue is the database, and a `backlog.json` beside it is an export or
    a legacy leftover — never the queue — so a watch pointed at the JSON on a
    migrated project polls a file that never changes and reports nothing,
    forever. The write-ahead log is watched alongside the database because a
@@ -160,6 +152,14 @@ not something this loop can do for itself.
    the interval, and do not arm a second watcher. Each emitted
    line, like each scheduled wakeup, is a prompt to run this same idempotent
    iteration — an iteration that finds nothing to do ends quickly.
+
+   **Database paths — never guess.**
+
+   - Find the database files with `moai paths`; never guess them.
+   - Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`.
+   - Never `sqlite3`-open a guessed path: opening a missing file creates an empty one.
+   - Direct reads only on a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together.
+   - Prefer the CLI: `moai todo list --json`, `moai factory status`.
 
 2. **Read the queue.** `moai gtd list --json` (lock-free). A missing queue
    file is an empty queue, never an error. Records carry `id`, `text`,

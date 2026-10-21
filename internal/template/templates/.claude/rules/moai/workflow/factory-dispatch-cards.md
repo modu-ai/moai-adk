@@ -33,6 +33,16 @@ The Class-A evidence rule is the same shape as the CodeRabbit section of the stu
 
 The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 
+## Card size ceiling — split before dispatch
+
+Rationale as the card states it: failed agent PRs are larger and touch more files (arXiv:2601.15195); DORA small batches; the Copilot coding agent's workflow-run approval default.
+
+Whoever issues or classifies a card states its expected size — files touched and lines changed — in the card text. The operative rule is: **when the work exceeds the stated estimate, split the card before dispatch**; a lane that finds the estimate exceeded mid-run stops and reports instead of widening the change. As an illustration only, a card expected to touch more than about 10 files or 400 changed lines is a candidate for splitting; the numbers are examples, not a policy threshold.
+
+## Workflow-file changes need operator review
+
+A card whose agent-authored branch changes any file under `.github/workflows/` is marked **operator review required before landing**. Detect it with `git diff --name-only <base>...HEAD -- .github/workflows` (non-empty output means marked). This is an operator-held gate in the keep-set style, not automation: the lane's verdict text states the marking, the lane does NOT self-land it (it stops before Deliver, the step where `moai factory complete` would open the PR, and reports to the leader), and the leader's checklist lists the card until the operator has reviewed it.
+
 ## Lane card transition — statement structure
 
 The leader's statement at `done` names three things, in this order, and asks the operator to clear nothing:

@@ -44,6 +44,8 @@ Route A/B step tables + the `merge_method` (default `squash`) footnote: see `spe
 
   Post-condition: the worktree branch is integrated — PR state `MERGED` in PR-integrating workflows (merged with the resolved `merge_method`), or the branch merged into the develop integration worktree under the integration-window discipline in git-flow workflows; `git status --porcelain` in the worktree returns empty; and `main` received no Late-branch commits at any point of the flow. Failure mode: disposing the worktree before the branch is integrated destroys the only copy of the work — an unpushed worktree branch is the work's only instance. For the complete worktree-branch Late-branch invocation pattern, see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
 
+  Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+
 [SHOULD] anti-patterns (advisory): see `spec-workflow-detail.md` § Anti-patterns — SPEC Phase Discipline.
 
 ## Conditional Design Route (UI-surfaced SPECs)

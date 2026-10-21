@@ -28,10 +28,8 @@ MoAI-ADK를 쓰다가 버그를 만났거나, 아쉬운 기능이 있거나, 개
 # 표준 형식
 > /moai feedback
 
-# 짧은 별칭
-> /moai fb
-> /moai bug
-> /moai issue
+# 직접 슬래시 명령
+> /moai:feedback
 ```
 
 명령어를 실행하면 피드백 유형을 선택하고, 내용을 입력하는 과정을 안내받습니다.

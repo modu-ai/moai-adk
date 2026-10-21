@@ -104,6 +104,15 @@ func newDecisionRecordCmd() *cobra.Command {
 	return cmd
 }
 
+// oneLine renders s as a single physical line so no detail value can
+// impersonate another detail line (the digest line included) in read output.
+// The backslash is escaped first, so the mapping is single-valued: two
+// distinct inputs can never render to the same line.
+func oneLine(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	return strings.NewReplacer("\n", "\\n", "\r", "\\r", "\t", "\\t").Replace(s)
+}
+
 func newDecisionReadCmd() *cobra.Command {
 	var (
 		root, scope string
@@ -133,10 +142,11 @@ func newDecisionReadCmd() *cobra.Command {
 			_, _ = fmt.Fprintln(out, res.StatusLine())
 			for _, r := range res.Records {
 				_, _ = fmt.Fprintln(out, r.Line())
-				_, _ = fmt.Fprintf(out, "  body: %s\n", r.Body)
+				_, _ = fmt.Fprintf(out, "  digest: %s\n", r.Digest())
+				_, _ = fmt.Fprintf(out, "  body: %s\n", oneLine(r.Body))
 				for _, kv := range [][2]string{{"predicate", r.Predicate}, {"supersedes", r.Supersedes}, {"resolves", r.Resolves}, {"release", r.Release}, {"cards", strings.Join(r.Cards, ",")}} {
 					if kv[1] != "" {
-						_, _ = fmt.Fprintf(out, "  %s: %s\n", kv[0], kv[1])
+						_, _ = fmt.Fprintf(out, "  %s: %s\n", kv[0], oneLine(kv[1]))
 					}
 				}
 			}

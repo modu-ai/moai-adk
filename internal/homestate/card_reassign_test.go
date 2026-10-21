@@ -246,3 +246,98 @@ func TestReassignCardAdmitsALaneBoundToThisRun(t *testing.T) {
 		t.Fatalf("owner = %q, want lane-15", card.OwnerLabel)
 	}
 }
+
+// Card t1859: a decision-waiting card (`kickoff`, `needs-decision`) holds no
+// lease, so its dead owner label could be neither reassigned nor given the
+// audit kickoff decision (T8a refuses "no registered owner"). ReassignCard
+// admits both states: the state stays, the owner swaps, the Decision* fields
+// ride along untouched.
+func TestReassignCardAdmitsDecisionWaitingCardsWithADeadOwner(t *testing.T) {
+	cases := []struct {
+		name  string
+		state string
+	}{
+		{"kickoff", CardKickoff},
+		{"needs-decision", CardNeedsDecision},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := frOpen(t)
+			frPlace(t, db, Card{RunID: frRun, CardID: "rd1", State: tc.state, OwnerLabel: "lane-dead", Version: 4,
+				DecisionGate: DecisionGateKickoff, DecisionResume: CardRun, DecisionQuestion: "which way?"})
+			raRegisterWorker(t, db, "lane-15")
+			card, err := db.ReassignCard(context.Background(), frRun, "rd1", "lane-15", "assign --reassign", frNow, nil)
+			if err != nil {
+				t.Fatalf("reassign of a %s card: %v", tc.state, err)
+			}
+			if card.State != tc.state || card.OwnerLabel != "lane-15" || card.Version != 5 || card.LeaseHolder != "" {
+				t.Fatalf("card = %s/%s v%d holder %q, want %s/lane-15 v5 with no holder", card.State, card.OwnerLabel, card.Version, card.LeaseHolder, tc.state)
+			}
+			if card.DecisionGate != DecisionGateKickoff || card.DecisionResume != CardRun || card.DecisionQuestion != "which way?" {
+				t.Fatalf("decision fields not preserved: gate=%q resume=%q question=%q", card.DecisionGate, card.DecisionResume, card.DecisionQuestion)
+			}
+			var payload string
+			if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE kind='card.reassign' ORDER BY seq DESC LIMIT 1`).Scan(&payload); err != nil {
+				t.Fatalf("read the reassign event: %v", err)
+			}
+			if !strings.Contains(payload, `"prev_owner":"lane-dead"`) || !strings.Contains(payload, `"new_owner":"lane-15"`) {
+				t.Fatalf("the reassign event lost the owner trail: %s", payload)
+			}
+		})
+	}
+}
+
+// Other non-holding, non-assigned states still refuse (the admission is the
+// two decision-waiting states, not every non-holding one).
+func TestReassignCardStillRefusesOtherNonHoldingStates(t *testing.T) {
+	for i, state := range []string{CardPicked, CardBlocked, CardDone, CardFailed} {
+		db := frOpen(t)
+		id := "rn" + string(rune('1'+i))
+		frPlace(t, db, Card{RunID: frRun, CardID: id, State: state, OwnerLabel: "lane-dead", Version: 1})
+		raRegisterWorker(t, db, "lane-15")
+		_, err := db.ReassignCard(context.Background(), frRun, id, "lane-15", "assign --reassign", frNow, nil)
+		if !errors.Is(err, ErrIllegalTransition) {
+			t.Fatalf("state %s: err = %v, want ErrIllegalTransition", state, err)
+		}
+	}
+}
+
+// A decision-waiting card keeps the other refusals: unregistered target,
+// same owner.
+func TestReassignCardDecisionWaitingKeepsTheTargetRefusals(t *testing.T) {
+	db := frOpen(t)
+	frPlace(t, db, Card{RunID: frRun, CardID: "rd2", State: CardKickoff, OwnerLabel: "lane-dead", Version: 1})
+	raRegisterWorker(t, db, "lane-15")
+	if _, err := db.ReassignCard(context.Background(), frRun, "rd2", "lane-99", "assign --reassign", frNow, nil); !errors.Is(err, ErrInvalidCardInput) || !strings.Contains(err.Error(), "not a registered lane") {
+		t.Fatalf("unregistered target: err = %v", err)
+	}
+	if _, err := db.ReassignCard(context.Background(), frRun, "rd2", "lane-dead", "assign --reassign", frNow, nil); !errors.Is(err, ErrInvalidCardInput) || !strings.Contains(err.Error(), "already assigned to") {
+		t.Fatalf("same owner: err = %v", err)
+	}
+}
+
+// End to end (card t1859): the audit kickoff decision refuses while the owner
+// is unregistered, and succeeds — leasing to the new owner — once the card is
+// reassigned.
+func TestReassignCardUnwedgesTheAuditKickoffDecision(t *testing.T) {
+	f := newFDAKickoff(t, "wedge")
+	if _, err := f.db.DB.Exec(`DELETE FROM workers WHERE label=?`, "worker-1"); err != nil {
+		t.Fatalf("remove the owner lane: %v", err)
+	}
+	raRegisterWorker(t, f.db, "worker-2")
+	if _, err := f.approve(DeciderAudit, QueueHoldClear); err == nil || !strings.Contains(err.Error(), "no registered owner") {
+		t.Fatalf("approve before reassign: err = %v, want the no-registered-owner refusal", err)
+	}
+	moved, err := f.db.ReassignCard(context.Background(), frRun, f.card.CardID, "worker-2", "assign --reassign", frNow, nil)
+	if err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+	f.card.Version = moved.Version
+	got, err := f.approve(DeciderAudit, QueueHoldClear)
+	if err != nil {
+		t.Fatalf("audit approval after reassign: %v", err)
+	}
+	if got.State != CardRun || got.LeaseHolder != "worker-2" || got.OwnerLabel != "worker-2" {
+		t.Fatalf("after reassign + approval: %s holder=%q owner=%q, want run leased to worker-2", got.State, got.LeaseHolder, got.OwnerLabel)
+	}
+}

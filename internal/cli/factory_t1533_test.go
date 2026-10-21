@@ -223,10 +223,16 @@ func TestFactoryBundleHeadCarriesHubCondition(t *testing.T) {
 // no card forever.
 func TestFactoryNextMergedPRPredecessorReleasesFollower(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): this arm-(b) lease
+	// is the test's vehicle; the flag is armed and the follower carries a
+	// spec id so the subject — a merged-pr predecessor releasing its
+	// follower — stays covered behind the gate.
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
+	cepSetSpecID(t, store, "t2", "SPEC-FOLLOWER-001")
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardMergedPR, OwnerLabel: "lane-1"},
 		homestate.Card{CardID: "t2", State: homestate.CardPicked, HintAfter: "t1"},
@@ -481,12 +487,22 @@ func TestReviewNominatedLeaseDoesNotFillAnEmptyHint(t *testing.T) {
 // call while an unrelated ready card waited behind it. The no-record arms
 // wait like every other path: b2 skips before recording, and selection
 // reaches the ready card.
+//
+// SPEC-CARD-ELIGIBLE-PULL-001 (sync-audit round-2 F9): under the OFF default
+// the (b2) candidate is skipped at the dormancy check BEFORE the hub-wait
+// read, so this guard went vacuously green (mutant-verified: falsifying the
+// b2 hub-wait result still passed). The fixture is armed with the flag on
+// and the waiting candidate carries a spec id, so the hub-wait subject
+// executes behind the gate; the sibling control below pins the OFF-dormancy
+// outcome for the same shape.
 func TestReviewUnrecordedPickedHubWait(t *testing.T) {
 	root, store := fcFixture(t)
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStateQueued)
 	for _, id := range []string{"t1", "t2", "t3"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
+	cepSetSpecID(t, store, "t2", "SPEC-HUBWAIT-001")
 	fbSeedFiles(t, store, "t1", t1533HubA)
 	fbSeedFiles(t, store, "t2", t1533HubA)
 	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
@@ -500,6 +516,44 @@ func TestReviewUnrecordedPickedHubWait(t *testing.T) {
 	}
 	if fcHasCard(t, root, "t2") {
 		t.Fatalf("t2 = %s — the waiting card must not be recorded before its predecessor merges", fcCard(t, root, "t2").State)
+	}
+	c := fcCard(t, root, "t3")
+	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t3 = %s holder=%q, want the unrelated ready card leased to lane-1", c.State, c.LeaseHolder)
+	}
+}
+
+// TestReviewUnrecordedPickedHubWaitOffDormancy — the OFF control for the
+// shape above (SPEC-CARD-ELIGIBLE-PULL-001, guard-both-ways): the same
+// fixture with self_dispatch absent. t2 is skipped by the dormancy check
+// before any evaluation — same observable outcome (unrecorded, t3 leased),
+// but quietly: no refusal lines, because no evaluation happened (REQ-CEP-001).
+// The hub-wait guard's liveness is carried by the armed test above; this
+// control pins the dormancy contract so a future reordering that evaluates
+// unowned candidates under OFF shows up here as refusal lines.
+func TestReviewUnrecordedPickedHubWaitOffDormancy(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStateQueued)
+	for _, id := range []string{"t1", "t2", "t3"} {
+		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	}
+	fbSeedFiles(t, store, "t1", t1533HubA)
+	fbSeedFiles(t, store, "t2", t1533HubA)
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: live})
+	sdRegisterLane(t, root, "lane-1")
+	t.Chdir(root)
+
+	sdLaneEnv(t, "lane-1", "")
+	out, _, err := runFactory(t, "next", "--run", fcRun)
+	if err != nil {
+		t.Fatalf("lane-1 next: %v — the dormant shape must still reach the ready card", err)
+	}
+	if lines := cepRefusedLines(out); len(lines) > 0 {
+		t.Errorf("OFF dormancy emitted refusal lines %v — the skip must be quiet (no evaluation, no reason)", lines)
+	}
+	if fcHasCard(t, root, "t2") {
+		t.Fatalf("t2 = %s — the dormant arm must not record the waiting card", fcCard(t, root, "t2").State)
 	}
 	c := fcCard(t, root, "t3")
 	if c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
@@ -797,6 +851,14 @@ func TestReviewNominatedCreationFollowsTheAfterRelation(t *testing.T) {
 		t.Fatalf("assign t1: %v", err)
 	}
 
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): the bare fbLeasedCard
+	// follower lease below is an arm-(b) vehicle — the flag is armed and the
+	// candidates carry spec ids so the after-relation subject stays covered
+	// behind the gate. RED observed pre-fix at HEAD: lease = "", want t1.
+	cepSelfDispatchYAML(t, root, true)
+	cepSetSpecID(t, store, "t1", "SPEC-CREATION-001")
+	cepSetSpecID(t, store, "t2", "SPEC-CREATION-001")
+
 	sdLaneEnv(t, "lane-1", "")
 	if _, _, err := runFactory(t, "next", "--card", "t2", "--run", fcRun); err != nil {
 		t.Fatalf("next --card t2: %v — the successor leads its own predecessor", err)
@@ -879,9 +941,15 @@ func TestReviewHubWaitCoversLaterSharers(t *testing.T) {
 func TestReviewWaitFollowsTheAfterRelation(t *testing.T) {
 	t.Run("explicit-after", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): both bare
+		// fbLeasedCard leases are arm-(b) vehicles — armed with spec ids so
+		// the after-relation ordering subject stays covered behind the gate.
+		// RED observed pre-fix at HEAD: lease = "", want t2 / t1.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		for _, id := range []string{"t1", "t2"} {
 			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+			cepSetSpecID(t, store, id, "SPEC-WAIT-AFTER-001")
 		}
 		fbSeedFiles(t, store, "t1", t1533HubA)
 		fbSeedFiles(t, store, "t2", t1533HubA)
@@ -906,9 +974,13 @@ func TestReviewWaitFollowsTheAfterRelation(t *testing.T) {
 
 	t.Run("generated-after", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): same arm-(b)
+		// vehicle shape as explicit-after — armed with spec ids.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 		for _, id := range []string{"t1", "t2"} {
 			fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+			cepSetSpecID(t, store, id, "SPEC-WAIT-GEN-001")
 		}
 		fbSeedFiles(t, store, "t1", t1533HubA)
 		fbSeedFiles(t, store, "t2", t1533HubA)
