@@ -26,3 +26,13 @@
 
 - 패키지 전체 internal/cli 시험·커버리지 미실행(범위 규율 — batch CI 소관, 카드 사슬 동일 처분).
 - 새 머지 헤드(b9d27825d4)에 대한 독립 sync-audit은 미실행 — dispatch가 감사가 아닌 draft PR까지를 범위로 명시; 병합 전 559a codex 게이트가 리더 측에서 수행.
+
+## 2026-10-21 ~03:2xZ — codex 재리뷰 발견 처분 (리더 승인분) + 설계 요구사항 전문 기록
+
+- **P2-c 수리(승인)**: SPEC-GLM-JEV-KEY plan.md:149·acceptance.md:35의 선택기를 `-run '^Test(GLM|Glm|Jev|Key|Root).*$'`로 수정 — 이전 수리(f526de7afb)의 `$` 앵커가 접두 패밀리(174건)를 빈 스위프(0건)로 만든 결함 정정. 실측: -list 174건 재입증. 자진 보고가 아니라 codex 재리뷰가 잡은 내 수리의 결함 — 빈 스위프 규정(verification-completeness §1.1) 준수 위해 재수정.
+- **stale 앵커 2건 수리(승인)**: PROGRESS-RECORD-IO acceptance.md:50 → 4 preservation 테스트 교대앵커(스위프 4건 실측); :147 → AC 본문이 인용하는 M3 스위프(28-목록, darwin 27건+linux 1건)로 재지향. 기록명 유지 옵션은 리더 처분으로 폐기.
+- **P1·P2-a·P2-b — t1914/t1839 설계 요구사항 (구현은 자격 설계 착수 시; #1859 수리 대상 아님 — 리더 처분 ③)**:
+  - **P1 (factoryNextPRSnapshot 사전 조회 게이트)**: bare 선택은 factoryNextLeaseOnceEligibility에서 self_dispatch와 5개 자격 조건을 적용하지만, 바로 앞의 factoryNextPRSnapshot이 사용하는 factoryNextMayLease는 여전히 모든 unowned picked 카드를 임대 가능하다고 판정. self_dispatch=false 기본값에서 그런 카드만 남아 실제 선택이 항상 no-card여도 `--wait`는 기본 15분 동안 5초마다 `gh pr list`를 실행해 레인 하나당 약 180회의 불필요한 네트워크 요청 — 여러 레인이 GitHub rate limit을 소진할 수 있음. 사전 조회도 동일한 플래그와 자격 판정을 공유해 실제로 임대 가능한 카드가 없으면 쿼리를 건너뛰어야 함.
+  - **P2-a (레코드의 spec_id도 자격 판정에 사용)**: self_dispatch가 켜져 있고 운영자가 `factory assign --spec ...`으로 SPEC을 팩토리 레코드에만 기록한 경우, homestate.Card.SpecID는 유효해도 큐의 BacklogItem.SpecID는 비어 있을 수 있음. 이 조건은 큐 힌트만 검사하므로 해당 카드를 spec-missing으로 거부하고 bare `factory next`가 계속 no-card로 끝남. 레코드 또는 큐 힌트 중 하나에 SPEC이 있으면 통과하도록 arm (b)의 c.SpecID도 판정에 전달해야 함.
+  - **P2-b (타 레인 번들 소유권을 선행 대기로 오인 금지)**: self_dispatch 켜진 상태에서 owner label은 비어 있지만 다른 레인이 소유한 번들의 멤버를 평가하면 selectionSkips는 번들 소유권 때문에 true를 반환. 이 값을 그대로 depsMet=false로 넘겨 이미 선행 카드가 병합된 경우에도 refused predecessor-unmerged를 출력 — 자동화나 운영자가 존재하지 않는 병합 대기를 해결하려고 잘못 대응. 외부 레인의 번들 멤버는 게이트 평가 전에 조용히 제외하거나, 번들 소유권 판정과 실제 predecessor/hub 대기 판정을 분리해야 함.
+- 출처: PR #1859 codex Code Review (2026-10-21T02:55:19Z, head f526de7afb) 인라인 발견 전문.
