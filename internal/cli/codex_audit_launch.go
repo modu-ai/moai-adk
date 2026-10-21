@@ -840,9 +840,42 @@ func codexAuditRenameIn(dir *os.Root, oldname, newname string) error {
 	return err
 }
 
-// codexAuditGit runs a read-only git query and returns trimmed stdout.
+// codexAuditGitScrubVars are removed from every boundary git inspection's
+// environment, so a variable inherited from whoever launched this process
+// cannot redirect the query at another repository (sync-audit r3 F1): with an
+// inherited GIT_DIR, the confinement's common-dir lookups and worktree
+// listing all execute in the FOREIGN repository and a foreign project_root
+// passes confinement. The same scrub internal/auditreceipt applies to its own
+// store-root inspections.
+var codexAuditGitScrubVars = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES"}
+
+// codexAuditGitEnv is the process environment minus the scrubbed git vars and
+// any locale override, with LC_ALL=C set.
+func codexAuditGitEnv() []string {
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+		drop := name == "LC_ALL"
+		for _, v := range codexAuditGitScrubVars {
+			if name == v {
+				drop = true
+			}
+		}
+		if !drop {
+			env = append(env, kv)
+		}
+	}
+	return append(env, "LC_ALL=C")
+}
+
+// codexAuditGit runs a read-only git query in the scrubbed environment and
+// returns trimmed stdout. Every caller is a boundary or repository-identity
+// check that must read the directory it was handed, never a repository named
+// by an inherited environment variable.
 func codexAuditGit(ctx context.Context, dir string, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...).Output()
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = codexAuditGitEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}

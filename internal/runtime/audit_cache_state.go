@@ -122,15 +122,18 @@ func (c *StateAuditCache) StoreVerdict(specID, hash string, result *AuditResult)
 
 // Lookup returns the cached entry when one exists for (specID, hash) AND its
 // verdict file still exists with the SAME SHA-256 the store recorded — the
-// reuse validation REQ-MN-020 requires before any reuse. The `now` parameter
-// is vestigial and ignored.
+// reuse validation REQ-MN-020 requires before any reuse. The stored SpecID is
+// compared too (sync-audit r3 F4): sanitizeStateKey folds SPEC IDs that differ
+// only by a separator onto one file name, so with identical artifact hashes a
+// lookup keyed by the colliding spelling must never be served another SPEC's
+// PASS. The `now` parameter is vestigial and ignored.
 func (c *StateAuditCache) Lookup(specID, hash string, _ time.Time) (*CachedEntry, bool) {
 	data, err := os.ReadFile(c.entryPath(specID))
 	if err != nil {
 		return nil, false
 	}
 	var e stateEntry
-	if err := json.Unmarshal(data, &e); err != nil || e.PlanArtifactHash != hash {
+	if err := json.Unmarshal(data, &e); err != nil || e.SpecID != specID || e.PlanArtifactHash != hash {
 		return nil, false
 	}
 	sum, err := fileSHA256(c.resolveReportPath(e.ReportPath))

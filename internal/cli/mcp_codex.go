@@ -608,8 +608,12 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	cmd.WaitDelay = codexStderrWaitDelay
 	// REQ-MN-024: the child runs on the SCRUBBED environment — the session's
 	// identity keys and the lane's launch keys never reach the reviewer
-	// process (the same scrub the codex exec role path applies).
-	cmd.Env = codexChildEnv()
+	// process (the same scrub the codex exec role path applies). The pane
+	// drop must ride along too (sync-audit r3 F2): codexChildCmd built the
+	// environment through codexReviewChildEnv, and replacing it wholesale
+	// with codexChildEnv() here discarded that drop — codexAuditChildEnv
+	// composes BOTH filters.
+	cmd.Env = codexAuditChildEnv()
 	// t1632: codexChildCmd put the audit-leg marker in cmd.Env when a leg
 	// spawns this child, but the marker rides the leg's CONTEXT, not this
 	// process's environment — the scrub above cannot inherit it. Re-append it

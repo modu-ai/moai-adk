@@ -1249,6 +1249,14 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		if specDir == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=compute_hash requires spec_dir")), nil
 		}
+		// A RELATIVE spec_dir names the validated root, not the server's
+		// working directory (sync-audit r3 F3): a server whose cwd sits in
+		// another tree must not return that tree's plan hash while "_root"
+		// claims the requested one — the same anchoring the store applies to
+		// a relative report_path.
+		if !filepath.IsAbs(specDir) {
+			specDir = filepath.Join(root, specDir)
+		}
 		hash, err := cache.ComputeHash(specDir)
 		if err != nil {
 			return toolErr("audit_cache", err), nil

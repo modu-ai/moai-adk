@@ -16,6 +16,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
@@ -424,6 +425,45 @@ func auditCacheJSON(t *testing.T, res *mcp.CallToolResult) map[string]any {
 		t.Fatalf("audit_cache: unmarshal %s: %v", string(b), err)
 	}
 	return m
+}
+
+// TestAuditCacheRelativeSpecDirAnchoredToRoot pins the sync-audit r3 F3 repair:
+// a RELATIVE spec_dir resolves against the validated project root the call
+// names, never against the server's working directory. Pre-fix, a server whose
+// cwd sits in a different tree returned THAT tree's plan hash while `_root`
+// claimed the requested one.
+func TestAuditCacheRelativeSpecDirAnchoredToRoot(t *testing.T) {
+	treeA := t.TempDir() // the server's working directory
+	treeB := t.TempDir() // the root the call resolves
+	writePlan := func(root, body string) string {
+		t.Helper()
+		dir := filepath.Join(root, ".moai", "specs", "SPEC-REL-001")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "plan.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+	dirB := writePlan(treeB, "# plan: tree B\n")
+	writePlan(treeA, "# plan: tree A\n")
+	t.Chdir(treeA)
+	t.Setenv(config.EnvClaudeProjectDir, treeB)
+
+	abs := mcpCallRaw(t, handleAuditCache, map[string]any{"op": "compute_hash", "spec_dir": dirB})
+	if abs.IsError {
+		t.Fatalf("absolute spec_dir compute_hash errored: %s", mcpTextOf(abs))
+	}
+	rel := mcpCallRaw(t, handleAuditCache, map[string]any{"op": "compute_hash", "spec_dir": ".moai/specs/SPEC-REL-001"})
+	if rel.IsError {
+		t.Fatalf("relative spec_dir compute_hash errored: %s", mcpTextOf(rel))
+	}
+	gotAbs := auditCacheJSON(t, abs)["hash"]
+	gotRel := auditCacheJSON(t, rel)["hash"]
+	if gotRel != gotAbs {
+		t.Fatalf("relative spec_dir hash = %v, want the named tree's %v — the relative path resolved against the server's working directory, not the validated project root (sync-audit r3 F3)", gotRel, gotAbs)
+	}
 }
 
 // TestMoaiMCPServer_BranchCoverage closes the remaining handler branches toward

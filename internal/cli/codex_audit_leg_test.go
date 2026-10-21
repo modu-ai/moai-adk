@@ -168,15 +168,18 @@ func TestAuditLegSkipSetEnumeratesVerifyMembers(t *testing.T) {
 // CONTEXT, but the child's Stop chain reads it from its ENVIRONMENT. Asserted
 // through the real session runner with a real child process, so the
 // environment the child actually receives is what is judged — the scrub must
-// both preserve the marker and keep dropping identity keys.
+// preserve the marker while dropping the identity keys AND the pane-owned
+// Orca variables (t1632 sync-audit r3 F2).
 func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
 	dir := t.TempDir()
 	legOut := filepath.Join(dir, "leg.txt")
 	scrubOut := filepath.Join(dir, "scrub.txt")
+	paneOut := filepath.Join(dir, "pane.txt")
 	script := filepath.Join(dir, "probe.sh")
 	body := "#!/bin/sh\n" +
 		fmt.Sprintf("printf '%%s' \"$%s\" > \"%s\"\n", codexAuditLegEnv, legOut) +
-		fmt.Sprintf("printf '%%s' \"${%s:+leaked}\" > \"%s\"\n", config.EnvClaudeCodeSessionID, scrubOut)
+		fmt.Sprintf("printf '%%s' \"${%s:+leaked}\" > \"%s\"\n", config.EnvClaudeCodeSessionID, scrubOut) +
+		fmt.Sprintf("printf '%%s' \"${%s:+leaked}\" > \"%s\"\n", config.EnvOrcaPaneKey, paneOut)
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -185,6 +188,10 @@ func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
 	// the env var empty, any marker the child sees can only come from the ctx.
 	t.Setenv(codexAuditLegEnv, "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "session-under-scrub")
+	// The session runner is a codex child, so the pane-owned Orca variables
+	// must be dropped here too (sync-audit r3 F2): the child must never report
+	// into the parent's pane.
+	t.Setenv(config.EnvOrcaPaneKey, "pane-under-scrub")
 
 	conn, err := realCodexSessionRunner{}.start(withCodexAuditLeg(context.Background()), script, nil)
 	if err != nil {
@@ -207,5 +214,12 @@ func TestRealCodexSessionRunnerScrubRetainsAuditLegMarker(t *testing.T) {
 	}
 	if string(scrub) != "" {
 		t.Fatalf("the scrub leaked %s=%q into the leg child", config.EnvClaudeCodeSessionID, string(scrub))
+	}
+	pane, err := os.ReadFile(paneOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(pane) != "" {
+		t.Fatalf("the session runner leaked %s=%q into the codex child — codexChildCmd's pane drop was discarded when cmd.Env was replaced (sync-audit r3 F2)", config.EnvOrcaPaneKey, string(pane))
 	}
 }

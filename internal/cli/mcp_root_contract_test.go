@@ -109,6 +109,31 @@ func TestMCPRootConfinement(t *testing.T) {
 	})
 }
 
+// TestMCPRootConfinementHostileGitDirEnv pins the sync-audit r3 F1 repair: the
+// confinement's git inspections run in a scrubbed environment, so an inherited
+// GIT_DIR / GIT_WORK_TREE cannot redirect the boundary checks at another
+// repository. Pre-fix, both common-dir lookups AND the worktree listing
+// execute in the hostile GIT_DIR's repository, so a foreign project_root
+// passes confinement — the same defect class l57-r1 F4 closed in
+// internal/auditreceipt (TestTreeState_IgnoresInheritedGitDir).
+func TestMCPRootConfinementHostileGitDirEnv(t *testing.T) {
+	serverRoot := sdServerFixture(t)
+	foreign, _ := sdMoaiFixture(t) // a real git repository with its own .moai
+	if foreign == serverRoot {
+		t.Fatal("fixture collision")
+	}
+	// Creating the fixture re-stamped CLAUDE_PROJECT_DIR to itself; the server
+	// root for this arm is the parent's.
+	t.Setenv(config.EnvClaudeProjectDir, serverRoot)
+	// The hostile environment a mislaunched server inherits: every git child
+	// reads the FOREIGN repository, whatever -C says.
+	t.Setenv("GIT_DIR", filepath.Join(foreign, ".git"))
+	t.Setenv("GIT_WORK_TREE", foreign)
+	if _, err := resolveToolProjectRoot(sdToolReq(map[string]any{"project_root": foreign})); err == nil {
+		t.Fatal("a foreign project_root passed confinement under an inherited hostile GIT_DIR — the boundary git checks executed in the foreign repository (sync-audit r3 F1)")
+	}
+}
+
 // TestMCPRootRequiredForMutating pins AC-MN-006's wire shape: a mutating
 // family tool called WITHOUT project_root refuses at the tool layer with
 // isError true and the pinned text — argument validation, deliberately

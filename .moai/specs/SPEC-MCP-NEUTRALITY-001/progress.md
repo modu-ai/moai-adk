@@ -588,6 +588,41 @@ Verification batch (this tree, this run, at the r2 HEAD):
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r3 delta repair round — landing re-audit (card t1632, branch WT-3-2-0-2)
+
+Commit: `fix(t1632): lane-57 sync-audit r3 repairs — boundary git env scrub, panel isolation, relative spec_dir, cache key collision` (this round). Base: HEAD `263d3254e9` (the r2 repairs commit). Audit receipt: `rcpt-9708ddd8d674aaa80c7390b6` (STATIC codex_audit on the merged tree — it ran NO tests; each finding was verified honestly before repair, all 4 proved REAL).
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 [P1] the repo-boundary git checks inherit hostile GIT_DIR/GIT_WORK_TREE (mcp_project_root.go:203 via codexAuditGit) | REAL-FIXED — `codexAuditGit` passed no `cmd.Env`, so the confinement's two common-dir lookups AND the worktree listing executed in whatever repository an inherited GIT_DIR named; a foreign project_root passed confinement. Fixed by scrubbing `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_CEILING_DIRECTORIES` (plus a locale pin, `LC_ALL=C`) inside `codexAuditGitEnv()` — the same scrub l57-r1 F4 landed in internal/auditreceipt (`scrubbedGitEnv`, TestTreeState_IgnoresInheritedGitDir). The fix lands at the shared helper, so codexAuditValidateRoot and the CLI verb path are covered by the same repair | `go test ./internal/cli -run 'TestMCPRootConfinementHostileGitDirEnv' -count=1` | RED→GREEN: `--- FAIL ... a foreign project_root passed confinement under an inherited hostile GIT_DIR` → `ok internal/cli` |
+| F2 [P1] the r1 audit-leg marker fix resurrects Orca panel env vars (mcp_codex.go:612) | REAL-FIXED — `realCodexSessionRunner.start` replaced `cmd.Env` wholesale with `codexChildEnv()`, discarding the `dropOrcaPaneEnv` pass codexChildCmd had applied through `codexReviewChildEnv`; ORCA_PANE_KEY leaked into the session child. Fixed by composing BOTH filters — `cmd.Env = codexAuditChildEnv()` (= `dropOrcaPaneEnv(codexChildEnv())`) — with the r1 audit-leg ctx re-append kept verbatim. The r1 pin `TestRealCodexSessionRunnerScrubRetainsAuditLegMarker` stays green, now extended to also probe ORCA_PANE_KEY | `go test ./internal/cli -run 'TestRealCodexSessionRunnerScrubRetainsAuditLegMarker' -count=1` | RED→GREEN: `--- FAIL ... the session runner leaked ORCA_PANE_KEY="leaked" into the codex child` → `ok internal/cli` |
+| F3 [P2] a relative spec_dir resolves against the server's CWD, not the request's project_root (mcp_server.go:1252) | REAL-FIXED — `handleAuditCache` compute_hash read `spec_dir` as-is, so a server whose cwd sat in another tree returned THAT tree's plan hash while `_root` claimed the requested one. Fixed by joining a relative spec_dir onto the validated root — the same anchoring the store applies to a relative report_path (card-review P2-7). `TestAuditCacheRelativeSpecDirAnchoredToRoot` pins it: two trees with different plan.md, relative spelling must equal the absolute root-anchored hash | `go test ./internal/cli -run 'TestAuditCacheRelativeSpecDirAnchoredToRoot' -count=1` | RED→GREEN: `--- FAIL ... relative spec_dir hash = 7cb8fe4b…, want the named tree's 944e2262…` → `ok internal/cli` |
+| F4 [P2] sanitizeStateKey collisions serve one SPEC's PASS to another (audit_cache_state.go:133) | REAL-FIXED — `SPEC-A/B` and `SPEC-A_B` both sanitize to `SPEC-A_B.json`, and `Lookup` verified only the artifact hash, never the stored SpecID; with identical hashes the first SPEC's PASS report was served to the second. Fixed per the auditor: `Lookup` now compares `e.SpecID != specID` and misses on mismatch (the storing SPEC's own lookup still hits) | `go test ./internal/runtime -run 'TestStateCache_LookupRefusesSpecIDCollision' -count=1` | RED→GREEN: `--- FAIL ... a separator-collision lookup was served another SPEC's PASS entry` → `ok internal/runtime` |
+
+E8 RED evidence (each pinning test run against the pre-fix code, all four REAL):
+
+- F1 RED (`go test ./internal/cli -run 'TestMCPRootConfinementHostileGitDirEnv' -count=1`, exit 1):
+  `--- FAIL: TestMCPRootConfinementHostileGitDirEnv (0.74s)` / `mcp_root_contract_test.go:133: a foreign project_root passed confinement under an inherited hostile GIT_DIR — the boundary git checks executed in the foreign repository (sync-audit r3 F1)`
+- F2 RED (`go test ./internal/cli -run 'TestRealCodexSessionRunnerScrubRetainsAuditLegMarker' -count=1 -v`, exit 1):
+  `codex_audit_leg_test.go:223: the session runner leaked ORCA_PANE_KEY="leaked" into the codex child — codexChildCmd's pane drop was discarded when cmd.Env was replaced (sync-audit r3 F2)`
+- F3 RED (`go test ./internal/cli -run 'TestAuditCacheRelativeSpecDirAnchoredToRoot' -count=1 -v`, exit 1):
+  `mcp_server_test.go:465: relative spec_dir hash = 7cb8fe4b2dc22016666fda881cb9b3c13c2e13a2337c4b980fb655759ac77834, want the named tree's 944e226249bc3fc79041cd1c6c0318a69bbfb5d6c25f60a3ffe8b98d690a369a — the relative path resolved against the server's working directory, not the validated project root (sync-audit r3 F3)`
+- F4 RED (`go test ./internal/runtime -run 'TestStateCache_LookupRefusesSpecIDCollision' -count=1 -v`, exit 1):
+  `audit_cache_state_test.go:112: a separator-collision lookup was served another SPEC's PASS entry — the stored SpecID is not compared on lookup (sync-audit r3 F4)`
+
+Verification batch (this tree, this run, at the r3 HEAD):
+
+- Builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `go test ./internal/cli -run 'TestMCPRoot|TestServerStaleness|TestRealCodexSessionRunnerScrubRetainsAuditLegMarker|TestCodexAudit' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 26.041s`.
+- `go test ./internal/runtime -count=1` (full) → `ok github.com/modu-ai/moai-adk/internal/runtime 3.743s`.
+- `go test ./internal/cli -run 'TestMCPGateExposure|TestSpecProgress|TestVerifySnapshot|TestVerifyTrend' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 1.456s`.
+- `go vet ./internal/cli ./internal/runtime` → clean (exit 0).
+- `golangci-lint run ./internal/cli/... ./internal/runtime/...` → exactly the 1 pre-existing errcheck (`internal/cli/mcp_server_call_log.go:123`), ZERO new.
+- Full-suite note: the repository-wide test verdict is owned by the CI run on the project's integration branch and is PENDING at report time (lane-local targeted selectors only, per the standing batch surface).
+- Push state: nothing pushed (the lane owns push/landing).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true

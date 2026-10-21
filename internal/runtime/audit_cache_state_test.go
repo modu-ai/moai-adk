@@ -96,6 +96,26 @@ func TestStateCache_LookupRefusesChangedVerdictFile(t *testing.T) {
 	}
 }
 
+// TestStateCache_LookupRefusesSpecIDCollision pins the sync-audit r3 F4 repair:
+// sanitizeStateKey folds SPEC IDs that differ only by a separator onto ONE
+// file name ("SPEC-A/B" and "SPEC-A_B" both sanitize to SPEC-A_B.json), so a
+// lookup must ALSO match the stored SpecID — with identical artifact hashes,
+// one SPEC's PASS report must never be served to another.
+func TestStateCache_LookupRefusesSpecIDCollision(t *testing.T) {
+	root := t.TempDir()
+	report := writeVerdictFile(t, root, "review-5.md", "# plan review: pass")
+	c := NewStateAuditCache(root)
+	if err := c.StoreVerdict("SPEC-A/B", "hash-5", passResult(report)); err != nil {
+		t.Fatalf("StoreVerdict: %v", err)
+	}
+	if _, ok := c.Lookup("SPEC-A_B", "hash-5", time.Now()); ok {
+		t.Fatal("a separator-collision lookup was served another SPEC's PASS entry — the stored SpecID is not compared on lookup (sync-audit r3 F4)")
+	}
+	if _, ok := c.Lookup("SPEC-A/B", "hash-5", time.Now()); !ok {
+		t.Fatal("the storing SPEC's own lookup must still hit after the collision repair")
+	}
+}
+
 // TestStateCache_RelativeReportPathAnchoredToRoot pins the P2-7 repair: a
 // RELATIVE verdict report path resolves against the project root the cache is
 // bound to — at store AND at lookup — never against whatever cwd the call
