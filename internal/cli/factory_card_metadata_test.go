@@ -758,7 +758,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 		mdEnableFlag(t, root)
 		fcQueue(t, store, tc.state)
 		before := mdQueueDump(t, store)
-		_, _, err := runFactory(t, "reclassify", "t1", "--priority", "high", "--reason", "r", "--run", fcRun)
+		_, _, err := runFactory(t, "reclassify", "t1", "--priority", "high", "--reason", "r")
 		if tc.admitted {
 			if err != nil {
 				t.Fatalf("admission state %s was refused: %v", tc.state, err)
@@ -774,7 +774,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 	}
 	// A missing item refuses.
 	root, store := mdClassifiedFixture(t)
-	if _, _, err := runFactory(t, "reclassify", "tX", "--priority", "high", "--reason", "r", "--run", fcRun); err == nil {
+	if _, _, err := runFactory(t, "reclassify", "tX", "--priority", "high", "--reason", "r"); err == nil {
 		t.Fatal("a missing item was admitted")
 	}
 	_ = store
@@ -782,7 +782,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 	// Closed sets go through the REAL validator — every out-of-set value is
 	// refused and the refusal quotes it.
 	for _, bad := range []string{"fast", "", "SERIAL", "parallel"} {
-		_, _, err := runFactory(t, "reclassify", "t1", "--mode", bad, "--reason", "r", "--run", fcRun)
+		_, _, err := runFactory(t, "reclassify", "t1", "--mode", bad, "--reason", "r")
 		if err == nil {
 			t.Fatalf("mode %q was admitted", bad)
 		}
@@ -791,7 +791,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 		}
 	}
 	for _, bad := range []string{"urgent", "", "HIGH", "normal-"} {
-		_, _, err := runFactory(t, "reclassify", "t1", "--priority", bad, "--reason", "r", "--run", fcRun)
+		_, _, err := runFactory(t, "reclassify", "t1", "--priority", bad, "--reason", "r")
 		if err == nil {
 			t.Fatalf("priority %q was admitted", bad)
 		}
@@ -801,7 +801,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 	}
 
 	// No axis: a usage refusal — neither --mode nor --priority supplied.
-	if _, _, err := runFactory(t, "reclassify", "t1", "--reason", "r", "--run", fcRun); err == nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--reason", "r"); err == nil {
 		t.Fatal("an axis-less reclassify was admitted")
 	}
 
@@ -813,7 +813,7 @@ func TestReclassify_ValidationGate(t *testing.T) {
 
 func TestReclassify_UnspecifiedAxisPreserved(t *testing.T) {
 	_, store := mdClassifiedFixture(t)
-	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "lower it", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "lower it"); err != nil {
 		t.Fatalf("reclassify: %v", err)
 	}
 	got := mdClass(t, store, "t1")
@@ -833,7 +833,7 @@ func TestReclassify_UnspecifiedAxisPreserved(t *testing.T) {
 
 func TestReclassify_BlockedUntouched(t *testing.T) {
 	_, store := mdClassifiedFixture(t)
-	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "parallel work", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "parallel work"); err != nil {
 		t.Fatalf("reclassify: %v", err)
 	}
 	got := mdClass(t, store, "t1")
@@ -851,7 +851,7 @@ func TestReclassify_WriteSemantics(t *testing.T) {
 	root, store := fcFixture(t)
 	mdEnableFlag(t, root)
 	fcQueue(t, store, factory.BacklogStateQueued)
-	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "first judgment", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "first judgment"); err != nil {
 		t.Fatalf("first-time reclassify: %v", err)
 	}
 	got := mdClass(t, store, "t1")
@@ -890,7 +890,7 @@ func TestReclassify_WriteSemantics(t *testing.T) {
 
 	// A reclassify on a card that HAD a classification re-stamps it.
 	_, store2 := mdClassifiedFixture(t)
-	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "re-judged", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "re-judged"); err != nil {
 		t.Fatalf("reclassify on classified card: %v", err)
 	}
 	got2 := mdClass(t, store2, "t1")
@@ -910,7 +910,7 @@ func TestReclassify_AuditWindowCatchUp(t *testing.T) {
 	// mutation, exit zero.
 	root, store := mdClassifiedFixture(t)
 	seed := *mdClass(t, store, "t1")
-	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "catch-up attestation", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "catch-up attestation"); err != nil {
 		t.Fatalf("converged-but-unaudited re-run refused: %v", err)
 	}
 	rows := mdAuditRows(t, root, "t1")
@@ -929,7 +929,7 @@ func TestReclassify_AuditWindowCatchUp(t *testing.T) {
 
 	// The converged-and-audited duplicate re-run refuses with no second row.
 	queueBefore := mdQueueDump(t, store)
-	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "again", "--run", fcRun); err == nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "again"); err == nil {
 		t.Fatal("the converged-and-audited duplicate was admitted")
 	}
 	if n := len(mdAuditRows(t, root, "t1")); n != 1 {
@@ -954,7 +954,7 @@ func TestReclassify_AuditWindowCatchUp(t *testing.T) {
 		return nil
 	}
 	t.Cleanup(func() { metadataWriteFault = restore })
-	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r", "--run", fcRun); err == nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r"); err == nil {
 		t.Fatal("the audit-loss sentinel did not fire")
 	} else if !strings.Contains(err.Error(), "card metadata audit row lost") {
 		t.Fatalf("error lacks the audit-loss sentinel: %v", err)
@@ -984,7 +984,7 @@ func TestReclassify_AuditWindowCatchUp(t *testing.T) {
 		return nil
 	}
 	t.Cleanup(func() { metadataWriteFault = restore3 })
-	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "reclassify", "t1", "--priority", "low", "--reason", "r"); err != nil {
 		t.Fatalf("retrying reclassify append: %v", err)
 	}
 	if n := len(mdAuditRows(t, root3, "t1")); n != 1 {

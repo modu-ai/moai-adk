@@ -15,6 +15,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -309,4 +310,208 @@ func writeQueueSpec(l *factory.LockedBacklog, cardID, spec string) error {
 		}
 		return fmt.Errorf("no backlog item %s", cardID)
 	})
+}
+
+// metadataAxesJSON renders the classification's VALUE axes — blocked, mode,
+// priority — as the canonical JSON the audit row's old/new carry and the
+// LATEST-row duplicate test compares. The decider, stamp, and reason are
+// payload fields, never part of the compared value: a re-run's stamp differs
+// by definition, and the REQ-CMV-010 duplicate test is about the value the
+// queue item carries.
+func metadataAxesJSON(c factory.CardClassification) string {
+	data, err := json.Marshal(struct {
+		Blocked  bool   `json:"blocked"`
+		Mode     string `json:"mode"`
+		Priority string `json:"priority"`
+	}{Blocked: c.Blocked, Mode: c.Mode, Priority: c.Priority})
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// newFactoryReclassifyCommand builds `moai factory reclassify <card>
+// [--mode <m>] [--priority <p>] --reason <text>` — the post-issuance
+// re-designation verb. Its write target is the queue item's classification
+// record (REQ-CMV-009): no Card-row write and no run identity — a
+// queued-only card takes the queue-only path, and only the audit append
+// touches homestate.
+func newFactoryReclassifyCommand() *cobra.Command {
+	var mode, priority, reason string
+	cmd := &cobra.Command{
+		Use:   "reclassify <card>",
+		Short: "Re-designate a queued or picked card's mode and/or priority (audit-trailed; gated by " + metadataFlagKey + ")",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := runFactoryReclassify(cmd, args[0], mode, priority, reason); err != nil {
+				return fmt.Errorf("factory reclassify: %w", err)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&mode, "mode", "",
+		"execution mode: "+factory.ClassModeSerial+" or "+factory.ClassModeParallelizable)
+	cmd.Flags().StringVar(&priority, "priority", "",
+		"priority: "+factory.ClassPriorityHigh+", "+factory.ClassPriorityNormal+", or "+factory.ClassPriorityLow)
+	cmd.Flags().StringVar(&reason, "reason", "",
+		"why the classification is changing (required, 1-500 runes; recorded verbatim in the audit row)")
+	return cmd
+}
+
+func runFactoryReclassify(cmd *cobra.Command, cardID, mode, priority, reason string) error {
+	if !homestate.ValidCardID(cardID) {
+		return fmt.Errorf("%q is not a card id", cardID)
+	}
+	// REQ-CMV-015: leader/operator acts; the lane boundary ahead of the gate
+	// order, as in set-spec.
+	if factoryLaneRefusal() {
+		return fmt.Errorf("refused — %s: the metadata verbs are the leader's or the operator's act (%s=%s marks a lane)",
+			factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+	}
+	root := factoryCardRoot()
+	// REQ-CMV-001: the flag gate.
+	if !cardMetadataVerbsEnabled(root) {
+		return fmt.Errorf("refused — this verb is gated by %s (default false); set it in .moai/config/sections/workflow.yaml to admit card metadata edits", metadataFlagKey)
+	}
+	// REQ-CMV-012: the reason gate.
+	if err := validateMetadataReason(reason); err != nil {
+		return err
+	}
+	// REQ-CMV-007 gate (c): at least one axis.
+	if !cmd.Flags().Changed("mode") && !cmd.Flags().Changed("priority") {
+		return fmt.Errorf("supply at least one of --mode or --priority")
+	}
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// The homestate database is opened for the audit surface only — the
+	// classification write itself is a queue-layer write (REQ-CMV-009).
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	actor, session := metadataActor()
+	now := factoryCardNow()
+	out := cmd.OutOrStdout()
+	return newTodoStore().WithLock(func(l *factory.LockedBacklog) error {
+		return reclassifyLocked(ctx, l, db, cardID, mode, priority, reason, cmd, actor, session, now, out)
+	})
+}
+
+// reclassifyLocked is runFactoryReclassify's body under the held queue lock.
+func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, cardID, mode, priority, reason string, cmd *cobra.Command, actor, session string, now time.Time, out io.Writer) error {
+	rec, err := l.LoadPure()
+	if err != nil {
+		return fmt.Errorf("read queue: %w", err)
+	}
+	var item *factory.BacklogItem
+	for i := range rec.Items {
+		if rec.Items[i].ID == cardID {
+			item = &rec.Items[i]
+			break
+		}
+	}
+	if item == nil {
+		return fmt.Errorf("queue item %s is not in the queue", cardID)
+	}
+	// REQ-CMV-007 gate (a): POSITIVE enumeration — the states the verb
+	// admits are named; every other state (a state added later included)
+	// refuses.
+	switch item.State {
+	case factory.BacklogStateQueued, factory.BacklogStatePicked:
+		// the admitted states
+	default:
+		return fmt.Errorf("queue item %s is %s, not queued or picked", cardID, item.State)
+	}
+	// The commanded classification: the read-side default seam derives any
+	// absent axis, the supplied axes override, and the blocked axis is never
+	// altered (REQ-CMV-008). Decider is human — a reclassify is a human
+	// re-judgment (REQ-CMV-009).
+	base := factory.EffectiveCardClassification(*item)
+	oldAxes := metadataAxesJSON(base)
+	target := base
+	if cmd.Flags().Changed("mode") {
+		target.Mode = mode
+	}
+	if cmd.Flags().Changed("priority") {
+		target.Priority = priority
+	}
+	target.Decider = metadataDeciderIdentity
+	// REQ-CMV-007 gate (b): the closed sets through the EXISTING validator —
+	// no re-spelled copy (classification.go's own header rule).
+	if err := factory.ValidateCardClassification(target); err != nil {
+		return err
+	}
+	commanded := metadataAxesJSON(target)
+	// REQ-CMV-010: the LATEST-row duplicate test ahead of the write. The
+	// queue item already carrying the commanded axes splits two ways: a
+	// converged-AND-audited duplicate refuses, a converged-but-unaudited
+	// item is the converged-state audit completion — exactly the row the
+	// crashed run owed, no store re-mutation, exit zero.
+	if item.Classification != nil && metadataAxesJSON(*item.Classification) == commanded {
+		latest, audited, err := db.LatestCardMetadataNewValue(ctx, cardID, metadataKindReclassify, metadataFieldClassific)
+		if err != nil {
+			return err
+		}
+		if audited && latest == commanded {
+			return fmt.Errorf("card %s already carries the commanded classification and the audit surface's latest row already records it (converged-and-audited duplicate)", cardID)
+		}
+		old := ""
+		if audited {
+			old = latest
+		}
+		if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
+			CardID: cardID, Kind: metadataKindReclassify, Actor: actor, Session: session,
+			Field: metadataFieldClassific, Old: old, New: commanded, Reason: reason,
+		}, now); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(out, "%s classification %s (attested; the queue item already carried it, no store re-mutated)\n", cardID, commanded)
+		return nil
+	}
+	// The write: fresh classified-at stamp, the caller-supplied reason,
+	// decider human — inside the caller's locked Mutate. Absence marshals
+	// byte-identically: a card classified for the first time here ACQUIRES
+	// the field, never a placeholder (REQ-CMV-009's additive discipline).
+	stamp := now.UTC().Format(time.RFC3339Nano)
+	target.ClassifiedAt = stamp
+	target.Reason = reason
+	if err := l.Mutate(func(rec *factory.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID != cardID {
+				continue
+			}
+			switch rec.Items[i].State {
+			case factory.BacklogStateQueued, factory.BacklogStatePicked:
+				// re-checked under the lock — a pick racing the read lands
+				// the classification on the post-pick item (acceptance.md §C)
+			default:
+				return fmt.Errorf("queue item %s is %s, not queued or picked", cardID, rec.Items[i].State)
+			}
+			value := target
+			rec.Items[i].Classification = &value
+			return nil
+		}
+		return fmt.Errorf("no backlog item %s", cardID)
+	}); err != nil {
+		return err
+	}
+	// The audit append only after the queue write commits — one retry, then
+	// the audit-loss sentinel with the completed queue write left in place
+	// (the single-store mirror of REQ-CMV-004 direction 4).
+	for attempt := 0; attempt < 2; attempt++ {
+		if aerr := metadataFault("audit-append"); aerr == nil {
+			if aerr = db.RecordCardMetadataEvent(ctx, homestate.CardMetadataEvent{
+				CardID: cardID, Kind: metadataKindReclassify, Actor: actor, Session: session,
+				Field: metadataFieldClassific, Old: oldAxes, New: commanded, Reason: reason, ClassifiedAt: stamp,
+			}, now); aerr == nil {
+				_, _ = fmt.Fprintf(out, "%s classification %s (was %s)\n", cardID, commanded, oldAxes)
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%s on %s (reclassify → %q): the queue write committed but the audit append failed after one retry; the missing row is surfaced — re-run reclassify to land the catch-up attestation",
+		metadataAuditLossSentinel, cardID, commanded)
 }
