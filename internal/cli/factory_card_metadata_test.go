@@ -803,6 +803,43 @@ func TestSetSpec_MissingRecordRefusalSparesTheStore(t *testing.T) {
 	}
 }
 
+// TestSetSpec_OpaqueStatErrorDoesNotClaimMissingRecord pins the D-G scoping
+// (sync-audit round 2): the pre-open existence probe refuses with the
+// missing-record message only on a truly absent store. A stat error with
+// another cause — here the store path made a self-referential symlink, so
+// stat fails with ELOOP — is not evidence about the record: the verb falls
+// through to the open and the accessor's own error surfaces the real cause.
+// The loop is unhealable by the accessor (openFactoryPathBusy normalizes
+// the store DIRECTORY's mode, which cannot touch a looping file path), and
+// ELOOP is uid-independent, so no root skip is needed.
+func TestSetSpec_OpaqueStatErrorDoesNotClaimMissingRecord(t *testing.T) {
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	// The store was materialized (fcPlace); its path is then swapped for a
+	// symlink that resolves to itself, so the stat probe fails for a reason
+	// that is not absence while every earlier gate reads a live store.
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(path) })
+	_, _, rerr := runFactory(t, "set-spec", "t1", "--spec", "SPEC-DG-001", "--reason", "r", "--run", fcRun)
+	if rerr == nil {
+		t.Fatal("an unopenable store was admitted")
+	}
+	if strings.Contains(rerr.Error(), "has no factory record") {
+		t.Fatalf("a non-not-exist stat error was misnamed as a missing record: %v", rerr)
+	}
+}
+
 // TestSetSpec_CatchUpAppendRetry pins the D-A alignment (sync-audit round
 // 1): the direction-6 catch-up append carries the write path's append
 // discipline — one retry, then the audit-loss sentinel, exit non-zero, with

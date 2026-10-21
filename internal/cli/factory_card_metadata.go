@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,7 +188,11 @@ func runFactorySetSpec(cmd *cobra.Command, cardID, spec, reason, run string) err
 	if err != nil {
 		return err
 	}
-	if _, serr := os.Stat(fdbPath); serr != nil {
+	// Only a truly absent store carries the missing-record refusal (sync-audit-2
+	// D-G): a stat error with any other cause — an untraversable path component
+	// around an existing store included — is not evidence about the record, so
+	// the probe falls through and the open's own error surfaces the real cause.
+	if _, serr := os.Stat(fdbPath); errors.Is(serr, fs.ErrNotExist) {
 		return fmt.Errorf("card %s has no factory record — assign it first (the cards table is keyed (run_id, card_id)); set-spec creates no record", cardID)
 	}
 	db, err := homestate.OpenFactory(root)
