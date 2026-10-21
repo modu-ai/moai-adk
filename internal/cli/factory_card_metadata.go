@@ -255,14 +255,22 @@ func setSpecLocked(ctx context.Context, l *factory.LockedBacklog, db *homestate.
 			if audited {
 				old = latest
 			}
-			if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
-				CardID: cardID, Kind: metadataKindSetSpec, Actor: actor, Session: session,
-				Field: metadataFieldSpecID, Old: old, New: spec, Reason: reason,
-			}, now); err != nil {
-				return err
+			// The catch-up append carries the write path's append discipline
+			// (sync-audit-1 D-A): one retry, then the audit-loss sentinel —
+			// no store was mutated either way, so a re-run heals by re-running.
+			for attempt := 0; attempt < 2; attempt++ {
+				if aerr := metadataFault("audit-append"); aerr == nil {
+					if aerr = db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
+						CardID: cardID, Kind: metadataKindSetSpec, Actor: actor, Session: session,
+						Field: metadataFieldSpecID, Old: old, New: spec, Reason: reason,
+					}, now); aerr == nil {
+						_, _ = fmt.Fprintf(out, "%s spec %s (attested; both stores already converged, no store re-mutated)\n", cardID, spec)
+						return nil
+					}
+				}
 			}
-			_, _ = fmt.Fprintf(out, "%s spec %s (attested; both stores already converged, no store re-mutated)\n", cardID, spec)
-			return nil
+			return fmt.Errorf("%s on %s (set-spec catch-up → %q): both stores already carried the value and neither was re-mutated, but the audit append failed after one retry; the missing attestation is surfaced — re-run set-spec to land it",
+				metadataAuditLossSentinel, cardID, spec)
 		}
 		// The record is stale: the write path below runs on the re-read state
 		// — the version fence and the compensating restore anchor on what the
@@ -485,14 +493,23 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homesta
 		if audited {
 			old = latest
 		}
-		if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
-			CardID: cardID, Kind: metadataKindReclassify, Actor: actor, Session: session,
-			Field: metadataFieldClassific, Old: old, New: commanded, Reason: reason,
-		}, now); err != nil {
-			return err
+		// The catch-up append carries the write path's append discipline
+		// (sync-audit-1 D-A): one retry, then the audit-loss sentinel — the
+		// queue write stands exactly as the crashed run committed it either
+		// way, and a re-run heals by re-running.
+		for attempt := 0; attempt < 2; attempt++ {
+			if aerr := metadataFault("audit-append"); aerr == nil {
+				if aerr = db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
+					CardID: cardID, Kind: metadataKindReclassify, Actor: actor, Session: session,
+					Field: metadataFieldClassific, Old: old, New: commanded, Reason: reason,
+				}, now); aerr == nil {
+					_, _ = fmt.Fprintf(out, "%s classification %s (attested; the queue item already carried it, no store re-mutated)\n", cardID, commanded)
+					return nil
+				}
+			}
 		}
-		_, _ = fmt.Fprintf(out, "%s classification %s (attested; the queue item already carried it, no store re-mutated)\n", cardID, commanded)
-		return nil
+		return fmt.Errorf("%s on %s (reclassify catch-up → %q): the queue item already carried the axes and nothing was re-mutated, but the audit append failed after one retry; the missing attestation is surfaced — re-run reclassify to land it",
+			metadataAuditLossSentinel, cardID, commanded)
 	}
 	// The write: fresh classified-at stamp, the caller-supplied reason,
 	// decider human — inside the caller's locked Mutate. Absence marshals
