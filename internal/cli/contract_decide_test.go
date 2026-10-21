@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -261,9 +260,11 @@ func TestContractKickoffCheck(t *testing.T) {
 }
 
 // TestContractDecideJevNotice — card t1803 (D21 re-scope): the decide command
-// prints the Jev model-change notice to stderr through the jevNotice helper
-// (silent when there is nothing to notice), and --json carries it as
-// jev_notice on the recorded result.
+// prints the Jev model-change notice to the command's configured stderr
+// (SetErr — the in-process harness configures one, so the notice must ride
+// cmd.ErrOrStderr and not the process-global jevNoticeWriter), is silent when
+// there is nothing to notice, and --json carries it as jev_notice on the
+// recorded result.
 func TestContractDecideJevNotice(t *testing.T) {
 	cfg := autoCfg{mode: "contract", decider: "llm+jev", pushDevelop: true}
 	const notice = "jev now answers as jev-9.9"
@@ -283,30 +284,20 @@ func TestContractDecideJevNotice(t *testing.T) {
 		t.Cleanup(func() { contractDecideJev = prev })
 		return p
 	}
-	installNoticeWriter := func(t *testing.T) *bytes.Buffer {
-		t.Helper()
-		var buf bytes.Buffer
-		prev := jevNoticeWriter
-		jevNoticeWriter = &buf
-		t.Cleanup(func() { jevNoticeWriter = prev })
-		return &buf
-	}
 
-	t.Run("notice on stderr", func(t *testing.T) {
+	t.Run("notice on configured stderr", func(t *testing.T) {
 		p := setup(t)
-		buf := installNoticeWriter(t)
 		res := runContract(t, p, contractRun{}, "decide", signtest.Card, "--spec", signtest.SpecID,
 			"--judgement", writeJudgement(t, goodJudgement))
 		if res.code != 0 {
 			t.Fatalf("decide: %s", res)
 		}
-		if got := buf.String(); !strings.Contains(got, notice) {
-			t.Errorf("stderr %q does not carry the notice line", got)
+		if !strings.Contains(res.stderr, notice) {
+			t.Errorf("configured stderr %q does not carry the notice line", res.stderr)
 		}
 	})
 	t.Run("json carries jev_notice", func(t *testing.T) {
 		p := setup(t)
-		installNoticeWriter(t)
 		res := runContract(t, p, contractRun{}, "decide", signtest.Card, "--spec", signtest.SpecID,
 			"--judgement", writeJudgement(t, goodJudgement), "--json")
 		if res.code != 0 {

@@ -89,7 +89,13 @@ func runContractDecide(cmd *cobra.Command, card, specID, judgementPath string, a
 	case err != nil:
 		return contractUsageError(cmd, "decide: %v", err)
 	}
-	jevNotice(res.JevNotice)
+	// The notice goes through the command's stderr (ErrOrStderr), not the
+	// process-global jevNoticeWriter: an in-process caller that configured
+	// SetErr must see the notice on the stderr it configured (card t1803
+	// review: the global writer bypasses that configuration).
+	if res.JevNotice != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), res.JevNotice)
+	}
 	out := cmd.OutOrStdout()
 	if asJSON {
 		enc := json.NewEncoder(out)
