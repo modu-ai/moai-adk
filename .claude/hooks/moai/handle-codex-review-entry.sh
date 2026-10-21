@@ -79,11 +79,23 @@ codex_entry_key() {
 			[ -n "$name" ] || continue
 			local path="$root/$name"
 			if [ -L "$path" ]; then
-				local target
-				target=$(readlink "$path") || exit 1
-				printf '%s\000l%s\000' "$name" "$target" || exit 1
+				# (R3) the link target's raw bytes are not portably readable:
+				# BSD readlink prints the target verbatim (no terminator),
+				# GNU readlink appends a newline, and $( ) would strip
+				# trailing newlines from a target that genuinely ends in one
+				# (os.Readlink keeps them). No shell form reproduces the
+				# os.Readlink leg byte-exactly on every platform — decline;
+				# Go owns the leg. Untracked non-ignored symlinks are rare
+				# (node_modules-class trees are gitignored), so the cost is
+				# the cold start on those trees only.
+				exit 1
 			elif [ -d "$path" ]; then
-				printf '%s\000d\000' "$name" || exit 1
+				# (R2) verify.Key WalkDirs a directory entry: the 'd' marker
+				# PLUS one leg per descendant (git lists an embedded repo as
+				# the directory itself). The walk's lexical order is not
+				# reproducible byte-exactly here, and a near-miss key silently
+				# kills the kick arm (plan §G) — decline; Go owns the walk.
+				exit 1
 			elif [ -f "$path" ]; then
 				# key.go writes path, NUL, 'f', content, NUL — the 'f' marker
 				# is followed DIRECTLY by the content (no separator), so the
@@ -105,6 +117,26 @@ codex_entry_key() {
 # field; take the first 64-hex-char field on the line.
 codex_entry_sha_extract() {
 	awk '{ for (i = 1; i <= NF; i++) if (length($i) == 64 && $i ~ /^[0-9a-f]+$/) { print $i; exit } }'
+}
+
+# codex_entry_config_digest emits the byte stream verify.ConfigDigest hashes
+# for the tree-scope review binding: the names sorted (gate, method, target),
+# each length-prefixed the way writeLenPrefixed does — one little-endian
+# length byte, seven zero bytes, then the bytes (internal/verify/receipt.go).
+# The literals are pinned to the Go output by
+# TestCodexEntryFastpath_GoldenConfigDigest; any drift breaks that equality.
+codex_entry_config_digest() {
+	awk '
+function lp(s) {
+	printf "%c", length(s)
+	printf "%c%c%c%c%c%c%c", 0, 0, 0, 0, 0, 0, 0
+	printf "%s", s
+}
+BEGIN {
+	lp("gate");   lp("codex-review")
+	lp("method"); lp("review/start")
+	lp("target"); lp("uncommittedChanges")
+}'
 }
 
 # codex_entry_resolve_path makes a possibly-relative git output absolute and
@@ -187,6 +219,32 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 # (7) every failure → fall through (REQ-HSA-007).
 codex_entry_fastpath() {
 	# --- (1) eligibility ---
+	# (R1) payload-cwd precedence: reviewScopeSessionDir (codex_review_scope.go)
+	# prefers the stdin session dir (cwd, then project_dir) over the
+	# caller-resolved root. When they disagree, the shell's tree premise is
+	# wrong — fall through and let Go resolve the scope. A spurious extraction
+	# from prompt text is fail-safe either way: a different path costs the
+	# cold start, a same-path false match is harmless.
+	local session_dir
+	session_dir=$(printf '%s' "$INPUT" | awk '
+{
+	if (match($0, /"cwd"[[:space:]]*:[[:space:]]*"/)) {
+		rest = substr($0, RSTART + RLENGTH)
+		end = index(rest, "\"")
+		print (end > 1 ? substr(rest, 1, end - 1) : "")
+		exit
+	}
+	if (match($0, /"project_dir"[[:space:]]*:[[:space:]]*"/)) {
+		rest = substr($0, RSTART + RLENGTH)
+		end = index(rest, "\"")
+		print (end > 1 ? substr(rest, 1, end - 1) : "")
+		exit
+	}
+}')
+	if [ -n "$session_dir" ] && [ "$session_dir" != "$CODEX_GATE_PROJECT_ROOT" ]; then
+		return 1
+	fi
+
 	command -v git >/dev/null 2>&1 || return 1
 
 	local branch
@@ -334,33 +392,67 @@ function extract(name,    v) {
 	sub("\"[[:space:]]*,?[[:space:]]*$", "", v)
 	return v
 }
-/^    \{/ { ec = 0; rec = ""; verd = "" }
+/^    \{/ { ec = 0; rec = ""; verd = ""; cfg = ""; tl = "" }
 ec == 0 && /^      "command":/ { if (extract("command") == cmd) ec = 1 }
 ec == 1 && /^      "recorded_at":/ { rec = extract("recorded_at") }
 ec == 1 && /^      "verdict":/ { verd = extract("verdict") }
+ec == 1 && /^      "config_digest":/ { cfg = extract("config_digest") }
+ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 /^    \},?[[:space:]]*$/ {
 	if (ec) {
 		gsub(/^[[:space:]]+|[[:space:]]+$/, "", verd)
 		verd = tolower(verd)
 		eps = rfc(rec)
-		print ((now - eps) > ttl ? "stale " : "fresh ") verd
+		print ((now - eps) > ttl ? "stale " : "fresh ") verd " " cfg " " tl
 		exit
 	}
 }
 ' "$snapshot" 2>/dev/null)
-	# receipt: "fresh <verdict>" | "stale <verdict>" | "" (receipt-ABSENT —
-	# no snapshot, unreadable, or unparseable: the LoadReceipt reading).
+	# receipt: "fresh <verdict> <config_digest> <tool_version>" | "stale ..."
+	# | "" (receipt-ABSENT — no snapshot, unreadable, or unparseable: the
+	# LoadReceipt reading). The tool_version value may contain spaces; it is
+	# the LAST field and is taken whole.
 	state=${receipt%% *}
 	if [ -n "$state" ]; then
-		verdict=${receipt#* }
-		if [ "$state" = "fresh" ]; then
+		local rest stored_cfg stored_tool
+		rest=${receipt#* }
+		verdict=${rest%% *}
+		rest=${rest#* }
+		stored_cfg=${rest%% *}
+		stored_tool=${rest#* }
+		# (R6) the two remaining CheckReceipt bound fields (receipt.go:73/:75):
+		# an UNBOUND stored field is never evidence — fall through and let the
+		# Go handler apply its own reading; a MISMATCH means the receipt is not
+		# valid for the current reviewer/config — the same cache-miss the Stop
+		# side re-kicks, so the miss arm proceeds.
+		if [ -z "$stored_cfg" ] || [ -z "$stored_tool" ]; then
+			return 1
+		fi
+		local cur_cfg cur_tool
+		cur_cfg=$(codex_entry_config_digest | $sha_bin 2>/dev/null | codex_entry_sha_extract) || return 1
+		[ "${#cur_cfg}" -eq 64 ] || return 1
+		cur_cfg="${cur_cfg:0:16}" # ConfigDigest binds 16 hex chars (digestHexLen)
+		if ! command -v codex >/dev/null 2>&1; then
+			return 1 # no reviewer: the Go entry allows at its reviewer-lookup step
+		fi
+		cur_tool=$(codex --version 2>/dev/null | awk '
+{ sub(/^[[:space:]]+|[[:space:]]+$/, "")
+  if (NR == 1) out = $0
+  else out = out "\n" $0 }
+END { print out }') || return 1
+		[ -n "$cur_tool" ] || return 1
+		if [ "$stored_cfg" != "$cur_cfg" ] || [ "$stored_tool" != "$cur_tool" ]; then
+			state="" # bound-field mismatch ⇒ the receipt is not valid here ⇒ miss arm
+		fi
+		if [ -n "$state" ] && [ "$state" = "fresh" ]; then
 			case "$verdict" in
 				fail*) return 1 ;; # (6) fresh FAIL: the Go handler owns the delivery
 				*) exit 0 ;;       # (5) fresh pass/inconclusive: allow, never re-kicked
 			esac
 		fi
 	fi
-	# (4) cache-MISS arm: no receipt, stale receipt, or receipt-absent.
+	# (4) cache-MISS arm: no receipt, stale receipt, bound-field mismatch, or
+	# receipt-absent.
 
 	# --- (4a) nothing-reviewable precondition ---
 	local p1
@@ -441,20 +533,22 @@ END { exit (any && !bad) ? 0 : 1 }
 	local ver_out bin_commit
 	ver_out=$("$moai_bin" version 2>/dev/null) || return 1
 	# The version stamp embeds the build commit the way git describe does
-	# (<tag>-<n>-g<sha>[-dirty]); no -g component = no commit metadata =
-	# not-applicable (binlag leniency: the kick proceeds).
+	# (<tag>-<n>-g<sha>[-dirty]).
 	bin_commit=$(printf '%s\n' "$ver_out" | awk '
 	{ if (match($0, /-g[0-9a-f][0-9a-f]*/)) { print substr($0, RSTART + 2, RLENGTH - 2); exit } }')
-	if [ -n "$bin_commit" ]; then
-		case "$head" in
-			"$bin_commit"*) : ;; # HEAD-match pre-check FIRST: StatusFresh → the kick proceeds
-			*)
-				if git -C "$root" merge-base --is-ancestor "$bin_commit" "$head" >/dev/null 2>&1; then
-					exit 0 # decidable behind → allow without the early kick
-				fi
-				;; # divergent / ahead → binlag leniency → the kick proceeds
-		esac
-	fi
+	# (R5) Without a -g component the shell cannot distinguish "tag-only
+	# build, no commit metadata" from "unparseable output" — fall through and
+	# let Go's staleBinarySkipApplies own the leniency decision with the real
+	# ldflags commit (an ancestor binary is no longer mis-classed).
+	[ -n "$bin_commit" ] || return 1
+	case "$head" in
+		"$bin_commit"*) : ;; # HEAD-match pre-check FIRST: StatusFresh → the kick proceeds
+		*)
+			if git -C "$root" merge-base --is-ancestor "$bin_commit" "$head" >/dev/null 2>&1; then
+				exit 0 # decidable behind → allow without the early kick
+			fi
+			;; # divergent / ahead → binlag leniency → the kick proceeds
+	esac
 
 	# --- (4c) the marker-guarded kick (the shared Stop-arm marker,
 	# kickInFlight / codexReviewKickMarkerPath) ---
@@ -484,13 +578,23 @@ END { exit (any && !bad) ? 0 : 1 }
 	fi
 	# The kick: the same detached `moai verify codex-review --project-root
 	# <dir>` the Stop gate launches, output appended to the same log.
+	# (R4) the log file is probed openable BEFORE the spawn: a failing `>>`
+	# redirect (e.g. the log path exists as a directory) kills the async
+	# command before exec and strands the marker for the whole bucket with no
+	# review behind it. An unopenable log routes through the /dev/null arm —
+	# the Go kick's log failure is best-effort and never stops the kick.
 	local log_dir="$root/.moai/logs"
 	mkdir -p "$log_dir" 2>/dev/null
-	if [ -d "$log_dir" ]; then
+	if ( : >>"$log_dir/codex-review-bg.log" ) 2>/dev/null; then
 		"$moai_bin" verify codex-review --project-root "$root" >>"$log_dir/codex-review-bg.log" 2>&1 &
 	else
 		"$moai_bin" verify codex-review --project-root "$root" >/dev/null 2>&1 &
 	fi
+	# (R4) a spawn that died before exec must not strand the marker: release
+	# it so the Stop side can retry within the bucket (the Go kickErr
+	# semantic). Best-effort — a live child (zombie included) reads as started.
+	local kick_pid=$!
+	kill -0 "$kick_pid" 2>/dev/null || rm -f "$marker" 2>/dev/null
 	exit 0
 }
 codex_entry_fastpath || :
