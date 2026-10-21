@@ -62,7 +62,7 @@ const (
 // codexEntryFullTools is the D3 dependency set the fast-path-eligible
 // fixtures put on PATH. The wrapper's PATH is masked to exactly this set, so
 // a probe removing an entry is the "missing <tool>" fixture of the M3 matrix.
-var codexEntryFullTools = []string{"git", "awk", "shasum", "mkdir", "rm", "cat", "readlink"}
+var codexEntryFullTools = []string{"git", "awk", "shasum", "date", "mkdir", "rm", "cat", "readlink"}
 
 type codexEntryFixtureOpts struct {
 	enabled      bool   // workflow.codex.review_gate.enabled
@@ -983,14 +983,14 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 			name: "missing git: probe failure falls through",
 			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
 				o.stubVersion = "v"
-				o.stubTools = []string{"awk", "shasum", "mkdir", "rm", "cat", "readlink"}
+				o.stubTools = []string{"awk", "shasum", "date", "mkdir", "rm", "cat", "readlink"}
 			}),
 			wantFwd: 1,
 		},
 		{
 			name: "missing shasum: the openssl fallback still kicks",
 			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
-				o.stubTools = []string{"git", "awk", "openssl", "mkdir", "rm", "cat", "readlink"}
+				o.stubTools = []string{"git", "awk", "openssl", "date", "mkdir", "rm", "cat", "readlink"}
 			}),
 			wantKick: 1,
 		},
@@ -998,7 +998,7 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 			name: "both sha256 tools absent: fall through",
 			opts: reviewableKickable(func(o *codexEntryFixtureOpts) {
 				o.stubVersion = "v"
-				o.stubTools = []string{"git", "awk", "mkdir", "rm", "cat", "readlink"}
+				o.stubTools = []string{"git", "awk", "date", "mkdir", "rm", "cat", "readlink"}
 			}),
 			wantFwd: 1,
 		},
@@ -1114,6 +1114,89 @@ func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
 			t.Fatalf("fresh pass produced forward=%d kick=%d, want 0/0\nargv:\n%s", fwd, kick, argv)
 		}
 	})
+}
+
+// An awk random seed is not a clock: modern mawk uses subsecond seed units.
+// Force that valid implementation behavior on every host so receipt freshness
+// and the marker shared with the Go Stop handler stay tied to Unix seconds.
+func TestCodexEntryFastpath_ClockIgnoresAwkRandomSeed(t *testing.T) {
+	for _, withReceipt := range []bool{false, true} {
+		name := "existing Stop marker"
+		if withReceipt {
+			name = "fresh receipt"
+		}
+		t.Run(name, func(t *testing.T) {
+			opts := codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
+				stubVersion: "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty"}
+			if withReceipt {
+				opts.receipt = &codexEntryReceiptSpec{verdict: "pass", recordedAt: time.Now()}
+			}
+			f := newCodexEntryFixture(t, opts)
+			awk, err := exec.LookPath("awk")
+			if err != nil {
+				t.Fatal(err)
+			}
+			maskedAwk := filepath.Join(f.toolsDir, "awk")
+			if err := os.Remove(maskedAwk); err != nil {
+				t.Fatal(err)
+			}
+			shim := "#!/bin/bash\ncase \"$*\" in *srand*) printf '%s\\n' 1792621305000000000 ;; *) exec " + codexEntryQuoteShell(awk) + " \"$@\" ;; esac\n"
+			if err := os.WriteFile(maskedAwk, []byte(shim), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if !withReceipt {
+				key, err := verify.Key(context.Background(), f.dir)
+				if err != nil {
+					t.Fatal(err)
+				}
+				head, digest, _ := strings.Cut(key, ":")
+				marker := filepath.Join(f.dir, ".moai", "state", "verify", "codex-review",
+					head+"-"+digest+".kick-"+strconv.FormatInt(time.Now().Unix()/900, 10))
+				if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(marker, []byte("stop-arm"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			run := runCodexEntryWrapper(t, f)
+			forward, kick, argv := codexEntryAwaitArgv(t, f, 0, 0)
+			if run.exitCode != 0 || forward != 0 || kick != 0 {
+				t.Fatalf("clock must use Unix seconds: exit=%d forward=%d kick=%d\nargv:\n%s\nstderr:\n%s",
+					run.exitCode, forward, kick, argv, run.stderr)
+			}
+		})
+	}
+}
+
+func TestCodexEntryFastpath_ClockFailureFallsThrough(t *testing.T) {
+	for _, tc := range []struct{ name, script string }{
+		{"missing", ""},
+		{"failed", "#!/bin/bash\nexit 1\n"},
+		{"empty", "#!/bin/bash\nexit 0\n"},
+		{"noninteger", "#!/bin/bash\nprintf '%s\\n' not-a-clock\n"},
+		{"out of range", "#!/bin/bash\nprintf '%s\\n' 999999999999999999999999\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCodexEntryFixture(t, codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
+				stubVersion: "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty"})
+			maskedDate := filepath.Join(f.toolsDir, "date")
+			if err := os.Remove(maskedDate); err != nil {
+				t.Fatal(err)
+			}
+			if tc.script != "" {
+				if err := os.WriteFile(maskedDate, []byte(tc.script), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			run := runCodexEntryWrapper(t, f)
+			forward, kick, argv := codexEntryAwaitArgv(t, f, 1, 0)
+			if run.exitCode != 0 || forward != 1 || kick != 0 {
+				t.Fatalf("uncertain clock must defer to Go: exit=%d forward=%d kick=%d\nargv:\n%s\nstderr:\n%s",
+					run.exitCode, forward, kick, argv, run.stderr)
+			}
+		})
+	}
 }
 
 // TestCodexEntryFastpath_BothSurfacesCarryProbe pins AC-HSA-006's both-

@@ -41,7 +41,7 @@ CODEX_GATE_WORKFLOW_YAML="$CODEX_GATE_PROJECT_ROOT/.moai/config/sections/workflo
 # the gate OFF and call them directly (the D4 key-parity gate).
 #
 # The fast path's dependency set is exactly git + one sha256 tool (shasum,
-# openssl fallback) + awk (D3) plus the fixture-stable coreutils the kick arm
+# openssl fallback) + awk + date for Unix seconds, plus the coreutils the kick arm
 # shares with the Stop gate (mkdir/rm/cat). Every absent or failing probe
 # FALLS THROUGH to the binary below — the shell may skip the
 # binary only on positive evidence of an ALLOW state.
@@ -156,6 +156,16 @@ codex_entry_resolve_path() {
 		/*) printf '%s\n' "$p" ;; # unresolvable absolute path: clean it lexically (EvalSymlinks fallback)
 		*) return 1 ;;
 	esac
+}
+
+# Read Unix seconds portably; awk's RNG seed is not a wall clock. Reject
+# uncertain or noncanonical values before receipt arithmetic or marker naming.
+codex_entry_epoch() {
+	local epoch
+	epoch=$(date +%s 2>/dev/null) || return 1
+	case "$epoch" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+	[ "$epoch" -ge 0 ] 2>/dev/null || return 1
+	printf '%s\n' "$epoch"
 }
 
 # Test seam: when sourced with CODEX_ENTRY_SOURCE_ONLY=1, yield to the caller
@@ -376,7 +386,7 @@ codex_entry_fastpath() {
 
 	# --- (3) the receipt probe ---
 	local now receipt state verdict
-	now=$(awk 'BEGIN { srand(); print srand() }') || return 1
+	now=$(codex_entry_epoch) || return 1
 	receipt=$(awk -v cmd="moai verify codex-review" -v now="$now" -v ttl=86400 -v wantkey="$head:$digest" '
 function dc(y, m, d,    yy, era, yoe, doy, doe) {
 	yy = y
@@ -603,7 +613,7 @@ END { exit (any && !bad) ? 0 : 1 }
 	# --- (4c) the marker-guarded kick (the shared Stop-arm marker,
 	# kickInFlight / codexReviewKickMarkerPath) ---
 	local epoch bucket marker_dir marker owned
-	epoch=$(awk 'BEGIN { srand(); print srand() }') || return 1
+	epoch=$(codex_entry_epoch) || return 1
 	bucket=$((epoch / 900))
 	marker_dir="$root/.moai/state/verify/codex-review"
 	marker="$marker_dir/$head-$digest.kick-$bucket"

@@ -188,6 +188,26 @@ Ledger sweep: E-L01..E-L16 + E-L18 GREEN cells closed in acceptance.md, each cit
 verbatim output + exit code + tree 703654daca. All AC-HSA-001..017 green; AC-HSA-014 per its
 regression-guard closure rule (§D.4). The ledger RED cells are untouched.
 
+### Cloud CI clock amendment — 2026-10-22 (t1913 / ci-repair-20261022)
+
+v1.0.4 amendment의 구현 기록은
+`.moai/reports/t1913/ci-repair-20261022-hook-clock.md`에 있다. 실제 Cloud mawk는
+난수 시드 `1792621868584499456`을 반환했고 같은 시점의 Unix 초는
+`1792621868`이었다. 수정 전 새 clock 회귀 검사의 7개 하위 사례가 실패한
+원문을 `work/ci-repair-20261022/clock-fallback-red.log`에 보존한 뒤
+template/live wrapper의 두 clock 지점을 검증된 `date +%s`로 바꿨다.
+clock을 확인하지 못하면 Go에 위임하며 receipt 및 shared marker 검증은 유지한다.
+
+수정 후 fastpath/HookEntryParity 전체 scoped 검사는
+`ok github.com/modu-ai/moai-adk/internal/cli 18.249s`, template scoped 검사는
+`ok github.com/modu-ai/moai-adk/internal/template 13.988s`였다. `go vet ./internal/cli`,
+공식 `make build`, 두 wrapper의 `bash -n` 및 byte `cmp`도 exit 0이었다.
+원래 kick 기대값을 유지하면서 명시 도구 fixture에도 허용된 date를 반영했다.
+
+현재 amendment의 외부 CI·독립 감사·최신 head 코드/보안 리뷰는 PENDING이다.
+아래 §E.3/§E.4와 앞선 close의 감사 기록은 v1.0.3의 역사적 증거이며
+이번 변경의 완료 또는 감사 통과를 의미하지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-22T00:20:00+09:00
