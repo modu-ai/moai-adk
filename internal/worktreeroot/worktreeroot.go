@@ -19,14 +19,16 @@
 // recorded, so re-running resolution is idempotent and a later same-name
 // arrival cannot displace the first (design.md, Stability).
 //
-// The package deliberately keeps its import surface small (paths only) so
-// that creation paths and readers can adopt it without weight.
+// The package keeps the config Loader out of its dependency graph, so
+// config consumers can share these paths without an import cycle.
 package worktreeroot
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,6 +36,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"gopkg.in/yaml.v3"
 )
@@ -75,7 +78,6 @@ var (
 const (
 	markerName = ".moai-project.json"
 	recordName = "moai-project-key"
-	pinKey     = "worktree_project_key"
 )
 
 // ownerMarker is the JSON document at <projects>/<key>/.moai-project.json:
@@ -309,7 +311,12 @@ func validatePin(pin string) error {
 // sends a derived key to the hash-suffixed name (REQ-WHR-003a) and a pinned
 // key to a refusal without suffixing (REQ-WHR-004); an unreadable owner
 // marker refuses creation, naming the marker path (REQ-WHR-003b).
-func claim(home, candidate, canonical string, pinned bool, base string) (string, error) {
+func claim(home, candidate, canonical string, pinned bool, base string) (_ string, err error) {
+	release, err := lockProjectClaims(home)
+	if err != nil {
+		return "", err
+	}
+	defer func() { err = errors.Join(err, release()) }()
 	projects := filepath.Join(home, projectsSubdir)
 
 	folder := foldFind(projects, candidate)
@@ -444,12 +451,44 @@ func readPin(primary string) (string, error) {
 
 // ensureProjectDir creates the project folder and its owner marker under the
 // home root when they are absent, leaving an existing marker untouched.
-func ensureProjectDir(home, key, canonical string) error {
+func ensureProjectDir(home, key, canonical string) (err error) {
+	release, err := lockProjectClaims(home)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, release()) }()
 	dir := projectDir(home, key)
-	if _, err := os.Stat(filepath.Join(dir, markerName)); err == nil {
+	markerPath := filepath.Join(dir, markerName)
+	owner, err := readMarkerOwner(markerPath)
+	if err == nil {
+		if !strings.EqualFold(owner, canonical) && !Same(owner, canonical) {
+			// The repository-side record travels with a renamed checkout;
+			// its historical marker remains byte-untouched. An owner root
+			// that still exists, however, is another repository's claim.
+			if _, statErr := os.Stat(owner); !os.IsNotExist(statErr) {
+				if statErr != nil {
+					return fmt.Errorf("inspect recorded marker owner %s: %w", owner, statErr)
+				}
+				return fmt.Errorf("recorded project key %q names a folder owned by another repository (owner marker %s)", key, markerPath)
+			}
+		}
 		return nil
 	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("read owner marker %s: %w", markerPath, err)
+	}
 	return writeMarker(dir, canonical)
+}
+
+// The case-folded folder search and marker creation form one claim across
+// repositories and processes. The shared claim primitive never reclaims a
+// live owner and keeps both acquisition and stale-owner inspection bounded.
+func lockProjectClaims(home string) (func() error, error) {
+	dir := filepath.Dir(filepath.Join(home, projectsSubdir))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	return atomicfile.ClaimSection(context.Background(), filepath.Join(dir, ".project-key.lock"), 0o644, 100, 10*time.Millisecond)
 }
 
 // readRecord returns the key recorded in the repository's git common
