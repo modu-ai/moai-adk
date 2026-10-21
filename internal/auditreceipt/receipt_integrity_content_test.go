@@ -315,3 +315,91 @@ func TestTreeState_FramingMasqueradeMovesUntrackedDigest(t *testing.T) {
 		t.Fatal("digest unchanged across the framing-masquerade content change — unframed concatenation let ua's content bytes read as ub's entry framing, so a pre-change PASS receipt stays fresh (l57-r7 finding 1)")
 	}
 }
+
+// TestTreeState_UntrackedNestedRepoComputes pins the l57-r8 finding 2: an
+// untracked nested git repository is listed by `git ls-files --others` as its
+// DIRECTORY entry (`nested/`), and os.ReadFile on a directory fails — the
+// read failure failed the whole TreeState, and the failed capture marked every
+// receipt from that audit BindCaptureFailed (all unusable). The directory
+// entry (any non-regular entry a content read cannot take) binds its PATH +
+// Lstat metadata without a content read.
+func TestTreeState_UntrackedNestedRepoComputes(t *testing.T) {
+	root := initContentRepo(t)
+	if out, err := runGit(t, root, "init", "-q", filepath.Join(root, "nested")); err != nil {
+		t.Fatalf("git init nested: %v\n%s", err, out)
+	}
+
+	// THE PIN: the capture computes over the untracked nested repo.
+	_, digest, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState failed on an untracked nested git repo — the directory entry was content-read (l57-r8 finding 2): %v", err)
+	}
+	if digest == "" {
+		t.Fatal("TreeState returned an empty digest for a state it could compute")
+	}
+}
+
+// TestTreeState_SubmoduleInnerEditMovesDigest pins the l57-r8 finding 3: a
+// submodule's INNER state is part of the judged state. The parent-side reads
+// cannot see it — the porcelain row and the `Subproject commit …-dirty` diff
+// line are identical no matter WHAT changed inside — so an inner re-edit
+// moved nothing and a pre-change PASS receipt stayed fresh across a different
+// tree. The gitlink entry (mode 160000) binds its submodule HEAD plus the
+// inner porcelain rows.
+func TestTreeState_SubmoduleInnerEditMovesDigest(t *testing.T) {
+	root := initContentRepo(t)
+
+	// The submodule: a real nested repository recorded as a gitlink (mode
+	// 160000) in the parent's index — the plumbing form of `git submodule
+	// add`, whose file-protocol gate the plumbing form sidesteps.
+	src := t.TempDir()
+	if out, err := runGit(t, src, "init", "-q", "-b", "main"); err != nil {
+		t.Fatalf("git init src: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(src, "lib.go"), []byte("package lib\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := runGit(t, src, "add", "-A"); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, src, "-c", "user.email=fx@example.com", "-c", "user.name=fx", "commit", "-q", "-m", "sub init"); err != nil {
+		t.Fatalf("git commit (src): %v\n%s", err, out)
+	}
+	gitlink, err := runGit(t, src, "rev-parse", "HEAD")
+	if err != nil {
+		t.Fatalf("rev-parse (src): %v", err)
+	}
+	if out, err := runGit(t, root, "update-index", "--add", "--cacheinfo", "160000,"+gitlink+",sub"); err != nil {
+		t.Fatalf("update-index: %v\n%s", err, out)
+	}
+	if out, err := runGit(t, root, "-c", "user.email=fx@example.com", "-c", "user.name=fx", "commit", "-q", "-m", "record submodule"); err != nil {
+		t.Fatalf("git commit (parent): %v\n%s", err, out)
+	}
+	if out, err := runGit(t, root, "clone", "-q", src, "sub"); err != nil {
+		t.Fatalf("git clone (populate submodule): %v\n%s", err, out)
+	}
+
+	// Dirty the submodule's inner worktree — edit v1.
+	inner := filepath.Join(root, "sub", "lib.go")
+	if err := os.WriteFile(inner, []byte("package lib\n\n// v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest1, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v1: %v", err)
+	}
+
+	// The re-edit: the parent porcelain row, the Subproject -dirty diff line,
+	// and HEAD are all UNCHANGED; only the inner content moved.
+	if err := os.WriteFile(inner, []byte("package lib\n\n// v2 — a different change\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest2, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v2: %v", err)
+	}
+
+	if digest1 == digest2 {
+		t.Fatal("digest unchanged across a submodule inner re-edit — the parent diff carries the same `Subproject commit …-dirty` line both times, so a pre-change PASS receipt stays fresh (l57-r8 finding 3)")
+	}
+}

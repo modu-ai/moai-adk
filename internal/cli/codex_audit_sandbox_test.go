@@ -50,7 +50,7 @@ func TestCodexAudit_NoProjectRootStillContainsChild(t *testing.T) {
 	_ = performCodexAudit(context.Background(), codexTargetUncommitted, "", "")
 	joined := strings.Join(*args, " ")
 	if !strings.Contains(joined, "mcp_servers.context7") {
-		t.Errorf("no-root audit child argv = %v, want the foreign-server disable (REQ-MN-009 containment is unconditional)", *args)
+		t.Errorf("no-root audit child argv = %v, want the foreign-server disable (REQ-MN-009 containment is unconditional ON THE GATE/AUDIT PATH — l57-r8 finding 1 scoped it there; ordinary codex_task spawns stay neutral)", *args)
 	}
 }
 
@@ -67,6 +67,39 @@ func TestCodexAudit_SessionChildCwdMatchesListingRoot(t *testing.T) {
 	_ = callToolCodexAudit(t, map[string]any{"project_root": root})
 	if sess.startDir != root {
 		t.Errorf("session child dir = %q, want the containment listing root %q — a child at another cwd resolves a different config.toml and escapes the disable list (l57-r5 finding 1)", sess.startDir, root)
+	}
+}
+
+// TestCodexTask_SessionChildNotContained pins the l57-r8 finding 1 split:
+// containment belongs to GATE/AUDIT sessions only. An ordinary codex_task
+// delegation rides the same session-open path, and the r4 round's
+// unconditional containment leaked the foreign-server disable (and the
+// session-level read-only sandbox) into EVERY task — the child lost all of
+// the operator's configured MCP servers regardless of allow_write. The task
+// child's argv carries neither; the task's own per-turn sandboxPolicy
+// governs its sandbox.
+func TestCodexTask_SessionChildNotContained(t *testing.T) {
+	root := t.TempDir()
+	withCodexProjectDir(t, root)
+	_, args := withCodexSessionArgs(t, codexTaskScript("trn-nogate", "task output"))
+	// A foreign server the operator configured: the stub makes the leak
+	// visible in the argv whenever the task path still runs the containment.
+	prevList := codexAuditMCPList
+	codexAuditMCPList = func(context.Context, string, string) (string, error) {
+		return `[{"name":"context7","transport":{"type":"streamable_http","url":"https://mcp.context7.example"}}]`, nil
+	}
+	t.Cleanup(func() { codexAuditMCPList = prevList })
+
+	res := callCodexTask(t, map[string]any{"prompt": "refactor the parser"})
+	if res.IsError {
+		t.Fatalf("unexpected IsError result: %+v", res)
+	}
+	joined := strings.Join(*args, " ")
+	if strings.Contains(joined, "mcp_servers.context7") {
+		t.Errorf("ordinary codex_task child argv = %v, want NO foreign-server disable args — the containment belongs to gate/audit spawns (l57-r8 finding 1)", *args)
+	}
+	if strings.Contains(joined, "sandbox_mode=read-only") {
+		t.Errorf("ordinary codex_task child argv = %v, want NO session-level read-only sandbox — the task's per-turn sandboxPolicy governs it (l57-r8 finding 1)", *args)
 	}
 }
 

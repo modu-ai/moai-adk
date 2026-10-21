@@ -878,8 +878,14 @@ func openCodexSession(ctx context.Context, binaryPath string, params map[string]
 // thread with thread/start — the unchanged path both existing callers take.
 // When it is set, thread/resume re-opens that thread instead, so no new thread
 // is started and the recorded id is the one every turn addresses.
+//
+// This is the PLAIN-TASK path (l57-r8 finding 1): an ordinary codex_task
+// delegation opens its session WITHOUT the gate containment, so the child
+// keeps the operator's configured MCP servers and its sandbox is governed by
+// the task's own per-turn sandboxPolicy. openCodexSessionResolved(contain=
+// true) is the gate/audit variant.
 func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
-	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil)
+	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil, false)
 }
 
 // openCodexSessionResolved is openCodexSessionOn with an INJECTED {model,
@@ -928,60 +934,82 @@ func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]s
 	return append(kept, "-c", moaiGateExposureArg), nil
 }
 
-func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error)) (*codexSessionHandle, error) {
+// openCodexSessionResolved is the session-open body with an INJECTED {model,
+// effort} resolver and the containment SCROLL (l57-r8 finding 1): contain=true
+// is the gate/audit/review spawn — the foreign-server disable plus gate
+// exposure (REQ-MN-009) plus the session-level read-only sandbox (REQ-MN-024);
+// contain=false is the plain codex_task spawn, which keeps the operator's
+// configured MCP servers and its per-turn sandboxPolicy. The r4 round made
+// containment unconditional on this shared path after an auditor demanded it
+// for audit spawns that name no root; the round-7 auditor correctly observed
+// that the same shape stripped EVERY ordinary task of its configured servers.
+// The scoped split keeps both audits' true findings: audit children stay
+// contained whatever the request carries, task children stay neutral.
+func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error), contain bool) (*codexSessionHandle, error) {
 	if resolve == nil {
 		resolve = pinFreeEffortResolver
 	}
-	// REQ-MN-009 gate/audit child containment: every codex app-server this
-	// path spawns is contained to the moai server in gate exposure, anchored
-	// at the reviewed tree (params["cwd"]). An uncontainable spawn is
-	// refused — the containment failure must not degrade into an uncontained
-	// child silently.
-	// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy — a
-	// reviewer never needs to write, and the config override is the app-server
-	// surface's spelling of the `-s read-only` the codex exec role path uses.
-	// Card t1632 sync-audit r5: the containment listing runs on the BACKGROUND
-	// context, the same precondition-before-session-work rule the serving
-	// anchor lookup applies (codex_task.go) — an already-cancelled request
-	// must fail AT THE SESSION (which stays on the request context), not at
-	// the containment read that runs before the session exists. Before this
-	// repair, a cancelled request failed the listing with "context canceled"
-	// and the session never opened at all.
-	// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
-	// listing that hangs on a wedged child must not outlive the request by
-	// minutes. The bound is the listing's OWN (DefaultCodexAuditListTimeout,
-	// the same bound codexAuditMCPList applies internally): keying it on the
-	// TASK bound would make a 100ms-bound request abort the containment and
-	// then sit out the listing's own WaitDelay anyway (r6 follow-through).
-	listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
-	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
-	// Card t1632 sync-audit r4: containment is UNCONDITIONAL. Before this
-	// repair the block keyed on params["cwd"], so an audit path that named no
-	// project_root (the audit_multi codex leg's default) spawned a child with
-	// NO disable args — the child resolved the operator's own MCP servers,
-	// write tools included. The anchor is now the request's root when one was
-	// named and the server's own project-root resolution otherwise; only a
-	// server that cannot resolve ANY root refuses the spawn (fail-closed — an
-	// uncontained child is the defect this closes). The params map is
-	// untouched: an OMITTED root still reaches the thread as an omission
-	// (REQ-2 pass-through), only the child's process containment changes.
+	argv := []string{codexAppServerSubcmd}
+	// The child's working directory: the request's root when one was named,
+	// the server's own project-root resolution otherwise. For a contained
+	// spawn this is the anchor the containment listing read (l57-r5 finding
+	// 1); for a plain task spawn it is the workRoot the task itself named.
 	root, _ := params["cwd"].(string)
 	if strings.TrimSpace(root) == "" {
 		root = projectDirResolver()
 	}
-	if strings.TrimSpace(root) == "" {
-		cancelList()
-		return nil, &codexSessionError{
-			summary: "codex session containment failed: no project root to anchor the MCP server containment",
-			cause:   errors.New("project root unresolved"),
+	if contain {
+		// REQ-MN-009 gate/audit child containment: every codex app-server the
+		// gate/audit path spawns is contained to the moai server in gate
+		// exposure, anchored at the reviewed tree (params["cwd"]). An
+		// uncontainable spawn is refused — the containment failure must not
+		// degrade into an uncontained child silently.
+		// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy —
+		// a reviewer never needs to write, and the config override is the
+		// app-server surface's spelling of the `-s read-only` the codex exec
+		// role path uses.
+		// Card t1632 sync-audit r5: the containment listing runs on the
+		// BACKGROUND context, the same precondition-before-session-work rule
+		// the serving anchor lookup applies (codex_task.go) — an
+		// already-cancelled request must fail AT THE SESSION (which stays on
+		// the request context), not at the containment read that runs before
+		// the session exists. Before this repair, a cancelled request failed
+		// the listing with "context canceled" and the session never opened at
+		// all.
+		// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
+		// listing that hangs on a wedged child must not outlive the request by
+		// minutes. The bound is the listing's OWN
+		// (DefaultCodexAuditListTimeout, the same bound codexAuditMCPList
+		// applies internally): keying it on the TASK bound would make a
+		// 100ms-bound request abort the containment and then sit out the
+		// listing's own WaitDelay anyway (r6 follow-through).
+		listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
+		argv = append(argv, "-c", "sandbox_mode=read-only")
+		// Card t1632 sync-audit r4: containment is UNCONDITIONAL on the
+		// gate/audit path. Before that repair the block keyed on
+		// params["cwd"], so an audit path that named no project_root (the
+		// audit_multi codex leg's default) spawned a child with NO disable
+		// args — the child resolved the operator's own MCP servers, write
+		// tools included. The anchor is the request's root when one was named
+		// and the server's own project-root resolution otherwise; only a
+		// server that cannot resolve ANY root refuses the spawn (fail-closed
+		// — an uncontained child is the defect this closes). The params map is
+		// untouched: an OMITTED root still reaches the thread as an omission
+		// (REQ-2 pass-through), only the child's process containment changes.
+		if strings.TrimSpace(root) == "" {
+			cancelList()
+			return nil, &codexSessionError{
+				summary: "codex session containment failed: no project root to anchor the MCP server containment",
+				cause:   errors.New("project root unresolved"),
+			}
 		}
+		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
+		cancelList()
+		if err != nil {
+			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
+		}
+		argv = append(argv, containment...)
 	}
-	containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
-	cancelList()
-	if err != nil {
-		return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
-	}
-	argv = append(argv, containment...)
 	conn, err := codexSession.start(ctx, binaryPath, argv, root)
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
@@ -1254,7 +1282,7 @@ func codexReviewSessionParams(method string, params map[string]any) map[string]a
 }
 
 func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) (config.ModelEffort, error)) (ReviewOutput, error) {
-	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve)
+	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve, true)
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {

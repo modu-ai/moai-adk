@@ -269,6 +269,18 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
 			continue
 		}
+		// l57-r8 finding 2: ONLY a regular file is content-read. An untracked
+		// nested git repository is listed by `git ls-files --others` as its
+		// DIRECTORY entry (`nested/`), and os.ReadFile on a directory fails —
+		// the read failure failed the whole TreeState, and the failed capture
+		// marked every receipt from that audit BindCaptureFailed (all
+		// unusable; the r6 symlink class again). A directory — or any other
+		// non-regular entry a content read cannot take (a FIFO would block) —
+		// binds its PATH + Lstat metadata and moves on; the r7 length framing
+		// keeps such an entry distinct from a same-framing empty file.
+		if !info.Mode().IsRegular() {
+			continue
+		}
 		data, rerr := os.ReadFile(full)
 		if rerr != nil {
 			return "", "", rerr
@@ -281,7 +293,62 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 		_, _ = fmt.Fprintf(h, "\x00len:%d", len(data))
 		_, _ = h.Write(data)
 	}
+	// l57-r8 finding 3: a submodule's INNER state is part of the judged
+	// state. The parent-side reads above cannot see it — the porcelain row and
+	// the `Subproject commit …-dirty` diff line are identical no matter WHAT
+	// changed inside the submodule — so an inner re-edit moved nothing and a
+	// pre-change PASS receipt stayed fresh across a different tree. Only
+	// gitlink entries (mode 160000) are bound — no arbitrary recursion — and
+	// each contributes its submodule HEAD, the inner porcelain rows, and the
+	// inner tracked diff's actual bytes (the inner porcelain alone is the same
+	// row-identity defect one level down: a re-edit emits the identical
+	// ` M <file>` row). An inner UNTRACKED file is outside this binding, as it
+	// is outside the parent-side `-dirty` signal itself. When the submodule
+	// worktree is absent or uninitialized (no inner state to read), its index
+	// gitlink is bound instead — the stable state the parent itself records,
+	// so the digest stays deterministic without failing the capture.
+	for _, link := range submoduleGitlinks(treeRoot) {
+		subRoot := filepath.Join(treeRoot, link.path)
+		subHead, herr := gitIn(subRoot, "rev-parse", "HEAD")
+		subStatus, serr := gitIn(subRoot, "status", "--porcelain", "-z")
+		subDiff, derr := gitIn(subRoot, "diff", "HEAD")
+		if herr != nil || serr != nil || derr != nil {
+			_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00gitlink:%s", link.path, link.sha)
+			continue
+		}
+		_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00head:%s\x00status\x00%s\x00diff\x00%s", link.path, subHead, subStatus, subDiff)
+	}
 	return headOut, hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// submoduleLink is one gitlink entry of the parent index: the submodule's path
+// and the gitlink commit the index records.
+type submoduleLink struct {
+	path string
+	sha  string
+}
+
+// submoduleGitlinks returns the parent index's gitlink entries (mode 160000),
+// sorted by path for a deterministic digest order.
+func submoduleGitlinks(treeRoot string) []submoduleLink {
+	out, err := gitInRaw(treeRoot, "ls-files", "--stage", "-z")
+	if err != nil || out == "" {
+		return nil
+	}
+	var links []submoduleLink
+	for _, line := range strings.Split(out, "\x00") {
+		meta, path, ok := strings.Cut(line, "\t")
+		if !ok || path == "" || !strings.HasPrefix(meta, "160000 ") {
+			continue
+		}
+		fields := strings.Fields(meta)
+		if len(fields) != 3 {
+			continue
+		}
+		links = append(links, submoduleLink{path: path, sha: fields[1]})
+	}
+	sort.Slice(links, func(i, j int) bool { return links[i].path < links[j].path })
+	return links
 }
 
 // untrackedContentPaths lists the untracked files OUTSIDE the runtime-managed
