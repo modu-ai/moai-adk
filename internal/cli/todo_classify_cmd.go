@@ -45,15 +45,26 @@ func classifyRecoveryAdvice(state factory.BacklogState) string {
 	}
 }
 
-// todoClassifySerialSlotConflict reports whether making cardID serial now
-// would put a second DISTINCT serial card in flight: the selection gate's own
-// read (factorySerialInFlightExcluding over the record's cards — slot-held ∧
-// mode serial) applied to the verb's target, so the verb adds no second
-// serial-overlap policy (plan D4, decision-index Q6). The queue snapshot is
-// the verb's own in-Mutate record, so the classification read and the
-// refused-or-not write share one lock acquisition. A root with no factory
-// record has no in-flight cards: the database is never created just to answer
-// that there is nothing in flight (the status surface's no-create rule).
+// todoClassifySerialSlotConflict reports whether cardID is in flight — its
+// homestate factory card row is slot-held (the selection gate's own
+// factorySerialSlotHeld read) — while another DISTINCT serial card holds the
+// serial slot (factorySerialInFlightExcluding over the record's cards:
+// slot-held ∧ mode serial), so the verb adds no second serial-overlap policy
+// (plan D4, decision-index Q6). The gate keys on the factory record's row,
+// NEVER on the queue row's state: `todo unpick` rewrites only the queue row,
+// so a `queued` queue row can still be in flight with a live lease (card
+// t1737 F1) — a queue-state gate would let a second serial card be
+// reclassified beside the un-picked holder. A target with no factory row, or
+// whose rows have all released the slot, is not in flight: making it serial
+// cannot leave a second in-flight card in serial mode, and the selection gate
+// still orders the lease itself. The queue snapshot is the verb's own
+// in-Mutate record, so the classification read and the refused-or-not write
+// share one lock acquisition. A root with no factory record has no in-flight
+// cards: the database is never created just to answer that there is nothing
+// in flight (the status surface's no-create rule), and ONLY a not-exist stat
+// says the record is absent — any other stat error leaves the record
+// unreadable, not absent, and is returned so the verb refuses with nothing
+// written (fail-closed; card t1737 F2).
 //
 // The returned holder id names the conflicting card for the refusal message;
 // it is message enrichment only — the verdict is the shared predicate's.
@@ -63,6 +74,9 @@ func todoClassifySerialSlotConflict(root string, rec *factory.BacklogRecord, car
 		return false, "", fmt.Errorf("todo classify: resolve the factory record: %w", err)
 	}
 	if _, statErr := os.Stat(path); statErr != nil {
+		if !os.IsNotExist(statErr) {
+			return false, "", fmt.Errorf("todo classify: stat the factory record: %w", statErr)
+		}
 		// No factory record: no in-flight cards to conflict with.
 		return false, "", nil
 	}
@@ -74,6 +88,16 @@ func todoClassifySerialSlotConflict(root string, rec *factory.BacklogRecord, car
 	cards, err := db.ListCards(context.Background(), "")
 	if err != nil {
 		return false, "", fmt.Errorf("todo classify: read the factory cards: %w", err)
+	}
+	targetInFlight := false
+	for _, c := range cards {
+		if c.CardID == cardID && factorySerialSlotHeld(c, now) {
+			targetInFlight = true
+			break
+		}
+	}
+	if !targetInFlight {
+		return false, "", nil
 	}
 	classOf := func(cid string) factory.CardClassification {
 		return factoryQueueClassification(rec, cid)
@@ -112,8 +136,9 @@ verbatim, a fresh classified-at stamp — the card's priority and blocked
 fields, its state and text, and every other item untouched. The verb takes
 no decider flag: the judgment is human, unconditionally.
 
-A picked card requested serial while ANOTHER distinct in-flight card holds
-the serial slot is refused with nothing written — a reclassification never
+An in-flight card (a live factory-record lease, whatever its queue row
+reads) requested serial while ANOTHER distinct in-flight card holds the
+serial slot is refused with nothing written — a reclassification never
 leaves two serial cards in flight at once (the selection gate's own
 exclusivity read). Every refusal leaves the queue file byte-identical.`,
 		Args: cobra.ExactArgs(1),
@@ -141,7 +166,10 @@ exclusivity read). Every refusal leaves the queue file byte-identical.`,
 						return &exitCodeError{code: 2, msg: fmt.Sprintf("todo classify: backlog item %s is %s, not classifiable — %s (nothing written)",
 							id, it.State, classifyRecoveryAdvice(it.State))}
 					}
-					if it.State == factory.BacklogStatePicked && mode == factory.ClassModeSerial {
+					if mode == factory.ClassModeSerial {
+						// The slot gate reads the factory record's own
+						// in-flight state — never the queue row's state,
+						// which `todo unpick` rewrites alone (card t1737).
 						conflict, holder, err := todoClassifySerialSlotConflict(root, rec, id, now)
 						if err != nil {
 							return err

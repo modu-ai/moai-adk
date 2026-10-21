@@ -7,6 +7,8 @@ package cli
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -278,6 +280,74 @@ func TestTodoClassifySerialSlotConflictRefusal(t *testing.T) {
 		}
 		if c := rec.Items[0].Classification; c == nil || c.Mode != factory.ClassModeSerial || c.Decider != factory.DeciderIdentityHuman {
 			t.Errorf("classification = %+v, want the serial human judgment recorded", c)
+		}
+	})
+
+	t.Run("serial refused while the unpicked target is still in flight", func(t *testing.T) {
+		root, store := conflictFixture(t)
+		// The reachable bypass (card t1737 F1): `todo unpick` rewrites ONLY
+		// the queue row, so the target reads queued in the queue while its
+		// homestate factory card row stays in flight with a live lease —
+		// and another distinct in-flight serial card (t2) holds the slot.
+		if _, _, err := runTodo(t, "unpick", "t1"); err != nil {
+			t.Fatalf("unpick: %v", err)
+		}
+		rec, err := store.LoadPure()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rec.Items[0].State != factory.BacklogStateQueued {
+			t.Fatalf("fixture: unpicked target queue state = %s, want queued", rec.Items[0].State)
+		}
+		before := readBacklogBytes(t, root)
+		_, _, err = runTodo(t, "classify", "t1", "--mode", "serial", "--reason", "make it serial")
+		var code *exitCodeError
+		if !errors.As(err, &code) || code.ExitCode() != 2 {
+			t.Fatalf("bypassed conflict error = %v, want a usage exit-2 refusal", err)
+		}
+		if !strings.Contains(err.Error(), "t2") {
+			t.Errorf("refusal %q does not name the slot holder", err)
+		}
+		for _, want := range []string{"wait", "reclassify"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("refusal %q is missing recovery advice naming %q", err, want)
+			}
+		}
+		if after := readBacklogBytes(t, root); string(after) != string(before) {
+			t.Fatalf("refused bypass classify changed the queue file")
+		}
+		rec, err = store.LoadPure()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c := rec.Items[0].Classification; c == nil || c.Mode != factory.ClassModeParallelizable {
+			t.Errorf("target classification = %+v, want the prior parallelizable record untouched", rec.Items[0].Classification)
+		}
+	})
+
+	t.Run("a non-NotExist stat error on the factory record refuses fail-closed", func(t *testing.T) {
+		root, _ := fcSeedCard(t)
+		path, err := homestate.FactoryDBPath(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		_ = os.Remove(path)
+		// A symlink loop: stat follows the link and fails with ELOOP — an
+		// error that is NOT IsNotExist, so the verb must refuse rather than
+		// read the unreadable record as an empty one (card t1737 F2).
+		if err := os.Symlink(path, path); err != nil {
+			t.Fatal(err)
+		}
+		before := readBacklogBytes(t, root)
+		_, _, err = runTodo(t, "classify", "t1", "--mode", "serial", "--reason", "the slot ledger cannot be read")
+		if err == nil {
+			t.Fatalf("classify succeeded over an unreadable factory record — the stat error fail-opened")
+		}
+		if after := readBacklogBytes(t, root); string(after) != string(before) {
+			t.Fatalf("failed classify changed the queue file")
 		}
 	})
 }
