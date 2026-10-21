@@ -764,6 +764,139 @@ func TestSetSpec_RefusalAtomicity(t *testing.T) {
 	}
 }
 
+// TestSetSpec_CatchUpAppendRetry pins the D-A alignment (sync-audit round
+// 1): the direction-6 catch-up append carries the write path's append
+// discipline — one retry, then the audit-loss sentinel, exit non-zero, with
+// both stores row-unchanged through the failure (the catch-up mutates no
+// store either way) — and a retry that lands leaves exactly the owed row.
+func TestSetSpec_CatchUpAppendRetry(t *testing.T) {
+	spec := "SPEC-D6-001"
+	seed := func(t *testing.T) (string, *factory.BacklogStore, string) {
+		t.Helper()
+		root, store := mdPickedFixture(t)
+		mdEnableFlag(t, root)
+		mdQueueSpec(t, store, "t1", &spec)
+		mdSetRecordSpec(t, root, "t1", spec, 2)
+		return root, store, mdCardsDump(t, root)
+	}
+	// Both attempts fail: the sentinel fires and nothing was mutated.
+	root, store, cardsBefore := seed(t)
+	attempts := 0
+	restore := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts++
+			if attempts <= 2 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore })
+	_, _, err := runFactory(t, "set-spec", "t1", "--spec", spec, "--reason", "r", "--run", fcRun)
+	if err == nil {
+		t.Fatal("the catch-up audit-loss sentinel did not fire")
+	}
+	if !strings.Contains(err.Error(), "card metadata audit row lost") {
+		t.Fatalf("error lacks the audit-loss sentinel: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("append attempts = %d, want the first attempt plus exactly one retry", attempts)
+	}
+	if got := mdCardsDump(t, root); got != cardsBefore {
+		t.Fatalf("catch-up failure re-mutated the record:\n got %s\nwant %s", got, cardsBefore)
+	}
+	queueBefore := mdQueueDump(t, store)
+	if got := mdQueueDump(t, store); got != queueBefore {
+		t.Fatalf("catch-up failure moved the queue")
+	}
+	if n := mdAuditCount(t, root); n != 0 {
+		t.Fatalf("audit rows = %d after the catch-up sentinel, want 0", n)
+	}
+
+	// The retry lands: one failed attempt, the retry succeeds, one row.
+	root2, _, _ := seed(t)
+	attempts2 := 0
+	restore2 := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts2++
+			if attempts2 == 1 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore2 })
+	if _, _, err := runFactory(t, "set-spec", "t1", "--spec", spec, "--reason", "r", "--run", fcRun); err != nil {
+		t.Fatalf("retrying catch-up append: %v", err)
+	}
+	if rows := mdAuditRows(t, root2, "t1"); len(rows) != 1 {
+		t.Fatalf("audit rows = %d, want exactly 1 after the landed catch-up retry", len(rows))
+	}
+}
+
+// TestReclassify_CatchUpAppendRetry is the reclassify mirror of
+// TestSetSpec_CatchUpAppendRetry (sync-audit round 1, D-A): the converged
+// catch-up append retries once, then surfaces the audit-loss sentinel with
+// the queue write left exactly as the crashed run committed it.
+func TestReclassify_CatchUpAppendRetry(t *testing.T) {
+	// mdClassifiedFixture already carries the axes a
+	// `--mode serial --priority high` run commands: the re-run is the
+	// converged-state catch-up.
+	root, store := mdClassifiedFixture(t)
+	queueBefore := mdQueueDump(t, store)
+	attempts := 0
+	restore := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts++
+			if attempts <= 2 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore })
+	_, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "r")
+	if err == nil {
+		t.Fatal("the catch-up audit-loss sentinel did not fire")
+	}
+	if !strings.Contains(err.Error(), "card metadata audit row lost") {
+		t.Fatalf("error lacks the audit-loss sentinel: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("append attempts = %d, want the first attempt plus exactly one retry", attempts)
+	}
+	if got := mdQueueDump(t, store); got != queueBefore {
+		t.Fatalf("catch-up failure moved the queue:\n got %s\nwant %s", got, queueBefore)
+	}
+	if n := mdAuditCount(t, root); n != 0 {
+		t.Fatalf("audit rows = %d after the catch-up sentinel, want 0", n)
+	}
+
+	// The retry lands: one failed attempt, the retry succeeds, one row.
+	root2, _ := mdClassifiedFixture(t)
+	attempts2 := 0
+	restore2 := metadataWriteFault
+	metadataWriteFault = func(stage string) error {
+		if stage == "audit-append" {
+			attempts2++
+			if attempts2 == 1 {
+				return context.DeadlineExceeded
+			}
+		}
+		return nil
+	}
+	t.Cleanup(func() { metadataWriteFault = restore2 })
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--priority", "high", "--reason", "r"); err != nil {
+		t.Fatalf("retrying catch-up append: %v", err)
+	}
+	if rows := mdAuditRows(t, root2, "t1"); len(rows) != 1 {
+		t.Fatalf("audit rows = %d, want exactly 1 after the landed catch-up retry", len(rows))
+	}
+}
+
 // SPEC-CARD-METADATA-VERBS-001 M3: the `moai factory reclassify` verb —
 // admission gate (positive enumeration), closed sets through the real
 // validator, axis preservation, write semantics, and the reclassify
