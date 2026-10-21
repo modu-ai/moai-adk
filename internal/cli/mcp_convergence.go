@@ -689,7 +689,29 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if root == "" {
 		root = resolveProjectDir()
 	}
-	diff, err := collectReviewDiffCtx(ctx, root, target)
+	// REQ-MN-019 (the l57-r7 repair, the GLM twin of the codex t1426 shape): a
+	// baseBranch leg resolves its base ONCE here, measures the diff from that
+	// exact merge base, and reports the same value as review_base — the
+	// second-review record then reads the leg as baseBranch coverage instead of
+	// "target not applied" for an audit that WAS applied. A delta base on ctx
+	// replaces the resolved base, exactly as collectReviewDiffCtx does.
+	var base *reviewBase
+	var diff string
+	var err error
+	if target == codexTargetBaseBranch {
+		var b reviewBase
+		if sha := deltaBaseFromContext(ctx); sha != "" {
+			b, err = deltaReviewBase(sha), nil
+		} else {
+			b, err = resolveReviewBase(root)
+		}
+		if err == nil {
+			base = &b
+			diff, err = collectReviewDiffAt(root, b)
+		}
+	} else {
+		diff, err = collectReviewDiffCtx(ctx, root, target)
+	}
 	if err != nil {
 		return glmInconclusive("no reviewable change: " + err.Error())
 	}
@@ -702,7 +724,11 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 		return glmInconclusive("workflow.audit pins unreadable: " + pinErr.Error())
 	}
-	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
+	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
+	return out
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool

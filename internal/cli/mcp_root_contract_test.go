@@ -134,6 +134,26 @@ func TestMCPRootConfinementHostileGitDirEnv(t *testing.T) {
 	}
 }
 
+// TestMCPRootConfinementNewlinePathWorktree pins the l57-r7 finding: the
+// worktree list parse is NUL-based (`--porcelain -z`), so a registered
+// worktree whose PATH contains a newline passes confinement. The line-based
+// parse truncated the path at the newline and refused the worktree as
+// unregistered. Measured grammar of `git worktree list --porcelain -z`: every
+// FIELD ends with a NUL, the entry boundary is an empty field, and a newline
+// inside a path stays verbatim inside its own field.
+func TestMCPRootConfinementNewlinePathWorktree(t *testing.T) {
+	serverRoot := sdServerFixture(t)
+	wt := filepath.Join(filepath.Dir(serverRoot), filepath.Base(serverRoot)+"-wt\nnewline")
+	fcGit(t, serverRoot, "worktree", "add", "-q", wt, "-b", "WT-newline-path")
+	got, err := resolveToolProjectRoot(sdToolReq(map[string]any{"project_root": wt}))
+	if err != nil {
+		t.Fatalf("registered worktree at a newline-containing path rejected — the worktree list parse truncated the path at the newline (l57-r7 finding 3): %v", err)
+	}
+	if want, lerr := filepath.EvalSymlinks(wt); lerr != nil || got != want {
+		t.Errorf("root = %q, want the canonical %q", got, want)
+	}
+}
+
 // TestMCPRootRequiredForMutating pins AC-MN-006's wire shape: a mutating
 // family tool called WITHOUT project_root refuses at the tool layer with
 // isError true and the pinned text — argument validation, deliberately

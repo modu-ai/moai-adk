@@ -213,12 +213,17 @@ func confineToServerRepository(ctx context.Context, serverRoot, canonical, raw s
 	if errA != nil || errB != nil || a != b {
 		return "", fmt.Errorf("project_root %q belongs to a different repository", raw)
 	}
-	list, err := codexAuditGit(ctx, serverRoot, "worktree", "list", "--porcelain")
+	// l57-r7 finding 3: the NUL form (`--porcelain -z`). The line-based parse
+	// truncated a registered worktree whose PATH contains a newline at the
+	// newline and refused it as unregistered. Measured grammar: in -z mode
+	// every FIELD ends with a NUL, the entry boundary is an empty field, and a
+	// newline inside a path stays verbatim inside its own field.
+	list, err := codexAuditGit(ctx, serverRoot, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return "", fmt.Errorf("cannot list the server repository's worktrees: %w", err)
 	}
-	for _, line := range strings.Split(list, "\n") {
-		path, ok := strings.CutPrefix(line, "worktree ")
+	for _, field := range strings.Split(list, "\x00") {
+		path, ok := strings.CutPrefix(field, "worktree ")
 		if !ok {
 			continue
 		}

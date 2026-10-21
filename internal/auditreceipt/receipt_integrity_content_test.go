@@ -5,6 +5,7 @@
 package auditreceipt
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -258,5 +259,59 @@ func TestTreeState_UntrackedContentMovesDigest(t *testing.T) {
 
 	if digest1 == digest2 {
 		t.Fatal("digest unchanged after an untracked file's content changed (card-review P1-1)")
+	}
+}
+
+// TestTreeState_FramingMasqueradeMovesUntrackedDigest pins the l57-r7 finding:
+// the untracked digest's concatenation is LENGTH-FRAMED. Without a per-file
+// length, a file's CONTENT bytes could masquerade as the framing of a phantom
+// entry: the tree {ua: "", ub: H+"X"} — H being the exact framing bytes of the
+// ub entry — hashed identically to {ua: H, ub: "X"}, so a content change moved
+// nothing and a pre-change PASS receipt stayed fresh across a different tree.
+// Both states keep the same untracked FILE SET, so the porcelain rows, the
+// diff, and HEAD are identical and only the content mapping differs.
+func TestTreeState_FramingMasqueradeMovesUntrackedDigest(t *testing.T) {
+	root := initContentRepo(t)
+	ua := filepath.Join(root, "ua")
+	ub := filepath.Join(root, "ub")
+	if err := os.WriteFile(ub, []byte("X"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// H is read from the file's own mode so the test assumes no umask.
+	if err := os.Chmod(ub, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(ub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	H := fmt.Sprintf("\x00untracked:ub\x00mode:%d", uint32(info.Mode()))
+
+	// State 1: ua empty; ub's content begins with ub's own framing bytes.
+	if err := os.WriteFile(ua, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ub, []byte(H+"X"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest1, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v1: %v", err)
+	}
+
+	// State 2: the framing bytes move into ua's content — the masquerade.
+	if err := os.WriteFile(ua, []byte(H), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ub, []byte("X"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, digest2, err := TreeState(root)
+	if err != nil {
+		t.Fatalf("TreeState v2: %v", err)
+	}
+
+	if digest1 == digest2 {
+		t.Fatal("digest unchanged across the framing-masquerade content change — unframed concatenation let ua's content bytes read as ub's entry framing, so a pre-change PASS receipt stays fresh (l57-r7 finding 1)")
 	}
 }

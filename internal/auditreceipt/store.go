@@ -258,7 +258,9 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 		// link's state: a dangling untracked symlink failed the read, the read
 		// failure failed the whole TreeState, and the failed capture marked
 		// every receipt from that audit BindCaptureFailed (all unusable); a
-		// FIFO- or device-backed target could block the read outright.
+		// FIFO- or device-backed target could block the read outright. The
+		// target needs no length framing: a link target cannot contain NUL, and
+		// the next framing always begins with one.
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, lerr := os.Readlink(full)
 			if lerr != nil {
@@ -271,6 +273,12 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 		if rerr != nil {
 			return "", "", rerr
 		}
+		// l57-r7 finding 1: the content is LENGTH-FRAMED. Unframed, a file's
+		// content bytes could masquerade as the framing of a phantom entry —
+		// the tree {a: "", b: H+"X"} (H = b's framing bytes) hashed identically
+		// to {a: H, b: "X"} — so a content change moved nothing and an earlier
+		// PASS receipt stayed fresh across a different tree.
+		_, _ = fmt.Fprintf(h, "\x00len:%d", len(data))
 		_, _ = h.Write(data)
 	}
 	return headOut, hex.EncodeToString(h.Sum(nil)), nil
