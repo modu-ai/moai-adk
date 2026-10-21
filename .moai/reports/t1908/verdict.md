@@ -36,3 +36,30 @@ Card: t1908 (Class C·P1) · Tree: `.moai/worktrees/t1908` · Branch `WT-mcp-cod
 - The batch may land further commits after `85c62aaff2`; a later lane absorbing a newer batch head must re-run the tools/list + doc-figure checks (the merge that introduces `factory_renew`-style additions shifts the 39 figure).
 - Sessions with a long-lived moai MCP server (started before this change) keep listing the nine tools until the server respawns — runtime restart, not a tree defect.
 - `go test ./...` on the merged tree could surface failures in untouched packages interacting with the removed surface indirectly (e.g., discovery/live tests referencing the tool names in prompts); not observed, bounded by the targeted runs above.
+
+---
+
+# Chain-change addendum — sync-phase leftovers (leader directive, same card/PR)
+
+## Claim
+
+The operational references to the removed tools in the doctrine/skill/hook surfaces are cleaned; the dead Codex approval overrides are removed; the boundary-ambiguous items are listed for the leader, not edited; all gates re-pass on the new HEAD.
+
+## Evidence (this run, tree = HEAD `a124c984ce` + the uncommitted cleanup, all verified before commit)
+
+- **① prose**: `.claude/rules/moai/workflow/cross-session-messaging-detail.md` (+ sanitized template mirror — each copy edited in place, fork conventions preserved): the Codex-broker-path section rewritten — broker removed in t1908, coordination rides the queue-on-disk channel, the broker-reading table dropped. `.claude/skills/moai-lane-watchdog/SKILL.md` (+ byte-identical template mirror, `cmp`): §4 Codex step ⑤ reworded to the queue-on-disk channel. Both references were OPERATIONAL (they instructed tool calls), not prose-only.
+- **② hook prompt text**: `internal/hook/factory_rebind.go` (rebound-notice tool tail dropped), `internal/hook/factory_messages.go` (inbox prefix reworded — notification-only, tool instructions dropped), `internal/hook/session_start_factory_i18n.go` (the four-locale `operationalStatus` strings reworded to keep one `%q` + the liveness caveat; field comment updated). No hook test pinned the dropped text; the surviving pins (`Factory inbox run=`, `factory lane rebound:` substrings) still pass.
+- **③ approval-override generator**: `internal/cli/managed_codex_factory.go` `factoryMoAIMCPApprovalArgs()` now emits only the `default_tools_approval_mode="approve"` pair — the two dead `.tools.factory_msg_send/receipt` overrides removed; `internal/cli/managed_codex_approval_test.go` updated (asserts the default override and rejects any `.tools.factory_msg` naming).
+- **Re-measurement** (tree-local binary `/tmp/t1908-moai-chain`, built at this working tree): `COUNT=39`; the nine removed names absent (grep -cx = 0 each); `codex_audit`/`audit_cache`/`spec_audit` present (=1). `go build ./...` exit 0; `go vet ./internal/cli ./internal/mcp ./internal/hook` exit 0; `golangci-lint run ./internal/cli ./internal/mcp ./internal/hook` → `0 issues.`; `go test ./internal/hook -count=1` ok (250s); name-pinned set (`TestMoaiMCP|TestMCPToolCatalogue|TestMCPAnnotation|TestMCPConsole|TestMoaiMCPServer|TestMCPAudit|TestMCPSelfReview|TestCodexReview|TestMoAIMCPApproval|TestManagedCodex|TestConfigToml`) → 212 RUNs, `internal/mcp` + `internal/cli` both ok.
+
+## Gaps (listed for the leader, deliberately not edited)
+
+- `cross-session-messaging-core.md` (always-loaded stub) + `cross-session-messaging.md` (role-injected full body), both copies: the § "Codex broker path (session messaging tools)" section still describes the removed broker as present. Names no removed tool identifier; ownership ambiguous vs the t1909 chain — not edited.
+- `internal/cli/managed_factory_session.go` `managedFactoryInboxPrompt` (line ~458, Korean): instructs the managed codex session to read/settle via `factory_msg_body`/`factory_msg_receipt`. Same defect class, but the managed inbox flow's design depends on the removed tools (a redesign decision), and it sits in the t1909-adjacent codex-managed surface — not edited. Its test (`managed_factory_session_test.go`) pins the tool names.
+- Prose/history keeps: `internal/sessionmsg/*.go` @MX fan_in annotations, `internal/config/defaults.go` SessionMsg constant comments (constants stay live for the retained package), `factory_live_test.go` / `factory_operational_*_test.go` / `managed_hardening_test.go` (compile-safe prompt/evidence strings), `mcp_code_tools_test.go:173` comment.
+
+## Residual-risk
+
+- The four-locale `operationalStatus` strings changed shape (tool call → run-id caveat); any downstream consumer matching the old leading tool-call syntax verbatim would miss — none found in the test sweep.
+- The managed codex inbox flow remains functionally broken-by-design (claims render, model cannot settle) until the leader rules on the listed item.
+
