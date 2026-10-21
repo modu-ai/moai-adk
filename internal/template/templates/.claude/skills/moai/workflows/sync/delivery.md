@@ -328,6 +328,7 @@ Where the integration branch is held by a dedicated worktree (the `WT-*` integra
 
 **main branch** → direct work context:
 - The session works on the trunk itself; report the branch state and continue with the sync record — no per-card pull request exists in this model
+- Where only the primary checkout holds the trunk branch, `moai factory complete` opens the card's pull request instead, and the coordinating session merges it
 
 **Any other branch** → stop and report:
 - A branch matching none of `WT-*` or the trunk branch matches no defined route for this strategy

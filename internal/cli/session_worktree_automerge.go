@@ -74,6 +74,11 @@ var (
 	// §2: one fact, one key).
 	autoMergeLoadGitFlow = config.LoadGitFlowIntegrationConfig
 
+	// autoMergePrimaryHoldsTarget reports whether the ONLY tree holding the
+	// integration branch is the primary checkout — the primary-route skip's
+	// probe (card t1831 M5b, REQ-AGT-007 rescope 0.4.0).
+	autoMergePrimaryHoldsTarget = factoryPrimaryHoldsTarget
+
 	// autoMergeBranchOf reports the branch checked out in the session worktree.
 	autoMergeBranchOf = gitBranchOfWorktreeReal
 
@@ -142,12 +147,14 @@ var (
 //  1. no live session worktree → no-op (REQ-WKW-002's trigger clause)
 //  2. auto_merge OFF → byte-identical baseline, no notice (REQ-WKW-001)
 //  3. non-clean exit → no merge, no notice (REQ-WKW-002 clean-exit-only)
-//  4. unconfigured / non-git-flow target → notice naming the config key
+//  4. unconfigured / non-local-integration target → notice naming the config key
 //     (REQ-WKW-003)
-//  5. ahead-of == 0 → silent no-op, no window churn (REQ-WKW-010)
-//  6. window held (live or stale) → skip + notice (REQ-WKW-004)
-//  7. source/target dirty or target absent → skip + notice (REQ-WKW-007/008)
-//  8. local `git merge --no-ff` inside the window; conflicts abort (REQ-WKW-005/006)
+//  5. only the primary checkout holds the target → skip + notice naming the
+//     missing dedicated landing surface (card t1831 M5b, REQ-AGT-007)
+//  6. ahead-of == 0 → silent no-op, no window churn (REQ-WKW-010)
+//  7. window held (live or stale) → skip + notice (REQ-WKW-004)
+//  8. source/target dirty or target absent → skip + notice (REQ-WKW-007/008)
+//  9. local `git merge --no-ff` inside the window; conflicts abort (REQ-WKW-005/006)
 //
 // The function NEVER returns an error and NEVER aborts the exit flow.
 //
@@ -184,6 +191,19 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 		return
 	}
 	develop := gitFlow.DevelopBranch
+
+	// REQ-AGT-007 (rescope 0.4.0, card t1831 M5b): under manual agentic-trunk,
+	// where the integration branch is held ONLY by the primary checkout, no
+	// dedicated landing surface exists — a session-exit merge never writes
+	// into the shared primary working tree. Skip with a notice naming the
+	// missing surface; the delivery that remains is the card's pull request
+	// (`moai factory complete`), which the leader merges. Git-flow keeps its
+	// present answers: its develop branch is an operator-chosen key, and the
+	// REQ-WKW-008 dirty-target guard already protects a primary that holds it.
+	if gitFlow.AgenticTrunkWorkflow && autoMergePrimaryHoldsTarget(root, develop) {
+		autoMergeNoticef(out, "skipped (no dedicated landing surface): only the primary checkout holds %s — the primary never merges for a session exit; provision a worktree holding %s (the dedicated landing surface), or deliver the work by pull request (moai factory complete)", develop, develop)
+		return
+	}
 
 	branch, err := autoMergeBranchOf(wtPath)
 	if err != nil || strings.TrimSpace(branch) == "" {

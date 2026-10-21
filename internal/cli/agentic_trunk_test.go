@@ -219,10 +219,12 @@ func TestAgenticTrunkMergeReadyTakesWindow(t *testing.T) {
 // ─── REQ-AGT-007 — session-exit auto-merge (AC-AGT-006) ───
 
 // autoMergeAgenticTrunkFixture is autoMergeGitFixture's shape with the
-// agentic-trunk config: the repo's branch is main, the config names manual
-// agentic-trunk with the git-flow keys present and ignored, and the session
-// worktree carries one commit ahead of main.
-func autoMergeAgenticTrunkFixture(t *testing.T) (root, swt string) {
+// agentic-trunk config: the primary checkout moves OFF main, a dedicated
+// integration worktree holds main (the dedicated-worktree route the
+// 0.4.0 routing keeps on the local merge), and the session worktree
+// carries one commit ahead of main. Returns the integration worktree so
+// the merge assertions read the tree the merge actually landed in.
+func autoMergeAgenticTrunkFixture(t *testing.T) (root, integ, swt string) {
 	t.Helper()
 	root = t.TempDir()
 	git := func(args ...string) string {
@@ -250,6 +252,13 @@ func autoMergeAgenticTrunkFixture(t *testing.T) (root, swt string) {
 	}
 	git("-C", root, "add", ".")
 	git("-C", root, "commit", "-m", "init")
+	// The primary vacates main and a dedicated integration worktree takes
+	// it (agenticTrunkMergeFixture's shape): under the target-holder
+	// routing the local merge lands in THAT worktree, never in the
+	// primary's working tree.
+	integ = filepath.Join(root, ".claude", "worktrees", "main")
+	git("-C", root, "checkout", "-q", "-b", "wtroot")
+	git("-C", root, "worktree", "add", "-q", integ, "main")
 
 	swt = filepath.Join(root, ".claude", "worktrees", "WT-am-test")
 	git("-C", root, "worktree", "add", "-b", "WT-am-test", swt)
@@ -258,7 +267,7 @@ func autoMergeAgenticTrunkFixture(t *testing.T) (root, swt string) {
 	}
 	git("-C", swt, "add", ".")
 	git("-C", swt, "commit", "-m", "card work")
-	return root, swt
+	return root, integ, swt
 }
 
 // TestAgenticTrunkAutoMerge is AC-AGT-006: session-exit auto-merge enabled
@@ -269,7 +278,7 @@ func autoMergeAgenticTrunkFixture(t *testing.T) (root, swt string) {
 func TestAgenticTrunkAutoMerge(t *testing.T) {
 	t.Run("manual merges into main", func(t *testing.T) {
 		testguard.RedirectHome(t)
-		root, swt := autoMergeAgenticTrunkFixture(t)
+		root, integ, swt := autoMergeAgenticTrunkFixture(t)
 		gitOut := func(args ...string) string {
 			out, err := exec.Command("git", args...).Output()
 			if err != nil {
@@ -292,13 +301,19 @@ func TestAgenticTrunkAutoMerge(t *testing.T) {
 
 		sessionExitAutoMerge(amCfg(true, false), swt, true, out)
 
-		parents := strings.Fields(gitOut("-C", root, "rev-list", "--parents", "-n", "1", "HEAD"))
+		// main's HEAD (in the dedicated integration worktree holding it) is
+		// a merge commit with exactly two parents; the second parent is the
+		// session branch tip — and the primary's own branch did not move.
+		parents := strings.Fields(gitOut("-C", integ, "rev-list", "--parents", "-n", "1", "HEAD"))
 		if len(parents) != 3 {
 			t.Fatalf("main HEAD is not a two-parent merge commit: %v (notice: %q)", parents, out.String())
 		}
 		swtTip := gitOut("-C", swt, "rev-parse", "HEAD")
 		if parents[2] != swtTip {
 			t.Errorf("merge second parent %s != session branch tip %s", parents[2], swtTip)
+		}
+		if rootHead := gitOut("-C", root, "rev-parse", "HEAD"); rootHead == parents[0] {
+			t.Errorf("the primary checkout's branch moved to the merge commit %s — the merge must land in the dedicated worktree", rootHead)
 		}
 		lock, err := factory.ReadIntegrationLock(root)
 		if err != nil {
@@ -337,6 +352,209 @@ func TestAgenticTrunkAutoMerge(t *testing.T) {
 			t.Errorf("skip notice must keep naming the config key: %q", notice)
 		}
 		requireNoticePrefixed(t, notice)
+	})
+}
+
+// ─── REQ-AGT-006 (rescope 0.4.0) — the primary route (AC-AGT-005/006) ───
+
+// agenticTrunkPrimaryFixture is ghfNew's shape with the workflow value
+// swapped to manual agentic-trunk: the primary checkout is the ONLY tree
+// holding main (the card worktree sits on its own branch and no dedicated
+// integration worktree exists), exactly the structure the 0.4.0 rescope
+// routes to the pull-request edge.
+func agenticTrunkPrimaryFixture(t *testing.T) ghfFixture {
+	t.Helper()
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	writeAgenticTrunkConfig(t, f.root)
+	return f
+}
+
+// TestAgenticTrunkCompletePrimaryPrEdge is AC-AGT-005's primary-route flip
+// (SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 M5b, rescope 0.4.0): under manual
+// agentic-trunk where only the primary checkout holds main, `factory
+// complete` delivers by pull request — the branch pushed, pr-open
+// recorded, no integration window taken — and `factory merge ready`
+// clears without taking the window.
+func TestAgenticTrunkCompletePrimaryPrEdge(t *testing.T) {
+	t.Run("complete opens the card's pull request", func(t *testing.T) {
+		f := agenticTrunkPrimaryFixture(t)
+		d := newGHDouble(t, f)
+		before := factoryGHUnexpectedCalls.Load()
+		out, err := ghfComplete(t)
+		if err != nil {
+			t.Fatalf("complete: %v", err)
+		}
+		if got := f.remoteBranchTip(t); got != f.tip {
+			t.Fatalf("origin %s = %q, want the card tip %s", ghfBranch, got, f.tip)
+		}
+		if d.count("pr", "create") != 1 {
+			t.Fatalf("pr create calls = %d, want 1; calls: %v", d.count("pr", "create"), d.calls)
+		}
+		if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+			t.Fatalf("card = %s, want pr-open (the primary route records the open pull request)", c.State)
+		}
+		if !strings.Contains(out, ghfPRURL) {
+			t.Errorf("output %q does not report the pull request", out)
+		}
+		ghfNoWindow(t, f, "after the primary-route complete")
+		if got := factoryGHUnexpectedCalls.Load(); got != before {
+			t.Errorf("the primary-route complete made %d unexpected gh call(s)", got-before)
+		}
+	})
+
+	t.Run("merge ready takes no window on the primary route", func(t *testing.T) {
+		repo, lockRoot, specID := agenticTrunkReadyFixture(t, "complete")
+		// The primary checkout takes main back: the 0.4.0 structure where
+		// the primary is the ONLY tree holding the integration branch (the
+		// fixture left the repo on the card branch). The routing probe
+		// reads the repository the lane stands in — the cwd the verb
+		// resolves (repo), not the split lock root.
+		checkout := exec.Command("git", "checkout", "main")
+		checkout.Dir = repo
+		if out, err := checkout.CombinedOutput(); err != nil {
+			t.Fatalf("checkout main in %s: %v\n%s", repo, err, out)
+		}
+		out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "main", "--session", "sess-lane-9", "--json")
+		if err != nil {
+			t.Fatalf("merge ready: %v", err)
+		}
+		if !strings.Contains(out, `"verdict":"cleared"`) {
+			t.Fatalf("ready did not clear: %s", out)
+		}
+		if lock := readLockRoot(t, lockRoot); lock.Held() {
+			t.Errorf("merge ready took the window on the primary route: %+v", lock)
+		}
+	})
+}
+
+// TestAgenticTrunkCompleteNoAutoMerge is AC-AGT-005's no-merge-request flip:
+// on the primary route the completion path records pr-open and issues NO
+// pull-request merge request of any kind — no `--auto`, nothing — the
+// leader merges, and a later completion run records merged-pr through the
+// existing observation path.
+func TestAgenticTrunkCompleteNoAutoMerge(t *testing.T) {
+	t.Run("the primary route issues no merge request", func(t *testing.T) {
+		f := agenticTrunkPrimaryFixture(t)
+		d := newGHDouble(t, f)
+		if _, err := ghfComplete(t); err != nil {
+			t.Fatalf("complete: %v", err)
+		}
+		if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+			t.Fatalf("card = %s, want pr-open", c.State)
+		}
+		if got := d.count("pr", "merge"); got != 0 {
+			t.Errorf("the primary-route completion issued %d `gh pr merge` request(s), want 0 — the leader merges; calls: %v", got, d.calls)
+		}
+		// The second completion run observes the leader's merge and records
+		// merged-pr — the merge request path stays observational.
+		d.state, d.mergeOid = "MERGED", f.squashOnMain(t)
+		if _, err := ghfComplete(t); err != nil {
+			t.Fatalf("complete after the merge: %v", err)
+		}
+		if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergedPR || c.MergeSHA != d.mergeOid {
+			t.Fatalf("card = %s merge=%s, want merged-pr with the merge commit %s", c.State, c.MergeSHA, d.mergeOid)
+		}
+		if got := d.count("pr", "merge"); got != 0 {
+			t.Errorf("the merged-pr observation issued %d `gh pr merge` request(s), want 0", got)
+		}
+	})
+}
+
+// TestAgenticTrunkAutoMergeSkipsPrimaryTarget is AC-AGT-006's primary-route
+// flip (M5b): session-exit auto-merge enabled and manual agentic-trunk where
+// the ONLY tree holding main is the primary checkout — the merge skips with
+// a notice naming the missing dedicated landing surface, no window record
+// and no merge invocation is written, and the same configuration over a
+// dedicated integration worktree still merges (judge A above).
+func TestAgenticTrunkAutoMergeSkipsPrimaryTarget(t *testing.T) {
+	t.Run("seam probe skips with the landing-surface notice", func(t *testing.T) {
+		testguard.RedirectHome(t)
+		rec := &amRecorder{}
+		seams := baseAMSeams(rec)
+		seams.gitFlow = func(string) config.GitFlowIntegrationConfig {
+			return config.GitFlowIntegrationConfig{Manual: true, AgenticTrunkWorkflow: true, Workflow: config.WorkflowAgenticTrunk, DevelopBranch: "main"}
+		}
+		seams.primaryHolds = func(root, branch string) bool { return true }
+		swapAutoMergeSeams(t, seams)
+		out := &bytes.Buffer{}
+
+		sessionExitAutoMerge(amCfg(true, false), amSessionWt, true, out)
+
+		notice := out.String()
+		if !strings.Contains(notice, "dedicated landing surface") {
+			t.Errorf("skip notice must name the missing dedicated landing surface: %q", notice)
+		}
+		if !strings.Contains(notice, "primary") {
+			t.Errorf("skip notice must name the primary checkout as the only holder: %q", notice)
+		}
+		requireNoticePrefixed(t, notice)
+		if len(rec.lockLog) != 0 {
+			t.Errorf("no window record may be written on the primary route, got: %v", rec.lockLog)
+		}
+		if len(rec.mergeDirs) != 0 {
+			t.Errorf("no merge may run on the primary route, got merges at %v", rec.mergeDirs)
+		}
+	})
+
+	t.Run("real git primary-only fixture skips", func(t *testing.T) {
+		testguard.RedirectHome(t)
+		// A repository whose primary checkout IS the only main holder: the
+		// real probe answers it without a seam.
+		root := t.TempDir()
+		git := func(args ...string) string {
+			out, err := exec.Command("git", args...).CombinedOutput()
+			if err != nil {
+				t.Fatalf("git %v failed: %v\n%s", args, err, out)
+			}
+			return string(out)
+		}
+		git("-C", root, "init")
+		git("-C", root, "config", "user.name", "t1831-test")
+		git("-C", root, "config", "user.email", "t1831@test.local")
+		git("-C", root, "symbolic-ref", "HEAD", "refs/heads/main")
+		if err := os.MkdirAll(filepath.Join(root, ".moai", "config", "sections"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(".moai/state/\n.claude/worktrees/\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml"), []byte(agenticTrunkGitStrategy), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "card.txt"), []byte("base\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		git("-C", root, "add", ".")
+		git("-C", root, "commit", "-m", "init")
+		swt := filepath.Join(root, ".claude", "worktrees", "WT-am-primary")
+		git("-C", root, "worktree", "add", "-b", "WT-am-primary", swt)
+		if err := os.WriteFile(filepath.Join(swt, "card.txt"), []byte("card work\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		git("-C", swt, "add", ".")
+		git("-C", swt, "commit", "-m", "card work")
+
+		swapAutoMergeSeams(t, amSeams{
+			lockRoot:  func() string { return root },
+			sessionID: func() string { return "sess-primary" },
+		})
+		out := &bytes.Buffer{}
+
+		sessionExitAutoMerge(amCfg(true, false), swt, true, out)
+
+		notice := out.String()
+		if !strings.Contains(notice, "dedicated landing surface") {
+			t.Errorf("skip notice must name the missing dedicated landing surface: %q", notice)
+		}
+		requireNoticePrefixed(t, notice)
+		// Nothing merged and nothing was recorded: the primary's HEAD is
+		// unmoved and no two-parent merge commit exists anywhere.
+		if head := git("-C", root, "rev-list", "--parents", "-n", "1", "HEAD"); len(strings.Fields(head)) == 3 {
+			t.Errorf("the primary's HEAD became a merge commit: %s", head)
+		}
+		if lock, err := factory.ReadIntegrationLock(root); err != nil || lock.Held() {
+			t.Errorf("window must be untouched on the primary route (err %v, lock %+v)", err, lock)
+		}
 	})
 }
 
