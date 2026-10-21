@@ -49,12 +49,13 @@ const (
 	// runes, not bytes.
 	metadataReasonMaxRunes = 500
 
-	// The audit row's kind and field vocabulary (REQ-CMV-010).
-	metadataKindSetSpec     = "set-spec"
-	metadataKindReclassify  = "reclassify"
-	metadataFieldSpecID     = "spec_id"
-	metadataFieldClassific  = "classification"
-	metadataDeciderIdentity = "human"
+	// The audit row's kind and field vocabulary (REQ-CMV-010). The decider
+	// identity a reclassify records is factory.DeciderIdentityHuman — the
+	// closed-set constant, never a re-spelled copy.
+	metadataKindSetSpec    = "set-spec"
+	metadataKindReclassify = "reclassify"
+	metadataFieldSpecID    = "spec_id"
+	metadataFieldClassific = "classification"
 )
 
 // metadataWriteFault is the write-sequence test seam (the shape of homestate's
@@ -438,7 +439,7 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, db *homesta
 	if cmd.Flags().Changed("priority") {
 		target.Priority = priority
 	}
-	target.Decider = metadataDeciderIdentity
+	target.Decider = factory.DeciderIdentityHuman
 	// REQ-CMV-007 gate (b): the closed sets through the EXISTING validator —
 	// no re-spelled copy (classification.go's own header rule).
 	if err := factory.ValidateCardClassification(target); err != nil {
