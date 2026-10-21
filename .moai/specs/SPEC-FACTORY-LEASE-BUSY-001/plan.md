@@ -41,9 +41,11 @@ Stateless plan artifact (no `status:` field — the SPEC's lifecycle lives in `s
   `mcp_factory_card.go` — the §A.3 hold. SPEC-FACTORY-ATOMIC-LEASE-001 is in-progress amendment;
   its amendment owns the adjacent timing machinery — do not touch its bounds or its AC text.
 - **Pinned-test flips are part of the change, not collateral.**
-  `factory_lease_bound_test.go` 109 (doc comment), 151, 298 pin the current misclassification
-  (record stall → `raced`); REQ-FLB-003/004 legitimately flip them. The queue-lock pins at 443, 464
-  stay untouched and keep passing (out of scope, decision-index Q4).
+  `TestFactoryLeaseRecordStallBounded` (its doc comment and its `raced` assertion) and
+  `TestFactoryLeaseMidClaimStallBounded` (its `raced` assertion) pin the current misclassification
+  (record stall → `raced`); REQ-FLB-003/004 legitimately flip them. The queue-lock pins —
+  `TestFactoryLeaseQueueLockStallBounded`, subtests `nominated` and `bare` — stay untouched and
+  keep passing (out of scope, decision-index Q4).
 - **B6 (spec-lint heading convention).** `spec.md` carries `### Out of Scope —` H3 sub-headings with
   `-` bullets (satisfies `OutOfScopeRule`).
 - **B8/B10 (hygiene, scope discipline).** Stage by explicit pathspec; no runtime-managed files; no
@@ -94,19 +96,38 @@ read-path change commit — git is the only sequencing witness.
   record-write contention / claim-deadline expiry — and the reason tokens; write the failing tests
   per class through the existing seams (`factoryLeaseClaimDeadlineOverride`, `flHoldRecord`,
   `factoryLeaseBeforeClaim`). Deliverable: RED outputs for AC-FLB-001..004 assertions plus the
-  class table recorded in this file's §F amendment note. Priority High. (Decision-reversibility:
+  token/class table recorded in progress.md §E.2 (run-phase evidence; this plan file's body is not
+  manager-develop-editable, so the table lands there — the classes themselves are already normative
+  in spec.md REQ-FLB-001). Priority High. (Decision-reversibility:
   the token names and class boundaries are the decisions most likely to move in review — they lead.)
 - **M2 — GREEN reclassification.** Split `factoryClaimFailure`'s marking (492-510) into the
   contention and deadline classes; map them at the nominated switch (1600-1614) and keep the race
-  family on `raced`; update the pinned assertions (109, 151, 298); preserve one-line rendering
-  (REQ-FLB-006) and exit 4 (REQ-FLB-007); the MCP relay inherits unchanged. Priority High.
-- **M3 — Slot-read classification alignment.** Attribute a busy serial-slot read
-  (`factory_card.go` 1857-1861 family) to the contention class (REQ-FLB-009); test via the slot
-  seam. Priority Medium.
+  family on `raced`; update the pinned assertions in `TestFactoryLeaseRecordStallBounded` and
+  `TestFactoryLeaseMidClaimStallBounded`; extend `waitable()` (`factory_card.go` 1270-1276) so the
+  new record-contention and claim-deadline tokens are wait-retryable exactly as `raced` is today,
+  keeping the `--wait` loop waiting through transient contention (REQ-FLB-008, AC-FLB-011);
+  preserve one-line rendering (REQ-FLB-006) and exit 4 (REQ-FLB-007); the MCP relay inherits
+  unchanged. Priority High.
+- **M3 — Slot-read race-claim hygiene.** Verify the lease path attributes no race loss to a
+  serial-slot outcome (REQ-FLB-009): the slot-hold refusal keeps its `serial-slot` token and text
+  (`factorySerialInFlightExcluding`, `factory_card.go` 330, refusing at 1368), and the peek's
+  store-read failure keeps failing open with no race claim in any rendered line
+  (`factoryNextMayLease`, `factory_card.go` 1868-1878). Test via the existing serial-slot arm of
+  the lease tests plus a forced peek store-read failure (AC-FLB-007). No reclassification of a
+  genuine serial-slot outcome — that would collide with REQ-FLB-010's byte-identical preservation.
+  Priority Medium.
 - **M4 — Status baseline + profile (evidence-first; ordering-attribution).** Capture
   `.moai/reports/t1916/status-latency-baseline.md` — N ≥ 20 `factory status` invocations, host
   1-minute load at or below the core count (the card-t1746 amendment's load-condition convention),
-  p50/p95 — committed in its own commit BEFORE any read-path change; profile the read path
+  p50/p95 — committed in its own commit BEFORE any read-path change. The recipe is executable end
+  to end and identical across revisions: (1) **binary** — built per revision from the tree under
+  measurement (`go build -o <scratch>/moai-<revision> ./cmd/moai`) and invoked by that path, never
+  the installed `moai` (whose build lags this tree); (2) **isolated root** — a fresh `mktemp -d`
+  project directory as the factory root for every run, never the primary checkout's live store;
+  (3) **fixed fixture** — the seeded factory record the setup step creates once in that root
+  (fixed card/run set), reused byte-identically by both runs; (4) **exact command** — the full
+  invocation line recorded verbatim in the baseline artifact and reissued verbatim, unchanged, for
+  the post-change measurement. Profile the read path
   (`EffectiveFactoryLease` / `LoadPure` / `OpenFactory`+`ListCards` / `ReadRecordUnavailable`) and
   name the dominant cost. Priority High.
 - **M5 — Status read-path fix + improvement measurement.** Remove or restructure the dominant cost;

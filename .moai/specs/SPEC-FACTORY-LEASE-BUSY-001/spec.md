@@ -93,22 +93,33 @@ The requirements use GEARS notation. Each active requirement maps to at least on
   record lock, and with exit code 4.
 - **REQ-FLB-004** When a lease claim fails because the claim's own deadline passed while a record
   write was still running, the lease path shall refuse with a claim-deadline reason token distinct
-  from `raced`, with a detail naming the claim deadline and the host-load reading of the cause (the
-  code's own finding: the host is under load, not a lock race), and with exit code 4.
-- **REQ-FLB-005** The lease path shall not surface the `raced` reason token for a lease-attempt
-  failure whose underlying cause is not a race lost to another claimant.
+  from `raced`, with a detail naming the observed signals — the expired claim deadline and, as
+  recorded, the presence or absence of a concurrent busy error (measured runs show the deadline
+  signal joined with `SQLITE_BUSY`) — asserting neither a load-only nor a race-only cause, and with
+  exit code 4.
+- **REQ-FLB-005** The claim-failure classification of this SPEC's cause table shall not surface the
+  `raced` reason token for a claim failure whose underlying cause is not a race lost to another
+  claimant; the queue-lock-held refusal (`factory_card.go` 1527-1528, preserved out of scope per
+  decision-index Q4) keeps its current token and exit code and sits outside this prohibition.
 - **REQ-FLB-006** Every lease-path refusal shall render as a single line matching
   `factory next: refused <token>: <detail>` with no embedded newline.
 - **REQ-FLB-007** Every lease-path refusal of a nomination shall exit with code 4, and no
   reclassification under this SPEC shall change the exit codes or refusal texts of the existing
   pre-claim refusal classes (serial-slot, quota-hold, backend-skip, foreign-worktree).
 - **REQ-FLB-008** When a nominated lease fails after its promotion for any cause class, the lease
-  path shall run the same compensation it runs today — restoring the queue item it promoted and
-  leaving a card another holder owns alone — so the reclassification changes only the refusal
-  surface and no store state.
-- **REQ-FLB-009** When the lease path's serial-slot read fails as busy, the lease path shall
-  attribute that outcome to the record-contention cause class and shall not report it as a race
-  lost to another lane.
+  path shall run the same compensation it runs today — acting only on the promotion this invocation
+  made and leaving a state another holder owns alone — so the reclassification changes no store
+  state and changes only the refusal surface, where the refusal surface includes the wait-retry
+  classification: the new record-contention and claim-deadline tokens shall be wait-retryable
+  exactly as the `raced` token is today (the `--wait` retry predicate at `factory_card.go`
+  1270-1276), so `--wait` keeps waiting through transient contention instead of stopping on the
+  first refusal.
+- **REQ-FLB-009** Where the lease path decides on a serial-slot outcome — the slot-hold refusal
+  computed from the in-memory slot check (`factorySerialInFlightExcluding`, `factory_card.go` 330,
+  refusing at 1368) or the peek's over-approximating serial read (`factory_card.go` 1857-1865,
+  whose store-read failures fail open) — the lease path shall attribute no race loss to that
+  outcome: the slot-hold refusal keeps its `serial-slot` token and text unchanged, and a read
+  failure that fails the peek open produces no race claim in any rendered line.
 - **REQ-FLB-010** The lease path shall keep the existing cause-accurate refusal texts unchanged for
   the causes this SPEC does not reclassify — in particular the serial-slot refusal line observed
   verbatim as `factory next: refused serial-slot: another serial card is in flight and holds the
@@ -132,9 +143,9 @@ The requirements use GEARS notation. Each active requirement maps to at least on
 ### Out of Scope — the queue-lock-held `raced` refusal
 
 - The queue-lock refusal at `factory_card.go` 1527-1528 (token `raced`, detail naming the queue
-  lock's wait budget) keeps its current token and text; the tests pinning it
-  (`factory_lease_bound_test.go` 443, 464) keep passing unchanged. Decision-index Q4 records the
-  disposition (default: preserve current behavior).
+  lock's wait budget) keeps its current token and text; the test pinning it
+  (`TestFactoryLeaseQueueLockStallBounded`, subtests `nominated` and `bare`) keeps passing
+  unchanged. Decision-index Q4 records the disposition (default: preserve current behavior).
 
 ### Out of Scope — lease bound sizing and PR #1859's scope
 
