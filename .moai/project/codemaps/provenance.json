@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "tree_root": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1774",
-  "commit_sha": "6dde1c1c1bdc84bf82c1b8266c071c44756fe7c0",
+  "tree_root": "/workspace/moai-adk/.moai/worktrees/cloud-ci-repair",
+  "commit_sha": "bf0a35f10e423d8f0768e637b74a58e143a5d7d6",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-19T11:01:17Z"
+  "generated_at": "2026-10-21T22:08:17Z"
 }

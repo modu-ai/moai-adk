@@ -1,6 +1,15 @@
 # 의존성 그래프
 
-## t1774 PR 후보의 현재 구조
+## Cloud PR #1848 호환 복구 — ci-repair-20261022
+
+원본 PR은 `crypto/rand`로 새 run identity를 만들기 위해 `github.com/oklog/ulid/v2 v2.1.2`를 직접 의존성으로 추가한다. 내부 계층은 CLI → factory/config/homestate를 유지하며 `AbortRunStart`의 영속화와 감사 이벤트는 homestate 트랜잭션 안에서 수행한다. 아래 플랫폼별 측정 수치는 각 기준 커밋의 관측값이다.
+
+
+## 현재 의존성 측정 — bf0a35f10
+
+Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 원본 t1774 PR의 구조 기록
 
 `go list`의 현재 darwin/arm64 선택 결과에서 저장소 패키지 176개와 직접 import 519쌍을 관측했다. 최상위 모듈로 접고 self-edge를 뺀 관계는 325쌍이다. 파일별 AST는 플랫폼 전용 파일도 읽었지만 이 import 그래프가 모든 플랫폼의 합집합이라는 뜻은 아니다.
 

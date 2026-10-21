@@ -1,6 +1,18 @@
 # 진입점
 
-## t1774 PR 후보의 현재 구조
+## Cloud PR #1848 호환 복구 — ci-repair-20261022
+
+`moai codex -f`와 `moai codex --factory`는 bare fresh-leader 진입이다. 값이 붙은 factory 진입은 계속 거부하고 `-l`/`--lane`은 기존 run 합류다. native `--` 뒤 prompt와 model/config option 경계는 보존하며 셸 환경의 factory identity는 실제 child 환경과 맞춘다. 리뷰·감사 workflow 진입점은 main과 동일하게 유지한다.
+
+
+## 현재 진입점 보완 — bf0a35f10
+
+- `moai paths`는 프로젝트에 귀속된 실제 데이터베이스 경로를 출력한다. 경로를 추측해 저장소를 열지 않는다.
+- `moai factory set-spec <card>`와 `reclassify <card>`는 설정 게이트와 상태·호출자 검증 뒤 메타데이터를 변경하고 감사 이벤트를 남긴다. `approve`는 기존 승인 증거 검증 경로를 유지한다.
+- `moai integration candidate --card <id>`는 착지 전 후보를 게시하고, `--observe`는 실제 CI 결과를 관측·기록한다. `moai integration resync`는 원격 통합 기준을 확인한 뒤 허용된 fast-forward만 수행한다.
+- `moai mcp-server`의 현재 도구 수는 `internal/mcp/catalog.go`의 등록 항목 기준 39개다. `factory_renew`는 남아 있고 퇴역한 session/factory 메시징 도구는 공개하지 않는다. 아래 과거 판의 45·47·48개 기록은 당시 표면을 설명한다.
+
+## 원본 t1774 PR의 구조 기록
 
 현재 Go AST에서 확인한 `main` 함수는 다음 6개다. 줄 번호는 갱신 기준 소스의 위치이며 실행 여부를 표시하지 않는다.
 
