@@ -464,9 +464,18 @@ func factoryQueueLockError(err error) error {
 	return fmt.Errorf("factory next: take the queue lock: %w", err)
 }
 
-// errFactoryRecordBusy marks a claim that gave up because the factory record
-// stayed busy for the claim's whole wait cap.
+// errFactoryRecordBusy marks a claim that gave up because another writer held
+// the factory record (SQLite busy/locked) past every retry while the claim's
+// own deadline was still live — the record-contention class
+// (SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-003).
 var errFactoryRecordBusy = errors.New("the factory record stayed busy")
+
+// errFactoryClaimDeadline marks a claim that gave up because the claim's own
+// context deadline passed while a record write was still running — the
+// claim-deadline class (SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-004). Where the
+// failure carries both the deadline signal and a busy error (a joined error),
+// this class takes precedence: the deadline is the outer bound.
+var errFactoryClaimDeadline = errors.New("the claim deadline passed while a record write was still running")
 
 // factoryClaimContext bounds one claim — RecordPicked and the two transitions
 // taken together — by the claim deadline, and marks it so that none of
@@ -489,19 +498,26 @@ func factoryClaimOneLine(err error) string {
 	return strings.NewReplacer("\n", "; ").Replace(err.Error())
 }
 
-// factoryClaimFailure marks a claim write's error as the busy-record outcome
-// and names the class (card t1696): a deadline the claim's own context
-// passed is the host under load — never a lock race — a SQLite busy/locked
-// error is another writer holding the record, and a stale version or a
-// holder mismatch is the lost race the caller already retries. Any other
-// error stays as it is.
+// factoryClaimFailure marks a claim write's error with its cause class
+// (card t1696; classes per SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-001): a stale
+// version or a holder mismatch is the lost race the caller already retries and
+// stays as it is; the claim's own deadline passing is the claim-deadline class
+// (errFactoryClaimDeadline), whose detail names the expired deadline and the
+// presence or absence of a concurrent busy error while asserting neither a
+// host-load-only nor a race-only cause; a SQLite busy/locked error under a
+// live deadline is the record-contention class (errFactoryRecordBusy, the
+// record lock held past every retry). Any other error stays as it is.
+//
+// @MX:NOTE: [AUTO] The one cause-class marking seam of the claim path — five call sites (T1, the carry-over, the worktree re-record, T2, T3) funnel the claim's error through it, so the class split here decides the refusal token on both the CLI verb and the MCP handler (one implementation per verb).
+// @MX:SPEC: SPEC-FACTORY-LEASE-BUSY-001
 func factoryClaimFailure(claimCtx context.Context, err error) error {
 	if errors.Is(err, homestate.ErrStaleVersion) || errors.Is(err, homestate.ErrLeaseHolder) {
 		return err
 	}
 	switch {
 	case errors.Is(err, context.DeadlineExceeded) || errors.Is(claimCtx.Err(), context.DeadlineExceeded):
-		return fmt.Errorf("%w — the claim deadline (%s) passed while a record write was still running: the host is under load, not a lock race: %s", errFactoryRecordBusy, factoryLeaseClaimWaitCap, factoryClaimOneLine(err))
+		busyPresent := homestate.IsBusy(err)
+		return fmt.Errorf("%w — the claim deadline (%s) passed while a record write was still running (a concurrent busy error was present: %t); the failure asserts neither a host-load-only nor a race-only cause: %s", errFactoryClaimDeadline, factoryLeaseClaimWaitCap, busyPresent, factoryClaimOneLine(err))
 	case homestate.IsBusy(err):
 		return fmt.Errorf("%w — another writer held the record past every retry: %s", errFactoryRecordBusy, factoryClaimOneLine(err))
 	default:
@@ -1246,6 +1262,14 @@ const (
 	factoryRefuseQuotaHold      = "quota-hold"
 	factoryRefuseBackendSkip    = "backend-skip"
 	factoryRefuseRaced          = "raced"
+	// The cause-accurate claim-failure tokens (SPEC-FACTORY-LEASE-BUSY-001
+	// REQ-FLB-003/-004): a record write held busy past every retry
+	// (record-contention) and the claim's own deadline expired under a
+	// still-running write (claim-deadline) each carry their own token instead
+	// of surfacing as `raced`. Both keep the exit-4 pairing and are
+	// wait-retryable exactly as `raced` is (REQ-FLB-007/-008).
+	factoryRefuseRecordBusy    = "record-busy"
+	factoryRefuseClaimDeadline = "claim-deadline"
 )
 
 // factoryNominateRefusal is the refusal of a nominated card: a token from the
@@ -1266,10 +1290,12 @@ func (r *factoryNominateRefusal) ExitCode() int { return factoryNextRefusedExit 
 
 // waitable reports whether `--wait` keeps waiting through the refusal: the
 // three states a bare `--wait` also waits through (another lane's claim, a
-// held serial slot, a quota hold). Any other refusal is permanent.
+// held serial slot, a quota hold) plus the two transient claim-failure classes
+// (record-contention, claim-deadline — SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-008,
+// wait-retryable exactly as `raced` is). Any other refusal is permanent.
 func (r *factoryNominateRefusal) waitable() bool {
 	switch r.Token {
-	case factoryRefuseRaced, factoryRefuseSerialSlot, factoryRefuseQuotaHold:
+	case factoryRefuseRaced, factoryRefuseRecordBusy, factoryRefuseClaimDeadline, factoryRefuseSerialSlot, factoryRefuseQuotaHold:
 		return true
 	}
 	return false
@@ -1605,8 +1631,13 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	switch {
 	case cerr != nil:
 		return homestate.Card{}, cerr
+	// The two non-race claim classes carry their own tokens
+	// (SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-003/-004): a race was not lost, so
+	// the refusal must not say raced.
+	case errors.Is(claimErr, errFactoryClaimDeadline):
+		return homestate.Card{}, factoryRefusal(factoryRefuseClaimDeadline, "%s was not leased: %v; retry when the host is quieter", cardID, claimErr)
 	case errors.Is(claimErr, errFactoryRecordBusy):
-		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "%s was not leased: %v; retry when the host is quieter", cardID, claimErr)
+		return homestate.Card{}, factoryRefusal(factoryRefuseRecordBusy, "%s was not leased: %v; retry when the record lock frees up", cardID, claimErr)
 	case otherHolder || claimErr == nil:
 		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "another lane leased or claimed %s first", cardID)
 	default:

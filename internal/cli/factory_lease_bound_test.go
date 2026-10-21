@@ -106,12 +106,15 @@ const flOverheadCeil = 700 * time.Millisecond
 
 // TestFactoryLeaseRecordStallBounded — AC-FAL-007 (a) and its bare-form arm (c)
 // clause: a record write transaction held by a second connection for three
-// times the cap C. The nominated lease gives up at C with exit 4 and a `raced`
-// refusal whose detail says the record or the queue lock was busy (not
-// "another lane"), the queue item is `queued` again, a queue writer started at
-// the same instant completes without a lock-held error, and the queue's lock is
-// acquirable right afterwards. The bare form gives up at C with exit 1 and
-// leaves the promoted item `picked`.
+// times the cap C. The nominated lease gives up at C with exit 4 and a
+// `claim-deadline` refusal (the deadline signal joins the busy error, and the
+// claim-deadline class takes precedence — SPEC-FACTORY-LEASE-BUSY-001; the
+// pre-reclassification pin said `raced`), its detail naming the expired
+// deadline and the concurrent busy error and never "another lane", the queue
+// item is `queued` again, a queue writer started at the same instant completes
+// without a lock-held error, and the queue's lock is acquirable right
+// afterwards. The bare form gives up at C with exit 1 and leaves the promoted
+// item `picked`.
 //
 // The wall-clock assertions here are hang guards, not the AC bound. The precise
 // deadline is the product's own and lives in the code: the claim runs under
@@ -148,9 +151,12 @@ func TestFactoryLeaseRecordStallBounded(t *testing.T) {
 		if elapsed > limit {
 			t.Errorf("the nominated lease returned after %s with the record held, want within %s (C + 4x the measured overhead ceiling, hang guard)", elapsed, limit)
 		}
-		nmAssertRefused(t, out, stderr, err, "raced")
-		if !strings.Contains(stderr, "busy") || strings.Contains(stderr, "another lane") {
-			t.Errorf("refusal detail = %q, want it to say the record or the queue lock was busy, and not \"another lane\"", stderr)
+		nmAssertRefused(t, out, stderr, err, "claim-deadline")
+		if !strings.Contains(stderr, "the claim deadline") || !strings.Contains(stderr, "busy error was present: true") {
+			t.Errorf("refusal detail = %q, want it to name the expired claim deadline and the concurrent busy error's presence", stderr)
+		}
+		if strings.Contains(stderr, "another lane") {
+			t.Errorf("refusal detail = %q, want no race claim", stderr)
 		}
 		if q != factory.BacklogStateQueued {
 			t.Errorf("queue state after the refused lease = %s, want queued (the compensation restores it)", q)
@@ -232,9 +238,14 @@ func TestFactoryLeaseClaimRespectsWaitCap(t *testing.T) {
 	_, leased, retry, claimErr := factoryNextRecordAndClaim(context.Background(), db, root, fcRun, "t1", "lane-1", homestate.CardFields{})
 	segment := time.Since(start)
 	end()
-	t.Logf("claim segment under a held record: %s busy=%v leased=%v retry=%v", segment, errors.Is(claimErr, errFactoryRecordBusy), leased, retry)
-	if !errors.Is(claimErr, errFactoryRecordBusy) {
-		t.Fatalf("the claim under a held record returned %v (leased=%v retry=%v), want the busy refusal errFactoryRecordBusy — without it the segment did not measure the give-up at the cap", claimErr, leased, retry)
+	// The give-up carries one of the two non-race markings: the held record
+	// joins the deadline signal with the busy error, so the claim-deadline
+	// class takes precedence (SPEC-FACTORY-LEASE-BUSY-001); either way the
+	// give-up is a hard refusal, not a race to retry.
+	busyMarked := errors.Is(claimErr, errFactoryRecordBusy) || errors.Is(claimErr, errFactoryClaimDeadline)
+	t.Logf("claim segment under a held record: %s busyMarked=%v leased=%v retry=%v", segment, busyMarked, leased, retry)
+	if !busyMarked {
+		t.Fatalf("the claim under a held record returned %v (leased=%v retry=%v), want the busy refusal (errFactoryRecordBusy or errFactoryClaimDeadline) — without it the segment did not measure the give-up at the cap", claimErr, leased, retry)
 	}
 	if leased || retry {
 		t.Errorf("the claim under a held record reported leased=%v retry=%v, want both false (the give-up is a hard busy refusal, not a race to retry)", leased, retry)
@@ -250,7 +261,10 @@ func TestFactoryLeaseClaimRespectsWaitCap(t *testing.T) {
 // TestFactoryLeaseMidClaimStallBounded — AC-FAL-007 (b): the same stall started
 // only when the claim's third record write is about to begin (after the assign
 // edge committed). The first invocation returns within C + 500 ms of the stall's
-// start with exit 4 and the busy detail; the row is `assigned` to the lane and
+// start with exit 4 and a `claim-deadline` refusal (the deadline signal joins
+// the busy error, and the claim-deadline class takes precedence —
+// SPEC-FACTORY-LEASE-BUSY-001; the pre-reclassification pin said `raced`) whose
+// detail names the expired deadline; the row is `assigned` to the lane and
 // the queue item stays `picked`; a second invocation after the stall leases.
 func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 	root, store := nmQueuedNominee(t)
@@ -295,9 +309,9 @@ func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 	if limit := factoryLeaseClaimWaitCap + flMargin; elapsed > limit {
 		t.Errorf("the lease returned %s after the stall began, want within %s (C + 500 ms)", elapsed, limit)
 	}
-	nmAssertRefused(t, out, stderr, err, "raced")
-	if !strings.Contains(stderr, "busy") {
-		t.Errorf("refusal detail = %q, want it to say the record was busy", stderr)
+	nmAssertRefused(t, out, stderr, err, "claim-deadline")
+	if !strings.Contains(stderr, "the claim deadline") {
+		t.Errorf("refusal detail = %q, want it to name the expired claim deadline", stderr)
 	}
 	if c := fcCard(t, root, "t1"); c.State != homestate.CardAssigned || c.OwnerLabel != "lane-1" {
 		t.Errorf("t1 = %s owner=%q, want assigned to lane-1 (spec §F R4, second shape)", c.State, c.OwnerLabel)

@@ -33,13 +33,21 @@ func TestFactoryClaimDeadlineRefusalNamesTheDeadline(t *testing.T) {
 	if strings.Contains(combined, "transaction has already been committed or rolled back") {
 		t.Fatalf("the refusal leaked the post-rollback tx-done text: %v (stderr %q)", err, stderr)
 	}
-	if !strings.Contains(combined, "the host is under load, not a lock race") {
-		t.Fatalf("the refusal does not name the deadline class: %v (stderr %q)", err, stderr)
+	// The claim-deadline class names its observed signals (the expired claim
+	// deadline, and the concurrent busy error's presence or absence —
+	// SPEC-FACTORY-LEASE-BUSY-001 REQ-FLB-004); it asserts neither a
+	// load-only nor a race-only cause.
+	if !strings.Contains(combined, "the claim deadline") || !strings.Contains(combined, "busy error was present: false") {
+		t.Fatalf("the refusal does not name the deadline class and its observed signals: %v (stderr %q)", err, stderr)
+	}
+	if strings.Contains(combined, "another lane") || strings.Contains(combined, "the host is under load") {
+		t.Fatalf("the refusal asserts a load-only or race-only cause: %v (stderr %q)", err, stderr)
 	}
 }
 
-// The nominated surface reports the same class through the raced refusal
-// line, carrying the claim error's own words.
+// The nominated surface reports the same class through the claim-deadline
+// refusal line, carrying the claim error's own words
+// (SPEC-FACTORY-LEASE-BUSY-001: the pre-reclassification pin said `raced`).
 func TestFactoryNominatedBusyRefusalCarriesTheClaimError(t *testing.T) {
 	_, _ = nmQueuedNominee(t)
 	prev := factoryLeaseClaimDeadlineOverride
@@ -50,10 +58,10 @@ func TestFactoryNominatedBusyRefusalCarriesTheClaimError(t *testing.T) {
 	if nmExit(err) != factoryNextRefusedExit {
 		t.Fatalf("exit = %d (err %v stderr %q), want %d", nmExit(err), err, stderr, factoryNextRefusedExit)
 	}
-	if !strings.Contains(stderr, "refused raced:") || !strings.Contains(stderr, "t1 was not leased") {
+	if !strings.Contains(stderr, "refused claim-deadline:") || !strings.Contains(stderr, "t1 was not leased") {
 		t.Fatalf("the refusal line lost its shape: %q", stderr)
 	}
-	if !strings.Contains(stderr, "the host is under load, not a lock race") {
+	if !strings.Contains(stderr, "the claim deadline") {
 		t.Fatalf("the refusal line does not carry the claim error's class: %q", stderr)
 	}
 }
