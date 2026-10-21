@@ -700,3 +700,31 @@ func TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically(t *te
 			controlLock.Branch, controlLock.BranchSource, lock.Branch, lock.BranchSource)
 	}
 }
+
+// A caller can reach a tree through an alias (a symlink on Unix, or the 8.3
+// TEMP spelling on Windows). The recorded target must use the resolved tree,
+// just like worktreeForBranch, rather than creating two identities for it.
+func TestResolveIntegrationTarget_CallerAliasUsesCanonicalTree(t *testing.T) {
+	repo, _ := scratchRepo(t)
+	canonical := realPath(t, repo)
+	alias := filepath.Join(t.TempDir(), "caller-alias")
+	if err := os.Symlink(canonical, alias); err != nil {
+		t.Fatal(err)
+	}
+	chdirRepo(t, alias)
+	t.Setenv("PWD", alias)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := realPath(t, cwd); got != canonical {
+		t.Fatalf("fixture cwd resolves to %q, want %q", got, canonical)
+	}
+	_, got, source := resolveIntegrationTarget("", "")
+	if got != canonical {
+		t.Errorf("caller target = %q, want canonical tree %q", got, canonical)
+	}
+	if source != factory.BranchSourceCaller {
+		t.Errorf("source = %q, want caller", source)
+	}
+}
