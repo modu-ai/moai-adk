@@ -41,6 +41,8 @@ LANE DECISION (binding for this card's remaining work, subject to leader/operato
 
 DECISION SUPERSEDED — operator clarification relayed by the leader, 2026-10-21 ~19:5x KST, ~10 minutes after the entry above: the operator confirmed verbatim "지금 사용하는 흐름은 agentic-trunk — 최근 추가된 워크플로우". The leader's earlier github-flow-readjustment framing is WITHDRAWN by its own sender. Corrected directive: (α) the SPEC's final value IS agentic-trunk — this repository ADOPTS it after the card lands; (β) the leader's current github-flow flip is a TEMPORARY BRIDGE only (the installed build 8249bff8c3 lacks the enum this card's M1 is adding — verifiable: the installed binary predates this branch); (γ) the rescope task REMAINS, re-aimed: agentic-trunk's authored delivery ("dedicated integration worktree serial local landing") conflicts with today's structure (no dedicated main tree; the primary checkout holds `main` as a shared, not-clean surface — the lane's verified premises above stand unchanged and are the CONSTRAINTS the redesign must satisfy); the manager-spec pass designs the serial landing surface FOR THE CURRENT STRUCTURE (or a PR-edge hybrid) and reflects the batch PR cycle (lead_push_threshold ≈ 20 landings) in the value definition; (δ) the `factory_card_pr.go:444 --auto` vs leader-only-merge review stays inside this card's rescope review. Operator intent per the leader: agentic-trunk is the main flow; the other values are transition support. The (1) point of the superseded entry still holds — M1-M5 value mechanics survive; the delivery-semantics layer (REQ-AGT-006..008 wiring, M6 cutover, M7 guidance) is what the rescope redesigns. Sequencing unchanged: delegate finishes M5 + §E → manager-spec rescope pass (design choice between serial-surface redesign and PR-edge hybrid belongs to that pass, under the verified structural constraints) → manager-develop applies the deltas → card-review → sync.
 
+run 2차 중단·재개 — 2026-10-22 00:0x KST (lane-4, ledger closure per agent-common-protocol § Ledger Closure (a)): the M5b delegation hit the 5-hour usage limit again (429, request id 202610212007482952882528094f8d, reset 2026-10-21 23:00:25 KST) during its §E verification stretch — its last state: AC-AGT-020 Judges 1-5 PASS, Judge 6 refused by the isolation guard (the awk program carried the `|` form) and it was re-running the equivalent program in the guard-allowed `-v` form. Partial state left UNCOMMITTED in the tree (14 files: M5b items 1-5 edits incl. factory_target_holder.go, the factory_card_pr.go --auto removal, the automerge primary guard, and the item-5 template+deployed pair) and preserved untouched; HEAD still fba207f214. The lane session was quota-blocked ~20:07-24:00 KST (queued cron firings drained at recovery); the lease expired and was restored by the recorded 8859 sequence (stage refusal reset → parent-checkout next, stage=run intact). The delegation was resumed via SendMessage to the same agent at 00:02 KST after the reset; the delegate continues from its own transcript with the tree exactly as it left it.
+
 ## §E.2 Run-phase Evidence
 
 ### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
@@ -329,21 +331,153 @@ M5 divergences recorded:
 - Line numbers quoted in the plan/acceptance for delivery.md (22/29) and factory-dispatch.md (219/222)
   matched this tree exactly; no AC text was invalidated by the absorb merge.
 
+### M5b — Delivery routing delta, rescope 0.4.0 (commit 34a792afe5)
+
+The target-holder routing (design.md section 1, candidate B): a worktree OTHER than the primary
+checkout holding `main` keeps the integration-window local merge (M0-M5 behavior); where ONLY the
+primary checkout holds `main`, `factory complete` and `factory merge ready` take the existing
+pull-request edge and issue NO merge request — the leader merges, and a later completion run
+records `merged-pr` through `factoryObservePRMerge`. New file `internal/cli/factory_target_holder.go`
+(`factoryPrimaryHoldsTarget`, `factoryAgenticTrunkPrimaryRoute`); the probe sits beside the
+no-worktree-holds-main refusal, and an empty probe (no tree holds the branch) is NOT primary-only —
+the existing refusals keep answering that state, which is what keeps the M2 pin judges green.
+Session-exit auto-merge gains the second guard clause on the `UsesLocalIntegration` gate, keyed on
+`AgenticTrunkWorkflow` (git-flow keeps its present answers — see the D-M5b-2 divergence below); the
+skip notice names the missing dedicated landing surface. The doctor's agentic-trunk
+standing-branch phrase is reworded holder-neutral with the pinned tokens (`agentic-trunk` via the
+message prefix, `main`, `serial`, `batch`) kept. Template-First item 5: the `factory-dispatch.md`
+line-222 sentence gained the primary-route clause in BOTH copies; the `delivery.md` agentic-trunk
+block gained the same clause as a second `main branch` bullet carrying no `push`/`gh pr` token;
+`make build` (exit 0, catalog regenerated), deployed copies brought in line, both pairs committed
+together.
+
+RED evidence (TDD, each flip observed red before green). Pre-edit tree fba207f214 — ledger E31
+re-observed, both selectors verbatim:
+
+```
+go test ./internal/cli -run '^(TestAgenticTrunkCompletePrimaryPrEdge|TestAgenticTrunkCompleteNoAutoMerge)$' -count=1 -v   exit 0
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.929s [no tests to run]
+go test ./internal/cli -run '^TestAgenticTrunkAutoMergeSkipsPrimaryTarget$' -count=1 -v   exit 0
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.757s [no tests to run]
+```
+
+Behavioral RED after the tests were written, before the implementation (exit 1, verbatim deciding
+lines): `agentic_trunk_test.go:385: complete: factory complete: cannot resolve this session's id;
+the integration window needs a holder address` (the completion still took the local-merge path);
+`agentic_trunk_test.go:425: merge ready took the window on the primary route`; and the automerge
+subtests merged through to the dirty-check instead of skipping (`agentic_trunk_test.go:485/492`,
+`...:547: skipped (integration worktree /Users/goos/MoAI/moai-adk-go has uncommitted changes)` —
+the pre-guard path hunting the integration worktree against the process cwd, exactly the hazard
+the guard exists to close).
+
+Gate matrix at HEAD 34a792afe5 (all commands `go test ./internal/cli -run '<selector>'
+-count=1 -v`, exit 0, deciding lines verbatim):
+
+```
+AC-AGT-005 flip:  --- PASS: TestAgenticTrunkCompletePrimaryPrEdge (2.98s)
+                  --- PASS: TestAgenticTrunkCompleteNoAutoMerge (3.20s)
+AC-AGT-006 flip B: --- PASS: TestAgenticTrunkAutoMergeSkipsPrimaryTarget (0.59s)
+AC-AGT-005 pin A + guard:
+                  --- PASS: TestAgenticTrunkFactoryCompleteTakesWindow (3.30s)
+                  --- PASS: TestAgenticTrunkMergeReadyTakesWindow (0.74s)
+                  --- PASS: TestFactoryCompleteWindowGitFlowUnchanged (2.95s)
+AC-AGT-006 judge A + guards:
+                  --- PASS: TestAgenticTrunkAutoMerge (1.32s)
+                  --- PASS: TestAutoMergeHappyPath (0.92s)
+                  --- PASS: TestAutoMergeUnconfiguredTarget (0.02s)
+AC-AGT-007 group: --- PASS: TestAgenticTrunkIntegrationAcquire (0.46s) + both
+                  TestIntegrationAcquire_Git*Flow judges PASS
+AC-AGT-011:       --- PASS: TestAgenticTrunkDoctor (0.00s)
+                  --- PASS: TestDoctorGitStrategyWorkflow (0.01s)
+```
+
+Guards (same tree, measured pre-commit on content byte-identical to 34a792afe5): the full
+`-run '^TestAutoMerge'` family — 14 tests, all `--- PASS` (OffBaseline through RealImplErrorPaths);
+the github-flow delivery suite — 11 tests, all `--- PASS` (TestFactoryCompleteGitHubFlowPR
+35.28s through TestFactoryCompleteGitHubFlowClosesTheQueueCard 2.08s, including the updated
+MergeMethod matrix and TestMergeReadinessBeforePR); the two specless guards PASS. The github-flow
+assertions that pinned the old merge request were UPDATED to the new truth, never skipped: the
+delivery subtest now asserts no `gh pr merge` call exists and renames to
+`pushes_the_branch_opens_a_pr_against_main_and_requests_no_merge`; the re-run guard asserts
+`pr merge` count 0; TestFactoryCompleteGitHubFlowMergeMethod now pins that every merge_method
+value (and none) leaves the same wire. TestFactoryCompleteWindowGitFlowUnchanged and
+TestAgenticTrunkFactoryCompleteTakesWindow stay green — the routing keeps dedicated-worktree
+fixtures on the local-merge path.
+
+Item-5 judges (AC-019/020/021, post-edit):
+
+```
+AC-019: nine template files each carry agentic-trunk (exit 0), counts 1..6.
+AC-020 J1-J5: 1 / 1 / four heading lines in order (239/269/279/314) / 0,0 / 1,1 — all as pinned.
+AC-020 J6: block_lines=17 push_lines=0 (template AND deployed, exit 0);
+  control on the git-flow block: block_lines=34 push_lines=8 — exactly ledger E26's value.
+AC-021 Judge A: seven cmp -s pairs exit 0.
+Judge B(i): numstat "1	1	{...=>...}/factory-dispatch.md", exit 1 (exactly one differing line).
+Judge B(ii): 'disposes remote-landing-confirmed trees' → template :0, deployed :1 (preserved).
+Judge B(iii): 'Under agentic-trunk the lane takes no' :1/:1; 'git strategy names git-flow;' :1/:1;
+  'names git-flow or agentic-trunk' :0/:0; the M5b clause '; where only the primary checkout
+  holds `main`, `moai factory complete` opens the card' :1/:1.
+Judge B(iv): 26343 (template) / 26665 (deployed) — difference 322 bytes, unchanged (both copies
+  grew by the same 126-byte clause from 26217/26539).
+Judge C: coupling pattern over the six labeled lines → all :0, exit 1.
+```
+
+E-batch results at HEAD 34a792afe5: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build
+./...` exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.` (exit 0);
+boundary grep `AskUserQuestion|mcp__askuser` over the nine touched files → no matches (exit 1);
+anchored coverage (`-coverprofile` over the ten-test selector): `factoryPrimaryHoldsTarget
+85.7%`, `factoryAgenticTrunkPrimaryRoute 75.0%`, the uncovered arms being the defensive
+`identifyPrimaryCheckout`-error and empty-target paths, `sessionExitAutoMerge 47.2%`,
+`factoryDeliverByPR 58.2%`, `factoryCompleteCard 54.7%` (the deep pre-existing branches outside
+the anchored selector; every NEW branch is exercised by the flip judges' assertions).
+
+M5b divergences recorded:
+
+- **D-M5b-1 (guard refusal, judge preserved):** AC-AGT-020 Judge 6's verbatim awk program carries
+  a `|` form the worktree isolation guard refuses (refused twice: the plain program and the
+  guard's own `-v re='a|b'` suggestion — Gaps entry per verification-claim-integrity §3.1). A
+  pipe-free equivalent was used instead: same block-boundary rules (`/^#+ /` with
+  `length($1)<=4` replacing `^(#|##|###|####) `, index-based once-per-line push counting with
+  arithmetic OR), validated by the git-flow control reproducing ledger E26's exact 34/8 — the
+  counter is a measurement, not an absence. On the agentic block it reads block_lines=17
+  push_lines=0 on both copies.
+- **D-M5b-2 (guard scoping, judge-mandated):** the session-exit skip clause is keyed on
+  `AgenticTrunkWorkflow`. A first unconditional version broke AC-AGT-006's own guard judge
+  `TestAutoMergeHappyPath` (manual git-flow, primary-only develop — the flow's fixture merges into
+  the develop holder as today, with the REQ-WKW-008 dirty-target guard protecting the primary).
+  AC-AGT-006 scopes the skip to the agentic-trunk project ("where only the primary checkout holds
+  `main`" under `Given ... manual agentic-trunk`), so the scoped clause is the contract-correct
+  reading, and the AC-006 judge group is green with it.
+- The M2 fixture `autoMergeAgenticTrunkFixture` was re-aimed to the dedicated-worktree shape (the
+  primary vacates main, a `.claude/worktrees/main` integration worktree takes it) — the update to
+  the new truth REQ-AGT-024 admits, keeping AC-AGT-006 judge A's merge assertions meaningful under
+  the routing; its merge assertions now read the integration worktree and assert the primary's own
+  branch did not move.
+- **D-M5b-3 (fixup during implementation):** an Edit intended for the merge-request block in
+  `factoryDeliverByPR` initially landed on the readiness prologue and corrupted the function; the
+  region was immediately rewritten whole and verified (`go vet` clean, no `gh pr merge`/
+  `mergeFlag`/`factoryPRMergeFlag` references remain, the function flow re-read end to end). No
+  corrupted state was committed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_complete_at: 2026-10-21 (M0-M5 delegation complete; the run PHASE is not complete — see run_status)
-run_commit_sha: ab639f9898 (last M5 code commit; the progress-record commit carrying this signal follows it, so its own SHA is unknowable until it lands — backfilled by the next progress-record commit if needed)
-run_status: partial — M0 (baseline re-check), M1 (value set/disposition/reader), M2 (consumers), M3 (display), M4 (pins/guards), M5 (template guidance) complete and green; M7 (repo-local guidance) is a later run-phase delegation per the §E.1 scope boundary; M6 (cutover, P1-P5) is the leader's step; M8 (docs-site) is sync-phase; M9 (close, AC-024) pending.
-ac_pass_count: 19 (AC-001..015, AC-019, AC-020, AC-021, AC-025 — every gate in this delegation's scope)
+run_complete_at: 2026-10-22 (M0-M5 + M5b delegation complete; the run PHASE is not complete — see run_status)
+run_commit_sha: 34a792afe5 (the M5b code commit; the progress-record commit carrying this signal follows it, so its own SHA is unknowable until it lands — backfilled by the next progress-record commit if needed)
+run_status: partial — M0 (baseline re-check), M1 (value set/disposition/reader), M2 (consumers), M3 (display), M4 (pins/guards), M5 (template guidance), M5b (delivery routing delta, rescope 0.4.0) complete and green; M7 (repo-local guidance) is a later run-phase delegation per the §E.1 scope boundary; M6 (cutover, P1-P5) is the leader's step; M8 (docs-site) is sync-phase; M9 (close, AC-024) pending.
+ac_pass_count: 19 (AC-001..015, AC-019, AC-020, AC-021, AC-025 — every gate in this delegation's scope; the AC-005/006 flip judges flipped green in M5b)
 ac_fail_count: 0 (two pre-existing template-package failures are recorded as divergences, not this SPEC's ACs: the armed-mode ratchet of the diagnostic sweep branch, and TestBindingLedgerIntegrity rows ALB-0139/0148 broken by the absorb merge — see D-M5-2)
-preserve_list_post_run_count: 0 files outside the delegation's scope touched; `.moai/config/sections/git-strategy.yaml`, `AGENTS.local.md`, `.claude/rules/local/gitflow-lane-protocol.md`, `git-strategy.yaml.tmpl`, `manager-git.md/.toml`, `auto-semantics.md`, `spec-workflow-detail.md`, `tab_schema.json`, docs-site, `.moai/harness/*`, `.moai/state/*` all untouched (verified by git status at each commit and by `git status --short .moai/config/sections/git-strategy.yaml` printing nothing after M5)
+preserve_list_post_run_count: 0 files outside the delegation's scope touched; `.moai/config/sections/git-strategy.yaml`, `AGENTS.local.md`, `.claude/rules/local/gitflow-lane-protocol.md`, `git-strategy.yaml.tmpl`, `manager-git.md/.toml`, `auto-semantics.md`, `spec-workflow-detail.md`, `tab_schema.json`, docs-site, `.moai/harness/*`, `.moai/state/*` all untouched (verified by git status at each commit and by `git status --short .moai/config/sections/git-strategy.yaml` printing nothing after M5 and M5b)
 l44_pre_commit_fetch: n/a (no push in this delegation; the lane handles landing — no fetch performed, none owed)
 l44_post_push_fetch: n/a (no push performed)
 new_warnings_or_lints_introduced: 0 (lint over all touched packages: "0 issues"; baseline was 1 pre-existing staticcheck finding in internal/discovery — unchanged, package untouched)
-cross_platform_build.darwin: go build ./... exit 0 at HEAD ab639f9898
-cross_platform_build.windows: GOOS=windows GOARCH=amd64 go build ./... exit 0 at HEAD ab639f9898
-total_run_phase_files: 24 (8 Go source, 13 Go test files incl. 6 new agentic_trunk test files, spec.md frontmatter, catalog.yaml, 9 template sources, 8 deployed projections — some files counted once across categories)
-m1_to_mN_commit_strategy: one commit per milestone (M0 8b00a111f9 docs, M1 27ebdd9aac feat, M2 cba38dd548 feat, M3 679e474fee feat, M4 9967c92b90 test, M5 ab639f9898 feat); the M0 baseline record precedes M1 per verification-claim-integrity §2.3; no push, no PR, no merge — the lane handles landing.
+cross_platform_build.darwin: go build ./... exit 0 at HEAD 34a792afe5
+cross_platform_build.windows: GOOS=windows GOARCH=amd64 go build ./... exit 0 at HEAD 34a792afe5
+total_run_phase_files: 39 (10 Go source incl. the new factory_target_holder.go, 14 Go test files incl. 6 new agentic_trunk test files, spec.md frontmatter, catalog.yaml, 9 template sources, 8 deployed projections — some files counted once across categories)
+m1_to_mN_commit_strategy: one commit per milestone (M0 8b00a111f9 docs, M1 27ebdd9aac feat, M2 cba38dd548 feat, M3 679e474fee feat, M4 9967c92b90 test, M5 ab639f9898 feat, M5b 34a792afe5 feat); the M0 baseline record precedes M1 per verification-claim-integrity §2.3; the M1-M5b commits precede the M6 flip per P1 lineage; no push, no PR, no merge — the lane handles landing.
 
 Residual risks for the sync audit:
 
@@ -356,6 +490,10 @@ Residual risks for the sync audit:
   files themselves (the pointers were kept).
 - The OQ-2 armed finding count (266) is a snapshot of a moving repository; the residue-sweep card
   should re-measure at its own start.
+- M5b's AC-020 Judge 6 ran through a pipe-free equivalent of the pinned awk program (the verbatim
+  program is refused by the worktree isolation guard, D-M5b-1); the equivalence rests on the
+  git-flow control reproducing ledger E26's 34/8 exactly, and the M5 diff review of the block
+  remains the second layer over reworded-push phrasings the counter cannot see.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
