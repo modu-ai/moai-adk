@@ -30,7 +30,7 @@ func TestBubblewrap_ExecHello(t *testing.T) {
 
 	out, err := b.Exec(opts, []string{"echo", "hello"})
 	if err != nil {
-		t.Fatalf("bubblewrap exec: %v", err)
+		t.Fatalf("bubblewrap exec: %v (output %q)", err, out)
 	}
 	if !strings.Contains(string(out), "hello") {
 		t.Errorf("bubblewrap exec: expected 'hello' in output, got %q", string(out))
