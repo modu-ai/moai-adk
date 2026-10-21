@@ -2505,6 +2505,21 @@
 - path: "workflow.factory.self_dispatch"
   class: W
   evidence: "reader: internal/cli factorySelfDispatchEnabled, read by factoryNextLeaseOnceEligibility (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-001/002)"
+- path: "workflow.card_age_alarm.enabled"
+  class: W
+  evidence: "reader: internal/config LoadCardAgeAlarm (SPEC-CARD-AGE-ALARM-001 REQ-CAA-001)"
+- path: "workflow.card_age_alarm.gate_alert_after"
+  class: W
+  evidence: "reader: internal/config LoadCardAgeAlarm + ResolveCardAgeAlarm (REQ-CAA-002)"
+- path: "workflow.card_age_alarm.gate_warn_after"
+  class: W
+  evidence: "reader: internal/config LoadCardAgeAlarm + ResolveCardAgeAlarm (REQ-CAA-002)"
+- path: "workflow.card_age_alarm.stall_alert_after"
+  class: W
+  evidence: "reader: internal/config LoadCardAgeAlarm + ResolveCardAgeAlarm (REQ-CAA-002)"
+- path: "workflow.card_age_alarm.stall_warn_after"
+  class: W
+  evidence: "reader: internal/config LoadCardAgeAlarm + ResolveCardAgeAlarm (REQ-CAA-002)"
 - path: "workflow.factory_lease.duration"
   class: W
   evidence: reader

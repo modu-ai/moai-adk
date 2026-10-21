@@ -37,6 +37,22 @@ workflow:
     # own-bundle members, and queued promotion are never gated by this flag.
     factory:
         self_dispatch: false
+    # card_age_alarm: display-only work-item-age alarms on gate-waiting and
+    # stalled factory cards. Ships OFF; while
+    # enabled is false the `moai factory status` output is unchanged. The four
+    # bands are unmeasured chosen starting points, not recommendations — gate
+    # waits are human-scale, working-card stalls machine-scale — and G1 exists
+    # to produce the calibration data that retunes them. Every value must be a
+    # positive duration and each warn band strictly below its alert band; a
+    # refused key omits the alarm section from the status output with exactly
+    # one warning line and never refuses the rest of the status. The alarm
+    # takes no action of any kind: no write, no notification, no quarantine.
+    card_age_alarm:
+        enabled: false
+        gate_warn_after: 6h
+        gate_alert_after: 24h
+        stall_warn_after: 2h
+        stall_alert_after: 8h
     # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
     # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
     # precedence documented ceiling surface for the diagnostic fix-loop). The

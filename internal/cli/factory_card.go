@@ -3605,6 +3605,15 @@ type factoryStatusReport struct {
 	// strings. They sit before Quota, which stays last.
 	LeaseDuration string `json:"lease_duration"`
 	RenewInterval string `json:"renew_interval"`
+	// AgeAlarms is the display-only work-item-age alarm block
+	// (SPEC-CARD-AGE-ALARM-001 REQ-CAA-006): present only while
+	// workflow.card_age_alarm.enabled is true and some covered card crosses a
+	// band, one row per card, oldest-first. AgeAlarmWarning carries the
+	// refused-key degrade of REQ-CAA-002 (the alarm section omitted, exactly
+	// one warning line naming the key). Both keys are additive and sit before
+	// Quota, which stays last.
+	AgeAlarms       []factoryAgeAlarmView `json:"age_alarms,omitempty"`
+	AgeAlarmWarning string                `json:"age_alarm_warning,omitempty"`
 	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
 	// REQ-QAS-013): present only while the quota gate is enabled and some window
 	// has data, and last, so every pre-existing key keeps its place.
@@ -3658,6 +3667,8 @@ func newFactoryStatusCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
 			}
+			alarmSettings, alarmWarning := resolveFactoryAgeAlarm(root)
+			report.AgeAlarmWarning = alarmWarning
 			// The classification snapshot for the mode/priority cells
 			// (REQ-TCD-010): one pure queue read; a failed read degrades the
 			// cells to the derived defaults rather than failing the whole
@@ -3670,11 +3681,20 @@ func newFactoryStatusCommand() *cobra.Command {
 					return fmt.Errorf("factory status: %w", err)
 				}
 				cards, err := db.ListCards(ctx, report.Run)
-				_ = db.Close()
 				if err != nil {
+					_ = db.Close()
 					return fmt.Errorf("factory status: %w", err)
 				}
 				now := factoryCardNow()
+				// The display-only age alarm (SPEC-CARD-AGE-ALARM-001): one
+				// compute call over the same cards, reading the events through
+				// the still-open handle; it writes nothing (REQ-CAA-007) and
+				// costs nothing beyond the flag read while disabled
+				// (REQ-CAA-001).
+				if alarmSettings.Enabled && alarmWarning == "" {
+					report.AgeAlarms, report.AgeAlarmWarning = computeFactoryAgeAlarmsWithSettings(ctx, report.Run, db, cards, now, alarmSettings)
+				}
+				_ = db.Close()
 				for _, c := range cards {
 					cls := factory.DefaultCardClassification()
 					if queueErr == nil {
@@ -3738,6 +3758,7 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	if r.UnavailableSkipped > 0 {
 		_, _ = fmt.Fprintf(w, "%s warning: skipped %d unparseable line(s)\n", factoryRecordUnavailableTag, r.UnavailableSkipped)
 	}
+	writeFactoryAgeAlarmText(w, r.AgeAlarms, r.AgeAlarmWarning)
 	if r.Quota != nil {
 		writeFactoryQuotaText(w, r.Quota)
 	}
