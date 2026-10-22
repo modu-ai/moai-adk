@@ -121,3 +121,39 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
 - **대기 기록**: 사유 = 완료 카드(merge-ready 실질)의 착지 처분, 대상 = 리더 tn8rpj, 선택지 =
   (가) 레인이 착지 수행(준비성 삼중+re-measure+push+PR — t1913 절차 준용), (나) 리더 직접 처분,
   (다) 흡수 후 트리에 대한 신규 감사 1회 후 착지. 재점검점 = 리더 응답.
+
+## 기계 위기 국면 기록 (10-22 10:2x KST, lane-5)
+
+- **부하 크리시스**: load 444~489(역대 과부하 영역) — go build/test 전반 600s+ 지연, MCP 서버
+  2517s 무응답 타임아웃, 메시지 경계 degraded(inbox context deadline exceeded). 레인의 상태 확인
+  명령조차 백그라운드 전환. 조치: **모든 도구 호출 일시 중단**(서버 워커 점유 방지), 부하 배수 후 재개.
+- **t1828 수렴 상태(무결, 커밋됨)**: `36978859a1 fix(t1828): reconcile card repairs with evolved
+  main signatures` — factory_card.go(+32/-7, 호출부 현 시그니처 정렬) + liveness 테스트(+49).
+  대리자 사전 보고: 빌드·gofmt 정상화 후 커밋. **레인 독립 검증(빌드+스코프 시험)은 부하 배수까지
+  보류** — 미실측이며 이는 Gaps로 유지.
+- **잔여 단계(부하 복구 후 순서)**: ① 레인 독립 검증(빌드+TestFactorySerialSlot 스코프) ② 흡수
+  HEAD 재감사(PASS 목표 — 리더 병합 조건) ③ push + birth-draft PR(--undo 이중 적용, complete 호출
+  금지 유지) ④ 리더 보고.
+- **t1913 임대 상태**: 만료(02:12:25Z) — 복구 시도가 MCP 타임아웃으로 미완료. PR #1867 draft 보존
+  은 원격에 안전(병합 불가 상태). 복구 재개 시 8859: stage 만료 거부(회수 확인) → next 재임대 →
+  renew. 카드 기록은 #1867 exact 링크 보존 확인됨(10-22 재임대 시 실측).
+- **재개 절차**: 부하 < ~20 확인 후 — ① 이 파일의 잔여 단계 순서로 t1828 진행 ② t1913 8859 복구
+  ③ 크론·갱신 루프 재무장(현재 크론 983d9ecb 생존, 루프 만료).
+
+## 착지 준비 완료 (10-22, lane-5)
+
+- **수렴 완료**: 36978859a1(호출부 현 시그니처 + holderAlive 생존 경로 배선, RED-first 배선 시험) →
+  5c224aa972(픽스처 4건을 #1859 게이트 헬퍼에 정렬 — 통제실험으로 생산 코드 무관 입증). 카드 수리
+  4건 전부 생존 판정(대리자 §E + 감사자 재검증).
+- **독립 검증**: 레인 백그라운드 관찰 build exit 0 + TestFactorySerialSlot ok 7.0s(커밋 콘텐츠 동일
+  바이트) + 감사자 스코프 회귀 cli ok 263.6s·homestate ok 120.0s + 빌드 2종·vet·gofmt 클린.
+- **재감사 PASS**: sync-audit-reconciled.md — rcpt-1d1ccbffd16e5534f8ede8a2, codex required pass,
+  장부 체크 `convergence_check.ok: true` exit 0(오케스트레이터 digest 기록 완료). 감사 체인 합계:
+  cold FAIL → iter2 FAIL → iter3 PASS-WITH-DEBT(pre-absorb) → absorb FAIL(빌드 파손) →
+  **reconciled PASS**.
+- **pr-open 달성**: push(origin, 신규 브랜치) → **Draft PR #1893**
+  (https://github.com/modu-ai/moai-adk/pull/1893 — 제목에 카드 id, birth-draft, complete 호출 없음 —
+  리더 병합 보류 지시 준수). 병합 조건 충족: 흡수 HEAD 독립 감사 PASS(rcpt-1d1ccbf) — 필수 CI는
+  리더 라운드에서 관측.
+- **리더 후보 과제(보고 동봉)**: 4개 픽스처가 main 자체에서도 실패(통제실험 입증) — main 측 후속
+  큐잉 대상. pid-reuse 부채 불변.
