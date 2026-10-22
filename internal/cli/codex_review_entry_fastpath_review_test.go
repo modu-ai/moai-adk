@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -161,5 +162,93 @@ func TestCodexEntryFastpath_ReviewYAMLPoliciesFallThrough(t *testing.T) {
 					run.exitCode, forward, kick, argv, run.stderr)
 			}
 		})
+	}
+}
+
+// GNU awk reserves RT as the scalar record terminator. Give the real local
+// awk the same scalar binding so this portability regression runs on mawk
+// hosts too; this is not a native GNU awk execution claim.
+func TestCodexEntryFastpath_AwkRecordTerminatorRemainsScalar(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		configOnly bool
+		wantKick   int
+	}{
+		{"reviewable change kicks", false, 1},
+		{"config-only change stays suppressed", true, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCodexEntryFixture(t, codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
+				configOnly: tc.configOnly, stubVersion: "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty"})
+			awkPath := filepath.Join(f.toolsDir, "awk")
+			realAwk, err := filepath.EvalSymlinks(awkPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(awkPath); err != nil {
+				t.Fatal(err)
+			}
+			shim := "#!/bin/bash\nexec " + codexEntryQuoteShell(realAwk) + " -v RT=record-terminator \"$@\"\n"
+			if err := os.WriteFile(awkPath, []byte(shim), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			run := runCodexEntryWrapper(t, f)
+			forward, kick, argv := codexEntryAwaitArgv(t, f, 0, tc.wantKick)
+			if run.exitCode != 0 || forward != 0 || kick != tc.wantKick || strings.Contains(run.stderr, "RT") {
+				t.Fatalf("scalar RT: exit=%d forward=%d kick=%d, want forward=0 kick=%d\nargv:\n%s\nstderr:\n%s",
+					run.exitCode, forward, kick, tc.wantKick, argv, run.stderr)
+			}
+		})
+	}
+}
+
+func TestCodexEntryFastpath_ReviewRejectsTrailingJSONData(t *testing.T) {
+	for _, verdict := range []string{"pass", "inconclusive"} {
+		for _, tc := range []struct {
+			name, suffix string
+			valid        bool
+		}{
+			{"junk on next line", "\njunk", false},
+			{"second object", "\n{}", false},
+			{"extra closing brace", "\n}", false},
+			{"top-level comma", ",", false},
+			{"same-line junk", "junk", false},
+			{"non-JSON whitespace", "\n\f", false},
+			{"whitespace", " \t\r\n\n", true},
+		} {
+			t.Run(verdict+"/"+tc.name, func(t *testing.T) {
+				f := newCodexEntryFixture(t, codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
+					stubVersion:     "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty",
+					reviewerVersion: "reviewer fixture v1",
+					receipt:         &codexEntryReceiptSpec{verdict: verdict, recordedAt: time.Now()}})
+				key, err := verify.Key(context.Background(), f.dir)
+				if err != nil {
+					t.Fatal(err)
+				}
+				path := verify.SnapshotPath(f.dir, key)
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				raw = append(raw, []byte(tc.suffix)...)
+				if err := os.WriteFile(path, raw, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				_, loadErr := verify.Load(f.dir, key)
+				if tc.valid != (loadErr == nil) {
+					t.Fatalf("Go snapshot authority: valid=%v load error=%v", tc.valid, loadErr)
+				}
+				wantForward := 1
+				if tc.valid {
+					wantForward = 0
+				}
+				run := runCodexEntryWrapper(t, f)
+				forward, kick, argv := codexEntryAwaitArgv(t, f, wantForward, 0)
+				if run.exitCode != 0 || forward != wantForward || kick != 0 {
+					t.Fatalf("trailing JSON: exit=%d forward=%d kick=%d, want forward=%d kick=0\nargv:\n%s\nstderr:\n%s",
+						run.exitCode, forward, kick, wantForward, argv, run.stderr)
+				}
+			})
+		}
 	}
 }

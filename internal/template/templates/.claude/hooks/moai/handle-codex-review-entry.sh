@@ -440,11 +440,15 @@ function extract(name,    v) {
 # closed — AND the stored key equal to the key this shell computed (the
 # filename-collision defense). A truncated or mismatched file reads as
 # receipt-ABSENT (cache-miss), never as a fresh verdict.
+# A supported document ends at its top-level close. Only JSON whitespace may
+# follow it; all other suffixes belong to the authoritative JSON decoder.
+doc_closed && $0 !~ /^[ \t\r]*$/ { invalid_json = 1 }
+doc_open && /^}/ && $0 !~ /^}[ \t\r]*$/ { invalid_json = 1 }
 /^\{$/ { doc_open = 1 }
 doc_open && /^  "key":/ { stored_key = extract("key") }
 doc_open && /^  "checks": \[/ { checks_open = 1 }
 /^  \],?[[:space:]]*$/ { checks_closed = 1 }
-/^\},?[[:space:]]*$/ { doc_closed = 1 }
+/^\}[ \t\r]*$/ { doc_closed = 1 }
 /^    \{/ { ec = 0; rec = ""; verd = ""; cfg = ""; tl = "" }
 ec == 0 && /^      "command":/ { if (extract("command") == cmd) ec = 1 }
 ec == 1 && /^      "recorded_at":/ { rec = extract("recorded_at") }
@@ -469,11 +473,12 @@ ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 }
 END {
 	if (invalid_time) print "invalid-time"
+	else if (invalid_json) print "invalid-json"
 	else if (found && matches == 1 && doc_closed && checks_closed && stored_key == wantkey)
 		print f_state " " f_verd " " f_cfg " " f_tl
 }
 ' "$snapshot" 2>/dev/null)
-	[ "$receipt" = "invalid-time" ] && return 1
+	case "$receipt" in invalid-time|invalid-json) return 1 ;; esac
 	# receipt: "fresh <verdict> <config_digest> <tool_version>" | "stale ..."
 	# | "" (receipt-ABSENT — no snapshot, unreadable, or unparseable: the
 	# LoadReceipt reading). The tool_version value may contain spaces; it is
@@ -531,11 +536,12 @@ END { print out }') || return 1
 	# receipt-absent.
 
 	# --- (4a) nothing-reviewable precondition ---
+	# GNU awk reserves RT as a scalar; keep prefix arrays in their own names.
 	local p1
 	p1=$(git -C "$root" status --porcelain 2>/dev/null) || exit 0 # detector fail-open ⇒ allow
 	if ! printf '%s\n' "$p1" | awk -v rt="$CODEX_ENTRY_RUNTIME_PREFIXES" '
-BEGIN { n = split(rt, RT, " ") }
-function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) return 1; return 0 }
+BEGIN { n = split(rt, runtime_paths, " ") }
+function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, runtime_paths[i]) == 1) return 1; return 0 }
 {
 	line = $0
 	if (line ~ /^[[:space:]]*$/) next
@@ -557,8 +563,8 @@ END { exit found ? 0 : 1 }
 	pa=$(git -C "$root" status --porcelain --untracked-files=all 2>/dev/null) || pa=""
 	if [ -n "$pa" ]; then
 		if printf '%s\n' "$pa" | awk -v rt="$CODEX_ENTRY_RUNTIME_PREFIXES" -v cx="$CODEX_ENTRY_CONFIG_EXACT" -v cd="$CODEX_ENTRY_CONFIG_DIR" '
-BEGIN { n = split(rt, RT, " "); m = split(cx, CX, " "); k = split(cd, CD, " ") }
-function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) return 1; return 0 }
+BEGIN { n = split(rt, runtime_paths, " "); m = split(cx, CX, " "); k = split(cd, CD, " ") }
+function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, runtime_paths[i]) == 1) return 1; return 0 }
 function excluded(p,   i) {
 	if (managed(p)) return 1
 	for (i = 1; i <= m; i++) if (p == CX[i]) return 1
