@@ -185,11 +185,3 @@ func mcpTodoOperatorGate(tool, surface string) *mcp.CallToolResult {
 	}
 	return toolRefusal(mcpIdentityRefusal(mcpUnknownAttributionReason(tool)))
 }
-
-// mcpRenewActorLabel resolves the renewal actor and refuses legacy spellings
-// through the SAME rules the CLI verb runs (factoryLaneLabelValidated, M2
-// Part A's shared validation), so a hand-set legacy label cannot reach the
-// factory record through the actor argument either (AC-SD-021).
-func mcpRenewActorLabel(actor string) (string, error) {
-	return factoryLaneLabelValidated("renew", actor)
-}

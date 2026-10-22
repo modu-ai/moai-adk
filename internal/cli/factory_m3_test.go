@@ -694,9 +694,14 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	before := fcCard(t, root, "t1")
 	args := map[string]any{"card": "t1", "gate": "kickoff", "choice": "approve", "run": fcRun, "project_root": root}
 
+	// Card t1632 main-absorb r9: the decide boundary refusal rides the ERROR
+	// channel with the CLI-identical text (the t1914 parity contract), no
+	// longer the M1-era structured result — the row keeps its tracelessness
+	// claim either way.
 	sdLaneEnv(t, "lane-1", "")
-	res := mcpCallRaw(t, handleFactoryDecide, args)
-	assertStructuredRefusal(t, res, "", "lane boundary")
+	if err := sdCallToolErr(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "lane boundary") {
+		t.Errorf("lane factory_decide: err = %v, want the boundary refusal", err)
+	}
 	if after := fcCard(t, root, "t1"); after.State != before.State || after.Version != before.Version {
 		t.Errorf("card row changed on the refused decide")
 	}
@@ -704,8 +709,9 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
-	res = mcpCallRaw(t, handleFactoryDecide, args)
-	assertStructuredRefusal(t, res, "", "lane boundary")
+	if err := sdCallToolErr(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "lane boundary") {
+		t.Errorf("codex-backend factory_decide: err = %v, want the boundary refusal", err)
+	}
 
 	// The positive operator mark (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) is what
 	// admits the decide now: env absence grants nothing.

@@ -120,7 +120,7 @@ func (w *mcpCallLogWriter) record(tool string, d time.Duration, res *mcp.CallToo
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, _ = f.Write(append(data, '\n'))
 	w.size += int64(len(data)) + 1
 }

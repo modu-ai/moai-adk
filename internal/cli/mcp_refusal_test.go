@@ -307,6 +307,16 @@ func TestMCPOperatorMark_Required(t *testing.T) {
 			sdClearLaneEnv(t)
 			root := build(t)
 			sdLaneEnv(t, "lane-1", "")
+			// Card t1632 main-absorb r9: factory_decide's boundary refusal
+			// rides the ERROR channel with the CLI-identical text (the t1914
+			// parity contract); the todo verbs keep the structured refusal.
+			if v.name == "factory_decide" {
+				err := sdCallToolErr(t, v.fn, v.args(root))
+				if err == nil || !strings.Contains(err.Error(), "lane boundary") {
+					t.Errorf("%s lane session: err = %v, want the boundary refusal", v.name, err)
+				}
+				return
+			}
 			res := mcpCallRaw(t, v.fn, v.args(root))
 			assertStructuredRefusal(t, res, "")
 		})

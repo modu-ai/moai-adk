@@ -152,14 +152,11 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if !factoryLaneAdmission() {
 		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("next").Error())), nil
 	}
-	lane := mcpFactoryActor(req)
-	if lane == "" {
-		return toolRefusal(mcpIdentityRefusal(fmt.Sprintf("factory next: %s is empty and no actor argument was given — a lane session carries its lane label there", config.EnvMoaiFactoryWorker))), nil
-	}
-	// The same lane-label validation the verb runs (factoryLaneLabelValidated): a
-	// legacy spelling is refused before any work, whichever source carried the
-	// label — the actor argument (t1632 REQ-MN-003) or the environment (t1680 N1).
-	lane, err = factoryLaneLabelValidated("next", lane)
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9): the actor argument wins, the
+	// environment is the default, and BOTH the empty case and a legacy spelling
+	// refuse on the error channel with the verb's exact wording.
+	lane, err := factoryLaneLabel("next", mcpFactoryActor(req))
 	if err != nil {
 		return toolErr("factory_next", err), nil
 	}
@@ -268,11 +265,10 @@ func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if res := mcpStaleRunCheck(ctx, root, explicitRun, "factory_stage"); res != nil {
 		return res, nil
 	}
-	lane := mcpFactoryActor(req)
-	if lane == "" {
-		return toolRefusal(mcpIdentityRefusal(fmt.Sprintf("factory stage: %s is empty and no actor argument was given — a lane session carries its lane label there", config.EnvMoaiFactoryWorker))), nil
-	}
-	lane, err = factoryLaneLabelValidated("stage", lane)
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9) — the error channel carries
+	// the verb's exact wording for both the empty case and a legacy spelling.
+	lane, err := factoryLaneLabel("stage", mcpFactoryActor(req))
 	if err != nil {
 		return toolErr("factory_stage", err), nil
 	}
@@ -297,11 +293,10 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	if !factoryLaneAdmission() {
 		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("complete").Error())), nil
 	}
-	lane := mcpFactoryActor(req)
-	if lane == "" {
-		return toolRefusal(mcpIdentityRefusal(fmt.Sprintf("factory complete: %s is empty and no actor argument was given — a lane session carries its lane label there", config.EnvMoaiFactoryWorker))), nil
-	}
-	lane, err = factoryLaneLabelValidated("complete", lane)
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9) — the error channel carries
+	// the verb's exact wording for both the empty case and a legacy spelling.
+	lane, err := factoryLaneLabel("complete", mcpFactoryActor(req))
 	if err != nil {
 		return toolErr("factory_complete", err), nil
 	}
@@ -345,11 +340,17 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	// the git-flow config and the queue are read at the parent checkout on both surfaces (card t1680 (a)).
 	root := factoryRootOf(launch)
 	// The REQ-MN-003 operator gate is the ONE predicate both surfaces run
-	// (factoryDecideGate, M2 Part A absorb): a positive operator mark admits, a
-	// lane keeps the boundary refusal (factoryLaneRefusal inside the gate), an
-	// unmarked session is unknown attribution — structured on this surface.
-	if gateErr := factoryDecideGate(); gateErr != nil {
-		return toolRefusal(mcpIdentityRefusal(gateErr.Error())), nil
+	// (factoryDecideGate, M2 Part A absorb), split here by CHANNEL (card t1632
+	// main-absorb r9, the t1914 parity contract winning on the boundary class):
+	// a lane session keeps the CLI-identical boundary refusal (factoryDecideLaneRefusal)
+	// on the ERROR channel, exactly as main's handler and the CLI verb surface it,
+	// while an unmarked session's unknown-attribution refusal stays a structured
+	// result (REQ-MN-001). A positive operator mark admits.
+	if factoryLaneRefusal() {
+		return toolErr("factory_decide", factoryDecideLaneRefusal()), nil
+	}
+	if !mcpOperatorAuthority() {
+		return toolRefusal(mcpIdentityRefusal(factoryUnknownAttributionError("factory decide").Error())), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {
@@ -385,14 +386,11 @@ func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if !factoryLaneAdmission() {
 		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("renew").Error())), nil
 	}
-	// The actor argument (REQ-MN-003) names the renewing lane, env as the
-	// default; the resolved label refuses legacy spellings through the same
-	// rules the verb applies to the environment value (AC-SD-021).
-	lane := mcpFactoryActor(req)
-	if lane == "" {
-		return toolRefusal(mcpIdentityRefusal(fmt.Sprintf("factory renew: %s is empty and no actor argument was given — a lane session carries its lane label there", config.EnvMoaiFactoryWorker))), nil
-	}
-	lane, err = mcpRenewActorLabel(lane)
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9): the actor argument wins, the
+	// environment is the default, and the error channel carries the verb's
+	// exact wording for both the empty case and a legacy spelling (AC-SD-021).
+	lane, err := factoryLaneLabel("renew", mcpFactoryActor(req))
 	if err != nil {
 		return toolErr("factory_renew", err), nil
 	}
