@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -81,7 +82,7 @@ func TestValidateClaudeBinaryPinWindowsExecuteDenyFailsWithoutPATHFallback(t *te
 	if got != "" || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
 		t.Fatalf("denied pin resolved=%q err=%v, want wrapped ACCESS_DENIED without fallback", got, err)
 	}
-	for _, want := range []string{pin, config.EnvClaudeBin, "not executable", "execute permission"} {
+	for _, want := range []string{strconv.Quote(pin), config.EnvClaudeBin, "not executable", "execute permission"} {
 		if !strings.Contains(fmt.Sprint(err), want) {
 			t.Errorf("denied pin diagnostic=%v, missing %q", err, want)
 		}
