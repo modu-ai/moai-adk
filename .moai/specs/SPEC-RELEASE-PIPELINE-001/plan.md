@@ -3,7 +3,7 @@ id: SPEC-RELEASE-PIPELINE-001
 title: "Release pipeline coverage and cost — implementation plan"
 version: "0.6.1"
 created: 2026-10-17
-updated: 2026-10-22
+updated: 2026-10-23
 author: manager-spec
 ---
 

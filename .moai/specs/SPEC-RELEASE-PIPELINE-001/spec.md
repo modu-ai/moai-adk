@@ -2,9 +2,9 @@
 id: SPEC-RELEASE-PIPELINE-001
 title: "Release pipeline coverage and cost — shared classification preservation, input-gated cost jobs, stage budgets, and the drafter-cleanup fetch and filter repair"
 version: "0.6.1"
-status: draft
+status: in-progress
 created: 2026-10-17
-updated: 2026-10-22
+updated: 2026-10-23
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
