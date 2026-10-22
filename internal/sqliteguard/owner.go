@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 )
 
 var (
@@ -161,6 +163,7 @@ func (o *lifetime) dropChild(token uint64) { o.m.mu.Lock(); delete(o.children, t
 
 func (o *lifetime) retainPanic(stage string) {
 	if p := recover(); p != nil {
+		bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 		// Preserve the original panic value after recording its ownership
 		// diagnostic; the joined error is not this function's return value.
 		_ = o.retain(stage, errors.New("SQLite operation panicked"))
@@ -170,6 +173,7 @@ func (o *lifetime) retainPanic(stage string) {
 
 func (o *lifetime) retainClosePanic(stage string, result *error) {
 	if p := recover(); p != nil {
+		bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 		*result = o.retain(stage, errors.New("SQLite resource Close panicked"))
 		panic(p)
 	}

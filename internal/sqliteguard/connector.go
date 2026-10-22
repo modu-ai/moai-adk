@@ -8,6 +8,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
+
 	"modernc.org/sqlite"
 )
 
@@ -30,6 +32,7 @@ func (c *connector) Connect(ctx context.Context) (result driver.Conn, err error)
 	}
 	defer func() {
 		if p := recover(); p != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			// Report and retain ownership, then propagate the original panic
 			// value rather than replacing it with the diagnostic error.
 			_ = o.retain("connect-panic", errors.New("driver operation panicked"))
@@ -100,6 +103,7 @@ func (c *guardedConn) Close() error {
 	c.once.Do(func() {
 		defer func() {
 			if p := recover(); p != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				c.closeErr = c.owner.retain("close-panic", errors.New("physical Close panicked"))
 				panic(p)
 			}
