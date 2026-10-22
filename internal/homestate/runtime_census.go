@@ -25,6 +25,15 @@ func (c RuntimeCensus) Total() int {
 	return c.ActiveSessions + c.ActiveFactoryLanes + c.ActiveMCPServers
 }
 
+func runtimeCensusFactoryDSN(path string) string {
+	values := url.Values{"mode": {"ro"}}
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: values.Encode()}).String()
+}
+
 func ReadRuntimeCensus(projectRoot string) (RuntimeCensus, error) {
 	return readRuntimeCensusWithWorktreeList(projectRoot, func(root string) ([]byte, error) {
 		if _, err := os.Stat(filepath.Join(root, ".git")); os.IsNotExist(err) {
@@ -101,9 +110,7 @@ func readRuntimeCensusWithWorktreeList(projectRoot string, listWorktrees func(st
 		return c, err
 	}
 	if _, statErr := os.Stat(factoryPath); statErr == nil {
-		values := url.Values{"mode": {"ro"}}
-		dsn := (&url.URL{Scheme: "file", Path: filepath.ToSlash(factoryPath), RawQuery: values.Encode()}).String()
-		db, err := sql.Open("sqlite", dsn)
+		db, err := sql.Open("sqlite", runtimeCensusFactoryDSN(factoryPath))
 		if err != nil {
 			return c, err
 		}

@@ -659,7 +659,11 @@ func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing
 	if err := os.WriteFile(b, []byte(base+"func B() int { return 6 }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	w := filepath.Join(root, "internal", "x", "only_windows.go")
+	foreignName := "only_windows.go"
+	if runtime.GOOS == "windows" {
+		foreignName = "only_unix.go"
+	}
+	w := filepath.Join(root, "internal", "x", foreignName)
 	if err := os.WriteFile(w, []byte("package x\nfunc W() int { return 4 }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -667,7 +671,7 @@ func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.Join(disposition, "\n"), "only_windows.go:cross-compile") {
+	if !strings.Contains(strings.Join(disposition, "\n"), foreignName+":cross-compile") {
 		t.Fatalf("disposition=%v", disposition)
 	}
 	ranges, err := changedProductionLineRanges(root, native)

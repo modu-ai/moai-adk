@@ -56,9 +56,9 @@ func TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard(t *testing.T) {
 		{Path: absent, EnabledKey: "true"},
 		// Relative shape: reported, never statted.
 		{Path: "relative-skills/SKILL.md", EnabledKey: "true"},
-		// Backslash shape on this '/'-separator host: oddly-formed,
-		// reported, never statted.
-		{Path: `C:\Users\u\SKILL.md`, EnabledKey: "true"},
+		// A non-absolute backslash declaration is oddly formed on every
+		// host, reported and never statted.
+		{Path: `skills\probe\SKILL.md`, EnabledKey: "true"},
 	})
 	stubCodexHome(t, home)
 

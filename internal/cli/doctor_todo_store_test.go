@@ -30,7 +30,7 @@ func TestDoctorTodoStoreDivergence_ThreeStates(t *testing.T) {
 			mutate: func(t *testing.T, root, homeDB, legacyDB string) {},
 			want:   uikit.CheckFail,
 			wantMsg: []string{
-				".moai/state/todo/backlog.db",
+				filepath.Join(".moai", "state", "todo", "backlog.db"),
 				"1305",
 				"661",
 			},
@@ -62,7 +62,7 @@ func TestDoctorTodoStoreDivergence_ThreeStates(t *testing.T) {
 				}
 			},
 			want:    uikit.CheckWarn,
-			wantMsg: []string{".moai/state/todo/backlog.db", "unreadable"},
+			wantMsg: []string{filepath.Join(".moai", "state", "todo", "backlog.db"), "unreadable"},
 		},
 		{
 			name: "equal-seqs",

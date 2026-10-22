@@ -203,7 +203,9 @@ func TestSyncGateGoRootsSurviveWholeModuleDeletion(t *testing.T) {
 		t.Skip("bash not on PATH")
 	}
 	script := syncGateScriptPath(t)
-	root := t.TempDir()
+	// The script composes paths with '/', so pass and compare its paths in
+	// that spelling while native filesystem operations use filepath.Join.
+	root := filepath.ToSlash(t.TempDir())
 	for rel, body := range map[string]string{
 		"modules/b/go.mod": "module example.com/b\n\ngo 1.21\n",
 		"modules/b/b.go":   "package b\n",
@@ -255,8 +257,8 @@ printf 'resolved=[%s]\n' "$(resolve_go_roots | sort)"
 	// the walk resolves nothing, surviving discovery finds modules/b and
 	// modules/c, and the ladder checks both — pre-fix this fell to the root
 	// anchor and blocked "does not contain main module" on a healthy tree.
-	wantB := filepath.Join(root, "modules/b")
-	wantC := filepath.Join(root, "modules/c")
+	wantB := filepath.ToSlash(filepath.Join(root, "modules/b"))
+	wantC := filepath.ToSlash(filepath.Join(root, "modules/c"))
 	wantBoth := wantB + "\n" + wantC
 	if got := probe(root, "modules/a/a.go\nmodules/a/go.mod"); got != fmt.Sprintf("walk=[]\nsurviving=[%s]\nresolved=[%s]\n", wantBoth, wantBoth) {
 		t.Fatalf("deletion ladder: got %q, want walk=[] surviving/resolved=%s", got, wantBoth)
@@ -269,7 +271,7 @@ printf 'resolved=[%s]\n' "$(resolve_go_roots | sort)"
 	}
 	// No go.mod anywhere: the bare root anchor survives as the final fallback
 	// — its failure there is a real one (design intent, unchanged).
-	bare := t.TempDir()
+	bare := filepath.ToSlash(t.TempDir())
 	if got := probe(bare, ""); got != fmt.Sprintf("walk=[]\nsurviving=[]\nresolved=[%s]\n", bare) {
 		t.Fatalf("bare ladder: got %q, want resolved=%s", got, bare)
 	}

@@ -55,7 +55,7 @@ func overrideSeparatorSlash(t *testing.T) {
 // which is what makes it a usable precondition rather than a restatement of
 // the guard.
 func TestCodexStaleSkillFinding_SlashPinnedAbsoluteArmIsReached(t *testing.T) {
-	const declared = "/Users/u/skills/probe/SKILL.md"
+	declared := codexAbsolutePathFixture(t, "/Users/u/skills/probe/SKILL.md")
 
 	overrideSeparatorSlash(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: declared, EnabledKey: "true"}})
@@ -78,7 +78,7 @@ func TestCodexStaleSkillFinding_SlashPinnedAbsoluteArmIsReached(t *testing.T) {
 // — hands back the backslash form here and fails, which is exactly what the
 // three '\\'-pinned guards cannot see.
 func TestCodexStaleSkillFinding_SlashPinnedStatTargetIsUnconverted(t *testing.T) {
-	const declared = "/Users/u/skills/probe/SKILL.md"
+	declared := codexAbsolutePathFixture(t, "/Users/u/skills/probe/SKILL.md")
 
 	overrideSeparatorSlash(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: declared, EnabledKey: "true"}})
