@@ -166,3 +166,7 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-22T18:54:09Z SPEC-CARD-MODE-JUDGMENT-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 6 >= tier ceiling 3); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1894/.moai/reports/t1894/plan-audit.md

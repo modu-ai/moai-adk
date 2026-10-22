@@ -15,7 +15,8 @@ defect_class: none
 
 Iteration: 4 (final exception round)
 Verdict: PASS
-Overall Score: 0.91 (Tier L threshold 0.85)
+Overall Score: 0.91
+The Tier L PASS threshold is 0.85.
 Plan Artifact Hash: 0daae3d5fa87edd5406fc295e87eda87243fa8ad20af7b0ae73290782a05b626
 Auditor Version: plan-auditor (claude-opus-5-5)
 

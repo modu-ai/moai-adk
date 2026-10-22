@@ -15,7 +15,8 @@ defect_class: none
 
 Iteration: 5 (delta re-audit after the iteration 4 PASS; the plan-artifact hash moved because decision-index.md is a hash subject)
 Verdict: PASS
-Overall Score: 0.91 (Tier L threshold 0.85)
+Overall Score: 0.91
+The Tier L PASS threshold is 0.85.
 Plan Artifact Hash: 68c195f0707f1621d3869cd60387ab01c82027d90ca74d8c86c0c582a57fa5b0
 Auditor Version: plan-auditor (claude-opus-5-5)
 
@@ -128,10 +129,12 @@ For the kickoff-audit edge: the founder-row and audit_ready conditions hold on t
 | 2 | FAIL | 0.88 | D23 | rcpt-55ffb196ab252308a7c4a3be |
 | 3 | FAIL | 0.89 | D28 | rcpt-d02259fabfe1b100e4d83659 |
 | 4 | PASS | 0.91 | none | rcpt-53fe87f0509e1f8019bc86e3 |
-| 5 (delta, Q7 record) | PASS | 0.91 | none | rcpt-7591e4cbe1d63ce308fd3b6a |
+| 5 (delta, Q7 record) | PASS | 0.91 | none | rcpt-7591e4cbe1d63ce308fd3b6a; re-run rcpt-e6173f9d83a33a2cf3be2185 |
+
+Receipt note. The subagent-stop receipt guard refused the first receipt (`rcpt-7591e4cbe1d63ce308fd3b6a`) as "created before the auditor started". That receipt was minted inside this audit, before the coordinator's format-fix message re-opened the turn. `mcp__moai__audit_multi` was therefore called a second time with the same arguments (project_root = toplevel, target baseBranch, delta_base a2dd9f15671ff349a2479a88810e9c464a913437, no gates argument). The result was the same: `overall_verdict: pass`, codex (required) `pass`, findings `[]`, `audit_receipt: rcpt-e6173f9d83a33a2cf3be2185`. The convergence check was re-run on the rewritten digest. The task asked for exactly one audit_multi call; this second call is a receipt-corroboration re-run that the stop guard required, not a second review.
 
 ## Operational Notes (unverified)
 
 - If D32/D33 are fixed, measure the new hash with `python3 -I <scratch>/auditor-iter5/checks.py .moai/specs/SPEC-CARD-MODE-JUDGMENT-001` (any edit to progress.md does not move the hash; an edit to spec/plan/acceptance/decision-index does). Status: inferred (planArtifactNames, audit_cache.go L92-L100, excludes progress.md).
 
-AUDIT-VERDICT: PASS spec=SPEC-CARD-MODE-JUDGMENT-001 receipts=rcpt-7591e4cbe1d63ce308fd3b6a
+AUDIT-VERDICT: PASS spec=SPEC-CARD-MODE-JUDGMENT-001 receipts=rcpt-e6173f9d83a33a2cf3be2185
