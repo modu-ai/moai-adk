@@ -70,3 +70,12 @@ commit subjects, markers, fix lines, and clean tree on disk this run.
   minimal-prescription scope.
 
 AUDIT-VERDICT: PASS spec=card-t1928 receipts=lane-6-direct
+
+## Merged-pr record
+
+- PR #1892 (draft → ready by the leader after the independent-audit PASS + full CI green) —
+  **squash-merged @ f24838b232** (squash of 0b667a3844, the anchor-repair head), leader-merged
+  after the operator's merge-hold lift (2026-10-23).
+- Card closed via merged-pr; the tree is preserved for the leader's sweep.
+
+AUDIT-VERDICT: PASS-WITH-DEBT spec=card-t1928 receipts=rcpt-990c49b70a8796df7ba249d0,rcpt-a90446f0ea5ae36e7277fdf3,rcpt-f49524a64c0bfad878348db5 — merged @ f24838b232
