@@ -22,6 +22,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -29,13 +31,14 @@ import (
 // ─────────────────────────────────────────────────────────────────────────
 
 // countEntriesWithPath counts declared [[skills.config]] entries whose path
-// key equals want. It reads through the shipped parser rather than grepping,
+// key equals want in the product's host-to-config slash spelling. It reads
+// through the shipped parser rather than grepping,
 // so the count is the one the consuming code will also see.
 func countEntriesWithPath(t *testing.T, content []byte, want string) int {
 	t.Helper()
 	n := 0
 	for _, e := range codexwiring.ParseSkillEntries(content) {
-		if e.Path == want {
+		if toConfigPath(e.Path, configPathSeparator) == toConfigPath(want, configPathSeparator) {
 			n++
 		}
 	}
@@ -48,7 +51,7 @@ func entryWithPath(t *testing.T, content []byte, want string) codexwiring.SkillE
 	t.Helper()
 	var found []codexwiring.SkillEntry
 	for _, e := range codexwiring.ParseSkillEntries(content) {
-		if e.Path == want {
+		if toConfigPath(e.Path, configPathSeparator) == toConfigPath(want, configPathSeparator) {
 			found = append(found, e)
 		}
 	}
@@ -526,6 +529,11 @@ func TestRunCodexSkillDisableBacksUpAndPreservesMode(t *testing.T) {
 	const skill = "t502probe"
 	proj := mirrorFixture(t, "copy", skill)
 	home, cfg := codexHomeWith(t, "# start\n", 0o644)
+	testguard.MakeFilePublic(t, cfg)
+	originalPolicy := codexConfigPolicyFingerprint(t, cfg)
+	if err := privatefile.Check(cfg); err == nil {
+		t.Fatal("fixture config must begin broadly readable")
+	}
 	before := mustRead(t, cfg)
 
 	var out, errBuf bytes.Buffer
@@ -536,12 +544,8 @@ func TestRunCodexSkillDisableBacksUpAndPreservesMode(t *testing.T) {
 		t.Fatalf("forced run: %v", err)
 	}
 
-	st, err := os.Stat(cfg)
-	if err != nil {
-		t.Fatalf("stat config: %v", err)
-	}
-	if got := st.Mode().Perm(); got != 0o644 {
-		t.Errorf("config mode = %04o, want 0644 preserved", got)
+	if got := codexConfigPolicyFingerprint(t, cfg); got != originalPolicy {
+		t.Errorf("config native access policy changed: got %s, want %s", got, originalPolicy)
 	}
 
 	entries, err := os.ReadDir(home)
@@ -560,13 +564,10 @@ func TestRunCodexSkillDisableBacksUpAndPreservesMode(t *testing.T) {
 	if !bytes.Equal(before, mustRead(t, backup)) {
 		t.Errorf("backup content differs from the pre-write original")
 	}
-	bst, err := os.Stat(backup)
-	if err != nil {
-		t.Fatalf("stat backup: %v", err)
+	if err := privatefile.Check(backup); err != nil {
+		t.Errorf("backup must have native owner-only access: %v", err)
 	}
-	if got := bst.Mode().Perm(); got != 0o600 {
-		t.Errorf("backup mode = %04o, want 0600", got)
-	}
+
 	if body := out.String() + errBuf.String(); !strings.Contains(body, sha256Hex(before)) {
 		t.Errorf("the pre-write sha256 was not reported\n--- report ---\n%s", body)
 	}

@@ -18,6 +18,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 // snapshotTree records size+mtime for every regular file under root so tests
@@ -264,12 +265,8 @@ func TestCleanHome_RetentionFromHomeTier(t *testing.T) {
 		if !strings.Contains(errBuf.String(), "disabled") {
 			t.Errorf("disabled run should say so, got %q", errBuf.String())
 		}
-		info, err := os.Stat(logsDir)
-		if err != nil {
-			t.Fatalf("stat repaired logs dir: %v", err)
-		}
-		if info.Mode().Perm() != 0o700 {
-			t.Errorf("force must repair directory permissions even when retention is disabled: mode=%v", info.Mode().Perm())
+		if err := privatefile.CheckDirectory(logsDir); err != nil {
+			t.Errorf("force must repair native directory permissions even when retention is disabled: %v", err)
 		}
 	})
 }
@@ -377,12 +374,8 @@ func TestSecureHomeDirectoriesRepairsMode0700(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{root, filepath.Join(root, "claude-profiles"), filepath.Join(root, "claude-profiles", "p1"), nested, filepath.Join(root, "cache"), nonProfile} {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := info.Mode().Perm(); got != 0o700 {
-			t.Errorf("%s mode=%#o, want 0700", path, got)
+		if err := privatefile.CheckDirectory(path); err != nil {
+			t.Errorf("%s must have native owner-only directory access: %v", path, err)
 		}
 	}
 }

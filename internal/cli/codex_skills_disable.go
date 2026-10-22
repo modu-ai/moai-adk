@@ -46,13 +46,18 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // codexSkillWriteFileFn is the file-write seam. The backup and the staged
 // write both go through it so a test can fail the backup alone and observe
 // that the target stayed byte-invariant.
-var codexSkillWriteFileFn = os.WriteFile
+var codexSkillWriteFileFn = func(name string, data []byte, _ fs.FileMode) error {
+	// Both backups and staged payloads are private before receiving bytes.
+	// Only the final config regains its original policy, just before replace.
+	return privatefile.WriteFile(name, data)
+}
 
 // codexSkillDisableAction is what the merge did, or declined to do.
 type codexSkillDisableAction int
@@ -515,7 +520,7 @@ func writeCodexConfigPreservingMode(cfgPath string, data []byte, mode fs.FileMod
 	if err := codexSkillWriteFileFn(staged, data, mode); err != nil {
 		return err
 	}
-	if err := os.Chmod(staged, mode); err != nil {
+	if err := restoreCodexConfigPolicy(staged, cfgPath, mode); err != nil {
 		_ = os.Remove(staged)
 		return err
 	}
