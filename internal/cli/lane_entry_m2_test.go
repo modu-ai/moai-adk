@@ -13,7 +13,6 @@ package cli
 // home state is written.
 
 import (
-	"encoding/json"
 	"os"
 	"regexp"
 	"strings"
@@ -161,48 +160,6 @@ func TestLaneEntryJoinsNextFreeSlot(t *testing.T) {
 	}
 }
 
-// laneRefusalShapes are AC-003's fifteen shapes: eight with `-l`, seven with
-// `--lane`. kind selects the contract a refusal line must meet.
-var laneRefusalShapes = []struct {
-	args []string
-	kind string // "argument", "tokens", "name", "retired"
-}{
-	{[]string{"-l", "lane-2"}, "argument"},
-	{[]string{"-l", "3"}, "argument"},
-	{[]string{"-l=lane-2"}, "argument"},
-	{[]string{"-l", "leader-2"}, "argument"},
-	{[]string{"-l", "-f"}, "tokens"},
-	{[]string{"-f", "-l"}, "tokens"},
-	{[]string{"-l", "-k"}, "retired"},
-	{[]string{"-l", "--name", "lane-2"}, "name"},
-	{[]string{"--lane", "lane-2"}, "argument"},
-	{[]string{"--lane=lane-2"}, "argument"},
-	{[]string{"--lane", "3"}, "argument"},
-	{[]string{"--lane", "leader-2"}, "argument"},
-	{[]string{"--lane", "-f"}, "tokens"},
-	{[]string{"--lane", "-k"}, "retired"},
-	{[]string{"--lane", "--name", "lane-2"}, "name"},
-}
-
-// requireLaneRefusalTokens asserts the line a refused lane shape carries: an
-// argument names `-l` as taking none and `--leader <name>` as the selector, a
-// combination names the one-entry-token rule, a --name names the role clash. A
-// `-k` beside the lane entry earns the retired-entry line instead (M5a: the
-// retired spelling is refused before the one-entry-token rule runs).
-func requireLaneRefusalTokens(t *testing.T, args []string, kind, msg string) {
-	t.Helper()
-	switch kind {
-	case "retired":
-		requireTokens(t, args, msg, "retired", "-f", "-l")
-	case "argument":
-		requireTokens(t, args, msg, "-l", "no argument", "--leader <name>")
-	case "tokens":
-		requireTokens(t, args, msg, "entry token")
-	case "name":
-		requireTokens(t, args, msg, "-l", "already names the role")
-	}
-}
-
 func TestLaneEntryComposesWithLaneOptions(t *testing.T) {
 	// Parse-level rows: the selections reach the entry parse.
 	for _, tc := range []struct {
@@ -329,18 +286,4 @@ func TestFactoryCountShapeStillRefused(t *testing.T) {
 			}
 		})
 	}
-}
-
-// readLaneGolden loads the committed `-f lane` marker golden (AC-004).
-func readLaneGolden(t *testing.T) map[string]map[string]string {
-	t.Helper()
-	raw, err := os.ReadFile(laneGoldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
-	var golden map[string]map[string]string
-	if err := json.Unmarshal(raw, &golden); err != nil {
-		t.Fatalf("parse golden: %v", err)
-	}
-	return golden
 }

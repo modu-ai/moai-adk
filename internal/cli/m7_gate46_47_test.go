@@ -15,7 +15,6 @@ package cli
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -73,21 +72,4 @@ func TestInitResumeCheckpointReadsBothDeploymentFaces(t *testing.T) {
 	if initResumeCheckpoint(healthyHome, deployed) {
 		t.Fatal("a healthy user store routed a deployed project into resume")
 	}
-}
-
-func jevEnabledInWorkflowYAML(content string) bool {
-	lines := strings.Split(content, "\n")
-	inJev := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		switch {
-		case strings.HasPrefix(trimmed, "jev:"):
-			inJev = true
-		case inJev && strings.HasPrefix(line, " ") && strings.HasPrefix(trimmed, "enabled:"):
-			return strings.TrimSpace(strings.TrimPrefix(trimmed, "enabled:")) == "true"
-		case inJev && trimmed != "" && !strings.HasPrefix(line, " "):
-			return false // the jev block ended
-		}
-	}
-	return false
 }

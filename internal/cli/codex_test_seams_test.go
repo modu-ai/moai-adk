@@ -143,21 +143,6 @@ func newAnchorRepo(t *testing.T) *anchorRepo {
 	return r
 }
 
-// tree creates an unlocked linked worktree <root>/.claude/worktrees/<name>.
-func (r *anchorRepo) tree(t *testing.T, name string) string {
-	t.Helper()
-	path := filepath.Join(r.root, ".claude", "worktrees", name)
-	anchorGit(t, r.root, "worktree", "add", "-q", "-b", "WT-"+name, path, r.base)
-	return path
-}
-
-func firstLineStr(s string) string {
-	if idx := strings.IndexByte(s, '\n'); idx >= 0 {
-		return s[:idx]
-	}
-	return s
-}
-
 // resumeHome isolates HOME and installs the shared init wizard seams.
 func resumeHome(t *testing.T) {
 	t.Helper()

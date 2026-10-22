@@ -10,13 +10,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -200,40 +197,6 @@ func writeProbeFile(t *testing.T, root, rel, content string) {
 	}
 	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", rel, err)
-	}
-}
-
-// probeReturnBound is how long one damageReason call may take before the test
-// treats it as blocked. A classification is one stat plus at most one bounded
-// read, so a healthy call returns in microseconds; the bound only has to tell a
-// block from a slow machine.
-const probeReturnBound = 5 * time.Second
-
-// damageReasonWithin runs e.damageReason(root) on its own goroutine and waits at
-// most bound for the classification. returned is false when the call is still
-// blocked when the bound expires.
-func damageReasonWithin(e integrityProbeEntry, root string, bound time.Duration) (reason string, returned bool) {
-	done := make(chan string, 1)
-	go func() { done <- e.damageReason(root) }()
-	select {
-	case reason = <-done:
-		return reason, true
-	case <-time.After(bound):
-		return "", false
-	}
-}
-
-// unblockPipe releases a goroutine stuck in the open-for-read of a named pipe at
-// abs: opening the pipe for writing completes the reader's open, and closing the
-// writer ends its stream. It does nothing for any other file type, so a bounded
-// test can call it unconditionally after a timeout.
-func unblockPipe(abs string) {
-	info, err := os.Lstat(abs)
-	if err != nil || info.Mode()&fs.ModeNamedPipe == 0 {
-		return
-	}
-	if w, err := os.OpenFile(abs, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
-		_ = w.Close()
 	}
 }
 

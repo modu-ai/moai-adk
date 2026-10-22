@@ -130,12 +130,6 @@ func netLeaderFixture(t *testing.T) string {
 	return root
 }
 
-// netCodexLane is what one substituted codex lane child observed.
-type netCodexLane struct {
-	root string
-	env  map[string]string
-}
-
 func netNamedArg(args []string) string {
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] == nameFlagLong {

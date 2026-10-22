@@ -285,11 +285,6 @@ func (l *parityLive) codexTurn(prompt string) (string, error) {
 	return l.host(codexBinaryName, "exec", "--skip-git-repo-check", "--cd", l.project, prompt)
 }
 
-// codexResume continues a Codex session by id.
-func (l *parityLive) codexResume(session, prompt string) (string, error) {
-	return l.host(codexBinaryName, "exec", "--skip-git-repo-check", "--cd", l.project, "resume", session, prompt)
-}
-
 // claudeTurn runs one claude -p turn under a session id the test chose, so a
 // goal can be armed for that session before the turn starts.
 func (l *parityLive) claudeTurn(session, prompt string) (string, error) {

@@ -351,14 +351,6 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 	}
 }
 
-// sdLaunchPathArgv is one entry of AC-SD-007's enumeration: a launch path
-// this SPEC adds, with the engine binary and the captured argv it hands it.
-type sdLaunchPathArgv struct {
-	name   string
-	binary string
-	argv   []string
-}
-
 func sdReadSource(t *testing.T, path string) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Clean(path))

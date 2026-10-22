@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -16,21 +14,6 @@ import (
 // auditCodexPinYAML is a workflow.yaml body carrying only the codex audit pin.
 func auditCodexPinYAML(model, effort string) string {
 	return "workflow:\n  audit:\n    codex:\n      model: " + model + "\n      effort: " + effort + "\n"
-}
-
-// writeLLMYAML writes a leftover llm.yaml agent-overrides cell for the former
-// codex audit agent key ("sync-auditor") INTO the given root (unlike writeCodexLLMFixture, which creates its
-// own temp dir — here the llm cell and the workflow pin must share one tree).
-func writeLLMYAML(t *testing.T, root, model, effort string) {
-	t.Helper()
-	sections := filepath.Join(root, ".moai", "config", "sections")
-	if err := os.MkdirAll(sections, 0o755); err != nil {
-		t.Fatalf("mkdir sections: %v", err)
-	}
-	body := "llm:\n  agent_overrides:\n    sync-auditor:\n      model: " + model + "\n      effort: " + effort + "\n"
-	if err := os.WriteFile(filepath.Join(sections, "llm.yaml"), []byte(body), 0o600); err != nil {
-		t.Fatalf("write llm.yaml: %v", err)
-	}
 }
 
 // AC-AMP-002 positive arm — a populated audit.codex pin reaches BOTH

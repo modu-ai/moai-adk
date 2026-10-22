@@ -211,24 +211,6 @@ func TestManagedLaunchRefusesContinue(t *testing.T) {
 	}
 }
 
-// managedCodexLaunchCapture records one managed codex divert.
-type managedCodexLaunchCapture struct {
-	calls int
-	bin   string
-	args  []string
-	env   []string
-	dir   string
-}
-
-func (c *managedCodexLaunchCapture) record(bin string, args, env []string) {
-	c.calls++
-	c.bin, c.args, c.env = bin, args, env
-}
-
-func (c *managedCodexLaunchCapture) envValue(key string) string {
-	return launchEnvValue(c.env, key)
-}
-
 func containsToken(args []string, token string) bool {
 	for _, a := range args {
 		if a == token {

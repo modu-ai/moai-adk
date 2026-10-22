@@ -725,13 +725,6 @@ func codexThreadRequestFailure(conn codexConn, summary string, cause error) erro
 	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderrTail: codexConnStderrTail(conn)}
 }
 
-// codexThreadRequestWasSent reports whether err is a session failure that
-// happened after the thread request was written.
-func codexThreadRequestWasSent(err error) bool {
-	var sErr *codexSessionError
-	return errors.As(err, &sErr) && sErr.threadRequestSent
-}
-
 // openCodexSession spawns a codex app-server subprocess and completes the
 // mandatory handshake — initialize (with clientInfo) → thread/start → threadId —
 // returning a handle further turns can be issued on.
@@ -871,24 +864,6 @@ func (h *codexSessionHandle) noteTurnStarted(turnID string) {
 	if observer != nil {
 		observer(turnID)
 	}
-}
-
-// setTurnStartedObserver installs the mid-flight turn-id observer under the same
-// lock noteTurnStarted reads it through, so the field has one discipline rather
-// than one that happens to be safe because of where it is currently called.
-func (h *codexSessionHandle) setTurnStartedObserver(fn func(string)) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.onTurnStarted = fn
-}
-
-// currentTurnID reports the turn id observed so far, or "" when no turn/started
-// has arrived. It is the ONLY safe way to read the id from outside the turn
-// loop (see noteTurnStarted).
-func (h *codexSessionHandle) currentTurnID() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.turnID
 }
 
 // allocID hands out the next JSON-RPC request id. Ids must stay unique across

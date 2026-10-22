@@ -5,7 +5,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -34,15 +33,6 @@ func readTestFile(t *testing.T, root, rel string) []byte {
 		t.Fatal(err)
 	}
 	return b
-}
-
-// lastLines returns the final n lines of s.
-func lastLines(s string, n int) string {
-	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
 }
 
 //		published-skill paths included (update never refreshes those once they
