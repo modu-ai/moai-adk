@@ -1,0 +1,115 @@
+# closed-world-manifest.txt — SPEC-CARD-MODE-JUDGMENT-001
+#
+# The complete set of lines the run phase may add to, and remove from, the eight changed document pairs.
+# Read by `closed-world-check.py` (AC-MJ-020; the pair and path checks of AC-MJ-011 and AC-MJ-020).
+#
+# Row syntax: `+ <line>` is a line the run adds; `- <line>` is a line the run removes (a rewrite is one `-` row
+# and one `+` row). The text after the two-character marker is the physical line as stored, leading spaces
+# included. Blank lines are not compared. A `file:` row names the template path; the deployed twin is the same
+# path without the `twin-strip` prefix and receives the same rows.
+#
+# Status and ownership: this file is a SPEC artifact in the ownership class of acceptance.md. The plan phase
+# (manager-spec) wrote every row, from the planned post-run text (progress.md G-15); the run phase never edits
+# it. A wording change the run phase needs is a blocker report; manager-spec amends this file together with the
+# acceptance cells that pin the same lines (E-005d, E-006, E-007, E-009, E-018a/d/e, E-004c/e). The file is
+# frozen in the plan-phase commit, so the list of allowed lines is written by the party that does not write the
+# documents and is fixed before the first document commit (verification-claim-integrity.md section 2.3).
+#
+# `also:` rows name the two non-document files the run edits in the same commits (catalog hashes and ledger
+# rows); their content is bounded by the Go guards of AC-MJ-014, not by this file.
+
+base: d31fb64239a688c053e455000cc9fe37f540b790
+twin-strip: internal/template/templates/
+also: internal/template/catalog.yaml
+also: internal/template/testdata/binding_ledger.json
+
+file: C internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
++ ### Mode judgment — serial or parallelizable
++ Class names the stages a card needs; mode names whether it may run beside other cards. The two axes are independent. Decide the mode at issuance, from the card's expected file set — never from the queue's default. A card is `serial` only when it edits the same files or shared state as an in-flight card, or edits a slot-gated surface (factory/todo core, release pipeline, shared migrations); every other card is `parallelizable`. The reason recorded with the classification states the file set and the conflict check and, for a `serial` card, names the conflicting card (the conflict check names the shared state or the slot-gated surface it found). Supply the judgment with `--classification-file` (decider `human`); no card is issued on the fail-safe default. A card that reached the queue on the default is reissued with an explicit classification. For a Class C card, give `--spec` when the card is picked: it cannot be added after assign.
+
+file: K internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-core.md
+- The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
+- [HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) stays armed to the completion report.
++ A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
++ [HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) is kept while the lane executes the card.
+
+file: F internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md
+- The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
+- [HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.
+- [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every renewal period of `workflow.factory_lease.renew_interval`) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
++ [HARD] Every card the leader issues carries an explicit serial/parallel judgment through `--classification-file` (decider `human`), decided from the card's expected file set per `factory-dispatch-cards.md` § Mode judgment; the fail-safe default is never the issuance path.
++ [HARD] **The delegated-dispatch case.** Besides the `--auto` batch approval, the leader may promote queued cards in the case stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion, with the limits given there; nothing in this section widens it.
++ A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's. A further case is stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion.
++ [HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept while the lane executes the card; each wake reads disk evidence before replying.
++ [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every renewal period of `workflow.factory_lease.renew_interval`) before its first stage and keeps it while the lane executes the card: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
+
+file: D internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
+- - **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+- - **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once its card reaches `done`, before the next card is routed to it, exactly as the stub's lane card transition rule requires.
++ - **Routing.** The leader routes a card WHOLE to a free lane. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
++   - A free lane is a lane on which no card is actually executing; a lane that holds only merge-ready, held (operator-wait), or serial-waiting cards is a free lane.
++   - Free is a different condition from live: a lane with no live session is not a free lane but a fault (`factory-dispatch-mechanics.md` § Boundaries), and a live lane with a card executing is not free.
++ ### Delegated-dispatch promotion
++ Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once.
++ - Where: only to a free live lane, as defined under Routing above.
++ - Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment).
++ - Order: queue priority and readiness first.
++ - Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3).
++ - Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader's remaining role).
++ - Unchanged: lane self-dispatch through `moai factory next`.
++ Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards.
++ - **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once it stops executing the card — the card reached `done`, or is merge-ready, held (operator-wait), or serial-waiting — and before the next card is routed to it, exactly as the stub's lane card transition rule requires; a kept tree is re-entered when its card resumes, by `moai factory next --card <id>` and `EnterWorktree` of the leased tree (`factory-dispatch-mechanics.md` § Lease renewal — only the card being executed).
+
+file: M internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md
+- A lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
++ While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
++ ### Lease renewal — only the card being executed
++ Executing means the lane is carrying out a stage of the card — plan, run, sync, the card-review, or the landing sequence — and is not waiting on a slot, a trigger, or the operator.
++ A lane renews the lease of the card it is executing, and of no other card: only the card the lane is actually executing is renewed.
++ A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire; expiry is harmless, because at the landing slot the leader reassigns the card or the lane re-leases it with `factory next --card`, the stage preserved.
++ The lane's standing recheck cron is kept while the lane executes the card; a lane waiting on a slot or a trigger arms and keeps no polling cron for that wait, and the leader sends a notice when a slot or a landing turn opens.
++ | Delegated-dispatch promotion | promoting queued cards to a free live lane without a per-card pick, in the case and within the limits stated once in `factory-dispatch-detail.md` § Delegated-dispatch promotion |
+
+file: A internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md
+- therefore **standing**: armed once at card intake, before the first stage, and
+- kept until the completion report.
+-   first (§0a of the watchdog skill), so the renewal period is also the cadence
+-   at which the card lease is renewed.
+- - **Keep.** `CronList` at card takeover (intake or the in-session transition to a newly leased card) and after any session reset; re-arm when
+-   Delete it (`CronDelete`) when the completion report is sent; the next card
+-   arms its own.
+- once it resolves; the standing carrier of §5.1 stays armed. The codex runner
++ therefore **standing**: armed once at card intake, before the first stage, and kept while the lane executes the card.
++   first (§0a of the watchdog skill), which renews the lease of the card the lane
++   is executing, so the renewal period is also the cadence at which that lease
++   is renewed.
++ - **Keep.** `CronList` at card takeover (intake, the in-session transition to a newly leased card, or the resumption of execution after a wait) and after any session reset; re-arm when
++   Delete it (`CronDelete`) when the lane stops executing the card, and at the
++   latest when the completion report is sent; the next card arms its own.
++ once it resolves; the standing carrier of §5.1 is kept only while the lane executes the card (an open wait on the leader is not execution). The codex runner
+
+file: G internal/template/templates/.claude/skills/moai/workflows/gtd.md
+- When the operator says `/moai todo "<description>"`, run
+- `moai todo add "<description>"`; a bare `/moai todo` runs `moai todo list`.
+-   `next --spec` is explicitly given. An empty `spec_id` on a picked card is
+-   the normal state; it is the `state` field (`queued` | `picked`), never
+-   `spec_id`, that distinguishes a backlog item from a card already on the
+-   board. The card↔SPEC association lives in the dispatch fields and the
+-   commit-message card id, not in this column.
+-    Attach the SPEC only when one exists and its identifier is known.
++ When the operator says `/moai todo "<description>"`, the leader issues the card with `moai todo add "<description>" --classification-file <path|->`, which carries the explicit serial/parallel judgment of `factory-dispatch-cards.md` § Mode judgment (decider `human`); a bare `/moai todo` runs `moai todo list`.
++   `next --spec` is explicitly given. A Class C card is picked with `--spec`.
++   On a Class A or Class B card an empty `spec_id` is the normal state; it is
++   the `state` field (`queued` | `picked`), never `spec_id`, that distinguishes
++   a backlog item from a card already on the board. The card↔SPEC association
++   lives in the dispatch fields and the commit-message card id, not in this
++   column.
++ Promotion by the leader without a pick is limited to the case stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion; every pick the operator makes follows the rule above.
++    Attach the SPEC only when one exists and its identifier is known; a Class C
++    card is picked with `--spec` (`factory-dispatch-cards.md` § Mode judgment).
+
+file: W internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md
+-    fires the awaken is the lane's standing recheck cron (doctrine §5.1), armed
+-    at card intake — this skill is its prompt, not its owner.
++ This step renews the card the lane is executing and no other card: a lane whose cards are all merge-ready, held, or waiting for the serial slot does not renew in that pass, and the pass carries the previous `renew_result` forward.
++    fires the awaken is the lane's standing recheck cron (doctrine §5.1), armed at card intake and kept while the lane executes the card — this skill is its prompt, not its owner.

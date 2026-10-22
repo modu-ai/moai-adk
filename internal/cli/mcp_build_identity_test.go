@@ -692,7 +692,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// absorb's final conflict resolution and counted lines the resolution
 		// did not keep. Same doc mention of the primitive, no ancestry call
 		// executes here — same count, only the coordinate moved.
-		"integration.go:258": true,
+		// Union resolution (card t1632 second main absorb, 5995962990): both
+		// lineages converge — main's t1928 currentBranch repair landed the same
+		// lines this merge carries, and the doc mention measures at :267 in the
+		// merged integration.go (grep-verified). Same hit; no added line is an
+		// ancestry comparison.
+		"integration.go:267": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
