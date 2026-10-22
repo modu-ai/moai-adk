@@ -173,10 +173,12 @@ func t1834F1Fixture(t *testing.T) (store, card, cardHead, decoy string) {
 // record then vouched for a candidate that was never measured.
 func TestRemeasureCommandMeasuresTheCandidateUnderInheritedGitEnv(t *testing.T) {
 	store, card, cardHead, decoy := t1834F1Fixture(t)
+	cardGitRoot := t1834G1Git(t, card, "rev-parse", "--show-toplevel")
 	t.Setenv("GIT_DIR", filepath.Join(decoy, ".git"))
 	t.Setenv("GIT_WORK_TREE", decoy)
 
-	command := `test "$(git rev-parse HEAD)" = ` + cardHead + ` && test "$(git rev-parse --show-toplevel)" = ` + card
+	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'" }
+	command := `test "$(git rev-parse HEAD)" = ` + quote(cardHead) + ` && test "$(git rev-parse --show-toplevel)" = ` + quote(cardGitRoot)
 	// RunRemeasure returns an error for a non-zero measuring exit (the record is
 	// still written as observed): the command exiting non-zero here means it read
 	// the decoy repository, not the candidate.

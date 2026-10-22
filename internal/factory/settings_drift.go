@@ -564,7 +564,7 @@ func lastSettingsDriftRowForWorktree(root, worktree string) (settingsDriftLedger
 		if json.Unmarshal([]byte(line), &row) != nil {
 			continue
 		}
-		if row.Worktree != worktree {
+		if !settingsDriftWorktreeEqual(row.Worktree, worktree, os.PathSeparator) {
 			continue
 		}
 		if row.Status == "" {
@@ -573,6 +573,17 @@ func lastSettingsDriftRowForWorktree(root, worktree string) (settingsDriftLedger
 		last, found = row, true
 	}
 	return last, found, nil
+}
+
+func settingsDriftWorktreeEqual(recorded, current string, separator uint8) bool {
+	if separator == '\\' {
+		// Git emits '/' even when a legacy row recorded Windows separators.
+		// Compare that spelling only; do not collapse traversal, guess case
+		// aliases or rewrite the historical row's evidence.
+		recorded = strings.ReplaceAll(recorded, `\`, "/")
+		current = strings.ReplaceAll(current, `\`, "/")
+	}
+	return recorded == current
 }
 
 // appendSettingsDriftLedger appends one JSON line. Append mode, never a

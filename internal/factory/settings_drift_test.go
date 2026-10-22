@@ -505,8 +505,9 @@ func TestAssessSettingsDriftPreservesAndLedgers(t *testing.T) {
 	if row.SizeBytes != int64(len(original)) {
 		t.Errorf("ledger size_bytes: got %d, want %d", row.SizeBytes, len(original))
 	}
-	if row.Worktree != worktree {
-		t.Errorf("ledger worktree: got %q, want %q", row.Worktree, worktree)
+	wantWorktree := strings.TrimSpace(gitFixture(t, worktree, "rev-parse", "--show-toplevel"))
+	if row.Worktree != wantWorktree {
+		t.Errorf("ledger worktree: got %q, want Git's canonical path %q", row.Worktree, wantWorktree)
 	}
 	if row.MatchCount != 1 {
 		t.Errorf("ledger match_count: got %d, want 1", row.MatchCount)

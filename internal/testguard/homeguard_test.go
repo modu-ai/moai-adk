@@ -299,8 +299,23 @@ func TestHomeGuard_AcceptsTempDir(t *testing.T) {
 			filepath.Join(fakeHome, ".moai", "claude-profiles"),
 			filepath.Join(fakeHome, ".moai"),
 		}
-		if err := CheckSeamHomes(realHome, seamPaths); err != nil {
-			t.Errorf("CheckSeamHomes(real home, temp dirs) = %v, want nil", err)
+		if err := judgeSandbox(realHome, fakeHome, seamPaths); err != nil {
+			t.Errorf("bounded temp sandbox against actual real home = %v, want nil", err)
+		}
+		resolvedHome, homeErr := filepath.EvalSymlinks(realHome)
+		resolvedTemp, tempErr := filepath.EvalSymlinks(fakeHome)
+		if homeErr != nil || tempErr != nil {
+			t.Fatalf("resolve actual guard paths: home=%v temp=%v", homeErr, tempErr)
+		}
+		rel, relErr := filepath.Rel(resolvedHome, resolvedTemp)
+		underHome := relErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+		pureErr := CheckSeamHomes(realHome, seamPaths)
+		if underHome {
+			if pureErr == nil {
+				t.Error("the pure guard must still refuse real-home descendants; only the bounded temp sandbox receives the exemption")
+			}
+		} else if pureErr != nil {
+			t.Errorf("CheckSeamHomes(real home, external temp dirs) = %v, want nil", pureErr)
 		}
 	})
 
