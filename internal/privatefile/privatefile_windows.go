@@ -31,7 +31,7 @@ func CreateTemp(dir, prefix string) (*os.File, error) {
 			return nil, err
 		}
 		name := filepath.Join(dir, prefix+hex.EncodeToString(nonce[:]))
-		p, err := windows.UTF16PtrFromString(name)
+		p, err := windows.UTF16PtrFromString(nativePath(name))
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func CreateTemp(dir, prefix string) (*os.File, error) {
 }
 
 func checkNative(path string, _ os.FileInfo) error {
-	p, err := windows.UTF16PtrFromString(path)
+	p, err := windows.UTF16PtrFromString(nativePath(path))
 	if err != nil {
 		return err
 	}

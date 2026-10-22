@@ -24,7 +24,7 @@ func ownerDescriptor(directory bool) (*windows.SECURITY_DESCRIPTOR, error) {
 }
 
 func openExisting(path string, access uint32, directory bool) (*os.File, error) {
-	p, err := windows.UTF16PtrFromString(path)
+	p, err := windows.UTF16PtrFromString(nativePath(path))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func openAppendNative(path string) (*os.File, error) {
 		return nil, err
 	}
 	sa := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
-	p, err := windows.UTF16PtrFromString(path)
+	p, err := windows.UTF16PtrFromString(nativePath(path))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func mkdirNative(path string) error {
 		return err
 	}
 	sa := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
-	p, err := windows.UTF16PtrFromString(path)
+	p, err := windows.UTF16PtrFromString(nativePath(path))
 	if err != nil {
 		return err
 	}
