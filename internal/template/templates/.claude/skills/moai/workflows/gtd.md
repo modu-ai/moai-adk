@@ -48,8 +48,7 @@ Database paths — never guess:
 
 ## Commands
 
-When the operator says `/moai todo "<description>"`, run
-`moai todo add "<description>"`; a bare `/moai todo` runs `moai todo list`.
+When the operator says `/moai todo "<description>"`, the leader issues the card with `moai todo add "<description>" --classification-file <path|->`, which carries the explicit serial/parallel judgment of `factory-dispatch-cards.md` § Mode judgment (decider `human`); a bare `/moai todo` runs `moai todo list`.
 
 | Command | Effect |
 |---|---|
@@ -265,11 +264,12 @@ moai todo list --json | jq '.[0]'                                            # W
 - `id` — assigned on append, never reused after removal (`last_seq` is the
   persisted high-water mark that guarantees it).
 - `spec_id` — a record-only, optional annotation attached only when
-  `next --spec` is explicitly given. An empty `spec_id` on a picked card is
-  the normal state; it is the `state` field (`queued` | `picked`), never
-  `spec_id`, that distinguishes a backlog item from a card already on the
-  board. The card↔SPEC association lives in the dispatch fields and the
-  commit-message card id, not in this column.
+  `next --spec` is explicitly given. A Class C card is picked with `--spec`.
+  On a Class A or Class B card an empty `spec_id` is the normal state; it is
+  the `state` field (`queued` | `picked`), never `spec_id`, that distinguishes
+  a backlog item from a card already on the board. The card↔SPEC association
+  lives in the dispatch fields and the commit-message card id, not in this
+  column.
 - `findings` — the records the analysis layer keeps ABOUT pairs of cards; a
   relation belongs to the pair rather than to either card, which is why it
   lives here and not in an item. Always an array: a file written before the
@@ -328,7 +328,8 @@ work without that answer has preselected, whatever it calls the step.
 Once picked:
 
 1. Record it with `moai todo next <n> [--spec <SPEC-ID>]` (one locked write).
-   Attach the SPEC only when one exists and its identifier is known.
+   Attach the SPEC only when one exists and its identifier is known; a Class C
+   card is picked with `--spec` (`factory-dispatch-cards.md` § Mode judgment).
 2. Follow `factory-dispatch.md`'s card class: Class A direct close, Class B
    run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
    in plan. A pick alone neither creates a SPEC nor requires one.

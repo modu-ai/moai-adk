@@ -29,6 +29,8 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 [HARD] The leader is the sole queue producer, and production its only self-authority queue mutation: `moai gtd add` turns an operator request into a card (translation, not invention; `moai gtd` alone lists); nothing the operator did not ask for enters.
 
+[HARD] Every card the leader issues carries an explicit serial/parallel judgment through `--classification-file` (decider `human`), decided from the card's expected file set per `factory-dispatch-cards.md` § Mode judgment; the fail-safe default is never the issuance path.
+
 [HARD] On prior operator authorization, standing sources also produce: `/moai project` one `[PROJECT] ` card at completion, codemaps-debt one `[GRAPH] ` card per debt period; each per occasion, derived not invented, marked, id reported, start a separate pick (gtd § Standing sources; conditional, not closed); nothing else produces: milestones, audit findings, open issues enter only as operator-approved card requests.
 
 <!-- moai:role-core-start -->

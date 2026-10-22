@@ -2,7 +2,7 @@
 id: SPEC-CARD-MODE-JUDGMENT-001
 title: "Force the serial/parallel judgment at card design time — mode-judgment step, explicit classification at issuance, free-lane definition, executing-card-only lease renewal"
 version: "0.1.6"
-status: draft
+status: in-progress
 created: 2026-10-19
 updated: 2026-10-23
 author: MoAI
