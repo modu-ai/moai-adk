@@ -171,9 +171,7 @@ func TestLauncherShortName_LegacyTree_PassesThrough(t *testing.T) {
 	t.Setenv(paths.EnvHome, home)
 	gotArgs := m2LaunchFixture(t, repo)
 
-	if err := os.MkdirAll(filepath.Join(repo, ".claude", "worktrees", "t7c"), 0o755); err != nil {
-		t.Fatalf("mkdir legacy tree: %v", err)
-	}
+	m3Gitf(t, repo, "worktree", "add", "-q", "--detach", filepath.Join(repo, ".claude", "worktrees", "t7c"), "HEAD")
 
 	if err := ccCmd.RunE(ccCmd, []string{"-w", "t7c"}); err != nil {
 		t.Fatalf("moai cc -w t7c: %v", err)

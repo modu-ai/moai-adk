@@ -56,10 +56,9 @@ func TestReviewGLMPrechecksAnchoredHomeTree(t *testing.T) {
 	w := m3NewWorld(t)
 	t.Chdir(w.repo)
 	got := m2LaunchFixture(t, w.repo)
-	if err := os.RemoveAll(w.homeT8); err != nil {
-		t.Fatal(err)
-	}
-	m3Gitf(t, w.repo, "worktree", "add", "-q", "-b", "WT-guarded-home", "--", w.homeT8)
+	// m3NewWorld already registered this home tree. Keep that registration
+	// and give it the guarded branch before pinning the active writer lock.
+	m3Gitf(t, w.homeT8, "switch", "-q", "-c", "WT-guarded-home")
 	// No PID is deliberately undetermined, and the existing writer contract
 	// refuses rather than assuming this live/unknown lock is dead.
 	m3Gitf(t, w.repo, "worktree", "lock", "--reason", "operator live writer", "--", w.homeT8)

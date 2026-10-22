@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -58,7 +57,8 @@ type stageObservation struct {
 }
 
 // stageCandidateNames are the worktree names the cells use; run 2 and run 3
-// create each as a directory so the precheck and the seeder have a tree to read.
+// create each as a directory outside Git, or as a registered Git worktree, so
+// the precheck and the seeder have an authenticated tree to read.
 var stageCandidateNames = []string{"plain", "other"}
 
 // launchWithStageSeams drives one entry (arm "cc" or "glm") for args and returns
@@ -76,13 +76,15 @@ func launchWithStageSeams(t *testing.T, arm string, args []string, rootKind stri
 	// (or sandbox protection mounts) above the temporary fixture.
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
 	if rootKind == "dirs-git" {
-		if out, err := exec.Command("git", "init", "-q", root).CombinedOutput(); err != nil {
-			t.Fatalf("git init: %v: %s", err, out)
-		}
+		m3Gitf(t, root, "init", "-q", "--template=", "-b", "main")
+		m3Gitf(t, root, "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "stage fixture")
 	}
 	if rootKind != "bare" {
 		for _, n := range stageCandidateNames {
-			if err := os.MkdirAll(filepath.Join(root, ".claude", "worktrees", n), 0o755); err != nil {
+			tree := filepath.Join(root, ".claude", "worktrees", n)
+			if rootKind == "dirs-git" {
+				m3Gitf(t, root, "worktree", "add", "-q", "--detach", tree, "HEAD")
+			} else if err := os.MkdirAll(tree, 0o755); err != nil {
 				t.Fatal(err)
 			}
 		}
