@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -523,7 +522,7 @@ func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 		// the read layer starts from an empty document, so the write creates
 		// the file instead of failing on the stat. Any other stat error
 		// (ENOTDIR, permissions) keeps its wrapped error (REQ-3).
-		if !os.IsNotExist(err) {
+		if !missingWriteTarget(path, err) {
 			return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
 		}
 	} else {
@@ -532,8 +531,7 @@ func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 	if perm != 0 {
 		mode = perm
 	}
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".yamlpatch-*.tmp")
+	tmp, err := createModeTemp(path, mode, perm)
 	if err != nil {
 		return fmt.Errorf("yamlpatch: create temp: %w", err)
 	}
@@ -547,7 +545,7 @@ func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("yamlpatch: close temp: %w", err)
 	}
-	if err := os.Chmod(tmpName, mode); err != nil {
+	if err := chmodModeTemp(tmpName, mode); err != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("yamlpatch: chmod temp: %w", err)
 	}

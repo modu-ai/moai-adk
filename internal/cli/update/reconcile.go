@@ -376,7 +376,7 @@ func safeWriteFile(projectRoot, rel string, data []byte) error {
 	if info, err := os.Lstat(abs); err == nil && info.Mode().IsRegular() {
 		mode = info.Mode().Perm()
 	}
-	tmp, err := os.CreateTemp(absDir, ".moai-merge-*")
+	tmp, err := createRestoreTemp(abs, mode)
 	if err != nil {
 		return err
 	}
@@ -389,7 +389,7 @@ func safeWriteFile(projectRoot, rel string, data []byte) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	if err := os.Chmod(tmpName, mode); err != nil {
+	if err := chmodRestoreTemp(tmpName, mode); err != nil {
 		return err
 	}
 	// Install with rename (replaces the final component without following
