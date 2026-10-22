@@ -161,7 +161,25 @@ m1_to_mN_commit_strategy: per-milestone local commits in plan order M2, M5, M4, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-23
+sync_commit_sha: pending-backfill   # the sync commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete-pending-audit
+tier: M
+ac_source: .moai/specs/SPEC-RELEASE-PIPELINE-001/acceptance.md   # B12 counter: stdout 11, stderr live=11 excluded=2 ambiguous=0
+b12_self_test_a: pass   # grep -c 'SPEC-RELEASE-PIPELINE-001' CHANGELOG.md was 0 before emission
+b12_self_test_b: pass   # CHANGELOG states 11 acceptance criteria (9 release-blocking + 2 regression-guard) = counter output
+b12_self_test_c: pass   # every file path claimed in the CHANGELOG entry verified by ls
+changelog_entry_position: "[Unreleased] > Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (single sync commit; updated: already 2026-10-23, unchanged)"
+  plan_md: "no status field; updated: already 2026-10-23, unchanged"
+  acceptance_md: "no status field; updated: already 2026-10-23, unchanged"
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
+mx_review: no tag added   # no non-test Go source changed; no @MX rule fires (test files and CI workflow YAML only)
+docs_impact: CHANGELOG.md only; no tracked codemap, README, or docs-site page names a changed workflow or guard file
+known_warning: "moai spec lint: 1 pre-existing VacuousTestAssertion at acceptance.md:52 (verbatim EV-6 evidence, SPEC body text; left unchanged)"
+```
 
 ## §F Phase 4 Mode Selection
 
