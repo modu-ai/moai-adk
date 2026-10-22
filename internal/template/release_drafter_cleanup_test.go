@@ -897,8 +897,9 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 // and must then equal one of exactly these, every other form being refused:
 //
 //   - needs.<id>.result        runner-defined status enum (success/failure/...)
-//   - matrix.<key>             workflow-authored constants; every matrix in the
-//     four workflows is a literal, none is built with fromJSON from an output
+//   - matrix.<key>             workflow-authored constants; TestWorkflowMatrixValuesLiteral
+//     holds every matrix value in the four workflows to a literal scalar or list
+//     (no ${{ }}, no fromJSON), which is what makes this entry safe
 //   - github.event_name        runner-defined event-kind enum
 //   - github.run_id / run_number / run_attempt / sha
 //     runner-defined numeric ids and a 40-hex commit id
@@ -910,6 +911,13 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 // allowing them would widen the guard for nothing), github.repository,
 // github.ref_name, github.actor, github.head_ref, github.event.*, inputs.*,
 // steps.*, env.*, needs.<id>.outputs.*, any function call and any bracket index.
+//
+// The sweep covers every surface a step hands to a shell or a script engine as
+// TEXT (sync-audit iter3 G1-R2): the `run:` body, and the code-valued `with:`
+// inputs of a `uses:` step (rdcCodeInputKeys: `script:` of actions/github-script
+// above all, and the command-shaped inputs other actions evaluate). Data inputs
+// (`name:`, `path:`, `go-version:`, `token:` ...) are values, not code, and are
+// not swept; `env:` is the safe channel and is not swept either.
 
 const rdcRunInterpSentinel = "RUN_INTERPOLATION_VIOLATION"
 
@@ -925,19 +933,109 @@ var (
 	}
 )
 
+// rdcCodeInputKeys are the `with:` input names (case-insensitive) a `uses:` step's
+// action evaluates as code or shell text.
+var rdcCodeInputKeys = []string{"script", "run", "command", "commands", "cmd", "args", "entrypoint"}
+
+// rdcSurface is one piece of text a step hands to a shell or script engine.
+type rdcSurface struct{ label, text string }
+
+// rdcStepSurfaces lists the code-bearing text of a step: its run body and the
+// code-valued inputs of its action.
+func rdcStepSurfaces(s rpcStep) []rdcSurface {
+	var out []rdcSurface
+	if s.Run != "" {
+		out = append(out, rdcSurface{"run script", s.Run})
+	}
+	if s.Uses != "" {
+		for _, k := range rpcSortedKeys(s.With) {
+			if rpcContains(rdcCodeInputKeys, strings.ToLower(k)) {
+				out = append(out, rdcSurface{fmt.Sprintf("with.%s input (%s evaluates it as code)", k, s.Uses), fmt.Sprint(s.With[k])})
+			}
+		}
+	}
+	return out
+}
+
 // rdcCheckRunInterpolation returns one violation per refused expression found
-// in a step's run body.
+// in a step's run body or code-valued action input.
 func rdcCheckRunInterpolation(wfs []*rpcWorkflow) []string {
 	var v []string
 	for _, wf := range wfs {
 		for _, id := range wf.jobIDs() {
 			for _, s := range wf.Jobs[id].Steps {
-				for _, m := range rdcExprRe.FindAllStringSubmatch(s.Run, -1) {
-					expr := strings.ToLower(strings.Join(strings.Fields(m[1]), " "))
-					if !rdcAllowedExpr.MatchString(expr) {
-						v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its run script, which is not on the allowlist; pass it through the step env and reference a quoted shell variable", rdcRunInterpSentinel, wf.Path, id, s.Name, expr))
+				for _, sf := range rdcStepSurfaces(s) {
+					for _, m := range rdcExprRe.FindAllStringSubmatch(sf.text, -1) {
+						expr := strings.ToLower(strings.Join(strings.Fields(m[1]), " "))
+						if !rdcAllowedExpr.MatchString(expr) {
+							v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its %s, which is not on the allowlist; pass it through the step env and reference a quoted shell variable (process.env in a script input)", rdcRunInterpSentinel, wf.Path, id, s.Name, expr, sf.label))
+						}
 					}
 				}
+			}
+		}
+	}
+	return v
+}
+
+// ---- matrix values are literals (sync-audit iter3 G1-R1) -----------------------
+//
+// The allowlist above admits `matrix.<key>` because a matrix value is authored in
+// the workflow. That holds only while every value IS authored there: a leg value
+// set from `${{ github.event.pull_request.title }}` or a whole matrix built with
+// `fromJSON(needs.x.outputs.m)` smuggles an outsider-controlled string through an
+// allowlisted spelling (mutant M20: it passes the allowlist guard and actionlint).
+// So every matrix value, key and nested include / exclude entry in the four
+// workflows must be a literal scalar or a literal list / mapping of literals.
+
+const rdcMatrixSentinel = "MATRIX_LITERAL_VIOLATION"
+
+var rdcMatrixExprRe = regexp.MustCompile(`(?i)\$\{\{|fromjson\s*\(`)
+
+// rdcWalkMatrix appends a violation for each expression-bearing string at or
+// below v (keys included).
+func rdcWalkMatrix(v *[]string, where, path string, x any) {
+	bad := func() {
+		*v = append(*v, fmt.Sprintf("%s: %s: %s carries an expression or fromJSON (%q); a matrix value must be a literal", rdcMatrixSentinel, where, path, x))
+	}
+	switch val := x.(type) {
+	case string:
+		if rdcMatrixExprRe.MatchString(val) {
+			bad()
+		}
+	case map[string]any:
+		for _, k := range rpcSortedKeys(val) {
+			if rdcMatrixExprRe.MatchString(k) {
+				*v = append(*v, fmt.Sprintf("%s: %s: %s has the key %q, which carries an expression", rdcMatrixSentinel, where, path, k))
+			}
+			rdcWalkMatrix(v, where, path+"."+k, val[k])
+		}
+	case []any:
+		for i, e := range val {
+			rdcWalkMatrix(v, where, fmt.Sprintf("%s[%d]", path, i), e)
+		}
+	case nil, bool, int, int64, uint64, float64:
+	default:
+		if rdcMatrixExprRe.MatchString(fmt.Sprint(val)) {
+			bad()
+		}
+	}
+}
+
+// rdcCheckMatrixLiteral returns one violation per non-literal matrix value, and
+// one per matrix written as a scalar expression instead of a mapping.
+func rdcCheckMatrixLiteral(wfs []*rpcWorkflow) []string {
+	var v []string
+	for _, wf := range wfs {
+		for _, id := range wf.jobIDs() {
+			m := wf.Jobs[id].Strategy.Matrix
+			where := fmt.Sprintf("%s job %q strategy.matrix", wf.Path, id)
+			for _, k := range rpcSortedKeys(m) {
+				if k == rpcMatrixScalarKey {
+					v = append(v, fmt.Sprintf("%s: %s is the scalar %q, not a mapping of literals", rdcMatrixSentinel, where, m[k]))
+					continue
+				}
+				rdcWalkMatrix(&v, where, k, m[k])
 			}
 		}
 	}
@@ -1052,6 +1150,166 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 		}
 		if got := rdcCheckRunInterpolation(wfs); len(got) != 0 {
 			t.Fatalf("a runner status enum / workflow constant was refused: %s", got[0])
+		}
+	})
+
+	// G1-R2: code-valued action inputs are swept like run bodies. Each control
+	// appends a `uses:` step to the first job of the named workflow.
+	withControls := []struct {
+		name, wf, uses string
+		with           map[string]any
+		wantRed        bool
+	}{
+		{"github-script script with a payload field (M15)", ".github/workflows/ci.yml", "actions/github-script@v7",
+			map[string]any{"script": "const t = '${{ github.event.pull_request.title }}';\ncore.info(t);\n"}, true},
+		{"github-script script with a step output", ".github/workflows/release-drafter-cleanup.yml", "actions/github-script@v7",
+			map[string]any{"script": "core.info('${{ steps.drafts.outputs.stale_tags }}')"}, true},
+		{"github-script script, expression spread over lines", ".github/workflows/release-pr-multi-os.yml", "actions/github-script@v7",
+			map[string]any{"script": "core.info(`${{\n  github.head_ref\n}}`)"}, true},
+		{"github-script input name in another case", ".github/workflows/ci.yml", "actions/github-script@v7",
+			map[string]any{"Script": "core.info('${{ github.event.head_commit.message }}')"}, true},
+		{"command input of another action", ".github/workflows/ci.yml", "example/shell-action@v1",
+			map[string]any{"command": "echo ${{ github.head_ref }}"}, true},
+		{"args input of another action", ".github/workflows/ci.yml", "example/runner-action@v1",
+			map[string]any{"args": "--title ${{ github.event.pull_request.title }}"}, true},
+		{"github-script script using only allowlisted forms", ".github/workflows/ci.yml", "actions/github-script@v7",
+			map[string]any{"script": "core.info('${{ github.event_name }} ${{ needs.detect.result }} ${{ matrix.goos }}')"}, false},
+	}
+	for _, c := range withControls {
+		t.Run("control/with/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+			}
+			wfs := load()
+			injected := false
+			for _, wf := range wfs {
+				if wf.Path != c.wf {
+					continue
+				}
+				id := wf.jobIDs()[0]
+				wf.Jobs[id].Steps = append(wf.Jobs[id].Steps, rpcStep{Name: "Injected", Uses: c.uses, With: c.with})
+				injected = true
+			}
+			if !injected {
+				t.Fatalf("control did not apply: %s is not in the swept set", c.wf)
+			}
+			got := rdcCheckRunInterpolation(wfs)
+			if !c.wantRed {
+				if len(got) != 0 {
+					t.Fatalf("an allowlisted form in a script input was refused: %s", got[0])
+				}
+				return
+			}
+			if len(got) == 0 {
+				t.Fatalf("mutant %v with %v passes the guard", c.uses, c.with)
+			}
+			t.Logf("control observed red: %s", got[0])
+		})
+	}
+}
+
+// TestWorkflowMatrixValuesLiteral closes the trust the interpolation allowlist
+// places in `matrix.<key>` (sync-audit iter3 G1-R1): every strategy.matrix value
+// in the four workflows is a literal, with no expression and no fromJSON.
+func TestWorkflowMatrixValuesLiteral(t *testing.T) {
+	load := func() []*rpcWorkflow {
+		var wfs []*rpcWorkflow
+		for _, rel := range rdcRunInterpWorkflows {
+			wfs = append(wfs, rpcLoadWorkflow(t, rel))
+		}
+		return wfs
+	}
+	base := load()
+	matrices := 0
+	for _, wf := range base {
+		for _, j := range wf.Jobs {
+			if len(j.Strategy.Matrix) > 0 {
+				matrices++
+			}
+		}
+	}
+	if matrices == 0 {
+		t.Fatalf("%s: the sweep selected no strategy.matrix, so a green would assert nothing", rdcMatrixSentinel)
+	}
+	t.Logf("swept %d matrices across %d workflows", matrices, len(base))
+	for _, msg := range rdcCheckMatrixLiteral(base) {
+		t.Error(msg)
+	}
+	baselineClean := len(rdcCheckMatrixLiteral(base)) == 0
+
+	// include returns the idx-th include entry of a job's matrix.
+	include := func(w *rpcWorkflow, job string, idx int) map[string]any {
+		return w.Jobs[job].Strategy.Matrix["include"].([]any)[idx].(map[string]any)
+	}
+	byPath := func(wfs []*rpcWorkflow, rel string) *rpcWorkflow {
+		for _, w := range wfs {
+			if w.Path == rel {
+				return w
+			}
+		}
+		t.Fatalf("control did not apply: %s is not in the swept set", rel)
+		return nil
+	}
+	const ciRel = ".github/workflows/ci.yml"
+	const miniHead = "jobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n    strategy:\n"
+	controls := []struct {
+		name   string
+		mutate func(wfs []*rpcWorkflow) []*rpcWorkflow
+	}{
+		{"include entry set from the pull request title (M20)", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			include(byPath(wfs, ciRel), "build", 0)["goos"] = "${{ github.event.pull_request.title }}"
+			return wfs
+		}},
+		{"axis list element carrying an expression", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			byPath(wfs, ciRel).Jobs["test"].Strategy.Matrix["os"] = []any{"ubuntu-latest", "${{ github.head_ref }}"}
+			return wfs
+		}},
+		{"exclude entry carrying an expression", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			byPath(wfs, ciRel).Jobs["build"].Strategy.Matrix["exclude"] = []any{map[string]any{"goos": "${{ github.head_ref }}"}}
+			return wfs
+		}},
+		{"axis built with fromJSON", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			byPath(wfs, ciRel).Jobs["test"].Strategy.Matrix["shard"] = "${{ fromJSON(needs.detect.outputs.shards) }}"
+			return wfs
+		}},
+		{"include value nested in a list", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			include(byPath(wfs, ciRel), "build", 1)["tags"] = []any{"a", map[string]any{"x": "${{ github.event.pull_request.title }}"}}
+			return wfs
+		}},
+		{"matrix key carrying an expression", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			include(byPath(wfs, ciRel), "build", 0)["${{ github.head_ref }}"] = "x"
+			return wfs
+		}},
+		{"fromJSON call without braces", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			include(byPath(wfs, ciRel), "build", 0)["goarch"] = "fromJSON('[\"amd64\"]')"
+			return wfs
+		}},
+		{"whole matrix written as a fromJSON scalar", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			return append(wfs, rpcParseWorkflow(t, "mini.yml", miniHead+"      matrix: ${{ fromJSON(needs.a.outputs.m) }}\n"))
+		}},
+		{"whole matrix written as an include scalar", func(wfs []*rpcWorkflow) []*rpcWorkflow {
+			return append(wfs, rpcParseWorkflow(t, "mini.yml", miniHead+"      matrix:\n        include: ${{ fromJSON(needs.a.outputs.m) }}\n"))
+		}},
+	}
+	for _, c := range controls {
+		t.Run("control/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+			}
+			got := rdcCheckMatrixLiteral(c.mutate(load()))
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the guard", c.name)
+			}
+			t.Logf("control observed red: %s", got[0])
+		})
+	}
+	t.Run("control/literal forms stay allowed", func(t *testing.T) {
+		mini := rpcParseWorkflow(t, "mini.yml", miniHead+
+			"      fail-fast: false\n      matrix:\n        os: [ubuntu-latest, macos-latest]\n        shard: [1, 2]\n        flag: [true, false]\n"+
+			"        include:\n          - os: ubuntu-latest\n            tags: [a, b]\n            extra: ~\n"+
+			"        exclude:\n          - os: macos-latest\n            shard: 2\n")
+		if got := rdcCheckMatrixLiteral([]*rpcWorkflow{mini}); len(got) != 0 {
+			t.Fatalf("a literal matrix was refused: %s", got[0])
 		}
 	})
 }
