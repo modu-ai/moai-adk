@@ -794,6 +794,15 @@ Verification batch (this tree, this run, at the final working-tree state the com
 
 Authored-By-Agent: manager-develop
 
+### Landing decision — debt-documented landing (operator ruling via leader, 2026-10-23)
+
+The landing re-audit loop ran 8 audits (receipts rcpt-99ea6bee74f2473b25362a18 → rcpt-1945aac06ebeb8675eee395c and the 8th rcpt-bf235d5b5ca7f537978e97c6) with 9 repair rounds (r1–r8 + r6b). Every round's findings were verified REAL and repaired with RED-first evidence; each round confirmed the previous round's fixes (zero re-reports), but the static review kept surfacing NEW P2 findings in the large merged diff (round-by-round: 4→4→2→2→2→2→3→3→2) — a non-terminating pattern the leader escalated to the operator. The operator ruled (relayed by the leader, 2026-10-23): **land with the remaining P2s documented as debts**; merge-hold discipline applies (draft PR, no `factory complete`, merge is the leader's).
+
+**Outstanding debts (the 8th audit's 2 findings, unrepaired by ruling):**
+
+- **t1632-DEBT-1** (rcpt-bf235d5b5ca7f537978e97c6, internal/hook/failure_observer.go:65, P2): the M1 policy-refusal exclusion matches `{"refused":true}` as TEXT, so a failed Bash command or test output that merely QUOTES that JSON is excluded from the usage log and lessons inbox. Fix direction: structurally verify the payload is an actual MCP tool refusal before excluding. Follow-up card candidate.
+- **t1632-DEBT-2** (same receipt, internal/cli/mcp_convergence.go:727, P2): the audit_multi GLM leg does not carry the `truncated` / `excluded_untracked` material marks that the standalone `glm_audit` records (M6) — a large-diff GLM leg reports no material truncation through the convergence path. Fix direction: share the standalone collector and preserve the marks on the per-backend convergence result. Follow-up card candidate.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
