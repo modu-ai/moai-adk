@@ -1,0 +1,23 @@
+package gl
+
+import "testing"
+
+func TestReal(t *testing.T)      {}
+func Test(t *testing.T)          {}
+func Fuzz(f *testing.F)          { f.Add(1); f.Fuzz(func(t *testing.T, n int) {}) }
+func FuzzReal(f *testing.F)      { f.Add(1); f.Fuzz(func(t *testing.T, n int) {}) }
+func Fuzzhelper(s string) string { return s }
+func BenchmarkB(b *testing.B)    {}
+func Example() {
+	// Output:
+}
+func ExampleAlpha() {}
+func ExampleLower() {
+	// output: x
+}
+func ExampleBlock() {
+	/* Output: */
+}
+func ExampleUnordered() {
+	// Unordered output:
+}

@@ -2217,6 +2217,9 @@
 - path: "security.sandbox.required"
   class: R
   evidence: none
+- path: "state.backup_past_versions_keep"
+  class: W
+  evidence: reader
 - path: "state.profile_max_bytes"
   class: W
   evidence: reader
@@ -2463,6 +2466,12 @@
 - path: "workflow.audit.glm.model"
   class: W
   evidence: reader
+- path: "workflow.base_freshness_gate.enabled"
+  class: W
+  evidence: "reader: internal/cli baseFreshnessGateConfig (SPEC-INTEGRATION-STALE-BASE-001); gates only the refusal layer of the pre-window base-freshness check"
+- path: "workflow.base_freshness_gate.max_behind_landings"
+  class: W
+  evidence: "reader: internal/cli baseFreshnessGateConfig (SPEC-INTEGRATION-STALE-BASE-001); the tolerance K the check measures landings behind against"
 - path: "workflow.branch_guard.deny_commits_on"
   class: W
   evidence: "reader: internal/hook preToolHandler.protectedCommitDenyList + checkProtectedCommit (SPEC-MAIN-COMMIT-BAN-001); empty list short-circuits before any subprocess"
@@ -2493,6 +2502,9 @@
 - path: "workflow.execution_mode"
   class: W
   evidence: reader
+- path: "workflow.factory.self_dispatch"
+  class: W
+  evidence: "reader: internal/cli factorySelfDispatchEnabled, read by factoryNextLeaseOnceEligibility (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-001/002)"
 - path: "workflow.factory_lease.duration"
   class: W
   evidence: reader

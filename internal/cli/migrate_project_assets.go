@@ -13,11 +13,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -35,6 +37,164 @@ var projectCommonAssetRels = []string{
 
 // removalEnabled gates the project-side removal; its criterion (AC-RC30-02) is owned by card t1668.
 var removalEnabled = false
+
+// migrationRunContext carries what the migration shares with the enclosing
+// update run (REQ-RC30-004, card t1668 M1 step 4): the reporter's manifest
+// manager instance, the run-scoped backup directory, and the migration's
+// outcome for the post-flow final-state verification. A nil context (every
+// direct-call path, tests included) keeps the standalone behavior — the
+// migration loads its own manager and creates its own run backup directory
+// on demand.
+type migrationRunContext struct {
+	// userAssetsInstalled is the run-level removal gate the enclosing update
+	// run resolved (the value the old pre-reporter call site passed in).
+	userAssetsInstalled bool
+	// mgr is the enclosing run's manifest manager — the reporter's instance,
+	// loaded before the Backup stage. Sharing it is the lost-update fix: the
+	// migration's drops and KeptBy marks land in the SAME in-memory view the
+	// Deploy-stage Save persists, so no later Save can overwrite them with a
+	// pre-migration view (plan-audit-iter2 R1: KeptBy wiped after reload).
+	mgr manifest.Manager
+	// runBackupDir is the run-scoped backup directory (REQ-UDS-002's one
+	// directory per run). The Backup stage seeds it with the config backup
+	// path so the removal copies ride the run's own directory; a direct call
+	// leaves it empty and backupRemovedAsset creates one on demand.
+	runBackupDir string
+	// removed and keptProfileReach are the migration's OUTCOME — the paths
+	// removed this run and the paths marked KeptByProfileReach this run.
+	// verifyMigrationFinalState re-reads the disk manifest against these
+	// after the whole update flow ends.
+	removed          []string
+	keptProfileReach []string
+}
+
+// migrationBackupSubdir names the run-backup subdirectory holding the
+// pre-removal copies (REQ-RC30-004): <runDir>/removed-assets/<rel>. It is
+// namespaced so it cannot collide with the .moai/config tree BackupMoaiConfig
+// writes in the same run directory (the diskBackupSubdir pattern).
+const migrationBackupSubdir = "removed-assets"
+
+// backupDestUnsafeSentinel prefixes every destination-guard refusal in
+// backupRemovedAsset, so the refused removal's cause is grep-able in run
+// output (the ARCHIVE_SYMLINK precedent).
+const backupDestUnsafeSentinel = "BACKUP_DEST_UNSAFE:"
+
+// backupRemovedAsset writes a byte copy of a file that is about to be removed
+// into the run backup (REQ-RC30-004, U-02 / AC-RC30-03). It reuses
+// ensureRunBackupDir so a run keeps exactly one backup directory: an
+// enclosing run's directory (rc.runBackupDir) when the migration rides the
+// update flow, a fresh timestamped one for a standalone migration call. The
+// directory is memoized back into rc so later removals in the same run reuse
+// it.
+//
+// The destination gets the mirror of the removal point's source-side guard
+// (sync-audit D1, card t1668): the run directory is project-controlled
+// content, so a symlink planted under it would route the write outside the
+// project — or onto the source file itself, turning the backup into a
+// no-copy right before os.Remove takes the only copy. The guard resolves the
+// trusted run directory once and verifies EVERY destination component below
+// it BEFORE creating anything (a verify-then-MkdirAll order — creating
+// first and resolving after would still litter the symlink's target), then
+// creates exclusively. Any refusal surfaces as a backup-write failure, which
+// the removal point treats as refuse-the-removal (the file stays
+// project-side, reported).
+//
+// The guard's boundary is the PROJECT ROOT (sync-audit delta D6, card
+// t1668), mirroring the source-side guard's semantics: a symlink planted at
+// .moai-backups itself resolves the whole backup tree outside the project —
+// every run-dir-anchored check below would pass — so the resolved run
+// directory is verified against the resolved project root, and the planted
+// .moai-backups link is refused BEFORE ensureRunBackupDir creates the run
+// directory through it. Documented ceiling (delta D7, optional per the
+// leader): a check-then-use window remains between the component walk and
+// the create — os.Root restructuring is out of scope for this repair.
+func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash string, data []byte) error {
+	dir := ""
+	if rc != nil {
+		dir = rc.runBackupDir
+	}
+	rootAbs, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("%s resolve project root %s: %w", backupDestUnsafeSentinel, projectRoot, err)
+	}
+	rootResolved, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return fmt.Errorf("%s resolve project root %s: %w", backupDestUnsafeSentinel, rootAbs, err)
+	}
+	// D6: refuse a planted .moai-backups link before the run directory is
+	// created through it.
+	if info, statErr := os.Lstat(filepath.Join(projectRoot, defs.BackupsDir)); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s %s is a planted symlink", backupDestUnsafeSentinel, defs.BackupsDir)
+	} else if statErr != nil && !os.IsNotExist(statErr) {
+		return fmt.Errorf("%s stat %s: %w", backupDestUnsafeSentinel, defs.BackupsDir, statErr)
+	}
+	runDir, err := ensureRunBackupDir(projectRoot, dir)
+	if err != nil {
+		return err
+	}
+	if rc != nil {
+		rc.runBackupDir = runDir
+	}
+	runDirAbs, err := filepath.Abs(runDir)
+	if err != nil {
+		return fmt.Errorf("%s resolve run backup dir %s: %w", backupDestUnsafeSentinel, runDir, err)
+	}
+	trustedRunDir, err := filepath.EvalSymlinks(runDirAbs)
+	if err != nil {
+		return fmt.Errorf("%s resolve run backup dir %s: %w", backupDestUnsafeSentinel, runDir, err)
+	}
+	if !withinRootBoundary(rootResolved, trustedRunDir) {
+		return fmt.Errorf("%s run backup dir %s resolves outside the project root", backupDestUnsafeSentinel, runDir)
+	}
+	dst := filepath.Join(trustedRunDir, migrationBackupSubdir, filepath.FromSlash(relSlash))
+	// Walk every component of the destination below the trusted run dir:
+	// each must be absent (creatable) or a real directory — a symlink at
+	// ANY depth would route the write outside, and a ".." component would
+	// leave the trusted root entirely. The final component must be absent
+	// outright (an existing entry there — symlink included — is refused,
+	// closing the no-copy-onto-source shape).
+	relToRun, err := filepath.Rel(trustedRunDir, dst)
+	if err != nil {
+		return fmt.Errorf("%s relate destination %s: %w", backupDestUnsafeSentinel, dst, err)
+	}
+	parts := strings.Split(filepath.ToSlash(relToRun), "/")
+	check := trustedRunDir
+	for i, part := range parts {
+		if part == ".." || part == "" {
+			return fmt.Errorf("%s destination component %q of %s is not a relative in-root path", backupDestUnsafeSentinel, part, relSlash)
+		}
+		check = filepath.Join(check, filepath.FromSlash(part))
+		info, statErr := os.Lstat(check)
+		if os.IsNotExist(statErr) {
+			continue
+		}
+		if statErr != nil {
+			return fmt.Errorf("%s stat destination component %s: %w", backupDestUnsafeSentinel, check, statErr)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s destination component %s is a planted symlink", backupDestUnsafeSentinel, check)
+		}
+		if i < len(parts)-1 && !info.IsDir() {
+			return fmt.Errorf("%s destination component %s is not a directory", backupDestUnsafeSentinel, check)
+		}
+		if i == len(parts)-1 {
+			return fmt.Errorf("%s destination %s already exists", backupDestUnsafeSentinel, check)
+		}
+	}
+	dstDir := filepath.Dir(dst)
+	if err := os.MkdirAll(dstDir, defs.DirPerm); err != nil {
+		return fmt.Errorf("create %s: %w", dstDir, err)
+	}
+	f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, defs.FilePerm)
+	if err != nil {
+		return fmt.Errorf("%s exclusive create %s: %w", backupDestUnsafeSentinel, dst, err)
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("write %s: %w", dst, err)
+	}
+	return f.Close()
+}
 
 // migrateProjectCommonAssets removes template-managed common skills and
 // agents from the project after confirming each user counterpart (REQ-020).
@@ -54,7 +214,15 @@ var removalEnabled = false
 // the §2.3 full-deletion-list rule (gate round 12): a removal that only
 // bumped a counter vanished from every deletion list, because the
 // reconciliation can no longer see the already-removed file.
-func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled bool, out fmt.Stringer, report func(string, ...interface{})) ([]string, error) {
+//
+// The optional run context (card t1668, REQ-RC30-004) shares the enclosing
+// update run's manifest manager and run backup directory with the migration
+// and collects its outcome; at most one is read, and a direct call omits it.
+func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled bool, out fmt.Stringer, report func(string, ...interface{}), run ...*migrationRunContext) ([]string, error) {
+	var rc *migrationRunContext
+	if len(run) > 0 {
+		rc = run[0]
+	}
 	migrationPreservedProjectFiles = map[string]bool{}
 	if !userAssetsInstalled {
 		report("migration: the user-asset install did not succeed this run — every project-side asset stays in place (nothing removed)")
@@ -71,7 +239,15 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		return nil, fmt.Errorf("load harness catalog for migration: %w", err)
 	}
 	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
+	if rc != nil && rc.mgr != nil {
+		// Shared instance (the reporter's): loaded before the Backup stage.
+		// The migration's drops and KeptBy marks land in the same in-memory
+		// view the Deploy-stage Save persists — the lost-update window where
+		// a stale pre-migration view overwrote the migration's manifest
+		// changes (dropped entries resurrected, KeptBy wiped) is closed by
+		// construction (plan M1 step 4 (a)).
+		mgr = rc.mgr
+	} else if _, err := mgr.Load(projectRoot); err != nil {
 		// No project manifest: nothing provenance-classified to migrate.
 		return nil, nil
 	}
@@ -181,6 +357,9 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				}
 				stayed++
 				migrationPreservedProjectFiles[p] = true
+				if rc != nil {
+					rc.keptProfileReach = append(rc.keptProfileReach, relSlash)
+				}
 				report("  migration: kept (profile-mapped project — profile sessions need this shared copy, so it stays project-side): %s", relSlash)
 				return nil
 			}
@@ -214,6 +393,16 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				report("  migration: kept project-side (removal is not enabled yet): %s", relSlash)
 				return nil
 			}
+			// REQ-RC30-004 (U-02, AC-RC30-03, card t1668 M1): a byte copy of
+			// the file lands in the run backup BEFORE os.Remove. A removal
+			// whose backup copy cannot be written is not a removal — the
+			// file stays project-side, reported.
+			if bErr := backupRemovedAsset(projectRoot, rc, relSlash, currentBytes); bErr != nil {
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: removal refused (the run-backup copy failed): %s: %v", relSlash, bErr)
+				return nil
+			}
 			if err := os.Remove(p); err != nil {
 				report("  migration: removal failed: %s: %v", relSlash, err)
 				return nil
@@ -225,7 +414,19 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			// see an already-removed file, so the deletion vanished from
 			// every list.
 			removedPaths = append(removedPaths, relSlash)
+			if rc != nil {
+				rc.removed = append(rc.removed, relSlash)
+			}
 			report("  migration: removed: %s", relSlash)
+			// REQ-RC30-004 (U-10, AC-RC30-11, card t1668 M2): the skill
+			// directory that held this file goes with it when the removal
+			// emptied it. A directory still holding content (the user's own
+			// files) stays.
+			if pruned, pErr := pruneEmptiedSkillDir(projectRoot, rootResolved, p); pErr != nil {
+				report("  migration: emptied-directory prune failed: %s: %v", relSlash, pErr)
+			} else if pruned {
+				report("  migration: removed empty skill directory: %s", filepath.ToSlash(filepath.Dir(relSlash)))
+			}
 			return nil
 		})
 		if err != nil && !os.IsNotExist(err) {
@@ -391,4 +592,103 @@ func withinRootBoundary(root, path string) bool {
 		return false
 	}
 	return rel == "." || (!strings.HasPrefix(rel, "..") && rel != "")
+}
+
+// migrationFinalStateSentinel prefixes every final-state divergence the
+// verification below surfaces, so the signal is grep-able in run output and
+// logs (the backupWriteFailedSentinel pattern).
+const migrationFinalStateSentinel = "migration-final-state-mismatch:"
+
+// pruneEmptiedSkillDir removes the skill directory that held a just-removed
+// file when that removal emptied it (REQ-RC30-004, U-10 / AC-RC30-11): a
+// managed-asset walk that only removes files would leave every emptied
+// `.claude/skills/<name>` / `.agents/skills/<name>` behind as litter.
+//
+// Boundaries (the removal point's own guards, followed deliberately): the
+// directory is resolved through symlinks and checked against the resolved
+// project root (withinRootBoundary), and only a path EXACTLY one component
+// below a skill root is a candidate — the skill roots themselves and any
+// deeper layout are never pruning targets. os.Remove (not RemoveAll) can
+// only take an empty directory, so a directory still holding the user's own
+// content stays even if the ReadDir check were ever bypassed. The manifest
+// needs no extra handling: its entries are FILES, and the entries-drop loop
+// stats file paths.
+//
+// Agent directories (.claude/agents/moai, .codex/agents/moai) are outside
+// this function on purpose — REQ-RC30-004 names skill directories only.
+func pruneEmptiedSkillDir(projectRoot, rootResolved, removedFile string) (bool, error) {
+	dir := filepath.Dir(removedFile)
+	resolvedDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		// The directory is already gone (a prior run) or unreadable: nothing
+		// to prune, not a failure.
+		return false, nil
+	}
+	if !withinRootBoundary(rootResolved, resolvedDir) {
+		return false, nil
+	}
+	rel, err := filepath.Rel(projectRoot, dir)
+	if err != nil {
+		return false, nil
+	}
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	if len(parts) != 3 || parts[2] == "" {
+		return false, nil
+	}
+	if parts[0] != ".claude" && parts[0] != ".agents" {
+		return false, nil
+	}
+	if parts[1] != "skills" {
+		return false, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		return false, nil
+	}
+	if err := os.Remove(dir); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// verifyMigrationFinalState re-reads the DISK manifest after the whole
+// update flow (the runTemplateSyncWithReporter path included) and confirms
+// the migration's outcome survived every later Save: entries the migration
+// marked KeptByProfileReach still carry the mark, and entries whose file the
+// migration removed are still absent (plan M1 step 4 (b)).
+//
+// This is the guard for the lost-update window the reorder opened: a later
+// stale-view Save would resurrect dropped entries and wipe the marks. The
+// unit-level migration tests bypass the reporter flow and cannot witness
+// that overwrite — only this re-read can. A divergence is reported loudly
+// but does not fail the completed run; the removal copies in the run backup
+// remain the recovery path.
+func verifyMigrationFinalState(projectRoot string, rc *migrationRunContext, errOut io.Writer) {
+	if rc == nil || (len(rc.removed) == 0 && len(rc.keptProfileReach) == 0) {
+		return
+	}
+	disk := manifest.NewManager()
+	if _, err := disk.Load(projectRoot); err != nil {
+		_, _ = fmt.Fprintf(errOut, "moai: %s manifest unreadable, cannot verify: %v\n", migrationFinalStateSentinel, err)
+		return
+	}
+	var problems []string
+	for _, rel := range rc.keptProfileReach {
+		entry, ok := disk.GetEntry(rel)
+		if !ok {
+			problems = append(problems, fmt.Sprintf("kept entry %s vanished from the manifest", rel))
+			continue
+		}
+		if entry.KeptBy != manifest.KeptByProfileReach {
+			problems = append(problems, fmt.Sprintf("kept entry %s lost its KeptBy mark (now %q)", rel, entry.KeptBy))
+		}
+	}
+	for _, rel := range rc.removed {
+		if _, ok := disk.GetEntry(rel); ok {
+			problems = append(problems, fmt.Sprintf("removed entry %s resurrected in the manifest", rel))
+		}
+	}
+	for _, p := range problems {
+		_, _ = fmt.Fprintf(errOut, "moai: %s %s\n", migrationFinalStateSentinel, p)
+	}
 }

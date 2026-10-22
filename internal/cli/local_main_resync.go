@@ -57,6 +57,32 @@ var localMainResyncAfterFastForward = func(repoRoot string) {}
 // default does nothing.
 var localMainResyncBeforeFastForward = func(repoRoot string) {}
 
+// localMainResyncAfterRevalidate is the end-of-re-validation test seam (card t1670,
+// sync-audit F1). It runs once localMainResyncRevalidate has passed every check and
+// before it returns, so a test can present a rival takeover right after the ownership
+// re-check. The production default does nothing.
+// @MX:NOTE: [AUTO] exists only to pin the in-lock placement of the re-validation: a rival takeover from here must be refused while the mutation section is held.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncAfterRevalidate = func(repoRoot string) {}
+
+// localMainResyncReadWindow is the window-record read localMainResyncRevalidate uses for
+// its ownership re-check (card t1670, sync-audit F1 of iteration 3). The production value
+// is factory.ReadIntegrationLock itself, so behaviour is unchanged.
+// @MX:NOTE: [AUTO] seam exists so a test can prove the ownership read happens inside the mutation section: a rival takeover attempted from the read must be refused as lock-busy.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncReadWindow = factory.ReadIntegrationLock
+
+// localMainResyncFastForward is the fast-forward itself, the one call that moves the
+// primary checkout's local main (card t1670, sync-audit F1 of iteration 5). The
+// --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is disabled so
+// the verb never stashes another session's changes (plan §B5). The production value
+// runs that merge and nothing else, so behaviour is unchanged.
+// @MX:NOTE: [AUTO] seam exists so a test observes the in-lock invariant at the move itself, not at a no-op hook beside it: when it runs, the read-time tripwire must be intact and a rival takeover must be refused as lock-busy.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncFastForward = func(git func(args ...string) (string, error), baseline string) (string, error) {
+	return git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline)
+}
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -240,10 +266,9 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 		if revalidateErr = localMainResyncRevalidate(git, repoRoot, sessionID, ref, head); revalidateErr != nil {
 			return nil
 		}
-		// The --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is
-		// disabled so the verb never stashes another session's changes (plan §B5).
+		// The move runs through localMainResyncFastForward, inside this section.
 		localMainResyncBeforeFastForward(repoRoot)
-		_, moveErr = git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline)
+		_, moveErr = localMainResyncFastForward(git, baseline)
 		return nil
 	}); lockErr != nil {
 		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: take the mutation lock before the move: %v", lockErr)
@@ -293,7 +318,7 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 // the primary must still be fully clean (iv). A refusal carries the exit class the
 // merge step uses for the same cause, and it moves nothing.
 func localMainResyncRevalidate(git func(args ...string) (string, error), repoRoot, sessionID, ref, headBeforeFetch string) error {
-	lock, err := factory.ReadIntegrationLock(repoRoot)
+	lock, err := localMainResyncReadWindow(repoRoot)
 	if err != nil {
 		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: read the window record before the move: %v", err)
 	}
@@ -324,6 +349,7 @@ func localMainResyncRevalidate(git func(args ...string) (string, error), repoRoo
 	if status != "" {
 		return localMainResyncRefusal(factory.MergeExitWorktreeDirty, "integration resync: refused — the primary checkout became dirty while the fetch ran (%d uncommitted or untracked change(s)). The primary is unchanged. Move or commit those changes from your own terminal, then re-run. Do not stash: the stash is repository-wide.", strings.Count(status, "\x00"))
 	}
+	localMainResyncAfterRevalidate(repoRoot)
 	return nil
 }
 

@@ -468,7 +468,6 @@ const (
 	DefaultProfileProjectsRetentionDays = 180
 	DefaultProfileDebugRetentionDays    = 30
 	DefaultProfileUnusedDays            = 90
-	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
 	// ProfileCapAdvisoryTimeout bounds the SessionStart profile-cap advisory
 	// check (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): the check walks the
@@ -512,6 +511,15 @@ const (
 	// reader needs history older than any live run could be. An explicit 0
 	// in state.yaml disables the sweep.
 	DefaultSessionRecordRetentionDays = 30
+
+	// DefaultBackupPastVersionsKeep is the shipped default for the
+	// project-tier `state.backup_past_versions_keep` key
+	// (SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-007): how many past versions
+	// of each backed-up file the update's backup pruning protects. It is
+	// declared here and nowhere else; the backup package falls back to it
+	// when handed a budget below 1, which would otherwise disable the
+	// protection of user files copied into pre-clean/.
+	DefaultBackupPastVersionsKeep = 3
 
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
@@ -1048,6 +1056,13 @@ const DefaultFactoryLanes = 8
 // fallback where a run carries no record or a capacity-open one.
 const DefaultFactoryLeaderLanes = 1
 
+// DefaultLeaderAnchorAuditRelPath is the override audit log of the leader
+// launch anchor guard (SPEC-LAUNCHER-ARGV-001 REQ-LA-005), relative to the
+// project root: one row per --allow-card-anchor bypass (backend, tree, branch),
+// following the BranchGuard `.moai/logs/` audit precedent. A bypass that cannot
+// be recorded here is refused, so the path is part of the guard's contract.
+const DefaultLeaderAnchorAuditRelPath = ".moai/logs/leader-anchor-audit.log"
+
 // DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
 // codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
 // when the phase exceeds it, the launcher prints one timing line per
@@ -1447,6 +1462,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Duration:      DefaultFactoryLeaseDuration.String(),
 			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
 		},
+		// SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007: the self-dispatch
+		// kill-switch ships default-OFF — the generic selection arms stay
+		// dormant for unowned cards, so the distributed behavior is exactly
+		// the incident t1780 posture minus the hazard. The entry is
+		// load-bearing the same way BranchGuard's is: without it the zero
+		// value would also read false, but the explicit false keeps the
+		// default readable from the constructor and lets the parity test
+		// pin it against both shipped workflow.yaml surfaces.
+		Factory: FactoryConfig{
+			SelfDispatch: false,
+		},
 		DefaultMode: "",
 		// "auto" (not "team") aligns with the template SSOT
 		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
@@ -1539,6 +1565,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` anywhere under internal/template/templates/.
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
+		},
+		// The base-freshness gate ships with its REFUSAL layer off and a
+		// tolerance of zero landings: measurement and the advisory line run on
+		// every entry regardless, and only the refusal is opt-in. Template
+		// neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		BaseFreshnessGate: BaseFreshnessGateConfig{
+			Enabled:           false,
+			MaxBehindLandings: 0,
 		},
 		// The candidate-CI path ships inert (SPEC-CANDIDATE-CI-001 REQ-CCI-006):
 		// no candidate verb operates and the merge step's landing check stays
@@ -1637,6 +1672,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		AnchorRelocationGuard: AnchorRelocationGuardConfig{
 			Enabled: false,
 		},
+		// The card-metadata editing verbs ship OFF (SPEC-CARD-METADATA-VERBS-001
+		// REQ-CMV-002): both verbs refuse naming the flag key on the
+		// distributed default, and an operator opts in via local config.
+		// Template neutrality: the template key lands commented-out (plan.md
+		// §F M5) — no `enabled: true` anywhere under
+		// internal/template/templates/.
+		CardMetadataVerbs: CardMetadataVerbsConfig{
+			Enabled: false,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
 		// ships default-OFF. Distributed users get an inert Stop hook; a
 		// maintainer opts in via local config. Template neutrality (§25): no
@@ -1726,7 +1770,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // literal in internal/cli/state.go and internal/worktree/state_guard.go is the SSOT.
 func NewDefaultStateConfig() StateConfig {
 	days := DefaultSessionRecordRetentionDays
-	return StateConfig{SessionRecordRetentionDays: &days}
+	return StateConfig{
+		SessionRecordRetentionDays: &days,
+		BackupPastVersionsKeep:     DefaultBackupPastVersionsKeep,
+	}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.

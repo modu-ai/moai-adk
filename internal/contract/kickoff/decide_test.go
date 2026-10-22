@@ -91,7 +91,7 @@ func (f *dfx) writeReport(r auditReport) {
 func jevAnswer(choice string, p float64) jev.Result {
 	return jev.Result{Availability: jev.Available, Answers: []jev.Answer{{
 		QuestionID: "start", Kind: jev.KindChoice, Choice: choice, Probability: p,
-	}}}
+	}}, Usage: jev.Usage{Model: "jev-9.8.7", RequestModel: jev.ModelID}}
 }
 
 func judgement(agent, answer string) []byte {
@@ -418,6 +418,47 @@ func TestDecideAuthorExclusion(t *testing.T) {
 			ev := f.lastEvent()
 			if ev.DeciderAgent != c.agent {
 				t.Errorf("event decider agent %q", ev.DeciderAgent)
+			}
+		})
+	}
+}
+
+// TestDecide_JevCrossCheckReasonNamesInterpretedModel — AC-JRM-009: the
+// receipt's Jev reason names the interpreted model the answer reported, not
+// the request alias.
+func TestDecide_JevCrossCheckReasonNamesInterpretedModel(t *testing.T) {
+	f := newDecide(t, "manager-spec")
+	f.jevRes = jevAnswer("approve", 0.8)
+	r0, e0 := f.counts()
+	f.mustDecide(f.input("llm+jev", "approve", true))
+	r := f.assertReceipt(r0, e0)
+	if r.JevAnswer == nil {
+		t.Fatal("no Jev answer in the receipt")
+	}
+	if !strings.Contains(r.JevAnswer.Reason, "jev-9.8.7") {
+		t.Errorf("reason %q does not name the interpreted model jev-9.8.7", r.JevAnswer.Reason)
+	}
+	if strings.Contains(r.JevAnswer.Reason, jev.ModelID) {
+		t.Errorf("reason %q names the request alias %q", r.JevAnswer.Reason, jev.ModelID)
+	}
+}
+
+// TestDecide_UnattributedJevTakesTheFallback — an unattributed Jev result is
+// not an answer: the R2 path applies with the jev_call_failed reason.
+func TestDecide_UnattributedJevTakesTheFallback(t *testing.T) {
+	for _, llm := range []string{"approve", "reject"} {
+		t.Run(llm, func(t *testing.T) {
+			f := newDecide(t, "manager-spec")
+			f.jevRes = jev.Result{Availability: jev.Unattributed, Condition: "no interpreted model id"}
+			r0, e0 := f.counts()
+			res := f.mustDecide(f.input("llm+jev", llm, true))
+			if res.Outcome != llm || res.Rule != "R2" || res.FallbackReason != "jev_call_failed" {
+				t.Fatalf("outcome %q rule %q fallback %q, want %q R2 jev_call_failed", res.Outcome, res.Rule, res.FallbackReason, llm)
+			}
+			r := f.assertReceipt(r0, e0)
+			if r.EffectiveDecider != "llm" || r.Fallback == nil || !r.Fallback.Applied ||
+				r.Fallback.Reason == nil || *r.Fallback.Reason != "jev_call_failed" || r.JevAnswer != nil {
+				t.Errorf("receipt %+v", r)
 			}
 		})
 	}

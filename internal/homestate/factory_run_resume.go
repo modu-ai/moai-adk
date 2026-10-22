@@ -52,9 +52,12 @@ func (f *FactoryDB) ResumeRun(ctx context.Context, runID string, verifiedPID int
 	// The WHERE on the conflict branch is the already-active no-op: a row
 	// that resolved active between the discovery read and this write keeps
 	// its owner stamp, and RowsAffected reports the outcome for the event.
+	// The verified owner identity carries no session, so a resume clears the
+	// session a previous leader left on the row: the new pid is never paired
+	// with a stale session (t1772 review P1).
 	res, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,created_at,updated_at)
 VALUES(?,?,?,'active','{}',?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET
-status='active',lead_pid=excluded.lead_pid,lead_process_start=excluded.lead_process_start,updated_at=excluded.updated_at WHERE runs.status!='active'`,
+status='active',lead_session_id='',lead_pid=excluded.lead_pid,lead_process_start=excluded.lead_process_start,updated_at=excluded.updated_at WHERE runs.status!='active'`,
 		runID, "", "", verifiedPID, verifiedProcessStart, now, now)
 	if err != nil {
 		return err

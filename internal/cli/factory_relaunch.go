@@ -73,7 +73,7 @@ func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.Relaunch
 // active and its owner classifies dead. Every other case leaves the run
 // untouched and returns the outcome text; the verb launches regardless.
 func relaunchRetireFromRun(ctx context.Context, runID string) string {
-	root, err := os.Getwd()
+	root, err := checkedFactoryRoot()
 	if err != nil {
 		return fmt.Sprintf("run %s: working directory unavailable (%v), left untouched", runID, err)
 	}
@@ -96,9 +96,12 @@ func relaunchRetireFromRun(ctx context.Context, runID string) string {
 	}
 	defer func() { _ = db.Close() }() // the outcome is already decided; a close failure cannot change it
 	classification, err := db.RetireRunIfDead(ctx, runID, factorymsg.ReconcileOptionsFor(root))
+	var cardsErr *homestate.RunInProgressCardsError
 	switch {
 	case err == nil:
 		return fmt.Sprintf("run %s: retired (owner %s)", runID, classification)
+	case errors.As(err, &cardsErr):
+		return fmt.Sprintf("run %s: left active (%d in-progress cards)", runID, len(cardsErr.Cards))
 	case errors.Is(err, homestate.ErrRunOwnerNotDead):
 		return fmt.Sprintf("run %s: left active (owner %s)", runID, classification)
 	default:

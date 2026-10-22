@@ -303,6 +303,13 @@ secret-*.*
 .moai/**/*.corrupt*
 .moai/harness/learning-history/archive/*.jsonl.gz
 
+# Harness runtime data (rewritten by live session hooks; a tracked copy keeps
+# the checkout permanently dirty). Mirrors the repository root .gitignore.
+.moai/harness/observations.yaml
+.moai/harness/usage-log.jsonl.prune-state
+.moai/harness/usage-log.jsonl.prune-heal
+.moai/harness/learning-history/
+
 # ===========================================
 # Generated Code-Graph Layer (rebuilt on demand, never committed)
 # `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is

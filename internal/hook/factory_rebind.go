@@ -134,8 +134,8 @@ func registerReboundLane(ctx context.Context, req laneRebindRequest, y, provider
 func emitReboundState(req laneRebindRequest, y string, generation int64) string {
 	return emitFactoryLaneState(req, "rebound:"+y, func() string {
 		return fmt.Sprintf("%s run %s is not active; this session (slot %s) is now registered in the only active run %s at generation %d — "+
-			"messages arrive at turn boundaries, not idle wake; use run_id %s with the factory_msg_* tools",
-			factoryLaneReboundPrefix, req.envRun, req.slot, y, generation, y)
+			"messages arrive at turn boundaries, not idle wake",
+			factoryLaneReboundPrefix, req.envRun, req.slot, y, generation)
 	})
 }
 

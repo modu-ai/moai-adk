@@ -180,7 +180,7 @@ func Decide(in DecideInput) (DecideResult, error) {
 			r.EffectiveDecider = contract.DeciderLLMJev
 			r.JevAnswer = &contract.ReceiptJevAnswer{
 				ReceiptAnswer: contract.ReceiptAnswer{Answer: ja.Choice, Confidence: &ja.Probability,
-					Reason: "Jev cross-check signal (" + jev.ModelID + ").", ReasonRefs: j.ReasonRefs},
+					Reason: "Jev cross-check signal (" + jres.Usage.Model + ").", ReasonRefs: j.ReasonRefs},
 				RequestSHA256: receipt.SHA256Hex(rd.JevRequest),
 				RawResponse:   string(rd.JevResponse),
 			}

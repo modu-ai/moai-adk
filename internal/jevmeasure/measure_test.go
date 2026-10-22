@@ -2,6 +2,7 @@ package jevmeasure
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -52,7 +53,7 @@ func (s stubAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
 			QuestionID: req.Questions[0].ID, Kind: jev.KindNoul,
 			Probability: p,
 		}},
-		Usage: jev.Usage{Model: jev.ModelID},
+		Usage: jev.Usage{Model: "jev-9.8.7", RequestModel: jev.ModelID},
 	}
 }
 
@@ -70,6 +71,22 @@ func extractStubID(state string) string {
 		return ""
 	}
 	return rest[:j]
+}
+
+// modelAnswerer answers exactly as its inner stub does, then sets the interpreted
+// model the response reports, chosen per request. It is the seam the straddle
+// tests use: the same answers, carrying the model ids the test names.
+type modelAnswerer struct {
+	inner   stubAnswerer
+	modelOf func(req jev.Request) string
+}
+
+func (m modelAnswerer) Ask(ctx context.Context, req jev.Request) jev.Result {
+	res := m.inner.Ask(ctx, req)
+	if res.OK() {
+		res.Usage.Model = m.modelOf(req)
+	}
+	return res
 }
 
 // trialSet builds a labelled set whose majority label is "alive" at 75% — the
@@ -136,7 +153,7 @@ func TestConstantBaseline_IsTheMajorityLabel(t *testing.T) {
 
 // TestRun_ProducesBothArmsAndDelta is REQ-JEVO-010 / AC-JEVO-010: every
 // measurement runs both language arms and records the per-arm result and the
-// delta, under the pinned model id.
+// delta, under the interpreted model id (REQ-JRM-006).
 func TestRun_ProducesBothArmsAndDelta(t *testing.T) {
 	set := trialSet()
 	// Answer every sample "alive" (noul=false for "dead"), which reproduces
@@ -149,8 +166,11 @@ func TestRun_ProducesBothArmsAndDelta(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	if rep.ModelID != jev.ModelID {
-		t.Errorf("ModelID = %q, want the pinned %q", rep.ModelID, jev.ModelID)
+	if rep.ModelID != "jev-9.8.7" {
+		t.Errorf("ModelID = %q, want the interpreted %q", rep.ModelID, "jev-9.8.7")
+	}
+	if rep.RequestModel != jev.ModelID {
+		t.Errorf("RequestModel = %q, want the request alias %q", rep.RequestModel, jev.ModelID)
 	}
 	if len(rep.Arms) != 2 {
 		t.Fatalf("arms = %d, want 2", len(rep.Arms))
@@ -167,6 +187,160 @@ func TestRun_ProducesBothArmsAndDelta(t *testing.T) {
 	}
 	if rep.Source != SourceInjected {
 		t.Errorf("Source = %q, want %q — the answerer was not the live client", rep.Source, SourceInjected)
+	}
+}
+
+// TestRun_RefusesAStraddledMeasurement is AC-JRM-006 (REQ-JRM-006): when the
+// answered calls of one run report two interpreted model ids, the run returns
+// no artifact, and its error names both ids.
+func TestRun_RefusesAStraddledMeasurement(t *testing.T) {
+	set := trialSet()
+	// Sample "b" is answered by jev-9.8.8; every other call by jev-9.8.7.
+	straddled := modelAnswerer{
+		inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+		modelOf: func(req jev.Request) string {
+			if extractStubID(req.State) == "b" {
+				return "jev-9.8.8"
+			}
+			return "jev-9.8.7"
+		},
+	}
+	rep, err := Run(context.Background(), straddled, set, trialBuild)
+	if err == nil {
+		t.Fatal("Run returned an artifact for a run whose answered calls report two model versions")
+	}
+	if !reflect.DeepEqual(rep, Report{}) {
+		t.Errorf("a refused run returned a non-empty artifact: %+v", rep)
+	}
+	first := strings.Index(err.Error(), "jev-9.8.7")
+	second := strings.Index(err.Error(), "jev-9.8.8")
+	if first < 0 || second < 0 {
+		t.Fatalf("the error does not name both interpreted model ids: %v", err)
+	}
+	if first > second {
+		t.Errorf("the error names the model ids out of sorted order: %v", err)
+	}
+
+	// Positive control: the same run with one id throughout is measured, so the
+	// refusal above is about the straddle and not about the fixture.
+	uniform := modelAnswerer{
+		inner:   stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+		modelOf: func(jev.Request) string { return "jev-9.8.7" },
+	}
+	if _, err := Run(context.Background(), uniform, set, trialBuild); err != nil {
+		t.Errorf("positive control failed: a run with one model id was refused: %v", err)
+	}
+
+	// An OK call with zero answers still reports an interpreted model, and that
+	// model counts toward the straddle (REQ-JRM-006): the run mixes jev-9.8.8
+	// (answered) with jev-9.8.7 (OK, no answers) and must be refused.
+	t.Run("ok call with no answers counts toward the straddle", func(t *testing.T) {
+		mixed := answerlessAnswerer{
+			inner: modelAnswerer{
+				inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+				modelOf: func(req jev.Request) string {
+					if extractStubID(req.State) == "b" {
+						return "jev-9.8.7"
+					}
+					return "jev-9.8.8"
+				},
+			},
+			empty: func(req jev.Request) bool { return extractStubID(req.State) == "b" },
+		}
+		rep, err := Run(context.Background(), mixed, set, trialBuild)
+		if err == nil {
+			t.Fatalf("Run returned an artifact citing %q for a run that also saw an OK call on another model", rep.ModelID)
+		}
+		if !reflect.DeepEqual(rep, Report{}) {
+			t.Errorf("a refused run returned a non-empty artifact: %+v", rep)
+		}
+		first := strings.Index(err.Error(), "jev-9.8.7")
+		second := strings.Index(err.Error(), "jev-9.8.8")
+		if first < 0 || second < 0 {
+			t.Fatalf("the error does not name both interpreted model ids: %v", err)
+		}
+		if first > second {
+			t.Errorf("the error names the model ids out of sorted order: %v", err)
+		}
+	})
+
+	// Control: an OK call with no answers whose interpreted id is not valid
+	// (empty) never enters the model set, so the run is measured on one id.
+	t.Run("ok call with no answers and an empty id stays out of the model set", func(t *testing.T) {
+		control := answerlessAnswerer{
+			inner: modelAnswerer{
+				inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+				modelOf: func(req jev.Request) string {
+					if extractStubID(req.State) == "b" {
+						return ""
+					}
+					return "jev-9.8.7"
+				},
+			},
+			empty: func(req jev.Request) bool { return extractStubID(req.State) == "b" },
+		}
+		rep, err := Run(context.Background(), control, set, trialBuild)
+		if err != nil {
+			t.Fatalf("a run with answered calls on one id was refused: %v", err)
+		}
+		if rep.ModelID != "jev-9.8.7" {
+			t.Errorf("ModelID = %q, want %q", rep.ModelID, "jev-9.8.7")
+		}
+	})
+}
+
+// answerlessAnswerer wraps an answerer and strips the answers from the OK
+// results of the requests selected by empty: an OK call with zero answers.
+type answerlessAnswerer struct {
+	inner modelAnswerer
+	empty func(req jev.Request) bool
+}
+
+func (a answerlessAnswerer) Ask(ctx context.Context, req jev.Request) jev.Result {
+	res := a.inner.Ask(ctx, req)
+	if res.OK() && a.empty(req) {
+		res.Answers = nil
+	}
+	return res
+}
+
+// TestRun_CitesTheInterpretedModelAcrossArms: the interpreted model is taken from
+// the answers of both language arms, not from the first arm alone. When both
+// arms report one version the artifact cites it, with the request alias in its
+// own field. When only the English arm reports another version, the run is
+// refused: a citation that read the Korean arm alone would drop that version.
+func TestRun_CitesTheInterpretedModelAcrossArms(t *testing.T) {
+	set := trialSet()
+	agreeing := stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}}
+
+	rep, err := Run(context.Background(), agreeing, set, trialBuild)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, a := range rep.Arms {
+		if a.Answered != len(set.Samples) {
+			t.Errorf("arm %s answered %d of %d: the citation must rest on both arms",
+				a.Arm, a.Answered, len(set.Samples))
+		}
+	}
+	if rep.ModelID != "jev-9.8.7" {
+		t.Errorf("ModelID = %q, want the interpreted %q cited across both arms", rep.ModelID, "jev-9.8.7")
+	}
+	if rep.RequestModel != jev.ModelID {
+		t.Errorf("RequestModel = %q, want the request alias %q", rep.RequestModel, jev.ModelID)
+	}
+
+	englishDrift := modelAnswerer{
+		inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+		modelOf: func(req jev.Request) string {
+			if strings.Contains(req.State, "card body") {
+				return "jev-9.8.8"
+			}
+			return "jev-9.8.7"
+		},
+	}
+	if _, err := Run(context.Background(), englishDrift, set, trialBuild); err == nil {
+		t.Error("Run cited one model although the English arm reported another")
 	}
 }
 
@@ -196,7 +370,7 @@ func TestVerdict_WithholdsWhenBaselineNotBeaten(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rep := Report{
 				Consumer: "trial",
-				ModelID:  jev.ModelID,
+				ModelID:  "jev-9.8.7",
 				Shape:    jev.KindNoul,
 				Source:   SourceLive,
 				Baseline: Baseline{Label: "alive", Correct: 15, N: 20, Accuracy: tc.baseline},
@@ -225,7 +399,7 @@ func TestVerdict_WithholdsWhenBaselineNotBeaten(t *testing.T) {
 // so equality withholds. This is the case a ">=" typo would silently flip.
 func TestVerdict_EqualAccuracyDoesNotShip(t *testing.T) {
 	rep := Report{
-		Consumer: "trial", ModelID: jev.ModelID, Shape: jev.KindNoul, Source: SourceLive,
+		Consumer: "trial", ModelID: "jev-9.8.7", Shape: jev.KindNoul, Source: SourceLive,
 		Baseline: Baseline{Label: "alive", Correct: 15, N: 20, Accuracy: 0.75},
 		Arms:     []ArmResult{{Arm: ArmKoreanOriginal, N: 20, Accuracy: 0.75}},
 	}
@@ -374,9 +548,12 @@ func TestReport_AbsenceRequiresPositiveControl(t *testing.T) {
 	}
 }
 
-// TestReport_RenderCitesPinnedModelAndCarriesNoAlias is AC-JEVO-011: the
-// rendered artifact names the pinned model id and never the moving alias.
-func TestReport_RenderCitesPinnedModelAndCarriesNoAlias(t *testing.T) {
+// TestReport_RenderCitesInterpretedModelAndAliasOnlyInRequestField is AC-JRM-007
+// (REQ-JRM-007): the rendered artifact names the interpreted model on its model
+// line and the request alias on its request-model line, and the alias appears on
+// no other line. The positive control is a rendering whose model line is the
+// alias, which the same check must refuse.
+func TestReport_RenderCitesInterpretedModelAndAliasOnlyInRequestField(t *testing.T) {
 	set := trialSet()
 	rep, err := Run(context.Background(), stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}}, set, trialBuild)
 	if err != nil {
@@ -384,15 +561,23 @@ func TestReport_RenderCitesPinnedModelAndCarriesNoAlias(t *testing.T) {
 	}
 	out := rep.Render()
 
-	if !strings.Contains(out, jev.ModelID) {
-		t.Errorf("the rendered report does not cite the pinned model id %q:\n%s", jev.ModelID, out)
+	for _, want := range []string{
+		"model: jev-9.8.7 (interpreted by the endpoint)",
+		"request model: " + jev.ModelID + " (alias sent)",
+	} {
+		if !hasLine(out, want) {
+			t.Errorf("the rendered report lacks the line %q:\n%s", want, out)
+		}
 	}
-	if strings.Contains(out, "jev-latest") {
-		t.Error("the rendered report carries the moving alias jev-latest")
+	if line := aliasOutsideRequestLine(out); line != "" {
+		t.Errorf("the alias appears outside the request-model line: %q", line)
 	}
-	// Positive control for the alias search: it finds the alias when present.
-	if !strings.Contains(out+"jev-latest", "jev-latest") {
-		t.Error("positive control failed: the alias search does not fire")
+
+	// Positive control: a rendering whose model line is the alias fails the check.
+	aliased := rep
+	aliased.ModelID = jev.ModelID
+	if aliasOutsideRequestLine(aliased.Render()) == "" {
+		t.Error("positive control failed: the check passed a model line that names the alias")
 	}
 
 	// The baseline must be rendered beside the accuracy. Raw accuracy without
@@ -402,6 +587,30 @@ func TestReport_RenderCitesPinnedModelAndCarriesNoAlias(t *testing.T) {
 			t.Errorf("the rendered report does not mention %q:\n%s", want, out)
 		}
 	}
+}
+
+// hasLine reports whether want is one whole line of out.
+func hasLine(out, want string) bool {
+	for _, line := range strings.Split(out, "\n") {
+		if line == want {
+			return true
+		}
+	}
+	return false
+}
+
+// aliasOutsideRequestLine returns the first line that names the request alias
+// anywhere other than the request-model line, or "" when none does.
+func aliasOutsideRequestLine(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "request model:") {
+			continue
+		}
+		if strings.Contains(line, jev.ModelID) {
+			return line
+		}
+	}
+	return ""
 }
 
 // TestRun_RejectsAMissingArm: a set whose samples lack one arm's text cannot

@@ -127,7 +127,7 @@ flowchart TD
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__spec_progress` | SPEC 文書リスト + frontmatter 照会 | manager-spec, manager-docs | `moai spec list` |
+| `mcp__moai__spec_progress` | SPEC 文書リスト + frontmatter 照会 | manager-spec, manager-docs | — |
 | `mcp__moai__spec_audit` | SPEC ライフサイクル監査（時代分類 + ドリフト） | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
 | `mcp__moai__spec_drift` | 現代時代 V3R6 ドリフト発見 | manager-spec, plan-auditor | `moai spec audit` (drift ビュー) |
 
@@ -160,7 +160,7 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | `mcp__moai__claude_audit` | Claude サブスクリプションバックエンドによる単独監査（`claude -p`、読み取り専用の隔離、構造化出力） | plan-auditor, sync-auditor。GPT・GLM セッションでは `audit_multi` が自動で呼び出す | — |
 | `mcp__moai__codex_audit` | codex バックエンド単一監査（ネイティブ/敵対的） | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) バックエンド単一監査 | plan-auditor, sync-auditor | — |
-| `mcp__moai__audit_cache` | plan-audit PASS キャッシュ（compute_hash / lookup / store、プロセス間共有） | sync-auditor | `moai audit cache` |
+| `mcp__moai__audit_cache` | plan-audit PASS キャッシュ（compute_hash / lookup / store、プロセス間共有） | sync-auditor | — |
 
 単一バックエンド監査モードはプロジェクトの `audit_model` 設定で決まります: `codex+glm`（デフォルト、`audit_multi` で収束）| `glm` | `codex` | `none`（Claude 単独、バックエンド呼び出しなし）。すべてのバックエンドは fail-open です — 利用不可なバックエンドは `inconclusive` を返し、Go error ではありません。
 
@@ -179,11 +179,11 @@ GLM にはファイルシステムがないため、ランタイム管理のパ�
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | `moai codex task` |
-| `mcp__moai__codex_setup` | ローカル codex インストール検出（LookPath + バージョン + 認証） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | manager-develop, super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | — |
+| `mcp__moai__codex_setup` | ローカル codex インストール検出（LookPath + バージョン + 認証） | super-advisor | — |
+| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | manager-develop, super-advisor | — |
 
 codex 委任ツール群は super-advisor と manager-develop に配線されています。随時の高推論相談エージェントである super-advisor は、バックグラウンドのクロスモデル委譲の自然な消費者です。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。manager-develop は `codex_setup` を除く残りを持ち、範囲の限られた機械的な部分作業を任せるときに限り、run ワークフローの `External Model Delegation` 節が認める範囲で `codex_task` を使います。委譲された codex のターンは読み取り専用のままです。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
 
