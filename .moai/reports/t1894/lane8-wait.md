@@ -17,3 +17,10 @@ Card t1894 re-leased by lane-8 on run tn8rpj (`moai factory next --card t1894 --
 | Recheck point | On the next awaken: re-read this directory and the leader's reply; if the disposition is named, proceed with plan repair via `manager-spec` (D28) then a fresh `plan-auditor`; Q7 still blocks only the autonomous Kickoff. |
 
 No repair, spawn, or push was performed in this wake.
+
+## Disposition received (2026-10-22, lane-8 wake)
+
+Source: leader message (relaying operator delegation; jev MCP unavailable, leader judged directly). Decision: **(i) one additional exception round approved** — `manager-spec` repairs D28 (a sixth fence-pair-vs-base comparison number, OR disclosure of the joint-move limit in the three statements: acceptance.md AC-MJ-020 prose, design.md D-10 row + Unit bullet, checker docstring), then one fresh `plan-auditor`.
+Condition: if a new D29+ blocker appears, NO further exception — switch to the split (`plan-hold.md` option B).
+Reason given: small, precise candidate fix; independently reproduced by lane and auditor; same-day precedents of the same shape.
+Lane action: proceed to plan repair; wait is closed.
