@@ -1,5 +1,11 @@
 # plan.md — SPEC-CI-CODEX-REVIEW-001
 
+**Plan revision 13 (Amendment 6, 2026-10-23).** The operator and leader ruled that audit findings F4 (a late review is never
+re-evaluated) and F3/F1 (merge-step holds end exit 0) are fixes (decision-index Q30). One milestone, **M7** (§F), changes
+`auto-merge.yml` and its tests only; the design is `design.md` "Delta of plan revision 13". No plan-audit re-entry; the head-bound sync
+re-audit at the final head checks the SPEC against the code. The repairs of commit `41b7f29b7a` (F1 `active`, F2 env-passed
+`PR_NUMBER`, F3 summary lines, F6 shellcheck) are landed and are not M7 work.
+
 **Plan revision 11 (amendment 4, 2026-10-20; incorporating corrections through revision 10).** The native Codex review is an issue-comment state protocol, not a pull-request review object (`research.md` E37 to E46), and the
 leader's policy adds an author, fork, and bot rule and forbids automatic branch deletion. The amendment adds one milestone, **M6** (§F), which changes the gate script,
 `auto-merge.yml`, and their tests, and nothing else; the delta is in `design.md` "Delta of plan revision 7" (Δ12 to Δ26). Revision-7 items that bind the run phase are marked
@@ -115,8 +121,9 @@ contract guards come last.
 16. **(rev 6) The CHANGELOG entry is the sync phase's.** Its sentence "reported as NOT RUN, which is neither a
     failure nor a pass, and the merge is withheld on that state as on a refusal" goes stale at M5; this plan
     does not edit `CHANGELOG.md`, and the sync phase of the amendment owes the correction.
-17. **(rev 6) Do not widen.** The steps `pr`, `head`, `checks`, and the merge step keep their exit-0 convention
-    (decision-index Q22); the draft's job result is "failure, never success" with one job (Q21); the gate
+17. **(rev 6) Do not widen.** The steps `pr`, `head`, `checks` (and, rev 7, `author`) keep their exit-0 convention
+    (decision-index Q22); **rev 13:** the merge step no longer does — a merge reached and not executed ends exit 1 (REQ-CCR-024,
+    Q30, M7); the draft's job result is "failure, never success" with one job (Q21); the gate
     script is untouched. A need to change any of these returns as a blocker.
 18. **(rev 7) The reader decides from the state comment.** `body` is read only for comments of the identity and only the marker lines of the leading block; never the prose, the
     table, the summary marker, or a reaction. Stale precedes pending in the reader order (design §3.2, step 7 before step 10); changing the order changes the contract.
@@ -313,6 +320,56 @@ ordinary comments added before R3 alone do not block, while list movement, missi
 artifacts still fail closed. RED is preserved at `after-8989/p3-unrelated-comment-red.log`; GREEN is recorded at
 `after-8989/p3-unrelated-comment-green.log`. The scoped run includes both the positive 3→4 unrelated-comment case
 and the negative count-movement, finding, duplicate-state, metadata-change, and review-comment-count cases.
+
+### M7 — Comment-path re-evaluation and visible holds (rev 13, Priority High)
+
+REQ/AC: REQ-CCR-022 to 025 (new), REQ-CCR-007, 011, 013 (reworded) / AC-CCR-006a, 013a, 013b, 013c, 019a (new sub-criteria) and the
+amended rows of AC-CCR-006, 012, 013, 019. Ordered by decision-reversibility:
+
+1. **The trust boundary and the trigger** (most likely to change): `issue_comment` `[created, edited]`; the job `if` disjunction of
+   `design.md` "Delta of plan revision 13" item 2; the concurrency group moved to the job level with the key
+   `workflow_run.pull_requests[0].number || issue.number || run_id`.
+2. **The status context and its permission:** `statuses: write`; a final step `status` (`always() && steps.pr.outputs.active ==
+   'true'`) posting `T-STATUS` on the evaluated head SHA with the one POST form; exit 1 on a failed write.
+3. **The comment path through the existing chain:** the `pr` step reads `state`, `merged`, and `headRefOid` from the API on the comment
+   path (number from `env`); `head` takes that head as the commit under evaluation; `review` runs one pass with `--wait-closed true` and
+   no sleep on the comment path (Q31).
+4. **The merge step's held outcomes** (mechanical): `exit 1` after each of the three held summaries and after the merge-failed
+   summary; `exit 0` only after "merge requested".
+
+Files (about 3, tests dominating): E `.github/workflows/auto-merge.yml`, E `internal/template/auto_merge_codex_test.go`, E
+`internal/template/auto_merge_repair_test.go`. **Existing pin-test assertions that must change** (read on tree `41b7f29b7a`; this plan
+does not edit them):
+
+- `auto_merge_codex_test.go` `TestAutoMergeAddsNoSecretTriggerOrArtifact/trigger_is_workflow_run_only` (`len(wf.On) != 1`, "want
+  exactly workflow_run") → exactly `workflow_run` and `issue_comment` with types `created`, `edited`.
+- `auto_merge_codex_test.go` `TestAutoMergeWiresGuardAndGate/permissions_unchanged` (exactly two keys, `contents` and
+  `pull-requests` write) → exactly three keys, `statuses: write` added.
+- `auto_merge_codex_test.go` `TestAutoMergeReadsOnlyAllowedReviewArtifacts`: the `forbidden` list (`"/status"`, `"statuses"`) and the
+  `default` case of `gh_invocations_match_allow_list_exactly` and `gh_api_paths_in_workflow_are_pull_object_only` (any `gh api` path
+  other than the pull request object fails) → admit exactly the one `--method POST "repos/$REPO/statuses/$SHA"` form; every status read
+  still fails.
+- `auto_merge_codex_test.go` `TestAutoMergeMergeDecisionPath/refusal_fixtures_job_result_failure_clean_fixture_success`: the fixtures
+  `head_moved_at_merge_step` and `deadline_expired` expect job `"success"` → `"failure"`; and the group-C row
+  `merge_step_owned_guards_job_result_success` (acceptance AC-CCR-019) → failure.
+- `auto_merge_repair_test.go` `TestAutoMergeSummarisesEveryMergeOutcome`: the shared `want` asserts `res.code != 0` is a failure ("want
+  the unchanged 0") for all five outcomes → exit 0 for `merge_requested` only, exit 1 for `review_window_elapsed_before_merge`,
+  `review_window_elapsed_during_head_check`, `head_moved`, `merge_failed`; the file-header and F3 comments that say the holds keep exit 0.
+- `auto_merge_codex_test.go` `amRig.render` fails the test on any expression it does not know (`workflow expression %q is not
+  supported`): it must learn `github.event_name`, `github.event.issue.number`, and the job-level condition terms, and the harness must
+  evaluate the job `if` (today it evaluates step `if` only).
+- Expected to hold unchanged, re-run name-exact: `TestAutoMergeCheckoutAndGuardsUnchanged` (its `head_reverify_present` row pins the
+  `"$TESTED_SHA" != "$CURRENT_SHA"` comparison, which the comment path keeps), `TestAutoMergeSkipsPullRequestThatIsNotOpen`,
+  `TestAutoMergeNeverInterpolatesExpressionsIntoScripts`, `TestAutoMergeWaitLoopIsBounded` (the `workflow_run` path keeps the 60-pass
+  loop), `TestAutoMergeGateScriptIsShellcheckedInLint`.
+
+RED first: write the new rows of §2.7 and the amended rows against tree `41b7f29b7a` and quote the failures, whose stated reasons are
+R28 to R35. GREEN: edit the workflow. Exit: every named subtest swept (`-v` lists each `--- PASS`); `TestAutoMergeRequiredChecks`
+still lists its 16 rows; `actionlint` exit 0; B1 exit 0; mutants recorded verbatim (a login-matching job `if`, a dropped
+`issue.pull_request` term, the 60-pass loop on the comment path, a concurrency key without the issue number, a checkout `ref` of the
+pull request head, an interpolated `issue.number`, the committed exit-0 merge holds, a status step without `always()`, a status
+read). Affected packages: `internal/template` (tests only). State at exit: landed locally only; R13-1 to R13-4 of the design delta stay
+UNOBSERVED until the change runs on the default branch.
 
 ### Landing scope (plan §F rule: changed packages plus direct importers plus readers of changed non-Go files)
 

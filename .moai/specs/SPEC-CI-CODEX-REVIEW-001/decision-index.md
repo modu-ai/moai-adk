@@ -18,6 +18,10 @@ t1874; the delta is in `design.md` "Delta of plan revision 6".
 marker, issue-comment noise, the `author` step's exit convention, the unprotected base, the author policy and branch deletion); DS-1, DS-2, DS-3 restated, G9 added; the
 delta is in `design.md` "Delta of plan revision 7".
 
+**Revision 13** (2026-10-23, an in-place amendment, Amendment 6) added Q30 (the operator and leader ruling on audit findings F4 and
+F3/F1) and Q31 (the comment path's reading of a non-clean state and the status mapping), and superseded Q22 for the merge step; the
+delta is in `design.md` "Delta of plan revision 13".
+
 How to read this file. The card text, the operator-confirmed contract, and the repository settled most
 questions; each settled one is a `### Q` row with its evidence and the rejected alternate. A product-level
 row whose answer is the operator order recorded in the card or the correction relayed by the leader carries
@@ -325,6 +329,10 @@ Operator verdict: DEFAULT-APPLIED 2026-10-18T16:00:33Z manager-spec (card t1868,
 
 ### Q22: Do the earlier steps `pr`, `head`, `checks`, and the merge step also end non-zero when they withhold?
 
+**[SUPERSEDED IN PART by Q30, 2026-10-23]** For the merge step the default below no longer holds: a merge the step reached and did not
+execute ends non-zero (REQ-CCR-024). For `pr`, `head`, `checks` (and `author`, Q26) the default stands, and each of their holds is now
+also a `pending` commit status `auto-merge` (REQ-CCR-025). The row is kept as written.
+
 Label: FOUNDER
 Class: implementation-level
 Authority anchor: none in the committed register; the scope line is the leader's ruling, board record
@@ -507,6 +515,28 @@ Why unresolved: PR #1844 (research E46) shows a code leg `failed` with both find
 Default: a distinct refusal `review-failed:<leg>`, a gate refusal (step exit 1, job failure), checked right after the stale check and before any finding flag is read, also while the other leg is `running` and also when `commit_sha` is null; the annotation names the re-request (`@codex review` for `code_review`, `@codex security review` for `security_review`) (rule: excluded before ranking: reading the flags of a failed leg as findings, which reports a failed run as a finding, and treating `failed` as pending, which waits for a comment that cannot pass without a new run; among the rest, one reason and one row is the smaller surface)
 Alternate: leave `failed` to the generic `review-not-complete:<leg>:<status>` — the same exit and job result, but the operator reads no re-request and a flags-first reader can misreport a finding
 Operator verdict: DEFAULT-APPLIED 2026-10-19T06:19:40Z manager-spec (card t1868, lane-22, plan revision 9)
+
+### Q30: Are audit findings F4 (a late review is never re-evaluated) and F3/F1 (merge-step holds end exit 0 and look green) accepted limitations or fixes?
+
+Label: FOUNDER
+Class: product-level (changes the shipped workflow's triggers, its permissions, the job result of a held merge, and adds a commit status every pull request shows)
+Authority anchor: none in the committed register — the settlement is the operator and leader ruling of 2026-10-23, relayed by the leader in the delegation to manager-spec (a message, not a committed artifact)
+Why unresolved: the first sync audit (`.moai/reports/t1868/sync-audit-1.md`, PASS-WITH-DEBT 0.91, local only and gitignored, never an authority anchor) found that a review finishing after the merge step's window, or after the pull request becomes ready, is never re-evaluated (the only trigger is a completed `CI` run; the SPEC had recorded this as accepted limitation AL-1), and that the merge step's holds end exit 0 (the SPEC had kept the merge step's exit-0 convention, Q22)
+Default: not applied (settled by the ruling)
+Resolution: both findings are FIXES on this card, not accepted limits; the accepted-limitation option (AL-1) is withdrawn. Approved: an `issue_comment` trigger (`created`, `edited`) admitted at the job level only for a pull request comment of user id 199175422 (`chatgpt-codex-connector[bot]`, type Bot), with no checkout or execution of pull-request code and the pull request number passed through `env`; the unchanged step chain bound to the API-read head, one concurrency group per pull request, one evaluation with no wait; non-zero merge-step outcomes when auto-merge was requested but not executed (deadline elapsed, head moved, `gh pr merge` failed); a commit status `auto-merge` (pending, failure, success) on the evaluated head on every evaluation, with the one new permission `statuses: write`; no branch-protection change, no required check, `.github/required-checks.yml` byte-identical to `origin/main`. A minimal SPEC amendment is approved with NO plan-audit re-entry; one head-bound sync re-audit at the final head checks this SPEC against the code (REQ-CCR-022 to 025, AC-CCR-006a, 013a, 013b, 013c, 019a)
+Alternate: keep AL-1 and the merge step's exit-0 convention as accepted limitations — withdrawn by the ruling
+Operator verdict: OPERATOR-SETTLED 2026-10-23 operator and leader ruling, transcribed from the leader's delegation message
+
+### Q31: On the comment path, how is a state that is not clean (a `running` leg, no state comment) ended, what does "auto-merge requested" mean, and which commit status does each outcome get?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the Q30 ruling fixes one evaluation with no wait and the three status states (pending "not yet", failure "requested but not executed", success "merge requested"); it names no exit for a `running` state on that single pass, uses "auto-merge requested" without naming a field, and does not place the `files`/`review` refusals, the draft, or an ineligible author among the three states
+Default: (a) the single pass is a last pass: `--wait-closed true`, so `running` is `review-not-complete:running` and an absent state comment is `not-run:review-absent`, both a failed `review` step per the unchanged `T-CHAIN`; the identity's next comment edit re-evaluates. (b) "Auto-merge requested" is the chain reaching the merge step with every guard passed; no GitHub `auto_merge` flag is required on either path. (c) `T-STATUS` of `design.md` "Delta of plan revision 13": `success` = merge requested; `failure` = merge step reached and not executed, or a `files`/`review` refusal other than `not-run:draft`; `pending` = draft, ineligible author, `checks` or `head` hold
+(rule: preserves current behavior — `T-CHAIN` and the step conditions are unchanged, and a refusal that already fails the job keeps a failing signal)
+Alternate: treat `running` on the comment path as a `pending` hold with step exit 0 — a change to `T-CHAIN` row 2g that the ruling did not make; or require GitHub's `auto_merge` flag on the comment path — a change to which pull requests the automation merges
+Operator verdict: DEFAULT-APPLIED 2026-10-22T23:52:15Z manager-spec (card t1868, plan revision 13; no plan-audit re-entry by Q30, checked by the head-bound sync re-audit)
 
 ## Follow-up candidates (recorded, not issued)
 

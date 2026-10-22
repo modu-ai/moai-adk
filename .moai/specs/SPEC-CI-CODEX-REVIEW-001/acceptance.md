@@ -17,6 +17,13 @@ verdict job, fork notice job, check-run binding) no longer exist because no such
 **Plan revision 12** (the run-phase correction for exact-head security finding #4316515155; delta in `design.md`) updates
 AC-CCR-012's recheck contract without adding or removing criteria: the fresh PR issue-comment count anchors the
 complete recheck list and its closing PR read, while a count increase since the earlier clean pass alone is allowed.
+**Plan revision 13** (Amendment 6, the operator and leader ruling of 2026-10-23, decision-index Q30) adds five lettered sub-criteria
+inside existing logical criteria — AC-CCR-006a (the `auto-merge` status and `statuses: write`), AC-CCR-013a (the `issue_comment`
+trigger and its job-level author gate), AC-CCR-013b (no pull-request code on the comment path), AC-CCR-013c (the same chain, one
+evaluation, head re-confirmed, one concurrency group), AC-CCR-019a (non-zero held merge outcomes) — in §2.7, and amends AC-CCR-006,
+007, 012, 013, and 019 where they pinned the old trigger, the old permission set, or an exit-0 merge hold. The logical criterion count
+stays 25, the Tier L ceiling; the sub-criteria are pairs within one logical criterion each (the lettered-suffix convention of
+acceptance bodies) and each carries its own two cells. Their RED-now pin is tree `41b7f29b7a` (ledger R28 to R35).
 
 **Document pin.** Every RED-now observation below was re-measured on tree `e11af67632` (full
 `e11af676320604bb1f7cf07f14aa457b3437a9ec`, branch `WT-ci-codex-review`, clean) on 2026-10-18 and binds every
@@ -33,6 +40,9 @@ that names the milestone that flips it (M6 for all of them). *regression-guard* 
 green on this tree by nature (M2 to M5 landed, so their older cells no longer reproduce, or the only red is a renamed row), so no RED-now exists; each names a mutant that makes it red, and the
 run phase must record that red verbatim; no plan revision re-observed those mutant reds (a stated Gap). A regression-guard is never recorded as a release gate
 (verification-completeness §2.1, the undecidable disposition).
+**Revision 13 sub-criteria:** *release-blocking* AC-CCR-006a, 013a, 013c, 019a (RED-now R28 to R35 on tree `41b7f29b7a`, green path
+M7); *regression-guard* AC-CCR-013b (the checkout already has no `ref` and no payload text is read, so no RED exists; its adoption
+evidence is the mutant red M7 records).
 
 **Swept-set rule.** Every Go-test criterion names its subtests. A run counts only when `-v` output lists
 each named `--- PASS:` line; a green with `[no tests to run]` or fewer named lines is a Gap, never a pass.
@@ -166,6 +176,52 @@ R27 $ grep -c -F 'author_step_present_after_head_before_checks' internal/templat
     stdout: 0
     exit: 1   (the author-step rows of AC-CCR-012 are absent)           tree e9ed17271cc743a78dc1e5b5d1d87b6b9a2f89ce
 ```
+
+**Revision 13 ledger (tree `41b7f29b7a`, full `41b7f29b7aa4d9d6717dc8fbff38058561d81ebd`, branch `WT-codex-native-gate`, clean;
+measured 2026-10-23 by manager-spec, each a single read-only invocation, exit code observed separately).** Why each is red for the
+right reason: `auto-merge.yml` as landed has the `workflow_run` trigger alone, no comment path, no status write, and a merge step whose
+held outcomes end exit 0; M7 adds exactly those, and no pre-existing unrelated file keeps any cell red.
+
+```
+R28 $ grep -c 'issue_comment' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (no issue_comment trigger: a late review is never re-evaluated, F4)
+R29 $ grep -c -F 'github.event.comment.user.id' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (no job-level author gate on a comment)
+R30 $ grep -c -F 'github.event.issue.number' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (neither a comment-path PR number nor a concurrency key for it)
+R31 $ grep -c -F 'github.event_name' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (no event discrimination: the job condition and the review loop know one path)
+R32 $ grep -n -A1 -F 'summary "merge not executed: head moved' .github/workflows/auto-merge.yml
+    stdout: 470:            summary "merge not executed: head moved - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}"
+            471-            exit 0
+    exit: 0   (a merge reached and not executed ends exit 0, F3/F1)
+R33 $ grep -n -A1 -F 'summary "merge held: review window elapsed before merge' .github/workflows/auto-merge.yml
+    stdout: 460:            summary "merge held: review window elapsed before merge - PR #$PR_NUMBER left open, head $TESTED_SHA"
+            461-            exit 0
+    exit: 0   (the deadline hold ends exit 0)
+    $ grep -n -A1 -F 'summary "merge failed:' .github/workflows/auto-merge.yml
+    stdout: 512:            summary "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA"
+            513-          fi
+    exit: 0   (a failed merge call falls through to the step's end, whose last command is the summary echo: exit 0)
+R34 $ grep -c -F 'statuses' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (no commit status is written)
+R35 $ grep -c -F 'statuses: write' .github/workflows/auto-merge.yml
+    stdout: 0
+    exit: 1   (the permission is absent)
+B1  $ git diff --quiet 8c36a7904bfe3e44c46b154a2839a6aedb719ef2 HEAD -- .github/required-checks.yml
+    stdout: (empty)
+    exit: 0   (baseline, not a RED: required-checks.yml equals origin/main, read as 8c36a7904b after `git fetch origin main`
+               on 2026-10-23; a regression-guard row that must stay exit 0)
+```
+
+Tool provenance (verification-claim-integrity §2.2): the cells are `grep` and `git` measurements, not moai-tool output. The
+`moai spec lint` run of this revision used the installed build `b1806498fe` (v3.2.0-rc.38); `git merge-base --is-ancestor
+b1806498fe HEAD` exited 1, so that build is not a strict ancestor of the measured HEAD.
 
 Supporting behavior, not a cell (the delegated Codex observer's reproduction `/tmp/adk-queue-repair-20261018/review-step-repro-v2/`,
 the observer's `/tmp/adk-ci-followthrough-20261018/files-step-missing-script-repro/result.json`, and this lane's
@@ -335,7 +391,10 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   | script | `gh api "<E>?per_page=100&page=<P>"` after `E` matched `^repos/<owner>/<repo>/(pulls/<N>/(files\|reviews\|comments)\|issues/<N>/comments)$` | `fetch-pages` |
 
   Any other `gh` group or subcommand (`gh issue`, `gh pr comment`, `gh pr review`, `gh pr edit`, `gh run`, `gh workflow`,
-  `gh label`) or any other `gh api` path fails. **Forbidden tokens** in either file: `/status`, `statuses`, `check-runs`,
+  `gh label`) or any other `gh api` path fails. **Revision 13:** the workflow (never the script) also makes exactly one write
+  form, `gh api --method POST "repos/$REPO/statuses/$SHA"` with the context `auto-merge` (step `status`, AC-CCR-006a), and the
+  token `statuses` is allowed only in that form and in the permission key `statuses: write`; `/status`, `commits/<sha>/status`,
+  and any read of `statuses` stay forbidden. **Forbidden tokens** in either file (with that one exception): `/status`, `statuses`, `check-runs`,
   `check_runs`, `labels`, `reactions`, `--delete-branch`, `CodeRabbit`, `Merge Risk`, `AUTOMERGE_MAX_MERGE_RISK`; no step deletes a ref (`git push --delete`,
   `gh api -X DELETE`); the token `issues/` is allowed only
   as the endpoint `issues/<N>/comments` of the issue-comment listing (revision 7 reverses its earlier blanket ban).
@@ -371,7 +430,8 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   withholds at once; a failing fetch counts as pending, and a list unreadable on every pass ends as a failure named
   `review-unreadable`, never as NOT RUN and never as success; a moved issue-comment count retries the pass and is never a failure; an
   APPROVED review never completes a running comment; a comment that turns `completed` is merged over only after the gate exits 0 and
-  the recheck agrees; a review that finishes after the window is not read; no merge is authorized at the end of the window. The script
+  the recheck agrees; a review that finishes after the window is not read by this `workflow_run` evaluation (revision 13: the
+  comment-path evaluation that the identity's comment edit starts reads it, AC-CCR-013c); no merge is authorized at the end of the window. The script
   half: no state comment yet is exit 10, and a `running` comment is exit 10 while the window is open and exit 1 when it is closed,
   never 0.
 - Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewPending$' ./internal/template/` lists `--- PASS` for
@@ -526,8 +586,8 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `ok=false`; the `review` step is skipped unless `files` passed; the merge step's `if` requires both
   `steps.files.outputs.ok == 'true'` and `steps.review.outputs.ok == 'true'` besides its existing terms; both
   steps run `scripts/ci/codex-review-gate.sh` from the checkout that has no `ref` (the default branch), and a
-  missing script is not a pass; and the workflow permissions stay exactly `contents: write` and
-  `pull-requests: write`.
+  missing script is not a pass; and the workflow permissions are exactly `contents: write`, `pull-requests: write`, and
+  (revision 13, REQ-CCR-025) `statuses: write` — the row `permissions_unchanged` is amended to that three-key set (AC-CCR-006a).
 - Verify: `grep -c 'gate-files-changed' .github/workflows/auto-merge.yml`, `grep -c 'read-native-review'
   .github/workflows/auto-merge.yml`, and `grep -c 'fetch-pages' .github/workflows/auto-merge.yml` each print a
   count of at least 1 and exit 0 (R4, R5, R6 flipped; necessary, not sufficient); `grep -c -F '6458969' .github/workflows/auto-merge.yml` prints at
@@ -588,7 +648,8 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
 **AC-CCR-013** — REQ-CCR-013 — regression-guard
 - Given `auto-merge.yml` after the edit and the set of workflow files added by this SPEC's commits,
 - When the triggers, the secret references, and the steps are read,
-- Then the only trigger is `workflow_run`, no trigger of the `pull_request_target` family appears, the only
+- Then the triggers are exactly `workflow_run` and (revision 13) `issue_comment` with the types `created` and `edited` (the row
+  `trigger_is_workflow_run_only` is amended to that two-trigger set; AC-CCR-013a), no trigger of the `pull_request_target` family appears, the only
   secret reference is the workflow token, no step uploads, downloads, or caches an artifact (no
   `actions/upload-artifact`, `actions/download-artifact`, `actions/cache`, no `cache:` input), and this SPEC
   adds no workflow file.
@@ -709,7 +770,10 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   now `e7cceb2cb5d6e1cd9dbd2f465c4b9d5a1d631f21`; the state is the #1842 re-request state with markers carrying different SHAs (`F-mixed-sha`); the state is the #1833 findings case
   (`F-findings-1833`); a leg `failed` (`F-failed`, #1844); a forged state comment of another author is the only one; the gate exits an unrecognised code; the state is stale; a gate path is changed; a list page fails;
   the gate script is missing.
-  **C, the merge-step guards** (zero merge calls; the job result stays success, Out of Scope of the amendment): the head differs at the merge step's own `gh pr view` (it moves between
+  **C, the merge-step guards** (zero merge calls; revision 13: the merge step ends with exit 1 and the job result is **failure**,
+  REQ-CCR-024 — formerly "the job result stays success", superseded by the 2026-10-23 ruling; the rows `head_moved_at_merge_step` and
+  `deadline_expired` of `refusal_fixtures_job_result_failure_clean_fixture_success` and `merge_step_owned_guards_job_result_success`
+  are amended to failure, AC-CCR-019a): the head differs at the merge step's own `gh pr view` (it moves between
   the review step's recheck and the merge call); the deadline has passed.
   **D, author policy** (zero merge calls; the `author` step exits 0 with `eligible=false`, the `checks`, `files`, `review`, and merge steps are skipped, and the job result is success):
   the author is a bot (dependabot, id 49699333, type Bot), another user, GoosLab's login with another id, id 6458969 with type Bot; the pull request is a fork (the head repository id
@@ -911,6 +975,126 @@ instantiates is `design.md` §5 `T-CHAIN`.
   output file only passes on the committed workflow and is rejected by AC-CCR-024.
 - RED-now: none on this tree. M5 landed; R15 and R16 no longer reproduce. Under verification-completeness §2.1 this criterion is a regression-guard, not a release gate; its adoption evidence is the mutant red the run phase records (not re-observed by revision 8: a stated Gap).
 
+### 2.7 Comment-path re-evaluation and visible holds (plan revision 13; M7)
+
+Lettered sub-criteria of existing logical criteria (count unchanged at 25). Each release-blocking sub-criterion cites its RED-now
+cells from the revision 13 ledger (tree `41b7f29b7a`) and names the milestone that flips it. The test functions and rows named below
+are new (M7); the amended existing rows are listed in `plan.md` M7.
+
+**AC-CCR-013a** — REQ-CCR-022 (with REQ-CCR-013) — release-blocking
+- Given the real `auto-merge.yml` parsed as YAML and an evaluator for its job-level `if` over a synthetic event context
+  (`event_name`, `issue.pull_request`, `comment.user.id`, and the `workflow_run` fields),
+- When the triggers and the job condition are read and evaluated for: an `issue_comment` `created` and `edited` by user id 199175422
+  on a pull request; the same id on an issue that is not a pull request; another user, another bot (`coderabbitai[bot]`, dependabot id
+  49699333), the login `chatgpt-codex-connector` with another id, and a null user, each on a pull request; and the unchanged
+  `workflow_run` cases (event `pull_request` with conclusion `success`, and each other combination),
+- Then the triggers are exactly `workflow_run` and `issue_comment` with the types exactly `created` and `edited`; the job runs for the
+  identity's comment on a pull request and for a successful `pull_request` `workflow_run` only; every other case skips the job, so no
+  step runs (zero step executions recorded by the harness) and no `gh` call is made.
+- Verify: `grep -c 'issue_comment' .github/workflows/auto-merge.yml` prints at least 1 and exits 0, and `grep -c -F
+  'github.event.comment.user.id' .github/workflows/auto-merge.yml` prints at least 1 and exits 0 (R28, R29 flipped; necessary, not
+  sufficient); and `go test -count=1 -v -run '^TestAutoMergeCommentPathTrustGate$' ./internal/template/` lists `--- PASS` for
+  `triggers_are_workflow_run_and_issue_comment_created_edited`, `codex_comment_on_pull_request_job_runs`,
+  `codex_comment_edited_on_pull_request_job_runs`, `codex_id_on_plain_issue_job_skipped`, `other_user_comment_job_skipped`,
+  `other_bot_comment_job_skipped`, `lookalike_login_other_id_job_skipped`, `null_user_job_skipped`,
+  `skipped_job_records_zero_steps_and_zero_gh_calls`, `workflow_run_success_pull_request_job_runs`,
+  `workflow_run_other_cases_job_skipped`.
+- Mutant: a job `if` that matches the login instead of the id, or drops `issue.pull_request`, or a trigger list without `edited`, or
+  with `pull_request_review` added, turns the matching row red.
+- RED-now: R28 and R29 (tree `41b7f29b7a`: no `issue_comment` trigger, no comment author gate). Green path: M7 adds the trigger and
+  the job condition; the rows above then pass.
+
+**AC-CCR-013b** — REQ-CCR-022 (with REQ-CCR-011) — regression-guard
+- Given the real `auto-merge.yml`,
+- When every step's `uses`, `with`, `env`, and `run` text is read,
+- Then the checkout step keeps no `ref` (on both paths); no expression names `github.event.comment.body`, `github.event.issue.title`,
+  `github.event.issue.body`, `github.head_ref`, or the pull request's head ref or SHA as a checkout input; `github.event.issue.number`
+  appears only as an `env` value or in the concurrency key, never inside a `run` script; no step runs a file other than
+  `scripts/ci/codex-review-gate.sh` from the default-branch checkout; on the comment path the `pr` step reads `state`, `merged`, and
+  `headRefOid` from the API.
+- Verify: `go test -count=1 -v -run '^TestAutoMergeCommentPathRunsNoPullRequestCode$' ./internal/template/` lists `--- PASS` for
+  `checkout_has_no_ref_on_both_paths`, `no_comment_body_or_issue_text_expression`, `issue_number_only_in_env_or_concurrency`,
+  `no_head_ref_checkout_input`, `gate_script_only_from_default_checkout`, `comment_path_pr_step_reads_state_from_api`; and
+  `TestAutoMergeNeverInterpolatesExpressionsIntoScripts` (landed by `41b7f29b7a`) still passes.
+- Mutant: `ref: refs/pull/${{ github.event.issue.number }}/head` on the checkout, a `run` line that interpolates
+  `${{ github.event.issue.number }}`, or an `env` value of `${{ github.event.comment.body }}` turns the matching row red. The red must
+  be recorded verbatim at M7.
+- RED-now: none (no RED exists: the checkout has no `ref` and no payload text is read on this tree by nature). Regression-guard, never
+  recorded as a release gate (verification-completeness §2.1). Green path: stays green through M7.
+
+**AC-CCR-013c** — REQ-CCR-023 — release-blocking
+- Given the real `auto-merge.yml`, a stub `gh` that records every call, the real or a stub gate script, and the comment-path event
+  context (`issue.number` 7, the identity's comment),
+- When the chain is run on the comment path for: the clean fixture; the clean fixture with the head moved after the comment (the API
+  head differs from the head the state comment names); a state comment with a leg `running`; no state comment; the draft fixture; and
+  the concurrency key is read for both events,
+- Then on the comment path the steps run in the same order and with the same conditions as on the `workflow_run` path; the clean
+  fixture merges exactly once with `--match-head-commit` equal to the API-read head; the moved head yields zero merge calls and a
+  failed `review` step (`stale-review`) or a held merge; the `review` step makes one pass with `--wait-closed true` and zero sleeps; a
+  `running` leg ends `review-not-complete:running` and an absent state comment `not-run:review-absent` (decision-index Q31), zero merge
+  calls; the draft ends `not-run:draft`; the concurrency group key resolves to the same `auto-merge-7` for a `workflow_run` of pull
+  request 7 and for a comment on pull request 7, the group is declared at the job level, and `cancel-in-progress` is false.
+- Verify: `grep -c -F 'github.event.issue.number' .github/workflows/auto-merge.yml` and `grep -c -F 'github.event_name'
+  .github/workflows/auto-merge.yml` each print at least 1 and exit 0 (R30, R31 flipped; necessary, not sufficient); and `go test
+  -count=1 -v -run '^TestAutoMergeCommentPathSameChainOnce$' ./internal/template/` lists `--- PASS` for
+  `comment_path_same_step_order_and_conditions`, `comment_path_clean_fixture_merges_once_with_head_pin`,
+  `comment_path_head_moved_after_comment_zero_merge_calls`, `comment_path_review_single_pass_wait_closed_no_sleep`,
+  `comment_path_running_fails_without_wait_zero_merge_calls`, `comment_path_absent_review_fails_zero_merge_calls`,
+  `comment_path_draft_not_run_zero_merge_calls`, `concurrency_key_same_for_both_paths`, `concurrency_group_at_job_level`,
+  `concurrency_cancel_in_progress_false`.
+- Mutant: the 60-pass loop kept on the comment path turns `comment_path_review_single_pass_wait_closed_no_sleep` red; a concurrency
+  key without `github.event.issue.number` turns `concurrency_key_same_for_both_paths` red; a `head` step that takes the head from the
+  event instead of the API, or a merge call pinned to another variable, turns `comment_path_head_moved_after_comment_zero_merge_calls`
+  or the clean row red.
+- RED-now: R30 and R31 (tree `41b7f29b7a`: no comment-path pull request number or concurrency key, no event discrimination). Green
+  path: M7.
+
+**AC-CCR-019a** — REQ-CCR-024 — release-blocking
+- Given the real merge step run against a stub `gh` with the guards seeded as passed, and the chain harness of AC-CCR-019,
+- When the merge step meets each outcome: merge requested; deadline passed before the merge call; deadline passed during the head
+  re-read; head moved before the call; `gh pr merge` exits 1,
+- Then "merge requested" ends the step with exit 0 and the job result success; each of the four other outcomes ends the step with
+  exit 1 and the job result failure, with zero merge calls for the deadline and head rows and one failed call for the merge-failed
+  row; every outcome still writes exactly one job-summary line naming the outcome and the head SHA; and the holds of `pr`, `head`,
+  `author`, and `checks` still end with exit 0.
+- Verify: `go test -count=1 -v -run '^TestAutoMergeHeldMergeOutcomesFail$' ./internal/template/` lists `--- PASS` for
+  `merge_requested_exit_0_job_success`, `window_elapsed_before_merge_exit_1_job_failure`,
+  `window_elapsed_during_head_check_exit_1_job_failure`, `head_moved_exit_1_job_failure`, `merge_failed_exit_1_job_failure`,
+  `each_outcome_one_summary_line_with_head_sha`, `earlier_holds_keep_exit_0`; and the amended rows of
+  `TestAutoMergeSummarisesEveryMergeOutcome` and `TestAutoMergeMergeDecisionPath` (`plan.md` M7) pass.
+- Mutant: the committed merge step (each held outcome `exit 0`, the merge-failed path falling through) turns the four exit-1 rows
+  red; an `exit 1` on "merge requested" turns `merge_requested_exit_0_job_success` red; a deleted summary line turns
+  `each_outcome_one_summary_line_with_head_sha` red.
+- RED-now: R32 and R33 (tree `41b7f29b7a`: the head-moved and deadline holds end `exit 0`, and the merge-failed path ends on the
+  summary echo with exit 0). Green path: M7.
+
+**AC-CCR-006a** — REQ-CCR-025 — release-blocking
+- Given the real `auto-merge.yml` and the chain harness with a stub `gh` that records every call,
+- When the permissions are read, the `gh` invocations are classified, and the chain runs each `T-STATUS` outcome (merge requested; a
+  merge step reached and not executed; a `review` refusal; review absent; the draft; `checks` withheld; an ineligible author; a `head`
+  hold; a head read that failed; a failing status write),
+- Then the permissions are exactly `contents: write`, `pull-requests: write`, and `statuses: write`; the only status call is
+  `gh api --method POST "repos/$REPO/statuses/$SHA"` and no status is read; for every outcome with a known evaluated head exactly one
+  status is posted on that SHA with the context `auto-merge`, the state of `T-STATUS` (`success`, `failure`, or `pending`), and a
+  description beginning with the `T-STATUS` text; no status is posted when the head is unknown; a failing status write ends the
+  `status` step with exit 1 and does not change the merge-call count; and `.github/required-checks.yml` is byte-unchanged.
+- Verify: `grep -c -F 'statuses' .github/workflows/auto-merge.yml` prints at least 1 and exits 0, and `grep -c -F 'statuses: write'
+  .github/workflows/auto-merge.yml` prints 1 and exits 0 (R34, R35 flipped; necessary, not sufficient); `git diff --quiet
+  8c36a7904bfe3e44c46b154a2839a6aedb719ef2 HEAD -- .github/required-checks.yml` exits 0 (B1, regression row; re-pinned to the
+  `origin/main` tip read at measurement time if that ref moved, never compared against the moving name); and `go test -count=1 -v -run
+  '^TestAutoMergePostsStatusContext$' ./internal/template/` lists `--- PASS` for
+  `permissions_exactly_contents_pull_requests_statuses_write`, `status_post_is_the_only_statuses_form`, `no_status_read`,
+  `merge_requested_posts_success`, `merge_not_executed_posts_failure`, `review_refusal_posts_failure`,
+  `review_absent_posts_failure`, `draft_posts_pending`, `checks_hold_posts_pending`, `ineligible_author_posts_pending`,
+  `head_hold_posts_pending`, `unknown_head_posts_no_status`, `one_status_per_evaluation_on_evaluated_sha`,
+  `context_is_auto_merge`, `description_names_reason`, `status_write_failure_step_exit_1_merge_unchanged`; and AC-CCR-016 and
+  AC-CCR-017 still pass.
+- Mutant: a status posted only on success (no `pending`/`failure`), a status step without `always()`, a `statuses: read` or a GET of
+  `commits/<sha>/status`, or a status on the head read after the merge instead of the evaluated SHA turns the matching row red; adding
+  `auto-merge` to `required-checks.yml` turns B1 and AC-CCR-017 red.
+- RED-now: R34 and R35 (tree `41b7f29b7a`: no status write, no `statuses: write`). B1 is a baseline row, green by nature. Green
+  path: M7.
+
 ## 3. REQ-to-AC matrix
 
 | REQ | AC | REQ | AC |
@@ -925,10 +1109,13 @@ instantiates is `design.md` §5 `T-CHAIN`.
 | REQ-CCR-008 | AC-CCR-008, AC-CCR-021, AC-CCR-022 | REQ-CCR-017 | AC-CCR-018 |
 | REQ-CCR-009 | AC-CCR-009 | REQ-CCR-018 | AC-CCR-020, AC-CCR-024, AC-CCR-025 |
 | REQ-CCR-020 | AC-CCR-012, AC-CCR-019 | REQ-CCR-019 | AC-CCR-023 |
-| REQ-CCR-021 | AC-CCR-006, AC-CCR-019 | | |
+| REQ-CCR-021 | AC-CCR-006, AC-CCR-019 | REQ-CCR-022 | AC-CCR-013a, AC-CCR-013b |
+| REQ-CCR-023 | AC-CCR-013c | REQ-CCR-024 | AC-CCR-019a |
+| REQ-CCR-025 | AC-CCR-006a (with AC-CCR-016, AC-CCR-017 for the unchanged contract) | | |
 
-Counts: 21 requirements, 25 criteria (ceilings 25 and 25; the criterion count is at the ceiling, so a further
-criterion means tiering up or splitting). Every requirement maps to at least one criterion;
+Counts (revision 13): 25 requirements, 25 logical criteria with 5 lettered sub-criteria (ceilings 25 and 25; both counts are at
+the ceiling, so a further requirement or logical criterion means tiering up or splitting). Revision 12 counts were 21 requirements
+and 25 criteria. Every requirement maps to at least one criterion;
 every criterion names one primary requirement in its heading, and AC-CCR-006, AC-CCR-012, and AC-CCR-019 also carry rows of REQ-CCR-020 and REQ-CCR-021; AC-CCR-016 and AC-CCR-017 share REQ-CCR-016, AC-CCR-012
 and AC-CCR-019 share REQ-CCR-012, AC-CCR-008, AC-CCR-021, and AC-CCR-022 share REQ-CCR-008, and AC-CCR-020,
 AC-CCR-024, and AC-CCR-025 share REQ-CCR-018. No criterion claims that doctrine is updated, and none depends on it (spec
@@ -978,7 +1165,11 @@ and by a mutant that a weaker implementation would satisfy.
   `not-run:review-absent`, observed as `remote observed: review step failed, review absent` at most (AC-CCR-021).
 - A failure in the `files` step (a missing gate script, a gate-path change, a list that cannot be proven complete) ends that step and
   the job non-zero and skips the `review` and merge steps (AC-CCR-025); a failure in `review` ends it non-zero (AC-CCR-020); the earlier
-  steps `pr`, `head`, `checks` keep the exit-0 withhold (Out of Scope).
+  steps `pr`, `head`, `author`, `checks` keep the exit-0 withhold (Out of Scope) and post a `pending` `auto-merge` status (AC-CCR-006a);
+  the merge step, reached and not executed, ends exit 1 (revision 13, AC-CCR-019a).
+- A review that completes after a `workflow_run` evaluation's window or after the pull request becomes ready: the identity's comment
+  edit starts a comment-path evaluation that reads it once through the same chain (AC-CCR-013a, AC-CCR-013c). A comment by anyone else
+  starts a skipped job (AC-CCR-013a).
 - The native review adds a `status` value or a marker `v2`: refused or not a candidate; the gate withholds until the contract is amended
   (design §3.2, §6, U14).
 - A clean state comment whose prose says otherwise passes, because prose is never read: a documented residual risk, not a testable property
@@ -999,7 +1190,7 @@ and by a mutant that a weaker implementation would satisfy.
 ## 6. Definition of Done — two states, never merged
 
 **State L — landed locally (reachable by this lane).**
-1. All 25 criteria pass on the merged-local tree with the swept-set rule satisfied.
+1. All 25 criteria and the 5 revision-13 sub-criteria pass on the merged-local tree with the swept-set rule satisfied.
 2. Every regression-guard mutant red is recorded verbatim in `progress.md` §E.2, and so is the red of each
    mutant named by AC-CCR-012 and AC-CCR-019, each with the subtest it turns red; the removal of the `files`
    term alone from the `review` or merge `if`, and the removal of the `steps.review.outputs.ok` term from
@@ -1013,7 +1204,8 @@ and by a mutant that a weaker implementation would satisfy.
 4. No key, secret, comment, review request, app or settings change, branch-protection call, or remote write was
    made by the run; the run record states that.
 5. The final run report lists gates G1-G9 and the deferred steps DS-1, DS-2, DS-3 (from `spec.md` §5) for the
-   leader's draft pull request body, states known debt KD-1 and the accepted limitations AL-1 and AL-2, and
+   leader's draft pull request body, states known debt KD-1 and the accepted limitation AL-2 (AL-1 is superseded and resolved by
+   REQ-CCR-022 and REQ-CCR-023, revision 13; the report names it as resolved, never as accepted), and
    names the merged-local SHA on local `main`.
 6. The landing re-measure of `plan.md` §F ran and its output is recorded.
 7. The report states that the remote conclusion of the `files` step, the `review` step, and the job is
