@@ -16,7 +16,7 @@ file URI와 별도로 전달한 파일 경로가 일치하는지 확인한 뒤 p
 
 프로세스 registry는 정상 연결과 fault 연결 모두를 강하게 참조한다. 새 native 자원을 얻기 전에 전체 예약 수를 128개로 제한한다. 최대 384개 file pin의 상한이며, SQLite의 전체 stmt·메모리·Backup/ATTACH 목적지 핸들의 상한은 아니다. 기존 두 pool은 각각 MaxOpenConns=1이지만 여러 pool은 총 128개 예약 범위에서 공존할 수 있다. 무제한 pool 동작과 동일하다는 주장은 하지 않는다.
 
-정상 종료는 underlying physical Close 성공 이후에만 pin을 해제한다. base.Connect 진입 뒤 opaque 실패, Close 오류·panic, 종료를 확인할 수 없는 Raw 자원은 명시적으로 보존한다. 이 경우 같은 canonical path의 새 admission을 거부하고 원래 error identity를 보존한다. `Status`와 안전한 로그에는 token·경로 digest·stage·보유 수만 표시한다. DSN·SQL·payload는 로그에 넣지 않는다. GC·TTL·자동 재시도·무조건 force release로 불확실한 객체를 해제하지 않는다. database/sql이 종료 오류를 버리는 경로에서도 registry와 진단은 남는다.
+정상 종료 경로는 **public driver.Close가 nil을 반환한 뒤에** pin을 해제한다. 이는 모든 OS 핸들 종료를 직접 확인하는 검사가 아니다. base.Connect 진입 뒤 opaque 실패, Close 오류·panic, 종료를 확인할 수 없는 Raw 자원은 명시적으로 보존한다. 이 경우 같은 canonical path의 새 admission을 거부하고 원래 error identity를 보존한다. `Status`와 안전한 로그에는 token·경로 digest·stage·보유 수만 표시한다. DSN·SQL·payload는 로그에 넣지 않는다. GC·TTL·자동 재시도·무조건 force release로 불확실한 객체를 해제하지 않는다. database/sql이 종료 오류를 버리는 경로에서도 registry와 진단은 남는다.
 
 Raw stmt와 rows는 별도 계수한다. EOF만으로 rows를 종료 처리하지 않는다. prepared rows의 reset과 stmt finalize를 구분하고, 자식 Close는 한 번만 호출한다. raw 자식이 남으면 modernc의 close_v2/TLS 정리 전에 physical Close 자체를 보류하고 오류를 반환한다.
 
@@ -29,3 +29,9 @@ NewBackup/NewRestore의 구체 반환형 `*sqlite.Backup`은 유지한다. 그�
 원래 driver의 global ConnectionHook은 wrapper 생성 전에 unwrapped conn을 받는다. 그 hook이 미종료 stmt/rows를 보관하면 이 wrapper의 계수에 들어오지 않는 경계가 있다. 현재 저장소에서 hook 등록 사용은 발견되지 않았으나, 임의 외부 hook의 자원까지 관측한다고 주장하지 않는다. 그 조합은 별도 계측·정책·native 검증이 필요하다.
 
 기존 namespace의 조상 rename/reparse 경합, 협조하지 않는 외부 SQLite 연결, ATTACH/VACUUM 목적지와 임의 Raw 리소스의 전체 수명까지 이 세 file pin으로 보장하지 않는다. Linux 회귀·Windows 교차 컴파일은 실제 Windows native 실행의 대체 증거가 아니다. 이전 합성 lifetime 실험의 통과도 생산 경로의 원자 생성·재연결·종료 오류 검증과 구분한다.
+
+## VFS 종료 관측의 남은 경계
+
+현재 의존성 modernc.org/sqlite v1.60.1에서 `lib/sqlite.go`의 `_sqlite3OsClose`는 VFS xClose의 반환값을 버린다. `_sqlite3PagerClose`와 `_sqlite3BtreeClose` 역시 하위 파일 종료 오류를 public Close 결과로 전달하지 않는 경로가 있다. Windows `_winClose`는 CloseHandle 실패를 오류로 만들 수 있으므로 **public Close nil만으로 모든 kernel 핸들의 종료를 입증할 수 없다**. 이 소스 경로는 실제 하위 CloseHandle 실패가 이번 실행에서 발생했다는 관측을 뜻하지 않는다.
+
+registry의 fault retention은 wrapper에 전달된 오류·panic과 관측한 미종료 자원에 적용한다. 하위 VFS가 감춘 종료 오류를 native pin이 실제로 감지하거나 방지하는지는 아직 검증되지 않은 Gap이다. ATTACH/VACUUM 출력의 숨은 연결 종료도 별도 경계이며, 주 DB의 세 pin으로 출력 파일까지 보호했다고 주장하지 않는다. 이 패치는 실제 Windows 생산 회귀와 해당 실패 경계 검토를 위한 변경이며 보안 수리 완료 판정이 아니다.

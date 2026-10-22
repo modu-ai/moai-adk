@@ -1,5 +1,22 @@
 # 패키지 모듈 상세
 
+## Windows 파일 정책과 SQLite 연결 경계 — 7d5d312
+
+`bf0a35f10` 이후 공통 수리와 이 트리의 SQLite 수리를 소스에서 대조했다. 아래 내용은 구현 책임을 설명하며 Windows 생산 회귀 통과나 독립 감사를 뜻하지 않는다.
+
+| 경로 | 현재 책임과 경계 |
+|---|---|
+| `internal/privatefile` | Unix 파일 0600·디렉터리 0700, Windows current-owner SID·protected DACL·정확한 owner ACE를 실제 객체에서 검사한다. 파일 생성·append·관리 디렉터리 생성은 payload 전 native 정책을 적용한다. 긴 Windows 경로는 syscall 경계에서 정규화한다. 새 `OpenPinned`는 단일 CreateFile의 SA와 READ_DATA/no-DELETE-share를 함께 적용하고 검증 전 callback으로 핸들 소유권을 넘긴다. 기존 객체의 owner를 바꾸지 않으며 SQLite pin은 단일 링크만 허용한다. |
+| `internal/sqliteguard` | writable Windows file URI와 경로를 함께 바인딩하고 물리 연결마다 DB/WAL/SHM을 먼저 pin한다. public modernc Connector를 감싸며 PERSIST_WAL 설정·readback, 관측한 stmt/rows 수명, 최대 128개 active/fault 예약과 동일 경로 fault admission 거부를 담당한다. Unix Open은 기존 sql.Open 경로다. |
+| `internal/homestate` | 관리 namespace 생성과 writable factory/profile-lease 두 연결 지점이 sqliteguard를 소비한다. 기존 namespace leaf는 검사만 하며 조상 ACL을 변경하지 않는다. readonly factory/census는 생성·checkpoint 없는 기존 경로를 유지한다. |
+| `internal/glmcred`, `internal/jevcred`, `internal/mission`, `internal/feedback/outbox` | credential 저장, governance/completion receipt·owner 경계, 자동 mission 상태, append outbox가 native 파일 정책을 소비한다. receipt의 digest·TTL·issuer·경로 검사는 그대로 남는다. |
+| `internal/cli/clean_home.go`, `codex_skills_disable.go`, `codex_config_policy_*` | home 보안 정리의 실제 파일·디렉터리 정책과 Codex config의 private backup/staging을 처리한다. 최종 config는 기존 플랫폼 정책을 복원하며 외부 링크 대상으로 내려가지 않는다. doctor의 canonical skill 경로는 ReadDir 전에 디렉터리 형태도 검사한다. |
+| `internal/factorymsg`, `internal/hook` | invocation별 검증된 Namespace를 registry·broker·bind cache에서 재사용한다. context는 namespace/run-state/broker/registration에 전달되며 동기 파일·owner probe·정리 전체를 interrupt할 수 있다는 주장은 하지 않는다. |
+| `internal/cli/factory_card.go`, `internal/cli/factory_card_metadata.go`, `internal/factory/integration_common_root.go` | picked 상태를 명시적으로 열거하고, self-dispatch가 꺼져 있어도 자기 bundle의 continuation eligibility를 selector와 맞춘다. integration fallback의 Git 경로를 native canonical 표기와 맞춘다. |
+| `internal/sandbox`, `internal/testguard` | bubblewrap의 isolated /tmp를 scope bind보다 먼저 mount한다. 테스트는 native 접근 정책 변조와 검증된 임시 HOME 판단을 사용하며 제품 보호 검사를 삭제하지 않는다. |
+
+종료 판단은 **public driver.Close가 nil을 반환하는 경계**에 한정된다. modernc 1.60.1의 내부 `_sqlite3OsClose`는 VFS xClose 반환값을 버린다. 따라서 하위 Windows CloseHandle 오류를 이 wrapper가 감지·방지하거나 모든 OS 핸들 종료를 증명한다는 보장은 없다. 이 경로의 실제 오류 주입 검증은 남아 있다. Raw Backup/Restore는 concrete 반환형을 유지하지만 종료 관측이 불가능하여 진입부터 sticky retention으로 처리한다. wrapper 이전 global ConnectionHook의 미종료 자원, ATTACH/VACUUM 목적지, 외부 연결도 별도 경계다.
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.

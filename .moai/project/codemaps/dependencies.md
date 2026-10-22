@@ -1,5 +1,22 @@
 # 의존성 그래프
 
+## SQLite native 정책 경계의 import — 7d5d312
+
+아래는 현재 비테스트 소스의 직접 import를 대조한 추가 경계다. Windows 선택 소스도 포함하며, 아래 과거 판의 전체 패키지 수·fan-in 수치를 재측정한 결과가 아니다.
+
+- internal/homestate depends on internal/sqliteguard
+- internal/sqliteguard depends on internal/privatefile
+- internal/privatefile depends on internal/atomicfile
+- internal/glmcred depends on internal/privatefile
+- internal/jevcred depends on internal/privatefile
+- internal/mission depends on internal/privatefile
+- internal/feedback/outbox depends on internal/privatefile
+- internal/cli depends on internal/privatefile
+- internal/factorymsg depends on internal/homestate
+- internal/hook depends on internal/factorymsg
+
+외부 직접 의존은 sqliteguard의 `modernc.org/sqlite`와 Windows privatefile의 `golang.org/x/sys/windows`다. 새 전역 driver 등록은 없다. sqliteguard의 Unix Open에는 privatefile import가 없고 기존 sql.Open을 유지한다. Windows 소비자는 URI/파일 바인딩과 물리 연결별 정책을 추가한다. readonly 호출자를 writable 생성 경로로 옮기지 않는다.
+
 ## 현재 의존성 측정 — bf0a35f10
 
 Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.

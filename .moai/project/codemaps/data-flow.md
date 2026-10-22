@@ -1,5 +1,17 @@
 # 데이터 흐름
 
+## Windows writable SQLite의 물리 연결 흐름 — 7d5d312
+
+관리 namespace의 없는 구성요소만 private SA로 생성하고 기존 leaf는 native 정책을 검사한다. homestate factory/profile-lease의 writable 요청은 절대 경로와 local file URI를 바인딩한 뒤 parent alias를 해소하여 같은 경로로 정규화한다. 허용 query key는 `_pragma`, `_txlock`이며 readonly 요청은 이 경로 밖에 남는다.
+
+Connect마다 프로세스 예약을 먼저 얻고 DB/WAL/SHM을 원자 CreateFile로 연다. native handle을 얻자마자 callback이 강한 소유권에 등록하고, 같은 객체의 단일 링크·현재 owner·strict DACL을 검증한다. 그 뒤에만 원래 Connector를 호출하여 SQLite가 payload를 쓴다. 같은 물리 연결에서 PERSIST_WAL=1 설정과 readback을 확인한 뒤 pool에 반환한다. 재연결도 같은 순서다.
+
+반환한 stmt와 rows를 강하게 계수하며 EOF는 Close의 대체 신호가 아니다. nonnil 자식과 오류가 함께 오면 자식을 한 번 정리하고, 정리 오류·panic은 보존한다. 관측한 자식이 남아 있으면 base Close 진입을 보류한다. 관측한 자식이 없고 public driver.Close가 nil이면 file pin을 해제한다. opaque Connect 오류·Close 오류/panic·Raw Backup/Restore의 관측 불가 수명은 같은 경로 admission을 거부한 채 registry에 남는다. 총 예약 128개(파일 pin 최대 384개), token·경로 digest·stage로 상태를 보고하며 자동 TTL 해제는 없다.
+
+public Close nil은 모든 kernel 핸들이 닫혔다는 증거가 아니다. modernc 내부 VFS close 오류가 public 경계로 전달되지 않는 소스 경로가 있어 현재 guard가 이를 감지·방지한다는 보장은 남아 있다. global ConnectionHook이 wrapper 이전에 보관한 자원과 ATTACH/VACUUM 목적지는 이 계수·세 파일 pin 밖이다. 합성 lifetime native 실험과 Linux 회귀·Windows 교차 컴파일을 생산 경로의 실제 Windows 검증으로 바꾸어 주장하지 않는다.
+
+공통 파일 쓰기는 credential·receipt·mission·outbox에서 privatefile의 생성/append/검사를 거친다. hook 메시지는 한 invocation의 검증된 Namespace를 registry·broker·cache에 전달하여 같은 root를 다시 찾지 않는다. bubblewrap은 isolated /tmp를 먼저 만들고 승인 scope를 그 아래 bind하므로 뒤쪽 mount가 scope를 가리지 않는다.
+
 ## 현재 흐름 보완 — bf0a35f10
 
 후보 CI 흐름은 카드의 검증된 변경과 통합 기준으로 merge-tree 후보를 생성하고, `ci/<card>`에 게시한 다음 pending 증거를 기록하는 순서다. `integration candidate --observe`가 실제 실행 결과를 읽어 후보 SHA·대상·통합 tip에 묶는다. 착지 경로는 이 값들과 green 판정이 모두 맞는 후보만 받는다. 게시나 관측 요청 자체는 CI 통과 증거가 아니다.
