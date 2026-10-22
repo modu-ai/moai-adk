@@ -128,3 +128,53 @@ func TestBlockedRefusesRegularRecordAncestor(t *testing.T) {
 		t.Fatalf("ancestor payload changed: %q, %v", got, err)
 	}
 }
+
+func TestBlockedRefusesNonregularRecordLeaves(t *testing.T) {
+	for _, shape := range []string{"linked-unrelated", "linked-matching", "dangling"} {
+		t.Run(shape, func(t *testing.T) {
+			root := t.TempDir()
+			dir := escalation.RecordDir(root, signtest.Card)
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			leaf := filepath.Join(dir, "revoke.md")
+			target := filepath.Join(root, "other-record.md")
+			if shape != "dangling" {
+				seal := "other seal"
+				if shape == "linked-matching" {
+					seal = "seal"
+				}
+				record := escalation.Record{SchemaVersion: 1, Card: signtest.Card, Spec: signtest.SpecID,
+					Kind: escalation.KindRevoke, Class: revoke.RecordClass,
+					Fingerprint: escalation.Fingerprint(revoke.RecordClass, seal), Status: escalation.StatusResolved,
+					Decider: "human", Occurrences: 1, Observation: "revoked", Options: []string{"re-sign", "abandon"}}
+				data, err := record.Marshal()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(target, data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			relative, err := filepath.Rel(dir, target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(relative, leaf); err != nil {
+				t.Fatalf("create linked record fixture: %v", err)
+			}
+			before, err := os.Lstat(leaf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			blocked, err := revoke.Blocked(root, signtest.Card, signtest.SpecID, "seal")
+			if !blocked || err == nil || !strings.Contains(err.Error(), "record leaf") {
+				t.Errorf("nonregular record = %v, %v; want blocked with record-leaf refusal", blocked, err)
+			}
+			after, err := os.Lstat(leaf)
+			if err != nil || !os.SameFile(before, after) {
+				t.Errorf("record fixture identity changed: %v", err)
+			}
+		})
+	}
+}

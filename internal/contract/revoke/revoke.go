@@ -283,7 +283,15 @@ func Blocked(root, card, spec, seal string) (blocked bool, retErr error) {
 			continue
 		}
 		p := filepath.Join(dir, e.Name())
-		data, err := r.ReadFile(filepath.Join(relative, e.Name()))
+		relativeLeaf := filepath.Join(relative, e.Name())
+		info, err := r.Lstat(relativeLeaf)
+		if err != nil {
+			return true, fmt.Errorf("record leaf %s: %w", p, err)
+		}
+		if !info.Mode().IsRegular() {
+			return true, fmt.Errorf("record leaf %s is not a regular file", p)
+		}
+		data, err := r.ReadFile(relativeLeaf)
 		if err != nil {
 			return true, fmt.Errorf("read %s: %w", p, err)
 		}

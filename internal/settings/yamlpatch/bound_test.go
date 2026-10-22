@@ -8,6 +8,47 @@ import (
 	"testing"
 )
 
+func TestBoundPatchRejectsDirectoryLeafBeforeRead(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "section.yaml")
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := PatchFileAtRoot(root, "section.yaml", []KeyEdit{{Path: []string{"a"}, Value: "new"}}, RootOptions{})
+	if err == nil || !strings.Contains(err.Error(), "yamlpatch: stat") {
+		t.Fatalf("directory leaf = %v; want refusal before read", err)
+	}
+}
+
+func TestBoundFullDocumentPreservesPayloadAndPublicationPolicy(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config", "section.yaml")
+	data := []byte("# typed section\nsection:\n  values: [one, two]\n  empty: {}\n")
+	if err := WriteFileAtRoot(root, filepath.Join("config", "section.yaml"), data, RootOptions{ParentPerm: 0o755}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != string(data) {
+		t.Fatalf("full-document bytes = %q, %v", got, err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.yaml")
+	if err := os.WriteFile(outside, []byte("user bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "linked.yaml")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatalf("create full-document linked fixture: %v", err)
+	}
+	if err := WriteFileAtRoot(root, "linked.yaml", data, RootOptions{}); err == nil || !strings.Contains(err.Error(), "yamlpatch: stat") {
+		t.Fatalf("linked full-document target = %v; want stat refusal", err)
+	}
+	if got, err := os.ReadFile(outside); err != nil || string(got) != "user bytes" {
+		t.Fatalf("outside full-document payload changed: %q, %v", got, err)
+	}
+	if err := WriteFileAtRoot(root, filepath.Join("missing", "section.yaml"), data, RootOptions{}); err == nil || !strings.Contains(err.Error(), "yamlpatch: create temp") {
+		t.Fatalf("missing full-document parent = %v; want create-temp error", err)
+	}
+}
+
 func TestBoundPatchRefusesLinkedComponents(t *testing.T) {
 	for _, linkRel := range []string{".moai", filepath.Join(".moai", "config"), filepath.Join(".moai", "config", "sections")} {
 		for _, present := range []bool{false, true} {
@@ -223,7 +264,7 @@ func TestBoundPatchErrorBoundariesAndCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), ".yamlpatch-") {
+		if strings.HasPrefix(entry.Name(), ".yamlpatch-") || strings.HasPrefix(entry.Name(), ".moai-config-") {
 			t.Errorf("failed publication left temp %q", entry.Name())
 		}
 	}

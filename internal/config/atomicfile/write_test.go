@@ -74,6 +74,9 @@ func TestWrite_PreservesExistingMode(t *testing.T) {
 			if err := os.WriteFile(target, []byte("old"), tc.mode); err != nil {
 				t.Fatalf("seed at mode %v: %v", tc.mode, err)
 			}
+			if err := os.Chmod(target, tc.mode); err != nil {
+				t.Fatalf("set fixture mode %v: %v", tc.mode, err)
+			}
 			// Sanity-check the seed landed at the mode we asked for (umask can
 			// interfere on some systems; a failure here means the fixture is
 			// wrong, not the helper).

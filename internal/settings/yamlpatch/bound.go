@@ -1,12 +1,13 @@
 package yamlpatch
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 )
 
 // RootOptions preserves the generic seam's mode/empty-document choices.
@@ -24,10 +25,29 @@ type RootOptions struct {
 //
 // @MX:ANCHOR: [AUTO] project-bound YAML read, parent creation and atomic publication.
 // @MX:REASON: settings, profile, config and CLI writers share this containment boundary.
-func PatchFileAtRoot(root, relative string, edits []KeyEdit, options RootOptions) (retErr error) {
+func PatchFileAtRoot(root, relative string, edits []KeyEdit, options RootOptions) error {
 	if len(edits) == 0 {
 		return nil
 	}
+	return withSectionRoot(root, relative, options, func(r *os.Root, path string) error {
+		return patchFileWithIO(path, edits, options.Mode, options.AllowEmpty, r.ReadFile,
+			func(path string, data []byte, perm os.FileMode) error {
+				return atomicWriteAtRoot(r, path, data, perm)
+			})
+	})
+}
+
+// WriteFileAtRoot atomically publishes an already serialized section beneath
+// the trusted project root, with the same path and mode policy as rooted edits.
+// It preserves data exactly; AllowEmpty applies only to PatchFileAtRoot.
+// A zero Mode preserves an existing file's mode or uses 0644 for a new file.
+func WriteFileAtRoot(root, relative string, data []byte, options RootOptions) error {
+	return withSectionRoot(root, relative, options, func(r *os.Root, path string) error {
+		return atomicWriteAtRoot(r, path, data, options.Mode)
+	})
+}
+
+func withSectionRoot(root, relative string, options RootOptions, operation func(*os.Root, string) error) (retErr error) {
 	if !filepath.IsLocal(relative) || filepath.Clean(relative) == "." {
 		return fmt.Errorf("yamlpatch: stat %s: target is not a local file path", relative)
 	}
@@ -52,13 +72,14 @@ func PatchFileAtRoot(root, relative string, edits []KeyEdit, options RootOptions
 	if err := checkRootSectionPath(r, relative); err != nil {
 		return fmt.Errorf("yamlpatch: stat %s: %w", relative, err)
 	}
-	return patchFileWithIO(relative, edits, options.Mode, options.AllowEmpty, r.ReadFile,
-		func(path string, data []byte, perm os.FileMode) error {
-			return atomicWriteAtRoot(r, path, data, perm)
-		})
+	return operation(r, relative)
 }
 
 func checkRootSectionPath(root *os.Root, relative string) error {
+	return checkRootPath(root, relative, false)
+}
+
+func checkRootPath(root *os.Root, relative string, directoryTarget bool) error {
 	parts := strings.Split(filepath.ToSlash(relative), "/")
 	current := ""
 	for i, part := range parts {
@@ -70,71 +91,29 @@ func checkRootSectionPath(root *os.Root, relative string) error {
 		if err != nil {
 			return err
 		}
-		if info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 || i < len(parts)-1 && !info.IsDir() {
-			return fmt.Errorf("section component %s is linked, irregular or not a directory", current)
+		leaf := i == len(parts)-1
+		if !leaf && !info.IsDir() || leaf && !info.Mode().IsRegular() && !(directoryTarget && info.IsDir()) || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+			return fmt.Errorf("section component %s is not a regular file or real parent directory", current)
 		}
 	}
 	return nil
 }
 
-func atomicWriteAtRoot(root *os.Root, path string, data []byte, perm os.FileMode) (retErr error) {
-	if err := checkRootSectionPath(root, path); err != nil {
+func atomicWriteAtRoot(root *os.Root, path string, data []byte, perm os.FileMode) error {
+	// Public rooted operations already require a regular leaf before reading.
+	// Keep the lower publication helper's directory-target rename/error contract,
+	// so a failed installation still exercises and verifies temporary cleanup.
+	if err := checkRootPath(root, path, true); err != nil {
 		return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
 	}
-	mode := defaultFilePerm
-	info, err := root.Lstat(path)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
-	}
+	err := atomicfile.Write(path, data, defaultFilePerm, atomicfile.RootOptions{Root: root, ForceMode: perm,
+		BeforeRename: func() error { return checkRootPath(root, path, true) }})
 	if err == nil {
-		mode = info.Mode().Perm()
+		return nil
 	}
-	if perm != 0 {
-		mode = perm
+	var failure *atomicfile.WriteError
+	if errors.As(err, &failure) {
+		return fmt.Errorf("yamlpatch: %s: %w", failure.Op, err)
 	}
-	var tmp *os.File
-	var name string
-	for range 100 {
-		name = filepath.Join(filepath.Dir(path), ".yamlpatch-"+rand.Text()+".tmp")
-		tmp, err = root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-		if !os.IsExist(err) {
-			break
-		}
-	}
-	if err != nil {
-		return fmt.Errorf("yamlpatch: create temp: %w", err)
-	}
-	closed := false
-	published := false
-	defer func() {
-		if !closed {
-			if err := tmp.Close(); err != nil {
-				retErr = errors.Join(retErr, fmt.Errorf("yamlpatch: close temp: %w", err))
-			}
-		}
-		if !published {
-			if err := root.Remove(name); err != nil && !os.IsNotExist(err) {
-				retErr = errors.Join(retErr, fmt.Errorf("yamlpatch: remove temp: %w", err))
-			}
-		}
-	}()
-	if _, err := tmp.Write(data); err != nil {
-		return fmt.Errorf("yamlpatch: write temp: %w", err)
-	}
-	if err := tmp.Chmod(mode); err != nil {
-		return fmt.Errorf("yamlpatch: chmod temp: %w", err)
-	}
-	closeErr := tmp.Close()
-	closed = true
-	if closeErr != nil {
-		return fmt.Errorf("yamlpatch: close temp: %w", closeErr)
-	}
-	if err := checkRootSectionPath(root, path); err != nil {
-		return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
-	}
-	if err := root.Rename(name, path); err != nil {
-		return fmt.Errorf("yamlpatch: rename: %w", err)
-	}
-	published = true
-	return nil
+	return fmt.Errorf("yamlpatch: write: %w", err)
 }
