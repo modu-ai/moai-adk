@@ -177,6 +177,25 @@ Repair commits on top of dec02e50f0: `a95d62749a` (F5 + F6), `5b58068810` (F4), 
 
 No real-workflow defect was exposed by a strengthened guard: every new guard is green on the unmutated tree.
 
+### Amendment v0.8.0 run (REQ-RPC-012 / AC-RPC-012; implementation commit 8cdc040958, RED measured at HEAD 6299276357)
+
+Result classification (`tdd-result-contract.md`): RED = `EXPECTED_RED` (the intended assertions fired), GREEN = `PASS`.
+
+RED (this run, tree 6299276357, `unset GITHUB_ACTIONS CI MOAI_TEST_MODE && go test ./internal/template/ -count=1 -run '^TestDrafterCleanupConcurrency$' -v`, exit 1). Verbatim violation lines, first four of the test body (the 11 controls then refuse to run on a red baseline, which is the designed behaviour):
+
+```
+CLEANUP_CONCURRENCY_VIOLATION: the two workflows share the group "release-drafter-mutations": GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups
+CLEANUP_CONCURRENCY_VIOLATION: draft absent at its re-query: the step output has no already-gone line ("release not found: stale-draft\n[SKIP] stale-draft: state re-query failed; not deleting")
+CLEANUP_CONCURRENCY_VIOLATION: delete reports the draft not found: the delete step exits 1, want 0 (an already-gone draft must not fail the run): Deleting stale draft: stale-draft
+HTTP 404: Not Found (https://api.github.com/repos/o/r/releases/1)
+```
+
+GREEN (this run, tree 8cdc040958 content, same command): `--- PASS: TestDrafterCleanupConcurrency (9.42s)`, `ok github.com/modu-ai/moai-adk/internal/template 9.667s`, exit 0. All 11 mutant controls observed red (groups equal again; cleanup group with `github.ref`; cleanup group with `github.run_id`; ref-keyed drafter group; drafter cancels; cleanup cancels with separate groups; cleanup without a group; delete before the re-query; delete never re-queries; fatal delete of an already-gone draft; every delete failure forgiven).
+
+Regression set (`-run` of the 13 named guards): 18 top-level tests PASS, exit 0, `ok github.com/modu-ai/moai-adk/internal/template 14.392s`. `golangci-lint run ./internal/template/...`: `0 issues.` `actionlint` on release-drafter-cleanup.yml, release-drafter.yml, ci.yml, release-pr-multi-os.yml: exit 0 each.
+
+Built values: drafter group `release-drafter-mutations` (unchanged), cleanup group `release-drafter-cleanup`, `cancel-in-progress: false` on both. The delete step treats `not found|HTTP 404` at the re-query or at the delete as `[ALREADY-GONE]` (exit 0); any other delete failure prints the error and exits 1. Accepted residual (named in the cleanup workflow comment): a draft edited after its re-query and before its delete is still deleted.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
