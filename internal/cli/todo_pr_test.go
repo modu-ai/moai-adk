@@ -16,6 +16,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -217,20 +218,56 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 			}
 			installSpy(t, tc.spy)
 
+			// Unix leaves a released flock artifact; Windows removes its
+			// atomic-create artifact. Neither shape proves that a read did
+			// not briefly acquire a lock. Make acquisition impossible on
+			// both hosts and positively exercise the real locking entry.
+			if err := os.Remove(store.LockPath()); err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(store.LockPath(), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			called := false
+			lockErr := store.WithLock(func(*factory.LockedBacklog) error { called = true; return nil })
+			if !errors.Is(lockErr, factory.ErrStateLockUnsafePath) || called || !strings.Contains(lockErr.Error(), store.LockPath()) {
+				t.Fatalf("lock refusal control: callback=%v err=%v", called, lockErr)
+			}
+			lockBefore, err := os.Stat(store.LockPath())
+			if err != nil || !lockBefore.IsDir() {
+				t.Fatalf("lock refusal sentinel: %v", err)
+			}
 			before := queueDirDigest(t, root)
-			// The physical carrier is the engine's database; Path() now names
-			// the legacy document, which a migrated queue no longer has.
+			// EnginePath names the database, rather than the legacy JSON.
 			beforeStat, err := os.Stat(store.EnginePath())
 			if err != nil {
 				t.Fatalf("stat backlog: %v", err)
 			}
-			lockBefore, lockErr := os.Stat(store.LockPath())
-			if lockErr != nil {
-				t.Fatalf("stat backlog.lock: %v", lockErr)
+			out, _, err := runTodo(t, tc.args...)
+			if err != nil {
+				t.Fatalf("todo %v with lock acquisition refused: %v", tc.args, err)
 			}
-
-			if _, _, err := runTodo(t, tc.args...); err != nil {
-				t.Fatalf("todo %v: %v", tc.args, err)
+			if tc.name == "json form" {
+				var rows []struct {
+					CardID string `json:"card_id"`
+				}
+				if err := json.Unmarshal([]byte(out), &rows); err != nil {
+					t.Fatalf("decode read-only JSON: %v", err)
+				}
+				if len(rows) != len(ids) {
+					t.Fatalf("JSON rows=%d want=%d: %s", len(rows), len(ids), out)
+				}
+				for i, id := range ids {
+					if rows[i].CardID != id {
+						t.Errorf("JSON row %d card=%q want=%q", i, rows[i].CardID, id)
+					}
+				}
+			} else {
+				for _, text := range []string{"first card", "second card"} {
+					if !strings.Contains(out, text) {
+						t.Errorf("todo %v omitted %q with lock acquisition refused: %s", tc.args, text, out)
+					}
+				}
 			}
 
 			after := queueDirDigest(t, root)
@@ -242,18 +279,14 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 				t.Fatalf("stat backlog after: %v", err)
 			}
 			if !beforeStat.ModTime().Equal(afterStat.ModTime()) {
-				t.Errorf("backlog.json mtime moved: %v -> %v", beforeStat.ModTime(), afterStat.ModTime())
+				t.Errorf("backlog database mtime moved: %v -> %v", beforeStat.ModTime(), afterStat.ModTime())
 			}
-			// The lock is NOT taken. The seeding writes left a lock artifact
-			// behind, so its presence proves nothing — what proves the read
-			// verb did not lock is that the artifact's mtime never moved.
-			// (The digest covers its bytes; a lock taken and released is an
-			// mtime event, not a content event.)
-			if lockAfter, err := os.Stat(store.LockPath()); err == nil {
-				if !lockBefore.ModTime().Equal(lockAfter.ModTime()) {
-					t.Errorf("backlog.lock mtime moved: %v -> %v — the read verb took the lock",
-						lockBefore.ModTime(), lockAfter.ModTime())
-				}
+			lockAfter, err := os.Stat(store.LockPath())
+			if err != nil {
+				t.Fatalf("lock refusal sentinel removed: %v", err)
+			}
+			if !lockAfter.IsDir() || !os.SameFile(lockBefore, lockAfter) || !lockBefore.ModTime().Equal(lockAfter.ModTime()) {
+				t.Errorf("lock refusal sentinel changed across read")
 			}
 		})
 	}

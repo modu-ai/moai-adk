@@ -395,7 +395,7 @@ func TestFactoryRelaunchSurfacesLaunchFailure(t *testing.T) {
 	prev := factoryRelaunchExecFn
 	t.Cleanup(func() { factoryRelaunchExecFn = prev })
 
-	factoryRelaunchExecFn = func(*exec.Cmd) error { return exec.Command("/bin/sh", "-c", "exit 3").Run() }
+	factoryRelaunchExecFn = func(*exec.Cmd) error { return nativeProcessFixtureCommand(t, 3).Run() }
 	_, _, err := runRelaunch(t, "--provider", "cc")
 	var coded *exitCodeError
 	if !errors.As(err, &coded) || coded.code != 3 {

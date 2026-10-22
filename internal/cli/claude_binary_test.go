@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,7 +19,7 @@ import (
 
 // writeExecutable creates an executable file at path with a marker body and
 // returns the path. Tests never execute the file directly (the launch seam is
-// captured), so the body is inert; only existence and the mode bit matter.
+// captured), so the body is inert; only existence and native execute permission matter.
 func writeExecutable(t *testing.T, path string) string {
 	t.Helper()
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
@@ -33,9 +34,19 @@ func writeExecutable(t *testing.T, path string) string {
 // test asserting a different path therefore proves the pin won.
 func fakePATHDir(t *testing.T) (dir, claudeBin string) {
 	t.Helper()
-	dir = t.TempDir()
-	claudeBin = writeExecutable(t, filepath.Join(dir, "claude"))
+	claudeBin = writeNativeToolFixture(t, "claude", "package main\nfunc main() {}\n")
+	dir = filepath.Dir(claudeBin)
 	return dir, claudeBin
+}
+
+// A successful native launch is the fixture's positive control: an inert
+// shebang with executable mode alone is insufficient on Windows.
+func TestClaudePATHFixtureLaunchesNativeExecutable(t *testing.T) {
+	dir, _ := fakePATHDir(t)
+	t.Setenv("PATH", dir)
+	if out, err := exec.Command("claude").CombinedOutput(); err != nil {
+		t.Fatalf("launch native PATH fixture: %v\n%s", err, out)
+	}
 }
 
 // fakeMoaiProject creates a minimal MoAI project root (a .moai directory, the
@@ -53,13 +64,21 @@ func fakeMoaiProject(t *testing.T) string {
 }
 
 func TestValidateClaudeBinaryPin_AcceptsExecutable(t *testing.T) {
-	pin := writeExecutable(t, filepath.Join(t.TempDir(), "claude-2.1.263"))
+	marker := filepath.Join(t.TempDir(), "unexpected-pin-execution")
+	t.Setenv("MOAI_PIN_EXECUTION_MARKER", marker)
+	pin := writeNativeToolFixture(t, "claude", `package main
+import "os"
+func main() { if marker := os.Getenv("MOAI_PIN_EXECUTION_MARKER"); marker != "" { os.WriteFile(marker, []byte("executed"), 0600) } }
+`)
 	got, err := validateClaudeBinaryPin(pin, "test-source")
 	if err != nil {
 		t.Fatalf("valid pin rejected: %v", err)
 	}
 	if got != pin {
 		t.Errorf("resolved %q, want the pinned path %q", got, pin)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("pin validation executed the pinned code: marker err=%v", err)
 	}
 }
 
@@ -80,10 +99,7 @@ func TestValidateClaudeBinaryPin_MissingPath(t *testing.T) {
 }
 
 func TestValidateClaudeBinaryPin_NotExecutable(t *testing.T) {
-	plain := filepath.Join(t.TempDir(), "claude")
-	if err := os.WriteFile(plain, []byte("not executable"), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
+	plain, remedy := nonExecutableClaudePinFixture(t)
 	_, err := validateClaudeBinaryPin(plain, "test-source")
 	if err == nil {
 		t.Fatal("non-executable pin accepted — pin validation must fail loud")
@@ -91,8 +107,8 @@ func TestValidateClaudeBinaryPin_NotExecutable(t *testing.T) {
 	if !strings.Contains(err.Error(), "not executable") {
 		t.Errorf("error %q should say the pin is not executable", err)
 	}
-	if !strings.Contains(err.Error(), "chmod +x") {
-		t.Errorf("error %q should carry the chmod +x remedy", err)
+	if !strings.Contains(err.Error(), remedy) {
+		t.Errorf("error %q should carry the native execute-permission remedy %q", err, remedy)
 	}
 }
 

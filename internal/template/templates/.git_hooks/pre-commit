@@ -30,26 +30,44 @@ if [ -n "$STAGED_GO" ]; then
     # fall through to go vet, which is skipped outside a Go module -- so in
     # those environments nothing caught them at all.
     if command -v gofmt >/dev/null 2>&1; then
+        # A native Windows gofmt cannot open /dev/stdin. Its no-path stdin
+        # mode also accepts fragments without a package clause, unlike the
+        # full-file parser used here. Materialize the unchanged index bytes
+        # in an exclusive file inside this repository's Git metadata instead.
         # One scan, two outcomes per file, told apart by a line prefix: the
         # loop runs in a subshell and cannot hand variables back.
         FMT_SCAN="$(
             printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                 [ -n "$f" ] || continue
-                if _out="$(git show ":$f" 2>/dev/null | gofmt -l /dev/stdin 2>/dev/null)"; then
+                _fmt_tmp=""
+                trap '[ -z "$_fmt_tmp" ] || rm -f -- "$_fmt_tmp" 2>/dev/null' 0
+                trap 'exit 1' HUP INT TERM
+                if _fmt_base="$(git rev-parse --git-path moai-precommit.XXXXXX 2>/dev/null)" &&
+                    _fmt_tmp="$(mktemp "$_fmt_base" 2>/dev/null)" &&
+                    git show ":$f" >"$_fmt_tmp" 2>/dev/null &&
+                    _out="$(gofmt -l "$_fmt_tmp" 2>/dev/null)"; then
                     if [ -n "$_out" ]; then
                         printf 'fmt %s\n' "$f"
                     fi
                 else
                     printf 'err %s\n' "$f"
                 fi
+                if [ -n "$_fmt_tmp" ] && ! rm -f -- "$_fmt_tmp" 2>/dev/null; then
+                    printf '[pre-commit] Could not remove staged temporary file: %s\n' "$_fmt_tmp" >&2
+                    exit 1
+                fi
+                _fmt_tmp=""
             done
-        )"
+        )" || {
+            printf '\n[pre-commit] FAILED: gofmt could not check the staged bytes (temporary file setup or cleanup failed).\n' >&2
+            exit 1
+        }
         FMT_ERR="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^err //p')"
         NEED_FMT="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^fmt //p')"
 
         # A non-zero gofmt exit is a tool error, never a pass. Deciding on an
         # empty stdout alone would let a gofmt that could not run at all --
-        # /dev/stdin missing, input unreadable, staged bytes that do not parse
+        # temporary file unavailable, input unreadable, staged bytes that do not parse
         # -- report a clean gate, and a gate that passes silently is worse
         # than no gate: nobody trusts an absent one, everybody trusts a green.
         if [ -n "$FMT_ERR" ]; then
