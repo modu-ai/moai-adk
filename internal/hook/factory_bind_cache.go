@@ -47,12 +47,19 @@ func factoryBindCachePath(root, session, suffix string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
+	return factoryBindCachePathAt(dir, session, suffix)
+}
+
+func factoryBindCachePathAt(dir, session, suffix string) (string, bool) {
+	if !factoryCacheSessionPattern.MatchString(session) || strings.Contains(session, "..") {
+		return "", false
+	}
 	return filepath.Join(dir, session+suffix), true
 }
 
 // factoryBindCacheHit reports whether the cached binding matches want exactly.
-func factoryBindCacheHit(root string, want factoryBindCacheEntry) bool {
-	path, ok := factoryBindCachePath(root, want.Session, ".json")
+func factoryBindCacheHit(factoryDir string, want factoryBindCacheEntry) bool {
+	path, ok := factoryBindCachePathAt(filepath.Join(factoryDir, "bind-cache"), want.Session, ".json")
 	if !ok {
 		return false
 	}
@@ -70,8 +77,8 @@ func factoryBindCacheHit(root string, want factoryBindCacheEntry) bool {
 
 // writeFactoryBindCache records a successful binding. A write failure only
 // costs the next prompt a full bind, so it is ignored.
-func writeFactoryBindCache(root string, e factoryBindCacheEntry) {
-	path, ok := factoryBindCachePath(root, e.Session, ".json")
+func writeFactoryBindCache(factoryDir string, e factoryBindCacheEntry) {
+	path, ok := factoryBindCachePathAt(filepath.Join(factoryDir, "bind-cache"), e.Session, ".json")
 	if !ok {
 		return
 	}
@@ -91,8 +98,8 @@ func writeFactoryBindCache(root string, e factoryBindCacheEntry) {
 }
 
 // dropFactoryBindCache invalidates a session's cached binding.
-func dropFactoryBindCache(root, session string) {
-	if path, ok := factoryBindCachePath(root, session, ".json"); ok {
+func dropFactoryBindCache(factoryDir, session string) {
+	if path, ok := factoryBindCachePathAt(filepath.Join(factoryDir, "bind-cache"), session, ".json"); ok {
 		_ = os.Remove(path)
 	}
 }
@@ -101,11 +108,8 @@ func dropFactoryBindCache(root, session string) {
 // binding to run/slot. A bind that takes a slot over (a handoff, a launch
 // binding, a registration) replaces whoever held it; their cache must not
 // keep answering for an endpoint the broker has since tombstoned.
-func dropFactoryBindCacheForSlot(root, run, slot, keepSession string) {
-	dir, err := factoryBindCacheDir(root)
-	if err != nil {
-		return
-	}
+func dropFactoryBindCacheForSlot(factoryDir, run, slot, keepSession string) {
+	dir := filepath.Join(factoryDir, "bind-cache")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
