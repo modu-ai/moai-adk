@@ -576,6 +576,136 @@ func TestLatestMergeCheckRunUnreadableRecordErrors(t *testing.T) {
 	}
 }
 
+// card t1928 (independent audit F1): the triple's git probes must consume the
+// card branch's fully qualified ref, not the bare name. Git resolves a bare
+// name tags-before-heads (gitrevisions rule 3 over rule 4), so a tag sharing
+// the card branch's name redirects every probe — merge-tree (b, c) and
+// rev-parse <branch>^{tree} (c, d) — to the TAG's commits: a real branch
+// conflicted against develop read all_passed on the tag's clean state. The
+// probes must read refs/heads/<branch> and surface the branch's real conflict.
+func TestEvaluateMergeTripleConflictProbeSurvivesTagSharingTheBranchName(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// develop and the card branch edit the same file differently from a
+	// common base — the REAL branch is conflicted, an unready merge candidate.
+	write("shared.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("checkout", "-b", "WT-card")
+	write("shared.txt", "card\n")
+	git("add", ".")
+	git("commit", "-m", "card work")
+	git("checkout", "develop")
+	write("shared.txt", "develop\n")
+	git("add", ".")
+	git("commit", "-m", "develop work")
+
+	// A tag named like the card branch points at develop's tip: from here on
+	// the bare name resolves to the tag, not the branch.
+	git("tag", "WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+
+	// Non-vacuity: the BRANCH really is conflicted (exit 1), and the bare
+	// name really resolves to the tag's commit at develop's tip.
+	if _, err := runner.Git("merge-tree", "--write-tree", "develop", "refs/heads/WT-card"); err == nil {
+		t.Fatalf("fixture: the real card branch must be conflicted against develop")
+	} else {
+		var exitErr *GitExitError
+		if !errors.As(err, &exitErr) || exitErr.ExitCode != 1 {
+			t.Fatalf("fixture: merge-tree on the real branch failed other than by conflict: %v", err)
+		}
+	}
+	if revParse("WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the tag must shadow the branch name at develop's tip")
+	}
+
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if run.AllPassed {
+		t.Fatalf("a conflicted card branch passed the triple — the probes read the tag's commits, not the branch's: %+v", run)
+	}
+	if run.FailedCondition != CheckConflictFree {
+		t.Fatalf("failing condition = %q, want the branch's real conflict %q: %+v", run.FailedCondition, CheckConflictFree, run)
+	}
+}
+
+// card t1928 (audit F1, site d): the re-measure candidate tree is read through
+// rev-parse <branch>^{tree} — with a tag sharing the branch's name the bare
+// form answers the TAG's tree, so the record would be keyed to (or validated
+// against) a tree the branch never produced. The read must answer the
+// branch's tree.
+func TestEvaluateMergeTripleRemeasureTreeSurvivesTagSharingTheBranchName(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The card branch adds a file on top of develop — a clean, absorbable
+	// merge whose tree differs from develop's.
+	write("base.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("checkout", "-b", "WT-card")
+	write("card.txt", "card\n")
+	git("add", ".")
+	git("commit", "-m", "card work")
+
+	// A tag named like the card branch points at develop's tip (whose tree
+	// has no card.txt).
+	git("tag", "WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	if revParse("WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the tag must shadow the branch name at develop's tip")
+	}
+
+	var got string
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+	in.VerifyRemeasure = func(treeSHA string) (string, error) {
+		got = treeSHA
+		return "go test ./... (recorded)", nil
+	}
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if !run.AllPassed {
+		t.Fatalf("a clean absorbable merge must pass the triple on the branch's own state: %+v", run)
+	}
+	if want := revParse("refs/heads/WT-card^{tree}"); got != want {
+		t.Fatalf("the re-measure candidate tree = %s, want the BRANCH's tree %s (the bare name answered the tag's tree)", got, want)
+	}
+}
+
 // A progress.md that cannot be read (here: a directory in its place) is a
 // named failure, not a pass — the fail-closed reading path.
 func TestCheckSyncAuditReadErrorFailsClosed(t *testing.T) {
