@@ -15,8 +15,9 @@
 // real home is not; seams equal to, above, empty, relative, or outside the
 // sandbox keep the full judgment.
 //
-// Only the standard library is imported, so the scanner never compiles the
-// packages it scans. Import this package only from _test.go files.
+// The home guard and scanner use only the standard library and never compile
+// packages they scan. Native permission fixtures additionally use Windows
+// security APIs. Import this package only from _test.go files.
 package testguard
 
 import (

@@ -14,11 +14,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/migration"
 	_ "github.com/modu-ai/moai-adk/internal/migration/migrations"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 const (
@@ -50,13 +52,8 @@ func writeWrapper(t *testing.T, root, name, body string, mode os.FileMode) strin
 		t.Fatalf("mkdir %s: %v", dir, err)
 	}
 	p := filepath.Join(dir, "handle-"+name+".sh")
-	if err := os.WriteFile(p, []byte(body), mode); err != nil {
+	if err := testguard.SeedFileModePolicy(p, []byte(body), mode); err != nil {
 		t.Fatalf("write %s: %v", p, err)
-	}
-	// os.WriteFile honours the mode only on create; set it explicitly so the
-	// executable-bit test measures what it means to.
-	if err := os.Chmod(p, mode); err != nil {
-		t.Fatalf("chmod %s: %v", p, err)
 	}
 	return p
 }
@@ -117,7 +114,10 @@ func TestM001_PreservesExecutableBit(t *testing.T) {
 	}
 	// Assert the precondition rather than assume it: if the fixture is not
 	// executable to begin with, the test proves nothing about preservation.
-	if before.Mode().Perm()&0o111 == 0 {
+	if err := testguard.CheckFileModePolicy(p, 0o755); err != nil {
+		t.Fatalf("fixture lacks actual execute permission: %v", err)
+	}
+	if runtime.GOOS != "windows" && before.Mode().Perm()&0o111 == 0 {
 		t.Fatalf("fixture is not executable (%v); the preservation assertion would be vacuous", before.Mode().Perm())
 	}
 
@@ -131,6 +131,9 @@ func TestM001_PreservesExecutableBit(t *testing.T) {
 	}
 	if after.Mode().Perm() != before.Mode().Perm() {
 		t.Errorf("mode changed across the rewrite: before %v, after %v", before.Mode().Perm(), after.Mode().Perm())
+	}
+	if err := testguard.CheckFileModePolicy(p, 0o755); err != nil {
+		t.Errorf("rewrite did not preserve actual execute policy: %v", err)
 	}
 }
 

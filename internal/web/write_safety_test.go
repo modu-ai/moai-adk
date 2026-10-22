@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // seedWriteSafetyFixture writes minimal section fixtures into a test project
@@ -161,12 +162,8 @@ func TestHandleSaveGreenfieldSectionCreation(t *testing.T) {
 	if !strings.Contains(string(raw), "spec_progress") || !strings.Contains(string(raw), "enabled: false") {
 		t.Errorf("submitted edit not persisted in created mcp.yaml:\n%s", raw)
 	}
-	info, err := os.Stat(filepath.Join(sections, "mcp.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := info.Mode().Perm(); got != 0o644 {
-		t.Errorf("created file mode = %o, want 644 (template convention)", got)
+	if err := testguard.CheckFileModePolicy(filepath.Join(sections, "mcp.yaml"), 0o644); err != nil {
+		t.Errorf("created file must have actual 0644 policy (template convention): %v", err)
 	}
 }
 

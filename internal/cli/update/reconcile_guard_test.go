@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // TestProtectFuncFor — AC-UPM-033's production composition: user-owned
@@ -173,18 +174,14 @@ func TestSafeWriteFilePreservesExistingMode(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(abs, []byte("original\n"), 0o600); err != nil {
+	if err := testguard.SeedFileModePolicy(abs, []byte("original\n"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	if err := safeWriteFile(root, rel, []byte("restored bytes\n")); err != nil {
 		t.Fatalf("safeWriteFile: %v", err)
 	}
-	info, err := os.Stat(abs)
-	if err != nil {
-		t.Fatalf("stat: %v", err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Errorf("restored file mode = %v, want the preserved 0600", info.Mode().Perm())
+	if err := testguard.CheckFileModePolicy(abs, 0o600); err != nil {
+		t.Errorf("restored file must preserve actual 0600 policy: %v", err)
 	}
 	if data, readErr := os.ReadFile(abs); readErr != nil || string(data) != "restored bytes\n" {
 		t.Errorf("restored content = %q (err=%v)", data, readErr)

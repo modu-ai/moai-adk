@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"gopkg.in/yaml.v3"
 )
 
@@ -409,12 +410,8 @@ func TestPatchFileGreenfieldCreation(t *testing.T) {
 	if !strings.Contains(string(raw), "spec_progress") || !strings.Contains(string(raw), "enabled: false") {
 		t.Errorf("submitted edit not persisted in greenfield file, got:\n%s", raw)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := info.Mode().Perm(); got != 0o644 {
-		t.Errorf("greenfield file mode = %o, want 644 (template convention, spec.md §4)", got)
+	if err := testguard.CheckFileModePolicy(path, 0o644); err != nil {
+		t.Errorf("greenfield file must have actual 0644 policy (spec.md §4): %v", err)
 	}
 }
 
@@ -448,22 +445,15 @@ func TestAtomicWriteStatErrorNotWidened(t *testing.T) {
 // 닫는다 (SPEC-SEAM-GREENFIELD-001 REQ-8 — 미검출 뮤턴트는 기록하고 닫는다).
 func TestAtomicWritePreservesPresentFileMode(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("POSIX permission bits are not meaningful for this assertion on Windows: chmod is reduced to a read-only flag there")
-	}
-	path := writeTempYAML(t, "a: 1\n")
-	if err := os.Chmod(path, 0o600); err != nil {
+	path := filepath.Join(t.TempDir(), "section.yaml")
+	if err := testguard.SeedFileModePolicy(path, []byte("a: 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := atomicWrite(path, []byte("a: 2\n")); err != nil {
 		t.Fatalf("atomicWrite: %v", err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Errorf("present-file mode = %o, want 600 preserved (an atomic write must not re-permission an existing file)", got)
+	if err := testguard.CheckFileModePolicy(path, 0o600); err != nil {
+		t.Errorf("present file must preserve actual 0600 policy: %v", err)
 	}
 }
 
@@ -512,12 +502,8 @@ func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
 		if err := atomicWrite(path, []byte("a: 1\n")); err != nil {
 			t.Fatalf("atomicWrite on absent target: %v", err)
 		}
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := info.Mode().Perm(); got != 0o644 {
-			t.Errorf("absent-target file mode = %o, want 644 (defaultFilePerm)", got)
+		if err := testguard.CheckFileModePolicy(path, 0o644); err != nil {
+			t.Errorf("absent-target file must have actual 0644 policy: %v", err)
 		}
 		raw, err := os.ReadFile(path)
 		if err != nil || string(raw) != "a: 1\n" {
