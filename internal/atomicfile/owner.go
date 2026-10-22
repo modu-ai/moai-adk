@@ -10,7 +10,7 @@ package atomicfile
 //     DIFFERENT boot than the current one cannot have a live owner — the
 //     break is unconditional (even if a live process now carries the
 //     recorded pid, it is not the owner);
-//   - pid liveness (PidAlive): signal 0 on unix — ESRCH proves death; any
+//   - pid liveness (PidAlive): signal 0 on Unix, native exit status on Windows; any
 //     other result (alive, or unverifiable) reads as ALIVE.
 //
 // Where a platform cannot verify (no boot id, no liveness probe), the owner
@@ -30,10 +30,7 @@ package atomicfile
 import (
 	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"os"
 	"runtime"
-	"syscall"
 )
 
 // LockOwner is what a section lock file records: the owner's process id,
@@ -46,36 +43,6 @@ type LockOwner struct {
 	PID       int    `json:"pid"`
 	BootID    string `json:"boot_id"`
 	CreatedAt string `json:"created_at"`
-}
-
-// PidAlive probes a pid with signal 0 — a liveness check that changes
-// nothing. It returns false when the process verifiably does not exist:
-// ESRCH from the kernel, or os.ErrProcessDone — a process this machine's
-// runtime already observed exiting is finished, and Signal surfaces that as
-// ErrProcessDone rather than ESRCH. Reading ErrProcessDone as alive judged
-// every finished same-boot child alive, so an orphan lock whose owner
-// exited was never reclaimed. Every OTHER outcome (EPERM from a live
-// process owned by someone else, a platform without a liveness probe)
-// reads as alive — the conservative direction: an incorrect "dead" breaks a
-// lock and discards a live writer's committed mutation, an incorrect
-// "alive" only delays.
-func PidAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return false // no such process on this platform's FindProcess
-	}
-	if err := p.Signal(syscall.Signal(0)); err != nil {
-		if errors.Is(err, os.ErrProcessDone) || err == syscall.ESRCH {
-			return false
-		}
-		// EPERM (a live process owned by someone else) and any other error
-		// read as alive — the conservative direction.
-		return true
-	}
-	return true
 }
 
 // OwnerIsDead applies the two verification paths.

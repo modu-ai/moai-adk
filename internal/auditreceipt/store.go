@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -34,6 +35,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -308,15 +310,15 @@ func lockLedger(path string) (func(), error) {
 	}
 	deadline := time.Now().Add(ledgerLockWait)
 	for {
-		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		f, err := atomicfile.CreateExclusive(lockPath, 0o644)
 		if err == nil {
 			if _, werr := f.WriteString(token + "\n"); werr != nil {
 				_ = f.Close()
-				_ = os.Remove(lockPath)
+				_ = atomicfile.RemoveFile(lockPath)
 				return nil, werr
 			}
 			if cerr := f.Close(); cerr != nil {
-				_ = os.Remove(lockPath)
+				_ = atomicfile.RemoveFile(lockPath)
 				return nil, cerr
 			}
 			return func() { releaseLedgerLock(lockPath, token) }, nil
@@ -325,7 +327,7 @@ func lockLedger(path string) (func(), error) {
 			return nil, err
 		}
 		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > ledgerLockStale {
-			_ = os.Remove(lockPath)
+			_ = atomicfile.RemoveFile(lockPath)
 			continue
 		}
 		if time.Now().After(deadline) {
@@ -349,11 +351,25 @@ func newRandomToken() (string, error) {
 // releaseLedgerLock removes the lockfile only when it still carries this
 // holder's token: a successor that broke the stale lock and acquired its own
 // wrote its own token, and this holder's release must leave the successor's
-// lock alone.
+// lock alone. On Windows deletion targets the same open file identity as the
+// token read; a reused pathname can never redirect an old release to its heir.
+//
+// @MX:NOTE: Keep the read handle through removal: a path-based retry can delete a successor claim.
 func releaseLedgerLock(lockPath, token string) {
-	data, err := os.ReadFile(lockPath)
+	releaseLedgerLockReading(lockPath, token, io.ReadAll)
+}
+
+// The reader parameter permits a deterministic ownership handoff between the
+// token read and removal, without replacing process-global filesystem behavior.
+func releaseLedgerLockReading(lockPath, token string, read func(io.Reader) ([]byte, error)) {
+	f, err := openLedgerLockForRelease(lockPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	data, err := read(f)
 	if err == nil && strings.TrimSpace(string(data)) == token {
-		_ = os.Remove(lockPath)
+		_ = removeOpenedLedgerLock(f)
 	}
 }
 

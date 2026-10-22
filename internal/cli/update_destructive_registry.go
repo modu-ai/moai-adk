@@ -196,15 +196,15 @@ var destructiveTargetRegistry = []destructiveSite{
 			"F13, F14). The package's one root-bound Remove, reached through the dropFile seam, " +
 			"and since card t1733 round 4 reached ONLY by the link fallback renameByLinks (and " +
 			"its dropOurs). The held-back rename itself moves skill.md by atomic no-replace " +
-			"renames (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL, MoveFileEx without a " +
-			"replace flag): skill.md -> a randomly named staging folder -> SKILL.md, each " +
+			"renames (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL, Windows handle-relative " +
+			"NtSetInformationFile with ReplaceIfExists false): skill.md -> a randomly named staging folder -> SKILL.md, each " +
 			"refusing when the destination exists, so no user-visible name is unlinked behind a " +
-			"check. Since round 5 the linux and darwin renames and the removal of the staging " +
+			"check. The linux, darwin and Windows renames and the removal of the staging " +
 			"folder are relative to the descriptors of the skill folder and the staging folder, " +
 			"both opened through the project root and held open, so swapping either path " +
-			"afterwards cannot redirect them; windows stays path-based behind a root-bound look. " +
-			"The staging folder is removed by rmdir (unlinkat AT_REMOVEDIR, or syscall.Rmdir " +
-			"where there is no such form), which the scan does not count and which cannot " +
+			"afterwards cannot redirect them. The staging folder is removed by a handle-relative " +
+			"empty-directory deletion (unlinkat AT_REMOVEDIR or Windows FileDispositionInformation; " +
+			"syscall.Rmdir only on fallback platforms), which the scan does not count and cannot " +
 			"remove a file, a link or a non-empty folder. The step takes the identity of " +
 			"skill.md before the first rename and requires it at the staged name before the " +
 			"second and at SKILL.md after it. A refused SKILL.md rename is undone by a " +

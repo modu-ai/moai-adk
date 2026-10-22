@@ -2,7 +2,7 @@
 
 ## 현재 의존성 측정 — bf0a35f10
 
-Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. `internal/testguard`는 표준 라이브러리만 import한다. `internal/cli/update/skillresidue`는 현재 Linux·Darwin 빌드에서 `golang.org/x/sys/unix`, Windows 빌드에서 `golang.org/x/sys/windows`를 직접 import한다. 이 플랫폼 의존성은 `go.mod`의 기존 직접 의존성 `golang.org/x/sys v0.49.0`에 속한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
 
 ## t1469 판의 의존성 — main 흡수 병합 트리
 

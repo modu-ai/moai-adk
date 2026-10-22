@@ -3,7 +3,7 @@
 package atomicfile
 
 import (
-	"os"
+	"io"
 	"time"
 )
 
@@ -22,6 +22,7 @@ const (
 // Opening a file for reading fails with ERROR_ACCESS_DENIED or
 // ERROR_SHARING_VIOLATION while another process is replacing it, because the
 // destination sits briefly in a delete-pending state that MoveFileEx creates.
+// Readers opened here share delete access, so they do not extend that window.
 // This is the mirror image of the conflict Replace absorbs: there the reader
 // blocks the writer, here the writer blocks the reader. Both are transient, so
 // the same bounded-retry policy converges.
@@ -34,7 +35,15 @@ func readFile(path string) ([]byte, error) {
 		err  error
 	)
 	for attempt := 0; attempt < readMaxAttempts; attempt++ {
-		data, err = os.ReadFile(path)
+		f, openErr := openRead(path)
+		err = openErr
+		if err == nil {
+			data, err = io.ReadAll(f)
+			closeErr := f.Close()
+			if err == nil {
+				err = closeErr
+			}
+		}
 		if err == nil || !isTransientReplaceError(err) {
 			return data, err
 		}

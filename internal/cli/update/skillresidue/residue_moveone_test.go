@@ -31,6 +31,8 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"renameNoReplace": true, "noReplaceRenameAt": true, "renameatNoReplace": true,
 		"Renameat2": true, "RenameatxNp": true, "MoveFileEx": true,
 		"removeDirAt": true, "Unlinkat": true, "Rmdir": true,
+		"openMoveEntry": true, "NtCreateFile": true, "NtSetInformationFile": true,
+		"FileRenameInformation": true, "FileDispositionInformation": true,
 	}
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -90,16 +92,23 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"renameNoReplace@moveNoReplace": 1,
 		"removeDirAt@removeStage":       1,
 		// The platform calls, one owner each: the descriptor-relative renames (linux,
-		// darwin), the MoveFileEx call (windows), and the rmdir behind removeDirAt.
-		"renameatNoReplace@noReplaceRenameAt": 1,
-		"Renameat2@renameatNoReplace":         1,
-		"RenameatxNp@renameatNoReplace":       1,
-		"MoveFileEx@noReplaceRenameAt":        1,
-		"Unlinkat@removeDirAt":                1,
-		"Rmdir@removeDirAt":                   2, // windows and the platforms without a rename primitive
-		"linkFile@renameByLinks":              3,
-		"dropFile@renameByLinks":              1,
-		"dropFile@dropOurs":                   1,
+		// darwin), the native handle-relative Windows calls, and rmdir elsewhere.
+		"renameatNoReplace@noReplaceRenameAt":     1,
+		"Renameat2@renameatNoReplace":             1,
+		"RenameatxNp@renameatNoReplace":           1,
+		"MoveFileEx@noReplaceRenameAt":            0, // path-based Windows rename must not return
+		"openMoveEntry@noReplaceRenameAt":         1,
+		"openMoveEntry@removeDirAt":               1,
+		"NtCreateFile@openMoveEntry":              1,
+		"NtSetInformationFile@noReplaceRenameAt":  1,
+		"NtSetInformationFile@removeDirAt":        1,
+		"FileRenameInformation@noReplaceRenameAt": 1,
+		"FileDispositionInformation@removeDirAt":  1,
+		"Unlinkat@removeDirAt":                    1,
+		"Rmdir@removeDirAt":                       1, // only platforms without a native rename primitive
+		"linkFile@renameByLinks":                  3,
+		"dropFile@renameByLinks":                  1,
+		"dropFile@dropOurs":                       1,
 	}
 	for key, n := range want {
 		if got[key] != n {

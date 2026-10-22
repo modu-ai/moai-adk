@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"golang.org/x/sys/windows"
 )
 
@@ -56,9 +57,9 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 			continue
 		}
 		if guardMarkerDead(marker) {
-			_ = os.Remove(marker)
+			_ = atomicfile.RemoveFile(marker)
 		}
-		fd, err = os.OpenFile(marker, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		fd, err = atomicfile.CreateExclusive(marker, 0o644)
 		if err == nil {
 			// REQ-LOCK-001: stamp the caller's PID — the .lock posture.
 			_, _ = fmt.Fprintf(fd, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
@@ -78,7 +79,7 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 	}
 	release := func() {
 		_ = fd.Close()
-		_ = os.Remove(marker)
+		_ = atomicfile.RemoveFile(marker)
 	}
 	return release, nil
 }
@@ -130,7 +131,7 @@ func readLockRecord(path string) lockRecord {
 	if !info.Mode().IsRegular() {
 		return lockRecord{status: recordIrregular}
 	}
-	data, readErr := os.ReadFile(path)
+	data, readErr := atomicfile.ReadFile(path)
 	if readErr != nil {
 		return lockRecord{status: recordIrregular}
 	}

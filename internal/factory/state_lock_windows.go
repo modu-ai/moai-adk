@@ -13,6 +13,9 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -41,7 +44,7 @@ func (f *atomicFileStateLock) release() error {
 		f.file = nil
 	}
 	if f.lockPath != "" {
-		err := os.Remove(f.lockPath)
+		err := atomicfile.RemoveFile(f.lockPath)
 		f.lockPath = ""
 		if err != nil && !os.IsNotExist(err) {
 			return err
@@ -57,19 +60,26 @@ func (f *atomicFileStateLock) release() error {
 // pre-existing symlink or non-regular artifact, wrapping ErrStateLockUnsafePath.
 // A pre-existing regular file is contention and still reports ErrStateLockHeld.
 func acquireStateLockImpl(lockPath string) (stateLockImpl, error) {
-	if err := checkStateLockAncestors(lockPath); err != nil {
-		return nil, err
-	}
-	if err := checkStateLockArtifact(lockPath); err != nil {
-		return nil, err
+	for attempt := 0; ; attempt++ {
+		err := checkStateLockAncestors(lockPath)
+		if err == nil {
+			err = checkStateLockArtifact(lockPath)
+		}
+		if err == nil {
+			break
+		}
+		if (!errors.Is(err, os.ErrPermission) && !errors.Is(err, windows.ERROR_SHARING_VIOLATION)) || attempt+1 >= boardLockTransientRetries {
+			return nil, err
+		}
+		time.Sleep(boardLockTransientDelay)
 	}
 	transientLeft := boardLockTransientRetries
 	for {
-		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o644)
+		file, err := atomicfile.CreateExclusive(lockPath, 0o644)
 		if err == nil {
 			if _, werr := file.Write(newLockOwnerRecord()); werr != nil {
 				_ = file.Close()
-				_ = os.Remove(lockPath)
+				_ = atomicfile.RemoveFile(lockPath)
 				return nil, fmt.Errorf("record board lock owner %s: %w", lockPath, werr)
 			}
 			return &atomicFileStateLock{lockPath: lockPath, file: file}, nil
