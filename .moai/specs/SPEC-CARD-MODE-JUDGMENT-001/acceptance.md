@@ -221,7 +221,7 @@ The exclusion is written into the pattern as digit classes, so a re-wrap of the 
 The pointer lines say that the leader's promotion without a pick is the case stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion, within the limits given there; they carry none of the six home tokens and no limit of their own, and they do not claim the case is the only one.
 
 - RED-now: `E-018a` (`:0`, `:0`, exit 1), `E-018b` (`:1` ×4, exit 0), `E-018c` (`:0` ×4, exit 1), `E-018d` (`:0`, `:0`, exit 1), `E-018e` (`:0`, `:0`, exit 1). Red because neither pointer line nor the enumeration row exists and the paragraph at F:44 / K:20 still opens by claiming a single reconciliation (`research.md` §10, P2-P6, and §12 for the enumeration).
-- Green path: M2 edits K and F's clause (K:20, F:44, with the ledger row ALB-0257 in the same commit); M3 edits F (the pointer line after F:40), G (the pointer paragraph after the [HARD] pick rule) and M (the table row), each side in the same commit → (a) `1`/`1`, (b) `0` ×4, (c) `1` ×4, (d) `1`/`1`, (e) `1`/`1`.
+- Green path: M2 edits K and F's clause (K:20, F:44, with the ledger row ALB-0257 in the same commit) — the clause is the same in both, and F's copy of the paragraph also ends with one pointer sentence (``A further case is stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion.``, the manifest's F row), so F's line is not the K line that ALB-0257 covers (mid-run amendment; see § 3 "A binding line copied into an on-demand file"); M3 edits F (the pointer line after F:40), G (the pointer paragraph after the [HARD] pick rule) and M (the table row), each side in the same commit → (a) `1`/`1`, (b) `0` ×4, (c) `1` ×4, (d) `1`/`1`, (e) `1`/`1`.
 - Mutants tried (observed on the simulation): pointer line deleted from F → (a) `0`; clause reverted in the template stub only → (b) and (c) change (and the stub reads `OVER 10003`); enumeration row deleted → (e) `0`. By construction: pointer line in the template only → (a) `1`/`0`; a pointer line that restates the limits → (a) `0` because the line differs, and `E-016` lists F when the restatement carries a home token; the pointer moved into K → (a) `0` and AC-MJ-012 goes red on size.
 - Does not establish: that no other sentence in the tree says the same thing in other words — `research.md` §10 and §12 are the measured lists, and the sync audit reads for a paraphrase.
 
@@ -740,8 +740,8 @@ exit: 1
 ```
 
 ```text
-E-020d   (AC-MJ-020 (c): the manifest and the check are the files the plan phase froze (SHA-256 pinned here because neither is in the plan-artifact hash subject set); the check's value re-measured in the ceiling-exception round, when the fifth number and the narrowed path exemption changed the check and not the manifest, and again in the D28 correction round, when the fifth number gained the segment and inside marks; the manifest value unchanged)
-command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','c2b0ef170297e49d191712e6e433cd16fb856e2da5abbe2eb0b6f444c28a2c08'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','d8df759fb641518e1838ee1553f5c5935b895d39eac95dd65abc7e1fa6a161e3')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
+E-020d   (AC-MJ-020 (c): the manifest and the check are the files the plan phase froze (SHA-256 pinned here because neither is in the plan-artifact hash subject set); the check's value re-measured in the ceiling-exception round, when the fifth number and the narrowed path exemption changed the check and not the manifest, and again in the D28 correction round, when the fifth number gained the segment and inside marks; the manifest value re-pinned in the mid-run amendment round, when the F reconciliation row gained one trailing pointer sentence, from `c2b0ef170297e49d191712e6e433cd16fb856e2da5abbe2eb0b6f444c28a2c08`; the check's value unchanged)
+command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','d0aceca49ec28f9bcad299776f84c23b1bf646542cd9b5412800a2575fd4d63c'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','d8df759fb641518e1838ee1553f5c5935b895d39eac95dd65abc7e1fa6a161e3')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
 stdout:
 same same
 exit: 0
@@ -749,7 +749,7 @@ exit: 0
 
 ```text
 E-020e   (AC-MJ-020 (c): known failing input — one hex digit of the manifest value changed)
-command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','c2b0ef170297e49d191712e6e433cd16fb856e2da5abbe2eb0b6f444c28a2c07'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','d8df759fb641518e1838ee1553f5c5935b895d39eac95dd65abc7e1fa6a161e3')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
+command: python3 -I -c "import hashlib,sys; w=[('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-manifest.txt','d0aceca49ec28f9bcad299776f84c23b1bf646542cd9b5412800a2575fd4d63d'),('.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/closed-world-check.py','d8df759fb641518e1838ee1553f5c5935b895d39eac95dd65abc7e1fa6a161e3')]; r=[hashlib.sha256(open(p,'rb').read()).hexdigest()==h for p,h in w]; print(*['same' if x else 'DIFFERENT' for x in r]); sys.exit(0 if all(r) else 1)"
 stdout:
 DIFFERENT same
 exit: 1
@@ -784,6 +784,7 @@ exit: 1
 ## 3. Edge cases
 
 - **A ledger row is stale after the rewrite.** If M2 rewrites F:119 and leaves ALB-0276 untouched, `TestBindingLedgerIntegrity` reports "after-text absent … obligation lost"; the row's `after_text` is updated in the same commit (REQ-MJ-016). The same holds for ALB-0257 and the K:20 / F:44 clause.
+- **A binding line copied into an on-demand file.** `TestBindingLedgerIntegrity` (AC-ALB-021(2)) fails when a line of 40 or more UTF-16 units of a binding or normative row's `after_text` is also a whole line of an on-demand (`paths:`-scoped) rule file, unless that line already stood in the file's copy at the ledger anchor. The run observed it: with F's reconciliation paragraph byte-identical to the K line that ALB-0257 covers, the guard reported row ALB-0257 in `factory-dispatch.md` (`.moai/reports/t1894/verdict.md` §2.4). The manifest's F row therefore ends the paragraph with one pointer sentence that K does not carry; the opening clause E-018b/E-018c count is unchanged.
 - **The core stub exceeds 10,000 units by a few characters.** AC-MJ-012 prints `OVER` and exits 1; the planned wording nets −2 when both K edits land in the same commit, so an overrun means a wording drift (`design.md` §D-4).
 - **The exception is folded into a pinned sentence.** Rewording F:38, F:40 or the K:20 / F:44 paragraph's pinned clauses to carry the exception turns AC-MJ-019 red and the Go doctrine tests of AC-MJ-014 red; the exception is added beside them, by pointer.
 - **A lane or leader treats an unstated delegation as given.** The ruling names no mechanism that establishes "the operator has delegated dispatch" (`spec.md` R-5, decision-index Q7); AC-MJ-006 pins the text and cannot see the practice.
