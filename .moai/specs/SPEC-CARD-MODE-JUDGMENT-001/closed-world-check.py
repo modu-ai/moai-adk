@@ -13,14 +13,24 @@ the non-blank lines of the working copy are compared with the non-blank lines of
 manifest's base commit, as multisets. A line present more often in the working copy than in the base is
 an ADDED line; present less often is a REMOVED line. Five numbers are printed per side:
   <added but not listed> <listed but not added> <removed but not listed> <listed but not removed>
-  <code-fence lines whose preceding non-blank line differs from the base>
+  <code-fence placement marks that differ from the base>
 and the command exits 1 unless every number is 0. Blank lines are ignored; the order of non-fence
-lines is ignored; every other difference, with or without any particular word in it, is a number.
-The fifth number reads a code-fence line's (one beginning with three backticks) nearest preceding
-non-blank line, walking past the lines the manifest lists, and compares that pair with the base: a
-fence moved behind different text keeps the line multiset the first four numbers compare, and is seen
-only here. Listed lines added or removed anywhere leave every fence's walked predecessor unchanged,
-so correct work prints 0 on the fifth number whatever position the listed rows land in.
+lines inside one fence-delimited segment is ignored; every other difference, with or without any
+particular word in it, is a number.
+The fifth number compares the placement of the code fences (lines beginning with three backticks)
+with the base, three ways, and sums them:
+  pair     fences whose nearest preceding non-blank line, walking past the listed lines, differs;
+  segment  occurrences of an unlisted line (fences included) present on both sides whose segment —
+           the number of fences before it — differs, so a fence moved across any unlisted line is
+           seen, whether it moves alone, together with its preceding line, or with any run of lines;
+  inside   listed lines that sit inside a code block (after an odd number of fences) beyond the
+           base's count, so a fence moved across listed lines only, or listed rows written inside a
+           block, is seen.
+A fence move keeps the line multiset the first four numbers compare, and is seen only here. Listed
+lines added or removed anywhere outside a code block, and an unlisted line added or removed, leave
+the segment and inside marks unchanged, so correct work prints 0 on the fifth number whatever
+position outside a code block the listed rows land in. Not seen: an unlisted line moved within its
+own segment (no fence crosses it), and where outside a code block a listed row lands.
 
 Semantics of `paths`: every changed or new path of the working copy — against the base commit, or the
 explicit list given after `--` — must be named by the manifest or lie under one of the four paths a
@@ -73,15 +83,30 @@ def load_manifest(path):
     return base, strip, files, also
 
 
-def fence_pairs(lines, listed):
-    c = Counter()
+def fence_marks(lines, listed):
+    pairs, segments, inside = Counter(), {}, 0
     prev = ''
+    k = 0
     for line in lines:
         if line.startswith('```'):
-            c[(line, prev)] += 1
-        if line not in listed:
+            pairs[(line, prev)] += 1
+            k += 1
+        if line in listed:
+            inside += k % 2
+        else:
+            segments.setdefault(line, Counter())[k] += 1
             prev = line
-    return c
+    return pairs, segments, inside
+
+
+def fence_moves(w_lines, b_lines, listed):
+    wp, ws, wi = fence_marks(w_lines, listed)
+    bp, bs, bi = fence_marks(b_lines, listed)
+    moved = 0
+    for line in ws.keys() & bs.keys():
+        both = min(sum(ws[line].values()), sum(bs[line].values()))
+        moved += both - sum((ws[line] & bs[line]).values())
+    return sum((wp - bp).values()) + moved + max(0, wi - bi)
 
 
 def cmd_lines(manifest, root):
@@ -103,7 +128,7 @@ def cmd_lines(manifest, root):
             added, removed = w - b, b - w
             n = [sum((added - f['plus']).values()), sum((f['plus'] - added).values()),
                  sum((removed - f['minus']).values()), sum((f['minus'] - removed).values()),
-                 sum((fence_pairs(w_lines, listed) - fence_pairs(b_lines, listed)).values())]
+                 fence_moves(w_lines, b_lines, listed)]
             if any(n):
                 bad = 1
             parts.append('%s %d %d %d %d %d' % (label, *n))
