@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -74,12 +73,7 @@ func newAutoLiveness() autoLiveness {
 			return out, nil
 		},
 		processCWDs: activeProcessCWDs,
-		pidAlive: func(pid int) bool {
-			if pid <= 0 {
-				return false
-			}
-			return exec.Command("kill", "-0", fmt.Sprint(pid)).Run() == nil
-		},
+		pidAlive:    factory.FactoryProcessAlive,
 	}
 }
 
