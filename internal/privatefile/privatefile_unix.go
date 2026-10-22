@@ -8,6 +8,8 @@ import (
 )
 
 // CreateTemp creates an empty owner-only temporary file, open for read/write.
+// @MX:ANCHOR: [AUTO] Create private staging files before receiving payload bytes.
+// @MX:REASON: Atomic private replacement, mission receipts and mission state share this creation boundary.
 func CreateTemp(dir, prefix string) (*os.File, error) { return os.CreateTemp(dir, prefix+"*") }
 
 func checkNative(_ string, info os.FileInfo) error {

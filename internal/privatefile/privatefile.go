@@ -12,6 +12,8 @@ import (
 
 // Check refuses links, nonregular files and any access policy other than the
 // native owner-only policy. An unreadable or unknown policy fails closed.
+// @MX:ANCHOR: [AUTO] Verify the native owner-only file policy at every receipt and persistence boundary.
+// @MX:REASON: Mission receipts, mission state and private replacement share this fail-closed check.
 func Check(path string) error {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -25,6 +27,8 @@ func Check(path string) error {
 
 // WriteFile replaces path with an owner-only file. The temporary file is
 // private before any data is written. Existing symlinks are never followed.
+// @MX:ANCHOR: [AUTO] Replace private payloads only after their native access policy is installed.
+// @MX:REASON: Credential stores, integration leases and config backups share this before-bytes privacy boundary.
 func WriteFile(path string, data []byte) error {
 	if info, err := os.Lstat(path); err == nil {
 		if !info.Mode().IsRegular() {

@@ -17,13 +17,10 @@ const fileAllAccess = 0x001f01ff
 
 // CreateTemp installs the protected DACL atomically at CREATE_NEW, before the
 // handle can receive secret bytes. No privilege is enabled or requested.
+// @MX:ANCHOR: [AUTO] Create private staging files before receiving payload bytes.
+// @MX:REASON: Atomic private replacement, mission receipts and mission state share this creation boundary.
 func CreateTemp(dir, prefix string) (*os.File, error) {
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	if err != nil {
-		return nil, err
-	}
-	sid := user.User.Sid.String()
-	sd, err := windows.SecurityDescriptorFromString("O:" + sid + "D:P(A;;FA;;;" + sid + ")")
+	sd, err := ownerDescriptor(false)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +69,16 @@ func checkNative(path string, _ os.FileInfo) error {
 	return checkHandle(h)
 }
 
-func checkHandle(h windows.Handle) error {
+func checkHandle(h windows.Handle) error { return checkObjectHandle(h, false) }
+
+// @MX:ANCHOR: [AUTO] Verify exact current-owner access on the opened Windows object.
+// @MX:REASON: File validation, directory validation and policy narrowing share this native readback boundary.
+func checkObjectHandle(h windows.Handle, directory bool) error {
 	var info windows.ByHandleFileInformation
 	if err := windows.GetFileInformationByHandle(h, &info); err != nil {
 		return err
 	}
-	if info.FileAttributes&(windows.FILE_ATTRIBUTE_REPARSE_POINT|windows.FILE_ATTRIBUTE_DIRECTORY) != 0 {
+	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || (info.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0) != directory {
 		return fmt.Errorf("private file: handle is not a regular file")
 	}
 
@@ -114,7 +115,11 @@ func checkHandle(h windows.Handle) error {
 	if err := windows.GetAce(acl, 0, &ace); err != nil {
 		return err
 	}
-	if ace == nil || ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags != 0 || ace.Mask != fileAllAccess {
+	expectedFlags := uint8(0)
+	if directory {
+		expectedFlags = windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE
+	}
+	if ace == nil || ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags != expectedFlags || ace.Mask != fileAllAccess {
 		return fmt.Errorf("private file: unexpected owner access rule")
 	}
 	sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
