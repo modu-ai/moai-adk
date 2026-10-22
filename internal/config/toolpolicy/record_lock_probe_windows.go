@@ -2,9 +2,35 @@
 
 package toolpolicy
 
-// pidProvablyDead reports nothing on windows — there is no portable liveness
-// probe across the signal interface (card t1630 sync-audit F2'). Windows
-// takeover eligibility is therefore governed solely by the lockfile mtime age
-// bound (recordLockStaleAge): a lockfile older than the stale bound is
-// takeover-eligible regardless of the recorded pid.
-func pidProvablyDead(int) bool { return false }
+import (
+	"errors"
+	"log/slog"
+
+	"golang.org/x/sys/windows"
+)
+
+// pidProvablyDead uses a native process query; signal 0 is not supported on
+// Windows. Only a nonexistent process or a read terminal exit code proves
+// death. Access-denied, unrepresentable IDs and unknown observations retain
+// the holder. The caller's existing retry and stale-age bounds are unchanged.
+func pidProvablyDead(pid int) (dead bool) {
+	if pid <= 0 || uint64(pid) > uint64(^uint32(0)) {
+		return false
+	}
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	if err != nil {
+		return errors.Is(err, windows.ERROR_INVALID_PARAMETER)
+	}
+	defer func() {
+		if closeErr := windows.CloseHandle(h); closeErr != nil {
+			slog.Warn("failed to close tool-policy process probe handle", "error", closeErr)
+			dead = false
+		}
+	}()
+	var code uint32
+	if err := windows.GetExitCodeProcess(h, &code); err != nil {
+		return false
+	}
+	const stillActive = 259
+	return code != stillActive
+}
