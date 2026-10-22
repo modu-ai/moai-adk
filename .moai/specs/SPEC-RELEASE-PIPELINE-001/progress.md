@@ -70,3 +70,8 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-22T18:41:00Z SPEC-RELEASE-PIPELINE-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 6 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1536/.moai/reports/t1536/plan-audit-iter6.md
+- 2026-10-23 SPEC-RELEASE-PIPELINE-001 operator-decision (relayed by the leader session 3936623d to lane-9 on 2026-10-23, recorded verbatim at the leader's request; the lane did not observe the operator directly): "운영자 결정 2026-10-23: plan-audit iter6 PASS-WITH-DEBT 0.93(rcpt-78c759130e822df7b345659e)을 수용, REQ-ACE-006 천장(6회>=2) 예외 승인, 리더 세션 3936623d 경유."
