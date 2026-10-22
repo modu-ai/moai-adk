@@ -44,16 +44,21 @@ permissions:
   contents: write  # Required for gh release delete
   pull-requests: read
 
-# Serialized with release-drafter.yml through one ref-independent literal group
-# (SPEC-RELEASE-PIPELINE-001 REQ-RPC-012): both workflows mutate the draft list,
-# and a cleanup cancelled mid-deletion, or a drafter run that lists while the
-# cleanup deletes, would act on a stale listing. cancel-in-progress is false on
-# BOTH sides because the incoming run's own flag governs a shared group.
-# Trade-off, recorded in both workflows (plan.md B6): a Monday cleanup can queue
-# behind a draft-update burst (its 15-minute job budget absorbs that), and rapid
-# main pushes queue drafter updates serially instead of cancelling the older one.
+# Own ref-independent literal group, different from release-drafter.yml's
+# (SPEC-RELEASE-PIPELINE-001 REQ-RPC-012, amended v0.8.0). GitHub keeps one
+# running and one pending run per group, and a newer pending run replaces the
+# older pending one, so in a group shared with the drafter a draft-update run
+# would replace the pending weekly cleanup and that week's cleanup would be
+# lost. The key carries no expression, so it cannot vary with the ref or the
+# run. cancel-in-progress stays false: a cleanup is never cancelled mid-deletion.
+# Trade-off, recorded in both workflows (plan.md B6): the cleanup and a drafter
+# run may now run at the same time, so safety rests on the per-tag re-query
+# immediately before each delete plus an idempotent delete (a draft that is
+# already gone is logged and does not fail the run), not on a shared group.
+# Accepted residual: a draft edited after its re-query and before its delete is
+# still deleted.
 concurrency:
-  group: release-drafter-mutations
+  group: release-drafter-cleanup
   cancel-in-progress: false
 
 jobs:
@@ -156,9 +161,17 @@ jobs:
 
             # Re-query this tag immediately before acting on it (REQ-RPC-011):
             # a draft published, retargeted at release/*, or refreshed since the
-            # listing no longer matches the stale predicate and is skipped.
-            if ! current="$(gh release view "$tag" --json tagName,isDraft,createdAt,targetCommitish)"; then
-              echo "[SKIP] ${tag}: state re-query failed; not deleting"
+            # listing no longer matches the stale predicate and is skipped. A
+            # draft that no longer exists (removed by a concurrent run) is
+            # logged as already gone, not failed (REQ-RPC-012); any other
+            # re-query failure is skipped without deleting.
+            if ! current="$(gh release view "$tag" --json tagName,isDraft,createdAt,targetCommitish 2>"$RUNNER_TEMP/requery.err")"; then
+              if grep -qiE 'not found|HTTP 404' "$RUNNER_TEMP/requery.err"; then
+                echo "[ALREADY-GONE] ${tag}: already gone at its re-query; nothing to delete"
+              else
+                cat "$RUNNER_TEMP/requery.err" >&2
+                echo "[SKIP] ${tag}: state re-query failed; not deleting"
+              fi
               continue
             fi
             still="$(printf '[%s]' "$current" | jq -r --arg threshold_days "$THRESHOLD_DAYS" "$STALE_FILTER")"
@@ -171,7 +184,17 @@ jobs:
               echo "[DRY-RUN] Would delete: ${tag}"
             else
               echo "Deleting stale draft: ${tag}"
-              gh release delete "$tag" --yes
+              # Idempotent delete (REQ-RPC-012): a draft that vanished between
+              # its re-query and its delete is already gone, so a not-found is
+              # logged and the loop continues; any other failure fails the step.
+              if ! deleted="$(gh release delete "$tag" --yes 2>&1)"; then
+                if printf '%s\n' "$deleted" | grep -qiE 'not found|HTTP 404'; then
+                  echo "[ALREADY-GONE] ${tag}: already gone at its delete; continuing"
+                else
+                  printf '%s\n' "$deleted" >&2
+                  exit 1
+                fi
+              fi
             fi
           done < "$RUNNER_TEMP/stale_tags.txt"
 

@@ -10,8 +10,11 @@
 //   - the filter's `now | floor as $now |` rebinds the iteration input to a
 //     number, so `.[]` iterated a number (jq exit 5);
 //   - the delete loop deleted straight from the listing;
-//   - nothing serialized the cleanup with Release Drafter, whose own group was
-//     ref-keyed with cancel-in-progress: true;
+//   - the cleanup had no concurrency group and Release Drafter's own was
+//     ref-keyed with cancel-in-progress: true; the v0.7.x repair joined both in
+//     one shared group, which lets a newer pending drafter run replace the
+//     pending weekly cleanup, so since v0.8.0 the two carry different literal
+//     groups and the cleanup's re-query plus idempotent delete carry the safety;
 //   - the dry-run path was unreachable by dispatch and, once wired, would have
 //     compared a stringified boolean against the literal "1".
 //
@@ -288,6 +291,16 @@ if [ "$1" = "release" ] && [ "$2" = "view" ]; then
   exit 0
 fi
 if [ "$1" = "release" ] && [ "$2" = "delete" ]; then
+  # A marker file makes the delete of that tag fail the way gh does: a draft that
+  # is already gone answers HTTP 404, any other failure answers something else.
+  if [ -f "$state/delete_notfound/$3" ]; then
+    echo "HTTP 404: Not Found (https://api.github.com/repos/o/r/releases/1)" >&2
+    exit 1
+  fi
+  if [ -f "$state/delete_error/$3" ]; then
+    echo "HTTP 500: Server Error (https://api.github.com/repos/o/r/releases/1)" >&2
+    exit 1
+  fi
   echo "$3" >> "$state/delete.log"
   exit 0
 fi
@@ -340,6 +353,18 @@ func (h *rdcHarness) setView(tag string, payload map[string]any) {
 	raw, _ := json.Marshal(payload)
 	if err := os.WriteFile(filepath.Join(h.mock, "view", tag+".json"), raw, 0o644); err != nil {
 		h.t.Fatalf("write view %s: %v", tag, err)
+	}
+}
+
+// mark drops a marker file the mock gh reads (see rdcMockGh) for one tag.
+func (h *rdcHarness) mark(dir, tag string) {
+	h.t.Helper()
+	d := filepath.Join(h.mock, dir)
+	if err := os.MkdirAll(d, 0o755); err != nil {
+		h.t.Fatalf("mkdir %s: %v", d, err)
+	}
+	if err := os.WriteFile(filepath.Join(d, tag), []byte("1"), 0o644); err != nil {
+		h.t.Fatalf("write marker %s/%s: %v", dir, tag, err)
 	}
 }
 
@@ -690,7 +715,15 @@ func TestCleanupRequeriesBeforeDelete(t *testing.T) {
 }
 
 // ---- AC-RPC-012 --------------------------------------------------------------
+//
+// Amended v0.8.0: the drafter and the cleanup carry DIFFERENT ref-independent
+// literal groups (a shared group lets a newer pending drafter run replace a
+// pending weekly cleanup), and safety between them rests on the re-query before
+// every delete plus an idempotent delete.
 
+// rdcCheckConcurrency is the static part of the amended AC-RPC-012: (a) literal,
+// expression-free, ref-invariant groups, (b) the two groups differ, (c)
+// cancel-in-progress false on both, (d) the re-query precedes the delete.
 func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 	var v []string
 	add := func(format string, a ...any) {
@@ -703,57 +736,210 @@ func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 			add("%s declares no concurrency group", w.Path)
 			continue
 		}
+		if strings.Contains(g, "${{") {
+			add("%s: the group key %q contains an expression; it must be a plain literal, because any ref- or run-dependent value (github.ref, github.run_id, ...) splits the group per ref or per run", w.Path, g)
+		}
 		var seen []string
 		for _, ref := range []string{"refs/heads/main", "refs/heads/release/v3.2.0"} {
-			resolved := strings.ReplaceAll(g, "${{ github.ref }}", ref)
-			seen = append(seen, resolved)
-			if strings.Contains(resolved, "${{") {
-				add("%s: the group key %q is not a literal (unresolved expression after substituting github.ref)", w.Path, g)
-			}
+			seen = append(seen, strings.ReplaceAll(g, "${{ github.ref }}", ref))
 		}
-		if len(seen) == 2 && seen[0] != seen[1] {
-			add("%s: the group key varies with github.ref (%q vs %q), so a dispatched drafter on another ref escapes the group", w.Path, seen[0], seen[1])
+		if seen[0] != seen[1] {
+			add("%s: the group key varies with github.ref (%q vs %q), so a dispatched run on another ref escapes the group", w.Path, seen[0], seen[1])
 		}
-		groups[w.Path] = seen[0]
+		groups[w.Path] = g
 		if c, ok := w.Concurrency.CancelInProgress.(bool); !ok || c {
-			add("%s: cancel-in-progress is %v, want false on BOTH sides (the incoming run's own flag governs a shared group)", w.Path, w.Concurrency.CancelInProgress)
+			add("%s: cancel-in-progress is %v, want false on BOTH sides", w.Path, w.Concurrency.CancelInProgress)
 		}
 	}
-	if len(groups) == 2 && groups[cleanup.Path] != groups[drafter.Path] {
-		add("the two workflows use different groups (%q vs %q), so they do not serialize", groups[cleanup.Path], groups[drafter.Path])
+	if len(groups) == 2 && groups[cleanup.Path] == groups[drafter.Path] {
+		add("the two workflows share the group %q: GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups", groups[cleanup.Path])
+	}
+	del := rdcStepByName(cleanup, "Delete stale drafts")
+	if del == nil {
+		add("the cleanup workflow has no Delete stale drafts step")
+		return v
+	}
+	text := rdcJoinContinuations(del.Run)
+	iView, iDel := strings.Index(text, "gh release view"), strings.Index(text, "gh release delete")
+	if iView < 0 || iDel < 0 || iView > iDel {
+		add("the delete step does not re-query (gh release view) before gh release delete (view at %d, delete at %d)", iView, iDel)
 	}
 	return v
 }
 
+// rdcCheckIdempotentDelete is clause (e): under the mock gh, a draft that is
+// already gone (absent at its re-query, or reported not found by the delete)
+// leaves the step at exit 0 with an already-gone line and no further delete,
+// while any other delete failure still fails the step. Every delete is also
+// preceded by a re-query of the same tag in the recorded gh calls.
+func rdcCheckIdempotentDelete(t *testing.T, wf *rpcWorkflow, fixture string) []string {
+	t.Helper()
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CLEANUP_CONCURRENCY_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	del := rdcStepByName(wf, "Delete stale drafts")
+	if del == nil {
+		return []string{"CLEANUP_CONCURRENCY_VIOLATION: the cleanup workflow has no Delete stale drafts step"}
+	}
+	scenarios := []struct {
+		name        string
+		mutate      func(h *rdcHarness)
+		wantFail    bool
+		wantGone    bool
+		wantDeletes int
+	}{
+		{"draft absent at its re-query", func(h *rdcHarness) {
+			if err := os.Remove(filepath.Join(h.mock, "view", "stale-draft.json")); err != nil {
+				h.t.Fatalf("remove view payload: %v", err)
+			}
+		}, false, true, 0},
+		{"delete reports the draft not found", func(h *rdcHarness) { h.mark("delete_notfound", "stale-draft") }, false, true, 1},
+		{"delete fails for another reason", func(h *rdcHarness) { h.mark("delete_error", "stale-draft") }, true, false, 1},
+	}
+	for _, sc := range scenarios {
+		h := rdcNewHarness(t, wf, fixture, nil)
+		if out, code := h.runUpToFetch(); code != 0 {
+			add("%s: the env/fetch steps exit %d before the delete loop is reached: %s", sc.name, code, strings.TrimSpace(out))
+			continue
+		}
+		sc.mutate(h)
+		h.resetCalls()
+		out, code := h.runStep(del)
+		if sc.wantFail && code == 0 {
+			add("%s: the delete step exits 0, want a failure (only a draft that is already gone is forgiven): %s", sc.name, strings.TrimSpace(out))
+		}
+		if !sc.wantFail && code != 0 {
+			add("%s: the delete step exits %d, want 0 (an already-gone draft must not fail the run): %s", sc.name, code, strings.TrimSpace(out))
+		}
+		gone := strings.Contains(strings.ToLower(out), "already gone")
+		if sc.wantGone && !gone {
+			add("%s: the step output has no already-gone line (%q)", sc.name, strings.TrimSpace(out))
+		}
+		if !sc.wantGone && gone {
+			add("%s: the step reports the draft already gone for a failure that is not a not-found (%q)", sc.name, strings.TrimSpace(out))
+		}
+		deletes := 0
+		calls := h.readLines("calls.log")
+		for i, c := range calls {
+			tag, ok := strings.CutPrefix(c, "release delete ")
+			if !ok {
+				continue
+			}
+			deletes++
+			tag = strings.Fields(tag)[0]
+			seen := false
+			for _, prev := range calls[:i] {
+				if strings.HasPrefix(prev, "release view "+tag+" ") {
+					seen = true
+				}
+			}
+			if !seen {
+				add("%s: gh release delete %s was not preceded by a gh release view %s", sc.name, tag, tag)
+			}
+		}
+		if deletes != sc.wantDeletes {
+			add("%s: %d delete call(s), want %d", sc.name, deletes, sc.wantDeletes)
+		}
+		if got := h.readLines("delete.log"); len(got) != 0 {
+			add("%s: a delete succeeded (%v) although the draft was gone or the delete was made to fail", sc.name, got)
+		}
+	}
+	return v
+}
+
+// rdcReplaceLast replaces the last occurrence of old in s, reporting whether
+// one was found.
+func rdcReplaceLast(s, old, repl string) (string, bool) {
+	i := strings.LastIndex(s, old)
+	if i < 0 {
+		return s, false
+	}
+	return s[:i] + repl + s[i+len(old):], true
+}
+
+const rdcDeleteBeforeRequeryLoop = `dry_run="${DRY_RUN}"
+while IFS= read -r tag; do
+  [ -z "$tag" ] && continue
+  gh release delete "$tag" --yes
+  gh release view "$tag" --json tagName,isDraft,createdAt,targetCommitish > /dev/null
+done < "$RUNNER_TEMP/stale_tags.txt"
+`
+
 func TestDrafterCleanupConcurrency(t *testing.T) {
 	cleanupText := rpcReadRepoFile(t, rdcCleanupRel)
 	drafterText := rpcReadRepoFile(t, rdcDrafterRel)
+	fixture := rpcReadRepoFile(t, rdcFixtureRel)
+	// The mock-gh scenarios (clause e) drive the workflow's bash; windows runs
+	// the static clauses only (the same precedent as the other cleanup guards).
+	harness := runtime.GOOS != "windows"
+	rdcRequireTools(t, false)
+
+	check := func(c, d *rpcWorkflow) []string {
+		v := rdcCheckConcurrency(c, d)
+		if harness {
+			v = append(v, rdcCheckIdempotentDelete(t, c, fixture)...)
+		}
+		return v
+	}
 	cleanup := rpcParseWorkflow(t, rdcCleanupRel, cleanupText)
 	drafter := rpcParseWorkflow(t, rdcDrafterRel, drafterText)
-	for _, msg := range rdcCheckConcurrency(cleanup, drafter) {
+	for _, msg := range check(cleanup, drafter) {
 		t.Error(msg)
 	}
 
-	baselineClean := len(rdcCheckConcurrency(cleanup, drafter)) == 0
+	baselineClean := len(check(cleanup, drafter)) == 0
 	mutants := []struct {
-		name   string
-		mutate func(c, d *rpcWorkflow)
+		name     string
+		needBash bool
+		mutate   func(t *testing.T, c, d *rpcWorkflow)
 	}{
-		{"ref-keyed drafter group (the original)", func(c, d *rpcWorkflow) { d.Concurrency.Group = "release-drafter-${{ github.ref }}" }},
-		{"drafter cancels in progress", func(c, d *rpcWorkflow) { d.Concurrency.CancelInProgress = true }},
-		{"cleanup cancels in progress", func(c, d *rpcWorkflow) { c.Concurrency.CancelInProgress = true }},
-		{"different literal groups", func(c, d *rpcWorkflow) { c.Concurrency.Group = "release-drafter-cleanup" }},
-		{"cleanup has no group", func(c, d *rpcWorkflow) { c.Concurrency.Group = "" }},
+		{"ref-keyed drafter group (the original)", false, func(t *testing.T, c, d *rpcWorkflow) { d.Concurrency.Group = "release-drafter-${{ github.ref }}" }},
+		{"drafter cancels in progress", false, func(t *testing.T, c, d *rpcWorkflow) { d.Concurrency.CancelInProgress = true }},
+		{"cleanup cancels in progress (separate groups)", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.CancelInProgress = true }},
+		{"cleanup has no group", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.Group = "" }},
+		{"groups equal again (the v0.7.x shared group)", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.Group = d.Concurrency.Group }},
+		{"cleanup group carries github.ref", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Concurrency.Group = "release-drafter-cleanup-${{ github.ref }}"
+		}},
+		{"cleanup group carries github.run_id", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Concurrency.Group = "release-drafter-cleanup-${{ github.run_id }}"
+		}},
+		{"delete before the re-query", false, func(t *testing.T, c, d *rpcWorkflow) {
+			rdcStepByName(c, "Delete stale drafts").Run = rdcDeleteBeforeRequeryLoop
+		}},
+		{"delete never re-queries (pre-fix unguarded loop)", false, func(t *testing.T, c, d *rpcWorkflow) {
+			rdcStepByName(c, "Delete stale drafts").Run = rdcUnguardedDeleteLoop
+		}},
+		{"fatal delete of a draft that is already gone", true, func(t *testing.T, c, d *rpcWorkflow) {
+			s := rdcStepByName(c, "Delete stale drafts")
+			run, ok := rdcReplaceLast(s.Run, "grep -qiE 'not found|HTTP 404'", "false")
+			if !ok {
+				t.Fatalf("control did not apply: the not-found test of the delete is not where the control expects it")
+			}
+			s.Run = run
+		}},
+		{"every delete failure forgiven", true, func(t *testing.T, c, d *rpcWorkflow) {
+			s := rdcStepByName(c, "Delete stale drafts")
+			run, ok := rdcReplaceLast(s.Run, "grep -qiE 'not found|HTTP 404'", "grep -qiE '.'")
+			if !ok {
+				t.Fatalf("control did not apply: the not-found test of the delete is not where the control expects it")
+			}
+			s.Run = run
+		}},
 	}
 	for _, m := range mutants {
 		t.Run("control/"+m.name, func(t *testing.T) {
+			if m.needBash && !harness {
+				t.Skip("the mock-gh scenarios are not exercised on windows")
+			}
 			if !baselineClean {
 				t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
 			}
 			c := rpcParseWorkflow(t, rdcCleanupRel, cleanupText)
 			d := rpcParseWorkflow(t, rdcDrafterRel, drafterText)
-			m.mutate(c, d)
-			got := rdcCheckConcurrency(c, d)
+			m.mutate(t, c, d)
+			got := check(c, d)
 			if len(got) == 0 {
 				t.Fatalf("mutant %q passes the guard", m.name)
 			}
