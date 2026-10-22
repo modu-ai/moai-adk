@@ -71,6 +71,9 @@ func Claim(path string, perm os.FileMode) error {
 // CreateExclusive creates a new claim and returns its open handle, so callers
 // can publish their owner record before closing it. An existing claim is never
 // overwritten or retried. Windows absorbs only bounded native sharing conflicts.
+//
+// @MX:ANCHOR: CreateExclusive publishes claims without replacing a live owner.
+// @MX:REASON: Audit ledgers, state locks and reclaim guards share this exclusive-create boundary.
 func CreateExclusive(path string, perm os.FileMode) (*os.File, error) {
 	return createExclusive(path, perm)
 }
