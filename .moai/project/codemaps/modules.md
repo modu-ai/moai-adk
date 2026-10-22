@@ -13,6 +13,8 @@
 | `internal/homestate/worktree_rebind_identity.go` · `internal/homestate/card_worktree.go` | 이동 전에 common directory·admin directory의 실제 file ID와 HEAD·branch를 캡처한다. `RebindCardWorktree`는 이 witness와 현재 Git 등록이 모두 일치해야 모든 해당 run row를 version CAS로 갱신하고 `card.fields`에 두 경로를 기록한다. 복사된 `.git` 파일만으로 등록이나 같은 트리임을 인정하지 않는다. |
 | `internal/lockfile/lockfile_windows.go` · `internal/lockfile/lockfile_unix.go` | Windows의 Lock·TryLock·Unlock은 동일한 OS byte range를 공유해 프로세스 간 writer를 배제한다. 데이터와 겹치지 않는 범위로 다른 핸들의 정상 파일 I/O를 유지하며 descriptor 종료도 잠금을 해제한다. Unix는 기존 flock 계약을 유지한다. |
 
+활성화된 PreToolUse 커밋 신원 가드(`internal/hook/commit_identity_guard.go`)는 같은 Git common directory의 커밋 생성 명령에서 설정·명령 override로 결정된 email을 내장·추가 목록과 trim/casefold exact-match로 대조한다. worktree 복구 fixture의 reserved email도 `internal/hook/commit_identity_guard_list_test.go`의 전수 열거 검사와 같은 거부 경계에 포함하며, 범위·probe 불확실성의 감사 기록과 advisory fail-open은 유지한다.
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.
