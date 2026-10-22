@@ -4,10 +4,8 @@
 // the complete new or the complete prior content) and preserves the
 // destination's pre-existing permission bits.
 //
-// The helper does NOT hardcode a numeric mode literal: existing-file modes are
-// read via os.Stat, new-file modes come from the caller-supplied defaultMode
-// parameter. The canonical default for regular config files is defs.FilePerm;
-// callers that own a secret file pass 0o600 explicitly.
+// Existing-file modes are read via os.Stat; new-file modes come from the
+// caller-supplied defaultMode. Staging stays owner-only until publication.
 package atomicfile
 
 import (
@@ -18,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // tempPattern is the glob prefix the helper uses for its in-directory temp
@@ -82,23 +82,23 @@ func Write(path string, data []byte, defaultMode os.FileMode, rooted ...RootOpti
 			}
 		}
 	}()
-	// The opened staging object receives its final mode before payload bytes.
-	// Rooted creation does not need a hardcoded temporary mode or path fallback.
-	if err := tmp.Chmod(mode); err != nil {
-		return writeFailure("chmod temp", fmt.Sprintf("chmod temp file to %v", mode), err)
-	}
 	if _, err := tmp.Write(data); err != nil {
 		return writeFailure("write temp", "write temp file", err)
-	}
-	closeErr := tmp.Close()
-	closed = true
-	if closeErr != nil {
-		return writeFailure("close temp", "close temp file", closeErr)
 	}
 	if options.BeforeRename != nil {
 		if err := options.BeforeRename(); err != nil {
 			return writeFailure("stat", "validate destination "+path, err)
 		}
+	}
+	// Broaden permissions only after the payload and destination checks finish.
+	// Chmod the held object, then close it before the atomic rename.
+	if err := tmp.Chmod(mode); err != nil {
+		return writeFailure("chmod temp", fmt.Sprintf("chmod temp file to %v", mode), err)
+	}
+	closeErr := tmp.Close()
+	closed = true
+	if closeErr != nil {
+		return writeFailure("close temp", "close temp file", closeErr)
 	}
 	if err := io.rename(tmpName, path); err != nil {
 		return writeFailure("rename", "rename temp to "+path, err)
@@ -155,10 +155,10 @@ func writerIO(rooted []RootOptions) (writeOperations, RootOptions, error) {
 	options := rooted[0]
 	root := options.Root
 	return writeOperations{stat: root.Lstat, remove: root.Remove, rename: root.Rename,
-		createTemp: func(dir string, mode os.FileMode) (*os.File, string, error) {
+		createTemp: func(dir string, _ os.FileMode) (*os.File, string, error) {
 			for range 100 {
 				name := filepath.Join(dir, strings.Replace(tempPattern, "*", rand.Text(), 1))
-				f, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+				f, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, defs.PrivateFilePerm)
 				if os.IsExist(err) {
 					continue
 				}

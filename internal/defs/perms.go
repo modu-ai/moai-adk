@@ -9,4 +9,7 @@ const (
 
 	// FilePerm is the default permission for regular files (rw-r--r--).
 	FilePerm os.FileMode = 0o644
+
+	// PrivateFilePerm keeps unpublished payloads accessible only to their owner.
+	PrivateFilePerm os.FileMode = 0o600
 )
