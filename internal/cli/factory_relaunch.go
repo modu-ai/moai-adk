@@ -81,7 +81,7 @@ func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.Relaunch
 // active and its owner classifies dead. Every other case leaves the run
 // untouched and returns the outcome text; the verb launches regardless.
 func relaunchRetireFromRun(ctx context.Context, runID string) string {
-	root, err := os.Getwd()
+	root, err := checkedFactoryRoot()
 	if err != nil {
 		return fmt.Sprintf("run %s: working directory unavailable (%v), left untouched", runID, err)
 	}

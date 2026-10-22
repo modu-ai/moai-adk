@@ -1,6 +1,12 @@
 # 아키텍처 개요
 
-## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
+## 현재 소스 기준 — bf0a35f10 (2026-10-22 갱신)
+
+기준 커밋은 `bf0a35f10e423d8f0768e637b74a58e143a5d7d6`이다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다. 패키지 수에는 테스트를 지원하는 `internal/testguard`와 `internal/skills`도 들어간다. 이 수치는 아래 과거 판의 OS별 집계와 구분한다.
+
+이전 provenance 앵커 `db0c514d3`와 이 커밋 사이의 설명 대상 Go 소스는 283개다(추가 93·수정 187·삭제 3). 테스트 파일과 testdata 경로는 제외하고 생성된 Go 파일은 포함하는 `mx.IsDescribedWorthy` 기준이다. 현재 구조에는 업데이트의 스킬 잔여 폴더 처리, 테스트 HOME 보호, 후보 CI와 통합 기준 검증, 카드 메타데이터 감사 기록이 반영돼 있다. MCP 메시징 도구는 퇴역했고 현재 카탈로그는 39개 도구를 등록한다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.
 

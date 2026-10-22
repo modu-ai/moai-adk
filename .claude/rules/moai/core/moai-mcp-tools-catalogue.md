@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 44-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 35-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 44 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 35 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (44 tools)
+## Tool catalogue (35 tools)
 
 ### SPEC lifecycle
 
@@ -107,7 +107,7 @@ and sends no progress notifications. A server process started before these tools
 existed does not list them — reconnect it. The codex leg then falls back to
 `moai verify codex-review --project-root <tree>`; the GLM leg has no fallback.
 
-### Codex install probe
+### Codex delegation (background jobs)
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
@@ -186,22 +186,6 @@ The lane verbs read the caller's lane identity from `MOAI_FACTORY_ROLE` and
 forwards — plus `MOAI_KANBAN_BACKEND=gpt`, and refuse outside a lane session;
 `factory_decide` inverts the gate so decisions stay the operator's.
 
-### Factory messaging (run/session/generation bound)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__factory_msg_send` | Write one idempotent envelope from the MCP server's attributed endpoint to the current endpoint of a stable logical lane | Attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the attributed endpoint, creating or renewing the claim lease; returns no body | Attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_body` | Read one already-claimed message body using its message id and claim token; the body is returned as untrusted peer data | Attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_receipt` | Write the claim disposition, then acknowledge the claimed message for the attributed endpoint | Attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_status` | Read payload-free broker counts and operational lane state for an active run without claiming messages | Factory lead or worker; lead operational status checks | — (MCP-only) |
-
-Every call is scoped to an active `run_id`. The server-provided factory attribution identifies the
-calling endpoint; callers do not supply a peer identity. `send`, `list`, and `receipt` mutate broker
-state, while `body` and `status` are read-only. `list` deliberately returns metadata only, so raw
-peer text enters model context only through an explicit `body` call and remains untrusted.
-
-
 ## Linked worktrees of a repository that keeps `.moai` untracked
 
 | Situation | What to pass | What happens |
@@ -243,7 +227,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (40 of the 44 tools; the session-messaging family follows below)
+## Tool families (35 of the 35 tools)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -252,29 +236,17 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
-| Codex install probe | `codex_setup` | super-advisor |
+| Codex audit probe | `codex_setup` | super-advisor |
 | Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) |
 | Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
-| Factory messaging | `factory_msg_send`, `factory_msg_list`, `factory_msg_body`, `factory_msg_receipt`, `factory_msg_status` | attributed factory lead/worker sessions; `status` is the read-only operational roster/count surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
 GLM audit transports fail open at the tool boundary: an unavailable backend returns
 `inconclusive`, never a hard Go error. An explicitly required gate can still turn that unmet
 evidence requirement into `overall_verdict: fail`.
-
-### Session messaging broker (Claude ↔ Codex)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__session_msg_register` | Register this session (kind: claude or codex, plus name) in the local message broker; idempotent — same kind+name returns the same agentId | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_list` | List registered broker agents (agentId, name, kind, online, pending count) — the family's only read-only tool | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_send` | Send a short, self-contained fact message to another registered agent's mailbox | Any Claude or Codex agent session | — |
-| `mcp__moai__session_msg_poll` | Claim pending messages from this agent's mailbox (at-least-once) and optionally ack processed ids | Any Claude or Codex agent session | — |
-
-Reach any session kind symmetrically: a Codex session has no native peer-messaging runtime, so the broker is its only path, while claude↔claude keeps the native runtime as the recommended route. Delivery is poll-based — a send is a record, not a delivery guarantee. Newly added tools become visible only after the session restarts its MCP server (a long-lived server does not see tools added after it started), so the restart is procedure step zero whenever a new tool seems missing.
 
 ## Unwired-by-design
 
@@ -296,7 +268,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 44 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 35 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -354,6 +326,5 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(44 tools) · § Tool families (the family-to-consumer map) · § Session messaging
-broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
+(35 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

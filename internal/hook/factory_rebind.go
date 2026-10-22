@@ -45,6 +45,7 @@ const (
 // laneRebindRequest is the measured and resolved input of one rebind attempt.
 type laneRebindRequest struct {
 	root      string
+	namespace factorymsg.Namespace
 	dbPath    string // resolved once by the caller (REQ-SRH-009)
 	sessionID string
 	envRun    string // X — the run the launch environment names (not active)
@@ -97,7 +98,17 @@ func rebindFactoryLane(ctx context.Context, req laneRebindRequest) (notice, rebo
 // RegisterPeer refuses it and that refusal is the refused state, written
 // nowhere.
 func registerReboundLane(ctx context.Context, req laneRebindRequest, y, provider string) (notice, reboundRun string) {
-	s, err := factorymsg.OpenWithContext(ctx, req.root, y)
+	namespace := req.namespace
+	if namespace.FactoryDir() == "" {
+		// Direct callers still resolve their root; the hook passes its already
+		// validated namespace so registration does not repeat Git discovery.
+		var err error
+		namespace, err = factorymsg.ResolveNamespace(ctx, req.root)
+		if err != nil {
+			return "factory messaging degraded: " + err.Error(), ""
+		}
+	}
+	s, err := namespace.OpenWithContext(ctx, y)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}
@@ -134,8 +145,8 @@ func registerReboundLane(ctx context.Context, req laneRebindRequest, y, provider
 func emitReboundState(req laneRebindRequest, y string, generation int64) string {
 	return emitFactoryLaneState(req, "rebound:"+y, func() string {
 		return fmt.Sprintf("%s run %s is not active; this session (slot %s) is now registered in the only active run %s at generation %d — "+
-			"messages arrive at turn boundaries, not idle wake; use run_id %s with the factory_msg_* tools",
-			factoryLaneReboundPrefix, req.envRun, req.slot, y, generation, y)
+			"messages arrive at turn boundaries, not idle wake",
+			factoryLaneReboundPrefix, req.envRun, req.slot, y, generation)
 	})
 }
 

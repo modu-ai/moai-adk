@@ -378,54 +378,71 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 // factoryNextLeaseOnceGated is factoryNextLeaseOnce with the quota gate's
 // verdict handed in as one boolean (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-009):
 // noNewCards leaves only the card already assigned to this lane leasable. The
-// `next` verb and the factory_next MCP handler call this form; the relaunch
-// loop and the Codex loop keep calling the ungated function above.
+// relaunch loop, the Codex loop and the lease-drift tests call this form; the
+// `next` verb and the factory_next MCP handler call the eligibility form
+// below (SPEC-CARD-ELIGIBLE-PULL-001 — they render the gate's refusal lines).
 //
-// @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the next verb, the factory_next MCP handler, the ungated wrapper) — kept a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the ungated wrapper, the drift-log test path, the eligibility form) — kept a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, error) {
+	card, leased, _, err := factoryNextLeaseOnceEligibility(ctx, root, runID, lane, noNewCards)
+	return card, leased, err
+}
+
+// factoryNextLeaseOnceEligibility is factoryNextLeaseOnceGated carrying the
+// self-dispatch gate's refusal collection out (SPEC-CARD-ELIGIBLE-PULL-001):
+// the flag is read once per invocation, every selection pass of the retry
+// loop evaluates the unowned candidates under it, and the refusals of the
+// LAST pass ride out for the no-card answer (REQ-CEP-005). The relaunch and
+// Codex loops keep the plainer gated form above — they never render refusal
+// lines.
+func factoryNextLeaseOnceEligibility(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, []factoryEligibleRefusal, error) {
 	// The record connection carries the claim's busy timeout and is opened
 	// before the section, so a slow open never lengthens the lock's hold.
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
 	if err != nil {
-		return homestate.Card{}, false, fmt.Errorf("open factory record: %w", err)
+		return homestate.Card{}, false, nil, fmt.Errorf("open factory record: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 	store := todoStoreAt(root)
 	skip := factoryNextSkipForBackend()
+	elig := &factoryEligibility{enabled: factorySelfDispatchEnabled(root)}
+	var refusals []factoryEligibleRefusal
 	for attempt := 0; attempt < factoryNextSelectionAttempts; attempt++ {
 		var (
 			card          homestate.Card
 			leased, raced bool
 			passErr       error
 		)
+		elig.refusals = nil // each pass collects its own; the last one answers
 		// Only the first attempt is the lease call's queue-lock wait; a retry adds no clock read.
 		ran, lockErr := factoryLeaseSection(store, attempt == 0, func(l *factory.LockedBacklog) {
-			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)
+			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards, elig)
 		})
 		if !ran {
 			// A queue lock that could not be taken ends the pass at once with an
 			// error: re-selecting would keep the verb waiting one more budget per
 			// attempt and then report an empty queue it never read.
-			return homestate.Card{}, false, factoryQueueLockError(lockErr)
+			return homestate.Card{}, false, nil, factoryQueueLockError(lockErr)
 		}
 		if passErr != nil {
-			return homestate.Card{}, false, passErr
+			return homestate.Card{}, false, nil, passErr
 		}
 		if leased {
 			// A failed lock release after a committed lease does not undo the lease;
 			// reporting it would orphan the card, and the next queue write meets the
 			// held lock loudly.
-			return card, true, nil
+			return card, true, nil, nil
 		}
 		if lockErr != nil {
-			return homestate.Card{}, false, lockErr
+			return homestate.Card{}, false, nil, lockErr
 		}
 		if !raced {
-			return homestate.Card{}, false, nil
+			return homestate.Card{}, false, elig.refusals, nil
 		}
 	}
-	return homestate.Card{}, false, nil
+	refusals = elig.refusals
+	return homestate.Card{}, false, refusals, nil
 }
 
 // factoryLeaseSection runs fn inside the lease section: the queue's own
@@ -829,7 +846,7 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 // The pass runs inside the lease section (factoryLeaseSection): l is the handle
 // of the queue lock the caller holds, every queue read and write goes through
 // it, and the claim is made before the section ends.
-func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool, elig *factoryEligibility) (homestate.Card, bool, bool, error) {
 	factoryLeaseAtPassEntry()
 	// The clock is read BEFORE the record snapshot: a lease whose expiry the
 	// snapshot shows as already past was expired when the clock was read too,
@@ -991,8 +1008,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	// (b) an operator-picked card assigned to no lane. The record row sits at
-	// `picked` with no owner; the queue item must still be picked, so an
-	// unpicked queue item disqualifies the row rather than failing the verb.
+	// `picked` with no owner. The self-dispatch gate owns the arm's conditions
+	// (SPEC-CARD-ELIGIBLE-PULL-001): with the flag OFF the arm is dormant for
+	// this card class — the quiet skip, no lease, no record, no reason line
+	// (REQ-CEP-001); with the flag ON the five-condition predicate applies and
+	// the first disqualifier is collected for the no-card answer
+	// (REQ-CEP-002/003). The queue-picked admission the row form used to check
+	// last is the predicate's condition 1 now.
 	for _, c := range cards {
 		if c.State != homestate.CardPicked || strings.TrimSpace(c.OwnerLabel) != "" {
 			continue
@@ -1000,14 +1022,27 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if skip(c) {
 			continue
 		}
-		if !modeEligible(c.CardID) {
+		// Another lane's bundle member is a quiet skip BEFORE the gate (PR
+		// #1859 review P2-b): feeding bundle ownership into depsMet
+		// misattributed the refusal as predecessor-unmerged and sent an
+		// operator hunting a merge wait that does not exist. Bundle
+		// ownership says "not this lane's candidate"; only the
+		// predecessor/hub predicates say "not leasable yet".
+		if c.BundleID != "" {
+			if owner, ok := bundleLane[c.BundleID]; ok && owner != lane {
+				continue
+			}
+		}
+		if !elig.active() {
 			continue
 		}
-		if selectionSkips(c) {
-			continue
+		it, inQueue := queueItemIn(queueRec, c.CardID)
+		depsMet := c.HintAfter == "" || mergedLocal[c.HintAfter]
+		if _, wait := hubWaitUnmerged(c.CardID); wait {
+			depsMet = false
 		}
-		state, inQueue := queueItemStateIn(queueRec, c.CardID)
-		if !inQueue || state != factory.BacklogStatePicked {
+		if r := elig.disqualify(c.CardID, it, inQueue, c.SpecID, depsMet, modeEligible(c.CardID)); r != nil {
+			elig.collect(*r)
 			continue
 		}
 		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
@@ -1017,27 +1052,39 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	}
 	// (b2) a queue-picked card with no record row yet: record it, then claim.
 	// The queue cannot have changed since the pass's one read: the section holds
-	// its lock, so arm (b2) reads the same record.
+	// its lock, so arm (b2) reads the same record. The same self-dispatch gate
+	// as arm (b) (SPEC-CARD-ELIGIBLE-PULL-001): OFF is the quiet skip — the
+	// item is neither recorded nor claimed, and selection reaches the queued
+	// cards behind it (the wait-not-error shape of card t1533 kept); ON runs
+	// the predicate, whose condition 1 this arm's own loop filter satisfies.
 	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State == factory.BacklogStatePicked && !recorded[it.ID] {
-			if !modeEligible(it.ID) {
-				continue
-			}
-			// The no-record arm waits like every other path (card t1533,
-			// review-gate r6/r7): recording first and refusing at the claim
-			// errored the whole next call while unrelated ready cards waited
-			// behind it. Skipped here, the card is neither recorded nor
-			// claimed, and selection reaches the ready cards.
-			if _, wait := hubWaitUnmerged(it.ID); wait {
-				continue
-			}
-			if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
-				return homestate.Card{}, false, false, err
-			}
-			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, hubFields(it.ID))
+		switch it.State {
+		case factory.BacklogStatePicked:
+		default:
+			continue
 		}
+		if recorded[it.ID] {
+			continue
+		}
+		if !elig.active() {
+			continue
+		}
+		// The no-record arm waits like every other path (card t1533,
+		// review-gate r6/r7): recording first and refusing at the claim
+		// errored the whole next call while unrelated ready cards waited
+		// behind it. Skipped here, the card is neither recorded nor
+		// claimed, and selection reaches the ready cards.
+		_, wait := hubWaitUnmerged(it.ID)
+		if r := elig.disqualify(it.ID, it, true, "", !wait, modeEligible(it.ID)); r != nil {
+			elig.collect(*r)
+			continue
+		}
+		if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
+		return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, hubFields(it.ID))
 	}
 	// (c) the highest-ranked eligible queued card (REQ-TCD-007/-008). The
 	// queue is kept sorted by classification inside the add's locked write
@@ -1286,6 +1333,142 @@ func factoryRefusal(token, format string, args ...any) *factoryNominateRefusal {
 // marker card: the marker parks a card the lease would otherwise promote.
 func factoryQueuedHoldMarked(it factory.BacklogItem) bool {
 	return it.State == factory.BacklogStateQueued && autoRankHoldMarked(it.Text)
+}
+
+// factoryNextNoCardText renders the no-card answer BOTH surfaces print —
+// the cobra verb's stdout and the factory_next MCP tool's result text — from
+// one shared source (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005, plan §D shared
+// refusal-result route): the existing no-card first line, unchanged so no
+// consumer parser breaks, then at most one `refused <token>: <detail>` line
+// per gate-disqualified candidate. An empty collection is the bare
+// no-card line — the OFF dormancy's quiet skip adds nothing (plan §G
+// anti-pattern: a reason line on an unevaluated skip).
+func factoryNextNoCardText(refusals []factoryEligibleRefusal) string {
+	var b strings.Builder
+	b.WriteString("no card is available")
+	for _, r := range refusals {
+		b.WriteString("\n")
+		b.WriteString(r.line())
+	}
+	return b.String()
+}
+
+// The closed token set of the self-dispatch eligibility gate
+// (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005, spec §C D3/D9): hold-marker and
+// serial-slot reuse the nominated set's vocabulary; not-admitted,
+// spec-missing and predecessor-unmerged are new. A hold STATE candidate is
+// absorbed into not-admitted at condition 1 (admission = queue picked, and a
+// held item never enters the generic pull), so no `held` token exists here.
+// The set is closed: no new reason token is added without a SPEC change.
+const (
+	factoryEligibleNotAdmitted         = "not-admitted"
+	factoryEligibleSpecMissing         = "spec-missing"
+	factoryEligibleHoldMarker          = "hold-marker"
+	factoryEligiblePredecessorUnmerged = "predecessor-unmerged"
+	factoryEligibleSerialSlot          = "serial-slot"
+)
+
+// factoryEligibleRefusal is one gate disqualification of an unowned candidate
+// (REQ-CEP-005): a token from the closed set above plus a one-line detail
+// that names the card. Refusals are part of the no-card answer (exit 3), not
+// errors and not the nominated lease's exit-4 refusal — a refused candidate
+// is re-evaluated unchanged by the next pass (REQ-CEP-006).
+type factoryEligibleRefusal struct {
+	Token  string
+	CardID string
+	Detail string
+}
+
+// line renders the machine-readable form both surfaces print:
+// `refused <token>: <detail>` (plan §D grammar).
+func (r factoryEligibleRefusal) line() string {
+	return "refused " + r.Token + ": " + r.Detail
+}
+
+// factoryEligibility carries the self-dispatch gate's state for one
+// selection pass (SPEC-CARD-ELIGIBLE-PULL-001): the flag read once by the
+// caller, and the refusals the gate collected for the unowned candidates it
+// evaluated and disqualified. With the flag OFF the arms skip unowned
+// candidates BEFORE evaluation (REQ-CEP-001 — the quiet skip: no lease, no
+// record, no reason line), so nothing is ever collected.
+//
+// @MX:NOTE: [AUTO] The self-dispatch eligibility gate — one flag read per next invocation, five-condition predicate over arms (b)/(b2), refusal collection for the no-card answer. Assigned/bundle/promotion arms never consult it (REQ-CEP-004/D6).
+// @MX:SPEC: SPEC-CARD-ELIGIBLE-PULL-001
+type factoryEligibility struct {
+	enabled  bool
+	refusals []factoryEligibleRefusal
+}
+
+// active reports whether the generic arms may evaluate unowned candidates
+// at all. OFF (the default kill-switch reading of the Q1 ruling) leaves the
+// arms fully dormant for cards not assigned to this lane.
+func (e *factoryEligibility) active() bool { return e != nil && e.enabled }
+
+// disqualify evaluates one unowned candidate against the five-condition
+// predicate (REQ-CEP-003) in the fixed order 1→5 and returns the FIRST
+// disqualifier, nil when the candidate passes. rowSpecID carries the record
+// row's spec id (empty for the rowless (b2) arm); depsMet and slotFree carry
+// the caller's existing predicates (predecessor/hub wait / modeEligible —
+// bundle ownership is excluded BEFORE the gate, PR #1859 review P2-b); the
+// serial-slot read is read-only (D5) and every input here reuses the
+// pass's one queue snapshot.
+func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, inQueue bool, rowSpecID string, depsMet, slotFree bool) *factoryEligibleRefusal {
+	refuse := func(token, detail string) *factoryEligibleRefusal {
+		return &factoryEligibleRefusal{Token: token, CardID: cardID, Detail: detail}
+	}
+	// 1. admitted — the queue item exists and is picked. A held (or dropped,
+	// or absent) item never enters the generic pull: the hold STATE is
+	// absorbed here (D9), not given its own token.
+	admitted := inQueue && it.State == factory.BacklogStatePicked
+	if !admitted {
+		state := "absent"
+		if inQueue {
+			state = string(it.State)
+		}
+		return refuse(factoryEligibleNotAdmitted, "card "+cardID+" is not admitted: the queue item is "+state+", not picked")
+	}
+	// 2. spec exists — FAIL-CLOSED and classification-agnostic (amendment
+	// 0.3.0, the F1 ruling): a card with no spec id on the record row or the
+	// queue hint is never leased through the generic arms, whatever its
+	// priority. Both carriers count — `factory assign --spec` writes the
+	// record row only, so the queue hint alone would wrongly refuse (PR
+	// #1859 review P2-a).
+	if (it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "") && strings.TrimSpace(rowSpecID) == "" {
+		return refuse(factoryEligibleSpecMissing, "card "+cardID+" carries no spec id on the record row or the queue hint")
+	}
+	// 3. not held — the marker predicate is state-independent (D1): a picked
+	// card whose text opens with the marker is parked the same way a queued
+	// one is.
+	if autoRankHoldMarked(it.Text) {
+		return refuse(factoryEligibleHoldMarker, "card "+cardID+" opens with the hold marker")
+	}
+	// 4. dependencies met — an unmerged after-predecessor or an unmerged hub
+	// sharer, the same predicate the arm already skipped on.
+	if !depsMet {
+		return refuse(factoryEligiblePredecessorUnmerged, "card "+cardID+" waits on an unmerged predecessor or hub sharer")
+	}
+	// 5. resources free — a serial-mode candidate needs the serial slot
+	// empty; the read is the existing one, changed not at all (D5).
+	if !slotFree {
+		return refuse(factoryEligibleSerialSlot, "card "+cardID+" is serial and the serial slot is held")
+	}
+	return nil
+}
+
+// collect appends one gate refusal to the pass's collection.
+func (e *factoryEligibility) collect(r factoryEligibleRefusal) { e.refusals = append(e.refusals, r) }
+
+// factorySelfDispatchEnabled reads workflow.factory.self_dispatch for the
+// factory rooted at root (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-001/REQ-CEP-002).
+// The default is OFF — the kill-switch: an absent, unreadable or unparsable
+// config leaves the generic arms dormant for unowned cards, so no deployment
+// gains unowned-card leasing by accident.
+func factorySelfDispatchEnabled(root string) bool {
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.Factory.SelfDispatch
 }
 
 // factoryRecordRefusal maps a factory-record row to the refusal it earns for
@@ -1744,6 +1927,10 @@ func newFactoryNextCommand() *cobra.Command {
 			// pass, outside the selection arms, and carried across the --wait
 			// re-checks by the latch.
 			quotaLatch := &factoryQuotaLatch{}
+			// The gate's refusals of the last pass (SPEC-CARD-ELIGIBLE-PULL-001
+			// REQ-CEP-005): rendered only inside the no-card answer below — a
+			// lease or a hold supersedes them.
+			var gateRefusals []factoryEligibleRefusal
 			for {
 				held, holdLine := quotaLatch.evaluate(root)
 				// The open-PR query of this attempt runs here, ahead of the attempt's queue
@@ -1775,7 +1962,7 @@ func newFactoryNextCommand() *cobra.Command {
 						return fmt.Errorf("factory next: %w", err)
 					}
 				} else {
-					card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+					card, leased, gateRefusals, err = factoryNextLeaseOnceEligibility(ctx, root, runID, lane, held)
 					if err != nil {
 						return fmt.Errorf("factory next: %w", err)
 					}
@@ -1799,7 +1986,10 @@ func newFactoryNextCommand() *cobra.Command {
 						_, _ = fmt.Fprintln(cmd.ErrOrStderr(), holdLine)
 						return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: " + holdLine}
 					}
-					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no card is available")
+					// The gate's refusal lines ride the no-card answer
+					// (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005): first line kept,
+					// exit stays 3, both surfaces render the same shared text.
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), factoryNextNoCardText(gateRefusals))
 					return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: no card is available"}
 				}
 				factoryNextWaitSleep(factoryNextWaitInterval)
@@ -1985,6 +2175,14 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if held {
 		return false
 	}
+	// The self-dispatch gate decides the bare path's picked candidates before
+	// any query runs (PR #1859 review P1): with the flag OFF, arms (b) and
+	// (b2) are dormant for unowned picked cards — the quiet skip — so a
+	// corpus holding only those would answer no-card on every pass, and a
+	// --wait loop fed the peek's stale "true" would run gh pr list every 5s
+	// for its whole budget (~180 calls/lane, enough to drain the shared rate
+	// limit). Queued candidates are arm (c)'s promotion and stay ungated.
+	selfDispatch := factorySelfDispatchEnabled(root)
 	// The bare path takes a NEW card, so sibling rows hold against it
 	// (ignoreAssigned=false). A candidate the selector itself skips is no
 	// candidate here either — each skip mirrors the arm that applies it: the
@@ -2008,7 +2206,15 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				continue
 			}
 		case factory.BacklogStatePicked:
-			if row, hasRow := rowByID[it.ID]; hasRow &&
+			row, hasRow := rowByID[it.ID]
+			bundleOwner, bundleHasOwner := bundleLane[row.BundleID]
+			ownBundle := hasRow && row.BundleID != "" && bundleHasOwner && bundleOwner == lane
+			// Arm (b-priority) continues this lane's own bundle with the
+			// generic self-dispatch arms OFF too (REQ-CEP-004).
+			if !selfDispatch && !ownBundle {
+				continue
+			}
+			if hasRow &&
 				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}
@@ -2444,6 +2650,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
 			}
 		}
+		// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): complete's
+		// own acquisition is a window entry like acquire's, so the same check
+		// runs before the window record is touched. A tip that is an adoption
+		// is exempt (REQ-ISB-016).
+		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
+			return freshErr
+		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
 		}
@@ -2475,16 +2688,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// from that commit without calling the merge step and without a fresh
 	// re-measure. A card branch that gained commits after that merge is NOT
 	// adopted and falls through to step 3.
-	tip := factoryBranchTip(integTree, branch)
-	cardTip := factoryBranchTip(card.WorktreePath, cardBranch)
-	adopted := ""
-	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
-		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
-			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
-				adopted = tip
-			}
-		}
-	}
+	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
 		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
@@ -2679,6 +2883,28 @@ func cliGitIn(dir string, args ...string) (string, error) {
 	return string(out), err
 }
 
+// factoryAdoptedTip returns the integration tip when it is an adoption in the
+// sense of REQ-MWQ-019 step 2 — a merge commit whose second parent is the card
+// branch's CURRENT tip and whose tree a VALID re-measure record that NAMES that
+// tree keys — and "" otherwise. The reader returns the tree field as written,
+// so a stored file whose tree names another SHA is not a record for the tip
+// tree and must not exempt the gate (sync-audit iter12 F1: the identity
+// comparison the gate's own verdict makes, mirrored here). complete's adoption
+// path and the base-freshness gate's exemption (SPEC-INTEGRATION-STALE-BASE-001,
+// REQ-ISB-016) both ask this one question, so the two cannot drift.
+func factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch string) string {
+	tip := factoryBranchTip(integTree, branch)
+	cardTip := factoryBranchTip(cardTree, cardBranch)
+	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
+		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil && record.Tree == tipTree {
+				return tip
+			}
+		}
+	}
+	return ""
+}
+
 // factoryBranchTip reads dir's tip for branch (empty dir falls back to the
 // process repository — the caller's resolution already ran).
 func factoryBranchTip(dir, branch string) string {
@@ -2822,14 +3048,21 @@ func factoryBranchOfWorktree(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
 	}
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	// The FULL ref, only refs/heads/ stripped: `rev-parse --abbrev-ref HEAD`
+	// prints heads/<branch> when a tag shares the branch's name, and the
+	// caller's refs/heads/<branch> lookups then name a branch that does not
+	// exist (card t1834, sync-audit iter12 F2) — the same hazard the gate's
+	// own symbolic-ref read exists for. With --quiet a detached HEAD is exit 1
+	// with no output; like the former --abbrev-ref error path, it stays ""
+	// (best-effort), and no new semantics are invented for it.
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "HEAD")
 	cmd.Dir = dir
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // factoryWorktreeForBranchIn resolves the worktree holding branch, anchored
@@ -3055,6 +3288,53 @@ func requireQueuePicked(root, cardID string) error {
 	return nil
 }
 
+// canonicalWorktreePath normalizes a card worktree path to one canonical
+// spelling per tree (card t1784): when the path exists, it resolves to the
+// real path via EvalSymlinks and confirms with os.SameFile that the resolved
+// path still names the input, so variant spellings of the same tree
+// (/tmp/x vs /private/tmp/x) cannot fork the record against the string
+// equality in homestate.RecordCardWorktree. A nonexistent path (the tree is
+// created after assign) falls back to filepath.Abs. t1751 N1 (a) composes:
+// the input is accepted as typed; only the stored spelling is canonical.
+func canonicalWorktreePath(input string) (string, error) {
+	abs, err := filepath.Abs(input)
+	if err != nil {
+		return "", err
+	}
+	result := abs
+	real, err := filepath.EvalSymlinks(abs)
+	if err == nil {
+		same, err := sameFilePath(abs, real)
+		if err == nil && same {
+			result = real
+		}
+		// Unresolvable or not confirmed to name the input — keep the Abs form
+		// rather than storing a path that points elsewhere.
+	}
+	// The persist layer (CardFields.apply) trims WorktreePath; storing a path
+	// whose canonical form is not trim-stable would break the SameFile
+	// guarantee this helper exists to provide. Refuse instead (card t1784
+	// sync-audit F2).
+	if strings.TrimSpace(result) != result {
+		return "", fmt.Errorf("worktree path %q is not trim-stable: the factory record trims stored paths, so this spelling cannot be stored without aliasing a different tree", input)
+	}
+	return result, nil
+}
+
+// sameFilePath reports whether two paths name the same file (os.SameFile on
+// their stat results).
+func sameFilePath(a, b string) (bool, error) {
+	infoA, err := os.Stat(a)
+	if err != nil {
+		return false, err
+	}
+	infoB, err := os.Stat(b)
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(infoA, infoB), nil
+}
+
 func newFactoryAssignCommand() *cobra.Command {
 	var to, prefer, after, spec, worktree, contractRef, run string
 	var reassign bool
@@ -3079,7 +3359,7 @@ func newFactoryAssignCommand() *cobra.Command {
 				abs := worktree
 				if abs != "" {
 					var err error
-					if abs, err = filepath.Abs(worktree); err != nil {
+					if abs, err = canonicalWorktreePath(worktree); err != nil {
 						return fmt.Errorf("factory assign: %w", err)
 					}
 				}
