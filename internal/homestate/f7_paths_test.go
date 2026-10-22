@@ -11,15 +11,28 @@ import (
 // is deterministic, and the human-readable prefix sanitizes characters that
 // do not belong in a directory name.
 func TestProjectKeyForCanonicalRoot(t *testing.T) {
-	root := "/Users/x/proj"
+	project := t.TempDir()
+	root := CanonicalProjectRoot(project)
+	projectInfo, err := os.Stat(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(root) || !os.SameFile(projectInfo, rootInfo) {
+		t.Fatalf("canonical root %q does not name the project %q", root, project)
+	}
 	if got := ProjectKeyForCanonicalRoot(root); got != ProjectKey(root) {
 		t.Fatalf("canonical-root key = %q, ProjectKey = %q, want equivalence", got, ProjectKey(root))
 	}
-	if got := ProjectKeyForCanonicalRoot("/x/한글이름"); strings.Contains(got, "한글") {
+	if got := ProjectKeyForCanonicalRoot(filepath.Join(root, "한글이름")); strings.Contains(got, "한글") {
 		t.Fatalf("key %q carries unsanitized characters", got)
 	}
-	if got := ProjectKeyForCanonicalRoot("/"); !strings.HasPrefix(got, "project-") {
-		t.Fatalf("key for root \"/\" = %q, want project- prefix", got)
+	volumeRoot := filepath.VolumeName(root) + string(filepath.Separator)
+	if got := ProjectKeyForCanonicalRoot(volumeRoot); !strings.HasPrefix(got, "project-") {
+		t.Fatalf("key for root %q = %q, want project- prefix", volumeRoot, got)
 	}
 }
 

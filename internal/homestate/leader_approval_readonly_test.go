@@ -200,26 +200,47 @@ func TestOpenFactoryReadonlyNeverCheckpointsWAL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open read-only beside a live writer: %v", err)
 	}
+	t.Cleanup(func() {
+		if open := ro.DB.Stats().OpenConnections; open != 0 {
+			t.Errorf("hot-WAL read-only fixture left %d database connection(s) open", open)
+		}
+	})
+	t.Cleanup(func() {
+		if err := ro.Close(); err != nil {
+			t.Errorf("close hot-WAL read-only fixture during cleanup: %v", err)
+		}
+	})
 	if _, linked, err := ro.RecordedCardRowReadonly(context.Background(), "hot"); err != nil || !linked {
 		t.Fatalf("read-only read: linked=%v err=%v", linked, err)
 	}
 	if during := hash(); during != before {
-		_ = ro.Close()
 		t.Fatalf("the read-only handle modified the store during its life: before %s during %s", before, during)
+	}
+	if err := ro.Close(); err != nil {
+		t.Fatalf("close hot-WAL read-only handle: %v", err)
 	}
 
 	// Steady-state arm: after the writer closes cleanly, the read-only
 	// handle's whole life on the clean store is byte-for-byte inert.
-	_ = db.Close()
+	if err := db.Close(); err != nil {
+		t.Fatalf("close live writer before the clean-store arm: %v", err)
+	}
 	db2, err := OpenFactoryReadonly(path)
 	if err != nil {
 		t.Fatalf("open read-only on the clean store: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := db2.Close(); err != nil {
+			t.Errorf("close clean-store read-only fixture during cleanup: %v", err)
+		}
+	})
 	if _, _, err := db2.RecordedCardRowReadonly(context.Background(), "hot"); err != nil {
 		t.Fatalf("clean-store read: %v", err)
 	}
 	steadyBefore := hash()
-	_ = db2.Close()
+	if err := db2.Close(); err != nil {
+		t.Fatalf("close clean-store read-only handle: %v", err)
+	}
 	if steadyAfter := hash(); steadyAfter != steadyBefore {
 		t.Fatalf("the read-only handle modified the clean store: before %s after %s", steadyBefore, steadyAfter)
 	}
