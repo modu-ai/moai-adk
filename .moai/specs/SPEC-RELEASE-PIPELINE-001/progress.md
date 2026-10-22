@@ -36,6 +36,29 @@ the gtmpl + template mirror reclassified shape-only PRESERVE (§D-11, M2 steps
 1+4, AC-RPC-004). O5 — retry-wrapper anchors corrected to the seven measured
 ci.yml sites (:222/:370/:422/:473/:525/:578/:635, verified this run).
 
+Hold-and-split revision (iter-3 FAIL 0.69 at the Tier M ceiling →
+operator-approved split → this revision, spec v0.4.0, 2026-10-22):
+
+plan_status: audit-ready
+audit_ready: true
+plan_complete_at: 2026-10-22T12:26:32Z
+plan_tree: bf0a0f35fc280e83c2f9fd76d0e2a5de39b7e8b7
+scope: M1 (verify-and-preserve) + M2 + M4 + M5 (with D10); M3 + D11 moved to a follow-up card
+requirements: 11 live (REQ-RPC-001..004, 007..013); REQ-RPC-005/006 [RETIRED]
+acceptance_criteria: 11 live (9 release-blocking, 2 regression-guard); AC-RPC-005/006 [RETIRED]
+authorized_audit_rounds: 1 (operator-approved, scope = this revision incl. D10)
+
+Changes: card item 3 removed (REQ/AC-005/006, EV-2, E5, M3; identifiers retired
+in place); REQ-RPC-013 / AC-RPC-013 added for D10 (EV-10 RED: `gh release list`
+rejects `targetCommitish`, exit 1; EV-12 green-path: `gh release view` supplies
+it); every RED-now cell re-measured at plan_tree (acceptance.md §B, document-level
+pin); line-citation drift table in plan.md §A.2 (release-pr-multi-os.yml moved
+by t1892 sharding; required-checks.yml gained `release_gate` by t1858; ci.yml,
+codeql.yml, release-drafter*.yml unchanged). Decision-index: Q4 re-opened and
+reversed to retained names (release_gate subset invariant), Q7 (fetch source)
+and Q8 (event-class gating scope) added and default-applied. AC-RPC-004
+reclassified regression-guard (no RED-now cell exists on the real tree).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
