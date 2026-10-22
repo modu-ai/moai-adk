@@ -101,3 +101,25 @@ func TestCanonicalWorktreePath(t *testing.T) {
 		}
 	})
 }
+
+func TestCanonicalWorktreePath_RejectsRawPadding(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "does-not-exist-yet")
+	for _, tc := range []struct {
+		name, input string
+	}{
+		{"leading space", " " + base},
+		{"trailing space", base + " "},
+		{"leading tab", "\t" + base},
+		{"trailing tab", base + "\t"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := canonicalWorktreePath(tc.input)
+			if err == nil || got != "" {
+				t.Fatalf("canonicalWorktreePath(%q) = %q, %v; want empty path and refusal", tc.input, got, err)
+			}
+			if !strings.Contains(err.Error(), "not trim-stable") {
+				t.Errorf("refusal = %v, want the storage trim-stability cause", err)
+			}
+		})
+	}
+}
