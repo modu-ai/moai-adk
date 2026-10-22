@@ -179,6 +179,7 @@ named); internal/guardstate 6 PASS; internal/config 9 PASS (`EV:2110-2146`).
   hash binds it); the transition is left for the leader or manager-spec.
 - Plan section F names milestones M1..M4; the instruction text mentions "plan M5". The deletions and manifest removals were done in
   M4, in one commit (plan section B.1).
+- 2026-10-23 trusted identity check: `gh api users/chatgpt-codex-connector[bot]` and the reverse lookup `user/199175422` both returned login chatgpt-codex-connector[bot], id 199175422, type Bot (observed by the lane and by the leader).
 
 ### Sync-phase correction (ruling B)
 
@@ -424,3 +425,69 @@ frontmatter_status_transitions:
 
 - 2026-10-18T13:54:17Z SPEC-CI-CODEX-REVIEW-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 3 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit.md
 - 2026-10-18T13:55:11Z SPEC-CI-CODEX-REVIEW-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 3 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1868/.moai/reports/t1868/plan-audit.md
+
+## Repair run (t1868 audit debt F1-F3, F5, F6)
+
+Authority: operator ruling that all six optional findings of `.moai/reports/t1868/sync-audit-1.md` (PASS-WITH-DEBT 0.91, receipt `rcpt-d931c7048c8d65433ee30425`, tree `af27f744c5`) are repaired on this card; F4 (re-trigger after the review window) is not part of this run. No gate decision changed: every merging path still needs the head-bound trusted Codex summary, the clean receipt, and the separate functional and security checks; every hold path still exits 0. `.github/required-checks.yml` is unchanged (`git diff --stat origin/main -- .github/required-checks.yml` printed nothing, exit 0). Baseline tree for this run: `af27f744c5`, clean.
+
+### Repairs
+
+| Finding | Repair | Files |
+|---|---|---|
+| F1 | The `pr` step computes `active`: `false` when the number is empty, the state is `closed`, or `merged` is `true`; otherwise `true`. Checkout, head, author, checks, files, review and merge all require `steps.pr.outputs.active == 'true'`. The old "Skip" step is kept as a log-only notice with the inverse condition. | `.github/workflows/auto-merge.yml` |
+| F2 | The merge step takes `PR_NUMBER` through its `env:`; no `run:` script carries a `${{ }}` expression any more. | `.github/workflows/auto-merge.yml` |
+| F3 | The merge step writes one line to `$GITHUB_STEP_SUMMARY` for each outcome, always with the head SHA: `merge held: review window elapsed before merge`, `merge held: review window elapsed during head verification`, `merge not executed: head moved` (tested and current head), `merge failed: gh pr merge exit N (reason)`, `merge requested`. Exit codes unchanged. | `.github/workflows/auto-merge.yml` |
+| F5 | `TestNoHardcodedContexts` lost the target `internal/cli/github_init.go` (deleted in `7d94cbc545`; grep found no file now carrying its init-time role, so no replacement target) and an unreadable scan target now fails the test instead of logging a skip. | `internal/config/required_checks_test.go` |
+| F6 | The existing `Lint` job in `ci.yml` gains a hard step `shellcheck scripts/ci/codex-review-gate.sh`. shellcheck is not installed here (no system package installed); the script was reviewed by hand against the shellcheck rules (SC2016 on single-quoted jq programs is exempt for assignments and for `jq` arguments; SC2155 absent because no declaration carries an assignment; every expansion quoted; `read -r` throughout; no `$?` after a pipeline). | `.github/workflows/ci.yml` |
+
+Design decision on F1: the audit suggested `steps.pr.outputs.state == 'open'`. That condition would stop every real merge if the `workflow_run` payload's `pull_requests[0]` element omits `state` and `merged` (from memory of GitHub's event documentation the element carries id, number, url, head, base only; that was not re-read and no live payload was observed in this run, see Gaps). The `active` output therefore turns the job off only on a positive signal and never reads an absent field as "not open"; an open pull request with the fields absent behaves as before (control `state_absent_payload`).
+
+Harness changes in `internal/template/auto_merge_codex_test.go` (support only, no assertion weakened): `GITHUB_STEP_SUMMARY` is set per step; the renderer resolves `github.event.workflow_run.pull_requests[0].<field>` from `amCtx.prEvent`; the seeded `pr` outputs gain `active: "true"` (what the `pr` step now produces for an open pull request).
+
+### RED on the unrepaired tree (tree `af27f744c5`, new tests only)
+
+Command: `go test ./internal/template -run 'TestAutoMergeSkipsPullRequestThatIsNotOpen|TestAutoMergeNeverInterpolatesExpressionsIntoScripts|TestAutoMergeSummarisesEveryMergeOutcome|TestCILintJobShellchecksGateScript' -count=1 -v` -> exit 1, `FAIL github.com/modu-ai/moai-adk/internal/template 3.192s`. (The F6 test was renamed afterwards to `TestAutoMergeGateScriptIsShellcheckedInLint` so the lane's selector sweeps it.) Assertion lines, verbatim from the run log:
+
+- F1: `auto_merge_repair_test.go:71: step "Verify PR head still matches the CI-tested commit" does not require steps.pr.outputs.active == 'true': ""` (also checkout, author, checks, files, review, merge); `auto_merge_repair_test.go:108: steps ran for a pull request that is not open: [{key:head code:0 coe:false} {key:author code:0 coe:false} {key:checks code:0 coe:false} {key:files code:0 coe:false} {key:review code:0 coe:false} {key:merge code:0 coe:false}]` (closed and merged cases; the number-less case stopped at `files`). On the unrepaired workflow a closed pull request with a number runs the whole chain up to the merge step in the harness; GitHub's server side refusing the merge of a closed pull request was not exercised. Controls `open` and `state_absent_payload` PASS on the unrepaired tree, as they must.
+- F2: `auto_merge_repair_test.go:139: step "Auto merge PR" interpolates an expression into its script`; `auto_merge_repair_test.go:149: merge step env PR_NUMBER = ""`; `auto_merge_repair_test.go:164: the pull request number was executed as shell code` (the marker file was created by the hostile number `7"; : > <marker>; X="`).
+- F3: `auto_merge_repair_test.go:225: summary lines [], want exactly one` (and the same at lines 230, 244, 249, 254, one per outcome subtest).
+- F6: `auto_merge_repair_test.go:297: the Lint job has no shellcheck step`.
+
+### GREEN after the repair
+
+Same command (F6 test under its new name) -> exit 0, `ok github.com/modu-ai/moai-adk/internal/template 2.658s`; 19 new run entries, all `--- PASS`.
+
+### Mutants (each: revert one repair in the working tree, run the four new tests, restore; restore verified byte-identical with `cmp`)
+
+| Mutant | Result |
+|---|---|
+| `ACTIVE=false` -> `ACTIVE=true` in the `pr` step | red (4 subtests: closed, merged, merged-flag, no-number) |
+| `active` term dropped from the merge `if` / the head `if` / the checkout `if` | red (static pin; head also red behaviourally) |
+| `PR_NUMBER="${{ ... }}"` restored in the merge script | red (static sweep and hostile-number subtest) |
+| each of the five summary lines deleted, one at a time | red, exactly the matching outcome subtest |
+| head SHA dropped from the `merge requested` line | red |
+| shellcheck step deleted / wrong script path / `|| true` appended | red (3 of 3) |
+
+The F5 mutant: re-adding the deleted target `github_init.go` makes `TestNoHardcodedContexts` fail with `scan target ... github_init.go is unreadable: ... no such file or directory`; reverted.
+
+### Swept counts
+
+- Baseline, lane selector `go test ./internal/template -run 'Codex|AutoMerge|Retire|Review|InputFilter|BindingLedger|Parity' -count=1 -v` on `af27f744c5`: 611 `=== RUN`, 611 `--- PASS`, 0 `--- FAIL`.
+- After the repair, same selector: 630 `=== RUN`, 630 `--- PASS`, 0 `--- FAIL` (611 + 19 new). The F6 test sweeps one `lint` job with its steps (non-empty asserted); the F1 static pin sweeps exactly 7 guarded steps; the F2 sweep covers at least 6 run scripts.
+- Wider scoped runs, all green: `go test ./internal/config/... -count=1` (config, atomicfile, toolpolicy `ok`); `go test ./internal/guardstate/... ./internal/guardliveness/... -count=1` (`ok`); `go test ./internal/template -run 'Release|DotGithub|BranchProtection|Cutover|Pipefail|Provenance|Shard|WorkflowFiles|Workflow' -count=1` (`ok`); `go test ./internal/cli -run 'WorkflowSyncRef|CodexLiveAxis' -count=1` (`ok`).
+
+### Verification (this run, this tree, logs under `.moai/state/verify-t1868/`)
+
+- `go build ./...` -> exit 0.
+- `go vet ./internal/config/... ./internal/template/...` -> exit 0.
+- `bash -n scripts/ci/codex-review-gate.sh` -> exit 0.
+- `actionlint .github/workflows/auto-merge.yml .github/workflows/ci.yml` (binary `/Users/goos/go/bin/actionlint`) -> exit 0, no output.
+- `gofmt -l internal/template internal/config` -> no output.
+
+### Gaps and residual risk of this run
+
+- shellcheck was not run (not installed; not installed by this run). The F6 step is the first execution of shellcheck on the script, on the first CI run of this branch; a style-level finding I could not predict would turn the required `Lint` check red there. The step runs at the default severity on purpose.
+- The `workflow_run` payload shape (whether `pull_requests[0]` carries `state` and `merged`) was not observed on a live run; the `active` computation is built to be correct either way.
+- Neither workflow change has run on a GitHub runner; the summary lines and the skip are proven in the offline harness only.
+- The two-second real-time delay in `review_window_elapsed_during_head_check` depends on wall-clock seconds; a very slow machine would take the earlier hold path, which carries the same summary prefix and still passes.
+- Both edited workflow files are under `.github/workflows/` and need operator review before landing (`factory-dispatch-cards.md` § Workflow-file changes).

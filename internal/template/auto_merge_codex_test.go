@@ -197,6 +197,10 @@ type amCtx struct {
 	outputs map[string]map[string]string
 	tested  string
 	repo    string
+	// prEvent holds the fields of github.event.workflow_run.pull_requests[0] the workflow reads, keyed by the
+	// path below the array element ("number", "head.ref", "state", "merged"); an absent key renders as empty,
+	// as the runner does for a field the payload does not carry.
+	prEvent map[string]string
 }
 
 type amRig struct {
@@ -232,7 +236,8 @@ func newAMRig(t *testing.T, script string) *amRig {
 	e := newCGEnv(t)
 	wf, _ := amLoad(t)
 	r := &amRig{t: t, e: e, wf: wf, work: filepath.Join(e.dir, "work"),
-		ctx:      &amCtx{outputs: map[string]map[string]string{}, tested: cgHead, repo: amRepo},
+		ctx: &amCtx{outputs: map[string]map[string]string{}, tested: cgHead, repo: amRepo,
+			prEvent: map[string]string{"number": amPR, "head.ref": "feature/x", "state": "open", "merged": "false"}},
 		deadline: fmt.Sprint(time.Now().Unix() + 3600)}
 	if err := os.MkdirAll(filepath.Join(r.work, "tmp"), 0o755); err != nil {
 		t.Fatal(err)
@@ -241,7 +246,7 @@ func newAMRig(t *testing.T, script string) *amRig {
 	r.setPulls(amPull(cgHead, false, 2, 0))
 	r.setViews(cgHead, cgHead)
 	e.write(filepath.Join(e.fixtures, "checks.json"), amPassChecks, 0o600)
-	r.ctx.outputs["pr"] = map[string]string{"number": amPR, "branch": "feature/x", "state": "open", "merged": "false"}
+	r.ctx.outputs["pr"] = map[string]string{"number": amPR, "branch": "feature/x", "state": "open", "merged": "false", "active": "true"}
 	return r
 }
 
@@ -316,6 +321,9 @@ func (r *amRig) render(s string) string {
 		case "github.event.workflow_run.head_sha":
 			return r.ctx.tested
 		}
+		if field, ok := strings.CutPrefix(expr, "github.event.workflow_run.pull_requests[0]."); ok {
+			return r.ctx.prEvent[field]
+		}
 		if parts := strings.Split(expr, "."); len(parts) == 4 && parts[0] == "steps" && parts[2] == "outputs" {
 			return r.ctx.outputs[parts[1]][parts[3]]
 		}
@@ -377,11 +385,13 @@ func (r *amRig) runStep(s amStep) (cgResult, map[string]string) {
 	outFile := filepath.Join(r.e.dir, "out-"+key+".txt")
 	r.e.write(scriptPath, r.render(s.Run), 0o600)
 	r.e.write(outFile, "", 0o600)
+	summaryFile := filepath.Join(r.e.dir, "summary-"+key+".md")
+	r.e.write(summaryFile, "", 0o600)
 	env := append(os.Environ(), r.e.env()...)
 	for k, v := range s.Env {
 		env = append(env, k+"="+r.render(v))
 	}
-	env = append(env, "GITHUB_OUTPUT="+outFile, "GITHUB_ENV="+filepath.Join(r.e.dir, "env.txt"),
+	env = append(env, "GITHUB_OUTPUT="+outFile, "GITHUB_STEP_SUMMARY="+summaryFile, "GITHUB_ENV="+filepath.Join(r.e.dir, "env.txt"),
 		"RUNNER_TEMP="+filepath.Join(r.work, "tmp"), "merge_deadline="+r.deadline)
 	env = append(env, r.extra...)
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)

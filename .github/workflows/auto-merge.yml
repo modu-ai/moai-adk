@@ -38,21 +38,27 @@ jobs:
           echo "state=$PR_STATE" >> "$GITHUB_OUTPUT"
           echo "merged=$PR_MERGED" >> "$GITHUB_OUTPUT"
           echo "PR #$PR_NUMBER ($PR_HEAD_BRANCH) - State: $PR_STATE, Merged: $PR_MERGED"
+          # active gates every later step. The workflow_run payload's pull_requests[]
+          # element does not always carry state or merged, so only a positive
+          # signal (closed, merged, or no number) turns the job off; an absent
+          # field is never read as "not open".
+          ACTIVE=true
+          if [ -z "$PR_NUMBER" ] || [ "$PR_STATE" = "closed" ] || [ "$PR_MERGED" = "true" ]; then
+            ACTIVE=false
+          fi
+          echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
           # AC-CI-005: record the job start once; the merge step derives its
           # single overall deadline from this timestamp (start + 17 min,
           # inside the 20-minute job timeout).
           echo "merge_deadline=$(( $(date +%s) + 1020 ))" >> "$GITHUB_ENV"
 
       - name: Skip if not open or already merged
-        if: >
-          steps.pr.outputs.state != 'open' ||
-          steps.pr.outputs.merged == 'true' ||
-          steps.pr.outputs.number == ''
+        if: steps.pr.outputs.active != 'true'
         run: |
           echo "Skipping: PR is not open or already merged"
-          exit 0
 
       - name: Checkout repository
+        if: steps.pr.outputs.active == 'true'
         uses: actions/checkout@v7
 
       # Guard (a) — head SHA re-verification.
@@ -62,6 +68,7 @@ jobs:
       # Any uncertainty (API failure, empty value) withholds the merge.
       - name: Verify PR head still matches the CI-tested commit
         id: head
+        if: steps.pr.outputs.active == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -89,6 +96,7 @@ jobs:
 
       - name: Check eligible PR author and same-repository head
         id: author
+        if: steps.pr.outputs.active == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
@@ -112,7 +120,7 @@ jobs:
           fi
 
       - name: Check all required CI checks passed
-        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true'
+        if: steps.pr.outputs.active == 'true' && steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true'
         id: checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -205,7 +213,7 @@ jobs:
       # step runs; only the pass exits 0.
       - name: Collect and check the changed-file list
         id: files
-        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true' && steps.checks.outputs.should_merge == 'true'
+        if: steps.pr.outputs.active == 'true' && steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true' && steps.checks.outputs.should_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERIFIED_SHA: ${{ steps.head.outputs.sha }}
@@ -277,6 +285,7 @@ jobs:
       - name: Read the native Codex review
         id: review
         if: >
+          steps.pr.outputs.active == 'true' &&
           steps.head.outputs.ok == 'true' &&
           steps.author.outputs.eligible == 'true' &&
           steps.checks.outputs.should_merge == 'true' &&
@@ -424,6 +433,7 @@ jobs:
 
       - name: Auto merge PR
         if: >
+          steps.pr.outputs.active == 'true' &&
           steps.checks.outputs.should_merge == 'true' &&
           steps.author.outputs.eligible == 'true' &&
           steps.head.outputs.ok == 'true' &&
@@ -431,10 +441,13 @@ jobs:
           steps.review.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
           PR_BRANCH: ${{ steps.pr.outputs.branch }}
           TESTED_SHA: ${{ steps.head.outputs.sha }}
         run: |
-          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          # Every hold below keeps its exit 0 (the job stays green, nothing is merged), so each
+          # outcome leaves one line in the job summary naming the outcome and the head SHA.
+          summary() { echo "$1" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"; }
           echo "Auto-merging PR #$PR_NUMBER ($PR_BRANCH)..."
 
           # AC-CI-005: the single overall deadline is RE-EVALUATED at merge
@@ -444,6 +457,7 @@ jobs:
           now="$(date +%s)"
           if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
             echo "::notice::Overall deadline passed before merge (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
+            summary "merge held: review window elapsed before merge - PR #$PR_NUMBER left open, head $TESTED_SHA"
             exit 0
           fi
 
@@ -453,6 +467,7 @@ jobs:
           HEAD_NOW="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')"
           if [ -z "$HEAD_NOW" ] || [ "$HEAD_NOW" != "$TESTED_SHA" ]; then
             echo "::notice::PR head moved (tested=${TESTED_SHA:-<empty>} now=${HEAD_NOW:-<empty>}) - leaving PR #$PR_NUMBER open for review"
+            summary "merge not executed: head moved - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}"
             exit 0
           fi
 
@@ -465,6 +480,7 @@ jobs:
           now="$(date +%s)"
           if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
             echo "::notice::Overall deadline passed during head verification (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
+            summary "merge held: review window elapsed during head verification - PR #$PR_NUMBER left open, head $TESTED_SHA"
             exit 0
           fi
 
@@ -484,8 +500,14 @@ jobs:
           # --match-head-commit makes the merge fail server-side if the head
           # moved in the window between the re-check above and GitHub applying
           # the merge (the pinned AC-CI-003 precondition).
-          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA"; then
+          merge_rc=0
+          MERGE_OUT="$(gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA" 2>&1)" || merge_rc=$?
+          if [ -n "$MERGE_OUT" ]; then echo "$MERGE_OUT"; fi
+          if [ "$merge_rc" -eq 0 ]; then
             echo "Successfully merged PR #$PR_NUMBER"
+            summary "merge requested: PR #$PR_NUMBER, head $TESTED_SHA"
           else
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"
+            MERGE_REASON="$(printf '%s' "$MERGE_OUT" | head -n 1)"
+            summary "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA"
           fi
