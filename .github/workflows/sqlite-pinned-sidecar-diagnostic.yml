@@ -1,0 +1,60 @@
+name: SQLite Pinned Sidecar Native Diagnostic
+
+# An independent synthetic experiment on normal PR events or manual dispatch.
+# This does not replace required CI or the release 18-leg matrix, and it does
+# not change their tests. No pull_request_target execution is used.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-sidecar:
+    name: Windows pinned sidecar experiment
+    runs-on: windows-latest
+    steps:
+      - name: Checkout exact tested head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup exact Go toolchain
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.8'
+          cache: true
+
+      - name: Record test source and toolchain
+        shell: pwsh
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $actualHead = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $actualHead | Out-File -Encoding utf8 artifacts/head.txt
+          $env:EXPECTED_HEAD_SHA | Out-File -Encoding utf8 artifacts/expected-head.txt
+          if ($actualHead.Trim() -ne $env:EXPECTED_HEAD_SHA.Trim()) {
+            throw 'Checkout HEAD differs from the requested test source'
+          }
+          go version | Out-File -Encoding utf8 artifacts/go-version.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test pinned sidecar lifetime
+        shell: pwsh
+        run: |
+          go test -json ./internal/privatefile -run '^TestSQLitePinnedSidecarLifetime$' -count=1 2> artifacts/stderr.log | Tee-Object -FilePath artifacts/test-events.jsonl
+          $testExit = $LASTEXITCODE
+          $testExit | Out-File -Encoding utf8 artifacts/test-exit.txt
+          exit $testExit
+
+      - name: Preserve native observations
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlite-pinned-sidecar-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: error
