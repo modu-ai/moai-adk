@@ -119,15 +119,24 @@ func integrationSidecarRoot() string {
 	return integrationLockRoot()
 }
 
-// currentBranch reports the checked-out branch of the caller's tree, for the
-// record's `branch` field. Best-effort: the field is for a human reading a
-// refusal, not a decision input.
+// currentBranch reports the checked-out branch of the caller's tree: for the
+// record's `branch` field and for the `factory merge ready` fallback, whose
+// value feeds the merge-readiness triple's conflict and tree-identity checks.
+// The read is `git symbolic-ref --quiet HEAD`, not `rev-parse --abbrev-ref
+// HEAD`: when a tag shares the branch's name, --abbrev-ref disambiguates to
+// `heads/<branch>` — the acquire record then names a branch that is no
+// refs/heads/ entry, and the merge triple's rev operations evaluate a
+// distorted ref (card t1834's F3; the same class t1834 fixed in
+// factory_card.go and t1920 in integration_merge_step.go). Only the
+// refs/heads/ prefix is stripped. With --quiet a detached HEAD exits non-zero
+// with no output, so the result is "" — an honest unknown over the literal
+// "HEAD" string the old read printed; no new semantics are invented for it.
 func currentBranch() string {
-	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	out, err := exec.Command("git", "symbolic-ref", "--quiet", "HEAD").Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // resolveIntegrationTarget returns the (branch, worktree) the window actually
