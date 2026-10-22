@@ -23,7 +23,17 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 `moai cc -f` launches the leader and lane sessions join one at a time with `moai cc -l`, labelled `lane-<n>`. No per-stage companions: the leader routes each card WHOLE to a free lane, or a lane receives the card by its own self-promotion of an already-queued card; either way the lane carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. The card class still names which ceremonies are skipped (`plan` for A and B) but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are as stated in the stub. Mechanics: `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
-A lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
+While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
+
+### Lease renewal — only the card being executed
+
+Executing means the lane is carrying out a stage of the card — plan, run, sync, the card-review, or the landing sequence — and is not waiting on a slot, a trigger, or the operator.
+
+A lane renews the lease of the card it is executing, and of no other card: only the card the lane is actually executing is renewed.
+
+A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire; expiry is harmless, because at the landing slot the leader reassigns the card or the lane re-leases it with `factory next --card`, the stage preserved.
+
+The lane's standing recheck cron is kept while the lane executes the card; a lane waiting on a slot or a trigger arms and keeps no polling cron for that wait, and the leader sends a notice when a slot or a landing turn opens.
 
 ## Isolation — launcher, tiers, branch naming, and the traceability carriers
 
