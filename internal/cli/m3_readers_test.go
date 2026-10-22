@@ -54,9 +54,7 @@ func m3NewWorld(t *testing.T) *m3World {
 		claudeT6:      filepath.Join(repo, ".claude", "worktrees", "t6"),
 	}
 	for _, d := range []string{w.homeT7, w.homeT5, w.homeT8, w.legacyMoaiT7b, w.moaiT6, w.claudeT7c, w.claudeT6} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			t.Fatalf("mkdir %s: %v", d, err)
-		}
+		m3Gitf(t, repo, "worktree", "add", "-q", "--detach", d, "HEAD")
 	}
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return repo, nil }
@@ -84,7 +82,11 @@ func TestM3FactoryRefuseForeignWorktree_HomeRoot(t *testing.T) {
 	if err := os.MkdirAll(w.homeT7, 0o755); err != nil {
 		t.Fatalf("mkdir foreign dir: %v", err)
 	}
-	err := factoryRefuseForeignWorktree(withFactoryLandingBase(context.Background(), w.repo), w.repo, "t7")
+	ctx, err := withFactoryLandingBase(context.Background(), w.repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = factoryRefuseForeignWorktree(ctx, w.repo, "t7")
 	if err == nil {
 		t.Fatal("a foreign directory at the home-root landing path was not refused")
 	}
@@ -111,7 +113,11 @@ func TestM3FactoryCarryPreviousWorktree_HomeRoot(t *testing.T) {
 	if _, err := db.RecordPicked(context.Background(), "run-prev", "t7", homestate.CardFields{WorktreePath: &wt}, "m3-carry", time.Now().UTC()); err != nil {
 		t.Fatalf("record picked: %v", err)
 	}
-	got, err := factoryCarryPreviousWorktree(withFactoryLandingBase(context.Background(), w.repo), db, w.repo, "run-new", "t7")
+	ctx, err := withFactoryLandingBase(context.Background(), w.repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := factoryCarryPreviousWorktree(ctx, db, w.repo, "run-new", "t7")
 	if err != nil {
 		t.Fatalf("factoryCarryPreviousWorktree: %v", err)
 	}
@@ -174,12 +180,8 @@ func TestM3SeedAdmittedWorktreeHooksFor_HomeRoot(t *testing.T) {
 // mis-resolved location would fail its git lock read.
 func TestM3CCWorktreeWriterPrecheck_HomeRoot(t *testing.T) {
 	w := m3NewWorld(t)
-	// Replace the plain fixture directory with a real registered worktree:
-	// the precheck's lock-state read runs git inside the resolved tree.
-	if err := os.RemoveAll(w.homeT7); err != nil {
-		t.Fatalf("clear fixture dir: %v", err)
-	}
-	m3Gitf(t, w.repo, "worktree", "add", "-q", "-b", "WT-t7", "--", w.homeT7)
+	// Give the registered fixture the card branch before reading its lock.
+	m3Gitf(t, w.homeT7, "switch", "-q", "-c", "WT-t7")
 	// No anchored session: the precheck answers nil for an unanchored tree.
 	if err := ccWorktreeWriterPrecheck(worktreeRead{Value: "t7", Has: true}); err != nil {
 		t.Errorf("ccWorktreeWriterPrecheck on an unanchored home-root tree = %v, want nil", err)
@@ -225,9 +227,7 @@ func TestM3ResolveCodexWorktreeDir_ThreeRoots(t *testing.T) {
 	moaiT6 := filepath.Join(repo, ".moai", "worktrees", "t6")
 	claudeT6 := filepath.Join(repo, ".claude", "worktrees", "t6")
 	for _, d := range []string{homeT7, homeT5, homeT8, moaiT7, moaiT6, claudeT6} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			t.Fatalf("mkdir %s: %v", d, err)
-		}
+		m3Gitf(t, repo, "worktree", "add", "-q", "--detach", d, "HEAD")
 	}
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return repo, nil }

@@ -15,8 +15,12 @@ package hook
 // must keep passing through the M3 change.
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // m3HomeRootDirs returns the two cwd spellings AC-WHR-008 names, under a
@@ -44,7 +48,18 @@ func TestCardIDFromPath_HomeRootDepth(t *testing.T) {
 // derivation on the home root: the walk must recognize
 // <MoaiHome>/worktrees/projects/<key>/<name> and return the tree name.
 func TestCardIDFromRegisteredWorktree_HomeRoot(t *testing.T) {
-	deep, treeRoot := m3HomeRootDirs(filepath.Join(string(filepath.Separator), "home-m3", "home"))
+	t.Setenv(paths.EnvHome, t.TempDir())
+	repo := initWorktreeTestRepo(t)
+	base, err := worktreeroot.Root(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	treeRoot := filepath.Join(base, "t7")
+	runWorktreeTestGit(t, repo, "worktree", "add", "-q", "--detach", treeRoot, "HEAD")
+	deep := filepath.Join(treeRoot, "internal", "cli")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	for name, dir := range map[string]string{"tree root": treeRoot, "deep cwd": deep} {
 		if got := cardIDFromRegisteredWorktree(dir); got != "t7" {
 			t.Errorf("%s: cardIDFromRegisteredWorktree(%s) = %q, want t7", name, dir, got)

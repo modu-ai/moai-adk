@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // The F1 factory-record CLI tests. Every test builds its own project root
@@ -31,6 +32,10 @@ var fcNow = time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
 // fcFixture is a project root with an isolated git config and a queue.
 func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
+	// todoFixture clears MOAI_HOME for project-local queue state. Keep its
+	// fallback HOME isolated too: landing resolution must never use the real
+	// account's .moai directory, including when it refuses before leasing.
+	testguard.RedirectHome(t)
 	cfg := filepath.Join(t.TempDir(), "gitconfig")
 	if err := os.WriteFile(cfg, []byte("[user]\n\tname = F1 Test\n\temail = f1@example.invalid\n[init]\n\tdefaultBranch = main\n"), 0o600); err != nil {
 		t.Fatal(err)

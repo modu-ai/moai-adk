@@ -402,7 +402,10 @@ func factoryNextLeaseOnceEligibility(ctx context.Context, root, runID, lane stri
 	// BEFORE the lease section: the section admits no git subprocess, and
 	// the carry/refuse readers derive their candidate leaves from this base
 	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007).
-	ctx = withFactoryLandingBase(ctx, root)
+	ctx, err := withFactoryLandingBase(ctx, root)
+	if err != nil {
+		return homestate.Card{}, false, nil, err
+	}
 	// The record connection carries the claim's busy timeout and is opened
 	// before the section, so a slow open never lengthens the lock's hold.
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
@@ -554,14 +557,17 @@ func factoryCardWorktreeDir(root, cardID string) string {
 type factoryLandingBaseKey struct{}
 
 // withFactoryLandingBase resolves root's home projects base and carries it
-// in ctx. When the resolver cannot run (root not a repository), the base is
-// absent and the readers fall back to the legacy leaf alone.
-func withFactoryLandingBase(ctx context.Context, root string) context.Context {
+// in ctx. Only a positively identified plain non-Git project falls back to
+// the legacy leaf; metadata errors must stop before the lease section.
+func withFactoryLandingBase(ctx context.Context, root string) (context.Context, error) {
 	base, err := worktreeroot.Root(root)
 	if err != nil {
-		return ctx
+		if plainProjectWithoutGitMetadata(root, err) {
+			return ctx, nil
+		}
+		return nil, fmt.Errorf("resolve factory landing base: %w", err)
 	}
-	return context.WithValue(ctx, factoryLandingBaseKey{}, base)
+	return context.WithValue(ctx, factoryLandingBaseKey{}, base), nil
 }
 
 // factoryLandingBaseFrom reads the pre-section landing base, if resolved.
@@ -1789,7 +1795,10 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
 	// The landing base is resolved before the section (see
 	// factoryNextLeaseOnceGated).
-	ctx = withFactoryLandingBase(ctx, root)
+	ctx, err := withFactoryLandingBase(ctx, root)
+	if err != nil {
+		return homestate.Card{}, err
+	}
 	// Opened before the section with the claim's busy timeout in its DSN (see
 	// factoryNextLeaseOnceGated).
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)

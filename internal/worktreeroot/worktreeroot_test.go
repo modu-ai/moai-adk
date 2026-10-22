@@ -678,9 +678,7 @@ func TestWorktreeRoot_Candidates_AcrossThreeRoots(t *testing.T) {
 			var want []string
 			for _, at := range c.at {
 				p := filepath.Join(roots[at], c.name)
-				if err := os.MkdirAll(p, 0o755); err != nil {
-					t.Fatalf("mkdir %s: %v", p, err)
-				}
+				wrGit(t, repo, "worktree", "add", "-q", "--detach", p, "HEAD")
 				want = append(want, kinds[at]+"="+p)
 			}
 			sort.Strings(want)
@@ -709,9 +707,7 @@ func TestWorktreeRoot_Candidates_TwoSpellingsOfOneDirectoryCollapse(t *testing.T
 	wrHome(t)
 	repo := wrRepo(t, "proj")
 	homeTree := filepath.Join(wrRoot(t, repo), "t5")
-	if err := os.MkdirAll(homeTree, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
+	wrGit(t, repo, "worktree", "add", "-q", "--detach", homeTree, "HEAD")
 	legacy := filepath.Join(repo, ".moai", "worktrees")
 	if err := os.MkdirAll(legacy, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

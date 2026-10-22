@@ -560,7 +560,11 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 		// resolver cannot run (a non-git project root), the pre-M3 two-root
 		// lookup below still answers.
 		handled := false
-		if cands, err := worktreeroot.Candidates(projectRoot, value); err == nil {
+		if cands, err := worktreeroot.Candidates(projectRoot, value); err != nil {
+			if !plainProjectWithoutGitMetadata(projectRoot, err) {
+				return "", fmt.Errorf("resolve worktree %q: %w", value, err)
+			}
+		} else {
 			handled = true
 			switch {
 			case len(cands) == 1:

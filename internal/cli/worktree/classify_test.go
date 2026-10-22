@@ -278,6 +278,11 @@ func TestParseWorktreeList_Porcelain(t *testing.T) {
 		{Path: "/r/repo/.moai/worktrees/gone", Head: h5, Branch: "WT-gone", Prunable: true},
 		{Path: "/r/bare", Bare: true},
 	}
+	// Git's porcelain spells paths with slashes on every OS. The parser's
+	// filesystem-facing record uses the host's native separators.
+	for i := range want {
+		want[i].Path = filepath.FromSlash(want[i].Path)
+	}
 	for name, input := range map[string]string{"with trailing blank line": doc + "\n", "without trailing blank line": doc} {
 		t.Run(name, func(t *testing.T) {
 			got, err := ParseWorktreeList(input)

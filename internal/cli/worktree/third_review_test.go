@@ -194,7 +194,15 @@ func thirdReviewInstallGit(t *testing.T, source string) {
 		name += ".exe"
 	}
 	target := filepath.Join(dir, name)
-	if err := os.Link(exe, target); err != nil {
+	// Windows keeps every hard link to a loaded executable image locked
+	// until the original test process exits. A separate copy is removable
+	// after the helper child has been waited for, so TempDir cleanup retains
+	// its ordinary resource-leak check.
+	linked := false
+	if runtime.GOOS != "windows" {
+		linked = os.Link(exe, target) == nil
+	}
+	if !linked {
 		in, err := os.Open(exe)
 		if err != nil {
 			t.Fatal(err)

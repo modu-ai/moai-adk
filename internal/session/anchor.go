@@ -158,10 +158,8 @@ func pathWithinTree(child, root string) bool {
 // case-aliased arm): darwin APFS is case-insensitive and case-preserving —
 // research §R1 measured 25 of this repository's real trees registered
 // under the lowercase spelling — so a recorded cwd spelled in the other
-// case of the tree path is the same tree, and its sessions anchor it. Off
-// darwin the comparison stays literal: case-sensitive filesystems have no
-// case axis, and Windows case handling is unmeasured (t1293 does not
-// guess).
+// case of the tree path is the same tree, and its sessions anchor it. Windows
+// folds case conservatively as well; case-sensitive Unix remains literal.
 func underPath(child, root string) bool {
 	c := filepath.Clean(child)
 	r := filepath.Clean(root)

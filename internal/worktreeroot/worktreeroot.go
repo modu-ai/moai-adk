@@ -165,7 +165,11 @@ func Plan(repoDir, name string) (string, error) {
 
 	// The recorded key wins over everything (design.md, Stability) — read
 	// only: ensureProjectDir is resolve()'s write and is skipped here.
-	if k := readRecord(common); k != "" {
+	k, err := readRecord(common)
+	if err != nil {
+		return "", err
+	}
+	if k != "" {
 		if err := validatePin(k); err != nil {
 			return "", fmt.Errorf("invalid recorded project key: %w", err)
 		}
@@ -214,11 +218,79 @@ func RecordedKey(repoDir string) string {
 	if err != nil {
 		return ""
 	}
-	k := readRecord(common)
-	if validatePin(k) != nil {
+	k, err := readRecord(common)
+	if err != nil || validatePin(k) != nil {
 		return ""
 	}
 	return k
+}
+
+// RecordedCandidate reads an existing home-tier assignment without creating
+// a key or marker. projects is the caller's explicit projects base. A missing
+// assignment or tree returns no candidate; uncertain ownership is an error.
+// @MX:ANCHOR: Read-only home candidate authentication shared by card status and session bootstrap.
+// @MX:REASON: These readers must verify existing ownership and Git registration without assigning a project key.
+func RecordedCandidate(repoDir, projects, name string) (string, error) {
+	if name == "" || name == "." || name == ".." || filepath.IsAbs(name) || strings.ContainsAny(name, `/\`) {
+		return "", fmt.Errorf("invalid worktree name %q", name)
+	}
+	common, err := gitCommonDir(repoDir)
+	if err != nil {
+		return "", err
+	}
+	key, err := readRecord(common)
+	if err != nil || key == "" {
+		return "", err
+	}
+	if err := validatePin(key); err != nil {
+		return "", fmt.Errorf("invalid recorded project key: %w", err)
+	}
+	primary, err := registeredPrimaryRoot(repoDir, common)
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(projects, key)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("inspect recorded project folder %s: %w", dir, err)
+	}
+	marker := filepath.Join(dir, markerName)
+	owner, err := readMarkerOwner(marker)
+	if err != nil {
+		return "", fmt.Errorf("read recorded project owner %s: %w", marker, err)
+	}
+	if !Same(owner, primary) {
+		// Preserve renamed-checkout records, as ensureProjectDir does. A
+		// foreign owner that exists or cannot be inspected remains a refusal.
+		if _, err := os.Stat(owner); !os.IsNotExist(err) {
+			if err != nil {
+				return "", fmt.Errorf("inspect recorded marker owner %s: %w", owner, err)
+			}
+			return "", fmt.Errorf("recorded project folder %s is owned by another repository (owner marker %s)", dir, marker)
+		}
+	}
+	path := filepath.Join(dir, name)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("inspect recorded candidate %s: %w", path, err)
+	}
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve recorded candidate %s: %w", path, err)
+	}
+	if !Same(filepath.Dir(real), dir) {
+		return "", fmt.Errorf("recorded candidate %s resolves outside its project folder", path)
+	}
+	registered, err := registeredWorktrees(primary)
+	if err != nil {
+		return "", err
+	}
+	if err := validateRegisteredCandidate(real, common, registered); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // resolve runs the full resolution: primary-root discovery, pin read and
@@ -257,7 +329,11 @@ func resolve(repoDir string) (Resolution, error) {
 	// project folder under the CURRENT home root is ensured here too: a
 	// relocated MOAI_HOME must still hold the owner marker for the recorded
 	// key (REQ-WHR-002a), while an existing marker is left byte-untouched.
-	if k := readRecord(common); k != "" {
+	k, err := readRecord(common)
+	if err != nil {
+		return Resolution{}, err
+	}
+	if k != "" {
 		if err := validatePin(k); err != nil {
 			return Resolution{}, fmt.Errorf("invalid recorded project key: %w", err)
 		}
@@ -544,12 +620,16 @@ func lockProjectClaims(home string) (func() error, error) {
 
 // readRecord returns the key recorded in the repository's git common
 // directory, or "" when none is recorded.
-func readRecord(common string) string {
-	body, err := os.ReadFile(filepath.Join(common, recordName))
-	if err != nil {
-		return ""
+func readRecord(common string) (string, error) {
+	path := filepath.Join(common, recordName)
+	body, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", nil
 	}
-	return strings.TrimSpace(string(body))
+	if err != nil {
+		return "", fmt.Errorf("read recorded project key %s: %w", path, err)
+	}
+	return strings.TrimSpace(string(body)), nil
 }
 
 func writeRecord(common, key string) error {
@@ -561,6 +641,9 @@ func writeRecord(common, key string) error {
 // ambiguity judgment (REQ-WHR-022). One directory reached under two
 // spellings is one tree, not an ambiguity (REQ-WHR-023).
 func Candidates(repoDir, name string) ([]Candidate, error) {
+	if name == "" || name == "." || name == ".." || filepath.IsAbs(name) || strings.ContainsAny(name, `/\`) {
+		return nil, fmt.Errorf("invalid worktree name %q", name)
+	}
 	res, err := Resolve(repoDir)
 	if err != nil {
 		return nil, err
@@ -570,16 +653,46 @@ func Candidates(repoDir, name string) ([]Candidate, error) {
 		{filepath.Join(res.PrimaryRoot, ".moai", "worktrees", name), KindLegacyMoai},
 		{filepath.Join(res.PrimaryRoot, ".claude", "worktrees", name), KindLegacyClaude},
 	}
+	registered, err := registeredWorktrees(res.PrimaryRoot)
+	if err != nil {
+		return nil, err
+	}
+	common, err := gitCommonDir(res.PrimaryRoot)
+	if err != nil {
+		return nil, err
+	}
 	var out []Candidate
 	var seen []string
 	for _, c := range roots {
 		fi, err := os.Stat(c.Path)
-		if err != nil || !fi.IsDir() {
+		if os.IsNotExist(err) {
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("inspect candidate %s: %w", c.Path, err)
+		}
+		if !fi.IsDir() {
+			return nil, fmt.Errorf("worktree candidate %s is not a directory", c.Path)
 		}
 		real, err := filepath.EvalSymlinks(c.Path)
 		if err != nil {
-			real = filepath.Clean(c.Path)
+			return nil, fmt.Errorf("resolve candidate %s: %w", c.Path, err)
+		}
+		contained := false
+		for _, root := range roots {
+			base := filepath.Dir(root.Path)
+			for parent := filepath.Dir(real); parent != filepath.Dir(parent); parent = filepath.Dir(parent) {
+				if Same(parent, base) {
+					contained = true
+					break
+				}
+			}
+		}
+		if !contained {
+			return nil, fmt.Errorf("worktree candidate %s resolves outside the allowed roots: %s", c.Path, real)
+		}
+		if err := validateRegisteredCandidate(real, common, registered); err != nil {
+			return nil, err
 		}
 		dup := false
 		for _, s := range seen {
@@ -595,6 +708,64 @@ func Candidates(repoDir, name string) ([]Candidate, error) {
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+func registeredWorktrees(repoDir string) ([]string, error) {
+	cmd := exec.Command("git", "-C", repoDir, "worktree", "list", "--porcelain", "-z")
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
+	body, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("read registered worktrees: %w", err)
+	}
+	var registered []string
+	for _, field := range strings.Split(string(body), "\x00") {
+		if path, ok := strings.CutPrefix(field, "worktree "); ok {
+			path = filepath.FromSlash(path)
+			if !filepath.IsAbs(path) {
+				return nil, fmt.Errorf("git reported a non-absolute registered worktree")
+			}
+			registered = append(registered, path)
+		}
+	}
+	if len(registered) == 0 {
+		return nil, fmt.Errorf("git reported no registered worktree")
+	}
+	return registered, nil
+}
+
+func validateRegisteredCandidate(real, common string, registered []string) error {
+	found := false
+	for _, path := range registered {
+		if Same(path, real) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("worktree candidate %s is not registered to this repository", real)
+	}
+	actualCommon, err := gitCommonDir(real)
+	if err != nil {
+		return err
+	}
+	if !Same(common, actualCommon) {
+		return fmt.Errorf("worktree candidate %s belongs to another repository", real)
+	}
+	cmd := exec.Command("git", "-C", real, "rev-parse", "--path-format=absolute", "--git-dir")
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
+	admin, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("read candidate administrative directory: %w", err)
+	}
+	backlink, err := os.ReadFile(filepath.Join(filepath.FromSlash(strings.TrimSuffix(string(admin), "\n")), "gitdir"))
+	if err != nil {
+		return fmt.Errorf("read candidate registration backlink: %w", err)
+	}
+	gitFile := filepath.FromSlash(strings.TrimSuffix(string(backlink), "\n"))
+	if !filepath.IsAbs(gitFile) || !Same(filepath.Dir(gitFile), real) || !Same(gitFile, filepath.Join(real, ".git")) {
+		return fmt.Errorf("worktree candidate %s does not match its administrative backlink", real)
+	}
+	return nil
 }
 
 // OwnerMarkerOf returns the owner identity recorded in projectDir's owner

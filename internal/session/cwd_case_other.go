@@ -1,18 +1,15 @@
-//go:build !darwin
+//go:build !darwin && !windows
 
 package session
 
-// realpathPlatform is a no-op off darwin: case-sensitive filesystems have no
-// case axis to canonicalize, symlink resolution is canonicalCWD's EvalSymlinks
-// fallback, and Windows case handling is unmeasured (t1293 does not guess).
+// realpathPlatform is a no-op on case-sensitive Unix systems; symlink
+// resolution remains canonicalCWD's EvalSymlinks fallback.
 func realpathPlatform(dir string) string {
 	_ = dir
 	return ""
 }
 
-// caseFoldsPlatform reports whether the platform's volumes fold path case
-// for the containment tests: not measured off darwin (t1293 does not
-// guess), so the containment tests stay literal.
+// caseFoldsPlatform keeps Unix containment literal on case-sensitive volumes.
 func caseFoldsPlatform() bool {
 	return false
 }

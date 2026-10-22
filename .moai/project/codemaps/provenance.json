@@ -2,12 +2,12 @@
   "schema_version": 1,
   "tree_root": "/workspace/moai-adk/.moai/worktrees/cloud-pr1858-repair",
   "dirty": true,
-  "content_fingerprint": "2498137875207a9f5523a8202441514a809bbae1d9ae21a0a27ec32aaeb24b36",
+  "content_fingerprint": "01f8fc536d21ee4d1f6bc3980a5769391a8d18bb6a47eba89c729d26febcd9b7",
   "described_roots": [
     "internal",
     "cmd",
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-22T05:10:36Z"
+  "generated_at": "2026-10-22T12:00:33Z"
 }

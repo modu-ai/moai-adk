@@ -37,6 +37,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
@@ -243,7 +245,16 @@ func cardIDFromRegisteredWorktree(dir string) string {
 		// card id to the tree name — the walk's parent is the project key,
 		// never the card.
 		if filepath.Base(filepath.Dir(parent)) == "projects" && filepath.Base(filepath.Dir(filepath.Dir(parent))) == "worktrees" {
-			return filepath.Base(d)
+			if home, err := paths.MoaiHome(); err == nil {
+				projects := filepath.Join(home, "worktrees", "projects")
+				if worktreeroot.Same(filepath.Dir(parent), projects) {
+					candidate, err := worktreeroot.RecordedCandidate(d, projects, filepath.Base(d))
+					if err == nil && candidate != "" && worktreeroot.Same(candidate, d) {
+						return filepath.Base(d)
+					}
+				}
+			}
+			return ""
 		}
 		if filepath.Base(parent) == "worktrees" {
 			gp := filepath.Base(filepath.Dir(parent))

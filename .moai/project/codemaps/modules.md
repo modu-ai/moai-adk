@@ -15,6 +15,14 @@
 
 활성화된 PreToolUse 커밋 신원 가드(`internal/hook/commit_identity_guard.go`)는 같은 Git common directory의 커밋 생성 명령에서 설정·명령 override로 결정된 email을 내장·추가 목록과 trim/casefold exact-match로 대조한다. worktree 복구 fixture의 reserved email도 `internal/hook/commit_identity_guard_list_test.go`의 전수 열거 검사와 같은 거부 경계에 포함하며, 범위·probe 불확실성의 감사 기록과 advisory fail-open은 유지한다.
 
+### 후보 인증과 오류 전파 보완 — c5ec1df48 이후 t1640
+
+`internal/worktreeroot/worktreeroot.go`의 `readRecord`는 레코드 부재만 미할당으로 취급하고 나머지 읽기 오류를 `Plan`·`Resolve`에 전달한다. `Candidates`는 해석된 대상이 허용된 세 루트 안에 있고 같은 Git common directory의 worktree 등록 및 admin backlink와 일치해야 채택한다. 허용된 별칭의 중복 제거는 유지한다.
+
+새 `RecordedCandidate`는 기존 key·owner·등록을 읽어 home 후보를 인증하며 key나 marker를 생성하지 않는다. 기존 owner 경로가 실제로 사라진 checkout 이름 변경은 허용하지만, 존재하거나 검사할 수 없는 다른 owner는 거부한다. `internal/factory/status_read.go`의 home 후보와 `internal/hook/session_start_factory.go`의 실제 MoaiHome 카드 식별이 이 API를 공유한다. 기존 `RecordedKey` wrapper는 오류를 빈 key로 표현하므로 모든 상태 읽기 오류가 전파된다는 뜻은 아니다.
+
+`internal/cli/factory_card.go`는 landing-root 해석 오류를 lease 전에 반환한다. `internal/cli/codex_launcher.go`는 후보 해석 오류를 보존하고, `launch_view.go`가 Git의 비 저장소 응답과 탐색 범위의 metadata 부재를 확인한 일반 프로젝트에서만 legacy 경로로 진행한다. Windows 전용 `internal/session/cwd_case_windows.go`는 registry 철자를 유지하면서 anchor의 경계 비교에 대소문자 접기를 적용한다. 대소문자를 구분하는 Unix의 기존 동작과 경로 구분자 경계는 유지하며 Windows 실제 실행 여부는 별도 검증 대상이다.
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.

@@ -136,8 +136,12 @@ func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatu
 	var scanPaths []string
 	if bases.Home != "" {
 		if key := worktreeroot.RecordedKey(primaryRoot); key != "" {
-			if matches, err := filepath.Glob(filepath.Join(bases.Home, key, specID)); err == nil {
-				scanPaths = append(scanPaths, matches...)
+			candidate, err := worktreeroot.RecordedCandidate(primaryRoot, bases.Home, specID)
+			if err != nil {
+				return nil, fmt.Errorf("read card status: %w", err)
+			}
+			if candidate != "" {
+				scanPaths = append(scanPaths, candidate)
 			}
 		}
 	}
