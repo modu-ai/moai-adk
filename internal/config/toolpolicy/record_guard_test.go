@@ -23,7 +23,11 @@ func TestRecordLockPersistentGuardKeepsPrivateIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("persistent guard missing while acquired: %v", err)
 	}
-	defer guard.Close()
+	defer func() {
+		if err := guard.Close(); err != nil {
+			t.Errorf("close guard observer: %v", err)
+		}
+	}()
 	before, err := guard.Stat()
 	if err != nil {
 		t.Fatal(err)

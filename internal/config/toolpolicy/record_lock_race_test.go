@@ -65,7 +65,11 @@ func TestRecordLockSecondStaleObserverCannotDeleteNewWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer winner.Close()
+	defer func() {
+		if err := winner.Close(); err != nil {
+			t.Errorf("close winner observer: %v", err)
+		}
+	}()
 	winnerInfo, err := winner.Stat()
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +118,11 @@ func TestRecordLockOldReleaseCannotDeleteSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer winner.Close()
+	defer func() {
+		if err := winner.Close(); err != nil {
+			t.Errorf("close successor observer: %v", err)
+		}
+	}()
 	winnerInfo, err := winner.Stat()
 	if err != nil {
 		t.Fatal(err)
