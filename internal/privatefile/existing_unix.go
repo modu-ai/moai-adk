@@ -14,7 +14,7 @@ func checkDirectoryNative(_ string, info os.FileInfo) error {
 	return nil
 }
 
-func secureExistingNative(path string, _ os.FileInfo, directory bool) error {
+func secureExistingNative(path string, _ os.FileInfo, directory, _ bool) error {
 	mode := os.FileMode(0o600)
 	if directory {
 		mode = 0o700
