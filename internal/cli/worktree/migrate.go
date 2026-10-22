@@ -737,10 +737,7 @@ func RunUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 // warning (AC-WHR-019(j)).
 func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 	run := func() error {
-		report, err := runMigrationEngine(root, !dryRun, "update")
-		if err != nil {
-			return err
-		}
+		report, engineErr := runMigrationEngine(root, !dryRun, "update")
 		moved := report.moved
 		// The update UI summarizes linked worktrees. Keep the primary
 		// checkout's classification and durable skip audit in the shared
@@ -765,7 +762,7 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 					_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
 				}
 			}
-			return nil
+			return engineErr
 		}
 		for _, r := range rows {
 			switch r.Outcome {
@@ -781,7 +778,7 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 		}
 		_, _ = fmt.Fprintf(out, "Worktree migration: %d moved, %d skipped, %d failed\n",
 			moved, skipped, report.failed+report.reversed)
-		return nil
+		return engineErr
 	}
 	if dryRun {
 		return run()

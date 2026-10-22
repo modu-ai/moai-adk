@@ -163,6 +163,25 @@ func TestReviewPartialMigrationReportSurvivesEngineError(t *testing.T) {
 	}
 }
 
+func TestReviewUpdatePartialReportSurvivesEngineError(t *testing.T) {
+	repo, tree, _ := rfxLegacyWorld(t)
+	m4InRepo(t, repo)
+	reviewMigrationStateDir(t, repo)
+	original := journalWrite
+	journalWrite = func(string, []byte) error { return fmt.Errorf("review update journal failure") }
+	t.Cleanup(func() { journalWrite = original })
+	var out bytes.Buffer
+	if err := runUpdateConsolidation(repo, false, &out); err == nil {
+		t.Fatal("journal failure became successful update consolidation")
+	}
+	if !strings.Contains(out.String(), tree) || !strings.Contains(out.String(), "failed") {
+		t.Fatalf("engine error erased update partial report: %s", out.String())
+	}
+	if _, err := os.Stat(tree); err != nil {
+		t.Fatalf("refused move lost its source: %v", err)
+	}
+}
+
 func TestReviewMigrationRevalidatesBeforeEachMove(t *testing.T) {
 	repo, first, _ := rfxLegacyWorld(t)
 	m4InRepo(t, repo)
