@@ -3,7 +3,7 @@
 Read-only. Run from the worktree root as one invocation:
 
   python3 -I <this file> lines <manifest> [<root>]   compare added/removed lines with the manifest
-  python3 -I <this file> paths <manifest> [<base>]   changed or new paths must be manifest-listed or run-writable
+  python3 -I <this file> paths <manifest> [<base>]   changed or new paths must be manifest-listed, run-writable, or CHANGELOG.md
   python3 -I <this file> paths <manifest> -- <path>...  judge an explicit path list instead of querying git
   python3 -I <this file> pairs <manifest> <commit>[:<n>]...  print `<commit> pairs <both sides> unpaired <one side only>`;
                                                              exit 1 if any unpaired, or if `:<n>` is given and the pair count differs
@@ -33,10 +33,13 @@ position outside a code block the listed rows land in. Not seen: an unlisted lin
 own segment (no fence crosses it), and where outside a code block a listed row lands.
 
 Semantics of `paths`: every changed or new path of the working copy — against the base commit, or the
-explicit list given after `--` — must be named by the manifest or lie under one of the four paths a
+explicit list given after `--` — must be named by the manifest, be the repository-root file
+CHANGELOG.md (exact path, the sync phase's mandatory output), or lie under one of the four paths a
 run of this SPEC legitimately writes (.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/, .moai/reports/,
-.moai/state/, .moai/logs/). Everything else, tracked .moai projections included, is printed as an
-unexpected path and makes the exit 1.
+.moai/state/, .moai/logs/). Everything else, tracked .moai projections and any other CHANGELOG
+path (docs/CHANGELOG.md, CHANGELOG.md.bak) included, is printed as an unexpected path and makes the
+exit 1. CHANGELOG.md is admitted as a path only: what its edit says, and whether the edit stays
+inside the [Unreleased] entry, is not seen here.
 """
 import subprocess
 import sys
@@ -140,7 +143,7 @@ def cmd_paths(manifest, base_override, simulated=()):
     base, strip, files, also = load_manifest(manifest)
     if base_override:
         base = base_override
-    allowed = set(also)
+    allowed = set(also) | {'CHANGELOG.md'}  # the sync phase's output; exact path, not a prefix
     for f in files:
         allowed.add(f['path'])
         allowed.add(f['path'][len(strip):])
