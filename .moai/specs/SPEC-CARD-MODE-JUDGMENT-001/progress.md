@@ -216,6 +216,7 @@ sync_heads_up: "acceptance.md holds 21 distinct AC-looking identifiers (AC-ALB-0
 
 ```yaml
 sync_complete_at: 2026-10-23
+merged_pr: https://github.com/modu-ai/moai-adk/pull/1897   # squash-merged to main 2026-10-22T20:46:02Z by the leader; merge commit 59959629908cda723c37e26c7c15718194d6b38a (card branch head 94b72685717466617fc93ef73c6efcf6422188c5); verified: PR state MERGED and the commit is an ancestor of origin/main
 sync_commit_sha: 6e74de5f4e162886a8c1f07e7e0b336e6875b8e7   # corrective sync commit; the first sync commit ea7b93c085 was audited and failed (sync-audit.md, 0.80)
 sync_status: complete   # corrective sync after the iter-1 audit FAIL
 ac_source: .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/acceptance.md   # tier L
