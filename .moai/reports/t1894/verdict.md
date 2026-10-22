@@ -1,9 +1,9 @@
 # Run-phase verdict — card t1894, SPEC-CARD-MODE-JUDGMENT-001
 
 Author: manager-develop (documents-only run; no Go source changed). Date: 2026-10-23.
-Overall: every AC this phase owns passes (AC-MJ-001..014, -016..019) except one cell: AC-MJ-020 (b) reads `unexpected-paths 1` at the final HEAD because of a sync-phase `CHANGELOG.md` line, not because of any run-phase edit (section 7.4). The M5 blocker raised earlier is resolved (section 6); the sync-audit finding S1 is corrected (section 7). AC-MJ-015 is the leader's.
+Overall: **PASS on every AC this phase owns** (AC-MJ-001..014, -016..020), 19 of 19, verified at the final HEAD (section 8). The M5 blocker is resolved (section 6), the sync-audit finding S1 is corrected (section 7), and AC-MJ-020 (b) / audit S2 is resolved by the third amendment (section 8). AC-MJ-015 is the leader's.
 
-Tree measured: sections 1-6 were measured at HEAD `05bcdc3a8f`; section 7 re-measures the full ledger at the final run-phase HEAD `45270e3ef3` on `WT-fail-safe-serial`, `git status --short` empty (0 lines), base `28c7bb8d36`. The evidence commit that carries this file follows `45270e3ef3` and touches only this file and `progress.md`.
+Tree measured: sections 1-6 at HEAD `05bcdc3a8f`; section 7 at `45270e3ef3`; section 8 re-runs the full ledger at HEAD `80a7dc041b` on `WT-fail-safe-serial`, `git status --short` empty (0 lines), base `28c7bb8d36`. The Go results (sections 2.4 and 7.3) were produced at `45270e3ef3`, and no Go or template file has changed since (section 8.1). The evidence commit that carries this file follows `80a7dc041b` and touches only this file and `progress.md`.
 
 Run commits:
 
@@ -18,6 +18,8 @@ Run commits:
 | `0638768424` | second evidence commit (AC-MJ-014 green, blocker resolved) |
 | `0fca8e0e90` | mid-run amendment 2 by manager-spec, committed by the coordinator (manifest D rows, cells E-005e and E-020i) after sync-audit finding S1 |
 | `45270e3ef3` | correction: D transition boundary follows the free-lane definition |
+| `120f9eeb6e` | third evidence commit (section 7) |
+| `80a7dc041b` | mid-run amendment 3 by manager-spec, committed by the coordinator (checker admits the exact repo-root `CHANGELOG.md`; cells E-020b/c/d/e re-pinned, E-020j/k/l added) |
 
 Path legend: `T:` = `internal/template/templates/.claude/` + `rules/moai/workflow/` (or `skills/…`), `D:` = the deployed twin under `.claude/`.
 
@@ -154,7 +156,7 @@ Go guards, one invocation per package, run under the `go-heavy` lease on the tre
 
 ### 7.4 AC-MJ-020 (b) at the final HEAD
 
-`closed-world-check.py paths` printed `unexpected-paths 1` / `CHANGELOG.md`, exit 1. `git log -3 -- CHANGELOG.md` names `ea7b93c085` (the sync-phase commit, manager-docs) as the change; `git diff --stat d31fb64239 HEAD -- CHANGELOG.md` shows 1 insertion. The same cell read `unexpected-paths 0` at `05bcdc3a8f`. The cell compares the whole tree against the manifest base and allows four prefixes, so a sync-phase `CHANGELOG.md` entry reddens it; the D correction touches only the two twins. I cannot edit the manifest or the criterion, so this stays open for manager-spec (the audit's S2).
+`closed-world-check.py paths` printed `unexpected-paths 1` / `CHANGELOG.md`, exit 1. `git log -3 -- CHANGELOG.md` names `ea7b93c085` (the sync-phase commit, manager-docs) as the change; `git diff --stat d31fb64239 HEAD -- CHANGELOG.md` shows 1 insertion. The same cell read `unexpected-paths 0` at `05bcdc3a8f`. The cell compares the whole tree against the manifest base and allows four prefixes, so a sync-phase `CHANGELOG.md` entry reddens it; the D correction touches only the two twins. I cannot edit the manifest or the criterion, so this stayed open for manager-spec (the audit's S2); it is resolved in section 8.
 
 ### 7.5 Not observed in this correction
 
@@ -163,3 +165,32 @@ Go guards, one invocation per package, run under the `go-heavy` lease on the tre
 - Windows build, coverage and lint: not run (documents only). Only the 14 + 6 named tests ran; CI owns the repository-wide verdict.
 - Raw logs stay in scratch outside the repository.
 - The judging builds are the same as in section 3 (compiled from this tree; installed `moai` used for `moai slot` only).
+
+## 8. Evidence-only pass after amendment 3 (audit S2), final HEAD `80a7dc041b`
+
+### 8.1 What changed, and what did not
+
+- manager-spec fixed the AC-MJ-020 (b) scope: `closed-world-check.py` now admits the exact repo-root `CHANGELOG.md`; cells E-020b/c/d/e were re-pinned and E-020j/k/l added. The coordinator committed it as `80a7dc041b`. This pass edited no rule file, SPEC body, checker or manifest.
+- `git diff --name-only 45270e3ef3 80a7dc041b` printed exactly six paths: this verdict, `acceptance.md`, `closed-world-check.py`, `design.md`, `progress.md` and `spec.md`. No Go file and no template or deployed document is among them, so the Go results of sections 2.4 and 7.3 (produced at `45270e3ef3`) still describe the committed documents; no Go run was made in this pass.
+
+### 8.2 Evidence (full ledger run on the committed tree `80a7dc041b`, `git status --short` empty; 65 summary lines)
+
+| Cell | Verbatim decisive output | Status |
+|---|---|---|
+| E-020b | `unexpected-paths 0`, exit 0 | PASS |
+| E-020c (control, old base commit) | `unexpected-paths 199`, exit 1 | PASS (known failing input) |
+| E-020d | `same same`, exit 0 | PASS |
+| E-020e (control) | `DIFFERENT same`, exit 1 | PASS (known failing input) |
+| E-020f / E-020g (controls) | `unexpected-paths 1` + `.moai/policies/workflow/factory-dispatch-detail.md` / `.moai/workflows/gtd.md`, exit 1 | PASS (known failing inputs) |
+| E-020j | `unexpected-paths 0`, exit 0 | PASS |
+| E-020k (control) | `unexpected-paths 1` + `CHANGELOG.md.bak`, exit 1 | PASS (known failing input) |
+| E-020l (control) | `unexpected-paths 1` + `docs/CHANGELOG.md`, exit 1 | PASS (known failing input) |
+| E-020a and E-020i | every one of the sixteen rows `0 0 0 0 0`, exit 0 (`lines` run directly gave the same, exit 0) | PASS |
+| E-020h (control) | `C good 0 0 pair-move 44 44`, exit 1 | PASS (known failing input) |
+| `paths` run directly | `unexpected-paths 0`, exit 0 | PASS |
+
+All other ledger cells: the summary lines (cell id, exit status and first output line) are identical to the full run at `45270e3ef3`, and the seven E-011 `cmp` calls all exit 0. So AC-MJ-001..013 and -016..019 keep the values listed in sections 2.2 and 7.3.
+
+### 8.3 Result and what was not observed
+
+AC-MJ-020 (b) is green with its controls red on the intended inputs; with it, all 19 ACs this phase owns pass at `80a7dc041b` (AC-MJ-001..014, -016..020). Not observed: AC-MJ-015 (the leader's); sync-audit findings S3-S5 (not worked, outside this pass); the checker's new path logic beyond the cells above (I ran its cells, I did not review its code). Baseline for every line of this section: this run, this tree, HEAD `80a7dc041b`.
