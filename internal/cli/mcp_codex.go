@@ -1778,7 +1778,11 @@ var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d
 // extension allowlist would silently drop anchors for every language it forgot.
 // Keep Windows drive/UNC spellings intact. Match URL tokens whole so the
 // anchor selector can exclude them instead of treating their suffix as a file.
-var codexPathLineRef = regexp.MustCompile(`((?:[A-Za-z][A-Za-z0-9+.-]*://[^\s` + "`" + `<>"']+|(?:[A-Za-z]:[\\/])?[\w./@+\\-]+\.[A-Za-z0-9]+)):([0-9]+)`)
+var codexPathLineRef = regexp.MustCompile(
+	"`" + `((?:[A-Za-z]:[\\/])?[^` + "`" + `\r\n:]+\.[A-Za-z0-9]+):([0-9]+)` + "`" +
+		`|"((?:[A-Za-z]:[\\/])?[^"\r\n:]+\.[A-Za-z0-9]+):([0-9]+)"` +
+		`|'((?:[A-Za-z]:[\\/])?[^'\r\n:]+\.[A-Za-z0-9]+):([0-9]+)'` +
+		`|((?:[A-Za-z][A-Za-z0-9+.-]*://[^\s` + "`" + `<>"']+|(?:[A-Za-z]:[\\/]|\\\\)[^:\r\n` + "`" + `<>"']+\.[A-Za-z0-9]+|[\w./@+\\-]+\.[A-Za-z0-9]+)):([0-9]+)`)
 
 // codexFindingTableRow and codexFindingBoldBullet read the two finding shapes
 // GitHub #1718 observed when a target project's instructions shaped codex's
@@ -1841,15 +1845,24 @@ func codexFindingAnchorOf(msg string) (string, int, bool) {
 	var anchor string
 	var line int
 	for _, m := range codexPathLineRef.FindAllStringSubmatch(msg, -1) {
-		if strings.Contains(m[1], "://") {
+		// Each quoting form captures its complete anchor as a path/line pair.
+		// A rooted Windows path may also contain spaces without quoting.
+		var path, lineText string
+		for i := 1; i+1 < len(m); i += 2 {
+			if m[i] != "" {
+				path, lineText = m[i], m[i+1]
+				break
+			}
+		}
+		if strings.Contains(path, "://") {
 			continue
 		}
-		if anchor != "" && anchor != m[1] {
+		if anchor != "" && anchor != path {
 			return "", 0, false // several distinct candidates — no defensible anchor
 		}
 		if anchor == "" {
-			anchor = m[1]
-			if n, err := strconv.Atoi(m[2]); err == nil {
+			anchor = path
+			if n, err := strconv.Atoi(lineText); err == nil {
 				line = n
 			}
 		}
