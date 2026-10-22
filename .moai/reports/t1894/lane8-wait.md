@@ -32,3 +32,15 @@ Verdict file: `.moai/reports/t1894/plan-audit-iter4.md` — **PASS 0.91** (Tier 
 decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3 ladder_path=①disk-evidence — the leader's condition "new D29+ => split" is read as a new BLOCKING defect (FAIL); D29-D31 are optional non-blocking, so no split. The plan stage ends PASS.
 
 Next gate: plan -> run Kickoff. Q7 (FOUNDER row, empty) still blocks the AUTONOMOUS Kickoff form (spec/handoff: "blocks only the autonomous Kickoff"); that is operator-held (keep-set). Run phase also waits on leader slot order. Lane does not enter run until the Kickoff gate is met.
+
+## Kickoff (2026-10-23, lane-8)
+
+Q7 answer, as RELAYED by the leader (session socket 50218; the relay is the leader's keep-set role, the answer is the operator's 10-23 verdict as the leader states it — not read by this lane from the operator directly): "the verdict's phrase is the whole condition". The SPEC's own decision-gate rule (decision-index.md Q7 gate note) names exactly this statement as one of the ways the autonomous Kickoff form is unblocked. The decision-index row itself is SPEC body (manager-spec's); the lane does not edit it, and this record is the operator-answer record.
+
+Autonomous Kickoff evidence (auto-semantics §9.1 / spec-workflow Plan Audit Gate skip contract), each re-measured in this run:
+- verdict PASS: `.moai/reports/t1894/plan-audit-iter4.md` (0.91, blocking 0, receipt rcpt-53fe87f0509e1f8019bc86e3)
+- score 0.91 >= Tier L threshold 0.85
+- plan-artifact hash unchanged since the verdict: `mcp audit_cache compute_hash` now `0daae3d5fa87edd5406fc295e87eda87243fa8ad20af7b0ae73290782a05b626` = the audited hash; `git diff --stat a2dd9f1567 HEAD -- .moai/specs` empty
+- no open blocker: Q7 answered (above); D29-D31 optional and non-blocking
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3,leader-relayed operator Q7 answer 10-23 ladder_path=auto-semantics §9.1 autonomous plan->run Kickoff (audit-cross evidence)
