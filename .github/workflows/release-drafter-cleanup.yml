@@ -11,7 +11,19 @@ name: Release Drafter cleanup
 # Safety constraints:
 #   - Only deletes if isDraft == true AND createdAt > 30 days old
 #   - Exempts drafts with targetCommitish == release/* (active release branches)
-#   - Supports MOAI_CLEANUP_DRY_RUN=1 environment for validation testing
+#   - A draft whose target branch cannot be resolved is never selected: the
+#     release/* exemption is not evaluable without it, so it is never dropped
+#     to make the fetch succeed (SPEC-RELEASE-PIPELINE-001 REQ-RPC-013)
+#   - Re-queries each tag immediately before deleting it and skips (and logs)
+#     any draft whose state changed since the listing (REQ-RPC-011)
+#   - Supports a dry run: dispatch with `dry_run: true`, or MOAI_CLEANUP_DRY_RUN=1
+#     in the environment
+#
+# Fetch: `gh release list` does not support the targetCommitish field (gh 2.92.0
+# answers "Unknown JSON field" and exits 1 before any filter runs), so the
+# listing requests supported fields only and the target branch is resolved per
+# DRAFT with `gh release view`, which does support it. The payload the filter
+# reads is camelCase end to end (no mapping layer).
 #
 # Audit:
 #   All cleanup actions appended to the workflow run's job summary ($GITHUB_STEP_SUMMARY).
@@ -22,16 +34,50 @@ on:
   schedule:
     - cron: '0 9 * * MON'  # Every Monday 09:00 UTC (18:00 KST)
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: list the stale drafts without deleting any'
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # Required for gh release delete
   pull-requests: read
+
+# Serialized with release-drafter.yml through one ref-independent literal group
+# (SPEC-RELEASE-PIPELINE-001 REQ-RPC-012): both workflows mutate the draft list,
+# and a cleanup cancelled mid-deletion, or a drafter run that lists while the
+# cleanup deletes, would act on a stale listing. cancel-in-progress is false on
+# BOTH sides because the incoming run's own flag governs a shared group.
+# Trade-off, recorded in both workflows (plan.md B6): a Monday cleanup can queue
+# behind a draft-update burst (its 15-minute job budget absorbs that), and rapid
+# main pushes queue drafter updates serially instead of cancelling the older one.
+concurrency:
+  group: release-drafter-mutations
+  cancel-in-progress: false
 
 jobs:
   cleanup:
     name: Clean stale drafts
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # The one stale-draft predicate. The fetch step selects with it and the
+      # delete loop re-applies it to the freshly re-queried state, so the two
+      # can never disagree. `(now|floor) as $now` is parenthesized so the
+      # release list stays the iteration input; an unparenthesized
+      # `now | floor as $now` rebinds `.` to a number and `.[]` fails (jq exit 5).
+      STALE_FILTER: |
+        (now|floor) as $now |
+        (($threshold_days | tonumber) * 86400) as $threshold_secs |
+        .[] |
+        select(
+          .isDraft == true and
+          (($now - (.createdAt | fromdate)) > $threshold_secs) and
+          ((.targetCommitish // "") | length > 0) and
+          (.targetCommitish | startswith("release/") | not)
+        ) |
+        .tagName
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -40,62 +86,94 @@ jobs:
 
       - name: Set cleanup environment
         id: env
+        env:
+          # workflow_dispatch boolean inputs stringify to "true"/"false", but the
+          # delete loop honors only the literal "1": convert explicitly. A
+          # scheduled run has no inputs, so this resolves to "0".
+          INPUT_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: |
           # Allow override of cleanup threshold via env var (default: 30 days)
           THRESHOLD_DAYS="${MOAI_CLEANUP_THRESHOLD_DAYS:-30}"
-          DRY_RUN="${MOAI_CLEANUP_DRY_RUN:-0}"
+          # Dry run when either the dispatch input or the environment override says so.
+          DRY_RUN=0
+          if [ "${MOAI_CLEANUP_DRY_RUN:-0}" = "1" ] || [ "${INPUT_DRY_RUN}" = "1" ]; then
+            DRY_RUN=1
+          fi
           echo "threshold_days=${THRESHOLD_DAYS}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT"
 
       - name: Fetch stale drafts
         id: drafts
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          THRESHOLD_DAYS: ${{ steps.env.outputs.threshold_days }}
         run: |
-          # Fetch latest 100 releases with draft status and creation date
+          # List the latest 100 releases with supported fields only.
           gh release list \
-            --json tagName,isDraft,createdAt,targetCommitish \
+            --json tagName,isDraft,createdAt \
             -L 100 \
-            > /tmp/releases.json
+            > "$RUNNER_TEMP/releases-list.json"
+
+          jq -r '.[] | select(.isDraft == true) | .tagName' \
+            "$RUNNER_TEMP/releases-list.json" \
+            > "$RUNNER_TEMP/draft_tags.txt"
+
+          # Resolve the target branch per draft. A draft whose view cannot be
+          # fetched is left out: without its target branch the release/*
+          # exemption cannot be evaluated, so it is not a deletion candidate.
+          : > "$RUNNER_TEMP/draft-views.ndjson"
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            if view="$(gh release view "$tag" --json tagName,isDraft,createdAt,targetCommitish)"; then
+              printf '%s\n' "$view" >> "$RUNNER_TEMP/draft-views.ndjson"
+            else
+              echo "::warning::cannot resolve ${tag}; not a deletion candidate"
+            fi
+          done < "$RUNNER_TEMP/draft_tags.txt"
+
+          jq -s '.' "$RUNNER_TEMP/draft-views.ndjson" > "$RUNNER_TEMP/releases.json"
 
           # Filter to drafts older than threshold, excluding active release branches
-          jq -r \
-            --arg threshold_days "${{ steps.env.outputs.threshold_days }}" \
-            '
-              now | floor as $now |
-              (($threshold_days | tonumber) * 86400) as $threshold_secs |
-              .[] |
-              select(
-                .isDraft == true and
-                (($now - (.createdAt | fromdate)) > $threshold_secs) and
-                (.targetCommitish | startswith("release/") | not)
-              ) |
-              .tagName
-            ' \
-            /tmp/releases.json \
-            > /tmp/stale_tags.txt
+          jq -r --arg threshold_days "$THRESHOLD_DAYS" "$STALE_FILTER" \
+            "$RUNNER_TEMP/releases.json" \
+            > "$RUNNER_TEMP/stale_tags.txt"
 
-          count=$(wc -l < /tmp/stale_tags.txt)
+          count=$(wc -l < "$RUNNER_TEMP/stale_tags.txt" | tr -d ' ')
           echo "stale_count=${count}" >> "$GITHUB_OUTPUT"
-          echo "stale_tags=$(cat /tmp/stale_tags.txt | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          echo "stale_tags=$(tr '\n' ' ' < "$RUNNER_TEMP/stale_tags.txt")" >> "$GITHUB_OUTPUT"
 
       - name: Delete stale drafts
         if: ${{ steps.drafts.outputs.stale_count > 0 }}
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          THRESHOLD_DAYS: ${{ steps.env.outputs.threshold_days }}
+          DRY_RUN: ${{ steps.env.outputs.dry_run }}
         run: |
-          dry_run="${{ steps.env.outputs.dry_run }}"
-
           while IFS= read -r tag; do
             [ -z "$tag" ] && continue
 
-            if [ "$dry_run" = "1" ]; then
+            # Re-query this tag immediately before acting on it (REQ-RPC-011):
+            # a draft published, retargeted at release/*, or refreshed since the
+            # listing no longer matches the stale predicate and is skipped.
+            if ! current="$(gh release view "$tag" --json tagName,isDraft,createdAt,targetCommitish)"; then
+              echo "[SKIP] ${tag}: state re-query failed; not deleting"
+              continue
+            fi
+            still="$(printf '[%s]' "$current" | jq -r --arg threshold_days "$THRESHOLD_DAYS" "$STALE_FILTER")"
+            if [ "$still" != "$tag" ]; then
+              echo "[SKIP] ${tag}: no longer a stale draft (published, retargeted at release/*, or younger than the threshold)"
+              continue
+            fi
+
+            if [ "$DRY_RUN" = "1" ]; then
               echo "[DRY-RUN] Would delete: ${tag}"
             else
               echo "Deleting stale draft: ${tag}"
               gh release delete "$tag" --yes
             fi
-          done < /tmp/stale_tags.txt
+          done < "$RUNNER_TEMP/stale_tags.txt"
 
       - name: Update cleanup log
         run: |

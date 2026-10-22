@@ -43,6 +43,7 @@ type rpcStep struct {
 	Name           string         `yaml:"name"`
 	If             string         `yaml:"if"`
 	Uses           string         `yaml:"uses"`
+	Shell          string         `yaml:"shell"`
 	Run            string         `yaml:"run"`
 	With           map[string]any `yaml:"with"`
 	Env            map[string]any `yaml:"env"`
@@ -57,6 +58,7 @@ type rpcJob struct {
 	Needs          yaml.Node
 	TimeoutMinutes yaml.Node `yaml:"timeout-minutes"`
 	Outputs        map[string]string
+	Env            map[string]any `yaml:"env"`
 	Strategy       struct {
 		Matrix map[string]any `yaml:"matrix"`
 	} `yaml:"strategy"`
@@ -295,7 +297,10 @@ func (j *rpcJob) displayNames() []string {
 
 // rpcExprCtx is the context an `if:` expression is evaluated in.
 type rpcExprCtx struct {
-	vars      map[string]string
+	vars map[string]string
+	// bools are typed boolean context values (workflow_dispatch boolean inputs
+	// are booleans in expressions, not strings); a missing key reads as null.
+	bools     map[string]bool
 	cancelled bool
 	success   bool
 	failure   bool
@@ -416,7 +421,10 @@ func (p *rpcParser) parseOr() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		l = rpcTruthy(l) || rpcTruthy(r)
+		// GitHub semantics: `a || b` yields a when a is truthy, else b.
+		if !rpcTruthy(l) {
+			l = r
+		}
 	}
 	return l, nil
 }
@@ -432,7 +440,10 @@ func (p *rpcParser) parseAnd() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		l = rpcTruthy(l) && rpcTruthy(r)
+		// GitHub semantics: `a && b` yields a when a is falsy, else b.
+		if rpcTruthy(l) {
+			l = r
+		}
 	}
 	return l, nil
 }
@@ -506,6 +517,9 @@ func (p *rpcParser) parsePrimary() (any, error) {
 		case "false":
 			return false, nil
 		}
+		if b, ok := p.ctx.bools[tok.text]; ok {
+			return b, nil
+		}
 		return p.ctx.vars[tok.text], nil
 	}
 	return nil, fmt.Errorf("unexpected token %q", tok.text)
@@ -541,7 +555,7 @@ var rpcStatusFuncRe = regexp.MustCompile(`\b(always|cancelled|success|failure)\s
 
 func rpcHasStatusFunc(expr string) bool { return rpcStatusFuncRe.MatchString(expr) }
 
-func rpcEvalIf(t *testing.T, expr string, ctx rpcExprCtx) bool {
+func rpcEvalValue(t *testing.T, expr string, ctx rpcExprCtx) any {
 	t.Helper()
 	toks, err := rpcLex(expr)
 	if err != nil {
@@ -555,7 +569,23 @@ func rpcEvalIf(t *testing.T, expr string, ctx rpcExprCtx) bool {
 	if err != nil {
 		t.Fatalf("evaluate %q: %v", expr, err)
 	}
-	return rpcTruthy(v)
+	return v
+}
+
+func rpcEvalIf(t *testing.T, expr string, ctx rpcExprCtx) bool {
+	t.Helper()
+	return rpcTruthy(rpcEvalValue(t, expr, ctx))
+}
+
+var rpcInterpRe = regexp.MustCompile(`\$\{\{\s*(.+?)\s*\}\}`)
+
+// rpcInterpolate substitutes every ${{ expr }} in text with its string value.
+func rpcInterpolate(t *testing.T, text string, ctx rpcExprCtx) string {
+	t.Helper()
+	return rpcInterpRe.ReplaceAllStringFunc(text, func(m string) string {
+		inner := rpcInterpRe.FindStringSubmatch(m)[1]
+		return rpcAsString(rpcEvalValue(t, inner, ctx))
+	})
 }
 
 // withStatusDefault applies GitHub's rule: an `if:` carrying no status function

@@ -16,9 +16,18 @@ on:
 permissions:
   contents: read
 
+# Serialized with release-drafter-cleanup.yml through one ref-independent literal
+# group (SPEC-RELEASE-PIPELINE-001 REQ-RPC-012): both workflows mutate the draft
+# list, and a cleanup cancelled mid-deletion, or a drafter run that lists while
+# the cleanup deletes, would act on a stale listing. The key must not vary with
+# github.ref (a dispatched drafter on any ref must land in the same group), and
+# cancel-in-progress is false on BOTH sides because the incoming run's own flag
+# governs a shared group. Trade-off, recorded in both workflows (plan.md B6):
+# rapid main pushes now queue drafter updates serially instead of cancelling
+# the older run, and a drafter run can queue behind the Monday cleanup.
 concurrency:
-  group: release-drafter-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-drafter-mutations
+  cancel-in-progress: false
 
 jobs:
   update_release_draft:
