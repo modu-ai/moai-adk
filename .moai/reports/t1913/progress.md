@@ -107,6 +107,8 @@
   6e9f3a9ccf**(7ef2aab8b1 squash; 감사 c880c6604a 이후 델타는 PR 본문에 갭 기록). 감사 최종
   판정 PASS-WITH-DEBT 9.37(rcpt-0a68858f @c880c6604a)이 병합 근거. 이 커밋으로 카드 생애주기
   종료(merged-pr).
+- **카드 기록 시도**: `factory stage t1913 merged-pr` → 기계 거부("illegal card transition:
+  leased → merged-pr" — 재임대로 stage 초기화, F1 순차 전이 불가; t1930 동사 수리 카드 대상).
 
 - **증거 십자**: plan-audit PASS 0.9375(codex leg rcpt-db13f385c8940f9c62e69c5c 포함) ≥ Tier M 임계 0.80 ✓ ·
   plan-artifact hash 불변(마지막 접촉 커밋 = 감사 SHA) ✓ · 미해결 블로커 없음(M2는 plan D1의 M3-M7 선행조건으로
