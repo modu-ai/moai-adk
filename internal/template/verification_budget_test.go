@@ -72,6 +72,26 @@ func vbStepIndex(j *rpcJob, prefix string) int {
 	return -1
 }
 
+// vbIfCond normalizes a step condition: surrounding space and an enclosing
+// `${{ }}` removed, so `always()` and `${{ always() }}` compare equal.
+func vbIfCond(cond string) string {
+	c := strings.TrimSpace(cond)
+	if strings.HasPrefix(c, "${{") && strings.HasSuffix(c, "}}") {
+		c = strings.TrimSpace(c[3 : len(c)-2])
+	}
+	return c
+}
+
+// vbIsAlways reports whether a step condition is exactly the always() status
+// function. A substring match would also accept `always() && false`, a step
+// that is named as evidence collection and never runs.
+func vbIsAlways(cond string) bool { return vbIfCond(cond) == "always()" }
+
+// vbRunsWhenJobRuns reports whether a step carries no condition, so it runs
+// whenever the job reaches it. A phase step guarded by `if: false` is skipped
+// while every other check on it (name, ceiling, command text) stays green.
+func vbRunsWhenJobRuns(s rpcStep) bool { return vbIfCond(s.If) == "" }
+
 var vbGoTimeoutRe = regexp.MustCompile(`-timeout\s+(\d+)m\b`)
 
 // ---- AC-RPC-007 --------------------------------------------------------------
@@ -95,6 +115,9 @@ func vbCheckBrowserBudget(ci *rpcWorkflow) []string {
 	total := vbBrowserSetupMin + vbBrowserEvidenceMin
 	for _, idx := range []int{green, red} {
 		s := j.Steps[idx]
+		if !vbRunsWhenJobRuns(s) {
+			add("%q carries `if: %s`, so the phase can be skipped while the job stays green", s.Name, s.If)
+		}
 		got, ok := vbNodeInt(s.TimeoutMinutes)
 		if !ok {
 			add("%q has no step-level timeout-minutes", s.Name)
@@ -120,7 +143,7 @@ func vbCheckBrowserBudget(ci *rpcWorkflow) []string {
 	found := false
 	for i := red + 1; i < len(j.Steps); i++ {
 		s := j.Steps[i]
-		if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && strings.Contains(s.If, "always()") {
+		if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && vbIsAlways(s.If) {
 			found = true
 		}
 	}
@@ -151,7 +174,7 @@ func vbCheckReleaseBudget(rel *rpcWorkflow) []string {
 		add("the evidence steps must follow the race step (race %d, compress %d, upload %d)", race, compress, upload)
 	}
 	for _, i := range []int{compress, upload} {
-		if !strings.Contains(j.Steps[i].If, "always()") {
+		if !vbIsAlways(j.Steps[i].If) {
 			add("%q is not an `if: always()` step, so a failing or ceiling-hit race step leaves no evidence", j.Steps[i].Name)
 		}
 	}
@@ -209,6 +232,14 @@ func TestStageCeilingBelowJobBudget(t *testing.T) {
 			j := w.Jobs["full-matrix-test"]
 			j.Steps[vbStepIndex(j, "Compress test event stream")].If = ""
 		}},
+		{"upload step if: always() && false (never runs)", func(w *rpcWorkflow) {
+			j := w.Jobs["full-matrix-test"]
+			j.Steps[vbStepIndex(j, "Upload test event stream")].If = "always() && false"
+		}},
+		{"compress step if: false (never runs)", func(w *rpcWorkflow) {
+			j := w.Jobs["full-matrix-test"]
+			j.Steps[vbStepIndex(j, "Compress test event stream")].If = "${{ always() && false }}"
+		}},
 		{"per-shard ceiling raised", func(w *rpcWorkflow) {
 			j := w.Jobs["full-matrix-test"]
 			s := &j.Steps[vbStepIndex(j, "Run tests with race detector")]
@@ -249,6 +280,22 @@ func TestStageCeilingBelowJobBudget(t *testing.T) {
 			setTimeout(&j.Steps[vbStepIndex(j, "Green phase")], 19)
 			setTimeout(&j.Steps[vbStepIndex(j, "Red phase")], 19)
 		}},
+		{"green phase if: false (the phase never runs)", func(w *rpcWorkflow) {
+			j := w.Jobs["test-browser"]
+			j.Steps[vbStepIndex(j, "Green phase")].If = "false"
+		}},
+		{"mutation phase if: false (the phase never runs)", func(w *rpcWorkflow) {
+			j := w.Jobs["test-browser"]
+			j.Steps[vbStepIndex(j, "Red phase")].If = "false"
+		}},
+		{"evidence upload if: always() && false", func(w *rpcWorkflow) {
+			j := w.Jobs["test-browser"]
+			for i := range j.Steps {
+				if strings.HasPrefix(j.Steps[i].Uses, "actions/upload-artifact@") {
+					j.Steps[i].If = "always() && false"
+				}
+			}
+		}},
 		{"no always() evidence upload", func(w *rpcWorkflow) {
 			j := w.Jobs["test-browser"]
 			for i := range j.Steps {
@@ -288,6 +335,11 @@ func vbCheckBrowserSplit(ci *rpcWorkflow) []string {
 	green, red := vbStepIndex(j, "Green phase"), vbStepIndex(j, "Red phase")
 	if green < 0 || red < 0 || green >= red {
 		return append(v, "BROWSER_SPLIT_VIOLATION: the green phase must be a separate step before the mutation phase")
+	}
+	for _, idx := range []int{green, red} {
+		if !vbRunsWhenJobRuns(j.Steps[idx]) {
+			add("%q carries `if: %s`, so the phase can be skipped while the job stays green", j.Steps[idx].Name, j.Steps[idx].If)
+		}
 	}
 	g, gok := vbNodeInt(j.Steps[green].TimeoutMinutes)
 	m, mok := vbNodeInt(j.Steps[red].TimeoutMinutes)
@@ -333,7 +385,7 @@ func vbCheckBrowserSplit(ci *rpcWorkflow) []string {
 	trail := false
 	for i := red + 1; i < len(j.Steps); i++ {
 		s := j.Steps[i]
-		if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && strings.Contains(s.If, "always()") {
+		if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && vbIsAlways(s.If) {
 			p := fmt.Sprint(s.With["path"])
 			if strings.Contains(p, "fire-guard") && strings.Contains(p, ".log") && strings.Contains(p, ".json") {
 				trail = true
@@ -376,6 +428,16 @@ func TestBrowserPhaseSplit(t *testing.T) {
 		{"pinned Chrome checksum dropped", func(j *rpcJob) {
 			for i := range j.Steps {
 				j.Steps[i].Run = strings.ReplaceAll(j.Steps[i].Run, "sha256sum --check --strict", "true")
+			}
+		}},
+		{"mutation phase if: false (the phase never runs)", func(j *rpcJob) {
+			j.Steps[vbStepIndex(j, "Red phase")].If = "false"
+		}},
+		{"mutation evidence upload if: always() && false", func(j *rpcJob) {
+			for i := range j.Steps {
+				if strings.HasPrefix(j.Steps[i].Uses, "actions/upload-artifact@") {
+					j.Steps[i].If = "always() && false"
+				}
 			}
 		}},
 		{"mutation evidence upload removed", func(j *rpcJob) {
@@ -486,7 +548,7 @@ func vbCheckRetryWorkflow(ci, rel *rpcWorkflow, attempt1 string) []string {
 			}
 			if strings.Contains(fmt.Sprint(s.With["path"]), attempt1) {
 				uploaded = true
-				if !strings.Contains(s.If, "always()") {
+				if !vbIsAlways(s.If) {
 					add("job %s: the attempt1 upload is not if: always()", id)
 				}
 				if fmt.Sprint(s.With["if-no-files-found"]) != "warn" {
@@ -565,6 +627,14 @@ func TestRetryPolicyPreservesFirstFailure(t *testing.T) {
 				s := &w.Jobs["test"].Steps[i]
 				if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && strings.Contains(fmt.Sprint(s.With["path"]), attempt1) {
 					s.If = ""
+				}
+			}
+		}},
+		{"attempt1 upload if: always() && false", func(w, _ *rpcWorkflow) {
+			for i := range w.Jobs["test"].Steps {
+				s := &w.Jobs["test"].Steps[i]
+				if strings.HasPrefix(s.Uses, "actions/upload-artifact@") && strings.Contains(fmt.Sprint(s.With["path"]), attempt1) {
+					s.If = "always() && false"
 				}
 			}
 		}},
