@@ -819,9 +819,6 @@ func buildTmuxClearVars() []string {
 // persistTeamMode saves the team_mode value to .moai/config/sections/llm.yaml.
 func persistTeamMode(projectRoot, mode string) error {
 	sectionsDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir, defs.SectionsSubdir)
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		return fmt.Errorf("create config directory: %w", err)
-	}
 
 	llmCfg, err := loadLLMSectionOnly(sectionsDir)
 	if err != nil {
@@ -830,7 +827,7 @@ func persistTeamMode(projectRoot, mode string) error {
 
 	llmCfg.TeamMode = mode
 
-	return saveLLMSection(sectionsDir, llmCfg)
+	return saveLLMSectionWithRoot(projectRoot, sectionsDir, llmCfg)
 }
 
 // loadLLMSectionOnly loads only the LLM section from llm.yaml.
@@ -891,6 +888,10 @@ func legacyLLMAliasEdits() []yamlpatch.KeyEdit {
 // (writeFileAtomic's perm), and touched mtime on every launch — reopening a
 // lost-update window against concurrent writers.
 func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
+	return saveLLMSectionWithRoot("", sectionsDir, llm)
+}
+
+func saveLLMSectionWithRoot(projectRoot, sectionsDir string, llm config.LLMConfig) error {
 	// Populate empty GLM model values with defaults for clarity.
 	// This prevents llm.yaml from containing empty model strings that
 	// confuse users about whether GLM is configured.
@@ -941,6 +942,10 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}
 	// A real write removes the legacy alias keys (see legacyLLMAliasKeys).
 	edits = append(edits, legacyLLMAliasEdits()...)
+	if projectRoot != "" {
+		return yamlpatch.PatchFileAtRoot(projectRoot, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, "llm.yaml"), edits,
+			yamlpatch.RootOptions{Mode: 0o600, AllowEmpty: true, ParentPerm: 0o755})
+	}
 
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
