@@ -29,7 +29,9 @@ delivery reads this file). Written by lane-6 on 2026-10-22.
   refs/heads/ stripped`.
 - Affected-area slice (delegate run): integration/acquire/base-freshness/merge-ready/
   settings-drift families → pass 257s; gofmt clean, vet exit 0.
-- Regression families (delegate run): TestResolveCardBranch family ok 1.753s; TestMergeStep ok
+- Regression families (delegate run, in **internal/factory** — an earlier draft of this file
+  mis-cited internal/cli, where the selector matches zero tests; corrected per the independent
+  audit F3): TestResolveCardBranch family ok 1.753s; TestMergeStep ok
   40.143s (t1920-era selectors still green on this tree).
 - Full internal/cli package: THREE attempts (10m default, 25m, 25m at recovered load) each
   ended in the go-test alarm (601s / 1502.4s / 1501.7s) with ZERO `--- FAIL` assertion lines —
@@ -60,5 +62,11 @@ commit subjects, markers, fix lines, and clean tree on disk this run.
   the sites are now catalogued here for any sweep follow-up.
 - The two fixed reads change rendered branch values only in the same-named-tag pathology; other
   callers of the fixed functions see identical behavior for healthy trees (regression-pinned).
+- **Known-issue (F2, independent audit)**: `scripts/release.sh:142` and the template mirrors
+  carry the same `--abbrev-ref` class but were outside the card's enumerated Go-file scope —
+  recorded for a follow-up card. The independent audit also flagged `merge.go`'s `develop`
+  merge-tree operand as an analogous bare-name surface (a tag named exactly `develop`) —
+  addressed for the branch operand in 6f1b8ead1e; the develop side remains per the auditor's
+  minimal-prescription scope.
 
 AUDIT-VERDICT: PASS spec=card-t1928 receipts=lane-6-direct
