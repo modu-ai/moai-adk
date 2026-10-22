@@ -246,7 +246,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-test-ubuntu-latest
-          path: test-stream.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -390,7 +398,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-1
-          path: test-stream-race-cli-1.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-1.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -442,7 +458,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-2
-          path: test-stream-race-cli-2.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-2.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -493,7 +517,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-3
-          path: test-stream-race-cli-3.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-3.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -545,7 +577,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-4
-          path: test-stream-race-cli-4.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-4.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -598,7 +638,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-rosterguard
-          path: test-stream-race-rosterguard.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-rosterguard.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -655,7 +703,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-remainder
-          path: test-stream-race-remainder.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-remainder.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -1107,6 +1163,16 @@ jobs:
   test-browser:
     name: Test (browser fire guard)
     runs-on: ubuntu-latest
+    # Budget (SPEC-RELEASE-PIPELINE-001 REQ-RPC-007/008, card t1536). The job
+    # keeps its 20 minutes; each phase is a separately bounded stage so a slow
+    # green phase cannot consume the mutation phase's budget:
+    #   setup 1 + green 16 + mutation 2 + evidence 1 = 20.
+    # Measured on four green main runs (38991715666, 38697937293, 38673824546,
+    # 37861953651): green 13m05s / 12m17s / 13m43s / 12m44s, mutation 1m11s /
+    # 1m09s / 1m16s / 59s, steps before the green phase about 45s. The ceilings
+    # keep a margin over those maxima; run-to-run variance beyond four runs is
+    # unmeasured. TestStageCeilingBelowJobBudget and TestBrowserPhaseSplit hold
+    # the arithmetic, with the allowances as test constants.
     timeout-minutes: 20
     # Input-class gate (card t1536, SPEC-RELEASE-PIPELINE-001 REQ-RPC-002):
     # on pull_request events this job runs only when its input class matched
@@ -1179,14 +1245,19 @@ jobs:
         shell: bash
         run: python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest
 
+      # Stage ceiling 16 (step-level): Go's own -timeout (15m) fires first, so a
+      # hung driver test leaves a goroutine dump instead of a killed step.
       - name: Green phase — gated driver tests (in-process surface)
+        timeout-minutes: 16
         env:
           MOAI_BROWSER_GUARD: "1"
           MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"
         shell: bash
-        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 17m
+        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 15m
 
+      # Stage ceiling 2 (step-level), independent of the green phase's.
       - name: Red phase — mutation cycle (0 → 1 → 0, real-binary surface)
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -1284,3 +1355,18 @@ jobs:
           start_server
           expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
             --cdp-port "$CDP_PORT" --primary-entries-only "$PORT" t1060-ci-post-restore
+
+      # The mutation phase's own diagnosable trail (REQ-RPC-008): server and
+      # Chrome logs and the probe reports survive a failing or ceiling-hit phase.
+      # always(), warn-on-absent: a green run that wrote none is not an error.
+      - name: Upload fire-guard evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fire-guard-evidence
+          path: |
+            ${{ runner.temp }}/fire-guard/*.log
+            ${{ runner.temp }}/fire-guard/*.json
+            ${{ runner.temp }}/fire-guard/last.out
+          retention-days: 7
+          if-no-files-found: warn

@@ -264,6 +264,22 @@ jobs:
       # 3-OS x 6-shard matrix: the artifact name below carries both matrix.os
       # and matrix.shard, or the eighteen legs collide.
       #
+      # Budget, recorded in place (SPEC-RELEASE-PIPELINE-001 REQ-RPC-007,
+      # decision-index Q9 default: NO step-level ceiling is placed on this
+      # step). A leg's 40 minutes hold: pre-step time (checkout, toolchain, `go
+      # vet` on the cli-2 leg) + this step (compilation plus every package binary;
+      # `-timeout 35m` bounds ONE binary, not the step) + the separate always()
+      # compress/upload steps below. Measured in dispatched run 39729541531 -
+      # a FAILING run (workflow_dispatch, branch WT-cloud-windows-portability-
+      # repair, not main), n=1, windows legs only, so none of these figures
+      # bounds a green leg: pre-step at most 4m21s (cli-2), this step up to
+      # 37m28s (cli-1) on failing legs, evidence tail 6-8s, and cli-1 used
+      # 39m09s of the 40. A future ceiling T on this step must satisfy
+      # T + 5 (pre-step) + 1 (evidence) <= 40, i.e. T <= 34
+      # (TestStageCeilingBelowJobBudget holds that arithmetic); which T, if any,
+      # is decision-index Q9, and a green-run re-measurement is the unmeasured
+      # follow-up that would establish the green-leg bound.
+      #
       # The shard's selector and package reach the script ONLY through the
       # SHARD_RUN and SHARD_PKG environment variables. The selectors contain
       # `|`, `$`, `^` and `[^...]`; interpolating them into the script text would
