@@ -435,8 +435,11 @@ func (r *registry) defaultOutputForEvent(event EventType, input *HookInput) *Hoo
 		EventSubagentStop, EventPostToolUseFailure, EventNotification,
 		EventSubagentStart, EventUserPromptSubmit, EventTeammateIdle,
 		EventTaskCompleted, EventWorktreeCreate, EventWorktreeRemove:
-		// These events do NOT use hookSpecificOutput per Claude Code protocol
-		// Return empty JSON {}
+		// Empty-JSON {} defaults: these events carry no registered-handler
+		// default of their own. (PostToolUseFailure's registered handler emits
+		// hookSpecificOutput.additionalContext per SPEC-HOOK-SYNC-ASYNC-001
+		// M4 — that shape rides the handler's own output through
+		// mergeHandlerOutput, not this no-handler default.)
 		return &HookOutput{}
 	case EventPermissionRequest:
 		// PermissionRequest default is empty JSON {} = defer to the normal
