@@ -46,12 +46,8 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 	// Sync user section — name row splice only (AC-WSL-005). The splice is the
 	// ONLY write for a name-only sync: no SetSection, no Save().
 	if prefs.UserName != "" && cfg.User.Name != prefs.UserName {
-		sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-			return fmt.Errorf("create config directory: %w", err)
-		}
-		if err := yamlpatch.PatchFile(filepath.Join(sectionsDir, "user.yaml"),
-			[]yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: prefs.UserName}}); err != nil {
+		if err := yamlpatch.PatchFileAtRoot(projectRoot, filepath.Join(".moai", "config", "sections", "user.yaml"),
+			[]yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: prefs.UserName}}, yamlpatch.RootOptions{ParentPerm: 0o755}); err != nil {
 			return fmt.Errorf("sync user name: %w", err)
 		}
 	}
@@ -80,11 +76,8 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 	}
 
 	if len(langEdits) > 0 {
-		sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-			return fmt.Errorf("create config directory: %w", err)
-		}
-		if err := yamlpatch.PatchFile(filepath.Join(sectionsDir, "language.yaml"), langEdits); err != nil {
+		if err := yamlpatch.PatchFileAtRoot(projectRoot, filepath.Join(".moai", "config", "sections", "language.yaml"),
+			langEdits, yamlpatch.RootOptions{ParentPerm: 0o755}); err != nil {
 			return fmt.Errorf("sync language section: %w", err)
 		}
 	}

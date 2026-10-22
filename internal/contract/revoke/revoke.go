@@ -233,11 +233,47 @@ func writeAtomic(path string, data []byte) error {
 // @MX:ANCHOR: [AUTO] Resume-block reader for revocations.
 // @MX:REASON: kickoff-check (reason revoked), decide precondition (e), and
 // Revoke's idempotence check all decide on its answer.
-func Blocked(root, card, spec, seal string) (bool, error) {
+func Blocked(root, card, spec, seal string) (blocked bool, retErr error) {
+	root = filepath.Clean(root)
 	dir := escalation.RecordDir(root, card)
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
+	r, err := os.OpenRoot(root)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			absent, shapeErr := absentRecordRoot(root)
+			if shapeErr == nil && absent {
+				return false, nil
+			}
+			if shapeErr != nil {
+				err = shapeErr
+			}
+		}
+		return true, fmt.Errorf("list %s: %w", dir, err)
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			blocked = true
+			retErr = errors.Join(retErr, fmt.Errorf("close record root: %w", err))
+		}
+	}()
+	relative := escalation.RecordDir(".", card)
+	exists, err := recordDirectoryExists(r, relative)
+	if err != nil {
+		return true, fmt.Errorf("list %s: %w", dir, err)
+	}
+	if !exists {
 		return false, nil
+	}
+	entries, err := fs.ReadDir(r.FS(), filepath.ToSlash(relative))
+	if errors.Is(err, fs.ErrNotExist) {
+		// A concurrent removal is genuinely absent; Windows also uses this
+		// errno for a non-directory component, which must still block.
+		exists, shapeErr := recordDirectoryExists(r, relative)
+		if shapeErr == nil && !exists {
+			return false, nil
+		}
+		if shapeErr != nil {
+			return true, fmt.Errorf("list %s: %w", dir, shapeErr)
+		}
 	}
 	if err != nil {
 		return true, fmt.Errorf("list %s: %w", dir, err)
@@ -247,7 +283,7 @@ func Blocked(root, card, spec, seal string) (bool, error) {
 			continue
 		}
 		p := filepath.Join(dir, e.Name())
-		data, err := os.ReadFile(p)
+		data, err := r.ReadFile(filepath.Join(relative, e.Name()))
 		if err != nil {
 			return true, fmt.Errorf("read %s: %w", p, err)
 		}
@@ -261,4 +297,45 @@ func Blocked(root, card, spec, seal string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// recordDirectoryExists checks every component beneath the explicitly trusted
+// root, including when the final record directory is missing. Root spellings
+// may contain aliases; child record paths may not.
+func recordDirectoryExists(root *os.Root, dir string) (bool, error) {
+	if !filepath.IsLocal(dir) {
+		return false, fmt.Errorf("record directory %s is outside the root", dir)
+	}
+	current := ""
+	for _, part := range strings.Split(filepath.ToSlash(dir), "/") {
+		current = filepath.Join(current, part)
+		info, err := root.Lstat(current)
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if !info.IsDir() || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+			return false, fmt.Errorf("record directory component %s is not a real directory", current)
+		}
+	}
+	return true, nil
+}
+
+// The supplied root may itself be absent. Follow its trusted alias spelling,
+// but distinguish Windows PATH_NOT_FOUND beneath a regular file from absence.
+func absentRecordRoot(root string) (bool, error) {
+	for current := root; ; current = filepath.Dir(current) {
+		info, err := os.Stat(current)
+		if err == nil {
+			if !info.IsDir() {
+				return false, fmt.Errorf("record root component %s is not a directory", current)
+			}
+			return true, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) || filepath.Dir(current) == current {
+			return false, err
+		}
+	}
 }

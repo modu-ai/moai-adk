@@ -94,7 +94,7 @@ func runWorkflowConfigStep(out io.Writer, projectRoot string) error {
 	if len(edits) == 0 {
 		return nil
 	}
-	if err := yamlpatch.PatchFile(workflowPath, edits); err != nil {
+	if err := yamlpatch.PatchFileAtRoot(projectRoot, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML), edits, yamlpatch.RootOptions{}); err != nil {
 		return fmt.Errorf("patch workflow.yaml: %w", err)
 	}
 	return nil

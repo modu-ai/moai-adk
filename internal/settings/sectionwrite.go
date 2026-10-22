@@ -21,7 +21,6 @@ package settings
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
@@ -109,13 +108,11 @@ func WriteSectionViaSeam(projectRoot, section string, edits []yamlpatch.KeyEdit)
 			return fmt.Errorf("settings: section %q: top-level key %q is outside the section file", section, e.Path[0])
 		}
 	}
-	path := filepath.Join(projectRoot, ".moai", "config", "sections", section+".yaml")
 	// The seam honors PatchFile's greenfield contract for an absent FILE; an
 	// absent sections DIRECTORY (fresh project, no .moai at all) needs the
 	// same tolerance — the typed Save path created it via MkdirAll, and the
 	// seam must not regress that EC-5 surface now that scalar edits route here.
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("settings: create sections directory: %w", err)
-	}
-	return yamlpatch.PatchFile(path, edits)
+	return yamlpatch.PatchFileAtRoot(projectRoot,
+		filepath.Join(".moai", "config", "sections", section+".yaml"), edits,
+		yamlpatch.RootOptions{ParentPerm: 0o755})
 }

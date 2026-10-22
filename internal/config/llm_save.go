@@ -16,6 +16,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 )
 
@@ -38,7 +39,8 @@ func (m *ConfigManager) saveLLM(sectionsDir string) error {
 		}
 		// The file keeps its mode: the current one is passed through. Unlike
 		// PatchFile, PatchFileWithMode also accepts a blank llm.yaml.
-		return yamlpatch.PatchFileWithMode(path, edits, info.Mode().Perm())
+		return yamlpatch.PatchFileAtRoot(m.root, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, "llm.yaml"), edits,
+			yamlpatch.RootOptions{Mode: info.Mode().Perm(), AllowEmpty: true})
 	}
 	return m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM})
 }

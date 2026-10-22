@@ -47,6 +47,8 @@ type KeyEdit struct {
 // 주석(Head/Line/FootComment)·키 순서·미모델링 키는 보존된다. upsert는 명시적으로
 // 편집된 경로에만 적용되며(EC-3), 노드 삭제는 KeyEdit.Remove만 지원한다 (design.md §A.2).
 // edits가 비어 있으면 파일을 건드리지 않고 nil을 반환한다.
+// The caller owns path and its parent spelling. This generic entry point does
+// not provide project containment; project writers use PatchFileAtRoot.
 //
 // REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): when every edit targets an EXISTING
 // scalar, the write takes the line-splice path (lineSplice) — only the target
@@ -85,12 +87,17 @@ func PatchFileWithMode(path string, edits []KeyEdit, perm os.FileMode) error {
 // @MX:NOTE: [AUTO] lenient 분기는 PatchFileWithMode만 탄다. PatchFile의 빈 문서 거부는
 // 기존 계약이고 TestYAMLPatchErrors가 고정하므로 이 분기를 PatchFile로 넓히지 않는다.
 func patchFile(path string, edits []KeyEdit, perm os.FileMode, lenient bool) error {
+	return patchFileWithIO(path, edits, perm, lenient, os.ReadFile, atomicWriteMode)
+}
+
+func patchFileWithIO(path string, edits []KeyEdit, perm os.FileMode, lenient bool,
+	read func(string) ([]byte, error), write func(string, []byte, os.FileMode) error) error {
 	if len(edits) == 0 {
 		return nil
 	}
 
 	greenfield := false
-	data, err := os.ReadFile(path)
+	data, err := read(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("yamlpatch: read %s: %w", path, err)
@@ -120,7 +127,7 @@ func patchFile(path string, edits []KeyEdit, perm os.FileMode, lenient bool) err
 	if out, ok, serr := lineSplice(data, edits); serr != nil {
 		return fmt.Errorf("yamlpatch: %s: %w", path, serr)
 	} else if ok {
-		return atomicWriteMode(path, out, perm)
+		return write(path, out, perm)
 	}
 
 	var doc yaml.Node
@@ -130,7 +137,7 @@ func patchFile(path string, edits []KeyEdit, perm os.FileMode, lenient bool) err
 	// A blank or comment-only file parses to no node at all, so its comments
 	// cannot be re-encoded. The section is appended after the file's own bytes.
 	if lenient && doc.Kind == 0 {
-		return appendSection(path, data, edits, perm)
+		return appendSection(path, data, edits, perm, write)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
 		return fmt.Errorf("yamlpatch: %s: empty or non-document YAML", path)
@@ -162,13 +169,14 @@ func patchFile(path string, edits []KeyEdit, perm os.FileMode, lenient bool) err
 	if err != nil {
 		return fmt.Errorf("yamlpatch: encode %s: %w", path, err)
 	}
-	return atomicWriteMode(path, out, perm)
+	return write(path, out, perm)
 }
 
 // appendSection은 노드가 없는 문서(빈 파일, 주석만 있는 파일)에 edits를 적용한 섹션을
 // 파일 본문 뒤에 덧붙인다. 원본 바이트(주석과 공백)는 그대로 남는다. 편집으로 채워진
 // 매핑이 없으면 파일을 건드리지 않는다.
-func appendSection(path string, data []byte, edits []KeyEdit, perm os.FileMode) error {
+func appendSection(path string, data []byte, edits []KeyEdit, perm os.FileMode,
+	write func(string, []byte, os.FileMode) error) error {
 	section := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	for _, e := range edits {
 		if err := applyEdit(section, e); err != nil {
@@ -186,7 +194,7 @@ func appendSection(path string, data []byte, edits []KeyEdit, perm os.FileMode) 
 	if len(out) > 0 && out[len(out)-1] != '\n' {
 		out = append(out, '\n')
 	}
-	return atomicWriteMode(path, append(out, body...), perm)
+	return write(path, append(out, body...), perm)
 }
 
 // lineSplice applies edits by rewriting only the source lines of the targeted
@@ -517,8 +525,16 @@ func atomicWrite(path string, data []byte) error {
 // 기존 모드 대신 perm으로 고정한다 — 새로 만들 때와 재기록할 때 모두.
 func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 	mode := defaultFilePerm
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
+	if err == nil && info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+		return fmt.Errorf("yamlpatch: stat %s: linked or irregular target", path)
+	}
 	if err != nil {
+		if os.IsNotExist(err) {
+			if shapeErr := checkMissingSectionParents(path); shapeErr != nil {
+				return fmt.Errorf("yamlpatch: stat %s: %w", path, shapeErr)
+			}
+		}
 		// REQ-1 (SPEC-SEAM-GREENFIELD-001): an absent target is greenfield —
 		// the read layer starts from an empty document, so the write creates
 		// the file instead of failing on the stat. Any other stat error
@@ -556,4 +572,24 @@ func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("yamlpatch: rename: %w", err)
 	}
 	return nil
+}
+
+// checkMissingSectionParents keeps Windows PATH_NOT_FOUND from treating a
+// regular-file ancestor as a greenfield target. Genuine missing directories
+// remain absent; CreateTemp retains its existing error when its parent is absent.
+// Parent aliases belong to the generic caller's owned path; project containment
+// and link rejection below a trusted root are provided by PatchFileAtRoot.
+func checkMissingSectionParents(target string) error {
+	for current := filepath.Dir(target); ; current = filepath.Dir(current) {
+		info, err := os.Stat(current)
+		if err == nil {
+			if !info.IsDir() || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+				return fmt.Errorf("section parent %s is not a real directory", current)
+			}
+			return nil
+		}
+		if !os.IsNotExist(err) || filepath.Dir(current) == current {
+			return err
+		}
+	}
 }
