@@ -2,9 +2,9 @@
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial landing into main (integration-window local merge, or the card's pull request where only the primary checkout holds main) -> leader release batch per lead_push_threshold -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-10-18
-updated: 2026-10-21
+updated: 2026-10-23
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

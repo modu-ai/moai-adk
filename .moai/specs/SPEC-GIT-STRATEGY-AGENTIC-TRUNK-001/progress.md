@@ -517,7 +517,18 @@ Residual risks for the sync audit:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-10-23
+sync_commit_sha: "pending-backfill"
+sync_status: audit-ready
+ac_source: .moai/specs/SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001/acceptance.md (tier L)
+b12_self_test_a: pre-emission grep `grep -c 'SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001' CHANGELOG.md` printed `0` (exit 1) — no duplicate entry
+b12_self_test_b: AC live-identifier counter on acceptance.md printed `30` (live=30 excluded=0 ambiguous=0, exit 0); composition: 25 declared criteria AC-AGT-001..025 plus 5 unmarked cross-namespace citations (AC-001, AC-003, AC-005, AC-007, AC-008 — criteria declared by another SPEC's acceptance file, `[REF]` unmarkable because the body is closed to sync-phase edits); the CHANGELOG entry cites the declared count 25
+b12_self_test_c: every file path named in the CHANGELOG entry verified present via `ls` (internal/config/loader_workflow_disposition.go, internal/cli/factory_target_holder.go, internal/cli/factory_card_pr.go, internal/cli/session_worktree_automerge.go, .claude/skills/moai/workflows/sync/delivery.md, the four docs-site pages, the SPEC link)
+changelog_entry_position: CHANGELOG.md `[Unreleased]` `### Added`, first entry
+ac022_judge: `grep -l agentic-trunk` over the four locale moai-sync.md pages printed all four paths, exit 0 (PASS; red cell was ledger E01-family, stdout empty exit 1 on tree f4175587)
+frontmatter_status_transitions.in-progress_to_completed: spec.md frontmatter `status: in-progress` → `status: completed` on the single sync commit (updated: 2026-10-21 → 2026-10-23); plan.md and acceptance.md carry no frontmatter block (Artifact Statelessness) and their bodies are untouched
+canary_compliance_check.docs_4locale: four `moai-sync.md` pages updated in one landing, Korean canonical first, en/ja/zh derived preserving structure; section-count parity held at 46 headings per page (no new headings added); the hns-oss-docs-verify recipe ran before the sync commit (outputs in the sync report)
+mx_tag_validation: sync sub-step — MX tags of the run-phase files stand as committed in M0-M5b (factory_target_holder.go, loader_workflow_disposition.go); no new source files in the sync phase, no tag changes owed
 
 ## §F Phase 4 Mode Selection
 

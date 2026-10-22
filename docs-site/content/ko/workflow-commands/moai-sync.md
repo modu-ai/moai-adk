@@ -110,7 +110,7 @@ Tier S/M은 CI 4 status checks와 pre-push hook이 안전을 받쳐 주므로 ma
 
 ### 브랜치별 전달 동작 (git strategy)
 
-`/moai sync`의 마지막 단계인 push와 PR 전달은 활성 모드의 전략 키가 결정합니다. `.moai/config/sections/git-strategy.yaml`의 `git_strategy.{mode}.workflow`를 읽으며, 값은 `github-flow`와 `git-flow` 둘 중 하나입니다. 세 모드(manual/personal/team) 모두 기본값은 `github-flow`입니다. 이 키가 두 값 어느 쪽도 아니면 전달 단계는 추측하지 않고 문제의 값을 보고하며 멈춥니다.
+`/moai sync`의 마지막 단계인 push와 PR 전달은 활성 모드의 전략 키가 결정합니다. `.moai/config/sections/git-strategy.yaml`의 `git_strategy.{mode}.workflow`를 읽으며, 값은 `github-flow`, `git-flow`, `gitlab-flow`, `release-flow`, `agentic-trunk` 다섯 가지 중 하나입니다. 세 모드(manual/personal/team) 모두 기본값은 `github-flow`입니다. 이 키가 다섯 값 어느 쪽도 아니면 전달 단계는 추측하지 않고 문제의 값을 보고하며 멈춥니다.
 
 `github-flow`에서는 현재 브랜치가 무엇인지에 따라 전달 결과가 갈립니다:
 
@@ -129,6 +129,8 @@ main 브랜치에서 Tier S/M SPEC을 처리한다면 이 동작은 v3.1.2까지
 - **어느 경로에도 맞지 않는 브랜치 상태에서는 sync가 멈춥니다.** 종전에는 브랜치 상태와 무관하게 main으로 push해 완주했지만, 이제는 아무것도 push하지 않고 상태를 보고합니다. 되던 sync가 갑자기 멈춘다면 이 지점부터 확인하세요.
 
 `git-flow`를 선택하면 브랜치 이름으로 경로가 갈립니다 — `feature/*`는 develop을 대상으로 PR을 만들고, `release/*`와 `hotfix/*`는 main을 대상으로 PR을 만듭니다 (hotfix는 머지 뒤 develop 백머지 PR이 하나 더 생깁니다). `WT-*` 브랜치는 PR 없이 통합 워크트리에서 머지합니다.
+
+`agentic-trunk`를 선택하면 카드 인계는 `main`을 보유한 트리가 어디인지(대상 보유 트리, target holder)에 따라 갈립니다. 이 값의 통합 대상은 고정 `main`이며, `develop_branch` 같은 다른 키가 바꿀 수 없습니다. 전용 통합 워크트리가 `main`을 보유하고 있으면 완료된 카드는 통합 창구의 로컬 머지로 착지하고(`moai factory complete`가 내부에서 `moai integration merge --card`를 호출), 카드별 PR은 만들어지지 않습니다. `main`을 보유한 트리가 프라이머리 체크아웃뿐이라면 전용 착지 면이 없는 상태이므로, `moai factory complete`가 카드의 PR을 열고 병합은 리더가 실행합니다 — 자동 병합 요청은 붙지 않습니다. 어느 경로든 레인이 직접 push하지 않으며, 리더가 `lead_push_threshold`회 착지마다 `release/main-batch-YYYYMMDD` 브랜치로 배치 릴리스를 진행하고 릴리스에는 태그를 붙입니다.
 
 이전 버전의 설정 키 `github.spec_git_workflow` (system.yaml)는 폐기 예정이며 v3.3.0에서 제거됩니다. 앞으로는 위의 `git_strategy.{mode}.workflow`가 정본입니다.
 
