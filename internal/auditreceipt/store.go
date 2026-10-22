@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -350,11 +351,25 @@ func newRandomToken() (string, error) {
 // releaseLedgerLock removes the lockfile only when it still carries this
 // holder's token: a successor that broke the stale lock and acquired its own
 // wrote its own token, and this holder's release must leave the successor's
-// lock alone.
+// lock alone. On Windows deletion targets the same open file identity as the
+// token read; a reused pathname can never redirect an old release to its heir.
+//
+// @MX:NOTE: Keep the read handle through removal: a path-based retry can delete a successor claim.
 func releaseLedgerLock(lockPath, token string) {
-	data, err := atomicfile.ReadFile(lockPath)
+	releaseLedgerLockReading(lockPath, token, io.ReadAll)
+}
+
+// The reader parameter permits a deterministic ownership handoff between the
+// token read and removal, without replacing process-global filesystem behavior.
+func releaseLedgerLockReading(lockPath, token string, read func(io.Reader) ([]byte, error)) {
+	f, err := openLedgerLockForRelease(lockPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	data, err := read(f)
 	if err == nil && strings.TrimSpace(string(data)) == token {
-		_ = atomicfile.RemoveFile(lockPath)
+		_ = removeOpenedLedgerLock(f)
 	}
 }
 

@@ -1,12 +1,18 @@
 # 패키지 모듈 상세
 
+## Windows 감사 락 해제의 소유권 경계 — PR #1883
+
+`internal/auditreceipt/store.go`는 ledger 토큰을 읽은 파일을 해제까지 열어 둔다. `internal/auditreceipt/ledger_lock_release_windows.go`는 기존 `golang.org/x/sys/windows` 의존성으로 읽기·삭제 권한의 핸들을 열고 `SetFileInformationByHandle(FileDispositionInfo)`로 그 객체만 삭제한다. 오래된 소유자가 읽은 뒤 이름이 재사용되어도 새 claim을 삭제하지 않는다. `internal/auditreceipt/ledger_lock_release_unix.go`는 POSIX 경로 기반 unlink 전에 `os.SameFile`로 읽은 객체와 현재 경로를 대조한다. POSIX 대조와 unlink 사이가 원자적이라는 보장은 추가하지 않는다.
+
+`internal/atomicfile/claim_windows.go`의 `CreateExclusive` 삭제 공유는 바꾸지 않는다. 장기 보유 state lock과 reclaim guard의 열린 핸들·삭제 대기 처리 경계는 유지하며, 게시 직후 닫는 감사 claim의 해제만 읽은 객체의 identity에 묶는다. 이 설명은 소스 계약이며 Windows 실행 성공 판정은 원격 CI가 담당한다.
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.
 
 | 경로 | 현재 책임과 경계 |
 |---|---|
-| `internal/cli/update/skillresidue` | 업데이트 뒤 남은 빈 스킬 폴더 정리와 퇴역 폴더 보존을 담당한다. 이름 변경은 기존 대상을 덮어쓰지 않는다. 표준 라이브러리만 의존한다. |
+| `internal/cli/update/skillresidue` | 업데이트 뒤 남은 빈 스킬 폴더 정리와 퇴역 폴더 보존을 담당한다. 이름 변경은 기존 대상을 덮어쓰지 않는다. Linux·Darwin에서는 `golang.org/x/sys/unix`, Windows에서는 `golang.org/x/sys/windows`로 디렉터리 핸들에 묶인 원자적 no-replace 이동을 수행한다. 다른 플랫폼은 미지원 이동을 거절하고 기존 link 기반 fallback을 사용한다. |
 | `internal/testguard` | 테스트의 HOME 접근을 고립시키고 실제 사용자 HOME을 건드리는 소스 패턴을 검사한다. 제품 런타임이 아니라 테스트를 지원하는 패키지다. |
 | `internal/cli/factory_card_metadata.go` | `set-spec`과 `reclassify`의 상태·권한 검증, 기록과 큐의 수렴, 보상 복구와 감사 이벤트를 담당한다. 감사 쓰기 실패는 성공으로 숨기지 않고 별도 오류로 알린다. |
 | `internal/cli/integration_candidate.go` | 후보 merge-tree를 만들고 `ci/<card>`에 게시한 뒤 실제 CI 관측 결과를 기록한다. pending과 green을 구분하며 후보 증거를 착지 검증에 넘긴다. |
