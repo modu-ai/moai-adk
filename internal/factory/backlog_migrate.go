@@ -905,7 +905,7 @@ func migrateLegacyBacklog(queuePath string) error {
 // exposing its canonical name. Caller holds the destination queue lock.
 func publishBacklogRecord(queuePath string, record *BacklogRecord, quarantine bool) error {
 	dbPath := backlogSQLitePath(queuePath)
-	f, err := privatefile.CreateTemp(filepath.Dir(dbPath), ".backlog-migrate-*.db")
+	f, err := privatefile.CreateTemp(filepath.Dir(dbPath), ".backlog-migrate-")
 	if err != nil {
 		return err
 	}
