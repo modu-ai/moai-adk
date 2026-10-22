@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "tree_root": "/workspace/moai-adk/.moai/worktrees/cloud-release-repair",
-  "dirty": true,
-  "content_fingerprint": "e7066b4203f2557962df17f721c8c9ceff27649c5385a063688fd08661baaa19",
+  "commit_sha": "2bc2198026e9622cf5b68b2cd8fd47868b073351",
+  "dirty": false,
   "described_roots": [
     "internal",
     "cmd",
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-22T02:30:43Z"
+  "generated_at": "2026-10-22T04:02:37Z"
 }
