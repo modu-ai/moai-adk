@@ -68,8 +68,12 @@ main ─────────────────────────
 
 Rules:
 - One standing trunk `main`; card worktrees branch from it
-- Cards land serially in the integration worktree (`--no-ff`, no per-card PR)
-- The leader opens one batch pull request per `lead_push_threshold` landings
+- Two delivery routes, decided by which tree holds `main`: when a dedicated
+  integration worktree holds it, cards land serially there (`--no-ff`, no
+  per-card pull request); when only the primary checkout holds it,
+  `moai factory complete` opens the card's pull request and the leader merges it
+- With the dedicated integration worktree, the leader opens one batch pull
+  request per `lead_push_threshold` landings
 - Lanes take no per-version release branch and run no lane push
 
 ### Trunk-Based (CI/CD Heavy)

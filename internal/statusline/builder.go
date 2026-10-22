@@ -292,15 +292,20 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	if input != nil {
 		// B3 (SPEC-STATE-ANCHOR-001 REQ-SA-006): the goal state is read from
 		// the anchored root, so a session that cd'd elsewhere still sees the
-		// project's goal state.
-		data.GoalArmed = resolveGoalArmed(resolveStateAnchor(input), input.SessionID)
+		// project's goal state. The anchor resolves ONCE for both consumers
+		// below (card t1831 card-review round 2): when the payload carries no
+		// workspace.project_dir and no worktree.original_cwd, resolving the
+		// anchor runs Git (stateanchor.FromDirectory), so a second resolution
+		// here would add a second Git execution to every render.
+		anchor := resolveStateAnchor(input)
+		data.GoalArmed = resolveGoalArmed(anchor, input.SessionID)
 
 		// The workflow label (card t1831, REQ-AGT-013) reads the same
 		// anchored root — config follows state, the same rule the config-root
 		// seam states — through the validated reader. One small yaml read, no
 		// git process; an empty answer withholds the label and the render
 		// stays byte-identical.
-		data.WorkflowLabel = resolveWorkflowLabel(resolveStateAnchor(input))
+		data.WorkflowLabel = resolveWorkflowLabel(anchor)
 	}
 
 	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)

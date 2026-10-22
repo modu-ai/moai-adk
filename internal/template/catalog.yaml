@@ -378,7 +378,7 @@ catalog:
                 - name: moai-ref-git-workflow
                   tier: optional-pack:delivery
                   path: templates/.claude/skills/moai-ref-git-workflow/
-                  hash: 29839d9f8535ad806ce51ba14260d00dc104bccc968e90859c0dc3d8fc7a0974
+                  hash: 48e5fca241aeb2707f75d93078d2e2d7ca9ddfde7994bf2639ebbf22c0887045
                   version: 1.0.0
             agents:
                 - name: manager-git

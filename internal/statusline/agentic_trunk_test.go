@@ -7,6 +7,7 @@ package statusline
 // extra git invocation (REQ-PLO-009's cases, pinned here for composition).
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -183,4 +184,142 @@ func TestAgenticTrunkStatuslineNoExtraGit(t *testing.T) {
 		t.Errorf("the provider/render path invoked git %d time(s): %q — the label reads the yaml, never git",
 			len(strings.Split(strings.TrimSpace(string(invoked)), "\n")), invoked)
 	}
+}
+
+// agenticTrunkShim installs the logging git shim and returns the log path.
+func agenticTrunkShim(t *testing.T) string {
+	t.Helper()
+	shimBin := t.TempDir()
+	log := filepath.Join(shimBin, "git-calls.log")
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatalf("locate real git: %v", err)
+	}
+	shim := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + log + "\nexec " + realGit + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(shimBin, "git"), []byte(shim), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", shimBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return log
+}
+
+// agenticTrunkShimReset clears the shim's log so the next measurement window
+// is exact.
+func agenticTrunkShimReset(t *testing.T, log string) {
+	t.Helper()
+	if err := os.Remove(log); err != nil && !os.IsNotExist(err) {
+		t.Fatalf("reset git-call log: %v", err)
+	}
+}
+
+// agenticTrunkShimCalls reads the shim's log, counting one entry per line.
+func agenticTrunkShimCalls(t *testing.T, log string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(log)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		t.Fatalf("read git-call log: %v", err)
+	}
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "\n")
+}
+
+// agenticTrunkWalkUpCount counts the git resolutions in the shim log: every
+// entry carrying both --path-format=absolute and --git-common-dir is one
+// gitcore.ResolveGitDirs first-command — the shape a state-anchor walk-up
+// (and homestate's project-root canonicalization) runs exactly once per
+// resolution, whatever the machine's symlink spelling of the path.
+func agenticTrunkWalkUpCount(t *testing.T, log string) int {
+	t.Helper()
+	n := 0
+	for _, line := range agenticTrunkShimCalls(t, log) {
+		if strings.Contains(line, "--path-format=absolute") && strings.Contains(line, "--git-common-dir") {
+			n++
+		}
+	}
+	return n
+}
+
+// agenticTrunkBuilder constructs a builder whose providers spawn nothing:
+// the git and update collectors are mocks, so every git invocation the
+// collect pass makes is the shim's, never a collector's.
+func agenticTrunkBuilder(t *testing.T) Builder {
+	t.Helper()
+	return New(Options{
+		GitProvider:    &mockGitProvider{data: &GitStatusData{Branch: "main", Available: true}},
+		UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "1.0.0"}},
+		ThemeName:      "default",
+		Mode:           ModeDefault,
+		NoColor:        true,
+	})
+}
+
+// TestAgenticTrunkStatuslineBuilderExecCount is the card-review round-2
+// builder-level guard (card t1831): the workflow label shares the state
+// anchor resolution with the GoalArmed lookup, so a collect pass whose
+// payload carries no project_dir — the shape whose anchor resolution runs
+// Git — performs the walk-up the SAME number of times whether or not the
+// label has a value to display, and the total is the count the pre-existing
+// consumers (board root, goal/label pair, quota fallback, homestate
+// canonicalization) already required.
+//
+// Decomposition of the expected counts on a plain (git-dir == common-dir)
+// fixture, measured and attributed, so a future count change can be
+// attributed line by line:
+//   - stdin-anchored payload: 1 resolution = the queue-root probe the backlog
+//     counts run (a ResolveGitDirs + its show-toplevel follow-up); every
+//     stateanchor consumer reads the anchor from stdin with zero git.
+//   - CWD-only payload: 4 resolutions = that same queue-root probe + THREE
+//     stateanchor walk-ups: board root (resolveBoardRoot), the SHARED
+//     goal/label resolution, and the quota-fallback anchor (the
+//     RateLimits-absent branch). Before the round-2 fix the goal and label
+//     resolved separately, making the walk-ups 4 and the total 5.
+func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
+	log := agenticTrunkShim(t)
+	root := statuslineGitStrategyFixture(t, "agentic-trunk")
+	// The fixture must be a real git repository: the no-project_dir payload
+	// resolves its anchor through the git walk-up.
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	t.Run("anchor from stdin: stateanchor consumers add no walk-up", func(t *testing.T) {
+		builder := agenticTrunkBuilder(t)
+		db, ok := builder.(*defaultBuilder)
+		if !ok {
+			t.Fatalf("New returned %T, want *defaultBuilder", builder)
+		}
+		input := &StdinData{Workspace: &WorkspaceInfo{ProjectDir: root, CurrentDir: root}}
+		agenticTrunkShimReset(t, log)
+		data := db.collectAll(context.Background(), input)
+		if data.WorkflowLabel != "agentic-trunk" {
+			t.Errorf("WorkflowLabel = %q, want agentic-trunk (label read through the shared anchor)", data.WorkflowLabel)
+		}
+		if got := agenticTrunkWalkUpCount(t, log); got != 1 {
+			t.Errorf("collect pass ran %d git resolution(s) with the anchor on stdin, want exactly 1 (the queue-root probe; the stateanchor consumers must read the stdin anchor with zero git)", got)
+		}
+	})
+
+	t.Run("anchor from the git walk-up: goal and label share one resolution", func(t *testing.T) {
+		builder := agenticTrunkBuilder(t)
+		db := builder.(*defaultBuilder)
+		// No Workspace: every stateanchor consumer falls through project_dir
+		// and original_cwd to the git walk-up. The GoalArmed lookup and the
+		// workflow label share that one resolution — an unshared label would
+		// make the count 4.
+		input := &StdinData{CWD: root}
+		agenticTrunkShimReset(t, log)
+		data := db.collectAll(context.Background(), input)
+		if data.WorkflowLabel != "agentic-trunk" {
+			t.Errorf("WorkflowLabel = %q, want agentic-trunk (resolved through the walked-up anchor)", data.WorkflowLabel)
+		}
+		if got := agenticTrunkWalkUpCount(t, log); got != 4 {
+			t.Errorf("collect pass ran %d git resolution(s) for the CWD-only payload, want exactly 4 (the queue-root probe + 3 stateanchor walk-ups: board root, the SHARED goal/label anchor, the quota-fallback anchor; an unshared goal/label pair makes it 5)", got)
+		}
+	})
 }
