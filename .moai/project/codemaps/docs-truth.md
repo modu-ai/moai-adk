@@ -14,12 +14,11 @@
 > 통과하는 동안 이 파일만 조용히 낡을 수 있다. **재생성 때마다 이 파일을 손으로
 > 함께 갱신하고, 그 사실을 재생성 증거와 분리해 기록한다.**
 >
-> **마지막 손 갱신**: 2026-09-22, 워크트리 `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`; 2026-09-29 자동 임무 판정 역할의 manager-todo 개명 반영.
-> §1 에이전트 파일 목록(13 retained — 자동 임무 판정 역할이 manager-todo로 개명·재정의됨), §2 상태 enum 개수,
-> §3 필수 필드 12개와 줄 위치, §4.1 `moai --help` 렌더 그룹(HEAD에서 빌드한 바이너리로 다시 렌더 — 그룹 불변)과
-> 등록 수치, §4.2 명령 파일 목록, §5 GLM 상수 값을 이 트리에서 다시 검증했다.
-> §4.1의 `codex` 런처 서술(verb 라우팅·init-offer 게이트)은 이번에 다시 읽지 않았고, 그 Source 문구의
-> 과거 검증일을 따른다.
+> **마지막 손 갱신**: 2026-10-23, 워크트리 `.moai/worktrees/t1909`, 브랜치 `WT-moai-codex-codexcmd`, HEAD `d5c083e86d`; card t1909 재생성 판.
+> §4.1의 `codex` 런처 단락을 감사 부모 현행 서술로 갈았고(삭제된 런처 서술은 사료로 보존), `moai --help`
+> 렌더 그룹을 이 트리 빌드 바이너리로 다시 렌더해 t1909 판 재렌더 노트를 남겼다. 등록 수치 넷(AddCommand
+> 252 · rootCmd 68 · root.go init() 29 · cli 비테스트 481/루트 382)을 같은 트리에서 다시 쟀다.
+> §1·§2·§3·§4.2·§5는 이번 카드 변경과 무관해 앞 판(2026-09-22, HEAD `0314801c2`) 검증을 따른다.
 
 ---
 
@@ -129,7 +128,13 @@ Top-level verbs rendered by `moai --help`, in the render's own grouping (re-rend
 
 Additional note: `statusline` is a root-registered command but `Hidden: true` in `moai --help`; `help` and `completion` are cobra-generated. The `run` verb exists ONLY as a `moai migration` subcommand (`internal/cli/migration.go`) — there is NO standalone `moai run` or `moai sync` root command; the plan/run/sync workflow lives in the `/moai` Claude Code skill set (§4.2).
 
-**Source:** `moai --help` rendered output of a binary built from HEAD `0314801c2` (2026-09-22) + `grep -rn 'AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**220** non-test calls) + `grep -rn 'rootCmd.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**66** root registrations across the package; **31**의 `rootCmd.AddCommand`가 `internal/cli/root.go`의 `init()` 안에 있다 — +1은 숨은 `newJevSuggestCmd()`) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**325**; 앞 판 표기 315는 t1066 이전 수치였다). **t1443 판 재측정(2026-10-02, HEAD `4bf547bca` 트리)**: AddCommand **239** · rootCmd.AddCommand **66** 불변 · root.go init() **30**(숨은 제안 명령 철수 반영 — 위 정정 문단과 일치) · cli 비테스트 파일 **402**(루트 321). 등록 줄 diff는 앵커 `c2703f698` 이후 0 — 동사 조성 변화 없음(위 표 유효). **t1456 판 재측정(2026-10-03, HEAD `5501c06af` 트리)**: AddCommand **239** · rootCmd.AddCommand **66** · root.go init() **30** 전부 불변(`moai factory relaunch`는 기존 등록 줄 인자 행, `moai verify audit-plan`은 `verifyExtraCommands` 레지스트리 합류 — 동사 조성의 하위 동사 확장일 뿐 위 표의 루트 동사 유효) · cli 비테스트 파일 **406**(루트 325).
+> **t1909 판 재렌더(2026-10-23, HEAD `d5c083e86d` 트리에서 빌드한 바이너리).** 위 표의 그룹 조성이
+> 바뀌었다 — COMMANDS에 `bundle`·`contract`·`decision`이 더했고, TOOLS에서 `model`(t1246 은퇴 잔존
+> 표기 정정)·`skills`·`tool`(둘 다 card t1909 철수)이 빠지고 `jev`·`ci-verdict`·`paths`가 더했다.
+> LAUNCH COMMANDS는 `cc`·`glm`·`codex` 셋이지만 `codex`는 감사 부모다(§ 아래 런처 단락).
+> 등록 수치는 아래 Source 문단의 t1909 판 재측정을 따른다.
+
+**Source:** `moai --help` rendered output of a binary built from HEAD `0314801c2` (2026-09-22) + `grep -rn 'AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**220** non-test calls) + `grep -rn 'rootCmd.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**66** root registrations across the package; **31**의 `rootCmd.AddCommand`가 `internal/cli/root.go`의 `init()` 안에 있다 — +1은 숨은 `newJevSuggestCmd()`) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**325**; 앞 판 표기 315는 t1066 이전 수치였다). **t1443 판 재측정(2026-10-02, HEAD `4bf547bca` 트리)**: AddCommand **239** · rootCmd.AddCommand **66** 불변 · root.go init() **30**(숨은 제안 명령 철수 반영 — 위 정정 문단과 일치) · cli 비테스트 파일 **402**(루트 321). 등록 줄 diff는 앵커 `c2703f698` 이후 0 — 동사 조성 변화 없음(위 표 유효). **t1456 판 재측정(2026-10-03, HEAD `5501c06af` 트리)**: AddCommand **239** · rootCmd.AddCommand **66** · root.go init() **30** 전부 불변(`moai factory relaunch`는 기존 등록 줄 인자 행, `moai verify audit-plan`은 `verifyExtraCommands` 레지스트리 합류 — 동사 조성의 하위 동사 확장일 뿐 위 표의 루트 동사 유효) · cli 비테스트 파일 **406**(루트 325). **t1909 판 재측정(2026-10-23, HEAD `d5c083e86d` 트리)**: AddCommand **252** · rootCmd.AddCommand **68** · root.go init() **29**(skills·tool 두 등록 철수 반영) · cli 비테스트 파일 **481**(루트 **382** — card t1909가 24개를 빼고 2개를 더한 뒤). 위 표의 그룹 조성은 앞 문단의 t1909 판 재렌더 노트를 따른다.
 
 HOME 상태의 사용자 진입점은 `moai migrate home-state`입니다. 기본 실행은 dry-run이고,
 실제 쓰기는 `--apply --verified-live`를 함께 요구합니다. 복구 표면은 하위 명령 `recover`와
@@ -137,9 +142,9 @@ HOME 상태의 사용자 진입점은 `moai migrate home-state`입니다. 기본
 `moai factory handoff recover-resume --id <id> --expected-token <token> --decision <fail|requeue>`입니다.
 이 명령의 존재는 운영 데이터 이전 완료를 뜻하지 않습니다.
 
-The `codex` launcher: closed-set verb routing `{bare, cli, app}` (launch, `--spawn` optional, `-w <worktree>` optional, `--` passthrough) × `{status}` (readout, rc 0, starts nothing); an unknown token is rejected with a one-line usage diagnostic (rc 1), never routed to a launch. Downstream of routing, an argv-translation table forwards a verb to the child only where it names a real codex subcommand — `app` is forwarded, the bare form and `cli` are moai-side synonyms and are not, so the child receives only the operator's own tail. `-w` is consumed by moai (it points the child's working directory at an EXISTING worktree and never creates one) and is not forwarded. All three launching forms pass through ONE init-offer gate function immediately before launching — the gate takes no `--spawn` parameter, accepts exactly `y`/`yes` at its prompt, exits 130 on decline (cancel, not error) and 1 on failure or a non-interactive session (report only, no prompt issued), and on acceptance delegates to the `moai init --agent codex` wiring generator exactly once, then links `AGENTS.md` ↔ `CLAUDE.md` (connection-only: at most one appended `@AGENTS.md` / `@CLAUDE.local.md` directive per file, path-containment guard runs before any read or write, writes are per-file temp+rename, idempotent on re-run).
+The `codex` command (t1909 판 — **런처가 아니라 감사 부모다**): `codexCmd`는 `rootCmd`에 등록되지만 RunE가 없어 어느 verb도 일반 Codex 실행을 시작하지 않는다. 남는 서브커맨드는 `codex audit <role> [--out <path>]`와 `codex role-audit` 둘이며(`codex_audit_launch.go`의 `init()`이 등록 — 읽기 전용 `codex exec -s read-only` 감사 런처), 둘 다 `-c`로 MCP 서버를 끄는 감사 인자와 `.moai/reports/` 리포트 경로 제한을 공유한다. `moai codex`를 동사 없이 부르면 아무것도 시작하지 않는다. **아래 단락은 삭제된 런처의 기록이다.** 런처는 closed-set verb routing `{bare, cli, app}` (launch, `--spawn` optional, `-w <worktree>` optional, `--` passthrough) × `{status}` (readout, rc 0, starts nothing)였고, 알 수 없는 토큰은 한 줄 사용 진단(rc 1)으로 거부했다. argv 번역 표는 실제 codex 서브커맨드 이름만 자식에게 전달했고(`app`은 전달, bare·`cli`는 moai 쪽 동의어라 미전달), `-w`는 moai가 소비해 존재하는 워크트리만 열었다(새 트리를 만들지 않는다). 세 실행 형태는 모두 실행 직전 하나의 init-offer 게이트 함수를 통과했다 — `y`/`yes`만 받고, 거절은 130(cancel), 실패·비대화형은 1(보고만, 프롬프트 없음), 수락 시 `moai init --agent codex` 배선 생성기를 한 번만 돌린 뒤 `AGENTS.md` ↔ `CLAUDE.md`를 연결했다(connection-only: 파일당 `@AGENTS.md` / `@CLAUDE.local.md` 지시문 최대 한 줄, 경로 포함 가드가 모든 읽기·쓰기에 선행, 파일별 temp+rename 쓰기, 재실행 멱등).
 
-**Source (gate):** `internal/cli/codex_launcher.go` (verb routing, single gate call site in `runCodexLaunch`), `internal/cli/codex_init.go` (gate + seams), `internal/cli/codex_contract.go` (link contract). Verified 2026-08-28 by direct read; the routing and argv-translation sentences re-verified 2026-09-01 by direct read of `codexVerbRouting` / `codexChildSubcommand` on the tree that reversed the default.
+**Source (gate):** `the retired codex launcher (removed card t1909)` (verb routing, single gate call site in `runCodexLaunch`), `the retired codex init surface (removed card t1909)` (gate + seams), `the retired codex link contract (removed card t1909)` (link contract). Verified 2026-08-28 by direct read; the routing and argv-translation sentences re-verified 2026-09-01 by direct read of `codexVerbRouting` / `codexChildSubcommand` on the tree that reversed the default. **t1909 판: 위 세 소스는 트리에서 삭제됐다** — 현행 감사 부모의 Source는 `internal/cli/codex_cmd.go`(등록)와 `internal/cli/codex_audit_launch.go`(서브커맨드·런처)다.
 
 ### §4.2 `/moai` Claude Code skill set (17 commands)
 

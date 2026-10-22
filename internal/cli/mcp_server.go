@@ -114,7 +114,6 @@ func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
-	defer stopCodexBackgroundJobs()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
 	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
@@ -357,65 +356,6 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithDescription("Probe the local codex installation: exec.LookPath + codex --version + auth-provider classification (ChatGPT / apiKey / provider / unknown) + the current enable_review_gate toggle state. Pure Go — no Node bridge."),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexSetup)
-
-	// --- codex task delegation + job lifecycle (SPEC-CODEX-PHASE2-001 M5) ---
-	//
-	// Each tool name is written as a quoted literal here, matching the shape
-	// "codex_audit" / "codex_setup" use above. The handlers carry the same names
-	// as constants (codexTaskToolName, codexJob*ToolName); the two cannot drift,
-	// because TestCodexJobTools_RegistrationShape looks each registered tool up
-	// BY the constant.
-	//
-	// The read-only hints below are stated explicitly, including the `false`
-	// ones. mcp.NewTool already seeds ReadOnlyHint to false, so the write tools
-	// would carry the right value without the call — but a hint that is correct
-	// only by inheriting a library default is indistinguishable from one nobody
-	// considered, and REQ-CX2-013 is a statement about what each tool DOES.
-
-	// codex_task → handleCodexTask (REQ-CX2-006/007/008). Drives a codex turn
-	// with the caller's prompt. NOT read-only: it starts a turn, and with the
-	// project opted in via workflow.codex.task.allow_write it can modify the
-	// working tree. Fail-open on a missing codex.
-	add("codex_task", mcp.NewTool(
-		"codex_task",
-		mcp.WithDescription("Delegate a coding or investigation task to codex. Returns the completed output when background is false, or a job id (observable via codex_job_status / codex_job_result, stoppable via codex_job_cancel) when background is true. Writing the working tree requires the project opt-in workflow.codex.task.allow_write; without it the turn runs read-only and the result says the write was not honored. codex is OPTIONAL; a missing or unavailable codex yields a structured fail-open result."),
-		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give codex.")),
-		mcp.WithString("project_root", mcp.Required(), mcp.Description("Required. The project or worktree root to act on — pass your own `git rev-parse --show-toplevel`. Must be a registered worktree of this server's repository (the primary checkout included); another repository or an unregistered directory is refused with the same verification as codex_role_audit, and an absent or empty value is refused rather than defaulted to the primary checkout. The thread's cwd, the write opt-in config, and the job registry all resolve under this root.")),
-		mcp.WithBoolean("background", mcp.Description("Run the turn in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
-		mcp.WithBoolean("write", mcp.Description("Request that codex be allowed to modify the working tree. Honored only when the project has opted in (workflow.codex.task.allow_write: true); otherwise the turn runs read-only and the result states the refusal.")),
-		mcp.WithBoolean("resume_last", mcp.Description("Continue a recorded codex thread instead of opening a new one. With work_key, only records carrying that work_key are considered. Without a selector, the call resumes the thread only when exactly one thread is recorded; when more than one thread is recorded it is refused (error_code resume_ambiguous) with candidates to pass back as thread_id or work_key. When no thread is recorded, a new one is opened and the result says so.")),
-		mcp.WithString("thread_id", mcp.Description("Resume exactly this codex thread. Limited to threads recorded in this project's codex job registry; any other id is refused (error_code thread_not_recorded) without starting codex. Takes precedence over resume_last and work_key.")),
-		mcp.WithString("work_key", mcp.Description("Caller-chosen work-item key (for example a card id), up to 128 bytes. Recorded on background jobs, and scopes resume_last to records carrying this work_key, so parallel work items do not resume each other's threads.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleCodexTask)
-
-	// codex_job_status → handleCodexJobStatus (REQ-CX2-009). Reads one record.
-	add("codex_job_status", mcp.NewTool(
-		"codex_job_status",
-		mcp.WithDescription("Read a codex job's record (status, timestamps, thread id, turn id, pid, mode, request summary). An unknown or unreadable job is a structured result, not a failed call."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleCodexJobStatus)
-
-	// codex_job_result → handleCodexJobResult (REQ-CX2-010). Reads one record;
-	// never waits for the turn.
-	add("codex_job_result", mcp.NewTool(
-		"codex_job_result",
-		mcp.WithDescription("Read a codex job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleCodexJobResult)
-
-	// codex_job_cancel → handleCodexJobCancel (REQ-CX2-011/012). NOT read-only:
-	// it interrupts a turn and may terminate the process this server spawned for
-	// the job. It signals ONLY that process — a record this server lifetime did
-	// not start is refused rather than signalled.
-	add("codex_job_cancel", mcp.NewTool(
-		"codex_job_cancel",
-		mcp.WithDescription("Stop a running codex job: sends turn/interrupt on that job's own session and, if the turn does not end within a bounded grace window, terminates the codex process this server spawned for it. A job this server lifetime did not start is refused rather than signalled; an already-terminal job returns its status and sends nothing."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleCodexJobCancel)
 
 	// --- Codex read-only role launcher (codex_role_audit start/status/result) ---
 	//

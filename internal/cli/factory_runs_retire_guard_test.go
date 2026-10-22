@@ -231,42 +231,6 @@ func TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun(t *testing.T) {
 	})
 }
 
-// AC-RRG-007 — relaunch --from-run leaves a run holding cards active.
-func TestRelaunchFromRunLeavesRunWithCardsActive(t *testing.T) {
-	root := runOwnerSandbox(t)
-	t.Chdir(root)
-	deadPID, deadStart := deadOwnerIdentity(t)
-	seedRun(t, root, "runD", deadPID, deadStart)
-	seedCardRows(t, root, "runD", [3]string{"cardA", "run", "lane-1"}, [3]string{"cardB", "picked", ""})
-
-	outcome := relaunchRetireFromRun(t.Context(), "runD")
-	if !strings.Contains(outcome, "left active") || !strings.Contains(outcome, "2 in-progress cards") {
-		t.Fatalf("outcome = %q, want left active (2 in-progress cards)", outcome)
-	}
-	if outcome != "run runD: left active (2 in-progress cards)" {
-		t.Fatalf("outcome = %q", outcome)
-	}
-
-	captured := captureRelaunchLaunch(t)
-	stdout, stderr, err := runRelaunch(t, "--provider", "cc", "--from-run", "runD")
-	if err != nil {
-		t.Fatalf("relaunch: %v", err)
-	}
-	if !strings.Contains(stdout+stderr, "2 in-progress cards") {
-		t.Errorf("verb output %q lacks the outcome", stdout+stderr)
-	}
-	if want := [][]string{{"cc", "-l"}}; !reflect.DeepEqual(*captured, want) {
-		t.Errorf("launch argv = %v, want %v", *captured, want)
-	}
-	if got := runStatusOf(t, root, "runD"); got != "active" {
-		t.Errorf("status = %q, want active", got)
-	}
-	if n := retiredEventCount(t, root, "runD"); n != 0 {
-		t.Errorf("run.retired events = %d, want 0", n)
-	}
-}
-
-// AC-RRG-008 (regression guard) — `moai factory runs` has exactly one flag.
 func TestFactoryRunsHasNoForceFlag(t *testing.T) {
 	cmd := newFactoryRunsCommand()
 	var names []string

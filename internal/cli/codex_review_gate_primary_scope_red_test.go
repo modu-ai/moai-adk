@@ -96,12 +96,11 @@ func TestCodexReviewGatePrimaryCheckoutSkip(t *testing.T) {
 }
 
 // TestCodexReviewGatePrimaryPolicySharedByBothPaths pins REQ-CGSC-003: for the
-// SAME session state (the primary checkout, tree_scope review), BOTH automatic
-// paths — the Claude Stop hook (HandleCodexReviewGate) and Codex Stop-chain
-// member 6 (codexReviewMember) — apply the one primary-scope policy and skip.
-//
-// RED on the pre-implementation tree: neither path knows the primary axis, so
-// the gate reviews and the chain takes the receipt route.
+// SAME session state (the primary checkout, tree_scope review), the automatic
+// path — the Claude Stop hook (HandleCodexReviewGate) — applies the one
+// primary-scope policy and skips. (The Codex Stop-chain member-6 arm was
+// removed with the chain, card t1909 step ⑤; the policy pin stays on the gate
+// path.)
 func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 	root := primaryScopeFixture(t)
 
@@ -110,10 +109,9 @@ func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 	gatePath(t, root, root)
 	gateSkipped := len(*skips) == 1 && !p.reviewed()
 
-	got := chainPath(t, root)
-	if !gateSkipped || !chainSkipped(got) {
-		t.Errorf("both automatic paths must skip a primary-checkout tree session; gate skipped=%v (rows %d), chain skipped=%v (outcome %+v)",
-			gateSkipped, len(*skips), chainSkipped(got), got)
+	if !gateSkipped {
+		t.Errorf("the gate path must skip a primary-checkout tree session; gate skipped=%v (rows %d)",
+			gateSkipped, len(*skips))
 	}
 }
 

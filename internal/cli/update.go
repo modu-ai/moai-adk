@@ -606,16 +606,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-009): refresh the Codex wiring in projects
-	// that already carry it — file existence is the standing opt-in, so a
-	// claude-only project gets nothing created. Deliberately BEFORE the
-	// syncSkipped early return below: an "Up to date · Skipping sync" update
-	// still owes a wired project its regeneration pass (AC-CW-008 clause 2),
-	// and the wiring refresh does not depend on template redeploy. A
-	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
-	// inside the helper.
-	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
-
 	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
 	// .agents/skills mirror. SPEC-USER-ASSET-INSTALL-001 (final-class item 6,
 	// AC-011 repeated-update arm): this repair path is TERMINATED — Path B of

@@ -1,6 +1,10 @@
 # 아키텍처 개요
 
-## 현재 소스 기준 — bf0a35f10 (2026-10-22 갱신)
+## 현재 소스 기준 — d5c083e (2026-10-23 갱신, card t1909 판)
+
+기준 커밋은 `d5c083e86d6d206f68735a3a63df69fe561facbb`(card t1909 제거 창 + origin/main 흡수 병합)다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다 — 앞 판과 세 값이 모두 같다. 창의 설명 대상 소스는 60개(추가 3·삭제 24·수정 33)로, 본체는 card t1909의 일반 moai-codex 실행·factory·init 표면 철수다(§ `modules.md` t1909 판 절). 의존성 집계와 `go.mod`·`go.sum`은 창에서 한 줄도 움직이지 않았다. 규모 표의 일곱 값은 아래에서 다시 쟀다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — bf0a35f10 (2026-10-22 갱신)
 
 기준 커밋은 `bf0a35f10e423d8f0768e637b74a58e143a5d7d6`이다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다. 패키지 수에는 테스트를 지원하는 `internal/testguard`와 `internal/skills`도 들어간다. 이 수치는 아래 과거 판의 OS별 집계와 구분한다.
 
@@ -72,18 +76,18 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1663 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 3086 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 174 | `go list ./... \| wc -l` |
-| 최상위 디렉터리 | 89 | `internal` 85(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 512 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
-| 내부 import 엣지 (최상위 집계) | 320 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 비테스트 Go 파일 | 1731 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 3385 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 176 | `go list ./... \| wc -l` |
+| 최상위 디렉터리 | 90 | `internal` 86(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 520 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
+| 내부 import 엣지 (최상위 집계) | 325 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 624 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율은 **1.86 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
-0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
+일곱 값은 모두 t1909 판(d5c083e86d 트리)의 직접 측정값이다. 테스트 대 비테스트 비율은 **1.96 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+0개인 곳은 7개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
 `scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
-`internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
+`internal/escalation/escalationtest`·bugreport의 `captureframesprobe`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
 `internal/skills`는 비테스트 Go 파일이 없는 테스트 전용 디렉터리입니다.
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시
