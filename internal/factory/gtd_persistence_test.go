@@ -6,13 +6,21 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 func TestGTDPersistenceOptInBackupRestoreExportImportAndLifecycle(t *testing.T) {
 	ctx := context.Background()
-	source := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	a, _ := CaptureGTDItem(ctx, source, CaptureInput{Content: "a", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "persist-a"})
-	b, _ := CaptureGTDItem(ctx, source, CaptureInput{Content: "b", Source: "user", SourceAllowed: true, Sensitivity: SensitivitySecret, EventID: "persist-b"})
+	source := newGTDTestStore(t)
+	a, err := CaptureGTDItem(ctx, source, CaptureInput{Content: "a", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "persist-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := CaptureGTDItem(ctx, source, CaptureInput{Content: "b", Source: "user", SourceAllowed: true, Sensitivity: SensitivitySecret, EventID: "persist-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	rel := GTDRelation{SubjectID: a.ItemID, ObjectID: b.ItemID, Kind: RelationRelatedTo, Source: "user", AssertionStatus: "confirmed", SourceRevision: 1, PolicyVersion: "p1"}
 	if err := PutGTDRelation(ctx, source, rel, nil, nil); err != nil {
 		t.Fatal(err)
@@ -27,10 +35,10 @@ func TestGTDPersistenceOptInBackupRestoreExportImportAndLifecycle(t *testing.T) 
 	if err := BackupGTDStore(ctx, source, backup, true); err != nil {
 		t.Fatal(err)
 	}
-	if info, err := os.Stat(backup); err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("backup mode=%v err=%v", info, err)
+	if err := privatefile.Check(backup); err != nil {
+		t.Fatalf("backup native private policy: %v", err)
 	}
-	restored := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	restored := newGTDTestStore(t)
 	if err := RestoreGTDStore(ctx, backup, restored, true); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +53,7 @@ func TestGTDPersistenceOptInBackupRestoreExportImportAndLifecycle(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	imported := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	imported := newGTDTestStore(t)
 	if err := ImportGTD(ctx, imported, raw, true); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +85,7 @@ func TestGTDPersistenceOptInBackupRestoreExportImportAndLifecycle(t *testing.T) 
 
 func TestGTDPersistenceRefusalBranches(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	if err := BackupGTDStore(ctx, store, "relative.db", true); err == nil {
 		t.Fatal("relative backup allowed")
 	}
@@ -116,10 +124,10 @@ func TestGTDPersistenceRefusalBranches(t *testing.T) {
 	if err := BackupGTDStore(ctx, store, backup, true); err == nil {
 		t.Fatal("existing backup destination overwritten")
 	}
-	if err := RestoreGTDStore(ctx, backup, NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json")), false); err == nil {
+	if err := RestoreGTDStore(ctx, backup, newGTDTestStore(t), false); err == nil {
 		t.Fatal("restore without opt-in allowed")
 	}
-	corruptStore := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	corruptStore := newGTDTestStore(t)
 	if err := RestoreGTDStore(ctx, backup, corruptStore, true); err == nil {
 		t.Fatal("corrupt SQLite backup restored")
 	}
@@ -127,7 +135,7 @@ func TestGTDPersistenceRefusalBranches(t *testing.T) {
 	if err := BackupGTDStore(ctx, store, validBackup, true); err != nil {
 		t.Fatal(err)
 	}
-	existingStore := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	existingStore := newGTDTestStore(t)
 	if _, err := CaptureGTDItem(ctx, existingStore, CaptureInput{Content: "existing", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "existing"}); err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +146,7 @@ func TestGTDPersistenceRefusalBranches(t *testing.T) {
 
 func TestGTDExportImportPreservesGovernanceState(t *testing.T) {
 	ctx := context.Background()
-	source := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	source := newGTDTestStore(t)
 	if err := MigrateGTDSchema(source); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +170,7 @@ func TestGTDExportImportPreservesGovernanceState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	destination := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	destination := newGTDTestStore(t)
 	if err := ImportGTD(ctx, destination, raw, true); err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +189,7 @@ func TestGTDExportImportPreservesGovernanceState(t *testing.T) {
 
 func TestReflectGTDStoreUsesPersistedRelationsAndLifecycle(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	project, err := CaptureGTDItem(ctx, store, CaptureInput{Content: "project", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "reflect-project"})
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +231,7 @@ func TestReflectGTDStoreUsesPersistedRelationsAndLifecycle(t *testing.T) {
 
 func TestReflectGTDStoreArchiveReopenCancelAndStaleRelationMutants(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	seed := func(event, content string, class GTDClass) GTDItem {
 		t.Helper()
 		item, err := CaptureGTDItem(ctx, store, CaptureInput{Content: content, Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: event})
@@ -281,7 +289,7 @@ func TestReflectGTDStoreArchiveReopenCancelAndStaleRelationMutants(t *testing.T)
 
 func TestGTDPersistenceCancelledAndCorruptStateRefusals(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	item, err := CaptureGTDItem(ctx, store, CaptureInput{Content: "x", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "cancelled-ops"})
 	if err != nil {
 		t.Fatal(err)
@@ -294,7 +302,7 @@ func TestGTDPersistenceCancelledAndCorruptStateRefusals(t *testing.T) {
 	if err := BackupGTDStore(cancelled, store, filepath.Join(t.TempDir(), "cancelled.db"), true); err == nil {
 		t.Fatal("cancelled backup succeeded")
 	}
-	if err := ImportGTD(cancelled, NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json")), []byte(`{"version":1,"logical_revision":0}`), true); err == nil {
+	if err := ImportGTD(cancelled, newGTDTestStore(t), []byte(`{"version":1,"logical_revision":0}`), true); err == nil {
 		t.Fatal("cancelled import succeeded")
 	}
 	if err := SetGTDItemCancelled(cancelled, store, item.ItemID, true); err == nil {
@@ -328,7 +336,7 @@ func TestGTDPersistenceCancelledAndCorruptStateRefusals(t *testing.T) {
 
 func TestImportGTDPreservesTrustedCancelledAndLinkedFields(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	payload := gtdExport{Version: 1, LogicalRevision: 9, Items: []GTDItem{{ItemID: "gtd-1111111111111111", Content: "linked", Source: "user", Sensitivity: SensitivityPrivate, EventID: "import-linked", SourceTrusted: true, Cancelled: true, CardID: "t1", Status: GTDStatusOrganized, SourceRevision: 4}}}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -345,7 +353,7 @@ func TestImportGTDPreservesTrustedCancelledAndLinkedFields(t *testing.T) {
 
 func TestGTDWorkflowFailsClosedOnCancelledPersistenceContext(t *testing.T) {
 	ctx := context.Background()
-	store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	store := newGTDTestStore(t)
 	seed, err := CaptureGTDItem(ctx, store, CaptureInput{Content: "seed", Source: "user", SourceAllowed: true, Sensitivity: SensitivityPrivate, EventID: "cancelled-workflow"})
 	if err != nil {
 		t.Fatal(err)

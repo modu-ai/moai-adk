@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 type gtdExport struct {
@@ -150,7 +154,7 @@ func ExportGTD(ctx context.Context, store *BacklogStore, explicitOptIn bool) ([]
 	return json.Marshal(gtdExport{Version: 2, LogicalRevision: revision, Items: items, Relations: relations, Contracts: contracts, Missions: missions, Events: events, Operations: operations})
 }
 
-func BackupGTDStore(ctx context.Context, store *BacklogStore, destination string, explicitOptIn bool) error {
+func BackupGTDStore(ctx context.Context, store *BacklogStore, destination string, explicitOptIn bool) (result error) {
 	if !explicitOptIn {
 		return errors.New("gtd backup: explicit opt-in required")
 	}
@@ -167,66 +171,141 @@ func BackupGTDStore(ctx context.Context, store *BacklogStore, destination string
 	if err != nil {
 		return err
 	}
-	defer func() { _ = db.Close() }()
+	defer func() { result = errors.Join(result, db.Close()) }()
+	return vacuumGTDInto(ctx, db, destination)
+}
+
+type gtdVacuumExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+// The SQL executor is entered only after exclusive native-private creation.
+// Exec nil and the function-owned file Close are distinct observations; neither
+// proves that SQLite's internal VFS has closed every kernel handle.
+func vacuumGTDInto(ctx context.Context, db gtdVacuumExecutor, destination string) (result error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	var output *os.File
+	defer func() {
+		if output != nil {
+			result = errors.Join(result, output.Close())
+		}
+	}()
+	if err := privatefile.CreateExclusive(destination, func(f *os.File) { output = f }); err != nil {
+		return err
+	}
+	before, err := output.Stat()
+	if err != nil {
+		return err
+	}
+	if !before.Mode().IsRegular() || before.Size() != 0 {
+		return errors.New("gtd backup: new output is not an empty regular file")
+	}
 	quoted := `'` + strings.ReplaceAll(destination, `'`, `''`) + `'`
 	if _, err := db.ExecContext(ctx, `VACUUM INTO `+quoted); err != nil {
 		return mapBacklogEngineError("vacuum gtd backup", err)
 	}
-	return os.Chmod(destination, 0600)
+	if err := output.Sync(); err != nil {
+		return err
+	}
+	after, err := os.Lstat(destination)
+	if err != nil {
+		return err
+	}
+	if !after.Mode().IsRegular() || !os.SameFile(before, after) {
+		return errors.New("gtd backup: output identity changed")
+	}
+	return privatefile.Check(destination)
 }
 
-func RestoreGTDStore(ctx context.Context, backup string, store *BacklogStore, explicitOptIn bool) error {
+func RestoreGTDStore(ctx context.Context, backup string, store *BacklogStore, explicitOptIn bool) (result error) {
 	if !explicitOptIn {
 		return errors.New("gtd restore: explicit opt-in required")
 	}
 	if !filepath.IsAbs(backup) {
 		return errors.New("gtd restore: absolute backup required")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	source, err := os.Open(backup)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = source.Close() }()
-	if err := os.MkdirAll(filepath.Dir(store.EnginePath()), 0700); err != nil {
+	defer func() { result = errors.Join(result, source.Close()) }()
+	if err := ensureBacklogDirectory(filepath.Dir(store.EnginePath())); err != nil {
 		return err
 	}
 	if _, err := os.Lstat(store.EnginePath()); err == nil {
 		return errors.New("gtd restore: destination exists")
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(store.EnginePath()), ".gtd-restore-*.tmp")
-	if err != nil {
+	if err := restoreGTDSnapshot(ctx, source, store.EnginePath()); err != nil {
 		return err
 	}
-	name := tmp.Name()
-	defer func() {
-		_ = tmp.Close()
-		_ = os.Remove(name)
-	}()
-	if err := tmp.Chmod(0600); err != nil {
-		return err
-	}
-	if _, err := io.Copy(tmp, source); err != nil {
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(name, store.EnginePath()); err != nil {
-		return err
-	}
+
 	db, err := openGTDDB(store)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = db.Close() }()
+	defer func() { result = errors.Join(result, db.Close()) }()
 	var integrity string
 	if err := db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrity); err != nil || integrity != "ok" {
 		return fmt.Errorf("gtd restore: integrity check failed")
 	}
 	return nil
+}
+
+// restoreGTDSnapshot keeps the staging/publication operation separate from
+// schema validation without changing its full-file snapshot semantics.
+func restoreGTDSnapshot(ctx context.Context, source io.Reader, destination string) (result error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	tmp, err := privatefile.CreateTemp(filepath.Dir(destination), ".gtd-restore-")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	closed := false
+	defer func() {
+		if !closed {
+			result = errors.Join(result, tmp.Close())
+		}
+		if err := os.Remove(name); err != nil && !os.IsNotExist(err) {
+			result = errors.Join(result, err)
+		}
+	}()
+	if _, err := io.Copy(tmp, gtdSnapshotReader{ctx: ctx, reader: source}); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	closeErr := tmp.Close()
+	closed = true // Do not retry a Close whose native outcome is uncertain.
+	if closeErr != nil {
+		return closeErr
+	}
+	if err := privatefile.Check(name); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return atomicfile.RenameNoReplace(name, destination)
+}
+
+type gtdSnapshotReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r gtdSnapshotReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
 }
 
 func ImportGTD(ctx context.Context, store *BacklogStore, data []byte, explicitOptIn bool) error {
