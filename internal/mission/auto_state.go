@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 type MissionMode string
@@ -108,7 +109,7 @@ func secureMissionPath(projectRoot, sessionID string, createDir bool) (string, e
 		if !createDir {
 			return filepath.Join(dir, sessionID+".json"), nil
 		}
-		if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+		if err := privatefile.Mkdir(dir); err != nil && !errors.Is(err, fs.ErrExist) {
 			return "", err
 		}
 	}
@@ -138,14 +139,14 @@ func SaveAutoMission(projectRoot string, mission AutoMission) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := os.Chmod(dir, 0o700); err != nil {
+	if err := privatefile.SecureDirectory(dir); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(mission, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".mission-*.tmp")
+	tmp, err := privatefile.CreateTemp(dir, ".mission-")
 	if err != nil {
 		return err
 	}
@@ -156,10 +157,6 @@ func SaveAutoMission(projectRoot string, mission AutoMission) error {
 			_ = os.Remove(name)
 		}
 	}()
-	if err := tmp.Chmod(0o600); err != nil {
-		_ = tmp.Close()
-		return err
-	}
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
 		return err
@@ -171,7 +168,7 @@ func SaveAutoMission(projectRoot string, mission AutoMission) error {
 		return err
 	}
 	cleanup = false
-	return os.Chmod(path, 0o600)
+	return privatefile.Check(path)
 }
 
 func LoadAutoMission(projectRoot, sessionID string) (*AutoMission, error) {
