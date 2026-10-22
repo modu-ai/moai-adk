@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/worktree"
@@ -56,6 +57,126 @@ func (f fakePrivatePermissionChecker) Mode(path string) (os.FileMode, error) {
 	return f.modes[path], f.err
 }
 
+func (f fakePrivatePermissionChecker) CheckPrivatePolicy(path string, expected os.FileMode) error {
+	mode, err := f.Mode(path)
+	if err != nil {
+		return err
+	}
+	if mode.Perm() != expected {
+		return errors.New("private mode denied")
+	}
+	return nil
+}
+
+type deniedPrivatePolicyChecker struct {
+	fakePrivatePermissionChecker
+	deniedPath string
+}
+
+func (f deniedPrivatePolicyChecker) CheckPrivatePolicy(path string, expected os.FileMode) error {
+	if path == f.deniedPath {
+		return errors.New("native policy readback denied")
+	}
+	mode, err := f.Mode(path)
+	if err != nil || mode.Perm() != expected {
+		return errors.New("private mode denied")
+	}
+	return nil
+}
+
+func TestPrivateGTDProjectionRequiresNativePolicy(t *testing.T) {
+	dir := t.TempDir()
+	projection := PrivateGTDProjection{DataPath: filepath.Join(dir, privateGTDDataName), MetaPath: filepath.Join(dir, privateGTDMetaName)}
+	base := fakePrivatePermissionChecker{current: "501", owners: map[string]string{}, modes: map[string]os.FileMode{}}
+	for _, path := range []string{dir, projection.DataPath, projection.MetaPath} {
+		base.owners[path] = "501"
+		base.modes[path] = 0o600
+	}
+	base.modes[dir] = 0o700
+	for _, path := range []string{dir, projection.DataPath, projection.MetaPath} {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			checker := deniedPrivatePolicyChecker{fakePrivatePermissionChecker: base, deniedPath: path}
+			if err := AuthorizePrivateGTDProjection(projection, "501", checker); err == nil {
+				t.Fatal("nominal owner/mode bypassed mandatory native policy denial")
+			}
+		})
+	}
+}
+
+func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "todo")
+	publisher := osPrivateGTDPublisher{}
+	if err := publisher.PrepareDir(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := privatefile.CheckDirectory(dir); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, privateGTDDataName)
+	if err := os.WriteFile(target, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	staging, err := publisher.WriteTemp(dir, ".gtd-regression-", []byte("new"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := privatefile.Check(staging); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Lstat(staging)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := publisher.Install(staging, target); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Lstat(target)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatalf("private staging object was not retained: %v", err)
+	}
+	if err := privatefile.Check(target); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(mustRead(t, target)); got != "new" {
+		t.Fatalf("published payload = %q", got)
+	}
+	outside := filepath.Join(t.TempDir(), "outside")
+	if err := publisher.Install(target, outside); err == nil {
+		t.Fatal("cross-directory publication allowed")
+	}
+	if _, err := os.Lstat(outside); !os.IsNotExist(err) {
+		t.Fatalf("refused publication changed outside target: %v", err)
+	}
+	if err := privatefile.Check(target); err != nil {
+		t.Fatalf("refused publication lost source: %v", err)
+	}
+}
+
+func TestPrivateGTDProjectionIdentityAndPolicyErrorsDeny(t *testing.T) {
+	dir := t.TempDir()
+	projection := PrivateGTDProjection{DataPath: filepath.Join(dir, privateGTDDataName), MetaPath: filepath.Join(dir, privateGTDMetaName)}
+	for _, tc := range []struct {
+		name      string
+		requester string
+		checker   PrivateGTDPermissionChecker
+	}{
+		{"missing-checker", "501", nil},
+		{"missing-requester", "", fakePrivatePermissionChecker{current: "501"}},
+		{"missing-current", "501", fakePrivatePermissionChecker{}},
+		{"current-error", "501", fakePrivatePermissionChecker{current: "501", err: errors.New("identity unavailable")}},
+		{"missing-owner", "501", fakePrivatePermissionChecker{current: "501", modes: map[string]os.FileMode{dir: 0o700}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := AuthorizePrivateGTDProjection(projection, tc.requester, tc.checker); err == nil {
+				t.Fatal("missing identity or policy evidence authorized")
+			}
+		})
+	}
+	if err := SystemPrivateGTDPermissionChecker().CheckPrivatePolicy(dir, 0o755); err == nil {
+		t.Fatal("unsupported private policy accepted")
+	}
+}
+
 func TestBuildPrivateGTDProjectionPrivacy(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "todo")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -78,9 +199,8 @@ func TestBuildPrivateGTDProjectionPrivacy(t *testing.T) {
 		path string
 		perm os.FileMode
 	}{{dir, 0o700}, {result.DataPath, 0o600}, {result.MetaPath, 0o600}} {
-		info, err := os.Stat(check.path)
-		if err != nil || info.Mode().Perm() != check.perm {
-			t.Fatalf("%s mode=%v err=%v, want %v", check.path, info.Mode().Perm(), err, check.perm)
+		if err := SystemPrivateGTDPermissionChecker().CheckPrivatePolicy(check.path, check.perm); err != nil {
+			t.Fatalf("%s native private policy %v: %v", check.path, check.perm, err)
 		}
 	}
 	if files := PrivateGTDBackupFiles(result, false); len(files) != 0 {
@@ -164,7 +284,7 @@ func TestPrivateGTDProjectionFailClosedBranches(t *testing.T) {
 	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := writePrivateTemp(blocked, ".tmp-*", nil); err == nil {
+	if _, err := writePrivateTemp(blocked, ".tmp-", nil); err == nil {
 		t.Fatal("temp file created below regular file")
 	}
 	if _, err := BuildPrivateGTDProjection(context.Background(), filepath.Join(blocked, "backlog.db"), 1, nil); err == nil {

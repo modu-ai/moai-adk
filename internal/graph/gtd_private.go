@@ -9,13 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strconv"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 func BuildPrivateGTDProjectionFromStore(ctx context.Context, store *factory.BacklogStore) (PrivateGTDProjection, error) {
@@ -52,37 +52,35 @@ type PrivateGTDProjection struct {
 
 // PrivateGTDPermissionChecker makes account identity and kernel ownership an
 // explicit, testable authorization boundary. Implementations must fail closed
-// when an OS cannot report a stable owner identity.
+// when an OS cannot report a stable owner identity. UID methods return the
+// native account identity: a Unix UID or Windows SID. Mode is an observation;
+// CheckPrivatePolicy is the mandatory native authorization oracle.
 type PrivateGTDPermissionChecker interface {
 	CurrentUID() (string, error)
 	OwnerUID(path string) (string, error)
 	Mode(path string) (os.FileMode, error)
+	CheckPrivatePolicy(path string, expected os.FileMode) error
 }
 
 type systemPrivateGTDPermissionChecker struct{}
 
 func (systemPrivateGTDPermissionChecker) CurrentUID() (string, error) {
-	account, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	return account.Uid, nil
+	return privateGTDCurrentIdentity()
 }
 
 func (systemPrivateGTDPermissionChecker) OwnerUID(path string) (string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", err
+	return privateGTDOwnerIdentity(path)
+}
+
+func (systemPrivateGTDPermissionChecker) CheckPrivatePolicy(path string, expected os.FileMode) error {
+	switch expected {
+	case 0o700:
+		return privatefile.CheckDirectory(path)
+	case 0o600:
+		return privatefile.Check(path)
+	default:
+		return errors.New("gtd projection: unsupported_private_policy")
 	}
-	value := reflect.Indirect(reflect.ValueOf(info.Sys()))
-	if !value.IsValid() {
-		return "", errors.New("gtd projection: owner_unavailable")
-	}
-	field := value.FieldByName("Uid")
-	if !field.IsValid() || !field.CanUint() {
-		return "", errors.New("gtd projection: owner_unavailable")
-	}
-	return strconv.FormatUint(field.Uint(), 10), nil
 }
 
 func (systemPrivateGTDPermissionChecker) Mode(path string) (os.FileMode, error) {
@@ -99,7 +97,8 @@ func SystemPrivateGTDPermissionChecker() PrivateGTDPermissionChecker {
 
 // AuthorizePrivateGTDProjection permits only the current account, and only
 // while the projection directory and both artifacts retain their private
-// kernel owner/mode invariants.
+// kernel owner and native private access-policy invariants. Windows approval
+// requires the protected owner-only DACL, never its synthetic POSIX mode bits.
 func AuthorizePrivateGTDProjection(projection PrivateGTDProjection, requesterUID string, checker PrivateGTDPermissionChecker) error {
 	if checker == nil || requesterUID == "" {
 		return errors.New("gtd projection: identity_required")
@@ -113,8 +112,8 @@ func AuthorizePrivateGTDProjection(projection PrivateGTDProjection, requesterUID
 		mode os.FileMode
 	}{{filepath.Dir(projection.DataPath), 0o700}, {projection.DataPath, 0o600}, {projection.MetaPath, 0o600}} {
 		owner, ownerErr := checker.OwnerUID(item.path)
-		mode, modeErr := checker.Mode(item.path)
-		if ownerErr != nil || modeErr != nil || owner != current || mode.Perm() != item.mode {
+		policyErr := checker.CheckPrivatePolicy(item.path, item.mode)
+		if ownerErr != nil || policyErr != nil || owner != current {
 			return errors.New("gtd projection: permission_denied")
 		}
 	}
@@ -175,8 +174,8 @@ func renderPrivateGTDEdges(edges []PrivateGTDEdge) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func writePrivateTemp(dir, pattern string, data []byte) (string, error) {
-	f, err := os.CreateTemp(dir, pattern)
+func writePrivateTemp(dir, prefix string, data []byte) (string, error) {
+	f, err := privatefile.CreateTemp(dir, prefix)
 	if err != nil {
 		return "", err
 	}
@@ -188,9 +187,6 @@ func writePrivateTemp(dir, pattern string, data []byte) (string, error) {
 			_ = os.Remove(name)
 		}
 	}()
-	if err := f.Chmod(0o600); err != nil {
-		return "", err
-	}
 	if _, err := f.Write(data); err != nil {
 		return "", err
 	}
@@ -198,6 +194,9 @@ func writePrivateTemp(dir, pattern string, data []byte) (string, error) {
 		return "", err
 	}
 	if err := f.Close(); err != nil {
+		return "", err
+	}
+	if err := privatefile.Check(name); err != nil {
 		return "", err
 	}
 	ok = true
@@ -261,19 +260,49 @@ type privateGTDPublisher interface {
 type osPrivateGTDPublisher struct{}
 
 func (osPrivateGTDPublisher) PrepareDir(dir string) error {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
 		return err
 	}
-	return os.Chmod(dir, 0o700)
+	if err := privatefile.Mkdir(dir); err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+		current, identityErr := privateGTDCurrentIdentity()
+		owner, ownerErr := privateGTDOwnerIdentity(dir)
+		if identityErr != nil || ownerErr != nil || current == "" || owner != current {
+			return errors.New("gtd projection: directory_owner_denied")
+		}
+		return privatefile.SecureDirectory(dir)
+	}
+	return nil
 }
-func (osPrivateGTDPublisher) WriteTemp(dir, pattern string, data []byte) (string, error) {
-	return writePrivateTemp(dir, pattern, data)
+func (osPrivateGTDPublisher) WriteTemp(dir, prefix string, data []byte) (string, error) {
+	return writePrivateTemp(dir, prefix, data)
 }
 func (osPrivateGTDPublisher) Install(source, target string) error {
-	if err := os.Rename(source, target); err != nil {
+	// A same-directory move retains the private staging object. In particular,
+	// Windows MoveFileEx must not copy a payload into an existing broad DACL.
+	if filepath.Clean(filepath.Dir(source)) != filepath.Clean(filepath.Dir(target)) {
+		return errors.New("gtd projection: staging_directory_mismatch")
+	}
+	before, err := os.Lstat(source)
+	if err != nil {
 		return err
 	}
-	if err := os.Chmod(target, 0o600); err != nil {
+	if err := privatefile.Check(source); err != nil {
+		return err
+	}
+	if err := atomicfile.Replace(source, target); err != nil {
+		return err
+	}
+	after, err := os.Lstat(target)
+	if err == nil && !os.SameFile(before, after) {
+		err = errors.New("gtd projection: publication_identity_changed")
+	}
+	if err == nil {
+		err = privatefile.Check(target)
+	}
+	if err != nil {
 		_ = os.Remove(target)
 		return err
 	}
@@ -289,12 +318,12 @@ func publishPrivateGTDProjectionWith(publisher privateGTDPublisher, dir string, 
 	if err := publisher.PrepareDir(dir); err != nil {
 		return "", "", err
 	}
-	dataTmp, err := publisher.WriteTemp(dir, ".gtd-edges-*.tmp", data)
+	dataTmp, err := publisher.WriteTemp(dir, ".gtd-edges-", data)
 	if err != nil {
 		return "", "", err
 	}
 	defer publisher.Remove(dataTmp)
-	metaTmp, err := publisher.WriteTemp(dir, ".gtd-meta-*.tmp", metaBytes)
+	metaTmp, err := publisher.WriteTemp(dir, ".gtd-meta-", metaBytes)
 	if err != nil {
 		return "", "", err
 	}
