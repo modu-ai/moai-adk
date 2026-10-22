@@ -112,6 +112,7 @@ func emitLevelProbes(t *testing.T, level string, wantLevel slog.Level) map[strin
 	t.Setenv(config.EnvLogLevel, level)
 
 	d := resolveLoggingDecision([]string{"hook", "pre-tool"})
+	closeTestHookSink(t, d.dest)
 	if d.level != wantLevel {
 		t.Fatalf("resolveLoggingDecision with %s=%q resolved level %v, want %v; "+
 			"the variable governs the hook sink's minimum level (REQ-HDS-005)",

@@ -28,6 +28,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -114,7 +115,7 @@ func AppendOutbox(row OutboxRow) error {
 	}
 	done := make(chan openResult, 1)
 	go func() {
-		f, oerr := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, outboxFilePerm)
+		f, oerr := privatefile.OpenAppend(path)
 		done <- openResult{f: f, err: oerr}
 	}()
 	var f *os.File

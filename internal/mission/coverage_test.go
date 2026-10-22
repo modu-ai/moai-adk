@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 func TestAutoMissionStateRoundTripAndRefusals(t *testing.T) {
@@ -26,12 +27,12 @@ func TestAutoMissionStateRoundTripAndRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := os.FileMode(0o600)
+		check := privatefile.Check
 		if info.IsDir() {
-			want = 0o700
+			check = privatefile.CheckDirectory
 		}
-		if info.Mode().Perm() != want {
-			t.Fatalf("mode %s=%o want %o", path, info.Mode().Perm(), want)
+		if err := check(path); err != nil {
+			t.Fatalf("native private policy %s: %v", path, err)
 		}
 	}
 	if missing, err := LoadAutoMission(root, "018f4f4a-7b7c-7a11-8f4d-444444444444"); err != nil || missing != nil {

@@ -55,9 +55,20 @@ func TestHelperProcess(t *testing.T) {
 func TestHelperProcess_ReusesTheParentGitConfigPin(t *testing.T) {
 	const helpers = 3
 	private := t.TempDir()
+	// The child deliberately has a narrower temporary root. Give it a parent-
+	// owned pin within that root, so the real-home guard can validate reuse on
+	// Windows too (the ordinary parent pin lies outside the child's temp root).
+	parentPin := filepath.Join(private, "parent-gitconfig")
+	pin, err := os.ReadFile(os.Getenv("GIT_CONFIG_GLOBAL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(parentPin, pin, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	for i := range helpers {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
-		cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1", "TMPDIR="+private, "TMP="+private, "TEMP="+private)
+		cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1", "TMPDIR="+private, "TMP="+private, "TEMP="+private, "GIT_CONFIG_GLOBAL="+parentPin, gitConfigSandboxEnv+"="+parentPin)
 		var exitErr *exec.ExitError
 		if err := cmd.Run(); !errors.As(err, &exitErr) || exitErr.ExitCode() != 3 {
 			t.Fatalf("helper %d: want exit 3, got %v", i, err)

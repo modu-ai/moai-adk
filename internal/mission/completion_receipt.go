@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 type CompletionReceipt struct {
@@ -82,7 +83,7 @@ func WriteCompletionReceipt(root, path string, receipt CompletionReceipt) error 
 }
 
 func writeCompletionReceiptAtomic(path string, raw []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".completion-*.tmp")
+	tmp, err := privatefile.CreateTemp(filepath.Dir(path), ".completion-")
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func writeCompletionReceiptAtomic(path string, raw []byte) error {
 	if err := atomicfile.Replace(name, path); err != nil {
 		return err
 	}
-	return os.Chmod(path, 0o600)
+	return privatefile.Check(path)
 }
 
 func LoadCompletionReceipt(root, path string, exp CompletionExpectation) (CompletionReceipt, error) {
@@ -110,7 +111,7 @@ func LoadCompletionReceipt(root, path string, exp CompletionExpectation) (Comple
 	if errors.Is(err, os.ErrNotExist) {
 		return CompletionReceipt{}, errors.New("mission completion: receipt_missing")
 	}
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o600 {
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || privatefile.Check(path) != nil {
 		return CompletionReceipt{}, errors.New("mission completion: receipt_unsafe")
 	}
 	resolved, err := filepath.EvalSymlinks(path)

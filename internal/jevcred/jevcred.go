@@ -7,16 +7,15 @@
 // The package is modelled on internal/glmcred, deliberately and down to the
 // two details that are easy to lose:
 //
-//   - Mode tightening on write. os.WriteFile's perm argument applies only at
-//     file creation, so a pre-existing 0644 credential file stays 0644 without
-//     an explicit Chmod. The explicit Chmod in Save closes that latent defect.
+//   - Native owner-only access on write, including pre-existing credentials.
+//     The replacement is private before it receives any credential bytes.
 //   - The four-character disclosure floor. View returns Configured: true with
 //     an EMPTY hint for a credential of four characters or fewer; a naive
 //     "last four or the whole key" fallback would disclose a short credential
 //     entirely, the exact inverse of REQ-JEVC-020.
 //
-// It depends only on the standard library and on stdlib-only internal leaf
-// packages (internal/paths, internal/defs) so it cannot participate in an
+// It depends on internal leaf packages (including privatefile, whose Windows
+// implementation uses native ACLs through golang.org/x/sys/windows), avoiding an
 // import cycle, and so both internal/cli and internal/web can import it while
 // the one-way internal/cli → internal/web dependency stays acyclic.
 //
@@ -34,13 +33,14 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 // EnvTestTypeSafeKey is the env-var test seam honoured by Load. A non-empty
 // value short-circuits the on-disk read and is returned verbatim, so tests can
 // simulate a stored credential without touching ~/.moai/.env.typesafe. The
 // constant string itself is owned by internal/config/envkeys.go
-// (config.EnvTestTypeSafeKey) — this alias keeps the package stdlib-only,
+// (config.EnvTestTypeSafeKey) — this alias avoids a config dependency,
 // exactly as glmcred.EnvTestGLMKey does, without introducing a second literal.
 const EnvTestTypeSafeKey = "MOAI_TEST_TYPESAFE_KEY"
 
@@ -77,8 +77,9 @@ func Path() string {
 	return filepath.Join(home, defs.MoAIDir, defs.TypeSafeEnvFileName)
 }
 
-// Save writes the TypeSafe API credential to ~/.moai/.env.typesafe at file mode
-// 0600, in the quoted dotenv form Load reads back.
+// Save writes the TypeSafe API credential to ~/.moai/.env.typesafe with native
+// owner-only access (Unix 0600 or a protected Windows owner DACL), in the quoted
+// dotenv form Load reads back.
 //
 // On a pre-existing file whose mode is wider than 0600, the mode is tightened to
 // 0600 as part of the write (REQ-JEVC-018 / AC-JEVC-011).
@@ -94,16 +95,8 @@ func Save(key string) error {
 
 	content := fmt.Sprintf("# TypeSafe API credential for MoAI-ADK\n# Written by internal/jevcred\n%s=\"%s\"\n",
 		dotenvKey, EscapeValue(key))
-	if err := os.WriteFile(envPath, []byte(content), 0o600); err != nil {
-		return fmt.Errorf("write file: %w", err)
-	}
-
-	// Explicit mode assertion: os.WriteFile's perm is honoured only at file
-	// creation. An existing credential file created at a wider mode by an
-	// older writer is narrowed here so the credential is never world-readable
-	// after a save.
-	if err := os.Chmod(envPath, 0o600); err != nil {
-		return fmt.Errorf("chmod credential file: %w", err)
+	if err := privatefile.WriteFile(envPath, []byte(content)); err != nil {
+		return fmt.Errorf("write private credential file: %w", err)
 	}
 	return nil
 }

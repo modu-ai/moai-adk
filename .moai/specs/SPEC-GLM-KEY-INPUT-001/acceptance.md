@@ -1,9 +1,9 @@
 ---
 id: SPEC-GLM-KEY-INPUT-001
 title: "Acceptance Criteria — GLM API Key Input Surface in the moai web Settings Console"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-10-21
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -125,18 +125,22 @@ Assertion: the walk over both trees collects exactly one path whose contents
 contain the sentinel; that path ends in `.moai/.env.glm`; and its contents
 match `GLM_API_KEY="NOT-A-REAL-KEY-glm-acceptance-sentinel"`.
 
-### AC-GKI-002-02 — credential file mode is exactly 0600
+### AC-GKI-002-02 — credential storage is natively owner-only
 
-Maps REQ-GKI-002-002. **Mechanical mode assertion.**
+Maps REQ-GKI-002-002. **Mechanical native-access assertion.**
 
 Given a sandboxed home, When the sentinel is saved through the console path,
-Then `os.Stat` on the credential file reports permission bits exactly `0600`.
+Then Unix `os.Stat` permission bits are exactly `0600`; on Windows native
+security-descriptor readback reports the current user as owner and a
+protected, non-inheriting DACL with exactly one explicit owner access grant.
+The replacement is already private before the first credential byte is
+written. An unknown or unreadable access policy fails the save.
 
 ```bash
 go test ./internal/glmcred/ ./internal/web/ -run 'TestCredentialFileMode|TestGLMKeySave_Mode' -count=1 -v
 ```
 
-Assertion, verbatim shape:
+Unix assertion, verbatim shape:
 
 ```go
 fi, err := os.Stat(credPath)
@@ -154,6 +158,24 @@ stat -f '%Lp' "$CRED_PATH"   # expect: 600
 # Linux
 stat -c '%a' "$CRED_PATH"    # expect: 600
 ```
+
+
+Windows assertions use native owner/DACL readback rather than
+`Mode().Perm()`. The descriptor must reject a null DACL, inheritance, any
+additional identity grant, a different owner, or a broader/unknown policy.
+The pre-write check observes the newly created empty replacement before any
+secret is supplied; published-file readback is checked again. These are
+additional platform assertions, not an exemption from Unix `0600`.
+
+The current Windows implementation has focused native probes; their decisive
+result must come from actual Windows execution, with explicit per-test PASS:
+
+```bash
+go test ./internal/privatefile/ -run '^(TestWindowsFileHasProtectedOwnerOnlyDACL|TestCheckRejectsBroadAndInheritedWindowsACLs)$' -count=1 -v
+```
+
+Both GLM save entry points must also retain the credential round-trip and
+native privacy assertion. A helper-only PASS does not replace that coverage.
 
 ### AC-GKI-002-03 — exactly one credential-write implementation exists
 
@@ -459,14 +481,17 @@ Assertion: `strings.Count(contents, "GLM_API_KEY=") == 1`, the parsed value is
 the new key, the prior key is absent from the contents, and no sibling
 credential file was created alongside it.
 
-### AC-GKI-006-02 — a pre-existing wide-mode file is tightened to 0600
+### AC-GKI-006-02 — a pre-existing broad-access file becomes owner-only
 
-Maps REQ-GKI-006-002. **Mechanical mode assertion on the pre-existing-file path.**
+Maps REQ-GKI-006-002. **Mechanical native-access assertion on the pre-existing-file path.**
 
-Given a credential file that already exists at mode `0644`, When a key is
+Given a credential file that already exists at Unix mode `0644` or with a
+broad/inheriting Windows DACL, When a key is
 written **from the console save path**, and again when a key is written **from
 the `moai glm` interactive save path**, Then the file's permission bits
-afterwards are exactly `0600` in both cases.
+afterwards are exactly `0600` on Unix; on Windows native readback proves a
+protected, non-inheriting owner-only DACL in both cases. The replacement is
+private before receiving new credential bytes.
 
 Per the resolved D-3 decision the tightening reaches both surfaces, so both are
 asserted. Testing only the console path would leave the CLI half of the shared
@@ -478,7 +503,7 @@ go test ./internal/cli/ -run 'TestGLMKeySave_TightensExistingMode' -count=1 -v
 go test ./internal/web/ -run 'TestGLMKeySave_TightensExistingMode' -count=1 -v
 ```
 
-Assertion, verbatim shape (applied at each of the three entry points):
+Unix assertion, verbatim shape (applied at each of the three entry points):
 
 ```go
 require.NoError(t, os.WriteFile(credPath, []byte("GLM_API_KEY=\"old\"\n"), 0o644))
@@ -494,6 +519,14 @@ the `0o644` argument at creation time, which would make the test pass without
 the tightening logic ever running. Forcing the mode to `0644` first is what
 makes this criterion a real test of REQ-GKI-006-002 rather than a
 umask-dependent accident.
+
+On Windows, construct a genuinely broad or inheriting DACL fixture and verify
+that it is rejected before the save; permission-bit emulation is not that
+positive control. After saving through each entry point, independently read
+the native owner and protected DACL and assert the same exact owner-only
+policy as AC-GKI-002-02. The sentinel still round-trips and no extra
+credential location appears. A native-policy/readback error must reach the
+existing failure banner rather than a success result.
 
 ### AC-GKI-006-03 — no-key save leaves the file intact
 

@@ -486,11 +486,23 @@ func inspectSkillMirror(root string) skillMirrorState {
 		}
 	}
 
-	canonical, cerr := os.ReadDir(filepath.Join(root, template.CanonicalSkillsRelDir))
+	canonicalDir := filepath.Join(root, template.CanonicalSkillsRelDir)
+	// ReadDir of a regular file can look empty on Windows. Establish the
+	// directory shape independently before treating an empty read as evidence.
+	canonicalInfo, cerr := os.Stat(canonicalDir)
 	if cerr != nil {
 		if !errors.Is(cerr, fs.ErrNotExist) {
 			st.indeterminate++
 		}
+		return st
+	}
+	if !canonicalInfo.IsDir() {
+		st.indeterminate++
+		return st
+	}
+	canonical, cerr := os.ReadDir(canonicalDir)
+	if cerr != nil {
+		st.indeterminate++
 		return st
 	}
 	for _, e := range canonical {

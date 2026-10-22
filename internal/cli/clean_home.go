@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -598,7 +600,13 @@ func secureHomeDirectories(root string) error {
 			return err
 		}
 		if entry.IsDir() {
-			return os.Chmod(path, 0o700)
+			return privatefile.SecureDirectory(path)
+		}
+		// Windows callers normally hold traverse-bypass privilege. Restricting
+		// directories alone cannot make broad descendant file ACLs confidential.
+		// Never follow a link into a user asset outside this home tree.
+		if runtime.GOOS == "windows" && entry.Type().IsRegular() {
+			return privatefile.SecureFile(path)
 		}
 		return nil
 	})

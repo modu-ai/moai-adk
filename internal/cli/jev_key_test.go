@@ -14,6 +14,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"os"
 	"path/filepath"
 	"slices"
@@ -188,12 +189,8 @@ func TestGlmKeyFlagSavesKeySameStorage(t *testing.T) {
 	if !strings.Contains(string(data), `GLM_API_KEY="`+key+`"`) {
 		t.Errorf("expected stored dotenv form, got:\n%s", data)
 	}
-	info, err := os.Stat(envPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
+	if err := privatefile.Check(envPath); err != nil {
+		t.Errorf("credential must have native owner-only access: %v", err)
 	}
 	if !strings.Contains(out, "GLM API key stored (") {
 		t.Errorf("masked confirmation missing, got: %q", out)
@@ -221,12 +218,8 @@ func TestJevKeyFlagSavesCredential(t *testing.T) {
 	if !strings.Contains(string(data), `TYPESAFE_API_KEY="`+cred+`"`) {
 		t.Errorf("expected stored dotenv form, got:\n%s", data)
 	}
-	info, err := os.Stat(envPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
+	if err := privatefile.Check(envPath); err != nil {
+		t.Errorf("credential must have native owner-only access: %v", err)
 	}
 	if !strings.Contains(out, "Jev credential stored") {
 		t.Errorf("confirmation missing, got: %q", out)

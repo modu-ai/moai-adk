@@ -187,13 +187,23 @@ func graphToolJSON(t *testing.T, res *mcp.CallToolResult) string {
 	return string(b)
 }
 
-// jsonBodyNamesTree reports whether a marshaled JSON body names a tree path.
-// JSON escaping doubles every backslash, so on Windows the raw path never
-// appears verbatim in marshaled output — the escaped form is the honest
-// match (t426 windows census axis 7).
+// jsonBodyNamesTree checks the decoded provenance field against the same
+// canonical tree the handler resolves. JSON escaping and Windows 8.3 aliases
+// must not make a correctly attributed answer look foreign; another field
+// mentioning the path must never count as provenance.
 func jsonBodyNamesTree(body, tree string) bool {
-	return strings.Contains(body, tree) ||
-		strings.Contains(body, strings.ReplaceAll(tree, `\`, `\\`))
+	var answer struct {
+		Provenance string `json:"provenance"`
+	}
+	if err := json.Unmarshal([]byte(body), &answer); err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(tree); err == nil {
+		tree = resolved
+	}
+	prefix := "provenance: tree=" + tree
+	return strings.HasPrefix(answer.Provenance, prefix+" commit=") ||
+		strings.HasPrefix(answer.Provenance, prefix+" dirty fingerprint=")
 }
 
 // AC-GF-020 — graph_file_api over MCP: exported signatures only, body-free,
@@ -335,5 +345,26 @@ func TestGraphTools_RequiredParamsAndDotDotPathRejected(t *testing.T) {
 				t.Errorf("rejection must name the rejected input %q, got: %s", tc.wantIn, body)
 			}
 		})
+	}
+}
+
+// Exercise JSON escaping on every host, including Windows separators and
+// quotes. A path appearing in another field is not provenance evidence.
+func TestJSONBodyNamesTreeUsesDecodedProvenance(t *testing.T) {
+	for _, tree := range []string{`C:\Users\runneradmin\Tree`, "/tmp/tree\"quoted"} {
+		raw, err := json.Marshal(map[string]string{"provenance": "provenance: tree=" + tree + " commit=abc"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !jsonBodyNamesTree(string(raw), tree) {
+			t.Errorf("decoded provenance lost tree %q: %s", tree, raw)
+		}
+		unrelated, err := json.Marshal(map[string]string{"other": tree, "provenance": "provenance: tree=elsewhere commit=abc"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if jsonBodyNamesTree(string(unrelated), tree) {
+			t.Errorf("unrelated field counted as provenance for %q", tree)
+		}
 	}
 }

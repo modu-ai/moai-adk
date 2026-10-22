@@ -80,7 +80,9 @@ func canonicalTreeSpelling(dir string) string {
 	if err != nil {
 		return dir
 	}
-	top := strings.TrimSpace(string(out))
+	// Git uses forward slashes on Windows. Keep its case and identity,
+	// but use the native separator used by the record root and branch lookup.
+	top := filepath.FromSlash(strings.TrimSpace(string(out)))
 	if top == "" || top == dir {
 		return dir
 	}

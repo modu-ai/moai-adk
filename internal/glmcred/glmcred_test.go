@@ -1,9 +1,10 @@
 package glmcred
 
 import (
+	"github.com/modu-ai/moai-adk/internal/privatefile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -40,19 +41,12 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 }
 
 func TestSave_FileMode0600(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not enforce POSIX permission bits: os.Stat reports a synthesized mode, so the 0600 assertion cannot hold there; the credential-file tightening stays covered on unix")
-	}
 	withTempHome(t)
 	if err := Save("mode-test-key"); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	info, err := os.Stat(Path())
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("file mode = %o, want 0600", perm)
+	if err := privatefile.Check(Path()); err != nil {
+		t.Fatalf("credential must have native owner-only access: %v", err)
 	}
 }
 
@@ -62,9 +56,6 @@ func TestSave_NarrowsExisting0644to0600(t *testing.T) {
 	// interactive save path (D-3 — they share this one writer).
 	// os.WriteFile's perm argument applies at creation only, so a naive Save
 	// leaves a pre-existing 0644 file at 0644. This is the §A.3 latent defect.
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not enforce POSIX permission bits: the pre-existing 0644 file cannot be created with a wide mode there, so the narrowing cannot be observed; the behavior stays covered on unix")
-	}
 	dir := withTempHome(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
@@ -73,15 +64,15 @@ func TestSave_NarrowsExisting0644to0600(t *testing.T) {
 	if err := os.WriteFile(envPath, []byte(`GLM_API_KEY="stale"`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	testguard.MakeFilePublic(t, envPath)
+	if err := privatefile.Check(envPath); err == nil {
+		t.Fatal("fixture must begin publicly readable")
+	}
 	if err := Save("new-key-after-0644"); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	info, err := os.Stat(envPath)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("file mode = %o, want 0600 after rewrite of pre-existing wide-mode file", perm)
+	if err := privatefile.Check(envPath); err != nil {
+		t.Fatalf("credential must have native owner-only access: %v", err)
 	}
 	if got := Load(); got != "new-key-after-0644" {
 		t.Fatalf("Load() = %q, want new-key-after-0644", got)

@@ -160,7 +160,7 @@ func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, 
 		return target, worktreeForBranch(target), source
 	}
 	wt, _ := os.Getwd()
-	return currentBranch(), wt, factory.BranchSourceCaller
+	return currentBranch(), canonicalTreePath(wt), factory.BranchSourceCaller
 }
 
 // integrationFallbackWarning is the one-line standard-error warning for a

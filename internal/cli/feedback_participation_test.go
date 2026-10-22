@@ -9,6 +9,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/feedback"
 	"github.com/modu-ai/moai-adk/internal/feedback/outbox"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/spf13/cobra"
 )
 
@@ -103,12 +104,8 @@ func TestOutboxLogAppendOnly0600(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StorePath: %v", err)
 	}
-	info, err := os.Stat(logPath)
-	if err != nil {
-		t.Fatalf("stat log: %v", err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("log mode = %v, want 0600", info.Mode().Perm())
+	if err := privatefile.Check(logPath); err != nil {
+		t.Fatalf("log is not owner-only: %v", err)
 	}
 	raw, err := os.ReadFile(logPath)
 	if err != nil {
