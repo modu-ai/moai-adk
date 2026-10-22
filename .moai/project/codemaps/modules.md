@@ -653,7 +653,7 @@ $ find internal cmd pkg -name '*.go' -not -name '*_test.go' -exec ls -l {} + | s
 
 ## Windows 접근 정책과 SQLite 진단 증거 — PR1888
 
-`internal/cli/clean_home.go`의 `secureHomeDirectories`는 디렉터리에 `internal/privatefile/existing.go`의 `SecureDirectoryNoPropagation`을 적용하고, 일반 파일은 각각 별도로 좁힌다. Windows 구현 `internal/privatefile/existing_windows.go`는 기존 자식 객체로 DACL을 자동 전파하지 않도록 디렉터리를 배타적으로 열지만, 향후 자식의 OICI 상속과 보호된 owner-only 정책의 엄격한 readback은 유지한다. 일반 파일의 캡처한 hardlink 수가 1이 아니면 정책 변경을 거절하며, symlink를 따라 외부 사용자 자산을 바꾸지 않는다. 이는 모든 하위 파일을 일괄 비공개로 만들었다는 실행 결과가 아니라 각 객체를 확인하는 구현 경계다.
+`internal/cli/clean_home.go`의 `secureHomeDirectories`는 디렉터리에 `internal/privatefile/existing.go`의 `SecureDirectoryNoPropagation`을 적용하고, 일반 파일은 각각 별도로 좁힌다. Windows 구현 `internal/privatefile/existing_windows.go`는 기존 자식 객체로 DACL을 자동 전파하지 않으려 디렉터리를 배타적으로 열고, 향후 자식의 OICI 상속과 보호된 owner-only 정책의 readback을 유지한다. 다만 동일 API를 사용한 PR1889 run39719161317/job119628524103의 실제 `TestWindowsDirectoryNarrowingDoesNotPropagateToHardlink`는 외부 hardlink의 DACL이 바뀌어 실패했다. 현재 메타데이터 전용 배타 핸들이 기존 자식 전파를 막는다고 보장할 수 없으며, 이 경계는 후속 native 검증이 필요한 미해결 사항이다. 일반 파일의 캡처한 hardlink 수가 1이 아니면 정책 변경을 거절하며, symlink를 따라 외부 사용자 자산을 바꾸지 않는다. 이는 모든 하위 파일을 일괄 비공개로 만들었다는 실행 결과가 아니라 각 객체를 확인하는 구현 경계다.
 
 `internal/cli/codex_config_policy_windows.go`는 Codex 설정을 교체하기 전에 원본 OWNER SID·DACL·보호 설정과 readonly 속성을 staging에 복원한다. 열린 staging 핸들에 OWNER와 DACL을 함께 적용하고 같은 OWNER SID가 읽히는지 확인한다. 원래 OWNER를 복원할 수 없으면 게시를 거부하며, 새 privilege를 활성화하거나 ownership을 탈취하지 않는다. `internal/cli/codex_config_publication_windows_test.go`는 복원 실패 시 원본 바이트·정책 보존과 staging 제거를 검증한다.
 
