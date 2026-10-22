@@ -47,7 +47,11 @@ func stubSGOnPath(t *testing.T, mode string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			t.Errorf("close native sg source: %v", err)
+		}
+	}()
 	dst, err := os.OpenFile(filepath.Join(binDir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o755)
 	if err != nil {
 		t.Fatal(err)
