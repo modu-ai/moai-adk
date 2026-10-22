@@ -10,7 +10,7 @@
 | `internal/atomicfile` | `Replace`, `CreateExclusive`, `ClaimSection`, `PidAlive`, `OwnerIsDead`. 게시와 claim 소유권·재회수는 서로 다른 연산이며 PID 접근 실패를 죽음으로 해석하지 않는다. |
 | `internal/auditreceipt` | ledger token을 확인한 핸들에 Windows 삭제를 묶는다. POSIX의 identity 확인 뒤 unlink에는 경로 연산의 경합 경계가 남는다. |
 | `internal/settings/yamlpatch` | `PatchFileAtRoot`와 `RootOptions`가 프로젝트 root 아래의 부모 생성·읽기·임시 쓰기·rename을 묶는다. 일반 owned-path 편집 함수는 프로젝트 containment API가 아니다. |
-| `internal/config/atomicfile` | 기존 `Write`의 3인자 호출을 보존하고 선택적 `RootOptions`로 열린 root·강제 mode·게시 직전 검사를 받는다. Root 아래 임시 파일은 생성부터 payload·대상 검증 완료까지 owner 전용 mode를 유지하고, 최종 mode를 열린 파일에 적용한 뒤 닫고 게시한다. Config의 typed section과 YAML root 편집이 같은 원자 쓰기 본체를 사용한다. |
+| `internal/config/atomicfile` | 기존 `Write`의 3인자 호출을 보존하고 선택적 `RootOptions`로 열린 root·강제 mode·게시 직전 검사를 받는다. POSIX에서는 root 아래 임시 파일이 생성부터 payload·대상 검증 완료까지 owner 전용 mode를 유지하고, 최종 mode를 열린 파일에 적용한 뒤 닫고 게시한다. 이 mode 계약은 Windows native DACL 보장을 대신하지 않는다. Config의 typed section과 YAML root 편집이 같은 원자 쓰기 본체를 사용한다. |
 | `internal/contract/revoke` | `Blocked`는 열린 신뢰 root 아래에서 기록을 열거·읽으며 linked/nonregular 기록 파일과 IO 오류를 거부한다. 기존 non-record 디렉터리 제외와 서명·fingerprint·감사 검사는 그대로 남는다. |
 | `internal/graph` | GTD의 `PrivateGTDPermissionChecker.CheckPrivatePolicy`는 필수 native 정책 oracle이다. Unix UID 또는 Windows SID와 실제 파일 정책을 확인하며 mode 관측을 가짜 승인 값으로 바꾸지 않는다. |
 | `internal/homestate` | readonly census는 escaped `file:` URI, 실제 worktree inventory, 보수적인 PID 관측을 사용한다. DB의 전체 native ACL 수명 보장은 아직 별도 미완료 범위다. |
