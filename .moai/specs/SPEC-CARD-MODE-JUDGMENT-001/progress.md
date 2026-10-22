@@ -215,7 +215,7 @@ sync_heads_up: "acceptance.md holds 21 distinct AC-looking identifiers (AC-ALB-0
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: pending-backfill   # canonical placeholder; a commit cannot cite its own hash. The real SHA is backfilled in the following commit.
+sync_commit_sha: ea7b93c08553339262f4e99db615b0ab7192d061
 sync_status: complete
 ac_source: .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/acceptance.md   # tier L
 b12_self_test_a: pass   # pre-emission grep -c 'SPEC-CARD-MODE-JUDGMENT-001' CHANGELOG.md printed 0 before the entry was written
