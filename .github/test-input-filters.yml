@@ -54,6 +54,10 @@ go_code:
   - '.github/workflows/ci.yml'
   - '.github/workflows/codeql.yml'
   - '.github/workflows/release-pr-multi-os.yml'
+  # Card t1536 (card-review P2): the drafter-cleanup regression guards read both
+  # drafter workflows, so a PR that edits only one of them must run the suite.
+  - '.github/workflows/release-drafter-cleanup.yml'
+  - '.github/workflows/release-drafter.yml'
   - '.github/test-input-filters.yml'
   # The branch-protection parity guard reads this repository input.
   - '.github/branch-protection.json.gtmpl'
