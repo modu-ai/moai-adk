@@ -600,7 +600,7 @@ func secureHomeDirectories(root string) error {
 			return err
 		}
 		if entry.IsDir() {
-			return privatefile.SecureDirectory(path)
+			return privatefile.SecureDirectoryNoPropagation(path)
 		}
 		// Windows callers normally hold traverse-bypass privilege. Restricting
 		// directories alone cannot make broad descendant file ACLs confidential.

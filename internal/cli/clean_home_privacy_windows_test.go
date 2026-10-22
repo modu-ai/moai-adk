@@ -7,6 +7,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/privatefile"
 	"github.com/modu-ai/moai-adk/internal/testguard"
+	"golang.org/x/sys/windows"
 )
 
 func TestSecureHomeDirectoriesRestrictsDescendantFilesWithoutFollowingLinks(t *testing.T) {
@@ -47,5 +48,44 @@ func TestSecureHomeDirectoriesRestrictsDescendantFilesWithoutFollowingLinks(t *t
 	raw, err := os.ReadFile(outside)
 	if err != nil || string(raw) != "synthetic content" {
 		t.Fatalf("user asset changed: %q err=%v", raw, err)
+	}
+}
+
+func TestSecureHomeDirectoriesRefusesHardlinkAndPreservesExternalPolicy(t *testing.T) {
+	base := t.TempDir()
+	root, outside := filepath.Join(base, "home"), filepath.Join(base, "external-asset")
+	if err := privatefile.Mkdir(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := privatefile.WriteFile(outside, []byte("preserved external asset")); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{root, outside} {
+		testguard.MakeFilePublic(t, path)
+	}
+	before, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "external-hardlink")
+	if err := os.Link(outside, alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := secureHomeDirectories(root); err == nil {
+		t.Error("home privacy repair admitted an external hardlink")
+	}
+	if err := privatefile.CheckDirectory(root); err != nil {
+		t.Errorf("managed home directory was not kept private: %v", err)
+	}
+	after, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Errorf("external policy changed: before=%s after=%s", before.String(), after.String())
+	}
+	data, err := os.ReadFile(outside)
+	if err != nil || string(data) != "preserved external asset" {
+		t.Fatalf("external payload=%q err=%v", data, err)
 	}
 }

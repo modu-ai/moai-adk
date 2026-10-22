@@ -123,9 +123,13 @@ func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
 	if err := privatefile.Check(staging); err != nil {
 		t.Fatal(err)
 	}
-	before, err := os.Lstat(staging)
+	staged, err := os.Open(staging)
 	if err != nil {
 		t.Fatal(err)
+	}
+	before, statErr := staged.Stat()
+	if closeErr := staged.Close(); statErr != nil || closeErr != nil {
+		t.Fatalf("capture staging identity: stat=%v close=%v", statErr, closeErr)
 	}
 	if err := publisher.Install(staging, target); err != nil {
 		t.Fatal(err)

@@ -21,12 +21,23 @@ func CheckDirectory(path string) error {
 // Windows uses a protected owner-only inheritable DACL; Unix keeps mode 0700.
 func SecureDirectory(path string) error { return secureExisting(path, true) }
 
+// SecureDirectoryNoPropagation narrows only this directory's access policy.
+// Windows holds an exclusive handle so existing descendants are not changed;
+// the directory retains the same protected owner-only inheritable DACL.
+func SecureDirectoryNoPropagation(path string) error {
+	return secureExistingWithPropagation(path, true, false)
+}
+
 // SecureFile narrows an existing regular file without changing its contents.
 // Symbolic-link inputs are refused.
 // A foreign or unknown Windows owner is refused, never taken over.
 func SecureFile(path string) error { return secureExisting(path, false) }
 
 func secureExisting(path string, directory bool) error {
+	return secureExistingWithPropagation(path, directory, true)
+}
+
+func secureExistingWithPropagation(path string, directory, propagate bool) error {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return err
@@ -34,7 +45,7 @@ func secureExisting(path string, directory bool) error {
 	if info.Mode()&os.ModeSymlink != 0 || (directory && !info.IsDir()) || (!directory && !info.Mode().IsRegular()) {
 		return fmt.Errorf("private path: unexpected object type")
 	}
-	return secureExistingNative(path, info, directory)
+	return secureExistingNative(path, info, directory, propagate)
 }
 
 // OpenAppend opens an owner-only regular file for append, protecting its native

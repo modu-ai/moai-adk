@@ -285,11 +285,19 @@ func (osPrivateGTDPublisher) Install(source, target string) error {
 	if filepath.Clean(filepath.Dir(source)) != filepath.Clean(filepath.Dir(target)) {
 		return errors.New("gtd projection: staging_directory_mismatch")
 	}
-	before, err := os.Lstat(source)
+	if err := privatefile.Check(source); err != nil {
+		return err
+	}
+	staging, err := os.Open(source)
 	if err != nil {
 		return err
 	}
-	if err := privatefile.Check(source); err != nil {
+	// File.Stat captures the object's identity now. Windows Lstat may defer
+	// loading its file ID until SameFile, when the old staging name is gone.
+	before, statErr := staging.Stat()
+	// Windows ordinary file opens do not share DELETE: close before Replace,
+	// retaining the captured identity and propagating any close failure.
+	if err := errors.Join(statErr, staging.Close()); err != nil {
 		return err
 	}
 	if err := atomicfile.Replace(source, target); err != nil {

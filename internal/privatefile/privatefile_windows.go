@@ -35,7 +35,7 @@ func CreateTemp(dir, prefix string) (*os.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		h, err := windows.CreateFile(p, windows.GENERIC_READ|windows.GENERIC_WRITE|windows.READ_CONTROL,
+		h, err := windows.CreateFile(p, windows.GENERIC_READ|windows.GENERIC_WRITE|windows.READ_CONTROL|windows.DELETE,
 			windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, &sa,
 			windows.CREATE_NEW, windows.FILE_ATTRIBUTE_NORMAL, 0)
 		if err == windows.ERROR_FILE_EXISTS || err == windows.ERROR_ALREADY_EXISTS {

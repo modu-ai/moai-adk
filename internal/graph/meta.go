@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
@@ -123,7 +124,7 @@ func writeMetaFile(metaPath string, meta edgesMeta) error {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("graph: chmod edges meta temp: %w", err)
 	}
-	if err := os.Rename(tmp, metaPath); err != nil {
+	if err := atomicfile.Replace(tmp, metaPath); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("graph: rename edges meta: %w", err)
 	}

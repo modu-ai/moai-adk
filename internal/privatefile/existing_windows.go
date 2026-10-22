@@ -24,6 +24,10 @@ func ownerDescriptor(directory bool) (*windows.SECURITY_DESCRIPTOR, error) {
 }
 
 func openExisting(path string, access uint32, directory bool) (*os.File, error) {
+	return openExistingWithShare(path, access, directory, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE)
+}
+
+func openExistingWithShare(path string, access uint32, directory bool, share uint32) (*os.File, error) {
 	p, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return nil, err
@@ -32,7 +36,7 @@ func openExisting(path string, access uint32, directory bool) (*os.File, error) 
 	if directory {
 		flags |= windows.FILE_FLAG_BACKUP_SEMANTICS
 	}
-	h, err := windows.CreateFile(p, access, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+	h, err := windows.CreateFile(p, access, share,
 		nil, windows.OPEN_EXISTING, flags, 0)
 	if err != nil {
 		return nil, err
@@ -56,8 +60,15 @@ func checkDirectoryNative(path string, before os.FileInfo) error {
 	return checkObjectHandle(windows.Handle(f.Fd()), true)
 }
 
-func secureExistingNative(path string, before os.FileInfo, directory bool) error {
-	f, err := openExisting(path, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES, directory)
+func secureExistingNative(path string, before os.FileInfo, directory, propagate bool) error {
+	share := uint32(windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE | windows.FILE_SHARE_DELETE)
+	if directory && !propagate {
+		// SetSecurityInfo's documented exclusive-directory behavior suppresses
+		// automatic propagation to existing children. Future inheritance and
+		// the strict descriptor readback remain unchanged.
+		share = 0
+	}
+	f, err := openExistingWithShare(path, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES, directory, share)
 	if err != nil {
 		return err
 	}
@@ -82,6 +93,9 @@ func restrictHandleNative(f *os.File, directory bool) error {
 	}
 	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || (info.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0) != directory {
 		return fmt.Errorf("private path: unexpected object type")
+	}
+	if !directory && info.NumberOfLinks != 1 {
+		return fmt.Errorf("private path: refusing to change a file with %d links", info.NumberOfLinks)
 	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
