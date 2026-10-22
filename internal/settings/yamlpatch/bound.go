@@ -92,7 +92,7 @@ func checkRootPath(root *os.Root, relative string, directoryTarget bool) error {
 			return err
 		}
 		leaf := i == len(parts)-1
-		if !leaf && !info.IsDir() || leaf && !info.Mode().IsRegular() && !(directoryTarget && info.IsDir()) || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+		if !leaf && !info.IsDir() || leaf && !info.Mode().IsRegular() && (!directoryTarget || !info.IsDir()) || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			return fmt.Errorf("section component %s is not a regular file or real parent directory", current)
 		}
 	}
