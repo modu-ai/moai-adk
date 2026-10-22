@@ -309,6 +309,8 @@ priority, and do not append a "start the top one" default. Where the queue is
 empty, say so and stop — an empty backlog is a legitimate state, not a prompt to
 invent work.
 
+Promotion by the leader without a pick is limited to the case stated in `factory-dispatch-detail.md` § Delegated-dispatch promotion; every pick the operator makes follows the rule above.
+
 An operator may authorize several cards at once — naming them, or saying to work
 the queue in order until it empties. That is still their pick, made once instead
 of one at a time, and the leader then admits those cards in the authorized order

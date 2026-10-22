@@ -188,6 +188,7 @@ a duty not listed is a lane's:
 | Dispatch | routing whole cards to lanes, with the pre-dispatch cross-check |
 | Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
+| Delegated-dispatch promotion | promoting queued cards to a free live lane without a per-card pick, in the case and within the limits stated once in `factory-dispatch-detail.md` § Delegated-dispatch promotion |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
 | Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 

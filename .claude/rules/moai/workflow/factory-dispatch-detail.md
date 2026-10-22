@@ -130,12 +130,26 @@ Discipline:
 
 Factory Mode (`moai cc -f` / `moai glm -f` for the leader, `-l` for each lane) rests on whole-card ownership: one leader plus `lane-<n>` sessions, each lane owning one card end to end. Lanes are launched by hand; the leader keeps the run-id, the queue, and the verdict.
 
-- **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+- **Routing.** The leader routes a card WHOLE to a free lane. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+  - A free lane is a lane on which no card is actually executing; a lane that holds only merge-ready, held (operator-wait), or serial-waiting cards is a free lane.
+  - Free is a different condition from live: a lane with no live session is not a free lane but a fault (`factory-dispatch-mechanics.md` § Boundaries), and a live lane with a card executing is not free.
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Sub-agent execution within a lane.
 - **Standing spawn authority (card t224's normative home).** The lane's right to those sub-agent spawns is standing, not per-dispatch: the SessionStart join notice carries the authority sentence (canonical English for `en`, localized per `conversation_language` for the other locales, with the Status Transition Ownership Matrix pointer path (.claude/rules/moai/development/spec-frontmatter-schema.md) verbatim in every locale), and the runtime's default "don't spawn unless the user asks" guidance does not bind a lane (the leader is not the lane's user, so leader approval can neither grant nor revoke what the bootstrap grants). Scope is the Status Transition Ownership Matrix's specialist for the stage at hand; depth is one — spawned agents are leaves. Observed defect this closes: two tk8hce lanes refused to spawn `manager-spec` and edited SPEC bodies directly, routing artifact writes around the ownership matrix.
 - **Classes name the entry stage.** A/B/C name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close); no card changes sessions. Every lane runs the serial stages for whatever its card still needs.
 - **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once its card reaches `done`, before the next card is routed to it, exactly as the stub's lane card transition rule requires.
 - **Evidence, verdict, integration since the lane-autonomy revision.** The lane writes the same completion signals; the per-card verdict and the landing are the lane's own (§ The verdict's home; `factory-dispatch-mechanics.md` § The lane's standard landing), and the leader reads evidence for its retained duties only. The deputy surface applies too: the factory leader may delegate dispatch sends and watches to the coordination deputy (§ The leader works through manager-lead → Deputy mode).
+
+### Delegated-dispatch promotion
+
+Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once.
+- Where: only to a free live lane, as defined under Routing above.
+- Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment).
+- Order: queue priority and readiness first.
+- Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3).
+- Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader's remaining role).
+- Unchanged: lane self-dispatch through `moai factory next`.
+
+Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards.
 
 ## The card-review stage
 
