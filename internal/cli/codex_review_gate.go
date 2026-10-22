@@ -703,7 +703,9 @@ func reviewExclusionRoot(dir string) string {
 		return dir
 	}
 	if root, err := reviewScopeGit(dir, "rev-parse", "--show-toplevel"); err == nil && root != "" {
-		return root
+		// Git uses slash-form paths on Windows; review callers share the
+		// filesystem's canonical spelling, including the MCP tool boundary.
+		return reviewScopeGitPath(dir, root)
 	}
 	return dir
 }
