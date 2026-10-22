@@ -1068,15 +1068,19 @@ func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
 
 	t.Run("two entries in one bucket kick once", func(t *testing.T) {
 		f := newCodexEntryFixture(t, base(nil))
-		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
-			t.Fatalf("first run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		first := runCodexEntryWrapper(t, f)
+		if first.exitCode != 0 {
+			t.Fatalf("first run exit = %d\nstderr:\n%s", first.exitCode, first.stderr)
 		}
-		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
-			t.Fatalf("second run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		second := runCodexEntryWrapper(t, f)
+		if second.exitCode != 0 {
+			t.Fatalf("second run exit = %d\nstderr:\n%s", second.exitCode, second.stderr)
 		}
 		_, kick, argv := codexEntryAwaitArgv(t, f, 0, 1)
 		if kick != 1 {
-			t.Fatalf("kick count = %d, want exactly 1 across both entries\nargv:\n%s", kick, argv)
+			// The wrapper traces each exit-0 gate on stderr (cep_trace) —
+			// dump both runs' stderr so a CI-only early escape names its gate.
+			t.Fatalf("kick count = %d, want exactly 1 across both entries\nargv:\n%s\nfirst-run stderr:\n%s\nsecond-run stderr:\n%s", kick, argv, first.stderr, second.stderr)
 		}
 	})
 
