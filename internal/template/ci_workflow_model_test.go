@@ -16,9 +16,10 @@
 //     failure has been observed).
 //
 // Modelling limits, stated so a green is read at its true width: a step is
-// modelled as failing only when the test says so or when its script ends in an
-// unconditional `exit 1` line; shell behaviour inside a `run:` body is not
-// executed. Job-level `if:` and step-level `if:` are evaluated; `needs` is
+// modelled as failing only when the test says so or when its script reaches an
+// unconditional top-level `exit 1` (rpcScriptHardFails: not inside a condition,
+// loop or group, not behind `&&` / `||`, not after an earlier top-level `exit`);
+// shell behaviour inside a `run:` body is otherwise not executed. Job-level `if:` and step-level `if:` are evaluated; `needs` is
 // modelled through the `needs.<id>.result` / `.outputs.<name>` context values
 // the test supplies.
 package template_test
@@ -60,9 +61,30 @@ type rpcJob struct {
 	Outputs        map[string]string
 	Env            map[string]any `yaml:"env"`
 	Strategy       struct {
-		Matrix map[string]any `yaml:"matrix"`
+		Matrix rpcMatrix `yaml:"matrix"`
 	} `yaml:"strategy"`
 	Steps []rpcStep `yaml:"steps"`
+}
+
+// rpcMatrixScalarKey is the key under which a `strategy.matrix` written as a
+// scalar (`matrix: ${{ fromJSON(needs.x.outputs.m) }}`) is held, so the model
+// parses that form instead of failing on it and a guard can see and refuse it.
+const rpcMatrixScalarKey = "$scalar"
+
+// rpcMatrix is a job's `strategy.matrix`: normally a mapping, tolerated as a scalar.
+type rpcMatrix map[string]any
+
+func (m *rpcMatrix) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode {
+		*m = rpcMatrix{rpcMatrixScalarKey: n.Value}
+		return nil
+	}
+	var raw map[string]any
+	if err := n.Decode(&raw); err != nil {
+		return err
+	}
+	*m = raw
+	return nil
 }
 
 // rpcWorkflow is a parsed workflow file.
@@ -174,6 +196,108 @@ func (w *rpcWorkflow) triggerBranches(event string) (bool, []string) {
 		}
 	}
 	return false, nil
+}
+
+// triggerPathFilters returns the `paths:` and `paths-ignore:` filters an event
+// declares (present=false when the workflow does not subscribe to the event).
+// GitHub applies them only to push and pull_request events.
+func (w *rpcWorkflow) triggerPathFilters(event string) (present bool, paths, ignore []string) {
+	if w.On.Kind != yaml.MappingNode {
+		present, _ = w.triggerBranches(event)
+		return present, nil, nil
+	}
+	list := func(n *yaml.Node) []string {
+		if n.Kind == yaml.ScalarNode {
+			return []string{n.Value}
+		}
+		out := make([]string, 0, len(n.Content))
+		for _, c := range n.Content {
+			out = append(out, c.Value)
+		}
+		return out
+	}
+	for i := 0; i+1 < len(w.On.Content); i += 2 {
+		if w.On.Content[i].Value != event {
+			continue
+		}
+		val := w.On.Content[i+1]
+		if val.Kind != yaml.MappingNode {
+			return true, nil, nil
+		}
+		for k := 0; k+1 < len(val.Content); k += 2 {
+			switch val.Content[k].Value {
+			case "paths":
+				paths = list(val.Content[k+1])
+			case "paths-ignore":
+				ignore = list(val.Content[k+1])
+			}
+		}
+		return true, paths, ignore
+	}
+	return false, nil, nil
+}
+
+// rpcGlobMatch matches a repo-relative file path against a workflow / paths-filter
+// glob: `*` within a path segment, `**` across segments (`**/` also matches no
+// directory), `?` one character, dotfiles matched (picomatch dot:true). Negation,
+// brace and character-class syntax is refused rather than guessed at.
+func rpcGlobMatch(pattern, file string) (bool, error) {
+	if strings.ContainsAny(pattern, "{}[]()!") {
+		return false, fmt.Errorf("glob syntax in %q is not modelled", pattern)
+	}
+	var re strings.Builder
+	re.WriteString("^")
+	for i := 0; i < len(pattern); i++ {
+		switch c := pattern[i]; c {
+		case '*':
+			if i+1 < len(pattern) && pattern[i+1] == '*' {
+				for i+1 < len(pattern) && pattern[i+1] == '*' {
+					i++
+				}
+				if i+1 < len(pattern) && pattern[i+1] == '/' {
+					i++
+					re.WriteString("(?:.*/)?")
+				} else {
+					re.WriteString(".*")
+				}
+			} else {
+				re.WriteString("[^/]*")
+			}
+		case '?':
+			re.WriteString("[^/]")
+		default:
+			re.WriteString(regexp.QuoteMeta(string(c)))
+		}
+	}
+	re.WriteString("$")
+	return regexp.MatchString(re.String(), file)
+}
+
+// rpcPathsAdmit reports whether a workflow's paths / paths-ignore filter lets a
+// pull_request or push whose changed files are exactly {file} start.
+func rpcPathsAdmit(paths, ignore []string, file string) (bool, error) {
+	if len(paths) > 0 {
+		for _, p := range paths {
+			ok, err := rpcGlobMatch(p, file)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	for _, p := range ignore {
+		ok, err := rpcGlobMatch(p, file)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // rpcMatrixCombos expands a strategy.matrix into its legs following GitHub's
@@ -624,11 +748,181 @@ func rpcJobRuns(t *testing.T, j *rpcJob, ctx rpcExprCtx) bool {
 	return rpcEvalIf(t, rpcWithStatusDefault(j.If), jc)
 }
 
-var rpcHardFailRe = regexp.MustCompile(`(?m)^\s*exit 1\s*$`)
+// rpcShellStatements splits a `run:` script into statements, each a list of
+// words. It is a reader for the straight-line scripts the verdict and marker
+// steps use, not a shell: it understands quoting, comments, `;` and newline as
+// statement ends, a trailing `&&` / `||` / `|` / backslash as a continuation,
+// `$( ... )` as one word and heredoc bodies as skipped text. `&&`, `||`, `|` and
+// `&` are kept as words so a conditional `cmd || exit 1` stays visibly one
+// statement.
+func rpcShellStatements(script string) [][]string {
+	var stmts [][]string
+	var cur []string
+	var word strings.Builder
+	inWord := false
+	heredoc, heredocNext := "", false
+	flushWord := func() {
+		if !inWord {
+			return
+		}
+		w := word.String()
+		word.Reset()
+		inWord = false
+		switch {
+		case heredocNext:
+			heredoc, heredocNext = strings.Trim(w, `'"`), false
+		case strings.HasPrefix(w, "<<") && !strings.HasPrefix(w, "<<<"):
+			d := strings.Trim(strings.TrimPrefix(strings.TrimPrefix(w, "<<"), "-"), `'"`)
+			if d == "" {
+				heredocNext = true
+			} else {
+				heredoc = d
+			}
+		}
+		cur = append(cur, w)
+	}
+	endStmt := func() {
+		flushWord()
+		if len(cur) > 0 {
+			stmts = append(stmts, cur)
+			cur = nil
+		}
+	}
+	rs := []rune(script)
+	sub := 0
+	for i := 0; i < len(rs); i++ {
+		c := rs[i]
+		switch {
+		case sub > 0:
+			word.WriteRune(c)
+			inWord = true
+			switch c {
+			case '(':
+				sub++
+			case ')':
+				sub--
+			}
+		case c == '\\':
+			if i+1 < len(rs) {
+				i++
+				if rs[i] == '\n' {
+					flushWord()
+				} else {
+					word.WriteRune(rs[i])
+					inWord = true
+				}
+			}
+		case c == '\'':
+			inWord = true
+			for i++; i < len(rs) && rs[i] != '\''; i++ {
+				word.WriteRune(rs[i])
+			}
+		case c == '"':
+			inWord = true
+			for i++; i < len(rs) && rs[i] != '"'; i++ {
+				if rs[i] == '\\' && i+1 < len(rs) {
+					i++
+				}
+				word.WriteRune(rs[i])
+			}
+		case c == '$' && i+1 < len(rs) && rs[i+1] == '(':
+			word.WriteString("$(")
+			inWord = true
+			i++
+			sub = 1
+		case c == '#' && !inWord:
+			for i+1 < len(rs) && rs[i+1] != '\n' {
+				i++
+			}
+		case c == '\n':
+			flushWord()
+			if heredoc != "" {
+				j := i + 1
+				for j < len(rs) {
+					k := j
+					for k < len(rs) && rs[k] != '\n' {
+						k++
+					}
+					line := strings.TrimSpace(string(rs[j:k]))
+					j = k + 1
+					if line == heredoc {
+						break
+					}
+				}
+				i, heredoc = j-1, ""
+			}
+			if n := len(cur); n > 0 && (cur[n-1] == "&&" || cur[n-1] == "||" || cur[n-1] == "|") {
+				continue
+			}
+			endStmt()
+		case c == ';':
+			endStmt()
+		case c == ' ' || c == '\t' || c == '\r':
+			flushWord()
+		case c == '&' || c == '|':
+			flushWord()
+			op := string(c)
+			if i+1 < len(rs) && rs[i+1] == c {
+				op += string(c)
+				i++
+			}
+			cur = append(cur, op)
+		default:
+			word.WriteRune(c)
+			inWord = true
+		}
+	}
+	endStmt()
+	return stmts
+}
 
-// rpcStepHardFails reports whether a step's script ends in an unconditional
-// `exit 1` line — the convention the verdict and marker steps use.
-func rpcStepHardFails(s rpcStep) bool { return rpcHardFailRe.MatchString(s.Run) }
+// rpcScriptHardFails reports whether running the script reaches an
+// unconditional `exit 1`: a top-level statement that is exactly `exit 1`, not
+// preceded by another top-level `exit`, and not inside an if / for / while /
+// until / case body, a `{ }` group or a `( )` subshell, nor chained behind
+// `&&` / `||`. An `exit 1` that sits inside a condition is NOT unconditional
+// (this reader does not evaluate the condition, so it never credits one — an
+// `if false; then exit 1; fi` and an `exit 0` followed by `exit 1` both read as
+// "does not hard-fail"). That is the conservative direction for a guard: a
+// verdict step that is wrapped in a condition turns the guard red.
+func rpcScriptHardFails(script string) bool {
+	depth := 0
+	for _, st := range rpcShellStatements(script) {
+		for len(st) > 0 && (st[0] == "then" || st[0] == "do" || st[0] == "else") {
+			st = st[1:]
+		}
+		if len(st) == 0 {
+			continue
+		}
+		switch st[0] {
+		case "if", "for", "while", "until", "case", "select":
+			depth++
+		case "fi", "done", "esac":
+			if depth > 0 {
+				depth--
+			}
+		case "exit":
+			if depth == 0 && len(st) <= 2 {
+				return len(st) == 2 && st[1] == "1"
+			}
+		}
+		for _, w := range st {
+			switch w {
+			case "{", "(":
+				depth++
+			case "}", ")":
+				if depth > 0 {
+					depth--
+				}
+			}
+		}
+	}
+	return false
+}
+
+// rpcStepHardFails reports whether a step's script reaches an unconditional
+// `exit 1` — the convention the verdict and marker steps use.
+func rpcStepHardFails(s rpcStep) bool { return rpcScriptHardFails(s.Run) }
 
 // rpcFirstVerificationStep names the first plain run step of a job that is
 // neither conditional nor a hard-fail step: the step the "verification fails"

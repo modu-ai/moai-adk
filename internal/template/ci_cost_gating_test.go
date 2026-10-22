@@ -413,11 +413,31 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 			w.Jobs[id].Steps = keep
 		}
 	}
+	// rewriteVerdict replaces the script of every hard-failing step of the given
+	// jobs (the verdict step of a real job, or the failing step of a marker).
+	rewriteVerdict := func(ids func(w *rpcWorkflow) []string, script string) func(w *rpcWorkflow) {
+		return func(w *rpcWorkflow) {
+			for _, id := range ids(w) {
+				for i := range w.Jobs[id].Steps {
+					if rpcStepHardFails(w.Jobs[id].Steps[i]) {
+						w.Jobs[id].Steps[i].Run = script
+					}
+				}
+			}
+		}
+	}
+	realJobs := func(*rpcWorkflow) []string { return rpcGatedRealJobs }
+	lintMarkers := func(w *rpcWorkflow) []string { return markerIDs(w, "lint") }
 	mutants := []struct {
 		name   string
 		mutate func(w *rpcWorkflow)
 	}{
 		{"no verdict step (run on failure, publish its success)", dropVerdict},
+		// F6: the failing branch must be reachable, not merely present as text.
+		{"verdict exit 1 inside an `if false` body", rewriteVerdict(realJobs, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
+		{"verdict exit 1 behind an earlier exit 0", rewriteVerdict(realJobs, "echo \"verdict\"\nexit 0\nexit 1\n")},
+		{"verdict exit 1 chained behind a failing test", rewriteVerdict(realJobs, "echo \"verdict\"\n[ -f /nonexistent ] && exit 1\n")},
+		{"marker exit 1 inside an `if false` body", rewriteVerdict(lintMarkers, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
 		{"marker passes on classification failure", func(w *rpcWorkflow) {
 			for _, id := range markerIDs(w, "lint") {
 				for i := range w.Jobs[id].Steps {
@@ -455,6 +475,60 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 	}
 }
 
+// TestScriptHardFailReachability pins what "this step hard-fails" means to the
+// verdict guards (F6): an unconditional, reachable top-level `exit 1`. Each row
+// is a script and whether it counts; the false rows are the unreachable or
+// conditional spellings a text match would have credited.
+func TestScriptHardFailReachability(t *testing.T) {
+	cases := []struct {
+		name   string
+		script string
+		want   bool
+	}{
+		{"bare exit 1", "exit 1", true},
+		{"echo then exit 1", "echo \"::error::x\"\nexit 1\n", true},
+		{"exit 1 with trailing comment", "echo x\nexit 1 # fail the check\n", true},
+		{"indented, extra spaces", "\t  exit   1   \n", true},
+		{"exit 1 then more text", "exit 1; echo after\n", true},
+		{"exit 1 after a comment mentioning exit 0", "# exit 0 here would end it\nexit 1\n", true},
+		{"exit 1 after a quoted exit 0 argument", "echo \"exit 0\"\nexit 1\n", true},
+
+		{"empty script", "", false},
+		{"exit 0 then exit 1", "echo x\nexit 0\nexit 1\n", false},
+		{"exit 0; exit 1 on one line", "exit 0; exit 1\n", false},
+		{"bare exit then exit 1", "exit\nexit 1\n", false},
+		{"exit with a computed code then exit 1", "exit $rc\nexit 1\n", false},
+		{"exit 2", "exit 2\n", false},
+		{"if false body, multi-line", "if false; then\n  exit 1\nfi\n", false},
+		{"if false body, one line", "if false; then exit 1; fi\n", false},
+		{"if true body (a condition is never credited)", "if true; then\n  exit 1\nfi\n", false},
+		{"elif branch", "if [ -z x ]; then\n  echo a\nelif [ -z y ]; then\n  exit 1\nfi\n", false},
+		{"while body", "while true; do\n  exit 1\ndone\n", false},
+		{"for body", "for x in a b; do exit 1; done\n", false},
+		{"case arm", "case \"$X\" in\n  a) exit 1 ;;\nesac\n", false},
+		{"&& chained", "[ -f /nonexistent ] && exit 1\n", false},
+		{"|| chained", "test -n \"$x\" || { echo bad; exit 1; }\n", false},
+		{"|| continued onto the next line", "test -n \"$x\" ||\n  exit 1\n", false},
+		{"brace group", "{\n  exit 1\n}\n", false},
+		{"subshell", "(\n  exit 1\n)\n", false},
+		{"exit 1 line inside a quoted multi-line string", "echo \"first\nexit 1\nlast\"\n", false},
+		{"exit 1 line inside a heredoc", "cat <<EOF\nexit 1\nEOF\n", false},
+		{"exit 1 line inside a quoted heredoc", "cat <<'EOF'\nexit 1\nEOF\n", false},
+		{"exit 1 only in a comment", "echo x\n# exit 1\n", false},
+		{"exit 1 only as an echo argument", "echo exit 1\n", false},
+		{"exit 1 inside command substitution", "x=$(echo a; exit 1)\n", false},
+		{"exit 1 after a closed if", "if [ -z x ]; then\n  echo a\nfi\nexit 1\n", true},
+		{"exit 1 after a loop that ends", "for x in a; do\n  echo $x\ndone\nexit 1\n", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := rpcScriptHardFails(c.script); got != c.want {
+				t.Fatalf("rpcScriptHardFails(%q) = %v, want %v", c.script, got, c.want)
+			}
+		})
+	}
+}
+
 // ---- AC-RPC-004: required names per event class ------------------------------
 
 type rpcEventClass struct {
@@ -476,6 +550,17 @@ var rpcEventClasses = []rpcEventClass{
 // `needs: detect` with no failure arm (PRESERVE item 4). M2 does not change
 // them, so the classification-failure outcome does not assert them.
 var rpcFailClosedByAbsence = map[string]bool{"Test (ubuntu-latest)": true}
+
+// rpcOutcomeDiffFile is the one changed file a representative pull_request / push
+// of each classification outcome carries; a workflow's `paths:` / `paths-ignore:`
+// filter is evaluated against it. A classification failure says nothing about the
+// diff, so it takes the docs-only file — the one a code-path filter skips.
+var rpcOutcomeDiffFile = map[string]string{
+	"docs-only":    "README.md",
+	"go-code":      "cmd/moai/main.go",
+	"harness-only": ".claude/rules/moai/core/zone-registry.md",
+	"":             "README.md",
+}
 
 func rpcTriggerMatches(wf *rpcWorkflow, event, branch string) bool {
 	present, branches := wf.triggerBranches(event)
@@ -511,24 +596,46 @@ func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow,
 			if o.kind != "" {
 				cell.classes = rpcOutcome(o.kind)
 			}
+			diff := rpcOutcomeDiffFile[o.kind]
 			for _, name := range set {
 				reported := false
-				if rpcTriggerMatches(ci, ec.event, ec.branch) &&
-					len(rpcNonSkipped(rpcConclusions(t, ci, name, cell.ctx(), rpcAllStepsPass))) > 0 {
-					reported = true
-				}
-				for _, w := range others {
+				var skippedBy []string
+				for _, w := range append([]*rpcWorkflow{ci}, others...) {
 					if !rpcTriggerMatches(w, ec.event, ec.branch) {
 						continue
 					}
-					for _, id := range w.jobIDs() {
-						if rpcContains(w.Jobs[id].displayNames(), name) {
-							reported = true
+					supplies := false
+					if w == ci {
+						supplies = len(rpcNonSkipped(rpcConclusions(t, ci, name, cell.ctx(), rpcAllStepsPass))) > 0
+					} else {
+						for _, id := range w.jobIDs() {
+							if rpcContains(w.Jobs[id].displayNames(), name) {
+								supplies = true
+							}
 						}
 					}
+					if !supplies {
+						continue
+					}
+					// F5: a workflow that supplies the name still publishes nothing
+					// when its own paths / paths-ignore filter skips this diff.
+					_, paths, ignore := w.triggerPathFilters(ec.event)
+					admitted, err := rpcPathsAdmit(paths, ignore, diff)
+					if err != nil {
+						add("%s: %s: %v", ec.label, w.Path, err)
+					}
+					if err != nil || !admitted {
+						skippedBy = append(skippedBy, w.Path)
+						continue
+					}
+					reported = true
 				}
 				if !reported && (o.kind != "" || !rpcFailClosedByAbsence[name]) {
-					add("%s x %s: required name %q is not reported by any job", ec.label, o.label, name)
+					why := ""
+					if len(skippedBy) > 0 {
+						why = fmt.Sprintf(" (supplied only by %v, whose %s paths / paths-ignore filter skips the diff {%s})", skippedBy, ec.event, diff)
+					}
+					add("%s x %s: required name %q is not reported by any job%s", ec.label, o.label, name, why)
 				}
 			}
 		}
@@ -613,6 +720,94 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 			t.Fatalf("a gated lint with no Lint marker did not report Lint missing on the docs-only pull_request cell; got %v", got)
 		}
 		t.Logf("control (a) observed red: %s", got[0])
+	})
+	// F5: a workflow that supplies a required name stops supplying it on a diff its
+	// own `paths:` / `paths-ignore:` filter skips. Each control edits the real
+	// workflow text (adds a pull_request path filter) and re-runs the guard.
+	cqText := rpcReadRepoFile(t, rpcCodeQLWorkflowRel)
+	relText := rpcReadRepoFile(t, rpcReleaseWorkflowRel)
+	withFilter := func(t *testing.T, text, filter string) string {
+		t.Helper()
+		out := strings.Replace(text, "  pull_request:\n", "  pull_request:\n"+filter, 1)
+		if out == text {
+			t.Fatalf("control did not apply: no `  pull_request:` trigger to attach a filter to")
+		}
+		return out
+	}
+	pathsControls := []struct {
+		name     string
+		target   string // ci | codeql | release
+		filter   string
+		wantCell string // substring of a violation; empty = the guard must stay clean
+	}{
+		{"codeql paths exclude docs", "codeql", "    paths:\n      - 'internal/**'\n", `pull_request to main x docs-only: required name "Analyze (Go) (go)"`},
+		{"codeql paths-ignore markdown", "codeql", "    paths-ignore:\n      - '**.md'\n", `pull_request to main x docs-only: required name "Analyze (Go) (go)"`},
+		{"codeql go-only paths skip a harness diff", "codeql", "    paths:\n      - '**/*.go'\n", `pull_request to main x harness-only: required name "Analyze (Go) (go)"`},
+		{"release gate behind a go-only paths filter", "release", "    paths:\n      - '**/*.go'\n", `pull_request to main x docs-only: required name "Release PR Multi-OS Gate"`},
+		{"ci behind a code-only paths filter", "ci", "    paths:\n      - 'internal/**'\n", `pull_request to main x docs-only: required name "Lint"`},
+		{"codeql paths admitting every file stays clean", "codeql", "    paths:\n      - '**'\n", ""},
+		{"codeql paths-ignore of an unrelated tree stays clean", "codeql", "    paths-ignore:\n      - 'docs-site/**'\n", ""},
+	}
+	for _, c := range pathsControls {
+		t.Run("control/paths filter/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+			}
+			ciT, cqT, relT := ciText, cqText, relText
+			switch c.target {
+			case "ci":
+				ciT = withFilter(t, ciText, c.filter)
+			case "codeql":
+				cqT = withFilter(t, cqText, c.filter)
+			case "release":
+				relT = withFilter(t, relText, c.filter)
+			}
+			got := rpcCheckRequiredNames(t, rpcParseWorkflow(t, rpcCIWorkflowRel, ciT), []*rpcWorkflow{
+				rpcParseWorkflow(t, rpcCodeQLWorkflowRel, cqT),
+				rpcParseWorkflow(t, rpcReleaseWorkflowRel, relT),
+			}, rc)
+			if c.wantCell == "" {
+				if len(got) != 0 {
+					t.Fatalf("a path filter that admits the diff was flagged: %s", got[0])
+				}
+				return
+			}
+			for _, g := range got {
+				if strings.Contains(g, c.wantCell) {
+					t.Logf("control observed red: %s", g)
+					return
+				}
+			}
+			t.Fatalf("path filter mutant not reported at %q; got %v", c.wantCell, got)
+		})
+	}
+	t.Run("control/glob matcher", func(t *testing.T) {
+		cases := []struct {
+			pattern, file string
+			want          bool
+		}{
+			{"**", "README.md", true},
+			{"**.md", "docs/a/b.md", true},
+			{"*.md", "docs/a.md", false},
+			{"*.md", "README.md", true},
+			{"internal/**", "internal/cli/x.go", true},
+			{"internal/**", "README.md", false},
+			{"**/*.go", "main.go", true},
+			{"**/*.go", "cmd/moai/main.go", true},
+			{"**/*.go", "README.md", false},
+			{".claude/rules/moai/**", ".claude/rules/moai/core/a.md", true},
+			{"docs/?.md", "docs/a.md", true},
+			{"docs/?.md", "docs/ab.md", false},
+		}
+		for _, c := range cases {
+			got, err := rpcGlobMatch(c.pattern, c.file)
+			if err != nil || got != c.want {
+				t.Errorf("rpcGlobMatch(%q, %q) = %v, %v; want %v", c.pattern, c.file, got, err, c.want)
+			}
+		}
+		if _, err := rpcGlobMatch("!docs/**", "a"); err == nil {
+			t.Errorf("a negated pattern must be refused, not guessed at")
+		}
 	})
 	t.Run("control/release gate name in release_gate", func(t *testing.T) {
 		if !baselineClean {
