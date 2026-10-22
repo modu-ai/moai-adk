@@ -75,7 +75,10 @@ func tripleFixture(t *testing.T, syncStatus string) (MergeTripleInput, *fakeGit)
 		// shape) so tree-identity passes.
 		mergeTreeOut: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
 		revParse: map[string]string{
-			"rev-parse WT-card^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+			// card t1928 (audit F1): the (d) candidate-tree read consumes the
+			// branch through cardBranchRef — the qualified spelling below is
+			// what the probe now scripts.
+			"rev-parse refs/heads/WT-card^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
 		},
 	}
 	return in, fake
