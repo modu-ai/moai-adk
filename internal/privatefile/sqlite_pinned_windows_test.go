@@ -1,12 +1,16 @@
 package privatefile
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/windows"
+	"modernc.org/sqlite"
 )
 
 // TestSQLitePinnedSidecarLifetime is a synthetic lifetime experiment, not a
@@ -14,6 +18,7 @@ import (
 // this test asks whether read-capable handles that do not share DELETE preserve
 // private objects while real SQLite operations and checked Close still work.
 func TestSQLitePinnedSidecarLifetime(t *testing.T) {
+	const closeBudget = 200 * time.Millisecond
 	token := sqliteNativeReadToken()
 	sqliteNativeLog(t, "token", token)
 	if len(token.Errors) != 0 {
@@ -52,26 +57,62 @@ func TestSQLitePinnedSidecarLifetime(t *testing.T) {
 		if db == nil {
 			t.Fatal("open synthetic pinned SQLite")
 		}
-		if _, err := db.ExecContext(t.Context(), `CREATE TABLE IF NOT EXISTS pinned(n INTEGER NOT NULL); INSERT INTO pinned(n) VALUES(1)`); err != nil {
+		conn, err := db.Conn(t.Context())
+		if err != nil {
+			t.Fatalf("acquire pinned physical connection phase=%d: %v", phase, err)
+		}
+		t.Cleanup(func() {
+			if err := conn.Close(); err != nil && !errors.Is(err, sql.ErrConnDone) {
+				t.Errorf("cleanup pinned physical connection: %v", err)
+			}
+		})
+		sqlitePinnedPersistWAL(t, conn, phase)
+		if _, err := conn.ExecContext(t.Context(), `CREATE TABLE IF NOT EXISTS pinned(n INTEGER NOT NULL); INSERT INTO pinned(n) VALUES(1)`); err != nil {
 			t.Fatalf("synthetic pinned write phase=%d: %v", phase, err)
 		}
 		var rows int
-		if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM pinned`).Scan(&rows); err != nil || rows != phase {
+		if err := conn.QueryRowContext(t.Context(), `SELECT count(*) FROM pinned`).Scan(&rows); err != nil || rows != phase {
 			t.Fatalf("pinned continuity phase=%d count=%d error=%v", phase, rows, err)
 		}
 		sqlitePinnedCheckArtifacts(t, fmt.Sprintf("pinned-writer-open-%d", phase), path, identities)
+		closeStart := time.Now()
+		releaseErr := conn.Close()
+		releaseElapsed := time.Since(closeStart)
+		poolCloseStart := time.Now()
 		closeErr := db.Close()
+		poolCloseElapsed := time.Since(poolCloseStart)
+		closeElapsed := time.Since(closeStart)
 		result := struct {
-			Phase int    `json:"phase"`
-			Error string `json:"error,omitempty"`
-		}{Phase: phase}
+			Phase            int     `json:"phase"`
+			Error            string  `json:"error,omitempty"`
+			ReleaseError     string  `json:"release_error,omitempty"`
+			ReleaseElapsedMS float64 `json:"release_elapsed_ms"`
+			PoolCloseMS      float64 `json:"pool_close_elapsed_ms"`
+			ElapsedMS        float64 `json:"close_elapsed_ms"`
+			BudgetMS         int     `json:"close_budget_ms"`
+		}{
+			Phase:            phase,
+			ReleaseElapsedMS: float64(releaseElapsed) / float64(time.Millisecond),
+			PoolCloseMS:      float64(poolCloseElapsed) / float64(time.Millisecond),
+			ElapsedMS:        float64(closeElapsed) / float64(time.Millisecond),
+			BudgetMS:         int(closeBudget / time.Millisecond),
+		}
 		if closeErr != nil {
 			result.Error = closeErr.Error()
 		}
+		if releaseErr != nil {
+			result.ReleaseError = releaseErr.Error()
+		}
 		sqliteNativeLog(t, "pinned-close", result)
 		sqlitePinnedCheckArtifacts(t, fmt.Sprintf("pinned-after-close-%d", phase), path, identities)
+		if releaseErr != nil {
+			t.Fatalf("pinned connection release must succeed phase=%d: %v", phase, releaseErr)
+		}
 		if closeErr != nil {
 			t.Fatalf("pinned SQLite Close must succeed phase=%d: %v", phase, closeErr)
+		}
+		if closeElapsed > closeBudget {
+			t.Errorf("pinned release and SQLite Close phase=%d took %v, diagnostic budget is %v", phase, closeElapsed, closeBudget)
 		}
 	}
 	// Both SQL pools have closed before any guard is released. Releasing
@@ -82,6 +123,50 @@ func TestSQLitePinnedSidecarLifetime(t *testing.T) {
 		}
 	}
 	sqlitePinnedCheckArtifacts(t, "after-all-guards-released", path, identities)
+}
+
+// The public FileControl setting is scoped to this synthetic physical
+// connection. It is re-applied and read back on each reopened connection;
+// no process-wide hook, registration or production setting is changed.
+func sqlitePinnedPersistWAL(t *testing.T, conn *sql.Conn, phase int) {
+	t.Helper()
+	result := struct {
+		Phase    int    `json:"phase"`
+		Before   int    `json:"before"`
+		Set      int    `json:"set_result"`
+		Readback int    `json:"readback"`
+		Error    string `json:"error,omitempty"`
+	}{Phase: phase}
+	err := conn.Raw(func(raw any) error {
+		control, ok := raw.(sqlite.FileControl)
+		if !ok {
+			return errors.New("physical connection does not implement sqlite.FileControl")
+		}
+		var err error
+		if result.Before, err = control.FileControlPersistWAL("main", -1); err != nil {
+			return fmt.Errorf("query persist WAL before setting: %w", err)
+		}
+		if result.Set, err = control.FileControlPersistWAL("main", 1); err != nil {
+			return fmt.Errorf("set persist WAL: %w", err)
+		}
+		if result.Set != 1 {
+			return fmt.Errorf("set persist WAL returned %d, want 1", result.Set)
+		}
+		if result.Readback, err = control.FileControlPersistWAL("main", -1); err != nil {
+			return fmt.Errorf("read back persist WAL: %w", err)
+		}
+		if result.Readback != 1 {
+			return fmt.Errorf("persist WAL readback %d, want 1", result.Readback)
+		}
+		return nil
+	})
+	if err != nil {
+		result.Error = err.Error()
+	}
+	sqliteNativeLog(t, "persist-wal", result)
+	if err != nil {
+		t.Fatalf("persist WAL phase=%d: %v", phase, err)
+	}
 }
 
 func sqlitePinnedArtifacts() []struct{ role, suffix string } {
