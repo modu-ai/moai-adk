@@ -3,10 +3,10 @@
 // Package lockfile provides cross-platform advisory file-lock primitives.
 //
 // The Unix implementation uses syscall.Flock (kernel advisory locks, safe
-// across processes). The Windows implementation falls back to in-process
-// per-path mutexes — see lockfile_windows.go for the documented cross-process
-// limitation. Migrated from internal/cli team_spawn_lock_{unix,windows}.go
-// (SPEC-AGENT-TEAM-RETIRE-001 M0, REQ-ATR-001) with behavior preserved.
+// across processes). Windows uses an OS-backed exclusive byte-range lock
+// for the same blocking/nonblocking acquisition and descriptor lifetime.
+// Migrated from internal/cli team_spawn_lock_{unix,windows}.go and extended
+// for the cross-process writers of SPEC-WORKTREE-HOME-ROOT-001.
 package lockfile
 
 import (
