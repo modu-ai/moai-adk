@@ -380,7 +380,10 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
                         elif (( leg_count > 1 )); then
                             run_problem="run $run_id has $leg_count jobs named '$leg' (a duplicated shard job)."
                         else
-                            leg_result="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print $2; exit}')"
+                            # Feed the captured snapshot directly: this awk exits
+                            # early, so a producer pipe can SIGPIPE under pipefail
+                            # before the matrix verdict is reported.
+                            leg_result="$(awk -F'|' -v leg="$leg" '$1 == leg {print $2; exit}' <<< "$RUN_JOBS")"
                             if [[ "$leg_result" != "success" ]]; then
                                 run_problem="run $run_id leg '$leg' is ${leg_result:-unknown}, not success."
                             fi
@@ -390,9 +393,9 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
             done
             # A Release Verify job outside the 3 x 6 expected names is an unknown shard.
             if [[ -z "$run_problem" ]]; then
-                unknown_leg="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v want="$expected_legs" '
+                unknown_leg="$(awk -F'|' -v want="$expected_legs" '
                     BEGIN { n = split(want, names, "|"); for (i = 1; i <= n; i++) ok[names[i]] = 1 }
-                    index($1, "Release Verify (") == 1 && !($1 in ok) { print $1; exit }')"
+                    index($1, "Release Verify (") == 1 && !($1 in ok) { print $1; exit }' <<< "$RUN_JOBS")"
                 if [[ -n "$unknown_leg" ]]; then
                     run_problem="run $run_id has an unknown Release Verify leg '$unknown_leg' (not one of the declared OS x shard legs)."
                 fi
