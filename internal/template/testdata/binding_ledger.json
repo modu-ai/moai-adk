@@ -4678,7 +4678,7 @@
     "start_line": 7
    },
    "before_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.",
-   "after_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.",
+   "after_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the dispatch cycle and coordination rationale; `factory-dispatch-cards.md` owns classification and traceability; `factory-dispatch-gates.md` owns native Codex review and integration gates; `factory-dispatch-mechanics.md` owns worktree and landing procedures. Load as needed.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5651,7 +5651,7 @@
     "start_line": 110
    },
    "before_text": "[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.",
-   "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
+   "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, native review evidence adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5676,7 +5676,7 @@
      "delivery": "REQ-ALB-024"
     }
    ],
-   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file; t1868 replaces retired CodeRabbit slot-wait adjudication with native review evidence adjudication"
   },
   {
    "id": "ALB-0280",
@@ -5788,7 +5788,7 @@
     "start_line": 124
    },
    "before_text": "[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:\n\n1. The **combined** endpoint `/commits/{sha}/status` shows `state == \"success\"` **and** description `Review completed`:\n\n    ```bash\n    gh api \"repos/$REPO/commits/$HEAD_SHA/status\" \\\n      --jq '.statuses[] | select(.context == \"CodeRabbit\" and .state == \"success\") | .description'\n    ```\n\n2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.",
-   "after_text": "[HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.",
+   "after_text": "[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5813,7 +5813,7 @@
      "delivery": "REQ-ALB-024"
     }
    ],
-   "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
+   "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file; t1868 replaces the retired CodeRabbit predicate with head-bound native Codex summary and receipt evidence"
   },
   {
    "id": "ALB-0285",
@@ -5825,7 +5825,7 @@
     "start_line": 135
    },
    "before_text": "Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)",
-   "after_text": "Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)",
+   "after_text": "Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5834,7 +5834,7 @@
      "delivery": "always"
     }
    ],
-   "reason": "CodeRabbit gap conditions"
+   "reason": "Native Codex evidence gap conditions"
   },
   {
    "id": "ALB-0286",

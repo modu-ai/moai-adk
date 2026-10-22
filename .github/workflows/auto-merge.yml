@@ -87,8 +87,32 @@ jobs:
           echo "sha=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
+      - name: Check eligible PR author and same-repository head
+        id: author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR_JSON="$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null || true)"
+          ELIGIBLE=false
+          if [ -n "$PR_JSON" ] && printf '%s' "$PR_JSON" | jq -e '
+            .user.login == "GoosLab" and
+            .user.id == 6458969 and
+            .user.type == "User" and
+            (.head.repo.id | type) == "number" and
+            (.base.repo.id | type) == "number" and
+            .head.repo.id == .base.repo.id
+          ' >/dev/null 2>&1; then
+            ELIGIBLE=true
+          fi
+          echo "eligible=$ELIGIBLE" >> "$GITHUB_OUTPUT"
+          if [ "$ELIGIBLE" != "true" ]; then
+            echo "::notice::PR author or head repository is not eligible for auto-merge; it requires the user's test confirmation and explicit approval"
+          fi
+
       - name: Check all required CI checks passed
-        if: steps.head.outputs.ok == 'true'
+        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true'
         id: checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -172,131 +196,239 @@ jobs:
           echo "Timeout waiting for checks, skipping auto-merge"
           echo "should_merge=false" >> "$GITHUB_OUTPUT"
 
-      # Guard (b)+(c) — CodeRabbit gate.
-      # CodeRabbit reports through a commit status named "CodeRabbit" and writes
-      # its verdict into the walkthrough comment, between the
-      # final_review_risk_start/end markers, in the shape:
-      #   **Merge Risk:** _<emoji> Moderate_ - up to `<head sha prefix>`
-      # The trailing prefix says which commit the verdict covers, so a verdict
-      # left over from an earlier push can be told apart from a current one.
-      #
-      # Merge proceeds only when the verdict is present, current, and no worse
-      # than AUTOMERGE_MAX_MERGE_RISK. Every other outcome - status still
-      # pending at timeout, comment missing, marker block absent, unparseable
-      # level, stale prefix, API error - withholds the merge.
-      - name: Wait for CodeRabbit and read its Merge Risk verdict
-        id: coderabbit
-        if: steps.head.outputs.ok == 'true' && steps.checks.outputs.should_merge == 'true'
+      # Guard (b) - changed-file list and tamper guard (SPEC-CI-CODEX-REVIEW-001).
+      # Every page of the pull request's changed-file list is collected, count-checked against the
+      # pull request's own count, and bound entry by entry to the verified head commit. Any change
+      # under .github/workflows/ or to the gate script withholds the merge for a human. The head is
+      # read before and after the list: a head that moved is never judged. A failure, a missing
+      # gate script included, ends this step non-zero, so the step and the job fail and no later
+      # step runs; only the pass exits 0.
+      - name: Collect and check the changed-file list
+        id: files
+        if: steps.head.outputs.ok == 'true' && steps.author.outputs.eligible == 'true' && steps.checks.outputs.should_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ steps.head.outputs.sha }}
+          VERIFIED_SHA: ${{ steps.head.outputs.sha }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           REPO: ${{ github.repository }}
-          # Highest risk level still allowed to auto-merge, on CodeRabbit's
-          # ladder: minimal | low | moderate | high. Defaults to "low", which
-          # admits minimal and low. Set the repository variable
-          # AUTOMERGE_MAX_MERGE_RISK to widen it without editing this workflow.
-          MAX_RISK: ${{ vars.AUTOMERGE_MAX_MERGE_RISK || 'low' }}
         run: |
-          echo "ok=false" >> "$GITHUB_OUTPUT"
+          GATE=scripts/ci/codex-review-gate.sh
+          LIST="${RUNNER_TEMP:-/tmp}/codex-gate-files.ndjson"
 
-          # --- (b) wait for the CodeRabbit commit status to settle -----------
-          MAX_WAIT=60   # 60 x 15s = 15 minutes
-          WAIT=0
-          STATE=""
-
-          while [ "$WAIT" -lt "$MAX_WAIT" ]; do
-            STATE="$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-              --jq '[.statuses[] | select(.context == "CodeRabbit")] | last | .state // ""' \
-              2>/dev/null || true)"
-
-            case "$STATE" in
-              success)          echo "CodeRabbit status: success"; break ;;
-              failure|error)    echo "::notice::CodeRabbit status is '$STATE' - withholding merge"; exit 0 ;;
-              *)                echo "CodeRabbit status: '${STATE:-<absent>}' - waiting ($WAIT/$MAX_WAIT)" ;;
-            esac
-
-            sleep 15
-            WAIT=$((WAIT + 1))
-          done
-
-          if [ "$STATE" != "success" ]; then
-            echo "::notice::Timed out waiting for CodeRabbit - withholding merge"
-            exit 0
-          fi
-
-          # --- (c) read the verdict out of the walkthrough comment -----------
-          BODY="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq '[ .[]
-                    | select(.user.login | ascii_downcase | startswith("coderabbitai"))
-                    | .body
-                    | select(contains("final_review_risk_start")) ] | last // ""' \
-            2>/dev/null || true)"
-
-          if [ -z "$BODY" ]; then
-            echo "::notice::No CodeRabbit verdict comment found - withholding merge"
-            exit 0
-          fi
-
-          RISK_LINE="$(printf '%s\n' "$BODY" \
-            | sed -n '/final_review_risk_start/,/final_review_risk_end/p' \
-            | grep -m1 'Merge Risk:' || true)"
-
-          if [ -z "$RISK_LINE" ]; then
-            echo "::notice::Verdict block present but no Merge Risk line - withholding merge"
-            exit 0
-          fi
-
-          echo "Verdict line: $RISK_LINE"
-
-          LEVEL="$(printf '%s\n' "$RISK_LINE" \
-            | sed -E 's/.*Merge Risk:[^_]*_[^A-Za-z]*([A-Za-z]+).*/\1/' \
-            | tr '[:upper:]' '[:lower:]')"
-          COVERED="$(printf '%s\n' "$RISK_LINE" \
-            | sed -nE 's/.*up to `([0-9a-f]+)`.*/\1/p')"
-
-          # Freshness: the verdict must cover the commit we are about to merge.
-          if [ -z "$COVERED" ]; then
-            echo "::notice::Verdict carries no covered-commit prefix - withholding merge"
-            exit 0
-          fi
-          case "$HEAD_SHA" in
-            "$COVERED"*) echo "Verdict covers $COVERED - current" ;;
-            *)  echo "::notice::Verdict covers $COVERED but head is $HEAD_SHA - stale, withholding merge"
-                exit 0 ;;
-          esac
-
-          # Observed ladder across PRs #1524-#1535: minimal, low, moderate, high.
-          # Anything outside it ranks 0 and withholds the merge, so a level this
-          # workflow has never seen is treated as unsafe rather than assumed low.
-          rank() {
-            case "$1" in
-              minimal) echo 1 ;; low) echo 2 ;; moderate) echo 3 ;; high) echo 4 ;; *) echo 0 ;;
-            esac
+          # The only place this step records its outputs: each key once, on the terminating path
+          # (T-OUTPUTS), and the only place it chooses its exit status (T-CHAIN).
+          conclude() {
+            echo "ok=$1" >> "$GITHUB_OUTPUT"
+            echo "state=$2" >> "$GITHUB_OUTPUT"
+            exit "$3"
+          }
+          withhold() {
+            echo "::error::changed-file check: $1 - merge withheld"
+            conclude false fail 1
+          }
+          read_pr() { gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null; }
+          field() { printf '%s' "$1" | jq -r "$2" 2>/dev/null || true; }
+          reason() {
+            r=""
+            if [ "$rc" -eq 1 ]; then
+              r="$(printf '%s\n' "$1" | sed -n 's/^CODEX_GATE_REFUSED: //p' | head -1 || true)"
+            fi
+            printf '%s' "${r:-gate-exit-$rc}"
           }
 
-          LEVEL_RANK="$(rank "$LEVEL")"
-          MAX_RANK="$(rank "$MAX_RISK")"
+          # The consumer runs from the default branch checkout; a missing script is a refusal.
+          if [ ! -f "$GATE" ]; then withhold "gate-script-missing"; fi
 
-          if [ "$LEVEL_RANK" -eq 0 ] || [ "$MAX_RANK" -eq 0 ]; then
-            echo "::notice::Unrecognised risk level (verdict='$LEVEL', ceiling='$MAX_RISK') - withholding merge"
-            exit 0
-          fi
+          FIRST="$(read_pr)" || withhold "files-unreadable"
+          HEAD1="$(field "$FIRST" '.head.sha // empty')"
+          COUNT1="$(field "$FIRST" '.changed_files // empty')"
+          if [ -z "$HEAD1" ] || [ -z "$COUNT1" ]; then withhold "files-unreadable"; fi
+          if [ "$HEAD1" != "$VERIFIED_SHA" ]; then withhold "head-moved:${HEAD1:0:10}"; fi
 
-          echo "Merge Risk: $LEVEL (ceiling: $MAX_RISK)"
+          rc=0
+          OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/files" --out "$LIST" --expect-count "$COUNT1" 2>&1)" || rc=$?
+          echo "$OUT"
+          if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
 
-          if [ "$LEVEL_RANK" -gt "$MAX_RANK" ]; then
-            echo "::notice::Risk '$LEVEL' exceeds ceiling '$MAX_RISK' - withholding merge"
-            exit 0
-          fi
+          SECOND="$(read_pr)" || withhold "files-unreadable-after-read"
+          HEAD2="$(field "$SECOND" '.head.sha // empty')"
+          COUNT2="$(field "$SECOND" '.changed_files // empty')"
+          if [ "$HEAD2" != "$VERIFIED_SHA" ]; then withhold "head-moved-during-read"; fi
+          if [ "$COUNT2" != "$COUNT1" ]; then withhold "count-moved-during-read"; fi
 
-          echo "ok=true" >> "$GITHUB_OUTPUT"
+          rc=0
+          OUT="$(bash "$GATE" gate-files-changed --file "$LIST" --head-sha "$VERIFIED_SHA" 2>&1)" || rc=$?
+          echo "$OUT"
+          if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
+
+          conclude true pass 0
+
+      # Guard (c) - native Codex review gate (SPEC-CI-CODEX-REVIEW-001).
+      # The gate reads the Codex identity's single issue-comment state marker, both review legs,
+      # the security marker, and corroborating review findings. Only a clean result bound to the
+      # verified head can pass. A formal APPROVED review alone is never a pass. Time appears only
+      # as the bound of the wait: no elapsed time, and no absence of a review, is ever a pass.
+      # Exit classes: 0 pass; 1 fail; 10 not yet observed or still running, keep waiting;
+      # 11 NOT RUN: a draft ends as the state not-run:draft with step exit 11 (never success, never
+      # a review result), and no review when the window ends on a non-draft pull request is a
+      # failure. Every other exit is a refusal. Every path but the clean pass ends the step
+      # non-zero, so the step and the job fail and the merge step does not run. The head is read
+      # again after the list reads.
+      - name: Read the native Codex review
+        id: review
+        if: >
+          steps.head.outputs.ok == 'true' &&
+          steps.author.outputs.eligible == 'true' &&
+          steps.checks.outputs.should_merge == 'true' &&
+          steps.files.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ steps.head.outputs.sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          GATE=scripts/ci/codex-review-gate.sh
+          REVIEWS="${RUNNER_TEMP:-/tmp}/codex-gate-reviews.ndjson"
+          COMMENTS="${RUNNER_TEMP:-/tmp}/codex-gate-comments.ndjson"
+          ISSUES="${RUNNER_TEMP:-/tmp}/codex-gate-issues.ndjson"
+          # At most 60 passes of 15s (15 minutes). The window is bounded by the 17-minute overall
+          # deadline; a long earlier checks wait, or the 20-minute job timeout, can shorten it, in
+          # which case the merge is withheld.
+          MAX_WAIT=60
+
+          # The only place this step records its outputs: each key once, on the terminating path
+          # (T-OUTPUTS), and the only place it chooses its exit status (T-CHAIN).
+          conclude() {
+            echo "ok=$1" >> "$GITHUB_OUTPUT"
+            echo "state=$2" >> "$GITHUB_OUTPUT"
+            exit "$3"
+          }
+          withhold() {
+            echo "::error::native review gate: $1 - merge withheld"
+            conclude false fail 1
+          }
+          read_pr() { gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null; }
+          field() { printf '%s' "$1" | jq -r "$2" 2>/dev/null || true; }
+          reason() {
+            r=""
+            if [ "$rc" -eq 1 ]; then
+              r="$(printf '%s\n' "$1" | sed -n 's/^CODEX_GATE_REFUSED: //p' | head -1 || true)"
+            fi
+            printf '%s' "${r:-gate-exit-$rc}"
+          }
+          wait_next() {
+            if [ "$WAIT" -lt "$MAX_WAIT" ]; then sleep 15; fi
+          }
+          # Pre-merge recheck, run once a pass is clean ($1 is that pass's state-marker summary line). The
+          # lists are collected again between two reads of the pull request object. The issue-comment
+          # count is refreshed at the start of this observation, used to verify the complete page
+          # collection, then checked again with the head before the gate re-reads trusted artifacts.
+          # Ordinary comments added since the clean pass do not change that pass's verdict; a changed
+          # trusted artifact still changes or refuses the gate result. A few seconds remain before merge.
+          recheck() {
+            R3="$(read_pr)" || withhold "recheck-unreadable"
+            if [ "$(field "$R3" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
+            if [ "$(field "$R3" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
+            IC_RECHECK_COUNT="$(field "$R3" '.comments // empty')"
+            case "$IC_RECHECK_COUNT" in
+              '' | *[!0-9]*) withhold "issue-comments-unreadable-before-merge" ;;
+            esac
+            rc=0
+            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/reviews" --out "$REVIEWS" 2>&1)" || rc=$?
+            if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
+            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/comments" --out "$COMMENTS" --expect-count "$RC_COUNT" 2>&1)" || rc=$?
+            if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
+            OUT2="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_RECHECK_COUNT" 2>&1)" || rc=$?
+            if [ "$rc" -ne 0 ]; then withhold "recheck-unreadable:$(reason "$OUT2")"; fi
+            R4="$(read_pr)" || withhold "recheck-unreadable"
+            if [ "$(field "$R4" '.head.sha // empty')" != "$VERIFIED_SHA" ]; then withhold "head-moved-before-merge"; fi
+            if [ "$(field "$R4" '.review_comments // empty')" != "$RC_COUNT" ]; then withhold "review-comments-moved-before-merge"; fi
+            if [ "$(field "$R4" '.comments // empty')" != "$IC_RECHECK_COUNT" ]; then withhold "issue-comments-moved-before-merge"; fi
+            OUT2="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed true 2>&1)" || rc=$?
+            if [ "$rc" -ne 0 ]; then withhold "review-changed-before-merge:$(reason "$OUT2")"; fi
+            if [ "$OUT2" != "$1" ]; then withhold "selected-review-changed-before-merge"; fi
+          }
+
+          if [ ! -f "$GATE" ]; then withhold "gate-script-missing"; fi
+
+          WAIT=0
+          NOTE="no-pass-completed"
+          while [ "$WAIT" -lt "$MAX_WAIT" ]; do
+            WAIT=$((WAIT + 1))
+            CLOSED=false
+            if [ "$WAIT" -eq "$MAX_WAIT" ]; then CLOSED=true; fi
+            rc=0
+
+            PR_JSON="$(read_pr)" || { NOTE="unreadable"; wait_next; continue; }
+            DRAFT="$(field "$PR_JSON" '.draft')"
+            HEAD1="$(field "$PR_JSON" '.head.sha // empty')"
+            RC_COUNT="$(field "$PR_JSON" '.review_comments // empty')"
+            IC_COUNT="$(field "$PR_JSON" '.comments // empty')"
+            case "$DRAFT" in
+              true | false) ;;
+              *) NOTE="unreadable"; wait_next; continue ;;
+            esac
+
+            if [ "$DRAFT" = "true" ]; then
+              # A draft is NOT RUN before any list is fetched.
+              OUT="$(bash "$GATE" read-native-review --head-sha "$VERIFIED_SHA" --draft true --wait-closed "$CLOSED" 2>&1)" || rc=$?
+            else
+              if [ "$HEAD1" != "$VERIFIED_SHA" ]; then withhold "head-moved:${HEAD1:0:10}"; fi
+              if [ -z "$RC_COUNT" ] || [ -z "$IC_COUNT" ]; then NOTE="unreadable"; wait_next; continue; fi
+              OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/reviews" --out "$REVIEWS" 2>&1)" || rc=$?
+              if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
+              OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/comments" --out "$COMMENTS" --expect-count "$RC_COUNT" 2>&1)" || rc=$?
+              if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
+              OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/issues/$PR_NUMBER/comments" --out "$ISSUES" --expect-count "$IC_COUNT" 2>&1)" || rc=$?
+              if [ "$rc" -ne 0 ]; then NOTE="unreadable:$(reason "$OUT")"; wait_next; continue; fi
+              # The head is read again after the list reads; lists of another head are never judged.
+              SECOND="$(read_pr)" || { NOTE="unreadable"; wait_next; continue; }
+              HEAD2="$(field "$SECOND" '.head.sha // empty')"
+              RC2="$(field "$SECOND" '.review_comments // empty')"
+              IC2="$(field "$SECOND" '.comments // empty')"
+              if [ -z "$HEAD2" ] || [ -z "$RC2" ]; then NOTE="unreadable"; wait_next; continue; fi
+              if [ "$HEAD2" != "$VERIFIED_SHA" ]; then withhold "head-moved-during-read"; fi
+              if [ "$RC2" != "$RC_COUNT" ]; then withhold "review-comments-moved-during-read"; fi
+              if [ -z "$IC2" ]; then NOTE="unreadable"; wait_next; continue; fi
+              if [ "$IC2" != "$IC_COUNT" ]; then NOTE="issue-comments-moved-during-read"; wait_next; continue; fi
+              OUT="$(bash "$GATE" read-native-review --reviews "$REVIEWS" --comments "$COMMENTS" --issue-comments "$ISSUES" --head-sha "$VERIFIED_SHA" --draft false --wait-closed "$CLOSED" 2>&1)" || rc=$?
+            fi
+
+            case "$rc" in
+              0)
+                echo "$OUT"
+                recheck "$OUT"
+                conclude true pass 0
+                ;;
+              10)
+                NOTE="pending"
+                echo "native review not observed yet ($WAIT/$MAX_WAIT)"
+                ;;
+              11)
+                if [ "$DRAFT" = "true" ]; then
+                  echo "::notice::NOT RUN: draft - not a review result and never a pass; the merge is withheld"
+                  conclude false not-run:draft 11
+                fi
+                echo "::error::native review gate: not-run:review-absent - no native review observed for the head commit"
+                conclude false fail 1
+                ;;
+              *)
+                withhold "$(reason "$OUT")"
+                ;;
+            esac
+            wait_next
+          done
+
+          # The loop ended without a stop: only possible when the last pass could not read its lists.
+          withhold "review-unreadable: $NOTE"
 
       - name: Auto merge PR
         if: >
           steps.checks.outputs.should_merge == 'true' &&
+          steps.author.outputs.eligible == 'true' &&
           steps.head.outputs.ok == 'true' &&
-          steps.coderabbit.outputs.ok == 'true'
+          steps.files.outputs.ok == 'true' &&
+          steps.review.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BRANCH: ${{ steps.pr.outputs.branch }}
@@ -352,7 +484,7 @@ jobs:
           # --match-head-commit makes the merge fail server-side if the head
           # moved in the window between the re-check above and GitHub applying
           # the merge (the pinned AC-CI-003 precondition).
-          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA" --delete-branch; then
+          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --match-head-commit "$TESTED_SHA"; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"

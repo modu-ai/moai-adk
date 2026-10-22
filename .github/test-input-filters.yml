@@ -62,10 +62,15 @@ go_code:
   # the pre-glob record of what t1536 wired.
   - '.github/workflows/**'
   - '.github/test-input-filters.yml'
+  # Review retirement and auto-merge guards read these inputs.
+  - '.github/workflows/**'
+  - '.github/required-checks.yml'
+  - '.coderabbit.yaml'
   # The branch-protection parity guard reads this repository input.
   - '.github/branch-protection.json.gtmpl'
   - '.moai/**'
   - 'internal/template/templates/**'
+  - 'internal/template/testdata/**'
   - 'internal/template/catalog.yaml'
   - '.claude/agents/**'
   - '.claude/rules/moai/**'
