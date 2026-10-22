@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -107,7 +108,9 @@ func registerWorktree(projectDir, path, branch, agentName string) error {
 // state file the WorktreeCreate hook maintains, so `moai worktree clean`'s
 // anchor check sees launcher-created trees too. Non-blocking on error.
 func RegisterLauncherWorktree(projectDir, path, branch, agentName string) {
-	_ = registerWorktree(projectDir, path, branch, agentName)
+	if err := registerWorktree(projectDir, path, branch, agentName); err != nil {
+		slog.Warn("launcher worktree registration failed", "path", path, "error", err)
+	}
 }
 
 // RegisterLauncherWorktreeE is RegisterLauncherWorktree with the step's

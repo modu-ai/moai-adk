@@ -154,7 +154,9 @@ func (h *worktreeCreateHandler) registerEntry(input *HookInput, path, branch str
 	// Write-side resolver, never input.CWD: a subdirectory cwd would otherwise
 	// grow a stray <subdir>/.moai/state/worktrees.json (card t1165).
 	if root := resolveProjectRoot(input); root != "" {
-		registerWorktree(root, path, branch, input.AgentName)
+		if err := registerWorktree(root, path, branch, input.AgentName); err != nil {
+			slog.Warn("worktree create registry update failed", "path", path, "error", err)
+		}
 	}
 }
 

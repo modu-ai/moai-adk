@@ -112,6 +112,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"other@example.com",
 	"probe-test@example.com",
 	"qwr@example.invalid",
+	"rfx@example.com",
+	"sfx-cli@example.com",
 	"slot-cli-test@example.com",
 	"slot-lease-test@example.com",
 	"someone@example.invalid",
