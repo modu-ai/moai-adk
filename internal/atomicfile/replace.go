@@ -56,14 +56,25 @@ func ReadFile(path string) ([]byte, error) {
 //     destination is success, and on Windows it retries a transient sharing
 //     violation until the destination is writable.
 //   - Claim answers "am I the one who gets to proceed", so an existing path is
-//     failure, and it NEVER retries — a retry would hand the same claim to a
-//     second caller and destroy the mutual exclusion it exists to provide.
+//     failure. Windows retries only transient sharing/delete-pending errors;
+//     every attempt is still an exclusive create and ErrExist returns immediately.
 //
 // Callers own removing the claim once the guarded work is done.
 func Claim(path string, perm os.FileMode) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, perm)
+	f, err := CreateExclusive(path, perm)
 	if err != nil {
 		return err
 	}
 	return f.Close()
 }
+
+// CreateExclusive creates a new claim and returns its open handle, so callers
+// can publish their owner record before closing it. An existing claim is never
+// overwritten or retried. Windows absorbs only bounded native sharing conflicts.
+func CreateExclusive(path string, perm os.FileMode) (*os.File, error) {
+	return createExclusive(path, perm)
+}
+
+// RemoveFile removes a state file, absorbing Windows sharing/delete-pending
+// conflicts for a bounded interval. It never changes owner/death decisions.
+func RemoveFile(path string) error { return removeFile(path) }

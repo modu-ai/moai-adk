@@ -52,7 +52,7 @@ var sectionRereadFn = func(path string) ([]byte, error) {
 	if info, serr := os.Stat(path); serr == nil && !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("section owner %s: not a regular file", path)
 	}
-	f, err := os.Open(path)
+	f, err := openRead(path)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ var sectionRereadFn = func(path string) ([]byte, error) {
 }
 
 // sectionRemoveFn is the removal seam.
-var sectionRemoveFn = os.Remove
+var sectionRemoveFn = RemoveFile
 
 // breakingSuffix names a breaker's mutual-exclusion marker beside the lock
 // it is breaking: one O_EXCL file per lock path, claimed through
@@ -197,7 +197,7 @@ func releaseSectionFunc(path string) func() error {
 			atPath.PID != os.Getpid() || atPath.BootID != BootIDIdentity() {
 			return nil // not ours: remove nothing
 		}
-		if rmErr := os.Remove(lockPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
+		if rmErr := RemoveFile(lockPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
 			// A surviving artifact blocks every later writer, so the
 			// failure is reported rather than swallowed.
 			return fmt.Errorf("claim section %s: lock release failed: %w", lockPath, rmErr)

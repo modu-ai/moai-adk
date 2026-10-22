@@ -34,6 +34,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -308,15 +309,15 @@ func lockLedger(path string) (func(), error) {
 	}
 	deadline := time.Now().Add(ledgerLockWait)
 	for {
-		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		f, err := atomicfile.CreateExclusive(lockPath, 0o644)
 		if err == nil {
 			if _, werr := f.WriteString(token + "\n"); werr != nil {
 				_ = f.Close()
-				_ = os.Remove(lockPath)
+				_ = atomicfile.RemoveFile(lockPath)
 				return nil, werr
 			}
 			if cerr := f.Close(); cerr != nil {
-				_ = os.Remove(lockPath)
+				_ = atomicfile.RemoveFile(lockPath)
 				return nil, cerr
 			}
 			return func() { releaseLedgerLock(lockPath, token) }, nil
@@ -325,7 +326,7 @@ func lockLedger(path string) (func(), error) {
 			return nil, err
 		}
 		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > ledgerLockStale {
-			_ = os.Remove(lockPath)
+			_ = atomicfile.RemoveFile(lockPath)
 			continue
 		}
 		if time.Now().After(deadline) {
@@ -351,9 +352,9 @@ func newRandomToken() (string, error) {
 // wrote its own token, and this holder's release must leave the successor's
 // lock alone.
 func releaseLedgerLock(lockPath, token string) {
-	data, err := os.ReadFile(lockPath)
+	data, err := atomicfile.ReadFile(lockPath)
 	if err == nil && strings.TrimSpace(string(data)) == token {
-		_ = os.Remove(lockPath)
+		_ = atomicfile.RemoveFile(lockPath)
 	}
 }
 

@@ -60,7 +60,7 @@ func Clean(projectRoot string, opts Options) ([]Action, error) {
 		return []Action{{Path: link, Kind: "refused-symlinked-root"}}, nil
 	}
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
-	entries, err := os.ReadDir(skillsDir)
+	entries, err := readSkillsDir(skillsDir)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -255,7 +255,7 @@ func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
 		return []Action{{Path: link, Kind: "refused-symlinked-root"}}, nil
 	}
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
-	entries, err := os.ReadDir(skillsDir)
+	entries, err := readSkillsDir(skillsDir)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -294,6 +294,15 @@ func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
 		actions = append(actions, Action{Path: rel + "/skill.md", Kind: "renamed-skill-file"})
 	}
 	return actions, nil
+}
+
+// readSkillsDir distinguishes an absent root from a present non-directory.
+// Windows ERROR_PATH_NOT_FOUND alone cannot make that distinction.
+func readSkillsDir(dir string) ([]os.DirEntry, error) {
+	if info, err := os.Lstat(dir); err == nil && !info.IsDir() {
+		return nil, fmt.Errorf("skills root %s is not a directory", dir)
+	}
+	return os.ReadDir(dir)
 }
 
 // regularFileAt reports whether name is a regular file. A symbolic link, a directory,
@@ -358,7 +367,7 @@ type moveEnd struct {
 // hop is not shown to be necessary there; it stays as the designed route, and whether another
 // case-folding filesystem (NTFS) needs it was not measured.
 //
-// Containment. On linux and darwin the renames and the removal of S are relative to the two
+// Containment. On linux, darwin and windows the renames and the removal of S are relative to the two
 // open folders' descriptors (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL,
 // unlinkat AT_REMOVEDIR): swapping the path of the skill folder or of S after it was opened
 // cannot redirect them, because the descriptor names the original inode. Opening goes through
@@ -368,10 +377,9 @@ type moveEnd struct {
 // move, it makes the step refuse when the path no longer leads to the folder it holds. A
 // put-back after such a refusal skips the look on these platforms, because the descriptors still
 // name both folders and the path it would look at is what was moved: a stage folder renamed out
-// of the project takes the first move with it, and the put-back brings the file home. On windows
-// the renames are path-based (MoveFileEx has no folder-relative form in x/sys), so that look is
-// the containment, the put-back keeps it, and a microsecond window remains between the look and
-// the call.
+// of the project takes the first move with it, and the put-back brings the file home.
+// Windows uses NtCreateFile and NtSetInformationFile with source/destination
+// directory handles and ReplaceIfExists false, giving the same identity binding.
 //
 // Identity. The step takes the identity of skill.md right before B (fd-relative Lstat) and
 // requires the file at S/skill.md to be that file before C and the file at SKILL.md to be that
@@ -397,11 +405,11 @@ type moveEnd struct {
 //	                                                   else (error names it)                 its own files
 //	A/B   skill folder swapped for a link out of       opening the skill folder is refused   outside untouched
 //	      the project before it was opened             by the root; nothing moves; error
-//	B     S renamed away after it was opened (to a     B lands in the open S, where it went; file back at L (unix); an empty or foreign
-//	      link, a folder, out of the project, or       the look before C refuses (the path   folder may sit where S was; windows: the
-//	      nothing at its old path)                     leads elsewhere); the put-back goes   put-back is refused by the look, the file
-//	                                                   through the held descriptors, with no stays in the moved folder, error says so
-//	                                                   look (unix); error
+//	B     S renamed away after it was opened (to a     B lands in the open S, where it went; file back at L; an empty or foreign
+//	      link, a folder, out of the project, or       the look before C refuses (the path   folder may sit where S was; the
+//	      nothing at its old path)                     leads elsewhere); the put-back goes   file is restored through the held folders;
+//	                                                   through the held descriptors, with no error reports the moved path
+//	                                                   look; error
 //	B     the skill folder renamed away before B       B lands in S inside the moved folder; file back as skill.md in the moved folder;
 //	                                                   look before C refuses; the put-back   error
 //	                                                   goes to the held (moved) skill folder
@@ -441,9 +449,8 @@ type moveEnd struct {
 // the folder this step opened as S, which was moved" (the step cannot name the moved folder's
 // new path). No step ever removes a file it did not just move. A microsecond window therefore
 // remains only (1) in renameByLinks (the fallback below), (2) between the identity check before
-// C and C, which the check after C reports, (3) between the look and the call on platforms whose
-// rename is path-based (windows), where a folder renamed away between the look and the call
-// also takes the file and the put-back is refused by the look.
+// C and C, which the check after C reports. Platforms without a descriptor-bound
+// primitive retain the explicitly reported link fallback.
 //
 // @MX:WARN: [AUTO] filesystem moves inside a user's skill folder
 // @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every move is
@@ -556,8 +563,9 @@ func contentPlace(root *os.Root, h *heldDir, rel, name string) string {
 // moveNoReplace renames from to to without replacing to. With look set, a root-bound look at
 // from precedes the rename: where the rename is relative to descriptors it makes the step
 // refuse when the path of from no longer leads to the folder that is held, where it is
-// path-based (windows) it is the containment against a folder swapped for a link out of the
-// project. A put-back passes look false on a descriptor-bound platform: the path it would look
+// path-based it is the containment against a folder swapped for a link out of the
+// project (only fallback platforms retain that shape). A put-back passes look false on a
+// descriptor-bound platform: the path it would look
 // at is exactly what may have been moved away, and the descriptors still name the folders.
 func moveNoReplace(root *os.Root, from, to moveEnd, look bool) error {
 	if look {

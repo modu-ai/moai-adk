@@ -15,9 +15,6 @@ import (
 // every such pid as alive, so a same-boot orphan lock whose owner exited is
 // never reclaimed.
 func TestPidAliveFalseForFinishedChild(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("windows Signal is unsupported and always reads alive by design")
-	}
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", "exit")
