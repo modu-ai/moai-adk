@@ -204,6 +204,17 @@ func claimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 		backend = BackendGPT
 	}
 	claim := FactoryClaim{Label: requested}
+	projectDir := root
+	if projectDir == "" {
+		projectDir = "."
+	}
+	info, rootErr := os.Stat(projectDir)
+	if rootErr != nil {
+		return claim, fmt.Errorf("factory project root: %w", rootErr)
+	}
+	if !info.IsDir() {
+		return claim, fmt.Errorf("factory project root %q is not a directory", projectDir)
+	}
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
 	if lockErr != nil {
 		return claim, lockErr
