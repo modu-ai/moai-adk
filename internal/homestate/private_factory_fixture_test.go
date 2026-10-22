@@ -34,7 +34,9 @@ func withRetainedFactoryFixture(t *testing.T, body func(root string)) {
 			t.Fatalf("retained fixture root must be an existing directory: %v", err)
 		}
 		body(root)
-		fmt.Fprintln(os.Stdout, "MOAI_RETAINED_FIXTURE_COMPLETE:"+name+":"+root)
+		if _, err := fmt.Fprintln(os.Stdout, "MOAI_RETAINED_FIXTURE_COMPLETE:"+name+":"+root); err != nil {
+			t.Fatalf("write retained fixture completion: %v", err)
+		}
 		return
 	}
 	root = t.TempDir()
