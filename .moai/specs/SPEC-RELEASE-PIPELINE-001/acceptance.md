@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELEASE-PIPELINE-001
 title: "Release pipeline coverage and cost — acceptance criteria"
-version: "0.6.0"
+version: "0.6.1"
 created: 2026-10-17
 updated: 2026-10-22
 author: manager-spec
@@ -126,7 +126,8 @@ Release Verify (windows-latest, cli-2)	2026-10-22T06:41:23Z	2026-10-22T07:08:51Z
 Release Verify (windows-latest, remainder)	2026-10-22T06:41:24Z	2026-10-22T07:17:14Z	2026-10-22T06:42:41Z	2026-10-22T07:17:08Z
 ```
 Exit code: 0 · Measured 2026-10-22 from tree `c1a53b483d380f0f2ef00defe0e555a2681e7bd5`.
-Arithmetic (from the rows above): pre-step = race-step start − job start, maximum 4m21s (cli-2, which runs `go vet`); race step longest 37m28s (cli-1) and 36m42s (cli-3); evidence tail = job end − race-step end, 6-8s; cli-1 used 39m09s of the 40-minute job. The race step's wall time includes compilation and every package binary, while `-timeout 35m` bounds one binary. A ceiling keeping cli-1 green needs ≥ 38; a ceiling leaving a 5-minute pre-step allowance (4m21s rounded up) and a 1-minute evidence allowance needs ≤ 34. Only windows legs were fetched; ubuntu/macOS pre-step durations are a Gap.
+Arithmetic (from the rows above): pre-step = race-step start − job start, maximum 4m21s (cli-2, which runs `go vet`); race step longest 37m28s (cli-1) and 36m42s (cli-3); evidence tail = job end − race-step end, 6-8s; cli-1 used 39m09s of the 40-minute job. The race step's wall time includes compilation and every package binary, while `-timeout 35m` bounds one binary. A ceiling leaving a 5-minute pre-step allowance (4m21s rounded up) and a 1-minute evidence allowance needs ≤ 34.
+Run classification (v0.6.1, plan-audit iter-5 D20): run 39729541531 is a FAILING run — `gh run view 39729541531 --repo modu-ai/moai-adk --json conclusion,event,headBranch` gives `failure` / `workflow_dispatch` / `WT-cloud-windows-portability-repair` (not main) — and the windows legs cli-1, cli-2, cli-3, cli-4 and remainder concluded `failure`, race step included. Every figure above is therefore an n=1, windows, non-main-branch, failing-run measurement. The race-step durations (37m28s, 36m42s) are durations of failing legs and bound nothing about a green leg's race step; no lower bound for a ceiling that leaves green legs green is derived from them. The pre-step figure is kept as the 5-minute constant because the pre-step precedes the tests and is outcome-independent, under the same n=1 / windows / non-main-branch label. Assumption (unmeasured, not a requirement): a green-run re-measurement — `gh run list --workflow release-pr-multi-os.yml --status success`, then this EV's jq on a listed run — is the follow-up that would establish the green-leg bound. Only windows legs were fetched; ubuntu/macOS pre-step durations are a Gap.
 
 **EV-16 — event classes on which each required-name producer runs (baseline for AC-RPC-004; v0.5.0, D14).**
 Command: `grep -nE "^on:|^  (push|pull_request|workflow_dispatch|schedule):|^    branches:|^      - (main|'ci/\*\*')$|name: (Analyze \(Go\)|Guard Bundle|Release PR Multi-OS Gate)$" .github/workflows/ci.yml .github/workflows/codeql.yml .github/workflows/release-pr-multi-os.yml`
