@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"gopkg.in/yaml.v3"
 )
@@ -284,6 +285,9 @@ func resolve(repoDir string) (Resolution, error) {
 // linked worktree included (design.md D-11 uses the same call).
 func gitCommonDir(repoDir string) (string, error) {
 	cmd := exec.Command("git", "-C", repoDir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	// The explicit repository must win over a hook's inherited Git context.
+	// Stable diagnostics distinguish normal absence from inspection failures.
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("resolving the repository of %s: %w", repoDir, err)

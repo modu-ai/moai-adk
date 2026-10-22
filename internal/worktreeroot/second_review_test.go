@@ -110,3 +110,27 @@ func TestReviewPublicRootEmitsRecordedPinNotice(t *testing.T) {
 		t.Fatalf("public path helper discarded operator notice: %s", buf.String())
 	}
 }
+
+func TestReviewRootUsesExplicitRepositoryDespiteAmbientGit(t *testing.T) {
+	for _, selector := range []string{"GIT_DIR", "GIT_COMMON_DIR"} {
+		t.Run(selector, func(t *testing.T) {
+			wrHome(t)
+			requested := wrRepo(t, "requested")
+			ambient := wrRepo(t, "ambient")
+			t.Setenv(selector, filepath.Join(ambient, ".git"))
+			res, err := Resolve(requested)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !Same(res.PrimaryRoot, requested) {
+				t.Errorf("explicit repository %q resolved through %s to %q", requested, selector, res.PrimaryRoot)
+			}
+			if _, err := os.Stat(filepath.Join(requested, ".git", recordName)); err != nil {
+				t.Errorf("requested repository assignment missing: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(ambient, ".git", recordName)); !os.IsNotExist(err) {
+				t.Errorf("ambient repository was modified: %v", err)
+			}
+		})
+	}
+}
