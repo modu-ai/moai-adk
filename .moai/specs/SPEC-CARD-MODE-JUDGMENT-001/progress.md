@@ -157,11 +157,58 @@ Rows the ruling affects, listed and not decided here:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase status: **blocked at M5** (AC-MJ-014). Measured on HEAD `770b5ae654`, clean tree. The commands are the single-line cells of `acceptance.md` §2 (ids in the verdict); the decisive output lines are in `.moai/reports/t1894/verdict.md` §2, which this table cites.
+
+| AC | Status | Actual Output (decisive) |
+|----|--------|--------------------------|
+| AC-MJ-001 | PASS | `8` / `8` |
+| AC-MJ-002 | PASS | E-002a empty exit 0; E-002d `:1` / `:1` |
+| AC-MJ-003 | PASS | `:1` / `:1` |
+| AC-MJ-004 | PASS | (a) `:1` (b) `:0` (c) `:2` (d) `:1` (e) `:2`, both trees |
+| AC-MJ-005 | PASS | (a) `:1` (b) `:0` (c) `:1` (d) `:3`, both trees |
+| AC-MJ-006 | PASS | `8 8 1 1` / `8 8 1 1` |
+| AC-MJ-007 | PASS | `4 4 1` / `4 4 1` |
+| AC-MJ-008 | PASS | (a) empty; (b) core 1, leader body 2, doctrine 2, watchdog 1; (d) 1; (e) 2; (f) 1 |
+| AC-MJ-009 | PASS | `1 1 0` / `1 1 0` |
+| AC-MJ-010 | PASS | (a) empty; (b) `:1` / `:1` |
+| AC-MJ-011 | PASS | seven `cmp` exit 0; `pairs 3/5/4 unpaired 0` for `2fb0be5ed8`, `89eb51de2f`, `770b5ae654` |
+| AC-MJ-012 | PASS | `OK 9997` |
+| AC-MJ-013 | PASS | `:0` on all eight template files |
+| AC-MJ-014 | **FAIL** | `TestBindingLedgerIntegrity` red: AC-ALB-021(2) on row ALB-0257; 13 of 14 template guards and 6 of 6 `internal/cli` guards PASS; blocker report in the verdict §6 |
+| AC-MJ-015 | not mine | recorded by the leader |
+| AC-MJ-016 | PASS | the three homes: cards, detail, mechanics |
+| AC-MJ-017 | PASS | ` 1 file changed, 1 insertion(+), 1 deletion(-)` |
+| AC-MJ-018 | PASS | (a) `:1`/`:1` (b) `:0` x4 (c) `:1` x4 (d) `:1`/`:1` (e) `:1`/`:1` |
+| AC-MJ-019 | PASS | `:1` / `:1` |
+| AC-MJ-020 | PASS | all sixteen rows `0 0 0 0 0`; `unexpected-paths 0`; `same same` |
+
+| Invariant | Status | Actual Output |
+|-----------|--------|---------------|
+| Stub budget | PASS | `OK 9997` (limit 10,000; was 9,999) |
+| Ledger rows ALB-0276 / ALB-0257 updated in M2 | applied | rows rewritten in `89eb51de2f`; ALB-0257 is the row the red guard names |
+| Catalog hashes | applied | `moai` in M1 and M3, `moai-lane-watchdog` in M2; `TestCatalogHashCoversSkillSubfiles` PASS |
+| Agents, Go source, other SPEC dirs untouched | PASS | `paths` check `unexpected-paths 0` |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: not-complete   # blocked at M5; see verdict.md §6
+run_commit_sha: 770b5ae654      # last run-phase document commit (M3); the evidence commit that carries this block follows it
+run_status: blocked
+ac_pass_count: 18               # AC-MJ-001..013, 016..020
+ac_fail_count: 1                # AC-MJ-014 (TestBindingLedgerIntegrity, AC-ALB-021(2) on ALB-0257)
+ac_not_owned: 1                 # AC-MJ-015, the leader's
+preserve_list_post_run_count: not-measured
+l44_pre_commit_fetch: not-run
+l44_post_push_fetch: not-run    # nothing was pushed
+new_warnings_or_lints_introduced: not-measured   # documents only; no lint run
+cross_platform_build:
+  linux_darwin: not-applicable  # no Go source changed
+  windows: not-applicable
+total_run_phase_files: 19       # git diff --name-only 28c7bb8d36 770b5ae654: 8 templates, 8 deployed, catalog.yaml, binding_ledger.json, spec.md
+m1_to_mN_commit_strategy: "M1 2fb0be5ed8, M2 89eb51de2f, M3 770b5ae654, one commit each, template and deployed twins together; M4 no commit; M5 blocked"
+blocker: "verdict.md §6 - F reconciliation line is byte-identical to the K stub line that ALB-0257 covers; needs a manager-spec amendment of the manifest F row"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
