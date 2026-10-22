@@ -4,7 +4,7 @@
 
 ## 생성과 연결
 
-Windows 파일은 `privatefile.OpenPinned`의 단일 `CreateFileW(OPEN_ALWAYS)`에서 보호 SA와 READ_DATA/no-DELETE-share를 함께 적용한다. 새 파일에는 payload 이전에 current SID 소유의 protected DACL을 설치한다. 기존 파일은 같은 핸들에서 객체 종류·단일 링크·현재 소유자를 확인한 뒤 DACL을 좁히고 strict policy를 재조회한다. WRITE_DAC은 기존 자기 소유 객체를 좁히기 위한 접근권이며 owner/group 변경이나 privilege 활성화를 하지 않는다. 기존 파일을 truncate·replace·unlink하지 않는다.
+Windows 파일은 `privatefile.OpenPinned`의 단일 `CreateFileW(OPEN_ALWAYS)`에서 보호 SA와 READ_DATA/no-DELETE-share를 함께 적용한다. CreateFile 성공 직후 검증 전에 ownership callback으로 핸들을 registry에 등록한다. 검증 오류·panic·정리 실패 때도 이 소유권을 보존한다. 새 파일에는 payload 이전에 current SID 소유의 protected DACL을 설치한다. 기존 파일은 같은 핸들에서 객체 종류·단일 링크·현재 소유자를 확인한 뒤 DACL을 좁히고 strict policy를 재조회한다. WRITE_DAC은 기존 자기 소유 객체를 좁히기 위한 접근권이며 owner/group 변경이나 privilege 활성화를 하지 않는다. 기존 파일을 truncate·replace·unlink하지 않는다.
 
 새 관리 디렉터리만 private SA로 생성한다. 기존 leaf는 `CheckDirectory`로 검사하며 상속 DACL을 다시 적용하지 않는다. 기존 조상 디렉터리의 ACL을 수정하거나, foreign owner 디렉터리를 인수하거나, 기존 weak policy를 검사 통과를 위해 사후 복구하지 않는다.
 

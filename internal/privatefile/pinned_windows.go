@@ -35,7 +35,7 @@ func OpenPinned(path string, acquired func(io.Closer)) error {
 		return err
 	}
 	sa := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
-	p, err := windows.UTF16PtrFromString(path)
+	p, err := windows.UTF16PtrFromString(nativePath(path))
 	if err != nil {
 		return err
 	}
