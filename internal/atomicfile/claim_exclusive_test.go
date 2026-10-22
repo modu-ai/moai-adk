@@ -24,7 +24,9 @@ func TestCreateExclusivePreservesExistingOwner(t *testing.T) {
 	}
 	second, err := CreateExclusive(path, 0o600)
 	if second != nil {
-		second.Close()
+		if closeErr := second.Close(); closeErr != nil {
+			t.Errorf("close unexpected second claim: %v", closeErr)
+		}
 		t.Fatal("second owner acquired an existing claim")
 	}
 	if !errors.Is(err, fs.ErrExist) {
