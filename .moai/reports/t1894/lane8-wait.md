@@ -53,3 +53,8 @@ Second, independent mechanical gate behind it: the autonomous edge (kickoff -> r
 
 Options for the leader (lane does not choose among keep-set acts): (1) attach SPEC-CARD-MODE-JUDGMENT-001 to the card; then lane runs stage kickoff; (2a) human-path approve by the operator/leader at kickoff, or (2b) manager-spec writes the Q7 verdict row + one delta plan-audit, then the autonomous edge.
 Card state now: run tn8rpj, state plan-audit v8, lease renewed by stage calls.
+
+## Kickoff met (2026-10-23, lane-8) — card at run v13
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter5.md,rcpt-e6173f9d83a33a2cf3be2185 (PASS 0.91, hash 68c195f0707f1621d3869cd60387ab01c82027d90ca74d8c86c0c582a57fa5b0, audited_sha 21974dddf24359a8a7bd742740aed592319394f1),leader-relayed Q7 answer 10-23 ladder_path=auto-semantics §9.1 autonomous Kickoff: `moai factory stage t1894 kickoff` (v12) then `moai factory decide t1894 --gate kickoff --choice approve --decider audit` -> run (v13).
+Notes: (1) SPEC attached by the leader (set-spec). (2) The first iter5 admission failed on a report-format defect (body line `Overall Score: 0.91 (Tier L threshold 0.85)` collided with the machine key `overall_score` => duplicate key); fixed by the auditor in its own files (iter4/iter5), no verdict/score/hash/finding change; the engine's §G refusal record from the failed attempt stays in progress.md as the truthful record. (3) Phase 4 mode: serial (progress.md §F).
