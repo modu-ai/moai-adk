@@ -60,7 +60,10 @@ func computeFactoryAgeAlarms(ctx context.Context, root, runID string, db *homest
 }
 
 func resolveFactoryAgeAlarm(root string) (config.CardAgeAlarmSettings, string) {
-	keys := config.LoadCardAgeAlarm(root)
+	keys, err := config.LoadCardAgeAlarmWithRefusal(root)
+	if err != nil {
+		return config.CardAgeAlarmSettings{}, fmt.Sprintf("age-alarm warning: %v", err)
+	}
 	if !keys.Enabled {
 		return config.CardAgeAlarmSettings{}, ""
 	}

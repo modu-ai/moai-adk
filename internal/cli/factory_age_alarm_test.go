@@ -296,6 +296,45 @@ func TestFactoryStatusAgeAlarmRefusedKey(t *testing.T) {
 	}
 }
 
+func TestFactoryStatusTypeInvalidAgeAlarmNamesRefusedKey(t *testing.T) {
+	for _, key := range []string{"gate_warn_after", "gate_alert_after", "stall_warn_after", "stall_alert_after"} {
+		t.Run(key, func(t *testing.T) {
+			root, _ := fcFixture(t)
+			caaEnableAlarm(t, root, "workflow:\n  card_age_alarm:\n    enabled: true\n    "+key+": [6h]\n")
+			out, _, err := runFactory(t, "status")
+			if err != nil {
+				t.Fatalf("status with a type-invalid threshold: %v", err)
+			}
+			refusedKey := "workflow.card_age_alarm." + key
+			if strings.Count(out, "age-alarm warning:") != 1 || !strings.Contains(out, refusedKey) {
+				t.Fatalf("text status must name the refused key exactly once:\n%s", out)
+			}
+			outJSON, _, err := runFactory(t, "status", "--json")
+			if err != nil {
+				t.Fatalf("JSON status with a type-invalid threshold: %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal([]byte(outJSON), &got); err != nil {
+				t.Fatalf("status output is not JSON: %v", err)
+			}
+			warning, _ := got["age_alarm_warning"].(string)
+			if !strings.Contains(warning, refusedKey) {
+				t.Fatalf("JSON status omitted the refused threshold key:\n%s", outJSON)
+			}
+			if _, exists := got["age_alarms"]; exists {
+				t.Fatalf("refused alarm must not render alarm rows:\n%s", outJSON)
+			}
+			path, err := homestate.FactoryDBPath(root)
+			if err != nil {
+				t.Fatalf("resolve factory database path: %v", err)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("status created a factory database: %v", err)
+			}
+		})
+	}
+}
+
 func TestFactoryStatusNoDatabaseStillRefusesInvalidAgeAlarm(t *testing.T) {
 	root, _ := fcFixture(t)
 	caaEnableAlarm(t, root, "workflow:\n  card_age_alarm:\n    enabled: true\n    gate_warn_after: invalid\n")

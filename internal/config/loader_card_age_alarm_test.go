@@ -227,8 +227,8 @@ func TestCardAgeAlarmTypeErrorIsolated(t *testing.T) {
 	if warnLines != 1 {
 		t.Fatalf("got %d warning lines across both loaders, want exactly 1:\n%s", warnLines, logs.String())
 	}
-	if !strings.Contains(logs.String(), "workflow.card_age_alarm") {
-		t.Fatalf("the warning does not name the key path workflow.card_age_alarm:\n%s", logs.String())
+	if !strings.Contains(logs.String(), CardAgeAlarmGateWarnKey) {
+		t.Fatalf("the warning does not name the refused threshold key %s:\n%s", CardAgeAlarmGateWarnKey, logs.String())
 	}
 }
 
@@ -252,6 +252,38 @@ func TestWorkflowConfigCardAgeAlarmTypeErrorPreservesOtherSettings(t *testing.T)
 	}
 	if want := NewDefaultWorkflowConfig().CardAgeAlarm; cfg.Workflow.CardAgeAlarm != want {
 		t.Fatalf("card_age_alarm = %+v, want block defaults %+v", cfg.Workflow.CardAgeAlarm, want)
+	}
+}
+
+func TestCardAgeAlarmRefusalPreservesYAMLShapes(t *testing.T) {
+	for _, tc := range []struct {
+		name, body  string
+		wantEnabled bool
+		wantRefusal string
+	}{
+		{"alias", "alarm: &alarm\n  enabled: true\nworkflow:\n  card_age_alarm: *alarm\n", true, ""},
+		{"merge", "alarm: &alarm\n  enabled: true\nworkflow:\n  card_age_alarm:\n    <<: *alarm\n", true, ""},
+		{"null", "workflow:\n  card_age_alarm: null\n", false, ""},
+		{"duplicate", "workflow:\n  card_age_alarm:\n    enabled: true\n    enabled: false\n", false, "workflow.card_age_alarm"},
+		{"malformed-enabled", "workflow:\n  card_age_alarm:\n    enabled: [true]\n", false, "workflow.card_age_alarm.enabled"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			caaWriteWorkflow(t, root, tc.body)
+			got, err := LoadCardAgeAlarmWithRefusal(root)
+			if tc.wantRefusal == "" && err != nil {
+				t.Fatalf("valid YAML shape refused: %v", err)
+			}
+			if tc.wantRefusal != "" && (err == nil || !strings.Contains(err.Error(), tc.wantRefusal)) {
+				t.Fatalf("refusal = %v, want key %s", err, tc.wantRefusal)
+			}
+			if got.Enabled != tc.wantEnabled {
+				t.Fatalf("enabled = %v, want %v", got.Enabled, tc.wantEnabled)
+			}
+			if err != nil && got != NewDefaultWorkflowConfig().CardAgeAlarm {
+				t.Fatalf("refused block must retain safe defaults: %+v", got)
+			}
+		})
 	}
 }
 

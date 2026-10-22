@@ -22,15 +22,11 @@ const (
 	CardAgeAlarmStallAlertKey = "workflow.card_age_alarm.stall_alert_after"
 )
 
-// cardAgeAlarmFile is the isolated decode target of the alarm keys: the only
-// workflow.yaml block it maps is card_age_alarm, so a YAML type error in any
-// OTHER key cannot fail this decode, and a type error in an alarm key fails
-// only this decode — never the whole shared WorkflowConfig (sync-audit iter1
-// F3: an alarm-key typo degrades the alarm alone; the lease keys keep their
-// written values through LoadFactoryLease's own isolated decode).
+// Keep the alarm node intact so a display consumer can report a refusal
+// independently of the shared workflow section's safe defaults.
 type cardAgeAlarmFile struct {
 	Workflow struct {
-		CardAgeAlarm CardAgeAlarmConfig `yaml:"card_age_alarm"`
+		CardAgeAlarm yaml.Node `yaml:"card_age_alarm"`
 	} `yaml:"workflow"`
 }
 
@@ -40,21 +36,57 @@ type cardAgeAlarmConfigDecode CardAgeAlarmConfig
 // block. WorkflowConfig is decoded as one section, so returning the field
 // error would discard unrelated safety settings with the section fallback.
 func (c *CardAgeAlarmConfig) UnmarshalYAML(node *yaml.Node) error {
-	defaults := NewDefaultWorkflowConfig().CardAgeAlarm
-	*c = defaults
-	if node.Kind != yaml.MappingNode {
+	decoded, err := decodeCardAgeAlarm(node)
+	*c = decoded
+	if err != nil {
 		slog.Warn("failed to decode card age alarm block, using defaults",
-			"key", "workflow.card_age_alarm", "error", "expected a mapping")
-		return nil
+			"key", "workflow.card_age_alarm", "error", err)
+	}
+	return nil
+}
+
+func decodeCardAgeAlarm(node *yaml.Node) (CardAgeAlarmConfig, error) {
+	defaults := NewDefaultWorkflowConfig().CardAgeAlarm
+	seen := make(map[*yaml.Node]bool)
+	for node != nil && node.Kind == yaml.AliasNode {
+		if seen[node] {
+			return defaults, fmt.Errorf("workflow.card_age_alarm: cyclic alias")
+		}
+		seen[node] = true
+		node = node.Alias
+	}
+	if node == nil {
+		return defaults, fmt.Errorf("workflow.card_age_alarm: missing alias target")
+	}
+	if node.Tag == "!!null" {
+		return defaults, nil
+	}
+	if node.Kind != yaml.MappingNode {
+		return defaults, fmt.Errorf("workflow.card_age_alarm: expected a mapping")
 	}
 	decoded := cardAgeAlarmConfigDecode(defaults)
 	if err := node.Decode(&decoded); err != nil {
-		slog.Warn("failed to decode card age alarm block, using defaults",
-			"key", "workflow.card_age_alarm", "error", err)
-		return nil
+		// The complete decode retains YAML's duplicate-key and alias checks.
+		// Identify the first malformed known field without accepting any part
+		// of a refused block or discarding unrelated workflow settings.
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key, value := node.Content[i].Value, node.Content[i+1]
+			var fieldErr error
+			switch key {
+			case "enabled":
+				var flag bool
+				fieldErr = value.Decode(&flag)
+			case "gate_warn_after", "gate_alert_after", "stall_warn_after", "stall_alert_after":
+				var band string
+				fieldErr = value.Decode(&band)
+			}
+			if fieldErr != nil {
+				return defaults, fmt.Errorf("workflow.card_age_alarm.%s: %w", key, fieldErr)
+			}
+		}
+		return defaults, fmt.Errorf("workflow.card_age_alarm: %w", err)
 	}
-	*c = CardAgeAlarmConfig(decoded)
-	return nil
+	return CardAgeAlarmConfig(decoded), nil
 }
 
 // LoadCardAgeAlarm returns the workflow.card_age_alarm keys of projectRoot as
@@ -74,21 +106,30 @@ func (c *CardAgeAlarmConfig) UnmarshalYAML(node *yaml.Node) error {
 // checked by ResolveCardAgeAlarm, whose refusal degrades the alarm section
 // of the status output (never the rest of it).
 func LoadCardAgeAlarm(projectRoot string) CardAgeAlarmConfig {
+	keys, err := LoadCardAgeAlarmWithRefusal(projectRoot)
+	if err != nil {
+		slog.Warn("failed to decode card age alarm block, using defaults",
+			"path", filepath.Join(projectRoot, ".moai", "config", "sections", "workflow.yaml"),
+			"key", "workflow.card_age_alarm", "error", err)
+	}
+	return keys
+}
+
+// LoadCardAgeAlarmWithRefusal returns safe block defaults together with a
+// key-naming decode error. Status surfaces must retain that refusal even
+// when the safe defaults disable the alarm.
+func LoadCardAgeAlarmWithRefusal(projectRoot string) (CardAgeAlarmConfig, error) {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	defaults := NewDefaultWorkflowConfig().CardAgeAlarm
 	file := &cardAgeAlarmFile{}
-	file.Workflow.CardAgeAlarm = defaults
 	loaded, err := loadYAMLFile(dir, "workflow.yaml", file)
 	if err != nil {
-		slog.Warn("failed to decode card age alarm block, using defaults",
-			"path", filepath.Join(dir, "workflow.yaml"),
-			"key", "workflow.card_age_alarm", "error", err)
-		return defaults
+		return defaults, fmt.Errorf("workflow.card_age_alarm: %w", err)
 	}
-	if !loaded {
-		return defaults
+	if !loaded || file.Workflow.CardAgeAlarm.Kind == 0 {
+		return defaults, nil
 	}
-	return file.Workflow.CardAgeAlarm
+	return decodeCardAgeAlarm(&file.Workflow.CardAgeAlarm)
 }
 
 // CardAgeAlarmSettings is the resolved, validated form of
