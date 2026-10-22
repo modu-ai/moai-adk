@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELEASE-PIPELINE-001
 title: "Release pipeline coverage and cost — acceptance criteria"
-version: "0.7.1"
+version: "0.8.0"
 created: 2026-10-17
 updated: 2026-10-23
 author: manager-spec
@@ -61,6 +61,7 @@ Why red: the delete loop (:89-98) deletes straight from the listing.
 Command: `grep -c "concurrency" .github/workflows/release-drafter-cleanup.yml`
 Verbatim stdout: `0` · Exit code: 1
 Why red: no concurrency relationship with `release-drafter.yml`, whose own group (:19-21) is ref-keyed with `cancel-in-progress: true` (read directly, file byte-unchanged since v0.3.0).
+(v0.8.0: historical plan-tree cell, flipped by the M5 commit; the amended AC-RPC-012's RED-now cell is EV-17.)
 
 **EV-9 — first-failure record absent from every upload path (RED for AC-RPC-009, upload clause).**
 Command: `grep -c "attempt1" .github/workflows/ci.yml`
@@ -159,11 +160,21 @@ Verbatim stdout:
 Exit code: 0 · Pin: `c1a53b483d380f0f2ef00defe0e555a2681e7bd5`
 Shows: `Release PR Multi-OS Gate` runs only on `pull_request` and `workflow_dispatch`, and `Analyze (Go)` never on a `ci/**` push, so `branches.main.contexts` is satisfiable only on pull requests to main — the per-event-class binding AC-RPC-004 asserts. `ci/**` contexts and `release_gate` name ci.yml jobs only, and ci.yml runs on push to `main` and to `ci/**`.
 
+**EV-17 — both draft-mutating workflows share one concurrency group (RED-now for the v0.8.0 amended AC-RPC-012).**
+Command: `grep -n "^  group:" .github/workflows/release-drafter.yml .github/workflows/release-drafter-cleanup.yml`
+Verbatim stdout:
+```
+.github/workflows/release-drafter.yml:29:  group: release-drafter-mutations
+.github/workflows/release-drafter-cleanup.yml:56:  group: release-drafter-mutations
+```
+Exit code: 0 (two matching lines; grep exits 0 on a match) · Pin: tree `3c6462e23c9eb77a79899db366dc8a484cbbf585`, measured 2026-10-23.
+Why red, and why for the right reason: the two group keys are byte-equal (`release-drafter-mutations` on both sides), which is the shared-group form the amended REQ-RPC-012 forbids — with one group, a newer pending drafter run replaces a pending weekly cleanup (sync-audit iter-3 F3). The amended `TestDrafterCleanupConcurrency` reads the same two values and fails on the not-equal assertion; the cell flips only when M5's amended step 5 renames one side, a change inside this SPEC's two workflows. A second, independent red exists at this tree and is not captured by this cell: the delete step runs under `shell: bash` (fail-on-error) and calls `gh release delete "$tag" --yes` with no not-found handling (release-drafter-cleanup.yml:174), so a draft that disappears between its re-query and its deletion fails the run — the idempotent-delete clause (ii) of REQ-RPC-012; the amended test's absent-draft scenario is its red.
+
 ## §C Edge cases
 
 - E1: mixed diff (docs + browser inputs) — browser job runs, build matrix does not (class matched per job, not per PR).
 - E2: filter file itself edited — every class including `go_code` re-matches.
-- E3: cleanup listing lands mid-drafter-update — shared group queues; no mid-deletion cancellation (REQ-RPC-012).
+- E3: drafter runs arrive while a weekly cleanup is pending or running — the two workflows sit in different groups, so no drafter run replaces or cancels the cleanup; a draft the drafter changes between listing and deletion is skipped by the re-query, and a draft already gone at re-query or deletion is logged as already gone without failing the run (REQ-RPC-011/012).
 - E4: draft published between listing and deletion — re-query skips it and logs the skip (REQ-RPC-011).
 - E5 [RETIRED] — rapid re-push cancellation; moved with card item 3.
 - E6: green phase at max ceiling — mutation phase retains its declared budget.
@@ -187,7 +198,7 @@ Shows: `Release PR Multi-OS Gate` runs only on `pull_request` and `workflow_disp
 | AC-RPC-009 | REQ-RPC-009 | release-blocking | Given registry-gated retries through `retry-flaky.sh` whose attempt1 record no upload path carries (EV-9), When `TestRetryPolicyPreservesFirstFailure` runs, Then its upload assertion FAILS while the wrapper-only and preserve-before-retry assertions hold; green path: each retry-wrapped job's upload includes `.moai/logs/ci-flaky-retry.attempt1.json` (always(), warn-on-absent) and all three assertions pass. |
 | AC-RPC-010 | REQ-RPC-010 | release-blocking | Given the workflow's jq program (EV-3: exit 5), When `TestCleanupFilterSelectsStaleDrafts` executes the extracted program against `internal/template/testdata/release-drafter-cleanup.json` (four drafts, keyed as the repaired fetch delivers them), Then pre-fix it FAILS and post-fix it selects exactly `stale-draft` (EV-4 divergence embedded). |
 | AC-RPC-011 | REQ-RPC-011 | release-blocking | Given the delete loop deletes straight from the listing (EV-7), When `TestCleanupRequeriesBeforeDelete` runs, Then it FAILS; green path: each deletion is preceded by a state re-query; a changed draft (E4) is skipped and the skip recorded. |
-| AC-RPC-012 | REQ-RPC-012 | release-blocking | Given no concurrency block on the cleanup (EV-8) and a ref-keyed `cancel-in-progress: true` drafter group (release-drafter.yml:19-21), When `TestDrafterCleanupConcurrency` runs, Then it FAILS; green path: both draft-mutating workflows share one ref-independent LITERAL group name (invariant under at least two distinct `github.ref` values) with `cancel-in-progress: false` on BOTH sides, and the test passes. |
+| AC-RPC-012 | REQ-RPC-012 | release-blocking | (Amended v0.8.0.) Given both draft-mutating workflows declare the same group `release-drafter-mutations` (EV-17, pin `3c6462e23c`) and the delete step treats a not-found delete as fatal (EV-17 second red), When `TestDrafterCleanupConcurrency` runs with its amended assertion set, Then it FAILS on the equal-groups assertion. What the test asserts today (read at `3c6462e23c`, `internal/template/release_drafter_cleanup_test.go` `rdcCheckConcurrency`): each group non-empty, unchanged under two distinct `github.ref` values, no unresolved `${{` after substituting `github.ref`, `cancel-in-progress: false` on both sides, and the two groups EQUAL (violation text "the two workflows use different groups … so they do not serialize"; control "different literal groups" expected red). Amended assertion set, green path (M5 amended steps 4-5): (a) each workflow's group is a non-empty literal that contains no `${{ … }}` expression at all — so neither `github.ref` nor `github.run_id` nor any other ref- or run-dependent value — and is unchanged under at least two distinct `github.ref` values (the D8 key-invariance rule, kept); (b) the cleanup group is NOT equal to the drafter group — the equality assertion is inverted, its "do not serialize" violation text is replaced by one naming the shared-group replacement hazard, and the former "different literal groups" control becomes the compliant case; (c) `cancel-in-progress: false` on the cleanup side and on the drafter side (unchanged); (d) in the "Delete stale drafts" step, a `gh release view` re-query of the tag precedes every `gh release delete` (the same order AC-RPC-011 reads; the dry-run requirement and AC-RPC-011's skip scenarios unchanged); (e) under the mock-gh harness, a draft absent at its re-query and a draft whose `gh release delete` reports not-found each leave the step exiting 0 with an already-gone log line and no further delete. The test passes with its swept count read (1, plus its controls; §D.0 lists the required controls). |
 | AC-RPC-013 | REQ-RPC-013 | release-blocking | Given the fetch requests `targetCommitish` from `gh release list` (EV-10: `Unknown JSON field`, exit 1), When `TestCleanupFetchFieldsSupported` runs, Then it FAILS (requested field outside the list-supported set); green path: every fetch requests only fields its subcommand supports, the filter's four read fields (`isDraft`, `createdAt`, `tagName`, `targetCommitish`) are supplied under those names (EV-12 shows `gh release view` supplies `targetCommitish`; a REST source is mapped first, EV-13), the `release/*` exemption is still present, a draft with an unresolvable target is not selected (E7), and the test passes. |
 
 ### §D.0 Mutant probes (§2 of verification-completeness.md)
@@ -203,6 +214,11 @@ Shows: `Release PR Multi-OS Gate` runs only on `pull_request` and `workflow_disp
 - AC-RPC-003 vs "verdict step without fail-open": a verdict step on a job that is still skipped when `detect` fails leaves the name unreported — rejected by (iii)'s "the real job runs".
 - AC-RPC-004 vs "gate every event": a mutant gating push-to-main too fails the push-to-main × docs-only cell for `release_gate` names unless a classification-aware surface publishes them (Q8 applied default).
 - AC-RPC-004 vs "event-blind assertion": a guard that checked only a union of names across events would pass control (b); the per-event-class assertion is what turns it red.
+- AC-RPC-012 (v0.8.0) vs "shared group again": both workflows set to the same literal group (the v0.7.x form, EV-17) — rejected by (b); control: cleanup group set equal to the drafter group → red.
+- AC-RPC-012 vs "ref- or run-keyed cleanup group": a cleanup group carrying `${{ github.ref }}` (varies per ref) or `${{ github.run_id }}` (varies per run, so every run is its own group and the key-invariance check under two refs alone would not see it) — rejected by (a)'s no-expression clause; controls: one mutant each, both red.
+- AC-RPC-012 vs "delete before re-query": a delete step that calls `gh release delete` before `gh release view` for the same tag (or never re-queries) — rejected by (d); control: the pre-fix unguarded loop → red.
+- AC-RPC-012 vs "fatal delete of an absent draft": a delete loop whose `gh release delete` failure on a not-found draft exits non-zero (the form at `3c6462e23c`, release-drafter-cleanup.yml:174 under `shell: bash`) — rejected by (e); control: mock gh returning not-found on delete → step exit non-zero → red.
+- AC-RPC-012 vs "separate groups, cleanup cancels": different groups but cleanup `cancel-in-progress: true` — rejected by (c); control red.
 - AC-RPC-002 vs "nothing-matching gate": an `if: false` mutant passes a "gate exists" check; blocked by the fail-open and matched-class-runs assertions (two-direction pairing).
 
 ## §D.1 Severity and traceability

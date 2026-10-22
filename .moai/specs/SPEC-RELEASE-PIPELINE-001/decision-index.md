@@ -5,7 +5,7 @@
 > One row per decision surfaced during assembly that the operator did not settle.
 > Labels are exactly: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER.
 
-> Scope note (v0.4.0, 2026-10-22): the hold-and-split decision itself — M3 + D11 out to a follow-up card; M2/M4/M5 (+D10) retained — was settled by the operator (relayed by leader lane-17, recorded in `.moai/reports/t1536/progress.md` § Split 결정). Because it is settled, it is not a row here, and that record is a card-local note, not a committed authority anchor. Rows Q1-Q6 carry over; Q4 is re-opened because its premise changed (card t1858); Q7 and Q8 are new. Q9 is added in v0.5.0 (plan-audit iter-4 D13 offered routing the ceiling value to a decision row).
+> Scope note (v0.4.0, 2026-10-22): the hold-and-split decision itself — M3 + D11 out to a follow-up card; M2/M4/M5 (+D10) retained — was settled by the operator (relayed by leader lane-17, recorded in `.moai/reports/t1536/progress.md` § Split 결정). Because it is settled, it is not a row here, and that record is a card-local note, not a committed authority anchor. Rows Q1-Q6 carry over; Q4 is re-opened because its premise changed (card t1858); Q7 and Q8 are new. Q9 is added in v0.5.0 (plan-audit iter-4 D13 offered routing the ceiling value to a decision row). Q10 is added in v0.8.0 to record the operator's relayed verdict on sync-audit iter-3 F3 (in-place amendment).
 
 ### Q1: Card item 1 is already landed on main under this card id (PR #1770 + t1478 follow-ups) — does M1 remain in this SPEC as a verify-and-preserve milestone, or is item 1 closed as delivered and the SPEC re-scoped to the open items?
 
@@ -40,6 +40,8 @@ Operator verdict: DEFAULT-APPLIED 2026-10-16T19:17:57Z manager-spec/plan-phase
 > Audit repair note (iter1 D3, 2026-10-17): extended, not reversed — `cancel-in-progress: false` on BOTH workflows (the incoming run's own flag governs). Label/Class/default direction unchanged.
 
 > Audit repair note (iter2 D8, 2026-10-17): extended again — the group key is a ref-independent literal name on BOTH sides. Label/Class/default direction unchanged.
+
+> Supersession note (v0.8.0, 2026-10-23): this row's premise — one shared drafter/cleanup group — is superseded by Q10 (separate groups). Its applied answer "never cancel" survives: both sides keep `cancel-in-progress: false`. The row is kept as recorded.
 
 ### Q4: When the cost jobs are input-gated, are their required check names (`Lint`, the five `Build (…)`) retained and published by skip-markers on a positively observed non-match, or replaced by one aggregate required name?
 
@@ -99,3 +101,13 @@ Class: implementation-level
 Default: place no step ceiling on the release race step in this SPEC; the release half of REQ-RPC-007 is held by the always()-evidence-step and not-raised invariants only (rule: preserves current behavior — no step ceiling is added; the unmeasured green-leg duration is not claimed)
 Alternate: place a 34-minute ceiling on the race step (40 − 5 − 1), accepting that any leg whose race step exceeds 34 minutes is cut and turns red until its shard is rebalanced under SPEC-CI-RELEASE-VERIFY-SHARD-001's ownership; in the one measured run (failing run 39729541531) the windows cli-1 and cli-3 race steps exceeded 34 minutes, and whether green legs do is unmeasured
 Operator verdict: DEFAULT-APPLIED 2026-10-22T12:54:18Z manager-spec/plan-phase
+
+### Q10: Do the Release Drafter workflow and the drafter-cleanup workflow share one concurrency group?
+
+Label: FOUNDER
+Authority anchor: none — no register entry decides cross-workflow concurrency for the draft list; the verdict below is an operator verdict relayed by the leader session, recorded in this SPEC's progress.md §G, and it is not cited as a committed register anchor.
+Why unresolved (at the time of the sync-audit iter-3 finding F3): GitHub keeps at most one running and one pending run per concurrency group, and a newer pending run replaces the older pending one. Under the v0.7.x shared group, a newer drafter run replaces a pending weekly cleanup, so that week's cleanup is lost (`.moai/reports/t1536/sync-audit-iter3.md` F3). Keeping the shared group preserves current behavior and accepts the loss; separating the groups lets the two workflows run at the same time, so the cleanup's safety must come from somewhere other than the group.
+Class: implementation-level
+Default: (b) keep the shared group and accept the pending-run replacement as debt (rule: preserves current behavior)
+Alternate: (a) separate the drafter and cleanup groups; correctness via the M5 re-query before each delete plus an idempotent delete
+Operator verdict: OPERATOR-DECIDED 2026-10-23 option (a) — separate groups (relayed by the leader session to lane-9 and recorded as relayed; the lane did not observe the operator directly; not DEFAULT-APPLIED). Rationale as relayed: pending-run replacement in a shared group loses the weekly cleanup; correctness is carried by the M5 re-query before delete plus idempotent delete, so no concurrency group can drop a pending cleanup. Applied in spec.md v0.8.0 (REQ-RPC-012, § Amendments).
