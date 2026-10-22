@@ -157,7 +157,7 @@ func initUserOwnedKeysProject(t *testing.T) string {
 		t.Fatalf("write preferences: %v", err)
 	}
 
-	root := filepath.Join(t.TempDir(), "survey")
+	root := filepath.Join(safeInitTempDir(t), "survey")
 	cmd := newInitTestCmd()
 	// Git values reach init only through flags (or remote detection).
 	for flag, val := range map[string]string{

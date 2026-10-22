@@ -7,8 +7,9 @@ package cli
 // (userHomeDirFn), the profile ledger (profile.BaseDirOverride), and the
 // private MoAI home (MOAI_HOME). It also reaches the shell rc writer, which
 // resolves HOME directly and cannot be redirected without overriding the HOME
-// environment variable, which is forbidden here. prepareSafeInitHome redirects the three seams under
-// t.TempDir(), replaces the shell-config seam with a counting spy, refuses to
+// environment variable, which is forbidden here. prepareSafeInitHome redirects
+// the three seams under an owned temporary directory outside the real home,
+// replaces the shell-config seam with a counting spy, refuses to
 // continue when any redirected home still resolves inside the real home, and
 // compares an 8-item real-home fingerprint before and after the test.
 //
@@ -112,6 +113,117 @@ func homeGuardFileSHA256(path string) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// safeInitTempBase validates an existing temp base before any fixture is
+// created. Prefer the standard temp directory when it is strictly outside the
+// real home; otherwise validate RUNNER_TEMP under the same strict judgment.
+func safeInitTempBase(realHome, runnerTemp, tempDir string) (string, error) {
+	validate := func(base string) (string, error) {
+		if err := testguard.CheckSeamHomes(realHome, []string{base}); err != nil {
+			return "", err
+		}
+		resolved, err := filepath.EvalSymlinks(base)
+		if err != nil {
+			return "", fmt.Errorf("resolve fixture temp base %q: %w", base, err)
+		}
+		info, err := os.Stat(resolved)
+		if err != nil {
+			return "", fmt.Errorf("stat fixture temp base %q: %w", base, err)
+		}
+		if !info.IsDir() {
+			return "", fmt.Errorf("fixture temp base %q is not a directory", base)
+		}
+		if err := testguard.CheckSeamHomes(realHome, []string{resolved}); err != nil {
+			return "", err
+		}
+		return resolved, nil
+	}
+	base, tempErr := validate(tempDir)
+	if tempErr == nil {
+		return base, nil
+	}
+	base, runnerErr := validate(runnerTemp)
+	if runnerErr != nil {
+		return "", fmt.Errorf("standard temp base: %v; RUNNER_TEMP base: %w", tempErr, runnerErr)
+	}
+	return base, nil
+}
+
+// safeInitTempDir owns only its fresh child, never the runner's temp base.
+// It does not change HOME or the process-wide temporary-directory variables.
+// @MX:ANCHOR: Allocates strict init fixture homes and projects for five caller functions.
+// @MX:REASON: Every caller depends on the base and child checks to keep fixture writes outside the real home without HOME or TEMP overrides.
+func safeInitTempDir(t *testing.T) string {
+	t.Helper()
+	realHome, err := testguard.RealHome()
+	if err != nil {
+		t.Fatalf("home guard: resolve real home: %v", err)
+	}
+	base, err := safeInitTempBase(realHome, os.Getenv("RUNNER_TEMP"), os.TempDir())
+	if err != nil {
+		t.Fatalf("home guard: select fixture temp base: %v", err)
+	}
+	dir, err := os.MkdirTemp(base, "moai-init-fixture-")
+	if err != nil {
+		t.Fatalf("home guard: create owned fixture under %q: %v", base, err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("home guard: remove owned fixture %q: %v", dir, err)
+		}
+	})
+	if err := testguard.CheckSeamHomes(realHome, []string{dir}); err != nil {
+		t.Fatalf("%v; refusing to use fixture directory", err)
+	}
+	t.Logf("home guard: owned fixture %q under validated temp base %q", dir, base)
+	return dir
+}
+
+func TestSafeInitTempBase_PreservesStrictHomeBoundary(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "real-home")
+	outside := filepath.Join(root, "outside")
+	for _, dir := range []string{home, outside} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file := filepath.Join(root, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, runner, temp string
+		wantOK             bool
+	}{
+		{"runner outside home", outside, home, true},
+		{"safe standard temp ignores unsafe runner", home, outside, true},
+		{"standard temp and runner both in home", home, home, false},
+		{"standard temp in home", "", home, false},
+		{"ancestor runner with unsafe standard temp", root, home, false},
+		{"relative runner with unsafe standard temp", "relative", home, false},
+		{"missing runner with unsafe standard temp", filepath.Join(outside, "missing"), home, false},
+		{"file runner with unsafe standard temp", file, home, false},
+		{"missing standard temp", "", filepath.Join(outside, "missing"), false},
+		{"empty bases", "", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := safeInitTempBase(home, tc.runner, tc.temp)
+			if (err == nil) != tc.wantOK {
+				t.Fatalf("safeInitTempBase = (%q, %v), want success %v", got, err, tc.wantOK)
+			}
+			if tc.wantOK {
+				want, err := filepath.EvalSymlinks(outside)
+				if err != nil || got != want {
+					t.Fatalf("safeInitTempBase = %q, want validated outside directory %q (resolve error: %v)", got, want, err)
+				}
+			}
+		})
+	}
+	if _, err := os.Stat(filepath.Join(outside, "missing")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("base validation created the missing directory: %v", err)
+	}
+}
+
 // prepareSafeInitHome makes a runInit execution test safe for the real home
 // (spec.md §4.2 items 1-6) and returns the fake home plus the shell-config
 // seam spy. Call it before runInit; never combine it with t.Parallel.
@@ -144,9 +256,10 @@ func prepareSafeInitHome(t *testing.T) (fakeHome string, spy *shellSeamSpy) {
 		}
 	})
 
-	// Item 2: redirect the three home seams under t.TempDir(). MOAI_HOME goes
-	// through t.Setenv, which also forbids t.Parallel for the calling test.
-	fakeHome = t.TempDir()
+	// Item 2: redirect the three home seams under an owned temp directory
+	// strictly outside the real home. MOAI_HOME goes through t.Setenv, which
+	// also forbids t.Parallel for the calling test.
+	fakeHome = safeInitTempDir(t)
 
 	origHomeFn := userHomeDirFn
 	userHomeDirFn = func() (string, error) { return fakeHome, nil }

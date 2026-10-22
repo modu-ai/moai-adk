@@ -109,7 +109,7 @@ func runInitForProfilePath(t *testing.T, interactive, nonInteractive bool) error
 			t.Fatalf("set --non-interactive: %v", err)
 		}
 	}
-	return runInit(cmd, []string{filepath.Join(t.TempDir(), "profile-path-proj")})
+	return runInit(cmd, []string{filepath.Join(safeInitTempDir(t), "profile-path-proj")})
 }
 
 // runUpdateForProfilePath executes the real runUpdate entry. --check with a
@@ -252,7 +252,7 @@ func TestInitInteractive_AsksConversationLanguageExactlyOnce(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errBuf)
-	if err := runInit(cmd, []string{filepath.Join(t.TempDir(), "conv-lang-proj")}); err != nil {
+	if err := runInit(cmd, []string{filepath.Join(safeInitTempDir(t), "conv-lang-proj")}); err != nil {
 		t.Fatalf("runInit: %v (stderr: %s)", err, errBuf.String())
 	}
 

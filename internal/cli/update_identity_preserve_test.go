@@ -71,7 +71,7 @@ func initIdentityProjectNamed(t *testing.T, dirName, projectName, userName strin
 	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) { return wizResult, nil }
 	t.Cleanup(func() { runWizardFn = origWizard })
 
-	projectDir := filepath.Join(t.TempDir(), dirName)
+	projectDir := filepath.Join(safeInitTempDir(t), dirName)
 	cmd := newInitTestCmd()
 	// An absolute positional argument names the project by the whole path
 	// (init.go uses the argument verbatim), so the name is pinned by flag.
