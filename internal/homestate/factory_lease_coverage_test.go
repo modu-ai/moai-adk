@@ -17,23 +17,41 @@ import (
 // The record database cannot be opened: the file at the factory database path is not a database,
 // so the schema statement fails and both open functions return the error.
 func TestOpenFactoryRefusesAnUnopenableRecord(t *testing.T) {
-	root := factorySandbox(t)
-	if err := EnsureProjectLayout(root); err != nil {
-		t.Fatalf("EnsureProjectLayout: %v", err)
-	}
-	path, err := FactoryDBPath(root)
-	if err != nil {
-		t.Fatalf("FactoryDBPath: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("this is not a sqlite database, not even close\n"), 0o600); err != nil {
-		t.Fatalf("write the corrupt record: %v", err)
-	}
-	if _, err := OpenFactory(root); err == nil {
-		t.Fatal("OpenFactory on a corrupt record: err = nil, want the open to fail")
-	}
-	if _, err := OpenFactoryBounded(root, time.Second); err == nil {
-		t.Fatal("OpenFactoryBounded on a corrupt record: err = nil, want the open to fail")
-	}
+	withRetainedFactoryFixture(t, func(fixtureRoot string) {
+		var root string
+		if fixtureRoot == "" {
+			root = factorySandbox(t)
+		} else {
+			home := filepath.Join(fixtureRoot, "home")
+			t.Setenv("HOME", home)
+			t.Setenv("MOAI_HOME", filepath.Join(home, ".moai"))
+			t.Setenv("MOAI_CLAUDE_BIN", filepath.Join(home, "bin", "claude"))
+			root = filepath.Join(fixtureRoot, "sandbox-project")
+			if err := os.MkdirAll(root, 0o700); err != nil {
+				t.Fatalf("create sandbox project root: %v", err)
+			}
+		}
+		if err := EnsureProjectLayout(root); err != nil {
+			t.Fatalf("EnsureProjectLayout: %v", err)
+		}
+		path, err := FactoryDBPath(root)
+		if err != nil {
+			t.Fatalf("FactoryDBPath: %v", err)
+		}
+		const corrupt = "this is not a sqlite database, not even close\n"
+		if err := os.WriteFile(path, []byte(corrupt), 0o600); err != nil {
+			t.Fatalf("write the corrupt record: %v", err)
+		}
+		if _, err := OpenFactory(root); err == nil {
+			t.Fatal("OpenFactory on a corrupt record: err = nil, want the open to fail")
+		}
+		if _, err := OpenFactoryBounded(root, time.Second); err == nil {
+			t.Fatal("OpenFactoryBounded on a corrupt record: err = nil, want the open to fail")
+		}
+		if got, err := os.ReadFile(path); err != nil || string(got) != corrupt {
+			t.Fatalf("corrupt record changed after refusal: bytes=%q err=%v", got, err)
+		}
+	})
 }
 
 // The project layout cannot be created: the moai home sits under a regular file, so the layout step

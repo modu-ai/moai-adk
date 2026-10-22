@@ -96,14 +96,26 @@ func TestOpenFactoryUnsupportedSchemaVersion(t *testing.T) {
 
 // A file that is not a database fails at DDL time, not at first use.
 func TestOpenFactoryCorruptFile(t *testing.T) {
-	path := filepath.Join(privateFactoryDir(t), "factory.db")
-	preparePrivateFactorySeed(t, path)
-	if err := os.WriteFile(path, []byte("this is not a database"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := OpenFactoryPath(path); err == nil || !strings.Contains(err.Error(), "initialize factory database") {
-		t.Fatalf("err = %v, want initialize factory database failure", err)
-	}
+	withRetainedFactoryFixture(t, func(root string) {
+		var dir string
+		if root == "" {
+			dir = privateFactoryDir(t)
+		} else {
+			dir = filepath.Join(root, "private-factory")
+		}
+		path := filepath.Join(dir, "factory.db")
+		preparePrivateFactorySeed(t, path)
+		const corrupt = "this is not a database"
+		if err := os.WriteFile(path, []byte(corrupt), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := OpenFactoryPath(path); err == nil || !strings.Contains(err.Error(), "initialize factory database") {
+			t.Fatalf("err = %v, want initialize factory database failure", err)
+		}
+		if got, err := os.ReadFile(path); err != nil || string(got) != corrupt {
+			t.Fatalf("corrupt database changed after refusal: bytes=%q err=%v", got, err)
+		}
+	})
 }
 
 // A database path whose parent cannot be created as a directory fails
