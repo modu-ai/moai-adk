@@ -90,6 +90,11 @@ func TestFactoryNextWaitStopsPollingGhForSelectorSkippedCandidate(t *testing.T) 
 	t.Run("merged predecessor leases on the first attempt", func(t *testing.T) {
 		root := flHintChainFixture(t)
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The picked candidate arms are gated on self-dispatch (PR #1859
+		// review P1, default OFF) and on the amended spec-id condition 2
+		// (fail-closed); the fixture predates both.
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, todoStoreAt(root), "t2", "SPEC-WAIT-SKIP-001")
 		sdLaneEnv(t, "lane-1", "")
 		gh := flCountGhCalls(t, func() (string, error) { return "[]", nil })
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
@@ -120,6 +125,9 @@ func TestFactoryNextMayLeaseMirrorsTheSelectorSkips(t *testing.T) {
 	t.Run("merged predecessor releases the candidate", func(t *testing.T) {
 		root := flHintChainFixture(t)
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The bare peek skips unowned picked candidates while self-dispatch
+		// is off (PR #1859 review P1); the fixture predates the gate.
+		cepSelfDispatchYAML(t, root, true)
 		if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", false) {
 			t.Errorf("peek = false after t1 reached the local merge, want true — the skip must clear with the merge (fail-closed guard against the unknown PR column)")
 		}
@@ -135,6 +143,10 @@ func TestFactoryNextMayLeaseMirrorsTheSelectorSkips(t *testing.T) {
 		t.Chdir(root)
 		fbBundle(t, root, "lane-1", "t1", "t2")
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The lane's own bundle head is reachable through the bare arms only
+		// with self-dispatch on (PR #1859 review P1); the fixture predates
+		// the gate.
+		cepSelfDispatchYAML(t, root, true)
 		if factoryNextMayLease(context.Background(), root, fcRun, "lane-2", "", false) {
 			t.Errorf("lane-2's peek = true over lane-1's bundle member t2, want false — the bundle-ownership skip must hold it out")
 		}
