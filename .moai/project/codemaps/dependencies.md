@@ -323,3 +323,8 @@ e65b3b의 실제 package adjacency에 SCC 분석을 적용한 nontrivial compone
    `internal/settings/yamlpatch`는 같은 라이브러리의 **노드 트리**를 직접 수술해 주석과
    미모델링 키를 보존합니다. 이 두 번째 쓰임이 typed struct 재직렬화가 파괴하는 것을
    보존하는 유일한 경로입니다.
+
+
+## Windows 권한 거절 fixture의 플랫폼 의존성 — Cloud CI 후속 수리
+
+현재 `internal/testguard/file_access_windows.go`와 Windows 전용 회귀는 `golang.org/x/sys/windows`의 보안 기술자·토큰·ACL·핸들 API를 직접 사용한다. 모듈의 기존 직접 의존성 `golang.org/x/sys v0.49.0`을 재사용하며 go.mod는 바꾸지 않는다. 비 Windows 구현은 기존 표준 라이브러리 chmod 경로다. civerdict·graph·mission의 이 연결은 테스트 파일의 import이며 제품 런타임의 privacy API가 아니다. 위 bf0/Linux 패키지·edge 집계는 당시 플랫폼 관측값으로 보존하고 현재 Windows 의존성이나 다른 OS 실행 성공 수치로 확대하지 않는다.

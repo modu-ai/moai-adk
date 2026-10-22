@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // D20 (REQ-GR-008 sibling hardening, SPEC-GRAPH-REPORT-001 M3): the meta
@@ -73,6 +75,7 @@ func TestWriteEdgesMeta_FailureBranches(t *testing.T) {
 	if err := os.MkdirAll(ro, 0o500); err != nil {
 		t.Fatal(err)
 	}
+	testguard.MakeDirReadOnly(t, ro)
 	err = WriteEdgesMeta(filepath.Join(ro, MetaFileName), root, nil, 0)
 	if err == nil || !strings.Contains(err.Error(), "create edges meta temp") {
 		t.Errorf("read-only directory must fail at temp creation, got: %v", err)

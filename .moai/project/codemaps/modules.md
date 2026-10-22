@@ -655,3 +655,10 @@ $ find internal cmd pkg -name '*.go' -not -name '*_test.go' -exec ls -l {} + | s
 
 > **t1278 판에서 확정한 소멸 경위(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 — 전체 경로는 음성 인용으로 이 줄에만 남긴다).**
 > `internal/cli/factory_lane_handoff.go` · `internal/cli/factory_lane_handoff_bind.go` · `internal/cli/factory_lane_handoff_recover.go` · `internal/cli/factory_lane_handoff_switch.go` 4형제와 `internal/cli/codex_factory.go` · `internal/cli/codex_kanban.go` 가 트리에서 사라졌다. 릴로케이션이 옮기던 헤드리스 codex 세션 자체가 factory 에 참여하지 않게 되면서 그 왕복 경로가 없어졌기 때문이며, `_bind.go` 의 책임(헤드리스 rebind)은 계승되지 않고 기능과 함께 은퇴했다 — 핸드오프 상태는 이제 `internal/factorymsg` Store API 와 훅 쪽 대화형 bind(`internal/hook/factory_handoff_bind.go`, 생존)로만 움직인다.
+
+
+## Windows 새 파일 생성 거절 fixture — Cloud CI 후속 수리
+
+`internal/testguard/file_access_windows.go`의 `MakeDirReadOnly`는 제품 권한 정책이 아니라 테스트용 새 파일 생성 거절 조건을 만든다. 이미 허용된 `READ_CONTROL`·`WRITE_DAC` 디렉터리 핸들을 보유하고 원래 DACL과 보호 플래그를 저장한다. 현재 SID에 `FILE_ADD_FILE`(0x2) DENY와 읽기·탐색 allow를 설치한 뒤 같은 핸들의 실제 DACL과 ACE를 다시 읽는다. 변경 전 `os.CreateTemp` 성공과 변경 후 `ERROR_ACCESS_DENIED`를 확인한다. cleanup은 같은 핸들로 원래 DACL과 상속 보호 설정을 복원하고 닫는다. 새 full-access grant나 owner 변경은 하지 않는다. 이는 모든 쓰기·삭제를 금지하는 정책이라는 뜻이 아니다.
+
+`internal/civerdict/civerdict_test.go`의 `TestErrorPaths/save-readonly-dir`와 `internal/graph/meta_tmp_test.go`의 `TestWriteEdgesMeta_FailureBranches`는 이 공통 fixture를 사용하고 기존 오류 기대를 유지한다. 기존 소비자인 `internal/mission/governance_receipt_test.go`도 같은 생성 거절 조건을 쓴다. `internal/testguard/file_access_unix.go`는 기존 chmod0500과 cleanup0700을 유지하며, 원래 Unix mode의 정확한 복원이라는 보장은 추가하지 않는다. `internal/testguard/file_access_windows_test.go`는 원래 DACL·control의 보호/상속 상태별 복원과 실제 생성 권한 복원을 검사한다. 이 단락은 소스 계약이며 native Windows 실행 성공 판정은 원격 CI가 담당한다.
