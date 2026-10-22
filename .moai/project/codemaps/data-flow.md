@@ -569,7 +569,16 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
 GTD의 사람 쪽 표면은 `moai gtd`입니다(`internal/cli/gtd.go`). `moai todo` 명령 트리를 감싼
 두 번째 이름이라 같은 큐·같은 카드 id를 보며, `capture` · `clarify` · `organize` · `reflect` ·
 `engage`가 다섯 단계를 따로 기록합니다. `internal/graph/gtd_private.go`는 같은 저장소에서 비공개
-관계 투영을 만들고 권한을 검사합니다.
+관계 투영을 만들고 권한을 검사합니다. 계정과 소유자는 Unix에서는 실제 UID,
+Windows에서는 `gtd_private_identity_windows.go`가 읽는 프로세스 token과 파일 객체의 실제 SID로
+대조합니다. `Mode`는 관측값이며 승인 근거는 필수 `CheckPrivatePolicy`입니다. 이 검사는
+`internal/privatefile`을 통해 Unix 디렉터리 `0700`·파일 `0600`, Windows의 현재 소유자만 허용하는
+protected DACL을 확인합니다. 계정·소유권·정책을 읽지 못하면 승인을 거부합니다.
+
+게시 디렉터리와 임시 파일은 payload를 받기 전에 native 비공개 정책을 적용합니다. data와 meta는
+같은 디렉터리의 임시 객체를 `internal/atomicfile`로 이동한 뒤 객체 동일성과 비공개 정책을
+확인합니다. meta 게시가 실패하면 먼저 게시한 data를 제거하고 두 임시 파일도 정리합니다.
+분류·정렬·중복 제거·해시와 generation 계산, 기본 수집·백업 제외 및 명시적 opt-in 경계는 유지합니다.
 
 ---
 
