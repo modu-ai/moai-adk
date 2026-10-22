@@ -219,25 +219,28 @@ m1_to_mN_commit_strategy: per-milestone local commits in plan order M2, M5, M4, 
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16   # the sync commit; backfilled in this following commit
+sync_commit_sha: pending-backfill   # the amended re-close commit (v0.8.0); backfilled in the following commit
+prior_completed_sha: f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16   # the v0.7.1 close, preserved
 sync_status: complete-pending-audit
 tier: M
-ac_source: .moai/specs/SPEC-RELEASE-PIPELINE-001/acceptance.md   # B12 counter: stdout 11, stderr live=11 excluded=2 ambiguous=0
-b12_self_test_a: pass   # grep -c 'SPEC-RELEASE-PIPELINE-001' CHANGELOG.md was 0 before emission
+ac_source: .moai/specs/SPEC-RELEASE-PIPELINE-001/acceptance.md   # B12 counter: stdout 11, stderr live=11 excluded=2 ambiguous=0, exit 0 (re-run at HEAD f9abf274aa)
+b12_self_test_a: pass   # grep -c 'SPEC-RELEASE-PIPELINE-001' CHANGELOG.md was 1 before the re-close; the existing entry is revised in place, no second entry added (amendment re-close)
 b12_self_test_b: pass   # CHANGELOG states 11 acceptance criteria (9 release-blocking + 2 regression-guard) = counter output
 b12_self_test_c: pass   # every file path claimed in the CHANGELOG entry verified by ls
-changelog_entry_position: "[Unreleased] > Added, first bullet"
+changelog_entry_position: "[Unreleased] > Added, first bullet (revised in place)"
+changed_docs: CHANGELOG.md (entry revised: separate concurrency groups, idempotent delete and re-query-before-delete, 14 guard tests); progress.md §E.4; spec.md frontmatter status/updated
+guard_test_count: 14   # func Test... added since bf0a35f10e in ci_cost_gating_test.go (4), release_drafter_cleanup_test.go (7), verification_budget_test.go (3); ci_workflow_model_test.go adds helpers only
 frontmatter_status_transitions:
-  spec_md: "in-progress -> implemented -> completed (single sync commit; updated: already 2026-10-23, unchanged)"
-  plan_md: "no status field; updated: already 2026-10-23, unchanged"
-  acceptance_md: "no status field; updated: already 2026-10-23, unchanged"
+  spec_md: "in-progress -> implemented -> completed (single amended re-close commit; updated: 2026-10-23); amendment_of and ### Amendments retained as history"
+  plan_md: "no status field; unchanged"
+  acceptance_md: "no status field; unchanged"
 canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
 mx_review: no tag added   # no non-test Go source changed; no @MX rule fires (test files and CI workflow YAML only)
 docs_impact: CHANGELOG.md only; no tracked codemap, README, or docs-site page names a changed workflow or guard file
 known_warning: "moai spec lint: 1 pre-existing VacuousTestAssertion at acceptance.md:52 (verbatim EV-6 evidence, SPEC body text; left unchanged)"
 ```
 
-Amendment open (manager-spec, 2026-10-23): spec.md v0.7.1 → v0.8.0, `status: completed → in-progress`, `amendment_of: SPEC-RELEASE-PIPELINE-001`, prior_completed_sha f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16 (= the `sync_commit_sha` above, retained). Scope: REQ-RPC-012 / AC-RPC-012 — separate drafter and cleanup concurrency groups, safety via the M5 re-query before each delete plus an idempotent delete (operator decision on F3, §G). RED-now cell: acceptance.md §B EV-17 (pin `3c6462e23c`). Run-phase repair and re-close pending.
+Amendment closed (manager-docs, 2026-10-23): spec.md v0.8.0 re-closed `in-progress -> implemented -> completed` for REQ-RPC-012 / AC-RPC-012 (separate drafter and cleanup concurrency groups, idempotent delete, re-query before each delete; run evidence in §E.2 "Amendment v0.8.0 run", implementation commits 8cdc040958 and f9abf274aa). The prior v0.7.1 close sha f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16 is preserved above as `prior_completed_sha`.
 
 ## §F Phase 4 Mode Selection
 
