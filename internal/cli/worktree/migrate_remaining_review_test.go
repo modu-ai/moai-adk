@@ -25,7 +25,10 @@ func TestMigrationInventoryIncludesProtectedRoots(t *testing.T) {
 		branch := []string{"release-home", "WT-operator", "WT-codex"}[i]
 		m6Git(t, w.repo, "worktree", "add", "-q", "-b", branch, "--", tree)
 	}
-	plans := planMigrationFor(w.repo, time.Now(), false)
+	plans, err := planMigrationFor(w.repo, time.Now(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	byPath := map[string]migratePlan{}
 	for _, plan := range plans {
 		byPath[plan.source] = plan
@@ -104,7 +107,7 @@ func TestMigrationManifestStreamsIgnoredFileContents(t *testing.T) {
 	runtime.GC()
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
-	digest := captureManifest(tree)
+	digest := reviewCaptureManifest(t, tree)
 	runtime.ReadMemStats(&after)
 	allocated := after.TotalAlloc - before.TotalAlloc
 	t.Logf("ignored file bytes=%d allocation bytes=%d", size, allocated)
@@ -120,7 +123,7 @@ func TestMigrationManifestStreamsIgnoredFileContents(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = f.Close()
-	if digest == captureManifest(tree) {
+	if digest == reviewCaptureManifest(t, tree) {
 		t.Fatal("streaming must continue hashing ignored content through the file's end")
 	}
 }

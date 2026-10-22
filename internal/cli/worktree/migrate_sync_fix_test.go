@@ -327,11 +327,11 @@ func TestCaptureManifest_DetectsTrackedContentMutation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tree, "README.md"), []byte("tracked-a\n"), 0o644); err != nil {
 		t.Fatalf("modify the tracked file: %v", err)
 	}
-	before := captureManifest(tree)
+	before := reviewCaptureManifest(t, tree)
 	if err := os.WriteFile(filepath.Join(tree, "README.md"), []byte("tracked-b\n"), 0o644); err != nil {
 		t.Fatalf("re-modify the tracked file: %v", err)
 	}
-	after := captureManifest(tree)
+	after := reviewCaptureManifest(t, tree)
 	if before == after {
 		t.Errorf("the manifest digest is blind to a tracked-content mutation that preserves the status shape")
 	}

@@ -106,7 +106,7 @@ func ParseWorktreeList(porcelain string) ([]WorktreeRecord, error) {
 		switch head {
 		case "worktree":
 			flush()
-			cur = &WorktreeRecord{Path: rest}
+			cur = &WorktreeRecord{Path: filepath.FromSlash(rest)}
 		case "HEAD":
 			if cur != nil {
 				cur.Head = rest

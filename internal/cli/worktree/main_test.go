@@ -13,6 +13,9 @@ import (
 // lane session's git context (GH #1691). The structural check in
 // internal/gitenv fails if this call is removed.
 func TestMain(m *testing.M) {
+	if os.Getenv("MOAI_REVIEW_GIT_HELPER") == "1" {
+		os.Exit(thirdReviewGitHelper())
+	}
 	if err := gitenv.ScrubProcess(); err != nil {
 		panic(err)
 	}

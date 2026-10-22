@@ -41,6 +41,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
@@ -270,14 +271,14 @@ var liveAnchoredProbe = func(tree, root string, now time.Time) int {
 // record is created for a planned tree (AC-WHR-015). The apply resolves
 // through the writing resolver, whose first-time assignment claims the key
 // and writes the marker (REQ-WHR-002a) — an apply may write.
-func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
+func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, error) {
 	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list migration worktrees: %w", err)
 	}
 	records, err := ParseWorktreeList(out)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("parse migration worktrees: %w", err)
 	}
 	homeBase := homeProjectsDir()
 	// The classifier verdicts must agree across list, migrate, tier and
@@ -364,7 +365,7 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 		}
 		plans = append(plans, p)
 	}
-	return plans
+	return plans, nil
 }
 
 // migrationReport builders
@@ -461,7 +462,10 @@ func (j *migrationJournal) settle(ident, outcome, reason, manifest string) error
 // AC-WHR-019(g)).
 func runMigrationEngine(root string, apply bool, trigger string) (*migrationReport, error) {
 	report := &migrationReport{}
-	plans := planMigrationFor(root, time.Now(), apply)
+	plans, err := planMigrationFor(root, time.Now(), apply)
+	if err != nil {
+		return report, err
+	}
 	mlPath := moveListPath(root)
 
 	var journal *migrationJournal
@@ -483,7 +487,11 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 			// enter or anchor this source. Refresh every safety input using
 			// the same planner immediately before this tree's move steps.
 			fresh := migratePlan{source: p.source, class: p.class, skip: "source is no longer registered"}
-			for _, current := range planMigrationFor(root, time.Now(), true) {
+			currentPlans, err := planMigrationFor(root, time.Now(), true)
+			if err != nil {
+				return report, err
+			}
+			for _, current := range currentPlans {
 				if worktreeroot.Same(current.source, p.source) {
 					fresh = current
 					break
@@ -586,7 +594,15 @@ type treeOutcome struct {
 // tree's identity with the journal's and refuses a mismatch with a
 // `refused` line (REQ-WHR-017/018).
 func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal) treeOutcome {
-	digest := captureManifest(p.source)
+	digest, err := captureManifest(p.source)
+	if err != nil {
+		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("capture pre-move manifest: %v", err), Cause: err}
+	}
+
+	bindIdentity, err := homestate.CaptureWorktreeRebindIdentity(p.source)
+	if err != nil {
+		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("capture pre-move binding identity: %v", err), Cause: err}
+	}
 
 	id, err := EnsureInstanceToken(p.source)
 	if err != nil {
@@ -607,8 +623,20 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 	}
 
 	if _, err := listGitOutput(root, "worktree", "move", p.source, p.destination); err != nil {
-		_ = appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "failed", p.source, p.destination, id.Ident()))
-		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("git worktree move: %v", err), Ident: id.Ident(), Manifest: digest}
+		cause := fmt.Errorf("git worktree move: %w", err)
+		_, sourceErr := os.Lstat(p.source)
+		if errors.Is(sourceErr, os.ErrNotExist) {
+			// Git may rename the directory before failing to update its admin
+			// backlink. Repair only the journal's exact tree, then reverse it.
+			if repairErr := ensureMigrationRegistration(root, p.destination, p.source, id); repairErr == nil {
+				return reverseAfterFailure(root, p, id, mlPath, trigger, digest, cause)
+			} else {
+				lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.source, p.destination, id.Ident(), repairErr.Error()))
+				return treeOutcome{Outcome: "failed", Reason: cause.Error(), Ident: id.Ident(), Manifest: digest, Cause: cause, MLErr: errors.Join(repairErr, lineErr)}
+			}
+		}
+		lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "failed", p.source, p.destination, id.Ident(), cause.Error()))
+		return treeOutcome{Outcome: "failed", Reason: cause.Error(), Ident: id.Ident(), Manifest: digest, Cause: cause, MLErr: lineErr}
 	}
 
 	if rerr := hook.RekeyWorktreeEntry(root, p.source, p.destination); rerr != nil {
@@ -620,12 +648,12 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		}
 	}
 
-	if rerr := rebindCardForPath(root, p.source, p.destination); rerr != nil {
+	if rerr := rebindCardForPath(root, p.source, p.destination, bindIdentity); rerr != nil {
 		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Errorf("card rebind failed: %w", rerr))
 	}
 
-	if after := captureManifest(p.destination); after != digest {
-		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, errors.New("manifest mismatch after the move"))
+	if after, err := captureManifest(p.destination); err != nil || after != digest {
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Errorf("manifest mismatch after the move: %w", errors.Join(err, errors.New("mandatory fields must match"))))
 	}
 
 	if merr := appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "moved", p.source, p.destination, id.Ident())); merr != nil {
@@ -797,9 +825,18 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 }
 
 func reverseMigrationTree(root string, p migratePlan, id TreeIdentity, mlPath, trigger string, restoreMetadata bool) (bool, error) {
-	destIdent, err := TreeIdent(p.destination)
-	if err == nil && destIdent.Ident() != id.Ident() {
-		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
+	observed, identErr := TreeIdent(p.destination)
+	if identErr != nil || id.Token == "" || observed.Ident() != id.Ident() {
+		refusal := fmt.Errorf("reverse migration identity is unavailable or differs at %s", p.destination)
+		return false, errors.Join(refusal, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "refused", p.destination, p.source, id.Ident(), refusal.Error())))
+	}
+	if err := ensureMigrationRegistration(root, p.destination, p.source, id); err != nil {
+		lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), err.Error()))
+		return false, errors.Join(err, lineErr)
+	}
+	bindIdentity, err := homestate.CaptureWorktreeRebindIdentity(p.destination)
+	if err != nil {
+		return false, err
 	}
 	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil {
 		// The tree stands at the destination: the re-key and the rebind stay
@@ -808,11 +845,11 @@ func reverseMigrationTree(root string, p migratePlan, id TreeIdentity, mlPath, t
 		// names the destination as the line's OLD path (the orientation the
 		// reverse order travels), and MovedBy reads both ends of a pending
 		// line (card t1640 review F5).
-		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
-			fmt.Sprintf("reverse move failed: %v", rerr)))
+		return false, errors.Join(rerr, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+			fmt.Sprintf("reverse move failed: %v", rerr))))
 	}
 	if restoreMetadata {
-		if rerr := reverseMigrationMetadata(root, p.destination, p.source); rerr != nil {
+		if rerr := reverseMigrationMetadata(root, p.destination, p.source, bindIdentity); rerr != nil {
 			lineErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
 				fmt.Sprintf("reverse metadata failed: %v", rerr)))
 			return true, errors.Join(rerr, lineErr)
@@ -821,11 +858,11 @@ func reverseMigrationTree(root string, p migratePlan, id TreeIdentity, mlPath, t
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
 }
 
-func reverseMigrationMetadata(root, from, to string) error {
+func reverseMigrationMetadata(root, from, to string, bindIdentity homestate.WorktreeRebindIdentity) error {
 	if err := hook.RekeyWorktreeEntryInverse(root, from, to); err != nil && !strings.Contains(err.Error(), "no entry keyed to") {
 		return fmt.Errorf("reverse re-key failed: %w", err)
 	}
-	if err := rebindCardForPath(root, from, to); err != nil {
+	if err := rebindCardForPath(root, from, to, bindIdentity); err != nil {
 		return fmt.Errorf("reverse card rebind failed: %w", err)
 	}
 	return nil
@@ -839,13 +876,16 @@ func reverseMigrationMetadata(root, from, to string) error {
 // layout <root>/.moai/factory/factory.db, not <root>/.moai/factory.db —
 // and through a WRITABLE connection: RebindCardWorktree is an UPDATE and a
 // mode=ro connection would refuse it (card t1640 review P1-1).
-func rebindCardForPath(root, oldPath, newPath string) error {
+func rebindCardForPath(root, oldPath, newPath string, bindIdentity homestate.WorktreeRebindIdentity) error {
 	dbPath, err := homestate.FactoryDBPath(root)
 	if err != nil {
-		return nil
+		return err
 	}
 	if _, serr := os.Stat(dbPath); serr != nil {
-		return nil // no factory store in this repository: nothing to rebind
+		if errors.Is(serr, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("inspect factory store for rebind: %w", serr)
 	}
 	db, err := homestate.OpenFactoryPath(dbPath)
 	if err != nil {
@@ -859,7 +899,7 @@ func rebindCardForPath(root, oldPath, newPath string) error {
 	if !ok {
 		return nil
 	}
-	_, err = db.RebindCardWorktree(context.Background(), cardID, oldPath, newPath, "worktree-migrate", time.Now())
+	_, err = db.RebindCardWorktree(context.Background(), cardID, oldPath, newPath, "worktree-migrate", time.Now(), bindIdentity)
 	return err
 }
 
@@ -908,10 +948,13 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 					continue
 				}
 			}
-			if s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\t%s → %s (manifest mismatch)\n", s.OldPath, s.NewPath)
-				mismatched++
-				continue
+			if s.Manifest != "" {
+				observed, err := captureManifest(s.NewPath)
+				if err != nil || observed != s.Manifest {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\t%s → %s (manifest mismatch; inspection error: %v)\n", s.OldPath, s.NewPath, err)
+					mismatched++
+					continue
+				}
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "intact\t%s → %s\n", s.OldPath, s.NewPath)
 			intact++
@@ -1020,12 +1063,35 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 			// The manifest-match precondition belongs to the ordinary
 			// rollback of a settled move; a pending step reverses
 			// unconditionally (REQ-WHR-018's fifth entry).
-			if !atSource && s.Outcome == "moved" && s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
-					return lerr
+			if !atSource && s.Outcome == "moved" && s.Manifest != "" {
+				observed, err := captureManifest(s.NewPath)
+				if err != nil || observed != s.Manifest {
+					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
+						return lerr
+					}
+					problems = append(problems, fmt.Sprintf("%s: manifest mismatch; the step stays pending (inspection error: %v)", s.NewPath, err))
+					refused++
+					continue
 				}
-				problems = append(problems, fmt.Sprintf("%s: manifest mismatch; the step stays pending", s.NewPath))
-				refused++
+			}
+			bindingPath := s.NewPath
+			if atSource {
+				bindingPath = s.OldPath
+			}
+			bindingIdent, bindErr := TreeIdent(bindingPath)
+			if bindErr == nil {
+				bindErr = ensureMigrationRegistration(root, bindingPath, s.OldPath, bindingIdent)
+			}
+			var bindIdentity homestate.WorktreeRebindIdentity
+			if bindErr == nil {
+				bindIdentity, bindErr = homestate.CaptureWorktreeRebindIdentity(bindingPath)
+			}
+			if bindErr != nil {
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, bindErr.Error())); lerr != nil {
+					return errors.Join(bindErr, lerr)
+				}
+				problems = append(problems, fmt.Sprintf("%s: recovery registration: %v", bindingPath, bindErr))
+				failed++
 				continue
 			}
 			if !atSource {
@@ -1038,7 +1104,7 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 					continue
 				}
 			}
-			if rerr := reverseMigrationMetadata(root, s.NewPath, s.OldPath); rerr != nil {
+			if rerr := reverseMigrationMetadata(root, s.NewPath, s.OldPath, bindIdentity); rerr != nil {
 				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, rerr.Error())); lerr != nil {
 					return errors.Join(rerr, lerr)
 				}
@@ -1071,7 +1137,15 @@ func canonicalTreePath(p string) string {
 // listGitOutput runs git in dir and returns stdout.
 func listGitOutput(dir string, args ...string) (string, error) {
 	argv := append([]string{"-C", dir}, args...)
-	out, err := exec.Command("git", argv...).Output()
+	cmd := exec.Command("git", argv...)
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
+	out, err := cmd.Output()
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			return string(out), fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(exit.Stderr)))
+		}
+	}
 	return string(out), err
 }
 
@@ -1122,49 +1196,61 @@ type treeManifest struct {
 
 // captureManifest digests the working state of the tree at path through the
 // full AC-WHR-017a manifest.
-func captureManifest(tree string) string {
-	m := captureTreeManifest(tree)
+func captureManifest(tree string) (string, error) {
+	m, err := captureTreeManifest(tree)
+	if err != nil {
+		return "", err
+	}
 	b, err := json.Marshal(m)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // captureTreeManifest reads the AC-WHR-017a manifest fields of the tree at
-// path. Read failures degrade to zero values inside the manifest — the
-// pre/post comparison then notices the change of shape, exactly as an
-// unreadable field should fail a field-for-field comparison.
-func captureTreeManifest(tree string) treeManifest {
+// path. Every mandatory probe must succeed: two equally unreadable states
+// are not evidence that a move preserved its content.
+func captureTreeManifest(tree string) (treeManifest, error) {
 	var m treeManifest
-	m.HEAD, _ = listGitOutput(tree, "rev-parse", "HEAD")
+	var staged, unstaged, untrackedOutput, ignoredOutput string
+	for _, field := range []struct {
+		value *string
+		args  []string
+	}{
+		{&m.HEAD, []string{"rev-parse", "HEAD"}},
+		{&m.Branch, []string{"rev-parse", "--abbrev-ref", "HEAD"}},
+		{&m.Unpushed, []string{"rev-list", "HEAD", "--not", "--remotes"}},
+		{&m.Status, []string{"status", "--porcelain"}},
+		{&staged, []string{"diff", "--cached"}},
+		{&unstaged, []string{"diff"}},
+		{&untrackedOutput, []string{"ls-files", "--others", "-z"}},
+		{&ignoredOutput, []string{"ls-files", "--others", "--ignored", "--exclude-standard", "-z"}},
+	} {
+		out, err := listGitOutput(tree, field.args...)
+		if err != nil {
+			return m, fmt.Errorf("manifest probe %s: %w", strings.Join(field.args, " "), err)
+		}
+		*field.value = out
+	}
 	m.HEAD = strings.TrimSpace(m.HEAD)
-	m.Branch, _ = listGitOutput(tree, "rev-parse", "--abbrev-ref", "HEAD")
 	m.Branch = strings.TrimSpace(m.Branch)
-	m.Unpushed, _ = listGitOutput(tree, "rev-list", "HEAD", "--not", "--remotes")
-	m.Status, _ = listGitOutput(tree, "status", "--porcelain")
+	if m.HEAD == "" || m.Branch == "" {
+		return m, errors.New("manifest HEAD and branch probes must not be empty")
+	}
 	// The tracked-change content (REQ-WHR-017's content digest over the
 	// tracked-change diff — card t1640 review F7): a content mutation that
 	// preserves the status shape must change the manifest. Both the
 	// unstaged and the staged forms ride the manifest.
-	staged, _ := listGitOutput(tree, "diff", "--cached")
-	unstaged, _ := listGitOutput(tree, "diff")
 	m.Diff = staged + unstaged
 
-	var untracked, ignored []string
-	if out, err := listGitOutput(tree, "ls-files", "--others", "-z"); err == nil {
-		untracked = splitNul(out)
-	}
-	if out, err := listGitOutput(tree, "ls-files", "--others", "--ignored", "--exclude-standard", "-z"); err == nil {
-		ignored = splitNul(out)
-	}
+	untracked, ignored := splitNul(untrackedOutput), splitNul(ignoredOutput)
 	m.IgnoredCount = len(ignored)
 
 	seen := map[string]bool{}
 	var paths []string
 	for _, p := range append(append([]string{}, untracked...), ignored...) {
-		p = strings.TrimSpace(p)
 		if p == "" || seen[p] {
 			continue
 		}
@@ -1184,40 +1270,45 @@ func captureTreeManifest(tree string) treeManifest {
 			// read; everything else hashes its type marker.
 			switch {
 			case info.Mode()&os.ModeSymlink != 0:
-				if target, rerr := os.Readlink(full); rerr == nil {
-					_, _ = digest.Write([]byte("link:" + target))
-				} else {
-					_, _ = digest.Write([]byte("\x00unreadable-link"))
+				target, rerr := os.Readlink(full)
+				if rerr != nil {
+					return m, fmt.Errorf("manifest link %s: %w", full, rerr)
 				}
+				_, _ = digest.Write([]byte("link:" + target))
 			case info.Mode().IsRegular():
-				if file, rerr := os.Open(full); rerr == nil {
-					_, copyErr := io.Copy(digest, file)
-					closeErr := file.Close()
-					if copyErr != nil || closeErr != nil {
-						_, _ = digest.Write([]byte("\x00unreadable"))
-					}
-				} else {
-					_, _ = digest.Write([]byte("\x00unreadable"))
+				file, rerr := os.Open(full)
+				if rerr != nil {
+					return m, fmt.Errorf("manifest file %s: %w", full, rerr)
+				}
+				_, copyErr := io.Copy(digest, file)
+				if err := errors.Join(copyErr, file.Close()); err != nil {
+					return m, fmt.Errorf("manifest file %s: %w", full, err)
 				}
 			default:
 				_, _ = digest.Write([]byte("special:" + info.Mode().String()))
 			}
 		} else {
-			_, _ = digest.Write([]byte("\x00unreadable"))
+			return m, fmt.Errorf("manifest path %s: %w", full, lerr)
 		}
 		_, _ = digest.Write([]byte{0})
 	}
 	m.ContentDigest = hex.EncodeToString(digest.Sum(nil))
 
 	reports := filepath.Join(tree, ".moai", "reports")
-	_ = filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	err := filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			if path == reports && errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
+		if d.IsDir() {
 			return nil
 		}
 		m.ReportsCount++
 		return nil
 	})
-	return m
+	return m, err
 }
 
 // splitNul splits a NUL-delimited git -z listing.

@@ -26,9 +26,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -69,7 +69,11 @@ func gitDirPointer(treePath string) (string, error) {
 	if rest, ok := strings.CutPrefix(line, "gitdir:"); ok {
 		p := strings.TrimSpace(rest)
 		if p != "" {
-			return p, nil
+			p = filepath.FromSlash(p)
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(treePath, p)
+			}
+			return filepath.Clean(p), nil
 		}
 	}
 	return "", fmt.Errorf("%s/.git is not a gitdir pointer to a linked worktree", treePath)
@@ -87,6 +91,8 @@ func TreeIdent(treePath string) (TreeIdentity, error) {
 	token := ""
 	if body, err := os.ReadFile(filepath.Join(gitdir, tokenFileName)); err == nil {
 		token = strings.TrimSpace(string(body))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return TreeIdentity{}, fmt.Errorf("read instance token: %w", err)
 	}
 	return TreeIdentity{AdminID: filepath.Base(gitdir), Token: token}, nil
 }
@@ -104,7 +110,13 @@ func EnsureInstanceToken(treePath string) (TreeIdentity, error) {
 	admin := filepath.Base(gitdir)
 	tokenFile := filepath.Join(gitdir, tokenFileName)
 	if body, err := os.ReadFile(tokenFile); err == nil {
-		return TreeIdentity{AdminID: admin, Token: strings.TrimSpace(string(body))}, nil
+		token := strings.TrimSpace(string(body))
+		if token == "" {
+			return TreeIdentity{}, fmt.Errorf("existing instance token %s is empty; refusing an unauthenticated move", tokenFile)
+		}
+		return TreeIdentity{AdminID: admin, Token: token}, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return TreeIdentity{}, fmt.Errorf("read existing instance token %s: %w", tokenFile, err)
 	}
 	token, err := newToken()
 	if err != nil {
@@ -178,7 +190,7 @@ func loadMoveList(primary string) []mlRecord {
 
 // registeredWorktreePaths returns the paths git registers for primary.
 func registeredWorktreePaths(primary string) ([]string, error) {
-	out, err := exec.Command("git", "-C", primary, "worktree", "list", "--porcelain").Output()
+	out, err := listGitOutput(primary, "worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, fmt.Errorf("listing the worktrees of %s: %w", primary, err)
 	}
@@ -362,11 +374,10 @@ func MovedBy(primary, path string) bool {
 		if !worktreeroot.Same(rec.NewPath, path) && !worktreeroot.Same(rec.OldPath, path) {
 			return false
 		}
-		registrations, err := registeredWorktreePaths(primary)
-		if err != nil {
-			return false
-		}
-		return isRegistered(registrations, path)
+		// A partially completed Git move can leave the registration naming
+		// the vanished source. The exact journal identity and repository-owned
+		// admin directory still protect either endpoint until recovery settles.
+		return authenticateMigrationAdmin(primary, path, id, rec.OldPath, rec.NewPath) == nil
 	case "moved":
 		if !worktreeroot.Same(rec.NewPath, path) {
 			return false

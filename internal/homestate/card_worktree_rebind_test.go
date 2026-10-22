@@ -19,9 +19,8 @@ package homestate
 
 import (
 	"context"
-	"os"
+	"encoding/json"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
@@ -58,17 +57,11 @@ func rebindOpen(t *testing.T) *FactoryDB {
 // PreviousCardWorktree answers P_new for the other run.
 func TestRebindCardWorktree_RebindsEveryRunRowOfTheCard(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
-	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
+	_, pOld, pNew, identity := thirdRebindWorld(t)
 	rebindPick(t, db, "run-a", "t7", pOld)
 	rebindPick(t, db, "run-b", "t7", pOld)
-	// The migration moved the tree to P_new before rebinding: the target is
-	// a registered worktree (the probe's default mechanical check).
-	if err := os.MkdirAll(filepath.Join(pNew, ".git"), 0o755); err != nil {
-		t.Fatalf("mkdir moved-tree .git: %v", err)
-	}
 
-	rows, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pNew, "rebind-test", rebindNow)
+	rows, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pNew, "rebind-test", rebindNow, identity)
 	if err != nil {
 		t.Fatalf("RebindCardWorktree: %v", err)
 	}
@@ -94,8 +87,12 @@ func TestRebindCardWorktree_RebindsEveryRunRowOfTheCard(t *testing.T) {
 			t.Errorf("%s: card.fields event: %v", run, err)
 			continue
 		}
-		if !strings.Contains(payload, pOld) || !strings.Contains(payload, pNew) {
-			t.Errorf("%s: card.fields payload %q does not record both paths", run, payload)
+		var paths struct {
+			Old string `json:"previous_worktree"`
+			New string `json:"worktree"`
+		}
+		if err := json.Unmarshal([]byte(payload), &paths); err != nil || paths.Old != pOld || paths.New != pNew {
+			t.Errorf("%s: card.fields payload %q does not record both exact paths: %v", run, payload, err)
 		}
 	}
 }
@@ -115,11 +112,10 @@ func rebindCard(t *testing.T, db *FactoryDB, runID, cardID string) Card {
 // changes nothing.
 func TestRebindCardWorktree_StaleOldPathIsRefused(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
-	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
+	_, pOld, pNew, identity := thirdRebindWorld(t)
 	rebindPick(t, db, "run-a", "t7", pOld)
 
-	if _, err := db.RebindCardWorktree(context.Background(), "t7", "/some/other/old", pNew, "rebind-test", rebindNow); err == nil {
+	if _, err := db.RebindCardWorktree(context.Background(), "t7", filepath.Join(t.TempDir(), "other-old"), pNew, "rebind-test", rebindNow, identity); err == nil {
 		t.Fatal("a rebind with a stale old path was accepted")
 	}
 	if c := rebindCard(t, db, "run-a", "t7"); c.WorktreePath != pOld {
@@ -132,21 +128,14 @@ func TestRebindCardWorktree_StaleOldPathIsRefused(t *testing.T) {
 // is not a registered worktree is refused; a registered target passes.
 func TestRebindCardWorktree_TargetMustBeRegistered(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
-	pRegistered := "/repo/.moai/worktrees/t7-moved"
-	pUnregistered := "/nowhere/t7-moved"
+	_, pOld, pRegistered, identity := thirdRebindWorld(t)
+	pUnregistered := t.TempDir()
 	rebindPick(t, db, "run-a", "t7", pOld)
 
-	orig := cardWorktreeTargetProbe
-	t.Cleanup(func() { cardWorktreeTargetProbe = orig })
-	cardWorktreeTargetProbe = func(path string) (bool, error) {
-		return path == pRegistered, nil
-	}
-
-	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pUnregistered, "rebind-test", rebindNow); err == nil {
+	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pUnregistered, "rebind-test", rebindNow, identity); err == nil {
 		t.Error("a rebind to an unregistered path was accepted")
 	}
-	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pRegistered, "rebind-test", rebindNow); err != nil {
+	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pRegistered, "rebind-test", rebindNow, identity); err != nil {
 		t.Errorf("a rebind to the registered target was refused: %v", err)
 	}
 }
@@ -157,20 +146,14 @@ func TestRebindCardWorktree_TargetMustBeRegistered(t *testing.T) {
 // path — the probe accepts both leaves.
 func TestRebindCardWorktree_ReverseRebindAfterReverseMove(t *testing.T) {
 	db := rebindOpen(t)
-	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
-	pNew := filepath.Join(t.TempDir(), "new-home", "t7")
+	repo, pOld, pNew, identity := thirdRebindWorld(t)
 	rebindPick(t, db, "run-a", "t7", pOld)
 
-	orig := cardWorktreeTargetProbe
-	t.Cleanup(func() { cardWorktreeTargetProbe = orig })
-	cardWorktreeTargetProbe = func(path string) (bool, error) {
-		return path == pOld || path == pNew, nil
-	}
-
-	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pNew, "rebind-test", rebindNow); err != nil {
+	if _, err := db.RebindCardWorktree(context.Background(), "t7", pOld, pNew, "rebind-test", rebindNow, identity); err != nil {
 		t.Fatalf("forward rebind: %v", err)
 	}
-	if _, err := db.RebindCardWorktree(context.Background(), "t7", pNew, pOld, "rebind-test", rebindNow); err != nil {
+	thirdRebindGit(t, repo, "worktree", "move", pNew, pOld)
+	if _, err := db.RebindCardWorktree(context.Background(), "t7", pNew, pOld, "rebind-test", rebindNow, identity); err != nil {
 		t.Fatalf("reverse rebind after the reverse move: %v", err)
 	}
 	if c := rebindCard(t, db, "run-a", "t7"); c.WorktreePath != pOld {
@@ -186,25 +169,20 @@ func TestRecordCardWorktree_StillRefusesPathChange(t *testing.T) {
 	pOld := filepath.Join(t.TempDir(), "old-moai", "t7")
 	rebindPick(t, db, "run-a", "t7", pOld)
 
-	if _, err := db.RecordCardWorktree(context.Background(), "run-a", "t7", "/elsewhere/t7", "rebind-test", rebindNow); err == nil {
+	if _, err := db.RecordCardWorktree(context.Background(), "run-a", "t7", filepath.Join(t.TempDir(), "elsewhere", "t7"), "rebind-test", rebindNow); err == nil {
 		t.Error("RecordCardWorktree moved a card onto a different tree; the refusal must stand")
 	}
 }
 
-// TestCardWorktreeTargetProbe_DefaultChecksGitEntry pins the default
-// registered-target probe: a directory carrying a .git entry is registered;
-// anything else is not.
+// TestCardWorktreeTargetProbe_DefaultChecksGitEntry uses real Git registration,
+// rather than treating an arbitrary .git directory as sufficient authority.
 func TestCardWorktreeTargetProbe_DefaultChecksGitEntry(t *testing.T) {
-	registered := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(registered, ".git"), 0o755); err != nil {
-		t.Fatalf("mkdir .git: %v", err)
-	}
+	_, _, registered, identity := thirdRebindWorld(t)
 	plain := t.TempDir()
-
-	if ok, err := defaultCardWorktreeTargetProbe(registered); err != nil || !ok {
-		t.Errorf("default probe(%s) = (%v, %v), want registered", registered, ok, err)
+	if ok, err := defaultCardWorktreeTargetProbe(registered, identity); err != nil || !ok {
+		t.Errorf("registered target = (%v,%v)", ok, err)
 	}
-	if ok, err := defaultCardWorktreeTargetProbe(plain); err != nil || ok {
-		t.Errorf("default probe(%s) = (%v, %v), want unregistered", plain, ok, err)
+	if ok, _ := defaultCardWorktreeTargetProbe(plain, identity); ok {
+		t.Error("unregistered target accepted")
 	}
 }

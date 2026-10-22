@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -62,25 +61,6 @@ func (f *FactoryDB) RecordCardWorktree(ctx context.Context, runID, cardID, path,
 	return result, nil
 }
 
-// cardWorktreeTargetProbe is the registered-target check of the rebind
-// operation (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-011(b)): it verifies at
-// call time that the target path is a registered worktree. The default
-// probe is mechanical — a directory carrying a .git entry is registered —
-// and the migration engine's journal carries the authoritative same-HEAD-
-// and-branch identity (design.md D-12).
-var cardWorktreeTargetProbe = defaultCardWorktreeTargetProbe
-
-// defaultCardWorktreeTargetProbe reports whether path names a registered
-// worktree: a directory holding a .git entry (file for a linked tree, dir
-// for a checkout).
-func defaultCardWorktreeTargetProbe(path string) (bool, error) {
-	info, err := os.Stat(filepath.Join(path, ".git"))
-	if err != nil || !info.IsDir() && !info.Mode().IsRegular() {
-		return false, nil
-	}
-	return true, nil
-}
-
 // RebindCardWorktree moves every run row of cardID that records oldPath onto
 // newPath in one transaction (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-011) — the
 // recorded-path rebind the migration performs after `git worktree move`. It
@@ -96,7 +76,7 @@ func defaultCardWorktreeTargetProbe(path string) (bool, error) {
 //
 // @MX:ANCHOR: [AUTO] rebind — the recorded-path move the migration rebinds cards through
 // @MX:REASON: M6's engine consumes this operation for forward and reverse moves; a rebind that dropped a run row would strand that run's card pointer on the pre-move path (REQ-WHR-011)
-func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, newPath, actor string, now time.Time) (int, error) {
+func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, newPath, actor string, now time.Time, expected WorktreeRebindIdentity) (int, error) {
 	if !ValidCardID(cardID) {
 		return 0, fmt.Errorf("%w: a valid card id is required", ErrInvalidCardInput)
 	}
@@ -106,7 +86,7 @@ func (f *FactoryDB) RebindCardWorktree(ctx context.Context, cardID, oldPath, new
 	if oldPath == newPath {
 		return 0, fmt.Errorf("%w: a rebind with equal old and new paths is a no-op", ErrInvalidCardInput)
 	}
-	registered, err := cardWorktreeTargetProbe(newPath)
+	registered, err := defaultCardWorktreeTargetProbe(newPath, expected)
 	if err != nil {
 		return 0, fmt.Errorf("rebind: registered-target check for %s: %w", newPath, err)
 	}

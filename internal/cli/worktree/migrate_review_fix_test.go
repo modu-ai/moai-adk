@@ -88,6 +88,7 @@ func rfxWalkHash(t *testing.T, dir string) string {
 // repository-side record — exactly the real legacy-migration shape.
 func rfxLegacyWorld(t *testing.T) (repo, tree, home string) {
 	t.Helper()
+	m6IsolateProcessObservation(t)
 	home = m6Real(t, t.TempDir())
 	t.Setenv(paths.EnvHome, home)
 	t.Setenv("HOME", home)
@@ -424,11 +425,11 @@ func TestMigrateManifestDetectsIgnoredMutation(t *testing.T) {
 	m6Git(t, tree, "commit", "-q", "-m", "ignore+tracked reports")
 	// .gitignore is committed; the .log file is ignored content.
 
-	before := captureManifest(tree)
+	before := reviewCaptureManifest(t, tree)
 	if err := os.WriteFile(logFile, []byte("evidence-one!\n"), 0o644); err != nil {
 		t.Fatalf("mutate the report: %v", err)
 	}
-	after := captureManifest(tree)
+	after := reviewCaptureManifest(t, tree)
 	if before == after {
 		t.Errorf("the manifest digest ignores a one-byte mutation in an ignored report file")
 	}

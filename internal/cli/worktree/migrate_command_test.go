@@ -74,6 +74,7 @@ type m6World struct {
 
 func m6NewWorld(t *testing.T) *m6World {
 	t.Helper()
+	m6IsolateProcessObservation(t)
 	home := m6Real(t, t.TempDir())
 	t.Setenv(paths.EnvHome, home)
 	t.Setenv("HOME", home)
@@ -149,7 +150,16 @@ func m6NewWorld(t *testing.T) *m6World {
 // m6Registered reports whether git still registers path.
 func m6Registered(t *testing.T, repo, path string) bool {
 	t.Helper()
-	return strings.Contains(m6Git(t, repo, "worktree", "list", "--porcelain"), path)
+	records, err := ParseWorktreeList(m6Git(t, repo, "worktree", "list", "--porcelain"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range records {
+		if worktreeroot.Same(record.Path, path) {
+			return true
+		}
+	}
+	return false
 }
 
 // TestMigrateVerb_IsRegistered pins the registration clause: the migrate
