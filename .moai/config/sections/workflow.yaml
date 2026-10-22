@@ -47,6 +47,19 @@ workflow:
     factory_lease:
         duration: 15m
         renew_interval: 5m
+    # factory: bare `moai factory next` self-dispatch policy
+    # (SPEC-CARD-ELIGIBLE-PULL-001). self_dispatch arms the generic selection
+    # arms — unowned picked rows (b) and queue-picked no-record cards (b2) —
+    # behind the five-condition eligibility gate. Default false is the
+    # kill-switch: OFF leaves those arms fully dormant for cards not assigned
+    # to this lane (silent skip — no lease, no record, no reason line), so a
+    # bare next can never take an operator-picked card waiting for another
+    # consumer. A deployment whose lanes rely on unowned-card leasing (the
+    # t1240 self-dispatch shape) opts in by setting this key true at the
+    # changeover; the assigned path, own-bundle members, and queued promotion
+    # are never gated by this flag.
+    factory:
+        self_dispatch: false
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
     # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
     # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
@@ -193,6 +206,19 @@ workflow:
     # default false, which keeps the primary-refusal behavior unchanged.
     local_main_integration:
         enabled: true
+    # base_freshness_gate: refuse entry to the release-integration window when the
+    # candidate is more than max_behind_landings landings behind the local
+    # integration branch, or carries no re-measure record keyed to its current
+    # tree. A landing is one first-parent commit of the integration branch, counted
+    # from the base the record names. enabled gates ONLY the refusal: the check
+    # still measures on every entry and prints one advisory line when it would have
+    # refused. Any uncertainty (config, branch, or git unreadable) admits with one
+    # line naming the cause. max_behind_landings: 0 asks for the very predicate the
+    # merge step re-checks inside the window; a larger number buys queue-wait slack
+    # and never relaxes the merge step. Ships OFF with a tolerance of 0.
+    base_freshness_gate:
+        enabled: false
+        max_behind_landings: 0
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
     # root cause: a fixture identity written into the shared .git/config

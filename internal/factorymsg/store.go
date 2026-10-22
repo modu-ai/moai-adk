@@ -178,8 +178,10 @@ func Open(projectRoot, runID string) (*Store, error) {
 // @MX:ANCHOR: [AUTO] context-bound broker initialization for ordinary and rebound hook registration
 // @MX:REASON: Open and both hook registration paths share the caller-budget clamp and connection cleanup.
 func OpenWithContext(ctx context.Context, projectRoot, runID string) (*Store, error) {
-	return openWithContext(ctx, projectRoot, runID, 5*time.Second)
+	return openWithContext(ctx, projectRoot, runID, defaultBrokerOpenDeadline)
 }
+
+const defaultBrokerOpenDeadline = 5 * time.Second
 
 // ValidateActiveRun rejects stale or invented run identifiers without
 // initializing registry state.
@@ -209,15 +211,39 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 // OpenExistingWithDeadline opens an already-initialized broker on the hook
 // hot path without repeating WAL/schema setup on every turn boundary.
 func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
-	path, err := BrokerPath(projectRoot, runID)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(path); err != nil {
+	return OpenExistingWithContext(context.Background(), projectRoot, runID, deadline)
+}
+
+// OpenExistingWithContext includes namespace resolution in the caller's inbox budget.
+func OpenExistingWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	if err := parent.Err(); err != nil {
 		return nil, err
 	}
 	if deadline <= 0 {
 		return nil, errors.New("factory broker deadline must be positive")
+	}
+	if end, ok := parent.Deadline(); ok && time.Until(end) < deadline {
+		deadline = time.Until(end)
+	}
+	if !safeID.MatchString(runID) {
+		return nil, errors.New("invalid factory run id")
+	}
+	ctx, cancel := context.WithTimeout(parent, deadline)
+	defer cancel()
+	namespace, err := ResolveNamespace(ctx, projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(namespace.dir, "messages", runID, "broker.db")
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	end, _ := ctx.Deadline()
+	if time.Until(end) <= 0 {
+		return nil, context.DeadlineExceeded
 	}
 	busyMillis := deadline.Milliseconds() / 10
 	if busyMillis < 1 {
@@ -241,8 +267,6 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 		return state == homestate.ProcessIdentityLive && fp == start
 	}
 	s.recordReject = s.recordDead
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
-	defer cancel()
 	var count int
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM peers`).Scan(&count); err != nil {
 		_ = db.Close()
@@ -261,6 +285,17 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 }
 
 func openWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	return openWithContextObserved(parent, projectRoot, runID, deadline, nil)
+}
+
+// openWithContextObserved is openWithContext plus a test seam: observeBusy, when
+// non-nil, receives the busy_timeout (milliseconds) chosen from the budget left
+// after path resolution, before SQLite is opened. It lets a test pin "the busy
+// wait is sized from the remaining budget" as state instead of as wall-clock
+// elapsed time, which under load measures scheduler overshoot (card t1807).
+//
+// @MX:NOTE: [AUTO] observeBusy is a test seam only; production passes nil.
+func openWithContextObserved(parent context.Context, projectRoot, runID string, deadline time.Duration, observeBusy func(busyMillis int64)) (*Store, error) {
 	if err := parent.Err(); err != nil {
 		return nil, err
 	}
@@ -275,14 +310,18 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 	if !safeID.MatchString(runID) {
 		return nil, fmt.Errorf("invalid factory run id %q", runID)
 	}
-	dir, err := homestate.FactoryDirContext(ctx, projectRoot)
+	namespace, err := ResolveNamespace(ctx, projectRoot)
 	if err != nil {
 		return nil, err
 	}
+	return openResolvedWithContext(ctx, namespace, runID, observeBusy)
+}
+
+func openResolvedWithContext(ctx context.Context, namespace Namespace, runID string, observeBusy func(int64)) (*Store, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	path := filepath.Join(dir, "messages", runID, "broker.db")
+	path := filepath.Join(namespace.dir, "messages", runID, "broker.db")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
@@ -290,7 +329,7 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 		return nil, err
 	}
 	end, _ := ctx.Deadline()
-	deadline = time.Until(end)
+	deadline := time.Until(end)
 	if deadline <= 0 {
 		return nil, context.DeadlineExceeded
 	}
@@ -302,6 +341,9 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 	busyMillis := deadline.Milliseconds() / 2
 	if busyMillis < 1 {
 		busyMillis = 1
+	}
+	if observeBusy != nil {
+		observeBusy(busyMillis)
 	}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")
@@ -318,7 +360,7 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: projectKeyFromBrokerPath(path), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
+	s := &Store{db: db, root: namespace.root, runID: runID, projectKey: namespace.key, now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
 	s.ownerCurrent = func(pid int, start string) bool {
 		fp, state := homestate.ProbeProcessIdentity(pid)
 		return state == homestate.ProcessIdentityLive && fp == start
@@ -420,7 +462,7 @@ func describeRunOwners(owners []homestate.RunOwner) string {
 			detail += fmt.Sprintf(", leader pid %d", o.LeadPID)
 		}
 		if o.CreatedAt != "" {
-			detail += fmt.Sprintf(", started %s", o.CreatedAt)
+			detail += fmt.Sprintf(", started %s", FormatKST(o.CreatedAt))
 		}
 		detail += ")"
 		parts = append(parts, detail)

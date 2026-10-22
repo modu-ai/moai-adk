@@ -19,6 +19,12 @@ import (
 
 const factorySchemaVersion = 6
 
+// card_metadata_events (SPEC-CARD-METADATA-VERBS-001, decision-index Q3
+// Default) is the card-keyed metadata audit surface declared at the tail of
+// factoryDDL below: it reuses the events table's shape (autoincrement seq,
+// kind, JSON payload, created-at) keyed by the card id, added by the
+// additive CREATE TABLE IF NOT EXISTS only — REQ-CMV-014 (row-preserving;
+// no existing row rewritten, migrated, or deleted).
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS workers (
@@ -156,6 +162,13 @@ CREATE TABLE IF NOT EXISTS card_dispatch (
   card_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL,
   recorded_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS card_metadata_events (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
 );
 `
 

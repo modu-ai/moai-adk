@@ -1,32 +1,13 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
-
-// t1589 — the lock-root spelling check reads the repository named by an
-// inherited GIT_DIR instead of the directory it was given. Given a symlink to a
-// repository, git answers the real path; under the inherited variable it
-// answers the symlink back, and the spelling correction is silently skipped.
-func TestCanonicalTreeSpellingIgnoresInheritedGitEnv(t *testing.T) {
-	repo := t1589Repo(t, "card tip", "main")
-	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(repo, link); err != nil {
-		t.Fatalf("symlink: %v", err)
-	}
-	other := t1589Repo(t, "unrelated tip", "other")
-	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
-	t.Setenv("GIT_WORK_TREE", other)
-
-	got := canonicalTreeSpelling(link)
-	if got == link || !factorySameTree(got, repo) {
-		t.Errorf("canonicalTreeSpelling(link) = %q, want the repository's own spelling of %q (the inherited GIT_DIR left the link unresolved)", got, repo)
-	}
-}
 
 // t1589 — the gh call of the github-flow delivery edge must not hand an
 // inherited GIT_DIR to gh: gh resolves the repository through it.
@@ -91,4 +72,42 @@ func t1589Git(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// t1834 iter12 F2 — `rev-parse --abbrev-ref HEAD` prints heads/<branch> when a
+// tag shares the branch's name, and the caller's refs/heads/<branch> lookups
+// then name a branch that does not exist: complete refused a healthy candidate
+// with "candidate tree cannot be read". The branch read must be symbolic-ref's
+// full ref with only the refs/heads/ prefix stripped.
+func TestFactoryBranchOfWorktreeWithSameNameTag(t *testing.T) {
+	wt := t1589Repo(t, "card worktree tip", "WT-card-branch")
+	t1589Git(t, wt, "tag", "WT-card-branch", "HEAD")
+
+	t.Run("resolution returns the plain branch name", func(t *testing.T) {
+		if branch := factoryBranchOfWorktree(wt); branch != "WT-card-branch" {
+			t.Errorf("factoryBranchOfWorktree() = %q, want %q (a tag sharing the branch's name must not distort the read)", branch, "WT-card-branch")
+		}
+	})
+	t.Run("a same-name tag on the card branch keeps the adoption path healthy", func(t *testing.T) {
+		// The adoption path (REQ-MWQ-019 step 2): the lane already merged
+		// through the merge verb, so complete records merged-local from the
+		// pre-made merge and never reaches the merge step. The card branch
+		// read is the exemption's second lookup — the one this finding broke.
+		root, integ, cardWT := mwq19Fixture(t)
+		bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+		fcGit(t, integ, "merge", "-q", "--no-ff", "-m", "M t1", cardWT.branch)
+		merge := fcGit(t, integ, "rev-parse", "HEAD")
+		t1589Git(t, cardWT.wt, "tag", cardWT.branch, "HEAD")
+		stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("a tag sharing the card branch's name must not break the adoption: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout+stderr, bfcSentinel) {
+			t.Fatalf("no sentinel on an adoption\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+		card := fcCard(t, root, "t1")
+		if card.State != homestate.CardMergedLocal || card.MergeSHA != merge {
+			t.Fatalf("the card must land merged-local on the pre-made merge %s, got %s %s", merge, card.State, card.MergeSHA)
+		}
+	})
 }

@@ -83,3 +83,9 @@ go_code:
   - 'scripts/release.sh'
   - 'scripts/verify-release-provenance.sh'
   - '.goreleaser.yml'
+  # Card t1858: the release gate's check names live in the release_gate list
+  # of this file; a PR that edits only it must run the suite that pins it:
+  #   .github/required-checks.yml           internal/config required_checks tests (incl. the release_gate pin)
+  #                                          + internal/template release_script / release_ci_gate tests (read it through scripts/release.sh)
+  #                                          + internal/cli branch protection
+  - '.github/required-checks.yml'

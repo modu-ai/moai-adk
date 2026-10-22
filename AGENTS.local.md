@@ -181,27 +181,27 @@ Conventional Commits — `<type>(<scope>): <description>` + an optional body/foo
 
 ### §4.0 Default development flow (local-main integration)
 
-Card work lands on local `main` in the primary checkout, and the remote `origin/main` advances only through release PRs. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+`main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
 
 **[HARD] 1. Branch base**
 
-Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change.
+Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change. A card worktree is created only through `moai factory next` or `moai worktree new`. When the configured base (`git_strategy.worktree_base_branch`, `main` here) resolves, it branches from the named ref `main` and not from HEAD; when the base is empty or does not resolve, creation falls back to the invoking tree's HEAD. Claude Code's default `--worktree` (remote default branch) is not used for card work. After creation, confirm that the new tree's HEAD equals `main`; that confirmation, not the creation path, is the check.
 
 **[HARD] 2. Merge landing**
 
-- The landing surface is in effect when `workflow.local_main_integration.enabled` is `true`, the HEAD of the primary checkout points at `main`, and no separate integration worktree holds `main`. If the conditions are not met, the tool does not merge and explains why.
+- The landing surface is the integration worktree that holds `main`; the tool refuses when no tree holds it. `workflow.local_main_integration.enabled` is `true` today, so the tool accepts the primary as holder; changing it is planned in t1847.
 - Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
-- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) confirms that the primary checkout is clean (item 3), and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
+- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
 
-**[HARD] 3. Clean-primary rule**
+**[HARD] 3. Clean-tree rule**
 
-To land from the primary checkout, the output of `git status --porcelain=v1 -z --untracked-files=all` must be empty. Because several sessions write to the primary, the owner of an uncommitted change cannot be identified. If there are changes, the merge is refused, and the changes are moved to a card worktree or left to the session that owns them. Do not use stash, because it spans the entire repository. The overlap rule (REQ-LMF-005) applies to a separate integration worktree.
+A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
 
 **[HARD] 4. Resynchronization**
 
-When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal.
+When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal. `moai integration resync` refuses when another tree holds `main` and no moai verb moves the primary checkout to the current local `main` tip; both are planned in t1847.
 
-- (1) Take the window, and confirm that HEAD points at `main` and that the primary checkout is clean.
+- (1) Take the window, and confirm that HEAD points at `main` and that the tree being updated is clean.
 - (2) Run `git fetch origin main` and check its exit status. Pin the `origin/main` value obtained as the baseline, and make every later remote comparison against this value.
 - (3) Read the ancestry relation between HEAD and the baseline. If HEAD is behind the baseline, check for ignored-file overwrites, then fast-forward. If the baseline is an ancestor of HEAD, or the two values are the same, report that no update is needed and leave HEAD where it is. If neither is an ancestor of the other, the histories have diverged: refuse, and HEAD does not move.
 - (4) After the move, re-read HEAD to confirm that it equals the baseline and still points at `main`; then report the old and new SHAs and release the window.
