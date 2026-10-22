@@ -1,5 +1,17 @@
 # 데이터 흐름
 
+## 이동·검증·복구의 데이터 경계 — t1640
+
+`internal/cli/worktree/migrate.go`의 apply는 최신 계획의 분류·잠금·process CWD·session anchor·destination을 각 트리 직전에 다시 확인한다. active process 관측이 불가능하면 그 트리를 보존하며, Git planning 오류를 성공한 빈 계획으로 바꾸지 않는다. Git subprocess는 `internal/gitenv`의 scrubbed 환경을 사용해 상속된 repository selector가 명시한 루트를 바꾸지 못하게 한다.
+
+이동 순서는 필수 manifest와 이동 전 rebind witness 관측 → instance token 확인 → journal pending → move-list intent → Git move → registry re-key → card rebind → manifest 대조 → moved 기록이다. manifest는 HEAD·branch·unpushed commits·status·staged/unstaged diff와 untracked·ignored 파일 내용까지 관측하며 읽지 못한 필드를 빈 값의 동등성으로 검증하지 않는다. 심링크는 대상 문자열을 해시하고 FIFO·device를 파일처럼 읽지 않는다.
+
+Git이 디렉터리를 옮긴 뒤 admin backlink 갱신에 실패할 수 있다. `internal/cli/worktree/migrate_registration.go`는 같은 token·repository admin·journal endpoint를 먼저 인증하고 정상 `git worktree repair` 뒤 등록을 재검사한다. 인증·repair 실패 시 pending과 오류를 보존하고 `internal/cli/worktree/movelist.go`의 `MovedBy`가 해당 endpoint를 정리에서 보호한다. 재시도는 등록 정합성을 회복한 뒤 역순으로 수렴한다.
+
+역순은 Git move back → registry inverse re-key → card inverse rebind다. Git 역이동이 실패하면 metadata를 되돌린 것으로 기록하지 않는다. 트리가 이미 돌아온 뒤 metadata만 실패한 경우 rollback은 원래 source의 동일 instance를 확인하고 남은 단계를 재개한다. verify와 settled rollback은 journal manifest를 대조하며 pending rollback은 같은 instance의 복구 계약을 따른다.
+
+`internal/homestate/worktree_rebind_identity.go`는 이동 전에 `File.Stat`으로 실제 metadata ID를 캡처한다. rebind 시 같은 common/admin ID·HEAD·branch와 현재 Git 등록 경로를 함께 확인하므로 복사된 pointer나 foreign repository로 카드 row가 옮겨가지 않는다. 이 관문 뒤의 모든 run-row 갱신과 감사 이벤트는 `internal/homestate/card_worktree.go`의 기존 트랜잭션에서 함께 처리한다.
+
 ## 현재 흐름 보완 — bf0a35f10
 
 후보 CI 흐름은 카드의 검증된 변경과 통합 기준으로 merge-tree 후보를 생성하고, `ci/<card>`에 게시한 다음 pending 증거를 기록하는 순서다. `integration candidate --observe`가 실제 실행 결과를 읽어 후보 SHA·대상·통합 tip에 묶는다. 착지 경로는 이 값들과 green 판정이 모두 맞는 후보만 받는다. 게시나 관측 요청 자체는 CI 통과 증거가 아니다.

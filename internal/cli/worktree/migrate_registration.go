@@ -73,7 +73,7 @@ func ensureMigrationRegistration(root, path, other string, id TreeIdentity) erro
 		return err
 	}
 	if !isRegistered(paths, path) {
-		return fmt.Errorf("Git did not register repaired worktree %s", path)
+		return fmt.Errorf("git did not register repaired worktree %s", path)
 	}
 	return nil
 }

@@ -1,5 +1,18 @@
 # 패키지 모듈 상세
 
+## 워크트리 home-root와 복구 책임 — t1640
+
+기준 소스는 `95e910852`이며, 다음은 새 파일과 바뀐 책임을 소스에서 확인한 보완이다. 이전 절의 전체 패키지 수·fan-in·fan-out을 다시 측정했다는 뜻은 아니다.
+
+| 소스 | 책임과 거부 경계 |
+|---|---|
+| `internal/worktreeroot/worktreeroot.go` | `Resolve`·`Plan`은 같은 repository key로 home-root를 고른다. `readMarkerOwner`는 schema 1과 비어 있지 않은 절대 owner를 요구한다. 일반 `.git`은 부모 checkout을 사용하고, 별도 Git 디렉터리는 `registeredPrimaryRoot`가 Git의 첫 등록 repository identity를 사용한다. 서로 다른 metadata 디렉터리의 공통 부모를 같은 owner로 취급하지 않으며 기존 owner 충돌은 탈취하지 않는다. |
+| `internal/cli/factory_card.go` | lease 전에 계산한 landing leaf와 legacy leaf의 모든 기존 파일·디렉터리·심링크 및 검사 오류를 거부한다. Windows의 PATH_NOT_FOUND도 가장 가까운 기존 부모가 디렉터리인지 확인한다. 같은 카드의 이전 run이 기록한 트리만 carry하며 다른 카드의 트리를 채택하지 않는다. |
+| `internal/cli/worktree/migrate.go` · `internal/cli/worktree/migrate_registration.go` | planning과 필수 manifest 관측 오류를 전달하고, intent를 기록한 뒤 Git move·registry re-key·card rebind를 수행한다. 부분 이동의 repair는 원래 token, 이 repository의 실제 admin 부모, 두 journal endpoint 중 하나를 가리키는 backlink가 모두 맞을 때만 허용한다. 복구 실패는 pending과 오류로 남긴다. |
+| `internal/cli/worktree/movelist.go` | admin ID와 비어 있지 않은 instance token으로 이동한 트리를 식별한다. 기존 빈 token은 덮어쓰지 않고 거부한다. 등록 정보가 이전 경로에 남은 부분 이동도 인증된 pending endpoint를 정리 보호 대상으로 유지한다. 성공한 restored·reversed 기록만 보호를 해제한다. |
+| `internal/homestate/worktree_rebind_identity.go` · `internal/homestate/card_worktree.go` | 이동 전에 common directory·admin directory의 실제 file ID와 HEAD·branch를 캡처한다. `RebindCardWorktree`는 이 witness와 현재 Git 등록이 모두 일치해야 모든 해당 run row를 version CAS로 갱신하고 `card.fields`에 두 경로를 기록한다. 복사된 `.git` 파일만으로 등록이나 같은 트리임을 인정하지 않는다. |
+| `internal/lockfile/lockfile_windows.go` · `internal/lockfile/lockfile_unix.go` | Windows의 Lock·TryLock·Unlock은 동일한 OS byte range를 공유해 프로세스 간 writer를 배제한다. 데이터와 겹치지 않는 범위로 다른 핸들의 정상 파일 I/O를 유지하며 descriptor 종료도 잠금을 해제한다. Unix는 기존 flock 계약을 유지한다. |
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.

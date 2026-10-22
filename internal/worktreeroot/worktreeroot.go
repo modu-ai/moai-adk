@@ -322,7 +322,7 @@ func registeredPrimaryRoot(repoDir, common string) (string, error) {
 	root, ok := strings.CutPrefix(strings.TrimSuffix(first, "\r"), "worktree ")
 	root = filepath.FromSlash(root)
 	if !ok || !filepath.IsAbs(root) {
-		return "", fmt.Errorf("Git did not report an absolute registered repository root")
+		return "", fmt.Errorf("git did not report an absolute registered repository root")
 	}
 	return root, nil
 }

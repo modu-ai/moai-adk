@@ -1,5 +1,13 @@
 # 진입점
 
+## Worktree home-root 명령과 실행 경계 — t1640
+
+- `moai worktree migrate`는 기본 계획 조회이고 `--apply`만 migration lock 아래 실제 이동을 수행한다. `--verify`와 `--rollback <journal>`은 `internal/cli/worktree/migrate.go`의 별도 검증·복구 진입점이다. planning 실패와 부분 결과를 함께 보고하며 요청 제출을 이동 성공으로 계산하지 않는다.
+- update의 자동 이전은 `internal/cli/update_worktree_migration.go`에서 같은 패키지의 `RunUpdateConsolidation`으로 합류한다. 같은 분류·목적지·journal·registry/card 복구 순서를 사용하며 오류 전까지의 실제 row와 요약을 남긴다.
+- `internal/cli/worktree/new.go`와 `internal/cli/worktree/list.go`는 `internal/worktreeroot`가 정한 repository 소유 namespace를 사용한다. `internal/cli/launch_view.go`는 짧은 이름이 여러 root의 서로 다른 실제 트리와 겹치면 선택을 거부한다.
+- `internal/cli/codex_launcher.go`의 쓰기 grant는 검증된 해당 project namespace와 필요한 state 경로로 한정한다. MOAI_HOME 전체나 sibling project worktrees를 grant하지 않는다. 이 argv 경계의 소스 설명은 실제 Codex sandbox 실행을 관측했다는 뜻이 아니다.
+- lifecycle의 registry 쓰기는 `internal/hook/worktree_create.go`·`internal/hook/worktree_remove.go`·`internal/hook/worktree_registry.go`로 합류한다. migration과 registry의 Windows writer 배제는 `internal/lockfile/lockfile_windows.go`의 같은 OS primitive를 사용한다.
+
 ## 현재 진입점 보완 — bf0a35f10
 
 - `moai paths`는 프로젝트에 귀속된 실제 데이터베이스 경로를 출력한다. 경로를 추측해 저장소를 열지 않는다.

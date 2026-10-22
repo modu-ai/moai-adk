@@ -1,5 +1,11 @@
 # 의존성 그래프
 
+## 워크트리 소유권·이동의 의존 경계 — t1640
+
+새 source witness와 복구 helper는 기존 패키지 안에 추가됐다. `internal/worktreeroot/worktreeroot.go`는 `internal/atomicfile`·`internal/gitenv`·`internal/paths`와 기존 YAML parser를 사용한다. `internal/cli/worktree/migrate.go`의 scrubbed Git 실행은 `internal/gitenv`로 연결되고, repository-owned admin 인증은 `internal/cli/worktree/migrate_registration.go`에서 수행한다.
+
+`internal/homestate/worktree_rebind_identity.go`의 새 외부 import는 표준 라이브러리뿐이며 Git 실행은 같은 homestate 패키지의 `scrubbedGit`를 재사용한다. 반면 `internal/lockfile/lockfile_windows.go`는 **기존 모듈** `golang.org/x/sys/windows`의 LockFileEx·UnlockFileEx를 직접 사용한다. Unix 구현의 syscall/flock과 플랫폼 경계를 구분해야 한다. `bf0a35f10`부터 `95e910852`까지 go.mod·go.sum 변경은 없으며 새 모듈 버전을 추가하지 않았다. 아래 과거 전체 import 집계·순환·fan-in 수치는 이번 한정 소스 대조로 다시 측정한 수치가 아니다.
+
 ## 현재 의존성 측정 — bf0a35f10
 
 Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
