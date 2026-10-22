@@ -78,6 +78,7 @@ import (
 // without that read ever being made (the recorder returns not-exist for
 // outside paths instead of opening them).
 func TestMain(m *testing.M) {
+	factoryBudgetGitHelper()
 	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
 	_ = os.Unsetenv(config.EnvClaudeConfigDir)

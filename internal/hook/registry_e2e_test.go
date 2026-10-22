@@ -36,7 +36,10 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 				Error:         "command not found",
 				IsInterrupt:   false,
 			},
-			wantNilHSO: true,
+			// SPEC-HOOK-SYNC-ASYNC-001 M4: the async registration delivers the
+			// classified message as hookSpecificOutput.additionalContext (the
+			// only async-deliverable field), so HookSpecificOutput is non-nil.
+			wantHookEventName: "PostToolUseFailure",
 		},
 		{
 			name:    "Notification dispatches with real handler",
@@ -463,10 +466,12 @@ func TestRegistryDispatch_MultipleHandlersNewEvents(t *testing.T) {
 		if !mockH.called {
 			t.Error("mock handler should have been called")
 		}
-		// The final output comes from defaultOutputForEvent since no handler blocked.
-		// PostToolUseFailure default is empty HookOutput.
-		if got.HookSpecificOutput != nil {
-			t.Errorf("HookSpecificOutput = %+v, want nil for PostToolUseFailure", got.HookSpecificOutput)
+		// No handler blocked, so the mock contributed nothing and the merged
+		// output carries the real handler's hookSpecificOutput (its
+		// additionalContext delivery, SPEC-HOOK-SYNC-ASYNC-001 M4) on top of
+		// the empty PostToolUseFailure default.
+		if got.HookSpecificOutput == nil {
+			t.Error("HookSpecificOutput = nil, want the real handler's additionalContext delivery for PostToolUseFailure")
 		}
 	}
 }
@@ -500,7 +505,10 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				Error:         "command not found",
 				IsInterrupt:   false,
 			},
-			wantNilHSO: true,
+			// SPEC-HOOK-SYNC-ASYNC-001 M4: hookSpecificOutput.
+			// additionalContext must survive the JSON round trip.
+			wantNilHSO:        false,
+			wantHookEventName: "PostToolUseFailure",
 		},
 		{
 			name:    "Notification round-trip",

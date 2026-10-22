@@ -58,6 +58,13 @@ go_code:
   # drafter workflows, so a PR that edits only one of them must run the suite.
   - '.github/workflows/release-drafter-cleanup.yml'
   - '.github/workflows/release-drafter.yml'
+  # SPEC-TRUNK-BACKUP-SYNC-001 (AC-TBS-010): every workflow file is Go-suite
+  # input — the sync/main exclusion guard (internal/cli/workflow_sync_ref_guard_test.go)
+  # reads .github/workflows/*, so a diff touching only workflow files (a new
+  # file, or any edit) must classify as Go and schedule the suite carrying
+  # the guard. The glob subsumes the three named files above; they stay as
+  # the pre-glob record of what t1536 wired.
+  - '.github/workflows/**'
   - '.github/test-input-filters.yml'
   # The branch-protection parity guard reads this repository input.
   - '.github/branch-protection.json.gtmpl'

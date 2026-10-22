@@ -125,10 +125,13 @@ func TestReassignCardRefusals(t *testing.T) {
 
 // An EXPIRED lease on a lease-holding card is the dead-lane shape itself
 // (card t1696 defect D4, lane-17's state=run): the reassignment lands the
-// expiry like T27/T28 — assigned, holder cleared — under the new owner.
+// expiry like T27/T28 — assigned, holder cleared — under the new owner. The
+// old owner's heartbeat clears with it (sync-audit round 2 F4, card t1828):
+// carried over, the not-yet-started row read as work-started and wedged the
+// serial slot.
 func TestReassignCardAdmitsAnExpiredLease(t *testing.T) {
 	db := frOpen(t)
-	frPlace(t, db, Card{RunID: frRun, CardID: "ra6", State: CardRun, OwnerLabel: "lane-9", Version: 2, LeaseHolder: "lane-9", LeaseExpiresAt: frNow.Add(-24 * time.Hour).Format(time.RFC3339Nano), Stage: CardRun})
+	frPlace(t, db, Card{RunID: frRun, CardID: "ra6", State: CardRun, OwnerLabel: "lane-9", Version: 2, LeaseHolder: "lane-9", LeaseExpiresAt: frNow.Add(-24 * time.Hour).Format(time.RFC3339Nano), HeartbeatAt: frNow.Add(-25 * time.Hour).Format(time.RFC3339Nano), Stage: CardRun})
 	raRegisterWorker(t, db, "lane-15")
 	card, err := db.ReassignCard(context.Background(), frRun, "ra6", "lane-15", "assign --reassign", frNow, nil)
 	if err != nil {
@@ -139,6 +142,9 @@ func TestReassignCardAdmitsAnExpiredLease(t *testing.T) {
 	}
 	if card.Stage != CardRun {
 		t.Fatalf("stage = %q, want it kept", card.Stage)
+	}
+	if card.HeartbeatAt != "" {
+		t.Fatalf("heartbeat = %q, want the old owner's session cleared", card.HeartbeatAt)
 	}
 }
 

@@ -33,6 +33,10 @@ The Class-A evidence rule is the same shape as the CodeRabbit section of the stu
 
 The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 
+### Mode judgment — serial or parallelizable
+
+Class names the stages a card needs; mode names whether it may run beside other cards. The two axes are independent. Decide the mode at issuance, from the card's expected file set — never from the queue's default. A card is `serial` only when it edits the same files or shared state as an in-flight card, or edits a slot-gated surface (factory/todo core, release pipeline, shared migrations); every other card is `parallelizable`. The reason recorded with the classification states the file set and the conflict check and, for a `serial` card, names the conflicting card (the conflict check names the shared state or the slot-gated surface it found). Supply the judgment with `--classification-file` (decider `human`); no card is issued on the fail-safe default. A card that reached the queue on the default is reissued with an explicit classification. For a Class C card, give `--spec` when the card is picked: it cannot be added after assign.
+
 ## Card size ceiling — split before dispatch
 
 Rationale as the card states it: failed agent PRs are larger and touch more files (arXiv:2601.15195); DORA small batches; the Copilot coding agent's workflow-run approval default.
