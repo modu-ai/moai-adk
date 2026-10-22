@@ -156,21 +156,78 @@ preserved. Current follow-up implementation, final-head CI, code/security
 review and independent audit are unmeasured here; no existing PASS is
 promoted to those results.
 
+## §D.9 Selector-only recipe maintenance (2026-10-22)
+
+The eight test-command recipes in §E were updated after implementation source
+`f8b3acb5db82bae8504fe04602d5b06d43e07cd8` to anchor the intended complete test families.
+This changes reproduction spelling, not an AC or its expected behavior. The original literal
+commands and all original outputs remain available together at
+`git show ee80624c2029c619b63da18e369f71ded79d2ac7:.moai/specs/SPEC-HOOK-SYNC-ASYNC-001/acceptance.md`
+(blob `42bf7b71631eb643f5da72887916809c25b15e82`). Each revised recipe below is
+separated from the unchanged historical output; that output retains its original RED or M7
+SHA attribution and is not presented as output newly obtained from the revised recipe.
+
+Static selection was checked against the actual top-level test declarations in each immediate
+package's `*_test.go` files at source `f8b3acb5db82bae8504fe04602d5b06d43e07cd8`:
+
+| Recipe | Original selector | Fully anchored selector | Same selected parent names |
+|--------|-------------------|-------------------------|----------------------------|
+| R-CLI | `TestCodexEntryFastpath\|TestHookEntryParity` | `^(TestCodexEntryFastpath.*\|TestHookEntryParity.*)$` | 15 |
+| R-HOOK-FAMILY | `TestPostToolUseFailure` | `^TestPostToolUseFailure.*$` | 7 |
+| R-HOOK-ONE | `TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage` | `^TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage$` | 1 |
+
+The suffix wildcards retain real family members; anchoring only the two bare CLI family
+names would select zero parents. Old/new parent-name sets are equal on this source. This is
+static selection evidence, not an execution claim for either narrow hook recipe, and does
+not retroactively measure the historical tree's selected set.
+
+Separate current implementation observations belong only to the following exact commands and
+source `f8b3acb5db82bae8504fe04602d5b06d43e07cd8` (the committed source matches the
+implementation owner's twelve-file `pr1870-green-source-hashes-v2.json` manifest):
+
+The owner executed these on `ee80624c2029c619b63da18e369f71ded79d2ac7` plus the final
+twelve-file implementation patch, then committed those same sources as `f8b3acb5db82bae8504fe04602d5b06d43e07cd8`.
+This maintenance inspected the saved observations and source parity; it did not rerun Go.
+
+```
+go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+go test -p 1 ./internal/template ./internal/hook -run '^(TestTemplateNeutrality.*|TestHookSyncAsyncRegistrationFlags|TestHookWrapper.*|TestNoHardcodedAbsolutePath_HookWrappers|TestCatalogHash.*|TestManifestHashFormat|TestBindingLedgerIntegrity|TestPostToolUseFailureHandler.*|TestChainEventHook.*)$' -count=1 -v -timeout 30m
+```
+
+| Actual command scope | Parent tests | Subcases | RUN / PASS | SKIP / FAIL |
+|----------------------|--------------|----------|------------|-------------|
+| CLI, first command | 15 | 68 | 83 / 83 | 0 / 0 |
+| Template, second command | 10 | 26 | 36 / 36 | 0 / 0 |
+| Hook, second command | 22 | 31 | 53 / 53 | 0 / 0 |
+| Total | 47 | 125 | 172 / 172 | 0 / 0 |
+
+These are the local implementation observations in `pr1870-cli-green-v2.log` (exit0,
+25.817s) and `pr1870-template-hook-green.log` (exit0, template6.093s / hook0.500s),
+under `work/ci-repair-20261022/`; the implementation owner's report is
+`.moai/reports/t1913/ci-repair-20261022-native-review.md`. The earlier
+`pr1870-cli-green.log` exited1 and is not a passing observation. The second command includes
+the two narrow hook recipes' parents but is not a standalone run of either recipe. Historical
+M7 output below is not reattributed to these current runs. Final-head required CI, code/security
+review, independent audit, Windows execution and actual Claude teardown remain separate gaps;
+this maintenance performs no close or audit transition.
+
 ## §E Evidence Ledger (RED-now, observed 2026-10-15, tree `e04ebd5ca6bc441b380c1072d5a1dff8431459ba`)
 
-Each entry: command (single-invocation read-only form), verbatim stdout, exit code. The document
-tree SHA above binds every entry; a criterion-level re-pin re-measures rather than re-cites.
+Each entry retains its historical verbatim stdout and exit code. The document tree SHA above
+binds the RED observations; a criterion-level re-pin re-measures rather than re-cites. The eight
+test-command recipes revised in §D.9 are separately labeled, with their original invocations
+pinned in the archive there; historical output is not an execution claim for those revisions.
 The two fixture probes (E-L07, E-L18) exercise the wrapper against a `/tmp` fixture project and
 a stub binary — they touch no repo-tree state; the fixture build steps are stated inside the
 entries so each command is re-executable as cited.
 
-**GREEN cells (M7 close, added 2026-10-22).** Every `GREEN` block below carries its command, the
+**GREEN cells (M7 close, added 2026-10-22).** Every historical `GREEN` output below retains the
 verbatim output observed in the M7 run, the exit code, and the landing observation tree
 `703654daca` (the M7 doctrine touch-up commit; the ledger evidence commit follows it). Test
 commands ran under the env scrub
 `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && TMPDIR=/tmp`.
-The single-invocation command form is a RED-cell constraint (§2.1); GREEN cells cite the
-command exactly as run.
+The single-invocation command form is a RED-cell constraint (§2.1). The original GREEN
+invocations are archived exactly as run; the separately labeled current recipes follow §D.9.
 
 **E-L01** (AC-HSA-001, template ConfigChange lacks async — red because the printed entry's fields
 end at `timeout`/`type` with no `async` key):
@@ -270,7 +327,17 @@ M4 change must update those tests in the same commit):
 $ grep -n "SystemMessage: message" internal/hook/post_tool_failure.go
 109:		SystemMessage: message,
 exit=0
-$ go test ./internal/hook -run "TestPostToolUseFailure" -count=1
+```
+
+Current recipe R-HOOK-FAMILY (2026-10-22; selection/execution boundary in §D.9):
+
+```
+$ go test ./internal/hook -run '^TestPostToolUseFailure.*$' -count=1
+```
+
+Historical output for E-L05 (original invocation archived in §D.9; original SHA above):
+
+```
 ok  	github.com/modu-ai/moai-adk/internal/hook	1.672s
 exit=0
 ```
@@ -278,8 +345,15 @@ exit=0
 **E-L05 GREEN** (M4 flipped the emission shape — commit a29a17cbeb; re-pinned at M7, tree
 `703654daca`):
 
+Current recipe R-HOOK-ONE (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/hook/ -run 'TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage' -count=1 -v
+$ go test ./internal/hook/ -run '^TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage$' -count=1 -v
+```
+
+Historical output for E-L05 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 --- PASS: TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage (0.00s)
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/hook	0.504s
@@ -302,8 +376,15 @@ exit=1
 **E-L06 GREEN** (M3 — commits 772b9a1590+3483d65726; re-pinned at M7, tree `703654daca` — the
 probe exists in BOTH wrapper surfaces and live↔template byte equality is test-pinned):
 
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L06 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 --- PASS: TestCodexEntryFastpath_BothSurfacesCarryProbe (0.00s)
 --- PASS: TestHookEntryParity_NoDivergenceEitherDirection (0.00s)
 PASS
@@ -348,8 +429,15 @@ cures both). Provenance of the superseded r1 observation retained under Gaps.
 WITHOUT the synchronous handler: `forward=0 kick=1`, the exact inverse of the RED observation
 above):
 
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L07 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 === RUN   TestCodexEntryFastpath_ProbeMatrix/no_receipt_on_a_reviewable_tree:_ALLOW_with_one_kick,_no_forward
 --- PASS: TestCodexEntryFastpath_ProbeMatrix (13.10s)
 PASS
@@ -371,8 +459,15 @@ exit=2  (No such file or directory)
 **E-L08 GREEN** (M3; re-pinned at M7, tree `703654daca` — shell digest byte-equal to `verify.Key`
 on both the `shasum` and the `openssl` pipeline):
 
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L08 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 --- PASS: TestCodexEntryFastpath_KeyParity (0.60s)
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	17.932s
@@ -596,7 +691,17 @@ $ grep -n "set -o noclobber\|verify codex-review" .claude/hooks/moai/handle-code
 490:		"$moai_bin" verify codex-review --project-root "$root" >>"$log_dir/codex-review-bg.log" 2>&1 &
 492:		"$moai_bin" verify codex-review --project-root "$root" >/dev/null 2>&1 &
 exit=0
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+```
+
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
+```
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L15 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 --- PASS: TestCodexEntryFastpath_SingleKickPerBucket (3.11s)
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	17.932s
@@ -617,8 +722,15 @@ the plan-phase script read showing no `WT-` branch check. Green path: the M3 pro
 **E-L16 GREEN** (M3; re-pinned at M7, tree `703654daca` — the WT- branch preservation case: the
 Go handler reached exactly once, no shell probe state consulted):
 
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L16 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 === RUN   TestCodexEntryFastpath_ProbeMatrix/WT-_branch:_card_scope_reaches_the_Go_handler_once
 --- PASS: TestCodexEntryFastpath_ProbeMatrix (13.10s)
 PASS
@@ -653,8 +765,15 @@ behavior on the rewritten wrapper.
 **E-L18 GREEN** (M3; re-pinned at M7, tree `703654daca` — the gate-OFF fast path preserved on the
 rewritten wrapper: exit 0, stub never invoked):
 
+Current recipe R-CLI (2026-10-22; selection/execution boundary in §D.9):
+
 ```
-$ go test ./internal/cli/ -run 'TestCodexEntryFastpath|TestHookEntryParity' -count=1 -v
+$ go test -p 1 ./internal/cli -run '^(TestCodexEntryFastpath.*|TestHookEntryParity.*)$' -count=1 -v -timeout 30m
+```
+
+Historical output for E-L18 GREEN (original invocation archived in §D.9; original SHA above):
+
+```
 === RUN   TestCodexEntryFastpath_ProbeMatrix/gate_off_exits_0_with_no_binary_resolution
 --- PASS: TestCodexEntryFastpath_ProbeMatrix (13.10s)
 PASS
