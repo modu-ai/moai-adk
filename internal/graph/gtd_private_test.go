@@ -144,9 +144,6 @@ func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := publisher.Install(staging, target); err != nil {
-		t.Fatal(err)
-	}
 	outside := filepath.Join(t.TempDir(), "outside")
 	if err := staging.Install(outside); err == nil {
 		t.Fatal("cross-directory publication allowed")
@@ -154,8 +151,18 @@ func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
 	if _, err := os.Lstat(outside); !os.IsNotExist(err) {
 		t.Fatalf("refused publication changed outside target: %v", err)
 	}
-	if err := privatefile.Check(target); err != nil {
-		t.Fatalf("refused publication lost source: %v", err)
+	if err := privatefile.Check(staging.Name()); err != nil {
+		t.Fatalf("refused publication lost private source: %v", err)
+	}
+	afterRefusal, err := privateGTDTestFileInfo(staging.Name())
+	if err != nil || !os.SameFile(before, afterRefusal) {
+		t.Fatalf("cross-directory refusal changed staging identity: %v", err)
+	}
+	if got, err := privateGTDTestReadFile(staging.Name()); err != nil || string(got) != "new" {
+		t.Fatalf("cross-directory refusal changed staging bytes: got=%q err=%v", got, err)
+	}
+	if err := publisher.Install(staging, target); err != nil {
+		t.Fatal(err)
 	}
 	if err := staging.Close(); err != nil {
 		t.Fatal(err)

@@ -15,3 +15,6 @@ func privateGTDTestFileInfo(path string) (os.FileInfo, error) {
 	info, statErr := f.Stat()
 	return info, errors.Join(statErr, f.Close())
 }
+
+// Observe full bytes without changing the retained staging object's policy.
+func privateGTDTestReadFile(path string) ([]byte, error) { return os.ReadFile(path) }
