@@ -11,7 +11,7 @@ import (
 
 // TestSQLitePinnedSidecarLifetime is a synthetic lifetime experiment, not a
 // production privacy strategy. Existing strict lifecycle tests remain separate:
-// this test asks whether metadata handles that do not share DELETE preserve
+// this test asks whether read-capable handles that do not share DELETE preserve
 // private objects while real SQLite operations and checked Close still work.
 func TestSQLitePinnedSidecarLifetime(t *testing.T) {
 	token := sqliteNativeReadToken()
@@ -75,7 +75,7 @@ func TestSQLitePinnedSidecarLifetime(t *testing.T) {
 		}
 	}
 	// Both SQL pools have closed before any guard is released. Releasing
-	// these metadata-only handles must not change the retained native policy.
+	// these read-capable guards must not change the retained native policy.
 	for _, guard := range guards {
 		if err := guard.Close(); err != nil {
 			t.Fatalf("release pinned metadata guard: %v", err)
@@ -94,7 +94,10 @@ func sqlitePinnedOpenGuard(t *testing.T, path, role string) (*os.File, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const access = windows.READ_CONTROL | windows.FILE_READ_ATTRIBUTES
+	// Attribute access is exempt from sharing flags (CreateFileW contract).
+	// The b910 metadata-only experiment allowed deletion; add READ_DATA to
+	// test the sharing hypothesis without reading or logging file payloads.
+	const access = windows.FILE_READ_DATA | windows.READ_CONTROL | windows.FILE_READ_ATTRIBUTES
 	const share = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE
 	h, err := windows.CreateFile(p, access, share, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 	if err != nil {
