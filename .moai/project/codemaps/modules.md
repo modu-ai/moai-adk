@@ -6,11 +6,11 @@
 
 | 패키지 | 확인한 책임과 공개 표면 |
 | --- | --- |
-| `internal/privatefile` | `CreateTemp`, `WriteFile`, `OpenAppend`, `Mkdir`, `Check`, `CheckDirectory`, `SecureFile`, `SecureDirectory`. Windows의 기존 객체 정리는 owner를 바꾸지 않고 동일 객체의 DACL을 좁힌다. |
+| `internal/privatefile` | `CreateTemp`, `WriteFile`, `OpenAppend`, `Mkdir`, `Check`, `CheckDirectory`, `SecureFile`, `SecureDirectory`. Windows의 기존 객체 정리는 owner를 바꾸지 않고 동일 객체의 DACL을 좁히며, 긴 drive·UNC 경로는 native 호출 전에 확장 경로로 변환한다. Linux의 기존 객체 권한 복구는 `O_PATH` 핸들과 검사한 identity에 묶어 경로 교체가 다른 객체의 mode를 바꾸지 않게 한다. |
 | `internal/atomicfile` | `Replace`, `CreateExclusive`, `ClaimSection`, `PidAlive`, `OwnerIsDead`. 게시와 claim 소유권·재회수는 서로 다른 연산이며 PID 접근 실패를 죽음으로 해석하지 않는다. |
 | `internal/auditreceipt` | ledger token을 확인한 핸들에 Windows 삭제를 묶는다. POSIX의 identity 확인 뒤 unlink에는 경로 연산의 경합 경계가 남는다. |
 | `internal/settings/yamlpatch` | `PatchFileAtRoot`와 `RootOptions`가 프로젝트 root 아래의 부모 생성·읽기·임시 쓰기·rename을 묶는다. 일반 owned-path 편집 함수는 프로젝트 containment API가 아니다. |
-| `internal/config/atomicfile` | 기존 `Write`의 3인자 호출을 보존하고 선택적 `RootOptions`로 열린 root·강제 mode·게시 직전 검사를 받는다. Config의 typed section과 YAML root 편집이 같은 원자 쓰기 본체를 사용한다. |
+| `internal/config/atomicfile` | 기존 `Write`의 3인자 호출을 보존하고 선택적 `RootOptions`로 열린 root·강제 mode·게시 직전 검사를 받는다. Root 아래 임시 파일은 생성부터 payload·대상 검증 완료까지 owner 전용 mode를 유지하고, 최종 mode를 열린 파일에 적용한 뒤 닫고 게시한다. Config의 typed section과 YAML root 편집이 같은 원자 쓰기 본체를 사용한다. |
 | `internal/contract/revoke` | `Blocked`는 열린 신뢰 root 아래에서 기록을 열거·읽으며 linked/nonregular 기록 파일과 IO 오류를 거부한다. 기존 non-record 디렉터리 제외와 서명·fingerprint·감사 검사는 그대로 남는다. |
 | `internal/graph` | GTD의 `PrivateGTDPermissionChecker.CheckPrivatePolicy`는 필수 native 정책 oracle이다. Unix UID 또는 Windows SID와 실제 파일 정책을 확인하며 mode 관측을 가짜 승인 값으로 바꾸지 않는다. |
 | `internal/homestate` | readonly census는 escaped `file:` URI, 실제 worktree inventory, 보수적인 PID 관측을 사용한다. DB의 전체 native ACL 수명 보장은 아직 별도 미완료 범위다. |
@@ -19,6 +19,12 @@
 
 GTD 게시 임시 파일과 최종 data/meta는 쓰기 전 private 정책 및 게시 후 동일 객체 검사를 받는다.
 데이터 먼저·메타 나중의 순서, 메타 게시 실패 시 정리, revision/hash와 collector 격리 의무는 유지된다.
+
+권한 복구의 이번 코드 기준은 `bae0635a6`이다. Linux에서는 현재 mode가 `000`인 소유 파일·디렉터리도
+읽기 권한을 요구하지 않고 같은 객체의 mode를 복구한다. `fchmodat2`가 없는 kernel의 fallback은 실제
+procfs의 열린 descriptor 링크만 사용한다. Darwin 등 다른 비 Windows 플랫폼은 기존 `000` 복구 동작을
+보존했으며 경로 기반 chmod의 교체 경합은 아직 미해결이다. 이 경계와 Windows 긴 경로의 native 실행,
+현재 head의 CI·리뷰·독립 감사 통과는 별도 조건이다.
 
 ## Windows 감사 락 해제의 소유권 경계 — PR #1883
 
