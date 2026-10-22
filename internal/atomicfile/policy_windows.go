@@ -14,6 +14,8 @@ import (
 
 const filePolicyInformation = windows.OWNER_SECURITY_INFORMATION | windows.GROUP_SECURITY_INFORMATION | windows.DACL_SECURITY_INFORMATION
 
+// @MX:ANCHOR: Windows atomic rewrite policy shared by YAML, updates and wrapper migration.
+// @MX:REASON: Three production callers require native owner/group/DACL checks before writing staged bytes.
 // CreatePolicyTemp creates an exclusive, random stage beside target, with its
 // native permission policy established and checked before the caller writes.
 // Existing regular files keep their observed owner, group and DACL. A nonzero

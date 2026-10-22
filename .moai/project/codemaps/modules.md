@@ -441,6 +441,16 @@ census가 모두 0일 때만 허용합니다. Factory 인계는 v2 lease와 toke
 
 ### `internal/settings/yamlpatch` — 보존 쓰기 경로
 
+Windows atomic rewrites in YAML settings, CLI updates and m001 wrapper migration
+share `CreatePolicyTemp` in `internal/atomicfile/policy_windows.go`. It snapshots an existing regular
+file's owner, group and DACL through a held handle, applies the policy when creating
+an exclusive random stage, and verifies it before callers write bytes. Explicit
+mode overrides retain owner/group; new files receive a protected mode policy.
+Unsupported or mismatched security fails before writing. Callers retain their
+write, close, publication and cleanup duties; this is not a destination CAS or
+an assertion that arbitrary ancestor replacement is safe. Unix rewrite adapters
+retain their existing chmod and rename sequence.
+
 `internal/settings`의 책임은 "두 표면이 공유하는 **스키마**"지만, `yamlpatch`가 지는 것은
 스키마가 아니라 **쓰기 방식**입니다. `ConfigManager.Save()`의 typed struct 재직렬화는
 YAML 주석 전량과 미모델링 키(예: `workflow.yaml`의 `team.patterns`, role-profile의 `effort`)를
