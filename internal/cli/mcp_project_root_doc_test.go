@@ -39,10 +39,10 @@ var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n
 func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	declared := toolsDeclaringProjectRoot(t)
 	locales := map[string]string{
-		"en": "Twenty-three tools",
-		"ko": "23개 도구",
-		"ja": "23個のツール",
-		"zh": "23 个工具",
+		"en": "Twenty-two tools",
+		"ko": "22개 도구",
+		"ja": "22個のツール",
+		"zh": "22 个工具",
 	}
 	for locale, countPhrase := range locales {
 		t.Run(locale, func(t *testing.T) {

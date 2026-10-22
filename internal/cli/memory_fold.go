@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,6 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"

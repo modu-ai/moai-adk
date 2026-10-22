@@ -1,19 +1,14 @@
 package cli
 
-// SPEC-INIT-HARNESS-PROMPT-001 — the wizard's agent-harness answer reaches
-// BOTH consumers of the harness selection, and the --llm flag still beats it.
-//
-// The centre of gravity is the resolution seam, not the question: before this
-// change resolveAgentWiring read only the cobra flag, so no wizard answer could
-// reach either the Codex wiring call or the .mcp.json provisioning precedence
-// switch (spec.md §4 D1).
+// The wizard's agent-harness answer surface went with the general codex
+// execution surface removal (card t1909): the harness selection is
+// claude-only, the wizard no longer asks, and no Codex wiring runs on init.
+// What remains here are the shared observation helpers and the
+// non-interactive-path guards.
 //
 // The MCP-side observable throughout is the stdout announcement, NOT the
 // existence of .mcp.json: that file is template-deployed and present in every
-// branch, so a file-existence assertion would pass vacuously (acceptance.md
-// §A.1).
-//
-// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+// branch, so a file-existence assertion would pass vacuously.
 
 import (
 	"os"
@@ -49,125 +44,6 @@ func assertCodexArtifacts(t *testing.T, projectDir string, want bool) {
 		case !want && err == nil:
 			t.Errorf("%s present, want absent", rel)
 		}
-	}
-}
-
-// TestRunInit_WizardCodexReachesBothConsumers asserts AC-IHP-003: with --llm
-// absent and the wizard answering codex, the selection reaches BOTH consumers
-// in one test — (a) the Codex wiring call wrote all three artifacts, and (b)
-// the MCP precedence switch declined provisioning, so the announcement is
-// absent.
-//
-// The interactive path provisions by default (SPEC-INIT-QUIET-WIZARD-001), so
-// leg (b) cannot pass by way of a decline default: without the harness
-// selection reaching the switch, the default provisions and the announcement
-// appears.
-func TestRunInit_WizardCodexReachesBothConsumers(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
-
-	// Leg (a): the Codex-wiring consumer saw codex.
-	assertCodexArtifacts(t, projectDir, true)
-
-	// Leg (b): the MCP-precedence consumer saw codex.
-	if strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("stdout contains %q — the MCP precedence consumer did not see the wizard's codex answer (AC-IHP-003 leg b)\nstdout:\n%s", mcpProvisionAnnouncement, stdout)
-	}
-}
-
-// TestRunInit_WizardCodexDeclinesMCPProvisioning asserts AC-IHP-009: harness
-// codex against the interactive provisioning default resolves in the harness
-// selection's favour (spec.md §4 D2), and the moai MCP server is still
-// registered for the user, through .codex/config.toml rather than .mcp.json.
-func TestRunInit_WizardCodexDeclinesMCPProvisioning(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
-
-	if strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("harness codex must decline .mcp.json provisioning even with mcp_provision=yes (REQ-IHP-009); stdout:\n%s", stdout)
-	}
-
-	cfg, err := os.ReadFile(filepath.Join(projectDir, codexwiring.ConfigRelPath))
-	if err != nil {
-		t.Fatalf("read %s: %v", codexwiring.ConfigRelPath, err)
-	}
-	if !strings.Contains(string(cfg), "mcp_servers.moai") {
-		t.Errorf("%s does not carry the mcp_servers.moai entry — declining .mcp.json under codex would withdraw the MCP surface; got:\n%s", codexwiring.ConfigRelPath, cfg)
-	}
-}
-
-// TestRunInit_FlagClaudeBeatsWizardCodex asserts the AC-IHP-004 claude row:
-// an explicit --llm claude discards a wizard answer of codex, so no Codex
-// artifact is written and provisioning follows the interactive default.
-//
-// The outcome alone is vacuous (the wizard answer was discarded before this
-// change too), which is why the precedence RULE is asserted directly in
-// TestResolveAgentWiringWithWizard_PrecedenceTable. This row is the end-to-end
-// companion, not the binding evidence.
-func TestRunInit_FlagClaudeBeatsWizardCodex(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"llm": "claude"})
-
-	assertCodexArtifacts(t, projectDir, false)
-	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("--llm claude must leave the mcp_provision answer (yes) intact, so the announcement is expected; stdout:\n%s", stdout)
-	}
-}
-
-// TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning asserts the
-// AC-IHP-004 both row: --llm both beats a wizard answer of codex, so
-// provisioning runs.
-//
-// The mcp_provision decline this row used to pin is no longer expressible (the
-// question is gone, SPEC-INIT-QUIET-WIZARD-001); the row now observes that the
-// codex wizard answer does not win over the flag.
-func TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"llm": "both"})
-
-	assertCodexArtifacts(t, projectDir, true)
-	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("--llm both must force provisioning on over an explicit mcp_provision decline (REQ-IHP-009); stdout:\n%s", stdout)
-	}
-}
-
-// TestRunInit_WizardBothForcesProvisioningOverDecline asserts the both rule
-// holds when it arrives from the WIZARD rather than the flag — the half of
-// REQ-IHP-009 that says the rule is about the harness selection's origin being
-// irrelevant. The decline in the name is no longer expressible from the wizard
-// (SPEC-INIT-QUIET-WIZARD-001); the outcome is unchanged.
-func TestRunInit_WizardBothForcesProvisioningOverDecline(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "both"}
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
-
-	assertCodexArtifacts(t, projectDir, true)
-	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("a wizard answer of both must force provisioning on (REQ-IHP-009); stdout:\n%s", stdout)
 	}
 }
 

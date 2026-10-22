@@ -1,4 +1,4 @@
-  ● ○ ○ ○ ○ ○ 1 / 6                                                             
+  ● ○ ○ ○ ○ 1 / 5                                                               
 ┃ Select conversation language                                                  
 ┃ The language MoAI uses when talking with you. The wizard switches to it       
 ┃ immediately.                                                                  
@@ -10,8 +10,5 @@
   How MoAI addresses you. Persisted to user.yaml (user.name). Leave empty to    
   skip.                                                                         
   >                                                                             
-                                                                                
-                                                                                
-                                                                                
 
 ↑ up • ↓ down • / filter • enter select
