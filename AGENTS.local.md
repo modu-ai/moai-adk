@@ -179,9 +179,9 @@ The language policy is defined in `.claude/rules/moai/development/coding-standar
 
 Conventional Commits — `<type>(<scope>): <description>` + an optional body/footer. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. For examples and the full format, see `.moai/docs/local-dev-guide.md` § 4a.
 
-### §4.0 Default development flow (local-main integration)
+### §4.0 Default development flow — agentic-trunk (local-main integration)
 
-`main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+The flow is **agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release.** Per-card delivery follows the target-holder routing: where only the primary checkout holds `main` (this repository — the 2026-10-21 rescope of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 abolished the dedicated integration worktree), the completed card lands through its pull request, which the leader merges with no auto-merge request; where a dedicated integration worktree holds `main`, the card lands through the integration-window local merge of item 2. The landing surface — whichever tree holds `main` — performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used for card work, and it stays clean. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written. (The live `git_strategy.manual.workflow` value converts at the leader's post-landing cutover; until then the temporary bridge `github-flow` is in force, and this section describes the post-cutover flow.)
 
 **[HARD] 1. Branch base**
 
@@ -189,13 +189,13 @@ Card worktrees branch from local `main`. Because origin/main can fall behind loc
 
 **[HARD] 2. Merge landing**
 
-- The landing surface is the integration worktree that holds `main`; the tool refuses when no tree holds it. `workflow.local_main_integration.enabled` is `true` today, so the tool accepts the primary as holder; changing it is planned in t1847.
-- Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
-- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
+- Where a dedicated integration worktree holds `main`, the landing surface is that worktree and the tool refuses when no tree holds it. Where only the primary checkout holds `main` (this repository), the completed card takes the pull-request edge instead: the completion path (`moai factory complete` / merge-ready) opens the card's pull request, and the leader merges it — the merge request is never an auto-merge request (`--auto` was removed from the pr-open path by M5b of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001).
+- Where the integration-window local merge applies, merging is performed only by `moai integration merge --card <id>`, which `moai factory complete` calls from lane sessions. Where the pull-request route applies, the lane never merges: the leader merges the card's pull request. On either route, an agent writing `git merge` directly in Bash is still refused — the designed exception covers only the tool path.
+- Where the local-merge route applies, the tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
 
 **[HARD] 3. Clean-tree rule**
 
-A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
+A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the tree that holds `main` (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>`, or — where a dedicated integration worktree holds it — in that worktree rather than the primary's working tree; `git show` does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`. (In this repository the primary checkout holds `main`, so its working tree is `main`'s tree.)
 
 **[HARD] 4. Resynchronization**
 
@@ -234,7 +234,7 @@ The pre-push hook's verdict on pushes of `main:release/*` has not yet been measu
 - The green condition takes precedence over the count trigger. Every card merge must pass the merge-tree re-measurement in the integration window, and while the `origin/main` CI of the most recently landed batch is red, the next batch is held. If that CI verdict does not yet exist, it is not a reason to hold.
 - If the threshold is 0 or the key is absent, the trigger is off, and the leader decides when to close a batch. This is not an error condition.
 
-Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1). Rescope 0.4.0 of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 (2026-10-21) renamed the model `agentic-trunk` and adopted the target-holder routing (card pull request merged by the leader with no auto-merge request where only the primary holds `main`; integration-window local merge where a dedicated worktree holds it); the landing and resync tool paths are unchanged.
 
 ### §4.1 Integration chain (main)
 
