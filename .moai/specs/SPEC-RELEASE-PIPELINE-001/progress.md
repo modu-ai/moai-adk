@@ -67,6 +67,13 @@ Copied from the PASS-WITH-DEBT verdict `.moai/reports/t1536/plan-audit-iter7.md`
 - debt: N3 dispose_in=run AC-RPC-003 cell (i) (real failure, marker skipped) pair relies on the landed same-name resolution; state it in (i)
 - debt: N4 dispose_in=run acceptance.md §D.0 "verdict step without fail-open" probe cites AC-RPC-004 as a red source that no longer reads red
 
+Binding run conditions disposition (manager-spec, 2026-10-23, SPEC v0.7.0, text-only; the debt lines above are kept as recorded):
+
+- N1 disposed 2026-10-23 — spec.md §C REQ-RPC-002 (fail-open clause now "in a run that is not itself cancelled", with a pointer to REQ-RPC-003's cancelled-run rule) and acceptance.md §D AC-RPC-002 (green path "fail-open on unevaluated classification in a run that is not itself cancelled (a cancelled run is AC-RPC-003 cell (iv))").
+- N3 disposed 2026-10-23 — acceptance.md §D AC-RPC-003 cell (i) (states the (real job `failure`/`cancelled`, marker `skipped`) pair relies on the landed same-name check-run resolution the `Test (ubuntu-latest)` / `test-skip-marker` pair already relies on; accepted pre-existing dependency, not introduced by this SPEC).
+- N4 disposed 2026-10-23 — acceptance.md §D.0, probe "AC-RPC-003 vs verdict step without fail-open" (the "and by AC-RPC-004's reported-name assertion" citation removed; the probe reads red through AC-RPC-003 cell (iii) alone).
+- Run-phase scope notes 1, 3, 4 (§E.2) reconciled in the same revision: REQ-RPC-004 / AC-RPC-004 `Test (ubuntu-latest)` exemption; REQ-RPC-008, plan M4 step 3, AC-RPC-007/008 at 15m/16m (n=4 green main runs); plan citations touched refreshed to HEAD `3b3fca7d0736879c23771b30db80c3a95c0b3b1c`.
+
 ## §E.2 Run-phase Evidence
 
 Measured by manager-develop (cycle_type=tdd, serial) in worktree `.moai/worktrees/t1536`, branch `WT-10-06-codex`. Tree for every GREEN cell below: HEAD `1258076d11102e596dadb86a80aa657cbbf6174f` (M1 commit) unless a cell names another; plan-tree baseline `4c387f96bc`. Run clock `2026-10-22T20:27Z` UTC (2026-10-23 local). gh `2.92.0 (2026-04-28)`, jq present. Nothing was pushed (lane holds pushes).
