@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/civerdict"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // fixture returns a valid record (REQ-CV-004 five-field schema).
@@ -213,10 +214,7 @@ func TestErrorPaths(t *testing.T) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chmod(dir, 0o555); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		testguard.MakeDirReadOnly(t, dir)
 		if err := civerdict.Save(root, fixture()); err == nil {
 			t.Error("Save succeeded into a read-only record directory")
 		}
