@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tree_root": "/workspace/moai-adk/.moai/worktrees/cloud-windows-gtd-privacy-repair",
-  "commit_sha": "e3885d0053e95faabb883e8b6385039173937397",
+  "commit_sha": "d3f8a00a772dcca79de71867cfb03286359b311e",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-22T05:47:47Z"
+  "generated_at": "2026-10-22T05:48:58Z"
 }
