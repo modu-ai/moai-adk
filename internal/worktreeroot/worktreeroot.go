@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,13 +94,17 @@ type ownerMarker struct {
 // @MX:ANCHOR: [AUTO] resolver entry SSOT — every creation path and reader resolves the home root here
 // @MX:REASON: [AUTO] M2 materializer, M3 readers and M4 list all consume it; a second key style would split one repository across two project folders (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-002)
 func Resolve(repoDir string) (Resolution, error) {
-	return resolve(repoDir)
+	res, err := resolve(repoDir)
+	if err == nil && res.Notice != "" {
+		slog.Warn(res.Notice)
+	}
+	return res, err
 }
 
 // Key returns the repository's assigned project key, assigning it on first
 // use (REQ-WHR-002).
 func Key(repoDir string) (string, error) {
-	res, err := resolve(repoDir)
+	res, err := Resolve(repoDir)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +115,7 @@ func Key(repoDir string) (string, error) {
 // assigning the key on first use. The directory itself is created by the
 // assignment; the per-tree subdirectories are not (REQ-WHR-001).
 func Root(repoDir string) (string, error) {
-	res, err := resolve(repoDir)
+	res, err := Resolve(repoDir)
 	if err != nil {
 		return "", err
 	}
@@ -120,7 +125,7 @@ func Root(repoDir string) (string, error) {
 // PathFor returns <project root>/<name> without creating anything; the tree
 // directory is left to the creation paths (REQ-WHR-001).
 func PathFor(repoDir, name string) (string, error) {
-	res, err := resolve(repoDir)
+	res, err := Resolve(repoDir)
 	if err != nil {
 		return "", err
 	}
@@ -157,6 +162,9 @@ func Plan(repoDir, name string) (string, error) {
 	// The recorded key wins over everything (design.md, Stability) — read
 	// only: ensureProjectDir is resolve()'s write and is skipped here.
 	if k := readRecord(common); k != "" {
+		if err := validatePin(k); err != nil {
+			return "", fmt.Errorf("invalid recorded project key: %w", err)
+		}
 		return filepath.Join(projectDir(home, k), name), nil
 	}
 
@@ -170,9 +178,11 @@ func Plan(repoDir, name string) (string, error) {
 	}
 	if folder := foldFind(projects, candidate); folder == "" {
 		return filepath.Join(projectDir(home, candidate), name), nil
-	} else if owner, oerr := readMarkerOwner(filepath.Join(projects, folder, markerName)); oerr != nil {
+	} else if owner, oerr := readMarkerOwner(filepath.Join(projects, folder, markerName)); os.IsNotExist(oerr) {
+		return filepath.Join(projectDir(home, folder), name), nil
+	} else if oerr != nil {
 		return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder, filepath.Join(projects, folder, markerName), oerr)
-	} else if strings.EqualFold(owner, canonical) {
+	} else if Same(owner, canonical) {
 		return filepath.Join(projectDir(home, folder), name), nil
 	} else if pin != "" {
 		return "", fmt.Errorf("git_strategy.worktree_project_key pin %q names project folder %q owned by another repository (owner marker %s); refusing without suffixing", candidate, folder, filepath.Join(projects, folder, markerName))
@@ -182,7 +192,7 @@ func Plan(repoDir, name string) (string, error) {
 			return filepath.Join(projectDir(home, suffixed), name), nil
 		} else if owner2, oerr := readMarkerOwner(filepath.Join(projects, folder2, markerName)); oerr != nil {
 			return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder2, filepath.Join(projects, folder2, markerName), oerr)
-		} else if !strings.EqualFold(owner2, canonical) {
+		} else if !Same(owner2, canonical) {
 			return "", fmt.Errorf("project folder %q is already owned by another repository (owner marker %s); refusing", folder2, filepath.Join(projects, folder2, markerName))
 		} else {
 			return filepath.Join(projectDir(home, folder2), name), nil
@@ -200,7 +210,11 @@ func RecordedKey(repoDir string) string {
 	if err != nil {
 		return ""
 	}
-	return readRecord(common)
+	k := readRecord(common)
+	if validatePin(k) != nil {
+		return ""
+	}
+	return k
 }
 
 // resolve runs the full resolution: primary-root discovery, pin read and
@@ -237,6 +251,9 @@ func resolve(repoDir string) (Resolution, error) {
 	// relocated MOAI_HOME must still hold the owner marker for the recorded
 	// key (REQ-WHR-002a), while an existing marker is left byte-untouched.
 	if k := readRecord(common); k != "" {
+		if err := validatePin(k); err != nil {
+			return Resolution{}, fmt.Errorf("invalid recorded project key: %w", err)
+		}
 		if err := ensureProjectDir(home, k, canonical); err != nil {
 			return Resolution{}, err
 		}
@@ -341,7 +358,7 @@ func claim(home, candidate, canonical string, pinned bool, base string) (_ strin
 		}
 		return folder, nil
 	}
-	if strings.EqualFold(owner, canonical) {
+	if Same(owner, canonical) {
 		return folder, nil
 	}
 	if pinned {
@@ -361,7 +378,7 @@ func claim(home, candidate, canonical string, pinned bool, base string) (_ strin
 	if err != nil {
 		return "", fmt.Errorf("project folder %q already exists and its owner marker %s cannot be read: %w", folder2, markerPath2, err)
 	}
-	if !strings.EqualFold(owner2, canonical) {
+	if !Same(owner2, canonical) {
 		return "", fmt.Errorf("project folder %q is already owned by another repository (owner marker %s); refusing", folder2, markerPath2)
 	}
 	return folder2, nil
@@ -461,7 +478,7 @@ func ensureProjectDir(home, key, canonical string) (err error) {
 	markerPath := filepath.Join(dir, markerName)
 	owner, err := readMarkerOwner(markerPath)
 	if err == nil {
-		if !strings.EqualFold(owner, canonical) && !Same(owner, canonical) {
+		if !Same(owner, canonical) {
 			// The repository-side record travels with a renamed checkout;
 			// its historical marker remains byte-untouched. An owner root
 			// that still exists, however, is another repository's claim.
@@ -510,7 +527,7 @@ func writeRecord(common, key string) error {
 // ambiguity judgment (REQ-WHR-022). One directory reached under two
 // spellings is one tree, not an ambiguity (REQ-WHR-023).
 func Candidates(repoDir, name string) ([]Candidate, error) {
-	res, err := resolve(repoDir)
+	res, err := Resolve(repoDir)
 	if err != nil {
 		return nil, err
 	}
