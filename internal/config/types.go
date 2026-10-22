@@ -464,11 +464,29 @@ type CardAgeAlarmConfig struct {
 	StallAlertAfter string `yaml:"stall_alert_after"`
 }
 
+// FactoryConfig is the workflow.factory block: the self-dispatch policy for
+// bare `factory next` card selection (SPEC-CARD-ELIGIBLE-PULL-001). Sibling
+// of BranchGuard / factory_lease — same snake_case block scheme.
+type FactoryConfig struct {
+	// SelfDispatch arms the generic selection arms (b)/(b2) behind the
+	// eligibility gate (workflow.factory.self_dispatch). Default false —
+	// the kill-switch reading of the Q1 ruling: OFF leaves the generic arms
+	// fully dormant for unowned cards (no lease, no record, no reason line),
+	// so a lane running bare `next` can never pick up an operator-picked card
+	// waiting for another consumer (incident t1780). ON activates the arms
+	// behind the five-condition eligibility predicate; an operator opting a
+	// deployment in (the t1240 self-dispatch shape) sets it in that
+	// deployment's local config.
+	SelfDispatch bool `yaml:"self_dispatch"`
+}
+
 type WorkflowConfig struct {
 	// FactoryLease carries workflow.factory_lease.* (see FactoryLeaseConfig).
 	FactoryLease FactoryLeaseConfig `yaml:"factory_lease"`
 	// CardAgeAlarm carries workflow.card_age_alarm.* (see CardAgeAlarmConfig).
 	CardAgeAlarm CardAgeAlarmConfig `yaml:"card_age_alarm"`
+	// Factory carries workflow.factory.* (see FactoryConfig).
+	Factory FactoryConfig `yaml:"factory"`
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
 	AutoClear     AutoClearConfig `yaml:"auto_clear"`
 	DefaultMode   string          `yaml:"default_mode"`
@@ -564,6 +582,15 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// BaseFreshnessGate gates the REFUSAL layer of the base-freshness check run
+	// before the release-integration window is taken (`moai integration
+	// acquire`, and `moai factory complete` when it acquires the window itself),
+	// and carries the tolerance K the check measures against. Default off: the
+	// check still measures and prints one advisory line when it would have
+	// refused, and only the refusal is opt-in. Sibling of SettingsDriftGate —
+	// same opt-in shape, same default-OFF neutrality.
+	BaseFreshnessGate BaseFreshnessGateConfig `yaml:"base_freshness_gate"`
+
 	// CandidateCI carries the pre-landing candidate-CI settings
 	// (SPEC-CANDIDATE-CI-001). Enabled gates the `moai integration candidate`
 	// verb and the merge step's shared landing check; default false ships the
@@ -631,6 +658,17 @@ type WorkflowConfig struct {
 	// never shrinks it). Sibling of BranchGuard — same opt-in shape, same
 	// default-OFF neutrality.
 	CommitIdentityGuard CommitIdentityGuardConfig `yaml:"commit_identity_guard"`
+
+	// CardMetadataVerbs gates the card-metadata editing verbs
+	// (SPEC-CARD-METADATA-VERBS-001 REQ-CMV-001/002): `moai factory
+	// set-spec` and `moai factory reclassify`. Default false — both verbs
+	// ship INERT and refuse naming this flag key, writing neither store and
+	// no audit row, until an operator opts in via local config. Sibling of
+	// BranchGuard / AgentStopGuard — same opt-in shape, same default-OFF
+	// neutrality. Template neutrality: the template key lands commented-out
+	// (plan.md §F M5), and the flag's absence is not a defect — `moai
+	// doctor` stays silent about it.
+	CardMetadataVerbs CardMetadataVerbsConfig `yaml:"card_metadata_verbs"`
 
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
 	// Default false: the capability ships INERT, and while it is off the
@@ -855,6 +893,20 @@ type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+// BaseFreshnessGateConfig mirrors workflow.base_freshness_gate.* — the opt-in
+// gate that refuses entry to the release-integration window when the candidate
+// is more than MaxBehindLandings landings behind the local integration branch,
+// or carries no re-measure record keyed to its current tree. When Enabled is
+// false (the distributed default) the check still measures and prints one
+// advisory line when it would have refused, and refuses nothing. The tolerance
+// lives here and nowhere else: the gate's decision code holds no threshold
+// literal. A negative value reads as "cannot determine" and admits with a
+// notice.
+type BaseFreshnessGateConfig struct {
+	Enabled           bool `yaml:"enabled"`
+	MaxBehindLandings int  `yaml:"max_behind_landings"`
+}
+
 // CandidateCIConfig mirrors workflow.candidate_ci.* (SPEC-CANDIDATE-CI-001,
 // card t1478, REQ-CCI-006/008). Enabled gates the candidate-CI path: the
 // `moai integration candidate` verb and the merge step's shared landing
@@ -975,6 +1027,15 @@ type AnchorRelocationGuardConfig struct {
 type CommitIdentityGuardConfig struct {
 	Enabled    bool     `yaml:"enabled"`
 	DenyEmails []string `yaml:"deny_emails"`
+}
+
+// CardMetadataVerbsConfig mirrors workflow.card_metadata_verbs.* — the
+// opt-in gate of the card-metadata editing verbs (SPEC-CARD-METADATA-VERBS-001
+// REQ-CMV-001/002). When Enabled is false (the distributed default), both
+// `moai factory set-spec` and `moai factory reclassify` refuse with a
+// refusal naming this flag key, writing neither store and no audit row.
+type CardMetadataVerbsConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe

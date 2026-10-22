@@ -1,0 +1,12 @@
+{
+  "overall_verdict": "pass",
+  "gate_unmet": null,
+  "plan_source": "config",
+  "per_backend_verdicts": [
+    {
+      "backend": "codex",
+      "gate": "required",
+      "verdict": "pass"
+    }
+  ]
+}

@@ -328,10 +328,18 @@ fi
 # A run counts only when ALL of these hold: it belongs to that workflow, it ran
 # on exactly this commit, workflow_dispatch started it (on a pull_request event
 # a leg can be skipped by the docs-only filter), it is completed with conclusion
-# success, AND each of the three OS legs itself concluded success (a run-level
-# success is not enough: a skipped leg leaves it green).
+# success, AND every leg itself concluded success (a run-level success is not
+# enough: a skipped leg leaves it green). The legs are the sharded Release Verify
+# jobs: each of the three OS values must carry exactly the six declared shards,
+# once each. A missing shard (on one OS or on all three), an unknown shard name
+# and a duplicated shard job are all refusals naming the OS and shard.
 if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
     MATRIX_WORKFLOW="release-pr-multi-os.yml"
+    # The legs of the Release Verify matrix: job `Release Verify (<os>, <shard>)`,
+    # three OS values x six shards. Mirrors strategy.matrix of $MATRIX_WORKFLOW
+    # (SPEC-CI-RELEASE-VERIFY-SHARD-001); a drift test compares the two lists.
+    MATRIX_OSES=(ubuntu-latest macos-latest windows-latest)
+    MATRIX_SHARDS=(cli-1 cli-2 cli-3 cli-4 rosterguard remainder)
     command -v gh >/dev/null 2>&1 || die "Matrix gate: --require-matrix-run needs the gh CLI to read the $MATRIX_WORKFLOW run, and gh is not available."
 
     MATRIX_RUNS="$(gh run list --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
@@ -357,16 +365,41 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
         else
             RUN_JOBS="$(gh run view "$run_id" --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
                 || die "Matrix gate: could not read the jobs of run $run_id (gh run view failed)."
-            for leg in "Release Verify (ubuntu-latest)" "Release Verify (macos-latest)" "Release Verify (windows-latest)"; do
-                leg_line="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {print "found|" $2; exit}')"
-                if [[ -z "$leg_line" ]]; then
-                    run_problem="run $run_id has no leg '$leg'."
-                    break
-                elif [[ "${leg_line#found|}" != "success" ]]; then
-                    run_problem="run $run_id leg '$leg' is ${leg_line#found|}, not success."
-                    break
-                fi
+            # Each of the three OS values must carry each of the six declared shards
+            # exactly once, every one success (REQ-RVS-011). The names are matched
+            # whole: zero jobs of a name is "no leg", two is a duplicate.
+            expected_legs=""
+            for leg_os in "${MATRIX_OSES[@]}"; do
+                for leg_shard in "${MATRIX_SHARDS[@]}"; do
+                    leg="Release Verify ($leg_os, $leg_shard)"
+                    expected_legs="${expected_legs:+$expected_legs|}$leg"
+                    leg_count="$(printf '%s\n' "$RUN_JOBS" | awk -F'|' -v leg="$leg" '$1 == leg {n++} END {print n + 0}')"
+                    if [[ -z "$run_problem" ]]; then
+                        if (( leg_count == 0 )); then
+                            run_problem="run $run_id has no leg '$leg'."
+                        elif (( leg_count > 1 )); then
+                            run_problem="run $run_id has $leg_count jobs named '$leg' (a duplicated shard job)."
+                        else
+                            # Feed the captured snapshot directly: this awk exits
+                            # early, so a producer pipe can SIGPIPE under pipefail
+                            # before the matrix verdict is reported.
+                            leg_result="$(awk -F'|' -v leg="$leg" '$1 == leg {print $2; exit}' <<< "$RUN_JOBS")"
+                            if [[ "$leg_result" != "success" ]]; then
+                                run_problem="run $run_id leg '$leg' is ${leg_result:-unknown}, not success."
+                            fi
+                        fi
+                    fi
+                done
             done
+            # A Release Verify job outside the 3 x 6 expected names is an unknown shard.
+            if [[ -z "$run_problem" ]]; then
+                unknown_leg="$(awk -F'|' -v want="$expected_legs" '
+                    BEGIN { n = split(want, names, "|"); for (i = 1; i <= n; i++) ok[names[i]] = 1 }
+                    index($1, "Release Verify (") == 1 && !($1 in ok) { print $1; exit }' <<< "$RUN_JOBS")"
+                if [[ -n "$unknown_leg" ]]; then
+                    run_problem="run $run_id has an unknown Release Verify leg '$unknown_leg' (not one of the declared OS x shard legs)."
+                fi
+            fi
         fi
 
         if [[ -z "$run_problem" ]]; then
@@ -384,7 +417,7 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
         fi
         die "Matrix gate: $MATRIX_REASON"
     fi
-    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs for ${LOCAL_SHA:0:12}"
+    log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs (${#MATRIX_SHARDS[@]} shards each) for ${LOCAL_SHA:0:12}"
 fi
 
 # ─── Validation 10: SPEC status 확인 (optional, informational) ───────────────
