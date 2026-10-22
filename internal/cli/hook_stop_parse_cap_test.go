@@ -176,11 +176,40 @@ func runStop(t *testing.T, stdin string) hookRunResult {
 }
 
 func validPayload(ev hook.EventType, root string) string {
+	cwd, _ := json.Marshal(root) // Marshaling a string cannot fail.
 	switch ev {
 	case hook.EventPreToolUse, hook.EventPostToolUse:
-		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":"` + root + `","tool_name":"Bash","tool_input":{"command":"true"}}`
+		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":` + string(cwd) + `,"tool_name":"Bash","tool_input":{"command":"true"}}`
 	default:
-		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":"` + root + `"}`
+		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":` + string(cwd) + `}`
+	}
+}
+
+func TestStopParseCap_ValidPayloadEncodesPaths(t *testing.T) {
+	root := `C:\Users\runner\project "quoted"`
+	for _, ev := range []hook.EventType{hook.EventStop, hook.EventPreToolUse, hook.EventPostToolUse} {
+		t.Run(string(ev), func(t *testing.T) {
+			var payload struct {
+				Event     hook.EventType    `json:"hook_event_name"`
+				SessionID string            `json:"session_id"`
+				Cwd       string            `json:"cwd"`
+				ToolName  string            `json:"tool_name"`
+				ToolInput map[string]string `json:"tool_input"`
+			}
+			if err := json.Unmarshal([]byte(validPayload(ev, root)), &payload); err != nil {
+				t.Fatalf("decode valid hook fixture: %v", err)
+			}
+			if payload.Event != ev || payload.SessionID != "s" || payload.Cwd != root {
+				t.Errorf("payload = %+v, want event=%s session=s cwd=%q", payload, ev, root)
+			}
+			if ev == hook.EventPreToolUse || ev == hook.EventPostToolUse {
+				if payload.ToolName != "Bash" || payload.ToolInput["command"] != "true" {
+					t.Errorf("tool payload = %+v, want Bash command true", payload)
+				}
+			} else if payload.ToolName != "" || payload.ToolInput != nil {
+				t.Errorf("unexpected tool fields on %s: %+v", ev, payload)
+			}
+		})
 	}
 }
 

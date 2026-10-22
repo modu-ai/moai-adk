@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,15 +44,52 @@ func writeMCPProviderFile(t *testing.T, path, body string) {
 
 const providerProjectMCP = `{"mcpServers":{"context7":{"command":"npx"},"playwright":{"command":"npx"}}}`
 
+func TestMCPProviderStateFixtures_EncodeProjectPaths(t *testing.T) {
+	root := `C:\Users\runner\project "quoted"`
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, body, fields string
+	}{
+		{"disabled local", providerState(t, root, `["context7"]`), `{"disabledMcpServers":["context7"]}`},
+		{"disabled connector", providerState(t, root, `["claude.ai Context7"]`), `{"disabledMcpServers":["claude.ai Context7"]}`},
+		{"null disabled", providerState(t, root, `null`), `{"disabledMcpServers":null}`},
+		{"rejected name", providerStateWithProject(t, root, `"disabledMcpjsonServers":["playwright"]`), `{"disabledMcpjsonServers":["playwright"]}`},
+		{"local server", providerStateWithProject(t, root, `"mcpServers":{"context7":{"command":"npx"}}`), `{"mcpServers":{"context7":{"command":"npx"}}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var state struct {
+				Connected []string                   `json:"claudeAiMcpEverConnected"`
+				Projects  map[string]json.RawMessage `json:"projects"`
+			}
+			if err := json.Unmarshal([]byte(tc.body), &state); err != nil {
+				t.Fatalf("decode state fixture: %v", err)
+			}
+			if got := string(state.Projects[abs]); got != tc.fields || len(state.Projects) != 1 {
+				t.Errorf("projects = %s, want only %q: %s", tc.body, abs, tc.fields)
+			}
+			if got := strings.Join(state.Connected, ","); got != "claude.ai Context7,claude.ai Notion" {
+				t.Errorf("connected providers = %q", got)
+			}
+		})
+	}
+}
+
 func providerState(t *testing.T, projectRoot, disabled string) string {
 	t.Helper()
 	abs, err := filepath.Abs(projectRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
+	key, err := json.Marshal(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
 	projects := `{}`
 	if disabled != "" {
-		projects = `{"` + abs + `":{"disabledMcpServers":` + disabled + `}}`
+		projects = `{` + string(key) + `:{"disabledMcpServers":` + disabled + `}}`
 	}
 	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":` + projects + `}`
 }
@@ -65,7 +103,11 @@ func providerStateWithProject(t *testing.T, projectRoot, fields string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":{"` + abs + `":{` + fields + `}}}`
+	key, err := json.Marshal(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":{` + string(key) + `:{` + fields + `}}}`
 }
 
 func TestCheckMCPProviderDuplicates_MatchWarns(t *testing.T) {
