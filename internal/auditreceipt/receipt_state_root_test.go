@@ -14,8 +14,8 @@ import (
 // TreeState read for the freshness comparison runs against r.TreeRoot (the
 // audited tree), not the caller's store root.
 func TestCheckCitedReceipts_StateComparesTheJudgedTree(t *testing.T) {
-	storeRoot := t.TempDir()        // what a hook in a linked worktree hands in
-	judged := "/linked-worktree"    // what the receipt actually recorded
+	storeRoot := t.TempDir()     // what a hook in a linked worktree hands in
+	judged := "/linked-worktree" // what the receipt actually recorded
 
 	var readFor string
 	prev := TreeState

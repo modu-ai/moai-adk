@@ -684,7 +684,15 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// absorbed t1576 integration-branch resolution landed above this
 		// comparison, moving it 301→317. Same comparison, same count — only
 		// the coordinate moved.
-		"integration.go:317": true,
+		// Re-measured at card t1632 CI repair (HEAD 1d4bf5773b, PR #1894
+		// main-base re-target): the sweep reported :317 MISSING and a NEW hit
+		// at :258. Verified the same t1576 doc mention (the "merge-base
+		// ..HEAD … exit status 128" quote) already sat at :258 at the
+		// release-head absorb e80010e89c — the :317 baseline predates the
+		// absorb's final conflict resolution and counted lines the resolution
+		// did not keep. Same doc mention of the primitive, no ancestry call
+		// executes here — same count, only the coordinate moved.
+		"integration.go:258": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the

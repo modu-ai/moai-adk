@@ -197,7 +197,7 @@ func ListSpecArtifactFiles(specDir string) ([]string, error) {
 	}
 	sort.Strings(found)
 	return found, nil
-}// ValidateReportDir ensures that the plan-audit report directory exists and
+} // ValidateReportDir ensures that the plan-audit report directory exists and
 // is safe (within projectDir). Creates it if absent.
 //
 // REQ-WAG-004 / AC-WAG-10: directory auto-creation and path traversal prevention.

@@ -63,6 +63,15 @@ func TestCodexAudit_CouldNotRunRetriesOnce(t *testing.T) {
 	root := newProbeProject(t, "SPEC-CNR-913")
 	writeCodexAuditGate(t, root, config.AuditGateRequired)
 
+	// Card t1632 CI repair: the audit handler resolves the codex binary BEFORE
+	// the codexReviewRPC seam — on CI no codex is installed, so the real
+	// LookPath failed-closed there before the stubbed seam was ever reached
+	// (green locally only where an operator codex exists). Point the seam at
+	// the stub path the rest of this suite uses.
+	prevLook := codexLookPath
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	t.Cleanup(func() { codexLookPath = prevLook })
+
 	calls := 0
 	prev := codexReviewRPC
 	codexReviewRPC = func(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
@@ -88,6 +97,12 @@ func TestCodexAudit_CouldNotRunRetriesOnce(t *testing.T) {
 // that produced a verdict never retries.
 func TestCodexAudit_SuccessVerdictRetriesNever(t *testing.T) {
 	root := newProbeProject(t, "SPEC-CNR-914")
+	// Card t1632 CI repair: same binary-resolution seam stub as the retry-once
+	// test — the handler's LookPath must not depend on an installed codex.
+	prevLook := codexLookPath
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	t.Cleanup(func() { codexLookPath = prevLook })
+
 	calls := 0
 	prev := codexReviewRPC
 	codexReviewRPC = func(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {

@@ -803,6 +803,36 @@ The landing re-audit loop ran 8 audits (receipts rcpt-99ea6bee74f2473b25362a18 �
 - **t1632-DEBT-1** (rcpt-bf235d5b5ca7f537978e97c6, internal/hook/failure_observer.go:65, P2): the M1 policy-refusal exclusion matches `{"refused":true}` as TEXT, so a failed Bash command or test output that merely QUOTES that JSON is excluded from the usage log and lessons inbox. Fix direction: structurally verify the payload is an actual MCP tool refusal before excluding. Follow-up card candidate.
 - **t1632-DEBT-2** (same receipt, internal/cli/mcp_convergence.go:727, P2): the audit_multi GLM leg does not carry the `truncated` / `excluded_untracked` material marks that the standalone `glm_audit` records (M6) — a large-diff GLM leg reports no material truncation through the convergence path. Fix direction: share the standalone collector and preserve the marks on the per-backend convergence result. Follow-up card candidate.
 
+### CI repair round — PR #1894 main-base re-target (card t1632, branch WT-3-2-0-2)
+
+CI run 39841385871 (+ spec-lint run 39841386342, CodeQL) on HEAD 1d4bf5773b (the origin/main a1762cabe1 absorb for the main-base PR re-target) failed 9 checks. Classification and disposition:
+
+| # | Check | Cause | Class | Disposition |
+|---|-------|-------|-------|-------------|
+| 1 | TestDocsSiteProjectRootMatchesServer (en/ja/ko/zh) | docs-site mcp-server pages still listed the 9 retired factory_msg_*/session_msg_* tools (45 vs the 36 tools/list serves) — the release-absorb's missed surface | card-caused | FIXED: removed the 9 tools + the two retired messaging sections from all 4 locale pages; count phrases 45→36 per locale; test's locale phrase map updated to match |
+| 2 | TestAuditLagUsesBinlagSeam | sweep: `integration.go:317` MISSING / NEW hit `integration.go:258`. Verified the same t1576 doc mention (the "merge-base ..HEAD … exit status 128" quote) already sat at :258 at the release-head absorb e80010e89c — the :317 baseline predates the absorb's final conflict resolution. Moved coordinate, NOT a new comparison (mcp_review_material.go:227 still exact) | card-caused (moved coordinate) | FIXED: map entry re-measured :317→:258 with dated comment |
+| 3 | TestCodexAudit_CouldNotRunRetriesOnce / SuccessVerdictRetriesNever | the audit handler resolves the codex binary via `codexLookPath` BEFORE the stubbed `codexReviewRPC` seam — on CI no codex is installed, so the real LookPath failed-closed first (calls=0). Green locally only where an operator codex exists | card-caused (M6 test env dependence) | FIXED: both tests stub `codexLookPath` → /fake/codex (the required-block test's pattern) |
+| 4 | TestCodexReviewStderrTailSurvivesFailedOpen / TestCodexTurnReview_ContextEnded_DiscardsPartial | the REQ-MN-009 containment listing (`codexAuditMCPList`) runs a REAL `codex mcp list` before the session open — /bin/sh and /fake/codex failed the fork/exec there. Not linux-specific: reproduces on darwin too | card-caused (unconditional containment, r4) | FIXED: both tests install `stubCodexContainmentListing(t)` (the withCodexSession rule) |
+| 5 | TestFactoryEligiblePullRefusalGrammar | the card's M1 MCP stale-run check (`mcpStaleRunCheck` → `factorymsg.ValidateActiveRun`) refuses an explicit run id with no active runs row, while the CLI surface tolerates a missing row — the t1914 grammar test's fixture never seeds fcRun active | card-caused (M1 wiring vs absorbed t1914 test) | FIXED: test seeds `sdSeedRun(t, root, fcRun, "active")` (the documented sdMoaiFixture convention). NOTE: the CLI/MCP missing-row semantic divergence (factoryRunRowNotActive tolerates, ValidateActiveRun refuses) remains — follow-up candidate |
+| 6 | Lint (gofmt) | `internal/auditreceipt/receipt_state_root_test.go` + `internal/runtime/audit_cache.go` unformatted — both are this card's own files (M6 / card-review commit c292a7a8d6) | card-caused | FIXED: gofmt -w (comment alignment / brace-comment spacing only) |
+| 7 | CodeQL (1 high) | `internal/cli/mcp_codex.go:918` `make([]string, 0, len(disable)+2)` — allocation-size arithmetic flagged as potential overflow; line from the card's own M3 commit 5e468bce12 | card-caused | FIXED: capacity dropped the +2 arithmetic (append grows when the moai pair survives) |
+| 8 | spec-lint | `baseline: EXCEEDED — StatusTransitionInvalid: recorded 0 -> current 1 (+1)` (baseline recorded at d5638ba81, 2026-09-24) — exactly the campaign-wide known finding (main itself carries it; campaign card t1929 owns the repair). Local `go test ./internal/spec -count=1 -run TestLint` → ok | campaign-common | DOCUMENTED, not fixed here |
+| 9 | graph-freshness | `moai graph check`: codemaps layer verdict=stale, described-source-diff 47 > threshold 40, stamp bf0a35f10 (main's t1840 merge). main's own Graph Freshness run at a1762cabe is GREEN (run 39839110681) — the 47 described-worthy files are this card's diff. codemaps content is LLM-curated (`/moai codemaps`); only the provenance stamp is mechanical — restamping without regenerating content would falsify freshness | card-caused | NOT fixed in this test-only repair round — owned by the card's landing/sync codemaps regeneration (the t1693 precedent), before or at landing |
+
+Verification batch (verbatim, this tree, HEAD 1d4bf5773b + working repairs, this run):
+
+- `go build ./...` → exit 0
+- `GOOS=linux GOARCH=amd64 go build ./...` → exit 0
+- `GOOS=linux go vet ./internal/cli` → exit 0
+- `go test ./internal/cli -run 'TestDocsSiteProjectRootMatchesServer|TestAuditLagUsesBinlagSeam|TestCodexAudit_CouldNotRunRetriesOnce|TestCodexAudit_SuccessVerdictRetriesNever|TestCodexReviewStderrTailSurvivesFailedOpen|TestCodexTurnReview_ContextEnded_DiscardsPartial|TestFactoryEligiblePullRefusalGrammar' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 5.311s`
+- `go test ./internal/template -run 'TestBinding' -count=1` → `ok ... 1.355s`
+- `go test ./internal/auditreceipt ./internal/runtime -count=1` → both ok
+- `go test ./internal/cli -run 'Containment|GateExposure|MCPDisable|CodexSandbox' -count=1` → ok
+- `gofmt -l` on the three touched Go files → empty
+- docs-site 4-locale parity: en/ja/ko/zh each h2=8 h3=17 lines=299 (identical)
+
+Gaps: the expected-CI verdict for checks 8 (spec-lint) and 9 (graph-freshness) remains RED on the next push by classification — both documented above, neither repaired in this round. CodeQL's re-run verdict and the full-suite CI verdict are PENDING at report time (the push is the deliverable).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true

@@ -914,8 +914,11 @@ func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]s
 	}
 	// Drop the moai disable pair: the disable args stub EVERY listed server,
 	// and the moai server is the one the gate session keeps — its gate
-	// exposure rides the appended args override instead.
-	kept := make([]string, 0, len(disable)+2)
+	// exposure rides the appended args override instead. The capacity skips
+	// the +2 headroom arithmetic — append grows the slice when the moai pair
+	// survives, and the addition was CodeQL's overflow finding on this
+	// allocation (card t1632 CI repair).
+	kept := make([]string, 0, len(disable))
 	moaiListed := false
 	for i := 0; i < len(disable); i++ {
 		if disable[i] == "-c" && i+1 < len(disable) && strings.Contains(disable[i+1], "mcp_servers.moai.") {

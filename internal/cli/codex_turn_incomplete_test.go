@@ -104,6 +104,11 @@ func TestCodexTurnReview_ContextEnded_DiscardsPartial(t *testing.T) {
 	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	// Card t1632 CI repair: the REQ-MN-009 containment listing runs a REAL
+	// `codex mcp list` before the session opens, so /fake/codex failed the
+	// fork/exec there and the turn never started. Stub it empty — the same
+	// rule withCodexSession applies — so the cancellation subject is reached.
+	stubCodexContainmentListing(t)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

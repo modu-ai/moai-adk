@@ -38,11 +38,14 @@ var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n
 
 func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	declared := toolsDeclaringProjectRoot(t)
+	// Card t1632 CI repair (PR #1894): the release absorb retired the
+	// factory_msg_* / session_msg_* tools server-side, so the served
+	// project_root set dropped from 45 to 36 and the pages were reconciled.
 	locales := map[string]string{
-		"en": "Forty-five tools",
-		"ko": "45개 도구",
-		"ja": "45個のツール",
-		"zh": "45 个工具",
+		"en": "Thirty-six tools",
+		"ko": "36개 도구",
+		"ja": "36個のツール",
+		"zh": "36 个工具",
 	}
 	for locale, countPhrase := range locales {
 		t.Run(locale, func(t *testing.T) {
