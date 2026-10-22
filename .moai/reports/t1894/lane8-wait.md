@@ -24,3 +24,11 @@ Source: leader message (relaying operator delegation; jev MCP unavailable, leade
 Condition: if a new D29+ blocker appears, NO further exception — switch to the split (`plan-hold.md` option B).
 Reason given: small, precise candidate fix; independently reproduced by lane and auditor; same-day precedents of the same shape.
 Lane action: proceed to plan repair; wait is closed.
+
+## Plan audit iter4 result (2026-10-22, lane-8)
+
+Verdict file: `.moai/reports/t1894/plan-audit-iter4.md` — **PASS 0.91** (Tier L threshold 0.85), blocking_count 0, required codex gate pass, receipt `rcpt-53fe87f0509e1f8019bc86e3`, audited_sha `a2dd9f15671ff349a2479a88810e9c464a913437`, plan-artifact hash `0daae3d5fa87edd5406fc295e87eda87243fa8ad20af7b0ae73290782a05b626`. D28 closed. New findings D29/D30 (wording) and D31 (attribution note) are optional and non-blocking.
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3 ladder_path=①disk-evidence — the leader's condition "new D29+ => split" is read as a new BLOCKING defect (FAIL); D29-D31 are optional non-blocking, so no split. The plan stage ends PASS.
+
+Next gate: plan -> run Kickoff. Q7 (FOUNDER row, empty) still blocks the AUTONOMOUS Kickoff form (spec/handoff: "blocks only the autonomous Kickoff"); that is operator-held (keep-set). Run phase also waits on leader slot order. Lane does not enter run until the Kickoff gate is met.
