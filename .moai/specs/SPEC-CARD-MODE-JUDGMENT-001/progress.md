@@ -216,8 +216,8 @@ sync_heads_up: "acceptance.md holds 21 distinct AC-looking identifiers (AC-ALB-0
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: ea7b93c08553339262f4e99db615b0ab7192d061
-sync_status: complete
+sync_commit_sha: pending-backfill   # corrective sync commit; the first sync commit ea7b93c085 was audited and failed (sync-audit.md, 0.80)
+sync_status: complete   # corrective sync after the iter-1 audit FAIL
 ac_source: .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/acceptance.md   # tier L
 b12_self_test_a: pass   # pre-emission grep -c 'SPEC-CARD-MODE-JUDGMENT-001' CHANGELOG.md printed 0 before the entry was written
 b12_self_test_b: pass   # REQ-MJ-001..017 = 17 distinct ids in spec.md; AC-MJ-001..020 = 20 distinct ids in acceptance.md; the entry states 17 and 20 (AC-MJ-015 named as the leader's criterion). The default-prefix AC- sweep reads 21 only because an edge case cites AC-ALB-021; not used for the count
@@ -230,6 +230,12 @@ frontmatter_status_transitions:
 canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
 mx_tag_validation: "not-applicable - documents only, no source file changed, no @MX tag added or changed"
 codemaps_readme_docs_site: "deliberately not touched - no user-facing feature and no code changed"
+corrective_sync:
+  s1: "fixed by the run phase in 45270e3ef3 (D transition boundary follows the free-lane definition), after SPEC amendments 8b9f610b91, 0fca8e0e90, 80a7dc041b"
+  s2: "resolved - AC-MJ-020(b) is green with the sync CHANGELOG.md admitted by SPEC amendment 80a7dc041b; run evidence ff41cde331 shows all 19 owned ACs green, E-020b unexpected-paths 0"
+  s3: "corrected - the CHANGELOG entry no longer claims a mode-judgment pointer in factory-dispatch-core.md; it names the pointers in factory-dispatch.md and the gtd workflow, the core stub's reconciliation clause and cron-scope tail, and the three mid-run amendments; counts stay 17 REQ and 20 AC-MJ"
+  s4: "left as the pre-disclosed R-9 operator-held residual (polling-cron wording versus auto-semantics section 14)"
+  s5: "minor, accepted"
 evidence: .moai/reports/t1894/verdict.md
 gaps:
   - "AC-MJ-015 (lane acknowledgement) is the leader's and is not recorded here"
