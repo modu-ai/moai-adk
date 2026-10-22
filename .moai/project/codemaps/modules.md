@@ -649,3 +649,12 @@ $ find internal cmd pkg -name '*.go' -not -name '*_test.go' -exec ls -l {} + | s
 
 > **t1278 판에서 확정한 소멸 경위(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 — 전체 경로는 음성 인용으로 이 줄에만 남긴다).**
 > `internal/cli/factory_lane_handoff.go` · `internal/cli/factory_lane_handoff_bind.go` · `internal/cli/factory_lane_handoff_recover.go` · `internal/cli/factory_lane_handoff_switch.go` 4형제와 `internal/cli/codex_factory.go` · `internal/cli/codex_kanban.go` 가 트리에서 사라졌다. 릴로케이션이 옮기던 헤드리스 codex 세션 자체가 factory 에 참여하지 않게 되면서 그 왕복 경로가 없어졌기 때문이며, `_bind.go` 의 책임(헤드리스 rebind)은 계승되지 않고 기능과 함께 은퇴했다 — 핸드오프 상태는 이제 `internal/factorymsg` Store API 와 훅 쪽 대화형 bind(`internal/hook/factory_handoff_bind.go`, 생존)로만 움직인다.
+
+
+## Windows 접근 정책과 SQLite 진단 증거 — PR1888
+
+`internal/cli/clean_home.go`의 `secureHomeDirectories`는 디렉터리에 `internal/privatefile/existing.go`의 `SecureDirectoryNoPropagation`을 적용하고, 일반 파일은 각각 별도로 좁힌다. Windows 구현 `internal/privatefile/existing_windows.go`는 기존 자식 객체로 DACL을 자동 전파하지 않도록 디렉터리를 배타적으로 열지만, 향후 자식의 OICI 상속과 보호된 owner-only 정책의 엄격한 readback은 유지한다. 일반 파일의 캡처한 hardlink 수가 1이 아니면 정책 변경을 거절하며, symlink를 따라 외부 사용자 자산을 바꾸지 않는다. 이는 모든 하위 파일을 일괄 비공개로 만들었다는 실행 결과가 아니라 각 객체를 확인하는 구현 경계다.
+
+`internal/cli/codex_config_policy_windows.go`는 Codex 설정을 교체하기 전에 원본 OWNER SID·DACL·보호 설정과 readonly 속성을 staging에 복원한다. 열린 staging 핸들에 OWNER와 DACL을 함께 적용하고 같은 OWNER SID가 읽히는지 확인한다. 원래 OWNER를 복원할 수 없으면 게시를 거부하며, 새 privilege를 활성화하거나 ownership을 탈취하지 않는다. `internal/cli/codex_config_publication_windows_test.go`는 복원 실패 시 원본 바이트·정책 보존과 staging 제거를 검증한다.
+
+기존 `.github/workflows/sqlite-pinned-sidecar-diagnostic.yml`은 정확한 head의 합성 실험을 유지하고 job 예산을 15분으로 제한한다. `scripts/ci-census/require-named-test.py`는 해당 패키지의 `TestSQLitePinnedSidecarLifetime` run·pass·package pass가 순서대로 각각 한 번 있어야 영수증을 내며, fail 또는 skip 이벤트와 빈 실행을 거절한다. 원래 SQLite strict·pin·PERSIST_WAL 실험은 이 변경으로 수정하지 않았다. 이 진단 영수증은 필수 CI·독립 감사·실제 운영 DB의 안전 판정을 대체하지 않는다.
