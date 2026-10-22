@@ -322,7 +322,8 @@ Detect current branch type and route accordingly. The route list is normative an
 4. Merge the branch there: `git merge --no-ff <branch>`
 5. Resolve any conflicts the merge raises; an unresolvable conflict is reported back to the coordinating session rather than forced
 6. Exit the integration worktree and report the branch name, merge commit, and evidence path. The landings reach the remote in the coordinating session's batch pull request from `release/main-batch-YYYYMMDD` — the lane's responsibility ends at the local merge
-7. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
+7. Precondition — before stopping, judge where the trunk branch is checked out: when only the primary checkout holds the trunk branch, deliver by the pull-request edge instead — `moai factory complete` opens the card's pull request and the coordinating session merges it (no integration worktree exists to enter)
+8. Stop and report only when no worktree holds the trunk branch at all — provisioning the dedicated integration worktree is the coordinating session's act
 
 Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 

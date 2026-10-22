@@ -43,9 +43,20 @@ func factoryPrimaryHoldsTarget(root, branch string) bool {
 // of the integration window (REQ-AGT-006, rescope 0.4.0; design.md
 // section 1, candidate B).
 func factoryAgenticTrunkPrimaryRoute(root string) bool {
-	cfg := config.LoadGitFlowIntegrationConfig(root)
+	return factoryAgenticTrunkPrimaryRouteIn(root, root)
+}
+
+// factoryAgenticTrunkPrimaryRouteIn is the two-root form: the workflow
+// JUDGMENT reads the config at configRoot — the common/lock root, whose
+// git-strategy.yaml every tree of the project shares — while the holder
+// LOOKUP probes the worktree list of probeRoot, the tree the lane stands
+// in (card-review round 1, finding 1: a card worktree carries no
+// git-strategy.yaml of its own, so a config read at the card tree read
+// zero and misrouted a primary-only project to the local-merge window).
+func factoryAgenticTrunkPrimaryRouteIn(configRoot, probeRoot string) bool {
+	cfg := config.LoadGitFlowIntegrationConfig(configRoot)
 	if !cfg.Manual || !cfg.AgenticTrunkWorkflow || cfg.IntegrationTarget == "" {
 		return false
 	}
-	return factoryPrimaryHoldsTarget(root, cfg.IntegrationTarget)
+	return factoryPrimaryHoldsTarget(probeRoot, cfg.IntegrationTarget)
 }

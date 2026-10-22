@@ -414,6 +414,15 @@ func TestAgenticTrunkCompletePrimaryPrEdge(t *testing.T) {
 		if out, err := checkout.CombinedOutput(); err != nil {
 			t.Fatalf("checkout main in %s: %v\n%s", repo, err, out)
 		}
+		// The card tree's own config is the stale half of card-review
+		// finding 1: the routing JUDGMENT reads the common root's config
+		// and only the holder lookup comes from the tree the lane stands
+		// in. Remove the repo copy and stamp the common root, so the
+		// judgment cannot pass by reading the cwd.
+		if err := os.Remove(filepath.Join(repo, ".moai", "config", "sections", "git-strategy.yaml")); err != nil {
+			t.Fatalf("remove the card tree's stale config: %v", err)
+		}
+		writeAgenticTrunkConfig(t, lockRoot)
 		out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "main", "--session", "sess-lane-9", "--json")
 		if err != nil {
 			t.Fatalf("merge ready: %v", err)
@@ -422,7 +431,7 @@ func TestAgenticTrunkCompletePrimaryPrEdge(t *testing.T) {
 			t.Fatalf("ready did not clear: %s", out)
 		}
 		if lock := readLockRoot(t, lockRoot); lock.Held() {
-			t.Errorf("merge ready took the window on the primary route: %+v", lock)
+			t.Errorf("merge ready took the window on the primary route (card tree without own config): %+v", lock)
 		}
 	})
 }
