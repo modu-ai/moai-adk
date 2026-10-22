@@ -327,8 +327,7 @@ func lockLedger(path string) (func(), error) {
 		if !os.IsExist(err) {
 			return nil, err
 		}
-		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > ledgerLockStale {
-			_ = atomicfile.RemoveFile(lockPath)
+		if breakStaleLedgerLockObserved(lockPath, nil) {
 			continue
 		}
 		if time.Now().After(deadline) {
@@ -336,6 +335,29 @@ func lockLedger(path string) (func(), error) {
 		}
 		time.Sleep(ledgerLockPoll)
 	}
+}
+
+// The observer permits a deterministic stale-owner handoff at the removal
+// boundary without replacing process-global filesystem behavior.
+// @MX:NOTE: Judge age and remove through one handle; retries must not reclaim a successor.
+func breakStaleLedgerLockObserved(lockPath string, observed func()) bool {
+	f, err := openLedgerLockForRelease(lockPath)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			slog.Warn("close stale audit ledger lock", "error", closeErr)
+		}
+	}()
+	fi, err := f.Stat()
+	if err != nil || time.Since(fi.ModTime()) <= ledgerLockStale {
+		return false
+	}
+	if observed != nil {
+		observed()
+	}
+	return removeOpenedLedgerLock(f) == nil
 }
 
 // newRandomToken mints a random hex id: the per-holder lock token a release

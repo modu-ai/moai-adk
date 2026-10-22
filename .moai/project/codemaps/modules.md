@@ -2,9 +2,9 @@
 
 ## Windows 감사 락 해제의 소유권 경계 — PR #1883
 
-`internal/auditreceipt/store.go`는 ledger 토큰을 읽은 파일을 해제까지 열어 둔다. `internal/auditreceipt/ledger_lock_release_windows.go`는 기존 `golang.org/x/sys/windows` 의존성으로 읽기·삭제 권한의 핸들을 열고 `SetFileInformationByHandle(FileDispositionInfo)`로 그 객체만 삭제한다. 오래된 소유자가 읽은 뒤 이름이 재사용되어도 새 claim을 삭제하지 않는다. `internal/auditreceipt/ledger_lock_release_unix.go`는 POSIX 경로 기반 unlink 전에 `os.SameFile`로 읽은 객체와 현재 경로를 대조한다. POSIX 대조와 unlink 사이가 원자적이라는 보장은 추가하지 않는다.
+`internal/auditreceipt/store.go`는 ledger 토큰을 읽은 파일을 해제까지 열어 둔다. `breakStaleLedgerLockObserved`는 오래됨을 경로명에서 미리 판정하지 않고 실제로 연 핸들의 `f.Stat`으로 판정한 뒤 같은 핸들을 플랫폼 삭제 함수에 넘긴다. Windows open의 공유 오류 재시도 중 이름이 후속 claim으로 바뀌면 새로 열린 객체의 나이를 다시 판정하며, 삭제 재시도는 이미 연 객체의 identity를 유지한다. `internal/auditreceipt/ledger_lock_release_windows.go`는 기존 `golang.org/x/sys/windows` 의존성으로 읽기·삭제 권한의 핸들을 열고 `SetFileInformationByHandle(FileDispositionInfo)`로 그 객체만 삭제한다. 오래된 소유자가 읽은 뒤 이름이 재사용되어도 새 claim을 삭제하지 않는다. `internal/auditreceipt/ledger_lock_release_unix.go`는 POSIX 경로 기반 unlink 전에 `os.SameFile`로 읽은 객체와 현재 경로를 대조한다. POSIX 대조와 unlink 사이가 원자적이라는 보장은 추가하지 않는다.
 
-`internal/atomicfile/claim_windows.go`의 `CreateExclusive` 삭제 공유는 바꾸지 않는다. 장기 보유 state lock과 reclaim guard의 열린 핸들·삭제 대기 처리 경계는 유지하며, 게시 직후 닫는 감사 claim의 해제만 읽은 객체의 identity에 묶는다. 이 설명은 소스 계약이며 Windows 실행 성공 판정은 원격 CI가 담당한다.
+`internal/atomicfile/claim_windows.go`의 `CreateExclusive` 삭제 공유는 바꾸지 않는다. 장기 보유 state lock과 reclaim guard의 열린 핸들·삭제 대기 처리 경계는 유지하며, 게시 직후 닫는 감사 claim의 해제와 stale 판정·삭제를 실제로 연 객체의 identity에 묶는다. 이 설명은 소스 계약이며 Windows 실행 성공 판정은 원격 CI가 담당한다.
 
 ## 현재 변경 경계 — bf0a35f10
 
