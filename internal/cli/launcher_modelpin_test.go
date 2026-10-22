@@ -279,6 +279,7 @@ func TestUserScopeSettingsPathFollowsConfigDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv(config.EnvClaudeConfigDir, "")
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	if got, want := userScopeSettingsPath(), filepath.Join(home, ".claude", "settings.json"); got != want {
 		t.Errorf("without CLAUDE_CONFIG_DIR: path = %q, want %q", got, want)
 	}

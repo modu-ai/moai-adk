@@ -176,12 +176,17 @@ func runStop(t *testing.T, stdin string) hookRunResult {
 }
 
 func validPayload(ev hook.EventType, root string) string {
+	input := map[string]any{"hook_event_name": ev, "session_id": "s", "cwd": root}
 	switch ev {
 	case hook.EventPreToolUse, hook.EventPostToolUse:
-		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":"` + root + `","tool_name":"Bash","tool_input":{"command":"true"}}`
-	default:
-		return `{"hook_event_name":"` + string(ev) + `","session_id":"s","cwd":"` + root + `"}`
+		input["tool_name"] = "Bash"
+		input["tool_input"] = map[string]string{"command": "true"}
 	}
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		panic(err) // Only strings and string-keyed maps are encoded above.
+	}
+	return string(encoded)
 }
 
 // --- expectations ----------------------------------------------------------

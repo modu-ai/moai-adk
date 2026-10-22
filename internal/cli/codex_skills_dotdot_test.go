@@ -52,10 +52,10 @@ func TestCodexSkillPathDotDotSegmentRefused(t *testing.T) {
 		{"clean_home_relative", "~/ok/SKILL.md", codexPathHomeRelative},
 		{"dotdot_prefixed_name_is_not_a_segment", "~/..ok/SKILL.md", codexPathHomeRelative},
 		{"plain_relative", "rel/SKILL.md", codexPathRelative},
-		{"absolute", "/etc/x", codexPathAbsolute},
+		{"absolute", codexAbsolutePathFixture(t, "/etc/x"), codexPathAbsolute},
 		// IsAbs stays FIRST, exactly as it does for a backslash-bearing
 		// absolute: an absolute declaration means what it literally says.
-		{"absolute_with_dotdot", "/tmp/a/../b", codexPathAbsolute},
+		{"absolute_with_dotdot", codexAbsolutePathFixture(t, "/tmp/a/../b"), codexPathAbsolute},
 	}
 
 	for _, tc := range cases {

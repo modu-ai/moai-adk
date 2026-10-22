@@ -44,12 +44,12 @@ var emptyTargetWants = map[string][]string{
 	},
 	"no git-strategy.yaml": {
 		"cannot read",
-		".moai/config/sections/git-strategy.yaml",
+		filepath.Join(".moai", "config", "sections", "git-strategy.yaml"),
 		"absent or not valid YAML",
 	},
 	"unparseable git-strategy.yaml": {
 		"cannot read",
-		".moai/config/sections/git-strategy.yaml",
+		filepath.Join(".moai", "config", "sections", "git-strategy.yaml"),
 		"absent or not valid YAML",
 	},
 }

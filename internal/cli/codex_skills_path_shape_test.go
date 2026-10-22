@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -96,10 +97,10 @@ func TestCodexSkillPathBackslashSymmetry(t *testing.T) {
 // move (AC-CHB-003). Only the home-relative-with-backslash cell changes.
 //
 // The first row is the load-bearing one. "IsAbs stays first" cannot be checked
-// on darwin with a Windows-shaped C:\... path — filepath.IsAbs is false for it
-// here, so it lands in oddly-formed under every candidate ordering and the
-// check would be vacuous. A POSIX absolute carrying a backslash is the
-// discriminant that actually works on this host: IsAbs is true, so the cell
+// with a foreign-platform absolute path — filepath.IsAbs can be false for it,
+// so it lands in oddly-formed under every candidate ordering and the
+// check would be vacuous. A native absolute carrying a backslash is the
+// discriminant on every host: IsAbs is true, so the cell
 // stays absolute — and goes red the moment the backslash check is hoisted
 // above IsAbs (AC-CHB-009 observes exactly that).
 func TestCodexSkillPathPreservedShapes(t *testing.T) {
@@ -108,7 +109,7 @@ func TestCodexSkillPathPreservedShapes(t *testing.T) {
 		path string
 		want codexSkillPathShape
 	}{
-		{"posix_absolute_with_backslash", `/tmp/a\b`, codexPathAbsolute},
+		{"native_absolute_with_backslash", codexAbsolutePathFixture(t, `/tmp/a\b`), codexPathAbsolute},
 		{"other_user_home", "~someone/SKILL.md", codexPathOddlyFormed},
 		{"plain_relative", "rel/SKILL.md", codexPathRelative},
 		{"clean_home_relative", "~/ok/SKILL.md", codexPathHomeRelative},
@@ -240,7 +241,7 @@ func TestCodexBackslashRefusalIsSymmetricAcrossReadAndWrite(t *testing.T) {
 // argument is the proof the stub took effect.
 func TestJudgeCodexSkillEntryBackslashHomeStillExpands(t *testing.T) {
 	const backslashHome = `C:\Users\x`
-	const want = backslashHome + "/ok/SKILL.md"
+	const want = backslashHome + string(filepath.Separator) + "ok" + string(filepath.Separator) + "SKILL.md"
 
 	origHome := codexUserHomeDir
 	codexUserHomeDir = func() (string, error) { return backslashHome, nil }

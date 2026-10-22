@@ -1268,7 +1268,7 @@ func TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Fatalf("absent mirror on a wired project status = %v, want Warn: %+v", check.Status, check)
 	}
-	for _, want := range []string{".agents/skills", testMirrorRedeployDirective} {
+	for _, want := range []string{filepath.Join(".agents", "skills"), testMirrorRedeployDirective} {
 		if !strings.Contains(check.Message, want) {
 			t.Errorf("Message missing %q (Detail is --verbose-only): %q", want, check.Message)
 		}
@@ -1583,7 +1583,7 @@ func TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters(t *testing.T) {
 	if check.Name != "Codex Wiring" {
 		t.Errorf("the mirror observation renamed the row: %q", check.Name)
 	}
-	if !strings.Contains(check.Message, ".agents/skills") {
+	if !strings.Contains(check.Message, filepath.Join(".agents", "skills")) {
 		t.Errorf("summary register empty of the mirror observation: %q", check.Message)
 	}
 	if !strings.Contains(codexDetailText(check), testMirrorDetailPhrase) {

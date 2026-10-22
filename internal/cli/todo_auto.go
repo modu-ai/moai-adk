@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,8 +45,8 @@ type autoRegistryEntry struct {
 }
 
 // autoLiveness carries the two owner-measurement channels (design D-4). Both
-// are seams so tests inject fixture state; the production wiring shells out
-// to the session registry and lsof, exactly like the worktree-move guard.
+// are seams so tests inject fixture state; the production wiring reads the
+// session registry and lsof and uses the shared native process-liveness probe.
 //
 // Decision rule: EITHER channel showing life means the owner is alive — a
 // false "alive" costs a skipped card, a false "dead" steals a living
@@ -74,12 +73,7 @@ func newAutoLiveness() autoLiveness {
 			return out, nil
 		},
 		processCWDs: activeProcessCWDs,
-		pidAlive: func(pid int) bool {
-			if pid <= 0 {
-				return false
-			}
-			return exec.Command("kill", "-0", fmt.Sprint(pid)).Run() == nil
-		},
+		pidAlive:    factory.FactoryProcessAlive,
 	}
 }
 

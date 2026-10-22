@@ -77,7 +77,7 @@ func TestCodexRoleLoadNegativeControl(t *testing.T) {
 	pos, neg := judge(positive), judge(negative)
 	t.Logf("AC-DHR-012 role-load clause, every role loaded: %s", strings.TrimSpace(pos))
 	t.Logf("AC-DHR-012 role-load clause, %s not loaded: %s", unloaded, strings.TrimSpace(neg))
-	if pos != "true\n" || neg != "false\n" {
+	if strings.ReplaceAll(pos, "\r\n", "\n") != "true\n" || strings.ReplaceAll(neg, "\r\n", "\n") != "false\n" {
 		t.Fatalf("judge clause printed %q (all loaded) and %q (one unloaded), want true and false", pos, neg)
 	}
 }

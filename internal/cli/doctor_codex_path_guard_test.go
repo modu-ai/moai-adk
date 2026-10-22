@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -34,8 +35,8 @@ import (
 // contains '/' and the expected form contains none, so the inequality half of
 // the assertion is non-vacuous by inspection.
 func TestCodexStaleSkillFinding_AbsoluteStatTargetIsConvertedForm(t *testing.T) {
-	const declared = "/Users/u/skills/probe/SKILL.md"
-	const wantStat = `\Users\u\skills\probe\SKILL.md`
+	declared := codexAbsolutePathFixture(t, "/Users/u/skills/probe/SKILL.md")
+	wantStat := strings.ReplaceAll(declared, "/", `\`)
 
 	overrideSeparator(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: declared, EnabledKey: "true"}})
@@ -109,7 +110,13 @@ func TestCodexStaleSkillFinding_ExtendedLengthStatTargetIsConvertedForm(t *testi
 // codexPathOddlyFormed branches `continue` BEFORE reaching osStatFn, so the
 // recorder counts 0 under the correct order and under the forbidden one alike.
 func TestCodexStaleSkillFinding_ClassificationPrecedesConversion(t *testing.T) {
-	const declared = "C:/Users/u/SKILL.md"
+	declared := "C:/Users/u/SKILL.md"
+	if filepath.IsAbs(declared) {
+		// A drive-rooted declaration is native absolute on Windows. A
+		// drive-less rooted declaration instead keeps the relative-vs-oddly
+		// formed discriminator the test needs before separator conversion.
+		declared = "/Users/u/SKILL.md"
+	}
 
 	overrideSeparator(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: declared, EnabledKey: "true"}})

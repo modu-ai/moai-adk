@@ -3297,6 +3297,11 @@ func requireQueuePicked(root, cardID string) error {
 // created after assign) falls back to filepath.Abs. t1751 N1 (a) composes:
 // the input is accepted as typed; only the stored spelling is canonical.
 func canonicalWorktreePath(input string) (string, error) {
+	// Refuse before Abs can normalize the typed whitespace into a different
+	// spelling and hide the persist layer's trim-stability violation.
+	if strings.TrimSpace(input) != input {
+		return "", fmt.Errorf("worktree path %q is not trim-stable: the factory record trims stored paths, so this spelling cannot be stored without aliasing a different tree", input)
+	}
 	abs, err := filepath.Abs(input)
 	if err != nil {
 		return "", err
