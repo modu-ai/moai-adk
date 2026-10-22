@@ -69,15 +69,8 @@ func m001Apply(projectRoot string) error {
 		// Substitute the literal (bytes.ReplaceAll - exact match only).
 		newContent := bytes.ReplaceAll(content, []byte(hardcodedLiteral), []byte(replacement))
 
-		// Atomic write (temporary file + rename).
-		tmpPath := wrapperPath + ".tmp"
-		if err := os.WriteFile(tmpPath, newContent, mode); err != nil {
-			return fmt.Errorf("wrapper 쓰기 실패 %s: %w", wrapperPath, err)
-		}
-
-		// Atomic rename.
-		if err := os.Rename(tmpPath, wrapperPath); err != nil {
-			return fmt.Errorf("wrapper rename 실패 %s: %w", wrapperPath, err)
+		if err := writeM001Wrapper(wrapperPath, newContent, mode); err != nil {
+			return err
 		}
 
 		rewrittenCount++
