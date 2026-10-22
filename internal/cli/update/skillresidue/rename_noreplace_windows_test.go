@@ -8,6 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"unicode/utf16"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // REQ-UBR-017: held-directory operations must keep their identity after a
@@ -59,5 +63,35 @@ func TestWindowsNoReplaceRenameUsesHeldDirectories(t *testing.T) {
 	}
 	if got, err := os.ReadFile(filepath.Join(src, "payload")); err != nil || string(got) != "new" {
 		t.Fatalf("refused source = %q, %v", got, err)
+	}
+}
+
+// FILE_RENAME_INFORMATION includes a WCHAR[1] and native trailing padding.
+// The NT ABI requires sizeof(struct) plus the full non-terminated UTF-16 name,
+// even when a one-character destination would fit before that native minimum.
+func TestWindowsRenameInformationUsesNativeBufferLength(t *testing.T) {
+	for _, name := range []string{"b", "name.txt", "이름", "𐐷"} {
+		t.Run(name, func(t *testing.T) {
+			const root = windows.Handle(0x1234)
+			buf, err := renameInformationBuffer(root, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded := utf16.Encode([]rune(name))
+			nameBytes := len(encoded) * 2
+			minimum := int(unsafe.Sizeof(renameInformation{})) + nameBytes
+			if len(buf) < minimum {
+				t.Fatalf("native rename buffer length=%d, want at least sizeof+UTF16bytes=%d", len(buf), minimum)
+			}
+			info := (*renameInformation)(unsafe.Pointer(&buf[0]))
+			if info.ReplaceIfExists != 0 || info.RootDirectory != root || info.FileNameLength != uint32(nameBytes) {
+				t.Fatalf("rename policy/root/name length changed: %#v", info)
+			}
+			got := string(utf16.Decode(unsafe.Slice(&info.FileName[0], len(encoded))))
+			if got != name {
+				t.Fatalf("UTF-16 filename=%q, want %q", got, name)
+			}
+			t.Logf("native rename ABI: offset=%d sizeof=%d filename-bytes=%d buffer=%d", unsafe.Offsetof(info.FileName), unsafe.Sizeof(*info), nameBytes, len(buf))
+		})
 	}
 }

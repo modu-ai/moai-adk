@@ -6,6 +6,10 @@
 
 `internal/atomicfile/claim_windows.go`의 `CreateExclusive` 삭제 공유는 바꾸지 않는다. 장기 보유 state lock과 reclaim guard의 열린 핸들·삭제 대기 처리 경계는 유지하며, 게시 직후 닫는 감사 claim의 해제와 stale 판정·삭제를 실제로 연 객체의 identity에 묶는다. 이 설명은 소스 계약이며 Windows 실행 성공 판정은 원격 CI가 담당한다.
 
+## Windows skill residue 이동의 버퍼 경계 — PR #1883
+
+`internal/cli/update/skillresidue/rename_noreplace_windows.go`의 no-replace 이동은 열린 대상 디렉터리 핸들을 `RootDirectory`에 두고 `ReplaceIfExists=FALSE`인 `FileRenameInformation` 버퍼를 사용한다. 버퍼는 native 구조체 `sizeof`에 종결 NUL을 제외한 UTF-16 파일명 바이트를 더해 할당하고, `FileNameLength`에도 그 바이트 길이를 기록해 native tail padding과 한 글자 대상의 최소 길이를 보존한다. 이 버퍼 계약은 열린 상위 폴더의 이동 가능성이나 실제 Windows 실행 성공을 판정하지 않는다.
+
 ## 현재 변경 경계 — bf0a35f10
 
 `db0c514d3` 이후의 설명 대상 소스 283개를 현재 트리와 대조했다. 다음은 이 창에서 추가되거나 책임이 바뀐 모듈이다.

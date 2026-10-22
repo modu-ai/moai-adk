@@ -50,23 +50,10 @@ func noReplaceRenameAt(srcDir *os.File, src string, dstDir *os.File, dst string)
 		return err
 	}
 	defer windows.CloseHandle(h)
-	name, err := windows.UTF16FromString(dst)
+	buf, err := renameInformationBuffer(windows.Handle(dstDir.Fd()), dst)
 	if err != nil {
 		return err
 	}
-	type renameInformation struct {
-		ReplaceIfExists uint32
-		RootDirectory   windows.Handle
-		FileNameLength  uint32
-		FileName        [1]uint16
-	}
-	nameBytes := (len(name) - 1) * 2
-	offset := unsafe.Offsetof(renameInformation{}.FileName)
-	buf := make([]byte, int(offset)+nameBytes)
-	info := (*renameInformation)(unsafe.Pointer(&buf[0]))
-	info.RootDirectory = windows.Handle(dstDir.Fd())
-	info.FileNameLength = uint32(nameBytes)
-	copy(unsafe.Slice(&info.FileName[0], len(name)-1), name[:len(name)-1])
 	err = windows.NtSetInformationFile(h, &windows.IO_STATUS_BLOCK{}, &buf[0], uint32(len(buf)), windows.FileRenameInformation)
 	runtime.KeepAlive(dstDir)
 	err = moveError(err)
@@ -74,6 +61,30 @@ func noReplaceRenameAt(srcDir *os.File, src string, dstDir *os.File, dst string)
 		return fmt.Errorf("%w: %v", errNoReplaceUnsupported, err)
 	}
 	return err
+}
+
+type renameInformation struct {
+	ReplaceIfExists uint32
+	RootDirectory   windows.Handle
+	FileNameLength  uint32
+	FileName        [1]uint16
+}
+
+// The NT buffer contract includes sizeof(FILE_RENAME_INFORMATION) plus the
+// filename bytes. Offsetof(FileName)+bytes alone drops native trailing padding
+// and is too short for one-character destinations (22 < 24 on Windows/amd64).
+func renameInformationBuffer(root windows.Handle, dst string) ([]byte, error) {
+	name, err := windows.UTF16FromString(dst)
+	if err != nil {
+		return nil, err
+	}
+	nameBytes := (len(name) - 1) * 2
+	buf := make([]byte, int(unsafe.Sizeof(renameInformation{}))+nameBytes)
+	info := (*renameInformation)(unsafe.Pointer(&buf[0]))
+	info.RootDirectory = root
+	info.FileNameLength = uint32(nameBytes)
+	copy(unsafe.Slice(&info.FileName[0], len(name)-1), name[:len(name)-1])
+	return buf, nil
 }
 
 // removeDirAt marks only the opened, empty directory for deletion. The handle
