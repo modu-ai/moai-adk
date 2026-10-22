@@ -157,6 +157,13 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
   리더 라운드에서 관측.
 - **리더 후보 과제(보고 동봉)**: 4개 픽스처가 main 자체에서도 실패(통제실험 입증) — main 측 후속
   큐잉 대상. pid-reuse 부채 불변.
+- **CI 통제실험 판정 (10-23, dc6527c44e)**: PR #1893 실패 8건 전부 origin/main(bf0a35f10e) 재현 —
+  **브랜치 도입 실패 0건**, DATA RACE/panic/timeout 0건, graph-freshness는 공유 codemaps 부채로
+  리더 공통 수리 대상(수리 제외). main 고유 결함 5종 리더 큐잉(AGENTS.md 천장 초과·카탈로그 해시
+  drift·ALB 장부 행·ubuntu Bubblewrap·TodoSelection 조항).
+- **merged-pr (10-23)**: 리더가 #1869 공유 CI 수리(a1762cabe1)를 main에 병합 후 본 PR 병합 —
+  **merge commit 734f11a686** (리더 실측 보고). 병합 게이트: 독립 감사 PASS(rcpt-1d1ccbf) +
+  리더 라운드. 이 커밋으로 카드 생애주기 종료(merged-pr).
 
 ## CI 실패 통제실험 — 브랜치 도입분 0건 (10-23, 재임대 라운드)
 
