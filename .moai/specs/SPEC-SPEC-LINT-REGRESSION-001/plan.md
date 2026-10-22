@@ -1,7 +1,7 @@
 ---
 id: SPEC-SPEC-LINT-REGRESSION-001
 title: "Implementation plan — spec-lint baseline regression repair (status record + vacuous-assertion verification + green gate)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-10-23
 updated: 2026-10-23
 author: manager-spec
@@ -92,15 +92,15 @@ Expected: the StatusTransitionInvalid finding, `advisory` absent (false) — the
 Each report item names (a) the exact command, (b) the verbatim observed output, and (c) the tree SHA it was captured against. The M2 exit batch:
 
 1. AC matrix — every AC-SLR-NNN with its command and verbatim output.
-2. The gate verdict — the `--baseline` run's exit code and its increase/inventory lines, verbatim.
-3. The baseline diff — `git diff -- .moai/spec-lint-baseline.json` empty output against the repair-start commit.
+2. The gate verdict — the `--baseline` run's exit code, its `baseline: OK` verdict line, and its inventory line, verbatim. (The per-rule `recorded -> current` increase lines print only on an EXCEEDED verdict, `internal/cli/spec_lint.go:255-259`; a green run asserts their absence through the OK verdict and the exit code, never by quoting an unprinted line.)
+3. The baseline diff — `git diff <repair-start-sha> -- .moai/spec-lint-baseline.json` with empty output, where `<repair-start-sha>` is the repair-start commit SHA recorded at pre-flight and pinned in the report (N1 — the commit-pinned form, not a bare `git diff -- <path>`, which reads worktree-vs-index and misses a staged change).
 4. The pair census — the targeted JSON re-run showing zero StatusTransitionInvalid for `<ID>` and zero VacuousTestAssertion for the three SPECs.
 5. Gaps and residual risk stated explicitly — anything not re-observed on the repaired tree is a Gap, never a carry-over from the plan-phase census.
 
 ## §F — Milestones
 
 - **M1 — the status-record repair** (REQ-SLR-001..004; AC-SLR-001..004). Pre-flight re-observation; then the two forward commits of REQ-SLR-002 in order: (i) restore — `<ID>/spec.md` frontmatter `implemented` → `completed`, `updated:` refreshed, commit subject naming the record-repair nature and citing `8d10007ca9` and `fa1f04b9f4`; (ii) reopen — frontmatter `completed` → `in-progress`, `amendment_of: SPEC-PROGRESS-RECORD-IO-001` added, `updated:` refreshed, and the `## Amendments` sub-section appended to the body per REQ-SLR-003 (prior completed version v0.3.x-equivalent = the `8d10007ca9` close; `prior_completed_sha: 8d10007ca9804eeb58bcb0a34aca922989603198`; rationale: AC-CI-007 landing-flow CI evidence pending + spec-lint StatusTransitionInvalid record repair; scope: status-token correction of the `fa1f04b9f4` revert plus this amendment record). Progress record updated between commits.
-- **M2 — verification and the green gate** (REQ-SLR-005..008; AC-SLR-005..008). Build the linter from the repaired tree; run the targeted JSON (zero findings for `<ID>`), the three-SPEC VacuousTestAssertion sweep (zero), the full `--baseline` gate (exit 0, `StatusTransitionInvalid: recorded 0 -> current 0`, no new increases), and the baseline byte-identity diff. Record the release-branch propagation note (REQ-SLR-006).
+- **M2 — verification and the green gate** (REQ-SLR-005..008; AC-SLR-005..008). Build the linter from the repaired tree; run the targeted JSON (zero findings for `<ID>`), the three-SPEC VacuousTestAssertion sweep (zero), the full `--baseline` gate and observe the observable green form (exit 0, the `baseline: OK` verdict line, its inventory line, no increase lines anywhere in the output), and the baseline byte-identity diff in the commit-pinned form of §E item 3. Record the release-branch propagation note (REQ-SLR-006).
 - **M3 — close-out evidence.** The §E report assembled from M2's verbatim outputs; progress.md phase sections populated by the owning agents; nothing pushed.
 
 ## §G — Anti-Patterns
