@@ -99,7 +99,23 @@ func lockAnchorTree(t *testing.T, tree, reason string) {
 func observedLock(t *testing.T, tree string) session.LockInfo {
 	t.Helper()
 	locks := session.ParseWorktreeLocks(anchorGit(t, tree, "worktree", "list", "--porcelain"))
-	return locks[tree]
+	target, err := os.Stat(tree)
+	if err != nil {
+		t.Fatalf("inspect observed worktree: %v", err)
+	}
+	for path, lock := range locks {
+		listed, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("inspect Git-listed locked worktree %q: %v", path, err)
+		}
+		// Git's porcelain path and the caller's native path can spell the
+		// same directory differently. Observe the real object independently
+		// of the production path normalizer, never an arbitrary locked row.
+		if os.SameFile(target, listed) {
+			return lock
+		}
+	}
+	return session.LockInfo{}
 }
 
 // exitedPID returns the pid of a process that has already exited.
