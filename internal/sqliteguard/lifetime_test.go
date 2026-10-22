@@ -73,7 +73,9 @@ func TestConcurrentAdmissionNeverExceedsReservedCapacity(t *testing.T) {
 			o, err := m.reserve(string(rune('a' + i)))
 			if err == nil {
 				admitted.Add(1)
-				o.retain("synthetic", ErrRetained)
+				if err := o.retain("synthetic", ErrRetained); !errors.Is(err, ErrRetained) {
+					t.Errorf("retention diagnostic=%v", err)
+				}
 			} else if !errors.Is(err, ErrCapacity) {
 				t.Errorf("admission=%v", err)
 			}
@@ -197,7 +199,9 @@ func TestRawOutstandingResourceMakesCloseUncertain(t *testing.T) {
 		t.Fatal(err)
 	}
 	conn := dc.(*guardedConn)
-	conn.owner.addResource()
+	if err := conn.owner.addResource(); err != nil {
+		t.Fatal(err)
+	}
 	if err := conn.Close(); !errors.Is(err, ErrRetained) {
 		t.Fatalf("outstanding raw object Close=%v", err)
 	}

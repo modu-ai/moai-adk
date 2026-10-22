@@ -13,8 +13,10 @@ type connectionAPI interface {
 	driver.Conn
 	driver.SessionResetter
 	driver.Validator
-	driver.Execer
-	driver.Queryer
+	// Preserve the legacy method signatures without embedding deprecated
+	// interface names; callers can still discover the same structural APIs.
+	Exec(string, []driver.Value) (driver.Result, error)
+	Query(string, []driver.Value) (driver.Rows, error)
 	driver.Pinger
 	driver.ConnBeginTx
 	driver.ConnPrepareContext

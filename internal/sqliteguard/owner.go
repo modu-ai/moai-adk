@@ -161,7 +161,9 @@ func (o *lifetime) dropChild(token uint64) { o.m.mu.Lock(); delete(o.children, t
 
 func (o *lifetime) retainPanic(stage string) {
 	if p := recover(); p != nil {
-		o.retain(stage, errors.New("SQLite operation panicked"))
+		// Preserve the original panic value after recording its ownership
+		// diagnostic; the joined error is not this function's return value.
+		_ = o.retain(stage, errors.New("SQLite operation panicked"))
 		panic(p)
 	}
 }

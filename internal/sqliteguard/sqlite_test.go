@@ -102,7 +102,15 @@ func TestRawRowsAndPreparedStatementAccounting(t *testing.T) {
 		if _, ok := s.(statementAPI); !ok {
 			return errors.New("lost statement context methods")
 		}
-		r, err := s.Query(nil)
+		// Exercise the actual legacy method without referring to the
+		// deprecated driver.Stmt.Query declaration in the fixture.
+		legacy, ok := s.(interface {
+			Query([]driver.Value) (driver.Rows, error)
+		})
+		if !ok {
+			return errors.New("lost legacy statement query")
+		}
+		r, err := legacy.Query(nil)
 		if err != nil {
 			return err
 		}

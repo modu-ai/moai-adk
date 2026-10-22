@@ -68,7 +68,9 @@ func (s *statement) Close() error {
 		}
 		s.closeErr = s.statementAPI.Close()
 		if s.closeErr != nil {
-			s.owner.retain("statement-close-failed", s.closeErr)
+			// The registry keeps the joined diagnostic; return the original
+			// backend error unchanged to the caller of this child Close.
+			_ = s.owner.retain("statement-close-failed", s.closeErr)
 			return
 		}
 		s.owner.resourceDone()
@@ -136,7 +138,9 @@ func (r *rows) Close() error {
 		defer r.owner.retainClosePanic("rows-close-panic", &r.closeErr)
 		r.closeErr = r.rowsAPI.Close()
 		if r.closeErr != nil {
-			r.owner.retain("rows-close-failed", r.closeErr)
+			// Keep the original rows Close error identity at the public API.
+			// The joined retention diagnostic remains observable in the registry.
+			_ = r.owner.retain("rows-close-failed", r.closeErr)
 			return
 		}
 		r.done()

@@ -30,7 +30,9 @@ func (c *connector) Connect(ctx context.Context) (result driver.Conn, err error)
 	}
 	defer func() {
 		if p := recover(); p != nil {
-			o.retain("connect-panic", errors.New("driver operation panicked"))
+			// Report and retain ownership, then propagate the original panic
+			// value rather than replacing it with the diagnostic error.
+			_ = o.retain("connect-panic", errors.New("driver operation panicked"))
 			panic(p)
 		}
 	}()
@@ -119,7 +121,9 @@ func (c *guardedConn) NewBackup(uri string) (*sqlite.Backup, error) {
 	c.owner.m.mu.Lock()
 	c.owner.sticky = true
 	c.owner.m.mu.Unlock()
-	c.owner.retain("raw-backup", ErrRetained)
+	// Status/Close expose sticky retention; preserve the original
+	// concrete Backup result and error from this API call.
+	_ = c.owner.retain("raw-backup", ErrRetained)
 	return c.connectionAPI.NewBackup(uri)
 }
 func (c *guardedConn) NewRestore(uri string) (*sqlite.Backup, error) {
@@ -127,6 +131,8 @@ func (c *guardedConn) NewRestore(uri string) (*sqlite.Backup, error) {
 	c.owner.m.mu.Lock()
 	c.owner.sticky = true
 	c.owner.m.mu.Unlock()
-	c.owner.retain("raw-restore", ErrRetained)
+	// Status/Close expose sticky retention while this call returns the
+	// original concrete Restore result and error.
+	_ = c.owner.retain("raw-restore", ErrRetained)
 	return c.connectionAPI.NewRestore(uri)
 }
