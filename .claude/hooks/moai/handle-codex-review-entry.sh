@@ -539,7 +539,8 @@ function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) re
 }
 END { exit found ? 0 : 1 }
 '; then
-		cep_trace g12-clean-tree
+		cep_trace "g12-clean-tree p1=[${p1//$'\n'/|}] git=$(git --version 2>&1)"
+		cep_trace "g12-clean-tree awk=$(awk -W version 2>&1)"
 		exit 0 # clean tree — nothing was kicked to enforce (REQ-GBN-002 preserved)
 	fi
 	local pa
