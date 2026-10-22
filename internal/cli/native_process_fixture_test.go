@@ -28,7 +28,9 @@ func TestNativeProcessFixtureChild(t *testing.T) {
 	if err != nil {
 		os.Exit(91)
 	}
-	fmt.Fprintln(os.Stdout, "ready")
+	if _, err := fmt.Fprintln(os.Stdout, "ready"); err != nil {
+		os.Exit(93)
+	}
 	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
 		os.Exit(92)
 	}
