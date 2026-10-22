@@ -12,6 +12,7 @@ package factory
 // repository.
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"os/exec"
@@ -105,13 +106,7 @@ func (r *collisionRepo) checksum(path string) string {
 	if err != nil {
 		return ""
 	}
-	cmd := exec.Command("shasum")
-	cmd.Stdin = strings.NewReader(string(data))
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.Fields(string(out))[0]
+	return fmt.Sprintf("%x", sha1.Sum(data))
 }
 
 // assertCause13 runs the collision check and asserts the refused outcome:

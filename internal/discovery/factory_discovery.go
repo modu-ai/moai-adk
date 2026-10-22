@@ -351,14 +351,22 @@ func openExistingFactory(projectRoot string) (*homestate.FactoryDB, bool) {
 // enumeration). A WAL database whose recovery would need the write lock fails
 // here and contributes no candidates — enumeration fail-open.
 func openSQLiteReadOnly(path string) (*sql.DB, error) {
-	v := url.Values{}
-	v.Add("_pragma", "busy_timeout(100)")
-	v.Add("mode", "ro")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", readOnlySQLiteURI(path))
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
+}
+
+func readOnlySQLiteURI(path string) string {
+	v := url.Values{}
+	v.Add("_pragma", "busy_timeout(100)")
+	v.Add("mode", "ro")
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: v.Encode()}).String()
 }
 
 // DescribeVerifiedLeaders renders verified candidates for the multi-leader

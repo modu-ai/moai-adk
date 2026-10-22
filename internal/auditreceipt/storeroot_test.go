@@ -122,7 +122,13 @@ func TestStoreRootHelpers_RejectUnexpectedShapes(t *testing.T) {
 			t.Errorf("parseWorktreePorcelain(%q) accepted an unexpected shape", out)
 		}
 	}
-	entries, err := parseWorktreePorcelain("worktree /nonexistent-p\nHEAD x\n\nworktree /nonexistent-w\nprunable gitdir file points to non-existent location\n")
+	missingParent := t.TempDir()
+	missingPrimary := filepath.Join(missingParent, "nonexistent-p")
+	missingWorktree := filepath.Join(missingParent, "nonexistent-w")
+	if !filepath.IsAbs(missingPrimary) || !filepath.IsAbs(missingWorktree) {
+		t.Fatal("porcelain fixture must carry native absolute paths")
+	}
+	entries, err := parseWorktreePorcelain("worktree " + missingPrimary + "\nHEAD x\n\nworktree " + missingWorktree + "\nprunable gitdir file points to non-existent location\n")
 	if err != nil || len(entries) != 2 || entries[0].Path != "" || !entries[1].Prunable {
 		t.Errorf("parseWorktreePorcelain: want 2 entries, uncanonicalizable paths empty, second prunable; got %+v %v", entries, err)
 	}
