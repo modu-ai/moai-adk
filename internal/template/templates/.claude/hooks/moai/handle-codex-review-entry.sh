@@ -19,13 +19,6 @@
 # Capture stdin once (hooks may have multiple composited readers).
 INPUT=$(cat)
 
-# TEMPORARY CI DIAGNOSTIC (run 39839473413): gate-id tracing on every exit-0
-# point — `cep_trace <gate-id>` emits one stderr line naming the gate the run
-# escaped through, so a CI-only early exit (kick count 0, empty argv) can be
-# attributed. Removal or retention is decided after the escaping gate is
-# identified; the D2 template mirror carries the identical bytes.
-cep_trace() { printf 'cep_trace %s\n' "$1" >&2; }
-
 # --- shell-layer self-gate (the handle-codex-review-gate.sh precondition
 # pattern) --- The gate ships OFF, so being registered in the UserPromptSubmit
 # array must NOT add a moai cold start to every prompt for every user: a hook
@@ -171,11 +164,11 @@ codex_entry_resolve_path() {
 # directly). Unset — the normal hook path — this changes nothing: `return`
 # fails outside a sourced script and the regular early exit applies.
 if [ "${CODEX_ENTRY_SOURCE_ONLY:-}" = "1" ]; then
-	return 0 2>/dev/null || { cep_trace g00-source-only-exit; exit 0; }
+	return 0 2>/dev/null || exit 0
 fi
 
-[ -f "$CODEX_GATE_WORKFLOW_YAML" ] || { cep_trace g01-no-workflow-yaml; exit 0; }
-command -v awk >/dev/null 2>&1 || { cep_trace g02-no-awk; exit 0; }
+[ -f "$CODEX_GATE_WORKFLOW_YAML" ] || exit 0
+command -v awk >/dev/null 2>&1 || exit 0
 
 CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 {
@@ -199,7 +192,7 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 ' "$CODEX_GATE_WORKFLOW_YAML" 2>/dev/null)
 
 # Gate off (or unreadable) ⇒ ALLOW with zero moai cold-start.
-[ "$CODEX_GATE_ENABLED" = "true" ] || { cep_trace g03-gate-off; exit 0; }
+[ "$CODEX_GATE_ENABLED" = "true" ] || exit 0
 
 # --- gate-ON shell fast path (fast-path milestone M3, plan §F) ---
 # Resolves the common ALLOW states without the synchronous moai cold start:
@@ -511,7 +504,7 @@ END { print out }') || return 1
 		if [ -n "$state" ] && [ "$state" = "fresh" ]; then
 			case "$verdict" in
 				fail*) return 1 ;; # (6) fresh FAIL: the Go handler owns the delivery
-				*) cep_trace g10-fresh-pass; exit 0 ;; # (5) fresh pass/inconclusive: allow, never re-kicked
+				*) exit 0 ;;       # (5) fresh pass/inconclusive: allow, never re-kicked
 			esac
 		fi
 	fi
@@ -520,10 +513,10 @@ END { print out }') || return 1
 
 	# --- (4a) nothing-reviewable precondition ---
 	local p1
-	p1=$(git -C "$root" status --porcelain 2>/dev/null) || { cep_trace g11-porcelain-fail-open; exit 0; } # detector fail-open ⇒ allow
+	p1=$(git -C "$root" status --porcelain 2>/dev/null) || exit 0 # detector fail-open ⇒ allow
 	if ! printf '%s\n' "$p1" | awk -v rt="$CODEX_ENTRY_RUNTIME_PREFIXES" '
-BEGIN { n = split(rt, RT, " ") }
-function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) return 1; return 0 }
+BEGIN { n = split(rt, RTP, " ") }
+function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RTP[i]) == 1) return 1; return 0 }
 {
 	line = $0
 	if (line ~ /^[[:space:]]*$/) next
@@ -539,16 +532,14 @@ function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) re
 }
 END { exit found ? 0 : 1 }
 '; then
-		cep_trace "g12-clean-tree p1=[${p1//$'\n'/|}] git=$(git --version 2>&1)"
-		cep_trace "g12-clean-tree awk=$(awk -W version 2>&1)"
 		exit 0 # clean tree — nothing was kicked to enforce (REQ-GBN-002 preserved)
 	fi
 	local pa
 	pa=$(git -C "$root" status --porcelain --untracked-files=all 2>/dev/null) || pa=""
 	if [ -n "$pa" ]; then
 		if printf '%s\n' "$pa" | awk -v rt="$CODEX_ENTRY_RUNTIME_PREFIXES" -v cx="$CODEX_ENTRY_CONFIG_EXACT" -v cd="$CODEX_ENTRY_CONFIG_DIR" '
-BEGIN { n = split(rt, RT, " "); m = split(cx, CX, " "); k = split(cd, CD, " ") }
-function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RT[i]) == 1) return 1; return 0 }
+BEGIN { n = split(rt, RTP, " "); m = split(cx, CX, " "); k = split(cd, CD, " ") }
+function managed(p,   i) { for (i = 1; i <= n; i++) if (index(p, RTP[i]) == 1) return 1; return 0 }
 function excluded(p,   i) {
 	if (managed(p)) return 1
 	for (i = 1; i <= m; i++) if (p == CX[i]) return 1
@@ -576,7 +567,6 @@ function excluded(p,   i) {
 }
 END { exit (any && !bad) ? 0 : 1 }
 '; then
-			cep_trace g13-config-only-tree
 			exit 0 # config-only-only tree — the Stop gate owns the decision
 		fi
 	fi
@@ -612,7 +602,6 @@ END { exit (any && !bad) ? 0 : 1 }
 		"$bin_commit"*) : ;; # HEAD-match pre-check FIRST: StatusFresh → the kick proceeds
 		*)
 			if git -C "$root" merge-base --is-ancestor "$bin_commit" "$head" >/dev/null 2>&1; then
-				cep_trace g14-behind-binary
 				exit 0 # decidable behind → allow without the early kick
 			fi
 			;; # divergent / ahead → binlag leniency → the kick proceeds
@@ -641,7 +630,6 @@ END { exit (any && !bad) ? 0 : 1 }
 		owned=1
 	elif [ -e "$marker" ]; then
 		set +C
-		cep_trace g15-marker-in-flight
 		exit 0 # a kick for this tree state is already in flight this bucket
 	fi
 	set +C
@@ -675,7 +663,6 @@ END { exit (any && !bad) ? 0 : 1 }
 	# semantic). Best-effort — a live child (zombie included) reads as started.
 	local kick_pid=$!
 	kill -0 "$kick_pid" 2>/dev/null || rm -f "$marker" 2>/dev/null
-	cep_trace g16-kick-issued
 	exit 0
 }
 codex_entry_fastpath || :
@@ -700,12 +687,10 @@ fi
 # Fail-open: if the moai binary is unavailable, ALLOW (never break the prompt
 # pipeline). The handler itself is fail-open, so an absent binary is a no-op.
 if [ -z "$MOAI_BIN" ]; then
-	cep_trace g17-no-moai-binary
 	exit 0
 fi
 
 printf '%s' "$INPUT" | "$MOAI_BIN" hook codex-review-entry
 # Always exit 0: the BLOCK decision rides the JSON Decision field on stdout
 # (exit 2 would discard stdout JSON per Claude Code semantics).
-cep_trace g18-forwarded
 exit 0
