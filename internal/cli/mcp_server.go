@@ -392,8 +392,6 @@ var moaiGateExposureTools = map[string]bool{
 	"todo_list":           true,
 	"jev_ask":             true,
 	"codex_setup":         true,
-	"codex_job_status":    true,
-	"codex_job_result":    true,
 	"glm_job_status":      true,
 	"glm_job_result":      true,
 }
