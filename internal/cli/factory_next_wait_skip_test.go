@@ -52,9 +52,12 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 func flHintChainFixture(t *testing.T) string {
 	t.Helper()
 	root, store := fcFixture(t)
+	// Exercise the generic picked-card arm, not the default OFF dormancy.
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, id, "SPEC-WAIT-001")
 	}
 	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
 	fcPlace(t, root,
@@ -148,7 +151,19 @@ func TestFactoryNextMayLeaseMirrorsTheSelectorSkips(t *testing.T) {
 			t.Errorf("lane-2's peek = true over lane-1's bundle member t2, want false — the bundle-ownership skip must hold it out")
 		}
 		if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", false) {
-			t.Errorf("lane-1's peek = false over its own assigned bundle head t1, want true — the arm-(a) mirror must still see the lane's own assignment")
+			t.Errorf("lane-1's peek = false over its own ready bundle member t2, want true — the bundle-priority arm stays active with self-dispatch OFF and no spec")
+		}
+		if factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", true) {
+			t.Error("a quota hold must still prevent taking the next bundle member")
+		}
+		sdLaneEnv(t, "lane-1", "")
+		gh := flCountGhCalls(t, func() (string, error) { return "[]", nil })
+		out, stderr, err := qasRunNext(t, "--run", fcRun)
+		if err != nil || !strings.Contains(out, "t2 stage=") {
+			t.Fatalf("next bundle member: stdout %q stderr %q err %v, want leased t2", out, stderr, err)
+		}
+		if n := gh(); n != 1 {
+			t.Errorf("ready own bundle issued %d gh calls, want 1 before the lease", n)
 		}
 	})
 }

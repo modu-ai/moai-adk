@@ -133,6 +133,50 @@ func TestBrokerOpenContextBoundsGitPathResolution(t *testing.T) {
 	}
 }
 
+func TestExistingBrokerOpenContextBoundsGitPathResolution(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := brokerGitRoot(t)
+	store, err := Open(root, "run-existing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	slowBrokerGit(t, 600)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	store, err = OpenExistingWithContext(ctx, root, "run-existing", time.Second)
+	elapsed := time.Since(started)
+	if store != nil {
+		_ = store.Close()
+		t.Fatal("expired existing-open returned a store")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("existing-open error=%v, want caller deadline", err)
+	}
+	if elapsed > 400*time.Millisecond {
+		t.Fatalf("existing-open Git path exceeded caller budget allowance: %v", elapsed)
+	}
+	t.Logf("existing-open slow Git path elapsed=%v", elapsed)
+}
+
+func TestFactoryNamespaceRejectsUnresolvedIdentity(t *testing.T) {
+	var namespace Namespace
+	store, err := namespace.OpenWithContext(context.Background(), "run-zero")
+	if store != nil {
+		_ = store.Close()
+		t.Fatal("an unresolved namespace opened a broker")
+	}
+	if err == nil || !strings.Contains(err.Error(), "unresolved factory namespace") {
+		t.Fatalf("unresolved namespace error=%v", err)
+	}
+	if namespace.FactoryDBPath() != "" || namespace.FactoryDir() != "" || namespace.ProjectKey() != "" {
+		t.Fatalf("unresolved namespace exposed an identity: %+v", namespace)
+	}
+}
+
 // The property: after delayed Git path resolution, the SQLite busy wait is sized
 // from the budget that is left, not from the caller's original budget. It is
 // pinned as state (the busy_timeout the opener chose), because a wall-clock
