@@ -203,6 +203,15 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # card_metadata_verbs: the card-metadata editing verbs — `moai factory
+    # set-spec` (set a picked card's SPEC identifier after pick) and `moai
+    # factory reclassify` (re-designate a queued or picked card's mode
+    # and/or priority). Both verbs write the store with an actor+reason
+    # audit trail (the card_metadata_events surface), and a lane session can
+    # run neither — they are leader/operator acts. Ships OFF: uncomment and
+    # set enabled to true to turn them on.
+    # card_metadata_verbs:
+    #     enabled: true
     # quota_gate: steer the NEXT card away from a nearly exhausted Claude
     # account. The statusline records each Claude session's five-hour and
     # seven-day usage windows; while the gate is on and a window reads at or
@@ -258,6 +267,19 @@ workflow:
     # default false, which keeps the primary-refusal behavior unchanged.
     local_main_integration:
         enabled: false
+    # base_freshness_gate: refuse entry to the release-integration window when the
+    # candidate is more than max_behind_landings landings behind the local
+    # integration branch, or carries no re-measure record keyed to its current
+    # tree. A landing is one first-parent commit of the integration branch, counted
+    # from the base the record names. enabled gates ONLY the refusal: the check
+    # still measures on every entry and prints one advisory line when it would have
+    # refused. Any uncertainty (config, branch, or git unreadable) admits with one
+    # line naming the cause. max_behind_landings: 0 asks for the very predicate the
+    # merge step re-checks inside the window; a larger number buys queue-wait slack
+    # and never relaxes the merge step. Ships OFF with a tolerance of 0.
+    base_freshness_gate:
+        enabled: false
+        max_behind_landings: 0
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (an email your test suites use for
     # throwaway repositories). The guard reads the identity the commit would

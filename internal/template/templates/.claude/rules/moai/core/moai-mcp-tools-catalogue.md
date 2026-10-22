@@ -288,7 +288,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### The `project_root` input — name your own tree
 
 
-Forty-five tools accept an optional `project_root` string: `spec_progress`,
+Thirty-six tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
 `codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
 `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,

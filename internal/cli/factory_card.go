@@ -1104,7 +1104,12 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State != factory.BacklogStatePicked || recorded[it.ID] {
+		switch it.State {
+		case factory.BacklogStatePicked:
+		default:
+			continue
+		}
+		if recorded[it.ID] {
 			continue
 		}
 		if !elig.active() {
@@ -1458,7 +1463,8 @@ func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, i
 	// 1. admitted — the queue item exists and is picked. A held (or dropped,
 	// or absent) item never enters the generic pull: the hold STATE is
 	// absorbed here (D9), not given its own token.
-	if !inQueue || it.State != factory.BacklogStatePicked {
+	admitted := inQueue && it.State == factory.BacklogStatePicked
+	if !admitted {
 		state := "absent"
 		if inQueue {
 			state = string(it.State)
@@ -2246,10 +2252,15 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				continue
 			}
 		case factory.BacklogStatePicked:
-			if !selfDispatch {
+			row, hasRow := rowByID[it.ID]
+			bundleOwner, bundleHasOwner := bundleLane[row.BundleID]
+			ownBundle := hasRow && row.BundleID != "" && bundleHasOwner && bundleOwner == lane
+			// Arm (b-priority) continues this lane's own bundle with the
+			// generic self-dispatch arms OFF too (REQ-CEP-004).
+			if !selfDispatch && !ownBundle {
 				continue
 			}
-			if row, hasRow := rowByID[it.ID]; hasRow &&
+			if hasRow &&
 				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}
@@ -2691,6 +2702,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
 			}
 		}
+		// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): complete's
+		// own acquisition is a window entry like acquire's, so the same check
+		// runs before the window record is touched. A tip that is an adoption
+		// is exempt (REQ-ISB-016).
+		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
+			return freshErr
+		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
 		}
@@ -2722,16 +2740,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// from that commit without calling the merge step and without a fresh
 	// re-measure. A card branch that gained commits after that merge is NOT
 	// adopted and falls through to step 3.
-	tip := factoryBranchTip(integTree, branch)
-	cardTip := factoryBranchTip(card.WorktreePath, cardBranch)
-	adopted := ""
-	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
-		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
-			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
-				adopted = tip
-			}
-		}
-	}
+	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
 		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
@@ -2926,6 +2935,28 @@ func cliGitIn(dir string, args ...string) (string, error) {
 	return string(out), err
 }
 
+// factoryAdoptedTip returns the integration tip when it is an adoption in the
+// sense of REQ-MWQ-019 step 2 — a merge commit whose second parent is the card
+// branch's CURRENT tip and whose tree a VALID re-measure record that NAMES that
+// tree keys — and "" otherwise. The reader returns the tree field as written,
+// so a stored file whose tree names another SHA is not a record for the tip
+// tree and must not exempt the gate (sync-audit iter12 F1: the identity
+// comparison the gate's own verdict makes, mirrored here). complete's adoption
+// path and the base-freshness gate's exemption (SPEC-INTEGRATION-STALE-BASE-001,
+// REQ-ISB-016) both ask this one question, so the two cannot drift.
+func factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch string) string {
+	tip := factoryBranchTip(integTree, branch)
+	cardTip := factoryBranchTip(cardTree, cardBranch)
+	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
+		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil && record.Tree == tipTree {
+				return tip
+			}
+		}
+	}
+	return ""
+}
+
 // factoryBranchTip reads dir's tip for branch (empty dir falls back to the
 // process repository — the caller's resolution already ran).
 func factoryBranchTip(dir, branch string) string {
@@ -3069,14 +3100,21 @@ func factoryBranchOfWorktree(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
 	}
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	// The FULL ref, only refs/heads/ stripped: `rev-parse --abbrev-ref HEAD`
+	// prints heads/<branch> when a tag shares the branch's name, and the
+	// caller's refs/heads/<branch> lookups then name a branch that does not
+	// exist (card t1834, sync-audit iter12 F2) — the same hazard the gate's
+	// own symbolic-ref read exists for. With --quiet a detached HEAD is exit 1
+	// with no output; like the former --abbrev-ref error path, it stays ""
+	// (best-effort), and no new semantics are invented for it.
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "HEAD")
 	cmd.Dir = dir
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // factoryWorktreeForBranchIn resolves the worktree holding branch, anchored

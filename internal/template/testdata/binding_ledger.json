@@ -2743,11 +2743,11 @@
     "start_line": 3
    },
    "before_text": "> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
-   "after_text": "> Single source of truth for the 50 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
+   "after_text": "> Single source of truth for the 41 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "scope/capability-map description",
-   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): 47 tools -> 48 tools. before_text and the anchor are unchanged."
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): 47 tools -> 48 tools. before_text and the anchor are unchanged. f25c78c6a removed the nine session/factory messaging tools; after_text now matches the 39-tool catalogue, with anchor and before_text preserved."
   },
   {
    "id": "ALB-0140",
@@ -2780,11 +2780,11 @@
     "start_line": 22
    },
    "before_text": "Twenty-two tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, and `factory_complete`. It names the tree the call should act\non. Four of the twenty-two\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\nand `factory_complete` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
-   "after_text": "Forty-five tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,\n`codex_job_cancel`, `codex_job_result`, `codex_job_status`, `factory_msg_body`,\n`factory_msg_list`, `factory_msg_receipt`, `factory_msg_send`,\n`factory_msg_status`, `glm_job_cancel`, `glm_job_result`, `glm_job_status`,\n`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,\n`session_msg_list`, `session_msg_poll`, `session_msg_register`,\n`session_msg_send`, and `todo_claim`. It names the tree the call should act\non. Five of the forty-five\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\n`factory_complete`, and `factory_renew` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
+   "after_text": "Thirty-six tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,\n`codex_job_cancel`, `codex_job_result`, `codex_job_status`,\n`glm_job_cancel`, `glm_job_result`, `glm_job_status`,\n`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,\n`codex_role_audit_cancel`, and `todo_claim`. It names the tree the call should act\non. Five of the thirty-six\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\n`factory_complete`, and `factory_renew` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "enumerates which tools require project_root (tool-behavior description)",
-   "rewrite_note": "project_root list follows 1f15ee972 (M2 added factory_renew to the catalogue): Twenty-two -> Twenty-three tools, Four of the twenty-two -> Five of the twenty-three, and factory_renew added to the REQUIRE clause. before_text and the anchor are unchanged."
+   "rewrite_note": "project_root list follows 1f15ee972 (M2 added factory_renew to the catalogue): Twenty-two -> Twenty-three tools, Four of the twenty-two -> Five of the twenty-three, and factory_renew added to the REQUIRE clause. before_text and the anchor are unchanged. Updated at the t1632 main-absorb (2026-10-23): the t1908 messaging-tool removal and card t1632's todo_claim + codex_role_audit_cancel re-add leave the deployed list at thirty-six tools (five REQUIRE); after_text tracks the deployed companion text."
   },
   {
    "id": "ALB-0142",
@@ -2891,11 +2891,11 @@
     "start_line": 71
    },
    "before_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
-   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(50 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
+   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(41 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "companion navigation pointer",
-   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): (47 tools) -> (48 tools) in the navigation line. before_text and the anchor are unchanged."
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): (47 tools) -> (48 tools) in the navigation line. before_text and the anchor are unchanged. f25c78c6a retired the messaging broker section; after_text tracks the current navigation without restoring the removed tools. Anchor and before_text stay unchanged."
   },
   {
    "id": "ALB-0149",

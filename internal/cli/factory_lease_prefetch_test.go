@@ -222,8 +222,10 @@ func TestFactoryNextIssuesNoOpenPRQueryWhenEveryCandidateIsSkipped(t *testing.T)
 		// blocked check, so the peek must still take the query for it;
 		// skipping it forced the leased card's PR column to unknown.
 		root, store := fcFixture(t)
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
 		fcClassify(t, store, "t1", factory.ClassPriorityHigh, true, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, "t1", "SPEC-PREFETCH-001")
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1")

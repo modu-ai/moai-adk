@@ -1566,6 +1566,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
 		},
+		// The base-freshness gate ships with its REFUSAL layer off and a
+		// tolerance of zero landings: measurement and the advisory line run on
+		// every entry regardless, and only the refusal is opt-in. Template
+		// neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		BaseFreshnessGate: BaseFreshnessGateConfig{
+			Enabled:           false,
+			MaxBehindLandings: 0,
+		},
 		// The candidate-CI path ships inert (SPEC-CANDIDATE-CI-001 REQ-CCI-006):
 		// no candidate verb operates and the merge step's landing check stays
 		// the absent no-op seam while Enabled is false. GuardBundleRequired
@@ -1661,6 +1670,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		AnchorRelocationGuard: AnchorRelocationGuardConfig{
+			Enabled: false,
+		},
+		// The card-metadata editing verbs ship OFF (SPEC-CARD-METADATA-VERBS-001
+		// REQ-CMV-002): both verbs refuse naming the flag key on the
+		// distributed default, and an operator opts in via local config.
+		// Template neutrality: the template key lands commented-out (plan.md
+		// §F M5) — no `enabled: true` anywhere under
+		// internal/template/templates/.
+		CardMetadataVerbs: CardMetadataVerbsConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
