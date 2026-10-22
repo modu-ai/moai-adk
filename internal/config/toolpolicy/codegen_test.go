@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // sampleSettingsJSON is a minimal pure-JSON settings.json with a permissions
@@ -189,8 +191,12 @@ func TestBuildInto_PreservesExistingFileMode(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
 			path := filepath.Join(dir, "settings.json")
-			if err := os.WriteFile(path, []byte(sampleSettingsJSON), tc.mode); err != nil {
+			if err := testguard.SeedFileModePolicy(path, []byte(sampleSettingsJSON), tc.mode); err != nil {
 				t.Fatalf("seed: %v", err)
+			}
+			before, err := os.Stat(path)
+			if err != nil || before.Mode().Perm() != tc.mode {
+				t.Fatalf("fixture did not establish original mode %04o before BuildInto: info=%v err=%v", tc.mode, before, err)
 			}
 			if _, err := BuildInto(path, doc, TargetJSON, ""); err != nil {
 				t.Fatalf("BuildInto: %v", err)

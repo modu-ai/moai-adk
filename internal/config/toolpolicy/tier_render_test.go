@@ -20,6 +20,9 @@ import (
 // re-exec'd as the child side of the inter-process lock test: it never runs
 // the suite, performs its helper role, and exits directly.
 func TestMain(m *testing.M) {
+	if os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD") == "guard-hold" {
+		runRecordGuardChildHelper()
+	}
 	if os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD") != "" {
 		runRecordLockChildHelper()
 	}
