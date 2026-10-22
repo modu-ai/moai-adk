@@ -80,9 +80,9 @@ func TestMCPSchemaLint_ServedTools(t *testing.T) {
 }
 
 // TestMCPSchemaLint_HandlerReadArgumentsDeclared pins the audit's named
-// handler-read drift: codex_task reads a model argument its schema never
-// declared, and goal_status declared a required field its enforcement does
-// not require. The lint pins the declared set by name.
+// handler-read drift: goal_status declared a required field its enforcement
+// does not require (codex_task, the audit's other named instance, was removed
+// with card t1909). The lint pins the declared set by name.
 func TestMCPSchemaLint_HandlerReadArgumentsDeclared(t *testing.T) {
 	tools := lintServedTools(t)
 	declared := map[string]map[string]bool{}
@@ -96,8 +96,8 @@ func TestMCPSchemaLint_HandlerReadArgumentsDeclared(t *testing.T) {
 	for _, tc := range []struct {
 		tool, arg string
 	}{
-		{"codex_task", "model"},
-		{"codex_task", "project_root"},
+		// codex_task left with the general codex execution surface (card t1909);
+		// the pin keeps the remaining named instance.
 		{"goal_status", "session_id"},
 	} {
 		if !declared[tc.tool][tc.arg] {

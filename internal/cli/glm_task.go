@@ -385,3 +385,12 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	}
 	return env.Content[0].Text, glmServedModel(env.Model), nil
 }
+
+// appendCodexNote joins two result notes, keeping both statements rather than
+// letting the second silently replace the first.
+func appendCodexNote(existing, add string) string {
+	if existing == "" {
+		return add
+	}
+	return existing + " " + add
+}

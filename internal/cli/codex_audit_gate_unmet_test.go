@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -115,4 +117,21 @@ func TestCodexAudit_AdvisoryGateLeavesGateUnmetEmpty(t *testing.T) {
 	if g, _ := got["gate_unmet"].(string); g != "" {
 		t.Errorf("gate_unmet = %q, want empty for an advisory gate", g)
 	}
+}
+
+// structuredMap decodes a tool result's StructuredContent into a map.
+func structuredMap(t *testing.T, res *mcp.CallToolResult) map[string]any {
+	t.Helper()
+	if res.StructuredContent == nil {
+		t.Fatalf("result carries no StructuredContent: %+v", res)
+	}
+	raw, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal StructuredContent: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("decode StructuredContent %s: %v", raw, err)
+	}
+	return m
 }

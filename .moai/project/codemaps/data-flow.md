@@ -1,6 +1,10 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — bf0a35f10
+## 현재 흐름 보완 — d5c083e (card t1909 판)
+
+Codex 일반 실행 흐름은 이 판에서 끊겼다 — 대화형 launch(`moai codex`)·factory 진입(`-f lane`)·init-offer 게이트·잡 제어·위임(codex_task)의 경로가 삭제됐고, 살아 남는 Codex 흐름은 **읽기 전용 감사**뿐이다: `moai codex audit|role-audit`(신규 `codex_cmd.go` 부모 아래 `codex_audit_launch.go`가 등록·연결)와 MCP `codex_audit`·`codex_role_audit{,_status,_result}`(`mcp_codex.go`에서 신규 `mcp_codex_audit.go`로 분리된 구현 — `codex exec -s read-only`와 app-server JSON-RPC는 같다). `moai verify sync-gate`·`moai verify codex-review`의 훅 밖 검사 동사와 Codex Stop 체인 러너도 이 판에서 사라졌다(훅 쪽 `codex_review_gate.go` 게이트와 `internal/codexwiring` 선언은 남는다). MCP 표면에서 codex_task·codex_job_* 4개 도구가 빠져 카탈로그는 35개다.
+
+## 이전 bf0a35f10 기준의 흐름 보완
 
 후보 CI 흐름은 카드의 검증된 변경과 통합 기준으로 merge-tree 후보를 생성하고, `ci/<card>`에 게시한 다음 pending 증거를 기록하는 순서다. `integration candidate --observe`가 실제 실행 결과를 읽어 후보 SHA·대상·통합 tip에 묶는다. 착지 경로는 이 값들과 green 판정이 모두 맞는 후보만 받는다. 게시나 관측 요청 자체는 CI 통과 증거가 아니다.
 
@@ -277,8 +281,8 @@ cmd/moai/main.go → cli.Execute()
 internal/cli/root.go                    rootCmd.AddCommand(newMCPServerCmd())
 internal/cli/mcp_server.go              newMCPServerCmd — stdio JSON-RPC 루프
 internal/cli/mcp_server.go              .moai/config/sections/mcp.yaml 로드 (파일 없으면 전 도구 등록)
-internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 30
-internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (30개)
+internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 22 + 등록 헬퍼
+internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (35개, t1909 판)
                                           (가드 테스트가 일치를 강제)
 
 핸들러 → 내부 코어 (CLI와 같은 코어를 공유한다)
@@ -288,11 +292,16 @@ internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable �
   spec_progress     internal/spec         ListDocs()
   verify_snapshot   internal/verify       Load() · RecordCheck()
   graph_*           internal/graph        query · codequery · shortestpath
-  codex_* / glm_*   internal/cli          mcp_codex.go · mcp_glm.go → 외부 에이전트 프로세스
+  codex_audit       internal/cli          mcp_codex_audit.go (t1909 판 분할) → codex app-server JSON-RPC
+  codex_role_audit* internal/cli          codex_audit_launch.go · codex_audit_mcp.go → codex exec -s read-only
+  codex_setup       internal/cli          mcp_codex.go (모델 해석 resolveCodexModelEffort 유지)
+  glm_*             internal/cli          mcp_glm.go → 외부 에이전트 프로세스
   claude_audit      internal/cli          mcp_claude*.go → claude CLI 서브프로세스 (읽기 전용 리뷰)
   audit_multi       internal/cli          mcp_convergence.go — Claude 백엔드는 claude_audit 수행 함수 재사용
-  session_msg_*     internal/sessionmsg   —
 ```
+
+> `session_msg_*`·`factory_msg_*` 도구 행은 이 판보다 앞서 비등록 전환됐다(`internal/sessionmsg`
+> 패키지와 `internal/factorymsg` Store API는 살아 있지만 MCP 공개는 하지 않는다).
 
 MCP 표면이 CLI와 **같은 코어를 공유**한다는 점이 이 경로의 핵심입니다 — MCP는 별도 구현이 아니라
 같은 도메인 패키지에 대한 두 번째 어댑터입니다.
@@ -678,7 +687,7 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 세션 워크트리 L1 생성기로 내려가 프로젝트의
 `.moai/worktrees/<name>`을 만든다. Claude Code가 자체 생성한
 `.claude/worktrees/<name>`은 별도 위치로 남는다. `moai codex -w <name>`은
-`internal/cli/codex_launcher.go`에서 두 위치의 **기존** 트리를 조회한다.
+`the retired codex launcher (removed card t1909)`에서 두 위치의 **기존** 트리를 조회한다.
 둘 다 있으면 이름만으로 고르지 않고 절대 경로를 요구한다. 없는 이름은 만들지 않는다.
 
 `moai update`는 템플릿 배포 전에 `internal/cli/update_worktree_migration.go`를 호출한다.

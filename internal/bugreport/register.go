@@ -50,7 +50,6 @@ var kindRegister = []KindRow{
 		Sites: []string{
 			"cmd/moai/main.go:1",
 			"internal/guardliveness/evaluator.go:160",
-			"internal/cli/codex_stop_chain.go:426",
 			"internal/cli/memory_fold.go:1011",
 			"internal/resilience/circuit.go:229",
 			"internal/navigator/route/run.go:51",

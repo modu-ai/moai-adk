@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
@@ -148,4 +149,14 @@ func recordCodexInterrupt(root string, input *hook.HookInput, now time.Time) err
 		return fmt.Errorf("save cancelled goal: %w", err)
 	}
 	return nil
+}
+
+func resolveCodexStopRoot(input *hook.HookInput) string {
+	if root := os.Getenv(config.EnvClaudeProjectDir); root != "" {
+		return root
+	}
+	if input != nil && input.CWD != "" {
+		return input.CWD
+	}
+	return resolveHookProjectRoot()
 }

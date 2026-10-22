@@ -70,39 +70,6 @@ func TestCodexAudit_SessionChildCwdMatchesListingRoot(t *testing.T) {
 	}
 }
 
-// TestCodexTask_SessionChildNotContained pins the l57-r8 finding 1 split:
-// containment belongs to GATE/AUDIT sessions only. An ordinary codex_task
-// delegation rides the same session-open path, and the r4 round's
-// unconditional containment leaked the foreign-server disable (and the
-// session-level read-only sandbox) into EVERY task — the child lost all of
-// the operator's configured MCP servers regardless of allow_write. The task
-// child's argv carries neither; the task's own per-turn sandboxPolicy
-// governs its sandbox.
-func TestCodexTask_SessionChildNotContained(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
-	_, args := withCodexSessionArgs(t, codexTaskScript("trn-nogate", "task output"))
-	// A foreign server the operator configured: the stub makes the leak
-	// visible in the argv whenever the task path still runs the containment.
-	prevList := codexAuditMCPList
-	codexAuditMCPList = func(context.Context, string, string) (string, error) {
-		return `[{"name":"context7","transport":{"type":"streamable_http","url":"https://mcp.context7.example"}}]`, nil
-	}
-	t.Cleanup(func() { codexAuditMCPList = prevList })
-
-	res := callCodexTask(t, map[string]any{"prompt": "refactor the parser"})
-	if res.IsError {
-		t.Fatalf("unexpected IsError result: %+v", res)
-	}
-	joined := strings.Join(*args, " ")
-	if strings.Contains(joined, "mcp_servers.context7") {
-		t.Errorf("ordinary codex_task child argv = %v, want NO foreign-server disable args — the containment belongs to gate/audit spawns (l57-r8 finding 1)", *args)
-	}
-	if strings.Contains(joined, "sandbox_mode=read-only") {
-		t.Errorf("ordinary codex_task child argv = %v, want NO session-level read-only sandbox — the task's per-turn sandboxPolicy governs it (l57-r8 finding 1)", *args)
-	}
-}
-
 // TestCodexReview_SessionSpawnsUnderReadOnlySandbox pins the same policy on
 // the review gate's session path (the Stop hook review leg).
 func TestCodexReview_SessionSpawnsUnderReadOnlySandbox(t *testing.T) {

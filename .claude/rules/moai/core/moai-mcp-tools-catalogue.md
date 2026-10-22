@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 41-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 37-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 41 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 37 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (41 tools)
+## Tool catalogue (37 tools)
 
 ### SPEC lifecycle
 
@@ -111,20 +111,14 @@ existed does not list them — reconnect it. The codex leg then falls back to
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | `moai codex job cancel` |
 
-The codex delegation family is wired into `super-advisor` because the on-demand
-high-reasoning consultation agent is the natural consumer of background
-cross-model delegation: it arms a codex task via `codex_task`, polls completion
-via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
-`codex_setup` probes whether codex is available before delegating. codex is
+The general codex delegation family (`codex_task`, `codex_job_{status,result,cancel}`)
+was removed with the general codex execution surface; `codex_setup` stays
+as the audit surface's install probe, wired into `super-advisor` — the on-demand
+high-reasoning consultation agent. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
-`manager-develop` carries the family except `codex_setup`: it may start a bounded drafting job with `codex_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run/external-delegation.md` allows, and a delegated codex turn stays read-only.
 
 ### Codex read-only roles (background jobs)
 
@@ -235,7 +229,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (41 of the 41 tools)
+## Tool families (37 of the 37 tools)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -244,7 +238,7 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
-| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor (all five), manager-develop (all but codex_setup) |
+| Codex audit probe | `codex_setup` | super-advisor |
 | Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result`, `codex_role_audit_cancel` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
@@ -276,7 +270,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 41 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 37 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -288,21 +282,19 @@ producer lives in `internal/cli/mcp_server.go`).
 ### The `project_root` input — name your own tree
 
 
-Thirty-six tools accept an optional `project_root` string: `spec_progress`,
+Thirty-two tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
+`codex_review`, `glm_audit`, `glm_review`, `claude_audit`,
 `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
 `graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
 `factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,
-`codex_job_cancel`, `codex_job_result`, `codex_job_status`,
 `glm_job_cancel`, `glm_job_result`, `glm_job_status`,
 `glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
 and `todo_claim`. It names the tree the call should act
-on. Five of the thirty-six
+on. Four of the thirty-two
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
-`factory_complete`, and `factory_renew` reject a call without it naming the argument, and
-`codex_task` is required rather than optional — pass your own toplevel or the
-call is refused (`project_root is required ...`); it is never defaulted.
+`factory_complete`, and `factory_renew` reject a call without it naming the
+argument; it is never defaulted.
 
 
 The caller is the only party that holds the answer, which is why it is an input.
@@ -339,5 +331,5 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(41 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
+(37 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

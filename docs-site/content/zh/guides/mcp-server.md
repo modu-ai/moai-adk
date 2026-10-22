@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-36 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`codex_job_cancel`、`codex_job_result`、`codex_job_status`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`session_list`、`todo_claim`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`codex_task` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
+32 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`session_list`、`todo_claim`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
@@ -179,13 +179,9 @@ GLM 没有文件系统，所以请求中携带的是排除了运行时管理路�
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | — |
 | `mcp__moai__codex_setup` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | — |
-| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | — |
 
-codex 委托工具族连线到 super-advisor 和 manager-develop。按需高推理咨询智能体 super-advisor 是后台跨模型委托的自然消费者：用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。manager-develop 持有除 `codex_setup` 之外的其余工具，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `codex_task` 委托范围有限的机械性子任务；被委托的 codex 轮次保持只读。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
+通用 codex 委托工具族（`codex_task`、`codex_job_status` / `codex_job_result` / `codex_job_cancel`）已移除；`codex_setup` 作为审计面的安装探针保留，连线到按需高推理咨询智能体 super-advisor。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
 
 ### codex 只读角色
 

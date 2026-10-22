@@ -17,14 +17,15 @@ var removedInM3 = []string{
 	"lsp_enabled", "enforce_quality", "design_enabled", "claude_design_enabled",
 }
 
-// removedQuietInit are the eleven page-3-only questions the quiet init wizard
-// stops asking (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002/013). No other caller
+// removedQuietInit are the page-3-only questions the quiet init wizard stops
+// asking (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002/013; agent_wiring joined with
+// the general codex execution surface removal, card t1909). No other caller
 // reaches them, so they leave no definition, translation, or capture branch
 // behind — the same removal invariant removedInM3 pins.
 var removedQuietInit = []string{
 	"project_mode", "worktree_auto_create", "todo_enabled", "feedback_auto_submit",
 	"project_continuation", "audit_model", "audit_gate_claude", "audit_gate_codex",
-	"audit_gate_glm", "codex_audit_enabled", "mcp_provision",
+	"audit_gate_glm", "codex_audit_enabled", "mcp_provision", "agent_wiring",
 }
 
 // sharedInitRemovedIDs are the DefaultQuestions entries the quiet init
@@ -40,14 +41,16 @@ var sharedInitRemovedIDs = []string{"project_name", "report_format"}
 // SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003 takes it from five to six by
 // adding the init-only participation opt-in on its own page after the Jev
 // slot (the quiet-wizard amendment REQ-ANON-022 records in the M2 commit).
-// The three DefaultQuestions entries the quiet wizard dropped stay dropped —
-// that half of the AC is untouched (TestRemovedQuestionsAbsentFromInitSet).
+// The agent_wiring harness selector left the set with the general codex
+// execution surface removal (card t1909). The three DefaultQuestions entries
+// the quiet wizard dropped stay dropped — that half of the AC is untouched
+// (TestRemovedQuestionsAbsentFromInitSet).
 func TestInitQuestions_QuietSet(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier", "jev_enabled", "feedback_participation"}
-	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy", "Judgment Capability", "Participation"}
+	wantIDs := []string{"conversation_language", "user_name", "autonomy_tier", "jev_enabled", "feedback_participation"}
+	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Judgment Capability", "Participation"}
 
 	if len(questions) != len(wantIDs) {
 		got := make([]string, 0, len(questions))
@@ -168,9 +171,8 @@ func TestRemovedQuestionsHaveNoCaptureBranch(t *testing.T) {
 
 	// Retained capture branches must survive (the kept init questions).
 	kept := &WizardResult{}
-	saveAnswer("agent_wiring", "both", kept, &locale)
 	saveAnswer("autonomy_tier", "automatic", kept, &locale)
-	if kept.AgentWiring != "both" || kept.AutonomyTier != "automatic" {
+	if kept.AutonomyTier != "automatic" {
 		t.Errorf("a kept capture branch was removed by mistake; result = %+v", *kept)
 	}
 

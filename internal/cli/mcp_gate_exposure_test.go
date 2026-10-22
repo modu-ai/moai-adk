@@ -27,7 +27,7 @@ var moaiGateExposureEnumerated = []string{
 	"session_list", "audit_cache", "goal_status",
 	"graph_file_api", "graph_find_code", "graph_trace_calls", "graph_shortest_path",
 	"todo_list", "jev_ask",
-	"codex_setup", "codex_job_status", "codex_job_result",
+	"codex_setup",
 	"glm_job_status", "glm_job_result",
 }
 
@@ -213,10 +213,6 @@ func TestACMN003_GateCallSuccessRate(t *testing.T) {
 	if _, err := factorymsg.Open(root, "gate-measure-run"); err != nil {
 		t.Fatal(err)
 	}
-	codexRec, err := newCodexJobRegistry(root).create(codexJobSpec{Mode: "task", RequestSummary: "gate measure"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	glmRec, err := newGLMJobRegistry(root).create(glmJobSpec{Model: "glm-5.3", RequestSummary: "gate measure"})
 	if err != nil {
 		t.Fatal(err)
@@ -249,8 +245,6 @@ func TestACMN003_GateCallSuccessRate(t *testing.T) {
 		"graph_shortest_path": {"from": "Run", "to": "Finish", "project_root": root},
 		"todo_list":           {"project_root": root},
 		"jev_ask":             {"project_root": root},
-		"codex_job_status":    {"job_id": codexRec.ID, "project_root": root},
-		"codex_job_result":    {"job_id": codexRec.ID, "project_root": root},
 		"glm_job_status":      {"job_id": glmRec.ID, "project_root": root},
 		"glm_job_result":      {"job_id": glmRec.ID, "project_root": root},
 	}

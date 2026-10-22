@@ -1,0 +1,2858 @@
+package cli
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+	"unicode"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// codex domain constants (§14 hardcoding prevention — domain identifiers live
+// here alongside the backend, like moaiMCPServerName in mcp_server.go; the
+// 900s review-gate timeout lives in internal/config/defaults.go as a threshold).
+const (
+	// codexBinaryName is the PATH-resolved codex binary (NO absolute path; §14).
+	codexBinaryName = "codex"
+	// codexAppServerSubcmd is the codex subcommand that speaks JSON-RPC over stdio.
+	codexAppServerSubcmd = "app-server"
+
+	// codexAuditDefaultModel / codexAuditDefaultEffort are the audit-path
+	// terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001), the codex
+	// counterpart of the claudeAuditDefault* pair in mcp_claude.go: when the
+	// workflow.audit.codex pin is absent (or unservable) AND the caller supplied
+	// no explicit model, resolveCodexAuditModelEffort lands here instead of the
+	// former zero value. The task-delegation path (resolveCodexModelEffort)
+	// still resolves to the zero value — REQ-AMP-008 keeps the audit pin and the
+	// task path separate. Unchanged by SPEC-AGENT-TIER-001; the model derives
+	// from config.DefaultCodexAuditModel per that constant's single-sourcing
+	// intent (the effort token stays local — effort vocabulary values are not
+	// swept pin literals).
+	codexAuditDefaultModel  = config.DefaultCodexAuditModel
+	codexAuditDefaultEffort = "high"
+
+	// codex JSON-RPC methods. review/start (native audit) and turn/start
+	// (adversarial prompt) are the review methods; initialize + thread/start are
+	// the mandatory session handshake the app-server (codex-cli 0.146.1) requires
+	// before either will answer (see runCodexReviewRPC doc).
+	codexMethodReviewStart = "review/start" // native audit mode
+	codexMethodTurnStart   = "turn/start"   // adversarial audit mode (carries the adversarial-review prompt)
+	codexMethodInitialize  = "initialize"   // mandatory handshake opener
+	codexMethodThreadStart = "thread/start" // opens a thread; its result.thread.id is the review threadId
+
+	// codexMethodThreadResume re-opens an EXISTING thread by id, loading it from
+	// codex's own on-disk store. It is what resume_last uses instead of
+	// thread/start (REQ-CX2-008). ThreadResumeParams requires only {threadId}
+	// and its response carries the same {thread:{id}} shape thread/start returns,
+	// so extractThreadID reads both (codex-cli 0.146.1 generate-json-schema).
+	codexMethodThreadResume = "thread/resume"
+
+	// codexMethodTurnInterrupt cancels an in-flight turn. Its params are
+	// {threadId, turnId} with BOTH required (M0 probe, progress.md §E.2 (a)) —
+	// which is why the job record carries a turnId at all (REQ-CX2-003), and why
+	// a job whose turn/started was never observed cannot be interrupted and
+	// degrades to process termination instead (REQ-CX2-011).
+	codexMethodTurnInterrupt = "turn/interrupt"
+
+	// codexNotifyTurnStarted is the server→client notification announcing that a
+	// turn began. Its turn.id is the ONLY source of the turnId that
+	// turn/interrupt requires alongside threadId (REQ-CX2-003; M0 probe,
+	// progress.md §E.2 (a)).
+	codexNotifyTurnStarted = "turn/started"
+
+	// codexRequestFileChangeApproval is a server→CLIENT request: it carries an
+	// `id` and the turn does not advance until a response with that id comes
+	// back. A live session (codex-cli 0.146.1) parked at
+	// activeFlags:["waitingOnApproval"] and never returned because this driver
+	// used to read the line and drop it (REQ-CX2-016; progress.md §E.2 § Live
+	// protocol verification).
+	codexRequestFileChangeApproval = "item/fileChange/requestApproval"
+
+	// codexApprovalDecisionDecline is the answer this client always gives.
+	//
+	// The value is READ FROM the generated protocol schema, not inferred from
+	// the request transcript (plan.md §F AP-9): FileChangeRequestApprovalResponse
+	// requires a `decision` field whose FileChangeApprovalDecision variants are
+	// accept | acceptForSession | decline | cancel. `decline` is documented as
+	// "User denied the file changes. The agent will continue the turn"; `cancel`
+	// denies AND interrupts the turn. Declining is the denial that still lets the
+	// turn finish and report what it could not do, which is the outcome the
+	// caller asked for.
+	//
+	// It is deliberately unconditional. REQ-CX2-016 adds no approval-GRANTING
+	// path — workflow.codex.task.allow_write is the sole write opt-in
+	// (REQ-CX2-007), and a turn that did opt in already runs workspaceWrite, so
+	// an approval request reaching this driver is by construction one that must
+	// not be granted (plan.md §F AP-7).
+	codexApprovalDecisionDecline = "decline"
+
+	// codexRPCMethodNotFound is the JSON-RPC 2.0 "Method not found" code. An
+	// unrecognized client-bound request gets this rather than silence, so an
+	// unknown request also unblocks the turn instead of stalling it
+	// (REQ-CX2-016).
+	codexRPCMethodNotFound = -32601
+
+	// codex client identity sent in the initialize handshake (the server rejects
+	// initialize without a clientInfo {name,version} object).
+	codexClientName    = "moai-codex-gate"
+	codexClientVersion = "0.1.0"
+
+	// codex_audit mode enum (AC-MCP-007).
+	codexModeNative      = "native"
+	codexModeAdversarial = "adversarial"
+
+	// codex_audit target enum (what codex reviews).
+	codexTargetUncommitted = "uncommittedChanges"
+	codexTargetBaseBranch  = "baseBranch"
+
+	// codex_setup auth-provider classification tokens. The spellings are the
+	// wire tokens the web console maps to display labels — they are lowercase
+	// on both sides so the two surfaces agree (internal/web/codex_state.go).
+	// The former "provider" token is gone: the two-stage ladder maps only the
+	// grammar's captured terms (chatgpt / api key) and treats a provider
+	// phrase outside the grammar as unknown rather than guessing
+	// (SPEC-CODEX-LAUNCHER-001, plan §C.1). internal/web keeps its own mirror
+	// constant for legacy display mapping.
+	codexAuthChatGPT = "chatgpt"
+	codexAuthAPIKey  = "apiKey"
+	codexAuthUnknown = "unknown"
+
+	// codex sandbox-policy variants (REQ-CX2-007). SandboxPolicy is an
+	// INTERNALLY-TAGGED UNION object — {"type":"readOnly"} — not a bare string,
+	// exactly like `target` (codex-cli 0.146.1 generate-json-schema, .definitions
+	// .SandboxPolicy: a oneOf of four objects each requiring `type`). A bare
+	// string is rejected with JSON-RPC -32600, which is how the `target` shape
+	// was originally learned. Only the two variants this SPEC transmits are named
+	// here; dangerFullAccess and externalSandbox are deliberately unreachable.
+	codexSandboxReadOnly       = "readOnly"
+	codexSandboxWorkspaceWrite = "workspaceWrite"
+)
+
+// codexServableModelPrefixes are the model-id families the codex app-server can
+// actually serve (§14 — the families live here as a named constant rather than
+// inline). A workflow.audit.codex pin outside these families is dropped, so a
+// Claude id pinned by mistake cannot break the review gate; the request then
+// carries no model and codex applies its own configured default.
+var codexServableModelPrefixes = []string{"gpt-", "o1", "o3", "o4", "codex"}
+
+// codexServableModel reports whether a model id can plausibly be served by the
+// codex app-server. An empty id is never servable (the field is then omitted so
+// codex applies its own configured default).
+func codexServableModel(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	if m == "" {
+		return false
+	}
+	for _, p := range codexServableModelPrefixes {
+		if strings.HasPrefix(m, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveCodexAuditModelEffort is the AUDIT-scoped resolution
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-002): the workflow.audit.codex pin
+// outranks the backend default; everything else falls through to the audit
+// terminal fallback (REQ-AMP-004, retargeted by SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-001 from the zero value to the {gpt-6.1-sol, high} pin).
+//
+// Pin rules: the pin applies only when its Model is non-empty AND
+// codexServable (an unservable pin falls back to the backend default — never
+// break the review gate); an explicit caller `model` argument still outranks the
+// pinned model, mirroring the legacy precedence (the paired pin effort stays).
+// An effort with an empty model pins nothing (the model is the gate). A
+// workflow.yaml that cannot be read or parsed returns the error — the audit
+// never runs with an assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, error) {
+	cwd, _ := params["cwd"].(string)
+	if strings.TrimSpace(cwd) == "" {
+		cwd = projectDirResolver()
+	}
+	pins, pinErr := workflowAuditPins(cwd)
+	if pinErr != nil {
+		return config.ModelEffort{}, pinErr
+	}
+	if pin := pins.Codex; pin.Model != "" && codexServableModel(pin.Model) {
+		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+			pin.Model = strings.TrimSpace(explicit)
+		}
+		return pin, nil
+	}
+	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		return resolveCodexModelEffort(params), nil
+	}
+	return config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}, nil
+}
+
+// VerdictInconclusive is the fail-open verdict value. It rides the same
+// `verdict` field as codex's native verdicts, as a STRUCTURED (non-error)
+// result, never a hard error (design.md §4.3 / §G.4).
+const VerdictInconclusive = "inconclusive"
+
+// ReviewOutput is the adopted review-output.schema.json shape (progress.md
+// §G.4 locked). It is shared across the codex (codex_audit) and — in M3 — the
+// GLM backend, so orchestrator translation is uniform (design.md DQ-2).
+type ReviewOutput struct {
+	Verdict   string    `json:"verdict"`
+	Summary   string    `json:"summary"`
+	Findings  []Finding `json:"findings"`
+	NextSteps []string  `json:"next_steps"`
+
+	// StderrTail is the bounded stderr tail of the codex child that produced this
+	// review. It feeds the receipt's codex_error and never reaches the JSON output.
+	StderrTail string `json:"-"`
+
+	// RecordingDefect carries synthesizeReviewOutput's finding that the body
+	// stated `Verdict: pass` while finding bullets made the recorded verdict
+	// fail (card t1708). Like StderrTail it never reaches the tool's JSON output,
+	// so the audit tools' output schema is untouched; audit_multi forwards it to
+	// PerBackendVerdict.RecordingDefect.
+	RecordingDefect string `json:"-"`
+
+	// Provenance identifies the backend transport that actually produced the
+	// review. It is optional so the existing Codex/GLM output remains byte-for-
+	// byte compatible until those backends opt into the common metadata.
+	Provenance *AuditProvenance `json:"provenance,omitempty"`
+
+	// SynthesisNote records that the verdict signals inside ONE backend's review
+	// body disagreed, and which way they were resolved. Empty whenever they
+	// agreed — a note present on every review would mark nothing.
+	//
+	// It is additive and omitempty, so no existing consumer's JSON changes. The
+	// reason it exists at all is that the adopted value alone cannot be told
+	// apart from a verdict the review stated plainly, which leaves the next
+	// person diagnosing an incident nothing to read.
+	SynthesisNote string `json:"synthesis_note,omitempty"`
+
+	// GateUnmet records that the project declared workflow.audit.gates.codex:
+	// required but THIS audit could not satisfy that requirement — the result
+	// is a fail-open inconclusive, not a review. Empty whenever the gate is
+	// not `required` or a real verdict exists.
+	//
+	// #1632 axis 3: "required reads as a guarantee but behaves as a
+	// suggestion". The tool layer cannot force a caller to invoke the audit,
+	// but it CAN refuse to let a mandatory gate's failure pass silently — an
+	// inconclusive result that looked byte-identical with or without a
+	// declared required gate now carries the unmet state as a structured
+	// field, so a machine consumer sees the gap instead of string-parsing for
+	// it. Additive + omitempty (the SynthesisNote precedent): no existing
+	// consumer's JSON changes, and the fail-open verdict itself is preserved.
+	GateUnmet string `json:"gate_unmet,omitempty"`
+
+	// Contradiction records that the review is self-contradictory: a blocking
+	// verdict survived the parse while no finding did, and no GateUnmet explains
+	// the pair. That is the V8 shape — the verdict line was recognized but the
+	// findings were written in a shape no recognizer reads, so a consumer
+	// reading Findings alone would see a clean review
+	// (SPEC-CODEX-PARSER-SHAPE-001 REQ-CPS-006).
+	//
+	// It is a separate field rather than a SynthesisNote because the
+	// convergence layer reads a non-empty SynthesisNote as a disagreement flag;
+	// this record is about lost content, not about signals that disagreed.
+	// Additive + omitempty (the SynthesisNote/GateUnmet precedent): no existing
+	// consumer's JSON changes unless the contradiction is present.
+	Contradiction string `json:"contradiction,omitempty"`
+
+	// AuditReceipt carries the id of the receipt the server recorded for THIS
+	// call, so an auditor can cite evidence that the audit ran rather than
+	// asserting it. Present only where the audited tree explicitly declared
+	// workflow.audit.gates.codex: required — the tree that asked to be checked
+	// is the only one that gains a field. Additive + omitempty, so every other
+	// project's result stays byte-identical.
+	AuditReceipt string `json:"audit_receipt,omitempty"`
+
+	// BuildCommit records the commit the SERVING binary was built from
+	// (SPEC-AUDIT-BUILD-IDENTITY-001), so a verdict can be re-attributed to
+	// the binary that produced it after the fact. Deliberately NOT a version
+	// string: one version names both a lagging build and a current one
+	// (REQ-ABI-003). Flat sibling fields, additive + omitempty (the
+	// SynthesisNote/GateUnmet precedent): no existing consumer's JSON changes
+	// when the identity is absent. Assembled ONLY by auditBuildIdentity —
+	// one constructor serves all three audit entry points (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+
+	// BuildLag carries the rebuild advisory on an ancestor build — the binary
+	// predates commits the reviewed tree already contains — naming both
+	// commits. Empty on every other verdict, so the advisory speaks only when
+	// the binary really is running code the tree has moved past (REQ-ABI-006).
+	BuildLag string `json:"build_lag,omitempty"`
+
+	// StateNotice names a state write this call skipped and why — set only
+	// when a config-orphaned worktree's primary checkout could not be
+	// identified, so the receipt had no store to go to
+	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-004). The verdict is unchanged.
+	// Additive + omitempty.
+	StateNotice string `json:"state_notice,omitempty"`
+
+	// ReviewBase names the base a baseBranch audit measured the change against
+	// — branch plus merge base — so a verdict says which diff it judged (card
+	// t1426: the configured integration base now outranks the remote default
+	// head). Set only for target baseBranch; additive + omitempty.
+	ReviewBase string `json:"review_base,omitempty"`
+
+	// CouldNotRun marks a review that never produced a verdict because the
+	// backend could not be PERFORMED at all — transport loss, unparsable
+	// reply, missing binary — as distinct from a review that ran and returned
+	// no usable content (SPEC-MCP-NEUTRALITY-001 REQ-MN-021). The required
+	// gate does not convert a could-not-run into verdict `fail`: a leg that
+	// never ran is a not-performed result, and converting it would misstate a
+	// reviewed failure that never happened. Set by the inconclusive factories;
+	// empty/absent on every verdict a backend actually produced. Additive +
+	// omitempty (the SynthesisNote/GateUnmet precedent).
+	CouldNotRun bool `json:"could_not_run,omitempty"`
+
+	// Stderr preserves the backend process's stderr tail when the leg could
+	// not be performed, for diagnosis (REQ-MN-021) — the stderr the session
+	// runner used to discard with the buffer it captured into. Empty on any
+	// verdict a backend produced, and on a could-not-run whose process never
+	// started (nothing was written). Additive + omitempty.
+	Stderr string `json:"stderr,omitempty"`
+
+	// Truncated marks a diff-carrying review whose material exceeded the
+	// review size limit (REQ-MN-024): the verdict judged a TAIL-CUT change,
+	// and the reader must be able to see that. Additive + omitempty.
+	Truncated bool `json:"truncated,omitempty"`
+
+	// ExcludedUntracked names the untracked files a diff cannot carry and the
+	// review therefore did not see (REQ-MN-024). Additive + omitempty.
+	ExcludedUntracked []string `json:"excluded_untracked,omitempty"`
+}
+
+// AuditProvenance is backend-supplied evidence about how a review was made.
+// Token fields are pointers so an unavailable provider metric is serialized as
+// JSON null instead of being misreported as a measured zero.
+type AuditProvenance struct {
+	Backend           string `json:"backend"`
+	Transport         string `json:"transport"`
+	AuthMode          string `json:"auth_mode"`
+	Source            string `json:"source,omitempty"`
+	RequestedModel    string `json:"requested_model"`
+	ResolvedModel     string `json:"resolved_model"`
+	RequestedEffort   string `json:"requested_effort"`
+	ToolSurface       string `json:"tool_surface"`
+	SessionPersisted  bool   `json:"session_persisted"`
+	UsageSource       string `json:"usage_source"`
+	InputTokens       *int64 `json:"input_tokens"`
+	CachedInputTokens *int64 `json:"cached_input_tokens"`
+	OutputTokens      *int64 `json:"output_tokens"`
+	ErrorCode         string `json:"error_code"`
+}
+
+// Finding is a single review finding (§G.4).
+type Finding struct {
+	Severity       string  `json:"severity"`
+	Title          string  `json:"title"`
+	Body           string  `json:"body"`
+	File           string  `json:"file"`
+	Line           int     `json:"line"`
+	Confidence     float64 `json:"confidence"`
+	Recommendation string  `json:"recommendation"`
+}
+
+// inconclusiveReview is the fail-open ReviewOutput factory: it ALWAYS returns a
+// usable structured result carrying the reason + the claude-fallback next step.
+// The full 3-way fallback plumbing is M3; M2 only guarantees no hard crash.
+//
+// Every inconclusive this factory builds is a could-not-run (REQ-MN-021): the
+// review never produced a verdict, and the flag keeps that not-performed state
+// distinct from a content failure.
+func inconclusiveReview(reason string) ReviewOutput {
+	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
+}
+
+// inconclusiveReviewWithSummary is the same fail-open factory taking the Summary
+// VERBATIM. It exists because not every inconclusive is an unavailable backend:
+// a blank review body is a backend that answered without saying anything, and
+// prefixing that with "codex unavailable" would make the two states
+// indistinguishable — a new silence, not a repair (REQ-CBR-005).
+func inconclusiveReviewWithSummary(summary string) ReviewOutput {
+	return ReviewOutput{
+		Verdict:     VerdictInconclusive,
+		Summary:     summary,
+		Findings:    []Finding{},
+		NextSteps:   []string{"fall back to the active auditor (claude)"},
+		CouldNotRun: true,
+	}
+}
+
+// codexBlankReviewSummary names the blank-output state in wording distinct from
+// the unavailable-backend wording, so a reader can tell the two apart
+// (REQ-CBR-005 / SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001).
+const codexBlankReviewSummary = "codex review output was blank: no verdict text was produced"
+
+// blankReviewInconclusive is the fail-open output for a review body that carries
+// no non-whitespace character. The verdict is inconclusive, NOT fail: codex is
+// optional, and a blank body is one symptom of a backend that is present but not
+// answering — blocking a session on that would contradict the optional-backend
+// contract (spec.md §C).
+func blankReviewInconclusive() ReviewOutput {
+	return inconclusiveReviewWithSummary(codexBlankReviewSummary)
+}
+
+// codexReviewTextIsBlank is the ONE emptiness discriminator the codex
+// review-text path uses — at collection, at selection, and at the guard.
+//
+// It exists as a named function rather than four inline comparisons because the
+// defect it repairs is shaped exactly like the miss-one hazard: three sites were
+// written with the same exact-equality test, a fourth was added later, and a
+// body of whitespace passed all four as if it were content
+// (SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001, plan.md §B.2).
+//
+// Filler is classified by category, never by a hand-listed rune set: a body is
+// blank when every rune in it is whitespace (unicode.IsSpace, which includes
+// U+00A0, so a body of non-breaking spaces alone is blank) or a format character
+// (general category Cf). Format characters count because unicode.IsSpace
+// excludes them — U+200B ZERO WIDTH SPACE is Cf, not space — so a body of
+// zero-width spaces alone is blank too. Both decisions are deliberate and
+// asserted.
+//
+// strings.TrimFunc trims only the ends, so a Cf character INSIDE real content is
+// left untouched: the discriminator never alters or rejects a body, it only
+// answers whether the body is empty.
+func codexReviewTextIsBlank(s string) bool {
+	return strings.TrimFunc(s, isReviewBlankFiller) == ""
+}
+
+// isReviewBlankFiller reports whether r can make up a review body that carries
+// no reviewable content: whitespace, or a format character (general category Cf)
+// such as a zero-width space, a byte-order mark, or a bidirectional control.
+func isReviewBlankFiller(r rune) bool {
+	return unicode.IsSpace(r) || unicode.Is(unicode.Cf, r)
+}
+
+// ─── injectable command-execution seams (cross-platform testable, no PATH stubs) ───
+
+// codexCommandRunner abstracts a SINGLE-SHOT shelling out to the codex binary
+// for the codex_setup / auth probes (`codex --version`, `codex login status`),
+// which are not JSON-RPC calls. The interactive review-gate session uses the
+// separate codexSession seam below. Tests inject canned responses without
+// spawning a process; the production runner uses exec.CommandContext.
+type codexCommandRunner interface {
+	run(ctx context.Context, binaryPath string, args []string, stdin string) (stdout string, err error)
+}
+
+// realCodexRunner is the production runner: spawns the binary, pipes stdin,
+// captures stdout. A bounded context deadline is the caller's responsibility
+// (the MCP tool call inherits the request ctx; the review-gate pins 900s).
+type realCodexRunner struct{}
+
+func (realCodexRunner) run(ctx context.Context, binaryPath string, args []string, stdin string) (string, error) {
+	cmd := codexChildCmd(ctx, binaryPath, args)
+	cmd.Stdin = strings.NewReader(stdin)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	// Discard stderr so a noisy codex never corrupts the JSON-RPC stdout parse.
+	cmd.Stderr = &bytes.Buffer{}
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// codexRunner is the single-shot command-execution seam (codex_setup / auth).
+// Tests swap it (with t.Cleanup).
+var codexRunner codexCommandRunner = realCodexRunner{}
+
+// codexLookPath is the binary-resolution seam (wraps exec.LookPath so tests
+// simulate a missing codex without PATH manipulation).
+var codexLookPath = exec.LookPath
+
+// ─── low-level codex app-server JSON-RPC session client ───
+//
+// codex app-server speaks an async, session-oriented JSON-RPC over stdio
+// (verified against codex-cli 0.146.1). Four protocol facts shape this client
+// (each was the cause of a prior structural ALLOW — the gate could not reach a
+// BLOCK even on an obvious injection + hardcoded-AWS-key change):
+//
+//  1. initialize handshake FIRST. A bare review/start gets no response at all;
+//     initialize with a clientInfo {name,version} object is the required opener.
+//  2. threadId is required by review/start and turn/start. It is obtained from
+//     thread/start's result (result.thread.id) and threaded into the review call.
+//  3. target is an INTERNALLY TAGGED OBJECT {"type":"uncommittedChanges"}, not a
+//     bare string. A bare string is rejected with JSON-RPC -32600.
+//  4. Responses are asynchronous NDJSON. Notifications (no id) and the final
+//     result (with id) arrive as LATER lines on stdout; the verdict itself is
+//     NOT in the review/start ack (which only says the turn started) — it
+//     arrives later as an `exitedReviewMode` item followed by `turn/completed`.
+//     The client keeps the subprocess's stdin/stdout open and reads NDJSON lines
+//     until the turn completes, then synthesizes a verdict from codex's review
+//     prose.
+
+// codexConn is the interactive JSON-RPC session handle: send writes one NDJSON
+// request line to the server's stdin; recv returns the next NDJSON line the
+// server wrote to stdout (response OR notification), or (_, false) on EOF.
+type codexConn interface {
+	send(line string) error
+	recv() (string, bool)
+	close() error
+}
+
+// codexProcessConn is the OPTIONAL half of codexConn: a connection backed by a
+// real OS process reports the pid of the process the session runner spawned. It
+// is separate from codexConn so the canned test connections stay processless —
+// a job record must never name a pid this server did not spawn (REQ-CX2-012).
+type codexProcessConn interface {
+	pid() int
+}
+
+// codexConnPID reports the pid of the codex process behind conn, or 0 when the
+// connection has no backing process. Zero is the "no process of ours" value the
+// job registry records and the cancel path (M4) refuses to signal.
+func codexConnPID(conn codexConn) int {
+	if p, ok := conn.(codexProcessConn); ok {
+		return p.pid()
+	}
+	return 0
+}
+
+// codexStderrReporter is the OPTIONAL half of codexConn: a connection backed by
+// a real process (or a test double that captured one) reports the backend's
+// stderr. Separate from codexConn so the connections without a stderr surface
+// stay unconstrained — the same shape codexProcessConn uses (REQ-MN-021).
+type codexStderrReporter interface {
+	stderrTail() string
+}
+
+// codexConnStderr returns the backend's stderr tail behind conn, or "" when the
+// connection reports none.
+func codexConnStderr(conn codexConn) string {
+	if r, ok := conn.(codexStderrReporter); ok {
+		return r.stderrTail()
+	}
+	return ""
+}
+
+// codexSessionRunner abstracts spawning the codex app-server subprocess so tests
+// inject a canned line exchange without spawning a process. The production
+// runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
+// concurrently into a buffered line channel. dir is the working directory the
+// child runs at (l57-r5 finding 1) — the SAME root the REQ-MN-009 containment
+// listing read, so the child resolves the config.toml whose MCP servers the
+// disable list actually names.
+type codexSessionRunner interface {
+	start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error)
+}
+
+// codexSession is the session-spawning seam. Tests swap it (with t.Cleanup).
+var codexSession codexSessionRunner = realCodexSessionRunner{}
+
+// realCodexSessionRunner is the production session runner.
+type realCodexSessionRunner struct{}
+
+func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error) {
+	cmd := codexChildCmd(ctx, binaryPath, args)
+	// l57-r5 finding 1: the child runs at the SAME root the containment
+	// listing read. The disable list names the MCP servers configured at that
+	// root; a child that inherits this process's cwd instead resolves a
+	// different config.toml, and a foreign server registered only in the
+	// server's own tree escapes the disable list and reaches the child.
+	cmd.Dir = dir
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("codex stdin pipe: %w", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("codex stdout pipe: %w", err)
+	}
+	// Keep stderr for the receipt's tail and the could-not-run diagnostic
+	// (REQ-MN-021). stdout stays the NDJSON channel, so the stream is never parsed
+	// from stderr and a noisy codex cannot corrupt it.
+	stderr := &codexStderrBuffer{}
+	cmd.Stderr = stderr
+	// A grandchild that inherits stderr can hold the pipe open after the child exits;
+	// WaitDelay bounds how long Wait (and close) waits on it (t1788).
+	cmd.WaitDelay = codexStderrWaitDelay
+	// REQ-MN-024: the child runs on the SCRUBBED environment — the session's
+	// identity keys and the lane's launch keys never reach the reviewer
+	// process (the same scrub the codex exec role path applies). The pane
+	// drop must ride along too (sync-audit r3 F2): codexChildCmd built the
+	// environment through codexReviewChildEnv, and replacing it wholesale
+	// with codexChildEnv() here discarded that drop — codexAuditChildEnv
+	// composes BOTH filters.
+	cmd.Env = codexAuditChildEnv()
+	// t1632: codexChildCmd put the audit-leg marker in cmd.Env when a leg
+	// spawns this child, but the marker rides the leg's CONTEXT, not this
+	// process's environment — the scrub above cannot inherit it. Re-append it
+	// (last-wins, the same posture as CODEX_HOME in codexChildEnv): a leg
+	// child without the marker re-runs the Stop chain's verification members
+	// (the t1754 defect).
+	if ctx.Value(codexAuditLegCtxKey{}) != nil {
+		cmd.Env = append(cmd.Env, codexAuditLegEnv+"=1")
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("codex start: %w", err)
+	}
+	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, stderr: stderr, lines: make(chan string, 128)}
+	go c.readLoop(ctx)
+	return c, nil
+}
+
+// realCodexConn pipes a single codex app-server subprocess. readLoop drains
+// stdout line-by-line into the lines channel; closing stdin + killing the
+// process on close prevents a hung codex from stalling the Stop hook.
+type realCodexConn struct {
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.Reader
+	stderr *codexStderrBuffer
+	lines  chan string
+	mu     sync.Mutex
+}
+
+// stderrTail satisfies codexStderrReporter: the last 4KiB of what the codex
+// process wrote to stderr, for the could-not-run diagnostic (REQ-MN-021). The
+// tail bound keeps a chatty backend from inflating a structured result.
+func (c *realCodexConn) stderrTail() string {
+	const stderrTailLimit = 4096
+	return c.stderr.tail(stderrTailLimit)
+}
+
+func (c *realCodexConn) readLoop(ctx context.Context) {
+	defer close(c.lines)
+	sc := bufio.NewScanner(c.stdout)
+	// Review turns can carry large patches in aggregatedOutput; raise the cap.
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for sc.Scan() {
+		select {
+		case c.lines <- sc.Text():
+		case <-ctx.Done():
+			return
+		}
+	}
+	// scanner stopped (EOF or read error) — the channel close signals recv EOF.
+}
+
+func (c *realCodexConn) send(line string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, err := fmt.Fprintln(c.stdin, line); err != nil {
+		return fmt.Errorf("codex write: %w", err)
+	}
+	return nil
+}
+
+func (c *realCodexConn) recv() (string, bool) {
+	line, ok := <-c.lines
+	return line, ok
+}
+
+// pid reports the pid of the codex subprocess this connection spawned, or 0
+// once the process is gone (satisfies codexProcessConn).
+func (c *realCodexConn) pid() int {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return 0
+	}
+	return c.cmd.Process.Pid
+}
+
+func (c *realCodexConn) close() error {
+	_ = c.stdin.Close()
+	done := make(chan error, 1)
+	go func() { done <- c.cmd.Wait() }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(3 * time.Second):
+		_ = c.cmd.Process.Kill()
+		return <-done
+	}
+}
+
+// codexRPCError is the JSON-RPC error object. Both fields are surfaced verbatim
+// so the operator sees the server's own words rather than our paraphrase. The
+// arm is load-bearing: without it a rejected request reads as "no opinion" and
+// the gate fail-opens silently with nothing anywhere saying why (the #1421 fix
+// preserves this surface).
+type codexRPCError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// rpcMessage is a permissive NDJSON decoder that captures the fields the
+// session driver needs: id (request vs notification discriminator), method
+// (notification name), result (response payload), error (rejection arm), and
+// params (notification payload). Lines that fail to parse are skipped as noise.
+type rpcMessage struct {
+	ID     json.RawMessage `json:"id,omitempty"`
+	Method string          `json:"method,omitempty"`
+	Result json.RawMessage `json:"result,omitempty"`
+	Error  *codexRPCError  `json:"error,omitempty"`
+	Params json.RawMessage `json:"params,omitempty"`
+}
+
+// codexSessionHandle is a REUSABLE codex app-server session (REQ-CX2-001): it
+// retains the threadId obtained from thread/start so a second turn can be issued
+// on the same thread without repeating the initialize + thread/start handshake.
+//
+// Before M1 the handshake was inlined in runCodexReviewRPC, which opened a
+// session, drove exactly one turn, and tore the subprocess down on return — the
+// threadId was a local variable discarded on return (spec.md §A.3 G1). Splitting
+// it out changes nothing for the two existing consumers (runCodexReviewRPC is
+// retained below as a thin caller) and gives the later job surface a session it
+// can hold across turns.
+//
+// The handle owns the connection once openCodexSession returns successfully; the
+// caller MUST close it.
+type codexSessionHandle struct {
+	conn     codexConn
+	threadID string
+
+	// mu guards nextID. A background job's goroutine allocates ids for its turn
+	// while the M4 cancel path allocates one for turn/interrupt on the SAME
+	// session from the calling goroutine, so the counter is genuinely shared.
+	mu     sync.Mutex
+	nextID int // monotonic JSON-RPC request id; the handshake consumed 1 and 2
+
+	// turnID is the id of the most recent turn the session observed starting,
+	// read from the turn/started notification's turn.id. It is the second
+	// argument turn/interrupt requires alongside threadId (REQ-CX2-003; M0
+	// probe, progress.md §E.2 (a)) — without it a turn cannot be addressed for
+	// cancellation at all.
+	turnID string
+
+	// onTurnStarted, when non-nil, is invoked with the turn id the moment
+	// turn/started is observed — MID-FLIGHT, before the turn completes. It is
+	// the hook a background job goroutine installs so the turnId reaches the
+	// job record while the turn is still running and therefore still
+	// cancellable (plan.md §D M2).
+	onTurnStarted func(turnID string)
+
+	// resolveME is the {model, effort} resolver this session's turns resolve
+	// through (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). It is set at open time from
+	// the injected resolver: the AUDIT flow passes the pin-aware
+	// resolveCodexAuditModelEffort; every other caller (codex_task, the
+	// Stop-hook review gate) passes nil and resolves through the legacy
+	// pin-free resolveCodexModelEffort (REQ-AMP-008 isolation). nil here
+	// means legacy — see effortResolver. Since SPEC-AUDIT-CEILING-002 the
+	// seam carries the pin-read error out, so the turn never runs with an
+	// assumed-absent pin.
+	resolveME func(params map[string]any) (config.ModelEffort, error)
+}
+
+// effortResolver returns the session's {model, effort} resolver, defaulting to
+// the pin-free resolution when none was injected.
+func (h *codexSessionHandle) effortResolver() func(map[string]any) (config.ModelEffort, error) {
+	if h != nil && h.resolveME != nil {
+		return h.resolveME
+	}
+	return pinFreeEffortResolver
+}
+
+// codexSessionError carries the fail-open summary text alongside the underlying
+// cause. The handshake's failure paths each have their own operator-facing
+// summary; returning them through this type lets openCodexSession be split out
+// while runCodexReviewRPC keeps emitting the exact same ReviewOutput.Summary and
+// the exact same error value it did before.
+type codexSessionError struct {
+	summary string
+	cause   error
+
+	// stderrTail is the bounded stderr tail of the codex child, read after the
+	// failed open closed it. It says why the handshake failed and feeds the
+	// receipt's codex_error (t1788).
+	stderrTail string
+
+	// threadRequestSent is true when the failure happened AFTER the thread
+	// request (thread/start or thread/resume) was written — the thread ack was
+	// rejected or carried no id. codex_task reads it to report the thread it
+	// asked to resume on exactly those failures and not on ones that ended
+	// before the request was sent (SPEC-CODEX-RESUME-SCOPE-001 REQ-CRS-001).
+	threadRequestSent bool
+
+	// stderr is the backend's stderr tail captured before the half-open
+	// connection was closed, so a could-not-run result can carry it for
+	// diagnosis (REQ-MN-021). Empty when the process never started.
+	stderr string
+}
+
+func (e *codexSessionError) Error() string { return e.cause.Error() }
+func (e *codexSessionError) Unwrap() error { return e.cause }
+
+// codexHandshakeFailure closes the half-open connection and wraps the cause with
+// its fail-open summary.
+func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
+	_ = conn.close()
+	return &codexSessionError{summary: summary, cause: cause, stderr: codexConnStderr(conn), stderrTail: codexConnStderrTail(conn)}
+}
+
+// codexConnStderrTail reads the bounded stderr tail of a real codex child. It is
+// called after the child was closed, so the stream is final; a canned test
+// connection has none (t1788).
+func codexConnStderrTail(conn codexConn) string {
+	if c, ok := conn.(*realCodexConn); ok && c.stderr != nil {
+		return c.stderr.tail(codexErrorTailBytes)
+	}
+	return ""
+}
+
+// codexThreadRequestFailure is codexHandshakeFailure for a failure after the
+// thread request was written: it marks the error so a caller can tell the
+// request reached codex.
+func codexThreadRequestFailure(conn codexConn, summary string, cause error) error {
+	_ = conn.close()
+	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderr: codexConnStderr(conn), stderrTail: codexConnStderrTail(conn)}
+}
+
+// openCodexSession spawns a codex app-server subprocess and completes the
+// mandatory handshake — initialize (with clientInfo) → thread/start → threadId —
+// returning a handle further turns can be issued on.
+//
+// params may carry "cwd" (string), threaded into thread/start so codex reviews
+// the right working tree, and "model" (string). thread/start is the SESSION-level
+// destination for the resolved model (REQ-CX2-002): ReviewStartParams declares
+// only {delivery, target, threadId} — it has no model field at all — so for the
+// review path the thread is the only place a model can reach codex.
+func openCodexSession(ctx context.Context, binaryPath string, params map[string]any) (*codexSessionHandle, error) {
+	return openCodexSessionOn(ctx, binaryPath, params, "")
+}
+
+// openCodexSessionOn is openCodexSession with an optional EXISTING thread to
+// resume (REQ-CX2-008). When resumeThreadID is empty the handshake opens a new
+// thread with thread/start — the unchanged path both existing callers take.
+// When it is set, thread/resume re-opens that thread instead, so no new thread
+// is started and the recorded id is the one every turn addresses.
+//
+// This is the PLAIN-TASK path (l57-r8 finding 1): an ordinary codex_task
+// delegation opens its session WITHOUT the gate containment, so the child
+// keeps the operator's configured MCP servers and its sandbox is governed by
+// the task's own per-turn sandboxPolicy. openCodexSessionResolved(contain=
+// true) is the gate/audit variant.
+func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
+	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil, false)
+}
+
+// openCodexSessionResolved is openCodexSessionOn with an INJECTED {model,
+// effort} resolver (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). A nil resolver means the
+// pin-free resolveCodexModelEffort; the audit flow injects the pin-aware
+// resolveCodexAuditModelEffort. This is the seam that keeps the pin
+// audit-entry-only: codex_task and the review gate keep calling
+// openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
+// Since SPEC-AUDIT-CEILING-002 the resolver's error return propagates to the
+// turn that consumes it.
+// moaiGateExposureArg is the config override that flips the moai MCP server
+// the gate child spawns into the gate exposure (REQ-MN-009): the served
+// surface collapses to the gate read-only subset.
+const moaiGateExposureArg = `mcp_servers.moai.args=["mcp-server","--exposure","gate"]`
+
+// codexGateContainmentArgs builds the argv that contains a codex child to the
+// moai server (REQ-MN-009): every NON-moai MCP server the child would resolve
+// is disabled (the role-audit path's containment, shared), and the moai
+// server's args are overridden to the gate exposure. Fail-closed: a listing
+// failure refuses the spawn — an uncontained gate child is the 38/38
+// defect family this closes.
+func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]string, error) {
+	disable, err := codexAuditMCPDisableArgs(ctx, binaryPath, root)
+	if err != nil {
+		return nil, err
+	}
+	// Drop the moai disable pair: the disable args stub EVERY listed server,
+	// and the moai server is the one the gate session keeps — its gate
+	// exposure rides the appended args override instead. The capacity skips
+	// the +2 headroom arithmetic — append grows the slice when the moai pair
+	// survives, and the addition was CodeQL's overflow finding on this
+	// allocation (card t1632 CI repair).
+	kept := make([]string, 0, len(disable))
+	moaiListed := false
+	for i := 0; i < len(disable); i++ {
+		if disable[i] == "-c" && i+1 < len(disable) && strings.Contains(disable[i+1], "mcp_servers.moai.") {
+			moaiListed = true
+			i++ // skip the value too
+			continue
+		}
+		kept = append(kept, disable[i])
+	}
+	// The override addresses the moai server, so it needs one to address: with no
+	// moai entry in the child's config it would create a transport-less table
+	// that codex rejects at load, and the child would never start.
+	if !moaiListed {
+		return kept, nil
+	}
+	return append(kept, "-c", moaiGateExposureArg), nil
+}
+
+// openCodexSessionResolved is the session-open body with an INJECTED {model,
+// effort} resolver and the containment SCROLL (l57-r8 finding 1): contain=true
+// is the gate/audit/review spawn — the foreign-server disable plus gate
+// exposure (REQ-MN-009) plus the session-level read-only sandbox (REQ-MN-024);
+// contain=false is the plain codex_task spawn, which keeps the operator's
+// configured MCP servers and its per-turn sandboxPolicy. The r4 round made
+// containment unconditional on this shared path after an auditor demanded it
+// for audit spawns that name no root; the round-7 auditor correctly observed
+// that the same shape stripped EVERY ordinary task of its configured servers.
+// The scoped split keeps both audits' true findings: audit children stay
+// contained whatever the request carries, task children stay neutral.
+func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error), contain bool) (*codexSessionHandle, error) {
+	if resolve == nil {
+		resolve = pinFreeEffortResolver
+	}
+	argv := []string{codexAppServerSubcmd}
+	// The child's working directory: the request's root when one was named,
+	// the server's own project-root resolution otherwise. For a contained
+	// spawn this is the anchor the containment listing read (l57-r5 finding
+	// 1); for a plain task spawn it is the workRoot the task itself named.
+	root, _ := params["cwd"].(string)
+	if strings.TrimSpace(root) == "" {
+		root = projectDirResolver()
+	}
+	if contain {
+		// REQ-MN-009 gate/audit child containment: every codex app-server the
+		// gate/audit path spawns is contained to the moai server in gate
+		// exposure, anchored at the reviewed tree (params["cwd"]). An
+		// uncontainable spawn is refused — the containment failure must not
+		// degrade into an uncontained child silently.
+		// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy —
+		// a reviewer never needs to write, and the config override is the
+		// app-server surface's spelling of the `-s read-only` the codex exec
+		// role path uses.
+		// Card t1632 sync-audit r5: the containment listing runs on the
+		// BACKGROUND context, the same precondition-before-session-work rule
+		// the serving anchor lookup applies (codex_task.go) — an
+		// already-cancelled request must fail AT THE SESSION (which stays on
+		// the request context), not at the containment read that runs before
+		// the session exists. Before this repair, a cancelled request failed
+		// the listing with "context canceled" and the session never opened at
+		// all.
+		// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
+		// listing that hangs on a wedged child must not outlive the request by
+		// minutes. The bound is the listing's OWN
+		// (DefaultCodexAuditListTimeout, the same bound codexAuditMCPList
+		// applies internally): keying it on the TASK bound would make a
+		// 100ms-bound request abort the containment and then sit out the
+		// listing's own WaitDelay anyway (r6 follow-through).
+		listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
+		argv = append(argv, "-c", "sandbox_mode=read-only")
+		// Card t1632 sync-audit r4: containment is UNCONDITIONAL on the
+		// gate/audit path. Before that repair the block keyed on
+		// params["cwd"], so an audit path that named no project_root (the
+		// audit_multi codex leg's default) spawned a child with NO disable
+		// args — the child resolved the operator's own MCP servers, write
+		// tools included. The anchor is the request's root when one was named
+		// and the server's own project-root resolution otherwise; only a
+		// server that cannot resolve ANY root refuses the spawn (fail-closed
+		// — an uncontained child is the defect this closes). The params map is
+		// untouched: an OMITTED root still reaches the thread as an omission
+		// (REQ-2 pass-through), only the child's process containment changes.
+		if strings.TrimSpace(root) == "" {
+			cancelList()
+			return nil, &codexSessionError{
+				summary: "codex session containment failed: no project root to anchor the MCP server containment",
+				cause:   errors.New("project root unresolved"),
+			}
+		}
+		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
+		cancelList()
+		if err != nil {
+			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
+		}
+		argv = append(argv, containment...)
+	}
+	conn, err := codexSession.start(ctx, binaryPath, argv, root)
+	if err != nil {
+		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
+	}
+
+	// 1. initialize handshake (mandatory; clientInfo {name,version} required).
+	if err := codexInitialize(ctx, conn); err != nil {
+		return nil, err
+	}
+
+	// 2. thread/start (or thread/resume) → obtain threadId (required by
+	//    review/start + turn/start).
+	const threadIDReq = 2
+	threadMethod := codexMethodThreadStart
+	threadParams := map[string]any{}
+	if resumeThreadID != "" {
+		threadMethod = codexMethodThreadResume
+		threadParams["threadId"] = resumeThreadID
+	}
+	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
+		threadParams["cwd"] = cwd
+	}
+	// The session-level instruction carrier (SPEC-CODEX-PARSER-SHAPE-001 M4):
+	// whatever the review path stashes here reaches the thread every turn of
+	// this session runs on. Only the native review path populates it — see
+	// codexReviewSessionParams.
+	if instr, ok := params["developerInstructions"].(string); ok && instr != "" {
+		threadParams["developerInstructions"] = instr
+	}
+	me, resolveErr := resolve(params)
+	if resolveErr != nil {
+		return nil, codexHandshakeFailure(conn, "codex thread model resolution failed: "+resolveErr.Error(), resolveErr)
+	}
+	if me.Model != "" {
+		threadParams["model"] = me.Model
+	}
+	if err := writeCodexRequest(conn, threadIDReq, threadMethod, threadParams); err != nil {
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" write failed: "+err.Error(), err)
+	}
+	thrResp, err := awaitCodexResponse(conn, threadIDReq, ctx)
+	if err != nil {
+		return nil, codexThreadRequestFailure(conn, "codex "+threadMethod+" rejected: "+err.Error(), err)
+	}
+	threadID := extractThreadID(thrResp.Result)
+	if threadID == "" {
+		return nil, codexThreadRequestFailure(conn, "codex "+threadMethod+" returned no thread id",
+			errors.New("codex "+threadMethod+": no thread id in result"))
+	}
+
+	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1, resolveME: resolve}, nil
+}
+
+// codexInitialize runs the mandatory initialize handshake (request id 1). On
+// failure it closes the half-open connection and returns a codexSessionError
+// carrying the fail-open summary.
+func codexInitialize(ctx context.Context, conn codexConn) error {
+	const initID = 1
+	if err := writeCodexRequest(conn, initID, codexMethodInitialize, map[string]any{
+		"clientInfo": map[string]any{"name": codexClientName, "version": codexClientVersion},
+	}); err != nil {
+		return codexHandshakeFailure(conn, "codex initialize write failed: "+err.Error(), err)
+	}
+	if _, err := awaitCodexResponse(conn, initID, ctx); err != nil {
+		return codexHandshakeFailure(conn, "codex initialize rejected: "+err.Error(), err)
+	}
+	return nil
+}
+
+// close tears the session's subprocess down (stdin close, bounded wait, kill).
+func (h *codexSessionHandle) close() error {
+	if h == nil || h.conn == nil {
+		return nil
+	}
+	return h.conn.close()
+}
+
+// pid reports the pid of the codex subprocess backing this session, or 0 when
+// the session has no backing process (a canned session, or a closed one).
+func (h *codexSessionHandle) pid() int {
+	if h == nil || h.conn == nil {
+		return 0
+	}
+	return codexConnPID(h.conn)
+}
+
+// noteTurnStarted records an observed turn id on the handle and fans it out to
+// the mid-flight observer, if one is installed.
+//
+// The write is guarded because the turn loop no longer always finishes before
+// its caller reads the id back: a turn abandoned at the REQ-CX2-017 bound keeps
+// running in its own goroutine while codex_task builds a result from the
+// handle. The observer fires OUTSIDE the lock — it writes a job record, which
+// has no business happening under a session mutex.
+func (h *codexSessionHandle) noteTurnStarted(turnID string) {
+	if turnID == "" {
+		return
+	}
+	h.mu.Lock()
+	h.turnID = turnID
+	observer := h.onTurnStarted
+	h.mu.Unlock()
+
+	if observer != nil {
+		observer(turnID)
+	}
+}
+
+// allocID hands out the next JSON-RPC request id. Ids must stay unique across
+// the whole session: a reused id would let awaitCodexResponse match an earlier
+// turn's response and return it as this turn's ack.
+func (h *codexSessionHandle) allocID() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	id := h.nextID
+	h.nextID++
+	return id
+}
+
+// sendTurnInterrupt sends turn/interrupt for the given thread and turn
+// (REQ-CX2-011). Both arguments are required by the method, so the caller must
+// have a recorded turnId — an empty one is a caller error rather than a
+// degradation to be papered over here.
+//
+// The response is deliberately NOT awaited. The job's own goroutine is inside
+// awaitCodexTurnReview draining this connection; a second reader would race it
+// for lines and could swallow the turn/completed notification the turn loop is
+// waiting for. What cancellation needs is the request to reach codex — the
+// outcome is observed as the turn ending, which the caller waits for through the
+// grace window instead.
+func (h *codexSessionHandle) sendTurnInterrupt(threadID, turnID string) error {
+	if threadID == "" || turnID == "" {
+		return fmt.Errorf("%s requires both threadId and turnId (got %q / %q)",
+			codexMethodTurnInterrupt, threadID, turnID)
+	}
+	return writeCodexRequest(h.conn, h.allocID(), codexMethodTurnInterrupt, map[string]any{
+		"threadId": threadID,
+		"turnId":   turnID,
+	})
+}
+
+// runTurn drives ONE turn on the session's existing thread: send the caller's
+// review/turn method with the corrected request shape → await the ack → await the
+// asynchronous turn completion → synthesize a ReviewOutput from codex's review
+// prose. On ANY error it returns an inconclusive ReviewOutput AND the error, so
+// the caller always has a fail-open-usable struct while still seeing the cause
+// (the error arm in awaitCodexResponse surfaces a JSON-RPC rejection verbatim).
+func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params map[string]any) (ReviewOutput, error) {
+	id := h.allocID()
+	finalParams, buildErr := buildCodexReviewParams(method, params, h.threadID, h.effortResolver())
+	if buildErr != nil {
+		// The request could not be assembled to the schema's contract, so NOTHING
+		// is sent: no review/start, and no other variant's target in its place.
+		// The cause is named in the Summary so this fail-open exit is
+		// distinguishable from every other one — an inconclusive that cannot be
+		// told apart from "codex is missing" is a new silence, not a repair.
+		return inconclusiveReview("codex " + method + " not sent: " + buildErr.Error()), buildErr
+	}
+	if err := writeCodexRequest(h.conn, id, method, finalParams); err != nil {
+		return inconclusiveReview("codex " + method + " write failed: " + err.Error()), err
+	}
+	// The review/start ack only confirms the turn started; the verdict comes later.
+	if _, err := awaitCodexResponse(h.conn, id, ctx); err != nil {
+		return inconclusiveReview("codex " + method + " rejected: " + err.Error()), err
+	}
+
+	reviewText, turnErr := awaitCodexTurnReview(h.conn, h.threadID, ctx, h.noteTurnStarted)
+	if turnErr != nil {
+		// The turn ENDED in a non-completed terminal state (failed / interrupted
+		// — quota exhaustion, stream error, interruption). Whatever review text
+		// was collected is codex's PLACEHOLDER ("Reviewer failed to output a
+		// response."), not a verdict, so it must never reach the synthesizer: a
+		// bullet-less placeholder there synthesizes "pass" and launders a review
+		// that never happened into a clean one (card t52 / the exact hazard the
+		// fail-open comment in HandleCodexReviewGate names).
+		return inconclusiveReview(turnErr.Error()), turnErr
+	}
+	if codexReviewTextIsBlank(reviewText) {
+		// The turn COMPLETED but said nothing: no body, or a body of whitespace
+		// only. Either way no verdict was produced, so this must never reach the
+		// synthesizer — native review mode's documented default for an
+		// unrecognized body is "pass", which would launder a review that never
+		// happened into a clean one (REQ-CBR-004). Only ABSENCE is reclassified
+		// here; a PRESENT body that matches no signal keeps that documented
+		// default (REQ-CBR-007).
+		return blankReviewInconclusive(), errors.New(codexBlankReviewSummary)
+	}
+	return synthesizeReviewOutput(reviewText, method), nil
+}
+
+// runCodexReviewRPC drives a full single-turn codex app-server JSON-RPC session:
+// the handshake (openCodexSession) → one turn (runTurn) → tear-down. It is
+// RETAINED as a thin caller over the reusable session so both existing consumers
+// — handleCodexAudit and the Stop-hook gate HandleCodexReviewGate — keep their
+// current behavior and signature semantics unchanged (C7 / plan.md §F AP-2: the
+// gate's fail-open depends on the (ReviewOutput, error) pair where the output is
+// always usable).
+//
+// The caller passes the FINAL review/turn method; the handshake is owned by
+// openCodexSession.
+//
+// codexReviewRPC is the injectable seam over it, wired to
+// runCodexAuditReviewRPC in production — the AUDIT-scoped variant that
+// resolves {model, effort} through the pin-aware
+// resolveCodexAuditModelEffort (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). Both codex
+// AUDIT paths — handleCodexAudit here and performCodexAudit in
+// mcp_convergence.go — dispatch through it, so a test can assert what the
+// params map actually carries with no live backend
+// (SPEC-MCP-WORKTREE-ROOT-001 AC-1b). The Stop-hook review gate keeps calling
+// the legacy runCodexReviewRPC directly: it is not an audit path and the pin
+// does not apply to it (REQ-AMP-008).
+var codexReviewRPC = runCodexAuditReviewRPC
+
+// runCodexReviewRPC is the LEGACY single-turn driver: pin-free model/effort
+// resolution, no audit pin. Serves the Stop-hook review gate and the
+// seam-captured legacy tests.
+func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, nil)
+}
+
+// runCodexAuditReviewRPC is the AUDIT single-turn driver: identical to
+// runCodexReviewRPC except the {model, effort} resolution reads the
+// workflow.audit.codex pin first (REQ-AMP-002), falling back to the legacy
+// backend default when the pin is absent/empty/unservable (REQ-AMP-004).
+func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
+}
+
+// codexReviewSessionParams returns the session-open params for a review path,
+// carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
+// as amended) when the review is native. ReviewStartParams declares only
+// {delivery, target, threadId} (measured, codex-cli 0.157.0
+// generate-json-schema) — no prompt, no instructions field — so exactly as the
+// session model does (REQ-CX2-002: "for the review path the thread is the
+// only place a model can reach codex"), the format instruction rides the
+// thread the review opens, as ThreadStartParams.developerInstructions
+// (measured string|null, same schema). The pin is additive and does NOT
+// change which changes the request asks codex to review: the target and its
+// variant are untouched, and the custom-substitution route the SPEC forbids
+// is not taken. The adversarial path pins its own format in the turn prompt
+// (codexAdversarialReviewPrompt) and carries no native pin; the caller's map
+// is not mutated.
+func codexReviewSessionParams(method string, params map[string]any) map[string]any {
+	if method != codexMethodReviewStart {
+		return params
+	}
+	out := make(map[string]any, len(params)+1)
+	for k, v := range params {
+		out[k] = v
+	}
+	out["developerInstructions"] = codexNativeReviewFormatPin + " " + codexReviewReproductionNote
+	return out
+}
+
+func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) (config.ModelEffort, error)) (ReviewOutput, error) {
+	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve, true)
+	if err != nil {
+		var sErr *codexSessionError
+		if errors.As(err, &sErr) {
+			// The failed open closed the child, so its stderr is final: it says why
+			// the handshake failed, and the receipt carries it (t1788).
+			failed := inconclusiveReview(sErr.summary)
+			failed.Stderr = sErr.stderr
+			failed.StderrTail = sErr.stderrTail
+			return failed, sErr.cause
+		}
+		return inconclusiveReview(err.Error()), err
+	}
+	defer func() { _ = sess.close() }()
+
+	out, turnErr := sess.runTurn(ctx, method, params)
+	if out.CouldNotRun {
+		// REQ-MN-021: the backend's stderr rides a could-not-run result for
+		// diagnosis — the tail the session runner captured while the turn was
+		// failing. A connection without a stderr surface reports "".
+		out.Stderr = codexConnStderr(sess.conn)
+	}
+	// The tail is read after close: close waits for the child and for its stderr copy,
+	// so the last error a child wrote just before exiting is in the capture. The
+	// deferred close above stays as the panic path and is harmless a second time.
+	// An unavailable buffer leaves the tail empty (t1788).
+	_ = sess.close()
+	if c, ok := sess.conn.(*realCodexConn); ok && c.stderr != nil {
+		out.StderrTail = c.stderr.tail(codexErrorTailBytes)
+	}
+	return out, turnErr
+}
+
+// writeCodexRequest marshals and sends one JSON-RPC request line.
+func writeCodexRequest(conn codexConn, id int, method string, params map[string]any) error {
+	req := map[string]any{"jsonrpc": "2.0", "method": method, "params": params, "id": id}
+	b, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return conn.send(string(b))
+}
+
+// awaitCodexResponse reads NDJSON lines until one carries the wanted id,
+// surfacing a JSON-RPC error arm verbatim (the #1421 invariant). Notification
+// lines (no id) and lines for other ids are consumed and discarded.
+func awaitCodexResponse(conn codexConn, wantID int, ctx context.Context) (rpcMessage, error) {
+	return awaitCodexResponseObserving(conn, wantID, ctx, nil)
+}
+
+// awaitCodexResponseObserving is awaitCodexResponse that also hands every
+// parsed line without a matching id — notifications included — to observe, so
+// a caller can see a notification that arrives before the response.
+func awaitCodexResponseObserving(conn codexConn, wantID int, ctx context.Context, observe func(rpcMessage)) (rpcMessage, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return rpcMessage{}, err
+		}
+		line, ok := conn.recv()
+		if !ok {
+			return rpcMessage{}, fmt.Errorf("codex stdout closed before response to id=%d", wantID)
+		}
+		var msg rpcMessage
+		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			continue // unparseable line (stray stderr leak / noise) — skip
+		}
+		if !codexIDMatches(msg.ID, wantID) {
+			if observe != nil {
+				observe(msg)
+			}
+			continue // a notification or a different request's response
+		}
+		if msg.Error != nil {
+			return msg, fmt.Errorf("codex rejected the request (JSON-RPC %d): %s", msg.Error.Code, msg.Error.Message)
+		}
+		return msg, nil
+	}
+}
+
+// codexIDMatches reports whether a JSON-RPC id (integer or string) equals want.
+func codexIDMatches(raw json.RawMessage, want int) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var n int
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return n == want
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s == strconv.Itoa(want)
+	}
+	return false
+}
+
+// extractThreadID reads result.thread.id from a thread/start response.
+func extractThreadID(result json.RawMessage) string {
+	if len(result) == 0 {
+		return ""
+	}
+	var doc struct {
+		Thread struct {
+			ID string `json:"id"`
+		} `json:"thread"`
+	}
+	if err := json.Unmarshal(result, &doc); err != nil {
+		return ""
+	}
+	return doc.Thread.ID
+}
+
+// buildCodexReviewParams shapes the final review/turn request params with the
+// corrected protocol envelope: threadId is always added; review/start's target
+// is coerced to the internally-tagged object; turn/start's prompt is wrapped in
+// the input array the UserInput schema requires, and carries the resolved model
+// + effort.
+//
+// The model/effort destination is method-specific, and NOT a matter of taste —
+// it is what the protocol declares (codex-cli 0.146.1 `codex app-server
+// generate-json-schema`):
+//
+//   - TurnStartParams declares BOTH `model` (string|null) and `effort`
+//     (ReasoningEffort|null), so a turn carries them directly.
+//   - ReviewStartParams declares ONLY {delivery, target, threadId} — neither
+//     field exists. Injecting them would put unknown fields on the Stop-hook
+//     gate's own request path, so review/start carries neither and the session
+//     model rides thread/start instead (see openCodexSession).
+//
+// Before M1 this function built a fresh map that dropped the caller's `model`
+// entirely, so the `model` parameter advertised by codex_audit never reached
+// codex (spec.md §A.3 G3 — a live defect, not a missing feature).
+// The error return is the review/start target's: a variant whose required
+// fields cannot be populated yields no request at all, rather than an
+// incomplete object or a quietly substituted one.
+func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) (config.ModelEffort, error)) (map[string]any, error) {
+	if resolve == nil {
+		resolve = pinFreeEffortResolver
+	}
+	out := map[string]any{"threadId": threadID}
+	switch method {
+	case codexMethodReviewStart:
+		root, _ := params["cwd"].(string)
+		target, err := coerceCodexReviewTarget(params["target"], root)
+		if err != nil {
+			return nil, err
+		}
+		out["target"] = target
+	case codexMethodTurnStart:
+		prompt, _ := params["prompt"].(string)
+		if strings.TrimSpace(prompt) == "" {
+			prompt = codexAdversarialReviewPrompt("")
+		}
+		out["input"] = []map[string]any{{"type": "text", "text": prompt}}
+		me, resolveErr := resolve(params)
+		if resolveErr != nil {
+			// The {model, effort} resolution failed: nothing is sent, and the
+			// cause rides the same not-sent exit every other build failure
+			// takes (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+			return nil, resolveErr
+		}
+		if me.Model != "" {
+			out["model"] = me.Model
+		}
+		if me.Effort != "" {
+			out["effort"] = me.Effort
+		}
+		// sandboxPolicy is forwarded ONLY when the caller supplied one, so the
+		// codex_audit / review-gate request stays byte-identical to its pre-M3
+		// shape (C7). codex_task supplies it on EVERY turn — see
+		// codexSandboxPolicy for why the non-writing turn is the one that must.
+		if policy, ok := params["sandboxPolicy"]; ok && policy != nil {
+			out["sandboxPolicy"] = policy
+		}
+	}
+	return out, nil
+}
+
+// codexSandboxPolicy builds the internally-tagged SandboxPolicy object for a
+// turn: workspaceWrite when the write opt-in is granted, readOnly otherwise.
+//
+// It is called for EVERY turn codex_task starts, including the ones that did
+// not ask to write — and that is the whole point rather than a redundancy. The
+// protocol documents sandboxPolicy as overriding the policy "for this turn AND
+// SUBSEQUENT TURNS": the field is sticky on the thread, not scoped to one turn.
+// Under resume_last thread reuse (REQ-CX2-008), omitting the field on a
+// non-writing turn would let it inherit a write-enabled policy left behind by an
+// earlier turn that DID opt in — a route around the allow_write gate, since the
+// gate is read at request time while its effect outlives the request. Sending
+// readOnly explicitly is what closes it (REQ-CX2-007; plan.md §D M3 hazard).
+func codexSandboxPolicy(allowWrite bool) map[string]any {
+	if allowWrite {
+		return map[string]any{"type": codexSandboxWorkspaceWrite}
+	}
+	return map[string]any{"type": codexSandboxReadOnly}
+}
+
+// coerceCodexReviewTarget normalizes the target value to the internally-tagged
+// object codex requires, filling in the required fields of the variant the
+// caller named. root is the tree the review runs against; it is what the
+// baseBranch variant's branch name is resolved from.
+//
+// The lift it replaces produced {"type": s} for ANY bare string, and that shape
+// is well-formed for exactly ONE of the four variants the measured
+// ReviewStartParams schema declares (codex-cli 0.150.1):
+//
+//	uncommittedChanges  required [type]                 ← the lift is correct
+//	baseBranch          required [branch, type]          ← rejected: missing branch
+//	commit              required [sha, type]             ← rejected: missing sha
+//	custom              required [instructions, type]    ← rejected: missing instructions
+//
+// Observed live on 0.150.1: {"type":"baseBranch"} comes back as JSON-RPC -32600
+// "Invalid request: missing field `branch`", and the fail-open contract then
+// absorbed that rejection as an `inconclusive` — a request codex REFUSED and a
+// review that PASSED reported as the same value (issue #1632).
+//
+// The caller cannot supply a branch: `codex_audit`'s target is a bare string
+// enum with no companion parameter, so the name has to be resolved server-side.
+//
+// commit and custom carry required fields this server has no source for, and a
+// bare string naming one is an error rather than a target. Substituting a
+// different variant is specifically NOT the answer: reviewing uncommitted
+// changes when a commit review was asked for is the silent-other-review shape
+// this SPEC exists to close, one variant over.
+func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
+	if m, ok := v.(map[string]any); ok {
+		if _, has := m["type"]; has {
+			return m, nil
+		}
+	}
+	s, _ := v.(string)
+	switch strings.TrimSpace(s) {
+	case "":
+		return map[string]any{"type": codexTargetUncommitted}, nil
+	case codexTargetUncommitted:
+		return map[string]any{"type": codexTargetUncommitted}, nil
+	case codexTargetBaseBranch:
+		// The resolved merge base SHA, not a branch name: codex compares from
+		// exactly the commit the GLM backend measures from (card t1426).
+		base, err := resolveReviewBase(root)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"type": codexTargetBaseBranch, "branch": base.MergeBase}, nil
+	default:
+		return nil, fmt.Errorf("review target %q needs fields this server cannot supply", s)
+	}
+}
+
+// awaitCodexTurnReview reads notifications until turn/completed for threadID,
+// collecting the review prose from the exitedReviewMode item (preferred) or the
+// final agentMessage text (fallback). A stream that closes or a context that
+// ends before turn/completed returns "" and an error naming the cause, never a
+// verdict built from the partial text.
+//
+// The second return value is the TURN FAILURE: non-nil exactly when the
+// turn/completed terminal state is anything other than "completed" (the
+// TurnStatus enum is completed | interrupted | failed | inProgress, and
+// turn.error is documented as populated only when status is failed — codex-cli
+// app-server generate-json-schema, verified on 0.147.0). A failed or
+// interrupted turn never produced a verdict, so the caller must treat the
+// collected text as a placeholder and fail open WITH the error surfaced rather
+// than synthesize a verdict from it. Only the turn/completed state is
+// authoritative: a bare `error` notification with willRetry semantics whose
+// turn later completes is a REAL review (the error was transient).
+//
+// onTurnStarted, when non-nil, is invoked with the turn id carried by the
+// turn/started notification — the ONLY source of the turnId that turn/interrupt
+// requires (REQ-CX2-003). It fires mid-loop, so a background job persists the
+// id while the turn is still running rather than after it completes.
+func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) (string, error) {
+	reviewText, agentText := "", ""
+	for {
+		// Only turn/completed ends a turn that produced a verdict. A context that
+		// ended or a stream that closed first leaves whatever text was collected
+		// as a partial review, which must never reach the synthesizer — runTurn
+		// maps this error to the inconclusive review and drops the text.
+		if err := ctx.Err(); err != nil {
+			return "", fmt.Errorf("codex review turn ended by context: %w", err)
+		}
+		line, ok := conn.recv()
+		if !ok {
+			return "", errors.New("codex stream closed before the turn completed")
+		}
+		var msg rpcMessage
+		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			continue
+		}
+		// A line carrying BOTH a method and an id is a server→client REQUEST, and
+		// the turn stops until it is answered (REQ-CX2-016). It is handled before
+		// the thread filter below on purpose: an unrecognized request need not
+		// carry a threadId, and a request dropped for want of one stalls the turn
+		// exactly as surely as one dropped for want of a case.
+		if codexIsClientRequest(msg) {
+			answerCodexClientRequest(conn, msg)
+			continue
+		}
+		if msg.Method == "" { // a response, not a notification
+			continue
+		}
+		if codexThreadIDOf(msg.Params) != threadID {
+			continue
+		}
+		switch msg.Method {
+		case codexNotifyTurnStarted:
+			if onTurnStarted != nil {
+				onTurnStarted(codexTurnIDOf(msg.Params))
+			}
+		case "item/completed":
+			var p struct {
+				Item struct {
+					Type   string `json:"type"`
+					Review string `json:"review"`
+					Text   string `json:"text"`
+				} `json:"item"`
+			}
+			_ = json.Unmarshal(msg.Params, &p)
+			// A field carrying no non-whitespace character is treated as ABSENT
+			// (REQ-CBR-001 / REQ-CBR-002). The loop REASSIGNS on every matching
+			// item, so an exact-equality test here lets a later blank item
+			// overwrite an earlier real one — the real review is then lost and
+			// the turn reports a body it never received.
+			if p.Item.Type == "exitedReviewMode" && !codexReviewTextIsBlank(p.Item.Review) {
+				reviewText = p.Item.Review
+			}
+			if p.Item.Type == "agentMessage" && !codexReviewTextIsBlank(p.Item.Text) {
+				agentText = p.Item.Text
+			}
+		case "turn/completed":
+			if failure := codexTurnFailure(msg.Params); failure != "" {
+				return bestCodexReviewText(reviewText, agentText),
+					fmt.Errorf("codex review turn %s", failure)
+			}
+			return bestCodexReviewText(reviewText, agentText), nil
+		}
+	}
+}
+
+// codexTurnFailure reads the terminal turn state from a turn/completed
+// notification's params and returns "" when the turn COMPLETED (a real verdict
+// exists), otherwise a short human description carrying codex's own error
+// message when one is present. Keys off turn.status (and turn.error) — the
+// authoritative terminal signal — so transient `error` notifications that
+// codex retried internally do not poison a review that did complete.
+func codexTurnFailure(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		Turn struct {
+			Status string `json:"status"`
+			Error  *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		} `json:"turn"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return ""
+	}
+	switch p.Turn.Status {
+	case "completed", "":
+		return "" // completed turn ("" = malformed/absent status — not our call)
+	case "inProgress":
+		return "" // a non-terminal state on a terminal notification — trust the notification
+	}
+	if p.Turn.Error != nil && strings.TrimSpace(p.Turn.Error.Message) != "" {
+		return p.Turn.Status + ": " + p.Turn.Error.Message
+	}
+	return p.Turn.Status
+}
+
+// codexIsClientRequest reports whether a decoded line is a server→client
+// REQUEST: a method AND an id. An explicit `"id":null` is a notification with a
+// noisy encoder, not a request — answering it would address nobody.
+func codexIsClientRequest(msg rpcMessage) bool {
+	if msg.Method == "" || len(msg.ID) == 0 {
+		return false
+	}
+	return strings.TrimSpace(string(msg.ID)) != "null"
+}
+
+// answerCodexClientRequest responds to a server→client request so the turn can
+// advance (REQ-CX2-016). A recognized approval request is DENIED; anything else
+// gets a JSON-RPC error arm, which unblocks the turn just as well as a result
+// would and states plainly that this client does not implement the method.
+//
+// The write happens from inside the read loop while the turn's caller is
+// blocked in it. That is the established shape here, not a new hazard:
+// sendTurnInterrupt already writes from a second goroutine while the turn's own
+// goroutine sits in this loop, and a live session exercised exactly that
+// (progress.md §E.2 Item 2). No locking is added on the assumption it is
+// needed.
+//
+// A write failure is deliberately swallowed: the connection is already broken,
+// the turn will end by EOF, and there is no caller here to hand an error to.
+func answerCodexClientRequest(conn codexConn, msg rpcMessage) {
+	if msg.Method == codexRequestFileChangeApproval {
+		_ = writeCodexResponse(conn, msg.ID, map[string]any{"decision": codexApprovalDecisionDecline})
+		return
+	}
+	_ = writeCodexErrorResponse(conn, msg.ID, codexRPCMethodNotFound,
+		"moai codex client does not implement "+msg.Method)
+}
+
+// writeCodexResponse sends one JSON-RPC RESULT response line, echoing the
+// request's id verbatim. It is a second small writer rather than a reuse of
+// writeCodexRequest, which builds a request envelope (method + params + id);
+// a response carries id + result and no method.
+//
+// The id is echoed as raw JSON so an integer id stays an integer and a string
+// id stays a string — the server matches on the value it sent, and codex sends
+// integer ids from its own counter (id 0 was the observed first one).
+func writeCodexResponse(conn codexConn, id json.RawMessage, result any) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"result":  result,
+	})
+}
+
+// writeCodexErrorResponse sends one JSON-RPC ERROR response line.
+func writeCodexErrorResponse(conn codexConn, id json.RawMessage, code int, message string) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"error":   map[string]any{"code": code, "message": message},
+	})
+}
+
+// writeCodexEnvelope marshals and sends one NDJSON line.
+func writeCodexEnvelope(conn codexConn, envelope map[string]any) error {
+	b, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return conn.send(string(b))
+}
+
+// bestCodexReviewText prefers the structured exitedReviewMode review over the
+// free-form agentMessage text (both carry the same prose in practice). That
+// preference is UNCHANGED; what changed is what counts as having a structured
+// review at all — a body with no non-whitespace character is absent, so it must
+// not SHADOW a real agent message (REQ-CBR-003). Shadowing here is why the guard
+// cannot be repaired alone: it would turn a case that has genuine review content
+// into an inconclusive, trading one wrong answer for another.
+func bestCodexReviewText(review, agent string) string {
+	if !codexReviewTextIsBlank(review) {
+		return review
+	}
+	return agent
+}
+
+// codexTurnIDOf reads turn.id from a turn/started notification's params. The
+// generated protocol schema (codex-cli 0.146.1) declares TurnStartedParams as
+// {threadId, turn} with Turn.id required; that id is what turn/interrupt
+// expects as its turnId (M0 probe, progress.md §E.2 (a)).
+func codexTurnIDOf(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		Turn struct {
+			ID string `json:"id"`
+		} `json:"turn"`
+	}
+	_ = json.Unmarshal(params, &p)
+	return p.Turn.ID
+}
+
+// codexThreadIDOf reads threadId from a notification's params.
+func codexThreadIDOf(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		ThreadID string `json:"threadId"`
+	}
+	_ = json.Unmarshal(params, &p)
+	return p.ThreadID
+}
+
+// codexFindingBullet matches codex review finding bullets, which carry a
+// severity tag in brackets (e.g. "- [P1] Avoid ..."). Verified against
+// codex-cli 0.146.1's review-mode output on BOTH a clean change (no bullets ⇒
+// pass: "introduces no identifiable correctness or blocking issues") and an
+// injection+secret change ("- [P1] ..." bullets ⇒ fail).
+var codexFindingBullet = regexp.MustCompile(`(?m)^\s*[-*]\s+\[[A-Za-z]+\d+\]`)
+
+// codexStatedVerdict matches a verdict codex states in its own words, which is
+// what the ADVERSARIAL path produces: a leading line reading "Verdict: fail —
+// merge blocked." The bullet heuristic above was measured against REVIEW-mode
+// output only, and adversarial prose carries none of those bullets — so a
+// merge-blocking review was synthesized as a pass, and a required gate inverted
+// with nothing in the result saying so (card t178).
+//
+// The match is deliberately narrow: the label must open a line (optionally
+// wrapped in markdown emphasis) and name the verdict on that same line. "I could
+// not reach a verdict on the caching layer" is prose about a verdict, not a
+// verdict, and must not be read as one. All three schema verdicts are captured
+// (card t186): a stated inconclusive is codex saying it could not tell, and
+// reading that as the default pass launders uncertainty into a clean verdict.
+var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0,2}\s*[:\-–—]+[*_]{0,2}\s*[*_]{0,2}(pass|fail|inconclusive)\b`)
+
+// codexScoredVerdict matches the OTHER way codex states a verdict in its own
+// words: a score line — "FAIL 0.75 / 1.00" — opening the response. Card t229
+// found that form synthesizing as a pass, because neither the bullet heuristic
+// nor the label regex above reads it.
+//
+// It is a separate recognizer rather than a widening of codexStatedVerdict on
+// purpose. That regex keeps a deliberately narrow contract — the label opens a
+// line and names the verdict on it — and folding a second, differently shaped
+// form into it would cost that narrowness for both.
+//
+// The contract here is narrow for its own reason: PASS and FAIL are ordinary
+// English words. Requiring the line head, an uppercase verdict word, and a
+// score in 0..1 keeps "the suite reported PASS 12 times before the regression"
+// prose about a test run rather than a verdict about the change — a loose
+// recognizer would not close the hole, it would widen it.
+var codexScoredVerdict = regexp.MustCompile(`(?m)^[\s>#*_]*(PASS|FAIL|INCONCLUSIVE)\b[ \t]+[01]\.\d+\b`)
+
+// codexGreetedVerdict reads the verdict label when a greeting precedes it on
+// its line: "<greeting>, **verdict: fail**" — a shape GitHub #1718 observed on
+// the adversarial path, where a target project's own instructions put a
+// greeting ahead of codex's reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)).
+//
+// It is a separate recognizer so codexStatedVerdict keeps its line-head
+// contract. The relaxation is exactly one clause wide: the text before the
+// label is a single comma-terminated span that opens the line, and the label
+// must follow that comma directly and name the verdict with the same separator
+// codexStatedVerdict requires. "Hello team, the verdict on caching is open and
+// the tests pass" names no verdict — the word after the comma is not the
+// label — and is not read as one.
+var codexGreetedVerdict = regexp.MustCompile(`(?mi)^[^\s*#|>\-,][^\n,]*,[ \t]+[*_]{0,2}verdict[*_]{0,2}[ \t]*[:\-–—]+[*_]{0,2}[ \t]*[*_]{0,2}(pass|fail|inconclusive)\b`)
+
+// codexLocalizedVerdict reads a verdict stated under the Korean label 판정
+// ("판정은 **FAIL**이야", "판정: pass") — the other #1718 shape. The label may
+// sit anywhere on a line outside a table (no '|' before it), because a
+// greeting and a possessive typically precede it.
+//
+// The narrowness comes from the statement form instead of the position: the
+// verdict word must follow the label (optionally with its topic particle)
+// either after a colon or wrapped in emphasis. "판정 기준상 **FAIL** 사유는
+// 없어" (a mention of the criterion) and "판정은 fail 여부를 가리기 어렵다"
+// (an unemphasized ordinary word) state no verdict and are not read as one.
+var codexLocalizedVerdict = regexp.MustCompile(`(?mi)^[^|\n]*?판정(?:은|는)?[ \t]*(?::[ \t]*[*_]{0,2}|[*_]{2})(pass|fail|inconclusive)\b`)
+
+// codexVerdictSignal is one verdict reading taken from a review body, kept
+// alongside the name of the signal that produced it. The name exists so a
+// divergence can be described in the operator's terms rather than as two bare
+// verdict words.
+type codexVerdictSignal struct {
+	source  string
+	verdict string
+}
+
+// codexVerdictSignalsOf collects EVERY verdict signal a review body carries.
+// It returns a set, not a decision: which of them is adopted is P-CONS's job
+// (see adoptConservativeVerdict), and keeping the two separate is what lets a
+// fourth signal be added here without touching the adoption rule.
+func codexVerdictSignalsOf(reviewText string) []codexVerdictSignal {
+	var signals []codexVerdictSignal
+	// FindAll, not Find: one body can carry the same recognizer's line twice
+	// ("Verdict: pass" then "Verdict: fail"), and a first-match-only read
+	// would drop the later — conservative — occurrence (PR #1663 review).
+	for _, m := range codexStatedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"stated verdict label", strings.ToLower(m[1])})
+	}
+	for _, m := range codexScoredVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"scored verdict line", strings.ToLower(m[1])})
+	}
+	for _, m := range codexGreetedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"greeting-prefixed verdict label", strings.ToLower(m[1])})
+	}
+	for _, m := range codexLocalizedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"localized verdict label", strings.ToLower(m[1])})
+	}
+	if codexFindingBullet.MatchString(reviewText) {
+		signals = append(signals, codexVerdictSignal{"severity-tagged finding bullet", "fail"})
+	}
+	return signals
+}
+
+// codexVerdictRank orders the schema verdicts by conservatism:
+// fail > inconclusive > pass. An unknown string ranks below all of them so it
+// can never win an adoption it was not meant to.
+func codexVerdictRank(verdict string) int {
+	switch verdict {
+	case "fail":
+		return 3
+	case VerdictInconclusive:
+		return 2
+	case "pass":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// adoptConservativeVerdict implements P-CONS (spec.md §A.5): the adopted verdict
+// is the most conservative MEMBER OF THE SIGNAL SET.
+//
+// It is a set operation on purpose, and the purpose is worth stating because the
+// obvious alternative looks identical today and is not. Written as an ordering
+// rule — "a later signal must not overwrite an earlier one" — the property holds
+// only while the signals happen to be arranged so that no lenient one comes
+// last; add a fourth signal and the same hole reopens one layer over. A maximum
+// over a set has no order to get wrong, so it survives signals being added.
+//
+// Callers must not pass the mode fall-through in here: the fall-through applies
+// when the set is EMPTY, and letting it compete with a real signal would report
+// an observed pass as inconclusive.
+func adoptConservativeVerdict(signals []codexVerdictSignal) string {
+	adopted := ""
+	for _, s := range signals {
+		if codexVerdictRank(s.verdict) > codexVerdictRank(adopted) {
+			adopted = s.verdict
+		}
+	}
+	return adopted
+}
+
+// codexUnrecognizedVerdict is the value adopted when a review body matches NO
+// known signal — the governing decision of SPEC-CODEX-VERDICT-SYNTH-001 §0.
+//
+// Both review modes now report "inconclusive" for an unrecognized body
+// (SPEC-CODEX-PARSER-SHAPE-001 M4, AC-CPS-004): each request pins an output
+// format — adversarial in the turn prompt (candidate (d),
+// codexAdversarialReviewPrompt), native on the thread it opens (candidate (b),
+// codexReviewSessionParams) — so a body matching no recognized signal means
+// the pin was not followed or the shape was never produced, and neither state
+// is evidence of a clean review. A genuinely clean review states `Verdict:
+// pass` in the pinned form, which codexStatedVerdict reads before this
+// fall-through is ever reached (REQ-CPS-009, expressed through the pin);
+// codexReviewTextIsBlank already short-circuits absence before the
+// synthesizer (REQ-CBR-004). The native "pass" default this function carried
+// before M4 — a bullet-less body read as codex saying nothing blocks — was
+// the silent pass #1718-adjacent bodies laundered reviews through, and is
+// what candidate (b) removes.
+//
+// This is deliberately NOT keyed on which formats are currently recognized,
+// and on NOTHING in the prose — no token (the word "fail", a severity word, a
+// greeting) may key the downgrade. Adding a recognizer must never require
+// touching this function; that coupling is how a single CLI version's output
+// conventions became the gate's verdict.
+func codexUnrecognizedVerdict(method string) string {
+	return VerdictInconclusive
+}
+
+// synthesizeReviewOutput maps codex's review prose into the review-output
+// schema. codex does NOT return a structured verdict enum — it returns free-form
+// prose, and the review paths express their verdict differently: review mode
+// emits severity-tagged finding bullets ("- [P1] ..."), adversarial mode states
+// the verdict in a line of its own. Every such signal is read here, and the
+// most conservative of them is adopted (P-CONS): a stated "pass" does NOT clear
+// finding bullets, and neither does a stated "inconclusive" — concrete findings
+// outrank a stated inability to judge, and uncertainty is never laundered into
+// the clean verdict (t186).
+//
+// When NO signal matches, the verdict comes from the mode rather than from a
+// hardcoded optimism — see codexUnrecognizedVerdict.
+//
+// The summary carries the verbatim review text either way, so the operator sees
+// codex's own words rather than only this function's reading of them.
+//
+// NOTE for a later editor: card t234 (GitHub #1632) fills the Findings field on
+// this same function. The (reviewText, method) signature is load-bearing —
+// reverting it removes the mode distinction and reinstates the lenient default.
+func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
+	signals := codexVerdictSignalsOf(reviewText)
+	verdict := adoptConservativeVerdict(signals)
+	if verdict == "" {
+		verdict = codexUnrecognizedVerdict(method)
+	}
+	return flagVerdictFindingsContradiction(ReviewOutput{
+		Verdict:         verdict,
+		Summary:         strings.TrimSpace(reviewText),
+		Findings:        codexFindingsOf(reviewText),
+		RecordingDefect: describeRecordingDefect(signals, verdict),
+		// NextSteps stays empty here, and that is the value rather than a gap.
+		// claude and glm carry next_steps from the model's OWN structured output
+		// (mcp_claude_protocol.go, mcp_glm.go); codex answers in prose, so this
+		// path has no model-produced list to carry. The only next_steps this
+		// package writes itself are tool-known routing instructions on a failure
+		// path (inconclusiveReviewWithSummary; codex_task's timeout branch), and
+		// a synthesis that produced a verdict has none of those to state.
+		// Deriving steps from the review bullets is NOT the alternative: those
+		// bullets are findings, and codexFindingsOf declares that this parser
+		// invents no structure from prose. #1632 item 1 observed this field empty
+		// and asked only for findings[] — filling it was never in that scope.
+		NextSteps:     []string{},
+		SynthesisNote: describeSignalDivergence(signals, verdict),
+	})
+}
+
+// codexFindingLine matches ONE severity-tagged finding bullet ("- [P1] message")
+// and captures the indent, the severity token, and the message text. codex's
+// native review mode and the adversarial prompt both shape findings this way —
+// the shape #1632 axis 1 reports arriving in summary prose while the structured
+// arrays stayed empty. The severity token is kept VERBATIM (e.g. "P1"): codex
+// owns that vocabulary, and mapping it to a different scale would invent a
+// translation no consumer asked for.
+var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d+)\][ \t]*(.*)$`)
+
+// codexPathLineRef matches a path:line anchor inside a finding message
+// ("internal/auth/keys.go:42"). The extension is matched GENERICALLY
+// (`\.[A-Za-z0-9]+`), not enumerated: moai is language-neutral, and an
+// extension allowlist would silently drop anchors for every language it forgot.
+var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
+
+// codexFindingTableRow and codexFindingBoldBullet read the two finding shapes
+// GitHub #1718 observed when a target project's instructions shaped codex's
+// adversarial reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)): a markdown
+// table row whose FIRST cell is exactly a bold severity word
+// ("| **High** | [a.md:28](…) | … |"), and a bullet led by a bold severity
+// word followed by a separator ("- **Medium · [a.yaml:38](<…>) · …").
+//
+// Both are anchored on the bold severity word from a closed vocabulary rather
+// than on any bold text: "- **High-level summary**" and "The risk is **High**"
+// are not findings. The severity word is kept verbatim, as the bracketed form
+// keeps "P1" verbatim. Neither shape adds a verdict signal — only the
+// bracketed bullet carries the fail signal it always has; a verdict for these
+// bodies comes from a stated verdict line.
+var (
+	codexFindingTableRow   = regexp.MustCompile(`^[ \t]*\|[ \t]*\*\*(Critical|High|Medium|Low)\*\*[ \t]*\|(.*)$`)
+	codexFindingBoldBullet = regexp.MustCompile(`^([ \t]*)[-*][ \t]+\*\*(Critical|High|Medium|Low)(?:\*\*)?[ \t]*[·:—–][*_]*[ \t]*(.*)$`)
+)
+
+// codexTableRowMessage joins a finding row's remaining cells into one message,
+// in column order, dropping empty cells.
+func codexTableRowMessage(rest string) string {
+	var cells []string
+	for _, c := range strings.Split(rest, "|") {
+		if c = strings.TrimSpace(c); c != "" {
+			cells = append(cells, c)
+		}
+	}
+	return strings.Join(cells, " — ")
+}
+
+// codexFindingLineOf matches one line against every finding shape and returns
+// the indent (for continuation joining; "" plus ok=false for a table row, which
+// has no continuation), the severity, and the message.
+func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool) {
+	if m := codexFindingLine.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingBoldBullet.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingTableRow.FindStringSubmatch(ln); m != nil {
+		return "", m[1], codexTableRowMessage(m[2]), false, true
+	}
+	return "", "", "", false, false
+}
+
+// codexFindingAnchorOf picks the file:line anchor a finding's COMPLETE body
+// can defend (card-review repair round 2, N1; round 3, M1). A body carrying
+// EXACTLY ONE distinct path:line candidate anchors to it — first occurrence's
+// line when the same path repeats. A body carrying SEVERAL distinct
+// candidates — a headline naming one file while the actual location is
+// another, in the headline OR the joined continuations — has no defensible
+// single location, so the anchor stays unset: a reference inside a title is
+// not the target, and ambiguity is not resolved by position. Consumers that
+// require an unambiguous target (REQ-CGSC-008's runtime-drift
+// reclassification) read an unset anchor as "keep the strict disposition".
+// URL-shaped matches are excluded as before.
+func codexFindingAnchorOf(msg string) (string, int, bool) {
+	var anchor string
+	var line int
+	for _, m := range codexPathLineRef.FindAllStringSubmatch(msg, -1) {
+		if strings.Contains(m[1], "://") {
+			continue
+		}
+		if anchor != "" && anchor != m[1] {
+			return "", 0, false // several distinct candidates — no defensible anchor
+		}
+		if anchor == "" {
+			anchor = m[1]
+			if n, err := strconv.Atoi(m[2]); err == nil {
+				line = n
+			}
+		}
+	}
+	if anchor == "" {
+		return "", 0, false
+	}
+	return anchor, line, true
+}
+
+// codexFindingsOf parses codex's review prose into structured findings
+// (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
+// verbatim severity and the message as title/body, with the anchor decided in
+// a SECOND pass after the continuations join (card-review repair round 3,
+// M1): codexFindingAnchorOf reads the COMPLETE body — a headline naming the
+// config surface while the body's continuation names the actual source
+// location is still two distinct candidates. Indented continuation lines
+// following a bullet are joined into that finding's body — codex commonly
+// continues a finding across the next lines, and truncating it to the
+// headline would lose the substance a reviewer needs. A body with no bullets
+// returns an empty, non-nil slice: the parser invents no structure from prose.
+func codexFindingsOf(reviewText string) []Finding {
+	findings := []Finding{}
+	var cur *Finding
+	var curIndent string
+	for _, ln := range strings.Split(reviewText, "\n") {
+		indent, sev, msg, continues, ok := codexFindingLineOf(ln)
+		if !ok {
+			if cur != nil && strings.TrimSpace(ln) != "" && strings.HasPrefix(ln, curIndent+" ") {
+				cur.Body += "\n" + strings.TrimSpace(ln)
+			}
+			continue
+		}
+		findings = append(findings, Finding{Severity: sev, Title: msg, Body: msg})
+		cur, curIndent = nil, ""
+		if continues {
+			cur = &findings[len(findings)-1]
+			curIndent = indent
+		}
+	}
+	for i := range findings {
+		if file, line, ok := codexFindingAnchorOf(findings[i].Body); ok {
+			findings[i].File = file
+			findings[i].Line = line
+		}
+	}
+	return findings
+}
+
+// codexContradictionNote is the Contradiction value: what was observed, and
+// where the lost content can still be read.
+const codexContradictionNote = "codex stated a fail verdict but no finding was recognized: " +
+	"the review's findings are in a shape the parser does not read, so the findings list is " +
+	"empty while the review is not clean — read the summary for codex's own findings"
+
+// flagVerdictFindingsContradiction reports the V8 state: verdict fail, zero
+// findings, and no GateUnmet (SPEC-CODEX-PARSER-SHAPE-001 candidate (c)).
+//
+// It reads the OUTPUT, never the body, which is why it holds for shapes no one
+// has enumerated: whatever recognizer failed, a surviving blocking verdict
+// with nothing behind it is a contradiction.
+//
+// [HARD] The GateUnmet conjunct is load-bearing. applyGateUnmet turns a
+// fail-open inconclusive into fail with an empty findings list when a gate is
+// declared `required` — a correctly functioning gate, not a parser defect.
+// Dropping the conjunct would report every unmet required gate as lost
+// content (REQ-CPS-006a).
+func flagVerdictFindingsContradiction(out ReviewOutput) ReviewOutput {
+	if out.Verdict == "fail" && len(out.Findings) == 0 && out.GateUnmet == "" {
+		out.Contradiction = codexContradictionNote
+	}
+	return out
+}
+
+// describeSignalDivergence names every signal and the value adopted, but ONLY
+// when the signals actually disagreed. Agreement is the ordinary case and
+// deserves no note; annotating it would dilute the ones that matter.
+func describeSignalDivergence(signals []codexVerdictSignal, adopted string) string {
+	distinct := map[string]bool{}
+	for _, s := range signals {
+		distinct[s.verdict] = true
+	}
+	if len(distinct) < 2 {
+		return ""
+	}
+	parts := make([]string, 0, len(signals))
+	for _, s := range signals {
+		parts = append(parts, s.source+"="+s.verdict)
+	}
+	return "codex signals diverged: " + strings.Join(parts, ", ") + "; adopted " + adopted
+}
+
+// describeRecordingDefect names the case where the body STATES a pass yet the
+// adopted verdict is fail only because severity-tagged finding bullets outweigh
+// it (P-CONS). The bullets may sit outside the audited scope (a "pre-existing"
+// section), so a bare fail would hide that the reviewer said pass. A stated fail
+// among the non-bullet signals means the body did not say pass, so no defect.
+// It describes; it never changes the adopted verdict.
+func describeRecordingDefect(signals []codexVerdictSignal, adopted string) string {
+	if adopted != "fail" {
+		return ""
+	}
+	statedPass, statedFail, bullets := false, false, false
+	for _, s := range signals {
+		switch {
+		case s.source == "severity-tagged finding bullet":
+			bullets = true
+		case s.verdict == "pass":
+			statedPass = true
+		case s.verdict == "fail":
+			statedFail = true
+		}
+	}
+	if !statedPass || statedFail || !bullets {
+		return ""
+	}
+	return "codex body stated pass but the recorded verdict is fail: severity-tagged finding bullets outweighed the stated pass (they may be outside the audited scope, e.g. pre-existing items)"
+}
+
+// codexAdversarialVerdictFormat and codexAdversarialFindingFormat are the
+// output format the adversarial request pins (SPEC-CODEX-PARSER-SHAPE-001
+// candidate (d)).
+const (
+	codexAdversarialVerdictFormat = "Verdict: <pass|fail|inconclusive>"
+	codexAdversarialFindingFormat = "- [P1] <message> — <path>:<line>"
+)
+
+// codexNativeReviewFormatPin is the output-format instruction the native
+// review request carries (SPEC-CODEX-PARSER-SHAPE-001 candidate (b),
+// REQ-CPS-005 as amended). The mechanism is the (d) family applied to the
+// native request: once the request names the format, `Verdict: pass` is a
+// recognized signal (codexStatedVerdict already reads it), so the pinned
+// clean review never reaches the fall-through, and a body carrying no
+// recognized signal — the pin unfollowed — is downgraded to inconclusive
+// instead of a silent pass. It is built FROM the adversarial pin constants,
+// so both requests ask for one format and the pinned lines are exactly the
+// shapes codexStatedVerdict and codexFindingLine accept
+// (TestCodexNativeFormatPin_SharesConstantsWithBuilder keeps that true).
+// Whether live codex honours the pin is not established by this tree — only a
+// recorded live observation (AC-CPS-016) can show that.
+const codexNativeReviewFormatPin = "Use exactly this output format so the review can be parsed: " +
+	"the first line of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+	"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no greeting or " +
+	"other text before it; then each finding on its own line as `" + codexAdversarialFindingFormat +
+	"`, with the severity tag P0 to P3 in brackets, and any further detail, confidence, or " +
+	"recommendation on indented lines below it. Do not put findings in a table."
+
+// codexReviewReproductionNote is the conditional-reproduction directive of the
+// review-request contract (SPEC-GATE-BOTTLENECK-001 REQ-GBN-003). The review's
+// verdict is reused verbatim from the tree-keyed receipt cache (REQ-GBN-001),
+// and a zero-findings verdict is accepted as-is, so the reproduction suite is
+// skipped in both arms — and the request says so: the reviewer must not spend
+// the review's wall time (the measured bottleneck this SPEC removes) running
+// the project's tests, builds, or reproduction commands. It rides the SAME
+// developerInstructions channel the format pin rides — an existing,
+// live-consumed protocol field, not a new request parameter — appended AFTER
+// the pin so the parser-pinned format text stays byte-identical at the head.
+const codexReviewReproductionNote = "Reproduction policy: this review's verdict is cached " +
+	"by tree key and reused verbatim, and a zero-findings verdict is accepted as-is " +
+	"(conditional reproduction) — do NOT run the project's tests, builds, " +
+	"or reproduction commands; review the changed code only."
+
+// codexAdversarialReviewPrompt builds the adversarial-review prompt text the
+// adversarial mode sends to codex turn/start (design.md §3 M2 / report §3.4).
+// Generic + focused: a red-team security + correctness review of the change.
+//
+// The request pins its output format (SPEC-CODEX-PARSER-SHAPE-001 candidate
+// (d)): without one, a target project's own instructions shape the reply, and
+// GitHub #1718 observed bodies whose verdict and findings no recognizer read.
+// The pinned lines are the shapes codexStatedVerdict and codexFindingLine
+// accept; TestCodexAdversarialFormat_IsRecognized keeps the two in step.
+// Whether live codex honours the pin against project instructions is not
+// established by anything in this tree — only a recorded live observation
+// (AC-CPS-014) can show that. The parser's handling of a body that ignores the
+// pin is unchanged.
+func codexAdversarialReviewPrompt(focus string) string {
+	prompt := "Perform an adversarial code review of the proposed change. " +
+		"Hunt for security flaws (injection, auth bypass, secret leakage, unsafe " +
+		"destructive operations), correctness bugs (edge cases, error handling, " +
+		"concurrency), and scope creep. Report concrete findings with severity, " +
+		"file/line, confidence, and a recommendation. If the change is sound, " +
+		"return verdict pass with an empty findings list. " +
+		"Use exactly this output format so the review can be parsed: the first line " +
+		"of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+		"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no " +
+		"greeting or other text before it; then each finding on its own line as `" +
+		codexAdversarialFindingFormat + "`, with the severity tag P0 to P3 in " +
+		"brackets, and any further detail, confidence, or recommendation on indented " +
+		"lines below it. Do not put findings in a table."
+	if focus != "" {
+		prompt += " Focus area: " + focus + "."
+	}
+	return prompt
+}
+
+// ─── codex_audit handler (AC-MCP-007) ───
+
+// handleCodexAudit is the thin-wrapper handler for the `codex_audit` MCP tool.
+// mode=native → codex review/start; mode=adversarial → codex turn/start +
+// the adversarial-review prompt. Both return a review-output.schema.json-shaped
+// result. fail-open on missing / erroring / malformed codex (VerdictInconclusive).
+//
+// It NEVER invokes AskUserQuestion (subagent boundary, REQ-MCP-014): a missing
+// or inconclusive codex is a structured result, surfaced for the orchestrator
+// to translate through its own user-interaction channel.
+func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	mode := req.GetString("mode", codexModeNative)
+	target := req.GetString("target", codexTargetUncommitted)
+	focus := req.GetString("focus", "")
+	model := req.GetString("model", "")
+	token := extractProgressToken(req)
+
+	// SPEC-MCP-WORKTREE-ROOT-001 REQ-1/REQ-3: the caller may name the tree codex
+	// should review. Absent ⇒ resolveProjectDir(), exactly as before. An unusable
+	// path is REJECTED here rather than replaced by the default — a fallback would
+	// review the primary checkout while reporting success, which is the defect the
+	// parameter exists to fix. The rejection is a tool error, not the fail-open
+	// inconclusive verdict: fail-open covers an absent or broken codex, not a
+	// caller input the caller can correct.
+	//
+	// SPEC-MCP-NEUTRALITY-001 M3 scoping: the audit/delegation surface is EXEMPT
+	// from the server-repository confinement — codex_audit legitimately names
+	// another repository's tree to audit (the reviewed repo is an explicit
+	// caller input, and the receipt/gate state under the caller's own project
+	// stays where the caller named it). The root is still validated as a git
+	// worktree and canonicalized; only the server-repository comparison is
+	// skipped. The wrong-tree hazard stays closed: an unusable path is
+	// rejected, never silently replaced.
+	root, rootSource, rootErr := resolveValidatedToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("codex_audit", rootErr), nil
+	}
+	// rootArg is the tree the CALLER named, empty when it named none. The
+	// receipt store needs that distinction — an argument-rooted receipt and a
+	// fallback-rooted one mean different things to the SubagentStop check —
+	// while the review itself keeps using the resolved root exactly as before.
+	rootArg := ""
+	if rootSource == rootSourceParam {
+		rootArg = root
+	}
+
+	// Card t1708: the optional delta scope. An unusable value is REJECTED here,
+	// before any codex process starts — falling back to the full diff would
+	// review more than the caller asked for while reporting success.
+	rawDeltaBase, deltaErr := deltaBaseArg(req)
+	if deltaErr != nil {
+		return toolErr("codex_audit", deltaErr), nil
+	}
+	deltaBase, deltaErr := readDeltaBase(root, rawDeltaBase, target)
+	if deltaErr != nil {
+		return toolErr("codex_audit", deltaErr), nil
+	}
+
+	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
+	// result this handler returns below, fail-open exits included — an
+	// inconclusive verdict is still a verdict that must name its binary.
+	buildCommit, buildLag := auditBuildIdentity(ctx, root)
+
+	// Card t1632 sync-audit F5: the receipt binds the tree state captured at
+	// AUDIT START — the state the audit actually judges. A tree edit during a
+	// minutes-long audit must not end up inside the receipt's freshness
+	// binding, or a PASS that judged state A launders through on state B at
+	// reuse time (the binding would read current). Card t1632 sync-audit r3
+	// F14: a capture FAILURE is recorded as the explicit bind_capture_failed
+	// marker — it never falls back to a write-time bind, because a binding
+	// written after the audit judged nothing.
+	bindHead, bindDigest, bindErr := auditreceipt.TreeState(root)
+	bindFailed := bindErr != nil
+
+	notifyMCPProgress(ctx, token, 0, "codex audit start - mode: "+mode+", target: "+target)
+	binaryPath, err := codexLookPath(codexBinaryName)
+	if err != nil {
+		// The gate annotation rides EVERY fail-open exit, including this early
+		// one — a missing binary is exactly the state where a required gate
+		// goes silently unmet (the review never ran at all).
+		out := inconclusiveReview("codex binary not found in PATH")
+		// The receipt's cause is read before applyGateUnmet rewrites an inconclusive
+		// verdict to fail under a required gate; after that it would read as empty (t1788).
+		receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+		out = applyGateUnmet(out, root)
+		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+		return codexReviewToolResult(out), nil
+	}
+	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the review request...")
+
+	method := codexMethodReviewStart
+	params := map[string]any{
+		"target": target,
+		"model":  model,
+		"cwd":    root,
+	}
+	// A native baseBranch review resolves its base ONCE, before the call, and
+	// codex is sent the captured merge base SHA rather than a branch name it
+	// would re-resolve later — so review_base names exactly the commit codex
+	// compared against, even if the base ref moves meanwhile (t1426). This is
+	// the shape the review gate's card scope already sends (reviewRequestParams).
+	// An unresolvable base leaves the bare target in place; coercion then fails
+	// the request open exactly as before. Adversarial mode (turn/start) carries
+	// no target and names no base, so it records no review_base.
+	var base *reviewBase
+	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
+		b, err := resolveReviewBase(root)
+		if deltaBase != "" {
+			b, err = deltaReviewBase(deltaBase), nil // the validated delta base replaces the resolved one
+		}
+		if err == nil {
+			base = &b
+			params["target"] = map[string]any{"type": codexTargetBaseBranch, "branch": b.MergeBase}
+		}
+	}
+	if mode == codexModeAdversarial {
+		method = codexMethodTurnStart
+		// REQ-MN-019 (as superseded by card t1708's delta scope): an
+		// adversarial audit is a turn/start — it has no target field, so the
+		// base is never applied in the prompt or the result; the target rides
+		// the DIFF COLLECTION (collectReviewDiffCtx resolves the baseBranch
+		// merge base mechanically), the prompt stays the standard adversarial
+		// one, and the delta-scope clause composes when the request carries
+		// delta_base. review_base is omitted without a delta_base and names
+		// the prose-only scope with one.
+		params["prompt"] = codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
+		if focus != "" {
+			params["focus"] = focus
+		}
+	}
+
+	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
+	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	if out.CouldNotRun {
+		// REQ-MN-021: a leg that could not be performed retries EXACTLY once
+		// before reporting — a transient transport loss gets one more chance,
+		// and the ceiling keeps a wedged backend from looping the audit. The
+		// retry's result (whatever it is) is what gets reported.
+		out, _ = codexReviewRPC(ctx, binaryPath, method, params)
+	}
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
+	// A delta_base scope on a turn/start review names the prose base — the
+	// diff was collected at the delta base (collectReviewDiffCtx), so the
+	// resolved merge base above is not what was judged.
+	if deltaBase != "" && mode == codexModeAdversarial {
+		out.ReviewBase = deltaProseReviewBase(deltaBase) // turn/start has no target: say the scope was only asked for
+	}
+	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
+	// the claude_audit verdict records it — a verdict a reader cannot attribute
+	// to a model is a verdict that cannot be re-checked against the pin.
+	if me, mErr := resolveCodexAuditModelEffort(params); mErr == nil {
+		out.Provenance = auditProvenanceFor("codex", model, me.Model, me.Effort)
+	}
+	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
+	// fail under a required gate (t1788).
+	receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+	out = applyGateUnmet(out, root)
+	out.BuildCommit, out.BuildLag = buildCommit, buildLag
+	out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+	notifyMCPProgress(ctx, token, 0.9, "codex response received - assembling the result...")
+	return codexReviewToolResult(out), nil
+}
+
+// applyGateUnmet records a could-not-perform audit when the audited tree
+// EXPLICITLY declares workflow.audit.gates.codex: required (#1632 axis 3). The
+// audit tree's own workflow.yaml decides — the same project_root the review ran
+// against — so a named tree's gate follows the named tree, not the server's cwd.
+//
+// REQ-MN-021 revises the operator's original fail-closed conversion: a leg that
+// COULD NOT RUN (transport loss, unparsable reply, missing binary — any
+// inconclusive this surface produces) is a not-performed result, not a reviewed
+// failure, so converting it to verdict `fail` would misstate a failure that
+// never happened. The verdict STAYS inconclusive, gate_unmet names the unmet
+// gate AND the could-not-run state, and the backend's stderr rides the result.
+// The not-converged safety net lives at the convergence surface
+// (enforceRequiredGateUnmet + the REQ-MN-022 not-converged outcome), which
+// refuses a pass on the caller's own submitted verdict just the same.
+//
+// The RAW configured value is read, never the engine default, so a project that
+// did not write `required` keeps the fail-open inconclusive byte-for-byte. A
+// gate READ that errors is a config problem, not a could-not-run: it still
+// fails the verdict, naming the cause (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+//
+// @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
+// @MX:REASON: flipping the verdict for a non-explicit gate would turn every existing project fail-closed
+func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
+	if out.Verdict != VerdictInconclusive {
+		return out
+	}
+	// A config-orphaned worktree takes the gate from its primary checkout, and
+	// fails closed when that primary cannot be identified
+	// (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-011/012); every other tree reads
+	// its own workflow.yaml exactly as before. A gate read that ERRORS is
+	// surfaced as a fail verdict naming the cause — it never reads as an
+	// absent configuration (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+	gates, assumedNote, gateErr := resolveAuditGates(projectDir)
+	if gateErr != nil {
+		out.GateUnmet = "workflow.audit gates unreadable: " + gateErr.Error()
+		out.Verdict = "fail"
+		out.Summary = out.GateUnmet + ": " + out.Summary
+		return out
+	}
+	if gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	// REQ-MN-021: could-not-run stays not-performed — verdict unchanged, the
+	// unmet gate named, stderr preserved.
+	note := "required gate unmet"
+	if assumedNote != "" {
+		note += " (" + assumedNote + ")"
+	}
+	out.GateUnmet = note + ", could-not-run: this audit returned no verdict (the review could not be performed)"
+	out.Summary = out.GateUnmet + ": " + out.Summary
+	return out
+}
+
+// codexReviewToolResult shapes a ReviewOutput as the schema-typed MCP result
+// (mcp.NewToolResultJSON carries the JSON in TextContent AND the typed struct
+// in StructuredContent, so a caller can read either).
+func codexReviewToolResult(out ReviewOutput) *mcp.CallToolResult {
+	res, err := mcp.NewToolResultJSON(out)
+	if err != nil {
+		// Marshal of a plain struct cannot fail; if it ever does, degrade to a
+		// text result rather than losing the verdict.
+		return mcp.NewToolResultText("codex_audit: " + out.Verdict + " (" + out.Summary + ")")
+	}
+	return res
+}
+
+// ─── codex_setup handler (AC-MCP-008) ───
+
+// CodexSetupResult is the plain-Go view of the codex_setup probe state. It is
+// shared by the MCP codex_setup tool handler and the web console (via
+// internal/cli/web.go injection) so the console CONSUMES the probe rather than
+// reimplementing the classification (SPEC-MCP-CONSOLE-001 AC-C-006 — no second
+// auth-classification in internal/web).
+type CodexSetupResult struct {
+	Installed        bool
+	Binary           string
+	Version          string
+	AuthProvider     string
+	EnableReviewGate bool
+	AllowWrite       bool
+}
+
+// ProbeCodexSetup runs the same probe handleCodexSetup runs and returns the
+// state as a typed struct. It is the single entry point both the MCP tool
+// handler and the web console consume — the auth classification
+// (classifyCodexAuth) is defined ONCE here and never forked into internal/web.
+// The fail-closed readers (readCodexReviewGateEnabled / readCodexTaskAllowWrite)
+// supply the toggle state through their shared workflow.yaml seam.
+func ProbeCodexSetup(ctx context.Context) CodexSetupResult {
+	binaryPath, err := codexLookPath(codexBinaryName)
+	installed := err == nil && binaryPath != ""
+	projectDir := projectDirResolver()
+	result := CodexSetupResult{
+		Installed:        installed,
+		AuthProvider:     codexAuthUnknown,
+		EnableReviewGate: readCodexReviewGateEnabled(projectDir),
+		AllowWrite:       readCodexTaskAllowWrite(projectDir),
+	}
+	if !installed {
+		return result
+	}
+	result.Binary = binaryPath
+
+	// codex --version (best-effort; failure leaves version empty, not an error).
+	if ver, vErr := codexRunner.run(ctx, binaryPath, []string{"--version"}, ""); vErr == nil {
+		result.Version = strings.TrimSpace(ver)
+	}
+
+	// Auth-provider classification (heuristic — codex's auth surface is
+	// undocumented per R1; fail-open to "unknown" on any uncertainty).
+	result.AuthProvider = classifyCodexAuth(ctx, binaryPath)
+	return result
+}
+
+// handleCodexSetup is the thin-wrapper handler for the `codex_setup` MCP tool.
+// It delegates to ProbeCodexSetup (the shared probe) and maps the typed result
+// to the MCP tool's JSON output. NO Node bridge of any kind (REQ-MCP-007).
+// Read-only: it REPORTS the toggle state; mutating it is a heavier,
+// wizard-owned concern (M4).
+func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Consumed through the codexSetupProbe seam (NOT the direct function) so
+	// the sentinel cross-bridge of AC-CL-007 can stub ONE probe and observe
+	// the value on every consuming surface — the launcher readout (a) and
+	// this tool's response (b) — through the same injection point.
+	s := codexSetupProbe(ctx)
+	result := map[string]any{
+		"installed":     s.Installed,
+		"auth_provider": s.AuthProvider,
+		// enable_review_gate and allow_write are the two codex opt-ins, reported
+		// through the SAME fail-closed reads the gates themselves perform.
+		// allow_write's inspectability here is load-bearing, not a convenience:
+		// the write-mode opt-in was made a config key rather than an environment
+		// variable precisely BECAUSE the key is visible to codex_setup
+		// (REQ-CX2-007; plan.md §D M0 write-mode decision, rejected alternative).
+		"enable_review_gate": s.EnableReviewGate,
+		"allow_write":        s.AllowWrite,
+		"node_bridge":        false, // explicit: REQ-MCP-007 Go-only reimplementation
+	}
+	if s.Installed {
+		result["binary"] = s.Binary
+		if s.Version != "" {
+			result["version"] = s.Version
+		}
+	}
+	return toolJSON("codex_setup", result), nil
+}
+
+// ─── two-stage auth classification ladder (SPEC-CODEX-LAUNCHER-001 M1) ───
+//
+// Stage 1 reads <CODEX_HOME>/auth.json — the structured source `codex doctor`
+// itself consults — and classifies ONLY when the mode is a known value AND the
+// credential material that mode implies is present. Stage 2 falls back to
+// `codex login status` and accepts a provider only from a WHOLE-LINE grammar
+// match. Everything else is a gap reported as unknown, never a verdict.
+//
+// The prior classifier substring-matched a SINGLE stream, so it read
+// "API key missing" as a successful apiKey login while discarding the stderr
+// the answer actually arrives on (spec §A.2).
+
+// codexAuthFileName is the credential file inside CODEX_HOME.
+const codexAuthFileName = "auth.json"
+
+// codexHomeEnvVar / codexHomeDirName drive CODEX_HOME resolution (REQ-CL-005).
+const (
+	codexHomeEnvVar  = "CODEX_HOME"
+	codexHomeDirName = ".codex"
+
+	codexHomeSourceEnv     = "env"
+	codexHomeSourceDefault = "default"
+)
+
+// codexAuthMode* are the auth_mode enum values stage 1 recognises. An
+// unrecognised mode descends to stage 2 rather than guessing.
+const (
+	codexAuthModeChatGPT = "chatgpt"
+	codexAuthModeAPIKey  = "apikey"
+)
+
+// errCodexAuthUnparseable is the SANITISED parse-failure reason. The
+// underlying encoding/json error is deliberately NOT wrapped: REQ-CL-008
+// forbids a credential being retained, logged, or wrapped, and a decoder error
+// can quote the offending bytes.
+var errCodexAuthUnparseable = errors.New("auth file is not valid JSON for the expected shape")
+
+// codexUserHomeDir is the home-resolution seam. Resolution goes through
+// os.UserHomeDir rather than reading $HOME directly, so it behaves on every
+// platform (spec §E cross-platform).
+var codexUserHomeDir = os.UserHomeDir
+
+// resolveCodexHomeDir returns the resolved CODEX_HOME and which source
+// supplied it. An env var that is unset, empty, or whitespace-only falls back
+// to the default — reading only LookupEnv's ok flag would accept a blank path.
+func resolveCodexHomeDir() (path string, source string) {
+	if v := os.Getenv(codexHomeEnvVar); strings.TrimSpace(v) != "" {
+		return v, codexHomeSourceEnv
+	}
+	home, err := codexUserHomeDir()
+	if err != nil {
+		return "", codexHomeSourceDefault
+	}
+	return filepath.Join(home, codexHomeDirName), codexHomeSourceDefault
+}
+
+// nonEmptyString records ONLY whether a JSON string field carried a non-blank
+// value; the value itself dies on the stack. Any other JSON type (null, false,
+// a number, an array, an object) counts as absent, and a type mismatch does
+// not fail the surrounding document.
+type nonEmptyString bool
+
+// UnmarshalJSON implements json.Unmarshaler, keeping the presence bit and
+// discarding the value.
+func (n *nonEmptyString) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		*n = false // not a string ⇒ not credential material
+		return nil
+	}
+	*n = nonEmptyString(strings.TrimSpace(s) != "")
+	return nil // s ends here — it is stored nowhere
+}
+
+// codexChatGPTCredentialKeys are the token keys that actually carry a login
+// credential. Account metadata such as account_id is deliberately absent: a
+// file holding only metadata is not a logged-in state.
+var codexChatGPTCredentialKeys = map[string]bool{
+	"access_token":  true,
+	"id_token":      true,
+	"refresh_token": true,
+}
+
+// codexTokenSet counts recognised credential keys whose value is a non-blank
+// JSON string. It stores a COUNT, never a token.
+type codexTokenSet struct{ credentialCount int }
+
+// UnmarshalJSON implements json.Unmarshaler. A non-object value yields a zero
+// count rather than an error, so a stale file descends instead of failing.
+// Each call counts ONLY its own payload: the reset up front keeps a reused
+// receiver (a second Unmarshal into the same value, or duplicate `tokens`
+// keys decoded per occurrence) from accumulating across calls.
+func (t *codexTokenSet) UnmarshalJSON(b []byte) error {
+	t.credentialCount = 0
+	var m map[string]nonEmptyString
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil // not an object ⇒ no credential material
+	}
+	for k, v := range m {
+		if codexChatGPTCredentialKeys[k] && bool(v) {
+			t.credentialCount++ // ignoring the key would let {"irrelevant":"x"} pass
+		}
+	}
+	return nil
+}
+
+// codexAuthFile is the deserialisation target. Every field is a value-free
+// kind except auth_mode, which is an enum rather than a secret — AC-CL-008
+// asserts that closed set by reflection over this type and its nested types.
+type codexAuthFile struct {
+	AuthMode string         `json:"auth_mode"`
+	APIKey   nonEmptyString `json:"OPENAI_API_KEY"`
+	Tokens   codexTokenSet  `json:"tokens"`
+}
+
+// classifyCodexAuthFile is stage 1: a PURE judgement over the file's bytes,
+// with no disk access. ok=false is a descent to stage 2, never an outcome.
+func classifyCodexAuthFile(raw []byte) (provider string, ok bool, err error) {
+	var f codexAuthFile
+	if uErr := json.Unmarshal(raw, &f); uErr != nil {
+		return "", false, errCodexAuthUnparseable
+	}
+	switch f.AuthMode {
+	case codexAuthModeChatGPT:
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
+		}
+	case codexAuthModeAPIKey:
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+	case "":
+		// Legacy auth.json written before codex started persisting auth_mode.
+		// codex itself keeps working on such a file — it infers the mode from
+		// the credential material — so the ladder rejecting it wholesale read
+		// a WORKING login as unknown (#1632 axis 4). Mirror codex's inference,
+		// with its precedence: an explicit API key wins, then token material.
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// readCodexAuthFile is the ONLY layer that knows the path. Its errors name the
+// path and a reason and nothing else — never the file's contents.
+func readCodexAuthFile(codexHome string) (provider string, ok bool, err error) {
+	path := filepath.Join(codexHome, codexAuthFileName)
+	raw, readErr := os.ReadFile(path) //nolint:gosec // path is the resolved CODEX_HOME, not user input
+	if readErr != nil {
+		return "", false, fmt.Errorf("codex auth file %s: %w", path, readErr)
+	}
+	provider, ok, cErr := classifyCodexAuthFile(raw)
+	if cErr != nil {
+		return "", false, fmt.Errorf("codex auth file %s: %w", path, cErr)
+	}
+	return provider, ok, nil
+}
+
+// codexLoginStatusRunnerFunc is the low-level execution seam for stage 2. It
+// returns the two streams SEPARATELY and on purpose: a seam handing back
+// pre-combined bytes cannot express "stdout empty, stderr carries the answer",
+// which is precisely the state this SPEC repairs — the regression test would
+// pass against the defective implementation.
+type codexLoginStatusRunnerFunc func(ctx context.Context, binaryPath string) (stdout, stderr []byte, exitCode int, err error)
+
+// codexLoginStatusRunner is the swappable seam (tests replace it with cleanup).
+var codexLoginStatusRunner codexLoginStatusRunnerFunc = defaultLoginStatusRunner
+
+// defaultLoginStatusRunner spawns `codex login status` and collects both
+// streams. A non-zero exit is DATA, not a failure: codex reports a logged-out
+// or degraded state that way and the status line still arrives.
+func defaultLoginStatusRunner(ctx context.Context, binaryPath string) ([]byte, []byte, int, error) {
+	cmd := codexChildCmd(ctx, binaryPath, []string{"login", "status"})
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	if runErr := cmd.Run(); runErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			return outBuf.Bytes(), errBuf.Bytes(), exitErr.ExitCode(), nil
+		}
+		return nil, nil, -1, runErr
+	}
+	return outBuf.Bytes(), errBuf.Bytes(), 0, nil
+}
+
+// combineCodexStreams merges both streams into a newline-joined block of the
+// non-blank lines, stdout first. Combining is a named, PURE function so the
+// combine rule itself is under test — the defect this SPEC repairs lived in a
+// production path that silently dropped one stream.
+func combineCodexStreams(stdout, stderr []byte) []byte {
+	var lines []string
+	for _, chunk := range [][]byte{stdout, stderr} {
+		for _, ln := range strings.Split(string(chunk), "\n") {
+			if strings.TrimSpace(ln) == "" {
+				continue
+			}
+			lines = append(lines, ln)
+		}
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
+
+// codexAuthStatusLine is the WHOLE-LINE grammar of stage 2. Anchoring on
+// "logged in" alone is not enough: "Logged in state unavailable: API key
+// missing" starts that way and would still be misread. Only the captured term
+// classifies, so a line merely CONTAINING a provider word never does.
+var codexAuthStatusLine = regexp.MustCompile(`(?i)^[ \t]*logged in using (chatgpt|api key)[ \t]*\r?$`)
+
+// parseCodexAuthLine is stage 2: a PURE parser over the combined block.
+//
+// exitCode is accepted so callers pass the probe's full result, but it is
+// deliberately NOT a discriminator: REQ-CL-009 classifies a non-zero exit
+// exactly when a grammar-matching line is present, which is the same rule as
+// for a zero exit. Two matching lines naming DIFFERENT providers are a
+// conflict, and a conflict is a gap rather than a guess.
+func parseCodexAuthLine(combined []byte, exitCode int) string {
+	seen := map[string]bool{}
+	for _, ln := range strings.Split(string(combined), "\n") {
+		m := codexAuthStatusLine.FindStringSubmatch(ln)
+		if m == nil {
+			continue
+		}
+		seen[strings.ToLower(m[1])] = true
+	}
+	if len(seen) != 1 {
+		return codexAuthUnknown
+	}
+	if seen[codexAuthModeChatGPT] {
+		return codexAuthChatGPT
+	}
+	return codexAuthAPIKey
+}
+
+// classifyCodexAuth is the THIN assembly of the two-stage ladder, and the
+// single classification path every consumer shares (the codex_setup MCP tool,
+// the web console card, and the launcher readout — REQ-CL-010).
+//
+// Stage 1 is the structured file; a rejected file — unknown mode, blank
+// credential material, unparseable, or absent — is a DESCENT to stage 2, never
+// an outcome. Stage 2 reads BOTH streams, because codex writes the status line
+// entirely to stderr on this platform and the previous implementation
+// discarded it (spec §A.2). Anything unreadable degrades to
+// codexAuthUnknown: an unreadable probe is a gap, not a verdict.
+func classifyCodexAuth(ctx context.Context, binaryPath string) string {
+	if codexHome, _ := resolveCodexHomeDir(); codexHome != "" {
+		if provider, ok, _ := readCodexAuthFile(codexHome); ok {
+			return provider
+		}
+	}
+	stdout, stderr, exitCode, err := codexLoginStatusRunner(ctx, binaryPath)
+	if err != nil {
+		return codexAuthUnknown
+	}
+	return parseCodexAuthLine(combineCodexStreams(stdout, stderr), exitCode)
+}
+
+// ─── config gate reader (shared by codex_setup + the review-gate subcommand) ───
+
+// readCodexReviewGateEnabled reads workflow.codex.review_gate.enabled from
+// `.moai/config/sections/workflow.yaml`. Truth table (fail-CLOSED — the opt-in
+// default is OFF, matching the HOI precedent isHookOptInEnabled, NOT the
+// fail-open learning gate):
+//
+//   - file missing / unreadable                   → false (default disabled)
+//   - YAML parse error                            → false (default disabled)
+//   - `workflow.codex` block absent               → false (Go zero-value default)
+//   - `workflow.codex.review_gate.enabled: false` → false
+//   - `workflow.codex.review_gate.enabled: true`  → true
+//
+// The key path is NESTED under the file's `workflow:` root — the shape
+// config.Loader.loadWorkflowSection expects (config.workflowFileWrapper) and
+// the shape the shipped template deploys. An earlier revision unmarshalled
+// `codex:` at the TOP level, which no deployed file ever carries, so the toggle
+// could never read true. The flat form is NOT accepted as an alias: one
+// spelling only.
+//
+// This stays a small hand-rolled read rather than a config.Loader.Load call on
+// purpose. The gate runs at every turn-end, so it should touch exactly one file
+// and no defaults/env-override machinery; and each failure path here returns
+// false explicitly, whereas Load returns populated defaults plus a nil error
+// and would blur "unreadable" into "configured off". The shape is pinned
+// against the real loader by TestReviewGateReaders_AgreeWithConfigLoader.
+//
+// The distributed default is false (C6 / AC-MCP-010 opt-in). A maintainer opts
+// in via local config; the template NEVER carries `enabled: true` (§25).
+func readCodexReviewGateEnabled(projectDir string) bool {
+	if projectDir == "" {
+		return false
+	}
+	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Workflow struct {
+			Codex struct {
+				ReviewGate struct {
+					Enabled bool `yaml:"enabled"`
+				} `yaml:"review_gate"`
+			} `yaml:"codex"`
+		} `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Workflow.Codex.ReviewGate.Enabled
+}
+
+// @MX:WARN: [AUTO] Measure the final representation, not the source body.
+// @MX:REASON: Shell quoting can quadruple single quotes after JSON encoding.
+func checkCodexInstructionSize(size int, representation string) error {
+	if size > config.DefaultCodexInstructionArgBytes {
+		return fmt.Errorf("codex %s is %d bytes, exceeds %d-byte ceiling", representation, size, config.DefaultCodexInstructionArgBytes)
+	}
+	return nil
+}
+
+const (
+	// codexJobIDPrefix prefixes every generated job id. The timestamp component
+	// makes a directory listing chronological; the random component is what
+	// actually guarantees uniqueness between two jobs started in the same
+	// second (spec.md §H R4 / acceptance.md §B two-concurrent-jobs).
+	codexJobIDPrefix = "job-"
+)
+
+// newCodexJobID returns a job id of the form job-<UTC compact timestamp>-<8 hex>.
+// The random suffix is what guarantees uniqueness; the timestamp only makes a
+// directory listing readable.
+func newCodexJobID() (string, error) {
+	var buf [4]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", fmt.Errorf("codex job id: %w", err)
+	}
+	return codexJobIDPrefix + time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(buf[:]), nil
+}
+
+// codexSetupProbe is the shared-probe seam (REQ-CL-007): the readout consumes
+// ProbeCodexSetup through this var, so tests can drive the whole probe with
+// sentinel values (AC-CL-007) without forking the classification path.
+var codexSetupProbe = ProbeCodexSetup

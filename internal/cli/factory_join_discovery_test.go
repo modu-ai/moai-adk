@@ -392,59 +392,6 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 	})
 }
 
-// AC-013's codex leg: the codex lane twin inherits the discovery behavior
-// through the SAME join function — zero active runs, one verified leader, the
-// join lands on the leader's run with the lead name exported.
-func TestCodexFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
-	root := discoveryTestRoot(t)
-	clearFactoryTestEnv(t)
-	stageDiscoveredLeaders(t, []discovery.VerifiedLeader{verifiedTestLeader("runcodex1")})
-
-	entry := factoryFlagParse{Enabled: true, LaneRole: true}
-	restore, err := enterCodexFactory(root, entry, nil)
-	if err != nil {
-		t.Fatalf("enterCodexFactory lane with one verified leader: %v", err)
-	}
-	if got := os.Getenv(config.EnvFactoryRunID); got != "runcodex1" {
-		t.Errorf("%s after codex lane join = %q, want the leader's run runcodex1", config.EnvFactoryRunID, got)
-	}
-	if got := os.Getenv(config.EnvFactoryLeadName); got != "leader" {
-		t.Errorf("%s after codex lane join = %q, want leader (REQ-009 on the codex twin)", config.EnvFactoryLeadName, got)
-	}
-	restore()
-
-	if status, _, _ := runRowOwner(t, root, "runcodex1"); status != "active" {
-		t.Errorf("resumed row status = %q, want active", status)
-	}
-}
-
-// The codex parse carries the same --leader surface as cc/glm (REQ-008 mirror
-// parity).
-func TestCodexFactoryLeadFlagSurface(t *testing.T) {
-	rest, entry, err := parseCodexFactoryEntry([]string{"-l", "--leader", "leader"})
-	if err != nil {
-		t.Fatalf("parseCodexFactoryEntry(-l --leader leader): %v", err)
-	}
-	if entry.Lead != "leader" {
-		t.Errorf("entry.Lead = %q, want leader", entry.Lead)
-	}
-	if len(rest) != 0 {
-		t.Errorf("rest = %v, want the flags consumed", rest)
-	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-l", "--leader", "lead"}); err == nil || !strings.Contains(err.Error(), "legacy leader spelling") {
-		t.Errorf("codex legacy --leader = %v, want the canonical-form refusal", err)
-	}
-	if _, _, err := parseCodexFactoryEntry([]string{"--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "-l") || !strings.Contains(err.Error(), "--lane") {
-		t.Errorf("codex selector without a lane entry = %v, want the lane-entry-only surface error", err)
-	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-l", "--factory-run", "runx0001", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "--factory-run") {
-		t.Errorf("codex --leader with --factory-run = %v, want the selector-conflict error", err)
-	}
-}
-
-// AC-013's source-level assert: the discovery+resume path lives in the shared
-// join point and NO launcher carries a private copy. The test binary's cwd is
-// the package directory, so the launcher sources read directly.
 func TestFactoryLaneJoinMirrorParity(t *testing.T) {
 	gate, err := os.ReadFile("factory.go")
 	if err != nil {
@@ -465,7 +412,10 @@ func TestFactoryLaneJoinMirrorParity(t *testing.T) {
 			t.Errorf("factory.go (the shared join point) does not carry %q", want)
 		}
 	}
-	for _, f := range []string{"cc.go", "glm.go", "codex_factory.go", "codex_launcher.go"} {
+	// The codex lane door (codex_factory.go / codex_launcher.go) was removed
+	// with the general codex execution surface (card t1909); the mirror set
+	// is the surviving lane launchers, cc and glm.
+	for _, f := range []string{"cc.go", "glm.go"} {
 		raw, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatalf("read %s: %v", f, err)
