@@ -213,7 +213,28 @@ sync_heads_up: "acceptance.md holds 21 distinct AC-looking identifiers (AC-ALB-0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-23
+sync_commit_sha: pending-backfill   # canonical placeholder; a commit cannot cite its own hash. The real SHA is backfilled in the following commit.
+sync_status: complete
+ac_source: .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/acceptance.md   # tier L
+b12_self_test_a: pass   # pre-emission grep -c 'SPEC-CARD-MODE-JUDGMENT-001' CHANGELOG.md printed 0 before the entry was written
+b12_self_test_b: pass   # REQ-MJ-001..017 = 17 distinct ids in spec.md; AC-MJ-001..020 = 20 distinct ids in acceptance.md; the entry states 17 and 20 (AC-MJ-015 named as the leader's criterion). The default-prefix AC- sweep reads 21 only because an edge case cites AC-ALB-021; not used for the count
+b12_self_test_c: pass   # every path named in the entry was checked with ls (8 template documents and their deployed twins, catalog.yaml, binding_ledger.json, verdict.md)
+changelog_entry_position: "[Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed, on this single sync commit; updated: 2026-10-23"
+  plan_md: "no frontmatter block; nothing refreshed"
+  acceptance_md: "no frontmatter block; nothing refreshed"
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
+mx_tag_validation: "not-applicable - documents only, no source file changed, no @MX tag added or changed"
+codemaps_readme_docs_site: "deliberately not touched - no user-facing feature and no code changed"
+evidence: .moai/reports/t1894/verdict.md
+gaps:
+  - "AC-MJ-015 (lane acknowledgement) is the leader's and is not recorded here"
+  - "sync-auditor verdict not part of this commit; the orchestrator owns the sync audit"
+  - "repository-wide CI verdict pending; only the 14 + 6 named Go guards were run in the run phase"
+```
 
 ## §F Phase 4 Mode Selection
 
