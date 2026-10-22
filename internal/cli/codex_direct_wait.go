@@ -10,6 +10,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// codexSessionExitError marks an error returned after the child has started
+// and all required factory identity/owner registration has succeeded. A
+// session's final exit is distinct from a failure to hand the run off.
+type codexSessionExitError struct{ err error }
+
+func (e *codexSessionExitError) Error() string { return e.err.Error() }
+func (e *codexSessionExitError) Unwrap() error { return e.err }
+
 // codexStartAndWait starts Codex as a child process and waits for it; the
 // child's exit code reaches the caller through the returned error. It is the
 // Windows direct door, and on every platform the launch form of a lane-loop
@@ -61,5 +69,8 @@ func codexStartAndWait(cmd *exec.Cmd) error {
 			}
 		}
 	}
-	return cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		return &codexSessionExitError{err: err}
+	}
+	return nil
 }

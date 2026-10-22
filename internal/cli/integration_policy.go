@@ -30,9 +30,11 @@ func newIntegrationPolicyCmd() *cobra.Command {
 
 // integrationLaneRoleSet reports whether this session declares the lane
 // role — the claim that refuses policy writes (REQ-MWQ-012). An unset
-// variable makes no claim.
+// variable makes no claim, and the explicit leader controls the policy.
+// Other nonempty roles remain refused, including legacy numbered lanes.
 func integrationLaneRoleSet() bool {
-	return strings.TrimSpace(os.Getenv(config.EnvFactoryRole)) != ""
+	role := strings.TrimSpace(os.Getenv(config.EnvFactoryRole))
+	return role != "" && role != factory.RoleLeader
 }
 
 func newIntegrationPolicyOpenCmd() *cobra.Command {

@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 func TestCodexFactoryLeaderFreshIdentity(t *testing.T) {
@@ -423,6 +424,9 @@ func TestCodexFactoryLeaderSameSecondDoesNotOverwriteRun(t *testing.T) {
 }
 
 func TestCodexFactoryLeaderMixedLanesJoinULIDRun(t *testing.T) {
+	// Lane admission uses the shared home-state run directory even though
+	// this fixture's factory database is project-local.
+	testguard.RedirectHome(t)
 	root, _ := fcFixture(t)
 	t.Chdir(root)
 	netScrubLaneEnv(t)

@@ -1275,7 +1275,8 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		if leader {
 			runID := os.Getenv(config.EnvFactoryRunID)
 			defer func() {
-				if launchErr != nil {
+				var sessionExit *codexSessionExitError
+				if launchErr != nil && !errors.As(launchErr, &sessionExit) {
 					launchErr = errors.Join(launchErr, abortFactoryRunStart(projectRoot, runID))
 				}
 			}()
@@ -1386,7 +1387,14 @@ func codexDirectLaunch(req codexLaunchRequest) error {
 	if err == nil {
 		return nil
 	}
-	return codexPropagateLaunchError(err)
+	propagated := codexPropagateLaunchError(err)
+	var sessionExit *codexSessionExitError
+	if errors.As(err, &sessionExit) {
+		// Keep the handoff distinction after converting a raw subprocess
+		// failure into the launcher's deliberate exit-code error.
+		return &codexSessionExitError{err: propagated}
+	}
+	return propagated
 }
 
 // codexPropagateLaunchError maps a launch failure onto the exit-code
