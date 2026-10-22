@@ -111,7 +111,11 @@ func qasRegistryState(t *testing.T, root string) string {
 	v := url.Values{}
 	v.Add("mode", "ro")
 	v.Add("_pragma", "query_only(ON)")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: p, RawQuery: v.Encode()}).String())
 	if err != nil {
 		t.Fatal(err)
 	}
