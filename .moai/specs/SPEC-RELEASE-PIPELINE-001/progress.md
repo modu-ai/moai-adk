@@ -186,7 +186,7 @@ m1_to_mN_commit_strategy: per-milestone local commits in plan order M2, M5, M4, 
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: pending-backfill   # the sync commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16   # the sync commit; backfilled in this following commit
 sync_status: complete-pending-audit
 tier: M
 ac_source: .moai/specs/SPEC-RELEASE-PIPELINE-001/acceptance.md   # B12 counter: stdout 11, stderr live=11 excluded=2 ambiguous=0
