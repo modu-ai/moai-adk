@@ -157,7 +157,7 @@ Rows the ruling affects, listed and not decided here:
 
 ## §E.2 Run-phase Evidence
 
-Run-phase status: **complete** (AC-MJ-014 was blocked at M5 on `770b5ae654`, resolved by the mid-run amendment `8b9f610b91` and the correction `05bcdc3a8f`; see the verdict §6). Measured on HEAD `05bcdc3a8f`, clean tree. The commands are the single-line cells of `acceptance.md` §2 (ids in the verdict); the decisive output lines are in `.moai/reports/t1894/verdict.md` §2, which this table cites.
+Run-phase status: **complete** (AC-MJ-014 was blocked at M5 on `770b5ae654`, resolved by the mid-run amendment `8b9f610b91` and the correction `05bcdc3a8f`; see the verdict §6). A second correction, `45270e3ef3` (D transition boundary, after sync-audit finding S1 and the amendment `0fca8e0e90`), follows; see the verdict §7. Measured on HEAD `45270e3ef3`, clean tree. The commands are the single-line cells of `acceptance.md` §2 (ids in the verdict); the decisive output lines are in `.moai/reports/t1894/verdict.md` §2, which this table cites.
 
 | AC | Status | Actual Output (decisive) |
 |----|--------|--------------------------|
@@ -165,13 +165,13 @@ Run-phase status: **complete** (AC-MJ-014 was blocked at M5 on `770b5ae654`, res
 | AC-MJ-002 | PASS | E-002a empty exit 0; E-002d `:1` / `:1` |
 | AC-MJ-003 | PASS | `:1` / `:1` |
 | AC-MJ-004 | PASS | (a) `:1` (b) `:0` (c) `:2` (d) `:1` (e) `:2`, both trees |
-| AC-MJ-005 | PASS | (a) `:1` (b) `:0` (c) `:1` (d) `:3`, both trees |
+| AC-MJ-005 | PASS | (a) `:1` (b) `:0` (c) `:1` (d) `:3`, both trees; (e) E-005e `0 1` / `0 1` |
 | AC-MJ-006 | PASS | `8 8 1 1` / `8 8 1 1` |
 | AC-MJ-007 | PASS | `4 4 1` / `4 4 1` |
 | AC-MJ-008 | PASS | (a) empty; (b) core 1, leader body 2, doctrine 2, watchdog 1; (d) 1; (e) 2; (f) 1 |
 | AC-MJ-009 | PASS | `1 1 0` / `1 1 0` |
 | AC-MJ-010 | PASS | (a) empty; (b) `:1` / `:1` |
-| AC-MJ-011 | PASS | seven `cmp` exit 0; `pairs 3/5/4/1 unpaired 0` for `2fb0be5ed8`, `89eb51de2f`, `770b5ae654`, `05bcdc3a8f` |
+| AC-MJ-011 | PASS | seven `cmp` exit 0; `pairs 3/5/4/1/1 unpaired 0` for `2fb0be5ed8`, `89eb51de2f`, `770b5ae654`, `05bcdc3a8f`, `45270e3ef3` |
 | AC-MJ-012 | PASS | `OK 9997` |
 | AC-MJ-013 | PASS | `:0` on all eight template files |
 | AC-MJ-014 | PASS | `ok  	github.com/modu-ai/moai-adk/internal/template	6.155s` (14 of 14 named guards, `TestBindingLedgerIntegrity` PASS, `violations=0`); `ok  	github.com/modu-ai/moai-adk/internal/cli	0.926s` (6 of 6); no `[no tests to run]` in either log |
@@ -180,23 +180,24 @@ Run-phase status: **complete** (AC-MJ-014 was blocked at M5 on `770b5ae654`, res
 | AC-MJ-017 | PASS | ` 1 file changed, 1 insertion(+), 1 deletion(-)` |
 | AC-MJ-018 | PASS | (a) `:1`/`:1` (b) `:0` x4 (c) `:1` x4 (d) `:1`/`:1` (e) `:1`/`:1` |
 | AC-MJ-019 | PASS | `:1` / `:1` |
-| AC-MJ-020 | PASS | all sixteen rows `0 0 0 0 0`; `unexpected-paths 0`; `same same` |
+| AC-MJ-020 | (a), (c) PASS; (b) open finding | (a) E-020a and E-020i: all sixteen rows `0 0 0 0 0`; (c) `same same`; (b) `unexpected-paths 1` at `45270e3ef3`, naming `CHANGELOG.md`, which the sync commit `ea7b93c085` added to (it read `unexpected-paths 0` at `05bcdc3a8f`); the D correction touches no such path — for manager-spec, see the verdict §7 |
 
 | Invariant | Status | Actual Output |
 |-----------|--------|---------------|
 | Stub budget | PASS | `OK 9997` (limit 10,000; was 9,999) |
 | Ledger rows ALB-0276 / ALB-0257 updated in M2 | applied | rows rewritten in `89eb51de2f`; the correction `05bcdc3a8f` changed no ledger or catalog file |
 | Catalog hashes | applied | `moai` in M1 and M3, `moai-lane-watchdog` in M2; `TestCatalogHashCoversSkillSubfiles` PASS |
-| Agents, Go source, other SPEC dirs untouched | PASS | `paths` check `unexpected-paths 0` |
+| Agents, Go source, other SPEC dirs untouched | PASS | `git diff --name-only` of this run's commits names only the 16 documents, `catalog.yaml`, `binding_ledger.json` and SPEC-directory files; the `paths` cell reads `unexpected-paths 1` only for the sync-phase `CHANGELOG.md` line (AC-MJ-020 row) |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-23
-run_commit_sha: 05bcdc3a8f      # last run-phase document commit (the F correction); the evidence commit that carries this block follows it
+run_commit_sha: 45270e3ef3      # last run-phase document commit (the D correction); the evidence commit that carries this block follows it
 run_status: complete
-ac_pass_count: 19               # AC-MJ-001..014, 016..020
-ac_fail_count: 0
+ac_pass_count: 18               # AC-MJ-001..014, 016..019
+ac_fail_count: 1                # AC-MJ-020, cell (b) only: unexpected-paths 1 = CHANGELOG.md from the sync commit ea7b93c085; cells (a) and (c) pass
+open_finding: "AC-MJ-020 (b) reads red at HEAD because the sync phase added a CHANGELOG.md line outside the four writable prefixes and the manifest also: rows; not caused by any run-phase edit; needs manager-spec"
 ac_not_owned: 1                 # AC-MJ-015, the leader's
 preserve_list_post_run_count: not-measured
 l44_pre_commit_fetch: not-run

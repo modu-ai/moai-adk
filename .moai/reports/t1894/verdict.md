@@ -1,9 +1,9 @@
 # Run-phase verdict — card t1894, SPEC-CARD-MODE-JUDGMENT-001
 
 Author: manager-develop (documents-only run; no Go source changed). Date: 2026-10-23.
-Overall: **PASS on every AC this phase owns** (AC-MJ-001..014, -016..020). The M5 blocker raised earlier is resolved (section 6). AC-MJ-015 is the leader's.
+Overall: every AC this phase owns passes (AC-MJ-001..014, -016..019) except one cell: AC-MJ-020 (b) reads `unexpected-paths 1` at the final HEAD because of a sync-phase `CHANGELOG.md` line, not because of any run-phase edit (section 7.4). The M5 blocker raised earlier is resolved (section 6); the sync-audit finding S1 is corrected (section 7). AC-MJ-015 is the leader's.
 
-Tree measured: HEAD `05bcdc3a8f` on `WT-fail-safe-serial`, `git status --short` empty (0 lines), base `28c7bb8d36`. The evidence commit that carries this file follows `05bcdc3a8f` and touches only this file and `progress.md`.
+Tree measured: sections 1-6 were measured at HEAD `05bcdc3a8f`; section 7 re-measures the full ledger at the final run-phase HEAD `45270e3ef3` on `WT-fail-safe-serial`, `git status --short` empty (0 lines), base `28c7bb8d36`. The evidence commit that carries this file follows `45270e3ef3` and touches only this file and `progress.md`.
 
 Run commits:
 
@@ -15,6 +15,9 @@ Run commits:
 | `0be1353bbd` | first evidence commit (M5 blocker record) |
 | `8b9f610b91` | mid-run amendment by manager-spec, committed by the coordinator (manifest F row) |
 | `05bcdc3a8f` | correction: F reconciliation line carries the home pointer |
+| `0638768424` | second evidence commit (AC-MJ-014 green, blocker resolved) |
+| `0fca8e0e90` | mid-run amendment 2 by manager-spec, committed by the coordinator (manifest D rows, cells E-005e and E-020i) after sync-audit finding S1 |
+| `45270e3ef3` | correction: D transition boundary follows the free-lane definition |
 
 Path legend: `T:` = `internal/template/templates/.claude/` + `rules/moai/workflow/` (or `skills/…`), `D:` = the deployed twin under `.claude/`.
 
@@ -111,4 +114,52 @@ Before the amendment, on HEAD `770b5ae654`, `internal/template` exited 1: `--- F
 
 Earlier blocker: AC-MJ-014 could not go green under the frozen manifest because `TestBindingLedgerIntegrity` failed AC-ALB-021(2) on row `ALB-0257` (section 2.5).
 
-Resolution: manager-spec amended the manifest F row under mid-run authority (`8b9f610b91`): F's reconciliation line ends with one extra pointer sentence and so differs from K's line. The correction `05bcdc3a8f` sets that line to the manifest row in both trees (line 48 in each), touching nothing else: the K stub, the ledger rows and `catalog.yaml` are unchanged, as expected for a rule file. Observed after the correction: `lines` `0 0 0 0 0` on all sixteen rows, E-012a `OK 9997`, `TestBindingLedgerIntegrity` PASS with `violations=0`, 14 of 14 and 6 of 6 guards PASS. No open blocker remains.
+Resolution: manager-spec amended the manifest F row under mid-run authority (`8b9f610b91`): F's reconciliation line ends with one extra pointer sentence and so differs from K's line. The correction `05bcdc3a8f` sets that line to the manifest row in both trees (line 48 in each), touching nothing else: the K stub, the ledger rows and `catalog.yaml` are unchanged, as expected for a rule file. Observed after the correction: `lines` `0 0 0 0 0` on all sixteen rows, E-012a `OK 9997`, `TestBindingLedgerIntegrity` PASS with `violations=0`, 14 of 14 and 6 of 6 guards PASS. No open blocker remains (as of `05bcdc3a8f`; superseded by section 7 for the final HEAD).
+
+## 7. Correction after sync-audit finding S1 (final run-phase HEAD `45270e3ef3`)
+
+### 7.1 Finding and amendment
+
+- Sync audit `.moai/reports/t1894/sync-audit.md` (verdict FAIL, 0.80) reports S1 [blocking]: the new free-lane definition in `factory-dispatch-detail.md` (the Routing sub-bullet, line 134: a free lane is one on which no card is actually executing) contradicts the in-lane bullet on line 139, which still said a lane leaves its card worktree once its card reaches `done`.
+- manager-spec amended the manifest under mid-run authority (D `-` and `+` rows for that bullet; new cells E-005e and E-020i); the coordinator committed it as `0fca8e0e90`.
+- Findings S2-S5 of the same audit are outside this correction's mandate and were not acted on. The audit itself records S2 (AC-MJ-020 (b) red at the audited SHA because of `CHANGELOG.md`) as a non-blocking criterion-scope defect; section 7.4 corroborates it.
+
+### 7.2 Change
+
+- Commit `45270e3ef3`: line 139 of both `factory-dispatch-detail.md` twins replaced with the manifest D `+` row (asserted beforehand to equal the manifest `-` row; one physical line each, `2 insertions(+), 2 deletions(-)` over the two files). Nothing else changed.
+- `pairs … 45270e3ef3:1` printed `45270e3ef3 pairs 1 unpaired 0 expected 1`, exit 0.
+
+### 7.3 Evidence (full ledger run on the committed tree `45270e3ef3`, `git status --short` empty; identical to the run made just before the commit)
+
+| Cell | Verbatim decisive output | Status |
+|---|---|---|
+| E-005a / b / c / d | `:1` / `:0` / `:1` / `:3` (both trees) | PASS |
+| E-005e (new) | `0 1` / `0 1`, exit 0 | PASS |
+| E-006 | `8 8 1 1` / `8 8 1 1` | PASS |
+| E-011 (seven `cmp`, including the D pair) | all seven exit 0 | PASS |
+| E-012a | `OK 9997` | PASS |
+| E-013a | `:0` on all eight template files | PASS |
+| E-016 | the three homes only | PASS |
+| E-017 | ` 1 file changed, 1 insertion(+), 1 deletion(-)` | PASS |
+| E-018a-e, E-019a, E-019c | unchanged from section 2.2 | PASS |
+| E-020a and E-020i | every one of the sixteen rows `0 0 0 0 0`, exit 0 (`lines` run directly gave the same, exit 0) | PASS |
+| E-020d / E-020e (control) / E-020h (control) | `same same` / `DIFFERENT same` / `C good 0 0 pair-move 44 44` | PASS |
+| E-020b | `unexpected-paths 1` listing `CHANGELOG.md`, exit 1 | see 7.4 |
+
+Go guards, one invocation per package, run under the `go-heavy` lease on the tree that `45270e3ef3` commits:
+
+- `internal/template`, exit 0: `--- PASS: TestBindingLedgerIntegrity (7.23s)`, `--- PASS: TestRuleTemplateMirrorDrift (0.00s)`, `--- PASS: TestTemplateNoInternalContentLeak (1.23s)`, `--- PASS: TestCardIDBaselineHasNoStaleEntries (0.02s)`, `--- PASS: TestWorkflowRulePathsPinned (0.00s)`, `--- PASS: TestDeployedAlwaysLoadedCharBudget (0.15s)`, and the other eight named guards likewise `--- PASS`; `ok  	github.com/modu-ai/moai-adk/internal/template	9.117s`; sweep line `[AC-ALB-021(2)] fragment sweep: … violations=0 lines exempt (already in anchor copy)=22`.
+- `internal/cli`, exit 0: six of six named guards `--- PASS`; `ok  	github.com/modu-ai/moai-adk/internal/cli	1.073s`; 179 `=== RUN` lines.
+- Empty-sweep check: 0 occurrences of `[no tests to run]` and of `[no test files]` in either log. Load before the lease: `22.71 24.95 23.54` — elevated by other sessions, still under the 32 limit; one Go invocation at a time.
+
+### 7.4 AC-MJ-020 (b) at the final HEAD
+
+`closed-world-check.py paths` printed `unexpected-paths 1` / `CHANGELOG.md`, exit 1. `git log -3 -- CHANGELOG.md` names `ea7b93c085` (the sync-phase commit, manager-docs) as the change; `git diff --stat d31fb64239 HEAD -- CHANGELOG.md` shows 1 insertion. The same cell read `unexpected-paths 0` at `05bcdc3a8f`. The cell compares the whole tree against the manifest base and allows four prefixes, so a sync-phase `CHANGELOG.md` entry reddens it; the D correction touches only the two twins. I cannot edit the manifest or the criterion, so this stays open for manager-spec (the audit's S2).
+
+### 7.5 Not observed in this correction
+
+- AC-MJ-015 is the leader's.
+- The other findings S2-S5 were not worked; S2's disposition needs manager-spec.
+- Windows build, coverage and lint: not run (documents only). Only the 14 + 6 named tests ran; CI owns the repository-wide verdict.
+- Raw logs stay in scratch outside the repository.
+- The judging builds are the same as in section 3 (compiled from this tree; installed `moai` used for `moai slot` only).
