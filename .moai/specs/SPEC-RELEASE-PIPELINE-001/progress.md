@@ -163,6 +163,20 @@ Repair commit `98599969ca` on top of 9f4e3078c4; all commands run in this worktr
 - Gate set at the repair tree: `go test ./internal/template/ -count=1 -run 'TestWorkflowRunScriptsNoUntrustedInterpolation|TestCICostJobsInputGated|TestCIGatedFamilyVerdictSemantics|TestCIRequiredNamesSatisfied|TestStageCeilingBelowJobBudget|TestBrowserPhaseSplit|TestRetryPolicyPreservesFirstFailure|TestCleanup|TestDrafterCleanupConcurrency'` -> `ok  	github.com/modu-ai/moai-adk/internal/template	11.875s`; `golangci-lint run ./internal/template/...` -> `0 issues.`; `actionlint` on ci.yml, release-drafter-cleanup.yml, release-drafter.yml, release-pr-multi-os.yml -> exit 0.
 - Residual: the allowlist trusts `matrix.<key>` because every matrix in the four workflows is a literal; a future matrix built with `fromJSON` from a step or job output would make `matrix.*` attacker-influenceable and the guard would not notice. Expressions in other positions than `run:` (`env:`, `with:`, `if:`, `shell:`) are outside this guard.
 
+### Sync-audit iter3 debt repair (F4, F5, F6, G1-R1, G1-R2; audit file `.moai/reports/t1536/sync-audit-iter3.md`, audited sha c9982e4f8f; F3 untouched, it needs a SPEC decision)
+
+Repair commits on top of dec02e50f0: `a95d62749a` (F5 + F6), `5b58068810` (F4), `97d5cb3bcf` (G1-R1 + G1-R2). Each mutant was applied to the real workflow or filter file in this worktree, the one guard run, and the file restored with `git checkout -- <path>`.
+
+| Debt | Mutant on the real tree | Old guard (HEAD dec02e50f0) | New guard |
+|---|---|---|---|
+| F4 | all 43 roots of `.github/test-input-filters.yml` replaced by `zz-nonmatching/**` | `TestCICostJobsInputGated` ok | FAIL: `class binary_inputs matches no root for "cmd/moai/main.go", a file it must classify` |
+| F5 | `codeql.yml` `pull_request:` gains `paths: ['internal/**']` | `TestCIRequiredNamesSatisfied` ok | FAIL: `required name "Analyze (Go) (go)" is not reported by any job (supplied only by [.github/workflows/codeql.yml], whose pull_request paths / paths-ignore filter skips the diff {README.md})` |
+| F6 | `ci.yml` Lint verdict `exit 1` wrapped in `if false; then ... fi` (and, separately, preceded by `exit 0`) | `TestCIGatedFamilyVerdictSemantics` ok (both) | FAIL (both): `Lint: (iii) detect=failure mode=0: published [success failure], want the real job and the marker both failure` |
+| G1-R1 (M20) | `ci.yml` build include `goos: ${{ github.event.pull_request.title }}` | `TestWorkflowRunScriptsNoUntrustedInterpolation` ok | `TestWorkflowMatrixValuesLiteral` FAIL: `include[0].goos carries an expression or fromJSON` |
+| G1-R2 (M15) | `ci.yml` lint job gains an `actions/github-script` step with `with.script` carrying a payload field | `TestWorkflowRunScriptsNoUntrustedInterpolation` ok | FAIL: `interpolates ${{ github.event.pull_request.title }} into its with.script input (actions/github-script@v7 evaluates it as code)` |
+
+No real-workflow defect was exposed by a strengthened guard: every new guard is green on the unmutated tree.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
