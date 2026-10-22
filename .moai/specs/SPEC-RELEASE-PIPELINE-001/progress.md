@@ -69,11 +69,88 @@ Copied from the PASS-WITH-DEBT verdict `.moai/reports/t1536/plan-audit-iter7.md`
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Measured by manager-develop (cycle_type=tdd, serial) in worktree `.moai/worktrees/t1536`, branch `WT-10-06-codex`. Tree for every GREEN cell below: HEAD `1258076d11102e596dadb86a80aa657cbbf6174f` (M1 commit) unless a cell names another; plan-tree baseline `4c387f96bc`. Run clock `2026-10-22T20:27Z` UTC (2026-10-23 local). gh `2.92.0 (2026-04-28)`, jq present. Nothing was pushed (lane holds pushes).
+
+Commits (plan order M2, M5, M4, M1): M2 `8a48e715f7` · M5 `4fc2d0a8d5` · M4 `81563e6f3f` · M1 `1258076d11`. The first commit carries the `draft -> in-progress` transition (spec.md `status:` + `updated:`; plan.md / acceptance.md `updated:` only).
+
+### AC matrix (regression-guard rows are labelled; none is counted as a release gate)
+
+| AC | Class | Verifying command (this run, HEAD 1258076d11) | Actual output | Status |
+|---|---|---|---|---|
+| AC-RPC-001 | regression-guard | `go test ./internal/template/ -run '^(TestTestInputFiltersSingleSource\|TestTestInputFiltersCoversGoTestInputs)$' -count=1 -v` | both `--- PASS`, `ok ... internal/template 0.231s` (swept 2 of 2); consumers: `grep -n "filters: .github/test-input-filters.yml"` -> ci.yml:85, codeql.yml:43, release-pr-multi-os.yml:68; fail-open wiring: release-pr-multi-os.yml:64 `continue-on-error: true`, :120 `!= 'false'` | PASS (guard holds) |
+| AC-RPC-002 | release-blocking | `go test ./internal/template/ -run '^TestCICostJobsInputGated$' -count=1 -v` | RED before M2 (see E8); after: `--- PASS: TestCICostJobsInputGated`, 6 negative controls observed red | PASS |
+| AC-RPC-003 | release-blocking | `... -run '^TestCIGatedFamilyVerdictSemantics$'` | RED before M2: `Lint: (iii) detect=failure mode=0: published [success], want the real job and the marker both failure`; after: PASS, 5 negative controls observed red | PASS |
+| AC-RPC-004 | regression-guard | `... -run '^TestCIRequiredNamesSatisfied$'`; `go test ./internal/config/ -run '^TestRequiredChecks_ReleaseGateSubsetOfMain$' -v` | green BEFORE and AFTER M2; both negative controls (a) lint gated + no Lint marker -> `pull_request to main x docs-only: required name "Lint" is not reported`, (b) release_gate + `Release PR Multi-OS Gate` -> `push to main x docs-only: ... not reported` observed red on the pre-M2 tree; config test `--- PASS` | PASS (guard holds; see scope note 1) |
+| AC-RPC-007 | release-blocking | `... -run '^TestStageCeilingBelowJobBudget$'` | RED before M4 (browser half); after: PASS; release-half controls T=38 (`38 + 5 + 1 = 44 exceeds the job budget 40`) and upload without `if: always()` observed red | PASS |
+| AC-RPC-008 | release-blocking | `... -run '^TestBrowserPhaseSplit$'` | RED before M4; after: PASS, 6 controls red | PASS |
+| AC-RPC-009 | release-blocking | `... -run '^TestRetryPolicyPreservesFirstFailure$'` | RED before M4 (7 jobs without the attempt1 upload); after: PASS, 6 controls red | PASS |
+| AC-RPC-010 | release-blocking | `... -run '^TestCleanupFilterSelectsStaleDrafts$'` | RED before M5 (no extractable program); EV-3/EV-4 divergence re-observed; after: PASS (selects exactly `stale-draft`), 5 controls red | PASS |
+| AC-RPC-011 | release-blocking | `... -run '^TestCleanupRequeriesBeforeDelete$'` | RED before M5; after: PASS (4 scenarios: unchanged deleted; published / retargeted / refreshed skipped and logged), 2 controls red | PASS |
+| AC-RPC-012 | release-blocking | `... -run '^TestDrafterCleanupConcurrency$'` | RED before M5 (no cleanup group; ref-keyed drafter group; cancel true); after: PASS, 5 controls red | PASS |
+| AC-RPC-013 | release-blocking | `... -run '^TestCleanupFetchFieldsSupported$'` | RED before M5 (`gh release list requests --json field "targetCommitish"`); after: PASS, 4 controls red | PASS |
+
+Final GREEN sweep, one invocation: `go test ./internal/template/ -run '^(TestCICostJobsInputGated|TestCIGatedFamilyVerdictSemantics|TestCIRequiredNamesSatisfied|TestCleanupFetchFieldsSupported|TestCleanupFilterSelectsStaleDrafts|TestCleanupRequeriesBeforeDelete|TestDrafterCleanupConcurrency|TestCleanupDryRunDispatchReachable|TestStageCeilingBelowJobBudget|TestBrowserPhaseSplit|TestRetryPolicyPreservesFirstFailure|TestReleaseVerifyShardParity|TestTestInputFiltersSingleSource|TestTestInputFiltersCoversGoTestInputs)$' -count=1 -v` -> 14 `--- PASS` lines (11 new guards incl. the dry-run reachability guard, `TestReleaseVerifyShardParity` swept and green, the 2 EV-1 guards), `ok ... 18.620s`.
+
+### RED-now cells re-observed at plan tree 4c387f96bc (before any change)
+
+- EV-14 `grep -n "needs.detect.result" .github/workflows/ci.yml` -> empty, exit 1. EV-5 `grep -nE "^  [a-z][a-z0-9-]*:|^    if:|^    needs:|^    continue-on-error:" .github/workflows/ci.yml` -> `lint`/`build`/`constitution-check`/`test-browser` with no `needs`/`if` (the `test` family has them).
+- EV-10 `gh release list --repo modu-ai/moai-adk --json tagName,isDraft,createdAt,targetCommitish -L 1` -> `Unknown JSON field: "targetCommitish"`, exit 1 (gh 2.92.0); EV-12 `gh release view v3.1.3 --repo modu-ai/moai-adk --json tagName,isDraft,createdAt,targetCommitish` -> `{"createdAt":"2026-08-21T19:28:08Z","isDraft":true,"tagName":"v3.1.3","targetCommitish":"main"}`, exit 0; `gh release view ... --json bogusField` lists the view field set (apiUrl assets author body createdAt databaseId id isDraft isImmutable isPrerelease name publishedAt tagName tarballUrl targetCommitish uploadUrl url zipballUrl) — pinned in the guard.
+- EV-3 `jq -r --arg threshold_days 30 'now | floor as $now | ...' internal/template/testdata/release-drafter-cleanup.json` -> `jq: error (at ...:6): Cannot iterate over number (1792699450....)`, exit 5; EV-4 `(now|floor) as $now` form -> `stale-draft`, exit 0 (the committed fixture stands in for the gitignored plan-phase copy).
+- EV-7 `grep -c "gh release view" .github/workflows/release-drafter-cleanup.yml` -> `0` exit 1; EV-8 `grep -c "concurrency" ...` -> `0` exit 1; EV-9 `grep -c "attempt1" .github/workflows/ci.yml` -> `0` exit 1.
+- EV-6/EV-11: `grep -n "timeout-minutes" .github/workflows/release-pr-multi-os.yml` -> :41 :121 (40) :367 plus comments, no race-step ceiling (the compliant Q9 state). ci.yml line numbers moved after M2 (browser job now at :1110, green step :1187).
+
+### E8 — verbatim RED before GREEN (the first violation lines per guard, copied from the run's test output; the full RED outputs were captured in the run session's scratch files, which are machine-local and not cited)
+
+```
+M2  CI_COST_GATE_VIOLATION: lint: runs on a docs-only pull_request (no input class matched)
+M2  CI_COST_GATE_VIOLATION: lint: does not need detect, so it cannot read the input classification
+M2  CI_VERDICT_SEMANTICS_VIOLATION: Lint: (iii) detect=failure mode=0: published [success], want the real job and the marker both failure
+M2  --- FAIL: TestCICostJobsInputGated / --- FAIL: TestCIGatedFamilyVerdictSemantics / --- PASS: TestCIRequiredNamesSatisfied (regression-guard green; controls (a)(b) red)
+M5  CLEANUP_FETCH_VIOLATION: gh release list requests --json field "targetCommitish", which that subcommand does not support (gh 2.92.0: "Unknown JSON field", exit 1)
+M5  CLEANUP_REQUERY_VIOLATION: the delete step does not re-query (gh release view) before gh release delete (view at -1, delete at 225)
+M5  CLEANUP_CONCURRENCY_VIOLATION: ... release-drafter-cleanup.yml declares no concurrency group
+M5  CLEANUP_CONCURRENCY_VIOLATION: ... release-drafter.yml: the group key varies with github.ref ...
+M5  CLEANUP_DRYRUN_VIOLATION: workflow_dispatch declares no dry_run input, so the dry-run path is unreachable by dispatch
+M5  CLEANUP_FILTER_VIOLATION: the workflow carries no stale-draft jq program (job env STALE_FILTER)
+M4  STAGE_BUDGET_VIOLATION: "Green phase — gated driver tests (in-process surface)" has no step-level timeout-minutes
+M4  STAGE_BUDGET_VIOLATION: no always() evidence upload follows the mutation phase, so a failing phase leaves no trail
+M4  RETRY_EVIDENCE_VIOLATION: job test-race-cli-1 runs the retry wrapper but no upload step carries .moai/logs/ci-flaky-retry.attempt1.json   (x7 jobs)
+M4  release half: green before M4; controls: race-step ceiling 38 + pre-step 5 + evidence 1 = 44 exceeds the job budget 40 / "Upload test event stream" is not an `if: always()` step
+```
+
+### E2 / E3 / E4 / E5
+
+- E2 `go build ./...` -> exit 0; `GOOS=windows GOARCH=amd64 go build ./...` -> exit 0; both re-run at HEAD 1258076d11; `GOOS=windows GOARCH=amd64 go vet ./internal/template/` -> exit 0 (run at the M5 commit, the test files' windows compile check).
+- E3 `go test -cover ./internal/template/ -count=1` -> `coverage: 82.8% of statements`, package FAIL only on three tests that also fail at the plan tree `4c387f96bc` (`TestBindingLedgerIntegrity`, `TestCatalogHashCoversSkillSubfiles`, `TestManifestHashFormat`: moai-lane-watchdog catalog hash, ledger rows ALB-0139/0148). No non-test Go file was touched, so there is no modified-file coverage to hold at 85%.
+- E4 `grep -rn 'AskUserQuestion'` over the four new Go files, comment lines excluded -> no match.
+- E5 `golangci-lint run --timeout=10m ./internal/template/...` -> `0 issues.`; `moai spec lint .moai/specs/SPEC-RELEASE-PIPELINE-001` -> 0 errors, 1 warning (`VacuousTestAssertion` at acceptance.md:52, an EV-6 cell in SPEC body text this agent may not edit).
+- `actionlint` over ci.yml, release-pr-multi-os.yml, release-drafter-cleanup.yml, release-drafter.yml -> exit 0. `git diff --name-only 4c387f96bc..HEAD` lists only: test-input-filters.yml, the four workflows above, the three SPEC artifacts (frontmatter), and the four Go test files plus the fixture; codeql.yml and required-checks.yml are untouched.
+
+### Scope notes for manager-spec disposition (SPEC text; not edited here)
+
+1. AC-RPC-004's "classification failure" outcome cannot hold for `Test (ubuntu-latest)`: when `detect` fails, both `test` and `test-skip-marker` are skipped (no failure arm; PRESERVE item 4), so the name is unreported today and stays so. The guard names that name as an explicit pre-existing fail-closed-by-absence exemption (`rpcFailClosedByAbsence`) and asserts every other name in every outcome.
+2. Binding conditions N1 (REQ/AC-RPC-002 lacks the not-cancelled qualifier), N3 (AC-RPC-003 cell (i) same-name resolution unstated), N4 (stale AC-RPC-004 citation in the "verdict step without fail-open" probe) remain open SPEC-text debts. The implementation is consistent with REQ-RPC-003: real jobs run under `!cancelled()`, the marker runs and fails on a failed classification, the verdict step is `if: always()`.
+3. Plan line citations shifted after M2 (ci.yml consumer line :79 -> :85; browser job :950 -> :1110).
+4. The browser green phase's Go `-timeout` moved 17m -> 15m (step ceiling 16) because REQ-RPC-007/008's arithmetic (setup 1 + green + mutation + evidence 1 <= 20 with a mutation phase measured up to 1m16s) cannot hold a 17-minute green phase; the measured green maximum is 13m43s (n=4).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-22T20:27:18Z
+run_commit_sha: pending-backfill   # M2 8a48e715f7, M5 4fc2d0a8d5, M4 81563e6f3f, M1 1258076d11; the evidence commit cannot cite itself
+run_status: complete-pending-audit
+ac_pass_count: 11                  # 9 release-blocking + 2 regression-guard
+ac_fail_count: 0
+preserve_list_post_run_count: 12   # plan.md section D items; spot-verified: filter + parity (1), release-pr-gate untouched (2), release/* exclusions untouched (3), test-skip-marker untouched (4), retry sites (5, TestRetryPolicy... 7 sites), permissions blocks unchanged (6), race evidence chain (7, TestStageCeiling... release half), browser invariants (8, TestBrowserPhaseSplit), release.yml untouched (9), item 10 untouched, required-checks.yml and gtmpl untouched (11), shard parity (12, TestReleaseVerifyShardParity PASS)
+l44_pre_commit_fetch: not-run    # no fetch performed; the lane holds pushes and reads no remote state
+l44_post_push_fetch: not-applicable  # no push
+new_warnings_or_lints_introduced: 0  # golangci-lint 0 issues; spec lint warning at acceptance.md:52 is pre-existing SPEC text
+cross_platform_build:
+  linux_amd64: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: per-milestone local commits in plan order M2, M5, M4, M1; evidence commit after; no push
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
