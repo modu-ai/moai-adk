@@ -1,0 +1,147 @@
+package cli
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
+
+// The re-executed native test binary stays alive until the parent closes its
+// input. That handshake lets the parent capture a real start fingerprint,
+// rather than racing a shell's exit and inventing an identity after the fact.
+func TestNativeProcessFixtureChild(t *testing.T) {
+	if os.Getenv("MOAI_CLI_NATIVE_PROCESS_CHILD") != "1" {
+		return
+	}
+	code, err := strconv.Atoi(os.Getenv("MOAI_NATIVE_PROCESS_EXIT"))
+	if err != nil {
+		os.Exit(91)
+	}
+	fmt.Fprintln(os.Stdout, "ready")
+	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
+		os.Exit(92)
+	}
+	os.Exit(code)
+}
+
+func nativeProcessFixtureCommand(t *testing.T, exitCode int) *exec.Cmd {
+	t.Helper()
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(binary, "-test.run=^TestNativeProcessFixtureChild$")
+	cmd.Env = append(os.Environ(), "MOAI_CLI_NATIVE_PROCESS_CHILD=1", "MOAI_NATIVE_PROCESS_EXIT="+strconv.Itoa(exitCode))
+	return cmd
+}
+
+type nativeProcessFixture struct {
+	pid         int
+	fingerprint string
+	finish      func() error
+}
+
+func startNativeProcessFixture(t *testing.T, exitCode int) nativeProcessFixture {
+	t.Helper()
+	cmd := nativeProcessFixtureCommand(t, exitCode)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	// CommandContext retains the exact executable/arguments/environment above.
+	bounded := exec.CommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+	bounded.Env = cmd.Env
+	input, err := bounded.StdinPipe()
+	if err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	output, err := bounded.StdoutPipe()
+	if err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	bounded.Stderr = &stderr
+	if err := bounded.Start(); err != nil {
+		cancel()
+		t.Fatalf("start native process: %v", err)
+	}
+	waited := false
+	t.Cleanup(func() {
+		cancel()
+		_ = input.Close()
+		if !waited {
+			_ = bounded.Process.Kill()
+			_ = bounded.Wait()
+		}
+	})
+	ready := make(chan error, 1)
+	go func() {
+		line, err := bufio.NewReader(output).ReadString('\n')
+		if err == nil && line != "ready\n" {
+			err = fmt.Errorf("unexpected readiness %q", line)
+		}
+		ready <- err
+	}()
+	select {
+	case err := <-ready:
+		if err != nil {
+			t.Fatalf("native child readiness: %v", err)
+		}
+	case <-ctx.Done():
+		t.Fatalf("native child readiness timed out: %v", ctx.Err())
+	}
+	pid := bounded.Process.Pid
+	fingerprint, state := homestate.ProbeProcessIdentity(pid)
+	if state != homestate.ProcessIdentityLive || fingerprint == "" {
+		t.Fatalf("ready native child identity=(%q,%s), want measurable live owner", fingerprint, state)
+	}
+	return nativeProcessFixture{pid: pid, fingerprint: fingerprint, finish: func() error {
+		if waited {
+			t.Fatal("native child waited twice")
+		}
+		_ = input.Close()
+		err := bounded.Wait()
+		waited = true
+		cancel()
+		if got := homestate.ClassifyOwnerWith(homestate.ProbeProcessIdentity, pid, fingerprint); got != homestate.OwnerDead {
+			t.Fatalf("waited native child owner=%s, want dead; stderr=%s", got, &stderr)
+		}
+		return err
+	}}
+}
+
+// Retirement must refuse the same child while it is alive and accept it only
+// after an observed exit. This positive/negative pair protects the ownership
+// gate as well as the fixture's native execution and exit-code semantics.
+func TestNativeProcessFixtureRetirementRequiresObservedExit(t *testing.T) {
+	root := runOwnerSandbox(t)
+	t.Chdir(root)
+	child := startNativeProcessFixture(t, 3)
+	seedRun(t, root, "native-child", child.pid, child.fingerprint)
+	if out, err := runFactoryCommand(t, "runs", "--retire", "native-child"); err == nil || !strings.Contains(err.Error(), "live") {
+		t.Fatalf("retire live child: output=%q err=%v", out, err)
+	}
+	if got := runStatusOf(t, root, "native-child"); got != "active" {
+		t.Fatalf("live child's run=%s, want active", got)
+	}
+	var exited *exec.ExitError
+	if err := child.finish(); !errors.As(err, &exited) || exited.ExitCode() != 3 {
+		t.Fatalf("native child's exit=%v, want exit 3", err)
+	}
+	if out, err := runFactoryCommand(t, "runs", "--retire", "native-child"); err != nil {
+		t.Fatalf("retire exited child: output=%q err=%v", out, err)
+	}
+	if got := runStatusOf(t, root, "native-child"); got != "retired" {
+		t.Fatalf("exited child's run=%s, want retired", got)
+	}
+}

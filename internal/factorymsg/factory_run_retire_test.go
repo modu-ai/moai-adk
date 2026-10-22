@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,19 +33,11 @@ func retireSandbox(t *testing.T) string {
 // probes dead, and a recycled one carries a different start fingerprint.
 func deadIdentity(t *testing.T) (int, string) {
 	t.Helper()
-	cmd := exec.Command("/bin/sh", "-c", "exit 0")
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start short-lived process: %v", err)
+	child := startNativeProcessFixture(t, 0)
+	if err := child.finish(); err != nil {
+		t.Fatalf("wait for native child: %v", err)
 	}
-	pid := cmd.Process.Pid
-	fingerprint, _ := homestate.ProbeProcessIdentity(pid)
-	if fingerprint == "" {
-		fingerprint = "fingerprint-of-a-process-that-has-exited"
-	}
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("wait for short-lived process: %v", err)
-	}
-	return pid, fingerprint
+	return child.pid, child.fingerprint
 }
 
 func liveIdentity(t *testing.T) (int, string) {

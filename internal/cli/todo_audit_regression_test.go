@@ -257,10 +257,11 @@ func TestTodoAuditSubprocessScopeIgnoresInheritedRepo(t *testing.T) {
 	if err != nil || got != want {
 		t.Fatalf("git root=%q want=%q err=%v", out, want, err)
 	}
-	bin := t.TempDir()
-	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte("#!/bin/sh\nprintf '%s|%s' \"$PWD\" \"${GH_REPO-}\"\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	binary := writeNativeToolFixture(t, "gh", `package main
+import ("fmt"; "os")
+func main() { wd, err := os.Getwd(); if err != nil { os.Exit(1) }; fmt.Printf("%s|%s", wd, os.Getenv("GH_REPO")) }
+`)
+	bin := filepath.Dir(binary)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("GH_REPO", "unrelated/repository")
 	out, err = todoRunCommand("gh", "pr", "list")

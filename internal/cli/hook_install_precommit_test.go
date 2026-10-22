@@ -566,7 +566,7 @@ func TestPreCommitHook_ToolchainAbsent(t *testing.T) {
 }
 
 // moduleShimPath builds a PATH shim directory holding the tools the vet block
-// needs (git, grep, sort, dirname, sed, awk, tr, go, gofmt) and NOT moai, so
+// needs (git, grep, sort, dirname, sed, awk, tr, mktemp, rm, go, gofmt) and NOT moai, so
 // the heavy-gate block is skipped deterministically while the fast subset runs
 // with a real Go toolchain. Mirrors the shim technique of
 // TestPreCommitHook_ToolchainAbsent.
@@ -576,7 +576,7 @@ func moduleShimPath(t *testing.T) string {
 		t.Skip("shim-PATH construction is POSIX-only")
 	}
 	shim := t.TempDir()
-	for _, tool := range []string{"git", "grep", "sort", "dirname", "sed", "awk", "tr", "go", "gofmt"} {
+	for _, tool := range []string{"git", "grep", "sort", "dirname", "sed", "awk", "tr", "mktemp", "rm", "go", "gofmt"} {
 		real, err := exec.LookPath(tool)
 		if err != nil {
 			t.Skipf("required tool %q not found: %v", tool, err)

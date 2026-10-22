@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -73,9 +72,9 @@ func resolveClaudeBinaryAt(projectRoot string) (string, error) {
 // validateClaudeBinaryPin validates an explicit binary pin. The path must
 // exist and point at an executable file; source names the configuration
 // surface the pin came from so the error tells the operator where to fix it.
-// The executable-bit check is POSIX-only: Windows has no executable mode bit
-// (executability is extension-based there), so on Windows existence and
-// not-a-directory are the check.
+// Execution permission uses the native host boundary: Unix mode bits or a
+// Windows FILE_EXECUTE access check. Validation never executes pinned code;
+// it does not introduce a binary-format or shell-wrapper policy.
 func validateClaudeBinaryPin(pin, source string) (string, error) {
 	info, err := os.Stat(pin)
 	if err != nil {
@@ -84,8 +83,8 @@ func validateClaudeBinaryPin(pin, source string) (string, error) {
 	if info.IsDir() {
 		return "", fmt.Errorf("claude binary pin %q (set via %s) is a directory, not an executable file — point the pin at the binary itself", pin, source)
 	}
-	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
-		return "", fmt.Errorf("claude binary pin %q (set via %s) is not executable — chmod +x it or point the pin at an executable file", pin, source)
+	if err := checkClaudeBinaryExecuteAccess(pin, info); err != nil {
+		return "", fmt.Errorf("claude binary pin %q (set via %s) is not executable — %w", pin, source, err)
 	}
 	return pin, nil
 }

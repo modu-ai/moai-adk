@@ -518,24 +518,21 @@ func TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite(t *testing.T) {
 func TestCoverageRunnerSetsRecursionGuardOnEveryChild(t *testing.T) {
 	bin := t.TempDir()
 	logPath := filepath.Join(bin, "guards.log")
-	fakeGo := filepath.Join(bin, "go")
-	script := `#!/bin/sh
-profile=
-for arg in "$@"; do
-  case "$arg" in
-    -coverprofile=*) profile=${arg#*=} ;;
-  esac
-done
-printf '%s\n' "${MOAI_HOME_STATE_COVERAGE_CHILD:-missing}" >> "$MOAI_GUARD_LOG"
-if [ "${MOAI_HOME_STATE_COVERAGE_CHILD:-}" != "1" ]; then
-  echo "coverage child recursion guard missing" >&2
-  exit 42
-fi
-printf 'mode: set\n' > "$profile"
-`
-	if err := os.WriteFile(fakeGo, []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	fakeGo := writeNativeToolFixture(t, "go", `package main
+import ("fmt"; "os"; "strings")
+func main() {
+ profile := ""
+ for _, arg := range os.Args[1:] { if strings.HasPrefix(arg, "-coverprofile=") { profile = strings.TrimPrefix(arg, "-coverprofile=") } }
+ guard := os.Getenv("MOAI_HOME_STATE_COVERAGE_CHILD")
+ f, err := os.OpenFile(os.Getenv("MOAI_GUARD_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+ if err != nil { os.Exit(41) }
+ fmt.Fprintln(f, guard)
+ if f.Close() != nil { os.Exit(41) }
+ if guard != "1" { fmt.Fprintln(os.Stderr, "coverage child recursion guard missing"); os.Exit(42) }
+ if os.WriteFile(profile, []byte("mode: set\n"), 0600) != nil { os.Exit(43) }
+}
+`)
+	bin = filepath.Dir(fakeGo)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("MOAI_GUARD_LOG", logPath)
 	t.Setenv("MOAI_HOME_STATE_COVERAGE_CHILD", "")
