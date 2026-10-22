@@ -493,14 +493,233 @@ func TestFactoryLeaseDriftLogStallBounded(t *testing.T) {
 	}
 }
 
+// flWriteStart holds the drift log's lock until the verb's card-worktree record
+// write is waiting for it (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (d)). The
+// write-start signal is the first factoryCardNow read after the worktree creator
+// returns: factoryEnsureCardWorktree reads the clock as the argument of
+// RecordCardWorktree, right before that write waits for the drift log's lock.
+// The release follows the signal by at least 100 ms. That hold is a test premise,
+// an ordering lower bound that keeps the release after the write attempt starts; it
+// is not a measurement. The measured interval starts at the release and ends at the
+// drift mark (flHoldUntilWriteStart states why the hold is a time bound).
+type flWriteStart struct {
+	signalled  atomic.Value  // time.Time of the write-start signal
+	released   atomic.Value  // time.Time of the release
+	releasedCh chan struct{} // closed exactly once, at the release
+}
+
+// flWriteStartBackstop is a hang guard for flHoldUntilWriteStart, not a measurement.
+// It releases the drift log's lock only if the write-start signal never comes, so a
+// verb that fails before its card-worktree write cannot hang the test. AC-FAL-015 (d)
+// requires only that the backstop exceed three times the claim wait cap; 30 s is a
+// hang bound well above that. The earlier 3 x C + 1 s backstop fired before the write
+// started on a loaded host, which is why flAssertWriteStartRelease requires the signal
+// to precede the release.
+const flWriteStartBackstop = 30 * time.Second
+
+// flHoldUntilWriteStart takes the drift log's lock now and arms the write-start
+// release. It runs after nmIsolatedWorktrees, so its creator wrapper stacks on
+// the stub, and before the verb starts. The lock is held from before the verb
+// starts; the backstop only guards against a hang, and flAssertWriteStartRelease
+// then requires the signal to have preceded that release.
+func flHoldUntilWriteStart(t *testing.T, root string) *flWriteStart {
+	t.Helper()
+	hold := flHoldDriftLogLock(t, root)
+	w := &flWriteStart{releasedCh: make(chan struct{})}
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			w.released.Store(time.Now())
+			close(w.releasedCh)
+			hold()
+		})
+	}
+	var created atomic.Bool
+	prevCreator := worktree.WorktreeCreator
+	worktree.WorktreeCreator = func(name string, out io.Writer) (string, error) {
+		dir, err := prevCreator(name, out)
+		created.Store(true)
+		return dir, err
+	}
+	t.Cleanup(func() { worktree.WorktreeCreator = prevCreator })
+	var signalOnce sync.Once
+	prevNow := factoryCardNow
+	factoryCardNow = func() time.Time {
+		if created.Load() {
+			signalOnce.Do(func() {
+				w.signalled.Store(time.Now())
+				// The hold is a test premise, not a measurement: an ordering lower bound that keeps
+				// the release after the write attempt starts. A signal from the write side that
+				// the attempt has reached the drift-log lock would need a production seam, which
+				// decision d-20261015T003848Z-8b69 condition 3 excludes, so the bound is a time.
+				// Where a signal that the attempt has started can be received without a production
+				// change, it is preferred to the time bound.
+				// The window it must cover runs from this clock read through the record write
+				// and its commit up to the settle step's lock attempt. A longer hold is safer and
+				// does not change the measured interval, which starts at the release and ends at
+				// the drift mark.
+				time.AfterFunc(100*time.Millisecond, release)
+			})
+		}
+		return prevNow()
+	}
+	t.Cleanup(func() { factoryCardNow = prevNow })
+	// Hang guard only (see flWriteStartBackstop): the signal is what releases the lock.
+	backstop := time.AfterFunc(flWriteStartBackstop, release)
+	t.Cleanup(func() {
+		backstop.Stop()
+		release()
+	})
+	return w
+}
+
+// instants returns the signal and release instants; a zero value means that the
+// event did not happen.
+func (w *flWriteStart) instants() (signalled, released time.Time) {
+	signalled, _ = w.signalled.Load().(time.Time)
+	released, _ = w.released.Load().(time.Time)
+	return signalled, released
+}
+
+// flFirstGhCall wraps todoRunCommand so that the first `gh` call is timestamped
+// and answered by answer; every other command passes through to the runner it
+// wraps. The returned getter gives that instant (zero when there was no call).
+func flFirstGhCall(t *testing.T, answer func() (string, error)) func() time.Time {
+	t.Helper()
+	var (
+		first atomic.Value
+		once  sync.Once
+	)
+	prevRun := todoRunCommand
+	prevContextRun := todoRunCommandContext
+	todoRunCommand = func(name string, args ...string) (string, error) {
+		if name != "gh" {
+			return prevRun(name, args...)
+		}
+		once.Do(func() { first.Store(time.Now()) })
+		return answer()
+	}
+
+	todoRunCommandContext = func(ctx context.Context, name string, args ...string) (string, error) {
+		if name != "gh" {
+			return prevContextRun(ctx, name, args...)
+		}
+		return todoRunCommand(name, args...)
+	}
+	t.Cleanup(func() { todoRunCommand = prevRun; todoRunCommandContext = prevContextRun })
+	return func() time.Time {
+		at, _ := first.Load().(time.Time)
+		return at
+	}
+}
+
+// flAssertWriteStartRelease asserts the premises that clause (vii)'s measurement
+// rests on: the write-start signal fired, the signal preceded the release (so the
+// release came from the write's start and not from the backstop, which would leave
+// the write unmeasured), the open-PR query ran, and it ran before the release, so no
+// network call lies inside the measured interval.
+func flAssertWriteStartRelease(t *testing.T, signalled, released, gh time.Time) {
+	t.Helper()
+	if signalled.IsZero() {
+		t.Fatal("clause (vii): the write-start signal never fired (no clock read after the worktree creator returned), so the backstop released the lock and the write's wait was not measured")
+	}
+	if released.IsZero() {
+		t.Fatal("clause (vii): the lock was never released")
+	}
+	if !signalled.Before(released) {
+		t.Fatalf("clause (vii): the lock was released %s before the write-start signal, so the backstop released it and the card-worktree write did not wait for the lock; the measurement is void", signalled.Sub(released))
+	}
+	if gh.IsZero() {
+		t.Errorf("clause (vii): the open-PR query (gh) never ran in the verb, so the output path had no query prefetched")
+		return
+	}
+	if !gh.Before(released) {
+		t.Errorf("clause (vii): the open-PR query ran %s after the lock release, want before it: a network call inside the measured interval", gh.Sub(released))
+	}
+}
+
+// flCommitPoll is the interval of the mark watch's reads and flCommitWatchLimit its
+// hang bound. The bound is not a measurement: a write whose mark never appears fails
+// the test through flAssertMarkAfterRelease. The poll interval is 2 ms, which is far
+// below the 500 ms bound: the observation can lag the mark by at most one interval
+// plus one read's latency, and the AC-FAL-015 (vii) watch requires an interval of
+// 10 ms or less.
+const (
+	flCommitPoll       = 2 * time.Millisecond
+	flCommitWatchLimit = 30 * time.Second
+)
+
+// flMarkWatch returns the getter of the instant the drift-log reconcile mark of the
+// run's card-worktree record write is set: the first read that finds no unreconciled
+// entry of the run (AC-FAL-015 (vii), as amended by decisions d-20261015T074309Z-fb83 and
+// d-20261015T074756Z-e04f).
+// The mark is set in the write's settle step, after the write's commit and after the
+// drift-log lock wait. The record commit that makes the card's worktree path visible
+// comes before that wait, so the path cannot mark the end of the interval. The watch
+// polls ReadRecordUnavailable, which takes no lock and writes nothing. The getter
+// waits for that observation or the hang bound, so a read made after the verb
+// returns still sees the mark.
+func flMarkWatch(t *testing.T, root string) func() time.Time {
+	t.Helper()
+	var (
+		marked atomic.Value
+		stop   = make(chan struct{})
+		done   = make(chan struct{})
+	)
+	go func() {
+		defer close(done)
+		deadline := time.Now().Add(flCommitWatchLimit)
+		for time.Now().Before(deadline) {
+			if entries, _, err := homestate.ReadRecordUnavailable(root, fcRun); err == nil && len(entries) == 0 {
+				marked.Store(time.Now())
+				return
+			}
+			select {
+			case <-stop:
+				return
+			case <-time.After(flCommitPoll):
+			}
+		}
+	}()
+	t.Cleanup(func() {
+		close(stop)
+		<-done
+	})
+	return func() time.Time {
+		<-done
+		at, _ := marked.Load().(time.Time)
+		return at
+	}
+}
+
+// flAssertMarkAfterRelease asserts the premise of the amended clause (vii)
+// measurement: the reconcile mark was set only after the drift-log lock was released,
+// so the write's settle step waited for the lock and the mark is a true end of the
+// measured interval.
+func flAssertMarkAfterRelease(t *testing.T, released, marked time.Time) {
+	t.Helper()
+	if marked.IsZero() {
+		t.Fatal("clause (vii): the drift-log reconcile mark of the card-worktree write was never observed, so the measured interval has no end")
+	}
+	if marked.Before(released) {
+		t.Fatalf("clause (vii): the reconcile mark was observed %s before the lock release, so the write's settle step did not wait for the lock; the measurement is void", released.Sub(marked))
+	}
+}
+
 // TestFactoryLeaseDriftLogVerbWorktreeWriteWaits — AC-FAL-015 fixture (d),
-// clause (vii), driven through the verb with the creator stubbed: the drift
-// log's lock is held for 2 s from before the verb starts by a timer that
-// records the instant it releases. For each form the verb exits 0, the card is
-// leased with its worktree recorded, the verb returned not before the release
-// and within 500 ms after it (the verb's own card-worktree write waited for the
-// lock), and the run's unreconciled count is then 0 with exactly one
-// record.drift event for the entry.
+// clause (vii), driven through the verb with the creator stubbed: the drift log's
+// lock is held from before the verb starts and released at the write-start signal
+// (flHoldUntilWriteStart). The contract is order, not elapsed wall-clock (card
+// t1746, following card t1807's pattern): the verb runs on a goroutine and must
+// return only AFTER the release signal fired — the card-worktree write's settle
+// step waits for the lock, so the reconcile mark, and with it the verb's return,
+// cannot precede the release; a verb that returns with the lock still held
+// skipped the wait. The mark itself must be observed, which the mark watch
+// bounds at flCommitWatchLimit as a hang guard, not a measurement; elapsed times
+// are also bounded by B + 500 ms. For each form the verb exits 0, the card is
+// leased with its worktree recorded, the open-PR query ran before the release,
+// and the run's unreconciled count is then 0 with exactly one record.drift event
+// for the entry.
 func TestFactoryLeaseDriftLogVerbWorktreeWriteWaits(t *testing.T) {
 	for _, form := range []string{"nominated", "bare"} {
 		t.Run(form, func(t *testing.T) {
@@ -508,12 +727,76 @@ func TestFactoryLeaseDriftLogVerbWorktreeWriteWaits(t *testing.T) {
 			nmLaneEnv(t, "lane-1", "")
 			nmIsolatedWorktrees(t, "t1", "t2")
 			flSeedDriftEntry(t, root)
-			release := flHoldDriftLogLock(t, root)
-			var releasedAt atomic.Value
-			time.AfterFunc(2*time.Second, func() {
-				releasedAt.Store(time.Now())
-				release()
+			gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+			ws := flHoldUntilWriteStart(t, root)
+			cw := flMarkWatch(t, root)
+
+			args := []string{"--run", fcRun}
+			if form == "nominated" {
+				args = append(args, "--card", "t1")
+			}
+			res := <-flRunNextAsync(t, ws.releasedCh, args...)
+			out, stderr, err := res.out, res.stderr, res.err
+			if err != nil {
+				t.Fatalf("clause (vii): the verb exited %d: %v (stderr %q)", nmExit(err), err, stderr)
+			}
+			// Order check: the verb must return only after the release signal
+			// fired (the settle step waited for the lock). The fact was sampled
+			// inside the verb goroutine at the instant of the return
+			// (flRunNextAsync); here the compliant direction is the opposite of
+			// the queue-lock test's — the return must FOLLOW the release, so
+			// heldAtReturn must be false.
+			if res.heldAtReturn {
+				t.Fatalf("clause (vii): the verb returned while the drift-log lock was still held: the card-worktree write's settle step did not wait for the lock")
+			}
+			head := nmLeasedHead(out)
+			if head == "" {
+				t.Fatalf("clause (vii): the verb printed no leased card (stdout %q)", out)
+			}
+			id := strings.Fields(head)[0]
+			if id != "t1" {
+				t.Fatalf("clause (vii): the verb leased %s, want t1: the mark watch polls t1", id)
+			}
+			nmAssertLeased(t, root, id, "lane-1")
+			if c := fcCard(t, root, id); strings.TrimSpace(c.WorktreePath) == "" {
+				t.Errorf("clause (vii): %s has no recorded worktree", id)
+			}
+			signalled, rel := ws.instants()
+			flAssertWriteStartRelease(t, signalled, rel, gh())
+			marked := cw()
+			flAssertMarkAfterRelease(t, rel, marked)
+			after := marked.Sub(rel)
+			unrec, drift := flUnreconciled(t, root), fcEventCount(t, root, "record.drift")
+			t.Logf("%s: write-start signal to release %s; reconcile mark %s after the release; verb returned %s after the release; unreconciled-after=%d record.drift-events=%d", form, rel.Sub(signalled), after, res.returned.Sub(rel), unrec, drift)
+			if unrec != 0 || drift != 1 {
+				t.Errorf("clause (vii): unreconciled=%d (want 0) record.drift-events=%d (want 1)", unrec, drift)
+			}
+		})
+	}
+}
+
+// TestFactoryLeaseDriftLogVerbTailHoldsWithOutputOverhead — AC-FAL-015 fixture (d),
+// clause (vii), with output-path overhead. The open-PR query (`gh pr list`, through
+// todoRunCommand in fetchOpenPRs) takes flOverheadCeil (700 ms) in this test; every
+// other command passes through to the real runner. The verb runs that query before
+// it takes the queue lock (AC-FAL-015 (vii)), so the latency falls before the lease.
+// The drift-log lock is released at the write-start signal (flHoldUntilWriteStart),
+// and the gap from that release to the reconcile mark of the card-worktree write must
+// stay within flMargin (500 ms). The landed check runs after that mark on the output
+// path and lies outside the measured interval.
+func TestFactoryLeaseDriftLogVerbTailHoldsWithOutputOverhead(t *testing.T) {
+	for _, form := range []string{"nominated", "bare"} {
+		t.Run(form, func(t *testing.T) {
+			root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
+			nmLaneEnv(t, "lane-1", "")
+			nmIsolatedWorktrees(t, "t1", "t2")
+			flSeedDriftEntry(t, root)
+			gh := flFirstGhCall(t, func() (string, error) {
+				time.Sleep(flOverheadCeil)
+				return "", os.ErrDeadlineExceeded
 			})
+			ws := flHoldUntilWriteStart(t, root)
+			cw := flMarkWatch(t, root)
 
 			args := []string{"--run", fcRun}
 			if form == "nominated" {
@@ -528,23 +811,17 @@ func TestFactoryLeaseDriftLogVerbWorktreeWriteWaits(t *testing.T) {
 			if head == "" {
 				t.Fatalf("clause (vii): the verb printed no leased card (stdout %q)", out)
 			}
-			id := strings.Fields(head)[0]
-			nmAssertLeased(t, root, id, "lane-1")
-			if c := fcCard(t, root, id); strings.TrimSpace(c.WorktreePath) == "" {
-				t.Errorf("clause (vii): %s has no recorded worktree", id)
+			if fields := strings.Fields(head); len(fields) == 0 || fields[0] != "t1" {
+				t.Fatalf("clause (vii): the verb leased %q, want t1: the mark watch polls t1", head)
 			}
-			rel, _ := releasedAt.Load().(time.Time)
-			if rel.IsZero() {
-				t.Fatalf("clause (vii): the verb returned before the timer released the lock (it did not wait for the held lock)")
-			}
-			after := returned.Sub(rel)
-			unrec, drift := flUnreconciled(t, root), fcEventCount(t, root, "record.drift")
-			t.Logf("%s: returned %s after the release; unreconciled-after=%d record.drift-events=%d", form, after, unrec, drift)
-			if after < 0 || after > flMargin {
-				t.Errorf("clause (vii): the verb returned %s relative to the release, want not before it and within %s after it", after, flMargin)
-			}
-			if unrec != 0 || drift != 1 {
-				t.Errorf("clause (vii): unreconciled=%d (want 0) record.drift-events=%d (want 1)", unrec, drift)
+			signalled, rel := ws.instants()
+			flAssertWriteStartRelease(t, signalled, rel, gh())
+			marked := cw()
+			flAssertMarkAfterRelease(t, rel, marked)
+			after := marked.Sub(rel)
+			t.Logf("%s: %s of open-PR query latency; reconcile mark %s after the release; verb returned %s after the release", form, flOverheadCeil, after, returned.Sub(rel))
+			if after > flMargin {
+				t.Errorf("clause (vii): the reconcile mark of the card-worktree write came %s after the lock release with %s of open-PR query latency, want within %s", after, flOverheadCeil, flMargin)
 			}
 		})
 	}
