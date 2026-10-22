@@ -11,6 +11,7 @@ package homestate
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -40,8 +41,11 @@ func TestPreviousCardWorktreeReadsNewestOtherRunBinding(t *testing.T) {
 	mustRecordRun(t, db, FactoryRun{RunID: "run-b", Backend: "claude", LeadPID: 2, LeadProcessStart: "st"})
 	mustRecordRun(t, db, FactoryRun{RunID: "run-new", Backend: "claude", LeadPID: 3, LeadProcessStart: "st"})
 
-	carryPick(t, db, "run-a", "t1", "/wt/run-a-t1")
-	carryPick(t, db, "run-b", "t1", "/wt/run-b-t1")
+	worktrees := t.TempDir()
+	worktreeA := filepath.Join(worktrees, "run-a-t1")
+	worktreeB := filepath.Join(worktrees, "run-b-t1")
+	carryPick(t, db, "run-a", "t1", worktreeA)
+	carryPick(t, db, "run-b", "t1", worktreeB)
 	carryPick(t, db, "run-new", "t1", "")
 
 	t.Run("newest other run's binding wins", func(t *testing.T) {
@@ -49,8 +53,8 @@ func TestPreviousCardWorktreeReadsNewestOtherRunBinding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PreviousCardWorktree: %v", err)
 		}
-		if !ok || got != "/wt/run-b-t1" {
-			t.Fatalf("PreviousCardWorktree(t1, run-new) = (%q, %v), want (/wt/run-b-t1, true)", got, ok)
+		if !ok || got != worktreeB {
+			t.Fatalf("PreviousCardWorktree(t1, run-new) = (%q, %v), want (%q, true)", got, ok, worktreeB)
 		}
 	})
 
@@ -59,8 +63,8 @@ func TestPreviousCardWorktreeReadsNewestOtherRunBinding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PreviousCardWorktree: %v", err)
 		}
-		if !ok || got != "/wt/run-a-t1" {
-			t.Fatalf("PreviousCardWorktree(t1, run-b) = (%q, %v), want (/wt/run-a-t1, true)", got, ok)
+		if !ok || got != worktreeA {
+			t.Fatalf("PreviousCardWorktree(t1, run-b) = (%q, %v), want (%q, true)", got, ok, worktreeA)
 		}
 	})
 

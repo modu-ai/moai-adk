@@ -1,7 +1,6 @@
 package web
 
 import (
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -230,9 +229,10 @@ func TestSpecCache_ConcurrentLoadsScanOnce(t *testing.T) {
 func TestSpecCache_RowsAreCopied(t *testing.T) {
 	var calls atomic.Int32
 	c := newSpecCache(countingLoader(&calls), time.Hour)
-	rows, _, _ := c.get(filepath.FromSlash("/root"))
+	root := t.TempDir()
+	rows, _, _ := c.get(root)
 	rows[0].Title = "mutated"
-	again, _, _ := c.get("/root")
+	again, _, _ := c.get(root)
 	if again[0].Title != "1" {
 		t.Fatalf("cached title = %q, a caller's mutation leaked into the cache", again[0].Title)
 	}
