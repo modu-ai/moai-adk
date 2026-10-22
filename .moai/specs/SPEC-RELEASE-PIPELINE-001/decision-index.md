@@ -5,7 +5,7 @@
 > One row per decision surfaced during assembly that the operator did not settle.
 > Labels are exactly: DECIDED / POLICY-COVERED / EVIDENCE-NEEDED / FOUNDER.
 
-> Scope note (v0.4.0, 2026-10-22): the hold-and-split decision itself — M3 + D11 out to a follow-up card; M2/M4/M5 (+D10) retained — was settled by the operator (relayed by leader lane-17, recorded in `.moai/reports/t1536/progress.md` § Split 결정). Because it is settled, it is not a row here, and that record is a card-local note, not a committed authority anchor. Rows Q1-Q6 carry over; Q4 is re-opened because its premise changed (card t1858); Q7 and Q8 are new.
+> Scope note (v0.4.0, 2026-10-22): the hold-and-split decision itself — M3 + D11 out to a follow-up card; M2/M4/M5 (+D10) retained — was settled by the operator (relayed by leader lane-17, recorded in `.moai/reports/t1536/progress.md` § Split 결정). Because it is settled, it is not a row here, and that record is a card-local note, not a committed authority anchor. Rows Q1-Q6 carry over; Q4 is re-opened because its premise changed (card t1858); Q7 and Q8 are new. Q9 is added in v0.5.0 (plan-audit iter-4 D13 offered routing the ceiling value to a decision row).
 
 ### Q1: Card item 1 is already landed on main under this card id (PR #1770 + t1478 follow-ups) — does M1 remain in this SPEC as a verify-and-preserve milestone, or is item 1 closed as delivered and the SPEC re-scoped to the open items?
 
@@ -89,3 +89,13 @@ Class: implementation-level
 Default: gate pull_request events only; push and workflow_dispatch keep the always-run behavior (rule: preserves current behavior — the tagged main commit and every candidate keep real Lint/Build runs)
 Alternate: gate push events as well, publishing the required names through markers on a positively observed non-match
 Operator verdict: DEFAULT-APPLIED 2026-10-22T12:26:32Z manager-spec/plan-phase
+
+### Q9: Does this SPEC place a step-level ceiling on the release race step, now that no ceiling value satisfies both "never cuts a currently-green leg" and "leaves pre-step plus evidence headroom inside the 40-minute job" (plan-audit iter-4 D13)?
+
+Label: FOUNDER
+Authority anchor: none — SPEC-CI-RELEASE-VERIFY-SHARD-001 fixed `-timeout 35m` and job `timeout-minutes: 40` as not-to-be-raised, but no register entry decides a race-step ceiling.
+Why unresolved: measured in dispatched run 39729541531 (acceptance.md EV-15, n=1): the windows cli-1 race step ran 37m28s and cli-3 36m42s, while the windows cli-2 leg spent 4m21s before its race step. A ceiling that keeps those green legs green needs ≥ 38 minutes; a ceiling that leaves the measured pre-step (rounded up to 5) plus a 1-minute evidence allowance needs ≤ 34. The interval is empty, so every option trades one property for the other. Run-to-run variance is unmeasured.
+Class: implementation-level
+Default: place no step ceiling on the release race step in this SPEC; the release half of REQ-RPC-007 is held by the always()-evidence-step and not-raised invariants only (rule: preserves current behavior — no currently-green leg changes verdict)
+Alternate: place a 34-minute ceiling on the race step (40 − 5 − 1), accepting that legs measured above 34 minutes (windows cli-1, cli-3) turn red until their shards are rebalanced under SPEC-CI-RELEASE-VERIFY-SHARD-001's ownership
+Operator verdict: DEFAULT-APPLIED 2026-10-22T12:54:18Z manager-spec/plan-phase
