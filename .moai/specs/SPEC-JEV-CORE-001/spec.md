@@ -1,10 +1,10 @@
 ---
 id: SPEC-JEV-CORE-001
 title: "Jev core capability — package, config gate, credential, fail-open"
-version: "0.6.0"
+version: "0.5.0"
 status: in-progress
 created: 2026-09-20
-updated: 2026-10-21
+updated: 2026-10-15
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -21,7 +21,6 @@ amendment_of: SPEC-JEV-CORE-001
 
 | Date | Version | Change | Author |
 |---|---|---|---|
-| 2026-10-21 | 0.6.0 | In-place native credential privacy amendment: retain the single credential owner and owner-only access; permit the shared Windows private-file leaf and require native DACL readback. `completed → in-progress`; no model, authority, config-gate, REQ/AC ID or prior audit signal changes. | manager-spec |
 | 2026-10-15 | 0.5.0 | **Amendment to a `completed` SPEC, card t1768 (`SPEC-JEV-RESOLVED-MODEL-001`). Status `completed → in-progress (amendment)`; `amendment_of: SPEC-JEV-CORE-001`.** Operator decision of 2026-10-15 (brain session). The request model becomes the alias `jev-latest`, because the response reports the version that answered. Measured by the leader on 2026-10-15: a request with `model=jev-latest` returned a response whose `model` field is `jev-1.13.0`, with the same answer and tokens as a request with `model=jev-1.13.0`. The prohibition on the alias rested on the risk that the answering model could not be attributed; recording the response's `model` field removes that risk. REQ-JEVC-003 changes from an alias prohibition to an alias request plus a mandatory recording of the response model. REQ-JEVC-004 records the interpreted model and the request alias in separate fields. Q2 changes its wording only. No requirement is removed or renumbered, and no acceptance criterion changes, because none of this SPEC's criteria names the alias. `sync_commit_sha` (`c8731f965`) is NOT rewritten. | manager-spec |
 | 2026-10-02 | 0.4.0 | **Narrow amendment to a `completed` SPEC, card t1403 (`SPEC-JEV-AUTO-EXCEPTION-001`).** `SPEC-TODO-AUTO-PRIORITY-001` gave the `moai todo --auto` cycle an auto-scoped ranking exception — the cycle may rank the queued candidates it is about to accept, which changes its selection order only — while this SPEC still stated the display-only principle without it. REQ-JEVC-011 and REQ-JEVC-012 each gain exactly one more exception, the same one in both, and each now names two exceptions: **the `--auto` cycle's own candidate ranking**, behind the default-off `workflow.jev.enabled` gate, with the candidate set fixed by mechanical filters before any answer is read and a fallback to recorded priority when the answer cannot be used as a whole. Both `### Out of Scope — authority` items name the same exception inside the existing bullet, so their count stays two. Every other prohibition stands unchanged, the Kickoff exception of v0.3.0 is untouched, and no ordering accuracy is claimed. No requirement was removed, no id renumbered, no AC mapping changed. As with v0.2.0 and v0.3.0, `sync_commit_sha` is NOT rewritten and `status` stays `completed` — a non-transition correction, decided as an in-place amendment in `SPEC-JEV-AUTO-EXCEPTION-001` `progress.md` §G OD-4. | manager-spec |
 | 2026-09-26 | 0.3.0 | **Narrow amendment to a `completed` SPEC, card t1236 (`SPEC-AUTONOMY-GATE-REWIRE-001` REQ-GR-013/025).** Operator decision, relayed by the lead: 「Kickoff 는 LLM·Jev 도 할 수 있게」 (let the LLM and Jev also decide Kickoff) — then the operator's same-day re-decision of 2026-09-26: **no Jev-alone decider; the cross-check only.** REQ-JEVC-011 and REQ-JEVC-012 each gain exactly one exception, the same one in both: **the second signal of the contract-mode Kickoff `llm+jev` cross-check**, where `moai contract decide` may call Jev directly and Jev's answer can only confirm an LLM approval or route the Kickoff to a human — it never starts a Kickoff alone. REQ-JEVC-011 additionally allows moai to record that answer in the Kickoff receipt and the contract store. Both `### Out of Scope — authority` items name the same exception so the SPEC does not contradict its own REQ-JEVC-012. Every other prohibition stands unchanged: completion verdicts, merge approvals, `moai todo`/`moai gtd` mutations, every other operator gate, user-surface behaviour changes, CodeRabbit slot-wait adjudication, and any Jev-alone decision. No requirement was removed, no id renumbered, no AC mapping changed. This amendment lands in one commit with the code constant that lifts the interim rule and with the matching rule, config, and local-guide sentences (REQ-GR-025). As with v0.2.0, `sync_commit_sha` is NOT rewritten and `status` stays `completed` — this is a non-transition correction. | manager-spec |
@@ -29,17 +28,6 @@ amendment_of: SPEC-JEV-CORE-001
 | 2026-09-20 | 0.1.0 | Split from SPEC-JEV-INTEGRATION-001 (card t1020) on the M1 seam, after that SPEC exceeded the Tier L REQ/AC ceilings (68/56 against 25/25). Carries M1: the single implementation, the config gate, the credential, the display-only invariant, fail-open, and the doctor check. Requirements re-numbered `REQ-JEVC-*`; no requirement was dropped. | manager-spec |
 
 ## Amendments
-
-### v0.6.0 — native credential privacy, 2026-10-21
-
-- Prior completed version: 0.5.0.
-- prior_completed_sha: c8731f965 (the unchanged prior `progress.md` §E.4 `sync_commit_sha`).
-- Rationale: emulated Unix mode bits do not establish Windows owner-only access. The shared credential storage path needs protected owner-DACL creation before payload writes and native readback checks, using the repository's existing Windows API dependency.
-- Scope: REQ-JEVC-018's platform-native access interpretation; plan B3/M1b, design §1 dependency direction and the two matching credential acceptance criteria. The helper may depend on existing `golang.org/x/sys/windows` only for native filesystem security; it does not gain Jev/model, configuration, CLI/web, network or operator authority.
-- Preserved: all REQ/AC IDs, single credential location and writer, masking/short-key floor, default-off/fail-open behavior, model attribution, authority boundaries, historical amendments and prior progress/audit numbers.
-- Closure: pending actual Windows credential/native-DACL and Unix 0600 regression validation plus final review/CI. No prior sync signal is rewritten and no new PASS/completion is claimed.
-
-### Historical v0.5.0 model-alias amendment
 
 - Amendment: v0.5.0, card t1768, carried by `SPEC-JEV-RESOLVED-MODEL-001`. In place.
 - Prior completed version: 0.4.0 (status `completed`; the close is recorded in `progress.md` §E.4).
@@ -154,7 +142,7 @@ A consumer relying on this carve-out is authorised **by name** in a downstream S
 
 ### C.6 — Credential
 
-**REQ-JEVC-018** (Ubiquitous) The API credential shall live at `~/.moai/.env.typesafe`, outside the repository, read and written through one credential-owner package modelled on `internal/glmcred`. Native access shall remain owner-only: exact mode 0600 on Unix, and a protected, non-inheriting current-owner-only DACL on Windows. A replacement shall be private before credential bytes are written and its native policy verified on readback; an existing broad-access file shall be narrowed on save. Unknown, unreadable, inherited or broader policies shall fail the save rather than be reported as successful.
+**REQ-JEVC-018** (Ubiquitous) The API credential shall live at `~/.moai/.env.typesafe` at file mode 0600, outside the repository, read and written through one package modelled on `internal/glmcred` — including that package's tightening of a pre-existing wider mode on write.
 
 **REQ-JEVC-019** (Unwanted) The credential shall not enter `settings.AllFields()`, so no generic schema-walking loop can read, render, or write it.
 

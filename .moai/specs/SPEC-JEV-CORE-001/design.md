@@ -24,21 +24,7 @@ Design-level decisions and their alternatives. Implementation-level naming is de
 
 One implementation, zero callers. The zero is the point: every later SPEC adds a caller, and each addition is a place the display-only invariant could be violated. Shipping the boundary first means the invariant has a test before it has anything to defend against.
 
-The dependency direction is forced by existing structure. `internal/cli`
-imports `internal/web` one-way; the credential owners and their dependencies
-must remain below both callers. The v0.6.0 privacy amendment permits shared
-low-level leaves (`paths`, `defs`, and native private-file storage). Only the
-private-file Windows implementation may use the existing
-`golang.org/x/sys/windows` dependency for native filesystem security. The
-helper must not import `cli`, `web`, configuration, Jev or either credential
-owner. This downward boundary preserves acyclic composition without the
-former stdlib-only restriction on transitive dependencies.
-
-The diagram's 0600 label denotes the Unix policy. On Windows the same
-owner-only invariant is a protected, non-inheriting owner DACL established
-before payload writing and verified by native readback; emulated mode bits
-are not a substitute. Credential format, location and disclosure remain in
-`jevcred`, outside the file-security helper.
+The dependency direction is forced by existing structure. `internal/cli` imports `internal/web` one-way, so both packages here depend only on the standard library and on stdlib-only leaves (`internal/paths`, `internal/defs`), exactly as `internal/glmcred` does. A richer dependency would close a cycle.
 
 ## §2. Why the gate sits below the callers
 
