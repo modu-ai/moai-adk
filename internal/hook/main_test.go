@@ -33,6 +33,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 )
 
@@ -111,6 +112,15 @@ func TestMain(m *testing.M) {
 		}
 		_ = os.Setenv(config.EnvHome, home)
 		_ = os.Setenv(moaiHomeSandboxEnv, home)
+		// Initialize the shared managed parents before profile/hook fixtures
+		// can create them with the Windows token's ordinary default owner.
+		// Validate/create through the production boundary; never repair an
+		// existing directory's owner or ACL to make a fixture pass.
+		if err := homestate.EnsureHomeLayout(); err != nil {
+			fmt.Fprintf(os.Stderr, "TestMain: prepare private MOAI_HOME layout: %v\n", err)
+			_ = os.RemoveAll(dir)
+			os.Exit(1)
+		}
 	}
 	// Home sandbox (D5): every home-shaped derivation in this package — the
 	// memory-budget advisory's store keys first among them — resolves inside

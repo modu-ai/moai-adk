@@ -552,8 +552,40 @@ func TestHealthyLanePathUnchangedAndFailOpen(t *testing.T) { // AC-SRH-014, REQ-
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Windows keeps WAL sidecars for native privacy pins. A valid WAL
+		// can recover a garbage main file, so checkpoint/truncate the fixture
+		// before corrupting it; leave the production persistence policy intact.
+		func() {
+			db, err := homestate.OpenFactory(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := db.Close(); err != nil {
+					t.Errorf("close corruption fixture: %v", err)
+				}
+			}()
+			var busy, frames, checkpointed int
+			if err := db.DB.QueryRow("PRAGMA wal_checkpoint(TRUNCATE)").Scan(&busy, &frames, &checkpointed); err != nil {
+				t.Fatal(err)
+			}
+			if busy != 0 || frames != 0 || checkpointed != 0 {
+				t.Fatalf("fixture WAL was not truncated: busy=%d frames=%d checkpointed=%d", busy, frames, checkpointed)
+			}
+		}()
 		if err := os.WriteFile(dbPath, []byte("this is not a sqlite database, only garbage bytes"), 0o600); err != nil {
 			t.Fatal(err)
+		}
+		probe, readErr := homestate.OpenFactoryReadonly(dbPath)
+		if readErr == nil {
+			var count int
+			readErr = probe.DB.QueryRow("SELECT count(*) FROM runs").Scan(&count)
+			if err := probe.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if readErr == nil || !strings.Contains(readErr.Error(), "file is not a database") {
+			t.Fatalf("fixture must be corrupt before the hook reads it: %v", readErr)
 		}
 		got := rebindPrompt(t, root, "s1")
 		if !strings.Contains(got, "factory messaging degraded") || strings.Contains(got, "factory lane") {

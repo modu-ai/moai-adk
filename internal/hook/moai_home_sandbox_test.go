@@ -28,6 +28,17 @@ func TestMainSandboxesProfileLeaseEnv(t *testing.T) {
 	}
 }
 
+// Hooks and profile fixtures share TestMain's home. Prepare its managed
+// parents before either can create children with the host's default owner.
+func TestMainPreparesSharedHomeBeforeHooks(t *testing.T) {
+	home := os.Getenv(moaiHomeSandboxEnv)
+	for _, name := range []string{"claude-profiles", "db", "state"} {
+		if err := privatefile.CheckDirectory(filepath.Join(home, name)); err != nil {
+			t.Errorf("TestMain shared %s native privacy: %v", name, err)
+		}
+	}
+}
+
 // privateHookHome leaves the unrelated TempDir parent untouched. Windows
 // tokens may assign an ordinary temp directory to a different default owner.
 func privateHookHome(t *testing.T) string {
