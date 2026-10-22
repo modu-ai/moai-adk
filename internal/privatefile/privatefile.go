@@ -29,6 +29,8 @@ func Check(path string) error {
 // private before any data is written. Existing symlinks are never followed.
 // @MX:ANCHOR: [AUTO] Replace private payloads only after their native access policy is installed.
 // @MX:REASON: Credential stores, integration leases and config backups share this before-bytes privacy boundary.
+// @MX:WARN: [AUTO] Keep each private replacement refusal and cleanup path fail-closed.
+// @MX:REASON: Creation, writing, closing, policy readback and replacement failures must stop the payload update.
 func WriteFile(path string, data []byte) error {
 	if info, err := os.Lstat(path); err == nil {
 		if !info.Mode().IsRegular() {

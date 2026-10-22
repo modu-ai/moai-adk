@@ -72,6 +72,8 @@ func secureExistingNative(path string, before os.FileInfo, directory bool) error
 	return restrictHandleNative(f, directory)
 }
 
+// @MX:WARN: [AUTO] Narrow an existing object only after its identity and current owner are known.
+// @MX:REASON: Metadata, ownership, descriptor creation, DACL installation and native readback errors must all stop the operation.
 func restrictHandleNative(f *os.File, directory bool) error {
 	h := windows.Handle(f.Fd())
 	var info windows.ByHandleFileInformation

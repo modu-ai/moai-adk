@@ -73,6 +73,8 @@ func checkHandle(h windows.Handle) error { return checkObjectHandle(h, false) }
 
 // @MX:ANCHOR: [AUTO] Verify exact current-owner access on the opened Windows object.
 // @MX:REASON: File validation, directory validation and policy narrowing share this native readback boundary.
+// @MX:WARN: [AUTO] Native access-policy validation has multiple independent refusal checks.
+// @MX:REASON: Object type, owner, protected inheritance and the exact access rule must all agree before acceptance.
 func checkObjectHandle(h windows.Handle, directory bool) error {
 	var info windows.ByHandleFileInformation
 	if err := windows.GetFileInformationByHandle(h, &info); err != nil {
