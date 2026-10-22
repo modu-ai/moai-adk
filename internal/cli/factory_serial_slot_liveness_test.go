@@ -306,6 +306,55 @@ func TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder(t *testing.T) {
 	})
 }
 
+// TestFactoryNextPeekSeesLiveHolderBehindExpiredLease — the reconciliation
+// of card t1828 with main's --wait peek (factoryNextMayLease, sync-audit
+// absorb F1): the peek's serial reads must take the same generation-aware
+// holder-liveness read the lease arms take. Behind a live holder's expired
+// lease the peek answers false — or the --wait loop would poll on a "may
+// lease" the lease attempt then refuses serial-slot; behind a dead holder it
+// answers true, so the loop never wedges on a lazily-collected row either.
+func TestFactoryNextPeekSeesLiveHolderBehindExpiredLease(t *testing.T) {
+	ctx := context.Background()
+	t.Run("nominated, live holder", func(t *testing.T) {
+		root, _ := expiredLeaseFixture(t)
+		serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
+		if factoryNextMayLease(ctx, root, fcRun, "lane-1", "t2", false) {
+			t.Fatalf("peek = true behind an expired lease whose holder is alive; want false — the --wait loop would poll a lease the attempt refuses serial-slot")
+		}
+	})
+	t.Run("nominated, dead holder", func(t *testing.T) {
+		root, _ := expiredLeaseFixture(t)
+		serialSlotWorkerRowDropped(t, root, "lane-2")
+		if !factoryNextMayLease(ctx, root, fcRun, "lane-1", "t2", false) {
+			t.Fatalf("peek = false behind an expired lease whose holder is gone; want true — the peek must not wedge the wait loop on a dead lane's row")
+		}
+	})
+	t.Run("bare candidate, live holder", func(t *testing.T) {
+		root := fcSlotFixture(t, homestate.Card{
+			State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
+			Stage:          homestate.CardRun,
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano),
+		}, 1)
+		serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
+		if factoryNextMayLease(ctx, root, fcRun, "lane-1", "", false) {
+			t.Fatalf("bare peek = true while a queued serial candidate sits behind an expired lease whose holder is alive; want false")
+		}
+	})
+	t.Run("bare candidate, dead holder", func(t *testing.T) {
+		root := fcSlotFixture(t, homestate.Card{
+			State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
+			Stage:          homestate.CardRun,
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano),
+		}, 1)
+		serialSlotWorkerRowDropped(t, root, "lane-2")
+		if !factoryNextMayLease(ctx, root, fcRun, "lane-1", "", false) {
+			t.Fatalf("bare peek = false behind an expired lease whose holder is gone; want true")
+		}
+	})
+}
+
 // serialSlotDeadHolderLeases asserts the lease of t2 goes through behind a
 // dead holder and lands leased by lane-1.
 func serialSlotDeadHolderLeases(t *testing.T, root string) {

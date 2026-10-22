@@ -2171,6 +2171,13 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if err != nil {
 		return true
 	}
+	// holderAlive (card t1828, sync-audit absorb F1): the same
+	// generation-aware holder-liveness read the lease arms take — an expired
+	// lease of a live same-incarnation holder still holds the slot in the
+	// peek, or the --wait loop would poll on a "may lease" the lease attempt
+	// then refuses serial-slot; a dead, absent, or re-registered holder
+	// releases, so the loop never wedges on a lazily-collected row.
+	holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(rec, id) }
 	now := factoryCardNow()
 	rowByID := make(map[string]homestate.Card, len(rows))
@@ -2195,10 +2202,16 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			}
 			// The serial read mirrors factoryNextValidate: only a serial
 			// nominee is blocked by the slot, and a lane nominating its own
-			// assigned card ignores sibling assigned rows (card t1542).
+			// assigned card ignores sibling assigned rows (card t1542). The
+			// peek reads nil/non-nil of the refusal alone, so the blocking
+			// card id the (string, bool) return names is discarded here —
+			// the rendered refusal detail is the validation arm's job.
 			ownAssigned := row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane
-			serialHeld := classOf(nominee).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned)
-			if factoryKeepSetRefusal(it, row, lane, serialHeld) != nil {
+			serialHeld := false
+			if classOf(nominee).Mode == factory.ClassModeSerial {
+				_, serialHeld = factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned, holderAlive)
+			}
+			if factoryKeepSetRefusal(it, row, lane, serialHeld, "") != nil {
 				return false
 			}
 			return !held || (row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane)
@@ -2251,7 +2264,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			continue
 		}
 		if it, inQueue := queueItemIn(rec, c.CardID); inQueue {
-			if factoryKeepSetRefusal(it, &rows[i], lane, false) != nil {
+			if factoryKeepSetRefusal(it, &rows[i], lane, false, "") != nil {
 				continue
 			}
 		}
@@ -2264,8 +2277,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		if skipForBackend(c) {
 			continue
 		}
-		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
-			continue
+		if classOf(c.CardID).Mode == factory.ClassModeSerial {
+			if _, held := factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true, holderAlive); held {
+				continue
+			}
 		}
 		return true
 	}
@@ -2334,7 +2349,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		} else if _, wait := hubWaitUnmerged(it.ID); wait {
 			continue
 		}
-		if classOf(it.ID).Mode != factory.ClassModeSerial || !factorySerialInFlightExcluding(rows, classOf, it.ID, now, false) {
+		if classOf(it.ID).Mode != factory.ClassModeSerial {
+			return true
+		}
+		if _, held := factorySerialInFlightExcluding(rows, classOf, it.ID, now, false, holderAlive); !held {
 			return true
 		}
 	}
