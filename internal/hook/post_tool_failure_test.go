@@ -19,16 +19,16 @@ func TestPostToolUseFailureHandler_EventType(t *testing.T) {
 
 // failureMessage extracts the classified failure message from the handler
 // output. SPEC-HOOK-SYNC-ASYNC-001 M4 (REQ-HSA-003): the registration is
-// async, and an async hook delivers ONLY additionalContext on the next turn —
-// so the message must ride hookSpecificOutput.additionalContext and
-// systemMessage must stay empty (AC-HSA-005).
+// async. This handler chooses hookSpecificOutput.additionalContext for its
+// next-turn message; systemMessage stays empty by this handler's output policy
+// (AC-HSA-005), although the vendor supports both async message fields.
 func failureMessage(t *testing.T, out *HookOutput) string {
 	t.Helper()
 	if out == nil {
 		t.Fatal("got nil output")
 	}
 	if out.SystemMessage != "" {
-		t.Errorf("SystemMessage = %q, want empty (async hooks deliver additionalContext only)", out.SystemMessage)
+		t.Errorf("SystemMessage = %q, want empty (this handler uses additionalContext)", out.SystemMessage)
 	}
 	if out.HookSpecificOutput == nil {
 		t.Fatal("HookSpecificOutput is nil, want hookSpecificOutput.additionalContext")

@@ -228,35 +228,25 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 # (7) every failure → fall through.
 codex_entry_fastpath() {
 	# --- (1) eligibility ---
-	# (R1) payload-cwd precedence: reviewScopeSessionDir (codex_review_scope.go)
-	# prefers the stdin session dir (cwd, then project_dir) over the
-	# caller-resolved root. When they disagree, the shell's tree premise is
-	# wrong — fall through and let Go resolve the scope. A spurious extraction
-	# from prompt text is fail-safe either way: a different path costs the
-	# cold start, a same-path false match is harmless.
-	local session_dir
-	session_dir=$(printf '%s' "$INPUT" | awk '
+	# Config and session roots have different payload precedence. Both must
+	# agree with this wrapper tree before it can decide without the handler.
+	if ! printf '%s' "$INPUT" | awk -v root="$CODEX_GATE_PROJECT_ROOT" '
 {
-	# (F9) an EMPTY cwd does not end the chain: reviewScopeSessionDir falls
-	# through to project_dir, and a diverging project_dir still invalidates
-	# this shell tree the same way a diverging cwd does.
 	if (match($0, /"cwd"[[:space:]]*:[[:space:]]*"/)) {
 		rest = substr($0, RSTART + RLENGTH)
 		end = index(rest, "\"")
 		v = (end > 1 ? substr(rest, 1, end - 1) : "")
-		if (v != "") {
-			print v
-			exit
-		}
+		if (v != "" && v != root) mismatch = 1
 	}
 	if (match($0, /"project_dir"[[:space:]]*:[[:space:]]*"/)) {
 		rest = substr($0, RSTART + RLENGTH)
 		end = index(rest, "\"")
-		print (end > 1 ? substr(rest, 1, end - 1) : "")
-		exit
+		v = (end > 1 ? substr(rest, 1, end - 1) : "")
+		if (v != "" && v != root) mismatch = 1
 	}
-}')
-	if [ -n "$session_dir" ] && [ "$session_dir" != "$CODEX_GATE_PROJECT_ROOT" ]; then
+}
+END { exit mismatch ? 1 : 0 }
+'; then
 		return 1
 	fi
 
@@ -268,13 +258,8 @@ codex_entry_fastpath() {
 		WT-*) return 1 ;; # card scope — the Go handler owns card sessions
 	esac
 
-	# The two entry-side skip policies, read from the SAME workflow.yaml the
-	# gate-OFF parse reads. Only an explicit literal is honored, in the
-	# direction that cannot kick where the Go design suppresses: tree_scope
-	# proceeds unless the literal value is skip (misreading review as skip
-	# only costs the cold start the Go handler applies correctly);
-	# primary_scope falls through unless the literal value is review (the
-	# skip default).
+	# Read only literal skip policies here. Aliases, anchors, merges, and
+	# other unsupported values belong to the authoritative YAML reader.
 	local tree_scope primary_scope
 	tree_scope=$(awk -v gate="codex" -v want="tree_scope" '
 {
@@ -290,6 +275,7 @@ codex_entry_fastpath() {
     if (!in_w) { if (ind == 0 && key == "workflow:") { in_w = 1; w_ind = ind } next }
     if (!in_g) { if (key == gate ":") { in_g = 1; g_ind = ind } next }
     if (!in_r) { if (key == "review_gate:") { in_r = 1; r_ind = ind } next }
+    if (key ~ /^<<[[:space:]]*:/) { print "unresolved"; exit }
     if (key ~ "^" want ":[[:space:]]") {
         v = key
         sub("^" want ":[[:space:]]*", "", v)
@@ -308,7 +294,10 @@ codex_entry_fastpath() {
     }
 }
 ' "$CODEX_GATE_WORKFLOW_YAML" 2>/dev/null)
-	[ "$tree_scope" = "skip" ] && return 1
+	case "$tree_scope" in
+		""|review) : ;;
+		*) return 1 ;; # literal skip or a value requiring full YAML decoding
+	esac
 
 	primary_scope=$(awk -v gate="codex" -v want="primary_scope" '
 {
@@ -397,19 +386,40 @@ function dc(y, m, d,    yy, era, yoe, doy, doe) {
 	doe = yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy
 	return era * 146097 + doe - 719468
 }
-function rfc(ts,    y, mo, d, h, mi, s, rest, off, oh, om) {
+function rfc(ts,    y, mo, d, h, mi, s, rest, off, oh, om, md) {
+	# A valid prefix is insufficient: reject unsupported date/zone syntax
+	# and calendar overflow before interpreting a receipt as evidence.
+	if (ts !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]/) {
+		invalid_time = 1
+		return 0
+	}
 	y = substr(ts, 1, 4) + 0
 	mo = substr(ts, 6, 2) + 0
 	d = substr(ts, 9, 2) + 0
 	h = substr(ts, 12, 2) + 0
 	mi = substr(ts, 15, 2) + 0
 	s = substr(ts, 18, 2) + 0
+	md = 31
+	if (mo == 2) md = 28 + (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0))
+	else if (mo == 4 || mo == 6 || mo == 9 || mo == 11) md = 30
+	if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > md || h > 23 || mi > 59 || s > 59) {
+		invalid_time = 1
+		return 0
+	}
 	rest = substr(ts, 20)
 	sub(/^[.][0-9]+/, "", rest)
+	if (rest !~ /^(Z|[+-][0-9][0-9]:[0-9][0-9])$/) {
+		invalid_time = 1
+		return 0
+	}
 	off = 0
 	if (rest ~ /^[+-]/) {
 		oh = substr(rest, 2, 2) + 0
 		om = substr(rest, 5, 2) + 0
+		if (oh > 23 || om > 59) {
+			invalid_time = 1
+			return 0
+		}
 		off = oh * 3600 + om * 60
 		if (substr(rest, 1, 1) == "-") off = -off
 	}
@@ -421,6 +431,10 @@ function extract(name,    v) {
 	sub("\"[[:space:]]*,?[[:space:]]*$", "", v)
 	return v
 }
+# The snapshot loader decodes every typed timestamp, including the snapshot
+# timestamp and checks unrelated to this command. An invalid one anywhere
+# must not leave a seemingly fresh selected verdict usable here.
+/^[[:space:]]*"recorded_at":[[:space:]]*"/ { rfc(extract("recorded_at")) }
 # (F7) document-level validation, the verify.Load mirror: a parsable receipt
 # requires the WHOLE document — the checks array closed and the document
 # closed — AND the stored key equal to the key this shell computed (the
@@ -454,10 +468,12 @@ ec == 1 && /^      "tool_version":/ { tl = extract("tool_version") }
 	}
 }
 END {
-	if (found && matches == 1 && doc_closed && checks_closed && stored_key == wantkey)
+	if (invalid_time) print "invalid-time"
+	else if (found && matches == 1 && doc_closed && checks_closed && stored_key == wantkey)
 		print f_state " " f_verd " " f_cfg " " f_tl
 }
 ' "$snapshot" 2>/dev/null)
+	[ "$receipt" = "invalid-time" ] && return 1
 	# receipt: "fresh <verdict> <config_digest> <tool_version>" | "stale ..."
 	# | "" (receipt-ABSENT — no snapshot, unreadable, or unparseable: the
 	# LoadReceipt reading). The tool_version value may contain spaces; it is

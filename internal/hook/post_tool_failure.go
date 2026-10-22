@@ -73,9 +73,9 @@ func (h *postToolUseFailureHandler) EventType() EventType {
 // and delivers actionable guidance as hookSpecificOutput.additionalContext.
 //
 // SPEC-HOOK-SYNC-ASYNC-001 M4 (REQ-HSA-003): the registration is async
-// ("async": true), and an async hook delivers ONLY additionalContext on the
-// next turn — a systemMessage emission would be silently dropped, so the
-// classified message rides hookSpecificOutput.additionalContext instead.
+// ("async": true). Both message fields reach Claude on the next turn without
+// user-UI display; this handler chooses hookSpecificOutput.additionalContext
+// for its classified guidance and leaves systemMessage empty.
 //
 // SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-001: the handler also records a
 // tool_failure:<tool>:<category> event to usage-log.jsonl so the failure signal
@@ -110,10 +110,9 @@ func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput
 	// REQ-CC2122-HOOK-001-006: PostToolUseFailure from/in/at outcome: includes "failure" field.
 	writeHookMetric(input, "handle-post-tool-failure", "failure")
 
-	// SPEC-HOOK-SYNC-ASYNC-001 M4 (REQ-HSA-003): async hooks deliver only
-	// additionalContext — emit hookSpecificOutput.additionalContext (event
-	// name PostToolUseFailure, REQUIRED by the Claude Code protocol on every
-	// hookSpecificOutput) instead of the sync-path systemMessage.
+	// Keep this handler on its chosen additionalContext channel. Every
+	// hookSpecificOutput includes the required PostToolUseFailure event name;
+	// the alternative async systemMessage channel is deliberately unused.
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			HookEventName:     string(EventPostToolUseFailure),

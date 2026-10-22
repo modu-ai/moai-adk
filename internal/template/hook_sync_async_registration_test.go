@@ -1,12 +1,8 @@
 package template
 
-// SPEC-HOOK-SYNC-ASYNC-001 registration pins (plan §F M4/M5): the converted
-// hook entries must carry "async": true in BOTH settings surfaces — this
-// repository's live .claude/settings.json and the rendered settings template —
-// so neither surface can drift back to a synchronous slot the SPEC retired.
-// The M4 conversion rides the same commit set as its Go handler change
-// (post_tool_failure.go hookSpecificOutput.additionalContext): a flag without
-// the delivery change silently drops the message, and vice versa.
+// Registration pins cover both settings surfaces. The completion-edge writer
+// stays synchronous so session teardown cannot cancel its foreground append;
+// the two observation handlers retain next-turn async delivery.
 
 import (
 	"os"
@@ -15,28 +11,38 @@ import (
 	"testing"
 )
 
-// hookSyncAsyncConverted enumerates the entries this SPEC converts to async.
-// M4 pinned the PostToolUseFailure row (REQ-HSA-003); M5 adds the mechanical
-// ConfigChange and SubagentStop chain-event rows (REQ-HSA-001/002) — both are
-// continue-only / ledger-append entries with no handler output to deliver.
+// The completion-edge entry remains covered alongside the async observations.
 var hookSyncAsyncConverted = []struct {
 	event  string
 	script string
+	async  bool
 }{
-	{event: "PostToolUseFailure", script: "handle-post-tool-failure.sh"},
-	{event: "ConfigChange", script: "handle-config-change.sh"},
-	{event: "SubagentStop", script: "chain-event.sh"},
+	{event: "PostToolUseFailure", script: "handle-post-tool-failure.sh", async: true},
+	{event: "ConfigChange", script: "handle-config-change.sh", async: true},
+	{event: "SubagentStop", script: "chain-event.sh", async: false},
 }
 
-// TestHookSyncAsyncRegistrationFlags asserts every converted entry parses with
-// Async == true from both surfaces (live settings + rendered template).
+// TestHookSyncAsyncRegistrationFlags asserts delivery and durability policies
+// in both live settings and the rendered template.
 func TestHookSyncAsyncRegistrationFlags(t *testing.T) {
 	project := hookSyncAsyncProjectEntries(t)
 	rendered := hookSyncAsyncRenderedEntries(t)
 
+	for surface, entries := range map[string][]HookEntry{"live settings.json": project, "rendered settings template": rendered} {
+		count := 0
+		for _, entry := range entries {
+			if entry.Async {
+				count++
+			}
+		}
+		if count != 13 {
+			t.Errorf("%s: async inventory = %d, want 13", surface, count)
+		}
+	}
+
 	for _, tt := range hookSyncAsyncConverted {
-		assertHookSyncAsyncEntry(t, project, "live settings.json", tt.event, tt.script)
-		assertHookSyncAsyncEntry(t, rendered, "rendered settings template", tt.event, tt.script)
+		assertHookSyncAsyncEntry(t, project, "live settings.json", tt.event, tt.script, tt.async)
+		assertHookSyncAsyncEntry(t, rendered, "rendered settings template", tt.event, tt.script, tt.async)
 	}
 }
 
@@ -67,12 +73,12 @@ func hookSyncAsyncRenderedEntries(t *testing.T) []HookEntry {
 	return entries
 }
 
-func assertHookSyncAsyncEntry(t *testing.T, entries []HookEntry, surface, event, script string) {
+func assertHookSyncAsyncEntry(t *testing.T, entries []HookEntry, surface, event, script string, wantAsync bool) {
 	t.Helper()
 	for _, e := range entries {
 		if e.Event == event && e.Script == script {
-			if !e.Async {
-				t.Errorf("%s: %s %s carries no async key (async=false); SPEC-HOOK-SYNC-ASYNC-001 converts it to async", surface, event, script)
+			if e.Async != wantAsync {
+				t.Errorf("%s: %s %s async=%v, want %v", surface, event, script, e.Async, wantAsync)
 			}
 			return
 		}

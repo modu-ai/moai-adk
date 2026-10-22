@@ -103,10 +103,10 @@ func TestHookEntryParity_ChainEventRegistered(t *testing.T) {
 	if got.Timeout != 5 {
 		t.Errorf("chain-event.sh timeout = %d, want 5", got.Timeout)
 	}
-	// SPEC-HOOK-SYNC-ASYNC-001 M5 (REQ-HSA-002): the chain-ledger append is
-	// fail-open and emits no decision output, so the entry converts to async.
-	if !got.Async {
-		t.Error("chain-event.sh must carry async=true; SPEC-HOOK-SYNC-ASYNC-001 M5 converts it to async")
+	// The foreground completion append must finish before session teardown.
+	// A fail-open ledger write still needs the synchronous lifecycle edge.
+	if got.Async {
+		t.Error("chain-event.sh must stay synchronous so teardown cannot cancel its completion append")
 	}
 }
 

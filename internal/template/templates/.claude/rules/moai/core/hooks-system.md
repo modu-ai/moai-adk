@@ -91,7 +91,7 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | UserPromptSubmit | `prompt` | `additionalContext`, `reason`, `decision:{block,reason}`, `sessionTitle`, `suppressOriginalPrompt` | Exit 2 blocks prompt; JSON `decision:"block"` also available |
 | PermissionRequest | `toolName`, `toolInput` | `reason`, `decision.behavior`, `updatedInput`, `updatedPermissions` | Exit 0 = allow, exit 2 = deny; JSON `decision.behavior` (allow/deny/ask) also available |
 | PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
-| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `hookSpecificOutput`: `additionalContext` | Non-blocking. Registered `async: true`: the classified failure message arrives as `additionalContext` on the next turn (async hooks deliver only `additionalContext`) |
+| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `hookSpecificOutput`: `additionalContext` | Non-blocking. Registered `async: true`: the classified failure message arrives as `additionalContext` on the next turn (this handler chooses `additionalContext`; async hooks also support `systemMessage`) |
 | Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — background-agent notifications; handler is a generic pass-through, no Go change) |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
 | InstructionsLoaded | `files`, `source` | - | Lists loaded instruction files (v2.1.69+) |
@@ -180,9 +180,10 @@ Run command hooks in the background without blocking the conversation.
 
 - Only available for `type: "command"` hooks
 - Configuration: Add `async: true` to any command hook definition
-- Results are delivered on the next conversation turn via `additionalContext` only (async hooks cannot control `decision` or `updatedToolOutput` — the sole async-deliverable stdout field is `additionalContext`)
+- Both `hookSpecificOutput.additionalContext` and `systemMessage` reach Claude on the next conversation turn; neither is displayed to the user. Async hooks cannot control `decision`, `permissionDecision`, `continue`, or `updatedToolOutput`.
 - Useful for long-running validations (linting, test execution, deployments)
-- Async PostToolUse can only deliver `additionalContext` — it cannot control `decision` or `updatedToolOutput` (those require synchronous PostToolUse). The shipped PostToolUse harness-observe tap is async, so it observes only; it never blocks.
+- Async PostToolUse can deliver `additionalContext` and `systemMessage`; blocking decisions and `updatedToolOutput` require synchronous PostToolUse. The shipped PostToolUse harness-observe tap is async, so it observes only; it never blocks.
+- In non-interactive (`claude -p`) sessions, running async hooks are cancelled at teardown. The SubagentStop chain-event completion writer stays synchronous so its foreground append finishes before teardown. Work that must outlive teardown needs a fully detached process. See the [official hook reference](https://code.claude.com/docs/en/hooks#run-hooks-in-the-background).
 
 ### Single-Fire Hooks (once: true)
 
@@ -367,7 +368,7 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
 | Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
 | UserPromptSubmit | 30s | not documented | Blocks user interaction. Default 30s for this event (Claude Code's default; the official hooks reference documents no separate maximum). Raised from 5s: the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
-| All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; `async: true` entries among these events: the PostToolUse harness-observe entries, PostToolUseFailure, ConfigChange, and the SubagentStop chain-event entry) |
+| All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; `async: true` entries among these events: the PostToolUse harness-observe entries, PostToolUseFailure and ConfigChange; the SubagentStop chain-event completion append stays synchronous) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
 Two events have a shorter timeout than the 600s maximum. For `MessageDisplay` that value is a runtime ceiling and is not overridable upward; for `UserPromptSubmit` 30s is the Claude Code default, not a ceiling:
@@ -386,7 +387,7 @@ The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse
 - Keep hooks lightweight for performance
 - Use proper path quoting to handle spaces in project paths
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
-- Async hooks deliver results via `additionalContext` on the next turn (the only async-deliverable field; `systemMessage`, `decision`, and `updatedToolOutput` are NOT delivered for async hooks)
+- Async hooks deliver both `additionalContext` and `systemMessage` to Claude on the next turn without displaying either to the user; decision fields and `updatedToolOutput` require synchronous execution.
 - Exit code 2 blocks on events marked "Can Block: Yes" (PreToolUse, PermissionRequest, UserPromptSubmit, UserPromptExpansion, Stop, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted, ConfigChange, PostToolBatch, PreCompact, Elicitation, ElicitationResult, WorktreeCreate); events marked "No" ignore it (StopFailure, PostToolUse, PostToolUseFailure, PermissionDenied, Notification, SubagentStart, SessionStart, Setup, SessionEnd, CwdChanged, FileChanged, PostCompact, WorktreeRemove, InstructionsLoaded, MessageDisplay, DirectoryAdded). Some events also support JSON `decision:"block"` (PostToolUse, PostToolBatch, SubagentStop, ConfigChange, PreCompact, UserPromptSubmit, UserPromptExpansion) or `continue:false` (TeammateIdle, TaskCreated, TaskCompleted) as alternative block mechanisms — exit 2 is NOT universal
 - Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 

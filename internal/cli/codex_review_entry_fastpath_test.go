@@ -65,20 +65,22 @@ const (
 var codexEntryFullTools = []string{"git", "awk", "shasum", "date", "mkdir", "rm", "cat", "readlink"}
 
 type codexEntryFixtureOpts struct {
-	enabled      bool   // workflow.codex.review_gate.enabled
-	treeScope    string // workflow.codex.review_gate.tree_scope ("" = key absent)
-	primaryScope string // workflow.codex.review_gate.primary_scope ("" = key absent)
-	branch       string // fixture branch name (WT- prefix ⇒ card scope)
-	dirty        bool   // uncommitted tracked modification (reviewable change)
-	configOnly   bool   // the ONLY change is .moai/config/ (config-only turn)
-	twoCommits   bool   // base + second commit, for the behind-binary fixture
-	stubVersion  string // what the stub `moai version` prints ("@PREV@"/"@HEAD@" resolved)
-	stubTools    []string
-	receipt      *codexEntryReceiptSpec // nil = no snapshot store entry
-	receiptRaw   string                 // raw snapshot JSON body (overrides receipt; the R6 unbound-fields shape)
-	logFileDir   bool                   // plant .moai/logs/codex-review-bg.log as a DIRECTORY (the R4 unopenable-log shape)
-	logFileFifo  bool                   // plant the log path as a FIFO (the C1 foreground-block shape)
-	corruptSnap  bool                   // overwrite the snapshot with garbage
+	enabled         bool   // workflow.codex.review_gate.enabled
+	treeScope       string // workflow.codex.review_gate.tree_scope ("" = key absent)
+	primaryScope    string // workflow.codex.review_gate.primary_scope ("" = key absent)
+	branch          string // fixture branch name (WT- prefix ⇒ card scope)
+	dirty           bool   // uncommitted tracked modification (reviewable change)
+	configOnly      bool   // the ONLY change is .moai/config/ (config-only turn)
+	twoCommits      bool   // base + second commit, for the behind-binary fixture
+	stubVersion     string // what the stub `moai version` prints ("@PREV@"/"@HEAD@" resolved)
+	stubTools       []string
+	reviewerVersion string                 // optional test-only reviewer executable; real receipt binding still applies
+	epochSeconds    int64                  // optional fixture clock pins same-bucket assertions
+	receipt         *codexEntryReceiptSpec // nil = no snapshot store entry
+	receiptRaw      string                 // raw snapshot JSON body (overrides receipt; the R6 unbound-fields shape)
+	logFileDir      bool                   // plant .moai/logs/codex-review-bg.log as a DIRECTORY (the R4 unopenable-log shape)
+	logFileFifo     bool                   // plant the log path as a FIFO (the C1 foreground-block shape)
+	corruptSnap     bool                   // overwrite the snapshot with garbage
 }
 
 // codexEntryReceiptSpec writes the receipt through the domain's own producer.
@@ -98,6 +100,7 @@ type codexEntryFixture struct {
 	headShort string
 	headFull  string
 	prevShort string // first commit when twoCommits, else the same commit
+	trace     bool   // synthetic-fixture diagnostics for failures observed only in CI
 }
 
 func codexEntryFixtureGit(t *testing.T, dir string, args ...string) string {
@@ -221,6 +224,22 @@ func newCodexEntryFixture(t *testing.T, opts codexEntryFixtureOpts) *codexEntryF
 		tools = append(append([]string{}, tools...), "codex")
 	}
 	for _, name := range tools {
+		if name == "date" && opts.epochSeconds > 0 {
+			stub := "#!/bin/bash\n[ \"$1\" = \"+%s\" ] || exit 1\nprintf '%s\\n' " + strconv.FormatInt(opts.epochSeconds, 10) + "\n"
+			if err := os.WriteFile(filepath.Join(f.toolsDir, name), []byte(stub), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if name == "codex" && opts.reviewerVersion != "" {
+			// Exercise the actual PATH/version boundary without requiring an
+			// installed reviewer. This executable supplies no review verdict.
+			stub := "#!/bin/bash\n[ \"$1\" = \"--version\" ] || exit 1\nprintf '%s\\n' " + codexEntryQuoteShell(opts.reviewerVersion) + "\n"
+			if err := os.WriteFile(filepath.Join(f.toolsDir, name), []byte(stub), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
 		real, err := exec.LookPath(name)
 		if err != nil {
 			t.Skipf("%s not available on this machine", name)
@@ -265,6 +284,9 @@ func newCodexEntryFixture(t *testing.T, opts codexEntryFixtureOpts) *codexEntryF
 				cfgDigest = verify.ConfigDigest(codexEntryStateConfigMap())
 			}
 			toolVersion := opts.receipt.toolVersion
+			if toolVersion == "" {
+				toolVersion = opts.reviewerVersion
+			}
 			if toolVersion == "" {
 				toolVersion = codexEntryRealToolVersion(t)
 			}
@@ -353,7 +375,11 @@ func runCodexEntryWrapperStdin(t *testing.T, f *codexEntryFixture, stdin string)
 	// hang the suite.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "bash", wrapper)
+	args := []string{wrapper}
+	if f.trace {
+		args = []string{"-x", wrapper}
+	}
+	cmd := exec.CommandContext(ctx, "bash", args...)
 	// A blocking child (the C1 FIFO shape) survives the context kill and
 	// holds the inherited stdout/stderr pipes open; WaitDelay bounds Wait so
 	// the deadline is actually observed.
@@ -363,6 +389,14 @@ func runCodexEntryWrapperStdin(t *testing.T, f *codexEntryFixture, stdin string)
 		"CLAUDE_PROJECT_DIR=" + f.dir,
 		"PATH=" + f.toolsDir,
 		"HOME=" + f.dir,
+	}
+	var gitTrace string
+	if f.trace {
+		gitTrace = filepath.Join(f.dir, ".moai", "logs", "entry-git-trace.json")
+		if err := os.MkdirAll(filepath.Dir(gitTrace), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cmd.Env = append(cmd.Env, "GIT_TRACE2_EVENT="+gitTrace)
 	}
 	cmd.Stdin = strings.NewReader(stdin)
 	var stdout, stderr bytes.Buffer
@@ -379,6 +413,12 @@ func runCodexEntryWrapperStdin(t *testing.T, f *codexEntryFixture, stdin string)
 			t.Fatalf("running the wrapper: %v\nstderr:\n%s", runErr, stderr.String())
 		}
 		code = ee.ExitCode()
+	}
+	if gitTrace != "" {
+		if trace, err := os.ReadFile(gitTrace); err == nil {
+			stderr.WriteString("\ngit trace:\n")
+			stderr.Write(trace)
+		}
 	}
 	return codexEntryRun{stdout: stdout.String(), stderr: stderr.String(), exitCode: code}
 }
@@ -1054,9 +1094,13 @@ func TestCodexEntryFastpath_ProbeMatrix(t *testing.T) {
 // Stop arm's kick) over the same tree state in the same bucket kick exactly
 // one background review; and a fresh-pass receipt produces NO kick at all.
 func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
+	// Pin the promised same-bucket premise. Wall time can cross a bucket
+	// between entries, when two kicks are correct production behavior.
+	epoch := time.Now().Unix()
 	base := func(mut func(*codexEntryFixtureOpts)) codexEntryFixtureOpts {
 		opts := codexEntryFixtureOpts{enabled: true, primaryScope: "review", dirty: true,
-			stubVersion: "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty"}
+			stubVersion:     "moai-adk v3.2.0-1-g" + codexEntryHeadPlaceholder + "-dirty",
+			reviewerVersion: "reviewer fixture v1", epochSeconds: epoch}
 		if mut != nil {
 			mut(&opts)
 		}
@@ -1065,15 +1109,18 @@ func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
 
 	t.Run("two entries in one bucket kick once", func(t *testing.T) {
 		f := newCodexEntryFixture(t, base(nil))
-		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
-			t.Fatalf("first run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		f.trace = true
+		first := runCodexEntryWrapper(t, f)
+		if first.exitCode != 0 {
+			t.Fatalf("first run exit = %d\nstderr:\n%s", first.exitCode, first.stderr)
 		}
-		if run := runCodexEntryWrapper(t, f); run.exitCode != 0 {
-			t.Fatalf("second run exit = %d\nstderr:\n%s", run.exitCode, run.stderr)
+		second := runCodexEntryWrapper(t, f)
+		if second.exitCode != 0 {
+			t.Fatalf("second run exit = %d\nstderr:\n%s", second.exitCode, second.stderr)
 		}
-		_, kick, argv := codexEntryAwaitArgv(t, f, 0, 1)
-		if kick != 1 {
-			t.Fatalf("kick count = %d, want exactly 1 across both entries\nargv:\n%s", kick, argv)
+		forward, kick, argv := codexEntryAwaitArgv(t, f, 0, 1)
+		if forward != 0 || kick != 1 {
+			t.Fatalf("forward=%d kick=%d, want forward=0 and exactly 1 kick across both entries\nargv:\n%s\nfirst stderr:\n%s\nsecond stderr:\n%s\nstatus:\n%s", forward, kick, argv, first.stderr, second.stderr, codexEntryFixtureGit(t, f.dir, "status", "--porcelain"))
 		}
 	})
 
@@ -1084,7 +1131,7 @@ func TestCodexEntryFastpath_SingleKickPerBucket(t *testing.T) {
 			t.Fatal(err)
 		}
 		head, digest, _ := strings.Cut(key, ":")
-		bucket := time.Now().Unix() / 900
+		bucket := epoch / 900
 		marker := filepath.Join(f.dir, ".moai", "state", "verify", "codex-review",
 			head+"-"+digest+".kick-"+strconv.FormatInt(bucket, 10))
 		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
