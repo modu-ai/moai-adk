@@ -72,6 +72,9 @@ var stageCandidateNames = []string{"plain", "other"}
 func launchWithStageSeams(t *testing.T, arm string, args []string, rootKind string) stageObservation {
 	t.Helper()
 	root := overrideProjectRoot(t)
+	// Characterize this project's metadata, independently of repositories
+	// (or sandbox protection mounts) above the temporary fixture.
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
 	if rootKind == "dirs-git" {
 		if out, err := exec.Command("git", "init", "-q", root).CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, out)

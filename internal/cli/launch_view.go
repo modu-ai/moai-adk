@@ -36,8 +36,11 @@ package cli
 //     always used, on the same stage input.
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -237,7 +240,13 @@ func existingWorktreeEntryDir(args []string) (string, error) {
 	}
 	cands, err := worktreeroot.Candidates(root, read.Value)
 	if err != nil {
-		return "", nil
+		if plainProjectWithoutGitMetadata(root, err) {
+			// No home-root repository identity exists in a plain project.
+			// Preserve its native backend -w behavior; broken or unreadable
+			// metadata is never evidence of this normal absence.
+			return "", nil
+		}
+		return "", fmt.Errorf("resolve worktree %q: %w", read.Value, err)
 	}
 	if len(cands) > 1 {
 		paths := make([]string, 0, len(cands))
@@ -252,26 +261,106 @@ func existingWorktreeEntryDir(args []string) (string, error) {
 	return cands[0].Path, nil
 }
 
-// stripWorktreeSelection removes the argv's first -w selection (both
-// spellings, its value included): the entry-by-directory form starts the
+// Only Git's positive not-a-repository result permits the plain-project
+// fallback. Missing Git, permission errors and unknown failures remain errors.
+func plainProjectWithoutGitMetadata(root string, resolverErr error) bool {
+	var gitErr *exec.ExitError
+	if !errors.As(resolverErr, &gitErr) || gitErr.ExitCode() != 128 {
+		return false
+	}
+	if !strings.HasPrefix(strings.TrimSpace(string(gitErr.Stderr)), "fatal: not a git repository (or any ") {
+		return false
+	}
+	return repositoryMetadataAbsent(root)
+}
+
+// repositoryMetadataAbsent positively distinguishes the legacy plain-project
+// path from failed ownership resolution. Only a complete absent-metadata walk
+// permits the fallback; explicit Git selectors, partial metadata and inspection
+// errors retain the resolver's refusal.
+func repositoryMetadataAbsent(root string) bool {
+	for _, key := range []string{"GIT_DIR", "GIT_COMMON_DIR", "GIT_WORK_TREE"} {
+		if os.Getenv(key) != "" {
+			return false
+		}
+	}
+	dir, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	} else if !os.IsNotExist(err) {
+		return false
+	}
+	var ceilings []string
+	for _, ceiling := range filepath.SplitList(os.Getenv("GIT_CEILING_DIRECTORIES")) {
+		if !filepath.IsAbs(ceiling) {
+			continue
+		}
+		if resolved, err := filepath.EvalSymlinks(ceiling); err == nil {
+			ceilings = append(ceilings, resolved)
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+	}
+	for {
+		if _, err := os.Lstat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
+			return false
+		}
+		// Bare repository metadata has no .git wrapper. Do not classify a
+		// failed bare repository as a normal unassigned project either.
+		if _, err := os.Lstat(filepath.Join(dir, "HEAD")); err == nil {
+			if _, err := os.Lstat(filepath.Join(dir, "objects")); !os.IsNotExist(err) {
+				return false
+			}
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return true
+		}
+		// The caller's discovery ceiling bounds this absence check. It
+		// cannot excuse broken metadata inside the project boundary.
+		for _, ceiling := range ceilings {
+			if worktreeroot.Same(parent, ceiling) {
+				return true
+			}
+		}
+		dir = parent
+	}
+}
+
+// stripWorktreeSelection removes worktree options and their parsed values
+// before the pass-through separator: the entry-by-directory form starts the
 // backend inside the tree, so the backend must receive no worktree
 // selection at all — a surviving short name would resolve against the
 // tree's own .claude/worktrees and create a duplicate inside it.
 func stripWorktreeSelection(args []string) []string {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" {
-		return args
-	}
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--worktree="+read.Value {
-			continue // the equals form carries its value
+		if args[i] == argSeparator {
+			return append(out, args[i:]...)
 		}
-		if (args[i] == "--worktree" || args[i] == "-w") && i+1 < len(args) && args[i+1] == read.Value {
-			i++ // the two-token form: skip the flag and its value
+		if len(args[i]) < 2 || args[i][0] != '-' {
+			out = append(out, args[i])
 			continue
 		}
-		out = append(out, args[i])
+		sel, span := backendOptionStep(args, i, worktreeSelection{})
+		if sel.Present {
+			if sel.Spelling == spellingCluster {
+				// The parser recognized only booleans before this w. Keep
+				// those flags when removing the cluster's worktree suffix.
+				at := strings.IndexByte(args[i], 'w')
+				if at > 1 {
+					out = append(out, args[i][:at])
+				}
+			}
+		} else {
+			out = append(out, args[i:i+span+1]...)
+		}
+		i += span
 	}
 	return out
 }
