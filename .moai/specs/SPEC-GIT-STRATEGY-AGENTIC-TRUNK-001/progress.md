@@ -51,6 +51,8 @@ M7 pre-edit counts — taken early at the leader's request, 2026-10-22 00:3x KST
 
 [방침 갱신, 이전 지시 대체] — leader directive 2026-10-22 ~05:5x KST: the draft-undo step cannot guarantee blocking before the auto-merge request is issued, so the COMPLETE/LANDING STEP ITSELF is SUSPENDED — the old-build `complete` hardcodes `--auto` (factory_card_pr.go:444) and cannot be split. Permitted during the hold: repairs, tests, push, and creating pull requests as draft FROM THE START. FORBIDDEN: any call of the old-build `moai factory complete` until the hold lifts. Effect on this card: the lane's landing step is deferred — consistent with the existing M6-signal wait (M7/card-review/sync precede landing anyway); when the hold lifts, the landing runs either under the M6-installed rc.38+ binary (where the M5b code path issues NO merge request) or under an explicit leader authorization.
 
+M6 P4 재프로브 결과 — leader measurement relayed 2026-10-23 ~03:3x KST: FAIL. Install time 2026-10-22T00:27:20; of 12 `moai mcp-server` processes, 6 predate it (started 10-21 14:41; lanes 2/3/4/5/6 sessions + one moai-cowork Codex server); `moai doctor --check "MCP Server Version"` = warn (5 servers on build 8249bff8c). The leader does not force-kill (it would disconnect lane MCP tools); the OPERATOR must `/mcp`-reconnect those terminals to lift P4. P5 (no pr-open awaiting merge) additionally overlaps the in-flight PR merge campaign. The leader will re-attempt M6 after the campaign ends; the lane keeps the current wait record — M7 stays un-started until the flip commit lands on this branch.
+
 ## §E.2 Run-phase Evidence
 
 ### M0 — Baseline re-check (2026-10-21, run tree 95e777a36e, branch WT-agentic-trunk)
