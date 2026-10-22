@@ -153,7 +153,10 @@ func Plan(repoDir, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	primary := filepath.Dir(common)
+	primary, err := registeredPrimaryRoot(repoDir, common)
+	if err != nil {
+		return "", err
+	}
 	canonical, err := filepath.EvalSymlinks(primary)
 	if err != nil {
 		return "", fmt.Errorf("resolving primary root %s: %w", primary, err)
@@ -226,7 +229,10 @@ func resolve(repoDir string) (Resolution, error) {
 	if err != nil {
 		return Resolution{}, err
 	}
-	primary := filepath.Dir(common)
+	primary, err := registeredPrimaryRoot(repoDir, common)
+	if err != nil {
+		return Resolution{}, err
+	}
 	canonical, err := filepath.EvalSymlinks(primary)
 	if err != nil {
 		return Resolution{}, fmt.Errorf("resolving primary root %s: %w", primary, err)
@@ -297,6 +303,28 @@ func gitCommonDir(repoDir string) (string, error) {
 		return "", fmt.Errorf("git rev-parse --git-common-dir printed nothing for %s", repoDir)
 	}
 	return common, nil
+}
+
+// registeredPrimaryRoot keeps ordinary checkout identity unchanged. For a
+// separate/bare Git directory, Git's first registered worktree is the shared
+// repository identity; its parent can contain unrelated repositories.
+func registeredPrimaryRoot(repoDir, common string) (string, error) {
+	if filepath.Base(filepath.Clean(common)) == ".git" {
+		return filepath.Dir(common), nil
+	}
+	cmd := exec.Command("git", "-C", repoDir, "worktree", "list", "--porcelain")
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C", "LANGUAGE=C")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve registered repository root: %w", err)
+	}
+	first, _, _ := strings.Cut(string(out), "\n")
+	root, ok := strings.CutPrefix(strings.TrimSuffix(first, "\r"), "worktree ")
+	root = filepath.FromSlash(root)
+	if !ok || !filepath.IsAbs(root) {
+		return "", fmt.Errorf("Git did not report an absolute registered repository root")
+	}
+	return root, nil
 }
 
 func projectDir(home, key string) string {
@@ -436,12 +464,14 @@ func readMarkerOwner(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var m map[string]any
+	var m ownerMarker
 	if err := json.Unmarshal(body, &m); err != nil {
 		return "", err
 	}
-	owner, _ := m["owner"].(string)
-	return owner, nil
+	if m.Schema != 1 || strings.TrimSpace(m.Owner) == "" || !filepath.IsAbs(m.Owner) {
+		return "", fmt.Errorf("invalid project owner marker in %s: schema 1 and an absolute owner are required", path)
+	}
+	return m.Owner, nil
 }
 
 // readPin returns the git_strategy.worktree_project_key value configured in
