@@ -144,10 +144,7 @@ func withMigrationLock(root string, fn func() error) error {
 // writer gate (AC-WHR-017b), not a reader's.
 func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) error {
 	run := func() error {
-		report, err := runMigrationEngine(root, apply, "migrate")
-		if err != nil {
-			return err
-		}
+		report, engineErr := runMigrationEngine(root, apply, "migrate")
 		if asJSON {
 			body, jerr := json.MarshalIndent(report.rows, "", "  ")
 			if jerr != nil {
@@ -164,6 +161,9 @@ func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) 
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "moved %d, skipped %d, failed %d, reversed %d\n",
 				report.moved, report.skipped, report.failed, report.reversed)
+		}
+		if engineErr != nil {
+			return engineErr
 		}
 		if report.reversed > 0 || report.failed > 0 {
 			return fmt.Errorf("migration completed with %d reversed and %d failed trees", report.reversed, report.failed)
@@ -389,6 +389,7 @@ type journalStep struct {
 // every tree whose move may have started (card t1640 review F3).
 type migrationJournal struct {
 	path    string
+	dir     string
 	trigger string
 	steps   []journalStep
 }
@@ -415,6 +416,21 @@ func (j *migrationJournal) pending(oldPath, newPath, ident string) error {
 	if j == nil {
 		return nil
 	}
+	if j.path == "" {
+		if err := os.MkdirAll(j.dir, 0o755); err != nil {
+			return err
+		}
+		// Reserve each run's name exclusively. A clock tick alone cannot
+		// distinguish serialized applies or a wall clock moving backward.
+		f, err := os.CreateTemp(j.dir, time.Now().UTC().Format("20060102T150405.000000000")+"-*.json")
+		if err != nil {
+			return err
+		}
+		j.path = f.Name()
+		if err := f.Close(); err != nil {
+			return err
+		}
+	}
 	j.steps = append(j.steps, journalStep{
 		OldPath: oldPath, NewPath: newPath, Outcome: "pending", Ident: ident,
 	})
@@ -431,10 +447,10 @@ func (j *migrationJournal) settle(ident, outcome, reason, manifest string) error
 			j.steps[i].Outcome = outcome
 			j.steps[i].Reason = reason
 			j.steps[i].Manifest = manifest
-			break
+			return j.flush()
 		}
 	}
-	return j.flush()
+	return nil
 }
 
 // runMigrationEngine plans and (when apply is set) executes the migration.
@@ -451,7 +467,7 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 	var journal *migrationJournal
 	if apply {
 		journal = &migrationJournal{
-			path:    filepath.Join(filepath.Dir(moveListPath(root)), time.Now().UTC().Format("20060102T150405")+".json"),
+			dir:     filepath.Dir(mlPath),
 			trigger: trigger,
 		}
 	}
@@ -461,6 +477,19 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 	for _, p := range plans {
 		if stateLockLapses >= hook.StateLockLapseBudget && p.class == string(ClassMoaiMade) && p.skip == "" {
 			p.skip = "state-file lock lapse budget spent; remaining trees await the next run"
+		}
+		if apply && p.class == string(ClassMoaiMade) && p.skip == "" {
+			// A previous move can take long enough for another process to
+			// enter or anchor this source. Refresh every safety input using
+			// the same planner immediately before this tree's move steps.
+			fresh := migratePlan{source: p.source, class: p.class, skip: "source is no longer registered"}
+			for _, current := range planMigrationFor(root, time.Now(), true) {
+				if worktreeroot.Same(current.source, p.source) {
+					fresh = current
+					break
+				}
+			}
+			p = fresh
 		}
 		row := migrationRow{
 			Class: p.class, Source: p.source, Destination: p.destination,
@@ -561,7 +590,9 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 
 	id, err := EnsureInstanceToken(p.source)
 	if err != nil {
-		return treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("identity unavailable: %v", err)}
+		reason := fmt.Sprintf("identity unavailable: %v", err)
+		lerr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "skipped", p.source, p.destination, "", reason))
+		return treeOutcome{Outcome: "skipped", Reason: reason, MLErr: lerr}
 	}
 	// The journal's pending entry precedes the move (REQ-WHR-017, review
 	// F3): a kill mid-move leaves the journal naming the tree whose move
@@ -711,8 +742,22 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 			return err
 		}
 		moved := report.moved
+		// The update UI summarizes linked worktrees. Keep the primary
+		// checkout's classification and durable skip audit in the shared
+		// engine, without counting it as a skipped linked worktree.
+		rows := make([]migrationRow, 0, len(report.rows))
+		skipped := report.skipped
+		for _, row := range report.rows {
+			if row.Class == string(ClassPrimary) {
+				if row.Outcome == "skipped" {
+					skipped--
+				}
+				continue
+			}
+			rows = append(rows, row)
+		}
 		if dryRun {
-			for _, r := range report.rows {
+			for _, r := range rows {
 				switch r.Outcome {
 				case "planned":
 					_, _ = fmt.Fprintf(out, "Worktree migration planned %s -> %s\n", r.Source, r.Destination)
@@ -722,7 +767,7 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 			}
 			return nil
 		}
-		for _, r := range report.rows {
+		for _, r := range rows {
 			switch r.Outcome {
 			case "skipped":
 				_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
@@ -735,7 +780,7 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 			}
 		}
 		_, _ = fmt.Fprintf(out, "Worktree migration: %d moved, %d skipped, %d failed\n",
-			moved, report.skipped, report.failed+report.reversed)
+			moved, skipped, report.failed+report.reversed)
 		return nil
 	}
 	if dryRun {
@@ -840,21 +885,17 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 		}
 		data, err := os.ReadFile(filepath.Join(mlDir, e.Name()))
 		if err != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\tjournal %s cannot be read: %v\n", e.Name(), err)
+			mismatched++
 			continue
 		}
-		var journal struct {
-			Steps []struct {
-				OldPath  string `json:"old_path"`
-				NewPath  string `json:"new_path"`
-				Outcome  string `json:"outcome"`
-				Ident    string `json:"ident"`
-				Manifest string `json:"manifest"`
-			} `json:"steps"`
-		}
-		if json.Unmarshal(data, &journal) != nil {
+		steps, err := decodeMigrationJournal(data)
+		if err != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\tjournal %s cannot be parsed: %v\n", e.Name(), err)
+			mismatched++
 			continue
 		}
-		for _, s := range journal.Steps {
+		for _, s := range steps {
 			if s.Outcome != "" && s.Outcome != "moved" {
 				continue
 			}
@@ -886,6 +927,36 @@ func runMigrateVerify(cmd *cobra.Command, root string) error {
 	return nil
 }
 
+// Decode the known journal envelope strictly: an unrelated JSON object,
+// unsupported schema or truncated step list is never evidence of intact moves.
+func decodeMigrationJournal(data []byte) ([]journalStep, error) {
+	var journal struct {
+		Steps   *[]journalStep `json:"steps"`
+		Trigger string         `json:"trigger"`
+		Created string         `json:"created"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&journal); err != nil {
+		return nil, err
+	}
+	if journal.Steps == nil {
+		return nil, fmt.Errorf("journal has no steps array")
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return nil, fmt.Errorf("journal has trailing data: %v", err)
+	}
+	for _, step := range *journal.Steps {
+		switch step.Outcome {
+		case "", "pending", "moved", "failed", "skipped", "reversed":
+		default:
+			return nil, fmt.Errorf("unknown journal outcome %q", step.Outcome)
+		}
+	}
+	return *journal.Steps, nil
+}
+
 // runMigrateRollback reverses each journaled move: move back, re-key back,
 // rebind back, restored lines appended. The identity check before every
 // reverse move compares the tree's ident with the journal's (D-12).
@@ -906,17 +977,15 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		if err != nil {
 			return fmt.Errorf("read the journal: %w", err)
 		}
-		var journal struct {
-			Steps []journalStep `json:"steps"`
-		}
-		if err := json.Unmarshal(data, &journal); err != nil {
+		steps, err := decodeMigrationJournal(data)
+		if err != nil {
 			return fmt.Errorf("parse the journal: %w", err)
 		}
 		mlPath := moveListPath(root)
 		restored, refused, failed := 0, 0, 0
 		var problems []string
-		for i := len(journal.Steps) - 1; i >= 0; i-- {
-			s := journal.Steps[i]
+		for i := len(steps) - 1; i >= 0; i-- {
+			s := steps[i]
 			if s.Outcome == "reversed" || s.Outcome == "skipped" {
 				continue
 			}
@@ -932,6 +1001,12 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				// at the source permits resuming those steps without moving it.
 				id, err := TreeIdent(s.OldPath)
 				if err != nil || s.Ident == "" || id.Ident() != s.Ident {
+					reason := "recorded tree is missing or its source identity differs"
+					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, reason)); lerr != nil {
+						return lerr
+					}
+					problems = append(problems, fmt.Sprintf("%s: %s", s.OldPath, reason))
+					refused++
 					continue
 				}
 				atSource = true

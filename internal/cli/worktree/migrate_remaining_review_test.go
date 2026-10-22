@@ -16,7 +16,7 @@ import (
 func TestMigrationInventoryIncludesProtectedRoots(t *testing.T) {
 	w := sfxWorld(t)
 	homeTree := filepath.Join(w.homeRoot, "already-home")
-	customTree := filepath.Join(t.TempDir(), "operator-tree")
+	customTree := filepath.Join(m6Real(t, t.TempDir()), "operator-tree")
 	codexTree := filepath.Join(w.home, ".codex", "worktrees", "managed")
 	for i, tree := range []string{homeTree, customTree, codexTree} {
 		if err := os.MkdirAll(filepath.Dir(tree), 0o755); err != nil {

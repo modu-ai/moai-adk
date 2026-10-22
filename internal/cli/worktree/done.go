@@ -252,16 +252,12 @@ func isL1WorktreePath(targetPath string) bool {
 	// shared function as list, migrate and the consolidation (AC-WHR-013).
 	if home, homeErr := paths.MoaiHome(); homeErr == nil {
 		projectsDir := canonicalTierPath(filepath.Join(home, "worktrees", "projects"))
-		if rel, relErr := filepath.Rel(projectsDir, target); relErr == nil && rel != "." &&
-			rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-			key := rel
-			if i := strings.Index(rel, string(os.PathSeparator)); i >= 0 {
-				key = rel[:i]
-			}
+		if underPath(target, projectsDir) {
 			ctx := ClassifyContext{
 				PrimaryRoot:     mainRoot,
 				HomeProjectsDir: projectsDir,
 			}
+			key := homeKeyOf(target, ctx)
 			if owner, ok := worktreeroot.OwnerMarkerOf(filepath.Join(projectsDir, key)); ok {
 				ctx.OwnerID = owner
 				ctx.MarkerOwners = map[string]string{key: owner}
