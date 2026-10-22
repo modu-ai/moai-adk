@@ -546,7 +546,7 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
                                           하위 verb: approve · run · status · revoke · resume
   approve
     internal/mission/contract.go        SealMissionContract — 범위·행동·증거·한도를 한 번 봉인
-    internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (internal/privatefile.WriteFile 경유)
+    internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (privatefile.WriteFile 경유)
   run (한 operation씩)
     internal/mission/policy.go          ValidateMissionDecision(sealed, snapshot, decision, now)
     internal/factory/gtd_engage.go       EngageGTDItem — 권한·증거 신선도·의존성·레인 조건 판정

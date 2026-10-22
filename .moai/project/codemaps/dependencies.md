@@ -151,8 +151,8 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 
 GTD 게시 소유권 수리의 파일 대조에서는 `internal/graph/gtd_private.go`가
 `internal/factory`와 `internal/privatefile`을 직접 import합니다. staging 객체의 원자 게시 경계는
-`internal/privatefile/publication.go`가 소비하는 `internal/atomicfile.Replace`로 이어집니다.
-미션 상태·완료·거버넌스 receipt 쓰기도 `internal/privatefile.WriteFile`을 공유합니다.
+`internal/privatefile/publication.go`가 소비하는 `internal/atomicfile`의 `Replace`로 이어집니다.
+미션 상태·완료·거버넌스 receipt 쓰기도 `privatefile.WriteFile`을 공유합니다.
 Unix 단일 link 검사는 `internal/privatefile/link_count_unix.go`의 기존 모듈
 `golang.org/x/sys/unix.Fstat`을 사용하며 Windows handle 검사는 기존
 `golang.org/x/sys/windows`의 link 수와 native owner-only 정책을 대조합니다.
