@@ -880,3 +880,142 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 		t.Logf("control observed red: %s", got[0])
 	})
 }
+
+// ---- run-script interpolation (sync-audit iter1 F1) ----------------------------
+//
+// A `${{ ... }}` expression inside a `run:` body is substituted into the script
+// TEXT before the shell parses it, so a value an outsider can influence (a draft
+// tag name routed through a step output, an event payload field, a dispatch
+// input) becomes shell syntax in a job that may hold contents: write. The
+// repair is to pass the value through the step's `env:` and reference "$VAR".
+// Allowed in a run body: `needs.<job>.result` (a runner-defined status enum),
+// `matrix.*` (workflow-authored constants), `github.event_name` and the like.
+// Refused: step and job outputs, event payload fields, head_ref, dispatch inputs.
+
+const rdcRunInterpSentinel = "RUN_INTERPOLATION_VIOLATION"
+
+var (
+	rdcExprRe    = regexp.MustCompile(`\$\{\{\s*(.+?)\s*\}\}`)
+	rdcUntrustRe = regexp.MustCompile(`(^|[^A-Za-z0-9_.])(steps\.[A-Za-z0-9_-]+\.outputs\.|needs\.[A-Za-z0-9_-]+\.outputs\.|github\.event\.|github\.head_ref|inputs\.)`)
+	// rdcRunInterpWorkflows are the workflows SPEC-RELEASE-PIPELINE-001 changed.
+	rdcRunInterpWorkflows = []string{
+		".github/workflows/ci.yml",
+		".github/workflows/release-drafter-cleanup.yml",
+		".github/workflows/release-drafter.yml",
+		".github/workflows/release-pr-multi-os.yml",
+	}
+)
+
+// rdcCheckRunInterpolation returns one violation per refused expression found
+// in a step's run body.
+func rdcCheckRunInterpolation(wfs []*rpcWorkflow) []string {
+	var v []string
+	for _, wf := range wfs {
+		for _, id := range wf.jobIDs() {
+			for _, s := range wf.Jobs[id].Steps {
+				for _, m := range rdcExprRe.FindAllStringSubmatch(s.Run, -1) {
+					if rdcUntrustRe.MatchString(m[1]) {
+						v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its run script; pass it through the step env and reference a quoted shell variable", rdcRunInterpSentinel, wf.Path, id, s.Name, m[1]))
+					}
+				}
+			}
+		}
+	}
+	return v
+}
+
+func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
+	texts := map[string]string{}
+	load := func() []*rpcWorkflow {
+		var wfs []*rpcWorkflow
+		for _, rel := range rdcRunInterpWorkflows {
+			if _, ok := texts[rel]; !ok {
+				texts[rel] = rpcReadRepoFile(t, rel)
+			}
+			wfs = append(wfs, rpcParseWorkflow(t, rel, texts[rel]))
+		}
+		return wfs
+	}
+	base := load()
+	swept := 0
+	for _, wf := range base {
+		for _, j := range wf.Jobs {
+			for _, s := range j.Steps {
+				if s.Run != "" {
+					swept++
+				}
+			}
+		}
+	}
+	if swept == 0 {
+		t.Fatalf("%s: the sweep selected no run steps, so a green would assert nothing", rdcRunInterpSentinel)
+	}
+	t.Logf("swept %d run steps across %d workflows", swept, len(base))
+	for _, msg := range rdcCheckRunInterpolation(base) {
+		t.Error(msg)
+	}
+	baselineClean := len(rdcCheckRunInterpolation(base)) == 0
+
+	// step names the run step to mutate; empty selects the first run step.
+	controls := []struct{ name, wf, step, expr string }{
+		{"drafts stale_tags step output (the audited sink)", ".github/workflows/release-drafter-cleanup.yml", "Show results", "steps.drafts.outputs.stale_tags"},
+		{"step output with a hyphenated id", ".github/workflows/release-drafter-cleanup.yml", "", "steps.set-env.outputs.dry_run"},
+		{"event payload field", ".github/workflows/ci.yml", "", "github.event.pull_request.title"},
+		{"pull request head ref", ".github/workflows/release-pr-multi-os.yml", "", "github.head_ref"},
+		{"needs output", ".github/workflows/release-pr-multi-os.yml", "Verify all OS legs passed", "needs.detect-release.outputs.go_code"},
+		{"dispatch input", ".github/workflows/release-drafter-cleanup.yml", "", "inputs.dry_run"},
+		{"expression inside a function call", ".github/workflows/ci.yml", "", "format('{0}', github.event.head_commit.message)"},
+	}
+	for _, c := range controls {
+		t.Run("control/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+			}
+			wfs := load()
+			injected := false
+			for _, wf := range wfs {
+				if wf.Path != c.wf {
+					continue
+				}
+				for _, id := range wf.jobIDs() {
+					j := wf.Jobs[id]
+					for i := range j.Steps {
+						if j.Steps[i].Run != "" && !injected && (c.step == "" || j.Steps[i].Name == c.step) {
+							j.Steps[i].Run += "\necho \"${{ " + c.expr + " }}\"\n"
+							injected = true
+						}
+					}
+				}
+			}
+			if !injected {
+				t.Fatalf("control did not apply: %s has no matching run step (step %q)", c.wf, c.step)
+			}
+			got := rdcCheckRunInterpolation(wfs)
+			if len(got) == 0 {
+				t.Fatalf("mutant interpolating ${{ %s }} passes the guard", c.expr)
+			}
+			t.Logf("control observed red: %s", got[0])
+		})
+	}
+	t.Run("control/status enum and matrix constants stay allowed", func(t *testing.T) {
+		if !baselineClean {
+			t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+		}
+		wfs := load()
+		injected := false
+		for _, id := range wfs[0].jobIDs() {
+			j := wfs[0].Jobs[id]
+			if len(j.Steps) > 0 && j.Steps[0].Run != "" {
+				j.Steps[0].Run += "\necho \"${{ needs.detect.result }} ${{ matrix.goos }} ${{ github.event_name }}\"\n"
+				injected = true
+				break
+			}
+		}
+		if !injected {
+			t.Fatalf("control did not apply: no run step to extend")
+		}
+		if got := rdcCheckRunInterpolation(wfs); len(got) != 0 {
+			t.Fatalf("a runner status enum / workflow constant was refused: %s", got[0])
+		}
+	})
+}

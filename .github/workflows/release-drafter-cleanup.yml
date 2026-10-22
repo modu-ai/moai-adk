@@ -176,10 +176,15 @@ jobs:
           done < "$RUNNER_TEMP/stale_tags.txt"
 
       - name: Update cleanup log
+        env:
+          # Step outputs reach the script through env, never through `${{ }}`
+          # substitution into the script text (a draft tag name is attacker-shaped).
+          STALE_COUNT: ${{ steps.drafts.outputs.stale_count }}
+          DRY_RUN: ${{ steps.env.outputs.dry_run }}
         run: |
           timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          stale_count="${{ steps.drafts.outputs.stale_count }}"
-          dry_run="${{ steps.env.outputs.dry_run }}"
+          stale_count="${STALE_COUNT}"
+          dry_run="${DRY_RUN}"
 
           mode="normal"
           [ "$dry_run" = "1" ] && mode="dry-run"
@@ -193,10 +198,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Show results
+        env:
+          # stale_tags carries draft tag names: it must never be substituted into
+          # the script text, only read from the environment and printed as data.
+          STALE_COUNT: ${{ steps.drafts.outputs.stale_count }}
+          DRY_RUN: ${{ steps.env.outputs.dry_run }}
+          STALE_TAGS: ${{ steps.drafts.outputs.stale_tags }}
         run: |
           echo "=== Release Drafter Cleanup Results ==="
-          echo "Stale drafts found: ${{ steps.drafts.outputs.stale_count }}"
-          echo "Dry run mode: ${{ steps.env.outputs.dry_run }}"
-          if [ -n "${{ steps.drafts.outputs.stale_tags }}" ]; then
-            echo "Tags processed: ${{ steps.drafts.outputs.stale_tags }}"
+          printf '%s\n' "Stale drafts found: ${STALE_COUNT}"
+          printf '%s\n' "Dry run mode: ${DRY_RUN}"
+          if [ -n "${STALE_TAGS}" ]; then
+            printf '%s\n' "Tags processed: ${STALE_TAGS}"
           fi
