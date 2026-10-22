@@ -330,6 +330,73 @@ commit carries (byte-identical to this commit's tree).
 | AC-PRI-008 | PASS | Source-level predicates met: stale token 0 (was 1); fd-verify / kauth_filesec / delete-denied / route (ii) / victim-overwrite (LIVE) all ≥1 in source (verbatim re-measurement); §E.2 pinned note stands |
 | AC-PRI-009 | NOT-EVIDENCE (dispositioned) | Q2 record |
 
+### AC-CI-007 landing-flow CI evidence follow-up (2026-10-21; manager-develop, t1598)
+
+This is an appended observation for the existing M4 recording rule. The earlier PENDING cells and
+audit/receipt citations above remain historical records. No audit verdict or receipt is authored here.
+
+- Actual CI subject: `release/cloud-ci-repair-20261022`, head `2c6e2a446af349aafe0bc2d4316f39b0ace84e0d`,
+  [Release PR Multi-OS Verification run 39688724176](https://github.com/modu-ai/moai-adk/actions/runs/39688724176), release PR #1871.
+- Source identity: this evidence-recording branch starts at `501007d808176ad1464cafbd8b1dc0394d213a1a` (normal merge of main `bf0a35f10` and common repair `670b1e9ed`).
+  `git rev-parse <CI-head>:internal/runtime` and `<recording-base>:internal/runtime` both return `ec3bb9ca800abaeb4cc422628f77c311058d0efc`.
+  The entire runtime tree, including family definitions and GOOS tags, is byte-identical; the counts below
+  apply to that measured tree. This is not a new execution on the later documentation commit.
+- Linter identity: `internal/spec` tree `c62b7cad664dc2cd72442e80dc01e4b84261ad7e` and CLI `spec*.go` sources match the
+  prebuilt main `bf0a35f10` binary used for scoped lint. No Go build/run was invoked for this follow-up.
+
+| Platform / remainder job | Explicit parent PASS | Explicit nested PASS | Family SKIP / FAIL / missing |
+|---|---:|---:|---|
+| [Linux job 119529412225](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412225) | 25/25 | 5/5 | 0 / 0 / 0 |
+| [Darwin job 119529412181](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412181) | 27/27 | 5/5 | 0 / 0 / 0 |
+| [Windows job 119529412230](https://github.com/modu-ai/moai-adk/actions/runs/39688724176/job/119529412230) | 8/8 | 3/3 | 0 / 0 / 0 |
+
+Expected sets were enumerated from test definitions/build tags at the CI head, not inferred from
+whatever happened to run. The eight Windows parents are:
+
+- `TestAppendProgressRecordClosesOrderedListFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordConcurrentSurvival` — explicit `Action: pass`.
+- `TestAppendProgressRecordGateInputsSingleSectionG` — explicit `Action: pass`.
+- `TestAppendProgressRecordInsertsAtSectionEnd` — explicit `Action: pass`.
+- `TestAppendProgressRecordSkipsHeadingInsideFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsFence` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsIndentedCodeBlock` — explicit `Action: pass`.
+- `TestAppendProgressRecordStartHeadingSkipsListFence` — explicit `Action: pass`.
+
+The Windows `GateInputsSingleSectionG` nested cases are `backtick_info_string_with_backtick_is_inline_code`,
+`inline_triple_backtick_code_is_not_a_fence_open`, and `closed_list_item_fence`; all three have explicit pass Actions.
+F9 and 6d have explicit Linux PASS; 6b has explicit Linux/Darwin PASS; F10 has explicit PASS on all three OSes.
+Windows-only 6c `TestResolveProgressPathWindowsVolumeRoot` has explicit PASS, with no subcases. Its runner
+uses a temp volume path: no UNC runtime exercise is claimed. POSIX/Darwin-only members absent on Windows
+are compilation exclusions, not skipped test results.
+
+| Artifact | ZIP SHA256 | JSONL SHA256 |
+|---|---|---|
+| ubuntu `12388466541` | `dbe90c065e008cdb2915ee32ca7204f234faf821b47c87c84330289916dfeac4` | `49351eb6e86b61525b854a3ff260127cb554d765a7191278db17b67185c79e02` |
+| macos `12388747730` | `0c2a2ce2e5725cd44c282d0032bfb00884644495ab9b474c92e1ae5d3d6a8151` | `a24e3b8314d451cf2f5f1278affddaa0ce5d4da02f64af742cbfb6008b596edc` |
+| windows `12388794672` | `4df5387704cf4a5f05db62ff19ae49e78139bc75bd72c029a8deb546ddd10ea7` | `5e41e6151aa8b24d07713399d573dd5f18b925f962414b37f641f28959bf8689` |
+
+Verbatim runtime package terminal JSON lines from those raw streams (each package exit is 0):
+
+```json
+{"Time":"2026-10-21T22:51:08.808925014Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":2.356}
+{"Time":"2026-10-21T22:59:29.696422Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":5.409}
+{"Time":"2026-10-21T23:05:20.4735224Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Elapsed":7.49}
+```
+
+Verbatim Windows 6c terminal Action:
+
+```json
+{"Time":"2026-10-21T23:05:18.2394579Z","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/runtime","Test":"TestResolveProgressPathWindowsVolumeRoot","Elapsed":0}
+```
+
+Execution-evidence verdict for AC-CI-007: the applicable three-OS families are decisive-PASS under
+acceptance.md lines 112-115 (every expected test has an explicit pass; no family skip/fail/missing).
+The Windows runtime package has one unrelated skip, `TestCountAuditRoundsDoesNotBlockOnFifoEvidence`;
+it was not counted as family PASS. The Windows remainder stream contains failures outside runtime,
+and the release workflow is not green. No PR-ready/merge or current-head independent audit claim follows
+from this family evidence. SPEC close eligibility is separately evaluated in §E.4; the retained
+route-(ii) residual risks and historical independent-audit/receipt claims are not replaced by this record.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: complete (route (ii) adopted; substance commits 3f1f942b4 + e6eb6da2f —
@@ -342,9 +409,9 @@ operator_override: §G row-level ceiling override recorded at a2fcca6c3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_status: sync-ready-pending-CI (implemented held until AC-CI-007's landing-flow run URL +
-per-family counts are recorded; the completed transition re-lands via the follow-up
-manager-docs commit citing that evidence — sync-audit r1 F1 arm A, card t1598)
+sync_status: sync-blocked-pending-bound-review (AC-CI-007's actual three-OS family evidence is
+recorded in §E.2; implemented is retained while the cited historical audit export/hash binding
+and AC-PRI-008 close-phase reviewer condition cannot be established in this Cloud checkout)
 sync_complete_at: 2026-10-08T12:44:19Z (first close attempt, reverted 2026-10-09 per r1 F1)
 sync_commit_sha: 8d10007ca9804eeb58bcb0a34aca922989603198
 governing_audit: plan-audit-4 PASS-WITH-DEBT 0.94 (audited_sha 6abc63d30e4bb133fead8fc24b5b1013c00581a9, must_pass_failed=0, blocking_count=0) — re-affirmed unchanged by plan-audit-5 (receipt rcpt-5bbbb0b8650328de4d6b115f; the seven hash-subject paths carry a zero diff 6abc63d30..a2fcca6c3)
@@ -413,6 +480,49 @@ Open-items ledger (honest carry-forward at close):
 §G ceiling-release record: intact and untouched by this close — the 4 ceiling-refusal holds, the
 LEADER-RULING release (receipts rcpt-ce322e7663362a796bf14bde + rcpt-f8998a6b0b8f1acd2b23d016),
 and the OPERATOR row-level override row stand as recorded.
+
+### CI evidence follow-up close eligibility (2026-10-21; manager-docs, t1598)
+
+- Evidence-recording commit: `34ea177b0aa5cdf7aa3587186e0cbb1d7ec509d6` (`Authored-By-Agent: manager-develop`),
+  limited to §E.2. The explicit Linux 25+5 / Darwin 27+5 / Windows 8+3 pass Actions,
+  Windows 6c/F10 passes, run URL, CI head, package terminal output, and artifact digests are
+  now recorded. This resolves the missing CI execution-evidence input; it is not an independent audit.
+- The earlier `sync-ready-pending-CI` state, first close attempt, status-revert note, historical
+  receipts and audit verdict claims above are preserved as history. The follow-up closure arm is
+  still the recorded manager-docs path; no new SPEC-body/AC/plan wording is introduced here.
+- **Binding verification gap:** the cited audited SHA `6abc63d30e4bb133fead8fc24b5b1013c00581a9`
+  and re-affirmed `a2fcca6c3` have the same byte-exact plan-artifact hash
+  `5bf1a0e0d9f2cd35856f2b4a31f636c923c91da717f0fd43647c87f3ff0b550e`;
+  this checkout's corresponding hash is
+  `773c4ed79814c2fd3444401c115cc047a8b1bd448531026b31dc3aebcd5215e0`.
+  These were mechanically reproduced from `internal/runtime/audit_cache.go`'s ordered
+  `ComputeHash` algorithm, without running Go. Four of its seven optional subject names are
+  present. Compared with the cited audit, the existing acceptance.md and plan.md bodies differ
+  (4 and 2 replaced lines respectively, introduced before this follow-up); spec.md also has the
+  historical status/date change. Those user changes are preserved. This follow-up changes no
+  hash subject. The old zero-diff claim through `a2fcca6c3` is not relabeled as a current binding.
+- **Review evidence gap:** the referenced t1598 plan-audit-4/5 and sync-audit-1/2 exported report
+  files are unavailable in both this isolated checkout and the primary checkout. Their actual F1
+  arm-A verdict/metadata cannot be re-read here. The carried `ac-content-enforcement` item above
+  assigns AC-PRI-008's pinned-content review to the close-phase reviewer; this follow-up has no
+  new bound reviewer evidence for that condition. It does not revoke or rewrite the historical
+  verdict/receipt claims, and it does not manufacture replacement receipts.
+- The report-persistence doctrine (`spec-workflow-detail.md`, Report Persistence) requires the
+  final review stream plus matching plan-artifact hash metadata for reuse; it says a review file
+  without hash/score/version metadata is a cache miss. This probe establishes a verification gap,
+  not a new plan/run implementation or a claim that a fresh audit was performed. No
+  `codex_role_audit` launcher is exposed in this session's tool inventory; a generic agent was
+  not substituted for an independent reviewer.
+- **Close disposition: blocked, status remains implemented.** No `completed` transition,
+  `sync_complete_at` replacement, or new sync-commit placeholder/backfill is authored. The
+  existing sync SHA remains historical. Completing this follow-up requires the appropriate
+  owner/reviewer to establish the actual close review/binding and remaining standing-set
+  conditions; a parser warning is not a reason to invent completion.
+- Separately, the Windows workflow still has failures outside this runtime family, and no
+  latest-head independent audit or current-head required-CI success for this documentation
+  branch is claimed. PR-ready/draft promotion/merge remains prohibited. The per-family rule is
+  retained as written; whole-workflow success is not invented as an additional AC-CI-007 clause.
+  Darwin's retained exec-seeder residual and the unobserved UNC runtime case remain as recorded.
 
 ## §G Override and Refusal Record
 
