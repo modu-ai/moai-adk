@@ -188,6 +188,9 @@ var trailingBinaryVersionRe = regexp.MustCompile(`/([0-9]+(?:\.[0-9]+)*)/` + reg
 // (card-review r1, P2②): /opt/claude-code/9/tools/claude/versions/2.1.281
 // reads 2.1.281.
 func versionSegmentFromPath(path string) string {
+	// Resolved Windows install paths carry backslashes; the version layout
+	// grammar below is separator-independent and never opens the parsed path.
+	path = strings.ReplaceAll(path, `\`, "/")
 	// The binary-name shape: the path ENDS in the claude binary inside a
 	// version-named directory — the anchor is the product binary itself.
 	if m := trailingBinaryVersionRe.FindStringSubmatch(path); m != nil {

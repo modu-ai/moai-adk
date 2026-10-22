@@ -717,7 +717,14 @@ func TestACBaselineEmitterRoundTrip(t *testing.T) {
 	if haltMutant == string(raw) {
 		t.Fatalf("halt fixture mutation was a no-op")
 	}
-	haltPath := filepath.Join(t.TempDir(), "halting-acceptance.md")
+	// The emitter's contract is repository-relative paths. The OS temp root
+	// can be on a different Windows volume, where filepath.Rel cannot exist.
+	haltDir, err := os.MkdirTemp(root, ".ac-baseline-roundtrip-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(haltDir) })
+	haltPath := filepath.Join(haltDir, "halting-acceptance.md")
 	if err := os.WriteFile(haltPath, []byte(haltMutant), 0o600); err != nil {
 		t.Fatalf("write halt fixture: %v", err)
 	}

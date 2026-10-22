@@ -53,6 +53,8 @@ func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
 	switch runtime.GOOS {
+	case "windows":
+		assertCanonicalWindowsCWD(t, entries[0].CWD, enter)
 	case "darwin":
 		if entries[0].CWD == variant {
 			t.Errorf("stored CWD %q keeps the logical-PWD spelling; want the on-disk spelling %q (t1290 F1)", entries[0].CWD, dir)
@@ -97,6 +99,8 @@ func TestRelocateSessionCanonicalizesCWD(t *testing.T) {
 		t.Fatalf("query: %v", err)
 	}
 	switch runtime.GOOS {
+	case "windows":
+		assertCanonicalWindowsCWD(t, entries[0].CWD, variant)
 	case "darwin":
 		if entries[0].CWD != dir {
 			t.Errorf("relocated CWD %q, want the on-disk spelling %q", entries[0].CWD, dir)
@@ -105,6 +109,31 @@ func TestRelocateSessionCanonicalizesCWD(t *testing.T) {
 		if entries[0].CWD != variant {
 			t.Errorf("relocated CWD %q differs from the caller spelling %q on %s", entries[0].CWD, variant, runtime.GOOS)
 		}
+	}
+}
+
+// Windows EvalSymlinks expands both the 8.3 alias and the caller's case.
+// Pin the canonical spelling AND real directory identity, rather than treating
+// a case-insensitive Windows filesystem as the Unix case-sensitive branch.
+func assertCanonicalWindowsCWD(t *testing.T, got, entered string) {
+	t.Helper()
+	want, err := filepath.EvalSymlinks(entered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Errorf("stored CWD = %q, want canonical %q", got, want)
+	}
+	a, err := os.Stat(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.Stat(entered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(a, b) {
+		t.Errorf("stored CWD %q does not name entered directory %q", got, entered)
 	}
 }
 

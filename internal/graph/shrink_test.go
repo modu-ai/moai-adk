@@ -120,16 +120,18 @@ func TestDetectUnexplainedShrink_KindScopeSkipsNonFileKinds(t *testing.T) {
 
 // D23 decode step: the existence test runs on the FILE part of the compound
 // code-call Source (splitCodeNode), never the undecoded `file:function`
-// string — proven by refusal when the FILE exists, and by no report when a
-// file named like the undecoded string exists but the decoded one does not.
+// string — pinned at the decode boundary and by opposite verdicts when the
+// decoded file is absent/present.
 // The bare-path code-import Source is the real shape for its kind and is in
 // scope directly.
 func TestDetectUnexplainedShrink_DecodeStep(t *testing.T) {
 	root := t.TempDir()
-	// A file literally named "calls.go:Calls" (colon in the filename) — a
-	// guard stat'ing the UNDECODED string would find it; the decoded file
-	// internal/demo/calls.go does not exist, so the correct verdict is empty.
-	shrinkFixtureFile(t, root, "internal/demo/calls.go:Calls", "package demo\n")
+	// On NTFS "calls.go:Calls" creates an alternate data stream AND its base
+	// file, so it cannot represent an absent decoded file. Assert the exact
+	// boundary without creating that host-dependent filesystem shape.
+	if got := decodeSourceFile(KindCodeCall, "internal/demo/calls.go:Calls"); got != "internal/demo/calls.go" {
+		t.Fatalf("decoded source = %q, want file part only", got)
+	}
 
 	report := DetectUnexplainedShrink(
 		[]Edge{{Kind: KindCodeCall, Source: "internal/demo/calls.go:Calls", Target: "Helper"}},

@@ -748,7 +748,8 @@ func (env *ledgerCheckEnv) checkEntryPoints() {
 				unresolved++
 				continue
 			}
-			data, rerr := fs.ReadFile(efs, filepath.FromSlash(ident))
+			// fs.FS names are slash-separated on every host, including Windows.
+			data, rerr := fs.ReadFile(efs, ident)
 			if rerr != nil {
 				env.errf("entry_point %q (REQ-ALB-024) is not a shipped template file: %v", ident, rerr)
 				unresolved++

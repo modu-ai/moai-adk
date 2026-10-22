@@ -142,6 +142,24 @@ func (s *Store) writeObs(obs Observation) error {
 // directory is an empty set.
 func (s *Store) readObs(lane string) ([]Observation, error) {
 	dir := s.obsDir(lane)
+	// Windows can report ERROR_PATH_NOT_FOUND (os.IsNotExist) for a regular
+	// file in a directory ancestor. That is corruption, not an empty lane.
+	// Walk the few store parents so a genuine absent subtree still stays empty.
+	for parent := dir; ; parent = filepath.Dir(parent) {
+		info, statErr := os.Stat(parent)
+		if statErr == nil {
+			if !info.IsDir() {
+				return nil, fmt.Errorf("factorylane: observations ancestor is not a directory: %s", parent)
+			}
+			break
+		}
+		if !os.IsNotExist(statErr) {
+			return nil, fmt.Errorf("factorylane: stat observations dir %s: %w", parent, statErr)
+		}
+		if next := filepath.Dir(parent); next == parent {
+			return nil, fmt.Errorf("factorylane: observations root is unavailable: %s", parent)
+		}
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
