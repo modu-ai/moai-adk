@@ -7,9 +7,9 @@
     role_composite_e2e_test.go:90: RESULT leader_ko: composite utf16=7882 (cap 10000, margin=2118)
 === RUN   TestCompositeBudgetRealAssembly/leader_en
     role_composite_e2e_test.go:90: RESULT leader_en: composite utf16=8806 (cap 10000, margin=1194)
---- PASS: TestCompositeBudgetRealAssembly (0.57s)
-    --- PASS: TestCompositeBudgetRealAssembly/lane_ko_glm (0.43s)
-    --- PASS: TestCompositeBudgetRealAssembly/lane_en_glm (0.13s)
+--- PASS: TestCompositeBudgetRealAssembly (0.33s)
+    --- PASS: TestCompositeBudgetRealAssembly/lane_ko_glm (0.25s)
+    --- PASS: TestCompositeBudgetRealAssembly/lane_en_glm (0.06s)
     --- PASS: TestCompositeBudgetRealAssembly/leader_ko (0.00s)
     --- PASS: TestCompositeBudgetRealAssembly/leader_en (0.00s)
 === RUN   TestRoleInjectionAssemblyBudget
@@ -27,4 +27,4 @@
     --- PASS: TestRoleInjectionAssemblyBudget/deployed/factory-lane (0.00s)
     --- PASS: TestRoleInjectionAssemblyBudget/deployed/factory-leader (0.00s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/hook	1.508s
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.305s

@@ -1,23 +1,35 @@
-// SPEC-FACTORY-BOOT-MINIMAL-001 plan-phase probe (card t1923).
+// SPEC-FACTORY-BOOT-MINIMAL-001 plan-phase probe (card t1923), revision 0.2.0.
 //
 // This file is NOT part of the package source. It is compiled into package
 // hook only through `go test -overlay` (see overlay.json beside it), so the
 // probe measures the PRODUCTION renderers on the tree under test without
-// writing a file into internal/hook. It is the RED-now / green instrument for
-// AC-FBM-001..003 (acceptance.md).
+// writing a file into internal/hook. It carries two tests:
 //
-// Envelope (spec.md REQ-FBM-004/005): composite = non-factory allowance (1,950
-// UTF-16, measured live: attribution 509 + peer-bound 111 + GLM 359 +
-// binary-lag 421 + guard-liveness 118 + skew-kept 411 + 6 joiners 12 = 1,941)
-// + joiner + factory fixed part (bootstrap notice + lane rule) + role block.
-// The 0.6.0 chain of SPEC-ROLE-INJECTION-BUDGET-001 is kept: producer ceiling
-// 4,797 = allowance 1,950 + factory fixed ceiling 2,847; composite 9,146 =
-// 4,797 + overhead 257 + core 4,092.
+//   - TestT1923BootBudgetProbe — AC-FBM-001 (REQ-FBM-001/002/004/005): 72
+//     cells; per cell the factory fixed part and the composite are measured
+//     and bounded; on startup cells both delivery channels are checked against
+//     the notice contract (retained elements present and verbatim, removed
+//     auto-mode text absent, exactly one pointer line naming the relocation
+//     destination, nothing else).
+//   - TestT1923RelocationProbe — AC-FBM-003 (REQ-FBM-003): for every
+//     relocated element R1..R5 the destination document carries the element
+//     on both faces (deployed + template), the element is gone from the
+//     surface it was removed from, and that surface names the destination
+//     path.
+//
+// Budget chain (spec.md §B.1): composite = allowance 1,950 + joiner 2 +
+// factory fixed part + joiner 2 + role block (core + 255). The 0.6.0 chain of
+// SPEC-ROLE-INJECTION-BUDGET-001 is kept: producer 4,797 = allowance 1,950 +
+// joiner 2 + factory fixed ceiling 2,845; composite 9,146 = 4,797 + overhead
+// 257 (joiner 2 + role wrapper 255) + core 4,092.
 package hook
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -27,12 +39,117 @@ import (
 
 const (
 	t1923NonFactoryAllowance = 1950
-	t1923FactoryFixedCeiling = 2847
+	t1923FactoryFixedCeiling = 2845
 	t1923CompositeBudget     = 9146
 	t1923CoreCeiling         = 4092
-	t1923DocsURL             = "https://adk.mo.ai.kr"
-	t1923MatrixPath          = ".claude/rules/moai/development/spec-frontmatter-schema.md"
+	t1923PointerMax          = 200
+	t1923RunID               = "f-probe1"
+	t1923LeadAddr            = "/tmp/moai-factory/f-probe1/lead.sock"
+	t1923LaneLabel           = "lane-3"
+	t1923GtdPath             = ".claude/skills/moai/workflows/gtd.md"
+	t1923MechanicsPath       = ".claude/rules/moai/workflow/factory-dispatch-mechanics.md"
+	t1923AutoSemPath         = ".claude/rules/moai/workflow/auto-semantics.md"
 )
+
+// t1923NoticeGone are the auto-mode explanation markers (relocation R1).
+var t1923NoticeGone = []string{"--auto-leader", "--auto-lane", "shipped — t1814"}
+
+// t1923Retained returns the retained notice elements of a role, rendered the
+// way the probe cells render them (REQ-FBM-001 / REQ-FBM-002).
+func t1923Retained(role, lang string) []string {
+	m := factoryMessagesFor(lang)
+	if role == "leader" {
+		return []string{
+			fmt.Sprintf(m.leaderHeader, t1923RunID),
+			fmt.Sprintf(m.leaderIdentity, factory.LeaderLabel()),
+			m.leaderManual,
+			m.entryGuide,
+			m.agentFanout,
+			fmt.Sprintf(m.leaderSocket, t1923LeadAddr),
+			m.leaderClasses,
+			m.leaderStagger,
+			m.gateSummary,
+			fmt.Sprintf(m.operationalStatus, t1923RunID),
+			m.settingsAuto,
+			m.docsPointer,
+		}
+	}
+	return []string{fmt.Sprintf(m.laneJoinNoCount, t1923LaneLabel), m.laneSpawnAuthority, m.docsPointer}
+}
+
+// t1923RetainedDigest fingerprints the retained elements so a retained
+// element cannot be reworded or padded with unlisted prose unnoticed.
+func t1923RetainedDigest(parts []string) string {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return fmt.Sprintf("%x", sum[:8])
+}
+
+// t1923RetainedPinned are the digests measured on the base tree
+// 59959629908cda723c37e26c7c15718194d6b38a (REQ-FBM-001/002: the retained
+// elements stay verbatim).
+var t1923RetainedPinned = map[string]string{
+	"leader/en": "405798363039d4f6",
+	"leader/ko": "1ce5f0cd243091b4",
+	"leader/ja": "906811826e1813cb",
+	"leader/zh": "f5ccba9e47f3d8d6",
+	"lane/en":   "6c2766459d6faafb",
+	"lane/ko":   "75b422b429c2b48f",
+	"lane/ja":   "aa21c37c6591be60",
+	"lane/zh":   "46d70f3e008f614a",
+}
+
+// t1923NoticeViolations is the notice contract of REQ-FBM-001/002. It returns
+// one code per breach; an empty slice is a compliant notice.
+func t1923NoticeViolations(role, lang, notice string) []string {
+	var v []string
+	retained := t1923Retained(role, lang)
+	for i, f := range retained {
+		if !strings.Contains(notice, f) {
+			v = append(v, fmt.Sprintf("missing-retained[%d]", i))
+		}
+	}
+	for _, g := range t1923NoticeGone {
+		if strings.Contains(notice, g) {
+			v = append(v, "carries-removed:"+g)
+		}
+	}
+	byLen := append([]string(nil), retained...)
+	sort.Slice(byLen, func(i, j int) bool { return len(byLen[i]) > len(byLen[j]) })
+	residue := notice
+	for _, f := range byLen {
+		residue = strings.Replace(residue, f, "", 1)
+	}
+	var lines []string
+	for _, l := range strings.Split(residue, "\n") {
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, l)
+		}
+	}
+	switch {
+	case len(lines) != 1:
+		v = append(v, fmt.Sprintf("residue-lines=%d", len(lines)))
+	case !strings.Contains(lines[0], t1923GtdPath):
+		v = append(v, "pointer-lacks-path")
+	case utf16Len(lines[0]) > t1923PointerMax:
+		v = append(v, "pointer-too-long")
+	}
+	return v
+}
+
+func t1923SetCellEnv(t *testing.T, role, dispatch string) {
+	t.Helper()
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvFactoryRunID, t1923RunID)
+	t.Setenv(config.EnvFactoryLeadAddr, t1923LeadAddr)
+	t.Setenv(config.EnvFactorySettingsInjected, "1")
+	if role == "leader" {
+		t.Setenv(config.EnvMoaiFactoryWorkers, "6")
+		return
+	}
+	t.Setenv(config.EnvMoaiFactoryWorker, t1923LaneLabel)
+	t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+	t.Setenv(config.EnvFactoryAutoDispatch, dispatch)
+}
 
 func TestT1923BootBudgetProbe(t *testing.T) {
 	root := budgetModuleRoot(t)
@@ -42,24 +159,14 @@ func TestT1923BootBudgetProbe(t *testing.T) {
 	}
 	type variant struct{ role, dispatch string }
 	variants := []variant{{"leader", ""}, {"lane", ""}, {"lane", config.FactoryDispatchManual}}
-	swept := 0
+	swept, channelChecks := 0, 0
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		for _, v := range variants {
 			for _, src := range []string{"startup", "clear", "compact"} {
 				for _, fc := range faces {
 					name := fmt.Sprintf("%s/%s/%s/%s/%s", v.role, v.dispatch, lang, src, fc.name)
 					t.Run(name, func(t *testing.T) {
-						clearFactoryEnv(t)
-						t.Setenv(config.EnvFactoryRunID, "f-probe1")
-						t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-factory/f-probe1/lead.sock")
-						t.Setenv(config.EnvFactorySettingsInjected, "1")
-						if v.role == "leader" {
-							t.Setenv(config.EnvMoaiFactoryWorkers, "6")
-						} else {
-							t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
-							t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
-							t.Setenv(config.EnvFactoryAutoDispatch, v.dispatch)
-						}
+						t1923SetCellEnv(t, v.role, v.dispatch)
 						notice := factoryBootstrapNoticeForSource(src, t.TempDir(), "probe-session", lang)
 						rule := factoryLaneRuleForSource(src, lang)
 						fixed := notice
@@ -89,26 +196,23 @@ func TestT1923BootBudgetProbe(t *testing.T) {
 						if coreLen > t1923CoreCeiling {
 							t.Errorf("role core %d > ceiling %d", coreLen, t1923CoreCeiling)
 						}
-						if src == "startup" {
-							// Minimal-set presence (mutant guard: a notice emptied to pass
-							// the size checks fails here).
-							want := []string{t1923DocsURL}
-							if v.role == "leader" {
-								want = append(want, "f-probe1", factory.LeaderLabel())
-							} else {
-								want = append(want, "lane-3", t1923MatrixPath)
+						if src != "startup" {
+							return
+						}
+						// Both delivery channels: additionalContext (agent) and
+						// systemMessage (operator copy).
+						for ch, n := range map[string]string{
+							"agent":    notice,
+							"operator": factoryBootstrapNotice(t.TempDir(), "probe-session", lang),
+						} {
+							channelChecks++
+							if got := t1923NoticeViolations(v.role, lang, n); len(got) != 0 {
+								t.Errorf("%s channel notice violates the contract: %v\n%s", ch, got, n)
 							}
-							for _, w := range want {
-								if !strings.Contains(notice, w) {
-									t.Errorf("startup notice lost required element %q", w)
-								}
-							}
-							// Relocated element: the two-flag auto-mode explanation.
-							for _, gone := range []string{"--auto-leader", "--auto-lane"} {
-								if strings.Contains(notice, gone) {
-									t.Errorf("startup notice still carries the auto-mode explanation (%q)", gone)
-								}
-							}
+						}
+						key := v.role + "/" + lang
+						if d := t1923RetainedDigest(t1923Retained(v.role, lang)); d != t1923RetainedPinned[key] {
+							t.Errorf("retained elements of %s changed: digest %s, pinned %q", key, d, t1923RetainedPinned[key])
 						}
 					})
 					swept++
@@ -116,9 +220,130 @@ func TestT1923BootBudgetProbe(t *testing.T) {
 			}
 		}
 	}
+	// Mutant self-test: the contract must reject each mutant under its own code.
+	t.Run("notice_mutants", func(t *testing.T) {
+		pointer := "Relocated guidance: " + t1923GtdPath
+		for _, role := range []string{"leader", "lane"} {
+			for _, lang := range []string{"en", "ko", "ja", "zh"} {
+				r := t1923Retained(role, lang)
+				good := strings.Join(r, "\n\n") + "\n" + pointer
+				if got := t1923NoticeViolations(role, lang, good); len(got) != 0 {
+					t.Errorf("%s/%s compliant synthetic notice rejected: %v", role, lang, got)
+				}
+				mutants := map[string]struct{ notice, want string }{
+					"auto-text-left":   {good + "\nAuto mode: `/moai todo --auto-leader` / `--auto-lane`", "carries-removed:--auto-leader"},
+					"no-pointer":       {strings.Join(r, "\n\n"), "residue-lines=0"},
+					"unlisted-prose":   {good + "\nUNLISTED-PROSE", "residue-lines=2"},
+					"pointer-no-path":  {strings.Join(r, "\n\n") + "\nRelocated guidance: see the docs", "pointer-lacks-path"},
+					"drop-retained":    {strings.Join(r[1:], "\n\n") + "\n" + pointer, "missing-retained[0]"},
+					"pointer-too-long": {strings.Join(r, "\n\n") + "\n" + pointer + " " + strings.Repeat("x", t1923PointerMax), "pointer-too-long"},
+				}
+				for name, mu := range mutants {
+					got := t1923NoticeViolations(role, lang, mu.notice)
+					found := false
+					for _, g := range got {
+						if g == mu.want {
+							found = true
+						}
+					}
+					if !found {
+						t.Errorf("mutant %s (%s/%s) reported %v, want %s", name, role, lang, got, mu.want)
+					} else if lang == "en" {
+						t.Logf("MUTANT %s role=%s rejected=%s", name, role, mu.want)
+					}
+				}
+			}
+		}
+		padded := t1923Retained("lane", "en")
+		padded[1] += " UNLISTED"
+		if t1923RetainedDigest(padded) == t1923RetainedDigest(t1923Retained("lane", "en")) {
+			t.Errorf("digest does not move when a retained element is padded")
+		} else {
+			t.Logf("MUTANT retained-padded rejected=digest-moved")
+		}
+	})
 	// Empty-sweep guard (verification-completeness.md §1.1).
-	if swept != 4*3*3*2 {
-		t.Fatalf("probe swept %d cells, want %d", swept, 4*3*3*2)
+	if swept != 4*3*3*2 || channelChecks != 4*3*2*2 {
+		t.Fatalf("probe swept %d cells / %d channel checks, want %d / %d", swept, channelChecks, 4*3*3*2, 4*3*2*2)
 	}
-	t.Logf("PROBE swept=%d", swept)
+	t.Logf("PROBE swept=%d channel_checks=%d", swept, channelChecks)
+}
+
+// t1923Relocation is one relocated element: where it lands, what proves it
+// landed, what must be gone from the removed-from surface, and which surface
+// must name the destination path.
+type t1923Relocation struct {
+	id, dest  string
+	destMarks []string
+	surface   string // "notice" (both roles), "rule" (lane auto rule), "lane-startup" (lane notice+rule)
+	gone      []string
+	pathOnSrc string
+}
+
+var t1923Relocations = []t1923Relocation{
+	{"R1-auto-mode", t1923GtdPath, []string{"--auto-leader", "--auto-lane", "stays for compatibility"}, "notice", t1923NoticeGone, t1923GtdPath},
+	{"R2-landing", t1923MechanicsPath, []string{"## The lane's standard landing", "codex_review", "Merge Risk", "moai worktree sweep"}, "rule", []string{"codex_review", "Merge Risk", "moai worktree sweep"}, t1923MechanicsPath},
+	{"R3-leader-duties", t1923MechanicsPath, []string{"## The leader's remaining role", "Keep-set gate relay"}, "rule", []string{"keep-set"}, t1923MechanicsPath},
+	{"R4-judgment-ladder", t1923AutoSemPath, []string{"## 6. The decision ladder", "jev_ask"}, "rule", []string{"jev_ask"}, t1923AutoSemPath},
+	{"R5-assigned-card-lease", t1923GtdPath, []string{"moai factory next --card <id>"}, "lane-startup", []string{"--card"}, t1923GtdPath},
+}
+
+func TestT1923RelocationProbe(t *testing.T) {
+	root := budgetModuleRoot(t)
+	faces := map[string]string{"deployed": root, "template": filepath.Join(root, "internal", "template", "templates")}
+	checks := 0
+	for _, r := range t1923Relocations {
+		for face, fr := range faces {
+			body, err := os.ReadFile(filepath.Join(fr, r.dest))
+			if err != nil {
+				t.Errorf("%s: destination %s (%s) unreadable: %v", r.id, r.dest, face, err)
+				continue
+			}
+			for _, mk := range r.destMarks {
+				checks++
+				if !strings.Contains(string(body), mk) {
+					t.Errorf("%s: destination %s (%s) lacks %q", r.id, r.dest, face, mk)
+				}
+			}
+		}
+		for _, lang := range []string{"en", "ko", "ja", "zh"} {
+			var surfaces map[string]string
+			switch r.surface {
+			case "notice":
+				t1923SetCellEnv(t, "leader", "")
+				leader := factoryBootstrapNoticeForSource("startup", t.TempDir(), "probe-session", lang)
+				t1923SetCellEnv(t, "lane", "")
+				lane := factoryBootstrapNoticeForSource("startup", t.TempDir(), "probe-session", lang)
+				surfaces = map[string]string{"leader-notice": leader, "lane-notice": lane}
+			case "rule":
+				t1923SetCellEnv(t, "lane", "")
+				surfaces = map[string]string{"lane-rule": factoryLaneRuleForSource("startup", lang)}
+			case "lane-startup":
+				t1923SetCellEnv(t, "lane", "")
+				surfaces = map[string]string{"lane-startup": factoryBootstrapNoticeForSource("startup", t.TempDir(), "probe-session", lang) +
+					"\n\n" + factoryLaneRuleForSource("startup", lang)}
+			}
+			for sname, s := range surfaces {
+				checks++
+				if s == "" {
+					t.Errorf("%s %s/%s: surface empty", r.id, sname, lang)
+					continue
+				}
+				for _, g := range r.gone {
+					if strings.Contains(s, g) {
+						t.Errorf("%s %s/%s still carries removed element marker %q", r.id, sname, lang, g)
+					}
+				}
+				if !strings.Contains(s, r.pathOnSrc) {
+					t.Errorf("%s %s/%s does not name the destination path %s", r.id, sname, lang, r.pathOnSrc)
+				}
+			}
+		}
+		t.Logf("RELOC %s dest=%s", r.id, r.dest)
+	}
+	// 5 relocations: 12 destination markers x 2 faces = 24; surfaces: R1 2x4, R2-R5 1x4 each = 24.
+	if checks != 24+24 {
+		t.Fatalf("relocation probe made %d checks, want %d", checks, 24+24)
+	}
+	t.Logf("RELOC swept=%d", checks)
 }

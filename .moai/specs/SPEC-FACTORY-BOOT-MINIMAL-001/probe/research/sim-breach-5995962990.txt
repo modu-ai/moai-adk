@@ -1,0 +1,662 @@
+=== RUN   TestT1923BootBudgetProbe
+=== RUN   TestT1923BootBudgetProbe/leader//en/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/startup/deployed fixed=2162 composite=8419 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//en/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/startup/template fixed=2162 composite=8419 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//en/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/clear/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//en/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/clear/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//en/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/compact/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//en/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//en/compact/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//en/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/startup/deployed fixed=2846 composite=9101 core=4048
+    zz_t1923_boot_probe_test.go:191: factory fixed part 2846 > ceiling 2845
+=== RUN   TestT1923BootBudgetProbe/lane//en/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/startup/template fixed=2846 composite=9101 core=4048
+    zz_t1923_boot_probe_test.go:191: factory fixed part 2846 > ceiling 2845
+=== RUN   TestT1923BootBudgetProbe/lane//en/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/clear/deployed fixed=2212 composite=8467 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//en/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/clear/template fixed=2212 composite=8467 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//en/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//en/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//en/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/startup/deployed fixed=1738 composite=7993 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/startup/template fixed=1738 composite=7993 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/clear/deployed fixed=1104 composite=7359 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/clear/template fixed=1104 composite=7359 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/en/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/en/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ko/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/startup/deployed fixed=1650 composite=7907 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: run f-probe1, 리더 세션.
+        이 세션의 이름은 leader 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.
+        
+        이 세션이 세션 간 메시지로 카드를 레인에 배분합니다.
+        세션은 다른 세션을 띄울 수 없으므로 레인은 새 터미널에서 `moai cc -l`(또는 `moai glm -l`, `moai codex -l`)을 실행해 시작하세요.
+        
+        진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. 런처가 백엔드를, `-f` 가 팩토리를 정합니다.
+        각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.
+        리더 소켓: /tmp/moai-factory/f-probe1/lead.sock
+        
+        카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로(plan -> run -> sync, 한 단계가 끝나야 다음 단계)를 끝까지 수행합니다 — 카드를 여러 레인에 쪼개 배분하지 않습니다.
+        큐 폴링과 카드 선택은 운영자 또는 팩토리 포어맨 루프(단독 `/loop`)가 담당합니다. 이 팩토리는 선택된(picked) 카드를 빈 레인으로 라우팅합니다.
+        순차 기동 — 필수: 절대 모든 레인을 동시에 활성화하지 마세요. 첫 번째 레인을 먼저 활성화하고, 실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. 동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). 이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).
+        plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.
+        
+        런 "f-probe1": 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.
+        세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: run f-probe1, 리더 세션.
+        이 세션의 이름은 leader 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.
+        
+        이 세션이 세션 간 메시지로 카드를 레인에 배분합니다.
+        세션은 다른 세션을 띄울 수 없으므로 레인은 새 터미널에서 `moai cc -l`(또는 `moai glm -l`, `moai codex -l`)을 실행해 시작하세요.
+        
+        진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. 런처가 백엔드를, `-f` 가 팩토리를 정합니다.
+        각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.
+        리더 소켓: /tmp/moai-factory/f-probe1/lead.sock
+        
+        카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로(plan -> run -> sync, 한 단계가 끝나야 다음 단계)를 끝까지 수행합니다 — 카드를 여러 레인에 쪼개 배분하지 않습니다.
+        큐 폴링과 카드 선택은 운영자 또는 팩토리 포어맨 루프(단독 `/loop`)가 담당합니다. 이 팩토리는 선택된(picked) 카드를 빈 레인으로 라우팅합니다.
+        순차 기동 — 필수: 절대 모든 레인을 동시에 활성화하지 마세요. 첫 번째 레인을 먼저 활성화하고, 실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. 동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). 이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).
+        plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.
+        
+        런 "f-probe1": 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.
+        세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/leader//ko/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/startup/template fixed=1650 composite=7907 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: run f-probe1, 리더 세션.
+        이 세션의 이름은 leader 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.
+        
+        이 세션이 세션 간 메시지로 카드를 레인에 배분합니다.
+        세션은 다른 세션을 띄울 수 없으므로 레인은 새 터미널에서 `moai cc -l`(또는 `moai glm -l`, `moai codex -l`)을 실행해 시작하세요.
+        
+        진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. 런처가 백엔드를, `-f` 가 팩토리를 정합니다.
+        각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.
+        리더 소켓: /tmp/moai-factory/f-probe1/lead.sock
+        
+        카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로(plan -> run -> sync, 한 단계가 끝나야 다음 단계)를 끝까지 수행합니다 — 카드를 여러 레인에 쪼개 배분하지 않습니다.
+        큐 폴링과 카드 선택은 운영자 또는 팩토리 포어맨 루프(단독 `/loop`)가 담당합니다. 이 팩토리는 선택된(picked) 카드를 빈 레인으로 라우팅합니다.
+        순차 기동 — 필수: 절대 모든 레인을 동시에 활성화하지 마세요. 첫 번째 레인을 먼저 활성화하고, 실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. 동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). 이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).
+        plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.
+        
+        런 "f-probe1": 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.
+        세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: run f-probe1, 리더 세션.
+        이 세션의 이름은 leader 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.
+        
+        이 세션이 세션 간 메시지로 카드를 레인에 배분합니다.
+        세션은 다른 세션을 띄울 수 없으므로 레인은 새 터미널에서 `moai cc -l`(또는 `moai glm -l`, `moai codex -l`)을 실행해 시작하세요.
+        
+        진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. 런처가 백엔드를, `-f` 가 팩토리를 정합니다.
+        각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.
+        리더 소켓: /tmp/moai-factory/f-probe1/lead.sock
+        
+        카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로(plan -> run -> sync, 한 단계가 끝나야 다음 단계)를 끝까지 수행합니다 — 카드를 여러 레인에 쪼개 배분하지 않습니다.
+        큐 폴링과 카드 선택은 운영자 또는 팩토리 포어맨 루프(단독 `/loop`)가 담당합니다. 이 팩토리는 선택된(picked) 카드를 빈 레인으로 라우팅합니다.
+        순차 기동 — 필수: 절대 모든 레인을 동시에 활성화하지 마세요. 첫 번째 레인을 먼저 활성화하고, 실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. 동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). 이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).
+        plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.
+        
+        런 "f-probe1": 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.
+        세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/leader//ko/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/clear/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ko/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/clear/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ko/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/compact/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ko/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ko/compact/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ko/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/startup/deployed fixed=2835 composite=9090 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/lane//ko/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/startup/template fixed=2835 composite=9090 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/lane//ko/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/clear/deployed fixed=2074 composite=8329 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ko/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/clear/template fixed=2074 composite=8329 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ko/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ko/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ko/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/startup/deployed fixed=1466 composite=7721 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/startup/template fixed=1466 composite=7721 core=4048
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        팩토리 모드: 리더의 팩토리 run 에 lane-3 로 합류했습니다.
+        
+        상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.
+        
+        자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). 두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.
+        전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/clear/deployed fixed=705 composite=6960 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/clear/template fixed=705 composite=6960 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ko/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ko/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ja/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/startup/deployed fixed=1651 composite=7908 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: run f-probe1、リーダーセッション。
+        このセッションの名前は leader です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。
+        
+        このセッションが、セッション間メッセージでカードをレーンに割り振ります。
+        セッションから別のセッションは起動できないため、レーンは新しいターミナルで `moai cc -l`(または `moai glm -l`、`moai codex -l`)を実行して始めてください。
+        
+        起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。ランチャーがバックエンドを、`-f` がファクトリーを決めます。
+        各レーンは最大 10 個のエージェントを同時に並列実行できます。
+        リーダーソケット: /tmp/moai-factory/f-probe1/lead.sock
+        
+        カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス(plan -> run -> sync、各段階の完了後に次へ)を最後まで実行します — カードを複数レーンに分割することはありません。
+        キューのポーリングとカードの選択はオペレーターまたはファクトリーフォアマンループ(単独の `/loop`)が担います。このファクトリーは選択済み(picked)カードを空きレーンへ振り分けます。
+        段階的起動 — 必須: すべてのレーンを同時に起動してはいけません。最初のレーンを起動し、実際に出力を生成し始めた証拠 (最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。
+        
+        ラン "f-probe1": プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。
+        セッション間メッセージは、注入された --settings により自動的に受理されます。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: run f-probe1、リーダーセッション。
+        このセッションの名前は leader です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。
+        
+        このセッションが、セッション間メッセージでカードをレーンに割り振ります。
+        セッションから別のセッションは起動できないため、レーンは新しいターミナルで `moai cc -l`(または `moai glm -l`、`moai codex -l`)を実行して始めてください。
+        
+        起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。ランチャーがバックエンドを、`-f` がファクトリーを決めます。
+        各レーンは最大 10 個のエージェントを同時に並列実行できます。
+        リーダーソケット: /tmp/moai-factory/f-probe1/lead.sock
+        
+        カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス(plan -> run -> sync、各段階の完了後に次へ)を最後まで実行します — カードを複数レーンに分割することはありません。
+        キューのポーリングとカードの選択はオペレーターまたはファクトリーフォアマンループ(単独の `/loop`)が担います。このファクトリーは選択済み(picked)カードを空きレーンへ振り分けます。
+        段階的起動 — 必須: すべてのレーンを同時に起動してはいけません。最初のレーンを起動し、実際に出力を生成し始めた証拠 (最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。
+        
+        ラン "f-probe1": プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。
+        セッション間メッセージは、注入された --settings により自動的に受理されます。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/leader//ja/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/startup/template fixed=1651 composite=7908 core=4048
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: run f-probe1、リーダーセッション。
+        このセッションの名前は leader です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。
+        
+        このセッションが、セッション間メッセージでカードをレーンに割り振ります。
+        セッションから別のセッションは起動できないため、レーンは新しいターミナルで `moai cc -l`(または `moai glm -l`、`moai codex -l`)を実行して始めてください。
+        
+        起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。ランチャーがバックエンドを、`-f` がファクトリーを決めます。
+        各レーンは最大 10 個のエージェントを同時に並列実行できます。
+        リーダーソケット: /tmp/moai-factory/f-probe1/lead.sock
+        
+        カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス(plan -> run -> sync、各段階の完了後に次へ)を最後まで実行します — カードを複数レーンに分割することはありません。
+        キューのポーリングとカードの選択はオペレーターまたはファクトリーフォアマンループ(単独の `/loop`)が担います。このファクトリーは選択済み(picked)カードを空きレーンへ振り分けます。
+        段階的起動 — 必須: すべてのレーンを同時に起動してはいけません。最初のレーンを起動し、実際に出力を生成し始めた証拠 (最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。
+        
+        ラン "f-probe1": プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。
+        セッション間メッセージは、注入された --settings により自動的に受理されます。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: run f-probe1、リーダーセッション。
+        このセッションの名前は leader です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。
+        
+        このセッションが、セッション間メッセージでカードをレーンに割り振ります。
+        セッションから別のセッションは起動できないため、レーンは新しいターミナルで `moai cc -l`(または `moai glm -l`、`moai codex -l`)を実行して始めてください。
+        
+        起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。ランチャーがバックエンドを、`-f` がファクトリーを決めます。
+        各レーンは最大 10 個のエージェントを同時に並列実行できます。
+        リーダーソケット: /tmp/moai-factory/f-probe1/lead.sock
+        
+        カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス(plan -> run -> sync、各段階の完了後に次へ)を最後まで実行します — カードを複数レーンに分割することはありません。
+        キューのポーリングとカードの選択はオペレーターまたはファクトリーフォアマンループ(単独の `/loop`)が担います。このファクトリーは選択済み(picked)カードを空きレーンへ振り分けます。
+        段階的起動 — 必須: すべてのレーンを同時に起動してはいけません。最初のレーンを起動し、実際に出力を生成し始めた証拠 (最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。
+        
+        ラン "f-probe1": プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。
+        セッション間メッセージは、注入された --settings により自動的に受理されます。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/leader//ja/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/clear/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ja/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/clear/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ja/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/compact/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//ja/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//ja/compact/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ja/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/startup/deployed fixed=2852 composite=9107 core=4048
+    zz_t1923_boot_probe_test.go:191: factory fixed part 2852 > ceiling 2845
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/lane//ja/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/startup/template fixed=2852 composite=9107 core=4048
+    zz_t1923_boot_probe_test.go:191: factory fixed part 2852 > ceiling 2845
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/lane//ja/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/clear/deployed fixed=2084 composite=8339 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ja/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/clear/template fixed=2084 composite=8339 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ja/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//ja/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//ja/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/startup/deployed fixed=1497 composite=7752 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/startup/template fixed=1497 composite=7752 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        ファクトリーモード: リーダーのファクトリー run に lane-3 として参加しました。
+        
+        常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。
+        
+        自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。
+        全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/clear/deployed fixed=729 composite=6984 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/clear/template fixed=729 composite=6984 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/ja/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/ja/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//zh/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/startup/deployed fixed=1229 composite=7486 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：run f-probe1，主导会话。
+        本会话的名称是 leader。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。
+        
+        本会话通过跨会话消息把卡片分发给各条泳道。
+        会话无法启动另一个会话，需要在新终端中运行 `moai cc -l`（或 `moai glm -l`、`moai codex -l`）来启动泳道。
+        
+        启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。启动器决定后端，`-f` 决定工厂。
+        每条泳道最多可同时并行运行 10 个代理。
+        主导会话套接字：/tmp/moai-factory/f-probe1/lead.sock
+        
+        卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径(plan -> run -> sync，上一阶段完成后才进入下一阶段)—— 绝不把卡片拆分到多条泳道。
+        队列轮询与卡片挑选由操作者或工厂工头循环(单独的 `/loop`)负责。本工厂把已挑选(picked)的卡片路由到空闲泳道。
+        分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 (首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 (cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。
+        
+        运行 "f-probe1"：进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。
+        跨会话消息通过注入的 --settings 自动接受。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：run f-probe1，主导会话。
+        本会话的名称是 leader。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。
+        
+        本会话通过跨会话消息把卡片分发给各条泳道。
+        会话无法启动另一个会话，需要在新终端中运行 `moai cc -l`（或 `moai glm -l`、`moai codex -l`）来启动泳道。
+        
+        启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。启动器决定后端，`-f` 决定工厂。
+        每条泳道最多可同时并行运行 10 个代理。
+        主导会话套接字：/tmp/moai-factory/f-probe1/lead.sock
+        
+        卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径(plan -> run -> sync，上一阶段完成后才进入下一阶段)—— 绝不把卡片拆分到多条泳道。
+        队列轮询与卡片挑选由操作者或工厂工头循环(单独的 `/loop`)负责。本工厂把已挑选(picked)的卡片路由到空闲泳道。
+        分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 (首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 (cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。
+        
+        运行 "f-probe1"：进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。
+        跨会话消息通过注入的 --settings 自动接受。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/leader//zh/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/startup/template fixed=1229 composite=7486 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：run f-probe1，主导会话。
+        本会话的名称是 leader。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。
+        
+        本会话通过跨会话消息把卡片分发给各条泳道。
+        会话无法启动另一个会话，需要在新终端中运行 `moai cc -l`（或 `moai glm -l`、`moai codex -l`）来启动泳道。
+        
+        启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。启动器决定后端，`-f` 决定工厂。
+        每条泳道最多可同时并行运行 10 个代理。
+        主导会话套接字：/tmp/moai-factory/f-probe1/lead.sock
+        
+        卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径(plan -> run -> sync，上一阶段完成后才进入下一阶段)—— 绝不把卡片拆分到多条泳道。
+        队列轮询与卡片挑选由操作者或工厂工头循环(单独的 `/loop`)负责。本工厂把已挑选(picked)的卡片路由到空闲泳道。
+        分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 (首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 (cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。
+        
+        运行 "f-probe1"：进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。
+        跨会话消息通过注入的 --settings 自动接受。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：run f-probe1，主导会话。
+        本会话的名称是 leader。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。
+        
+        本会话通过跨会话消息把卡片分发给各条泳道。
+        会话无法启动另一个会话，需要在新终端中运行 `moai cc -l`（或 `moai glm -l`、`moai codex -l`）来启动泳道。
+        
+        启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。启动器决定后端，`-f` 决定工厂。
+        每条泳道最多可同时并行运行 10 个代理。
+        主导会话套接字：/tmp/moai-factory/f-probe1/lead.sock
+        
+        卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径(plan -> run -> sync，上一阶段完成后才进入下一阶段)—— 绝不把卡片拆分到多条泳道。
+        队列轮询与卡片挑选由操作者或工厂工头循环(单独的 `/loop`)负责。本工厂把已挑选(picked)的卡片路由到空闲泳道。
+        分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 (首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 (cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。
+        当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。
+        
+        运行 "f-probe1"：进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。
+        跨会话消息通过注入的 --settings 自动接受。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/leader//zh/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/clear/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//zh/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/clear/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//zh/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/compact/deployed fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/leader//zh/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE leader//zh/compact/template fixed=0 composite=6257 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//zh/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/startup/deployed fixed=2266 composite=8521 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/lane//zh/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/startup/template fixed=2266 composite=8521 core=4048
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/lane//zh/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/clear/deployed fixed=1680 composite=7935 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//zh/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/clear/template fixed=1680 composite=7935 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//zh/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane//zh/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane//zh/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/startup/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/startup/deployed fixed=1129 composite=7384 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/startup/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/startup/template fixed=1129 composite=7384 core=4048
+    zz_t1923_boot_probe_test.go:210: agent channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+    zz_t1923_boot_probe_test.go:210: operator channel notice violates the contract: [carries-removed:--auto-leader carries-removed:--auto-lane carries-removed:shipped — t1814 pointer-lacks-path]
+        工厂模式：已以 lane-3 身份加入主导会话的工厂 run。
+        
+        常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。
+        
+        自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。
+        完整指南见在线文档 https://adk.mo.ai.kr。
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/clear/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/clear/deployed fixed=543 composite=6798 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/clear/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/clear/template fixed=543 composite=6798 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/compact/deployed
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/compact/deployed fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/lane/manual/zh/compact/template
+    zz_t1923_boot_probe_test.go:189: PROBE lane/manual/zh/compact/template fixed=0 composite=6255 core=4048
+=== RUN   TestT1923BootBudgetProbe/notice_mutants
+    zz_t1923_boot_probe_test.go:252: MUTANT drop-retained role=leader rejected=missing-retained[0]
+    zz_t1923_boot_probe_test.go:252: MUTANT pointer-too-long role=leader rejected=pointer-too-long
+    zz_t1923_boot_probe_test.go:252: MUTANT auto-text-left role=leader rejected=carries-removed:--auto-leader
+    zz_t1923_boot_probe_test.go:252: MUTANT no-pointer role=leader rejected=residue-lines=0
+    zz_t1923_boot_probe_test.go:252: MUTANT unlisted-prose role=leader rejected=residue-lines=2
+    zz_t1923_boot_probe_test.go:252: MUTANT pointer-no-path role=leader rejected=pointer-lacks-path
+    zz_t1923_boot_probe_test.go:252: MUTANT no-pointer role=lane rejected=residue-lines=0
+    zz_t1923_boot_probe_test.go:252: MUTANT unlisted-prose role=lane rejected=residue-lines=2
+    zz_t1923_boot_probe_test.go:252: MUTANT pointer-no-path role=lane rejected=pointer-lacks-path
+    zz_t1923_boot_probe_test.go:252: MUTANT drop-retained role=lane rejected=missing-retained[0]
+    zz_t1923_boot_probe_test.go:252: MUTANT pointer-too-long role=lane rejected=pointer-too-long
+    zz_t1923_boot_probe_test.go:252: MUTANT auto-text-left role=lane rejected=carries-removed:--auto-leader
+    zz_t1923_boot_probe_test.go:262: MUTANT retained-padded rejected=digest-moved
+=== NAME  TestT1923BootBudgetProbe
+    zz_t1923_boot_probe_test.go:269: PROBE swept=72 channel_checks=48
+--- FAIL: TestT1923BootBudgetProbe (2.06s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/startup/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/startup/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/clear/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/clear/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//en/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//en/startup/deployed (0.23s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//en/startup/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane//en/clear/deployed (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane//en/clear/template (0.03s)
+    --- PASS: TestT1923BootBudgetProbe/lane//en/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane//en/compact/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/startup/deployed (0.03s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/startup/template (0.03s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/clear/deployed (0.03s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/clear/template (0.03s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/en/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//ko/startup/deployed (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//ko/startup/template (0.01s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ko/clear/deployed (0.01s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ko/clear/template (0.01s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ko/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ko/compact/template (0.01s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//ko/startup/deployed (0.07s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//ko/startup/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ko/clear/deployed (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ko/clear/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ko/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ko/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/ko/startup/deployed (0.04s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/ko/startup/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ko/clear/deployed (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ko/clear/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ko/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ko/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//ja/startup/deployed (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//ja/startup/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ja/clear/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ja/clear/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ja/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//ja/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//ja/startup/deployed (0.06s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//ja/startup/template (0.07s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ja/clear/deployed (0.05s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ja/clear/template (0.10s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ja/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane//ja/compact/template (0.01s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/ja/startup/deployed (0.10s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/ja/startup/template (0.09s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ja/clear/deployed (0.08s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ja/clear/template (0.06s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ja/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/ja/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//zh/startup/deployed (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/leader//zh/startup/template (0.01s)
+    --- PASS: TestT1923BootBudgetProbe/leader//zh/clear/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//zh/clear/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//zh/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/leader//zh/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//zh/startup/deployed (0.05s)
+    --- FAIL: TestT1923BootBudgetProbe/lane//zh/startup/template (0.10s)
+    --- PASS: TestT1923BootBudgetProbe/lane//zh/clear/deployed (0.10s)
+    --- PASS: TestT1923BootBudgetProbe/lane//zh/clear/template (0.07s)
+    --- PASS: TestT1923BootBudgetProbe/lane//zh/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane//zh/compact/template (0.00s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/zh/startup/deployed (0.06s)
+    --- FAIL: TestT1923BootBudgetProbe/lane/manual/zh/startup/template (0.05s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/zh/clear/deployed (0.05s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/zh/clear/template (0.04s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/zh/compact/deployed (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/lane/manual/zh/compact/template (0.00s)
+    --- PASS: TestT1923BootBudgetProbe/notice_mutants (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.968s
+FAIL

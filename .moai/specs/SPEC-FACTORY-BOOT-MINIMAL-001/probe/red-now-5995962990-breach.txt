@@ -1,0 +1,30 @@
+=== RUN   TestCompositeBudgetRealAssembly
+=== RUN   TestCompositeBudgetRealAssembly/lane_ko_glm
+    role_composite_e2e_test.go:90: RESULT lane_ko_glm: composite utf16=9030 (cap 10000, margin=970)
+=== RUN   TestCompositeBudgetRealAssembly/lane_en_glm
+    role_composite_e2e_test.go:90: RESULT lane_en_glm: composite utf16=9946 (cap 10000, margin=54)
+=== RUN   TestCompositeBudgetRealAssembly/leader_ko
+    role_composite_e2e_test.go:90: RESULT leader_ko: composite utf16=7882 (cap 10000, margin=2118)
+=== RUN   TestCompositeBudgetRealAssembly/leader_en
+    role_composite_e2e_test.go:90: RESULT leader_en: composite utf16=8806 (cap 10000, margin=1194)
+--- PASS: TestCompositeBudgetRealAssembly (0.45s)
+    --- PASS: TestCompositeBudgetRealAssembly/lane_ko_glm (0.35s)
+    --- PASS: TestCompositeBudgetRealAssembly/lane_en_glm (0.09s)
+    --- PASS: TestCompositeBudgetRealAssembly/leader_ko (0.00s)
+    --- PASS: TestCompositeBudgetRealAssembly/leader_en (0.00s)
+=== RUN   TestRoleInjectionAssemblyBudget
+=== RUN   TestRoleInjectionAssemblyBudget/template/factory-lane
+    role_injection_budget_test.go:163: template tree: role factory-lane composite=9100 (budget 9146) core=4048 (ceiling 4092, target 3800)
+=== RUN   TestRoleInjectionAssemblyBudget/template/factory-leader
+    role_injection_budget_test.go:163: template tree: role factory-leader composite=9102 (budget 9146) core=4048 (ceiling 4092, target 3800)
+=== RUN   TestRoleInjectionAssemblyBudget/deployed/factory-lane
+    role_injection_budget_test.go:163: deployed tree: role factory-lane composite=9100 (budget 9146) core=4048 (ceiling 4092, target 3800)
+=== RUN   TestRoleInjectionAssemblyBudget/deployed/factory-leader
+    role_injection_budget_test.go:163: deployed tree: role factory-leader composite=9102 (budget 9146) core=4048 (ceiling 4092, target 3800)
+--- PASS: TestRoleInjectionAssemblyBudget (0.02s)
+    --- PASS: TestRoleInjectionAssemblyBudget/template/factory-lane (0.01s)
+    --- PASS: TestRoleInjectionAssemblyBudget/template/factory-leader (0.00s)
+    --- PASS: TestRoleInjectionAssemblyBudget/deployed/factory-lane (0.01s)
+    --- PASS: TestRoleInjectionAssemblyBudget/deployed/factory-leader (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.519s

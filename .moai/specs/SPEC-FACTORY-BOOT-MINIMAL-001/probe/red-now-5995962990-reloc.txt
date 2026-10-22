@@ -1,0 +1,79 @@
+=== RUN   TestT1923RelocationProbe
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/en still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/en still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/en still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode leader-notice/en does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/en still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/en still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/en still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode lane-notice/en does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ko still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ko still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ko still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode lane-notice/ko does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ko still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ko still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ko still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode leader-notice/ko does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ja still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ja still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/ja still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode leader-notice/ja does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ja still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ja still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/ja still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode lane-notice/ja does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/zh still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/zh still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode leader-notice/zh still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode leader-notice/zh does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/zh still carries removed element marker "--auto-leader"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/zh still carries removed element marker "--auto-lane"
+    zz_t1923_boot_probe_test.go:334: R1-auto-mode lane-notice/zh still carries removed element marker "shipped — t1814"
+    zz_t1923_boot_probe_test.go:338: R1-auto-mode lane-notice/zh does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:342: RELOC R1-auto-mode dest=.claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/en still carries removed element marker "codex_review"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/en still carries removed element marker "Merge Risk"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/en still carries removed element marker "moai worktree sweep"
+    zz_t1923_boot_probe_test.go:338: R2-landing lane-rule/en does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ko still carries removed element marker "codex_review"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ko still carries removed element marker "Merge Risk"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ko still carries removed element marker "moai worktree sweep"
+    zz_t1923_boot_probe_test.go:338: R2-landing lane-rule/ko does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ja still carries removed element marker "codex_review"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ja still carries removed element marker "Merge Risk"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/ja still carries removed element marker "moai worktree sweep"
+    zz_t1923_boot_probe_test.go:338: R2-landing lane-rule/ja does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/zh still carries removed element marker "codex_review"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/zh still carries removed element marker "Merge Risk"
+    zz_t1923_boot_probe_test.go:334: R2-landing lane-rule/zh still carries removed element marker "moai worktree sweep"
+    zz_t1923_boot_probe_test.go:338: R2-landing lane-rule/zh does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:342: RELOC R2-landing dest=.claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R3-leader-duties lane-rule/en still carries removed element marker "keep-set"
+    zz_t1923_boot_probe_test.go:338: R3-leader-duties lane-rule/en does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R3-leader-duties lane-rule/ko still carries removed element marker "keep-set"
+    zz_t1923_boot_probe_test.go:338: R3-leader-duties lane-rule/ko does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R3-leader-duties lane-rule/ja still carries removed element marker "keep-set"
+    zz_t1923_boot_probe_test.go:338: R3-leader-duties lane-rule/ja does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R3-leader-duties lane-rule/zh still carries removed element marker "keep-set"
+    zz_t1923_boot_probe_test.go:338: R3-leader-duties lane-rule/zh does not name the destination path .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:342: RELOC R3-leader-duties dest=.claude/rules/moai/workflow/factory-dispatch-mechanics.md
+    zz_t1923_boot_probe_test.go:334: R4-judgment-ladder lane-rule/en still carries removed element marker "jev_ask"
+    zz_t1923_boot_probe_test.go:334: R4-judgment-ladder lane-rule/ko still carries removed element marker "jev_ask"
+    zz_t1923_boot_probe_test.go:334: R4-judgment-ladder lane-rule/ja still carries removed element marker "jev_ask"
+    zz_t1923_boot_probe_test.go:334: R4-judgment-ladder lane-rule/zh still carries removed element marker "jev_ask"
+    zz_t1923_boot_probe_test.go:342: RELOC R4-judgment-ladder dest=.claude/rules/moai/workflow/auto-semantics.md
+    zz_t1923_boot_probe_test.go:334: R5-assigned-card-lease lane-startup/en still carries removed element marker "--card"
+    zz_t1923_boot_probe_test.go:338: R5-assigned-card-lease lane-startup/en does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R5-assigned-card-lease lane-startup/ko still carries removed element marker "--card"
+    zz_t1923_boot_probe_test.go:338: R5-assigned-card-lease lane-startup/ko does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R5-assigned-card-lease lane-startup/ja still carries removed element marker "--card"
+    zz_t1923_boot_probe_test.go:338: R5-assigned-card-lease lane-startup/ja does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:334: R5-assigned-card-lease lane-startup/zh still carries removed element marker "--card"
+    zz_t1923_boot_probe_test.go:338: R5-assigned-card-lease lane-startup/zh does not name the destination path .claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:342: RELOC R5-assigned-card-lease dest=.claude/skills/moai/workflows/gtd.md
+    zz_t1923_boot_probe_test.go:348: RELOC swept=48
+--- FAIL: TestT1923RelocationProbe (1.14s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.976s
+FAIL

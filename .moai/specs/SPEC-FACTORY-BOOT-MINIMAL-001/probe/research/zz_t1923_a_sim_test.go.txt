@@ -1,0 +1,34 @@
+// SPEC-FACTORY-BOOT-MINIMAL-001 green-path simulation (card t1923, plan phase).
+//
+// NOT package source and NOT an acceptance instrument: compiled into package
+// hook only through `go test -overlay sim-overlay.json` / `sim-breach-overlay.json`.
+// It rewrites the ENGLISH message table in memory into one illustrative
+// post-M3 shape — R1 (auto-mode explanation replaced by a one-line pointer),
+// R2-R4 (landing / leader-duties / judgment-ladder sentences dropped and
+// replaced by one terse pointer clause), R5 (the assigned-card --card clause
+// dropped) — so the plan can measure whether the English lane startup cell
+// (the binding cell) fits the 2,845 fixed ceiling, and whether the breach
+// mutant lands that cell on exactly 2,846. The wording is illustrative; the
+// run phase chooses its own.
+package hook
+
+import "strings"
+
+func init() {
+	m := factoryLocales[langEnglish]
+	m.autoModeGuideLeader = "Auto-mode guide: .claude/skills/moai/workflows/gtd.md"
+	m.autoModeGuideLane = "Auto-mode guide: .claude/skills/moai/workflows/gtd.md"
+	rule := strings.Replace(m.laneNextCardRule,
+		"; for a card assigned to you, `moai factory next --card <id>` even while sibling assignments sit (t1542)", "", 1)
+	var kept []string
+	for _, s := range strings.SplitAfter(rule, ". ") {
+		if strings.Contains(s, "codex_review") || strings.Contains(s, "jev_ask") || strings.Contains(s, "keep-set") {
+			continue
+		}
+		kept = append(kept, s)
+	}
+	m.laneNextCardRule = strings.Join(kept, "") +
+		" Judgments: disk evidence, never ask and wait (.claude/rules/moai/workflow/auto-semantics.md §6). " +
+		"Landing: .claude/rules/moai/workflow/factory-dispatch-mechanics.md § The lane's standard landing."
+	factoryLocales[langEnglish] = m
+}

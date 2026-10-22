@@ -1,0 +1,50 @@
+# AC-FBM-004 mutant probe — AGENTS.md (card t1923, plan phase, 2026-10-23)
+# Base AGENTS.md: HEAD b805ac2d24 (AGENTS.md byte-identical to 59959629908cda723c37e26c7c15718194d6b38a).
+# Copies built by: python3 -I probe/research/mk_agents_mutants.py AGENTS.md <scratch dir>
+#   cand.md            24221 bytes — operator patch paragraphs + "live only under" restored (green path)
+#   cand_no_only.md    24218 bytes — operator patch verbatim ("belong under", exclusivity lost)
+#   del_mainvariant.md 23888 bytes — the "No main-variant" paragraph deleted to buy bytes
+#   cand_del_other.md  23872 bytes — candidate + an unrelated obligation paragraph deleted
+#   cand_hollow.md     23625 bytes — both paragraphs hollowed to a heading
+# Command per copy: python3 -I .moai/specs/SPEC-FACTORY-BOOT-MINIMAL-001/probe/agents_md_check.py <copy>
+
+### cand.md — exit 0
+size 24221 ceiling 24276 OK
+scope prefix identical suffix identical
+O1 found no WT-*main* branch
+O2 found no worktree holding main for integration
+O3 found main advances only by PR merges
+O4 found local main re-synced with origin/main at every landing
+O5 found local main ahead past a landing is a defect
+O6 found tooling never detaches the primary checkout's HEAD
+O7 found a branch occupied by the primary is refused
+O8 found WT worktrees live ONLY under .moai/worktrees/
+O9 found created by moai worktree new
+O10 found .claude/worktrees/ reserved for runtime agent-* trees
+O11 found agent-* runtime isolation trees named
+O12 found adopted runtime tree renamed to WT- in place
+O13 found adopted runtime tree stays at its creator's path
+result PASS
+
+### cand_no_only.md — exit 1
+size 24218 ceiling 24276 OK
+scope prefix identical suffix identical
+O8 MISSING WT worktrees live ONLY under .moai/worktrees/
+result FAIL
+(O1-O7, O9-O13 found)
+
+### del_mainvariant.md — exit 1
+size 23888 ceiling 24276 OK
+scope MISSING-ANCHOR (paragraph anchors not found)
+result FAIL
+
+### cand_del_other.md — exit 1
+size 23872 ceiling 24276 OK
+scope prefix CHANGED suffix identical
+result FAIL
+(O1-O13 found)
+
+### cand_hollow.md — exit 1
+size 23625 ceiling 24276 OK
+O1 MISSING .. O13 MISSING (all thirteen)
+result FAIL

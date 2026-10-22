@@ -51,6 +51,6 @@ MEASURE role=lane face=deployed lang=zh source=clear bootstrap=0 laneRule=1680 r
 MEASURE role=lane face=template lang=zh source=clear bootstrap=0 laneRule=1680 roleBlock=4301 composite_factory=5983
 MEASURE role=lane face=deployed lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
 MEASURE role=lane face=template lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
---- PASS: TestT1923Measure (1.19s)
+--- PASS: TestT1923Measure (0.87s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/hook	1.911s
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.727s

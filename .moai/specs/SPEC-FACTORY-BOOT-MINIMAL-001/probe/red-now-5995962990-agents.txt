@@ -1,0 +1,16 @@
+size 24501 ceiling 24276 OVER
+scope prefix identical suffix identical
+O1 found no WT-*main* branch
+O2 found no worktree holding main for integration
+O3 found main advances only by PR merges
+O4 found local main re-synced with origin/main at every landing
+O5 found local main ahead past a landing is a defect
+O6 found tooling never detaches the primary checkout's HEAD
+O7 found a branch occupied by the primary is refused
+O8 found WT worktrees live ONLY under .moai/worktrees/
+O9 found created by moai worktree new
+O10 found .claude/worktrees/ reserved for runtime agent-* trees
+O11 found agent-* runtime isolation trees named
+O12 found adopted runtime tree renamed to WT- in place
+O13 found adopted runtime tree stays at its creator's path
+result FAIL

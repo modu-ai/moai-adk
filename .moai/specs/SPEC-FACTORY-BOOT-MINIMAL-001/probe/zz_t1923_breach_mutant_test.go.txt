@@ -1,0 +1,34 @@
+// SPEC-FACTORY-BOOT-MINIMAL-001 breach mutant (card t1923, AC-FBM-002).
+//
+// NOT package source: compiled into package hook only through
+// `go test -overlay breach-overlay.json`. It pads the English lane next-card
+// rule so that the English auto-dispatch lane startup factory fixed part —
+// rendered in its SHORTEST production form (single-digit label `lane-3`,
+// count-less `-l` join, Claude backend) — is exactly ceiling + 1 = 2,846
+// UTF-16 units. Every other in-tree rendering convention (longer label, lane
+// count present, GLM backend) is at least as long, so any in-tree budget test
+// that measures the real renderers for that cell sees a breach of REQ-FBM-004.
+// When the unpadded fixed part already exceeds 2,846 (the base tree: 3,751),
+// nothing is padded — the tree itself is the breach.
+//
+// REQ-FBM-008 demands that the in-tree budget tests fail on any breach, so
+// under this overlay `go test -run '^(TestRoleInjectionAssemblyBudget|
+// TestCompositeBudgetRealAssembly)$'` must exit 1 and name the breach.
+package hook
+
+import (
+	"fmt"
+	"strings"
+)
+
+const t1923BreachTarget = 2846
+
+func init() {
+	m := factoryLocales[langEnglish]
+	notice := factoryLaneNotice("lane-3", 0, langEnglish)
+	rule := m.laneNextCardRule + "\n\n" + fmt.Sprintf(m.laneRecheckRule, laneArmExpression())
+	if pad := t1923BreachTarget - utf16Len(notice+"\n\n"+rule); pad > 0 {
+		m.laneNextCardRule += strings.Repeat("x", pad)
+		factoryLocales[langEnglish] = m
+	}
+}

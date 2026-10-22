@@ -7,13 +7,14 @@
 audit_ready: true
 plan_status: audit-ready
 plan_complete_at: 2026-10-23
-plan_artifacts: spec.md 0.1.0 · plan.md · acceptance.md · decision-index.md (Tier M — 3 artifacts + decision index)
+plan_artifacts: spec.md 0.2.0 · plan.md · acceptance.md · decision-index.md (Tier M — 3 artifacts + decision index)
 plan_author: manager-spec
+plan_revision: 0.2.0 — plan-audit round 1 FAIL 0.69 (`.moai/reports/t1923/plan-audit.md`, codex `.moai/reports/t1923/boot-minimal-plan-audit.md`) corrected; blocking D1-D5 and optional D6-D10 addressed
 
-- 측정: 팩토리 고정분·역할 블록·합본을 실제 렌더러로 4개 언어 × 3개 소스 × 역할별 실측(plan.md §B.2), 카드의 23,145자 넘침을 라이브 훅 출력으로 분해해 원인(10-21 primary checkout의 압축 전 core 18,367)을 확인(§B.3), AGENTS.md Codex 상한 테스트 실행(기준 트리 PASS, 여유 75)과 운영자 패치 검토(§B.5).
-- 결정: 0.6.0 예산 수치 유지, 생산자 4,797을 허용분 1,950 + 팩토리 고정분 상한 2,847로 분해(decision-index Q4). 나머지 결정은 decision-index Q1~Q7.
-- 채택: AC 9개 — release-blocking 4개(AC-FBM-001~004, 증거 E1~E4 기준 트리 RED 관측), regression-guard 5개.
-- Gaps: AC-FBM-009 테스트 4개 plan 단계 미실행.
+- 측정: 팩토리 고정분·역할 블록·합본을 실제 렌더러로 4개 언어 × 3개 소스 × 역할별 실측(plan.md §B.2), 카드의 23,145자 넘침을 라이브 훅 출력으로 분해해 원인(10-21 primary checkout의 압축 전 core 18,367)을 확인(§B.3), AGENTS.md Codex 상한 테스트 실행(기준 트리 PASS, 여유 75)과 운영자 패치 검토(§B.5), 녹색 경로 모의(§B.7 — 영어 레인 startup 2,727, 경계 변이 2,846 관측).
+- 결정: 0.6.0 예산 수치 유지, 생산자 4,797을 허용분 1,950 + 결합자 2 + 팩토리 고정분 상한 2,845로 분해(Q4). 리더 공지는 자동 모드 해설만 옮기고 나머지는 그대로(Q8 — SPEC-AUTONOMY-BATCH-GATE-001 REQ-BGS-016/017 보존). 재배치는 R1~R5, 목적지는 기존 문서(Q5·Q10). 나머지는 decision-index Q1~Q10.
+- 채택: REQ 11개, AC 12개 — release-blocking 5개(AC-FBM-001·002·003·004·011, 증거 E1~E4·E11 기준 트리 RED 관측), regression-guard 7개.
+- Gaps: AC-FBM-009 테스트 13개 plan 단계 미실행(0.1.0의 4개는 감사가 4/4 PASS 관측). ko·ja·zh 녹색 경로는 실행 모의 없음.
 
 ## §E.2 Run-phase Evidence
 
