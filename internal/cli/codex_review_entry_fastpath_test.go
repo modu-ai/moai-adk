@@ -406,15 +406,18 @@ func codexEntryArgvCounts(t *testing.T, f *codexEntryFixture) (forward, kick int
 // codexEntryAwaitArgv waits out the detached-kick race: the background review
 // child is async by design and may append its argv line after the wrapper
 // (and this test's exec) has returned. For expected invocations it polls up
-// to 2s for the counts to be reached; for a want-0 state it gives the child a
-// fixed settle window before the caller asserts absence.
+// to 10s — the poll returns the moment the counts are reached, so the window
+// costs nothing on the healthy path; it only matters on a loaded CI runner
+// where the detached child's first scheduling quantum can lag whole seconds
+// behind the wrapper's exit. For a want-0 state it gives the child a fixed
+// settle window before the caller asserts absence.
 func codexEntryAwaitArgv(t *testing.T, f *codexEntryFixture, wantFwd, wantKick int) (int, int, string) {
 	t.Helper()
 	if wantFwd == 0 && wantKick == 0 {
 		time.Sleep(500 * time.Millisecond)
 		return codexEntryArgvCounts(t, f)
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		fwd, kick, argv := codexEntryArgvCounts(t, f)
 		if fwd >= wantFwd && kick >= wantKick {
