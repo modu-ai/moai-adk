@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -55,94 +53,11 @@ var codexCmd = &cobra.Command{
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
 	SilenceUsage:       true,
-	RunE:               runCodex,
 }
 
-// runCodex routes the invocation: --help first (DisableFlagParsing means
-// cobra never intercepts it), then --spawn stripping, then the closed-set
-// verb lookup, then the readout or launch path.
-func runCodex(cmd *cobra.Command, args []string) error {
-	for _, a := range args {
-		if a == "--help" || a == "-h" {
-			return cmd.Help()
-		}
-		if a == "--" {
-			break
-		}
-	}
-
-	args, spawn := stripSpawnFlag(args)
-	head, tail, hasTail := splitCodexDashDash(args)
-	// The debug tokens are launcher-owned on this launcher (SPEC-CODEX-DEBUG-
-	// MODE-001 REQ-001): the codex CLI rejects them, so the head's tokens are
-	// stripped here — never forwarded — and activate the launcher debug trace
-	// downstream. Tokens after -- are codex's own and were never inspected
-	// (REQ-002).
-	head, debugRequested := stripCodexDebugFlag(head)
-	// The factory entries classify before anything else is read or written
-	// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004, narrowing
-	// REQ-CFR-001..005, SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-001/002/006): `-l` /
-	// `--lane` routes to the per-card relaunch, every other factory shape
-	// prints its one refusal line. Tokens after -- are codex's own.
-	entry, diag := codexFactoryEntryClassify(head)
-	if diag != "" {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
-		return &exitCodeError{code: 1}
-	}
-	head, factoryEntry, err := parseCodexFactoryEntry(head)
-	if err != nil {
-		return err
-	}
-	// -w is consumed before the verb lookup so its tokens can never be
-	// mistaken for a verb, and so the verb position keeps its one-token shape.
-	head, worktree := stripCodexWorktreeFlag(head)
-	if entry == codexFactoryEntryLane {
-		// The relaunch stays the parent and selects each card's worktree
-		// itself: no --spawn, no -w, and no verb or passthrough composes
-		// with it — the closed-set discipline refuses the combination
-		// rather than adapting it. The debug token (already stripped above)
-		// composes: the relaunch loop traces its own pre-exec steps under
-		// debug mode.
-		if spawn || worktree.present || hasTail || len(stripCodexFactoryTokens(head)) > 0 {
-			return codexUsageFailure(cmd)
-		}
-		return runCodexFactoryLane(cmd, factoryEntry, debugRequested)
-	}
-	if len(head) > 1 {
-		return codexUsageFailure(cmd)
-	}
-	verb := ""
-	if len(head) == 1 {
-		verb = head[0]
-	}
-	kind, ok := codexVerbRouting[verb]
-	if !ok {
-		return codexUsageFailure(cmd)
-	}
-	if factoryEntry.Enabled && kind == codexVerbLaunchApp {
-		return fmt.Errorf("-f/--factory requires the Codex CLI launch")
-	}
-
-	if kind.launches() {
-		return runCodexLaunch(cmd, kind, tail, spawn, worktree, factoryEntry, debugRequested)
-	}
-	if worktree.present || factoryEntry.Enabled {
-		// A readout starts no process, so it has no working directory to
-		// point anywhere.
-		return codexUsageFailure(cmd)
-	}
-	if spawn {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexSpawnReadoutDiag)
-		return &exitCodeError{code: 1}
-	}
-	if debugRequested {
-		// REQ-003: the debug token on a readout refuses with the named
-		// diagnostic — a readout starts nothing there is nothing to trace.
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexDebugReadoutDiag)
-		return &exitCodeError{code: 1}
-	}
-	if hasTail {
-		return codexUsageFailure(cmd)
-	}
-	return runCodexReadout(cmd)
+// init keeps the surviving codex parent registered next to its audit
+// subcommands; the general RunE and the launch verbs were removed
+// (card t1909 step ⑤, t1910 §3.3).
+func init() {
+	rootCmd.AddCommand(codexCmd)
 }

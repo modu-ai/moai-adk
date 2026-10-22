@@ -65,7 +65,6 @@ Verbs:
 	cmd.AddCommand(newVerifyRunCmd(&projectRoot))
 	cmd.AddCommand(newVerifyAuditPlanCmd(&projectRoot))
 	cmd.AddCommand(newVerifyCodexReviewCmd(&projectRoot))
-	cmd.AddCommand(newVerifySyncGateCmd(&projectRoot))
 	return cmd
 }
 

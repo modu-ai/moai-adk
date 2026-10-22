@@ -2,23 +2,54 @@ package cli
 
 import (
 	"bytes"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
-// TestInitForceCarriesManifestProvenance pins what `moai init --force` owes
-// the files a previous deployment left outside .moai/. The force path moves
-// .moai/ aside, manifest included; the files it recorded must keep the
-// provenance they had rather than all turning user_created:
-//   - a template file nobody edited is redeployed and stays template_managed,
-//     published-skill paths included (update never refreshes those once they
-//     read user_created);
-//   - a template file the user edited is left byte-identical and recorded
-//     user_modified, so reinitializing never overwrites the edit;
-//   - a file recorded user_created is left byte-identical and stays so.
+// initProfileAt runs a non-interactive `moai init` of root under harness.
+func initProfileAt(t *testing.T, root, harness string) {
+	t.Helper()
+	cmd := newInitTestCmd()
+	for name, val := range map[string]string{"llm": harness, "non-interactive": "true", "name": "transition", "language": "go", "mode": "tdd"} {
+		if err := cmd.Flags().Set(name, val); err != nil {
+			t.Fatalf("set --%s=%s: %v", name, val, err)
+		}
+	}
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	if err := runInit(cmd, []string{root}); err != nil {
+		t.Fatalf("init --llm %s: %v (stderr: %s)", harness, err, errBuf.String())
+	}
+}
+
+// readTestFile reads root/rel and fails the test on error.
+func readTestFile(t *testing.T, root, rel string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// lastLines returns the final n lines of s.
+func lastLines(s string, n int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
+}
+
+//		published-skill paths included (update never refreshes those once they
+//		read user_created);
+//	  - a template file the user edited is left byte-identical and recorded
+//	    user_modified, so reinitializing never overwrites the edit;
+//	  - a file recorded user_created is left byte-identical and stays so.
 func TestInitForceCarriesManifestProvenance(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_SANDBOX_PROOF", "")

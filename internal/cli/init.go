@@ -18,7 +18,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
-	"github.com/modu-ai/moai-adk/internal/codexwiring"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
@@ -133,28 +132,19 @@ func init() {
 	// fully-autonomous).
 	initCmd.Flags().String("autonomy-tier", "", "Session permission mode: accept edits on (semi-auto, default), auto mode (automatic), or bypass permissions (fully-autonomous; requires sandbox proof). Writes user-scope defaultMode: acceptEdits for the default")
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the LLM harness selector. Closed
-	// set {claude, codex, both} validated fail-loud in validateInitFlags;
-	// help names all three values. Default claude = flag-absent behavior
-	// byte-identical to today (AC-CW-004).
-	// SPEC-INIT-HARNESS-001 (D2): the gpt value means CODEX-ONLY deployment —
-	// AGENTS.md + Codex surfaces, no .claude/ tree, no CLAUDE.md, no .mcp.json
-	// (operator-accepted value redefinition, plan.md §I NC-1; value renamed
-	// codex->gpt per the model-family naming axis, card t858).
-	initCmd.Flags().String("llm", "", "LLM harness to deploy and wire: claude, gpt, or both (default: claude; gpt deploys AGENTS.md + Codex surfaces only — no .claude/ tree; both adds Codex wiring to the claude deployment)")
+	// The LLM harness selector is claude-only since the general codex
+	// execution surface removal (card t1909): init deploys and wires the
+	// claude harness alone. The flag stays for script compatibility and is
+	// validated fail-loud in validateInitFlags.
+	initCmd.Flags().String("llm", "", "LLM harness to deploy and wire: claude (default and only value — the general codex execution surface was removed)")
 }
 
-// agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
-// semantics (claude = today, codex = skip .mcp.json + wire Codex, both = wire
-// both sides) are resolved in ONE place, so the decision stays a one-line
-// reversible delta.
-//
-// SPEC-INIT-HARNESS-PROMPT-001 moved that place: the selection now has TWO
-// input sources — the --llm flag and the wizard's agent_wiring answer — so
-// the resolution point is resolveAgentWiringWithWizard, not resolveAgentWiring
-// (which is now only the flag-reading primitive). The flag still wins over the
-// wizard answer; that precedence is decided there, once, upstream of both
-// consumers.
+// agentWiring is the harness selection label. The closed deployment set is
+// claude-only (card t1909 removed the general codex execution and init
+// surface); gpt and both survive solely as LEGACY RECORD values an interrupted
+// pre-removal init may have left under .moai/state/resume-wiring, which
+// readResumeWiring still recognizes so the resume can refuse a harness
+// mismatch instead of mis-wiring the tree.
 type agentWiring string
 
 const (
@@ -162,82 +152,6 @@ const (
 	agentWiringGPT    agentWiring = "gpt"
 	agentWiringBoth   agentWiring = "both"
 )
-
-// normalizeAgentWiring maps a raw harness value onto the closed set, defaulting
-// to claude. It is the SINGLE definition of that mapping: resolveAgentWiring
-// (the flag-reading primitive) and resolveAgentWiringWithWizard (the
-// SPEC-INIT-HARNESS-PROMPT-001 resolution point, which also reads the wizard's
-// answer) both delegate here, so the two inputs cannot drift apart.
-func normalizeAgentWiring(value string) agentWiring {
-	switch wiring := agentWiring(config.CanonicalAgentHarness(value)); wiring {
-	case agentWiringGPT, agentWiringBoth:
-		return wiring
-	default:
-		return agentWiringClaude
-	}
-}
-
-// resolveAgentWiring resolves the --llm selection, defaulting to claude.
-// An empty or unrecognized value falls back to claude rather than erroring
-// here — invalid values are rejected earlier, fail-loud, by
-// validateInitFlags.
-//
-// It is the flag-reading primitive only. The value the init tail actually acts
-// on is resolved once by resolveAgentWiringWithWizard, which additionally reads
-// the wizard's answer (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004).
-func resolveAgentWiring(cmd *cobra.Command) agentWiring {
-	return normalizeAgentWiring(getStringFlag(cmd, "llm"))
-}
-
-// wireCodexUnlessClaude wires the Codex side (.codex/hooks.json +
-// .codex/config.toml) for a codex|both harness selection, adjacent to the
-// .mcp.json provisioning call in the runInit tail. Best-effort (spec §F): a
-// wiring failure — including the REQ-CW-003 validation refusal, whose hard part
-// (no violating bytes on disk) is already guaranteed by the codexwiring
-// package — warns and init continues.
-//
-// It takes the ALREADY-RESOLVED wiring rather than the command
-// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004): re-reading the flag here would
-// put a second resolution behind the resolution point, which is exactly how a
-// wizard answer reaches one consumer and not the other.
-func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
-	if err := wireCodex(cmd, wiring, projectRoot); err != nil {
-		// Card t1527 D4 (repair round): ! severity line replaces the raw
-		// "warning:" prefix.
-		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
-	}
-}
-
-// wireCodex is the Codex wiring step that wireCodexUnlessClaude and the resume
-// share. It returns the failure instead of printing it: the healthy init tail
-// warns on it, and the resume returns it as an error (card t1591, repair round).
-// A claude selection is a no-op.
-func wireCodex(cmd *cobra.Command, wiring agentWiring, projectRoot string) error {
-	if wiring == agentWiringClaude {
-		return nil
-	}
-	_, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr())
-	return err
-}
-
-// addCodexReinitGuidance is the redirect note printed when init runs
-// --llm gpt|both against an already-initialized project (the --force
-// reinit path): the preferred additive verb is `moai tool enable codex`,
-// which wires Codex in place without reinitializing and is the only additive
-// command. The reinit itself proceeds as requested.
-const addCodexReinitGuidance = "note: this project is already initialized — use `moai tool enable codex` to add Codex without reinitializing. Proceeding with the requested reinit."
-
-// emitAddCodexReinitGuidance prints the guidance when the selection is
-// codex|both AND the project is already initialized. A claude selection and a
-// fresh project stay silent; a nil writer is safe.
-func emitAddCodexReinitGuidance(errOut io.Writer, wiring agentWiring, alreadyInitialized bool) {
-	if wiring == agentWiringClaude || !alreadyInitialized {
-		return
-	}
-	if errOut != nil {
-		_, _ = fmt.Fprintln(errOut, addCodexReinitGuidance)
-	}
-}
 
 // getStringFlag retrieves a string flag value from the command.
 func getStringFlag(cmd *cobra.Command, name string) string {
@@ -408,15 +322,12 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --llm closed set
-	// fail-loud, naming the valid values (autonomy-tier closed-set pattern).
+	// The --llm closed set is claude-only (card t1909): the gpt/both/codex
+	// deployment paths are gone, so any other value fails loud here rather
+	// than silently deploying claude.
 	llm := getStringFlag(cmd, "llm")
-	if llm != "" {
-		switch agentWiring(config.CanonicalAgentHarness(llm)) {
-		case agentWiringClaude, agentWiringGPT, agentWiringBoth:
-		default:
-			return fmt.Errorf("invalid --llm value %q: must be one of: claude, gpt, both", llm)
-		}
+	if llm != "" && llm != string(agentWiringClaude) {
+		return fmt.Errorf("invalid --llm value %q: must be claude — moai init deploys the claude harness only", llm)
 	}
 
 	return nil
@@ -726,26 +637,19 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		wizardResult, &opts,
 	)
 
-	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-004): resolve the agent-harness
-	// selection ONCE, here, from the flag or the wizard answer. Both consumers
-	// in the init tail — the .mcp.json provisioning precedence switch and the
-	// Codex wiring call — read this local, so the selection cannot reach one
-	// and miss the other. wizardResult stays empty when the wizard did not run,
-	// which resolves to claude: the flag-absent non-interactive path is
-	// unchanged (REQ-IHP-007).
-	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
-	agentWiringSelection := resolveAgentWiringWithWizard(
-		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
-	)
+	// The harness selection is claude-only (card t1909): the flag is validated
+	// to claude above and the wizard no longer asks, so every consumer below
+	// reads this constant.
+	agentWiringSelection := agentWiringClaude
 
 	// SPEC-INIT-SHRINK-001 (REQ-001/REQ-003/REQ-007, OD-5/OD-7): resolve the
 	// deploy mode ONCE, here — the initializer's scaffold (below), the
 	// deployer option, and the mode record all read this local.
 	deployMode := resolveInitDeployMode(cmd)
 
-	// SPEC-INIT-HARNESS-001 (REQ-IH-005): the initializer suppresses every
-	// claude-surface write while the selection is codex — the .claude/ scaffold
-	// and CLAUDE.md never materialize under the project root.
+	// SPEC-INIT-HARNESS-001 (REQ-IH-005) named the codex suppression here; the
+	// codex selection is gone, so the initializer always writes the claude
+	// surface.
 	opts.Harness = string(agentWiringSelection)
 	// SPEC-INIT-SHRINK-001 (REQ-001): the initializer skips the dropped-root
 	// scaffold shells on the plugin path, matching the deployer's file set.
@@ -788,42 +692,20 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	renderer := template.NewRenderer(embeddedFS)
 
 	var deployer template.Deployer
-	// SPEC-INIT-HARNESS-001 M2 (REQ-IH-005/006, design.md D3): a codex-only
-	// selection reroutes the WHOLE deployment through the harnessFS wrapper —
-	// claude-only surfaces hidden, the skill catalog re-homed to
-	// .agents/skills as real directories, skill mirror off. The harness
-	// contract outranks the distribute-all mode (REQ-IH-005 fixes the codex
-	// file set; the slim/full split lives entirely inside .claude/** which
-	// harnessFS hides). claude and both keep the deployers below untouched
-	// (REQ-IH-003/004).
+	// The claude harness is the only init deployment (card t1909 removed the
+	// gpt/both arms). The harnessFS reroute of SPEC-INIT-HARNESS-001 M2 and
+	// the dual-harness deployers are gone with them; the update path still
+	// reads llm.harness for projects initialized before the removal.
 	//
 	// SPEC-INIT-SHRINK-001 M2 (REQ-001/REQ-003/REQ-006/REQ-007): the deploy
 	// mode rides through as an option — local (opt-out or --all) is today's
-	// payload; plugin (the default) carries no .claude/skills or
-	// .claude/commands file. The mirror policy stays at its conservative
-	// default (re-home: real directory copies, never dangling links) until
-	// Codex's actual execution of plugin-borne skills is verified (OD-6
-	// settled (a) + condition; the REQ-008 measurement proves listing, not
-	// execution).
-	// SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the split
-	// is retired with the plugin carrier.
-	switch agentWiringSelection {
-	case agentWiringGPT:
-		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
-	case agentWiringBoth:
-		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer)
-		} else {
-			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer)
-			emitSlimModeNotice(cmd.OutOrStdout())
-		}
-	default:
-		if shouldDistributeAll(cmd) {
-			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
-		} else {
-			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
-			emitSlimModeNotice(cmd.OutOrStdout())
-		}
+	// payload. SPEC-USER-ASSET-INSTALL-001 (M7): no deploy-mode options — the
+	// split is retired with the plugin carrier.
+	if shouldDistributeAll(cmd) {
+		deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
+	} else {
+		deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
+		emitSlimModeNotice(cmd.OutOrStdout())
 	}
 	if err != nil {
 		return fmt.Errorf("construct %s harness deployer: %w", agentWiringSelection, err)
@@ -844,16 +726,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// live line on a TTY and degrades to plain lines otherwise
 	// (REQ-TUX2-010/011).
 	executor.SetReporter(newSpinnerReporter(p))
-
-	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-013, decision D4): redirect-not-block —
-	// on the --force reinit path with a codex|both selection, name the additive
-	// verb BEFORE proceeding; the reinit itself is not blocked. The probe
-	// reuses the same validator the executor consults, so the guidance and the
-	// executor cannot disagree about what "already initialized" means.
-	if getBoolFlag(cmd, "force") && agentWiringSelection != agentWiringClaude {
-		probe, probeErr := validator.Validate(opts.ProjectRoot)
-		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
-	}
 
 	// B7 (review-fix round 2 addendum): validate --bundle names EARLY — a
 	// typo must fail before the deploy, not after the project is already
@@ -984,7 +856,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			// (gate round 35-3) — a healthy project's ordinary re-run
 			// keeps the original update redirect below.
 			if resuming {
-				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult, prefs); resumeErr != nil {
+				if resumeErr := resumeInitializedProject(cmd, &opts, wizardRan, wizardResult, prefs); resumeErr != nil {
 					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
 				}
 				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
@@ -1054,18 +926,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		// SPEC-INIT-HARNESS-001 (REQ-IH-005): a codex-only project carries no
-		// .claude/ surface, so the bundle gets an empty projectSettingsPath —
-		// its contract is USER-scope-only writes in that case, never a
-		// project-root .claude/settings.json.
-		projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
-		if agentWiringSelection == agentWiringGPT {
-			projectSettingsPath = ""
-		}
 		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
-			projectSettingsPath,
+			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
 			opts.AutonomyTier,
 		); tierErr != nil {
 			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
@@ -1173,73 +1037,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// into the single neutral .mcp.json entry. The interactive path sets it
 	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
 	// the non-interactive path leaves it false and skips the ensure-entry call
-	// (REQ-IQW-006).
-	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
-	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
-	// itself a wizard axis: the harness selection is the more specific
-	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
-	// flag or wizard. codex declines provisioning (the user declared their
-	// harness is Codex, and the moai MCP server is registered for them through
-	// .codex/config.toml instead), both forces it on, claude leaves the
-	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
-	// harness itself is a different rule, resolved upstream in
-	// resolveAgentWiringWithWizard rather than here.
-	//
-	// SPEC-PLUGIN-MARKETPLACE-001 REQ-010, wired through the SPEC-INIT-SHRINK-001
-	// probe (design §2.4): install the moai plugin into the tool(s) the
-	// harness selects, after the deployment is complete, and read the
-	// observable outcome from the post-install list-surface probe. Fail-open
-	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin install step is
-	// retired with its carrier — init invokes no marketplace or plugin
-	// install command for either harness; the user-folder installer (M2)
-	// is the distribution.
-
-	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
-	// into the single neutral .mcp.json entry. The interactive path sets it
-	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
-	// the non-interactive path leaves it false and skips the ensure-entry call
-	// (REQ-IQW-006).
-	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
-	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
-	// itself a wizard axis: the harness selection is the more specific
-	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
-	// flag or wizard. codex declines provisioning (the user declared their
-	// harness is Codex, and the moai MCP server is registered for them through
-	// .codex/config.toml instead), both forces it on, claude leaves the
-	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
-	// harness itself is a different rule, resolved upstream in
-	// resolveAgentWiringWithWizard rather than here.
-	//
-	// SPEC-INIT-SHRINK-001 REQ-005 (OD-1 settled (c), design §2.3): the call
-	// is sequenced AFTER the install step so it can read the probe outcome.
-	// On the plugin path a probe-confirmed install writes no project `moai`
-	// entry (the plugin is the sole carrier); on not-demonstrated — and on
-	// opted-out, i.e. the whole local path — the entry is written as the
-	// fallback carrier. On the init surface the deploy file set and the mode
-	// record never key on the probe (REQ-001/REQ-009).
-	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+	// (REQ-IQW-006). The codex/both MCP-provisioning overrides of
+	// SPEC-CODEX-WIRING-001 D3 are gone with the harness selection (card
+	// t1909), so only the wizard answer decides mcpDeclined.
 	// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
-	mcpDeclined := !opts.MCPProvision
-	switch agentWiringSelection {
-	case agentWiringGPT:
-		mcpDeclined = true
-	case agentWiringBoth:
-		mcpDeclined = false
-	}
-	// SPEC-USER-ASSET-INSTALL-001 (REQ-017): the plugin probe arm is
-	// retired with its carrier — no plugin install can confirm or decline
-	// the MCP entry, so only the wizard answer decides mcpDeclined.
 	// The returned failure joins the warning collector exactly once.
+	mcpDeclined := !opts.MCPProvision
 	if mcpErr := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); mcpErr != nil {
 		p.Collect("MCP server entry provisioning failed: " + mcpErr.Error())
 	}
-
-	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
-	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
-	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
-	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
-	// so both harness sides of the init tail read as one unit.
-	wireCodexUnlessClaude(cmd, agentWiringSelection, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

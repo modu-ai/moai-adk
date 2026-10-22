@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -2581,3 +2583,36 @@ func readCodexReviewGateEnabled(projectDir string) bool {
 	}
 	return doc.Workflow.Codex.ReviewGate.Enabled
 }
+
+// @MX:WARN: [AUTO] Measure the final representation, not the source body.
+// @MX:REASON: Shell quoting can quadruple single quotes after JSON encoding.
+func checkCodexInstructionSize(size int, representation string) error {
+	if size > config.DefaultCodexInstructionArgBytes {
+		return fmt.Errorf("codex %s is %d bytes, exceeds %d-byte ceiling", representation, size, config.DefaultCodexInstructionArgBytes)
+	}
+	return nil
+}
+
+const (
+	// codexJobIDPrefix prefixes every generated job id. The timestamp component
+	// makes a directory listing chronological; the random component is what
+	// actually guarantees uniqueness between two jobs started in the same
+	// second (spec.md §H R4 / acceptance.md §B two-concurrent-jobs).
+	codexJobIDPrefix = "job-"
+)
+
+// newCodexJobID returns a job id of the form job-<UTC compact timestamp>-<8 hex>.
+// The random suffix is what guarantees uniqueness; the timestamp only makes a
+// directory listing readable.
+func newCodexJobID() (string, error) {
+	var buf [4]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", fmt.Errorf("codex job id: %w", err)
+	}
+	return codexJobIDPrefix + time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(buf[:]), nil
+}
+
+// codexSetupProbe is the shared-probe seam (REQ-CL-007): the readout consumes
+// ProbeCodexSetup through this var, so tests can drive the whole probe with
+// sentinel values (AC-CL-007) without forking the classification path.
+var codexSetupProbe = ProbeCodexSetup

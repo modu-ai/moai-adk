@@ -18,8 +18,10 @@ import (
 // factory card + queue tools. The two on-demand self-review tools
 // (codex_review, glm_review) are read-only and bring the surface to 47.
 // SPEC-FACTORY-LEASE-RENEW-001 M2 (REQ-FLR-002) adds factory_renew, the lane's
-// write-capable card lease renewal, which brings the surface to 48.
-const wantCatalogSize = 48
+// write-capable card lease renewal, which brought the surface to 48; the
+// general codex execution surface removal (card t1909) retired the four
+// codex_task/codex_job_* tools, bringing it to 44.
+const wantCatalogSize = 44
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -31,8 +33,8 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	}
 }
 
-// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty-one write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 27 are
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the nineteen write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 25 are
 // read-only (the two self-review tools among them). session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
@@ -53,8 +55,6 @@ func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
 		"verify_snapshot":      true,
-		"codex_task":           true,
-		"codex_job_cancel":     true,
 		"codex_role_audit":     true,
 		"glm_task":             true,
 		"glm_job_cancel":       true,

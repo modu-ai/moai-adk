@@ -50,13 +50,6 @@ type WizardResult struct {
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).
 	AutonomyTier string // workflow.autonomy_tier
 
-	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
-	// interactive LLM-harness selection, reusing the --llm closed set
-	// {claude, codex, both}. Empty means the wizard did not run (or did not
-	// reach the question), which resolveAgentWiringWithWizard resolves to the
-	// claude fallback — the same fallback the flag path has always used.
-	AgentWiring string // agent harness: claude, codex, both
-
 	// JevEnabled (SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001/005): the init-only
 	// Jev opt-in. False is both the zero value and the declined answer, which
 	// is the fail-safe direction: a wizard that did not run, or did not reach

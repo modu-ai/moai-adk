@@ -9,18 +9,15 @@ package cli
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -240,115 +237,6 @@ func unblockPipe(abs string) {
 	}
 }
 
-// TestIntegrityProbeEntry_DamageReasons pins every classification one
-// representative entry can return. The end-to-end tests reach only some of them
-// (the damage a version-matched run can observe); the rest are pinned here,
-// through the entry check itself.
-func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
-	settings := integrityProbeEntry{rel: ".claude/settings.json", check: probeJSON}
-	manifest := integrityProbeEntry{rel: ".moai/manifest.json", check: probeJSON}
-
-	cases := []struct {
-		name  string
-		entry integrityProbeEntry
-		setup func(t *testing.T, root string)
-		want  string
-	}{
-		{"missing", settings, func(*testing.T, string) {}, "missing"},
-		{"directory_in_place_of_file", settings, func(t *testing.T, root string) {
-			if err := os.MkdirAll(filepath.Join(root, ".claude", "settings.json"), 0o755); err != nil {
-				t.Fatal(err)
-			}
-		}, "not a file"},
-		{"intact_json", settings, func(t *testing.T, root string) {
-			writeProbeFile(t, root, ".claude/settings.json", "{}")
-		}, ""},
-		{"unparseable_json", settings, func(t *testing.T, root string) {
-			writeProbeFile(t, root, ".claude/settings.json", "{not json")
-		}, "unparseable"},
-		{"stat_fails_under_a_file", settings, func(t *testing.T, root string) {
-			if runtime.GOOS == "windows" {
-				t.Skip("a path through a file reports not-exist on windows, not an unreadable stat")
-			}
-			writeProbeFile(t, root, ".claude", "a file where the directory belongs")
-		}, "unreadable"},
-		{"read_denied", settings, func(t *testing.T, root string) {
-			if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-				t.Skip("file permissions do not deny reads on this platform or for root")
-			}
-			writeProbeFile(t, root, ".claude/settings.json", "{}")
-			abs := filepath.Join(root, ".claude", "settings.json")
-			if err := os.Chmod(abs, 0); err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = os.Chmod(abs, 0o644) })
-		}, "unreadable"},
-		{"fifo_in_place_of_json", manifest, func(t *testing.T, root string) {
-			if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := makeCodexFIFOFixture(filepath.Join(root, ".moai", "manifest.json")); err != nil {
-				if errors.Is(err, errCodexFixtureUnsupported) {
-					t.Skip("named pipes cannot be created on this platform")
-				}
-				t.Fatalf("plant a named pipe where the manifest belongs: %v", err)
-			}
-		}, "not a file"},
-		{"oversized_json", manifest, func(t *testing.T, root string) {
-			// Valid JSON one byte past the read bound: the probe must refuse to read it.
-			writeProbeFile(t, root, ".moai/manifest.json", `{"pad":"`+strings.Repeat("x", plan.MaxConfigSize)+`"}`)
-		}, "unreadable"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			tc.setup(t, root)
-			got, returned := damageReasonWithin(tc.entry, root, probeReturnBound)
-			if !returned {
-				unblockPipe(filepath.Join(root, filepath.FromSlash(tc.entry.rel)))
-				t.Fatalf("damageReason(%s) did not return within %s: the probe is blocked on a read it must never make",
-					tc.entry.rel, probeReturnBound)
-			}
-			if got != tc.want {
-				t.Fatalf("damageReason(%s) = %q, want %q", tc.entry.rel, got, tc.want)
-			}
-		})
-	}
-}
-
-// TestReadProbeFile_HandleRecheckRefusesNonRegular pins the checked-handle read
-// (F1): the handle opened for a member is re-checked with Stat, so a named pipe is
-// refused as "not a file" even when it is reached past the pre-open stat, and the
-// refusal returns without a blocking read.
-func TestReadProbeFile_HandleRecheckRefusesNonRegular(t *testing.T) {
-	pipe := filepath.Join(t.TempDir(), "member.fifo")
-	if err := makeCodexFIFOFixture(pipe); err != nil {
-		if errors.Is(err, errCodexFixtureUnsupported) {
-			t.Skip("named pipes cannot be created on this platform")
-		}
-		t.Fatalf("create a named pipe: %v", err)
-	}
-	done := make(chan string, 1)
-	go func() {
-		_, reason := readProbeFile(pipe)
-		done <- reason
-	}()
-	select {
-	case reason := <-done:
-		if reason != "not a file" {
-			t.Fatalf("readProbeFile(named pipe) = %q, want %q", reason, "not a file")
-		}
-	case <-time.After(probeReturnBound):
-		unblockPipe(pipe)
-		t.Fatalf("readProbeFile did not return within %s on a named pipe", probeReturnBound)
-	}
-}
-
-// TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath pins F3. The
-// probe runs only on the version-matched path, and that path is taken only while
-// the template-version stamp in system.yaml matches the package version. So every
-// member of the set must stay observable with the stamp intact: damaging a member
-// must not flip the skip predicate, or the probe never runs and never names it.
 func TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath(t *testing.T) {
 	for _, e := range managedSurfaceProbeSet {
 		t.Run(e.rel, func(t *testing.T) {

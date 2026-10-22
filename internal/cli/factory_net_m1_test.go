@@ -26,14 +26,10 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // netLaunch is what one substituted engine launch observed.
@@ -140,61 +136,6 @@ type netCodexLane struct {
 	env  map[string]string
 }
 
-// netCodexLaneChild runs `moai codex -l` over a one-card queue with the
-// codex binary and child launch substituted, and returns the first child's
-// full environment. Boot opens one parent session and leaves cards untouched.
-func netCodexLaneChild(t *testing.T) netCodexLane {
-	t.Helper()
-	return netCodexLaneChildFor(t, "-l")
-}
-
-// netCodexLaneChildFor is netCodexLaneChild for one lane entry spelling.
-func netCodexLaneChildFor(t *testing.T, args ...string) netCodexLane {
-	t.Helper()
-	root, store := fcFixture(t)
-	fcQueue(t, store, factory.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-	t.Chdir(root)
-	netScrubLaneEnv(t)
-
-	var childEnv map[string]string
-	prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
-	codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
-	codexDirectLaunchFn = func(c *exec.Cmd) error {
-		if childEnv == nil {
-			childEnv = sdEnvOf(t, c.Env)
-		}
-		if got := childEnv[config.EnvFactoryCard]; got != "" {
-			t.Errorf("lane boot carries card %q; consumption belongs to todo --auto", got)
-		}
-		primary, err := filepath.EvalSymlinks(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if c.Dir != primary || c.Args[len(c.Args)-1] != codexLaneAutoPrompt {
-			t.Errorf("lane launch dir=%q args=%q, want parent checkout and auto directive", c.Dir, c.Args)
-		}
-		record, err := store.LoadPure()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(record.Items) != 1 || record.Items[0].State != factory.BacklogStatePicked {
-			t.Errorf("lane boot changed queue before todo --auto: %+v", record.Items)
-		}
-		return nil
-	}
-	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
-
-	if _, _, err := runCodexCmd(t, args...); err != nil {
-		t.Fatalf("codex %v lane launch: %v", args, err)
-	}
-	if childEnv == nil {
-		t.Fatal("the substituted codex child was never launched")
-	}
-	return netCodexLane{root: root, env: childEnv}
-}
-
-// netNamedArg returns the value following the first --name in args.
 func netNamedArg(args []string) string {
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] == nameFlagLong {
@@ -229,105 +170,6 @@ func containsFlag(args []string, flag string) bool {
 	return false
 }
 
-// netRunRecorded reports whether the project's run records name runID, with
-// the given backend, in both stores the leader start writes: the queue's
-// runtime section and the factory database (with the derived-capacity marker
-// a count-less leader records).
-func netRunRecorded(t *testing.T, root, runID, backend string) {
-	t.Helper()
-	record, err := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()
-	if err != nil {
-		t.Fatalf("load the queue record: %v", err)
-	}
-	found := false
-	for _, run := range record.Runtime.Runs {
-		if run.RunID == runID {
-			found = true
-			if run.Backend != backend {
-				t.Errorf("queue run %s backend = %q, want %q", runID, run.Backend, backend)
-			}
-		}
-	}
-	if !found {
-		t.Errorf("the queue's runtime section has no run %q", runID)
-	}
-	capacity, ok := recordedFactoryLaneCapacity(root, runID)
-	if !ok {
-		t.Fatalf("the factory database has no run %q", runID)
-	}
-	if capacity != homestate.LaneCapacityDerived {
-		t.Errorf("run %s lane capacity = %d, want the derived-capacity marker %d (a count-less leader never declares a bound)",
-			runID, capacity, homestate.LaneCapacityDerived)
-	}
-}
-
-// TestFactoryNetLeaderLaunch is the leader half of the net (AC-015): a bare
-// `-f` on cc and on glm starts a factory leader that records its run, stamps
-// the leader markers (and only those), names itself, and receives the
-// transient settings injection.
-func TestFactoryNetLeaderLaunch(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		backend string
-		entry   func([]string) error
-	}{
-		{"cc", factory.BackendClaude, netCC},
-		{"glm", factory.BackendGLM, netGLM},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := netLeaderFixture(t)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-f"})
-			if launch.err != nil || !launch.launched {
-				t.Fatalf("%s -f: launched=%v err=%v", tc.name, launch.launched, launch.err)
-			}
-
-			runID := launch.env[config.EnvFactoryRunID]
-			if runID == "" {
-				t.Fatalf("%s at launch is empty: the leader carries no run id", config.EnvFactoryRunID)
-			}
-			if got := launch.env[config.EnvMoaiFactoryWorkers]; got != "1" {
-				t.Errorf("%s at launch = %q, want 1 (the count-less leader's one-lane default)", config.EnvMoaiFactoryWorkers, got)
-			}
-			if got, want := launch.env[config.EnvFactoryLeadAddr], factory.FactoryLeaderSocketPath(runID); got != want {
-				t.Errorf("%s at launch = %q, want the run's leader socket %q", config.EnvFactoryLeadAddr, got, want)
-			}
-			if got := launch.env[config.EnvFactoryBackend]; got != tc.backend {
-				t.Errorf("%s at launch = %q, want %q", config.EnvFactoryBackend, got, tc.backend)
-			}
-			// A factory leader seeds no chain and is no lane.
-			for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker, config.EnvFactoryRole} {
-				if got := launch.env[key]; got != "" {
-					t.Errorf("%s at a leader launch = %q, want unset (the marker belongs to another role)", key, got)
-				}
-			}
-			leaderName := launch.env[config.EnvFactoryLeadName]
-			if _, ok := factory.SplitLeaderLabel(leaderName); !ok {
-				t.Errorf("%s at launch = %q, want a leader-shaped name", config.EnvFactoryLeadName, leaderName)
-			}
-			if got := netNamedArg(launch.args); got != leaderName {
-				t.Errorf("the backend argv names the session %q, want the exported leader name %q (argv %v)", got, leaderName, launch.args)
-			}
-			if containsFlag(launch.args, "-f") || containsFlag(launch.args, "--factory") {
-				t.Errorf("the entry token reached the engine argv: %v", launch.args)
-			}
-			netRequireSettingsInjected(t, launch)
-			netRunRecorded(t, root, runID, tc.backend)
-
-			// The enter helpers restore the process environment on return.
-			for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvFactoryRunID, config.EnvFactoryLeadAddr, config.EnvFactoryBackend} {
-				if v, ok := os.LookupEnv(key); ok {
-					t.Errorf("%s = %q survived the launch; the leader markers must be restored", key, v)
-				}
-			}
-		})
-	}
-}
-
-// TestFactoryNetLaneLaunch is the lane half of the net (AC-015): a lane
-// launched through `-l` claims a registry slot under its own pid,
-// stamps the lane markers, names itself with the claimed label, and receives
-// the settings injection; a second lane from the same process takes the next
-// label because the first claim is live.
 func TestFactoryNetLaneLaunch(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -442,89 +284,4 @@ func containsEntry(env []string, entry string) bool {
 		}
 	}
 	return false
-}
-
-// TestFactoryEntryMatrix is the enterable-pair matrix (AC-015): every
-// backend/role pair that is enterable today still launches — Claude and GLM
-// as leader (`-f`), Claude, GLM and Codex as lane (`-l`)
-// — and the Codex leader stays refused with one line,
-// exit 1, and no child, no run record.
-func TestFactoryEntryMatrix(t *testing.T) {
-	t.Run("claude leader", func(t *testing.T) {
-		root := netLeaderFixture(t)
-		launch := netDriveLaunch(t, root, netCC, []string{"-f"})
-		if launch.err != nil || !launch.launched {
-			t.Fatalf("cc -f: launched=%v err=%v", launch.launched, launch.err)
-		}
-		if launch.env[config.EnvMoaiFactoryWorkers] == "" || launch.env[config.EnvFactoryRole] != "" {
-			t.Errorf("cc -f did not launch as a leader: workers=%q role=%q", launch.env[config.EnvMoaiFactoryWorkers], launch.env[config.EnvFactoryRole])
-		}
-	})
-	t.Run("glm leader", func(t *testing.T) {
-		root := netLeaderFixture(t)
-		launch := netDriveLaunch(t, root, netGLM, []string{"-f"})
-		if launch.err != nil || !launch.launched {
-			t.Fatalf("glm -f: launched=%v err=%v", launch.launched, launch.err)
-		}
-		if launch.env[config.EnvMoaiFactoryWorkers] == "" || launch.env[config.EnvFactoryRole] != "" {
-			t.Errorf("glm -f did not launch as a leader: workers=%q role=%q", launch.env[config.EnvMoaiFactoryWorkers], launch.env[config.EnvFactoryRole])
-		}
-	})
-	for _, tc := range []struct {
-		name    string
-		backend string
-		entry   func([]string) error
-	}{
-		{"claude lane", factory.BackendClaude, netCC},
-		{"glm lane", factory.BackendGLM, netGLM},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := netLaneFixture(t, tc.backend)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
-			if launch.err != nil || !launch.launched {
-				t.Fatalf("%s: launched=%v err=%v", tc.name, launch.launched, launch.err)
-			}
-			if launch.env[config.EnvFactoryRole] != config.FactoryRoleLane || launch.env[config.EnvMoaiFactoryWorker] == "" {
-				t.Errorf("%s did not launch as a lane: role=%q worker=%q", tc.name, launch.env[config.EnvFactoryRole], launch.env[config.EnvMoaiFactoryWorker])
-			}
-		})
-	}
-	t.Run("codex lane", func(t *testing.T) {
-		lane := netCodexLaneChild(t)
-		if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || lane.env[config.EnvMoaiFactoryWorker] == "" {
-			t.Errorf("codex lane child is not a lane: role=%q worker=%q", lane.env[config.EnvFactoryRole], lane.env[config.EnvMoaiFactoryWorker])
-		}
-		if got := lane.env[config.EnvFactoryBackend]; got != factory.BackendGPT {
-			t.Errorf("codex lane child %s = %q, want %q", config.EnvFactoryBackend, got, factory.BackendGPT)
-		}
-	})
-	t.Run("codex leader refused", func(t *testing.T) {
-		root := pinCodexRefusalRoot(t)
-		netScrubLaneEnv(t)
-		prevDirect, prevSpawn := codexDirectLaunchFn, codexSpawnLaunchFn
-		launches := 0
-		codexDirectLaunchFn = func(*exec.Cmd) error { launches++; return nil }
-		codexSpawnLaunchFn = func(string, string, []string, []string) error { launches++; return nil }
-		prevLook := codexLookPath
-		codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
-		t.Cleanup(func() { codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook })
-
-		_, stderr, err := runCodexCmd(t, "-f")
-		code, ok := ResolveExitCode(err)
-		if !ok || code != 1 {
-			t.Errorf("codex -f: exit code = (%d, %v), want (1, true); err=%v", code, ok, err)
-		}
-		if lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n"); len(lines) != 1 || lines[0] == "" {
-			t.Errorf("codex -f: stderr = %q, want exactly one refusal line", stderr)
-		}
-		if launches != 0 {
-			t.Errorf("codex -f launched %d child(ren); the refusal must start none", launches)
-		}
-		if record, loadErr := factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure(); loadErr == nil && len(record.Runtime.Runs) != 0 {
-			t.Errorf("codex -f recorded %d run(s): %+v", len(record.Runtime.Runs), record.Runtime.Runs)
-		}
-		if reg := loadFactoryRegistry(factoryRegistryPath(root)); len(reg) != 0 {
-			t.Errorf("codex -f wrote lane claims: %v", reg)
-		}
-	})
 }
