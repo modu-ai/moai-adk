@@ -242,10 +242,9 @@ func (m *ConfigManager) Save() error {
 
 	sectionsDir := filepath.Join(filepath.Clean(m.root), defs.MoAIDir, defs.SectionsSubdir)
 
-	// Ensure directory exists
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		return fmt.Errorf("create config directory: %w", err)
-	}
+	// Each project-bound writer creates its parents through the trusted root.
+	// A path-based MkdirAll here could mutate an external linked directory
+	// before the first section writer has a chance to refuse it.
 
 	// Save user section — dirty-or-absent gate (SPEC-WEB-SAVE-LOSSLESS-001
 	// backstop): rewritten only when SetSection-mutated this session or the
@@ -276,7 +275,7 @@ func (m *ConfigManager) Save() error {
 		gitConventionAbsent = true
 	}
 	if m.gitConventionDirty || gitConventionAbsent {
-		if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
+		if err := m.saveSectionAtRoot("git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
 			return fmt.Errorf("save git convention config: %w", err)
 		}
 	}
@@ -293,7 +292,7 @@ func (m *ConfigManager) Save() error {
 		gitStrategyAbsent = true
 	}
 	if m.gitStrategyDirty || gitStrategyAbsent {
-		if err := saveSection(sectionsDir, "git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
+		if err := m.saveSectionAtRoot("git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
 			return fmt.Errorf("save git strategy config: %w", err)
 		}
 	}
@@ -324,7 +323,7 @@ func (m *ConfigManager) saveGated(sectionsDir, filename string, dirty bool, data
 	if !dirty {
 		return nil
 	}
-	return saveSection(sectionsDir, filename, data)
+	return m.saveSectionAtRoot(filename, data)
 }
 
 // Reload forces a re-read from disk, replacing the in-memory configuration.

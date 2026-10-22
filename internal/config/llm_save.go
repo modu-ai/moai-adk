@@ -24,8 +24,8 @@ import (
 // patched through yamlpatch: each changed scalar is replaced, a value that must
 // be quoted is written quoted, and a removed key is deleted, so the keys and
 // comments the section does not own survive (REQ-RC30-007). An absent file takes
-// the typed write of saveGated, which has no content to keep, and a section that
-// is not dirty keeps saveGated's no-op.
+// the rooted typed write, which has no content to keep, and an existing section
+// that is not dirty keeps saveGated's no-op.
 func (m *ConfigManager) saveLLM(sectionsDir string) error {
 	path := filepath.Join(sectionsDir, "llm.yaml")
 	if info, statErr := os.Stat(path); m.llmDirty && statErr == nil {
@@ -43,6 +43,17 @@ func (m *ConfigManager) saveLLM(sectionsDir string) error {
 			yamlpatch.RootOptions{Mode: info.Mode().Perm(), AllowEmpty: true})
 	}
 	return m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM})
+}
+
+// saveSectionAtRoot preserves typed section serialization without using a
+// path-based parent creation or publishing operation outside the project root.
+func (m *ConfigManager) saveSectionAtRoot(filename string, data any) error {
+	yamlData, err := yaml.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("marshal %s: %w", filename, err)
+	}
+	return yamlpatch.WriteFileAtRoot(m.root, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, filename), yamlData,
+		yamlpatch.RootOptions{ParentPerm: defs.DirPerm})
 }
 
 // LLMSectionEdits returns the yamlpatch edits that turn the llm section held in
