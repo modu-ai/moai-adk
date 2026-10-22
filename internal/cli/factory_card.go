@@ -600,8 +600,26 @@ func factoryRefuseForeignWorktreeAt(ctx context.Context, landingDir, legacyLeaf,
 		if dir == "" {
 			continue
 		}
-		if info, err := os.Lstat(dir); err == nil && info.IsDir() {
-			return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+		if _, err := os.Lstat(dir); err == nil {
+			return fmt.Errorf("factory next: refused — the worktree path %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the path first)", dir)
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("factory next: inspect landing path %s: %w", dir, err)
+		}
+		// Windows can report PATH_NOT_FOUND for a leaf below a regular
+		// file. Confirm the nearest existing ancestor is a directory before
+		// interpreting a missing leaf as an available landing path.
+		for parent := filepath.Dir(dir); ; parent = filepath.Dir(parent) {
+			if info, err := os.Stat(parent); err == nil {
+				if !info.IsDir() {
+					return fmt.Errorf("factory next: landing parent %s is not a directory", parent)
+				}
+				break
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("factory next: inspect landing parent %s: %w", parent, err)
+			}
+			if parent == filepath.Dir(parent) {
+				return fmt.Errorf("factory next: no existing directory contains landing path %s", dir)
+			}
 		}
 	}
 	return nil
