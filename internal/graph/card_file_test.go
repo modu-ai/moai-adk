@@ -8,6 +8,7 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -303,8 +304,8 @@ func TestGraphCardFileEdgesKeepNonASCIIPaths(t *testing.T) {
 			got = e.File
 		}
 	}
-	if got != filepath.Join("문서", "설계노트.txt") {
-		t.Fatalf("t16's edge file = %q, want the raw path %q", got, filepath.Join("문서", "설계노트.txt"))
+	if got != "문서/설계노트.txt" {
+		t.Fatalf("t16's edge file = %q, want the raw Git path %q", got, "문서/설계노트.txt")
 	}
 }
 
@@ -430,16 +431,15 @@ func TestGraphCardFileEdgesSeeSquashLanding(t *testing.T) {
 // number of subprocess launches from returning unnoticed.
 func TestGraphCardFileEdgesBatchMatchesSerial(t *testing.T) {
 	root := cardFileFixture(t)
-	for _, name := range []string{"\nleading\nnewline.txt", strings.Repeat("a", 40)} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte("squash\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		gitFix(t, root, "add", "--", name)
-	}
-	gitFix(t, root, "commit", "-qm", "fix(graph): squash landing (card t1560) (#1999)")
+	// Git trees can contain legal Git names that cannot be checked out on NTFS.
+	// Exercise their real NUL-framed Git output through object plumbing, without
+	// weakening core.protectNTFS or asking the host filesystem to create them.
 	gitFix(t, root, "mv", "--", "t5.txt", "renamed.txt")
 	gitFix(t, root, "commit", "-qm", "fix(graph): rename landing (card t1561) (#2000)")
 	gitFix(t, root, "commit", "--allow-empty", "-qm", "fix(graph): empty landing (card t1562) (#2001)")
+	// Keep the object-only commit last: a later index-based commit would
+	// accidentally delete these object-only names absent from the fixture index.
+	cardFileObjectCommit(t, root, []string{"\nleading\nnewline.txt", strings.Repeat("a", 40)})
 	for _, renames := range []string{"true", "false"} {
 		t.Run(renames, func(t *testing.T) {
 			gitFix(t, root, "config", "diff.renames", renames)
@@ -461,6 +461,17 @@ func TestGraphCardFileEdgesBatchMatchesSerial(t *testing.T) {
 					if file != "" {
 						want = append(want, CardFileEdge{Card: card, File: file, SHA: c.sha[:9]})
 					}
+				}
+			}
+			for _, rawName := range []string{"\nleading\nnewline.txt", strings.Repeat("a", 40)} {
+				found := false
+				for _, edge := range want {
+					if edge.Card == "t1560" && edge.File == rawName {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatalf("native Git serial oracle lost raw squash path %q", rawName)
 				}
 			}
 			sort.Slice(want, func(i, j int) bool {
@@ -491,6 +502,29 @@ func TestGraphCardFileEdgesBatchMatchesSerial(t *testing.T) {
 			}
 		})
 	}
+}
+
+func cardFileObjectCommit(t *testing.T, root string, names []string) {
+	t.Helper()
+	run := func(input string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return string(out)
+	}
+	parent := strings.TrimSpace(run("", "rev-parse", "HEAD"))
+	blob := strings.TrimSpace(run("squash\n", "hash-object", "-w", "--stdin"))
+	entries := run("", "ls-tree", "-z", "HEAD")
+	for _, name := range names {
+		entries += fmt.Sprintf("100644 blob %s\t%s\x00", blob, name)
+	}
+	tree := strings.TrimSpace(run(entries, "mktree", "-z"))
+	commit := strings.TrimSpace(run("", "commit-tree", tree, "-p", parent, "-m", "fix(graph): squash landing (card t1560) (#1999)"))
+	run("", "update-ref", "HEAD", commit, parent)
 }
 
 func TestGraphCardFileEdgesBatchFailurePreservesPerCommitIsolation(t *testing.T) {
