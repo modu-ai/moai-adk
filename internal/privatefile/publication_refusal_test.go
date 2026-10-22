@@ -25,7 +25,7 @@ func TestWriteFilePostPublicationRefusalRevokesSecret(t *testing.T) {
 					return Check(candidate)
 				}
 				checkedPublished = true
-				got, err := os.ReadFile(path)
+				got, err := publicationReadbackForTest(path)
 				if err != nil || string(got) != secret {
 					t.Fatalf("fixture did not reach real publication: payload=%q err=%v", got, err)
 				}
