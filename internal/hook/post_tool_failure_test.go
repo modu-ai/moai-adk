@@ -17,6 +17,57 @@ func TestPostToolUseFailureHandler_EventType(t *testing.T) {
 	}
 }
 
+// failureMessage extracts the classified failure message from the handler
+// output. SPEC-HOOK-SYNC-ASYNC-001 M4 (REQ-HSA-003): the registration is
+// async, and an async hook delivers ONLY additionalContext on the next turn —
+// so the message must ride hookSpecificOutput.additionalContext and
+// systemMessage must stay empty (AC-HSA-005).
+func failureMessage(t *testing.T, out *HookOutput) string {
+	t.Helper()
+	if out == nil {
+		t.Fatal("got nil output")
+	}
+	if out.SystemMessage != "" {
+		t.Errorf("SystemMessage = %q, want empty (async hooks deliver additionalContext only)", out.SystemMessage)
+	}
+	if out.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput is nil, want hookSpecificOutput.additionalContext")
+	}
+	if out.HookSpecificOutput.HookEventName != string(EventPostToolUseFailure) {
+		t.Errorf("hookEventName = %q, want %q",
+			out.HookSpecificOutput.HookEventName, string(EventPostToolUseFailure))
+	}
+	return out.HookSpecificOutput.AdditionalContext
+}
+
+// TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage pins the
+// AC-HSA-005 output shape end to end: additionalContext present with the
+// classified category prefix, systemMessage absent, and the hookSpecificOutput
+// event name carried (Claude Code protocol requires hookEventName on every
+// hookSpecificOutput).
+func TestPostToolUseFailureHandler_AdditionalContextNotSystemMessage(t *testing.T) {
+	t.Parallel()
+
+	h := NewPostToolUseFailureHandler()
+	got, err := h.Handle(context.Background(), &HookInput{
+		SessionID:     "sess-hsa005",
+		ToolName:      "Bash",
+		ToolUseID:     "tool-hsa005",
+		HookEventName: "PostToolUseFailure",
+		Error:         "exit status 1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := failureMessage(t, got)
+	if msg == "" {
+		t.Fatal("additionalContext empty, want the classified failure message")
+	}
+	if !strings.HasPrefix(msg, "ExitError:") {
+		t.Errorf("additionalContext = %q, want ExitError: prefix", msg)
+	}
+}
+
 func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 	t.Parallel()
 
@@ -141,21 +192,14 @@ func TestPostToolUseFailureHandler_Handle(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got == nil {
-				t.Fatal("got nil output")
-			}
 
-			// Check that system message is present
-			if tt.wantMessage && got.SystemMessage == "" {
-				t.Error("Handle() expected SystemMessage to be set")
-			}
-
-			// Check that message starts with category name
-			if tt.wantMessage && got.SystemMessage != "" {
+			// The classified message is delivered as additionalContext (M4
+			// async conversion) and starts with the category name.
+			if tt.wantMessage {
+				msg := failureMessage(t, got)
 				expectedPrefix := string(tt.expectedCategory) + ":"
-				if len(got.SystemMessage) < len(expectedPrefix) ||
-					got.SystemMessage[:len(expectedPrefix)] != expectedPrefix {
-					t.Errorf("Handle() SystemMessage = %v, want prefix %v", got.SystemMessage, expectedPrefix)
+				if len(msg) < len(expectedPrefix) || msg[:len(expectedPrefix)] != expectedPrefix {
+					t.Errorf("Handle() additionalContext = %v, want prefix %v", msg, expectedPrefix)
 				}
 			}
 		})
@@ -234,12 +278,10 @@ func TestPostToolUseFailureHandler_NestedToolResponse(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got == nil || got.SystemMessage == "" {
-				t.Fatal("expected non-empty SystemMessage")
-			}
+			msg := failureMessage(t, got)
 			expectedPrefix := string(tt.expectedCategory) + ":"
-			if !strings.HasPrefix(got.SystemMessage, expectedPrefix) {
-				t.Errorf("SystemMessage = %q, want prefix %q", got.SystemMessage, expectedPrefix)
+			if !strings.HasPrefix(msg, expectedPrefix) {
+				t.Errorf("additionalContext = %q, want prefix %q", msg, expectedPrefix)
 			}
 		})
 	}
@@ -263,14 +305,15 @@ func TestPostToolUseFailureHandler_UnknownFailureExcerpt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.SystemMessage == contentFreeUnknownMessage {
-		t.Fatalf("SystemMessage is the content-free string: %q", got.SystemMessage)
+	msg := failureMessage(t, got)
+	if msg == contentFreeUnknownMessage {
+		t.Fatalf("additionalContext is the content-free string: %q", msg)
 	}
-	if !strings.HasPrefix(got.SystemMessage, "UnknownFailure:") {
-		t.Errorf("SystemMessage = %q, want UnknownFailure: prefix", got.SystemMessage)
+	if !strings.HasPrefix(msg, "UnknownFailure:") {
+		t.Errorf("additionalContext = %q, want UnknownFailure: prefix", msg)
 	}
-	if !strings.Contains(got.SystemMessage, "something went wrong") {
-		t.Errorf("SystemMessage = %q, want raw-error excerpt %q", got.SystemMessage, "something went wrong")
+	if !strings.Contains(msg, "something went wrong") {
+		t.Errorf("additionalContext = %q, want raw-error excerpt %q", msg, "something went wrong")
 	}
 
 	// Boundedness: a very long raw error is truncated to maxErrorExcerptLen.
@@ -284,11 +327,12 @@ func TestPostToolUseFailureHandler_UnknownFailureExcerpt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.HasSuffix(got2.SystemMessage, "...") {
-		t.Errorf("long excerpt not truncated: %q", got2.SystemMessage[:50])
+	msg2 := failureMessage(t, got2)
+	if !strings.HasSuffix(msg2, "...") {
+		t.Errorf("long excerpt not truncated: %q", msg2[:50])
 	}
-	if len(got2.SystemMessage) > len("UnknownFailure: Tool execution failed: ")+maxErrorExcerptLen+3 {
-		t.Errorf("excerpt exceeds bound: len=%d", len(got2.SystemMessage))
+	if len(msg2) > len("UnknownFailure: Tool execution failed: ")+maxErrorExcerptLen+3 {
+		t.Errorf("excerpt exceeds bound: len=%d", len(msg2))
 	}
 }
 
@@ -312,11 +356,12 @@ func TestPostToolUseFailureHandler_TopLevelErrorPrecedence(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	// Both sources unclassifiable → UnknownFailure with the TOP-LEVEL excerpt.
-	if !strings.HasPrefix(got.SystemMessage, "UnknownFailure:") {
-		t.Fatalf("SystemMessage = %q, want UnknownFailure: prefix", got.SystemMessage)
+	msg := failureMessage(t, got)
+	if !strings.HasPrefix(msg, "UnknownFailure:") {
+		t.Fatalf("additionalContext = %q, want UnknownFailure: prefix", msg)
 	}
-	if !strings.Contains(got.SystemMessage, "top-level mystery text") {
-		t.Errorf("SystemMessage = %q, want top-level excerpt", got.SystemMessage)
+	if !strings.Contains(msg, "top-level mystery text") {
+		t.Errorf("additionalContext = %q, want top-level excerpt", msg)
 	}
 	// Classification still considers nested text when top-level misses a category.
 	input2 := &HookInput{
@@ -330,14 +375,15 @@ func TestPostToolUseFailureHandler_TopLevelErrorPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.HasPrefix(got2.SystemMessage, "PermissionDenied:") {
-		t.Errorf("SystemMessage = %q, want PermissionDenied: (classification union)", got2.SystemMessage)
+	msg2 := failureMessage(t, got2)
+	if !strings.HasPrefix(msg2, "PermissionDenied:") {
+		t.Errorf("additionalContext = %q, want PermissionDenied: (classification union)", msg2)
 	}
 }
 
 // TestPostToolUseFailureHandler_ToolResponseResilience covers REQ-HFC-006
 // (AC-HFC-006): malformed, bare-string, and absent tool_response degrade
-// gracefully — no panic, no handler error, non-empty SystemMessage.
+// gracefully — no panic, no handler error, non-empty additionalContext.
 func TestPostToolUseFailureHandler_ToolResponseResilience(t *testing.T) {
 	t.Parallel()
 
@@ -367,8 +413,8 @@ func TestPostToolUseFailureHandler_ToolResponseResilience(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got == nil || got.SystemMessage == "" {
-				t.Fatal("expected non-empty SystemMessage (fail-open)")
+			if msg := failureMessage(t, got); msg == "" {
+				t.Fatal("expected non-empty additionalContext (fail-open)")
 			}
 		})
 	}

@@ -91,7 +91,7 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | UserPromptSubmit | `prompt` | `additionalContext`, `reason`, `decision:{block,reason}`, `sessionTitle`, `suppressOriginalPrompt` | Exit 2 blocks prompt; JSON `decision:"block"` also available |
 | PermissionRequest | `toolName`, `toolInput` | `reason`, `decision.behavior`, `updatedInput`, `updatedPermissions` | Exit 0 = allow, exit 2 = deny; JSON `decision.behavior` (allow/deny/ask) also available |
 | PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
-| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
+| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `hookSpecificOutput`: `additionalContext` | Non-blocking. Registered `async: true`: the classified failure message arrives as `additionalContext` on the next turn (async hooks deliver only `additionalContext`) |
 | Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — background-agent notifications; handler is a generic pass-through, no Go change) |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
 | InstructionsLoaded | `files`, `source` | - | Lists loaded instruction files (v2.1.69+) |
@@ -367,7 +367,7 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
 | Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
 | UserPromptSubmit | 30s | not documented | Blocks user interaction. Default 30s for this event (Claude Code's default; the official hooks reference documents no separate maximum). Raised from 5s: the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
-| All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
+| All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; `async: true` entries among these events: the PostToolUse harness-observe entries, PostToolUseFailure, ConfigChange, and the SubagentStop chain-event entry) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
 Two events have a shorter timeout than the 600s maximum. For `MessageDisplay` that value is a runtime ceiling and is not overridable upward; for `UserPromptSubmit` 30s is the Claude Code default, not a ceiling:
