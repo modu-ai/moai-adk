@@ -27,3 +27,7 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 운영자 결정 2026-10-23: 천장 예외 1회(델타 한정), 리더 세션 3936623d 경유 — recorded by lane-8 on the leader's relayed message (cross-session, 2026-10-23); the lane did not receive the decision from the operator directly. Scope: Tier M plan-audit ceiling (2 rounds, reached at round 2: FAIL 0.76, rcpt-87831eae3fa19ae402a21281) is excepted for ONE delta re-audit limited to the verdict's `fix_scope` anchors (N1-N4); a PASS goes to kickoff; a further FAIL returns to the hold-and-split disposition with no further exception.
