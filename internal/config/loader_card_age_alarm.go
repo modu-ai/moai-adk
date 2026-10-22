@@ -65,26 +65,42 @@ func decodeCardAgeAlarm(node *yaml.Node) (CardAgeAlarmConfig, error) {
 		return defaults, fmt.Errorf("workflow.card_age_alarm: expected a mapping")
 	}
 	decoded := cardAgeAlarmConfigDecode(defaults)
-	if err := node.Decode(&decoded); err != nil {
-		// The complete decode retains YAML's duplicate-key and alias checks.
-		// Identify the first malformed known field without accepting any part
-		// of a refused block or discarding unrelated workflow settings.
-		for i := 0; i+1 < len(node.Content); i += 2 {
-			key, value := node.Content[i].Value, node.Content[i+1]
-			var fieldErr error
-			switch key {
-			case "enabled":
-				var flag bool
-				fieldErr = value.Decode(&flag)
-			case "gate_warn_after", "gate_alert_after", "stall_warn_after", "stall_alert_after":
-				var band string
-				fieldErr = value.Decode(&band)
-			}
-			if fieldErr != nil {
-				return defaults, fmt.Errorf("workflow.card_age_alarm.%s: %w", key, fieldErr)
-			}
+	decodeErr := node.Decode(&decoded)
+	// Preserve the complete native decode above, including duplicate/alias
+	// checks. Native map decoding supplies effective fields with YAML's own
+	// merge-sequence precedence and explicit-key overrides, rather than
+	// reporting an overridden or hidden field from a merge source.
+	var fields map[string]yaml.Node
+	if err := node.Decode(&fields); err != nil {
+		if decodeErr != nil {
+			err = decodeErr
 		}
 		return defaults, fmt.Errorf("workflow.card_age_alarm: %w", err)
+	}
+	for _, key := range []string{"enabled", "gate_warn_after", "gate_alert_after", "stall_warn_after", "stall_alert_after"} {
+		value, present := fields[key]
+		if !present {
+			continue
+		}
+		var fieldErr error
+		if key == "enabled" {
+			var flag bool
+			fieldErr = value.Decode(&flag)
+		} else {
+			// A nil pointer distinguishes explicit null (including aliases)
+			// from an omitted threshold, which keeps its compiled default.
+			var band *string
+			fieldErr = value.Decode(&band)
+			if fieldErr == nil && band == nil {
+				fieldErr = fmt.Errorf("must be a positive duration; got null")
+			}
+		}
+		if fieldErr != nil {
+			return defaults, fmt.Errorf("workflow.card_age_alarm.%s: %w", key, fieldErr)
+		}
+	}
+	if decodeErr != nil {
+		return defaults, fmt.Errorf("workflow.card_age_alarm: %w", decodeErr)
 	}
 	return CardAgeAlarmConfig(decoded), nil
 }

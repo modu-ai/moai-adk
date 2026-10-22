@@ -155,7 +155,7 @@ func writeFactoryAgeAlarmText(w io.Writer, rows []factoryAgeAlarmView, warning s
 			r.Card, r.Run, r.State, r.Class, r.Band, r.Age, r.Stage, r.Commit, r.Activity)
 	}
 	if warning != "" {
-		_, _ = fmt.Fprintln(w, warning)
+		_, _ = fmt.Fprintln(w, strings.Join(strings.Fields(warning), " "))
 	}
 }
 
