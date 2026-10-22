@@ -219,7 +219,7 @@ m1_to_mN_commit_strategy: per-milestone local commits in plan order M2, M5, M4, 
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: pending-backfill   # the amended re-close commit (v0.8.0); backfilled in the following commit
+sync_commit_sha: 019db5aa7ef0244a3c1fcd26dc0a3483a75f617d   # the amended re-close commit (v0.8.0)
 prior_completed_sha: f3c09a12e74dee508a3abd8a9e5a80d61f9b0c16   # the v0.7.1 close, preserved
 sync_status: complete-pending-audit
 tier: M
