@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELEASE-PIPELINE-001
 title: "Release pipeline coverage and cost — acceptance criteria"
-version: "0.7.0"
+version: "0.7.1"
 created: 2026-10-17
 updated: 2026-10-23
 author: manager-spec
@@ -207,7 +207,7 @@ Shows: `Release PR Multi-OS Gate` runs only on `pull_request` and `workflow_disp
 
 ## §D.1 Severity and traceability
 
-Count, live identifiers only: release-blocking = 002, 003, 007, 008, 009, 010, 011, 012, 013 (9); regression-guard = 001, 004 (2); total live = 11. Retired: AC-RPC-005, AC-RPC-006 (moved, not reused). Every live REQ-RPC maps to exactly one live AC; no orphan. Traceability chain: card item # → M# (plan.md §F) → REQ-RPC-### (spec.md §C) → AC-RPC-### (here) → EV-# / guard test.
+Count, live identifiers only: release-blocking = 002, 003, 007, 008, 009, 010, 011, 012, 013 (9); regression-guard = 001, 004 (2); total live = 11. Retired: AC-RPC-005 [RETIRED], AC-RPC-006 [RETIRED] (moved, not reused). Every live REQ-RPC maps to exactly one live AC; no orphan. Traceability chain: card item # → M# (plan.md §F) → REQ-RPC-### (spec.md §C) → AC-RPC-### (here) → EV-# / guard test.
 
 ## §D.2 Indirect verification (workflow-level, post-merge)
 
