@@ -1,0 +1,8 @@
+=== RUN   TestCodexContractByteCeiling
+    token_budget_guard_test.go:109: contract document AGENTS.md = 24501 bytes (ceiling 24576, headroom 75)
+    token_budget_guard_test.go:109: contract document internal/template/templates/AGENTS.md.tmpl = 23784 bytes (ceiling 24576, headroom 792)
+--- PASS: TestCodexContractByteCeiling (0.20s)
+=== RUN   TestCodexNestedTemplateDiscoveryBudget
+--- PASS: TestCodexNestedTemplateDiscoveryBudget (1.38s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	1.998s

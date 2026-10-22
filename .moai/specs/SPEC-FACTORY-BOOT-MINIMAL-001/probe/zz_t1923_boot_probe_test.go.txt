@@ -1,0 +1,124 @@
+// SPEC-FACTORY-BOOT-MINIMAL-001 plan-phase probe (card t1923).
+//
+// This file is NOT part of the package source. It is compiled into package
+// hook only through `go test -overlay` (see overlay.json beside it), so the
+// probe measures the PRODUCTION renderers on the tree under test without
+// writing a file into internal/hook. It is the RED-now / green instrument for
+// AC-FBM-001..003 (acceptance.md).
+//
+// Envelope (spec.md REQ-FBM-004/005): composite = non-factory allowance (1,950
+// UTF-16, measured live: attribution 509 + peer-bound 111 + GLM 359 +
+// binary-lag 421 + guard-liveness 118 + skew-kept 411 + 6 joiners 12 = 1,941)
+// + joiner + factory fixed part (bootstrap notice + lane rule) + role block.
+// The 0.6.0 chain of SPEC-ROLE-INJECTION-BUDGET-001 is kept: producer ceiling
+// 4,797 = allowance 1,950 + factory fixed ceiling 2,847; composite 9,146 =
+// 4,797 + overhead 257 + core 4,092.
+package hook
+
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
+)
+
+const (
+	t1923NonFactoryAllowance = 1950
+	t1923FactoryFixedCeiling = 2847
+	t1923CompositeBudget     = 9146
+	t1923CoreCeiling         = 4092
+	t1923DocsURL             = "https://adk.mo.ai.kr"
+	t1923MatrixPath          = ".claude/rules/moai/development/spec-frontmatter-schema.md"
+)
+
+func TestT1923BootBudgetProbe(t *testing.T) {
+	root := budgetModuleRoot(t)
+	faces := []struct{ name, root string }{
+		{"deployed", root},
+		{"template", filepath.Join(root, "internal", "template", "templates")},
+	}
+	type variant struct{ role, dispatch string }
+	variants := []variant{{"leader", ""}, {"lane", ""}, {"lane", config.FactoryDispatchManual}}
+	swept := 0
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		for _, v := range variants {
+			for _, src := range []string{"startup", "clear", "compact"} {
+				for _, fc := range faces {
+					name := fmt.Sprintf("%s/%s/%s/%s/%s", v.role, v.dispatch, lang, src, fc.name)
+					t.Run(name, func(t *testing.T) {
+						clearFactoryEnv(t)
+						t.Setenv(config.EnvFactoryRunID, "f-probe1")
+						t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-factory/f-probe1/lead.sock")
+						t.Setenv(config.EnvFactorySettingsInjected, "1")
+						if v.role == "leader" {
+							t.Setenv(config.EnvMoaiFactoryWorkers, "6")
+						} else {
+							t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
+							t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+							t.Setenv(config.EnvFactoryAutoDispatch, v.dispatch)
+						}
+						notice := factoryBootstrapNoticeForSource(src, t.TempDir(), "probe-session", lang)
+						rule := factoryLaneRuleForSource(src, lang)
+						fixed := notice
+						if rule != "" {
+							if fixed != "" {
+								fixed += "\n\n"
+							}
+							fixed += rule
+						}
+						inj := roleRuleInjectionFor(fc.root, src, lang)
+						if inj.Context == "" {
+							t.Fatalf("role injection empty — role detection or source gate failed")
+						}
+						composite := assembleInjectionComposite(strings.Repeat("a", t1923NonFactoryAllowance)+"\n\n"+fixed, inj)
+						core, err := buildRoleCore(fc.root, roleRuleFiles[0])
+						if err != nil {
+							t.Fatalf("buildRoleCore: %v", err)
+						}
+						fixedLen, compLen, coreLen := utf16Len(fixed), utf16Len(composite), utf16Len(core)
+						t.Logf("PROBE %s fixed=%d composite=%d core=%d", name, fixedLen, compLen, coreLen)
+						if fixedLen > t1923FactoryFixedCeiling {
+							t.Errorf("factory fixed part %d > ceiling %d", fixedLen, t1923FactoryFixedCeiling)
+						}
+						if compLen > t1923CompositeBudget {
+							t.Errorf("composite %d > budget %d", compLen, t1923CompositeBudget)
+						}
+						if coreLen > t1923CoreCeiling {
+							t.Errorf("role core %d > ceiling %d", coreLen, t1923CoreCeiling)
+						}
+						if src == "startup" {
+							// Minimal-set presence (mutant guard: a notice emptied to pass
+							// the size checks fails here).
+							want := []string{t1923DocsURL}
+							if v.role == "leader" {
+								want = append(want, "f-probe1", factory.LeaderLabel())
+							} else {
+								want = append(want, "lane-3", t1923MatrixPath)
+							}
+							for _, w := range want {
+								if !strings.Contains(notice, w) {
+									t.Errorf("startup notice lost required element %q", w)
+								}
+							}
+							// Relocated element: the two-flag auto-mode explanation.
+							for _, gone := range []string{"--auto-leader", "--auto-lane"} {
+								if strings.Contains(notice, gone) {
+									t.Errorf("startup notice still carries the auto-mode explanation (%q)", gone)
+								}
+							}
+						}
+					})
+					swept++
+				}
+			}
+		}
+	}
+	// Empty-sweep guard (verification-completeness.md §1.1).
+	if swept != 4*3*3*2 {
+		t.Fatalf("probe swept %d cells, want %d", swept, 4*3*3*2)
+	}
+	t.Logf("PROBE swept=%d", swept)
+}

@@ -1,0 +1,56 @@
+=== RUN   TestT1923Measure
+FIELDS lang=en leaderHeader=37 leaderIdentity=319 leaderManual=202 entryGuide=140 agentFanout=60 leaderSocket=17 leaderClasses=375 leaderStagger=444 gateSummary=226 operationalStatus=99 settingsAuto=69 settingsVerify=113 laneJoin=58 laneJoinNoCount=55 laneNextCardRule=1926 laneManualDispatchRule=317 laneRecheckRule=779 laneSpawnAuthority=467 autoModeGuideLeader=464 autoModeGuideLane=457 docsPointer=51
+MEASURE role=leader face=deployed lang=en source=startup bootstrap=2573 laneRule=0 roleBlock=4303 composite_factory=6878
+MEASURE role=leader face=template lang=en source=startup bootstrap=2573 laneRule=0 roleBlock=4303 composite_factory=6878
+MEASURE role=leader face=deployed lang=en source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=en source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=deployed lang=en source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=en source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=lane face=deployed lang=en source=startup bootstrap=1036 laneRule=2713 roleBlock=4301 composite_factory=8054
+MEASURE role=lane face=template lang=en source=startup bootstrap=1036 laneRule=2713 roleBlock=4301 composite_factory=8054
+MEASURE role=lane face=deployed lang=en source=clear bootstrap=0 laneRule=2713 roleBlock=4301 composite_factory=7016
+MEASURE role=lane face=template lang=en source=clear bootstrap=0 laneRule=2713 roleBlock=4301 composite_factory=7016
+MEASURE role=lane face=deployed lang=en source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+MEASURE role=lane face=template lang=en source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+FIELDS lang=ko leaderHeader=22 leaderIdentity=185 leaderManual=123 entryGuide=94 agentFanout=39 leaderSocket=9 leaderClasses=218 leaderStagger=276 gateSummary=152 operationalStatus=60 settingsAuto=36 settingsVerify=79 laneJoin=40 laneJoinNoCount=37 laneNextCardRule=1573 laneManualDispatchRule=204 laneRecheckRule=493 laneSpawnAuthority=347 autoModeGuideLeader=319 autoModeGuideLane=322 docsPointer=47
+MEASURE role=leader face=deployed lang=ko source=startup bootstrap=1650 laneRule=0 roleBlock=4303 composite_factory=5955
+MEASURE role=leader face=template lang=ko source=startup bootstrap=1650 laneRule=0 roleBlock=4303 composite_factory=5955
+MEASURE role=leader face=deployed lang=ko source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=ko source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=deployed lang=ko source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=ko source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=lane face=deployed lang=ko source=startup bootstrap=759 laneRule=2074 roleBlock=4301 composite_factory=7138
+MEASURE role=lane face=template lang=ko source=startup bootstrap=759 laneRule=2074 roleBlock=4301 composite_factory=7138
+MEASURE role=lane face=deployed lang=ko source=clear bootstrap=0 laneRule=2074 roleBlock=4301 composite_factory=6377
+MEASURE role=lane face=template lang=ko source=clear bootstrap=0 laneRule=2074 roleBlock=4301 composite_factory=6377
+MEASURE role=lane face=deployed lang=ko source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+MEASURE role=lane face=template lang=ko source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+FIELDS lang=ja leaderHeader=28 leaderIdentity=180 leaderManual=135 entryGuide=100 agentFanout=32 leaderSocket=12 leaderClasses=222 leaderStagger=267 gateSummary=163 operationalStatus=50 settingsAuto=44 settingsVerify=84 laneJoin=51 laneJoinNoCount=45 laneNextCardRule=1569 laneManualDispatchRule=214 laneRecheckRule=507 laneSpawnAuthority=370 autoModeGuideLeader=302 autoModeGuideLane=299 docsPointer=46
+MEASURE role=leader face=deployed lang=ja source=startup bootstrap=1651 laneRule=0 roleBlock=4303 composite_factory=5956
+MEASURE role=leader face=template lang=ja source=startup bootstrap=1651 laneRule=0 roleBlock=4303 composite_factory=5956
+MEASURE role=leader face=deployed lang=ja source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=ja source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=deployed lang=ja source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=ja source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=lane face=deployed lang=ja source=startup bootstrap=766 laneRule=2084 roleBlock=4301 composite_factory=7155
+MEASURE role=lane face=template lang=ja source=startup bootstrap=766 laneRule=2084 roleBlock=4301 composite_factory=7155
+MEASURE role=lane face=deployed lang=ja source=clear bootstrap=0 laneRule=2084 roleBlock=4301 composite_factory=6387
+MEASURE role=lane face=template lang=ja source=clear bootstrap=0 laneRule=2084 roleBlock=4301 composite_factory=6387
+MEASURE role=lane face=deployed lang=ja source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+MEASURE role=lane face=template lang=ja source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+FIELDS lang=zh leaderHeader=17 leaderIdentity=115 leaderManual=95 entryGuide=78 agentFanout=21 leaderSocket=10 leaderClasses=151 leaderStagger=189 gateSummary=138 operationalStatus=42 settingsAuto=27 settingsVerify=67 laneJoin=39 laneJoinNoCount=30 laneNextCardRule=1284 laneManualDispatchRule=147 laneRecheckRule=388 laneSpawnAuthority=271 autoModeGuideLeader=245 autoModeGuideLane=246 docsPointer=31
+MEASURE role=leader face=deployed lang=zh source=startup bootstrap=1229 laneRule=0 roleBlock=4303 composite_factory=5534
+MEASURE role=leader face=template lang=zh source=startup bootstrap=1229 laneRule=0 roleBlock=4303 composite_factory=5534
+MEASURE role=leader face=deployed lang=zh source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=zh source=clear bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=deployed lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=leader face=template lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4303 composite_factory=4303
+MEASURE role=lane face=deployed lang=zh source=startup bootstrap=584 laneRule=1680 roleBlock=4301 composite_factory=6569
+MEASURE role=lane face=template lang=zh source=startup bootstrap=584 laneRule=1680 roleBlock=4301 composite_factory=6569
+MEASURE role=lane face=deployed lang=zh source=clear bootstrap=0 laneRule=1680 roleBlock=4301 composite_factory=5983
+MEASURE role=lane face=template lang=zh source=clear bootstrap=0 laneRule=1680 roleBlock=4301 composite_factory=5983
+MEASURE role=lane face=deployed lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+MEASURE role=lane face=template lang=zh source=compact bootstrap=0 laneRule=0 roleBlock=4301 composite_factory=4301
+--- PASS: TestT1923Measure (1.19s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.911s

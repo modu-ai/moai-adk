@@ -1,0 +1,55 @@
+package hook
+
+import (
+	"fmt"
+	"path/filepath"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+func TestT1923Measure(t *testing.T) {
+	root := budgetModuleRoot(t)
+	faces := []struct{ n, r string }{{"deployed", root}, {"template", filepath.Join(root, "internal", "template", "templates")}}
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		m := factoryMessagesFor(lang)
+		fmt.Printf("FIELDS lang=%s leaderHeader=%d leaderIdentity=%d leaderManual=%d entryGuide=%d agentFanout=%d leaderSocket=%d leaderClasses=%d leaderStagger=%d gateSummary=%d operationalStatus=%d settingsAuto=%d settingsVerify=%d laneJoin=%d laneJoinNoCount=%d laneNextCardRule=%d laneManualDispatchRule=%d laneRecheckRule=%d laneSpawnAuthority=%d autoModeGuideLeader=%d autoModeGuideLane=%d docsPointer=%d\n",
+			lang, utf16Len(m.leaderHeader), utf16Len(m.leaderIdentity), utf16Len(m.leaderManual), utf16Len(m.entryGuide), utf16Len(m.agentFanout), utf16Len(m.leaderSocket), utf16Len(m.leaderClasses), utf16Len(m.leaderStagger), utf16Len(m.gateSummary), utf16Len(m.operationalStatus), utf16Len(m.settingsAuto), utf16Len(m.settingsVerify), utf16Len(m.laneJoin), utf16Len(m.laneJoinNoCount), utf16Len(m.laneNextCardRule), utf16Len(m.laneManualDispatchRule), utf16Len(m.laneRecheckRule), utf16Len(m.laneSpawnAuthority), utf16Len(m.autoModeGuideLeader), utf16Len(m.autoModeGuideLane), utf16Len(m.docsPointer))
+
+		// leader
+		t.Setenv(config.EnvMoaiFactoryWorker, "")
+		t.Setenv(config.EnvMoaiFactoryWorkers, "6")
+		t.Setenv(config.EnvFactoryRunID, "f-abc123")
+		t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-factory/f-abc123/lead.sock")
+		t.Setenv(config.EnvFactorySettingsInjected, "1")
+		for _, src := range []string{"startup", "clear", "compact"} {
+			for _, fc := range faces {
+				inj := roleRuleInjectionFor(fc.r, src, lang)
+				notice := factoryBootstrapNoticeForSource(src, t.TempDir(), "sess", lang)
+				comp := assembleInjectionComposite(notice, inj)
+				fmt.Printf("MEASURE role=leader face=%s lang=%s source=%s bootstrap=%d laneRule=0 roleBlock=%d composite_factory=%d\n", fc.n, lang, src, utf16Len(notice), utf16Len(inj.Context), utf16Len(comp))
+			}
+		}
+		// lane
+		t.Setenv(config.EnvMoaiFactoryWorkers, "")
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
+		t.Setenv(config.EnvFactoryBackend, "claude")
+		t.Setenv(config.EnvFactoryAutoDispatch, "")
+		for _, src := range []string{"startup", "clear", "compact"} {
+			for _, fc := range faces {
+				inj := roleRuleInjectionFor(fc.r, src, lang)
+				notice := factoryBootstrapNoticeForSource(src, t.TempDir(), "sess", lang)
+				rule := factoryLaneRuleForSource(src, lang)
+				fixed := notice
+				if rule != "" {
+					if fixed != "" {
+						fixed += "\n\n"
+					}
+					fixed += rule
+				}
+				comp := assembleInjectionComposite(fixed, inj)
+				fmt.Printf("MEASURE role=lane face=%s lang=%s source=%s bootstrap=%d laneRule=%d roleBlock=%d composite_factory=%d\n", fc.n, lang, src, utf16Len(notice), utf16Len(rule), utf16Len(inj.Context), utf16Len(comp))
+			}
+		}
+	}
+}
