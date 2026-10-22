@@ -888,15 +888,34 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 // tag name routed through a step output, an event payload field, a dispatch
 // input) becomes shell syntax in a job that may hold contents: write. The
 // repair is to pass the value through the step's `env:` and reference "$VAR".
-// Allowed in a run body: `needs.<job>.result` (a runner-defined status enum),
-// `matrix.*` (workflow-authored constants), `github.event_name` and the like.
-// Refused: step and job outputs, event payload fields, head_ref, dispatch inputs.
+//
+// The check is an ALLOWLIST (sync-audit iter2 G1: the iter1 denylist matched only
+// the lower-case dotted spelling, so bracket indexing, upper case, a toJSON /
+// fromJSON / format / join wrapper, the env context and an expression spread over
+// several lines all slipped through). Each `${{ ... }}` is matched across lines,
+// whitespace-collapsed and lower-cased (Actions contexts are case-insensitive),
+// and must then equal one of exactly these, every other form being refused:
+//
+//   - needs.<id>.result        runner-defined status enum (success/failure/...)
+//   - matrix.<key>             workflow-authored constants; every matrix in the
+//     four workflows is a literal, none is built with fromJSON from an output
+//   - github.event_name        runner-defined event-kind enum
+//   - github.run_id / run_number / run_attempt / sha
+//     runner-defined numeric ids and a 40-hex commit id
+//   - runner.os / runner.arch  runner-defined platform enums
+//   - job.status               runner-defined status enum
+//
+// Deliberately NOT allowed although some are harmless: secrets.* and vars.*
+// (the real workflows use secrets only in env:/with:, never in a run body, so
+// allowing them would widen the guard for nothing), github.repository,
+// github.ref_name, github.actor, github.head_ref, github.event.*, inputs.*,
+// steps.*, env.*, needs.<id>.outputs.*, any function call and any bracket index.
 
 const rdcRunInterpSentinel = "RUN_INTERPOLATION_VIOLATION"
 
 var (
-	rdcExprRe    = regexp.MustCompile(`\$\{\{\s*(.+?)\s*\}\}`)
-	rdcUntrustRe = regexp.MustCompile(`(^|[^A-Za-z0-9_.])(steps\.[A-Za-z0-9_-]+\.outputs\.|needs\.[A-Za-z0-9_-]+\.outputs\.|github\.event\.|github\.head_ref|inputs\.)`)
+	rdcExprRe      = regexp.MustCompile(`(?s)\$\{\{(.*?)\}\}`)
+	rdcAllowedExpr = regexp.MustCompile(`^(needs\.[a-z0-9_-]+\.result|matrix\.[a-z0-9_-]+|github\.(event_name|run_id|run_number|run_attempt|sha)|runner\.(os|arch)|job\.status)$`)
 	// rdcRunInterpWorkflows are the workflows SPEC-RELEASE-PIPELINE-001 changed.
 	rdcRunInterpWorkflows = []string{
 		".github/workflows/ci.yml",
@@ -914,8 +933,9 @@ func rdcCheckRunInterpolation(wfs []*rpcWorkflow) []string {
 		for _, id := range wf.jobIDs() {
 			for _, s := range wf.Jobs[id].Steps {
 				for _, m := range rdcExprRe.FindAllStringSubmatch(s.Run, -1) {
-					if rdcUntrustRe.MatchString(m[1]) {
-						v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its run script; pass it through the step env and reference a quoted shell variable", rdcRunInterpSentinel, wf.Path, id, s.Name, m[1]))
+					expr := strings.ToLower(strings.Join(strings.Fields(m[1]), " "))
+					if !rdcAllowedExpr.MatchString(expr) {
+						v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its run script, which is not on the allowlist; pass it through the step env and reference a quoted shell variable", rdcRunInterpSentinel, wf.Path, id, s.Name, expr))
 					}
 				}
 			}
@@ -965,6 +985,19 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 		{"needs output", ".github/workflows/release-pr-multi-os.yml", "Verify all OS legs passed", "needs.detect-release.outputs.go_code"},
 		{"dispatch input", ".github/workflows/release-drafter-cleanup.yml", "", "inputs.dry_run"},
 		{"expression inside a function call", ".github/workflows/ci.yml", "", "format('{0}', github.event.head_commit.message)"},
+		// sync-audit iter2 G1: spellings the denylist did not recognise.
+		{"bracket-index step output", ".github/workflows/release-drafter-cleanup.yml", "Show results", "steps['drafts'].outputs.stale_tags"},
+		{"upper-case step output", ".github/workflows/release-drafter-cleanup.yml", "Show results", "STEPS.drafts.outputs.stale_tags"},
+		{"toJSON of the whole event", ".github/workflows/release-drafter-cleanup.yml", "Show results", "toJSON(github.event)"},
+		{"env context value", ".github/workflows/release-drafter-cleanup.yml", "Show results", "env.STALE_TAGS"},
+		{"fromJSON(toJSON(steps)) round trip", ".github/workflows/release-drafter-cleanup.yml", "Show results", "fromJSON(toJSON(steps)).drafts.outputs.stale_tags"},
+		{"expression spread over several lines", ".github/workflows/ci.yml", "", "format('{0}',\n  github.event.head_commit.message)"},
+		{"multi-line bare payload field", ".github/workflows/ci.yml", "", "\n  github.event.pull_request.title\n"},
+		{"attacker-influenceable ref name", ".github/workflows/release-pr-multi-os.yml", "", "github.ref_name"},
+		{"attacker-influenceable actor", ".github/workflows/release-pr-multi-os.yml", "", "github.actor"},
+		{"secrets context value", ".github/workflows/ci.yml", "", "secrets.CODECOV_TOKEN"},
+		{"join wrapper over a matrix constant", ".github/workflows/ci.yml", "", "join(matrix.goos, ',')"},
+		{"needs output via bracket index", ".github/workflows/release-pr-multi-os.yml", "Verify all OS legs passed", "needs['detect-release'].outputs.go_code"},
 	}
 	for _, c := range controls {
 		t.Run("control/"+c.name, func(t *testing.T) {
@@ -997,7 +1030,7 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 			t.Logf("control observed red: %s", got[0])
 		})
 	}
-	t.Run("control/status enum and matrix constants stay allowed", func(t *testing.T) {
+	t.Run("control/every allowlisted form stays allowed", func(t *testing.T) {
 		if !baselineClean {
 			t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
 		}
@@ -1006,7 +1039,10 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 		for _, id := range wfs[0].jobIDs() {
 			j := wfs[0].Jobs[id]
 			if len(j.Steps) > 0 && j.Steps[0].Run != "" {
-				j.Steps[0].Run += "\necho \"${{ needs.detect.result }} ${{ matrix.goos }} ${{ github.event_name }}\"\n"
+				j.Steps[0].Run += "\necho \"${{ needs.detect.result }} ${{ needs.detect-release.result }} ${{ matrix.goos }} ${{ github.event_name }}\"\n" +
+					"echo \"${{ github.run_id }} ${{ github.run_number }} ${{ github.run_attempt }} ${{ github.sha }}\"\n" +
+					"echo \"${{ runner.os }} ${{ runner.arch }} ${{ job.status }}\"\n" +
+					"echo \"${{ NEEDS.detect.RESULT }} ${{\n   matrix.goarch\n}}\"\n"
 				injected = true
 				break
 			}
