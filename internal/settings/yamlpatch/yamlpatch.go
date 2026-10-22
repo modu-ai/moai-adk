@@ -517,8 +517,16 @@ func atomicWrite(path string, data []byte) error {
 // 기존 모드 대신 perm으로 고정한다 — 새로 만들 때와 재기록할 때 모두.
 func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 	mode := defaultFilePerm
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
+	if err == nil && info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+		return fmt.Errorf("yamlpatch: stat %s: linked or irregular target", path)
+	}
 	if err != nil {
+		if os.IsNotExist(err) {
+			if shapeErr := checkMissingSectionParents(path); shapeErr != nil {
+				return fmt.Errorf("yamlpatch: stat %s: %w", path, shapeErr)
+			}
+		}
 		// REQ-1 (SPEC-SEAM-GREENFIELD-001): an absent target is greenfield —
 		// the read layer starts from an empty document, so the write creates
 		// the file instead of failing on the stat. Any other stat error
@@ -556,4 +564,22 @@ func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("yamlpatch: rename: %w", err)
 	}
 	return nil
+}
+
+// checkMissingSectionParents keeps Windows PATH_NOT_FOUND from treating a
+// regular-file ancestor as a greenfield target. Genuine missing directories
+// remain absent; CreateTemp retains its existing error when its parent is absent.
+func checkMissingSectionParents(target string) error {
+	for current := filepath.Dir(target); ; current = filepath.Dir(current) {
+		info, err := os.Lstat(current)
+		if err == nil {
+			if !info.IsDir() || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+				return fmt.Errorf("section parent %s is not a real directory", current)
+			}
+			return nil
+		}
+		if !os.IsNotExist(err) || filepath.Dir(current) == current {
+			return err
+		}
+	}
 }

@@ -235,9 +235,24 @@ func writeAtomic(path string, data []byte) error {
 // Revoke's idempotence check all decide on its answer.
 func Blocked(root, card, spec, seal string) (bool, error) {
 	dir := escalation.RecordDir(root, card)
+	exists, err := recordDirectoryExists(dir)
+	if err != nil {
+		return true, fmt.Errorf("list %s: %w", dir, err)
+	}
+	if !exists {
+		return false, nil
+	}
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
+		// A concurrent removal is genuinely absent; Windows also uses this
+		// errno for a non-directory component, which must still block.
+		exists, shapeErr := recordDirectoryExists(dir)
+		if shapeErr == nil && !exists {
+			return false, nil
+		}
+		if shapeErr != nil {
+			return true, fmt.Errorf("list %s: %w", dir, shapeErr)
+		}
 	}
 	if err != nil {
 		return true, fmt.Errorf("list %s: %w", dir, err)
@@ -261,4 +276,22 @@ func Blocked(root, card, spec, seal string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// recordDirectoryExists distinguishes absent records from an unreadable,
+// non-directory or linked entry. Windows PATH_NOT_FOUND also covers ENOTDIR,
+// so a missing leaf requires checking its nearest existing ancestor.
+func recordDirectoryExists(dir string) (bool, error) {
+	for current := dir; ; current = filepath.Dir(current) {
+		info, err := os.Lstat(current)
+		if err == nil {
+			if !info.IsDir() || info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+				return false, fmt.Errorf("record directory component %s is not a real directory", current)
+			}
+			return current == dir, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) || filepath.Dir(current) == current {
+			return false, err
+		}
+	}
 }
