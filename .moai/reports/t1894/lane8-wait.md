@@ -44,3 +44,12 @@ Autonomous Kickoff evidence (auto-semantics §9.1 / spec-workflow Plan Audit Gat
 - no open blocker: Q7 answered (above); D29-D31 optional and non-blocking
 
 decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3,leader-relayed operator Q7 answer 10-23 ladder_path=auto-semantics §9.1 autonomous plan->run Kickoff (audit-cross evidence)
+
+## Kickoff mechanics blocked (2026-10-23, lane-8)
+
+Stage transitions applied this wake (run tn8rpj): leased -> plan (v7) -> plan-audit (v8, evidence a2dd9f15671ff349a2479a88810e9c464a913437:.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/spec.md). `moai factory stage t1894 kickoff` then REFUSED: "card carries no valid SPEC id (""), so the plan-artifact hash cannot be checked" — the factory card record is `no-link` (picked without --spec). The lane has no verb that attaches a SPEC id (`moai todo set-spec` is not a command; the card's SPEC link is queue/ledger state — no direct ledger edits). Environment-impossible for the lane => keep-set => reported to the leader.
+
+Second, independent mechanical gate behind it: the autonomous edge (kickoff -> run, T8a) refuses while the FOUNDER row Q7 in `.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/decision-index.md` has an empty `Operator verdict:`; that file is part of the plan-artifact hash (internal/runtime/audit_cache.go), so recording the relayed Q7 answer there changes the hash and invalidates the iter4 PASS (a delta re-audit would be needed). The human edge (kickoff -> assigned, `moai factory decide --gate kickoff --choice approve`, decider=human) reads neither.
+
+Options for the leader (lane does not choose among keep-set acts): (1) attach SPEC-CARD-MODE-JUDGMENT-001 to the card; then lane runs stage kickoff; (2a) human-path approve by the operator/leader at kickoff, or (2b) manager-spec writes the Q7 verdict row + one delta plan-audit, then the autonomous edge.
+Card state now: run tn8rpj, state plan-audit v8, lease renewed by stage calls.
