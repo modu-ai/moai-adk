@@ -62,13 +62,15 @@ func checkDirectoryNative(path string, before os.FileInfo) error {
 
 func secureExistingNative(path string, before os.FileInfo, directory, propagate bool) error {
 	share := uint32(windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE | windows.FILE_SHARE_DELETE)
+	access := uint32(windows.READ_CONTROL | windows.WRITE_DAC | windows.FILE_READ_ATTRIBUTES)
 	if directory && !propagate {
-		// SetSecurityInfo's documented exclusive-directory behavior suppresses
-		// automatic propagation to existing children. Future inheritance and
-		// the strict descriptor readback remain unchanged.
+		// Attribute-only access does not participate in data sharing checks.
+		// Hold actual directory-read access exclusively so SetSecurityInfo's
+		// child traversal cannot reopen it for automatic ACE propagation.
+		access |= windows.FILE_LIST_DIRECTORY
 		share = 0
 	}
-	f, err := openExistingWithShare(path, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES, directory, share)
+	f, err := openExistingWithShare(path, access, directory, share)
 	if err != nil {
 		return err
 	}
