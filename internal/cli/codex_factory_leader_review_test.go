@@ -136,15 +136,20 @@ func TestHelperProcess_CodexLeaderExitAfterHandoff(t *testing.T) {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(91)
 	}
-	defer db.Close()
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		var pid int
 		if err := db.DB.QueryRow("SELECT lead_pid FROM runs WHERE run_id=?", os.Getenv("MOAI_TEST_CODEX_LEADER_RUN")).Scan(&pid); err == nil && pid == os.Getpid() {
-			_ = db.Close()
+			if err := db.Close(); err != nil {
+				_, _ = fmt.Fprintln(os.Stderr, err)
+				os.Exit(93)
+			}
 			os.Exit(7)
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+	if err := db.Close(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "child owner handoff was not observed")
 	os.Exit(92)
