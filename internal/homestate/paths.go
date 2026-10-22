@@ -15,6 +15,7 @@ import (
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 )
 
 // ProjectKey returns a stable, readable key for a project. Linked worktrees
@@ -394,10 +395,7 @@ func EnsureHomeLayout() error {
 		filepath.Join(home, "reports"),
 	}
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return err
-		}
-		if err := os.Chmod(dir, 0o700); err != nil {
+		if err := sqliteguard.EnsureDirectory(dir); err != nil {
 			return err
 		}
 	}
@@ -418,10 +416,7 @@ func EnsureProjectLayout(projectRoot string) error {
 		return err
 	}
 	for _, p := range []string{dir, filepath.Join(dir, "todo"), filepath.Join(dir, "factory")} {
-		if err := os.MkdirAll(p, 0o700); err != nil {
-			return err
-		}
-		if err := os.Chmod(p, 0o700); err != nil {
+		if err := sqliteguard.EnsureDirectory(p); err != nil {
 			return err
 		}
 	}
@@ -435,10 +430,7 @@ func EnsureProjectLayout(projectRoot string) error {
 			return err
 		}
 		for _, p := range []string{filepath.Dir(searchPath), runDir, filepath.Join(runDir, "locks"), filepath.Join(runDir, "sockets"), filepath.Join(runDir, "guard-liveness")} {
-			if err := os.MkdirAll(p, 0o700); err != nil {
-				return err
-			}
-			if err := os.Chmod(p, 0o700); err != nil {
+			if err := sqliteguard.EnsureDirectory(p); err != nil {
 				return err
 			}
 		}

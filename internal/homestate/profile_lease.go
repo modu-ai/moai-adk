@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 	_ "modernc.org/sqlite"
 )
 
@@ -62,10 +63,7 @@ func OpenProfileLeases() (*ProfileLeaseStore, error) {
 		return nil, err
 	}
 	dir := filepath.Join(home, "run")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
-	}
-	if err := os.Chmod(dir, 0o700); err != nil {
+	if err := sqliteguard.EnsureDirectory(dir); err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dir, "profile-leases.db")
@@ -73,7 +71,7 @@ func OpenProfileLeases() (*ProfileLeaseStore, error) {
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_pragma", "busy_timeout(5000)")
 	v.Add("_txlock", "immediate")
-	db, err := sql.Open("sqlite", profileLeaseDSN(path, v))
+	db, err := sqliteguard.Open(path, profileLeaseDSN(path, v))
 	if err != nil {
 		return nil, err
 	}

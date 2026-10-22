@@ -8,21 +8,19 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 func TestHomeLayoutAndProjectRuntimePermissions(t *testing.T) {
-	home := t.TempDir()
+	home := filepath.Join(t.TempDir(), "managed-home")
 	t.Setenv("MOAI_HOME", home)
 	if err := EnsureHomeLayout(); err != nil {
 		t.Fatal(err)
 	}
 	for _, rel := range []string{"claude-profiles", "config", "credentials", "db", "cache/search", "run", "logs", "integrations", "bin", "releases", "backups", "reports"} {
-		info, err := os.Stat(filepath.Join(home, filepath.FromSlash(rel)))
-		if err != nil {
-			t.Fatalf("stat %s: %v", rel, err)
-		}
-		if got := info.Mode().Perm(); got != 0o700 {
-			t.Errorf("%s mode=%#o, want 0700", rel, got)
+		if err := privatefile.CheckDirectory(filepath.Join(home, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("%s native directory privacy: %v", rel, err)
 		}
 	}
 	root, err := os.Getwd()
@@ -35,12 +33,8 @@ func TestHomeLayoutAndProjectRuntimePermissions(t *testing.T) {
 	search, _ := SearchDBPath(root)
 	run, _ := RunProjectDir(root)
 	for _, path := range []string{filepath.Dir(search), run, filepath.Join(run, "locks"), filepath.Join(run, "sockets"), filepath.Join(run, "guard-liveness")} {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat %s: %v", path, err)
-		}
-		if got := info.Mode().Perm(); got != 0o700 {
-			t.Errorf("%s mode=%#o, want 0700", path, got)
+		if err := privatefile.CheckDirectory(path); err != nil {
+			t.Errorf("%s native directory privacy: %v", path, err)
 		}
 	}
 }
@@ -110,12 +104,8 @@ func TestProjectLayoutPermissions(t *testing.T) {
 	}
 	dir, _ := ProjectDir(root)
 	for _, path := range []string{dir, dir + "/todo", dir + "/factory"} {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat %s: %v", path, err)
-		}
-		if got := info.Mode().Perm(); got != 0o700 {
-			t.Errorf("%s mode=%#o, want 0700", path, got)
+		if err := privatefile.CheckDirectory(path); err != nil {
+			t.Errorf("%s native directory privacy: %v", path, err)
 		}
 	}
 }
@@ -149,12 +139,8 @@ func TestFactorySQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
 	}
 
 	for _, path := range []string{db.Path, db.Path + "-wal", db.Path + "-shm"} {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat %s: %v", path, err)
-		}
-		if got := info.Mode().Perm(); got != 0o600 {
-			t.Errorf("%s mode=%#o, want 0600", filepath.Base(path), got)
+		if err := privatefile.Check(path); err != nil {
+			t.Errorf("%s native file privacy: %v", filepath.Base(path), err)
 		}
 	}
 }

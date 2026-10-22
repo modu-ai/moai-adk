@@ -16,7 +16,7 @@ var operatorBoot = time.Unix(1789526916, 954947000).UTC()
 
 func openBareFactory(t *testing.T) *FactoryDB {
 	t.Helper()
-	db, err := OpenFactoryPath(filepath.Join(t.TempDir(), "factory.db"))
+	db, err := OpenFactoryPath(filepath.Join(privateFactoryDir(t), "factory.db"))
 	if err != nil {
 		t.Fatalf("open factory: %v", err)
 	}

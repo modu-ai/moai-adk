@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 	_ "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -303,10 +304,7 @@ func (f *FactoryDB) FactoryTablePresent(ctx context.Context, table string) (bool
 }
 
 func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, err
-	}
-	if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+	if err := sqliteguard.EnsureDirectory(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
 	values := url.Values{}
@@ -319,7 +317,7 @@ func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {
 		p = "/" + p
 	}
 	dsn := (&url.URL{Scheme: "file", Path: p, RawQuery: values.Encode()}).String()
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sqliteguard.Open(path, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -645,7 +643,7 @@ func factoryTableColumns(ctx context.Context, tx *sql.Tx, table string) (_ map[s
 
 func secureFactoryArtifacts(path string) error {
 	for _, artifact := range []string{path, path + "-wal", path + "-shm"} {
-		if err := os.Chmod(artifact, 0o600); err != nil && !os.IsNotExist(err) {
+		if err := sqliteguard.SecureArtifact(artifact); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("secure factory database artifact %s: %w", artifact, err)
 		}
 	}

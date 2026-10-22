@@ -241,9 +241,7 @@ func TestMigrateFactoryV2ToV3PreservesRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("factory db path: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		t.Fatalf("create factory dir: %v", err)
-	}
+	preparePrivateFactorySeed(t, path)
 	seed, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
 	if err != nil {
 		t.Fatalf("open seed db: %v", err)

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 func TestProfileLeasesAreGlobalAndPrivate(t *testing.T) {
@@ -26,8 +28,8 @@ func TestProfileLeasesAreGlobalAndPrivate(t *testing.T) {
 	if store.Path != want {
 		t.Fatalf("path=%q want=%q", store.Path, want)
 	}
-	if info, err := os.Stat(want); err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode=%v err=%v", info.Mode().Perm(), err)
+	if err := privatefile.Check(want); err != nil {
+		t.Fatalf("profile lease native file privacy: %v", err)
 	}
 }
 

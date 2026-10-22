@@ -14,7 +14,8 @@ import (
 // claimed_at, and one that was never claimed.
 func frSeedV1(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "factory.db")
+	path := filepath.Join(privateFactoryDir(t), "factory.db")
+	preparePrivateFactorySeed(t, path)
 	raw, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
 	if err != nil {
 		t.Fatalf("open raw seed: %v", err)
@@ -95,7 +96,8 @@ func TestOpenFactoryUnsupportedSchemaVersion(t *testing.T) {
 
 // A file that is not a database fails at DDL time, not at first use.
 func TestOpenFactoryCorruptFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "factory.db")
+	path := filepath.Join(privateFactoryDir(t), "factory.db")
+	preparePrivateFactorySeed(t, path)
 	if err := os.WriteFile(path, []byte("this is not a database"), 0o600); err != nil {
 		t.Fatal(err)
 	}

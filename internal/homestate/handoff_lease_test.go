@@ -12,7 +12,8 @@ import (
 )
 
 func TestFactoryV1ClaimedRowsUpgradeToV2(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "factory.db")
+	path := filepath.Join(privateFactoryDir(t), "factory.db")
+	preparePrivateFactorySeed(t, path)
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +58,7 @@ INSERT INTO resume_handoffs(status,schema_version,saved_at,body,body_sha256,clai
 }
 
 func TestResumeLatestPendingThenExpiredReclaim(t *testing.T) {
-	f, err := OpenFactoryPath(filepath.Join(t.TempDir(), "factory.db"))
+	f, err := OpenFactoryPath(filepath.Join(privateFactoryDir(t), "factory.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +102,7 @@ func TestResumeLatestPendingThenExpiredReclaim(t *testing.T) {
 }
 
 func TestResumeFinishRejectsABAToken(t *testing.T) {
-	f, err := OpenFactoryPath(filepath.Join(t.TempDir(), "factory.db"))
+	f, err := OpenFactoryPath(filepath.Join(privateFactoryDir(t), "factory.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestResumeFinishRejectsABAToken(t *testing.T) {
 }
 
 func TestResumeInjectionCrashIsAtLeastOnce(t *testing.T) {
-	f, err := OpenFactoryPath(filepath.Join(t.TempDir(), "factory.db"))
+	f, err := OpenFactoryPath(filepath.Join(privateFactoryDir(t), "factory.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +145,7 @@ func TestResumeInjectionCrashIsAtLeastOnce(t *testing.T) {
 }
 
 func TestResumeLeaseRejectsInvalidAndClosedDatabaseOperations(t *testing.T) {
-	f, err := OpenFactoryPath(filepath.Join(t.TempDir(), "factory.db"))
+	f, err := OpenFactoryPath(filepath.Join(privateFactoryDir(t), "factory.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +174,8 @@ func TestResumeLeaseRejectsInvalidAndClosedDatabaseOperations(t *testing.T) {
 }
 
 func TestFactorySchemaRejectsUnsupportedAndMalformedV1(t *testing.T) {
-	unsupported := filepath.Join(t.TempDir(), "unsupported.db")
+	unsupported := filepath.Join(privateFactoryDir(t), "unsupported.db")
+	preparePrivateFactorySeed(t, unsupported)
 	db, err := sql.Open("sqlite", unsupported)
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +188,8 @@ func TestFactorySchemaRejectsUnsupportedAndMalformedV1(t *testing.T) {
 	if _, err := OpenFactoryPath(unsupported); err == nil {
 		t.Fatal("unsupported schema accepted")
 	}
-	malformed := filepath.Join(t.TempDir(), "malformed.db")
+	malformed := filepath.Join(privateFactoryDir(t), "malformed.db")
+	preparePrivateFactorySeed(t, malformed)
 	db, err = sql.Open("sqlite", malformed)
 	if err != nil {
 		t.Fatal(err)
