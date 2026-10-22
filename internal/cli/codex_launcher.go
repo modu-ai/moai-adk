@@ -36,6 +36,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -130,14 +131,10 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 	return append(args, tail...)
 }
 
-// codexMoaiHomeAddDir returns `--add-dir <moai home>` for an interactive
-// codex session. The project databases live under ~/.moai, outside the
-// workspace a workspace-write sandbox may write, and SQLite must create its
-// -wal/-shm/journal files beside a database even to read it — without the
-// flag every `moai todo` / `moai factory` call inside the session fails with
-// "unable to open database file (14)". A home that cannot be resolved or does
-// not exist yet adds nothing; the launch proceeds as before.
-func codexMoaiHomeAddDir() []string {
+// codexMoaiHomeAddDir grants only the selected repository's namespaces.
+// SQLite needs the database directory for its WAL/SHM files. Granting MoaiHome
+// itself would also expose every other project's worktrees and credentials.
+func codexMoaiHomeAddDir(root string) []string {
 	home, err := paths.MoaiHome()
 	if err != nil {
 		return nil
@@ -145,7 +142,73 @@ func codexMoaiHomeAddDir() []string {
 	if info, err := os.Stat(home); err != nil || !info.IsDir() {
 		return nil
 	}
-	return []string{"--add-dir", home}
+	db, err := homestate.ProjectDirContext(context.Background(), root)
+	if err != nil {
+		slog.Warn("resolve Codex project state grant", "error", err)
+		return nil
+	}
+	run, err := homestate.RunProjectDir(root)
+	if err != nil {
+		return nil
+	}
+	search, err := homestate.SearchDBPath(root)
+	if err != nil {
+		return nil
+	}
+	dirs := []string{db, run, filepath.Dir(search)}
+	if trees, err := worktreeroot.Root(root); err == nil {
+		// auto-lane creates card worktrees through the shared materializer.
+		// Root validates the recorded key and owner before this exact grant.
+		dirs = append(dirs, trees)
+	} else if !plainProjectWithoutGitMetadata(root, err) {
+		slog.Warn("resolve Codex project worktree grant", "error", err)
+	}
+	var args []string
+	for _, dir := range dirs {
+		base := home
+		if rel, err := filepath.Rel(home, dir); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			// Temporary projects without an explicit home keep their database
+			// in the project-local layout; never broaden that grant to its parent.
+			base = homestate.CanonicalProjectRoot(root)
+		}
+		grant, err := codexStateGrantDirectory(base, dir)
+		if err != nil {
+			slog.Warn("prepare Codex project state grant", "path", dir, "error", err)
+			continue
+		}
+		args = append(args, "--add-dir", grant)
+	}
+	return args
+}
+
+// Existing namespace components must be real directories: a project-state
+// symlink must not turn a narrow grant back into a grant over sibling trees.
+func codexStateGrantDirectory(base, dir string) (string, error) {
+	rel, err := filepath.Rel(base, dir)
+	if err != nil || rel == "." || rel == ".." || filepath.IsAbs(rel) || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("state directory is outside its namespace")
+	}
+	current, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		return "", err
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			if err = os.Mkdir(current, 0700); err != nil && !os.IsExist(err) {
+				return "", err
+			}
+			info, err = os.Lstat(current)
+		}
+		if err != nil {
+			return "", err
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("state namespace component is not a real directory: %s", current)
+		}
+	}
+	return current, nil
 }
 
 // codexMoaiHomeAddDirArgs is the seam the launch paths call; tests that pin
@@ -1081,7 +1144,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
 	args := append([]string{"-C", root}, localArgs...)
-	args = append(args, codexMoaiHomeAddDirArgs()...)
+	args = append(args, codexMoaiHomeAddDirArgs(root)...)
 	// card t1808: the lane session's default model and effort.
 	args = append(args, codexSessionDefaultArgsFn(root, config.SessionRoleLane, nil)...)
 	laneEnv := []string{
@@ -1222,7 +1285,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if kind == codexVerbLaunchCli {
 		// The desktop app is not the sandboxed CLI session; only the CLI
 		// session needs the moai home writable.
-		childArgs = append(childArgs, codexMoaiHomeAddDirArgs()...)
+		childArgs = append(childArgs, codexMoaiHomeAddDirArgs(dir)...)
 		// card t1808: a plain `moai codex` is the operator's ordinary session
 		// and adds no model args — .codex/config.toml decides. The leader
 		// session default is reserved for a future `moai codex -f` (t1645).

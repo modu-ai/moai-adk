@@ -132,7 +132,7 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	// The --add-dir pair depends on the host's moai home; the exact-argv cells
 	// pin it off and codex_moai_home_add_dir_test.go measures it directly.
 	prevAddDir := codexMoaiHomeAddDirArgs
-	codexMoaiHomeAddDirArgs = func() []string { return nil }
+	codexMoaiHomeAddDirArgs = func(string) []string { return nil }
 	// The session-default -m / -c pair (card t1808) depends on the project's
 	// llm.yaml; the exact-argv cells pin it off, and
 	// TestCodexPlainLaunchCarriesNoModelArgs (plain launch) and
@@ -866,7 +866,7 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 
 	prevLook, prevSpawn, prevTmux, prevInTmux := codexLookPath, codexSpawnLaunchFn, tmuxSpawnFn, inTmuxFn
 	prevAddDir := codexMoaiHomeAddDirArgs
-	codexMoaiHomeAddDirArgs = func() []string { return nil }
+	codexMoaiHomeAddDirArgs = func(string) []string { return nil }
 	t.Cleanup(func() { codexMoaiHomeAddDirArgs = prevAddDir })
 	prevSession := codexSessionDefaultArgsFn
 	codexSessionDefaultArgsFn = func(string, string, []string) []string { return nil }

@@ -12,6 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // Factory session launch defaults (card t1808): the leader (-f) and lane (-l)
@@ -463,13 +464,14 @@ func TestCodexLaneModelSurroundingWhitespace(t *testing.T) {
 // launch and pins the lane argv wiring (codex_launcher.go): the lane child
 // carries -m <sol> and -c model_reasoning_effort="medium".
 func TestCodexLaneLaunchCarriesSessionDefaults(t *testing.T) {
+	testguard.RedirectHome(t)
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked)
 	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	netScrubLaneEnv(t)
 	prevAdd := codexMoaiHomeAddDirArgs
-	codexMoaiHomeAddDirArgs = func() []string { return nil }
+	codexMoaiHomeAddDirArgs = func(string) []string { return nil }
 	var argv []string
 	prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
 	codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }

@@ -1,13 +1,16 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/testguard"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 	"github.com/spf13/cobra"
 )
 
@@ -33,24 +36,24 @@ func withRealCodexMoaiHomeAddDir(t *testing.T) string {
 	return home
 }
 
-// TestCodexLaunch_CliAddsMoaiHomeWritableDir — the interactive launch hands
-// codex `--add-dir <moai home>` so a workspace-write sandbox can open the
-// project databases under ~/.moai (SQLite needs to create -wal/-shm/journal
-// files beside them). The flag precedes the operator tail, which keeps a
-// literal `--` in the tail from turning it into a prompt.
+// TestCodexLaunch_CliAddsMoaiHomeWritableDir pins the narrowed per-project
+// database/run/search/worktree grants. SQLite's WAL/SHM files stay writable, and the
+// grant block still precedes the operator's literal argument tail.
 func TestCodexLaunch_CliAddsMoaiHomeWritableDir(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
-	home := withRealCodexMoaiHomeAddDir(t)
-	withCodexProjectRoot(t, t.TempDir())
+	withRealCodexMoaiHomeAddDir(t)
+	root := t.TempDir()
+	withCodexProjectRoot(t, root)
 	tail := []string{"--model", "o3"}
 	if _, _, err := runCodexCmd(t, append([]string{"cli", "--"}, tail...)...); err != nil {
 		t.Fatalf("cli: %v", err)
 	}
 	argv := codexOnlyRecord(t, cap).Argv[1:]
-	if got := codexAddDirValue(argv); got != home {
-		t.Fatalf("argv = %q, want --add-dir %q", argv, home)
+	wantGrants := expectedCodexProjectStateGrants(t, root)
+	if got := codexAddDirValue(argv); got != wantGrants[1] {
+		t.Fatalf("argv = %q, want project database grant %q", argv, wantGrants[1])
 	}
-	if want := append([]string{"--add-dir", home}, tail...); !slices.Equal(argv, want) {
+	if want := append(wantGrants, tail...); !slices.Equal(argv, want) {
 		t.Errorf("argv = %q, want %q (flag before the operator tail)", argv, want)
 	}
 }
@@ -73,7 +76,7 @@ func TestCodexLaunch_AppCarriesNoAddDir(t *testing.T) {
 // exist yet is not handed to codex; the launch proceeds without the flag.
 func TestCodexMoaiHomeAddDir_AbsentHomeAddsNothing(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir()+"/missing")
-	if got := codexMoaiHomeAddDir(); got != nil {
+	if got := codexMoaiHomeAddDir(t.TempDir()); got != nil {
 		t.Errorf("codexMoaiHomeAddDir() = %q, want nil for an absent home", got)
 	}
 }
@@ -82,20 +85,12 @@ func TestCodexMoaiHomeAddDir_AbsentHomeAddsNothing(t *testing.T) {
 // `moai todo --auto` inside the codex sandbox, which reads the backlog
 // database under ~/.moai; the lane child must carry the same --add-dir.
 func TestCodexLaneLaunch_AddsMoaiHomeWritableDir(t *testing.T) {
+	testguard.RedirectHome(t)
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked)
 	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	netScrubLaneEnv(t)
-	// The lane scrub clears MOAI_HOME, so the expectation is whatever home the
-	// scrubbed environment resolves — the same resolution the launcher makes.
-	home, err := paths.MoaiHome()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(home, 0o700); err != nil {
-		t.Fatal(err)
-	}
 	prevAdd := codexMoaiHomeAddDirArgs
 	codexMoaiHomeAddDirArgs = codexMoaiHomeAddDir
 	var argv []string
@@ -113,8 +108,15 @@ func TestCodexLaneLaunch_AddsMoaiHomeWritableDir(t *testing.T) {
 	if _, _, err := runCodexCmd(t, "-l"); err != nil {
 		t.Fatalf("codex -l: %v", err)
 	}
-	if got := codexAddDirValue(argv); got != home {
-		t.Errorf("lane argv = %q, want --add-dir %q", argv, home)
+	wantGrants := expectedCodexProjectStateGrants(t, root)
+	if got := codexAddDirValue(argv); got != wantGrants[1] {
+		t.Errorf("lane argv = %q, want project database grant %q", argv, wantGrants[1])
+	}
+	grantAt := slices.Index(argv, "--add-dir")
+	for i, want := range wantGrants {
+		if grantAt < 0 || grantAt+i >= len(argv) || argv[grantAt+i] != want {
+			t.Fatalf("lane argv = %q, want grant block %q", argv, wantGrants)
+		}
 	}
 	if argv[len(argv)-1] != codexLaneAutoPrompt {
 		t.Errorf("lane argv last = %q, want the auto directive", argv[len(argv)-1])
@@ -126,7 +128,7 @@ func TestCodexLaneLaunch_AddsMoaiHomeWritableDir(t *testing.T) {
 func pinCodexMoaiHomeAddDir(t *testing.T, dir string) {
 	t.Helper()
 	prev := codexMoaiHomeAddDirArgs
-	codexMoaiHomeAddDirArgs = func() []string { return []string{"--add-dir", dir} }
+	codexMoaiHomeAddDirArgs = func(string) []string { return []string{"--add-dir", dir} }
 	t.Cleanup(func() { codexMoaiHomeAddDirArgs = prev })
 }
 
@@ -170,4 +172,34 @@ func TestCodexLaunch_DirectDoorKeepsAddDirWhenNotDiverted(t *testing.T) {
 	if got := codexAddDirValue(argv); got != dir {
 		t.Errorf("direct argv = %q, want --add-dir %q", argv, dir)
 	}
+}
+
+// Exact positive contract: project database, run, search and worktree namespaces are
+// writable; the shared home, credentials and sibling namespaces are excluded.
+func expectedCodexProjectStateGrants(t *testing.T, root string) []string {
+	t.Helper()
+	db, err := homestate.ProjectDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := homestate.RunProjectDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	search, err := homestate.SearchDBPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var args []string
+	for _, dir := range []string{db, run, filepath.Dir(search)} {
+		args = append(args, "--add-dir", m2Real(t, dir))
+	}
+	if key := worktreeroot.RecordedKey(root); key != "" {
+		home, err := paths.MoaiHome()
+		if err != nil {
+			t.Fatal(err)
+		}
+		args = append(args, "--add-dir", m2Real(t, filepath.Join(home, "worktrees", "projects", key)))
+	}
+	return args
 }
