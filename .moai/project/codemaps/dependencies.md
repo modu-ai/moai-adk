@@ -1,5 +1,14 @@
 # 의존성 그래프
 
+## backlog writable 소비자 추가 — ci-repair-20261022 phase2
+
+현재 추가한 직접 import는 아래 두 쌍이다. 기존 전체 패키지 통계를 재측정한 수치로 해석하지 않는다.
+
+- internal/factory depends on internal/sqliteguard
+- internal/factory depends on internal/privatefile
+
+sqliteguard는 writable backlog/GTD 연결과 관리 namespace 준비를 담당하고, privatefile은 migration staging의 payload 전 생성 정책을 담당한다. readonly reader의 sql.Open 경로는 그대로 유지한다.
+
 ## SQLite native 정책 경계의 import — 7d5d312
 
 아래는 현재 비테스트 소스의 직접 import를 대조한 추가 경계다. Windows 선택 소스도 포함하며, 아래 과거 판의 전체 패키지 수·fan-in 수치를 재측정한 결과가 아니다.

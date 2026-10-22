@@ -10,7 +10,7 @@ import (
 
 func newGTDTestStore(t *testing.T) *BacklogStore {
 	t.Helper()
-	return NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	return NewBacklogStore(filepath.Join(privateBacklogFixtureDir(t), "backlog.json"))
 }
 
 func TestMigrateGTDSchemaIdempotent(t *testing.T) {

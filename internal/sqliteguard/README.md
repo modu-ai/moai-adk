@@ -1,6 +1,6 @@
 # SQLite 물리 연결의 Windows 파일 보호
 
-이 패키지는 쓰기용 homestate factory DB와 profile lease DB의 Windows 연결을 보호한다. Unix `Open`은 기존 `sql.Open("sqlite", dsn)` 동작을 유지한다. 읽기 전용 factory/census 연결은 이 생성·보호 경로에 들어오지 않으며, 기존 mode=ro·생성 금지·checkpoint 금지 계약을 유지한다.
+이 패키지는 쓰기용 homestate factory/profile lease DB와 factory backlog/GTD DB의 Windows 물리 연결에 파일 보호 경계를 추가한다. Unix `Open`은 기존 `sql.Open("sqlite", dsn)` 동작을 유지한다. 읽기 전용 factory/census 연결은 이 생성·보호 경로에 들어오지 않으며, 기존 mode=ro·생성 금지·checkpoint 금지 계약을 유지한다.
 
 ## 생성과 연결
 
@@ -14,7 +14,7 @@ file URI와 별도로 전달한 파일 경로가 일치하는지 확인한 뒤 p
 
 ## 종료 실패의 소유권
 
-프로세스 registry는 정상 연결과 fault 연결 모두를 강하게 참조한다. 새 native 자원을 얻기 전에 전체 예약 수를 128개로 제한한다. 최대 384개 file pin의 상한이며, SQLite의 전체 stmt·메모리·Backup/ATTACH 목적지 핸들의 상한은 아니다. 기존 두 pool은 각각 MaxOpenConns=1이지만 여러 pool은 총 128개 예약 범위에서 공존할 수 있다. 무제한 pool 동작과 동일하다는 주장은 하지 않는다.
+프로세스 registry는 정상 연결과 fault 연결 모두를 강하게 참조한다. 새 native 자원을 얻기 전에 전체 예약 수를 128개로 제한한다. 최대 384개 file pin의 상한이며, SQLite의 전체 stmt·메모리·Backup/ATTACH 목적지 핸들의 상한은 아니다. 현재 통합한 각 writable pool은 MaxOpenConns=1이며, 여러 pool은 총 128개 예약 범위에서 공존할 수 있다. 무제한 pool 동작과 동일하다는 주장은 하지 않는다.
 
 정상 종료 경로는 **public driver.Close가 nil을 반환한 뒤에** pin을 해제한다. 이는 모든 OS 핸들 종료를 직접 확인하는 검사가 아니다. base.Connect 진입 뒤 opaque 실패, Close 오류·panic, 종료를 확인할 수 없는 Raw 자원은 명시적으로 보존한다. 이 경우 같은 canonical path의 새 admission을 거부하고 원래 error identity를 보존한다. `Status`와 안전한 로그에는 token·경로 digest·stage·보유 수만 표시한다. DSN·SQL·payload는 로그에 넣지 않는다. GC·TTL·자동 재시도·무조건 force release로 불확실한 객체를 해제하지 않는다. database/sql이 종료 오류를 버리는 경로에서도 registry와 진단은 남는다.
 
@@ -35,3 +35,11 @@ NewBackup/NewRestore의 구체 반환형 `*sqlite.Backup`은 유지한다. 그�
 현재 의존성 modernc.org/sqlite v1.60.1에서 `lib/sqlite.go`의 `_sqlite3OsClose`는 VFS xClose의 반환값을 버린다. `_sqlite3PagerClose`와 `_sqlite3BtreeClose` 역시 하위 파일 종료 오류를 public Close 결과로 전달하지 않는 경로가 있다. Windows `_winClose`는 CloseHandle 실패를 오류로 만들 수 있으므로 **public Close nil만으로 모든 kernel 핸들의 종료를 입증할 수 없다**. 이 소스 경로는 실제 하위 CloseHandle 실패가 이번 실행에서 발생했다는 관측을 뜻하지 않는다.
 
 registry의 fault retention은 wrapper에 전달된 오류·panic과 관측한 미종료 자원에 적용한다. 하위 VFS가 감춘 종료 오류를 native pin이 실제로 감지하거나 방지하는지는 아직 검증되지 않은 Gap이다. ATTACH/VACUUM 출력의 숨은 연결 종료도 별도 경계이며, 주 DB의 세 pin으로 출력 파일까지 보호했다고 주장하지 않는다. 이 패치는 실제 Windows 생산 회귀와 해당 실패 경계 검토를 위한 변경이며 보안 수리 완료 판정이 아니다.
+
+## backlog와 relocation 통합 범위
+
+`openBacklogEngine`과 `openGTDDB`의 writable 연결이 같은 물리 guard를 사용한다. queue lock 이전에도 기존 ancestor 거부를 실행한 뒤 관리 namespace를 준비하므로 기본 Windows owner로 부모를 먼저 만드는 경로를 피한다. Unix에서는 기존 owner의 write bit가 없는 디렉터리를 chmod로 다시 쓰기 가능하게 만들지 않는다. 기존 shared lock 검사와 실제 잠금·release 처리는 유지한다.
+
+논리 migration/relocation의 sibling DB는 privatefile.CreateTemp로 payload 전에 생성한다. 기존 parity/readback·quarantine·rollback 원본·대상 no-overwrite 확인·atomic publication 순서는 유지한다. readonly reader의 query-only SQL, 기존 DB만 열기와 live WAL을 checkpoint하지 않는 경로는 변경하지 않는다. 기존 DB의 schema preflight도 이전 순서를 유지하며, 임의 legacy readonly 연결의 모든 파일 수명까지 관측한다는 주장은 하지 않는다.
+
+이 통합은 `BackupGTDStore`의 VACUUM INTO 출력이나 `RestoreGTDStore`의 별도 임시 파일을 보호하는 변경이 아니다. 해당 출력의 원자 CREATE_NEW·before-bytes 정책·내부 연결 종료는 별도 검토와 실제 Windows 검증이 필요하다. 새 native 회귀는 생산 backlog/GTD의 두 번 연결·SQL·Close 전후 strict policy와 capture-time file ID, weak 기존 namespace의 무변경 거부를 검사하도록 작성했으며 교차 컴파일만으로 native 통과를 주장하지 않는다.

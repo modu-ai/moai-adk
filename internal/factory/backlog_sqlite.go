@@ -29,8 +29,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 
 	_ "modernc.org/sqlite" // registers the pure-Go "sqlite" database/sql driver (CGO_ENABLED=0 safe)
 	sqlite3 "modernc.org/sqlite/lib"
@@ -363,10 +366,10 @@ func openBacklogEngine(dbPath string) (*backlogEngine, error) {
 		}
 		_ = probe.close()
 	}
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
+	if err := ensureBacklogDirectory(filepath.Dir(dbPath)); err != nil {
 		return nil, fmt.Errorf("open backlog store %s: creating dir: %w", dbPath, err)
 	}
-	db, err := sql.Open(sqliteDriverName, backlogDSN(dbPath))
+	db, err := sqliteguard.Open(dbPath, backlogDSN(dbPath))
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("open backlog store %s", dbPath), err)
 	}
@@ -383,10 +386,6 @@ func openBacklogEngine(dbPath string) (*backlogEngine, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	if err := os.Chmod(dbPath, 0o600); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("open backlog store %s: secure database: %w", dbPath, err)
-	}
 	if err := secureBacklogArtifacts(dbPath); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -396,11 +395,29 @@ func openBacklogEngine(dbPath string) (*backlogEngine, error) {
 
 func secureBacklogArtifacts(dbPath string) error {
 	for _, artifact := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
-		if err := os.Chmod(artifact, 0o600); err != nil && !os.IsNotExist(err) {
+		if err := sqliteguard.SecureArtifact(artifact); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("open backlog store %s: secure database artifact %s: %w", dbPath, artifact, err)
 		}
 	}
 	return nil
+}
+
+// ensureBacklogDirectory prepares a managed queue leaf before lock records or
+// SQLite payloads. An existing Unix read-only namespace stays read-only;
+// privacy narrowing must not silently restore its owner's write permission.
+// @MX:ANCHOR: [AUTO] Prepare the same private queue namespace before every writable entry.
+// @MX:REASON: Queue locking, SQLite engine opening and destination relocation share this boundary.
+func ensureBacklogDirectory(path string) error {
+	if runtime.GOOS != "windows" {
+		info, err := os.Lstat(path)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if err == nil && info.IsDir() && info.Mode().Perm()&0o200 == 0 {
+			return &os.PathError{Op: "prepare private backlog directory", Path: path, Err: os.ErrPermission}
+		}
+	}
+	return sqliteguard.EnsureDirectory(path)
 }
 
 // ensureSchema executes the idempotent DDL, adds any column the DDL cannot

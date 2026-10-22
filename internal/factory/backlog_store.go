@@ -1381,6 +1381,14 @@ func (s *BacklogStore) acquireLock() (*StateLock, error) {
 	// The ancestor check runs before the directory is created: MkdirAll follows
 	// a symlinked `.moai` and would create the queue directory outside the
 	// project before the opener refused (card t1458).
+	// Reuse the same ancestor refusal before private creation; the shared
+	// lock helper and opener repeat it after this narrow preparation.
+	if err := checkStateLockAncestors(s.LockPath()); err != nil {
+		return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
+	}
+	if err := ensureBacklogDirectory(filepath.Dir(s.LockPath())); err != nil {
+		return nil, fmt.Errorf("mutate backlog %s: creating private dir: %w", s.EnginePath(), err)
+	}
 	if err := ensureStateLockDir(s.LockPath()); err != nil {
 		if errors.Is(err, ErrStateLockUnsafePath) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)

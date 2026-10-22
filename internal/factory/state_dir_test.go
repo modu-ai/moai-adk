@@ -19,6 +19,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 // seedLegacyStateDir plants a queue file plus N session-registry files under
@@ -66,7 +68,7 @@ func TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource(t *testin
 	base := t.TempDir()
 	from := filepath.Join(base, "legacy")
 	to := filepath.Join(base, "global")
-	if err := os.MkdirAll(from, 0o700); err != nil {
+	if err := privatefile.Mkdir(from); err != nil {
 		t.Fatal(err)
 	}
 	source := filepath.Join(from, backlogFileName)
@@ -94,10 +96,11 @@ func TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource(t *testin
 	if _, err := os.Stat(registry); err != nil {
 		t.Fatalf("unowned registry moved: %v", err)
 	}
-	if info, err := os.Stat(filepath.Join(to, "backlog.db")); err != nil {
+	if _, err := os.Stat(filepath.Join(to, "backlog.db")); err != nil {
 		t.Fatalf("target database missing: %v", err)
-	} else if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("target database mode=%#o, want 0600", got)
+	}
+	if err := privatefile.Check(filepath.Join(to, "backlog.db")); err != nil {
+		t.Fatalf("target database native privacy: %v", err)
 	}
 }
 
@@ -105,7 +108,7 @@ func TestRelocateQueueArtifactsRemovesIncompleteTargetOnWriteFailure(t *testing.
 	base := t.TempDir()
 	from := filepath.Join(base, "legacy")
 	to := filepath.Join(base, "global")
-	if err := os.MkdirAll(from, 0o700); err != nil {
+	if err := privatefile.Mkdir(from); err != nil {
 		t.Fatal(err)
 	}
 	broken := `{"version":1,"last_seq":2,"items":[{"id":"t1","text":"a","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"queued"},{"id":"t1","text":"b","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"queued"}],"findings":[],"archived":[]}`
@@ -128,7 +131,7 @@ func TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue(t *testing.T) {
 	base := t.TempDir()
 	from := filepath.Join(base, "legacy")
 	to := filepath.Join(base, "global")
-	if err := os.MkdirAll(from, 0o700); err != nil {
+	if err := privatefile.Mkdir(from); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(from, backlogFileName), []byte(migrationFixture), 0o600); err != nil {
@@ -155,7 +158,7 @@ func TestRelocateQueueArtifactsSerializesOnTargetQueueLock(t *testing.T) {
 	base := t.TempDir()
 	from := filepath.Join(base, "legacy")
 	to := filepath.Join(base, "global")
-	if err := os.MkdirAll(from, 0o700); err != nil {
+	if err := privatefile.Mkdir(from); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(from, backlogFileName), []byte(migrationFixture), 0o600); err != nil {
@@ -253,7 +256,7 @@ func TestAdoptingPathFindsLegacyHomeQueueWithPreSanitizationKey(t *testing.T) {
 }
 
 func TestBacklogSQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
-	dir := t.TempDir()
+	dir := privateBacklogFixtureDir(t)
 	dbPath := filepath.Join(dir, "backlog.db")
 	eng, err := openBacklogEngine(dbPath)
 	if err != nil {
@@ -264,12 +267,12 @@ func TestBacklogSQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
-		info, err := os.Stat(path)
+		_, err := os.Stat(path)
 		if err != nil {
 			t.Fatalf("stat %s: %v", path, err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
-			t.Errorf("%s mode=%#o, want 0600", filepath.Base(path), got)
+		if err := privatefile.Check(path); err != nil {
+			t.Errorf("%s native privacy: %v", filepath.Base(path), err)
 		}
 	}
 }

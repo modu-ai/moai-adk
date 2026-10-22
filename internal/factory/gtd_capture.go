@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 )
 
 type GTDSensitivity string
@@ -61,7 +63,7 @@ func openGTDDB(store *BacklogStore) (*sql.DB, error) {
 	if err := MigrateGTDSchema(store); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open(sqliteDriverName, backlogDSN(store.EnginePath()))
+	db, err := sqliteguard.Open(store.EnginePath(), backlogDSN(store.EnginePath()))
 	if err != nil {
 		return nil, mapBacklogEngineError("open gtd store", err)
 	}

@@ -1,5 +1,11 @@
 # 패키지 모듈 상세
 
+## backlog writable 연결 보완 — ci-repair-20261022 phase2
+
+`internal/factory/backlog_sqlite.go`와 `internal/factory/gtd_capture.go`의 쓰기 연결도 sqliteguard를 사용한다. backlog lock은 기존 ancestor 거부 후 관리 namespace를 private하게 준비하고 shared lock 검사·직렬화·release를 그대로 거친다. Unix owner write bit가 없는 기존 디렉터리는 거부하며 chmod로 권한을 복구하지 않는다.
+
+`internal/factory/backlog_migrate.go`의 sibling DB는 payload 전 native 정책을 적용한 CreateTemp로 만들고, parity/readback·quarantine·atomic publication을 유지한다. `internal/factory/state_dir.go`의 logical relocation은 대상 namespace를 준비하되 기존 queue 우선·rollback 원본·session 파일·retired marker 보상 규칙을 보존한다. readonly reader와 unknown-schema preflight의 원래 SQL 흐름은 유지한다. VACUUM backup 출력과 restore staging은 별도 경계이며 이 phase2에서 수리 완료로 포함하지 않는다. 실제 Windows 실행 판정은 아직 필요하다.
+
 ## Windows 파일 정책과 SQLite 연결 경계 — 7d5d312
 
 `bf0a35f10` 이후 공통 수리와 이 트리의 SQLite 수리를 소스에서 대조했다. 아래 내용은 구현 책임을 설명하며 Windows 생산 회귀 통과나 독립 감사를 뜻하지 않는다.

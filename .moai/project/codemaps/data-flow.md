@@ -1,5 +1,11 @@
 # 데이터 흐름
 
+## backlog 쓰기·relocation 보완 — ci-repair-20261022 phase2
+
+backlog mutation은 기존 ancestor 거부 후 private namespace를 준비하고 원래 queue lock을 획득한다. writable engine/GTD open의 물리 연결은 아래 SQLite guard 흐름을 소비한다. unknown-schema preflight·query-only readonly reader는 이전 경로를 유지한다.
+
+relocation은 source와 target lock을 유지한 채 논리 record를 읽고, payload 전 private sibling DB에서 write·runtime copy·readback·parity를 검증한다. public Close 결과를 확인한 뒤 canonical 이름으로 atomic publication하며 legacy source와 session 파일은 rollback용으로 남긴다. 실패 보상과 기존 target 우선 규칙은 유지한다. VACUUM INTO의 내부 출력 연결은 이 세 파일 guard 범위 밖이며 별도 실패·privacy 검증이 필요하다.
+
 ## Windows writable SQLite의 물리 연결 흐름 — 7d5d312
 
 관리 namespace의 없는 구성요소만 private SA로 생성하고 기존 leaf는 native 정책을 검사한다. homestate factory/profile-lease의 writable 요청은 절대 경로와 local file URI를 바인딩한 뒤 parent alias를 해소하여 같은 경로로 정규화한다. 허용 query key는 `_pragma`, `_txlock`이며 readonly 요청은 이 경로 밖에 남는다.

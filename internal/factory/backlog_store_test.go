@@ -22,7 +22,7 @@ import (
 // newTestBacklogStore builds a store over a temp-dir backlog file.
 func newTestBacklogStore(t *testing.T) *BacklogStore {
 	t.Helper()
-	return NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	return NewBacklogStore(filepath.Join(privateBacklogFixtureDir(t), "backlog.json"))
 }
 
 // seedBacklogFile writes raw bytes as the backlog file and returns its

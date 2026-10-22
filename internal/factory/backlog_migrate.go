@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 // backlogMigratedSuffix names the quarantine the legacy file is RENAMED to on
@@ -904,7 +905,7 @@ func migrateLegacyBacklog(queuePath string) error {
 // exposing its canonical name. Caller holds the destination queue lock.
 func publishBacklogRecord(queuePath string, record *BacklogRecord, quarantine bool) error {
 	dbPath := backlogSQLitePath(queuePath)
-	f, err := os.CreateTemp(filepath.Dir(dbPath), ".backlog-migrate-*.db")
+	f, err := privatefile.CreateTemp(filepath.Dir(dbPath), ".backlog-migrate-*.db")
 	if err != nil {
 		return err
 	}

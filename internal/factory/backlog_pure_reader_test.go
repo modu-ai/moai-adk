@@ -10,7 +10,7 @@ import (
 )
 
 func TestPureBacklogReaderPreservesSidecarInventory(t *testing.T) {
-	dir := t.TempDir()
+	dir := privateBacklogFixtureDir(t)
 	s := NewBacklogStore(filepath.Join(dir, backlogFileName))
 	if _, _, err := s.Add("card"); err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestPureBacklogReaderPreservesSidecarInventory(t *testing.T) {
 }
 
 func TestPureBacklogReaderWorksWithReadOnlyDatabase(t *testing.T) {
-	s := NewBacklogStore(filepath.Join(t.TempDir(), backlogFileName))
+	s := NewBacklogStore(filepath.Join(privateBacklogFixtureDir(t), backlogFileName))
 	if _, _, err := s.Add("read only"); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestPureBacklogReaderWorksWithReadOnlyDatabase(t *testing.T) {
 }
 
 func TestPureBacklogReaderRejectsSQLWrites(t *testing.T) {
-	s := NewBacklogStore(filepath.Join(t.TempDir(), backlogFileName))
+	s := NewBacklogStore(filepath.Join(privateBacklogFixtureDir(t), backlogFileName))
 	if _, _, err := s.Add("retained"); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestPureBacklogReaderNeverCreatesMissingDB(t *testing.T) {
 }
 
 func TestPureBacklogReaderSeesCommittedWAL(t *testing.T) {
-	s := NewBacklogStore(filepath.Join(t.TempDir(), backlogFileName))
+	s := NewBacklogStore(filepath.Join(privateBacklogFixtureDir(t), backlogFileName))
 	if _, _, err := s.Add("first"); err != nil {
 		t.Fatal(err)
 	}

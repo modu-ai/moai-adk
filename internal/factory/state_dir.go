@@ -168,10 +168,7 @@ func relocateQueueArtifacts(from, to string) (err error) {
 		err = joinBacklogReleaseErr(err, lock.Release(), sourceQueue)
 	}()
 
-	if err := os.MkdirAll(to, 0o700); err != nil {
-		return err
-	}
-	if err := os.Chmod(to, 0o700); err != nil {
+	if err := ensureBacklogDirectory(to); err != nil {
 		return err
 	}
 	targetQueue := filepath.Join(to, backlogFileName)
