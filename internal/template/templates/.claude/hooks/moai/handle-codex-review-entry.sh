@@ -2,12 +2,12 @@
 
 # MoAI Hook Wrapper - handle-codex-review-entry.sh
 # Forwards stdin JSON to `moai hook codex-review-entry` — the delayed review
-# block's NEXT-TURN-ENTRY enforcement handler (SPEC-GATE-BOTTLENECK-001
-# REQ-GBN-002). The Stop gate (handle-codex-review-gate.sh) allows the turn
+# block's NEXT-TURN-ENTRY enforcement handler (the review-gate bottleneck
+# contract). The Stop gate (handle-codex-review-gate.sh) allows the turn
 # and kicks a background review; this wrapper is the entry-side half: it reads
 # the receipt that review recorded and delivers a fresh FAIL's detail as
-# additional context — it never blocks a prompt (SPEC-REVIEW-GATE-REPAIR-001
-# REQ-RG-001). Composes with handle-user-prompt-submit.sh — it is a SEPARATE
+# additional context — it never blocks a prompt (the review-gate repair
+# contract). Composes with handle-user-prompt-submit.sh — it is a SEPARATE
 # entry reading the same stdin JSON independently. It never runs a review
 # synchronously; on a cache-MISS state the gate-ON shell fast path below fires
 # the same detached, marker-guarded background kick the Stop gate uses, then
@@ -37,7 +37,7 @@ INPUT=$(cat)
 CODEX_GATE_PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 CODEX_GATE_WORKFLOW_YAML="$CODEX_GATE_PROJECT_ROOT/.moai/config/sections/workflow.yaml"
 
-# --- gate-ON shell fast-path helpers (SPEC-HOOK-SYNC-ASYNC-001 M3) ---
+# --- gate-ON shell fast-path helpers (fast-path milestone M3) ---
 # Defined BEFORE the early exits below so a test can `source` this file with
 # the gate OFF and call them directly (the D4 key-parity gate).
 #
@@ -194,7 +194,7 @@ CODEX_GATE_ENABLED=$(awk -v gate="codex" '
 # Gate off (or unreadable) ⇒ ALLOW with zero moai cold-start.
 [ "$CODEX_GATE_ENABLED" = "true" ] || exit 0
 
-# --- gate-ON shell fast path (SPEC-HOOK-SYNC-ASYNC-001 M3, plan §F) ---
+# --- gate-ON shell fast path (fast-path milestone M3, plan §F) ---
 # Resolves the common ALLOW states without the synchronous moai cold start:
 # (1) eligibility — a WT- branch (card scope) and either entry-side skip
 #     policy (tree_scope: skip; the primary-checkout primary_scope: skip
@@ -378,6 +378,12 @@ codex_entry_fastpath() {
 	# --- (3) the receipt probe ---
 	local now receipt state verdict
 	now=$(awk 'BEGIN { srand(); print srand() }') || return 1
+	# (R7) mawk on newer runners seeds srand() at NANOSECOND precision and the
+	# one-liner returns that seed — a 19-digit "now" reads every fresh receipt
+	# as ancient (TTL math off by 1e9) and breaks the fresh/stale reading the
+	# Go side computes. Truncate a >10-digit capture to its leading seconds
+	# digits; a seconds-precision capture passes through unchanged.
+	[ "${#now}" -gt 10 ] && now="${now:0:10}"
 	receipt=$(awk -v cmd="moai verify codex-review" -v now="$now" -v ttl=86400 -v wantkey="$head:$digest" '
 function dc(y, m, d,    yy, era, yoe, doy, doe) {
 	yy = y
@@ -605,6 +611,11 @@ END { exit (any && !bad) ? 0 : 1 }
 	# kickInFlight / codexReviewKickMarkerPath) ---
 	local epoch bucket marker_dir marker owned
 	epoch=$(awk 'BEGIN { srand(); print srand() }') || return 1
+	# (R7) same ns-precision srand seed as the receipt probe above: a 19-digit
+	# epoch sends the 15-minute bucket off its grid and the marker the Go side
+	# (and a prior shell entry) computed no longer matches, so the per-bucket
+	# single-kick guarantee breaks. Same leading-seconds truncation.
+	[ "${#epoch}" -gt 10 ] && epoch="${epoch:0:10}"
 	bucket=$((epoch / 900))
 	marker_dir="$root/.moai/state/verify/codex-review"
 	marker="$marker_dir/$head-$digest.kick-$bucket"
