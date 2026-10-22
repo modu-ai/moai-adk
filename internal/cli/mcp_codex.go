@@ -1776,7 +1776,7 @@ var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d
 // ("internal/auth/keys.go:42"). The extension is matched GENERICALLY
 // (`\.[A-Za-z0-9]+`), not enumerated: moai is language-neutral, and an
 // extension allowlist would silently drop anchors for every language it forgot.
-var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
+var codexPathLineRef = regexp.MustCompile(`((?:[A-Za-z]:)?[\\\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
 
 // codexFindingTableRow and codexFindingBoldBullet read the two finding shapes
 // GitHub #1718 observed when a target project's instructions shaped codex's

@@ -127,3 +127,26 @@ func TestSynthesizeReviewOutput_FindingBulletsMapToFail(t *testing.T) {
 		}
 	}
 }
+
+func TestSynthesizeReviewOutput_DriveQualifiedFindingAnchors(t *testing.T) {
+	for _, tc := range []struct {
+		name, text, path string
+		line             int
+	}{
+		{"slash drive", "- [P1] drift at `C:/repo/.claude/settings.json:13`", "C:/repo/.claude/settings.json", 13},
+		{"native drive", `- [P1] drift at C:\repo\.claude\settings.json:27`, `C:\repo\.claude\settings.json`, 27},
+		{"lowercase drive", "- [P1] drift at d:/repo/main.go:9", "d:/repo/main.go", 9},
+		{"relative control", "- [P1] drift at internal/config/loader.go:125", "internal/config/loader.go", 125},
+		{"distinct targets stay ambiguous", "- [P1] drift at C:/repo/.claude/settings.json:13; fix internal/config/loader.go:125", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := synthesizeReviewOutput(tc.text, codexMethodReviewStart)
+			if got.Verdict != "fail" || len(got.Findings) != 1 {
+				t.Fatalf("review = %+v, want fail with one finding", got)
+			}
+			if f := got.Findings[0]; f.File != tc.path || f.Line != tc.line {
+				t.Errorf("finding anchor = %q:%d, want %q:%d", f.File, f.Line, tc.path, tc.line)
+			}
+		})
+	}
+}
