@@ -149,6 +149,12 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 일회성 도구이고, `internal/graph`는 이 판의 GTD 비공개 투영(`internal/graph/gtd_private.go`)이
 만든 엣지입니다.
 
+GTD native 권한 수리의 파일 대조에서는 `internal/graph/gtd_private.go`가
+`internal/privatefile`(쓰기 전 비공개 생성과 필수 native 정책 검사)과 `internal/atomicfile`
+(같은 디렉터리의 임시 객체 게시)을 직접 import합니다. Windows 소유권 판독은
+`internal/graph/gtd_private_identity_windows.go`에서 기존 `golang.org/x/sys/windows`를 사용합니다.
+fan-in·fan-out 표는 각 표에 명시된 기존 측정 트리의 수치를 유지합니다.
+
 ### 작은 fan-in의 seam과 leaf
 
 | 패키지 | fan-in | 비고 |
