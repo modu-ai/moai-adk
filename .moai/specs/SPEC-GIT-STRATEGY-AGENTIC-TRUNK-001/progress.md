@@ -475,6 +475,10 @@ M5b divergences recorded:
   `mergeFlag`/`factoryPRMergeFlag` references remain, the function flow re-read end to end). No
   corrupted state was committed.
 
+### M7 — Repo-local guidance (2026-10-23, manager-develop, effort high; pre-flip commit per the ladder decision in §E.1)
+
+Commit `3c2670015c` "feat(SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001): M7 repo-local guidance (card t1831)" — 6 files, +33/−23: gitflow-lane-protocol.md retitled `# agentic-trunk Lane Protocol` with §2 retargeted to the landing-surface wording (N1 preserved) and §4/§10 route-split rewrites; AGENTS.local.md §4.0 retitled with the four-step sentinel + target-holder routing; repo-local-pr-policy.md card-workflow block rewritten to the routing; three .moai/docs current-model notices (git-workflow-doctrine, git-local-workflow-doctrine, gitflow-integration-chain). Lane spot-verification on tree 3c2670015c: J1 title grep `1` (exit 0); J5 sentinel `agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release` = `:1`/`:1` in both shared files (exit 0); N1 `performs landing and resync only` = 1/1 preserved; tree clean, no push. Delegate judge matrix: AC-018 J1-J6 all PASS, AC-023 S-A/S-B all PASS (N1′+N0′ = 1+0 ≥ starting sum per file; F2 not applicable, N0=0), pre-counts re-observed at 72e6e09494 matching §E.1. Divergence: the ordering-clause deferral only — pre-authorized by the ladder decision above. The delegate did not edit SPEC artifacts (constraint held); this entry is the evidence carrier.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-22 (M0-M5 + M5b delegation complete; the run PHASE is not complete — see run_status)
