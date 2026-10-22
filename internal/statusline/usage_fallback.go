@@ -76,11 +76,12 @@ func primaryRepoRoot(projDir string) string {
 	if !filepath.IsAbs(ptr) {
 		ptr = filepath.Clean(filepath.Join(projDir, ptr))
 	}
+	ptr = filepath.ToSlash(ptr)
 	idx := strings.LastIndex(ptr, worktreeGitdirSeparator)
 	if idx <= 0 {
 		return projDir // malformed or non-worktree pointer: fail open
 	}
-	return filepath.Clean(ptr[:idx])
+	return filepath.Clean(filepath.FromSlash(ptr[:idx]))
 }
 
 // quotaScanStateDirs names the state directories the snapshot fallback reads
