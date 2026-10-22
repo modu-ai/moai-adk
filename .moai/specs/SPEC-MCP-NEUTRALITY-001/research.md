@@ -3,7 +3,7 @@ id: SPEC-MCP-NEUTRALITY-001
 title: "Research — verified code-path inventory (worktree t1632)"
 version: "0.1.0"
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-23
 author: manager-spec
 ---
 
@@ -38,7 +38,7 @@ The 2026-10-10 audit cited paths that have moved since. Verified in this tree:
 
 ## §R4 Files verified to exist (implementation surface)
 
-`internal/cli/`: mcp_project_root.go, mcp_factory_msg.go, mcp_factory_card.go, factory_card.go, mcp_server.go, mcp_server_runtime.go, mcp_todo.go, mcp_claude.go, codex_jobs.go, glm_jobs.go, codex_audit_mcp.go, mcp_convergence.go, mcp_codex.go, mcp_glm.go, mcp_audit_multi_record.go, codex_review_scope.go, mcp_review_material.go, codex_audit_launch.go. `internal/`: auditreceipt/store.go, factorymsg/store.go, hook/stop.go, hook/factory_messages.go, mcp/catalog.go, codexwiring/configtoml.go, config/role_markers.go.
+`internal/cli/`: mcp_project_root.go, mcp_factory_msg.go, mcp_factory_card.go, factory_card.go, mcp_server.go, mcp_server_runtime.go, mcp_todo.go, mcp_claude.go, codex_jobs.go (superseded — surface removed by card t1909), glm_jobs.go, codex_audit_mcp.go, mcp_convergence.go, mcp_codex.go, mcp_glm.go, mcp_audit_multi_record.go, codex_review_scope.go, mcp_review_material.go, codex_audit_launch.go. `internal/`: auditreceipt/store.go, factorymsg/store.go, hook/stop.go, hook/factory_messages.go, mcp/catalog.go, codexwiring/configtoml.go, config/role_markers.go.
 
 ## §R5 Test-coverage state (from lens-7 §8, unverified in this tree)
 

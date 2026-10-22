@@ -3,7 +3,7 @@ id: SPEC-MCP-NEUTRALITY-001
 title: "Acceptance criteria — MCP refusal structuring and harness neutrality"
 version: "0.2.0"
 created: 2026-10-14
-updated: 2026-10-17
+updated: 2026-10-23
 author: manager-spec
 ---
 
@@ -37,7 +37,7 @@ Verification commands are single-invocation, read-only forms run from the worktr
 | AC-MN-013 | Given an empty factory inbox, When the counting path inspects it, Then no write lock is taken and no write-probe deadline is paid, and no message is claimed; delivery remains the rendering path of REQ-MN-016. | REQ-MN-011 | EV-013 | M3 |
 | AC-MN-014 | Given the claude_audit child env built by the allowlist, When inspected, Then it contains neither `CLAUDE_CONFIG_DIR` nor proxy/CA variables, pins the subscription config dir, honors `MOAI_CLAUDE_BIN`, and a forced 429 is labeled rate-limited with the endpoint unverified. | REQ-MN-012 | EV-014 | M4 |
 | AC-MN-015 | Given the installed binary's mtime/commit changed relative to the serving process, When any tool is called, Then the result annotates `_server` + `stale_server: true` with reconnect guidance and a mutating call refuses. | REQ-MN-013 | EV-015 | M4 |
-| AC-MN-016 | Given a background job whose originating request's context has ended, When the job is queried, Then it is still running or completed (never cancelled by the request) — the three pinned regression tests stay green; given a GLM job and a role-audit job alive at server exit, When the server shuts down, Then both are cancelled; a status query on a dead-owner record reports `stale`; `codex_role_audit_cancel` exists; a timed-out foreground codex_task returns partial output plus its thread id. | REQ-MN-014 | EV-016 | M4 |
+| AC-MN-016 | Given a background job whose originating request's context has ended, When the job is queried, Then it is still running or completed (never cancelled by the request) — the pinned GLM regression tests `TestGLMTask_BackgroundJobSurvivesRequestContextEnd` and `TestGLMTask_DetachedBackgroundJobIsStillCancellable` stay green (the third pin, `TestCodexTask_BackgroundJobSurvivesRequestContextEnd`: superseded — surface removed by card t1909); given a GLM job and a role-audit job alive at server exit, When the server shuts down, Then both are cancelled; a status query on a dead-owner record reports `stale`; `codex_role_audit_cancel` exists; a timed-out foreground codex_task returns partial output plus its thread id (superseded — surface removed by card t1909). | REQ-MN-014 | EV-016 | M4 |
 | AC-MN-017 | Given a read-only project directory and a non-project cwd, When the server starts there, Then it still serves despite the stamp-write failure and creates no `.moai` in the foreign cwd; the rotated per-process call log gains one row per tool call. | REQ-MN-015 | EV-017 | M4 |
 | AC-MN-018 | Given an endpoint with a live claim, When it re-claims, Then the token is unchanged and the lease extended; after a `/clear`, peer attribution resolves the live identity or refuses with guidance (never the stale spawn-time id). | REQ-MN-017 | EV-018 | M5 |
 | AC-MN-019 | Given a receiver re-registering from generation 1 to 2 with pending gen-1 messages, When the re-register completes, Then each message is claimable at gen-2 or dead-lettered with sender notification — orphan count 0; given more messages than the hook byte cap, When the delivery path renders, Then the cut falls on a line boundary and claimed count equals visible count. | REQ-MN-016 | EV-019 | M5 |
@@ -165,8 +165,9 @@ green   : M2.
 ```
 EV-009 (AC-MN-009 · milestone-gating · regression-guard)
 red     : schemas carry the eleven undocumented factory_msg_* properties, the
-          undeclared codex_task.model read, unset additionalProperties, wrong
-          hints (lens-7 schema section); no schema lint test exists.
+          undeclared codex_task.model read (superseded — surface removed by
+          card t1909), unset additionalProperties, wrong hints (lens-7 schema
+          section); no schema lint test exists.
 why not measured now : the lint test is itself the M2 deliverable. Disposition:
           not recorded as a pass.
 green   : M2.
@@ -238,14 +239,20 @@ green   : M4.
 EV-016 (AC-MN-016 · milestone-gating · regression-guard)
 red     : GLM/role-audit jobs never cancelled on server exit; no owner stamp,
           no liveness check, no role-audit cancel tool; foreground timeout
-          loses the thread (lens-3 #16/17; sites verified in-tree).
+          loses the thread (lens-3 #16/17; sites verified in-tree). The
+          foreground codex_task thread clause: superseded — surface removed
+          by card t1909.
 why not measured now : the survival assertion is real but its GREEN form
           depends on M4's lifecycle changes; running the three pinned
           regression tests today shows the survival contract the fix must
           preserve, not the missing cancellation. Disposition: not recorded
           as a pass.
 green   : M4 — the three regression tests stay green AND the new
-          cancellation/stale/cancel/partial-output assertions pass.
+          cancellation/stale/cancel/partial-output assertions pass. Since
+          2026-10-23 the codex pin and the codex partial-output assertion are
+          superseded — surface removed by card t1909; the two GLM pins and
+          the GLM/role-audit cancellation, stale and cancel-tool assertions
+          remain the green form.
 ```
 
 ```

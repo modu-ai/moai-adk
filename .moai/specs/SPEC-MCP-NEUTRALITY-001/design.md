@@ -3,7 +3,7 @@ id: SPEC-MCP-NEUTRALITY-001
 title: "Design — target contracts for refusal structuring and harness neutrality"
 version: "0.1.0"
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-23
 author: manager-spec
 ---
 
@@ -55,10 +55,10 @@ Every root-dependent result carries `_root {dir, source, warning}` where `source
 
 Two regimes, never conflated:
 
-- **Background jobs** (codex background sessions, GLM jobs, role-audit jobs) run under the SERVER's lifetime: they survive their originating request's context end — the existing contract the regression tests `TestCodexTask_BackgroundJobSurvivesRequestContextEnd`, `TestGLMTask_BackgroundJobSurvivesRequestContextEnd`, and `TestGLMTask_DetachedBackgroundJobIsStillCancellable` pin and this design preserves — each bound by its own job deadline, cancellable through an explicit cancel surface, and cancelled by the server's shutdown pass.
-- **Foreground codex tasks** run under the REQUEST's context: the bound ending the call also ends the child.
+- **Background jobs** (codex background sessions [superseded — surface removed by card t1909], GLM jobs, role-audit jobs) run under the SERVER's lifetime: they survive their originating request's context end — the existing contract the regression tests `TestCodexTask_BackgroundJobSurvivesRequestContextEnd` [superseded — surface removed by card t1909], `TestGLMTask_BackgroundJobSurvivesRequestContextEnd`, and `TestGLMTask_DetachedBackgroundJobIsStillCancellable` pin and this design preserves — each bound by its own job deadline, cancellable through an explicit cancel surface, and cancelled by the server's shutdown pass.
+- **Foreground codex tasks** run under the REQUEST's context: the bound ending the call also ends the child. [superseded — surface removed by card t1909]
 
-Every background job record carries: `owner_server {pid, commit}`, `created_at`, `ttl`. On server exit, the shutdown pass cancels all live job contexts (codex, GLM, role-audit). `*_job_status` checks the owner's liveness and reports `stale` when dead. Foreground `codex_task` records its thread id at start so a timeout returns partial output plus a resumable thread. Registries prune by TTL.
+Every background job record carries: `owner_server {pid, commit}`, `created_at`, `ttl`. On server exit, the shutdown pass cancels all live job contexts (codex [superseded — surface removed by card t1909], GLM, role-audit). `*_job_status` checks the owner's liveness and reports `stale` when dead. Foreground `codex_task` records its thread id at start so a timeout returns partial output plus a resumable thread [superseded — surface removed by card t1909]. Registries prune by TTL.
 
 ## §D6 Broker claim model (REQ-MN-016/017/018)
 
