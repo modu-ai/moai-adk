@@ -1,5 +1,31 @@
 # 데이터 흐름
 
+## CI 수리 통합의 IO 흐름 — 2026-10-22
+
+1. private payload 작성자는 `internal/privatefile`에서 보호된 임시 객체를 만든 뒤
+   bytes를 쓰고 게시한다. append와 기존 객체 정리는 새 파일 생성과 구분하며,
+   Windows에서 foreign/unknown owner를 인수하지 않는다.
+2. GTD는 현재 account와 directory/data/meta의 native 정책을 확인한다. 같은 디렉터리의
+   private 임시 객체를 게시하고 file identity·정책을 재검사한다. 메타 실패 정리,
+   내용 hash·source revision·backup opt-in 및 collector 제외 의무는 유지한다.
+3. YAML project caller → 명시된 root/relative path → child component 검사 →
+   선택적 root-relative 부모 생성 → 읽기/표현 보존 편집 → 배타 임시 파일 →
+   공통 config atomic writer의 checked mode/write/close → root-relative rename 순서다.
+   Config Save의 typed section도 같은 본체를 쓴다. 신뢰 root 자체의 alias는 허용하고
+   연결된 child와 FIFO/socket/device 등 비정규 leaf는 읽기 전에 거부한다.
+   일반 owned-path API와 저장 이전의 설정 읽기는 별도 범위다.
+4. 감사 ledger는 claim token을 읽은 핸들을 유지한 채 같은 Windows 객체를 삭제한다.
+   새 경로에 게시된 후임 claim으로 삭제 대상을 다시 해석하지 않는다. Close 오류는
+   경고로 남으며 데이터·감사 완료를 새로 만들어 내지 않는다.
+5. readonly census는 actual worktree·session·PID 관측과 URI-escaped readonly SQLite를
+   결합한다. 불완전 inventory나 indeterminate PID를 빈 성공/죽은 owner로 바꾸지 않는다.
+6. release gate는 모든 선언 leg의 count와 conclusion을 검사한다. 소비자 awk가 일찍
+   끝나도 생산자 파이프 오류가 정확한 missing/unknown reason을 덮지 않도록 했다.
+
+남은 경계: homestate SQLite는 native 부모가 비공개여도 sidecar 재생성이 엄격한 정책을
+자동 유지하지 않는다. 실제 Windows 진단의 상속 DACL·마지막 Close 뒤 새 file ID 관측을
+전체 수명 해결로 재해석하지 않는다. 새 소스의 실제 native CI와 공식 독립 감사는 별도 검증이다.
+
 ## 현재 흐름 보완 — bf0a35f10
 
 후보 CI 흐름은 카드의 검증된 변경과 통합 기준으로 merge-tree 후보를 생성하고, `ci/<card>`에 게시한 다음 pending 증거를 기록하는 순서다. `integration candidate --observe`가 실제 실행 결과를 읽어 후보 SHA·대상·통합 tip에 묶는다. 착지 경로는 이 값들과 green 판정이 모두 맞는 후보만 받는다. 게시나 관측 요청 자체는 CI 통과 증거가 아니다.

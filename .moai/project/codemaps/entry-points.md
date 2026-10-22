@@ -1,5 +1,26 @@
 # 진입점
 
+## CI 수리에서 유지한 진입 경계 — 2026-10-22
+
+- GTD projection 재생성은 `internal/graph`의 공개 빌더와 native 권한 checker를 거친다.
+  일반 그래프의 build/query 표면과 private data/meta의 승인·게시 표면은 별개다.
+- 프로젝트 설정 쓰기 `internal/settings/sectionwrite.go`, profile 동기화
+  `internal/profile/sync.go`, init workflow `internal/cli/init_workflow_flags.go`,
+  LLM 저장 `internal/config/llm_save.go`, team mode `internal/cli/glm.go`가
+  명시된 root를 YAML seam에 전달한다. 원래 목록은 여섯 호출·다섯 파일이며, 후속 Config Save
+  수리는 선행 path-based mkdir을 제거하고 여섯 typed section·없는 LLM 파일 생성까지
+  열린 root와 공통 config atomic writer로 연결한다. 일반 owned-path 저장 API는 별도 범위다.
+- `internal/cli/contract_revoke.go`의 폐기와 kickoff의 `Blocked` 조회는 기존
+  receipt·서명·fingerprint 검사를 유지한다. 잘못된 기록을 없음으로 바꾸지 않는다.
+- 업데이트의 residue 정리는 사용자 확인 전 rename을 실행하지 않고,
+  확인 뒤 열린 디렉터리 identity와 no-replace 연산으로 지연 rename을 적용한다.
+- release 스크립트는 정확한 SHA의 실제 required checks와 3 OS × 6 shard를 확인한다.
+  missing·duplicate·unknown leg와 실패 leg는 그대로 거부하며, awk의 조기 종료가
+  생산자 SIGPIPE로 진단을 지우지 않도록 입력 전달만 수정했다.
+
+native child 실행 fixture는 stdin 준비 신호 뒤 실제 시작 fingerprint를 관측한다.
+이는 프로세스 수명 회귀의 입력이며 코드 리뷰·공식 독립 감사 영수증이 아니다.
+
 ## 현재 진입점 보완 — bf0a35f10
 
 - `moai paths`는 프로젝트에 귀속된 실제 데이터베이스 경로를 출력한다. 경로를 추측해 저장소를 열지 않는다.

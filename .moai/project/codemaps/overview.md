@@ -1,5 +1,27 @@
 # 아키텍처 개요
 
+## Windows CI 수리 통합 관측 — 2026-10-22
+
+이 절은 release 통합 `84c09de30`에 감사 Close 경고 수리를 반영한 실제 소스와 대상 패키지의 Linux
+`go list -deps -json`·`go doc`, 별도 읽기 전용 탐색 결과를 대조한 영역 갱신이다.
+아래의 기존 전체 패키지·간선 수는 각 원래 측정 시점의 값이며 이번 판에서 재측정한 수치가 아니다.
+
+- `internal/privatefile`은 payload를 쓰기 전 비공개 파일을 만들고 파일·디렉터리의
+  실제 정책을 검사한다. Unix의 mode와 Windows의 owner SID·보호 DACL은 별도 구현이다.
+- `internal/atomicfile`의 게시·배타 claim과 `internal/auditreceipt`의 감사 토큰 검사는
+  접근 정책과 별개다. Windows 감사 락 해제는 토큰을 읽은 핸들의 객체를 삭제하므로
+  이전 소유자가 새 claim 경로를 지우지 않는다. Close 오류는 경고로 관측한다.
+- 프로젝트 YAML 편집과 Config Save의 여섯 typed section·LLM 저장은 명시된 신뢰 root
+  아래의 descriptor IO와 공통 config atomic writer를 사용한다. 일반 owned-path writer와
+  저장 전의 설정 읽기는 별도 경계다. 폐기 기록의 linked/nonregular 파일도 거부한다.
+- 실제 PID·시작 fingerprint와 native 자식 실행 fixture는 shell 이름이나 합성 PID를
+  프로세스 생존 증거로 사용하지 않는다. 불확실한 PID 관측은 소유권 회수 근거가 아니다.
+
+SQLite native 진단은 비공개 부모 아래에서도 새 DB/WAL/SHM의 DACL이 상속 상태로
+생성되고 마지막 Close 후 sidecar가 재생성됨을 관측했다. `internal/homestate`의
+전체 SQLite 수명에 대한 비공개 정책은 아직 수리 완료가 아니다. 관련 native CI와
+공식 독립 감사도 별도 조건이며 문서 갱신이 그 통과 증거를 대신하지 않는다.
+
 ## 현재 소스 기준 — bf0a35f10 (2026-10-22 갱신)
 
 기준 커밋은 `bf0a35f10e423d8f0768e637b74a58e143a5d7d6`이다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다. 패키지 수에는 테스트를 지원하는 `internal/testguard`와 `internal/skills`도 들어간다. 이 수치는 아래 과거 판의 OS별 집계와 구분한다.

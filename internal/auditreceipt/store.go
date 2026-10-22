@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -366,7 +367,11 @@ func releaseLedgerLockReading(lockPath, token string, read func(io.Reader) ([]by
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			slog.Warn("close audit ledger lock", "error", closeErr)
+		}
+	}()
 	data, err := read(f)
 	if err == nil && strings.TrimSpace(string(data)) == token {
 		_ = removeOpenedLedgerLock(f)

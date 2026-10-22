@@ -1,5 +1,27 @@
 # 의존성 그래프
 
+## Windows CI 수리 영역의 의존 관계 — 2026-10-22
+
+별도 보존한 Go dependency JSON과 대상별 `go doc`은 통합 소스의
+Linux 선택 파일 집합을 실제 추출한 근거다. 아래 관계는 그 출력과 Windows 선택 소스를
+대조한 것이며 기존 bf0/Linux 전체 그래프 수치는 원래 관측으로 남긴다.
+
+- `internal/privatefile` → `internal/atomicfile`; 비공개 정책과 게시 primitive를 분리한다.
+  Windows 정책 구현은 `golang.org/x/sys/windows`를 사용한다.
+- `internal/graph` → `internal/privatefile`, `internal/atomicfile`, `internal/factory`:
+  GTD의 권한 검사·게시와 backlog 투영을 연결한다.
+- `internal/settings/yamlpatch` → `gopkg.in/yaml.v3`, `internal/config/atomicfile`, 표준 `os.Root`:
+  YAML 표현·정책 검사와 공통 원자 쓰기를 연결한다. Config Save도 같은 writer로 수렴한다.
+- `internal/contract/revoke` → `internal/contract/receipt`, `internal/atomicfile`,
+  `internal/gitenv`: 기록의 내용·게시와 Git 조회 환경을 분리한다.
+- `internal/homestate` → `database/sql`, `modernc.org/sqlite`, `internal/config`,
+  `internal/gitenv`; readonly 관측이 write/migration으로 승격되지 않도록 한다.
+- `internal/cli/update/skillresidue`는 Linux/Darwin에서 `golang.org/x/sys/unix`,
+  Windows에서 `golang.org/x/sys/windows`를 사용한다. testguard의 native ACL 의존성은
+  테스트 조건을 만드는 경계이며 제품의 privatefile 정책과 혼동하지 않는다.
+
+Linux 선택 import의 추출 성공은 실제 Windows 실행·새 전체 fan-in 측정·독립 감사의 증거가 아니다.
+
 ## 현재 의존성 측정 — bf0a35f10
 
 Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. `internal/testguard`는 표준 라이브러리만 import한다. `internal/cli/update/skillresidue`는 현재 Linux·Darwin 빌드에서 `golang.org/x/sys/unix`, Windows 빌드에서 `golang.org/x/sys/windows`를 직접 import한다. 이 플랫폼 의존성은 `go.mod`의 기존 직접 의존성 `golang.org/x/sys v0.49.0`에 속한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.

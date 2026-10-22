@@ -1,5 +1,25 @@
 # 패키지 모듈 상세
 
+## CI 수리의 현재 모듈 경계 — 2026-10-22
+
+다음은 영역별 공개 API와 책임의 대조이며, 기존 파일 수·fan-in 전체 계수를 새 값으로 대체하지 않는다.
+
+| 패키지 | 확인한 책임과 공개 표면 |
+| --- | --- |
+| `internal/privatefile` | `CreateTemp`, `WriteFile`, `OpenAppend`, `Mkdir`, `Check`, `CheckDirectory`, `SecureFile`, `SecureDirectory`. Windows의 기존 객체 정리는 owner를 바꾸지 않고 동일 객체의 DACL을 좁힌다. |
+| `internal/atomicfile` | `Replace`, `CreateExclusive`, `ClaimSection`, `PidAlive`, `OwnerIsDead`. 게시와 claim 소유권·재회수는 서로 다른 연산이며 PID 접근 실패를 죽음으로 해석하지 않는다. |
+| `internal/auditreceipt` | ledger token을 확인한 핸들에 Windows 삭제를 묶는다. POSIX의 identity 확인 뒤 unlink에는 경로 연산의 경합 경계가 남는다. |
+| `internal/settings/yamlpatch` | `PatchFileAtRoot`와 `RootOptions`가 프로젝트 root 아래의 부모 생성·읽기·임시 쓰기·rename을 묶는다. 일반 owned-path 편집 함수는 프로젝트 containment API가 아니다. |
+| `internal/config/atomicfile` | 기존 `Write`의 3인자 호출을 보존하고 선택적 `RootOptions`로 열린 root·강제 mode·게시 직전 검사를 받는다. Config의 typed section과 YAML root 편집이 같은 원자 쓰기 본체를 사용한다. |
+| `internal/contract/revoke` | `Blocked`는 열린 신뢰 root 아래에서 기록을 열거·읽으며 linked/nonregular 기록 파일과 IO 오류를 거부한다. 기존 non-record 디렉터리 제외와 서명·fingerprint·감사 검사는 그대로 남는다. |
+| `internal/graph` | GTD의 `PrivateGTDPermissionChecker.CheckPrivatePolicy`는 필수 native 정책 oracle이다. Unix UID 또는 Windows SID와 실제 파일 정책을 확인하며 mode 관측을 가짜 승인 값으로 바꾸지 않는다. |
+| `internal/homestate` | readonly census는 escaped `file:` URI, 실제 worktree inventory, 보수적인 PID 관측을 사용한다. DB의 전체 native ACL 수명 보장은 아직 별도 미완료 범위다. |
+| `internal/cli/update/skillresidue` | 열린 root·디렉터리 identity와 no-replace rename으로 사용자·은퇴 파일을 보존한다. Linux/Darwin과 Windows는 각각 x/sys 구현을 선택한다. |
+| `internal/testguard` | Windows의 CreateTemp 거절 fixture는 실제 native ACL과 오류를 확인하고 원래 DACL/protectedness를 같은 핸들로 복원한다. 제품 접근 권한을 부여하는 API가 아니다. |
+
+GTD 게시 임시 파일과 최종 data/meta는 쓰기 전 private 정책 및 게시 후 동일 객체 검사를 받는다.
+데이터 먼저·메타 나중의 순서, 메타 게시 실패 시 정리, revision/hash와 collector 격리 의무는 유지된다.
+
 ## Windows 감사 락 해제의 소유권 경계 — PR #1883
 
 `internal/auditreceipt/store.go`는 ledger 토큰을 읽은 파일을 해제까지 열어 둔다. `internal/auditreceipt/ledger_lock_release_windows.go`는 기존 `golang.org/x/sys/windows` 의존성으로 읽기·삭제 권한의 핸들을 열고 `SetFileInformationByHandle(FileDispositionInfo)`로 그 객체만 삭제한다. 오래된 소유자가 읽은 뒤 이름이 재사용되어도 새 claim을 삭제하지 않는다. `internal/auditreceipt/ledger_lock_release_unix.go`는 POSIX 경로 기반 unlink 전에 `os.SameFile`로 읽은 객체와 현재 경로를 대조한다. POSIX 대조와 unlink 사이가 원자적이라는 보장은 추가하지 않는다.
