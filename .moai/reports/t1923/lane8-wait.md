@@ -1,0 +1,7 @@
+# t1923 — lane-8 disk wait (2026-10-23)
+
+State: card t1923, run tn8rpj, stage plan-audit (v9). SPEC-FACTORY-BOOT-MINIMAL-001 (Tier M) plan audit: round 1 FAIL 0.69 (D1-D5, fixed in dce3279bcd); round 2 `plan-audit-iter1.md` FAIL 0.76 (rcpt-87831eae3fa19ae402a21281, audited dce3279bcd, 4 blocking N1-N4, codex fail). Tier M ceiling is 2 rounds => ceiling reached (policy hold-and-split; a delta round is eligible only if the verdict carries scoped fix anchors, which it does: acceptance.md AC-FBM-001/003/004, plan.md §A/§C, probe TestT1923RelocationProbe / t1923NoticeViolations, agents_md_check.py OBLIGATIONS).
+
+Blockers (all reproduced by the auditor): N1 lane rule keeps-check missing (a safety sentence outside R1-R5 can be deleted unseen); N2 plan §C grep finds 28 test files vs 14 classified in §A (14 unclassified, incl. notice-pinning tests); N3 agents_md_check.py matches markers, not obligation direction (Never create -> You may create passes); N4 AC-FBM-001 probe misses text appended after the pointer line.
+
+Reason for stop: usage limit reached in this session. Recheck point: next awaken -> read plan-audit-iter1.md, then either (a) manager-spec correction limited to the fix_scope anchors + delta re-audit (REQ 11 / AC 12 set unchanged), or (b) split per the ceiling policy if the leader/operator prefers. Whom: leader for the ceiling disposition (operator-held if an exception is needed).
