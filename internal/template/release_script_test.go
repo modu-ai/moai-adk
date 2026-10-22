@@ -432,3 +432,52 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 		}
 	}
 }
+
+// A long, otherwise ordinary jobs response must not change a matrix verdict.
+// In particular, a consumer that finds one leg early must not close a producer
+// pipe and turn the release command's named refusal into exit 141 (SIGPIPE).
+func TestReleaseScriptMatrixGateLargeJobList(t *testing.T) {
+	rlsRequireTools(t, "jq")
+	for _, tc := range []struct {
+		name, wantReason string
+		tweak            func([]rlsJob) []rlsJob
+	}{
+		{name: "complete_matrix"},
+		{name: "missing_macos_remainder", wantReason: "has no leg 'Release Verify (macos-latest, remainder)'", tweak: func(jobs []rlsJob) []rlsJob {
+			return rlsWithout(jobs, func(j rlsJob) bool { return j.name == rlsLegName("macos-latest", "remainder") })
+		}},
+		{name: "unknown_release_leg", wantReason: "unknown Release Verify leg 'Release Verify (windows-latest, cli-5)'", tweak: func(jobs []rlsJob) []rlsJob {
+			return append([]rlsJob{{rlsLegName("windows-latest", "cli-5"), "success"}}, jobs...)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+			s := rlsNewStub(t)
+			sha := r.git("rev-parse", "HEAD")
+			s.setRuns(t, rlsDispatched(t, s, 201, sha, func(jobs []rlsJob) []rlsJob {
+				if tc.tweak != nil {
+					jobs = tc.tweak(jobs)
+				}
+				// Supporting jobs are outside the Release Verify family. Keep
+				// every required leg unchanged while exceeding a pipe buffer.
+				for i := 0; i < 128; i++ {
+					jobs = append(jobs, rlsJob{fmt.Sprintf("Supporting job %03d %s", i, strings.Repeat("x", 8192)), "success"})
+				}
+				return jobs
+			}))
+			res := rlsRelease(t, r, s, rlsRcTag, "--dry-run", "--require-matrix-run")
+			out := rlsNorm(res.out)
+			if tc.wantReason == "" {
+				if res.exit != 0 {
+					t.Fatalf("complete matrix: exit=%d, want 0\n%s", res.exit, out)
+				}
+				rlsMustContain(t, out, "Matrix gate: run 201 of "+rlsMatrixFile+" is green on all three OS legs", "DRY RUN — skipping tag creation")
+			} else {
+				if res.exit != 1 {
+					t.Errorf("refused matrix: exit=%d, want 1\n%s", res.exit, out)
+				}
+				rlsMustContain(t, out, "Matrix gate:", tc.wantReason)
+			}
+		})
+	}
+}

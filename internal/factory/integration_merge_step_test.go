@@ -1104,6 +1104,24 @@ func TestResolveCardBranchRefusalsNameTheCard(t *testing.T) {
 	})
 }
 
+func TestResolveCardBranchSurvivesTagSharingTheBranchName(t *testing.T) {
+	// card t1920 (live observation from card t1834's audit): with a tag
+	// named like the card branch, `rev-parse --abbrev-ref HEAD`
+	// disambiguates to heads/WT-... and the WT- prefix check refused a
+	// healthy candidate tree — the integration-window entry decision was
+	// distorted by a tag, not by any real branch problem. The resolver must
+	// read the checked-out branch itself.
+	f := newMergeFixture(t)
+	stepMustGit(t, f.cardTree, "tag", stepCardBranch, "HEAD")
+	branch, err := resolveCardBranch(f.cardTree, stepCard)
+	if err != nil {
+		t.Fatalf("a tag shadowing the card branch's name must not refuse the healthy WT- tree: %v", err)
+	}
+	if branch != stepCardBranch {
+		t.Fatalf("resolveCardBranch must read the card branch %q, got %q", stepCardBranch, branch)
+	}
+}
+
 // requireRefusalNamesCard fails unless the resolver refused and the refusal
 // names the card id.
 func requireRefusalNamesCard(t *testing.T, err error) {
