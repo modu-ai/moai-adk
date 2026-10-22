@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,11 +50,11 @@ func providerState(t *testing.T, projectRoot, disabled string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projects := `{}`
+	projects := map[string]any{}
 	if disabled != "" {
-		projects = `{"` + abs + `":{"disabledMcpServers":` + disabled + `}}`
+		projects[abs] = map[string]json.RawMessage{"disabledMcpServers": json.RawMessage(disabled)}
 	}
-	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":` + projects + `}`
+	return encodeMCPProviderStateFixture(t, projects)
 }
 
 // providerStateWithProject builds a state file whose project entry for
@@ -65,7 +66,19 @@ func providerStateWithProject(t *testing.T, projectRoot, fields string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":{"` + abs + `":{` + fields + `}}}`
+	return encodeMCPProviderStateFixture(t, map[string]json.RawMessage{abs: json.RawMessage("{" + fields + "}")})
+}
+
+func encodeMCPProviderStateFixture(t *testing.T, projects any) string {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{
+		"claudeAiMcpEverConnected": []string{"claude.ai Context7", "claude.ai Notion"},
+		"projects":                 projects,
+	})
+	if err != nil {
+		t.Fatalf("marshal provider state fixture: %v", err)
+	}
+	return string(raw)
 }
 
 func TestCheckMCPProviderDuplicates_MatchWarns(t *testing.T) {
@@ -243,5 +256,31 @@ func TestCheckMCPProviderDuplicates_Registered(t *testing.T) {
 	results := runDiagnosticChecks(false, mcpProviderDuplicatesCheckName)
 	if len(results) != 1 || results[0].Name != mcpProviderDuplicatesCheckName {
 		t.Fatalf("expected one %q result, got %+v", mcpProviderDuplicatesCheckName, results)
+	}
+}
+
+// Windows separators and JSON-special characters must round-trip through the
+// fixture's project key, so provider assertions exercise valid state data.
+func TestMCPProviderStateFixturesRoundTripProjectKey(t *testing.T) {
+	root := `C:\Users\fixture "quoted"\project`
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"disabled-null":  providerState(t, root, "null"),
+		"project-fields": providerStateWithProject(t, root, `"mcpServers":{"context7":{"command":"npx"}}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var state struct {
+				Projects map[string]json.RawMessage `json:"projects"`
+			}
+			if err := json.Unmarshal([]byte(body), &state); err != nil {
+				t.Fatalf("fixture must be valid JSON: %v; body=%s", err, body)
+			}
+			if _, ok := state.Projects[abs]; !ok {
+				t.Fatalf("project key %q did not round-trip: %s", abs, body)
+			}
+		})
 	}
 }

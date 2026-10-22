@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/mission"
+	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
 // blockedQuestionFixtureID is a syntactically valid mission session id, in the
@@ -75,8 +76,8 @@ func TestMissionBlockedQuestionPersistedShapeUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read persisted mission: %v", err)
 	}
-	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("persisted mission mode = %v err=%v, want 0600", info.Mode(), err)
+	if err := privatefile.Check(path); err != nil {
+		t.Fatalf("persisted mission must have native owner-only access: %v", err)
 	}
 
 	var doc map[string]any
