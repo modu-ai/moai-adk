@@ -540,10 +540,11 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		}
 		mcpRefRoot := build(t)
 		sdLaneEnv(t, "lane-1", "")
-		res := mcpCallRaw(t, handleFactoryDecide, withRoot(mcpRefRoot))
-		reason := assertStructuredRefusal(t, res, "")
-		if !strings.Contains(reason, cliErr.Error()) {
-			t.Errorf("mcp refusal reason %q does not carry the cli refusal %q", reason, cliErr.Error())
+		// Card t1632 CI repair (main-absorb r9): the lane boundary refusal rides
+		// the ERROR channel with the CLI-identical text (t1914 parity contract).
+		mcpErr := sdCallToolErr(t, handleFactoryDecide, withRoot(mcpRefRoot))
+		if mcpErr == nil || !strings.Contains(mcpErr.Error(), cliErr.Error()) {
+			t.Errorf("mcp refusal %v does not carry the cli refusal %q", mcpErr, cliErr.Error())
 		}
 		_ = rootRef
 		// Success twin with no lane variables — under the positive operator
