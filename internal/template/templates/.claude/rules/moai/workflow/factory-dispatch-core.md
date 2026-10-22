@@ -17,7 +17,7 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 ## Entry into the queue is an operator act
 
-The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
+A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
 
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same whole-card routing follows.
 
@@ -25,7 +25,7 @@ A card the operator chose to start when it was issued is not a silent promotion:
 
 [HARD] A dispatch is a fixed-field block (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, ≤10 lines. [HARD] Read the send result: `routing` = lost (re-send `name [ref]`); a delivery notice = held or refused.
 
-[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) stays armed to the completion report.
+[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) is kept while the lane executes the card.
 
 ## Card classes — not every card needs every stage
 
