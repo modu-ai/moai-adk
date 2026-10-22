@@ -173,6 +173,14 @@ entries:
     expected_when: release-cycle
 
   - kind: github-workflow
+    locator: .github/workflows/sqlite-pinned-sidecar-diagnostic.yml
+    events: [pull_request, workflow_dispatch]
+    window: 3d
+    # Independent native experiment on every PR, with no path or job gate;
+    # it renders a verdict and does not replace any required CI check.
+    measure: verdict-rendered
+
+  - kind: github-workflow
     locator: .github/workflows/template-neutrality-check.yaml
     events: [pull_request, push]
     window: 60d
