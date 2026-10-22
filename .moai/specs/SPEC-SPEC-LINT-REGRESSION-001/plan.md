@@ -1,7 +1,7 @@
 ---
 id: SPEC-SPEC-LINT-REGRESSION-001
 title: "Implementation plan — spec-lint baseline regression repair (status record + vacuous-assertion verification + green gate)"
-version: "0.2.0"
+version: "0.2.1"
 created: 2026-10-23
 updated: 2026-10-23
 author: manager-spec
