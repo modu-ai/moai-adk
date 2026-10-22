@@ -26,6 +26,7 @@ import (
 type fakeGit struct {
 	mergeTreeOut string
 	mergeTreeErr error
+	branchTip    string            // the show-ref --verify --hash answer (the pinned branch tip SHA)
 	revParse     map[string]string // joined args -> stdout
 	seen         []string
 }
@@ -35,6 +36,11 @@ func (f *fakeGit) Git(args ...string) (string, error) {
 	switch args[0] {
 	case "merge-tree":
 		return f.mergeTreeOut, f.mergeTreeErr
+	case "show-ref":
+		if f.branchTip == "" {
+			return "", fmt.Errorf("fakeGit: no branch tip scripted")
+		}
+		return f.branchTip + "\n", nil
 	case "rev-parse":
 		if v, ok := f.revParse[strings.Join(args, " ")]; ok {
 			return v, nil
@@ -74,11 +80,12 @@ func tripleFixture(t *testing.T, syncStatus string) (MergeTripleInput, *fakeGit)
 		// Clean merge; the result tree equals the branch tree (the absorbed
 		// shape) so tree-identity passes.
 		mergeTreeOut: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+		// card t1928 (audit F4): the probes consume the branch tip SHA that
+		// show-ref --verify resolves — script both the pin and the reads
+		// keyed to the SHA.
+		branchTip: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 		revParse: map[string]string{
-			// card t1928 (audit F1): the (d) candidate-tree read consumes the
-			// branch through cardBranchRef — the qualified spelling below is
-			// what the probe now scripts.
-			"rev-parse refs/heads/WT-card^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+			"rev-parse 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
 		},
 	}
 	return in, fake
@@ -259,6 +266,7 @@ func TestEvaluateMergeTriple_TreeIdentityLiteralFormOnMergeCommit(t *testing.T) 
 	// Diverging trees on the merge commit fail and name the condition.
 	fake2 := &fakeGit{
 		mergeTreeOut: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+		branchTip:    "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 		revParse: map[string]string{
 			"rev-parse abcabcabcabcabcabcabcabcabcabcabcabcabc1^{tree}":   "ffffffffffffffffffffffffffffffffffffffff\n",
 			"rev-parse abcabcabcabcabcabcabcabcabcabcabcabcabc1^2^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
