@@ -38,14 +38,14 @@ Files (template and deployed in one commit): M, K, F, A, W, plus `internal/templ
 
 Files (template and deployed in one commit): D, F, G, M, plus the `moai` entry of `catalog.yaml` (G again).
 
-1. D Routing bullet (line 133): replace the parent line with the pinned parent line of AC-MJ-005 (the "free means the lane's previous card reached `done`" clause removed) and add the two pinned sub-bullets (executing-card definition with the merge-ready / held / serial-waiting inclusion; free versus live with `not a free lane`). Line 35 (the diagram) keeps the term unchanged.
+1. D Routing bullet (line 133): replace the parent line with the pinned parent line of AC-MJ-005 (the "free means the lane's previous card reached `done`" clause removed) and add the two pinned sub-bullets (executing-card definition with the merge-ready / held / serial-waiting inclusion; free versus live with `not a free lane`). Line 35 (the diagram) keeps the term unchanged. D transition bullet (line 139, added by the sync-audit amendment 0.1.8): replace the line that begins `- **The transition boundary is between cards.**` with the `+` row of that name in manifest section D, on one physical line, on both sides — the lane leaves its card worktree with `ExitWorktree(keep)` once it stops executing the card, and re-enters a kept tree by `moai factory next --card <id>` and `EnterWorktree`. This step lands as its own correction commit after the sync close (`pairs 1`, D only; no ledger row or catalog entry covers D's text).
 2. D: add `### Delegated-dispatch promotion` after the last bullet of `## Factory in-lane 3-stage` and before `## The card-review stage`, consisting of exactly the eight lines pinned in `acceptance.md` E-006 — copy them, do not re-word: AC-MJ-006 compares whole lines. Re-measure D's size afterwards (27,611 units today; the per-file figure that applies is 40,000).
 3. Pointers (REQ-MJ-017, AC-MJ-018, AC-MJ-019):
    a. F: insert the exact pointer line of E-018a directly after F:40 as its own paragraph. Leave F:38 and F:40 verbatim.
    b. G: add the exact pointer paragraph of E-018d as one physical line after the [HARD] pick rule (the paragraph at `gtd.md:307-310` whose last words are `invent work.`). Leave that paragraph verbatim.
    c. M: add the exact enumeration row of E-018e after the `Serial-slot policy` row of `## The leader's remaining role`.
    d. New text avoids the strings `Promotion is the operator's act, always.` and `The leader never picks for the operator`, and carries no SPEC id, REQ token, date, board or card id, or hex run (the neutrality tests).
-4. Check: AC-MJ-005, -006, -016, -017, -018, -019 green; AC-MJ-020 (a) `0 0 0 0` on every file and (b) `unexpected-paths 0` (the whole manifest is applied after M3); the `pairs` command on the M3 commit prints `pairs 4 unpaired 0` (D, F, G, M); AC-MJ-011 and -013 still green.
+4. Check: AC-MJ-005 (a)-(e), -006, -016, -017, -018, -019 green; AC-MJ-020 (a) `0 0 0 0` on every file and (b) `unexpected-paths 0` (the whole manifest is applied after M3); the `pairs` command on the M3 commit prints `pairs 4 unpaired 0` (D, F, G, M); AC-MJ-011 and -013 still green.
 
 ### M4 — Confirmation pass (Priority Medium; expected to produce no commit)
 

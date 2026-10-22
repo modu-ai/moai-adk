@@ -45,6 +45,7 @@ file: F internal/template/templates/.claude/rules/moai/workflow/factory-dispatch
 
 file: D internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
 - - **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+- - **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once its card reaches `done`, before the next card is routed to it, exactly as the stub's lane card transition rule requires.
 + - **Routing.** The leader routes a card WHOLE to a free lane. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
 +   - A free lane is a lane on which no card is actually executing; a lane that holds only merge-ready, held (operator-wait), or serial-waiting cards is a free lane.
 +   - Free is a different condition from live: a lane with no live session is not a free lane but a fault (`factory-dispatch-mechanics.md` § Boundaries), and a live lane with a card executing is not free.
@@ -57,6 +58,7 @@ file: D internal/template/templates/.claude/rules/moai/workflow/factory-dispatch
 + - Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader's remaining role).
 + - Unchanged: lane self-dispatch through `moai factory next`.
 + Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards.
++ - **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once it stops executing the card — the card reached `done`, or is merge-ready, held (operator-wait), or serial-waiting — and before the next card is routed to it, exactly as the stub's lane card transition rule requires; a kept tree is re-entered when its card resumes, by `moai factory next --card <id>` and `EnterWorktree` of the leased tree (`factory-dispatch-mechanics.md` § Lease renewal — only the card being executed).
 
 file: M internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md
 - A lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
