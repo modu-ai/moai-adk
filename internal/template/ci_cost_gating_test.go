@@ -25,6 +25,7 @@ package template_test
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -188,6 +189,209 @@ func rpcCheckFilterClasses(text string) []string {
 
 func rpcFilterRelPath() string { return ".github/test-input-filters.yml" }
 
+// ---- F4: the classification itself -------------------------------------------
+//
+// rpcCheckFilterClasses proves each class is non-empty and documented, which a
+// filter whose every root was replaced by a path nothing changes still satisfies.
+// The checks below make the roots load-bearing: representative changed files
+// (test-owned facts, each tied to the evidence comment of its root in the filter
+// file) must be classified into the classes the cost-job table says read them,
+// docs files must be classified into none, and the classification must compose
+// with the real gate expressions into the documented run decision.
+
+// rpcFilterMatchFixtures: class -> changed files the class must match.
+var rpcFilterMatchFixtures = map[string][]string{
+	"go_code": {
+		"cmd/moai/main.go", "go.mod", "go.sum", "Makefile", ".github/workflows/ci.yml",
+		".moai/config/sections/quality.yaml", "internal/template/templates/x.md",
+		"internal/template/catalog.yaml", ".claude/agents/moai/manager-develop.md",
+		".claude/rules/moai/core/moai-constitution.md", ".claude/settings.json",
+		"scripts/ci/retry.sh", "scripts/release.sh",
+	},
+	"binary_inputs": {
+		"cmd/moai/main.go", "internal/cli/doctor.go", "internal/template/templates/x.txt",
+		"web/page.templ", "go.mod", "go.sum", "Makefile", ".golangci.yml", ".github/workflows/ci.yml",
+	},
+	"browser_inputs": {
+		"cmd/moai/main.go", "internal/web/static/app.js", "go.mod", "go.sum", ".github/workflows/ci.yml",
+	},
+	"harness_inputs": {
+		".claude/rules/moai/core/zone-registry.md", ".claude/agents/moai/manager-develop.md",
+	},
+}
+
+// rpcFilterNoMatchFixtures: changed files no class may match (a docs-only diff).
+var rpcFilterNoMatchFixtures = []string{"README.md", "CHANGELOG.md", "LICENSE", "docs-site/content/en/index.md"}
+
+// rpcDiffScenarios: a changed-file set, the input classes it belongs to by the
+// cost-job design decision, and (derived) which cost jobs a pull_request runs.
+var rpcDiffScenarios = []struct {
+	label   string
+	files   []string
+	classes []string
+}{
+	{"docs-only diff", []string{"README.md", "docs-site/content/en/index.md"}, nil},
+	{"Go source diff", []string{"cmd/moai/main.go"}, []string{"binary_inputs", "browser_inputs"}},
+	{"harness-only diff", []string{".claude/rules/moai/core/zone-registry.md"}, []string{"harness_inputs"}},
+}
+
+func rpcParseFilterRoots(text string) (map[string][]string, error) {
+	var m map[string][]string
+	if err := yaml.Unmarshal([]byte(text), &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func rpcAnyGlob(patterns []string, file string) (bool, error) {
+	for _, p := range patterns {
+		ok, err := rpcGlobMatch(p, file)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func rpcCheckFilterFixtures(text string) []string {
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	roots, err := rpcParseFilterRoots(text)
+	if err != nil {
+		return []string{"CI_COST_GATE_VIOLATION: " + rpcFilterRelPath() + " does not parse as class -> root list: " + err.Error()}
+	}
+	for _, class := range rpcSortedKeys(rpcFilterMatchFixtures) {
+		for _, f := range rpcFilterMatchFixtures[class] {
+			ok, err := rpcAnyGlob(roots[class], f)
+			if err != nil {
+				add("%s: class %s: %v", rpcFilterRelPath(), class, err)
+			} else if !ok {
+				add("%s: class %s matches no root for %q, a file it must classify", rpcFilterRelPath(), class, f)
+			}
+		}
+		for _, f := range rpcFilterNoMatchFixtures {
+			if ok, _ := rpcAnyGlob(roots[class], f); ok {
+				add("%s: class %s matches %q, a docs file no class may classify", rpcFilterRelPath(), class, f)
+			}
+		}
+	}
+	return v
+}
+
+// rpcCheckClassificationEndToEnd classifies each scenario's files with the real
+// filter, feeds the resulting classes into the real gate expressions as a
+// successful `detect`, and compares which cost jobs run with the design table.
+func rpcCheckClassificationEndToEnd(t *testing.T, wf *rpcWorkflow, filterText string) []string {
+	t.Helper()
+	var v []string
+	roots, err := rpcParseFilterRoots(filterText)
+	if err != nil {
+		return []string{"CI_COST_GATE_VIOLATION: " + rpcFilterRelPath() + " does not parse as class -> root list: " + err.Error()}
+	}
+	for _, sc := range rpcDiffScenarios {
+		got := map[string]bool{}
+		for class, patterns := range roots {
+			for _, f := range sc.files {
+				ok, err := rpcAnyGlob(patterns, f)
+				if err != nil {
+					v = append(v, fmt.Sprintf("CI_COST_GATE_VIOLATION: %s: class %s: %v", rpcFilterRelPath(), class, err))
+				}
+				if ok {
+					got[class] = true
+				}
+			}
+		}
+		cell := rpcCell{event: "pull_request", detect: "success", classes: got}
+		for _, id := range rpcSortedKeys(rpcCostJobClasses) {
+			j := wf.Jobs[id]
+			if j == nil {
+				continue
+			}
+			want := false
+			for _, c := range rpcCostJobClasses[id] {
+				if rpcContains(sc.classes, c) {
+					want = true
+				}
+			}
+			if runs := rpcJobRuns(t, j, cell.ctx()); runs != want {
+				v = append(v, fmt.Sprintf("CI_COST_GATE_VIOLATION: %s: on a %s the filter classifies %v and the gate gives runs=%v, want %v", id, sc.label, rpcSortedKeys(got), runs, want))
+			}
+		}
+	}
+	return v
+}
+
+// rpcCheckDetectWiring checks the classification step ci.yml's gate reads from:
+// the step `f` of the detect job runs dorny/paths-filter over the shared filter
+// file, and detect re-exports go_code from it (the class exports are checked in
+// rpcCheckCostJobsGated).
+func rpcCheckDetectWiring(wf *rpcWorkflow) []string {
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	detect := wf.Jobs["detect"]
+	if detect == nil {
+		return []string{"CI_COST_GATE_VIOLATION: ci.yml has no detect job"}
+	}
+	var f *rpcStep
+	for i := range detect.Steps {
+		if detect.Steps[i].ID == "f" {
+			f = &detect.Steps[i]
+		}
+	}
+	switch {
+	case f == nil:
+		add("detect has no classification step with id f, so steps.f.outputs.* reads nothing")
+	case !strings.HasPrefix(f.Uses, "dorny/paths-filter@"):
+		add("detect step f runs %q, not dorny/paths-filter", f.Uses)
+	default:
+		if got := fmt.Sprint(f.With["filters"]); got != rpcFilterRelPath() {
+			add("detect step f reads filters %q, not the shared %s", got, rpcFilterRelPath())
+		}
+	}
+	if !strings.Contains(detect.Outputs["go_code"], "steps.f.outputs.go_code") {
+		add("detect does not export go_code from the shared filter step (output = %q)", detect.Outputs["go_code"])
+	}
+	return v
+}
+
+var (
+	rpcFilterKeyRe  = regexp.MustCompile(`^([a-z_]+):\s*$`)
+	rpcFilterItemRe = regexp.MustCompile(`^  - '(.*)'\s*$`)
+)
+
+// rpcEditFilterRoots rewrites the `  - '<root>'` items of one class of the filter
+// text (every class when class is ""); edit returns the replacement root, or ""
+// to drop the item. Negative-control helper.
+func rpcEditFilterRoots(t *testing.T, text, class string, edit func(root string) string) string {
+	t.Helper()
+	var out []string
+	cur := ""
+	for _, ln := range strings.Split(text, "\n") {
+		if m := rpcFilterKeyRe.FindStringSubmatch(ln); m != nil {
+			cur = m[1]
+		}
+		if m := rpcFilterItemRe.FindStringSubmatch(ln); m != nil && (class == "" || cur == class) {
+			if repl := edit(m[1]); repl != "" {
+				out = append(out, "  - '"+repl+"'")
+			}
+			continue
+		}
+		out = append(out, ln)
+	}
+	res := strings.Join(out, "\n")
+	if res == text {
+		t.Fatalf("control did not apply: no root of class %q changed", class)
+	}
+	return res
+}
+
 // rpcStripKeyHeadComment removes the contiguous comment block directly above
 // `key:` in filter text (negative-control helper).
 func rpcStripKeyHeadComment(t *testing.T, text, key string) string {
@@ -217,6 +421,16 @@ func TestCICostJobsInputGated(t *testing.T) {
 	}
 	filterText := rpcReadRepoFile(t, rpcFilterRelPath())
 	for _, msg := range rpcCheckFilterClasses(filterText) {
+		t.Error(msg)
+	}
+	// F4: the classification roots and their composition with the gate.
+	for _, msg := range rpcCheckFilterFixtures(filterText) {
+		t.Error(msg)
+	}
+	for _, msg := range rpcCheckDetectWiring(wf) {
+		t.Error(msg)
+	}
+	for _, msg := range rpcCheckClassificationEndToEnd(t, wf, filterText) {
 		t.Error(msg)
 	}
 
@@ -258,6 +472,104 @@ func TestCICostJobsInputGated(t *testing.T) {
 				t.Fatalf("mutant %q passes the guard: the guard is vacuous in that direction", m.name)
 			}
 			t.Logf("mutant %q observed red: %s", m.name, got[0])
+		})
+	}
+	// F4 controls on the filter text: each rewrite leaves every class non-empty and
+	// documented (rpcCheckFilterClasses stays green) yet breaks the classification.
+	filterClean := len(rpcCheckFilterFixtures(filterText)) == 0 && len(rpcCheckClassificationEndToEnd(t, wf, filterText)) == 0
+	keep := func(root string) string { return root }
+	filterControls := []struct {
+		name string
+		edit func(t *testing.T) string
+	}{
+		{"every classification path replaced by a non-matching path", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "", func(string) string { return "zz-nonmatching/**" })
+		}},
+		{"binary_inputs loses internal/**", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "binary_inputs", func(r string) string {
+				if r == "internal/**" {
+					return ""
+				}
+				return keep(r)
+			})
+		}},
+		{"harness_inputs retargeted at a path nothing changes", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "harness_inputs", func(string) string { return "zz-nonmatching/**" })
+		}},
+		{"go_code loses .moai/**", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "go_code", func(r string) string {
+				if r == ".moai/**" {
+					return ""
+				}
+				return keep(r)
+			})
+		}},
+		{"a docs tree classified as a binary input", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "binary_inputs", func(r string) string {
+				if r == ".github/test-input-filters.yml" {
+					return "**/*.md"
+				}
+				return keep(r)
+			})
+		}},
+	}
+	for _, c := range filterControls {
+		t.Run("control/filter/"+c.name, func(t *testing.T) {
+			if !filterClean {
+				t.Fatalf("control precondition: the real filter is not clean for this guard, so the control proves nothing")
+			}
+			mut := c.edit(t)
+			if len(rpcCheckFilterClasses(mut)) != 0 {
+				t.Logf("note: the class-shape guard already reads this mutant red")
+			}
+			got := append(rpcCheckFilterFixtures(mut), rpcCheckClassificationEndToEnd(t, wf, mut)...)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the classification guards", c.name)
+			}
+			t.Logf("mutant %q observed red: %s", c.name, got[0])
+		})
+	}
+	wiringControls := []struct {
+		name   string
+		mutate func(w *rpcWorkflow)
+	}{
+		{"classifier reads another filter file", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].With["filters"] = ".github/other-filters.yml"
+				}
+			}
+		}},
+		{"classifier step id renamed", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].ID = "g"
+				}
+			}
+		}},
+		{"classifier replaced by another action", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].Uses = "actions/checkout@v7"
+				}
+			}
+		}},
+		{"go_code no longer exported from the classifier", func(w *rpcWorkflow) {
+			w.Jobs["detect"].Outputs["go_code"] = "true"
+		}},
+	}
+	for _, c := range wiringControls {
+		t.Run("control/wiring/"+c.name, func(t *testing.T) {
+			if len(rpcCheckDetectWiring(wf)) != 0 {
+				t.Fatalf("control precondition: the real detect job is not clean for this guard, so the control proves nothing")
+			}
+			mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+			c.mutate(mut)
+			got := rpcCheckDetectWiring(mut)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the detect-wiring guard", c.name)
+			}
+			t.Logf("mutant %q observed red: %s", c.name, got[0])
 		})
 	}
 	t.Run("control/filter class without evidence comment", func(t *testing.T) {
