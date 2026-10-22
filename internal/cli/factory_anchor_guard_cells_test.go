@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -265,7 +266,10 @@ func TestLauncherAnchorGuardSemantics(t *testing.T) {
 					t.Fatalf("read the audit log: %v", err)
 				}
 				backend := map[string]string{"cc": "claude", "glm": "glm"}[arm]
-				for _, want := range []string{"backend=" + backend, fx.card, "WT-card", allowCardAnchorFlag} {
+				// The audit protocol quotes these fields with %q. Assert the
+				// exact field encoding, including native backslashes, rather
+				// than searching for an unescaped path inside serialized text.
+				for _, want := range []string{"backend=" + backend, "tree=" + strconv.Quote(fx.card), "branch=" + strconv.Quote("WT-card"), "override=" + allowCardAnchorFlag} {
 					if !strings.Contains(string(raw), want) {
 						t.Errorf("audit row %q lacks %q", raw, want)
 					}

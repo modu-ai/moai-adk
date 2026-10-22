@@ -296,7 +296,42 @@ func qasAutoRun(t *testing.T, root string, store *factory.BacklogStore) string {
 	if err := runAutoCycle(&out, store, root, opts); err != nil {
 		t.Fatal(err)
 	}
-	return strings.ReplaceAll(out.String(), root, "<ROOT>")
+	return qasNormalizeAutoFixturePaths(out.String(), root, ids)
+}
+
+// Normalize only independently known evidence addresses from this fixture.
+// Everything else, including a wrong evidence address, remains byte-exact
+// against the unchanged golden. This is not a separator-wide output rewrite.
+func qasNormalizeAutoFixturePaths(output, root string, ids []string) string {
+	for _, id := range ids {
+		native := filepath.Join(root, ".moai", "reports", id, "evidence.md")
+		golden := root + "/.moai/reports/" + id + "/evidence.md"
+		output = strings.ReplaceAll(output, native, golden)
+	}
+	return strings.ReplaceAll(output, root, "<ROOT>")
+}
+
+func TestQASAutoFixturePathNormalizationPreservesWrongAddressFailure(t *testing.T) {
+	root := t.TempDir()
+	golden := qasGoldenAuto(t)
+	observed := strings.ReplaceAll(golden, "<ROOT>", root)
+	for _, id := range []string{"t1", "t2"} {
+		portable := root + "/.moai/reports/" + id + "/evidence.md"
+		native := filepath.Join(root, ".moai", "reports", id, "evidence.md")
+		observed = strings.ReplaceAll(observed, portable, native)
+	}
+	if got := qasNormalizeAutoFixturePaths(observed, root, []string{"t1", "t2"}); got != golden {
+		t.Fatalf("known native addresses changed other golden bytes:\n%s", got)
+	}
+	for _, wrong := range []string{"foreign.md", "evidence.md.extra", "../evidence.md"} {
+		mutant := strings.Replace(observed, filepath.Join(root, ".moai", "reports", "t1", "evidence.md"), filepath.Join(root, ".moai", "reports", "t1", wrong), 1)
+		if mutant == observed {
+			t.Fatal("wrong-address control did not mutate an actual evidence address")
+		}
+		if got := qasNormalizeAutoFixturePaths(mutant, root, []string{"t1", "t2"}); got == golden {
+			t.Errorf("wrong address %q was laundered into the golden", wrong)
+		}
+	}
 }
 
 const qasLineTime = `[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z`

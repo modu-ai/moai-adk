@@ -191,7 +191,7 @@ func announceUnselectedOptionalPacks(projectRoot string, selection []string, out
 // userCodexInstallPresent reports whether the per-user Codex dispatcher
 // install exists (SPEC-USER-ASSET-INSTALL-001: the user-folder primary).
 func userCodexInstallPresent() bool {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDirFn()
 	if err != nil {
 		return false
 	}

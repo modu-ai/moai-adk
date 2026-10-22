@@ -7,7 +7,10 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -216,10 +219,32 @@ func TestPreflightDefaultsToTheCurrentTree(t *testing.T) {
 	if err == nil {
 		t.Errorf("preflight on a dirty tree returned no signal\noutput: %s", out)
 	}
-	if !strings.Contains(out, `"status":"drift"`) {
-		t.Errorf("preflight did not measure the current tree: %q", out)
+	var report struct {
+		Status     string `json:"status"`
+		Worktree   string `json:"worktree"`
+		MatchCount *int   `json:"match_count"`
 	}
-	if !strings.Contains(out, worktree) {
-		t.Errorf("report does not name the tree it measured (%s): %q", worktree, out)
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatalf("preflight did not emit one valid JSON report: %v\n%s", err, out)
+	}
+	if report.Status != "drift" || report.MatchCount == nil || *report.MatchCount <= 0 {
+		t.Errorf("preflight did not measure the dirty current tree: %q", out)
+	}
+	if !filepath.IsAbs(report.Worktree) {
+		t.Fatalf("report worktree must be absolute, got %q", report.Worktree)
+	}
+	// Git may spell the same Windows directory with forward slashes or
+	// expand a short-name alias. The report must identify the measured
+	// directory, not merely contain an unescaped substring of its name.
+	reported, statErr := os.Stat(report.Worktree)
+	if statErr != nil {
+		t.Fatalf("stat reported worktree %q: %v", report.Worktree, statErr)
+	}
+	measured, statErr := os.Stat(worktree)
+	if statErr != nil {
+		t.Fatalf("stat measured worktree: %v", statErr)
+	}
+	if !os.SameFile(reported, measured) {
+		t.Errorf("report names another directory: got %q, measured %q", report.Worktree, worktree)
 	}
 }

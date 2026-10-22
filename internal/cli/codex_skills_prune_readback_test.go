@@ -20,6 +20,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
@@ -96,15 +98,15 @@ func TestJudgeCodexSkillEntry_SeparatorConversion(t *testing.T) {
 
 // TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
 // (AC-CSRB-003 — ordering guard): classification runs on the DECLARED string,
-// so a slash-form Windows declaration stays relative on this host and is
-// skipped without a single stat call. The forbidden convert-first order would
+// so a slash-form relative declaration is skipped without a single stat call
+// on every host. The forbidden convert-first order would
 // emit the oddly-formed skip reason instead — a distinct string, so the
 // ordering is observable here.
 func TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion(t *testing.T) {
 	overrideSeparator(t)
 	rec := stubRecordingStat(t, fs.ErrNotExist)
 
-	v := judgeCodexSkillEntry(readbackEntry("C:/Users/u/SKILL.md"))
+	v := judgeCodexSkillEntry(readbackEntry("relative/skill/SKILL.md"))
 
 	if len(rec.calls) != 0 {
 		t.Errorf("osStatFn called with %v, want zero calls — a relative declaration is never statted", rec.calls)
@@ -181,13 +183,12 @@ func TestJudgeCodexSkillEntry_EligibilityGatingPins(t *testing.T) {
 	})
 
 	t.Run("backslash declaration is oddly formed and never statted", func(t *testing.T) {
-		// Production separators: no overrideSeparator here. On this
-		// '/'-separator host a backslash-bearing non-absolute declaration
-		// classifies codexPathOddlyFormed and skips non-destructively —
-		// spec.md §B.3's platform-conditional truth, measured on this host.
+		// Keep this declaration non-absolute on every supported host.
+		// A native Windows drive path is legitimately absolute and belongs
+		// to the positive ordering control below, not the no-stat arm.
 		rec := stubRecordingStat(t, fs.ErrNotExist)
 
-		v := judgeCodexSkillEntry(readbackEntry(`C:\Users\u\SKILL.md`))
+		v := judgeCodexSkillEntry(readbackEntry(`relative\skill\SKILL.md`))
 
 		if len(rec.calls) != 0 {
 			t.Errorf("osStatFn calls = %v, want zero — an oddly-formed declaration is never statted", rec.calls)
@@ -200,4 +201,29 @@ func TestJudgeCodexSkillEntry_EligibilityGatingPins(t *testing.T) {
 			t.Errorf("verdict = %+v, want not eligible", v)
 		}
 	})
+}
+
+// Keep the original drive-shaped declarations as explicit host-truth controls.
+// All rows execute: native absolute paths are statted exactly once and become
+// eligible only for the observed ErrNotExist; foreign shapes remain non-destructive.
+func TestJudgeCodexSkillEntry_DriveDeclarationsRespectHost(t *testing.T) {
+	for _, declared := range []string{"C:/Users/u/SKILL.md", `C:\Users\u\SKILL.md`} {
+		t.Run(declared, func(t *testing.T) {
+			rec := stubRecordingStat(t, fs.ErrNotExist)
+			v := judgeCodexSkillEntry(readbackEntry(declared))
+			if runtime.GOOS == "windows" {
+				if !v.Eligible || v.SkipReason != "" || len(rec.calls) != 1 || rec.calls[0] != fromConfigPath(declared, configPathSeparator) {
+					t.Errorf("native absolute declaration lost its exact stat/eligibility contract: verdict=%+v calls=%q", v, rec.calls)
+				}
+				return
+			}
+			wantReason := "relative path — no observed resolution base"
+			if strings.ContainsRune(declared, '\\') {
+				wantReason = "oddly-formed path — not resolvable here"
+			}
+			if v.Eligible || v.SkipReason != wantReason || len(rec.calls) != 0 {
+				t.Errorf("foreign declaration must remain non-destructive: verdict=%+v calls=%q, want reason %q", v, rec.calls, wantReason)
+			}
+		})
+	}
 }
