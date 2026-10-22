@@ -40,14 +40,26 @@ func (f *faultPrivatePublisher) fail() error {
 	return nil
 }
 func (f *faultPrivatePublisher) PrepareDir(string) error { return f.fail() }
-func (f *faultPrivatePublisher) WriteTemp(_ string, pattern string, _ []byte) (string, error) {
+func (f *faultPrivatePublisher) WriteTemp(_ string, pattern string, _ []byte) (privateGTDPublication, error) {
 	if err := f.fail(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return pattern, nil
+	return &faultPrivatePublication{owner: f, name: pattern}, nil
 }
-func (f *faultPrivatePublisher) Install(string, string) error { return f.fail() }
-func (f *faultPrivatePublisher) Remove(path string)           { f.removed = append(f.removed, path) }
+func (f *faultPrivatePublisher) Install(privateGTDPublication, string) error { return f.fail() }
+
+type faultPrivatePublication struct {
+	owner *faultPrivatePublisher
+	name  string
+}
+
+func (f *faultPrivatePublication) Name() string         { return f.name }
+func (f *faultPrivatePublication) Install(string) error { return f.owner.fail() }
+func (f *faultPrivatePublication) Revoke() error {
+	f.owner.removed = append(f.owner.removed, f.name)
+	return nil
+}
+func (f *faultPrivatePublication) Close() error { return nil }
 
 func (f fakePrivatePermissionChecker) CurrentUID() (string, error) { return f.current, f.err }
 func (f fakePrivatePermissionChecker) OwnerUID(path string) (string, error) {
@@ -120,18 +132,32 @@ func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := privatefile.Check(staging); err != nil {
+	t.Cleanup(func() {
+		if err := staging.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := privatefile.Check(staging.Name()); err != nil {
 		t.Fatal(err)
 	}
-	staged, err := os.Open(staging)
+	before, err := privateGTDTestFileInfo(staging.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, statErr := staged.Stat()
-	if closeErr := staged.Close(); statErr != nil || closeErr != nil {
-		t.Fatalf("capture staging identity: stat=%v close=%v", statErr, closeErr)
-	}
 	if err := publisher.Install(staging, target); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside")
+	if err := staging.Install(outside); err == nil {
+		t.Fatal("cross-directory publication allowed")
+	}
+	if _, err := os.Lstat(outside); !os.IsNotExist(err) {
+		t.Fatalf("refused publication changed outside target: %v", err)
+	}
+	if err := privatefile.Check(target); err != nil {
+		t.Fatalf("refused publication lost source: %v", err)
+	}
+	if err := staging.Close(); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.Lstat(target)
@@ -144,16 +170,7 @@ func TestPrivateGTDNativePublicationRetainsStagingObject(t *testing.T) {
 	if got := string(mustRead(t, target)); got != "new" {
 		t.Fatalf("published payload = %q", got)
 	}
-	outside := filepath.Join(t.TempDir(), "outside")
-	if err := publisher.Install(target, outside); err == nil {
-		t.Fatal("cross-directory publication allowed")
-	}
-	if _, err := os.Lstat(outside); !os.IsNotExist(err) {
-		t.Fatalf("refused publication changed outside target: %v", err)
-	}
-	if err := privatefile.Check(target); err != nil {
-		t.Fatalf("refused publication lost source: %v", err)
-	}
+
 }
 
 func TestPrivateGTDProjectionIdentityAndPolicyErrorsDeny(t *testing.T) {

@@ -149,11 +149,16 @@ $ go list -deps -json ./... 의 프로젝트 패키지 Imports 중 모듈 내부
 일회성 도구이고, `internal/graph`는 이 판의 GTD 비공개 투영(`internal/graph/gtd_private.go`)이
 만든 엣지입니다.
 
-GTD native 권한 수리의 파일 대조에서는 `internal/graph/gtd_private.go`가
-`internal/privatefile`(쓰기 전 비공개 생성과 필수 native 정책 검사)과 `internal/atomicfile`
-(같은 디렉터리의 임시 객체 게시)을 직접 import합니다. Windows 소유권 판독은
-`internal/graph/gtd_private_identity_windows.go`에서 기존 `golang.org/x/sys/windows`를 사용합니다.
-fan-in·fan-out 표는 각 표에 명시된 기존 측정 트리의 수치를 유지합니다.
+GTD 게시 소유권 수리의 파일 대조에서는 `internal/graph/gtd_private.go`가
+`internal/factory`와 `internal/privatefile`을 직접 import합니다. staging 객체의 원자 게시 경계는
+`internal/privatefile/publication.go`가 소비하는 `internal/atomicfile.Replace`로 이어집니다.
+미션 상태·완료·거버넌스 receipt 쓰기도 `internal/privatefile.WriteFile`을 공유합니다.
+Unix 단일 link 검사는 `internal/privatefile/link_count_unix.go`의 기존 모듈
+`golang.org/x/sys/unix.Fstat`을 사용하며 Windows handle 검사는 기존
+`golang.org/x/sys/windows`의 link 수와 native owner-only 정책을 대조합니다.
+Windows GTD 소유권 판독은 `internal/graph/gtd_private_identity_windows.go`가 맡습니다.
+이번 선택 패키지의 `go list -deps -json`·`go doc` 추출과 소스 대조는 전체 저장소 fan-in 재측정이
+아닙니다. fan-in·fan-out 표는 각 표에 명시된 기존 측정 트리의 수치를 유지합니다.
 
 ### 작은 fan-in의 seam과 leaf
 

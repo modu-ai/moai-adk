@@ -25,6 +25,11 @@ func secureExistingNative(path string, _ os.FileInfo, directory, _ bool) error {
 }
 
 func restrictHandleNative(f *os.File, directory bool) error {
+	if !directory {
+		if err := checkSingleLinkNative(f); err != nil {
+			return err
+		}
+	}
 	mode := os.FileMode(0o600)
 	if directory {
 		mode = 0o700

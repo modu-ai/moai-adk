@@ -8,12 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
@@ -174,33 +174,31 @@ func renderPrivateGTDEdges(edges []PrivateGTDEdge) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func writePrivateTemp(dir, prefix string, data []byte) (string, error) {
+func writePrivateTemp(dir, prefix string, data []byte) (_ privateGTDPublication, resultErr error) {
 	f, err := privatefile.CreateTemp(dir, prefix)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	name := f.Name()
-	ok := false
+	consumed := false
 	defer func() {
-		_ = f.Close()
-		if !ok {
-			_ = os.Remove(name)
+		if !consumed {
+			// Capture consumes the writer even on error. Cleanup retains the
+			// inode rather than unlinking a replaceable temporary pathname.
+			owned, err := privatefile.CapturePublication(f)
+			resultErr = errors.Join(resultErr, err)
+			if owned != nil {
+				resultErr = errors.Join(resultErr, owned.Revoke(), owned.Close())
+			}
 		}
 	}()
 	if _, err := f.Write(data); err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := f.Sync(); err != nil {
-		return "", err
+		return nil, err
 	}
-	if err := f.Close(); err != nil {
-		return "", err
-	}
-	if err := privatefile.Check(name); err != nil {
-		return "", err
-	}
-	ok = true
-	return name, nil
+	consumed = true
+	return privatefile.CapturePublication(f)
 }
 
 // BuildPrivateGTDProjection publishes a deterministic, generation-paired
@@ -250,16 +248,40 @@ func preparePrivateGTDProjection(sourceRevision int64, edges []PrivateGTDEdge) (
 	return normalized, data, metaBytes, generation, nil
 }
 
+type privateGTDPublication interface {
+	Name() string
+	Install(string) error
+	Revoke() error
+	Close() error
+}
+
 type privateGTDPublisher interface {
 	PrepareDir(string) error
-	WriteTemp(string, string, []byte) (string, error)
-	Install(string, string) error
-	Remove(string)
+	WriteTemp(string, string, []byte) (privateGTDPublication, error)
+	Install(privateGTDPublication, string) error
 }
 
 type osPrivateGTDPublisher struct{}
 
 func (osPrivateGTDPublisher) PrepareDir(dir string) error {
+	if err := preparePrivateGTDDir(dir); err != nil {
+		return err
+	}
+	// Refuse a known invalid pair before installing either file. Install
+	// repeats its own checks because a pathname can change after this preflight.
+	for _, name := range []string{privateGTDDataName, privateGTDMetaName} {
+		info, err := os.Lstat(filepath.Join(dir, name))
+		if err == nil && !info.Mode().IsRegular() {
+			return errors.New("gtd projection: unsafe_destination")
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func preparePrivateGTDDir(dir string) error {
 	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
 		return err
 	}
@@ -272,57 +294,22 @@ func (osPrivateGTDPublisher) PrepareDir(dir string) error {
 		if identityErr != nil || ownerErr != nil || current == "" || owner != current {
 			return errors.New("gtd projection: directory_owner_denied")
 		}
-		return privatefile.SecureDirectory(dir)
+		return privatefile.SecureDirectoryNoPropagation(dir)
 	}
 	return nil
 }
-func (osPrivateGTDPublisher) WriteTemp(dir, prefix string, data []byte) (string, error) {
+func (osPrivateGTDPublisher) WriteTemp(dir, prefix string, data []byte) (privateGTDPublication, error) {
 	return writePrivateTemp(dir, prefix, data)
 }
-func (osPrivateGTDPublisher) Install(source, target string) error {
-	// A same-directory move retains the private staging object. In particular,
-	// Windows MoveFileEx must not copy a payload into an existing broad DACL.
-	if filepath.Clean(filepath.Dir(source)) != filepath.Clean(filepath.Dir(target)) {
-		return errors.New("gtd projection: staging_directory_mismatch")
-	}
-	if err := privatefile.Check(source); err != nil {
-		return err
-	}
-	staging, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	// File.Stat captures the object's identity now. Windows Lstat may defer
-	// loading its file ID until SameFile, when the old staging name is gone.
-	before, statErr := staging.Stat()
-	// Windows ordinary file opens do not share DELETE: close before Replace,
-	// retaining the captured identity and propagating any close failure.
-	if err := errors.Join(statErr, staging.Close()); err != nil {
-		return err
-	}
-	if err := atomicfile.Replace(source, target); err != nil {
-		return err
-	}
-	after, err := os.Lstat(target)
-	if err == nil && !os.SameFile(before, after) {
-		err = errors.New("gtd projection: publication_identity_changed")
-	}
-	if err == nil {
-		err = privatefile.Check(target)
-	}
-	if err != nil {
-		_ = os.Remove(target)
-		return err
-	}
-	return nil
+func (osPrivateGTDPublisher) Install(source privateGTDPublication, target string) error {
+	return source.Install(target)
 }
-func (osPrivateGTDPublisher) Remove(path string) { _ = os.Remove(path) }
 
 func publishPrivateGTDProjection(dir string, data, metaBytes []byte) (string, string, error) {
 	return publishPrivateGTDProjectionWith(osPrivateGTDPublisher{}, dir, data, metaBytes)
 }
 
-func publishPrivateGTDProjectionWith(publisher privateGTDPublisher, dir string, data, metaBytes []byte) (string, string, error) {
+func publishPrivateGTDProjectionWith(publisher privateGTDPublisher, dir string, data, metaBytes []byte) (_ string, _ string, resultErr error) {
 	if err := publisher.PrepareDir(dir); err != nil {
 		return "", "", err
 	}
@@ -330,19 +317,30 @@ func publishPrivateGTDProjectionWith(publisher privateGTDPublisher, dir string, 
 	if err != nil {
 		return "", "", err
 	}
-	defer publisher.Remove(dataTmp)
+	finish := func(owned privateGTDPublication) {
+		if resultErr != nil {
+			resultErr = errors.Join(resultErr, owned.Revoke())
+		}
+		if err := owned.Close(); err != nil {
+			if resultErr != nil {
+				resultErr = errors.Join(resultErr, err)
+			} else {
+				slog.Warn("failed to close private GTD publication cleanup handle", "error", err)
+			}
+		}
+	}
+	defer finish(dataTmp)
 	metaTmp, err := publisher.WriteTemp(dir, ".gtd-meta-", metaBytes)
 	if err != nil {
 		return "", "", err
 	}
-	defer publisher.Remove(metaTmp)
+	defer finish(metaTmp)
 	dataPath := filepath.Join(dir, privateGTDDataName)
 	metaPath := filepath.Join(dir, privateGTDMetaName)
 	if err := publisher.Install(dataTmp, dataPath); err != nil {
 		return "", "", err
 	}
 	if err := publisher.Install(metaTmp, metaPath); err != nil {
-		publisher.Remove(dataPath)
 		return "", "", err
 	}
 	return dataPath, metaPath, nil

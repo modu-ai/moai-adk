@@ -92,18 +92,22 @@ func TestPrivateGTDWindowsReplaceRetainsPrivateDACLAndIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	staged, err := os.Open(staging)
+	t.Cleanup(func() {
+		if err := staging.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	before, err := privateGTDTestFileInfo(staging.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, statErr := staged.Stat()
-	if closeErr := staged.Close(); statErr != nil || closeErr != nil {
-		t.Fatalf("capture native staging identity: stat=%v close=%v", statErr, closeErr)
-	}
-	if err := privatefile.Check(staging); err != nil {
+	if err := privatefile.Check(staging.Name()); err != nil {
 		t.Fatal(err)
 	}
 	if err := publisher.Install(staging, target); err != nil {
+		t.Fatal(err)
+	}
+	if err := staging.Close(); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.Lstat(target)

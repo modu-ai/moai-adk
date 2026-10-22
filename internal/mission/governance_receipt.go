@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
@@ -175,25 +174,7 @@ func WriteGovernanceReceipt(root, path string, receipt GovernanceReceipt) error 
 	// hexadecimal string cannot introduce a JSON encoding failure, so a second
 	// defensive branch would be unreachable and would obscure the invariant.
 	raw, _ := marshalGovernanceReceipt(receipt)
-	tmp, err := privatefile.CreateTemp(filepath.Dir(path), ".governance-")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	defer func() { _ = os.Remove(name) }()
-	// The native owner-only policy is installed before writing any receipt bytes.
-	// Keep this handle open through the write for Windows sharing semantics.
-	if _, err := tmp.Write(raw); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := atomicfile.Replace(name, path); err != nil {
-		return err
-	}
-	return privatefile.Check(path)
+	return privatefile.WriteFile(path, raw)
 }
 
 func readGovernanceReceipt(root, path string) (GovernanceReceipt, error) {

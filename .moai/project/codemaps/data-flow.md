@@ -546,7 +546,7 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
                                           하위 verb: approve · run · status · revoke · resume
   approve
     internal/mission/contract.go        SealMissionContract — 범위·행동·증거·한도를 한 번 봉인
-    internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (internal/atomicfile 경유)
+    internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (internal/privatefile.WriteFile 경유)
   run (한 operation씩)
     internal/mission/policy.go          ValidateMissionDecision(sealed, snapshot, decision, now)
     internal/factory/gtd_engage.go       EngageGTDItem — 권한·증거 신선도·의존성·레인 조건 판정
@@ -575,10 +575,21 @@ Windows에서는 `gtd_private_identity_windows.go`가 읽는 프로세스 token�
 `internal/privatefile`을 통해 Unix 디렉터리 `0700`·파일 `0600`, Windows의 현재 소유자만 허용하는
 protected DACL을 확인합니다. 계정·소유권·정책을 읽지 못하면 승인을 거부합니다.
 
-게시 디렉터리와 임시 파일은 payload를 받기 전에 native 비공개 정책을 적용합니다. data와 meta는
-같은 디렉터리의 임시 객체를 `internal/atomicfile`로 이동한 뒤 객체 동일성과 비공개 정책을
-확인합니다. meta 게시가 실패하면 먼저 게시한 data를 제거하고 두 임시 파일도 정리합니다.
-분류·정렬·중복 제거·해시와 generation 계산, 기본 수집·백업 제외 및 명시적 opt-in 경계는 유지합니다.
+게시 디렉터리와 임시 파일은 payload를 받기 전에 native 비공개 정책을 적용합니다. GTD는
+기존 Write→Sync 뒤 `CapturePublication`으로 같은 staging 객체를 보유하며, 두 capability를
+유지한 채 data→meta 순으로 `Install`합니다. 알려진 nonregular destination 쌍은 미리 거절하고,
+각 게시 시 단일 link·객체 identity·native 정책을 다시 확인합니다. 실패하면 보유한 자기 객체의
+비밀 bytes를 `Revoke`하고 `Close`하며, 경쟁 작성자의 후속 파일을 오래된 이름으로 삭제하지
+않습니다. Windows는 보유 handle의 truncate·sync 후 삭제를 요청하고, Unix는 truncate·sync 뒤
+pathname을 제거하지 못했다는 cleanup 오류를 보존합니다. 명시적 `RevokePrivateGTDProjection`의
+경로 삭제 API와는 다른 게시 실패 정리 경계입니다.
+
+GTD와 AutoMission의 기존 디렉터리는 `SecureDirectoryNoPropagation`으로 좁혀 기존 descendants의
+DACL 자동전파를 막는 경로를 사용합니다. owner-only inheritable 정책은 유지합니다. 미션 상태와
+완료·거버넌스 receipt 쓰기는 공용 `WriteFile`의 native readback·same-object refusal cleanup을
+사용하며 JSON·hash·경로 guards는 유지합니다. generic `WriteFile`에 새 Sync 보장을 추가한 것은
+아닙니다. 분류·정렬·중복 제거·해시와 generation 계산, 기본 수집·백업 제외 및 명시적 opt-in
+경계도 유지합니다. 새 caller·capability의 실제 Windows 실행은 별도의 CI 증거로 확인해야 합니다.
 
 ---
 

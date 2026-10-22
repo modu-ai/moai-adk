@@ -11,7 +11,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
 
@@ -83,23 +82,7 @@ func WriteCompletionReceipt(root, path string, receipt CompletionReceipt) error 
 }
 
 func writeCompletionReceiptAtomic(path string, raw []byte) error {
-	tmp, err := privatefile.CreateTemp(filepath.Dir(path), ".completion-")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	defer func() { _ = os.Remove(name) }()
-	if _, err := tmp.Write(raw); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := atomicfile.Replace(name, path); err != nil {
-		return err
-	}
-	return privatefile.Check(path)
+	return privatefile.WriteFile(path, raw)
 }
 
 func LoadCompletionReceipt(root, path string, exp CompletionExpectation) (CompletionReceipt, error) {

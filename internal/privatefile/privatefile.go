@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // Check refuses links, nonregular files and any access policy other than the
@@ -49,65 +47,24 @@ func writeFileWithCheck(path string, data []byte, check func(string) error) (res
 	if err != nil {
 		return err
 	}
-	name := f.Name()
-	anchor := f
-	writerClosed := false
+	if _, err := f.Write(data); err != nil {
+		return errors.Join(err, revokePublicationNative(f), f.Close())
+	}
+	publication, err := CapturePublication(f)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if resultErr != nil {
-			// Revoke bytes on our captured object, even if another writer has
-			// moved it or replaced its pathname. Never unlink by a stale name.
-			resultErr = errors.Join(resultErr, revokePublicationNative(anchor))
+			resultErr = errors.Join(resultErr, publication.Revoke())
 		}
-		if anchor != f {
-			if closeErr := anchor.Close(); closeErr != nil {
-				if resultErr != nil {
-					resultErr = errors.Join(resultErr, closeErr)
-				} else {
-					// Publication has already passed its identity and policy
-					// checks. A cleanup-close warning must not reclassify it
-					// as a failed write whose payload was never revoked.
-					slog.Warn("failed to close private publication cleanup handle", "error", closeErr)
-				}
+		if closeErr := publication.Close(); closeErr != nil {
+			if resultErr != nil {
+				resultErr = errors.Join(resultErr, closeErr)
+			} else {
+				slog.Warn("failed to close private publication cleanup handle", "error", closeErr)
 			}
 		}
-		if !writerClosed {
-			resultErr = errors.Join(resultErr, f.Close())
-		}
 	}()
-	if _, err := f.Write(data); err != nil {
-		return err
-	}
-	before, err := f.Stat()
-	if err != nil {
-		return err
-	}
-	held, err := openPublicationAnchorNative(name)
-	if err != nil {
-		return err
-	}
-	opened, err := held.Stat()
-	if err != nil || !os.SameFile(before, opened) {
-		return errors.Join(err, fmt.Errorf("private file: staging identity changed"), held.Close())
-	}
-	anchor = held
-	// Keep the original writer's close-before-publication error contract.
-	// The independent handle remains available solely for identity-safe cleanup.
-	writerClosed = true
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := check(name); err != nil {
-		return err
-	}
-	if err := atomicfile.Replace(name, path); err != nil {
-		return err
-	}
-	if err := check(path); err != nil {
-		return err
-	}
-	after, err := publicationInfoNative(path)
-	if err != nil || !os.SameFile(before, after) {
-		return errors.Join(err, fmt.Errorf("private file: publication identity changed"))
-	}
-	return nil
+	return publication.install(path, check)
 }

@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/privatefile"
 )
@@ -139,36 +138,14 @@ func SaveAutoMission(projectRoot string, mission AutoMission) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := privatefile.SecureDirectory(dir); err != nil {
+	if err := privatefile.SecureDirectoryNoPropagation(dir); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(mission, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp, err := privatefile.CreateTemp(dir, ".mission-")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	cleanup := true
-	defer func() {
-		if cleanup {
-			_ = os.Remove(name)
-		}
-	}()
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := atomicfile.Replace(name, path); err != nil {
-		return err
-	}
-	cleanup = false
-	return privatefile.Check(path)
+	return privatefile.WriteFile(path, data)
 }
 
 func LoadAutoMission(projectRoot, sessionID string) (*AutoMission, error) {
