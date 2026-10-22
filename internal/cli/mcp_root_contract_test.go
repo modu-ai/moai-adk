@@ -7,7 +7,6 @@
 package cli
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -39,11 +38,11 @@ func TestMCPRootConfinement(t *testing.T) {
 	serverRoot := sdServerFixture(t)
 
 	t.Run("the home directory is rejected explicitly", func(t *testing.T) {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			t.Skip("no home directory to test against")
-		}
-		_, err = resolveToolProjectRoot(sdToolReq(map[string]any{"project_root": home}))
+		// A sandboxed home keeps the test off the real one (the home-access guard).
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("USERPROFILE", home)
+		_, err := resolveToolProjectRoot(sdToolReq(map[string]any{"project_root": home}))
 		if err == nil {
 			t.Fatal("the home directory was accepted as a project root")
 		}

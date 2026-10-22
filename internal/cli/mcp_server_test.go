@@ -392,8 +392,15 @@ func TestMoaiMCPServer_AuditCacheStoreLookup(t *testing.T) {
 	if err := os.WriteFile(report, []byte("# plan review: pass\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Card t1632 CI repair: a mutating call names its project_root and the root
+	// must be a MoAI project (a .moai directory inside a git tree) — REQ-MN-005
+	// root confinement.
+	initGitRepo(t, tmp)
+	if err := os.MkdirAll(filepath.Join(tmp, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	resStore, err := c.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "store", "spec_id": sid, "hash": h, "auditor_version": "plan-auditor", "report_path": report}},
+		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "store", "spec_id": sid, "hash": h, "auditor_version": "plan-auditor", "report_path": report, "project_root": tmp}},
 	})
 	if err != nil || resStore == nil || resStore.IsError {
 		t.Fatalf("store: err=%v res=%v", err, resStore)

@@ -297,7 +297,7 @@ Thirty-six tools accept an optional `project_root` string: `spec_progress`,
 `codex_job_cancel`, `codex_job_result`, `codex_job_status`,
 `glm_job_cancel`, `glm_job_result`, `glm_job_status`,
 `glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
-`codex_role_audit_cancel`, and `todo_claim`. It names the tree the call should act
+and `todo_claim`. It names the tree the call should act
 on. Five of the thirty-six
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
 `factory_complete`, and `factory_renew` reject a call without it naming the argument, and

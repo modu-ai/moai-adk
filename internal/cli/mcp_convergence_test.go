@@ -624,10 +624,14 @@ func TestPerformCodexAudit_ReusesExistingCodexHandler_NoReimpl_AP_AMM_1(t *testi
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	codexSession = &fakeCodexSession{lines: lines}
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSess })
+	// Card t1632 CI repair: the REQ-MN-009 containment listing runs a real
+	// `codex mcp list` before the session opens; stub it so /fake/codex reaches
+	// the verdict pass-through this test is about.
+	stubCodexContainmentListing(t)
 
 	out := performCodexAudit(context.Background(), "uncommittedChanges", "concurrency", "")
 	if out.Verdict != "pass" {
-		t.Errorf("performCodexAudit verdict = %q, want pass (must pass through codex result)", out.Verdict)
+		t.Errorf("performCodexAudit verdict = %q (summary %q), want pass (must pass through codex result)", out.Verdict, out.Summary)
 	}
 }
 

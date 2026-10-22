@@ -1021,8 +1021,12 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			}
 		}
 	}
-	if sites != 7 {
-		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	// Card t1632 CI repair: codex_audit now records its receipt on exactly its
+	// two verdict-bearing exits (binary missing, review ran — every other return
+	// is a tool error carrying no verdict), so the total is 6: the writers (3)
+	// plus the two codex_audit calls and the one audit_multi call.
+	if sites != 6 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 6 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 
@@ -1082,8 +1086,8 @@ func TestSelfReview_CatalogueAndGuideCarryTheNewRows(t *testing.T) {
 				t.Errorf("%s does not name `%s` in the project_root inventory", p, tool)
 			}
 		}
-		if !strings.Contains(body, "Five of the twenty-three") {
-			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Five of the twenty-three\")", p)
+		if !strings.Contains(body, "Five of the thirty-six") {
+			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Five of the thirty-six\")", p)
 		}
 	}
 }
