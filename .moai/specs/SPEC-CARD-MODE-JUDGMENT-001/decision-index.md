@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-CARD-MODE-JUDGMENT-001
 
-Stateless on the status axis (no `status:` field; the lifecycle lives in `spec.md`). Seven decisions the plan phase surfaced. Q3 has been settled by an operator ruling (recorded in its row); Q7 is open and goes to the operator; the others carry the stamps shown. Each row states what was unresolved and why; none carries a recommendation for a judgment call. Where the published Default rule ranks the options (the option that preserves current behavior; else the one whose undo is a single revert of this SPEC's own commits; else the smaller user-visible surface), the row carries `Default:` and `Alternate:`, and an `implementation-level` row with a `Default:` is stamped `DEFAULT-APPLIED` at plan close. Every other FOUNDER row is left empty and goes to the operator.
+Stateless on the status axis (no `status:` field; the lifecycle lives in `spec.md`). Seven decisions the plan phase surfaced. Q3 has been settled by an operator ruling (recorded in its row); Q7 was answered by the operator on 2026-10-23, relayed by the leader (recorded in its row); the others carry the stamps shown. Each row states what was unresolved and why; none carries a recommendation for a judgment call. Where the published Default rule ranks the options (the option that preserves current behavior; else the one whose undo is a single revert of this SPEC's own commits; else the smaller user-visible surface), the row carries `Default:` and `Alternate:`, and an `implementation-level` row with a `Default:` is stamped `DEFAULT-APPLIED` at plan close. Every other FOUNDER row is left empty and goes to the operator.
 
 ### Q1: Do `manager-todo.md` and `manager-lead.md` get an issuance pointer?
 
@@ -80,10 +80,12 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: (none — the ruling d-20261019T023441Z-d314 conditions the leader's promotion on "while the operator has delegated dispatch (operator-away / standing delegation)" and names no mechanism, record, or expiry; no committed clause decides it)
 Why unresolved: The documents carry the ruling's words (`(operator away, or a standing delegation)`) and, by design, no mechanism. An actor that treats an unstated delegation as given widens the exception in practice, and no command in this SPEC can see that (spec R-5). Which signal counts — nothing beyond the operator's own words in the session, a decision-board record the leader cites, a configuration key, or a time-bounded delegation — changes who may dispatch and when, and so changes a shipped coordination behavior. The options visible to the planner are listed unranked; the published Default rule does not rank them, because each one changes the user-visible behavior differently.
-Operator verdict:
-Gate note: No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
+Operator verdict: met 2026-10-23 — decided_by=operator, relayed by the leader (cross-session message of 2026-10-23; this lane did not receive the answer from the operator directly). Answer: "the verdict's phrase is the whole condition" (Korean original: "판정문 구절이 전체 조건") — the phrase `(operator away, or a standing delegation)` of the ruling d-20261019T023441Z-d314 is the whole condition, and no further mechanism, record format or expiry is required. evidence_refs=the leader's cross-session message of 2026-10-23; `.moai/reports/t1894/lane8-wait.md` § "Kickoff (2026-10-23, lane-8)". No decision-board record is cited: `moai decision read --scope card:t1894 --project-root /Users/goos/MoAI/moai-adk-go` (exit 0, first line `board=ok unparseable=0 records=146`) printed no record id dated 2026-10-23.
+Gate note: No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition. State on 2026-10-23: the operator stated exactly that (relayed by the leader, verdict above), so the row is no longer empty and Q7 no longer blocks the autonomous form of the Kickoff.
 
-## Gate (state after correction round 1)
+Row status: met. The answer adds nothing to the documents: REQ-MJ-007 (a) already carries the ruling's words and no mechanism, and residual risk R-5 (the practice of treating an unstated delegation as given) stands as stated.
+
+## Gate (state on 2026-10-23)
 
 | Row | Label / class | State |
 |---|---|---|
@@ -93,9 +95,9 @@ Gate note: No requirement, criterion or milestone of this SPEC waits on Q7; REQ-
 | Q4 | FOUNDER / implementation-level | `DEFAULT-APPLIED`; the same ruling moves the notice to card t1695 |
 | Q5 | FOUNDER / implementation-level | `DEFAULT-APPLIED` (unchanged); consequence now stated (R-2) |
 | Q6 | FOUNDER / implementation-level | `DEFAULT-APPLIED` (re-labelled from POLICY-COVERED, which the cited anchor did not support) |
-| Q7 | FOUNDER / product-level | **open**, empty verdict; goes to the operator and blocks the autonomous form of the Kickoff; no requirement, criterion or milestone waits on it |
+| Q7 | FOUNDER / product-level | **met** — answered 2026-10-23 (relayed by the leader): the ruling's phrase is the whole condition; no longer blocks the autonomous form of the Kickoff; no requirement, criterion or milestone waits on it |
 
-One FOUNDER row (Q7) carries an empty verdict. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition.
+No FOUNDER row carries an empty verdict. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition. Q7 was answered on 2026-10-23 (relayed by the leader) with exactly that statement, so it no longer blocks the autonomous Kickoff form.
 
 ## Milestone-to-row map
 
@@ -103,6 +105,6 @@ One FOUNDER row (Q7) carries an empty verdict. No requirement, criterion or mile
 |---|---|---|
 | M1 mode judgment and issuance | Q1 (agents untouched), Q2 (`doc-generation.md` untouched), Q5 (board words verbatim) | all defaults |
 | M2 lease renewal and scoped standing cron | Q4 (Go notice is card t1695's; residual risk R-1) | nothing to decide here |
-| M3 free lane and delegated-dispatch promotion | Q3 (met), Q7 (open; no text waits on it, the autonomous Kickoff form does) | REQ-MJ-006, REQ-MJ-007, REQ-MJ-017 are written against the ruling, not against a planner default |
+| M3 free lane and delegated-dispatch promotion | Q3 (met), Q7 (answered 2026-10-23, relayed by the leader; no text waits on it, and it no longer blocks the autonomous Kickoff form) | REQ-MJ-006, REQ-MJ-007, REQ-MJ-017 are written against the ruling, not against a planner default |
 | M4 confirmation pass | Q1 (if flipped: agent emission) | defaults hold |
 | M5 verification | none | |

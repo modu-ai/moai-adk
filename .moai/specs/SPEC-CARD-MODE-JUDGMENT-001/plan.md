@@ -68,7 +68,7 @@ Record, per verdict, the empty-sweep check (each `-run` must report a non-zero t
 
 ## C. Order and dependencies
 
-M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on a decision: Q3 is met by the operator ruling d314, and Q1, Q2, Q4, Q5, Q6 carry their stamps. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition. The two stub edits both land in M2, so the stub is within budget at every commit; M3 does not touch K.
+M1 → M2 → M3 → M4 → M5, with M5 running after M4. No milestone waits on a decision: Q3 is met by the operator ruling d314, and Q1, Q2, Q4, Q5, Q6 carry their stamps. No requirement, criterion or milestone of this SPEC waits on Q7; REQ-MJ-007 (a) is text-final because it carries the ruling's words and no mechanism. Per the decision-gate rule the empty FOUNDER row Q7 goes to the operator and blocks the autonomous form of the plan→run Kickoff until the operator answers it or states that the ruling's phrase is the whole condition. Q7 was answered on 2026-10-23 (relayed by the leader) with exactly that statement, so it no longer blocks the autonomous Kickoff form. The two stub edits both land in M2, so the stub is within budget at every commit; M3 does not touch K.
 
 ## D. Risks
 
