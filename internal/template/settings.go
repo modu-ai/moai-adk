@@ -2,7 +2,7 @@ package template
 
 import (
 	"os"
-	"path/filepath"
+	"path"
 	"runtime"
 	"strings"
 )
@@ -66,6 +66,18 @@ func isExistingDir(path string) bool {
 // a pure function of its arguments — table tests can pin exact output per
 // platform without touching the host filesystem or runtime.GOOS.
 func buildSmartPATHFor(goos, home string, envLookup func(string) string, stat func(string) bool, wsl2 bool) string {
+	// These suffixes are fixed relative directory names. Their separators,
+	// like the list separator below, belong to the target rather than host.
+	join := func(base string, suffix ...string) string {
+		if goos != "windows" {
+			return path.Join(append([]string{base}, suffix...)...)
+		}
+		base = strings.ReplaceAll(base, "/", `\`)
+		if base == "" {
+			return strings.Join(suffix, `\`)
+		}
+		return strings.TrimRight(base, `\`) + `\` + strings.Join(suffix, `\`)
+	}
 	// The list separator is a property of the TARGET platform, not the build
 	// host: os.PathListSeparator is pinned to the build GOOS at compile time,
 	// so it is derived from the injected goos instead. unix builds join with
@@ -77,8 +89,8 @@ func buildSmartPATHFor(goos, home string, envLookup func(string) string, stat fu
 
 	// User-specific directories (always included, cross-platform)
 	candidates := []string{
-		filepath.Join(home, ".local", "bin"), // XDG user-local binaries
-		filepath.Join(home, "go", "bin"),     // Go workspace binaries
+		join(home, ".local", "bin"), // XDG user-local binaries
+		join(home, "go", "bin"),     // Go workspace binaries
 	}
 
 	// Platform-specific package manager and system paths
@@ -86,27 +98,27 @@ func buildSmartPATHFor(goos, home string, envLookup func(string) string, stat fu
 	case "windows":
 		// @MX:NOTE: [AUTO] Windows assembles Windows-shaped entries only — the POSIX system tail below is never appended under windows (GH #1690: the GOOS-blind generator fell into the default/linux branch and shipped a ";-joined" mix of POSIX dirs that broke exec-form hook bash resolution).
 		if systemRoot := envLookup("SystemRoot"); systemRoot != "" {
-			candidates = append(candidates, filepath.Join(systemRoot, "System32"))
+			candidates = append(candidates, join(systemRoot, "System32"))
 		}
 		// Git Bash candidates resolve from standard install-location
 		// environment variables (no hardcoded C:\ literals in source) and are
 		// appended only when the probe reports an existing directory. Git for
 		// Windows registers only Git\cmd on the system PATH; bash.exe lives
 		// in Git\bin, which exec-form hooks must be able to resolve.
-		if pf := envLookup("ProgramFiles"); pf != "" && stat(filepath.Join(pf, "Git", "bin")) {
-			candidates = append(candidates, filepath.Join(pf, "Git", "bin"))
+		if pf := envLookup("ProgramFiles"); pf != "" && stat(join(pf, "Git", "bin")) {
+			candidates = append(candidates, join(pf, "Git", "bin"))
 		}
-		if pf86 := envLookup("ProgramFiles(x86)"); pf86 != "" && stat(filepath.Join(pf86, "Git", "bin")) {
-			candidates = append(candidates, filepath.Join(pf86, "Git", "bin"))
+		if pf86 := envLookup("ProgramFiles(x86)"); pf86 != "" && stat(join(pf86, "Git", "bin")) {
+			candidates = append(candidates, join(pf86, "Git", "bin"))
 		}
-		if lad := envLookup("LOCALAPPDATA"); lad != "" && stat(filepath.Join(lad, "Programs", "Git", "bin")) {
-			candidates = append(candidates, filepath.Join(lad, "Programs", "Git", "bin"))
+		if lad := envLookup("LOCALAPPDATA"); lad != "" && stat(join(lad, "Programs", "Git", "bin")) {
+			candidates = append(candidates, join(lad, "Programs", "Git", "bin"))
 		}
 	case "darwin":
 		if brewPrefix := envLookup("HOMEBREW_PREFIX"); brewPrefix != "" {
 			candidates = append(candidates,
-				filepath.Join(brewPrefix, "bin"),
-				filepath.Join(brewPrefix, "sbin"),
+				join(brewPrefix, "bin"),
+				join(brewPrefix, "sbin"),
 			)
 		}
 		// Always include standard Homebrew paths as fallback (ensures binaries are accessible even if HOMEBREW_PREFIX is not set)

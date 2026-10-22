@@ -1333,12 +1333,8 @@ func t515StatFound(dirs ...string) func(string) bool {
 // with NO POSIX entry ever under windows. The darwin/linux rows assert
 // byte-equality with the pre-refactor fixtures (non-regression).
 //
-// Path assembly note: filepath.Join is pinned to the BUILD host's path
-// separator, so in a darwin/linux test build the windows rows' sub-path
-// joins render with "/" (e.g. `C:\Users\u\.local/bin`). The expected values
-// are therefore built with the same filepath.Join expressions the
-// implementation uses, which keeps every assertion byte-exact on any build
-// GOOS — and would match the all-`\` forms a real windows build produces.
+// The Windows oracle uses literal target paths on every test host. Building
+// the oracle with host filepath.Join masked the host/target separator defect.
 func TestBuildSmartPATHWindows(t *testing.T) {
 	const home = `C:\Users\u`
 	envFull := map[string]string{
@@ -1348,18 +1344,17 @@ func TestBuildSmartPATHWindows(t *testing.T) {
 		"LOCALAPPDATA":      `C:\Users\u\AppData\Local`,
 	}
 
-	// Candidate paths exactly as filepath.Join assembles them on this build.
-	pfGit := filepath.Join(envFull["ProgramFiles"], "Git", "bin")
-	pf86Git := filepath.Join(envFull["ProgramFiles(x86)"], "Git", "bin")
-	ladGit := filepath.Join(envFull["LOCALAPPDATA"], "Programs", "Git", "bin")
-	system32 := filepath.Join(envFull["SystemRoot"], "System32")
+	pfGit := `C:\Program Files\Git\bin`
+	pf86Git := `C:\Program Files (x86)\Git\bin`
+	ladGit := `C:\Users\u\AppData\Local\Programs\Git\bin`
+	system32 := `C:\Windows\System32`
 
 	// wantWindows builds the expected full windows value: the two home
 	// entries always first, then the supplied entries in append order.
 	wantWindows := func(entries ...string) string {
 		return strings.Join(append([]string{
-			filepath.Join(home, ".local", "bin"),
-			filepath.Join(home, "go", "bin"),
+			`C:\Users\u\.local\bin`,
+			`C:\Users\u\go\bin`,
 		}, entries...), ";")
 	}
 
