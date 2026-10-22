@@ -157,3 +157,27 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
   리더 라운드에서 관측.
 - **리더 후보 과제(보고 동봉)**: 4개 픽스처가 main 자체에서도 실패(통제실험 입증) — main 측 후속
   큐잉 대상. pid-reuse 부채 불변.
+
+## CI 실패 통제실험 — 브랜치 도입분 0건 (10-23, 재임대 라운드)
+
+PR #1893 실패 체크 4종(runs 39786048290/39786047765)을 CI 로그 → 실패 테스트 8건 확정 →
+main(bf0a35f10e) 임시 읽기전용 worktree 통제실험. **전부 main 고유 결함 — #1893 diff 기인 0건,
+카드 브랜치 수리 없음**(리더 범위 축소 지시: graph-freshness 제외·main 재현분 제외).
+
+| 실패 테스트 | main 재현 | 증거 |
+|---|---|---|
+| TestTodoSelectionPredicatesPositivelyEnumerateStates (internal/cli) | YES | main 4건 위반(브랜치는 5c224aa972로 2건 수리, 잔여 2건은 factory_card.go — main과 동일 바이트) |
+| TestCodexContractByteCeiling (internal/config) | YES | main AGENTS.md 24807B > 천장 24576B(main이 13줄 추가, 브랜치 미편집 — 병합이 main판 채택) |
+| TestCodexNestedTemplateDiscoveryBudget (internal/config) | YES | 동일 원인(24807B, +231 초과) |
+| TestBubblewrap_ExecHello (internal/sandbox) | YES(정적 통제) | internal/sandbox 브랜치-무차이 + CI(ubuntu) 환경 동일 → main CI에서도 동일 실패 예측(로컬 darwin은 skip으로 판별 불가 — Gaps) |
+| TestCatalogHashParity (internal/spec) | YES | 동일 해시쌍(734677c3 vs 98079f07) 양측 재현 — moai-lane-watchdog 스킬 트리 브랜치-무차이 |
+| TestBindingLedgerIntegrity (internal/template) | YES | ALB-0139/0148 after-text 소실, 양측 동일 — .claude/rules/ 브랜치-무차이 |
+| TestCatalogHashCoversSkillSubfiles (internal/template) | YES | 동일 해시쌍 |
+| TestManifestHashFormat (internal/template) | YES | 동일 해시쌍 |
+| graph-freshness | — | 리더 지시로 제외(공유 codemaps 부채, 24개 PR 동일 집합 — 리더 공통 수리 대기) |
+
+- DATA RACE / panic / test-timeout 서명: 3개 로그 전부 0건(고측: grep 실측).
+- main 고유 결함 5종은 리더 큐잉 대상: ① REQ-THS-012 잔여 위반(factory_card.go) ② AGENTS.md
+  Codex 천장 초과 ③ moai-lane-watchdog catalog 해시 drift(gen-catalog-hashes --all) ④
+  ALB-0139/0148 장부 행(moai-mcp-tools 이관 잔여) ⑤ CI ubuntu bubblewrap 실행 실패.
+- 임시 main worktree(/tmp/t1828-main)는 통제실험 후 제거 완료. HEAD 불변 66371bebd7, 수리 커밋 없음.
