@@ -35,7 +35,7 @@ import (
 func rebindEnv(t *testing.T, run, label, backend string) {
 	t.Helper()
 	m3ScrubEnv(t)
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, label)

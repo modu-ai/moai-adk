@@ -26,12 +26,14 @@ package hook
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"go.uber.org/goleak"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
+	"github.com/modu-ai/moai-adk/internal/sqliteguard"
 )
 
 // TestMain enables goroutine leak detection across all internal/hook tests.
@@ -98,9 +100,17 @@ func TestMain(m *testing.M) {
 			fmt.Fprintf(os.Stderr, "TestMain: create MOAI_HOME sandbox: %v\n", err)
 			os.Exit(1)
 		}
+		// Keep the ordinary temp parent for cleanup, and let the production
+		// API create the managed child with an explicit native owner policy.
 		moaiHome = dir
-		_ = os.Setenv(config.EnvHome, dir)
-		_ = os.Setenv(moaiHomeSandboxEnv, dir)
+		home := filepath.Join(dir, "managed-home")
+		if err := sqliteguard.EnsureDirectory(home); err != nil {
+			fmt.Fprintf(os.Stderr, "TestMain: create private MOAI_HOME sandbox: %v\n", err)
+			_ = os.RemoveAll(dir)
+			os.Exit(1)
+		}
+		_ = os.Setenv(config.EnvHome, home)
+		_ = os.Setenv(moaiHomeSandboxEnv, home)
 	}
 	// Home sandbox (D5): every home-shaped derivation in this package — the
 	// memory-budget advisory's store keys first among them — resolves inside

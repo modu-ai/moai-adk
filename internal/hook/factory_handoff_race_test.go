@@ -404,7 +404,7 @@ func generationTrail(t *testing.T, gens ...int64) {
 // the t1074 launcher registration/bind (A) against the handoff rebind (B) on
 // one slot, forced orders (i)-(v) and 200 unforced iterations.
 func TestFactoryLaneHandoffRebindVsLaunchBindRace(t *testing.T) {
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	t.Setenv(config.EnvFactoryRunID, "run-launch-race")
 	t.Setenv(config.EnvMoaiFactoryWorker, launchRaceSlot)
 	t.Setenv(config.EnvFactoryBackend, "codex")
@@ -722,7 +722,7 @@ func runUnforcedLaunchVsRebind(t *testing.T, i int, fixture func(*testing.T) *la
 // handoff rebind, returns a named notice (fail-open) and never rotates the
 // endpoint.
 func TestFactoryUserPromptRegistrationSurfacesHandoffRefusals(t *testing.T) {
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	root := t.TempDir()
 	run := "run-prompt-refusal"
 	recordActiveFactoryRun(t, root, run)

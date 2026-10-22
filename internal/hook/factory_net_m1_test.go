@@ -116,7 +116,7 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 // outside the test.
 func netSessionStart(t *testing.T, root, sessionID string) (additionalContext, systemMessage string) {
 	t.Helper()
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	h := NewSessionStartHandler(nil)
 	out, err := h.Handle(context.Background(), &HookInput{SessionID: sessionID, CWD: root, ProjectDir: root, Source: "startup"})
 	if err != nil {

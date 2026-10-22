@@ -40,7 +40,7 @@ func handoffTestGit(t *testing.T, dir string, args ...string) string {
 
 func newInteractiveHandoffFixture(t *testing.T, switchPending bool) *interactiveHandoffFixture {
 	t.Helper()
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	for k, v := range map[string]string{

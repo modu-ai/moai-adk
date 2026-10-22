@@ -253,7 +253,7 @@ func TestCurrentVocabularyBindPathUnchanged(t *testing.T) { // AC-SRL-007
 	// REQ-SRL-008 behavior preservation: a current-vocabulary label against a
 	// measured-active run still binds through ValidateActiveRun →
 	// BindLaunchPending exactly as before the repair.
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	root := t.TempDir()
 	run := "srl-current-vocab"
 	recordActiveFactoryRun(t, root, run)

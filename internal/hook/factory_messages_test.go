@@ -231,7 +231,7 @@ func closeOnCleanup(t *testing.T, what string, c io.Closer) {
 }
 
 func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	root := t.TempDir()
 	run := "run-session-start-rebind"
 	recordActiveFactoryRun(t, root, run)
@@ -317,7 +317,7 @@ func TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding(t *testin
 
 func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Store, factorymsg.Peer, *HookInput) {
 	t.Helper()
-	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", privateHookHome(t))
 	root := t.TempDir()
 	run := "run-user-prompt-rebind"
 	recordActiveFactoryRun(t, root, run)
