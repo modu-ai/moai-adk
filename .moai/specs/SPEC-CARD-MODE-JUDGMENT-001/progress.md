@@ -216,7 +216,7 @@ sync_heads_up: "acceptance.md holds 21 distinct AC-looking identifiers (AC-ALB-0
 
 ```yaml
 sync_complete_at: 2026-10-23
-sync_commit_sha: pending-backfill   # corrective sync commit; the first sync commit ea7b93c085 was audited and failed (sync-audit.md, 0.80)
+sync_commit_sha: 6e74de5f4e162886a8c1f07e7e0b336e6875b8e7   # corrective sync commit; the first sync commit ea7b93c085 was audited and failed (sync-audit.md, 0.80)
 sync_status: complete   # corrective sync after the iter-1 audit FAIL
 ac_source: .moai/specs/SPEC-CARD-MODE-JUDGMENT-001/acceptance.md   # tier L
 b12_self_test_a: pass   # pre-emission grep -c 'SPEC-CARD-MODE-JUDGMENT-001' CHANGELOG.md printed 0 before the entry was written
