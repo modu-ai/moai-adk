@@ -518,7 +518,7 @@ Residual risks for the sync audit:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-23
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "7bf5e35a73"
 sync_status: audit-ready
 ac_source: .moai/specs/SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001/acceptance.md (tier L)
 b12_self_test_a: pre-emission grep `grep -c 'SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001' CHANGELOG.md` printed `0` (exit 1) — no duplicate entry
