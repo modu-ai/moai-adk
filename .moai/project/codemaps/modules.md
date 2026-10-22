@@ -672,3 +672,7 @@ $ find internal cmd pkg -name '*.go' -not -name '*_test.go' -exec ls -l {} + | s
 
 > **t1278 판에서 확정한 소멸 경위(card t1242, SPEC-CODEX-FACTORY-RETIRE-001 — 전체 경로는 음성 인용으로 이 줄에만 남긴다).**
 > `internal/cli/factory_lane_handoff.go` · `internal/cli/factory_lane_handoff_bind.go` · `internal/cli/factory_lane_handoff_recover.go` · `internal/cli/factory_lane_handoff_switch.go` 4형제와 `internal/cli/codex_factory.go` · `internal/cli/codex_kanban.go` 가 트리에서 사라졌다. 릴로케이션이 옮기던 헤드리스 codex 세션 자체가 factory 에 참여하지 않게 되면서 그 왕복 경로가 없어졌기 때문이며, `_bind.go` 의 책임(헤드리스 rebind)은 계승되지 않고 기능과 함께 은퇴했다 — 핸드오프 상태는 이제 `internal/factorymsg` Store API 와 훅 쪽 대화형 bind(`internal/hook/factory_handoff_bind.go`, 생존)로만 움직인다.
+
+## 전체 DB snapshot의 출력 책임 — ci-repair-20261022
+
+`internal/factory/gtd_persistence.go`는 전체 DB VACUUM SQL·opt-in·스트리밍 restore·integrity·rollback 원본을 유지하며 private output과 absent-only publication을 조율한다. `internal/privatefile/exclusive*`는 기존 파일을 열거나 ACL을 바꾸지 않는 원자 생성과 즉시 FD 소유권 인계를, `internal/atomicfile/noreplace*`는 OS별 같은 볼륨의 no-replace 게시를 담당한다. 생성 직후 정책·경쟁 대상 보존·추가 DB 테이블 보존 회귀는 실제 Windows 실행과 분리해 귀속한다.

@@ -1,5 +1,9 @@
 # 데이터 흐름
 
+## 전체 DB 백업과 복원의 별도 출력 경계 — ci-repair-20261022
+
+백업은 CREATE_NEW/O_EXCL로 빈 private 출력을 확보한 후 기존 VACUUM INTO 전체 DB SQL을 실행한다. Windows SA는 현재 SID와 protected DACL을 bytes 전에 적용하고 read-capable no-DELETE-share FD가 출력 identity를 유지한다. SQL 오류가 남긴 partial 출력도 private이며 함수 소유 FD의 Close 오류를 전달한다. 기존 파일은 빈 파일도 덮어쓰지 않는다. 복원은 readonly 원본을 private staging에 스트리밍 복사·Sync·Close하고 kernel no-replace로 게시한 뒤 원래 integrity 검증을 수행한다. source/rollback snapshot은 유지한다. SQLite 내부 VFS가 감춘 Close 오류와 조상 경로 교체는 별도 한계이며 이 FD만으로 모두 종료됐다고 판단하지 않는다.
+
 ## backlog 쓰기·relocation 보완 — ci-repair-20261022 phase2
 
 backlog mutation은 기존 ancestor 거부 후 private namespace를 준비하고 원래 queue lock을 획득한다. writable engine/GTD open의 물리 연결은 아래 SQLite guard 흐름을 소비한다. unknown-schema preflight·query-only readonly reader는 이전 경로를 유지한다.

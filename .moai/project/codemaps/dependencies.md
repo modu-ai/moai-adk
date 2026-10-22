@@ -1,5 +1,12 @@
 # 의존성 그래프
 
+## 백업/복원 및 panic 관측의 추가 경계 — ci-repair-20261022
+
+- internal/factory depends on internal/atomicfile: 복원의 same-volume absent-only 게시를 담당한다.
+- internal/sqliteguard depends on internal/bugreport: recover 지점은 기존 참여·개인정보·시간 제한을 지키는 Capture를 호출한다. SQL·파일 경로·panic payload는 넘기지 않는다.
+
+privatefile.CreateExclusive는 VACUUM 출력의 CREATE_NEW와 payload 전 native 정책을 담당한다. 기존 three-file 연결 registry와 달리 백업 함수가 이 FD를 한 번 닫으며, SQLite 내부 VFS 종료까지 증명하지 않는다. 위 두 import는 소스의 직접 의존 경계이고 전체 그래프 통계를 재측정한 값이 아니다.
+
 ## backlog writable 소비자 추가 — ci-repair-20261022 phase2
 
 현재 추가한 직접 import는 아래 두 쌍이다. 기존 전체 패키지 통계를 재측정한 수치로 해석하지 않는다.
