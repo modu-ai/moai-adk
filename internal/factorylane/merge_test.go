@@ -709,6 +709,62 @@ func TestEvaluateMergeTripleRemeasureTreeSurvivesTagSharingTheBranchName(t *test
 	}
 }
 
+// card t1928 (independent audit delta F4): even the qualified
+// refs/heads/<branch> operand is shadowable — gitrevisions rule 3 answers a
+// tag literally NAMED "refs/heads/<branch>" when the exact ref path is
+// absent. The probes must consume the branch's SHA, resolved through
+// `git show-ref --verify --hash` (an exact-path check a tag can never
+// satisfy); an unverifiable branch refuses fail-closed. A SHA cannot be
+// shadowed — this is the terminal fix for the tag-shadow class.
+func TestEvaluateMergeTripleSurvivesATagNamedLikeTheQualifiedBranchRef(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// develop carries one commit; NO refs/heads/WT-card branch exists. A tag
+	// literally named "refs/heads/WT-card" points at develop's tip.
+	write("shared.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("tag", "refs/heads/WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+
+	// Non-vacuity: the qualified operand really does resolve — to the TAG
+	// (rule 3), not to any branch — and the exact-path show-ref --verify the
+	// pin relies on really does refuse it.
+	if revParse("refs/heads/WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the fake tag must shadow the qualified operand at develop's tip")
+	}
+	if _, err := runner.Git("show-ref", "--verify", "--hash", "refs/heads/WT-card"); err == nil {
+		t.Fatalf("fixture: show-ref --verify must refuse a branch that does not exist (the fake tag must not satisfy it)")
+	}
+
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if run.AllPassed {
+		t.Fatalf("the triple passed by probing a FAKE TAG named like the qualified branch ref (no branch exists): %+v", run)
+	}
+	if run.FailedCondition != CheckConflictFree {
+		t.Fatalf("failing condition = %q, want the unverifiable-branch refusal at %q: %+v", run.FailedCondition, CheckConflictFree, run)
+	}
+}
+
 // A progress.md that cannot be read (here: a directory in its place) is a
 // named failure, not a pass — the fail-closed reading path.
 func TestCheckSyncAuditReadErrorFailsClosed(t *testing.T) {
