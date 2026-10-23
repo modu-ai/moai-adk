@@ -89,9 +89,10 @@ func todoClassifySerialSlotConflict(root string, rec *factory.BacklogRecord, car
 	if err != nil {
 		return false, "", fmt.Errorf("todo classify: read the factory cards: %w", err)
 	}
+	holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(context.Background(), db, c) }
 	targetInFlight := false
 	for _, c := range cards {
-		if c.CardID == cardID && factorySerialSlotHeld(c, now) {
+		if c.CardID == cardID && factorySerialSlotHeld(c, now, holderAlive) {
 			targetInFlight = true
 			break
 		}
@@ -102,7 +103,7 @@ func todoClassifySerialSlotConflict(root string, rec *factory.BacklogRecord, car
 	classOf := func(cid string) factory.CardClassification {
 		return factoryQueueClassification(rec, cid)
 	}
-	if !factorySerialInFlightExcluding(cards, classOf, cardID, now, false) {
+	if _, held := factorySerialInFlightExcluding(cards, classOf, cardID, now, false, holderAlive); !held {
 		return false, "", nil
 	}
 	for _, c := range cards {
@@ -112,7 +113,7 @@ func todoClassifySerialSlotConflict(root string, rec *factory.BacklogRecord, car
 		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {
 			continue
 		}
-		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
+		if factorySerialSlotHeld(c, now, holderAlive) && classOf(c.CardID).Mode == factory.ClassModeSerial {
 			return true, c.CardID, nil
 		}
 	}
