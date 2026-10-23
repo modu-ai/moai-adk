@@ -1137,21 +1137,16 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			elig.collect(*r)
 			continue
 		}
-		// The crash-window catch-up (card t1930, card-review r5, F5): the
-		// carry-over is a two-write sequence — RecordPicked, then the fenced
-		// stage/evidence write — and a crash between them leaves this row
-		// existing but empty, which the carry gate (row must be absent) can
-		// no longer see. A row that carries NO stage and NO evidence of its
-		// own is completed idempotently from the same prior-row gate before
-		// the claim; a row that carries either is left alone. A fence
-		// refusal falls through to the claim as-is — the lease edges
-		// re-fence on their own.
+		// The crash-window catch-up (card t1930, card-review r5 F5) shares
+		// the record-and-claim path's seam (r6 R2); the backend-skip test on
+		// the restored candidate (r6 R1) is the selection arms' own — a quiet
+		// skip, the card stays leasable by a lane that can complete it.
 		if c.Stage == "" && c.EvidenceSHA == "" {
-			if prev := factoryPriorCarryCandidate(ctx, db, root, runID, c.CardID); prev != nil {
-				if updated, cerr := db.SetCardStageEvidence(ctx, runID, c.CardID, prev.Stage, prev.EvidenceSHA, c.Version, factoryCardNow()); cerr == nil {
-					c = updated
-				}
+			candidate := factoryPriorCarryCandidate(ctx, db, root, runID, c.CardID)
+			if factoryBackendSkipsCarriedStage(candidate) {
+				continue
 			}
+			c, _ = factoryCompleteCarryOver(ctx, db, runID, c, candidate)
 		}
 		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
@@ -1321,6 +1316,37 @@ func factoryPriorCarryCandidate(ctx context.Context, db *homestate.FactoryDB, ro
 	return &prev
 }
 
+// factoryBackendSkipsCarriedStage applies the REQ-SD-025 selection half to a
+// RESTORED carry candidate (card t1930, card-review r6, R1): the same
+// skip(*prev) test the selection arms already run, so a Codex lane can never
+// lease a carried merge-ready card through any path — the unnominated arms
+// skip quietly, the nominated carry refuses before its first write.
+func factoryBackendSkipsCarriedStage(candidate *homestate.Card) bool {
+	return candidate != nil && factoryNextSkipForBackend()(*candidate)
+}
+
+// factoryCompleteCarryOver is the ONE catch-up seam of the re-lease
+// stage/evidence carry-over (card t1930, card-review r5 F5 / r6 R2): it
+// writes the prior row's stage and evidence onto a picked row that carries
+// neither of its own — whether the row is freshly recorded (the carry-over
+// proper) or a crash-window leftover a retry re-enters (RecordPicked
+// committed, the fenced write died). carried is false and the row unchanged
+// when there is no candidate, the row is not eligible, or the fenced write
+// refuses (a fence refusal falls through — the lease edges re-fence anyway).
+// The caller owns the backend-skip decision on the candidate (R1), because
+// the nominated path renders it as a refusal and the selection arms skip
+// quietly.
+func factoryCompleteCarryOver(ctx context.Context, db *homestate.FactoryDB, runID string, c homestate.Card, candidate *homestate.Card) (homestate.Card, bool) {
+	if candidate == nil || c.State != homestate.CardPicked || c.Stage != "" || c.EvidenceSHA != "" {
+		return c, false
+	}
+	updated, err := db.SetCardStageEvidence(ctx, runID, c.CardID, candidate.Stage, candidate.EvidenceSHA, c.Version, factoryCardNow())
+	if err != nil {
+		return c, false
+	}
+	return updated, true
+}
+
 // factoryPriorWorktreeReusable reports whether the prior row's worktree is
 // the reusable landing tree the claim path would re-enter (the same
 // conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
@@ -1351,9 +1377,15 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// The re-lease carry-over (card t1930, defect ③): a card recorded under a
 	// NEW run is born with empty stage and evidence_sha, orphaning the prior
 	// run's progress (t1828 re-batched read stage "-", t1832's re-lease reset
-	// the row). factoryPriorCarryRow is the single gate both the carry-over
-	// here and the selection skip (card-review r4, F4) read — see its comment.
-	carry := factoryPriorCarryRow(recordCtx, db, root, runID, cardID)
+	// the row). The candidate is read whether or not this run's row exists
+	// yet (card-review r5 F5 / r6 R2): the nominated retry over a crash-window
+	// row — RecordPicked committed, the fenced write died — recovers through
+	// the same seam. The backend-skip test (r6 R1) fires BEFORE T1, so a
+	// refused nominated carry writes nothing.
+	carry := factoryPriorCarryCandidate(recordCtx, db, root, runID, cardID)
+	if factoryBackendSkipsCarriedStage(carry) {
+		return factoryNextClaimRefused(fmt.Errorf("factory next: refused %s: a Codex lane cannot advance a card recorded at %s", factoryRefuseBackendSkip, dash(carry.Stage)))
+	}
 	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
@@ -1366,12 +1398,7 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	if fresh.State != homestate.CardPicked {
 		return homestate.Card{}, false, true, nil
 	}
-	if carry != nil && fresh.Stage == "" && fresh.EvidenceSHA == "" {
-		fresh, err = db.SetCardStageEvidence(recordCtx, runID, cardID, carry.Stage, carry.EvidenceSHA, fresh.Version, factoryCardNow())
-		if err != nil {
-			return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
-		}
-	}
+	fresh, _ = factoryCompleteCarryOver(recordCtx, db, runID, fresh, carry)
 	return factoryNextClaim(ctx, db, root, runID, fresh, lane)
 }
 

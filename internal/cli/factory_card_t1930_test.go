@@ -354,6 +354,59 @@ func TestFactoryNextSkipsCarriedMergeReadyForCodexLanes(t *testing.T) {
 			t.Fatalf("positive control: stage=%q evidence=%q, want the carried merge-ready values", c.Stage, c.EvidenceSHA)
 		}
 	})
+	// card-review r6, Pin A — the same backend-skip test on the two restore
+	// seams: a Codex lane leases a carried merge-ready card through NEITHER
+	// the nominated carry nor the arm-(b) crash-window catch-up.
+	t.Run("codex_nominated_carry_refuses", func(t *testing.T) {
+		root, store := build(t)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", factory.BackendGPT)
+		t.Chdir(root)
+
+		_, _, err := runFactory(t, "next", "--run", carryNewRun, "--card", "t1")
+		if err == nil || !strings.Contains(err.Error(), factoryRefuseBackendSkip) {
+			t.Fatalf("err = %v, want the nominated carry to refuse naming %s", err, factoryRefuseBackendSkip)
+		}
+		db := fcOpen(t, root)
+		_, lerr := db.LoadCard(context.Background(), carryNewRun, "t1")
+		_ = db.Close()
+		if !errors.Is(lerr, homestate.ErrCardNotFound) {
+			t.Fatalf("the refused nominated carry left a row behind (load err = %v); the refusal must precede the first write", lerr)
+		}
+		if got := fcQueueItemState(t, store, "t1"); got != factory.BacklogStateQueued {
+			t.Errorf("queue item state = %s, want back to queued after the compensation", got)
+		}
+	})
+	t.Run("codex_arm_b_catch_up_skips", func(t *testing.T) {
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSelfDispatchYAML(t, root, true)
+		spec := ghfSpec
+		mdQueueSpec(t, store, "t1", &spec)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root,
+			homestate.Card{RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+				Stage: homestate.CardMergeReady, EvidenceSHA: strings.Repeat("ef", 20), WorktreePath: landing},
+			homestate.Card{RunID: carryNewRun, CardID: "t1", State: homestate.CardPicked},
+		)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", factory.BackendGPT)
+		t.Chdir(root)
+
+		out, _, err := runFactory(t, "next", "--run", carryNewRun)
+		sdExit3(t, "carried-stage skip", err)
+		if !strings.Contains(out, "no card is available") {
+			t.Fatalf("stdout = %q, want the no-card line", out)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.State != homestate.CardPicked || c.LeaseHolder != "" || c.Stage != "" {
+			t.Fatalf("a Codex lane leased or stage-carried through the catch-up: state=%s holder=%q stage=%q; zero leases, no restore", c.State, c.LeaseHolder, c.Stage)
+		}
+	})
 }
 
 // TestFactoryNextCompletesTheInterruptedCarryOver — card-review r5 F5 (card
@@ -421,6 +474,25 @@ func TestFactoryNextCompletesTheInterruptedCarryOver(t *testing.T) {
 		c := carryCard(t, root, carryNewRun, "t1")
 		if c.Stage != homestate.CardSyncAudit {
 			t.Fatalf("the catch-up overwrote an already-carried row: stage=%q, want the row's own %s", c.Stage, homestate.CardSyncAudit)
+		}
+	})
+	// card-review r6, Pin B — the nominated retry over the same crash-window
+	// row recovers stage+evidence through the shared catch-up seam.
+	t.Run("nominated_retry_recovers_the_interrupted_carry_over", func(t *testing.T) {
+		root, _ := build(t)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun, "--card", "t1"); err != nil {
+			t.Fatalf("nominated retry over the interrupted carry-over: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.State != homestate.CardLeased {
+			t.Fatalf("card state = %s, want leased", c.State)
+		}
+		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
+			t.Fatalf("the nominated retry did not recover the interrupted carry-over: stage=%q evidence=%q, want %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
 		}
 	})
 }
