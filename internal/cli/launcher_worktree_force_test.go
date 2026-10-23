@@ -40,6 +40,24 @@ func newRepoWithWorkerWorktree(t *testing.T) (string, string) {
 	runGitOrSkip(t, root, "add", "seed.txt")
 	runGitOrSkip(t, root, "commit", "-m", "seed")
 
+	// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-014): the cleanup guard
+	// removes a worker tree only when its branch is integrated and landed
+	// on the configured integration ref, so the fixture configures the
+	// target and lands main on a remote — the worker branch sits at the
+	// same seed commit and is therefore in the removable state.
+	cfgDir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	cfg := "git_strategy:\n  mode: manual\n  manual:\n    workflow: git-flow\n    develop_branch: main\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte(cfg), 0o600); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
+	remote := filepath.Join(t.TempDir(), "origin.git")
+	runGitOrSkip(t, root, "init", "-q", "--bare", remote)
+	runGitOrSkip(t, root, "remote", "add", "origin", remote)
+	runGitOrSkip(t, root, "push", "-q", "-u", "origin", "main")
+
 	wtPath := filepath.Join(root, ".claude", "worktrees", "worker-SPEC-TEST-001")
 	runGitOrSkip(t, root, "worktree", "add", "-b", "worker-branch", wtPath)
 

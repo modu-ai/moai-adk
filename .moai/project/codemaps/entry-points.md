@@ -1,6 +1,17 @@
 # 진입점
 
-## 현재 진입점 보완 — 2fccfd2 (card t1931 후속 판)
+## 현재 진입점 보완 — 656e4d3 (card t1640 판)
+
+- `moai worktree list [--json]`(신규, `internal/cli/worktree/list.go`) — 등록 트리의 클래스·루트·브랜치·더티·미푸시 커밋 수·앵커 여부 9필드 읽기 전용 재고. 아무것도 쓰지 않는다.
+- `moai worktree migrate [--apply|--verify|--rollback]`(신규, `internal/cli/worktree/migrate.go`) — moai-made 트리를 홈 루트로 옮기는 이관 엔진(기본 plan). 트리별 매니페스트→인텐트→`git worktree move`→상태파일 재키→팩토리 카드 재결속→매니페스트 대조 순이며 저널은 `pending`/`settle`로 죽은 실행의 수렴을 보장한다.
+- `moai worktree new`·런처의 `--branch` 암(`moai cc -w <name> --branch <existing>` — REQ-WHR-005b, `worktree_branch_flag.go`)·팩토리 카드 머티리얼라이저 — 신규 트리가 홈 루트(`<MoaiHome>/worktrees/projects/<key>/<name>`)에 착지한다. 반면 런처의 짧은 이름 `-w`(`moai cc/glm/codex -w <name>`)는 **생성하지 않는다** — 기존 홈 루트 트리면 chdir해 `-w` 선택을 argv에서 벗기고, 어느 뿌리에도 없는 이름은 REQ-WHR-006 브랜치-Y로 이름 그대로 통과한다(`TestLauncherShortName_{,Glm_}NoExistingTree_PassesThrough`가 고정 — 델타 감사 F5 정정).
+- `moai factory next` — 착지 베이스가 임대 섹션 전 ctx 주입으로 고정되고(REQ-WHR-007) 외래 트리 거부·carry-over가 양 리프 후보를 본다.
+- `moai factory status` — 카드 나이 경보 블록(card t1838, 기본 OFF)이 추가됐다. 읽기 전용.
+- `moai worktree done` — 티어 판정이 공유 분류기(`Classify`+`OwnerMarkerOf`) 경유로 바뀌어 홈 루트의 moai-made 트리를 `WT-` 브랜치 없이도 인정한다.
+- `moai update` — 작업트리 통합이 `worktree.RunUpdateConsolidation` 위임으로 수렴(D1 경계: 최초 실제 적용 전 수리·수용 선행 필요).
+- 등록 수치(t1640 판 미측정 — 이전 판 기준: 비테스트 253회/78파일, `moai mcp-server` 도구 35개)는 본 판에서 재측정하지 않았다(간내 요건 밖 — Gaps로 기록).
+
+## 이전 진입점 보완 — 2fccfd2 (card t1931 후속 판)
 
 - `moai factory rebind-evidence <card>`가 이 창에서 등록됐다(card t1930 수리, `internal/cli/factory_card_rebind.go`의 cobra 등록) — 카드의 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 다시 묶는 정식 동사로, 감사 행(card_metadata_events)이 커밋 뒤 함께 남는다.
 - 등록 수치(t1931 후속 판 재측정, 측정 명령 `git grep -c -F 'AddCommand(' <rev> -- internal/cli` — `.go` 파일만 한정한 뒤 `_test.go`를 제외한다: 미한정 시 testdata JSONL 3개·TOML 2개의 본문 5건이 섞인다): **비테스트 253회 / 78파일** — t1931 판의 252회 대비 +1(rebind-evidence 등록), 파일 수 동일. **테스트 포함 274회 / 90파일**. `rootCmd.AddCommand(` 전체 71회, `root.go` `init()` 29회(동일).

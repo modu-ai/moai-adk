@@ -79,7 +79,7 @@ Main Repository (project_root/):
 - Source code, docs, and configuration files
 - Central worktree registry file
 
-Worktree Root ({repo}/.moai/worktrees/{project-name}/):
+Worktree Root (<MoaiHome>/worktrees/projects/<project-key>/):
 - Contains all worktrees for the project
 - Each SPEC has dedicated subdirectory
 - Independent environment per worktree

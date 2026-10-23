@@ -47,3 +47,9 @@ func realpathPlatform(dir string) string {
 	}
 	return cur
 }
+
+// caseFoldsPlatform reports whether the platform's volumes fold path case
+// for the containment tests (darwin APFS: yes — see realpathPlatform).
+func caseFoldsPlatform() bool {
+	return true
+}

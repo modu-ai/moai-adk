@@ -229,6 +229,17 @@ func cardIDFromPath(dir string) string {
 		if parent == dir {
 			return ""
 		}
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-008): the home-root tier
+		// <MoaiHome>/worktrees/projects/<project-key>/<name> resolves the
+		// card id to the tree name — the walk's parent is the project key,
+		// never the card.
+		if filepath.Base(filepath.Dir(parent)) == "projects" && filepath.Base(filepath.Dir(filepath.Dir(parent))) == worktreeRootDirName {
+			base := filepath.Base(dir)
+			if base == "." || base == string(filepath.Separator) {
+				return ""
+			}
+			return base
+		}
 		if filepath.Base(parent) == worktreeRootDirName {
 			base := filepath.Base(dir)
 			if base == "." || base == string(filepath.Separator) {

@@ -505,3 +505,42 @@ func TestDecideJevFallback(t *testing.T) {
 		}
 	}
 }
+
+// TestDecide_JevNoticeSurfaces — card t1803 (D21 re-scope): the DeciderLLMJev
+// branch carries the at-most-one notice line out on DecideResult.JevNotice —
+// computed once from the one call, in the R2 fallback and the answered
+// sub-branch alike — and every other decider path leaves it empty.
+func TestDecide_JevNoticeSurfaces(t *testing.T) {
+	t.Run("answered with a change notice", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jevAnswer("approve", 0.8)
+		f.jevRes.Notice = "jev now answers as jev-9.9"
+		res := f.mustDecide(f.input("llm+jev", "approve", true))
+		if res.JevNotice != "jev now answers as jev-9.9" {
+			t.Errorf("JevNotice = %q, want the change notice", res.JevNotice)
+		}
+	})
+	t.Run("fallback carries its unavailability notice", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jev.Result{Availability: jev.Unreachable, Condition: "no network"}
+		res := f.mustDecide(f.input("llm+jev", "approve", true))
+		if res.Rule != "R2" || res.FallbackReason != "jev_call_failed" {
+			t.Fatalf("rule %q fallback %q, want R2 jev_call_failed", res.Rule, res.FallbackReason)
+		}
+		if res.JevNotice != "jev unavailable (unreachable): no network" {
+			t.Errorf("JevNotice = %q, want the unavailability notice", res.JevNotice)
+		}
+	})
+	t.Run("decider llm leaves it empty", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jevAnswer("approve", 0.8)
+		f.jevRes.Notice = "jev now answers as jev-9.9"
+		res := f.mustDecide(f.input("llm", "approve", true))
+		if res.JevNotice != "" {
+			t.Errorf("JevNotice = %q on the decider-llm path, want empty", res.JevNotice)
+		}
+		if f.jevCalls != 0 {
+			t.Errorf("Jev called %d times under decider llm", f.jevCalls)
+		}
+	})
+}

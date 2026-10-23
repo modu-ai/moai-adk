@@ -21,10 +21,10 @@ var WorktreeCmd = &cobra.Command{
 	Aliases: []string{"wt"},
 	Short:   "Git worktree management",
 	GroupID: "tools",
-	Long: `Manage Git worktrees for parallel SPEC development: new, sync, remove, clean, sweep, recover, done, hoist, plus the guard verbs snapshot, verify and restore.
+	Long: `Manage Git worktrees for parallel SPEC development: new, sync, remove, clean, sweep, recover, done, hoist, list, migrate, plus the guard verbs snapshot, verify and restore.
 
 Create a harness-neutral L1 worktree through MoAI's shared materializer:
-  moai worktree new <name>     create .moai/worktrees/<name>
+  moai worktree new <name>     create <MoaiHome>/worktrees/projects/<project-key>/<name>
 
 Entering an existing worktree remains the launchers' job:
   moai cc -w <absolute-path>  work inside an existing MoAI worktree
@@ -47,6 +47,8 @@ func init() {
 		newRecoverCmd(),
 		newDoneCmd(),
 		newHoistCmd(),
+		newListCmd(),
+		newMigrateCmd(),
 		newGuardSnapshotCmd(),
 		newGuardVerifyCmd(),
 		newGuardRestoreCmd(),

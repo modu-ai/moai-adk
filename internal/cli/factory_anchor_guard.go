@@ -33,6 +33,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // allowCardAnchorFlag is the documented explicit override of the leader anchor
@@ -95,12 +96,18 @@ func shortWorktreeRoot(root string) string {
 
 // resolveWorktreeLaunchTarget maps a worktree option value to the tree path the
 // backend would launch into: an absolute path names the tree directly; a short
-// name resolves under the launch project root's .claude/worktrees/. A value
-// naming no existing tree cannot be an anchor — anchorBranchOfTree reads it as
-// empty.
+// name resolves across the three roots (SPEC-WORKTREE-HOME-ROOT-001 M3,
+// REQ-WHR-007) and maps to its single tree, while a name at no tree keeps the
+// legacy .claude spelling and an ambiguous name falls back to it (the anchor
+// guard reports what it can; REQ-WHR-022's no-guessing rule binds the
+// launching lookups). A value naming no existing tree cannot be an anchor —
+// anchorBranchOfTree reads it as empty.
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
+	}
+	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
+		return cands[0].Path
 	}
 	return filepath.Join(shortWorktreeRoot(root), ".claude", "worktrees", value)
 }

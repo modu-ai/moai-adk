@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
@@ -94,9 +95,29 @@ func TestSessionWorktreeBaseOperandAppendedWhenSet(t *testing.T) {
 
 // TestSessionWorktreeNoBaseWhenConfigEmpty: an empty configured value reaches
 // the add seam as an empty base.
+// m4InitRepoInPlace turns dir into a real git repository in place — the
+// resolver inside materializeSessionWorktree needs one
+// (SPEC-WORKTREE-HOME-ROOT-001 M2/M3 destination swap).
+func m4InitRepoInPlace(t *testing.T, dir string) {
+	t.Helper()
+	cmd := exec.Command("git", "-C", dir, "init", "-q", "--template=", "-b", "main")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init %s: %v\n%s", dir, err, out)
+	}
+}
+
+// m4SandboxHome sandboxes MOAI_HOME so resolver assignments land in a temp
+// home, never the real ~/.moai.
+func m4SandboxHome(t *testing.T) {
+	t.Helper()
+	t.Setenv(paths.EnvHome, t.TempDir())
+}
+
 func TestSessionWorktreeNoBaseWhenConfigEmpty(t *testing.T) {
 	testguard.RedirectHome(t)
 	root := t.TempDir()
+	m4InitRepoInPlace(t, root)
+	m4SandboxHome(t)
 	writeWorktreeBaseConfig(t, root, "")
 
 	var gotBase string
@@ -126,6 +147,8 @@ func TestSessionWorktreeNoBaseWhenConfigEmpty(t *testing.T) {
 func TestSessionWorktreeUnresolvableBaseFallsBackToNoOperand(t *testing.T) {
 	testguard.RedirectHome(t)
 	root := t.TempDir()
+	m4InitRepoInPlace(t, root)
+	m4SandboxHome(t)
 	writeWorktreeBaseConfig(t, root, "no-such-branch")
 
 	var gotBase string
@@ -153,6 +176,8 @@ func TestSessionWorktreeUnresolvableBaseFallsBackToNoOperand(t *testing.T) {
 func TestSessionWorktreeSharedPredicateResolverInvokedOnce(t *testing.T) {
 	testguard.RedirectHome(t)
 	root := t.TempDir()
+	m4InitRepoInPlace(t, root)
+	m4SandboxHome(t)
 	writeWorktreeBaseConfig(t, root, "develop")
 
 	var resolvableArgs []string

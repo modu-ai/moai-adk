@@ -15,6 +15,8 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // errBranchMaterializeFailed is the sentinel the materialize seam returns to
@@ -173,14 +175,20 @@ func TestResolveWorktreeExistingBranch_MaterializeErrorPropagates(t *testing.T) 
 }
 
 // TestLauncherWorktreeMaterializeReal_Integration runs the real materializer
-// against a throwaway repository and pins the contract: the tree exists with
-// the existing branch checked out, the registry carries the entry, a missing
+// against a throwaway repository and pins the contract: the tree exists — at
+// the home-root destination the resolver answers (SPEC-WORKTREE-HOME-ROOT-001
+// M2, REQ-WHR-005b), no longer the legacy .claude/worktrees root — with the
+// existing branch checked out, the registry carries the entry, a missing
 // branch fails without creating anything, and a second run re-enters
 // idempotently.
 func TestLauncherWorktreeMaterializeReal_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("real-git integration test")
 	}
+	// Redirect MOAI_HOME so the resolver's home root lands in this test's own
+	// scratch tree and no assertion can touch the operator's real trees (the
+	// m2_home_root_creation_test.go pattern).
+	t.Setenv(paths.EnvHome, t.TempDir())
 	repo, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatalf("resolve symlinks: %v", err)
@@ -200,9 +208,15 @@ func TestLauncherWorktreeMaterializeReal_Integration(t *testing.T) {
 		t.Fatalf("materialize: %v", merr)
 	}
 
-	treePath := filepath.Join(repo, ".claude", "worktrees", "develop")
+	treePath, perr := worktreeroot.PathFor(repo, "develop")
+	if perr != nil {
+		t.Fatalf("resolve home-root destination: %v", perr)
+	}
 	if _, statErr := os.Stat(treePath); statErr != nil {
 		t.Fatalf("worktree not created at %s: %v", treePath, statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(repo, ".claude", "worktrees", "develop")); statErr == nil {
+		t.Fatal("legacy .claude/worktrees/develop must not be created (the M2 destination swap)")
 	}
 	out, cmdErr := exec.Command("git", "-C", treePath, "symbolic-ref", "--short", "HEAD").Output()
 	if cmdErr != nil {
@@ -229,7 +243,11 @@ func TestLauncherWorktreeMaterializeReal_Integration(t *testing.T) {
 	if merr := launcherWorktreeMaterializeReal(repo, "typo-tree", "nonexistent-branch", &notice); merr == nil {
 		t.Fatal("expected error for nonexistent branch")
 	}
-	if _, statErr := os.Stat(filepath.Join(repo, ".claude", "worktrees", "typo-tree")); statErr == nil {
+	typoPath, perr := worktreeroot.PathFor(repo, "typo-tree")
+	if perr != nil {
+		t.Fatalf("resolve typo-tree destination: %v", perr)
+	}
+	if _, statErr := os.Stat(typoPath); statErr == nil {
 		t.Fatal("typo-tree must not be created for a missing branch")
 	}
 

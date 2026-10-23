@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // The F1 factory-record CLI tests. Every test builds its own project root
@@ -37,6 +38,10 @@ func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	}
 	t.Setenv("GIT_CONFIG_GLOBAL", cfg)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: the factory-next flow resolves the
+	// card's landing directory through the home projects root — the
+	// assignment must land in a sandbox, never the real ~/.moai.
+	t.Setenv(paths.EnvHome, t.TempDir())
 	root, store := todoFixture(t)
 	prev := factoryCardNow
 	factoryCardNow = func() time.Time { return fcNow }

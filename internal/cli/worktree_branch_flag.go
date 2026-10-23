@@ -39,6 +39,7 @@ import (
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // launcherWorktreeAgentName marks registry entries created by the launcher's
@@ -106,7 +107,15 @@ func launcherWorktreeMaterializeReal(projectRoot, name, branch string, warn io.W
 		return fmt.Errorf("--branch: branch %q does not exist; this flag checks out an existing branch and never creates one", branch)
 	}
 
-	treePath := filepath.Join(projectRoot, ".claude", "worktrees", name)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005b): the destination comes
+	// from the resolver — <MoaiHome>/worktrees/projects/<project-key>/<name> —
+	// not the legacy .claude/worktrees root. The existing-branch check, the
+	// idempotent re-entry and the registration are unchanged; the shared
+	// materializer's new-branch guarantees are deliberately NOT added here.
+	treePath, err := worktreeroot.PathFor(projectRoot, name)
+	if err != nil {
+		return fmt.Errorf("--branch: resolve home-root destination: %w", err)
+	}
 	if _, statErr := os.Stat(treePath); statErr == nil {
 		// Idempotent re-entry: report and reuse. A failed notice write must
 		// not abort an otherwise valid launch, so it degrades to the log.

@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — 2fccfd2 (card t1931 후속 판)
+## 현재 의존성 측정 — 656e4d3 (card t1640 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 **175**개(+2), 모듈 내부 import 쌍은 **530**개(+10)다 — t1931 후속 판 대비 움직임은 전부 worktree-home-root와 agentemit 진입점이 만든 새 경계다(델타 감사 F2 정정 — 초판 174·529는 파서 결함). **신규 패키지 경계 2개**: `internal/worktreeroot`(잎 — stdlib+`internal/paths`만 임포트)와 `internal/template/agentemit/cmd/agents-emit`(card t1649). `internal/cli/worktree`·`internal/template/agentemit` 본체는 기준 커밋에 존재한다(F3 정정). **검증된 신규 패키지 쌍 5개**(jq 유니크 쌍 집계 기계 산출): `internal/cli`→`internal/worktreeroot`, `internal/cli/worktree`→`internal/worktreeroot`, `internal/factory`→`internal/worktreeroot`, `internal/worktreeroot`→`internal/paths`, `internal/template/agentemit/cmd/agents-emit`→`internal/template/agentemit`. 나머지 +5쌍은 기존 패키지 간 신규 쌍으로 기준 커밋과의 쌍 집합 대조 없이는 신규성을 검증할 수 없어 이 판에서 열거하지 않는다(Gaps). **config→worktreeroot 엣지는 없다**(F1 정정 — 리졸버가 핀을 자체 스캔으로 읽고 config 쪽 로더는 의존 없이 병존). **제거된 엣지**: `claudeNativeWorktreeSubdir` 상수 소비 — `.claude/worktrees`는 리졸버 Candidates의 legacy-claude 폴백으로만 남는다. **불변 경계**: `internal/hook`은 `worktreeroot`를 임포트하지 않는다 — moai-made 홈 루트 생성은 internal/cli 리졸버로 수렴하지만 훅의 생성기(`worktree_create.go`)는 legacy `.claude/worktrees`에 claude-native 트리를 직접 만든다(리졸버 미경유 — 델타 감사 F7 정정). 이 판 측정의 fan-out 상위는 cli·hook·web, fan-in 상위는 config·defs·atomicfile 순으로 구성이 유지된다.
+
+## 이전 의존성 측정 — 2fccfd2 (card t1931 후속 판)
 
 Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — t1931 판과 같은 플랫폼의 재측정으로, 창(8c36a7904b..2fccfd2b34)이 패키지나 import 경계를 만들지 않았다: 7개 신규 파일이 전부 기존 패키지(`internal/cli`·`internal/runtime`)에 들어왔다. 이 판 측정(개별 패키지 쌍 기준)의 fan-out 상위는 cli·hook·web 순이고 fan-in 상위는 config·defs·atomicfile 순이다 — 구성은 t1931 판과 같다. `go.mod`·`go.sum`은 **이 창에서 움직였다**: dependabot #1839가 직접 의존성 6개(gomod-minor-patch 그룹)를 갱신(go.mod 7행)하고 재해시(go.sum 21행)했으며, #1840이 `actions/checkout` 4→7로 올렸다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
 
