@@ -1,6 +1,20 @@
 # 패키지 모듈 상세
 
-## 현재 변경 경계 — 8c36a79 (card t1931 판)
+## 현재 변경 경계 — 2fccfd2 (card t1931 후속 판)
+
+기준 `8c36a79` 이후의 설명 대상 소스 49개를 현재 트리와 대조했다(추가 7·수정 42·삭제 0; testdata·테스트 제외). 창은 여덟 커밋(#1900 t1930 병합·#1901 t1929·#1898 t1536·#1894 t1632·#1903 t1910 문서·dependabot 2건)이 운반했고 신규 패키지는 없다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/cli/factory_card_rebind.go`(신규) · `internal/cli/factory_card.go` | `moai factory rebind-evidence` — 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 version-fenced 재결속하고 감사 행을 남긴다(card t1930 ④). 같은 창의 `factory_card.go`에는 merged-PR 관측 분기(스쿼시 병합 뒤 readiness를 건너뛰는 pr-open 직행)와 re-lease carry-over의 공유 seam(`factoryCompleteCarryOver`·`factoryBackendSkipsCarriedStage` — Codex 레인이 carried merge-ready를 임대하지 않게 하는 백엔드 skip 포함)이 들어왔다. |
+| `internal/cli/mcp_refusal.go`(신규) · `mcp_server_call_log.go`(신규) · `internal/mcp/*` | MCP neutrality(card t1632, #1894) — moai MCP 도구의 거부 응답을 구조화해 돌리고 호출 로그를 남긴다. 도구 카탈로그 35개는 불변. |
+| `internal/runtime/audit_cache_state.go` · `regular_file.go` · `regular_open_nofollow.go` · `regular_open_stat.go`(신규 4파일) | 감사 캐시 상태 판독의 regular-file 경계(card t1536, #1898) — NOFOLLOW 열기와 stat 검증으로 감사 대상 파일이 심벌릭 링크로 치환되는 경로를 좁힌다. release pipeline 가드의 일부로 `internal/runtime` 패키지는 기존 그대로다. |
+| `internal/hook/*`(2파일) · `internal/auditreceipt/*`(2파일) · `internal/homestate/*` · `internal/factorymsg/*` | t1929 spec-lint 수리·t1930 carry-over 정리의 인접 배선 — 각 패키지의 기존 행에 더해졌다. |
+| `internal/template/templates/**`(2파일) · `internal/web/assets`(1파일) | 배포 템플릿·웹 자산의 창 동기화 — 런타임 배선이 아니라 배포 내용물이다. |
+
+`internal/cli`의 27개 수정 중 t1929 spec-lint 수리분(5개 SPEC)과 t1930·t1632 상기 항목 외는 삭제된 표면을 가리키던 참조 정리다. dependabot 창(go.mod 7행·go.sum 21행)은 소스 책임 이동이 아니다.
+
+## 이전 변경 경계 — 8c36a79 (card t1931 판)
 
 기준 `d5c083e` 이후의 설명 대상 소스 27개를 현재 트리와 대조했다(추가 1·수정 26·삭제 0; testdata 경로는 `mx.IsDescribedWorthy` 술어가 제외한다 — 신규 `internal/sandbox/testdata/echo`는 시험 전용 testdata로 서술 대상이 아니다). 창은 여섯 병합(#1893 t1828·#1895 t1832·#1892 t1928·#1897 t1894·#1867 t1913·#1896 나머지)이 운반했고 신규 패키지는 없다.
 
