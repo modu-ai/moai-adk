@@ -71,13 +71,16 @@ func TestCodexAudit_SendsTheCapturedMergeBaseNotABranchName(t *testing.T) {
 	}
 }
 
-// TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase keeps the one shape
-// the original t1426 pin guarded that stays true: turn/start carries no target
-// OBJECT (the prompt is the carrier). What changed is REQ-MN-019
+// TestCodexAudit_AdversarialBaseBranchSendsNoTargetObjectAndNamesTheBase pins
+// two shapes: turn/start carries no target OBJECT (the prompt is the carrier,
+// the one shape the original t1426 pin guarded that stays true), and the
+// result's review_base is NON-empty. The second is REQ-MN-019
 // (SPEC-MCP-NEUTRALITY-001): an adversarial audit asked for baseBranch APPLIES
 // the resolved target in the prompt, so the result NAMES the base it judged
 // (TestCodexAudit_AdversarialBaseBranchAppliesTheTarget pins the prompt side).
-func TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase(t *testing.T) {
+// The test was previously named ...ClaimsNoReviewBase, the opposite of the
+// review_base assertion (card t1632 audit N3).
+func TestCodexAudit_AdversarialBaseBranchSendsNoTargetObjectAndNamesTheBase(t *testing.T) {
 	repo, _ := newIntegrationBaseRepo(t, "develop")
 	sess := withCodexSession(t, codexSessionScript("clean change, no findings"))
 

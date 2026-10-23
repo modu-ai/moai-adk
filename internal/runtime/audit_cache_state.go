@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,12 +159,35 @@ func (c *StateAuditCache) Store(specID, hash string, result *AuditResult) {
 	_ = c.StoreVerdict(specID, hash, result)
 }
 
-// fileSHA256 computes the hex SHA-256 of a file's bytes.
+// maxVerdictFileBytes bounds how much of a verdict file is read as evidence;
+// a verdict report is prose measured in kilobytes, so a few MiB is ample.
+const maxVerdictFileBytes = 4 << 20
+
+// fileSHA256 computes the hex SHA-256 of a verdict file's bytes. Only a
+// REGULAR file is read (card t1632 card-review P2-B): a FIFO or device blocks
+// os.ReadFile, and a symlink is refused unopened — the policy of
+// internal/auditreceipt, where a link is bound as a link and never followed.
+// The read is capped at maxVerdictFileBytes; a larger file is refused.
 func fileSHA256(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	info, err := os.Lstat(path)
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("%s is not a regular file (mode %s)", path, info.Mode().Type())
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	n, err := io.Copy(h, io.LimitReader(f, maxVerdictFileBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if n > maxVerdictFileBytes {
+		return "", fmt.Errorf("%s exceeds the %d-byte verdict file limit", path, maxVerdictFileBytes)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

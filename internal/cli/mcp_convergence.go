@@ -644,6 +644,11 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if target == codexTargetBaseBranch && deltaBaseFromContext(ctx) == "" {
 		baseRoot := strings.TrimSpace(projectRoot)
 		if baseRoot == "" {
+			// With an empty projectRoot the base is resolved in resolveProjectDir()
+			// but the leg sends no cwd (the pre-existing SPEC-MCP-WORKTREE-ROOT-001
+			// REQ-2 rule), so the SHA may belong to a different tree than the one
+			// codex starts in. Reachable only by a caller that names no project_root,
+			// which the worktree doctrine forbids (card t1632 audit N5).
 			baseRoot = resolveProjectDir() // the resolver performGLMAudit falls back to
 		}
 		b, resolveErr := resolveReviewBase(baseRoot)

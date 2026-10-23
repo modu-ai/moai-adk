@@ -340,16 +340,18 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	// the git-flow config and the queue are read at the parent checkout on both surfaces (card t1680 (a)).
 	root := factoryRootOf(launch)
 	// The REQ-MN-003 operator gate is the ONE predicate both surfaces run
-	// (factoryDecideGate, M2 Part A absorb), split here by CHANNEL (card t1632
-	// main-absorb r9, the t1914 parity contract winning on the boundary class):
-	// a lane session keeps the CLI-identical boundary refusal (factoryDecideLaneRefusal)
-	// on the ERROR channel, exactly as main's handler and the CLI verb surface it,
-	// while an unmarked session's unknown-attribution refusal stays a structured
-	// result (REQ-MN-001). A positive operator mark admits.
-	if factoryLaneRefusal() {
-		return toolErr("factory_decide", factoryDecideLaneRefusal()), nil
-	}
+	// (factoryDecideGate, M2 Part A absorb), in the SAME order: a positive
+	// operator mark admits FIRST (card t1632 card-review P2-A: an operator-marked
+	// session on the Codex backend trips factoryLaneRefusal() on the backend
+	// value alone, and the CLI verb admits it), then a lane session keeps the
+	// CLI-identical boundary refusal (factoryDecideLaneRefusal) on the ERROR
+	// channel (card t1632 main-absorb r9, the t1914 parity contract), and an
+	// unmarked session's unknown-attribution refusal stays a structured result
+	// (REQ-MN-001).
 	if !mcpOperatorAuthority() {
+		if factoryLaneRefusal() {
+			return toolErr("factory_decide", factoryDecideLaneRefusal()), nil
+		}
 		return toolRefusal(mcpIdentityRefusal(factoryUnknownAttributionError("factory decide").Error())), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))

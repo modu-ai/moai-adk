@@ -568,6 +568,48 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			t.Errorf("decided rows diverge: cli %+v vs mcp %+v", a, b)
 		}
 	})
+
+	// Card t1632 card-review P2-A: a POSITIVE operator mark wins over the lane
+	// refusal on BOTH surfaces (factoryDecideGate admits it first). The backend
+	// variable naming the Codex harness trips factoryLaneRefusal() on its own,
+	// so an operator-marked session on that backend is the case the two
+	// surfaces' gate order decides.
+	t.Run("factory_decide: operator mark on the Codex backend is admitted on both surfaces", func(t *testing.T) {
+		build := func(t *testing.T) string {
+			t.Helper()
+			sdClearLaneEnv(t)
+			root, store := sdMoaiFixture(t)
+			fcQueue(t, store, factory.BacklogStatePicked)
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
+			return root
+		}
+		operatorOnCodex := func(t *testing.T) {
+			t.Helper()
+			t.Setenv(config.EnvFactoryRole, config.FactoryRoleOperator)
+			t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
+		}
+		rootA := build(t)
+		operatorOnCodex(t)
+		if !factoryLaneRefusal() {
+			t.Fatal("precondition: the Codex backend value must trip factoryLaneRefusal(), or this case measures nothing")
+		}
+		_, _, cliErr := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun)
+		rootB := build(t)
+		operatorOnCodex(t)
+		mcpOut, mcpErr := sdCallTool(t, handleFactoryDecide, map[string]any{
+			"card": "t1", "gate": "kickoff", "choice": "approve", "run": fcRun, "project_root": rootB,
+		})
+		if (cliErr == nil) != (mcpErr == nil) {
+			t.Fatalf("surfaces diverge for an operator-marked Codex-backend session: cli err = %v, mcp err = %v (out %q)", cliErr, mcpErr, mcpOut)
+		}
+		if cliErr != nil {
+			t.Fatalf("cli refused an operator-marked session: %v", cliErr)
+		}
+		a, b := fcCard(t, rootA, "t1"), fcCard(t, rootB, "t1")
+		if a.State != b.State || a.Version != b.Version || a.Stage != b.Stage {
+			t.Errorf("decided rows diverge: cli %+v vs mcp %+v", a, b)
+		}
+	})
 }
 
 // AC-SD-014 — `factory_next`, `factory_stage`, and `factory_complete`

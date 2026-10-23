@@ -1191,8 +1191,18 @@ func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params ma
 // workflow.audit.codex pin first (REQ-AMP-002), falling back to the legacy
 // backend default when the pin is absent/empty/unservable (REQ-AMP-004).
 func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
-	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
+	resolve := resolveCodexAuditModelEffort
+	if me, ok := ctx.Value(codexAuditModelCtxKey{}).(config.ModelEffort); ok {
+		// The caller resolved the pin once and recorded it as provenance: the
+		// wire carries that same value, never a second read (card t1632 D1).
+		resolve = func(map[string]any) (config.ModelEffort, error) { return me, nil }
+	}
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolve)
 }
+
+// codexAuditModelCtxKey carries the {model, effort} handleCodexAudit already
+// resolved, so provenance and the transmitted model are the same read.
+type codexAuditModelCtxKey struct{}
 
 // codexReviewSessionParams returns the session-open params for a review path,
 // carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
@@ -2354,6 +2364,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// pin the request starts under — re-reading it after a minutes-long audit
 	// would record a model that did not run if the pin was edited meanwhile.
 	auditorModel, auditorModelErr := resolveCodexAuditModelEffort(params)
+	if auditorModelErr == nil {
+		// The RPC (and its could-not-run retry) transmits this same value.
+		ctx = context.WithValue(ctx, codexAuditModelCtxKey{}, auditorModel)
+	}
 
 	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
