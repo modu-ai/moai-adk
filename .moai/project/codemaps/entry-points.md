@@ -2,7 +2,7 @@
 
 ## 현재 진입점 보완 — 2bfd83175d
 
-> 병합 후 정정(card t1632, 세 번째 main 흡수 2026-10-23): 이 절의 41개는 t1909(codex_task·codex_job_* 4개 제거) 병합 전 측정값이다. 병합 뒤 카탈로그 재측정은 **37개**(`wantCatalogSize=37` — main 35 + 이 카드의 `todo_claim`·`codex_role_audit_cancel`)이고, `project_root`를 받는 도구는 32개다.
+> 병합 후 정정(card t1632, 세 번째 main 흡수 2026-10-23): 이 절의 41개는 t1909(codex_task·codex_job_* 4개 제거) 병합 전 측정값이다. 병합 뒤 카탈로그 재측정은 **37개**(`wantCatalogSize=37` — main 35 + 이 카드의 `todo_claim`·`codex_role_audit_cancel`)이고, `project_root`를 받는 도구는 32개다. 병합 트리 재측정(비테스트, 2026-10-23): `AddCommand(` **252**회(등록 파일 **78**개), `rootCmd.AddCommand(` **68**회, `root.go` **29**회.
 
 카드 t1632 착지 창(SPEC-MCP-NEUTRALITY-001 — main-base draft PR #1894, 2026-10-23). 앵커 `bf0a35f10` 이후 3.2 배치 착지분과 본 카드를 반영했다. **MCP 도구는 이 트리 재측정 41개**(`TestMoaiMCPTools_CatalogSize` 핀 — `wantCatalogSize=41`): bf0a35f10 창의 39개에서 t1632가 `todo_claim`(REQ-MN-006, 게이트 노출 20-tool 목록 합류)과 `codex_role_audit_cancel`(REQ-MN-014, role-audit cancel 표면)을 추가했다. 등록 수치는 이 트리 재측정에서 비테스트 `AddCommand(` 247→**260**, `rootCmd.AddCommand(` 68→**70** — 3.2 배치 착지분(§ `modules.md` r8 이전 창의 t1920·t1840 등)과 본 카드의 catalogue·게이트 등록이 섹여 움직였다. 문서 4로케일·`.claude/rules` 카탈로그·템플릿 미러 2벌도 41-tool로 정렬됐고(카드 CI 수리 창), project_root 단락의 개수 문언(Thirty-six tools·Five of the thirty-six)이 배포본과 일치함을 `TestBindingLedgerIntegrity`가 확인했다. 수리 체인 r1~r8의 창별 내역은 § progress.md(E2)와 `.moai/reports/t1632/` 영수증이 운반한다.
 
