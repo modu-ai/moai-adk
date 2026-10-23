@@ -1496,7 +1496,7 @@ func TestAutoMergeWiresGuardAndGate(t *testing.T) {
 			files := idx(func(s amStep) bool { return s.ID == "files" })
 			review := idx(func(s amStep) bool { return s.ID == "review" })
 			merge := idx(func(s amStep) bool { return s.Name == amMergeName })
-			if head < 0 || head >= checks || checks >= files || files >= review || review >= merge || merge != len(wf.steps())-1 {
+			if head < 0 || head >= checks || checks >= files || files >= review || review >= merge || merge != len(wf.steps())-2 || idx(func(s amStep) bool { return s.ID == "status" }) != len(wf.steps())-1 {
 				t.Fatalf("step order head=%d checks=%d files=%d review=%d merge=%d (of %d)", head, checks, files, review, merge, len(wf.steps()))
 			}
 		}},
@@ -3458,6 +3458,24 @@ func TestAutoMergeCommentPathSameChainOnce(t *testing.T) {
 			t.Fatalf("read-native-review calls %v sleeps %d, want exactly one pass with --wait-closed false and no sleep", calls, r.sleeps())
 		}
 	})
+	// The 60-pass loop applies to the workflow_run path only: on the comment path a list that cannot be read ends the
+	// one pass as a refusal at once (no retry, no sleep), where the workflow_run path retries 15 seconds later.
+	run("comment_path_unreadable_list_one_pass_no_retry_no_sleep", func(t *testing.T) {
+		r := amCommentRig(t, "stub")
+		r.seedGuards()
+		r.seed("pr", "active", "true")
+		r.setEnv("STUB_FETCH_EXITS=1")
+		res, outs := r.runStep(r.step("review"))
+		if res.code != 1 || outs["ok"] != "false" || outs["state"] != "fail" {
+			t.Fatalf("review exit %d outputs %v, want exit 1, ok=false, state=fail\n%s%s", res.code, outs, res.stdout, res.stderr)
+		}
+		if n := len(r.gateCalls("fetch-pages")); n != 1 || r.sleeps() != 0 || len(r.gateCalls("read-native-review")) != 0 {
+			t.Fatalf("fetch-pages calls %d, sleeps %d, read-native-review calls %d, want 1, 0, 0", n, r.sleeps(), len(r.gateCalls("read-native-review")))
+		}
+		if !strings.Contains(amText(res), "review-unreadable") {
+			t.Fatalf("no review-unreadable annotation:\n%s", amText(res))
+		}
+	})
 	pendingHold := func(t *testing.T, r *amRig, reason string) {
 		t.Helper()
 		ch := r.runChain()
@@ -3481,7 +3499,9 @@ func TestAutoMergeCommentPathSameChainOnce(t *testing.T) {
 	})
 	run("comment_path_absent_review_is_not_yet_hold_exit_0_zero_merge_calls", func(t *testing.T) {
 		r := amCommentRig(t, "real")
-		r.e.setPages("issues", []any{})
+		// setPages writes nothing for an empty list, so page 1 is overwritten with an empty array to clear the
+		// native comments the rig seeded.
+		r.e.setRawPage("issues", 1, "[]")
 		r.setPulls(amCommentPull(cgHead, false, "open", false, 0))
 		pendingHold(t, r, "review-not-complete:no-state-comment")
 	})

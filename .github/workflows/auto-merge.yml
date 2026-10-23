@@ -14,7 +14,7 @@ on:
   issue_comment:
     types: [created, edited]
 
-# statuses: write is the one scope added for the `auto-merge` commit status (REQ-CCR-025).
+# The commit-status write scope is the one permission added, for the `auto-merge` status (REQ-CCR-025).
 permissions:
   contents: write
   pull-requests: write
@@ -133,12 +133,14 @@ jobs:
 
           if [ -z "$TESTED_SHA" ] || [ -z "$CURRENT_SHA" ]; then
             echo "::warning::Could not resolve both SHAs - withholding merge"
+            echo "HEAD_REASON=unreadable" >> "${GITHUB_ENV:-/dev/null}"
             echo "ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$TESTED_SHA" != "$CURRENT_SHA" ]; then
             echo "::notice::PR head moved after CI ran - withholding merge"
+            echo "HEAD_REASON=moved" >> "${GITHUB_ENV:-/dev/null}"
             echo "ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -284,6 +286,7 @@ jobs:
           }
           withhold() {
             echo "::error::changed-file check: $1 - merge withheld"
+            echo "GATE_REASON=$(printf '%s' "$1" | tr '\r\n' '  ')" >> "${GITHUB_ENV:-/dev/null}"
             conclude false fail 1
           }
           read_pr() { gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null; }
@@ -332,8 +335,9 @@ jobs:
       # 11 NOT RUN: a draft ends as the state not-run:draft with step exit 11 (never success, never
       # a review result), and no review when the window ends on a non-draft pull request is a
       # failure. Every other exit is a refusal. Every path but the clean pass ends the step
-      # non-zero, so the step and the job fail and the merge step does not run. The head is read
-      # again after the list reads.
+      # non-zero, so the step and the job fail and the merge step does not run. The one exception is
+      # the comment path's single pass: a pending result (exit 10) is a "not yet" hold that ends
+      # the step with exit 0, state pending, and no merge. The head is read again after the list reads.
       - name: Read the native Codex review
         id: review
         if: >
@@ -347,6 +351,7 @@ jobs:
           VERIFIED_SHA: ${{ steps.head.outputs.sha }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           GATE=scripts/ci/codex-review-gate.sh
           REVIEWS="${RUNNER_TEMP:-/tmp}/codex-gate-reviews.ndjson"
@@ -354,11 +359,14 @@ jobs:
           ISSUES="${RUNNER_TEMP:-/tmp}/codex-gate-issues.ndjson"
           # At most 60 passes of 15s (15 minutes). The window is bounded by the 17-minute overall
           # deadline; a long earlier checks wait, or the 20-minute job timeout, can shorten it, in
-          # which case the merge is withheld.
+          # which case the merge is withheld. The comment path (REQ-CCR-023) is one pass with the
+          # window open and no sleep: the identity's next edit of its comment starts the next evaluation.
           MAX_WAIT=60
+          if [ "$EVENT_NAME" = "issue_comment" ]; then MAX_WAIT=1; fi
 
           # The only place this step records its outputs: each key once, on the terminating path
-          # (T-OUTPUTS), and the only place it chooses its exit status (T-CHAIN).
+          # (T-OUTPUTS), and the only place it chooses its exit status (T-CHAIN). The reason of a
+          # refusal is also handed to the status step through the job environment.
           conclude() {
             echo "ok=$1" >> "$GITHUB_OUTPUT"
             echo "state=$2" >> "$GITHUB_OUTPUT"
@@ -366,6 +374,7 @@ jobs:
           }
           withhold() {
             echo "::error::native review gate: $1 - merge withheld"
+            echo "GATE_REASON=$(printf '%s' "$1" | tr '\r\n' '  ')" >> "${GITHUB_ENV:-/dev/null}"
             conclude false fail 1
           }
           read_pr() { gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null; }
@@ -417,7 +426,7 @@ jobs:
           while [ "$WAIT" -lt "$MAX_WAIT" ]; do
             WAIT=$((WAIT + 1))
             CLOSED=false
-            if [ "$WAIT" -eq "$MAX_WAIT" ]; then CLOSED=true; fi
+            if [ "$MAX_WAIT" -gt 1 ] && [ "$WAIT" -eq "$MAX_WAIT" ]; then CLOSED=true; fi
             rc=0
 
             PR_JSON="$(read_pr)" || { NOTE="unreadable"; wait_next; continue; }
@@ -462,6 +471,18 @@ jobs:
                 conclude true pass 0
                 ;;
               10)
+                if [ "$EVENT_NAME" = "issue_comment" ]; then
+                  # A review that is still running, or that has no state comment yet, is a "not yet" hold:
+                  # exit 0, the merge step does not run, the job is not failed, and the next edit of the
+                  # identity's comment starts the next evaluation (REQ-CCR-023).
+                  HOLD="review-not-complete:no-state-comment"
+                  case "$OUT" in
+                    *"CODEX_GATE_REFUSED: pending:running"*) HOLD="review-not-complete:running" ;;
+                  esac
+                  echo "::notice::native review not complete ($HOLD) - merge not requested; the next review update re-evaluates"
+                  echo "REVIEW_HOLD=$HOLD" >> "${GITHUB_ENV:-/dev/null}"
+                  conclude false pending 0
+                fi
                 NOTE="pending"
                 echo "native review not observed yet ($WAIT/$MAX_WAIT)"
                 ;;
@@ -471,6 +492,7 @@ jobs:
                   conclude false not-run:draft 11
                 fi
                 echo "::error::native review gate: not-run:review-absent - no native review observed for the head commit"
+                echo "GATE_REASON=not-run:review-absent" >> "${GITHUB_ENV:-/dev/null}"
                 conclude false fail 1
                 ;;
               *)
@@ -497,9 +519,17 @@ jobs:
           PR_BRANCH: ${{ steps.pr.outputs.branch }}
           TESTED_SHA: ${{ steps.head.outputs.sha }}
         run: |
-          # Every hold below keeps its exit 0 (the job stays green, nothing is merged), so each
-          # outcome leaves one line in the job summary naming the outcome and the head SHA.
+          # This step is reached only when every guard passed. Each outcome leaves one line in the job
+          # summary naming the outcome and the head SHA, records it for the status step, and ends the
+          # step: exit 0 only when the merge was requested (gh pr merge exited 0); every outcome where the
+          # merge was reached and not executed ends exit 1, so the job result is a failure (REQ-CCR-024).
           summary() { echo "$1" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"; }
+          finish() {
+            summary "$2"
+            echo "AUTO_MERGE_STATE=$1" >> "${GITHUB_ENV:-/dev/null}"
+            echo "AUTO_MERGE_LINE=$(printf '%s' "$2" | tr '\r\n' '  ')" >> "${GITHUB_ENV:-/dev/null}"
+            exit "$3"
+          }
           echo "Auto-merging PR #$PR_NUMBER ($PR_BRANCH)..."
 
           # AC-CI-005: the single overall deadline is RE-EVALUATED at merge
@@ -509,8 +539,7 @@ jobs:
           now="$(date +%s)"
           if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
             echo "::notice::Overall deadline passed before merge (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
-            summary "merge held: review window elapsed before merge - PR #$PR_NUMBER left open, head $TESTED_SHA"
-            exit 0
+            finish failure "merge held: review window elapsed before merge - PR #$PR_NUMBER left open, head $TESTED_SHA" 1
           fi
 
           # AC-CI-003: re-verify the head IMMEDIATELY before merging and pin
@@ -519,8 +548,7 @@ jobs:
           HEAD_NOW="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')"
           if [ -z "$HEAD_NOW" ] || [ "$HEAD_NOW" != "$TESTED_SHA" ]; then
             echo "::notice::PR head moved (tested=${TESTED_SHA:-<empty>} now=${HEAD_NOW:-<empty>}) - leaving PR #$PR_NUMBER open for review"
-            summary "merge not executed: head moved - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}"
-            exit 0
+            finish failure "merge not executed: head moved - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}" 1
           fi
 
           # AC-CI-005 re-evaluation (post-head-query): the head query itself
@@ -532,8 +560,7 @@ jobs:
           now="$(date +%s)"
           if [ "$now" -gt "${merge_deadline:-9999999999}" ]; then
             echo "::notice::Overall deadline passed during head verification (now=$now deadline=${merge_deadline:-unset}) - leaving PR #$PR_NUMBER open for review"
-            summary "merge held: review window elapsed during head verification - PR #$PR_NUMBER left open, head $TESTED_SHA"
-            exit 0
+            finish failure "merge held: review window elapsed during head verification - PR #$PR_NUMBER left open, head $TESTED_SHA" 1
           fi
 
           # Release/hotfix PRs preserve individual SPEC history via --merge.
@@ -557,9 +584,62 @@ jobs:
           if [ -n "$MERGE_OUT" ]; then echo "$MERGE_OUT"; fi
           if [ "$merge_rc" -eq 0 ]; then
             echo "Successfully merged PR #$PR_NUMBER"
-            summary "merge requested: PR #$PR_NUMBER, head $TESTED_SHA"
+            finish success "merge requested: PR #$PR_NUMBER, head $TESTED_SHA" 0
           else
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"
             MERGE_REASON="$(printf '%s' "$MERGE_OUT" | head -n 1)"
-            summary "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA"
+            finish failure "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA" 1
           fi
+
+      # Evaluation status (REQ-CCR-025). Every evaluation of an open pull request whose evaluated head
+      # commit is known posts exactly one commit status `auto-merge` on that commit: success when the merge
+      # was requested, failure when the merge step ran and did not merge or files/review ended non-zero
+      # (a draft excepted), pending for every other withheld outcome. The status reports the evaluation;
+      # it is an output, never an input of any decision, and it is not a required check. A failed write
+      # ends this step non-zero without changing the merge decision already taken.
+      - name: Post the evaluation status
+        id: status
+        if: always() && steps.pr.outputs.active == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha || steps.pr.outputs.head_sha }}
+          HEAD_OK: ${{ steps.head.outputs.ok }}
+          AUTHOR_ELIGIBLE: ${{ steps.author.outputs.eligible }}
+          CHECKS_MERGE: ${{ steps.checks.outputs.should_merge }}
+          FILES_STATE: ${{ steps.files.outputs.state }}
+          REVIEW_STATE: ${{ steps.review.outputs.state }}
+        run: |
+          case "$SHA" in
+            *[!0-9a-f]*) SHA="" ;;
+          esac
+          if [ "${#SHA}" -ne 40 ]; then
+            echo "::notice::no evaluated head commit is known - no commit status is posted"
+            exit 0
+          fi
+          STATE=pending
+          DESC="not yet: evaluation incomplete"
+          if [ -n "${AUTO_MERGE_STATE:-}" ]; then
+            STATE="$AUTO_MERGE_STATE"
+            DESC="${AUTO_MERGE_LINE:-merge step ended}"
+          elif [ "$FILES_STATE" = "fail" ] || [ "$REVIEW_STATE" = "fail" ]; then
+            STATE=failure
+            DESC="gate refused: ${GATE_REASON:-unknown}"
+          elif [ "$REVIEW_STATE" = "not-run:draft" ]; then
+            DESC="not yet: draft"
+          elif [ "$REVIEW_STATE" = "pending" ]; then
+            DESC="${REVIEW_HOLD:-review-not-complete:running}"
+          elif [ "$HEAD_OK" != "true" ]; then
+            DESC="not yet: head ${HEAD_REASON:-not verified}"
+          elif [ "$AUTHOR_ELIGIBLE" != "true" ]; then
+            DESC="needs user approval: not an eligible author"
+          elif [ "$CHECKS_MERGE" != "true" ]; then
+            DESC="not yet: required checks not all passed"
+          fi
+          DESC="${DESC:0:140}"
+          if ! gh api --method POST "repos/$REPO/statuses/$SHA" \
+            -f state="$STATE" -f context=auto-merge -f description="$DESC" >/dev/null; then
+            echo "::error::the auto-merge commit status could not be written"
+            exit 1
+          fi
+          echo "auto-merge status $STATE on $SHA: $DESC"
