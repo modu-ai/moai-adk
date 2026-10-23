@@ -24,6 +24,14 @@ func Lock(f *os.File) error {
 	return syscall.Flock(int(f.Fd()), syscall.LOCK_EX)
 }
 
+// TryLock acquires an exclusive flock on the given file without blocking,
+// returning an error when another holder owns it (SPEC-WORKTREE-HOME-ROOT-001
+// M5, design.md D-12: the state-file lock is try-and-bounded-wait, never
+// blocking). Nothing else about the lockfile surface changes.
+func TryLock(f *os.File) error {
+	return syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+}
+
 // Unlock releases the flock on the given file (Unix only).
 func Unlock(f *os.File) error {
 	return syscall.Flock(int(f.Fd()), syscall.LOCK_UN)

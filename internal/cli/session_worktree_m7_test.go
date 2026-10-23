@@ -18,9 +18,11 @@ package cli
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
@@ -476,11 +478,16 @@ func TestApplyGitConfig_OptionsNoOpNoProfileFields(t *testing.T) {
 func TestEnterSessionWorktree_M7WiringInvokesHelper(t *testing.T) {
 	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: real repository + sandboxed MOAI_HOME
+	// for the resolver inside the materializer.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	var safeAdds []string
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})

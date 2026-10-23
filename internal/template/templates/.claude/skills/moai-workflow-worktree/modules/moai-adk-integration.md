@@ -23,7 +23,7 @@ MoAI-ADK Integration Points (EnterWorktree-first doctrine):
 
 The plan phase does NOT create a worktree. A worktree is entered by the USER before a phase runs, not provisioned by a workflow step. The EnterWorktree-first doctrine is the SSOT:
 
-- New-session launch (post-`/clear` or new terminal): `moai cc -w <name>` (or `moai glm -w`). The `-w` flag accepts both short names (resolved under `.claude/worktrees/`) and absolute paths under `~/.moai/worktrees/<project>/...`.
+- New-session launch (post-`/clear` or new terminal): `moai cc -w <name>` (or `moai glm -w`). The `-w` flag accepts both short names (resolved under `.claude/worktrees/` when created new; an existing tree of the same name under `<MoaiHome>/worktrees/projects/<project-key>` is re-entered) and absolute paths under `<MoaiHome>/worktrees/projects/<project-key>/...` or `~/.moai/worktrees/<project>/...`.
 - Current-session re-entry (same session continuing): the runtime tool `EnterWorktree(<path>)`.
 - The retired `/moai plan --worktree` flag and the retired `moai worktree new` command MUST NOT be presented as live entry points.
 
@@ -33,6 +33,7 @@ Branch Naming Convention (informational — the launcher handles this):
 
 Worktree Path Pattern:
 - L1 Claude-native (ephemeral): `{repo}/.claude/worktrees/<auto-name>/`
+- L1 MoAI-created (`moai worktree new <name>`): `<MoaiHome>/worktrees/projects/<project-key>/<name>/`
 - L2 MoAI persistent (SPEC-scoped): `~/.moai/worktrees/{project-name}/SPEC-{id}/`
 
 Reference: the canonical L1/L2 layering and the EnterWorktree-first policy live in `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary.

@@ -18,6 +18,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 const (
@@ -200,11 +201,20 @@ func TestFactoryNextCreatesFreshTreeWhenPreviousTreeIsGone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("next with a dead previous tree: %v\nstdout: %s\nstderr: %s", err, out, stderr)
 	}
-	info, statErr := os.Stat(gone)
-	if statErr != nil || !info.IsDir() {
-		t.Fatalf("fresh card worktree %s does not exist: %v", gone, statErr)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the materializer
+	// creates the fresh tree at the resolver's home-root landing path —
+	// <MoaiHome>/worktrees/projects/<key>/<card> — not the legacy leaf the
+	// dead binding named.
+	homeRoot, rerr := worktreeroot.Root(root)
+	if rerr != nil {
+		t.Fatalf("resolve home root: %v", rerr)
 	}
-	if got := carryCard(t, root, carryNewRun, "t1").WorktreePath; !sameDirPath(got, gone) {
-		t.Errorf("run-new binding = %q, want the freshly created tree %q", got, gone)
+	fresh := filepath.Join(homeRoot, "t1")
+	info, statErr := os.Stat(fresh)
+	if statErr != nil || !info.IsDir() {
+		t.Fatalf("fresh card worktree %s does not exist: %v", fresh, statErr)
+	}
+	if got := carryCard(t, root, carryNewRun, "t1").WorktreePath; !sameDirPath(got, fresh) {
+		t.Errorf("run-new binding = %q, want the freshly created tree %q", got, fresh)
 	}
 }

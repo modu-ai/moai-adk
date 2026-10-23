@@ -1,6 +1,24 @@
 # 패키지 모듈 상세
 
-## 현재 변경 경계 — 2fccfd2 (card t1931 후속 판)
+## 현재 변경 경계 — 656e4d3 (card t1640 판)
+
+기준 `2fccfd2` 이후의 설명 대상 소스 86개를 현재 트리와 대조했다(추가 25·수정 61·삭제 0; testdata·테스트 제외). 창은 본 카드 PR #1858(card t1640, SPEC-WORKTREE-HOME-ROOT-001)과 세 차례 흡수 병합(eb2da27·d429ffd2·656e4d3 — #1843 t1649·#1844 t1838·#1853 t1803 포함)이 운반했고 **신규 패키지는 둘이다** — `internal/worktreeroot`와 `internal/template/agentemit/cmd/agents-emit`. `internal/cli/worktree`와 `internal/template/agentemit` 본체는 기준 커밋에 이미 존재하며(델타 감사 F3 정정 — 이 창은 그 위에 파일을 추가했다), `internal/config`는 리졸버를 임포트하지 않는다(F1 정정 — 핀 값 로더가 config 쪽 소비자를 위한 것으로, 의존 없음이 이 파일 스스로의 설계 문서다).
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/worktreeroot`(신규 패키지) | 홈 작업트리 루트의 유일한 리졸버 — 저장소마다 한 번 배정되는 프로젝트 키(오너 마커 `.moai-project.json` + git common-dir 기록 파일)로 `<MoaiHome>/worktrees/projects/<project-key>/<name>` 착지 경로를 이름 충돌 시 결정적 접미사로 풀고, `Resolve`(기록 우선 멱등 SSOT, @MX:ANCHOR)·`Key`/`Root`/`PathFor`·`Plan`(비기록 dry-run)·`RecordedKey`(읽기 전용 키 엿보기)·`Candidates`(home·legacy-moai·legacy-claude 3뿌리 후보 열거 — 모호 판정 없음)·`Same`(철자 안전 동일성)을 제공한다. 임포트는 stdlib+`internal/paths`만인 의도적 잎 패키지다. |
+| `internal/cli/worktree`(기존 패키지 — 이 창에서 파일 추가) | `moai worktree` 계열의 공유 분류기와 신규 동사 — `classify.go`의 `Classify`(@MX:ANCHOR, 인수 순수 — 오너 마커는 데이터로 주입)가 목록·이관·티어·은퇴가 서로 다르게 판정하지 못게 하고(`TreeClass` moai-made/claude-native/codex-managed/integration/primary/unclassified + `RootKind`), `list.go`(읽기 전용 9필드 재고)·`migrate.go`(트리별 매니페스트/인텐트/이동/재키/리바인드/저널 + 역순 롤백 + `TreeIdent` 정체성 가드)·`movelist.go`(이동 저널 역조회 `MovedBy`)·`retire.go`(빈 legacy 루트 비재귀 제거 — Claude 소유 디렉터리 불접촉)가 온다. `done` 티어 판정도 분류기로 재키됐다. |
+| `internal/cli` 런처 표면(launcher·launch_view·cc·glm·session_worktree·codex_hooks_seed·worktree_branch_flag) | 홈 루트 진입 — 짧은 `-w` 이름이 home 후보 하나로 유일 해석되면 그 경로로 chdir하고 `-w` 선택을 argv에서 떼어 백엔드에 절대 `--worktree`를 주지 않는다(claude 2.1.303 거부 대응). 신규 트리 절단은 `worktreeroot.PathFor`(REQ-WHR-005a/b), `resolveShortWorktreeTree`는 Candidates 단일 적중 우선·legacy 폴백. `claudeNativeWorktreeSubdir` 상수는 소비자 삭제(#1896)와 함께 제거됐고 `.claude/worktrees`는 Candidates의 `KindLegacyClaude` 폴백으로만 남는다. |
+| `internal/cli/factory_card.go` | 착지 베이스 주입 — `withFactoryLandingBase`가 임대 섹션 전(대기열 잠금 구간 밖)에 리졸버 루트를 풀어 ctx로 운반하고(REQ-WHR-007), 외래 트리 거부·carry-over가 리졸버 리프+legacy 리프 후보 집합 둘 다를 본다. CI 수리 커밋(16c27e27)에서 주입이 `factoryNextLeaseOnceEligibility` 내부로 이동해 next 동사·MCP 핸들러·재시도 루프·드리프트 시험의 모든 임대 경로가 base를 받는다. |
+| `internal/cli/worktree/migrate.go`의 `RunUpdateConsolidation` · `internal/cli/update_worktree_migration.go` | `moai update`의 작업트리 통합이 같은 이관 엔진 위임으로 수렴(update_worktree_migration은 얇은 셈 — 실패는 update 경고로 강등). D1 경계: 엔진은 계획을 한 번 세우고 이동 직전의 생존 재판독을 하지 않는다 — 최초 실제 `moai update` 적용 전 수리 또는 운영자 수용이 선행되어야 한다(CHANGELOG ⚠ 행). |
+| `internal/hook/worktree_create.go` · `worktree_remove.go` · `worktree_registry.go` | 등록·해제가 오류를 반환하고 핸들러는 `slog.Warn`으로 남긴다(errcheck 수리). 레지스트리는 상태파일 자문 잠금·엄격 적재·원자적 저장·`RekeyWorktreeEntry{,Inverse}`(이관 재키와 롤백)을 갖춘다. **internal/hook은 worktreeroot를 임포트하지 않는다** — moai-made 홈 루트 생성 경로는 internal/cli의 리졸버로 수렴하지만, 훅 자신의 생성기(`worktree_create.go`)는 claude-native 트리를 legacy `.claude/worktrees`에 직접 만든다(리졸버 미경유 — 델타 감사 F7 정정, 이 이원 경계가 분류기 `KindLegacyClaude` 후보의 근거다). |
+| `internal/factory/status_read.go` | 팩토리 상태판이 `worktreeroot.RecordedKey`로 스캔 범위를 한정한다 — worktreeroot로의 신규 엣지(검증된 쌍 목록에 있음). |
+| `internal/cli/factory_age_alarm.go`(신규) · `internal/homestate/card_age.go`(신규) · `internal/config/loader_card_age_alarm.go`(신규) | 카드 나이 경보(card t1838, #1844) — 게이트 대기·무진행 카드의 작업 나이를 읽기 전용으로 측정해 `factory status`에 표시한다. 기본 OFF, 경보 경로는 쓰기가 없다. |
+| `internal/config/loader_worktree_project.go` | `git_strategy.worktree_project_key` 핀 값의 config 쪽 로더 — **config는 리졸버를 임포트하지 않는다**(델타 감사 F1 정정): 리졸버 자신이 핀을 자체 YAML 스캔으로 읽고 이 헬퍼는 핀 값을 필요로 하는 config 패키지 소비자를 위한 것으로, 의존 없음이 이 파일 스스로의 설계 문서다. worktreeroot로의 엣지는 없다. |
+| `internal/template/agentemit/cmd/agents-emit`(신규 패키지, card t1649 #1843) | 에이전트 소스 단일 편집면에서 템플릿 Markdown·Codex TOML을 블록 인식 렌더로 생성하는 Emitter 진입점 — `make agents-emit`(재생성)·`make agents-emit-check`(판독 전용 drift 검사, `make build`가 게이트로 삼는다). 본체 `internal/template/agentemit`는 기준 커밋에 존재(신규 아님 — F3 정정). |
+| `internal/cli/contract_decide.go` | Jev 모델 변경 통지의 CLI 소비자 전파(card t1803, #1853) — `--auto` 랭킹의 세 반환 경로와 kickoff decide의 `jev_notice` 필드·stderr 선행 인쇄. |
+
+## 이전 변경 경계 — 2fccfd2 (card t1931 후속 판)
 
 기준 `8c36a79` 이후의 설명 대상 소스 49개를 현재 트리와 대조했다(추가 7·수정 42·삭제 0; testdata·테스트 제외). 창은 여덟 커밋(#1900 t1930 병합·#1901 t1929·#1898 t1536·#1894 t1632·#1903 t1910 문서·dependabot 2건)이 운반했고 신규 패키지는 없다.
 
