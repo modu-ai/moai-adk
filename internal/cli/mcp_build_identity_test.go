@@ -787,9 +787,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the doc mention 845→853 and the comparison 879→887. Same two hits
 		// and one mention — same count of actual ancestry comparisons; no
 		// added line is an ancestry comparison.
-		"session_worktree.go:847": true,
-		"session_worktree.go:853": true,
-		"session_worktree.go:887": true,
+		// Re-measured at the #1858 CI repair: removing the dead
+		// claudeNativeWorktreeSubdir constant above the predicate pulled the
+		// three hits up 3 lines (847→844, 853→850, 887→884). No comparison
+		// was added or removed — the same three hits at new offsets.
+		"session_worktree.go:844": true,
+		"session_worktree.go:850": true,
+		"session_worktree.go:884": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch
