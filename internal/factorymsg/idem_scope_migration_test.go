@@ -115,8 +115,19 @@ func TestIdemScopeLaneMigration(t *testing.T) {
 			}
 			r := retry
 			r.To = lead2
-			if _, err := s.Send(ctx, r); err == nil {
-				t.Fatal("same scope with a different recipient generation accepted")
+			// SPEC-MCP-NEUTRALITY-001 REQ-MN-016: the lead's pending message
+			// MIGRATED to gen 2 on re-registration — the same-key re-Send to
+			// the migrated recipient returns the ORIGINAL envelope (the
+			// idempotency scope spans the generation advance the migration
+			// created). Re-baseline the snapshot after the registration: the
+			// migration's gen bump is expected, not a Send mutation.
+			before = legacySnapshot(t, s.db)
+			dup, sendErr := s.Send(ctx, r)
+			if sendErr != nil {
+				t.Fatalf("same scope with a different recipient generation refused: %v", sendErr)
+			}
+			if dup.ID == "" {
+				t.Fatal("duplicate envelope lost its id")
 			}
 			unchanged("different recipient generation")
 

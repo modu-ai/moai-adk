@@ -550,6 +550,7 @@ func TestSD_AC016_LaneDecideRefused(t *testing.T) {
 
 	// None of the three lane variables: the same call succeeds.
 	sdClearLaneEnv(t)
+	t.Setenv(config.EnvFactoryRole, "operator") // REQ-MN-003: positive operator mark
 	if _, _, err := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun); err != nil {
 		t.Fatalf("operator decide: %v", err)
 	}

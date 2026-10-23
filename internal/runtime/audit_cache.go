@@ -38,6 +38,11 @@ type CachedEntry struct {
 	// older review files that predate the snapshot metadata contract.
 	OverallScore float64
 	ScorePresent bool
+
+	// VerdictFileSHA is the SHA-256 of the verdict report file the entry cites
+	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the evidence hash a reuse check
+	// revalidates. Empty on entries whose source carried none.
+	VerdictFileSHA string
 }
 
 // AuditCache provides plan artifact hashing and sticky (hash-keyed) verdict caching.
@@ -99,6 +104,11 @@ var planArtifactNames = []string{
 	"tasks.md",
 }
 
+// maxPlanArtifactBytes bounds how much of one plan artifact ComputeHash reads;
+// the artifacts are prose and tables measured in tens of kilobytes, so 8 MiB is
+// generous while still refusing an unbounded file in a caller-supplied spec_dir.
+const maxPlanArtifactBytes = 8 << 20
+
 // InMemoryCache implements AuditCache using an in-memory store.
 //
 // Suitable for both production (single process lifetime) and tests.
@@ -117,24 +127,33 @@ func NewInMemoryCache() *InMemoryCache {
 // ComputeHash computes a combined, byte-exact SHA-256 hash of the plan
 // artifact files present in specDir.
 //
-// Missing artifact files are silently skipped (only spec.md is required).
+// A directory with NO plan artifact at all returns an ERROR
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the old behavior hashed the empty
+// input set into a well-defined value, and a hash of nothing reads as a
+// legitimate cache identity — a non-SPEC directory must be refused, never
+// hashed.
 func (c *InMemoryCache) ComputeHash(specDir string) (string, error) {
 	h := sha256.New()
+	found := 0
 
 	for _, name := range planArtifactNames {
 		path := filepath.Join(specDir, name)
-		data, err := os.ReadFile(path)
+		data, err := readRegularFile(path, maxPlanArtifactBytes)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue // optional artifact
 			}
 			return "", fmt.Errorf("read %s: %w", name, err)
 		}
+		found++
 		// Include the path and exact bytes as separators to prevent collisions
 		// between adjacent files and to preserve executable whitespace semantics.
 		_, _ = fmt.Fprintf(h, "%s:%d\x00", name, len(data))
 		_, _ = h.Write(data)
 		_, _ = h.Write([]byte{0})
+	}
+	if found == 0 {
+		return "", fmt.Errorf("no plan artifacts found in %s — refusing to hash a non-SPEC directory", specDir)
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
@@ -183,9 +202,7 @@ func ListSpecArtifactFiles(specDir string) ([]string, error) {
 	}
 	sort.Strings(found)
 	return found, nil
-}
-
-// ValidateReportDir ensures that the plan-audit report directory exists and
+} // ValidateReportDir ensures that the plan-audit report directory exists and
 // is safe (within projectDir). Creates it if absent.
 //
 // REQ-WAG-004 / AC-WAG-10: directory auto-creation and path traversal prevention.

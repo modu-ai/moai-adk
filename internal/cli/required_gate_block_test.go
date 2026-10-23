@@ -1,10 +1,14 @@
 package cli
 
 // required_gate_block_test.go — GH #1632 item 3, card t580: an audit gate the
-// project EXPLICITLY configures `required` in workflow.audit.gates must fail
-// the convergence overall_verdict when its backend returned no verdict
-// (fail-open inconclusive). A gate the project never configured keeps the
-// pre-existing annotate-only fail-open behavior byte-for-byte. The three
+// project EXPLICITLY configures `required` in workflow.audit.gates must refuse
+// the convergence overall_verdict a PASS when its backend returned no verdict
+// (fail-open inconclusive). REQ-MN-021 (SPEC-MCP-NEUTRALITY-001) revises what
+// the refusal looks like: a backend with no verdict could not be performed, so
+// the overall stays at the distinct NOT-CONVERGED outcome (inconclusive) — the
+// old overall-fail conversion is superseded, and the pass it used to absorb
+// into stays equally unreachable. A gate the project never configured keeps
+// the pre-existing annotate-only fail-open behavior byte-for-byte. The three
 // branches the card names are the first three tests below; the rest pin the
 // adjacent contracts the enforcement must not disturb.
 //
@@ -89,11 +93,13 @@ func seedWorkflowGates(t *testing.T, root string, gates map[string]string) {
 }
 
 // Branch 1 — the new contract: workflow.audit.gates.codex is EXPLICITLY
-// `required` and codex returns no verdict → overall_verdict FAILS even though
-// the claude anchor passed. The enforcement moves ONLY the overall verdict and
-// the note: codex's own entry keeps its true inconclusive verdict and its
-// fail_open_backends listing, so the audit trail still says the backend never
-// ran.
+// `required` and codex returns no verdict → the overall verdict stays
+// NOT-CONVERGED (inconclusive) instead of riding the claude anchor to pass
+// (REQ-MN-021 supersedes the original overall-fail conversion: a backend that
+// never produced a verdict was not performed, not reviewed-failed). The
+// enforcement moves ONLY the overall verdict and the note: codex's own entry
+// keeps its true inconclusive verdict and its fail_open_backends listing, so
+// the audit trail still says the backend never ran.
 func TestRunMultiAudit_ExplicitRequiredGateUnmet_FailsOverall(t *testing.T) {
 	root := newProbeProject(t, "SPEC-REQGATEUNMET-901")
 	seedWorkflowGates(t, root, map[string]string{"codex": config.AuditGateRequired})
@@ -104,8 +110,8 @@ func TestRunMultiAudit_ExplicitRequiredGateUnmet_FailsOverall(t *testing.T) {
 		ProjectRoot: root,
 	}, nil)
 
-	if r.OverallVerdict != overallVerdictFail {
-		t.Errorf("overall_verdict = %q, want %q — an explicitly-required gate left unmet must fail the overall verdict, not ride the claude anchor to pass", r.OverallVerdict, overallVerdictFail)
+	if r.OverallVerdict != VerdictInconclusive {
+		t.Errorf("overall_verdict = %q, want %q — an explicitly-required gate left unmet must refuse the pass and stay not-converged (REQ-MN-021)", r.OverallVerdict, VerdictInconclusive)
 	}
 	codexVerdict := ""
 	for _, v := range r.PerBackendVerdicts {
@@ -173,10 +179,14 @@ func TestRunMultiAudit_ExplicitRequiredGateFail_BlockedByExistingContract(t *tes
 }
 
 // Branch 3 — the regression guard: NO gates block in workflow.yaml (the common
-// project; the distributed template ships none). The same fail-open
-// inconclusive must still produce overall pass — the engine's default codex
-// gate is `required`, but a default is not an explicit configuration, and
-// flipping it would change behavior for every existing project.
+// project; the distributed template ships none). The enforcement still never
+// FAILS the overall on an unset gate — the engine's default codex gate is
+// `required`, but a default is not an explicit configuration, and flipping it
+// to a converged fail would change behavior for every existing project.
+// REQ-MN-021/022 supersede the original byte-for-byte pass clause: a codex
+// left without a verdict is a could-not-run, so the overall is the distinct
+// NOT-CONVERGED outcome — never a converged fail, and never the pass the old
+// claude-anchor fall-through produced.
 func TestRunMultiAudit_UnsetGate_KeepsAnnotateOnlyFailOpen(t *testing.T) {
 	root := newProbeProject(t, "SPEC-REQGATEUNSET-904") // no workflow.yaml seeded
 	withBackendCall(t, gateBlockCaller(map[string]string{BackendCodex: VerdictInconclusive}))
@@ -186,8 +196,8 @@ func TestRunMultiAudit_UnsetGate_KeepsAnnotateOnlyFailOpen(t *testing.T) {
 		ProjectRoot: root,
 	}, nil)
 
-	if r.OverallVerdict != overallVerdictPass {
-		t.Errorf("overall_verdict = %q, want %q — an UNSET gate keeps the fail-open behavior byte-for-byte (a default is not an explicit opt-in)", r.OverallVerdict, overallVerdictPass)
+	if r.OverallVerdict != VerdictInconclusive {
+		t.Errorf("overall_verdict = %q, want %q — an UNSET gate is never a converged fail (a default is not an opt-in) and REQ-MN-022 keeps the could-not-run not-converged", r.OverallVerdict, VerdictInconclusive)
 	}
 	open := false
 	for _, b := range r.FailOpenBackends {
@@ -233,13 +243,15 @@ func TestRunMultiAudit_ExplicitRequiredClaudeAnchorUnmet_FailsOverall(t *testing
 		OriginProvider: BackendClaude,
 	}, nil)
 
-	if r.OverallVerdict != overallVerdictFail {
-		t.Errorf("overall_verdict = %q, want %q — an explicitly-required claude anchor left unmet fails the overall verdict", r.OverallVerdict, overallVerdictFail)
+	if r.OverallVerdict != VerdictInconclusive {
+		t.Errorf("overall_verdict = %q, want %q — an explicitly-required claude anchor left unmet stays not-converged (REQ-MN-021)", r.OverallVerdict, VerdictInconclusive)
 	}
 }
 
 // The enforced verdict reaches the persisted state file the multi-review-gate
 // Stop hook reads, so the block survives past the tool call (DQ-1 consumption).
+// REQ-MN-021: the persisted verdict is the not-converged inconclusive — a value
+// the Stop hook reads as anything-but-pass, so the block holds.
 func TestRunMultiAudit_ExplicitRequiredGateUnmet_PersistedResultCarriesFail(t *testing.T) {
 	root := newProbeProject(t, "SPEC-REQGATEPERSIST-907")
 	seedWorkflowGates(t, root, map[string]string{"codex": config.AuditGateRequired})
@@ -256,14 +268,18 @@ func TestRunMultiAudit_ExplicitRequiredGateUnmet_PersistedResultCarriesFail(t *t
 	if !ok {
 		t.Fatal("no convergence state file at the named tree — the Stop hook would read nothing")
 	}
-	if stored.OverallVerdict != overallVerdictFail {
-		t.Errorf("persisted overall_verdict = %q, want %q — the state file must carry the enforced verdict so the Stop hook blocks on it", stored.OverallVerdict, overallVerdictFail)
+	if stored.OverallVerdict != VerdictInconclusive {
+		t.Errorf("persisted overall_verdict = %q, want %q — the state file must carry the not-converged verdict so the Stop hook blocks on it (REQ-MN-021)", stored.OverallVerdict, VerdictInconclusive)
 	}
 }
 
 // An explicitly-required gate in a DIFFERENT tree must not reach into this
 // audit: the enforcement keys on the audited tree (project_root), the same
 // tree-scoped rule applyGateUnmet follows at the single-backend surface.
+// REQ-MN-021/022: the un-configured tree's codex inconclusive is a
+// could-not-run, so the overall is the not-converged inconclusive — the point
+// this pin keeps is that the OTHER tree's `required` never makes it a
+// converged fail or a gate_unmet here.
 func TestRunMultiAudit_GateIsTreeScoped(t *testing.T) {
 	configured := newProbeProject(t, "SPEC-REQGATESCOPE-908")
 	seedWorkflowGates(t, configured, map[string]string{"codex": config.AuditGateRequired})
@@ -275,8 +291,11 @@ func TestRunMultiAudit_GateIsTreeScoped(t *testing.T) {
 		ProjectRoot: other,
 	}, nil)
 
-	if r.OverallVerdict != overallVerdictPass {
-		t.Errorf("overall_verdict = %q, want %q — a gate configured in another tree must not enforce here", r.OverallVerdict, overallVerdictPass)
+	if r.OverallVerdict == overallVerdictFail {
+		t.Errorf("overall_verdict = fail — a gate configured in another tree must not enforce here")
+	}
+	if r.GateUnmet != "" {
+		t.Errorf("gate_unmet = %q, want empty — no gate is required in this tree", r.GateUnmet)
 	}
 	_ = configured
 }
