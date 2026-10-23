@@ -327,13 +327,15 @@ REQ/AC: REQ-CCR-022 to 025 (new), REQ-CCR-007, 011, 013 (reworded) / AC-CCR-006a
 amended rows of AC-CCR-006, 012, 013, 019. Ordered by decision-reversibility:
 
 1. **The trust boundary and the trigger** (most likely to change): `issue_comment` `[created, edited]`; the job `if` disjunction of
-   `design.md` "Delta of plan revision 13" item 2; the concurrency group moved to the job level with the key
-   `workflow_run.pull_requests[0].number || issue.number || run_id`.
+   `design.md` "Delta of plan revision 13" item 2; the concurrency group moved to the job level with the key shape of design item 4
+   (revision 13.1): the pull request number for the `workflow_run` path and for comments of user id 199175422, `github.run_id` for any
+   other comment author.
 2. **The status context and its permission:** `statuses: write`; a final step `status` (`always() && steps.pr.outputs.active ==
    'true'`) posting `T-STATUS` on the evaluated head SHA with the one POST form; exit 1 on a failed write.
 3. **The comment path through the existing chain:** the `pr` step reads `state`, `merged`, and `headRefOid` from the API on the comment
-   path (number from `env`); `head` takes that head as the commit under evaluation; `review` runs one pass with `--wait-closed true` and
-   no sleep on the comment path (Q31).
+   path (number from `env`); `head` takes that head as the commit under evaluation; `review` runs one pass with `--wait-closed false` and
+   no sleep on the comment path, and its gate exit 10 is a "not yet" hold (step exit 0, `state=pending`, status `pending`
+   `review-not-complete:running`; revision 13.1, Q31(a) reversed).
 4. **The merge step's held outcomes** (mechanical): `exit 1` after each of the three held summaries and after the merge-failed
    summary; `exit 0` only after "merge requested".
 

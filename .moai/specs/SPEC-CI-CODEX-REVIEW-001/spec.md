@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.11.0"
+version: "0.11.1"
 status: in-progress
 created: 2026-10-18
 updated: 2026-10-23
@@ -35,6 +35,7 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.10.1 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 finding 4316243010 and the upper contract in `AGENTS.md` §4: completed state legs must report both `has_any_findings: false` and `has_unresolved_findings: false`. The gate previously accepted `has_any_findings: true` when unresolved was false. REQ-CCR-001, 004, and 005, the reader design, and AC-CCR-001/005 now agree; three per-leg/both-leg controls refuse and a completed finding is not hidden by a running peer. Counts remain 21 requirements and 25 criteria. |
 | 0.10.2 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 security finding 4316515155: a pre-merge recheck no longer rejects an otherwise clean review solely because ordinary issue comments were added after the earlier clean pass. It snapshots the fresh PR issue-comment count, proves the complete paginated list against that count, checks the same count and head after collection, and reruns the trusted native-review gate; review-comment count, trusted identity, marker/state integrity, and clean summary equality remain enforced. Counts remain 21 requirements and 25 criteria. |
 | 0.11.0 | 2026-10-23 | manager-spec (card t1868) | Plan revision 13, an in-place amendment (Amendment 6) under the operator and leader ruling of 2026-10-23 (decision-index Q30): audit findings F4 (a Codex review that completes after the merge step's window, or after the pull request becomes ready, is never re-evaluated) and F3/F1 (merge-step holds end exit 0 and look green) are fixes, not accepted limitations. New: REQ-CCR-022 (an `issue_comment` trigger, `created` and `edited`, admitted at the job level only for a pull request comment of user id 199175422; no pull-request code is checked out or run), REQ-CCR-023 (the same chain, one evaluation with no wait, head re-confirmed, one concurrency group per pull request), REQ-CCR-024 (a merge step that was reached and did not merge ends non-zero), REQ-CCR-025 (a commit status `auto-merge` on the evaluated head, `statuses: write`, no required check added). Reworded: REQ-CCR-007, 011, 013; §2 item 7; §5 stated fact and G6 condition; §6 Out of Scope "step conclusions"; §7 AL-1 superseded (resolved by REQ-CCR-022). The F1 `active` gating, the env-passed `PR_NUMBER`, the per-outcome job-summary line, and the shellcheck step of commit `41b7f29b7a` are already landed and are not re-specified as new work. Criteria: five lettered sub-criteria (AC-CCR-006a, 013a, 013b, 013c, 019a) inside existing logical criteria, because the logical criterion count is at the Tier L ceiling of 25. Counts: 25 requirements (ceiling 25), 25 logical criteria with 5 sub-criteria. No plan-audit re-entry (ruling); one head-bound sync re-audit at the final head checks this SPEC against the code. |
+| 0.11.1 | 2026-10-23 | manager-spec (card t1868) | Revision 13.1, the lane ruling on the revision-13 defaults: decision-index Q31(a) is REVERSED — on the comment path a pending review pass (a `running` leg or marker, or no state comment yet) is a "not yet" hold with exit 0 and a `pending` `auto-merge` status (`review-not-complete:running`), never a failed job; only a merge step reached and not executed is non-zero. Q31(b) stands, clarified in design. The concurrency key is specified: the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author. Reworded REQ-CCR-012, 018, 019, 023, 024; no requirement or criterion added. |
 
 ## Amendments
 
@@ -371,7 +372,8 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   review (`review`); the `files` and `review` steps shall each read the pull request's head commit before and after their list reads
   (the review step on every pass that reads lists) and record a failing result when that head differs from the verified head commit, shall
   each record a passing result only when the corresponding gate-script call exits 0, and shall each treat any other exit, including one
-  they do not recognise, as a withheld merge and a failed step (REQ-CCR-018); the `author` step is governed by REQ-CCR-020 alone (one
+  they do not recognise, as a withheld merge and a failed step (REQ-CCR-018; the one exception is the comment path's pending `review`
+  pass, a "not yet" hold with exit 0, REQ-CCR-023); the `author` step is governed by REQ-CCR-020 alone (one
   read of the pull request object, no gate-script call, exit status 0); the `review` step shall recheck a clean pass before recording it,
   by taking the issue-comment count from the first pull-request read of that recheck, re-listing the complete issue-comment list, the reviews,
   and the review comments, then requiring the same head, that fresh issue-comment count, the unchanged review-comment count, and the same clean
@@ -393,14 +395,14 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   a list stays unreadable to the end of the window; or the gate
   script is missing — that step shall end with a non-zero exit status, so that the step conclusion and the job
   conclusion are failures and the later steps, the merge step included, do not run, and shall end with exit
-  status 0 only on its pass; the mapping from the gate script's exit code to the step's exit status, the job
+  status 0 only on its pass — and, for `review` on the comment path only, on the pending "not yet" hold of REQ-CCR-023; the mapping from the gate script's exit code to the step's exit status, the job
   result, and the recorded output values, across both steps, shall be the single table of `design.md` §5
   (`T-CHAIN`), and the workflow shall mark neither step `continue-on-error` nor otherwise exempt from the
   job's conclusion.
 - **REQ-CCR-019** (Ubiquitous) Each guard step this SPEC adds (`files` and `review`) shall record each of its
   output keys at most once, on its single terminating path, so that every key of a step's output carries
   exactly one value: `ok` is `true` or `false`; `state` is `pass` or `fail` for the `files` step and `pass`,
-  `fail`, or `not-run:draft` for the `review` step; a key the step never recorded reads as not-pass.
+  `fail`, `not-run:draft`, or (comment path only, REQ-CCR-023) `pending` for the `review` step; a key the step never recorded reads as not-pass.
 - **REQ-CCR-020** (Event-driven) When a pull request is not authored by the eligible author (login `GoosLab`, user id 6458969, type
   User, all three together), or its head repository is missing or is not the base repository, or its author's account type is Bot,
   auto-merge shall not merge it: a step that reads the pull request object once and records the single output `eligible` (`true` only when
@@ -424,16 +426,22 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   with the same conditions as the `workflow_run` path (`pr`, `head`, `author`, `checks`, `files`, `review`, the merge step), shall take
   the commit under evaluation from the pull request's head as read from the API and bind every guard and the merge call to it, so that a
   head that moved after the identity's comment fails the binding and withholds; shall run the review read as one pass with the window
-  closed, with no wait and no sleep (a state that is not clean is decided by `T-CHAIN` as on the last pass, and the identity's next
-  comment creation or edit starts the next evaluation); and auto-merge shall serialise both paths in one concurrency group keyed by the
-  pull request number, so that at most one evaluation of a pull request runs at a time and the two paths never both merge, and a run
-  whose job the trust gate of REQ-CCR-022 skips shall not cancel or displace a pending evaluation of the same pull request.
+  open (`--wait-closed false`), with no wait and no sleep; when that pass is pending (gate exit 10: a leg or the current-head security
+  marker still `running`, or no state comment yet), the `review` step shall end as a "not yet" hold — exit status 0, `ok` not `true`,
+  the single state `pending`, the merge step not run, the job not failed, and the `auto-merge` status `pending` with the reason
+  `review-not-complete:running` (or `review-not-complete:no-state-comment`) — and the identity's completion edit of its comment starts
+  the next evaluation; every other result that is not clean is decided by `T-CHAIN` (revision 13.1, the lane ruling reversing
+  decision-index Q31(a)); and auto-merge shall serialise evaluations in one job-level concurrency group whose key is the pull request
+  number for the `workflow_run` path and for a comment of user id 199175422, and is unique per run (the run id) for a comment of any
+  other author, so that at most one real evaluation of a pull request runs at a time, the two paths never both merge, and a run whose
+  job the trust gate of REQ-CCR-022 skips can never share a group with, cancel, or replace a pending real evaluation.
 - **REQ-CCR-024** (Event-driven) When the merge step runs (every guard passed) and does not merge — the overall deadline passed before
   the merge call or during the head re-read, the head read immediately before the call differs from the verified head, or `gh pr merge`
   exits non-zero — the merge step shall end with exit status 1, so that the job result is failure, and shall still write its one
   job-summary line naming the outcome and the head commit; the merge step shall end with exit status 0 only when `gh pr merge` exits 0.
-  The steps `pr`, `head`, `author`, and `checks` keep exit status 0 when they withhold (the "not yet" holds), and the `files` and
-  `review` steps keep `T-CHAIN`.
+  The steps `pr`, `head`, `author`, and `checks` keep exit status 0 when they withhold (the "not yet" holds), the comment path's pending
+  `review` pass is a "not yet" hold with exit status 0 (REQ-CCR-023), and otherwise the `files` and `review` steps keep `T-CHAIN`; only
+  the three outcomes above, where the merge step was reached and did not merge, are non-zero holds.
 - **REQ-CCR-025** (Ubiquitous) Every evaluation of an open pull request whose evaluated head commit is known shall post exactly one
   commit status with the context `auto-merge` on that commit through the API, with the state `success` when the merge was requested
   (`gh pr merge` exited 0), `failure` when the merge step ran and did not merge or the `files` or `review` step ended non-zero other than

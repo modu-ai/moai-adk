@@ -1030,20 +1030,25 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   the concurrency key is read for both events,
 - Then on the comment path the steps run in the same order and with the same conditions as on the `workflow_run` path; the clean
   fixture merges exactly once with `--match-head-commit` equal to the API-read head; the moved head yields zero merge calls and a
-  failed `review` step (`stale-review`) or a held merge; the `review` step makes one pass with `--wait-closed true` and zero sleeps; a
-  `running` leg ends `review-not-complete:running` and an absent state comment `not-run:review-absent` (decision-index Q31), zero merge
-  calls; the draft ends `not-run:draft`; the concurrency group key resolves to the same `auto-merge-7` for a `workflow_run` of pull
-  request 7 and for a comment on pull request 7, the group is declared at the job level, and `cancel-in-progress` is false.
+  failed `review` step (`stale-review`) or a held merge; the `review` step makes one pass with `--wait-closed false` and zero sleeps;
+  (revision 13.1, decision-index Q31(a) reversed) a `running` leg or marker, and an absent state comment, are a "not yet" hold: the
+  `review` step ends with exit 0, `ok` not `true`, the single state `pending`, zero merge calls, the job result is success, and the
+  `auto-merge` status is `pending` with `review-not-complete:running` (or `review-not-complete:no-state-comment`); the draft ends
+  `not-run:draft`; the concurrency group key resolves to the same `auto-merge-7` for a `workflow_run` of pull request 7 and for the
+  identity's comment on pull request 7, and to a run-id key (`auto-merge-run-<run id>`) that differs from `auto-merge-7` for another
+  author's comment on pull request 7; the group is declared at the job level, and `cancel-in-progress` is false.
 - Verify: `grep -c -F 'github.event.issue.number' .github/workflows/auto-merge.yml` and `grep -c -F 'github.event_name'
   .github/workflows/auto-merge.yml` each print at least 1 and exit 0 (R30, R31 flipped; necessary, not sufficient); and `go test
   -count=1 -v -run '^TestAutoMergeCommentPathSameChainOnce$' ./internal/template/` lists `--- PASS` for
   `comment_path_same_step_order_and_conditions`, `comment_path_clean_fixture_merges_once_with_head_pin`,
-  `comment_path_head_moved_after_comment_zero_merge_calls`, `comment_path_review_single_pass_wait_closed_no_sleep`,
-  `comment_path_running_fails_without_wait_zero_merge_calls`, `comment_path_absent_review_fails_zero_merge_calls`,
-  `comment_path_draft_not_run_zero_merge_calls`, `concurrency_key_same_for_both_paths`, `concurrency_group_at_job_level`,
-  `concurrency_cancel_in_progress_false`.
-- Mutant: the 60-pass loop kept on the comment path turns `comment_path_review_single_pass_wait_closed_no_sleep` red; a concurrency
-  key without `github.event.issue.number` turns `concurrency_key_same_for_both_paths` red; a `head` step that takes the head from the
+  `comment_path_head_moved_after_comment_zero_merge_calls`, `comment_path_review_single_pass_wait_open_no_sleep`,
+  `comment_path_running_is_not_yet_hold_exit_0_zero_merge_calls`, `comment_path_absent_review_is_not_yet_hold_exit_0_zero_merge_calls`,
+  `comment_path_draft_not_run_zero_merge_calls`, `concurrency_key_same_for_both_paths`,
+  `concurrency_key_unique_per_run_for_other_authors`, `concurrency_group_at_job_level`, `concurrency_cancel_in_progress_false`.
+- Mutant: the 60-pass loop kept on the comment path turns `comment_path_review_single_pass_wait_open_no_sleep` red; a pass with
+  `--wait-closed true` (a running review failing the job) turns `comment_path_running_is_not_yet_hold_exit_0_zero_merge_calls` red; a
+  concurrency key without `github.event.issue.number` turns `concurrency_key_same_for_both_paths` red, and one that gives a foreign
+  comment the pull request number turns `concurrency_key_unique_per_run_for_other_authors` red; a `head` step that takes the head from the
   event instead of the API, or a merge call pinned to another variable, turns `comment_path_head_moved_after_comment_zero_merge_calls`
   or the clean row red.
 - RED-now: R30 and R31 (tree `41b7f29b7a`: no comment-path pull request number or concurrency key, no event discrimination). Green
@@ -1055,12 +1060,14 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   re-read; head moved before the call; `gh pr merge` exits 1,
 - Then "merge requested" ends the step with exit 0 and the job result success; each of the four other outcomes ends the step with
   exit 1 and the job result failure, with zero merge calls for the deadline and head rows and one failed call for the merge-failed
-  row; every outcome still writes exactly one job-summary line naming the outcome and the head SHA; and the holds of `pr`, `head`,
-  `author`, and `checks` still end with exit 0.
+  row; every outcome still writes exactly one job-summary line naming the outcome and the head SHA; and the "not yet" holds — `pr`,
+  `head`, `author`, `checks`, and (revision 13.1) the comment path's pending `review` pass — still end with exit 0 and a job that is
+  not failed. Group mapping: non-zero = merge step reached and not merged (the four rows above) only; exit 0 = merge requested and
+  every "not yet" hold.
 - Verify: `go test -count=1 -v -run '^TestAutoMergeHeldMergeOutcomesFail$' ./internal/template/` lists `--- PASS` for
   `merge_requested_exit_0_job_success`, `window_elapsed_before_merge_exit_1_job_failure`,
   `window_elapsed_during_head_check_exit_1_job_failure`, `head_moved_exit_1_job_failure`, `merge_failed_exit_1_job_failure`,
-  `each_outcome_one_summary_line_with_head_sha`, `earlier_holds_keep_exit_0`; and the amended rows of
+  `each_outcome_one_summary_line_with_head_sha`, `earlier_holds_keep_exit_0`, `comment_path_running_hold_keeps_exit_0`; and the amended rows of
   `TestAutoMergeSummarisesEveryMergeOutcome` and `TestAutoMergeMergeDecisionPath` (`plan.md` M7) pass.
 - Mutant: the committed merge step (each held outcome `exit 0`, the merge-failed path falling through) turns the four exit-1 rows
   red; an `exit 1` on "merge requested" turns `merge_requested_exit_0_job_success` red; a deleted summary line turns
@@ -1085,7 +1092,7 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   '^TestAutoMergePostsStatusContext$' ./internal/template/` lists `--- PASS` for
   `permissions_exactly_contents_pull_requests_statuses_write`, `status_post_is_the_only_statuses_form`, `no_status_read`,
   `merge_requested_posts_success`, `merge_not_executed_posts_failure`, `review_refusal_posts_failure`,
-  `review_absent_posts_failure`, `draft_posts_pending`, `checks_hold_posts_pending`, `ineligible_author_posts_pending`,
+  `review_absent_posts_failure`, `comment_path_running_posts_pending_review_not_complete_running`, `draft_posts_pending`, `checks_hold_posts_pending`, `ineligible_author_posts_pending`,
   `head_hold_posts_pending`, `unknown_head_posts_no_status`, `one_status_per_evaluation_on_evaluated_sha`,
   `context_is_auto_merge`, `description_names_reason`, `status_write_failure_step_exit_1_merge_unchanged`; and AC-CCR-016 and
   AC-CCR-017 still pass.

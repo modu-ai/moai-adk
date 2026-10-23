@@ -31,14 +31,22 @@ the `active` output that ends the job for a pull request that is not open, `PR_N
    `checks` (the required checks of that head) → `files` → `review` (the head-SHA-bound trusted summary, the clean receipt, and the
    pre-merge recheck) → merge (the head re-read immediately before the call, `--match-head-commit`). "Auto-merge requested" in the
    ruling's wording is read as this chain reaching the merge step with every guard passed; no GitHub `auto_merge` flag is required on
-   either path (decision-index Q31). A head that moved after the bot's comment fails the binding (`stale-review`, `head-moved`, or the
-   merge step's head re-read) and holds. The concurrency group key becomes `auto-merge-<PR number>` for both paths
-   (`workflow_run.pull_requests[0].number || issue.number || run_id`) and sits at the job level, so that a run whose job the trust gate
-   skips does not enter the group (residual R13-2).
-5. **One evaluation on the comment path.** The `review` step runs one pass with `--wait-closed true` and no sleep; the 60-pass loop
-   applies to the `workflow_run` path only. A state that is not clean is decided by `T-CHAIN` exactly as on a last pass (a `running` leg
-   is `review-not-complete:running`, decision-index Q31), and the identity's next creation or edit of its comment starts the next
-   evaluation.
+   either path (decision-index Q31(b), confirmed by the lane ruling). The workflow reads no GitHub `auto_merge` flag: it gates on the
+   `author` step's eligibility (author and same-repository head) and on the CI (`checks`), `head`, `files`, and `review` steps. A head
+   that moved after the bot's comment fails the binding (`stale-review`, `head-moved`, or the merge step's head re-read) and holds.
+   **Concurrency key (revision 13.1, specified shape).** One job-level group, `cancel-in-progress: false`, whose key is
+   `auto-merge-<PR number>` for the `workflow_run` path (`workflow_run.pull_requests[0].number`) and for a comment of user id 199175422
+   (`issue.number`), and `auto-merge-run-<run id>` (`github.run_id`, unique per run) for a comment of any other author. A skipped
+   foreign comment therefore never shares a group with, cancels, or replaces a pending real evaluation; R13-2 keeps only the remaining
+   platform unknown.
+5. **One evaluation on the comment path.** The `review` step runs one pass with `--wait-closed false` and no sleep; the 60-pass loop
+   applies to the `workflow_run` path only. **Revision 13.1 (lane ruling, decision-index Q31(a) reversed):** a pending pass (gate exit
+   10 — a leg or the current-head security marker still `running`, or no state comment yet) is a "not yet" hold: the step ends with exit
+   0, records `ok` not `true` and the single state `pending`, the merge step is skipped, the job is not failed, and the `auto-merge`
+   status is `pending` with the reason `review-not-complete:running` (or `review-not-complete:no-state-comment`). The identity's
+   completion edit of its comment starts the next evaluation. Every other result that is not clean follows `T-CHAIN` unchanged (a
+   refusal, a failed leg, a stale state, an unreadable list all still fail the step and the job). The superseded revision-13 text read:
+   "runs one pass with `--wait-closed true` … a `running` leg is `review-not-complete:running`" as a failed step.
 6. **Hold semantics and the status context.** The merge step ends with exit 1 on the three outcomes where the chain reached it and it
    did not merge (deadline passed before the call or during the head re-read; head moved; `gh pr merge` non-zero), keeping its summary
    line; exit 0 only on "merge requested". `pr`, `head`, `author`, and `checks` keep exit 0. A final step `status`, conditioned
@@ -56,6 +64,7 @@ the `active` output that ends the job for a pull request that is not open, `PR_N
 | merge step ran and did not merge (deadline, head moved, merge failed) | `failure` | the summary line's outcome, e.g. `merge not executed: head moved` |
 | `files` or `review` ended non-zero, other than `not-run:draft` (`T-CHAIN` rows 2 to 4, 6 to 9, 11 to 13) | `failure` | `gate refused: <reason>` |
 | `review` ended `not-run:draft` (`T-CHAIN` row 5) | `pending` | `not yet: draft` |
+| comment path: `review` pending pass, exit 0, state `pending` (revision 13.1) | `pending` | `review-not-complete:running` (or `review-not-complete:no-state-comment`) |
 | `checks` withheld (`should_merge=false`) | `pending` | `not yet: required checks <state>` |
 | `author` recorded `eligible=false` | `pending` | `needs user approval: not an eligible author` |
 | `head` withheld (moved since the CI-tested commit, unreadable) | `pending` | `not yet: head <reason>` |
@@ -68,9 +77,11 @@ Descriptions are cut to the API's 140-character limit; the context is the litera
   UNVERIFIED; it is observable only on the remote after the change lands on the default branch (G6 condition). Until observed, a late
   review is re-evaluated at least on `created` and on the next `CI` run.
 - **R13-2** — GitHub documents that "any existing `pending` job or workflow in the same concurrency group will be canceled" when a new
-  one enters (docs.github.com, *Control the concurrency of workflows and jobs*, read 2026-10-23). The page says nothing about a job
-  skipped by its `if`; whether a skipped job enters a job-level group is UNVERIFIED. A cancelled pending evaluation never merges; the
-  next trigger re-evaluates.
+  one enters (docs.github.com, *Control the concurrency of workflows and jobs*, read 2026-10-23). The specified key (item 4) gives every
+  foreign comment its own run-id group, so it can no longer displace a real evaluation whatever the platform does with a skipped job.
+  What remains unknown: whether GitHub evaluates a job-level concurrency key for a job skipped by its `if` at all (UNVERIFIED), and
+  that a pending real evaluation can still be replaced by a later real one of the same pull request (a newer `CI` completion or bot
+  edit); the replacing run reads the current state, and a cancelled pending evaluation never merges.
 - **R13-3** — when the evaluated head SHA is unknown (the `head` read failed), no status can be posted; the hold is visible in the run
   log and annotation only.
 - **R13-4** — a `failure` status on a refused review is replaced by the next evaluation's status for the same SHA and context; the
@@ -612,7 +623,9 @@ corrected design draws:
   says what GitHub reports on a runner (research U11: unobserved). Rows 2 to 4, 6 to 9, and 11 to 13 are the
   failures the rulings name; row 5 is the draft that must not read as a pass; rows 1 and 10 together are the
   only success path of the chain (`files` then `review`, then the merge step). The earlier steps `pr`, `head`,
-  `author`, and `checks` keep their exit-0 convention (Out of Scope); the merge step does not since revision 13 (REQ-CCR-024).
+  `author`, and `checks` keep their exit-0 convention (Out of Scope); the merge step does not since revision 13 (REQ-CCR-024). One
+  comment-path exception to the `review` rows (revision 13.1, REQ-CCR-023): gate exit 10 on the comment path's single pass is a "not yet"
+  hold — step exit 0, `ok` not `true`, `state=pending`, job not failed — where row 2g and row 4 apply on the `workflow_run` path's last pass.
 
   **`T-OUTPUTS` — the output keys** (REQ-CCR-019)
 
@@ -763,7 +776,7 @@ corrected design draws:
 | `pull_request_target` or a secret in a workflow this SPEC edits | Secrets with attacker-controlled code | The `workflow_run` trigger and (revision 13) `issue_comment` `created`/`edited` only, no `pull_request_target`, no secret reference other than the workflow token (none added) | AC-CCR-013, AC-CCR-013a |
 | **(revision 13) An issue comment by anyone other than the Codex identity**, or on an issue that is not a pull request | A comment author triggers token use, a checkout, or a merge evaluation | The job `if` admits `issue_comment` only with `issue.pull_request` present and `comment.user.id == 199175422`; every other comment's job is skipped before any step; the gate still binds login, id, and type | AC-CCR-013a |
 | **(revision 13) Code or text of the pull request reaching the comment path** | Attacker-controlled code or text runs with a write token | The checkout keeps no `ref` on both paths; only `issue.number` is taken from the payload, through `env`; no comment body, title, or head ref expression exists | AC-CCR-013b |
-| **(revision 13) Both trigger paths merging the same pull request, or a head that moved after the comment** | A double merge, or a merge of a head the review did not see | One job-level concurrency group per pull request number; the head is re-read and every guard binds it; the merge call is pinned | AC-CCR-013c |
+| **(revision 13) Both trigger paths merging the same pull request, or a head that moved after the comment** | A double merge, or a merge of a head the review did not see | One job-level concurrency group per pull request number for the `workflow_run` path and the identity's comments, a run-id group for any other comment author (revision 13.1); the head is re-read and every guard binds it; the merge call is pinned | AC-CCR-013c |
 | **(revision 13) A held merge reading as a green run** (F3/F1) | A reader of the job conclusion takes a hold for a pass | The merge step ends exit 1 when reached and not executed; every evaluation posts the `auto-merge` status (`T-STATUS`) | AC-CCR-019a, AC-CCR-006a |
 | Auto-merge checks out the PR ref | Attacker code runs with a write token | Checkout has no `ref` | AC-CCR-011 |
 | **Artifact or cache poisoning** | Not applicable: nothing is uploaded, downloaded, or cached; the lists are temporary files of one job | No surface exists; a test finds no artifact or cache step | AC-CCR-013 |
