@@ -200,12 +200,7 @@ observation, not one made in this run: a verdict citing it names the key and `re
 from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
 not a Claim — and a claim that needs verbatim output runs the command directly.
 
-**A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
-`success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
-(1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
-`state == "success"` and description `Review completed`; (2) a `Merge Risk:` line exists whose
-commit prefix matches the current `headRefOid`. Anything else is a gap, not a pass; `Review rate
-limited` means the review never started.
+**Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
 
 ---
 

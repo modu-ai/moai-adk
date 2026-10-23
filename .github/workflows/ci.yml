@@ -882,6 +882,11 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
+      # SPEC-CI-CODEX-REVIEW-001: the merge gate script is the one shell program the auto-merge
+      # workflow trusts for its decision; ubuntu-latest runners ship shellcheck.
+      - name: Shellcheck the Codex review gate script
+        run: shellcheck scripts/ci/codex-review-gate.sh
+
       - name: Build moai binary for agent lint
         run: go build -o ./bin/moai ./cmd/moai/
 

@@ -83,7 +83,7 @@ The factory leader session does not draft its own coordination: it spawns the `m
 
 ### Deputy mode — background coordination off the leader's turn
 
-The leader's turn loop is the scarcest surface in a factory run: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
+The leader's turn loop is the scarcest surface in a factory run: a dispatch send, a CI watch, and a native Codex observation each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
 
 **Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not it is needed — an unused deputy costs one spawn; an unspawned one costs every dispatch after it.
 
@@ -97,11 +97,11 @@ The leader's turn loop is the scarcest surface in a factory run: a dispatch send
 
 - **Dispatch sends with delivery-shape verification.** The deputy sends the fixed-field address blocks for ALREADY-PICKED cards and reads every send result. A `routing` object on the result means an in-process mailbox took the block — lost, not delivered — and the deputy re-sends to the `name [ref]` form the `ListAgents` listing printed (§ The dispatch cycle). A rapid-burst refusal is read and reported; the queue already carries the delegation, so a refused nudge stalls nothing.
 - **Bounded CI-watch polls.** The deputy polls a card's checks to terminal states and returns those states — the states, never a judgement about them.
-- **CodeRabbit two-condition reads.** The deputy reads the combined-status `CodeRabbit` entry (state `success` AND description `Review completed`) plus the `Merge Risk:` line matching the current `headRefOid`, and REPORTS both conditions to the leader. It never adjudicates the slot-wait outcome: a card carrying `Review rate limited` is reported as exactly that, and the leader decides what it means.
+- **Native Codex artifact reads.** The deputy reports the current head, trusted bot identity, full-SHA code-review summary, clean receipt, and unresolved findings. The leader judges the evidence and retains final integration approval.
 - **First-pass evidence reading.** The deputy reads a card's completion evidence and returns findings as recommendations, each prefixed `RECOMMEND:` — never a verdict token.
 - **Summary reporting.** The deputy folds its observations into a single report addressed to the leader.
 
-**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the two-condition CodeRabbit read — the deputy's report is input to the leader's judgement, never a substitute for it.
+**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the head-bound native Codex artifact read — the deputy's report is input to the leader's judgement, never a substitute for it.
 
 **What does not change — the structural principles:**
 
@@ -109,7 +109,7 @@ The leader's turn loop is the scarcest surface in a factory run: a dispatch send
 - **Completion is read, never trusted.** The deputy's first-pass read does not discharge the leader's own evidence-read obligation. The leader advances a card on what the leader read; a deputy report is one more claim until the evidence under it has been read.
 - **The queue is the channel.** The deputy's `SendMessage` is a nudge, never the delegation (stub § The delegation channel is the queue); card advancement never depends on a message arriving, whoever sent it.
 
-The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, CodeRabbit adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
+The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, native review evidence adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
 
 Messaging stays a nudge (stub § The delegation channel is the queue, § Completion is read, never trusted). The rename changes who drafts the coordination, not what counts as delegated or as done.
 
@@ -178,5 +178,5 @@ The lane-autonomy revision moved the per-card completion verdict to the lane tha
 ## Cross-references
 
 - `factory-dispatch-cards.md` — report milestones ↔ queue cards, card classes, the lane card transition statement structure, isolation rationale, the pre-dispatch cross-check, and the PR-title carrier.
-- `factory-dispatch-gates.md` — the CodeRabbit endpoint measurement, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record.
+- `factory-dispatch-gates.md` — the native Codex artifact contract, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record.
 - `factory-dispatch-mechanics.md` — the lane-and-lens mechanics bodies relocated from the stub (isolation launchers and tiers, lane-local verification variants, the integration window procedure).
