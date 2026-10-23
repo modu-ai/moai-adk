@@ -26,6 +26,22 @@ workflow:
     factory_lease:
         duration: 15m
         renew_interval: 5m
+    # card_age_alarm: display-only work-item-age alarms on gate-waiting and
+    # stalled factory cards. Ships OFF; while
+    # enabled is false the `moai factory status` output is unchanged. The four
+    # bands are unmeasured chosen starting points, not recommendations — gate
+    # waits are human-scale, working-card stalls machine-scale — and G1 exists
+    # to produce the calibration data that retunes them. Every value must be a
+    # positive duration and each warn band strictly below its alert band; a
+    # refused key omits the alarm section from the status output with exactly
+    # one warning line and never refuses the rest of the status. The alarm
+    # takes no action of any kind: no write, no notification, no quarantine.
+    card_age_alarm:
+        enabled: false
+        gate_warn_after: 6h
+        gate_alert_after: 24h
+        stall_warn_after: 2h
+        stall_alert_after: 8h
     # factory: bare `moai factory next` self-dispatch policy. self_dispatch
     # arms the generic selection arms — cards picked by the operator but
     # owned by no lane — behind an eligibility gate. Default false is the

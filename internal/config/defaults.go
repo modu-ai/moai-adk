@@ -86,6 +86,33 @@ const (
 	// by being "newest". A compiled, unmeasured value.
 	QuotaClockSkewTolerance = 5 * time.Minute
 
+	// workflow.card_age_alarm defaults (SPEC-CARD-AGE-ALARM-001 REQ-CAA-001 /
+	// REQ-CAA-002, card t1838). The enable flag ships OFF: while it is false the
+	// factory status output is byte-identical to the pre-SPEC output. All four
+	// band values are UNMEASURED chosen starting points in the quota-gate
+	// tradition (decision-index Q5): gate waits are human-scale (the incident
+	// inventory's leader-repair stalls ran ~5.5h; multi-day strandings exist),
+	// working-card stalls machine-scale (a 15m lease with 5m renewal makes 2h
+	// without a stage move or commit notable, 8h serious). G1 exists to produce
+	// the calibration data that retunes them; this is the one place they are
+	// defined, and the shipped template block mirrors them.
+	DefaultCardAgeAlarmEnabled         = false
+	DefaultCardAgeAlarmGateWarnAfter   = 6 * time.Hour
+	DefaultCardAgeAlarmGateAlertAfter  = 24 * time.Hour
+	DefaultCardAgeAlarmStallWarnAfter  = 2 * time.Hour
+	DefaultCardAgeAlarmStallAlertAfter = 8 * time.Hour
+
+	// CardAgeAlarmClockSkewTolerance is how far in the future an age-anchor
+	// timestamp may lie, relative to the reader's clock, before the alarm
+	// renders that anchor unknown (SPEC-CARD-AGE-ALARM-001 REQ-CAA-004, plan
+	// audit iter1 D2): a record from another machine or a skewed clock must not
+	// yield a negative or zero age by being "newest". It mirrors
+	// QuotaClockSkewTolerance's shape exactly — a compiled, unmeasured value,
+	// deliberately not a workflow.card_age_alarm.* key, and the one sanctioned
+	// home of the number under REQ-CAA-002's no-literal rule. A compiled,
+	// unmeasured value.
+	CardAgeAlarmClockSkewTolerance = 5 * time.Minute
+
 	// workflow.quota_gate defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008).
 	// All four numeric values are UNMEASURED defaults: no data on the quota a
 	// card consumes exists, so they are chosen, not measured, and are
@@ -1461,6 +1488,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		FactoryLease: FactoryLeaseConfig{
 			Duration:      DefaultFactoryLeaseDuration.String(),
 			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
+		},
+		CardAgeAlarm: CardAgeAlarmConfig{
+			Enabled:         DefaultCardAgeAlarmEnabled,
+			GateWarnAfter:   DefaultCardAgeAlarmGateWarnAfter.String(),
+			GateAlertAfter:  DefaultCardAgeAlarmGateAlertAfter.String(),
+			StallWarnAfter:  DefaultCardAgeAlarmStallWarnAfter.String(),
+			StallAlertAfter: DefaultCardAgeAlarmStallAlertAfter.String(),
 		},
 		// SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007: the self-dispatch
 		// kill-switch ships default-OFF — the generic selection arms stay

@@ -65,33 +65,49 @@ func defaultQuotaGateMaxAge() time.Duration {
 	return d
 }
 
+// quotaGateFile is the isolated decode target of the quota keys: the only
+// workflow.yaml block it maps is quota_gate, so a YAML type error in any
+// OTHER key — a card_age_alarm typo included — cannot fail this decode and
+// revert the written quota values to the compiled defaults (sync-audit iter2
+// N2; the cardAgeAlarmFile / factoryLeaseFile pattern).
+type quotaGateFile struct {
+	Workflow struct {
+		QuotaGate QuotaGateConfig `yaml:"quota_gate"`
+	} `yaml:"workflow"`
+}
+
 // LoadQuotaGate resolves workflow.quota_gate for the project rooted at
-// projectRoot.
+// projectRoot. The block is decoded in isolation (quotaGateFile), so a type
+// error elsewhere in workflow.yaml degrades only the block that carries it.
 func LoadQuotaGate(projectRoot string) QuotaGateSettings {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
-	wrapper := &workflowFileWrapper{Workflow: NewDefaultWorkflowConfig()}
-	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
+	file := &quotaGateFile{}
+	file.Workflow.QuotaGate = NewDefaultWorkflowConfig().QuotaGate
+	loaded, err := loadYAMLFile(dir, "workflow.yaml", file)
 	if err != nil || !loaded {
 		return DefaultQuotaGate()
 	}
-	return resolveQuotaGate(wrapper.Workflow.QuotaGate)
+	return resolveQuotaGate(file.Workflow.QuotaGate)
 }
 
 // LoadQuotaScanBound returns the bound on linked-worktree record directories the
 // quota reading examines per call (workflow.quota_gate.max_scan_dirs,
 // SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011). It reads the same file through
-// the same decode path as LoadQuotaGate, but is a separate accessor so that
-// QuotaGateSettings carries no bound. A missing, unparseable, or mistyped file
-// (a decode failure) and a value outside 1-1024 yield the default; an absent key
-// keeps the default seeded into the wrapper.
+// the same isolated decode as LoadQuotaGate, but is a separate accessor so that
+// QuotaGateSettings carries no bound. A missing, unparseable, or mistyped
+// quota_gate block (a decode failure of this block) and a value outside 1-1024
+// yield the default; an absent key keeps the default seeded into the decode
+// target. A type error in any OTHER workflow block no longer reaches this
+// reader (sync-audit iter2 N2).
 func LoadQuotaScanBound(projectRoot string) int {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
-	wrapper := &workflowFileWrapper{Workflow: NewDefaultWorkflowConfig()}
-	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
+	file := &quotaGateFile{}
+	file.Workflow.QuotaGate = NewDefaultWorkflowConfig().QuotaGate
+	loaded, err := loadYAMLFile(dir, "workflow.yaml", file)
 	if err != nil || !loaded {
 		return DefaultQuotaGateMaxScanDirs
 	}
-	n := wrapper.Workflow.QuotaGate.MaxScanDirs
+	n := file.Workflow.QuotaGate.MaxScanDirs
 	if n < quotaGateScanDirsMin || n > quotaGateScanDirsMax {
 		return DefaultQuotaGateMaxScanDirs
 	}
