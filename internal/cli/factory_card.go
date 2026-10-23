@@ -463,13 +463,6 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 // @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the ungated wrapper, the drift-log test path, the eligibility form) — kept a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
 func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, error) {
-	// The landing base (the resolver's home projects root) is resolved
-	// BEFORE the lease section: the section admits no git subprocess, and
-	// the carry/refuse readers derive their candidate leaves from this base
-	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Resolved on the gated
-	// wrapper so the delegated eligibility form and its refusal readers
-	// inherit the base through the context.
-	ctx = withFactoryLandingBase(ctx, root)
 	card, leased, _, err := factoryNextLeaseOnceEligibility(ctx, root, runID, lane, noNewCards)
 	return card, leased, err
 }
@@ -482,6 +475,14 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // Codex loops keep the plainer gated form above — they never render refusal
 // lines.
 func factoryNextLeaseOnceEligibility(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, []factoryEligibleRefusal, error) {
+	// The landing base (the resolver's home projects root) is resolved
+	// BEFORE the lease section: the section admits no git subprocess, and
+	// the carry/refuse readers derive their candidate leaves from this base
+	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Resolved inside the
+	// eligibility form because every lease path funnels through it — the
+	// `next` verb, the MCP handler, the retry loop, the gated wrapper, and
+	// the lease-drift tests call it directly.
+	ctx = withFactoryLandingBase(ctx, root)
 	// The record connection carries the claim's busy timeout and is opened
 	// before the section, so a slow open never lengthens the lock's hold.
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
@@ -1384,7 +1385,7 @@ func factoryPriorCarryCandidate(ctx context.Context, db *homestate.FactoryDB, ro
 		return nil
 	}
 	if prev.Stage == "" || !homestate.IsCardState(prev.Stage) || homestate.IsTerminalCardState(prev.Stage) ||
-		!factoryPriorWorktreeReusable(root, cardID, prev.WorktreePath) {
+		!factoryPriorWorktreeReusable(ctx, root, cardID, prev.WorktreePath) {
 		return nil
 	}
 	return &prev
@@ -1424,17 +1425,23 @@ func factoryCompleteCarryOver(ctx context.Context, db *homestate.FactoryDB, runI
 // factoryPriorWorktreeReusable reports whether the prior row's worktree is
 // the reusable landing tree the claim path would re-enter (the same
 // conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
-// existing directory, and the card's own landing directory. It gates the
-// stage/evidence carry-over (card t1930, card-review r2 F3) — a stage carried
-// onto a FRESH tree would resume an audit stage with none of the audit files.
-func factoryPriorWorktreeReusable(root, cardID, path string) bool {
+// existing directory, and one of the card's own landing candidates — the
+// resolver-derived leaf from the pre-section base (REQ-WHR-007) or the
+// legacy in-repo leaf, the same candidate set the carry and refusal readers
+// keep. It gates the stage/evidence carry-over (card t1930, card-review r2
+// F3) — a stage carried onto a FRESH tree would resume an audit stage with
+// none of the audit files.
+func factoryPriorWorktreeReusable(ctx context.Context, root, cardID, path string) bool {
 	if strings.TrimSpace(path) == "" {
 		return false
 	}
 	if info, err := os.Lstat(path); err != nil || !info.IsDir() {
 		return false
 	}
-	return sameDirPath(path, factoryCardWorktreeDir(root, cardID))
+	if base := factoryLandingBaseFrom(ctx); base != "" && sameDirPath(path, filepath.Join(base, cardID)) {
+		return true
+	}
+	return sameDirPath(path, filepath.Join(root, sessionWorktreeSubdir, cardID))
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.

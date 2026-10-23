@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: f90b2c11377291478a7860626a2113cf2af137c60353a1d7f6ee1f4f2b51723f
+              hash: 01cfb2449c01376de45a8227546d9253ee5c034752a60b2811e5fd28c9923676
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec

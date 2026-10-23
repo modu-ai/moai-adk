@@ -48,9 +48,6 @@ const SessionWorktreeBranchPrefix = "WT-"
 // relative to the primary checkout's project root.
 const sessionWorktreeSubdir = ".moai" + string(filepath.Separator) + "worktrees"
 
-// Claude's short-name -w flag still resolves inside this native directory.
-const claudeNativeWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
-
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapSessionWorktreeSeams and restore on cleanup.
 var (

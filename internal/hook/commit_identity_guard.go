@@ -76,9 +76,9 @@ var commitVerbs = map[string]bool{
 // enumeration and the t1453 landing-predicate fixture email (gfd-test) was
 // registered; 61 with the t1856 env-diff-base fixture email; 62 with the t1680
 // common-root fixture email; 63 with the t1913 codex-review-entry fixture
-// email (SPEC-HOOK-SYNC-ASYNC-001 M3); 74 with the t1640
+// email (SPEC-HOOK-SYNC-ASYNC-001 M3); 76 with the t1640
 // (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
-// m6, ml-test, tier, wr-test) joined under the t1913 addition.
+// m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -114,6 +114,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"other@example.com",
 	"probe-test@example.com",
 	"qwr@example.invalid",
+	"rfx@example.com",
+	"sfx-cli@example.com",
 	"slot-cli-test@example.com",
 	"slot-lease-test@example.com",
 	"someone@example.invalid",
