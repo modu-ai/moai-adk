@@ -1,26 +1,44 @@
 name: Auto Merge
 
 # CI가 PR에서 성공적으로 완료되면 자동으로 squash merge
+#
+# Two triggers (SPEC-CI-CODEX-REVIEW-001, REQ-CCR-022): the completed CI run, and the Codex app
+# identity's issue comment on a pull request, which is created when a review starts and edited in
+# place until it ends. A comment re-evaluates the same chain, so a review that completes after the
+# CI window is still read. The comment path checks out the default branch only and runs no file,
+# ref, or text of the pull request.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+  issue_comment:
+    types: [created, edited]
 
+# statuses: write is the one scope added for the `auto-merge` commit status (REQ-CCR-025).
 permissions:
   contents: write
   pull-requests: write
-
-# Auto-merge — PR별 mutex, in-flight cancel 시 race condition 위험
-concurrency:
-  group: auto-merge-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
-  cancel-in-progress: false
+  statuses: write
 
 jobs:
   auto-merge:
-    # CI가 성공한 경우에만 실행
+    # Trust gate at the job level (REQ-CCR-022): a successful CI run of a pull request, or a comment
+    # of user id 199175422 (the Codex app identity) on a pull request. Any other comment starts a run
+    # whose job is skipped before any step, token use, or checkout. The id is a cost and exposure
+    # filter; the gate script still binds login, id, and type before any verdict.
     if: >
+      (github.event_name == 'workflow_run' &&
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success'
+      github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.id == 199175422)
+    # Auto-merge — one group per pull request, in-flight cancel would race a merge (REQ-CCR-023). The
+    # key is the pull request number for a CI run and for the identity's comment; a comment of any other
+    # author gets a unique per-run key, so a skipped run never shares a group with a real evaluation.
+    concurrency:
+      group: auto-merge-${{ github.event_name == 'issue_comment' && github.event.comment.user.id != 199175422 && format('run-{0}', github.run_id) || github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.run_id }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -28,11 +46,29 @@ jobs:
       - name: Get PR number
         id: pr
         env:
-          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number || github.event.issue.number }}
           PR_HEAD_BRANCH: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
           PR_STATE: ${{ github.event.workflow_run.pull_requests[0].state }}
           PR_MERGED: ${{ github.event.workflow_run.pull_requests[0].merged }}
         run: |
+          HEAD_SHA=""
+          # Comment path (REQ-CCR-022): the event names only the pull request number. The state, the merged
+          # flag, the head branch, and the head commit are read from the API; a read that fails leaves them
+          # empty, which turns the job off below.
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            PULL="$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null || true)"
+            PR_STATE="$(printf '%s' "$PULL" | jq -r '.state // empty' 2>/dev/null || true)"
+            PR_MERGED="$(printf '%s' "$PULL" | jq -r 'if .merged == true then "true" else "false" end' 2>/dev/null || true)"
+            PR_HEAD_BRANCH="$(printf '%s' "$PULL" | jq -r '.head.ref // empty' 2>/dev/null || true)"
+            HEAD_SHA="$(printf '%s' "$PULL" | jq -r '.head.sha // empty' 2>/dev/null || true)"
+            case "$HEAD_SHA" in
+              *[!0-9a-f]*) HEAD_SHA="" ;;
+            esac
+            if [ "${#HEAD_SHA}" -ne 40 ]; then HEAD_SHA=""; fi
+          fi
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "branch=$PR_HEAD_BRANCH" >> "$GITHUB_OUTPUT"
           echo "state=$PR_STATE" >> "$GITHUB_OUTPUT"
@@ -41,12 +77,28 @@ jobs:
           # active gates every later step. The workflow_run payload's pull_requests[]
           # element does not always carry state or merged, so only a positive
           # signal (closed, merged, or no number) turns the job off; an absent
-          # field is never read as "not open".
+          # field is never read as "not open". On the comment path the API read is
+          # the only source, so an unreadable pull request is never active.
           ACTIVE=true
           if [ -z "$PR_NUMBER" ] || [ "$PR_STATE" = "closed" ] || [ "$PR_MERGED" = "true" ]; then
             ACTIVE=false
           fi
+          case "$PR_NUMBER" in
+            *[!0-9]*) ACTIVE=false ;;
+          esac
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            if [ "$PR_STATE" != "open" ] || [ -z "$HEAD_SHA" ]; then
+              ACTIVE=false
+            fi
+          fi
           echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
+          # head_sha is the commit under evaluation on the comment path only; the workflow_run path
+          # takes it from the CI run.
+          if [ "$ACTIVE" = "true" ]; then
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "head_sha=" >> "$GITHUB_OUTPUT"
+          fi
           # AC-CI-005: record the job start once; the merge step derives its
           # single overall deadline from this timestamp (start + 17 min,
           # inside the 20-minute job timeout).
@@ -71,7 +123,7 @@ jobs:
         if: steps.pr.outputs.active == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha || steps.pr.outputs.head_sha }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           CURRENT_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid' 2>/dev/null || true)"

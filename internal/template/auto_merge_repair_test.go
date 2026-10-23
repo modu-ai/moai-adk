@@ -4,7 +4,7 @@ package template_test
 //
 // These tests pin four repairs that change no gate decision: a pull request that is not open ends the
 // job before any guard runs (F1); no step interpolates a `${{ }}` expression into its script (F2);
-// every exit-0 hold of the merge step leaves one explicit line in the job summary (F3); the Lint job
+// every outcome of the merge step leaves one explicit line in the job summary (F3); the Lint job
 // runs shellcheck over the gate script (F6). Each one was seen red on the unrepaired workflow first;
 // the evidence is recorded in the SPEC's progress.md.
 
@@ -166,8 +166,9 @@ func TestAutoMergeNeverInterpolatesExpressionsIntoScripts(t *testing.T) {
 	})
 }
 
-// F3 — every hold of the merge step, which keeps its exit 0, leaves one explicit line in the job summary
-// naming the outcome and the head SHA.
+// F3 — every outcome of the merge step leaves one explicit line in the job summary naming the outcome and the
+// head SHA. Revision 13 (REQ-CCR-024): "merge requested" ends exit 0; the four reached-and-not-merged outcomes end
+// exit 1 (formerly exit 0).
 // Mutants: the line of any one outcome deleted (each subtest below kills exactly its own outcome).
 func TestAutoMergeSummarisesEveryMergeOutcome(t *testing.T) {
 	t.Parallel()
@@ -198,10 +199,17 @@ func TestAutoMergeSummarisesEveryMergeOutcome(t *testing.T) {
 		}
 		return r, res, lines
 	}
+	// Revision 13 (REQ-CCR-024): the exit status is part of the outcome. Only "merge requested" ends exit 0; the four
+	// outcomes where the merge step was reached and did not merge (the deadline before the call, the deadline during
+	// the head re-read, the head moved, the merge call failed) end exit 1, and each still leaves its one summary line.
 	want := func(t *testing.T, r *amRig, res cgResult, lines []string, prefix string, merges int, shas ...string) {
 		t.Helper()
-		if res.code != 0 {
-			t.Fatalf("exit %d, want the unchanged 0\n%s%s", res.code, res.stdout, res.stderr)
+		wantCode := 1
+		if prefix == "merge requested" {
+			wantCode = 0
+		}
+		if res.code != wantCode {
+			t.Fatalf("exit %d, want %d for %q\n%s%s", res.code, wantCode, prefix, res.stdout, res.stderr)
 		}
 		if len(r.mergeCalls()) != merges {
 			t.Fatalf("merge calls %v, want %d", r.mergeCalls(), merges)
