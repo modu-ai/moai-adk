@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-23
+
 ### Added
 
 - **[SPEC-WORKTREE-HOME-ROOT-001](.moai/specs/SPEC-WORKTREE-HOME-ROOT-001/spec.md) — MoAI-made worktrees move to a home-level root, `~/.moai/worktrees/projects/<project-key>/<name>`, with a non-destructive migration of existing trees (card t1640, Tier L; 25 requirements REQ-WHR-001..025, 32 live acceptance-criterion identifiers counted by the B12 counter — 25 parent criteria AC-WHR-001..025, sub-lettered a/b cells belonging to their parent per acceptance.md's own convention; run commits `440cbbd689` to `d2b0627728`).**
