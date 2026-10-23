@@ -4,7 +4,7 @@
 
 - `moai worktree list [--json]`(신규, `internal/cli/worktree/list.go`) — 등록 트리의 클래스·루트·브랜치·더티·미푸시 커밋 수·앵커 여부 9필드 읽기 전용 재고. 아무것도 쓰지 않는다.
 - `moai worktree migrate [--apply|--verify|--rollback]`(신규, `internal/cli/worktree/migrate.go`) — moai-made 트리를 홈 루트로 옮기는 이관 엔진(기본 plan). 트리별 매니페스트→인텐트→`git worktree move`→상태파일 재키→팩토리 카드 재결속→매니페스트 대조 순이며 저널은 `pending`/`settle`로 죽은 실행의 수렴을 보장한다.
-- `moai worktree new`·`moai worktree --branch`(REQ-WHR-005b)·팩토리 카드 머티리얼라이저 — 신규 트리가 홈 루트(`<MoaiHome>/worktrees/projects/<key>/<name>`)에 착지한다. 반면 런처의 짧은 이름 `-w`(`moai cc/glm/codex -w <name>`)는 **생성하지 않는다** — 기존 홈 루트 트리면 chdir해 `-w` 선택을 argv에서 벗기고, 어느 뿌리에도 없는 이름은 REQ-WHR-006 브랜치-Y로 이름 그대로 통과한다(`TestLauncherShortName_{,Glm_}NoExistingTree_PassesThrough`가 고정 — 델타 감사 F5 정정).
+- `moai worktree new`·런처의 `--branch` 암(`moai cc -w <name> --branch <existing>` — REQ-WHR-005b, `worktree_branch_flag.go`)·팩토리 카드 머티리얼라이저 — 신규 트리가 홈 루트(`<MoaiHome>/worktrees/projects/<key>/<name>`)에 착지한다. 반면 런처의 짧은 이름 `-w`(`moai cc/glm/codex -w <name>`)는 **생성하지 않는다** — 기존 홈 루트 트리면 chdir해 `-w` 선택을 argv에서 벗기고, 어느 뿌리에도 없는 이름은 REQ-WHR-006 브랜치-Y로 이름 그대로 통과한다(`TestLauncherShortName_{,Glm_}NoExistingTree_PassesThrough`가 고정 — 델타 감사 F5 정정).
 - `moai factory next` — 착지 베이스가 임대 섹션 전 ctx 주입으로 고정되고(REQ-WHR-007) 외래 트리 거부·carry-over가 양 리프 후보를 본다.
 - `moai factory status` — 카드 나이 경보 블록(card t1838, 기본 OFF)이 추가됐다. 읽기 전용.
 - `moai worktree done` — 티어 판정이 공유 분류기(`Classify`+`OwnerMarkerOf`) 경유로 바뀌어 홈 루트의 moai-made 트리를 `WT-` 브랜치 없이도 인정한다.
