@@ -49,9 +49,22 @@ const unknownAttribution = "unknown"
 // full error text, which would explode key cardinality and defeat pattern
 // aggregation.
 //
+// SPEC-MCP-NEUTRALITY-001 REQ-MN-002 (design §D1): a payload whose structure
+// marks a policy refusal (refused: true) is a policy decision, not a
+// malfunction — the observer records NO row for it, here at the one
+// classification seam, so neither the usage-log ratchet feed nor the lessons
+// inbox counts a refusal as a tool failure.
+//
 // Fail-open: errors are logged and swallowed; the PostToolUseFailure handler
 // must never block the user's session end.
 func recordToolFailureEvent(input *HookInput, category ErrorCategory) {
+	// The refusal JSON rides both text surfaces: the top-level error text and
+	// the tool_response bytes (an MCP isError result nests the text block
+	// under content[0].text, which decodeToolResponse's string-key concat
+	// does not surface — so the raw bytes join the haystack).
+	if mcpPolicyRefusalMark(classificationText(input)) || mcpPolicyRefusalMark(string(input.ToolResponse)) {
+		return
+	}
 	root := resolveProjectRoot(input)
 	if root == "" {
 		return // no project root — silent skip (REQ-SEW-013 graceful degradation).
@@ -98,6 +111,66 @@ func recordToolFailureEvent(input *HookInput, category ErrorCategory) {
 	// the orchestrator's Lessons Protocol can drain it into auto-memory.
 	eventKey := string(harness.EventTypeToolFailure) + ":" + tool + ":" + string(category)
 	appendLessonsInboxStub(root, eventKey, truncateSummary(input.Error, string(category)), "tool:"+tool)
+}
+
+// mcpPolicyRefusalMark reports whether the failure text carries a
+// policy-refusal payload — a JSON object whose refused field is true
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-002). Three shapes reach it: the refusal
+// object itself (the text block's payload), a JSON envelope carrying it (an
+// MCP isError result nests the text block under content[0].text as an escaped
+// string), and plain text with the JSON embedded ("tool: {...}" prefixes).
+func mcpPolicyRefusalMark(text string) bool {
+	var v any
+	if err := json.Unmarshal([]byte(text), &v); err == nil && mcpRefusalInValue(v) {
+		return true
+	}
+	return mcpRefusalInRawText(text)
+}
+
+// mcpRefusalInValue walks a decoded JSON value: the refused key wins, string
+// leaves go back through the raw scanner (an escaped refusal JSON inside a
+// string value unescapes exactly once on decode).
+func mcpRefusalInValue(v any) bool {
+	switch t := v.(type) {
+	case map[string]any:
+		if refused, ok := t["refused"].(bool); ok && refused {
+			return true
+		}
+		for _, child := range t {
+			if mcpRefusalInValue(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range t {
+			if mcpRefusalInValue(child) {
+				return true
+			}
+		}
+	case string:
+		return mcpRefusalInRawText(t)
+	}
+	return false
+}
+
+// mcpRefusalInRawText scans plain text for a JSON object with refused true,
+// decoding from every '{' so prefixed or trailing prose around the payload
+// still matches.
+func mcpRefusalInRawText(text string) bool {
+	for offset := 0; offset < len(text); offset++ {
+		if text[offset] != '{' {
+			continue
+		}
+		dec := json.NewDecoder(strings.NewReader(text[offset:]))
+		var candidate map[string]any
+		if err := dec.Decode(&candidate); err != nil {
+			continue
+		}
+		if refused, ok := candidate["refused"].(bool); ok && refused {
+			return true
+		}
+	}
+	return false
 }
 
 // recordTestFailEvent records a test_fail:<package>: event to usage-log.jsonl

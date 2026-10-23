@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -79,10 +80,14 @@ const (
 	CauseReceiptBeforeStart        = "receipt created before the auditor started"
 	CauseReceiptReused             = "receipt created before the previous auditor instance of this session ended"
 	CauseReceiptNotACodexAudit     = "receipt is not a codex audit"
+	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
+	CauseReceiptVerdictFail        = "receipt records a FAIL verdict"
+	CauseReceiptTreeStateChanged   = "receipt judged a different tree state (head or digest moved)"
+	CauseReceiptStateUnreadable    = "the tree state could not be read for the freshness check"
+	CauseReceiptBindCaptureFailed  = "receipt's state binding capture failed — its freshness is unknowable"
 	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
 	CauseInstancePendingUnreadable = "instance end record unreadable"
 	CauseInstancePendingUnresolved = "instance end record unresolved"
-	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
 	CauseVerdictLineMissing        = "verdict line missing"
 )
 
@@ -106,6 +111,11 @@ const (
 // here rather than imported because the store is the leaf package: internal/cli
 // depends on it, not the other way round.
 const codexVerdictInconclusive = "inconclusive"
+
+// codexVerdictFail is the verdict a codex audit records when it ran and found
+// a blocking failure. Such a receipt must never corroborate a PASS
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020).
+const codexVerdictFail = "fail"
 
 // gateRequired is the ONLY value that opts a tree into the receipt checks. The
 // resolver (config.ResolveAuditPlan) trims surrounding whitespace and matches
@@ -174,6 +184,211 @@ type Receipt struct {
 	// CodexError names the cause of an inconclusive codex verdict, with a bounded
 	// tail of the codex child's stderr. Absent when codex gave a verdict (t1788).
 	CodexError string `json:"codex_error,omitempty"`
+
+	// HeadCommit and TreeDigest bind the receipt to the tree state it judged
+	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the head commit and a deterministic
+	// digest of the working-tree state at audit time. A reuse check compares
+	// them against the tree's CURRENT state — a receipt whose state moved is
+	// not evidence for the state that now exists. Empty on receipts written
+	// before the binding existed (a record without them is unattributable, not
+	// contradictory — the reuse check skips the comparison rather than
+	// inventing a difference).
+	HeadCommit string `json:"head_commit,omitempty"`
+	TreeDigest string `json:"tree_digest,omitempty"`
+
+	// BindCaptureFailed marks a receipt whose start-of-audit state capture
+	// FAILED (card t1632 sync-audit r3 F14): the freshness of this receipt is
+	// UNKNOWABLE, so the reuse check refuses it — never silent, never a
+	// write-time fallback. A receipt without the marker and without a binding
+	// is a pre-binding record and stays permissive.
+	BindCaptureFailed bool `json:"bind_capture_failed,omitempty"`
+}
+
+// TreeState returns the (head commit, tree digest) of the state a receipt
+// recorded against treeRoot. The digest covers the CONTENT the backend audit
+// judged (card t1632 card-review P1-1): the head commit, the porcelain rows,
+// the tracked diff's actual bytes (`git diff HEAD` — an in-place re-edit moves
+// the digest even though HEAD and the porcelain rows do not), and the bytes of
+// every untracked file OUTSIDE the runtime-managed prefixes (an untracked
+// file's content change moves the digest even though its row does not).
+// It is a var so tests stub the git reads; the real implementation shells out
+// to the tree's own git. Any failure returns empty values: the receipt is then
+// written WITHOUT the binding (recorded evidence beats a missing field), and
+// the reuse check skips the comparison for a receipt that carries no binding.
+//
+// @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
+// @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
+var TreeState = func(treeRoot string) (head, digest string, err error) {
+	if strings.TrimSpace(treeRoot) == "" {
+		return "", "", nil
+	}
+	headOut, err := gitIn(treeRoot, "rev-parse", "HEAD")
+	if err != nil {
+		return "", "", err
+	}
+	// Card t1632 sync-audit F3: NUL-delimited reads — `git status --porcelain`
+	// C-quotes non-ASCII filenames and the line parser misreads them, so a
+	// Korean filename made the state read FAIL. The -z forms carry the same
+	// rows with no quoting.
+	statusOut, err := gitIn(treeRoot, "status", "--porcelain", "-z")
+	if err != nil {
+		return "", "", err
+	}
+	diffOut, err := gitIn(treeRoot, "diff", "HEAD")
+	if err != nil {
+		return "", "", err
+	}
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
+	for _, f := range untrackedContentPaths(treeRoot) {
+		full := filepath.Join(treeRoot, f)
+		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
+		// bytes — the file type and permission bits (a chmod +x on an untracked
+		// script is a materially different judged state), and for a symlink the
+		// link target (see below), since the content bytes of a link's target
+		// are not the link's own state.
+		info, lerr := os.Lstat(full)
+		if lerr != nil {
+			return "", "", lerr
+		}
+		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00mode:%d", f, uint32(info.Mode()))
+		// l57-r6 finding 1: a symlink is bound as a LINK — the Readlink target
+		// beside the lstat metadata — and is NEVER opened. os.ReadFile follows
+		// the link, so binding its result bound the target's content, not the
+		// link's state: a dangling untracked symlink failed the read, the read
+		// failure failed the whole TreeState, and the failed capture marked
+		// every receipt from that audit BindCaptureFailed (all unusable); a
+		// FIFO- or device-backed target could block the read outright. The
+		// target needs no length framing: a link target cannot contain NUL, and
+		// the next framing always begins with one.
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, lerr := os.Readlink(full)
+			if lerr != nil {
+				return "", "", lerr
+			}
+			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
+			continue
+		}
+		// l57-r8 finding 2: ONLY a regular file is content-read. An untracked
+		// nested git repository is listed by `git ls-files --others` as its
+		// DIRECTORY entry (`nested/`), and os.ReadFile on a directory fails —
+		// the read failure failed the whole TreeState, and the failed capture
+		// marked every receipt from that audit BindCaptureFailed (all
+		// unusable; the r6 symlink class again). A directory — or any other
+		// non-regular entry a content read cannot take (a FIFO would block) —
+		// binds its PATH + Lstat metadata and moves on; the r7 length framing
+		// keeps such an entry distinct from a same-framing empty file.
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		data, rerr := os.ReadFile(full)
+		if rerr != nil {
+			return "", "", rerr
+		}
+		// l57-r7 finding 1: the content is LENGTH-FRAMED. Unframed, a file's
+		// content bytes could masquerade as the framing of a phantom entry —
+		// the tree {a: "", b: H+"X"} (H = b's framing bytes) hashed identically
+		// to {a: H, b: "X"} — so a content change moved nothing and an earlier
+		// PASS receipt stayed fresh across a different tree.
+		_, _ = fmt.Fprintf(h, "\x00len:%d", len(data))
+		_, _ = h.Write(data)
+	}
+	// l57-r8 finding 3: a submodule's INNER state is part of the judged
+	// state. The parent-side reads above cannot see it — the porcelain row and
+	// the `Subproject commit …-dirty` diff line are identical no matter WHAT
+	// changed inside the submodule — so an inner re-edit moved nothing and a
+	// pre-change PASS receipt stayed fresh across a different tree. Only
+	// gitlink entries (mode 160000) are bound — no arbitrary recursion — and
+	// each contributes its submodule HEAD, the inner porcelain rows, and the
+	// inner tracked diff's actual bytes (the inner porcelain alone is the same
+	// row-identity defect one level down: a re-edit emits the identical
+	// ` M <file>` row). An inner UNTRACKED file is outside this binding, as it
+	// is outside the parent-side `-dirty` signal itself. When the submodule
+	// worktree is absent or uninitialized (no inner state to read), its index
+	// gitlink is bound instead — the stable state the parent itself records,
+	// so the digest stays deterministic without failing the capture.
+	for _, link := range submoduleGitlinks(treeRoot) {
+		subRoot := filepath.Join(treeRoot, link.path)
+		subHead, herr := gitIn(subRoot, "rev-parse", "HEAD")
+		subStatus, serr := gitIn(subRoot, "status", "--porcelain", "-z")
+		subDiff, derr := gitIn(subRoot, "diff", "HEAD")
+		if herr != nil || serr != nil || derr != nil {
+			_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00gitlink:%s", link.path, link.sha)
+			continue
+		}
+		_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00head:%s\x00status\x00%s\x00diff\x00%s", link.path, subHead, subStatus, subDiff)
+	}
+	return headOut, hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// submoduleLink is one gitlink entry of the parent index: the submodule's path
+// and the gitlink commit the index records.
+type submoduleLink struct {
+	path string
+	sha  string
+}
+
+// submoduleGitlinks returns the parent index's gitlink entries (mode 160000),
+// sorted by path for a deterministic digest order.
+func submoduleGitlinks(treeRoot string) []submoduleLink {
+	out, err := gitInRaw(treeRoot, "ls-files", "--stage", "-z")
+	if err != nil || out == "" {
+		return nil
+	}
+	var links []submoduleLink
+	for _, line := range strings.Split(out, "\x00") {
+		meta, path, ok := strings.Cut(line, "\t")
+		if !ok || path == "" || !strings.HasPrefix(meta, "160000 ") {
+			continue
+		}
+		fields := strings.Fields(meta)
+		if len(fields) != 3 {
+			continue
+		}
+		links = append(links, submoduleLink{path: path, sha: fields[1]})
+	}
+	sort.Slice(links, func(i, j int) bool { return links[i].path < links[j].path })
+	return links
+}
+
+// untrackedContentPaths lists the untracked files OUTSIDE the runtime-managed
+// prefixes, sorted for a deterministic digest — the same exclusion surface the
+// review material applies, so a runtime-config edit between the audit and the
+// citation does not forge a state change that the judged diff never saw.
+func untrackedContentPaths(treeRoot string) []string {
+	// -z (card t1632 sync-audit F3): no C-quoting, NUL-separated — non-ASCII
+	// filenames survive intact. The RAW gitIn variant (l57-r2 finding 1): the
+	// output BEGINS with the first path, so gitIn's whole-output trim stripped
+	// a leading space that is part of that filename.
+	out, err := gitInRaw(treeRoot, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil || out == "" {
+		return nil
+	}
+	var kept []string
+	for _, line := range strings.Split(out, "\x00") {
+		// l57-r2 finding 1: a -z path is taken VERBATIM — a leading/trailing
+		// space is part of the filename, and trimming it made the content read
+		// collide with the trimmed name (the tracked a.go), so an edit to the
+		// whitespace-named untracked file moved nothing and an earlier PASS
+		// receipt stayed fresh. Only the empty split tail skips.
+		if line == "" || isRuntimeManagedStatePath(line) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	sort.Strings(kept)
+	return kept
+}
+
+// isRuntimeManagedStatePath reports whether a path lives under one of the
+// runtime-managed state prefixes the receipt binding excludes.
+func isRuntimeManagedStatePath(path string) bool {
+	for _, p := range []string{".moai/state/", ".moai/cache/", ".moai/reports/", ".moai/logs/", ".moai/harness/"} {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // StartMarker records that an auditor subagent instance began, so a receipt
@@ -939,8 +1154,40 @@ func NewReceiptID() (string, error) {
 	return "rcpt-" + hex.EncodeToString(buf), nil
 }
 
+// gitIn runs one git command inside treeRoot and returns its trimmed stdout.
+// A missing git or a non-repository tree errors: the caller decides whether a
+// missing binding is tolerable (receipt writes tolerate it; a reuse
+// comparison is skipped rather than invented).
+func gitIn(treeRoot string, args ...string) (string, error) {
+	out, err := gitInRaw(treeRoot, args...)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// gitInRaw is gitIn without the whole-output trim (l57-r2 finding 1): a -z
+// path list begins with its first filename, so a leading space that is part
+// of that name must survive byte-for-byte. Everything else about gitIn holds.
+func gitInRaw(treeRoot string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", treeRoot}, args...)...)
+	// Card t1632 sync-audit F4: scrub the inherited git-redirect variables —
+	// the same environment storeroot.go applies to its store-root inspections.
+	// A server process launched with GIT_DIR/GIT_WORK_TREE naming another
+	// repository must not bind the receipt state to that other tree.
+	cmd.Env = scrubbedGitEnv()
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s in %s: %w", strings.Join(args, " "), treeRoot, err)
+	}
+	return string(out), nil
+}
+
 // WriteReceipt stores a receipt, filling ReceiptID and CreatedAt when unset,
-// and returns the ID.
+// and returns the ID. REQ-MN-020: it also binds the receipt to the tree state
+// it judged — head commit + tree digest from the TreeState seam. A state read
+// that fails leaves the binding empty (recorded evidence beats a missing
+// field) and does not fail the write.
 func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 	if r.ReceiptID == "" {
 		id, err := NewReceiptID()
@@ -951,6 +1198,15 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 	}
 	if r.CreatedAt.IsZero() {
 		r.CreatedAt = Now()
+	}
+	if r.HeadCommit == "" && r.TreeDigest == "" && !r.BindCaptureFailed {
+		// The write-time bind is the FALLBACK for a receipt whose caller did
+		// not capture the state itself (card t1632 sync-audit F5/F14): a
+		// capture-failed receipt carries the marker INSTEAD of a fallback
+		// binding, because a binding written after the audit judged nothing.
+		if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil {
+			r.HeadCommit, r.TreeDigest = head, digest
+		}
 	}
 	if err := writeJSON(filepath.Join(StateDir(treeRoot), receiptsRel, r.ReceiptID+".json"), r); err != nil {
 		return "", err
@@ -1272,6 +1528,10 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			CauseReceiptReused,
 			CauseReceiptNotACodexAudit,
 			CauseReceiptAuditNotRun,
+			CauseReceiptVerdictFail,
+			CauseReceiptTreeStateChanged,
+			CauseReceiptStateUnreadable,
+			CauseReceiptBindCaptureFailed,
 		} {
 			if c == cause {
 				return i
@@ -1310,6 +1570,49 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// codex_verdict stays permissive: it means the field was not
 			// recorded, not that the audit failed.
 			cause = CauseReceiptAuditNotRun
+		case strings.TrimSpace(r.CodexVerdict) == codexVerdictFail:
+			// REQ-MN-020: the audit RAN and found a blocking failure — a PASS
+			// citing this receipt contradicts the evidence it cites, so the
+			// corroboration is refused rather than reinforced.
+			cause = CauseReceiptVerdictFail
+		case r.HeadCommit != "" || r.TreeDigest != "" || r.BindCaptureFailed:
+			// REQ-MN-020: the receipt binds the tree state it judged. A
+			// binding whose state differs from the tree's CURRENT state is
+			// evidence for a state that no longer exists — not reusable. A
+			// state read that fails leaves the refusal undecided here (the
+			// receipt keeps its other arms) — a broken git must not flip a
+			// receipt into a false contradiction, and must equally never
+			// forge freshness. A receipt with NO binding (written before the
+			// binding existed) is unattributable, not contradictory.
+			// Card-review P1-2: the comparison reads the tree the receipt
+			// JUDGED (r.TreeRoot), never the store root the caller handed
+			// in — a hook in a linked worktree passes the primary checkout
+			// as the store root, and the receipt was recorded against the
+			// worktree.
+			// Card t1632 sync-audit F3: a state read that ERRORS refuses the
+			// reuse (CauseReceiptStateUnreadable) — the freshness check must
+			// not vanish exactly when the tree cannot be judged. The ONE
+			// carve-out is the git command being ABSENT (exec.ErrNotFound):
+			// that cannot be a state change, and refusing every receipt on a
+			// machine without git would be a self-inflicted outage.
+			// Card t1632 sync-audit r3 F14: a capture-failed binding has NO
+			// judged state — the marker alone refuses the reuse, because a
+			// binding whose freshness is unknowable proves nothing.
+			if r.BindCaptureFailed {
+				cause = CauseReceiptBindCaptureFailed
+				break
+			}
+			head, digest, sErr := TreeState(r.TreeRoot)
+			switch {
+			case sErr == nil && (head != "" || digest != ""):
+				if r.HeadCommit != head || r.TreeDigest != digest {
+					cause = CauseReceiptTreeStateChanged
+				}
+			case sErr != nil && errors.Is(sErr, exec.ErrNotFound):
+				// Absent-git carve-out: undecided, the receipt keeps its other arms.
+			case sErr != nil:
+				cause = CauseReceiptStateUnreadable
+			}
 		}
 		if cause == "" {
 			return true, ""

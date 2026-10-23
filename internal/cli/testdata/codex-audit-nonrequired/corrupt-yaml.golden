@@ -3,6 +3,7 @@
   "structured": {
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
+    "could_not_run": true,
     "findings": [],
     "gate_unmet": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']'",
     "next_steps": [
@@ -14,6 +15,7 @@
   "text": {
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
+    "could_not_run": true,
     "findings": [],
     "gate_unmet": "workflow.audit gates unreadable: parse workflow.yaml: yaml: line 1: did not find expected ',' or ']'",
     "next_steps": [

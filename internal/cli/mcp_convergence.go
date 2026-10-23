@@ -101,6 +101,11 @@ type PerBackendVerdict struct {
 	// this backend's own verdict signals disagreed. It is forwarded rather than
 	// re-derived because converge sees only verdicts, never review bodies.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+	// ReviewBase carries forward ReviewOutput.ReviewBase (SPEC-MCP-NEUTRALITY-
+	// 001 REQ-MN-019): the base the backend leg actually judged, empty when the
+	// leg judged no declared base — the fact the second-review record's
+	// effective scope states instead of claiming baseBranch coverage.
+	ReviewBase string `json:"review_base,omitempty"`
 	// Source distinguishes a Claude verdict produced by the subscription-backed
 	// MCP subprocess from the backwards-compatible in-session anchor.
 	Source string `json:"source,omitempty"`
@@ -250,11 +255,13 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		// nothing required, nothing blocks). Either way: overall pass.
 		overall = overallVerdictPass
 	default:
-		// No required FAIL, but not all required PASS — i.e. some required are
-		// inconclusive (missing/erroring optionals). Fail-OPEN to the Claude
-		// participant (AC-AMM-021 / EC-1 / EC-4): either the valid in-session
-		// anchor or the independently acquired Claude subscription verdict.
-		overall = claudeVerdictOrDefault(verdicts, overallVerdictPass)
+		// SPEC-MCP-NEUTRALITY-001 REQ-MN-022: a REQUIRED backend left
+		// inconclusive means the participant-evidence threshold is unmet — the
+		// claude participant's verdict (the caller's own submitted anchor)
+		// cannot rescue the convergence to pass. The overall is the distinct
+		// not-converged outcome; fail_open_backends still names the
+		// inconclusive backends for the orchestrator.
+		overall = VerdictInconclusive
 	}
 
 	// ── Step 2: disagreement_flag derivation ──
@@ -420,17 +427,6 @@ func verdictIn(xs []string, want string) bool {
 		}
 	}
 	return false
-}
-
-// claudeVerdictOrDefault returns the claude backend's verdict from vs, or dflt
-// if claude is absent. Used for the fail-open-to-claude branch.
-func claudeVerdictOrDefault(vs []PerBackendVerdict, dflt string) string {
-	for _, v := range vs {
-		if v.Backend == BackendClaude {
-			return v.Verdict
-		}
-	}
-	return dflt
 }
 
 // collectFailOpen returns the backends whose verdict is VerdictInconclusive
@@ -637,10 +633,35 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if err != nil {
 		return inconclusiveReview("codex binary not found in PATH")
 	}
+	prompt := codexAdversarialPromptFor(ctx, focus)
+	// REQ-MN-019: the turn/start this leg sends has no target field, so a
+	// baseBranch target is applied in the prompt — the resolved base SHA and the
+	// diff instruction — and the result names the base it judged. A delta base
+	// on ctx carries its own base and diff instruction (the t1708 clause) and is
+	// not replaced. A base that cannot be resolved is not silently downgraded
+	// to a working-tree review: the leg is inconclusive, stating so.
+	var base *reviewBase
+	if target == codexTargetBaseBranch && deltaBaseFromContext(ctx) == "" {
+		baseRoot := strings.TrimSpace(projectRoot)
+		if baseRoot == "" {
+			// With an empty projectRoot the base is resolved in resolveProjectDir()
+			// but the leg sends no cwd (the pre-existing SPEC-MCP-WORKTREE-ROOT-001
+			// REQ-2 rule), so the SHA may belong to a different tree than the one
+			// codex starts in. Reachable only by a caller that names no project_root,
+			// which the worktree doctrine forbids (card t1632 audit N5).
+			baseRoot = resolveProjectDir() // the resolver performGLMAudit falls back to
+		}
+		b, resolveErr := resolveReviewBase(baseRoot)
+		if resolveErr != nil {
+			return inconclusiveReview("target not applied: the base for " + codexTargetBaseBranch + " could not be resolved: " + resolveErr.Error())
+		}
+		base = &b
+		prompt = codexAdversarialBaseBranchPrompt(b.MergeBase, focus)
+	}
 	params := map[string]any{
 		"target": target,
 		"model":  "", // model/effort resolution is delegated to the SSOT at the single-backend layer
-		"prompt": codexAdversarialPromptFor(ctx, focus),
+		"prompt": prompt,
 	}
 	if strings.TrimSpace(focus) != "" {
 		params["focus"] = focus
@@ -665,6 +686,9 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 		timedOut := inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
 		timedOut.StderrTail = out.StderrTail // the deadline is the cause; the tail says what the child printed before the kill
 		return timedOut
+	}
+	if base != nil {
+		out.ReviewBase = base.String()
 	}
 	return out
 }
@@ -693,7 +717,29 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if root == "" {
 		root = resolveProjectDir()
 	}
-	diff, err := collectReviewDiffCtx(ctx, root, target)
+	// REQ-MN-019 (the l57-r7 repair, the GLM twin of the codex t1426 shape): a
+	// baseBranch leg resolves its base ONCE here, measures the diff from that
+	// exact merge base, and reports the same value as review_base — the
+	// second-review record then reads the leg as baseBranch coverage instead of
+	// "target not applied" for an audit that WAS applied. A delta base on ctx
+	// replaces the resolved base, exactly as collectReviewDiffCtx does.
+	var base *reviewBase
+	var diff string
+	var err error
+	if target == codexTargetBaseBranch {
+		var b reviewBase
+		if sha := deltaBaseFromContext(ctx); sha != "" {
+			b, err = deltaReviewBase(sha), nil
+		} else {
+			b, err = resolveReviewBase(root)
+		}
+		if err == nil {
+			base = &b
+			diff, err = collectReviewDiffAt(root, b)
+		}
+	} else {
+		diff, err = collectReviewDiffCtx(ctx, root, target)
+	}
 	if err != nil {
 		return glmInconclusive("no reviewable change: " + err.Error())
 	}
@@ -706,7 +752,11 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 		// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 		return glmInconclusive("workflow.audit pins unreadable: " + pinErr.Error())
 	}
-	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
+	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
+	if base != nil {
+		out.ReviewBase = base.String()
+	}
+	return out
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool
@@ -737,6 +787,23 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// resolveOptionalToolProjectRoot resolved (nothing, on an omitted
 	// project_root).
 	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
+
+	// Card t1632 sync-audit r3 F13: the convergence receipt binds the tree
+	// state captured BEFORE the fan-out — the state the backends actually
+	// judged. A write-time bind records the post-edit state when a tree edit
+	// lands during the fan-out, laundering a PASS through the freshness check
+	// (the same defect the codex_audit surface's F5 repair removed). The
+	// capture root follows the SAME receipt-target contract the write uses,
+	// so the capture and the receipt describe one tree. r3 F14: a failed
+	// capture is an explicit marker, never a write-time fallback.
+	var bindHead, bindDigest string
+	captureFailed := false
+	if captureRoot, _ := receiptTarget(cfg.ProjectRoot); captureRoot != "" {
+		bindHead, bindDigest, captureFailed = func() (string, string, bool) {
+			h, d, err := auditreceipt.TreeState(captureRoot)
+			return h, d, err != nil
+		}()
+	}
 
 	// ── resolve Claude source ──
 	claudeGate := cfg.Gates.Claude
@@ -826,6 +893,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					SynthesisNote: p.out.SynthesisNote,
 					Source:        source,
 					Provenance:    p.out.Provenance,
+					ReviewBase:    p.out.ReviewBase,
 					StderrTail:    p.out.StderrTail,
 
 					RecordingDefect: p.out.RecordingDefect,
@@ -834,24 +902,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		}
 	}
 
-	result := converge(verdicts)
-	// Set BEFORE persist: persistConvergenceResult marshals this struct
-	// verbatim, so filling the returned result is what makes the state file
-	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
-	// persistence-side code).
-	result.BuildCommit, result.BuildLag = buildCommit, buildLag
-	result.PlanSource = cfg.PlanSource
-
 	// ── explicit-required gate enforcement (GH #1632 item 3) ──
-	// converge above is deliberately fail-open: a required backend that
-	// returned no verdict falls back to the claude anchor, so an unmet gate
-	// rode to an overall pass. The operator decision closes that gap for gates
-	// the project EXPLICITLY configured `required`: such a gate left unmet
-	// fails the overall verdict. The raw workflow.yaml value decides — an
-	// UNSET gate keeps the fail-open behavior byte-for-byte, because the
-	// engine's distributed default (codex required) is not an opt-in. Runs
-	// BEFORE persist so the state file the multi-review-gate Stop hook reads
-	// carries the enforced verdict.
+	// Read the audited tree's raw gates BEFORE converge: REQ-MN-021/022 moved
+	// the could-not-run outcome into converge's required classification, so a
+	// backend the tree explicitly configured `advisory` must not ride the
+	// engine-default `required` into a not-converged overall — the raw
+	// workflow.yaml value re-stamps the per-backend gate first (codex/glm only:
+	// the in-session claude anchor keeps its own default-required gate
+	// hierarchy below). converge ABOVE is still fail-open for an UNSET gate —
+	// the engine's distributed default (codex required) is not an opt-in, so
+	// an unset gate never re-stamps.
 	var (
 		enforcementGates config.AuditGates
 		gateAssumedNote  string
@@ -881,6 +941,31 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			}
 		}
 	}
+	for i := range verdicts {
+		if verdicts[i].Backend == BackendClaude {
+			continue // the anchor keeps its own gate hierarchy (see claudeGate)
+		}
+		if g := explicitGateFor(enforcementGates, verdicts[i].Backend); g != "" {
+			verdicts[i].Gate = g
+		}
+	}
+
+	result := converge(verdicts)
+	// Set BEFORE persist: persistConvergenceResult marshals this struct
+	// verbatim, so filling the returned result is what makes the state file
+	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
+	// persistence-side code).
+	result.BuildCommit, result.BuildLag = buildCommit, buildLag
+	result.PlanSource = cfg.PlanSource
+
+	// ── explicit-required gate enforcement (GH #1632 item 3) ──
+	// converge above is deliberately fail-open for an UNSET gate: the engine's
+	// distributed default (codex required) is not an opt-in. The raw
+	// workflow.yaml value was read BEFORE converge (above) — the same gates the
+	// enforcement below applies, so the per-backend classification and the
+	// overall enforcement read one configuration. Runs BEFORE persist so the
+	// state file the multi-review-gate Stop hook reads carries the enforced
+	// verdict.
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
@@ -925,7 +1010,12 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
-		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired)
+		// F13: the receipt carries the START state captured before the fan-out.
+		// The fan-out-time capture failure stays honest the same way (F14's
+		// marker): a failed start bind records bind_capture_failed instead of
+		// a write-time fallback.
+		bindFailed := bindHead == "" && bindDigest == "" && captureFailed
+		result.AuditReceipt, notice = recordAuditReceiptAtBound(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
 		if notice != "" {
 			notices = append(notices, notice)
 		}
@@ -1006,11 +1096,17 @@ func validReviewVerdict(verdict string) bool {
 
 // ─── explicit-required gate enforcement (GH #1632 item 3) ───
 
-// enforceRequiredGateUnmet fails the overall verdict when a backend the
-// project EXPLICITLY configured `required` returned no verdict, instead of
-// letting it ride the claude-anchor fall-through to a pass. Operator decision:
-// fail-closed for an explicit `required`; the annotate-only fail-open behavior
-// is preserved byte-for-byte when `required` is NOT set.
+// enforceRequiredGateUnmet marks the overall verdict as unmet (and REFUSES a
+// pass) when a backend the project EXPLICITLY configured `required` returned no
+// verdict, instead of letting it ride the claude-anchor fall-through to a pass.
+// Operator decision: fail-closed for an explicit `required`; the annotate-only
+// fail-open behavior is preserved byte-for-byte when `required` is NOT set.
+//
+// REQ-MN-021 revises what "fail-closed" means here: a backend that returned no
+// verdict could not be PERFORMED, so the outcome is the distinct NOT-CONVERGED
+// result (overall inconclusive — REQ-MN-022's participant-evidence threshold),
+// never an overall `fail` that would misstate a reviewed failure no backend
+// reported. A pass is equally unreachable, so the gate still blocks.
 //
 // The gates argument is the audited tree's RAW workflow.audit.gates block (zero
 // values where unset) — the same value applyGateUnmet reads at the
@@ -1019,10 +1115,11 @@ func validReviewVerdict(verdict string) bool {
 // the key is absent) must never count as an opt-in, or every existing project
 // would flip to fail-closed.
 //
-// Only overall_verdict and residual_risk_note move. per_backend_verdicts keeps
-// the backend's true inconclusive verdict and fail_open_backends keeps naming
-// it, so the audit trail still says "this backend never ran" — the enforcement
-// changes what the verdict DECIDES, not what the backends REPORTED.
+// Only overall_verdict, gate_unmet, and residual_risk_note move.
+// per_backend_verdicts keeps the backend's true inconclusive verdict and
+// fail_open_backends keeps naming it, so the audit trail still says "this
+// backend never ran" — the enforcement changes what the verdict DECIDES, not
+// what the backends REPORTED.
 func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict, gates config.AuditGates) ConvergenceResult {
 	var unmet []string
 	for _, v := range verdicts {
@@ -1037,9 +1134,18 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 	if len(unmet) == 0 {
 		return r
 	}
-	r.OverallVerdict = overallVerdictFail
+	// REQ-MN-021: could-not-run stays not-performed — the overall stays at the
+	// distinct not-converged outcome (inconclusive), never a converged fail,
+	// and never the pass the claude-anchor fall-through would have produced.
+	// l57-r2 finding 2: the downgrade applies only to an overall that does not
+	// itself carry a required FAIL — a converged FAIL is a failure a backend
+	// REPORTED, and reclassifying it as not-run would erase a found defect.
+	// The unmet leg is named either way.
+	if r.OverallVerdict != overallVerdictFail {
+		r.OverallVerdict = VerdictInconclusive
+	}
 	r.GateUnmet = strings.Join(unmet, ",")
-	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
+	note := "required gate unmet (explicitly configured required, could-not-run, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {
 		// The verdict now fails, so a disagreement written as advisory is no
 		// longer "not a block" — keep the split, drop the qualifier.

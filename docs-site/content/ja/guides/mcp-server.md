@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-22個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`factory_renew` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
+32個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`session_list`、`todo_claim`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`factory_renew` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -222,27 +222,6 @@ GLM 委任ツール群は codex 委任と同じ形で super-advisor と manager-
 | `mcp__moai__jev_ask` | 与えた状態1つについて型の決まった質問を投げ、確率付きの回答を受け取る | 配布時の既定値（`workflow.jev.enabled: false`）では利用不可 | — （MCP 専用） |
 
 ツール自体は常に登録されますが、ゲートがオフのときはリクエストを組み立てず、ネットワークも呼び出しません。回答は人が読む参考シグナルであり、それ自体が完了判定・マージ承認・キュー変更になることはありません。自動で使われる場合も信号としてだけです — 例えば `moai todo --auto` が待機中のカードを検討する順序や、確認するか人に引き継ぐだけの任意の着手の交差検証があります。
-
-### ファクトリーメッセージング
-
-| ツール | 目的 | 利用エージェント | CLI 等価物 |
-|--------|------|------------------|------------|
-| `mcp__moai__factory_msg_send` | 論理レーンの現在のエンドポイントへ、冪等なエンベロープを1つ書き込む | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_list` | 自分のエンドポイントのメタデータを最大16件占有（占有リースの作成・更新、本文なし） | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_body` | 占有済みのメッセージ本文を1つ読む（本文は信頼できないピアデータとして返る） | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_receipt` | 占有の処分を記録してから、メッセージを確認済みにする | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_status` | メッセージを占有せずに、ブローカーの件数とレーンの運用状態を読む | ファクトリーのリーダー・レーン | — （MCP 専用） |
-
-### セッションメッセージング（Claude ↔ Codex）
-
-| ツール | 目的 | 利用エージェント | CLI 等価物 |
-|--------|------|------------------|------------|
-| `mcp__moai__session_msg_register` | このセッション（種類: claude または codex、名前）をローカルのメッセージブローカーに登録。同じ種類・名前なら同じ ID を返す | すべての Claude・Codex セッション | — |
-| `mcp__moai__session_msg_list` | 登録済みブローカーエージェントの一覧（ID、名前、種類、接続状態、未処理件数） | すべての Claude・Codex セッション | — |
-| `mcp__moai__session_msg_send` | 登録済みの別エージェントのメールボックスへ、短く自己完結した事実メッセージを送る | すべての Claude・Codex セッション | — |
-| `mcp__moai__session_msg_poll` | 自分のメールボックスの未処理メッセージを取得し（少なくとも1回の配信）、処理済み ID を確認済みにする | すべての Claude・Codex セッション | — |
-
-Codex セッションにはネイティブのピアメッセージング実行環境がないため、このブローカーが唯一の経路です。Claude セッション同士ではネイティブの `SendMessage` 経路を推奨します。配信はポーリング方式のため、送信は記録であって配信の保証ではありません。
 
 ### MCP-over-CLI 規則
 
