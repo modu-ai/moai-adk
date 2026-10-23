@@ -24,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // factoryCardNow is the clock the factory card commands read; tests replace it
@@ -518,6 +519,14 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // Codex loops keep the plainer gated form above — they never render refusal
 // lines.
 func factoryNextLeaseOnceEligibility(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, []factoryEligibleRefusal, error) {
+	// The landing base (the resolver's home projects root) is resolved
+	// BEFORE the lease section: the section admits no git subprocess, and
+	// the carry/refuse readers derive their candidate leaves from this base
+	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Resolved inside the
+	// eligibility form because every lease path funnels through it — the
+	// `next` verb, the MCP handler, the retry loop, the gated wrapper, and
+	// the lease-drift tests call it directly.
+	ctx = withFactoryLandingBase(ctx, root)
 	// The record connection carries the claim's busy timeout and is opened
 	// before the section, so a slow open never lengthens the lock's hold.
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
@@ -647,11 +656,42 @@ func factoryClaimFailure(claimCtx context.Context, err error) error {
 	}
 }
 
-// factoryCardWorktreeDir is the card's landing directory under the shared
-// materializer root — the leaf the REQ-SD-011 refusal and the carry-over both
-// read.
+// factoryCardWorktreeDir is the card's landing directory — the leaf the
+// REQ-SD-011 refusal and the carry-over both read.
+//
+// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): the landing directory comes
+// from the resolver (<MoaiHome>/worktrees/projects/<project-key>/<cardID>);
+// when the resolver cannot run the pre-M2 in-repo spelling is the fallback,
+// preserving this reader's behavior where it cannot know the home root.
+// Section callers use factoryLandingDirFromCtx (the base is resolved before
+// the lease section so no git spawns inside it) plus the legacy leaf.
 func factoryCardWorktreeDir(root, cardID string) string {
+	if p, err := worktreeroot.PathFor(root, cardID); err == nil {
+		return p
+	}
 	return filepath.Join(root, sessionWorktreeSubdir, cardID)
+}
+
+// factoryLandingBaseKey carries the home projects root resolved before the
+// lease section into the section's readers (REQ-WHR-007: the resolver's git
+// spawn happens outside the section, which holds the queue lock).
+type factoryLandingBaseKey struct{}
+
+// withFactoryLandingBase resolves root's home projects base and carries it
+// in ctx. When the resolver cannot run (root not a repository), the base is
+// absent and the readers fall back to the legacy leaf alone.
+func withFactoryLandingBase(ctx context.Context, root string) context.Context {
+	base, err := worktreeroot.Root(root)
+	if err != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, factoryLandingBaseKey{}, base)
+}
+
+// factoryLandingBaseFrom reads the pre-section landing base, if resolved.
+func factoryLandingBaseFrom(ctx context.Context) string {
+	base, _ := ctx.Value(factoryLandingBaseKey{}).(string)
+	return base
 }
 
 // factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
@@ -663,38 +703,73 @@ func factoryCardWorktreeDir(root, cardID string) string {
 // before this refusal at the lease boundary: a directory a previous run of
 // the SAME card recorded is that card's own tree, re-recorded rather than
 // refused (card t1521); every other shape lands here.
-func factoryRefuseForeignWorktree(root, cardID string) error {
-	dir := factoryCardWorktreeDir(root, cardID)
-	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
-		return nil
+func factoryRefuseForeignWorktree(ctx context.Context, root, cardID string) error {
+	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	return factoryRefuseForeignWorktreeAt(ctx, landingDir, legacyLeaf, cardID)
+}
+
+// factoryRefuseForeignWorktreeAt is the refusal over precomputed candidate
+// leaves: the resolver-derived landing dir and the legacy in-repo leaf (the
+// transition keeps both candidates, REQ-WHR-007).
+func factoryRefuseForeignWorktreeAt(ctx context.Context, landingDir, legacyLeaf, cardID string) error {
+	for _, dir := range []string{landingDir, legacyLeaf} {
+		if dir == "" {
+			continue
+		}
+		if info, err := os.Lstat(dir); err == nil && info.IsDir() {
+			return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+		}
 	}
-	return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+	return nil
 }
 
 // factoryCarryPreviousWorktree resolves the binding a run replacement may
-// carry into runID for cardID (card t1521): the card's landing directory
-// exists, a previous run's record of the SAME card names that same directory,
-// and the tree it names still exists on disk. Only that exact shape carries —
-// the new run re-records what its predecessor already bound instead of
-// refusing the card's own surviving tree as foreign. It returns "" when the
-// carry does not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
+// carry into runID for cardID (card t1521). The leaves are precomputed by
+// the caller (the resolver-derived landing dir carried in ctx, plus the
+// legacy in-repo leaf); the recorded path takes precedence over any derived
+// candidate (REQ-WHR-007). Only the exact carry shape applies — the card's
+// own previous run bound that directory and the tree still exists — the new
+// run re-records what its predecessor already bound instead of refusing the
+// card's own surviving tree as foreign. It returns "" when the carry does
+// not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
 // materialization when no directory stands in the way) to the caller.
 func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) (string, error) {
-	dir := factoryCardWorktreeDir(root, cardID)
-	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
-		return "", nil
-	}
-	prev, ok, err := db.PreviousCardWorktree(ctx, cardID, runID)
-	if err != nil || !ok {
+	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	return factoryCarryPreviousWorktreeAt(ctx, db, landingDir, legacyLeaf, runID, cardID)
+}
+
+// factoryCarryPreviousWorktreeAt is the carry over precomputed candidate
+// leaves.
+func factoryCarryPreviousWorktreeAt(ctx context.Context, db *homestate.FactoryDB, landingDir, legacyLeaf, runID, cardID string) (string, error) {
+	prev, prevOK, err := db.PreviousCardWorktree(ctx, cardID, runID)
+	if err != nil {
 		return "", err
 	}
-	if info, err := os.Stat(prev); err != nil || !info.IsDir() {
-		return "", nil
+	for _, dir := range []string{landingDir, legacyLeaf} {
+		if dir == "" {
+			continue
+		}
+		info, err := os.Lstat(dir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		// The leaf exists: the carry requires the card's own previous run to
+		// have bound exactly this directory and the tree to still exist; a
+		// leaf no record explains stays for the caller's refusal.
+		if !prevOK {
+			return "", nil
+		}
+		if pinfo, perr := os.Stat(prev); perr != nil || !pinfo.IsDir() {
+			return "", nil
+		}
+		if !sameDirPath(prev, dir) {
+			return "", nil
+		}
+		return prev, nil
 	}
-	if !sameDirPath(prev, dir) {
-		return "", nil
-	}
-	return prev, nil
+	return "", nil
 }
 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
@@ -1354,7 +1429,7 @@ func factoryPriorCarryCandidate(ctx context.Context, db *homestate.FactoryDB, ro
 		return nil
 	}
 	if prev.Stage == "" || !homestate.IsCardState(prev.Stage) || homestate.IsTerminalCardState(prev.Stage) ||
-		!factoryPriorWorktreeReusable(root, cardID, prev.WorktreePath) {
+		!factoryPriorWorktreeReusable(ctx, root, cardID, prev.WorktreePath) {
 		return nil
 	}
 	return &prev
@@ -1394,17 +1469,23 @@ func factoryCompleteCarryOver(ctx context.Context, db *homestate.FactoryDB, runI
 // factoryPriorWorktreeReusable reports whether the prior row's worktree is
 // the reusable landing tree the claim path would re-enter (the same
 // conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
-// existing directory, and the card's own landing directory. It gates the
-// stage/evidence carry-over (card t1930, card-review r2 F3) — a stage carried
-// onto a FRESH tree would resume an audit stage with none of the audit files.
-func factoryPriorWorktreeReusable(root, cardID, path string) bool {
+// existing directory, and one of the card's own landing candidates — the
+// resolver-derived leaf from the pre-section base (REQ-WHR-007) or the
+// legacy in-repo leaf, the same candidate set the carry and refusal readers
+// keep. It gates the stage/evidence carry-over (card t1930, card-review r2
+// F3) — a stage carried onto a FRESH tree would resume an audit stage with
+// none of the audit files.
+func factoryPriorWorktreeReusable(ctx context.Context, root, cardID, path string) bool {
 	if strings.TrimSpace(path) == "" {
 		return false
 	}
 	if info, err := os.Lstat(path); err != nil || !info.IsDir() {
 		return false
 	}
-	return sameDirPath(path, factoryCardWorktreeDir(root, cardID))
+	if base := factoryLandingBaseFrom(ctx); base != "" && sameDirPath(path, filepath.Join(base, cardID)) {
+		return true
+	}
+	return sameDirPath(path, filepath.Join(root, sessionWorktreeSubdir, cardID))
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
@@ -1469,7 +1550,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 				return factoryNextClaimRefused(factoryClaimFailure(ctx, rerr))
 			}
 			c = next
-		} else if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
+		} else if err := factoryRefuseForeignWorktree(ctx, root, c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
 	}
@@ -1919,7 +2000,7 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			return nom, nil, err
 		}
 		if carried == "" {
-			if err := factoryRefuseForeignWorktree(root, cardID); err != nil {
+			if err := factoryRefuseForeignWorktree(ctx, root, cardID); err != nil {
 				return nom, factoryRefusal(factoryTokenForeignWorktree, "%s", strings.TrimPrefix(err.Error(), "factory next: refused — ")), nil
 			}
 		}
@@ -1958,6 +2039,9 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 // @MX:NOTE: [AUTO] The nominated lease entry point — shared by the `next --card` verb and the factory_next MCP handler (one implementation per verb, design.md §3); the single seam factoryNominateBeforeRecord sits between the promotion and RecordPicked. Fan-in 2 — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
 func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
+	// The landing base is resolved before the section (see
+	// factoryNextLeaseOnceGated).
+	ctx = withFactoryLandingBase(ctx, root)
 	// Opened before the section with the claim's busy timeout in its DSN (see
 	// factoryNextLeaseOnceGated).
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)

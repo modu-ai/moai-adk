@@ -14,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // `/moai:todo --auto` — the serial card-processing cycle (SPEC-MANAGER-TODO-001).
@@ -84,12 +85,19 @@ func newAutoLiveness() autoLiveness {
 }
 
 // autoOwnerWorktrees names the candidate owner trees for a card: the tree
-// keeps the card id by convention, under either worktree root.
+// keeps the card id by convention, at the home root and under either
+// in-repo worktree root (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007/008 —
+// a card whose recorded tree is a home-root tree must not be judged
+// owner-not-alive for lacking an in-repo candidate).
 func autoOwnerWorktrees(root, cardID string) []string {
-	return []string{
+	cands := []string{}
+	if p, err := worktreeroot.PathFor(root, cardID); err == nil {
+		cands = append(cands, p)
+	}
+	return append(cands,
 		filepath.Join(root, ".claude", "worktrees", cardID),
 		filepath.Join(root, ".moai", "worktrees", cardID),
-	}
+	)
 }
 
 func autoInsideTree(dir, tree string) bool {

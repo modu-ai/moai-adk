@@ -76,15 +76,19 @@ var commitVerbs = map[string]bool{
 // enumeration and the t1453 landing-predicate fixture email (gfd-test) was
 // registered; 61 with the t1856 env-diff-base fixture email; 62 with the t1680
 // common-root fixture email; 63 with the t1913 codex-review-entry fixture
-// email (SPEC-HOOK-SYNC-ASYNC-001 M3).
+// email (SPEC-HOOK-SYNC-ASYNC-001 M3); 76 with the t1640
+// (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
+// m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
 	"audit@example.invalid",
+	"bases@example.com",
 	"board-test@example.com",
 	"branch-guard-test@example.com",
 	"c@e.invalid",
 	"chain-test@example.com",
+	"cls-test@example.com",
 	"disposal-test@example.com",
 	"env-diff-base-test@example.invalid",
 	"f@e.com",
@@ -100,12 +104,18 @@ var builtinCommitIdentityDenyEmails = []string{
 	"guard-test@example.invalid",
 	"guard@test",
 	"landing-test@example.com",
+	"list@example.com",
 	"m2-test@example.com",
+	"m3@example.com",
+	"m6@example.com",
 	"migration-test@example.com",
+	"ml-test@example.com",
 	"o@e.x",
 	"other@example.com",
 	"probe-test@example.com",
 	"qwr@example.invalid",
+	"rfx@example.com",
+	"sfx-cli@example.com",
 	"slot-cli-test@example.com",
 	"slot-lease-test@example.com",
 	"someone@example.invalid",
@@ -144,6 +154,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"test@example.invalid",
 	"test@test.com",
 	"tier-guard-test@example.com",
+	"tier@example.com",
+	"wr-test@example.com",
 }
 
 // effectiveDenyEmails returns the union of the built-in list and extra

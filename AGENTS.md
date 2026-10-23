@@ -125,9 +125,10 @@ and resolve the remote default branch instead of assuming `main`.
 
 ## 3. Worktrees
 
-**Work inside an isolated worktree.** `moai worktree new <name>` creates a MoAI tree under
-`.moai/worktrees/`. Claude Code uses `moai cc -w <name>` for its native `.claude/worktrees/`
-location or `moai cc -w <absolute-path>` for a MoAI tree; `EnterWorktree(<path>)` and
+**Work inside an isolated worktree.** `moai worktree new <name>` creates one at
+`<MoaiHome>/worktrees/projects/<key>/<name>`. Claude Code uses
+`moai cc -w <name>` for its `.claude/worktrees/` or
+`moai cc -w <absolute-path>` for a MoAI tree; `EnterWorktree(<path>)` and
 `ExitWorktree` are Claude Code session tools. Codex app users select Worktree when starting a
 chat. Codex CLI uses `codex -C <absolute-worktree-path>` for a new session; an active Codex
 session operates through `git -C <absolute-worktree-path>` and direct file operations.

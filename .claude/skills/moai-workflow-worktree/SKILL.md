@@ -84,7 +84,7 @@ The registry file stores worktree metadata in JSON format. Each worktree entry c
 
 File Structure:
 
-The worktree system creates a dedicated directory structure in the user's global home directory. At the worktree root (~/.moai/worktrees/{ProjectName}/), you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
+The worktree system creates a dedicated directory structure in the user's global home directory. Trees created by `moai worktree new <name>` live under the home projects root (<MoaiHome>/worktrees/projects/<project-key>/<name>/); the L2 persistent registry remains at the worktree root (~/.moai/worktrees/{ProjectName}/), where you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
 
 Detailed Reference: Refer to Worktree Management Module at modules/worktree-management.md
 
@@ -191,7 +191,7 @@ moai glm -w feat-auth --spawn   # all-GLM teammate
 Behavior:
 
 - The new window is created detached, so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
-- The spawned window starts at the project root, so a short `-w <name>` value resolves against `.claude/worktrees/<name>/`.
+- The spawned window starts at the project root, so a short `-w <name>` value resolves against `.claude/worktrees/<name>/` (an existing tree of the same name under `<MoaiHome>/worktrees/projects/<project-key>` is re-entered).
 - `--spawn` is consumed by MoAI and never reaches Claude Code. Tokens after the `--` pass-through marker are left untouched.
 - Arguments are shell-quoted, so a worktree name containing spaces or shell metacharacters reaches the spawned process intact.
 
