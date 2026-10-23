@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // embeddedFallbackCoreText is the fixture embedded core — its text is unique
@@ -119,7 +120,7 @@ func TestRoleRulesSkewedTreeKeepsDeployedCoreWithNotice(t *testing.T) {
 	if strings.Contains(inj.Context, embeddedFallbackCoreText) {
 		t.Fatalf("embedded copy replaced a parseable deployment:\n%s", inj.Context)
 	}
-	if !strings.Contains(inj.Context, "v0.0.0-fixture-stamp") || !strings.Contains(inj.Context, "v3.1.3") {
+	if !strings.Contains(inj.Context, "v0.0.0-fixture-stamp") || !strings.Contains(inj.Context, version.GetVersion()) {
 		t.Fatalf("skew notice does not name both versions:\n%s", inj.Context)
 	}
 	t.Logf("PASS: skewed tree keeps the deployed core and surfaces the skew in one line")

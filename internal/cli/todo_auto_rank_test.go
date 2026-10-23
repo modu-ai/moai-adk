@@ -1210,6 +1210,41 @@ func TestAutoRankJevMalformedAnswer(t *testing.T) {
 	}
 }
 
+// TestAutoRankJevNotice — card t1803 (D21 re-scope): the at-most-one notice
+// line of the one Jev call reaches the stage's notes on both branches —
+// appended to the notes of an answered order, and carried as the notes of an
+// unavailable one, so the selection record names what the call observed.
+func TestAutoRankJevNotice(t *testing.T) {
+	items := []factory.BacklogItem{rankTestItem("t1", "card one", "", false)}
+	record := rankTestRecord(items)
+
+	t.Run("answered with a change notice", func(t *testing.T) {
+		reply := func(jev.Request) jev.Result {
+			return jev.Result{Availability: jev.Available,
+				Answers: []jev.Answer{rankScoreAnswer("t1", 3, 0.5)},
+				Notice:  "jev now answers as jev-X"}
+		}
+		res := autoRank(record, items, rankLanded(nil), (&rankJevStub{reply: reply}).ask)
+		if res.Source != autoRankSourceJev {
+			t.Fatalf("source = %q, want jev", res.Source)
+		}
+		if got := strings.Join(res.Notes, "\n"); !strings.Contains(got, "jev now answers as jev-X") {
+			t.Errorf("notes %v lack the change notice", res.Notes)
+		}
+	})
+
+	t.Run("unavailable notice becomes the note", func(t *testing.T) {
+		reply := rankReplyResult(jev.Result{Availability: jev.Unreachable, Condition: "no network"})
+		res := autoRank(record, items, rankLanded(nil), (&rankJevStub{reply: reply}).ask)
+		if res.Reason != autoRankReasonUnreachable {
+			t.Fatalf("reason = %q, want %q", res.Reason, autoRankReasonUnreachable)
+		}
+		if got := strings.Join(res.Notes, "\n"); !strings.Contains(got, "jev unavailable (unreachable): no network") {
+			t.Errorf("notes %v lack the unavailability notice", res.Notes)
+		}
+	})
+}
+
 // TestAutoRankRescueFirst — AC-TAP-008 (REQ-TAP-009, M2): dead-owner picked
 // targets stay at the head on every ranking source, and the ranking neither
 // reorders them nor sends them to Jev.

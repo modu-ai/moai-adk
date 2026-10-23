@@ -600,6 +600,7 @@ func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 func gitHeadSHA(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("read HEAD of %s: %v", dir, err)
@@ -612,6 +613,7 @@ func gitHeadSHA(dir string) (string, error) {
 func gitMergeBase(dir, baseRef string) (string, error) {
 	cmd := exec.Command("git", "merge-base", baseRef, "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("merge-base %s..HEAD in %s: %v", baseRef, dir, err)
@@ -646,6 +648,12 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Dir = worktree
+	// The command measures THIS candidate: an inherited GIT_DIR / GIT_WORK_TREE
+	// would outrank cmd.Dir and point any git the command runs at another
+	// repository, and the record would then vouch for a tree never measured. Only
+	// the repository-selecting variables go; the rest of the user's environment
+	// (PATH, HOME, TMPDIR, GOFLAGS, ...) still reaches the command.
+	cmd.Env = gitenv.Env()
 	outBytes, runErr := cmd.Output()
 	exitCode := 0
 	if runErr != nil {
@@ -686,7 +694,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 	}
 
 	tree := headTreeSHA(worktree, headAfter)
-	base, err := gitMergeBase(worktree, baseBranch)
+	base, err := gitMergeBase(worktree, integrationBranchRef(baseBranch))
 	if err != nil {
 		return nil, err
 	}
@@ -722,6 +730,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 func headTreeSHA(dir, commit string) string {
 	cmd := exec.Command("git", "rev-parse", commit+"^{tree}")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""

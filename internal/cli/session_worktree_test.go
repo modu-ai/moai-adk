@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
@@ -174,10 +175,15 @@ func TestEnterSessionWorktree_DefaultOffWithConfigFalse(t *testing.T) {
 func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
 	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M2: the destination comes from the
+	// resolver, which needs a real repository and a MOAI_HOME of its own.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
@@ -188,13 +194,12 @@ func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
 		t.Fatal("env=1 should force ON and materialize a worktree")
 	}
 	// The prefix is built with filepath.Join so it carries the host's
-	// separators: the product derives the path from the seam's "/repo/.git"
-	// via filepath, which yields backslashes on Windows.
-	wantPrefix := filepath.Join("/repo", sessionWorktreeSubdir) + string(filepath.Separator)
+	// separators: the product derives the home-root form from the resolver.
+	wantPrefix := filepath.Join(home, "worktrees", "projects") + string(filepath.Separator)
 	if !strings.HasPrefix(got, wantPrefix) {
 		t.Fatalf("worktree path %q does not start with %q", got, wantPrefix)
 	}
-	if want := filepath.Join("/repo", ".moai", "worktrees", "WT-abcdef12-init"); got != want {
+	if want := filepath.Join(home, "worktrees", "projects", filepath.Base(repo), "WT-abcdef12-init"); got != want {
 		t.Fatalf("MoAI worktree path = %q, want %q", got, want)
 	}
 }
@@ -228,10 +233,14 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkips(t *testing.T) {
 func TestEnterSessionWorktree_MaterializeFailFallsBack(t *testing.T) {
 	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M2: the resolver in the materializer needs
+	// a real repository, so the failure below comes from the add seam, not
+	// from destination resolution.
+	repo := m2Repo(t)
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(string, string, string) (string, error) { return "", errFakeGitAdd },
 	})
 	var out bytes.Buffer
@@ -253,11 +262,13 @@ func TestEnterSessionWorktree_MaterializeFailFallsBack(t *testing.T) {
 func TestEnterSessionWorktree_SuccessAppliesDefaultBranch(t *testing.T) {
 	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M2: the resolver needs a real repository.
+	repo := m2Repo(t)
 	var setCalls []struct{ dir, key, val string }
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(dir, key, val string) error {
 			setCalls = append(setCalls, struct{ dir, key, val string }{dir, key, val})
@@ -747,10 +758,15 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 	// difference between A and B, so B's call proves A's non-call is the guard's
 	// doing, not a stale seam).
 	addCallsB := 0
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: real repository + sandboxed MOAI_HOME
+	// for the resolver inside the materializer.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add: func(string, string, string) (string, error) {
 			addCallsB++
 			return "/repo/.claude/worktrees/WT-abcdef12-web", nil

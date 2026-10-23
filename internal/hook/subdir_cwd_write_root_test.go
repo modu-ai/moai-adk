@@ -170,13 +170,13 @@ func TestSubdirCWDWritesLandInProjectDir(t *testing.T) {
 
 	wtPath := filepath.Join(root, ".claude", "worktrees", "probe")
 	NewWorktreeCreateHandler().(*worktreeCreateHandler).registerEntry(&HookInput{SessionID: "s", CWD: sub}, wtPath, "b")
-	if got := loadWorktreeEntries(worktreeStateFile(root)); len(got) != 1 || got[0].Path != wtPath {
+	if got, gerr := loadWorktreeEntriesStrict(worktreeStateFile(root)); gerr != nil || len(got) != 1 || got[0].Path != wtPath {
 		t.Errorf("registry after create = %+v, want one entry for %s", got, wtPath)
 	}
 	if _, err := NewWorktreeRemoveHandler().Handle(ctx, &HookInput{SessionID: "s", CWD: sub, WorktreePath: wtPath}); err != nil {
 		t.Fatalf("worktree remove: %v", err)
 	}
-	if got := loadWorktreeEntries(worktreeStateFile(root)); len(got) != 0 {
+	if got, gerr := loadWorktreeEntriesStrict(worktreeStateFile(root)); gerr == nil && len(got) != 0 {
 		t.Errorf("registry after remove = %+v, want empty", got)
 	}
 

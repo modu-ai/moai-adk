@@ -34,17 +34,21 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // sdMoaiFixture is a factory fixture whose root is a MoAI project root (the
 // .moai directory exists), so a caller-supplied project_root argument
 // resolves through the same validation the existing project_root tools use.
+// The MCP stale-run validation (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) checks an
+// explicit run id against the active run, so the fixture seeds fcRun active.
 func sdMoaiFixture(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := fcFixture(t)
 	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	sdSeedRun(t, root, fcRun, "active")
 	return root, store
 }
 
@@ -111,7 +115,14 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("next: %v\nstderr: %s", err, out)
 		}
-		wt := filepath.Join(sdWorktreesDir(root), "t1")
+		// SPEC-WORKTREE-HOME-ROOT-001 M2: the materializer's actual landing
+		// directory is the resolver's home-root path — the assertions
+		// evaluate the actual landing directory (the file's t1292 note).
+		homeRoot, rerr := worktreeroot.Root(root)
+		if rerr != nil {
+			t.Fatalf("resolve home root: %v", rerr)
+		}
+		wt := filepath.Join(homeRoot, "t1")
 		info, statErr := os.Stat(wt)
 		if statErr != nil || !info.IsDir() {
 			t.Fatalf("card worktree %s does not exist: %v", wt, statErr)
@@ -257,8 +268,10 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cli add: %v", err)
 		}
-		// MCP twin.
+		// MCP twin (SPEC-MCP-NEUTRALITY-001 REQ-MN-003: the operator gate
+		// requires the positive mark — the operator twin stamps it).
 		rootB, storeB := sdMoaiFixture(t)
+		t.Setenv(config.EnvFactoryRole, "operator")
 		mcpOut, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "mcp parity card", "project_root": rootB})
 		if err != nil {
 			t.Fatalf("mcp todo_add: %v", err)
@@ -278,18 +291,18 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		if a.ID != b.ID || a.State != b.State || a.Text != b.Text {
 			t.Errorf("queue items diverge: cli %+v vs mcp %+v", a, b)
 		}
-		// Refusal twin: the lane boundary refusal, same text on both surfaces.
+		// Refusal twin: the lane boundary refusal, same text on both surfaces,
+		// structured on the MCP side (is_error false, REQ-MN-001).
+		sdClearLaneEnv(t)
 		sdLaneEnv(t, "lane-1", "")
 		_, _, cliErr := runTodo(t, "add", "refused card")
 		if cliErr == nil {
 			t.Fatal("cli lane add was accepted")
 		}
-		_, mcpErr := sdCallTool(t, handleTodoAdd, map[string]any{"text": "refused card", "project_root": rootB})
-		if mcpErr == nil {
-			t.Fatal("mcp lane todo_add was accepted")
-		}
-		if !strings.Contains(mcpErr.Error(), cliErr.Error()) {
-			t.Errorf("mcp refusal %q does not carry the cli refusal %q", mcpErr.Error(), cliErr.Error())
+		res := mcpCallRaw(t, handleTodoAdd, map[string]any{"text": "refused card", "project_root": rootB})
+		reason := assertStructuredRefusal(t, res, "")
+		if !strings.Contains(reason, cliErr.Error()) {
+			t.Errorf("mcp refusal reason %q does not carry the cli refusal %q", reason, cliErr.Error())
 		}
 	})
 
@@ -349,23 +362,28 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		if a.State != b.State || a.Version != b.Version || a.LeaseHolder != b.LeaseHolder || a.OwnerLabel != b.OwnerLabel {
 			t.Errorf("leased rows diverge: cli %+v vs mcp %+v", a, b)
 		}
-		if filepath.Base(b.WorktreePath) != "t1" || filepath.Dir(b.WorktreePath) != sdWorktreesDir(rootB) {
-			t.Errorf("mcp worktree path = %q, want the landing directory leaf t1", b.WorktreePath)
+		// SPEC-WORKTREE-HOME-ROOT-001 M2: the actual landing directory is
+		// the resolver's home-root path; the leaf stays the card id.
+		homeRootB, rerr := worktreeroot.Root(rootB)
+		if rerr != nil {
+			t.Fatalf("resolve home root: %v", rerr)
+		}
+		if filepath.Base(b.WorktreePath) != "t1" || filepath.Dir(b.WorktreePath) != homeRootB {
+			t.Errorf("mcp worktree path = %q, want the landing directory leaf t1 under %s", b.WorktreePath, homeRootB)
 		}
 
-		// Refusal twin: label-only is not a lane, on either surface.
+		// Refusal twin: label-only is not a lane, on either surface; the MCP
+		// side refuses as a structured result (REQ-MN-001).
 		sdClearLaneEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 		_, _, cliErr := runFactory(t, "next", "--run", fcRun)
 		if cliErr == nil || !strings.Contains(cliErr.Error(), "not a lane session") {
 			t.Fatalf("cli label-only next: err = %v", cliErr)
 		}
-		_, mcpErr := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": rootB, "run": fcRun})
-		if mcpErr == nil {
-			t.Fatal("mcp label-only factory_next was accepted")
-		}
-		if !strings.Contains(mcpErr.Error(), cliErr.Error()) {
-			t.Errorf("mcp refusal %q does not carry the cli refusal %q", mcpErr.Error(), cliErr.Error())
+		res := mcpCallRaw(t, handleFactoryNext, map[string]any{"project_root": rootB, "run": fcRun})
+		reason := assertStructuredRefusal(t, res, "")
+		if !strings.Contains(reason, cliErr.Error()) {
+			t.Errorf("mcp refusal reason %q does not carry the cli refusal %q", reason, cliErr.Error())
 		}
 	})
 
@@ -389,35 +407,38 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			})
 			return root, sha
 		}
+		// Refusal twin first, on fresh fixtures: after the success twins both
+		// cards sit at plan-audit, where a re-stage is an illegal-transition
+		// error, not the holder refusal this twin pins.
+		rootRef, shaRef := build(t)
+		sdLaneEnv(t, "lane-2", "")
+		_, _, cliErr := runFactory(t, "stage", "t1", "plan-audit", shaRef+":plan.md", "--run", fcRun)
+		if cliErr == nil {
+			t.Fatal("cli lane-2 stage was accepted")
+		}
+		mcpRefRoot, shaRefB := build(t)
+		sdLaneEnv(t, "lane-2", "")
+		res := mcpCallRaw(t, handleFactoryStage, map[string]any{"card": "t1", "state": "plan-audit", "evidence": shaRefB + ":plan.md", "run": fcRun, "project_root": mcpRefRoot})
+		reason := assertStructuredRefusal(t, res, "owned")
+		if !strings.Contains(reason, cliErr.Error()) {
+			t.Errorf("mcp refusal reason %q does not carry the cli refusal %q", reason, cliErr.Error())
+		}
+		_ = rootRef
 		// CLI twin.
-		rootA, shaA := build(t)
+		rootA, shaA2 := build(t)
 		sdLaneEnv(t, "lane-1", "")
-		if _, _, err := runFactory(t, "stage", "t1", "plan-audit", shaA+":plan.md", "--run", fcRun); err != nil {
+		if _, _, err := runFactory(t, "stage", "t1", "plan-audit", shaA2+":plan.md", "--run", fcRun); err != nil {
 			t.Fatalf("cli stage: %v", err)
 		}
 		// MCP twin.
-		rootB, shaB := build(t)
+		rootB, shaB2 := build(t)
 		sdLaneEnv(t, "lane-1", "")
-		if _, err := sdCallTool(t, handleFactoryStage, map[string]any{"card": "t1", "state": "plan-audit", "evidence": shaB + ":plan.md", "run": fcRun, "project_root": rootB}); err != nil {
+		if _, err := sdCallTool(t, handleFactoryStage, map[string]any{"card": "t1", "state": "plan-audit", "evidence": shaB2 + ":plan.md", "run": fcRun, "project_root": rootB}); err != nil {
 			t.Fatalf("mcp factory_stage: %v", err)
 		}
 		a, b := fcCard(t, rootA, "t1"), fcCard(t, rootB, "t1")
 		if a.State != b.State || a.Version != b.Version || a.Stage != b.Stage || a.LeaseHolder != b.LeaseHolder {
 			t.Errorf("staged rows diverge: cli %+v vs mcp %+v", a, b)
-		}
-		// Refusal twin: lane-2 does not hold the lease — the F1 refusal, the
-		// same text on both surfaces.
-		sdLaneEnv(t, "lane-2", "")
-		_, _, cliErr := runFactory(t, "stage", "t1", "plan-audit", shaA+":plan.md", "--run", fcRun)
-		if cliErr == nil {
-			t.Fatal("cli lane-2 stage was accepted")
-		}
-		_, mcpErr := sdCallTool(t, handleFactoryStage, map[string]any{"card": "t1", "state": "plan-audit", "evidence": shaB + ":plan.md", "run": fcRun, "project_root": rootB})
-		if mcpErr == nil {
-			t.Fatal("mcp lane-2 factory_stage was accepted")
-		}
-		if !strings.Contains(mcpErr.Error(), cliErr.Error()) {
-			t.Errorf("mcp refusal %q does not carry the cli refusal %q", mcpErr.Error(), cliErr.Error())
 		}
 	})
 
@@ -523,7 +544,8 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			d["project_root"] = root
 			return d
 		}
-		// Refusal twin under the lane environment.
+		// Refusal twin under the lane environment; the MCP side refuses as a
+		// structured result (REQ-MN-001).
 		rootRef := build(t)
 		sdLaneEnv(t, "lane-1", "")
 		_, _, cliErr := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun)
@@ -532,23 +554,70 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		}
 		mcpRefRoot := build(t)
 		sdLaneEnv(t, "lane-1", "")
-		_, mcpErr := sdCallTool(t, handleFactoryDecide, withRoot(mcpRefRoot))
-		if mcpErr == nil {
-			t.Fatal("mcp lane factory_decide was accepted")
-		}
-		if !strings.Contains(mcpErr.Error(), cliErr.Error()) {
-			t.Errorf("mcp refusal %q does not carry the cli refusal %q", mcpErr.Error(), cliErr.Error())
+		// Card t1632 CI repair (main-absorb r9): the lane boundary refusal rides
+		// the ERROR channel with the CLI-identical text (t1914 parity contract).
+		mcpErr := sdCallToolErr(t, handleFactoryDecide, withRoot(mcpRefRoot))
+		if mcpErr == nil || !strings.Contains(mcpErr.Error(), cliErr.Error()) {
+			t.Errorf("mcp refusal %v does not carry the cli refusal %q", mcpErr, cliErr.Error())
 		}
 		_ = rootRef
-		// Success twin with no lane variables.
+		// Success twin with no lane variables — under the positive operator
+		// mark (SPEC-MCP-NEUTRALITY-001 REQ-MN-003: env absence grants
+		// nothing, on the CLI verb since M2 Part A too). The mark is stamped
+		// AFTER each build: build clears the lane environment its queue setup
+		// must not trip on.
 		sdClearLaneEnv(t)
 		rootA := build(t)
+		t.Setenv(config.EnvFactoryRole, "operator")
 		if _, _, err := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun); err != nil {
 			t.Fatalf("cli decide: %v", err)
 		}
 		rootB := build(t)
+		t.Setenv(config.EnvFactoryRole, "operator")
 		if _, err := sdCallTool(t, handleFactoryDecide, withRoot(rootB)); err != nil {
 			t.Fatalf("mcp factory_decide: %v", err)
+		}
+		a, b := fcCard(t, rootA, "t1"), fcCard(t, rootB, "t1")
+		if a.State != b.State || a.Version != b.Version || a.Stage != b.Stage {
+			t.Errorf("decided rows diverge: cli %+v vs mcp %+v", a, b)
+		}
+	})
+
+	// Card t1632 card-review P2-A: a POSITIVE operator mark wins over the lane
+	// refusal on BOTH surfaces (factoryDecideGate admits it first). The backend
+	// variable naming the Codex harness trips factoryLaneRefusal() on its own,
+	// so an operator-marked session on that backend is the case the two
+	// surfaces' gate order decides.
+	t.Run("factory_decide: operator mark on the Codex backend is admitted on both surfaces", func(t *testing.T) {
+		build := func(t *testing.T) string {
+			t.Helper()
+			sdClearLaneEnv(t)
+			root, store := sdMoaiFixture(t)
+			fcQueue(t, store, factory.BacklogStatePicked)
+			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
+			return root
+		}
+		operatorOnCodex := func(t *testing.T) {
+			t.Helper()
+			t.Setenv(config.EnvFactoryRole, config.FactoryRoleOperator)
+			t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
+		}
+		rootA := build(t)
+		operatorOnCodex(t)
+		if !factoryLaneRefusal() {
+			t.Fatal("precondition: the Codex backend value must trip factoryLaneRefusal(), or this case measures nothing")
+		}
+		_, _, cliErr := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun)
+		rootB := build(t)
+		operatorOnCodex(t)
+		mcpOut, mcpErr := sdCallTool(t, handleFactoryDecide, map[string]any{
+			"card": "t1", "gate": "kickoff", "choice": "approve", "run": fcRun, "project_root": rootB,
+		})
+		if (cliErr == nil) != (mcpErr == nil) {
+			t.Fatalf("surfaces diverge for an operator-marked Codex-backend session: cli err = %v, mcp err = %v (out %q)", cliErr, mcpErr, mcpOut)
+		}
+		if cliErr != nil {
+			t.Fatalf("cli refused an operator-marked session: %v", cliErr)
 		}
 		a, b := fcCard(t, rootA, "t1"), fcCard(t, rootB, "t1")
 		if a.State != b.State || a.Version != b.Version || a.Stage != b.Stage {
@@ -621,9 +690,10 @@ func TestSD_AC010_MCPNextParentCheck(t *testing.T) {
 
 	// The server process's own working directory is the linked worktree.
 	t.Chdir(wt)
-	_, mcpErr := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": wt, "run": fcRun})
-	if mcpErr == nil || !strings.Contains(mcpErr.Error(), primary) {
-		t.Fatalf("factory_next on the linked worktree: err = %v, want a refusal naming %s", mcpErr, primary)
+	res := mcpCallRaw(t, handleFactoryNext, map[string]any{"project_root": wt, "run": fcRun})
+	reason := assertStructuredRefusal(t, res, "parent-checkout")
+	if !strings.Contains(reason, primary) {
+		t.Fatalf("factory_next on the linked worktree: reason %q, want it to name %s", reason, primary)
 	}
 	if got := sdQueueBytes(t, store); got != queueBefore {
 		t.Errorf("queue file changed on the refused factory_next")
@@ -651,9 +721,8 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 
 	sdLaneEnv(t, "lane-1", "")
 	before := sdQueueBytes(t, store)
-	if _, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "lane card", "project_root": root}); err == nil || !strings.Contains(err.Error(), "lane boundary") {
-		t.Fatalf("lane todo_add: err = %v, want the lane-boundary refusal", err)
-	}
+	res := mcpCallRaw(t, handleTodoAdd, map[string]any{"text": "lane card", "project_root": root})
+	assertStructuredRefusal(t, res, "", "lane boundary")
 	if got := sdQueueBytes(t, store); got != before {
 		t.Errorf("lane todo_add refusal changed the queue bytes")
 	}
@@ -663,15 +732,13 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
 	before = sdQueueBytes(t, store)
-	if _, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "codex card", "project_root": root}); err == nil || !strings.Contains(err.Error(), "lane boundary") {
-		t.Fatalf("codex-mcp todo_add: err = %v, want the lane-boundary refusal", err)
-	}
+	res = mcpCallRaw(t, handleTodoAdd, map[string]any{"text": "codex card", "project_root": root})
+	assertStructuredRefusal(t, res, "", "lane boundary")
 	if got := sdQueueBytes(t, store); got != before {
 		t.Errorf("codex-mcp todo_add refusal changed the queue bytes")
 	}
-	if _, err := sdCallTool(t, handleFactoryNext, map[string]any{"project_root": root, "run": fcRun}); err == nil || !strings.Contains(err.Error(), "not a lane session") {
-		t.Fatalf("codex-mcp factory_next: err = %v, want the not-a-lane refusal", err)
-	}
+	res = mcpCallRaw(t, handleFactoryNext, map[string]any{"project_root": root, "run": fcRun})
+	assertStructuredRefusal(t, res, "", "not a lane session")
 }
 
 // AC-SD-016 (factory_decide MCP arm) — a lane and a Codex MCP environment
@@ -684,9 +751,13 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	before := fcCard(t, root, "t1")
 	args := map[string]any{"card": "t1", "gate": "kickoff", "choice": "approve", "run": fcRun, "project_root": root}
 
+	// Card t1632 main-absorb r9: the decide boundary refusal rides the ERROR
+	// channel with the CLI-identical text (the t1914 parity contract), no
+	// longer the M1-era structured result — the row keeps its tracelessness
+	// claim either way.
 	sdLaneEnv(t, "lane-1", "")
-	if _, err := sdCallTool(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "refused") {
-		t.Fatalf("lane factory_decide: err = %v, want a refusal", err)
+	if err := sdCallToolErr(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "lane boundary") {
+		t.Errorf("lane factory_decide: err = %v, want the boundary refusal", err)
 	}
 	if after := fcCard(t, root, "t1"); after.State != before.State || after.Version != before.Version {
 		t.Errorf("card row changed on the refused decide")
@@ -695,11 +766,14 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
-	if _, err := sdCallTool(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "refused") {
-		t.Fatalf("codex-mcp factory_decide: err = %v, want a refusal", err)
+	if err := sdCallToolErr(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "lane boundary") {
+		t.Errorf("codex-backend factory_decide: err = %v, want the boundary refusal", err)
 	}
 
+	// The positive operator mark (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) is what
+	// admits the decide now: env absence grants nothing.
 	sdClearLaneEnv(t)
+	t.Setenv(config.EnvFactoryRole, "operator")
 	if _, err := sdCallTool(t, handleFactoryDecide, args); err != nil {
 		t.Fatalf("operator factory_decide: %v", err)
 	}

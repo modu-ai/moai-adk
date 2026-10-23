@@ -83,7 +83,7 @@ The factory leader session does not draft its own coordination: it spawns the `m
 
 ### Deputy mode — background coordination off the leader's turn
 
-The leader's turn loop is the scarcest surface in a factory run: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
+The leader's turn loop is the scarcest surface in a factory run: a dispatch send, a CI watch, and a native Codex observation each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
 
 **Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not it is needed — an unused deputy costs one spawn; an unspawned one costs every dispatch after it.
 
@@ -97,11 +97,11 @@ The leader's turn loop is the scarcest surface in a factory run: a dispatch send
 
 - **Dispatch sends with delivery-shape verification.** The deputy sends the fixed-field address blocks for ALREADY-PICKED cards and reads every send result. A `routing` object on the result means an in-process mailbox took the block — lost, not delivered — and the deputy re-sends to the `name [ref]` form the `ListAgents` listing printed (§ The dispatch cycle). A rapid-burst refusal is read and reported; the queue already carries the delegation, so a refused nudge stalls nothing.
 - **Bounded CI-watch polls.** The deputy polls a card's checks to terminal states and returns those states — the states, never a judgement about them.
-- **CodeRabbit two-condition reads.** The deputy reads the combined-status `CodeRabbit` entry (state `success` AND description `Review completed`) plus the `Merge Risk:` line matching the current `headRefOid`, and REPORTS both conditions to the leader. It never adjudicates the slot-wait outcome: a card carrying `Review rate limited` is reported as exactly that, and the leader decides what it means.
+- **Native Codex artifact reads.** The deputy reports the current head, trusted bot identity, full-SHA code-review summary, clean receipt, and unresolved findings. The leader judges the evidence and retains final integration approval.
 - **First-pass evidence reading.** The deputy reads a card's completion evidence and returns findings as recommendations, each prefixed `RECOMMEND:` — never a verdict token.
 - **Summary reporting.** The deputy folds its observations into a single report addressed to the leader.
 
-**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the two-condition CodeRabbit read — the deputy's report is input to the leader's judgement, never a substitute for it.
+**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the head-bound native Codex artifact read — the deputy's report is input to the leader's judgement, never a substitute for it.
 
 **What does not change — the structural principles:**
 
@@ -109,7 +109,7 @@ The leader's turn loop is the scarcest surface in a factory run: a dispatch send
 - **Completion is read, never trusted.** The deputy's first-pass read does not discharge the leader's own evidence-read obligation. The leader advances a card on what the leader read; a deputy report is one more claim until the evidence under it has been read.
 - **The queue is the channel.** The deputy's `SendMessage` is a nudge, never the delegation (stub § The delegation channel is the queue); card advancement never depends on a message arriving, whoever sent it.
 
-The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, CodeRabbit adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
+The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, native review evidence adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
 
 Messaging stays a nudge (stub § The delegation channel is the queue, § Completion is read, never trusted). The rename changes who drafts the coordination, not what counts as delegated or as done.
 
@@ -130,12 +130,26 @@ Discipline:
 
 Factory Mode (`moai cc -f` / `moai glm -f` for the leader, `-l` for each lane) rests on whole-card ownership: one leader plus `lane-<n>` sessions, each lane owning one card end to end. Lanes are launched by hand; the leader keeps the run-id, the queue, and the verdict.
 
-- **Routing.** The leader routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+- **Routing.** The leader routes a card WHOLE to a free lane. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block carries `cmd`, which names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
+  - A free lane is a lane on which no card is actually executing; a lane that holds only merge-ready, held (operator-wait), or serial-waiting cards is a free lane.
+  - Free is a different condition from live: a lane with no live session is not a free lane but a fault (`factory-dispatch-mechanics.md` § Boundaries), and a live lane with a card executing is not free.
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Sub-agent execution within a lane.
 - **Standing spawn authority (card t224's normative home).** The lane's right to those sub-agent spawns is standing, not per-dispatch: the SessionStart join notice carries the authority sentence (canonical English for `en`, localized per `conversation_language` for the other locales, with the Status Transition Ownership Matrix pointer path (.claude/rules/moai/development/spec-frontmatter-schema.md) verbatim in every locale), and the runtime's default "don't spawn unless the user asks" guidance does not bind a lane (the leader is not the lane's user, so leader approval can neither grant nor revoke what the bootstrap grants). Scope is the Status Transition Ownership Matrix's specialist for the stage at hand; depth is one — spawned agents are leaves. Observed defect this closes: two tk8hce lanes refused to spawn `manager-spec` and edited SPEC bodies directly, routing artifact writes around the ownership matrix.
 - **Classes name the entry stage.** A/B/C name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close); no card changes sessions. Every lane runs the serial stages for whatever its card still needs.
-- **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once its card reaches `done`, before the next card is routed to it, exactly as the stub's lane card transition rule requires.
+- **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once it stops executing the card — the card reached `done`, or is merge-ready, held (operator-wait), or serial-waiting — and before the next card is routed to it, exactly as the stub's lane card transition rule requires; a kept tree is re-entered when its card resumes, by `moai factory next --card <id>` and `EnterWorktree` of the leased tree (`factory-dispatch-mechanics.md` § Lease renewal — only the card being executed).
 - **Evidence, verdict, integration since the lane-autonomy revision.** The lane writes the same completion signals; the per-card verdict and the landing are the lane's own (§ The verdict's home; `factory-dispatch-mechanics.md` § The lane's standard landing), and the leader reads evidence for its retained duties only. The deputy surface applies too: the factory leader may delegate dispatch sends and watches to the coordination deputy (§ The leader works through manager-lead → Deputy mode).
+
+### Delegated-dispatch promotion
+
+Promotion remains an act of the operator. One further case is stated here, besides the `--auto` batch approval and a lane taking a lease itself: while the operator has delegated dispatch (operator away, or a standing delegation), the leader itself promotes queued cards to `picked` and assigns them, with no per-card operator pick. This section states every limit of that case, once.
+- Where: only to a free live lane, as defined under Routing above.
+- Which cards: only queued cards explicitly classified `parallelizable` by the mode judgment recorded at issuance (`factory-dispatch-cards.md` § Mode judgment).
+- Order: queue priority and readiness first.
+- Never promoted: a keep-set card, a held card, or a [보류-marked card (the keep-set is defined in `auto-semantics.md` §9.3).
+- Serial cards: outside this case; a serial card follows the slot rules (`factory-dispatch-mechanics.md` § The leader's remaining role).
+- Unchanged: lane self-dispatch through `moai factory next`.
+
+Consequence, not a further limit: the assignment input of a free live lane is the picked cards plus, only while dispatch is delegated, the queued `parallelizable` cards.
 
 ## The card-review stage
 
@@ -164,5 +178,5 @@ The lane-autonomy revision moved the per-card completion verdict to the lane tha
 ## Cross-references
 
 - `factory-dispatch-cards.md` — report milestones ↔ queue cards, card classes, the lane card transition statement structure, isolation rationale, the pre-dispatch cross-check, and the PR-title carrier.
-- `factory-dispatch-gates.md` — the CodeRabbit endpoint measurement, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record.
+- `factory-dispatch-gates.md` — the native Codex artifact contract, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record.
 - `factory-dispatch-mechanics.md` — the lane-and-lens mechanics bodies relocated from the stub (isolation launchers and tiers, lane-local verification variants, the integration window procedure).

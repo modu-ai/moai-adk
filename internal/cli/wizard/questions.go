@@ -10,22 +10,23 @@ import (
 //
 //   - DefaultQuestions      — the five Basic / Model & Report questions shared
 //     with the reconfigure path (NO Git questions)
-//   - Page3Questions        — the init-only questions: agent_wiring,
-//     autonomy_tier, and jev_enabled
-//   - InitQuestions         — the five-question `moai init` set, picked by ID
-//     from DefaultQuestions and followed by Page3Questions
+//   - Page3Questions        — the init-only questions: autonomy_tier and
+//     jev_enabled
+//   - InitQuestions         — the `moai init` set, picked by ID from
+//     DefaultQuestions and followed by Page3Questions
 //   - GitQuestions          — the 7 Git questions, on their own
 //   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back
 //     in, used by the `moai update --reconfigure` path. It deliberately does
 //     NOT include the page-3 questions, so the reconfigure set keeps its
 //     pre-restructure membership.
 //
-// The `moai init` wizard asks five questions (SPEC-INIT-QUIET-WIZARD-001
-// REQ-IQW-001 set four; SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 added the
-// fifth), each keeping its group label:
+// The `moai init` wizard asks four questions (SPEC-INIT-QUIET-WIZARD-001
+// REQ-IQW-001 set three; SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 added the
+// fourth; the agent_wiring harness selector went with the general codex
+// execution surface removal, card t1909), each keeping its group label:
 //
 //	"Basic"                — conversation_language, user_name
-//	"Agents & Autonomy"    — agent_wiring, autonomy_tier
+//	"Agents & Autonomy"    — autonomy_tier
 //	"Judgment Capability"  — jev_enabled
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
@@ -295,29 +296,20 @@ func userParticipationDefault() string {
 
 // InitQuestions returns the `moai init` question set: conversation_language
 // and user_name picked by ID from DefaultQuestions, followed by Page3Questions
-// (agent_wiring, autonomy_tier, jev_enabled). It is InitQuestionsWithAgentWiring
-// with no pre-fill, so the init set cannot drift from what the tests exercise.
+// (autonomy_tier, jev_enabled). It is the single assembly point of the init
+// set, consumed by the wizard entry point, so the init set cannot drift from
+// what the tests exercise.
 //
 // ReconfigureQuestions deliberately does NOT build on this: the page-3
 // questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
 // SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-006 depends on that exclusion rather
 // than working around it.
-func InitQuestions(projectRoot string) []Question {
-	return InitQuestionsWithAgentWiring(projectRoot, "")
-}
-
-// InitQuestionsWithAgentWiring is the single assembly point of the init set,
-// consumed by the wizard entry point. It is InitQuestions with the agent_wiring
-// question's default pre-filled from agentWiring — the harness a resumed init
-// recorded (card t1591). An empty agentWiring keeps the shipped claude default.
-// Only the default moves: the question stays unconditional and its answer stays
-// authoritative.
 //
-// @MX:NOTE: [AUTO] The init set is five questions assembled by ID; the
-// reconfigure path keeps using DefaultQuestions unchanged (D1). Removed keys
-// resolve to their shipped defaults.
+// @MX:NOTE: [AUTO] The init set is assembled by ID; the reconfigure path
+// keeps using DefaultQuestions unchanged (D1). Removed keys resolve to their
+// shipped defaults.
 // @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
-func InitQuestionsWithAgentWiring(projectRoot, agentWiring string) []Question {
+func InitQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	page3 := Page3Questions(projectRoot)
 	all := make([]Question, 0, len(initSharedQuestionIDs)+len(page3))
@@ -326,9 +318,7 @@ func InitQuestionsWithAgentWiring(projectRoot, agentWiring string) []Question {
 			all = append(all, *q)
 		}
 	}
-	all = append(all, page3...)
-	prefillAgentWiringDefault(all, agentWiring)
-	return all
+	return append(all, page3...)
 }
 
 // FilteredQuestions returns questions filtered by their conditions.
@@ -364,45 +354,25 @@ func QuestionByID(questions []Question, id string) *Question {
 	return nil
 }
 
-// Page3Questions returns the init-only questions, in order: agent_wiring and
-// autonomy_tier ("Agents & Autonomy"), then jev_enabled, which carries its own
-// group label ("Judgment Capability") and therefore its own page.
+// Page3Questions returns the init-only questions, in order: autonomy_tier
+// ("Agents & Autonomy"), then jev_enabled, which carries its own group label
+// ("Judgment Capability") and therefore its own page.
 //
 // The other eleven page-3 questions — project mode, worktree auto-creation,
 // backlog queue, feedback auto-submit, project continuation, audit model, the
 // three audit gates, the codex review gate, and MCP provisioning — are no
-// longer asked (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002). Each resolves to its
-// shipped default, and interactive `moai init` provisions the .mcp.json entry
-// by default (internal/cli/init.go). The four former confirms fixed at true
-// (lsp_enabled, enforce_quality, design_enabled, claude_design_enabled) are
-// seeded by RunWithDefaults (see wizard.go).
+// longer asked (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002), and the agent_wiring
+// harness selector went with the general codex execution surface removal (card
+// t1909): `moai init` deploys the claude harness only. Each removed question
+// resolves to its shipped default, and interactive `moai init` provisions the
+// .mcp.json entry by default (internal/cli/init.go). The four former confirms
+// fixed at true (lsp_enabled, enforce_quality, design_enabled,
+// claude_design_enabled) are seeded by RunWithDefaults (see wizard.go).
 //
 // The constructor is named for the page it builds rather than for the retired
 // mode taxonomy (REQ-WIZ-018): no flag selects it any more.
 func Page3Questions(projectRoot string) []Question {
 	return []Question{
-		// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-001) — the agent-harness
-		// selector, previously reachable only through `moai init --llm`. It
-		// carries NO Condition: it is asked unconditionally, and its answer
-		// decides the MCP surface (codex declines .mcp.json provisioning, both
-		// forces it on).
-		// SPEC-INIT-HARNESS-001 (REQ-IH-013, design.md D1): the option values
-		// stay FROZEN; the labels and descriptions now state the DEPLOYMENT
-		// consequences of each value — what lands at the project root — so the
-		// question keeps the promise the deployer keeps.
-		{
-			ID:          "agent_wiring",
-			Group:       "Agents & Autonomy",
-			Type:        QuestionTypeSelect,
-			Title:       "Select the agent harness to deploy and wire",
-			Description: "Which LLM harness MoAI deploys and wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
-			Options: []Option{
-				{Label: "Claude only (Recommended)", Value: "claude", Desc: "Deploy the .claude/ surface plus AGENTS.md (today's default behavior)"},
-				{Label: "GPT (Codex) only", Value: "gpt", Desc: "AGENTS.md and Codex surfaces only — no .claude/ tree, no CLAUDE.md, no .mcp.json"},
-				{Label: "Claude + Codex", Value: "both", Desc: "Same .claude/ deployment plus .codex/ wiring; .mcp.json provisioning forced on"},
-			},
-			Default: "claude",
-		},
 		// SPEC-AUT-PERMMODES-001 REQ-001/REQ-002 — the autonomy question
 		// speaks Claude Code's real permission modes: "Accept edits on"
 		// (acceptEdits) is the pre-selected default; "Bypass permissions"

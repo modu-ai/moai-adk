@@ -56,15 +56,17 @@ func TestFlagVerdictFindingsContradiction_Predicate(t *testing.T) {
 
 // TestContradiction_UnmetRequiredGateIsNotFlagged runs the control case through
 // the real producers: an unrecognized adversarial body synthesizes as
-// inconclusive, applyGateUnmet turns it into fail + GateUnmet under a declared
-// required gate, and neither step may report a parser contradiction.
+// inconclusive, applyGateUnmet under a declared required gate annotates it as
+// could-not-run (REQ-MN-021: the verdict stays inconclusive — the old fail
+// conversion is superseded), and neither step may report a parser
+// contradiction.
 func TestContradiction_UnmetRequiredGateIsNotFlagged(t *testing.T) {
 	root := newProbeProject(t, "SPEC-CPS-CONTROL-001")
 	writeCodexAuditGate(t, root, config.AuditGateRequired)
 
 	out := applyGateUnmet(synthesizeReviewOutput("I walked the diff and moved on.", codexMethodTurnStart), root)
-	if out.Verdict != "fail" || out.GateUnmet == "" || len(out.Findings) != 0 {
-		t.Fatalf("precondition: want fail/0 with GateUnmet, got %s/%d gate=%q", out.Verdict, len(out.Findings), out.GateUnmet)
+	if out.Verdict != VerdictInconclusive || out.GateUnmet == "" || len(out.Findings) != 0 {
+		t.Fatalf("precondition: want inconclusive/0 with GateUnmet, got %s/%d gate=%q", out.Verdict, len(out.Findings), out.GateUnmet)
 	}
 	if out.Contradiction != "" {
 		t.Errorf("unmet required gate reported as a contradiction: %q", out.Contradiction)

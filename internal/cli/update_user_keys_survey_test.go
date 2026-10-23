@@ -139,7 +139,6 @@ func initUserOwnedKeysProject(t *testing.T) string {
 		GitHubUsername:    "gh-user",
 		GitLabInstanceURL: "https://gitlab.example.com",
 		GitLabUsername:    "gl-user",
-		AgentWiring:       "claude",
 		AutonomyTier:      "full-auto",
 		LSPEnabled:        false,
 		EnforceQuality:    false,

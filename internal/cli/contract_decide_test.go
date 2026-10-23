@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 	"github.com/modu-ai/moai-adk/internal/contract/sign/signtest"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/jev"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 )
 
@@ -253,6 +255,56 @@ func TestContractKickoffCheck(t *testing.T) {
 		}
 		if r.code != 0 || strings.Contains(r.stdout+r.stderr, contract.RefuseReceiptRequiresHuman) {
 			t.Fatalf("CLI sign of an llm+jev approve receipt with the doctrine constant true: %s, want signed", r)
+		}
+	})
+}
+
+// TestContractDecideJevNotice — card t1803 (D21 re-scope): the decide command
+// prints the Jev model-change notice to the command's configured stderr
+// (SetErr — the in-process harness configures one, so the notice must ride
+// cmd.ErrOrStderr and not the process-global jevNoticeWriter), is silent when
+// there is nothing to notice, and --json carries it as jev_notice on the
+// recorded result.
+func TestContractDecideJevNotice(t *testing.T) {
+	cfg := autoCfg{mode: "contract", decider: "llm+jev", pushDevelop: true}
+	const notice = "jev now answers as jev-9.9"
+	setup := func(t *testing.T) *signtest.Project {
+		t.Helper()
+		p := newContractProject(t, cfg)
+		p.WriteFile(workflowYAMLRel, strings.Replace(cfg.yaml(), "workflow:\n", "workflow:\n  jev:\n    enabled: true\n", 1))
+		p.Git("add", "-A")
+		p.Git("commit", "-q", "-m", "config")
+		prepareDecide(t, p)
+		prev := contractDecideJev
+		contractDecideJev = func(context.Context, jev.Request) jev.Result {
+			return jev.Result{Availability: jev.Available,
+				Answers: []jev.Answer{{QuestionID: "start", Kind: jev.KindChoice, Choice: "approve", Probability: 0.8}},
+				Notice:  notice}
+		}
+		t.Cleanup(func() { contractDecideJev = prev })
+		return p
+	}
+
+	t.Run("notice on configured stderr", func(t *testing.T) {
+		p := setup(t)
+		res := runContract(t, p, contractRun{}, "decide", signtest.Card, "--spec", signtest.SpecID,
+			"--judgement", writeJudgement(t, goodJudgement))
+		if res.code != 0 {
+			t.Fatalf("decide: %s", res)
+		}
+		if !strings.Contains(res.stderr, notice) {
+			t.Errorf("configured stderr %q does not carry the notice line", res.stderr)
+		}
+	})
+	t.Run("json carries jev_notice", func(t *testing.T) {
+		p := setup(t)
+		res := runContract(t, p, contractRun{}, "decide", signtest.Card, "--spec", signtest.SpecID,
+			"--judgement", writeJudgement(t, goodJudgement), "--json")
+		if res.code != 0 {
+			t.Fatalf("decide --json: %s", res)
+		}
+		if !strings.Contains(res.stdout, `"jev_notice": "jev now answers as jev-9.9"`) {
+			t.Errorf("json lacks jev_notice:\n%s", res.stdout)
 		}
 	})
 }

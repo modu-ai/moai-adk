@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/always-loaded-budget",
-  "commit_sha": "db0c514d3b0ce16befa5a6d35126a35b6b0f73d0",
+  "tree_root": "/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1640",
+  "commit_sha": "42b237567af035c707218d585ec262217caae853",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-10-08T20:35:27Z"
+  "generated_at": "2026-10-23T18:05:22Z"
 }

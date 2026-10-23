@@ -461,6 +461,11 @@ func TestFactoryEligiblePullTraceless(t *testing.T) {
 // text from the one shared source.
 func TestFactoryEligiblePullRefusalGrammar(t *testing.T) {
 	root, store := fcFixture(t)
+	// Card t1632 CI repair: the MCP surface's stale-run check (REQ-MN-003,
+	// card t1632 M1) validates an explicit run id against the active run, so
+	// the fixture seeds fcRun active — the sdMoaiFixture convention — or the
+	// MCP arm refuses stale-run before the eligible-pull pass is reached.
+	sdSeedRun(t, root, fcRun, "active")
 	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)

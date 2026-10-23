@@ -12,10 +12,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
@@ -58,6 +60,11 @@ func seedTestSeams(t *testing.T, root string, addOverride func(destDir string) e
 func TestNew_SeedsCodexHooksJson(t *testing.T) {
 	testguard.RedirectHome(t)
 	root := t.TempDir()
+	cmd := exec.Command("git", "-C", root, "init", "-q", "--template=", "-b", "main")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init %s: %v\n%s", root, err, out)
+	}
+	t.Setenv(paths.EnvHome, t.TempDir())
 	seedTestSeams(t, root, nil)
 
 	var out bytes.Buffer
@@ -152,6 +159,11 @@ func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
 func TestNew_SeedFailureFailOpen(t *testing.T) {
 	testguard.RedirectHome(t)
 	root := t.TempDir()
+	cmd := exec.Command("git", "-C", root, "init", "-q", "--template=", "-b", "main")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init %s: %v\n%s", root, err, out)
+	}
+	t.Setenv(paths.EnvHome, t.TempDir())
 	seedTestSeams(t, root, func(destDir string) error {
 		// Path pollution: after the tree directory exists, occupy the .codex
 		// path with a regular file so the seed's directory creation fails.

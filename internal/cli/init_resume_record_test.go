@@ -22,41 +22,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/codexwiring"
 )
 
-// isolatedInitHome points HOME at a fresh directory and installs the init wizard
-// seams. The real user-asset ensure then installs into that temp home.
-func isolatedInitHome(t *testing.T) {
-	t.Helper()
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-	seamsForInit(t)
-}
-
-// stubEnsure replaces the user-asset ensure for the duration of the test.
 func stubEnsure(t *testing.T, fn func(homeDir string, selection []string, out io.Writer) error) {
 	t.Helper()
 	orig := ensureUserAssetsLockedFn
 	t.Cleanup(func() { ensureUserAssetsLockedFn = orig })
 	ensureUserAssetsLockedFn = fn
-}
-
-// writeCorruptWiringJournal plants an unreadable Codex wiring journal. Recovery
-// reads the journal before any wiring file is written and refuses it, so
-// codexwiring.Wire fails without changing a wiring file. This is the path
-// condition the Codex wiring cannot pass.
-func writeCorruptWiringJournal(t *testing.T, projectDir string) {
-	t.Helper()
-	journal := filepath.Join(projectDir, filepath.FromSlash(codexwiring.JournalRelPath))
-	if err := os.MkdirAll(filepath.Dir(journal), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(journal, []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 }
 
 // writeResumeMarker plants the resume checkpoint marker a failed resume leaves behind.
@@ -87,69 +59,13 @@ func TestInitResumeRecordSurvivesInterruptedEnsure(t *testing.T) {
 	var interrupted any
 	func() {
 		defer func() { interrupted = recover() }()
-		_ = resumeRun(t, projectDir, "both")
+		_ = resumeRun(t, projectDir, "")
 	}()
 	if interrupted == nil {
 		t.Fatal("the injected interruption did not bite: the ensure was never reached")
 	}
-	if got, ok := readResumeWiring(projectDir); !ok || got != agentWiringBoth {
-		t.Fatalf("the interrupted run left no selection record for its resume (ok=%v, got=%q, want both)", ok, got)
-	}
-}
-
-// TestInitResumeWiringFailureIsAnError — Finding 2. The resume's Codex wiring
-// fails on the path condition above. The resume must return an error that names
-// the wiring failure, and it must retire neither the checkpoint marker nor the
-// selection record, so the next run resumes from them.
-func TestInitResumeWiringFailureIsAnError(t *testing.T) {
-	resumeHome(t)
-	projectDir := filepath.Join(t.TempDir(), "wiring-fail-resume-proj")
-	resumeSeedRun(t, projectDir, "both")
-	writeCorruptWiringJournal(t, projectDir)
-
-	err := resumeRun(t, projectDir, "")
-	if err == nil {
-		t.Fatal("the resume reported success over a failed Codex wiring — a half-finished resume must not retire its marker or record")
-	}
-	if !strings.Contains(err.Error(), "codex wiring") {
-		t.Fatalf("the resume error does not name the Codex wiring failure: %v", err)
-	}
-	if _, statErr := os.Stat(filepath.Join(projectDir, ".moai", "resume-pending")); statErr != nil {
-		t.Fatalf("the failed resume retired its checkpoint marker (stat err = %v)", statErr)
-	}
-	if got, ok := readResumeWiring(projectDir); !ok || got != agentWiringBoth {
-		t.Fatalf("the failed resume retired its selection record (ok=%v, got=%q, want both)", ok, got)
-	}
-}
-
-// TestInitWiringFailureWarnsOutsideResume — guard. The healthy init path keeps its
-// warn-only Codex wiring: the same path condition produces a named warning and a
-// successful init. The condition is planted in the post-executor window (card t1619):
-// the executor has deployed the project by then. A plant before the executor would
-// create .moai/, and a fresh init refuses a project whose .moai/ directory already
-// exists (validator.go:130).
-func TestInitWiringFailureWarnsOutsideResume(t *testing.T) {
-	isolatedInitHome(t)
-	projectDir := filepath.Join(t.TempDir(), "healthy-wiring-fail-proj")
-	origWindow := initWindowFn
-	t.Cleanup(func() { initWindowFn = origWindow })
-	initWindowFn = func(root string) error {
-		writeCorruptWiringJournal(t, root)
-		return nil
-	}
-
-	cmd := newInitTestCmd()
-	if err := cmd.Flags().Set("llm", "both"); err != nil {
-		t.Fatal(err)
-	}
-	var out, errOut strings.Builder
-	cmd.SetOut(&out)
-	cmd.SetErr(&errOut)
-	if err := runInit(cmd, []string{projectDir}); err != nil {
-		t.Fatalf("a healthy init failed on a Codex wiring failure; outside the resume it must stay warn-only: %v", err)
-	}
-	if !strings.Contains(errOut.String(), "Codex wiring failed") {
-		t.Fatalf("the Codex wiring failure was not named on stderr: %q", errOut.String())
+	if got, ok := readResumeWiring(projectDir); !ok || got != agentWiringClaude {
+		t.Fatalf("the interrupted run left no selection record for its resume (ok=%v, got=%q, want claude)", ok, got)
 	}
 }
 
@@ -179,7 +95,7 @@ func TestInitResumeRecordRetirementFollowsMarker(t *testing.T) {
 			}
 
 			cmd := newInitTestCmd()
-			if err := cmd.Flags().Set("llm", "both"); err != nil {
+			if err := cmd.Flags().Set("llm", "claude"); err != nil {
 				t.Fatal(err)
 			}
 			var out, errOut strings.Builder
@@ -191,8 +107,8 @@ func TestInitResumeRecordRetirementFollowsMarker(t *testing.T) {
 
 			got, ok := readResumeWiring(projectDir)
 			if tc.markerKept {
-				if !ok || got != agentWiringBoth {
-					t.Fatalf("a healthy completion with a standing checkpoint marker left no selection record for the resume the marker names (ok=%v, got=%q, want both)", ok, got)
+				if !ok || got != agentWiringClaude {
+					t.Fatalf("a healthy completion with a standing checkpoint marker left no selection record for the resume the marker names (ok=%v, got=%q, want claude)", ok, got)
 				}
 				return
 			}

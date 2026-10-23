@@ -6,9 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 // codexAuditLegEnv marks the codex child of an audit leg (t1788). The Stop chain
@@ -16,19 +14,6 @@ import (
 // command: the model is already reviewing inside the leg, and a nested
 // verification command is the defect that stalled the leg (t1754).
 const codexAuditLegEnv = config.EnvCodexAuditLeg
-
-// codexAuditLegSkipped names the Stop-chain members whose deny or continuation
-// text asks the model to run a verification command: sync-gate (2), goal (3),
-// and codex-review (6). Multi-review (7) reports only a residual-risk note.
-var codexAuditLegSkipped = map[int]string{
-	2: "sync-gate",
-	3: "goal",
-	6: "codex-review",
-}
-
-// stopStatusSkippedAuditLeg records a member skipped inside an audit leg. A skip
-// is never a pass.
-const stopStatusSkippedAuditLeg = "skipped-audit-leg"
 
 // codexAuditLegCtxKey carries the leg marker on the spawner's context.
 type codexAuditLegCtxKey struct{}
@@ -114,30 +99,50 @@ func inCodexAuditLeg() bool {
 	return os.Getenv(codexAuditLegEnv) == "1"
 }
 
-// auditLegSkipsMember reports whether Stop-chain member n is skipped here.
-func auditLegSkipsMember(n int) bool {
-	if _, ok := codexAuditLegSkipped[n]; !ok {
-		return false
-	}
-	return inCodexAuditLeg()
+// codexLaneLaunchEnvKeys are the lane launch keys an outer session may
+// export. A plain Codex launch scrubs them. An explicit -f launch supplies a
+// freshly selected factory identity after the scrub.
+var codexLaneLaunchEnvKeys = []string{
+	config.EnvFactoryRunID,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryLeadName,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactorySettingsInjected,
+	config.EnvMoaiFactoryWorker,
+	config.EnvMoaiFactoryWorkers,
+	config.EnvFactoryRole,
 }
 
-// auditLegSkipOutcome is a skipped member's result. It allows the turn and states
-// the skip on the visible output, so the rollout shows it rather than the skip
-// passing silently (t1788 brain ruling, condition b).
-func auditLegSkipOutcome(n int) stopMemberOutcome {
-	spec := stopMemberSpec(n)
-	note := spec.Name + ": skipped: audit leg (verification is not run inside a codex audit leg)"
-	return stopMemberOutcome{
-		Number:   n,
-		Name:     spec.Name,
-		Decision: codexadapter.DecisionAllow,
-		Status:   stopStatusSkippedAuditLeg,
-		Advisory: note,
-		Discards: []codexadapter.Discard{{
-			Event:  hook.EventStop,
-			Key:    "codex-stop-chain/" + spec.Name + "/audit-leg",
-			Reason: note,
-		}},
+// codexChildEnv is the environment handed to the codex child: the parent's own
+// environment with the RESOLVED CODEX_HOME appended. Appending (rather than
+// replacing) keeps the rest of the parent environment intact, and last-wins
+// makes the appended entry the value the child reads.
+//
+// Explicit rather than ambient: where the parent has no CODEX_HOME at all,
+// there is nothing to inherit, and the child would otherwise resolve its own
+// default independently of the value the readout reports.
+//
+// Removed from the inherited environment: the foreign attribution pair
+// (CLAUDE_CODE_SESSION_ID, MOAI_SESSION_PID) and the lane launch keys,
+// so a codex run inside a Claude lane never presents that lane's identity
+// Posture keys such as MOAI_AUTONOMY_TIER carry no identity and pass through.
+func codexChildEnv() []string {
+	drop := map[string]bool{config.EnvClaudeCodeSessionID: true, config.EnvMoaiSessionPID: true}
+	for _, key := range codexLaneLaunchEnvKeys {
+		drop[key] = true
 	}
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if drop[key] {
+			continue
+		}
+		env = append(env, entry)
+	}
+	// resolveCodexHomeDir's second result is the source label, not an error.
+	if home, _ := resolveCodexHomeDir(); home != "" {
+		env = append(env, codexHomeEnvVar+"="+home)
+	}
+	return env
 }

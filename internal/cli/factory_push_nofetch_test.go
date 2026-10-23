@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/modu-ai/moai-adk/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,8 @@ import (
 // requires the log to show the push gate's own git reads, so an empty log
 // (a recorder that saw nothing) cannot pass as "no fetch".
 func TestFR_AC018_PushGateNeverFetches(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	if runtime.GOOS == "windows" {
 		t.Skip("the recording wrapper is a POSIX shell script")
 	}

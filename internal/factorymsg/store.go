@@ -178,8 +178,17 @@ func Open(projectRoot, runID string) (*Store, error) {
 // @MX:ANCHOR: [AUTO] context-bound broker initialization for ordinary and rebound hook registration
 // @MX:REASON: Open and both hook registration paths share the caller-budget clamp and connection cleanup.
 func OpenWithContext(ctx context.Context, projectRoot, runID string) (*Store, error) {
-	return openWithContext(ctx, projectRoot, runID, 5*time.Second)
+	return openWithContext(ctx, projectRoot, runID, defaultBrokerOpenDeadline)
 }
+
+const defaultBrokerOpenDeadline = 5 * time.Second
+
+// ErrRunNotActive is the sentinel ValidateActiveRun returns when the run id is
+// well-formed but is not the currently active run (or no run table exists
+// yet). The string keeps the historical NO_ACTIVE_FACTORY spelling every
+// string-matching consumer reads; callers classify it with errors.Is
+// (SPEC-MCP-NEUTRALITY-001 maps it to the stale-run policy code).
+var ErrRunNotActive = errors.New("NO_ACTIVE_FACTORY")
 
 // ValidateActiveRun rejects stale or invented run identifiers without
 // initializing registry state.
@@ -192,7 +201,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 		return err
 	}
 	if _, err := os.Stat(path); err != nil {
-		return errors.New("NO_ACTIVE_FACTORY")
+		return ErrRunNotActive
 	}
 	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
 	if err != nil {
@@ -201,7 +210,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 	defer closeInto(&err, db, "factory state")
 	var status string
 	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); err != nil || status != "active" {
-		return errors.New("NO_ACTIVE_FACTORY")
+		return ErrRunNotActive
 	}
 	return nil
 }
@@ -209,15 +218,39 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 // OpenExistingWithDeadline opens an already-initialized broker on the hook
 // hot path without repeating WAL/schema setup on every turn boundary.
 func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
-	path, err := BrokerPath(projectRoot, runID)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(path); err != nil {
+	return OpenExistingWithContext(context.Background(), projectRoot, runID, deadline)
+}
+
+// OpenExistingWithContext includes namespace resolution in the caller's inbox budget.
+func OpenExistingWithContext(parent context.Context, projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	if err := parent.Err(); err != nil {
 		return nil, err
 	}
 	if deadline <= 0 {
 		return nil, errors.New("factory broker deadline must be positive")
+	}
+	if end, ok := parent.Deadline(); ok && time.Until(end) < deadline {
+		deadline = time.Until(end)
+	}
+	if !safeID.MatchString(runID) {
+		return nil, errors.New("invalid factory run id")
+	}
+	ctx, cancel := context.WithTimeout(parent, deadline)
+	defer cancel()
+	namespace, err := ResolveNamespace(ctx, projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(namespace.dir, "messages", runID, "broker.db")
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	end, _ := ctx.Deadline()
+	if time.Until(end) <= 0 {
+		return nil, context.DeadlineExceeded
 	}
 	busyMillis := deadline.Milliseconds() / 10
 	if busyMillis < 1 {
@@ -241,8 +274,6 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 		return state == homestate.ProcessIdentityLive && fp == start
 	}
 	s.recordReject = s.recordDead
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
-	defer cancel()
 	var count int
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM peers`).Scan(&count); err != nil {
 		_ = db.Close()
@@ -286,14 +317,18 @@ func openWithContextObserved(parent context.Context, projectRoot, runID string, 
 	if !safeID.MatchString(runID) {
 		return nil, fmt.Errorf("invalid factory run id %q", runID)
 	}
-	dir, err := homestate.FactoryDirContext(ctx, projectRoot)
+	namespace, err := ResolveNamespace(ctx, projectRoot)
 	if err != nil {
 		return nil, err
 	}
+	return openResolvedWithContext(ctx, namespace, runID, observeBusy)
+}
+
+func openResolvedWithContext(ctx context.Context, namespace Namespace, runID string, observeBusy func(int64)) (*Store, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	path := filepath.Join(dir, "messages", runID, "broker.db")
+	path := filepath.Join(namespace.dir, "messages", runID, "broker.db")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
@@ -301,7 +336,7 @@ func openWithContextObserved(parent context.Context, projectRoot, runID string, 
 		return nil, err
 	}
 	end, _ := ctx.Deadline()
-	deadline = time.Until(end)
+	deadline := time.Until(end)
 	if deadline <= 0 {
 		return nil, context.DeadlineExceeded
 	}
@@ -332,7 +367,7 @@ func openWithContextObserved(parent context.Context, projectRoot, runID string, 
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: projectKeyFromBrokerPath(path), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
+	s := &Store{db: db, root: namespace.root, runID: runID, projectKey: namespace.key, now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
 	s.ownerCurrent = func(pid int, start string) bool {
 		fp, state := homestate.ProbeProcessIdentity(pid)
 		return state == homestate.ProcessIdentityLive && fp == start
@@ -566,6 +601,19 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	_, err = tx.ExecContext(ctx, `INSERT INTO peers(slot,project_key,run_id,backend,role,session_uuid,generation,pid,process_start,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(slot) DO UPDATE SET project_key=excluded.project_key,run_id=excluded.run_id,backend=excluded.backend,role=excluded.role,session_uuid=excluded.session_uuid,generation=excluded.generation,pid=excluded.pid,process_start=excluded.process_start,updated_at=excluded.updated_at`, p.Slot, s.projectKey, s.runID, p.Backend, p.Role, p.SessionUUID, p.Generation, p.PID, p.ProcessStart, s.now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return Peer{}, err
+	}
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-016: when the SAME session's generation
+	// advances, PENDING messages addressed to the previous generation migrate
+	// to the new one — inside this transaction, so a same-session relaunch
+	// can never orphan an undelivered message (the orphan defect is "a
+	// generation change ALONE"). A SLOT REBIND to a different session UUID
+	// keeps the REQ-DHR-020 superseded semantics: those messages are addressed
+	// to a specific endpoint identity that no longer exists, and silently
+	// retargeting them would violate the fencing contract that test pins.
+	if oldSession != "" && oldSession == p.SessionUUID && oldGen < p.Generation {
+		if _, err := tx.ExecContext(ctx, `UPDATE messages SET recipient_generation=? WHERE recipient_session=? AND recipient_generation=? AND state='pending'`, p.Generation, p.SessionUUID, oldGen); err != nil {
+			return Peer{}, err
+		}
 	}
 	if launcher {
 		if err := s.finalizeHandoffOnLauncherRegistration(ctx, tx, p.Slot); err != nil {
@@ -856,6 +904,56 @@ func (s *Store) CheckWritable(ctx context.Context) (err error) {
 	return err
 }
 
+// PendingCount counts the messages the next Claim could deliver to p — the
+// read-only counting query the hook's empty-inbox path runs (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-011). It takes NO write lock: in WAL a plain SELECT answers while a
+// writer holds the database, which is exactly the property the counting path
+// needs. Receipt-kind rows are excluded — settling them is a write the
+// counting path must not perform; they stay pending until a delivery-path
+// inspection or the receipt tool answers them.
+func (s *Store) PendingCount(ctx context.Context, p Peer) (int, error) {
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND kind<>? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?))`, p.SessionUUID, p.Generation, KindReceipt, now).Scan(&n)
+	return n, err
+}
+
+// PendingListEntry is one read-only pending row the counting path renders.
+type PendingListEntry struct {
+	ID   string
+	Kind string
+}
+
+// PendingList returns up to limit pending message ids and kinds for p WITHOUT
+// claiming them — the read-only observation the hook's inbox inspection uses
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-017: the hook observes counts; the MCP
+// factory_msg_list tool is the only claim surface). Expired claims are
+// pending again (the same clause PendingCount applies, t1632): a session that
+// claimed a message and died must not hide it from the rendered inbox — only
+// a LIVE claim is excluded. Decision-required kinds (blocker, status_request)
+// sort FIRST, so a rendered batch always carries them when any exist — the
+// Stop-side block decision reads the rendered list.
+func (s *Store) PendingList(ctx context.Context, p Peer, limit int) ([]PendingListEntry, error) {
+	if limit < 1 || limit > MaxBatch {
+		limit = MaxBatch
+	}
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,kind FROM messages WHERE recipient_session=? AND recipient_generation=? AND kind<>? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY CASE WHEN kind IN ('blocker','status_request') THEN 0 ELSE 1 END, created_at LIMIT ?`, p.SessionUUID, p.Generation, KindReceipt, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer closeInto(&err, rows, "broker rows")
+	var out []PendingListEntry
+	for rows.Next() {
+		var e PendingListEntry
+		if err := rows.Scan(&e.ID, &e.Kind); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func validKind(k string) bool {
 	switch k {
 	case KindDispatchNotice, KindStatusRequest, KindStatusReport, KindBlocker, KindReceipt:
@@ -1020,7 +1118,23 @@ func (s *Store) DeadLetters(ctx context.Context) (_ []DeadLetter, err error) {
 	return out, rows.Err()
 }
 
-func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) (_ []Claim, err error) {
+// Claim claims up to limit messages for the endpoint p. A re-claim inside a
+// live lease keeps the claim token and extends the lease (REQ-MN-017), so the
+// rows the endpoint already holds are delivered again.
+func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
+	return s.claim(ctx, p, limit, lease, false)
+}
+
+// ClaimFresh claims only what the endpoint does not already hold: pending rows
+// and rows whose lease has expired. A claim the endpoint still holds is NOT
+// delivered again, so a consumer that drives one model turn per delivery (the
+// managed session driver) never retries a failed turn by itself — the held
+// row waits for its lease, which is the broker's redelivery policy.
+func (s *Store) ClaimFresh(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
+	return s.claim(ctx, p, limit, lease, true)
+}
+
+func (s *Store) claim(ctx context.Context, p Peer, limit int, lease time.Duration, fresh bool) (_ []Claim, err error) {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return nil, err
 	}
@@ -1028,8 +1142,19 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		limit = MaxBatch
 	}
 	now := s.now().UTC()
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-017: the eligibility now INCLUDES rows
+	// this endpoint still holds a live claim on — a re-claim inside the lease
+	// keeps the claim token and extends the lease instead of letting the old
+	// token die (the "claim identity mismatch" defect family). The
+	// per-recipient scoping means every claimed row IS this endpoint's claim.
+	// EXPIRED rows stay eligible too: the dead-letter step below ends them.
+	stateClause, stateArgs := `state IN ('pending','claimed')`, []any(nil)
+	if fresh {
+		stateClause = `(state='pending' OR (state='claimed' AND claim_expires_at<=?))`
+		stateArgs = []any{now.Format(time.RFC3339Nano)}
+	}
 	var eligible int
-	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND (claim_expires_at<=? OR expires_at<=?)))`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&eligible); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND `+stateClause, append([]any{p.SessionUUID, p.Generation}, stateArgs...)...).Scan(&eligible); err != nil {
 		return nil, err
 	}
 	if eligible == 0 {
@@ -1052,7 +1177,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
+	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,claim_token,claim_expires_at,state FROM messages WHERE recipient_session=? AND recipient_generation=? AND `+stateClause+` ORDER BY created_at LIMIT ?`, append(append([]any{p.SessionUUID, p.Generation}, stateArgs...), limit)...)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,12 +1186,32 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	for rows.Next() {
 		var c Claim
 		var created, expires string
-		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderSlot, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
+		var existingToken, existingExpiry, state string
+		var nullExpiry sql.NullString
+		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderSlot, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires, &existingToken, &nullExpiry, &state); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		c.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
-		c.ClaimToken = newID()
+		existingExpiry = nullExpiry.String
+		// REQ-MN-017 token stability: a LIVE claim (lease not yet expired)
+		// keeps its token — the identity the endpoint already holds stays
+		// valid, and the lease extends below. An EXPIRED claim mints a new
+		// token: the fencing contract requires the old holder's identity to
+		// die with its lease (the dispatch-result exactly-once flow).
+		live := state == "claimed" && existingToken != ""
+		if live {
+			if exp, pErr := time.Parse(time.RFC3339Nano, existingExpiry); pErr != nil || !exp.After(now) {
+				live = false
+			}
+		} else {
+			existingToken = "" // pending rows carry no token
+		}
+		if live {
+			c.ClaimToken = existingToken
+		} else {
+			c.ClaimToken = newID()
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='claimed',claim_token=?,claim_expires_at=?,disposition='' WHERE id=?`, c.ClaimToken, now.Add(lease).Format(time.RFC3339Nano), c.ID); err != nil {
 			return nil, err
 		}

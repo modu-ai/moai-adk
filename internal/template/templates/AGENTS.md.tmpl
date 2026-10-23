@@ -129,12 +129,13 @@ and resolve the remote default branch instead of assuming `main`.
 
 ## 3. Worktrees
 
-**Work inside an isolated worktree.** `moai worktree new <name>` creates a MoAI tree under
-`.moai/worktrees/`. Claude Code uses `moai cc -w <name>` for its native `.claude/worktrees/`
-location or `moai cc -w <absolute-path>` for a MoAI tree; `EnterWorktree(<path>)` and
-`ExitWorktree` are Claude Code session tools. Codex app users select Worktree when starting a
-chat. Codex CLI uses `codex -C <absolute-worktree-path>` for a new session; an active Codex
-session operates through `git -C <absolute-worktree-path>` and direct file operations.
+**Work inside an isolated worktree.** `moai worktree new <name>` creates one at
+`<MoaiHome>/worktrees/projects/<project-key>/<name>`. Claude Code uses
+`moai cc -w <name>` for its `.claude/worktrees/` or `moai cc -w <absolute-path>`
+for a MoAI tree; `EnterWorktree(<path>)` and `ExitWorktree` are Claude Code session tools.
+Codex app users select Worktree when starting a chat. Codex CLI uses
+`codex -C <absolute-worktree-path>` for a new session; an active Codex session operates through
+`git -C <absolute-worktree-path>` and direct file operations.
 A Codex agent must not invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
 `git worktree add`.
 
@@ -199,12 +200,7 @@ observation, not one made in this run: a verdict citing it names the key and `re
 from the reuse notice and lists "output not re-observed" under Gaps — a reused result is a Gap,
 not a Claim — and a claim that needs verbatim output runs the command directly.
 
-**A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
-`success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
-(1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
-`state == "success"` and description `Review completed`; (2) a `Merge Risk:` line exists whose
-commit prefix matches the current `headRefOid`. Anything else is a gap, not a pass; `Review rate
-limited` means the review never started.
+**Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
 
 ---
 
@@ -369,3 +365,13 @@ project language and runs its standard toolchain, skipping missing tools gracefu
 
 <!-- moai:learned-start -->
 <!-- moai:learned-end -->
+
+## 14. MCP Server Reconnect (staleness)
+
+The self-hosted `moai` MCP server keeps serving the build it started with; a
+reinstall moves the installed binary without restarting the server. Stale
+results carry the reconnect guidance (`stale_server: true` + `_server
+{version, commit}`; write tools refuse until reconnected). Reconnect: end the
+host session so `moai mcp-server` respawns from the installed binary (Codex:
+end the codex session; generic clients: re-open the stdio transport), then
+re-read `tools/list`. `moai doctor` is the operator-level check.

@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 39-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 37-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 39 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 37 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (39 tools)
+## Tool catalogue (37 tools)
 
 ### SPEC lifecycle
 
@@ -111,20 +111,14 @@ existed does not list them — reconnect it. The codex leg then falls back to
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | manager-develop, super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | manager-develop, super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | manager-develop, super-advisor | `moai codex job cancel` |
 
-The codex delegation family is wired into `super-advisor` because the on-demand
-high-reasoning consultation agent is the natural consumer of background
-cross-model delegation: it arms a codex task via `codex_task`, polls completion
-via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
-`codex_setup` probes whether codex is available before delegating. codex is
+The general codex delegation family (`codex_task`, `codex_job_{status,result,cancel}`)
+was removed with the general codex execution surface; `codex_setup` stays
+as the audit surface's install probe, wired into `super-advisor` — the on-demand
+high-reasoning consultation agent. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
-`manager-develop` carries the family except `codex_setup`: it may start a bounded drafting job with `codex_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run/external-delegation.md` allows, and a delegated codex turn stays read-only.
 
 ### Codex read-only roles (background jobs)
 
@@ -133,6 +127,7 @@ a hard error.
 | `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | a Codex session | none — a Codex session's shell cannot reach the model from a nested `codex exec` |
 | `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | a Codex session | — |
 | `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | a Codex session | — |
+| `mcp__moai__codex_role_audit_cancel` | Stop a running role-audit job by revoking its launcher context | a Codex session | — |
 
 On Codex, `spawn_agent` gives a subagent the parent session's sandbox, so a
 read-only role started that way could write. This family starts it as its own
@@ -185,6 +180,7 @@ well-formed questions live in the reference skill; the call path lives in
 | `mcp__moai__factory_decide` | Record one operator decision (MCP form of `moai factory decide`); inverted gate — refused FOR a lane session | attributed factory lead | `moai factory decide` |
 | `mcp__moai__factory_renew` | Extend the lane's own card lease by the configured duration (MCP form of `moai factory renew --json`; `project_root` required); a refused renewal writes nothing | factory lane session — refused outside one | `moai factory renew` |
 | `mcp__moai__todo_add` | Append one card to the backlog queue; lane-refused like the CLI guard | factory lead or lane session | `moai todo add` |
+| `mcp__moai__todo_claim` | Claim the oldest queued card under a lease (atomic CAS), or renew a held lease | operator or lane session | `moai todo claim` |
 | `mcp__moai__todo_list` | Render the backlog queue, lock-free; read-only, no lane guard | any session | `moai todo list` |
 
 The lane verbs read the caller's lane identity from `MOAI_FACTORY_ROLE` and
@@ -233,7 +229,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (39 of the 39 tools)
+## Tool families (37 of the 37 tools)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -242,12 +238,12 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
-| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor (all five), manager-develop (all but codex_setup) |
-| Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
+| Codex audit probe | `codex_setup` | super-advisor |
+| Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result`, `codex_role_audit_cancel` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) |
-| Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
+| Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_claim`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
 GLM audit transports fail open at the tool boundary: an unavailable backend returns
@@ -274,7 +270,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 39 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 37 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -286,17 +282,19 @@ producer lives in `internal/cli/mcp_server.go`).
 ### The `project_root` input — name your own tree
 
 
-Twenty-three tools accept an optional `project_root` string: `spec_progress`,
+Thirty-two tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
+`codex_review`, `glm_audit`, `glm_review`, `claude_audit`,
 `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
 `graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
-`factory_stage`, `factory_complete`, and `factory_renew`. It names the tree the call should act
-on. Five of the twenty-three
+`factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,
+`glm_job_cancel`, `glm_job_result`, `glm_job_status`,
+`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
+and `todo_claim`. It names the tree the call should act
+on. Four of the thirty-two
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
-`factory_complete`, and `factory_renew` reject a call without it naming the argument, and
-`codex_task` is required rather than optional — pass your own toplevel or the
-call is refused (`project_root is required ...`); it is never defaulted.
+`factory_complete`, and `factory_renew` reject a call without it naming the
+argument; it is never defaulted.
 
 
 The caller is the only party that holds the answer, which is why it is an input.
@@ -333,5 +331,5 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(39 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
+(37 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

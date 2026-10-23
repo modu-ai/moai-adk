@@ -114,7 +114,14 @@ func TestMCPVerbParity_RecordRoot(t *testing.T) {
 	}{
 		{
 			name: "decide",
-			env:  func(t *testing.T, _ string) { sdClearLaneEnv(t) },
+			// The REQ-MN-003 operator gate (card t1632 M2) requires a POSITIVE
+			// operator mark — the fixture stands in for the operator/leader
+			// session a push decision runs in, so the mark is seeded the way
+			// the launcher stamps it (card t1632 main-absorb r9).
+			env: func(t *testing.T, _ string) {
+				sdClearLaneEnv(t)
+				t.Setenv(config.EnvFactoryRole, "operator")
+			},
 			place: func(t *testing.T, root string) {
 				fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardKickoff, DecisionGate: homestate.DecisionGateKickoff})
 			},
@@ -295,6 +302,11 @@ func TestMCPVerbParity_DecideConfigRoot(t *testing.T) {
 	arm := func(viaMCP bool) homestate.Card {
 		root, wt := parityTree(t)
 		sdClearLaneEnv(t)
+		// The REQ-MN-003 operator gate (card t1632 M2) requires a POSITIVE
+		// operator mark; the fixture is the operator session a push decision
+		// runs in, so the mark is seeded the way the launcher stamps it
+		// (card t1632 main-absorb r9).
+		t.Setenv(config.EnvFactoryRole, "operator")
 		fcGitFlowConfig(t, root)
 		dir, merge := fcRepo(t, true)
 		fcGit(t, dir, "push", "-q", "origin", "integration")

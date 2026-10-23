@@ -33,7 +33,6 @@ func TestRunInit_ShellConfigStepReachedViaSeam(t *testing.T) {
 	wizResult := &wizard.WizardResult{
 		ConversationLang:          "en",
 		UserName:                  "tester",
-		AgentWiring:               "claude",
 		AutonomyTier:              "semi-auto",
 		LSPEnabled:                true,
 		EnforceQuality:            true,

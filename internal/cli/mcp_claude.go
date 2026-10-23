@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ const (
 	claudeErrSubscriptionUnavailable = "CLAUDE_SUBSCRIPTION_UNAVAILABLE"
 	claudeErrModelUnavailable        = "CLAUDE_MODEL_UNAVAILABLE"
 	claudeErrCapacityUnavailable     = "CLAUDE_CAPACITY_UNAVAILABLE"
+	claudeErrRateLimited             = "CLAUDE_RATE_LIMITED_ENDPOINT_UNVERIFIED"
 	claudeErrProviderMismatch        = "CLAUDE_PROVIDER_MISMATCH"
 	claudeErrProtocol                = "CLAUDE_PROTOCOL_ERROR"
 	claudeErrOutputMalformed         = "CLAUDE_OUTPUT_MALFORMED"
@@ -51,7 +53,10 @@ type claudeAuditRequest struct {
 }
 
 func handleClaudeAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := resolveToolProjectRoot(req)
+	// SPEC-MCP-NEUTRALITY-001 M3 scoping (mirrors codex_audit): the audit
+	// surface may name another repository's tree — validated + canonicalized
+	// without the server-repository confinement.
+	root, _, err := resolveValidatedToolProjectRoot(req)
 	if err != nil {
 		return toolErr(claudeAuditToolName, err), nil
 	}
@@ -82,9 +87,13 @@ func performClaudeAudit(ctx context.Context, req claudeAuditRequest) ReviewOutpu
 	req.Model = me.Model
 	req.Effort = me.Effort
 
-	binary, err := claudeLookPath(claudeBinaryName)
+	// REQ-MN-012: the audit honors the configured claude binary pin
+	// (MOAI_CLAUDE_BIN / llm.claude_bin) — a raw PATH lookup here was the
+	// bypass that ignored the operator's pin. An unresolvable binary is the
+	// same structured inconclusive as before.
+	binary, err := resolveClaudeBinaryAt(root)
 	if err != nil {
-		return claudeInconclusive(claudeErrBinaryMissing, "Claude Code binary is unavailable", me.Model, me.Effort)
+		return claudeInconclusive(claudeErrBinaryMissing, "Claude Code binary is unavailable (the configured pin, if any, did not resolve)", me.Model, me.Effort)
 	}
 	return performClaudeAuditWith(ctx, req, binary, claudeRunner, os.Environ())
 }
@@ -112,7 +121,7 @@ func performClaudeAuditWith(ctx context.Context, req claudeAuditRequest, binary 
 	if !validClaudeAuditEffort(me.Effort) {
 		return claudeInconclusive(claudeErrModelUnavailable, "Claude audit effort is outside the supported set", me.Model, me.Effort)
 	}
-	env := scrubClaudeAuditEnv(environ)
+	env := claudeAuditAllowlistEnv(environ)
 	if err := validateClaudeAuditEnv(env); err != nil {
 		return claudeInconclusive(claudeErrProtocol, "Claude audit environment isolation failed", me.Model, me.Effort)
 	}
@@ -149,12 +158,15 @@ func performClaudeAuditWith(ctx context.Context, req claudeAuditRequest, binary 
 			return claudePostAuthInconclusive(claudeErrAuditCancelled, "Claude audit was cancelled", me.Model, me.Effort)
 		}
 		if claudeAuditAPIStatus(stdout) == 429 {
-			return claudePostAuthInconclusive(claudeErrCapacityUnavailable, "Claude subscription capacity is unavailable", me.Model, me.Effort)
+			// REQ-MN-012: a 429 is labeled RATE LIMITING with the endpoint
+			// unverified — the pre-fix label claimed subscription capacity,
+			// which the unverified endpoint cannot support.
+			return claudePostAuthInconclusive(claudeErrRateLimited, "Claude audit was rate limited (429); the serving endpoint is unverified", me.Model, me.Effort)
 		}
 		return claudePostAuthInconclusive(claudeErrOutputMalformed, "Claude audit process did not return a valid result", me.Model, me.Effort)
 	}
 	if claudeAuditAPIStatus(stdout) == 429 {
-		return claudePostAuthInconclusive(claudeErrCapacityUnavailable, "Claude subscription capacity is unavailable", me.Model, me.Effort)
+		return claudePostAuthInconclusive(claudeErrRateLimited, "Claude audit was rate limited (429); the serving endpoint is unverified", me.Model, me.Effort)
 	}
 
 	out, resolvedModel, usage, err := parseClaudeAuditOutput(stdout)
@@ -263,6 +275,42 @@ var claudeAuditScrubKeySet = map[string]struct{}{
 	"API_TIMEOUT_MS":                      {},
 }
 
+// claudeAuditAllowKeySet is the ALLOWLIST of environment variables the
+// claude_audit child inherits (SPEC-MCP-NEUTRALITY-001 REQ-MN-012): the
+// minimum a subprocess needs to execute. Everything else — proxy variables,
+// provider keys, session identity, the harness's own carriers — is dropped,
+// and CLAUDE_CONFIG_DIR is pinned explicitly below rather than inherited.
+var claudeAuditAllowKeySet = map[string]struct{}{
+	"PATH": {},
+	"LANG": {},
+	"TZ":   {},
+	"TERM": {},
+}
+
+// claudeAuditAllowlistEnv builds the claude_audit child environment from an
+// ALLOWLIST (SPEC-MCP-NEUTRALITY-001 REQ-MN-012): only the exec-minimum keys
+// pass through, and CLAUDE_CONFIG_DIR is pinned explicitly to the
+// subscription directory so an ambient (possibly attacker-redirected) value
+// cannot reach the child. The pre-fix denylist scrub kept every variable the
+// set did not name — proxy variables and a redirected CLAUDE_CONFIG_DIR
+// included.
+func claudeAuditAllowlistEnv(environ []string) []string {
+	out := make([]string, 0, len(claudeAuditAllowKeySet)+1)
+	for _, entry := range environ {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		if _, allow := claudeAuditAllowKeySet[key]; allow {
+			out = append(out, entry)
+		}
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		out = append(out, "CLAUDE_CONFIG_DIR="+filepath.Join(home, ".claude"))
+	}
+	return out
+}
+
 func scrubClaudeAuditEnv(environ []string) []string {
 	out := make([]string, 0, len(environ))
 	for _, entry := range environ {
@@ -285,18 +333,31 @@ func scrubClaudeAuditEnv(environ []string) []string {
 	return out
 }
 
+// validateClaudeAuditEnv validates the ALLOWLISTED child environment
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-012): no provider/harness key survived,
+// and CLAUDE_CONFIG_DIR is present and pinned to the subscription directory.
 func validateClaudeAuditEnv(environ []string) error {
+	configDir := ""
 	for _, entry := range environ {
-		key, _, ok := strings.Cut(entry, "=")
+		key, val, ok := strings.Cut(entry, "=")
 		if !ok {
 			continue
 		}
 		if strings.HasPrefix(key, config.EnvAnthropicPrefix) || strings.HasPrefix(key, claudeCodeEnvPrefix) || key == claudeNestedSessionEnv {
 			return fmt.Errorf("forbidden Claude audit environment key: %s", key)
 		}
+		switch {
+		case key == "CLAUDE_CONFIG_DIR":
+			configDir = val
+		case strings.HasSuffix(key, "_PROXY") || key == "NO_PROXY":
+			return fmt.Errorf("proxy variable %s must not reach the claude audit child", key)
+		}
 		if _, scrub := claudeAuditScrubKeySet[key]; scrub {
 			return fmt.Errorf("forbidden Claude audit environment key: %s", key)
 		}
+	}
+	if configDir == "" || !strings.HasSuffix(filepath.Clean(configDir), ".claude") {
+		return fmt.Errorf("CLAUDE_CONFIG_DIR is not pinned to the subscription directory")
 	}
 	return nil
 }
