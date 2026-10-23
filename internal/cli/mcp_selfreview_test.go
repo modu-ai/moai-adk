@@ -963,7 +963,9 @@ func TestSelfReview_NeverMintsReceiptsAndIgnoresTheRequiredGate(t *testing.T) {
 // required-gate conversion, nor the progress notifier.
 func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	src := srReadFile(t, "mcp_selfreview.go")
-	codex := srReadFile(t, "mcp_codex.go")
+	// The audit machinery moved out of mcp_codex.go into mcp_codex_audit.go
+	// (card t1909 step ③); the positive controls read the new home.
+	codex := srReadFile(t, "mcp_codex_audit.go")
 	for _, tok := range []string{"recordAuditReceipt", "applyGateUnmet", "auditreceipt.", "notifyMCPProgress", "extractProgressToken"} {
 		if n := strings.Count(src, tok); n != 0 {
 			t.Errorf("mcp_selfreview.go references %q %d time(s)", tok, n)
@@ -972,7 +974,7 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	// Positive controls: the scanner is not blind (acceptance.md P2, P12).
 	for tok, min := range map[string]int{"recordAuditReceipt": 2, "applyGateUnmet": 5, "auditreceipt.": 2} {
 		if n := strings.Count(codex, tok); n < min {
-			t.Errorf("control: mcp_codex.go references %q %d time(s), want >= %d", tok, n, min)
+			t.Errorf("control: mcp_codex_audit.go references %q %d time(s), want >= %d", tok, n, min)
 		}
 	}
 	// P11: the self-review milestone added no receipt-writing call site. Before
@@ -1059,8 +1061,8 @@ func TestSelfReview_CatalogueAndGuideCarryTheNewRows(t *testing.T) {
 				t.Errorf("%s does not name `%s` in the project_root inventory", p, tool)
 			}
 		}
-		if !strings.Contains(body, "Five of the twenty-three") {
-			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Five of the twenty-three\")", p)
+		if !strings.Contains(body, "Four of the twenty-two") {
+			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Four of the twenty-two\")", p)
 		}
 	}
 }

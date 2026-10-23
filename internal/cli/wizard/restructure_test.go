@@ -80,7 +80,7 @@ func TestInitPages_Membership(t *testing.T) {
 	}{
 		{pageBasic, []string{"conversation_language", "user_name"}},
 		{pageModelReport, nil},
-		{pageAgentsAutonomy, []string{"agent_wiring", "autonomy_tier"}},
+		{pageAgentsAutonomy, []string{"autonomy_tier"}},
 		{pageJudgment, []string{"jev_enabled"}},
 	}
 	for _, tc := range cases {
@@ -127,13 +127,13 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 
 // TestPage3_NoModeGate pins AC-WIZ-003 + the C3 half of AC-WIZ-001: the
 // page-3 questions are visible with NO gate. Since SPEC-INIT-QUIET-WIZARD-001
-// page 3 carries agent_wiring and autonomy_tier, and both must be
-// unconditional.
+// page 3 carries autonomy_tier (agent_wiring went with the general codex
+// execution surface removal, card t1909), and it must be unconditional.
 func TestPage3_NoModeGate(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	for _, id := range []string{"agent_wiring", "autonomy_tier"} {
+	for _, id := range []string{"autonomy_tier"} {
 		q := QuestionByID(questions, id)
 		if q == nil {
 			t.Fatalf("%s missing from the init question set", id)

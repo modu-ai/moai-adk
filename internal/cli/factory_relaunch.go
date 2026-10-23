@@ -30,7 +30,9 @@ var factoryRelaunchExecFn = func(c *exec.Cmd) error { return c.Run() }
 // command value. A legacy lane spelling is refused naming the canonical form
 // (REQ-SRH-014, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009: detection, never a
 // mapping), and a Codex pin is refused naming the Codex limitation
-// (REQ-SRH-016).
+// (REQ-SRH-016). The codex provider itself is refused outright: the general
+// codex launcher was removed (card t1909), so a codex relaunch would emit a
+// launch line nothing executes — recovery goes through cc or glm.
 func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.RelaunchCommand, error) {
 	c := factory.RelaunchCommand{Provider: provider, Lane: lane, Run: run, FromRun: fromRun}
 	switch provider {
@@ -38,6 +40,12 @@ func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.Relaunch
 	default:
 		return c, fmt.Errorf("--%s must be %s, %s, or %s (got %q)", factory.RelaunchFlagProvider,
 			factory.RelaunchProviderCC, factory.RelaunchProviderGLM, factory.RelaunchProviderCodex, provider)
+	}
+	if provider == factory.RelaunchProviderCodex {
+		return c, fmt.Errorf("--%s %s is no longer available: the general codex launcher was removed; re-enter the lane through --%s %s or --%s %s",
+			factory.RelaunchFlagProvider, factory.RelaunchProviderCodex,
+			factory.RelaunchFlagProvider, factory.RelaunchProviderCC,
+			factory.RelaunchFlagProvider, factory.RelaunchProviderGLM)
 	}
 	if lane != "" {
 		lowered := strings.ToLower(lane)
@@ -73,7 +81,7 @@ func buildRelaunchCommand(provider, lane, run, fromRun string) (factory.Relaunch
 // active and its owner classifies dead. Every other case leaves the run
 // untouched and returns the outcome text; the verb launches regardless.
 func relaunchRetireFromRun(ctx context.Context, runID string) string {
-	root, err := os.Getwd()
+	root, err := checkedFactoryRoot()
 	if err != nil {
 		return fmt.Sprintf("run %s: working directory unavailable (%v), left untouched", runID, err)
 	}
@@ -129,7 +137,7 @@ func newFactoryRelaunchCommand() *cobra.Command {
 		Long: `Relaunch a factory lane session into a live run.
 
 The verb re-executes the provider's own lane entry — 'moai cc -l' or 'moai glm -l'
-through the shared lane-join gate, 'moai codex -l' for Codex — so the run is
+through the shared lane-join gate — so the run is
 resolved exactly as when the operator types that line. '-l' takes no argument, so
 a supplied --lane is not passed on: the verb says so on stderr and the session
 joins as the next free lane.
@@ -182,9 +190,9 @@ card leases or worktrees.`,
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&provider, factory.RelaunchFlagProvider, factory.RelaunchProviderCC, "Launcher to re-enter through: cc, glm, or codex")
-	cmd.Flags().StringVar(&lane, factory.RelaunchFlagLane, "", "Lane label the stale session carried (lane-<n>); recorded for the notice only: the join takes the next free lane, since -l takes no argument (not available with codex)")
-	cmd.Flags().StringVar(&run, factory.RelaunchFlagRun, "", "Run to join (--factory-run); omitted resolves the single active run (not available with codex)")
+	cmd.Flags().StringVar(&provider, factory.RelaunchFlagProvider, factory.RelaunchProviderCC, "Launcher to re-enter through: cc or glm")
+	cmd.Flags().StringVar(&lane, factory.RelaunchFlagLane, "", "Lane label the stale session carried (lane-<n>); recorded for the notice only: the join takes the next free lane, since -l takes no argument")
+	cmd.Flags().StringVar(&run, factory.RelaunchFlagRun, "", "Run to join (--factory-run); omitted resolves the single active run")
 	cmd.Flags().StringVar(&fromRun, factory.RelaunchFlagFromRun, "", "Retire this run first when it is active and its owner is dead; otherwise leave it untouched")
 	cmd.Flags().BoolVar(&dryRun, factory.RelaunchFlagDryRun, false, "Print the launch line and write nothing")
 	return cmd

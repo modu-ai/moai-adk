@@ -257,59 +257,6 @@ func requireEnv(t *testing.T, want string) {
 	}
 }
 
-// AC-LJR-003 (gate half): on an interactive ambiguity the gate hands the
-// chooser the facts of both runs, once per door — enterFactoryLaneRun and the
-// codex relaunch join. Every field is asserted by equality.
-func TestLaneJoinTTYAmbiguityInvokesChooserWithFacts(t *testing.T) {
-	root := laneGateRoot(t)
-	seedLiveRun(t, root, "runa-live")
-	selExec(t, root, `UPDATE runs SET created_at=? WHERE run_id=?`, "2026-10-18T02:11:00Z", "runa-live")
-	holdLeaderName(t, root, "lane-x9")
-	selSeedDead(t, root, "runb-dead", false, 7)
-	selExec(t, root, `UPDATE runs SET created_at=? WHERE run_id=?`, "2026-10-18T01:31:00.123456789Z", "runb-dead")
-	// The latest card update is 03:00:00.5Z; the others are earlier.
-	selExec(t, root, `UPDATE cards SET updated_at=? WHERE run_id=? AND card_id=?`, "2026-10-18T03:00:00.5Z", "runb-dead", "card-runb-dead-3")
-
-	want := []laneRunRow{
-		{RunID: "runa-live", Liveness: laneLivenessLive, LeaderName: "lane-x9", Start: "2026-10-18 11:11:00 KST", LastActivity: "-", InProgress: 0, CanCleanup: false},
-		{RunID: "runb-dead", Liveness: laneLivenessDead, LeaderName: "-", Start: "2026-10-18 10:31:00 KST", LastActivity: "2026-10-18 12:00:00 KST", InProgress: 7, CanCleanup: false},
-	}
-	_, codexEntry, perr := parseCodexFactoryEntry([]string{"-l"})
-	if perr != nil {
-		t.Fatalf("parse codex -l: %v", perr)
-	}
-	doors := map[string]func() (func(), error){
-		"enterFactoryLaneRun":    func() (func(), error) { return enterFactoryLaneRun(root, "", "", nil) },
-		"enterCodexRelaunchJoin": func() (func(), error) { return enterCodexRelaunchJoin(root, codexEntry, nil) },
-	}
-	for name, door := range doors {
-		spy := newSpy(root, choose(choiceCancel, ""))
-		installLaneSeams(t, spy)
-		_, err := door()
-		if err == nil || !strings.Contains(err.Error(), joinCancelledSentinel) {
-			t.Errorf("%s: err = %v, want the %s cancel", name, err, joinCancelledSentinel)
-		}
-		if len(spy.entries) != 1 {
-			t.Errorf("%s: spy entered %d times, want exactly once", name, len(spy.entries))
-			continue
-		}
-		got := spy.entries[0].Rows
-		if len(got) != len(want) {
-			t.Errorf("%s: spy saw %d rows, want %d: %+v", name, len(got), len(want), got)
-			continue
-		}
-		for i := range want {
-			if got[i] != want[i] {
-				t.Errorf("%s: row %d = %+v, want %+v", name, i+1, got[i], want[i])
-			}
-		}
-	}
-}
-
-// AC-LJR-005: join sets the variable only after the operator's choice;
-// cancel, an empty line and end of input all end with FACTORY_JOIN_CANCELLED
-// and no variable; cancel keeps what was already changed (the automatic
-// reconciliation's retirement) and changes nothing more.
 func TestLaneJoinChooserJoinAndCancel(t *testing.T) {
 	t.Run("join-sets-the-variable-only-after-the-choice", func(t *testing.T) {
 		root := laneGateRoot(t)

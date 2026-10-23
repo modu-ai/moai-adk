@@ -34,8 +34,7 @@ The factory is a multi-lane run: one **leader** session routes queue cards to **
 Two entry tokens exist, and neither takes an argument.
 
 - `-f` / `--factory` starts the factory leader. It is available on `moai cc` and `moai glm`.
-- `-l` / `--lane` joins the running factory as a lane. It is available on `moai cc`, `moai glm`, and `moai codex`.
-- `moai codex` has no leader entry: any `-f` shape on it is refused with a line naming `moai cc -f` and `moai glm -f`.
+- `-l` / `--lane` joins the running factory as a lane. It is available on `moai cc` and `moai glm`.
 - A launch carries at most one entry token, and no other entry token exists.
 
 Each row below is replayed against the launcher's entry parse by the document-versus-behavior test, so a row that disagrees with the launcher fails the build. The third column names the role an accepted entry takes.
@@ -47,13 +46,10 @@ Each row below is replayed against the launcher's entry parse by the document-ve
 | accepted | `moai cc -l` | lane |
 | accepted | `moai glm -l` | lane |
 | accepted | `moai cc --lane` | lane |
-| accepted | `moai codex -l` | lane |
 | refused | `moai cc -f <spec-id>` | |
 | refused | `moai glm --factory <spec-id>` | |
 | refused | `moai cc -l lane-2` | |
 | refused | `moai glm --lane lane-2` | |
-| refused | `moai codex -l lane-2` | |
-| refused | `moai codex --factory` | |
 | retired | `moai cg` | |
 | retired | `moai gpt` | |
 
@@ -63,7 +59,7 @@ What the table fixes:
 - A value after `-l` or `--lane` is refused with one line; a lane never names itself.
 - A lane joins a running factory and claims the next free lane number automatically. The operator does not choose slot numbers, and a launch with no running factory is refused.
 - `--leader <name>` selects which leader session a lane joins, and composes with `-l` or `--lane` only. It is not a short flag for any entry.
-- `moai cg` is retired and exits with its migration diagnostic; `moai migrate cg` previews an explicit role migration. `moai gpt` does not exist: GPT models run through `moai codex`.
+- `moai cg` is retired and exits with its migration diagnostic; `moai migrate cg` previews an explicit role migration. `moai gpt` does not exist.
 
 ## Session record
 

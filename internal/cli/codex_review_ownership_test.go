@@ -7,9 +7,10 @@ package cli
 // no WT- branch evidence either reviews the whole uncommitted tree (tree_scope
 // review, the default) or is let through without a review (tree_scope skip).
 // The policy reads exactly two inputs — the resolver's result and the key value
-// (REQ-CRO-005) — and runs on both automatic paths: the Claude Stop hook
-// (HandleCodexReviewGate) and Codex Stop-chain member 6 (codexReviewMember). The
-// explicit producer `moai verify codex-review` ignores it (REQ-CRO-006).
+// (REQ-CRO-005) — and runs on the automatic Claude Stop-hook path
+// (HandleCodexReviewGate). The explicit producer `moai verify codex-review`
+// ignores it (REQ-CRO-006). (The Codex Stop-chain member-6 path was removed
+// with the Codex Stop chain, card t1909 step ⑤.)
 //
 // Observation discipline (acceptance.md §A): every assertion here reads what the
 // gate DID — reviewer lookups, detector calls, the wire requests of the faked
@@ -31,7 +32,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
@@ -140,19 +140,9 @@ func gatePath(t *testing.T, dir, projectDir string) *hook.HookOutput {
 	return out
 }
 
-// chainPath drives Codex Stop-chain member 6 for the session tree root.
-func chainPath(t *testing.T, root string) stopMemberOutcome {
-	t.Helper()
-	fakeCodexVersion(t, "codex-cli 0.0.0-ownership")
-	return newCodexStopChain(root, stopInput("own", false)).codexReviewMember(context.Background())
-}
-
-// chainSkipped reports whether the member outcome is the policy's skip: allowed,
-// not-applicable, naming tree_scope, and without having read a receipt.
-func chainSkipped(o stopMemberOutcome) bool {
-	return o.Decision == codexadapter.DecisionAllow && o.Status == stopStatusNotApplicable &&
-		strings.Contains(o.Reason, "tree_scope") && !o.ReceiptRead
-}
+// chainPath / chainSkipped were removed with the Codex Stop chain
+// (card t1909 step ⑤): the chain is gone, so the policy's only automatic
+// surface is the Claude Stop-hook gate path below.
 
 // requireGateSkipped asserts the strongest skip observation on the Claude path:
 // ALLOW, and not one reviewer lookup, detector call or wire request happened.
@@ -380,44 +370,6 @@ func TestCodexReviewGate_TreeScopeSkip(t *testing.T) {
 	}
 }
 
-// TestCodexStopChain_TreeScopeSkip pins REQ-CRO-002 on the Codex path: member 6
-// returns allow / not-applicable naming tree_scope, reads no receipt and never
-// touches the reviewer; under review the same state takes the receipt route.
-func TestCodexStopChain_TreeScopeSkip(t *testing.T) {
-	for _, variant := range []string{"main", "develop", "detached", "non-git"} {
-		t.Run(variant, func(t *testing.T) {
-			root := newTreeSession(t, variant)
-
-			writeOwnershipConfig(t, root, "skip")
-			p := newOwnershipProbe(t)
-			skips := captureTreeScopeSkips(t)
-			got := chainPath(t, root)
-			if !chainSkipped(got) {
-				t.Errorf("%s/skip: member 6 must skip (allow, not-applicable, tree_scope reason, no receipt read), got %+v", variant, got)
-			}
-			if p.lookups != 0 || p.detects != 0 || p.reviewed() || len(*skips) != 1 {
-				t.Errorf("%s/skip: lookups=%d detects=%d reviewed=%v skipRows=%d, want 0/0/false/1",
-					variant, p.lookups, p.detects, p.reviewed(), len(*skips))
-			}
-
-			// The same primary_scope restore as the Claude path's control arm.
-			writeOwnershipConfigWithPrimary(t, root, "review", "review")
-			c := newOwnershipProbe(t)
-			cskips := captureTreeScopeSkips(t)
-			got = chainPath(t, root)
-			if chainSkipped(got) || len(*cskips) != 0 {
-				t.Errorf("%s/review: member 6 must not skip, got %+v (skip rows %d)", variant, got, len(*cskips))
-			}
-			if variant != "non-git" && !got.ReceiptRead {
-				t.Errorf("%s/review: the receipt route must be taken, got %+v", variant, got)
-			}
-			if c.detects != 1 {
-				t.Errorf("%s/review: the self-gate must run once, got %d detector calls", variant, c.detects)
-			}
-		})
-	}
-}
-
 // --- AC-003: non-skip values keep the pre-policy tree request -------------
 
 // primaryScopeRestore appends the explicit primary_scope restore to a nested
@@ -482,7 +434,7 @@ func TestTreeScope_NonSkipValuesKeepTreeRequest(t *testing.T) {
 // --- AC-004: WT- sessions are never swallowed by skip ---------------------
 
 // TestTreeScopeSkip_WTSessionsStillReviewed pins REQ-CRO-004 under tree_scope
-// skip on both paths: a card session (merge base available) reviews its card
+// skip on the gate path: a card session (merge base available) reviews its card
 // diff, and a WT- session without a develop base reviews the whole tree and
 // keeps its "merge base unavailable" scope row. A skip implementation keyed on
 // the scope CLASS alone would swallow the second case — that is the mutant this
@@ -504,11 +456,6 @@ func TestTreeScopeSkip_WTSessionsStillReviewed(t *testing.T) {
 		requireCardRequest(t, p.sess.sent, f)
 		if len(*skips) != 0 {
 			t.Errorf("a card session must log no policy skip, got %d rows", len(*skips))
-		}
-
-		got := chainPath(t, f.card)
-		if chainSkipped(got) || !got.ReceiptRead {
-			t.Errorf("member 6 must take the receipt route for a card session, got %+v", got)
 		}
 	})
 	t.Run("WT- session without a develop base", func(t *testing.T) {
@@ -539,11 +486,6 @@ func TestTreeScopeSkip_WTSessionsStillReviewed(t *testing.T) {
 		}
 		if len(*skips) != 0 {
 			t.Errorf("a WT- session must log no policy skip, got %d rows", len(*skips))
-		}
-
-		got := chainPath(t, tree)
-		if chainSkipped(got) || !got.ReceiptRead {
-			t.Errorf("member 6 must take the receipt route for a WT- session, got %+v", got)
 		}
 	})
 }
@@ -599,7 +541,7 @@ func setOwnershipEnv(t *testing.T, all []string, row map[string]string) {
 
 // TestTreeScopePolicy_EnvMatrix pins REQ-CRO-005 by behaviour: the policy's
 // decision is identical across every launcher env shape. T1 (a develop tree with
-// foreign work) must skip and T2 (a WT- card tree) must review on BOTH paths,
+// foreign work) must skip and T2 (a WT- card tree) must review on the gate path,
 // whatever the environment — including the value shapes the launchers really
 // set (a leader carries no label, a factory lane carries the lane-label marker)
 // and set-but-empty. A decision read
@@ -650,11 +592,6 @@ func TestTreeScopePolicy_EnvMatrix(t *testing.T) {
 				if gateSkipped := len(*skips) == 1 && !p.reviewed(); gateSkipped != tr.wantSkip {
 					t.Errorf("%s gate path: skipped=%v, want %v (skip rows %d, reviewed %v)",
 						tr.name, gateSkipped, tr.wantSkip, len(*skips), p.reviewed())
-				}
-				cskips := captureTreeScopeSkips(t)
-				got := chainPath(t, tr.dir)
-				if chainSkipped(got) != tr.wantSkip || (len(*cskips) == 1) != tr.wantSkip {
-					t.Errorf("%s chain path: skipped=%v, want %v (outcome %+v)", tr.name, chainSkipped(got), tr.wantSkip, got)
 				}
 			}
 		})
@@ -709,11 +646,11 @@ func TestTreeScopePolicy_SourceReadsNoEnvironment(t *testing.T) {
 
 // --- AC-006: roots and the explicit producer ------------------------------
 
-// TestTreeScopePolicy_SameDecisionOnBothPaths pins the four-way table of
-// REQ-CRO-006: for the same session state, in the same root, the two automatic
-// paths decide alike — skip only for a tree session without WT- evidence under
-// skip.
-func TestTreeScopePolicy_SameDecisionOnBothPaths(t *testing.T) {
+// TestTreeScopePolicy_SameDecisionOnTheGatePath pins the four-way table of
+// REQ-CRO-006 on the gate path (the chain path was removed with the Codex Stop
+// chain, card t1909): for the same session state, in the same root, skip only
+// for a tree session without WT- evidence under skip.
+func TestTreeScopePolicy_SameDecisionOnTheGatePath(t *testing.T) {
 	// primary is the primary_scope restore value; "" keeps the distributed
 	// default (skip), which is what the two "skip" rows ride on a primary
 	// checkout and what the WT- rows are guarded against by the branch
@@ -743,28 +680,26 @@ func TestTreeScopePolicy_SameDecisionOnBothPaths(t *testing.T) {
 			skips := captureTreeScopeSkips(t)
 			gatePath(t, root, root)
 			gateSkipped := len(*skips) == 1 && !p.reviewed()
-
-			cskips := captureTreeScopeSkips(t)
-			chainSkippedNow := chainSkipped(chainPath(t, root))
-			if gateSkipped != tc.wantSkips || chainSkippedNow != tc.wantSkips || (len(*cskips) == 1) != tc.wantSkips {
-				t.Errorf("gate skipped=%v, chain skipped=%v, want both %v", gateSkipped, chainSkippedNow, tc.wantSkips)
+			if gateSkipped != tc.wantSkips {
+				t.Errorf("gate skipped=%v, want %v", gateSkipped, tc.wantSkips)
 			}
 		})
 	}
 }
 
-// TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot pins the root half of
-// REQ-CRO-006: the Claude path reads tree_scope from the root it reads enabled
-// from (reviewGateConfigRoot(projectDir)), the Codex path from the session tree
-// (c.root), and neither reads the other's. The reader seam records the roots.
-func TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot(t *testing.T) {
+// TestTreeScopePolicy_GatePathReadsItsOwnEnabledRoot pins the root half of
+// REQ-CRO-006: the gate path reads tree_scope from the root it reads enabled
+// from (reviewGateConfigRoot(projectDir)), never from the session tree. The
+// reader seam records the roots. (The chain-path arm was removed with the Codex
+// Stop chain, card t1909.)
+func TestTreeScopePolicy_GatePathReadsItsOwnEnabledRoot(t *testing.T) {
 	session := newTreeSession(t, "develop")
-	decoy := t.TempDir() // a config-only directory, the other path's root
+	decoy := t.TempDir() // a config-only directory, the other candidate root
 
 	// Both roots carry the primary_scope restore: the read-count pin below
 	// counts tree_scope reads, and the primary-checkout policy (which reads
 	// its own key first) must stay silent for it to hold (REQ-CGSC-002/004).
-	t.Run("Claude path reads reviewGateConfigRoot(projectDir)", func(t *testing.T) {
+	t.Run("gate path reads reviewGateConfigRoot(projectDir)", func(t *testing.T) {
 		for _, tc := range []struct {
 			name, decoyValue, sessionValue string
 			wantSkip                       bool
@@ -788,38 +723,11 @@ func TestTreeScopePolicy_EachPathReadsItsOwnEnabledRoot(t *testing.T) {
 			})
 		}
 	})
-	t.Run("Codex path reads the session tree", func(t *testing.T) {
-		for _, tc := range []struct {
-			name, decoyValue, sessionValue string
-			wantSkip                       bool
-		}{
-			{"skip only in the session tree", "review", "skip", true},
-			{"skip only in the other root", "skip", "review", false},
-		} {
-			t.Run(tc.name, func(t *testing.T) {
-				writeOwnershipConfigWithPrimary(t, decoy, tc.decoyValue, "review")
-				writeOwnershipConfigWithPrimary(t, session, tc.sessionValue, "review")
-				newOwnershipProbe(t)
-				reads := recordTreeScopeReads(t)
-				if skipped := chainSkipped(chainPath(t, session)); skipped != tc.wantSkip {
-					t.Errorf("skipped=%v, want %v", skipped, tc.wantSkip)
-				}
-				if len(*reads) != 1 || (*reads)[0] != session {
-					t.Errorf("the key must be read once, from %q; reads=%v", session, *reads)
-				}
-			})
-		}
-	})
 }
 
-// TestTreeScopePolicy_ConfigOrphanedWorktree pins the one case where the two
-// paths' roots differ: a linked worktree of a repository that keeps .moai
-// untracked. The Claude path resolves the primary's key through StoreRoot; the
-// Codex chain reads enabled from the worktree itself, finds the gate off and
-// never reaches the policy. That asymmetry predates the policy and is
-// INTENTIONAL (plan plan-audit I3-5: AC-006 (b) outranks the REQ-CRO-006
-// "cannot disagree" sentence for this fixture) — each path uses the same root
-// for tree_scope as for enabled, nothing more is asserted.
+// TestTreeScopePolicy_ConfigOrphanedWorktree pins the linked-worktree case: a
+// linked worktree of a repository that keeps .moai untracked. The gate path
+// resolves the primary's key through StoreRoot — the primary's key decides.
 func TestTreeScopePolicy_ConfigOrphanedWorktree(t *testing.T) {
 	fx := newUntrackedFixture(t, ownershipWorkflow("skip"))
 	writeCardFile(t, fx.W, "orphan_work.go", "package main\n\n// reviewable work in the orphaned worktree\n")
@@ -834,13 +742,7 @@ func TestTreeScopePolicy_ConfigOrphanedWorktree(t *testing.T) {
 			skips := captureTreeScopeSkips(t)
 			gatePath(t, fx.W, fx.W)
 			if skipped := len(*skips) == 1 && !p.reviewed(); skipped != tc.wantSkip {
-				t.Errorf("Claude path on the orphaned worktree: skipped=%v, want %v (the primary's key decides)", skipped, tc.wantSkip)
-			}
-
-			reads := recordTreeScopeReads(t)
-			got := chainPath(t, fx.W)
-			if got.Status != stopStatusNotApplicable || strings.Contains(got.Reason, "tree_scope") || len(*reads) != 0 {
-				t.Errorf("Codex chain on the orphaned worktree must stop at its own enabled=false (outcome %+v, reads %v)", got, *reads)
+				t.Errorf("gate path on the orphaned worktree: skipped=%v, want %v (the primary's key decides)", skipped, tc.wantSkip)
 			}
 		})
 	}

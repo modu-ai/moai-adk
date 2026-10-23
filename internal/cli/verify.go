@@ -50,7 +50,6 @@ Verbs:
   verify record   record one executed check result under the current-tree key
   verify check    freshness query — exit 0 fresh / exit 1 stale
   verify run      run a command, or reuse a passing result recorded for the same tree state
-  verify sync-gate     run the sync-phase gate checks, record a receipt (Codex Stop chain)
   verify codex-review  run the codex review of uncommitted changes, record a receipt (Codex Stop chain)`,
 		GroupID:      "tools",
 		SilenceUsage: true,
@@ -65,7 +64,6 @@ Verbs:
 	cmd.AddCommand(newVerifyRunCmd(&projectRoot))
 	cmd.AddCommand(newVerifyAuditPlanCmd(&projectRoot))
 	cmd.AddCommand(newVerifyCodexReviewCmd(&projectRoot))
-	cmd.AddCommand(newVerifySyncGateCmd(&projectRoot))
 	return cmd
 }
 

@@ -36,14 +36,12 @@ import (
 // unloaded machine. Under load those two scale together and the remainder does
 // not fit in what is left.
 //
-// WHAT THIS BUDGET ACTUALLY COVERS — it is NOT the bind's upper bound.
-// It bounds only the context-aware part of the path: ValidateActiveRun, Peer
-// and RegisterPeer. factorymsg.Open takes no context — it carries its own 5s
-// deadline built on context.Background() — and session.ResolveOwnerPID and
-// homestate.ProbeProcessIdentity take none either, so none of them can be cut
-// short by this value. That was equally true when the bind ran on the 200ms
-// inspection deadline, so it is not a regression this change introduces; it is
-// a limit on what this change can promise.
+// WHAT THIS BUDGET COVERS. Namespace resolution, run-state reads, broker
+// initialization and peer registration share the caller's context. The
+// validated namespace is reused within this invocation instead of resolving
+// the same root again for the cache, expected peer key and broker. Owner
+// identity probes, filesystem operations and deferred handle cleanup are
+// synchronous and cannot themselves be interrupted by the context.
 //
 // The real outer bound is the hook's own timeout: the UserPromptSubmit hook is
 // configured with 5s in settings.json, and internal/cli/hook.go wraps Handle in

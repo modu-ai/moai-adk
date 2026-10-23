@@ -17,24 +17,6 @@ import (
 	"testing"
 )
 
-// resumeHome isolates HOME and installs the shared init wizard seams. It no longer
-// corrupts the user manifest: the user-asset ensure runs before the executor (card
-// t1587), so a corrupt manifest would stop the first run before any project state
-// exists. The interrupted first run is injected at the post-executor window instead
-// (card t1619 re-adjusted placement; see injectInitWindowFailure).
-func resumeHome(t *testing.T) {
-	t.Helper()
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-	seamsForInit(t)
-}
-
-// resumeSeedRun runs the failing first init: the post-executor window fails once, after
-// the project is initialized and the record and marker are on disk. An empty llm names
-// no --llm flag. A run that succeeds means the injection did not bite; that is a tool
-// failure, so the test fails rather than skipping.
 func resumeSeedRun(t *testing.T, projectDir, llm string) {
 	t.Helper()
 	injectInitWindowFailure(t)
@@ -72,39 +54,6 @@ func readResumeLLMYAML(t *testing.T, projectDir string) string {
 // hasHarness reports whether llm.yaml records the named harness, quoted or not.
 func hasHarness(llm, harness string) bool {
 	return strings.Contains(llm, "harness: "+harness) || strings.Contains(llm, `harness: "`+harness+`"`)
-}
-
-// TestInitResumeRestoresBothSelection — finding 1. The seed run selects
-// --llm both and dies at the user-asset ensure; the resume names no --llm. The
-// resume must restore the both wiring: the harness recorded as both, the Codex
-// side wired, and the record removed once the resume completes.
-func TestInitResumeRestoresBothSelection(t *testing.T) {
-	resumeHome(t)
-	projectDir := filepath.Join(t.TempDir(), "both-resume-proj")
-	resumeSeedRun(t, projectDir, "both")
-
-	// The seed run deployed the claude-side layout: .claude/ and the template
-	// AGENTS.md. No harness writes CLAUDE.md any more, so a both layout and a
-	// claude layout are identical on disk at the failure point — the recorded
-	// selection is the only thing that tells them apart.
-	for _, rel := range []string{".claude", "AGENTS.md"} {
-		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
-			t.Fatalf("the seed run did not deploy the claude-side layout (%s missing): %v", rel, err)
-		}
-	}
-
-	if err := resumeRun(t, projectDir, ""); err != nil {
-		t.Fatalf("run 2 (the resume) failed: %v", err)
-	}
-	if llm := readResumeLLMYAML(t, projectDir); !hasHarness(llm, "both") {
-		t.Fatalf("the resume did not restore the both selection the failing run made — llm.yaml:\n%s", llm)
-	}
-	if _, err := os.Stat(filepath.Join(projectDir, ".codex", "config.toml")); err != nil {
-		t.Fatalf("the resume skipped the Codex wiring for a both selection (.codex/config.toml): %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(projectDir, ".moai", "state", "resume-wiring")); !os.IsNotExist(err) {
-		t.Fatalf("the wiring record survived a COMPLETED resume (stat err = %v)", err)
-	}
 }
 
 // TestInitResumeDoesNotInferBothFromAGENTSFile — finding 1, the "do not infer
@@ -167,19 +116,4 @@ func TestDeployedWiringIsGPTReadsTheClaudeSurface(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestInitResumeExplicitLLMOverRecordedSelectionIsRefused — finding 1, restated by
-// Item C. An explicit --llm on the resume is the current invocation's answer, but it
-// cannot switch the harness the failing run deployed: over the recorded both, --llm
-// claude is refused rather than applied over the both files.
-func TestInitResumeExplicitLLMOverRecordedSelectionIsRefused(t *testing.T) {
-	resumeHome(t)
-	projectDir := filepath.Join(t.TempDir(), "explicit-resume-proj")
-	resumeSeedRun(t, projectDir, "both")
-	llmBefore := readResumeLLMYAML(t, projectDir)
-
-	manifestBefore := readUserManifestForTest(t)
-	err := resumeRun(t, projectDir, "claude")
-	requireResumeRefused(t, err, projectDir, llmBefore, manifestBefore, "both", "both", "claude")
 }

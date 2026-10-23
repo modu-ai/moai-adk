@@ -305,7 +305,6 @@ func TestSD_M6_ClearPolicyCarrierConstantOnly(t *testing.T) {
 		"factory_card.go":               sdReadSource(t, filepath.Join(cliDir, "factory_card.go")),
 		"cc.go":                         sdReadSource(t, filepath.Join(cliDir, "cc.go")),
 		"glm.go":                        sdReadSource(t, filepath.Join(cliDir, "glm.go")),
-		"codex_launcher.go":             sdReadSource(t, filepath.Join(cliDir, "codex_launcher.go")),
 		"session_start_factory.go":      sdReadSource(t, filepath.Join(hookDir, "session_start_factory.go")),
 		"session_start_factory_i18n.go": sdReadSource(t, filepath.Join(hookDir, "session_start_factory_i18n.go")),
 	}
