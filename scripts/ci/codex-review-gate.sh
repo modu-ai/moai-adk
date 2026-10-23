@@ -38,7 +38,8 @@ refuse() {
 # review comments. Fields read: review id, user.login, user.id, user.type, commit_id, state,
 # submitted_at; comment id, user.login, user.id, user.type, commit_id, original_commit_id.
 # Output: one line, "<exit code> TAB <reason or summary>".
-# shellcheck disable=SC2016 -- jq program is intentionally single-quoted
+# The jq program below is intentionally single-quoted (no shell expansion wanted).
+# shellcheck disable=SC2016
 DECIDE_JQ='
 def ident:
   (.user | type) == "object"
@@ -368,7 +369,8 @@ cmd_fetch_pages() {
 GATE_SCRIPT_PATH='scripts/ci/codex-review-gate.sh'
 FILES_CEILING=3000
 
-# shellcheck disable=SC2016 -- jq program is intentionally single-quoted
+# The jq program below is intentionally single-quoted (no shell expansion wanted).
+# shellcheck disable=SC2016
 FILES_JQ='
 def lc: ascii_downcase;
 def is_gate($p): ($p | lc) as $l | ($l | startswith(".github/workflows/")) or ($l == $script);
