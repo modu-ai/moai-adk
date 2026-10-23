@@ -1,7 +1,7 @@
 ---
 id: SPEC-SPEC-LINT-REGRESSION-001
 title: "Spec-lint baseline regression repair: restore the SPEC-PROGRESS-RECORD-IO-001 canonical status record and re-verify the main-push spec-lint gate green"
-version: "0.2.1"
+version: "0.3.0"
 status: draft
 created: 2026-10-23
 updated: 2026-10-23
@@ -24,6 +24,8 @@ tier: M
 
 - **2026-10-23 (v0.2.1)** — plan-audit iteration 2 repair (verdict FAIL 0.81, receipt `rcpt-6bdb6635a3499ba31bf034bf`, audited `4371b86a7`; round-1 repairs B1/B2/N1 adopted in full — the source-citation correction is recorded as verdict §4-N2). New blocking B3, one clause at two sites (REQ-SLR-007, AC-SLR-007): the phrase "the same run's targeted JSON census" demanded one invocation produce both the baseline verdict output and the JSON finding payload — the CLI refuses `--baseline` together with `--json` by design (`internal/cli/spec_lint.go:182`, measured exit 3: `cannot use --baseline with --json (the JSON payload carries no baseline verdict)`), so a Must criterion named an impossible output form, the same class as B1. Both sites restated: the census is a second observation — a targeted JSON lint run separately on the same pinned tree with the same tree-built binary (plan.md §E item 4). The already-correct separate-observation wordings (§C Goal, the green-path cell, §F DoD, plan.md §E) are untouched per the audit's confirmation. Requirement and AC counts unchanged (8 / 8).
 
+- **2026-10-23 (v0.3.0)** — executed-repair alignment (leader disposition received; run-phase repair landed at commit `35cccfc217`). The leader simplified the original two-commit design to a one-commit execution — restore `implemented → completed` (matrix row 3) in a single forward commit, dropping the (ii) `completed → in-progress` amendment machinery, because this SPEC itself carries the amendment context and AC-CI-007 remains t1598's own pending path. REQ-SLR-002/003 restated to the executed form (single canonical-edge restore + a complete HISTORY record at the point of change), REQ-SLR-004's completion-claim clause reworded for the restored-close reality, AC-SLR-002/003 and plan.md §A.1/§F M1/§G aligned, §C Goal and the closing Out of Scope bullet updated. The full-corpus baseline gate was observed GREEN on the repaired tree at `35cccfc217` (exit 0, `baseline: OK`, tracked set 5 → 4, the repaired rule gone) before this alignment commit. Requirement and AC counts unchanged (8 / 8).
+
 ## §B — Problem
 
 The main push run 39680374012 (head `bf0a35f10e`) failed the spec-lint baseline gate. The lane's preserved measurement on the merged tree `c3c86e795d` (`.moai/reports/t1929/baseline-lint-measurement.txt`) records the verdict verbatim: `baseline: EXCEEDED — .moai/spec-lint-baseline.json`, `StatusTransitionInvalid: recorded 0 -> current 1 (+1)`, `inventory: 8557 warning(s) total (advisory included), 5 non-advisory tracked across 1 recorded rule(s)`, with 0 errors. Because one non-advisory finding stands on the main baseline comparison, every open pull request touching SPEC input (24 at card time) shows the same `baseline: EXCEEDED` — one record defect reds a repo-wide gate.
@@ -34,7 +36,7 @@ The main push run 39680374012 (head `bf0a35f10e`) failed the spec-lint baseline 
 
 ## §C — Goal
 
-- Restore SPEC-PROGRESS-RECORD-IO-001's status record to a canonical lifecycle edge by forward commits only, ending in the truthful mid-amendment state (in-progress, amendment machinery complete) — never by rewriting history, raising the baseline, or editing lint rules.
+- Restore SPEC-PROGRESS-RECORD-IO-001's status record to a canonical lifecycle edge by a forward commit only, ending in the restored close state (`completed`, matrix row 3) that the leader disposition of 2026-10-23 ordered (산출물 실제 보완 — the substance repairs landed on main at `17a3b98de2`) — never by rewriting history, raising the baseline, or editing lint rules.
 - Verify on a real checkout that the 13 vacuous-assertion sites carry the repaired forms as landed at `17a3b98de2`, and record the release-branch propagation path.
 - Re-measure the spec-lint baseline gate on the repaired tree and observe the observable green form — exit 0 with the `baseline: OK` verdict for `.moai/spec-lint-baseline.json`, the JSON census reporting zero StatusTransitionInvalid findings for SPEC-PROGRESS-RECORD-IO-001, and no rule increase — with the baseline file byte-identical to its pre-repair state.
 
@@ -44,10 +46,10 @@ The main push run 39680374012 (head `bf0a35f10e`) failed the spec-lint baseline 
 
 ### D.1 — The status-record repair
 
-- **REQ-SLR-001** (State-driven) — While the git-recorded most-recent status transition of `<ID>` reads `completed → implemented` (commit `fa1f04b9f4`), the spec-lint baseline gate shall report exactly one non-advisory StatusTransitionInvalid finding for it, and the repair shall eliminate that finding only by landing forward status-transition commits whose recorded pair is a canonical lifecycle edge (`internal/spec/lint_transition.go:65-77`, including the row-7 amendment edge and terminal targets) — never by editing `.moai/spec-lint-baseline.json`, never by editing any file under `internal/spec/`, and never by rewriting recorded history (no rebase, no filter, no revert of `fa1f04b9f4`).
-- **REQ-SLR-002** (Event-driven) — When the repair re-records `<ID>`'s status, it shall do so in exactly two forward commits: first a commit transitioning the status from `implemented` to `completed` (the canonical row-3 edge) that restores the recorded close state of commit `8d10007ca9` — a record repair, not a new close claim; then a commit transitioning the status from `completed` to `in-progress` (the canonical row-7 amendment edge) that reopens the SPEC as the in-place amendment of that close, which is its factual state (AC-CI-007 landing-flow CI evidence still pending, recorded in progress.md §E.4). A single-commit `implemented` to `in-progress` transition is prohibited: that pair is outside the canonical set and would re-fire the finding under a different message.
-- **REQ-SLR-003** (Ubiquitous) — The reopened amendment record shall carry the full in-place amendment machinery so the spec audit's SyncStatusDrift check exempts it: spec.md frontmatter `amendment_of: SPEC-PROGRESS-RECORD-IO-001` (self-referential), a `## Amendments` sub-section in the spec.md body recording the prior completed version (the `8d10007ca9` close), a `prior_completed_sha` equal to progress.md §E.4's recorded `sync_commit_sha` (`8d10007ca9804eeb58bcb0a34aca922989603198`), the rationale (AC-CI-007 landing-flow CI evidence pending; spec-lint StatusTransitionInvalid record repair), and the amendment scope.
-- **REQ-SLR-004** (State-driven) — Throughout the repair, `<ID>`'s progress.md §E.4 content (the `sync-ready-pending-CI` state and the AC-CI-007 pending record) shall remain intact and uncontradicted: the repair changes the status TOKEN and adds the amendment record; it shall not record a completion claim, shall not mark AC-CI-007 satisfied, and shall not alter the pending-CI evidence record — the close re-lands through its own recorded path when AC-CI-007's evidence arrives.
+- **REQ-SLR-001** (State-driven) — While the git-recorded most-recent status transition of `<ID>` reads `completed → implemented` (commit `fa1f04b9f4`), the spec-lint baseline gate shall report exactly one non-advisory StatusTransitionInvalid finding for it, and the repair shall eliminate that finding only by landing a forward status-transition commit whose recorded pair is a canonical lifecycle edge (`internal/spec/lint_transition.go:65-77`, including the row-7 amendment edge and terminal targets) — never by editing `.moai/spec-lint-baseline.json`, never by editing any file under `internal/spec/`, and never by rewriting recorded history (no rebase, no filter, no revert of `fa1f04b9f4`).
+- **REQ-SLR-002** (Event-driven) — When the repair re-records `<ID>`'s status, it shall do so in exactly one forward commit transitioning the status from `implemented` to `completed` — the canonical row-3 edge (`internal/spec/lint_transition.go:65-77`) — restoring the recorded close state of commit `8d10007ca9`: a record repair under the leader disposition of 2026-10-23 (산출물 실제 보완, with the one-commit simplification directive; the substance repairs landed on main at `17a3b98de2`, PR #1859, card t1914), not a new close claim. The original two-commit design (restore, then a `completed → in-progress` row-7 amendment reopen) is retracted by that disposition: this SPEC itself carries the amendment context, and AC-CI-007 remains `<ID>`'s own pending surface rather than an open amendment of this card. A `implemented` to `in-progress` transition remains prohibited: that pair is outside the canonical set and would re-fire the finding under a different message.
+- **REQ-SLR-003** (Ubiquitous) — The repair commit's HISTORY record in `<ID>/spec.md` shall document the repair's nature completely: that it restores the recorded close of commit `8d10007ca9` (progress.md §E.4's `sync_commit_sha` `8d10007ca9804eeb58bcb0a34aca922989603198`), that it undoes the mis-toked revert `fa1f04b9f4` (card t1598) whose recorded pair `completed → implemented` is outside the canonical set, that the restored edge is matrix row 3, that it executes the leader disposition of 2026-10-23 rather than a new close claim, and that AC-CI-007 remains `<ID>`'s own pending surface with progress.md untouched — so a later reader of the status value finds the audit context at the point of change. (The original in-place amendment machinery — `amendment_of`, a `## Amendments` sub-section, `prior_completed_sha` — is retracted with the two-commit design; with the SPEC terminal at `completed`, the audit's drift check is sheltered by the terminal-status class.)
+- **REQ-SLR-004** (State-driven) — Throughout the repair, `<ID>`'s progress.md §E.4 content (the `sync-ready-pending-CI` state and the AC-CI-007 pending record) shall remain intact and uncontradicted: the repair restores the recorded close TOKEN and adds the HISTORY record only; it shall not assert AC-CI-007 satisfied, shall not alter the pending-CI evidence record, and shall open no further status transition on `<ID>` beyond the single restore — any additional transition in this card's window re-fires the pair judgment.
 
 ### D.2 — The vacuous-assertion verification
 
@@ -65,7 +67,7 @@ The main push run 39680374012 (head `bf0a35f10e`) failed the spec-lint baseline 
 - The lint rules are correct; the SPEC records drifted. No file under `internal/spec/` changes.
 - Forward commits only; recorded history is immutable. The lane commits (the plan-phase SPEC author does not).
 - Work happens in the card worktree only; nothing is pushed to any remote.
-- The two repair commits are the minimum status-record surgery: any additional status transition on `<ID>` during this card's window re-fires the pair judgment and is prohibited.
+- The single repair commit is the minimum status-record surgery: any additional status transition on `<ID>` during this card's window re-fires the pair judgment and is prohibited.
 
 ## §F — Out of Scope
 
@@ -75,7 +77,7 @@ The main push run 39680374012 (head `bf0a35f10e`) failed the spec-lint baseline 
 
 ### Out of Scope — closing SPEC-PROGRESS-RECORD-IO-001
 
-- No `implemented`/`in-progress` to `completed` close lands in this card's window beyond REQ-SLR-002's intermediate restore commit; the close re-lands through the SPEC's own recorded path when AC-CI-007 evidence arrives.
+- The restore commit sets the recorded close TOKEN (`completed`, matrix row 3) under the leader disposition; no further lifecycle act on `<ID>` belongs to this card — resolving AC-CI-007's pending landing-flow CI evidence remains the SPEC's own recorded path (progress.md §E.4), outside this card's window.
 
 ### Out of Scope — release-branch propagation
 

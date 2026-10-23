@@ -1,7 +1,7 @@
 ---
 id: SPEC-SPEC-LINT-REGRESSION-001
 title: "Implementation plan — spec-lint baseline regression repair (status record + vacuous-assertion verification + green gate)"
-version: "0.2.1"
+version: "0.3.0"
 created: 2026-10-23
 updated: 2026-10-23
 author: manager-spec
@@ -20,7 +20,7 @@ tags: "spec-lint, baseline-gate, status-transition, lifecycle-record, vacuous-as
 
 ### A.1 Task shape
 
-A two-commit status-record repair on one SPEC's frontmatter plus its amendment record, a verification pass over three already-repaired SPEC files, and a gate re-measurement. No Go source changes; no lint-rule changes; no baseline changes. The load-bearing deliverable is the canonical recorded pair at the end state (`completed → in-progress`, matrix row 7) — the mechanism that turns the main-push gate from red to green.
+A one-commit status-record repair on one SPEC's frontmatter plus its HISTORY record (the executed form of the leader disposition of 2026-10-23, which simplified the original two-commit design — landed at `35cccfc217`), a verification pass over three already-repaired SPEC files, and a gate re-measurement. No Go source changes; no lint-rule changes; no baseline changes. The load-bearing deliverable is the canonical recorded pair at the end state (`implemented → completed`, matrix row 3) — the mechanism that turns the main-push gate from red to green.
 
 ### A.2 Codebase anchors (measured at worktree HEAD `c3c86e795d`)
 
@@ -55,7 +55,7 @@ This SPEC directory (3 plan-phase artifacts) and the card's own evidence under `
 
 ## §B — Known Issues (filtered)
 
-- **B4 Frontmatter schema**: the repair edits `status:`, `amendment_of:`, and `updated:` only; canonical key names; no snake_case aliases.
+- **B4 Frontmatter schema**: the repair edits `status:` and `updated:` in frontmatter plus the HISTORY body record only; canonical key names; no snake_case aliases.
 - **B5 CI 3-tier**: spec-lint is the failing tier here; the repair must not disturb golangci-lint or the Go test tiers — it touches no Go source.
 - **B6 spec-lint heading convention**: this SPEC's own artifacts use the `## §F — Out of Scope` + `### Out of Scope — X` shape; the bare h2 form is an error-severity finding.
 - **B8 Working tree hygiene**: stage by explicit pathspec; the repair commits carry exactly one file each (`<ID>/spec.md`).
@@ -99,14 +99,14 @@ Each report item names (a) the exact command, (b) the verbatim observed output, 
 
 ## §F — Milestones
 
-- **M1 — the status-record repair** (REQ-SLR-001..004; AC-SLR-001..004). Pre-flight re-observation; then the two forward commits of REQ-SLR-002 in order: (i) restore — `<ID>/spec.md` frontmatter `implemented` → `completed`, `updated:` refreshed, commit subject naming the record-repair nature and citing `8d10007ca9` and `fa1f04b9f4`; (ii) reopen — frontmatter `completed` → `in-progress`, `amendment_of: SPEC-PROGRESS-RECORD-IO-001` added, `updated:` refreshed, and the `## Amendments` sub-section appended to the body per REQ-SLR-003 (prior completed version v0.3.x-equivalent = the `8d10007ca9` close; `prior_completed_sha: 8d10007ca9804eeb58bcb0a34aca922989603198`; rationale: AC-CI-007 landing-flow CI evidence pending + spec-lint StatusTransitionInvalid record repair; scope: status-token correction of the `fa1f04b9f4` revert plus this amendment record). Progress record updated between commits.
+- **M1 — the status-record repair** (REQ-SLR-001..004; AC-SLR-001..004). Pre-flight re-observation; then the single forward commit of REQ-SLR-002, as executed at `35cccfc217`: `<ID>/spec.md` frontmatter `implemented` → `completed` (the canonical row-3 edge), `updated:` refreshed, and the HISTORY record appended per REQ-SLR-003 (the `8d10007ca9` recorded close restored; the `fa1f04b9f4` mis-toked revert named; the leader disposition of 2026-10-23 산출물 실제 보완 cited with the one-commit simplification; AC-CI-007 left as the SPEC's own pending surface). Commit subject names the record-repair nature and cites `8d10007ca9` and `fa1f04b9f4`; trailer `Authored-By-Agent: orchestrator-direct` (the pair's expected owner class); progress record updated after the commit. (The original two-commit sequence — restore then row-7 amendment reopen — is retracted by the leader disposition; see spec.md §A v0.3.0.)
 - **M2 — verification and the green gate** (REQ-SLR-005..008; AC-SLR-005..008). Build the linter from the repaired tree; run the targeted JSON (zero findings for `<ID>`), the three-SPEC VacuousTestAssertion sweep (zero), the full `--baseline` gate and observe the observable green form (exit 0, the `baseline: OK` verdict line, its inventory line, no increase lines anywhere in the output), and the baseline byte-identity diff in the commit-pinned form of §E item 3. Record the release-branch propagation note (REQ-SLR-006).
 - **M3 — close-out evidence.** The §E report assembled from M2's verbatim outputs; progress.md phase sections populated by the owning agents; nothing pushed.
 
 ## §G — Anti-Patterns
 
-- **G-1 — The one-commit "fix"**: transitioning `implemented` directly to `in-progress` records a non-canonical pair and re-fires the finding. The two-commit sequence is the mechanism, not ceremony.
-- **G-2 — The dishonest shortcut**: stopping at the restore commit (status `completed`) would green the gate while asserting a completion the record contradicts (AC-CI-007 pending). Both commits land together in M1.
+- **G-1 — The non-canonical shortcut**: transitioning `implemented` directly to `in-progress` records a non-canonical pair and re-fires the finding. The executed repair's canonical edge (`implemented → completed`, row 3) is the only single-commit form out of the parked token; a `→ in-progress` reopen stays out of this card's window (REQ-SLR-002).
+- **G-2 — The uncontextualized completion**: setting `completed` without the HISTORY record (REQ-SLR-003) would read as a fresh close claim while AC-CI-007 stands pending — the record must name the restored close (`8d10007ca9`), the mis-toked revert (`fa1f04b9f4`), and the leader disposition, so the audit context travels at the point of change. The leader disposition of 2026-10-23 (산출물 실제 보완 — substance repairs landed at `17a3b98de2`) is what makes the restored token truthful; the completion-leak prohibition (G-6) is unchanged.
 - **G-3 — The baseline raise**: recording the +1 in the baseline file would green the gate by license, not by repair — operator-forbidden.
 - **G-4 — The rule edit**: widening the canonical set or demoting the rule would green every future non-canonical record too.
 - **G-5 — The archive-tree measurement**: running the gate in a git-archive export reads the walk as empty and "passes" vacuously. Real checkout only.
