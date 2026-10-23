@@ -27,12 +27,12 @@ const (
 
 // carryPlaceRunRow inserts a runs row with an explicit created_at, so the
 // previous run reads older than the current one deterministically.
-func carryPlaceRunRow(t *testing.T, root, runID, createdAt string) {
+func carryPlaceRunRow(t *testing.T, root, runID, status, createdAt string) {
 	t.Helper()
 	db := fcOpen(t, root)
 	defer func() { _ = db.Close() }()
-	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES(?,?,?,'retired','{}',0,'',1,?,?)`,
-		runID, "", "", createdAt, createdAt); err != nil {
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES(?,?,?,?,'{}',0,'',1,?,?)`,
+		runID, "", "", status, createdAt, createdAt); err != nil {
 		t.Fatalf("place run %s: %v", runID, err)
 	}
 }
@@ -59,8 +59,8 @@ func carryFixture(t *testing.T) (string, *factory.BacklogStore) {
 	if real, err := filepath.EvalSymlinks(root); err == nil {
 		root = real
 	}
-	carryPlaceRunRow(t, root, carryPrevRun, "2026-10-04T00:00:00Z")
-	carryPlaceRunRow(t, root, carryNewRun, "2026-10-05T00:00:00Z")
+	carryPlaceRunRow(t, root, carryPrevRun, "retired", "2026-10-04T00:00:00Z")
+	carryPlaceRunRow(t, root, carryNewRun, "active", "2026-10-05T00:00:00Z")
 	return root, store
 }
 

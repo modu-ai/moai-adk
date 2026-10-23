@@ -166,7 +166,9 @@ func TestCodexAudit_DeltaBase_AdversarialAbsentPromptIsUnchanged(t *testing.T) {
 	d := newDeltaRepo(t)
 	sess := withCodexSession(t, adversarialScript())
 
-	res := callCodexAudit(t, deltaAuditArgs(d, map[string]any{"mode": codexModeAdversarial}))
+	// REQ-MN-019: a baseBranch adversarial audit now carries the resolved base in
+	// its prompt, so the byte-identical claim holds for a target with no base.
+	res := callCodexAudit(t, deltaAuditArgs(d, map[string]any{"mode": codexModeAdversarial, "target": codexTargetUncommitted}))
 
 	if got, want := sentTurnPrompt(t, sess), codexAdversarialReviewPrompt(""); got != want {
 		t.Errorf("without delta_base the prompt must be byte-identical.\ngot:  %q\nwant: %q", got, want)

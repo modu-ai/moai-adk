@@ -17,12 +17,15 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -67,7 +70,7 @@ const (
 // boundary, C-HRA-008 / REQ-MCP-014). MCP tool handlers return structured
 // results only; the orchestrator owns all user interaction.
 func newMCPServerCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   moaiMCPServerSubcommand,
 		Short: "Run the moai self-hosted MCP server (stdio JSON-RPC)",
 		Long: `Run a long-running stdio JSON-RPC MCP server exposing moai's core
@@ -82,18 +85,37 @@ this subcommand only RUNS the server. Use ` + "`moai init`" + ` / ` + "`moai web
 provision the entry (M4).`,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
-			return runMCPServer()
+			exposure, _ := c.Flags().GetString("exposure")
+			if exposure == "" {
+				exposure = mcpServerExposureFromEnv()
+			}
+			return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, exposure)
 		},
 	}
+	// REQ-MN-009: the gate child's containment overrides pass --exposure gate
+	// (the MOAI_MCP_EXPOSURE env is the equivalent input), restricting the
+	// served surface to the gate read-only subset.
+	cmd.Flags().String("exposure", "", `Serve a restricted surface: "gate" serves only the gate read-only subset (set by the gate child's containment overrides).`)
+	return cmd
+}
+
+// mcpServerExposureFromEnv reads the exposure input MOAI_MCP_EXPOSURE (the
+// flag-free carrier; the gate child's env table can set it).
+func mcpServerExposureFromEnv() string {
+	return strings.TrimSpace(os.Getenv("MOAI_MCP_EXPOSURE"))
 }
 
 // runMCPServer builds the moai MCP server and serves it over stdio (blocking,
-// until the stdio stream closes). REQ-MCP-001.
+// until the stdio stream closes). REQ-MCP-001. The exposure comes from the
+// --exposure flag, defaulted by MOAI_MCP_EXPOSURE (REQ-MN-009: the gate
+// child's containment overrides pass "gate").
 func runMCPServer() error {
-	return runMCPServerWithIO(os.Stdin, os.Stdout)
+	return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, mcpServerExposureFromEnv())
 }
 
-func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
+// runMCPServerWithIOAndExposure serves under an explicit exposure (REQ-MN-009:
+// "gate" restricts the surface to the gate read-only subset).
+func runMCPServerWithIOAndExposure(stdin io.Reader, stdout io.Writer, exposure string) error {
 	projectDir := resolveProjectDir()
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
 	if lockErr != nil {
@@ -103,17 +125,27 @@ func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 		_ = admissionLock.Release()
 		return err
 	}
-	// Stamp this process's build identity so `moai doctor` can detect a host
-	// still talking to a previously-installed build (mcp_server_runtime.go).
-	// Best-effort by contract: a failed stamp never blocks serving.
+	// REQ-MN-015: the runtime stamp is BEST-EFFORT — a failed stamp (a
+	// read-only state dir, a non-project cwd) never blocks serving. The
+	// pre-fix code returned here, which made a read-only project unable to
+	// start the server at all.
 	if recordPath, err := writeMCPServerRuntimeRecord(projectDir); err == nil {
 		defer removeMCPServerRuntimeRecord(recordPath)
 		_ = admissionLock.Release()
 	} else {
 		_ = admissionLock.Release()
-		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
-	s := newMoaiMCPServer()
+	s := newMoaiMCPServerWithExposure(exposure)
+	// REQ-MN-015: the call log binds to the serving project — the server run
+	// is the only writer; direct-construction tests leave it nil (disabled).
+	mcpCallLog = newMCPCallLogWriter()
+	// REQ-MN-014: the shutdown pass cancels every background job family —
+	// GLM jobs, role-audit jobs — so nothing outlives the server that started
+	// it (the codex task/job family left with t1909).
+	defer func() {
+		stopGLMBackgroundJobs()
+		stopCodexRoleAuditJobs()
+	}()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
 	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
@@ -172,9 +204,28 @@ func newMoaiMCPServer() *server.MCPServer {
 		moaiMCPServerName,
 		version.GetFullVersion(),
 		server.WithToolCapabilities(true),
+		// REQ-MN-008 wire honesty: the long-running tools emit
+		// notifications/message progress logs, so the server declares the
+		// logging capability that emission implies.
+		server.WithLogging(),
 		server.WithInstructions(moaiMCPServerInstructions()),
 	)
 	registerMoaiMCPTools(s, resolveProjectDir())
+	return s
+}
+
+// newMoaiMCPServerWithExposure is newMoaiMCPServer with an explicit exposure
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-009): "gate" serves ONLY the gate
+// read-only subset; empty serves the full catalogue.
+func newMoaiMCPServerWithExposure(exposure string) *server.MCPServer {
+	s := server.NewMCPServer(
+		moaiMCPServerName,
+		version.GetFullVersion(),
+		server.WithToolCapabilities(true),
+		server.WithLogging(),
+		server.WithInstructions(moaiMCPServerInstructions()),
+	)
+	registerMoaiMCPToolsWithExposure(s, resolveProjectDir(), exposure)
 	return s
 }
 
@@ -198,19 +249,212 @@ func moaiMCPServerInstructions() string {
 // (design.md §3). Each tool declares its JSON Schema (REQ-MCP-004) and registers
 // a thin-wrapper handler that calls the verified internal/ integration point
 // (REQ-MCP-005). Read-only tools carry the read-only hint annotation (§G.2).
+// mcpStalenessGuard wraps one handler with the REQ-MN-013 per-call staleness
+// contract: a WRITE-CAPABLE tool refuses while the serving build is stale,
+// and every STALE result carries the reconnect guidance plus the stale_server
+// and _server markers. Fresh results pass through untouched.
+func mcpStalenessGuard(name string, handler server.ToolHandlerFunc) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		info := serverStalenessInfo()
+		if !info.Stale {
+			return handler(ctx, req)
+		}
+		guidance := fmt.Sprintf(
+			"stale_server: the serving moai build (%s) differs from the installed build (%s) — reconnect the moai MCP server (restart the host session) so the installed build serves",
+			info.Serving, info.Installed)
+		if mcpCallIsWriteCapable(name, req) {
+			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance))
+			return addMCPStalenessMetadata(res, info, guidance), nil
+		}
+		res, err := handler(ctx, req)
+		if res == nil {
+			return res, err
+		}
+		return addMCPStalenessMetadata(res, info, guidance), err
+	}
+}
+
+// mcpCallIsWriteCapable includes operation-level writes on tools whose
+// catalogue entry is read-only for its other operations.
+func mcpCallIsWriteCapable(name string, req mcp.CallToolRequest) bool {
+	if name == "audit_cache" {
+		return req.GetString("op", "") == "store"
+	}
+	return mcpcat.IsWriteCapable(name)
+}
+
+// addMCPStalenessMetadata mirrors stale-server identity into both MCP result
+// channels. A stale write refusal is an IsError result with a JSON text block;
+// successful stale reads keep their original structured payload and guidance.
+func addMCPStalenessMetadata(res *mcp.CallToolResult, info serverStaleness, guidance string) *mcp.CallToolResult {
+	if res == nil {
+		return nil
+	}
+	var payload map[string]any
+	if res.StructuredContent != nil {
+		if body, err := json.Marshal(res.StructuredContent); err == nil {
+			_ = json.Unmarshal(body, &payload)
+		}
+	}
+	if payload == nil {
+		payload = make(map[string]any)
+		for _, item := range res.Content {
+			block, ok := item.(mcp.TextContent)
+			if !ok {
+				continue
+			}
+			if err := json.Unmarshal([]byte(block.Text), &payload); err != nil || payload == nil {
+				payload = map[string]any{"error": block.Text}
+			}
+			break
+		}
+	}
+	payload["stale_server"] = true
+	payload["_server"] = map[string]any{"version": info.Version, "commit": info.Commit}
+	res.StructuredContent = payload
+
+	body, err := json.Marshal(payload)
+	if err == nil {
+		text := string(body)
+		updatedText := false
+		for i, item := range res.Content {
+			block, ok := item.(mcp.TextContent)
+			if !ok {
+				continue
+			}
+			var existing map[string]any
+			if json.Unmarshal([]byte(block.Text), &existing) == nil && existing != nil {
+				block.Text = text
+				res.Content[i] = block
+				updatedText = true
+				break
+			}
+		}
+		if !updatedText {
+			for i, item := range res.Content {
+				block, ok := item.(mcp.TextContent)
+				if !ok {
+					continue
+				}
+				block.Text = text
+				res.Content[i] = block
+				updatedText = true
+				break
+			}
+		}
+		if !updatedText {
+			res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: text})
+		}
+	}
+	if guidance != "" {
+		res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: guidance})
+	}
+	return res
+}
+
+// mcpCatalogueGate is the fail-closed check every registration runs
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-006): the enablement map is catalogue-seeded,
+// so a registered name absent from the catalogue gets no enablement key and
+// silently never serves — that silence is how todo_claim died (plan B4). A
+// catalogue-absent registration fails the construction loudly instead.
+func mcpCatalogueGate(name string) {
+	if !mcpcat.HasTool(name) {
+		panic("moai mcp: tool " + name + " is registered but absent from the internal/mcp catalogue; add the ToolDef — a catalogue-absent registration never serves")
+	}
+}
+
 func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
+	registerMoaiMCPToolsWithExposure(s, projectDir, "")
+}
+
+// moaiMCPExposureGate is the exposure value the gate-session containment
+// serves: ONLY the gate read-only subset (plan §F M3's enumerated set).
+const moaiMCPExposureGate = "gate"
+
+// moaiGateExposureTools is the enumerated gate-session read-only subset
+// (REQ-MN-009, plan §F M3): every served tool whose registered annotation is
+// read-only and whose handler performs no write to project state. The
+// exposure test asserts the SERVED set equals this set exactly — the
+// derivation rule's output is fixed here so a new read-only tool must DECIDE
+// whether it is gate-visible, in this one table.
+var moaiGateExposureTools = map[string]bool{
+	"spec_progress":       true,
+	"spec_audit":          true,
+	"spec_drift":          true,
+	"verify_trend":        true,
+	"session_list":        true,
+	"audit_cache":         true, // read op only: the store op is refused under this exposure
+	"goal_status":         true,
+	"graph_file_api":      true,
+	"graph_find_code":     true,
+	"graph_trace_calls":   true,
+	"graph_shortest_path": true,
+	"todo_list":           true,
+	"jev_ask":             true,
+	"codex_setup":         true,
+	"glm_job_status":      true,
+	"glm_job_result":      true,
+}
+
+// moaiCurrentExposure carries the exposure the process's server was
+// constructed under (REQ-MN-009). One server per process is the production
+// reality, so the handlers that enforce an exposure-dependent rule read this
+// package-level value instead of threading the exposure through every
+// handler signature.
+var moaiCurrentExposure string
+
+// registerMoaiMCPToolsWithExposure registers the tool surface under an
+// exposure (REQ-MN-009): the "gate" exposure intersects the enablement map
+// with the enumerated read-only subset, so a gate session's moai server
+// serves exactly that subset and nothing else.
+func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure string) {
+	moaiCurrentExposure = exposure
 	// SPEC-MCP-CONSOLE-001 M1 (REQ-C-2): per-tool enablement consulted at
 	// registration time. A disabled tool is NOT registered and does NOT appear
 	// in tools/list. Default all-enabled (owner decision 2026-08-12) — a
 	// missing/unreadable/absent mcp.yaml registers every tool.
 	enabled := readMCPToolEnablement(projectDir)
+	if exposure == moaiMCPExposureGate {
+		gated := make(map[string]bool, len(moaiGateExposureTools))
+		for name := range moaiGateExposureTools {
+			if enabled[name] {
+				gated[name] = true
+			}
+		}
+		enabled = gated
+	}
 	// add gates one tool registration on the per-tool enablement map. The name
 	// argument MUST match both the mcp.NewTool name and the catalog
 	// (internal/mcp MoaiMCPTools) — the guard test
-	// TestMoaiMCPServer_RegistrationMatchesCatalog enforces set equality.
+	// TestMoaiMCPServer_RegistrationMatchesCatalog enforces set equality, and
+	// mcpCatalogueGate fails the construction on a catalogue-absent name.
+	//
+	// The gate also applies the two surface-wide schema policies of
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-007: every served input schema declares
+	// its additional-properties policy (strict), and a read-only tool never
+	// carries the SDK's default destructive hint.
 	add := func(name string, tool mcp.Tool, handler server.ToolHandlerFunc) {
+		mcpCatalogueGate(name)
+		tool.InputSchema.AdditionalProperties = false
+		if tool.Annotations.ReadOnlyHint != nil && *tool.Annotations.ReadOnlyHint {
+			noDestructive := false
+			tool.Annotations.DestructiveHint = &noDestructive
+		}
+		// REQ-MN-015: one row per tool call into the rotated call log — tool,
+		// duration, and the refused/error classification (M1's refused
+		// marking reused). The log write is best-effort and never blocks the
+		// result. Card-review P2-10: the timer starts INSIDE logged — a
+		// registration-time start would bill every tool the registration-to-
+		// first-call gap as its own duration.
+		wrapped := mcpStalenessGuard(name, handler)
+		logged := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			started := time.Now()
+			res, err := wrapped(ctx, req)
+			mcpCallLog.record(name, time.Since(started), res, err)
+			return res, err
+		}
 		if enabled[name] {
-			s.AddTool(tool, handler)
+			s.AddTool(tool, logged)
 		}
 	}
 
@@ -219,6 +463,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"session_list",
 		mcp.WithDescription("List active moai sessions (optional spec_id filter). Wraps session.QueryActiveWork."),
 		mcp.WithString("spec_id", mcp.Description("Optional SPEC-ID filter; empty lists all active sessions.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSessionList)
 
@@ -226,7 +471,11 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("goal_status", mcp.NewTool(
 		"goal_status",
 		mcp.WithDescription("Read the armed-goal state for a session. Wraps goal.LoadGoal."),
-		mcp.WithString("session_id", mcp.Required(), mcp.Description("Session id whose goal state is read.")),
+		// session_id is OPTIONAL here by enforcement (goal.LoadGoal reads it
+		// optionally), so the schema no longer declares it required — the
+		// required-consistency half of REQ-MN-007.
+		mcp.WithString("session_id", mcp.Description("Session id whose goal state is read.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGoalStatus)
 
@@ -238,6 +487,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("session_id", mcp.Description("Session id to arm under; defaults to the resolved current session.")),
 		mcp.WithInteger("max_turns", mcp.Description("Turn ceiling (0 = infinite, requires max_duration > 0). Default 30 when omitted.")),
 		mcp.WithInteger("max_duration", mcp.Description("Wall-clock bound in seconds since arm time (required when max_turns = 0).")),
+		requiredProjectRootOption(),
 	), handleGoalArm)
 
 	// --- spec_progress → spec.ListDocs (listdocs.go:36) — the SPEC scanner ---
@@ -296,6 +546,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup, op=store).")),
 		mcp.WithString("auditor_version", mcp.Description("Auditor identifier (for op=store).")),
 		mcp.WithString("report_path", mcp.Description("Audit report path (for op=store).")),
+		projectRootOption(),
 		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): audit_cache is a
 		// catalog-READ tool; declaring read-only keeps its effective annotation
 		// equal to the catalog classification so the capability-based `writes`
@@ -385,6 +636,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("glm_task", mcp.NewTool(
 		"glm_task",
 		mcp.WithDescription("Delegate a task (arbitrary prompt) to GLM (z.ai). Returns the completed text output when background is false, or a job id (observable via glm_job_status / glm_job_result, stoppable via glm_job_cancel) when background is true. Background jobs live inside this server process and do not survive its exit. GLM is OPTIONAL; a missing key or an unavailable z.ai yields a structured fail-open result, never a tool error."),
+		requiredProjectRootOption(),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give GLM.")),
 		mcp.WithBoolean("background", mcp.Description("Run the task in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ the backend default GLM model (glm_audit reads the workflow.audit.glm pin first).")),
@@ -398,6 +650,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_status",
 		mcp.WithDescription("Read a GLM job's record (status, timestamps, model, request summary). An unknown or unreadable job is a structured result, not a failed call."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMJobStatus)
 
@@ -407,6 +660,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_result",
 		mcp.WithDescription("Read a GLM job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMJobResult)
 
@@ -417,6 +671,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_cancel",
 		mcp.WithDescription("Stop a running GLM job: records the cancellation and revokes the context its in-flight z.ai request runs under, then waits a bounded grace window for the job to end. A job this server lifetime did not start is refused rather than cancelled; an already-terminal job returns its status and sends nothing."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleGLMJobCancel)
 
@@ -630,15 +885,19 @@ func readMCPToolEnablement(projectDir string) map[string]bool {
 // handleSessionList wraps session.QueryActiveWork (registry.go:254).
 func handleSessionList(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	specID := req.GetString("spec_id", "")
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("session_list", err), nil
+	}
 	entries, err := session.QueryActiveWork(specID)
 	if err != nil {
 		return toolErr("session_list", err), nil
 	}
-	return toolJSON("session_list", map[string]any{
+	return toolJSONWithRoot("session_list", map[string]any{
 		"spec_id":  specID,
 		"count":    len(entries),
 		"sessions": entries,
-	}), nil
+	}, root, source), nil
 }
 
 // handleGoalStatus wraps goal.LoadGoal (state.go:57).
@@ -647,14 +906,18 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if sessionID == "" {
 		sessionID = statusSessionID("") // inherit the CLI's read-path resolver
 	}
-	g, err := goal.LoadGoal(resolveProjectDir(), sessionID)
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("goal_status", err), nil
+	}
+	g, err := goal.LoadGoal(root, sessionID)
 	if err != nil {
 		return toolErr("goal_status", err), nil
 	}
 	if g == nil {
-		return toolJSON("goal_status", map[string]any{"session_id": sessionID, "armed": false}), nil
+		return toolJSONWithRoot("goal_status", map[string]any{"session_id": sessionID, "armed": false}, root, source), nil
 	}
-	return toolJSON("goal_status", map[string]any{"session_id": sessionID, "armed": true, "goal": g}), nil
+	return toolJSONWithRoot("goal_status", map[string]any{"session_id": sessionID, "armed": true, "goal": g}, root, source), nil
 }
 
 // handleGoalArm wraps the goal.NewGoal (schema.go:115) + goal.SaveGoal
@@ -664,9 +927,11 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 // requires max_duration > 0) WITHOUT re-implementing internal/goal logic. The
 // CLI-only stderr warnings / flag UX are presentation, not core.
 func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root := resolveProjectDir()
-	if root == "" {
-		return toolErr("goal_arm", fmt.Errorf("cannot resolve project root (set CLAUDE_PROJECT_DIR or run from the project directory)")), nil
+	// REQ-MN-004: a mutating tool names its tree — the caller's project_root
+	// is required, confined, and anchors the goal state the arm writes.
+	root, source, err := resolveRequiredToolProjectRoot(req)
+	if err != nil {
+		return toolErr("goal_arm", err), nil
 	}
 	conditionText := req.GetString("condition", "")
 	if conditionText == "" {
@@ -702,15 +967,20 @@ func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		g.Ceiling.MaxTurns = maxTurns
 	}
 	g.Ceiling.MaxDuration = maxDuration
+	// REQ-MN-010: the goal state write is a project-state write — serialized
+	// through the one server-wide write mutex.
+	releaseGoal := mcpStateWriteLock()
 	if err := goal.SaveGoal(root, g); err != nil {
+		releaseGoal()
 		return toolErr("goal_arm", err), nil
 	}
-	return toolJSON("goal_arm", map[string]any{
+	releaseGoal()
+	return toolJSONWithRoot("goal_arm", map[string]any{
 		"action":           "arm",
 		"session_id":       sessionID,
 		"condition_type":   string(cond.Type),
 		"ceiling_maxturns": g.Ceiling.MaxTurns,
-	}), nil
+	}, root, source), nil
 }
 
 // handleSpecProgress wraps spec.ListDocs (listdocs.go:36) — the SPEC scanner.
@@ -769,7 +1039,11 @@ func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 			Command:  cmd,
 			ExitCode: req.GetInt("exit_code", 0),
 		}
+		// REQ-MN-010: the snapshot record is a project-state write — the one
+		// server-wide write mutex serializes it against the other writers.
+		release := mcpStateWriteLock()
 		snap, err := verify.RecordCheck(store, key, entry)
+		release()
 		if err != nil {
 			return toolErr("verify_snapshot", err), nil
 		}
@@ -871,57 +1145,81 @@ func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	}), nil
 }
 
-// moaiAuditCache is the process-shared AuditCache backing the audit_cache MCP
-// tool. It persists across calls within ONE moai mcp-server process so that a
-// store in one call is visible to a lookup in a later call (the prior per-call
-// NewInMemoryCache made lookup ALWAYS return hit:false).
-//
-// @MX:DEBT: single-process in-memory cache only
-// @MX:CEILING: single moai mcp-server process lifetime, sequential calls
-// @MX:UPGRADE: the plan-audit gate (audit_gate.go) runs in a separate /moai run
-//
-//	process and does NOT populate this cache; true cross-process verdict reuse
-//	requires lookup to read the durable daily-report cache (AuditReporter).
-//
-// @MX:REASON: [AUTO] fan_in >= 3 (compute_hash/lookup/store ops + tests)
-var moaiAuditCache = runtime.NewInMemoryCache()
+// stateAuditCacheFor binds the disk-persisted store to the call's project root
+// (REQ-MN-020). The project root was resolved and validated by the caller.
+func stateAuditCacheFor(root string) *runtime.StateAuditCache {
+	return runtime.NewStateAuditCache(root)
+}
 
 // handleAuditCache wraps runtime.AuditCache ComputeHash/Lookup/Store over the
 // process-shared moaiAuditCache. The store op lets a caller record a PASS
 // verdict that a later lookup (same moai mcp-server process) returns as a hit.
 func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	op := req.GetString("op", "")
+	resolveRoot := resolveToolProjectRootWithSource
+	if op == "store" {
+		resolveRoot = resolveRequiredToolProjectRoot
+	}
+	root, source, rootErr := resolveRoot(req)
+	if rootErr != nil {
+		return toolErr("audit_cache", rootErr), nil
+	}
+	// REQ-MN-020: the store is the project's own — entries persist under the
+	// named tree's state root, carrying verdict-file evidence.
+	cache := stateAuditCacheFor(root)
+	// REQ-MN-009: under the gate exposure audit_cache is the READ member —
+	// its store operation is one of the mutating operations the exclusion
+	// names, and a gate session's server refuses it.
+	if op == "store" && moaiCurrentExposure == moaiMCPExposureGate {
+		return toolErr("audit_cache", fmt.Errorf("op=store is not available to gate sessions")), nil
+	}
 	switch op {
 	case "compute_hash":
 		specDir := req.GetString("spec_dir", "")
 		if specDir == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=compute_hash requires spec_dir")), nil
 		}
-		hash, err := moaiAuditCache.ComputeHash(specDir)
+		// A RELATIVE spec_dir names the validated root, not the server's
+		// working directory (sync-audit r3 F3): a server whose cwd sits in
+		// another tree must not return that tree's plan hash while "_root"
+		// claims the requested one — the same anchoring the store applies to
+		// a relative report_path.
+		if !filepath.IsAbs(specDir) {
+			specDir = filepath.Join(root, specDir)
+		}
+		hash, err := cache.ComputeHash(specDir)
 		if err != nil {
 			return toolErr("audit_cache", err), nil
 		}
-		return toolJSON("audit_cache", map[string]any{"op": op, "hash": hash}), nil
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "hash": hash}, root, source), nil
 	case "lookup":
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
-		entry, ok := moaiAuditCache.Lookup(specID, hash, time.Now())
-		return toolJSON("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}), nil
+		entry, ok := cache.Lookup(specID, hash, time.Now())
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}, root, source), nil
 	case "store":
-		// Record a PASS verdict so a later lookup (same process) returns a hit.
-		// Only PASS verdicts are cached (audit_cache.go Store guards on VerdictPass).
+		// Record a PASS verdict whose evidence is an existing verdict file
+		// (REQ-MN-020): a store whose report file is missing or unreadable is
+		// an error, never a stored entry.
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
 		if specID == "" || hash == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=store requires spec_id and hash")), nil
 		}
-		moaiAuditCache.Store(specID, hash, &runtime.AuditResult{
+		// REQ-MN-010: the cache store is a project-state write — serialized
+		// through the one server-wide write mutex.
+		releaseCache := mcpStateWriteLock()
+		storeErr := cache.StoreVerdict(specID, hash, &runtime.AuditResult{
 			Verdict:        runtime.VerdictPass,
 			AuditAt:        time.Now(),
 			AuditorVersion: req.GetString("auditor_version", ""),
 			ReportPath:     req.GetString("report_path", ""),
 		})
-		return toolJSON("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}), nil
+		releaseCache()
+		if storeErr != nil {
+			return toolErr("audit_cache", storeErr), nil
+		}
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}, root, source), nil
 	default:
 		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup|store)", op)), nil
 	}
@@ -975,11 +1273,36 @@ func provisionMoaiMCPServerEntryAt(configPath string) error {
 	})
 }
 
+// ─── project-state write serialization (REQ-MN-010) ───────────────────────────
+
+// mcpStateWriteMu serializes the project-state writes the tool handlers
+// perform under the caller's .moai/state — the goal state, the verification
+// snapshots, and the audit cache. Concurrent tool calls on one server hold
+// this ONE mutex across their read-modify-write sections, so interleaved
+// writers cannot corrupt or double-write the same artifact (REQ-MN-010).
+var mcpStateWriteMu sync.Mutex
+
+// mcpStateWriteLock takes the project-state write mutex and returns the
+// release func — the handlers' defer shape.
+func mcpStateWriteLock() func() {
+	mcpStateWriteMu.Lock()
+	return mcpStateWriteMu.Unlock
+}
+
 // ─── result-shaping helpers (structured results, never AskUserQuestion) ───────
 
-// toolJSON shapes a successful structured result with a text fallback.
+// toolJSON shapes a successful structured result whose TEXT block carries the
+// same JSON as the structured content (SPEC-MCP-NEUTRALITY-001 REQ-MN-008
+// wire honesty): the old "<tool>: ok" fallback told a text-reading caller
+// nothing while the payload sat in the other block.
 func toolJSON(tool string, data any) *mcp.CallToolResult {
-	return mcp.NewToolResultStructured(data, tool+": ok")
+	body, err := json.Marshal(data)
+	if err != nil {
+		// The payload is not marshalable — the text block degrades to the
+		// old fallback rather than lying with a JSON-looking string.
+		return mcp.NewToolResultStructured(data, tool+": ok")
+	}
+	return mcp.NewToolResultStructured(data, string(body))
 }
 
 // toolErr shapes a domain error as a structured IsError result (NOT a Go error),

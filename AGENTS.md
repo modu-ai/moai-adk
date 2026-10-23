@@ -163,15 +163,14 @@ in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entr
 name, and the worktree directory keeps the card id.
 
 **No main-variant worktree branches; local `main` stays synced.** Never create a `WT-*main*`
-branch or a worktree that holds `main` as an integration holder. `main` advances only through
-PR merges, and local `main` is re-synced with `origin/main` at every landing — a local `main`
-sitting ahead of the remote past a landing is a defect, not a buffer. Tooling must never detach
-the primary checkout's HEAD to take over a branch: a branch checked out in the primary is
-occupied, and the tool refuses rather than steals. (2026-10-21 incident: a `main` holder detached the primary, leaving it 559 commits behind.)
+branch or a worktree holding `main` as an integration holder. `main` advances only through PR
+merges and is re-synced with `origin/main` at every landing — a local `main` ahead of the remote
+past a landing is a defect. Tooling never detaches the primary checkout's HEAD to take over a
+branch: an occupied branch is refused, not stolen.
 
-**WT worktrees live only under `.moai/worktrees/`** — created by `moai worktree new`. `.claude/worktrees/`
-stays reserved for the Claude runtime's own ephemeral `agent-*` isolation trees (behavior unchanged); a
-runtime tree adopted for card work is renamed to `WT-` in place and stays where its creator put it.
+**WT worktrees live only under `.moai/worktrees/`** (`moai worktree new`). `.claude/worktrees/` is
+reserved for the runtime's ephemeral `agent-*` trees; a runtime tree adopted for card work is
+renamed to `WT-` in place and stays put.
 
 **Three traceability carriers are mandatory**: the dispatch's `card:` field, the card id in every commit message on the branch, and the
 card id in the evidence path (`.moai/reports/<card-id>/verdict.md`).
@@ -368,3 +367,9 @@ section carries the binding summary.
 Rule 5 (WHAT) runs before Rule 1 (HOW). Where `workflow.autonomy.mode: contract`, a signed contract
 satisfies both — `contract-autonomy.md` § Gate disposition. The quality gate auto-detects the
 project language and runs its standard toolchain, skipping missing tools gracefully.
+
+## 14. MCP Server Reconnect (staleness)
+
+The `moai` MCP server keeps its startup build after a reinstall (stale results carry
+`stale_server: true`; write tools refuse). Reconnect: end the host session so `moai mcp-server`
+respawns, then re-read `tools/list`.

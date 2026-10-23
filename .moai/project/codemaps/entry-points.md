@@ -1,6 +1,13 @@
 # 진입점
 
-## 현재 진입점 보완 — 8c36a79 (card t1931 판)
+## 현재 진입점 보완 — 2fccfd2 (card t1931 후속 판)
+
+- `moai factory rebind-evidence <card>`가 이 창에서 등록됐다(card t1930 수리, `internal/cli/factory_card_rebind.go`의 cobra 등록) — 카드의 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 다시 묶는 정식 동사로, 감사 행(card_metadata_events)이 커밋 뒤 함께 남는다.
+- 등록 수치(t1931 후속 판 재측정, 측정 명령 `git grep -c -F 'AddCommand(' <rev> -- internal/cli` — `.go` 파일만 한정한 뒤 `_test.go`를 제외한다: 미한정 시 testdata JSONL 3개·TOML 2개의 본문 5건이 섞인다): **비테스트 253회 / 78파일** — t1931 판의 252회 대비 +1(rebind-evidence 등록), 파일 수 동일. **테스트 포함 274회 / 90파일**. `rootCmd.AddCommand(` 전체 71회, `root.go` `init()` 29회(동일).
+- `moai mcp-server`의 도구 수는 카탈로그 기준 **35개 불변**(`internal/mcp/catalog.go`) — t1632의 MCP refusal structuring은 등록 수를 바꾸지 않고 응답 구조화(`mcp_refusal.go`)와 호출 로그(`mcp_server_call_log.go`)만 강화한다.
+- `moai integration backup`·`moai paths` 등 이전 판의 등록은 변동 없이 유효하다.
+
+## 이전 진입점 보완 — 8c36a79 (card t1931 판)
 
 - `moai codex audit`·`moai codex role-audit` 서브커맨드의 실제 등록은 `internal/cli/codex_audit_launch.go:926-928`의 `func init(){ codexCmd.AddCommand(newCodexAuditCmd()); codexCmd.AddCommand(newCodexRoleAuditCmd()) }`다(#1896 나머지 창). 이 창의 신규 파일 `internal/cli/mcp_codex_audit.go`는 CLI 등록이 아니라 **MCP 도구 구현**(`codex_audit`·`codex_role_audit{,_status,_result}`의 구현 표면 — `mcp_codex.go`에서 분리된 몸통)이다: CLI 등록 파일(codex_audit_launch.go)과 MCP 구현 파일(mcp_codex_audit.go)은 별개다. t1909 판의 "codex 표면은 감사 둘" 선언에 이 둘이 각각 결합해 표면이 확정됐다.
 - 등록 수치(t1931 판 재측정, 측정 명령 `git grep -c -F 'AddCommand(' <rev> -- internal/cli` — **`.go` 파일만 한정한 뒤 `_test.go`를 제외**한다: `.go` 한정이 없으면 testdata JSONL 3개·TOML 2개의 본문 5건이 섞인다): **비테스트 252회 / 78파일** — base `8c36a7904b`와 동일(창 중 불변). **테스트 포함 273회 / 90파일**. 이전 판의 "252회/79개"는 파일 수만 다른 이전 관측값(발생 수는 동일)으로 남긴다. `rootCmd.AddCommand(` 전체 71회, `root.go` `init()` 29회(동일).

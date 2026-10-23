@@ -51,8 +51,9 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 		},
 	}
 	// Gate-unmet path: an explicitly-required backend returned no verdict, so
-	// enforceRequiredGateUnmet flips overall to fail after converge() wrote an
-	// advisory note. The flipped result must not still say "NOT a block".
+	// enforceRequiredGateUnmet marks the outcome not-converged (REQ-MN-021 —
+	// the old overall-fail conversion is superseded) and rewrites the advisory
+	// note. The rewritten result must not still say "NOT a block".
 	t.Run("required gate unmet flips advisory note", func(t *testing.T) {
 		verdicts := []PerBackendVerdict{
 			{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "pass"},
@@ -60,8 +61,8 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 			{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "fail"},
 		}
 		r := enforceRequiredGateUnmet(converge(verdicts), verdicts, config.AuditGates{Codex: config.AuditGateRequired})
-		if r.OverallVerdict != overallVerdictFail {
-			t.Fatalf("overall_verdict = %q, want %q", r.OverallVerdict, overallVerdictFail)
+		if r.OverallVerdict != VerdictInconclusive {
+			t.Fatalf("overall_verdict = %q, want %q (could-not-run stays not-converged, REQ-MN-021)", r.OverallVerdict, VerdictInconclusive)
 		}
 		if !strings.Contains(r.ResidualRiskNote, "required gate unmet") {
 			t.Errorf("residual_risk_note = %q, want the unmet gate named", r.ResidualRiskNote)
@@ -70,7 +71,7 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 			t.Errorf("residual_risk_note = %q, want the split kept without the qualifier", r.ResidualRiskNote)
 		}
 		if strings.Contains(r.ResidualRiskNote, "NOT a block") {
-			t.Errorf("residual_risk_note = %q, must not contain %q on a failing verdict", r.ResidualRiskNote, "NOT a block")
+			t.Errorf("residual_risk_note = %q, must not contain %q on a not-converged verdict", r.ResidualRiskNote, "NOT a block")
 		}
 	})
 

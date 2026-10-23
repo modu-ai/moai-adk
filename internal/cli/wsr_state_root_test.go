@@ -45,6 +45,9 @@ func wsrSpecBody(id, status string) string {
 func newWSRFixture(t *testing.T, workflowYAML string) untrackedFixture {
 	t.Helper()
 	fx := newUntrackedFixture(t, workflowYAML)
+	// REQ-WSR-005 as amended / REQ-MN-005: the server's own repository is F's
+	// primary checkout, so P and its registered worktree W are confined roots.
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.P)
 	if err := os.RemoveAll(filepath.Join(fx.P, ".moai", "specs", "SPEC-WTFIX-001")); err != nil {
 		t.Fatal(err)
 	}
@@ -468,8 +471,12 @@ func TestWSR003_PrimaryUnidentifiedNoFallback(t *testing.T) {
 			"verify_snapshot": handleVerifySnapshot, "verify_trend": handleVerifyTrend,
 		} {
 			isErr, text := wsrToolText(t, h, map[string]any{"project_root": fx.W, "key": "k1", "command": "c"})
-			if !isErr || !strings.Contains(text, "primary checkout") || !strings.Contains(text, "could not be identified") {
-				t.Errorf("%s: want a tool error naming the unidentifiable primary checkout, got isError=%v %s", name, isErr, text)
+			// REQ-WSR-005 (b)/(c) as amended: the verify tools are in the REQ-MN-005
+			// confined set, and W whose primary cannot be identified (admin HEAD
+			// deleted, or no git) cannot be confirmed as a registered worktree, so
+			// the call is refused at confinement and writes nothing.
+			if !isErr || !strings.Contains(text, "project_root") || !strings.Contains(text, "not a git worktree") {
+				t.Errorf("%s: want a confinement refusal naming project_root and the unconfirmable worktree, got isError=%v %s", name, isErr, text)
 			}
 		}
 		wsrStubCodexPass(t)
@@ -501,34 +508,115 @@ func TestWSR003_PrimaryUnidentifiedNoFallback(t *testing.T) {
 	})
 }
 
-// AC-WSR-004: a root that is not config-orphaned — P, a tracked-.moai
-// worktree WT, a bare non-git B — keeps every path it uses today, with and
-// without git on PATH.
+// wsrStateListing lists every path under root/.moai/state, sorted, so a test
+// can prove a refused call wrote nothing there.
+func wsrStateListing(t *testing.T, root string) string {
+	t.Helper()
+	var names []string
+	base := filepath.Join(root, ".moai", "state")
+	_ = filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
+		if err == nil {
+			names = append(names, path)
+		}
+		return nil
+	})
+	sort.Strings(names)
+	return strings.Join(names, "\n")
+}
+
+// AC-WSR-004 (amended 0.3.0, operator decision 2026-10-17). Two tool groups:
+//
+// Group A — the REQ-MN-005-confined set (verify_snapshot, verify_trend and the
+// spec_progress / spec_audit / spec_drift catalogue tools): a registered worktree of the SERVER's own repository keeps
+// today's paths; any other root (another repository, a directory that is not a
+// git worktree) is refused and nothing is written; with no git on PATH
+// confinement cannot be established, so every leg fails closed.
+//
+// Group B — the audit / delegation surface (codex_audit, audit_multi, ...):
+// validated but NOT confined (resolveValidatedToolProjectRoot; MN progress M3
+// note 3; AC-MN-007's documented exception), so REQ-WSR-005 holds as written:
+// any validated root, a foreign repository and a bare directory with a .moai
+// included, keeps its receipt / convergence result under its own .moai/state,
+// with and without git.
+//
+// Two servers: S_F (own repository F's P) and S_T (own repository T's primary
+// checkout); B is a bare directory with a .moai.
 func TestWSR004_OtherRootsUnchanged(t *testing.T) {
+	type leg struct {
+		name       string
+		server     string // the server's own repository (CLAUDE_PROJECT_DIR)
+		root       string // the project_root argument
+		registered bool   // a registered worktree of the server's repository
+	}
 	for _, withGit := range []bool{true, false} {
 		fx := newWSRFixture(t, wsrWorkflowF)
-		_, wt := newTrackedFixture(t)
+		tPrimary, tWorktree := newTrackedFixture(t)
 		b := wtCanonTempDir(t)
 		mustMkdir(t, filepath.Join(b, ".moai"))
 		wsrStubCodexPass(t)
 		if !withGit {
 			noGitPath(t)
 		}
-		for _, root := range []string{fx.P, wt, b} {
-			out, _ := wsrCodexAudit(t, root)
-			rcpts := wsrJSONFiles(t, filepath.Join(root, ".moai", "state", "audit-receipts", "receipts"))
-			if len(rcpts) != 1 {
-				t.Errorf("git=%v %s: want the receipt under its own store, got %v", withGit, root, rcpts)
+		legs := []leg{
+			{"P in S_F", fx.P, fx.P, true},
+			{"T primary in S_T", tPrimary, tPrimary, true},
+			{"WT in S_T", tPrimary, tWorktree, true},
+			{"WT in S_F (foreign repository)", fx.P, tWorktree, false},
+			{"P in S_T (foreign repository)", tPrimary, fx.P, false},
+			{"B in S_F (not a git worktree)", fx.P, b, false},
+			{"B in S_T (not a git worktree)", tPrimary, b, false},
+		}
+		for _, l := range legs {
+			t.Setenv("CLAUDE_PROJECT_DIR", l.server)
+			before := wsrStateListing(t, l.root)
+
+			// Group A: the confined set.
+			admitted := l.registered && withGit
+			confined := map[string]struct {
+				h    func(context.Context, mcpReq) (*mcpRes, error)
+				args map[string]any
+			}{
+				"verify_snapshot": {handleVerifySnapshot, map[string]any{"project_root": l.root, "key": "h:d", "command": "c"}},
+				"verify_trend":    {handleVerifyTrend, map[string]any{"project_root": l.root, "key": "h:d"}},
+				"spec_progress":   {handleSpecProgress, map[string]any{"project_root": l.root}},
+				"spec_audit":      {handleSpecAudit, map[string]any{"project_root": l.root}},
+				"spec_drift":      {handleSpecDrift, map[string]any{"project_root": l.root}},
 			}
-			_ = out
-			wsrAuditMulti(t, root, "S", map[string]string{BackendClaude: "pass", BackendCodex: "pass"})
-			if _, err := os.Stat(filepath.Join(root, ".moai", "state", "audit-multi", "S.json")); err != nil {
-				t.Errorf("git=%v %s: convergence result not at the base path: %v", withGit, root, err)
+			for name, c := range confined {
+				isErr, text := wsrToolText(t, c.h, c.args)
+				switch {
+				case admitted && isErr && name != "verify_trend":
+					t.Errorf("git=%v %s (group A): %s refused a registered worktree: %s", withGit, l.name, name, text)
+				case !admitted && !isErr:
+					t.Errorf("git=%v %s (group A): %s accepted a root that is not a registered worktree of the server's repository: %s", withGit, l.name, name, text)
+				case !admitted && !strings.Contains(text, "project_root"):
+					t.Errorf("git=%v %s (group A): %s refusal does not name the project_root: %s", withGit, l.name, name, text)
+				}
 			}
-			if isErr, text := wsrToolText(t, handleVerifySnapshot, map[string]any{"project_root": root, "key": "h:d", "command": "c"}); isErr {
-				t.Errorf("git=%v %s: verify_snapshot record failed: %s", withGit, root, text)
-			} else if _, err := os.Stat(verify.SnapshotPath(root, "h:d")); err != nil {
-				t.Errorf("git=%v %s: snapshot not at the base path: %v", withGit, root, err)
+			if admitted {
+				if _, err := os.Stat(verify.SnapshotPath(l.root, "h:d")); err != nil {
+					t.Errorf("git=%v %s (group A): snapshot not at the base path: %v", withGit, l.name, err)
+				}
+			} else if after := wsrStateListing(t, l.root); after != before {
+				t.Errorf("git=%v %s (group A): a refused call wrote under the root's .moai/state:\nbefore:\n%s\nafter:\n%s", withGit, l.name, before, after)
+			}
+
+			// Group B: the audit surface accepts every validated root.
+			withBackendCall(t, gateBlockCaller(map[string]string{BackendClaude: "pass", BackendCodex: "pass"}))
+			t.Setenv(config.EnvMoaiLaunchProvider, "")
+			cIsErr, cText := wsrToolText(t, handleCodexAudit, map[string]any{"project_root": l.root, "target": "uncommittedChanges"})
+			if cIsErr {
+				t.Errorf("git=%v %s (group B): codex_audit refused a validated root: %s", withGit, l.name, cText)
+			}
+			mIsErr, mText := wsrToolText(t, handleAuditMulti, map[string]any{"project_root": l.root, "session_id": "S", "gates": map[string]any{"glm": "off"}})
+			if mIsErr {
+				t.Errorf("git=%v %s (group B): audit_multi refused a validated root: %s", withGit, l.name, mText)
+			}
+			if rcpts := wsrJSONFiles(t, filepath.Join(l.root, ".moai", "state", "audit-receipts", "receipts")); len(rcpts) == 0 {
+				t.Errorf("git=%v %s (group B): no receipt under the root's own store", withGit, l.name)
+			}
+			if _, err := os.Stat(filepath.Join(l.root, ".moai", "state", "audit-multi", "S.json")); err != nil {
+				t.Errorf("git=%v %s (group B): convergence result not at the base path: %v", withGit, l.name, err)
 			}
 		}
 	}
@@ -713,25 +801,19 @@ func TestWSR011_SameSpecInBoth(t *testing.T) {
 // AC-WSR-012: with the primary unidentifiable the catalogue tools answer over
 // the worktree only and say, in _root, that the primary catalogue was not read.
 func TestWSR012_PrimaryUnidentifiedOnRead(t *testing.T) {
+	// REQ-WSR-005 (b)/(c) as amended: spec_progress, spec_drift and spec_audit are
+	// in the REQ-MN-005 confined set. A W whose primary cannot be identified
+	// (admin HEAD deleted, or no git) cannot be confirmed as a registered
+	// worktree, so each read is refused at confinement instead of answering from
+	// W's own catalogue with a "primary not read" statement.
 	wsrNoidVariants(t, wtWorkflowNoGate, func(t *testing.T, fx untrackedFixture) {
 		wtWriteFile(t, filepath.Join(fx.W, ".moai", "specs", "SPEC-WTL-001", "spec.md"), wsrSpecBody("SPEC-WTL-001", "draft"))
-		states := func(body map[string]any) bool {
-			root, _ := body["_root"].(map[string]any)
-			s, _ := root["primary_catalogue"].(string)
-			return strings.Contains(s, "not read") && strings.Contains(s, "could not be identified")
-		}
-		var progress map[string]any
-		decodeTool(t, handleSpecProgress, map[string]any{"project_root": fx.W}, &progress)
-		if progress["count"] != float64(1) || !states(progress) {
-			t.Errorf("spec_progress: want count 1 and a primary-not-read statement, got count=%v _root=%v", progress["count"], progress["_root"])
-		}
 		for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
-			"spec_drift": handleSpecDrift, "spec_audit": handleSpecAudit,
+			"spec_progress": handleSpecProgress, "spec_drift": handleSpecDrift, "spec_audit": handleSpecAudit,
 		} {
-			var body map[string]any
-			decodeTool(t, h, map[string]any{"project_root": fx.W}, &body)
-			if body["total_specs"] != float64(1) || !states(body) {
-				t.Errorf("%s: want total_specs 1 and a primary-not-read statement, got %v _root=%v", name, body["total_specs"], body["_root"])
+			isErr, text := wsrToolText(t, h, map[string]any{"project_root": fx.W})
+			if !isErr || !strings.Contains(text, "project_root") || !strings.Contains(text, "not a git worktree") {
+				t.Errorf("%s: want a confinement refusal naming project_root and the unconfirmable worktree, got isError=%v %s", name, isErr, text)
 			}
 		}
 	})
@@ -986,8 +1068,11 @@ func newTrackedFixture(t *testing.T) (primary, wt string) {
 func TestWSR016_EndToEndUntrackedShape(t *testing.T) {
 	wsrTickClock(t)
 	wsrStubCodexPass(t)
+	// newWSRFixture makes F's primary the server's repository. The pre-amendment
+	// version froze CLAUDE_PROJECT_DIR on an unrelated temp directory; under
+	// REQ-MN-005 a call from such a server is refused for the confined tools
+	// (that refusal is pinned by TestWSR004), so it is no longer the shape here.
 	fx := newWSRFixture(t, wsrWorkflowF)
-	t.Setenv("CLAUDE_PROJECT_DIR", wtCanonTempDir(t))
 	const agent = "a16"
 	if _, err := hook.NewSubagentStartHandler().Handle(context.Background(), &hook.HookInput{
 		CWD: fx.W, AgentID: agent, AgentType: auditreceipt.AgentPlanAuditor, SessionID: "s16",

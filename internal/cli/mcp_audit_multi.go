@@ -146,9 +146,9 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	token := extractProgressToken(req)
-	notifyMCPProgress(ctx, token, 0, "audit_multi 시작 — claude/codex/glm 백엔드 수렴 준비 중...")
+	notifyMCPProgress(ctx, token, 0, "audit_multi start - converging the claude/codex/glm backends...")
 	result := runMultiAudit(ctx, claudeVerdict, target, focus, cfg, token)
-	notifyMCPProgress(ctx, token, 1, "audit_multi 완료 — 수렴 결과 조립됨")
+	notifyMCPProgress(ctx, token, 1, "audit_multi done - convergence result assembled")
 	return convergenceToolResult(result)
 }
 

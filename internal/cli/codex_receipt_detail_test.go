@@ -97,7 +97,7 @@ func TestCodexConnCloseDoesNotWaitForOrphanedStderr(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the orphaned-grandchild shape needs a POSIX shell")
 	}
-	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo gc=$! >&2; echo ready >&2; read line"})
+	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo gc=$! >&2; echo ready >&2; read line"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,6 +165,12 @@ func TestCodexReviewStderrTailSurvivesFailedOpen(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	// Card t1632 CI repair: the REQ-MN-009 containment listing is a
+	// precondition BEFORE the session open, and the real listing would exec
+	// /bin/sh with `mcp list` and fail the spawn there — the subject here is
+	// the failed-open CHILD's stderr, so the listing precondition is stubbed
+	// empty (the withCodexSession rule) and the child itself still fails.
+	stubCodexContainmentListing(t)
 	// /bin/sh runs with the app-server subcommand as its script name, so it fails before
 	// it can answer the handshake and names that subcommand on stderr.
 	out, _ := runCodexReviewRPCResolved(ctx, "/bin/sh", codexMethodReviewStart, map[string]any{}, nil)
