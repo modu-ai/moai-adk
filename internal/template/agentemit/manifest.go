@@ -82,7 +82,7 @@ type Manifest struct {
 	// neither enforced nor declared UNSUPPORTED.
 	PermissionContract *PermissionContract `yaml:"permission_contract"`
 	// CodexRoleAddenda maps a role name to Codex-only text appended after
-	// its verbatim body in the emitted TOML. The neutral .md is untouched.
+	// its verbatim body in the emitted TOML. The agent source is untouched.
 	CodexRoleAddenda map[string]string `yaml:"codex_role_addenda"`
 }
 
