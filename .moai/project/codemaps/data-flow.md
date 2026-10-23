@@ -1,6 +1,10 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — 8c36a79 (card t1931 판)
+## 현재 흐름 보완 — 2fccfd2 (card t1931 후속 판)
+
+이 창에서 실제로 움직인 흐름은 셋이다. **① merged-PR 관측(card t1930 수리)** — `moai factory complete`가 merge-ready 카드의 PR을 먼저 읽어 MERGED+mergeCommit이면 readiness 삼중을 건너뛰고 `pr-open` 관측 경로로 바로 보낸다: 스쿼시 병합 뒤 브랜치 커밋이 main 이력에서 벗어나 merge-tree가 충돌로 읽는 경우에도, GitHub가 이미 병합한 사실이 관측으로 기록된다. **② evidence 재결속(card t1930 수리)** — `moai factory rebind-evidence`가 카드의 최신 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 version-fenced 재결속하고, 감사 행을 커밋 뒤에 남긴다. 두 흐름 모두 operator-approved SQL 예외(t1832·t1536)와 대체 관계다. **③ MCP refusal structuring(card t1632)** — moai MCP 도구가 거부 응답을 구조화해 돌리고(`mcp_refusal.go`) 호출 로그를 남긴다(`mcp_server_call_log.go`) — 거부가 조용히 사라지지 않는다. runtime regular-file 경계 3파일(t1536)은 감사 캐시 상태 판독의 NOFOLLOW 열기 경로로 감사 대상 위조를 좁힌다.
+
+## 이전 흐름 보완 — 8c36a79 (card t1931 판)
 
 이 창에서 실제로 움직인 흐름은 셋이다. **① trunk backup(card t1832)** — `moai integration backup`이 로컬 main의 뒷받침 커밋을 `refs/heads/sync/main`으로 force-push해 배치 push 전까지 로컬 main이 유일한 사본이 되지 않게 한다. refspec은 한 번 해석해 인쇄한 SHA를 그대로 밀어 올리고(push.recurseSubmodules off·태그 누출 방지 플래그 포함), 밀기 전 뒤 쪽 원격을 다시 읽어 보고된 SHA = 전송 SHA를 보장한다. **② serial-slot 보유자 생존(card t1828)** — 만료 임대의 슬롯 해제가 생존 판정을 통과해야만 일어난다: 레인 죽음·워처 재해석·재배정 HeartbeatAt 클리어 세 갈래가 판정을 공유하고, 만료 수거→재임대 복구(8859 순서)가 판정의 회복 경로다. **③ 병합 준비 SHA 고정(card t1928)** — merge-tree dry-run이 브랜치 참조 문자열 대신 `show-ref --verify --hash`로 핀한 tip SHA를 소비해 이름 충돌(t1920·t1928 감사 F1/F4)이 probe를 다른 대상으로 돌리지 못하게 묶는다. hook 레지스트리 sync/async 정리(card t1913)는 흐름 추가가 아니라 같은 경계의 판정 정리다(commit identity 가드·PostToolUse 실패가 registry의 비동기 슬롯으로 옮겨간 것). #1896 나머지는 `moai codex role-audit` 런처와 런치 기본값·버그리포트 등록의 배선 보강이고 t1909 판이 끊어 놓은 Codex 감사 흐름의 등록 파일 확정이다.
 
