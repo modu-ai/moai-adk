@@ -1028,6 +1028,16 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	hubFields := func(cardID string) homestate.CardFields {
 		return factoryHubChainFields(queueRec, cards, cardID, nil)
 	}
+	// A rowless candidate whose re-lease carry-over would land a stage this
+	// backend can never advance is skipped at selection (card t1930,
+	// card-review r4, F4): a Codex lane stops at merge-ready, so leasing it a
+	// carried merge-ready card strands the card in a dead end — the skip
+	// reads the SAME gate the carry-over applies (factoryPriorCarryRow), and
+	// the card stays queued for a lane that can complete it.
+	carrySkips := func(cardID string) bool {
+		prev := factoryPriorCarryRow(ctx, db, root, runID, cardID)
+		return prev != nil && skip(*prev)
+	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
@@ -1153,6 +1163,9 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if !elig.active() {
 			continue
 		}
+		if carrySkips(it.ID) {
+			continue
+		}
 		// The no-record arm waits like every other path (card t1533,
 		// review-gate r6/r7): recording first and refusing at the claim
 		// errored the whole next call while unrelated ready cards waited
@@ -1213,6 +1226,8 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 					continue
 				} else if _, wait := hubWaitUnmerged(it.ID); wait {
 					continue
+				} else if carrySkips(it.ID) {
+					continue
 				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
@@ -1255,6 +1270,31 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	}
 }
 
+// factoryPriorCarryRow is the one gate of the re-lease stage/evidence
+// carry-over (card t1930, defect ③): when no row exists for THIS run yet, it
+// returns the card's most recent prior factory row (another run allowed) when
+// that row holds a live stage AND its worktree is the reusable landing tree
+// the claim path re-enters (card-review r2, F3 — a stage carried onto a
+// FRESH tree would resume an audit stage with none of the audit files); nil
+// otherwise, and a card no prior run recorded carries nothing, exactly as
+// before. The selection pass reads the same gate (card-review r4, F4): a
+// candidate whose carry-over would land a stage this backend can never
+// advance is skipped before it is leased.
+func factoryPriorCarryRow(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) *homestate.Card {
+	if _, lerr := db.LoadCard(ctx, runID, cardID); !errors.Is(lerr, homestate.ErrCardNotFound) {
+		return nil
+	}
+	prev, ok, err := db.PreviousCardRow(ctx, cardID, runID)
+	if err != nil || !ok {
+		return nil
+	}
+	if prev.Stage == "" || !homestate.IsCardState(prev.Stage) || homestate.IsTerminalCardState(prev.Stage) ||
+		!factoryPriorWorktreeReusable(root, cardID, prev.WorktreePath) {
+		return nil
+	}
+	return &prev
+}
+
 // factoryPriorWorktreeReusable reports whether the prior row's worktree is
 // the reusable landing tree the claim path would re-enter (the same
 // conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
@@ -1285,24 +1325,9 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// The re-lease carry-over (card t1930, defect ③): a card recorded under a
 	// NEW run is born with empty stage and evidence_sha, orphaning the prior
 	// run's progress (t1828 re-batched read stage "-", t1832's re-lease reset
-	// the row). When no row exists for THIS run yet and the card's most
-	// recent prior row (another run allowed) holds a live stage, that row's
-	// stage and evidence_sha are carried onto the fresh row after T1 — a new
-	// fenced row, never a rewrite of the prior run's row. A card no prior run
-	// recorded carries nothing, exactly as before. The carry is sound only
-	// when the prior run's worktree is the reusable landing tree the claim
-	// path re-enters (card-review r2, F3): without it the lane gets a FRESH
-	// tree, and a carried audit stage would resume against audit files the
-	// new tree does not hold — so a prior worktree that did not survive keeps
-	// the old no-carry behavior.
-	var carry *homestate.Card
-	if _, lerr := db.LoadCard(recordCtx, runID, cardID); errors.Is(lerr, homestate.ErrCardNotFound) {
-		if prev, ok, perr := db.PreviousCardRow(recordCtx, cardID, runID); perr == nil && ok &&
-			prev.Stage != "" && homestate.IsCardState(prev.Stage) && !homestate.IsTerminalCardState(prev.Stage) &&
-			factoryPriorWorktreeReusable(root, cardID, prev.WorktreePath) {
-			carry = &prev
-		}
-	}
+	// the row). factoryPriorCarryRow is the single gate both the carry-over
+	// here and the selection skip (card-review r4, F4) read — see its comment.
+	carry := factoryPriorCarryRow(recordCtx, db, root, runID, cardID)
 	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))

@@ -11,6 +11,8 @@ package cli
 // doubled through factoryGH, and an isolated SQLite factory store per root.
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -289,6 +291,67 @@ func TestFactoryNextCarriesOnlyWithAReusablePriorWorktree(t *testing.T) {
 		c := carryCard(t, root, carryNewRun, "t1")
 		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
 			t.Fatalf("positive control: stage=%q evidence=%q, want the carried %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
+		}
+	})
+}
+
+// TestFactoryNextSkipsCarriedMergeReadyForCodexLanes — card-review r4 F4
+// (card t1930): a Codex-backend lane stops at merge-ready (REQ-SD-025), so a
+// rowless candidate whose re-lease carry-over would land stage merge-ready is
+// a card that lane could never complete. Selection must skip it — the card
+// stays queued for a lane that can complete it — while every other backend
+// still leases it with the carry-over.
+func TestFactoryNextSkipsCarriedMergeReadyForCodexLanes(t *testing.T) {
+	build := func(t *testing.T) (string, *factory.BacklogStore) {
+		t.Helper()
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStateQueued)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root, homestate.Card{
+			RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+			Stage: homestate.CardMergeReady, EvidenceSHA: strings.Repeat("ef", 20), WorktreePath: landing,
+		})
+		return root, store
+	}
+	t.Run("codex_lane_skips_the_carried_merge_ready_card", func(t *testing.T) {
+		root, store := build(t)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", factory.BackendGPT)
+		t.Chdir(root)
+
+		out, _, err := runFactory(t, "next", "--run", carryNewRun)
+		// The quiet skip is the no-card answer (the eligibility gate's own
+		// shape): exit 3 and the no-card line, never a lease.
+		sdExit3(t, "carried-stage skip", err)
+		if !strings.Contains(out, "no card is available") {
+			t.Fatalf("stdout = %q, want the no-card line", out)
+		}
+		db := fcOpen(t, root)
+		_, lerr := db.LoadCard(context.Background(), carryNewRun, "t1")
+		_ = db.Close()
+		if !errors.Is(lerr, homestate.ErrCardNotFound) {
+			t.Fatalf("a Codex lane leased a card whose carried stage it can never complete (load err = %v); selection must skip it and leave no row", lerr)
+		}
+		if got := fcQueueItemState(t, store, "t1"); got != factory.BacklogStateQueued {
+			t.Errorf("queue item state = %s, want still queued for a lane that can complete it", got)
+		}
+	})
+	t.Run("other_backends_still_lease_with_the_carry_over", func(t *testing.T) {
+		root, _ := build(t)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next as a Claude lane over the carried card: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != strings.Repeat("ef", 20) {
+			t.Fatalf("positive control: stage=%q evidence=%q, want the carried merge-ready values", c.Stage, c.EvidenceSHA)
 		}
 	})
 }
