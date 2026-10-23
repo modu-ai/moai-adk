@@ -196,6 +196,29 @@ Regression set (`-run` of the 13 named guards): 18 top-level tests PASS, exit 0,
 
 Built values: drafter group `release-drafter-mutations` (unchanged), cleanup group `release-drafter-cleanup`, `cancel-in-progress: false` on both. The delete step treats `not found|HTTP 404` at the re-query or at the delete as `[ALREADY-GONE]` (exit 0); any other delete failure prints the error and exits 1. Accepted residual (named in the cleanup workflow comment): a draft edited after its re-query and before its delete is still deleted.
 
+### Sync-audit iter4 repair (B1-B4; audit file `.moai/reports/t1536/sync-audit-iter4.md`, audited sha 138b46750c)
+
+Repair commits on top of 138b46750c (tests only; no workflow, SPEC body, CHANGELOG, required-checks.yml or codeql.yml edit): `8d7c632ce8` (B2 + B4), `ab633e1885` (B1), `4273524989` (B3 + the same-class scan). Method: each mutant was applied to an in-memory or text copy of the real workflow (`git archive` export of 138b46750c for the old guard, this worktree for the new one), never to a tracked file.
+
+| Finding | Mutant | Old guard (138b46750c export) | New guard |
+|---|---|---|---|
+| B1 N11 | Lint verdict step `continue-on-error: true` | `rpcCheckVerdictSemantics` green | RED `Lint: (iii) detect=failure mode=0: published [success failure]` |
+| B1 N12-N15 | verdict body `trap 'exit 0' EXIT` / indented heredoc terminator / `exit() { return 0; }` / `exec true`, then `exit 1` | green (each) | RED (each), same line; the script is executed under bash |
+| B2 N1, N17, unlisted input, nested map | `azure/powershell` `inlineScript`, `nick-fields/retry` `on_retry_command`, `zz_unlisted_input`, a map value | `rdcCheckRunInterpolation` green (each) | RED `RUN_INTERPOLATION_VIOLATION ... with.<input>` |
+| B2 N2 | cleanup job `defaults.run.shell` carrying `github.head_ref` | green | RED `... into its defaults.run.shell` |
+| B3 N8 / N8' | codeql / release-pr-multi-os `pull_request` `types: [closed]` | `rpcCheckRequiredNames` green | RED `required name ... is not reported by any job (... its pull_request types [closed] omit "opened" ...)` |
+| B3 N9 | codeql `analyze-skip-marker` `if: ${{ false }}` | green | RED `pull_request to main x docs-only: required name "Analyze (Go) (go)" is not reported by any job` |
+| B3 N10 / N10' | codeql / release-pr-multi-os `branches-ignore: [main]` | green | RED `... branches-ignore [main] exclude "main"` |
+| B4 N4 | cleanup group in another letter case / with surrounding whitespace | `TestDrafterCleanupConcurrency` controls fail `passes the guard` (guard temporarily reverted to byte comparison) | RED `share the group ... (compared case-insensitively, as GitHub does)` |
+| scan | cleanup JOB carrying the drafter's group (job-level `concurrency:`) | green | RED `job "cleanup" and ... share the group` |
+| scan | codeql analyze matrix `exclude: [{language: go}]` | green | RED `pull_request to main x go_code: required name "Analyze (Go) (go)" is not reported by any job` |
+
+Equivalent mutant dropped: `[ -f /nonexistent ] && exit 1` as a verdict body. Bash ends that script with the failed test's own status 1, so it fails the job exactly like the real verdict; the guard rightly reads it green. The control now appends `true`, which makes it a real mutant (RED).
+
+GREEN at the repair tree: `unset GITHUB_ACTIONS CI MOAI_TEST_MODE && go test ./internal/template/ -count=1 -run '<the 13-name set>'` -> `ok  	github.com/modu-ai/moai-adk/internal/template	20.795s`; `golangci-lint run ./internal/template/...` -> `0 issues.`; `actionlint` on ci.yml, release-drafter-cleanup.yml, release-drafter.yml, release-pr-multi-os.yml -> exit 0 each.
+
+Stated residuals (text-level checking, named so the verdict reads at its true width): executed verdict scripts run under the host's bash (macOS 3.2.57 here), not the runner's bash 5, and `matrix.*` expressions inside them read as empty; verification steps (go build, go vet) are simulated, not run; shells other than bash, sh and the default are refused, never executed; `env:` values, `if:` conditions, `runs-on` and `working-directory` are outside the interpolation sweep by design; a required name is credited from job conditions and trigger filters only, never from a check run observed on GitHub; the skip-marker success path has still never run on a runner.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
