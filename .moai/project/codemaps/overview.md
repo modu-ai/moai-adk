@@ -1,6 +1,10 @@
 # 아키텍처 개요
 
-## 현재 소스 기준 — d5c083e (2026-10-23 갱신, card t1909 판)
+## 현재 소스 기준 — 8c36a79 (2026-10-23 갱신, card t1931 판)
+
+기준 커밋은 `8c36a7904b`(origin/main 현재 팁 — card t1909 스쿼시 병합 #1896 위에 여섯 병합이 얹힌 트리)다. 이 기계(Darwin/arm64)에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다 — 이전 판(t1909)의 세 값과 같지만 이전 판은 Linux/amd64 관측이므로 "같은 baseline"이 아니라 **플랫폼이 다른 두 측정이 같은 값**이다. 창은 `d5c083e86d..8c36a7904b`로, 설명 대상 소스는 **27개(추가 1·수정 26·삭제 0)**로 좁다. 여섯 병합이 운반한 것이다: trunk backup sync 가드(card t1832, `integration_backup.go` 신규 +138), serial-slot 보유자 생존 판정(card t1828), `EvaluateMergeTriple` SHA 고정 probe와 `--abbrev-ref` 잔여 정리(card t1928), fail-safe 직렬 카드 모드 판정(card t1894), hook 레지스트리 sync/async 정리(card t1913), 그리고 #1896의 나머지(codex 감사 런처 등록·런치 기본·버그리포트 등록·배포 템플릿 갱신). 신규 패키지는 없다(`internal/sandbox/testdata/echo`는 테스트 전용 testdata). 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go`는 별도 분리; 확장자 필터 없이는 비-Go 1317개가 섞인다): 비테스트 Go 파일 1731→**1732**(+1), 테스트 3385→**3389**(+4) — 창에서 실제로 움직인 규모다. 모듈 패키지 176, 최상위 디렉터리 90(`go list ./...`·디렉터리 census), 임베드 원본 **624**(`git ls-tree -r --name-only HEAD -- internal/template/templates | wc -l` — 창 중 불변). `go.mod`·`go.sum`은 창에서 한 줄도 움직이지 않았다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — d5c083e (2026-10-23 갱신, card t1909 판)
 
 기준 커밋은 `d5c083e86d6d206f68735a3a63df69fe561facbb`(card t1909 제거 창 + origin/main 흡수 병합)다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다 — 앞 판과 세 값이 모두 같다. 창의 설명 대상 소스는 60개(추가 3·삭제 24·수정 33)로, 본체는 card t1909의 일반 moai-codex 실행·factory·init 표면 철수다(§ `modules.md` t1909 판 절). 의존성 집계와 `go.mod`·`go.sum`은 창에서 한 줄도 움직이지 않았다. 규모 표의 일곱 값은 아래에서 다시 쟀다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
 

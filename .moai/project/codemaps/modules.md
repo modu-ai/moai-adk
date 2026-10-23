@@ -1,6 +1,22 @@
 # 패키지 모듈 상세
 
-## 현재 변경 경계 — d5c083e (card t1909 판)
+## 현재 변경 경계 — 8c36a79 (card t1931 판)
+
+기준 `d5c083e` 이후의 설명 대상 소스 27개를 현재 트리와 대조했다(추가 1·수정 26·삭제 0; testdata 경로는 `mx.IsDescribedWorthy` 술어가 제외한다 — 신규 `internal/sandbox/testdata/echo`는 시험 전용 testdata로 서술 대상이 아니다). 창은 여섯 병합(#1893 t1828·#1895 t1832·#1892 t1928·#1897 t1894·#1867 t1913·#1896 나머지)이 운반했고 신규 패키지는 없다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/cli/integration_backup.go`(신규) · `internal/cli/integration.go` | `moai integration backup` — 로컬 main의 뒷받침 커밋을 `refs/heads/sync/main`으로 밀어 올려 배치 push 전까지 로컬 main이 유일한 사본이 되지 않게 한다(card t1832, REQ-TBS-001/002). refspec은 `<sha>:refs/heads/sync/main`으로 한 번 해석·인쇄해 보고된 SHA = 전송 SHA를 보장하고, `--force --no-follow-tags --no-recurse-submodules` 상수 조합이 태그 누출과 서브모듈 no-op 거짓 성공을 막는다. 밀기 후 ls-remote 재판독의 자동 강등은 R2 수리에서 삭제됐다. |
+| `internal/cli/factory_card.go` | 직렬 슬롯 판정이 만료 임대의 보유자 생존을 확인한다 — `factorySerialSlotHeld`가 `LeaseExpired`만으로 해제하지 않고 `factory.FactoryProcessAlive`·workers 레코드 세대 대조로 산 레인의 작업을 만료선 뒤에도 지킨다(card t1828 D1·P2·F1·F4 수리). 같은 파일에 fail-safe 직렬 카드 모드 판정이 들어왔다 — 분류 파일이 없는 카드의 직렬/병렬 판정을 보수 기본값으로 안전하게 내린다(card t1894, SPEC-CARD-MODE-JUDGMENT-001). |
+| `internal/homestate/card_reassign.go` · `card_pr_states.go` | 재배정이 소유자를 바꿀 때 HeartbeatAt을 초기화해 낡은 하트비트가 점유 판정을 거짓 발동시키지 않게 한다(t1828 F4). PR 상태 판독의 참조 해석이 `--abbrev-ref` 잔여를 벗어나 SHA 고정 probe를 쓴다(t1928). |
+| `internal/factorylane/merge.go` | 병합 준비 삼중의 probe가 브랜치 이름 대신 `show-ref --verify --hash`로 핀한 tip SHA를 소비한다 — 태그 섀도(gitrevisions 규칙 3)가 probe를 다른 대상으로 돌리는 경로를 닫는다(t1928, `cardBranchRef`·`branchTipSHA`). |
+| `internal/hook/commit_identity_guard.go` · `post_tool_failure.go` · `registry.go` | 훅 레지스트리의 sync/async 경계를 정리한다(card t1913, SPEC-HOOK-SYNC-ASYNC-001) — commit identity 가드와 PostToolUse 실패 관측이 registry의 비동기 슬롯으로 옮겨가고 실패 이벤트가 `.moai/lessons-inbox.jsonl`에 `tool_failure` 행으로 남는 경로가 명시된다. |
+| `internal/cli/mcp_codex_audit.go`(신규) · `internal/cli/codex_audit_launch.go` | `mcp_codex_audit.go`는 **MCP 도구 구현**(`codex_audit`·`codex_role_audit{,_status,_result}` 가족의 구현 표면 — `mcp_codex.go`에서 분리된 몸통)이고, CLI 등록은 `codex_audit_launch.go:926-928`의 `func init(){ codexCmd.AddCommand(newCodexAuditCmd()); codexCmd.AddCommand(newCodexRoleAuditCmd()) }`다(#1896 나머지). 둘이 합쳐 t1909 판이 선언한 감사 전용 표면의 CLI·MCP 양쪽 결합이 확정된다. |
+| `internal/cli/spawn.go` · `launch_session_defaults.go` · `launcher_debug_trace.go` | 세션 런처의 기본값 해석(`llm.defaults.sessions`·역할별 모델·effort)과 debug trace 배선이 이 창에서 보강됐다(#1896 나머지). |
+| `internal/bugreport/register.go` | 버그리포트 파이프라인의 등록 표면 정리(#1896 나머지) — captureframesprobe 시험 전용 패키지와의 경계는 t1469 판 행이 운반한다. |
+| `internal/template/templates/**`(rules·workflows·settings·skills 9파일) | 배포 템플릿이 이 창의 규칙·워크플로 문서(factory-dispatch 계열·auto-semantics·hooks-system·gtd·lane-watchdog SKILL)와 settings를 main 본문과 동기화해 운반한다 — described 소스이지만 런타임 배선이 아니라 배포 내용물이다. |
+
+## 이전 변경 경계 — d5c083e (card t1909 판)
 
 기준 `bf0a35f10` 이후의 설명 대상 소스 60개를 현재 트리와 대조했다(추가 3·삭제 24·수정 33; testdata 경로는 `mx.IsDescribedWorthy` 술어가 제외한다). 창은 두 절반이다.
 

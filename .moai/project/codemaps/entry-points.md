@@ -1,12 +1,13 @@
 # 진입점
 
-## 현재 진입점 보완 — 2bfd83175d
+## 현재 진입점 보완 — 8c36a79 (card t1931 판)
 
-> 병합 후 정정(card t1632, 세 번째 main 흡수 2026-10-23): 이 절의 41개는 t1909(codex_task·codex_job_* 4개 제거) 병합 전 측정값이다. 병합 뒤 카탈로그 재측정은 **37개**(`wantCatalogSize=37` — main 35 + 이 카드의 `todo_claim`·`codex_role_audit_cancel`)이고, `project_root`를 받는 도구는 32개다. 병합 트리 재측정(비테스트, 2026-10-23): `AddCommand(` **252**회(등록 파일 **78**개), `rootCmd.AddCommand(` **68**회, `root.go` **29**회.
+- `moai codex audit`·`moai codex role-audit` 서브커맨드의 실제 등록은 `internal/cli/codex_audit_launch.go:926-928`의 `func init(){ codexCmd.AddCommand(newCodexAuditCmd()); codexCmd.AddCommand(newCodexRoleAuditCmd()) }`다(#1896 나머지 창). 이 창의 신규 파일 `internal/cli/mcp_codex_audit.go`는 CLI 등록이 아니라 **MCP 도구 구현**(`codex_audit`·`codex_role_audit{,_status,_result}`의 구현 표면 — `mcp_codex.go`에서 분리된 몸통)이다: CLI 등록 파일(codex_audit_launch.go)과 MCP 구현 파일(mcp_codex_audit.go)은 별개다. t1909 판의 "codex 표면은 감사 둘" 선언에 이 둘이 각각 결합해 표면이 확정됐다.
+- 등록 수치(t1931 판 재측정, 측정 명령 `git grep -c -F 'AddCommand(' <rev> -- internal/cli` — **`.go` 파일만 한정한 뒤 `_test.go`를 제외**한다: `.go` 한정이 없으면 testdata JSONL 3개·TOML 2개의 본문 5건이 섞인다): **비테스트 252회 / 78파일** — base `8c36a7904b`와 동일(창 중 불변). **테스트 포함 273회 / 90파일**. 이전 판의 "252회/79개"는 파일 수만 다른 이전 관측값(발생 수는 동일)으로 남긴다. `rootCmd.AddCommand(` 전체 71회, `root.go` `init()` 29회(동일).
+- `moai mcp-server`의 도구 수는 카탈로그 기준 **35개 불변**(`internal/mcp/catalog.go` `{Name:` 35건) — 창에서 MCP 표면은 움직이지 않았다.
+- `moai integration backup`이 이 창에서 실제로 등록됐다(card t1832, § `modules.md` t1931 판) — 로컬 main을 `refs/heads/sync/main`으로 밀어 올리는 읽기 원본 보존용 동사다.
 
-카드 t1632 착지 창(SPEC-MCP-NEUTRALITY-001 — main-base draft PR #1894, 2026-10-23). 앵커 `bf0a35f10` 이후 3.2 배치 착지분과 본 카드를 반영했다. **MCP 도구는 이 트리 재측정 41개**(`TestMoaiMCPTools_CatalogSize` 핀 — `wantCatalogSize=41`): bf0a35f10 창의 39개에서 t1632가 `todo_claim`(REQ-MN-006, 게이트 노출 20-tool 목록 합류)과 `codex_role_audit_cancel`(REQ-MN-014, role-audit cancel 표면)을 추가했다. 등록 수치는 이 트리 재측정에서 비테스트 `AddCommand(` 247→**260**, `rootCmd.AddCommand(` 68→**70** — 3.2 배치 착지분(§ `modules.md` r8 이전 창의 t1920·t1840 등)과 본 카드의 catalogue·게이트 등록이 섹여 움직였다. 문서 4로케일·`.claude/rules` 카탈로그·템플릿 미러 2벌도 41-tool로 정렬됐고(카드 CI 수리 창), project_root 단락의 개수 문언(Thirty-six tools·Five of the thirty-six)이 배포본과 일치함을 `TestBindingLedgerIntegrity`가 확인했다. 수리 체인 r1~r8의 창별 내역은 § progress.md(E2)와 `.moai/reports/t1632/` 영수증이 운반한다.
-
-## 현재 진입점 보완 — d5c083e (card t1909 판)
+## 이전 진입점 보완 — d5c083e (card t1909 판)
 
 - `moai codex`는 감사 부모로 재편됐다 — 일반 RunE와 launch 동사(bare·`cli`·`app`·`status`)는 제거됐고(의미상의 도움말 문면은 `codex_cmd.go`의 Short/Long에 그대로 남아 렌더된다), 남는 서브커맨드는 `codex audit`·`codex role-audit` 둘이다(`codex_audit_launch.go`의 `init()`이 `codexCmd.AddCommand(...)`로 등록). `moai codex`를 동사 없이 부르면 아무것도 시작하지 않는다.
 - `moai skills`와 `moai tool` 루트 명령이 사라졌다 — `root.go`의 `init()`에서 `newSkillsCmd()`·`newToolCmd()` 등록 두 줄이 빠졌고(skills.go·tool.go 소멸), 등록 수는 31→**29**다. `tool-policy`는 별개 명령으로 남는다.
