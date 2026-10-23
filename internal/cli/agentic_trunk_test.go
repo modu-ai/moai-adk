@@ -469,6 +469,127 @@ func TestAgenticTrunkCompleteNoAutoMerge(t *testing.T) {
 	})
 }
 
+// agenticTrunkModeGitStrategy is a non-manual (personal/team) agentic-trunk
+// profile body: the same workflow value under a mode profile that carries no
+// manual keys — the shape the F1 repair routes on the workflow value and the
+// integration target alone (card t1831 landing-audit F1).
+func agenticTrunkModeGitStrategy(mode string) string {
+	return "git_strategy:\n    mode: " + mode + "\n    " + mode + ":\n        workflow: agentic-trunk\n"
+}
+
+// TestAgenticTrunkPrimaryRouteModeFlip is the landing-audit F1 repair judge
+// (card t1831): the primary-route judgment gates on the workflow value and
+// the integration target only. A personal or team agentic-trunk project
+// whose ONLY main holder is the primary checkout behaves github-flow-like —
+// `factory complete` delivers by pull request and `factory merge ready`
+// clears without taking the window — while the same configuration over a
+// dedicated integration worktree still takes the window and merges locally.
+func TestAgenticTrunkPrimaryRouteModeFlip(t *testing.T) {
+	for _, mode := range []string{"team", "personal"} {
+		t.Run(mode+" primary-only complete delivers by pull request", func(t *testing.T) {
+			f := agenticTrunkPrimaryFixture(t)
+			writeGitStrategyBody(t, f.root, agenticTrunkModeGitStrategy(mode))
+			d := newGHDouble(t, f)
+			before := factoryGHUnexpectedCalls.Load()
+			out, err := ghfComplete(t)
+			if err != nil {
+				t.Fatalf("complete: %v", err)
+			}
+			if got := f.remoteBranchTip(t); got != f.tip {
+				t.Fatalf("origin %s = %q, want the card tip %s", ghfBranch, got, f.tip)
+			}
+			if d.count("pr", "create") != 1 {
+				t.Fatalf("pr create calls = %d, want 1; calls: %v", d.count("pr", "create"), d.calls)
+			}
+			if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+				t.Fatalf("card = %s, want pr-open (the mode's workflow value takes the PR route)", c.State)
+			}
+			if !strings.Contains(out, ghfPRURL) {
+				t.Errorf("output %q does not report the pull request", out)
+			}
+			ghfNoWindow(t, f, "after the "+mode+"-mode primary-route complete")
+			if got := factoryGHUnexpectedCalls.Load(); got != before {
+				t.Errorf("the primary-route complete made %d unexpected gh call(s)", got-before)
+			}
+		})
+
+		t.Run(mode+" primary-only merge ready clears without the window", func(t *testing.T) {
+			repo, lockRoot, specID := agenticTrunkReadyFixture(t, "complete")
+			checkout := exec.Command("git", "checkout", "main")
+			checkout.Dir = repo
+			if out, err := checkout.CombinedOutput(); err != nil {
+				t.Fatalf("checkout main in %s: %v\n%s", repo, err, out)
+			}
+			if err := os.Remove(filepath.Join(repo, ".moai", "config", "sections", "git-strategy.yaml")); err != nil {
+				t.Fatalf("remove the card tree's stale config: %v", err)
+			}
+			writeGitStrategyBody(t, lockRoot, agenticTrunkModeGitStrategy(mode))
+			out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", specID, "--branch", "WT-card", "--develop", "main", "--session", "sess-lane-9", "--json")
+			if err != nil {
+				t.Fatalf("merge ready: %v", err)
+			}
+			if !strings.Contains(out, `"verdict":"cleared"`) {
+				t.Fatalf("ready did not clear: %s", out)
+			}
+			if lock := readLockRoot(t, lockRoot); lock.Held() {
+				t.Errorf("merge ready took the window on the %s-mode primary route: %+v", mode, lock)
+			}
+		})
+
+		t.Run(mode+" dedicated holder takes the window and merges locally", func(t *testing.T) {
+			root, integWT, _ := agenticTrunkMergeFixture(t)
+			writeGitStrategyBody(t, root, agenticTrunkModeGitStrategy(mode))
+			before := factoryGHUnexpectedCalls.Load()
+			if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
+				t.Fatalf("complete: %v", err)
+			}
+			c := fcCard(t, root, "t1")
+			if c.State != homestate.CardMergedLocal || c.MergeSHA == "" {
+				t.Fatalf("card = %s merge=%q, want merged-local (the dedicated holder keeps the local-merge route)", c.State, c.MergeSHA)
+			}
+			if got := fcGit(t, integWT, "rev-list", "--parents", "-n", "1", "HEAD"); len(strings.Fields(got)) != 3 {
+				t.Errorf("main HEAD is not a two-parent merge: %s", got)
+			}
+			if lock := sdWindow(t, root); lock.Held() {
+				t.Errorf("window after complete = held=%v by %q, want released", lock.Held(), lock.SessionID)
+			}
+			if got := factoryGHUnexpectedCalls.Load(); got != before {
+				t.Errorf("the local-merge complete called gh %d time(s)", got-before)
+			}
+		})
+	}
+}
+
+// TestAgenticTrunkObserveAfterHolderMove is the landing-audit F2 repair judge
+// (card t1831): a card already in pr-open keeps the PR-edge observe path when
+// the main holder later moves to a dedicated worktree — the second completion
+// run records merged-pr through factoryObservePRMerge instead of falling to
+// the local-merge path, which refuses a card that is not merge-ready (the
+// route-change shape of codex's TestReviewAgenticObserveAfterHolderMove).
+func TestAgenticTrunkObserveAfterHolderMove(t *testing.T) {
+	f := agenticTrunkPrimaryFixture(t)
+	d := newGHDouble(t, f)
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
+		t.Fatalf("card = %s, want pr-open", c.State)
+	}
+	// The leader merges while the primary still holds main (the squash shape
+	// the observation half verifies), and THEN the holder moves: the primary
+	// vacates main and a dedicated integration worktree takes it.
+	d.state, d.mergeOid = "MERGED", f.squashOnMain(t)
+	fcGit(t, f.root, "checkout", "-q", "-b", "wtroot")
+	integ := filepath.Join(f.root, ".claude", "worktrees", "main")
+	fcGit(t, f.root, "worktree", "add", "-q", integ, "main")
+	if _, err := ghfComplete(t); err != nil {
+		t.Fatalf("complete after the holder move: %v", err)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergedPR || c.MergeSHA != d.mergeOid {
+		t.Fatalf("card = %s merge=%s, want merged-pr with the merge commit %s (the pr-open card keeps the observe path)", c.State, c.MergeSHA, d.mergeOid)
+	}
+}
+
 // TestAgenticTrunkAutoMergeSkipsPrimaryTarget is AC-AGT-006's primary-route
 // flip (M5b): session-exit auto-merge enabled and manual agentic-trunk where
 // the ONLY tree holding main is the primary checkout — the merge skips with

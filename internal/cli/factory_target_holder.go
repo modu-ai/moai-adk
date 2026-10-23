@@ -37,11 +37,16 @@ func factoryPrimaryHoldsTarget(root, branch string) bool {
 }
 
 // factoryAgenticTrunkPrimaryRoute reports that the project rooted at root
-// runs manual agentic-trunk AND holds its fixed integration target `main`
-// nowhere but the primary checkout — the condition under which `factory
-// complete` and `factory merge ready` take the pull-request edge instead
-// of the integration window (REQ-AGT-006, rescope 0.4.0; design.md
-// section 1, candidate B).
+// runs agentic-trunk — any mode: the route is judged on the workflow value
+// and the integration target only, never on the git-strategy mode (card
+// t1831 landing audit F1: a `!cfg.Manual` restriction excluded team and
+// personal agentic-trunk from the PR edge and fell them through to the
+// local-merge window, contradicting the SPEC's github-flow-like edge-case
+// rows) — AND holds its fixed integration target `main` nowhere but the
+// primary checkout. That is the condition under which `factory complete`
+// and `factory merge ready` take the pull-request edge instead of the
+// integration window (REQ-AGT-006, rescope 0.4.0; design.md section 1,
+// candidate B).
 func factoryAgenticTrunkPrimaryRoute(root string) bool {
 	return factoryAgenticTrunkPrimaryRouteIn(root, root)
 }
@@ -55,7 +60,7 @@ func factoryAgenticTrunkPrimaryRoute(root string) bool {
 // zero and misrouted a primary-only project to the local-merge window).
 func factoryAgenticTrunkPrimaryRouteIn(configRoot, probeRoot string) bool {
 	cfg := config.LoadGitFlowIntegrationConfig(configRoot)
-	if !cfg.Manual || !cfg.AgenticTrunkWorkflow || cfg.IntegrationTarget == "" {
+	if !cfg.AgenticTrunkWorkflow || cfg.IntegrationTarget == "" {
 		return false
 	}
 	return factoryPrimaryHoldsTarget(probeRoot, cfg.IntegrationTarget)
