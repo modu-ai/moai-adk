@@ -819,6 +819,14 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 			s.If = "${{ always() && contains(needs.detect.result, 'fail') }}"
 		})},
 		{"verdict script uses an expression the model cannot evaluate", rewriteVerdict(realJobs, "echo \"${{ toJSON(needs) }}\"\nexit 1\n")},
+		// sync-audit iter5 F-1: a context the cell does not model is an error, never "".
+		{"iter5 A3 an allowlisted but unmodelled context in the verdict body (runner.os)", rewriteVerdict(realJobs, "if [ -n \"${{ runner.os }}\" ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A4 an allowlisted but unmodelled context in the verdict body (github.sha)", rewriteVerdict(realJobs, "if [ -n \"${{ github.sha }}\" ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A5 an unmodelled context in the verdict step condition", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && needs.detect.result != 'success' && github.repository == '' }}"
+		})},
+		{"iter5 A1 the verdict branches on GITHUB_ACTIONS", rewriteVerdict(realJobs, "if [ \"${GITHUB_ACTIONS:-}\" = true ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A2 the verdict branches on a workspace file", rewriteVerdict(realJobs, "if [ -f go.mod ]; then exit 0; fi\nexit 1\n")},
 		{"marker passes on classification failure", func(w *rpcWorkflow) {
 			n := 0
 			for _, id := range markerIDs(w, "lint") {
@@ -845,6 +853,36 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 			w.Jobs["lint"].If = "${{ github.event_name != 'pull_request' || needs.detect.outputs.binary_inputs == 'true' }}"
 		}},
 	}
+	// Expression-context controls. The positive rows read a context the cell models
+	// (an event name, a matrix leg's own value) and must evaluate; the failure rows
+	// read one it does not and must come back as the exact "not modelled" error.
+	t.Run("control/context model", func(t *testing.T) {
+		ctx := rpcCell{event: "pull_request", detect: "success", classes: rpcOutcome("go-code")}.ctx()
+		legs := wf.Jobs["build"].legCombos("Build (linux/amd64)")
+		if len(legs) != 1 || legs[0]["goos"] != "linux" || legs[0]["goarch"] != "amd64" {
+			t.Fatalf("control precondition: the Build (linux/amd64) leg does not expand to goos=linux goarch=amd64: %v", legs)
+		}
+		for _, c := range []struct {
+			name, expr string
+			ctx        rpcExprCtx
+			want       string // "" = positive (must evaluate); else the exact error substring
+		}{
+			{"positive: a modelled event context evaluates", "github.event_name == 'pull_request'", ctx, ""},
+			{"positive: a matrix leg value evaluates on that leg", "matrix.goos == 'linux' && matrix.goarch == 'amd64'", ctx.withMatrix(legs[0]), ""},
+			{"failure: an unmodelled context is an error, not an empty string", "github.repository == ''", ctx, `context "github.repository" is not modelled by this guard`},
+			{"failure: a matrix value outside any leg is an error", "matrix.goos == 'linux'", ctx, `context "matrix.goos" is not modelled by this guard`},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				_, err := rpcEvalValueE(c.expr, c.ctx)
+				switch {
+				case c.want == "" && err != nil:
+					t.Fatalf("a modelled expression was refused: %v", err)
+				case c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)):
+					t.Fatalf("expression %q: want an error containing %q, got %v", c.expr, c.want, err)
+				}
+			})
+		}
+	})
 	for _, m := range mutants {
 		t.Run("control/"+m.name, func(t *testing.T) {
 			if !baselineClean {
@@ -952,6 +990,47 @@ func TestScriptHardFailReachability(t *testing.T) {
 			}
 		}
 	})
+	// The runner-state refusal (sync-audit iter5 F-1): rpcExecScript runs a script
+	// bare and runner-like (GITHUB_ACTIONS / CI / RUNNER_OS / GITHUB_WORKSPACE, a
+	// seeded checkout, a runner HOME) and refuses it when the two exits differ.
+	// Positive controls are scripts whose verdict does not depend on that state
+	// (they run and report the plain exit); failure controls are scripts that do
+	// (they must come back refused with the runner-state reason, not executed).
+	t.Run("control/runner-state differential", func(t *testing.T) {
+		const reason = "exits differently with and without the runner environment"
+		for _, c := range []struct {
+			name   string
+			script string
+			want   string // "" = executed with this outcome (positive); else the refusal reason substring
+			failed bool
+		}{
+			{"positive: plain exit 1 is runner-independent", "exit 1\n", "", true},
+			{"positive: plain exit 0 is runner-independent", "exit 0\n", "", false},
+			{"positive: GITHUB_ACTIONS read but not branched on", "echo \"${GITHUB_ACTIONS:-unset}\"\nexit 1\n", "", true},
+			{"failure: branches on GITHUB_ACTIONS (A1)", "if [ \"${GITHUB_ACTIONS:-}\" = true ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on a CI variable", "if [ -n \"${CI:-}\" ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on a file of the checked-out workspace (A2)", "if [ -f go.mod ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on the runner HOME (A10)", "if [ \"$HOME\" = /home/runner ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on RUNNER_OS", "if [ \"${RUNNER_OS:-}\" = Linux ]; then exit 0; fi\nexit 1\n", reason, false},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				res := rpcExecScript("bash", c.script, nil)
+				if c.want == "" {
+					if res.why != "" {
+						t.Fatalf("a runner-independent script was refused: %s", res.why)
+					}
+					if res.failed != c.failed {
+						t.Fatalf("rpcExecScript failed=%v, want %v", res.failed, c.failed)
+					}
+					return
+				}
+				if !strings.Contains(res.why, c.want) {
+					t.Fatalf("a runner-state-dependent script was not refused with %q; got why=%q failed=%v", c.want, res.why, res.failed)
+				}
+				t.Logf("control observed refused: %s", res.why)
+			})
+		}
+	})
 	t.Run("continue-on-error values", func(t *testing.T) {
 		for _, c := range []struct {
 			v    any
@@ -1056,6 +1135,21 @@ func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow,
 					ctx := extCell.ctx()
 					if w == ci {
 						ctx = cell.ctx()
+					} else if dj, ok := w.Jobs["detect"]; ok {
+						// The external workflow's own detect job concludes success only
+						// when its own condition starts it: evaluate that condition
+						// instead of fixing the result to success, because a skipped
+						// detect job leaves its dependents (the marker included) skipped.
+						runs, err := rpcJobRunsE(dj, extCell.ctx())
+						switch {
+						case err != nil:
+							add("%s x %s: %s: its detect job's condition cannot be evaluated (%v)", ec.label, o.label, w.Path, err)
+							continue
+						case !runs:
+							skipped := extCell
+							skipped.detect = "skipped"
+							ctx = skipped.ctx()
+						}
 					}
 					started, errs := rpcStartedSuppliers(w, name, ctx)
 					for _, e := range errs {
@@ -1197,6 +1291,18 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 		anyNameCI  = `pull_request to main x docs-only: required name "Lint"`
 	)
 	cqMarkerIf := "    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'"
+	// cqDetectHead is the head of codeql.yml's own detect job (the job the external
+	// supplier's marker and analyze jobs wait on).
+	cqDetectHead := "  detect:\n    name: Detect (paths-filter)\n    runs-on: ubuntu-latest\n"
+	// aliasIgnore writes the pull_request paths-ignore list through a YAML alias of
+	// an anchor declared on the (earlier) push trigger.
+	aliasIgnore := func(list string) func(*testing.T, string) string {
+		return func(t *testing.T, text string) string {
+			t.Helper()
+			text = replaceOnce("  push:\n    branches: [main]\n", "  push:\n    paths-ignore: &ign ["+list+"]\n    branches: [main]\n")(t, text)
+			return withFilter("    paths-ignore: *ign\n")(t, text)
+		}
+	}
 	cqAnalyzeIf := "    if: >\n      needs.detect.outputs.go_code == 'true' ||\n      github.event_name == 'push' ||\n      github.event_name == 'schedule'\n"
 	relGateIf := "    needs: [full-matrix-test, detect-release]\n    if: always()\n"
 	triggerControls := []struct {
@@ -1245,6 +1351,21 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 		{"a proven-true skip-marker publishes when the real job is off", "codeql", func(t *testing.T, text string) string {
 			return replaceOnce(cqMarkerIf, "    if: github.event_name == 'pull_request'")(t, replaceOnce(cqAnalyzeIf, "    if: ${{ false }}\n")(t, text))
 		}, ""},
+
+		// sync-audit iter5 F-2. Each failure row names the exact refusal text it must
+		// produce; each positive row is the same shape with a harmless value and must
+		// stay clean (wantCell ""). Filters Actions evaluates in order with negation,
+		// `?` with its own meaning, aliases, an external workflow's own detect job and
+		// a context the model does not know.
+		{"iter5 C1 failure: a negated branch listed after a matching one is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - '!ci/**'\n"), "uses negation or"},
+		{"iter5 C1 positive: another plain branch after a matching one stays clean", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - 'ci/extra'\n"), ""},
+		{"iter5 C2b failure: `?` in paths-ignore is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md?'\n"), "uses negation or"},
+		{"iter5 C3b failure: paths-ignore through an alias is resolved and skips docs", "codeql", aliasIgnore("'**.md'"), anyNameCQ},
+		{"iter5 C3b positive: paths-ignore through an alias of an unrelated tree stays clean", "codeql", aliasIgnore("'docs-site/**'"), ""},
+		{"iter5 C4 failure: the external detect job is skipped on a pull_request", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: github.event_name == 'workflow_dispatch'\n"), anyNameCQ},
+		{"iter5 C4 positive: the external detect job with a true condition stays clean", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: ${{ true }}\n"), ""},
+		{"iter5 C5 failure: an unknown context in a supplier if is an error, not an empty string", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.repository == ''"), "is not modelled by this guard"},
+		{"iter5 C5 positive: a modelled context in a supplier if stays clean", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.event_name != 'schedule'"), ""},
 	}
 	for _, c := range triggerControls {
 		t.Run("control/trigger/"+c.name, func(t *testing.T) {

@@ -394,9 +394,9 @@ func (h *rdcHarness) ctx() rpcExprCtx {
 		}
 	}
 	c := rpcExprCtx{vars: vars, bools: map[string]bool{}}
-	if h.dispatchDryRun != nil {
-		c.bools["inputs.dry_run"] = *h.dispatchDryRun
-	}
+	// A run that is not a workflow_dispatch has no inputs: inputs.dry_run reads
+	// false there, which is a modelled value, not an unmodelled context.
+	c.bools["inputs.dry_run"] = h.dispatchDryRun != nil && *h.dispatchDryRun
 	return c
 }
 
@@ -758,8 +758,12 @@ func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 			byPath[w.Path] = append(byPath[w.Path], declared{w.Path, w.Concurrency.Group, w.Concurrency.CancelInProgress})
 		}
 		for _, id := range w.jobIDs() {
-			n := w.Jobs[id].Concurrency
+			// An alias (`concurrency: *group`) is read as the node it stands for; any
+			// other node kind is refused rather than skipped.
+			n := rpcResolveAlias(&w.Jobs[id].Concurrency)
 			switch n.Kind {
+			case 0:
+				// no job-level concurrency block
 			case yaml.ScalarNode:
 				byPath[w.Path] = append(byPath[w.Path], declared{fmt.Sprintf("%s job %q", w.Path, id), n.Value, false})
 			case yaml.MappingNode:
@@ -772,6 +776,8 @@ func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 					continue
 				}
 				byPath[w.Path] = append(byPath[w.Path], declared{fmt.Sprintf("%s job %q", w.Path, id), jc.Group, jc.CancelInProgress})
+			default:
+				add("%s job %q: its concurrency block has a YAML node kind (%d) this guard does not read", w.Path, id, n.Kind)
 			}
 		}
 		for _, d := range byPath[w.Path] {
@@ -967,6 +973,15 @@ func TestDrafterCleanupConcurrency(t *testing.T) {
 		{"cleanup JOB carries the drafter's group as a scalar", false, func(t *testing.T, c, d *rpcWorkflow) {
 			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, d.Concurrency.Group+"\n")
 		}},
+		// sync-audit iter5 F-4: a job-level group written through a YAML alias is read
+		// as the group it stands for; a node kind the guard cannot read is refused.
+		{"iter5 D1 failure: cleanup JOB group through a YAML alias of the drafter's group in another case", false, func(t *testing.T, c, d *rpcWorkflow) {
+			target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: strings.ToUpper(d.Concurrency.Group)}
+			c.Jobs["cleanup"].Concurrency = yaml.Node{Kind: yaml.AliasNode, Alias: target}
+		}},
+		{"iter5 D1 failure: cleanup JOB concurrency block is a sequence the guard cannot read", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "- not-a-group\n")
+		}},
 		{"cleanup JOB group is ref-keyed", false, func(t *testing.T, c, d *rpcWorkflow) {
 			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "group: x-${{ github.ref }}\ncancel-in-progress: false\n")
 		}},
@@ -1017,9 +1032,28 @@ func TestDrafterCleanupConcurrency(t *testing.T) {
 			if len(got) == 0 {
 				t.Fatalf("mutant %q passes the guard", m.name)
 			}
+			if !strings.Contains(got[0], "CLEANUP_CONCURRENCY_VIOLATION") {
+				t.Fatalf("mutant %q was rejected without the CLEANUP_CONCURRENCY_VIOLATION sentinel: %s", m.name, got[0])
+			}
 			t.Logf("mutant observed red: %s", got[0])
 		})
 	}
+	// Positive control for the alias handling (iter5 F-4): a job-level group written
+	// through a YAML alias of a value that does NOT collide with the drafter's
+	// group is read and accepted, so refusing aliases outright is not what the
+	// failure rows above prove.
+	t.Run("control/iter5 D1 positive: cleanup JOB group through a YAML alias of a distinct literal stays clean", func(t *testing.T) {
+		if !baselineClean {
+			t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+		}
+		c := rpcParseWorkflow(t, rdcCleanupRel, cleanupText)
+		d := rpcParseWorkflow(t, rdcDrafterRel, drafterText)
+		target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "release-drafter-cleanup"}
+		c.Jobs["cleanup"].Concurrency = yaml.Node{Kind: yaml.AliasNode, Alias: target}
+		if got := check(c, d); len(got) != 0 {
+			t.Fatalf("an aliased job group that does not collide was refused: %s", got[0])
+		}
+	})
 }
 
 // ---- dry-run reachability and value contract ----------------------------------
@@ -1250,30 +1284,42 @@ func rdcFlatten(x any) []string {
 	}
 }
 
-// rdcNodeScalars returns the scalar text under a yaml node, skipping the data
-// maps named in skip (matched against mapping keys).
-func rdcNodeScalars(n *yaml.Node, skip ...string) []string {
+// rdcNodeScalars returns the scalar text under a yaml node. YAML aliases are
+// followed to the node they stand for, so a value written through `*anchor` is
+// swept as the text the runner sees. The data maps named in skip are skipped only
+// where a container property can sit: when the mapping nesting depth equals
+// skipDepth (1 = the keys of the node's own mapping, as in `container:`; 2 = the
+// keys of each service in `services:`). A key of the same name anywhere else, a
+// service called `env` among them, is swept like any other.
+func rdcNodeScalars(n *yaml.Node, skipDepth int, skip ...string) []string {
 	var out []string
-	var walk func(*yaml.Node)
-	walk = func(x *yaml.Node) {
+	var walk func(x *yaml.Node, depth, hops int)
+	walk = func(x *yaml.Node, depth, hops int) {
+		if hops > 64 { // a self-referencing alias chain: stop rather than loop
+			return
+		}
 		switch x.Kind {
+		case yaml.AliasNode:
+			if x.Alias != nil {
+				walk(x.Alias, depth, hops+1)
+			}
 		case yaml.ScalarNode:
 			out = append(out, x.Value)
 		case yaml.MappingNode:
 			for i := 0; i+1 < len(x.Content); i += 2 {
-				if rpcContains(skip, x.Content[i].Value) {
+				if depth+1 == skipDepth && rpcContains(skip, rpcResolveAlias(x.Content[i]).Value) {
 					continue
 				}
-				walk(x.Content[i])
-				walk(x.Content[i+1])
+				walk(x.Content[i], depth+1, hops)
+				walk(x.Content[i+1], depth+1, hops)
 			}
 		default:
 			for _, c := range x.Content {
-				walk(c)
+				walk(c, depth, hops)
 			}
 		}
 	}
-	walk(n)
+	walk(n, 0, 0)
 	return out
 }
 
@@ -1302,11 +1348,25 @@ func rdcJobSurfaces(j *rpcJob) []rdcSurface {
 		out = append(out, rdcSurface{label: "defaults.run.shell", text: j.Defaults.Run.Shell})
 	}
 	for _, blk := range []struct {
-		name string
-		node *yaml.Node
-	}{{"container", &j.Container}, {"services", &j.Services}} {
-		for _, txt := range rdcNodeScalars(blk.node, "env", "credentials") {
+		name      string
+		node      *yaml.Node
+		skipDepth int
+	}{{"container", &j.Container, 1}, {"services", &j.Services, 2}} {
+		for _, txt := range rdcNodeScalars(blk.node, blk.skipDepth, "env", "credentials") {
 			out = append(out, rdcSurface{label: blk.name + " block", text: txt})
+		}
+	}
+	// A job that calls a reusable workflow hands its job-level `with:` inputs and
+	// `secrets:` to whatever that workflow does with them, which cannot be read
+	// from here, so every value and key is swept like a step's `with:`.
+	if j.Uses != "" {
+		for _, blk := range []struct {
+			name string
+			node *yaml.Node
+		}{{"with", &j.With}, {"secrets", &j.Secrets}} {
+			for _, txt := range rdcNodeScalars(blk.node, 0) {
+				out = append(out, rdcSurface{label: fmt.Sprintf("job-level %s input (%s may evaluate it as code)", blk.name, j.Uses), text: txt, withInput: true})
+			}
 		}
 	}
 	return out
@@ -1698,6 +1758,41 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 		{"secret in a run body stays refused (a with value may name one, a script may not)", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
 			j.Steps = append(j.Steps, rpcStep{Name: "Injected", Run: "echo ${{ secrets.CODECOV_TOKEN }}"})
 		}, true},
+		// sync-audit iter5 F-3. Failure rows hide the expression where the iter4 sweep
+		// did not look; positive rows put an expression only where it is data.
+		{"iter5 B2a failure: container options through a YAML alias whose target sits outside the block", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "--hostname ${{ github.head_ref }}"}
+			j.Container = yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "image"}, {Kind: yaml.ScalarNode, Tag: "!!str", Value: "alpine:3.20"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "options"}, {Kind: yaml.AliasNode, Alias: target},
+			}}
+		}, true},
+		{"iter5 B2a positive: container options through a YAML alias of a plain value", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "--cpus 1"}
+			j.Container = yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "image"}, {Kind: yaml.ScalarNode, Tag: "!!str", Value: "alpine:3.20"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "options"}, {Kind: yaml.AliasNode, Alias: target},
+			}}
+		}, false},
+		{"iter5 B2b failure: a service NAMED env carrying an expression in its options", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Services = nodeOf(t, "env:\n  image: alpine:3.20\n  options: --health-cmd ${{ github.head_ref }}\n")
+		}, true},
+		{"iter5 B2b positive: a service's own env and credentials maps stay data", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Services = nodeOf(t, "db:\n  image: postgres:16\n  env:\n    X: ${{ github.head_ref }}\n  credentials:\n    password: ${{ secrets.X }}\n")
+		}, false},
+		{"iter5 B2c failure: job-level with: of a reusable-workflow call carrying a payload field", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Uses = "octo-org/tools/.github/workflows/run.yml@v1"
+			j.With = nodeOf(t, "cmd: echo ${{ github.event.pull_request.title }}\n")
+		}, true},
+		{"iter5 B2c failure: job-level secrets: of a reusable-workflow call carrying head_ref", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Uses = "octo-org/tools/.github/workflows/run.yml@v1"
+			j.Secrets = nodeOf(t, "token: ${{ github.head_ref }}\n")
+		}, true},
+		{"iter5 B2c positive: job-level with: of allowlisted forms and a secret, secrets: inherit", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Uses = "octo-org/tools/.github/workflows/run.yml@v1"
+			j.With = nodeOf(t, "cmd: ${{ github.event_name }}\ntoken: ${{ secrets.X }}\n")
+			j.Secrets = nodeOf(t, "inherit\n")
+		}, false},
 		{"literal shell and a service without expressions stay allowed", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
 			wf.Defaults.Run.Shell = "bash"
 			j.Defaults.Run.Shell = "bash"
@@ -1719,6 +1814,9 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 					t.Fatalf("an allowed surface was refused: %s", got[0])
 				}
 				return
+			}
+			if len(got) > 0 && !strings.Contains(got[0], rdcRunInterpSentinel) {
+				t.Fatalf("mutant %q was rejected without the %s sentinel: %s", c.name, rdcRunInterpSentinel, got[0])
 			}
 			if len(got) == 0 {
 				t.Fatalf("mutant %q passes the guard", c.name)

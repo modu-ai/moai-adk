@@ -36,6 +36,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,7 +92,13 @@ type rpcJob struct {
 	Concurrency     yaml.Node `yaml:"concurrency"`
 	Container       yaml.Node `yaml:"container"`
 	Services        yaml.Node `yaml:"services"`
-	Strategy        struct {
+	// Uses, With and Secrets are the job-level reusable-workflow call surface
+	// (`uses: owner/repo/.github/workflows/x.yml@ref` with its inputs and
+	// secrets); the injection sweep reads them, which a steps-only model missed.
+	Uses     string    `yaml:"uses"`
+	With     yaml.Node `yaml:"with"`
+	Secrets  yaml.Node `yaml:"secrets"`
+	Strategy struct {
 		Matrix rpcMatrix `yaml:"matrix"`
 	} `yaml:"strategy"`
 	Steps []rpcStep `yaml:"steps"`
@@ -199,37 +206,39 @@ type rpcTrigger struct {
 // when it does not subscribe to the event).
 func (w *rpcWorkflow) trigger(event string) rpcTrigger {
 	list := func(n *yaml.Node) []string {
+		n = rpcResolveAlias(n)
 		if n.Kind == yaml.ScalarNode {
 			return []string{n.Value}
 		}
 		out := make([]string, 0, len(n.Content))
 		for _, c := range n.Content {
-			out = append(out, c.Value)
+			out = append(out, rpcResolveAlias(c).Value)
 		}
 		return out
 	}
-	switch w.On.Kind {
+	on := rpcResolveAlias(&w.On)
+	switch on.Kind {
 	case yaml.ScalarNode:
-		return rpcTrigger{present: w.On.Value == event}
+		return rpcTrigger{present: on.Value == event}
 	case yaml.SequenceNode:
-		for _, c := range w.On.Content {
-			if c.Value == event {
+		for _, c := range on.Content {
+			if rpcResolveAlias(c).Value == event {
 				return rpcTrigger{present: true}
 			}
 		}
 	case yaml.MappingNode:
-		for i := 0; i+1 < len(w.On.Content); i += 2 {
-			if w.On.Content[i].Value != event {
+		for i := 0; i+1 < len(on.Content); i += 2 {
+			if rpcResolveAlias(on.Content[i]).Value != event {
 				continue
 			}
 			tr := rpcTrigger{present: true}
-			val := w.On.Content[i+1]
+			val := rpcResolveAlias(on.Content[i+1])
 			if val.Kind != yaml.MappingNode {
 				return tr
 			}
 			for k := 0; k+1 < len(val.Content); k += 2 {
 				v := list(val.Content[k+1])
-				switch val.Content[k].Value {
+				switch rpcResolveAlias(val.Content[k]).Value {
 				case "types":
 					tr.types = v
 				case "branches":
@@ -250,6 +259,16 @@ func (w *rpcWorkflow) trigger(event string) rpcTrigger {
 		}
 	}
 	return rpcTrigger{}
+}
+
+// rpcResolveAlias follows YAML alias nodes (`*anchor`) to the node they stand for,
+// so a filter list or key written through an alias is read as the value the
+// Actions runner sees, not as the alias node's empty Value.
+func rpcResolveAlias(n *yaml.Node) *yaml.Node {
+	for n != nil && n.Kind == yaml.AliasNode && n.Alias != nil {
+		n = n.Alias
+	}
+	return n
 }
 
 // rpcPullRequestMustFireOn are the activity types a required check needs on a
@@ -280,6 +299,17 @@ func rpcWorkflowAdmits(w *rpcWorkflow, event, branch, file string) (admitted boo
 	}
 	if event == "push" && len(tr.tags)+len(tr.tagsIgnore) > 0 && len(tr.branches)+len(tr.branchesIgnore) == 0 {
 		return false, "its push trigger filters on tags only, so a branch push does not start it", nil
+	}
+	// Actions evaluates branch / tag / path filters in order with leading-`!`
+	// negation and gives `?` its own meaning (zero or one of the preceding
+	// character), neither of which the first-hit matcher below models: refuse the
+	// whole list rather than let an earlier hit hide a later `!` entry.
+	for _, ps := range [][]string{tr.branches, tr.branchesIgnore, tr.tags, tr.tagsIgnore, tr.paths, tr.pathsIgnore} {
+		for _, p := range ps {
+			if strings.ContainsAny(p, "!?") {
+				return false, "", fmt.Errorf("%s filter pattern %q uses negation or `?`, which the Actions filter model does not evaluate", event, p)
+			}
+		}
 	}
 	match := func(patterns []string, s string) (bool, error) {
 		for _, p := range patterns {
@@ -531,6 +561,43 @@ func (j *rpcJob) displayNames() []string {
 	return out
 }
 
+// legCombos returns, for every leg of the job whose published check-run name is
+// name, the matrix values of that leg (nil for a job without a matrix). It
+// follows displayNames leg for leg, so a leg's `${{ matrix.* }}` references can
+// be evaluated with that leg's own values.
+func (j *rpcJob) legCombos(name string) []map[string]string {
+	combos := rpcMatrixCombos(j.Strategy.Matrix)
+	names := j.displayNames()
+	if len(combos) == 0 {
+		var out []map[string]string
+		for _, n := range names {
+			if n == name {
+				out = append(out, nil)
+			}
+		}
+		return out
+	}
+	var out []map[string]string
+	for i, n := range names {
+		if n == name && i < len(combos) {
+			out = append(out, combos[i])
+		}
+	}
+	return out
+}
+
+// withMatrix returns a copy of the context that also carries one matrix leg's
+// values as `matrix.<axis>`.
+func (c rpcExprCtx) withMatrix(m map[string]string) rpcExprCtx {
+	vars := make(map[string]string, len(c.vars)+len(m))
+	maps.Copy(vars, c.vars)
+	for k, v := range m {
+		vars["matrix."+k] = v
+	}
+	c.vars = vars
+	return c
+}
+
 // ---- expression evaluation -------------------------------------------------
 
 // rpcExprCtx is the context an `if:` expression is evaluated in.
@@ -758,7 +825,14 @@ func (p *rpcParser) parsePrimary() (any, error) {
 		if b, ok := p.ctx.bools[tok.text]; ok {
 			return b, nil
 		}
-		return p.ctx.vars[tok.text], nil
+		// A context the cell does not model is an error, never "": reading it as
+		// the empty string would let `github.repository == ''` (or any other
+		// unmodelled operand) steer the guard differently from a runner.
+		v, ok := p.ctx.vars[tok.text]
+		if !ok {
+			return nil, fmt.Errorf("context %q is not modelled by this guard", tok.text)
+		}
+		return v, nil
 	}
 	return nil, fmt.Errorf("unexpected token %q", tok.text)
 }
@@ -983,12 +1057,52 @@ func rpcExecScript(shell, script string, env map[string]string) rpcExecResult {
 	if v, ok := rpcExecCache.Load(cacheKey); ok {
 		return v.(rpcExecResult)
 	}
+	// The script runs twice: bare (an empty scratch directory, only the file
+	// variables) and runner-like (the documented runner variables, a checked-out
+	// workspace). A script whose verdict differs between the two reads runner
+	// state this guard can reproduce only in part, so it is refused rather than
+	// credited with the bare run's outcome.
+	bare := rpcExecOnce(argv, script, env, keys, false)
+	res := bare
+	if bare.why == "" {
+		runner := rpcExecOnce(argv, script, env, keys, true)
+		switch {
+		case runner.why != "":
+			res = runner
+		case runner.failed != bare.failed:
+			res = rpcExecResult{why: "the step script exits differently with and without the runner environment and a checked-out workspace, so its verdict depends on runner state this guard cannot reproduce"}
+		}
+	}
+	rpcExecCache.Store(cacheKey, res)
+	return res
+}
+
+// rpcExecOnce runs one step script once. runnerLike supplies the variables a
+// hosted runner sets (GITHUB_ACTIONS, CI, RUNNER_OS, GITHUB_WORKSPACE, a runner
+// HOME) and a workspace holding the files a checked-out repository has.
+func rpcExecOnce(argv []string, script string, env map[string]string, keys []string, runnerLike bool) rpcExecResult {
+	argv = append([]string(nil), argv...)
 	dir, err := os.MkdirTemp("", "rpc-step-")
 	if err != nil {
 		return rpcExecResult{why: "cannot create a scratch directory: " + err.Error()}
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
-	path := filepath.Join(dir, "step.sh")
+	scriptDir := dir
+	workDir := dir
+	home := dir
+	if runnerLike {
+		workDir = filepath.Join(dir, "workspace")
+		home = "/home/runner"
+		if err := os.MkdirAll(filepath.Join(workDir, ".git"), 0o755); err != nil {
+			return rpcExecResult{why: "cannot create the runner-like workspace: " + err.Error()}
+		}
+		for _, f := range []string{"go.mod", "go.sum", "package.json", "Makefile", "README.md"} {
+			if err := os.WriteFile(filepath.Join(workDir, f), nil, 0o644); err != nil {
+				return rpcExecResult{why: "cannot seed the runner-like workspace: " + err.Error()}
+			}
+		}
+	}
+	path := filepath.Join(scriptDir, "step.sh")
 	if err := os.WriteFile(path, []byte(script), 0o644); err != nil {
 		return rpcExecResult{why: "cannot write the step script: " + err.Error()}
 	}
@@ -996,14 +1110,19 @@ func rpcExecScript(shell, script string, env map[string]string) rpcExecResult {
 	tctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(tctx, argv[0], argv[1:]...)
-	cmd.Dir = dir
+	cmd.Dir = workDir
 	cmd.Env = []string{
 		"PATH=" + os.Getenv("PATH"),
-		"HOME=" + dir,
+		"HOME=" + home,
 		"GITHUB_STEP_SUMMARY=" + filepath.Join(dir, "summary"),
 		"GITHUB_OUTPUT=" + filepath.Join(dir, "output"),
 		"GITHUB_ENV=" + filepath.Join(dir, "env"),
 		"GITHUB_PATH=" + filepath.Join(dir, "path"),
+	}
+	if runnerLike {
+		cmd.Env = append(cmd.Env,
+			"GITHUB_ACTIONS=true", "CI=true", "RUNNER_OS=Linux", "RUNNER_ARCH=X64",
+			"RUNNER_TEMP="+filepath.Join(dir, "tmp"), "GITHUB_WORKSPACE="+workDir)
 	}
 	for _, k := range keys {
 		cmd.Env = append(cmd.Env, k+"="+env[k])
@@ -1020,7 +1139,6 @@ func rpcExecScript(shell, script string, env map[string]string) rpcExecResult {
 			res.why = "cannot start " + argv[0] + ": " + runErr.Error()
 		}
 	}
-	rpcExecCache.Store(cacheKey, res)
 	return res
 }
 
@@ -1134,24 +1252,18 @@ func rpcConclusions(t *testing.T, wf *rpcWorkflow, name string, ctx rpcExprCtx, 
 	var out []string
 	for _, id := range wf.jobIDs() {
 		j := wf.Jobs[id]
-		legs := 0
-		for _, n := range j.displayNames() {
-			if n == name {
-				legs++
+		// Each leg is evaluated with its own matrix values, so a step or condition
+		// that reads `matrix.*` is judged on what that leg's runner would see.
+		for _, combo := range j.legCombos(name) {
+			legCtx := ctx.withMatrix(combo)
+			conclusion := "skipped"
+			runs, err := rpcJobRunsE(j, legCtx)
+			switch {
+			case err != nil:
+				conclusion = rpcUnmodelled(fmt.Sprintf("job %s condition: %v", id, err))
+			case runs:
+				conclusion = rpcSimulateJob(t, wf, j, legCtx, mode)
 			}
-		}
-		if legs == 0 {
-			continue
-		}
-		conclusion := "skipped"
-		runs, err := rpcJobRunsE(j, ctx)
-		switch {
-		case err != nil:
-			conclusion = rpcUnmodelled(fmt.Sprintf("job %s condition: %v", id, err))
-		case runs:
-			conclusion = rpcSimulateJob(t, wf, j, ctx, mode)
-		}
-		for i := 0; i < legs; i++ {
 			out = append(out, conclusion)
 		}
 	}
@@ -1167,12 +1279,16 @@ func rpcStartedSuppliers(wf *rpcWorkflow, name string, ctx rpcExprCtx) (started 
 		if !rpcContains(j.displayNames(), name) {
 			continue
 		}
-		runs, err := rpcJobRunsE(j, ctx)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Sprintf("job %s of %s: its condition cannot be evaluated (%v)", id, wf.Path, err))
-		case runs:
-			started = append(started, id)
+		for _, combo := range j.legCombos(name) {
+			runs, err := rpcJobRunsE(j, ctx.withMatrix(combo))
+			switch {
+			case err != nil:
+				errs = append(errs, fmt.Sprintf("job %s of %s: its condition cannot be evaluated (%v)", id, wf.Path, err))
+			case runs:
+				if len(started) == 0 || started[len(started)-1] != id {
+					started = append(started, id)
+				}
+			}
 		}
 	}
 	return started, errs
