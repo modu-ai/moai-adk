@@ -1000,14 +1000,17 @@ var rpcOutcomeDiffFile = map[string]string{
 	"":             "README.md",
 }
 
-func rpcTriggerMatches(wf *rpcWorkflow, event, branch string) bool {
-	present, branches := wf.triggerBranches(event)
-	if !present {
-		return false
-	}
-	return len(branches) == 0 || rpcContains(branches, branch)
-}
-
+// rpcCheckRequiredNames fails CLOSED (sync-audit iter4 B3). A required name counts
+// as reported in a cell only when some workflow that subscribes to the event
+//
+//   - is started by every filter its trigger declares (rpcWorkflowAdmits: pull_request
+//     `types`, `branches`, `branches-ignore`, a tags-only push, `paths`,
+//     `paths-ignore`), evaluated against the representative event and diff; and
+//   - has a job publishing the name whose own `if:` evaluates true in the cell.
+//
+// Any restrictive filter, any unprovable condition and any glob the model cannot
+// read therefore leaves the name unreported and is a violation; nothing is
+// credited because a job of that display name merely exists.
 func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow, rc rpcRequiredChecks) []string {
 	t.Helper()
 	var v []string
@@ -1035,47 +1038,47 @@ func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow,
 				cell.classes = rpcOutcome(o.kind)
 			}
 			diff := rpcOutcomeDiffFile[o.kind]
+			// A workflow other than ci.yml classifies the diff with its own detect
+			// job, so the ci.yml classification failure does not carry over to it: it
+			// sees a concluded detect over the same (docs-only) diff.
+			extKind := o.kind
+			if extKind == "" {
+				extKind = "docs-only"
+			}
+			extCell := rpcCell{event: ec.event, detect: "success", classes: rpcOutcome(extKind)}
 			for _, name := range set {
 				reported := false
-				var skippedBy []string
+				var refused []string
 				for _, w := range append([]*rpcWorkflow{ci}, others...) {
-					if !rpcTriggerMatches(w, ec.event, ec.branch) {
+					if !w.trigger(ec.event).present {
 						continue
 					}
-					supplies := false
+					ctx := extCell.ctx()
 					if w == ci {
-						started, errs := rpcStartedSuppliers(ci, name, cell.ctx())
-						for _, e := range errs {
-							add("%s: %s", ec.label, e)
-						}
-						supplies = len(started) > 0
-					} else {
-						for _, id := range w.jobIDs() {
-							if rpcContains(w.Jobs[id].displayNames(), name) {
-								supplies = true
-							}
-						}
+						ctx = cell.ctx()
 					}
-					if !supplies {
+					started, errs := rpcStartedSuppliers(w, name, ctx)
+					for _, e := range errs {
+						add("%s x %s: %s", ec.label, o.label, e)
+					}
+					if len(started) == 0 {
 						continue
 					}
-					// F5: a workflow that supplies the name still publishes nothing
-					// when its own paths / paths-ignore filter skips this diff.
-					_, paths, ignore := w.triggerPathFilters(ec.event)
-					admitted, err := rpcPathsAdmit(paths, ignore, diff)
-					if err != nil {
-						add("%s: %s: %v", ec.label, w.Path, err)
+					admitted, why, err := rpcWorkflowAdmits(w, ec.event, ec.branch, diff)
+					switch {
+					case err != nil:
+						add("%s x %s: %s: %v", ec.label, o.label, w.Path, err)
+						refused = append(refused, w.Path+": "+err.Error())
+					case !admitted:
+						refused = append(refused, w.Path+": "+why)
+					default:
+						reported = true
 					}
-					if err != nil || !admitted {
-						skippedBy = append(skippedBy, w.Path)
-						continue
-					}
-					reported = true
 				}
 				if !reported && (o.kind != "" || !rpcFailClosedByAbsence[name]) {
 					why := ""
-					if len(skippedBy) > 0 {
-						why = fmt.Sprintf(" (supplied only by %v, whose %s paths / paths-ignore filter skips the diff {%s})", skippedBy, ec.event, diff)
+					if len(refused) > 0 {
+						why = fmt.Sprintf(" (a job publishing it starts only in a workflow the event does not start: %s)", strings.Join(refused, "; "))
 					}
 					add("%s x %s: required name %q is not reported by any job%s", ec.label, o.label, name, why)
 				}
@@ -1163,46 +1166,99 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 		}
 		t.Logf("control (a) observed red: %s", got[0])
 	})
-	// F5: a workflow that supplies a required name stops supplying it on a diff its
-	// own `paths:` / `paths-ignore:` filter skips. Each control edits the real
-	// workflow text (adds a pull_request path filter) and re-runs the guard.
+	// F5 / iter4 B3: a workflow that supplies a required name stops supplying it when
+	// its trigger does not start (paths, paths-ignore, types, branches,
+	// branches-ignore, a tags-only push) or when its supplying job's own `if:` is
+	// not true in the cell. Each control edits the real workflow text and re-runs
+	// the guard.
 	cqText := rpcReadRepoFile(t, rpcCodeQLWorkflowRel)
 	relText := rpcReadRepoFile(t, rpcReleaseWorkflowRel)
-	withFilter := func(t *testing.T, text, filter string) string {
-		t.Helper()
-		out := strings.Replace(text, "  pull_request:\n", "  pull_request:\n"+filter, 1)
-		if out == text {
-			t.Fatalf("control did not apply: no `  pull_request:` trigger to attach a filter to")
+	replaceOnce := func(old, repl string) func(*testing.T, string) string {
+		return func(t *testing.T, text string) string {
+			t.Helper()
+			out := strings.Replace(text, old, repl, 1)
+			if out == text {
+				t.Fatalf("control did not apply: %q is not in the workflow text", old)
+			}
+			return out
 		}
-		return out
 	}
-	pathsControls := []struct {
+	const prHead = "  pull_request:\n"
+	withFilter := func(filter string) func(*testing.T, string) string {
+		return replaceOnce(prHead, prHead+filter)
+	}
+	branchesToIgnore := func(list string) func(*testing.T, string) string {
+		return replaceOnce(prHead+"    branches: [main]", prHead+"    branches-ignore: "+list)
+	}
+	const (
+		anyNameCQ  = `pull_request to main x docs-only: required name "Analyze (Go) (go)"`
+		goCodeCQ   = `pull_request to main x go_code: required name "Analyze (Go) (go)"`
+		anyNameRel = `pull_request to main x docs-only: required name "Release PR Multi-OS Gate"`
+		anyNameCI  = `pull_request to main x docs-only: required name "Lint"`
+	)
+	cqMarkerIf := "    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'"
+	cqAnalyzeIf := "    if: >\n      needs.detect.outputs.go_code == 'true' ||\n      github.event_name == 'push' ||\n      github.event_name == 'schedule'\n"
+	relGateIf := "    needs: [full-matrix-test, detect-release]\n    if: always()\n"
+	triggerControls := []struct {
 		name     string
 		target   string // ci | codeql | release
-		filter   string
+		edit     func(*testing.T, string) string
 		wantCell string // substring of a violation; empty = the guard must stay clean
 	}{
-		{"codeql paths exclude docs", "codeql", "    paths:\n      - 'internal/**'\n", `pull_request to main x docs-only: required name "Analyze (Go) (go)"`},
-		{"codeql paths-ignore markdown", "codeql", "    paths-ignore:\n      - '**.md'\n", `pull_request to main x docs-only: required name "Analyze (Go) (go)"`},
-		{"codeql go-only paths skip a harness diff", "codeql", "    paths:\n      - '**/*.go'\n", `pull_request to main x harness-only: required name "Analyze (Go) (go)"`},
-		{"release gate behind a go-only paths filter", "release", "    paths:\n      - '**/*.go'\n", `pull_request to main x docs-only: required name "Release PR Multi-OS Gate"`},
-		{"ci behind a code-only paths filter", "ci", "    paths:\n      - 'internal/**'\n", `pull_request to main x docs-only: required name "Lint"`},
-		{"codeql paths admitting every file stays clean", "codeql", "    paths:\n      - '**'\n", ""},
-		{"codeql paths-ignore of an unrelated tree stays clean", "codeql", "    paths-ignore:\n      - 'docs-site/**'\n", ""},
+		{"codeql paths exclude docs", "codeql", withFilter("    paths:\n      - 'internal/**'\n"), anyNameCQ},
+		{"codeql paths-ignore markdown", "codeql", withFilter("    paths-ignore:\n      - '**.md'\n"), anyNameCQ},
+		{"codeql go-only paths skip a harness diff", "codeql", withFilter("    paths:\n      - '**/*.go'\n"), `pull_request to main x harness-only: required name "Analyze (Go) (go)"`},
+		{"release gate behind a go-only paths filter", "release", withFilter("    paths:\n      - '**/*.go'\n"), anyNameRel},
+		{"ci behind a code-only paths filter", "ci", withFilter("    paths:\n      - 'internal/**'\n"), anyNameCI},
+		{"codeql paths admitting every file stays clean", "codeql", withFilter("    paths:\n      - '**'\n"), ""},
+		{"codeql paths-ignore of an unrelated tree stays clean", "codeql", withFilter("    paths-ignore:\n      - 'docs-site/**'\n"), ""},
+
+		// iter4 B3 (N8): pull_request activity types.
+		{"N8 codeql pull_request types closed only", "codeql", withFilter("    types: [closed]\n"), anyNameCQ},
+		{"codeql pull_request types without synchronize", "codeql", withFilter("    types: [opened, reopened]\n"), anyNameCQ},
+		{"codeql pull_request types without opened", "codeql", withFilter("    types: [synchronize]\n"), anyNameCQ},
+		{"release gate types closed only", "release", replaceOnce("    types: [opened, synchronize, reopened, ready_for_review]", "    types: [closed]"), anyNameRel},
+		{"ci pull_request types closed only", "ci", withFilter("    types: [closed]\n"), anyNameCI},
+		{"codeql the default activity types spelled out stays clean", "codeql", withFilter("    types: [opened, synchronize, reopened]\n"), ""},
+		{"codeql types opened and synchronize only stays clean", "codeql", withFilter("    types: [opened, synchronize]\n"), ""},
+
+		// iter4 B3 (N10): branch filters.
+		{"N10 codeql branches-ignore main", "codeql", branchesToIgnore("[main]"), anyNameCQ},
+		{"release gate branches-ignore main", "release", branchesToIgnore("[main]"), anyNameRel},
+		{"ci branches-ignore main", "ci", branchesToIgnore("[main]"), anyNameCI},
+		{"codeql branches-ignore matched by a glob", "codeql", branchesToIgnore("['m*']"), anyNameCQ},
+		{"codeql branches names another branch", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: [develop]"), anyNameCQ},
+		{"codeql branches-ignore of another branch stays clean", "codeql", branchesToIgnore("[develop]"), ""},
+		{"codeql branches ** stays clean", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: ['**']"), ""},
+		{"codeql negated branch pattern is refused, not guessed", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: ['!main']"), anyNameCQ},
+		{"ci push narrowed to tags only", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    tags:\n      - 'v*'\n"), `push to ci/** x docs-only: required name "Lint"`},
+
+		// iter4 B3 (N9): the supplying job's own condition.
+		{"N9 codeql skip-marker if false", "codeql", replaceOnce(cqMarkerIf, "    if: ${{ false }}"), anyNameCQ},
+		{"codeql skip-marker gated on a different event", "codeql", replaceOnce(cqMarkerIf, "    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'schedule'"), anyNameCQ},
+		{"codeql analyze if false (go-code cell)", "codeql", replaceOnce(cqAnalyzeIf, "    if: ${{ false }}\n"), goCodeCQ},
+		{"release gate only on push", "release", replaceOnce(relGateIf, "    needs: [full-matrix-test, detect-release]\n    if: github.event_name == 'push'\n"), anyNameRel},
+		{"codeql skip-marker condition the model cannot evaluate", "codeql", replaceOnce(cqMarkerIf, "    if: contains(github.head_ref, 'docs')"), "its condition cannot be evaluated"},
+		// Matrix exclude: a leg the matrix removes publishes no check run.
+		{"codeql analyze matrix excludes its only leg", "codeql", replaceOnce("      matrix:\n        language: [go]\n", "      matrix:\n        language: [go]\n        exclude:\n          - language: go\n"), goCodeCQ},
+		{"codeql analyze matrix excludes an unrelated leg and stays clean", "codeql", replaceOnce("      matrix:\n        language: [go]\n", "      matrix:\n        language: [go]\n        exclude:\n          - language: rust\n"), ""},
+		{"a proven-true skip-marker publishes when the real job is off", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerIf, "    if: github.event_name == 'pull_request'")(t, replaceOnce(cqAnalyzeIf, "    if: ${{ false }}\n")(t, text))
+		}, ""},
 	}
-	for _, c := range pathsControls {
-		t.Run("control/paths filter/"+c.name, func(t *testing.T) {
+	for _, c := range triggerControls {
+		t.Run("control/trigger/"+c.name, func(t *testing.T) {
 			if !baselineClean {
 				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
 			}
 			ciT, cqT, relT := ciText, cqText, relText
 			switch c.target {
 			case "ci":
-				ciT = withFilter(t, ciText, c.filter)
+				ciT = c.edit(t, ciText)
 			case "codeql":
-				cqT = withFilter(t, cqText, c.filter)
+				cqT = c.edit(t, cqText)
 			case "release":
-				relT = withFilter(t, relText, c.filter)
+				relT = c.edit(t, relText)
 			}
 			got := rpcCheckRequiredNames(t, rpcParseWorkflow(t, rpcCIWorkflowRel, ciT), []*rpcWorkflow{
 				rpcParseWorkflow(t, rpcCodeQLWorkflowRel, cqT),
@@ -1210,7 +1266,7 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 			}, rc)
 			if c.wantCell == "" {
 				if len(got) != 0 {
-					t.Fatalf("a path filter that admits the diff was flagged: %s", got[0])
+					t.Fatalf("a trigger / condition that still publishes the name was flagged: %s", got[0])
 				}
 				return
 			}
@@ -1220,7 +1276,7 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 					return
 				}
 			}
-			t.Fatalf("path filter mutant not reported at %q; got %v", c.wantCell, got)
+			t.Fatalf("mutant not reported at %q; got %v", c.wantCell, got)
 		})
 	}
 	t.Run("control/glob matcher", func(t *testing.T) {

@@ -721,6 +721,16 @@ func TestCleanupRequeriesBeforeDelete(t *testing.T) {
 // pending weekly cleanup), and safety between them rests on the re-query before
 // every delete plus an idempotent delete.
 
+// rdcYAMLNode parses a YAML fragment into its content node (a control helper).
+func rdcYAMLNode(t *testing.T, text string) yaml.Node {
+	t.Helper()
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &doc); err != nil || len(doc.Content) == 0 {
+		t.Fatalf("control text does not parse: %v", err)
+	}
+	return *doc.Content[0]
+}
+
 // rdcGroupKey normalizes a concurrency group name for comparison.
 func rdcGroupKey(g string) string { return strings.ToLower(strings.TrimSpace(g)) }
 
@@ -732,33 +742,64 @@ func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 	add := func(format string, a ...any) {
 		v = append(v, "CLEANUP_CONCURRENCY_VIOLATION: "+fmt.Sprintf(format, a...))
 	}
-	groups := map[string]string{}
+	// Every concurrency group a workflow declares, at workflow level AND on any job
+	// (a job-level `concurrency:` joins the same repository-wide group namespace,
+	// so a cleanup JOB carrying the drafter's group collides exactly like a shared
+	// workflow-level group would).
+	type declared struct {
+		where, group string
+		cancel       any
+	}
+	byPath := map[string][]declared{}
 	for _, w := range []*rpcWorkflow{cleanup, drafter} {
-		g := w.Concurrency.Group
-		if g == "" {
+		if w.Concurrency.Group == "" {
 			add("%s declares no concurrency group", w.Path)
-			continue
+		} else {
+			byPath[w.Path] = append(byPath[w.Path], declared{w.Path, w.Concurrency.Group, w.Concurrency.CancelInProgress})
 		}
-		if strings.Contains(g, "${{") {
-			add("%s: the group key %q contains an expression; it must be a plain literal, because any ref- or run-dependent value (github.ref, github.run_id, ...) splits the group per ref or per run", w.Path, g)
+		for _, id := range w.jobIDs() {
+			n := w.Jobs[id].Concurrency
+			switch n.Kind {
+			case yaml.ScalarNode:
+				byPath[w.Path] = append(byPath[w.Path], declared{fmt.Sprintf("%s job %q", w.Path, id), n.Value, false})
+			case yaml.MappingNode:
+				var jc struct {
+					Group            string `yaml:"group"`
+					CancelInProgress any    `yaml:"cancel-in-progress"`
+				}
+				if err := n.Decode(&jc); err != nil {
+					add("%s job %q: its concurrency block cannot be read: %v", w.Path, id, err)
+					continue
+				}
+				byPath[w.Path] = append(byPath[w.Path], declared{fmt.Sprintf("%s job %q", w.Path, id), jc.Group, jc.CancelInProgress})
+			}
 		}
-		var seen []string
-		for _, ref := range []string{"refs/heads/main", "refs/heads/release/v3.2.0"} {
-			seen = append(seen, strings.ReplaceAll(g, "${{ github.ref }}", ref))
-		}
-		if seen[0] != seen[1] {
-			add("%s: the group key varies with github.ref (%q vs %q), so a dispatched run on another ref escapes the group", w.Path, seen[0], seen[1])
-		}
-		groups[w.Path] = g
-		if c, ok := w.Concurrency.CancelInProgress.(bool); !ok || c {
-			add("%s: cancel-in-progress is %v, want false on BOTH sides", w.Path, w.Concurrency.CancelInProgress)
+		for _, d := range byPath[w.Path] {
+			g := d.group
+			if strings.Contains(g, "${{") {
+				add("%s: the group key %q contains an expression; it must be a plain literal, because any ref- or run-dependent value (github.ref, github.run_id, ...) splits the group per ref or per run", d.where, g)
+			}
+			var seen []string
+			for _, ref := range []string{"refs/heads/main", "refs/heads/release/v3.2.0"} {
+				seen = append(seen, strings.ReplaceAll(g, "${{ github.ref }}", ref))
+			}
+			if seen[0] != seen[1] {
+				add("%s: the group key varies with github.ref (%q vs %q), so a dispatched run on another ref escapes the group", d.where, seen[0], seen[1])
+			}
+			if c, ok := d.cancel.(bool); !ok || c {
+				add("%s: cancel-in-progress is %v, want false on BOTH sides", d.where, d.cancel)
+			}
 		}
 	}
 	// Group names are compared as GitHub compares them: case-insensitively, with
 	// surrounding whitespace dropped (sync-audit iter4 B4: `Release-Drafter-X` vs
 	// `release-drafter-x` is ONE group to GitHub and two to a byte comparison).
-	if len(groups) == 2 && rdcGroupKey(groups[cleanup.Path]) == rdcGroupKey(groups[drafter.Path]) {
-		add("the two workflows share the group %q (compared case-insensitively, as GitHub does): GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups", groups[cleanup.Path])
+	for _, c := range byPath[cleanup.Path] {
+		for _, d := range byPath[drafter.Path] {
+			if rdcGroupKey(c.group) == rdcGroupKey(d.group) {
+				add("%s and %s share the group %q (compared case-insensitively, as GitHub does): GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups", c.where, d.where, c.group)
+			}
+		}
 	}
 	del := rdcStepByName(cleanup, "Delete stale drafts")
 	if del == nil {
@@ -915,6 +956,22 @@ func TestDrafterCleanupConcurrency(t *testing.T) {
 		}},
 		{"groups equal apart from surrounding whitespace", false, func(t *testing.T, c, d *rpcWorkflow) {
 			c.Concurrency.Group = "  " + d.Concurrency.Group + " "
+		}},
+		// A job-level group joins the same repository-wide namespace.
+		{"cleanup JOB carries the drafter's group", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "group: "+d.Concurrency.Group+"\ncancel-in-progress: false\n")
+		}},
+		{"cleanup JOB carries the drafter's group in another case", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "group: "+strings.ToUpper(d.Concurrency.Group)+"\ncancel-in-progress: false\n")
+		}},
+		{"cleanup JOB carries the drafter's group as a scalar", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, d.Concurrency.Group+"\n")
+		}},
+		{"cleanup JOB group is ref-keyed", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "group: x-${{ github.ref }}\ncancel-in-progress: false\n")
+		}},
+		{"cleanup JOB cancels in progress", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Jobs["cleanup"].Concurrency = rdcYAMLNode(t, "group: cleanup-job-only\ncancel-in-progress: true\n")
 		}},
 		{"cleanup group carries github.ref", false, func(t *testing.T, c, d *rpcWorkflow) {
 			c.Concurrency.Group = "release-drafter-cleanup-${{ github.ref }}"

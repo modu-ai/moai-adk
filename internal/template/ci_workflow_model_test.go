@@ -88,6 +88,7 @@ type rpcJob struct {
 	Defaults       rpcDefaults    `yaml:"defaults"`
 	// ContinueOnError is the raw job-level `continue-on-error:` value.
 	ContinueOnError any       `yaml:"continue-on-error"`
+	Concurrency     yaml.Node `yaml:"concurrency"`
 	Container       yaml.Node `yaml:"container"`
 	Services        yaml.Node `yaml:"services"`
 	Strategy        struct {
@@ -188,56 +189,15 @@ func (j *rpcJob) needsList() []string {
 	}
 }
 
-// triggerBranches reports whether the workflow subscribes to an event and the
-// branch filter it declares (empty = no filter).
-func (w *rpcWorkflow) triggerBranches(event string) (bool, []string) {
-	switch w.On.Kind {
-	case yaml.ScalarNode:
-		return w.On.Value == event, nil
-	case yaml.SequenceNode:
-		for _, c := range w.On.Content {
-			if c.Value == event {
-				return true, nil
-			}
-		}
-		return false, nil
-	case yaml.MappingNode:
-		for i := 0; i+1 < len(w.On.Content); i += 2 {
-			if w.On.Content[i].Value != event {
-				continue
-			}
-			val := w.On.Content[i+1]
-			if val.Kind != yaml.MappingNode {
-				return true, nil
-			}
-			for k := 0; k+1 < len(val.Content); k += 2 {
-				if val.Content[k].Value != "branches" {
-					continue
-				}
-				bn := val.Content[k+1]
-				if bn.Kind == yaml.ScalarNode {
-					return true, []string{bn.Value}
-				}
-				out := make([]string, 0, len(bn.Content))
-				for _, c := range bn.Content {
-					out = append(out, c.Value)
-				}
-				return true, out
-			}
-			return true, nil
-		}
-	}
-	return false, nil
+// rpcTrigger is the filter set a workflow declares for one event.
+type rpcTrigger struct {
+	present                                                               bool
+	types, branches, branchesIgnore, tags, tagsIgnore, paths, pathsIgnore []string
 }
 
-// triggerPathFilters returns the `paths:` and `paths-ignore:` filters an event
-// declares (present=false when the workflow does not subscribe to the event).
-// GitHub applies them only to push and pull_request events.
-func (w *rpcWorkflow) triggerPathFilters(event string) (present bool, paths, ignore []string) {
-	if w.On.Kind != yaml.MappingNode {
-		present, _ = w.triggerBranches(event)
-		return present, nil, nil
-	}
+// trigger returns the filters the workflow declares for an event (present=false
+// when it does not subscribe to the event).
+func (w *rpcWorkflow) trigger(event string) rpcTrigger {
 	list := func(n *yaml.Node) []string {
 		if n.Kind == yaml.ScalarNode {
 			return []string{n.Value}
@@ -248,25 +208,120 @@ func (w *rpcWorkflow) triggerPathFilters(event string) (present bool, paths, ign
 		}
 		return out
 	}
-	for i := 0; i+1 < len(w.On.Content); i += 2 {
-		if w.On.Content[i].Value != event {
-			continue
-		}
-		val := w.On.Content[i+1]
-		if val.Kind != yaml.MappingNode {
-			return true, nil, nil
-		}
-		for k := 0; k+1 < len(val.Content); k += 2 {
-			switch val.Content[k].Value {
-			case "paths":
-				paths = list(val.Content[k+1])
-			case "paths-ignore":
-				ignore = list(val.Content[k+1])
+	switch w.On.Kind {
+	case yaml.ScalarNode:
+		return rpcTrigger{present: w.On.Value == event}
+	case yaml.SequenceNode:
+		for _, c := range w.On.Content {
+			if c.Value == event {
+				return rpcTrigger{present: true}
 			}
 		}
-		return true, paths, ignore
+	case yaml.MappingNode:
+		for i := 0; i+1 < len(w.On.Content); i += 2 {
+			if w.On.Content[i].Value != event {
+				continue
+			}
+			tr := rpcTrigger{present: true}
+			val := w.On.Content[i+1]
+			if val.Kind != yaml.MappingNode {
+				return tr
+			}
+			for k := 0; k+1 < len(val.Content); k += 2 {
+				v := list(val.Content[k+1])
+				switch val.Content[k].Value {
+				case "types":
+					tr.types = v
+				case "branches":
+					tr.branches = v
+				case "branches-ignore":
+					tr.branchesIgnore = v
+				case "tags":
+					tr.tags = v
+				case "tags-ignore":
+					tr.tagsIgnore = v
+				case "paths":
+					tr.paths = v
+				case "paths-ignore":
+					tr.pathsIgnore = v
+				}
+			}
+			return tr
+		}
 	}
-	return false, nil, nil
+	return rpcTrigger{}
+}
+
+// rpcPullRequestMustFireOn are the activity types a required check needs on a
+// pull_request: the check must be published when the PR is opened and again for
+// every push to it. (`reopened` is not needed: the head commit of a reopened PR
+// already carries its check runs; `ready_for_review` only matters for drafts,
+// which the default types already cover.) An absent `types:` list means GitHub's
+// defaults (opened, synchronize, reopened), which include both.
+var rpcPullRequestMustFireOn = []string{"opened", "synchronize"}
+
+// rpcWorkflowAdmits reports whether an event of the representative shape starts
+// the workflow: its `types:` (pull_request), `branches:` / `branches-ignore:`
+// (the base branch of a pull_request, the pushed branch of a push), `tags:`-only
+// push filters, and `paths:` / `paths-ignore:` (evaluated against a diff
+// consisting of exactly {file}). why names the first filter that refuses the event;
+// a pattern the glob model cannot read is returned as an error, never guessed at.
+func rpcWorkflowAdmits(w *rpcWorkflow, event, branch, file string) (admitted bool, why string, err error) {
+	tr := w.trigger(event)
+	if !tr.present {
+		return false, "it does not subscribe to " + event, nil
+	}
+	if event == "pull_request" && len(tr.types) > 0 {
+		for _, need := range rpcPullRequestMustFireOn {
+			if !rpcContains(tr.types, need) {
+				return false, fmt.Sprintf("its pull_request types %v omit %q, so the check is not published when a PR is opened or pushed to", tr.types, need), nil
+			}
+		}
+	}
+	if event == "push" && len(tr.tags)+len(tr.tagsIgnore) > 0 && len(tr.branches)+len(tr.branchesIgnore) == 0 {
+		return false, "its push trigger filters on tags only, so a branch push does not start it", nil
+	}
+	match := func(patterns []string, s string) (bool, error) {
+		for _, p := range patterns {
+			if p == s {
+				return true, nil
+			}
+			ok, err := rpcGlobMatch(p, s)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	if len(tr.branches) > 0 {
+		ok, err := match(tr.branches, branch)
+		if err != nil {
+			return false, "", err
+		}
+		if !ok {
+			return false, fmt.Sprintf("its %s branches %v do not include %q", event, tr.branches, branch), nil
+		}
+	}
+	if len(tr.branchesIgnore) > 0 {
+		ok, err := match(tr.branchesIgnore, branch)
+		if err != nil {
+			return false, "", err
+		}
+		if ok {
+			return false, fmt.Sprintf("its %s branches-ignore %v exclude %q", event, tr.branchesIgnore, branch), nil
+		}
+	}
+	ok, err := rpcPathsAdmit(tr.paths, tr.pathsIgnore, file)
+	if err != nil {
+		return false, "", err
+	}
+	if !ok {
+		return false, fmt.Sprintf("its %s paths / paths-ignore filter skips the diff {%s}", event, file), nil
+	}
+	return true, "", nil
 }
 
 // rpcGlobMatch matches a repo-relative file path against a workflow / paths-filter
@@ -368,6 +423,30 @@ func rpcMatrixCombos(m map[string]any) []map[string]string {
 			}
 			combos = next
 		}
+		// `exclude` removes the axis combinations it matches (every key/value of an
+		// exclude entry equal), before any `include` is applied; sync-audit iter4
+		// scan: a matrix that excludes its only leg publishes no check at all.
+		excl, _ := m["exclude"].([]any)
+		for _, raw := range excl {
+			ex, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			var kept []map[string]string
+			for _, c := range combos {
+				match := true
+				for k, v := range ex {
+					if c[k] != fmt.Sprint(v) {
+						match = false
+						break
+					}
+				}
+				if !match {
+					kept = append(kept, c)
+				}
+			}
+			combos = kept
+		}
 	}
 	incs, _ := m["include"].([]any)
 	axisSet := map[string]bool{}
@@ -424,6 +503,9 @@ func (j *rpcJob) displayNames() []string {
 	}
 	combos := rpcMatrixCombos(j.Strategy.Matrix)
 	if len(combos) == 0 {
+		if _, scalar := j.Strategy.Matrix[rpcMatrixScalarKey]; len(j.Strategy.Matrix) > 0 && !scalar {
+			return nil // a declared matrix whose every leg is excluded publishes nothing
+		}
 		return []string{name}
 	}
 	usesExpr := rpcMatrixRefRe.MatchString(name)
