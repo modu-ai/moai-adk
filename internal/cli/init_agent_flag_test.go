@@ -1,14 +1,10 @@
 package cli
 
-// SPEC-CODEX-WIRING-001 M2 — the `moai init --llm claude|codex|both` flag
-// (REQ-CW-001) and its init-tail wiring (D3 semantics):
-//
-//   - claude / absent → today's behavior byte-for-byte (no .codex files)
-//   - codex           → .mcp.json provisioning treated as declined + Codex wiring
-//   - both            → .mcp.json provisioning + Codex wiring
-//
-// The flag beats the wizard answer (plan D3); validation is fail-loud with the
-// closed set named (autonomy-tier pattern).
+// The `moai init --llm` flag after the general codex execution surface removal
+// (card t1909): the harness deployment is claude-only. The flag stays for
+// script compatibility, its usage documents claude as the only value, and
+// validateInitFlags rejects every other value fail-loud. An init run — flag or
+// not — leaves no Codex wiring files behind.
 
 import (
 	"os"
@@ -17,27 +13,28 @@ import (
 	"testing"
 )
 
-// TestInitAgentFlag_RegisteredWithClosedSet verifies the flag exists on the
-// production initCmd and its usage names all three values (AC-CW-001's
-// `moai init --help | grep -- '--llm'` contract).
-func TestInitAgentFlag_RegisteredWithClosedSet(t *testing.T) {
+// TestInitAgentFlag_RegisteredClaudeOnly verifies the flag exists on the
+// production initCmd and its usage names claude as the only deployable value.
+func TestInitAgentFlag_RegisteredClaudeOnly(t *testing.T) {
 	flag := initCmd.Flags().Lookup("llm")
 	if flag == nil {
 		t.Fatal("--llm flag not registered on initCmd")
 	}
-	for _, want := range []string{"claude", "gpt", "both"} {
-		if !strings.Contains(flag.Usage, want) {
-			t.Errorf("--llm usage %q does not document %q (AC-CW-001)", flag.Usage, want)
+	if !strings.Contains(flag.Usage, "claude") {
+		t.Errorf("--llm usage %q does not document the claude value", flag.Usage)
+	}
+	for _, stale := range []string{"gpt, or both", "codex|both"} {
+		if strings.Contains(flag.Usage, stale) {
+			t.Errorf("--llm usage %q still advertises the removed selection %q", flag.Usage, stale)
 		}
 	}
 }
 
-// TestValidateInitFlags_AgentClosedSet verifies the fail-loud closed set
-// (AC-CW-001 second clause): valid values and empty pass; an invalid value
-// exits with a diagnostic naming the valid values.
+// TestValidateInitFlags_AgentClosedSet verifies the fail-loud claude-only
+// closed set: empty and claude pass; the removed gpt/both/codex values and any
+// unknown value exit with a diagnostic naming claude.
 func TestValidateInitFlags_AgentClosedSet(t *testing.T) {
-	validCases := []string{"", "claude", "gpt", "both"}
-	for _, val := range validCases {
+	for _, val := range []string{"", "claude"} {
 		cmd := newInitTestCmd()
 		if val != "" {
 			if err := cmd.Flags().Set("llm", val); err != nil {
@@ -49,66 +46,40 @@ func TestValidateInitFlags_AgentClosedSet(t *testing.T) {
 		}
 	}
 
-	cmd := newInitTestCmd()
-	if err := cmd.Flags().Set("llm", "gemini"); err != nil {
-		t.Fatal(err)
-	}
-	err := validateInitFlags(cmd, nil)
-	if err == nil {
-		t.Fatal("--llm gemini must fail validation (fail-loud closed set)")
-	}
-	for _, want := range []string{"claude", "gpt", "both"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("validation error %q does not list valid value %q", err.Error(), want)
+	for _, val := range []string{"gemini", "gpt", "both", "codex"} {
+		cmd := newInitTestCmd()
+		if err := cmd.Flags().Set("llm", val); err != nil {
+			t.Fatal(err)
+		}
+		err := validateInitFlags(cmd, nil)
+		if err == nil {
+			t.Errorf("--llm %s must fail validation (claude-only closed set, card t1909)", val)
+			continue
+		}
+		if !strings.Contains(err.Error(), "claude") {
+			t.Errorf("validation error %q does not name the claude-only set", err.Error())
 		}
 	}
 }
 
-// TestRunInit_AgentCodexWiresAndSkipsMCPProvisioning verifies the codex
-// semantics end to end through runInit: .codex wiring files exist, and the
-// MCP provisioning call site treats codex as declined (D3).
-func TestRunInit_AgentCodexWiresAndSkipsMCPProvisioning(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
-
-	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
-		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
-			t.Errorf("%s missing after --llm gpt init: %v", rel, err)
-		}
-	}
-}
-
-// TestRunInit_AgentBothWiresBothSides verifies the both semantics: Codex
-// wiring files AND the trust sidecar exist (AC-CW-005; sidecar assertion per
-// SPEC-CODEX-SIDECAR-GUARD-001).
-func TestRunInit_AgentBothWiresBothSides(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "both"})
-
-	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
-		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
-			t.Errorf("%s missing after --llm both init: %v", rel, err)
-		}
-	}
-}
-
-// TestRunInit_AgentAbsentLeavesNoCodexFiles verifies the backward-compat
-// contract (AC-CW-004): with no --llm flag, no .codex WIRING is created.
-// The .codex/ directory itself may exist — the template tree ships
-// .codex/agents/** (M5 agentemit artifacts) — but the wiring files
-// (hooks.json, config.toml) and the trust sidecar must be absent.
+// TestRunInit_AgentAbsentLeavesNoCodexFiles verifies the flag-absent
+// contract: no .codex WIRING is created. The .codex/ directory itself may
+// exist — the template tree ships .codex/agents/** (M5 agentemit artifacts) —
+// but the wiring files (hooks.json, config.toml) and the trust sidecar must
+// be absent.
 func TestRunInit_AgentAbsentLeavesNoCodexFiles(t *testing.T) {
 	projectDir, _ := runInitForAutonomy(t, nil, nil)
 
 	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
 		if _, err := os.Stat(filepath.Join(projectDir, rel)); err == nil {
-			t.Errorf("%s created by a flag-absent init (AC-CW-004 violation)", rel)
+			t.Errorf("%s created by a flag-absent init", rel)
 		}
 	}
 }
 
 // TestRunInit_AgentClaudeLeavesNoCodexFiles verifies --llm claude equals
-// flag-absent behavior (REQ-CW-001): neither the Codex wiring files nor the
-// trust sidecar is created (sidecar assertion per
-// SPEC-CODEX-SIDECAR-GUARD-001).
+// flag-absent behavior: neither the Codex wiring files nor the trust sidecar
+// is created (sidecar assertion per SPEC-CODEX-SIDECAR-GUARD-001).
 func TestRunInit_AgentClaudeLeavesNoCodexFiles(t *testing.T) {
 	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "claude"})
 
@@ -119,45 +90,15 @@ func TestRunInit_AgentClaudeLeavesNoCodexFiles(t *testing.T) {
 	}
 }
 
-// TestRunInit_CodexProvisioningDeclineIsolated verifies the D3 isolation: the
-// decision lives in one place — resolveAgentWiring(cmd) — so the codex decline
-// of the .mcp.json provisioning call is a one-line reversible delta.
-func TestRunInit_CodexProvisioningDeclineIsolated(t *testing.T) {
-	cmd := newInitTestCmd()
-	if err := cmd.Flags().Set("llm", "gpt"); err != nil {
-		t.Fatal(err)
-	}
-	if w := resolveAgentWiring(cmd); w != agentWiringGPT {
-		t.Errorf("resolveAgentWiring(codex) = %v, want %v", w, agentWiringGPT)
-	}
-	if err := cmd.Flags().Set("llm", "both"); err != nil {
-		t.Fatal(err)
-	}
-	if w := resolveAgentWiring(cmd); w != agentWiringBoth {
-		t.Errorf("resolveAgentWiring(both) = %v, want %v", w, agentWiringBoth)
-	}
-	cmd2 := newInitTestCmd()
-	if w := resolveAgentWiring(cmd2); w != agentWiringClaude {
-		t.Errorf("resolveAgentWiring(absent) = %v, want %v (default claude)", w, agentWiringClaude)
-	}
-	if err := cmd2.Flags().Set("llm", "claude"); err != nil {
-		t.Fatal(err)
-	}
-	if w := resolveAgentWiring(cmd2); w != agentWiringClaude {
-		t.Errorf("resolveAgentWiring(claude) = %v, want %v", w, agentWiringClaude)
-	}
-}
-
-// TestRunInit_CallsCodexWiring is the reachability guard (source inspection,
-// TestRunInit_CallsMCPProvisioning pattern): runInit must call the codex
-// wiring helper adjacent to provisionMCPEntryUnlessDeclined.
-func TestRunInit_CallsCodexWiring(t *testing.T) {
+// TestRunInit_NeverCallsCodexWiring is the reachability guard (source
+// inspection, the inverted TestRunInit_CallsCodexWiring): runInit must NOT
+// call the codex wiring helper — the gpt|both selection that drove it is gone.
+func TestRunInit_NeverCallsCodexWiring(t *testing.T) {
 	src, err := os.ReadFile("init.go")
 	if err != nil {
 		t.Fatalf("read init.go: %v", err)
 	}
-	body := string(src)
-	if !strings.Contains(body, "wireCodexUnlessClaude(") {
-		t.Error("runInit must call wireCodexUnlessClaude — without it the --llm gpt|both selection is dropped")
+	if strings.Contains(string(src), "wireCodexUnlessClaude(") {
+		t.Error("init.go still calls wireCodexUnlessClaude — the general codex wiring was removed (card t1909)")
 	}
 }

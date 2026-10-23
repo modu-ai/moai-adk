@@ -16,9 +16,20 @@ on:
 permissions:
   contents: read
 
+# Own ref-independent literal group, different from release-drafter-cleanup.yml's
+# (SPEC-RELEASE-PIPELINE-001 REQ-RPC-012, amended v0.8.0). GitHub keeps one
+# running and one pending run per group, and a newer pending run replaces the
+# older pending one, so a group shared with the cleanup would let a drafter run
+# replace the pending weekly cleanup. The key must not vary with github.ref (a
+# dispatched drafter on any ref must land in the same group), and
+# cancel-in-progress stays false. Trade-off, recorded in both workflows
+# (plan.md B6): rapid main pushes queue drafter updates serially within this
+# group instead of cancelling the older run, and the drafter and the cleanup may
+# run at the same time, with the cleanup's per-tag re-query plus idempotent
+# delete carrying the safety between them.
 concurrency:
-  group: release-drafter-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-drafter-mutations
+  cancel-in-progress: false
 
 jobs:
   update_release_draft:

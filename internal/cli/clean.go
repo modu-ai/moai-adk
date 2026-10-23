@@ -23,7 +23,6 @@ import (
 func newCleanCmd() *cobra.Command {
 	var force bool
 	var home bool
-	var codexSkills bool
 	var reportsArchive bool
 	var reportsArchiveDays int
 	var auditLogs bool
@@ -38,7 +37,7 @@ Default: dry-run mode (no actual deletion). Use --force to actually delete.
 
 retention_days is read from .moai/config/sections/state.yaml.
 
-Exactly one scope is cleaned per invocation. --home, --codex-skills,
+Exactly one scope is cleaned per invocation. --home,
 --reports-archive, --audit-logs and --session-state select different files
 and may not be combined.
 
@@ -50,15 +49,6 @@ directory under ~/.moai to mode 0700. Profiles unused for 90 days and byte-ident
 plugin trees are reported but never deleted automatically. Releases, root
 logs/, and backups/removed-* retain the existing home-retention policy. This
 scope touches only ~/.moai — ~/.claude is never modified.
-
-With --codex-skills, remove ghost [[skills.config]] registrations from
-~/.codex/config.toml (or $CODEX_HOME/config.toml) — entries whose declared
-path is provably absent. This scope MODIFIES ~/.codex/config.toml. An entry
-is kept whenever its absence cannot be proven: a relative or oddly-formed
-path, an unresolvable home, a stat that did not complete, a path that
-resolves, or a line range holding anything the parser did not recognise.
-Under --force the file is backed up first and the backup path and sha256 are
-reported.
 
 With --reports-archive, move aging evidence directories out of
 .moai/reports/ into .moai/reports/archive/<YYYY-MM>/ (move-only — nothing is
@@ -81,14 +71,11 @@ auto path alone and never makes a CLI invocation mutate.`,
 			// Status output routes through the Printer to stderr
 			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
 			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
-			if countScopes(home, codexSkills, reportsArchive, auditLogs, sessionState) > 1 {
-				return fmt.Errorf("--home, --codex-skills, --reports-archive, --audit-logs and --session-state select different scopes; pass exactly one")
+			if countScopes(home, reportsArchive, auditLogs, sessionState) > 1 {
+				return fmt.Errorf("--home, --reports-archive, --audit-logs and --session-state select different scopes; pass exactly one")
 			}
 			if reportsArchive {
 				return runCleanReportsArchive(p, force, reportsArchiveDays)
-			}
-			if codexSkills {
-				return runCleanCodexSkills(p, force)
 			}
 			if home {
 				return runCleanHome(p, force)
@@ -105,7 +92,6 @@ auto path alone and never makes a CLI invocation mutate.`,
 
 	cmd.Flags().BoolVar(&force, "force", false, "Actually delete files (default: dry-run)")
 	cmd.Flags().BoolVar(&home, "home", false, "Clean the ~/.moai home directory (allowlist-only; dry-run by default)")
-	cmd.Flags().BoolVar(&codexSkills, "codex-skills", false, "Remove provably-absent [[skills.config]] entries from ~/.codex/config.toml (dry-run by default)")
 	cmd.Flags().BoolVar(&reportsArchive, "reports-archive", false, "Move aging evidence directories from .moai/reports/ into archive/<YYYY-MM>/ (move-only; dry-run by default)")
 	cmd.Flags().IntVar(&reportsArchiveDays, "reports-archive-days", config.DefaultReportsArchiveRetentionDays, "Retention window in days for --reports-archive candidates")
 	cmd.Flags().BoolVar(&auditLogs, "audit-logs", false, "Run the audit-log rotator over .moai/logs/ (dry-run by default; mutates only with --apply)")

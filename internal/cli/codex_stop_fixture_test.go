@@ -13,10 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/modu-ai/moai-adk/internal/codexadapter"
-	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 // stopFixture is a scratch git project: go.mod + main.go, HEAD a sync-phase
@@ -118,75 +114,10 @@ func (f *stopFixture) setFakeGo(t *testing.T, vetExit int) {
 	}
 }
 
-// enableReviewGates writes the project's review-gate switches (git-ignored).
-// The primary_scope restore rides along: these fixtures pin review-path
-// mechanics (receipts, Claude/Codex parity, budgets), and the distributed
-// primary_scope default now skips a primary-checkout tree session before any
-// of that runs (SPEC-CODEX-GATE-SCOPING-001 REQ-CGSC-002 / REQ-CGSC-004).
-func (f *stopFixture) enableReviewGates(t *testing.T, codexGate, multiGate bool) {
-	t.Helper()
-	b := func(v bool) string {
-		if v {
-			return "true"
-		}
-		return "false"
-	}
-	f.write(t, ".moai/config/sections/workflow.yaml",
-		"workflow:\n  codex:\n    review_gate:\n      enabled: "+b(codexGate)+"\n      primary_scope: review\n  multi:\n    review_gate:\n      enabled: "+b(multiGate)+"\n")
-}
-
 // dirty leaves an uncommitted, reviewable change in the tree.
 func (f *stopFixture) dirty(t *testing.T, content string) {
 	t.Helper()
 	f.write(t, "extra.go", "package main\n\n// "+content+"\n")
-}
-
-// syncGateEnv is the from-scratch environment of the sync-gate child. The
-// pinned GIT_CONFIG_GLOBAL passes through when the process has one, so the child
-// never reads the operator's real global git config (card t1801).
-func syncGateEnv(path, root string, extra ...string) []string {
-	env := []string{"PATH=" + path, "HOME=" + os.Getenv("HOME"), "CLAUDE_PROJECT_DIR=" + root}
-	if v, ok := os.LookupEnv("GIT_CONFIG_GLOBAL"); ok {
-		env = append(env, "GIT_CONFIG_GLOBAL="+v)
-	}
-	return append(env, extra...)
-}
-
-// syncGateOutput runs the sync-gate child; a test swaps it to observe the
-// command (and so its Env) that runClaudeSyncGate built.
-var syncGateOutput = func(cmd *exec.Cmd) ([]byte, error) { return cmd.Output() }
-
-// runClaudeSyncGate runs the distributed Claude sync-gate script, unmodified,
-// on the fixture and returns its normalized decision.
-func (f *stopFixture) runClaudeSyncGate(t *testing.T, payload string, env ...string) codexadapter.Decision {
-	t.Helper()
-	script, err := filepath.Abs(filepath.Join("..", "template", "templates", ".claude", "hooks", "moai", "sync-phase-quality-gate.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", script)
-	cmd.Dir = f.root
-	cmd.Env = syncGateEnv(f.path, f.root, env...)
-	cmd.Stdin = strings.NewReader(payload)
-	out, err := syncGateOutput(cmd)
-	if err != nil {
-		t.Fatalf("claude sync gate: %v\n%s", err, out)
-	}
-	if strings.Contains(string(out), `"decision":"block"`) {
-		return codexadapter.DecisionDeny
-	}
-	return codexadapter.DecisionAllow
-}
-
-func stopInput(session string, active bool) *hook.HookInput {
-	return &hook.HookInput{HookEventName: string(hook.EventStop), SessionID: session, StopHookActive: active}
-}
-
-func claudeDecision(out *hook.HookOutput) codexadapter.Decision {
-	if out != nil && out.Decision == hook.DecisionBlock {
-		return codexadapter.DecisionDeny
-	}
-	return codexadapter.DecisionAllow
 }
 
 // sinkRecords now resolves to the package-level helper in
@@ -200,19 +131,4 @@ func fakeCodexVersion(t *testing.T, v string) {
 	prev := codexVersionProbe
 	codexVersionProbe = func(context.Context, string) (string, error) { return v, nil }
 	t.Cleanup(func() { codexVersionProbe = prev })
-}
-
-// wideStopBudget widens every member's internal budget for a decision test,
-// so a loaded machine cannot turn it into a timing test. The declared budgets
-// are measured by the AC-HPR-016 timing leg instead.
-func wideStopBudget(int) time.Duration { return time.Minute }
-
-func countDiscards(recs []codexadapter.Discard, keyPart string) int {
-	n := 0
-	for _, d := range recs {
-		if strings.Contains(d.Key, keyPart) {
-			n++
-		}
-	}
-	return n
 }
