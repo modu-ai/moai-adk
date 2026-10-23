@@ -14,7 +14,8 @@ on:
   issue_comment:
     types: [created, edited]
 
-# The commit-status write scope is the one permission added, for the `auto-merge` status (REQ-CCR-025).
+# Two scopes are added on top of the original pair: the commit-status write scope for the `auto-merge` status
+# (REQ-CCR-025) and the read-only Actions scope for the comment path's CI-run read (REQ-CCR-020/023).
 permissions:
   contents: write
   pull-requests: write
@@ -350,7 +351,8 @@ jobs:
 
           rc=0
           OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/files" --out "$LIST" --expect-count "$COUNT1" 2>&1)" || rc=$?
-          printf '%s\n' "$OUT"
+          # Log only: break any `::` so a PR file name cannot start a workflow command in the log.
+          printf '%s\n' "$OUT" | sed 's/::/: :/g'
           if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
 
           SECOND="$(read_pr)" || withhold "files-unreadable-after-read"
@@ -361,7 +363,7 @@ jobs:
 
           rc=0
           OUT="$(bash "$GATE" gate-files-changed --file "$LIST" --head-sha "$VERIFIED_SHA" 2>&1)" || rc=$?
-          printf '%s\n' "$OUT"
+          printf '%s\n' "$OUT" | sed 's/::/: :/g'
           if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
 
           conclude true pass 0
@@ -506,7 +508,7 @@ jobs:
 
             case "$rc" in
               0)
-                echo "$OUT"
+                printf '%s\n' "$OUT" | sed 's/::/: :/g'
                 recheck "$OUT"
                 conclude true pass 0
                 ;;
