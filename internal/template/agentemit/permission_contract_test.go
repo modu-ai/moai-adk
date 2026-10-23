@@ -98,7 +98,7 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 	// manifest's stated mode is still checked against the contract (the
 	// broad mutant below).
 	pub := emitRealSet(t)
-	report, err := agentemit.BuildPermissionReport(os.DirFS(templatesDir), agentMDRoot, man)
+	report, err := agentemit.BuildPermissionReport(os.DirFS(repoRoot), sourceRoot, man)
 	if err != nil {
 		t.Fatalf("BuildPermissionReport: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 	}
 
 	// Mutants the generator must refuse.
-	fsys := os.DirFS(templatesDir)
+	fsys := os.DirFS(repoRoot)
 	dropped := mustManifest(t)
 	var kept []agentemit.AxisMapping
 	for _, m := range dropped.PermissionContract.Axes {
@@ -136,13 +136,13 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 		}
 	}
 	dropped.PermissionContract.Axes = kept
-	if _, err := agentemit.EmitAll(fsys, agentMDRoot, dropped); err == nil || !strings.Contains(err.Error(), "web") {
+	if _, err := agentemit.EmitAll(fsys, sourceRoot, dropped); err == nil || !strings.Contains(err.Error(), "web") {
 		t.Errorf("mapping removed for axis web: emitter must refuse naming the axis, got %v", err)
 	}
 
 	broad := mustManifest(t)
 	broad.Fields["sandbox_mode"].RoleValues["manager-todo"] = "workspace-write"
-	if _, err := agentemit.EmitAll(fsys, agentMDRoot, broad); err == nil || !strings.Contains(err.Error(), "manager-todo") {
+	if _, err := agentemit.EmitAll(fsys, sourceRoot, broad); err == nil || !strings.Contains(err.Error(), "manager-todo") {
 		t.Errorf("read-only contract role emitted workspace-write: emitter must refuse, got %v", err)
 	}
 
@@ -186,7 +186,7 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 			fake.PermissionContract.Axes[i].Field = "subagent_enabled"
 		}
 	}
-	if _, err := agentemit.EmitAll(fsys, agentMDRoot, fake); err == nil || !strings.Contains(err.Error(), "subagent") {
+	if _, err := agentemit.EmitAll(fsys, sourceRoot, fake); err == nil || !strings.Contains(err.Error(), "subagent") {
 		t.Errorf("enforced mapping through a field the emitter never writes must be refused, got %v", err)
 	}
 }
@@ -196,15 +196,15 @@ func TestRolePermissionUnsupportedNeverPass(t *testing.T) {
 	if man.PermissionContract == nil {
 		t.Fatal("manifest carries no permission_contract")
 	}
-	fsys := os.DirFS(templatesDir)
-	report, err := agentemit.BuildPermissionReport(fsys, agentMDRoot, man)
+	fsys := os.DirFS(repoRoot)
+	report, err := agentemit.BuildPermissionReport(fsys, sourceRoot, man)
 	if err != nil {
 		t.Fatalf("BuildPermissionReport: %v", err)
 	}
 
 	// Expected set, computed from the contract: (role, axis, kind) where the
 	// role's contract requires the restriction and its axis maps UNSUPPORTED.
-	entries, err := os.ReadDir(templatesDir + "/" + agentMDRoot)
+	entries, err := os.ReadDir(repoRoot + "/" + sourceRoot)
 	if err != nil {
 		t.Fatalf("read agent sources: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestRolePermissionUnsupportedNeverPass(t *testing.T) {
 		if !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
-		raw, err := os.ReadFile(templatesDir + "/" + agentMDRoot + "/" + e.Name())
+		raw, err := os.ReadFile(repoRoot + "/" + sourceRoot + "/" + e.Name())
 		if err != nil {
 			t.Fatalf("read %s: %v", e.Name(), err)
 		}
