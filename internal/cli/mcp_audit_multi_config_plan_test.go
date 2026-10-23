@@ -177,7 +177,10 @@ func TestAuditMulti_ArgsWinOverConfig(t *testing.T) {
 
 // TestAuditMulti_ArgumentRequiredIsNotExplicit (design.md §D.2): a `required`
 // the caller wrote in the call enforces nothing on a tree that configures
-// nothing — today's behaviour, kept so existing callers do not change.
+// nothing — no gate_unmet, no plan members. REQ-MN-021/022 revise the verdict
+// the could-not-run codex leg produces: the overall is the distinct
+// not-converged outcome — the argument-sourced required still enforces nothing
+// (no fail, no unmet-gate claim), but the old fail-open pass is superseded.
 func TestAuditMulti_ArgumentRequiredIsNotExplicit(t *testing.T) {
 	root := newAuditMultiBaselineRoot(t, distributedAuditPinsYAML)
 	_, res, m := planCall(t, root, map[string]any{
@@ -186,8 +189,8 @@ func TestAuditMulti_ArgumentRequiredIsNotExplicit(t *testing.T) {
 	if res.IsError {
 		t.Fatalf("unexpected error result: %s", toolResultText(res))
 	}
-	if m["overall_verdict"] != "pass" {
-		t.Errorf("overall_verdict = %v, want pass (an argument-sourced required is fail-open)", m["overall_verdict"])
+	if m["overall_verdict"] != VerdictInconclusive {
+		t.Errorf("overall_verdict = %v, want %q (could-not-run stays not-converged; an argument-sourced required enforces nothing)", m["overall_verdict"], VerdictInconclusive)
 	}
 	if _, present := m["gate_unmet"]; present {
 		t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -212,8 +215,10 @@ func TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed(t *testing.T) {
 			if res.IsError {
 				t.Fatalf("unexpected error result: %s", toolResultText(res))
 			}
-			if m["overall_verdict"] != "fail" {
-				t.Errorf("overall_verdict = %v, want fail", m["overall_verdict"])
+			// REQ-MN-021 / AC-MN-021: could-not-run is the distinct not-converged
+			// outcome, never a converged fail — and still never a pass.
+			if m["overall_verdict"] != VerdictInconclusive {
+				t.Errorf("overall_verdict = %v, want %q (not-converged, REQ-MN-021)", m["overall_verdict"], VerdictInconclusive)
 			}
 			if m["gate_unmet"] != BackendCodex {
 				t.Errorf("gate_unmet = %v, want %q", m["gate_unmet"], BackendCodex)
@@ -246,8 +251,11 @@ func TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed(t *testing.T) {
 	t.Run("unconfigured sibling root still passes", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, "")
 		_, _, m := planCall(t, root, nil, map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")})
-		if m["overall_verdict"] != "pass" {
-			t.Errorf("overall_verdict = %v, want pass", m["overall_verdict"])
+		// REQ-MN-022: an unset gate is never an opt-in (so no gate_unmet), and a
+		// required-by-default backend left inconclusive can no longer ride the
+		// claude anchor to a pass — the outcome is the not-converged one.
+		if m["overall_verdict"] != VerdictInconclusive {
+			t.Errorf("overall_verdict = %v, want %q (REQ-MN-022)", m["overall_verdict"], VerdictInconclusive)
 		}
 		if _, present := m["gate_unmet"]; present {
 			t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -269,8 +277,12 @@ func TestAuditMulti_ExplicitClaudeToken(t *testing.T) {
 	if m["plan_source"] != "config" {
 		t.Errorf("plan_source = %v, want \"config\"", m["plan_source"])
 	}
-	if m["overall_verdict"] != "pass" {
-		t.Errorf("overall_verdict = %v, want pass (codex is the non-explicit default under the claude token)", m["overall_verdict"])
+	// REQ-MN-021/022: the could-not-run codex leg keeps the overall at the
+	// distinct not-converged outcome — never the old fail-open pass, equally
+	// never a converged fail (codex is the non-explicit default under the
+	// claude token, so no gate claim rides it).
+	if m["overall_verdict"] != VerdictInconclusive {
+		t.Errorf("overall_verdict = %v, want %q (could-not-run stays not-converged)", m["overall_verdict"], VerdictInconclusive)
 	}
 	if _, present := m["gate_unmet"]; present {
 		t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -321,14 +333,16 @@ func TestAuditMulti_UnknownConfiguredTokenIsToolError(t *testing.T) {
 // reading the resolver gives a gate written with surrounding whitespace: before
 // the resolver, ` required ` reached the explicit-gate check untrimmed and never
 // matched `required`, so the unmet gate was silently not enforced.
+// REQ-MN-021 revises the enforced verdict: the unmet gate names codex and the
+// overall stays at the distinct not-converged outcome (never a converged fail).
 func TestAuditMulti_PaddedConfiguredGateEnforcesLikeTheTrimmedValue(t *testing.T) {
 	root := newAuditMultiBaselineRoot(t, planWorkflowYAML("", map[string]string{"codex": " required "}))
 	_, res, m := planCall(t, root, nil, map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")})
 	if res.IsError {
 		t.Fatalf("unexpected error result: %s", toolResultText(res))
 	}
-	if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
-		t.Errorf("overall_verdict = %v, gate_unmet = %v, want fail / codex", m["overall_verdict"], m["gate_unmet"])
+	if m["overall_verdict"] != VerdictInconclusive || m["gate_unmet"] != BackendCodex {
+		t.Errorf("overall_verdict = %v, gate_unmet = %v, want %q / codex (REQ-MN-021 not-converged)", m["overall_verdict"], m["gate_unmet"], VerdictInconclusive)
 	}
 }
 
@@ -390,17 +404,22 @@ func TestCodexAudit_PaddedRequiredGateFailsClosed(t *testing.T) {
 	withCodexLookPath(t, func(string) (string, error) { return "", errFakeLookPath })
 
 	got := structuredMap(t, callToolCodexAudit(t, map[string]any{"project_root": root}))
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (REQ-MN-021: the unmet gate records could-not-run, not a reviewed fail)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a padded required gate with no verdict must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a padded required gate with no verdict must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 }
 
 // TestCodexAudit_ModelCodexUnmetGateFails (AC-ACV-010): the single-backend
 // codex_audit reads the same plan, so `model: codex` makes a codex that cannot
-// answer an unmet gate.
+// answer an unmet gate. REQ-MN-021: the unmet-gate record is could-not-run —
+// the verdict stays inconclusive (never a reviewed fail).
 func TestCodexAudit_ModelCodexUnmetGateFails(t *testing.T) {
 	root := newProbeProject(t, "SPEC-ACV-MODEL-CODEX")
 	dir := filepath.Join(root, ".moai", "config", "sections")
@@ -417,10 +436,14 @@ func TestCodexAudit_ModelCodexUnmetGateFails(t *testing.T) {
 		t.Fatalf("unexpected IsError — fail-open stays a structured result")
 	}
 	got := structuredMap(t, res)
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail (model: codex makes codex an explicit required gate)", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (model: codex makes codex an explicit required gate; REQ-MN-021 keeps the could-not-run verdict)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a required codex gate that produced no verdict must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a required codex gate that produced no verdict must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 }

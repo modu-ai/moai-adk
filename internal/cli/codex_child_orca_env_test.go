@@ -250,7 +250,7 @@ func TestCodexSessionRunnerStartDropsOrcaPaneEnv(t *testing.T) {
 	bin, dump := t1869FakeCodex(t, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	conn, err := (realCodexSessionRunner{}).start(ctx, bin, nil)
+	conn, err := (realCodexSessionRunner{}).start(ctx, bin, nil, "")
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}

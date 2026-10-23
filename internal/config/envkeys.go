@@ -410,6 +410,15 @@ const (
 	// which is why the pin lives inside the carrier packages.
 	FactoryRoleLane = "lane"
 
+	// FactoryRoleOperator is the positive operator mark the operator-only
+	// surfaces require (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, decision-index Q2
+	// default): the role vocabulary MOAI_FACTORY_ROLE already carries gains an
+	// operator value, so authority comes from a launcher-stamped marker and
+	// never from the ABSENCE of lane variables. The MCP operator-only verbs
+	// (factory_decide, operator todo_add, operator todo_claim) refuse an
+	// unmarked session as unknown attribution.
+	FactoryRoleOperator = "operator"
+
 	// EnvFactoryClearPolicy carries the clear policy a Claude-harness
 	// factory lane launch selected (SPEC-FACTORY-SELF-DISPATCH-001
 	// REQ-SD-020): the launcher stamps it into the lane session's

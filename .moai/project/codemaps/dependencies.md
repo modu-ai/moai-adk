@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — 8c36a79 (card t1931 판)
+## 현재 의존성 측정 — 2fccfd2 (card t1931 후속 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — t1931 판과 같은 플랫폼의 재측정으로, 창(8c36a7904b..2fccfd2b34)이 패키지나 import 경계를 만들지 않았다: 7개 신규 파일이 전부 기존 패키지(`internal/cli`·`internal/runtime`)에 들어왔다. 이 판 측정(개별 패키지 쌍 기준)의 fan-out 상위는 cli·hook·web 순이고 fan-in 상위는 config·defs·atomicfile 순이다 — 구성은 t1931 판과 같다. `go.mod`·`go.sum`은 **이 창에서 움직였다**: dependabot #1839가 직접 의존성 6개(gomod-minor-patch 그룹)를 갱신(go.mod 7행)하고 재해시(go.sum 21행)했으며, #1840이 `actions/checkout` 4→7로 올렸다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — 8c36a79 (card t1931 판)
 
 Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — 이전 판(t1909)의 세 집계와 같지만 이전 판은 Linux/amd64 관측이므로 **플랫폼이 다른 두 측정이 같은 값**이다. 창(d5c083e86d..8c36a7904b)이 패키지나 import 경계를 만들지 않았기 때문이다: `integration_backup.go`·`mcp_codex_audit.go` 등 신규 파일은 전부 기존 패키지(`internal/cli`·`internal/homestate` 등) 안에 들어왔다. 이 판 측정(Darwin/arm64, 개별 패키지 쌍 기준)의 fan-out 상위는 cli 120·hook 53·web 17이고 fan-in 상위는 config 44·defs 21·atomicfile 19다(이전 판의 cli 77·hook 41·config 32는 Linux/amd64 상위 집계 기준의 관측값 — 기준·플랫폼이 달라 직접 비교하지 않는다). `go.mod`·`go.sum`은 창에서 변하지 않았다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
 

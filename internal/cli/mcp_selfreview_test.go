@@ -345,7 +345,6 @@ func TestSelfReview_NonCardTreeReturnsInconclusiveWithoutReviewing(t *testing.T)
 	trees := map[string]struct{ dir, cause string }{
 		"develop":  {newSelfReviewPlainTree(t, "develop", true), "no card branch"},
 		"detached": {newSelfReviewDetachedTree(t), "detached"},
-		"nongit":   {newSelfReviewNonGitTree(t), "unreadable"},
 		"nobase":   {nobase, "merge base"},
 	}
 	for name, tc := range trees {
@@ -366,6 +365,19 @@ func TestSelfReview_NonCardTreeReturnsInconclusiveWithoutReviewing(t *testing.T)
 			})
 		}
 	}
+	// REQ-MN-005: a NON-GIT tree is an argument-validation refusal at the
+	// confinement, never a review — it is not a worktree of any repository the
+	// server serves.
+	t.Run("nongit/codex", func(t *testing.T) {
+		rig := newSelfReviewRig(t, "codex", "fail")
+		res, _ := selfReviewCall(t, rig.tool, map[string]any{"scope": "card", "project_root": newSelfReviewNonGitTree(t)})
+		if !res.IsError {
+			t.Fatalf("isError = false — a non-git tree must be refused at the root confinement (REQ-MN-005)")
+		}
+		if rig.calls() != 0 {
+			t.Errorf("the reviewer was reached %d time(s); a refused root must not be reviewed", rig.calls())
+		}
+	})
 }
 
 // --- AC-009: uncommitted scope, untracked list, truncation ---
@@ -756,6 +768,12 @@ func TestSelfReview_MaterialIsAPlainUnifiedDiff(t *testing.T) {
 // cancellation forwarding) cannot return.
 func TestSelfReview_ReviewBudgetAndCallerCancellationAreHonoured(t *testing.T) {
 	dir := newSelfReviewPlainTree(t, "develop", true)
+	// REQ-MN-005 confinement: the fixture tree lives in its own repository, so
+	// the server-root seam is stubbed to it — the exact shape the production
+	// path takes for a tree the server actually serves.
+	prevProj := projectDirResolver
+	projectDirResolver = func() string { return dir }
+	t.Cleanup(func() { projectDirResolver = prevProj })
 	for _, backend := range []string{"codex", "glm"} {
 		for _, mode := range []string{"budget-elapses", "caller-cancels"} {
 			t.Run(backend+"/"+mode, func(t *testing.T) {
@@ -921,14 +939,15 @@ func TestSelfReview_NeverMintsReceiptsAndIgnoresTheRequiredGate(t *testing.T) {
 	f := newSelfReviewFixture(t)
 	writeCodexAuditGate(t, f.card, "required")
 
-	// Positive control: the AUDIT tool under the same required gate still turns an
-	// absent codex into fail + gate_unmet and files a receipt — so an unchanged
-	// receipt directory below is a measurement, not an empty sweep.
+	// Positive control: the AUDIT tool under the same required gate still turns
+	// an absent codex into a could-not-run inconclusive + gate_unmet and files a
+	// receipt (REQ-MN-021: the old fail conversion is superseded) — so an
+	// unchanged receipt directory below is a measurement, not an empty sweep.
 	withCodexSession(t, codexSessionScript(realCleanReview))
 	withCodexLookPath(t, func(string) (string, error) { return "", os.ErrNotExist })
 	audit := structuredMap(t, callToolCodexAudit(t, map[string]any{"project_root": f.canon}))
-	if v, _ := audit["verdict"].(string); v != "fail" {
-		t.Fatalf("control: codex_audit verdict = %q, want fail under a required gate", v)
+	if v, _ := audit["verdict"].(string); v != VerdictInconclusive {
+		t.Fatalf("control: codex_audit verdict = %q, want %q under a required gate (REQ-MN-021 could-not-run)", v, VerdictInconclusive)
 	}
 	if g, _ := audit["gate_unmet"].(string); g == "" {
 		t.Fatal("control: codex_audit must carry a non-empty gate_unmet")
@@ -979,12 +998,14 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	}
 	// P11: the self-review milestone added no receipt-writing call site. Before
 	// it the package carried four lines (one definition + three calls). The
-	// audit_multi path later moved to recordAuditReceiptAt, which takes the
-	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9); the sites are
-	// therefore counted under both spellings: recordAuditReceipt( on its
-	// definition and the two codex_audit calls (3), recordAuditReceiptAt( on its
-	// definition, the delegation inside recordAuditReceipt and the audit_multi
-	// call (3). The self-review file stays at zero (checked above).
+	// sync-audit r3 F13/F14 repairs collapsed the surface onto the BOUND
+	// writers (the start-of-audit state binding), so the sites are counted
+	// under all four spellings — measured 2026-10-15 at the r3 repair HEAD:
+	// recordAuditReceiptBound definition + its AtBound delegation (2);
+	// recordAuditReceiptAtBound definition (1); the three codex_audit
+	// recordAuditReceiptBound calls (3); the audit_multi
+	// recordAuditReceiptAtBound call (1) — 7 total. The self-review file
+	// stays at zero (checked above).
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -995,13 +1016,20 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			continue
 		}
 		for line := range strings.SplitSeq(srReadFile(t, e.Name()), "\n") {
-			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(")) && !strings.HasPrefix(strings.TrimSpace(line), "//") {
+			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(") ||
+				strings.Contains(line, "recordAuditReceiptBound(") || strings.Contains(line, "recordAuditReceiptAtBound(")) &&
+				!strings.HasPrefix(strings.TrimSpace(line), "//") {
 				sites++
 			}
 		}
 	}
-	if sites != 6 {
-		t.Errorf("recordAuditReceipt( / recordAuditReceiptAt( appear on %d non-comment lines, want the 6 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	// Card t1632: codex_audit records its receipt on every verdict-bearing exit
+	// (binary missing, REQ-MN-019 baseBranch unresolvable -> inconclusive "target
+	// not applied", review ran — every other return is a tool error carrying no
+	// verdict), so the total is 7: the writers (3) plus the three codex_audit
+	// calls and the one audit_multi call.
+	if sites != 7 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 
@@ -1061,8 +1089,8 @@ func TestSelfReview_CatalogueAndGuideCarryTheNewRows(t *testing.T) {
 				t.Errorf("%s does not name `%s` in the project_root inventory", p, tool)
 			}
 		}
-		if !strings.Contains(body, "Four of the twenty-two") {
-			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Four of the twenty-two\")", p)
+		if !strings.Contains(body, "Four of the thirty-two") {
+			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Four of the thirty-two\")", p)
 		}
 	}
 }

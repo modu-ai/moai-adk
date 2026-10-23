@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -146,27 +147,70 @@ func factoryNotALaneError(verb string) error {
 		verb, factoryNotALaneSentinel, config.EnvFactoryRole, config.FactoryRoleLane)
 }
 
-// factoryLaneLabelFromEnv reads the lane-identity variable for a lane verb
-// and refuses legacy spellings before any work is done (AC-SD-021): the
-// refusal mirrors the REQ-RNC-003/-005/-007 producer shapes, naming the
-// canonical lane label. Every lane verb reads its identity through this
-// helper, so a hand-set legacy label cannot reach the factory record.
+// factoryLaneLabelValidated refuses a lane label's legacy spellings before
+// any work is done (AC-SD-021): the refusal mirrors the REQ-RNC-003/-005/-007
+// producer shapes, naming the canonical lane label.
+func factoryLaneLabelValidated(verb, label string) (string, error) {
+	lowered := strings.ToLower(label)
+	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, label, factory.FactoryLaneLabel(n))
+	}
+	if factory.IsLegacyFactoryRoleValue(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, label)
+	}
+	if factory.IsLegacyLeaderSpelling(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, label)
+	}
+	return label, nil
+}
+
+// factoryLaneLabelFromEnv reads the lane-identity variable for a lane verb.
+// Every lane verb reads its identity through this helper, so a hand-set
+// legacy label cannot reach the factory record.
 func factoryLaneLabelFromEnv(verb string) (string, error) {
 	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if lane == "" {
 		return "", fmt.Errorf("factory %s: %s is empty — a lane session carries its lane label there", verb, config.EnvMoaiFactoryWorker)
 	}
-	lowered := strings.ToLower(lane)
-	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, factory.FactoryLaneLabel(n))
+	return factoryLaneLabelValidated(verb, lane)
+}
+
+// factoryLaneLabel resolves the acting lane label for a lane verb
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, CLI side): the explicit --actor flag
+// wins and the spawn environment is the default only. Both spellings refuse
+// legacy labels through the same rules, so a hand-set legacy label cannot
+// reach the factory record through the flag either.
+func factoryLaneLabel(verb, actor string) (string, error) {
+	if label := strings.TrimSpace(actor); label != "" {
+		return factoryLaneLabelValidated(verb, label)
 	}
-	if factory.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, lane)
+	return factoryLaneLabelFromEnv(verb)
+}
+
+// factoryUnknownAttributionError is the REQ-MN-003 unknown-attribution
+// refusal, one wording for both surfaces: the caller carries no positive
+// operator mark and no lane identity, and the ABSENCE of lane variables
+// confers nothing.
+func factoryUnknownAttributionError(surface string) error {
+	return fmt.Errorf("%s: refused — %s: set %s=%s in the operator session (the launcher or the operator environment stamps it); the absence of lane variables confers nothing",
+		surface, factoryUnknownAttributionSentinel, config.EnvFactoryRole, config.FactoryRoleOperator)
+}
+
+// factoryDecideGate is the REQ-MN-003 operator gate BOTH decide surfaces run:
+// a positive operator mark admits, a lane-marked session keeps the REQ-SD-016
+// boundary refusal, and an unmarked session is unknown attribution — the
+// env-absence-grants-operator path is closed (M2 Part A absorbs the M1 MCP
+// contract into the CLI verb). The audit-decider exception (a kickoff approval
+// by the audit decider on the lane's own card) is the caller's per-card
+// evaluation, unchanged.
+func factoryDecideGate() error {
+	if mcpOperatorAuthority() {
+		return nil
 	}
-	if factory.IsLegacyLeaderSpelling(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)
+	if factoryLaneRefusal() {
+		return factoryDecideLaneRefusal()
 	}
-	return lane, nil
+	return factoryUnknownAttributionError("factory decide")
 }
 
 // factoryCodexMergeSentinel names the REQ-SD-025 refusal: while the backend
@@ -2115,7 +2159,7 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 func newFactoryNextCommand() *cobra.Command {
 	var wait bool
 	var waitBound time.Duration
-	var run, nominee string
+	var run, nominee, actor string
 	cmd := &cobra.Command{
 		Use:   "next",
 		Short: "Lease the lane's next card through the factory record (lane session, parent checkout)",
@@ -2124,7 +2168,7 @@ func newFactoryNextCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("next")
 			}
-			lane, err := factoryLaneLabelFromEnv("next")
+			lane, err := factoryLaneLabel("next", actor)
 			if err != nil {
 				return err
 			}
@@ -2224,9 +2268,11 @@ func newFactoryNextCommand() *cobra.Command {
 		"Keep re-checking at a fixed interval until a card is leased or the wait bound elapses")
 	cmd.Flags().DurationVar(&waitBound, "wait-bound", factoryNextWaitBoundDefault,
 		"How long --wait re-checks before reporting no card")
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
 	cmd.Flags().StringVar(&nominee, "card", "",
 		"Lease exactly this card (the session's own judged pick) or refuse it: exit 4 with one line `factory next: refused <token>: <detail>`; the quota hold and the Codex skip apply as to any new card")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -2517,7 +2563,7 @@ func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.C
 // (REQ-SD-012): the lane applies the card's next F1 stage transition, the
 // evidence positional feeding the guards that need it.
 func newFactoryStageCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	cmd := &cobra.Command{
 		Use:   "stage <card> <state> [evidence]",
 		Short: "Apply a card's next stage transition with its evidence (lane session)",
@@ -2526,7 +2572,7 @@ func newFactoryStageCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
 			}
-			lane, err := factoryLaneLabelFromEnv("stage")
+			lane, err := factoryLaneLabel("stage", actor)
 			if err != nil {
 				return err
 			}
@@ -2546,7 +2592,9 @@ func newFactoryStageCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -2626,7 +2674,7 @@ type factoryRenewOutcome struct {
 // lease by the configured card lease duration and prints the new expiry. With --json it
 // prints the outcome as one JSON object, and a refusal exits non-zero after printing it.
 func newFactoryRenewCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	var asJSON bool
 	cmd := &cobra.Command{
 		Use:          "renew <card>",
@@ -2637,7 +2685,7 @@ func newFactoryRenewCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("renew")
 			}
-			lane, err := factoryLaneLabelFromEnv("renew")
+			lane, err := factoryLaneLabel("renew", actor)
 			if err != nil {
 				return err
 			}
@@ -2659,7 +2707,9 @@ func newFactoryRenewCommand() *cobra.Command {
 			return renewErr
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the lane's roster binding against the active runs; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the outcome as JSON: result and expires_at")
 	return cmd
 }
@@ -2723,7 +2773,7 @@ func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (fact
 // commit — it records the merge identity, never a test-run claim). The
 // window is NOT released here: the lane releases it as its next step.
 func newFactoryCompleteCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
 		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
@@ -2732,7 +2782,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			lane, err := factoryLaneLabelFromEnv("complete")
+			lane, err := factoryLaneLabel("complete", actor)
 			if err != nil {
 				return err
 			}
@@ -2747,7 +2797,9 @@ func newFactoryCompleteCommand() *cobra.Command {
 			return factoryCompleteCard(ctx, cmd.OutOrStdout(), factoryCardRoot(), integrationLockRoot(), args[0], remeasure, run, lane)
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -3366,9 +3418,16 @@ func factoryHolderLabel(lock *factory.IntegrationLock) string {
 // in for the re-measure — the record store is the gate.)
 
 // resolveFactoryCardRun returns the explicit --run value, or the single active
-// factory run.
+// factory run. An explicit id whose row exists but is not active refuses
+// (REQ-MN-003 stale-run): the run's lease, stage, and evidence rows are
+// expired, and reading them is the B8 defect. A run with no row — or no runs
+// table at all — has nothing expired to read, so the id passes through and
+// the verb's own record reads answer for it.
 func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
+		if factoryRunRowNotActive(ctx, root, run) {
+			return "", fmt.Errorf("run %q is not the currently active factory run; pass the active run or omit --run", run)
+		}
 		return run, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
@@ -3376,6 +3435,32 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 		return "", fmt.Errorf("no --run given and no single active factory run (%w)", err)
 	}
 	return run, nil
+}
+
+// factoryRunRowNotActive reports whether a run row EXISTS and is not active.
+// A missing row (or an unreadable record) is not a staleness answer — the
+// verb's own reads fail on their own — so only a present non-active row
+// refuses. The read is a plain single-query sqlite open (the
+// factorymsg.ValidateActiveRun pattern), NOT homestate.OpenFactory: the verb
+// leases wait on timing bounds a full schema-init open would eat into.
+func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return false
+	}
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	if err != nil {
+		return false
+	}
+	defer func() { _ = db.Close() }()
+	var status string
+	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, run).Scan(&status); err != nil {
+		return false
+	}
+	return status != "active"
 }
 
 // resolveFactoryRenewRun returns the run a renewal acts in (SPEC-FACTORY-LEASE-RENEW-001,
@@ -3395,6 +3480,9 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 // RosterSoleRun, and the ambiguous-set answer carries RosterBound.
 func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardID string) (string, homestate.RosterRule, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
+		if factoryRunRowNotActive(ctx, root, run) {
+			return "", homestate.RosterUnchecked, fmt.Errorf("run %q is not the currently active factory run; pass the active run or omit --run", run)
+		}
 		return run, homestate.RosterUnchecked, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
@@ -4051,15 +4139,17 @@ func newFactoryDecideCommand() *cobra.Command {
 		Short: "Record an operator decision: --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// REQ-SD-016: a session for which lane refusal holds — a lane by
-			// marker, label, or Codex backend — cannot record decisions. The
-			// guard runs before any card row is read or written.
-			// The one lane exception: a kickoff approval by the audit decider,
-			// admitted per card only when the lane is the card's record owner
-			// (checked in decideOne).
+			// REQ-SD-016 + SPEC-MCP-NEUTRALITY-001 REQ-MN-003: the operator
+			// gate both decide surfaces run — a positive operator mark admits,
+			// a lane keeps the boundary refusal, an unmarked session is
+			// unknown attribution. The one lane exception: a kickoff approval
+			// by the audit decider, admitted per card only when the lane is
+			// the card's record owner (checked in decideOne).
 			auditApprove := decider == homestate.DeciderAudit && gate == "kickoff" && choice == "approve"
-			if factoryLaneRefusal() && !auditApprove {
-				return factoryDecideLaneRefusal()
+			if !auditApprove {
+				if err := factoryDecideGate(); err != nil {
+					return err
+				}
 			}
 			if decider != homestate.DeciderHuman && !auditApprove {
 				return fmt.Errorf("factory decide: decider %q is not accepted here; %q decides every gate and %q only --gate kickoff --choice approve", decider, homestate.DeciderHuman, homestate.DeciderAudit)

@@ -1,6 +1,20 @@
 # 패키지 모듈 상세
 
-## 현재 변경 경계 — 8c36a79 (card t1931 판)
+## 현재 변경 경계 — 2fccfd2 (card t1931 후속 판)
+
+기준 `8c36a79` 이후의 설명 대상 소스 49개를 현재 트리와 대조했다(추가 7·수정 42·삭제 0; testdata·테스트 제외). 창은 여덟 커밋(#1900 t1930 병합·#1901 t1929·#1898 t1536·#1894 t1632·#1903 t1910 문서·dependabot 2건)이 운반했고 신규 패키지는 없다.
+
+| 소유 모듈·경로 | 현재 책임 |
+|---|---|
+| `internal/cli/factory_card_rebind.go`(신규) · `internal/cli/factory_card.go` | `moai factory rebind-evidence` — 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 version-fenced 재결속하고 감사 행을 남긴다(card t1930 ④). 같은 창의 `factory_card.go`에는 merged-PR 관측 분기(스쿼시 병합 뒤 readiness를 건너뛰는 pr-open 직행)와 re-lease carry-over의 공유 seam(`factoryCompleteCarryOver`·`factoryBackendSkipsCarriedStage` — Codex 레인이 carried merge-ready를 임대하지 않게 하는 백엔드 skip 포함)이 들어왔다. |
+| `internal/cli/mcp_refusal.go`(신규) · `mcp_server_call_log.go`(신규) · `internal/mcp/*` | MCP neutrality(card t1632, #1894) — moai MCP 도구의 거부 응답을 구조화해 돌리고 호출 로그를 남긴다. 도구 카탈로그 35개는 불변. |
+| `internal/runtime/audit_cache_state.go` · `regular_file.go` · `regular_open_nofollow.go` · `regular_open_stat.go`(신규 4파일) | 감사 캐시 상태 판독의 regular-file 경계(card t1536, #1898) — NOFOLLOW 열기와 stat 검증으로 감사 대상 파일이 심벌릭 링크로 치환되는 경로를 좁힌다. release pipeline 가드의 일부로 `internal/runtime` 패키지는 기존 그대로다. |
+| `internal/hook/*`(2파일) · `internal/auditreceipt/*`(2파일) · `internal/homestate/*` · `internal/factorymsg/*` | t1929 spec-lint 수리·t1930 carry-over 정리의 인접 배선 — 각 패키지의 기존 행에 더해졌다. |
+| `internal/template/templates/**`(2파일) · `internal/web/assets`(1파일) | 배포 템플릿·웹 자산의 창 동기화 — 런타임 배선이 아니라 배포 내용물이다. |
+
+`internal/cli`의 27개 수정 중 t1929 spec-lint 수리분(5개 SPEC)과 t1930·t1632 상기 항목 외는 삭제된 표면을 가리키던 참조 정리다. dependabot 창(go.mod 7행·go.sum 21행)은 소스 책임 이동이 아니다.
+
+## 이전 변경 경계 — 8c36a79 (card t1931 판)
 
 기준 `d5c083e` 이후의 설명 대상 소스 27개를 현재 트리와 대조했다(추가 1·수정 26·삭제 0; testdata 경로는 `mx.IsDescribedWorthy` 술어가 제외한다 — 신규 `internal/sandbox/testdata/echo`는 시험 전용 testdata로 서술 대상이 아니다). 창은 여섯 병합(#1893 t1828·#1895 t1832·#1892 t1928·#1897 t1894·#1867 t1913·#1896 나머지)이 운반했고 신규 패키지는 없다.
 
@@ -491,7 +505,7 @@ round-trip 테스트가 그 범위를 고정합니다. 노드 삭제는 지원�
 | `internal/astgrep` | 13 | ast-grep(`sg`) CLI 래핑 기반 AST 분석·룰 시드 | — |
 | `internal/github` | 10 | `gh` CLI 기반 PR/이슈 오퍼레이션 | `workflow` |
 | `internal/hygiene` | 12 | **t1524 판 신규**(card t1518, SPEC-MOAI-HYGIENE-001) — `.moai` 위생 엔진. 두 단위가 있다. ① 감사 로그 회전기: 크기 기반(`audit_log_max_bytes` 기본 10 MiB, keep-1 — `auditlog.go`·`rotate.go`), lockfile로 직렬화한 단일 통과, 스테일 판정 건너뜀, Windows는 LockFileEx 사이드카(`rotate_lock_unix.go`·`rotate_lock_windows.go`). 대상은 닫힌 20항목 싱크 레지스트리(`sinks.go`)이고 완전성 가드 `ScanSourceSinks`가 미등록 append-only 쓰기를 적색으로 낸다(레지스트리 밖의 신규 로거는 회전기가 아니라 레지스트리 갱신으로 수용된다). ② 끝난 세션 상태 GC: 세 신호 fail-closed 생존 판정(`liveness.go` — pid 프로브 `probe_pid_unix.go`·`probe_pid_windows.go`, 48시간 전사본 활동, 24시간 심박; 긍정=LIVE·전부 음성=DEAD·미측정=INDETERMINATE=KEEP), mtime은 삭제 데이터가 아니고 클래스별 내용 연대표를 따르며(`targets.go` — 연대 불능 클래스 codex-stop-cap은 보존), 해석된 루트 아래 심볼릭 링크 성분 거부, 디렉터리 fd 고정 삭제, 실행 시각 재판정, SPEC 종결 락 클래스 제외(`gc.go`·`engine.go`·`settings.go`). report가 출하 기본이고 apply는 표면별 옵트인이다. 내부 import는 `internal/config` 하나, 비테스트 소비자는 `internal/cli`(`clean.go`)와 `internal/hook`(`session_start_hygiene.go`) | — |
-| `internal/runtime` | 21 | 토큰 서킷 브레이커, 감사 캐시/게이트/리포트, 클록. **t1524 판에서 하나가 더했다**(11→12, card t1500, SPEC-AUDIT-CEILING-002) — `audit_ceiling.go`: plan-audit 반복 상한의 구성 읽기·계수·판정(`internal/auditverdict`의 확장된 필드·파서·admit을 소비하고 `internal/config`의 workflow.audit 상한 키를 읽는다 — 이 패키지 최초의 config import) **t1469 판에서 아홉이 더했다**(12→21, main 흡수) — 파일 진행 상황 판독의 플랫폼 분기: `progress_metadata_acl.go`(ACL)·`progress_metadata_darwin.go`·`progress_metadata_linux.go`·`progress_metadata_other.go`(메타데이터), `progress_ownership_unix.go`(소유권), `progress_nlink_other.go`(링크 카운트), `progress_fd_unix.go`·`progress_fd_other.go`(진행 fd) | `gobin` |
+| `internal/runtime` | 25 | 토큰 서킷 브레이커, 감사 캐시/게이트/리포트, 클록. **t1632 판에서 셋이 더했다** — 호출자가 넘긴 경로를 읽는 모든 지점이 공유하는 정규 파일 읽기 헬퍼: `regular_file.go`(`readRegularFile` — 열린 기술자에 대해 정규 파일 여부를 검사하고 상한까지만 읽는다; 열기 직전 테스트 seam), `regular_open_nofollow.go`(유닉스 계열: `O_NONBLOCK\|O_NOFOLLOW`로 열고 `Stat`으로 확인), `regular_open_stat.go`(그 밖의 플랫폼·Windows: `Lstat`→`Stat`→`SameFile`); `audit_cache_state.go`의 `fileSHA256`·`audit_cache.go`의 `ComputeHash`·`audit_gate.go`의 `attachCeiling`이 소비한다(이 트리 find 직접 측정 25; 표의 이전 값 21과의 차이 4 중 셋이 이 파일들이고 나머지 하나는 귀속하지 않았다). **t1524 판에서 하나가 더했다**(11→12, card t1500, SPEC-AUDIT-CEILING-002) — `audit_ceiling.go`: plan-audit 반복 상한의 구성 읽기·계수·판정(`internal/auditverdict`의 확장된 필드·파서·admit을 소비하고 `internal/config`의 workflow.audit 상한 키를 읽는다 — 이 패키지 최초의 config import) **t1469 판에서 아홉이 더했다**(12→21, main 흡수) — 파일 진행 상황 판독의 플랫폼 분기: `progress_metadata_acl.go`(ACL)·`progress_metadata_darwin.go`·`progress_metadata_linux.go`·`progress_metadata_other.go`(메타데이터), `progress_ownership_unix.go`(소유권), `progress_nlink_other.go`(링크 카운트), `progress_fd_unix.go`·`progress_fd_other.go`(진행 fd) | `gobin` |
 | `internal/sandbox` | 8 | 명령 실행을 감싸는 임시 샌드박스 실행 계층 | — |
 | `internal/git` | 8 | `core/git` 위에 얹은 상위 유틸리티. **루트 패키지 자체의 비테스트 import 는 0이고, 최상위 집계 fan-in 1은 전부 하위 `convention`이 받은 것**이다 — 아래 §네거티브 스페이스 | `convention` |
 | `internal/update` | 7 | 바이너리 셀프 업데이트 (체커 + 오케스트레이터) | — |
