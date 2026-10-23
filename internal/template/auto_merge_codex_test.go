@@ -266,6 +266,70 @@ func amPullWithIssueComments(head string, draft bool, changed, reviewComments, i
 	return strings.Replace(amPull(head, draft, changed, reviewComments), `"comments":0`, fmt.Sprintf(`"comments":%d`, issueComments), 1)
 }
 
+// amGhWrapStub wraps the shared stub gh. It adds, on top of that stub's reads:
+//   - the one write form the workflow makes (the commit status POST), recorded in the call log and answered with
+//     STATUS_POST_EXIT (default 0);
+//   - the CI workflow-runs listing the comment path reads (REQ-CCR-020, REQ-CCR-023), served from
+//     $FIXTURES/ci-runs.json and failed with CI_RUNS_EXIT when that is non-zero;
+//   - an injected failure of `gh pr view` from its VIEW_FAIL_FROM-th call on (the head lookups are counted
+//     separately from the shared stub's own sequence).
+//
+// Every other call passes to the shared stub unchanged.
+const amGhWrapStub = `#!/bin/sh
+if [ "${1:-}" = api ] && [ "${2:-}" = --method ]; then
+  if [ -n "${CALL_LOG:-}" ]; then echo "gh $*" >> "$CALL_LOG"; fi
+  exit "${STATUS_POST_EXIT:-0}"
+fi
+case "${1:-} ${2:-}" in
+  "api repos/"*"/actions/workflows/ci.yml/runs?"*)
+    if [ -n "${CALL_LOG:-}" ]; then echo "gh $*" >> "$CALL_LOG"; fi
+    if [ "${CI_RUNS_EXIT:-0}" -ne 0 ]; then echo "stub gh: workflow runs read failed" >&2; exit "$CI_RUNS_EXIT"; fi
+    cat "$FIXTURES/ci-runs.json"
+    exit 0
+    ;;
+esac
+if [ "${1:-}" = pr ] && [ "${2:-}" = view ] && [ -n "${VIEW_FAIL_FROM:-}" ]; then
+  n=0
+  if [ -f "$FIXTURES/view-fail.count" ]; then n=$(cat "$FIXTURES/view-fail.count"); fi
+  n=$((n + 1))
+  echo "$n" > "$FIXTURES/view-fail.count"
+  if [ "$n" -ge "$VIEW_FAIL_FROM" ]; then
+    if [ -n "${CALL_LOG:-}" ]; then echo "gh $*" >> "$CALL_LOG"; fi
+    echo "stub gh: pr view failed" >&2
+    exit 1
+  fi
+fi
+exec "$(dirname "$0")/gh-base" "$@"
+`
+
+// amCIRun is one run of the CI workflow for a head commit, as the workflow-runs listing returns it; an empty
+// conclusion is the null a run carries until it completes.
+func amCIRun(id int, status, conclusion, head string) string {
+	c := "null"
+	if conclusion != "" {
+		c = fmt.Sprintf("%q", conclusion)
+	}
+	return fmt.Sprintf(`{"id":%d,"name":"CI","event":"pull_request","head_sha":%q,"status":%q,"conclusion":%s}`, id, head, status, c)
+}
+
+// setCIRuns replaces the CI workflow-runs listing the stub gh serves (the default is one completed, successful run
+// of the clean head).
+func (r *amRig) setCIRuns(runs ...string) {
+	r.t.Helper()
+	r.e.write(filepath.Join(r.e.fixtures, "ci-runs.json"), fmt.Sprintf(`{"total_count":%d,"workflow_runs":[%s]}`, len(runs), strings.Join(runs, ",")), 0o600)
+}
+
+// ciRunCalls returns the recorded reads of the CI workflow-runs listing.
+func (r *amRig) ciRunCalls() []string {
+	var out []string
+	for _, c := range r.e.calls() {
+		if strings.HasPrefix(c, "gh api repos/"+amRepo+"/actions/workflows/ci.yml/runs?") {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 func newAMRig(t *testing.T, script string) *amRig {
 	t.Helper()
 	e := newCGEnv(t)
@@ -277,7 +341,7 @@ func newAMRig(t *testing.T, script string) *amRig {
 	if err := os.Rename(base, filepath.Join(e.bin, "gh-base")); err != nil {
 		t.Fatal(err)
 	}
-	e.write(base, "#!/bin/sh\nif [ \"${1:-}\" = api ] && [ \"${2:-}\" = --method ]; then\n  if [ -n \"${CALL_LOG:-}\" ]; then echo \"gh $*\" >> \"$CALL_LOG\"; fi\n  exit \"${STATUS_POST_EXIT:-0}\"\nfi\nexec \"$(dirname \"$0\")/gh-base\" \"$@\"\n", 0o755)
+	e.write(base, amGhWrapStub, 0o755)
 	r := &amRig{t: t, e: e, wf: wf, work: filepath.Join(e.dir, "work"), carried: map[string]string{},
 		ctx: &amCtx{outputs: map[string]map[string]string{}, tested: cgHead, repo: amRepo,
 			prEvent:  map[string]string{"number": amPR, "head.ref": "feature/x", "state": "open", "merged": "false"},
@@ -298,6 +362,7 @@ func newAMRig(t *testing.T, script string) *amRig {
 	r.installScript(script)
 	r.setPulls(amPull(cgHead, false, 2, 0))
 	r.setViews(cgHead, cgHead)
+	r.setCIRuns(amCIRun(1, "completed", "success", cgHead))
 	e.write(filepath.Join(e.fixtures, "checks.json"), amPassChecks, 0o600)
 	r.ctx.outputs["pr"] = map[string]string{"number": amPR, "branch": "feature/x", "state": "open", "merged": "false", "active": "true"}
 	return r
@@ -969,6 +1034,9 @@ func amReadRepoFile(t *testing.T, rel string) string {
 func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 	t.Parallel()
 	const pullObject = `"repos/$REPO/pulls/$PR_NUMBER"`
+	// Revision 14 (REQ-CCR-020, REQ-CCR-023): the comment path reads the CI workflow's runs of the verified head,
+	// one listing, in the checks step. It is the only gh api read besides the pull request object.
+	const ciRuns = amCIRunsEndpoint
 	// Revision 13 (REQ-CCR-025): the workflow makes exactly one write form, the commit status POST, and names the
 	// token `statuses` only in that form and in the permission key. Every status READ stays forbidden.
 	const statusPost = `"repos/$REPO/statuses/$SHA"`
@@ -999,6 +1067,8 @@ func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 				}
 			case inv.group == "api" && inv.sub == pullObject:
 				// the pull request object, with no further path segment
+			case inv.group == "api" && inv.sub == ciRuns:
+				// the CI workflow's runs of the verified head (comment path, checks step)
 			case inv.group == "api" && inv.sub == "--method" && strings.HasPrefix(strings.TrimSpace(inv.rest), "POST "+statusPost+" "):
 				// the one write form: the auto-merge commit status
 			default:
@@ -1029,8 +1099,8 @@ func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 				}
 				continue
 			}
-			if inv.sub != pullObject {
-				t.Errorf("workflow gh api path is not the pull request object: %s", inv.line)
+			if inv.sub != pullObject && inv.sub != ciRuns {
+				t.Errorf("workflow gh api path is neither the pull request object nor the CI workflow runs: %s", inv.line)
 			}
 		}
 		if n == 0 {
@@ -1577,9 +1647,10 @@ func TestAutoMergeWiresGuardAndGate(t *testing.T) {
 			}
 		}},
 		{"permissions_unchanged", func(t *testing.T) {
-			// Revision 13 (REQ-CCR-025): the one new scope is statuses: write; the row keeps its name.
-			if len(wf.Permissions) != 3 || wf.Permissions["contents"] != "write" || wf.Permissions["pull-requests"] != "write" || wf.Permissions["statuses"] != "write" {
-				t.Fatalf("permissions %v, want exactly contents: write, pull-requests: write and statuses: write", wf.Permissions)
+			// Revision 13 (REQ-CCR-025) added statuses: write; the comment-path CI read (REQ-CCR-020/023)
+			// adds actions: read, the only read scope. The row keeps its name.
+			if len(wf.Permissions) != 4 || wf.Permissions["contents"] != "write" || wf.Permissions["pull-requests"] != "write" || wf.Permissions["statuses"] != "write" || wf.Permissions["actions"] != "read" {
+				t.Fatalf("permissions %v, want exactly contents: write, pull-requests: write, statuses: write and actions: read", wf.Permissions)
 			}
 		}},
 		{"files_step_workflow_edit_not_ok", func(t *testing.T) {
@@ -3709,9 +3780,9 @@ func TestAutoMergePostsStatusContext(t *testing.T) {
 		r.chainStatus = true
 		return r
 	}
-	run("permissions_exactly_contents_pull_requests_statuses_write", func(t *testing.T) {
+	run("permissions_exactly_contents_pull_requests_statuses_write_actions_read", func(t *testing.T) {
 		wf, _ := amLoad(t)
-		want := map[string]string{"contents": "write", "pull-requests": "write", "statuses": "write"}
+		want := map[string]string{"contents": "write", "pull-requests": "write", "statuses": "write", "actions": "read"}
 		if len(wf.Permissions) != len(want) {
 			t.Fatalf("permissions %v, want exactly %v", wf.Permissions, want)
 		}
@@ -3742,7 +3813,7 @@ func TestAutoMergePostsStatusContext(t *testing.T) {
 		swept := 0
 		for _, inv := range amGhInvocations(raw) {
 			swept++
-			if strings.Contains(inv.line, "status") && !(inv.group == "api" && inv.sub == "--method") {
+			if strings.Contains(inv.line, "status") && (inv.group != "api" || inv.sub != "--method") {
 				t.Errorf("a gh call that reads a status: %s", inv.line)
 			}
 		}
@@ -3914,6 +3985,329 @@ func TestAutoMergePostsStatusContext(t *testing.T) {
 		}
 		if okCh.job != "success" {
 			t.Fatalf("the control chain ended %q", okCh.job)
+		}
+	})
+}
+
+// amCIRunsEndpoint is the one CI workflow-runs read of the comment path, exactly as the checks step writes it.
+const amCIRunsEndpoint = `"repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$VERIFIED_SHA&event=pull_request&per_page=100"`
+
+// amCIHold is what the checks step must record when the comment path's CI condition does not hold: it ends exit 0
+// with should_merge not true, the merge step does not run, the job is green, and the one evaluation status is a
+// pending "not yet" naming the CI condition. wantDesc is the prefix of that description.
+func amCIHold(t *testing.T, r *amRig, wantDesc string) {
+	t.Helper()
+	ch := r.runChain()
+	chk, ran := ch.executed("checks")
+	if !ran || chk.code != 0 {
+		t.Fatalf("checks ran=%t exit=%d, want a run ending exit 0: %v", ran, chk.code, amStepKeys(ch))
+	}
+	if got := r.ctx.outputs["checks"]["should_merge"]; got == "true" {
+		t.Fatalf("checks recorded should_merge=true although the CI condition does not hold: %v", r.ctx.outputs["checks"])
+	}
+	if n := len(r.mergeCalls()); n != 0 {
+		t.Fatalf("gh pr merge was called %d times: %v", n, r.mergeCalls())
+	}
+	if _, merged := ch.executed("merge"); merged {
+		t.Fatalf("the merge step ran: %v", amStepKeys(ch))
+	}
+	if ch.job != "success" {
+		t.Fatalf("job %q, want success (a hold never fails the job): %v", ch.job, amStepKeys(ch))
+	}
+	if got := r.oneStatus(cgHead); got.state != "pending" || !strings.HasPrefix(got.description, wantDesc) {
+		t.Fatalf("status %+v, want pending beginning %q", got, wantDesc)
+	}
+	if n := len(r.ciRunCalls()); n != 1 || r.sleeps() != 0 {
+		t.Fatalf("%d CI run reads and %d sleeps, want exactly one read in a single evaluation with no wait", n, r.sleeps())
+	}
+}
+
+// AC-CCR-013c / AC-CCR-020 (REQ-CCR-020, REQ-CCR-023) — the comment path merges only on the same conditions as the
+// workflow_run path: the required checks of the base AND the current head's CI workflow concluded success. A CI job
+// outside the required list that failed (Integration Tests, a race job, Constitution Check) must still withhold.
+// Mutants: a checks step that reads the required checks only; a CI read that accepts any conclusion; a read of the
+// wrong head; a lookup failure read as success.
+func TestAutoMergeCommentPathRequiresCISuccess(t *testing.T) {
+	t.Parallel()
+	run := func(name string, fn func(t *testing.T)) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			fn(t)
+		})
+	}
+	run("required_checks_pass_but_ci_concluded_non_success_zero_merge_calls", func(t *testing.T) {
+		// The required-checks fixture is all pass (the rig default) while the CI workflow as a whole is not green:
+		// the failed job is one the base's required list does not name.
+		swept := 0
+		for _, conclusion := range []string{"failure", "cancelled", "timed_out", "action_required", "skipped", "neutral", "startup_failure", "stale"} {
+			r := amCommentRig(t, "real")
+			r.setCIRuns(amCIRun(1, "completed", conclusion, cgHead))
+			amCIHold(t, r, "not yet: ci-not-success:"+conclusion)
+			swept++
+		}
+		if swept != 8 {
+			t.Fatalf("swept %d conclusions, want 8", swept)
+		}
+	})
+	run("ci_run_listing_unreadable_zero_merge_calls", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		r.setEnv("CI_RUNS_EXIT=1")
+		amCIHold(t, r, "not yet: ci-unreadable")
+	})
+	run("ci_run_listing_malformed_zero_merge_calls", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		r.e.write(filepath.Join(r.e.fixtures, "ci-runs.json"), `{"message":"Not Found"}`, 0o600)
+		amCIHold(t, r, "not yet: ci-unreadable")
+	})
+	run("no_ci_run_for_the_verified_head_zero_merge_calls", func(t *testing.T) {
+		// An empty listing, and a listing whose only run names another head: neither is a success of this head.
+		r := amCommentRig(t, "real")
+		r.setCIRuns()
+		amCIHold(t, r, "not yet: ci-run-not-found")
+		r = amCommentRig(t, "real")
+		r.setCIRuns(amCIRun(1, "completed", "success", cgOther))
+		amCIHold(t, r, "not yet: ci-run-not-found")
+	})
+	run("latest_run_of_the_head_decides", func(t *testing.T) {
+		// A superseded failed run does not block a later successful one; a later failed run is not rescued by an
+		// earlier success.
+		r := amCommentRig(t, "real")
+		r.setCIRuns(amCIRun(1, "completed", "failure", cgHead), amCIRun(2, "completed", "success", cgHead))
+		ch := r.runChain()
+		if len(r.mergeCalls()) != 1 || ch.job != "success" {
+			t.Fatalf("merge calls %v job %q, want one merge when the latest run succeeded\n%v", r.mergeCalls(), ch.job, amStepKeys(ch))
+		}
+		r = amCommentRig(t, "real")
+		r.setCIRuns(amCIRun(1, "completed", "success", cgHead), amCIRun(2, "completed", "failure", cgHead))
+		amCIHold(t, r, "not yet: ci-not-success:failure")
+	})
+	run("ci_success_with_required_checks_passing_merges_once", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		ch := r.runChain()
+		calls := r.mergeCalls()
+		if len(calls) != 1 || amFlagValue(calls[0], "--match-head-commit") != cgHead || ch.job != "success" {
+			t.Fatalf("merge calls %v job %q, want one head-pinned merge\n%v", calls, ch.job, amStepKeys(ch))
+		}
+		reads := r.ciRunCalls()
+		if len(reads) != 1 || !strings.Contains(reads[0], "head_sha="+cgHead) || !strings.Contains(reads[0], "event=pull_request") || r.sleeps() != 0 {
+			t.Fatalf("CI run reads %v sleeps %d, want one read bound to the verified head and the pull_request event, no wait", reads, r.sleeps())
+		}
+	})
+	run("required_checks_not_passing_still_withholds_before_any_ci_read", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		r.setEnv("CHECKS_EXIT=1")
+		ch := r.runChain()
+		if len(r.mergeCalls()) != 0 || len(r.ciRunCalls()) != 0 || ch.job != "success" {
+			t.Fatalf("merge calls %v CI reads %v job %q, want no merge and no CI read when the required checks did not pass", r.mergeCalls(), r.ciRunCalls(), ch.job)
+		}
+		if got := r.oneStatus(cgHead); got.state != "pending" || !strings.HasPrefix(got.description, "not yet: required checks") {
+			t.Fatalf("status %+v, want pending beginning %q", got, "not yet: required checks")
+		}
+	})
+	run("workflow_run_path_makes_no_ci_read", func(t *testing.T) {
+		// The workflow_run path's CI condition is the job-level `if` (the triggering run concluded success); the
+		// checks step must not read the runs again there.
+		r := amRepairClean(t)
+		r.chainStatus = true
+		ch := r.runChain()
+		if len(r.ciRunCalls()) != 0 || len(r.mergeCalls()) != 1 || ch.job != "success" {
+			t.Fatalf("CI reads %v merge calls %v job %q, want no CI read and one merge on the workflow_run path", r.ciRunCalls(), r.mergeCalls(), ch.job)
+		}
+	})
+	run("ci_read_is_one_data_only_listing_in_the_checks_step", func(t *testing.T) {
+		wf, _ := amLoad(t)
+		reads := 0
+		for _, s := range wf.steps() {
+			for _, inv := range amGhInvocations(s.Run) {
+				if inv.group == "api" && inv.sub == amCIRunsEndpoint {
+					reads++
+					if s.ID != "checks" {
+						t.Errorf("the CI runs read is in step %q, want the checks step", s.ID)
+					}
+					for _, tok := range []string{"VERIFIED_SHA", "REPO", "EVENT_NAME"} {
+						if _, ok := s.Env[tok]; !ok {
+							t.Errorf("the checks step takes no %s through env", tok)
+						}
+					}
+				}
+			}
+			if strings.Contains(s.Run, "${{") {
+				t.Errorf("step %q interpolates an expression into its script", s.Name)
+			}
+		}
+		if reads != 1 {
+			t.Fatalf("%d CI runs reads in the workflow, want exactly 1", reads)
+		}
+	})
+}
+
+// AC-CCR-013c (REQ-CCR-023) — a CI workflow that has not finished is a "not yet" hold on the comment path: one
+// evaluation, no wait loop, exit 0, no merge, a pending status. The identity's next comment edit evaluates again.
+// Mutants: the in-progress run read as success; the hold ending exit 1; a wait loop around the CI read.
+func TestAutoMergeCommentPathCIInProgressHolds(t *testing.T) {
+	t.Parallel()
+	run := func(name string, fn func(t *testing.T)) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			fn(t)
+		})
+	}
+	run("every_unfinished_status_is_a_pending_hold", func(t *testing.T) {
+		swept := 0
+		for _, status := range []string{"in_progress", "queued", "waiting", "requested", "pending"} {
+			r := amCommentRig(t, "real")
+			r.setCIRuns(amCIRun(1, status, "", cgHead))
+			amCIHold(t, r, "not yet: ci-not-complete:"+status)
+			swept++
+		}
+		if swept != 5 {
+			t.Fatalf("swept %d statuses, want 5", swept)
+		}
+	})
+	run("a_rerun_in_progress_after_an_earlier_success_holds", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		r.setCIRuns(amCIRun(1, "completed", "success", cgHead), amCIRun(2, "in_progress", "", cgHead))
+		amCIHold(t, r, "not yet: ci-not-complete:in_progress")
+	})
+	run("hold_step_output_is_not_a_pass", func(t *testing.T) {
+		r := amCommentRig(t, "real")
+		r.setCIRuns(amCIRun(1, "in_progress", "", cgHead))
+		r.seed("head", "ok", "true")
+		r.seed("head", "sha", cgHead)
+		r.seed("author", "eligible", "true")
+		r.seed("pr", "active", "true")
+		res, outs := r.runStep(r.step("checks"))
+		if res.code != 0 || outs["should_merge"] != "false" {
+			t.Fatalf("checks exit %d outputs %v, want exit 0 and should_merge=false\n%s%s", res.code, outs, res.stdout, res.stderr)
+		}
+		if got := r.keyValues("checks", "should_merge"); len(got) != 1 {
+			t.Fatalf("should_merge recorded %d times, want once: %v", len(got), got)
+		}
+	})
+}
+
+// AC-CCR-013c (REQ-CCR-020, REQ-CCR-023) — parity: for every conclusion the CI workflow can report, the comment path
+// reaches a merge exactly when the workflow_run path does. The workflow_run path's condition is the job-level `if`
+// (the triggering run concluded success); the comment path reads the same fact from the API.
+func TestAutoMergeCommentPathCIConditionMatchesWorkflowRunPath(t *testing.T) {
+	t.Parallel()
+	cgTools(t)
+	swept := 0
+	for _, conclusion := range []string{"success", "failure", "cancelled", "timed_out", "action_required", "skipped", "neutral", "startup_failure", "stale"} {
+		t.Run(conclusion, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			wr := amRepairClean(t)
+			wr.ctx.facts["github.event.workflow_run.conclusion"] = conclusion
+			wr.runChain()
+			cm := amCommentRig(t, "real")
+			cm.setCIRuns(amCIRun(1, "completed", conclusion, cgHead))
+			cm.runChain()
+			wrMerged, cmMerged := len(wr.mergeCalls()) == 1, len(cm.mergeCalls()) == 1
+			if wrMerged != cmMerged || wrMerged != (conclusion == "success") {
+				t.Fatalf("CI conclusion %q: workflow_run path merged=%t, comment path merged=%t, want both merged exactly when success", conclusion, wrMerged, cmMerged)
+			}
+		})
+		swept++
+	}
+	if swept != 9 {
+		t.Fatalf("swept %d conclusions, want 9", swept)
+	}
+	t.Run("ci_workflow_is_the_one_both_triggers_name", func(t *testing.T) {
+		t.Parallel()
+		cgTools(t)
+		wf, _ := amLoad(t)
+		trigger, ok := wf.On["workflow_run"].(map[string]any)
+		if !ok {
+			t.Fatalf("no workflow_run trigger: %v", wf.On)
+		}
+		names, _ := trigger["workflows"].([]any)
+		if len(names) != 1 || names[0] != "CI" {
+			t.Fatalf("workflow_run names %v, want exactly [CI]", names)
+		}
+		if !regexp.MustCompile(`(?m)^name: CI$`).MatchString(amReadRepoFile(t, ".github/workflows/ci.yml")) {
+			t.Fatal(".github/workflows/ci.yml is not the workflow named CI that the comment path reads by file")
+		}
+	})
+}
+
+// AC-CCR-019a (REQ-CCR-024, REQ-CCR-025) — a head lookup that fails inside the merge step is a reached-and-not-merged
+// outcome like the other four: one summary line, exit 1, the status `failure`, zero merge calls. Under the default
+// `bash -e` an unguarded failed command substitution would end the script before that line.
+// Mutants: the lookup left unguarded; the guarded branch exiting 0; the summary line deleted from that branch.
+func TestAutoMergeMergeHeadLookupFailureFailsClosed(t *testing.T) {
+	t.Parallel()
+	run := func(name string, fn func(t *testing.T)) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			fn(t)
+		})
+	}
+	run("merge_step_alone_summary_line_exit_1_zero_merge_calls", func(t *testing.T) {
+		wf, _ := amLoad(t)
+		merge, ok := wf.merge()
+		if !ok {
+			t.Fatal("merge step missing")
+		}
+		r := newAMRig(t, "stub")
+		r.seedGuards()
+		r.seed("review", "ok", "true")
+		r.setEnv("VIEW_FAIL_FROM=1")
+		res, _ := r.runStep(merge)
+		raw, err := os.ReadFile(filepath.Join(r.e.dir, "summary-merge.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lines []string
+		for _, l := range strings.Split(string(raw), "\n") {
+			if strings.TrimSpace(l) != "" {
+				lines = append(lines, l)
+			}
+		}
+		if res.code != 1 {
+			t.Fatalf("merge step exit %d, want 1\n%s%s", res.code, res.stdout, res.stderr)
+		}
+		if len(lines) != 1 || !strings.HasPrefix(lines[0], "merge not executed: head unreadable") || !strings.Contains(lines[0], cgHead) {
+			t.Fatalf("summary lines %q, want exactly one beginning %q and naming the tested head", lines, "merge not executed: head unreadable")
+		}
+		if got := r.carried["AUTO_MERGE_STATE"]; got != "failure" {
+			t.Fatalf("AUTO_MERGE_STATE %q, want failure", got)
+		}
+		if n := len(r.mergeCalls()); n != 0 {
+			t.Fatalf("gh pr merge was called %d times: %v", n, r.mergeCalls())
+		}
+	})
+	run("whole_chain_status_failure_job_failure_zero_merge_calls", func(t *testing.T) {
+		// The head step's own lookup (call 1) succeeds; the merge step's lookup (call 2) fails.
+		r := amRepairClean(t)
+		r.chainStatus = true
+		r.setEnv("VIEW_FAIL_FROM=2")
+		ch := r.runChain()
+		m, ran := ch.executed("merge")
+		if !ran || m.code != 1 || ch.job != "failure" {
+			t.Fatalf("merge ran=%t exit=%d job=%q, want exit 1 and a failed job: %v", ran, m.code, ch.job, amStepKeys(ch))
+		}
+		if n := len(r.mergeCalls()); n != 0 {
+			t.Fatalf("gh pr merge was called %d times: %v", n, r.mergeCalls())
+		}
+		if got := r.oneStatus(cgHead); got.state != "failure" || !strings.HasPrefix(got.description, "merge not executed: head unreadable") {
+			t.Fatalf("status %+v, want failure beginning %q", got, "merge not executed: head unreadable")
+		}
+	})
+	run("moved_head_keeps_its_own_wording", func(t *testing.T) {
+		// The moved-head path is unchanged by the guard: still "head moved", exit 1, no merge.
+		r := amRepairClean(t)
+		r.chainStatus = true
+		r.setViews(cgHead, cgOther)
+		ch := r.runChain()
+		if m, _ := ch.executed("merge"); m.code != 1 || len(r.mergeCalls()) != 0 {
+			t.Fatalf("merge exit %d merge calls %v, want exit 1 and none", m.code, r.mergeCalls())
+		}
+		if got := r.oneStatus(cgHead); got.state != "failure" || !strings.HasPrefix(got.description, "merge not executed: head moved") {
+			t.Fatalf("status %+v, want failure beginning %q", got, "merge not executed: head moved")
 		}
 	})
 }

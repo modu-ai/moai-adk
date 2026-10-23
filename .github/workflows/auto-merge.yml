@@ -19,6 +19,8 @@ permissions:
   contents: write
   pull-requests: write
   statuses: write
+  # Read-only: the comment path lists the CI workflow's runs of the evaluated head (REQ-CCR-020/023); no write scope added.
+  actions: read
 
 jobs:
   auto-merge:
@@ -179,8 +181,45 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          VERIFIED_SHA: ${{ steps.head.outputs.sha }}
         run: |
           echo "Checking required CI checks for PR #$PR_NUMBER..."
+
+          # Comment path (REQ-CCR-020, REQ-CCR-023): the same conditions as the workflow_run path, whose job
+          # `if` requires the triggering CI run to have concluded success. Once the required checks all pass,
+          # the CI workflow's runs of the verified head are read once (no wait: the identity's next comment
+          # edit evaluates again). The latest run decides: success continues; a run that has not finished,
+          # no run of this head, or a read that fails is a "not yet" hold; any other conclusion withholds.
+          # Every result but success ends this step exit 0 with should_merge=false, so no merge is requested.
+          # The listing is data only: read through jq, never executed, the commit only from the API-read head.
+          ci_hold() {
+            echo "::notice::CI condition not met ($1) - merge not requested; the next review update re-evaluates"
+            echo "CI_HOLD=$1" >> "${GITHUB_ENV:-/dev/null}"
+            echo "should_merge=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          ci_gate() {
+            ci_rc=0
+            CI_RUNS="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$VERIFIED_SHA&event=pull_request&per_page=100" 2>/dev/null)" || ci_rc=$?
+            if [ "$ci_rc" -ne 0 ]; then ci_hold "ci-unreadable"; fi
+            CI_STATE="$(printf '%s' "$CI_RUNS" | jq -r --arg sha "$VERIFIED_SHA" '
+              if type == "object" and (.workflow_runs | type) == "array" then
+                ([.workflow_runs[] | select(type == "object" and .head_sha == $sha and .event == "pull_request")] | sort_by(.id) | last) as $run
+                | if $run == null then "none" else "\($run.status // "unknown")/\($run.conclusion // "none")" end
+              else "unreadable" end' 2>/dev/null)" || CI_STATE="unreadable"
+            case "$CI_STATE" in
+              '' | *[!a-z_/]*) CI_STATE="unreadable" ;;
+            esac
+            case "$CI_STATE" in
+              completed/success) ;;
+              none) ci_hold "ci-run-not-found" ;;
+              unreadable) ci_hold "ci-unreadable" ;;
+              completed/*) ci_hold "ci-not-success:${CI_STATE#completed/}" ;;
+              *) ci_hold "ci-not-complete:${CI_STATE%%/*}" ;;
+            esac
+          }
 
           # AC-CI-004: the required-checks observation is a structured JSON
           # query with explicit failure handling — a lookup failure, an empty
@@ -246,6 +285,7 @@ jobs:
 
             if [ "${pending:-0}" -eq 0 ]; then
               echo "All checks completed!"
+              if [ "$EVENT_NAME" = "issue_comment" ]; then ci_gate; fi
               echo "should_merge=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -545,10 +585,15 @@ jobs:
           # AC-CI-003: re-verify the head IMMEDIATELY before merging and pin
           # the merge to the CI-tested commit, so a push landing between the
           # guards and this call can never be merged unverified.
-          HEAD_NOW="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')"
+          # A failed lookup must not end the script here: under the runner's default errexit shell an
+          # unguarded failed command substitution would skip the summary line and the status. An empty value
+          # is an unconfirmed head and takes the same not-executed outcome (REQ-CCR-024).
+          HEAD_NOW="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid' 2>/dev/null || true)"
           if [ -z "$HEAD_NOW" ] || [ "$HEAD_NOW" != "$TESTED_SHA" ]; then
-            echo "::notice::PR head moved (tested=${TESTED_SHA:-<empty>} now=${HEAD_NOW:-<empty>}) - leaving PR #$PR_NUMBER open for review"
-            finish failure "merge not executed: head moved - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}" 1
+            HEAD_WHY="head moved"
+            if [ -z "$HEAD_NOW" ]; then HEAD_WHY="head unreadable"; fi
+            echo "::notice::PR head not confirmed ($HEAD_WHY; tested=${TESTED_SHA:-<empty>} now=${HEAD_NOW:-<empty>}) - leaving PR #$PR_NUMBER open for review"
+            finish failure "merge not executed: $HEAD_WHY - PR #$PR_NUMBER left open, tested head ${TESTED_SHA:-<empty>}, current head ${HEAD_NOW:-<empty>}" 1
           fi
 
           # AC-CI-005 re-evaluation (post-head-query): the head query itself
@@ -634,7 +679,7 @@ jobs:
           elif [ "$AUTHOR_ELIGIBLE" != "true" ]; then
             DESC="needs user approval: not an eligible author"
           elif [ "$CHECKS_MERGE" != "true" ]; then
-            DESC="not yet: required checks not all passed"
+            DESC="not yet: ${CI_HOLD:-required checks not all passed}"
           fi
           DESC="${DESC:0:140}"
           if ! gh api --method POST "repos/$REPO/statuses/$SHA" \
