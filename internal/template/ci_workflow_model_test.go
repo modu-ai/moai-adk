@@ -15,24 +15,38 @@
 //     (verification-completeness.md 1.1: a check is unfinished until its
 //     failure has been observed).
 //
-// Modelling limits, stated so a green is read at its true width: a step is
-// modelled as failing only when the test says so or when its script reaches an
-// unconditional top-level `exit 1` (rpcScriptHardFails: not inside a condition,
-// loop or group, not behind `&&` / `||`, not after an earlier top-level `exit`);
-// shell behaviour inside a `run:` body is otherwise not executed. Job-level `if:` and step-level `if:` are evaluated; `needs` is
-// modelled through the `needs.<id>.result` / `.outputs.<name>` context values
-// the test supplies.
+// Modelling limits, stated so a green is read at its true width. Job-level and
+// step-level `if:` are evaluated; `needs` is modelled through the
+// `needs.<id>.result` / `.outputs.<name>` context values the test supplies.
+// A step whose condition reads a needed job's result (the classification verdict
+// of a real job and both steps of a skip-marker, rpcIsClassificationStep) is
+// EXECUTED: its `run:` body, with the cell's expressions substituted and the
+// workflow / job / step env applied, runs under bash (shells other than bash,
+// sh and the default are refused), and a non-zero exit is the step failing. A
+// `continue-on-error` step cannot fail its job. Every other run step (go build,
+// go vet, ...) is a verification step: it passes, or in the "verification
+// fails" mode the first plain one fails. Not modelled: `matrix.*` values inside
+// executed scripts (they read as empty), runner-provided commands beyond the
+// host PATH, the runner's own bash version, step `timeout-minutes`,
+// `working-directory`, and a job-level `continue-on-error` (reported as a
+// violation by the verdict guard instead).
 package template_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 	"unicode"
 
 	"gopkg.in/yaml.v3"
@@ -697,11 +711,12 @@ var rpcStatusFuncRe = regexp.MustCompile(`\b(always|cancelled|success|failure)\s
 
 func rpcHasStatusFunc(expr string) bool { return rpcStatusFuncRe.MatchString(expr) }
 
-func rpcEvalValue(t *testing.T, expr string, ctx rpcExprCtx) any {
-	t.Helper()
+// rpcEvalValueE evaluates an expression and returns an error for syntax or a
+// function the model does not implement.
+func rpcEvalValueE(expr string, ctx rpcExprCtx) (any, error) {
 	toks, err := rpcLex(expr)
 	if err != nil {
-		t.Fatalf("evaluate %q: %v", expr, err)
+		return nil, fmt.Errorf("evaluate %q: %w", expr, err)
 	}
 	p := &rpcParser{toks: toks, ctx: ctx}
 	v, err := p.parseOr()
@@ -709,25 +724,26 @@ func rpcEvalValue(t *testing.T, expr string, ctx rpcExprCtx) any {
 		err = fmt.Errorf("trailing token %q", p.peek().text)
 	}
 	if err != nil {
-		t.Fatalf("evaluate %q: %v", expr, err)
+		return nil, fmt.Errorf("evaluate %q: %w", expr, err)
 	}
-	return v
-}
-
-func rpcEvalIf(t *testing.T, expr string, ctx rpcExprCtx) bool {
-	t.Helper()
-	return rpcTruthy(rpcEvalValue(t, expr, ctx))
+	return v, nil
 }
 
 var rpcInterpRe = regexp.MustCompile(`\$\{\{\s*(.+?)\s*\}\}`)
 
-// rpcInterpolate substitutes every ${{ expr }} in text with its string value.
-func rpcInterpolate(t *testing.T, text string, ctx rpcExprCtx) string {
-	t.Helper()
-	return rpcInterpRe.ReplaceAllStringFunc(text, func(m string) string {
+// rpcInterpolateE substitutes every ${{ expr }} in text with its string value,
+// reporting an expression the model cannot evaluate instead of aborting.
+func rpcInterpolateE(text string, ctx rpcExprCtx) (string, error) {
+	var firstErr error
+	out := rpcInterpRe.ReplaceAllStringFunc(text, func(m string) string {
 		inner := rpcInterpRe.FindStringSubmatch(m)[1]
-		return rpcAsString(rpcEvalValue(t, inner, ctx))
+		v, err := rpcEvalValueE(inner, ctx)
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+		return rpcAsString(v)
 	})
+	return out, firstErr
 }
 
 // withStatusDefault applies GitHub's rule: an `if:` carrying no status function
@@ -747,6 +763,15 @@ func rpcWithStatusDefault(cond string) string {
 // meaning every needed job concluded success.
 func rpcJobRuns(t *testing.T, j *rpcJob, ctx rpcExprCtx) bool {
 	t.Helper()
+	ok, err := rpcJobRunsE(j, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// rpcJobRunsE is rpcJobRuns reporting an unevaluable condition as an error.
+func rpcJobRunsE(j *rpcJob, ctx rpcExprCtx) (bool, error) {
 	jc := ctx
 	// A cancelled run starts no further job unless its condition says always():
 	// success() is false once the run is cancelled.
@@ -763,191 +788,199 @@ func rpcJobRuns(t *testing.T, j *rpcJob, ctx rpcExprCtx) bool {
 			jc.failure = true
 		}
 	}
-	return rpcEvalIf(t, rpcWithStatusDefault(j.If), jc)
+	v, err := rpcEvalValueE(rpcWithStatusDefault(j.If), jc)
+	return rpcTruthy(v), err
 }
 
-// rpcShellStatements splits a `run:` script into statements, each a list of
-// words. It is a reader for the straight-line scripts the verdict and marker
-// steps use, not a shell: it understands quoting, comments, `;` and newline as
-// statement ends, a trailing `&&` / `||` / `|` / backslash as a continuation,
-// `$( ... )` as one word and heredoc bodies as skipped text. `&&`, `||`, `|` and
-// `&` are kept as words so a conditional `cmd || exit 1` stays visibly one
-// statement.
-func rpcShellStatements(script string) [][]string {
-	var stmts [][]string
-	var cur []string
-	var word strings.Builder
-	inWord := false
-	heredoc, heredocNext := "", false
-	flushWord := func() {
-		if !inWord {
-			return
-		}
-		w := word.String()
-		word.Reset()
-		inWord = false
-		switch {
-		case heredocNext:
-			heredoc, heredocNext = strings.Trim(w, `'"`), false
-		case strings.HasPrefix(w, "<<") && !strings.HasPrefix(w, "<<<"):
-			d := strings.Trim(strings.TrimPrefix(strings.TrimPrefix(w, "<<"), "-"), `'"`)
-			if d == "" {
-				heredocNext = true
-			} else {
-				heredoc = d
-			}
-		}
-		cur = append(cur, w)
+// rpcInterpolate substitutes every ${{ expr }} in text with its string value.
+func rpcInterpolate(t *testing.T, text string, ctx rpcExprCtx) string {
+	t.Helper()
+	out, err := rpcInterpolateE(text, ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
-	endStmt := func() {
-		flushWord()
-		if len(cur) > 0 {
-			stmts = append(stmts, cur)
-			cur = nil
+	return out
+}
+
+// ---- executing a step's script ------------------------------------------------
+//
+// The verdict and marker steps are not read, they are RUN (sync-audit iter4 B1).
+// An earlier revision tried to decide "does this script fail" by reading the shell
+// text; every reader is out-parsed by a spelling bash accepts (`trap 'exit 0' EXIT`,
+// an indented heredoc terminator, an `exit()` function, `exec true`). The authority
+// is now the exit status of the real script under the shell GitHub would use.
+
+// rpcRequireBash skips on windows (the ubuntu legs run the executed guards, the
+// same precedent as the cleanup guards) and fails, not skips, when bash is absent
+// elsewhere: an absent tool must never turn a guard into a silent pass.
+func rpcRequireBash(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the verdict guards execute the workflow's bash; not exercised on windows (the verdict is platform-independent and the ubuntu legs run it)")
+	}
+	for _, tool := range []string{"bash", "sh"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Fatalf("%s is required by the verdict guard and is not on PATH (absence fails, it does not skip)", tool)
 		}
 	}
-	rs := []rune(script)
-	sub := 0
-	for i := 0; i < len(rs); i++ {
-		c := rs[i]
+}
+
+// rpcContinuesOnError reports whether a `continue-on-error:` value lets the unit
+// fail without failing its parent. Anything that is not provably false counts as
+// true, because an expression cannot be evaluated here and the safe direction for
+// a guard is to assume the failure is swallowed.
+func rpcContinuesOnError(v any) bool {
+	switch x := v.(type) {
+	case nil:
+		return false
+	case bool:
+		return x
+	case string:
+		return strings.ToLower(strings.TrimSpace(rpcStripExpr(x))) != "false"
+	}
+	return true
+}
+
+// rpcShellSemanticEnv are the environment variables that change how bash
+// executes a script. A step that sets one is refused rather than guessed at.
+var rpcShellSemanticEnv = map[string]bool{
+	"BASH_ENV": true, "ENV": true, "SHELLOPTS": true, "BASHOPTS": true, "PATH": true,
+	"IFS": true, "PS4": true, "PROMPT_COMMAND": true, "LD_PRELOAD": true, "LD_LIBRARY_PATH": true,
+}
+
+// rpcEffectiveShell is the shell a step runs under: its own `shell:`, else the
+// job's `defaults.run.shell`, else the workflow's.
+func rpcEffectiveShell(wf *rpcWorkflow, j *rpcJob, s rpcStep) string {
+	for _, sh := range []string{s.Shell, j.Defaults.Run.Shell, wf.Defaults.Run.Shell} {
+		if strings.TrimSpace(sh) != "" {
+			return strings.TrimSpace(sh)
+		}
+	}
+	return ""
+}
+
+// rpcExecResult is the outcome of running one step script.
+type rpcExecResult struct {
+	failed bool
+	// why is non-empty when the script could not be executed faithfully; the
+	// caller reports the step as unmodelled, which no verdict cell accepts.
+	why string
+}
+
+var rpcExecCache sync.Map // key string -> rpcExecResult
+
+// rpcExecScript runs a step script under the named workflow shell and reports
+// whether it exits non-zero. Only the shells `bash`, `sh` and the unset default
+// are executed; any other shell string (a custom `bash -c "..."` template,
+// pwsh, python) is not modelled and is refused.
+func rpcExecScript(shell, script string, env map[string]string) rpcExecResult {
+	var argv []string
+	switch shell {
+	case "":
+		argv = []string{"bash", "-e", ""} // GitHub's default on Linux and macOS
+	case "bash":
+		argv = []string{"bash", "--noprofile", "--norc", "-eo", "pipefail", ""}
+	case "sh":
+		argv = []string{"sh", "-e", ""}
+	default:
+		return rpcExecResult{why: fmt.Sprintf("shell %q is not executed by this guard", shell)}
+	}
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		if rpcShellSemanticEnv[strings.ToUpper(k)] {
+			return rpcExecResult{why: fmt.Sprintf("env %s changes how the shell executes the script", k)}
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var kb strings.Builder
+	for _, k := range keys {
+		kb.WriteString(k + "=" + env[k] + "\x00")
+	}
+	cacheKey := shell + "\x01" + script + "\x01" + kb.String()
+	if v, ok := rpcExecCache.Load(cacheKey); ok {
+		return v.(rpcExecResult)
+	}
+	dir, err := os.MkdirTemp("", "rpc-step-")
+	if err != nil {
+		return rpcExecResult{why: "cannot create a scratch directory: " + err.Error()}
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	path := filepath.Join(dir, "step.sh")
+	if err := os.WriteFile(path, []byte(script), 0o644); err != nil {
+		return rpcExecResult{why: "cannot write the step script: " + err.Error()}
+	}
+	argv[len(argv)-1] = path
+	tctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(tctx, argv[0], argv[1:]...)
+	cmd.Dir = dir
+	cmd.Env = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + dir,
+		"GITHUB_STEP_SUMMARY=" + filepath.Join(dir, "summary"),
+		"GITHUB_OUTPUT=" + filepath.Join(dir, "output"),
+		"GITHUB_ENV=" + filepath.Join(dir, "env"),
+		"GITHUB_PATH=" + filepath.Join(dir, "path"),
+	}
+	for _, k := range keys {
+		cmd.Env = append(cmd.Env, k+"="+env[k])
+	}
+	res := rpcExecResult{}
+	if runErr := cmd.Run(); runErr != nil {
+		var ee *exec.ExitError
 		switch {
-		case sub > 0:
-			word.WriteRune(c)
-			inWord = true
-			switch c {
-			case '(':
-				sub++
-			case ')':
-				sub--
-			}
-		case c == '\\':
-			if i+1 < len(rs) {
-				i++
-				if rs[i] == '\n' {
-					flushWord()
-				} else {
-					word.WriteRune(rs[i])
-					inWord = true
-				}
-			}
-		case c == '\'':
-			inWord = true
-			for i++; i < len(rs) && rs[i] != '\''; i++ {
-				word.WriteRune(rs[i])
-			}
-		case c == '"':
-			inWord = true
-			for i++; i < len(rs) && rs[i] != '"'; i++ {
-				if rs[i] == '\\' && i+1 < len(rs) {
-					i++
-				}
-				word.WriteRune(rs[i])
-			}
-		case c == '$' && i+1 < len(rs) && rs[i+1] == '(':
-			word.WriteString("$(")
-			inWord = true
-			i++
-			sub = 1
-		case c == '#' && !inWord:
-			for i+1 < len(rs) && rs[i+1] != '\n' {
-				i++
-			}
-		case c == '\n':
-			flushWord()
-			if heredoc != "" {
-				j := i + 1
-				for j < len(rs) {
-					k := j
-					for k < len(rs) && rs[k] != '\n' {
-						k++
-					}
-					line := strings.TrimSpace(string(rs[j:k]))
-					j = k + 1
-					if line == heredoc {
-						break
-					}
-				}
-				i, heredoc = j-1, ""
-			}
-			if n := len(cur); n > 0 && (cur[n-1] == "&&" || cur[n-1] == "||" || cur[n-1] == "|") {
-				continue
-			}
-			endStmt()
-		case c == ';':
-			endStmt()
-		case c == ' ' || c == '\t' || c == '\r':
-			flushWord()
-		case c == '&' || c == '|':
-			flushWord()
-			op := string(c)
-			if i+1 < len(rs) && rs[i+1] == c {
-				op += string(c)
-				i++
-			}
-			cur = append(cur, op)
+		case tctx.Err() != nil:
+			res.why = "the step script did not finish within 30s"
+		case errors.As(runErr, &ee):
+			res.failed = true
 		default:
-			word.WriteRune(c)
-			inWord = true
+			res.why = "cannot start " + argv[0] + ": " + runErr.Error()
 		}
 	}
-	endStmt()
-	return stmts
+	rpcExecCache.Store(cacheKey, res)
+	return res
 }
 
-// rpcScriptHardFails reports whether running the script reaches an
-// unconditional `exit 1`: a top-level statement that is exactly `exit 1`, not
-// preceded by another top-level `exit`, and not inside an if / for / while /
-// until / case body, a `{ }` group or a `( )` subshell, nor chained behind
-// `&&` / `||`. An `exit 1` that sits inside a condition is NOT unconditional
-// (this reader does not evaluate the condition, so it never credits one — an
-// `if false; then exit 1; fi` and an `exit 0` followed by `exit 1` both read as
-// "does not hard-fail"). That is the conservative direction for a guard: a
-// verdict step that is wrapped in a condition turns the guard red.
-func rpcScriptHardFails(script string) bool {
-	depth := 0
-	for _, st := range rpcShellStatements(script) {
-		for len(st) > 0 && (st[0] == "then" || st[0] == "do" || st[0] == "else") {
-			st = st[1:]
-		}
-		if len(st) == 0 {
-			continue
-		}
-		switch st[0] {
-		case "if", "for", "while", "until", "case", "select":
-			depth++
-		case "fi", "done", "esac":
-			if depth > 0 {
-				depth--
+var rpcNeedsResultRe = regexp.MustCompile(`(?i)needs\.[a-z0-9_-]+\.result`)
+
+// rpcIsClassificationStep names the steps whose condition reads a needed job's
+// result: the classification verdict of a real job and both steps of a marker.
+// These are EXECUTED; every other run step of a gated job is a verification
+// step (go build, go vet, ...) the guard cannot run and simulates instead. A step
+// that drops its needs.*.result condition therefore stops being executed and
+// reads as an always-passing verification step, which the cells then refuse.
+func rpcIsClassificationStep(s rpcStep) bool {
+	return s.Run != "" && rpcNeedsResultRe.MatchString(s.If)
+}
+
+// rpcRunClassificationStep executes a classification step with the expressions it
+// carries substituted from the cell context, exactly as the runner would, and
+// with the workflow, job and step env applied.
+func rpcRunClassificationStep(wf *rpcWorkflow, j *rpcJob, s rpcStep, ctx rpcExprCtx) rpcExecResult {
+	script, err := rpcInterpolateE(s.Run, ctx)
+	if err != nil {
+		return rpcExecResult{why: err.Error()}
+	}
+	env := map[string]string{"GITHUB_EVENT_NAME": ctx.vars["github.event_name"]}
+	for _, src := range []map[string]any{wf.Env, j.Env, s.Env} {
+		for k, v := range src {
+			val, err := rpcInterpolateE(fmt.Sprint(v), ctx)
+			if err != nil {
+				return rpcExecResult{why: err.Error()}
 			}
-		case "exit":
-			if depth == 0 && len(st) <= 2 {
-				return len(st) == 2 && st[1] == "1"
-			}
-		}
-		for _, w := range st {
-			switch w {
-			case "{", "(":
-				depth++
-			case "}", ")":
-				if depth > 0 {
-					depth--
-				}
-			}
+			env[k] = val
 		}
 	}
-	return false
+	return rpcExecScript(rpcEffectiveShell(wf, j, s), script, env)
 }
-
-// rpcStepHardFails reports whether a step's script reaches an unconditional
-// `exit 1` — the convention the verdict and marker steps use.
-func rpcStepHardFails(s rpcStep) bool { return rpcScriptHardFails(s.Run) }
 
 // rpcFirstVerificationStep names the first plain run step of a job that is
-// neither conditional nor a hard-fail step: the step the "verification fails"
-// variants of a cell fail.
+// neither conditional nor a classification step: the step the "verification
+// fails" variants of a cell fail.
 func rpcFirstVerificationStep(j *rpcJob) string {
 	for _, s := range j.Steps {
-		if s.Run != "" && s.If == "" && !rpcStepHardFails(s) {
+		if s.Run != "" && s.If == "" && !rpcIsClassificationStep(s) {
 			return s.Name
 		}
 	}
@@ -962,8 +995,15 @@ const (
 	rpcVerificationFails
 )
 
-// rpcSimulateJob walks a job's steps and returns its conclusion.
-func rpcSimulateJob(t *testing.T, j *rpcJob, ctx rpcExprCtx, mode rpcStepMode) string {
+// rpcUnmodelled is the conclusion of a job the guard could not simulate
+// faithfully. It equals no real conclusion, so every cell that expects
+// success or failure reads it as a violation and prints the reason.
+func rpcUnmodelled(why string) string { return "unmodelled(" + why + ")" }
+
+// rpcSimulateJob walks a job's steps and returns its conclusion. Step `if:` is
+// evaluated, classification steps are executed, a step with `continue-on-error`
+// cannot fail the job, and a verification step fails only when the mode says so.
+func rpcSimulateJob(t *testing.T, wf *rpcWorkflow, j *rpcJob, ctx rpcExprCtx, mode rpcStepMode) string {
 	t.Helper()
 	failName := ""
 	if mode == rpcVerificationFails {
@@ -975,12 +1015,27 @@ func rpcSimulateJob(t *testing.T, j *rpcJob, ctx rpcExprCtx, mode rpcStepMode) s
 		sc.success, sc.failure = !prevFailed && !ctx.cancelled, prevFailed
 		run := sc.success
 		if strings.TrimSpace(s.If) != "" {
-			run = rpcEvalIf(t, rpcWithStatusDefault(s.If), sc)
+			v, err := rpcEvalValueE(rpcWithStatusDefault(s.If), sc)
+			if err != nil {
+				return rpcUnmodelled(err.Error())
+			}
+			run = rpcTruthy(v)
 		}
 		if !run {
 			continue
 		}
-		if (failName != "" && s.Name == failName) || rpcStepHardFails(s) {
+		failed := false
+		switch {
+		case rpcIsClassificationStep(s):
+			res := rpcRunClassificationStep(wf, j, s, ctx)
+			if res.why != "" {
+				return rpcUnmodelled(fmt.Sprintf("step %q: %s", s.Name, res.why))
+			}
+			failed = res.failed
+		case failName != "" && s.Name == failName:
+			failed = true
+		}
+		if failed && !rpcContinuesOnError(s.ContinueOnError) {
 			prevFailed = true
 		}
 	}
@@ -1007,14 +1062,38 @@ func rpcConclusions(t *testing.T, wf *rpcWorkflow, name string, ctx rpcExprCtx, 
 			continue
 		}
 		conclusion := "skipped"
-		if rpcJobRuns(t, j, ctx) {
-			conclusion = rpcSimulateJob(t, j, ctx, mode)
+		runs, err := rpcJobRunsE(j, ctx)
+		switch {
+		case err != nil:
+			conclusion = rpcUnmodelled(fmt.Sprintf("job %s condition: %v", id, err))
+		case runs:
+			conclusion = rpcSimulateJob(t, wf, j, ctx, mode)
 		}
 		for i := 0; i < legs; i++ {
 			out = append(out, conclusion)
 		}
 	}
 	return out
+}
+
+// rpcStartedSuppliers returns the ids of the jobs of wf that publish the check
+// name and whose own condition starts them in ctx. It reads no step: it answers
+// "is a check run published under this name", not "does it pass".
+func rpcStartedSuppliers(wf *rpcWorkflow, name string, ctx rpcExprCtx) (started []string, errs []string) {
+	for _, id := range wf.jobIDs() {
+		j := wf.Jobs[id]
+		if !rpcContains(j.displayNames(), name) {
+			continue
+		}
+		runs, err := rpcJobRunsE(j, ctx)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Sprintf("job %s of %s: its condition cannot be evaluated (%v)", id, wf.Path, err))
+		case runs:
+			started = append(started, id)
+		}
+	}
+	return started, errs
 }
 
 // rpcNonSkipped drops the "skipped" entries: a skipped job publishes no

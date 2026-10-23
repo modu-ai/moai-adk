@@ -663,6 +663,12 @@ func rpcCheckVerdictSemantics(t *testing.T, wf *rpcWorkflow, names []string) []s
 		if (publishes || rpcCostJobClasses[id] != nil) && strings.Contains(j.If, "always()") {
 			add("job %s: its condition uses always(), so it starts after the run is cancelled", id)
 		}
+		// A job-level continue-on-error is not modelled (the check-run conclusion it
+		// leaves under the required name is not provable here), so a job publishing a
+		// gated name must not carry it. Step-level continue-on-error IS modelled.
+		if publishes && rpcContinuesOnError(j.ContinueOnError) {
+			add("job %s: it publishes a gated required name and carries a job-level continue-on-error (%v), so a failed classification may not conclude failure under the name", id, j.ContinueOnError)
+		}
 	}
 	return v
 }
@@ -690,6 +696,7 @@ func rpcParseRequiredChecks(t *testing.T, text string) rpcRequiredChecks {
 }
 
 func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
+	rpcRequireBash(t)
 	ciText := rpcReadRepoFile(t, rpcCIWorkflowRel)
 	wf := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
 	rc := rpcLoadRequiredChecks(t)
@@ -714,32 +721,52 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 		}
 		return ids
 	}
+	// failStep locates the step a control rewrites: a classification step whose
+	// body ends the job with `exit 1` (the verdict step of a real job, or the
+	// failing step of a marker). It only LOCATES a mutation target; whether a
+	// mutated step fails is decided by running it.
+	ctlErr := "" // set by a mutation that found nothing to change
+	failStep := func(s rpcStep) bool {
+		return rpcIsClassificationStep(s) && strings.Contains(s.Run, "exit 1")
+	}
+	// editFailSteps applies edit to every failStep of the given jobs and fails
+	// the control when it changed nothing (a control that did not apply proves nothing).
+	editFailSteps := func(ids func(w *rpcWorkflow) []string, edit func(s *rpcStep)) func(w *rpcWorkflow) {
+		return func(w *rpcWorkflow) {
+			n := 0
+			for _, id := range ids(w) {
+				for i := range w.Jobs[id].Steps {
+					if failStep(w.Jobs[id].Steps[i]) {
+						edit(&w.Jobs[id].Steps[i])
+						n++
+					}
+				}
+			}
+			if n == 0 {
+				ctlErr = "control did not apply: no failing classification step to edit"
+			}
+		}
+	}
 	dropVerdict := func(w *rpcWorkflow) {
 		for _, id := range rpcGatedRealJobs {
 			var keep []rpcStep
 			for _, s := range w.Jobs[id].Steps {
-				if !rpcStepHardFails(s) || !strings.Contains(s.If, "always()") {
+				if !failStep(s) || !strings.Contains(s.If, "always()") {
 					keep = append(keep, s)
 				}
 			}
 			w.Jobs[id].Steps = keep
 		}
 	}
-	// rewriteVerdict replaces the script of every hard-failing step of the given
-	// jobs (the verdict step of a real job, or the failing step of a marker).
+	// rewriteVerdict replaces the script of every failing step of the given jobs.
 	rewriteVerdict := func(ids func(w *rpcWorkflow) []string, script string) func(w *rpcWorkflow) {
-		return func(w *rpcWorkflow) {
-			for _, id := range ids(w) {
-				for i := range w.Jobs[id].Steps {
-					if rpcStepHardFails(w.Jobs[id].Steps[i]) {
-						w.Jobs[id].Steps[i].Run = script
-					}
-				}
-			}
-		}
+		return editFailSteps(ids, func(s *rpcStep) { s.Run = script })
 	}
 	realJobs := func(*rpcWorkflow) []string { return rpcGatedRealJobs }
 	lintMarkers := func(w *rpcWorkflow) []string { return markerIDs(w, "lint") }
+	both := func(w *rpcWorkflow) []string {
+		return append(append([]string{}, rpcGatedRealJobs...), markerIDs(w, "lint")...)
+	}
 	mutants := []struct {
 		name   string
 		mutate func(w *rpcWorkflow)
@@ -748,15 +775,62 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 		// F6: the failing branch must be reachable, not merely present as text.
 		{"verdict exit 1 inside an `if false` body", rewriteVerdict(realJobs, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
 		{"verdict exit 1 behind an earlier exit 0", rewriteVerdict(realJobs, "echo \"verdict\"\nexit 0\nexit 1\n")},
-		{"verdict exit 1 chained behind a failing test", rewriteVerdict(realJobs, "echo \"verdict\"\n[ -f /nonexistent ] && exit 1\n")},
+		// (The bare `[ -f /nonexistent ] && exit 1` is NOT a mutant: bash ends it with
+		// the failed test's own status 1, so it fails the job like the real script.)
+		{"verdict exit 1 chained behind a failing test, script ends on true", rewriteVerdict(realJobs, "echo \"verdict\"\n[ -f /nonexistent ] && exit 1\ntrue\n")},
 		{"marker exit 1 inside an `if false` body", rewriteVerdict(lintMarkers, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
+		// sync-audit iter4 B1 (N12-N15 and kin): a script bash ends with status 0
+		// although a text reader sees a reachable `exit 1`. The guard runs the script.
+		{"N12 trap 'exit 0' EXIT before exit 1 (verdict)", rewriteVerdict(realJobs, "echo \"verdict\"\ntrap 'exit 0' EXIT\nexit 1\n")},
+		{"N12 trap 'exit 0' EXIT before exit 1 (marker)", rewriteVerdict(lintMarkers, "echo \"verdict\"\ntrap 'exit 0' EXIT\nexit 1\n")},
+		{"N13 indented heredoc terminator swallows exit 1 (verdict)", rewriteVerdict(realJobs, "cat <<EOF\n  EOF\nexit 1\nEOF\n")},
+		{"N13 indented heredoc terminator swallows exit 1 (marker)", rewriteVerdict(lintMarkers, "cat <<EOF\n  EOF\nexit 1\nEOF\n")},
+		{"N14 exit() function override (verdict)", rewriteVerdict(realJobs, "exit() { return 0; }\nexit 1\n")},
+		{"N14 exit() function override (marker)", rewriteVerdict(lintMarkers, "exit() { return 0; }\nexit 1\n")},
+		{"N15 exec true before exit 1 (verdict)", rewriteVerdict(realJobs, "exec true\nexit 1\n")},
+		{"N15 exec true before exit 1 (marker)", rewriteVerdict(lintMarkers, "exec true\nexit 1\n")},
+		{"alias exit=true before exit 1", rewriteVerdict(realJobs, "shopt -s expand_aliases\nalias exit=true\nexit 1\n")},
+		{"exit 1 inside a function that is never called", rewriteVerdict(realJobs, "fail() { exit 1; }\necho \"verdict\"\n")},
+		{"exit 1 in a subshell swallowed by || true", rewriteVerdict(realJobs, "( exit 1 ) || true\n")},
+		// N11: a step that cannot fail its job.
+		{"N11 continue-on-error true on the verdict step", editFailSteps(realJobs, func(s *rpcStep) { s.ContinueOnError = true })},
+		{"N11 continue-on-error true on the marker's failing step", editFailSteps(lintMarkers, func(s *rpcStep) { s.ContinueOnError = true })},
+		{"continue-on-error as an unprovable expression", editFailSteps(realJobs, func(s *rpcStep) { s.ContinueOnError = "${{ github.event_name == 'push' }}" })},
+		{"job-level continue-on-error on the real job", func(w *rpcWorkflow) { w.Jobs["lint"].ContinueOnError = true }},
+		{"job-level continue-on-error on the marker", func(w *rpcWorkflow) {
+			for _, id := range markerIDs(w, "lint") {
+				w.Jobs[id].ContinueOnError = true
+			}
+		}},
+		// The shell and environment the script runs under are part of its behavior.
+		{"custom shell template that swallows the status (verdict)", editFailSteps(realJobs, func(s *rpcStep) { s.Shell = "bash {0} || true" })},
+		{"custom shell template that swallows the status (marker)", editFailSteps(lintMarkers, func(s *rpcStep) { s.Shell = "bash {0} || true" })},
+		{"verdict step runs under a non-bash interpreter", editFailSteps(realJobs, func(s *rpcStep) { s.Shell = "python" })},
+		{"workflow default shell replaced and the step shell dropped", func(w *rpcWorkflow) {
+			w.Defaults.Run.Shell = "bash {0} || true"
+			editFailSteps(both, func(s *rpcStep) { s.Shell = "" })(w)
+		}},
+		{"BASH_ENV set on the verdict step", editFailSteps(realJobs, func(s *rpcStep) { s.Env = map[string]any{"BASH_ENV": "/dev/null"} })},
+		{"SHELLOPTS set on the job", func(w *rpcWorkflow) { w.Jobs["lint"].Env = map[string]any{"SHELLOPTS": "posix"} }},
+		{"verdict step stops reading the classification result", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && github.event_name == 'pull_request' }}"
+		})},
+		{"verdict step condition uses a function the model cannot evaluate", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && contains(needs.detect.result, 'fail') }}"
+		})},
+		{"verdict script uses an expression the model cannot evaluate", rewriteVerdict(realJobs, "echo \"${{ toJSON(needs) }}\"\nexit 1\n")},
 		{"marker passes on classification failure", func(w *rpcWorkflow) {
+			n := 0
 			for _, id := range markerIDs(w, "lint") {
 				for i := range w.Jobs[id].Steps {
-					if rpcStepHardFails(w.Jobs[id].Steps[i]) {
+					if failStep(w.Jobs[id].Steps[i]) {
 						w.Jobs[id].Steps[i].If = "${{ false }}"
+						n++
 					}
 				}
+			}
+			if n == 0 {
+				ctlErr = "control did not apply: no failing marker step"
 			}
 		}},
 		{"marker skipped on classification failure", func(w *rpcWorkflow) {
@@ -777,7 +851,11 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
 			}
 			mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+			ctlErr = ""
 			m.mutate(mut)
+			if ctlErr != "" {
+				t.Fatal(ctlErr)
+			}
 			got := rpcCheckVerdictSemantics(t, mut, names)
 			if len(got) == 0 {
 				t.Fatalf("mutant %q passes the guard: the guard is vacuous in that direction", m.name)
@@ -788,57 +866,105 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 }
 
 // TestScriptHardFailReachability pins what "this step hard-fails" means to the
-// verdict guards (F6): an unconditional, reachable top-level `exit 1`. Each row
-// is a script and whether it counts; the false rows are the unreachable or
-// conditional spellings a text match would have credited.
+// verdict guards (F6, sync-audit iter4 B1): the script, RUN under the shell the
+// workflow declares, ends with a non-zero status. Each row is a script and the
+// status bash really gives it; the false rows are the spellings a text reader
+// credited as a reachable `exit 1` although bash ends them with status 0
+// (`trap 'exit 0' EXIT`, an indented heredoc terminator, an `exit()` override,
+// `exec true`, an alias), and the true rows include the ones a text reader
+// refused although bash fails them (a `&&` list ending on a failed test, a
+// failing command substitution). The executed behavior is the authority.
 func TestScriptHardFailReachability(t *testing.T) {
+	rpcRequireBash(t)
 	cases := []struct {
 		name   string
 		script string
-		want   bool
+		shell  string
+		want   bool // true = the script ends non-zero
 	}{
-		{"bare exit 1", "exit 1", true},
-		{"echo then exit 1", "echo \"::error::x\"\nexit 1\n", true},
-		{"exit 1 with trailing comment", "echo x\nexit 1 # fail the check\n", true},
-		{"indented, extra spaces", "\t  exit   1   \n", true},
-		{"exit 1 then more text", "exit 1; echo after\n", true},
-		{"exit 1 after a comment mentioning exit 0", "# exit 0 here would end it\nexit 1\n", true},
-		{"exit 1 after a quoted exit 0 argument", "echo \"exit 0\"\nexit 1\n", true},
+		{"bare exit 1", "exit 1", "bash", true},
+		{"echo then exit 1", "echo \"::error::x\"\nexit 1\n", "bash", true},
+		{"exit 1 with trailing comment", "echo x\nexit 1 # fail the check\n", "bash", true},
+		{"indented, extra spaces", "\t  exit   1   \n", "bash", true},
+		{"exit 1 then more text", "exit 1; echo after\n", "bash", true},
+		{"exit 1 after a comment mentioning exit 0", "# exit 0 here would end it\nexit 1\n", "bash", true},
+		{"exit 1 after a quoted exit 0 argument", "echo \"exit 0\"\nexit 1\n", "bash", true},
+		{"exit 1 after a closed if", "if [ -z x ]; then\n  echo a\nfi\nexit 1\n", "bash", true},
+		{"exit 1 after a loop that ends", "for x in a; do\n  echo $x\ndone\nexit 1\n", "bash", true},
+		{"exit 2", "exit 2\n", "bash", true},
+		{"if true body", "if true; then\n  exit 1\nfi\n", "bash", true},
+		{"while body", "while true; do\n  exit 1\ndone\n", "bash", true},
+		{"for body", "for x in a b; do exit 1; done\n", "bash", true},
+		{"brace group", "{\n  exit 1\n}\n", "bash", true},
+		{"subshell", "(\n  exit 1\n)\n", "bash", true},
+		{"|| chained", "test -n \"$x\" || { echo bad; exit 1; }\n", "bash", true},
+		{"|| continued onto the next line", "test -n \"$x\" ||\n  exit 1\n", "bash", true},
+		{"&& list ending on a failed test (the script takes the test's own status)", "[ -f /nonexistent ] && exit 1\n", "bash", true},
+		{"failing command substitution", "x=$(echo a; exit 1)\n", "bash", true},
+		{"EXIT trap that fails an otherwise clean script", "trap 'exit 1' EXIT\nexit 0\n", "bash", true},
+		{"pipeline failure under shell: bash (pipefail)", "false | cat\n", "bash", true},
+		{"sh -e runs the script", "exit 1\n", "sh", true},
 
-		{"empty script", "", false},
-		{"exit 0 then exit 1", "echo x\nexit 0\nexit 1\n", false},
-		{"exit 0; exit 1 on one line", "exit 0; exit 1\n", false},
-		{"bare exit then exit 1", "exit\nexit 1\n", false},
-		{"exit with a computed code then exit 1", "exit $rc\nexit 1\n", false},
-		{"exit 2", "exit 2\n", false},
-		{"if false body, multi-line", "if false; then\n  exit 1\nfi\n", false},
-		{"if false body, one line", "if false; then exit 1; fi\n", false},
-		{"if true body (a condition is never credited)", "if true; then\n  exit 1\nfi\n", false},
-		{"elif branch", "if [ -z x ]; then\n  echo a\nelif [ -z y ]; then\n  exit 1\nfi\n", false},
-		{"while body", "while true; do\n  exit 1\ndone\n", false},
-		{"for body", "for x in a b; do exit 1; done\n", false},
-		{"case arm", "case \"$X\" in\n  a) exit 1 ;;\nesac\n", false},
-		{"&& chained", "[ -f /nonexistent ] && exit 1\n", false},
-		{"|| chained", "test -n \"$x\" || { echo bad; exit 1; }\n", false},
-		{"|| continued onto the next line", "test -n \"$x\" ||\n  exit 1\n", false},
-		{"brace group", "{\n  exit 1\n}\n", false},
-		{"subshell", "(\n  exit 1\n)\n", false},
-		{"exit 1 line inside a quoted multi-line string", "echo \"first\nexit 1\nlast\"\n", false},
-		{"exit 1 line inside a heredoc", "cat <<EOF\nexit 1\nEOF\n", false},
-		{"exit 1 line inside a quoted heredoc", "cat <<'EOF'\nexit 1\nEOF\n", false},
-		{"exit 1 only in a comment", "echo x\n# exit 1\n", false},
-		{"exit 1 only as an echo argument", "echo exit 1\n", false},
-		{"exit 1 inside command substitution", "x=$(echo a; exit 1)\n", false},
-		{"exit 1 after a closed if", "if [ -z x ]; then\n  echo a\nfi\nexit 1\n", true},
-		{"exit 1 after a loop that ends", "for x in a; do\n  echo $x\ndone\nexit 1\n", true},
+		{"empty script", "", "bash", false},
+		{"exit 0 then exit 1", "echo x\nexit 0\nexit 1\n", "bash", false},
+		{"exit 0; exit 1 on one line", "exit 0; exit 1\n", "bash", false},
+		{"bare exit then exit 1", "exit\nexit 1\n", "bash", false},
+		{"exit with an unset variable then exit 1", "exit $rc\nexit 1\n", "bash", false},
+		{"if false body, multi-line", "if false; then\n  exit 1\nfi\n", "bash", false},
+		{"if false body, one line", "if false; then exit 1; fi\n", "bash", false},
+		{"elif branch that is not taken", "if [ -z x ]; then\n  echo a\nelif [ -z y ]; then\n  exit 1\nfi\n", "bash", false},
+		{"case arm that does not match", "case \"$X\" in\n  a) exit 1 ;;\nesac\n", "bash", false},
+		{"exit 1 line inside a quoted multi-line string", "echo \"first\nexit 1\nlast\"\n", "bash", false},
+		{"exit 1 line inside a heredoc", "cat <<EOF\nexit 1\nEOF\n", "bash", false},
+		{"exit 1 line inside a quoted heredoc", "cat <<'EOF'\nexit 1\nEOF\n", "bash", false},
+		{"exit 1 only in a comment", "echo x\n# exit 1\n", "bash", false},
+		{"exit 1 only as an echo argument", "echo exit 1\n", "bash", false},
+		{"N12 trap 'exit 0' EXIT before exit 1", "trap 'exit 0' EXIT\nexit 1\n", "bash", false},
+		{"N13 indented heredoc terminator swallows exit 1", "cat <<EOF\n  EOF\nexit 1\nEOF\n", "bash", false},
+		{"N14 exit() override", "exit() { return 0; }\nexit 1\n", "bash", false},
+		{"N15 exec true", "exec true\nexit 1\n", "bash", false},
+		{"alias exit=true", "shopt -s expand_aliases\nalias exit=true\nexit 1\n", "bash", false},
+		{"function that is never called", "fail() { exit 1; }\n", "bash", false},
+		{"subshell exit swallowed by || true", "( exit 1 ) || true\n", "bash", false},
+		{"set +e then a failing command", "set +e\nfalse\necho done\n", "bash", false},
+		{"pipeline failure under the default shell (no pipefail)", "false | cat\n", "", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := rpcScriptHardFails(c.script); got != c.want {
-				t.Fatalf("rpcScriptHardFails(%q) = %v, want %v", c.script, got, c.want)
+			res := rpcExecScript(c.shell, c.script, nil)
+			if res.why != "" {
+				t.Fatalf("script not executable: %s", res.why)
+			}
+			if res.failed != c.want {
+				t.Fatalf("rpcExecScript(%q, shell %q) failed=%v, want %v", c.script, c.shell, res.failed, c.want)
 			}
 		})
 	}
+	t.Run("shells and env the guard refuses to guess at", func(t *testing.T) {
+		for _, sh := range []string{"pwsh", "python", "bash {0} || true", "bash -c \"bash -e {0}\"", "cmd"} {
+			if res := rpcExecScript(sh, "exit 1\n", nil); res.why == "" {
+				t.Errorf("shell %q was executed instead of refused", sh)
+			}
+		}
+		for _, k := range []string{"BASH_ENV", "bash_env", "SHELLOPTS", "BASHOPTS", "PATH", "IFS"} {
+			if res := rpcExecScript("bash", "exit 1\n", map[string]string{k: "x"}); res.why == "" {
+				t.Errorf("env %s was passed to the shell instead of refused", k)
+			}
+		}
+	})
+	t.Run("continue-on-error values", func(t *testing.T) {
+		for _, c := range []struct {
+			v    any
+			want bool
+		}{
+			{nil, false}, {false, false}, {true, true}, {"false", false}, {"${{ false }}", false},
+			{"true", true}, {"${{ github.event_name == 'push' }}", true}, {42, true},
+		} {
+			if got := rpcContinuesOnError(c.v); got != c.want {
+				t.Errorf("rpcContinuesOnError(%#v) = %v, want %v", c.v, got, c.want)
+			}
+		}
+	})
 }
 
 // ---- AC-RPC-004: required names per event class ------------------------------
@@ -918,7 +1044,11 @@ func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow,
 					}
 					supplies := false
 					if w == ci {
-						supplies = len(rpcNonSkipped(rpcConclusions(t, ci, name, cell.ctx(), rpcAllStepsPass))) > 0
+						started, errs := rpcStartedSuppliers(ci, name, cell.ctx())
+						for _, e := range errs {
+							add("%s: %s", ec.label, e)
+						}
+						supplies = len(started) > 0
 					} else {
 						for _, id := range w.jobIDs() {
 							if rpcContains(w.Jobs[id].displayNames(), name) {
