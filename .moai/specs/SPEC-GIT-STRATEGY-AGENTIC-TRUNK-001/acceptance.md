@@ -8,6 +8,8 @@ Iteration 3 repair (version 0.3.1, defect D1 only): AC-AGT-020 Judge 6 and its t
 
 Rescope (version 0.4.0, 2026-10-21): AC-AGT-005, AC-AGT-006, AC-AGT-011, AC-AGT-016, AC-AGT-017, AC-AGT-018 (Judge 5) and AC-AGT-023 (Judge 2) were re-authored for the target-holder routing; their fresh RED-now cells were observed on tree `a6c69e154b62eb33763212a3034e505bd1046fe1` (branch `WT-agentic-trunk`, M0-M5 implemented, final pre-rescope HEAD) and are carried in ledger E27 to E32. All other criteria keep their original pins; the code, template, config and guidance observations they carry are unaffected by the rescope (the rescope edited SPEC artifacts only). AC-AGT-016 P4a and P4b are leader-time probes; this pass observed the worktree-side state only (E30) and the leader re-measures both from the primary checkout at cutover, as the criterion states.
 
+Amendment (2026-10-24, leader-directed in-place amendment; spec.md `amendment_of` + HISTORY `## Amendments`): AC-AGT-010's judge is scoped with one exception — the home-root resolver reads at `internal/cli/worktree/list.go:103` and `internal/cli/worktree/migrate.go:286` (`LoadGitFlowIntegrationConfig(...).IntegrationTarget`), introduced by absorbed #1858 — which fall under follow-up card t1949's invariant re-scope. No other criterion changed. (This document carries no frontmatter, so the amendment date is recorded here.)
+
 ## Conventions
 
 - A judge is a single invocation. A Go-test judge is `go test <pkg> -run '^(TestA|TestB)$' -count=1 -v`; it is green only when stdout carries each named `--- PASS:` line, exit is 0 and `[no tests to run]` is absent. A selector that matches nothing prints `ok ... [no tests to run]` with exit 0 (ledger E01), so exit 0 alone is never a verdict.
@@ -107,8 +109,8 @@ Then no diagnostic mentions the three keys, the target is `main`, and `lead_push
 ### AC-AGT-010 (maps REQ-AGT-011)
 Given the landing-check code,
 When searched for a workflow-value read,
-Then it contains none.
-- Judge: `git grep -c -E 'LoadGitFlowIntegrationConfig|WorkflowGitFlow|WorkflowGitHubFlow|WorkflowAgenticTrunk|"agentic-trunk"' -- internal/cli/worktree`
+Then it contains none, EXCEPT the home-root resolver reads introduced by absorbed #1858 — `internal/cli/worktree/list.go:103` and `internal/cli/worktree/migrate.go:286` (the `config.LoadGitFlowIntegrationConfig(...).IntegrationTarget` assignments) — which are carved out of this judge's scope and fall under follow-up card t1949's invariant re-scope.
+- Judge: `git grep -c -E 'LoadGitFlowIntegrationConfig|WorkflowGitFlow|WorkflowGitHubFlow|WorkflowAgenticTrunk|"agentic-trunk"' -- internal/cli/worktree` (interpreted under the exception above: a match confined to `list.go:103` / `migrate.go:286` is not a judge failure; any other match in `internal/cli/worktree` is)
 - Pass stdout: empty; exit 1 (no match).
 - Observed (tree f4175587, regression guard): stdout empty, exit 1. Why already green: the invariant is fixed before M2 can break it; it is not a flip criterion. Positive control, observed: `git grep -c LoadGitFlowIntegrationConfig -- internal/cli/factory_card.go` printed `internal/cli/factory_card.go:3`, exit 0, so the pattern fires where the identifier exists.
 - Green path: unchanged by M2; failing means M2 added a workflow read to the landing checks.

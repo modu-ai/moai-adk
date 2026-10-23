@@ -2,9 +2,9 @@
 id: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 title: "The agentic-trunk workflow value: name the lane -> serial landing into main (integration-window local merge, or the card's pull request where only the primary checkout holds main) -> leader release batch per lead_push_threshold -> tagged release model in git_strategy.manual.workflow and reflect it in the reader, consumers, doctor, statusline and guidance"
 version: "0.4.0"
-status: completed
+status: in-progress
 created: 2026-10-18
-updated: 2026-10-23
+updated: 2026-10-24
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "agentic-trunk, git-strategy, workflow-value, disposition, integration-target, statusline, doctor, guidance, template-first"
 tier: L
 related_specs: [SPEC-GITSTRAT-WORKFLOW-READER-001, SPEC-GITHUB-FLOW-DEFAULT-001, SPEC-LOCAL-MAIN-FLOW-001, SPEC-PRIMARY-LANDING-ONLY-001, SPEC-LANDING-SURFACE-RULES-001]
+amendment_of: SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
 ---
 
 # SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001
@@ -28,6 +29,14 @@ Card: **t1831** (Class C, P1, plan -> run -> sync; operator directive 2026-10-17
 | 2026-10-18 | manager-spec | 0.3.0: plan-audit iteration 2 repairs: D1, D2 and the optional/codex findings. D1: REQ-AGT-021 now carries the one recorded exception (the live-only tail sentence of `factory-dispatch.md` line 222, commit `7ff326d99`, card t1815), so requirement and AC-AGT-021 agree. D2: REQ-AGT-020 states that `agentic-trunk` follows neither the per-version release branch nor a lane push, and the line-222 edit no longer attaches `agentic-trunk` to the `release/vX.Y.Z` push (the `names git-flow or agentic-trunk` sentinel is retired and its absence is judged). Optional: AC-AGT-020 judges the whole agentic-trunk block for any push instruction; AC-AGT-023 is non-vacuous at N0 = 0 and rejects a bare label; the P4 precondition of REQ-AGT-017 is probed over all running servers, not one project directory. 25 requirements, 25 acceptance criteria. |
 | 2026-10-18 | manager-spec | 0.3.1: plan-audit iteration 3 repair: D1 only. AC-AGT-020 Judge 6 now ends the agentic-trunk block at the next sibling (a heading of level 1 to 4, or the next `##### Strategy:` heading, outside a fenced snippet) instead of at any heading, so a push placed after a sub-heading or after a `#` comment line inside a fenced snippet is counted; two failing controls added (ledger E26). D2 to D6 are recorded as known debt in progress.md, not repaired. 25 requirements, 25 acceptance criteria. |
 | 2026-10-21 | manager-spec | 0.4.0: mid-run rescope per the operator-corrected directive relayed by the leader (operator verbatim: "지금 사용하는 흐름은 agentic-trunk — 최근 추가된 워크플로우"). The dedicated `main` integration worktree was abolished on 2026-10-21; the primary checkout now holds `main` as a shared surface (verified: `git worktree list` row 1 `/Users/goos/MoAI/moai-adk-go 28b727065b [main]`, no dedicated main worktree). Delivery redesigned as the target-holder routing (design B, the PR-edge hybrid; candidate A, serial landing on the shared primary, assessed and rejected in design.md section 1): agentic-trunk keeps the integration-window local merge where a dedicated worktree holds `main` (REQ-AGT-006/007/008 re-aimed with the where-clause) and takes the card's own pull request, merged by the leader with no auto-merge request (the `factory_card_pr.go:444` `gh pr merge --auto` conflict resolved toward the operator's leader-only-merge principle), where only the primary checkout holds it. `lead_push_threshold` redefined as the leader's release-batch cadence metric (REQ-AGT-010). The M6 cutover is RESTORED in P1-P5 shape with the 2026-10-21 bridge value `github-flow` as its starting state (REQ-AGT-017/018); M0-M5 implementations stand as generic product capability, unchanged. M5b (delivery-routing delta) added to plan.md; M7 re-aimed at the hybrid flow. Fresh RED-now cells observed on tree `a6c69e154b` (ledger E27 to E32). 25 requirements, 25 acceptance criteria unchanged in count. |
+
+## Amendments
+
+In-place amendment (leader-directed, card t1831 landing-audit follow-up, 2026-10-24) of the prior completed version 0.4.0 (`status: completed` at the prior 3-phase close).
+
+- prior_completed_sha: 7bf5e35a73
+- rationale: AC-010's "no workflow read in internal/cli/worktree" invariant is re-scoped by the home-root resolver reads introduced by absorbed #1858 (`internal/cli/worktree/list.go:103`, `internal/cli/worktree/migrate.go:286` — `LoadGitFlowIntegrationConfig(...).IntegrationTarget`); the full invariant re-scope is owned by follow-up card t1949.
+- scope: acceptance.md AC-010 judge exception only; no requirement, plan or progress artifact is modified by this amendment.
 
 ## 1. Context and problem
 
