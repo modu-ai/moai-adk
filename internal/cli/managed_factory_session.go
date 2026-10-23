@@ -436,7 +436,10 @@ func claimManagedFactoryInbox(store *factorymsg.Store, pid int, start string) ([
 	if _, err := store.SettleReceiptControls(ctx, peer); err != nil {
 		return nil, err
 	}
-	return store.Claim(ctx, peer, factorymsg.MaxBatch, config.DefaultManagedSessionClaimLease)
+	// ClaimFresh, not Claim: a turn that fails leaves its claim untouched and is
+	// never retried by this layer, so a row the endpoint still holds must not be
+	// delivered again inside its lease (the claim contract of AC-MH-008).
+	return store.ClaimFresh(ctx, peer, factorymsg.MaxBatch, config.DefaultManagedSessionClaimLease)
 }
 
 // managedFactoryInboxWiring is the claim/prompt pair both managed owners hand

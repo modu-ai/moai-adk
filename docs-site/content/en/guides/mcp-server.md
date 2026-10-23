@@ -98,7 +98,7 @@ Users never hand-edit `.mcp.json`. The `moai mcp add|remove|list` CLI manages th
 
 ## The `project_root` input — the caller names its own tree
 
-Twenty-two tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_review`, `claude_audit`, `glm_audit`, `glm_review`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`, and `factory_renew`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`. On `factory_next`, `factory_stage`, `factory_complete`, and `factory_renew` the input is required rather than optional — pass your own toplevel or the call is refused; it is never defaulted.
+Thirty-two tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_review`, `glm_audit`, `glm_review`, `claude_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`, `graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`, `glm_job_cancel`, `glm_job_result`, `glm_job_status`, `glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`, and `todo_claim`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`. On `factory_next`, `factory_stage`, `factory_complete`, and `factory_renew` the input is required rather than optional — pass your own toplevel or the call is refused; it is never defaulted.
 
 An agent working inside a worktree must pass it. This is not a convenience. The server has no way to work the answer out for itself: it is a long-lived subprocess, so its working directory cannot follow a worktree switch, and the environment variable it falls back on names the **project** root — the primary checkout — even for a session working in a worktree. Omit it from a worktree and the call acts on the primary checkout instead, which means a SPEC that exists only on the card's branch is not in the catalog the auditor reads. It is not reported missing. It is simply absent.
 
@@ -222,27 +222,6 @@ Every answer names the tree root and commit it was computed from. The edge layer
 | `mcp__moai__jev_ask` | Ask typed questions over one supplied state and receive typed answers with probabilities | unavailable at the shipped default (`workflow.jev.enabled: false`) | — (MCP-only) |
 
 The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read, and on its own it is never a completion verdict, merge approval, or queue mutation. Where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person.
-
-### Factory messaging
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory leader or lane session | — (MCP-only) |
-| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory leader or lane session | — (MCP-only) |
-| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory leader or lane session | — (MCP-only) |
-| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory leader or lane session | — (MCP-only) |
-| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory leader or lane | — (MCP-only) |
-
-### Session messaging (Claude ↔ Codex)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__session_msg_register` | Register this session (kind: claude or codex, plus a name) with the local message broker; the same kind and name return the same id | any Claude or Codex session | — |
-| `mcp__moai__session_msg_list` | List registered broker agents (id, name, kind, online, pending count) | any Claude or Codex session | — |
-| `mcp__moai__session_msg_send` | Send a short, self-contained fact message to another registered agent's mailbox | any Claude or Codex session | — |
-| `mcp__moai__session_msg_poll` | Claim pending messages from the caller's mailbox (at-least-once) and acknowledge processed ids | any Claude or Codex session | — |
-
-A Codex session has no native peer-messaging runtime, so this broker is its only path; between Claude sessions the native `SendMessage` path is recommended. Delivery is poll-based: a send is a record, not a delivery guarantee.
 
 ### MCP-over-CLI rule
 

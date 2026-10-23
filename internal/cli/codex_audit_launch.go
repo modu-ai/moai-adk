@@ -607,13 +607,10 @@ func codexAuditParseRoleTOML(src string) (map[string]string, error) {
 	return out, nil
 }
 
-// codexAuditMCPDisableArgs disables every server Codex resolves for root.
-// Plugin transports are resolved after bootstrap config validation: an
-// enabled=false override alone creates an invalid, transport-less table.
-// Preserve the transport kind with inert descriptors for bootstrap validation.
-// Never forward real URLs or commands: these may contain credentials and would
-// leak through process arguments even when launch records redact them.
-func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]string, error) {
+// codexAuditMCPList is the seam the containment listing runs through: the
+// `codex mcp list --json` stdout (tests substitute canned listings so the
+// containment argv is testable without a codex binary).
+var codexAuditMCPList = func(ctx context.Context, program, root string) (string, error) {
 	lctx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditListTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(lctx, program, "mcp", "list", "--json")
@@ -624,7 +621,21 @@ func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]stri
 	configureClaudeAuditProcess(cmd)
 	cmd.WaitDelay = 2 * time.Second
 	if err := runClaudeAuditProcess(cmd); err != nil {
-		return nil, fmt.Errorf("mcp list: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("mcp list: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
+}
+
+// codexAuditMCPDisableArgs disables every server Codex resolves for root.
+// Plugin transports are resolved after bootstrap config validation: an
+// enabled=false override alone creates an invalid, transport-less table.
+// Preserve the transport kind with inert descriptors for bootstrap validation.
+// Never forward real URLs or commands: these may contain credentials and would
+// leak through process arguments even when launch records redact them.
+func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]string, error) {
+	stdout, err := codexAuditMCPList(ctx, program, root)
+	if err != nil {
+		return nil, err
 	}
 	var servers []struct {
 		Name      string `json:"name"`
@@ -634,7 +645,7 @@ func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]stri
 			URL     string `json:"url"`
 		} `json:"transport"`
 	}
-	if err := json.Unmarshal(stdout.Bytes(), &servers); err != nil {
+	if err := json.Unmarshal([]byte(stdout), &servers); err != nil {
 		return nil, fmt.Errorf("mcp list output is not a JSON server list: %w", err)
 	}
 	seen := map[string]bool{}
@@ -829,9 +840,42 @@ func codexAuditRenameIn(dir *os.Root, oldname, newname string) error {
 	return err
 }
 
-// codexAuditGit runs a read-only git query and returns trimmed stdout.
+// codexAuditGitScrubVars are removed from every boundary git inspection's
+// environment, so a variable inherited from whoever launched this process
+// cannot redirect the query at another repository (sync-audit r3 F1): with an
+// inherited GIT_DIR, the confinement's common-dir lookups and worktree
+// listing all execute in the FOREIGN repository and a foreign project_root
+// passes confinement. The same scrub internal/auditreceipt applies to its own
+// store-root inspections.
+var codexAuditGitScrubVars = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES"}
+
+// codexAuditGitEnv is the process environment minus the scrubbed git vars and
+// any locale override, with LC_ALL=C set.
+func codexAuditGitEnv() []string {
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+		drop := name == "LC_ALL"
+		for _, v := range codexAuditGitScrubVars {
+			if name == v {
+				drop = true
+			}
+		}
+		if !drop {
+			env = append(env, kv)
+		}
+	}
+	return append(env, "LC_ALL=C")
+}
+
+// codexAuditGit runs a read-only git query in the scrubbed environment and
+// returns trimmed stdout. Every caller is a boundary or repository-identity
+// check that must read the directory it was handed, never a repository named
+// by an inherited environment variable.
 func codexAuditGit(ctx context.Context, dir string, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...).Output()
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = codexAuditGitEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}

@@ -26,7 +26,26 @@ import (
 var projectRootSpecTools = []string{"spec_audit", "spec_drift", "spec_progress"}
 
 // newProbeProject writes a minimal project tree carrying one SPEC, so a
-// catalogue scan rooted there has something distinctive to find.
+// catalogue scan rooted there has something distinctive to find. The probe is
+// a git repository AND the server root for the calling test
+// (CLAUDE_PROJECT_DIR): the REQ-MN-005 confinement accepts a validated
+// project_root only as a registered worktree of the server's own repository,
+// so an in-process probe must be that repository, not an unregistered tree.
+// confineTestRoot makes root a valid project_root under the REQ-MN-005
+// confinement: a git worktree of the server's own repository. It initialises a
+// repository when the directory is not one yet and points the server root
+// (CLAUDE_PROJECT_DIR) at it. Not for parallel tests (it sets an env var).
+func confineTestRoot(t *testing.T, root string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
+		initGitRepo(t, root)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+}
+
 func newProbeProject(t *testing.T, specID string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -41,6 +60,8 @@ func newProbeProject(t *testing.T, specID string) string {
 	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(body), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	initGitRepo(t, root)
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	// Return the CANONICAL path. validateProjectRoot resolves symlinks, and
 	// t.TempDir() hands back a symlinked path on macOS (/var → /private/var), so
 	// a test comparing a handler's answer against this value would otherwise be
@@ -106,6 +127,9 @@ func TestSpecAudit_ProjectRootRedirectsTheCatalogue(t *testing.T) {
 func TestSpecAudit_WithoutProjectRootDoesNotSeeTheProbe(t *testing.T) {
 	root := newProbeProject(t, "SPEC-PROBETWO-902")
 	_ = root // deliberately NOT passed
+	// newProbeProject points the server root at the probe tree; the default root
+	// this test measures must be a DIFFERENT tree, or the fallback would find it.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	got := callSpecAuditJSON(t, map[string]any{})
 	if strings.Contains(got, "SPEC-PROBETWO-902") {
 		t.Errorf("audit without project_root saw a SPEC that exists only in the probe tree; got=%s", got)
@@ -196,7 +220,10 @@ func TestSpecProgress_ProjectRootRedirectsTheScanner(t *testing.T) {
 
 	// The absent direction, for the same reason AC-1a demands it: a
 	// present-only assertion passes just as well if the parameter is ignored
-	// and the default tree happens to hold the SPEC.
+	// and the default tree happens to hold the SPEC. The ambient server root
+	// moves off the probe (the helper stamps the probe for confinement), so
+	// the default tree cannot hold the named SPEC.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	without := callSpecToolJSON(t, handleSpecProgress, map[string]any{})
 	if strings.Contains(without, "SPEC-PROBESCAN-905") {
 		t.Errorf("spec_progress without project_root listed a SPEC that exists only in the probe tree; got=%s", without)
@@ -214,6 +241,9 @@ func TestSpecDrift_ProjectRootRedirectsTheCatalogue(t *testing.T) {
 		t.Errorf("spec_drift rooted at the named tree did not audit its two SPECs; got=%s", withParam)
 	}
 
+	// The ambient server root moves off the probe (the helper stamps the probe
+	// for confinement), so the default tree cannot carry the probe's count.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	without := callSpecToolJSON(t, handleSpecDrift, map[string]any{})
 	if strings.Contains(without, `"total_specs":2`) {
 		t.Errorf("spec_drift without project_root reported the probe tree's count, so the parameter was not what redirected it; got=%s", without)
@@ -368,6 +398,9 @@ func TestSpecProgress_ResponseCarriesRootProvenance(t *testing.T) {
 		t.Errorf("spec_progress response lacks param provenance; got=%s", withParam)
 	}
 
+	// The ambient server root moves off the probe (the helper stamps the probe
+	// for confinement), so the default tree cannot hold the named SPEC.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	without := callSpecToolJSON(t, handleSpecProgress, map[string]any{})
 	if strings.Contains(without, "SPEC-PROBEPROV-908") {
 		t.Errorf("spec_progress without project_root listed a SPEC that exists only in the probe tree; got=%s", without)
@@ -383,7 +416,12 @@ func TestSpecProgress_ResponseCarriesRootProvenance(t *testing.T) {
 // behaviour (fallback write) cannot leak into a real checkout.
 func TestVerifySnapshot_HonorsProjectRoot(t *testing.T) {
 	root := newProbeProject(t, "SPEC-PROBEVERIFY-909")
-	fallback := t.TempDir()
+	// The fallback scratch is a REGISTERED WORKTREE of the probe's repository
+	// (REQ-MN-005 confines a validated root to the server's repo): a different
+	// directory from the probe, so a fallback write stays visible, but the
+	// same repository so the confinement accepts the probe.
+	fallback := filepath.Join(filepath.Dir(root), filepath.Base(root)+"-fallback")
+	fcGit(t, root, "worktree", "add", "-q", fallback, "-b", "WT-verify-fallback")
 	t.Setenv("CLAUDE_PROJECT_DIR", fallback)
 
 	key := "t236red00000000:verify-probe"
@@ -440,7 +478,10 @@ func TestVerifySnapshot_HonorsProjectRoot(t *testing.T) {
 // key recorded under a named root is visible only when that root is passed.
 func TestVerifyTrend_HonorsProjectRoot(t *testing.T) {
 	root := newProbeProject(t, "SPEC-PROBETREND-910")
-	fallback := t.TempDir()
+	// The fallback scratch is a REGISTERED WORKTREE of the probe's repository,
+	// same premise as TestVerifySnapshot_HonorsProjectRoot above.
+	fallback := filepath.Join(filepath.Dir(root), filepath.Base(root)+"-fallback")
+	fcGit(t, root, "worktree", "add", "-q", fallback, "-b", "WT-trend-fallback")
 	t.Setenv("CLAUDE_PROJECT_DIR", fallback)
 
 	key := "t236red00000000:trend-probe"
@@ -464,8 +505,14 @@ func TestVerifyTrend_HonorsProjectRoot(t *testing.T) {
 	}
 
 	without := callSpecToolJSON(t, handleVerifyTrend, map[string]any{"key": key})
-	if strings.Contains(without, cmd) {
-		t.Errorf("verify_trend without project_root saw a check that exists only in the probe tree; got=%s", without)
+	// The store-root rules (SPEC-MCP-WORKTREE-UNTRACKED-001) keep ONE state
+	// store per repository — the fallback worktree's read resolves to the
+	// primary's store (`sources` names it), so root-based record invisibility
+	// no longer holds for same-repository trees. The guarantee the caller
+	// gets is the provenance: the response must DECLARE the fallback
+	// resolution and name the store it actually read.
+	if !strings.Contains(without, `"source":"env:CLAUDE_PROJECT_DIR"`) || !strings.Contains(without, `"warning"`) || !strings.Contains(without, `"source":"store"`) {
+		t.Errorf("verify_trend without project_root carried no fallback provenance naming the store it read; got=%s", without)
 	}
 }
 

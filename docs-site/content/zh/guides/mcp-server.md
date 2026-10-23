@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-22 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
+32 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`session_list`、`todo_claim`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
@@ -222,27 +222,6 @@ GLM 委托工具族与 codex 委托同形，连线到 super-advisor 和 manager-
 | `mcp__moai__jev_ask` | 针对给定的一个状态提出类型化问题，得到带概率的回答 | 发布默认值（`workflow.jev.enabled: false`）下不可用 | —（仅 MCP） |
 
 该工具始终注册，但门控关闭时既不构造请求，也不发起网络调用。回答是供人阅读的参考信号，其本身不会成为完成判定、合并批准或队列变更。即使被自动使用，也只作为信号 — 例如 `moai todo --auto` 查看待办卡片的顺序，或只能确认或移交给人的可选启动交叉验证。
-
-### 工厂消息
-
-| 工具 | 用途 | 使用方 | CLI 等价 |
-|------|------|--------|----------|
-| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂主导或泳道 | —（仅 MCP） |
-
-### 会话消息（Claude ↔ Codex）
-
-| 工具 | 用途 | 使用方 | CLI 等价 |
-|------|------|--------|----------|
-| `mcp__moai__session_msg_register` | 将本会话（类型：claude 或 codex，以及名称）注册到本地消息代理；类型与名称相同时返回相同 ID | 所有 Claude 或 Codex 会话 | — |
-| `mcp__moai__session_msg_list` | 列出已注册的代理（ID、名称、类型、在线状态、待处理数） | 所有 Claude 或 Codex 会话 | — |
-| `mcp__moai__session_msg_send` | 向另一个已注册代理的信箱发送简短、自包含的事实消息 | 所有 Claude 或 Codex 会话 | — |
-| `mcp__moai__session_msg_poll` | 领取自身信箱中的待处理消息（至少投递一次），并确认已处理的 ID | 所有 Claude 或 Codex 会话 | — |
-
-Codex 会话没有原生的对等消息运行时，因此该代理是它唯一的通道；Claude 会话之间推荐使用原生的 `SendMessage`。投递采用轮询方式：发送只是一条记录，并不保证送达。
 
 ### MCP-over-CLI 规则
 

@@ -282,8 +282,6 @@ func TestGLMJob_ServedModel(t *testing.T) {
 	})
 }
 
-// ─── AC-MSM-003 — codex_task requested model + served "unknown" ───
-
 func TestGLMAudit_ServedModelFieldIgnored(t *testing.T) {
 	review := ReviewOutput{
 		Verdict:   "pass",

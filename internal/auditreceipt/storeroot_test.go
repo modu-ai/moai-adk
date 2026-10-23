@@ -117,14 +117,29 @@ func TestStoreRootHelpers_RejectUnexpectedShapes(t *testing.T) {
 			t.Errorf("SingleGitPath(%q) accepted an unexpected shape", out)
 		}
 	}
-	for _, out := range []string{"", "HEAD abc\n", "worktree relative\n"} {
+	// l57-r7 finding 3: the -z fixtures — every FIELD ends with NUL, the entry
+	// boundary is an empty field (provenance: `git worktree list --porcelain
+	// -z` measured on a live repository).
+	for _, out := range []string{"", "HEAD abc\x00", "worktree relative\x00"} {
 		if _, err := parseWorktreePorcelain(out); err == nil {
 			t.Errorf("parseWorktreePorcelain(%q) accepted an unexpected shape", out)
 		}
 	}
-	entries, err := parseWorktreePorcelain("worktree /nonexistent-p\nHEAD x\n\nworktree /nonexistent-w\nprunable gitdir file points to non-existent location\n")
+	entries, err := parseWorktreePorcelain("worktree /nonexistent-p\x00HEAD x\x00\x00worktree /nonexistent-w\x00prunable gitdir file points to non-existent location\x00\x00")
 	if err != nil || len(entries) != 2 || entries[0].Path != "" || !entries[1].Prunable {
 		t.Errorf("parseWorktreePorcelain: want 2 entries, uncanonicalizable paths empty, second prunable; got %+v %v", entries, err)
+	}
+	// A worktree whose PATH contains a newline is one entry whose canonical
+	// path keeps the newline — the line-based parse truncated it at the
+	// newline (l57-r7 finding 3).
+	nlDir := filepath.Join(t.TempDir(), "we\nird")
+	if err := os.MkdirAll(nlDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nlEntries, err := parseWorktreePorcelain("worktree " + nlDir + "\x00HEAD x\x00\x00")
+	want, wantErr := filepath.EvalSymlinks(nlDir)
+	if err != nil || len(nlEntries) != 1 || nlEntries[0].Path != want || wantErr != nil {
+		t.Errorf("parseWorktreePorcelain newline path: want 1 entry with the verbatim canonical path %q; got %+v %v", want, nlEntries, err)
 	}
 
 	base := t.TempDir()

@@ -14,6 +14,10 @@ import (
 // writeRuntimeRecord is a test helper stamping an arbitrary record for a project.
 func writeRuntimeRecord(t *testing.T, projectDir string, rec mcpServerRuntimeRecord) string {
 	t.Helper()
+	// REQ-MN-015: the record dir is scoped to a tree that already is a moai project.
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("MkdirAll .moai: %v", err)
+	}
 	dir := mcpServerRuntimeDir(projectDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -34,6 +38,9 @@ func writeRuntimeRecord(t *testing.T, projectDir string, rec mcpServerRuntimeRec
 // and that the exit path removes it.
 func TestWriteMCPServerRuntimeRecord_RoundTrip(t *testing.T) {
 	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil { // REQ-MN-015: a moai project tree
+		t.Fatal(err)
+	}
 
 	path, err := writeMCPServerRuntimeRecord(projectDir)
 	if err != nil {
@@ -86,6 +93,9 @@ func TestWriteMCPServerRuntimeRecord_EmptyProjectDir(t *testing.T) {
 // break the diagnostic.
 func TestReadMCPServerRuntimeRecords_SkipsMalformed(t *testing.T) {
 	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil { // REQ-MN-015: a moai project tree
+		t.Fatal(err)
+	}
 	dir := mcpServerRuntimeDir(projectDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
