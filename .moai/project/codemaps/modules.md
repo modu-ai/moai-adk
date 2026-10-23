@@ -2,7 +2,7 @@
 
 ## 현재 변경 경계 — 656e4d3 (card t1640 판)
 
-기준 `2fccfd2` 이후의 설명 대상 소스 86개를 현재 트리와 대조했다(추가 25·수정 61·삭제 0; testdata·테스트 제외). 창은 본 카드 PR #1858(card t1640, SPEC-WORKTREE-HOME-ROOT-001)과 세 차례 흡수 병합(eb2da27·d429ffd2·656e4d3 — #1843 t1649·#1844 t1838·#1853 t1803 포함)이 운반했고 신규 패키지는 셋이다.
+기준 `2fccfd2` 이후의 설명 대상 소스 86개를 현재 트리와 대조했다(추가 25·수정 61·삭제 0; testdata·테스트 제외). 창은 본 카드 PR #1858(card t1640, SPEC-WORKTREE-HOME-ROOT-001)과 세 차례 흡수 병합(eb2da27·d429ffd2·656e4d3 — #1843 t1649·#1844 t1838·#1853 t1803 포함)이 운반했고 **신규 패키지는 둘이다** — `internal/worktreeroot`와 `internal/template/agentemit/cmd/agents-emit`. `internal/cli/worktree`와 `internal/template/agentemit` 본체는 기준 커밋에 이미 존재하며(델타 감사 F3 정정 — 이 창은 그 위에 파일을 추가했다), `internal/config`는 리졸버를 임포트하지 않는다(F1 정정 — 핀 값 로더가 config 쪽 소비자를 위한 것으로, 의존 없음이 이 파일 스스로의 설계 문서다).
 
 | 소유 모듈·경로 | 현재 책임 |
 |---|---|
@@ -12,9 +12,10 @@
 | `internal/cli/factory_card.go` | 착지 베이스 주입 — `withFactoryLandingBase`가 임대 섹션 전(대기열 잠금 구간 밖)에 리졸버 루트를 풀어 ctx로 운반하고(REQ-WHR-007), 외래 트리 거부·carry-over가 리졸버 리프+legacy 리프 후보 집합 둘 다를 본다. CI 수리 커밋(16c27e27)에서 주입이 `factoryNextLeaseOnceEligibility` 내부로 이동해 next 동사·MCP 핸들러·재시도 루프·드리프트 시험의 모든 임대 경로가 base를 받는다. |
 | `internal/cli/worktree/migrate.go`의 `RunUpdateConsolidation` · `internal/cli/update_worktree_migration.go` | `moai update`의 작업트리 통합이 같은 이관 엔진 위임으로 수렴(update_worktree_migration은 얇은 셈 — 실패는 update 경고로 강등). D1 경계: 엔진은 계획을 한 번 세우고 이동 직전의 생존 재판독을 하지 않는다 — 최초 실제 `moai update` 적용 전 수리 또는 운영자 수용이 선행되어야 한다(CHANGELOG ⚠ 행). |
 | `internal/hook/worktree_create.go` · `worktree_remove.go` · `worktree_registry.go` | 등록·해제가 오류를 반환하고 핸들러는 `slog.Warn`으로 남긴다(errcheck 수리). 레지스트리는 상태파일 자문 잠금·엄격 적재·원자적 저장·`RekeyWorktreeEntry{,Inverse}`(이관 재키와 롤백)을 갖춘다. **internal/hook은 worktreeroot를 임포트하지 않는다** — 생성 경로가 internal/cli의 리졸버로 수렴하기 때문이다. |
-| `internal/config/loader_worktree_project.go`(신규) · `internal/factory/status_read.go` | `git_strategy.worktree_project_key` 핀 로더와 팩토리 상태판의 `RecordedKey` 스캔 범위 한정 — 둘 다 worktreeroot로의 신규 엣지다. |
+| `internal/factory/status_read.go` | 팩토리 상태판이 `worktreeroot.RecordedKey`로 스캔 범위를 한정한다 — worktreeroot로의 신규 엣지(검증된 쌍 목록에 있음). |
 | `internal/cli/factory_age_alarm.go`(신규) · `internal/homestate/card_age.go`(신규) · `internal/config/loader_card_age_alarm.go`(신규) | 카드 나이 경보(card t1838, #1844) — 게이트 대기·무진행 카드의 작업 나이를 읽기 전용으로 측정해 `factory status`에 표시한다. 기본 OFF, 경보 경로는 쓰기가 없다. |
-| `internal/template/agentemit`(신규 패키지, card t1649 #1843) | 에이전트 소스 단일 편집면에서 템플릿 Markdown·Codex TOML을 블록 인식 렌더로 생성 — `make agents-emit`(재생성)·`make agents-emit-check`(판독 전용 drift 검사, `make build`가 게이트로 삼는다). |
+| `internal/config/loader_worktree_project.go` | `git_strategy.worktree_project_key` 핀 값의 config 쪽 로더 — **config는 리졸버를 임포트하지 않는다**(델타 감사 F1 정정): 리졸버 자신이 핀을 자체 YAML 스캔으로 읽고 이 헬퍼는 핀 값을 필요로 하는 config 패키지 소비자를 위한 것으로, 의존 없음이 이 파일 스스로의 설계 문서다. worktreeroot로의 엣지는 없다. |
+| `internal/template/agentemit/cmd/agents-emit`(신규 패키지, card t1649 #1843) | 에이전트 소스 단일 편집면에서 템플릿 Markdown·Codex TOML을 블록 인식 렌더로 생성하는 Emitter 진입점 — `make agents-emit`(재생성)·`make agents-emit-check`(판독 전용 drift 검사, `make build`가 게이트로 삼는다). 본체 `internal/template/agentemit`는 기준 커밋에 존재(신규 아님 — F3 정정). |
 | `internal/cli/contract_decide.go` | Jev 모델 변경 통지의 CLI 소비자 전파(card t1803, #1853) — `--auto` 랭킹의 세 반환 경로와 kickoff decide의 `jev_notice` 필드·stderr 선행 인쇄. |
 
 ## 이전 변경 경계 — 2fccfd2 (card t1931 후속 판)
