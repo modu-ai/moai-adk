@@ -136,9 +136,14 @@ func TestCheckMCPServerVersion_RegisteredInDoctor(t *testing.T) {
 }
 
 // TestMCPServerRuntimeDir_ProjectScoped asserts the record path is anchored
-// under the project's .moai/state tree (not $HOME, not a relative path).
+// under the project's .moai/state tree (not $HOME, not a relative path). The
+// project fixture carries .moai — REQ-MN-015 scopes the record dir to a tree
+// that already is a moai project, so the dir never creates one.
 func TestMCPServerRuntimeDir_ProjectScoped(t *testing.T) {
 	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	want := filepath.Join(projectDir, ".moai", "state", "mcp-server")
 	if got := mcpServerRuntimeDir(projectDir); got != want {
 		t.Errorf("mcpServerRuntimeDir = %q, want %q", got, want)

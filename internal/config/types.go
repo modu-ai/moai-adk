@@ -456,6 +456,25 @@ type FactoryLeaseConfig struct {
 	RenewInterval string `yaml:"renew_interval"`
 }
 
+// CardAgeAlarmConfig is the workflow.card_age_alarm block: the display-only
+// work-item-age alarm of SPEC-CARD-AGE-ALARM-001 — an enable flag that ships
+// OFF and four age-band thresholds. They are held as strings so a bound
+// refusal (ResolveCardAgeAlarm) can name the key and the written value; the
+// measurement and rendering code carries no age-threshold literal
+// (REQ-CAA-002).
+type CardAgeAlarmConfig struct {
+	// Enabled is workflow.card_age_alarm.enabled (REQ-CAA-001), default false.
+	Enabled bool `yaml:"enabled"`
+	// GateWarnAfter is the warn band of the gate-wait class (REQ-CAA-002).
+	GateWarnAfter string `yaml:"gate_warn_after"`
+	// GateAlertAfter is the alert band of the gate-wait class.
+	GateAlertAfter string `yaml:"gate_alert_after"`
+	// StallWarnAfter is the warn band of the no-progress class.
+	StallWarnAfter string `yaml:"stall_warn_after"`
+	// StallAlertAfter is the alert band of the no-progress class.
+	StallAlertAfter string `yaml:"stall_alert_after"`
+}
+
 // FactoryConfig is the workflow.factory block: the self-dispatch policy for
 // bare `factory next` card selection (SPEC-CARD-ELIGIBLE-PULL-001). Sibling
 // of BranchGuard / factory_lease — same snake_case block scheme.
@@ -475,6 +494,8 @@ type FactoryConfig struct {
 type WorkflowConfig struct {
 	// FactoryLease carries workflow.factory_lease.* (see FactoryLeaseConfig).
 	FactoryLease FactoryLeaseConfig `yaml:"factory_lease"`
+	// CardAgeAlarm carries workflow.card_age_alarm.* (see CardAgeAlarmConfig).
+	CardAgeAlarm CardAgeAlarmConfig `yaml:"card_age_alarm"`
 	// Factory carries workflow.factory.* (see FactoryConfig).
 	Factory FactoryConfig `yaml:"factory"`
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).

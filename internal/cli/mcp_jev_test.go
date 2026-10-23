@@ -128,8 +128,14 @@ func TestJevAskGateOnDelegatesToJevClientAndMapsAnswers(t *testing.T) {
 		!ok || q.Type != "noul" || q.Instructions != "Is the premise still alive?" {
 		t.Errorf("delegate request = %+v, want the supplied state and questions", received)
 	}
-	answers, ok := doc["answers"].([]jev.Answer)
-	if !ok || len(answers) != 1 {
+	// The M2 _root provenance normalizes the payload to a map; decode the
+	// typed answers back out of the generic slice.
+	rawAnswers, aErr := json.Marshal(doc["answers"])
+	if aErr != nil {
+		t.Fatalf("marshal answers: %v", aErr)
+	}
+	var answers []jev.Answer
+	if jErr := json.Unmarshal(rawAnswers, &answers); jErr != nil || len(answers) != 1 {
 		t.Fatalf("answers = %#v, want exactly one mapped answer", doc["answers"])
 	}
 	if answers[0].QuestionID != "premise-alive" || answers[0].Kind != jev.KindNoul || answers[0].Probability != 0.62 {

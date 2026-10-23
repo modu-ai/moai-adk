@@ -96,7 +96,7 @@ func classifyToken(man Manifest, token string) (class string, ok bool) {
 // manifest writes it into the file ("" when the manifest states none).
 //
 // A role with a Codex-only addendum in the manifest gets that text appended
-// after its verbatim body; the neutral .md is never touched.
+// after its verbatim body; the agent source is never touched.
 func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, string, error) {
 	if !basicStringSafe(doc.Name) {
 		return nil, "", fmt.Errorf("%s: agent name %q is not representable as a TOML basic string", doc.File, doc.Name)
