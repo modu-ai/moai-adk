@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1260,6 +1261,22 @@ func TestReclassify_WriteSemantics(t *testing.T) {
 	root, store := fcFixture(t)
 	mdEnableFlag(t, root)
 	fcQueue(t, store, factory.BacklogStateQueued)
+	// SPEC-FACTORY-DEFAULT-MODE-001: the add path now records a
+	// decider-default classification at creation (REQ-FDM-002), so without
+	// this seed a same-axes reclassify takes the converged path and never
+	// re-stamps. Seed the absence back: this test names the FIRST-TIME
+	// acquire, where reclassify itself stamps decider human.
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID == "t1" {
+				rec.Items[i].Classification = nil
+				return nil
+			}
+		}
+		return fmt.Errorf("no t1 in the fixture queue")
+	}); err != nil {
+		t.Fatalf("seed the absent classification: %v", err)
+	}
 	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "parallelizable", "--reason", "first judgment"); err != nil {
 		t.Fatalf("first-time reclassify: %v", err)
 	}
@@ -1290,8 +1307,13 @@ func TestReclassify_WriteSemantics(t *testing.T) {
 	if rows[0].Kind != metadataKindReclassify || rows[0].Field != metadataFieldClassific {
 		t.Fatalf("row = (%s/%s), want (reclassify/classification)", rows[0].Kind, rows[0].Field)
 	}
-	if rows[0].Old != `{"blocked":false,"mode":"serial","priority":"normal"}` {
-		t.Fatalf("old = %q, want the derived-default axes", rows[0].Old)
+	// After the flip the absent read derives parallelizable (REQ-FDM-001),
+	// so the old axes on a first acquire are the absent-derived axes — the
+	// same axes the command commanded, because the command re-asserted the
+	// derived mode. The old=new pair on this row is the flip's honest
+	// record, not a lost transition.
+	if rows[0].Old != `{"blocked":false,"mode":"parallelizable","priority":"normal"}` {
+		t.Fatalf("old = %q, want the absent-derived axes (REQ-FDM-001)", rows[0].Old)
 	}
 	if rows[0].New != `{"blocked":false,"mode":"parallelizable","priority":"normal"}` {
 		t.Fatalf("new = %q, want the commanded axes", rows[0].New)
@@ -1308,6 +1330,59 @@ func TestReclassify_WriteSemantics(t *testing.T) {
 	}
 	if got2.ClassifiedAt == "2026-10-20T00:00:00Z" {
 		t.Fatalf("classified_at = %q, want a fresh stamp", got2.ClassifiedAt)
+	}
+}
+
+func TestReclassify_SerialSlotConflictRefused(t *testing.T) {
+	// REQ-FDM-004 on the reclassify surface (card t1737 delta F1): the
+	// reclassify write commanding serial runs the same serial-conflict gate
+	// the todo classify verb runs — an in-flight serial holder refuses the
+	// second serial card instead of letting reclassify create it by going
+	// around the todo classify gate. The refused write leaves the queue
+	// item's classification untouched (nil stays nil).
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStateQueued)
+	// t-slot holds the serial slot: in flight, driven, live lease — the
+	// TestMCPRefusal_SerialSlotStructured holder mold. The lease anchor is
+	// the real clock (factoryCardNow is the real time on this verb), not the
+	// fixture's frozen fcNow — an fcNow-anchored lease reads as expired and
+	// the t1828 liveness clause frees the slot. The holder's serial judgment
+	// is recorded on its queue item too (the classification-flip world: an
+	// absent read derives parallelizable, so an unrecorded holder would not
+	// read serial), and the fcRun seed row gives the homestate card its run.
+	fcPlace(t, root, homestate.Card{
+		CardID: "t-slot", State: homestate.CardRun, Stage: homestate.CardRun,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		LeaseExpiresAt: time.Now().Add(10 * time.Minute).Format(time.RFC3339Nano),
+		WorktreePath:   root,
+	})
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
+			ID:      "t-slot",
+			Text:    "serial slot holder",
+			AddedAt: "2026-09-26T00:00:00Z",
+			State:   factory.BacklogStatePicked,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed t-slot queue item: %v", err)
+	}
+	fcClassify(t, store, "t-slot", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	// The add path records a decider-default parallelizable classification at
+	// creation (REQ-FDM-002), so the refusal scenario is a recorded
+	// parallelizable card commanding serial — a mode transition, not a
+	// convergence (different axes), so the gate arms.
+	start := mdClass(t, store, "t1")
+	if start == nil || start.Mode != factory.ClassModeParallelizable {
+		t.Fatalf("fixture precondition: t1 starts recorded-parallelizable, got %v", start)
+	}
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--reason", "wants serial"); err == nil {
+		t.Fatal("reclassify to serial over a held slot: want a refusal, got success")
+	}
+	after := mdClass(t, store, "t1")
+	if after == nil || after.Mode != factory.ClassModeParallelizable {
+		t.Fatalf("the refused reclassify must leave t1 parallelizable, got %v", after)
 	}
 }
 
