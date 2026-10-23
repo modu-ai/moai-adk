@@ -1,6 +1,10 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — d5c083e (card t1909 판)
+## 현재 흐름 보완 — 8c36a79 (card t1931 판)
+
+이 창에서 실제로 움직인 흐름은 셋이다. **① trunk backup(card t1832)** — `moai integration backup`이 로컬 main의 뒷받침 커밋을 `refs/heads/sync/main`으로 force-push해 배치 push 전까지 로컬 main이 유일한 사본이 되지 않게 한다. refspec은 한 번 해석해 인쇄한 SHA를 그대로 밀어 올리고(push.recurseSubmodules off·태그 누출 방지 플래그 포함), 밀기 전 뒤 쪽 원격을 다시 읽어 보고된 SHA = 전송 SHA를 보장한다. **② serial-slot 보유자 생존(card t1828)** — 만료 임대의 슬롯 해제가 생존 판정을 통과해야만 일어난다: 레인 죽음·워처 재해석·재배정 HeartbeatAt 클리어 세 갈래가 판정을 공유하고, 만료 수거→재임대 복구(8859 순서)가 판정의 회복 경로다. **③ 병합 준비 SHA 고정(card t1928)** — merge-tree dry-run이 브랜치 참조 문자열 대신 `show-ref --verify --hash`로 핀한 tip SHA를 소비해 이름 충돌(t1920·t1928 감사 F1/F4)이 probe를 다른 대상으로 돌리지 못하게 묶는다. hook 레지스트리 sync/async 정리(card t1913)는 흐름 추가가 아니라 같은 경계의 판정 정리다(commit identity 가드·PostToolUse 실패가 registry의 비동기 슬롯으로 옮겨간 것). #1896 나머지는 `moai codex role-audit` 런처와 런치 기본값·버그리포트 등록의 배선 보강이고 t1909 판이 끊어 놓은 Codex 감사 흐름의 등록 파일 확정이다.
+
+## 이전 흐름 보완 — d5c083e (card t1909 판)
 
 Codex 일반 실행 흐름은 이 판에서 끊겼다 — 대화형 launch(`moai codex`)·factory 진입(`-f lane`)·init-offer 게이트·잡 제어·위임(codex_task)의 경로가 삭제됐고, 살아 남는 Codex 흐름은 **읽기 전용 감사**뿐이다: `moai codex audit|role-audit`(신규 `codex_cmd.go` 부모 아래 `codex_audit_launch.go`가 등록·연결)와 MCP `codex_audit`·`codex_role_audit{,_status,_result}`(`mcp_codex.go`에서 신규 `mcp_codex_audit.go`로 분리된 구현 — `codex exec -s read-only`와 app-server JSON-RPC는 같다). `moai verify sync-gate`·`moai verify codex-review`의 훅 밖 검사 동사와 Codex Stop 체인 러너도 이 판에서 사라졌다(훅 쪽 `codex_review_gate.go` 게이트와 `internal/codexwiring` 선언은 남는다). MCP 표면에서 codex_task·codex_job_* 4개 도구가 빠져 카탈로그는 35개다.
 

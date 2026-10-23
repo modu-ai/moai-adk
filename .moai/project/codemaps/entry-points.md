@@ -1,6 +1,13 @@
 # 진입점
 
-## 현재 진입점 보완 — d5c083e (card t1909 판)
+## 현재 진입점 보완 — 8c36a79 (card t1931 판)
+
+- `moai codex audit`·`moai codex role-audit` 서브커맨드의 실제 등록은 `internal/cli/codex_audit_launch.go:926-928`의 `func init(){ codexCmd.AddCommand(newCodexAuditCmd()); codexCmd.AddCommand(newCodexRoleAuditCmd()) }`다(#1896 나머지 창). 이 창의 신규 파일 `internal/cli/mcp_codex_audit.go`는 CLI 등록이 아니라 **MCP 도구 구현**(`codex_audit`·`codex_role_audit{,_status,_result}`의 구현 표면 — `mcp_codex.go`에서 분리된 몸통)이다: CLI 등록 파일(codex_audit_launch.go)과 MCP 구현 파일(mcp_codex_audit.go)은 별개다. t1909 판의 "codex 표면은 감사 둘" 선언에 이 둘이 각각 결합해 표면이 확정됐다.
+- 등록 수치(t1931 판 재측정, 비테스트 기준): `AddCommand(` **273**회(등록 파일 **83**개 — 이전 252회/79개), `rootCmd.AddCommand(` 전체 **71**회(이전 68회), `root.go` `init()` **29**회(동일). 증가분은 trunk backup(`integration backup`·하위동사), 카드 메타데이터(`set-spec`·`reclassify`), 통합 기준 신선도(`integration_base_freshness`) 등 이전 창에서 만들어진 동사의 등록 파일이 이번에 집계 범위에 들어온 것과 codex 런처 등록이다.
+- `moai mcp-server`의 도구 수는 카탈로그 기준 **35개 불변**(`internal/mcp/catalog.go` `{Name:` 35건) — 창에서 MCP 표면은 움직이지 않았다.
+- `moai integration backup`이 이 창에서 실제로 등록됐다(card t1832, § `modules.md` t1931 판) — 로컬 main을 `refs/heads/sync/main`으로 밀어 올리는 읽기 원본 보존용 동사다.
+
+## 이전 진입점 보완 — d5c083e (card t1909 판)
 
 - `moai codex`는 감사 부모로 재편됐다 — 일반 RunE와 launch 동사(bare·`cli`·`app`·`status`)는 제거됐고(의미상의 도움말 문면은 `codex_cmd.go`의 Short/Long에 그대로 남아 렌더된다), 남는 서브커맨드는 `codex audit`·`codex role-audit` 둘이다(`codex_audit_launch.go`의 `init()`이 `codexCmd.AddCommand(...)`로 등록). `moai codex`를 동사 없이 부르면 아무것도 시작하지 않는다.
 - `moai skills`와 `moai tool` 루트 명령이 사라졌다 — `root.go`의 `init()`에서 `newSkillsCmd()`·`newToolCmd()` 등록 두 줄이 빠졌고(skills.go·tool.go 소멸), 등록 수는 31→**29**다. `tool-policy`는 별개 명령으로 남는다.
