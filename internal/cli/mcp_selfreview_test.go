@@ -1023,12 +1023,13 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			}
 		}
 	}
-	// Card t1632 CI repair: codex_audit now records its receipt on exactly its
-	// two verdict-bearing exits (binary missing, review ran — every other return
-	// is a tool error carrying no verdict), so the total is 6: the writers (3)
-	// plus the two codex_audit calls and the one audit_multi call.
-	if sites != 6 {
-		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 6 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	// Card t1632: codex_audit records its receipt on every verdict-bearing exit
+	// (binary missing, REQ-MN-019 baseBranch unresolvable -> inconclusive "target
+	// not applied", review ran — every other return is a tool error carrying no
+	// verdict), so the total is 7: the writers (3) plus the three codex_audit
+	// calls and the one audit_multi call.
+	if sites != 7 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 
