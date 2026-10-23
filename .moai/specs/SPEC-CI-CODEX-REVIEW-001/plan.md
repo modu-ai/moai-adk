@@ -331,7 +331,10 @@ amended rows of AC-CCR-006, 012, 013, 019. Ordered by decision-reversibility:
    (revision 13.1): the pull request number for the `workflow_run` path and for comments of user id 199175422, `github.run_id` for any
    other comment author.
 2. **The status context and its permission:** `statuses: write`; a final step `status` (`always() && steps.pr.outputs.active ==
-   'true'`) posting `T-STATUS` on the evaluated head SHA with the one POST form; exit 1 on a failed write.
+   'true'`) posting `T-STATUS` on the evaluated head SHA with the one POST form; exit 1 on a failed write. (Revision 13.2: the workflow
+   holds exactly four permissions — `contents: write`, `pull-requests: write`, `statuses: write`, and the read-only `actions: read` that
+   the comment path's `checks` step needs to list the `CI` workflow's runs of the evaluated head and require a current-head `CI`
+   success, `design.md` item 4, REQ-CCR-020, REQ-CCR-023, REQ-CCR-025.)
 3. **The comment path through the existing chain:** the `pr` step reads `state`, `merged`, and `headRefOid` from the API on the comment
    path (number from `env`); `head` takes that head as the commit under evaluation; `review` runs one pass with `--wait-closed false` and
    no sleep on the comment path, and its gate exit 10 is a "not yet" hold (step exit 0, `state=pending`, status `pending`
@@ -346,7 +349,8 @@ does not edit them):
 - `auto_merge_codex_test.go` `TestAutoMergeAddsNoSecretTriggerOrArtifact/trigger_is_workflow_run_only` (`len(wf.On) != 1`, "want
   exactly workflow_run") → exactly `workflow_run` and `issue_comment` with types `created`, `edited`.
 - `auto_merge_codex_test.go` `TestAutoMergeWiresGuardAndGate/permissions_unchanged` (exactly two keys, `contents` and
-  `pull-requests` write) → exactly three keys, `statuses: write` added.
+  `pull-requests` write) → exactly four keys, `statuses: write` and the read-only `actions: read` added (revision 13.2; the row keeps
+  its name).
 - `auto_merge_codex_test.go` `TestAutoMergeReadsOnlyAllowedReviewArtifacts`: the `forbidden` list (`"/status"`, `"statuses"`) and the
   `default` case of `gh_invocations_match_allow_list_exactly` and `gh_api_paths_in_workflow_are_pull_object_only` (any `gh api` path
   other than the pull request object fails) → admit exactly the one `--method POST "repos/$REPO/statuses/$SHA"` form; every status read

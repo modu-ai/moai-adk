@@ -394,7 +394,10 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `gh label`) or any other `gh api` path fails. **Revision 13:** the workflow (never the script) also makes exactly one write
   form, `gh api --method POST "repos/$REPO/statuses/$SHA"` with the context `auto-merge` (step `status`, AC-CCR-006a), and the
   token `statuses` is allowed only in that form and in the permission key `statuses: write`; `/status`, `commits/<sha>/status`,
-  and any read of `statuses` stay forbidden. **Forbidden tokens** in either file (with that one exception): `/status`, `statuses`, `check-runs`,
+  and any read of `statuses` stay forbidden. **Revision 13.2:** the workflow (never the script) also makes exactly one more read
+  form, `gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$VERIFIED_SHA&event=pull_request&per_page=100"` (step `checks`,
+  comment path only, `design.md` item 4), admitted by `gh_invocations_match_allow_list_exactly` and
+  `gh_api_paths_in_workflow_are_pull_object_only`; it needs the read-only permission `actions: read`. **Forbidden tokens** in either file (with that one exception): `/status`, `statuses`, `check-runs`,
   `check_runs`, `labels`, `reactions`, `--delete-branch`, `CodeRabbit`, `Merge Risk`, `AUTOMERGE_MAX_MERGE_RISK`; no step deletes a ref (`git push --delete`,
   `gh api -X DELETE`); the token `issues/` is allowed only
   as the endpoint `issues/<N>/comments` of the issue-comment listing (revision 7 reverses its earlier blanket ban).
@@ -586,8 +589,9 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `ok=false`; the `review` step is skipped unless `files` passed; the merge step's `if` requires both
   `steps.files.outputs.ok == 'true'` and `steps.review.outputs.ok == 'true'` besides its existing terms; both
   steps run `scripts/ci/codex-review-gate.sh` from the checkout that has no `ref` (the default branch), and a
-  missing script is not a pass; and the workflow permissions are exactly `contents: write`, `pull-requests: write`, and
-  (revision 13, REQ-CCR-025) `statuses: write` — the row `permissions_unchanged` is amended to that three-key set (AC-CCR-006a).
+  missing script is not a pass; and the workflow permissions are exactly `contents: write`, `pull-requests: write`,
+  (revision 13, REQ-CCR-025) `statuses: write`, and (revision 13.2) the read-only `actions: read` — the row `permissions_unchanged`
+  keeps its name and is amended to that four-key set (AC-CCR-006a).
 - Verify: `grep -c 'gate-files-changed' .github/workflows/auto-merge.yml`, `grep -c 'read-native-review'
   .github/workflows/auto-merge.yml`, and `grep -c 'fetch-pages' .github/workflows/auto-merge.yml` each print a
   count of at least 1 and exit 0 (R4, R5, R6 flipped; necessary, not sufficient); `grep -c -F '6458969' .github/workflows/auto-merge.yml` prints at
@@ -872,7 +876,9 @@ instantiates is `design.md` §5 `T-CHAIN`.
   `running_on_last_pass_step_exit_nonzero_job_failure`, `unknown_gate_exit_step_exit_nonzero`,
   `head_moved_during_read_step_exit_nonzero`, `review_comments_moved_during_read_step_exit_nonzero`,
   `review_failed_step_exit_nonzero_job_failure_annotation_names_re_request_target`, `recheck_mismatch_step_exit_nonzero`, `recheck_second_state_comment_step_exit_nonzero`, `unreadable_to_end_of_window_step_exit_nonzero`, `gate_script_missing_step_exit_nonzero`,
-  `merge_step_skipped_after_review_failure`, `clean_pass_step_exit_0_job_success`, `review_step_has_no_continue_on_error`.
+  `merge_step_skipped_after_review_failure`, `clean_pass_step_exit_0_job_success`, `review_step_has_no_continue_on_error`; and
+  (revision 13.2, the header of `TestAutoMergeCommentPathRequiresCISuccess` cites this criterion) that function passes as listed
+  under AC-CCR-013c.
 - Mutant: the committed workflow (a `withhold` that ends `exit 0`) turns every failure row red on the exit status although its
   outputs read `ok=false state=fail`; `continue-on-error: true` on the step turns the job-result assertion of every failure row and
   `review_step_has_no_continue_on_error` red while the step exit status stays non-zero; a step that exits 1 on the clean pass turns
@@ -1044,7 +1050,13 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   `comment_path_head_moved_after_comment_zero_merge_calls`, `comment_path_review_single_pass_wait_open_no_sleep`,
   `comment_path_running_is_not_yet_hold_exit_0_zero_merge_calls`, `comment_path_absent_review_is_not_yet_hold_exit_0_zero_merge_calls`,
   `comment_path_draft_not_run_zero_merge_calls`, `concurrency_key_same_for_both_paths`,
-  `concurrency_key_unique_per_run_for_other_authors`, `concurrency_group_at_job_level`, `concurrency_cancel_in_progress_false`.
+  `concurrency_key_unique_per_run_for_other_authors`, `concurrency_group_at_job_level`, `concurrency_cancel_in_progress_false`;
+  and (revision 13.2, the comment path's current-head `CI` condition, `design.md` item 4) `go test -count=1 -v -run
+  '^(TestAutoMergeCommentPathRequiresCISuccess|TestAutoMergeCommentPathCIInProgressHolds|TestAutoMergeCommentPathCIConditionMatchesWorkflowRunPath)$'
+  ./internal/template/` lists `--- PASS` for every subtest of the three functions, among them
+  `required_checks_pass_but_ci_concluded_non_success_zero_merge_calls`, `ci_run_listing_unreadable_zero_merge_calls`,
+  `no_ci_run_for_the_verified_head_zero_merge_calls`, `latest_run_of_the_head_decides`, `workflow_run_path_makes_no_ci_read`,
+  `every_unfinished_status_is_a_pending_hold`, and `ci_workflow_is_the_one_both_triggers_name`.
 - Mutant: the 60-pass loop kept on the comment path turns `comment_path_review_single_pass_wait_open_no_sleep` red; a pass with
   `--wait-closed true` (a running review failing the job) turns `comment_path_running_is_not_yet_hold_exit_0_zero_merge_calls` red; a
   concurrency key without `github.event.issue.number` turns `concurrency_key_same_for_both_paths` red, and one that gives a foreign
@@ -1068,7 +1080,10 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   `merge_requested_exit_0_job_success`, `window_elapsed_before_merge_exit_1_job_failure`,
   `window_elapsed_during_head_check_exit_1_job_failure`, `head_moved_exit_1_job_failure`, `merge_failed_exit_1_job_failure`,
   `each_outcome_one_summary_line_with_head_sha`, `earlier_holds_keep_exit_0`, `comment_path_running_hold_keeps_exit_0`; and the amended rows of
-  `TestAutoMergeSummarisesEveryMergeOutcome` and `TestAutoMergeMergeDecisionPath` (`plan.md` M7) pass.
+  `TestAutoMergeSummarisesEveryMergeOutcome` and `TestAutoMergeMergeDecisionPath` (`plan.md` M7) pass; and (revision 13.2, a head
+  lookup that fails inside the merge step) `go test -count=1 -v -run '^TestAutoMergeMergeHeadLookupFailureFailsClosed$'
+  ./internal/template/` lists `--- PASS` for `merge_step_alone_summary_line_exit_1_zero_merge_calls`,
+  `whole_chain_status_failure_job_failure_zero_merge_calls`, and `moved_head_keeps_its_own_wording`.
 - Mutant: the committed merge step (each held outcome `exit 0`, the merge-failed path falling through) turns the four exit-1 rows
   red; an `exit 1` on "merge requested" turns `merge_requested_exit_0_job_success` red; a deleted summary line turns
   `each_outcome_one_summary_line_with_head_sha` red.
@@ -1080,7 +1095,8 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
 - When the permissions are read, the `gh` invocations are classified, and the chain runs each `T-STATUS` outcome (merge requested; a
   merge step reached and not executed; a `review` refusal; review absent; the draft; `checks` withheld; an ineligible author; a `head`
   hold; a head read that failed; a failing status write),
-- Then the permissions are exactly `contents: write`, `pull-requests: write`, and `statuses: write`; the only status call is
+- Then the permissions are exactly the four `contents: write`, `pull-requests: write`, `statuses: write`, and `actions: read`
+  (revision 13.2: the read-only scope of the comment path's `CI` run listing, `design.md` item 4); the only status call is
   `gh api --method POST "repos/$REPO/statuses/$SHA"` and no status is read; for every outcome with a known evaluated head exactly one
   status is posted on that SHA with the context `auto-merge`, the state of `T-STATUS` (`success`, `failure`, or `pending`), and a
   description beginning with the `T-STATUS` text; no status is posted when the head is unknown; a failing status write ends the
@@ -1090,13 +1106,14 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   8c36a7904bfe3e44c46b154a2839a6aedb719ef2 HEAD -- .github/required-checks.yml` exits 0 (B1, regression row; re-pinned to the
   `origin/main` tip read at measurement time if that ref moved, never compared against the moving name); and `go test -count=1 -v -run
   '^TestAutoMergePostsStatusContext$' ./internal/template/` lists `--- PASS` for
-  `permissions_exactly_contents_pull_requests_statuses_write`, `status_post_is_the_only_statuses_form`, `no_status_read`,
+  `permissions_exactly_contents_pull_requests_statuses_write_actions_read`, `status_post_is_the_only_statuses_form`, `no_status_read`,
   `merge_requested_posts_success`, `merge_not_executed_posts_failure`, `review_refusal_posts_failure`,
   `review_absent_posts_failure`, `comment_path_running_posts_pending_review_not_complete_running`, `draft_posts_pending`, `checks_hold_posts_pending`, `ineligible_author_posts_pending`,
   `head_hold_posts_pending`, `unknown_head_posts_no_status`, `one_status_per_evaluation_on_evaluated_sha`,
   `context_is_auto_merge`, `description_names_reason`, `status_write_failure_step_exit_1_merge_unchanged`; and AC-CCR-016 and
   AC-CCR-017 still pass.
-- Mutant: a status posted only on success (no `pending`/`failure`), a status step without `always()`, a `statuses: read` or a GET of
+- Mutant: a status posted only on success (no `pending`/`failure`), a status step without `always()`, an `actions: write` or a
+  missing `actions: read`, a `statuses: read` or a GET of
   `commits/<sha>/status`, or a status on the head read after the merge instead of the evaluated SHA turns the matching row red; adding
   `auto-merge` to `required-checks.yml` turns B1 and AC-CCR-017 red.
 - RED-now: R34 and R35 (tree `41b7f29b7a`: no status write, no `statuses: write`). B1 is a baseline row, green by nature. Green

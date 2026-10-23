@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.11.1"
+version: "0.11.2"
 status: in-progress
 created: 2026-10-18
-updated: 2026-10-23
+updated: 2026-10-24
 author: "Goos Kim"
 priority: P1
 phase: "v3.2.0 target"
@@ -36,8 +36,28 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.10.2 | 2026-10-20 | t1868 run-phase writer | Correction from exact-head #1828 security finding 4316515155: a pre-merge recheck no longer rejects an otherwise clean review solely because ordinary issue comments were added after the earlier clean pass. It snapshots the fresh PR issue-comment count, proves the complete paginated list against that count, checks the same count and head after collection, and reruns the trusted native-review gate; review-comment count, trusted identity, marker/state integrity, and clean summary equality remain enforced. Counts remain 21 requirements and 25 criteria. |
 | 0.11.0 | 2026-10-23 | manager-spec (card t1868) | Plan revision 13, an in-place amendment (Amendment 6) under the operator and leader ruling of 2026-10-23 (decision-index Q30): audit findings F4 (a Codex review that completes after the merge step's window, or after the pull request becomes ready, is never re-evaluated) and F3/F1 (merge-step holds end exit 0 and look green) are fixes, not accepted limitations. New: REQ-CCR-022 (an `issue_comment` trigger, `created` and `edited`, admitted at the job level only for a pull request comment of user id 199175422; no pull-request code is checked out or run), REQ-CCR-023 (the same chain, one evaluation with no wait, head re-confirmed, one concurrency group per pull request), REQ-CCR-024 (a merge step that was reached and did not merge ends non-zero), REQ-CCR-025 (a commit status `auto-merge` on the evaluated head, `statuses: write`, no required check added). Reworded: REQ-CCR-007, 011, 013; §2 item 7; §5 stated fact and G6 condition; §6 Out of Scope "step conclusions"; §7 AL-1 superseded (resolved by REQ-CCR-022). The F1 `active` gating, the env-passed `PR_NUMBER`, the per-outcome job-summary line, and the shellcheck step of commit `41b7f29b7a` are already landed and are not re-specified as new work. Criteria: five lettered sub-criteria (AC-CCR-006a, 013a, 013b, 013c, 019a) inside existing logical criteria, because the logical criterion count is at the Tier L ceiling of 25. Counts: 25 requirements (ceiling 25), 25 logical criteria with 5 sub-criteria. No plan-audit re-entry (ruling); one head-bound sync re-audit at the final head checks this SPEC against the code. |
 | 0.11.1 | 2026-10-23 | manager-spec (card t1868) | Revision 13.1, the lane ruling on the revision-13 defaults: decision-index Q31(a) is REVERSED — on the comment path a pending review pass (a `running` leg or marker, or no state comment yet) is a "not yet" hold with exit 0 and a `pending` `auto-merge` status (`review-not-complete:running`), never a failed job; only a merge step reached and not executed is non-zero. Q31(b) stands, clarified in design. The concurrency key is specified: the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author. Reworded REQ-CCR-012, 018, 019, 023, 024; no requirement or criterion added. |
+| 0.11.2 | 2026-10-24 | manager-spec (card t1868) | Revision 13.2, documents aligned to the landed implementation after sync audit 3 (`.moai/reports/t1868/sync-audit-3.md`, FAIL 0.72 at `60997114fe`, findings F1, F2, F6); leader and operator ruling: the documents follow the code, the permissions are not reduced. REQ-CCR-025: exactly four permissions — `actions: read` (read-only; the comment path lists the `CI` workflow's runs of the evaluated head) added beside `statuses: write`. `design.md` item 4 defines `checks` on the comment path as the required checks plus the current-head `CI` conclusion; `T-STATUS` gains the `ci-*` hold descriptions; item 6, §5, `plan.md` M7, and AC-CCR-006 / 006a restated to four scopes; the new pin tests are added to the Verify lists of AC-CCR-013c, 019a, and 020. No requirement or criterion added; no plan-audit re-entry (ruling). |
 
 ## Amendments
+
+### Amendment 6, revision 13.2 — the permission set and the comment-path CI condition follow the landed workflow
+
+- rationale: sync audit 3 (`.moai/reports/t1868/sync-audit-3.md`, FAIL 0.72 at `60997114fe`) found the code correct and the documents
+  behind it. F1: `auto-merge.yml` holds four permissions — `contents: write`, `pull-requests: write`, `statuses: write`, `actions: read`
+  — while REQ-CCR-025, AC-CCR-006a, `plan.md` M7, and `design.md` said exactly three. `actions: read` is read-only and exists because the
+  comment path lists the `CI` workflow's runs of the evaluated head (`gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=..."`)
+  to require a current-head `CI` success, the condition the `workflow_run` path gets from its job-level `if` (REQ-CCR-020, REQ-CCR-023).
+  F2: `design.md` item 4 and the `T-STATUS` `checks` row did not describe that condition or its `ci-*` hold descriptions. F6: the four
+  pin tests that cite AC-CCR-013c, 019a, and 020 in their headers were absent from those criteria's Verify lists. Ruling of the leader
+  and the operator: the documents follow the implementation; the permissions are not reduced.
+- scope: REQ-CCR-025 reworded (four permissions); `design.md` items 4 and 6, the `T-STATUS` `checks` row, and §5 restated; `plan.md`
+  M7 item 2 and the `permissions_unchanged` pin note restated; AC-CCR-006 and AC-CCR-006a restated to the four-scope set with the real
+  subtest name; Verify lists of AC-CCR-013c, 019a, and 020 extended. No requirement or criterion added; the logical criterion count is
+  unchanged.
+- recorded, not changed: F4 — the criterion header count stays at the operator exception of decision-index Q30. F5 — the `checks` step
+  waits for pending required checks (up to 60 polls, 10 s apart) on both paths; the "no wait" of REQ-CCR-023 binds the review read and
+  the `CI` run read, not the required-checks wait, which is common to both paths (`design.md` item 4).
+- plan audit: no re-entry, by the ruling; the next head-bound sync re-audit checks this delta against the code.
 
 ### Amendment 6 — late reviews are re-evaluated and held merges are visible (plan revision 13)
 
@@ -446,8 +466,10 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   commit status with the context `auto-merge` on that commit through the API, with the state `success` when the merge was requested
   (`gh pr merge` exited 0), `failure` when the merge step ran and did not merge or the `files` or `review` step ended non-zero other than
   `not-run:draft`, and `pending` for every other withheld outcome, and with a description naming the outcome's reason (`design.md`
-  "Delta of plan revision 13", `T-STATUS`); the auto-merge workflow shall hold exactly the permissions `contents: write`,
-  `pull-requests: write`, and `statuses: write` (one new scope), shall never read a commit status (the status is an output of the
+  "Delta of plan revision 13", `T-STATUS`); the auto-merge workflow shall hold exactly the four permissions `contents: write`,
+  `pull-requests: write`, `statuses: write` (the write scope added for this status), and `actions: read` (revision 13.2: the
+  read-only scope the comment path needs to list the `CI` workflow's runs of the evaluated head, REQ-CCR-020 and REQ-CCR-023; no other
+  write scope), shall never read a commit status (the status is an output of the
   evaluation, never an input of the verdict), and shall end the status-writing step non-zero when the write fails, without changing the
   merge decision; the context shall not become a required check: `.github/required-checks.yml` and the branch protection stay
   byte-unchanged (REQ-CCR-016).

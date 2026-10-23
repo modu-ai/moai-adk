@@ -28,12 +28,23 @@ the `active` output that ends the job for a pull request that is not open, `PR_N
 4. **Same head, same chain.** The step order is reused unchanged: `pr` (resolve the number; `active` false unless the pull request is
    open and not merged, now read from the API on the comment path) → `head` (the commit under evaluation: `workflow_run.head_sha` on the
    `workflow_run` path, the API-read `headRefOid` captured in `pr` on the comment path, re-read and compared as today) → `author` →
-   `checks` (the required checks of that head) → `files` → `review` (the head-SHA-bound trusted summary, the clean receipt, and the
+   `checks` (the required checks of that head; on the comment path, revision 13.2, also the current-head `CI` conclusion — see below)
+   → `files` → `review` (the head-SHA-bound trusted summary, the clean receipt, and the
    pre-merge recheck) → merge (the head re-read immediately before the call, `--match-head-commit`). "Auto-merge requested" in the
    ruling's wording is read as this chain reaching the merge step with every guard passed; no GitHub `auto_merge` flag is required on
    either path (decision-index Q31(b), confirmed by the lane ruling). The workflow reads no GitHub `auto_merge` flag: it gates on the
    `author` step's eligibility (author and same-repository head) and on the CI (`checks`), `head`, `files`, and `review` steps. A head
    that moved after the bot's comment fails the binding (`stale-review`, `head-moved`, or the merge step's head re-read) and holds.
+   **The `CI` condition on the comment path (revision 13.2, REQ-CCR-020, REQ-CCR-023).** The `workflow_run` path reaches `checks` only
+   when the triggering `CI` run concluded `success` (its job-level `if`); the comment path has no such run, so once the required checks
+   all pass, the `checks` step lists the `CI` workflow's runs of the verified head once (`gh api
+   "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$VERIFIED_SHA&event=pull_request&per_page=100"`, read through `jq` as data
+   only, no wait). The latest run of that head (highest id) decides: `completed/success` continues; a run that has not finished
+   (`ci-not-complete:<status>`), no run of this head (`ci-run-not-found`), or a listing that fails or is malformed (`ci-unreadable`) is
+   a "not yet" hold; any other conclusion withholds (`ci-not-success:<conclusion>`). Every result other than success ends the step
+   exit 0 with `should_merge=false`, so no merge is requested — the same condition the `workflow_run` path gets from its job `if`. The
+   wait for pending required checks before this read (up to 60 polls, 10 s apart) is common to both paths; the "no wait" of item 5
+   binds the review pass and this `CI` read.
    **Concurrency key (revision 13.1, specified shape).** One job-level group, `cancel-in-progress: false`, whose key is
    `auto-merge-<PR number>` for the `workflow_run` path (`workflow_run.pull_requests[0].number`) and for a comment of user id 199175422
    (`issue.number`), and `auto-merge-run-<run id>` (`github.run_id`, unique per run) for a comment of any other author. A skipped
@@ -51,8 +62,9 @@ the `active` output that ends the job for a pull request that is not open, `PR_N
    did not merge (deadline passed before the call or during the head re-read; head moved; `gh pr merge` non-zero), keeping its summary
    line; exit 0 only on "merge requested". `pr`, `head`, `author`, and `checks` keep exit 0. A final step `status`, conditioned
    `always() && steps.pr.outputs.active == 'true'`, posts one commit status on the evaluated head SHA with
-   `gh api --method POST "repos/$REPO/statuses/$SHA"`, context `auto-merge`, state and description per `T-STATUS` below. It needs the one
-   new permission `statuses: write`. No branch-protection change, no required check; `.github/required-checks.yml` stays byte-identical
+   `gh api --method POST "repos/$REPO/statuses/$SHA"`, context `auto-merge`, state and description per `T-STATUS` below. It needs the
+   write scope `statuses: write`; with the read-only `actions: read` of the comment path's `CI` read (item 4, revision 13.2) the
+   workflow holds exactly four permissions (REQ-CCR-025). No branch-protection change, no required check; `.github/required-checks.yml` stays byte-identical
    to `origin/main` (measured `8c36a7904b`, acceptance B1). A failed status write ends the `status` step with exit 1; the merge decision
    was already taken by the steps before it.
 
@@ -65,7 +77,7 @@ the `active` output that ends the job for a pull request that is not open, `PR_N
 | `files` or `review` ended non-zero, other than `not-run:draft` (`T-CHAIN` rows 2 to 4, 6 to 9, 11 to 13) | `failure` | `gate refused: <reason>` |
 | `review` ended `not-run:draft` (`T-CHAIN` row 5) | `pending` | `not yet: draft` |
 | comment path: `review` pending pass, exit 0, state `pending` (revision 13.1) | `pending` | `review-not-complete:running` (or `review-not-complete:no-state-comment`) |
-| `checks` withheld (`should_merge=false`) | `pending` | `not yet: required checks <state>` |
+| `checks` withheld (`should_merge=false`) | `pending` | `not yet: ${CI_HOLD:-required checks not all passed}` — on the comment path's `CI` hold (revision 13.2, item 4) `not yet: ci-unreadable`, `not yet: ci-run-not-found`, `not yet: ci-not-success:<conclusion>`, or `not yet: ci-not-complete:<status>`; otherwise `not yet: required checks not all passed` |
 | `author` recorded `eligible=false` | `pending` | `needs user approval: not an eligible author` |
 | `head` withheld (moved since the CI-tested commit, unreadable) | `pending` | `not yet: head <reason>` |
 
@@ -560,9 +572,11 @@ corrected design draws:
 
 ## 5. Consumer changes (`auto-merge.yml`)
 
-- Permissions: `contents: write`, `pull-requests: write`, and (revision 13, REQ-CCR-025) `statuses: write`; reading reviews,
-  review comments, and changed files needs only `pull-requests`, and writing the `auto-merge` commit status needs `statuses`. No
-  other permission is added. (Before revision 13 this line read "Permissions are unchanged"; superseded by the 2026-10-23 ruling.)
+- Permissions: exactly `contents: write`, `pull-requests: write`, (revision 13, REQ-CCR-025) `statuses: write`, and (revision
+  13.2) `actions: read`; reading reviews, review comments, and changed files needs only `pull-requests`, writing the `auto-merge`
+  commit status needs `statuses`, and the comment path's read of the `CI` workflow's runs of the evaluated head needs the read-only
+  `actions` scope. No other scope is held. (Before revision 13 this line read "Permissions are unchanged"; before revision 13.2 it
+  read "No other permission is added" with three scopes; both superseded.)
 - The CodeRabbit step (status wait, comment read, risk ladder, `AUTOMERGE_MAX_MERGE_RISK`) is deleted.
 - **Step conclusion convention (revision 6, Δ1 to Δ3, widened by the leader's scope addition, board record
   d-20261018T155527Z-4e9e).** The steps `pr`, `head`, `checks`, and (revision 7) `author` keep the convention of the closed SPEC:

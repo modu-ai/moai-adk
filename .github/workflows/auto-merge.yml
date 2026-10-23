@@ -350,7 +350,7 @@ jobs:
 
           rc=0
           OUT="$(bash "$GATE" fetch-pages --endpoint "repos/$REPO/pulls/$PR_NUMBER/files" --out "$LIST" --expect-count "$COUNT1" 2>&1)" || rc=$?
-          echo "$OUT"
+          printf '%s\n' "$OUT"
           if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
 
           SECOND="$(read_pr)" || withhold "files-unreadable-after-read"
@@ -361,7 +361,7 @@ jobs:
 
           rc=0
           OUT="$(bash "$GATE" gate-files-changed --file "$LIST" --head-sha "$VERIFIED_SHA" 2>&1)" || rc=$?
-          echo "$OUT"
+          printf '%s\n' "$OUT"
           if [ "$rc" -ne 0 ]; then withhold "$(reason "$OUT")"; fi
 
           conclude true pass 0
