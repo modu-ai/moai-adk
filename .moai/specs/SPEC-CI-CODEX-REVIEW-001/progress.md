@@ -1,6 +1,6 @@
 # SPEC-CI-CODEX-REVIEW-001 — progress
 
-status: in-progress
+status: completed
 card: t1868 (lane-22, run tn1p4e) · tree .moai/worktrees/t1868 · branch WT-ci-codex-review · card base 4f9dba14bf · revision 5 (post-ceiling correction) follows audited revision 4 at 51993bd7d9
 evidence: this file + .moai/reports/t1868/ (card record: progress.md; verdict.md, plan-audit*.md, sync-audit*.md are auditor/leader-owned)
 
@@ -396,7 +396,7 @@ audit_ready: true
 
 ```yaml
 sync_phase_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash (spec-workflow Sync (close)); backfilled with the real SHA in a following commit
+sync_commit_sha: 9286f6b6ba88a73521c896e2d5bd536c29631c97
 sync_status: completed   # documentation and SPEC close only; NOT landed locally and NOT remote verified (see Gaps)
 ac_source: .moai/specs/SPEC-CI-CODEX-REVIEW-001/acceptance.md   # tier L
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Changed, first entry"
@@ -573,3 +573,4 @@ Command: `go test ./internal/template/ -run 'TestAutoMergeCommentPathRequiresCIS
 - Windows `Multi-OS Test (windows-latest)` failure on head `60997114fe` (`internal/hook` `TestAuditPerFileCategoryHeader/*`, job 120543385315): attribution unconfirmed; pre-existing Windows family; candidate card after 3.2 (em-dash/CRLF header comparison suspected, unverified).
 - AC-count exception (decision-index Q30): recorded only.
 - F5 (sync audit 3): the comment path also waits for pending required checks; recorded only.
+mx_commit_sha: (this commit)
