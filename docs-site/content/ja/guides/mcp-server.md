@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-23個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`factory_renew`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
+22個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`factory_renew` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -179,13 +179,9 @@ GLM にはファイルシステムがないため、ランタイム管理のパ�
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | — |
 | `mcp__moai__codex_setup` | ローカル codex インストール検出（LookPath + バージョン + 認証） | super-advisor | — |
-| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | manager-develop, super-advisor | — |
 
-codex 委任ツール群は super-advisor と manager-develop に配線されています。随時の高推論相談エージェントである super-advisor は、バックグラウンドのクロスモデル委譲の自然な消費者です。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。manager-develop は `codex_setup` を除く残りを持ち、範囲の限られた機械的な部分作業を任せるときに限り、run ワークフローの `External Model Delegation` 節が認める範囲で `codex_task` を使います。委譲された codex のターンは読み取り専用のままです。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
+汎用 codex 委任ツール群（`codex_task`、`codex_job_status` / `codex_job_result` / `codex_job_cancel`）は削除されました。`codex_setup` は監査面のインストールプローブとして super-advisor — 随時の高推論相談エージェント — に配線されて残ります。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
 
 ### codex 読み取り専用ロール
 

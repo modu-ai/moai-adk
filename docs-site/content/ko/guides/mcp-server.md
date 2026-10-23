@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 입력 — 호출자가 자기 트리를 지목한다
 
-23개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_review`, `codex_task`, `claude_audit`, `glm_audit`, `glm_review`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`, `factory_renew`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `factory_next`, `factory_stage`, `factory_complete`, `factory_renew`, `codex_task`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
+22개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_review`, `claude_audit`, `glm_audit`, `glm_review`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`, `factory_renew`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `factory_next`, `factory_stage`, `factory_complete`, `factory_renew`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
 
 워크트리 안에서 일하는 에이전트는 이 값을 반드시 넘겨야 합니다. 편의 기능이 아닙니다. 서버가 스스로 답을 알아낼 방법이 없기 때문입니다. MCP 서버는 오래 사는 서브프로세스라 작업 디렉터리가 워크트리 전환을 따라가지 못하고, 대신 참조하는 환경변수는 세션이 워크트리에서 일하고 있어도 **프로젝트** 루트 — 즉 primary 체크아웃 — 를 가리킵니다. 워크트리에서 이 값을 빠뜨리면 호출은 primary 체크아웃을 대상으로 동작하고, 카드 브랜치에만 있는 SPEC은 감사자가 읽는 카탈로그에 들어오지 않습니다. 없다고 보고되지도 않습니다. 그냥 없습니다.
 
@@ -179,13 +179,9 @@ GLM은 파일 시스템이 없어서, 런타임 관리 경로를 뺀 diff를 요
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 코딩/조사 작업을 codex에 위임 (동기 또는 백그라운드) | manager-develop, super-advisor | — |
 | `mcp__moai__codex_setup` | 로컬 codex 설치 탐지 (LookPath + 버전 + 인증) | super-advisor | — |
-| `mcp__moai__codex_job_status` | 백그라운드 codex 작업 상태/기록 읽기 | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_result` | 백그라운드 codex 작업 출력 읽기 | manager-develop, super-advisor | — |
-| `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | manager-develop, super-advisor | — |
 
-codex 위임 도구군은 super-advisor와 manager-develop에 배선되어 있습니다. 수시 고추론 자문 에이전트인 super-advisor는 백그라운드 교차 모델 위임의 자연스러운 소비자입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. manager-develop은 `codex_setup`을 뺀 나머지를 가지며, 범위가 좁은 기계적 하위 작업을 맡길 때에만, 그것도 run 워크플로의 `External Model Delegation` 절이 허용하는 범위에서 `codex_task`를 씁니다. 위임된 codex 턴은 읽기 전용으로 남습니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
+일반 codex 위임 도구군(`codex_task`, `codex_job_status` / `codex_job_result` / `codex_job_cancel`)은 제거되었습니다. `codex_setup`은 감사면의 설치 프로브로 수시 고추론 자문 에이전트인 super-advisor에 배선된 채 남습니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
 
 ### codex 읽기 전용 역할
 

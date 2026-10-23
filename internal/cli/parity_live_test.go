@@ -285,32 +285,12 @@ func (l *parityLive) codexTurn(prompt string) (string, error) {
 	return l.host(codexBinaryName, "exec", "--skip-git-repo-check", "--cd", l.project, prompt)
 }
 
-// codexResume continues a Codex session by id.
-func (l *parityLive) codexResume(session, prompt string) (string, error) {
-	return l.host(codexBinaryName, "exec", "--skip-git-repo-check", "--cd", l.project, "resume", session, prompt)
-}
-
 // claudeTurn runs one claude -p turn under a session id the test chose, so a
 // goal can be armed for that session before the turn starts.
 func (l *parityLive) claudeTurn(session, prompt string) (string, error) {
 	return l.host("claude", "-p", "--session-id", session, prompt)
 }
 
-// codexSessions returns the Codex session ids the Stop chain has recorded
-// (one record file per session). Goal state is keyed by session, and a Codex
-// session id is only known after its first Stop.
-func (l *parityLive) codexSessions() []string {
-	entries, _ := os.ReadDir(filepath.Join(l.project, filepath.FromSlash(stopChainRecordDir)))
-	var out []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".json") {
-			out = append(out, strings.TrimSuffix(e.Name(), ".json"))
-		}
-	}
-	return out
-}
-
-// armLiveGoal arms an unmet mechanical goal for session in the scratch project.
 func (l *parityLive) armLiveGoal(session, cmd string) {
 	l.t.Helper()
 	g := goal.NewGoal(session, "live parity", []goal.Condition{{Type: goal.ConditionMechanical, Cmd: cmd}})
@@ -334,30 +314,14 @@ func (l *parityLive) record(verdict, attempted, observed string) {
 	}
 }
 
-// TestLiveStopChainGoalContinuation is AC-HPR-004 (live). Codex: a first turn
-// reveals the session id, a goal is armed for it, and the resumed turn must
-// continue. Claude: a goal is armed for a chosen --session-id first.
+// TestLiveStopChainGoalContinuation is AC-HPR-004 (live). Claude: a goal is
+// armed for a chosen --session-id first, and the resumed turn must continue.
+// (The codex arm was removed with the Codex Stop chain, card t1909 step ⑤.)
 func TestLiveStopChainGoalContinuation(t *testing.T) {
 	const ac = "AC-HPR-004"
-	attempted := "codex exec (+ resume) / claude -p --session-id on a scratch project with an armed unmet goal `test -f done.flag`"
+	attempted := "claude -p --session-id on a scratch project with an armed unmet goal `test -f done.flag`"
 	l := openParityLive(t, ac, attempted, true)
 	l.write(".claude/settings.json", `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"moai hook stop-goal"}]}]}}`)
-
-	out, err := l.codexTurn("Reply with the single word ready and stop.")
-	sessions := l.codexSessions()
-	if len(sessions) != 1 {
-		parityNotRunSkip(t, ac, attempted, fmt.Sprintf("Codex Stop chain recorded %d sessions after the first turn, want 1 (err=%v, tail %s)", len(sessions), err, tailString([]byte(out), 400)))
-	}
-	l.armLiveGoal(sessions[0], "test -f done.flag")
-	out, err = l.codexResume(sessions[0], "Reply with the single word again and stop.")
-	g, _ := goal.LoadGoal(l.project, sessions[0])
-	if g == nil || g.TurnsUsed < 2 {
-		turns := 0
-		if g != nil {
-			turns = g.TurnsUsed
-		}
-		l.record(parityFail, attempted, fmt.Sprintf("Codex: the unmet goal was evaluated %d time(s); a continued turn evaluates it at least twice (err=%v, tail %s)", turns, err, tailString([]byte(out), 300)))
-	}
 
 	claudeSession := "00000000-0000-4000-8000-00000000c1a0"
 	l.armLiveGoal(claudeSession, "test -f done.flag")
@@ -472,26 +436,6 @@ func TestLiveCodexInterruptFires(t *testing.T) {
 		parityNotRunSkip(t, ac, attempted, "SIGINT delivered; no Interrupt cancellation record appeared (the event may not fire in exec mode)")
 	}
 	l.record(parityPass, attempted, fmt.Sprintf("%d cancellation record file(s) written", len(entries)))
-}
-
-// TestLiveCodexGoalContinueUntilMet is the AC-HPR-012 live leg.
-func TestLiveCodexGoalContinueUntilMet(t *testing.T) {
-	const ac = "AC-HPR-012"
-	attempted := "codex exec + resume on an armed goal `test -f done.flag`, the agent told to create it and record the receipt"
-	l := openParityLive(t, ac, attempted, false)
-	out, err := l.codexTurn("Reply with the word ready and stop.")
-	sessions := l.codexSessions()
-	if len(sessions) != 1 {
-		parityNotRunSkip(t, ac, attempted, fmt.Sprintf("Codex Stop chain recorded %d sessions, want 1 (err=%v, tail %s)", len(sessions), err, tailString([]byte(out), 400)))
-	}
-	l.armLiveGoal(sessions[0], "test -f done.flag")
-	out, err = l.codexResume(sessions[0], fmt.Sprintf(
-		"Create an empty file done.flag, then run `%s --check-id goal --command 'test -f done.flag' --exit 0`, then stop.", codexwiring.GoalReceiptCommand))
-	if g, _ := goal.LoadGoal(l.project, sessions[0]); g != nil && g.Status == goal.StatusSatisfied {
-		l.record(parityPass, attempted, "the goal reached satisfied through the Codex Stop chain")
-		return
-	}
-	parityNotRunSkip(t, ac, attempted, fmt.Sprintf("the goal did not reach satisfied (err=%v, tail %s)", err, tailString([]byte(out), 400)))
 }
 
 // TestLiveHarnessIsolation is AC-HPR-020 (live): one Codex and one Claude run,

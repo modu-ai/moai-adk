@@ -1,22 +1,17 @@
 package cli
 
-// launcher_debug_trace.go — SPEC-CODEX-DEBUG-MODE-001: the three-runner
-// launcher debug surface. One flag spelling (-d / --debug) under one pre---
-// scoping discipline across the cc, glm, and codex launchers (REQ-012), one
-// stderr destination and one line-prefix vocabulary (REQ-013), and a
-// keys-only rule for anything the trace says about the environment (REQ-006:
-// the lane keys carry leader addresses and identity — values never print).
+// launcher_debug_trace.go — SPEC-CODEX-DEBUG-MODE-001: the launcher debug
+// surface. One flag spelling (-d / --debug) under one pre--- scoping
+// discipline across the cc and glm launchers (REQ-012), one stderr
+// destination and one line-prefix vocabulary (REQ-013), and a keys-only rule
+// for anything the trace says about the environment (REQ-006: the lane keys
+// carry leader addresses and identity — values never print). The codex
+// runner's own debug helpers were removed with the general codex launch
+// surface (card t1909).
 //
 // The debug trace is gated by the debug tokens alone; MOAI_LOG_LEVEL governs
 // the slog default handler and neither enables nor suppresses this trace
 // (REQ-008 — two separate axes).
-
-import (
-	"os"
-	"strings"
-
-	"github.com/modu-ai/moai-adk/internal/config"
-)
 
 const (
 	// launcherDebugFlagShort / launcherDebugFlagLong are the debug token
@@ -25,12 +20,8 @@ const (
 	launcherDebugFlagLong  = "--debug"
 
 	// launcherDebugTracePrefix is the single line prefix every launcher
-	// debug line carries, on all three runners, to stderr (REQ-005/REQ-013).
+	// debug line carries, on all runners, to stderr (REQ-005/REQ-013).
 	launcherDebugTracePrefix = "moai-launcher-debug:"
-
-	// codexDebugRustLogValue is the level the launcher injects for the codex
-	// child's Rust logging when the operator set none (REQ-010).
-	codexDebugRustLogValue = "debug"
 )
 
 // The debug step vocabulary — one line per executed pre-exec phase
@@ -69,81 +60,4 @@ func launcherDebugRequested(args []string) bool {
 		}
 	}
 	return false
-}
-
-// hasEnvKey reports whether the KEY=value entry list carries key.
-func hasEnvKey(env []string, key string) bool {
-	for _, entry := range env {
-		if k, _, _ := strings.Cut(entry, "="); k == key {
-			return true
-		}
-	}
-	return false
-}
-
-// codexApplyDebugEnv appends RUST_LOG=debug to the assembled child
-// environment when the inherited environment carries no RUST_LOG (REQ-010)
-// — the last-wins append posture of codexChildEnv. An operator-supplied
-// value is never modified (REQ-011): the caller invokes this only under
-// debug mode, and the absence check is what keeps an operator value
-// authoritative.
-// @MX:NOTE: [AUTO] operator-supplied RUST_LOG must survive untouched (REQ-011) — the absence check IS the override guard; do not fold it away
-// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
-func codexApplyDebugEnv(env []string) []string {
-	if hasEnvKey(env, config.EnvRustLog) {
-		return env
-	}
-	return append(env, config.EnvRustLog+"="+codexDebugRustLogValue)
-}
-
-// codexDebugEnvDetail renders the child-env assembly trace detail from the
-// parent's environment: KEY names with presence only — values are never
-// emitted (REQ-006; the lane keys carry leader addresses and identity). The
-// rustLogInjected caller knowledge distinguishes "injected" from
-// "preserved" for the RUST_LOG clause.
-// @MX:NOTE: [AUTO] REQ-006 secrecy boundary: renders env KEY names and presence only — lane keys carry leader addresses and identity; never extend it to print values
-// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
-func codexDebugEnvDetail(rustLogInjected bool) string {
-	var parts []string
-	if _, ok := os.LookupEnv(config.EnvRustLog); ok {
-		parts = append(parts, config.EnvRustLog+" preserved (operator-set)")
-	} else if rustLogInjected {
-		parts = append(parts, config.EnvRustLog+"=debug injected (absent upstream)")
-	}
-	var present, absent []string
-	for _, key := range codexLaneLaunchEnvKeys {
-		if _, ok := os.LookupEnv(key); ok {
-			present = append(present, key)
-		} else {
-			absent = append(absent, key)
-		}
-	}
-	if len(present) > 0 {
-		parts = append(parts, "lane keys upstream present (dropped from child): "+strings.Join(present, ", "))
-	}
-	if len(absent) > 0 {
-		parts = append(parts, "lane keys absent: "+strings.Join(absent, ", "))
-	}
-	return strings.Join(parts, "; ")
-}
-
-// stripCodexDebugFlag removes every debug token from the verb-position head
-// and reports whether one was found (REQ-001: the token never reaches the
-// codex child — its CLI rejects `-d` outright). Only the head is scanned:
-// tokens after -- are codex's own and are never inspected (REQ-002). Exact
-// token shapes only, mirroring stripSpawnFlag, so a `-d` sitting in the
-// value position of another flag is never consumed.
-// @MX:NOTE: [AUTO] exact-token strip so `-d` never reaches the codex child (REQ-001) — token-shape parity with stripSpawnFlag, value positions untouched
-// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
-func stripCodexDebugFlag(head []string) ([]string, bool) {
-	rest := make([]string, 0, len(head))
-	found := false
-	for _, token := range head {
-		if token == launcherDebugFlagShort || token == launcherDebugFlagLong {
-			found = true
-			continue
-		}
-		rest = append(rest, token)
-	}
-	return rest, found
 }

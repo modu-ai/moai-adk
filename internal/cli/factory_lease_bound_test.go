@@ -313,14 +313,16 @@ func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 }
 
 // flQueueReleaseSlack is the slack past the queue lock's wait budget B that the
-// release deadline carries. It is a hang/mutant bound, not a measurement: no
-// pass/fail rides on elapsed wall-clock. The release is a state event the test
-// controls — a context that starts counting at the lease's first queue-lock
-// wait and expires B + flQueueReleaseSlack later — so a lease that gives up
-// within its budget returns with the lock still held, with ~4 s of allowance
-// above the worst measured harness overhead (1.14 s, the t1506 verification
-// pass), while a lease that ignores its budget only returns after the
-// deadline-driven release.
+// release deadline carries. It is a hang/mutant bound: the release is a state
+// event the test controls — a context that starts counting at the lease's
+// first queue-lock wait and expires B + flQueueReleaseSlack later — so a lease
+// that gives up within its budget returns with the lock still held, with ~4 s
+// of allowance above the worst measured harness overhead (1.14 s, the t1506
+// verification pass), while a lease that ignores its budget only returns after
+// the deadline-driven release. The slack guards the order assertion only; the
+// AC's own B + 500 ms limit rides the same wait-start seam (AC-FAL-007(c),
+// PR #1832 post-merge review ②) — both measurement ends are sampled
+// goroutine-side, so harness delay cannot inflate the elapsed time.
 const flQueueReleaseSlack = 4 * time.Second
 
 // flVerbResult carries one qasRunNext call's outcome from the goroutine that
@@ -461,6 +463,13 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		if !res.heldAtReturn {
 			t.Errorf("the nominated lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget", elapsed, flQueueReleaseSlack, budget)
 		}
+		// AC-FAL-007(c): the lease returns within B + 500 ms of the queue-lock
+		// wait start. Both ends are sampled goroutine-side (waitStart from the
+		// seam, returned inside flRunNextAsync), so a delayed test body cannot
+		// false-RED a compliant lease.
+		if limit := budget + flMargin; elapsed > limit {
+			t.Errorf("the nominated lease returned %s after the queue-lock wait started, want within %s (AC-FAL-007(c): B + 500 ms)", elapsed, limit)
+		}
 		nmAssertRefused(t, res.out, res.stderr, res.err, "raced")
 		if !strings.Contains(res.stderr, "queue lock") {
 			t.Errorf("refusal detail = %q, want it to name the queue lock", res.stderr)
@@ -485,6 +494,11 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		// return (flRunNextAsync), not at observation time.
 		if !res.heldAtReturn {
 			t.Errorf("the bare lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget, one attempt", elapsed, flQueueReleaseSlack, budget)
+		}
+		// AC-FAL-007(c): the bare form is held to the same B + 500 ms limit,
+		// measured from the same wait-start seam.
+		if limit := budget + flMargin; elapsed > limit {
+			t.Errorf("the bare lease returned %s after the queue-lock wait started, want within %s (AC-FAL-007(c): B + 500 ms, one attempt)", elapsed, limit)
 		}
 		if err := res.err; err == nil || nmExit(err) == 3 || nmExit(err) == 0 {
 			t.Errorf("the bare lease returned %v (exit %d), want an error with exit 1", err, nmExit(err))

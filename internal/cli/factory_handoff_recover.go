@@ -17,6 +17,41 @@ import (
 // variable, never a store field or a broker row.
 var abandonLaneProbe = homestate.ProbeProcessIdentity
 
+// verifyWorkingDir returns the working-directory error the project-dir
+// resolution swallowed, so a verb never opens a factory at a fabricated
+// root: dir may be empty (the resolution's unresolved branch) or name a
+// path that no longer exists — os.Getwd can still succeed with a deleted
+// working directory, and OpenFactory would then recreate the tree under
+// it instead of failing (Codex PR #1833 review P2-1, card t1862).
+func verifyWorkingDir(dir string) error {
+	if dir == "" {
+		if _, err := os.Getwd(); err != nil {
+			return err
+		}
+		return fmt.Errorf("project directory unresolved")
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("working directory %s is unavailable: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("working directory %s is not a directory", dir)
+	}
+	return nil
+}
+
+// checkedFactoryRoot validates the launch directory before applying the shared
+// queue-root rule, so maintenance verbs cannot open a fabricated factory root.
+// @MX:ANCHOR: [AUTO] Checked root resolution for factory maintenance verbs.
+// @MX:REASON: Recovery, run listing, and relaunch must share validation and mapping.
+func checkedFactoryRoot() (string, error) {
+	dir, _ := resolveProjectDirWithSource()
+	if err := verifyWorkingDir(dir); err != nil {
+		return "", err
+	}
+	return factoryRootOf(dir), nil
+}
+
 func newFactoryCommand() *cobra.Command {
 	factory := &cobra.Command{Use: "factory", Short: "Factory runtime maintenance", Long: "Factory runtime maintenance.\n\nRun `moai paths` for the confirmed factory and broker database paths; never guess\na database path. Opening a missing file with sqlite3 creates an empty one."}
 	handoff := &cobra.Command{Use: "handoff", Short: "Factory handoff maintenance"}
@@ -26,7 +61,7 @@ func newFactoryCommand() *cobra.Command {
 		if id <= 0 || token == "" || (decision != "requeue" && decision != "fail") {
 			return fmt.Errorf("--id, --expected-token, and --decision requeue|fail are required")
 		}
-		root, err := os.Getwd()
+		root, err := checkedFactoryRoot()
 		if err != nil {
 			return err
 		}
@@ -56,6 +91,8 @@ func newFactoryCommand() *cobra.Command {
 	factory.AddCommand(newFactoryRunsCommand(), newFactoryRelaunchCommand())
 	factory.AddCommand(newFactoryAssignCommand(), newFactoryBundleCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
 		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand(), newFactoryRenewCommand())
+	factory.AddCommand(newFactorySetSpecCommand(), newFactoryReclassifyCommand())
+	factory.AddCommand(newFactoryRebindEvidenceCommand()) // card t1930 defect ④
 	factory.AddCommand(newFactoryApproveCommand())
 	factory.AddCommand(newFactoryMessagingCommand(), newFactoryFallbackCommand())
 	factory.AddCommand(newFactoryPickupCommand())
@@ -83,7 +120,7 @@ func newFactoryRunsCommand() *cobra.Command {
 		Use:   "runs",
 		Short: "Report factory runs with their owner liveness, and retire a dead-owner run",
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
-			root, err := os.Getwd()
+			root, err := checkedFactoryRoot()
 			if err != nil {
 				return err
 			}

@@ -37,8 +37,8 @@
 #                                    census alone gets the skip-marker
 #                                    stub and the edit is never exercised
 #   scripts/ci/**                   the flaky registry + retry wrapper the race and
-#                                    test jobs call (ci.yml wiring lands in a later M6
-#                                    slice); without it here, a PR that edits the
+#                                    test jobs call (ci.yml wires it at seven sites since
+#                                    SPEC-CANDIDATE-CI-001); without it here, a PR that edits the
 #                                    registry or the wrapper alone gets the skip-marker
 #                                    stub and the retry logic is never exercised
 # The three CI workflow files and this file itself are inputs too: editing
@@ -54,6 +54,17 @@ go_code:
   - '.github/workflows/ci.yml'
   - '.github/workflows/codeql.yml'
   - '.github/workflows/release-pr-multi-os.yml'
+  # Card t1536 (card-review P2): the drafter-cleanup regression guards read both
+  # drafter workflows, so a PR that edits only one of them must run the suite.
+  - '.github/workflows/release-drafter-cleanup.yml'
+  - '.github/workflows/release-drafter.yml'
+  # SPEC-TRUNK-BACKUP-SYNC-001 (AC-TBS-010): every workflow file is Go-suite
+  # input — the sync/main exclusion guard (internal/cli/workflow_sync_ref_guard_test.go)
+  # reads .github/workflows/*, so a diff touching only workflow files (a new
+  # file, or any edit) must classify as Go and schedule the suite carrying
+  # the guard. The glob subsumes the three named files above; they stay as
+  # the pre-glob record of what t1536 wired.
+  - '.github/workflows/**'
   - '.github/test-input-filters.yml'
   # The branch-protection parity guard reads this repository input.
   - '.github/branch-protection.json.gtmpl'
@@ -82,3 +93,62 @@ go_code:
   #                                          + internal/template release_script / release_ci_gate tests (read it through scripts/release.sh)
   #                                          + internal/cli branch protection
   - '.github/required-checks.yml'
+
+# ---------------------------------------------------------------------------
+# Verification input classes for ci.yml's always-on cost jobs (card t1536,
+# SPEC-RELEASE-PIPELINE-001 M2, REQ-RPC-002). ci.yml's `detect` job exports
+# each class; on pull_request events a cost job runs only when its class
+# matched, and runs whenever the classification did not conclude success
+# (an unclassifiable diff never skips a cost job silently). Push events and
+# workflow_dispatch keep the always-run behavior. Over-matching is the
+# accepted direction: when in doubt a root belongs in the class.
+#
+# The release matrix and codeql.yml read only `go_code` above; these classes
+# add outputs they ignore. The harness roots below are literal entries of
+# go_code, so release 3-OS coverage keyed to go_code is not narrowed
+# (guarded by TestCIRequiredNamesSatisfied).
+# ---------------------------------------------------------------------------
+
+# binary_inputs: read by the ci.yml `lint`, `build` and `constitution-check`
+# jobs. Evidence per root:
+binary_inputs:
+  # `go vet ./...` + the cross-compile in `build`, and golangci-lint + gofmt in `lint`.
+  - '**/*.go'
+  # `lint`: the templ codegen drift guard regenerates from the *.templ sources.
+  - '**/*.templ'
+  # `build` / `lint` / `constitution-check`: module resolution.
+  - 'go.mod'
+  - 'go.sum'
+  # `lint`: `make fmt-check` is the gofmt gate; the Makefile defines it.
+  - 'Makefile'
+  # `lint`: golangci-lint reads its rule set from this file.
+  - '.golangci.yml'
+  # `build` / `lint`: every //go:embed target lives under internal/ (templates,
+  # web assets, tui i18n, statusline, homestate); removing or renaming an
+  # embedded file breaks `go build` / `go vet` with zero .go files changed.
+  - 'internal/**'
+  # Editing the verification harness must re-run the verification.
+  - '.github/workflows/ci.yml'
+  - '.github/test-input-filters.yml'
+
+# browser_inputs: read by the ci.yml `test-browser` job (app.js fire guard).
+# Evidence per root:
+browser_inputs:
+  # The job builds ./cmd/moai and runs the internal/web driver tests.
+  - '**/*.go'
+  - 'go.mod'
+  - 'go.sum'
+  # app.js and the probe/mutation scripts live under internal/web/ and are
+  # //go:embed'ed into the binary the probe drives.
+  - 'internal/**'
+  - '.github/workflows/ci.yml'
+  - '.github/test-input-filters.yml'
+
+# harness_inputs: read by the ci.yml `lint` and `constitution-check` jobs.
+# Every root is a literal entry of go_code above. Evidence per root:
+harness_inputs:
+  # `constitution-check` validates the zone registry against the rule files;
+  # the registry itself is .claude/rules/moai/core/zone-registry.md.
+  - '.claude/rules/moai/**'
+  # `lint` runs `moai agent lint`, which scans .claude/agents/{moai,harness}.
+  - '.claude/agents/**'

@@ -144,3 +144,13 @@ fold internal/atomicfile/bootid_linux.go
 fold internal/atomicfile/bootid_other.go
 fold internal/atomicfile/owner.go
 fold internal/atomicfile/section.go
+
+# --- 2026-10-23 refresh (worktree t1931, HEAD 8c36a7904b, card t1931) ---
+# 위 fold 단위들은 이번 refresh 본문(t1931 판 섹션)과 대조해 그대로 성립함을
+# 확인했으므로 모두 남겨 둡니다. 이번 창(d5c083e86d..8c36a7904b)에서 새로 내린
+# fold·omission 판정은 없습니다 — 신규 패키지가 없고(added 1파일은 testdata
+# echo), 창의 27파일은 modules.md t1931 판의 표가 직접 기술합니다.
+# 유실 기록: card t1693의 2026-10-19 refresh 주석(위 53개 fold 유지 확인)은
+# #1896 스쿼시 병합에서 fold-judgments −8행으로 유실됐습니다 — 본 refresh가
+# 그 확인 내용을 이 주석으로 재수록합니다. fold 가드 검사 결과는 본문 작성 후
+# moai graph check와 함께 진행 기록에 남습니다.

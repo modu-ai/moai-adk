@@ -4,20 +4,15 @@ package cli
 // t1399), AC-004 golden.
 //
 // The golden pins the lane environment markers (the MOAI_FACTORY* and
-// MOAI_KANBAN* families) that today's `-f lane` launch publishes for the three
+// MOAI_KANBAN* families) that today's `-f lane` launch publishes for the
 // backends: the cc and glm rows are the environment live at the engine launch
-// seam, the codex row is the single parent session's run environment. It was
-// originally captured BEFORE the `-l` entry existed
+// seam. It was originally captured BEFORE the `-l` entry existed
 // (internal/config/testdata/lane_entry_env_golden.json, committed alone) and compared here
 // against the same launches, so a later milestone that adds `-l` can prove the
 // new entry publishes the identical set (label aside), and so a milestone that
 // removes the kanban surface can prove it dropped no lane marker.
-// The Codex row now pins the parent run ID rather than a boot-leased card ID.
-//
-// The codex row carries MOAI_KANBAN_LABEL because today's lane child did; the
-// stamp was removed at M5a (REQ-012) and the comparison excludes exactly that
-// key from both sides (REQ-003's one exception, withoutRetiredLabel), so the
-// retired label remains in the golden as historical evidence.
+// (The Codex row was removed with the codex general surface, card t1909
+// step ⑤.)
 //
 // Capture: MOAI_LANE_GOLDEN_WRITE=<path> go test ./internal/cli -run
 // '^TestLaneMarkerGoldenMatchesFLane$' -count=1 rewrites the golden at <path>
@@ -96,46 +91,12 @@ func netEnvMap() map[string]string {
 	return m
 }
 
-// captureLaneEnvToday launches a lane on each backend through `-l` and
-// returns the marker environment each launch published, keyed by row name.
-func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
-	t.Helper()
-	rows := map[string]map[string]string{}
-
-	for _, tc := range []struct {
-		name    string
-		backend string
-		entry   func([]string) error
-	}{
-		{"cc", factory.BackendClaude, netCC},
-		{"glm", factory.BackendGLM, netGLM},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := netLaneFixture(t, tc.backend)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
-			if !launch.launched || launch.err != nil {
-				t.Fatalf("%s lane launch: launched=%v err=%v", tc.name, launch.launched, launch.err)
-			}
-			rows[tc.name] = laneMarkerEnv(launch.env)
-		})
-	}
-
-	t.Run("codex", func(t *testing.T) {
-		rows["codex"] = laneMarkerEnv(netCodexLaneChild(t).env)
-	})
-	return rows
-}
-
-// TestLaneMarkerGoldenMatchesFLane compares the lane launch marker
-// environment, per backend, with the committed golden (AC-004 at M1). A key
-// that appears, disappears, or changes value fails here with the full diff of
-// the row.
 func TestLaneMarkerGoldenMatchesFLane(t *testing.T) {
 	got := captureLaneEnvToday(t)
 	if t.Failed() {
 		return
 	}
-	for _, name := range []string{"cc", "glm", "codex"} {
+	for _, name := range []string{"cc", "glm"} {
 		if len(got[name]) == 0 {
 			t.Fatalf("row %q captured no marker (positive control): got %v", name, got)
 		}
@@ -164,15 +125,15 @@ func TestLaneMarkerGoldenMatchesFLane(t *testing.T) {
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatalf("parse golden: %v", err)
 	}
-	for _, name := range []string{"cc", "glm", "codex"} {
+	for _, name := range []string{"cc", "glm"} {
 		gotRow, wantRow := withoutRetiredLabel(got[name]), withoutRetiredLabel(want[name])
 		if reflect.DeepEqual(gotRow, wantRow) {
 			continue
 		}
 		t.Errorf("row %q differs from the golden\n got: %s\nwant: %s", name, formatMarkerRow(gotRow), formatMarkerRow(wantRow))
 	}
-	if len(want) != 3 {
-		t.Errorf("golden holds %d rows, want exactly cc, glm, codex", len(want))
+	if len(want) != 2 {
+		t.Errorf("golden holds %d rows, want exactly cc, glm", len(want))
 	}
 }
 
@@ -202,4 +163,30 @@ func formatMarkerRow(row map[string]string) string {
 		parts = append(parts, k+"="+row[k])
 	}
 	return strings.Join(parts, " ")
+}
+
+// captureLaneEnvToday captures each staying backend's lane-launch environment.
+// (The codex row was removed with the codex general surface, card t1909.)
+func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
+	t.Helper()
+	rows := map[string]map[string]string{}
+
+	for _, tc := range []struct {
+		name    string
+		backend string
+		entry   func([]string) error
+	}{
+		{"cc", factory.BackendClaude, netCC},
+		{"glm", factory.BackendGLM, netGLM},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := netLaneFixture(t, tc.backend)
+			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
+			if !launch.launched || launch.err != nil {
+				t.Fatalf("%s lane launch: launched=%v err=%v", tc.name, launch.launched, launch.err)
+			}
+			rows[tc.name] = laneMarkerEnv(launch.env)
+		})
+	}
+	return rows
 }

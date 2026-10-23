@@ -95,7 +95,14 @@ func sdBranchOf(t *testing.T, dir string) string {
 func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 	t.Run("leased card with no recorded worktree gains one through the materializer", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): this arm-(b2)
+		// lease is the cell's vehicle; the flag is armed and the vehicle
+		// carries a spec id (amendment 0.3.0 fail-closed condition 2) so the
+		// subject — the materializer's worktree creation — stays covered
+		// behind the gate.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t1", "SPEC-AC011-WT-001")
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Chdir(root)
@@ -147,7 +154,13 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 
 	t.Run("existing directory no card record names it: refuse, row unchanged", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): this arm-(b)
+		// lease is the cell's vehicle; the flag is armed and the vehicle
+		// carries a spec id so the subject — the REQ-SD-011 foreign-directory
+		// refusal — stays covered behind the gate.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t1", "SPEC-AC011-FOR-001")
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 		foreign := filepath.Join(sdWorktreesDir(root), "t1")
@@ -309,7 +322,14 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			// still set; the fixture's own `todo add` needs a clean env.
 			sdClearLaneEnv(t)
 			root, store := sdMoaiFixture(t)
+			// SPEC-CARD-ELIGIBLE-PULL-001 update: this arm-(b2) lease is the
+			// parity test's vehicle; the self-dispatch flag is armed so the
+			// subject (cli and mcp lease identically) keeps its coverage
+			// behind the gate. Amendment 0.3.0: the vehicle carries a spec id
+			// (condition 2 is fail-closed).
+			cepSelfDispatchYAML(t, root, true)
 			fcQueue(t, store, factory.BacklogStatePicked)
+			cepSetSpecID(t, store, "t1", "SPEC-PARITY-001")
 			sdRegisterLane(t, root, "lane-1")
 			sdLaneEnv(t, "lane-1", "")
 			t.Chdir(root)
@@ -576,7 +596,16 @@ func TestSD_AC014_ProjectRootRequired(t *testing.T) {
 // process's own working directory is the linked worktree.
 func TestSD_AC010_MCPNextParentCheck(t *testing.T) {
 	root, store := sdMoaiFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit round 6, F14): the
+	// parent-checkout lease below is an arm-(b) lease of an unowned picked row,
+	// which the default-OFF kill switch leaves dormant (REQ-CEP-001). The flag
+	// is armed and the vehicle carries a spec id (condition 2 is fail-closed) so
+	// the subject — factory_next resolving its parent-checkout check against
+	// the project_root argument — keeps its coverage behind the gate. RED
+	// observed pre-fix at HEAD 954e25f96: "t1 = picked, want leased".
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	cepSetSpecID(t, store, "t1", "SPEC-AC010-MCP-001")
 	sdRegisterLane(t, root, "lane-1")
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 	sdLaneEnv(t, "lane-1", "")

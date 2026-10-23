@@ -114,8 +114,7 @@ do not idle-spin on the wait.
 
 A lane that has stopped cannot wake itself, and a turn ended by an API error
 (a 429) leaves no model action in which to arm anything. The carrier is
-therefore **standing**: armed once at card intake, before the first stage, and
-kept until the completion report.
+therefore **standing**: armed once at card intake, before the first stage, and kept while the lane executes the card.
 
 - **Arm.** `CronCreate` with `cron: "*/N * * * *"`, where N is the value of
   `workflow.factory_lease.renew_interval` in minutes (`*/5 * * * *` at the
@@ -125,14 +124,15 @@ kept until the completion report.
   Never a one-shot at an absolute clock time: a local/UTC slip lands it in the
   past and it never fires (observed on card t1393), and it covers one wait
   rather than the stall that follows it. Each fire runs the watchdog's renewal
-  first (§0a of the watchdog skill), so the renewal period is also the cadence
-  at which the card lease is renewed.
-- **Keep.** `CronList` at card takeover (intake or the in-session transition to a newly leased card) and after any session reset; re-arm when
+  first (§0a of the watchdog skill), which renews the lease of the card the lane
+  is executing, so the renewal period is also the cadence at which that lease
+  is renewed.
+- **Keep.** `CronList` at card takeover (intake, the in-session transition to a newly leased card, or the resumption of execution after a wait) and after any session reset; re-arm when
   the entry is missing, or when its expression no longer matches the configured
   renewal period. A changed renewal period takes effect at the next arm. A
   recurring job expires after 7 days — a card that outlives that re-arms it.
-  Delete it (`CronDelete`) when the completion report is sent; the next card
-  arms its own.
+  Delete it (`CronDelete`) when the lane stops executing the card, and at the
+  latest when the completion report is sent; the next card arms its own.
 - **Read disk, not messages.** Every wake — the cron, a leader message, a
   teammate's idle notice — starts with the watchdog pass, which reads the
   evidence on disk (the three channels of §3, the card's progress record, the
@@ -393,7 +393,7 @@ While a wait whose `waiting_on` names the leader is open, the lane keeps a
 one-shot recheck (`CronCreate` with `recurring: false`) at
 `workflow.watchdog.wait_recheck_minutes` (default 5, never below 5) from
 now, re-armed by each fire that finds the wait still open and not re-armed
-once it resolves; the standing carrier of §5.1 stays armed. The codex runner
+once it resolves; the standing carrier of §5.1 is kept only while the lane executes the card (an open wait on the leader is not execution). The codex runner
 has no cron tool: there the leader's board write plus the nudge is the named
 substitute. When the leader resolves a judgment a lane waits on, it records
 the ruling (`moai decision record ... --resolves <wait-id>`) before sending

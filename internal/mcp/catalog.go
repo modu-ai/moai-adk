@@ -20,8 +20,8 @@ type ToolDef struct {
 	// (mcp.tools.<name>.enabled).
 	Name string
 	// WriteCapable is true for the tools whose handler may mutate state
-	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel,
-	// codex_role_audit, glm_task, glm_job_cancel, codex_audit, audit_multi,
+	// (goal_arm, verify_snapshot, codex_role_audit,
+	// glm_task, glm_job_cancel, codex_audit, audit_multi,
 	// the session-messaging broker's three mutating tools, and the factory
 	// message family's three) and false for the read-only tools (including the
 	// graph code-query additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The exact
@@ -63,10 +63,6 @@ var moaiMCPTools = []ToolDef{
 	{Name: "claude_audit", WriteCapable: false},
 	{Name: "codex_audit", WriteCapable: true},
 	{Name: "codex_setup", WriteCapable: false},
-	{Name: "codex_task", WriteCapable: true},
-	{Name: "codex_job_status", WriteCapable: false},
-	{Name: "codex_job_result", WriteCapable: false},
-	{Name: "codex_job_cancel", WriteCapable: true},
 	// Codex read-only role launcher: start writes a verdict and a launch
 	// record under the caller's .moai/reports/; status and result only read.
 	{Name: "codex_role_audit", WriteCapable: true},
@@ -82,15 +78,6 @@ var moaiMCPTools = []ToolDef{
 	{Name: "codex_review", WriteCapable: false},
 	{Name: "glm_review", WriteCapable: false},
 	{Name: "audit_multi", WriteCapable: true},
-	{Name: "session_msg_register", WriteCapable: true},
-	{Name: "session_msg_list", WriteCapable: false},
-	{Name: "session_msg_send", WriteCapable: true},
-	{Name: "session_msg_poll", WriteCapable: true},
-	{Name: "factory_msg_send", WriteCapable: true},
-	{Name: "factory_msg_list", WriteCapable: true},
-	{Name: "factory_msg_body", WriteCapable: false},
-	{Name: "factory_msg_receipt", WriteCapable: true},
-	{Name: "factory_msg_status", WriteCapable: false},
 	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
 	// read-only surfaces over the per-tree graph artifacts. The shortest-
 	// path addition rides SPEC-GRAPH-REPORT-001 REQ-GR-001.

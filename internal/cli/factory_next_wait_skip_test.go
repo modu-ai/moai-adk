@@ -25,6 +25,7 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 	t.Helper()
 	var calls atomic.Int64
 	prevRun := todoRunCommand
+	prevContextRun := todoRunCommandContext
 	todoRunCommand = func(name string, args ...string) (string, error) {
 		if name != "gh" {
 			return prevRun(name, args...)
@@ -32,7 +33,14 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 		calls.Add(1)
 		return answer()
 	}
-	t.Cleanup(func() { todoRunCommand = prevRun })
+
+	todoRunCommandContext = func(ctx context.Context, name string, args ...string) (string, error) {
+		if name != "gh" {
+			return prevContextRun(ctx, name, args...)
+		}
+		return todoRunCommand(name, args...)
+	}
+	t.Cleanup(func() { todoRunCommand = prevRun; todoRunCommandContext = prevContextRun })
 	return func() int { return int(calls.Load()) }
 }
 
@@ -44,9 +52,12 @@ func flCountGhCalls(t *testing.T, answer func() (string, error)) func() int {
 func flHintChainFixture(t *testing.T) string {
 	t.Helper()
 	root, store := fcFixture(t)
+	// Exercise the generic picked-card arm, not the default OFF dormancy.
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, id, "SPEC-WAIT-001")
 	}
 	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
 	fcPlace(t, root,
@@ -79,6 +90,11 @@ func TestFactoryNextWaitStopsPollingGhForSelectorSkippedCandidate(t *testing.T) 
 	t.Run("merged predecessor leases on the first attempt", func(t *testing.T) {
 		root := flHintChainFixture(t)
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The picked candidate arms are gated on self-dispatch (PR #1859
+		// review P1, default OFF) and on the amended spec-id condition 2
+		// (fail-closed); the fixture predates both.
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, todoStoreAt(root), "t2", "SPEC-WAIT-SKIP-001")
 		sdLaneEnv(t, "lane-1", "")
 		gh := flCountGhCalls(t, func() (string, error) { return "[]", nil })
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
@@ -109,6 +125,9 @@ func TestFactoryNextMayLeaseMirrorsTheSelectorSkips(t *testing.T) {
 	t.Run("merged predecessor releases the candidate", func(t *testing.T) {
 		root := flHintChainFixture(t)
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The bare peek skips unowned picked candidates while self-dispatch
+		// is off (PR #1859 review P1); the fixture predates the gate.
+		cepSelfDispatchYAML(t, root, true)
 		if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", false) {
 			t.Errorf("peek = false after t1 reached the local merge, want true — the skip must clear with the merge (fail-closed guard against the unknown PR column)")
 		}
@@ -124,11 +143,27 @@ func TestFactoryNextMayLeaseMirrorsTheSelectorSkips(t *testing.T) {
 		t.Chdir(root)
 		fbBundle(t, root, "lane-1", "t1", "t2")
 		fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+		// The lane's own bundle head is reachable through the bare arms only
+		// with self-dispatch on (PR #1859 review P1); the fixture predates
+		// the gate.
+		cepSelfDispatchYAML(t, root, true)
 		if factoryNextMayLease(context.Background(), root, fcRun, "lane-2", "", false) {
 			t.Errorf("lane-2's peek = true over lane-1's bundle member t2, want false — the bundle-ownership skip must hold it out")
 		}
 		if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", false) {
-			t.Errorf("lane-1's peek = false over its own assigned bundle head t1, want true — the arm-(a) mirror must still see the lane's own assignment")
+			t.Errorf("lane-1's peek = false over its own ready bundle member t2, want true — the bundle-priority arm stays active with self-dispatch OFF and no spec")
+		}
+		if factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", true) {
+			t.Error("a quota hold must still prevent taking the next bundle member")
+		}
+		sdLaneEnv(t, "lane-1", "")
+		gh := flCountGhCalls(t, func() (string, error) { return "[]", nil })
+		out, stderr, err := qasRunNext(t, "--run", fcRun)
+		if err != nil || !strings.Contains(out, "t2 stage=") {
+			t.Fatalf("next bundle member: stdout %q stderr %q err %v, want leased t2", out, stderr, err)
+		}
+		if n := gh(); n != 1 {
+			t.Errorf("ready own bundle issued %d gh calls, want 1 before the lease", n)
 		}
 	})
 }

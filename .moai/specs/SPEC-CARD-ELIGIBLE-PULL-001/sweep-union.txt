@@ -1,0 +1,187 @@
+# SPEC-CARD-ELIGIBLE-PULL-001 — sweep union (round-6 regeneration, F14)
+#
+# 123 tests of internal/cli that reach the selection arms the self-dispatch
+# flag gates: 98 reachable from the factory-next VERB (part 1, rounds 3-4),
+# 22 reachable only through the axes part 1's greps could not see (part 2,
+# round 6), and 3 of this SPEC's own armed gate tests (part 3). Every count
+# below reproduces on demand from the repo root.
+#
+# Part 1 — the verb axis (round-4 figures, unchanged):
+#   1. grep -rn 'qasRunNext(t\|runFactory(t, "next"' internal/cli/*_test.go
+#      → 135 raw sites in 24 files.
+#   2. Enclosing "func Test" per site (stateful per file), sorted unique
+#      → 81 direct names.
+#   3. grep -rln 'fbLeasedCard(' internal/cli/{factory_bundle,factory_t1533,
+#      factory_two_hub_cycle,review_observation}_test.go → enclosing tests
+#      → 17 helper callers (fbLeasedCard wraps runFactory "next").
+#   4. grep -rln 'flRaceLanes(' internal/cli/*_test.go → enclosing tests
+#      → 4 race-helper callers (flRaceLanes drives the verb per lane).
+#   5. cat (2)(3)(4) | sort -u → 98 names.
+#
+# Part 2 — the axes part 1 missed (sync-audit round 6, finding F14; the MCP
+# and direct-call forms reach the SAME entry, factoryNextLeaseOnceEligibility,
+# and none of them contains the literal `runFactory(t, "next"`):
+#   6. grep -rn 'handleFactoryNext\|factoryNextLeaseOnce' internal/cli/*_test.go
+#      → 34 raw sites in 10 files (the MCP handler form and the direct Go
+#      form, factoryNextLeaseOnce / factoryNextLeaseOnceGated).
+#      Enclosing "func Test" per site, sorted unique → 26 names, of which 5
+#      were already in part 1 (TestFactoryNextNominateMCPParity,
+#      TestFactoryNextNominateBlankCardIsAnError,
+#      TestSD_AC014_MCPMatchesCLIWithProjectRoot,
+#      TestQWR_AC008_SurfacesSeeWorktreeReading,
+#      TestSD_AC008_NextSelectionOrderAndOutput) and 1 is this SPEC's own
+#      TestFactoryEligiblePullRefusalGrammar (part 3) → 20 new names.
+#   7. Verb calls whose argument list is a variable, not the literal "next":
+#      grep -rn 'runFactory(t, \(args\|append\|arg\|verb\|full\)' internal/cli/*_test.go
+#      → enclosing tests that can carry "next" in the list → 2 new names
+#      (TestSD_AC021_LegacySpellingsRefused, TestLaneVerbsMatchMCPLeaseDuration).
+#   Part 2 total: 20 + 2 = 22 new names. Checked and left out: the
+#   callFactoryTool sites of factory_mcp_verb_parity_test.go other than the
+#   `next` row (line 36) — TestMCPVerbParity_RecordRoot and
+#   TestMCPVerbParity_DecideConfigRoot drive decide / renew / stage /
+#   complete, never next (verified by grep of every handleFactory* site).
+#   Completeness argument: the only production callers of the lease entry are
+#   the cobra verb, the MCP handler, factoryNextLeaseOnceGated (todo_auto_lane.go,
+#   noNewCards=true, so arms (b)/(b2) are unreachable from it) and the
+#   factoryNextLeaseOnce wrapper; steps 1-7 enumerate every test form of the
+#   first three. Residual: a test reaching the entry through a helper whose
+#   call shape matches none of the greps above (see progress.md round-6 Gaps).
+#
+# Part 3 — this SPEC's own armed gate tests (flag ON + spec id by design):
+#   TestFactoryEligiblePullOnGate, TestFactoryEligiblePullRefusalGrammar,
+#   TestFactoryEligiblePullTraceless.
+#
+# Axes BEYOND this union (drivers enumerated, callers already dispositioned in
+# progress.md §E.2): cepNoCard (wraps runFactory "next"; callers = this SPEC's
+# own gate family OnGate / RefusalGrammar / Traceless — now listed above) and
+# nmRunCase / nmRaceAtSeamTolerant (nominated quota family; callers
+# NominateBackendSkip / NominateQuotaHold — inside the union above).
+#
+# Dispositions for every entry: progress.md §E.2, round-3 subsection (the
+# 11-repaired / 2-F7 / 77-cleared split) + the round-4 addendum (the 14
+# previously unrecorded dispositions) + the round-6 re-sweep subsection (the
+# per-name class and verbatim result of all 123).
+#
+TestFactoryAssignBundleHubChain
+TestFactoryBundleKeepsSerialSlot
+TestFactoryCardVerbsResolveLaneFromWorkerMarker
+TestFactoryClaimDeadlineRefusalNamesTheDeadline
+TestFactoryEligiblePullOffDormancy
+TestFactoryEligiblePullOnEligible
+TestFactoryEligiblePullOnGate
+TestFactoryEligiblePullRefusalGrammar
+TestFactoryEligiblePullTraceless
+TestFactoryHubChainChainsToTheLastPredecessor
+TestFactoryKeepSetReadsNoFileOverlap
+TestFactoryLeaseArmAExcludesHeldAssignedCard
+TestFactoryLeaseArmCOperatorHold
+TestFactoryLeaseCompensationKeepsOperatorPick
+TestFactoryLeaseDriftLogStallBounded
+TestFactoryLeaseDriftLogVerbWorktreeWriteWaits
+TestFactoryLeaseMidClaimStallBounded
+TestFactoryLeaseOperatorWriteWaitsForSection
+TestFactoryLeaseOwnAssignedSerialSiblingsExactlyOne
+TestFactoryLeaseQueueLockStallBounded
+TestFactoryLeaseRecordStallBounded
+TestFactoryLeaseSectionAllowedSet
+TestFactoryLeaseSectionExcludesWorktreeStep
+TestFactoryLeaseSectionRecordWritesPerArm
+TestFactoryLeaseSectionRejectsNestedMutate
+TestFactoryLeaseSerialBareLanesExactlyOne
+TestFactoryLeaseSerialCrossProcessHelper
+TestFactoryLeaseSerialDistinctNomineesExactlyOne
+TestFactoryNextAfterGuardCountsOtherRunsMerges
+TestFactoryNextAllMarkerQueueExitsNoCard
+TestFactoryNextArmALeasesOwnAssignedPickedCard
+TestFactoryNextArmAQueuedQueueItemPromotesFirst
+TestFactoryNextArmASkipsHoldQueueItem
+TestFactoryNextArmCSkipsHoldMarker
+TestFactoryNextAssignedSerialCardHoldsSlotInPickedArms
+TestFactoryNextAssignedSerialCardStillHoldsSlotAgainstNewTakes
+TestFactoryNextBareUnchanged
+TestFactoryNextBundleSerialLane
+TestFactoryNextCarriesWorktreeBindingAcrossRunReplacement
+TestFactoryNextCreatesFreshTreeWhenPreviousTreeIsGone
+TestFactoryNextDuplicateDispatchGuard
+TestFactoryNextExpiredLeaseReleasesSerialSlot
+TestFactoryNextFailedSerialRowReleasesSlot
+TestFactoryNextForeignNominationStillHoldsBehindAssignments
+TestFactoryNextHubChainPickedRowReleasesSerialSlot
+TestFactoryNextIgnoresDriverlessPickedRow
+TestFactoryNextLeasesBehindMergedPRPredecessor
+TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState
+TestFactoryNextMergedPRPredecessorReleasesFollower
+TestFactoryNextNominateBackendSkip
+TestFactoryNextNominateBlankCardIsAnError
+TestFactoryNextNominateCarriesWorktreeBindingAcrossRunReplacement
+TestFactoryNextNominateClaimRefusedRollsBack
+TestFactoryNextNominateCompensationFailure
+TestFactoryNextNominateLeasesNominee
+TestFactoryNextNominateMCPParity
+TestFactoryNextNominatePromoteThenLose
+TestFactoryNextNominateQuotaHold
+TestFactoryNextNominateRecordStateTokens
+TestFactoryNextNominateRefusesKeepSet
+TestFactoryNextNominateSameCardExactlyOne
+TestFactoryNextNominateUnknownCard
+TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments
+TestFactoryNextOwnAssignedSerialCardBlockedByLiveSerialLease
+TestFactoryNextOwnAssignedSerialCardBlockedByPickedSibling
+TestFactoryNextOwnAssignedSerialCardLeasesPastSiblingAssigned
+TestFactoryNextParallelizableConcurrentLeases
+TestFactoryNextParallelizableLeasesBesideLiveSerial
+TestFactoryNextPickedOwnerlessRowReleasesSlot
+TestFactoryNextPostLeaseWorktreeFailureNamesTheLease
+TestFactoryNextQueuedAssignedCardPreservesHubHints
+TestFactoryNextRecordAndClaimRaceOnLeasedRow
+TestFactoryNextRefusesAgainAfterLaterAssign
+TestFactoryNextRefusesAnotherCardsPreviousTree
+TestFactoryNextRefusesWhenPreviousBindingNamesAnotherPath
+TestFactoryNextSerialMutualExclusivity
+TestFactoryNextSerialSlotLeaseExpiryBoundary
+TestFactoryNextSkipsClassificationBlocked
+TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged
+TestFactoryNextStillRefusedBehindADrivenRow
+TestFactoryNominatedBusyRefusalCarriesTheClaimError
+TestFactoryNominateRefusesForeignBundleMember
+TestFactorySerialBundleHeadLeasesDespitePickedMembers
+TestLaneVerbsMatchMCPLeaseDuration
+TestMCPVerbParity_LaneLabel
+TestQAS_AC006b_NextLeasesWhenQuotaDataAbsent
+TestQAS_AC008_ClaudeLaneHeldAtThreshold
+TestQAS_AC008b_MCPFactoryNextHeld
+TestQAS_AC009_HoldLineCarriesResetTime
+TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown
+TestQAS_AC011_NonClaudeBackendsNeverHeld
+TestQAS_AC022_GateOffOrPressureOffOutputUnchanged
+TestQWR_AC008_SurfacesSeeWorktreeReading
+TestQWR_AC009_WorktreeSourceRendersIdentically
+TestQWR_AC010b_CliRootWithoutGitMetadata
+TestReviewFindingBundleMultiHubMemberWaits
+TestReviewFindingMergedPRPredecessor
+TestReviewFindingNominatedLeasesAfterPredecessorMerges
+TestReviewFindingNominatedOverwritesDependency
+TestReviewFindingNoRecordArmSkipsBlockedCandidate
+TestReviewNominatedBundlePreservesHint
+TestReviewNominatedCreationFollowsTheAfterRelation
+TestReviewNominatedLeaseDoesNotFillAnEmptyHint
+TestReviewNominatedWaitsOnAllHubPredecessors
+TestReviewPickedHubSkip
+TestReviewReversedBundleLeasesInBundleOrder
+TestReviewTwoHubCombinedCycle
+TestReviewUnrecordedPickedHubWait
+TestReviewUnrecordedPickedHubWaitOffDormancy
+TestReviewWaitFollowsTheAfterRelation
+TestSD_AC006_LaneCycleWithoutRemote
+TestSD_AC008_NextSelectionOrderAndOutput
+TestSD_AC009_NextWaitLeasesOrTimesOut
+TestSD_AC010_MCPNextParentCheck
+TestSD_AC010_NextRefusedOutsideParent
+TestSD_AC011_CardWorktreeCreateReuseRefuse
+TestSD_AC014_MCPMatchesCLIWithProjectRoot
+TestSD_AC014_ProjectRootRequired
+TestSD_AC015_LabelOnlyIsNotALane
+TestSD_AC015_MCPTodoAddRefused
+TestSD_AC018_ParentCheckoutUntouched
+TestSD_AC021_LegacySpellingsRefused
+TestSD_AC023_CodexNextSkipsUnadvanceableCard

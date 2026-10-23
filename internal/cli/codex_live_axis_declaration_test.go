@@ -75,8 +75,8 @@ var codexLiveAxis = []codexLiveAxisEntry{
 	{
 		file:     "parity_live_test.go",
 		switches: []string{"MOAI_PARITY_LIVE", "codexBinaryName"},
-		tests:    9,
-		observes: "SPEC-DUAL-HARNESS-HOOK-PARITY-001 live legs (AC-HPR-004, 007, 008–012 live, 020, 021): whether Codex and Claude hosts honour the Stop chain, needs_input, hook faults, compaction, approval, Interrupt, goal continuation, isolation, and the Stop-timeout ceiling — NOT_RUN by operator decision Q5",
+		tests:    8,
+		observes: "SPEC-DUAL-HARNESS-HOOK-PARITY-001 live legs (AC-HPR-004, 007, 008–011 live, 020, 021): whether Codex and Claude hosts honour needs_input, hook faults, compaction, approval, Interrupt, isolation, and the Stop-timeout ceiling — NOT_RUN by operator decision Q5 (the AC-HPR-012 goal-continuation leg was removed with the Codex Stop chain, card t1909 step ⑤)",
 	},
 	{
 		file:     "audit_pin_live_test.go",
