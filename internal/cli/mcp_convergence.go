@@ -633,10 +633,30 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if err != nil {
 		return inconclusiveReview("codex binary not found in PATH")
 	}
+	prompt := codexAdversarialPromptFor(ctx, focus)
+	// REQ-MN-019: the turn/start this leg sends has no target field, so a
+	// baseBranch target is applied in the prompt — the resolved base SHA and the
+	// diff instruction — and the result names the base it judged. A delta base
+	// on ctx carries its own base and diff instruction (the t1708 clause) and is
+	// not replaced. A base that cannot be resolved is not silently downgraded
+	// to a working-tree review: the leg is inconclusive, stating so.
+	var base *reviewBase
+	if target == codexTargetBaseBranch && deltaBaseFromContext(ctx) == "" {
+		baseRoot := strings.TrimSpace(projectRoot)
+		if baseRoot == "" {
+			baseRoot = resolveProjectDir() // the resolver performGLMAudit falls back to
+		}
+		b, resolveErr := resolveReviewBase(baseRoot)
+		if resolveErr != nil {
+			return inconclusiveReview("target not applied: the base for " + codexTargetBaseBranch + " could not be resolved: " + resolveErr.Error())
+		}
+		base = &b
+		prompt = codexAdversarialBaseBranchPrompt(b.MergeBase, focus)
+	}
 	params := map[string]any{
 		"target": target,
 		"model":  "", // model/effort resolution is delegated to the SSOT at the single-backend layer
-		"prompt": codexAdversarialPromptFor(ctx, focus),
+		"prompt": prompt,
 	}
 	if strings.TrimSpace(focus) != "" {
 		params["focus"] = focus
@@ -661,6 +681,9 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 		timedOut := inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
 		timedOut.StderrTail = out.StderrTail // the deadline is the cause; the tail says what the child printed before the kill
 		return timedOut
+	}
+	if base != nil {
+		out.ReviewBase = base.String()
 	}
 	return out
 }

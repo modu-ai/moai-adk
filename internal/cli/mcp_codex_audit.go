@@ -2194,6 +2194,16 @@ func codexAdversarialReviewPrompt(focus string) string {
 	return prompt
 }
 
+// codexAdversarialBaseBranchPrompt is the adversarial prompt for a declared
+// baseBranch target (SPEC-MCP-NEUTRALITY-001 REQ-MN-019): the resolved base SHA
+// and the diff instruction are IN the prompt, so the review judges the change
+// against that base instead of silently reviewing something else.
+func codexAdversarialBaseBranchPrompt(mergeBase, focus string) string {
+	return "The change under review is the diff `git diff " + mergeBase + "..HEAD` — " +
+		"review exactly that diff, nothing else. " +
+		codexAdversarialReviewPrompt(focus)
+}
+
 // ─── codex_audit handler (AC-MCP-007) ───
 
 // handleCodexAudit is the thin-wrapper handler for the `codex_audit` MCP tool.
@@ -2297,8 +2307,8 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// compared against, even if the base ref moves meanwhile (t1426). This is
 	// the shape the review gate's card scope already sends (reviewRequestParams).
 	// An unresolvable base leaves the bare target in place; coercion then fails
-	// the request open exactly as before. Adversarial mode (turn/start) carries
-	// no target and names no base, so it records no review_base.
+	// the request open exactly as before. Adversarial mode (turn/start) has no
+	// target field, so it applies the target in the prompt instead (below).
 	var base *reviewBase
 	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
 		b, err := resolveReviewBase(root)
@@ -2312,19 +2322,38 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
-		// REQ-MN-019 (as superseded by card t1708's delta scope): an
-		// adversarial audit is a turn/start — it has no target field, so the
-		// base is never applied in the prompt or the result; the target rides
-		// the DIFF COLLECTION (collectReviewDiffCtx resolves the baseBranch
-		// merge base mechanically), the prompt stays the standard adversarial
-		// one, and the delta-scope clause composes when the request carries
-		// delta_base. review_base is omitted without a delta_base and names
-		// the prose-only scope with one.
-		params["prompt"] = codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
+		// REQ-MN-019: a turn/start has no target field, so a declared target
+		// travels in the prompt. A delta_base request carries its own base and
+		// diff instruction (the t1708 delta-scope clause), which IS the applied
+		// target and is named by review_base below. A plain baseBranch request
+		// resolves the base here and puts its SHA and the diff instruction in
+		// the prompt; a base that cannot be resolved is not silently downgraded
+		// to a working-tree review: the result is inconclusive stating the
+		// target was not applied.
+		prompt := codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
+		if target == codexTargetBaseBranch && deltaBase == "" {
+			b, resolveErr := resolveReviewBase(root)
+			if resolveErr != nil {
+				out := inconclusiveReview("target not applied: the base for " + codexTargetBaseBranch + " could not be resolved: " + resolveErr.Error())
+				receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+				out = applyGateUnmet(out, root)
+				out.BuildCommit, out.BuildLag = buildCommit, buildLag
+				out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+				return codexReviewToolResult(out), nil
+			}
+			base = &b
+			prompt = codexAdversarialBaseBranchPrompt(b.MergeBase, focus)
+		}
+		params["prompt"] = prompt
 		if focus != "" {
 			params["focus"] = focus
 		}
 	}
+
+	// REQ-MN-020: the auditor model is resolved ONCE, before the call, from the
+	// pin the request starts under — re-reading it after a minutes-long audit
+	// would record a model that did not run if the pin was edited meanwhile.
+	auditorModel, auditorModelErr := resolveCodexAuditModelEffort(params)
 
 	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
@@ -2347,8 +2376,8 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
 	// the claude_audit verdict records it — a verdict a reader cannot attribute
 	// to a model is a verdict that cannot be re-checked against the pin.
-	if me, mErr := resolveCodexAuditModelEffort(params); mErr == nil {
-		out.Provenance = auditProvenanceFor("codex", model, me.Model, me.Effort)
+	if auditorModelErr == nil {
+		out.Provenance = auditProvenanceFor("codex", model, auditorModel.Model, auditorModel.Effort)
 	}
 	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
 	// fail under a required gate (t1788).
