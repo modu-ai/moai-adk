@@ -128,6 +128,26 @@ func TestMCPRefusal_SerialSlotStructured(t *testing.T) {
 		WorktreePath:   root,
 	})
 	fcQueue(t, store, factory.BacklogStatePicked) // t1: the nominee
+	// SPEC-FACTORY-DEFAULT-MODE-001: the absent read now derives
+	// parallelizable, so the serial-slot refusal needs the holder's serial
+	// judgment recorded on the queue record — the flSeedDrivenQueueItem mold
+	// (queue item + explicit serial classification on the holder).
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
+			ID:      "t-slot",
+			Text:    "serial slot holder",
+			AddedAt: "2026-09-26T00:00:00Z",
+			State:   factory.BacklogStatePicked,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed t-slot queue item: %v", err)
+	}
+	fcClassify(t, store, "t-slot", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	// The nominee is serial too: the structured serial-slot refusal is a
+	// serial nominee against a serial holder, and after the flip an unrecorded
+	// nominee reads parallelizable — the refusal would never arm.
+	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	sdLaneEnv(t, "lane-1", "")
 	t.Chdir(root)
 
