@@ -145,6 +145,12 @@ fold internal/atomicfile/bootid_other.go
 fold internal/atomicfile/owner.go
 fold internal/atomicfile/section.go
 
+# --- 2026-10-23 refresh (worktree t1931, HEAD 2fccfd2b34, card t1931 후속) ---
+# 위 fold 단위들은 이번 refresh 본문(t1931 후속 판 섹션)과 대조해 그대로 성립함을
+# 확인했으므로 모두 남겨 둡니다. 이번 창(8c36a7904b..2fccfd2b34)에서 새로 내린
+# fold·omission 판정은 없습니다 — 신규 패키지가 없고, 창의 49파일은 modules.md
+# 후속 판의 표가 직접 기술합니다.
+
 # --- 2026-10-23 refresh (worktree t1931, HEAD 8c36a7904b, card t1931) ---
 # 위 fold 단위들은 이번 refresh 본문(t1931 판 섹션)과 대조해 그대로 성립함을
 # 확인했으므로 모두 남겨 둡니다. 이번 창(d5c083e86d..8c36a7904b)에서 새로 내린
