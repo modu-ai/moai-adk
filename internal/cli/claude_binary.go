@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 
@@ -63,7 +62,10 @@ func resolveClaudeBinaryAt(projectRoot string) (string, error) {
 				"llm.claude_bin in .moai/config/sections/llm.yaml")
 		}
 	}
-	claudeBin, err := exec.LookPath("claude")
+	// The PATH fallback routes through the claudeLookPath seam (the same
+	// injectable lookup the audit uses) so tests can stub the resolution
+	// without a real binary on PATH.
+	claudeBin, err := claudeLookPath("claude")
 	if err != nil {
 		return "", &claudeNotFoundError{}
 	}

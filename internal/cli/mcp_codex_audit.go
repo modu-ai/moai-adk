@@ -309,6 +309,33 @@ type ReviewOutput struct {
 	// t1426: the configured integration base now outranks the remote default
 	// head). Set only for target baseBranch; additive + omitempty.
 	ReviewBase string `json:"review_base,omitempty"`
+
+	// CouldNotRun marks a review that never produced a verdict because the
+	// backend could not be PERFORMED at all — transport loss, unparsable
+	// reply, missing binary — as distinct from a review that ran and returned
+	// no usable content (SPEC-MCP-NEUTRALITY-001 REQ-MN-021). The required
+	// gate does not convert a could-not-run into verdict `fail`: a leg that
+	// never ran is a not-performed result, and converting it would misstate a
+	// reviewed failure that never happened. Set by the inconclusive factories;
+	// empty/absent on every verdict a backend actually produced. Additive +
+	// omitempty (the SynthesisNote/GateUnmet precedent).
+	CouldNotRun bool `json:"could_not_run,omitempty"`
+
+	// Stderr preserves the backend process's stderr tail when the leg could
+	// not be performed, for diagnosis (REQ-MN-021) — the stderr the session
+	// runner used to discard with the buffer it captured into. Empty on any
+	// verdict a backend produced, and on a could-not-run whose process never
+	// started (nothing was written). Additive + omitempty.
+	Stderr string `json:"stderr,omitempty"`
+
+	// Truncated marks a diff-carrying review whose material exceeded the
+	// review size limit (REQ-MN-024): the verdict judged a TAIL-CUT change,
+	// and the reader must be able to see that. Additive + omitempty.
+	Truncated bool `json:"truncated,omitempty"`
+
+	// ExcludedUntracked names the untracked files a diff cannot carry and the
+	// review therefore did not see (REQ-MN-024). Additive + omitempty.
+	ExcludedUntracked []string `json:"excluded_untracked,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -345,6 +372,10 @@ type Finding struct {
 // inconclusiveReview is the fail-open ReviewOutput factory: it ALWAYS returns a
 // usable structured result carrying the reason + the claude-fallback next step.
 // The full 3-way fallback plumbing is M3; M2 only guarantees no hard crash.
+//
+// Every inconclusive this factory builds is a could-not-run (REQ-MN-021): the
+// review never produced a verdict, and the flag keeps that not-performed state
+// distinct from a content failure.
 func inconclusiveReview(reason string) ReviewOutput {
 	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
 }
@@ -356,10 +387,11 @@ func inconclusiveReview(reason string) ReviewOutput {
 // indistinguishable — a new silence, not a repair (REQ-CBR-005).
 func inconclusiveReviewWithSummary(summary string) ReviewOutput {
 	return ReviewOutput{
-		Verdict:   VerdictInconclusive,
-		Summary:   summary,
-		Findings:  []Finding{},
-		NextSteps: []string{"fall back to the active auditor (claude)"},
+		Verdict:     VerdictInconclusive,
+		Summary:     summary,
+		Findings:    []Finding{},
+		NextSteps:   []string{"fall back to the active auditor (claude)"},
+		CouldNotRun: true,
 	}
 }
 
@@ -493,12 +525,32 @@ func codexConnPID(conn codexConn) int {
 	return 0
 }
 
+// codexStderrReporter is the OPTIONAL half of codexConn: a connection backed by
+// a real process (or a test double that captured one) reports the backend's
+// stderr. Separate from codexConn so the connections without a stderr surface
+// stay unconstrained — the same shape codexProcessConn uses (REQ-MN-021).
+type codexStderrReporter interface {
+	stderrTail() string
+}
+
+// codexConnStderr returns the backend's stderr tail behind conn, or "" when the
+// connection reports none.
+func codexConnStderr(conn codexConn) string {
+	if r, ok := conn.(codexStderrReporter); ok {
+		return r.stderrTail()
+	}
+	return ""
+}
+
 // codexSessionRunner abstracts spawning the codex app-server subprocess so tests
 // inject a canned line exchange without spawning a process. The production
 // runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
-// concurrently into a buffered line channel.
+// concurrently into a buffered line channel. dir is the working directory the
+// child runs at (l57-r5 finding 1) — the SAME root the REQ-MN-009 containment
+// listing read, so the child resolves the config.toml whose MCP servers the
+// disable list actually names.
 type codexSessionRunner interface {
-	start(ctx context.Context, binaryPath string, args []string) (codexConn, error)
+	start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error)
 }
 
 // codexSession is the session-spawning seam. Tests swap it (with t.Cleanup).
@@ -507,8 +559,14 @@ var codexSession codexSessionRunner = realCodexSessionRunner{}
 // realCodexSessionRunner is the production session runner.
 type realCodexSessionRunner struct{}
 
-func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
+func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error) {
 	cmd := codexChildCmd(ctx, binaryPath, args)
+	// l57-r5 finding 1: the child runs at the SAME root the containment
+	// listing read. The disable list names the MCP servers configured at that
+	// root; a child that inherits this process's cwd instead resolves a
+	// different config.toml, and a foreign server registered only in the
+	// server's own tree escapes the disable list and reaches the child.
+	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("codex stdin pipe: %w", err)
@@ -517,17 +575,35 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if err != nil {
 		return nil, fmt.Errorf("codex stdout pipe: %w", err)
 	}
-	// Keep stderr for the receipt's tail. stdout stays the NDJSON channel, so the
-	// stream is never parsed from stderr and a noisy codex cannot corrupt it.
+	// Keep stderr for the receipt's tail and the could-not-run diagnostic
+	// (REQ-MN-021). stdout stays the NDJSON channel, so the stream is never parsed
+	// from stderr and a noisy codex cannot corrupt it.
 	stderr := &codexStderrBuffer{}
 	cmd.Stderr = stderr
 	// A grandchild that inherits stderr can hold the pipe open after the child exits;
 	// WaitDelay bounds how long Wait (and close) waits on it (t1788).
 	cmd.WaitDelay = codexStderrWaitDelay
+	// REQ-MN-024: the child runs on the SCRUBBED environment — the session's
+	// identity keys and the lane's launch keys never reach the reviewer
+	// process (the same scrub the codex exec role path applies). The pane
+	// drop must ride along too (sync-audit r3 F2): codexChildCmd built the
+	// environment through codexReviewChildEnv, and replacing it wholesale
+	// with codexChildEnv() here discarded that drop — codexAuditChildEnv
+	// composes BOTH filters.
+	cmd.Env = codexAuditChildEnv()
+	// t1632: codexChildCmd put the audit-leg marker in cmd.Env when a leg
+	// spawns this child, but the marker rides the leg's CONTEXT, not this
+	// process's environment — the scrub above cannot inherit it. Re-append it
+	// (last-wins, the same posture as CODEX_HOME in codexChildEnv): a leg
+	// child without the marker re-runs the Stop chain's verification members
+	// (the t1754 defect).
+	if ctx.Value(codexAuditLegCtxKey{}) != nil {
+		cmd.Env = append(cmd.Env, codexAuditLegEnv+"=1")
+	}
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
-	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128), stderr: stderr}
+	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, stderr: stderr, lines: make(chan string, 128)}
 	go c.readLoop(ctx)
 	return c, nil
 }
@@ -539,9 +615,17 @@ type realCodexConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.Reader
+	stderr *codexStderrBuffer
 	lines  chan string
 	mu     sync.Mutex
-	stderr *codexStderrBuffer
+}
+
+// stderrTail satisfies codexStderrReporter: the last 4KiB of what the codex
+// process wrote to stderr, for the could-not-run diagnostic (REQ-MN-021). The
+// tail bound keeps a chatty backend from inflating a structured result.
+func (c *realCodexConn) stderrTail() string {
+	const stderrTailLimit = 4096
+	return c.stderr.tail(stderrTailLimit)
 }
 
 func (c *realCodexConn) readLoop(ctx context.Context) {
@@ -695,6 +779,11 @@ type codexSessionError struct {
 	// asked to resume on exactly those failures and not on ones that ended
 	// before the request was sent (SPEC-CODEX-RESUME-SCOPE-001 REQ-CRS-001).
 	threadRequestSent bool
+
+	// stderr is the backend's stderr tail captured before the half-open
+	// connection was closed, so a could-not-run result can carry it for
+	// diagnosis (REQ-MN-021). Empty when the process never started.
+	stderr string
 }
 
 func (e *codexSessionError) Error() string { return e.cause.Error() }
@@ -704,7 +793,7 @@ func (e *codexSessionError) Unwrap() error { return e.cause }
 // its fail-open summary.
 func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause, stderrTail: codexConnStderrTail(conn)}
+	return &codexSessionError{summary: summary, cause: cause, stderr: codexConnStderr(conn), stderrTail: codexConnStderrTail(conn)}
 }
 
 // codexConnStderrTail reads the bounded stderr tail of a real codex child. It is
@@ -722,7 +811,7 @@ func codexConnStderrTail(conn codexConn) string {
 // request reached codex.
 func codexThreadRequestFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderrTail: codexConnStderrTail(conn)}
+	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderr: codexConnStderr(conn), stderrTail: codexConnStderrTail(conn)}
 }
 
 // openCodexSession spawns a codex app-server subprocess and completes the
@@ -743,8 +832,14 @@ func openCodexSession(ctx context.Context, binaryPath string, params map[string]
 // thread with thread/start — the unchanged path both existing callers take.
 // When it is set, thread/resume re-opens that thread instead, so no new thread
 // is started and the recorded id is the one every turn addresses.
+//
+// This is the PLAIN-TASK path (l57-r8 finding 1): an ordinary codex_task
+// delegation opens its session WITHOUT the gate containment, so the child
+// keeps the operator's configured MCP servers and its sandbox is governed by
+// the task's own per-turn sandboxPolicy. openCodexSessionResolved(contain=
+// true) is the gate/audit variant.
 func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
-	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil)
+	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil, false)
 }
 
 // openCodexSessionResolved is openCodexSessionOn with an INJECTED {model,
@@ -755,11 +850,124 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 // openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
 // Since SPEC-AUDIT-CEILING-002 the resolver's error return propagates to the
 // turn that consumes it.
-func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error)) (*codexSessionHandle, error) {
+// moaiGateExposureArg is the config override that flips the moai MCP server
+// the gate child spawns into the gate exposure (REQ-MN-009): the served
+// surface collapses to the gate read-only subset.
+const moaiGateExposureArg = `mcp_servers.moai.args=["mcp-server","--exposure","gate"]`
+
+// codexGateContainmentArgs builds the argv that contains a codex child to the
+// moai server (REQ-MN-009): every NON-moai MCP server the child would resolve
+// is disabled (the role-audit path's containment, shared), and the moai
+// server's args are overridden to the gate exposure. Fail-closed: a listing
+// failure refuses the spawn — an uncontained gate child is the 38/38
+// defect family this closes.
+func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]string, error) {
+	disable, err := codexAuditMCPDisableArgs(ctx, binaryPath, root)
+	if err != nil {
+		return nil, err
+	}
+	// Drop the moai disable pair: the disable args stub EVERY listed server,
+	// and the moai server is the one the gate session keeps — its gate
+	// exposure rides the appended args override instead. The capacity skips
+	// the +2 headroom arithmetic — append grows the slice when the moai pair
+	// survives, and the addition was CodeQL's overflow finding on this
+	// allocation (card t1632 CI repair).
+	kept := make([]string, 0, len(disable))
+	moaiListed := false
+	for i := 0; i < len(disable); i++ {
+		if disable[i] == "-c" && i+1 < len(disable) && strings.Contains(disable[i+1], "mcp_servers.moai.") {
+			moaiListed = true
+			i++ // skip the value too
+			continue
+		}
+		kept = append(kept, disable[i])
+	}
+	// The override addresses the moai server, so it needs one to address: with no
+	// moai entry in the child's config it would create a transport-less table
+	// that codex rejects at load, and the child would never start.
+	if !moaiListed {
+		return kept, nil
+	}
+	return append(kept, "-c", moaiGateExposureArg), nil
+}
+
+// openCodexSessionResolved is the session-open body with an INJECTED {model,
+// effort} resolver and the containment SCROLL (l57-r8 finding 1): contain=true
+// is the gate/audit/review spawn — the foreign-server disable plus gate
+// exposure (REQ-MN-009) plus the session-level read-only sandbox (REQ-MN-024);
+// contain=false is the plain codex_task spawn, which keeps the operator's
+// configured MCP servers and its per-turn sandboxPolicy. The r4 round made
+// containment unconditional on this shared path after an auditor demanded it
+// for audit spawns that name no root; the round-7 auditor correctly observed
+// that the same shape stripped EVERY ordinary task of its configured servers.
+// The scoped split keeps both audits' true findings: audit children stay
+// contained whatever the request carries, task children stay neutral.
+func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error), contain bool) (*codexSessionHandle, error) {
 	if resolve == nil {
 		resolve = pinFreeEffortResolver
 	}
-	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
+	argv := []string{codexAppServerSubcmd}
+	// The child's working directory: the request's root when one was named,
+	// the server's own project-root resolution otherwise. For a contained
+	// spawn this is the anchor the containment listing read (l57-r5 finding
+	// 1); for a plain task spawn it is the workRoot the task itself named.
+	root, _ := params["cwd"].(string)
+	if strings.TrimSpace(root) == "" {
+		root = projectDirResolver()
+	}
+	if contain {
+		// REQ-MN-009 gate/audit child containment: every codex app-server the
+		// gate/audit path spawns is contained to the moai server in gate
+		// exposure, anchored at the reviewed tree (params["cwd"]). An
+		// uncontainable spawn is refused — the containment failure must not
+		// degrade into an uncontained child silently.
+		// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy —
+		// a reviewer never needs to write, and the config override is the
+		// app-server surface's spelling of the `-s read-only` the codex exec
+		// role path uses.
+		// Card t1632 sync-audit r5: the containment listing runs on the
+		// BACKGROUND context, the same precondition-before-session-work rule
+		// the serving anchor lookup applies (codex_task.go) — an
+		// already-cancelled request must fail AT THE SESSION (which stays on
+		// the request context), not at the containment read that runs before
+		// the session exists. Before this repair, a cancelled request failed
+		// the listing with "context canceled" and the session never opened at
+		// all.
+		// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
+		// listing that hangs on a wedged child must not outlive the request by
+		// minutes. The bound is the listing's OWN
+		// (DefaultCodexAuditListTimeout, the same bound codexAuditMCPList
+		// applies internally): keying it on the TASK bound would make a
+		// 100ms-bound request abort the containment and then sit out the
+		// listing's own WaitDelay anyway (r6 follow-through).
+		listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
+		argv = append(argv, "-c", "sandbox_mode=read-only")
+		// Card t1632 sync-audit r4: containment is UNCONDITIONAL on the
+		// gate/audit path. Before that repair the block keyed on
+		// params["cwd"], so an audit path that named no project_root (the
+		// audit_multi codex leg's default) spawned a child with NO disable
+		// args — the child resolved the operator's own MCP servers, write
+		// tools included. The anchor is the request's root when one was named
+		// and the server's own project-root resolution otherwise; only a
+		// server that cannot resolve ANY root refuses the spawn (fail-closed
+		// — an uncontained child is the defect this closes). The params map is
+		// untouched: an OMITTED root still reaches the thread as an omission
+		// (REQ-2 pass-through), only the child's process containment changes.
+		if strings.TrimSpace(root) == "" {
+			cancelList()
+			return nil, &codexSessionError{
+				summary: "codex session containment failed: no project root to anchor the MCP server containment",
+				cause:   errors.New("project root unresolved"),
+			}
+		}
+		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
+		cancelList()
+		if err != nil {
+			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
+		}
+		argv = append(argv, containment...)
+	}
+	conn, err := codexSession.start(ctx, binaryPath, argv, root)
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
 	}
@@ -983,8 +1191,18 @@ func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params ma
 // workflow.audit.codex pin first (REQ-AMP-002), falling back to the legacy
 // backend default when the pin is absent/empty/unservable (REQ-AMP-004).
 func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
-	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
+	resolve := resolveCodexAuditModelEffort
+	if me, ok := ctx.Value(codexAuditModelCtxKey{}).(config.ModelEffort); ok {
+		// The caller resolved the pin once and recorded it as provenance: the
+		// wire carries that same value, never a second read (card t1632 D1).
+		resolve = func(map[string]any) (config.ModelEffort, error) { return me, nil }
+	}
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolve)
 }
+
+// codexAuditModelCtxKey carries the {model, effort} handleCodexAudit already
+// resolved, so provenance and the transmitted model are the same read.
+type codexAuditModelCtxKey struct{}
 
 // codexReviewSessionParams returns the session-open params for a review path,
 // carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
@@ -1013,13 +1231,14 @@ func codexReviewSessionParams(method string, params map[string]any) map[string]a
 }
 
 func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) (config.ModelEffort, error)) (ReviewOutput, error) {
-	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve)
+	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve, true)
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
 			// The failed open closed the child, so its stderr is final: it says why
 			// the handshake failed, and the receipt carries it (t1788).
 			failed := inconclusiveReview(sErr.summary)
+			failed.Stderr = sErr.stderr
 			failed.StderrTail = sErr.stderrTail
 			return failed, sErr.cause
 		}
@@ -1027,7 +1246,13 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	}
 	defer func() { _ = sess.close() }()
 
-	out, err := sess.runTurn(ctx, method, params)
+	out, turnErr := sess.runTurn(ctx, method, params)
+	if out.CouldNotRun {
+		// REQ-MN-021: the backend's stderr rides a could-not-run result for
+		// diagnosis — the tail the session runner captured while the turn was
+		// failing. A connection without a stderr surface reports "".
+		out.Stderr = codexConnStderr(sess.conn)
+	}
 	// The tail is read after close: close waits for the child and for its stderr copy,
 	// so the last error a child wrote just before exiting is in the capture. The
 	// deferred close above stays as the panic path and is harmless a second time.
@@ -1036,7 +1261,7 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	if c, ok := sess.conn.(*realCodexConn); ok && c.stderr != nil {
 		out.StderrTail = c.stderr.tail(codexErrorTailBytes)
 	}
-	return out, err
+	return out, turnErr
 }
 
 // writeCodexRequest marshals and sends one JSON-RPC request line.
@@ -1979,6 +2204,16 @@ func codexAdversarialReviewPrompt(focus string) string {
 	return prompt
 }
 
+// codexAdversarialBaseBranchPrompt is the adversarial prompt for a declared
+// baseBranch target (SPEC-MCP-NEUTRALITY-001 REQ-MN-019): the resolved base SHA
+// and the diff instruction are IN the prompt, so the review judges the change
+// against that base instead of silently reviewing something else.
+func codexAdversarialBaseBranchPrompt(mergeBase, focus string) string {
+	return "The change under review is the diff `git diff " + mergeBase + "..HEAD` — " +
+		"review exactly that diff, nothing else. " +
+		codexAdversarialReviewPrompt(focus)
+}
+
 // ─── codex_audit handler (AC-MCP-007) ───
 
 // handleCodexAudit is the thin-wrapper handler for the `codex_audit` MCP tool.
@@ -2003,7 +2238,16 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// parameter exists to fix. The rejection is a tool error, not the fail-open
 	// inconclusive verdict: fail-open covers an absent or broken codex, not a
 	// caller input the caller can correct.
-	root, rootSource, rootErr := resolveToolProjectRootWithSource(req)
+	//
+	// SPEC-MCP-NEUTRALITY-001 M3 scoping: the audit/delegation surface is EXEMPT
+	// from the server-repository confinement — codex_audit legitimately names
+	// another repository's tree to audit (the reviewed repo is an explicit
+	// caller input, and the receipt/gate state under the caller's own project
+	// stays where the caller named it). The root is still validated as a git
+	// worktree and canonicalized; only the server-repository comparison is
+	// skipped. The wrong-tree hazard stays closed: an unusable path is
+	// rejected, never silently replaced.
+	root, rootSource, rootErr := resolveValidatedToolProjectRoot(req)
 	if rootErr != nil {
 		return toolErr("codex_audit", rootErr), nil
 	}
@@ -2033,7 +2277,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// inconclusive verdict is still a verdict that must name its binary.
 	buildCommit, buildLag := auditBuildIdentity(ctx, root)
 
-	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
+	// Card t1632 sync-audit F5: the receipt binds the tree state captured at
+	// AUDIT START — the state the audit actually judges. A tree edit during a
+	// minutes-long audit must not end up inside the receipt's freshness
+	// binding, or a PASS that judged state A launders through on state B at
+	// reuse time (the binding would read current). Card t1632 sync-audit r3
+	// F14: a capture FAILURE is recorded as the explicit bind_capture_failed
+	// marker — it never falls back to a write-time bind, because a binding
+	// written after the audit judged nothing.
+	bindHead, bindDigest, bindErr := auditreceipt.TreeState(root)
+	bindFailed := bindErr != nil
+
+	notifyMCPProgress(ctx, token, 0, "codex audit start - mode: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		// The gate annotation rides EVERY fail-open exit, including this early
@@ -2045,10 +2300,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
 		out = applyGateUnmet(out, root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet)
+		out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
 		return codexReviewToolResult(out), nil
 	}
-	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
+	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the review request...")
 
 	method := codexMethodReviewStart
 	params := map[string]any{
@@ -2062,8 +2317,8 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// compared against, even if the base ref moves meanwhile (t1426). This is
 	// the shape the review gate's card scope already sends (reviewRequestParams).
 	// An unresolvable base leaves the bare target in place; coercion then fails
-	// the request open exactly as before. Adversarial mode (turn/start) carries
-	// no target and names no base, so it records no review_base.
+	// the request open exactly as before. Adversarial mode (turn/start) has no
+	// target field, so it applies the target in the prompt instead (below).
 	var base *reviewBase
 	if target == codexTargetBaseBranch && mode != codexModeAdversarial {
 		b, err := resolveReviewBase(root)
@@ -2077,42 +2332,96 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
-		params["prompt"] = codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
+		// REQ-MN-019: a turn/start has no target field, so a declared target
+		// travels in the prompt. A delta_base request carries its own base and
+		// diff instruction (the t1708 delta-scope clause), which IS the applied
+		// target and is named by review_base below. A plain baseBranch request
+		// resolves the base here and puts its SHA and the diff instruction in
+		// the prompt; a base that cannot be resolved is not silently downgraded
+		// to a working-tree review: the result is inconclusive stating the
+		// target was not applied.
+		prompt := codexAdversarialPromptFor(withDeltaBase(ctx, deltaBase), focus)
+		if target == codexTargetBaseBranch && deltaBase == "" {
+			b, resolveErr := resolveReviewBase(root)
+			if resolveErr != nil {
+				out := inconclusiveReview("target not applied: the base for " + codexTargetBaseBranch + " could not be resolved: " + resolveErr.Error())
+				receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+				out = applyGateUnmet(out, root)
+				out.BuildCommit, out.BuildLag = buildCommit, buildLag
+				out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+				return codexReviewToolResult(out), nil
+			}
+			base = &b
+			prompt = codexAdversarialBaseBranchPrompt(b.MergeBase, focus)
+		}
+		params["prompt"] = prompt
 		if focus != "" {
 			params["focus"] = focus
 		}
 	}
 
-	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
+	// REQ-MN-020: the auditor model is resolved ONCE, before the call, from the
+	// pin the request starts under — re-reading it after a minutes-long audit
+	// would record a model that did not run if the pin was edited meanwhile.
+	auditorModel, auditorModelErr := resolveCodexAuditModelEffort(params)
+	if auditorModelErr == nil {
+		// The RPC (and its could-not-run retry) transmits this same value.
+		ctx = context.WithValue(ctx, codexAuditModelCtxKey{}, auditorModel)
+	}
+
+	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	if out.CouldNotRun {
+		// REQ-MN-021: a leg that could not be performed retries EXACTLY once
+		// before reporting — a transient transport loss gets one more chance,
+		// and the ceiling keeps a wedged backend from looping the audit. The
+		// retry's result (whatever it is) is what gets reported.
+		out, _ = codexReviewRPC(ctx, binaryPath, method, params)
+	}
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
+	// A delta_base scope on a turn/start review names the prose base — the
+	// diff was collected at the delta base (collectReviewDiffCtx), so the
+	// resolved merge base above is not what was judged.
 	if deltaBase != "" && mode == codexModeAdversarial {
 		out.ReviewBase = deltaProseReviewBase(deltaBase) // turn/start has no target: say the scope was only asked for
+	}
+	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
+	// the claude_audit verdict records it — a verdict a reader cannot attribute
+	// to a model is a verdict that cannot be re-checked against the pin.
+	if auditorModelErr == nil {
+		out.Provenance = auditProvenanceFor("codex", model, auditorModel.Model, auditorModel.Effort)
 	}
 	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
 	// fail under a required gate (t1788).
 	receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet)
-	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
+	out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+	notifyMCPProgress(ctx, token, 0.9, "codex response received - assembling the result...")
 	return codexReviewToolResult(out), nil
 }
 
-// applyGateUnmet blocks a fail-open inconclusive audit when the audited tree
+// applyGateUnmet records a could-not-perform audit when the audited tree
 // EXPLICITLY declares workflow.audit.gates.codex: required (#1632 axis 3). The
 // audit tree's own workflow.yaml decides — the same project_root the review ran
 // against — so a named tree's gate follows the named tree, not the server's cwd.
 //
-// Operator decision (fail-closed for an explicit `required`, the same rule the
-// convergence engine applies in enforceRequiredGateUnmet): the verdict becomes
-// fail, gate_unmet says the failure is an unmet gate rather than a reviewed
-// failure, and the summary keeps the original no-verdict cause. The result
-// stays a structured result (isError false). The RAW configured value is read,
-// never the engine default, so a project that did not write `required` keeps
-// the fail-open inconclusive byte-for-byte.
+// REQ-MN-021 revises the operator's original fail-closed conversion: a leg that
+// COULD NOT RUN (transport loss, unparsable reply, missing binary — any
+// inconclusive this surface produces) is a not-performed result, not a reviewed
+// failure, so converting it to verdict `fail` would misstate a failure that
+// never happened. The verdict STAYS inconclusive, gate_unmet names the unmet
+// gate AND the could-not-run state, and the backend's stderr rides the result.
+// The not-converged safety net lives at the convergence surface
+// (enforceRequiredGateUnmet + the REQ-MN-022 not-converged outcome), which
+// refuses a pass on the caller's own submitted verdict just the same.
+//
+// The RAW configured value is read, never the engine default, so a project that
+// did not write `required` keeps the fail-open inconclusive byte-for-byte. A
+// gate READ that errors is a config problem, not a could-not-run: it still
+// fails the verdict, naming the cause (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 //
 // @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
 // @MX:REASON: flipping the verdict for a non-explicit gate would turn every existing project fail-closed
@@ -2136,15 +2445,14 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if gates.Codex != config.AuditGateRequired {
 		return out
 	}
+	// REQ-MN-021: could-not-run stays not-performed — verdict unchanged, the
+	// unmet gate named, stderr preserved.
+	note := "required gate unmet"
 	if assumedNote != "" {
-		out.GateUnmet = assumedNote + ", and this audit returned no verdict (fail-open inconclusive)"
-		out.Verdict = "fail"
-		out.Summary = "required gate unmet (" + assumedNote + "): " + out.Summary
-		return out
+		note += " (" + assumedNote + ")"
 	}
-	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
-	out.Verdict = "fail"
-	out.Summary = "required gate unmet (workflow.audit.gates.codex is `required`, no verdict): " + out.Summary
+	out.GateUnmet = note + ", could-not-run: this audit returned no verdict (the review could not be performed)"
+	out.Summary = out.GateUnmet + ": " + out.Summary
 	return out
 }
 

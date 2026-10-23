@@ -676,17 +676,27 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
 		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
 		// moving it 287→288. Same doc mention, no added line is a comparison.
-		// Re-measured at card t1680: the common-root rule moved to
-		// factory.IntegrationCommonRoot (shared with the PreToolUse guard) and the
-		// card's remaining integrationLockRoot edit nets thirty lines fewer above
-		// this doc comment, moving it 288→258. Same doc mention, no added line is
-		// a comparison. (The card's earlier in-file rule had moved it to :334 and
-		// left this sweep red; the move out of the file is what restores a
-		// coordinate near the baseline.)
-		// Re-measured at card t1928: the currentBranch symbolic-ref repair
-		// (+9 lines above the doc mention — the comment expansion 3→12 and the
-		// TrimPrefix line) moved the doc mention 258→267. Same hit; no added
-		// line is an ancestry comparison.
+		// Re-measured at card t1632 (merge of main c3aa6b057): the card's own
+		// additions above this doc comment moved it 288→301. Same doc mention
+		// of the primitive, no added line is a comparison — same count, only
+		// the coordinate moved.
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// absorbed t1576 integration-branch resolution landed above this
+		// comparison, moving it 301→317. Same comparison, same count — only
+		// the coordinate moved.
+		// Re-measured at card t1632 CI repair (HEAD 1d4bf5773b, PR #1894
+		// main-base re-target): the sweep reported :317 MISSING and a NEW hit
+		// at :258. Verified the same t1576 doc mention (the "merge-base
+		// ..HEAD … exit status 128" quote) already sat at :258 at the
+		// release-head absorb e80010e89c — the :317 baseline predates the
+		// absorb's final conflict resolution and counted lines the resolution
+		// did not keep. Same doc mention of the primitive, no ancestry call
+		// executes here — same count, only the coordinate moved.
+		// Union resolution (card t1632 second main absorb, 5995962990): both
+		// lineages converge — main's t1928 currentBranch repair landed the same
+		// lines this merge carries, and the doc mention measures at :267 in the
+		// merged integration.go (grep-verified). Same hit; no added line is an
+		// ancestry comparison.
 		"integration.go:267": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
@@ -697,7 +707,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured at card t1468: card t1426 added the base-selection
 		// ladder above this comparison, moving it from :95. Same single
 		// review-diff base measurement, same count — only the coordinate moved.
-		"mcp_review_material.go:175": true,
+		// Re-measured at card t1632 (merge of main c3aa6b057): the card's review
+		// material additions above this comparison moved it 175→210. Same single
+		// review-diff base measurement, same count — only the coordinate moved.
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// restored t1426 collectReviewDiffAt (17 lines) above this comparison
+		// moved it 210→227. Same single review-diff base measurement, same
+		// count — only the coordinate moved.
+		"mcp_review_material.go:227": true,
 		"todo_landed.go:231":         true,
 		// Re-measured at card t1502: M4's card-close wiring added three lines
 		// above this comparison, moving it from :349. Same single ancestry
