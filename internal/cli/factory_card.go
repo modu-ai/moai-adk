@@ -1255,6 +1255,22 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	}
 }
 
+// factoryPriorWorktreeReusable reports whether the prior row's worktree is
+// the reusable landing tree the claim path would re-enter (the same
+// conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
+// existing directory, and the card's own landing directory. It gates the
+// stage/evidence carry-over (card t1930, card-review r2 F3) — a stage carried
+// onto a FRESH tree would resume an audit stage with none of the audit files.
+func factoryPriorWorktreeReusable(root, cardID, path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	if info, err := os.Lstat(path); err != nil || !info.IsDir() {
+		return false
+	}
+	return sameDirPath(path, factoryCardWorktreeDir(root, cardID))
+}
+
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
 // fields carries the record-creation attributes the caller computed — the
 // hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
@@ -1273,11 +1289,17 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// recent prior row (another run allowed) holds a live stage, that row's
 	// stage and evidence_sha are carried onto the fresh row after T1 — a new
 	// fenced row, never a rewrite of the prior run's row. A card no prior run
-	// recorded carries nothing, exactly as before.
+	// recorded carries nothing, exactly as before. The carry is sound only
+	// when the prior run's worktree is the reusable landing tree the claim
+	// path re-enters (card-review r2, F3): without it the lane gets a FRESH
+	// tree, and a carried audit stage would resume against audit files the
+	// new tree does not hold — so a prior worktree that did not survive keeps
+	// the old no-carry behavior.
 	var carry *homestate.Card
 	if _, lerr := db.LoadCard(recordCtx, runID, cardID); errors.Is(lerr, homestate.ErrCardNotFound) {
 		if prev, ok, perr := db.PreviousCardRow(recordCtx, cardID, runID); perr == nil && ok &&
-			prev.Stage != "" && homestate.IsCardState(prev.Stage) && !homestate.IsTerminalCardState(prev.Stage) {
+			prev.Stage != "" && homestate.IsCardState(prev.Stage) && !homestate.IsTerminalCardState(prev.Stage) &&
+			factoryPriorWorktreeReusable(root, cardID, prev.WorktreePath) {
 			carry = &prev
 		}
 	}

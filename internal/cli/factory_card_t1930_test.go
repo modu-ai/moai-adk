@@ -236,6 +236,63 @@ func TestFactoryNextCarriesStageAndEvidenceAcrossRunReplacement(t *testing.T) {
 	}
 }
 
+// TestFactoryNextCarriesOnlyWithAReusablePriorWorktree — card-review r2 F3
+// (card t1930): the stage/evidence carry-over is sound only when the prior
+// run's worktree is the reusable landing tree the claim path re-enters.
+// Without it the lane gets a FRESH tree, and a carried plan-audit or
+// sync-audit stage would resume an audit stage in a tree that holds none of
+// the audit files — stageAdmits refuses and the exit fails on missing files.
+// A prior worktree that did not survive must keep the old behavior: a fresh
+// row with no carry-over.
+func TestFactoryNextCarriesOnlyWithAReusablePriorWorktree(t *testing.T) {
+	evidence := strings.Repeat("cd", 20)
+	t.Run("prior_worktree_absent_carries_nothing", func(t *testing.T) {
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStateQueued)
+		// The prior run recorded a live stage, but its tree did not survive.
+		fcPlace(t, root, homestate.Card{
+			RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+			Stage: homestate.CardMergeReady, EvidenceSHA: evidence,
+			WorktreePath: filepath.Join(root, ".moai", "worktrees", "t1"),
+		})
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next with a dead prior tree: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.Stage != "" || c.EvidenceSHA != "" {
+			t.Fatalf("carried stage=%q evidence=%q onto a fresh tree; both must stay empty when the prior worktree did not survive (a fresh tree holds no audit files to resume against)", c.Stage, c.EvidenceSHA)
+		}
+	})
+	t.Run("prior_worktree_present_still_carries", func(t *testing.T) {
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStateQueued)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root, homestate.Card{
+			RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+			Stage: homestate.CardMergeReady, EvidenceSHA: evidence, WorktreePath: landing,
+		})
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next over the card's own previous tree: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
+			t.Fatalf("positive control: stage=%q evidence=%q, want the carried %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
+		}
+	})
+}
+
 // TestFactoryNextKeepsFreshCardsStageless — the defect-③ boundary: a card no
 // previous run ever recorded gets no carry-over; its fresh row stays empty
 // exactly as before.
