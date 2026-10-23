@@ -356,6 +356,75 @@ func TestFactoryNextSkipsCarriedMergeReadyForCodexLanes(t *testing.T) {
 	})
 }
 
+// TestFactoryNextCompletesTheInterruptedCarryOver — card-review r5 F5 (card
+// t1930): the carry-over is a two-write sequence (RecordPicked, then the
+// fenced stage/evidence write). A crash between them leaves the current-run
+// row existing but empty, and the retry's carry gate — which requires the row
+// to be absent — then finds nothing to carry: the prior run's stage and
+// evidence were lost for this lease. The retry must complete the interrupted
+// carry-over; a row that already carries its stage is left alone.
+func TestFactoryNextCompletesTheInterruptedCarryOver(t *testing.T) {
+	evidence := strings.Repeat("99", 20)
+	build := func(t *testing.T) (string, *factory.BacklogStore) {
+		t.Helper()
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSelfDispatchYAML(t, root, true)
+		spec := ghfSpec // the eligibility predicate's condition 2: a spec id must exist
+		mdQueueSpec(t, store, "t1", &spec)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root,
+			homestate.Card{RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+				Stage: homestate.CardMergeReady, EvidenceSHA: evidence, WorktreePath: landing},
+			// The crash window: T1 committed, the carry-over write did not.
+			homestate.Card{RunID: carryNewRun, CardID: "t1", State: homestate.CardPicked},
+		)
+		return root, store
+	}
+	t.Run("recovers_the_stage_and_evidence_onto_the_existing_row", func(t *testing.T) {
+		root, _ := build(t)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next over the interrupted carry-over: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.State != homestate.CardLeased {
+			t.Fatalf("card state = %s, want leased", c.State)
+		}
+		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
+			t.Fatalf("the interrupted carry-over was not completed: stage=%q evidence=%q, want the prior row's %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
+		}
+	})
+	t.Run("an_already_carried_row_is_left_alone", func(t *testing.T) {
+		root, _ := build(t)
+		// The current-run row already carries a DIFFERENT (later) stage than
+		// the prior run's — the catch-up must not overwrite it.
+		db := fcOpen(t, root)
+		if _, err := db.DB.Exec(`UPDATE cards SET stage=? WHERE run_id=? AND card_id='t1'`, homestate.CardSyncAudit, carryNewRun); err != nil {
+			t.Fatal(err)
+		}
+		_ = db.Close()
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next over an already-carried row: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.Stage != homestate.CardSyncAudit {
+			t.Fatalf("the catch-up overwrote an already-carried row: stage=%q, want the row's own %s", c.Stage, homestate.CardSyncAudit)
+		}
+	})
+}
+
 // TestFactoryNextKeepsFreshCardsStageless — the defect-③ boundary: a card no
 // previous run ever recorded gets no carry-over; its fresh row stays empty
 // exactly as before.

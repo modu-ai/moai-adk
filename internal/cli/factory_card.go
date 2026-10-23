@@ -1137,6 +1137,22 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			elig.collect(*r)
 			continue
 		}
+		// The crash-window catch-up (card t1930, card-review r5, F5): the
+		// carry-over is a two-write sequence — RecordPicked, then the fenced
+		// stage/evidence write — and a crash between them leaves this row
+		// existing but empty, which the carry gate (row must be absent) can
+		// no longer see. A row that carries NO stage and NO evidence of its
+		// own is completed idempotently from the same prior-row gate before
+		// the claim; a row that carries either is left alone. A fence
+		// refusal falls through to the claim as-is — the lease edges
+		// re-fence on their own.
+		if c.Stage == "" && c.EvidenceSHA == "" {
+			if prev := factoryPriorCarryCandidate(ctx, db, root, runID, c.CardID); prev != nil {
+				if updated, cerr := db.SetCardStageEvidence(ctx, runID, c.CardID, prev.Stage, prev.EvidenceSHA, c.Version, factoryCardNow()); cerr == nil {
+					c = updated
+				}
+			}
+		}
 		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
@@ -1284,6 +1300,16 @@ func factoryPriorCarryRow(ctx context.Context, db *homestate.FactoryDB, root, ru
 	if _, lerr := db.LoadCard(ctx, runID, cardID); !errors.Is(lerr, homestate.ErrCardNotFound) {
 		return nil
 	}
+	return factoryPriorCarryCandidate(ctx, db, root, runID, cardID)
+}
+
+// factoryPriorCarryCandidate is the prior-row half of the carry gate alone.
+// The crash-window catch-up (card-review r5, F5) reads it for a row that
+// ALREADY exists: RecordPicked committed but the fenced carry write died, so
+// the retry's factoryPriorCarryRow — which requires the row to be absent —
+// would find nothing and the prior run's stage/evidence were lost for the
+// lease.
+func factoryPriorCarryCandidate(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) *homestate.Card {
 	prev, ok, err := db.PreviousCardRow(ctx, cardID, runID)
 	if err != nil || !ok {
 		return nil

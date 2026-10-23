@@ -165,7 +165,7 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 				CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
 				Field: metadataFieldEvidenceSHA, Old: auditOld, New: full, Reason: reason,
 			}, now); err == nil {
-				fmt.Fprintf(out, "%s evidence_sha %s (attested; the record already carried it, no store re-mutated)\n", cardID, shortSHA(full))
+				_, _ = fmt.Fprintf(out, "%s evidence_sha %s (attested; the record already carried it, no store re-mutated)\n", cardID, shortSHA(full))
 				return nil
 			}
 		}
@@ -185,7 +185,7 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 			CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
 			Field: metadataFieldEvidenceSHA, Old: old, New: full, Reason: reason,
 		}, now); err == nil {
-			fmt.Fprintf(out, "%s evidence_sha %s (was %s) — rebound to the newest %s verdict's audited commit\n",
+			_, _ = fmt.Fprintf(out, "%s evidence_sha %s (was %s) — rebound to the newest %s verdict's audited commit\n",
 				cardID, shortSHA(full), dash(shortSHA(old)), phase)
 			return nil
 		}
