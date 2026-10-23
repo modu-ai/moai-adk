@@ -29,12 +29,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"

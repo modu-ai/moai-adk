@@ -1135,10 +1135,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", unresolved, configBackupPath)
 	}
 
-	// REQ-DHR-007: a .codex/ template the target harness profile (or this
-	// version) no longer ships is reported and left in place, never deleted.
-	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
-
 	// Card t1527 D5: the tail's mid-noise emitters move into the terminal
 	// block — the hook-restart step is ACTION REQUIRED, the -c hint and the
 	// worktree advisory are Reference one-liners. The block renders at the end

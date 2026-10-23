@@ -24,7 +24,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -227,4 +229,183 @@ func (f *FactoryDB) mutateCardSpec(ctx context.Context, runID, cardID, specID st
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// mutateCardColumns is the shared version-fenced body of the t1930 metadata
+// mutations (card t1930): the same withCardTx + updateCardRow + stale-version
+// discipline mutateCardSpec carries, with the field changes themselves passed
+// as an apply function so each verb keeps a named record-layer entry point.
+// The audit append timing rule is unchanged: nothing here appends; the verb
+// appends only after the store commit.
+func (f *FactoryDB) mutateCardColumns(ctx context.Context, runID, cardID string, expectedVersion int64, now time.Time, apply func(*Card)) (Card, error) {
+	if strings.TrimSpace(runID) == "" || !ValidCardID(cardID) {
+		return Card{}, fmt.Errorf("%w: run id and a valid card id are required", ErrInvalidCardInput)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	now = now.UTC()
+	var result Card
+	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
+		cur, err := loadCard(ctx, tx, runID, cardID)
+		if err != nil {
+			return nil, err
+		}
+		if cur.Legacy() {
+			return nil, fmt.Errorf("%w: card %s holds pre-F1 state %q; its fields change through the F1 transitions", ErrLegacyState, cur.CardID, cur.State)
+		}
+		// The version compare comes first, as in every fenced write: a
+		// caller whose read is stale has no standing to be told anything else.
+		if cur.Version != expectedVersion {
+			return nil, staleErr(cur, expectedVersion)
+		}
+		next := cur
+		apply(&next)
+		next.Version = cur.Version + 1
+		next.UpdatedAt = now.Format(time.RFC3339Nano)
+		if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+			return nil, err
+		}
+		result = next
+		return nil, nil
+	})
+	if err != nil {
+		return Card{}, err
+	}
+	return result, nil
+}
+
+// PreviousCardRow returns the card's most recent factory row recorded under a
+// run other than excludeRunID — the re-lease carry-over's read (card t1930
+// defect ③: a card leased under a NEW run used to be born with empty stage
+// and evidence_sha, orphaning the prior run's progress). ok is false when no
+// other run ever recorded the card. The ordering matches
+// PreviousCardWorktree: newest run first, then newest row.
+func (f *FactoryDB) PreviousCardRow(ctx context.Context, cardID, excludeRunID string) (Card, bool, error) {
+	// SQL: one constant statement; cardID and excludeRunID ride ? placeholders,
+	// never the statement text.
+	const query = `SELECT c.run_id,c.card_id,c.owner_label,c.state,c.version,c.evidence_path,c.updated_at,
+c.stage,c.lease_holder,c.lease_expires_at,c.heartbeat_at,c.decision_gate,c.decision_question,c.decision_resume,
+c.decider,c.decided_at,c.failure_reason,c.hint_prefer,c.hint_after,c.spec_id,c.worktree_path,c.evidence_sha,
+c.merge_sha,c.merge_tree,c.remeasure_path,c.bundle_id,c.bundle_order,c.contract_spec_id,c.contract_sha256,c.contract_signed_at,c.contract_event
+FROM cards c LEFT JOIN runs r ON r.run_id = c.run_id
+WHERE c.card_id = ? AND c.run_id != ?
+ORDER BY r.created_at DESC, c.updated_at DESC
+LIMIT 1`
+	var c Card
+	err := f.DB.QueryRowContext(ctx, query, cardID, excludeRunID).Scan(&c.RunID, &c.CardID, &c.OwnerLabel, &c.State, &c.Version, &c.EvidencePath, &c.UpdatedAt,
+		&c.Stage, &c.LeaseHolder, &c.LeaseExpiresAt, &c.HeartbeatAt, &c.DecisionGate, &c.DecisionQuestion, &c.DecisionResume,
+		&c.Decider, &c.DecidedAt, &c.FailureReason, &c.HintPrefer, &c.HintAfter, &c.SpecID, &c.WorktreePath, &c.EvidenceSHA,
+		&c.MergeSHA, &c.MergeTree, &c.RemeasurePath, &c.BundleID, &c.BundleOrder, &c.ContractSpecID, &c.ContractSHA256, &c.ContractSignedAt, &c.ContractEvent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Card{}, false, nil
+	}
+	if err != nil {
+		return Card{}, false, err
+	}
+	return c, true, nil
+}
+
+// SetCardStageEvidence is the re-lease carry-over write (card t1930 defect ③):
+// a version-fenced mutation that lands the prior row's stage and evidence_sha
+// on the freshly recorded row of the new run. It is a NEW row's carry-over,
+// never a rewrite of the prior run's row, and the fence refuses a caller
+// whose read of the fresh row is stale.
+func (f *FactoryDB) SetCardStageEvidence(ctx context.Context, runID, cardID, stage, evidenceSHA string, expectedVersion int64, now time.Time) (Card, error) {
+	return f.mutateCardColumns(ctx, runID, cardID, expectedVersion, now, func(c *Card) {
+		c.Stage = strings.TrimSpace(stage)
+		c.EvidenceSHA = strings.TrimSpace(evidenceSHA)
+	})
+}
+
+// SetCardEvidenceSHA is the rebind-evidence record layer (card t1930 defect ④):
+// a version-fenced mutation of evidence_sha alone. The VALUE this lands must
+// come from ResolveRebindEvidence — the newest verdict file's audited_sha —
+// never from the caller's own input; the record layer cannot enforce that
+// provenance, so the verb does.
+func (f *FactoryDB) SetCardEvidenceSHA(ctx context.Context, runID, cardID, sha string, expectedVersion int64, now time.Time) (Card, error) {
+	if strings.TrimSpace(sha) == "" {
+		return Card{}, fmt.Errorf("%w: evidence sha is required", ErrInvalidCardInput)
+	}
+	return f.mutateCardColumns(ctx, runID, cardID, expectedVersion, now, func(c *Card) {
+		c.EvidenceSHA = strings.TrimSpace(sha)
+	})
+}
+
+// ResolveRebindEvidence reads the card's newest `<phase>*.md` verdict file
+// under its worktree's .moai/reports/<card-id>/ (the same newest-selection
+// rule readAuditVerdict uses: highest -iter number, then latest mtime) and
+// returns the FULL object name of the commit that verdict's audited_sha
+// names, verified by the T10 reader's own conditions — the commit resolves in
+// the card worktree and is an ancestor of, or equal to, its HEAD. It is the
+// only value the rebind-evidence verb may write, so a lane cannot forge an
+// audit claim by passing an arbitrary SHA.
+func ResolveRebindEvidence(ctx context.Context, card Card, phase string) (string, error) {
+	if !ValidCardID(card.CardID) {
+		return "", evidenceErr("card id %q is not a safe path segment", card.CardID)
+	}
+	if strings.TrimSpace(card.WorktreePath) == "" {
+		return "", evidenceErr("card has no worktree path")
+	}
+	if strings.TrimSpace(phase) == "" {
+		return "", evidenceErr("no audit phase was named")
+	}
+	v, err := readNewestVerdict(card.WorktreePath, card.CardID, phase)
+	if err != nil {
+		return "", err
+	}
+	full, err := verifyCommitAtHead(ctx, card.WorktreePath, v.AuditedSHA)
+	if err != nil {
+		return "", err
+	}
+	return full, nil
+}
+
+// readNewestVerdict locates the newest `<phase>*.md` verdict file and applies
+// the E-VERDICT single-value line rules (verdictLinePattern /
+// auditedSHAPattern in card_evidence_readers.go) WITHOUT the recorded-commit
+// comparison parseAuditVerdict adds — the rebind reader is the one place the
+// recorded value is precisely what is being recomputed.
+func readNewestVerdict(dir, cardID, phase string) (auditVerdict, error) {
+	pattern := filepath.Join(dir, ".moai", "reports", cardID, phase+"*.md")
+	matches, err := filepath.Glob(pattern)
+	if err != nil || len(matches) == 0 {
+		return auditVerdict{}, evidenceErr("no %s verdict file under %s", phase, filepath.Dir(pattern))
+	}
+	newest, err := newestVerdictFile(matches)
+	if err != nil {
+		return auditVerdict{}, err
+	}
+	raw, err := readBoundedFile(newest)
+	if err != nil {
+		return auditVerdict{}, evidenceErr("verdict file %s: %v", newest, err)
+	}
+	verdicts, shas := map[string]bool{}, map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimRight(line, " \t\r")
+		if m := verdictLinePattern.FindStringSubmatch(line); m != nil {
+			verdicts[m[1]] = true
+		}
+		if m := auditedSHAPattern.FindStringSubmatch(line); m != nil {
+			shas[m[1]] = true
+		}
+	}
+	out := auditVerdict{Path: newest}
+	switch len(verdicts) {
+	case 1:
+		for v := range verdicts {
+			out.Verdict = v
+		}
+	default:
+		return out, evidenceErr("verdict file %s carries no single `verdict:` line", newest)
+	}
+	switch len(shas) {
+	case 1:
+		for s := range shas {
+			out.AuditedSHA = s
+		}
+	default:
+		return out, evidenceErr("verdict file %s carries no single `audited_sha:` line", newest)
+	}
+	return out, nil
 }

@@ -1,6 +1,14 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — bf0a35f10
+## 현재 의존성 측정 — 8c36a79 (card t1931 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — 이전 판(t1909)의 세 집계와 같지만 이전 판은 Linux/amd64 관측이므로 **플랫폼이 다른 두 측정이 같은 값**이다. 창(d5c083e86d..8c36a7904b)이 패키지나 import 경계를 만들지 않았기 때문이다: `integration_backup.go`·`mcp_codex_audit.go` 등 신규 파일은 전부 기존 패키지(`internal/cli`·`internal/homestate` 등) 안에 들어왔다. 이 판 측정(Darwin/arm64, 개별 패키지 쌍 기준)의 fan-out 상위는 cli 120·hook 53·web 17이고 fan-in 상위는 config 44·defs 21·atomicfile 19다(이전 판의 cli 77·hook 41·config 32는 Linux/amd64 상위 집계 기준의 관측값 — 기준·플랫폼이 달라 직접 비교하지 않는다). `go.mod`·`go.sum`은 창에서 변하지 않았다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — d5c083e (card t1909 판)
+
+Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — 앞 판의 세 집계와 정확히 같다(card t1909가 지운 것은 기존 패키지 안의 파일들이지 패키지나 import 경계가 아니었다). 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15로 이 역시 앞 판과 같다. `go.mod`·`go.sum`은 창에서 변하지 않았다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — bf0a35f10
 
 Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
 

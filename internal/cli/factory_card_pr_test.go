@@ -501,8 +501,16 @@ func TestMergeReadinessBeforePR(t *testing.T) {
 			if !strings.Contains(err.Error()+out, tc.failing) {
 				t.Errorf("the refusal does not name %s:\nerr: %v\nout: %s", tc.failing, err, out)
 			}
-			if d.count("pr", "create") != 0 || len(d.calls) != 0 {
-				t.Errorf("a failing triple still called gh: %v", d.calls)
+			if d.count("pr", "create") != 0 || d.count("pr", "merge") != 0 {
+				t.Errorf("a failing triple still mutated gh: %v", d.calls)
+			}
+			// card t1930 defect ②: the only gh traffic a refused delivery may
+			// produce is the read-only already-merged probe (`pr view`) that
+			// precedes the triple — never a create or a merge request.
+			for _, c := range d.calls {
+				if len(c) < 2 || c[1] != "view" {
+					t.Errorf("a failing triple called gh beyond the probe: %v", c)
+				}
 			}
 			if f.remoteBranchTip(t) != "" {
 				t.Error("a failing triple still pushed the card branch")

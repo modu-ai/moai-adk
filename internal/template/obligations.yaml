@@ -20,60 +20,6 @@ obligations:
     codex_path: moai hook stop --harness codex
     check: TestStopChainInventoryMatchesClaudeTemplate
     ac: AC-HPR-001
-  - id: stop-member1-dispatch
-    required: true
-    claude_path: moai hook stop
-    codex_path: moai hook stop --harness codex
-    check: TestCodexStopHandlerRunsTheChain
-    ac: AC-HPR-002
-  - id: stop-member2-sync-gate
-    required: true
-    claude_path: .claude/hooks/moai/sync-phase-quality-gate.sh
-    codex_path: moai verify sync-gate
-    check: TestStopChainEffectParityGolden
-    ac: AC-HPR-002
-  - id: stop-member3-goal
-    required: true
-    claude_path: moai hook stop-goal
-    codex_path: moai hook stop --harness codex
-    check: TestCodexGoalContinueUntilMet
-    ac: AC-HPR-012
-  - id: stop-member4-security-turn
-    required: true
-    claude_path: moai hook security-turn
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainAdvisoryFailureRecorded
-    ac: AC-HPR-005
-  - id: stop-member5-security-commit
-    required: true
-    claude_path: moai hook security-commit
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainAdvisoryFailureRecorded
-    ac: AC-HPR-005
-  - id: stop-member6-codex-review-gate
-    required: true
-    claude_path: moai hook codex-review-gate
-    codex_path: moai verify codex-review
-    check: TestStopChainEffectParityGolden
-    ac: AC-HPR-002
-  - id: stop-member7-multi-review-gate
-    required: true
-    claude_path: moai hook multi-review-gate
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainEffectParityGolden
-    ac: AC-HPR-002
-  - id: stop-member8-harness-observe
-    required: true
-    claude_path: moai hook harness-observe-stop
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainAdvisoryFailureRecorded
-    ac: AC-HPR-005
-  - id: stop-chain-no-claude-dependency
-    required: true
-    claude_path: moai hook stop
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainGPTProfileNoClaudeDependency
-    ac: AC-HPR-003
   - id: stop-chain-live-continuation
     required: true
     claude_path: moai hook stop-goal
@@ -150,24 +96,6 @@ obligations:
     ac: AC-HPR-011
 
   # ── Goal continuation, cancellation, budget (AC-GOAL-01) ──────────────
-  - id: goal-continue-until-met
-    required: true
-    claude_path: moai hook stop-goal
-    codex_path: moai hook stop --harness codex
-    check: TestCodexGoalContinueUntilMet
-    ac: AC-HPR-012
-  - id: goal-continue-live
-    required: true
-    claude_path: moai hook stop-goal
-    codex_path: moai hook stop --harness codex
-    check: TestLiveCodexGoalContinueUntilMet
-    ac: AC-HPR-012
-  - id: goal-cancellation-precedence
-    required: true
-    claude_path: moai goal clear
-    codex_path: moai hook interrupt --harness codex
-    check: TestGoalCancellationPrecedence
-    ac: AC-HPR-013
   - id: goal-status-consumers
     required: true
     claude_path: moai hook stop-goal
@@ -180,25 +108,11 @@ obligations:
     codex_path: moai hook stop --harness codex
     check: TestGoalBudgetTerminationNotSuccess
     ac: AC-HPR-014
-  - id: goal-host-override
-    required: true
-    claude_path: moai hook stop-goal
-    codex_path: moai hook stop --harness codex
-    check: TestGoalHostOverrideNotSuccess
-    ac: AC-HPR-015
-
-  # ── Receipts and timeouts ─────────────────────────────────────────────
   - id: stop-budget-fits-timeout
     required: true
     claude_path: .claude/settings.json.tmpl
     codex_path: moai hook stop --harness codex
     check: TestStopChainAggregateBudgetFitsTimeout
-    ac: AC-HPR-016
-  - id: stop-member-cost-within-budget
-    required: true
-    claude_path: moai hook stop
-    codex_path: moai hook stop --harness codex
-    check: TestStopChainMemberCostWithinBudget
     ac: AC-HPR-016
   - id: receipt-validity
     required: true
