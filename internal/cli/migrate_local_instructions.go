@@ -195,3 +195,11 @@ func emitLocalInstructionsAdvisory(w io.Writer, root string) {
 		_, _ = fmt.Fprintln(w, msg)
 	}
 }
+
+// Instruction-file name constants rehomed from the removed codex_contract.go
+// (card t1909 step ⑤): AGENTS.local.md is the user-owned local file and
+// CLAUDE.local.md its legacy predecessor, read ahead of it.
+const (
+	codexLocalInstructionName = "AGENTS.local.md"
+	codexClaudeLocalName      = "CLAUDE.local.md"
+)

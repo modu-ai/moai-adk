@@ -106,7 +106,10 @@ func newDecisionRecordCmd() *cobra.Command {
 
 // oneLine renders s as a single physical line so no detail value can
 // impersonate another detail line (the digest line included) in read output.
+// The backslash is escaped first, so the mapping is single-valued: two
+// distinct inputs can never render to the same line.
 func oneLine(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
 	return strings.NewReplacer("\n", "\\n", "\r", "\\r", "\t", "\\t").Replace(s)
 }
 

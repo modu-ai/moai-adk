@@ -145,32 +145,6 @@ func TestAmbiguousRefusalCarriesResolutionGuidance(t *testing.T) {
 	}
 }
 
-// ② the codex head classifier stops refusing --factory-run on the lane
-// entry: the token travels to the parser, which owns its validation.
-func TestCodexClassifyAllowsFactoryRunOnLaneEntry(t *testing.T) {
-	entry, diag := codexFactoryEntryClassify([]string{"-l", "--factory-run", "ambigruna"})
-	if diag != "" {
-		t.Fatalf("classify diag = %q, want empty (parser owns --factory-run)", diag)
-	}
-	if entry != codexFactoryEntryLane {
-		t.Errorf("classify entry = %v, want codexFactoryEntryLane", entry)
-	}
-}
-
-// ② the refusal MOVED, not vanished: --factory-run without a lane entry is
-// still refused, now by the parser with its precise message.
-func TestCodexFactoryRunWithoutLaneStillRefused(t *testing.T) {
-	entry, diag := codexFactoryEntryClassify([]string{"--factory-run", "ambigruna"})
-	if diag != "" {
-		t.Fatalf("classify diag = %q, want empty (parser owns --factory-run)", diag)
-	}
-	_ = entry
-	_, _, err := parseCodexFactoryEntry([]string{"--factory-run", "ambigruna"})
-	if err == nil || !strings.Contains(err.Error(), "--factory-run requires -l/--lane") {
-		t.Fatalf("parse err = %v, want the requires--l refusal", err)
-	}
-}
-
 // ② pins the shared-gate semantic the codex plumbing relies on: an explicit
 // run id joins the NAMED run among two live ones (works today on cc/glm;
 // guards the contract the codex twin inherits).
@@ -190,34 +164,6 @@ func TestExplicitFactoryRunJoinsNamedRunAmongTwoLive(t *testing.T) {
 	}
 }
 
-// ② the codex relaunch loop's join carries the parsed entry's run id: the
-// named run joins among two live ones instead of the ambiguity refusal.
-// (Lands with the fix — the seam enterCodexRelaunchJoin is the plumbing this
-// card unblocked.)
-func TestCodexRelaunchJoinCarriesFactoryRunID(t *testing.T) {
-	root := discoveryTestRoot(t)
-	clearFactoryTestEnv(t)
-	seedLiveRun(t, root, "ambigruna")
-	seedLiveRun(t, root, "ambigrunb")
-
-	_, entry, perr := parseCodexFactoryEntry([]string{"-l", "--factory-run", "ambigruna"})
-	if perr != nil {
-		t.Fatalf("parse -l --factory-run: %v", perr)
-	}
-	restore, err := enterCodexRelaunchJoin(root, entry, nil)
-	if err != nil {
-		t.Fatalf("codex relaunch join with --factory-run among two live runs = %v, want ambigruna", err)
-	}
-	defer restore()
-	if runID := os.Getenv(config.EnvFactoryRunID); runID != "ambigruna" {
-		t.Errorf("%s = %q, want the explicitly named ambigruna", config.EnvFactoryRunID, runID)
-	}
-}
-
-// ④ operator test: an operator-supplied leader name that a LIVE leader
-// already holds is bumped to a distinguishable name, so ①'s name selection
-// always has an unambiguous target. The default-name path already bumps;
-// the operator-supplied path is the gap.
 func TestOperatorLeaderNameCollisionBumps(t *testing.T) {
 	root := discoveryTestRoot(t)
 	holdLeaderName(t, root, "leader")

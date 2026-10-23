@@ -191,9 +191,9 @@ func TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass(t *testing.T) {
 // does NOT establish that the guard would behave correctly if reached — nothing
 // on the current production path can reach it with a blank-but-non-empty value.
 func TestCodexBlankReview_GuardKeepsSharedDiscriminator(t *testing.T) {
-	raw, err := os.ReadFile("mcp_codex.go")
+	raw, err := os.ReadFile("mcp_codex_audit.go")
 	if err != nil {
-		t.Fatalf("read mcp_codex.go: %v — an unreadable source file makes every assertion below vacuous", err)
+		t.Fatalf("read mcp_codex_audit.go: %v — an unreadable source file makes every assertion below vacuous", err)
 	}
 	src := string(raw)
 
@@ -205,7 +205,7 @@ func TestCodexBlankReview_GuardKeepsSharedDiscriminator(t *testing.T) {
 		"func codexReviewTextIsBlank(",
 	} {
 		if !strings.Contains(src, sentinel) {
-			t.Fatalf("sentinel %q absent from mcp_codex.go — this test is no longer measuring what it claims", sentinel)
+			t.Fatalf("sentinel %q absent from mcp_codex_audit.go — this test is no longer measuring what it claims", sentinel)
 		}
 	}
 
@@ -400,7 +400,7 @@ func TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable(t *testing
 	// The PREFIX, asserted specifically. Substring presence plus inequality is
 	// not enough: a summary reading "codex unavailable: blank review output …"
 	// satisfies both of those and still collapses state A into the
-	// unavailable-backend wording — the exact outcome mcp_codex.go's own comment
+	// unavailable-backend wording — the exact outcome mcp_codex_audit.go's own comment
 	// calls "a new silence, not a repair". A sync-audit mutant that made that
 	// rewrite passed the whole suite, which is why this pair exists.
 	const unavailablePrefix = "codex unavailable: "

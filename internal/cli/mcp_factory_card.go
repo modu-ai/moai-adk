@@ -160,6 +160,9 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	openPRs := factoryNextPRSnapshot(ctx, root, runID, lane, nominee, held)
 	var card homestate.Card
 	leased := false
+	// The gate's refusals of the last pass (SPEC-CARD-ELIGIBLE-PULL-001
+	// REQ-CEP-005): rendered through the same shared text the CLI verb prints.
+	var gateRefusals []factoryEligibleRefusal
 	if nominee != "" {
 		// The nominated lease: the same implementation the CLI verb calls, the
 		// same refusal line (design.md §3 — one implementation per verb).
@@ -178,7 +181,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 		}
 	} else {
-		card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+		card, leased, gateRefusals, err = factoryNextLeaseOnceEligibility(ctx, root, runID, lane, held)
 		if err != nil {
 			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 		}
@@ -188,7 +191,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 			// A hold is the whole, non-error result text — never the empty-queue text.
 			return mcp.NewToolResultText(holdLine), nil
 		}
-		return mcp.NewToolResultText("no card is available"), nil
+		return mcp.NewToolResultText(factoryNextNoCardText(gateRefusals)), nil
 	}
 	wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard)
 	if err != nil {

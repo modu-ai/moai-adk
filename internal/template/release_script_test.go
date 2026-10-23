@@ -214,54 +214,176 @@ func rlsRunJSON(id int, sha, event, status, conclusion string) string {
 		id, sha, event, status, concl, rlsMatrixName)
 }
 
-func rlsLegsJSON(win string) string {
-	job := func(name, conclusion string) string {
-		return fmt.Sprintf(`{"name":%q,"status":"completed","conclusion":%q}`, name, conclusion)
+// rlsJob is one job of a canned `gh run view --json jobs` answer.
+type rlsJob struct{ name, conclusion string }
+
+// The sharded matrix of release-pr-multi-os.yml (SPEC-CI-RELEASE-VERIFY-SHARD-001
+// REQ-RVS-011): three OS values, each carrying exactly these six shard ids.
+var (
+	rlsMatrixOSes   = []string{"ubuntu-latest", "macos-latest", "windows-latest"}
+	rlsMatrixShards = []string{"cli-1", "cli-2", "cli-3", "cli-4", "rosterguard", "remainder"}
+)
+
+func rlsLegName(osName, shard string) string {
+	return fmt.Sprintf("Release Verify (%s, %s)", osName, shard)
+}
+
+// rlsShardedJobs is the all-green job list of a sharded run: the detect job plus
+// 3 OS x 6 shards, every one `success`.
+func rlsShardedJobs() []rlsJob {
+	jobs := []rlsJob{{"Detect Release PR", "success"}}
+	for _, osName := range rlsMatrixOSes {
+		for _, shard := range rlsMatrixShards {
+			jobs = append(jobs, rlsJob{rlsLegName(osName, shard), "success"})
+		}
 	}
-	return `{"jobs":[` + strings.Join([]string{
-		job("Detect Release PR", "success"),
-		job("Release Verify (ubuntu-latest)", "success"),
-		job("Release Verify (macos-latest)", "success"),
-		job("Release Verify (windows-latest)", win),
-	}, ",") + `]}`
+	return jobs
+}
+
+// rlsJobsJSON renders a job list the way the gh stub's `run view` answers it.
+func rlsJobsJSON(jobs []rlsJob) string {
+	parts := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		parts = append(parts, fmt.Sprintf(`{"name":%q,"status":"completed","conclusion":%q}`, j.name, j.conclusion))
+	}
+	return `{"jobs":[` + strings.Join(parts, ",") + `]}`
+}
+
+// rlsLegsJSON renders the sharded all-green run after tweak has edited its jobs;
+// a nil tweak leaves it all green.
+func rlsLegsJSON(tweak func([]rlsJob) []rlsJob) string {
+	jobs := rlsShardedJobs()
+	if tweak != nil {
+		jobs = tweak(jobs)
+	}
+	return rlsJobsJSON(jobs)
+}
+
+// rlsWithout returns jobs minus every job for which drop reports true.
+func rlsWithout(jobs []rlsJob, drop func(rlsJob) bool) []rlsJob {
+	var out []rlsJob
+	for _, j := range jobs {
+		if !drop(j) {
+			out = append(out, j)
+		}
+	}
+	return out
+}
+
+// rlsSetConclusion returns jobs with the named job's conclusion replaced.
+func rlsSetConclusion(jobs []rlsJob, name, conclusion string) []rlsJob {
+	out := append([]rlsJob(nil), jobs...)
+	for i := range out {
+		if out[i].name == name {
+			out[i].conclusion = conclusion
+		}
+	}
+	return out
+}
+
+// rlsDispatched registers a sharded run's jobs and returns the runs JSON of one
+// completed, successful, hand-dispatched run on sha.
+func rlsDispatched(t *testing.T, s *rlsStub, id int, sha string, tweak func([]rlsJob) []rlsJob) string {
+	t.Helper()
+	s.setJobs(t, id, rlsLegsJSON(tweak))
+	return "[" + rlsRunJSON(id, sha, "workflow_dispatch", "completed", "success") + "]"
 }
 
 func matrixScenarios() []matrixScenario {
 	return []matrixScenario{
-		{name: "a_three_legs_green_on_the_target_sha", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 101, rlsLegsJSON("success"))
+		{name: "a_sharded_legs_all_green_on_the_target_sha", build: func(t *testing.T, s *rlsStub, sha string) string {
+			s.setJobs(t, 101, rlsLegsJSON(nil))
 			return "[" + rlsRunJSON(101, sha, "workflow_dispatch", "completed", "success") + "]"
 		}},
 		{name: "b_no_run", wantReason: "found for", build: func(t *testing.T, s *rlsStub, sha string) string { return "[]" }},
 		{name: "c_green_run_on_another_sha", wantReason: "found for", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 102, rlsLegsJSON("success"))
+			s.setJobs(t, 102, rlsLegsJSON(nil))
 			return "[" + rlsRunJSON(102, rlsOtherSHA, "workflow_dispatch", "completed", "success") + "]"
 		}},
 		{name: "d_failed_run_on_the_target_sha", wantReason: "concluded failure", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 103, rlsLegsJSON("failure"))
+			s.setJobs(t, 103, rlsLegsJSON(func(j []rlsJob) []rlsJob {
+				return rlsSetConclusion(j, rlsLegName("windows-latest", "cli-3"), "failure")
+			}))
 			return "[" + rlsRunJSON(103, sha, "workflow_dispatch", "completed", "failure") + "]"
 		}},
 		{name: "e_run_still_in_progress", wantReason: "not completed", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 104, rlsLegsJSON("success"))
+			s.setJobs(t, 104, rlsLegsJSON(nil))
 			return "[" + rlsRunJSON(104, sha, "workflow_dispatch", "in_progress", "") + "]"
 		}},
-		{name: "f_run_success_but_one_leg_skipped", wantReason: "leg 'Release Verify (windows-latest)' is skipped", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 105, rlsLegsJSON("skipped"))
-			return "[" + rlsRunJSON(105, sha, "workflow_dispatch", "completed", "success") + "]"
+		{name: "f_run_success_but_one_shard_skipped", wantReason: "leg 'Release Verify (windows-latest, cli-3)' is skipped", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 105, sha, func(j []rlsJob) []rlsJob {
+				return rlsSetConclusion(j, rlsLegName("windows-latest", "cli-3"), "skipped")
+			})
 		}},
 		{name: "g_green_run_from_a_pull_request_event", wantReason: "none came from workflow_dispatch", build: func(t *testing.T, s *rlsStub, sha string) string {
-			s.setJobs(t, 106, rlsLegsJSON("success"))
+			s.setJobs(t, 106, rlsLegsJSON(nil))
 			return "[" + rlsRunJSON(106, sha, "pull_request", "completed", "success") + "]"
+		}},
+		// The scenarios below are REQ-RVS-011 / AC-RVS-011: partial shard sets are refused.
+		{name: "h_run_success_but_one_shard_failed", wantReason: "leg 'Release Verify (macos-latest, rosterguard)' is failure", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 107, sha, func(j []rlsJob) []rlsJob {
+				return rlsSetConclusion(j, rlsLegName("macos-latest", "rosterguard"), "failure")
+			})
+		}},
+		{name: "i_one_shard_absent_on_a_single_os", wantReason: "has no leg 'Release Verify (macos-latest, remainder)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 108, sha, func(j []rlsJob) []rlsJob {
+				return rlsWithout(j, func(x rlsJob) bool { return x.name == rlsLegName("macos-latest", "remainder") })
+			})
+		}},
+		{name: "j_the_same_shard_absent_on_all_three_os", wantReason: "has no leg 'Release Verify (ubuntu-latest, cli-4)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 109, sha, func(j []rlsJob) []rlsJob {
+				return rlsWithout(j, func(x rlsJob) bool {
+					for _, osName := range rlsMatrixOSes {
+						if x.name == rlsLegName(osName, "cli-4") {
+							return true
+						}
+					}
+					return false
+				})
+			})
+		}},
+		{name: "k_an_unknown_shard_name_on_every_os_alongside_all_eighteen", wantReason: "unknown Release Verify leg 'Release Verify (ubuntu-latest, cli-5)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 110, sha, func(j []rlsJob) []rlsJob {
+				for _, osName := range rlsMatrixOSes {
+					j = append(j, rlsJob{rlsLegName(osName, "cli-5"), "success"})
+				}
+				return j
+			})
+		}},
+		{name: "o_an_unknown_shard_name_on_a_single_os_alongside_all_eighteen", wantReason: "unknown Release Verify leg 'Release Verify (windows-latest, cli-5)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 114, sha, func(j []rlsJob) []rlsJob {
+				return append(j, rlsJob{rlsLegName("windows-latest", "cli-5"), "success"})
+			})
+		}},
+		{name: "l_a_duplicated_shard_job", wantReason: "has 2 jobs named 'Release Verify (macos-latest, cli-2)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 111, sha, func(j []rlsJob) []rlsJob {
+				return append(j, rlsJob{rlsLegName("macos-latest", "cli-2"), "success"})
+			})
+		}},
+		{name: "m_an_os_with_no_shard_job", wantReason: "has no leg 'Release Verify (windows-latest, cli-1)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 112, sha, func(j []rlsJob) []rlsJob {
+				return rlsWithout(j, func(x rlsJob) bool { return strings.Contains(x.name, "(windows-latest, ") })
+			})
+		}},
+		{name: "n_only_the_pre_shard_unsuffixed_leg_names", wantReason: "has no leg 'Release Verify (ubuntu-latest, cli-1)'", build: func(t *testing.T, s *rlsStub, sha string) string {
+			return rlsDispatched(t, s, 113, sha, func(j []rlsJob) []rlsJob {
+				legacy := []rlsJob{{"Detect Release PR", "success"}}
+				for _, osName := range rlsMatrixOSes {
+					legacy = append(legacy, rlsJob{"Release Verify (" + osName + ")", "success"})
+				}
+				return legacy
+			})
 		}},
 	}
 }
 
-// TestReleaseScriptMatrixGate is AC-GFD-010: two switch states times seven gh
-// doubles. With the switch off the script must not look at the matrix at all
-// (no `gh run` call is logged); with `--require-matrix-run` only the run that
-// is complete, green on all three legs, on the target SHA and dispatched by
-// hand passes, and every other double is refused before the tag with the
-// condition named.
+// TestReleaseScriptMatrixGate is AC-GFD-010 extended by AC-RVS-011: two switch
+// states times fifteen gh doubles. With the switch off the script must not
+// look at the matrix at all (no `gh run` call is logged); with
+// `--require-matrix-run` only the run that is complete, green on every one of
+// the six shards of each of the three OS values (each exactly once), on the
+// target SHA and dispatched by hand passes, and every other double is refused
+// before the tag with the condition named.
 func TestReleaseScriptMatrixGate(t *testing.T) {
 	rlsRequireTools(t, "jq")
 
@@ -308,5 +430,54 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 				rlsMustContain(t, out, "Matrix gate:", sc.wantReason)
 			})
 		}
+	}
+}
+
+// A long, otherwise ordinary jobs response must not change a matrix verdict.
+// In particular, a consumer that finds one leg early must not close a producer
+// pipe and turn the release command's named refusal into exit 141 (SIGPIPE).
+func TestReleaseScriptMatrixGateLargeJobList(t *testing.T) {
+	rlsRequireTools(t, "jq")
+	for _, tc := range []struct {
+		name, wantReason string
+		tweak            func([]rlsJob) []rlsJob
+	}{
+		{name: "complete_matrix"},
+		{name: "missing_macos_remainder", wantReason: "has no leg 'Release Verify (macos-latest, remainder)'", tweak: func(jobs []rlsJob) []rlsJob {
+			return rlsWithout(jobs, func(j rlsJob) bool { return j.name == rlsLegName("macos-latest", "remainder") })
+		}},
+		{name: "unknown_release_leg", wantReason: "unknown Release Verify leg 'Release Verify (windows-latest, cli-5)'", tweak: func(jobs []rlsJob) []rlsJob {
+			return append([]rlsJob{{rlsLegName("windows-latest", "cli-5"), "success"}}, jobs...)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+			s := rlsNewStub(t)
+			sha := r.git("rev-parse", "HEAD")
+			s.setRuns(t, rlsDispatched(t, s, 201, sha, func(jobs []rlsJob) []rlsJob {
+				if tc.tweak != nil {
+					jobs = tc.tweak(jobs)
+				}
+				// Supporting jobs are outside the Release Verify family. Keep
+				// every required leg unchanged while exceeding a pipe buffer.
+				for i := 0; i < 128; i++ {
+					jobs = append(jobs, rlsJob{fmt.Sprintf("Supporting job %03d %s", i, strings.Repeat("x", 8192)), "success"})
+				}
+				return jobs
+			}))
+			res := rlsRelease(t, r, s, rlsRcTag, "--dry-run", "--require-matrix-run")
+			out := rlsNorm(res.out)
+			if tc.wantReason == "" {
+				if res.exit != 0 {
+					t.Fatalf("complete matrix: exit=%d, want 0\n%s", res.exit, out)
+				}
+				rlsMustContain(t, out, "Matrix gate: run 201 of "+rlsMatrixFile+" is green on all three OS legs", "DRY RUN — skipping tag creation")
+			} else {
+				if res.exit != 1 {
+					t.Errorf("refused matrix: exit=%d, want 1\n%s", res.exit, out)
+				}
+				rlsMustContain(t, out, "Matrix gate:", tc.wantReason)
+			}
+		})
 	}
 }

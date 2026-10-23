@@ -91,7 +91,13 @@ func TestFactoryLeaseSectionExcludesWorktreeStep(t *testing.T) {
 // refusal row (card t1516): the nomination is refused with that token before
 // any write — no lease, no promotion, no record write.
 type flArmCase struct {
-	name                       string
+	name string
+	// selfDispatch arms the fixture's self-dispatch flag: the row leases an
+	// unowned picked card through the generic arms, which sit behind the flag
+	// since SPEC-CARD-ELIGIBLE-PULL-001 (the arm rows below keep their
+	// atomicity subject — record writes under the lease-section lock — the
+	// flag only re-arms the vehicle; sync-audit F2).
+	selfDispatch               bool
 	itemState                  factory.BacklogState
 	row                        *homestate.Card
 	nominated                  bool
@@ -106,8 +112,8 @@ func flArmCases() []flArmCase {
 	picked := func() *homestate.Card { return &homestate.Card{CardID: "t1", State: homestate.CardPicked} }
 	return []flArmCase{
 		{name: "arm-a", itemState: factory.BacklogStatePicked, row: assigned(), wrts: 1},
-		{name: "arm-b", itemState: factory.BacklogStatePicked, row: picked(), wrts: 2},
-		{name: "arm-b2", itemState: factory.BacklogStatePicked, wrts: 3},
+		{name: "arm-b", itemState: factory.BacklogStatePicked, row: picked(), selfDispatch: true, wrts: 2},
+		{name: "arm-b2", itemState: factory.BacklogStatePicked, selfDispatch: true, wrts: 3},
 		{name: "arm-c", itemState: factory.BacklogStateQueued, promotions: 1, wrts: 3},
 		{name: "nominated-queued", itemState: factory.BacklogStateQueued, nominated: true, promotions: 1, wrts: 3},
 		// Card t1516: the queued stale-row shape is refused, not leased (the
@@ -128,6 +134,13 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 	for _, c := range flArmCases() {
 		t.Run(c.name, func(t *testing.T) {
 			root, store := nmBase(t, c.itemState)
+			if c.selfDispatch {
+				cepSelfDispatchYAML(t, root, true)
+				// Amendment 0.3.0: condition 2 is fail-closed — the generic-arm
+				// vehicles carry a spec id so the lease (and the atomicity
+				// subject under it) stays reachable.
+				cepSetSpecID(t, store, "t1", "SPEC-FAL-ARM-001")
+			}
 			if c.row != nil {
 				fcPlace(t, root, *c.row)
 			}

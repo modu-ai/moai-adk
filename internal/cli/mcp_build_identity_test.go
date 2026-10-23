@@ -683,7 +683,11 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// a comparison. (The card's earlier in-file rule had moved it to :334 and
 		// left this sweep red; the move out of the file is what restores a
 		// coordinate near the baseline.)
-		"integration.go:258": true,
+		// Re-measured at card t1928: the currentBranch symbolic-ref repair
+		// (+9 lines above the doc mention — the comment expansion 3→12 and the
+		// TrimPrefix line) moved the doc mention 258→267. Same hit; no added
+		// line is an ancestry comparison.
+		"integration.go:267": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the

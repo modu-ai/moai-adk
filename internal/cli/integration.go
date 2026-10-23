@@ -119,15 +119,24 @@ func integrationSidecarRoot() string {
 	return integrationLockRoot()
 }
 
-// currentBranch reports the checked-out branch of the caller's tree, for the
-// record's `branch` field. Best-effort: the field is for a human reading a
-// refusal, not a decision input.
+// currentBranch reports the checked-out branch of the caller's tree: for the
+// record's `branch` field and for the `factory merge ready` fallback, whose
+// value feeds the merge-readiness triple's conflict and tree-identity checks.
+// The read is `git symbolic-ref --quiet HEAD`, not `rev-parse --abbrev-ref
+// HEAD`: when a tag shares the branch's name, --abbrev-ref disambiguates to
+// `heads/<branch>` — the acquire record then names a branch that is no
+// refs/heads/ entry, and the merge triple's rev operations evaluate a
+// distorted ref (card t1834's F3; the same class t1834 fixed in
+// factory_card.go and t1920 in integration_merge_step.go). Only the
+// refs/heads/ prefix is stripped. With --quiet a detached HEAD exits non-zero
+// with no output, so the result is "" — an honest unknown over the literal
+// "HEAD" string the old read printed; no new semantics are invented for it.
 func currentBranch() string {
-	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	out, err := exec.Command("git", "symbolic-ref", "--quiet", "HEAD").Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // resolveIntegrationTarget returns the (branch, worktree) the window actually
@@ -247,7 +256,7 @@ The deny layer is opt-in (workflow.integration_lock.enabled, default false);
 these verbs work regardless, so a project may keep the record as a
 coordination signal without enabling refusal.`,
 	}
-	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPolicyCmd(), newIntegrationRemeasureCmd(), newIntegrationMergeCmd(), newIntegrationPreflightCmd(), newIntegrationResyncCmd(), newIntegrationCandidateCmd())
+	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPolicyCmd(), newIntegrationRemeasureCmd(), newIntegrationMergeCmd(), newIntegrationPreflightCmd(), newIntegrationResyncCmd(), newIntegrationCandidateCmd(), newIntegrationBackupCmd())
 	return cmd
 }
 
@@ -258,8 +267,14 @@ coordination signal without enabling refusal.`,
 // base died with `merge-base ..HEAD … exit status 128`; IntegrationTarget
 // carries the git-flow DevelopBranch unchanged and resolves github-flow to
 // main.
+//
+// The configuration is read from integrationLockRoot, the root acquire, complete
+// and the base-freshness gate read it from. Reading CLAUDE_PROJECT_DIR as given
+// instead let a variable naming a linked worktree with its own git-strategy.yaml
+// record the re-measure against one branch while the gate measured landings
+// behind another (card t1834, sync-audit iter8 F2).
 func configuredIntegrationBranch() string {
-	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).IntegrationTarget
+	return config.LoadGitFlowIntegrationConfig(integrationLockRoot()).IntegrationTarget
 }
 
 func newIntegrationStatusCmd() *cobra.Command {
@@ -434,6 +449,22 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// git-flow at all — the latter only decides the warning below.
 			gitFlow := config.LoadGitFlowIntegrationConfig(root)
 			branch, wt, source := resolveIntegrationTarget(branchFlag, gitFlow.DevelopBranch)
+			// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): a
+			// candidate too far behind the integration branch, or carrying no
+			// re-measure record for its current tree, is refused BEFORE the
+			// window record is written and before any --wait ticket is
+			// enqueued. Its refusal layer is gated on
+			// workflow.base_freshness_gate.enabled; an uncertain verdict admits.
+			// The gate measures the configured integration target only: the window
+			// record above may fall back to the caller's branch, the measurement
+			// never does, and an explicit --branch naming another branch is the
+			// gate's to refuse (card t1834, sync-audit iter10 H1). Without --branch
+			// the window resolves to the configured target only where a develop
+			// branch is configured (git-flow); elsewhere it records the caller's
+			// branch, which shapes the wording of the refusal's remedy.
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, gitFlow.IntegrationTarget, branchFlag, gitFlow.DevelopBranch != ""); freshErr != nil {
+				return freshErr
+			}
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
 			// before any reader probes it — recording it made every window read

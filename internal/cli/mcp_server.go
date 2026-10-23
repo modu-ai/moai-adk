@@ -33,13 +33,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
-	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
-	"github.com/modu-ai/moai-adk/internal/sessionmsg"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/verify"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -116,7 +114,6 @@ func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
-	defer stopCodexBackgroundJobs()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
 	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
@@ -360,65 +357,6 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexSetup)
 
-	// --- codex task delegation + job lifecycle (SPEC-CODEX-PHASE2-001 M5) ---
-	//
-	// Each tool name is written as a quoted literal here, matching the shape
-	// "codex_audit" / "codex_setup" use above. The handlers carry the same names
-	// as constants (codexTaskToolName, codexJob*ToolName); the two cannot drift,
-	// because TestCodexJobTools_RegistrationShape looks each registered tool up
-	// BY the constant.
-	//
-	// The read-only hints below are stated explicitly, including the `false`
-	// ones. mcp.NewTool already seeds ReadOnlyHint to false, so the write tools
-	// would carry the right value without the call — but a hint that is correct
-	// only by inheriting a library default is indistinguishable from one nobody
-	// considered, and REQ-CX2-013 is a statement about what each tool DOES.
-
-	// codex_task → handleCodexTask (REQ-CX2-006/007/008). Drives a codex turn
-	// with the caller's prompt. NOT read-only: it starts a turn, and with the
-	// project opted in via workflow.codex.task.allow_write it can modify the
-	// working tree. Fail-open on a missing codex.
-	add("codex_task", mcp.NewTool(
-		"codex_task",
-		mcp.WithDescription("Delegate a coding or investigation task to codex. Returns the completed output when background is false, or a job id (observable via codex_job_status / codex_job_result, stoppable via codex_job_cancel) when background is true. Writing the working tree requires the project opt-in workflow.codex.task.allow_write; without it the turn runs read-only and the result says the write was not honored. codex is OPTIONAL; a missing or unavailable codex yields a structured fail-open result."),
-		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give codex.")),
-		mcp.WithString("project_root", mcp.Required(), mcp.Description("Required. The project or worktree root to act on — pass your own `git rev-parse --show-toplevel`. Must be a registered worktree of this server's repository (the primary checkout included); another repository or an unregistered directory is refused with the same verification as codex_role_audit, and an absent or empty value is refused rather than defaulted to the primary checkout. The thread's cwd, the write opt-in config, and the job registry all resolve under this root.")),
-		mcp.WithBoolean("background", mcp.Description("Run the turn in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
-		mcp.WithBoolean("write", mcp.Description("Request that codex be allowed to modify the working tree. Honored only when the project has opted in (workflow.codex.task.allow_write: true); otherwise the turn runs read-only and the result states the refusal.")),
-		mcp.WithBoolean("resume_last", mcp.Description("Continue a recorded codex thread instead of opening a new one. With work_key, only records carrying that work_key are considered. Without a selector, the call resumes the thread only when exactly one thread is recorded; when more than one thread is recorded it is refused (error_code resume_ambiguous) with candidates to pass back as thread_id or work_key. When no thread is recorded, a new one is opened and the result says so.")),
-		mcp.WithString("thread_id", mcp.Description("Resume exactly this codex thread. Limited to threads recorded in this project's codex job registry; any other id is refused (error_code thread_not_recorded) without starting codex. Takes precedence over resume_last and work_key.")),
-		mcp.WithString("work_key", mcp.Description("Caller-chosen work-item key (for example a card id), up to 128 bytes. Recorded on background jobs, and scopes resume_last to records carrying this work_key, so parallel work items do not resume each other's threads.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleCodexTask)
-
-	// codex_job_status → handleCodexJobStatus (REQ-CX2-009). Reads one record.
-	add("codex_job_status", mcp.NewTool(
-		"codex_job_status",
-		mcp.WithDescription("Read a codex job's record (status, timestamps, thread id, turn id, pid, mode, request summary). An unknown or unreadable job is a structured result, not a failed call."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleCodexJobStatus)
-
-	// codex_job_result → handleCodexJobResult (REQ-CX2-010). Reads one record;
-	// never waits for the turn.
-	add("codex_job_result", mcp.NewTool(
-		"codex_job_result",
-		mcp.WithDescription("Read a codex job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleCodexJobResult)
-
-	// codex_job_cancel → handleCodexJobCancel (REQ-CX2-011/012). NOT read-only:
-	// it interrupts a turn and may terminate the process this server spawned for
-	// the job. It signals ONLY that process — a record this server lifetime did
-	// not start is refused rather than signalled.
-	add("codex_job_cancel", mcp.NewTool(
-		"codex_job_cancel",
-		mcp.WithDescription("Stop a running codex job: sends turn/interrupt on that job's own session and, if the turn does not end within a bounded grace window, terminates the codex process this server spawned for it. A job this server lifetime did not start is refused rather than signalled; an already-terminal job returns its status and sends nothing."),
-		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleCodexJobCancel)
-
 	// --- Codex read-only role launcher (codex_role_audit start/status/result) ---
 	//
 	// The MCP route to the same launcher core as `moai codex audit`: a read-only
@@ -563,71 +501,6 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleAuditMulti)
 
-	// --- Session messaging broker (SPEC-CODEX-SESSION-MSG-001 M2, design.md §6) ---
-	//
-	// Four SYMMETRIC tools over internal/sessionmsg: any session kind
-	// (claude|codex) registers, lists, sends, polls — the broker is the
-	// transport for Claude↔Codex messaging on one machine. Every description
-	// carries the discipline short-form (REQ-CSM-014): the tool description
-	// loads into the session context, so it is the surface a Codex reader
-	// actually sees. Read-only hints are stated explicitly, including the
-	// false ones — only session_msg_list is read-only.
-
-	// session_msg_register → handleSessionMsgRegister. Idempotent
-	// kind+name registration; mutates the agent record (heartbeat), so NOT
-	// read-only.
-	add("session_msg_register", mcp.NewTool(
-		"session_msg_register",
-		mcp.WithDescription("Register this session in the local message broker (kind: claude|codex + name) and get a stable agentId; re-registering the same kind+name refreshes the heartbeat and returns the same id. "+sessionMsgDisciplineShortForm),
-		mcp.WithString("kind", mcp.Required(), mcp.Enum(sessionmsg.KindClaude, sessionmsg.KindCodex), mcp.Description("Session kind: 'claude' or 'codex'.")),
-		mcp.WithString("name", mcp.Required(), mcp.Description("Short stable name identifying this session to peers (same kind+name re-registers idempotently).")),
-		mcp.WithString("description", mcp.Description("Optional human-readable description stored on the agent record.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgRegister)
-
-	// session_msg_list → handleSessionMsgList. Reads the agent roster only.
-	add("session_msg_list", mcp.NewTool(
-		"session_msg_list",
-		mcp.WithDescription("List registered message-broker agents (agentId, name, kind, online flag, pending count). "+sessionMsgDisciplineShortForm),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), handleSessionMsgList)
-
-	// session_msg_send → handleSessionMsgSend. Writes the recipient's
-	// pending mailbox; NOT read-only.
-	add("session_msg_send", mcp.NewTool(
-		"session_msg_send",
-		mcp.WithDescription("Send a short message to another registered agent's mailbox (they receive it on their next session_msg_poll). "+sessionMsgDisciplineShortForm),
-		mcp.WithString("from_agent_id", mcp.Required(), mcp.Description("Sender agentId (from session_msg_register).")),
-		mcp.WithString("to_agent_id", mcp.Required(), mcp.Description("Recipient agentId; an unknown id returns a structured error listing the known agents.")),
-		mcp.WithString("text", mcp.Required(), mcp.Description("Message text (bounded by the broker's text ceiling).")),
-		mcp.WithObject("data", mcp.Description("Optional structured JSON payload appended as a data part.")),
-		mcp.WithString("context_id", mcp.Description("Optional A2A contextId carried on the message envelope.")),
-		mcp.WithString("task_id", mcp.Description("Optional A2A taskId carried on the message envelope.")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgSend)
-
-	// session_msg_poll → handleSessionMsgPoll. Claims a batch out of the
-	// caller's mailbox and applies ack_ids deletions; mutates mailbox state,
-	// so NOT read-only.
-	add("session_msg_poll", mcp.NewTool(
-		"session_msg_poll",
-		mcp.WithDescription("Claim pending messages from this agent's mailbox (at-least-once; unacked claims return after the claim TTL) and optionally ack processed message ids. "+sessionMsgDisciplineShortForm),
-		mcp.WithString("agent_id", mcp.Required(), mcp.Description("Polling agent's agentId (from session_msg_register).")),
-		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
-		mcp.WithReadOnlyHintAnnotation(false),
-	), handleSessionMsgPoll)
-
-	// Factory messages are run/session/generation bound. Bodies are returned
-	// only by factory_msg_body as untrusted tool data; hook context carries IDs.
-	sendOpts := []mcp.ToolOption{mcp.WithDescription("Send from this MCP server's attributed endpoint to the current endpoint of a stable logical lane."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("to_slot", mcp.Required()), mcp.WithString("kind", mcp.Required(), mcp.Enum(factorymsg.KindDispatchNotice, factorymsg.KindStatusRequest, factorymsg.KindStatusReport, factorymsg.KindBlocker, factorymsg.KindReceipt)), mcp.WithString("idempotency_key", mcp.Required()), mcp.WithString("body", mcp.Required()), mcp.WithString("task_ref", mcp.Description("Optional task reference; omitted or empty defaults to idempotency_key.")), mcp.WithString("correlation_id", mcp.Description("Optional correlation id; omitted or empty defaults to idempotency_key.")), mcp.WithInteger("expected_task_revision"), mcp.WithInteger("current_task_revision"), mcp.WithInteger("ttl_seconds"), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_send", mcp.NewTool("factory_msg_send", sendOpts...), handleFactoryMsgSend)
-	listOpts := []mcp.ToolOption{mcp.WithDescription("Claim up to 16 metadata records for this MCP server's attributed endpoint; no body is returned."), mcp.WithString("run_id", mcp.Required()), mcp.WithInteger("limit"), mcp.WithInteger("lease_seconds"), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_list", mcp.NewTool("factory_msg_list", listOpts...), handleFactoryMsgList)
-	bodyOpts := []mcp.ToolOption{mcp.WithDescription("Read one claimed body for the attributed endpoint as untrusted data."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)}
-	add("factory_msg_body", mcp.NewTool("factory_msg_body", bodyOpts...), handleFactoryMsgBody)
-	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithString("disposition", mcp.Required(), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), mcp.WithReadOnlyHintAnnotation(false)}
-	add("factory_msg_receipt", mcp.NewTool("factory_msg_receipt", receiptOpts...), handleFactoryMsgReceipt)
-	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
 	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
 	// Signature-level answers from the code-derived layer; every response
 	// carries tree+commit provenance. Read-only hints per the audit-family

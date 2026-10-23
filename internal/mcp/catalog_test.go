@@ -12,14 +12,16 @@ import (
 // catches drift in either direction. The jev_ask addition rides
 // SPEC-JEV-GOAL-DIST-001 M8a: registration is unconditional, the capability
 // itself stays gated (workflow.jev.enabled ships false).
-// The factory message family contributes five further registered tools, and
-// the Codex read-only role launcher three (start, status, result).
+// The Codex read-only role launcher contributes three (start, status, result).
 // SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014) contributes the six
 // factory card + queue tools. The two on-demand self-review tools
 // (codex_review, glm_review) are read-only and bring the surface to 47.
 // SPEC-FACTORY-LEASE-RENEW-001 M2 (REQ-FLR-002) adds factory_renew, the lane's
-// write-capable card lease renewal, which brings the surface to 48.
-const wantCatalogSize = 48
+// write-capable card lease renewal, which brought the surface to 48; card
+// t1908 removed the nine session_msg_* / factory_msg_* messaging tools,
+// leaving it at 39; the general codex execution surface removal (card t1909)
+// retired the four codex_task/codex_job_* tools, bringing it to 35.
+const wantCatalogSize = 35
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -31,11 +33,11 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	}
 }
 
-// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty-one write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 27 are
-// read-only (the two self-review tools among them). session_msg_list is read-only: it enumerates registered peers
-// without touching the store, unlike register/send/poll which write an agent
-// record, append a message, and claim an inbox respectively.
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the thirteen write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 22 are
+// read-only (the two self-review tools among them). card t1909 removed the
+// two write-capable codex delegation tools (codex_task, codex_job_cancel)
+// from the fifteen.
 //
 // codex_audit and audit_multi joined the write side in card t904: both file an
 // audit receipt under the audited tree's .moai/state/audit-receipts/ on every
@@ -51,27 +53,19 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // factory_renew (the lane's card lease renewal, REQ-FLR-002).
 func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
-		"goal_arm":             true,
-		"verify_snapshot":      true,
-		"codex_task":           true,
-		"codex_job_cancel":     true,
-		"codex_role_audit":     true,
-		"glm_task":             true,
-		"glm_job_cancel":       true,
-		"codex_audit":          true,
-		"audit_multi":          true,
-		"session_msg_register": true,
-		"session_msg_send":     true,
-		"session_msg_poll":     true,
-		"factory_msg_send":     true,
-		"factory_msg_list":     true,
-		"factory_msg_receipt":  true,
-		"todo_add":             true,
-		"factory_next":         true,
-		"factory_stage":        true,
-		"factory_complete":     true,
-		"factory_decide":       true,
-		"factory_renew":        true,
+		"goal_arm":         true,
+		"verify_snapshot":  true,
+		"codex_role_audit": true,
+		"glm_task":         true,
+		"glm_job_cancel":   true,
+		"codex_audit":      true,
+		"audit_multi":      true,
+		"todo_add":         true,
+		"factory_next":     true,
+		"factory_stage":    true,
+		"factory_complete": true,
+		"factory_decide":   true,
+		"factory_renew":    true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {
