@@ -142,12 +142,16 @@ file the completion report names:
    runtime-completion archive authority (`auto-semantics.md` §13): the
    archive lands with the landing verdict the edge answered, and the
    runtime completion row is recorded. No leader `todo done` is needed.
-5. **Read the review on the pull request** — a `gh pr checks` row naming
-   CodeRabbit is not evidence (`factory-dispatch.md` § CodeRabbit is not
-   read from `gh pr checks`): the combined commit-status API must show
-   `state == "success"` with description `Review completed`, AND a
-   `Merge Risk:` line whose commit prefix matches the current
-   `headRefOid`. Anything else is a gap.
+5. **Read native review evidence on the pull request** — a `gh pr checks`
+   row or successful CI job does not prove a native review ran (`factory-dispatch.md`
+   § Native Codex review evidence is separate from check status). Read the
+   trusted code and security review artifacts against the current full
+   `headRefOid`; both legs and their matching receipts must be complete and
+   clean, with no reported or unresolved finding. Missing or running evidence
+   stays pending while the review window is open and cannot pass at its final
+   check; stale, failed, malformed, ambiguous, or finding-bearing evidence
+   holds the gate. The workflow's `review` step runs
+   `scripts/ci/codex-review-gate.sh`.
 6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
    disposes the card tree (owner check, dirty trees skipped — the
    `worktree-integration.md` disposal contract).

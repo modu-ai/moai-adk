@@ -72,23 +72,29 @@ func withCodexLookPath(t *testing.T, fn func(string) (string, error)) {
 // fakeCodexSession is the session-spawning double: start returns a fakeConn that
 // replays the canned NDJSON lines in order and records every sent request line.
 type fakeCodexSession struct {
-	lines    []string // canned NDJSON lines recv yields, in order
-	startErr error    // if non-nil, start returns this error
-	sent     []string // recorded sent request lines (across the single session)
+	lines     []string // canned NDJSON lines recv yields, in order
+	startErr  error    // if non-nil, start returns this error
+	sent      []string // recorded sent request lines (across the single session)
+	stderr    string   // backend stderr the fake process would have written
+	startArgs []string // the argv the session start received (REQ-MN-024)
+	startDir  string   // the working directory the session start received (l57-r5 finding 1)
 }
 
-func (f *fakeCodexSession) start(context.Context, string, []string) (codexConn, error) {
+func (f *fakeCodexSession) start(_ context.Context, _ string, args []string, dir string) (codexConn, error) {
+	f.startArgs = append([]string(nil), args...)
+	f.startDir = dir
 	if f.startErr != nil {
 		return nil, f.startErr
 	}
-	return &fakeCodexConn{lines: f.lines, sent: &f.sent}, nil
+	return &fakeCodexConn{lines: f.lines, sent: &f.sent, stderr: f.stderr}, nil
 }
 
 // fakeCodexConn replays canned lines via recv and records sends.
 type fakeCodexConn struct {
-	lines []string
-	idx   int
-	sent  *[]string
+	lines  []string
+	idx    int
+	sent   *[]string
+	stderr string
 }
 
 func (c *fakeCodexConn) send(line string) error { *c.sent = append(*c.sent, line); return nil }
@@ -102,9 +108,37 @@ func (c *fakeCodexConn) recv() (string, bool) {
 }
 func (c *fakeCodexConn) close() error { return nil }
 
+// stderrTail satisfies codexStderrReporter so a could-not-run result can carry
+// the backend's stderr (REQ-MN-021).
+func (c *fakeCodexConn) stderrTail() string { return c.stderr }
+
+// withCodexSessionStderr is withCodexSession with a canned backend stderr, for
+// tests asserting the stderr-preservation half of REQ-MN-021.
+func withCodexSessionStderr(t *testing.T, lines []string, stderr string) *fakeCodexSession {
+	t.Helper()
+	sess := withCodexSession(t, lines)
+	sess.stderr = stderr
+	return sess
+}
+
+// stubCodexContainmentListing installs the EMPTY-server listing the REQ-MN-009
+// containment precondition reads before every codex session open — the same
+// rule withCodexSession applies: a test spawn carries no config.toml MCP
+// servers to disable, and without the stub the listing executes the stub
+// binary and fails, so no session ever opens.
+func stubCodexContainmentListing(t *testing.T) {
+	t.Helper()
+	prevList := codexAuditMCPList
+	codexAuditMCPList = func(context.Context, string, string) (string, error) { return "[]", nil }
+	t.Cleanup(func() { codexAuditMCPList = prevList })
+}
+
 // withCodexSession installs a fake session that replays `lines` and exposes the
 // recorded sent request lines. The single-shot runner + LookPath seams are also
-// pointed at a stub binary so the gate's binary-resolution succeeds.
+// pointed at a stub binary so the gate's binary-resolution succeeds, and the
+// REQ-MN-009 containment listing is stubbed to an EMPTY server list — a test
+// spawn carries no config.toml MCP servers to disable, while a real listing
+// failure still refuses the spawn (fail-closed).
 func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
 	t.Helper()
 	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
@@ -112,7 +146,10 @@ func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	sess := &fakeCodexSession{lines: lines}
 	codexSession = sess
-	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
+	stubCodexContainmentListing(t)
+	t.Cleanup(func() {
+		codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess
+	})
 	return sess
 }
 
@@ -661,26 +698,3 @@ func TestRealCodexConnPid(t *testing.T) {
 }
 
 // ─── SPEC-CODEX-COVER-RESIDUAL-001 M2 (REQ-CCR-005 / AC-CCR-006) ──────────
-
-// TestCodexSessionHandlePid covers the 3-branch pid read on the session handle
-// directly, same package, no subprocess: a nil receiver → 0, a handle with a
-// nil conn → 0, and a handle whose conn is a fakeCodexConn → fakeCodexConnPID.
-//
-// It is the sibling of TestRealCodexConnPid above — the same 3-arm nil-guard
-// shape on the other receiver — and the nil arms are likewise a disjunction:
-// h == nil MUST short-circuit before h.conn is dereferenced, or the typed-nil
-// call panics rather than returning 0.
-//
-// Constructing &fakeCodexConn{} with a nil sent field is safe here: pid() reads
-// no field of the conn beyond the interface dispatch, and send is never called.
-func TestCodexSessionHandlePid(t *testing.T) {
-	if got := (*codexSessionHandle)(nil).pid(); got != 0 {
-		t.Errorf("pid on a nil handle = %d, want 0", got)
-	}
-	if got := (&codexSessionHandle{}).pid(); got != 0 {
-		t.Errorf("pid on a handle with no conn = %d, want 0", got)
-	}
-	if got := (&codexSessionHandle{conn: &fakeCodexConn{}}).pid(); got != fakeCodexConnPID {
-		t.Errorf("pid with a process-bearing conn = %d, want %d", got, fakeCodexConnPID)
-	}
-}

@@ -1,6 +1,7 @@
 [
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "card_id": {
           "description": "Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.",
@@ -29,7 +30,7 @@
           "type": "string"
         },
         "session_id": {
-          "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.",
+          "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/\u003csession\u003e.json). Empty ⇒ persistence no-op.",
           "type": "string"
         },
         "target": {
@@ -45,6 +46,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "effort": {
           "description": "Optional Claude Code effort; overrides workflow.audit.claude.effort.",
@@ -96,6 +98,18 @@
         },
         "contradiction": {
           "type": "string"
+        },
+        "could_not_run": {
+          "type": "boolean"
+        },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "findings": {
           "items": {
@@ -232,11 +246,17 @@
         "state_notice": {
           "type": "string"
         },
+        "stderr": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"
@@ -253,6 +273,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "delta_base": {
           "description": "Optional delta scope: a commit SHA, an ancestor of HEAD, that this change was already audited up to. With target 'baseBranch' the review measures `delta_base...HEAD` instead of the resolved base, so findings that predate it do not re-surface. Claude, GLM and codex native honour it exactly; codex adversarial (and the audit_multi codex leg) is told in the prompt only, and the result says so. An invalid value, or one used with another target, is a tool error — never a silent full-diff review. audit_multi writes no second-review record for a delta call. Omitted ⇒ unchanged behaviour.",
@@ -306,6 +327,18 @@
         "contradiction": {
           "type": "string"
         },
+        "could_not_run": {
+          "type": "boolean"
+        },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -441,11 +474,17 @@
         "state_notice": {
           "type": "string"
         },
+        "stderr": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"
@@ -462,6 +501,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "focus": {
           "description": "Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').",
@@ -503,6 +543,18 @@
         "contradiction": {
           "type": "string"
         },
+        "could_not_run": {
+          "type": "boolean"
+        },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -638,11 +690,17 @@
         "state_notice": {
           "type": "string"
         },
+        "stderr": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"

@@ -2743,11 +2743,11 @@
     "start_line": 3
    },
    "before_text": "> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
-   "after_text": "> Single source of truth for the 48 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
+   "after_text": "> Single source of truth for the 37 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "scope/capability-map description",
-   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): 47 tools -> 48 tools. before_text and the anchor are unchanged."
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew, 47 -> 48), f25c78c6a (t1908 removed the nine session/factory messaging tools, 48 -> 39), and card t1909 (the general codex execution surface removal retired codex_task and the codex_job_* family, 39 -> 35). before_text and the anchor are unchanged."
   },
   {
    "id": "ALB-0140",
@@ -2780,11 +2780,11 @@
     "start_line": 22
    },
    "before_text": "Twenty-two tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, and `factory_complete`. It names the tree the call should act\non. Four of the twenty-two\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\nand `factory_complete` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
-   "after_text": "Twenty-three tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, `factory_complete`, and `factory_renew`. It names the tree the call should act\non. Five of the twenty-three\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\n`factory_complete`, and `factory_renew` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
+   "after_text": "Thirty-two tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,\n`glm_job_cancel`, `glm_job_result`, `glm_job_status`,\n`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,\nand `todo_claim`. It names the tree the call should act\non. Four of the thirty-two\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\n`factory_complete`, and `factory_renew` reject a call without it naming the\nargument; it is never defaulted.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "enumerates which tools require project_root (tool-behavior description)",
-   "rewrite_note": "project_root list follows 1f15ee972 (M2 added factory_renew to the catalogue): Twenty-two -> Twenty-three tools, Four of the twenty-two -> Five of the twenty-three, and factory_renew added to the REQUIRE clause. before_text and the anchor are unchanged."
+   "rewrite_note": "project_root list follows 1f15ee972 (M2 added factory_renew to the catalogue): Twenty-two -> Twenty-three tools, Four of the twenty-two -> Five of the twenty-three, and factory_renew added to the REQUIRE clause. before_text and the anchor are unchanged. Updated at the t1632 third main-absorb (2026-10-23): card t1909 retired codex_task and the codex_job_* tools, and card t1632's todo_claim re-add leaves the deployed list at thirty-two tools (four REQUIRE); after_text tracks the deployed companion text."
   },
   {
    "id": "ALB-0142",
@@ -2891,11 +2891,11 @@
     "start_line": 71
    },
    "before_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
-   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(48 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
+   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(37 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
    "reason": "companion navigation pointer",
-   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): (47 tools) -> (48 tools) in the navigation line. before_text and the anchor are unchanged."
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew, 47 -> 48), f25c78c6a (t1908 retired the messaging broker section and removed nine messaging tools, 48 -> 39), and card t1909 (the general codex execution surface removal retired codex_task and the codex_job_* family, 39 -> 35). before_text and the anchor are unchanged."
   },
   {
    "id": "ALB-0149",
@@ -4678,7 +4678,7 @@
     "start_line": 7
    },
    "before_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.",
-   "after_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.",
+   "after_text": "> **Detail companion**: `factory-dispatch-detail.md` owns the dispatch cycle and coordination rationale; `factory-dispatch-cards.md` owns classification and traceability; `factory-dispatch-gates.md` owns native Codex review and integration gates; `factory-dispatch-mechanics.md` owns worktree and landing procedures. Load as needed.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -4938,7 +4938,7 @@
     "start_line": 33
    },
    "before_text": "The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.",
-   "after_text": "The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.",
+   "after_text": "A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5540,7 +5540,7 @@
     "start_line": 102
    },
    "before_text": "[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).",
-   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.",
+   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept while the lane executes the card; each wake reads disk evidence before replying.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5651,7 +5651,7 @@
     "start_line": 110
    },
    "before_text": "[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.",
-   "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
+   "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, native review evidence adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5676,7 +5676,7 @@
      "delivery": "REQ-ALB-024"
     }
    ],
-   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file; t1868 replaces retired CodeRabbit slot-wait adjudication with native review evidence adjudication"
   },
   {
    "id": "ALB-0280",
@@ -5788,7 +5788,7 @@
     "start_line": 124
    },
    "before_text": "[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:\n\n1. The **combined** endpoint `/commits/{sha}/status` shows `state == \"success\"` **and** description `Review completed`:\n\n    ```bash\n    gh api \"repos/$REPO/commits/$HEAD_SHA/status\" \\\n      --jq '.statuses[] | select(.context == \"CodeRabbit\" and .state == \"success\") | .description'\n    ```\n\n2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.",
-   "after_text": "[HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.",
+   "after_text": "[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5813,7 +5813,7 @@
      "delivery": "REQ-ALB-024"
     }
    ],
-   "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
+   "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file; t1868 replaces the retired CodeRabbit predicate with head-bound native Codex summary and receipt evidence"
   },
   {
    "id": "ALB-0285",
@@ -5825,7 +5825,7 @@
     "start_line": 135
    },
    "before_text": "Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)",
-   "after_text": "Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)",
+   "after_text": "Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5834,7 +5834,7 @@
      "delivery": "always"
     }
    ],
-   "reason": "CodeRabbit gap conditions"
+   "reason": "Native Codex evidence gap conditions"
   },
   {
    "id": "ALB-0286",

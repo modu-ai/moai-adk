@@ -343,9 +343,20 @@ func autoRankTargets(out io.Writer, rec *factory.BacklogRecord, targets []factor
 	return append(rescue, res.Ranked...), res, true
 }
 
+// noticeNotes wraps the at-most-one notice line (REQ-JEVC-007) as the notes
+// slice the selection record renders. An empty notice carries no note.
+func noticeNotes(notice string) []string {
+	if notice == "" {
+		return nil
+	}
+	return []string{notice}
+}
+
 // autoRankJevOrder asks Jev to order the candidates, which arrive in fallback
 // order. It returns the full processing order, or — when the signal is not
-// available — an empty order and the one fallback reason. At most
+// available — an empty order and the one fallback reason. The result's
+// at-most-one notice line rides out in notes: on the unavailable branch it is
+// the note, and on the answered ones it is appended last (card t1803). At most
 // autoRankJevCandidateLimit candidates are sent (the first in fallback order);
 // the surplus follows the Jev-ordered cards in fallback order and a note says
 // so. No lock is held: the cycle ranks over an in-memory record.
@@ -359,12 +370,14 @@ func autoRankJevOrder(fallback []autoRankCandidate, ask autoJevRanker) (ordered 
 	}
 
 	res := ask(autoRankJevRequest(sent))
+	notice := res.NoticeLine()
 	if !res.OK() {
-		return nil, autoFallbackReason(res.Availability), nil
+		return nil, autoFallbackReason(res.Availability), noticeNotes(notice)
 	}
 	answers, defect := autoRankJevAnswers(sent, res.Answers)
 	if defect != "" {
-		return nil, autoRankReasonIncompleteAnswer, []string{"jev answer set rejected as a whole: " + defect}
+		return nil, autoRankReasonIncompleteAnswer,
+			append(noticeNotes(notice), "jev answer set rejected as a whole: "+defect)
 	}
 
 	ordered = make([]autoRankCandidate, len(sent))
@@ -386,7 +399,7 @@ func autoRankJevOrder(fallback []autoRankCandidate, ask autoJevRanker) (ordered 
 		notes = append(notes, fmt.Sprintf("jev request bound %d reached: %d further card(s) follow the jev order in fallback order (%s)",
 			autoRankJevCandidateLimit, len(surplus), strings.Join(ids, " ")))
 	}
-	return append(ordered, surplus...), "", notes
+	return append(ordered, surplus...), "", append(notes, noticeNotes(notice)...)
 }
 
 // autoRankJevRequest builds the one request: one state listing the candidates

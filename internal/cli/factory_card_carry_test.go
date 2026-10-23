@@ -18,6 +18,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 const (
@@ -27,12 +28,12 @@ const (
 
 // carryPlaceRunRow inserts a runs row with an explicit created_at, so the
 // previous run reads older than the current one deterministically.
-func carryPlaceRunRow(t *testing.T, root, runID, createdAt string) {
+func carryPlaceRunRow(t *testing.T, root, runID, status, createdAt string) {
 	t.Helper()
 	db := fcOpen(t, root)
 	defer func() { _ = db.Close() }()
-	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES(?,?,?,'retired','{}',0,'',1,?,?)`,
-		runID, "", "", createdAt, createdAt); err != nil {
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES(?,?,?,?,'{}',0,'',1,?,?)`,
+		runID, "", "", status, createdAt, createdAt); err != nil {
 		t.Fatalf("place run %s: %v", runID, err)
 	}
 }
@@ -59,8 +60,8 @@ func carryFixture(t *testing.T) (string, *factory.BacklogStore) {
 	if real, err := filepath.EvalSymlinks(root); err == nil {
 		root = real
 	}
-	carryPlaceRunRow(t, root, carryPrevRun, "2026-10-04T00:00:00Z")
-	carryPlaceRunRow(t, root, carryNewRun, "2026-10-05T00:00:00Z")
+	carryPlaceRunRow(t, root, carryPrevRun, "retired", "2026-10-04T00:00:00Z")
+	carryPlaceRunRow(t, root, carryNewRun, "active", "2026-10-05T00:00:00Z")
 	return root, store
 }
 
@@ -200,11 +201,20 @@ func TestFactoryNextCreatesFreshTreeWhenPreviousTreeIsGone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("next with a dead previous tree: %v\nstdout: %s\nstderr: %s", err, out, stderr)
 	}
-	info, statErr := os.Stat(gone)
-	if statErr != nil || !info.IsDir() {
-		t.Fatalf("fresh card worktree %s does not exist: %v", gone, statErr)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the materializer
+	// creates the fresh tree at the resolver's home-root landing path —
+	// <MoaiHome>/worktrees/projects/<key>/<card> — not the legacy leaf the
+	// dead binding named.
+	homeRoot, rerr := worktreeroot.Root(root)
+	if rerr != nil {
+		t.Fatalf("resolve home root: %v", rerr)
 	}
-	if got := carryCard(t, root, carryNewRun, "t1").WorktreePath; !sameDirPath(got, gone) {
-		t.Errorf("run-new binding = %q, want the freshly created tree %q", got, gone)
+	fresh := filepath.Join(homeRoot, "t1")
+	info, statErr := os.Stat(fresh)
+	if statErr != nil || !info.IsDir() {
+		t.Fatalf("fresh card worktree %s does not exist: %v", fresh, statErr)
+	}
+	if got := carryCard(t, root, carryNewRun, "t1").WorktreePath; !sameDirPath(got, fresh) {
+		t.Errorf("run-new binding = %q, want the freshly created tree %q", got, fresh)
 	}
 }

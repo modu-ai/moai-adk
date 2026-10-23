@@ -95,15 +95,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "권한 우회", Desc: "모든 프롬프트 생략; 샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
-		"agent_wiring": {
-			Title:       "배포하고 연결할 에이전트 하니스 선택",
-			Description: "이 프로젝트에 MoAI가 배포하고 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
-			Options: []OptionTranslation{
-				{Label: "Claude 단독 (권장)", Desc: ".claude/ 표면과 AGENTS.md를 배포합니다 (지금까지의 기본 동작)"},
-				{Label: "Codex 단독", Desc: "AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터리, CLAUDE.md, .mcp.json이 생기지 않습니다"},
-				{Label: "Claude + Codex", Desc: "동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다"},
-			},
-		},
 		"jev_enabled": {
 			Title:       "Jev 판정 기능을 켤까요? (선택, 기본은 꺼짐)",
 			Description: "Jev는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 확률을 돌려줍니다. 스스로 결정하지는 않으며, 답은 사람이 읽습니다. 소프트웨어가 자동으로 쓰더라도 신호로만 쓰입니다 — 예를 들어 `moai todo --auto` 가 대기 카드를 살피는 순서, 또는 확인하거나 사람에게 넘기기만 하는 선택형 착수 교차 검증이 있습니다. 이 신호만으로 카드를 승인하거나 병합하거나 바꾸지는 않습니다. 켜면 카드 본문이나 요청 본문이 외부 업체 서버로 전송됩니다. 이 질문은 init 때만 묻습니다 — 나중에 바꾸려면 `moai web` 설정 화면을 여세요.",
@@ -180,15 +171,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "権限をバイパス", Desc: "すべてのプロンプトを省略; サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
-		"agent_wiring": {
-			Title:       "デプロイして接続するエージェントハーネスを選択",
-			Description: "このプロジェクトに MoAI がデプロイ・接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
-			Options: []OptionTranslation{
-				{Label: "Claude のみ (推奨)", Desc: ".claude/ サーフェスと AGENTS.md をデプロイします (従来のデフォルト動作)"},
-				{Label: "Codex のみ", Desc: "AGENTS.md と Codex サーフェスのみデプロイ — .claude/ ツリー、CLAUDE.md、.mcp.json は作成されません"},
-				{Label: "Claude + Codex", Desc: "同じ .claude/ デプロイに .codex/ 接続を追加し、.mcp.json のプロビジョニングを強制有効化"},
-			},
-		},
 		"jev_enabled": {
 			Title:       "Jev の型付き判定を有効にしますか？（任意・既定は無効）",
 			Description: "Jev は渡された状態について型付きの質問に答え、確率を返します。判断そのものは行わず、答えは人が読みます。自動で使われる場合も信号としてだけです — 例えば `moai todo --auto` が待機中のカードを検討する順序や、確認するか人に引き継ぐだけの任意の着手の交差検証があります。この信号だけでカードを承認・マージ・変更することはありません。有効にすると、カード本文やリクエスト本文が外部ベンダーのサーバーへ送信されます。この質問は init のときだけ尋ねます — 後から変える場合は `moai web` の設定画面を開いてください。",
@@ -263,15 +245,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "自动接受编辑 (推荐)", Desc: "自动接受文件编辑;其他工具仍需确认"},
 				{Label: "自动模式", Desc: "在分类器安全检查下自动批准工具调用"},
 				{Label: "跳过权限检查", Desc: "跳过所有提示;需要沙箱证明 (Docker/gVisor 等)"},
-			},
-		},
-		"agent_wiring": {
-			Title:       "选择要部署并接入的代理框架",
-			Description: "MoAI 为本项目部署并接入的 LLM 框架。'claude' 是推荐默认值，--llm 参数优先于此答案。",
-			Options: []OptionTranslation{
-				{Label: "仅 Claude (推荐)", Desc: "部署 .claude/ 表面与 AGENTS.md（沿用至今的默认行为）"},
-				{Label: "仅 Codex", Desc: "仅部署 AGENTS.md 与 Codex 表面 — 不会生成 .claude/ 目录、CLAUDE.md 和 .mcp.json"},
-				{Label: "Claude + Codex", Desc: "在相同的 .claude/ 部署之上追加 .codex/ 接入，并强制开启 .mcp.json 供应"},
 			},
 		},
 		"jev_enabled": {

@@ -307,14 +307,60 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		return fmt.Errorf("factory complete: read the card tip: %w", err)
 	}
 	checkedTip = strings.TrimSpace(checkedTip)
-	run, err := factoryPRReadiness(out, root, card, lane, cardBranch, target)
-	if err != nil {
-		return fmt.Errorf("factory complete: the merge-readiness check could not run: %w", err)
+	// The already-merged probe (card t1930, defect ②): a merge-ready or
+	// merging card whose pull request ALREADY reads MERGED — the squash-merge
+	// shape, where the card branch's commits never enter main's history and
+	// the merge-tree probe reports the very collision the squash produced —
+	// must reach the observation half, not the readiness triple. The probe is
+	// fail-open exactly like the observation half: a gh failure, timeout or
+	// unreadable answer here falls through to the readiness path below, whose
+	// own guards and refusals stay byte-for-byte what they were (reproduced
+	// on t1832 PR #1895 and t1894 PR #1897).
+	mergedProbe, _, probeErr := factoryReadPR(wt, cardBranch)
+	alreadyMerged := probeErr == nil && mergedProbe != nil &&
+		strings.EqualFold(mergedProbe.State, "MERGED") &&
+		mergedProbe.MergeCommit != nil && strings.TrimSpace(mergedProbe.MergeCommit.Oid) != ""
+	// The deleted-head-branch recovery (card-review r1, F1): GitHub deletes a
+	// merged pull request's head branch, and a pruned remote-tracking ref
+	// left a correctly merged card stuck — the pr-open edge's reader
+	// (verifyPROpen) requires refs/remotes/origin/<branch> to hold the tip.
+	// The branch is never re-pushed (that would resurrect what GitHub
+	// deleted); instead the tracking ref is restored from the STRONGER fact:
+	// the pull request itself attests headRefOid == the card tip, and the
+	// merged-pr edge independently verifies the merge commit on the fetched
+	// integration branch. A healthy ref (or one an honest fetch restores) is
+	// left untouched.
+	if alreadyMerged && mergedProbe.HeadRefOid == checkedTip {
+		headRef := "refs/remotes/origin/" + cardBranch
+		if pushed, rerr := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", headRef+"^{commit}"); rerr != nil || strings.TrimSpace(pushed) != checkedTip {
+			restored := false
+			if _, ferr := factoryGitRead(wt, "fetch", "origin", cardBranch); ferr == nil {
+				if again, rerr2 := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", headRef+"^{commit}"); rerr2 == nil && strings.TrimSpace(again) == checkedTip {
+					restored = true // the branch survives on origin; the honest fetch brought the ref back
+				}
+			}
+			if !restored {
+				if _, uerr := factoryGitRead(wt, "update-ref", headRef, checkedTip); uerr == nil {
+					_, _ = fmt.Fprintf(out, "  note: head branch %s is gone from origin; its remote-tracking ref was re-established from pull request #%d's head %s — nothing was pushed\n",
+						cardBranch, mergedProbe.Number, shortSHA(checkedTip))
+				}
+			}
+		}
 	}
-	if !run.AllPassed {
-		_, _ = fmt.Fprintf(out, "merge-readiness: REFUSED — failing condition: %s\nno pull request was opened\n", run.FailedCondition)
-		printMergeChecks(out, run.Checks)
-		return fmt.Errorf("factory complete: refused — merge-readiness failed on %s against %s; no branch was pushed and no pull request was opened", run.FailedCondition, target)
+	var run factorylane.MergeCheckRun
+	if alreadyMerged {
+		_, _ = fmt.Fprintf(out, "pull request #%d already reads MERGED with merge commit %s — recording the merge instead of re-checking readiness against %s\n",
+			mergedProbe.Number, mergedProbe.MergeCommit.Oid, target)
+	} else {
+		run, err = factoryPRReadiness(out, root, card, lane, cardBranch, target)
+		if err != nil {
+			return fmt.Errorf("factory complete: the merge-readiness check could not run: %w", err)
+		}
+		if !run.AllPassed {
+			_, _ = fmt.Fprintf(out, "merge-readiness: REFUSED — failing condition: %s\nno pull request was opened\n", run.FailedCondition)
+			printMergeChecks(out, run.Checks)
+			return fmt.Errorf("factory complete: refused — merge-readiness failed on %s against %s; no branch was pushed and no pull request was opened", run.FailedCondition, target)
+		}
 	}
 
 	stays := fmt.Sprintf("card %s stays in merging", card.CardID)
@@ -366,8 +412,10 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 		}
 		return nil
 	}
-	if err := verifyLease("the push"); err != nil {
-		return err
+	if !alreadyMerged {
+		if err := verifyLease("the push"); err != nil {
+			return err
+		}
 	}
 
 	// Every remote mutation re-checks the tip first AND is pinned to the
@@ -375,17 +423,26 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	// the readiness check was pushed and opened as a pull request before the
 	// late merge check refused it. The push re-reads the tip, refuses a
 	// moved one, and sends exactly checkedTip — a newer local commit stays
-	// local.
+	// local. An already-merged pull request skips the push itself (card
+	// t1930, defect ②): the branch it was merged from is already on origin,
+	// and pushing again could resurrect a head branch GitHub deleted at
+	// merge — the pr-open edge's own reader judges what is on the remote.
 	nowTip, err := factoryGitRead(wt, "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("factory complete: %s; read the card tip: %w", stays, err)
 	}
 	nowTip = strings.TrimSpace(nowTip)
 	if nowTip != checkedTip {
-		return fmt.Errorf("factory complete: %s; the card tip moved to %s after the readiness check verified %s — re-run complete", stays, dash(nowTip), checkedTip)
+		checkedIn := "the readiness check"
+		if alreadyMerged {
+			checkedIn = "the merged-pull-request probe"
+		}
+		return fmt.Errorf("factory complete: %s; the card tip moved to %s after %s verified %s — re-run complete", stays, dash(nowTip), checkedIn, checkedTip)
 	}
-	if _, err := factoryGitRead(wt, "push", "origin", checkedTip+":refs/heads/"+cardBranch); err != nil {
-		return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
+	if !alreadyMerged {
+		if _, err := factoryGitRead(wt, "push", "origin", checkedTip+":refs/heads/"+cardBranch); err != nil {
+			return fmt.Errorf("factory complete: %s; the push of %s failed: %w", stays, cardBranch, err)
+		}
 	}
 	if err := verifyLease("before the pull request"); err != nil {
 		return err

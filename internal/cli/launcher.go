@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	worktreepkg "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -488,16 +489,15 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	var cleanedWorktrees []string
 	var skippedWorktrees []string
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if !strings.HasPrefix(line, "worktree ") {
-			continue
-		}
-		rawPath := strings.TrimPrefix(line, "worktree ")
+	records, err := worktreepkg.ParseWorktreeList(output)
+	if err != nil {
+		return ""
+	}
+	for _, rec := range records {
 		// Normalize path separators: git on Windows returns forward-slash paths
 		// (e.g. C:/Users/...) while filepath.Join produces backslash paths.
 		// filepath.FromSlash converts to OS-native separators for correct comparison.
-		worktreePath := filepath.FromSlash(rawPath)
+		worktreePath := filepath.FromSlash(rec.Path)
 		workerName := filepath.Base(worktreePath)
 		if !strings.HasPrefix(workerName, "worker-") {
 			continue
@@ -510,15 +510,43 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 				continue
 			}
+			// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-014): a worker tree is
+			// removed only when its branch is integrated and landed on a
+			// remote by the disposal verbs' predicate and the migration did
+			// not move it (the M1 reverse lookup). Everything else is kept
+			// with its reason: a branch pushed but not integrated, a branch
+			// integrated locally but present on no remote, a branch whose
+			// remote check fails, and any tree the migration moved —
+			// whatever the tree's location or name.
+			keepReason := ""
+			switch rec.Branch {
+			case "":
+				keepReason = "detached or bare: no branch to confirm a landing for"
+			default:
+				landed, lerr := gitBranchLandedReal(worktreePath)
+				switch {
+				case lerr != nil:
+					keepReason = fmt.Sprintf("landing check failed (%v)", lerr)
+				case !landed:
+					keepReason = "branch is not landed on the remote integration ref"
+				}
+			}
+			if keepReason == "" && worktreepkg.MovedBy(projectRoot, worktreePath) {
+				keepReason = "moved by the migration"
+			}
+			if keepReason != "" {
+				skippedWorktrees = append(skippedWorktrees, fmt.Sprintf("%s (%s)", workerName, keepReason))
+				break
+			}
 			// Use the full path so git can locate the worktree regardless
-			// of whether it is under .claude/worktrees/ or ~/.moai/worktrees/.
-			// Non-force removal: git refuses when the worktree still holds
-			// uncommitted or untracked work, so a failure here means "kept",
-			// not "broken". See removeWorktree.
+			// of whether it is under .claude/worktrees/, ~/.moai/worktrees/
+			// or the home root. Non-force removal: git refuses when the
+			// worktree still holds uncommitted or untracked work, so a
+			// failure here means "kept", not "broken". See removeWorktree.
 			if err := removeWorktree(projectRoot, worktreePath); err == nil {
 				cleanedWorktrees = append(cleanedWorktrees, workerName)
 			} else {
-				skippedWorktrees = append(skippedWorktrees, workerName)
+				skippedWorktrees = append(skippedWorktrees, fmt.Sprintf("%s (git refused: %v)", workerName, err))
 			}
 			break
 		}
@@ -905,21 +933,29 @@ func parseProfileFlag(args []string) (string, []string, error) {
 // launch_view.go; resolveWorktreeL2Path derives it from raw args for callers
 // outside the cc / glm launch paths). It runs BEFORE normalizeWorktreeFlag.
 //
-// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010). The launcher's -w flag
-// accepts three kinds of values:
+// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010); accepted prefixes
+// updated by SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005) to the home root
+// plus the legacy roots. The launcher's -w flag accepts these kinds of
+// values:
 //
 //  1. A short name (e.g. "feat-login"). normalizeWorktreeFlag rewrites it into
 //     the canonical "--worktree <name>" two-token form for claude pass-through;
 //     claude then resolves the name against .claude/worktrees/<name>. This
-//     step MUST NOT interfere with short-name inputs.
-//  2. An absolute path under ~/.moai/worktrees/<project>/... (an L2 persistent
-//     worktree created by `moai worktree new` or the auto-isolation
-//     procedure). claude accepts an absolute --worktree value and uses it
-//     directly, so this step accepts the path and leaves args unchanged.
+//     step MUST NOT interfere with short-name inputs; the M2 entry clause
+//     for short names naming an existing home-root tree lives in
+//     existingWorktreeEntryDir (launch_view.go, REQ-WHR-006).
+//  2. An absolute path under the home-level root
+//     <MoaiHome>/worktrees/projects/<project-key>/<name> (the M2 home-root
+//     form) or under the legacy ~/.moai/worktrees/... (an L2 persistent
+//     worktree). Measurement PM-3 (operator ruling bd72) recorded that
+//     claude 2.1.303 REJECTS absolute --worktree values at argument
+//     validation — the real backend's acceptance is the entry measurement's
+//     domain (REQ-WHR-025); this step's launcher-side prefix validation is
+//     unchanged and leaves accepted args unchanged.
 //  3. An absolute path under <project>/.claude/worktrees/... (an L1
 //     Claude-native worktree). Treated the same as case 2.
 //
-// An absolute path NOT under either accepted prefix is REJECTED with a clear
+// An absolute path NOT under an accepted prefix is REJECTED with a clear
 // error so the launcher does not silently fall through to creating a new
 // worktree under either prefix (AC-WES-010c).
 //
@@ -947,8 +983,13 @@ func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
 		// Short name: defer to normalizeWorktreeFlag + claude resolution.
 		return nil
 	}
-	// Absolute path: must be under an accepted worktree prefix.
+	// Absolute path: must be under an accepted worktree prefix — the home
+	// root (<MoaiHome>/worktrees/projects, the M2 form) plus the legacy
+	// roots.
 	var acceptedPrefixes []string
+	if home, err := paths.MoaiHome(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(home, "worktrees", "projects"))
+	}
 	if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
 	}
@@ -964,7 +1005,8 @@ func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
 	}
 	return fmt.Errorf(
 		"worktree path %q is not under an accepted worktree prefix\n"+
-			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
+			"  accepted prefixes: <MoaiHome>/worktrees/projects/ (home root), ~/.moai/worktrees/ (L2 legacy),\n"+
+			"  .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
 			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,

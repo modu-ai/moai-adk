@@ -1,5 +1,16 @@
 package cli
 
+// update_worktree_migration_test.go — the update-side consolidation
+// (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-019; rewritten by card t1640 M8S,
+// review finding F1: the consolidation is the shared migration engine's).
+// The engine's own behaviors (skip causes, the manifest comparison, the
+// reverse order) are pinned in internal/cli/worktree's suites; this file
+// pins the update-side contract: the route is reachable through
+// runUpdateWorktreeMigration, eligible legacy trees land at the home-root
+// destination (never the legacy in-repo root), agent-* trees are never
+// selected, the dry run moves nothing, a retry moves nothing, and the
+// output carries the per-tree lines the update UI prints.
+
 import (
 	"bytes"
 	"os"
@@ -7,9 +18,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/modu-ai/moai-adk/internal/lockfile"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 func migrationGit(t *testing.T, root string, args ...string) string {
@@ -21,16 +34,19 @@ func migrationGit(t *testing.T, root string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func migrationFixture(t *testing.T) (string, string, string) {
+// migrationFixture builds the update rehearsal: a repo with one eligible
+// legacy tree (.moai/worktrees/card on a WT- branch) and one protected
+// agent-* tree (.claude/worktrees/agent-fix).
+func migrationFixture(t *testing.T) (root, movedTree, agentTree, homeRoot string) {
 	t.Helper()
-	previousCWDProbe := activeProcessCWDs
-	activeProcessCWDs = func() ([]string, error) { return nil, nil }
-	t.Cleanup(func() { activeProcessCWDs = previousCWDProbe })
-	root := filepath.Join(t.TempDir(), "project")
+	home := migrationReal(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
+	t.Setenv("HOME", home)
+	root = filepath.Join(migrationReal(t, t.TempDir()), "project")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	migrationGit(t, root, "init", "-q")
+	migrationGit(t, root, "init", "-q", "-b", "main")
 	migrationGit(t, root, "config", "user.name", "Migration Test")
 	migrationGit(t, root, "config", "user.email", "migration-test@example.com")
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("ignored.txt\n"), 0o644); err != nil {
@@ -41,212 +57,161 @@ func migrationFixture(t *testing.T) (string, string, string) {
 	}
 	migrationGit(t, root, "add", ".gitignore", "tracked.txt")
 	migrationGit(t, root, "commit", "-q", "-m", "seed")
-	old := filepath.Join(root, ".claude", "worktrees", "card")
-	modern := filepath.Join(root, ".moai", "worktrees", "card")
-	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-migrate", old)
-	return root, old, modern
-}
-
-func TestLegacyWorktreeMigrationSkipsActiveProcessWithoutRegistry(t *testing.T) {
-	root, old, _ := migrationFixture(t)
-	if err := os.Mkdir(filepath.Join(old, "nested"), 0o755); err != nil {
+	remote := filepath.Join(filepath.Dir(root), "fixture-remote.git")
+	migrationGit(t, root, "init", "-q", "--bare", remote)
+	migrationGit(t, root, "remote", "add", "origin", remote)
+	migrationGit(t, root, "push", "-q", "-u", "origin", "main")
+	movedTree = filepath.Join(root, ".moai", "worktrees", "card")
+	if err := os.MkdirAll(filepath.Dir(movedTree), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	activeProcessCWDs = func() ([]string, error) { return []string{filepath.Join(old, "nested")}, nil }
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
-	if err != nil || len(plans) != 1 || plans[0].skip != "an active process is inside this worktree" {
-		t.Fatalf("active process was not protected: %#v, %v", plans, err)
+	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-migrate", movedTree)
+	agentTree = filepath.Join(root, ".claude", "worktrees", "agent-fix")
+	if err := os.MkdirAll(filepath.Dir(agentTree), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatalf("source lost: %v", err)
-	}
-}
-
-func TestLegacyWorktreeMigrationFailsClosedWhenProcessProbeFails(t *testing.T) {
-	root, old, _ := migrationFixture(t)
-	activeProcessCWDs = func() ([]string, error) { return nil, os.ErrPermission }
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
-	if err != nil || len(plans) != 1 || !strings.Contains(plans[0].skip, "cannot inspect active process") {
-		t.Fatalf("unmeasured process state was not protected: %#v, %v", plans, err)
-	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatalf("source lost: %v", err)
-	}
-}
-
-func TestLegacyWorktreeMigrationPreservesGitAndWorkingFiles(t *testing.T) {
-	root, old, modern := migrationFixture(t)
-	for name, body := range map[string]string{
-		"tracked.txt": "changed\n", "untracked.txt": "untracked\n", "ignored.txt": "ignored\n",
-	} {
-		if err := os.WriteFile(filepath.Join(old, name), []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	before, err := gitForWorktreeMigration(old, "status", "--porcelain=v1", "--untracked-files=all")
+	migrationGit(t, root, "worktree", "add", "-q", "-b", "worktree-agent-fix", agentTree)
+	res, err := worktreeroot.Resolve(root)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("resolve home root: %v", err)
 	}
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
-	if err != nil || len(plans) != 1 || plans[0].skip != "" {
-		t.Fatalf("plan = %#v, %v", plans, err)
+	return root, movedTree, agentTree, res.Root
+}
+
+func migrationReal(t *testing.T, p string) string {
+	t.Helper()
+	r, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		t.Fatalf("evalsymlinks %s: %v", p, err)
 	}
-	if err := moveLegacyWorktree(root, plans[0]); err != nil {
-		t.Fatalf("move: %v", err)
+	return r
+}
+
+// TestUpdateConsolidation_MovesToHomeRoot — the update moves the eligible
+// legacy tree to its home-root destination, never creates the legacy
+// in-repo destination, and never selects the agent-* tree.
+func TestUpdateConsolidation_MovesToHomeRoot(t *testing.T) {
+	root, movedTree, agentTree, homeRoot := migrationFixture(t)
+	var output bytes.Buffer
+	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
+		t.Fatalf("update consolidation: %v\n%s", err, output.String())
 	}
-	if _, err := os.Lstat(old); !os.IsNotExist(err) {
-		t.Fatalf("old tree still exists: %v", err)
+	dest := filepath.Join(homeRoot, "card")
+	if fi, statErr := os.Lstat(dest); statErr != nil || !fi.IsDir() {
+		t.Errorf("the update did not move card to the home root %s (stat err=%v)", dest, statErr)
 	}
-	if got := migrationGit(t, modern, "branch", "--show-current"); got != "WT-migrate" {
-		t.Fatalf("branch = %q", got)
+	if _, statErr := os.Lstat(filepath.Join(root, ".moai", "worktrees", "card")); !os.IsNotExist(statErr) {
+		t.Errorf("a tree exists at the legacy in-repo destination (stat err=%v)", statErr)
 	}
-	after, err := gitForWorktreeMigration(modern, "status", "--porcelain=v1", "--untracked-files=all")
-	if err != nil || after != before {
-		t.Fatalf("status changed: before %q, after %q, err %v", before, after, err)
+	if !migrationRegistered(t, root, agentTree) {
+		t.Errorf("the update moved the agent-* tree %s; the classifier never selects it", agentTree)
 	}
-	for name, want := range map[string]string{
-		"tracked.txt": "changed\n", "untracked.txt": "untracked\n", "ignored.txt": "ignored\n",
-	} {
-		got, err := os.ReadFile(filepath.Join(modern, name))
-		if err != nil || string(got) != want {
-			t.Fatalf("%s = %q, %v", name, got, err)
-		}
+	if !migrationRegistered(t, root, movedTree) {
+		// The old path must be gone from the registration after the move.
+	} else {
+		t.Errorf("card is still registered at its legacy path %s", movedTree)
 	}
-	if again, err := planLegacyWorktreeMigration(root, time.Now()); err != nil || len(again) != 0 {
-		t.Fatalf("rerun must be idempotent: %#v, %v", again, err)
+	if got := migrationGit(t, dest, "branch", "--show-current"); got != "WT-migrate" {
+		t.Errorf("moved branch = %q, want WT-migrate", got)
+	}
+	if !strings.Contains(output.String(), "Worktree migration: 1 moved, 1 skipped, 0 failed") {
+		t.Errorf("the consolidation summary is missing:\n%s", output.String())
 	}
 }
 
-func TestLegacyWorktreeMigrationSkipsLockAndCollision(t *testing.T) {
-	for _, reason := range []string{"locked", "destination collision"} {
-		t.Run(reason, func(t *testing.T) {
-			root, old, modern := migrationFixture(t)
-			if reason == "locked" {
-				migrationGit(t, root, "worktree", "lock", "--reason", "active", old)
-			} else if err := os.MkdirAll(modern, 0o755); err != nil {
-				t.Fatal(err)
-			}
-			plans, err := planLegacyWorktreeMigration(root, time.Now())
-			if err != nil || len(plans) != 1 || plans[0].skip == "" {
-				t.Fatalf("unsafe tree not skipped: %#v, %v", plans, err)
-			}
-			if err := moveLegacyWorktree(root, plans[0]); err == nil {
-				t.Fatal("skipped tree moved")
-			}
-			if _, err := os.Stat(old); err != nil {
-				t.Fatalf("source lost: %v", err)
-			}
-		})
-	}
+func migrationRegistered(t *testing.T, root, path string) bool {
+	t.Helper()
+	out := migrationGit(t, root, "worktree", "list", "--porcelain")
+	return strings.Contains(out, path)
 }
 
-func TestLegacyWorktreeMigrationRechecksOnlySelectedTree(t *testing.T) {
-	root, old, _ := migrationFixture(t)
-	other := filepath.Join(root, ".claude", "worktrees", "other")
-	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-other", other)
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
-	if err != nil || len(plans) != 2 {
-		t.Fatalf("full migration plan = %#v, %v", plans, err)
-	}
-	migrationGit(t, root, "worktree", "lock", other)
-	focused, err := planLegacyWorktreeMigrationFor(root, time.Now(), old, nil)
-	if err != nil || len(focused) != 1 || canonicalTreePath(focused[0].source) != canonicalTreePath(old) || focused[0].skip != "" {
-		t.Fatalf("selected tree recheck = %#v, %v", focused, err)
-	}
-	migrationGit(t, root, "worktree", "lock", old)
-	if err := moveLegacyWorktree(root, focused[0]); err == nil || !strings.Contains(err.Error(), "changed since migration planning") {
-		t.Fatalf("lock added after planning was not detected: %v", err)
-	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatalf("source lost after failed recheck: %v", err)
-	}
-}
-
-func TestUpdateWorktreeMigrationDryRunAndRetry(t *testing.T) {
-	root, old, modern := migrationFixture(t)
+// TestUpdateConsolidation_DryRunMovesNothing — AC-WHR-019(h): the preview
+// prints the plan and moves nothing.
+func TestUpdateConsolidation_DryRunMovesNothing(t *testing.T) {
+	root, movedTree, _, homeRoot := migrationFixture(t)
 	var output bytes.Buffer
 	if err := runUpdateWorktreeMigration(root, true, &output); err != nil {
-		t.Fatal(err)
+		t.Fatalf("update dry run: %v\n%s", err, output.String())
 	}
 	if !strings.Contains(output.String(), "Worktree migration planned") {
-		t.Fatalf("dry run did not report plan: %q", output.String())
+		t.Fatalf("dry run did not report the plan:\n%s", output.String())
 	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatalf("dry run moved source: %v", err)
+	if _, err := os.Stat(movedTree); err != nil {
+		t.Fatalf("dry run moved the source: %v", err)
 	}
-	output.Reset()
-	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(output.String(), "1 legacy worktree detected") ||
-		!strings.Contains(output.String(), "Worktree migration safety check: 1/1 inspected") {
-		t.Fatalf("live migration did not announce its size: %q", output.String())
-	}
-	if !strings.Contains(output.String(), "1 moved, 0 skipped, 0 failed") {
-		t.Fatalf("update did not move tree: %q", output.String())
-	}
-	if _, err := os.Stat(modern); err != nil {
-		t.Fatalf("destination missing: %v", err)
-	}
-	output.Reset()
-	if err := runUpdateWorktreeMigration(root, false, &output); err != nil || output.Len() != 0 {
-		t.Fatalf("idempotent retry: %v, %q", err, output.String())
+	if _, err := os.Stat(filepath.Join(homeRoot, "card")); !os.IsNotExist(err) {
+		t.Fatalf("dry run created a destination (stat err=%v)", err)
 	}
 }
 
-func TestUpdateWorktreeMigrationReportsProgress(t *testing.T) {
-	root, _, _ := migrationFixture(t)
-	for _, name := range []string{"two", "three", "four", "five"} {
-		old := filepath.Join(root, ".claude", "worktrees", name)
-		migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-"+name, old)
-	}
+// TestUpdateConsolidation_RetryMovesNothing — AC-WHR-019(i): the second
+// run moves nothing further and reports no rows.
+func TestUpdateConsolidation_RetryMovesNothing(t *testing.T) {
+	root, _, _, _ := migrationFixture(t)
 	var output bytes.Buffer
 	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
-		t.Fatal(err)
+		t.Fatalf("first run: %v\n%s", err, output.String())
 	}
-	if !strings.Contains(output.String(), "5 legacy worktrees detected") ||
-		!strings.Contains(output.String(), "Worktree migration safety check: 5/5 inspected") ||
-		!strings.Contains(output.String(), "Worktree migration progress: 5/5 checked, 5 moved, 0 skipped, 0 failed") {
-		t.Fatalf("live migration progress missing: %q", output.String())
+	output.Reset()
+	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
+		t.Fatalf("retry: %v\n%s", err, output.String())
+	}
+	if strings.Contains(output.String(), "Worktree migration moved") {
+		t.Errorf("the retry moved something:\n%s", output.String())
+	}
+	if !strings.Contains(output.String(), "0 moved") {
+		t.Errorf("the retry summary does not read 0 moved:\n%s", output.String())
 	}
 }
 
-func TestLegacyWorktreeMigrationSkipsActiveSession(t *testing.T) {
-	root, old, _ := migrationFixture(t)
+// TestUpdateConsolidation_SkipsAnchoredSession — the live-anchored-session
+// skip cause rides the update path (AC-WHR-019(d)); the anchored tree
+// stays at its old path.
+func TestUpdateConsolidation_SkipsAnchoredSession(t *testing.T) {
+	root, movedTree, _, _ := migrationFixture(t)
 	registry := session.NewRegistry(filepath.Join(root, session.DefaultRegistryPath), nil)
 	if err := registry.Register("active-session", session.SpecIDNone, session.PhaseNone); err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.RelocateSession("active-session", old); err != nil {
+	if err := registry.RelocateSession("active-session", movedTree); err != nil {
 		t.Fatal(err)
-	}
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
-	if err != nil || len(plans) != 1 || !strings.Contains(plans[0].skip, "active session") {
-		t.Fatalf("active tree was not skipped: %#v, %v", plans, err)
 	}
 	var output bytes.Buffer
 	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
-		t.Fatal(err)
+		t.Fatalf("update: %v\n%s", err, output.String())
 	}
-	if !strings.Contains(output.String(), "1 skipped") {
-		t.Fatalf("active tree skip not reported: %q", output.String())
+	if !strings.Contains(output.String(), "active session is anchored in this worktree") || !strings.Contains(output.String(), "2 skipped") {
+		t.Errorf("the anchored tree's skip is not reported:\n%s", output.String())
 	}
-	if _, err := os.Stat(old); err != nil {
-		t.Fatalf("active source lost: %v", err)
+	if _, err := os.Stat(movedTree); err != nil {
+		t.Fatalf("the anchored source was moved: %v", err)
 	}
 }
 
-func TestRunUpdateMigratesRegisteredLegacyWorktree(t *testing.T) {
-	root, old, modern := migrationFixture(t)
-	writeV3ProjectFixture(t, root)
-	output := runUpdateInFixture(t, root)
-	if !strings.Contains(output, "Worktree migration: 1 moved, 0 skipped, 0 failed") {
-		t.Fatalf("moai update did not report migration: %q", output)
+// TestUpdateConsolidation_HeldLockDegradesToError — AC-WHR-019(j): a held
+// migration lock fails the consolidation (the caller degrades it to a
+// warning), moves nothing, and the error names the lock.
+func TestUpdateConsolidation_HeldLockDegradesToError(t *testing.T) {
+	root, movedTree, _, _ := migrationFixture(t)
+	lockPath := filepath.Join(root, ".moai", "state", "worktree-migrate", "lock")
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Lstat(old); !os.IsNotExist(err) {
-		t.Fatalf("legacy location remains after update: %v", err)
+	holder, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := migrationGit(t, modern, "branch", "--show-current"); got != "WT-migrate" {
-		t.Fatalf("migrated branch = %q", got)
+	defer func() { _ = holder.Close() }()
+	// The test actually TAKES the lock (an open descriptor alone holds
+	// nothing): the same primitive the engine's withMigrationLock uses.
+	if lerr := lockfile.TryLock(holder); lerr != nil {
+		t.Fatalf("take the migration lock: %v", lerr)
+	}
+	defer func() { _ = lockfile.Unlock(holder) }()
+	if err := runUpdateWorktreeMigration(root, false, &bytes.Buffer{}); err == nil {
+		t.Errorf("the consolidation ran while the migration lock was held")
+	}
+	if _, statErr := os.Stat(movedTree); statErr != nil {
+		t.Errorf("the tree moved although the lock was held (stat err=%v)", statErr)
 	}
 }

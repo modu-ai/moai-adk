@@ -133,6 +133,13 @@ func (f *FactoryDB) ReassignCard(ctx context.Context, runID, cardID, newOwner, a
 		next := cur
 		next.OwnerLabel = newOwner
 		next.LeaseHolder, next.LeaseExpiresAt = "", ""
+		// The heartbeat belonged to the OLD owner's session (sync-audit
+		// round 2 F4, card t1828): carried over, it read as work-started
+		// under a new owner who has not started — two expiry-collected
+		// serial cards reassigned cross-wise wedged each lane's
+		// self-nomination. Cleared, the row is a pure assignment until the
+		// new owner's first lease writes a fresh heartbeat.
+		next.HeartbeatAt = ""
 		if holding {
 			// The expired-lease landing (T27/T28), its merging branch
 			// included: an expired card returns to `assigned`; one that

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // factoryCardNow is the clock the factory card commands read; tests replace it
@@ -146,27 +148,70 @@ func factoryNotALaneError(verb string) error {
 		verb, factoryNotALaneSentinel, config.EnvFactoryRole, config.FactoryRoleLane)
 }
 
-// factoryLaneLabelFromEnv reads the lane-identity variable for a lane verb
-// and refuses legacy spellings before any work is done (AC-SD-021): the
-// refusal mirrors the REQ-RNC-003/-005/-007 producer shapes, naming the
-// canonical lane label. Every lane verb reads its identity through this
-// helper, so a hand-set legacy label cannot reach the factory record.
+// factoryLaneLabelValidated refuses a lane label's legacy spellings before
+// any work is done (AC-SD-021): the refusal mirrors the REQ-RNC-003/-005/-007
+// producer shapes, naming the canonical lane label.
+func factoryLaneLabelValidated(verb, label string) (string, error) {
+	lowered := strings.ToLower(label)
+	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, label, factory.FactoryLaneLabel(n))
+	}
+	if factory.IsLegacyFactoryRoleValue(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, label)
+	}
+	if factory.IsLegacyLeaderSpelling(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, label)
+	}
+	return label, nil
+}
+
+// factoryLaneLabelFromEnv reads the lane-identity variable for a lane verb.
+// Every lane verb reads its identity through this helper, so a hand-set
+// legacy label cannot reach the factory record.
 func factoryLaneLabelFromEnv(verb string) (string, error) {
 	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if lane == "" {
 		return "", fmt.Errorf("factory %s: %s is empty — a lane session carries its lane label there", verb, config.EnvMoaiFactoryWorker)
 	}
-	lowered := strings.ToLower(lane)
-	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, factory.FactoryLaneLabel(n))
+	return factoryLaneLabelValidated(verb, lane)
+}
+
+// factoryLaneLabel resolves the acting lane label for a lane verb
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, CLI side): the explicit --actor flag
+// wins and the spawn environment is the default only. Both spellings refuse
+// legacy labels through the same rules, so a hand-set legacy label cannot
+// reach the factory record through the flag either.
+func factoryLaneLabel(verb, actor string) (string, error) {
+	if label := strings.TrimSpace(actor); label != "" {
+		return factoryLaneLabelValidated(verb, label)
 	}
-	if factory.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, lane)
+	return factoryLaneLabelFromEnv(verb)
+}
+
+// factoryUnknownAttributionError is the REQ-MN-003 unknown-attribution
+// refusal, one wording for both surfaces: the caller carries no positive
+// operator mark and no lane identity, and the ABSENCE of lane variables
+// confers nothing.
+func factoryUnknownAttributionError(surface string) error {
+	return fmt.Errorf("%s: refused — %s: set %s=%s in the operator session (the launcher or the operator environment stamps it); the absence of lane variables confers nothing",
+		surface, factoryUnknownAttributionSentinel, config.EnvFactoryRole, config.FactoryRoleOperator)
+}
+
+// factoryDecideGate is the REQ-MN-003 operator gate BOTH decide surfaces run:
+// a positive operator mark admits, a lane-marked session keeps the REQ-SD-016
+// boundary refusal, and an unmarked session is unknown attribution — the
+// env-absence-grants-operator path is closed (M2 Part A absorbs the M1 MCP
+// contract into the CLI verb). The audit-decider exception (a kickoff approval
+// by the audit decider on the lane's own card) is the caller's per-card
+// evaluation, unchanged.
+func factoryDecideGate() error {
+	if mcpOperatorAuthority() {
+		return nil
 	}
-	if factory.IsLegacyLeaderSpelling(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)
+	if factoryLaneRefusal() {
+		return factoryDecideLaneRefusal()
 	}
-	return lane, nil
+	return factoryUnknownAttributionError("factory decide")
 }
 
 // factoryCodexMergeSentinel names the REQ-SD-025 refusal: while the backend
@@ -284,10 +329,12 @@ func factorySerialSlotFree(state string) bool {
 // factorySerialSlotHeld reports whether a recorded card holds the serial slot
 // at now. Three conditions hold together: the state is not one of the
 // releasing states; — for a card in a lease-holding state — its lease has not
-// expired; and a driver is recorded. An expired lease is only collected
-// lazily, by the next transition on that same card, so the row keeps its
-// lease-holding state after the lane that held it is gone; reading the state
-// alone would hold the slot for that lane indefinitely (card t1407).
+// expired, or its holder's worker process is still alive; and a driver is
+// recorded. An expired lease is only collected lazily, by the next transition
+// on that same card, so the row keeps its lease-holding state after the lane
+// that held it is gone; reading the state alone would hold the slot for that
+// lane indefinitely (card t1407) — the holder-liveness clause below is what
+// keeps a DEAD holder's row from holding forever.
 //
 // The driver condition (card t1513): a row whose OwnerLabel is empty holds
 // nothing. A picked row recorded without a lane (`factory assign` with no
@@ -298,8 +345,71 @@ func factorySerialSlotFree(state string) bool {
 // lease in the run was refused `serial-slot`. A later `factory assign
 // --lane` or the nominate arm sets the owner and the row holds again, so
 // only genuinely driverless rows release.
-func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
+//
+// The liveness refinement (card t1828): expiry alone no longer frees the
+// slot. An expired lease keeps holding while the roster binds its owner to a
+// live pid of the SAME incarnation that last heartbeated the card, and frees
+// only when the holder's worker row is absent, dead, non-positive, or
+// re-registered by a later process — measured 2026-10-17 (run tn1p4e),
+// t1825's lease expired at 10:57:43Z while its worker (pid 21334) stayed
+// alive and committed at 11:22:39Z, and t1697 leased the slot at 10:59:37Z:
+// two serial cards worked concurrently. An expiry-collected `assigned` row
+// with a recorded heartbeat (sync-audit cold F1) is decided the same way —
+// factoryStageCard does not verify the requesting lane owns the card, so a
+// foreign lane's stage collects an expired lease to assigned while the
+// first holder still works; a pure assignment row (empty HeartbeatAt, never
+// started work) holds as before. holderAlive is threaded in from the
+// db-owning callers (the generation-aware workers-table read by OwnerLabel,
+// factoryWorkerPidAlive); a nil reader frees on expiry, the pre-t1828 read.
+func factorySerialSlotHeld(c homestate.Card, now time.Time, holderAlive func(homestate.Card) bool) bool {
+	if factorySerialSlotFree(c.State) || c.OwnerLabel == "" {
+		return false
+	}
+	// An expiry-collected assigned row (card t1828, sync-audit F1): its
+	// heartbeat names the work session, so the same generation-aware liveness
+	// reader decides it — a live session holds, a dead one frees.
+	if c.State == homestate.CardAssigned && c.HeartbeatAt != "" {
+		return holderAlive != nil && holderAlive(c)
+	}
+	if !c.LeaseExpired(now) {
+		return true
+	}
+	// An expired lease holds only while its holder's process is alive (card
+	// t1828); a dead or absent holder releases — the t1407 no-wedge.
+	return holderAlive != nil && holderAlive(c)
+}
+
+// factoryWorkerPidAlive reports whether the roster binds the card's owner to
+// the live process incarnation that last heartbeated it: the workers row's
+// pid probed with signal 0 through factory.FactoryProcessAlive (the
+// waiterDropReason precedent), generation-checked against the row's
+// registered_at — factory_slots deletes a dead worker's row and reassigns
+// the same label to a new process (card-review r1 P2), so the row counts
+// only when its registration precedes the card's heartbeat (registered_at
+// parsed and <= HeartbeatAt; a registration after the heartbeat is a
+// different process, and the expired lease frees). A label with no roster
+// row, an unreadable row, a non-positive or dead pid, and an empty or
+// unparseable heartbeat (leased cards always carry one) all read as not
+// alive — freeing, never holding.
+func factoryWorkerPidAlive(ctx context.Context, db *homestate.FactoryDB, c homestate.Card) bool {
+	var pid int
+	var registeredAt string
+	err := db.DB.QueryRowContext(ctx, `SELECT pid, registered_at FROM workers WHERE label=?`, c.OwnerLabel).Scan(&pid, &registeredAt)
+	if err != nil {
+		return false
+	}
+	if !factory.FactoryProcessAlive(pid) {
+		return false
+	}
+	beat, err := time.Parse(time.RFC3339Nano, c.HeartbeatAt)
+	if err != nil {
+		return false
+	}
+	reg, err := time.Parse(time.RFC3339Nano, registeredAt)
+	if err != nil {
+		return false
+	}
+	return !reg.After(beat)
 }
 
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
@@ -314,7 +424,13 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // leader-assigned serial card against the others with nothing in flight. The
 // unnominated arm and — since card t1542 — the nominated lease of the lane's
 // own assigned card pass true; every path that takes a NEW card passes
-// false.
+// false. Since card t1828 (sync-audit cold F1) the skip covers only PURE
+// assignment rows — empty HeartbeatAt, never started work. An
+// expiry-collected assigned row keeps its heartbeat, and factoryStageCard
+// does not verify the requesting lane owns the card, so a foreign lane's
+// stage collects an expired lease to assigned while the first holder still
+// works; that row stays in the walk and the predicate's liveness clause
+// decides it instead of the skip letting a second serial card lease.
 //
 // A `picked` row carrying a bundle identity is excluded the same way (card
 // t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
@@ -326,23 +442,29 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // driven picked row (no bundle identity, no hint) keeps holding the slot
 // exactly as the t1407 ruling's tests pin.
 //
+// holderAlive (card t1828) is the holder-liveness reader the expired-lease
+// clause of factorySerialSlotHeld consults, threaded in from the db-owning
+// callers; the slot read itself stays the one function. The id return names
+// the blocking card so the serial-slot refusal detail can say who holds the
+// slot (card t1828) — the unnominated arms' silent skips discard it.
+//
 // @MX:NOTE: [AUTO] The one serial-slot read of selection — fan-in 3 (both selection closures and the nominated validation); an ANCHOR is owed but factory_card.go is at its 3-anchor limit, and a queue-mutation path bypassing this read would break REQ-TCD-008.
-func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool, holderAlive func(homestate.Card) bool) (string, bool) {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
 		}
-		if ignoreAssigned && c.State == homestate.CardAssigned {
+		if ignoreAssigned && c.State == homestate.CardAssigned && c.HeartbeatAt == "" {
 			continue
 		}
 		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {
 			continue
 		}
-		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
-			return true
+		if factorySerialSlotHeld(c, now, holderAlive) && classOf(c.CardID).Mode == factory.ClassModeSerial {
+			return c.CardID, true
 		}
 	}
-	return false
+	return "", false
 }
 
 // factoryQueueClassification reads one card's classification from a queue
@@ -397,6 +519,14 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // Codex loops keep the plainer gated form above — they never render refusal
 // lines.
 func factoryNextLeaseOnceEligibility(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, []factoryEligibleRefusal, error) {
+	// The landing base (the resolver's home projects root) is resolved
+	// BEFORE the lease section: the section admits no git subprocess, and
+	// the carry/refuse readers derive their candidate leaves from this base
+	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Resolved inside the
+	// eligibility form because every lease path funnels through it — the
+	// `next` verb, the MCP handler, the retry loop, the gated wrapper, and
+	// the lease-drift tests call it directly.
+	ctx = withFactoryLandingBase(ctx, root)
 	// The record connection carries the claim's busy timeout and is opened
 	// before the section, so a slow open never lengthens the lock's hold.
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
@@ -526,11 +656,42 @@ func factoryClaimFailure(claimCtx context.Context, err error) error {
 	}
 }
 
-// factoryCardWorktreeDir is the card's landing directory under the shared
-// materializer root — the leaf the REQ-SD-011 refusal and the carry-over both
-// read.
+// factoryCardWorktreeDir is the card's landing directory — the leaf the
+// REQ-SD-011 refusal and the carry-over both read.
+//
+// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): the landing directory comes
+// from the resolver (<MoaiHome>/worktrees/projects/<project-key>/<cardID>);
+// when the resolver cannot run the pre-M2 in-repo spelling is the fallback,
+// preserving this reader's behavior where it cannot know the home root.
+// Section callers use factoryLandingDirFromCtx (the base is resolved before
+// the lease section so no git spawns inside it) plus the legacy leaf.
 func factoryCardWorktreeDir(root, cardID string) string {
+	if p, err := worktreeroot.PathFor(root, cardID); err == nil {
+		return p
+	}
 	return filepath.Join(root, sessionWorktreeSubdir, cardID)
+}
+
+// factoryLandingBaseKey carries the home projects root resolved before the
+// lease section into the section's readers (REQ-WHR-007: the resolver's git
+// spawn happens outside the section, which holds the queue lock).
+type factoryLandingBaseKey struct{}
+
+// withFactoryLandingBase resolves root's home projects base and carries it
+// in ctx. When the resolver cannot run (root not a repository), the base is
+// absent and the readers fall back to the legacy leaf alone.
+func withFactoryLandingBase(ctx context.Context, root string) context.Context {
+	base, err := worktreeroot.Root(root)
+	if err != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, factoryLandingBaseKey{}, base)
+}
+
+// factoryLandingBaseFrom reads the pre-section landing base, if resolved.
+func factoryLandingBaseFrom(ctx context.Context) string {
+	base, _ := ctx.Value(factoryLandingBaseKey{}).(string)
+	return base
 }
 
 // factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
@@ -542,38 +703,73 @@ func factoryCardWorktreeDir(root, cardID string) string {
 // before this refusal at the lease boundary: a directory a previous run of
 // the SAME card recorded is that card's own tree, re-recorded rather than
 // refused (card t1521); every other shape lands here.
-func factoryRefuseForeignWorktree(root, cardID string) error {
-	dir := factoryCardWorktreeDir(root, cardID)
-	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
-		return nil
+func factoryRefuseForeignWorktree(ctx context.Context, root, cardID string) error {
+	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	return factoryRefuseForeignWorktreeAt(ctx, landingDir, legacyLeaf, cardID)
+}
+
+// factoryRefuseForeignWorktreeAt is the refusal over precomputed candidate
+// leaves: the resolver-derived landing dir and the legacy in-repo leaf (the
+// transition keeps both candidates, REQ-WHR-007).
+func factoryRefuseForeignWorktreeAt(ctx context.Context, landingDir, legacyLeaf, cardID string) error {
+	for _, dir := range []string{landingDir, legacyLeaf} {
+		if dir == "" {
+			continue
+		}
+		if info, err := os.Lstat(dir); err == nil && info.IsDir() {
+			return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+		}
 	}
-	return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+	return nil
 }
 
 // factoryCarryPreviousWorktree resolves the binding a run replacement may
-// carry into runID for cardID (card t1521): the card's landing directory
-// exists, a previous run's record of the SAME card names that same directory,
-// and the tree it names still exists on disk. Only that exact shape carries —
-// the new run re-records what its predecessor already bound instead of
-// refusing the card's own surviving tree as foreign. It returns "" when the
-// carry does not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
+// carry into runID for cardID (card t1521). The leaves are precomputed by
+// the caller (the resolver-derived landing dir carried in ctx, plus the
+// legacy in-repo leaf); the recorded path takes precedence over any derived
+// candidate (REQ-WHR-007). Only the exact carry shape applies — the card's
+// own previous run bound that directory and the tree still exists — the new
+// run re-records what its predecessor already bound instead of refusing the
+// card's own surviving tree as foreign. It returns "" when the carry does
+// not apply, leaving the REQ-SD-011 refusal (and the fresh-tree
 // materialization when no directory stands in the way) to the caller.
 func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) (string, error) {
-	dir := factoryCardWorktreeDir(root, cardID)
-	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
-		return "", nil
-	}
-	prev, ok, err := db.PreviousCardWorktree(ctx, cardID, runID)
-	if err != nil || !ok {
+	landingDir := filepath.Join(factoryLandingBaseFrom(ctx), cardID)
+	legacyLeaf := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	return factoryCarryPreviousWorktreeAt(ctx, db, landingDir, legacyLeaf, runID, cardID)
+}
+
+// factoryCarryPreviousWorktreeAt is the carry over precomputed candidate
+// leaves.
+func factoryCarryPreviousWorktreeAt(ctx context.Context, db *homestate.FactoryDB, landingDir, legacyLeaf, runID, cardID string) (string, error) {
+	prev, prevOK, err := db.PreviousCardWorktree(ctx, cardID, runID)
+	if err != nil {
 		return "", err
 	}
-	if info, err := os.Stat(prev); err != nil || !info.IsDir() {
-		return "", nil
+	for _, dir := range []string{landingDir, legacyLeaf} {
+		if dir == "" {
+			continue
+		}
+		info, err := os.Lstat(dir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		// The leaf exists: the carry requires the card's own previous run to
+		// have bound exactly this directory and the tree to still exist; a
+		// leaf no record explains stays for the caller's refusal.
+		if !prevOK {
+			return "", nil
+		}
+		if pinfo, perr := os.Stat(prev); perr != nil || !pinfo.IsDir() {
+			return "", nil
+		}
+		if !sameDirPath(prev, dir) {
+			return "", nil
+		}
+		return prev, nil
 	}
-	if !sameDirPath(prev, dir) {
-		return "", nil
-	}
-	return prev, nil
+	return "", nil
 }
 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
@@ -882,8 +1078,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card
 	// t1407); see factorySerialInFlightExcluding. Every arm that takes a NEW
 	// card passes false.
+	// holderAlive (card t1828) reads the roster pid of a sibling row's owner,
+	// so an expired lease of a LIVE holder keeps holding the slot while a
+	// dead, absent, or re-registered holder releases it.
+	holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
 	serialInFlightExcluding := func(cardID string, ignoreAssigned bool) bool {
-		return factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned)
+		_, held := factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned, holderAlive)
+		return held
 	}
 	modeEligible := func(cardID string) bool {
 		if classOf(cardID).Mode != factory.ClassModeSerial {
@@ -946,6 +1147,16 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	hubFields := func(cardID string) homestate.CardFields {
 		return factoryHubChainFields(queueRec, cards, cardID, nil)
 	}
+	// A rowless candidate whose re-lease carry-over would land a stage this
+	// backend can never advance is skipped at selection (card t1930,
+	// card-review r4, F4): a Codex lane stops at merge-ready, so leasing it a
+	// carried merge-ready card strands the card in a dead end — the skip
+	// reads the SAME gate the carry-over applies (factoryPriorCarryRow), and
+	// the card stays queued for a lane that can complete it.
+	carrySkips := func(cardID string) bool {
+		prev := factoryPriorCarryRow(ctx, db, root, runID, cardID)
+		return prev != nil && skip(*prev)
+	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
@@ -969,7 +1180,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		// clause is arm (a)'s own check below (a self-excluding read the
 		// predicate's shared form does not carry).
 		if it, inQueue := queueItemIn(queueRec, c.CardID); inQueue {
-			if r := factoryKeepSetRefusal(it, &c, lane, false); r != nil {
+			if r := factoryKeepSetRefusal(it, &c, lane, false, ""); r != nil {
 				continue
 			}
 		}
@@ -1045,6 +1256,17 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			elig.collect(*r)
 			continue
 		}
+		// The crash-window catch-up (card t1930, card-review r5 F5) shares
+		// the record-and-claim path's seam (r6 R2); the backend-skip test on
+		// the restored candidate (r6 R1) is the selection arms' own — a quiet
+		// skip, the card stays leasable by a lane that can complete it.
+		if c.Stage == "" && c.EvidenceSHA == "" {
+			candidate := factoryPriorCarryCandidate(ctx, db, root, runID, c.CardID)
+			if factoryBackendSkipsCarriedStage(candidate) {
+				continue
+			}
+			c, _ = factoryCompleteCarryOver(ctx, db, runID, c, candidate)
+		}
 		if err := factoryLeaseBeforeClaim("b", c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
@@ -1060,10 +1282,18 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	for _, it := range queueRec.Items {
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
-		if it.State != factory.BacklogStatePicked || recorded[it.ID] {
+		switch it.State {
+		case factory.BacklogStatePicked:
+		default:
+			continue
+		}
+		if recorded[it.ID] {
 			continue
 		}
 		if !elig.active() {
+			continue
+		}
+		if carrySkips(it.ID) {
 			continue
 		}
 		// The no-record arm waits like every other path (card t1533,
@@ -1126,6 +1356,8 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 					continue
 				} else if _, wait := hubWaitUnmerged(it.ID); wait {
 					continue
+				} else if carrySkips(it.ID) {
+					continue
 				}
 				if cls.Mode == factory.ClassModeSerial && serialInFlightExcluding(it.ID, false) {
 					continue
@@ -1168,6 +1400,94 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	}
 }
 
+// factoryPriorCarryRow is the one gate of the re-lease stage/evidence
+// carry-over (card t1930, defect ③): when no row exists for THIS run yet, it
+// returns the card's most recent prior factory row (another run allowed) when
+// that row holds a live stage AND its worktree is the reusable landing tree
+// the claim path re-enters (card-review r2, F3 — a stage carried onto a
+// FRESH tree would resume an audit stage with none of the audit files); nil
+// otherwise, and a card no prior run recorded carries nothing, exactly as
+// before. The selection pass reads the same gate (card-review r4, F4): a
+// candidate whose carry-over would land a stage this backend can never
+// advance is skipped before it is leased.
+func factoryPriorCarryRow(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) *homestate.Card {
+	if _, lerr := db.LoadCard(ctx, runID, cardID); !errors.Is(lerr, homestate.ErrCardNotFound) {
+		return nil
+	}
+	return factoryPriorCarryCandidate(ctx, db, root, runID, cardID)
+}
+
+// factoryPriorCarryCandidate is the prior-row half of the carry gate alone.
+// The crash-window catch-up (card-review r5, F5) reads it for a row that
+// ALREADY exists: RecordPicked committed but the fenced carry write died, so
+// the retry's factoryPriorCarryRow — which requires the row to be absent —
+// would find nothing and the prior run's stage/evidence were lost for the
+// lease.
+func factoryPriorCarryCandidate(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID string) *homestate.Card {
+	prev, ok, err := db.PreviousCardRow(ctx, cardID, runID)
+	if err != nil || !ok {
+		return nil
+	}
+	if prev.Stage == "" || !homestate.IsCardState(prev.Stage) || homestate.IsTerminalCardState(prev.Stage) ||
+		!factoryPriorWorktreeReusable(ctx, root, cardID, prev.WorktreePath) {
+		return nil
+	}
+	return &prev
+}
+
+// factoryBackendSkipsCarriedStage applies the REQ-SD-025 selection half to a
+// RESTORED carry candidate (card t1930, card-review r6, R1): the same
+// skip(*prev) test the selection arms already run, so a Codex lane can never
+// lease a carried merge-ready card through any path — the unnominated arms
+// skip quietly, the nominated carry refuses before its first write.
+func factoryBackendSkipsCarriedStage(candidate *homestate.Card) bool {
+	return candidate != nil && factoryNextSkipForBackend()(*candidate)
+}
+
+// factoryCompleteCarryOver is the ONE catch-up seam of the re-lease
+// stage/evidence carry-over (card t1930, card-review r5 F5 / r6 R2): it
+// writes the prior row's stage and evidence onto a picked row that carries
+// neither of its own — whether the row is freshly recorded (the carry-over
+// proper) or a crash-window leftover a retry re-enters (RecordPicked
+// committed, the fenced write died). carried is false and the row unchanged
+// when there is no candidate, the row is not eligible, or the fenced write
+// refuses (a fence refusal falls through — the lease edges re-fence anyway).
+// The caller owns the backend-skip decision on the candidate (R1), because
+// the nominated path renders it as a refusal and the selection arms skip
+// quietly.
+func factoryCompleteCarryOver(ctx context.Context, db *homestate.FactoryDB, runID string, c homestate.Card, candidate *homestate.Card) (homestate.Card, bool) {
+	if candidate == nil || c.State != homestate.CardPicked || c.Stage != "" || c.EvidenceSHA != "" {
+		return c, false
+	}
+	updated, err := db.SetCardStageEvidence(ctx, runID, c.CardID, candidate.Stage, candidate.EvidenceSHA, c.Version, factoryCardNow())
+	if err != nil {
+		return c, false
+	}
+	return updated, true
+}
+
+// factoryPriorWorktreeReusable reports whether the prior row's worktree is
+// the reusable landing tree the claim path would re-enter (the same
+// conditions factoryCarryPreviousWorktree decides by): a non-empty path, an
+// existing directory, and one of the card's own landing candidates — the
+// resolver-derived leaf from the pre-section base (REQ-WHR-007) or the
+// legacy in-repo leaf, the same candidate set the carry and refusal readers
+// keep. It gates the stage/evidence carry-over (card t1930, card-review r2
+// F3) — a stage carried onto a FRESH tree would resume an audit stage with
+// none of the audit files.
+func factoryPriorWorktreeReusable(ctx context.Context, root, cardID, path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	if info, err := os.Lstat(path); err != nil || !info.IsDir() {
+		return false
+	}
+	if base := factoryLandingBaseFrom(ctx); base != "" && sameDirPath(path, filepath.Join(base, cardID)) {
+		return true
+	}
+	return sameDirPath(path, filepath.Join(root, sessionWorktreeSubdir, cardID))
+}
+
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
 // fields carries the record-creation attributes the caller computed — the
 // hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
@@ -1179,6 +1499,18 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// the lease edge to T1's remainder.
 	recordCtx, cancel := factoryClaimContext(ctx)
 	defer cancel()
+	// The re-lease carry-over (card t1930, defect ③): a card recorded under a
+	// NEW run is born with empty stage and evidence_sha, orphaning the prior
+	// run's progress (t1828 re-batched read stage "-", t1832's re-lease reset
+	// the row). The candidate is read whether or not this run's row exists
+	// yet (card-review r5 F5 / r6 R2): the nominated retry over a crash-window
+	// row — RecordPicked committed, the fenced write died — recovers through
+	// the same seam. The backend-skip test (r6 R1) fires BEFORE T1, so a
+	// refused nominated carry writes nothing.
+	carry := factoryPriorCarryCandidate(recordCtx, db, root, runID, cardID)
+	if factoryBackendSkipsCarriedStage(carry) {
+		return factoryNextClaimRefused(fmt.Errorf("factory next: refused %s: a Codex lane cannot advance a card recorded at %s", factoryRefuseBackendSkip, dash(carry.Stage)))
+	}
 	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
@@ -1191,6 +1523,7 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	if fresh.State != homestate.CardPicked {
 		return homestate.Card{}, false, true, nil
 	}
+	fresh, _ = factoryCompleteCarryOver(recordCtx, db, runID, fresh, carry)
 	return factoryNextClaim(ctx, db, root, runID, fresh, lane)
 }
 
@@ -1217,7 +1550,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 				return factoryNextClaimRefused(factoryClaimFailure(ctx, rerr))
 			}
 			c = next
-		} else if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
+		} else if err := factoryRefuseForeignWorktree(ctx, root, c.CardID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
 	}
@@ -1414,7 +1747,8 @@ func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, i
 	// 1. admitted — the queue item exists and is picked. A held (or dropped,
 	// or absent) item never enters the generic pull: the hold STATE is
 	// absorbed here (D9), not given its own token.
-	if !inQueue || it.State != factory.BacklogStatePicked {
+	admitted := inQueue && it.State == factory.BacklogStatePicked
+	if !admitted {
 		state := "absent"
 		if inQueue {
 			state = string(it.State)
@@ -1507,11 +1841,12 @@ func factoryRowHolder(row homestate.Card) string {
 // and the serial slot — never a relation store (REQ-TAU-013). The same
 // function runs at validation and again inside the queue lock at promotion.
 // The unnominated promotion arm applies only its marker clause, through
-// factoryQueuedHoldMarked.
+// factoryQueuedHoldMarked. serialHolder, when non-empty, names the blocking
+// card in the serial-slot refusal detail (card t1828).
 //
 // @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
-func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
+func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool, serialHolder string) *factoryNominateRefusal {
 	switch it.State {
 	case factory.BacklogStateQueued, factory.BacklogStatePicked:
 	case factory.BacklogStateDropped:
@@ -1542,7 +1877,11 @@ func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane str
 		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
 	}
 	if serialHeld {
-		return factoryRefusal(factoryRefuseSerialSlot, "another serial card is in flight and holds the serial slot")
+		detail := "another serial card is in flight and holds the serial slot"
+		if serialHolder != "" {
+			detail += ": " + serialHolder
+		}
+		return factoryRefusal(factoryRefuseSerialSlot, "%s", detail)
 	}
 	return nil
 }
@@ -1596,8 +1935,24 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	// refused the one lease a lane was dispatched to run). A nomination of a
 	// card NOT assigned to this lane is a NEW card and still passes false.
 	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
-	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere)
-	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
+	// holderAlive (card t1828): the same generation-aware holder-liveness
+	// read the selection arms take — an expired lease of a live same-incarnation
+	// holder still holds the slot.
+	holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
+	blocking, held := factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere, holderAlive)
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && held
+	// The refusal names who holds the slot (card t1828): the blocking card id
+	// plus its holder — the live 10-17 incident left the leader guessing.
+	serialHolder := ""
+	if nom.serialHeld {
+		for i := range cards {
+			if cards[i].CardID == blocking {
+				serialHolder = fmt.Sprintf("%s (holder %s)", blocking, factoryRowHolder(cards[i]))
+				break
+			}
+		}
+	}
+	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld, serialHolder); r != nil {
 		return nom, r, nil
 	}
 	// Another lane's bundle member is never a nominee (card t1454
@@ -1645,7 +2000,7 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			return nom, nil, err
 		}
 		if carried == "" {
-			if err := factoryRefuseForeignWorktree(root, cardID); err != nil {
+			if err := factoryRefuseForeignWorktree(ctx, root, cardID); err != nil {
 				return nom, factoryRefusal(factoryTokenForeignWorktree, "%s", strings.TrimPrefix(err.Error(), "factory next: refused — ")), nil
 			}
 		}
@@ -1684,6 +2039,9 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 // @MX:NOTE: [AUTO] The nominated lease entry point — shared by the `next --card` verb and the factory_next MCP handler (one implementation per verb, design.md §3); the single seam factoryNominateBeforeRecord sits between the promotion and RecordPicked. Fan-in 2 — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
 func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHold string) (homestate.Card, error) {
+	// The landing base is resolved before the section (see
+	// factoryNextLeaseOnceGated).
+	ctx = withFactoryLandingBase(ctx, root)
 	// Opened before the section with the claim's busy timeout in its DSN (see
 	// factoryNextLeaseOnceGated).
 	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
@@ -1885,7 +2243,7 @@ func cardStageAtOrAfterMergeReady(s string) bool {
 func newFactoryNextCommand() *cobra.Command {
 	var wait bool
 	var waitBound time.Duration
-	var run, nominee string
+	var run, nominee, actor string
 	cmd := &cobra.Command{
 		Use:   "next",
 		Short: "Lease the lane's next card through the factory record (lane session, parent checkout)",
@@ -1894,7 +2252,7 @@ func newFactoryNextCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("next")
 			}
-			lane, err := factoryLaneLabelFromEnv("next")
+			lane, err := factoryLaneLabel("next", actor)
 			if err != nil {
 				return err
 			}
@@ -1994,9 +2352,11 @@ func newFactoryNextCommand() *cobra.Command {
 		"Keep re-checking at a fixed interval until a card is leased or the wait bound elapses")
 	cmd.Flags().DurationVar(&waitBound, "wait-bound", factoryNextWaitBoundDefault,
 		"How long --wait re-checks before reporting no card")
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
 	cmd.Flags().StringVar(&nominee, "card", "",
 		"Lease exactly this card (the session's own judged pick) or refuse it: exit 4 with one line `factory next: refused <token>: <detail>`; the quota hold and the Codex skip apply as to any new card")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -2068,6 +2428,13 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if err != nil {
 		return true
 	}
+	// holderAlive (card t1828, sync-audit absorb F1): the same
+	// generation-aware holder-liveness read the lease arms take — an expired
+	// lease of a live same-incarnation holder still holds the slot in the
+	// peek, or the --wait loop would poll on a "may lease" the lease attempt
+	// then refuses serial-slot; a dead, absent, or re-registered holder
+	// releases, so the loop never wedges on a lazily-collected row.
+	holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(rec, id) }
 	now := factoryCardNow()
 	rowByID := make(map[string]homestate.Card, len(rows))
@@ -2092,10 +2459,16 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			}
 			// The serial read mirrors factoryNextValidate: only a serial
 			// nominee is blocked by the slot, and a lane nominating its own
-			// assigned card ignores sibling assigned rows (card t1542).
+			// assigned card ignores sibling assigned rows (card t1542). The
+			// peek reads nil/non-nil of the refusal alone, so the blocking
+			// card id the (string, bool) return names is discarded here —
+			// the rendered refusal detail is the validation arm's job.
 			ownAssigned := row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane
-			serialHeld := classOf(nominee).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned)
-			if factoryKeepSetRefusal(it, row, lane, serialHeld) != nil {
+			serialHeld := false
+			if classOf(nominee).Mode == factory.ClassModeSerial {
+				_, serialHeld = factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned, holderAlive)
+			}
+			if factoryKeepSetRefusal(it, row, lane, serialHeld, "") != nil {
 				return false
 			}
 			return !held || (row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane)
@@ -2148,7 +2521,7 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			continue
 		}
 		if it, inQueue := queueItemIn(rec, c.CardID); inQueue {
-			if factoryKeepSetRefusal(it, &rows[i], lane, false) != nil {
+			if factoryKeepSetRefusal(it, &rows[i], lane, false, "") != nil {
 				continue
 			}
 		}
@@ -2161,8 +2534,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		if skipForBackend(c) {
 			continue
 		}
-		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
-			continue
+		if classOf(c.CardID).Mode == factory.ClassModeSerial {
+			if _, held := factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true, holderAlive); held {
+				continue
+			}
 		}
 		return true
 	}
@@ -2200,10 +2575,15 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 				continue
 			}
 		case factory.BacklogStatePicked:
-			if !selfDispatch {
+			row, hasRow := rowByID[it.ID]
+			bundleOwner, bundleHasOwner := bundleLane[row.BundleID]
+			ownBundle := hasRow && row.BundleID != "" && bundleHasOwner && bundleOwner == lane
+			// Arm (b-priority) continues this lane's own bundle with the
+			// generic self-dispatch arms OFF too (REQ-CEP-004).
+			if !selfDispatch && !ownBundle {
 				continue
 			}
-			if row, hasRow := rowByID[it.ID]; hasRow &&
+			if hasRow &&
 				(row.State != homestate.CardPicked || strings.TrimSpace(row.OwnerLabel) != "") {
 				continue
 			}
@@ -2231,7 +2611,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		} else if _, wait := hubWaitUnmerged(it.ID); wait {
 			continue
 		}
-		if classOf(it.ID).Mode != factory.ClassModeSerial || !factorySerialInFlightExcluding(rows, classOf, it.ID, now, false) {
+		if classOf(it.ID).Mode != factory.ClassModeSerial {
+			return true
+		}
+		if _, held := factorySerialInFlightExcluding(rows, classOf, it.ID, now, false, holderAlive); !held {
 			return true
 		}
 	}
@@ -2264,7 +2647,7 @@ func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.C
 // (REQ-SD-012): the lane applies the card's next F1 stage transition, the
 // evidence positional feeding the guards that need it.
 func newFactoryStageCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	cmd := &cobra.Command{
 		Use:   "stage <card> <state> [evidence]",
 		Short: "Apply a card's next stage transition with its evidence (lane session)",
@@ -2273,7 +2656,7 @@ func newFactoryStageCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
 			}
-			lane, err := factoryLaneLabelFromEnv("stage")
+			lane, err := factoryLaneLabel("stage", actor)
 			if err != nil {
 				return err
 			}
@@ -2293,7 +2676,9 @@ func newFactoryStageCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -2373,7 +2758,7 @@ type factoryRenewOutcome struct {
 // lease by the configured card lease duration and prints the new expiry. With --json it
 // prints the outcome as one JSON object, and a refusal exits non-zero after printing it.
 func newFactoryRenewCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	var asJSON bool
 	cmd := &cobra.Command{
 		Use:          "renew <card>",
@@ -2384,7 +2769,7 @@ func newFactoryRenewCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("renew")
 			}
-			lane, err := factoryLaneLabelFromEnv("renew")
+			lane, err := factoryLaneLabel("renew", actor)
 			if err != nil {
 				return err
 			}
@@ -2406,7 +2791,9 @@ func newFactoryRenewCommand() *cobra.Command {
 			return renewErr
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the lane's roster binding against the active runs; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the outcome as JSON: result and expires_at")
 	return cmd
 }
@@ -2470,7 +2857,7 @@ func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (fact
 // commit — it records the merge identity, never a test-run claim). The
 // window is NOT released here: the lane releases it as its next step.
 func newFactoryCompleteCommand() *cobra.Command {
-	var run string
+	var run, actor string
 	cmd := &cobra.Command{
 		Use:   "complete <card> [remeasure]",
 		Short: "Take a merge-ready card through merging to merged-local; under github-flow, to pr-open then merged-pr (lane session)",
@@ -2479,7 +2866,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			lane, err := factoryLaneLabelFromEnv("complete")
+			lane, err := factoryLaneLabel("complete", actor)
 			if err != nil {
 				return err
 			}
@@ -2494,7 +2881,9 @@ func newFactoryCompleteCommand() *cobra.Command {
 			return factoryCompleteCard(ctx, cmd.OutOrStdout(), factoryCardRoot(), integrationLockRoot(), args[0], remeasure, run, lane)
 		},
 	}
-	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run; a run whose row is not active refuses stale)")
+	cmd.Flags().StringVar(&actor, "actor", "",
+		"Act as this lane label (SPEC-MCP-NEUTRALITY-001 REQ-MN-003). Default: "+config.EnvMoaiFactoryWorker+".")
 	return cmd
 }
 
@@ -2643,6 +3032,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
 			}
 		}
+		// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): complete's
+		// own acquisition is a window entry like acquire's, so the same check
+		// runs before the window record is touched. A tip that is an adoption
+		// is exempt (REQ-ISB-016).
+		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
+			return freshErr
+		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
 		}
@@ -2674,16 +3070,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// from that commit without calling the merge step and without a fresh
 	// re-measure. A card branch that gained commits after that merge is NOT
 	// adopted and falls through to step 3.
-	tip := factoryBranchTip(integTree, branch)
-	cardTip := factoryBranchTip(card.WorktreePath, cardBranch)
-	adopted := ""
-	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
-		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
-			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
-				adopted = tip
-			}
-		}
-	}
+	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
 		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
@@ -2878,6 +3265,28 @@ func cliGitIn(dir string, args ...string) (string, error) {
 	return string(out), err
 }
 
+// factoryAdoptedTip returns the integration tip when it is an adoption in the
+// sense of REQ-MWQ-019 step 2 — a merge commit whose second parent is the card
+// branch's CURRENT tip and whose tree a VALID re-measure record that NAMES that
+// tree keys — and "" otherwise. The reader returns the tree field as written,
+// so a stored file whose tree names another SHA is not a record for the tip
+// tree and must not exempt the gate (sync-audit iter12 F1: the identity
+// comparison the gate's own verdict makes, mirrored here). complete's adoption
+// path and the base-freshness gate's exemption (SPEC-INTEGRATION-STALE-BASE-001,
+// REQ-ISB-016) both ask this one question, so the two cannot drift.
+func factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch string) string {
+	tip := factoryBranchTip(integTree, branch)
+	cardTip := factoryBranchTip(cardTree, cardBranch)
+	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
+		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil && record.Tree == tipTree {
+				return tip
+			}
+		}
+	}
+	return ""
+}
+
 // factoryBranchTip reads dir's tip for branch (empty dir falls back to the
 // process repository — the caller's resolution already ran).
 func factoryBranchTip(dir, branch string) string {
@@ -3021,14 +3430,21 @@ func factoryBranchOfWorktree(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
 	}
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	// The FULL ref, only refs/heads/ stripped: `rev-parse --abbrev-ref HEAD`
+	// prints heads/<branch> when a tag shares the branch's name, and the
+	// caller's refs/heads/<branch> lookups then name a branch that does not
+	// exist (card t1834, sync-audit iter12 F2) — the same hazard the gate's
+	// own symbolic-ref read exists for. With --quiet a detached HEAD is exit 1
+	// with no output; like the former --abbrev-ref error path, it stays ""
+	// (best-effort), and no new semantics are invented for it.
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "HEAD")
 	cmd.Dir = dir
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
 }
 
 // factoryWorktreeForBranchIn resolves the worktree holding branch, anchored
@@ -3090,9 +3506,16 @@ func factoryHolderLabel(lock *factory.IntegrationLock) string {
 // in for the re-measure — the record store is the gate.)
 
 // resolveFactoryCardRun returns the explicit --run value, or the single active
-// factory run.
+// factory run. An explicit id whose row exists but is not active refuses
+// (REQ-MN-003 stale-run): the run's lease, stage, and evidence rows are
+// expired, and reading them is the B8 defect. A run with no row — or no runs
+// table at all — has nothing expired to read, so the id passes through and
+// the verb's own record reads answer for it.
 func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
+		if factoryRunRowNotActive(ctx, root, run) {
+			return "", fmt.Errorf("run %q is not the currently active factory run; pass the active run or omit --run", run)
+		}
 		return run, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
@@ -3100,6 +3523,32 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 		return "", fmt.Errorf("no --run given and no single active factory run (%w)", err)
 	}
 	return run, nil
+}
+
+// factoryRunRowNotActive reports whether a run row EXISTS and is not active.
+// A missing row (or an unreadable record) is not a staleness answer — the
+// verb's own reads fail on their own — so only a present non-active row
+// refuses. The read is a plain single-query sqlite open (the
+// factorymsg.ValidateActiveRun pattern), NOT homestate.OpenFactory: the verb
+// leases wait on timing bounds a full schema-init open would eat into.
+func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return false
+	}
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	if err != nil {
+		return false
+	}
+	defer func() { _ = db.Close() }()
+	var status string
+	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, run).Scan(&status); err != nil {
+		return false
+	}
+	return status != "active"
 }
 
 // resolveFactoryRenewRun returns the run a renewal acts in (SPEC-FACTORY-LEASE-RENEW-001,
@@ -3119,6 +3568,9 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 // RosterSoleRun, and the ambiguous-set answer carries RosterBound.
 func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardID string) (string, homestate.RosterRule, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
+		if factoryRunRowNotActive(ctx, root, run) {
+			return "", homestate.RosterUnchecked, fmt.Errorf("run %q is not the currently active factory run; pass the active run or omit --run", run)
+		}
 		return run, homestate.RosterUnchecked, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
@@ -3571,6 +4023,15 @@ type factoryStatusReport struct {
 	// strings. They sit before Quota, which stays last.
 	LeaseDuration string `json:"lease_duration"`
 	RenewInterval string `json:"renew_interval"`
+	// AgeAlarms is the display-only work-item-age alarm block
+	// (SPEC-CARD-AGE-ALARM-001 REQ-CAA-006): present only while
+	// workflow.card_age_alarm.enabled is true and some covered card crosses a
+	// band, one row per card, oldest-first. AgeAlarmWarning carries the
+	// refused-key degrade of REQ-CAA-002 (the alarm section omitted, exactly
+	// one warning line naming the key). Both keys are additive and sit before
+	// Quota, which stays last.
+	AgeAlarms       []factoryAgeAlarmView `json:"age_alarms,omitempty"`
+	AgeAlarmWarning string                `json:"age_alarm_warning,omitempty"`
 	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
 	// REQ-QAS-013): present only while the quota gate is enabled and some window
 	// has data, and last, so every pre-existing key keeps its place.
@@ -3624,6 +4085,8 @@ func newFactoryStatusCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
 			}
+			alarmSettings, alarmWarning := resolveFactoryAgeAlarm(root)
+			report.AgeAlarmWarning = alarmWarning
 			// The classification snapshot for the mode/priority cells
 			// (REQ-TCD-010): one pure queue read; a failed read degrades the
 			// cells to the derived defaults rather than failing the whole
@@ -3636,11 +4099,20 @@ func newFactoryStatusCommand() *cobra.Command {
 					return fmt.Errorf("factory status: %w", err)
 				}
 				cards, err := db.ListCards(ctx, report.Run)
-				_ = db.Close()
 				if err != nil {
+					_ = db.Close()
 					return fmt.Errorf("factory status: %w", err)
 				}
 				now := factoryCardNow()
+				// The display-only age alarm (SPEC-CARD-AGE-ALARM-001): one
+				// compute call over the same cards, reading the events through
+				// the still-open handle; it writes nothing (REQ-CAA-007) and
+				// costs nothing beyond the flag read while disabled
+				// (REQ-CAA-001).
+				if alarmSettings.Enabled && alarmWarning == "" {
+					report.AgeAlarms, report.AgeAlarmWarning = computeFactoryAgeAlarmsWithSettings(ctx, report.Run, db, cards, now, alarmSettings)
+				}
+				_ = db.Close()
 				for _, c := range cards {
 					cls := factory.DefaultCardClassification()
 					if queueErr == nil {
@@ -3704,6 +4176,7 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	if r.UnavailableSkipped > 0 {
 		_, _ = fmt.Fprintf(w, "%s warning: skipped %d unparseable line(s)\n", factoryRecordUnavailableTag, r.UnavailableSkipped)
 	}
+	writeFactoryAgeAlarmText(w, r.AgeAlarms, r.AgeAlarmWarning)
 	if r.Quota != nil {
 		writeFactoryQuotaText(w, r.Quota)
 	}
@@ -3754,15 +4227,17 @@ func newFactoryDecideCommand() *cobra.Command {
 		Short: "Record an operator decision: --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// REQ-SD-016: a session for which lane refusal holds — a lane by
-			// marker, label, or Codex backend — cannot record decisions. The
-			// guard runs before any card row is read or written.
-			// The one lane exception: a kickoff approval by the audit decider,
-			// admitted per card only when the lane is the card's record owner
-			// (checked in decideOne).
+			// REQ-SD-016 + SPEC-MCP-NEUTRALITY-001 REQ-MN-003: the operator
+			// gate both decide surfaces run — a positive operator mark admits,
+			// a lane keeps the boundary refusal, an unmarked session is
+			// unknown attribution. The one lane exception: a kickoff approval
+			// by the audit decider, admitted per card only when the lane is
+			// the card's record owner (checked in decideOne).
 			auditApprove := decider == homestate.DeciderAudit && gate == "kickoff" && choice == "approve"
-			if factoryLaneRefusal() && !auditApprove {
-				return factoryDecideLaneRefusal()
+			if !auditApprove {
+				if err := factoryDecideGate(); err != nil {
+					return err
+				}
 			}
 			if decider != homestate.DeciderHuman && !auditApprove {
 				return fmt.Errorf("factory decide: decider %q is not accepted here; %q decides every gate and %q only --gate kickoff --choice approve", decider, homestate.DeciderHuman, homestate.DeciderAudit)

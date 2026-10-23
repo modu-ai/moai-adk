@@ -86,6 +86,33 @@ const (
 	// by being "newest". A compiled, unmeasured value.
 	QuotaClockSkewTolerance = 5 * time.Minute
 
+	// workflow.card_age_alarm defaults (SPEC-CARD-AGE-ALARM-001 REQ-CAA-001 /
+	// REQ-CAA-002, card t1838). The enable flag ships OFF: while it is false the
+	// factory status output is byte-identical to the pre-SPEC output. All four
+	// band values are UNMEASURED chosen starting points in the quota-gate
+	// tradition (decision-index Q5): gate waits are human-scale (the incident
+	// inventory's leader-repair stalls ran ~5.5h; multi-day strandings exist),
+	// working-card stalls machine-scale (a 15m lease with 5m renewal makes 2h
+	// without a stage move or commit notable, 8h serious). G1 exists to produce
+	// the calibration data that retunes them; this is the one place they are
+	// defined, and the shipped template block mirrors them.
+	DefaultCardAgeAlarmEnabled         = false
+	DefaultCardAgeAlarmGateWarnAfter   = 6 * time.Hour
+	DefaultCardAgeAlarmGateAlertAfter  = 24 * time.Hour
+	DefaultCardAgeAlarmStallWarnAfter  = 2 * time.Hour
+	DefaultCardAgeAlarmStallAlertAfter = 8 * time.Hour
+
+	// CardAgeAlarmClockSkewTolerance is how far in the future an age-anchor
+	// timestamp may lie, relative to the reader's clock, before the alarm
+	// renders that anchor unknown (SPEC-CARD-AGE-ALARM-001 REQ-CAA-004, plan
+	// audit iter1 D2): a record from another machine or a skewed clock must not
+	// yield a negative or zero age by being "newest". It mirrors
+	// QuotaClockSkewTolerance's shape exactly — a compiled, unmeasured value,
+	// deliberately not a workflow.card_age_alarm.* key, and the one sanctioned
+	// home of the number under REQ-CAA-002's no-literal rule. A compiled,
+	// unmeasured value.
+	CardAgeAlarmClockSkewTolerance = 5 * time.Minute
+
 	// workflow.quota_gate defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008).
 	// All four numeric values are UNMEASURED defaults: no data on the quota a
 	// card consumes exists, so they are chosen, not measured, and are
@@ -1462,6 +1489,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Duration:      DefaultFactoryLeaseDuration.String(),
 			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
 		},
+		CardAgeAlarm: CardAgeAlarmConfig{
+			Enabled:         DefaultCardAgeAlarmEnabled,
+			GateWarnAfter:   DefaultCardAgeAlarmGateWarnAfter.String(),
+			GateAlertAfter:  DefaultCardAgeAlarmGateAlertAfter.String(),
+			StallWarnAfter:  DefaultCardAgeAlarmStallWarnAfter.String(),
+			StallAlertAfter: DefaultCardAgeAlarmStallAlertAfter.String(),
+		},
 		// SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007: the self-dispatch
 		// kill-switch ships default-OFF — the generic selection arms stay
 		// dormant for unowned cards, so the distributed behavior is exactly
@@ -1566,6 +1600,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
 		},
+		// The base-freshness gate ships with its REFUSAL layer off and a
+		// tolerance of zero landings: measurement and the advisory line run on
+		// every entry regardless, and only the refusal is opt-in. Template
+		// neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		BaseFreshnessGate: BaseFreshnessGateConfig{
+			Enabled:           false,
+			MaxBehindLandings: 0,
+		},
 		// The candidate-CI path ships inert (SPEC-CANDIDATE-CI-001 REQ-CCI-006):
 		// no candidate verb operates and the merge step's landing check stays
 		// the absent no-op seam while Enabled is false. GuardBundleRequired
@@ -1661,6 +1704,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		AnchorRelocationGuard: AnchorRelocationGuardConfig{
+			Enabled: false,
+		},
+		// The card-metadata editing verbs ship OFF (SPEC-CARD-METADATA-VERBS-001
+		// REQ-CMV-002): both verbs refuse naming the flag key on the
+		// distributed default, and an operator opts in via local config.
+		// Template neutrality: the template key lands commented-out (plan.md
+		// §F M5) — no `enabled: true` anywhere under
+		// internal/template/templates/.
+		CardMetadataVerbs: CardMetadataVerbsConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate

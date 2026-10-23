@@ -99,10 +99,10 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 
 	// Init control (the same rule with init's own visible N): InitQuestions —
 	// what `moai init` runs — renders Basic (conversation_language + user_name,
-	// first at 1), Agents & Autonomy (agent_wiring + autonomy_tier, first at 3),
-	// and Judgment Capability (jev_enabled, first at 5); N = 6 since
-	// SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003 added the participation
-	// opt-in. Its own page (page 4) is a full-viewport disclosure that huh
+	// first at 1), Agents & Autonomy (autonomy_tier, first at 3), and Judgment
+	// Capability (jev_enabled, first at 4); N = 5 since the agent_wiring
+	// removal (card t1909; the participation opt-in keeps its own disclosure
+	// page). Its own page (page 4) is a full-viewport disclosure that huh
 	// renders WITHOUT the step indicator — the same measured trade the Jev
 	// slot's comment describes — so the init control's stepper assertions stop
 	// at page 3 and the driver enters the disclosure page to complete the form.
@@ -114,11 +114,11 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 		first     int
 	}{
 		{questions: 2, first: 1},
-		{questions: 2, first: 3},
-		{questions: 1, first: 5},
+		{questions: 1, first: 3},
+		{questions: 1, first: 4},
 	}
 	for _, g := range initGroups {
-		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 6)
+		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 5)
 		for range g.questions {
 			id.Enter()
 		}

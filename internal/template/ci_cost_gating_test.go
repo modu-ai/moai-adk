@@ -1,0 +1,1519 @@
+// ci_cost_gating_test.go: guards for SPEC-RELEASE-PIPELINE-001 M2 (card t1536,
+// REQ-RPC-002 / REQ-RPC-003 / REQ-RPC-004).
+//
+// ci.yml's always-on cost jobs (lint, build, constitution-check, test-browser)
+// are gated on shared-filter input classes for pull_request events only
+// (decision-index Q8), fail open when the classification did not conclude
+// success, and publish their retained required names (`Lint`, the five
+// `Build (...)` names; decision-index Q4) through skip-markers plus a
+// classification-verdict step so that "the classification failed" never yields
+// a passing required name. Three guards:
+//
+//   - TestCICostJobsInputGated        (AC-RPC-002) the gate itself
+//   - TestCIGatedFamilyVerdictSemantics (AC-RPC-003) what each required name concludes
+//   - TestCIRequiredNamesSatisfied    (AC-RPC-004) every required-name set is
+//     still reported on the event class it governs
+//
+// Each guard is a pure check function over a parsed workflow; the test runs it
+// on the real tree and then on in-memory mutants. A mutant that does not turn
+// the check red is a vacuous control, so every control first asserts its
+// baseline is clean and that the mutation actually changed the workflow.
+//
+// Sentinels on failure: CI_COST_GATE_VIOLATION, CI_VERDICT_SEMANTICS_VIOLATION,
+// CI_REQUIRED_NAME_VIOLATION.
+package template_test
+
+import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"testing"
+
+	"gopkg.in/yaml.v3"
+)
+
+const (
+	rpcCIWorkflowRel       = ".github/workflows/ci.yml"
+	rpcCodeQLWorkflowRel   = ".github/workflows/codeql.yml"
+	rpcReleaseWorkflowRel  = ".github/workflows/release-pr-multi-os.yml"
+	rpcRequiredChecksRel   = ".github/required-checks.yml"
+	rpcBranchProtectionRel = ".github/branch-protection.json.gtmpl"
+	rpcBranchProtectionMir = "internal/template/templates/.github/branch-protection.json.gtmpl"
+)
+
+// rpcCostJobClasses maps each gated cost job to the filter classes whose
+// positive match runs it (the design decision the filter file's evidence
+// comments document).
+var rpcCostJobClasses = map[string][]string{
+	"lint":               {"binary_inputs", "harness_inputs"},
+	"build":              {"binary_inputs"},
+	"constitution-check": {"binary_inputs", "harness_inputs"},
+	"test-browser":       {"browser_inputs"},
+}
+
+// rpcGatedRealJobs are the cost jobs that publish retained required names.
+var rpcGatedRealJobs = []string{"lint", "build"}
+
+func rpcSortedKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func rpcContains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+// ---- AC-RPC-002: the gate ---------------------------------------------------
+
+func rpcCheckCostJobsGated(t *testing.T, wf *rpcWorkflow) []string {
+	t.Helper()
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	detect := wf.Jobs["detect"]
+	if detect == nil {
+		return []string{"CI_COST_GATE_VIOLATION: ci.yml has no detect job"}
+	}
+	for _, k := range rpcClassKeys[1:] {
+		if !strings.Contains(detect.Outputs[k], "steps.f.outputs."+k) {
+			add("detect does not export the %s class from the shared filter step (output = %q)", k, detect.Outputs[k])
+		}
+	}
+	for _, id := range rpcSortedKeys(rpcCostJobClasses) {
+		classes := rpcCostJobClasses[id]
+		j := wf.Jobs[id]
+		if j == nil {
+			add("job %s is missing", id)
+			continue
+		}
+		if !rpcContains(j.needsList(), "detect") {
+			add("%s: does not need detect, so it cannot read the input classification", id)
+		}
+		if strings.Contains(j.If, "always()") {
+			add("%s: its condition is built on always(), which starts the job after the run is cancelled", id)
+		}
+		if !strings.Contains(j.If, "!cancelled()") {
+			add("%s: its condition is not !cancelled()-guarded", id)
+		}
+		runs := func(c rpcCell) bool { return rpcJobRuns(t, j, c.ctx()) }
+		if runs(rpcCell{event: "pull_request", detect: "success", classes: rpcOutcome("docs-only")}) {
+			add("%s: runs on a docs-only pull_request (no input class matched)", id)
+		}
+		for _, k := range rpcClassKeys[1:] {
+			want := rpcContains(classes, k)
+			if got := runs(rpcCell{event: "pull_request", detect: "success", classes: rpcOnly(k)}); got != want {
+				add("%s: with only %s matched it runs=%v, want %v", id, k, got, want)
+			}
+		}
+		for _, d := range []string{"failure", "cancelled"} {
+			if !runs(rpcCell{event: "pull_request", detect: d}) {
+				add("%s: does not run when the classification concluded %s (fail-open)", id, d)
+			}
+		}
+		for _, d := range []string{"success", "failure"} {
+			if runs(rpcCell{event: "pull_request", detect: d, classes: rpcOutcome("go-code"), cancelled: true}) {
+				add("%s: starts although the run itself is cancelled (detect=%s)", id, d)
+			}
+		}
+		for _, ev := range []string{"push", "workflow_dispatch"} {
+			for _, d := range []string{"success", "failure"} {
+				if !runs(rpcCell{event: ev, detect: d, classes: rpcOutcome("docs-only")}) {
+					add("%s: does not run on %s with detect=%s (Q8-exempt event class)", id, ev, d)
+				}
+			}
+		}
+	}
+	return v
+}
+
+// rpcClassReaders inverts rpcCostJobClasses: class -> job ids reading it.
+func rpcClassReaders() map[string][]string {
+	out := map[string][]string{}
+	for _, id := range rpcSortedKeys(rpcCostJobClasses) {
+		for _, c := range rpcCostJobClasses[id] {
+			out[c] = append(out[c], id)
+		}
+	}
+	return out
+}
+
+// rpcCheckFilterClasses checks the shared filter file defines the three input
+// classes, each with a non-empty root list and an evidence comment naming the
+// jobs whose verdict reads it.
+func rpcCheckFilterClasses(text string) []string {
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &doc); err != nil || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return []string{"CI_COST_GATE_VIOLATION: " + rpcFilterRelPath() + " does not parse as a mapping"}
+	}
+	m := doc.Content[0]
+	readers := rpcClassReaders()
+	for _, class := range rpcClassKeys[1:] {
+		var key, val *yaml.Node
+		for i := 0; i+1 < len(m.Content); i += 2 {
+			if m.Content[i].Value == class {
+				key, val = m.Content[i], m.Content[i+1]
+			}
+		}
+		if key == nil || val.Kind != yaml.SequenceNode || len(val.Content) == 0 {
+			add("%s: class %s missing or empty", rpcFilterRelPath(), class)
+			continue
+		}
+		for _, job := range readers[class] {
+			if !strings.Contains(key.HeadComment, job) {
+				add("%s: class %s has no evidence comment naming the %s job that reads it", rpcFilterRelPath(), class, job)
+			}
+		}
+		first := val.Content[0]
+		if first.HeadComment == "" && first.LineComment == "" {
+			add("%s: class %s: first root %q carries no evidence comment", rpcFilterRelPath(), class, first.Value)
+		}
+	}
+	return v
+}
+
+func rpcFilterRelPath() string { return ".github/test-input-filters.yml" }
+
+// ---- F4: the classification itself -------------------------------------------
+//
+// rpcCheckFilterClasses proves each class is non-empty and documented, which a
+// filter whose every root was replaced by a path nothing changes still satisfies.
+// The checks below make the roots load-bearing: representative changed files
+// (test-owned facts, each tied to the evidence comment of its root in the filter
+// file) must be classified into the classes the cost-job table says read them,
+// docs files must be classified into none, and the classification must compose
+// with the real gate expressions into the documented run decision.
+
+// rpcFilterMatchFixtures: class -> changed files the class must match.
+var rpcFilterMatchFixtures = map[string][]string{
+	"go_code": {
+		"cmd/moai/main.go", "go.mod", "go.sum", "Makefile", ".github/workflows/ci.yml",
+		".moai/config/sections/quality.yaml", "internal/template/templates/x.md",
+		"internal/template/catalog.yaml", ".claude/agents/moai/manager-develop.md",
+		".claude/rules/moai/core/moai-constitution.md", ".claude/settings.json",
+		"scripts/ci/retry.sh", "scripts/release.sh",
+	},
+	"binary_inputs": {
+		"cmd/moai/main.go", "internal/cli/doctor.go", "internal/template/templates/x.txt",
+		"web/page.templ", "go.mod", "go.sum", "Makefile", ".golangci.yml", ".github/workflows/ci.yml",
+	},
+	"browser_inputs": {
+		"cmd/moai/main.go", "internal/web/static/app.js", "go.mod", "go.sum", ".github/workflows/ci.yml",
+	},
+	"harness_inputs": {
+		".claude/rules/moai/core/zone-registry.md", ".claude/agents/moai/manager-develop.md",
+	},
+}
+
+// rpcFilterNoMatchFixtures: changed files no class may match (a docs-only diff).
+var rpcFilterNoMatchFixtures = []string{"README.md", "CHANGELOG.md", "LICENSE", "docs-site/content/en/index.md"}
+
+// rpcDiffScenarios: a changed-file set, the input classes it belongs to by the
+// cost-job design decision, and (derived) which cost jobs a pull_request runs.
+var rpcDiffScenarios = []struct {
+	label   string
+	files   []string
+	classes []string
+}{
+	{"docs-only diff", []string{"README.md", "docs-site/content/en/index.md"}, nil},
+	{"Go source diff", []string{"cmd/moai/main.go"}, []string{"binary_inputs", "browser_inputs"}},
+	{"harness-only diff", []string{".claude/rules/moai/core/zone-registry.md"}, []string{"harness_inputs"}},
+}
+
+func rpcParseFilterRoots(text string) (map[string][]string, error) {
+	var m map[string][]string
+	if err := yaml.Unmarshal([]byte(text), &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func rpcAnyGlob(patterns []string, file string) (bool, error) {
+	for _, p := range patterns {
+		ok, err := rpcGlobMatch(p, file)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func rpcCheckFilterFixtures(text string) []string {
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	roots, err := rpcParseFilterRoots(text)
+	if err != nil {
+		return []string{"CI_COST_GATE_VIOLATION: " + rpcFilterRelPath() + " does not parse as class -> root list: " + err.Error()}
+	}
+	for _, class := range rpcSortedKeys(rpcFilterMatchFixtures) {
+		for _, f := range rpcFilterMatchFixtures[class] {
+			ok, err := rpcAnyGlob(roots[class], f)
+			if err != nil {
+				add("%s: class %s: %v", rpcFilterRelPath(), class, err)
+			} else if !ok {
+				add("%s: class %s matches no root for %q, a file it must classify", rpcFilterRelPath(), class, f)
+			}
+		}
+		for _, f := range rpcFilterNoMatchFixtures {
+			if ok, _ := rpcAnyGlob(roots[class], f); ok {
+				add("%s: class %s matches %q, a docs file no class may classify", rpcFilterRelPath(), class, f)
+			}
+		}
+	}
+	return v
+}
+
+// rpcCheckClassificationEndToEnd classifies each scenario's files with the real
+// filter, feeds the resulting classes into the real gate expressions as a
+// successful `detect`, and compares which cost jobs run with the design table.
+func rpcCheckClassificationEndToEnd(t *testing.T, wf *rpcWorkflow, filterText string) []string {
+	t.Helper()
+	var v []string
+	roots, err := rpcParseFilterRoots(filterText)
+	if err != nil {
+		return []string{"CI_COST_GATE_VIOLATION: " + rpcFilterRelPath() + " does not parse as class -> root list: " + err.Error()}
+	}
+	for _, sc := range rpcDiffScenarios {
+		got := map[string]bool{}
+		for class, patterns := range roots {
+			for _, f := range sc.files {
+				ok, err := rpcAnyGlob(patterns, f)
+				if err != nil {
+					v = append(v, fmt.Sprintf("CI_COST_GATE_VIOLATION: %s: class %s: %v", rpcFilterRelPath(), class, err))
+				}
+				if ok {
+					got[class] = true
+				}
+			}
+		}
+		cell := rpcCell{event: "pull_request", detect: "success", classes: got}
+		for _, id := range rpcSortedKeys(rpcCostJobClasses) {
+			j := wf.Jobs[id]
+			if j == nil {
+				continue
+			}
+			want := false
+			for _, c := range rpcCostJobClasses[id] {
+				if rpcContains(sc.classes, c) {
+					want = true
+				}
+			}
+			if runs := rpcJobRuns(t, j, cell.ctx()); runs != want {
+				v = append(v, fmt.Sprintf("CI_COST_GATE_VIOLATION: %s: on a %s the filter classifies %v and the gate gives runs=%v, want %v", id, sc.label, rpcSortedKeys(got), runs, want))
+			}
+		}
+	}
+	return v
+}
+
+// rpcCheckDetectWiring checks the classification step ci.yml's gate reads from:
+// the step `f` of the detect job runs dorny/paths-filter over the shared filter
+// file, and detect re-exports go_code from it (the class exports are checked in
+// rpcCheckCostJobsGated).
+func rpcCheckDetectWiring(wf *rpcWorkflow) []string {
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_COST_GATE_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	detect := wf.Jobs["detect"]
+	if detect == nil {
+		return []string{"CI_COST_GATE_VIOLATION: ci.yml has no detect job"}
+	}
+	var f *rpcStep
+	for i := range detect.Steps {
+		if detect.Steps[i].ID == "f" {
+			f = &detect.Steps[i]
+		}
+	}
+	switch {
+	case f == nil:
+		add("detect has no classification step with id f, so steps.f.outputs.* reads nothing")
+	case !strings.HasPrefix(f.Uses, "dorny/paths-filter@"):
+		add("detect step f runs %q, not dorny/paths-filter", f.Uses)
+	default:
+		if got := fmt.Sprint(f.With["filters"]); got != rpcFilterRelPath() {
+			add("detect step f reads filters %q, not the shared %s", got, rpcFilterRelPath())
+		}
+	}
+	if !strings.Contains(detect.Outputs["go_code"], "steps.f.outputs.go_code") {
+		add("detect does not export go_code from the shared filter step (output = %q)", detect.Outputs["go_code"])
+	}
+	return v
+}
+
+var (
+	rpcFilterKeyRe  = regexp.MustCompile(`^([a-z_]+):\s*$`)
+	rpcFilterItemRe = regexp.MustCompile(`^  - '(.*)'\s*$`)
+)
+
+// rpcEditFilterRoots rewrites the `  - '<root>'` items of one class of the filter
+// text (every class when class is ""); edit returns the replacement root, or ""
+// to drop the item. Negative-control helper.
+func rpcEditFilterRoots(t *testing.T, text, class string, edit func(root string) string) string {
+	t.Helper()
+	var out []string
+	cur := ""
+	for _, ln := range strings.Split(text, "\n") {
+		if m := rpcFilterKeyRe.FindStringSubmatch(ln); m != nil {
+			cur = m[1]
+		}
+		if m := rpcFilterItemRe.FindStringSubmatch(ln); m != nil && (class == "" || cur == class) {
+			if repl := edit(m[1]); repl != "" {
+				out = append(out, "  - '"+repl+"'")
+			}
+			continue
+		}
+		out = append(out, ln)
+	}
+	res := strings.Join(out, "\n")
+	if res == text {
+		t.Fatalf("control did not apply: no root of class %q changed", class)
+	}
+	return res
+}
+
+// rpcStripKeyHeadComment removes the contiguous comment block directly above
+// `key:` in filter text (negative-control helper).
+func rpcStripKeyHeadComment(t *testing.T, text, key string) string {
+	t.Helper()
+	lines := strings.Split(text, "\n")
+	for i, ln := range lines {
+		if strings.HasPrefix(ln, key+":") {
+			start := i
+			for start > 0 && strings.HasPrefix(lines[start-1], "#") {
+				start--
+			}
+			if start == i {
+				t.Fatalf("control did not apply: %s has no head comment to strip", key)
+			}
+			return strings.Join(append(append([]string{}, lines[:start]...), lines[i:]...), "\n")
+		}
+	}
+	t.Fatalf("control did not apply: key %s not found", key)
+	return ""
+}
+
+func TestCICostJobsInputGated(t *testing.T) {
+	ciText := rpcReadRepoFile(t, rpcCIWorkflowRel)
+	wf := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+	for _, msg := range rpcCheckCostJobsGated(t, wf) {
+		t.Error(msg)
+	}
+	filterText := rpcReadRepoFile(t, rpcFilterRelPath())
+	for _, msg := range rpcCheckFilterClasses(filterText) {
+		t.Error(msg)
+	}
+	// F4: the classification roots and their composition with the gate.
+	for _, msg := range rpcCheckFilterFixtures(filterText) {
+		t.Error(msg)
+	}
+	for _, msg := range rpcCheckDetectWiring(wf) {
+		t.Error(msg)
+	}
+	for _, msg := range rpcCheckClassificationEndToEnd(t, wf, filterText) {
+		t.Error(msg)
+	}
+
+	// Negative controls: each mutant must turn the check red. The baseline must
+	// be clean first, or a control proves nothing.
+	baselineClean := len(rpcCheckCostJobsGated(t, wf)) == 0
+	snap := func(w *rpcWorkflow) string {
+		return w.Jobs["lint"].If + "|" + strconv.Itoa(int(w.Jobs["build"].Needs.Kind)) + "|" + w.Jobs["test-browser"].If
+	}
+	mutants := []struct {
+		name   string
+		mutate func(w *rpcWorkflow)
+	}{
+		{"nothing-matching gate (!cancelled() && false)", func(w *rpcWorkflow) { w.Jobs["lint"].If = "${{ !cancelled() && false }}" }},
+		{"no fail-open clause", func(w *rpcWorkflow) {
+			w.Jobs["lint"].If = "${{ !cancelled() && (github.event_name != 'pull_request' || needs.detect.outputs.binary_inputs == 'true' || needs.detect.outputs.harness_inputs == 'true') }}"
+		}},
+		{"always() instead of !cancelled()", func(w *rpcWorkflow) {
+			w.Jobs["lint"].If = strings.ReplaceAll(w.Jobs["lint"].If, "!cancelled()", "always()")
+		}},
+		{"gate without needs: detect", func(w *rpcWorkflow) { w.Jobs["build"].Needs = yaml.Node{} }},
+		{"gates push events too", func(w *rpcWorkflow) {
+			w.Jobs["test-browser"].If = "${{ !cancelled() && (needs.detect.result != 'success' || needs.detect.outputs.browser_inputs == 'true') }}"
+		}},
+	}
+	for _, m := range mutants {
+		t.Run("control/"+m.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+			}
+			mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+			before := snap(mut)
+			m.mutate(mut)
+			if snap(mut) == before {
+				t.Fatalf("control did not apply: the mutation changed nothing")
+			}
+			got := rpcCheckCostJobsGated(t, mut)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the guard: the guard is vacuous in that direction", m.name)
+			}
+			t.Logf("mutant %q observed red: %s", m.name, got[0])
+		})
+	}
+	// F4 controls on the filter text: each rewrite leaves every class non-empty and
+	// documented (rpcCheckFilterClasses stays green) yet breaks the classification.
+	filterClean := len(rpcCheckFilterFixtures(filterText)) == 0 && len(rpcCheckClassificationEndToEnd(t, wf, filterText)) == 0
+	keep := func(root string) string { return root }
+	filterControls := []struct {
+		name string
+		edit func(t *testing.T) string
+	}{
+		{"every classification path replaced by a non-matching path", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "", func(string) string { return "zz-nonmatching/**" })
+		}},
+		{"binary_inputs loses internal/**", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "binary_inputs", func(r string) string {
+				if r == "internal/**" {
+					return ""
+				}
+				return keep(r)
+			})
+		}},
+		{"harness_inputs retargeted at a path nothing changes", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "harness_inputs", func(string) string { return "zz-nonmatching/**" })
+		}},
+		{"go_code loses .moai/**", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "go_code", func(r string) string {
+				if r == ".moai/**" {
+					return ""
+				}
+				return keep(r)
+			})
+		}},
+		{"a docs tree classified as a binary input", func(t *testing.T) string {
+			return rpcEditFilterRoots(t, filterText, "binary_inputs", func(r string) string {
+				if r == ".github/test-input-filters.yml" {
+					return "**/*.md"
+				}
+				return keep(r)
+			})
+		}},
+	}
+	for _, c := range filterControls {
+		t.Run("control/filter/"+c.name, func(t *testing.T) {
+			if !filterClean {
+				t.Fatalf("control precondition: the real filter is not clean for this guard, so the control proves nothing")
+			}
+			mut := c.edit(t)
+			if len(rpcCheckFilterClasses(mut)) != 0 {
+				t.Logf("note: the class-shape guard already reads this mutant red")
+			}
+			got := append(rpcCheckFilterFixtures(mut), rpcCheckClassificationEndToEnd(t, wf, mut)...)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the classification guards", c.name)
+			}
+			t.Logf("mutant %q observed red: %s", c.name, got[0])
+		})
+	}
+	wiringControls := []struct {
+		name   string
+		mutate func(w *rpcWorkflow)
+	}{
+		{"classifier reads another filter file", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].With["filters"] = ".github/other-filters.yml"
+				}
+			}
+		}},
+		{"classifier step id renamed", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].ID = "g"
+				}
+			}
+		}},
+		{"classifier replaced by another action", func(w *rpcWorkflow) {
+			for i := range w.Jobs["detect"].Steps {
+				if w.Jobs["detect"].Steps[i].ID == "f" {
+					w.Jobs["detect"].Steps[i].Uses = "actions/checkout@v7"
+				}
+			}
+		}},
+		{"go_code no longer exported from the classifier", func(w *rpcWorkflow) {
+			w.Jobs["detect"].Outputs["go_code"] = "true"
+		}},
+	}
+	for _, c := range wiringControls {
+		t.Run("control/wiring/"+c.name, func(t *testing.T) {
+			if len(rpcCheckDetectWiring(wf)) != 0 {
+				t.Fatalf("control precondition: the real detect job is not clean for this guard, so the control proves nothing")
+			}
+			mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+			c.mutate(mut)
+			got := rpcCheckDetectWiring(mut)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the detect-wiring guard", c.name)
+			}
+			t.Logf("mutant %q observed red: %s", c.name, got[0])
+		})
+	}
+	t.Run("control/filter class without evidence comment", func(t *testing.T) {
+		if len(rpcCheckFilterClasses(filterText)) != 0 {
+			t.Fatalf("control precondition: the real filter file is not clean")
+		}
+		got := rpcCheckFilterClasses(rpcStripKeyHeadComment(t, filterText, "binary_inputs"))
+		if len(got) == 0 {
+			t.Fatalf("a class with no evidence comment passes the guard")
+		}
+		t.Logf("mutant observed red: %s", got[0])
+	})
+}
+
+// ---- AC-RPC-003: verdict semantics -----------------------------------------
+
+func rpcGatedNames(rc rpcRequiredChecks) []string {
+	var out []string
+	for _, c := range rc.Branches["main"].Contexts {
+		if c == "Lint" || strings.HasPrefix(c, "Build (") {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func rpcCheckVerdictSemantics(t *testing.T, wf *rpcWorkflow, names []string) []string {
+	t.Helper()
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_VERDICT_SEMANTICS_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	if len(names) == 0 {
+		return []string{"CI_VERDICT_SEMANTICS_VIOLATION: no gated required names to check (empty sweep)"}
+	}
+	matched, nonMatch := rpcOutcome("go-code"), rpcOutcome("docs-only")
+	for _, name := range names {
+		conc := func(c rpcCell, mode rpcStepMode) []string {
+			return rpcNonSkipped(rpcConclusions(t, wf, name, c.ctx(), mode))
+		}
+		// (i) the input-relevant job concludes failure -> the name fails.
+		pr := rpcCell{event: "pull_request", detect: "success", classes: matched}
+		if got := conc(pr, rpcVerificationFails); !rpcAllEqual(got, "failure", 0) {
+			add("%s: (i) class matched + verification fails: published %v, want only failure", name, got)
+		}
+		if got := conc(pr, rpcAllStepsPass); !rpcAllEqual(got, "success", 0) {
+			add("%s: (i) class matched + verification passes: published %v, want only success", name, got)
+		}
+		// (ii) positively observed non-match -> the marker passes, the real job is skipped.
+		if got := conc(rpcCell{event: "pull_request", detect: "success", classes: nonMatch}, rpcAllStepsPass); !rpcAllEqual(got, "success", 1) {
+			add("%s: (ii) positive non-match: published %v, want exactly one success", name, got)
+		}
+		// (iii) the classification did not conclude success, run not cancelled:
+		// the real job AND the marker run and both fail (the counter-case is
+		// pass mode: classification failure x verification success).
+		for _, d := range []string{"failure", "cancelled"} {
+			for _, mode := range []rpcStepMode{rpcAllStepsPass, rpcVerificationFails} {
+				got := conc(rpcCell{event: "pull_request", detect: d}, mode)
+				if !rpcAllEqual(got, "failure", 2) {
+					add("%s: (iii) detect=%s mode=%d: published %v, want the real job and the marker both failure", name, d, mode, got)
+				}
+			}
+		}
+		// (iv) the run itself is cancelled: nothing may start.
+		for _, d := range []string{"success", "failure", "cancelled"} {
+			if got := conc(rpcCell{event: "pull_request", detect: d, classes: matched, cancelled: true}, rpcAllStepsPass); len(got) != 0 {
+				add("%s: (iv) run cancelled (detect=%s): %v started after the cancellation", name, d, got)
+			}
+		}
+		// Q8-exempt event classes: no marker, the name is the real job's own outcome.
+		for _, ev := range []string{"push", "workflow_dispatch"} {
+			for _, d := range []string{"success", "failure"} {
+				if got := conc(rpcCell{event: ev, detect: d, classes: nonMatch}, rpcAllStepsPass); !rpcAllEqual(got, "success", 1) {
+					add("%s: %s detect=%s, verification passes: published %v, want exactly the real job's success", name, ev, d, got)
+				}
+				if got := conc(rpcCell{event: ev, detect: d, classes: nonMatch}, rpcVerificationFails); !rpcAllEqual(got, "failure", 1) {
+					add("%s: %s detect=%s, verification fails: published %v, want exactly the real job's failure", name, ev, d, got)
+				}
+			}
+		}
+	}
+	// No cost job or marker condition may be built on always().
+	for _, id := range wf.jobIDs() {
+		j := wf.Jobs[id]
+		publishes := false
+		for _, n := range j.displayNames() {
+			if rpcContains(names, n) {
+				publishes = true
+			}
+		}
+		if (publishes || rpcCostJobClasses[id] != nil) && strings.Contains(j.If, "always()") {
+			add("job %s: its condition uses always(), so it starts after the run is cancelled", id)
+		}
+		// A job-level continue-on-error is not modelled (the check-run conclusion it
+		// leaves under the required name is not provable here), so a job publishing a
+		// gated name must not carry it. Step-level continue-on-error IS modelled.
+		if publishes && rpcContinuesOnError(j.ContinueOnError) {
+			add("job %s: it publishes a gated required name and carries a job-level continue-on-error (%v), so a failed classification may not conclude failure under the name", id, j.ContinueOnError)
+		}
+	}
+	return v
+}
+
+func rpcLoadRequiredChecks(t *testing.T) rpcRequiredChecks {
+	t.Helper()
+	return rpcParseRequiredChecks(t, rpcReadRepoFile(t, rpcRequiredChecksRel))
+}
+
+// rpcRequiredChecks is the parsed .github/required-checks.yml.
+type rpcRequiredChecks struct {
+	Branches map[string]struct {
+		Contexts []string `yaml:"contexts"`
+	} `yaml:"branches"`
+	ReleaseGate []string `yaml:"release_gate"`
+}
+
+func rpcParseRequiredChecks(t *testing.T, text string) rpcRequiredChecks {
+	t.Helper()
+	var rc rpcRequiredChecks
+	if err := yaml.Unmarshal([]byte(text), &rc); err != nil {
+		t.Fatalf("parse %s: %v", rpcRequiredChecksRel, err)
+	}
+	return rc
+}
+
+func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
+	rpcRequireBash(t)
+	ciText := rpcReadRepoFile(t, rpcCIWorkflowRel)
+	wf := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+	rc := rpcLoadRequiredChecks(t)
+	names := rpcGatedNames(rc)
+	for _, msg := range rpcCheckVerdictSemantics(t, wf, names) {
+		t.Error(msg)
+	}
+
+	baselineClean := len(rpcCheckVerdictSemantics(t, wf, names)) == 0
+	markerIDs := func(w *rpcWorkflow, real string) []string {
+		var ids []string
+		for _, id := range w.jobIDs() {
+			if id == real {
+				continue
+			}
+			for _, n := range w.Jobs[id].displayNames() {
+				if (n == "Lint" && real == "lint") || (strings.HasPrefix(n, "Build (") && real == "build") {
+					ids = append(ids, id)
+					break
+				}
+			}
+		}
+		return ids
+	}
+	// failStep locates the step a control rewrites: a classification step whose
+	// body ends the job with `exit 1` (the verdict step of a real job, or the
+	// failing step of a marker). It only LOCATES a mutation target; whether a
+	// mutated step fails is decided by running it.
+	ctlErr := "" // set by a mutation that found nothing to change
+	failStep := func(s rpcStep) bool {
+		return rpcIsClassificationStep(s) && strings.Contains(s.Run, "exit 1")
+	}
+	// editFailSteps applies edit to every failStep of the given jobs and fails
+	// the control when it changed nothing (a control that did not apply proves nothing).
+	editFailSteps := func(ids func(w *rpcWorkflow) []string, edit func(s *rpcStep)) func(w *rpcWorkflow) {
+		return func(w *rpcWorkflow) {
+			n := 0
+			for _, id := range ids(w) {
+				for i := range w.Jobs[id].Steps {
+					if failStep(w.Jobs[id].Steps[i]) {
+						edit(&w.Jobs[id].Steps[i])
+						n++
+					}
+				}
+			}
+			if n == 0 {
+				ctlErr = "control did not apply: no failing classification step to edit"
+			}
+		}
+	}
+	dropVerdict := func(w *rpcWorkflow) {
+		for _, id := range rpcGatedRealJobs {
+			var keep []rpcStep
+			for _, s := range w.Jobs[id].Steps {
+				if !failStep(s) || !strings.Contains(s.If, "always()") {
+					keep = append(keep, s)
+				}
+			}
+			w.Jobs[id].Steps = keep
+		}
+	}
+	// rewriteVerdict replaces the script of every failing step of the given jobs.
+	rewriteVerdict := func(ids func(w *rpcWorkflow) []string, script string) func(w *rpcWorkflow) {
+		return editFailSteps(ids, func(s *rpcStep) { s.Run = script })
+	}
+	realJobs := func(*rpcWorkflow) []string { return rpcGatedRealJobs }
+	lintMarkers := func(w *rpcWorkflow) []string { return markerIDs(w, "lint") }
+	both := func(w *rpcWorkflow) []string {
+		return append(append([]string{}, rpcGatedRealJobs...), markerIDs(w, "lint")...)
+	}
+	mutants := []struct {
+		name   string
+		mutate func(w *rpcWorkflow)
+	}{
+		{"no verdict step (run on failure, publish its success)", dropVerdict},
+		// F6: the failing branch must be reachable, not merely present as text.
+		{"verdict exit 1 inside an `if false` body", rewriteVerdict(realJobs, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
+		{"verdict exit 1 behind an earlier exit 0", rewriteVerdict(realJobs, "echo \"verdict\"\nexit 0\nexit 1\n")},
+		// (The bare `[ -f /nonexistent ] && exit 1` is NOT a mutant: bash ends it with
+		// the failed test's own status 1, so it fails the job like the real script.)
+		{"verdict exit 1 chained behind a failing test, script ends on true", rewriteVerdict(realJobs, "echo \"verdict\"\n[ -f /nonexistent ] && exit 1\ntrue\n")},
+		{"marker exit 1 inside an `if false` body", rewriteVerdict(lintMarkers, "echo \"verdict\"\nif false; then\n  exit 1\nfi\n")},
+		// sync-audit iter4 B1 (N12-N15 and kin): a script bash ends with status 0
+		// although a text reader sees a reachable `exit 1`. The guard runs the script.
+		{"N12 trap 'exit 0' EXIT before exit 1 (verdict)", rewriteVerdict(realJobs, "echo \"verdict\"\ntrap 'exit 0' EXIT\nexit 1\n")},
+		{"N12 trap 'exit 0' EXIT before exit 1 (marker)", rewriteVerdict(lintMarkers, "echo \"verdict\"\ntrap 'exit 0' EXIT\nexit 1\n")},
+		{"N13 indented heredoc terminator swallows exit 1 (verdict)", rewriteVerdict(realJobs, "cat <<EOF\n  EOF\nexit 1\nEOF\n")},
+		{"N13 indented heredoc terminator swallows exit 1 (marker)", rewriteVerdict(lintMarkers, "cat <<EOF\n  EOF\nexit 1\nEOF\n")},
+		{"N14 exit() function override (verdict)", rewriteVerdict(realJobs, "exit() { return 0; }\nexit 1\n")},
+		{"N14 exit() function override (marker)", rewriteVerdict(lintMarkers, "exit() { return 0; }\nexit 1\n")},
+		{"N15 exec true before exit 1 (verdict)", rewriteVerdict(realJobs, "exec true\nexit 1\n")},
+		{"N15 exec true before exit 1 (marker)", rewriteVerdict(lintMarkers, "exec true\nexit 1\n")},
+		{"alias exit=true before exit 1", rewriteVerdict(realJobs, "shopt -s expand_aliases\nalias exit=true\nexit 1\n")},
+		{"exit 1 inside a function that is never called", rewriteVerdict(realJobs, "fail() { exit 1; }\necho \"verdict\"\n")},
+		{"exit 1 in a subshell swallowed by || true", rewriteVerdict(realJobs, "( exit 1 ) || true\n")},
+		// N11: a step that cannot fail its job.
+		{"N11 continue-on-error true on the verdict step", editFailSteps(realJobs, func(s *rpcStep) { s.ContinueOnError = true })},
+		{"N11 continue-on-error true on the marker's failing step", editFailSteps(lintMarkers, func(s *rpcStep) { s.ContinueOnError = true })},
+		{"continue-on-error as an unprovable expression", editFailSteps(realJobs, func(s *rpcStep) { s.ContinueOnError = "${{ github.event_name == 'push' }}" })},
+		{"job-level continue-on-error on the real job", func(w *rpcWorkflow) { w.Jobs["lint"].ContinueOnError = true }},
+		{"job-level continue-on-error on the marker", func(w *rpcWorkflow) {
+			for _, id := range markerIDs(w, "lint") {
+				w.Jobs[id].ContinueOnError = true
+			}
+		}},
+		// The shell and environment the script runs under are part of its behavior.
+		{"custom shell template that swallows the status (verdict)", editFailSteps(realJobs, func(s *rpcStep) { s.Shell = "bash {0} || true" })},
+		{"custom shell template that swallows the status (marker)", editFailSteps(lintMarkers, func(s *rpcStep) { s.Shell = "bash {0} || true" })},
+		{"verdict step runs under a non-bash interpreter", editFailSteps(realJobs, func(s *rpcStep) { s.Shell = "python" })},
+		{"workflow default shell replaced and the step shell dropped", func(w *rpcWorkflow) {
+			w.Defaults.Run.Shell = "bash {0} || true"
+			editFailSteps(both, func(s *rpcStep) { s.Shell = "" })(w)
+		}},
+		{"BASH_ENV set on the verdict step", editFailSteps(realJobs, func(s *rpcStep) { s.Env = map[string]any{"BASH_ENV": "/dev/null"} })},
+		{"SHELLOPTS set on the job", func(w *rpcWorkflow) { w.Jobs["lint"].Env = map[string]any{"SHELLOPTS": "posix"} }},
+		{"verdict step stops reading the classification result", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && github.event_name == 'pull_request' }}"
+		})},
+		{"verdict step condition uses a function the model cannot evaluate", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && contains(needs.detect.result, 'fail') }}"
+		})},
+		{"verdict script uses an expression the model cannot evaluate", rewriteVerdict(realJobs, "echo \"${{ toJSON(needs) }}\"\nexit 1\n")},
+		// sync-audit iter5 F-1: a context the cell does not model is an error, never "".
+		{"iter5 A3 an allowlisted but unmodelled context in the verdict body (runner.os)", rewriteVerdict(realJobs, "if [ -n \"${{ runner.os }}\" ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A4 an allowlisted but unmodelled context in the verdict body (github.sha)", rewriteVerdict(realJobs, "if [ -n \"${{ github.sha }}\" ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A5 an unmodelled context in the verdict step condition", editFailSteps(realJobs, func(s *rpcStep) {
+			s.If = "${{ always() && needs.detect.result != 'success' && github.repository == '' }}"
+		})},
+		{"iter5 A1 the verdict branches on GITHUB_ACTIONS", rewriteVerdict(realJobs, "if [ \"${GITHUB_ACTIONS:-}\" = true ]; then exit 0; fi\nexit 1\n")},
+		{"iter5 A2 the verdict branches on a workspace file", rewriteVerdict(realJobs, "if [ -f go.mod ]; then exit 0; fi\nexit 1\n")},
+		{"marker passes on classification failure", func(w *rpcWorkflow) {
+			n := 0
+			for _, id := range markerIDs(w, "lint") {
+				for i := range w.Jobs[id].Steps {
+					if failStep(w.Jobs[id].Steps[i]) {
+						w.Jobs[id].Steps[i].If = "${{ false }}"
+						n++
+					}
+				}
+			}
+			if n == 0 {
+				ctlErr = "control did not apply: no failing marker step"
+			}
+		}},
+		{"marker skipped on classification failure", func(w *rpcWorkflow) {
+			for _, id := range markerIDs(w, "lint") {
+				w.Jobs[id].If = "${{ !cancelled() && github.event_name == 'pull_request' && needs.detect.result == 'success' && needs.detect.outputs.binary_inputs != 'true' }}"
+			}
+		}},
+		{"always() job condition", func(w *rpcWorkflow) {
+			w.Jobs["lint"].If = strings.Replace(w.Jobs["lint"].If, "!cancelled()", "always()", 1)
+		}},
+		{"verdict step on a job still skipped when detect fails", func(w *rpcWorkflow) {
+			w.Jobs["lint"].If = "${{ github.event_name != 'pull_request' || needs.detect.outputs.binary_inputs == 'true' }}"
+		}},
+	}
+	// Dependency-model controls (sync-audit iter6 F-2). A job whose condition leans on
+	// success()/failure() (or has no status function, which GitHub treats as an
+	// implicit success()) is decided by its dependencies' results; one built only on
+	// always()/cancelled() is not. A `needs:` written through a YAML alias is read.
+	t.Run("control/needs dependency model", func(t *testing.T) {
+		for _, c := range []struct {
+			name, cond string
+			want       bool
+		}{
+			{"positive: a plain condition has an implicit success()", "github.event_name == 'pull_request'", true},
+			{"positive: an explicit success() reads the dependencies", "success() && github.event_name == 'push'", true},
+			{"positive: an explicit failure() reads the dependencies", "failure()", true},
+			{"negative: always() alone does not depend on the results", "always()", false},
+			{"negative: !cancelled() alone does not depend on the results", "!cancelled()", false},
+			{"negative: empty condition is the implicit success()", "", true},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				if got := rpcNeedsResultMatters(c.cond); got != c.want {
+					t.Fatalf("rpcNeedsResultMatters(%q) = %v, want %v", c.cond, got, c.want)
+				}
+			})
+		}
+		t.Run("needsList follows aliases", func(t *testing.T) {
+			var doc struct {
+				Jobs map[string]*rpcJob `yaml:"jobs"`
+			}
+			text := "jobs:\n  a:\n    needs: &dep detect\n  b:\n    needs: *dep\n  c:\n    needs: [*dep, other]\n"
+			if err := yaml.Unmarshal([]byte(text), &doc); err != nil {
+				t.Fatalf("control text does not parse: %v", err)
+			}
+			if got := doc.Jobs["b"].needsList(); len(got) != 1 || got[0] != "detect" {
+				t.Fatalf("needs: *dep read as %v, want [detect]", got)
+			}
+			if got := doc.Jobs["c"].needsList(); len(got) != 2 || got[0] != "detect" || got[1] != "other" {
+				t.Fatalf("needs: [*dep, other] read as %v, want [detect other]", got)
+			}
+		})
+		t.Run("an untracked dependency is an error where results decide the start", func(t *testing.T) {
+			ctx := rpcCell{event: "pull_request", detect: "success", classes: rpcOutcome("go-code")}.ctx()
+			needs := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "untracked"}
+			if _, err := rpcJobRunsE(&rpcJob{If: "github.event_name == 'pull_request'", Needs: needs}, ctx); err == nil || !strings.Contains(err.Error(), "has no modelled result") {
+				t.Fatalf("want a `has no modelled result` error, got %v", err)
+			}
+			if runs, err := rpcJobRunsE(&rpcJob{If: "always()", Needs: needs}, ctx); err != nil || !runs {
+				t.Fatalf("an always()-only condition must not be blocked by an untracked dependency: runs=%v err=%v", runs, err)
+			}
+		})
+	})
+	// Expression-context controls. The positive rows read a context the cell models
+	// (an event name, a matrix leg's own value) and must evaluate; the failure rows
+	// read one it does not and must come back as the exact "not modelled" error.
+	t.Run("control/context model", func(t *testing.T) {
+		ctx := rpcCell{event: "pull_request", detect: "success", classes: rpcOutcome("go-code")}.ctx()
+		legs := wf.Jobs["build"].legCombos("Build (linux/amd64)")
+		if len(legs) != 1 || legs[0]["goos"] != "linux" || legs[0]["goarch"] != "amd64" {
+			t.Fatalf("control precondition: the Build (linux/amd64) leg does not expand to goos=linux goarch=amd64: %v", legs)
+		}
+		for _, c := range []struct {
+			name, expr string
+			ctx        rpcExprCtx
+			want       string // "" = positive (must evaluate); else the exact error substring
+		}{
+			{"positive: a modelled event context evaluates", "github.event_name == 'pull_request'", ctx, ""},
+			{"positive: a matrix leg value evaluates on that leg", "matrix.goos == 'linux' && matrix.goarch == 'amd64'", ctx.withMatrix(legs[0]), ""},
+			{"failure: an unmodelled context is an error, not an empty string", "github.repository == ''", ctx, `context "github.repository" is not modelled by this guard`},
+			{"failure: a matrix value outside any leg is an error", "matrix.goos == 'linux'", ctx, `context "matrix.goos" is not modelled by this guard`},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				_, err := rpcEvalValueE(c.expr, c.ctx)
+				switch {
+				case c.want == "" && err != nil:
+					t.Fatalf("a modelled expression was refused: %v", err)
+				case c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)):
+					t.Fatalf("expression %q: want an error containing %q, got %v", c.expr, c.want, err)
+				}
+			})
+		}
+	})
+	for _, m := range mutants {
+		t.Run("control/"+m.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+			}
+			mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+			ctlErr = ""
+			m.mutate(mut)
+			if ctlErr != "" {
+				t.Fatal(ctlErr)
+			}
+			got := rpcCheckVerdictSemantics(t, mut, names)
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the guard: the guard is vacuous in that direction", m.name)
+			}
+			t.Logf("mutant %q observed red: %s", m.name, got[0])
+		})
+	}
+}
+
+// TestScriptHardFailReachability pins what "this step hard-fails" means to the
+// verdict guards (F6, sync-audit iter4 B1): the script, RUN under the shell the
+// workflow declares, ends with a non-zero status. Each row is a script and the
+// status bash really gives it; the false rows are the spellings a text reader
+// credited as a reachable `exit 1` although bash ends them with status 0
+// (`trap 'exit 0' EXIT`, an indented heredoc terminator, an `exit()` override,
+// `exec true`, an alias), and the true rows include the ones a text reader
+// refused although bash fails them (a `&&` list ending on a failed test, a
+// failing command substitution). The executed behavior is the authority.
+func TestScriptHardFailReachability(t *testing.T) {
+	rpcRequireBash(t)
+	cases := []struct {
+		name   string
+		script string
+		shell  string
+		want   bool // true = the script ends non-zero
+	}{
+		{"bare exit 1", "exit 1", "bash", true},
+		{"echo then exit 1", "echo \"::error::x\"\nexit 1\n", "bash", true},
+		{"exit 1 with trailing comment", "echo x\nexit 1 # fail the check\n", "bash", true},
+		{"indented, extra spaces", "\t  exit   1   \n", "bash", true},
+		{"exit 1 then more text", "exit 1; echo after\n", "bash", true},
+		{"exit 1 after a comment mentioning exit 0", "# exit 0 here would end it\nexit 1\n", "bash", true},
+		{"exit 1 after a quoted exit 0 argument", "echo \"exit 0\"\nexit 1\n", "bash", true},
+		{"exit 1 after a closed if", "if [ -z x ]; then\n  echo a\nfi\nexit 1\n", "bash", true},
+		{"exit 1 after a loop that ends", "for x in a; do\n  echo $x\ndone\nexit 1\n", "bash", true},
+		{"exit 2", "exit 2\n", "bash", true},
+		{"if true body", "if true; then\n  exit 1\nfi\n", "bash", true},
+		{"while body", "while true; do\n  exit 1\ndone\n", "bash", true},
+		{"for body", "for x in a b; do exit 1; done\n", "bash", true},
+		{"brace group", "{\n  exit 1\n}\n", "bash", true},
+		{"subshell", "(\n  exit 1\n)\n", "bash", true},
+		{"|| chained", "test -n \"$x\" || { echo bad; exit 1; }\n", "bash", true},
+		{"|| continued onto the next line", "test -n \"$x\" ||\n  exit 1\n", "bash", true},
+		{"&& list ending on a failed test (the script takes the test's own status)", "[ -f /nonexistent ] && exit 1\n", "bash", true},
+		{"failing command substitution", "x=$(echo a; exit 1)\n", "bash", true},
+		{"EXIT trap that fails an otherwise clean script", "trap 'exit 1' EXIT\nexit 0\n", "bash", true},
+		{"pipeline failure under shell: bash (pipefail)", "false | cat\n", "bash", true},
+		{"sh -e runs the script", "exit 1\n", "sh", true},
+
+		{"empty script", "", "bash", false},
+		{"exit 0 then exit 1", "echo x\nexit 0\nexit 1\n", "bash", false},
+		{"exit 0; exit 1 on one line", "exit 0; exit 1\n", "bash", false},
+		{"bare exit then exit 1", "exit\nexit 1\n", "bash", false},
+		{"exit with an unset variable then exit 1", "exit $rc\nexit 1\n", "bash", false},
+		{"if false body, multi-line", "if false; then\n  exit 1\nfi\n", "bash", false},
+		{"if false body, one line", "if false; then exit 1; fi\n", "bash", false},
+		{"elif branch that is not taken", "if [ -z x ]; then\n  echo a\nelif [ -z y ]; then\n  exit 1\nfi\n", "bash", false},
+		{"case arm that does not match", "case \"$X\" in\n  a) exit 1 ;;\nesac\n", "bash", false},
+		{"exit 1 line inside a quoted multi-line string", "echo \"first\nexit 1\nlast\"\n", "bash", false},
+		{"exit 1 line inside a heredoc", "cat <<EOF\nexit 1\nEOF\n", "bash", false},
+		{"exit 1 line inside a quoted heredoc", "cat <<'EOF'\nexit 1\nEOF\n", "bash", false},
+		{"exit 1 only in a comment", "echo x\n# exit 1\n", "bash", false},
+		{"exit 1 only as an echo argument", "echo exit 1\n", "bash", false},
+		{"N12 trap 'exit 0' EXIT before exit 1", "trap 'exit 0' EXIT\nexit 1\n", "bash", false},
+		{"N13 indented heredoc terminator swallows exit 1", "cat <<EOF\n  EOF\nexit 1\nEOF\n", "bash", false},
+		{"N14 exit() override", "exit() { return 0; }\nexit 1\n", "bash", false},
+		{"N15 exec true", "exec true\nexit 1\n", "bash", false},
+		{"alias exit=true", "shopt -s expand_aliases\nalias exit=true\nexit 1\n", "bash", false},
+		{"function that is never called", "fail() { exit 1; }\n", "bash", false},
+		{"subshell exit swallowed by || true", "( exit 1 ) || true\n", "bash", false},
+		{"set +e then a failing command", "set +e\nfalse\necho done\n", "bash", false},
+		{"pipeline failure under the default shell (no pipefail)", "false | cat\n", "", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			res := rpcExecScript(c.shell, c.script, nil)
+			if res.why != "" {
+				t.Fatalf("script not executable: %s", res.why)
+			}
+			if res.failed != c.want {
+				t.Fatalf("rpcExecScript(%q, shell %q) failed=%v, want %v", c.script, c.shell, res.failed, c.want)
+			}
+		})
+	}
+	t.Run("shells and env the guard refuses to guess at", func(t *testing.T) {
+		for _, sh := range []string{"pwsh", "python", "bash {0} || true", "bash -c \"bash -e {0}\"", "cmd"} {
+			if res := rpcExecScript(sh, "exit 1\n", nil); res.why == "" {
+				t.Errorf("shell %q was executed instead of refused", sh)
+			}
+		}
+		for _, k := range []string{"BASH_ENV", "bash_env", "SHELLOPTS", "BASHOPTS", "PATH", "IFS"} {
+			if res := rpcExecScript("bash", "exit 1\n", map[string]string{k: "x"}); res.why == "" {
+				t.Errorf("env %s was passed to the shell instead of refused", k)
+			}
+		}
+	})
+	// The runner-state refusal (sync-audit iter5 F-1): rpcExecScript runs a script
+	// bare and runner-like (GITHUB_ACTIONS / CI / RUNNER_OS / GITHUB_WORKSPACE, a
+	// seeded checkout, a runner HOME) and refuses it when the two exits differ.
+	// Positive controls are scripts whose verdict does not depend on that state
+	// (they run and report the plain exit); failure controls are scripts that do
+	// (they must come back refused with the runner-state reason, not executed).
+	t.Run("control/runner-state differential", func(t *testing.T) {
+		const reason = "exits differently with and without the runner environment"
+		for _, c := range []struct {
+			name   string
+			script string
+			want   string // "" = executed with this outcome (positive); else the refusal reason substring
+			failed bool
+		}{
+			{"positive: plain exit 1 is runner-independent", "exit 1\n", "", true},
+			{"positive: plain exit 0 is runner-independent", "exit 0\n", "", false},
+			{"positive: GITHUB_ACTIONS read but not branched on", "echo \"${GITHUB_ACTIONS:-unset}\"\nexit 1\n", "", true},
+			{"failure: branches on GITHUB_ACTIONS (A1)", "if [ \"${GITHUB_ACTIONS:-}\" = true ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on a CI variable", "if [ -n \"${CI:-}\" ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on a file of the checked-out workspace (A2)", "if [ -f go.mod ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on the runner HOME (A10)", "if [ \"$HOME\" = /home/runner ]; then exit 0; fi\nexit 1\n", reason, false},
+			{"failure: branches on RUNNER_OS", "if [ \"${RUNNER_OS:-}\" = Linux ]; then exit 0; fi\nexit 1\n", reason, false},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				res := rpcExecScript("bash", c.script, nil)
+				if c.want == "" {
+					if res.why != "" {
+						t.Fatalf("a runner-independent script was refused: %s", res.why)
+					}
+					if res.failed != c.failed {
+						t.Fatalf("rpcExecScript failed=%v, want %v", res.failed, c.failed)
+					}
+					return
+				}
+				if !strings.Contains(res.why, c.want) {
+					t.Fatalf("a runner-state-dependent script was not refused with %q; got why=%q failed=%v", c.want, res.why, res.failed)
+				}
+				t.Logf("control observed refused: %s", res.why)
+			})
+		}
+	})
+	t.Run("continue-on-error values", func(t *testing.T) {
+		for _, c := range []struct {
+			v    any
+			want bool
+		}{
+			{nil, false}, {false, false}, {true, true}, {"false", false}, {"${{ false }}", false},
+			{"true", true}, {"${{ github.event_name == 'push' }}", true}, {42, true},
+		} {
+			if got := rpcContinuesOnError(c.v); got != c.want {
+				t.Errorf("rpcContinuesOnError(%#v) = %v, want %v", c.v, got, c.want)
+			}
+		}
+	})
+}
+
+// ---- AC-RPC-004: required names per event class ------------------------------
+
+type rpcEventClass struct {
+	label  string
+	event  string
+	branch string
+	set    func(rc rpcRequiredChecks) []string
+}
+
+var rpcEventClasses = []rpcEventClass{
+	{"pull_request to main", "pull_request", "main", func(rc rpcRequiredChecks) []string { return rc.Branches["main"].Contexts }},
+	{"push to ci/**", "push", "ci/**", func(rc rpcRequiredChecks) []string { return rc.Branches["ci/**"].Contexts }},
+	{"push to main", "push", "main", func(rc rpcRequiredChecks) []string { return rc.ReleaseGate }},
+}
+
+// rpcFailClosedByAbsence names required checks that are ALREADY unreported when
+// the classification step fails, before this SPEC: the Go test family
+// (`test` / `test-skip-marker`) and nothing else is gated on go_code through
+// `needs: detect` with no failure arm (PRESERVE item 4). M2 does not change
+// them, so the classification-failure outcome does not assert them.
+var rpcFailClosedByAbsence = map[string]bool{"Test (ubuntu-latest)": true}
+
+// rpcOutcomeDiffFile is the one changed file a representative pull_request / push
+// of each classification outcome carries; a workflow's `paths:` / `paths-ignore:`
+// filter is evaluated against it. A classification failure says nothing about the
+// diff, so it takes the docs-only file — the one a code-path filter skips.
+var rpcOutcomeDiffFile = map[string]string{
+	"docs-only":    "README.md",
+	"go-code":      "cmd/moai/main.go",
+	"harness-only": ".claude/rules/moai/core/zone-registry.md",
+	"":             "README.md",
+}
+
+// rpcCheckRequiredNames fails CLOSED (sync-audit iter4 B3). A required name counts
+// as reported in a cell only when some workflow that subscribes to the event
+//
+//   - is started by every filter its trigger declares (rpcWorkflowAdmits: pull_request
+//     `types`, `branches`, `branches-ignore`, a tags-only push, `paths`,
+//     `paths-ignore`), evaluated against the representative event and diff; and
+//   - has a job publishing the name whose own `if:` evaluates true in the cell.
+//
+// Any restrictive filter, any unprovable condition and any glob the model cannot
+// read therefore leaves the name unreported and is a violation; nothing is
+// credited because a job of that display name merely exists.
+func rpcCheckRequiredNames(t *testing.T, ci *rpcWorkflow, others []*rpcWorkflow, rc rpcRequiredChecks) []string {
+	t.Helper()
+	var v []string
+	add := func(format string, a ...any) {
+		v = append(v, "CI_REQUIRED_NAME_VIOLATION: "+fmt.Sprintf(format, a...))
+	}
+	outcomes := []struct {
+		label  string
+		detect string
+		kind   string
+	}{
+		{"docs-only", "success", "docs-only"},
+		{"go_code", "success", "go-code"},
+		{"harness-only", "success", "harness-only"},
+		{"classification failure", "failure", ""},
+	}
+	for _, ec := range rpcEventClasses {
+		set := ec.set(rc)
+		if len(set) == 0 {
+			add("%s: the governing required-name set is empty (empty sweep)", ec.label)
+		}
+		for _, o := range outcomes {
+			cell := rpcCell{event: ec.event, detect: o.detect}
+			if o.kind != "" {
+				cell.classes = rpcOutcome(o.kind)
+			}
+			diff := rpcOutcomeDiffFile[o.kind]
+			// A workflow other than ci.yml classifies the diff with its own detect
+			// job, so the ci.yml classification failure does not carry over to it: it
+			// sees a concluded detect over the same (docs-only) diff.
+			extKind := o.kind
+			if extKind == "" {
+				extKind = "docs-only"
+			}
+			extCell := rpcCell{event: ec.event, detect: "success", classes: rpcOutcome(extKind)}
+			for _, name := range set {
+				reported := false
+				var refused []string
+				for _, w := range append([]*rpcWorkflow{ci}, others...) {
+					if !w.trigger(ec.event).present {
+						continue
+					}
+					ctx := extCell.ctx()
+					if w == ci {
+						ctx = cell.ctx()
+					} else if dj, ok := w.Jobs["detect"]; ok {
+						// The external workflow's own detect job concludes success only
+						// when its own condition starts it: evaluate that condition
+						// instead of fixing the result to success, because a skipped
+						// detect job leaves its dependents (the marker included) skipped.
+						runs, err := rpcJobRunsE(dj, extCell.ctx())
+						switch {
+						case err != nil:
+							add("%s x %s: %s: its detect job's condition cannot be evaluated (%v)", ec.label, o.label, w.Path, err)
+							continue
+						case !runs:
+							skipped := extCell
+							skipped.detect = "skipped"
+							ctx = skipped.ctx()
+						}
+					}
+					started, errs := rpcStartedSuppliers(w, name, ctx)
+					for _, e := range errs {
+						add("%s x %s: %s", ec.label, o.label, e)
+					}
+					if len(started) == 0 {
+						continue
+					}
+					admitted, why, err := rpcWorkflowAdmits(w, ec.event, ec.branch, diff)
+					switch {
+					case err != nil:
+						add("%s x %s: %s: %v", ec.label, o.label, w.Path, err)
+						refused = append(refused, w.Path+": "+err.Error())
+					case !admitted:
+						refused = append(refused, w.Path+": "+why)
+					default:
+						reported = true
+					}
+				}
+				if !reported && (o.kind != "" || !rpcFailClosedByAbsence[name]) {
+					why := ""
+					if len(refused) > 0 {
+						why = fmt.Sprintf(" (a job publishing it starts only in a workflow the event does not start: %s)", strings.Join(refused, "; "))
+					}
+					add("%s x %s: required name %q is not reported by any job%s", ec.label, o.label, name, why)
+				}
+			}
+		}
+	}
+	// release_gate must stay a subset of main's contexts (scripts/release.sh reads it).
+	for _, n := range rc.ReleaseGate {
+		if !rpcContains(rc.Branches["main"].Contexts, n) {
+			add("release_gate name %q is not in branches.main.contexts", n)
+		}
+	}
+	return v
+}
+
+func TestCIRequiredNamesSatisfied(t *testing.T) {
+	ciText := rpcReadRepoFile(t, rpcCIWorkflowRel)
+	ci := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+	others := []*rpcWorkflow{
+		rpcLoadWorkflow(t, rpcCodeQLWorkflowRel),
+		rpcLoadWorkflow(t, rpcReleaseWorkflowRel),
+	}
+	rcText := rpcReadRepoFile(t, rpcRequiredChecksRel)
+	rc := rpcParseRequiredChecks(t, rcText)
+	for _, msg := range rpcCheckRequiredNames(t, ci, others, rc) {
+		t.Error(msg)
+	}
+
+	// REQ-RPC-004: harness roots stay inside go_code, so release 3-OS coverage
+	// (keyed to go_code) is not narrowed by input splitting.
+	var filter map[string][]string
+	if err := yaml.Unmarshal([]byte(rpcReadRepoFile(t, rpcFilterRelPath())), &filter); err != nil {
+		t.Fatalf("parse %s: %v", rpcFilterRelPath(), err)
+	}
+	// Presence of the class is TestCICostJobsInputGated's obligation; this
+	// assertion is the containment of whatever roots it declares, so the guard
+	// is green before the class exists and stays a regression guard after.
+	for _, root := range filter["harness_inputs"] {
+		if !rpcContains(filter["go_code"], root) {
+			t.Errorf("CI_REQUIRED_NAME_VIOLATION: harness root %q is outside go_code — release 3-OS coverage would narrow", root)
+		}
+	}
+
+	// The branch-protection template and its distributed mirror are SHAPE-ONLY:
+	// no required check name may appear in them (plan.md PRESERVE item 11).
+	all := map[string]bool{}
+	for _, c := range rc.Branches["main"].Contexts {
+		all[c] = true
+	}
+	for _, c := range rc.Branches["ci/**"].Contexts {
+		all[c] = true
+	}
+	for _, rel := range []string{rpcBranchProtectionRel, rpcBranchProtectionMir} {
+		text := rpcReadRepoFile(t, rel)
+		for _, name := range rpcSortedKeys(all) {
+			if strings.Contains(text, `"`+name+`"`) {
+				t.Errorf("CI_REQUIRED_NAME_VIOLATION: %s carries the check name %q — it must stay shape-only", rel, name)
+			}
+		}
+	}
+
+	// Negative controls (verification-completeness.md 1.1), both observed red.
+	baselineClean := len(rpcCheckRequiredNames(t, ci, others, rc)) == 0
+	t.Run("control/lint gated with no Lint marker", func(t *testing.T) {
+		if !baselineClean {
+			t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+		}
+		mut := rpcParseWorkflow(t, rpcCIWorkflowRel, ciText)
+		mut.Jobs["lint"].If = "${{ github.event_name != 'pull_request' || needs.detect.outputs.binary_inputs == 'true' }}"
+		mut.Jobs["lint"].Needs = yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "detect"}
+		for _, id := range mut.jobIDs() {
+			if id != "lint" && rpcContains(mut.Jobs[id].displayNames(), "Lint") {
+				delete(mut.Jobs, id)
+			}
+		}
+		got := rpcCheckRequiredNames(t, mut, others, rc)
+		found := false
+		for _, g := range got {
+			if strings.Contains(g, `pull_request to main x docs-only: required name "Lint"`) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("a gated lint with no Lint marker did not report Lint missing on the docs-only pull_request cell; got %v", got)
+		}
+		t.Logf("control (a) observed red: %s", got[0])
+	})
+	// F5 / iter4 B3: a workflow that supplies a required name stops supplying it when
+	// its trigger does not start (paths, paths-ignore, types, branches,
+	// branches-ignore, a tags-only push) or when its supplying job's own `if:` is
+	// not true in the cell. Each control edits the real workflow text and re-runs
+	// the guard.
+	cqText := rpcReadRepoFile(t, rpcCodeQLWorkflowRel)
+	relText := rpcReadRepoFile(t, rpcReleaseWorkflowRel)
+	replaceOnce := func(old, repl string) func(*testing.T, string) string {
+		return func(t *testing.T, text string) string {
+			t.Helper()
+			out := strings.Replace(text, old, repl, 1)
+			if out == text {
+				t.Fatalf("control did not apply: %q is not in the workflow text", old)
+			}
+			return out
+		}
+	}
+	const prHead = "  pull_request:\n"
+	withFilter := func(filter string) func(*testing.T, string) string {
+		return replaceOnce(prHead, prHead+filter)
+	}
+	branchesToIgnore := func(list string) func(*testing.T, string) string {
+		return replaceOnce(prHead+"    branches: [main]", prHead+"    branches-ignore: "+list)
+	}
+	const (
+		anyNameCQ  = `pull_request to main x docs-only: required name "Analyze (Go) (go)"`
+		goCodeCQ   = `pull_request to main x go_code: required name "Analyze (Go) (go)"`
+		anyNameRel = `pull_request to main x docs-only: required name "Release PR Multi-OS Gate"`
+		anyNameCI  = `pull_request to main x docs-only: required name "Lint"`
+	)
+	cqMarkerIf := "    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'"
+	// cqDetectHead is the head of codeql.yml's own detect job (the job the external
+	// supplier's marker and analyze jobs wait on).
+	cqDetectHead := "  detect:\n    name: Detect (paths-filter)\n    runs-on: ubuntu-latest\n"
+	// cqMarkerNeeds / cqAnalyzeNeeds are the `needs:` lines of codeql.yml's marker and
+	// analyze jobs, with enough context to be unique.
+	cqMarkerNeeds := "    timeout-minutes: 5\n    needs: detect\n"
+	cqAnalyzeNeeds := "    needs: detect\n    # Run on go-code PRs; always run on push"
+	cqAnalyzeNeedsDep := "    needs: &dep detect\n    # Run on go-code PRs; always run on push"
+	// aliasIgnore writes the pull_request paths-ignore list through a YAML alias of
+	// an anchor declared on the (earlier) push trigger.
+	aliasIgnore := func(list string) func(*testing.T, string) string {
+		return func(t *testing.T, text string) string {
+			t.Helper()
+			text = replaceOnce("  push:\n    branches: [main]\n", "  push:\n    paths-ignore: &ign ["+list+"]\n    branches: [main]\n")(t, text)
+			return withFilter("    paths-ignore: *ign\n")(t, text)
+		}
+	}
+	cqAnalyzeIf := "    if: >\n      needs.detect.outputs.go_code == 'true' ||\n      github.event_name == 'push' ||\n      github.event_name == 'schedule'\n"
+	relGateIf := "    needs: [full-matrix-test, detect-release]\n    if: always()\n"
+	triggerControls := []struct {
+		name     string
+		target   string // ci | codeql | release
+		edit     func(*testing.T, string) string
+		wantCell string // substring of a violation; empty = the guard must stay clean
+	}{
+		{"codeql paths exclude docs", "codeql", withFilter("    paths:\n      - 'internal/**'\n"), anyNameCQ},
+		{"codeql paths-ignore markdown", "codeql", withFilter("    paths-ignore:\n      - '**.md'\n"), anyNameCQ},
+		{"codeql go-only paths skip a harness diff", "codeql", withFilter("    paths:\n      - '**/*.go'\n"), `pull_request to main x harness-only: required name "Analyze (Go) (go)"`},
+		{"release gate behind a go-only paths filter", "release", withFilter("    paths:\n      - '**/*.go'\n"), anyNameRel},
+		{"ci behind a code-only paths filter", "ci", withFilter("    paths:\n      - 'internal/**'\n"), anyNameCI},
+		{"codeql paths admitting every file stays clean", "codeql", withFilter("    paths:\n      - '**'\n"), ""},
+		{"codeql paths-ignore of an unrelated tree stays clean", "codeql", withFilter("    paths-ignore:\n      - 'docs-site/**'\n"), ""},
+
+		// iter4 B3 (N8): pull_request activity types.
+		{"N8 codeql pull_request types closed only", "codeql", withFilter("    types: [closed]\n"), anyNameCQ},
+		{"codeql pull_request types without synchronize", "codeql", withFilter("    types: [opened, reopened]\n"), anyNameCQ},
+		{"codeql pull_request types without opened", "codeql", withFilter("    types: [synchronize]\n"), anyNameCQ},
+		{"release gate types closed only", "release", replaceOnce("    types: [opened, synchronize, reopened, ready_for_review]", "    types: [closed]"), anyNameRel},
+		{"ci pull_request types closed only", "ci", withFilter("    types: [closed]\n"), anyNameCI},
+		{"codeql the default activity types spelled out stays clean", "codeql", withFilter("    types: [opened, synchronize, reopened]\n"), ""},
+		{"codeql types opened and synchronize only stays clean", "codeql", withFilter("    types: [opened, synchronize]\n"), ""},
+
+		// iter4 B3 (N10): branch filters.
+		{"N10 codeql branches-ignore main", "codeql", branchesToIgnore("[main]"), anyNameCQ},
+		{"release gate branches-ignore main", "release", branchesToIgnore("[main]"), anyNameRel},
+		{"ci branches-ignore main", "ci", branchesToIgnore("[main]"), anyNameCI},
+		{"codeql branches-ignore matched by a glob", "codeql", branchesToIgnore("['m*']"), anyNameCQ},
+		{"codeql branches names another branch", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: [develop]"), anyNameCQ},
+		{"codeql branches-ignore of another branch stays clean", "codeql", branchesToIgnore("[develop]"), ""},
+		{"codeql branches ** stays clean", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: ['**']"), ""},
+		{"codeql negated branch pattern is refused, not guessed", "codeql", replaceOnce(prHead+"    branches: [main]", prHead+"    branches: ['!main']"), anyNameCQ},
+		{"ci push narrowed to tags only", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    tags:\n      - 'v*'\n"), `push to ci/** x docs-only: required name "Lint"`},
+
+		// iter4 B3 (N9): the supplying job's own condition.
+		{"N9 codeql skip-marker if false", "codeql", replaceOnce(cqMarkerIf, "    if: ${{ false }}"), anyNameCQ},
+		{"codeql skip-marker gated on a different event", "codeql", replaceOnce(cqMarkerIf, "    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'schedule'"), anyNameCQ},
+		{"codeql analyze if false (go-code cell)", "codeql", replaceOnce(cqAnalyzeIf, "    if: ${{ false }}\n"), goCodeCQ},
+		{"release gate only on push", "release", replaceOnce(relGateIf, "    needs: [full-matrix-test, detect-release]\n    if: github.event_name == 'push'\n"), anyNameRel},
+		{"codeql skip-marker condition the model cannot evaluate", "codeql", replaceOnce(cqMarkerIf, "    if: contains(github.head_ref, 'docs')"), "its condition cannot be evaluated"},
+		// Matrix exclude: a leg the matrix removes publishes no check run.
+		{"codeql analyze matrix excludes its only leg", "codeql", replaceOnce("      matrix:\n        language: [go]\n", "      matrix:\n        language: [go]\n        exclude:\n          - language: go\n"), goCodeCQ},
+		{"codeql analyze matrix excludes an unrelated leg and stays clean", "codeql", replaceOnce("      matrix:\n        language: [go]\n", "      matrix:\n        language: [go]\n        exclude:\n          - language: rust\n"), ""},
+		{"a proven-true skip-marker publishes when the real job is off", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerIf, "    if: github.event_name == 'pull_request'")(t, replaceOnce(cqAnalyzeIf, "    if: ${{ false }}\n")(t, text))
+		}, ""},
+
+		// sync-audit iter5 F-2. Each failure row names the exact refusal text it must
+		// produce; each positive row is the same shape with a harmless value and must
+		// stay clean (wantCell ""). Filters Actions evaluates in order with negation,
+		// `?` with its own meaning, aliases, an external workflow's own detect job and
+		// a context the model does not know.
+		{"iter5 C1 failure: a negated branch listed after a matching one is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - '!ci/**'\n"), "uses negation, `?` or `+`"},
+		{"iter5 C1 positive: another plain branch after a matching one stays clean", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - 'ci/extra'\n"), ""},
+		{"iter5 C2b failure: `?` in paths-ignore is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md?'\n"), "uses negation, `?` or `+`"},
+		{"iter5 C3b failure: paths-ignore through an alias is resolved and skips docs", "codeql", aliasIgnore("'**.md'"), anyNameCQ},
+		{"iter5 C3b positive: paths-ignore through an alias of an unrelated tree stays clean", "codeql", aliasIgnore("'docs-site/**'"), ""},
+		{"iter5 C4 failure: the external detect job is skipped on a pull_request", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: github.event_name == 'workflow_dispatch'\n"), anyNameCQ},
+		{"iter5 C4 positive: the external detect job with a true condition stays clean", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: ${{ true }}\n"), ""},
+		{"iter5 C5 failure: an unknown context in a supplier if is an error, not an empty string", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.repository == ''"), "is not modelled by this guard"},
+		{"iter5 C5 positive: a modelled context in a supplier if stays clean", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.event_name != 'schedule'"), ""},
+
+		// sync-audit iter6 F-1: the `+` quantifier means something to Actions that the
+		// first-hit matcher does not model, so a list holding it is refused whole.
+		{"iter6 F-1 failure: `+` in a paths-ignore pattern is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md+'\n"), "uses negation, `?` or `+`"},
+		{"iter6 F-1 failure: `+` in a push branch pattern of ci.yml is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - 'ci/a+'\n"), "uses negation, `?` or `+`"},
+		{"iter6 F-1 positive: plain unrelated paths-ignore patterns stay clean", "codeql", withFilter("    paths-ignore:\n      - 'docs-site/**'\n      - 'vendor/**'\n"), ""},
+		// sync-audit iter6 F-2: a `needs:` dependency the model does not track must not
+		// be treated as satisfied, and one written through an alias is still a dependency.
+		{"iter6 F-2 failure: the marker also needs an untracked job", "codeql", replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [detect, analyze]\n"), "has no modelled result"},
+		{"iter6 F-2 failure: the marker needs an untracked job through an alias list entry", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [*dep, analyze]\n")(t, replaceOnce(cqAnalyzeNeeds, cqAnalyzeNeedsDep)(t, text))
+		}, "has no modelled result"},
+		{"iter6 F-2 failure: the external detect job itself needs an untracked job", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    needs: prereq\n"), "has no modelled result"},
+		{"iter6 F-2 positive: the marker needs detect through a YAML alias and stays clean", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: *dep\n")(t, replaceOnce(cqAnalyzeNeeds, cqAnalyzeNeedsDep)(t, text))
+		}, ""},
+		{"iter6 F-2 positive: the marker needs detect as a one-entry list and stays clean", "codeql", replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [detect]\n"), ""},
+	}
+	for _, c := range triggerControls {
+		t.Run("control/trigger/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+			}
+			ciT, cqT, relT := ciText, cqText, relText
+			switch c.target {
+			case "ci":
+				ciT = c.edit(t, ciText)
+			case "codeql":
+				cqT = c.edit(t, cqText)
+			case "release":
+				relT = c.edit(t, relText)
+			}
+			got := rpcCheckRequiredNames(t, rpcParseWorkflow(t, rpcCIWorkflowRel, ciT), []*rpcWorkflow{
+				rpcParseWorkflow(t, rpcCodeQLWorkflowRel, cqT),
+				rpcParseWorkflow(t, rpcReleaseWorkflowRel, relT),
+			}, rc)
+			if c.wantCell == "" {
+				if len(got) != 0 {
+					t.Fatalf("a trigger / condition that still publishes the name was flagged: %s", got[0])
+				}
+				return
+			}
+			for _, g := range got {
+				if strings.Contains(g, c.wantCell) {
+					t.Logf("control observed red: %s", g)
+					return
+				}
+			}
+			t.Fatalf("mutant not reported at %q; got %v", c.wantCell, got)
+		})
+	}
+	t.Run("control/glob matcher", func(t *testing.T) {
+		cases := []struct {
+			pattern, file string
+			want          bool
+		}{
+			{"**", "README.md", true},
+			{"**.md", "docs/a/b.md", true},
+			{"*.md", "docs/a.md", false},
+			{"*.md", "README.md", true},
+			{"internal/**", "internal/cli/x.go", true},
+			{"internal/**", "README.md", false},
+			{"**/*.go", "main.go", true},
+			{"**/*.go", "cmd/moai/main.go", true},
+			{"**/*.go", "README.md", false},
+			{".claude/rules/moai/**", ".claude/rules/moai/core/a.md", true},
+			{"docs/?.md", "docs/a.md", true},
+			{"docs/?.md", "docs/ab.md", false},
+		}
+		for _, c := range cases {
+			got, err := rpcGlobMatch(c.pattern, c.file)
+			if err != nil || got != c.want {
+				t.Errorf("rpcGlobMatch(%q, %q) = %v, %v; want %v", c.pattern, c.file, got, err, c.want)
+			}
+		}
+		if _, err := rpcGlobMatch("!docs/**", "a"); err == nil {
+			t.Errorf("a negated pattern must be refused, not guessed at")
+		}
+	})
+	t.Run("control/release gate name in release_gate", func(t *testing.T) {
+		if !baselineClean {
+			t.Fatalf("control precondition: the real tree is not clean for this guard, so the control proves nothing")
+		}
+		mut := rpcParseRequiredChecks(t, rcText)
+		mut.ReleaseGate = append(append([]string{}, mut.ReleaseGate...), "Release PR Multi-OS Gate")
+		got := rpcCheckRequiredNames(t, ci, others, mut)
+		found := false
+		for _, g := range got {
+			if strings.Contains(g, `push to main x docs-only: required name "Release PR Multi-OS Gate"`) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("adding Release PR Multi-OS Gate to release_gate did not report it unpublished on push to main; got %v", got)
+		}
+		t.Logf("control (b) observed red: %s", got[0])
+	})
+}

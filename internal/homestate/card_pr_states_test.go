@@ -286,3 +286,26 @@ func TestPRStatesCanBeAbandoned(t *testing.T) {
 		}
 	}
 }
+
+// TestPROpenEdgeSurvivesTagSharingTheCardBranchName — card t1928. With a tag
+// named like the card branch, `rev-parse --abbrev-ref HEAD` disambiguates to
+// heads/WT-pr-card: validBranchName accepts that shape, the remote-tracking
+// ref is then composed as refs/remotes/origin/heads/WT-pr-card, and a healthy
+// pushed tree was refused as "the card branch was never pushed" — the same
+// disambiguation class t1920 fixed in the merge-step branch read. The edge
+// must read the card branch itself.
+func TestPROpenEdgeSurvivesTagSharingTheCardBranchName(t *testing.T) {
+	ctx := context.Background()
+	db := frOpen(t)
+	repo := prRepo(t)
+	frGit(t, repo.Dir, "tag", prCardBranch, "HEAD") // a tag shadowing the card branch's name
+	prCard(t, db, repo, "c1", CardMerging)
+
+	got, err := db.Transition(ctx, prOpenRequest("c1", repo))
+	if err != nil {
+		t.Fatalf("a tag shadowing the card branch's name must not refuse the healthy pushed tree: %v", err)
+	}
+	if got.State != CardPROpen {
+		t.Fatalf("state = %s, want pr-open", got.State)
+	}
+}

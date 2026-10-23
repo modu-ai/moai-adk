@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -25,10 +28,14 @@ func writeCodexAuditGate(t *testing.T, root, gate string) {
 
 // TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive is the axis-3
 // acceptance: when the project declared gates.codex=required but the audit
-// came back fail-open inconclusive (here: codex missing), the result must
-// RECORD the unmet gate as a structured field. Before the fix, an inconclusive
-// result looked byte-identical whether or not a mandatory gate was declared —
-// the "required reads as a guarantee but behaves as a suggestion" defect.
+// could not run at all (here: codex missing), the result must RECORD the unmet
+// gate as a structured field. Before the axis-3 fix, an inconclusive result
+// looked byte-identical whether or not a mandatory gate was declared — the
+// "required reads as a guarantee but behaves as a suggestion" defect.
+// REQ-MN-021 (SPEC-MCP-NEUTRALITY-001) revises the conversion: a could-not-run
+// is a not-performed result, so the verdict stays inconclusive and gate_unmet
+// names both the unmet gate and the could-not-run state — the blocking lives at
+// the convergence surface (never pass).
 func TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive(t *testing.T) {
 	root := newProbeProject(t, "SPEC-GATEUNMET-901")
 	writeCodexAuditGate(t, root, config.AuditGateRequired)
@@ -39,13 +46,20 @@ func TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive(t *testing.T) {
 		t.Fatalf("unexpected IsError — fail-open stays a structured result")
 	}
 	got := structuredMap(t, res)
-	// An explicitly required gate is fail-closed: the unmet gate blocks with
-	// verdict fail, and gate_unmet distinguishes it from a reviewed failure.
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail (explicit required gate left without a verdict blocks)", v)
+	// REQ-MN-021: the not-performed verdict stays distinct from a reviewed
+	// failure, and the unmet gate still reads as a structured field.
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (could-not-run stays not-performed, REQ-MN-021)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a required gate that produced no verdict must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a required gate that produced no verdict must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
+	}
+	if c, _ := got["could_not_run"].(bool); !c {
+		t.Error("could_not_run = false, want true — a missing binary is a could-not-run")
 	}
 }
 
@@ -103,4 +117,21 @@ func TestCodexAudit_AdvisoryGateLeavesGateUnmetEmpty(t *testing.T) {
 	if g, _ := got["gate_unmet"].(string); g != "" {
 		t.Errorf("gate_unmet = %q, want empty for an advisory gate", g)
 	}
+}
+
+// structuredMap decodes a tool result's StructuredContent into a map.
+func structuredMap(t *testing.T, res *mcp.CallToolResult) map[string]any {
+	t.Helper()
+	if res.StructuredContent == nil {
+		t.Fatalf("result carries no StructuredContent: %+v", res)
+	}
+	raw, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal StructuredContent: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("decode StructuredContent %s: %v", raw, err)
+	}
+	return m
 }

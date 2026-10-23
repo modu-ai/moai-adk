@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,9 +35,9 @@ func readLLMHarness(t *testing.T, projectDir string) string {
 	return h
 }
 
-// TestInitPersistsHarnessKey verifies AC-IH-001: the resolved harness value is
-// written to llm.harness on every init run, for all three closed-set values
-// AND for the flag-absent default (explicit record of claude included).
+// TestInitPersistsHarnessKey verifies AC-IH-001 (narrowed by card t1909 to
+// the claude-only deployment): the resolved harness value is written to
+// llm.harness on every init run — flag absent and --llm claude alike.
 func TestInitPersistsHarnessKey(t *testing.T) {
 	cases := []struct {
 		name string
@@ -47,8 +46,6 @@ func TestInitPersistsHarnessKey(t *testing.T) {
 	}{
 		{"flag absent records claude", "", "claude"},
 		{"claude records claude", "claude", "claude"},
-		{"gpt records gpt", "gpt", "gpt"},
-		{"both records both", "both", "both"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -62,18 +59,5 @@ func TestInitPersistsHarnessKey(t *testing.T) {
 				t.Errorf("llm.harness after init = %q, want %q", got, tc.want)
 			}
 		})
-	}
-}
-
-// TestInitPersistsHarnessKeyFromWizard verifies the wizard path records the
-// same key (REQ-IH-001: one resolution, two input sources — the persistence
-// consumer must read the RESOLVED value either way). Flag absent, wizard
-// answers codex.
-func TestInitPersistsHarnessKeyFromWizard(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
-	projectDir, _ := runInitForAutonomy(t, wiz, nil)
-
-	if got := readLLMHarness(t, projectDir); got != "gpt" {
-		t.Errorf("llm.harness after wizard gpt init = %q, want %q", got, "gpt")
 	}
 }
