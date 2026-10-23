@@ -54,7 +54,7 @@ func swapAutoMergeSeams(t *testing.T, s amSeams) {
 	orig := amSeams{
 		lockRoot: autoMergeLockRoot, sessionID: autoMergeSessionID,
 		gitFlow: autoMergeLoadGitFlow, primaryHolds: autoMergePrimaryHoldsTarget,
-		branchOf: autoMergeBranchOf,
+		branchOf:   autoMergeBranchOf,
 		aheadCount: autoMergeAheadCount, wtForBranch: autoMergeWorktreeForBranch,
 		ownerPID: autoMergeResolveOwnerPID, readLock: autoMergeReadLock,
 		acquire: autoMergeAcquireLock, release: autoMergeReleaseLock,

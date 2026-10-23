@@ -1,6 +1,10 @@
 # 패키지 모듈 상세
 
-## 현재 변경 경계 — 656e4d3 (card t1640 판)
+## 현재 변경 경계 — c1f54078 (card t1831 판)
+
+기준 `9286f6b6ba`(origin/main 팁, provenance 스탬프) 뒤의 설명 대상 소스 13개(추가 2·수정 11·삭제 0; testdata·테스트 제외)를 현재 트리와 대조했다. 창은 본 카드 PR #1908(card t1831, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001) 단독 몫이다 — `git_strategy.manual.workflow` 값 집합에 `agentic-trunk`를 더하는 창이다. ① **값 집합과 판정**(`internal/config`): `loader_workflow_disposition.go`의 값 집합이 다섯 값이 됐다(`AllowedWorkflows` — github-flow·git-flow·gitlab-flow·release-flow·agentic-trunk; `ClassifyWorkflowDisposition`가 새 값을 분류), `loader_integration_branch.go`의 통합 대상 판정이 agentic-trunk에서 고정 `main`을 가리킨다(`develop_branch` 재정의를 받지 않는다), `integration_target_guidance.go`의 안내 문언 확장. ② **대상 홀더 라우팅**(`internal/cli`): 신규 `factory_target_holder.go`(`factoryAgenticTrunkPrimaryRouteIn(configRoot, probeRoot)` 두 루트 형태 — 설정은 공통·잠금 루트에서, 홀더 조회는 대상 트리에서 읽는다; 단일 루트 래퍼가 complete 경로에 합류), `factory_merge.go`의 merge-ready 판정이 두 루트 형태로, `factory_card_pr.go`는 PR 생성 경로에서 `gh pr merge --auto` 요청을 뗐다(리더 병합 — 요청 없음), `session_worktree_automerge.go`의 세션 종료 자동 병합 게이트가 primary-only `main` 구성에서 스킵 공지를 낸다. ③ **상태줄 라벨**(`internal/statusline`): 신규 `workflow_provider.go`(워크플로 라벨 판독), `builder.go`는 앵커를 한 번만 풀어 GoalArmed와 워크플로 라벨이 나눠 쓴다(Git exec 1회 — 실행 수 가드 테스트 동행), `renderer.go`·`types.go` 라벨 전달. ④ **doctor**(`doctor_git_strategy_workflow.go`): 값 분류가 다섯 값 목록을 따른다. 파일 수가 움직인 행: `internal/cli` 387→388(`factory_target_holder.go`), `internal/statusline` 25→26(`workflow_provider.go`) — 이 트리 find 직접 측정; `internal/config` 71 불변. 등록 수치 변동 없음(신규 동사 없음). 규모 표 일곱 값은 § `overview.md` t1831 판이 운반한다.
+
+## 이전 변경 경계 — 656e4d3 (card t1640 판)
 
 기준 `2fccfd2` 이후의 설명 대상 소스 86개를 현재 트리와 대조했다(추가 25·수정 61·삭제 0; testdata·테스트 제외). 창은 본 카드 PR #1858(card t1640, SPEC-WORKTREE-HOME-ROOT-001)과 세 차례 흡수 병합(eb2da27·d429ffd2·656e4d3 — #1843 t1649·#1844 t1838·#1853 t1803 포함)이 운반했고 **신규 패키지는 둘이다** — `internal/worktreeroot`와 `internal/template/agentemit/cmd/agents-emit`. `internal/cli/worktree`와 `internal/template/agentemit` 본체는 기준 커밋에 이미 존재하며(델타 감사 F3 정정 — 이 창은 그 위에 파일을 추가했다), `internal/config`는 리졸버를 임포트하지 않는다(F1 정정 — 핀 값 로더가 config 쪽 소비자를 위한 것으로, 의존 없음이 이 파일 스스로의 설계 문서다).
 
