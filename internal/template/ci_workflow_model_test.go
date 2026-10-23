@@ -49,6 +49,17 @@ type rpcStep struct {
 	With           map[string]any `yaml:"with"`
 	Env            map[string]any `yaml:"env"`
 	TimeoutMinutes yaml.Node      `yaml:"timeout-minutes"`
+	// ContinueOnError is the raw `continue-on-error:` value (bool, or an
+	// expression string); see rpcContinuesOnError.
+	ContinueOnError any `yaml:"continue-on-error"`
+}
+
+// rpcDefaults is a `defaults:` block (workflow or job level); only run.shell is
+// modelled.
+type rpcDefaults struct {
+	Run struct {
+		Shell string `yaml:"shell"`
+	} `yaml:"run"`
 }
 
 // rpcJob is one workflow job.
@@ -60,7 +71,12 @@ type rpcJob struct {
 	TimeoutMinutes yaml.Node `yaml:"timeout-minutes"`
 	Outputs        map[string]string
 	Env            map[string]any `yaml:"env"`
-	Strategy       struct {
+	Defaults       rpcDefaults    `yaml:"defaults"`
+	// ContinueOnError is the raw job-level `continue-on-error:` value.
+	ContinueOnError any       `yaml:"continue-on-error"`
+	Container       yaml.Node `yaml:"container"`
+	Services        yaml.Node `yaml:"services"`
+	Strategy        struct {
 		Matrix rpcMatrix `yaml:"matrix"`
 	} `yaml:"strategy"`
 	Steps []rpcStep `yaml:"steps"`
@@ -96,7 +112,9 @@ type rpcWorkflow struct {
 		Group            string `yaml:"group"`
 		CancelInProgress any    `yaml:"cancel-in-progress"`
 	} `yaml:"concurrency"`
-	Jobs map[string]*rpcJob `yaml:"jobs"`
+	Env      map[string]any     `yaml:"env"`
+	Defaults rpcDefaults        `yaml:"defaults"`
+	Jobs     map[string]*rpcJob `yaml:"jobs"`
 }
 
 // rpcReadRepoFile reads a repo-relative file from the module root.

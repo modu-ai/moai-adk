@@ -721,6 +721,9 @@ func TestCleanupRequeriesBeforeDelete(t *testing.T) {
 // pending weekly cleanup), and safety between them rests on the re-query before
 // every delete plus an idempotent delete.
 
+// rdcGroupKey normalizes a concurrency group name for comparison.
+func rdcGroupKey(g string) string { return strings.ToLower(strings.TrimSpace(g)) }
+
 // rdcCheckConcurrency is the static part of the amended AC-RPC-012: (a) literal,
 // expression-free, ref-invariant groups, (b) the two groups differ, (c)
 // cancel-in-progress false on both, (d) the re-query precedes the delete.
@@ -751,8 +754,11 @@ func rdcCheckConcurrency(cleanup, drafter *rpcWorkflow) []string {
 			add("%s: cancel-in-progress is %v, want false on BOTH sides", w.Path, w.Concurrency.CancelInProgress)
 		}
 	}
-	if len(groups) == 2 && groups[cleanup.Path] == groups[drafter.Path] {
-		add("the two workflows share the group %q: GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups", groups[cleanup.Path])
+	// Group names are compared as GitHub compares them: case-insensitively, with
+	// surrounding whitespace dropped (sync-audit iter4 B4: `Release-Drafter-X` vs
+	// `release-drafter-x` is ONE group to GitHub and two to a byte comparison).
+	if len(groups) == 2 && rdcGroupKey(groups[cleanup.Path]) == rdcGroupKey(groups[drafter.Path]) {
+		add("the two workflows share the group %q (compared case-insensitively, as GitHub does): GitHub keeps one running and one pending run per group and a newer pending run replaces the older pending one, so a drafter run can replace the pending weekly cleanup; they must use different groups", groups[cleanup.Path])
 	}
 	del := rdcStepByName(cleanup, "Delete stale drafts")
 	if del == nil {
@@ -899,6 +905,17 @@ func TestDrafterCleanupConcurrency(t *testing.T) {
 		{"cleanup cancels in progress (separate groups)", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.CancelInProgress = true }},
 		{"cleanup has no group", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.Group = "" }},
 		{"groups equal again (the v0.7.x shared group)", false, func(t *testing.T, c, d *rpcWorkflow) { c.Concurrency.Group = d.Concurrency.Group }},
+		// sync-audit iter4 B4: GitHub compares group names case-insensitively.
+		{"groups equal apart from letter case (cleanup upper-cased)", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Concurrency.Group = strings.ToUpper(d.Concurrency.Group)
+		}},
+		{"groups equal apart from letter case (drafter capitalised)", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Concurrency.Group = d.Concurrency.Group
+			d.Concurrency.Group = strings.ToUpper(d.Concurrency.Group[:1]) + d.Concurrency.Group[1:]
+		}},
+		{"groups equal apart from surrounding whitespace", false, func(t *testing.T, c, d *rpcWorkflow) {
+			c.Concurrency.Group = "  " + d.Concurrency.Group + " "
+		}},
 		{"cleanup group carries github.ref", false, func(t *testing.T, c, d *rpcWorkflow) {
 			c.Concurrency.Group = "release-drafter-cleanup-${{ github.ref }}"
 		}},
@@ -1090,6 +1107,7 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 //   - github.run_id / run_number / run_attempt / sha
 //     runner-defined numeric ids and a 40-hex commit id
 //   - runner.os / runner.arch  runner-defined platform enums
+//   - runner.temp              runner-defined scratch directory path
 //   - job.status               runner-defined status enum
 //
 // Deliberately NOT allowed although some are harmless: secrets.* and vars.*
@@ -1098,18 +1116,41 @@ func TestCleanupDryRunDispatchReachable(t *testing.T) {
 // github.ref_name, github.actor, github.head_ref, github.event.*, inputs.*,
 // steps.*, env.*, needs.<id>.outputs.*, any function call and any bracket index.
 //
-// The sweep covers every surface a step hands to a shell or a script engine as
-// TEXT (sync-audit iter3 G1-R2): the `run:` body, and the code-valued `with:`
-// inputs of a `uses:` step (rdcCodeInputKeys: `script:` of actions/github-script
-// above all, and the command-shaped inputs other actions evaluate). Data inputs
-// (`name:`, `path:`, `go-version:`, `token:` ...) are values, not code, and are
-// not swept; `env:` is the safe channel and is not swept either.
+// An expression is not matched against the allowlist as one fixed string: it is
+// read as operands joined by `==` `!=` `&&` `||` `!` and parentheses, with string
+// literals, and is accepted when EVERY operand is on the allowlist and nothing
+// else (no function call, no bracket index, no other character) appears. So
+// `runner.os == 'Windows' && 'error' || 'warn'` is accepted and any form that
+// can yield an outsider-influenced value is refused.
+//
+// Swept surfaces (sync-audit iter3 G1-R2, iter4 B2): the `run:` body; a step's
+// `shell:`; `defaults.run.shell` at workflow and job level; EVERY value and key of
+// a step's `with:` map at any depth, whatever the input is called, because what an
+// action does with an input (azure/powershell `inlineScript`, nick-fields/retry
+// `on_retry_command`, github-script `script`, a docker `args`) cannot be read from
+// the workflow, so no input name is assumed to be data; and a job's `container:` /
+// `services:` blocks (their `env` and `credentials` data maps aside). A `with:`
+// value, unlike a run body, may also reference `secrets.<NAME>` (rdcWithOnlyExpr):
+// the real tree passes a token there, and a secret is not an outsider-controlled
+// string.
+//
+// NOT swept, because each is data the runner reads rather than text a shell or
+// interpreter evaluates: `env:` (the safe channel), `if:` (an expression, never
+// substituted into text), `name:`, `working-directory:`, `runs-on:`, `outputs:`,
+// `concurrency:`, `permissions:`, `timeout-minutes:`, `continue-on-error:`, and
+// `strategy:` (its own guard, TestWorkflowMatrixValuesLiteral). Residual risk: an
+// action that evaluates an `env:` value as code, and any surface a future
+// workflow-syntax version adds.
 
 const rdcRunInterpSentinel = "RUN_INTERPOLATION_VIOLATION"
 
 var (
-	rdcExprRe      = regexp.MustCompile(`(?s)\$\{\{(.*?)\}\}`)
-	rdcAllowedExpr = regexp.MustCompile(`^(needs\.[a-z0-9_-]+\.result|matrix\.[a-z0-9_-]+|github\.(event_name|run_id|run_number|run_attempt|sha)|runner\.(os|arch)|job\.status)$`)
+	rdcExprRe = regexp.MustCompile(`(?s)\$\{\{(.*?)\}\}`)
+	// rdcAllowedExpr is the operand allowlist: one whole context reference.
+	rdcAllowedExpr = regexp.MustCompile(`^(needs\.[a-z0-9_-]+\.result|matrix\.[a-z0-9_-]+|github\.(event_name|run_id|run_number|run_attempt|sha)|runner\.(os|arch|temp)|job\.status)$`)
+	// rdcWithOnlyExpr are the operands a `with:` value may add: a secret is
+	// configured, not outsider-controlled, and the real tree passes a token there.
+	rdcWithOnlyExpr = regexp.MustCompile(`^secrets\.[a-z0-9_]+$`)
 	// rdcRunInterpWorkflows are the workflows SPEC-RELEASE-PIPELINE-001 changed.
 	rdcRunInterpWorkflows = []string{
 		".github/workflows/ci.yml",
@@ -1119,44 +1160,195 @@ var (
 	}
 )
 
-// rdcCodeInputKeys are the `with:` input names (case-insensitive) a `uses:` step's
-// action evaluates as code or shell text.
-var rdcCodeInputKeys = []string{"script", "run", "command", "commands", "cmd", "args", "entrypoint"}
+// rdcSurface is one piece of text a workflow hands to a shell, a script engine or
+// an action; withInput marks a `with:` value (which may also name a secret).
+type rdcSurface struct {
+	label, text string
+	withInput   bool
+}
 
-// rdcSurface is one piece of text a step hands to a shell or script engine.
-type rdcSurface struct{ label, text string }
+// rdcFlatten returns every scalar (map keys included) at or below x as text, so a
+// nested `with:` value is swept like a flat one.
+func rdcFlatten(x any) []string {
+	switch val := x.(type) {
+	case nil:
+		return nil
+	case string:
+		return []string{val}
+	case map[string]any:
+		var out []string
+		for _, k := range rpcSortedKeys(val) {
+			out = append(out, k)
+			out = append(out, rdcFlatten(val[k])...)
+		}
+		return out
+	case []any:
+		var out []string
+		for _, e := range val {
+			out = append(out, rdcFlatten(e)...)
+		}
+		return out
+	default:
+		return []string{fmt.Sprint(val)}
+	}
+}
 
-// rdcStepSurfaces lists the code-bearing text of a step: its run body and the
-// code-valued inputs of its action.
+// rdcNodeScalars returns the scalar text under a yaml node, skipping the data
+// maps named in skip (matched against mapping keys).
+func rdcNodeScalars(n *yaml.Node, skip ...string) []string {
+	var out []string
+	var walk func(*yaml.Node)
+	walk = func(x *yaml.Node) {
+		switch x.Kind {
+		case yaml.ScalarNode:
+			out = append(out, x.Value)
+		case yaml.MappingNode:
+			for i := 0; i+1 < len(x.Content); i += 2 {
+				if rpcContains(skip, x.Content[i].Value) {
+					continue
+				}
+				walk(x.Content[i])
+				walk(x.Content[i+1])
+			}
+		default:
+			for _, c := range x.Content {
+				walk(c)
+			}
+		}
+	}
+	walk(n)
+	return out
+}
+
+// rdcStepSurfaces lists the code-bearing text of a step: its run body, its shell
+// and every value of its `with:` map, whatever the input is called.
 func rdcStepSurfaces(s rpcStep) []rdcSurface {
 	var out []rdcSurface
 	if s.Run != "" {
-		out = append(out, rdcSurface{"run script", s.Run})
+		out = append(out, rdcSurface{label: "run script", text: s.Run})
 	}
-	if s.Uses != "" {
-		for _, k := range rpcSortedKeys(s.With) {
-			if rpcContains(rdcCodeInputKeys, strings.ToLower(k)) {
-				out = append(out, rdcSurface{fmt.Sprintf("with.%s input (%s evaluates it as code)", k, s.Uses), fmt.Sprint(s.With[k])})
-			}
+	if s.Shell != "" {
+		out = append(out, rdcSurface{label: "shell", text: s.Shell})
+	}
+	for _, k := range rpcSortedKeys(s.With) {
+		for _, txt := range rdcFlatten(map[string]any{k: s.With[k]}) {
+			out = append(out, rdcSurface{label: fmt.Sprintf("with.%s input (%s may evaluate it as code)", k, s.Uses), text: txt, withInput: true})
 		}
 	}
 	return out
 }
 
+// rdcJobSurfaces lists the code-bearing text a job carries outside its steps.
+func rdcJobSurfaces(j *rpcJob) []rdcSurface {
+	var out []rdcSurface
+	if j.Defaults.Run.Shell != "" {
+		out = append(out, rdcSurface{label: "defaults.run.shell", text: j.Defaults.Run.Shell})
+	}
+	for _, blk := range []struct {
+		name string
+		node *yaml.Node
+	}{{"container", &j.Container}, {"services", &j.Services}} {
+		for _, txt := range rdcNodeScalars(blk.node, "env", "credentials") {
+			out = append(out, rdcSurface{label: blk.name + " block", text: txt})
+		}
+	}
+	return out
+}
+
+// rdcExprRefusal reads one `${{ }}` body as operands joined by == != && || ! and
+// parentheses, with string and number literals, and returns why it is refused ("" =
+// accepted). Every operand must be on the allowlist; a function call, a bracket
+// index or any other character is refused.
+func rdcExprRefusal(expr string, withInput bool) string {
+	rs := []rune(expr)
+	for i := 0; i < len(rs); {
+		c := rs[i]
+		switch {
+		case c == ' ':
+			i++
+		case c == '(' || c == ')':
+			i++
+		case c == '\'':
+			i++
+			for i < len(rs) {
+				if rs[i] == '\'' {
+					if i+1 < len(rs) && rs[i+1] == '\'' {
+						i += 2
+						continue
+					}
+					break
+				}
+				i++
+			}
+			if i >= len(rs) {
+				return "an unterminated string literal"
+			}
+			i++
+		case (c == '=' || c == '!') && i+1 < len(rs) && rs[i+1] == '=':
+			i += 2
+		case (c == '&' || c == '|') && i+1 < len(rs) && rs[i+1] == c:
+			i += 2
+		case c == '!':
+			i++
+		case c >= '0' && c <= '9':
+			for i < len(rs) && rs[i] >= '0' && rs[i] <= '9' {
+				i++
+			}
+		case c >= 'a' && c <= 'z' || c == '_':
+			j := i
+			for j < len(rs) && (rs[j] >= 'a' && rs[j] <= 'z' || rs[j] >= '0' && rs[j] <= '9' || rs[j] == '_' || rs[j] == '.' || rs[j] == '-') {
+				j++
+			}
+			id := string(rs[i:j])
+			k := j
+			for k < len(rs) && rs[k] == ' ' {
+				k++
+			}
+			switch {
+			case k < len(rs) && rs[k] == '(':
+				return fmt.Sprintf("the function call %s(...)", id)
+			case id == "true" || id == "false" || id == "null":
+			case rdcAllowedExpr.MatchString(id):
+			case withInput && rdcWithOnlyExpr.MatchString(id):
+			default:
+				return fmt.Sprintf("the context reference %s", id)
+			}
+			i = j
+		default:
+			return fmt.Sprintf("the character %q", c)
+		}
+	}
+	return ""
+}
+
 // rdcCheckRunInterpolation returns one violation per refused expression found
-// in a step's run body or code-valued action input.
+// in any swept surface (see the surface list above).
 func rdcCheckRunInterpolation(wfs []*rpcWorkflow) []string {
 	var v []string
+	sweep := func(wf *rpcWorkflow, where string, sf rdcSurface) {
+		matches := rdcExprRe.FindAllStringSubmatch(sf.text, -1)
+		if strings.Count(sf.text, "${{") != len(matches) {
+			v = append(v, fmt.Sprintf("%s: %s: %s has a ${{ with no closing }} in its %s; the text cannot be read as expressions", rdcRunInterpSentinel, wf.Path, where, sf.label))
+		}
+		for _, m := range matches {
+			expr := strings.ToLower(strings.Join(strings.Fields(m[1]), " "))
+			if why := rdcExprRefusal(expr, sf.withInput); why != "" {
+				v = append(v, fmt.Sprintf("%s: %s: %s interpolates ${{ %s }} into its %s: %s is not on the allowlist; pass the value through the step env and reference a quoted shell variable (process.env in a script input)", rdcRunInterpSentinel, wf.Path, where, expr, sf.label, why))
+			}
+		}
+	}
 	for _, wf := range wfs {
+		if wf.Defaults.Run.Shell != "" {
+			sweep(wf, "the workflow", rdcSurface{label: "defaults.run.shell", text: wf.Defaults.Run.Shell})
+		}
 		for _, id := range wf.jobIDs() {
-			for _, s := range wf.Jobs[id].Steps {
+			j := wf.Jobs[id]
+			for _, sf := range rdcJobSurfaces(j) {
+				sweep(wf, fmt.Sprintf("job %q", id), sf)
+			}
+			for _, s := range j.Steps {
 				for _, sf := range rdcStepSurfaces(s) {
-					for _, m := range rdcExprRe.FindAllStringSubmatch(sf.text, -1) {
-						expr := strings.ToLower(strings.Join(strings.Fields(m[1]), " "))
-						if !rdcAllowedExpr.MatchString(expr) {
-							v = append(v, fmt.Sprintf("%s: %s: job %q step %q interpolates ${{ %s }} into its %s, which is not on the allowlist; pass it through the step env and reference a quoted shell variable (process.env in a script input)", rdcRunInterpSentinel, wf.Path, id, s.Name, expr, sf.label))
-						}
-					}
+					sweep(wf, fmt.Sprintf("job %q step %q", id, s.Name), sf)
 				}
 			}
 		}
@@ -1360,6 +1552,29 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 			map[string]any{"args": "--title ${{ github.event.pull_request.title }}"}, true},
 		{"github-script script using only allowlisted forms", ".github/workflows/ci.yml", "actions/github-script@v7",
 			map[string]any{"script": "core.info('${{ github.event_name }} ${{ needs.detect.result }} ${{ matrix.goos }}')"}, false},
+		// iter4 B2: the sweep is a rule over every `with:` value, not a list of names.
+		{"azure/powershell inlineScript (N1)", ".github/workflows/ci.yml", "azure/powershell@v2",
+			map[string]any{"inlineScript": "Write-Output \"${{ github.event.pull_request.title }}\""}, true},
+		{"nick-fields/retry on_retry_command (N17)", ".github/workflows/ci.yml", "nick-fields/retry@v3",
+			map[string]any{"command": "true", "on_retry_command": "echo '${{ github.event.pull_request.title }}'"}, true},
+		{"nick-fields/retry new_command_on_retry", ".github/workflows/ci.yml", "nick-fields/retry@v3",
+			map[string]any{"command": "true", "new_command_on_retry": "echo ${{ github.head_ref }}"}, true},
+		{"an input name no list has ever heard of", ".github/workflows/ci.yml", "example/anything@v1",
+			map[string]any{"zz_unlisted_input": "${{ github.head_ref }}"}, true},
+		{"expression nested in a map value", ".github/workflows/ci.yml", "example/anything@v1",
+			map[string]any{"config": map[string]any{"hook": "${{ github.head_ref }}"}}, true},
+		{"expression nested in a list value", ".github/workflows/ci.yml", "example/anything@v1",
+			map[string]any{"steps": []any{"ok", "${{ github.head_ref }}"}}, true},
+		{"expression with no closing braces", ".github/workflows/ci.yml", "example/anything@v1",
+			map[string]any{"script": "echo ${{ github.event_name "}, true},
+		{"a with value built with a function call", ".github/workflows/ci.yml", "example/anything@v1",
+			map[string]any{"x": "${{ toJSON(matrix) }}"}, true},
+		{"secret in a with value stays allowed (the real tree passes a token)", ".github/workflows/ci.yml", "codecov/codecov-action@v7",
+			map[string]any{"token": "${{ secrets.CODECOV_TOKEN }}"}, false},
+		{"runner enum comparison with literals stays allowed (the real tree's if-no-files-found)", ".github/workflows/ci.yml", "actions/upload-artifact@v7",
+			map[string]any{"if-no-files-found": "${{ runner.os == 'Windows' && 'error' || 'warn' }}", "path": "${{ runner.temp }}/x"}, false},
+		{"comparison that falls back to an outsider value", ".github/workflows/ci.yml", "actions/upload-artifact@v7",
+			map[string]any{"name": "${{ runner.os == 'Windows' && 'error' || github.head_ref }}"}, true},
 	}
 	for _, c := range withControls {
 		t.Run("control/with/"+c.name, func(t *testing.T) {
@@ -1388,6 +1603,68 @@ func TestWorkflowRunScriptsNoUntrustedInterpolation(t *testing.T) {
 			}
 			if len(got) == 0 {
 				t.Fatalf("mutant %v with %v passes the guard", c.uses, c.with)
+			}
+			t.Logf("control observed red: %s", got[0])
+		})
+	}
+
+	// iter4 B2: the shell a step runs under, and the blocks a job carries outside
+	// its steps, are code surfaces too. Each control edits the first job of ci.yml.
+	nodeOf := func(t *testing.T, text string) yaml.Node {
+		t.Helper()
+		var n yaml.Node
+		if err := yaml.Unmarshal([]byte(text), &n); err != nil {
+			t.Fatalf("control text does not parse: %v", err)
+		}
+		return n
+	}
+	surfaceControls := []struct {
+		name    string
+		mutate  func(t *testing.T, wf *rpcWorkflow, j *rpcJob)
+		wantRed bool
+	}{
+		{"job defaults.run.shell carrying head_ref (N2)", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Defaults.Run.Shell = `bash -c "echo ${{ github.head_ref }}; bash -e {0}"`
+		}, true},
+		{"workflow defaults.run.shell carrying head_ref", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			wf.Defaults.Run.Shell = `bash -c "echo ${{ github.head_ref }}; bash -e {0}"`
+		}, true},
+		{"step shell carrying head_ref", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Steps = append(j.Steps, rpcStep{Name: "Injected", Run: "echo ok", Shell: `bash -c "echo ${{ github.head_ref }}; bash -e {0}"`})
+		}, true},
+		{"container options carrying head_ref", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Container = nodeOf(t, "image: alpine:3.20\noptions: --hostname ${{ github.head_ref }}\n")
+		}, true},
+		{"service options carrying a payload field", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Services = nodeOf(t, "db:\n  image: postgres:16\n  options: --health-cmd ${{ github.event.pull_request.title }}\n")
+		}, true},
+		{"secret in a run body stays refused (a with value may name one, a script may not)", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			j.Steps = append(j.Steps, rpcStep{Name: "Injected", Run: "echo ${{ secrets.CODECOV_TOKEN }}"})
+		}, true},
+		{"literal shell and a service without expressions stay allowed", func(t *testing.T, wf *rpcWorkflow, j *rpcJob) {
+			wf.Defaults.Run.Shell = "bash"
+			j.Defaults.Run.Shell = "bash"
+			j.Container = nodeOf(t, "image: alpine:3.20\noptions: --cpus 1\nenv:\n  X: ${{ github.head_ref }}\ncredentials:\n  password: ${{ secrets.X }}\n")
+			j.Steps = append(j.Steps, rpcStep{Name: "Injected", Run: "echo ok", Shell: "bash"})
+		}, false},
+	}
+	for _, c := range surfaceControls {
+		t.Run("control/surface/"+c.name, func(t *testing.T) {
+			if !baselineClean {
+				t.Fatalf("control precondition: the real workflows are not clean for this guard, so the control proves nothing")
+			}
+			wfs := load()
+			wf := wfs[0]
+			c.mutate(t, wf, wf.Jobs[wf.jobIDs()[0]])
+			got := rdcCheckRunInterpolation(wfs)
+			if !c.wantRed {
+				if len(got) != 0 {
+					t.Fatalf("an allowed surface was refused: %s", got[0])
+				}
+				return
+			}
+			if len(got) == 0 {
+				t.Fatalf("mutant %q passes the guard", c.name)
 			}
 			t.Logf("control observed red: %s", got[0])
 		})
