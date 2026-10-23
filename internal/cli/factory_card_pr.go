@@ -327,6 +327,33 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	alreadyMerged := probeErr == nil && mergedProbe != nil &&
 		strings.EqualFold(mergedProbe.State, "MERGED") &&
 		mergedProbe.MergeCommit != nil && strings.TrimSpace(mergedProbe.MergeCommit.Oid) != ""
+	// The deleted-head-branch recovery (card-review r1, F1): GitHub deletes a
+	// merged pull request's head branch, and a pruned remote-tracking ref
+	// left a correctly merged card stuck — the pr-open edge's reader
+	// (verifyPROpen) requires refs/remotes/origin/<branch> to hold the tip.
+	// The branch is never re-pushed (that would resurrect what GitHub
+	// deleted); instead the tracking ref is restored from the STRONGER fact:
+	// the pull request itself attests headRefOid == the card tip, and the
+	// merged-pr edge independently verifies the merge commit on the fetched
+	// integration branch. A healthy ref (or one an honest fetch restores) is
+	// left untouched.
+	if alreadyMerged && mergedProbe.HeadRefOid == checkedTip {
+		headRef := "refs/remotes/origin/" + cardBranch
+		if pushed, rerr := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", headRef+"^{commit}"); rerr != nil || strings.TrimSpace(pushed) != checkedTip {
+			restored := false
+			if _, ferr := factoryGitRead(wt, "fetch", "origin", cardBranch); ferr == nil {
+				if again, rerr2 := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", headRef+"^{commit}"); rerr2 == nil && strings.TrimSpace(again) == checkedTip {
+					restored = true // the branch survives on origin; the honest fetch brought the ref back
+				}
+			}
+			if !restored {
+				if _, uerr := factoryGitRead(wt, "update-ref", headRef, checkedTip); uerr == nil {
+					_, _ = fmt.Fprintf(out, "  note: head branch %s is gone from origin; its remote-tracking ref was re-established from pull request #%d's head %s — nothing was pushed\n",
+						cardBranch, mergedProbe.Number, shortSHA(checkedTip))
+				}
+			}
+		}
+	}
 	var run factorylane.MergeCheckRun
 	if alreadyMerged {
 		_, _ = fmt.Fprintf(out, "pull request #%d already reads MERGED with merge commit %s — recording the merge instead of re-checking readiness against %s\n",

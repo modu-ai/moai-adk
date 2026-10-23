@@ -184,3 +184,58 @@ func TestFactoryRebindEvidence(t *testing.T) {
 		}
 	})
 }
+
+// TestFactoryRebindEvidenceCatchUp — card-review r1 F2 (card t1930): a run
+// whose record write committed but whose audit append failed (or died) is
+// healed by a re-run — the record already carries the verdict's sha, and the
+// re-run appends the missing audit row without re-writing the record.
+func TestFactoryRebindEvidenceCatchUp(t *testing.T) {
+	converge := func(t *testing.T, root, baseFull string) {
+		t.Helper()
+		// The crashed run's state: the record write landed, the audit row did not.
+		db := fcOpen(t, root)
+		defer func() { _ = db.Close() }()
+		if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha=? WHERE card_id='t1'`, baseFull); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Run("re_run_appends_the_missing_audit_row_without_re_mutating", func(t *testing.T) {
+		root, _, baseFull := rebindFixture(t)
+		converge(t, root, baseFull)
+		before := fcCard(t, root, "t1")
+		out, err := rebindRun(t, "heal the audit row the crashed run owed")
+		if err != nil {
+			t.Fatalf("rebind-evidence catch-up: %v\nout: %s", err, out)
+		}
+		after := fcCard(t, root, "t1")
+		if after.EvidenceSHA != baseFull || after.Version != before.Version {
+			t.Fatalf("the catch-up re-mutated the record: evidence %q v%d → %q v%d", before.EvidenceSHA, before.Version, after.EvidenceSHA, after.Version)
+		}
+		rows := mdAuditRows(t, root, "t1")
+		if len(rows) != 1 || rows[0].Kind != "rebind-evidence" || rows[0].New != baseFull {
+			t.Fatalf("audit rows = %+v, want exactly one rebind-evidence row recording %s", rows, baseFull)
+		}
+		if !strings.Contains(out, "attested") {
+			t.Errorf("output does not say the record was already converged:\n%s", out)
+		}
+	})
+
+	t.Run("converged_and_audited_duplicate_refuses", func(t *testing.T) {
+		root, _, baseFull := rebindFixture(t)
+		converge(t, root, baseFull)
+		db := fcOpen(t, root)
+		if err := db.RecordCardMetadataEvent(context.Background(), homestate.CardMetadataEvent{
+			CardID: "t1", Kind: "rebind-evidence", Actor: "operator", Field: "evidence_sha",
+			Old: rebindDivergedSHA, New: baseFull, Reason: "seed",
+		}, fcNow); err != nil {
+			t.Fatal(err)
+		}
+		_ = db.Close()
+		if _, err := rebindRun(t, "duplicate"); err == nil || !strings.Contains(err.Error(), "duplicate") {
+			t.Fatalf("err = %v, want the converged-and-audited duplicate refusal", err)
+		}
+		if n := mdAuditCount(t, root); n != 1 {
+			t.Errorf("audit rows = %d, want the seeded row only", n)
+		}
+	})
+}

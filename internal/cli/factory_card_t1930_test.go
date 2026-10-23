@@ -79,6 +79,43 @@ func TestFactoryCompleteRecordsMergedPROnASquashMergedCard(t *testing.T) {
 	}
 }
 
+// TestFactoryCompleteRecordsMergedPRWhenTheHeadBranchIsGone — card-review r1
+// F1 (card t1930): GitHub deletes a merged pull request's head branch, and
+// the local remote-tracking ref is pruned with it — the pr-open edge's reader
+// then finds no ref and a correctly merged card stayed stuck. The
+// already-merged path must verify by the pull request's head SHA and the
+// merge commit on the fetched integration branch, never by re-creating the
+// head branch on the remote.
+func TestFactoryCompleteRecordsMergedPRWhenTheHeadBranchIsGone(t *testing.T) {
+	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
+	fcGit(t, f.root, "push", "-q", "origin", ghfBranch)
+	squash := ghfSquashOnOrigin(t, f)
+	// GitHub deleted the merged head branch; the local tracking ref went with it.
+	fcGit(t, f.root, "push", "-q", "origin", "--delete", ghfBranch)
+	fcGit(t, f.root, "update-ref", "-d", "refs/remotes/origin/"+ghfBranch)
+	if f.remoteBranchTip(t) != "" {
+		t.Fatal("fixture: the head branch still exists on origin")
+	}
+	d := newGHDouble(t, f)
+	d.created = true
+	d.state, d.mergeOid = "MERGED", squash
+
+	out, err := ghfComplete(t)
+	if err != nil {
+		t.Fatalf("complete with the merged head branch deleted: %v\nout: %s", err, out)
+	}
+	c := fcCard(t, f.root, "t1")
+	if c.State != homestate.CardMergedPR || c.MergeSHA != squash {
+		t.Fatalf("card = %s merge=%s, want merged-pr with the squash commit %s", c.State, c.MergeSHA, squash)
+	}
+	if !strings.Contains(out, "merged-pr") {
+		t.Errorf("output does not report merged-pr:\n%s", out)
+	}
+	if f.remoteBranchTip(t) != "" {
+		t.Error("the deleted head branch was resurrected on origin")
+	}
+}
+
 // TestFactoryCompleteStillRefusesTheUnmergedConflictingCard pins the boundary
 // of the defect-② repair: a conflicting card whose pull request does NOT read
 // MERGED keeps the readiness refusal verbatim — the merged-PR observation

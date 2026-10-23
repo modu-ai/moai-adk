@@ -138,13 +138,40 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	if err != nil {
 		return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w", cardID, phase, err)
 	}
-	if full == strings.TrimSpace(card.EvidenceSHA) {
-		return fmt.Errorf("card %s already records evidence %s — the newest %s verdict audits the recorded commit; nothing diverges", cardID, full, phase)
-	}
 	actor, session := metadataActor()
 	now := factoryCardNow()
 	out := cmd.OutOrStdout()
 	old := strings.TrimSpace(card.EvidenceSHA)
+	if full == old {
+		// The record already carries the verdict's sha (card-review r1, F2):
+		// a converged-and-audited state is a duplicate, but a converged
+		// record whose audit row is missing is the crashed run's recovery —
+		// the catch-up append lands the owed attestation without re-writing
+		// the record (version unchanged), so a failed append can always be
+		// healed by a re-run.
+		latest, audited, lerr := db.LatestCardMetadataNewValue(ctx, cardID, metadataKindRebindEvidence, metadataFieldEvidenceSHA)
+		if lerr != nil {
+			return lerr
+		}
+		if audited && latest == full {
+			return fmt.Errorf("card %s already records evidence %s and the audit surface's latest rebind-evidence row already records it (converged-and-audited duplicate)", cardID, full)
+		}
+		auditOld := ""
+		if audited {
+			auditOld = latest
+		}
+		for attempt := 0; attempt < 2; attempt++ {
+			if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
+				CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
+				Field: metadataFieldEvidenceSHA, Old: auditOld, New: full, Reason: reason,
+			}, now); err == nil {
+				fmt.Fprintf(out, "%s evidence_sha %s (attested; the record already carried it, no store re-mutated)\n", cardID, shortSHA(full))
+				return nil
+			}
+		}
+		return fmt.Errorf("%s on %s (rebind-evidence catch-up → %s): the record already carried the value and was not re-mutated, but the audit append failed after one retry; the missing attestation is surfaced — re-run rebind-evidence to land it",
+			metadataAuditLossSentinel, cardID, full)
+	}
 	// The record write: version-fenced (a stale read refuses with
 	// ErrStaleVersion and nothing is written).
 	if _, err := db.SetCardEvidenceSHA(ctx, runID, cardID, full, card.Version, now); err != nil {
@@ -152,7 +179,7 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	}
 	// The audit append only after the store commit — one retry, then the
 	// audit-loss sentinel with the completed write left in place (the same
-	// discipline the metadata verbs carry).
+	// discipline the metadata verbs carry); the catch-up branch above heals it.
 	for attempt := 0; attempt < 2; attempt++ {
 		if err := db.RecordCardMetadataEvent(ctx, homestate.CardMetadataEvent{
 			CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
