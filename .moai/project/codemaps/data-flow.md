@@ -1,6 +1,10 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — 2fccfd2 (card t1931 후속 판)
+## 현재 흐름 보완 — 656e4d3 (card t1640 판)
+
+이 창에서 실제로 움직인 흐름은 넷이다. **① 홈 루트 착지 흐름** — 모든 MoAI 트리 생성(`moai worktree new`·`moai cc -w`·`moai factory next`의 카드 머티리얼라이저)이 `worktreeroot.Resolve`의 일회성 프로젝트 키(오너 마커+common-dir 기록)로 `<MoaiHome>/worktrees/projects/<key>/<name>`에 착지하고, legacy 뿌리는 `Candidates`의 폴백 후보로만 남는다. **② 이관 흐름** — `moai worktree migrate`가 트리별로 매니페스트(HEAD·브랜치·미푸시·ignored 다이제스트)→인텐트→이동→레지스트리 재키(`RekeyWorktreeEntry`)→카드 재결속→대조를 저널(`pending`/`settle`) 아래 수행하고, 죽은 실행은 `--rollback`이 역순으로 되돌린다. 이동 저널의 역조회(`MovedBy`)가 정리 가드가 freshly-migrated 트리를 건드리지 않게 한다. **③ 런처 진입 흐름** — 짧은 `-w` 이름이 Candidates에서 home 후보 하나로 유일 해석되면 chdir 후 argv에서 선택을 벗겨 백엔드에 절대 경로 `--worktree`가 가지 않는다. **④ 팩토리 임대 흐름의 보강** — `factoryNextLeaseOnceEligibility` 진입에서 착지 베이스가 ctx 주입되고(REQ-WHR-007) 외래 트리 거부·carry-over가 리졸버 리프+legacy 리프를 모두 검사한다. 부수: `factory status`의 카드 나이 경보(t1838, 읽기 전용), `contract decide`의 Jev 통지 전파(t1803), agentemit 렌더 게이트(t1649 — `make build`가 drift를 잡는다).
+
+## 이전 흐름 보완 — 2fccfd2 (card t1931 후속 판)
 
 이 창에서 실제로 움직인 흐름은 셋이다. **① merged-PR 관측(card t1930 수리)** — `moai factory complete`가 merge-ready 카드의 PR을 먼저 읽어 MERGED+mergeCommit이면 readiness 삼중을 건너뛰고 `pr-open` 관측 경로로 바로 보낸다: 스쿼시 병합 뒤 브랜치 커밋이 main 이력에서 벗어나 merge-tree가 충돌로 읽는 경우에도, GitHub가 이미 병합한 사실이 관측으로 기록된다. **② evidence 재결속(card t1930 수리)** — `moai factory rebind-evidence`가 카드의 최신 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 version-fenced 재결속하고, 감사 행을 커밋 뒤에 남긴다. 두 흐름 모두 operator-approved SQL 예외(t1832·t1536)와 대체 관계다. **③ MCP refusal structuring(card t1632)** — moai MCP 도구가 거부 응답을 구조화해 돌리고(`mcp_refusal.go`) 호출 로그를 남긴다(`mcp_server_call_log.go`) — 거부가 조용히 사라지지 않는다. runtime regular-file 경계 3파일(t1536)은 감사 캐시 상태 판독의 NOFOLLOW 열기 경로로 감사 대상 위조를 좁힌다.
 

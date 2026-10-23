@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — 2fccfd2 (card t1931 후속 판)
+## 현재 의존성 측정 — 656e4d3 (card t1640 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 **174**개(+1), 모듈 내부 import 쌍은 **529**개(+9)다 — t1931 후속 판 대비 움직임은 전부 worktree-home-root와 agentemit이 만든 새 경계다. **신규 패키지 경계 3개**: `internal/worktreeroot`(잎 — stdlib+`internal/paths`만 임포트), `internal/cli/worktree`(`worktreeroot`·`internal/hook`의 재키 함수·기존 계열 의존), `internal/template/agentemit`(card t1649). **신규 엣지 7종**: `internal/cli`→`worktreeroot`(factory_card·launch_view·launch_chain·factory_anchor_guard·session_worktree·codex_hooks_seed·todo_auto·worktree_branch_flag), `internal/cli/worktree`→`worktreeroot`, `internal/config`→`worktreeroot`(핀 로더 — 새로운 config→하위 리졸버 의존), `internal/factory`→`worktreeroot`(status_read의 `RecordedKey`), `internal/cli/worktree`→`internal/hook`(`RekeyWorktreeEntry{,Inverse}` 재키 재사용), `internal/cli/launcher.go`→`internal/cli/worktree`(`ParseWorktreeList`·`MovedBy`), `internal/cli/update_worktree_migration.go`→`internal/cli/worktree`의 `RunUpdateConsolidation`(`migrate.go`). **제거된 엣지**: `claudeNativeWorktreeSubdir` 상수 소비 — `.claude/worktrees`는 리졸버 Candidates의 legacy-claude 폴백으로만 남는다. **불변 경계**: `internal/hook`은 `worktreeroot`를 임포트하지 않는다(생성이 internal/cli 리졸버로 수렴). 이 판 측정의 fan-out 상위는 cli·hook·web, fan-in 상위는 config·defs·atomicfile 순으로 구성이 유지된다.
+
+## 이전 의존성 측정 — 2fccfd2 (card t1931 후속 판)
 
 Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — t1931 판과 같은 플랫폼의 재측정으로, 창(8c36a7904b..2fccfd2b34)이 패키지나 import 경계를 만들지 않았다: 7개 신규 파일이 전부 기존 패키지(`internal/cli`·`internal/runtime`)에 들어왔다. 이 판 측정(개별 패키지 쌍 기준)의 fan-out 상위는 cli·hook·web 순이고 fan-in 상위는 config·defs·atomicfile 순이다 — 구성은 t1931 판과 같다. `go.mod`·`go.sum`은 **이 창에서 움직였다**: dependabot #1839가 직접 의존성 6개(gomod-minor-patch 그룹)를 갱신(go.mod 7행)하고 재해시(go.sum 21행)했으며, #1840이 `actions/checkout` 4→7로 올렸다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
 
