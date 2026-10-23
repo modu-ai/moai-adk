@@ -81,8 +81,17 @@ func TestMergeReadinessBeforePRSpecLess(t *testing.T) {
 					t.Errorf("the refusal lacks %q:\nerr: %v\nout: %s", want, err, out)
 				}
 			}
-			if len(d.calls) != 0 || f.remoteBranchTip(t) != "" {
-				t.Errorf("a refused card still reached gh (%v) or origin (%q)", d.calls, f.remoteBranchTip(t))
+			// card t1930 defect ②: the only gh traffic a refused delivery may
+			// produce is the read-only already-merged probe (`pr view`) — never
+			// a create or a merge request, and never a push.
+			for _, c := range d.calls {
+				if len(c) >= 2 && c[1] == "view" {
+					continue
+				}
+				t.Errorf("a refused card reached gh beyond the probe (%v)", c)
+			}
+			if f.remoteBranchTip(t) != "" {
+				t.Errorf("a refused card still reached origin (%q)", f.remoteBranchTip(t))
 			}
 			if c.State != homestate.CardMergeReady {
 				t.Errorf("a refused card moved to %s", c.State)

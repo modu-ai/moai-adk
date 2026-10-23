@@ -1266,6 +1266,21 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// the lease edge to T1's remainder.
 	recordCtx, cancel := factoryClaimContext(ctx)
 	defer cancel()
+	// The re-lease carry-over (card t1930, defect ③): a card recorded under a
+	// NEW run is born with empty stage and evidence_sha, orphaning the prior
+	// run's progress (t1828 re-batched read stage "-", t1832's re-lease reset
+	// the row). When no row exists for THIS run yet and the card's most
+	// recent prior row (another run allowed) holds a live stage, that row's
+	// stage and evidence_sha are carried onto the fresh row after T1 — a new
+	// fenced row, never a rewrite of the prior run's row. A card no prior run
+	// recorded carries nothing, exactly as before.
+	var carry *homestate.Card
+	if _, lerr := db.LoadCard(recordCtx, runID, cardID); errors.Is(lerr, homestate.ErrCardNotFound) {
+		if prev, ok, perr := db.PreviousCardRow(recordCtx, cardID, runID); perr == nil && ok &&
+			prev.Stage != "" && homestate.IsCardState(prev.Stage) && !homestate.IsTerminalCardState(prev.Stage) {
+			carry = &prev
+		}
+	}
 	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
@@ -1277,6 +1292,12 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	// re-select, not a fresh picked row to claim.
 	if fresh.State != homestate.CardPicked {
 		return homestate.Card{}, false, true, nil
+	}
+	if carry != nil && fresh.Stage == "" && fresh.EvidenceSHA == "" {
+		fresh, err = db.SetCardStageEvidence(recordCtx, runID, cardID, carry.Stage, carry.EvidenceSHA, fresh.Version, factoryCardNow())
+		if err != nil {
+			return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
+		}
 	}
 	return factoryNextClaim(ctx, db, root, runID, fresh, lane)
 }
