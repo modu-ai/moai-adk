@@ -164,19 +164,14 @@ func (c *StateAuditCache) Store(specID, hash string, result *AuditResult) {
 const maxVerdictFileBytes = 4 << 20
 
 // fileSHA256 computes the hex SHA-256 of a verdict file's bytes. Only a
-// REGULAR file is read (card t1632 card-review P2-B): a FIFO or device blocks
-// os.ReadFile, and a symlink is refused unopened — the policy of
-// internal/auditreceipt, where a link is bound as a link and never followed.
+// REGULAR file is read (card t1632 card-review P2-B, audit N6): the check is on
+// the OPENED file (openRegularFile), so a FIFO or device never blocks and a
+// symlink is refused rather than followed — the policy of
+// internal/auditreceipt, where a link is bound as a link and never followed —
+// even when the path is swapped while this call runs.
 // The read is capped at maxVerdictFileBytes; a larger file is refused.
 func fileSHA256(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s is not a regular file (mode %s)", path, info.Mode().Type())
-	}
-	f, err := os.Open(path)
+	f, err := openRegularFile(path)
 	if err != nil {
 		return "", err
 	}

@@ -104,6 +104,11 @@ var planArtifactNames = []string{
 	"tasks.md",
 }
 
+// maxPlanArtifactBytes bounds how much of one plan artifact ComputeHash reads;
+// the artifacts are prose and tables measured in tens of kilobytes, so 8 MiB is
+// generous while still refusing an unbounded file in a caller-supplied spec_dir.
+const maxPlanArtifactBytes = 8 << 20
+
 // InMemoryCache implements AuditCache using an in-memory store.
 //
 // Suitable for both production (single process lifetime) and tests.
@@ -133,7 +138,7 @@ func (c *InMemoryCache) ComputeHash(specDir string) (string, error) {
 
 	for _, name := range planArtifactNames {
 		path := filepath.Join(specDir, name)
-		data, err := os.ReadFile(path)
+		data, err := readRegularFile(path, maxPlanArtifactBytes)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue // optional artifact
