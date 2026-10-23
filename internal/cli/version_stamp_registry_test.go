@@ -511,8 +511,9 @@ func TestVersionStampSyntheticVacuity(t *testing.T) {
 		in.population = in.population[:len(in.population)-1]
 		delete(in.contents, dropped.path)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		if len(findings) != 1 || findings[0] != "registry entries=33 expected=34" {
-			t.Errorf("check did not emit expected failure: registry entries=33 expected=34 (got %v)", findings)
+		want := fmt.Sprintf("registry entries=%d expected=%d", expectedRegistryEntries-1, expectedRegistryEntries)
+		if len(findings) != 1 || findings[0] != want {
+			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
 	})
 	t.Run("holds the stamp classification count", func(t *testing.T) {
@@ -663,7 +664,7 @@ func TestVersionStampSyntheticPopulationReach(t *testing.T) {
 		const unreadable = "dist/artifact.bin"
 		in.population = append(in.population, unreadable)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		want := "judged=34 handed=35"
+		want := fmt.Sprintf("judged=%d handed=%d", expectedRegistryEntries, expectedRegistryEntries+1)
 		if len(findings) != 1 || findings[0] != want {
 			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
