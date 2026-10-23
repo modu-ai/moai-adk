@@ -182,13 +182,16 @@ func (w *rpcWorkflow) jobIDs() []string {
 
 // needsList returns the job ids named by `needs:` (scalar or sequence).
 func (j *rpcJob) needsList() []string {
-	switch j.Needs.Kind {
+	// `needs: *anchor` and `- *anchor` entries are followed to the node they stand
+	// for, so a dependency written through an alias is still a dependency.
+	needs := rpcResolveAlias(&j.Needs)
+	switch needs.Kind {
 	case yaml.ScalarNode:
-		return []string{j.Needs.Value}
+		return []string{needs.Value}
 	case yaml.SequenceNode:
-		out := make([]string, 0, len(j.Needs.Content))
-		for _, c := range j.Needs.Content {
-			out = append(out, c.Value)
+		out := make([]string, 0, len(needs.Content))
+		for _, c := range needs.Content {
+			out = append(out, rpcResolveAlias(c).Value)
 		}
 		return out
 	default:
@@ -306,8 +309,8 @@ func rpcWorkflowAdmits(w *rpcWorkflow, event, branch, file string) (admitted boo
 	// whole list rather than let an earlier hit hide a later `!` entry.
 	for _, ps := range [][]string{tr.branches, tr.branchesIgnore, tr.tags, tr.tagsIgnore, tr.paths, tr.pathsIgnore} {
 		for _, p := range ps {
-			if strings.ContainsAny(p, "!?") {
-				return false, "", fmt.Errorf("%s filter pattern %q uses negation or `?`, which the Actions filter model does not evaluate", event, p)
+			if strings.ContainsAny(p, "!?+") {
+				return false, "", fmt.Errorf("%s filter pattern %q uses negation, `?` or `+`, which the Actions filter model does not evaluate", event, p)
 			}
 		}
 	}
@@ -867,6 +870,16 @@ var rpcStatusFuncRe = regexp.MustCompile(`\b(always|cancelled|success|failure)\s
 
 func rpcHasStatusFunc(expr string) bool { return rpcStatusFuncRe.MatchString(expr) }
 
+var rpcResultStatusFuncRe = regexp.MustCompile(`\b(success|failure)\s*\(`)
+
+// rpcNeedsResultMatters reports whether the results of a job's dependencies decide
+// whether it starts under this condition: true when the condition has no status
+// function (GitHub then adds an implicit success()) or reads success()/failure()
+// itself; false when it is built only on always() / cancelled().
+func rpcNeedsResultMatters(cond string) bool {
+	return !rpcHasStatusFunc(cond) || rpcResultStatusFuncRe.MatchString(cond)
+}
+
 // rpcEvalValueE evaluates an expression and returns an error for syntax or a
 // function the model does not implement.
 func rpcEvalValueE(expr string, ctx rpcExprCtx) (any, error) {
@@ -935,6 +948,13 @@ func rpcJobRunsE(j *rpcJob, ctx rpcExprCtx) (bool, error) {
 	for _, n := range j.needsList() {
 		res, ok := ctx.vars["needs."+n+".result"]
 		if !ok {
+			// A dependency with no modelled result decides whether the job starts
+			// whenever the condition leans on the implicit or an explicit
+			// success()/failure(): skipping it would credit a job that a runner
+			// holds back. Conditions built only on always()/cancelled() do not.
+			if rpcNeedsResultMatters(j.If) {
+				return false, fmt.Errorf("needs %q has no modelled result, so whether this job starts cannot be decided", n)
+			}
 			continue
 		}
 		if res != "success" {

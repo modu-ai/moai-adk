@@ -853,6 +853,54 @@ func TestCIGatedFamilyVerdictSemantics(t *testing.T) {
 			w.Jobs["lint"].If = "${{ github.event_name != 'pull_request' || needs.detect.outputs.binary_inputs == 'true' }}"
 		}},
 	}
+	// Dependency-model controls (sync-audit iter6 F-2). A job whose condition leans on
+	// success()/failure() (or has no status function, which GitHub treats as an
+	// implicit success()) is decided by its dependencies' results; one built only on
+	// always()/cancelled() is not. A `needs:` written through a YAML alias is read.
+	t.Run("control/needs dependency model", func(t *testing.T) {
+		for _, c := range []struct {
+			name, cond string
+			want       bool
+		}{
+			{"positive: a plain condition has an implicit success()", "github.event_name == 'pull_request'", true},
+			{"positive: an explicit success() reads the dependencies", "success() && github.event_name == 'push'", true},
+			{"positive: an explicit failure() reads the dependencies", "failure()", true},
+			{"negative: always() alone does not depend on the results", "always()", false},
+			{"negative: !cancelled() alone does not depend on the results", "!cancelled()", false},
+			{"negative: empty condition is the implicit success()", "", true},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				if got := rpcNeedsResultMatters(c.cond); got != c.want {
+					t.Fatalf("rpcNeedsResultMatters(%q) = %v, want %v", c.cond, got, c.want)
+				}
+			})
+		}
+		t.Run("needsList follows aliases", func(t *testing.T) {
+			var doc struct {
+				Jobs map[string]*rpcJob `yaml:"jobs"`
+			}
+			text := "jobs:\n  a:\n    needs: &dep detect\n  b:\n    needs: *dep\n  c:\n    needs: [*dep, other]\n"
+			if err := yaml.Unmarshal([]byte(text), &doc); err != nil {
+				t.Fatalf("control text does not parse: %v", err)
+			}
+			if got := doc.Jobs["b"].needsList(); len(got) != 1 || got[0] != "detect" {
+				t.Fatalf("needs: *dep read as %v, want [detect]", got)
+			}
+			if got := doc.Jobs["c"].needsList(); len(got) != 2 || got[0] != "detect" || got[1] != "other" {
+				t.Fatalf("needs: [*dep, other] read as %v, want [detect other]", got)
+			}
+		})
+		t.Run("an untracked dependency is an error where results decide the start", func(t *testing.T) {
+			ctx := rpcCell{event: "pull_request", detect: "success", classes: rpcOutcome("go-code")}.ctx()
+			needs := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "untracked"}
+			if _, err := rpcJobRunsE(&rpcJob{If: "github.event_name == 'pull_request'", Needs: needs}, ctx); err == nil || !strings.Contains(err.Error(), "has no modelled result") {
+				t.Fatalf("want a `has no modelled result` error, got %v", err)
+			}
+			if runs, err := rpcJobRunsE(&rpcJob{If: "always()", Needs: needs}, ctx); err != nil || !runs {
+				t.Fatalf("an always()-only condition must not be blocked by an untracked dependency: runs=%v err=%v", runs, err)
+			}
+		})
+	})
 	// Expression-context controls. The positive rows read a context the cell models
 	// (an event name, a matrix leg's own value) and must evaluate; the failure rows
 	// read one it does not and must come back as the exact "not modelled" error.
@@ -1294,6 +1342,11 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 	// cqDetectHead is the head of codeql.yml's own detect job (the job the external
 	// supplier's marker and analyze jobs wait on).
 	cqDetectHead := "  detect:\n    name: Detect (paths-filter)\n    runs-on: ubuntu-latest\n"
+	// cqMarkerNeeds / cqAnalyzeNeeds are the `needs:` lines of codeql.yml's marker and
+	// analyze jobs, with enough context to be unique.
+	cqMarkerNeeds := "    timeout-minutes: 5\n    needs: detect\n"
+	cqAnalyzeNeeds := "    needs: detect\n    # Run on go-code PRs; always run on push"
+	cqAnalyzeNeedsDep := "    needs: &dep detect\n    # Run on go-code PRs; always run on push"
 	// aliasIgnore writes the pull_request paths-ignore list through a YAML alias of
 	// an anchor declared on the (earlier) push trigger.
 	aliasIgnore := func(list string) func(*testing.T, string) string {
@@ -1357,15 +1410,32 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 		// stay clean (wantCell ""). Filters Actions evaluates in order with negation,
 		// `?` with its own meaning, aliases, an external workflow's own detect job and
 		// a context the model does not know.
-		{"iter5 C1 failure: a negated branch listed after a matching one is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - '!ci/**'\n"), "uses negation or"},
+		{"iter5 C1 failure: a negated branch listed after a matching one is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - '!ci/**'\n"), "uses negation, `?` or `+`"},
 		{"iter5 C1 positive: another plain branch after a matching one stays clean", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - 'ci/extra'\n"), ""},
-		{"iter5 C2b failure: `?` in paths-ignore is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md?'\n"), "uses negation or"},
+		{"iter5 C2b failure: `?` in paths-ignore is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md?'\n"), "uses negation, `?` or `+`"},
 		{"iter5 C3b failure: paths-ignore through an alias is resolved and skips docs", "codeql", aliasIgnore("'**.md'"), anyNameCQ},
 		{"iter5 C3b positive: paths-ignore through an alias of an unrelated tree stays clean", "codeql", aliasIgnore("'docs-site/**'"), ""},
 		{"iter5 C4 failure: the external detect job is skipped on a pull_request", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: github.event_name == 'workflow_dispatch'\n"), anyNameCQ},
 		{"iter5 C4 positive: the external detect job with a true condition stays clean", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    if: ${{ true }}\n"), ""},
 		{"iter5 C5 failure: an unknown context in a supplier if is an error, not an empty string", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.repository == ''"), "is not modelled by this guard"},
 		{"iter5 C5 positive: a modelled context in a supplier if stays clean", "codeql", replaceOnce(cqMarkerIf, cqMarkerIf+" && github.event_name != 'schedule'"), ""},
+
+		// sync-audit iter6 F-1: the `+` quantifier means something to Actions that the
+		// first-hit matcher does not model, so a list holding it is refused whole.
+		{"iter6 F-1 failure: `+` in a paths-ignore pattern is refused", "codeql", withFilter("    paths-ignore:\n      - 'README.md+'\n"), "uses negation, `?` or `+`"},
+		{"iter6 F-1 failure: `+` in a push branch pattern of ci.yml is refused", "ci", replaceOnce("    branches:\n      - main\n      - 'ci/**'\n", "    branches:\n      - main\n      - 'ci/**'\n      - 'ci/a+'\n"), "uses negation, `?` or `+`"},
+		{"iter6 F-1 positive: plain unrelated paths-ignore patterns stay clean", "codeql", withFilter("    paths-ignore:\n      - 'docs-site/**'\n      - 'vendor/**'\n"), ""},
+		// sync-audit iter6 F-2: a `needs:` dependency the model does not track must not
+		// be treated as satisfied, and one written through an alias is still a dependency.
+		{"iter6 F-2 failure: the marker also needs an untracked job", "codeql", replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [detect, analyze]\n"), "has no modelled result"},
+		{"iter6 F-2 failure: the marker needs an untracked job through an alias list entry", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [*dep, analyze]\n")(t, replaceOnce(cqAnalyzeNeeds, cqAnalyzeNeedsDep)(t, text))
+		}, "has no modelled result"},
+		{"iter6 F-2 failure: the external detect job itself needs an untracked job", "codeql", replaceOnce(cqDetectHead, cqDetectHead+"    needs: prereq\n"), "has no modelled result"},
+		{"iter6 F-2 positive: the marker needs detect through a YAML alias and stays clean", "codeql", func(t *testing.T, text string) string {
+			return replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: *dep\n")(t, replaceOnce(cqAnalyzeNeeds, cqAnalyzeNeedsDep)(t, text))
+		}, ""},
+		{"iter6 F-2 positive: the marker needs detect as a one-entry list and stays clean", "codeql", replaceOnce(cqMarkerNeeds, "    timeout-minutes: 5\n    needs: [detect]\n"), ""},
 	}
 	for _, c := range triggerControls {
 		t.Run("control/trigger/"+c.name, func(t *testing.T) {
