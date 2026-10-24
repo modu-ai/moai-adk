@@ -110,7 +110,7 @@ The "direct push to main" in the Tier S/M rows assumes delivery from the main br
 
 ### Delivery behavior by branch (git strategy)
 
-The final step of `/moai sync` — the push and PR delivery — is decided by the active mode's strategy key. It reads `git_strategy.{mode}.workflow` from `.moai/config/sections/git-strategy.yaml`, and the value is one of exactly two: `github-flow` or `git-flow`. All three modes (manual/personal/team) default to `github-flow`. When the key is neither of the two, the delivery step does not guess — it reports the offending value and stops.
+The final step of `/moai sync` — the push and PR delivery — is decided by the active mode's strategy key. It reads `git_strategy.{mode}.workflow` from `.moai/config/sections/git-strategy.yaml`, and the value is one of exactly five: `github-flow`, `git-flow`, `gitlab-flow`, `release-flow` or `agentic-trunk`. All three modes (manual/personal/team) default to `github-flow`. When the key is none of the five, the delivery step does not guess — it reports the offending value and stops.
 
 Under `github-flow`, the outcome depends on the current branch context:
 
@@ -129,6 +129,8 @@ For a Tier S/M SPEC delivered from the main branch, this behaves exactly as it d
 - **A branch state matching no route now stops the sync.** It used to push to main from any branch state and complete; now it pushes nothing and reports the state. If a sync that used to finish suddenly halts, check this point first.
 
 Selecting `git-flow` routes by branch name — `feature/*` opens a PR against develop, `release/*` and `hotfix/*` open a PR against main (a hotfix adds a back-merge PR to develop after merging), and a `WT-*` branch merges in the integration worktree without a PR.
+
+Selecting `agentic-trunk` routes each card's delivery by the target holder — which tree holds `main`. The value's integration target is a fixed `main` that no other key (such as `develop_branch`) can change. Where a dedicated integration worktree holds `main`, the completed card lands through the integration-window local merge (`moai factory complete` invokes `moai integration merge --card` internally) and no per-card PR is created. Where the only tree holding `main` is the primary checkout, no dedicated landing surface exists — `moai factory complete` opens the card's pull request instead and the leader merges it, with no auto-merge request. On either route the lane never pushes; the leader runs the release batch every `lead_push_threshold` landings as a `release/main-batch-YYYYMMDD` pull request, and the release itself is tagged.
 
 The previous-version key `github.spec_git_workflow` (system.yaml) is deprecated and will be removed in v3.3.0. The canonical key going forward is `git_strategy.{mode}.workflow` above.
 

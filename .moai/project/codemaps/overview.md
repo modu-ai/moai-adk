@@ -1,6 +1,10 @@
 # 아키텍처 개요
 
-## 현재 소스 기준 — 656e4d3 (2026-10-24 재갱신, card t1640 판)
+## 현재 소스 기준 — c1f54078 (2026-10-24 재갱신, card t1831 판)
+
+기준 커밋은 `9286f6b6ba`(origin/main 팁, provenance 스탬프와 동일한 신선도 닻 — 본 창의 측정은 PR #1908 팁 `c1f540782f` 트리에서 수행했다. O2 통일: 두 SHA는 이 한 문장으로만 표기한다). 창은 본 카드 PR #1908(card t1831, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001) 단독 몫이다. Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 **175**개, 내부 import 쌍 **530**개 — t1640 판과 두 값 모두 같다(신규 패키지도 패키지 간 import 쌍도 없다 — 카드의 신규 파일 둘은 기존 패키지 안이다). 창의 설명 대상 소스는 **13개(추가 2·수정 11·삭제 0)**다. 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1752→**1754**(+2), 테스트 3467→**3483**(+16 — 카드의 판정 테스트 추가). 임베드 원본 624 불변. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — 656e4d3 (2026-10-24 재갱신, card t1640 판)
 
 기준 커밋은 `42b237567af0`(provenance 스탬프와 동일한 신선도 닻 — 본 창의 측정은 그 위의 팁 `656e4d3c8b`에서 수행했다. O2 통일: 두 SHA는 이 한 문장으로만 표기한다). PR #1858은 실측 100파일의 변경을 운반했고(카드 본문 추정 98과 달리 흡수 해소분까지 포함한 diffstat 실측 — O1 정정) 그 위에 세 차례 흡수 해소가 얹힌 트리다. Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 **175**개, 내부 import 쌍 **530**개 — t1931 후속 판(173·520) 대비 패키지 +2, 쌍 +10다(델타 감사 F2 정정 — 초판의 174·529는 파서 결함이었다). +10 중 검증된 신규 패키지 쌍 5개: `internal/cli`→`internal/worktreeroot`, `internal/cli/worktree`→`internal/worktreeroot`, `internal/factory`→`internal/worktreeroot`, `internal/worktreeroot`→`internal/paths`, `internal/template/agentemit/cmd/agents-emit`→`internal/template/agentemit`. 창의 설명 대상 소스는 **86개(추가 25·수정 61·삭제 0)**. 신규 패키지 둘: `internal/worktreeroot`(홈 루트 리졸버 유일 SSOT)와 `internal/template/agentemit/cmd/agents-emit`(에이전트 렌더러 진입점, card t1649 #1843) — `internal/cli/worktree`와 `internal/template/agentemit` 본체는 기준 커밋에 이미 존재한다(델타 감사 F3 정정). 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1739→**1752**(+13), 테스트 3433→**3467**(+34). 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
 

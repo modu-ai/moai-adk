@@ -54,6 +54,9 @@ func TestWorkflowDisposition(t *testing.T) {
 			{value: "git-flow", want: DispositionGitFlow},
 			{value: "gitlab-flow", want: DispositionValidNonGitFlow},
 			{value: "release-flow", want: DispositionValidNonGitFlow},
+			// SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 (card t1831): the fifth
+			// value, github-flow's class.
+			{value: "agentic-trunk", want: DispositionValidNonGitFlow},
 			// Deliberately excluded (operator decision): unsupported, must be
 			// rejected/diagnosed, not tolerated.
 			{value: "trunk-based", want: DispositionInvalid},
@@ -68,16 +71,16 @@ func TestWorkflowDisposition(t *testing.T) {
 		}
 	})
 
-	t.Run("allowed set is exactly four flows", func(t *testing.T) {
+	t.Run("allowed set is exactly five flows", func(t *testing.T) {
 		got := AllowedWorkflows()
-		if len(got) != 4 {
-			t.Fatalf("AllowedWorkflows() has %d entries, want 4: %v", len(got), got)
+		if len(got) != 5 {
+			t.Fatalf("AllowedWorkflows() has %d entries, want 5: %v", len(got), got)
 		}
 		set := map[string]bool{}
 		for _, v := range got {
 			set[v] = true
 		}
-		for _, want := range []string{"github-flow", "git-flow", "gitlab-flow", "release-flow"} {
+		for _, want := range []string{"github-flow", "git-flow", "gitlab-flow", "release-flow", "agentic-trunk"} {
 			if !set[want] {
 				t.Errorf("AllowedWorkflows() is missing %q: %v", want, got)
 			}
@@ -126,6 +129,7 @@ func TestWorkflowDisposition(t *testing.T) {
 			{workflow: "git-flow", want: DispositionGitFlow},
 			{workflow: "gitlab-flow", want: DispositionValidNonGitFlow},
 			{workflow: "release-flow", want: DispositionValidNonGitFlow},
+			{workflow: "agentic-trunk", want: DispositionValidNonGitFlow},
 		}
 		for _, tt := range tests {
 			root := t.TempDir()

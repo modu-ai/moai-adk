@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 01cfb2449c01376de45a8227546d9253ee5c034752a60b2811e5fd28c9923676
+              hash: 18df0ebde3a82e0718c904dedc9c3ac8970c2dd6cb4676d5b9e29be107898286
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -378,7 +378,7 @@ catalog:
                 - name: moai-ref-git-workflow
                   tier: optional-pack:delivery
                   path: templates/.claude/skills/moai-ref-git-workflow/
-                  hash: 0440292378de665eb805deb439564984494411495946f9f7a96a740f54772d73
+                  hash: 48e5fca241aeb2707f75d93078d2e2d7ca9ddfde7994bf2639ebbf22c0887045
                   version: 1.0.0
             agents:
                 - name: manager-git

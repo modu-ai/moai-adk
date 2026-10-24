@@ -2929,6 +2929,27 @@ func newFactoryCompleteCommand() *cobra.Command {
 	return cmd
 }
 
+// factoryCardStateIs reports whether cardID's recorded factory state equals
+// state. Every read failure answers false: the caller falls through to the
+// ordinary routing, whose own gates reproduce the standing refusals — a read
+// failure must never invent a delivery route.
+func factoryCardStateIs(ctx context.Context, root, cardID, run, state string) bool {
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return false
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil {
+		return false
+	}
+	return card.State == state
+}
+
 // factoryCompleteCard is the complete body after the lane checks: hold the
 // integration window (the same record acquire writes, never a shell-out),
 // apply the REQ-SD-023 refusals, merge --no-ff inside the worktree that has
@@ -2942,9 +2963,25 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
 		return err
 	}
+	// A card already delivered by pull request keeps the PR edge regardless
+	// of the current holder topology (card t1831 landing audit F2): its
+	// delivery route was judged when it entered pr-open, and re-judging it
+	// from the live worktree set would strand the card — the pr-open record
+	// edge (factoryObservePRMerge) is reachable only through
+	// factoryCompleteGitHubFlow, while the local-merge path below refuses a
+	// card that is not merge-ready. A read failure answers false and falls
+	// through to the routing judgment unchanged, whose own gates reproduce
+	// the standing refusals.
+	if factoryCardStateIs(ctx, root, cardID, run, homestate.CardPROpen) {
+		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
+	}
 	// github-flow delivers by pull request, takes no integration window and
-	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006).
-	if factoryGitHubFlow(root) {
+	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006). Under
+	// agentic-trunk the target-holder routing sends a project whose ONLY
+	// `main` holder is the primary checkout down the same edge (card t1831
+	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
+	// becomes a merge window; the leader merges the card's pull request.
+	if factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root) {
 		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
 	}
 	// The same session identity acquire resolves: a window whose holder is

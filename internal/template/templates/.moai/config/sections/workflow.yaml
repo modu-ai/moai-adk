@@ -90,10 +90,12 @@ workflow:
     # auto_cleanup: read by the two auto-cleanup paths (session-exit disposal
     # and the PR-merge sweep); gates worktree removal only.
     # auto_merge: read by the session-exit auto-merge path — when true, a clean
-    # session exit merges the session branch into the configured git-flow
-    # develop branch (a local merge inside the release-integration window,
-    # never a push). Inert unless the project is manual git-flow with
-    # git_strategy.<mode>.develop_branch set.
+    # session exit merges the session branch into the integration branch: the
+    # configured git-flow develop branch, or main under manual agentic-trunk
+    # (a local merge inside the release-integration window, never a push).
+    # Inert unless the project is manual git-flow with
+    # git_strategy.<mode>.develop_branch set, or manual agentic-trunk (main is
+    # projected; the develop_branch key is ignored there).
     worktree:
         auto_create: false
         auto_merge: false

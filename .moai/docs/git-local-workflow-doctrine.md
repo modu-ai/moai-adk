@@ -4,6 +4,8 @@
 
 > **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 카드 작업은 `develop`에서 분기하고 카드 단위 PR 없이 `develop`으로 직접 병합되며, `origin/develop`의 CI가 통합을 판정한다. 정본: `CLAUDE.local.md` §4.1 + `.claude/rules/local/gitflow-lane-protocol.md`.
 >
+> **[HARD] 현행 모델 (2026-10-21, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 rescope 0.4.0) — agentic-trunk.** 레인 워크트리는 로컬 `main`에서 분기하고, 카드 인도는 target-holder 라우팅을 따른다 — primary만 `main`을 보유하는 이 리포에서는 카드 PR을 리더가 auto-merge 요청 없이 병합하며, 전용 통합 워크트리가 `main`을 보유하는 프로젝트에서는 통합 창 로컬 병합이다. 리더가 `lead_push_threshold` 도달분마다 릴리스 배치를 올리고, 릴리스는 태그로 자른다. 정본: `AGENTS.local.md` §4.0 · `.claude/rules/local/gitflow-lane-protocol.md`. (라이브 설정값은 착지 후 리더 cutover에서 `agentic-trunk`로 전환되며, 그 전까지 임시 브리지 `github-flow`가 유효하다.)
+>
 > - **초과분(superseded)**: 이 문서의 "모든 변경은 **`main`으로 향하는** PR을 경유한다"는 적용 대상 — 일상 카드 작업은 이제 `main` PR을 내지 않는다. §23.9의 tier별 PR ceremony도 카드 단위로는 발생하지 않는다.
 > - **여전히 구속력 있음**: `enforce_admins: true` 로 인한 `main` 직접 push 전면 차단, `main`은 **릴리스 PR로만** 갱신된다는 규칙, self-merge 허용 조건(승인 0 + CI status check 통과), pre-push/pre-commit 훅 설정, PR merge 후 로컬 동기화 패턴(A4/A5/A6). 이들은 릴리스 PR 경로에 그대로 적용된다.
 >

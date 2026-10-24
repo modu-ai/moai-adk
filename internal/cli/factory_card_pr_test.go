@@ -283,11 +283,12 @@ func ghfNoWindow(t *testing.T, f ghfFixture, where string) {
 }
 
 // AC-GFD-004 — the delivery edge: push, a PR against the integration target,
-// auto-merge requested, `pr-open` recorded — and `merged-pr` only after the PR
-// is observed MERGED. The homestate half (the predecessor pass and the `done`
-// path of the new state) is the same-named test in internal/homestate.
+// no merge request issued (the leader merges; card t1831 M5b), `pr-open`
+// recorded — and `merged-pr` only after the PR is observed MERGED. The
+// homestate half (the predecessor pass and the `done` path of the new state)
+// is the same-named test in internal/homestate.
 func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
-	t.Run("pushes_the_branch_opens_a_pr_against_main_and_requests_auto_merge", func(t *testing.T) {
+	t.Run("pushes_the_branch_opens_a_pr_against_main_and_requests_no_merge", func(t *testing.T) {
 		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		d := newGHDouble(t, f)
 		out, err := ghfComplete(t)
@@ -317,9 +318,11 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 		if !strings.HasSuffix(strings.TrimRight(body, "\n"), "\n🗿 MoAI") {
 			t.Errorf("PR body does not end with the line 🗿 MoAI:\n%s", body)
 		}
-		merge := d.last("pr", "merge")
-		if merge == nil || strings.Join(merge, " ") != "pr merge 7 --auto --squash --match-head-commit "+f.tip {
-			t.Errorf("auto-merge request = %v, want `pr merge 7 --auto --squash --match-head-commit <card tip>`", merge)
+		if merge := d.last("pr", "merge"); merge != nil {
+			t.Errorf("the delivery edge issued a merge request: %v — the leader merges, no `gh pr merge` call may exist (card t1831 M5b)", merge)
+		}
+		if !strings.Contains(out, "the leader merges") {
+			t.Errorf("output %q does not say the leader merges", out)
 		}
 		c := fcCard(t, f.root, "t1")
 		if c.State != homestate.CardPROpen {
@@ -354,7 +357,7 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 		if !strings.Contains(out, "open") {
 			t.Errorf("output %q does not say the PR is still open", out)
 		}
-		if d.count("pr", "create") != 1 || d.count("pr", "merge") != 1 {
+		if d.count("pr", "create") != 1 || d.count("pr", "merge") != 0 {
 			t.Errorf("re-running complete opened or merge-requested again: create=%d merge=%d", d.count("pr", "create"), d.count("pr", "merge"))
 		}
 		// The PR merges: GitHub put one squash commit on main.
@@ -446,10 +449,13 @@ func TestFactoryCompleteGitHubFlowResumesFromMerging(t *testing.T) {
 	}
 }
 
-// The merge method rides the configuration: git_strategy.manual.merge_method.
+// The configured merge_method no longer rides the delivery edge: since card
+// t1831 M5b the path issues no merge request at all, so every configured
+// method — and no key at all — leaves the same wire: the PR opens, no
+// `gh pr merge` call exists.
 func TestFactoryCompleteGitHubFlowMergeMethod(t *testing.T) {
-	for cfg, want := range map[string]string{
-		"squash": "--squash", "merge": "--merge", "rebase": "--rebase", "": "--squash", "bogus": "--squash",
+	for cfg := range map[string]string{
+		"squash": "", "merge": "", "rebase": "", "": "", "bogus": "",
 	} {
 		t.Run("merge_method_"+cfg, func(t *testing.T) {
 			f := ghfNew(t, ghfOpts{syncStatus: "complete", mergeCfg: cfg})
@@ -457,9 +463,11 @@ func TestFactoryCompleteGitHubFlowMergeMethod(t *testing.T) {
 			if _, err := ghfComplete(t); err != nil {
 				t.Fatalf("complete: %v", err)
 			}
-			want := "pr merge 7 --auto " + want + " --match-head-commit " + f.tip
-			if got := strings.Join(d.last("pr", "merge"), " "); got != want {
-				t.Errorf("merge request = %q, want %q", got, want)
+			if d.count("pr", "create") != 1 {
+				t.Fatalf("pr create calls = %d, want 1", d.count("pr", "create"))
+			}
+			if got := d.count("pr", "merge"); got != 0 {
+				t.Errorf("merge_method %q issued %d merge request(s), want 0 — calls: %v", cfg, got, d.calls)
 			}
 		})
 	}

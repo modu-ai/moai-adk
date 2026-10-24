@@ -564,9 +564,12 @@ func TestReviewUnrecordedPickedHubWaitOffDormancy(t *testing.T) {
 // TestFactoryCompletePRMergePinnedToCardTip — gate r7: the auto-merge
 // request was not bound to the verified card commit — a pull request whose
 // head moved off the card's tip (a concurrent push) still had auto-merge
-// requested and pr-open recorded. The delivery verifies the PR head equals
-// the card tip and pins the merge request with --match-head-commit, so a
-// concurrent change cannot merge unverified code.
+// requested and pr-open recorded. Rescope 0.4.0 (card t1831 M5b) dropped the
+// auto-merge request from the pr-open path entirely — the leader merges by
+// their own judgment — so the pinning hazard is gone by construction: the
+// matching-head case now asserts the leader-only-merge contract (no merge
+// request issued, card observed at pr-open), and the moved-head case keeps
+// its refusal.
 func TestFactoryCompletePRMergePinnedToCardTip(t *testing.T) {
 	t.Run("moved-head-refuses-before-the-merge", func(t *testing.T) {
 		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
@@ -580,15 +583,14 @@ func TestFactoryCompletePRMergePinnedToCardTip(t *testing.T) {
 		}
 	})
 
-	t.Run("matching-head-pins-the-merge", func(t *testing.T) {
+	t.Run("matching-head-issues-no-merge-request", func(t *testing.T) {
 		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		d := newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("complete: %v", err)
 		}
-		want := "pr merge 7 --auto --squash --match-head-commit " + f.tip
-		if got := strings.Join(d.last("pr", "merge"), " "); got != want {
-			t.Fatalf("merge request = %q, want %q (pinned to the verified card tip)", got, want)
+		if got := d.count("pr", "merge"); got != 0 {
+			t.Fatalf("merge request ran %d times; the leader-only-merge contract (card t1831 M5b) issues none; calls: %v", got, d.calls)
 		}
 		if c := fcCard(t, f.root, "t1"); c.State != homestate.CardPROpen {
 			t.Fatalf("card = %s, want pr-open", c.State)

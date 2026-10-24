@@ -4,6 +4,8 @@
 
 > **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 이 리포는 git-flow로 전환했다. 새 모델의 정본은 `CLAUDE.local.md` §4.1(모델·근거)과 `.claude/rules/local/gitflow-lane-protocol.md`(레인 운영 규칙)다.
 >
+> **[HARD] 현행 모델 (2026-10-21, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 rescope 0.4.0) — agentic-trunk.** 레인 워크트리는 로컬 `main`에서 분기하고, 카드 인도는 target-holder 라우팅을 따른다 — primary만 `main`을 보유하는 이 리포에서는 카드 PR을 리더가 auto-merge 요청 없이 병합하며, 전용 통합 워크트리가 `main`을 보유하는 프로젝트에서는 통합 창 로컬 병합이다. 리더가 `lead_push_threshold` 도달분마다 릴리스 배치를 올리고, 릴리스는 태그로 자른다. 정본: `AGENTS.local.md` §4.0 · `.claude/rules/local/gitflow-lane-protocol.md`. (라이브 설정값은 착지 후 리더 cutover에서 `agentic-trunk`로 전환되며, 그 전까지 임시 브리지 `github-flow`가 유효하다.)
+>
 > - **초과분(superseded)**: 이 문서가 전제하는 "`develop` 없는 Enhanced GitHub Flow" 자체 — 즉 feature 브랜치가 `main`에서 분기해 `main`으로 PR을 낸다는 전제. 이제 카드 워크트리는 `develop`에서 분기하고, 카드 단위 PR은 없으며, 통합은 `origin/develop`에서 CI로 판정된다. 서두의 "Gitflow 기각" 판단도 이 전환으로 뒤집혔다.
 > - **여전히 구속력 있음**: `main` 브랜치 보호(`enforce_admins: true`, PR 필수 §18.7), `main`으로 가는 릴리스 PR, merge strategy(release = merge commit), label 3축, Release Drafter, hotfix 명명 규칙. 릴리스 브랜치가 `main` 대신 `develop`에서 분기한다는 점만 바뀐다.
 >

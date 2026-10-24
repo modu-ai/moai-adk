@@ -246,7 +246,7 @@ Subshell and `env -u` variants, their measured refusal shapes, and the script-fi
 ### Integration into the release branch is self-served
 
 
-This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing.
+This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Under agentic-trunk the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`, and the only push is the leader's batch pull request from `release/main-batch-YYYYMMDD`.
 
 
 ### Boundaries — what this protocol does not do

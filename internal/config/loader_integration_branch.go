@@ -20,14 +20,12 @@ import (
 	"strings"
 )
 
-// gitFlowWorkflow is the git-strategy workflow discriminator for the
-// manual-mode git-flow profile. develop_branch is meaningful only under it.
-const gitFlowWorkflow = "git-flow"
-
-// LoadGitFlowDevelopBranch returns the configured git-flow integration branch
-// for the project rooted at projectRoot, or the empty string when the key is
-// absent, the active mode profile is not git-flow, or the file cannot be
-// read. The returned value is trimmed.
+// LoadGitFlowDevelopBranch returns the configured integration branch for the
+// project rooted at projectRoot, or the empty string when the key is absent,
+// the active mode profile is not a local-integration workflow, or the file
+// cannot be read. Under manual git-flow it is the develop_branch key; under
+// manual agentic-trunk it is the projected main (REQ-AGT-025, card t1831) —
+// the key is ignored there. The returned value is trimmed.
 //
 // Callers that already hold a loaded *Config should read
 // cfg.GitStrategy.ActiveModeProfile() directly instead of re-reading the file.
@@ -46,8 +44,15 @@ type GitFlowIntegrationConfig struct {
 	// GitFlowWorkflow reports that the ACTIVE mode profile's workflow is
 	// git-flow.
 	GitFlowWorkflow bool
-	// DevelopBranch is the trimmed develop branch, non-empty only when the
-	// project is git-flow (both halves above hold).
+	// AgenticTrunkWorkflow reports that the ACTIVE mode profile's workflow is
+	// agentic-trunk (card t1831, REQ-AGT-001). It takes the github-flow class
+	// (valid, not git-flow) and the git-flow local-integration delivery route
+	// with a fixed main target.
+	AgenticTrunkWorkflow bool
+	// DevelopBranch is the trimmed develop branch under manual git-flow, or
+	// the projected main under manual agentic-trunk (REQ-AGT-025: the legacy
+	// develop-branch seam, with the develop_branch key ignored). Empty in
+	// every other state.
 	DevelopBranch string
 
 	// Workflow is the ACTIVE mode profile's raw workflow value (card t656,
@@ -62,11 +67,12 @@ type GitFlowIntegrationConfig struct {
 	// (EmptyTargetGuidance). Empty only when the file is unreadable or sets none.
 	Mode string
 	// IntegrationTarget is the flow-scoped integration target projected from
-	// the D2 interpretation table: github-flow → "main", git-flow → the
-	// gated DevelopBranch, gitlab-flow → environment, release-flow →
-	// release_branch_prefix; empty on invalid/unknown. git-flow keeps the
-	// Manual && GitFlowWorkflow gate (REQ-GWS-005) — a non-manual git-flow
-	// profile resolves no target, exactly as DevelopBranch stays empty today.
+	// the D2 interpretation table: github-flow → "main", agentic-trunk → the
+	// fixed "main" (REQ-AGT-003), git-flow → the gated DevelopBranch,
+	// gitlab-flow → environment, release-flow → release_branch_prefix; empty
+	// on invalid/unknown. git-flow keeps the Manual && GitFlowWorkflow gate
+	// (REQ-GWS-005) — a non-manual git-flow profile resolves no target,
+	// exactly as DevelopBranch stays empty today.
 	IntegrationTarget string
 	// MergeMethod is the ACTIVE mode profile's raw merge_method, trimmed (card
 	// t1453 M2-B): the github-flow delivery edge maps it to the `gh pr merge`
@@ -80,6 +86,16 @@ type GitFlowIntegrationConfig struct {
 // unreadable file is not git-flow — neither half holds.
 func (c GitFlowIntegrationConfig) IsGitFlow() bool {
 	return c.Manual && c.GitFlowWorkflow
+}
+
+// UsesLocalIntegration reports whether the project lands cards through the
+// local integration-window route (the dedicated integration worktree and
+// its --no-ff merge): manual mode AND an active profile whose workflow is
+// git-flow or agentic-trunk (REQ-AGT-005). It is the widened predicate the
+// session-exit auto-merge and the acquire target read; IsGitFlow keeps its
+// present answers for its own consumers.
+func (c GitFlowIntegrationConfig) UsesLocalIntegration() bool {
+	return c.Manual && (c.GitFlowWorkflow || c.AgenticTrunkWorkflow)
 }
 
 // LoadGitFlowIntegrationConfig reads the git strategy once and reports both
@@ -100,9 +116,10 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	// a manual-mode key by contract, so a personal/team profile that happens to
 	// carry a git-flow workflow and a develop_branch does not qualify.
 	cfg := GitFlowIntegrationConfig{
-		Manual:          wrapper.GitStrategy.Mode == "manual",
-		GitFlowWorkflow: ok && profile.Workflow == gitFlowWorkflow,
-		Mode:            wrapper.GitStrategy.Mode,
+		Manual:               wrapper.GitStrategy.Mode == "manual",
+		GitFlowWorkflow:      ok && profile.Workflow == WorkflowGitFlow,
+		AgenticTrunkWorkflow: ok && profile.Workflow == WorkflowAgenticTrunk,
+		Mode:                 wrapper.GitStrategy.Mode,
 	}
 	if ok {
 		// Card t656: carry the raw value and its three-way disposition.
@@ -115,11 +132,17 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	if cfg.Manual && cfg.GitFlowWorkflow {
 		cfg.DevelopBranch = strings.TrimSpace(profile.DevelopBranch)
 	}
+	if cfg.Manual && cfg.AgenticTrunkWorkflow {
+		// Card t1831 REQ-AGT-025: the legacy develop-branch seam projects to
+		// main under manual agentic-trunk, whether or not the develop_branch
+		// key is present (the key is ignored there — REQ-AGT-010).
+		cfg.DevelopBranch = agenticTrunkFixedTarget
+	}
 	if ok {
 		// Project the D2 interpretation table onto the seam. git-flow goes
 		// through the gated DevelopBranch (empty when the manual gate fails
 		// or the key is empty), preserving today's adoption contract.
-		if profile.Workflow == gitFlowWorkflow {
+		if profile.Workflow == WorkflowGitFlow {
 			cfg.IntegrationTarget = cfg.DevelopBranch
 		} else {
 			cfg.IntegrationTarget = WorkflowIntegrationTarget(profile.Workflow, *profile)

@@ -30,20 +30,21 @@ import (
 // amSeams snapshots the auto-merge seams so a test can swap them and restore
 // on cleanup (same pattern as swSeams / prMergeSeams).
 type amSeams struct {
-	lockRoot    func() string
-	sessionID   func() string
-	gitFlow     func(root string) config.GitFlowIntegrationConfig
-	branchOf    func(wtPath string) (string, error)
-	aheadCount  func(wtPath, develop, branch string) (int, error)
-	wtForBranch func(branch string) string
-	ownerPID    func() (int, bool)
-	readLock    func(root string) (*factory.IntegrationLock, error)
-	acquire     func(root string, lock factory.IntegrationLock) (*factory.IntegrationLock, error)
-	release     func(root, sessionID string) (*factory.IntegrationLock, error)
-	merge       func(dir, branch string) (string, error)
-	inProgress  func(dir string) bool
-	abort       func(dir string) error
-	headShort   func(dir string) string
+	lockRoot     func() string
+	sessionID    func() string
+	gitFlow      func(root string) config.GitFlowIntegrationConfig
+	primaryHolds func(root, branch string) bool
+	branchOf     func(wtPath string) (string, error)
+	aheadCount   func(wtPath, develop, branch string) (int, error)
+	wtForBranch  func(branch string) string
+	ownerPID     func() (int, bool)
+	readLock     func(root string) (*factory.IntegrationLock, error)
+	acquire      func(root string, lock factory.IntegrationLock) (*factory.IntegrationLock, error)
+	release      func(root, sessionID string) (*factory.IntegrationLock, error)
+	merge        func(dir, branch string) (string, error)
+	inProgress   func(dir string) bool
+	abort        func(dir string) error
+	headShort    func(dir string) string
 }
 
 // swapAutoMergeSeams replaces the auto-merge seams and registers restoration.
@@ -52,7 +53,8 @@ func swapAutoMergeSeams(t *testing.T, s amSeams) {
 	t.Helper()
 	orig := amSeams{
 		lockRoot: autoMergeLockRoot, sessionID: autoMergeSessionID,
-		gitFlow: autoMergeLoadGitFlow, branchOf: autoMergeBranchOf,
+		gitFlow: autoMergeLoadGitFlow, primaryHolds: autoMergePrimaryHoldsTarget,
+		branchOf:   autoMergeBranchOf,
 		aheadCount: autoMergeAheadCount, wtForBranch: autoMergeWorktreeForBranch,
 		ownerPID: autoMergeResolveOwnerPID, readLock: autoMergeReadLock,
 		acquire: autoMergeAcquireLock, release: autoMergeReleaseLock,
@@ -67,6 +69,9 @@ func swapAutoMergeSeams(t *testing.T, s amSeams) {
 	}
 	if s.gitFlow != nil {
 		autoMergeLoadGitFlow = s.gitFlow
+	}
+	if s.primaryHolds != nil {
+		autoMergePrimaryHoldsTarget = s.primaryHolds
 	}
 	if s.branchOf != nil {
 		autoMergeBranchOf = s.branchOf
@@ -105,6 +110,7 @@ func swapAutoMergeSeams(t *testing.T, s amSeams) {
 		autoMergeLockRoot = orig.lockRoot
 		autoMergeSessionID = orig.sessionID
 		autoMergeLoadGitFlow = orig.gitFlow
+		autoMergePrimaryHoldsTarget = orig.primaryHolds
 		autoMergeBranchOf = orig.branchOf
 		autoMergeAheadCount = orig.aheadCount
 		autoMergeWorktreeForBranch = orig.wtForBranch
