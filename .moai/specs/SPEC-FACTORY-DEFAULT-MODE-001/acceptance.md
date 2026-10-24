@@ -13,17 +13,17 @@ author: manager-spec (card t1737)
 
 | AC | Requirement | Severity | Class | Verification |
 |----|-------------|----------|-------|--------------|
-| AC-FDM-001 | REQ-FDM-001 | P1 | release-blocking | `go test -v ./internal/factory -run TestEffectiveClassificationAbsentDefaultsParallelizable` |
-| AC-FDM-002 | REQ-FDM-001 | P2 | release-blocking | `go test -v ./internal/cli -run TestQueueAbsentCardClassificationDefault` |
-| AC-FDM-003 | REQ-FDM-002 | P1 | release-blocking | `go test -v ./internal/cli -run TestTodoAddDefaultClassificationParallelizable` |
-| AC-FDM-004 | REQ-FDM-003 | P1 | regression-guard (demoted, §D.0) | `go test -v ./internal/cli -run TestTodoAddDeciderFailureFailsafeSerial` |
-| AC-FDM-005 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run TestTodoClassifyQueuedCard` |
-| AC-FDM-006 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run TestTodoClassifyPickedCard` |
-| AC-FDM-007 | REQ-FDM-006 | P1 | release-blocking | `go test -v ./internal/cli -run TestTodoClassifyRefusals` |
-| AC-FDM-008 | REQ-FDM-005 | P2 | release-blocking | `go test -v ./internal/cli -run TestFactorySelectionReadsReclassifiedMode` |
-| AC-FDM-009 | REQ-FDM-007 | P1 | regression-guard | `go test -v ./internal/cli -run TestSerialExclusivityAfterDefaultFlip` |
-| AC-FDM-010 | REQ-FDM-001 (C3) | P2 | regression-guard | `go test -v ./internal/factory -run TestRecordedClassificationNotRewritten` |
-| AC-FDM-011 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run TestTodoClassifySerialSlotConflictRefusal` |
+| AC-FDM-001 | REQ-FDM-001 | P1 | release-blocking | `go test -v ./internal/factory -run '^TestEffectiveClassificationAbsentDefaultsParallelizable$'` |
+| AC-FDM-002 | REQ-FDM-001 | P2 | release-blocking | `go test -v ./internal/cli -run '^TestQueueAbsentCardClassificationDefault$'` |
+| AC-FDM-003 | REQ-FDM-002 | P1 | release-blocking | `go test -v ./internal/cli -run '^TestTodoAddDefaultClassificationParallelizable$'` |
+| AC-FDM-004 | REQ-FDM-003 | P1 | regression-guard (demoted, §D.0) | `go test -v ./internal/cli -run '^TestTodoAddDeciderFailureFailsafeSerial$'` |
+| AC-FDM-005 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run '^TestTodoClassifyQueuedCard$'` |
+| AC-FDM-006 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run '^TestTodoClassifyPickedCard$'` |
+| AC-FDM-007 | REQ-FDM-006 | P1 | release-blocking | `go test -v ./internal/cli -run '^TestTodoClassifyRefusals$'` |
+| AC-FDM-008 | REQ-FDM-005 | P2 | release-blocking | `go test -v ./internal/cli -run '^TestFactorySelectionReadsReclassifiedMode$'` |
+| AC-FDM-009 | REQ-FDM-007 | P1 | regression-guard | `go test -v ./internal/cli -run '^TestSerialExclusivityAfterDefaultFlip$'` |
+| AC-FDM-010 | REQ-FDM-001 (C3) | P2 | regression-guard | `go test -v ./internal/factory -run '^TestRecordedClassificationNotRewritten$'` |
+| AC-FDM-011 | REQ-FDM-004 | P1 | release-blocking | `go test -v ./internal/cli -run '^TestTodoClassifySerialSlotConflictRefusal$'` |
 
 ## §D.0 RED-now evidence ledger and swept-set guard (round-2 D1 repair)
 
@@ -43,7 +43,7 @@ R2-D1 repair); their original `f6742080a6` observations read the identical bytes
 entries were observed at `f6742080a6` and remain true on this tree.
 
 **Swept-set guard (binds every release-blocking AC's green).** A green result requires the
-target test to actually execute: the verification command is `go test -v -run <Name> ./<pkg>`
+target test to actually execute: the verification command is `go test -v -run '^<Name>$' ./<pkg>`
 and green is stdout carrying a `--- PASS: <Name>` line for the named test. A result carrying
 `[no tests to run]` (or `no test files`), or lacking the named `--- PASS:` line, is **not
 green** regardless of exit code — a selector sweeping zero tests exits 0 (observed by the
@@ -242,7 +242,7 @@ then on.
   absent field — the test is expected to pass today, and that passing run is the baseline the
   flip breaks. The run is unobserved at repair time: its verbatim passing output is
   **PENDING-observation** (Go-restraint window active); the command
-  `go test -v ./internal/factory -run TestEffectiveCardClassificationDerivesAbsentDefaults`
+  `go test -v ./internal/factory -run '^TestEffectiveCardClassificationDerivesAbsentDefaults$'`
   is recorded for run entry alongside plan §C P2.
 
 ### EV-FDM-13 — the parent-SPEC test pinning the fail-safe fallback (AC-FDM-004 baseline)
@@ -254,7 +254,7 @@ then on.
 ```
 - exit code: `0` · tree `f6742080a6` · channel (b), this session. Passing output
   **PENDING-observation** (same window); recorded at run entry via plan §E E2 — the full
-  package suite `go test ./internal/cli` runs it (§C P2's `-run TodoClassify` selector does
+  package suite `go test ./internal/cli` runs it (§C P2's `-run '^TodoClassify$'` selector does
   not match this test name).
 
 ### EV-FDM-14 — the existing parallelizable-beside-serial test (AC-FDM-009 baseline)
@@ -329,15 +329,15 @@ names its milestone (plan.md §F) and the exact green output required under the 
   `TestEffectiveCardClassificationDerivesAbsentDefaults`, wanting `Mode: ClassModeSerial` for
   an absent field (EV-FDM-12) — is expected to pass today; its passing run is the baseline the
   flip breaks and is unobserved at repair time (PENDING-observation, recorded at run entry per
-  EV-FDM-12). Green path: M1 — `--- PASS: TestEffectiveClassificationAbsentDefaultsParallelizable`.
+  EV-FDM-12). Green path: M1 — `--- PASS: TestEffectiveClassificationAbsentDefaultsParallelizable `.
 - **AC-FDM-002 — RED-now.** The queue-absent factory-card read returns
   `factory.DefaultCardClassification()` on both the nil-record and id-absent branches
   (EV-FDM-06) — mode `serial` today, `parallelizable` only after M1 flips the seam. Test
-  absent (EV-FDM-01). Green path: M1 — `--- PASS: TestQueueAbsentCardClassificationDefault`.
+  absent (EV-FDM-01). Green path: M1 — `--- PASS: TestQueueAbsentCardClassificationDefault `.
 - **AC-FDM-003 — RED-now.** The default decider records the same serial value at admission:
   `DefaultCardDecider.Classify` answers `DefaultCardClassification()` with reason
   "deterministic default: no classification judgment supplied" (EV-FDM-07). Test absent
-  (EV-FDM-01). Green path: M1 — `--- PASS: TestTodoAddDefaultClassificationParallelizable`.
+  (EV-FDM-01). Green path: M1 — `--- PASS: TestTodoAddDefaultClassificationParallelizable `.
 - **AC-FDM-004 — regression-guard (demoted; green-now; no RED recorded).** The fail-safe
   promotion already lands serial with exactly one notice naming `mode=serial` (EV-FDM-08;
   promotion branch `todo_classify.go:81-89`), pinned today by
@@ -349,16 +349,16 @@ names its milestone (plan.md §F) and the exact green output required under the 
 - **AC-FDM-005 — RED-now.** The verb does not exist: the installed binary answers
   `Unknown command "classify" for "moai todo"`, exit 1 (EV-FDM-03); the registry carries no
   `newTodoClassifyCmd` (EV-FDM-04); the cited tests are absent (EV-FDM-01). Green path: M2 —
-  `--- PASS: TestTodoClassifyQueuedCard`.
+  `--- PASS: TestTodoClassifyQueuedCard `.
 - **AC-FDM-006 — RED-now.** Same verb absence (EV-FDM-03/-04/-01); a picked-card
   reclassification cannot be observed because no reclassification path exists. Green path:
-  M2 — `--- PASS: TestTodoClassifyPickedCard`.
+  M2 — `--- PASS: TestTodoClassifyPickedCard `.
 - **AC-FDM-007 — RED-now.** Same verb absence (EV-FDM-03/-04/-01); no refusal matrix exists
-  to observe byte-identity on. Green path: M2 — `--- PASS: TestTodoClassifyRefusals`.
+  to observe byte-identity on. Green path: M2 — `--- PASS: TestTodoClassifyRefusals `.
 - **AC-FDM-008 — RED-now.** No reclassification can occur (verb absent, EV-FDM-03/-04), so no
   post-reclassify selection read exists to observe, and the observing test is absent
   (EV-FDM-01). Green path: M3 guard-addition, expected green-by-construction once M1/M2 land —
-  `--- PASS: TestFactorySelectionReadsReclassifiedMode`.
+  `--- PASS: TestFactorySelectionReadsReclassifiedMode `.
 - **AC-FDM-009 — regression-guard (green-now).** Serial exclusivity holds today and is pinned
   by the existing `TestFactoryNextParallelizableLeasesBesideLiveSerial`
   (factory_serial_slot_stale_test.go:303, EV-FDM-14; passing output PENDING, recorded via §E E2). M3 adds
@@ -374,7 +374,7 @@ names its milestone (plan.md §F) and the exact green output required under the 
   required backend (EV-FDM-A2 — indirect attribution, see that entry), and the refusal
   predicate it will reuse already exists on the
   tree (EV-FDM-09/-10/-11). Green path: M2 —
-  `--- PASS: TestTodoClassifySerialSlotConflictRefusal` under the swept-set guard.
+  `--- PASS: TestTodoClassifySerialSlotConflictRefusal ` under the swept-set guard.
 
 ## §D.1 AC-FDM-001 — absent queue item derives parallelizable
 
@@ -468,8 +468,8 @@ names its milestone (plan.md §F) and the exact green output required under the 
   codex reproduced on the plan-close tree (EV-FDM-A2 — indirect attribution, see that entry)
   is exactly the state this refusal
   forecloses; the predicate it reuses exists on the tree (EV-FDM-09/-10/-11). Swept-set guard
-  applies: green requires `--- PASS: TestTodoClassifySerialSlotConflictRefusal`.
-- Verification: `go test -v ./internal/cli -run TestTodoClassifySerialSlotConflictRefusal`
+  applies: green requires `--- PASS: TestTodoClassifySerialSlotConflictRefusal `.
+- Verification: `go test -v ./internal/cli -run '^TestTodoClassifySerialSlotConflictRefusal$'`
 
 ## §E Quality gates
 

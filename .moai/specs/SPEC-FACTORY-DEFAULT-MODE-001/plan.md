@@ -105,8 +105,8 @@ parallelizable cards file-domain separation and further shrink this residual.
   binary answers `Unknown command "classify" for "moai todo"` with exit 1. The run-entry check
   re-measures in case main moved).
 - P2 — Confirm the parent SPEC's completed tests still pass before the flip
-  (`go test ./internal/factory -run Classification` and `go test ./internal/cli -run
-  TodoClassify`) — these name the baseline the split intentionally changes; the run updates the
+  (`go test ./internal/factory -run '^Classification$'` and `go test ./internal/cli -run
+  '^TodoClassify$'`) — these name the baseline the split intentionally changes; the run updates the
   affected assertions rather than deleting them.
 - P3 — Fallback-path closure check (card scope item 3): after M2, the leader's correction path
   for a fail-safe admission is the verb itself — exercised by AC-FDM-006's picked-card scenario
