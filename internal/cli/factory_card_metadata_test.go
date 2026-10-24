@@ -1369,10 +1369,18 @@ func TestReclassify_SerialSlotConflictRefused(t *testing.T) {
 		t.Fatalf("seed t-slot queue item: %v", err)
 	}
 	fcClassify(t, store, "t-slot", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
-	// The add path records a decider-default parallelizable classification at
-	// creation (REQ-FDM-002), so the refusal scenario is a recorded
-	// parallelizable card commanding serial — a mode transition, not a
-	// convergence (different axes), so the gate arms.
+	// The gate arms only when the TARGET is itself in flight (the codex-P2
+	// scoping): t1 carries an in-flight homestate row (picked, live lease, its
+	// own lane) so the serial command is a second concurrently in-flight
+	// serial card — exactly the harm REQ-FDM-004 names. The add path records
+	// a decider-default parallelizable classification at creation
+	// (REQ-FDM-002), so this is a mode transition, not a convergence.
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardPicked, Stage: homestate.CardPlan,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		LeaseExpiresAt: time.Now().Add(10 * time.Minute).Format(time.RFC3339Nano),
+		WorktreePath:   root,
+	})
 	start := mdClass(t, store, "t1")
 	if start == nil || start.Mode != factory.ClassModeParallelizable {
 		t.Fatalf("fixture precondition: t1 starts recorded-parallelizable, got %v", start)
@@ -1383,6 +1391,47 @@ func TestReclassify_SerialSlotConflictRefused(t *testing.T) {
 	after := mdClass(t, store, "t1")
 	if after == nil || after.Mode != factory.ClassModeParallelizable {
 		t.Fatalf("the refused reclassify must leave t1 parallelizable, got %v", after)
+	}
+}
+
+func TestReclassify_UnleasedSerialAdmitted(t *testing.T) {
+	// The gate's other half (codex-P2 scoping): an UN-LEASED queued card — no
+	// in-flight homestate row — commanding serial is admitted here, because
+	// REQ-FDM-004's harm is two CONCURRENTLY in-flight serial cards and the
+	// selection gate re-checks the slot at lease time. The write succeeds and
+	// records the human serial judgment.
+	root, store := fcFixture(t)
+	mdEnableFlag(t, root)
+	fcQueue(t, store, factory.BacklogStateQueued)
+	// t-slot holds the serial slot: same in-flight holder mold as the refusal
+	// test — but t1 has NO homestate row, so the gate does not arm.
+	fcPlace(t, root, homestate.Card{
+		CardID: "t-slot", State: homestate.CardRun, Stage: homestate.CardRun,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		LeaseExpiresAt: time.Now().Add(10 * time.Minute).Format(time.RFC3339Nano),
+		WorktreePath:   root,
+	})
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
+			ID:      "t-slot",
+			Text:    "serial slot holder",
+			AddedAt: "2026-09-26T00:00:00Z",
+			State:   factory.BacklogStatePicked,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed t-slot queue item: %v", err)
+	}
+	fcClassify(t, store, "t-slot", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+	if _, _, err := runFactory(t, "reclassify", "t1", "--mode", "serial", "--reason", "planned serial work"); err != nil {
+		t.Fatalf("un-leased queued card's serial reclassify must be admitted: %v", err)
+	}
+	got := mdClass(t, store, "t1")
+	if got == nil || got.Mode != factory.ClassModeSerial {
+		t.Fatalf("classification = %v, want recorded serial", got)
+	}
+	if got.Decider != factory.DeciderIdentityHuman {
+		t.Fatalf("decider = %q, want human (REQ-CMV-009)", got.Decider)
 	}
 }
 

@@ -577,28 +577,38 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, root, cardI
 			metadataAuditLossSentinel, cardID, commanded)
 	}
 	// REQ-FDM-004's serial-conflict gate on the reclassify surface (card
-	// t1737 delta F1): a write that commands serial reads the serial slot
-	// through the selection gate's own predicate —
+	// t1737 delta F1, codex-P2 scoped): the gate arms ONLY when the card
+	// being reclassified is itself in flight — the harm REQ-FDM-004 names is
+	// two CONCURRENTLY in-flight serial cards, and an un-leased queued card's
+	// serial reclassification creates none (the selection gate re-checks the
+	// slot at lease time). When the target is in flight, the write reads the
+	// serial slot through the selection gate's own predicate —
 	// factorySerialInFlightExcluding over the factory record's rows, with the
-	// t1828 holder-liveness threaded — so the second in-flight serial card
-	// the todo classify gate refuses cannot be created by reclassifying
-	// around it. (todoClassifySerialSlotConflict itself answers a different
-	// question — whether the card being classified is ITSELF in flight — and
-	// an un-leased queue nominee is not, so the exclusion predicate is the
-	// shared verdict this surface needs.) The converged paths above
-	// re-mutated nothing, so they stay outside the gate.
+	// t1828 holder-liveness threaded, excluding the target row by identity —
+	// so a reclassification cannot walk around the todo classify gate. The
+	// converged paths above re-mutated nothing, so they stay outside the
+	// gate.
 	if cmd.Flags().Changed("mode") && target.Mode == factory.ClassModeSerial {
 		rows, lerr := db.ListCards(ctx, "")
 		if lerr != nil {
 			return fmt.Errorf("reclassify: read the factory cards: %w", lerr)
 		}
-		classOf := func(cid string) factory.CardClassification {
-			return factoryQueueClassification(rec, cid)
-		}
 		holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
-		blocking, held := factorySerialInFlightExcluding(rows, classOf, cardID, now, false, holderAlive)
-		if held {
-			return fmt.Errorf("refused — the serial slot is already held by %s; resolve the in-flight serial card before reclassifying %s to serial", blocking, cardID)
+		targetInFlight := false
+		for i := range rows {
+			if rows[i].CardID == cardID && factorySerialSlotHeld(rows[i], now, holderAlive) {
+				targetInFlight = true
+				break
+			}
+		}
+		if targetInFlight {
+			classOf := func(cid string) factory.CardClassification {
+				return factoryQueueClassification(rec, cid)
+			}
+			blocking, held := factorySerialInFlightExcluding(rows, classOf, cardID, now, false, holderAlive)
+			if held {
+				return fmt.Errorf("refused — the serial slot is already held by %s; resolve the in-flight serial card before reclassifying %s to serial", blocking, cardID)
+			}
 		}
 	}
 	// The write: fresh classified-at stamp, the caller-supplied reason,
