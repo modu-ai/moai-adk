@@ -1,6 +1,10 @@
 # 아키텍처 개요
 
-## 현재 소스 기준 — c1f54078 (2026-10-24 재갱신, card t1831 판)
+## 현재 소스 기준 — 4998dc47 (2026-10-24 재갱신, card t1737 판)
+
+기준 커밋은 본 카드 트리의 HEAD `4998dc47`(브랜치 `WT-spec-factory-default` — 흡수 병합 `1c49ac4376`이 origin/main `9286f6b6ba`를 받고 테스트 픽스처 수리 `4998dc479f`가 얹힌 트리)다. 창의 본체는 카드 t1737(SPEC-FACTORY-DEFAULT-MODE-001)의 분류 기본값 분리다: `internal/factory/classification.go`에서 absent-read 기본(`AbsentCardClassification` 신규 — 분류 없는 읽기가 parallelizable을 도출, REQ-FDM-001)과 decider-실패 fail-safe(`DefaultCardClassification` — serial 유지, REQ-FDM-003)가 갈라졌고, 신규 동사 파일 `internal/cli/todo_classify_cmd.go`(`moai todo classify <id> --mode <serial|parallelizable> --reason <text>`, REQ-FDM-004 — todo.go의 등록 1행 포함)이 열렸다. 흡수 병합이 운반한 t1828 holder-liveness 시그니처(`factorySerialSlotHeld` 3인자·`factorySerialInFlightExcluding` 6인자+2값 반환)에 `todoClassifySerialSlotConflict` 호출부를 맞춘 적응(`9147f14adb`)과 serial-slot 거부 픽스처의 명시적 serial 분류 보강(`4998dc479f`)이 같은 창에 속한다(§ `modules.md` internal/factory·internal/cli t1737 판). Darwin/arm64에서 규모 재측정(측정 명령 `git ls-tree -r --name-only HEAD -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1752→**1753**(+1 — `todo_classify_cmd.go`), 테스트 3467→**3479**(+12 — serial-slot 픽스처·분류 시험 보강). 스탬프 `42b237567af0` 대비 비테스트 소스 diff는 41개 — 그 본체는 스탬프 이후 main 창(#1907 등)과 본 카드 창의 합이다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — c1f54078 (2026-10-24 재갱신, card t1831 판)
 
 기준 커밋은 `9286f6b6ba`(origin/main 팁, provenance 스탬프와 동일한 신선도 닻 — 본 창의 측정은 PR #1908 팁 `c1f540782f` 트리에서 수행했다. O2 통일: 두 SHA는 이 한 문장으로만 표기한다). 창은 본 카드 PR #1908(card t1831, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001) 단독 몫이다. Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 **175**개, 내부 import 쌍 **530**개 — t1640 판과 두 값 모두 같다(신규 패키지도 패키지 간 import 쌍도 없다 — 카드의 신규 파일 둘은 기존 패키지 안이다). 창의 설명 대상 소스는 **13개(추가 2·수정 11·삭제 0)**다. 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1752→**1754**(+2), 테스트 3467→**3483**(+16 — 카드의 판정 테스트 추가). 임베드 원본 624 불변. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
 

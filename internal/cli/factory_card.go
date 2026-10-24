@@ -469,10 +469,11 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 
 // factoryQueueClassification reads one card's classification from a queue
 // record snapshot. A card absent from the queue reads as the absent-field
-// default derivation (REQ-TCD-014): serial, normal, non-blocked.
+// default derivation (SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-001):
+// parallelizable, normal, non-blocked.
 func factoryQueueClassification(rec *factory.BacklogRecord, cardID string) factory.CardClassification {
 	if rec == nil {
-		return factory.DefaultCardClassification()
+		return factory.AbsentCardClassification()
 	}
 	for _, it := range rec.Items {
 		if it.ID == cardID {
@@ -484,7 +485,7 @@ func factoryQueueClassification(rec *factory.BacklogRecord, cardID string) facto
 			return factory.EffectiveCardClassification(entry.Item)
 		}
 	}
-	return factory.DefaultCardClassification()
+	return factory.AbsentCardClassification()
 }
 
 // factoryNextLeaseOnce selects and leases one card for lane through the F1
@@ -4164,7 +4165,7 @@ func newFactoryStatusCommand() *cobra.Command {
 			report.AgeAlarmWarning = alarmWarning
 			// The classification snapshot for the mode/priority cells
 			// (REQ-TCD-010): one pure queue read; a failed read degrades the
-			// cells to the derived defaults rather than failing the whole
+			// cells to the absent-read defaults rather than failing the whole
 			// status surface (the lease rows survive a queue read fault).
 			queueRec, queueErr := todoReadStoreAt(root).LoadPure()
 			// Never create a database just to report that it is empty.
@@ -4189,7 +4190,7 @@ func newFactoryStatusCommand() *cobra.Command {
 				}
 				_ = db.Close()
 				for _, c := range cards {
-					cls := factory.DefaultCardClassification()
+					cls := factory.AbsentCardClassification()
 					if queueErr == nil {
 						cls = factoryQueueClassification(queueRec, c.CardID)
 					}

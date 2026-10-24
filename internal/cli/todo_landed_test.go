@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -627,7 +628,16 @@ func TestTodoLanded_SHAValidation(t *testing.T) {
 		if !r1.failed || !r2.failed {
 			t.Errorf("the refusing branch diverged by card id: t1 failed=%v, t2 failed=%v", r1.failed, r2.failed)
 		}
-		strip := func(s, id string) string { return strings.ReplaceAll(s, id, "<card>") }
+		// strip masks the card id WHOLE-TOKEN only (word boundaries): a bare
+		// ReplaceAll("t1") also rewrites path tokens that merely share the
+		// prefix — a TMPDIR like /private/tmp/moai-t1737 — mangling one
+		// message's paths and fabricating a divergence that is not a card-id
+		// leak. A real leak (the id standing alone in the message) still
+		// matches and still diverges, so the assertion's reach is unchanged.
+		strip := func(s, id string) string {
+			re := regexp.MustCompile(`\b` + id + `\b`)
+			return re.ReplaceAllString(s, "<card>")
+		}
 		if strip(r1.msg, "t1") != strip(r2.msg, "t2") {
 			t.Errorf("the two cards' refusal classifications differ; the card token reached a check\nt1: %s\nt2: %s", r1.msg, r2.msg)
 		}

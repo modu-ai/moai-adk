@@ -10,12 +10,13 @@
 //
 // Value sets are CLOSED and validated here, once: no other file re-spells
 // them. Absence is never a hidden member of either axis — a card recorded
-// before this SPEC reads through EffectiveCardClassification, which derives
-// the defaults positively on read (REQ-TCD-014): priority normal, blocked
-// false, mode serial, decider default. The serial read default is the
-// conservative direction (leader ruling 2026-09-29, OD-3 extension): absent
-// = unclassified = treated as serial, so an unclassified card participates
-// in the serial-vs-serial mutual exclusivity of the dispatch layer.
+// before any classification judgment reads through
+// EffectiveCardClassification, which derives the defaults positively on read
+// (REQ-TCD-014): priority normal, blocked false, mode parallelizable,
+// decider default (SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-001 — the
+// 2026-10-19 operator ruling flipped the absent-read default from serial to
+// parallelizable; the decider-failure fail-safe is a separate value that
+// stays serial, REQ-FDM-003).
 package factory
 
 import (
@@ -91,16 +92,42 @@ type CardClassification struct {
 	Reason       string `json:"reason"`
 }
 
-// DefaultCardClassification is the fail-safe default (REQ-TCD-003): the
-// values an unavailable or failed decider promotes, and the values an absent
-// field derives on read (REQ-TCD-014). One function, both call sites — the
-// two defaults are the same defaults by ruling, not by coincidence.
+// DefaultCardClassification is the decider-failure fail-safe default
+// (REQ-TCD-003): the values an unavailable or failed decider promotes. Since
+// the 2026-10-19 operator ruling (SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-003)
+// it is a SEPARATE value from the absent-read default
+// (AbsentCardClassification) — the parent ruling had unified the two
+// defaults, and that pairing is now split. The fail-safe stays serial
+// because a wrongly-parallel fail-safe could run true-serial cards
+// concurrently (C2).
 func DefaultCardClassification() CardClassification {
 	return CardClassification{
 		Priority: ClassPriorityNormal,
 		Blocked:  false,
 		Mode:     ClassModeSerial,
 		Decider:  DeciderIdentityDefault,
+	}
+}
+
+// AbsentCardClassification is the absent-read default
+// (SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-001): the values an absent
+// classification field derives on read — priority normal, blocked false,
+// mode parallelizable, decider default — with a reason naming the absence
+// derivation. An unclassified card is parallel work unless judged
+// otherwise; the serial ordering binds the cards that say serial (the
+// fail-safe above and every recorded serial judgment), not the ones that
+// say nothing.
+//
+// @MX:ANCHOR: [AUTO] AbsentCardClassification — the named source of the absent-read default; every absence derivation reads this one constructor
+// @MX:REASON: expected fan_in >= 3 (EffectiveCardClassification seam, DefaultCardDecider, factoryQueueClassification's absent branches and the status degrade fallback); a second spelling of the absent default would let one reader derive absence differently from the rest
+// @MX:SPEC: SPEC-FACTORY-DEFAULT-MODE-001
+func AbsentCardClassification() CardClassification {
+	return CardClassification{
+		Priority: ClassPriorityNormal,
+		Blocked:  false,
+		Mode:     ClassModeParallelizable,
+		Decider:  DeciderIdentityDefault,
+		Reason:   "derived default: no classification record (absent-field derivation)",
 	}
 }
 
@@ -138,9 +165,10 @@ func ParseCardClassificationJSON(data []byte) (CardClassification, error) {
 }
 
 // EffectiveCardClassification derives the card's classification at read:
-// the recorded judgment when present, the positive default derivation when
-// absent (REQ-TCD-014). Every machine consumer reads through this seam —
-// none tests the pointer for nil itself.
+// the recorded judgment when present, the absent-read default derivation
+// when absent (REQ-TCD-014; SPEC-FACTORY-DEFAULT-MODE-001 REQ-FDM-001 —
+// absent reads parallelizable). Every machine consumer reads through this
+// seam — none tests the pointer for nil itself.
 //
 // @MX:ANCHOR: [AUTO] EffectiveCardClassification — the sole absent-field default derivation seam (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-014)
 // @MX:REASON: expected fan_in >= 3 (factory selection, add-path rendering, list/web consumers); a second derivation site would let one reader treat absence differently from the rest, which is exactly the silent divergence the SPEC exists to close
@@ -149,7 +177,7 @@ func EffectiveCardClassification(it BacklogItem) CardClassification {
 	if it.Classification != nil {
 		return *it.Classification
 	}
-	return DefaultCardClassification()
+	return AbsentCardClassification()
 }
 
 // CardClassificationValue renders a classification for its SQLite TEXT
@@ -247,14 +275,17 @@ type CardDecider interface {
 }
 
 // DefaultCardDecider is the deterministic shipped implementation
-// (REQ-TCD-012): with no judgment supplied, it answers with the fail-safe
-// defaults under the default decider identity. It is a judgment, not a
-// failure — it never errors and prints no fallback notice.
+// (REQ-TCD-012): with no judgment supplied, it answers with the absent-read
+// default under the default decider identity (SPEC-FACTORY-DEFAULT-MODE-001
+// REQ-FDM-002 — a plain admission records parallelizable). It is a judgment,
+// not a failure — it never errors and prints no fallback notice; the
+// decider-FAILURE fail-safe is the separate serial DefaultCardClassification
+// the add path promotes instead.
 type DefaultCardDecider struct{}
 
 // Classify returns the deterministic default classification.
 func (DefaultCardDecider) Classify(string) (CardClassification, error) {
-	c := DefaultCardClassification()
+	c := AbsentCardClassification()
 	c.Reason = "deterministic default: no classification judgment supplied"
 	return c, nil
 }

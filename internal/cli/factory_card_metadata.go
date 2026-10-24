@@ -576,6 +576,41 @@ func reclassifyLocked(ctx context.Context, l *factory.LockedBacklog, root, cardI
 		return fmt.Errorf("%s on %s (reclassify catch-up → %q): the queue item already carried the axes and nothing was re-mutated, but the audit append failed after one retry; the missing attestation is surfaced — re-run reclassify to land it",
 			metadataAuditLossSentinel, cardID, commanded)
 	}
+	// REQ-FDM-004's serial-conflict gate on the reclassify surface (card
+	// t1737 delta F1, codex-P2 scoped): the gate arms ONLY when the card
+	// being reclassified is itself in flight — the harm REQ-FDM-004 names is
+	// two CONCURRENTLY in-flight serial cards, and an un-leased queued card's
+	// serial reclassification creates none (the selection gate re-checks the
+	// slot at lease time). When the target is in flight, the write reads the
+	// serial slot through the selection gate's own predicate —
+	// factorySerialInFlightExcluding over the factory record's rows, with the
+	// t1828 holder-liveness threaded, excluding the target row by identity —
+	// so a reclassification cannot walk around the todo classify gate. The
+	// converged paths above re-mutated nothing, so they stay outside the
+	// gate.
+	if cmd.Flags().Changed("mode") && target.Mode == factory.ClassModeSerial {
+		rows, lerr := db.ListCards(ctx, "")
+		if lerr != nil {
+			return fmt.Errorf("reclassify: read the factory cards: %w", lerr)
+		}
+		holderAlive := func(c homestate.Card) bool { return factoryWorkerPidAlive(ctx, db, c) }
+		targetInFlight := false
+		for i := range rows {
+			if rows[i].CardID == cardID && factorySerialSlotHeld(rows[i], now, holderAlive) {
+				targetInFlight = true
+				break
+			}
+		}
+		if targetInFlight {
+			classOf := func(cid string) factory.CardClassification {
+				return factoryQueueClassification(rec, cid)
+			}
+			blocking, held := factorySerialInFlightExcluding(rows, classOf, cardID, now, false, holderAlive)
+			if held {
+				return fmt.Errorf("refused — the serial slot is already held by %s; resolve the in-flight serial card before reclassifying %s to serial", blocking, cardID)
+			}
+		}
+	}
 	// The write: fresh classified-at stamp, the caller-supplied reason,
 	// decider human — inside the caller's locked Mutate. Absence marshals
 	// byte-identically: a card classified for the first time here ACQUIRES

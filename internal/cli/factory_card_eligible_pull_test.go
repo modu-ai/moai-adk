@@ -357,10 +357,19 @@ func TestFactoryEligiblePullOnGate(t *testing.T) {
 	t.Run("v serial slot held: refused serial-slot", func(t *testing.T) {
 		root, store := fcFixture(t)
 		cepSelfDispatchYAML(t, root, true)
-		fcQueue(t, store, factory.BacklogStatePicked)
+		// SPEC-FACTORY-DEFAULT-MODE-001: both serial roles need their
+		// judgments recorded — the candidate's serial MODE is what arms the
+		// slot check (an absent read now derives parallelizable, so an
+		// unrecorded candidate never reaches condition 5), and the holder's
+		// serial judgment is what makes the held slot count (the 4998dc479f
+		// mold). The holder's queue item sits at hold — the holder is parked,
+		// so it is not itself a selection candidate, only the slot holder.
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStateHold)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+		fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 		cepSetSpecID(t, store, "t1", "SPEC-GATE-005")
 		sdRegisterLane(t, root, "lane-1")
-		live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+		live := time.Now().Add(time.Hour).Format(time.RFC3339Nano)
 		fcPlace(t, root,
 			homestate.Card{CardID: "t1", State: homestate.CardPicked},
 			homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2", LeaseExpiresAt: live},
