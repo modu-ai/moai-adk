@@ -756,6 +756,14 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		branch += fmt.Sprintf(" +%d", dirty)
 	}
 
+	// The workflow label (card t1831, REQ-AGT-013): the git-strategy workflow
+	// beside the branch, in parentheses after the dirty count. The provider
+	// withholds it for github-flow, an unreadable config, and an invalid
+	// value, so those renders stay byte-identical to the pre-label bar.
+	if data.WorkflowLabel != "" {
+		branch += " (" + data.WorkflowLabel + ")"
+	}
+
 	// Withhold the forge half when repo info is missing (no remote configured, or
 	// a stdin payload that carries no workspace.repo). The branch stands alone.
 	repo := data.Workspace.Repo

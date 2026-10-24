@@ -110,7 +110,7 @@ Tier S/M は CI 4 status checks + pre-push hook が安全を保証するので m
 
 ### ブランチ別の引き渡し動作 (git strategy)
 
-`/moai sync` の最終段階である push と PR の引き渡しは、アクティブモードのストラテジーキーが決めます。`.moai/config/sections/git-strategy.yaml` の `git_strategy.{mode}.workflow` を読み、値は `github-flow` と `git-flow` の 2 つのどちらか一方です。3 つのモード(manual/personal/team)すべてのデフォルトは `github-flow` です。キーがこの 2 つのどちらでもない場合、引き渡し段階は推測せず、問題の値を報告して停止します。
+`/moai sync` の最終段階である push と PR の引き渡しは、アクティブモードのストラテジーキーが決めます。`.moai/config/sections/git-strategy.yaml` の `git_strategy.{mode}.workflow` を読み、値は `github-flow`、`git-flow`、`gitlab-flow`、`release-flow`、`agentic-trunk` の 5 つのうちどれか 1 つです。3 つのモード(manual/personal/team)すべてのデフォルトは `github-flow` です。キーがこの 5 つのどれでもない場合、引き渡し段階は推測せず、問題の値を報告して停止します。
 
 `github-flow` では、現在のブランチコンテキストによって結果が変わります:
 
@@ -129,6 +129,8 @@ main ブランチから Tier S/M の SPEC を処理する場合、この動作�
 - **どの経路にも合わないブランチ状態では sync が停止します。** 以前はどんなブランチ状態でも main に push して完了していましたが、今後は何も push せず状態を報告します。今まで完了していた sync が突然止まったら、まずこの箇所を確認してください。
 
 `git-flow` を選ぶとブランチ名で経路が分かれます — `feature/*` は develop 向け PR、`release/*` と `hotfix/*` は main 向け PR を作り(hotfix はマージ後に develop へのバックマージ PR が 1 つ追加されます)、`WT-*` ブランチは PR なしで統合ワークツリー内でマージします。
+
+`agentic-trunk` を選ぶと、カードの引き渡しは `main` を保持するツリーがどこか (ターゲットホルダー) で分かれます。この値の統合ターゲットは固定の `main` で、`develop_branch` などの他のキーでは変更できません。専用の統合ワークツリーが `main` を保持している場合、完了したカードは統合ウィンドウのローカルマージで着地し (`moai factory complete` が内部的に `moai integration merge --card` を呼び出します)、カードごとの PR は作られません。`main` を保持するツリーがプライマリチェックアウトだけの場合、専用の着地面が存在しないため、`moai factory complete` がカードの PR を開き、マージはリーダーが実行します — 自動マージの要求は行いません。どちらの経路でもレーンが自ら push することはなく、リーダーが `lead_push_threshold` 回の着地ごとに `release/main-batch-YYYYMMDD` ブランチでバッチリリースを進め、リリースにはタグを付けます。
 
 旧バージョンの設定キー `github.spec_git_workflow`(system.yaml)は非推奨で、v3.3.0 で削除されます。今後の正規キーは上記の `git_strategy.{mode}.workflow` です。
 

@@ -4,6 +4,8 @@
 > 체인 다이어그램·[HARD] 규율 5항·레인 의무의 교리는 AGENTS.local.md §4.1 에 남아 있다(현행 착지 흐름은 §4.0) — 이 문서는 그 실행 절차와 실측 근거만 운반한다. 레인의 main 갱신 판정식은 `.claude/rules/local/gitflow-lane-protocol.md` §11 이 소유한다.
 
 > **후보 경로 예외 — 운영자 승인 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push해 착지 전 CI 판정을 받는 경로다. 이 경로에 한해 `WT push · CI 요청 금지`를 대체하며, 통합 브랜치 push는 여전히 리더의 일괄 행위이고 후보 verb는 통합 창을 잡지 않는다. 정본은 `AGENTS.local.md` §4.1이다. 이 문서의 develop 서술은 그대로 남는다.
+>
+> **[HARD] 현행 모델 (2026-10-21, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 rescope 0.4.0) — agentic-trunk.** 레인 워크트리, `main` 직렬 착지, `lead_push_threshold`마다의 리더 릴리스 배치, 태그 릴리스. 이 리포에서는 primary 체크아웃이 `main`을 보유하므로 카드는 PR로 인도되며 리더가 auto-merge 요청 없이 병합한다. 정본: `AGENTS.local.md` §4.0. (라이브 설정값은 착지 후 리더 cutover에서 전환되며, 그 전까지 임시 브리지 `github-flow`가 유효하다.)
 
 ---
 **운영 절차**

@@ -2,7 +2,7 @@
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
 version: "0.11.2"
-status: in-progress
+status: completed
 created: 2026-10-18
 updated: 2026-10-24
 author: "Goos Kim"

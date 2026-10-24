@@ -111,7 +111,7 @@ Sync 完成后自动合并 PR 并清理分支:
 
 ### 按分支区分的交付行为 (git strategy)
 
-`/moai sync` 的最后一步——push 与 PR 交付——由当前模式的策略键决定。它读取 `.moai/config/sections/git-strategy.yaml` 中的 `git_strategy.{mode}.workflow`,取值只有两个:`github-flow` 或 `git-flow`。三种模式(manual/personal/team)的默认值都是 `github-flow`。当该键不是这两个值之一时,交付步骤不做猜测,而是报告该值并停止。
+`/moai sync` 的最后一步——push 与 PR 交付——由当前模式的策略键决定。它读取 `.moai/config/sections/git-strategy.yaml` 中的 `git_strategy.{mode}.workflow`,取值是以下五个之一:`github-flow`、`git-flow`、`gitlab-flow`、`release-flow`、`agentic-trunk`。三种模式(manual/personal/team)的默认值都是 `github-flow`。当该键不是这五个值之一时,交付步骤不做猜测,而是报告该值并停止。
 
 在 `github-flow` 下,交付结果取决于当前的分支环境:
 
@@ -130,6 +130,8 @@ Sync 完成后自动合并 PR 并清理分支:
 - **不匹配任何路径的分支状态现在会让 sync 停止。** 过去无论处于何种分支状态都会 push 到 main 并完成;现在则什么也不 push,改为报告状态。如果原本能完成的 sync 突然停住,请先从这里排查。
 
 选择 `git-flow` 时按分支名路由——`feature/*` 创建以 develop 为目标的 PR,`release/*` 与 `hotfix/*` 创建以 main 为目标的 PR(hotfix 在合并后还会追加一个向 develop 的回迁 PR),`WT-*` 分支则在集成 worktree 内合并,不创建 PR。
+
+选择 `agentic-trunk` 时,卡片的交付按持有 `main` 的树(目标持有者,target holder)路由。该值的集成分支固定为 `main`,`develop_branch` 等其他键无法改变它。当专用集成 worktree 持有 `main` 时,完成的卡片通过集成窗口内的本地合并落地(`moai factory complete` 内部调用 `moai integration merge --card`),不创建每卡片 PR。当持有 `main` 的只有主检出时,不存在专用落地界面——此时 `moai factory complete` 改为打开卡片的 pull request,由领导者执行合并,且不附带自动合并请求。无论哪条路径,负责卡片的泳道都不会自行 push;领导者每落地 `lead_push_threshold` 次便以 `release/main-batch-YYYYMMDD` 分支执行一次批量发布,发布本身会打上标签。
 
 旧版本配置键 `github.spec_git_workflow`(system.yaml)已弃用,将于 v3.3.0 移除。今后的规范键是上文的 `git_strategy.{mode}.workflow`。
 

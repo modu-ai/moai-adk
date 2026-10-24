@@ -91,10 +91,10 @@ func (c GitFlowIntegrationConfig) EmptyTargetGuidance(root, tail string) string 
 		msg = fmt.Sprintf("git_strategy.%s.workflow %q is not one of %s; correct it in %s",
 			c.Mode, c.Workflow, strings.Join(AllowedWorkflows(), ", "), gitStrategyRelPath)
 	case EmptyTargetGitFlowNotManual:
-		msg = fmt.Sprintf("git-flow resolves a target only when git_strategy.mode is manual (mode is %s); set git_strategy.mode: manual in %s, or set git_strategy.%s.workflow: github-flow (target main)",
+		msg = fmt.Sprintf("git-flow resolves a target only when git_strategy.mode is manual (mode is %s); set git_strategy.mode: manual in %s, or set git_strategy.%s.workflow: github-flow (target main) or agentic-trunk (target main)",
 			c.Mode, gitStrategyRelPath, c.Mode)
 	case EmptyTargetDevelopEmpty:
-		msg = fmt.Sprintf("git_strategy.%s.develop_branch is empty; set it (for example `develop`) in %s, or set git_strategy.%s.workflow: github-flow (target main)",
+		msg = fmt.Sprintf("git_strategy.%s.develop_branch is empty; set it (for example `develop`) in %s, or set git_strategy.%s.workflow: github-flow (target main) or agentic-trunk (target main)",
 			c.Mode, gitStrategyRelPath, c.Mode)
 	case EmptyTargetEnvironmentEmpty:
 		msg = fmt.Sprintf("git_strategy.%s.environment is empty; set it to the integration branch in %s", c.Mode, gitStrategyRelPath)

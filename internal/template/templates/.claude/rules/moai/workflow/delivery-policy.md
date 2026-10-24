@@ -15,7 +15,7 @@ plan, run, and sync.
    an explicitly configured `git-flow` `WT-*` integration branch merged into
    the designated local integration worktree; it is still pushed by
    `manager-git` only after the local merge and required checks.
-   Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route),
+   Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk),
    it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs
    landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout
    is the human and leader workspace and does not check out the integration branch.

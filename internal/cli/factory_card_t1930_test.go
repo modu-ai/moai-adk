@@ -364,8 +364,18 @@ func TestFactoryNextSkipsCarriedMergeReadyForCodexLanes(t *testing.T) {
 		t.Chdir(root)
 
 		_, _, err := runFactory(t, "next", "--run", carryNewRun, "--card", "t1")
-		if err == nil || !strings.Contains(err.Error(), factoryRefuseBackendSkip) {
-			t.Fatalf("err = %v, want the nominated carry to refuse naming %s", err, factoryRefuseBackendSkip)
+		if err == nil {
+			t.Fatal("the nominated carry leased a card the Codex lane can never complete")
+		}
+		// card-review r12, D1: REQ-TAU-005 and the --card help promise exit 4
+		// with ONE line `factory next: refused backend-skip: <detail>` — the
+		// plain fmt.Errorf doubled the prefix and exited 1.
+		var refusal *factoryNominateRefusal
+		if !errors.As(err, &refusal) || refusal.Token != factoryRefuseBackendSkip {
+			t.Fatalf("err = %v, want the one-line %s refusal (the exit-4 shape)", err, factoryRefuseBackendSkip)
+		}
+		if got := refusal.Error(); strings.Count(got, "factory next:") != 1 || !strings.Contains(got, "a Codex lane cannot advance a card recorded at merge-ready") {
+			t.Fatalf("refusal line = %q, want `factory next: refused backend-skip: …` with a single prefix", got)
 		}
 		db := fcOpen(t, root)
 		_, lerr := db.LoadCard(context.Background(), carryNewRun, "t1")
@@ -405,6 +415,47 @@ func TestFactoryNextSkipsCarriedMergeReadyForCodexLanes(t *testing.T) {
 		c := carryCard(t, root, carryNewRun, "t1")
 		if c.State != homestate.CardPicked || c.LeaseHolder != "" || c.Stage != "" {
 			t.Fatalf("a Codex lane leased or stage-carried through the catch-up: state=%s holder=%q stage=%q; zero leases, no restore", c.State, c.LeaseHolder, c.Stage)
+		}
+	})
+	// card-review r12, D2 — the compensated crash-window shape through arm
+	// (c)'s row-exists branch: a Codex lane's bare next skips the card
+	// quietly (the t1533 wait-not-error discipline), so other ready cards
+	// stay reachable instead of the whole call erroring at exit 1.
+	t.Run("codex_bare_next_skips_a_compensated_crash_window_row_quietly", func(t *testing.T) {
+		root, store := carryFixture(t)
+		// t1: the compensated crash-window shape — queue back to queued, row
+		// picked+empty, prior run carries merge-ready and a reusable tree.
+		// t2: a fresh, ready card behind it. The self-dispatch gate stays OFF
+		// (the distributed default), so arm (b) is dormant and arm (c) decides.
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root,
+			homestate.Card{RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+				Stage: homestate.CardMergeReady, EvidenceSHA: strings.Repeat("ef", 20), WorktreePath: landing},
+			homestate.Card{RunID: carryNewRun, CardID: "t1", State: homestate.CardPicked},
+		)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", factory.BackendGPT)
+		t.Chdir(root)
+
+		out, _, err := runFactory(t, "next", "--run", carryNewRun)
+		if err != nil {
+			t.Fatalf("a Codex lane's bare next errored on the carried card instead of skipping it quietly: %v\n%s", err, out)
+		}
+		c2 := carryCard(t, root, carryNewRun, "t2")
+		if c2.State != homestate.CardLeased || c2.LeaseHolder != "lane-1" {
+			t.Fatalf("the ready card behind the skipped one was not reachable: t2 = %s holder=%q, want leased/lane-1", c2.State, c2.LeaseHolder)
+		}
+		c1 := carryCard(t, root, carryNewRun, "t1")
+		if c1.State != homestate.CardPicked || c1.Stage != "" || c1.LeaseHolder != "" {
+			t.Fatalf("the carried card was touched: state=%s holder=%q stage=%q, want picked/unheld/empty", c1.State, c1.LeaseHolder, c1.Stage)
+		}
+		if got := fcQueueItemState(t, store, "t1"); got != factory.BacklogStateQueued {
+			t.Errorf("the carried card's queue item = %s, want still queued", got)
 		}
 	})
 }
@@ -493,6 +544,61 @@ func TestFactoryNextCompletesTheInterruptedCarryOver(t *testing.T) {
 		}
 		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
 			t.Fatalf("the nominated retry did not recover the interrupted carry-over: stage=%q evidence=%q, want %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
+		}
+	})
+	// card-review r12, D3 — a carry write that fails (the busy shape, faulted
+	// at the seam) refuses the lease instead of leasing a stage-less row.
+	t.Run("busy_carry_write_refuses_rather_than_leasing_stageless", func(t *testing.T) {
+		root, _ := build(t)
+		prev := factoryCarryWriteFault
+		factoryCarryWriteFault = func(string) error { return errors.New("database is locked") }
+		t.Cleanup(func() { factoryCarryWriteFault = prev })
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		out, _, err := runFactory(t, "next", "--run", carryNewRun, "--card", "t1")
+		if err == nil {
+			t.Fatalf("the busy carry write leased a stage-less row:\n%s", out)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.State != homestate.CardPicked || c.LeaseHolder != "" {
+			t.Fatalf("a failed carry write still leased: state=%s holder=%q; the lease must refuse, not fall through", c.State, c.LeaseHolder)
+		}
+	})
+	// card-review r12, D4 — the bundle arm leases a crash-window member WITH
+	// the catch-up (prior audit R3).
+	t.Run("bundle_member_gets_the_catch_up_on_lease", func(t *testing.T) {
+		root, store := carryFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		landing := carryLanding(root, "t1")
+		if err := os.MkdirAll(sdWorktreesDir(root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, root, "worktree", "add", "-q", landing, "-b", "WT-previous-tree")
+		fcPlace(t, root,
+			homestate.Card{RunID: carryPrevRun, CardID: "t1", State: homestate.CardMergeReady,
+				Stage: homestate.CardMergeReady, EvidenceSHA: evidence, WorktreePath: landing},
+			// The crash-window member of this lane's own bundle.
+			homestate.Card{RunID: carryNewRun, CardID: "t1", State: homestate.CardPicked,
+				SpecID: "SPEC-BND-001", BundleID: "b1"},
+			// A sibling member leased by this lane makes b1 this lane's bundle.
+			homestate.Card{RunID: carryNewRun, CardID: "t2", State: homestate.CardPicked,
+				OwnerLabel: "lane-1", BundleID: "b1"},
+		)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+
+		if _, _, err := runFactory(t, "next", "--run", carryNewRun); err != nil {
+			t.Fatalf("next over the bundle's crash-window member: %v", err)
+		}
+		c := carryCard(t, root, carryNewRun, "t1")
+		if c.State != homestate.CardLeased {
+			t.Fatalf("card state = %s, want leased through arm (b-priority)", c.State)
+		}
+		if c.Stage != homestate.CardMergeReady || c.EvidenceSHA != evidence {
+			t.Fatalf("the bundle arm leased a crash-window member without the catch-up: stage=%q evidence=%q, want %s/%s", c.Stage, c.EvidenceSHA, homestate.CardMergeReady, evidence)
 		}
 	})
 }

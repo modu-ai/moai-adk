@@ -29,6 +29,15 @@ func workflowStandingBranches(flow string) string {
 		return "single standing branch main; topic branches are short-lived"
 	case config.WorkflowGitFlow:
 		return "standing branches develop + main; release branches cut for each release"
+	case config.WorkflowAgenticTrunk:
+		// Card t1831 REQ-AGT-012: the standing-branch interpretation of the
+		// model — one trunk, serial landing by the target holder (the
+		// integration-window merge, or the card's pull request where only
+		// the primary checkout holds main), a leader release batch per
+		// lead_push_threshold landings, tagged release. Holder-neutral
+		// wording per the 0.4.0 rescope; the pinned tokens main, serial and
+		// batch stay in the message (AC-AGT-011).
+		return "single trunk main; cards land serially (integration-window merge, or the card's pull request where only the primary checkout holds main); a leader release batch per lead_push_threshold landings; tagged release"
 	case config.WorkflowGitLabFlow:
 		return "one long-lived branch per deploy environment (environment key)"
 	case config.WorkflowReleaseFlow:

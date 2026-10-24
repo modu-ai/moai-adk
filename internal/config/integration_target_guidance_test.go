@@ -58,7 +58,7 @@ func TestEmptyTargetGuidance(t *testing.T) {
 			[]string{"git-flow resolves a target only when git_strategy.mode is manual (mode is personal)", "git_strategy.personal.workflow: github-flow"}},
 		{"unknown workflow", manual("        workflow: svn-flow\n"), false,
 			EmptyTargetUnknownWorkflow,
-			[]string{`git_strategy.manual.workflow "svn-flow" is not one of github-flow, git-flow, gitlab-flow, release-flow`}},
+			[]string{`git_strategy.manual.workflow "svn-flow" is not one of github-flow, git-flow, gitlab-flow, release-flow, agentic-trunk`}},
 		{"empty workflow value", manual("        workflow: \"\"\n"), false,
 			EmptyTargetUnknownWorkflow,
 			[]string{`git_strategy.manual.workflow "" is not one of`}},

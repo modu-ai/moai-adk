@@ -78,7 +78,8 @@ var commitVerbs = map[string]bool{
 // common-root fixture email; 63 with the t1913 codex-review-entry fixture
 // email (SPEC-HOOK-SYNC-ASYNC-001 M3); 76 with the t1640
 // (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
-// m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition.
+// m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition;
+// 77 with the t1831 agentic-trunk fixture email.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -138,6 +139,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t1395@example.invalid",
 	"t1404@example.invalid",
 	"t1680@example.invalid",
+	"t1831@test.local",
 	"t371@example.com",
 	"t461@example.test",
 	"t488@example.invalid",

@@ -59,7 +59,7 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 
 [HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves in-session (`ExitWorktree(keep)`, lease, `EnterWorktree`); the integration-tree merge entry keeps its own re-entry rule.
 
-[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
+[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader. Under agentic-trunk the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`; the only push is the leader's batch PR from `release/main-batch-YYYYMMDD`.
 
 ## Factory Mode — the card travels whole
 
@@ -73,9 +73,6 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 - **No question delegation.** Lane sessions return blocker reports; the operator is asked by the leader, through `AskUserQuestion`.
 
 ## Cross-references
-
----
-
 
 ---
 

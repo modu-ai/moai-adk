@@ -170,8 +170,19 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 
 			// github-flow delivers by pull request: the integration window is
 			// no prerequisite (REQ-GFD-006), so a cleared triple takes none.
-			if factoryGitHubFlow(integrationLockRoot()) {
-				const detail = "github-flow takes no integration window — run moai factory complete to push the card branch and open the pull request"
+			// Under agentic-trunk the target-holder routing takes the same
+			// edge when the primary checkout is the only holder of the
+			// integration target (card t1831 M5b). The workflow judgment
+			// reads the COMMON root's config (a card worktree carries no
+			// git-strategy.yaml of its own — card-review round 1 finding 1);
+			// only the holder lookup probes the tree the lane stands in.
+			ghfNoWindow := factoryGitHubFlow(integrationLockRoot())
+			primaryRoute := !ghfNoWindow && factoryAgenticTrunkPrimaryRouteIn(integrationLockRoot(), root)
+			if ghfNoWindow || primaryRoute {
+				detail := "github-flow takes no integration window — run moai factory complete to push the card branch and open the pull request"
+				if primaryRoute {
+					detail = "the primary checkout is the only tree holding main — the card's pull request is the delivery; run moai factory complete to push the card branch and open the pull request"
+				}
 				_, _ = fmt.Fprintf(human, "merge-readiness: CLEARED — three checks recorded; %s\n", detail)
 				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
 					Verdict: "cleared", Lane: lane, Card: card, Detail: detail,
