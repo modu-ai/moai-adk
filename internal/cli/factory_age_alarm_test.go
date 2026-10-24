@@ -123,10 +123,16 @@ func TestFactoryStatusDisabledUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("factory status: %v", err)
 	}
-	golden := "below run=run-cli state=plan stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=serial priority=normal\n" +
-		"gate-alert run=run-cli state=needs-decision stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=serial priority=normal\n" +
-		"gate-warn run=run-cli state=kickoff stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=serial priority=normal\n" +
-		"stall-warn run=run-cli state=run stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=serial priority=normal\n"
+	// The golden was re-baselined for SPEC-FACTORY-DEFAULT-MODE-001 (card
+	// t1737): these cards carry no queue classification, and the absent read
+	// now derives parallelizable (REQ-FDM-001) instead of the old serial
+	// default — the mode= field is the classification surface rendering the
+	// derived value honestly, not a disabled-flag regression. Byte-identity
+	// vs the pre-age-alarm renderer is still what this test guards.
+	golden := "below run=run-cli state=plan stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=parallelizable priority=normal\n" +
+		"gate-alert run=run-cli state=needs-decision stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=parallelizable priority=normal\n" +
+		"gate-warn run=run-cli state=kickoff stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=parallelizable priority=normal\n" +
+		"stall-warn run=run-cli state=run stage=- version=1 owner=- lease=none gate=- prefer=- after=- contract=none mode=parallelizable priority=normal\n"
 	if out != golden {
 		t.Fatalf("disabled status output is not the pre-SPEC golden:\n--- got ---\n%s--- want ---\n%s", out, golden)
 	}
