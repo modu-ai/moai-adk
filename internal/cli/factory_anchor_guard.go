@@ -94,6 +94,14 @@ func shortWorktreeRoot(root string) string {
 	return root
 }
 
+// nativeWorktreeDirName is the directory name the backend gives a short -w name:
+// a slash becomes `+` (`feature/foo` enters .claude/worktrees/feature+foo), so
+// the guard inspects the tree claude enters, not a nested path that does not
+// exist (card t1958). No repository helper implements this mapping.
+func nativeWorktreeDirName(name string) string {
+	return strings.ReplaceAll(name, "/", "+")
+}
+
 // resolveWorktreeLaunchTarget maps a worktree option value to the tree path the
 // backend would launch into: an absolute path names the tree directly; a short
 // name resolves across the three roots (SPEC-WORKTREE-HOME-ROOT-001 M3,
@@ -106,6 +114,7 @@ func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
 	}
+	value = nativeWorktreeDirName(value)
 	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
 		return cands[0].Path
 	}
