@@ -252,13 +252,15 @@ func existingWorktreeEntryDir(args []string) string {
 // MoAI tree (the 2026-10-08 lane-12 incident, GH #1813). The refusal is
 // pre-launch and argv-preserving — nothing is stripped, entered, or
 // rewritten; the error guides into the existing tree by directory
-// (`cd '<path>' && moai <verb>` — audit r1 P2-1 measured claude 2.1.309
-// rejecting an absolute path as a --worktree value with "Invalid worktree
-// name", so `-w <path>` is never guided). Both paths are spelled from the
-// primary checkout resolved through the git common directory — independent
-// of the MoAI home metadata (audit r1 P2-2: a broken MOAI_HOME must not
-// bypass the check), and the probe failing refuses (fail closed) rather
-// than proceeding into the duplicate-creation path. The native side is
+// (`cd '<path>' && moai <verb>`, the path shellSingleQuoted — audit r1 P2-1
+// measured claude 2.1.309 rejecting an absolute path as a --worktree value
+// with "Invalid worktree name", so `-w <path>` is never guided). Both paths
+// are spelled from the primary checkout resolved through the main worktree
+// record — independent of the MoAI home metadata (audit r1 P2-2: a broken
+// MOAI_HOME must not bypass the check) and of the git-dir layout (audit r2
+// P2: a --separate-git-dir checkout is not the common-dir parent's child),
+// and the probe failing refuses (fail closed) rather than proceeding into
+// the duplicate-creation path. The native side is
 // judged by its own existence (a native path aliasing the MoAI tree keeps
 // the existing behavior). Every non-judgment answers nil: no selection or a
 // bare one, an absolute or path-shaped value.
@@ -286,33 +288,70 @@ func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 	if _, err := os.Stat(nativeDir); err == nil {
 		return nil // the native tree exists (aliases included); claude re-enters it natively
 	}
-	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree instead:\n  cd '%s' && moai %s",
-		value, moaiDir, value, value, moaiDir, verb)
+	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree instead:\n  cd %s && moai %s",
+		value, moaiDir, value, value, shellSingleQuoted(moaiDir), verb)
 }
 
-// moaiPrimaryRoot resolves the primary checkout's root from dir through the
-// git common directory. It runs the probe with the inherited GIT_*
-// environment scrubbed — a planted GIT_WORK_TREE or GIT_DIR would redirect
-// it — and answers the symlink-resolved parent of the common dir.
+// moaiPrimaryRoot resolves the primary checkout's root from dir, by the
+// git-dir layout (every step git-native, GIT_* scrubbed, fail closed):
+//
+//   - a git common directory named ".git" — a normal repo and any linked
+//     worktree — names its owner: the parent of <main>/.git is the main
+//     checkout.
+//   - an external common directory (a --separate-git-dir checkout; its
+//     worktree-list main record is the metadata dir and no core.worktree is
+//     recorded, both measured, audit r2 P2) resolves only when dir IS the
+//     main checkout — its git dir equals the common dir and show-toplevel
+//     answers the checkout. A linked tree over an external git dir has no
+//     git-native address for its main checkout: the layout is refused (fail
+//     closed), never guessed.
 func moaiPrimaryRoot(dir string) (string, error) {
-	probe := exec.Command("git", "-C", dir, "rev-parse", "--git-common-dir")
+	common, err := moaiRevParse(dir, "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return "", err
+	}
+	if filepath.Base(common) == ".git" {
+		return moaiCanonical(filepath.Dir(common)), nil
+	}
+	gitDir, err := moaiRevParse(dir, "--path-format=absolute", "--git-dir")
+	if err != nil {
+		return "", err
+	}
+	if gitDir != common {
+		return "", fmt.Errorf("the git directory %s is external to the checkout and %s is not its main worktree; the primary checkout cannot be resolved", common, dir)
+	}
+	toplevel, err := moaiRevParse(dir, "--path-format=absolute", "--show-toplevel")
+	if err != nil {
+		return "", err
+	}
+	return moaiCanonical(toplevel), nil
+}
+
+// moaiRevParse runs one `git -C dir rev-parse` probe with the inherited
+// GIT_* environment scrubbed — a planted GIT_WORK_TREE or GIT_DIR would
+// redirect it — and returns the trimmed single-line output.
+func moaiRevParse(dir string, args ...string) (string, error) {
+	argv := append([]string{"-C", dir, "rev-parse"}, args...)
+	probe := exec.Command("git", argv...)
 	probe.Env = scrubbedGitEnv()
 	out, err := probe.Output()
 	if err != nil {
 		return "", err
 	}
-	common := strings.TrimSpace(string(out))
-	if common == "" {
-		return "", fmt.Errorf("empty git-common-dir for %s", dir)
+	line := strings.TrimSpace(string(out))
+	if line == "" {
+		return "", fmt.Errorf("git rev-parse %v answered empty in %s", args, dir)
 	}
-	if !filepath.IsAbs(common) {
-		common = filepath.Join(dir, common)
+	return line, nil
+}
+
+// moaiCanonical resolves symlinks on a path that exists, passing the input
+// through when it does not or cannot be resolved.
+func moaiCanonical(p string) string {
+	if real, err := filepath.EvalSymlinks(p); err == nil {
+		return real
 	}
-	primary := filepath.Dir(common)
-	if real, err := filepath.EvalSymlinks(primary); err == nil {
-		primary = real
-	}
-	return primary, nil
+	return p
 }
 
 // scrubbedGitEnv returns the process environment without any GIT_* variable.

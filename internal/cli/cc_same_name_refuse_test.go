@@ -48,11 +48,97 @@ func TestCCRefusesShortNameShadowedByMoaiTree(t *testing.T) {
 	// Audit r1 P2-1 (rcpt-90420fa3, measured on claude 2.1.309): an absolute
 	// path as a --worktree value exits 1 with "Invalid worktree name", so the
 	// guidance must be the directory-entry form, never `-w <path>`.
-	if !strings.Contains(launch.err.Error(), "cd '"+moai+"' && moai cc") {
+	if !strings.Contains(launch.err.Error(), "cd "+shellSingleQuoted(moai)+" && moai cc") {
 		t.Errorf("the refusal carries no directory-entry guidance: %q", launch.err.Error())
 	}
 	if strings.Contains(launch.err.Error(), "moai cc -w") {
 		t.Errorf("the guidance names the measured-broken -w <path> form: %q", launch.err.Error())
+	}
+}
+
+// TestCCGuidanceQuotesAHostileTreeName (audit r2 P1, rcpt-c6749fd0): the
+// guided `cd` command single-quotes the path — a tree name carrying a
+// single quote and command substitution must survive the copy-paste as a
+// literal, never execute.
+func TestCCGuidanceQuotesAHostileTreeName(t *testing.T) {
+	root := m2Repo(t)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	hostile := "fe'at$(touch MOAI_REVIEW_PROBE)"
+	moai := filepath.Join(root, ".moai", "worktrees", hostile)
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, root, netCC, []string{"-w", hostile})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("want the refusal, got err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), "cd "+shellSingleQuoted(moai)) {
+		t.Errorf("the guidance does not single-quote the hostile path: %q", launch.err.Error())
+	}
+}
+
+// TestCCRefusalSurvivesASeparateGitDir (audit r2 P2, rcpt-c6749fd0): the
+// primary is the main worktree record, not a git-common-dir parent — a
+// --separate-git-dir layout (metadata outside the checkout) must not bypass
+// the same-name check.
+func TestCCRefusalSurvivesASeparateGitDir(t *testing.T) {
+	base := m2Real(t, t.TempDir())
+	primary := filepath.Join(base, "repo")
+	metadata := filepath.Join(base, "metadata")
+	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", primary)
+	m2Git(t, primary, "config", "user.email", "m2-test@example.com")
+	m2Git(t, primary, "config", "user.name", "M2 Test")
+	if err := os.WriteFile(filepath.Join(primary, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m2Git(t, primary, "add", "README.md")
+	m2Git(t, primary, "commit", "-q", "-m", "seed")
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(primary, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, primary, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("a separate-git-dir layout must not bypass the refusal: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
+// TestCCRefusesWhenThePrimaryCannotBeResolved (audit r2 P2, fail-closed
+// arm): a linked worktree whose repository carries an external git dir has
+// no git-native address for its main checkout — the launch is refused, not
+// guessed through.
+func TestCCRefusesWhenThePrimaryCannotBeResolved(t *testing.T) {
+	base := m2Real(t, t.TempDir())
+	primary := filepath.Join(base, "repo")
+	metadata := filepath.Join(base, "metadata")
+	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", primary)
+	m2Git(t, primary, "config", "user.email", "m2-test@example.com")
+	m2Git(t, primary, "config", "user.name", "M2 Test")
+	if err := os.WriteFile(filepath.Join(primary, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m2Git(t, primary, "add", "README.md")
+	m2Git(t, primary, "commit", "-q", "-m", "seed")
+	moai := filepath.Join(primary, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	linked := filepath.Join(base, "wt-linked")
+	m2Git(t, primary, "worktree", "add", "-q", "-b", "wt-linked", linked)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("an unresolvable layout must refuse, not launch: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), "cannot be resolved") {
+		t.Errorf("the refusal does not name the unresolvable layout: %q", launch.err.Error())
 	}
 }
 
@@ -92,7 +178,7 @@ func TestGLMRefusesShortNameShadowedByMoaiTree(t *testing.T) {
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
 	}
-	if !strings.Contains(launch.err.Error(), "cd '"+moai+"' && moai glm") {
+	if !strings.Contains(launch.err.Error(), "cd "+shellSingleQuoted(moai)+" && moai glm") {
 		t.Errorf("the refusal carries no directory-entry guidance: %q", launch.err.Error())
 	}
 	if strings.Contains(launch.err.Error(), "moai glm -w") {
