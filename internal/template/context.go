@@ -48,10 +48,10 @@ type TemplateContext struct {
 	CreatedAt     string // ISO 8601 timestamp when project was created
 
 	// Paths (detected during initialization)
-	GoBinPath      string // Detected Go binary installation path (e.g., "/home/user/go/bin")
-	HomeDir        string // User's home directory
-	SmartPATH      string // Captured terminal PATH with essential dirs prepended
-	InheritedPATH  string // Rendering process's own PATH (os.Getenv), baked in as an absolute list (GH #1827)
+	GoBinPath     string // Detected Go binary installation path (e.g., "/home/user/go/bin")
+	HomeDir       string // User's home directory
+	SmartPATH     string // Captured terminal PATH with essential dirs prepended
+	InheritedPATH string // Rendering process's own PATH (os.Getenv), baked in as an absolute list (GH #1827)
 
 	// ResolvedMoaiPath is the running binary's own resolved executable path,
 	// captured via os.Executable() at init/update time. It is the first
