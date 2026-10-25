@@ -3,9 +3,11 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +35,11 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 			if wdErr != nil {
 				return fmt.Errorf("integration remeasure: resolve the working directory: %w", wdErr)
 			}
-			rec, err := factory.RunRemeasure(root, worktree, configuredIntegrationBranch(), command)
+			baseBranch, baseErr := remeasureBaseBranch(root, worktree)
+			if baseErr != nil {
+				return baseErr
+			}
+			rec, err := factory.RunRemeasure(root, worktree, baseBranch, command)
 			if err != nil {
 				return err
 			}
@@ -48,6 +54,29 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 		},
 	}
 	return cmd
+}
+
+// remeasureBaseBranch names the integration branch the re-measure records as
+// its absorbed base (card t1790, GH #1817). The configured target comes first.
+// git-strategy.yaml is gitignored, so a checkout that never had the file (a
+// fresh clone, a CI workspace) resolved an empty branch and the verb called
+// `git merge-base refs/heads/ HEAD`, which died with exit status 128. When the
+// configuration names none, the remote's default branch (origin/HEAD) stands
+// in; when that does not resolve either, the verb refuses with guidance before
+// it runs the command or calls git with an empty ref.
+func remeasureBaseBranch(root, worktree string) (string, error) {
+	if branch := strings.TrimSpace(configuredIntegrationBranch()); branch != "" {
+		return branch, nil
+	}
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
+	cmd.Dir = worktree
+	cmd.Env = gitenv.Env()
+	if out, err := cmd.Output(); err == nil {
+		if branch := strings.TrimPrefix(strings.TrimSpace(string(out)), "origin/"); branch != "" {
+			return branch, nil
+		}
+	}
+	return "", fmt.Errorf("integration remeasure: no integration branch to measure against: git_strategy in %s/.moai/config/sections/git-strategy.yaml (gitignored; read from the primary checkout) names none and the remote default branch (origin/HEAD) does not resolve; set the git strategy there or run `git remote set-head origin --auto`, then re-run", root)
 }
 
 // shellJoinArgs joins the argv the caller passed after -- into the one
