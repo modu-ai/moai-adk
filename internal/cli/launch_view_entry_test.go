@@ -396,6 +396,45 @@ func TestEntryDir_InheritedGitWorkTreeEnvCannotSpoofTheProbe(t *testing.T) {
 	}
 }
 
+// TestEntryDir_ForeignGitCommonDirCannotSpoofThePrimary — the primary
+// resolution scrubs the inherited GIT_* environment (card t1791 audit round
+// 8 finding 1): an inherited GIT_COMMON_DIR pointed at a foreign store
+// cannot redirect the primary-root computation, so an alias of the primary
+// stays refused even with the variable set.
+func TestEntryDir_ForeignGitCommonDirCannotSpoofThePrimary(t *testing.T) {
+	primary := entryFixture(t)
+	alias := filepath.Join(primary, ".moai", "worktrees", "alias")
+	if err := os.Symlink(primary, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	foreign := t.TempDir() // a foreign store with no relation to the project
+	t.Setenv("GIT_COMMON_DIR", filepath.Join(foreign, ".git"))
+	if got := entryDirFor(t, []string{"-w", "alias"}); got != "" {
+		t.Fatalf("entry dir = %q, want \"\" — the inherited GIT_COMMON_DIR must not redirect the primary resolution", got)
+	}
+}
+
+// TestGitCommonDir_ScrubbedEnvIgnoresForeignOverride — the primary
+// resolution's git probe scrubs the inherited GIT_* environment (card t1791
+// audit round 8 finding 1): an inherited GIT_COMMON_DIR pointing at a
+// foreign store cannot redirect gitCommonDirFn; the honest common dir of the
+// queried repository comes back.
+func TestGitCommonDir_ScrubbedEnvIgnoresForeignOverride(t *testing.T) {
+	repo := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	foreign := filepath.Join(t.TempDir(), "foreign", ".git")
+	t.Setenv("GIT_COMMON_DIR", foreign)
+	got, err := gitCommonDirFn(repo)
+	if err != nil {
+		t.Fatalf("gitCommonDirFn: %v", err)
+	}
+	if !strings.Contains(got, filepath.Base(repo)) || strings.Contains(got, "foreign") {
+		t.Fatalf("gitCommonDirFn = %q, want the queried repo's own common dir (the foreign GIT_COMMON_DIR override must be scrubbed)", got)
+	}
+}
+
 func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
 	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
 	rest, _ := stripWorktreeOptionsForBackend(view)

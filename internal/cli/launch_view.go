@@ -428,11 +428,15 @@ func existingWorktreeEntryDir(view launchView) string {
 }
 
 // gitCommonDirFn resolves the git common directory of dir, a seam for tests
-// (the production form runs `git -C <dir> rev-parse --git-common-dir`; the
-// common dir lives in the PRIMARY checkout, so its parent names the real
-// primary root even when dir is a linked worktree).
+// (the production form runs `git -C <dir> rev-parse --git-common-dir` with
+// the same GIT_* scrub as the top-level probe — an inherited GIT_COMMON_DIR
+// would redirect the primary-resolution itself, card t1791 audit round 8
+// finding 1; the common dir lives in the PRIMARY checkout, so its parent
+// names the real primary root even when dir is a linked worktree).
 var gitCommonDirFn = func(dir string) (string, error) {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--git-common-dir").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--git-common-dir")
+	cmd.Env = scrubbedGitEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
@@ -446,6 +450,21 @@ var gitCommonDirFn = func(dir string) (string, error) {
 	return p, nil
 }
 
+// scrubbedGitEnv is the inherited environment minus every GIT_* variable
+// (card t1791 audit rounds 7-8): an inherited GIT_WORK_TREE, GIT_DIR or
+// GIT_COMMON_DIR would let the caller point the entry validation's git
+// probes at whatever directory it likes, passing the isolation checks for a
+// directory that is no isolated worktree.
+func scrubbedGitEnv() []string {
+	env := make([]string, 0, len(os.Environ()))
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "GIT_") {
+			env = append(env, e)
+		}
+	}
+	return env
+}
+
 // worktreeTopLevelFn is the git top-level probe of the entry check, a seam
 // for tests (the production form runs `git -C <dir> rev-parse --show-toplevel`
 // with the inherited GIT_* environment scrubbed — an inherited GIT_WORK_TREE
@@ -455,13 +474,7 @@ var gitCommonDirFn = func(dir string) (string, error) {
 // directory has no top level).
 var worktreeTopLevelFn = func(dir string) string {
 	cmd := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--show-toplevel")
-	env := make([]string, 0, len(os.Environ()))
-	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "GIT_") {
-			env = append(env, e)
-		}
-	}
-	cmd.Env = env
+	cmd.Env = scrubbedGitEnv()
 	out, err := cmd.Output()
 	if err != nil {
 		return ""

@@ -321,6 +321,12 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		if err := ccWorktreeWriterPrecheck(entryWorktreeRead(entryDir)); err != nil {
 			return err
 		}
+		// The semantic-shift guard runs BEFORE any write into the target
+		// tree (card t1791 audit round 8 finding 2): a refused launch must
+		// not leave hook files behind in the worktree it refused.
+		if !entryStripIsSemanticallyClean(view) {
+			return fmt.Errorf("enter the existing worktree %s: removing the worktree selection would shift the backend argument roles (a positional prompt would be consumed as another option's value); adjust the arguments so the prompt's position survives, or drop the -w name", entryDir)
+		}
 		// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill —
 		// applied only now that the admission above succeeded, so a refused
 		// launch leaves the tree untouched (audit F0, sync-audit-opus.md).
@@ -350,10 +356,6 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	filteredArgs = view.LaunchArgs
 	if entryDir != "" {
 		stripped, _ := stripWorktreeOptionsForBackend(view)
-		if !entryStripIsSemanticallyClean(view) {
-			endHandoff()
-			return fmt.Errorf("enter the existing worktree %s: removing the worktree selection would shift the backend argument roles (a positional prompt would be consumed as another option's value); adjust the arguments so the prompt's position survives, or drop the -w name", entryDir)
-		}
 		filteredArgs = stripped
 		// The chain ledger records the entered tree even though the backend
 		// argv no longer carries a selection for the populator to resolve

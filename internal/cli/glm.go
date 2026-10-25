@@ -366,6 +366,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		if err := ccWorktreeWriterPrecheck(entryWorktreeRead(entryDir)); err != nil {
 			return err
 		}
+		// The semantic-shift guard runs BEFORE any write into the target
+		// tree (card t1791 audit round 8 finding 2): a refused launch must
+		// not leave hook files behind in the worktree it refused.
+		if !entryStripIsSemanticallyClean(view) {
+			return fmt.Errorf("enter the existing worktree %s: removing the worktree selection would shift the backend argument roles (a positional prompt would be consumed as another option's value); adjust the arguments so the prompt's position survives, or drop the -w name", entryDir)
+		}
 		seedAdmittedWorktreeHooksFor(entryWorktreeRead(entryDir), cmd.ErrOrStderr())
 	} else {
 		seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
