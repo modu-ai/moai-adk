@@ -38,6 +38,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -403,26 +404,65 @@ func existingWorktreeEntryDir(view launchView) string {
 	}
 	// The candidate must be a REAL git worktree whose top level is the
 	// directory itself (card t1791 audit round 5 finding 1), and that top
-	// level must NOT be the primary checkout (card t1791 audit round 6
-	// finding 2): a symlink alias pointing at the primary resolves to the
-	// shared checkout, and entering it would drop the isolation the -w asked
-	// for. A candidate that fails either check answers "" (the launcher
-	// creates nothing; claude's own pass-through applies).
+	// level must NOT be the real primary checkout (card t1791 audit round 6
+	// finding 2, round 7 finding 1): a symlink alias pointing at the primary
+	// resolves to the shared checkout, and entering it would drop the
+	// isolation the -w asked for. The primary is resolved from the GIT
+	// COMMON DIRECTORY — findProjectRootFn answers the CALLING tree when the
+	// launch runs inside a linked worktree, which is not the primary the
+	// comparison needs. A candidate that fails either check answers "" (the
+	// launcher creates nothing; claude's own pass-through applies).
 	top := worktreeTopLevelFn(cands[0].Path)
 	if top == "" || entryCanonicalPath(top) != entryCanonicalPath(cands[0].Path) {
 		return ""
 	}
-	if entryCanonicalPath(top) == entryCanonicalPath(root) {
+	common, err := gitCommonDirFn(root)
+	if err != nil {
+		return ""
+	}
+	primaryRoot := entryCanonicalPath(filepath.Dir(common))
+	if entryCanonicalPath(top) == primaryRoot {
 		return "" // an alias of the primary checkout: no isolation to enter
 	}
 	return cands[0].Path
 }
 
+// gitCommonDirFn resolves the git common directory of dir, a seam for tests
+// (the production form runs `git -C <dir> rev-parse --git-common-dir`; the
+// common dir lives in the PRIMARY checkout, so its parent names the real
+// primary root even when dir is a linked worktree).
+var gitCommonDirFn = func(dir string) (string, error) {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--git-common-dir").Output()
+	if err != nil {
+		return "", err
+	}
+	p := strings.TrimSpace(string(out))
+	if p == "" {
+		return "", fmt.Errorf("empty common dir")
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(dir, p)
+	}
+	return p, nil
+}
+
 // worktreeTopLevelFn is the git top-level probe of the entry check, a seam
 // for tests (the production form runs `git -C <dir> rev-parse --show-toplevel`
-// and answers "" on any failure — a non-git directory has no top level).
+// with the inherited GIT_* environment scrubbed — an inherited GIT_WORK_TREE
+// or GIT_DIR would otherwise report whatever directory an attacker pointed
+// at, passing the validation for a directory that is no worktree; card t1791
+// audit round 7 finding 2 — and answers "" on any failure: a non-git
+// directory has no top level).
 var worktreeTopLevelFn = func(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--show-toplevel").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--show-toplevel")
+	env := make([]string, 0, len(os.Environ()))
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "GIT_") {
+			env = append(env, e)
+		}
+	}
+	cmd.Env = env
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}

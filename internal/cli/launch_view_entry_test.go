@@ -352,6 +352,50 @@ func TestEntryStrip_ClusterContinueSurvives(t *testing.T) {
 	}
 }
 
+// TestEntryDir_AliasRejectedWhenCalledFromALinkedWorktree — the alias check
+// anchors on the REAL primary (resolved from the git common directory), not
+// on findProjectRootFn's answer (card t1791 audit round 7 finding 1): when
+// the launch runs inside a LINKED worktree, findProjectRootFn names that
+// worktree, and an alias of the true primary must still be refused.
+func TestEntryDir_AliasRejectedWhenCalledFromALinkedWorktree(t *testing.T) {
+	primary := entryFixture(t)
+	if out, err := exec.Command("git", "-C", primary, "commit", "--allow-empty", "-q", "--allow-empty-message", "-m", "seed").CombinedOutput(); err != nil {
+		t.Fatalf("seed commit: %v\n%s", err, out)
+	}
+	linked := filepath.Join(t.TempDir(), "linked")
+	if out, err := exec.Command("git", "-C", primary, "worktree", "add", "-q", linked).CombinedOutput(); err != nil {
+		t.Fatalf("worktree add: %v\n%s", err, out)
+	}
+	mustMkdirTree(t, filepath.Join(primary, ".moai", "worktrees"))
+	alias := filepath.Join(primary, ".moai", "worktrees", "alias")
+	if err := os.Symlink(primary, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	// The launch runs inside the LINKED tree: the project-root seam names it.
+	orig := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return linked, nil }
+	defer func() { findProjectRootFn = orig }()
+	if got := entryDirFor(t, []string{"-w", "alias"}); got != "" {
+		t.Fatalf("entry dir = %q, want \"\" — the alias is the primary checkout even when the launch runs from a linked worktree", got)
+	}
+}
+
+// TestEntryDir_InheritedGitWorkTreeEnvCannotSpoofTheProbe — the top-level
+// probe scrubs the inherited GIT_* environment (card t1791 audit round 7
+// finding 2): GIT_WORK_TREE pointed at a plain non-git directory cannot make
+// the probe report that directory as a worktree top level, so the entry
+// stays "".
+func TestEntryDir_InheritedGitWorkTreeEnvCannotSpoofTheProbe(t *testing.T) {
+	primary := entryFixture(t)
+	name := "plain"
+	candidate := filepath.Join(primary, ".moai", "worktrees", name)
+	mustMkdirTree(t, candidate)
+	t.Setenv("GIT_WORK_TREE", candidate)
+	if got := entryDirFor(t, []string{"-w", name}); got != "" {
+		t.Fatalf("entry dir = %q, want \"\" — the inherited GIT_WORK_TREE must not pass the validation", got)
+	}
+}
+
 func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
 	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
 	rest, _ := stripWorktreeOptionsForBackend(view)
