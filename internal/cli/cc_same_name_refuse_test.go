@@ -45,8 +45,14 @@ func TestCCRefusesShortNameShadowedByMoaiTree(t *testing.T) {
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
 	}
-	if !strings.Contains(launch.err.Error(), "moai cc -w "+moai) {
-		t.Errorf("the refusal carries no absolute-path entry guidance: %q", launch.err.Error())
+	// Audit r1 P2-1 (rcpt-90420fa3, measured on claude 2.1.309): an absolute
+	// path as a --worktree value exits 1 with "Invalid worktree name", so the
+	// guidance must be the directory-entry form, never `-w <path>`.
+	if !strings.Contains(launch.err.Error(), "cd '"+moai+"' && moai cc") {
+		t.Errorf("the refusal carries no directory-entry guidance: %q", launch.err.Error())
+	}
+	if strings.Contains(launch.err.Error(), "moai cc -w") {
+		t.Errorf("the guidance names the measured-broken -w <path> form: %q", launch.err.Error())
 	}
 }
 
@@ -86,8 +92,36 @@ func TestGLMRefusesShortNameShadowedByMoaiTree(t *testing.T) {
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
 	}
-	if !strings.Contains(launch.err.Error(), "moai cc -w "+moai) {
-		t.Errorf("the refusal carries no absolute-path entry guidance: %q", launch.err.Error())
+	if !strings.Contains(launch.err.Error(), "cd '"+moai+"' && moai glm") {
+		t.Errorf("the refusal carries no directory-entry guidance: %q", launch.err.Error())
+	}
+	if strings.Contains(launch.err.Error(), "moai glm -w") {
+		t.Errorf("the guidance names the measured-broken -w <path> form: %q", launch.err.Error())
+	}
+}
+
+// TestCCRefusalSurvivesABrokenMoaiHome (audit r1 P2-2, rcpt-90420fa3): the
+// refusal's two-path check resolves the primary through the git common
+// directory, independent of the MoAI home metadata — a broken MOAI_HOME
+// must not bypass it into the duplicate-creation path.
+func TestCCRefusalSurvivesABrokenMoaiHome(t *testing.T) {
+	root := m2Repo(t)
+	home := filepath.Join(t.TempDir(), "moai-home")
+	if err := os.WriteFile(home, []byte("not a directory\n"), 0o644); err != nil {
+		t.Fatalf("write home file: %v", err)
+	}
+	t.Setenv(paths.EnvHome, home)
+	netScrubLaneEnv(t)
+	moai := filepath.Join(root, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, root, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("a broken MoAI home must not bypass the refusal: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
 	}
 }
 

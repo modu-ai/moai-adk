@@ -304,7 +304,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// Card t1791 (GH #1813): a short name shadowed by an existing MoAI tree
 	// with no native tree is refused before anything materializes — the
 	// refusal changes no argv; the entry guidance names the absolute path.
-	if err := refuseShadowedMoaiTreeName(view); err != nil {
+	if err := refuseShadowedMoaiTreeName(view, "cc"); err != nil {
 		endWt()
 		return err
 	}

@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -250,15 +251,18 @@ func existingWorktreeEntryDir(args []string) string {
 // name natively and silently create a duplicate branch tree beside the
 // MoAI tree (the 2026-10-08 lane-12 incident, GH #1813). The refusal is
 // pre-launch and argv-preserving — nothing is stripped, entered, or
-// rewritten; the existing tree is entered with the absolute-path form the
-// error names (`moai cc -w <absolute path>`), and both paths are spelled
-// from the primary checkout the resolution returns — the native side is
+// rewritten; the error guides into the existing tree by directory
+// (`cd '<path>' && moai <verb>` — audit r1 P2-1 measured claude 2.1.309
+// rejecting an absolute path as a --worktree value with "Invalid worktree
+// name", so `-w <path>` is never guided). Both paths are spelled from the
+// primary checkout resolved through the git common directory — independent
+// of the MoAI home metadata (audit r1 P2-2: a broken MOAI_HOME must not
+// bypass the check), and the probe failing refuses (fail closed) rather
+// than proceeding into the duplicate-creation path. The native side is
 // judged by its own existence (a native path aliasing the MoAI tree keeps
-// the existing behavior), never through a candidate list that dedups
-// same-directory spellings. Every non-judgment answers nil: no selection or
-// a bare one, an absolute or path-shaped value, an unresolvable root —
-// those keep the launcher's existing answers.
-func refuseShadowedMoaiTreeName(view launchView) error {
+// the existing behavior). Every non-judgment answers nil: no selection or a
+// bare one, an absolute or path-shaped value.
+func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 	if !view.Selection.Present || !view.Selection.HasValue {
 		return nil
 	}
@@ -270,20 +274,58 @@ func refuseShadowedMoaiTreeName(view launchView) error {
 	if err != nil {
 		return nil
 	}
-	res, err := worktreeroot.Resolve(root)
+	primary, err := moaiPrimaryRoot(root)
 	if err != nil {
-		return nil
+		return fmt.Errorf("refusing -w %s: the repository root cannot be resolved for the same-name safety check (%v); run from inside the repository and retry", value, err)
 	}
-	moaiDir := filepath.Join(res.PrimaryRoot, ".moai", "worktrees", value)
+	moaiDir := filepath.Join(primary, ".moai", "worktrees", value)
 	if fi, err := os.Stat(moaiDir); err != nil || !fi.IsDir() {
 		return nil
 	}
-	nativeDir := filepath.Join(res.PrimaryRoot, ".claude", "worktrees", value)
+	nativeDir := filepath.Join(primary, ".claude", "worktrees", value)
 	if _, err := os.Stat(nativeDir); err == nil {
 		return nil // the native tree exists (aliases included); claude re-enters it natively
 	}
-	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree by its absolute path:\n  moai cc -w %s",
-		value, moaiDir, value, value, moaiDir)
+	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree instead:\n  cd '%s' && moai %s",
+		value, moaiDir, value, value, moaiDir, verb)
+}
+
+// moaiPrimaryRoot resolves the primary checkout's root from dir through the
+// git common directory. It runs the probe with the inherited GIT_*
+// environment scrubbed — a planted GIT_WORK_TREE or GIT_DIR would redirect
+// it — and answers the symlink-resolved parent of the common dir.
+func moaiPrimaryRoot(dir string) (string, error) {
+	probe := exec.Command("git", "-C", dir, "rev-parse", "--git-common-dir")
+	probe.Env = scrubbedGitEnv()
+	out, err := probe.Output()
+	if err != nil {
+		return "", err
+	}
+	common := strings.TrimSpace(string(out))
+	if common == "" {
+		return "", fmt.Errorf("empty git-common-dir for %s", dir)
+	}
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(dir, common)
+	}
+	primary := filepath.Dir(common)
+	if real, err := filepath.EvalSymlinks(primary); err == nil {
+		primary = real
+	}
+	return primary, nil
+}
+
+// scrubbedGitEnv returns the process environment without any GIT_* variable.
+func scrubbedGitEnv() []string {
+	env := os.Environ()
+	out := env[:0]
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "GIT_") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return out
 }
 
 // stripWorktreeSelection removes the argv's first -w selection (both
