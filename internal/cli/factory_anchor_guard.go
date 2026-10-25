@@ -103,16 +103,23 @@ func nativeWorktreeDirName(name string) string {
 }
 
 // nativeWorktreePath is the tree `-w <value>` enters under the backend's own
-// .claude/worktrees. Claude 2.1.309 resolves the canonical (main) repository
-// root from the launch directory (the startup path reads ti(cwd), the
-// commondir-derived root), so a leader launched inside a linked worktree still
-// enters the main repository's tree. worktreeroot.Resolve is the repository's
-// primary-root resolver (the root worktreeroot.Candidates uses); where it
-// cannot name one the launch tree's top level stands.
+// .claude/worktrees. Claude 2.1.309 uses the canonical (main) repository root of
+// the launch directory: the directory above the common `.git` when the checkout
+// is a linked worktree, and the checkout's own root when there is no such
+// directory (a separate git dir, a bare repository). The guard reads the same
+// fact with `git rev-parse --git-common-dir` — read-only, repository-scoping
+// variables scrubbed like the other git calls here — and keeps the launch
+// tree's top level (shortWorktreeRoot) wherever the common dir is not named
+// `.git` or git cannot answer (card t1958). It does not use worktreeroot.Resolve,
+// which writes a project-key record and can fail for reasons the backend ignores.
 func nativeWorktreePath(root, value string) string {
 	base := shortWorktreeRoot(root)
-	if res, err := worktreeroot.Resolve(base); err == nil && res.PrimaryRoot != "" {
-		base = res.PrimaryRoot
+	cmd := exec.Command("git", "-C", base, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	cmd.Env = gitenv.Env()
+	if out, err := cmd.Output(); err == nil {
+		if common := strings.TrimSpace(string(out)); filepath.IsAbs(common) && filepath.Base(common) == ".git" {
+			base = filepath.Dir(common)
+		}
 	}
 	return filepath.Join(base, ".claude", "worktrees", nativeWorktreeDirName(value))
 }
@@ -128,7 +135,8 @@ func nativeWorktreePath(root, value string) string {
 // `-`, never name a home or legacy-root tree at launch (existingWorktreeEntryDir
 // rejects the slash and reads `-w -` as no value), so they skip the root lookup
 // and resolve to the native directory the backend enters, under the main
-// repository's .claude/worktrees (card t1958).
+// repository's .claude/worktrees as Claude Code 2.1.309 derives it
+// (nativeWorktreePath, card t1958).
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value

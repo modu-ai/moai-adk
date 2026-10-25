@@ -475,9 +475,11 @@ func optionalValueAfter(argv []string, i int) (string, bool) {
 }
 
 // worktreeValueAfter is optionalValueAfter for the worktree option: the backend
-// (claude 2.1.303) also takes a lone `-` as the value of -w/--worktree, so the
-// tree it enters is `.claude/worktrees/-`, not an auto-named one (card t1958).
-// Commander takes a lone `-` as the value of every optional-value option; this
+// also takes a lone `-` as the value of -w/--worktree (the issue measured claude
+// 2.1.303; the installed 2.1.309 bundle does the same), so the tree it enters is
+// `.claude/worktrees/-`, not an auto-named one (card t1958). In the installed
+// 2.1.309 bundle Commander takes a lone `-` as the value of every optional-value
+// option; this
 // stays worktree-only because the anchor guard is the only consumer of the
 // worktree selection and only the worktree option was measured and needed.
 func worktreeValueAfter(argv []string, i int) (string, bool) {

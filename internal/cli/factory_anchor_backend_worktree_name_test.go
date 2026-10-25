@@ -16,11 +16,13 @@ package cli
 // the --branch materializer are substituted.
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
@@ -231,6 +233,106 @@ func assertOtherRootsIgnored(t *testing.T, value, dir string) {
 					}
 				})
 			}
+		}
+	}
+}
+
+// backendRootValues are the two values the guard resolves to the native
+// directory without the root lookup.
+var backendRootValues = []struct{ value, dir string }{{"feature/foo", "feature+foo"}, {"-", "-"}}
+
+// assertMainRootRefused launches the leader from a linked worktree on a plain
+// branch, with a WT- tree at the MAIN repository's .claude/worktrees/<dir>
+// (where claude 2.1.309 enters), after setup has disturbed the environment: the
+// launch must be refused.
+func assertMainRootRefused(t *testing.T, setup func(t *testing.T, fx *leaderFixture)) {
+	t.Helper()
+	pinSnapshotModel(t)
+	for _, arm := range leaderArms {
+		for _, v := range backendRootValues {
+			t.Run(arm+"/"+v.dir, func(t *testing.T) {
+				fx := newLeaderFixture(t)
+				tree := addBackendNamedTree(t, fx, v.dir, "WT-native")
+				t.Chdir(filepath.Join(fx.root, ".claude", "worktrees", "plain"))
+				setup(t, fx)
+				obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", v.value})
+				assertRefusedBeforeMutation(t, v.dir, obs)
+				refusalNames(t, v.dir, obs, tree, "WT-native")
+			})
+		}
+	}
+}
+
+// TestLauncherAnchorBackendWorktreeNameResolveFailure: the backend enters the
+// main root whatever MOAI_HOME holds, so a worktreeroot.Resolve that fails
+// (MOAI_HOME/worktrees is a regular file) must not change the guard's answer.
+func TestLauncherAnchorBackendWorktreeNameResolveFailure(t *testing.T) {
+	assertMainRootRefused(t, func(t *testing.T, _ *leaderFixture) {
+		if err := os.WriteFile(filepath.Join(os.Getenv("MOAI_HOME"), "worktrees"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := worktreeroot.Resolve("."); err == nil {
+			t.Fatal("the fixture no longer makes worktreeroot.Resolve fail")
+		}
+	})
+}
+
+// TestLauncherAnchorBackendWorktreeNameInheritedGitDir: an inherited GIT_DIR
+// outranks `git -C`; the root lookup must scrub it like the rest of the guard
+// (anchorBranchOfTree, shortWorktreeRoot), and the backend, which walks the
+// file system, is unaffected by it.
+func TestLauncherAnchorBackendWorktreeNameInheritedGitDir(t *testing.T) {
+	assertMainRootRefused(t, func(t *testing.T, _ *leaderFixture) {
+		other, err := filepath.EvalSymlinks(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		anchorGit(t, other, "init", "-q")
+		t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+	})
+}
+
+// TestLauncherAnchorBackendWorktreeNameSeparateGitDir: in a `git init
+// --separate-git-dir` checkout the common dir is not named `.git`, so it has no
+// "main checkout above it". Claude 2.1.309 reads the checkout's own `.git` file,
+// finds no commondir and uses the checkout root itself; the guard falls back to
+// the launch tree's top level, not the parent of the metadata directory.
+func TestLauncherAnchorBackendWorktreeNameSeparateGitDir(t *testing.T) {
+	pinSnapshotModel(t)
+	for _, arm := range leaderArms {
+		for _, v := range backendRootValues {
+			t.Run(arm+"/"+v.dir, func(t *testing.T) {
+				tmp, err := filepath.EvalSymlinks(t.TempDir())
+				if err != nil {
+					t.Fatal(err)
+				}
+				repo := filepath.Join(tmp, "proj")
+				if err := os.MkdirAll(filepath.Join(tmp, "meta"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				anchorGit(t, tmp, "init", "-q", "--separate-git-dir", filepath.Join(tmp, "meta", "store"), repo)
+				anchorGit(t, repo, "config", "user.email", "anchor-test@example.com")
+				anchorGit(t, repo, "config", "user.name", "Anchor Test")
+				anchorGit(t, repo, "config", "commit.gpgsign", "false")
+				if err := os.MkdirAll(filepath.Join(repo, ".moai"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				anchorGit(t, repo, "add", "README.md")
+				anchorGit(t, repo, "commit", "-q", "-m", "seed")
+				t.Setenv(config.EnvClaudeProjectDir, repo)
+				withCodexProjectRoot(t, repo)
+				t.Setenv("MOAI_HOME", t.TempDir())
+				netScrubLaneEnv(t)
+				fx := &leaderFixture{root: repo, base: anchorGit(t, repo, "branch", "--show-current")}
+				tree := addBackendNamedTree(t, fx, v.dir, "WT-native")
+				t.Chdir(repo)
+				obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", v.value})
+				assertRefusedBeforeMutation(t, v.dir, obs)
+				refusalNames(t, v.dir, obs, tree, "WT-native")
+			})
 		}
 	}
 }
