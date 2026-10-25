@@ -1,6 +1,8 @@
 package template
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,6 +57,80 @@ func BuildSmartPATH() string {
 func isExistingDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// SyncLocalSettingsPATH refreshes env.PATH in the project's
+// .claude/settings.local.json (gitignored) with
+// "<inherited><sep><smartPath>" (GH #1827, card t1957 audit resolution).
+//
+// The COMMITTED project settings.json keeps a machine-independent PATH
+// (SmartPATH only) — baking the launcher's session PATH there caused
+// cross-machine re-render churn and unbounded accumulation across in-session
+// updates, and partially reversed the #467 design. Claude Code merges local
+// env key-by-key over the project file (official settings docs: "when more
+// than one settings file sets a variable, the highest-precedence one
+// applies"), so the local PATH wins for this machine without disturbing the
+// project file's other env entries.
+//
+// The value is rebuilt from the launcher's fresh capture on every run: a
+// previous env.PATH already in the file is never read back, so repeated
+// updates cannot accumulate paths. Every other key in the file — other env
+// entries and any sibling settings keys — is preserved verbatim.
+//
+// The written value is plain data, not template output: it never passes the
+// renderer's unexpanded-token validation, so a PATH segment containing a
+// literal "$VAR" reference cannot fail init/update.
+func SyncLocalSettingsPATH(projectRoot, inheritedPath, smartPath string) error {
+	return syncLocalSettingsPathFor(runtime.GOOS, projectRoot, inheritedPath, smartPath)
+}
+
+// syncLocalSettingsPathFor is the GOOS-injected core of SyncLocalSettingsPATH.
+func syncLocalSettingsPathFor(goos, projectRoot, inheritedPath, smartPath string) error {
+	value := smartPath
+	if inheritedPath != "" {
+		sep := ":"
+		if goos == "windows" {
+			sep = ";"
+		}
+		value = inheritedPath + sep + smartPath
+	}
+
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.local.json")
+	doc := map[string]any{}
+	if raw, err := os.ReadFile(settingsPath); err == nil {
+		if len(raw) > 0 {
+			if err := json.Unmarshal(raw, &doc); err != nil {
+				return fmt.Errorf("parse %s: %w", settingsPath, err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("read %s: %w", settingsPath, err)
+	}
+
+	env, ok := doc["env"].(map[string]any)
+	if !ok || env == nil {
+		env = map[string]any{}
+	}
+	env["PATH"] = value
+	doc["env"] = env
+
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode %s: %w", settingsPath, err)
+	}
+	out = append(out, '\n')
+
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", filepath.Dir(settingsPath), err)
+	}
+	tmp := settingsPath + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, settingsPath); err != nil {
+		return fmt.Errorf("replace %s: %w", settingsPath, err)
+	}
+	return nil
 }
 
 // @MX:ANCHOR: [AUTO] buildSmartPATHFor is the GOOS-injected, deterministic core of BuildSmartPATH

@@ -265,15 +265,6 @@ func TestNewTemplateContext_WithOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithInheritedPATH",
-			opt:  WithInheritedPATH("/venv/bin:/custom"),
-			checkFn: func(t *testing.T, ctx *TemplateContext) {
-				if ctx.InheritedPATH != "/venv/bin:/custom" {
-					t.Errorf("InheritedPATH = %q, want %q", ctx.InheritedPATH, "/venv/bin:/custom")
-				}
-			},
-		},
-		{
 			name: "WithModelPolicy_low",
 			opt:  WithModelPolicy("low"),
 			checkFn: func(t *testing.T, ctx *TemplateContext) {

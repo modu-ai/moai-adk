@@ -468,7 +468,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
-					template.WithInheritedPATH(os.Getenv("PATH")),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
@@ -627,12 +626,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// Seam-routed per REQ-UGE-004 (test isolation).
 				homeDir, _ := userHomeDirFn()
 				goBinPath := detectGoBinPathForUpdate(homeDir)
+				smartPath := template.BuildSmartPATH()
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
 					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
-					template.WithSmartPATH(template.BuildSmartPATH()),
-					template.WithInheritedPATH(os.Getenv("PATH")),
+					template.WithSmartPATH(smartPath),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
@@ -644,6 +643,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					captureTemplateDeployFailure(deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
+				}
+				// GH #1827 (card t1957): the committed settings.json keeps
+				// SmartPATH only (machine-independent); this machine's session
+				// PATH goes to the gitignored settings.local.json, merged
+				// key-by-key over the project file. Rebuilt from a fresh capture
+				// every run — never inherited from the file's previous value.
+				// Best-effort non-blocking; a failure is a warning on errOut,
+				// matching the snapshot writes below.
+				if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
+					_, _ = fmt.Fprintf(errOut, "  settings.local.json env.PATH refresh failed: %v\n", err)
 				}
 				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
 				// settings.json render this deploy wrote, before the Restore
