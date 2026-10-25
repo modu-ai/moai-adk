@@ -7,11 +7,14 @@ package cli
 // mechanised form of closing a SPEC-less card on a verdict; absent or failing,
 // the card is refused — nothing is pushed, no pull request is opened. The
 // triple's own condition table is TestMergeTripleSpecLessVerdict in
-// internal/factorylane; this half pins the delivery edge that consumes it and
-// the git-flow surface that must not move.
+// internal/factorylane; this half pins the delivery edge that consumes it and,
+// since GH #1913 (card t1959), the `merge ready` verb reaching the same
+// SPEC-less condition (a) — an omitted --spec, or the card id as --spec,
+// closes on the verdict file instead of being refused.
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -100,23 +103,150 @@ func TestMergeReadinessBeforePRSpecLess(t *testing.T) {
 	}
 }
 
-// git-flow does not move: `merge ready` still requires a SPEC id and never reads
-// a verdict file in its place, so a SPEC-less card is refused there exactly as
-// before this follow-up. (`factory complete` under git-flow never runs the
-// triple at all — TestFactoryCompleteWindowGitFlowUnchanged.)
-func TestFactoryMergeReadySpecLessGitFlowUnchanged(t *testing.T) {
-	repo, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
+// gitHead reads the fixture repo's HEAD — the commit a bound audited_sha
+// must name.
+func gitHead(t *testing.T, repo string) string {
+	t.Helper()
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = repo
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("rev-parse HEAD: %v", err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// GH #1913 (card t1959): `merge ready` accepts a SPEC-less Class B card —
+// `--spec` omitted, or the card id passed as `--spec`, keeps SpecDir empty
+// and condition (a) closes on the card's verdict file (merge_specless.go).
+// The gate itself does not move: a card WITH a SPEC keeps the progress.md
+// record as its evidence, and the verdict file is read under the same
+// admission rules (PASS label + audited_sha binding).
+func TestFactoryMergeReadySpecLessOnVerdictFile(t *testing.T) {
+	cases := []struct {
+		name string
+		spec []string // the --spec argv, if any, after "--card t9001"
+	}{
+		{"spec_omitted", nil},
+		{"spec_is_card_id", []string{"--spec", "t9001"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
+			writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+			dir := filepath.Join(repo, ".moai", "reports", "t9001")
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			body := "verdict: PASS\naudited_sha: " + gitHead(t, repo) + "\n"
+			if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			args := append([]string{"merge", "ready", "--card", "t9001"}, tc.spec...)
+			args = append(args, "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+			out, err := runFactoryMerge(t, args...)
+			if err != nil || !strings.Contains(out, `"verdict":"cleared"`) {
+				t.Fatalf("SPEC-less merge ready (%s): err=%v out=%s; want a cleared verdict", tc.name, err, out)
+			}
+			lock := readLockRoot(t, lockRoot)
+			if !lock.Held() || lock.SessionName != "lane-9" || lock.Card != "t9001" {
+				t.Fatalf("window not taken for the SPEC-less card: %+v", lock)
+			}
+		})
+	}
+}
+
+// The SPEC-less acceptance is the verdict file, not an open gate: with no
+// verdict file the card is refused by condition (a) — the refusal names the
+// evidence path and its required machine lines, and no window is taken.
+func TestFactoryMergeReadySpecLessWithoutVerdictRefused(t *testing.T) {
+	_, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
 	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+
+	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+	if err != nil {
+		t.Fatalf("a condition refusal is a verdict, not an error: %v", err)
+	}
+	for _, want := range []string{".moai/reports/t9001/verdict.md", "verdict: PASS", "sync-audit"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the SPEC-less refusal lacks %q: %s", want, out)
+		}
+	}
+	if lock := readLockRoot(t, lockRoot); lock.Held() {
+		t.Errorf("a refused SPEC-less card took the window: %+v", lock)
+	}
+}
+
+// F1 (GH #1913, leader ruling): the SPEC/SPEC-less routing consults the
+// factory record's SpecID, not the caller's flag alone — a card whose
+// record carries a SPEC is NOT cleared by a verdict file alone when
+// --spec is omitted; it takes the SPEC path, whose progress.md evidence
+// is what condition (a) reads.
+func TestFactoryMergeReadyRecordSpecIDKeepsSpecPathOnOmittedFlag(t *testing.T) {
+	repo, lockRoot, specID := mergeReadyFixture(t, "audit-ready", "lane-9", "sess-lane-9")
+	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+	// The factory record names a SPEC; the SPEC's progress.md reads
+	// audit-ready, so the SPEC path refuses on condition (a).
+	db := fcOpen(t, repo)
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES('run-f1','','','active','{}',0,'',1,datetime('now'),datetime('now'))`); err != nil {
+		t.Fatalf("place run: %v", err)
+	}
+	if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after,spec_id,bundle_id) VALUES('run-f1','t9001','lane-9','merge-ready',1,'',datetime('now'),'','','','','','','','','','','',?,'')`, specID); err != nil {
+		t.Fatalf("place card: %v", err)
+	}
+	_ = db.Close()
+	// A valid verdict file sits in the tree — it must NOT be the evidence
+	// for a card whose record carries a SPEC.
 	dir := filepath.Join(repo, ".moai", "reports", "t9001")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte("verdict: PASS\naudited_sha: "+strings.Repeat("c", 40)+"\n"), 0o600); err != nil {
+	body := "verdict: PASS\naudited_sha: " + gitHead(t, repo) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--spec", "", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
-	if err == nil || !strings.Contains(err.Error(), "--spec is required") {
-		t.Fatalf("merge ready with an empty --spec: err=%v out=%s; want the --spec is required refusal", err, out)
+
+	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+	if err != nil {
+		t.Fatalf("a condition refusal is a verdict, not an error: %v", err)
+	}
+	if strings.Contains(out, `"verdict":"cleared"`) {
+		t.Fatalf("a card whose record carries SPEC %s was cleared on the verdict file alone:\n%s", specID, out)
+	}
+	if !strings.Contains(out, "sync-audit") {
+		t.Errorf("the refusal does not name the failing SPEC-path condition: %s", out)
+	}
+	if lock := readLockRoot(t, lockRoot); lock.Held() {
+		t.Errorf("a refused card took the window: %+v", lock)
+	}
+}
+
+// F4/D1 (codex round 2, leader ruling): an AMBIGUOUS_FACTORY resolution
+// must refuse even when one candidate run id happens to carry the
+// NO_ACTIVE_FACTORY literal — a poisoned id used to flip the ambiguity
+// into the SPEC-less fallback (strings.Contains) and clear on a verdict
+// file alone. The classification is now the factorymsg sentinel.
+func TestFactoryMergeReadyAmbiguousRunWithPoisonedIDRefuses(t *testing.T) {
+	repo, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
+	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+	// Two owner-live runs — real ambiguity — one id carrying the literal.
+	seedLiveRun(t, repo, "run-NO_ACTIVE_FACTORY-x")
+	seedLiveRun(t, repo, "run-b")
+	// A valid verdict file sits in the tree; under the misclassification
+	// it cleared the card on this file alone.
+	dir := filepath.Join(repo, ".moai", "reports", "t9001")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "verdict: PASS\naudited_sha: " + gitHead(t, repo) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+	if err == nil || !strings.Contains(err.Error(), "AMBIGUOUS_FACTORY") {
+		t.Fatalf("an ambiguous run context with a poisoned candidate id must refuse naming the ambiguity: err=%v", err)
 	}
 	if lock := readLockRoot(t, lockRoot); lock.Held() {
 		t.Errorf("a refused merge ready took the window: %+v", lock)
