@@ -177,3 +177,47 @@ func TestFactoryMergeReadySpecLessWithoutVerdictRefused(t *testing.T) {
 		t.Errorf("a refused SPEC-less card took the window: %+v", lock)
 	}
 }
+
+// F1 (GH #1913, leader ruling): the SPEC/SPEC-less routing consults the
+// factory record's SpecID, not the caller's flag alone — a card whose
+// record carries a SPEC is NOT cleared by a verdict file alone when
+// --spec is omitted; it takes the SPEC path, whose progress.md evidence
+// is what condition (a) reads.
+func TestFactoryMergeReadyRecordSpecIDKeepsSpecPathOnOmittedFlag(t *testing.T) {
+	repo, lockRoot, specID := mergeReadyFixture(t, "audit-ready", "lane-9", "sess-lane-9")
+	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+	// The factory record names a SPEC; the SPEC's progress.md reads
+	// audit-ready, so the SPEC path refuses on condition (a).
+	db := fcOpen(t, repo)
+	if _, err := db.DB.Exec(`INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at) VALUES('run-f1','','','active','{}',0,'',1,datetime('now'),datetime('now'))`); err != nil {
+		t.Fatalf("place run: %v", err)
+	}
+	if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after,spec_id,bundle_id) VALUES('run-f1','t9001','lane-9','merge-ready',1,'',datetime('now'),'','','','','','','','','','','',?,'')`, specID); err != nil {
+		t.Fatalf("place card: %v", err)
+	}
+	_ = db.Close()
+	// A valid verdict file sits in the tree — it must NOT be the evidence
+	// for a card whose record carries a SPEC.
+	dir := filepath.Join(repo, ".moai", "reports", "t9001")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "verdict: PASS\naudited_sha: " + gitHead(t, repo) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+	if err != nil {
+		t.Fatalf("a condition refusal is a verdict, not an error: %v", err)
+	}
+	if strings.Contains(out, `"verdict":"cleared"`) {
+		t.Fatalf("a card whose record carries SPEC %s was cleared on the verdict file alone:\n%s", specID, out)
+	}
+	if !strings.Contains(out, "sync-audit") {
+		t.Errorf("the refusal does not name the failing SPEC-path condition: %s", out)
+	}
+	if lock := readLockRoot(t, lockRoot); lock.Held() {
+		t.Errorf("a refused card took the window: %+v", lock)
+	}
+}

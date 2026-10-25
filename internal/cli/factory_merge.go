@@ -14,7 +14,9 @@ package cli
 // because what a lane does with the answer is the lane's doctrine move.
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -25,6 +27,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -74,18 +77,25 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			if strings.TrimSpace(card) == "" {
 				return fmt.Errorf("factory merge ready: --card is required")
 			}
-			// A SPEC-less Class B card reaches merge ready on its verdict
-			// file (GH #1913): an omitted --spec, or the card id passed as
-			// --spec, keeps SpecDir empty and the triple closes condition
-			// (a) on .moai/reports/<card>/verdict.md (merge_specless.go).
-			// A card with a SPEC keeps its progress.md record as its
-			// evidence — the SPEC path and every other gate are unchanged.
-			if strings.TrimSpace(specID) == "" || specID == card {
-				specID = ""
-			}
+			// F1 (GH #1913, leader ruling): the SPEC/SPEC-less routing
+			// consults the factory record's SpecID, not the caller's flag
+			// alone. An omitted --spec — or the card id passed as --spec —
+			// defers to the record: a card with a registered SPEC keeps
+			// its progress.md gate; only a record-empty or record-absent
+			// card takes the SPEC-less verdict-file path
+			// (.moai/reports/<card>/verdict.md, merge_specless.go). An
+			// explicit --spec naming a SPEC id is unchanged, and so is
+			// every other gate.
 			root, err := os.Getwd()
 			if err != nil {
 				return err
+			}
+			if strings.TrimSpace(specID) == "" || specID == card {
+				rec, recErr := factoryRecordSpecID(root, card)
+				if recErr != nil {
+					return recErr
+				}
+				specID = rec
 			}
 			if strings.TrimSpace(branch) == "" {
 				branch = currentBranch()
@@ -295,6 +305,37 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session id to record as the window holder (default: this session)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Emit machine-readable JSON")
 	return cmd
+}
+
+// factoryRecordSpecID reads the SpecID recorded on cardID's factory
+// record: the recorded id, or "" when the record cannot name one — no
+// active run, no database, or no record for this card (the verb has
+// always served such unrecorded cards SPEC-less). Resolving a run
+// context that is ambiguous (several active runs) is an error, not a
+// guess: the routing consults a record or refuses, it never half-reads.
+// A SPEC-card record whose SPEC fails its gate still refuses on the SPEC
+// path — the record only chooses which gate judges the card.
+func factoryRecordSpecID(root, cardID string) (string, error) {
+	runID, err := resolveFactoryCardRun(context.Background(), root, "")
+	if err != nil {
+		if strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
+			return "", nil // no factory run context — the verb's standing SPEC-less service
+		}
+		return "", fmt.Errorf("factory merge ready: resolving card %s's factory run: %w", cardID, err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return "", fmt.Errorf("factory merge ready: reading card %s's factory record: %w", cardID, err)
+	}
+	defer func() { _ = db.Close() }()
+	rec, err := db.LoadCard(context.Background(), runID, cardID)
+	if err != nil {
+		if errors.Is(err, homestate.ErrCardNotFound) {
+			return "", nil // unrecorded card — SPEC-less, as the verb has always served it
+		}
+		return "", fmt.Errorf("factory merge ready: reading card %s's factory record: %w", cardID, err)
+	}
+	return rec.SpecID, nil
 }
 
 // newFactoryMergeGateCommand is the REQ-FLA-011 gate: refuse unless a live
