@@ -477,8 +477,9 @@ func optionalValueAfter(argv []string, i int) (string, bool) {
 // worktreeValueAfter is optionalValueAfter for the worktree option: the backend
 // (claude 2.1.303) also takes a lone `-` as the value of -w/--worktree, so the
 // tree it enters is `.claude/worktrees/-`, not an auto-named one (card t1958).
-// Other optional-value options keep optionalValueAfter: the lone dash is
-// measured for the worktree option only.
+// Commander takes a lone `-` as the value of every optional-value option; this
+// stays worktree-only because the anchor guard is the only consumer of the
+// worktree selection and only the worktree option was measured and needed.
 func worktreeValueAfter(argv []string, i int) (string, bool) {
 	if i+1 < len(argv) && argv[i+1] == "-" {
 		return "-", true

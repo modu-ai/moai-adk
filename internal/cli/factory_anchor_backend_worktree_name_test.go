@@ -161,25 +161,73 @@ func TestLauncherAnchorBackendWorktreeNameNonLeader(t *testing.T) {
 // .claude/worktrees/feature+foo.
 func TestLauncherAnchorBackendWorktreeNameSlashIgnoresOtherRoots(t *testing.T) {
 	pinSnapshotModel(t)
+	assertOtherRootsIgnored(t, "feature/foo", "feature+foo")
+}
+
+// TestLauncherAnchorBackendWorktreeNameDashIgnoresOtherRoots is the same for a
+// lone `-`: existingWorktreeEntryDir reads `-w -` as no value, so the launch
+// enters .claude/worktrees/- and a card tree named `-` under another root must
+// not condemn it.
+func TestLauncherAnchorBackendWorktreeNameDashIgnoresOtherRoots(t *testing.T) {
+	pinSnapshotModel(t)
+	assertOtherRootsIgnored(t, "-", "-")
+}
+
+// TestLauncherAnchorBackendWorktreeNameFromLinkedWorktree launches the leader
+// from a linked worktree on a plain branch. Claude 2.1.309 creates and enters
+// `-w <name>` under the MAIN repository's .claude/worktrees (the startup path
+// resolves the canonical git root, not the launch tree's top level), so a WT-
+// tree there is the anchor and a plain one is not.
+func TestLauncherAnchorBackendWorktreeNameFromLinkedWorktree(t *testing.T) {
+	pinSnapshotModel(t)
+	for _, arm := range leaderArms {
+		for _, tc := range []struct {
+			value, dir string
+		}{{"feature/foo", "feature+foo"}, {"-", "-"}} {
+			for _, branch := range []string{"WT-main-side", "plain-main-side"} {
+				t.Run(arm+"/"+tc.dir+"/"+branch, func(t *testing.T) {
+					fx := newLeaderFixture(t)
+					tree := addBackendNamedTree(t, fx, tc.dir, branch)
+					t.Chdir(filepath.Join(fx.root, ".claude", "worktrees", "plain"))
+					obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", tc.value})
+					if strings.HasPrefix(branch, "WT-") {
+						assertRefusedBeforeMutation(t, tc.dir, obs)
+						refusalNames(t, tc.dir, obs, tree, branch)
+						return
+					}
+					if obs.err != nil || !obs.launched {
+						t.Errorf("a plain tree under the main repository must launch: err=%v launched=%v", obs.err, obs.launched)
+					}
+				})
+			}
+		}
+	}
+}
+
+// assertOtherRootsIgnored launches `-f -- -w <value>` on both arms with a
+// WT- tree named dir under the home root or the .moai root and the native
+// .claude/worktrees/<dir> on a plain branch or absent: every launch proceeds.
+func assertOtherRootsIgnored(t *testing.T, value, dir string) {
+	t.Helper()
 	for _, arm := range leaderArms {
 		for _, other := range []string{"home", "legacy-moai"} {
 			for _, native := range []string{"plain branch", "absent"} {
 				t.Run(arm+"/"+other+"/native "+native, func(t *testing.T) {
 					fx := newLeaderFixture(t)
-					otherPath := filepath.Join(fx.root, ".moai", "worktrees", "feature+foo")
+					otherPath := filepath.Join(fx.root, ".moai", "worktrees", dir)
 					if other == "home" {
 						var err error
-						if otherPath, err = worktreeroot.PathFor(fx.root, "feature+foo"); err != nil {
+						if otherPath, err = worktreeroot.PathFor(fx.root, dir); err != nil {
 							t.Fatalf("resolve the home-root destination: %v", err)
 						}
 					}
 					anchorGit(t, fx.root, "worktree", "add", "-q", "-b", "WT-other-root", otherPath, fx.base)
 					if native == "plain branch" {
-						addBackendNamedTree(t, fx, "feature+foo", "plain-slash")
+						addBackendNamedTree(t, fx, dir, "plain-native")
 					}
-					obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", "feature/foo"})
+					obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", value})
 					if obs.err != nil || !obs.launched {
-						t.Errorf("a card tree under the %s root must not condemn a launch into .claude/worktrees/feature+foo: err=%v launched=%v", other, obs.err, obs.launched)
+						t.Errorf("a card tree under the %s root must not condemn a launch into .claude/worktrees/%s: err=%v launched=%v", other, dir, obs.err, obs.launched)
 					}
 				})
 			}

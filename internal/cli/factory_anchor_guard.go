@@ -102,6 +102,21 @@ func nativeWorktreeDirName(name string) string {
 	return strings.ReplaceAll(name, "/", "+")
 }
 
+// nativeWorktreePath is the tree `-w <value>` enters under the backend's own
+// .claude/worktrees. Claude 2.1.309 resolves the canonical (main) repository
+// root from the launch directory (the startup path reads ti(cwd), the
+// commondir-derived root), so a leader launched inside a linked worktree still
+// enters the main repository's tree. worktreeroot.Resolve is the repository's
+// primary-root resolver (the root worktreeroot.Candidates uses); where it
+// cannot name one the launch tree's top level stands.
+func nativeWorktreePath(root, value string) string {
+	base := shortWorktreeRoot(root)
+	if res, err := worktreeroot.Resolve(base); err == nil && res.PrimaryRoot != "" {
+		base = res.PrimaryRoot
+	}
+	return filepath.Join(base, ".claude", "worktrees", nativeWorktreeDirName(value))
+}
+
 // resolveWorktreeLaunchTarget maps a worktree option value to the tree path the
 // backend would launch into: an absolute path names the tree directly; a short
 // name resolves across the three roots (SPEC-WORKTREE-HOME-ROOT-001 M3,
@@ -109,16 +124,17 @@ func nativeWorktreeDirName(name string) string {
 // legacy .claude spelling and an ambiguous name falls back to it (the anchor
 // guard reports what it can; REQ-WHR-022's no-guessing rule binds the
 // launching lookups). A value naming no existing tree cannot be an anchor —
-// anchorBranchOfTree reads it as empty. A name containing a slash never names a
-// home or legacy-root tree at launch (existingWorktreeEntryDir rejects it), so
-// it skips the root lookup and resolves to the native directory the backend
-// enters (card t1958).
+// anchorBranchOfTree reads it as empty. A name containing a slash, and a lone
+// `-`, never name a home or legacy-root tree at launch (existingWorktreeEntryDir
+// rejects the slash and reads `-w -` as no value), so they skip the root lookup
+// and resolve to the native directory the backend enters, under the main
+// repository's .claude/worktrees (card t1958).
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
 	}
-	if strings.Contains(value, "/") {
-		return filepath.Join(shortWorktreeRoot(root), ".claude", "worktrees", nativeWorktreeDirName(value))
+	if value == "-" || strings.Contains(value, "/") {
+		return nativeWorktreePath(root, value)
 	}
 	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
 		return cands[0].Path
