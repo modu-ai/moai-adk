@@ -1798,6 +1798,37 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 		}
 	})
 
+	// card-review r5 P2: a file whose whole content is `null` unmarshals to a
+	// nil map without error — the refresh must reset it, not panic.
+	t.Run("null file content refreshes without panic", func(t *testing.T) {
+		root := t.TempDir()
+		p := filepath.Join(root, ".claude", "settings.local.json")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if err := os.WriteFile(p, []byte("null"), 0o600); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		if err := syncLocalSettingsPathFor("darwin", root, "/fresh", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, ok := doc["env"].(map[string]any)
+		if !ok {
+			t.Fatal("missing env section after null-file refresh")
+		}
+		if got, _ := env["PATH"].(string); got != "/fresh:"+smart {
+			t.Errorf("env.PATH = %q, want fresh join", got)
+		}
+	})
+
 	// card-review r3 P1: settings.local.json is credential-bearing and
 	// pre-existing writers keep it 0600 — the replacement must not widen the
 	// mode through a 0644 temp file.

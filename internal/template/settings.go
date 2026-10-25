@@ -126,6 +126,12 @@ func syncLocalSettingsPathFor(goos, projectRoot, inheritedPath, smartPath string
 			if err := json.Unmarshal(raw, &doc); err != nil {
 				return fmt.Errorf("parse %s: %w", settingsPath, err)
 			}
+			// A file whose entire content is `null` unmarshals without error
+			// into a nil map; assigning into it would panic and abort the
+			// whole launcher run for what is only a PATH refresh (r5 P2).
+			if doc == nil {
+				doc = map[string]any{}
+			}
 		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("read %s: %w", settingsPath, err)
