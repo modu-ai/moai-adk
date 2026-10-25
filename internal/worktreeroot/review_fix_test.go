@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -26,26 +27,34 @@ func wrTreeHash(t *testing.T, dir string) map[string][2]string {
 	t.Helper()
 	out := map[string][2]string{}
 	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
 		rel, rerr := filepath.Rel(dir, path)
 		if rerr != nil {
 			return rerr
 		}
-		info, ierr := d.Info()
-		if ierr != nil {
-			return ierr
-		}
 		var entry [2]string
-		entry[0] = info.Mode().String()
-		if !info.IsDir() {
-			body, rerr := os.ReadFile(path)
-			if rerr != nil {
-				return rerr
+		switch {
+		case err != nil:
+			// The walk itself failed for this path (e.g. an unreadable
+			// directory): keep the path in the map with the reason, so a
+			// Plan-created artifact can never escape the diff by being
+			// un-readable (audit F1 — the base fold kept rel+mode here).
+			entry[0] = "WALKERR:" + err.Error()
+		default:
+			info, ierr := d.Info()
+			if ierr != nil {
+				entry[0] = "INFOERR:" + ierr.Error()
+				break
 			}
-			sum := sha256.Sum256(body)
-			entry[1] = fmt.Sprintf("%x", sum)
+			entry[0] = info.Mode().String()
+			if !info.IsDir() {
+				body, rerr := os.ReadFile(path)
+				if rerr != nil {
+					entry[1] = "READERR:" + rerr.Error()
+					break
+				}
+				sum := sha256.Sum256(body)
+				entry[1] = fmt.Sprintf("%x", sum)
+			}
 		}
 		out[rel] = entry
 		return nil
@@ -257,5 +266,40 @@ func TestPlan_ExistingFolderOwnedBySelf(t *testing.T) {
 	}
 	if after := rfxWalkHash(t, wrProjects(home)); after != before {
 		t.Errorf("Plan wrote inside the home root (hash changed)")
+	}
+}
+
+// TestWalkHash_KeepsReadFailureEntries pins the audit F1 repair (card
+// t1954): a path that cannot be read stays in the wrTreeHash map as a
+// READERR sentinel instead of being dropped, so a Plan-created unreadable
+// artifact cannot escape the before/after diff by being un-readable. The
+// mutation lives entirely inside the fixture's own t.TempDir — the real
+// working tree is never touched.
+func TestWalkHash_KeepsReadFailureEntries(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod-000 unreadability is POSIX-only")
+	}
+	repo := wrRepo(t, "readerr-repo")
+	before := wrTreeHash(t, repo)
+
+	secret := filepath.Join(repo, "unreadable.bin")
+	if err := os.WriteFile(secret, []byte("unreachable\n"), 0o600); err != nil {
+		t.Fatalf("write secret: %v", err)
+	}
+	if err := os.Chmod(secret, 0o000); err != nil {
+		t.Fatalf("chmod 000: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(secret, 0o644) })
+
+	after := wrTreeHash(t, repo)
+	entry, ok := after["unreadable.bin"]
+	if !ok {
+		t.Fatal("the unreadable file is missing from the map — read-failure entries are being dropped (audit F1)")
+	}
+	if !strings.Contains(entry[1], "READERR:") {
+		t.Errorf("entry[1] = %q, want a READERR sentinel", entry[1])
+	}
+	if diff := wrTreeDiff(before, after); !strings.Contains(diff, "unreadable.bin") {
+		t.Errorf("wrTreeDiff = %q, want the unreadable file named", diff)
 	}
 }
