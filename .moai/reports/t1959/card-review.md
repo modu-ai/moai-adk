@@ -29,3 +29,18 @@
 
 - 이 finding은 **독립 감사 iteration 1의 F3와 동일 클래스**(감사자도 codex P1-2로 동일 지적) — 리더 판정(10-25): "선천적 구조·기본 경로 도달 불가 → 수리 안 함, verdict Gaps/Residual에 그대로 두고 **후속 카드 후보로 회신**". 본 PR 수리 대상 아님 — r2 FAIL은 F3의 재확인(corroboration)으로 기록하고 레인은 리더 회신에 그대로 전달. 재검토 라운드로의 강제 복귀 없음(리더 처분이 선행).
 - F1 수리 자체는 r2 findings에 포함되지 않음(수리 후 소멸 확인).
+
+## Round 3 — FAIL (advisory) @ 54633f9362
+
+- backend: codex (`moai verify codex-review --project-root …/worktrees/t1930`, CLI 폴백 — 동일 경로)
+- head: 54633f936246b44b66f37fb358c793114b8e2fdf · tree_digest 274d6e89748b394c · tool_version codex-cli 0.163.0 · exit_code 1 · verdict **fail**
+- F4/D1 센티넬 수리 커밋 이후 재검토
+
+### Findings
+
+- **[P1] internal/cli/factory_merge.go:128** — SPEC-less `audited_sha`가 작업 트리 HEAD만 대조, 나머지 조건은 `--branch` 후보 검사: 감사받은 HEAD에서 다른 브랜치 지정 + 유효한 재측정 기록이면 미감사 변경까지 cleared+창 획득 가능. 처방: 감사 SHA를 후보 팁에 결속 또는 불일치 거부. (정적 검토만, 도구 자기 서술)
+
+### Dispositions
+
+- r3 finding은 **F3의 3번째 재확인**(감사 r1 codex P1-2 → card-review r2 → r3) — 리더 판정(10-25 r2·r3 반복): "선천적 구조·기본 경로 도달 불가 → 수리 안 함, 후속 카드 후보 유지". 본 PR 수리 대상 아님.
+- **F4/D1은 r3 findings에서 소멸** — 센티넬 수리의 codex 측 소멸 확인. 신규 finding 없음.
