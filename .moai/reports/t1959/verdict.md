@@ -2,11 +2,11 @@ auditor-model: glm-5.3
 
 # Sync Audit — card t1959 (GH #1913)
 
-verdict: PASS
-audited_sha: c1c9c26d9891845fb1c11fb1a3df1a26ccb6b4ce
+verdict: PASS-WITH-DEBT
+audited_sha: 309b2670b6cc92e603dd8bee4e6a8162f952bbb9
 
 SPEC: none (Class B card — SPEC-less by definition; audited against GH #1913 and the lane's claims 1-5)
-Overall Verdict: PASS
+Overall Verdict: PASS-WITH-DEBT (round 2 / iteration 3 — F1 repaired and verified; one codex P2 carries as debt D1, unrepaired in this PR; F3 leader-ruled unrepaired. Round-1 detail below; current state in Iteration history.)
 
 ## Claim
 
@@ -86,36 +86,41 @@ All measurements above were taken in this run against this tree: worktree `/User
 
 | Dimension | Score | Verdict | Evidence |
 |-----------|-------|---------|----------|
-| Functionality (40%) | 95/100 | PASS | Claims 1-5 verified against code + `go test` filtered run `ok … 31.699s`; new-contract subtests all PASS |
-| Security (25%) | 95/100 | PASS | No gate bypass reachable: verdict admission fails closed (receipt rules, sole SHA, HEAD binding, path-safety regex, 4 MiB bound — all pre-existing, untouched); lint `0 issues.` |
-| Craft (20%) | 90/100 | PASS | `go vet` clean, `golangci-lint` `0 issues.`, new tests pin both the cleared and refused edges with the window state asserted |
-| Consistency (15%) | 95/100 | PASS | SpecDir guard byte-parallel to `factory_card_pr.go:242-245` precedent; comment style and refusal-message conventions match surrounding code |
+| Functionality (40%) | 95/100 | PASS | Round 2: F1 repair verified against code + RED-first regression PASS + filtered `go test` `ok … 18.960s` |
+| Security (25%) | 85/100 | PASS-WITH-DEBT | No evidence-unclosed cleared path remains; F4/D1 (sentinel Contains bypass via poisoned run id, codex-reproduced) and F3 (unrepaired, leader-ruled) carried as debt; lint `0 issues.` |
+| Craft (20%) | 90/100 | PASS | `go vet` clean, `golangci-lint` `0 issues.`, regression pins the SPEC-path precedence with the window state asserted |
+| Consistency (15%) | 90/100 | PASS | `factoryRecordSpecID` follows the established NO_ACTIVE_FACTORY/ErrCardNotFound sentinel shapes and surrounding refusal conventions; the Contains probe itself follows repo-wide practice (which F4 shows is the weak link, not a divergence) |
 
-Must-pass firewall (Functionality, Security): both PASS independently.
+Must-pass firewall (Functionality, Security): Functionality PASS; Security at 85 with debt D1 carried — above the pass threshold, not clean.
 
 ## Findings
 
-- F1 [Medium] [optional] internal/cli/factory_merge.go:83 — routing decides SPEC vs SPEC-less on the caller's flag alone, without consulting the card record's `SpecID`, so a card WITH a registered SPEC can be evaluated on the verdict file by omitting `--spec` (independently reproduced by the codex backend: `audit-ready` SPEC card → refused with its SPEC, `cleared` with it omitted). Not blocking: the substituted evidence is a HEAD-bound independent-audit verdict — a closed, not weakened, gate; no evidence-unclosed cleared path exists. Required fix (follow-up card, not this PR): route on the card record's `SpecID` and admit the verdict-file path only for cards with no SPEC.
-- F2 [Informational] [optional] internal/cli/factory_merge.go:83 — `specID == card` compares the raw flag (no TrimSpace), so `" t9001"` falls through to the SPEC branch and fails closed with the generic no-progress.md refusal. Required fix: none (fail-closed direction is safe); a TrimSpace on the comparison would only sharpen the message.
-- F3 [Medium] [optional] internal/cli/factory_merge.go:117 — the SPEC-less `audited_sha` binds the worktree HEAD while (b)(c)(d) examine the `--branch` candidate: an explicit `--branch` pointing at a commit other than HEAD can clear a candidate carrying changes outside the audited commit (codex P1-2, reproduced at this head with `HEAD=develop`, `--branch WT-card`, an unaudited `card.txt` change, `cleared` + window). Not blocking and not new in kind — the SPEC path's progress.md evidence is equally un-correlated with the candidate tip, and the default path (`--branch` unset → current branch == HEAD) cannot reach it; the cleared verdict still requires (b)(c)(d) to pass on the candidate. Required fix (follow-up card, not this PR): bind `audited_sha` to the candidate branch tip, or refuse on the SPEC-less path when the candidate tip differs from HEAD.
+Round-2 state: F1 REPAIRED (commit 309b2670b6, verified below). F2 unchanged (cosmetic). F3 leader-ruled NOT repaired in this PR — recorded as-is, verbatim from round 1. New this round: F4, carried as debt D1 verbatim from the codex required gate, NOT re-classified.
 
-No blocking findings. All findings are optional: per the finding-consumption discipline an all-optional findings list does not convert this PASS into a FAIL.
+- F1 [Medium] [REPAIRED — round 2] internal/cli/factory_merge.go:77-96 — routing decided SPEC vs SPEC-less on the caller's flag alone (codex round-1 P1-1). Repaired by commit 309b2670b6: an omitted `--spec` (or card id as `--spec`) now defers to the factory record's `SpecID` (`factoryRecordSpecID`); a SPEC-recorded card keeps the progress.md gate, only record-empty/record-absent cards take the verdict-file path, an ambiguous run context refuses rather than guesses. RED-first regression `TestFactoryMergeReadyRecordSpecIDKeepsSpecPathOnOmittedFlag` observed PASS: SPEC-recorded card + valid HEAD-bound verdict file → NOT cleared, refusal names the SPEC-path condition, no window.
+- F2 [Informational] [optional] internal/cli/factory_merge.go:83 — `specID == card` compares the raw flag (no TrimSpace), so `" t9001"` falls through to the SPEC branch and fails closed with the generic no-progress.md refusal. Required fix: none (fail-closed direction is safe); a TrimSpace on the comparison would only sharpen the message.
+- F3 [Medium] [unrepaired — leader ruling, follow-up card candidate] internal/cli/factory_merge.go:117 (round-1 numbering; in head 309b2670b6 the EvaluateMergeTriple call sits at line 126) — the SPEC-less `audited_sha` binds the worktree HEAD while (b)(c)(d) examine the `--branch` candidate: an explicit `--branch` pointing at a commit other than HEAD can clear a candidate carrying changes outside the audited commit (codex round-1 P1-2, reproduced at c1c9c26d98 with `HEAD=develop`, `--branch WT-card`, an unaudited `card.txt` change, `cleared` + window). Leader-ruled NOT repaired in this PR; carried verbatim per the round-2 dispatch. Required fix (follow-up card): bind `audited_sha` to the candidate branch tip, or refuse on the SPEC-less path when the candidate tip differs from HEAD.
+- F4 [P2] [debt D1 — carried, not re-classified] internal/cli/factory_merge.go:321 — codex round-2 finding, VERBATIM: "실행 ID에 포함된 문자열로 모호한 실행 문맥의 거부를 우회할 수 있습니다 — internal/cli/factory_merge.go:321. 신뢰도: 높음. `strings.Contains`가 오류 전체에서 `NO_ACTIVE_FACTORY`를 검색하므로, 활성 실행 ID가 `run-NO_ACTIVE_FACTORY`이면 해당 ID를 포함한 `AMBIGUOUS_FACTORY` 오류까지 실행 부재로 처리합니다. 재현: 지정 HEAD의 임시 오버레이 테스트에서 활성 실행 두 개, SPEC이 등록된 카드의 `sync_status: audit-ready`, 유효한 verdict 파일을 구성했습니다. 일반 실행 ID에서는 거부했으나 위 ID에서는 `err=<nil>`, `\"verdict\":\"cleared\"`, `held=true`를 관측했습니다. SPEC 레코드를 조회하지 않고 병합 창을 획득합니다. 권고: 실행 부재를 전용 오류 값으로 반환하고 `errors.Is`로 구분하십시오. 실행 ID에 해당 문자열이 포함된 모호성 오류도 반드시 거부하는 회귀 테스트를 추가하십시오." — Auditor's independent assessment: reproduced-by-codex and logically sound; the `strings.Contains` sentinel probe is this repository's established pattern (join gate, glm.go carry the same shape), so the defect class is repository-wide rather than born here, and the SPEC-less gate still demands its full closed evidence (a HEAD-bound PASS verdict) — no evidence-unclosed cleared path. Carried as debt because it directly weakens the F1 repair's intent (a poisoned run id makes the record lookup vanish). Required fix (debt D1, follow-up): dedicated sentinel error value + `errors.Is` discrimination + a regression test that an ambiguity error whose run id contains `NO_ACTIVE_FACTORY` still refuses.
+
+No blocking findings this round; D1 (F4) is the debt that makes this verdict PASS-WITH-DEBT rather than PASS.
 
 ## Cross-model audit plan result (for the orchestrator's check)
 
-`moai verify audit-plan --project-root <this worktree>` → `config_status: ok`, `cross_model_active: true`, enforced required: `codex` (claude/glm off). `audit_multi` was driven over stdio (no `gates` argument; the tree's own plan applied) with `project_root` = this worktree, `target: baseBranch`. Result members, per the report obligation:
+ROUND 2 (current, head 309b2670b6cc92e603dd8bee4e6a8162f952bbb9). `audit_multi` driven over stdio (no `gates` argument; the tree's own plan applied — codex required, claude/glm off) with `project_root` = this worktree, `target: baseBranch`, focus naming the F1 repair head. Result members, per the report obligation:
 
 - `overall_verdict`: fail
 - `gate_unmet`: (member absent from the result)
 - `plan_source`: config
-- `per_backend_verdicts`: backend=codex, gate=required, verdict=fail (digest members only; finding text folded into F1/F3 above)
-- `audit_receipt`: rcpt-26567a378837d950e5081ccf
+- `per_backend_verdicts`: backend=codex, gate=required, verdict=fail — one P2 finding, carried VERBATIM as F4/debt D1 above (not re-classified)
+- `audit_receipt`: rcpt-49a23ab7055d4d6033b70b86 (worktree receipt store, verified on disk)
+- Round 1 (superseded, head c1c9c26d98): overall_verdict fail, codex fail with two P1s (→ F1 repaired this round; F3 leader-ruled unrepaired), receipt rcpt-26567a378837d950e5081ccf.
 
-This auditor's verdict remains its own (the receipt proves the codex audit ran; a codex `fail` corroborates and does not dictate the verdict). The verdict is not final until the orchestrator's convergence check passes: the orchestrator writes these members fresh to `<toplevel>/.moai/state/audit-plan-result.json` and runs `moai verify audit-plan --project-root <toplevel> --result-file <that path>`.
+This auditor's verdict states its disagreement with the codex `fail` without converting it: the codex finding stands in this file verbatim as F4 and the verdict is PASS-WITH-DEBT on this auditor's own judgment (no evidence-unclosed cleared path; repository-wide sentinel-Contains practice; artificial preconditions) — the fail line is surfaced, not folded away. The verdict is not final until the orchestrator's convergence check passes: the orchestrator writes these members fresh to `<toplevel>/.moai/state/audit-plan-result.json` and runs `moai verify audit-plan --project-root <toplevel> --result-file <that path>`.
 
 ## Iteration history
 
 - 2026-10-25 iteration 1: full read (4 files + precedent) + 5-command mechanical batch, all green (`ok … 31.699s`, build/vet exit 0, `0 issues.`). Verdict PASS; blocked stop with receipts=none per the continuation-minting procedure.
-- 2026-10-25 iteration 2 (continuation turn): receipt minted ONCE via the stdio driver (`bash /tmp/t1959-mint-receipt.sh`, moai mcp-server v3.2.0-rc.38 b1806498fe, stdin held open). Mint succeeded: `audit_receipt: rcpt-26567a378837d950e5081ccf`, `tree_root` = this worktree. The codex backend returned `verdict: fail` with two P1 findings, both reproduced at the audited head — re-evaluated independently and folded in as F1 (upgraded Medium) and F3 (new, Medium): both are evidence-class/hardening design gaps with no evidence-unclosed cleared path, hence optional, not blocking; PASS stands. No timing refusal occurred; the N1 escape was not needed.
+- 2026-10-25 iteration 2 (continuation turn): receipt minted ONCE via the stdio driver (`bash /tmp/t1959-mint-receipt.sh`, moai mcp-server v3.2.0-rc.38 b1806498fe, stdin held open). Mint succeeded: `audit_receipt: rcpt-26567a378837d950e5081ccf`, `tree_root` = this worktree. The codex backend returned `verdict: fail` with two P1 findings, both reproduced at the audited head — re-evaluated independently above and folded in as F1 (upgraded Medium) and F3 (new, Medium): both are evidence-class/hardening design gaps with no evidence-unclosed cleared path, hence optional, not blocking; PASS stood. No timing refusal occurred; the N1 escape was not needed. (Leader subsequently rejected the round-1 optional fold as merge grounds → round 2 dispatched.)
+- 2026-10-25 iteration 3 (round 2, head 309b2670b6cc92e603dd8bee4e6a8162f952bbb9): F1 repair read in full (diff 2 files +94/−9: `factoryRecordSpecID` routing + RED-first regression) and machine-verified — `go test ./internal/cli/ -run 'Specless|MergeReady' -count=1` → `ok … 18.960s`; `go build`/`go vet` exit 0; `golangci-lint` `0 issues.`; `TestFactoryMergeReadyRecordSpecIDKeepsSpecPathOnOmittedFlag` → `--- PASS (1.55s)`. Round-1 P1-1 confirmed repaired; P1-2 (F3) absent from this round's codex result, leader-ruled unrepaired — carried as-is. New codex P2 (sentinel-Contains bypass via a run id containing `NO_ACTIVE_FACTORY`, reproduced at this head) carried VERBATIM as F4, debt D1, not re-classified. Verdict PASS-WITH-DEBT (auditor's own judgment; codex fail surfaced unconverted). Receipt minted once this round: `rcpt-49a23ab7055d4d6033b70b86`, worktree store verified on disk. Uncommitted `.moai/reports/t1959/card-review.md` modification observed in the tree and left untouched (out of audit scope; no foreign commit on the audited window).
 
-AUDIT-VERDICT: PASS spec=t1959 receipts=rcpt-26567a378837d950e5081ccf
+AUDIT-VERDICT: PASS-WITH-DEBT spec=t1959 receipts=rcpt-49a23ab7055d4d6033b70b86
