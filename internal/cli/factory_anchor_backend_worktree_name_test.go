@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // addBackendNamedTree links a tree at .claude/worktrees/<dir> on branch.
@@ -148,5 +150,39 @@ func TestLauncherAnchorBackendWorktreeNameNonLeader(t *testing.T) {
 				t.Errorf("non-leader `-w -` launch: err=%v launched=%v, want allowed", obs.err, obs.launched)
 			}
 		})
+	}
+}
+
+// TestLauncherAnchorBackendWorktreeNameSlashIgnoresOtherRoots proves a value
+// containing a slash is judged at the native .claude/worktrees directory only.
+// The real launch never enters a home-root or .moai tree for such a name
+// (existingWorktreeEntryDir rejects it), so a card-branch tree of the mapped
+// name under another root must not condemn a launch the backend sends to
+// .claude/worktrees/feature+foo.
+func TestLauncherAnchorBackendWorktreeNameSlashIgnoresOtherRoots(t *testing.T) {
+	pinSnapshotModel(t)
+	for _, arm := range leaderArms {
+		for _, other := range []string{"home", "legacy-moai"} {
+			for _, native := range []string{"plain branch", "absent"} {
+				t.Run(arm+"/"+other+"/native "+native, func(t *testing.T) {
+					fx := newLeaderFixture(t)
+					otherPath := filepath.Join(fx.root, ".moai", "worktrees", "feature+foo")
+					if other == "home" {
+						var err error
+						if otherPath, err = worktreeroot.PathFor(fx.root, "feature+foo"); err != nil {
+							t.Fatalf("resolve the home-root destination: %v", err)
+						}
+					}
+					anchorGit(t, fx.root, "worktree", "add", "-q", "-b", "WT-other-root", otherPath, fx.base)
+					if native == "plain branch" {
+						addBackendNamedTree(t, fx, "feature+foo", "plain-slash")
+					}
+					obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", "feature/foo"})
+					if obs.err != nil || !obs.launched {
+						t.Errorf("a card tree under the %s root must not condemn a launch into .claude/worktrees/feature+foo: err=%v launched=%v", other, obs.err, obs.launched)
+					}
+				})
+			}
+		}
 	}
 }

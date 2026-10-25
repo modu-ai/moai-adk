@@ -109,12 +109,17 @@ func nativeWorktreeDirName(name string) string {
 // legacy .claude spelling and an ambiguous name falls back to it (the anchor
 // guard reports what it can; REQ-WHR-022's no-guessing rule binds the
 // launching lookups). A value naming no existing tree cannot be an anchor —
-// anchorBranchOfTree reads it as empty.
+// anchorBranchOfTree reads it as empty. A name containing a slash never names a
+// home or legacy-root tree at launch (existingWorktreeEntryDir rejects it), so
+// it skips the root lookup and resolves to the native directory the backend
+// enters (card t1958).
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
 	}
-	value = nativeWorktreeDirName(value)
+	if strings.Contains(value, "/") {
+		return filepath.Join(shortWorktreeRoot(root), ".claude", "worktrees", nativeWorktreeDirName(value))
+	}
 	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
 		return cands[0].Path
 	}
