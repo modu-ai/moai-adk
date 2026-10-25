@@ -20,10 +20,16 @@ complete recheck list and its closing PR read, while a count increase since the 
 **Plan revision 13** (Amendment 6, the operator and leader ruling of 2026-10-23, decision-index Q30) adds five lettered sub-criteria
 inside existing logical criteria — AC-CCR-006a (the `auto-merge` status and `statuses: write`), AC-CCR-013a (the `issue_comment`
 trigger and its job-level author gate), AC-CCR-013b (no pull-request code on the comment path), AC-CCR-013c (the same chain, one
-evaluation, head re-confirmed, one concurrency group), AC-CCR-019a (non-zero held merge outcomes) — in §2.7, and amends AC-CCR-006,
+evaluation, head re-confirmed, one concurrency group — per-run on the comment path since revision 14), AC-CCR-019a (non-zero held merge outcomes) — in §2.7, and amends AC-CCR-006,
 007, 012, 013, and 019 where they pinned the old trigger, the old permission set, or an exit-0 merge hold. The logical criterion count
 stays 25, the Tier L ceiling; the sub-criteria are pairs within one logical criterion each (the lettered-suffix convention of
 acceptance bodies) and each carries its own two cells. Their RED-now pin is tree `41b7f29b7a` (ledger R28 to R35).
+**Plan revision 14** (Amendment 7, the operator and leader ruling of 2026-10-25, decision-index Q32) adds no logical criterion and no
+sub-criterion: it extends AC-CCR-008, 013c, 019a, 022, and 006a in place (per-run comment-path concurrency, the draft hold with exit
+0, the already-merged merge outcome). The three pin tests it names — `TestAutoMergeCommentPathRunScopedConcurrency`,
+`TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch`, `TestAutoMergeAlreadyMergedIsSuccess` in
+`internal/template/auto_merge_codex_test.go` — are **to be created** by `plan.md` M8 and do not exist on tree `53fbc2d206` (ledger
+R39). Their RED-now cells are R36 to R39 on that tree; green path M8.
 
 **Document pin.** Every RED-now observation below was re-measured on tree `e11af67632` (full
 `e11af676320604bb1f7cf07f14aa457b3437a9ec`, branch `WT-ci-codex-review`, clean) on 2026-10-18 and binds every
@@ -43,6 +49,10 @@ run phase must record that red verbatim; no plan revision re-observed those muta
 **Revision 13 sub-criteria:** *release-blocking* AC-CCR-006a, 013a, 013c, 019a (RED-now R28 to R35 on tree `41b7f29b7a`, green path
 M7); *regression-guard* AC-CCR-013b (the checkout already has no `ref` and no payload text is read, so no RED exists; its adoption
 evidence is the mutant red M7 records).
+**Revision 14 extensions:** the rows added to AC-CCR-008, 013c, 019a, and 006a carry RED-now R36 to R39 (tree `53fbc2d206`, green path
+M8). AC-CCR-022 keeps its regression-guard class for its unchanged rows; its revision-14 rows (the draft now exits 0) are red on that
+tree for the stated reason R37 and are adopted through the pin `TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch` listed
+under AC-CCR-008, which is release-blocking.
 
 **Swept-set rule.** Every Go-test criterion names its subtests. A run counts only when `-v` output lists
 each named `--- PASS:` line; a green with `[no tests to run]` or fewer named lines is a Gap, never a pass.
@@ -217,6 +227,29 @@ B1  $ git diff --quiet 8c36a7904bfe3e44c46b154a2839a6aedb719ef2 HEAD -- .github/
     stdout: (empty)
     exit: 0   (baseline, not a RED: required-checks.yml equals origin/main, read as 8c36a7904b after `git fetch origin main`
                on 2026-10-23; a regression-guard row that must stay exit 0)
+```
+
+**Revision 14 ledger (tree `53fbc2d206`, full `53fbc2d206457a5d88fcc9ad73872f90b9c73758`, branch `WT-auto-merge-no-cancelled`,
+clean, equal to `origin/main` at measurement; measured 2026-10-25 by manager-spec, each a single read-only invocation, exit code
+observed separately by the tool).** Why each is red for the right reason: the landed workflow gives the identity's comments the pull
+request's group, ends a draft's `review` step with exit 11, and ends every failed `gh pr merge` with exit 1 without re-reading the pull
+request; M8 changes exactly those lines, and no unrelated file keeps a cell red. A green path flips R36 and R37 to no match (exit 1) and
+leaves R38's line guarded by an already-merged branch that the pin `TestAutoMergeAlreadyMergedIsSuccess` executes; the grep cells are
+necessary, never sufficient.
+
+```
+R36 $ grep -n -F 'github.event.comment.user.id != 199175422' .github/workflows/auto-merge.yml
+    stdout: 43:      group: auto-merge-${{ github.event_name == 'issue_comment' && github.event.comment.user.id != 199175422 && format('run-{0}', github.run_id) || github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.run_id }}
+    exit: 0   (the identity's comments fall through to the pull request key: queued comment runs share one group and are cancelled)
+R37 $ grep -n -F 'conclude false not-run:draft 11' .github/workflows/auto-merge.yml
+    stdout: 534:                  conclude false not-run:draft 11
+    exit: 0   (a draft ends the review step with exit 11, which fails the job on a default-branch SHA)
+R38 $ grep -n -F 'finish failure "merge failed: gh pr merge exit' .github/workflows/auto-merge.yml
+    stdout: 638:            finish failure "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA" 1
+    exit: 0   (every non-zero gh pr merge ends exit 1; a pull request a concurrent evaluation already merged is reported as a failure)
+R39 $ grep -c -E 'TestAutoMergeCommentPathRunScopedConcurrency|TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch|TestAutoMergeAlreadyMergedIsSuccess' internal/template/auto_merge_codex_test.go
+    stdout: 0
+    exit: 1   (the three revision-14 pins do not exist yet; they are to be created by M8)
 ```
 
 Tool provenance (verification-claim-integrity §2.2): the cells are `grep` and `git` measurements, not moai-tool output. The
@@ -471,8 +504,14 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   invalid flag exits 1; the four classes 0, 1, 10, and 11 are pairwise distinct; and the step, on 11, withholds the merge, never
   treats 11 as success, reads `draft` from the pull request object, and does not fetch the lists for a draft. What the step records
   and how it ends for each cause is `T-CHAIN` rows 4 and 5 and criteria AC-CCR-021 (non-draft, a failure: step exit 1, `state=fail`,
-  `::error::` naming `not-run:review-absent`) and AC-CCR-022 (draft: `state=not-run:draft`, step exit 11, a `::notice::` that says it
-  is not a review result and never a pass, job result never success).
+  `::error::` naming `not-run:review-absent`) and AC-CCR-022 (draft: `state=not-run:draft`, a `::notice::` that says it is not a
+  review result and never a pass; since revision 14 step exit 0, the job not failed, the `auto-merge` status `pending` `not yet:
+  draft`, zero merge calls — formerly step exit 11 and a job result never success). (Revision 14) Given the step harness's event
+  matrix — `workflow_run` and `issue_comment` (the identity's `created` and `edited`), each crossed with every held outcome (`pr` not
+  open, `head` hold, ineligible author, `checks` hold, the comment path's pending review, the draft, an already-merged pull request)
+  — no event/outcome combination yields a job result other than success or skipped, and none yields a `cancelled` conclusion from the
+  modelled concurrency queue; the draft rows end the `review` step with exit 0 and zero merge calls on both paths; every refusal row
+  of `T-CHAIN` still ends the job as failure.
 - Verify: `go test -count=1 -v -run '^TestCodexGateReadNativeReviewDraftNotRun$' ./internal/template/` lists `--- PASS` for
   `draft_true_exit_11`, `draft_true_with_clean_state_comment_still_11`, `draft_true_without_input_files_still_11`,
   `draft_false_clean_exit_0`, `draft_flag_invalid_exit_1`, `wait_closed_flag_invalid_exit_1`, `review_absent_window_open_exit_10`,
@@ -481,12 +520,20 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `not_run_message_draft_names_cause`, `not_run_message_review_absent_names_cause`, `not_run_message_never_a_pass`,
   `not_run_message_gate_path_only`, `not_run_state_output_distinct_from_fail`, `exit_11_never_reaches_merge_condition`,
   `draft_read_from_pull_request_object`, `draft_skips_list_fetch_and_is_not_run`. A draft observation, and the absence of a state
-  comment, can never be read as a review result or as a pass, and each says so (design §12).
+  comment, can never be read as a review result or as a pass, and each says so (design §12). (Revision 14, **to be created** by M8,
+  absent on tree `53fbc2d206`, R39) `go test -count=1 -v -run '^TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch$'
+  ./internal/template/` lists `--- PASS` for every subtest of the function, at least one per event/outcome cell of the matrix above,
+  among them a draft row per path asserting step exit 0, `state=not-run:draft`, zero merge calls, and status `pending` `not yet:
+  draft`, a row asserting no comment-path run shares a concurrency group with another run, and a control row asserting that a
+  `T-CHAIN` refusal still yields job failure; the swept count is read from the `-v` output before the verdict.
 - Mutant: a script that exits 0 for a draft with a clean state comment (a draft merged), one that exits 1 for a draft or for an absent
   comment at window close (NOT RUN indistinguishable from failure), one that stays at 10 at window close (absence never final), one
   that maps a stale state to 11, a loop that proceeds on 11, a `state` output of `fail` for a draft, or a message that claims a review
-  result turns the matching row red.
+  result turns the matching row red. (Revision 14) The landed `conclude false not-run:draft 11`, a draft mapped to `ok=true`, or a
+  matrix that omits the draft or the comment path turns the matching row of the new pin red; a draft hold that also skips the
+  `status` step turns its status assertion red.
 - RED-now: R18 (the shipped reader reads no issue comment, so the absence of a state comment is not what it decides on). Green path: M6.
+  (Revision 14) R37 and R39 (tree `53fbc2d206`: the draft ends exit 11; the pin is absent). Green path: M8.
 
 **AC-CCR-009** — REQ-CCR-009 — regression-guard
 - Given a changed-file list (one JSON object per line, as `fetch-pages` writes it) and the verified head SHA,
@@ -905,19 +952,25 @@ instantiates is `design.md` §5 `T-CHAIN`.
 - Given a draft pull request — with no state comment, with a clean state comment bound to the head, and with a
   state comment that reports unresolved findings —
 - When the real `review` step runs through the harness,
-- Then the step exit status is 11, the derived job result is failure and in no case success, `ok=false`,
+- Then (revision 14, decision-index Q32; the revision-6 text read "the step exit status is 11, the derived job result is failure
+  and in no case success") the step exit status is 0 and the derived job result is not failure, `ok=false`,
   `state` is the single value `not-run:draft` (the key appears once; it is distinct from `pass` and from
   `fail`), the annotation is a `::notice::` that names the cause `draft`, says it is not a review result and
-  never a pass, the review lists are not fetched, and no `gh pr merge` call is made; the state never reads
-  as a review PASS.
+  never a pass, the review lists are not fetched, no `gh pr merge` call is made, and the `auto-merge` status is `pending` with
+  `not yet: draft`; the state never reads as a review PASS.
 - Verify: `go test -count=1 -v -run '^TestAutoMergeDraftIsNotRunNeverSuccess$' ./internal/template/` lists
   `--- PASS` for `draft_step_exit_11_job_not_success`, `draft_state_output_is_single_value_not_run_draft`,
   `draft_ok_output_false`, `draft_skips_list_fetch`, `draft_with_clean_state_comment_still_not_success`,
   `draft_annotation_notice_names_cause_and_says_not_a_pass`, `draft_zero_merge_calls`,
-  `draft_state_distinct_from_fail_and_pass`.
+  `draft_state_distinct_from_fail_and_pass`. (Revision 14) The two rows whose assertion is the old exit
+  (`draft_step_exit_11_job_not_success`, `draft_with_clean_state_comment_still_not_success`) are amended by M8 to assert step exit 0
+  and no merge; the run pass records whether it renames them, and the draft rows of
+  `TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch` (AC-CCR-008, to be created) carry the exit-0 assertion.
 - Mutant: the committed step (draft ends `exit 0`, `state=fail` then `state=not-run`) turns the first, second,
   and last rows red; mapping a draft to `state=pass` or `ok=true` turns `draft_ok_output_false` red;
-  `continue-on-error` turns the job-result assertion red.
+  `continue-on-error` turns the job-result assertion red. (Revision 14: the first sentence names the revision-5 step, whose
+  duplicated keys still turn the second and last rows red; a draft exit 11 now turns the amended exit rows red, and a draft that
+  reaches the merge step turns `draft_zero_merge_calls` red.)
 - RED-now: none on this tree. The draft path exits 11 before any list is read and is already implemented and tested (M5 landed; plan audit N1); R25 (the renamed row
   `draft_with_clean_state_comment_still_not_success` is absent) is a test-addition cell outside the class claim, because adding a row changes a name, not a behaviour. Under
   verification-completeness §2.1 this criterion is a regression-guard; its adoption evidence is the red of the named mutant (the committed draft ending `exit 0` with `state=fail` then
@@ -1040,9 +1093,11 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   (revision 13.1, decision-index Q31(a) reversed) a `running` leg or marker, and an absent state comment, are a "not yet" hold: the
   `review` step ends with exit 0, `ok` not `true`, the single state `pending`, zero merge calls, the job result is success, and the
   `auto-merge` status is `pending` with `review-not-complete:running` (or `review-not-complete:no-state-comment`); the draft ends
-  `not-run:draft`; the concurrency group key resolves to the same `auto-merge-7` for a `workflow_run` of pull request 7 and for the
-  identity's comment on pull request 7, and to a run-id key (`auto-merge-run-<run id>`) that differs from `auto-merge-7` for another
-  author's comment on pull request 7; the group is declared at the job level, and `cancel-in-progress` is false.
+  `not-run:draft` (a hold with step exit 0 since revision 14); the concurrency group key resolves to `auto-merge-7` for a
+  `workflow_run` of pull request 7 and (revision 14, decision-index Q32; the revision-13.1 text gave the identity's comment the same
+  `auto-merge-7`) to a run-id key (`auto-merge-run-<run id>`) for every comment on pull request 7, the identity's `created` and
+  `edited` included, so that two comment-path runs of one pull request never share a key with each other or with the `workflow_run`
+  key; the group is declared at the job level, and `cancel-in-progress` is false.
 - Verify: `grep -c -F 'github.event.issue.number' .github/workflows/auto-merge.yml` and `grep -c -F 'github.event_name'
   .github/workflows/auto-merge.yml` each print at least 1 and exit 0 (R30, R31 flipped; necessary, not sufficient); and `go test
   -count=1 -v -run '^TestAutoMergeCommentPathSameChainOnce$' ./internal/template/` lists `--- PASS` for
@@ -1056,15 +1111,25 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   ./internal/template/` lists `--- PASS` for every subtest of the three functions, among them
   `required_checks_pass_but_ci_concluded_non_success_zero_merge_calls`, `ci_run_listing_unreadable_zero_merge_calls`,
   `no_ci_run_for_the_verified_head_zero_merge_calls`, `latest_run_of_the_head_decides`, `workflow_run_path_makes_no_ci_read`,
-  `every_unfinished_status_is_a_pending_hold`, and `ci_workflow_is_the_one_both_triggers_name`.
+  `every_unfinished_status_is_a_pending_hold`, and `ci_workflow_is_the_one_both_triggers_name`. (Revision 14) The row
+  `concurrency_key_same_for_both_paths` is amended by M8 to assert the `workflow_run` key only (the run pass records whether it
+  renames the row); and, **to be created** by M8 (absent on tree `53fbc2d206`, R39), `go test -count=1 -v -run
+  '^TestAutoMergeCommentPathRunScopedConcurrency$' ./internal/template/` lists `--- PASS` for every subtest of the function, among
+  them a row asserting that two identity comment runs (`created`, `edited`) of one pull request with different run ids render
+  different keys, a row asserting that the identity's comment key differs from the `workflow_run` key of the same pull request, a
+  row asserting that two `workflow_run` evaluations of one pull request render the same `auto-merge-<number>` key, and a row
+  asserting `cancel-in-progress: false` at the job level; the swept count is read from the `-v` output.
 - Mutant: the 60-pass loop kept on the comment path turns `comment_path_review_single_pass_wait_open_no_sleep` red; a pass with
   `--wait-closed true` (a running review failing the job) turns `comment_path_running_is_not_yet_hold_exit_0_zero_merge_calls` red; a
   concurrency key without `github.event.issue.number` turns `concurrency_key_same_for_both_paths` red, and one that gives a foreign
   comment the pull request number turns `concurrency_key_unique_per_run_for_other_authors` red; a `head` step that takes the head from the
   event instead of the API, or a merge call pinned to another variable, turns `comment_path_head_moved_after_comment_zero_merge_calls`
-  or the clean row red.
+  or the clean row red. (Revision 14) The landed key (the identity's comment falls through to the pull request number, R36) turns
+  the two comment-key rows of `TestAutoMergeCommentPathRunScopedConcurrency` red; a run-id key on the `workflow_run` path too turns its
+  per-pull-request row red.
 - RED-now: R30 and R31 (tree `41b7f29b7a`: no comment-path pull request number or concurrency key, no event discrimination). Green
-  path: M7.
+  path: M7. (Revision 14) R36 and R39 (tree `53fbc2d206`: the identity's comments share the pull request group; the pin is absent).
+  Green path: M8.
 
 **AC-CCR-019a** — REQ-CCR-024 — release-blocking
 - Given the real merge step run against a stub `gh` with the guards seeded as passed, and the chain harness of AC-CCR-019,
@@ -1075,7 +1140,10 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   row; every outcome still writes exactly one job-summary line naming the outcome and the head SHA; and the "not yet" holds — `pr`,
   `head`, `author`, `checks`, and (revision 13.1) the comment path's pending `review` pass — still end with exit 0 and a job that is
   not failed. Group mapping: non-zero = merge step reached and not merged (the four rows above) only; exit 0 = merge requested and
-  every "not yet" hold.
+  every "not yet" hold. (Revision 14, REQ-CCR-024 refinement) When `gh pr merge` exits 1 and the re-read shows the pull request
+  merged at the verified head, the step ends with exit 0, one summary line says `already merged`, the job result is success, and the
+  status is `success` `already merged`; when `gh pr merge` exits 1 and the re-read shows it open, unreadable, malformed, or merged at
+  another head, the step still ends with exit 1 ("merge failed"), the job result is failure.
 - Verify: `go test -count=1 -v -run '^TestAutoMergeHeldMergeOutcomesFail$' ./internal/template/` lists `--- PASS` for
   `merge_requested_exit_0_job_success`, `window_elapsed_before_merge_exit_1_job_failure`,
   `window_elapsed_during_head_check_exit_1_job_failure`, `head_moved_exit_1_job_failure`, `merge_failed_exit_1_job_failure`,
@@ -1083,10 +1151,19 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   `TestAutoMergeSummarisesEveryMergeOutcome` and `TestAutoMergeMergeDecisionPath` (`plan.md` M7) pass; and (revision 13.2, a head
   lookup that fails inside the merge step) `go test -count=1 -v -run '^TestAutoMergeMergeHeadLookupFailureFailsClosed$'
   ./internal/template/` lists `--- PASS` for `merge_step_alone_summary_line_exit_1_zero_merge_calls`,
-  `whole_chain_status_failure_job_failure_zero_merge_calls`, and `moved_head_keeps_its_own_wording`.
+  `whole_chain_status_failure_job_failure_zero_merge_calls`, and `moved_head_keeps_its_own_wording`; and (revision 14, **to be
+  created** by M8, absent on tree `53fbc2d206`, R39) `go test -count=1 -v -run '^TestAutoMergeAlreadyMergedIsSuccess$'
+  ./internal/template/` lists `--- PASS` for every subtest of the function, among them a row where a failed merge call on a pull
+  request re-read as merged at the verified head ends exit 0 with job success and one `already merged` summary line, and control rows
+  where the re-read shows the pull request open, unreadable, malformed, or merged at another head and the step ends exit 1 with job
+  failure; the swept count is read from the `-v` output. The row `merge_failed_exit_1_job_failure` keeps its exit-1 assertion (its
+  stub re-read reports an open pull request).
 - Mutant: the committed merge step (each held outcome `exit 0`, the merge-failed path falling through) turns the four exit-1 rows
   red; an `exit 1` on "merge requested" turns `merge_requested_exit_0_job_success` red; a deleted summary line turns
-  `each_outcome_one_summary_line_with_head_sha` red.
+  `each_outcome_one_summary_line_with_head_sha` red. (Revision 14) The landed merge-failed branch (exit 1 with no re-read, R38) turns
+  the already-merged row red; an already-merged branch that skips the head comparison, or treats an unreadable re-read as merged,
+  turns the matching control row red.
+- RED-now (revision 14 rows): R38 and R39 (tree `53fbc2d206`). Green path: M8.
 - RED-now: R32 and R33 (tree `41b7f29b7a`: the head-moved and deadline holds end `exit 0`, and the merge-failed path ends on the
   summary echo with exit 0). Green path: M7.
 
@@ -1099,7 +1176,9 @@ are new (M7); the amended existing rows are listed in `plan.md` M7.
   (revision 13.2: the read-only scope of the comment path's `CI` run listing, `design.md` item 4); the only status call is
   `gh api --method POST "repos/$REPO/statuses/$SHA"` and no status is read; for every outcome with a known evaluated head exactly one
   status is posted on that SHA with the context `auto-merge`, the state of `T-STATUS` (`success`, `failure`, or `pending`), and a
-  description beginning with the `T-STATUS` text; no status is posted when the head is unknown; a failing status write ends the
+  description beginning with the `T-STATUS` text (revision 14: an already-merged pull request at the verified head posts `success`
+  `already merged`, and the draft, whose `review` step now ends exit 0, still posts `pending` `not yet: draft`); no status is posted
+  when the head is unknown; a failing status write ends the
   `status` step with exit 1 and does not change the merge-call count; and `.github/required-checks.yml` is byte-unchanged.
 - Verify: `grep -c -F 'statuses' .github/workflows/auto-merge.yml` prints at least 1 and exits 0, and `grep -c -F 'statuses: write'
   .github/workflows/auto-merge.yml` prints 1 and exits 0 (R34, R35 flipped; necessary, not sufficient); `git diff --quiet
@@ -1183,10 +1262,15 @@ and by a mutant that a weaker implementation would satisfy.
   must match the fresh R3 count and R4 must retain that same count. Movement during the recheck, a truncated list, or a changed trusted Codex
   artifact still withholds it (AC-CCR-012, REQ-CCR-012).
 - A pull request that adds or changes any workflow file or the gate script: withheld for a human (AC-CCR-009).
-- Draft pull request: `not-run:draft`, step exit 11, job result never success, withheld at once, whatever artifacts exist; its
+- Draft pull request: `not-run:draft`, withheld at once, whatever artifacts exist, a "not yet" hold — step exit 0, status `pending`
+  `not yet: draft` since revision 14 (step exit 11 and a job result never success until then); its
   observation is `remote observed: gate path NOT RUN (not-run:draft)` at most, never `remote verified` (AC-CCR-008, AC-CCR-022, design
   §12). A non-draft pull request with no state comment at the end of the window is a failed `review` step with cause
   `not-run:review-absent`, observed as `remote observed: review step failed, review absent` at most (AC-CCR-021).
+- (revision 14) Several bot edits of the state comment in a row: each starts its own comment-path run in its own run-id group, none is
+  queued behind another, and none ends `cancelled` (AC-CCR-013c). Two evaluations that both reach the merge step: one merge call
+  succeeds; the other fails, re-reads the pull request merged at the verified head, and ends exit 0 `already merged` (AC-CCR-019a).
+  Three `CI` completions of one pull request inside one `workflow_run` evaluation can still cancel the waiting one (design R14-1).
 - A failure in the `files` step (a missing gate script, a gate-path change, a list that cannot be proven complete) ends that step and
   the job non-zero and skips the `review` and merge steps (AC-CCR-025); a failure in `review` ends it non-zero (AC-CCR-020); the earlier
   steps `pr`, `head`, `author`, `checks` keep the exit-0 withhold (Out of Scope) and post a `pending` `auto-merge` status (AC-CCR-006a);

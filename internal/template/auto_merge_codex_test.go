@@ -272,7 +272,10 @@ func amPullWithIssueComments(head string, draft bool, changed, reviewComments, i
 //   - the CI workflow-runs listing the comment path reads (REQ-CCR-020, REQ-CCR-023), served from
 //     $FIXTURES/ci-runs.json and failed with CI_RUNS_EXIT when that is non-zero;
 //   - an injected failure of `gh pr view` from its VIEW_FAIL_FROM-th call on (the head lookups are counted
-//     separately from the shared stub's own sequence).
+//     separately from the shared stub's own sequence);
+//   - the merge step's one re-read after a failed `gh pr merge` (revision 14: `gh pr view --json
+//     state,mergedAt,headRefOid`), served from $FIXTURES/reread.json (default: the pull request still open at the
+//     clean head) and failed with REREAD_EXIT when that is non-zero. It is not counted by VIEW_FAIL_FROM.
 //
 // Every other call passes to the shared stub unchanged.
 const amGhWrapStub = `#!/bin/sh
@@ -288,6 +291,16 @@ case "${1:-} ${2:-}" in
     exit 0
     ;;
 esac
+if [ "${1:-}" = pr ] && [ "${2:-}" = view ]; then
+  case "$*" in
+    *"--json state,mergedAt,headRefOid"*)
+      if [ -n "${CALL_LOG:-}" ]; then echo "gh $*" >> "$CALL_LOG"; fi
+      if [ "${REREAD_EXIT:-0}" -ne 0 ]; then echo "stub gh: pull request re-read failed" >&2; exit "$REREAD_EXIT"; fi
+      cat "$FIXTURES/reread.json"
+      exit 0
+      ;;
+  esac
+fi
 if [ "${1:-}" = pr ] && [ "${2:-}" = view ] && [ -n "${VIEW_FAIL_FROM:-}" ]; then
   n=0
   if [ -f "$FIXTURES/view-fail.count" ]; then n=$(cat "$FIXTURES/view-fail.count"); fi
@@ -317,6 +330,28 @@ func amCIRun(id int, status, conclusion, head string) string {
 func (r *amRig) setCIRuns(runs ...string) {
 	r.t.Helper()
 	r.e.write(filepath.Join(r.e.fixtures, "ci-runs.json"), fmt.Sprintf(`{"total_count":%d,"workflow_runs":[%s]}`, len(runs), strings.Join(runs, ",")), 0o600)
+}
+
+// setReread replaces the pull request the merge step's re-read returns after a failed `gh pr merge`: the state
+// (OPEN, CLOSED, MERGED), the merge time (empty is JSON null), and the head commit.
+func (r *amRig) setReread(state, mergedAt, head string) {
+	r.t.Helper()
+	at := "null"
+	if mergedAt != "" {
+		at = fmt.Sprintf("%q", mergedAt)
+	}
+	r.e.write(filepath.Join(r.e.fixtures, "reread.json"), fmt.Sprintf(`{"state":%q,"mergedAt":%s,"headRefOid":%q}`, state, at, head), 0o600)
+}
+
+// rereadCalls returns the recorded merge-step re-reads of the pull request.
+func (r *amRig) rereadCalls() []string {
+	var out []string
+	for _, c := range r.e.calls() {
+		if strings.HasPrefix(c, "gh pr view ") && strings.Contains(c, "--json state,mergedAt,headRefOid") {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // ciRunCalls returns the recorded reads of the CI workflow-runs listing.
@@ -363,6 +398,7 @@ func newAMRig(t *testing.T, script string) *amRig {
 	r.setPulls(amPull(cgHead, false, 2, 0))
 	r.setViews(cgHead, cgHead)
 	r.setCIRuns(amCIRun(1, "completed", "success", cgHead))
+	r.setReread("OPEN", "", cgHead)
 	e.write(filepath.Join(e.fixtures, "checks.json"), amPassChecks, 0o600)
 	r.ctx.outputs["pr"] = map[string]string{"number": amPR, "branch": "feature/x", "state": "open", "merged": "false", "active": "true"}
 	return r
@@ -1054,8 +1090,9 @@ func TestAutoMergeReadsOnlyAllowedReviewArtifacts(t *testing.T) {
 		for _, inv := range amGhInvocations(wf) {
 			switch {
 			case inv.group == "pr" && inv.sub == "view":
-				if !strings.Contains(inv.rest, "--json headRefOid") {
-					t.Errorf("workflow gh pr view is not the headRefOid form: %s", inv.line)
+				// The head lookup, and (revision 14, REQ-CCR-024) the merge step's one re-read after a failed merge.
+				if !strings.Contains(inv.rest, "--json headRefOid") && !strings.Contains(inv.rest, "--json state,mergedAt,headRefOid") {
+					t.Errorf("workflow gh pr view is neither the headRefOid form nor the merge re-read form: %s", inv.line)
 				}
 			case inv.group == "pr" && inv.sub == "checks":
 				if !strings.Contains(inv.rest, "--required --json name,state,bucket") {
@@ -2073,7 +2110,8 @@ func TestAutoMergeMergeDecisionPath(t *testing.T) {
 					r.setEnv("STUB_REVIEW_EXITS=1")
 					return r
 				}},
-				{"draft", "failure", func() *amRig {
+				// Revision 14: a draft is a "not yet" hold (review exit 0, no merge), so its job is no longer a failure.
+				{"draft", "success", func() *amRig {
 					r := clean(t, "real")
 					r.setPulls(amChainPulls(amPDraft)...)
 					return r
@@ -2354,7 +2392,8 @@ func TestAutoMergeRetriesIssueCommentCountRaceDuringReviewWait(t *testing.T) {
 
 // ---------------------------------------------------------------------------------------------
 // Plan revision 6, M5 (REQ-CCR-018, REQ-CCR-019; AC-CCR-020 to AC-CCR-025): a failure in the files step or the
-// review step ends that step AND the job as not-success; a draft is the single state not-run:draft with exit 11;
+// review step ends that step AND the job as not-success; a draft is the single state not-run:draft (exit 11 in
+// revision 6, a "not yet" hold with exit 0 since revision 14);
 // each output key carries one value. Every row below runs the real step body (the real gate script or the one
 // subcommand-aware stub, the stub gh, the no-op sleep) through the shared chain harness and asserts THREE
 // observables together, never the output file alone: the step's exit status, the job result the harness derives
@@ -2664,10 +2703,12 @@ func TestAutoMergeReviewAbsentIsFailure(t *testing.T) {
 	})
 }
 
-// AC-CCR-022 (REQ-CCR-008) — a draft is the single state not-run:draft, step exit 11, a job that is never success.
-// Mutants: the pre-revision-6 step (draft ends exit 0, state=fail then state=not-run) turns the first, second, and
-// last rows red; mapping a draft to state=pass or ok=true turns draft_ok_output_false red; continue-on-error turns the
-// job-result assertion red.
+// AC-CCR-022 (REQ-CCR-008) — a draft is the single state not-run:draft, a "not yet" hold: step exit 0 (revision 14,
+// decision-index Q32; the revision-6 text read exit 11 and a job that is never success), ok=false, never a pass.
+// Mutants: the revision-6 step (draft ends exit 11) turns the first and the clean-approval rows red; the
+// pre-revision-6 step (state=fail then state=not-run) turns the first, second, and last rows red; mapping a draft
+// to state=pass or ok=true turns draft_ok_output_false red; a draft that reaches the merge step turns
+// draft_zero_merge_calls red.
 func TestAutoMergeDraftIsNotRunNeverSuccess(t *testing.T) {
 	t.Parallel()
 	H := cgHead
@@ -2685,21 +2726,28 @@ func TestAutoMergeDraftIsNotRunNeverSuccess(t *testing.T) {
 		r.setPulls(amChainPulls(amPDraft)...)
 		return r, r.runChain()
 	}
-	t.Run("draft_step_exit_11_job_not_success", func(t *testing.T) {
+	// Revision 14 (formerly draft_step_exit_11_job_not_success): the draft is a hold, so the step exits 0 and the
+	// job is not failed; what stays asserted is that it is never a pass (ok=false, the single state not-run:draft).
+	t.Run("draft_step_exit_0_hold_job_not_failed", func(t *testing.T) {
 		t.Parallel()
+		swept := 0
 		for name, reviews := range map[string][]any{
 			"no_review":         {},
 			"approved":          {cgReview(10, H, "APPROVED")},
 			"changes_requested": {cgReview(10, H, "CHANGES_REQUESTED")},
 		} {
 			r, ch := draft(t, reviews...)
-			want := amObs{exit: 11, job: "failure", outputs: map[string]string{"ok": "false", "state": "not-run:draft"}}
+			want := amObs{exit: 0, job: "success", outputs: map[string]string{"ok": "false", "state": "not-run:draft"}}
 			if err := amCompare(r.obs("review", ch.job), want); err != nil {
 				t.Fatalf("%s: %v\n%s", name, err, amText(r.results["review"]))
 			}
-			if ch.job == "success" {
-				t.Fatalf("%s: a draft ended the job as success", name)
+			if ch.job == "failure" || ch.job == "cancelled" {
+				t.Fatalf("%s: a draft hold ended the job as %s", name, ch.job)
 			}
+			swept++
+		}
+		if swept != 3 {
+			t.Fatalf("swept %d draft cells, want 3", swept)
 		}
 	})
 	t.Run("draft_state_output_is_single_value_not_run_draft", func(t *testing.T) {
@@ -2725,11 +2773,11 @@ func TestAutoMergeDraftIsNotRunNeverSuccess(t *testing.T) {
 			}
 		}
 	})
-	t.Run("draft_with_clean_approved_review_still_not_success", func(t *testing.T) {
+	t.Run("draft_with_clean_approved_review_still_not_a_pass", func(t *testing.T) {
 		t.Parallel()
 		r, ch := draft(t, cgReview(10, H, "APPROVED"))
-		if e, _ := ch.executed("review"); e.code != 11 || ch.job == "success" || r.ctx.outputs["review"]["state"] == "pass" {
-			t.Fatalf("review exit=%d job=%q state=%q: a draft with a clean approval must not read as a pass", e.code, ch.job, r.ctx.outputs["review"]["state"])
+		if e, _ := ch.executed("review"); e.code != 0 || r.ctx.outputs["review"]["ok"] != "false" || r.ctx.outputs["review"]["state"] != "not-run:draft" {
+			t.Fatalf("review exit=%d job=%q outputs=%v: a draft with a clean approval must end exit 0 as the hold ok=false state=not-run:draft, never a pass", e.code, ch.job, r.ctx.outputs["review"])
 		}
 	})
 	t.Run("draft_annotation_notice_names_cause_and_says_not_a_pass", func(t *testing.T) {
@@ -3440,10 +3488,11 @@ func TestAutoMergeCommentPathRunsNoPullRequestCode(t *testing.T) {
 	})
 }
 
-// AC-CCR-013c (REQ-CCR-023) — the same chain, one evaluation, the head re-confirmed, one concurrency group.
+// AC-CCR-013c (REQ-CCR-023) — the same chain, one evaluation, the head re-confirmed, one concurrency group (the
+// comment path's key is per run since revision 14).
 // Mutants: the 60-pass loop kept on the comment path; --wait-closed true on the comment path; a concurrency key
-// without the issue number or one that gives a foreign comment the pull request number; a head step that takes the
-// head from the event; a merge call pinned to another variable.
+// that gives a foreign comment the pull request number; a head step that takes the head from the event; a merge
+// call pinned to another variable.
 func TestAutoMergeCommentPathSameChainOnce(t *testing.T) {
 	t.Parallel()
 	run := func(name string, fn func(t *testing.T)) {
@@ -3581,9 +3630,13 @@ func TestAutoMergeCommentPathSameChainOnce(t *testing.T) {
 		r.setPulls(amCommentPull(cgHead, true, "open", false, 3))
 		ch := r.runChain()
 		noMerge(t, r, ch)
-		want := amObs{exit: 11, job: "failure", outputs: map[string]string{"ok": "false", "state": "not-run:draft"}}
+		// Revision 14: the draft is a "not yet" hold, step exit 0 and a job that is not failed (formerly exit 11).
+		want := amObs{exit: 0, job: "success", outputs: map[string]string{"ok": "false", "state": "not-run:draft"}}
 		if err := amCompare(r.obs("review", ch.job), want); err != nil {
 			t.Fatalf("%v\n%s", err, amText(r.results["review"]))
+		}
+		if got := r.oneStatus(cgHead); got.state != "pending" || !strings.HasPrefix(got.description, "not yet: draft") {
+			t.Fatalf("status %+v, want pending beginning %q", got, "not yet: draft")
 		}
 	})
 	keyOf := func(t *testing.T, mk func(r *amRig)) string {
@@ -3592,11 +3645,13 @@ func TestAutoMergeCommentPathSameChainOnce(t *testing.T) {
 		mk(r)
 		return r.concurrencyKey()
 	}
-	run("concurrency_key_same_for_both_paths", func(t *testing.T) {
+	// Revision 14 (formerly concurrency_key_same_for_both_paths, which asserted auto-merge-7 for the identity's
+	// comment too): the workflow_run path keeps the per-pull-request key; the comment path's keys are pinned by
+	// TestAutoMergeCommentPathRunScopedConcurrency.
+	run("concurrency_key_workflow_run_is_per_pull_request", func(t *testing.T) {
 		wr := keyOf(t, func(r *amRig) {})
-		cm := keyOf(t, func(r *amRig) { r.commentEvent(amCodexID, true) })
-		if wr != "auto-merge-7" || cm != "auto-merge-7" {
-			t.Fatalf("keys %q (workflow_run) and %q (the identity's comment), want both auto-merge-7", wr, cm)
+		if wr != "auto-merge-7" {
+			t.Fatalf("key %q (workflow_run of pull request 7), want auto-merge-7", wr)
 		}
 	})
 	run("concurrency_key_unique_per_run_for_other_authors", func(t *testing.T) {
@@ -4308,6 +4363,503 @@ func TestAutoMergeMergeHeadLookupFailureFailsClosed(t *testing.T) {
 		}
 		if got := r.oneStatus(cgHead); got.state != "failure" || !strings.HasPrefix(got.description, "merge not executed: head moved") {
 			t.Fatalf("status %+v, want failure beginning %q", got, "merge not executed: head moved")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------------------------
+// Plan revision 14, M8 (Amendment 7, decision-index Q32; card t1956): no run of auto-merge.yml ends `cancelled` or
+// `failure` on a default-branch SHA because of queueing or a held (not-merged-yet) evaluation. `scripts/release.sh`
+// counts every completed check run that is not success, neutral, or skipped as a release-gate failure, and the
+// `issue_comment` and `workflow_run` runs of this workflow report on the default-branch tip. Three pins, each
+// observed red on the unmodified workflow before the edit (progress.md, "Repair run 5"):
+//
+//   - TestAutoMergeCommentPathRunScopedConcurrency  — AC-CCR-013c: a per-run group for every comment run;
+//   - TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch — AC-CCR-008 / AC-CCR-022: the event x held-outcome
+//     matrix never yields a failed or cancelled job; the refusals and window-end failures stay failures (R14-2);
+//   - TestAutoMergeAlreadyMergedIsSuccess — AC-CCR-019a: a failed merge call on a pull request a concurrent
+//     evaluation already merged at the verified head ends exit 0.
+//
+// The queue below models GitHub's documented behaviour (one running and at most one pending run per group; an older
+// pending run is ended `cancelled` when a newer one arrives). It is a model, never an observation of a real runner.
+// ---------------------------------------------------------------------------------------------
+
+// amQueueCancelled returns how many of the runs ended `cancelled` when all of them were queued behind a run that was
+// still in flight: per group, one runs and one waits, and every further arrival replaces the waiting run.
+func amQueueCancelled(keys []string) int {
+	perGroup := map[string]int{}
+	for _, k := range keys {
+		perGroup[k]++
+	}
+	cancelled := 0
+	for _, n := range perGroup {
+		if n > 2 {
+			cancelled += n - 2
+		}
+	}
+	return cancelled
+}
+
+// amKeyAt renders the job-level concurrency group of one run: a comment of userID (nil: no user object) on pull
+// request 7 when comment is true, the completion of the CI workflow for pull request 7 otherwise.
+func amKeyAt(t *testing.T, comment bool, userID any, runID int) string {
+	t.Helper()
+	r := newAMRig(t, "stub")
+	if comment {
+		r.commentEvent(userID, true)
+	}
+	r.ctx.facts["github.run_id"] = runID
+	return r.concurrencyKey()
+}
+
+// AC-CCR-013c (REQ-CCR-023, revision 14) — the group is per run for every issue_comment run (the identity's included) and
+// per pull request for the workflow_run path; cancel-in-progress stays false.
+// Mutants: the landed key (the identity's comments fall through to the pull request number, R36) turns the two
+// comment-key rows red; a run-id key on the workflow_run path too turns its per-pull-request row red; a
+// cancel-in-progress of true turns the last row red.
+func TestAutoMergeCommentPathRunScopedConcurrency(t *testing.T) {
+	t.Parallel()
+	run := func(name string, fn func(t *testing.T)) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			fn(t)
+		})
+	}
+	run("identity_comment_runs_with_different_run_ids_get_different_keys", func(t *testing.T) {
+		keys := map[string]int{}
+		runs := 0
+		for _, runID := range []int{5001, 5002, 5003} { // the identity's `created`, then two `edited` runs of pull request 7
+			k := amKeyAt(t, true, amCodexID, runID)
+			if want := fmt.Sprintf("auto-merge-run-%d", runID); k != want {
+				t.Fatalf("the identity's comment run %d rendered %q, want %q", runID, k, want)
+			}
+			keys[k]++
+			runs++
+		}
+		if runs != 3 || len(keys) != 3 {
+			t.Fatalf("%d runs rendered %d distinct keys %v, want 3 and 3", runs, len(keys), keys)
+		}
+	})
+	run("other_authors_comment_runs_get_per_run_keys", func(t *testing.T) {
+		keys := map[string]int{}
+		runs := 0
+		for _, runID := range []int{5101, 5102} {
+			for _, id := range []any{6458969, 49699333, nil} {
+				k := amKeyAt(t, true, id, runID)
+				if want := fmt.Sprintf("auto-merge-run-%d", runID); k != want {
+					t.Fatalf("a comment of user %v in run %d rendered %q, want %q", id, runID, k, want)
+				}
+				keys[k]++
+				runs++
+			}
+		}
+		if runs != 6 || len(keys) != 2 {
+			t.Fatalf("%d runs rendered %d distinct keys %v, want 6 and 2 (one per run id)", runs, len(keys), keys)
+		}
+	})
+	run("identity_comment_key_differs_from_workflow_run_key_of_the_same_pull_request", func(t *testing.T) {
+		swept := 0
+		wr := amKeyAt(t, false, nil, 5201)
+		if wr != "auto-merge-7" {
+			t.Fatalf("workflow_run key %q, want auto-merge-7", wr)
+		}
+		// A run id equal to the pull request number must not collide with the workflow_run key either.
+		for _, runID := range []int{5201, 7, 5202} {
+			if k := amKeyAt(t, true, amCodexID, runID); k == wr {
+				t.Fatalf("the identity's comment run %d shares the workflow_run key %q", runID, wr)
+			}
+			swept++
+		}
+		if swept != 3 {
+			t.Fatalf("swept %d run ids, want 3", swept)
+		}
+	})
+	run("workflow_run_evaluations_of_one_pull_request_share_the_per_pull_request_key", func(t *testing.T) {
+		a, b := amKeyAt(t, false, nil, 5301), amKeyAt(t, false, nil, 5302)
+		if a != "auto-merge-7" || b != "auto-merge-7" {
+			t.Fatalf("two workflow_run evaluations of pull request 7 rendered %q and %q, want both auto-merge-7", a, b)
+		}
+		other := newAMRig(t, "stub")
+		other.ctx.prEvent["number"] = "8"
+		if k := other.concurrencyKey(); k != "auto-merge-8" {
+			t.Fatalf("workflow_run key of pull request 8 is %q, want auto-merge-8", k)
+		}
+	})
+	run("cancel_in_progress_false_at_the_job_level", func(t *testing.T) {
+		wf, raw := amLoad(t)
+		if wf.job().Concurrency.Group == "" || wf.job().Concurrency.CancelInProgress || !strings.Contains(raw, "cancel-in-progress: false") {
+			t.Fatalf("job concurrency %+v, want a group with cancel-in-progress false", wf.job().Concurrency)
+		}
+		if strings.Contains(raw, "cancel-in-progress: true") {
+			t.Fatal("a cancel-in-progress: true remains")
+		}
+	})
+}
+
+// AC-CCR-008 / AC-CCR-022 (REQ-CCR-008, REQ-CCR-023, REQ-CCR-024; revision 14) — over the event x held-outcome matrix, no
+// combination yields a failed or cancelled job. Every held cell ends every executed step with exit 0, makes no merge
+// call (the already-merged cell makes the one that a concurrent evaluation had already satisfied), and posts the one
+// expected status. The control cells assert, explicitly, that the refusals and the window-end failures STAY failures:
+// they still land on the default-branch SHA (residual R14-2), and the queue model documents the workflow_run path's
+// remaining exposure (residual R14-1).
+// Mutants: the landed draft step (exit 11) turns both draft cells red; the landed comment-path key turns the
+// no-shared-group row red; the landed merge step (no re-read) turns both already-merged cells red; a refusal that
+// ends exit 0 turns a control cell red.
+func TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch(t *testing.T) {
+	t.Parallel()
+	wrRig := func(t *testing.T) *amRig {
+		t.Helper()
+		r := amRepairClean(t)
+		r.chainPR = true
+		r.chainStatus = true
+		return r
+	}
+	cmRig := func(t *testing.T) *amRig { return amCommentRig(t, "real") }
+	const mergedAt = "2026-10-25T00:00:00Z"
+	type cell struct {
+		name    string
+		build   func(t *testing.T) *amRig
+		merges  int    // gh pr merge calls the cell makes
+		status  string // the one expected status state; "" when the cell posts none (a pull request that is not open)
+		descPfx string
+	}
+	held := []cell{
+		{"workflow_run/pr_not_open", func(t *testing.T) *amRig { r := wrRig(t); r.ctx.prEvent["state"] = "closed"; return r }, 0, "", ""},
+		{"workflow_run/head_moved", func(t *testing.T) *amRig { r := wrRig(t); r.setViews(cgOther); return r }, 0, "pending", "not yet: head"},
+		{"workflow_run/author_ineligible", func(t *testing.T) *amRig {
+			r := wrRig(t)
+			r.setPulls(strings.Replace(amPullWithIssueComments(cgHead, false, 2, 0, 3), `"login":"GoosLab"`, `"login":"other"`, 1))
+			return r
+		}, 0, "pending", "needs user approval"},
+		{"workflow_run/checks_hold", func(t *testing.T) *amRig { r := wrRig(t); r.setEnv("CHECKS_EXIT=1"); return r }, 0, "pending", "not yet: required checks"},
+		{"workflow_run/draft", func(t *testing.T) *amRig { r := wrRig(t); r.setPulls(amChainPulls(amPDraft)...); return r }, 0, "pending", "not yet: draft"},
+		{"workflow_run/already_merged", func(t *testing.T) *amRig {
+			r := wrRig(t)
+			r.setEnv("MERGE_EXIT=1")
+			r.setReread("MERGED", mergedAt, cgHead)
+			return r
+		}, 1, "success", "already merged"},
+		{"issue_comment/pr_not_open", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.setPulls(amCommentPull(cgHead, false, "closed", false, 3))
+			return r
+		}, 0, "", ""},
+		{"issue_comment/head_moved", func(t *testing.T) *amRig { r := cmRig(t); r.setViews(cgOther); return r }, 0, "pending", "not yet: head"},
+		{"issue_comment/author_ineligible", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.setPulls(strings.Replace(amCommentPull(cgHead, false, "open", false, 3), `"login":"GoosLab"`, `"login":"other"`, 1))
+			return r
+		}, 0, "pending", "needs user approval"},
+		{"issue_comment/checks_hold", func(t *testing.T) *amRig { r := cmRig(t); r.setEnv("CHECKS_EXIT=1"); return r }, 0, "pending", "not yet: required checks"},
+		{"issue_comment/ci_not_complete", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.setCIRuns(amCIRun(1, "in_progress", "", cgHead))
+			return r
+		}, 0, "pending", "not yet: ci-not-complete"},
+		{"issue_comment/review_pending_running", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.e.setPages("issues", amRunningComments(t, cgHead))
+			return r
+		}, 0, "pending", "review-not-complete:running"},
+		{"issue_comment/review_pending_no_state_comment", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.e.setRawPage("issues", 1, "[]")
+			r.setPulls(amCommentPull(cgHead, false, "open", false, 0))
+			return r
+		}, 0, "pending", "review-not-complete:no-state-comment"},
+		{"issue_comment/draft", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.setPulls(amCommentPull(cgHead, true, "open", false, 3))
+			return r
+		}, 0, "pending", "not yet: draft"},
+		{"issue_comment/already_merged", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.setEnv("MERGE_EXIT=1")
+			r.setReread("MERGED", mergedAt, cgHead)
+			return r
+		}, 1, "success", "already merged"},
+	}
+	const wantHeld = 15
+	if len(held) != wantHeld {
+		t.Fatalf("the matrix lists %d held cells, want %d", len(held), wantHeld)
+	}
+	for _, c := range held {
+		t.Run("held/"+c.name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			r := c.build(t)
+			ch := r.runChain()
+			if ch.job != "success" {
+				t.Fatalf("job %q, want success (a held evaluation never fails or cancels the job): %v", ch.job, amStepKeys(ch))
+			}
+			if len(ch.ran) == 0 {
+				t.Fatal("the cell ran no step: the job was skipped, so nothing was observed")
+			}
+			for _, e := range ch.ran {
+				if e.code != 0 {
+					t.Errorf("step %s ended exit %d in a held cell: %v", e.key, e.code, amStepKeys(ch))
+				}
+			}
+			if n := len(r.mergeCalls()); n != c.merges {
+				t.Fatalf("%d gh pr merge calls, want %d: %v", n, c.merges, r.mergeCalls())
+			}
+			if c.status == "" {
+				if ss := r.statuses(); len(ss) != 0 {
+					t.Fatalf("statuses %+v, want none for a pull request that is not open", ss)
+				}
+				return
+			}
+			if got := r.oneStatus(cgHead); got.state != c.status || !strings.HasPrefix(got.description, c.descPfx) {
+				t.Fatalf("status %+v, want %s beginning %q", got, c.status, c.descPfx)
+			}
+		})
+	}
+
+	// The controls: what stays a failure by design (residual R14-2). Each lands as `failure` on the default-branch SHA.
+	controls := []struct {
+		name  string
+		build func(t *testing.T) *amRig
+		step  string
+	}{
+		{"files_refusal", func(t *testing.T) *amRig { r := wrRig(t); r.setEnv("FAIL_PAGE=files:1"); return r }, "files"},
+		{"review_refusal_bound_to_another_head", func(t *testing.T) *amRig {
+			r := cmRig(t)
+			r.e.setPages("issues", cgNativeIssueComments(t, cgOther))
+			return r
+		}, "review"},
+		{"review_absent_at_window_end", func(t *testing.T) *amRig {
+			r := newAMRig(t, "stub")
+			r.chainStatus = true
+			r.setEnv("STUB_REVIEW_EXITS=" + amRepeat("10", 59) + " 11")
+			return r
+		}, "review"},
+		{"merge_failed_on_an_open_pull_request", func(t *testing.T) *amRig { r := wrRig(t); r.setEnv("MERGE_EXIT=1"); return r }, "merge"},
+		{"window_elapsed_before_merge", func(t *testing.T) *amRig { r := wrRig(t); r.deadline = "1"; return r }, "merge"},
+	}
+	for _, c := range controls {
+		t.Run("control_stays_failure/"+c.name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			r := c.build(t)
+			ch := r.runChain()
+			e, ran := ch.executed(c.step)
+			if !ran || e.code != 1 || ch.job != "failure" {
+				t.Fatalf("%s ran=%t exit=%d job=%q, want exit 1 and a failed job (a refusal is not a hold): %v", c.step, ran, e.code, ch.job, amStepKeys(ch))
+			}
+			if c.step != "merge" && len(r.mergeCalls()) != 0 {
+				t.Fatalf("gh pr merge was called after a %s refusal: %v", c.step, r.mergeCalls())
+			}
+		})
+	}
+
+	// The queue model over the rendered keys.
+	t.Run("queue/comment_path_runs_are_never_cancelled", func(t *testing.T) {
+		t.Parallel()
+		cgTools(t)
+		var keys []string
+		for i, id := range []any{amCodexID, amCodexID, amCodexID, amCodexID, 6458969, nil} { // created, three edits, two foreign comments
+			keys = append(keys, amKeyAt(t, true, id, 5400+i))
+		}
+		keys = append(keys, amKeyAt(t, false, nil, 5410)) // a workflow_run evaluation of the same pull request beside them
+		if n := amQueueCancelled(keys); len(keys) != 7 || n != 0 {
+			t.Fatalf("%d queued runs %v: the model cancels %d, want none", len(keys), keys, n)
+		}
+	})
+	t.Run("queue/model_is_not_vacuous_a_shared_key_would_cancel", func(t *testing.T) {
+		t.Parallel()
+		shared := []string{"auto-merge-7", "auto-merge-7", "auto-merge-7", "auto-merge-7"}
+		if n := amQueueCancelled(shared); n != 2 {
+			t.Fatalf("the model cancels %d of 4 runs that share one group, want 2 (one runs, one waits)", n)
+		}
+	})
+	t.Run("queue/residual_R14_1_workflow_run_path_can_still_cancel", func(t *testing.T) {
+		t.Parallel()
+		cgTools(t)
+		keys := []string{amKeyAt(t, false, nil, 5501), amKeyAt(t, false, nil, 5502), amKeyAt(t, false, nil, 5503)}
+		// Three CI completions of one pull request while the first evaluation still runs: the per-pull-request group
+		// ends the second, waiting run `cancelled`. This is the documented residual, pinned so it is not hidden.
+		if n := amQueueCancelled(keys); n != 1 {
+			t.Fatalf("the model cancels %d of 3 workflow_run evaluations of one pull request, want 1 (residual R14-1)", n)
+		}
+	})
+}
+
+// AC-CCR-019a (REQ-CCR-024 refinement, REQ-CCR-025; revision 14) — a failed `gh pr merge` on a pull request that a
+// concurrent evaluation already merged at the verified head ends the merge step exit 0, one `already merged` summary
+// line, status `success`; any other re-read keeps "merge failed", exit 1.
+// Mutants: the landed merge step (no re-read, R38) turns the first and second rows red; an already-merged branch that
+// skips the head comparison turns the other-head control red; one that treats an unreadable or malformed re-read as
+// merged turns the unreadable and malformed controls red; a re-read made on a successful merge, or before the merge
+// call, turns the re-read-count row red.
+func TestAutoMergeAlreadyMergedIsSuccess(t *testing.T) {
+	t.Parallel()
+	const mergedAt = "2026-10-25T00:00:00Z"
+	mergeAlone := func(t *testing.T, setup func(r *amRig)) (*amRig, cgResult, []string) {
+		t.Helper()
+		wf, _ := amLoad(t)
+		merge, ok := wf.merge()
+		if !ok {
+			t.Fatal("merge step missing")
+		}
+		r := newAMRig(t, "stub")
+		r.seedGuards()
+		r.seed("review", "ok", "true")
+		if setup != nil {
+			setup(r)
+		}
+		res, _ := r.runStep(merge)
+		raw, err := os.ReadFile(filepath.Join(r.e.dir, "summary-merge.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lines []string
+		for _, l := range strings.Split(string(raw), "\n") {
+			if strings.TrimSpace(l) != "" {
+				lines = append(lines, l)
+			}
+		}
+		return r, res, lines
+	}
+	run := func(name string, fn func(t *testing.T)) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cgTools(t)
+			fn(t)
+		})
+	}
+	run("merged_at_the_verified_head_ends_exit_0_with_one_already_merged_line", func(t *testing.T) {
+		r, res, lines := mergeAlone(t, func(r *amRig) {
+			r.setEnv("MERGE_EXIT=1")
+			r.setReread("MERGED", mergedAt, cgHead)
+		})
+		job := amDeriveJob([]amExec{{key: "merge", code: res.code}})
+		if res.code != 0 || job != "success" || len(r.mergeCalls()) != 1 {
+			t.Fatalf("exit %d job %q merge calls %v, want exit 0, success, one failed merge call\n%s%s", res.code, job, r.mergeCalls(), res.stdout, res.stderr)
+		}
+		if len(lines) != 1 || !strings.HasPrefix(lines[0], "already merged") || !strings.Contains(lines[0], cgHead) {
+			t.Fatalf("summary lines %q, want exactly one beginning %q and naming the verified head", lines, "already merged")
+		}
+		if got := r.carried["AUTO_MERGE_STATE"]; got != "success" {
+			t.Fatalf("AUTO_MERGE_STATE %q, want success", got)
+		}
+		if got := r.carried["AUTO_MERGE_LINE"]; !strings.HasPrefix(got, "already merged") {
+			t.Fatalf("AUTO_MERGE_LINE %q, want it to begin with %q", got, "already merged")
+		}
+	})
+	run("whole_chain_status_success_already_merged_job_success_on_both_paths", func(t *testing.T) {
+		swept := 0
+		for name, mk := range map[string]func() *amRig{
+			"workflow_run":  func() *amRig { r := amRepairClean(t); r.chainStatus = true; return r },
+			"issue_comment": func() *amRig { return amCommentRig(t, "real") },
+		} {
+			r := mk()
+			r.setEnv("MERGE_EXIT=1")
+			r.setReread("MERGED", mergedAt, cgHead)
+			ch := r.runChain()
+			swept++
+			m, ran := ch.executed("merge")
+			if !ran || m.code != 0 || ch.job != "success" {
+				t.Fatalf("%s: merge ran=%t exit=%d job=%q, want exit 0 and success: %v", name, ran, m.code, ch.job, amStepKeys(ch))
+			}
+			if got := r.oneStatus(cgHead); got.state != "success" || !strings.HasPrefix(got.description, "already merged") {
+				t.Fatalf("%s: status %+v, want success beginning %q", name, got, "already merged")
+			}
+		}
+		if swept != 2 {
+			t.Fatalf("swept %d paths, want 2", swept)
+		}
+	})
+	run("any_other_reread_keeps_merge_failed_exit_1", func(t *testing.T) {
+		raw := func(body string) func(r *amRig) {
+			return func(r *amRig) { r.e.write(filepath.Join(r.e.fixtures, "reread.json"), body, 0o600) }
+		}
+		cases := []struct {
+			name  string
+			setup func(r *amRig)
+		}{
+			{"open", func(r *amRig) { r.setReread("OPEN", "", cgHead) }},
+			{"closed_not_merged", func(r *amRig) { r.setReread("CLOSED", "", cgHead) }},
+			{"merged_at_another_head", func(r *amRig) { r.setReread("MERGED", mergedAt, cgOther) }},
+			{"merged_state_without_merge_time", func(r *amRig) { r.setReread("MERGED", "", cgHead) }},
+			{"merge_time_but_open_state", func(r *amRig) { r.setReread("OPEN", mergedAt, cgHead) }},
+			{"merged_with_no_head", func(r *amRig) { r.setReread("MERGED", mergedAt, "") }},
+			{"unreadable", func(r *amRig) { r.setEnv("REREAD_EXIT=1") }},
+			{"malformed_text", raw("not json")},
+			{"malformed_array", raw(`[]`)},
+			{"empty_body", raw("")},
+			{"empty_object", raw(`{}`)},
+		}
+		swept := 0
+		for _, c := range cases {
+			r, res, lines := mergeAlone(t, func(r *amRig) {
+				r.setEnv("MERGE_EXIT=1")
+				c.setup(r)
+			})
+			swept++
+			job := amDeriveJob([]amExec{{key: "merge", code: res.code}})
+			if res.code != 1 || job != "failure" || len(r.mergeCalls()) != 1 {
+				t.Errorf("%s: exit %d job %q merge calls %v, want exit 1, failure, one failed merge call\n%s%s", c.name, res.code, job, r.mergeCalls(), res.stdout, res.stderr)
+				continue
+			}
+			if len(lines) != 1 || !strings.HasPrefix(lines[0], "merge failed:") || !strings.Contains(lines[0], cgHead) {
+				t.Errorf("%s: summary lines %q, want exactly one beginning %q", c.name, lines, "merge failed:")
+			}
+			if got := r.carried["AUTO_MERGE_STATE"]; got != "failure" {
+				t.Errorf("%s: AUTO_MERGE_STATE %q, want failure", c.name, got)
+			}
+		}
+		if swept != 11 {
+			t.Fatalf("swept %d re-read shapes, want 11", swept)
+		}
+	})
+	run("the_pull_request_is_re_read_once_and_only_after_a_failed_merge", func(t *testing.T) {
+		ok, _, _ := mergeAlone(t, func(r *amRig) { r.setReread("MERGED", mergedAt, cgHead) }) // merge exits 0: no re-read
+		if n := len(ok.rereadCalls()); n != 0 || len(ok.mergeCalls()) != 1 {
+			t.Fatalf("a successful merge made %d re-reads (merge calls %v), want 0", n, ok.mergeCalls())
+		}
+		failed, _, _ := mergeAlone(t, func(r *amRig) { r.setEnv("MERGE_EXIT=1"); r.setReread("MERGED", mergedAt, cgHead) })
+		calls := failed.e.calls()
+		mergeAt, rereadAt := -1, -1
+		for i, c := range calls {
+			if strings.HasPrefix(c, "gh pr merge") {
+				mergeAt = i
+			}
+			if strings.Contains(c, "--json state,mergedAt,headRefOid") {
+				rereadAt = i
+			}
+		}
+		if n := len(failed.rereadCalls()); n != 1 || mergeAt < 0 || rereadAt <= mergeAt {
+			t.Fatalf("%d re-reads, merge at %d, re-read at %d, want exactly one re-read after the merge call: %v", n, mergeAt, rereadAt, calls)
+		}
+	})
+	run("deadline_and_head_holds_do_not_re_read_and_stay_exit_1", func(t *testing.T) {
+		cases := []struct {
+			name   string
+			prefix string
+			setup  func(r *amRig)
+		}{
+			{"window_elapsed_before_merge", "merge held: review window elapsed", func(r *amRig) { r.deadline = "1" }},
+			{"head_moved", "merge not executed: head moved", func(r *amRig) { r.setViews(cgOther) }},
+			{"head_unreadable", "merge not executed: head unreadable", func(r *amRig) { r.setEnv("VIEW_FAIL_FROM=1") }},
+		}
+		swept := 0
+		for _, c := range cases {
+			r, res, lines := mergeAlone(t, func(r *amRig) {
+				r.setEnv("MERGE_EXIT=1")
+				r.setReread("MERGED", mergedAt, cgHead) // a merged re-read is on offer; these outcomes never ask for it
+				c.setup(r)
+			})
+			swept++
+			if res.code != 1 || len(r.rereadCalls()) != 0 || len(r.mergeCalls()) != 0 {
+				t.Errorf("%s: exit %d re-reads %v merge calls %v, want exit 1 with neither\n%s%s", c.name, res.code, r.rereadCalls(), r.mergeCalls(), res.stdout, res.stderr)
+			}
+			if len(lines) != 1 || !strings.HasPrefix(lines[0], c.prefix) {
+				t.Errorf("%s: summary lines %q, want exactly one beginning %q", c.name, lines, c.prefix)
+			}
+		}
+		if swept != 3 {
+			t.Fatalf("swept %d outcomes, want 3", swept)
 		}
 	})
 }

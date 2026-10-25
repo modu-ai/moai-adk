@@ -178,7 +178,7 @@ Why unresolved: the native review runs "when a pull request opens"; whether it a
 ready-for-review transition, or after a push is not observed (research U4, U6), and per-push widening is
 excluded by the operator
 Default: the gate reads whatever exists and designs nothing on the answer: a draft ends as `not-run:draft`
-(gate exit 11, step exit 11, job result never success) at once; a review bound to another commit is
+(gate exit 11, step exit 11, job result never success — revision 14: step exit 0, a hold, Q32) at once; a review bound to another commit is
 `stale-review` (a moved head withholds); no review at window expiry is gate exit 11 `not-run:review-absent`,
 which the consumer ends as a failed step (revision 6; never success); a fresh review after a push
 is the leader-coordinated step DS-3 and never a deliverable
@@ -294,7 +294,7 @@ read as a pass, as a failure, or as nothing, and the consumer must tell the thre
 Default: not applied (settled by the operator direction)
 Resolution (revised in revision 6): the gate reads `draft` from the pull request object and exits 11 at once,
 whatever reviews exist; the consumer records the single state `not-run:draft`, ends the `review` step with exit
-11 so the job result is never success, and withholds the merge; a non-draft pull request with no native review
+11 so the job result is never success (revision 14, Q32: exit 0, a hold with a `pending` status), and withholds the merge; a non-draft pull request with no native review
 at the end of the wait window is the same gate exit 11 with cause `review-absent`, which the consumer reports
 as a failure (step exit 1, `state=fail`); the draft report says it verifies the gate path only and is not a
 review result; the gate's pass is 0, fail is 1, pending is 10, not run is 11 (design §3.2, §5 `T-CHAIN`). The keyless notice job of revisions 1 and 2 is gone with the keyed workflow
@@ -306,6 +306,10 @@ leader's ruling of 2026-10-18 (board record d-20261018T152011Z-8447, which super
 draft's job result is not success
 
 ### Q21: How does a draft pull request's job result avoid reading as success?
+
+**[SUPERSEDED by Q32, 2026-10-25]** The default below (the `review` step ends a draft with exit 11, the job result failure) no
+longer holds: a draft is a "not yet" hold with step exit 0, the state `not-run:draft`, and the `auto-merge` status `pending` `not yet:
+draft`; the one-job topology stays and the alternate stays unbuilt. The row is kept as written.
 
 Label: FOUNDER
 Class: implementation-level
@@ -518,6 +522,9 @@ Operator verdict: DEFAULT-APPLIED 2026-10-19T06:19:40Z manager-spec (card t1868,
 
 ### Q30: Are audit findings F4 (a late review is never re-evaluated) and F3/F1 (merge-step holds end exit 0 and look green) accepted limitations or fixes?
 
+**[SUPERSEDED IN PART by Q32, 2026-10-25]** "One concurrency group per pull request" in the resolution below now binds the
+`workflow_run` path only; every comment-path run takes a run-id group. The rest of the resolution stands. The row is kept as written.
+
 Label: FOUNDER
 Class: product-level (changes the shipped workflow's triggers, its permissions, the job result of a held merge, and adds a commit status every pull request shows)
 Authority anchor: none in the committed register — the settlement is the operator and leader ruling of 2026-10-23, relayed by the leader in the delegation to manager-spec (a message, not a committed artifact)
@@ -537,7 +544,18 @@ Default: (a) the single pass is a last pass: `--wait-closed true`, so `running` 
 (rule: preserves current behavior — `T-CHAIN` and the step conditions are unchanged, and a refusal that already fails the job keeps a failing signal)
 Alternate: treat `running` on the comment path as a `pending` hold with step exit 0 — a change to `T-CHAIN` row 2g that the ruling did not make; or require GitHub's `auto_merge` flag on the comment path — a change to which pull requests the automation merges
 Operator verdict: DEFAULT-APPLIED 2026-10-22T23:52:15Z manager-spec (card t1868, plan revision 13; no plan-audit re-entry by Q30, checked by the head-bound sync re-audit)
-Lane ruling 2026-10-23 (revision 13.1), relayed by the coordinator: **default (a) SUPERSEDED — REVERSED** (the text above is kept as history): on the comment path a review that is not yet complete is a "not yet" hold, not a requested-but-not-executed outcome; the single pass runs with `--wait-closed false`, and a pending result (gate exit 10: a leg or the current-head security marker `running`, or no state comment yet) ends the `review` step with exit 0, state `pending`, the merge step skipped, the job not failed, and the `auto-merge` status `pending` with reason `review-not-complete:running` (or `review-not-complete:no-state-comment`); the bot's completion edit re-triggers a pass; only a merge step reached and not executed (head moved, window elapsed, `gh pr merge` failed) is non-zero. **Default (b) CONFIRMED:** "auto-merge requested" means the chain reached the merge step; the workflow reads no GitHub `auto_merge` flag and gates on the `author` (eligibility, same-repository) step and the CI, head, files, and review steps. **Default (c) stands**, with the pending row added to `T-STATUS`. Concurrency key specified (design item 4): the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author.
+Lane ruling 2026-10-23 (revision 13.1), relayed by the coordinator: **default (a) SUPERSEDED — REVERSED** (the text above is kept as history): on the comment path a review that is not yet complete is a "not yet" hold, not a requested-but-not-executed outcome; the single pass runs with `--wait-closed false`, and a pending result (gate exit 10: a leg or the current-head security marker `running`, or no state comment yet) ends the `review` step with exit 0, state `pending`, the merge step skipped, the job not failed, and the `auto-merge` status `pending` with reason `review-not-complete:running` (or `review-not-complete:no-state-comment`); the bot's completion edit re-triggers a pass; only a merge step reached and not executed (head moved, window elapsed, `gh pr merge` failed) is non-zero. **Default (b) CONFIRMED:** "auto-merge requested" means the chain reached the merge step; the workflow reads no GitHub `auto_merge` flag and gates on the `author` (eligibility, same-repository) step and the CI, head, files, and review steps. **Default (c) stands**, with the pending row added to `T-STATUS`. Concurrency key specified (design item 4): the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author. **[Concurrency key SUPERSEDED by Q32, 2026-10-25: the identity's comments take the run id too.]**
+
+### Q32: How does `auto-merge.yml` avoid leaving a `cancelled` or `failure` conclusion on a default-branch SHA for a queued or held evaluation?
+
+Label: FOUNDER
+Class: product-level (changes the concurrency of the shipped workflow, the job result a draft pull request shows, and the merge step's exit on an already-merged pull request)
+Authority anchor: none in the committed register — the settlement is the operator and leader ruling of 2026-10-25, relayed in the delegation to manager-spec; the lane's record `.moai/reports/t1868/lane-decisions.md` D78 to D80 is local material and never an authority anchor
+Why unresolved: `scripts/release.sh` counts a check-run conclusion other than `success`, `neutral`, or `skipped` on a default-branch SHA as a release-gate failure, and the `issue_comment` and `workflow_run` runs of this workflow report on the default-branch tip; the lane observed (read-only `gh`, 100 runs) 5 `cancelled` `issue_comment` runs — the identity's repeated comment edits queued in the shared group `auto-merge-<PR number>`, where GitHub keeps one pending run and cancels the older ones — and 1 `failure`, a draft's `review` step ending exit 11 (Q21's default). The SPEC required one group per pull request on both paths (REQ-CCR-023) and the draft to fail the job (REQ-CCR-008)
+Default: not applied (settled by the ruling)
+Resolution: (1) the `workflow_run` path keeps the per-pull-request group; every `issue_comment` run, the identity's included, takes a run-id group, and the comment path relies on the head re-read before the merge, `--match-head-commit`, and idempotent evaluations instead of serialization; (2) a `gh pr merge` that fails on a pull request re-read as merged at the verified head ends the merge step successfully with a summary line saying so, and every other not-merged outcome stays non-zero (REQ-CCR-024 refined); (3) a draft is a "not yet" hold — `review` step exit 0, `not-run:draft`, status `pending` `not yet: draft`, no merge — and every other gate exit keeps its meaning; invariant: no run ends with a conclusion other than `success`, `skipped`, or `neutral` on a default-branch SHA because of queueing or a held evaluation. In-place SPEC amendment (Amendment 7) with NO plan-audit re-entry; no permission, gate semantic, or check is reduced (REQ-CCR-022, 023, 024, 025 and the refusals of `T-CHAIN` otherwise unchanged)
+Alternate: filter the identity's redundant comment edits before the job so they end `skipped` (lane option B) — not chosen: it needs a marker in the comment body the gate does not read and risks dropping the completing edit; leave the draft failing — withdrawn by the ruling
+Operator verdict: OPERATOR-SETTLED 2026-10-25 operator and leader ruling, transcribed from the leader's delegation message
 
 ## Follow-up candidates (recorded, not issued)
 
