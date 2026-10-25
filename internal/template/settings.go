@@ -167,32 +167,36 @@ func syncLocalSettingsPathFor(goos, projectRoot, inheritedPath, smartPath string
 	return nil
 }
 
-// joinPATHDeduped appends the SmartPATH segments to an inherited PATH while
-// preserving order and dropping inherited entries that SmartPATH already
-// covers. A launcher run inside a session that inherited a previous local
-// PATH would otherwise re-append the same SmartPATH entries on every update
-// and grow the value on every session restart (card-review r3 P2).
+// joinPATHDeduped merges SmartPATH into an inherited PATH preserving the
+// user's existing search precedence: inherited entries keep their
+// first-occurrence order, and only SmartPATH entries the inherited PATH does
+// not already carry are appended after them. Two guards this ordering serves
+// (card-review r3/r4): a launcher run inside a session that inherited a
+// previous local PATH would otherwise re-append the same SmartPATH entries
+// on every update and grow the value on every session restart, and dropping
+// inherited SmartPATH-covered entries from the FRONT would silently reorder
+// the search path so Claude resolves a different binary than the terminal.
 func joinPATHDeduped(inheritedPath, smartPath, sep string) string {
 	if inheritedPath == "" {
 		return smartPath
 	}
-	smartSeen := make(map[string]bool)
-	for _, seg := range strings.Split(smartPath, sep) {
-		if seg != "" {
-			smartSeen[seg] = true
-		}
-	}
-	kept := make([]string, 0, 8)
+	seen := make(map[string]bool)
+	kept := make([]string, 0, 16)
 	for _, seg := range strings.Split(inheritedPath, sep) {
-		if seg == "" || smartSeen[seg] {
+		if seg == "" || seen[seg] {
 			continue
 		}
+		seen[seg] = true
 		kept = append(kept, seg)
 	}
-	if len(kept) == 0 {
-		return smartPath
+	for _, seg := range strings.Split(smartPath, sep) {
+		if seg == "" || seen[seg] {
+			continue
+		}
+		seen[seg] = true
+		kept = append(kept, seg)
 	}
-	return strings.Join(kept, sep) + sep + smartPath
+	return strings.Join(kept, sep)
 }
 
 // @MX:ANCHOR: [AUTO] buildSmartPATHFor is the GOOS-injected, deterministic core of BuildSmartPATH

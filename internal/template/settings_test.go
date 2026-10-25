@@ -1748,13 +1748,16 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 		}
 	})
 
-	// card-review r3 P2: a session that inherited an earlier local PATH
-	// re-captures the SmartPATH segments in its environment; the join must
-	// drop those inherited duplicates in order instead of re-appending.
-	t.Run("drops inherited segments already covered by SmartPATH", func(t *testing.T) {
+	// card-review r3/r4 P2: a session that inherited an earlier local PATH
+	// re-captures the SmartPATH segments in its environment; the join keeps
+	// the inherited entries in first-occurrence order and appends only
+	// SmartPATH entries not already present — never re-appends, never
+	// reorders the user's existing search precedence.
+	t.Run("keeps inherited order and appends only new SmartPATH entries", func(t *testing.T) {
 		root := t.TempDir()
-		inherited := "/moai/bin:/usr/local/bin:/venv/bin:/custom"
-		if err := syncLocalSettingsPathFor("darwin", root, inherited, smart); err != nil {
+		// r4's exact case: /usr/local/bin must keep precedence over
+		// /custom/bin exactly as the terminal had it.
+		if err := syncLocalSettingsPathFor("darwin", root, "/usr/local/bin:/custom/bin", "/usr/local/bin:/moai/bin"); err != nil {
 			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
 		}
 		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
@@ -1766,13 +1769,32 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 			t.Fatalf("Unmarshal error: %v", err)
 		}
 		env, _ := doc["env"].(map[string]any)
-		want := "/venv/bin:/custom:" + smart
-		got, _ := env["PATH"].(string)
-		if got != want {
-			t.Errorf("env.PATH = %q, want deduped %q", got, want)
+		want := "/usr/local/bin:/custom/bin:/moai/bin"
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want precedence-preserving %q", got, want)
 		}
-		if strings.Count(got, "/moai/bin") != 1 {
-			t.Errorf("env.PATH = %q, SmartPATH segment duplicated", got)
+
+		// A session-inherited value carrying the SmartPATH segments must not
+		// grow on the next refresh either.
+		if err := syncLocalSettingsPathFor("darwin", root, "/moai/bin:/usr/local/bin:/venv/bin:/custom", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err = os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc2 map[string]any
+		if err := json.Unmarshal(raw, &doc2); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env2, _ := doc2["env"].(map[string]any)
+		want2 := "/moai/bin:/usr/local/bin:/venv/bin:/custom"
+		got2, _ := env2["PATH"].(string)
+		if got2 != want2 {
+			t.Errorf("env.PATH = %q, want unchanged inherited order %q", got2, want2)
+		}
+		if strings.Count(got2, "/moai/bin") != 1 || strings.Count(got2, "/usr/local/bin") != 1 {
+			t.Errorf("env.PATH = %q, SmartPATH segment duplicated", got2)
 		}
 	})
 
