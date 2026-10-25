@@ -205,6 +205,36 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
+// readLastWorktree is worktreeFlagValue with the LAST launcher-segment match
+// deciding (card t1791 audit finding 1): a duplicate selection pair enters by
+// the final selection — the same last-wins convention the backend applies,
+// so what the entry judges is what the backend would have resolved. The scan
+// stops at the first "--" pass-through marker; a bare -w as the final
+// selection answers no value.
+func readLastWorktree(args []string) (string, bool) {
+	value, ok := "", false
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return value, ok
+		}
+		switch {
+		case arg == "-w" || arg == "--worktree":
+			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
+				value, ok = args[i+1], true
+				i++
+			} else {
+				value, ok = "", false
+			}
+		case strings.HasPrefix(arg, "--worktree="):
+			value, ok = strings.TrimPrefix(arg, "--worktree="), true
+		case strings.HasPrefix(arg, "-w="):
+			value, ok = strings.TrimPrefix(arg, "-w="), true
+		}
+	}
+	return value, ok
+}
+
 // existingWorktreeEntryDir reports the single existing MoAI tree the launch
 // argv's first -w short name names, or "" (REQ-WHR-006's entry clause, card
 // t1640 review P1-2; legacy-moai widened by card t1791, GH #1813). The entry
@@ -229,18 +259,18 @@ func readFirstWorktree(args []string) worktreeRead {
 // selection is derived in ONE file (launch_view.go) and every reader on the
 // launch path receives values (TestLaunchViewSingleParse).
 func existingWorktreeEntryDir(args []string) string {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+	value, ok := readLastWorktree(args)
+	if !ok || value == "" || filepath.IsAbs(value) {
 		return ""
 	}
-	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
+	if value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
 		return ""
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
 		return ""
 	}
-	cands, err := worktreeroot.Candidates(root, read.Value)
+	cands, err := worktreeroot.Candidates(root, value)
 	if err != nil || len(cands) != 1 {
 		return ""
 	}
@@ -252,26 +282,39 @@ func existingWorktreeEntryDir(args []string) string {
 	return cands[0].Path
 }
 
-// stripWorktreeSelection removes the argv's first -w selection (both
-// spellings, its value included): the entry-by-directory form starts the
-// backend inside the tree, so the backend must receive no worktree
-// selection at all — a surviving short name would resolve against the
-// tree's own .claude/worktrees and create a duplicate inside it.
+// stripWorktreeSelection removes EVERY -w/--worktree selection from the
+// launcher segment (before the first "--" pass-through marker): the
+// entry-by-directory form starts the backend inside the tree, so the backend
+// must receive no worktree selection at all — a surviving selection (the
+// second of a duplicate pair, or a name alive in the tail) would let claude
+// resolve it against its own .claude/worktrees and create a duplicate there
+// (card t1791 audit findings 1-2). Tokens from the first "--" on are
+// verbatim backend input — a literal --worktree-shaped token there is a
+// prompt, never an option — and are never scanned or stripped, the same
+// scan rule worktreeFlagValue reads by.
 func stripWorktreeSelection(args []string) []string {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" {
-		return args
-	}
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--worktree="+read.Value {
-			continue // the equals form carries its value
+		arg := args[i]
+		if arg == "--" {
+			// The pass-through marker and everything after it are verbatim
+			// backend input — never scanned, never stripped.
+			out = append(out, args[i:]...)
+			return out
 		}
-		if (args[i] == "--worktree" || args[i] == "-w") && i+1 < len(args) && args[i+1] == read.Value {
-			i++ // the two-token form: skip the flag and its value
-			continue
+		switch {
+		case arg == "-w" || arg == "--worktree":
+			// Drop the flag, and its value when one is paired — the same
+			// pairing rule worktreeFlagValue reads: the next token is the
+			// value unless it is another flag or the marker.
+			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
+				i++
+			}
+		case strings.HasPrefix(arg, "--worktree="), strings.HasPrefix(arg, "-w="):
+			// Equals form: the flag and its value are one token.
+		default:
+			out = append(out, arg)
 		}
-		out = append(out, args[i])
 	}
 	return out
 }

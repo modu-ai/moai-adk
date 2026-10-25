@@ -114,3 +114,44 @@ func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 		}
 	}
 }
+
+// TestEntryDir_DuplicateSelectionEntersByFinal — a duplicate selection pair
+// enters by the FINAL selection (the same last-wins convention the backend
+// applies; card t1791 audit finding 1): the first strip used to leave the
+// second selection alive in the backend argv, the nested-creation path.
+func TestEntryDir_DuplicateSelectionEntersByFinal(t *testing.T) {
+	primary := entryFixture(t)
+	second := filepath.Join(primary, ".moai", "worktrees", "second")
+	if err := os.MkdirAll(second, 0o755); err != nil {
+		t.Fatalf("mkdir second tree: %v", err)
+	}
+	got := existingWorktreeEntryDir([]string{"-w", "first", "-w", "second"})
+	want, err := filepath.EvalSymlinks(second)
+	if err != nil {
+		t.Fatalf("evalsymlinks %s: %v", second, err)
+	}
+	if got != want {
+		t.Fatalf("entry dir = %q, want the final selection's tree %q", got, want)
+	}
+}
+
+// TestStrip_DuplicateSelectionsAllRemoved — the strip removes EVERY
+// launcher-segment selection, not just the first (card t1791 audit finding
+// 1): a surviving second selection is the nested-creation path.
+func TestStrip_DuplicateSelectionsAllRemoved(t *testing.T) {
+	rest := stripWorktreeSelection([]string{"-w", "first", "--worktree", "second", "-c", "extra"})
+	if len(rest) != 2 || rest[0] != "-c" || rest[1] != "extra" {
+		t.Fatalf("stripped argv = %v, want [-c extra] (every selection removed)", rest)
+	}
+}
+
+// TestStrip_PreservesSeparatorTail — the strip never crosses the first "--"
+// pass-through marker (card t1791 audit finding 2): a literal
+// --worktree-shaped token in the tail is a prompt, not an option, and the
+// marker and tail survive byte-identical.
+func TestStrip_PreservesSeparatorTail(t *testing.T) {
+	rest := stripWorktreeSelection([]string{"-w", "first", "--", "--", "--worktree=first"})
+	if len(rest) != 3 || rest[0] != "--" || rest[1] != "--" || rest[2] != "--worktree=first" {
+		t.Fatalf("stripped argv = %v, want [-- -- --worktree=first] (tail preserved verbatim)", rest)
+	}
+}
