@@ -276,6 +276,46 @@ func TestSettingsTemplateRequiredHooks(t *testing.T) {
 	}
 }
 
+// TestSettingsTemplatePATHPreservesInheritedEnv pins the GH #1827 (item 2)
+// fix: settings.json env.PATH must PREFIX the inherited environment PATH
+// rather than replace it. The template renders "${PATH}" + a
+// platform-correct separator + SmartPATH, so a session's virtualenv and
+// user-local tool directories stay ahead of the MoAI well-known directories
+// instead of being wiped by a baked-in absolute list. Machine-specific
+// entries belong in .claude/settings.local.json (documented in
+// settings-management.md).
+func TestSettingsTemplatePATHPreservesInheritedEnv(t *testing.T) {
+	for _, tc := range []struct {
+		platform string
+		wantJoin string // separator between ${PATH} and SmartPATH
+	}{
+		{"darwin", ":"},
+		{"linux", ":"},
+		{"windows", ";"},
+	} {
+		t.Run(tc.platform, func(t *testing.T) {
+			ctx := testContext(tc.platform)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			var settings struct {
+				Env map[string]string `json:"env"`
+			}
+			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+				t.Fatalf("Unmarshal error: %v", err)
+			}
+
+			got, ok := settings.Env["PATH"]
+			if !ok {
+				t.Fatal("missing env.PATH in rendered settings")
+			}
+			want := "${PATH}" + tc.wantJoin + ctx.SmartPATH
+			if got != want {
+				t.Errorf("env.PATH = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
@@ -1468,10 +1508,12 @@ func TestBuildSmartPATHWrapperMatchesFixture(t *testing.T) {
 // TestSettingsRenderWindowsPATH renders a windows-shaped SmartPATH through
 // the real embedded settings.json.tmpl (SPEC-WIN-SMARTPATH-001, GH #1690):
 // the rendered settings.json must be valid JSON, the env.PATH value must
-// round-trip byte-exactly as a ";-joined" Windows-form value with no POSIX
-// entry, and the {{jsonEscape .SmartPATH}} directive must still appear
-// exactly once in the template source (REQ-CWSP-002; the full AC-TPS-014
-// sentinel lives in internal/config/toolpolicy).
+// round-trip byte-exactly as a ";-joined" Windows-form value prefixed by the
+// inherited-PATH marker "${PATH};" (GH #1827: the session PATH is preserved,
+// not replaced) with no POSIX entry, and the {{jsonEscape .SmartPATH}}
+// directive must still appear exactly once in the template source
+// (REQ-CWSP-002; the full AC-TPS-014 sentinel lives in
+// internal/config/toolpolicy).
 func TestSettingsRenderWindowsPATH(t *testing.T) {
 	smartPath := strings.Join([]string{
 		`C:\Users\u\.local\bin`,
@@ -1505,8 +1547,9 @@ func TestSettingsRenderWindowsPATH(t *testing.T) {
 	if !ok {
 		t.Fatal("env.PATH is not a string")
 	}
-	if gotPath != smartPath {
-		t.Errorf("env.PATH round-trip mismatch:\ngot:  %s\nwant: %s", gotPath, smartPath)
+	wantPath := "${PATH};" + smartPath
+	if gotPath != wantPath {
+		t.Errorf("env.PATH round-trip mismatch:\ngot:  %s\nwant: %s", gotPath, wantPath)
 	}
 	if strings.Contains(gotPath, "/usr/") || strings.Contains(gotPath, "/opt/") || strings.Contains(gotPath, ":/bin") {
 		t.Errorf("windows env.PATH must not contain POSIX entries: %s", gotPath)
