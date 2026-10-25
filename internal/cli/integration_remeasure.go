@@ -59,8 +59,9 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 // remeasureBaseBranch names the integration branch the re-measure records as
 // its absorbed base (card t1790, GH #1817). The configured target comes first.
 // git-strategy.yaml is gitignored, so a checkout that never had the file (a
-// fresh clone, a CI workspace) resolved an empty branch and the verb called
-// `git merge-base refs/heads/ HEAD`, which died with exit status 128. When the
+// fresh clone, a CI workspace) resolved an empty branch and the verb asked git
+// for the fork point of the ref `refs/heads/` (no branch name), which died with
+// exit status 128. When the
 // configuration names none, the remote's default branch (origin/HEAD) stands
 // in; when that does not resolve either, the verb refuses with guidance before
 // it runs the command or calls git with an empty ref.
@@ -78,7 +79,8 @@ func remeasureBaseBranch(root, worktree string) (string, error) {
 		// The record names the base through refs/heads/<branch>, so that local
 		// branch must exist before the command runs: a remote default branch
 		// with no local counterpart (a clone that checked out another branch)
-		// would otherwise fail in merge-base AFTER the command (card-review).
+		// would otherwise fail when the fork point is computed, AFTER the
+		// command (card-review).
 		verify := exec.Command("git", "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
 		verify.Dir = worktree
 		verify.Env = gitenv.Env()
