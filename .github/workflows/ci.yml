@@ -137,6 +137,12 @@ jobs:
       # to actually run here to mean anything.
       # The version is pinned because the rewrite path parses sg's output, so an
       # unreviewed upgrade can change behaviour. Bump it deliberately.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -372,6 +378,12 @@ jobs:
       # ast-grep is needed because internal/cli rewrite-guard tests shell out
       # to `sg`; without it those tests skip and the race run misses the very
       # exec.Command paths that dominate race runtime.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -432,6 +444,12 @@ jobs:
         run: go mod download
 
       # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -492,6 +510,12 @@ jobs:
         run: go mod download
 
       # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -551,6 +575,12 @@ jobs:
         run: go mod download
 
       # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -611,6 +641,12 @@ jobs:
         run: go mod download
 
       # ast-grep: kept so this leg runs in the same environment as the other race legs.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
@@ -672,6 +708,12 @@ jobs:
         run: go mod download
 
       # ast-grep: the hook/mx scans in this leg need `sg` as before the split.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 

@@ -99,6 +99,12 @@ jobs:
       # guards shell out to; without it those guards fail here rather than
       # skip. Mirrors ci.yml / release-pr-multi-os.yml — keep the pinned
       # version in step with them.
+      # CVE-2026-111497: npm uses this patched Node 24 release.
+      - name: Setup patched Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
