@@ -12,6 +12,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -170,6 +171,76 @@ func TestCCRefusesAnExternalGitDirNamedDotGit(t *testing.T) {
 	launch := netDriveLaunch(t, repo, netCC, []string{"-w", "feat"})
 	if launch.err == nil || launch.launched {
 		t.Fatalf("an external .git-named git dir must not misjudge the primary: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
+// TestCCRefusesALinkedTreeOverAnExternalDotGit (audit r4 P2-1,
+// rcpt-4b5b6fc2): from a linked worktree whose repository carries an
+// external git dir named ".git", git answers the metadata's parent as the
+// main worktree — the true checkout announces itself with a .git FILE
+// linking directly to the common dir, and the refusal names ITS shadow.
+func TestCCRefusesALinkedTreeOverAnExternalDotGit(t *testing.T) {
+	base := m2Real(t, t.TempDir())
+	repo := filepath.Join(base, "repo")
+	admin := filepath.Join(base, "admin")
+	metadata := filepath.Join(admin, ".git")
+	if err := os.MkdirAll(admin, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", admin, err)
+	}
+	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", repo)
+	m2Git(t, repo, "config", "user.email", "m2-test@example.com")
+	m2Git(t, repo, "config", "user.name", "M2 Test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m2Git(t, repo, "add", "README.md")
+	m2Git(t, repo, "commit", "-q", "-m", "seed")
+	moai := filepath.Join(repo, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	linked := filepath.Join(base, "linked")
+	m2Git(t, repo, "worktree", "add", "-q", "-b", "wt-linked", linked)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("the shadow under the true checkout must refuse, not launch: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal does not name the true checkout's shadow: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
+// TestCCRefusesATrailingSpaceCheckoutPath (audit r4 P2-2): the checkout
+// path itself may end in a space — git's output is trimmed of its trailing
+// newline only, so the check inspects the real path.
+func TestCCRefusesATrailingSpaceCheckoutPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("trailing-space directories are not creatable on windows")
+	}
+	base := m2Real(t, t.TempDir())
+	repo := filepath.Join(base, "repo ")
+	m2Git(t, base, "init", "-q", "--template=", "-b", "main", repo)
+	m2Git(t, repo, "config", "user.email", "m2-test@example.com")
+	m2Git(t, repo, "config", "user.name", "M2 Test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m2Git(t, repo, "add", "README.md")
+	m2Git(t, repo, "commit", "-q", "-m", "seed")
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(repo, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, repo, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("the trailing-space checkout must not bypass the refusal: err=%v launched=%v", launch.err, launch.launched)
 	}
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)

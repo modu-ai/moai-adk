@@ -43,6 +43,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	worktreepkg "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
@@ -301,15 +302,13 @@ func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 //     external --separate-git-dir metadata, one named ".git"; the basename
 //     misjudged that last one, audit r3 P2). show-toplevel answers the
 //     checkout.
-//   - dir's git dir differs — dir is a LINKED worktree, and the main
-//     checkout owns the common dir as its .git. Verified, never assumed:
-//     the common dir must be named ".git" and the candidate's .git entry
-//     must BE it (os.SameFile). Anything else is refused — a linked tree
-//     over an external git dir has no git-native address for its main
-//     checkout (audit r2 P2). Residual: an external metadata dir named
-//     ".git" hosting an unrelated checkout's git dir is structurally
-//     indistinguishable from a normal main checkout and answers the
-//     metadata's parent; no git-native discriminator exists.
+//   - dir's git dir differs — dir is a LINKED worktree. The main checkout
+//     is the checkout `git worktree list` names first, verified to own the
+//     common dir as its .git entry (os.SameFile). An external git dir —
+//     whatever its name, ".git" included — answers itself as the first
+//     record (measured) and is refused: which checkout owns it is not
+//     git-decidable, and guessing the metadata's parent launched into the
+//     wrong tree (audit r2 P2, r4 P2-1).
 func moaiPrimaryRoot(dir string) (string, error) {
 	gitDir, err := moaiRevParse(dir, "--path-format=absolute", "--git-dir")
 	if err != nil {
@@ -326,24 +325,94 @@ func moaiPrimaryRoot(dir string) (string, error) {
 		}
 		return moaiCanonical(toplevel), nil
 	}
-	if filepath.Base(common) != ".git" {
-		return "", fmt.Errorf("the git directory %s is external to the checkout and %s is not its main worktree; the primary checkout cannot be resolved", common, dir)
+	list, err := moaiWorktreeList(dir)
+	if err != nil {
+		return "", err
 	}
-	candidate := filepath.Dir(common)
+	if len(list) == 0 || list[0].Path == "" {
+		return "", fmt.Errorf("no main worktree record for %s", dir)
+	}
+	candidate := moaiCanonical(filepath.FromSlash(list[0].Path))
+	if filepath.Clean(candidate) == filepath.Clean(common) {
+		return "", fmt.Errorf("the main worktree record is the git directory %s itself; the primary checkout cannot be resolved", common)
+	}
 	fiCommon, err := os.Stat(common)
 	if err != nil {
 		return "", err
 	}
 	fiDotGit, err := os.Stat(filepath.Join(candidate, ".git"))
-	if err != nil || !os.SameFile(fiCommon, fiDotGit) {
+	if err != nil || !fiDotGit.IsDir() || !os.SameFile(fiCommon, fiDotGit) {
 		return "", fmt.Errorf("the git directory %s is not the .git of %s; the primary checkout cannot be resolved", common, candidate)
 	}
-	return moaiCanonical(candidate), nil
+	// An external git dir NAMED ".git" is git-indistinguishable from this
+	// shape: git names the metadata's parent the main worktree (measured,
+	// audit r4 P2-1) and SameFile agrees with itself. The checkout it
+	// actually serves announces itself with a .git FILE linking directly to
+	// the common dir — searched one level around the metadata's parent; a
+	// linked worktree's .git file never links that directly (it carries the
+	// worktrees/<name> path).
+	if linked, ok := fileLinkedMainCheckout(common); ok {
+		return linked, nil
+	}
+	return candidate, nil
+}
+
+// fileLinkedMainCheckout searches the directories one level around the
+// common dir's parent for a .git FILE whose gitdir links DIRECTLY to
+// common — the signature of a main checkout served by an external git dir
+// (audit r4 P2-1). One such directory resolves it; none or several answer
+// not-ok, which leaves the caller's structural answer standing.
+func fileLinkedMainCheckout(common string) (string, bool) {
+	grand := filepath.Dir(filepath.Dir(common))
+	entries, err := os.ReadDir(grand)
+	if err != nil {
+		return "", false
+	}
+	found := ""
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dotGit := filepath.Join(grand, e.Name(), ".git")
+		fi, err := os.Stat(dotGit)
+		if err != nil || fi.IsDir() {
+			continue
+		}
+		body, err := os.ReadFile(dotGit)
+		if err != nil {
+			continue
+		}
+		if strings.TrimSpace(string(body)) != "gitdir: "+common {
+			continue
+		}
+		if found != "" {
+			return "", false // two checkouts claim it: undecidable
+		}
+		found = filepath.Join(grand, e.Name())
+	}
+	if found == "" {
+		return "", false
+	}
+	return moaiCanonical(found), true
+}
+
+// moaiWorktreeList parses one `git -C dir worktree list --porcelain` probe,
+// GIT_* scrubbed like the rev-parse probes.
+func moaiWorktreeList(dir string) ([]worktreepkg.WorktreeRecord, error) {
+	probe := exec.Command("git", "-C", dir, "worktree", "list", "--porcelain")
+	probe.Env = scrubbedGitEnv()
+	out, err := probe.Output()
+	if err != nil {
+		return nil, err
+	}
+	return worktreepkg.ParseWorktreeList(string(out))
 }
 
 // moaiRevParse runs one `git -C dir rev-parse` probe with the inherited
 // GIT_* environment scrubbed — a planted GIT_WORK_TREE or GIT_DIR would
-// redirect it — and returns the trimmed single-line output.
+// redirect it — and returns the output with its single trailing newline
+// removed. Only the newline: a checkout path may itself end in a space,
+// and trimming it checked the wrong tree (audit r4 P2).
 func moaiRevParse(dir string, args ...string) (string, error) {
 	argv := append([]string{"-C", dir, "rev-parse"}, args...)
 	probe := exec.Command("git", argv...)
@@ -352,7 +421,7 @@ func moaiRevParse(dir string, args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	line := strings.TrimSpace(string(out))
+	line := strings.TrimSuffix(strings.TrimSuffix(string(out), "\n"), "\r")
 	if line == "" {
 		return "", fmt.Errorf("git rev-parse %v answered empty in %s", args, dir)
 	}
