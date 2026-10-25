@@ -392,7 +392,17 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// dropped would otherwise leave a selection alive in the backend argv.
 	filteredArgs = view.LaunchArgs
 	if entryDir != "" {
-		filteredArgs = stripWorktreeOptionsForBackend(view)
+		stripped, _ := stripWorktreeOptionsForBackend(view)
+		if !entryStripIsSemanticallyClean(view) {
+			endHandoff()
+			return fmt.Errorf("enter the existing worktree %s: removing the worktree selection would shift the backend argument roles (a positional prompt would be consumed as another option's value); adjust the arguments so the prompt's position survives, or drop the -w name", entryDir)
+		}
+		filteredArgs = stripped
+		// The chain ledger records the entered tree even though the backend
+		// argv no longer carries a selection for the populator to resolve
+		// (card t1791 audit round 5 finding 3).
+		launchChainTargetOverride = entryDir
+		defer func() { launchChainTargetOverride = "" }()
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

@@ -879,10 +879,25 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-005 (Path A): record the worktree spawn
 	// boundary on the chain ledger and hand the node ID to the child
-	// environment. Fail-open — never blocks the launch (card t242).
-	launchEnv = injectChainNodeForTarget(consumed.ChainTarget, launchEnv, os.Stderr)
+	// environment. Fail-open — never blocks the launch (card t242). The
+	// entry-by-directory override carries the entered tree when the backend
+	// argv carries no worktree selection for the populator to resolve (card
+	// t1791 audit round 5 finding 3).
+	chainTarget := consumed.ChainTarget
+	if launchChainTargetOverride != "" {
+		chainTarget = launchChainTargetOverride
+	}
+	launchEnv = injectChainNodeForTarget(chainTarget, launchEnv, os.Stderr)
 	return execOrSpawnClaudeFunc(claudeBin, buildArgs(false), launchEnv)
 }
+
+// launchChainTargetOverride carries the entry-by-directory tree to the chain
+// ledger when the backend argv carries no worktree selection for the
+// populator to resolve (card t1791 audit round 5 finding 3). The cc and glm
+// entry flows set it immediately before their launch call and clear it when
+// the call returns; empty leaves the consumption-derived target in charge.
+// Fail-open: an empty override is the shipped behavior.
+var launchChainTargetOverride string
 
 // --- Flag Parsing ---
 

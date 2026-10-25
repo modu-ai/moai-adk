@@ -349,7 +349,19 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// backend argv and re-open the nested-creation path.
 	filteredArgs = view.LaunchArgs
 	if entryDir != "" {
-		filteredArgs = stripWorktreeOptionsForBackend(view)
+		stripped, _ := stripWorktreeOptionsForBackend(view)
+		if !entryStripIsSemanticallyClean(view) {
+			endHandoff()
+			return fmt.Errorf("enter the existing worktree %s: removing the worktree selection would shift the backend argument roles (a positional prompt would be consumed as another option's value); adjust the arguments so the prompt's position survives, or drop the -w name", entryDir)
+		}
+		filteredArgs = stripped
+		// The chain ledger records the entered tree even though the backend
+		// argv no longer carries a selection for the populator to resolve
+		// (card t1791 audit round 5 finding 3). The override rides until the
+		// launch call returns; on the exec path the process is replaced and
+		// the child carries the node id in its environment.
+		launchChainTargetOverride = entryDir
+		defer func() { launchChainTargetOverride = "" }()
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

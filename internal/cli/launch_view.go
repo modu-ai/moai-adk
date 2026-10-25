@@ -38,6 +38,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -216,7 +217,7 @@ func readFirstWorktree(args []string) worktreeRead {
 // argv: a token another option consumed as its value is never removed, a
 // token past the backend's own terminator is never touched, and a cluster
 // token loses only its `w` letters (the leading options survive).
-func stripWorktreeOptionsForBackend(view launchView) []string {
+func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 	type cut struct {
 		drop       bool
 		keepPrefix string
@@ -262,20 +263,96 @@ func stripWorktreeOptionsForBackend(view launchView) []string {
 		f += span
 	}
 	if len(cuts) == 0 {
-		return view.LaunchArgs
+		kept := make([]int, len(view.FinalArgv))
+		for i := range kept {
+			kept[i] = i
+		}
+		return view.LaunchArgs, kept
+	}
+	// Invert the origin chain: kept reports FINALARGV indices (the guard's
+	// comparison surface), while the cuts are keyed by LaunchArgs indices.
+	inv := make(map[int]int)
+	for f, la := range view.Consumed.Origin {
+		inv[la] = f
 	}
 	out := make([]string, 0, len(view.LaunchArgs))
+	kept := make([]int, 0, len(view.LaunchArgs))
 	for i, tok := range view.LaunchArgs {
 		c, hit := cuts[i]
-		if !hit {
-			out = append(out, tok)
+		if hit {
+			if c.keepPrefix != "" {
+				out = append(out, c.keepPrefix)
+				kept = append(kept, inv[i]) // the cut token survives, shortened
+			}
 			continue
 		}
-		if c.keepPrefix != "" {
-			out = append(out, c.keepPrefix)
+		out = append(out, tok)
+		// The launcher's own separator has no FinalArgv origin — the
+		// consumption drops it before the backend argv exists — and never
+		// reaches the guard's comparison surface.
+		if f, ok := inv[i]; ok {
+			kept = append(kept, f)
 		}
 	}
-	return out
+	return out, kept
+}
+
+// backendArgRoles classifies every token of a backend argv by the option
+// model: "option" (a flag), "value" (an option's consumed value), or
+// "positional" (a prompt, or anything past the terminator).
+func backendArgRoles(argv []string) []string {
+	roles := make([]string, len(argv))
+	for i := 0; i < len(argv); i++ {
+		tok := argv[i]
+		if tok == argSeparator {
+			for j := i; j < len(argv); j++ {
+				roles[j] = "positional"
+			}
+			break
+		}
+		if len(tok) < 2 || tok[0] != '-' {
+			roles[i] = "positional"
+			continue
+		}
+		roles[i] = "option"
+		var span int
+		var sel worktreeSelection
+		sel, span = backendOptionStep(argv, i, sel)
+		_ = sel
+		if span == 1 && i+1 < len(argv) {
+			roles[i+1] = "value"
+		}
+		i += span
+	}
+	return roles
+}
+
+// entryStripIsSemanticallyClean reports whether removing the worktree
+// selections from the launch argv preserves every surviving token's role in
+// the backend argv the launch will actually produce (card t1791 audit round
+// 5 finding 2): a middle-token removal can turn a positional prompt into
+// another option's consumed value (--debug -w plain PROMPT), and a launch
+// that proceeds on such a shift corrupts the prompt. The comparison runs the
+// stripped argv back through the consumption loop and compares each
+// surviving token's role against the role the authoritative FinalArgv parse
+// gave it.
+func entryStripIsSemanticallyClean(view launchView) bool {
+	stripped, kept := stripWorktreeOptionsForBackend(view)
+	actualBackend := consumeLaunchArgs(stripped).PassThrough
+	if len(actualBackend) != len(kept) {
+		return false
+	}
+	origRoles := backendArgRoles(view.FinalArgv)
+	actualRoles := backendArgRoles(actualBackend)
+	for k, orig := range kept {
+		if orig >= len(origRoles) {
+			return false
+		}
+		if origRoles[orig] != actualRoles[k] {
+			return false
+		}
+	}
+	return true
 }
 
 // existingWorktreeEntryDir reports the single existing MoAI tree the view's
@@ -326,7 +403,36 @@ func existingWorktreeEntryDir(view launchView) string {
 	if cands[0].Kind != worktreeroot.KindHome && cands[0].Kind != worktreeroot.KindLegacyMoai {
 		return ""
 	}
+	// The candidate must be a REAL git worktree whose top level is the
+	// directory itself (card t1791 audit round 5 finding 1): a plain
+	// directory that merely sits under a worktrees root is not isolation —
+	// entering it would run the backend in a subdirectory of the default
+	// checkout. A candidate that fails the check answers "" (the launcher
+	// creates nothing; claude's own pass-through applies).
+	if worktreeTopLevelFn(cands[0].Path) != entryCanonicalPath(cands[0].Path) {
+		return ""
+	}
 	return cands[0].Path
+}
+
+// worktreeTopLevelFn is the git top-level probe of the entry check, a seam
+// for tests (the production form runs `git -C <dir> rev-parse --show-toplevel`
+// and answers "" on any failure — a non-git directory has no top level).
+var worktreeTopLevelFn = func(dir string) string {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--quiet", "--show-toplevel").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// entryCanonicalPath resolves symlinks so the comparison survives the macOS
+// /var alias the resolver itself canonicalizes through.
+func entryCanonicalPath(dir string) string {
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		return real
+	}
+	return dir
 }
 
 // entryWorktreeRead is the writer-precheck and hook-seed read the
