@@ -39,11 +39,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
-	worktreepkg "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
@@ -247,24 +245,27 @@ func existingWorktreeEntryDir(args []string) string {
 
 // refuseShadowedMoaiTreeName refuses the launch when the backend's worktree
 // selection — the LAST -w value the view resolved, not the first flag —
-// names an existing .moai/worktrees/<name> MoAI tree while the native
-// .claude/worktrees/<name> tree does not exist: claude would resolve the
-// name natively and silently create a duplicate branch tree beside the
-// MoAI tree (the 2026-10-08 lane-12 incident, GH #1813). The refusal is
-// pre-launch and argv-preserving — nothing is stripped, entered, or
-// rewritten; the error guides into the existing tree by directory
-// (`cd '<path>' && moai <verb>`, the path shellSingleQuoted — audit r1 P2-1
-// measured claude 2.1.309 rejecting an absolute path as a --worktree value
-// with "Invalid worktree name", so `-w <path>` is never guided). Both paths
-// are spelled from the primary checkout resolved through the main worktree
-// record — independent of the MoAI home metadata (audit r1 P2-2: a broken
-// MOAI_HOME must not bypass the check) and of the git-dir layout (audit r2
-// P2: a --separate-git-dir checkout is not the common-dir parent's child),
-// and the probe failing refuses (fail closed) rather than proceeding into
-// the duplicate-creation path. The native side is
-// judged by its own existence (a native path aliasing the MoAI tree keeps
-// the existing behavior). Every non-judgment answers nil: no selection or a
-// bare one, an absolute or path-shaped value.
+// names a .moai/worktrees/<name> tree that already exists at the launcher's
+// own project root while the native .claude/worktrees/<name> tree does not:
+// claude would resolve the name against THIS root and silently create a
+// duplicate branch tree beside the MoAI tree (the 2026-10-08 lane-12
+// incident, GH #1813). The base is deliberately findProjectRootFn — the
+// same root every other launcher check reads and the exact directory claude
+// would create the tree in — NOT a git-layout resolver: audits r2-r5
+// measured the resolver shapes (common-dir parent, worktree-list record,
+// file-link scan) wrong or hijackable on exotic layouts, and the launcher's
+// byte-equality contract requires no probe side effects on the launch path.
+// Where the root itself cannot be resolved there is no repository for
+// claude to create a worktree in either, so nothing can be duplicated.
+// The refusal is pre-launch and argv-preserving — nothing is stripped,
+// entered, or rewritten; the error guides into the existing tree by
+// directory (`cd '<path>' && moai <verb>`, the path shellSingleQuoted —
+// audit r1 P2-1 measured claude 2.1.309 rejecting an absolute path as a
+// --worktree value with "Invalid worktree name", so `-w <path>` is never
+// guided). The native side is judged by its own existence (a native path
+// aliasing the MoAI tree keeps the existing behavior). Every non-judgment
+// answers nil: no selection or a bare one, an absolute or path-shaped
+// value, an unresolvable root.
 func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 	if !view.Selection.Present || !view.Selection.HasValue {
 		return nil
@@ -275,17 +276,13 @@ func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
-		return nil
+		return nil // no root, no repository for claude to create a worktree in
 	}
-	primary, err := moaiPrimaryRoot(root)
-	if err != nil {
-		return fmt.Errorf("refusing -w %s: the repository root cannot be resolved for the same-name safety check (%v); run from inside the repository and retry", value, err)
-	}
-	moaiDir := filepath.Join(primary, ".moai", "worktrees", value)
+	moaiDir := filepath.Join(root, ".moai", "worktrees", value)
 	if fi, err := os.Stat(moaiDir); err != nil || !fi.IsDir() {
 		return nil
 	}
-	nativeDir := filepath.Join(primary, ".claude", "worktrees", value)
+	nativeDir := filepath.Join(root, ".claude", "worktrees", value)
 	if _, err := os.Stat(nativeDir); err == nil {
 		return nil // the native tree exists (aliases included); claude re-enters it natively
 	}
@@ -293,166 +290,6 @@ func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 		value, moaiDir, value, value, shellSingleQuoted(moaiDir), verb)
 }
 
-// moaiPrimaryRoot resolves the primary checkout's root from dir, by the
-// git-dir identity first and the layout second (every step git-native,
-// GIT_* scrubbed, fail closed):
-//
-//   - dir's git dir EQUALS the common dir — dir IS the main checkout,
-//     whatever the git dir is called or where it lives (a normal .git, an
-//     external --separate-git-dir metadata, one named ".git"; the basename
-//     misjudged that last one, audit r3 P2). show-toplevel answers the
-//     checkout.
-//   - dir's git dir differs — dir is a LINKED worktree. The main checkout
-//     is the checkout `git worktree list` names first, verified to own the
-//     common dir as its .git entry (os.SameFile). An external git dir —
-//     whatever its name, ".git" included — answers itself as the first
-//     record (measured) and is refused: which checkout owns it is not
-//     git-decidable, and guessing the metadata's parent launched into the
-//     wrong tree (audit r2 P2, r4 P2-1).
-func moaiPrimaryRoot(dir string) (string, error) {
-	gitDir, err := moaiRevParse(dir, "--path-format=absolute", "--git-dir")
-	if err != nil {
-		return "", err
-	}
-	common, err := moaiRevParse(dir, "--path-format=absolute", "--git-common-dir")
-	if err != nil {
-		return "", err
-	}
-	if gitDir == common {
-		toplevel, err := moaiRevParse(dir, "--path-format=absolute", "--show-toplevel")
-		if err != nil {
-			return "", err
-		}
-		return moaiCanonical(toplevel), nil
-	}
-	list, err := moaiWorktreeList(dir)
-	if err != nil {
-		return "", err
-	}
-	if len(list) == 0 || list[0].Path == "" {
-		return "", fmt.Errorf("no main worktree record for %s", dir)
-	}
-	candidate := moaiCanonical(filepath.FromSlash(list[0].Path))
-	if filepath.Clean(candidate) == filepath.Clean(common) {
-		return "", fmt.Errorf("the main worktree record is the git directory %s itself; the primary checkout cannot be resolved", common)
-	}
-	fiCommon, err := os.Stat(common)
-	if err != nil {
-		return "", err
-	}
-	fiDotGit, err := os.Stat(filepath.Join(candidate, ".git"))
-	if err != nil || !fiDotGit.IsDir() || !os.SameFile(fiCommon, fiDotGit) {
-		return "", fmt.Errorf("the git directory %s is not the .git of %s; the primary checkout cannot be resolved", common, candidate)
-	}
-	// An external git dir NAMED ".git" is git-indistinguishable from this
-	// shape: git names the metadata's parent the main worktree (measured,
-	// audit r4 P2-1) and SameFile agrees with itself. The checkout it
-	// actually serves announces itself with a .git FILE linking directly to
-	// the common dir — searched one level around the metadata's parent; a
-	// linked worktree's .git file never links that directly (it carries the
-	// worktrees/<name> path).
-	if linked, ok := fileLinkedMainCheckout(common); ok {
-		return linked, nil
-	}
-	return candidate, nil
-}
-
-// fileLinkedMainCheckout searches the directories one level around the
-// common dir's parent for a .git FILE whose gitdir links DIRECTLY to
-// common — the signature of a main checkout served by an external git dir
-// (audit r4 P2-1). One such directory resolves it; none or several answer
-// not-ok, which leaves the caller's structural answer standing.
-func fileLinkedMainCheckout(common string) (string, bool) {
-	grand := filepath.Dir(filepath.Dir(common))
-	entries, err := os.ReadDir(grand)
-	if err != nil {
-		return "", false
-	}
-	found := ""
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		dotGit := filepath.Join(grand, e.Name(), ".git")
-		fi, err := os.Stat(dotGit)
-		if err != nil || fi.IsDir() {
-			continue
-		}
-		body, err := os.ReadFile(dotGit)
-		if err != nil {
-			continue
-		}
-		if strings.TrimSpace(string(body)) != "gitdir: "+common {
-			continue
-		}
-		if found != "" {
-			return "", false // two checkouts claim it: undecidable
-		}
-		found = filepath.Join(grand, e.Name())
-	}
-	if found == "" {
-		return "", false
-	}
-	return moaiCanonical(found), true
-}
-
-// moaiWorktreeList parses one `git -C dir worktree list --porcelain` probe,
-// GIT_* scrubbed like the rev-parse probes.
-func moaiWorktreeList(dir string) ([]worktreepkg.WorktreeRecord, error) {
-	probe := exec.Command("git", "-C", dir, "worktree", "list", "--porcelain")
-	probe.Env = scrubbedGitEnv()
-	out, err := probe.Output()
-	if err != nil {
-		return nil, err
-	}
-	return worktreepkg.ParseWorktreeList(string(out))
-}
-
-// moaiRevParse runs one `git -C dir rev-parse` probe with the inherited
-// GIT_* environment scrubbed — a planted GIT_WORK_TREE or GIT_DIR would
-// redirect it — and returns the output with its single trailing newline
-// removed. Only the newline: a checkout path may itself end in a space,
-// and trimming it checked the wrong tree (audit r4 P2).
-func moaiRevParse(dir string, args ...string) (string, error) {
-	argv := append([]string{"-C", dir, "rev-parse"}, args...)
-	probe := exec.Command("git", argv...)
-	probe.Env = scrubbedGitEnv()
-	out, err := probe.Output()
-	if err != nil {
-		return "", err
-	}
-	line := strings.TrimSuffix(strings.TrimSuffix(string(out), "\n"), "\r")
-	if line == "" {
-		return "", fmt.Errorf("git rev-parse %v answered empty in %s", args, dir)
-	}
-	return line, nil
-}
-
-// moaiCanonical resolves symlinks on a path that exists, passing the input
-// through when it does not or cannot be resolved.
-func moaiCanonical(p string) string {
-	if real, err := filepath.EvalSymlinks(p); err == nil {
-		return real
-	}
-	return p
-}
-
-// scrubbedGitEnv returns the process environment without any GIT_* variable.
-func scrubbedGitEnv() []string {
-	env := os.Environ()
-	out := env[:0]
-	for _, kv := range env {
-		if strings.HasPrefix(kv, "GIT_") {
-			continue
-		}
-		out = append(out, kv)
-	}
-	return out
-}
-
-// stripWorktreeSelection removes the argv's first -w selection (both
-// spellings, its value included): the entry-by-directory form starts the
-// backend inside the tree, so the backend must receive no worktree
 // selection at all — a surviving short name would resolve against the
 // tree's own .claude/worktrees and create a duplicate inside it.
 func stripWorktreeSelection(args []string) []string {

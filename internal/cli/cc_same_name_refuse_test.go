@@ -110,36 +110,27 @@ func TestCCRefusalSurvivesASeparateGitDir(t *testing.T) {
 	}
 }
 
-// TestCCRefusesWhenThePrimaryCannotBeResolved (audit r2 P2, fail-closed
-// arm): a linked worktree whose repository carries an external git dir has
-// no git-native address for its main checkout — the launch is refused, not
-// guessed through.
-func TestCCRefusesWhenThePrimaryCannotBeResolved(t *testing.T) {
-	base := m2Real(t, t.TempDir())
-	primary := filepath.Join(base, "repo")
-	metadata := filepath.Join(base, "metadata")
-	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", primary)
-	m2Git(t, primary, "config", "user.email", "m2-test@example.com")
-	m2Git(t, primary, "config", "user.name", "M2 Test")
-	if err := os.WriteFile(filepath.Join(primary, "README.md"), []byte("seed\n"), 0o644); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	m2Git(t, primary, "add", "README.md")
-	m2Git(t, primary, "commit", "-q", "-m", "seed")
-	moai := filepath.Join(primary, ".moai", "worktrees", "feat")
+// TestCCRefusesTheShortNameAtTheLinkedRootItself (collapsed design — the
+// audits r2-r5 layout resolver withdrawn): from a LINKED worktree the
+// launcher's project root is the linked tree itself, and that is exactly
+// where claude would create the duplicate — so the shadow judged is the
+// linked root's own .moai tree. No primary-checkout resolution runs on the
+// launch path (the byte-equality contract forbids probe side effects, and
+// the resolver shapes were measured wrong or hijackable, audits r2-r5).
+func TestCCRefusesTheShortNameAtTheLinkedRootItself(t *testing.T) {
+	linked := m2Repo(t)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(linked, ".moai", "worktrees", "feat")
 	if err := os.MkdirAll(moai, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", moai, err)
 	}
-	linked := filepath.Join(base, "wt-linked")
-	m2Git(t, primary, "worktree", "add", "-q", "-b", "wt-linked", linked)
-	t.Setenv(paths.EnvHome, t.TempDir())
-	netScrubLaneEnv(t)
 	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
 	if launch.err == nil || launch.launched {
-		t.Fatalf("an unresolvable layout must refuse, not launch: err=%v launched=%v", launch.err, launch.launched)
+		t.Fatalf("the shadow at the linked root must refuse, not launch: err=%v launched=%v", launch.err, launch.launched)
 	}
-	if !strings.Contains(launch.err.Error(), "cannot be resolved") {
-		t.Errorf("the refusal does not name the unresolvable layout: %q", launch.err.Error())
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
 	}
 }
 
@@ -174,44 +165,6 @@ func TestCCRefusesAnExternalGitDirNamedDotGit(t *testing.T) {
 	}
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
-	}
-}
-
-// TestCCRefusesALinkedTreeOverAnExternalDotGit (audit r4 P2-1,
-// rcpt-4b5b6fc2): from a linked worktree whose repository carries an
-// external git dir named ".git", git answers the metadata's parent as the
-// main worktree — the true checkout announces itself with a .git FILE
-// linking directly to the common dir, and the refusal names ITS shadow.
-func TestCCRefusesALinkedTreeOverAnExternalDotGit(t *testing.T) {
-	base := m2Real(t, t.TempDir())
-	repo := filepath.Join(base, "repo")
-	admin := filepath.Join(base, "admin")
-	metadata := filepath.Join(admin, ".git")
-	if err := os.MkdirAll(admin, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", admin, err)
-	}
-	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", repo)
-	m2Git(t, repo, "config", "user.email", "m2-test@example.com")
-	m2Git(t, repo, "config", "user.name", "M2 Test")
-	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	m2Git(t, repo, "add", "README.md")
-	m2Git(t, repo, "commit", "-q", "-m", "seed")
-	moai := filepath.Join(repo, ".moai", "worktrees", "feat")
-	if err := os.MkdirAll(moai, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", moai, err)
-	}
-	linked := filepath.Join(base, "linked")
-	m2Git(t, repo, "worktree", "add", "-q", "-b", "wt-linked", linked)
-	t.Setenv(paths.EnvHome, t.TempDir())
-	netScrubLaneEnv(t)
-	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
-	if launch.err == nil || launch.launched {
-		t.Fatalf("the shadow under the true checkout must refuse, not launch: err=%v launched=%v", launch.err, launch.launched)
-	}
-	if !strings.Contains(launch.err.Error(), moai) {
-		t.Errorf("the refusal does not name the true checkout's shadow: %q, want %q", launch.err.Error(), moai)
 	}
 }
 
@@ -338,30 +291,6 @@ func TestCCRefusalJudgesTheBackendSelectionNotTheFirstFlag(t *testing.T) {
 	}
 	if !strings.Contains(launch.err.Error(), moai) {
 		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
-	}
-}
-
-// TestCCRefusalNamesTheResolvedTreeNotTheCallingRoot (card t1791 review
-// P2-2): the launcher can run with its project root naming a linked tree
-// while the candidate search resolves the primary checkout — the guidance
-// must name the tree the search actually found, never a path spelled from
-// the calling root.
-func TestCCRefusalNamesTheResolvedTreeNotTheCallingRoot(t *testing.T) {
-	primary := m2Repo(t)
-	t.Setenv(paths.EnvHome, t.TempDir())
-	netScrubLaneEnv(t)
-	moai := filepath.Join(primary, ".moai", "worktrees", "feat")
-	if err := os.MkdirAll(moai, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", moai, err)
-	}
-	linked := filepath.Join(filepath.Dir(primary), "wt-linked")
-	m2Git(t, primary, "worktree", "add", "-q", "-b", "wt-linked", linked)
-	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
-	if launch.err == nil || launch.launched {
-		t.Fatalf("want the refusal from the linked tree, got err=%v launched=%v", launch.err, launch.launched)
-	}
-	if !strings.Contains(launch.err.Error(), moai) {
-		t.Errorf("the guidance names a path other than the resolved tree: %q, want %q", launch.err.Error(), moai)
 	}
 }
 
