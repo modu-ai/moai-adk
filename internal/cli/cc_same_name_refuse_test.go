@@ -91,6 +91,55 @@ func TestGLMRefusesShortNameShadowedByMoaiTree(t *testing.T) {
 	}
 }
 
+// TestCCRefusalJudgesTheBackendSelectionNotTheFirstFlag (card t1791 review
+// P2-1): the backend resolves the LAST -w selection, so the refusal judges
+// the backend's selection — a shadowed name behind a later selection is dead
+// text and must not refuse; the shadowed name that IS the selection must.
+func TestCCRefusalJudgesTheBackendSelectionNotTheFirstFlag(t *testing.T) {
+	root := m2Repo(t)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(root, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, root, netCC, []string{"-w", "feat", "-w", "other"})
+	if launch.err != nil {
+		t.Fatalf("the backend selects other; the feat shadow is dead text, no refusal: %v", launch.err)
+	}
+	launch = netDriveLaunch(t, root, netCC, []string{"-w", "other", "-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("the backend selection feat is shadowed; want the refusal, got err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
+// TestCCRefusalNamesTheResolvedTreeNotTheCallingRoot (card t1791 review
+// P2-2): the launcher can run with its project root naming a linked tree
+// while the candidate search resolves the primary checkout — the guidance
+// must name the tree the search actually found, never a path spelled from
+// the calling root.
+func TestCCRefusalNamesTheResolvedTreeNotTheCallingRoot(t *testing.T) {
+	primary := m2Repo(t)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(primary, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	linked := filepath.Join(filepath.Dir(primary), "wt-linked")
+	m2Git(t, primary, "worktree", "add", "-q", "-b", "wt-linked", linked)
+	launch := netDriveLaunch(t, linked, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("want the refusal from the linked tree, got err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the guidance names a path other than the resolved tree: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
 func TestGLMPassesThroughWhenTheNativeTreeExists(t *testing.T) {
 	root := m2Repo(t)
 	t.Setenv(paths.EnvHome, t.TempDir())

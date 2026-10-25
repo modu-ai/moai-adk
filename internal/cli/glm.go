@@ -347,7 +347,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Card t1791 (GH #1813): see cc.go — the same pre-launch refusal, argv-preserving.
-	if err := refuseShadowedMoaiTreeName(view.LaunchArgs); err != nil {
+	if err := refuseShadowedMoaiTreeName(view); err != nil {
 		endWt()
 		return err
 	}

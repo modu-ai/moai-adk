@@ -242,39 +242,43 @@ func existingWorktreeEntryDir(args []string) string {
 	return cands[0].Path
 }
 
-// refuseShadowedMoaiTreeName refuses the launch when the argv's first -w
-// short name names an existing .moai/worktrees/<name> MoAI tree while the
-// native .claude/worktrees/<name> tree does not exist: claude would resolve
-// the name natively and silently create a duplicate branch tree beside the
+// refuseShadowedMoaiTreeName refuses the launch when the backend's worktree
+// selection — the LAST -w value the view resolved, not the first flag —
+// names an existing .moai/worktrees/<name> MoAI tree while the native
+// .claude/worktrees/<name> tree does not exist: claude would resolve the
+// name natively and silently create a duplicate branch tree beside the
 // MoAI tree (the 2026-10-08 lane-12 incident, GH #1813). The refusal is
 // pre-launch and argv-preserving — nothing is stripped, entered, or
 // rewritten; the existing tree is entered with the absolute-path form the
-// error names (`moai cc -w <absolute path>`). A native tree present (both
-// exist) keeps the existing behavior — claude re-enters the tree it owns.
-// Every non-judgment answers nil: no -w value, an absolute or path-shaped
-// value, an unresolvable root, an ambiguous name — those keep the launcher's
-// existing answers.
-func refuseShadowedMoaiTreeName(args []string) error {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+// error names (`moai cc -w <absolute path>`), and the path named is the one
+// the candidate search actually found (the primary checkout's tree), never a
+// spelling rebuilt from the calling root. A native tree present (both exist)
+// keeps the existing behavior — claude re-enters the tree it owns. Every
+// non-judgment answers nil: no selection or a bare one, an absolute or
+// path-shaped value, an unresolvable root, an ambiguous name — those keep
+// the launcher's existing answers.
+func refuseShadowedMoaiTreeName(view launchView) error {
+	if !view.Selection.Present || !view.Selection.HasValue {
 		return nil
 	}
-	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
+	value := view.Selection.Value
+	if filepath.IsAbs(value) || value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
 		return nil
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
 		return nil
 	}
-	cands, err := worktreeroot.Candidates(root, read.Value)
+	cands, err := worktreeroot.Candidates(root, value)
 	if err != nil {
 		return nil
 	}
 	hasMoai, hasNative := false, false
+	moaiDir := ""
 	for _, c := range cands {
 		switch c.Kind {
 		case worktreeroot.KindLegacyMoai:
-			hasMoai = true
+			hasMoai, moaiDir = true, c.Path
 		case worktreeroot.KindLegacyClaude:
 			hasNative = true
 		}
@@ -282,9 +286,8 @@ func refuseShadowedMoaiTreeName(args []string) error {
 	if !hasMoai || hasNative {
 		return nil
 	}
-	moaiDir := filepath.Join(root, ".moai", "worktrees", read.Value)
 	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree by its absolute path:\n  moai cc -w %s",
-		read.Value, moaiDir, read.Value, read.Value, moaiDir)
+		value, moaiDir, value, value, moaiDir)
 }
 
 // stripWorktreeSelection removes the argv's first -w selection (both
