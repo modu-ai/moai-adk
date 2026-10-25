@@ -27,6 +27,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
@@ -318,7 +319,11 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 func factoryRecordSpecID(root, cardID string) (string, error) {
 	runID, err := resolveFactoryCardRun(context.Background(), root, "")
 	if err != nil {
-		if strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
+		// F4/D1 (GH #1913, codex round 2): classify by the sentinel, not
+		// by the message text — a candidate run id carrying the
+		// NO_ACTIVE_FACTORY literal inside an AMBIGUOUS_FACTORY refusal
+		// must refuse, not fall back to the SPEC-less path.
+		if errors.Is(err, factorymsg.ErrRunNotActive) {
 			return "", nil // no factory run context — the verb's standing SPEC-less service
 		}
 		return "", fmt.Errorf("factory merge ready: resolving card %s's factory run: %w", cardID, err)

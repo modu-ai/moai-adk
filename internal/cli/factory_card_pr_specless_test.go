@@ -221,3 +221,34 @@ func TestFactoryMergeReadyRecordSpecIDKeepsSpecPathOnOmittedFlag(t *testing.T) {
 		t.Errorf("a refused card took the window: %+v", lock)
 	}
 }
+
+// F4/D1 (codex round 2, leader ruling): an AMBIGUOUS_FACTORY resolution
+// must refuse even when one candidate run id happens to carry the
+// NO_ACTIVE_FACTORY literal — a poisoned id used to flip the ambiguity
+// into the SPEC-less fallback (strings.Contains) and clear on a verdict
+// file alone. The classification is now the factorymsg sentinel.
+func TestFactoryMergeReadyAmbiguousRunWithPoisonedIDRefuses(t *testing.T) {
+	repo, lockRoot, _ := mergeReadyFixture(t, "complete", "lane-9", "sess-lane-9")
+	writeGitStrategyBody(t, lockRoot, "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n")
+	// Two owner-live runs — real ambiguity — one id carrying the literal.
+	seedLiveRun(t, repo, "run-NO_ACTIVE_FACTORY-x")
+	seedLiveRun(t, repo, "run-b")
+	// A valid verdict file sits in the tree; under the misclassification
+	// it cleared the card on this file alone.
+	dir := filepath.Join(repo, ".moai", "reports", "t9001")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "verdict: PASS\naudited_sha: " + gitHead(t, repo) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "verdict.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := runFactoryMerge(t, "merge", "ready", "--card", "t9001", "--branch", "WT-card", "--develop", "develop", "--session", "sess-lane-9", "--json")
+	if err == nil || !strings.Contains(err.Error(), "AMBIGUOUS_FACTORY") {
+		t.Fatalf("an ambiguous run context with a poisoned candidate id must refuse naming the ambiguity: err=%v", err)
+	}
+	if lock := readLockRoot(t, lockRoot); lock.Held() {
+		t.Errorf("a refused merge ready took the window: %+v", lock)
+	}
+}
