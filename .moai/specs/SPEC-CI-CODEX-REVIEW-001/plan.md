@@ -123,7 +123,9 @@ contract guards come last.
     does not edit `CHANGELOG.md`, and the sync phase of the amendment owes the correction.
 17. **(rev 6) Do not widen.** The steps `pr`, `head`, `checks` (and, rev 7, `author`) keep their exit-0 convention
     (decision-index Q22); **rev 13:** the merge step no longer does — a merge reached and not executed ends exit 1 (REQ-CCR-024,
-    Q30, M7); the draft's job result is "failure, never success" with one job (Q21); the gate
+    Q30, M7); the draft's job result is "failure, never success" with one job (Q21) — **rev 14:** superseded, the draft is a hold
+    with step exit 0 and a `pending` status, still one job (Q32, M8), and an already-merged pull request at the verified head ends the
+    merge step exit 0 (REQ-CCR-024 refinement); the gate
     script is untouched. A need to change any of these returns as a blocker.
 18. **(rev 7) The reader decides from the state comment.** `body` is read only for comments of the identity and only the marker lines of the leading block; never the prose, the
     table, the summary marker, or a reaction. Stale precedes pending in the reader order (design §3.2, step 7 before step 10); changing the order changes the contract.
@@ -281,7 +283,7 @@ unchanged). Re-measure: the new selectors plus the three census tests, `^TestNoH
 REQ/AC: REQ-CCR-007, REQ-CCR-008, REQ-CCR-012 (reworded), REQ-CCR-018, REQ-CCR-019 / AC-CCR-020 to AC-CCR-025
 new; AC-CCR-007, 008, 012, 019 changed rows. Files (2, about 700 changed lines): E `.github/workflows/auto-merge.yml`
 (the `files` and `review` steps: a terminating function that records `ok` and `state` once and exits with the
-status of `T-CHAIN`; no default first; `::error::` annotations for failures; draft exit 11 with `state=not-run:draft`;
+status of `T-CHAIN`; no default first; `::error::` annotations for failures; draft exit 11 with `state=not-run:draft` (M5 record; rev 14 makes it exit 0, M8);
 missing script a failure), E `internal/template/auto_merge_codex_test.go` (the step harness records exit status,
 outputs, and the derived job result; five new tests named in `acceptance.md` §2.6; the two exit-0 rows replaced;
 chain fixtures of AC-CCR-019 extended). The gate script, its tests, and every other file are untouched.
@@ -329,7 +331,8 @@ amended rows of AC-CCR-006, 012, 013, 019. Ordered by decision-reversibility:
 1. **The trust boundary and the trigger** (most likely to change): `issue_comment` `[created, edited]`; the job `if` disjunction of
    `design.md` "Delta of plan revision 13" item 2; the concurrency group moved to the job level with the key shape of design item 4
    (revision 13.1): the pull request number for the `workflow_run` path and for comments of user id 199175422, `github.run_id` for any
-   other comment author.
+   other comment author. **[SUPERSEDED IN PART by M8, revision 14: the identity's comments take the run-id key too; kept as the M7
+   record.]**
 2. **The status context and its permission:** `statuses: write`; a final step `status` (`always() && steps.pr.outputs.active ==
    'true'`) posting `T-STATUS` on the evaluated head SHA with the one POST form; exit 1 on a failed write. (Revision 13.2: the workflow
    holds exactly four permissions — `contents: write`, `pull-requests: write`, `statuses: write`, and the read-only `actions: read` that
@@ -377,6 +380,38 @@ pull request head, an interpolated `issue.number`, the committed exit-0 merge ho
 read). Affected packages: `internal/template` (tests only). State at exit: landed locally only; R13-1 to R13-4 of the design delta stay
 UNOBSERVED until the change runs on the default branch.
 
+### M8 — No queue-cancelled or held-failed run on a default-branch SHA (rev 14, Priority High)
+
+REQ/AC: REQ-CCR-023, REQ-CCR-024, REQ-CCR-008, REQ-CCR-018, REQ-CCR-025 (reworded; spec Amendment 7, decision-index Q32) / the
+revision-14 rows of AC-CCR-008, 013c, 019a, 022, 006a; no criterion added. Ordered by decision-reversibility:
+
+1. **The concurrency key** (most likely to change): `issue_comment` runs take `auto-merge-run-<run id>` whatever the author; the
+   `workflow_run` path keeps `auto-merge-<PR number>`; `cancel-in-progress: false` and the job-level placement unchanged (`design.md`
+   "Delta of plan revision 14" item 1). The trust gate of the job `if` is unchanged.
+2. **The draft hold:** gate exit 11 with `draft` `true` ends the `review` step with exit 0, `ok=false`, `state=not-run:draft`, the
+   `::notice::` unchanged; the merge step stays skipped and the `status` step keeps posting `pending` `not yet: draft` (delta item 4).
+   Exits 0, 1, 10, the non-draft 11, and any other exit keep their mapping.
+3. **Merge idempotence:** on a non-zero `gh pr merge`, one re-read of the pull request object; merged at the verified head → exit 0,
+   summary `already merged`, status `success`; anything else → the existing "merge failed" exit 1 (delta item 3). No new `gh` call
+   form (the pull request object read is already allowed).
+
+Files (about 2, tests dominating): E `.github/workflows/auto-merge.yml`, E `internal/template/auto_merge_codex_test.go` (and
+`internal/template/auto_merge_repair_test.go` where a summary-outcome row needs the already-merged outcome). **Pins to be created**
+(absent on tree `53fbc2d206`, acceptance R39): `TestAutoMergeCommentPathRunScopedConcurrency`,
+`TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch`, `TestAutoMergeAlreadyMergedIsSuccess`. **Existing rows whose assertion
+must change:** `TestAutoMergeCommentPathSameChainOnce/concurrency_key_same_for_both_paths` (the identity's comment no longer takes
+the pull request key), `TestAutoMergeDraftIsNotRunNeverSuccess/draft_step_exit_11_job_not_success` and
+`.../draft_with_clean_state_comment_still_not_success` (exit 0, no merge), and any `TestAutoMergeNotRunWithholds`,
+`TestAutoMergeMergeDecisionPath`, or `TestAutoMergeHeldMergeOutcomesFail` row that pins the draft's exit 11 or a failed merge call
+without a re-read stub; the run pass names each row it amends in its evidence.
+
+RED first: write the three pins against tree `53fbc2d206` and quote the failures, whose stated reasons are R36 to R38. GREEN: edit
+the workflow. Exit: every named subtest swept (`-v` lists each `--- PASS`); `actionlint` exit 0; B1 exit 0; mutants recorded verbatim
+(the landed key, a run-id key on the `workflow_run` path, the landed draft exit 11, a draft mapped to `ok=true`, an already-merged
+branch without the head comparison, an unreadable re-read read as merged). Affected packages: `internal/template` (tests only). State
+at exit: landed locally only; R14-1 to R14-4 of the design delta stay as stated, and the remote conclusions stay UNOBSERVED until the
+change runs on the default branch.
+
 ### Landing scope (plan §F rule: changed packages plus direct importers plus readers of changed non-Go files)
 
 | Group | Packages | How |
@@ -392,6 +427,9 @@ lane" (acceptance §6, §7). The sync exit says the same two things in the same 
 
 ## §G Anti-patterns
 
+- (rev 14) Letting a queued comment-path run share a concurrency group, ending a draft hold non-zero, or reporting a merge a
+  concurrent evaluation already made at the verified head as a failure (AC-CCR-008, 013c, 019a); and, the other way, widening the
+  already-merged exit 0 to an open, unreadable, or other-head pull request.
 - Reading a draft as anything but NOT RUN, or a draft's gate-path observation as a review result (AC-CCR-008); reading a missing state comment as a pass, as a failure, or as
   pending forever instead of NOT RUN `review-absent` at the end of the window (AC-CCR-007, AC-CCR-008); reading a check run, a commit status, a reaction, a review object,
   or prose or a table row of any comment as a verdict, or a marker string in another author's comment as a state (AC-CCR-003, AC-CCR-006). The one verdict carrier is the

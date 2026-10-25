@@ -36,11 +36,18 @@ jobs:
       (github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       github.event.comment.user.id == 199175422)
-    # Auto-merge — one group per pull request, in-flight cancel would race a merge (REQ-CCR-023). The
-    # key is the pull request number for a CI run and for the identity's comment; a comment of any other
-    # author gets a unique per-run key, so a skipped run never shares a group with a real evaluation.
+    # Auto-merge concurrency (REQ-CCR-023, revision 14). An in-flight cancel would race a merge, so
+    # cancel-in-progress stays false. GitHub keeps one pending run per group and ends the older pending
+    # runs `cancelled`, and a cancelled run lands on the default-branch SHA that scripts/release.sh reads
+    # as a failure. The key is therefore per pull request for a CI run only (that run's 60-pass window is
+    # long, so evaluations of one pull request are serialised), and per run for every comment, the
+    # identity's included: a group of one run never queues, so no comment run is cancelled by a later
+    # edit of the same comment, and a skipped run never shares a group with a real evaluation. What
+    # serialisation did on the comment path is done by the head re-read before the merge call,
+    # --match-head-commit, and an idempotent merge step (a merge a concurrent run already made ends
+    # exit 0).
     concurrency:
-      group: auto-merge-${{ github.event_name == 'issue_comment' && github.event.comment.user.id != 199175422 && format('run-{0}', github.run_id) || github.event.workflow_run.pull_requests[0].number || github.event.issue.number || github.run_id }}
+      group: auto-merge-${{ github.event_name == 'issue_comment' && format('run-{0}', github.run_id) || github.event.workflow_run.pull_requests[0].number || github.run_id }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -374,12 +381,14 @@ jobs:
       # verified head can pass. A formal APPROVED review alone is never a pass. Time appears only
       # as the bound of the wait: no elapsed time, and no absence of a review, is ever a pass.
       # Exit classes: 0 pass; 1 fail; 10 not yet observed or still running, keep waiting;
-      # 11 NOT RUN: a draft ends as the state not-run:draft with step exit 11 (never success, never
-      # a review result), and no review when the window ends on a non-draft pull request is a
-      # failure. Every other exit is a refusal. Every path but the clean pass ends the step
-      # non-zero, so the step and the job fail and the merge step does not run. The one exception is
-      # the comment path's single pass: a pending result (exit 10) is a "not yet" hold that ends
-      # the step with exit 0, state pending, and no merge. The head is read again after the list reads.
+      # 11 NOT RUN: a draft ends as the state not-run:draft (never a pass, never a review result), and
+      # no review when the window ends on a non-draft pull request is a failure. Every other exit is a
+      # refusal. Every path but the clean pass ends the step non-zero, so the step and the job fail and
+      # the merge step does not run. Two exceptions are "not yet" holds that end the step with exit 0,
+      # ok=false, and no merge, so the job is not failed on the default-branch SHA the run reports on
+      # (revision 14): the comment path's single pass when it is pending (exit 10; state pending), and
+      # a draft (state not-run:draft; the status step posts `pending` `not yet: draft`). The head is
+      # read again after the list reads.
       - name: Read the native Codex review
         id: review
         if: >
@@ -530,8 +539,10 @@ jobs:
                 ;;
               11)
                 if [ "$DRAFT" = "true" ]; then
+                  # A hold, not a failure: exit 0 with ok=false, so the merge step does not run and the
+                  # job is not failed (revision 14); the status step posts `pending` `not yet: draft`.
                   echo "::notice::NOT RUN: draft - not a review result and never a pass; the merge is withheld"
-                  conclude false not-run:draft 11
+                  conclude false not-run:draft 0
                 fi
                 echo "::error::native review gate: not-run:review-absent - no native review observed for the head commit"
                 echo "GATE_REASON=not-run:review-absent" >> "${GITHUB_ENV:-/dev/null}"
@@ -563,8 +574,10 @@ jobs:
         run: |
           # This step is reached only when every guard passed. Each outcome leaves one line in the job
           # summary naming the outcome and the head SHA, records it for the status step, and ends the
-          # step: exit 0 only when the merge was requested (gh pr merge exited 0); every outcome where the
-          # merge was reached and not executed ends exit 1, so the job result is a failure (REQ-CCR-024).
+          # step: exit 0 only when the merge was requested (gh pr merge exited 0) or a failed merge call is
+          # found to have been made already (the pull request is merged at the verified head, revision 14);
+          # every outcome where the merge was reached and not executed ends exit 1, so the job result is a
+          # failure (REQ-CCR-024).
           summary() { echo "$1" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"; }
           finish() {
             summary "$2"
@@ -633,6 +646,19 @@ jobs:
             echo "Successfully merged PR #$PR_NUMBER"
             finish success "merge requested: PR #$PR_NUMBER, head $TESTED_SHA" 0
           else
+            # Merge idempotence (REQ-CCR-024, revision 14): a concurrent evaluation may have merged this very
+            # head first, which makes this call fail although nothing is left to merge. The pull request is
+            # re-read once; only a pull request merged with its head equal to the verified head is "already
+            # merged". A re-read that fails, is malformed, shows the pull request open, or shows another head
+            # keeps the merge-failed outcome. Like the head lookup, a failed read must not end the script.
+            REREAD="$(gh pr view "$PR_NUMBER" --json state,mergedAt,headRefOid 2>/dev/null || true)"
+            RE_STATE="$(printf '%s' "$REREAD" | jq -r '.state // empty' 2>/dev/null || true)"
+            RE_MERGED_AT="$(printf '%s' "$REREAD" | jq -r '.mergedAt // empty' 2>/dev/null || true)"
+            RE_HEAD="$(printf '%s' "$REREAD" | jq -r '.headRefOid // empty' 2>/dev/null || true)"
+            if [ "$RE_STATE" = "MERGED" ] && [ -n "$RE_MERGED_AT" ] && [ "$RE_HEAD" = "$TESTED_SHA" ]; then
+              echo "::notice::Merge command failed but PR #$PR_NUMBER is already merged at the verified head - a concurrent evaluation merged it"
+              finish success "already merged: PR #$PR_NUMBER merged at head $TESTED_SHA by a concurrent evaluation" 0
+            fi
             echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"
             MERGE_REASON="$(printf '%s' "$MERGE_OUT" | head -n 1)"
             finish failure "merge failed: gh pr merge exit $merge_rc (${MERGE_REASON:-no output}) - PR #$PR_NUMBER left open, head $TESTED_SHA" 1
@@ -640,8 +666,9 @@ jobs:
 
       # Evaluation status (REQ-CCR-025). Every evaluation of an open pull request whose evaluated head
       # commit is known posts exactly one commit status `auto-merge` on that commit: success when the merge
-      # was requested, failure when the merge step ran and did not merge or files/review ended non-zero
-      # (a draft excepted), pending for every other withheld outcome. The status reports the evaluation;
+      # was requested or was found already made at the verified head (revision 14), failure when the merge
+      # step ran and did not merge or files/review ended non-zero, pending for every other withheld outcome
+      # (a draft included: `not yet: draft`). The status reports the evaluation;
       # it is an output, never an input of any decision, and it is not a required check. A failed write
       # ends this step non-zero without changing the merge decision already taken.
       - name: Post the evaluation status

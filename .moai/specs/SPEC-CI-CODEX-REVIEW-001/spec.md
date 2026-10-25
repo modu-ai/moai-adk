@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.11.2"
-status: completed
+version: "0.12.0"
+status: in-progress
 created: 2026-10-18
-updated: 2026-10-24
+updated: 2026-10-25
 author: "Goos Kim"
 priority: P1
 phase: "v3.2.0 target"
@@ -37,8 +37,41 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.11.0 | 2026-10-23 | manager-spec (card t1868) | Plan revision 13, an in-place amendment (Amendment 6) under the operator and leader ruling of 2026-10-23 (decision-index Q30): audit findings F4 (a Codex review that completes after the merge step's window, or after the pull request becomes ready, is never re-evaluated) and F3/F1 (merge-step holds end exit 0 and look green) are fixes, not accepted limitations. New: REQ-CCR-022 (an `issue_comment` trigger, `created` and `edited`, admitted at the job level only for a pull request comment of user id 199175422; no pull-request code is checked out or run), REQ-CCR-023 (the same chain, one evaluation with no wait, head re-confirmed, one concurrency group per pull request), REQ-CCR-024 (a merge step that was reached and did not merge ends non-zero), REQ-CCR-025 (a commit status `auto-merge` on the evaluated head, `statuses: write`, no required check added). Reworded: REQ-CCR-007, 011, 013; §2 item 7; §5 stated fact and G6 condition; §6 Out of Scope "step conclusions"; §7 AL-1 superseded (resolved by REQ-CCR-022). The F1 `active` gating, the env-passed `PR_NUMBER`, the per-outcome job-summary line, and the shellcheck step of commit `41b7f29b7a` are already landed and are not re-specified as new work. Criteria: five lettered sub-criteria (AC-CCR-006a, 013a, 013b, 013c, 019a) inside existing logical criteria, because the logical criterion count is at the Tier L ceiling of 25. Counts: 25 requirements (ceiling 25), 25 logical criteria with 5 sub-criteria. No plan-audit re-entry (ruling); one head-bound sync re-audit at the final head checks this SPEC against the code. |
 | 0.11.1 | 2026-10-23 | manager-spec (card t1868) | Revision 13.1, the lane ruling on the revision-13 defaults: decision-index Q31(a) is REVERSED — on the comment path a pending review pass (a `running` leg or marker, or no state comment yet) is a "not yet" hold with exit 0 and a `pending` `auto-merge` status (`review-not-complete:running`), never a failed job; only a merge step reached and not executed is non-zero. Q31(b) stands, clarified in design. The concurrency key is specified: the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author. Reworded REQ-CCR-012, 018, 019, 023, 024; no requirement or criterion added. |
 | 0.11.2 | 2026-10-24 | manager-spec (card t1868) | Revision 13.2, documents aligned to the landed implementation after sync audit 3 (`.moai/reports/t1868/sync-audit-3.md`, FAIL 0.72 at `60997114fe`, findings F1, F2, F6); leader and operator ruling: the documents follow the code, the permissions are not reduced. REQ-CCR-025: exactly four permissions — `actions: read` (read-only; the comment path lists the `CI` workflow's runs of the evaluated head) added beside `statuses: write`. `design.md` item 4 defines `checks` on the comment path as the required checks plus the current-head `CI` conclusion; `T-STATUS` gains the `ci-*` hold descriptions; item 6, §5, `plan.md` M7, and AC-CCR-006 / 006a restated to four scopes; the new pin tests are added to the Verify lists of AC-CCR-013c, 019a, and 020. No requirement or criterion added; no plan-audit re-entry (ruling). |
+| 0.12.0 | 2026-10-25 | manager-spec (card t1956, parent t1868) | Plan revision 14, an in-place amendment of the completed SPEC (Amendment 7) under the operator and leader ruling of 2026-10-25 (decision-index Q32): no run of `auto-merge.yml` ends `cancelled` or `failure` on a default-branch SHA because of queueing or a held evaluation. REQ-CCR-023: the identity's `issue_comment` path moves to a per-run concurrency group (the run id); the `workflow_run` path keeps the per-pull-request group; serialization on the comment path is replaced by the head re-read before the merge, `--match-head-commit`, and idempotent evaluations. REQ-CCR-024 refined: a `gh pr merge` that fails because the pull request is already merged at the verified head ends the merge step with exit 0. REQ-CCR-008, 018, 025 and the §2/§3/§4 draft wording: a draft is a "not yet" hold — `review` step exit 0, state `not-run:draft`, status `pending` `not yet: draft`, no merge — instead of a failed step (decision-index Q21 superseded). No requirement or logical criterion added (header count stays at the Q30 exception); AC-CCR-008, 013c, 019a, 022, 006a extended with three to-be-created pin tests. No plan-audit re-entry (ruling). |
 
 ## Amendments
+
+### Amendment 7 — no queue-cancelled or held-failed run on a default-branch SHA (plan revision 14)
+
+- prior_completed_version: 0.11.2
+- prior_completed_sha: 9286f6b6ba88a73521c896e2d5bd536c29631c97   # the `sync_commit_sha` of `progress.md` §E.4 (the 3-phase close, PR #1899; its SHA backfill is `d26e44d605`)
+- rationale: `scripts/release.sh` counts every completed check run whose conclusion is not `success`, `neutral`, or `skipped` as a
+  release-gate failure, and an `issue_comment` or `workflow_run` run of `auto-merge.yml` reports on the default-branch tip SHA, not on
+  the pull request's head. Read-only `gh` observation by the lane (recorded in `.moai/reports/t1868/lane-decisions.md` D78; local,
+  never an authority anchor): of the last 100 `auto-merge` runs, 5 ended `cancelled` and 1 `failure`. All 5 cancelled runs are
+  `issue_comment` events: the Codex identity (user id 199175422) edits its state comment repeatedly, every such run shared the job-level
+  group `auto-merge-<PR number>` with `cancel-in-progress: false`, and GitHub keeps one pending run per group and ends the older pending
+  runs `cancelled`. The 1 failure is a `workflow_run` evaluation of a draft pull request: the `review` step printed `NOT RUN: draft - not
+  a review result and never a pass; the merge is withheld` and exited 11, which failed the job although the status step already posts
+  `auto-merge` = `pending` `not yet: draft`. The operator and leader ruled on 2026-10-25 (decision-index Q32) that both are defects.
+- the invariant (new): **no run of this workflow ends with a conclusion other than `success`, `skipped`, or `neutral` on a
+  default-branch SHA because of queueing or a held (not-merged-yet) evaluation.** "Held" means the "not yet" holds this SPEC names — the
+  `pr`, `head`, `author`, and `checks` holds, the comment path's pending `review` pass, the draft, and a merge that a concurrent
+  evaluation already made. It does not cover a refusal: a `files` or `review` refusal, a review still `running` or absent at the end
+  of the `workflow_run` path's window, and a merge step reached that did not merge an open pull request stay failures by design
+  (`T-CHAIN`, REQ-CCR-018, REQ-CCR-024), and they still land on the default-branch SHA (`design.md` "Delta of plan revision 14",
+  residual R14-2).
+- scope: REQ-CCR-023 (per-run group on the identity's comment path; per-pull-request group on the `workflow_run` path; the
+  replacement safeguards), REQ-CCR-024 (already-merged refinement), REQ-CCR-008, REQ-CCR-018, REQ-CCR-025 (draft hold), §2 item 4,
+  the §3 term "NOT RUN", and the §4 draft bullets restated; §6 "step conclusions" restated. AC-CCR-008, 013c, 019a, 022, and 006a
+  extended in place, with three pin tests to be created by the run pass (`acceptance.md` §2.7, revision 14 note); `design.md` "Delta of
+  plan revision 14", item 4 and 5, `T-STATUS`, `T-CHAIN` row 5, `T-OUTPUTS`, the threat table and §11 restated; `plan.md` M8 added and
+  M7 item 1 marked; decision-index Q32 added, Q21 and Q30 marked superseded in part. Not changed: the gate script and its exit classes
+  (0, 1, 10, 11), every refusal of `T-CHAIN`, the author policy, the permissions (exactly four), `.github/required-checks.yml`, branch
+  protection, the `workflow_run` path's 60-pass window, and the `pr`, `head`, `author`, `checks` holds.
+- evidence: none re-observed by this amendment (a plan-phase edit runs no `gh`); the run pass records RED-now for the three new pins on
+  the tree before its workflow edit.
+- plan audit: no re-entry, by the ruling; the head-bound audit of the implementation pass checks this delta against the code.
 
 ### Amendment 6, revision 13.2 — the permission set and the comment-path CI condition follow the landed workflow
 
@@ -254,8 +287,9 @@ After the run phase lands locally and the leader's draft pull request is merged 
    comment, an unreadable or unprovably complete list — leaves the merge withheld with a named reason (a
    review still `running` is waited on inside the window); nothing is ever read as a pass by absence or by
    the passing of time.
-4. A draft pull request is reported `not-run:draft` — a state of its own that is never a pass — and the
-   `review` step and the job do not end in success; a non-draft pull request with no native review observed
+4. A draft pull request is reported `not-run:draft` — a state of its own that is never a pass — and is a
+   "not yet" hold: the `review` step ends with exit 0, the merge is not requested, and the `auto-merge` status stays `pending`
+   `not yet: draft` (revision 14; until revision 13.2 the step and the job did not end in success); a non-draft pull request with no native review observed
    for its head commit when the wait window ends is a failure of the step and the job (cause
    `not-run:review-absent`). Auto-merge withholds the merge on both; a draft report verifies the gate path
    only. The leader's ruling is that a draft pull request gets no native review (a review starts on
@@ -300,8 +334,8 @@ missing head repository is a fork); the **gate paths** are every file under the 
 directory and the gate script; **clean** is the one state REQ-CCR-001 defines; **pending** is a state
 comment with a leg `running`; **NOT RUN** is the gate script's exit class 11, with exactly two causes: a
 draft pull request, or no state comment observed for the head commit when the wait window ends. At the
-consumer the two causes are not one result: a draft is the recorded state `not-run:draft` with a job result
-that is never success, and a non-draft pull request whose window ended with no review is a failure
+consumer the two causes are not one result: a draft is the recorded state `not-run:draft`, a "not yet" hold
+whose commit status is `pending` and never a pass (revision 14), and a non-draft pull request whose window ended with no review is a failure
 (REQ-CCR-008, REQ-CCR-018). The **step exit status** and the **job result** are what the workflow platform
 reports for the `review` step and its job; **a pass** is the one case where the step exits 0.
 
@@ -370,8 +404,10 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   former "read only when auto-merge next runs", AL-1, is superseded).
 - **REQ-CCR-008** (Event-driven) When the pull request is a draft, auto-merge shall record the single state
   `not-run:draft` — distinct in gate exit class (11), annotation, and recorded state from pass and from
-  failure — shall withhold the merge, and shall end the `review` step with a non-zero exit status so that the
-  job result is never success, whether or not any state comment exists on a draft; when the pull request is not
+  failure — shall withhold the merge, and shall end the `review` step as a "not yet" hold with exit status 0
+  (revision 14, decision-index Q32; the former "non-zero exit status so that the job result is never success" of revision 6 is
+  superseded), with `ok` not `true`, no merge requested, and the `auto-merge` status `pending` with the description
+  `not yet: draft` (REQ-CCR-025), whether or not any state comment exists on a draft; when the pull request is not
   a draft and the wait window ends with no state comment observed (gate exit class 11, cause
   `not-run:review-absent`), auto-merge shall report a failure — a failed step and a failed job — naming that
   cause, and shall withhold the merge; a draft report verifies the gate path only and is not a review result.
@@ -392,8 +428,8 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   review (`review`); the `files` and `review` steps shall each read the pull request's head commit before and after their list reads
   (the review step on every pass that reads lists) and record a failing result when that head differs from the verified head commit, shall
   each record a passing result only when the corresponding gate-script call exits 0, and shall each treat any other exit, including one
-  they do not recognise, as a withheld merge and a failed step (REQ-CCR-018; the one exception is the comment path's pending `review`
-  pass, a "not yet" hold with exit 0, REQ-CCR-023); the `author` step is governed by REQ-CCR-020 alone (one
+  they do not recognise, as a withheld merge and a failed step (REQ-CCR-018; the two exceptions are the comment path's pending `review`
+  pass, a "not yet" hold with exit 0, REQ-CCR-023, and, since revision 14, the draft hold of REQ-CCR-008, exit 0 on both paths); the `author` step is governed by REQ-CCR-020 alone (one
   read of the pull request object, no gate-script call, exit status 0); the `review` step shall recheck a clean pass before recording it,
   by taking the issue-comment count from the first pull-request read of that recheck, re-listing the complete issue-comment list, the reviews,
   and the review comments, then requiring the same head, that fresh issue-comment count, the unchanged review-comment count, and the same clean
@@ -409,13 +445,15 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   `pull_request_target` family, shall reference the workflow token as its only secret, and shall carry only steps that neither upload, download,
   nor cache an artifact; this SPEC's commits shall add zero workflow files.
 - **REQ-CCR-018** (Event-driven) When either guard step this SPEC adds (`files`, `review`) ends any way other
-  than its pass — the gate script refuses (exit 1), exits 11, or exits a code the step does not recognise; the
+  than its pass — the gate script refuses (exit 1), exits 11 for a pull request that is not a draft, or exits a code the step does
+  not recognise; the
   pull request is unreadable or its head or count moved during or after the read; the `review` step's
   pre-merge recheck detects an incomplete/changing list, changed head or review-comment count, or a different trusted clean verdict;
   a list stays unreadable to the end of the window; or the gate
   script is missing — that step shall end with a non-zero exit status, so that the step conclusion and the job
   conclusion are failures and the later steps, the merge step included, do not run, and shall end with exit
-  status 0 only on its pass — and, for `review` on the comment path only, on the pending "not yet" hold of REQ-CCR-023; the mapping from the gate script's exit code to the step's exit status, the job
+  status 0 only on its pass — and, for `review`, on the comment path's pending "not yet" hold of REQ-CCR-023 and, on both paths, on
+  the draft hold of REQ-CCR-008 (revision 14); the mapping from the gate script's exit code to the step's exit status, the job
   result, and the recorded output values, across both steps, shall be the single table of `design.md` §5
   (`T-CHAIN`), and the workflow shall mark neither step `continue-on-error` nor otherwise exempt from the
   job's conclusion.
@@ -451,21 +489,38 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   the single state `pending`, the merge step not run, the job not failed, and the `auto-merge` status `pending` with the reason
   `review-not-complete:running` (or `review-not-complete:no-state-comment`) — and the identity's completion edit of its comment starts
   the next evaluation; every other result that is not clean is decided by `T-CHAIN` (revision 13.1, the lane ruling reversing
-  decision-index Q31(a)); and auto-merge shall serialise evaluations in one job-level concurrency group whose key is the pull request
-  number for the `workflow_run` path and for a comment of user id 199175422, and is unique per run (the run id) for a comment of any
-  other author, so that at most one real evaluation of a pull request runs at a time, the two paths never both merge, and a run whose
-  job the trust gate of REQ-CCR-022 skips can never share a group with, cancel, or replace a pending real evaluation.
+  decision-index Q31(a)); and auto-merge shall declare one job-level concurrency group with `cancel-in-progress: false` whose key is
+  the pull request number for the `workflow_run` path only, and is unique per run (the run id) for every `issue_comment` run — a
+  comment of user id 199175422 included (revision 14, decision-index Q32; until revision 13.2 the identity's comments shared the pull
+  request's group) — so that no queued comment-path run is ever ended `cancelled` by a later comment edit, and a run whose job the
+  trust gate of REQ-CCR-022 skips can never share a group with, cancel, or replace a pending real evaluation. On the comment path the
+  serialization is replaced by the safeguards the chain already carries: the head is re-read immediately before the merge call and
+  must equal the verified head, `gh pr merge` carries `--match-head-commit` with that head, and every evaluation is idempotent — it
+  reads the pull request's current state, an evaluation that finds the pull request no longer open ends at the `pr` step's "not yet"
+  hold, and a merge already made by a concurrent evaluation ends the merge step successfully (REQ-CCR-024). Two concurrent
+  evaluations of one pull request can therefore both reach the merge step, and at most one merge of the verified head is made.
+  Invariant (revision 14): no run of this workflow ends with a conclusion other than `success`, `skipped`, or `neutral` on a
+  default-branch SHA because of queueing or a held (not-merged-yet) evaluation; a refusal that this SPEC makes a failure stays a
+  failure (Amendment 7).
 - **REQ-CCR-024** (Event-driven) When the merge step runs (every guard passed) and does not merge — the overall deadline passed before
   the merge call or during the head re-read, the head read immediately before the call differs from the verified head, or `gh pr merge`
-  exits non-zero — the merge step shall end with exit status 1, so that the job result is failure, and shall still write its one
-  job-summary line naming the outcome and the head commit; the merge step shall end with exit status 0 only when `gh pr merge` exits 0.
+  exits non-zero on a pull request that is still open — the merge step shall end with exit status 1, so that the job result is
+  failure, and shall still write its one job-summary line naming the outcome and the head commit; the merge step shall end with exit
+  status 0 only when `gh pr merge` exits 0, or (revision 14, merge idempotence) when `gh pr merge` exits non-zero and an immediate
+  re-read of the pull request from the API shows it merged with its head equal to the verified head — a concurrent evaluation merged
+  it — in which case the step writes its one summary line saying the pull request was already merged at that head. A re-read that
+  fails, is malformed, shows the pull request open, or shows a head other than the verified head leaves the outcome "merge failed",
+  exit status 1. This refinement narrows the third outcome above to a merge failure on an open pull request; it adds no other exit-0
+  path, and every other not-merged outcome — the deadline, a moved head, a failed merge of an open pull request — still ends non-zero.
   The steps `pr`, `head`, `author`, and `checks` keep exit status 0 when they withhold (the "not yet" holds), the comment path's pending
-  `review` pass is a "not yet" hold with exit status 0 (REQ-CCR-023), and otherwise the `files` and `review` steps keep `T-CHAIN`; only
-  the three outcomes above, where the merge step was reached and did not merge, are non-zero holds.
+  `review` pass and (revision 14) the draft are "not yet" holds with exit status 0 (REQ-CCR-023, REQ-CCR-008), and otherwise the
+  `files` and `review` steps keep `T-CHAIN`; only the three outcomes above, where the merge step was reached and the pull request was
+  not merged, are non-zero holds.
 - **REQ-CCR-025** (Ubiquitous) Every evaluation of an open pull request whose evaluated head commit is known shall post exactly one
   commit status with the context `auto-merge` on that commit through the API, with the state `success` when the merge was requested
-  (`gh pr merge` exited 0), `failure` when the merge step ran and did not merge or the `files` or `review` step ended non-zero other than
-  `not-run:draft`, and `pending` for every other withheld outcome, and with a description naming the outcome's reason (`design.md`
+  (`gh pr merge` exited 0) or (revision 14) the merge step found the pull request already merged at the verified head (REQ-CCR-024),
+  `failure` when the merge step ran and the pull request was not merged or the `files` or `review` step ended non-zero, and `pending`
+  for every other withheld outcome, the draft (`not yet: draft`, REQ-CCR-008) included, and with a description naming the outcome's reason (`design.md`
   "Delta of plan revision 13", `T-STATUS`); the auto-merge workflow shall hold exactly the four permissions `contents: write`,
   `pull-requests: write`, `statuses: write` (the write scope added for this status), and `actions: read` (revision 13.2: the
   read-only scope the comment path needs to list the `CI` workflow's runs of the evaluated head, REQ-CCR-020 and REQ-CCR-023; no other
@@ -511,8 +566,9 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   confirmed. This lane produces only the first state: no report of this lane says "complete", and
   "remote verified" is claimed only by the actor that read the remote data (`acceptance.md` §6 and §7).
 - **A draft never reaches "remote verified".** On a draft pull request the observable thing is the gate
-  path: auto-merge records `not-run:draft` for the head commit with a job result that is not success (gate
-  exit class 11, REQ-CCR-008). That observation is worded `remote observed: gate path NOT RUN (not-run:draft)`;
+  path: auto-merge records `not-run:draft` for the head commit (gate exit class 11, REQ-CCR-008) as a "not yet"
+  hold — since revision 14 the `review` step ends exit 0 and the `auto-merge` status stays `pending` `not yet: draft`; the
+  job result of revision 6 to 13.2 was not success. That observation is worded `remote observed: gate path NOT RUN (not-run:draft)`;
   it never verifies that a review ran or what it returned, and required CI results on the same commit are
   reported as "required CI", never as a review verification. The leader-coordinated observation steps are
   DS-1 and DS-2 (§5) for the Codex app's behavior and the post-landing job observation of the G6 acceptance
@@ -521,7 +577,9 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   limit.
 - **The remote conclusion of the job is UNOBSERVED.** No GitHub-hosted run of the amended `auto-merge.yml`
   has been observed, so what the platform reports for the `review` step and its job — a failure for a refused
-  or absent review, a result that is not success for a draft — is UNOBSERVED (research U11). The local
+  or absent review, a result that is not success for a draft — is UNOBSERVED (research U11). (Revision 14: one remote
+  conclusion was read by the lane, not by this SPEC's criteria — a draft `workflow_run` evaluation whose `review` step exited 11
+  failed the job, Amendment 7; the draft is now a hold with exit 0, and its new remote conclusion is unobserved.) The local
   criteria assert the step's exit status and a job result derived from the step statuses against a stub
   `gh`; they never claim what GitHub reports. The conclusion is first observable on the next pull request
   after the change lands on the default branch, through the leader-coordinated flow (§5, G6 acceptance
@@ -673,7 +731,11 @@ depends on the observation (its local criteria are AC-CCR-001 to AC-CCR-025 on t
   Extending the non-zero rule to `pr`, `head`, `author`, and `checks` remains the alternate of decision-index
   Q22 and a separate ruling.
 - A job-level skip for a draft (a pre-job that reads the draft flag and a `needs` condition on the job): not
-  built; the alternate of decision-index Q21. The workflow stays one job.
+  built; the alternate of decision-index Q21. The workflow stays one job; since revision 14 the draft ends the `review` step with
+  exit 0 as a hold (REQ-CCR-008, decision-index Q32), which keeps the one-job topology.
+- (revision 14) Filtering the identity's redundant comment edits before the job (the D78 option B): not built — it needs a marker in
+  the comment body the gate does not read, and it could drop the edit that completes a review. Cancelling a superseded
+  `workflow_run` evaluation (`cancel-in-progress: true`): not built — a cancelled run is itself a non-success conclusion.
 - Any change to the gate script's behavior or exit classes (0, 1, 10, 11) and to its recognition contract.
 
 ### Out of Scope — what the comment path and the status context do not do
