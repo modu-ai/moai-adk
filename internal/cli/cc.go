@@ -301,6 +301,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		endWt()
 		return err
 	}
+	// Card t1791 (GH #1813): a short name shadowed by an existing MoAI tree
+	// with no native tree is refused before anything materializes — the
+	// refusal changes no argv; the entry guidance names the absolute path.
+	if err := refuseShadowedMoaiTreeName(view.LaunchArgs); err != nil {
+		endWt()
+		return err
+	}
 	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
 	// the existing branch before launch; the flag tokens are already stripped
 	// from the view's LaunchArgs so the backend re-enters the tree that now

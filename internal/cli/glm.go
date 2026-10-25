@@ -346,6 +346,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		endWt()
 		return err
 	}
+	// Card t1791 (GH #1813): see cc.go — the same pre-launch refusal, argv-preserving.
+	if err := refuseShadowedMoaiTreeName(view.LaunchArgs); err != nil {
+		endWt()
+		return err
+	}
 	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
 	err = view.materializeBranch(cmd.ErrOrStderr())
 	endWt()
