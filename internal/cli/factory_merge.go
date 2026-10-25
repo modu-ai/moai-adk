@@ -74,8 +74,14 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			if strings.TrimSpace(card) == "" {
 				return fmt.Errorf("factory merge ready: --card is required")
 			}
-			if strings.TrimSpace(specID) == "" {
-				return fmt.Errorf("factory merge ready: --spec is required (the card's SPEC id — its sync phase record is condition (a))")
+			// A SPEC-less Class B card reaches merge ready on its verdict
+			// file (GH #1913): an omitted --spec, or the card id passed as
+			// --spec, keeps SpecDir empty and the triple closes condition
+			// (a) on .moai/reports/<card>/verdict.md (merge_specless.go).
+			// A card with a SPEC keeps its progress.md record as its
+			// evidence — the SPEC path and every other gate are unchanged.
+			if strings.TrimSpace(specID) == "" || specID == card {
+				specID = ""
 			}
 			root, err := os.Getwd()
 			if err != nil {
@@ -98,10 +104,17 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				}
 			}
 
+			// Join with an empty specID would name the specs DIRECTORY, not
+			// a SPEC-less run — the empty case must stay the empty string
+			// so the triple's SPEC-less branch (merge.go) is reachable.
+			specDir := ""
+			if specID != "" {
+				specDir = filepath.Join(root, ".moai", "specs", specID)
+			}
 			run, err := factorylane.EvaluateMergeTriple(factorylane.MergeTripleInput{
 				Lane:        lane,
 				Card:        card,
-				SpecDir:     filepath.Join(root, ".moai", "specs", specID),
+				SpecDir:     specDir,
 				Branch:      branch,
 				Develop:     developRef,
 				RepoDir:     root,
@@ -275,8 +288,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&card, "card", "", "The card being merged")
 	_ = cmd.MarkFlagRequired("card")
-	cmd.Flags().StringVar(&specID, "spec", "", "The card's SPEC id — its sync phase record is condition (a)")
-	_ = cmd.MarkFlagRequired("spec")
+	cmd.Flags().StringVar(&specID, "spec", "", "The card's SPEC id — its sync phase record is condition (a); omit (or pass the card id) for a SPEC-less Class B card, whose merge evidence is .moai/reports/<card-id>/verdict.md")
 	cmd.Flags().StringVar(&branch, "branch", "", "The card branch (merge source; default: the current branch)")
 	cmd.Flags().StringVar(&developRef, "develop", "", "The integration branch (merge target; default: the configured git-flow develop branch)")
 	cmd.Flags().StringVar(&mergeCommit, "merge-commit", "", "A prepared merge commit — switches tree identity to the literal HEAD^{tree} == HEAD^2^{tree} form")
