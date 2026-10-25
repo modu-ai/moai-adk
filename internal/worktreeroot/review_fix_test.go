@@ -122,6 +122,9 @@ func rfxWalkHash(t *testing.T, dir string) string {
 // owner marker, or the repository-side record — the home root and the
 // repository stay unchanged.
 func TestPlan_IsReadOnly(t *testing.T) {
+	// Optional locks off (card t1954): Plan's own git invocation must not
+	// take even an optional lock, so the hash bracket is Plan's effect alone.
+	t.Setenv("GIT_OPTIONAL_LOCKS", "0")
 	home := wrHome(t)
 	repo := wrRepo(t, "plan-repo")
 	projects := wrProjects(home)
@@ -266,6 +269,35 @@ func TestPlan_ExistingFolderOwnedBySelf(t *testing.T) {
 	}
 	if after := rfxWalkHash(t, wrProjects(home)); after != before {
 		t.Errorf("Plan wrote inside the home root (hash changed)")
+	}
+}
+
+// TestPlan_IsReadOnly_MaintenanceLockRepro pins the natural CI failure
+// deterministically (card t1954, run 40178638653): a
+// `.git/objects/maintenance.lock` present at the before-hash and removed
+// during Plan — by git's own maintenance finishing, never by Plan — made
+// the repo-side hash report exactly `REMOVED
+// plan-repo/.git/objects/maintenance.lock`. The test replays that sequence
+// by hand so the mechanism the wrGit maintenance block prevents stays
+// demonstrable, whatever git's future scheduling does.
+func TestPlan_IsReadOnly_MaintenanceLockRepro(t *testing.T) {
+	_ = wrHome(t)
+	repo := wrRepo(t, "plan-repo")
+	lock := filepath.Join(repo, ".git", "objects", "maintenance.lock")
+	if err := os.WriteFile(lock, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o644); err != nil {
+		t.Fatalf("write lock: %v", err)
+	}
+	beforeRepo := wrTreeHash(t, filepath.Dir(repo))
+	// The maintenance process finishes during Plan: the lock goes away by
+	// itself — the sequence the CI failure captured.
+	if err := os.Remove(lock); err != nil {
+		t.Fatalf("remove lock: %v", err)
+	}
+	if _, err := Plan(repo, "t9"); err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if diff := wrTreeDiff(beforeRepo, wrTreeHash(t, filepath.Dir(repo))); !strings.Contains(diff, "REMOVED plan-repo/.git/objects/maintenance.lock") {
+		t.Errorf("diff = %q, want the REMOVED maintenance.lock entry the CI log carried", diff)
 	}
 }
 
