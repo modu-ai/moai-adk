@@ -349,7 +349,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// backend argv and re-open the nested-creation path.
 	filteredArgs = view.LaunchArgs
 	if entryDir != "" {
-		filteredArgs = stripBackendWorktreeSelections(view.FinalArgv)
+		filteredArgs = stripWorktreeOptionsForBackend(view.LaunchArgs)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

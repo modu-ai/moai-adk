@@ -205,55 +205,115 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
-// collectBackendWorktreeIndices returns the token indices of EVERY worktree
-// option in the backend argv — each flag token, plus the index of its
-// separate value token where the two-token form carries one — walking by the
-// same backend option model and the same backend-separator stop that
-// selectBackendWorktree reads by (card t1791 audit round 2): a surviving
-// selection after the entry-by-directory is the nested-creation path, and a
-// token another option consumed as its value is never a selection.
-func collectBackendWorktreeIndices(argv []string) []int {
-	var idx []int
-	for i := 0; i < len(argv); i++ {
-		tok := argv[i]
-		if tok == argSeparator {
-			break // the backend's option terminator: past it nothing is an option
-		}
-		if len(tok) < 2 || tok[0] != '-' {
-			continue // a positional (a prompt, or a value already consumed)
-		}
-		var span int
-		var sel worktreeSelection
-		sel, span = backendOptionStep(argv, i, sel)
-		if sel.Present {
-			idx = append(idx, i)
-			if sel.HasValue && span == 1 && i+1 < len(argv) {
-				idx = append(idx, i+1)
-			}
-		}
-		i += span
-	}
-	return idx
+// backendWorktreeCut is one removal the entry strip applies: drop the whole
+// token, or keep only its letters before the in-cluster `w` (the cluster's
+// non-worktree letters, e.g. the `-p` of `-pwplain`, survive — card t1791
+// audit round 3 finding 3).
+type backendWorktreeCut struct {
+	index      int
+	keepPrefix string // non-empty: replace the token with this prefix
 }
 
-// stripBackendWorktreeSelections removes every worktree option the backend
-// argv carries (card t1791 audit round 2, findings 1 and 3): after the
-// entry-by-directory the backend must hold no selection at all — neither the
-// first of a duplicate pair nor one shaped like a prompt past the launcher
-// separator the consumption dropped. Everything else, separators and
-// prompts included, survives byte-identical.
-func stripBackendWorktreeSelections(argv []string) []string {
-	drop := make(map[int]bool)
-	for _, i := range collectBackendWorktreeIndices(argv) {
-		drop[i] = true
+// stripWorktreeOptionsForBackend removes every worktree selection from the
+// launch argv the launcher seam will consume, so that AFTER the launcher's
+// own consumption (which drops the first "--" separator) the backend argv
+// holds no worktree option at all (card t1791 audit rounds 2-3). The walk
+// covers two option spaces: the tokens before the first "--" (the launcher
+// segment, whose separator the consumption drops) and the tokens between the
+// first and the second "--" (the backend's option space — the launcher
+// separator is gone by the time the backend parses, so its own terminator is
+// the NEXT marker). A token another option consumed as its value is never a
+// selection; the second "--" and everything past it are the backend's
+// terminator and prompts, kept verbatim; a cluster's non-worktree letters
+// survive the cut of its `w` (and of the attached or following value).
+func stripWorktreeOptionsForBackend(args []string) []string {
+	cuts := make(map[int]backendWorktreeCut)
+	collect := func(from, to int) {
+		for i := from; i < to && i < len(args); i++ {
+			tok := args[i]
+			if tok == argSeparator || len(tok) < 2 || tok[0] != '-' {
+				continue
+			}
+			var span int
+			var sel worktreeSelection
+			sel, span = backendOptionStep(args, i, sel)
+			if !sel.Present {
+				i += span
+				continue
+			}
+			if sel.Spelling == spellingCluster || sel.Spelling == spellingAttached {
+				// In-token selection: cut the letters from the `w` on (the
+				// attached value rides them). The letter index is where the
+				// value spelling began — recover it by scanning the token
+				// the same way scanShortCluster does.
+				cut := len(tok)
+				for j := 1; j < len(tok); j++ {
+					if tok[j] == 'w' {
+						cut = j
+						break
+					}
+					switch activeClaudeOptionModel["-"+string(tok[j])] {
+					case claudeOptionBoolean:
+						continue
+					default:
+						cut = j
+						j = len(tok)
+					}
+				}
+				if cut <= 1 {
+					cuts[i] = backendWorktreeCut{index: i} // nothing survives: drop the token
+				} else {
+					cuts[i] = backendWorktreeCut{index: i, keepPrefix: tok[:cut]}
+				}
+				if sel.HasValue && sel.Spelling == spellingCluster && span == 1 {
+					i++ // the value rode the NEXT token: drop it too
+					cuts[i] = backendWorktreeCut{index: i}
+				}
+				i += span
+				continue
+			}
+			cuts[i] = backendWorktreeCut{index: i}
+			if sel.HasValue && span == 1 && i+1 < len(args) {
+				i++
+				cuts[i] = backendWorktreeCut{index: i}
+			}
+			i += span
+		}
 	}
-	if len(drop) == 0 {
-		return argv
+	// Segment walk: the launcher's option space (before the first "--",
+	// which the consumption drops), then the backend's own option space
+	// (between the first and the second "--" — the launcher separator is
+	// gone by the time the backend parses, so the NEXT marker is the
+	// backend's own terminator). Everything from that terminator on is the
+	// backend's positionals and prompts, kept verbatim and never walked.
+	first := len(args)
+	for i := 0; i < len(args); i++ {
+		if args[i] == argSeparator {
+			first = i
+			break
+		}
 	}
-	out := make([]string, 0, len(argv))
-	for i, tok := range argv {
-		if !drop[i] {
+	second := len(args)
+	for i := first + 1; i < len(args); i++ {
+		if args[i] == argSeparator {
+			second = i
+			break
+		}
+	}
+	collect(0, first)
+	collect(first+1, second)
+	if len(cuts) == 0 {
+		return args
+	}
+	out := make([]string, 0, len(args))
+	for i, tok := range args {
+		cut, hit := cuts[i]
+		if !hit {
 			out = append(out, tok)
+			continue
+		}
+		if cut.keepPrefix != "" {
+			out = append(out, cut.keepPrefix)
 		}
 	}
 	return out

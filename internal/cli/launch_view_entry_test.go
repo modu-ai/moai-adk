@@ -121,7 +121,7 @@ func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve for the strip to be reachable")
 	}
-	rest := stripBackendWorktreeSelections(view.FinalArgv)
+	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
 	for _, tok := range rest {
 		if strings.HasPrefix(tok, "-w") || strings.HasPrefix(tok, "--worktree") || tok == name {
 			t.Fatalf("worktree selection survived the strip: %v", rest)
@@ -199,7 +199,7 @@ func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
 	}
-	rest := stripBackendWorktreeSelections(view.FinalArgv)
+	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
 	for _, tok := range rest {
 		if strings.Contains(tok, "worktree") || tok == "first" {
 			t.Fatalf("a selection survived the backend-argv strip: %v", rest)
@@ -207,9 +207,58 @@ func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 	}
 	// A non-selection tail token the backend owns survives the strip.
 	view2 := resolveLaunchView([]string{"-w", "first", "--", "--keep", "prompt"})
-	rest2 := stripBackendWorktreeSelections(view2.FinalArgv)
+	rest2 := stripWorktreeOptionsForBackend(view2.LaunchArgs)
 	joined := strings.Join(rest2, " ")
 	if !strings.Contains(joined, "--keep") || !strings.Contains(joined, "prompt") {
 		t.Fatalf("backend-owned tail tokens lost: %v", rest2)
+	}
+}
+
+// TestStrip_PreservesUserPermissionModeAndModel — the entry strip operates on
+// the pre-consumption launch argv (card t1791 audit round 3 finding 1): the
+// user's explicit --permission-mode and --model survive, so the launcher's
+// consumption sees them and never injects the saved settings over them.
+func TestStrip_PreservesUserPermissionModeAndModel(t *testing.T) {
+	primary := entryFixture(t)
+	mustMkdirTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	view := resolveLaunchView([]string{"-w", "plain", "--permission-mode", "plan", "--model", "opus"})
+	if existingWorktreeEntryDir(view) == "" {
+		t.Fatal("precondition: the entry must resolve")
+	}
+	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	joined := strings.Join(rest, " ")
+	if !strings.Contains(joined, "--permission-mode plan") {
+		t.Fatalf("the user's explicit permission mode was lost: %v", rest)
+	}
+	if !strings.Contains(joined, "--model opus") {
+		t.Fatalf("the user's explicit model was lost: %v", rest)
+	}
+}
+
+// TestStrip_SecondSeparatorIsTheBackendTerminator — the launcher consumes
+// only the FIRST separator (card t1791 audit round 3 finding 2): the second
+// separator is the backend's own terminator and survives, so tokens past it
+// are the backend's positionals — never re-parsed as a worktree selection.
+func TestStrip_SecondSeparatorIsTheBackendTerminator(t *testing.T) {
+	primary := entryFixture(t)
+	mustMkdirTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	view := resolveLaunchView([]string{"-w", "plain", "--", "--", "--worktree", "other"})
+	if existingWorktreeEntryDir(view) == "" {
+		t.Fatal("precondition: the entry must resolve")
+	}
+	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	if len(rest) != 4 || rest[0] != "--" || rest[1] != "--" || rest[2] != "--worktree" || rest[3] != "other" {
+		t.Fatalf("stripped argv = %v, want [-- -- --worktree other] (backend terminator and positionals verbatim)", rest)
+	}
+}
+
+// TestStrip_ClusterCutKeepsTheLeadingLetters — a cluster token loses only its
+// `w` and the attached value; the preceding letters are other options and
+// survive the cut (card t1791 audit round 3 finding 3).
+func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
+	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
+	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	if len(rest) != 3 || rest[0] != "--" || rest[1] != "-p" || rest[2] != "hello" {
+		t.Fatalf("stripped argv = %v, want [-- -p hello] (the -p output mode survives the w cut)", rest)
 	}
 }
