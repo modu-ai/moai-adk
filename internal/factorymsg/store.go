@@ -401,7 +401,7 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		}
 		var status string
 		if err := db.DB.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, explicit).Scan(&status); err != nil || status != "active" {
-			return "", errors.New("NO_ACTIVE_FACTORY")
+			return "", ErrRunNotActive
 		}
 		return explicit, nil
 	}
@@ -420,7 +420,7 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	}
 	switch len(runs) {
 	case 0:
-		return "", errors.New("NO_ACTIVE_FACTORY")
+		return "", ErrRunNotActive
 	case 1:
 		return runs[0], nil
 	}
@@ -435,7 +435,7 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	}
 	switch len(rec.Remaining) {
 	case 0:
-		return "", errors.New("NO_ACTIVE_FACTORY")
+		return "", ErrRunNotActive
 	case 1:
 		return rec.Remaining[0].RunID, nil
 	default:
