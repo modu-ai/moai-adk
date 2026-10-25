@@ -466,6 +466,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithInheritedPATH(os.Getenv("PATH")),
 		template.WithPlatform(runtime.GOOS),
 		template.WithVersion(version.GetVersion()),
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),

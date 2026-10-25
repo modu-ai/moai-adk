@@ -404,6 +404,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithInheritedPATH(os.Getenv("PATH")),
 		template.WithVersion(version.GetVersion()),
 	)
 

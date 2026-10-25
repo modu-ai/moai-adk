@@ -277,24 +277,34 @@ func TestSettingsTemplateRequiredHooks(t *testing.T) {
 }
 
 // TestSettingsTemplatePATHPreservesInheritedEnv pins the GH #1827 (item 2)
-// fix: settings.json env.PATH must PREFIX the inherited environment PATH
-// rather than replace it. The template renders "${PATH}" + a
-// platform-correct separator + SmartPATH, so a session's virtualenv and
-// user-local tool directories stay ahead of the MoAI well-known directories
-// instead of being wiped by a baked-in absolute list. Machine-specific
-// entries belong in .claude/settings.local.json (documented in
-// settings-management.md).
+// fix: settings.json env.PATH must lead with the rendering process's own
+// inherited PATH rather than replace it. The launcher (moai init / moai
+// update) captures its real os.Getenv("PATH") via WithInheritedPATH and the
+// template bakes it in as an ABSOLUTE list — Claude Code copies env values
+// into its environment as written and expands no ${VAR} references (official
+// env-vars doc: "No shell processes them"), so a template-level "${PATH}"
+// literal would land as a bogus relative directory. When InheritedPATH is
+// empty (exotic setups), the template renders SmartPATH alone with no
+// leading separator. Machine-specific entries belong in
+// .claude/settings.local.json (documented in settings-management.md).
 func TestSettingsTemplatePATHPreservesInheritedEnv(t *testing.T) {
 	for _, tc := range []struct {
-		platform string
-		wantJoin string // separator between ${PATH} and SmartPATH
+		name       string
+		platform   string
+		inherited  string
+		wantPrefix string // rendered before SmartPATH (separator included)
 	}{
-		{"darwin", ":"},
-		{"linux", ":"},
-		{"windows", ";"},
+		{"darwin join", "darwin", "/venv/bin:/custom", "/venv/bin:/custom:"},
+		{"linux join", "linux", "/venv/bin:/custom", "/venv/bin:/custom:"},
+		{"windows join", "windows", `C:\venv\Scripts`, `C:\venv\Scripts;`},
+		{"empty inherited renders SmartPATH alone", "darwin", "", ""},
 	} {
-		t.Run(tc.platform, func(t *testing.T) {
-			ctx := testContext(tc.platform)
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := NewTemplateContext(
+				WithPlatform(tc.platform),
+				WithSmartPATH("/moai/bin"),
+				WithInheritedPATH(tc.inherited),
+			)
 			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
 			var settings struct {
@@ -308,9 +318,12 @@ func TestSettingsTemplatePATHPreservesInheritedEnv(t *testing.T) {
 			if !ok {
 				t.Fatal("missing env.PATH in rendered settings")
 			}
-			want := "${PATH}" + tc.wantJoin + ctx.SmartPATH
+			want := tc.wantPrefix + "/moai/bin"
 			if got != want {
 				t.Errorf("env.PATH = %q, want %q", got, want)
+			}
+			if tc.inherited != "" && strings.Contains(got, "${PATH}") {
+				t.Errorf("env.PATH must not contain a literal ${PATH} token: %s", got)
 			}
 		})
 	}
@@ -1505,14 +1518,15 @@ func TestBuildSmartPATHWrapperMatchesFixture(t *testing.T) {
 	}
 }
 
-// TestSettingsRenderWindowsPATH renders a windows-shaped SmartPATH through
-// the real embedded settings.json.tmpl (SPEC-WIN-SMARTPATH-001, GH #1690):
-// the rendered settings.json must be valid JSON, the env.PATH value must
-// round-trip byte-exactly as a ";-joined" Windows-form value prefixed by the
-// inherited-PATH marker "${PATH};" (GH #1827: the session PATH is preserved,
-// not replaced) with no POSIX entry, and the {{jsonEscape .SmartPATH}}
-// directive must still appear exactly once in the template source
-// (REQ-CWSP-002; the full AC-TPS-014 sentinel lives in
+// TestSettingsRenderWindowsPATH renders a windows-shaped inherited PATH and
+// SmartPATH through the real embedded settings.json.tmpl
+// (SPEC-WIN-SMARTPATH-001, GH #1690): the rendered settings.json must be
+// valid JSON, the env.PATH value must round-trip byte-exactly as a
+// ";-joined" Windows-form value led by the launcher-captured inherited PATH
+// (GH #1827: the session PATH is preserved as an absolute list, not replaced
+// and not carried as a literal token) with no POSIX entry, and the
+// {{jsonEscape .SmartPATH}} directive must still appear exactly once in the
+// template source (REQ-CWSP-002; the full AC-TPS-014 sentinel lives in
 // internal/config/toolpolicy).
 func TestSettingsRenderWindowsPATH(t *testing.T) {
 	smartPath := strings.Join([]string{
@@ -1521,10 +1535,12 @@ func TestSettingsRenderWindowsPATH(t *testing.T) {
 		`C:\Windows\System32`,
 		`C:\Program Files\Git\bin`,
 	}, ";")
+	inherited := `C:\Users\u\venv\Scripts;C:\Users\u\scoop\shims`
 
 	ctx := NewTemplateContext(
 		WithPlatform("windows"),
 		WithSmartPATH(smartPath),
+		WithInheritedPATH(inherited),
 		WithGoBinPath("/usr/local/go/bin"),
 		WithHomeDir("/home/test"),
 	)
@@ -1547,7 +1563,7 @@ func TestSettingsRenderWindowsPATH(t *testing.T) {
 	if !ok {
 		t.Fatal("env.PATH is not a string")
 	}
-	wantPath := "${PATH};" + smartPath
+	wantPath := inherited + ";" + smartPath
 	if gotPath != wantPath {
 		t.Errorf("env.PATH round-trip mismatch:\ngot:  %s\nwant: %s", gotPath, wantPath)
 	}

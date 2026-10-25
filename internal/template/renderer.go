@@ -73,9 +73,11 @@ var claudeCodePassthroughTokens = []string{
 	"$CLAUDE_SKILL_DIR",
 	"$ARGUMENTS",
 	"$HOME",
-	// Inherited process PATH (settings.json env.PATH renders "${PATH}<sep>"
-	// + SmartPATH so the session PATH is preserved rather than replaced —
-	// GH #1827). Resolved at runtime by Claude Code / the shell.
+	// Inherited process PATH (settings.json env.PATH bakes the launcher's
+	// captured os.Getenv("PATH") ahead of SmartPATH — GH #1827). The captured
+	// value is already absolute, but a shell whose PATH was assigned a literal
+	// reference can surface one here; keep it passthrough so such a value
+	// renders instead of failing the validator.
 	"$PATH",
 	// GitHub Actions runtime environment variables
 	"$GITHUB_OUTPUT",

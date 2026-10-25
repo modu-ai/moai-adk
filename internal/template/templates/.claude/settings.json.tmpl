@@ -443,7 +443,7 @@
 {{- if ne .Platform "linux"}}
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
 {{- end}}
-    "PATH": "${PATH}{{if eq .Platform "windows"}};{{else}}:{{end}}{{jsonEscape .SmartPATH}}"
+    "PATH": "{{if .InheritedPATH}}{{jsonEscape .InheritedPATH}}{{if eq .Platform "windows"}};{{else}}:{{end}}{{end}}{{jsonEscape .SmartPATH}}"
   },
   "permissions": {
     "defaultMode": "default",

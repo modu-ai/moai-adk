@@ -48,9 +48,10 @@ type TemplateContext struct {
 	CreatedAt     string // ISO 8601 timestamp when project was created
 
 	// Paths (detected during initialization)
-	GoBinPath string // Detected Go binary installation path (e.g., "/home/user/go/bin")
-	HomeDir   string // User's home directory
-	SmartPATH string // Captured terminal PATH with essential dirs prepended
+	GoBinPath      string // Detected Go binary installation path (e.g., "/home/user/go/bin")
+	HomeDir        string // User's home directory
+	SmartPATH      string // Captured terminal PATH with essential dirs prepended
+	InheritedPATH  string // Rendering process's own PATH (os.Getenv), baked in as an absolute list (GH #1827)
 
 	// ResolvedMoaiPath is the running binary's own resolved executable path,
 	// captured via os.Executable() at init/update time. It is the first
@@ -253,6 +254,19 @@ func WithResolvedMoaiPath(path string) ContextOption {
 func WithSmartPATH(path string) ContextOption {
 	return func(c *TemplateContext) {
 		c.SmartPATH = path
+	}
+}
+
+// WithInheritedPATH sets the rendering process's own PATH, which
+// settings.json.tmpl bakes into env.PATH ahead of SmartPATH. The launcher
+// (moai init / moai update) reads the real environment, so the rendered
+// value is an absolute list — no runtime variable expansion is involved
+// (Claude Code does not expand env values; GH #1827, card t1957). Empty on
+// exotic setups: the template then renders SmartPATH alone, with no
+// leading separator.
+func WithInheritedPATH(path string) ContextOption {
+	return func(c *TemplateContext) {
+		c.InheritedPATH = path
 	}
 }
 
