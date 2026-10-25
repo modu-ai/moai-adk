@@ -255,7 +255,22 @@ ROW_COUNT="$(wc -l <"$ROWS_FILE" 2>/dev/null | tr -dc '0-9' || echo 0)"
     else
         # Frontier milestone: derived from progress.md if present (best-effort,
         # non-fatal), else the SPEC status itself.
-        while IFS=$'\t' read -r id title status phase module sha ts; do
+        # Split each row on tabs preserving EMPTY fields (GH #1827). An
+        # `IFS=$'\t' read` cannot be used here: tab is IFS whitespace, so
+        # consecutive tabs collapse into one delimiter and every later field
+        # shifts left the moment a SPEC omits phase/module. Read the whole
+        # line and split manually instead.
+        while IFS= read -r row; do
+            fields=()
+            rest="$row"
+            while :; do
+                case "$rest" in
+                    *$'\t'*) fields+=("${rest%%$'\t'*}"); rest="${rest#*$'\t'}" ;;
+                    *)       fields+=("$rest"); break ;;
+                esac
+            done
+            id="${fields[0]:-}" title="${fields[1]:-}" status="${fields[2]:-}"
+            phase="${fields[3]:-}" module="${fields[4]:-}" sha="${fields[5]:-}" ts="${fields[6]:-}"
             fmilestone="$status"
             progfile="$SPECS_DIR/$id/progress.md"
             if [ -f "$progfile" ]; then

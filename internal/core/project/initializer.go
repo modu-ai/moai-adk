@@ -389,6 +389,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 	goBinPath := detectGoBinPath(homeDir)
 
 	// Build TemplateContext from InitOptions
+	smartPath := template.BuildSmartPATH()
 	tmplCtx := template.NewTemplateContext(
 		template.WithProject(opts.ProjectName, opts.ProjectRoot),
 		template.WithUser(opts.UserName),
@@ -403,9 +404,22 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
-		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithSmartPATH(smartPath),
 		template.WithVersion(version.GetVersion()),
 	)
+
+	// The committed settings.json keeps SmartPATH only (machine-independent);
+	// this machine's session PATH goes to the gitignored settings.local.json,
+	// which Claude Code merges key-by-key over the project file (GH #1827).
+	// A refresh failure is non-fatal — the file keeps its previous value and
+	// the next launcher run retries. Skipped for the codex-only harness
+	// (SPEC-INIT-HARNESS-001 REQ-IH-005): that project carries zero .claude/**
+	// paths and this call would create them.
+	if opts.Harness != "gpt" {
+		if err := template.SyncLocalSettingsPATH(opts.ProjectRoot, os.Getenv("PATH"), smartPath); err != nil {
+			result.Warnings = append(result.Warnings, "settings.local.json env.PATH refresh failed: "+err.Error())
+		}
+	}
 
 	// The deployer reports its skill-mirror outcome by return value and never
 	// prints, so surfacing a copy fallback is this caller's job. The result

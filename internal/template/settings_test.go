@@ -2,6 +2,7 @@ package template
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -273,6 +274,47 @@ func TestSettingsTemplateRequiredHooks(t *testing.T) {
 		if _, ok := hooks[event]; !ok {
 			t.Errorf("missing required hook event %q", event)
 		}
+	}
+}
+
+// TestSettingsTemplatePATHIsSmartPATHOnly pins the GH #1827 (card t1957)
+// audit resolution: the COMMITTED project settings.json keeps a deterministic,
+// machine-independent PATH (SmartPATH only). Baking the launcher's session
+// PATH into the shared file caused cross-machine re-render churn and
+// unbounded SmartPATH accumulation across in-session updates (sync-audit
+// F1, codex rcpt-ce824f1c0b7908db19d007eb), partially reversing the #467
+// design. Machine-specific paths belong in .claude/settings.local.json,
+// which Claude Code merges key-by-key with the project file's env (official
+// docs: "when more than one settings file sets a variable, the
+// highest-precedence one applies"). The launcher refreshes env.PATH there
+// via SyncLocalSettingsPATH.
+func TestSettingsTemplatePATHIsSmartPATHOnly(t *testing.T) {
+	for _, platform := range []string{"darwin", "linux", "windows"} {
+		t.Run(platform, func(t *testing.T) {
+			ctx := NewTemplateContext(
+				WithPlatform(platform),
+				WithSmartPATH("/moai/bin"),
+			)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			var settings struct {
+				Env map[string]string `json:"env"`
+			}
+			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+				t.Fatalf("Unmarshal error: %v", err)
+			}
+
+			got, ok := settings.Env["PATH"]
+			if !ok {
+				t.Fatal("missing env.PATH in rendered settings")
+			}
+			if got != "/moai/bin" {
+				t.Errorf("env.PATH = %q, want exactly SmartPATH %q", got, "/moai/bin")
+			}
+			if strings.Contains(got, "${PATH}") || strings.Contains(got, "$") {
+				t.Errorf("env.PATH must not contain a variable reference: %s", got)
+			}
+		})
 	}
 }
 
@@ -1468,10 +1510,11 @@ func TestBuildSmartPATHWrapperMatchesFixture(t *testing.T) {
 // TestSettingsRenderWindowsPATH renders a windows-shaped SmartPATH through
 // the real embedded settings.json.tmpl (SPEC-WIN-SMARTPATH-001, GH #1690):
 // the rendered settings.json must be valid JSON, the env.PATH value must
-// round-trip byte-exactly as a ";-joined" Windows-form value with no POSIX
-// entry, and the {{jsonEscape .SmartPATH}} directive must still appear
-// exactly once in the template source (REQ-CWSP-002; the full AC-TPS-014
-// sentinel lives in internal/config/toolpolicy).
+// round-trip byte-exactly as a ";-joined" Windows-form value (the committed
+// project file stays machine-independent — GH #1827 audit resolution) with
+// no POSIX entry, and the {{jsonEscape .SmartPATH}} directive must still
+// appear exactly once in the template source (REQ-CWSP-002; the full
+// AC-TPS-014 sentinel lives in internal/config/toolpolicy).
 func TestSettingsRenderWindowsPATH(t *testing.T) {
 	smartPath := strings.Join([]string{
 		`C:\Users\u\.local\bin`,
@@ -1523,4 +1566,342 @@ func TestSettingsRenderWindowsPATH(t *testing.T) {
 	if n := strings.Count(string(src), "{{jsonEscape .SmartPATH}}"); n != 1 {
 		t.Errorf("{{jsonEscape .SmartPATH}} directive count = %d, want 1", n)
 	}
+}
+
+// --- SyncLocalSettingsPATH (GH #1827 card t1957 audit resolution) ---
+
+// TestSyncLocalSettingsPATH pins the machine-local PATH surface: the
+// committed project settings.json stays SmartPATH-only, and the launcher
+// refreshes env.PATH in the gitignored .claude/settings.local.json with a
+// freshly captured session PATH. Claude Code merges local env key-by-key
+// over the project file (official docs: "when more than one settings file
+// sets a variable, the highest-precedence one applies"), so the local PATH
+// wins without disturbing the project file's other entries.
+func TestSyncLocalSettingsPATH(t *testing.T) {
+	const smart = "/moai/bin:/usr/local/bin"
+
+	t.Run("creates file with inherited PATH first", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("darwin", root, "/venv/bin:/custom", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, ok := doc["env"].(map[string]any)
+		if !ok {
+			t.Fatal("missing env section")
+		}
+		if got, _ := env["PATH"].(string); got != "/venv/bin:/custom:"+smart {
+			t.Errorf("env.PATH = %q, want inherited-led join", got)
+		}
+	})
+
+	t.Run("preserves other keys and replaces PATH only", func(t *testing.T) {
+		root := t.TempDir()
+		p := filepath.Join(root, ".claude", "settings.local.json")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		existing := `{"env":{"PATH":"/stale/old","MY_FLAG":"1"},"permissions":{"allow":["Read"]},"teammateMode":"tmux"}`
+		if err := os.WriteFile(p, []byte(existing), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+
+		if err := syncLocalSettingsPathFor("darwin", root, "/fresh/bin", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		if env == nil {
+			t.Fatal("missing env section")
+		}
+		if got, _ := env["PATH"].(string); got != "/fresh/bin:"+smart {
+			t.Errorf("env.PATH = %q, want fresh capture (never inherited)", got)
+		}
+		if got, _ := env["MY_FLAG"].(string); got != "1" {
+			t.Errorf("sibling env key MY_FLAG = %v, want preserved", env["MY_FLAG"])
+		}
+		if _, ok := doc["permissions"]; !ok {
+			t.Error("sibling top-level key permissions dropped")
+		}
+		if got, _ := doc["teammateMode"].(string); got != "tmux" {
+			t.Errorf("sibling top-level key teammateMode = %v, want preserved", doc["teammateMode"])
+		}
+	})
+
+	t.Run("repeated runs never accumulate", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("darwin", root, "/first", smart); err != nil {
+			t.Fatalf("first run error: %v", err)
+		}
+		if err := syncLocalSettingsPathFor("darwin", root, "/second", smart); err != nil {
+			t.Fatalf("second run error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		got, _ := env["PATH"].(string)
+		if got != "/second:"+smart {
+			t.Errorf("env.PATH = %q, want exactly the second capture (no accumulation)", got)
+		}
+		if strings.Contains(got, "/first") {
+			t.Errorf("env.PATH inherited the previous value: %s", got)
+		}
+	})
+
+	t.Run("empty inherited renders SmartPATH alone", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("darwin", root, "", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		if got, _ := env["PATH"].(string); got != smart {
+			t.Errorf("env.PATH = %q, want SmartPATH alone (no leading separator)", got)
+		}
+	})
+
+	t.Run("windows uses semicolon separator", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("windows", root, `C:\venv\Scripts`, `C:\moai\bin`); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := `C:\venv\Scripts;C:\moai\bin`
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want %q", got, want)
+		}
+	})
+
+	// Regression test for sync-audit F2 (codex reproduced: a captured PATH
+	// containing a "$UPPERCASE" segment failed renderer token validation and
+	// hard-failed init/update). The local PATH is written as plain data — it
+	// never passes through the template renderer — so a literal reference in
+	// the environment must write through with no error, and the committed
+	// settings.json render (SmartPATH-only) stays token-clean.
+	t.Run("dollar-bearing PATH segments write through without error", func(t *testing.T) {
+		root := t.TempDir()
+		inherited := `/x/$SDK/bin:${OTHER_VAR}/bin`
+		if err := syncLocalSettingsPathFor("darwin", root, inherited, smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH must not fail on $-bearing PATH: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := inherited + ":" + smart
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want verbatim %q", got, want)
+		}
+
+		// The committed project file renders with no inherited value at all,
+		// so the renderer's unexpanded-token check has nothing to trip on.
+		ctx := NewTemplateContext(WithPlatform("darwin"), WithSmartPATH(smart))
+		output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+		var settings struct {
+			Env map[string]string `json:"env"`
+		}
+		if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+			t.Fatalf("settings render Unmarshal error: %v", err)
+		}
+		if got := settings.Env["PATH"]; got != smart || strings.Contains(got, "$") {
+			t.Errorf("settings.json env.PATH = %q, want token-free SmartPATH %q", got, smart)
+		}
+	})
+
+	// card-review r9 P2: an empty POSIX PATH entry ("::") means the current
+	// directory — it must survive the join with its position intact.
+	t.Run("preserves empty PATH entries with their position", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("darwin", root, "/custom/bin::/usr/bin", "/moai/bin"); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := "/custom/bin::/usr/bin:/moai/bin"
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want empty entry preserved %q", got, want)
+		}
+	})
+
+	// card-review r3/r4 P2: a session that inherited an earlier local PATH
+	// re-captures the SmartPATH segments in its environment; the join keeps
+	// the inherited entries in first-occurrence order and appends only
+	// SmartPATH entries not already present — never re-appends, never
+	// reorders the user's existing search precedence.
+	t.Run("keeps inherited order and appends only new SmartPATH entries", func(t *testing.T) {
+		root := t.TempDir()
+		// r4's exact case: /usr/local/bin must keep precedence over
+		// /custom/bin exactly as the terminal had it.
+		if err := syncLocalSettingsPathFor("darwin", root, "/usr/local/bin:/custom/bin", "/usr/local/bin:/moai/bin"); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := "/usr/local/bin:/custom/bin:/moai/bin"
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want precedence-preserving %q", got, want)
+		}
+
+		// A session-inherited value carrying the SmartPATH segments must not
+		// grow on the next refresh either.
+		if err := syncLocalSettingsPathFor("darwin", root, "/moai/bin:/usr/local/bin:/venv/bin:/custom", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err = os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc2 map[string]any
+		if err := json.Unmarshal(raw, &doc2); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env2, _ := doc2["env"].(map[string]any)
+		want2 := "/moai/bin:/usr/local/bin:/venv/bin:/custom"
+		got2, _ := env2["PATH"].(string)
+		if got2 != want2 {
+			t.Errorf("env.PATH = %q, want unchanged inherited order %q", got2, want2)
+		}
+		if strings.Count(got2, "/moai/bin") != 1 || strings.Count(got2, "/usr/local/bin") != 1 {
+			t.Errorf("env.PATH = %q, SmartPATH segment duplicated", got2)
+		}
+	})
+
+	// card-review r5 P2: a file whose whole content is `null` unmarshals to a
+	// nil map without error — the refresh must reset it, not panic.
+	t.Run("null file content refreshes without panic", func(t *testing.T) {
+		root := t.TempDir()
+		p := filepath.Join(root, ".claude", "settings.local.json")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if err := os.WriteFile(p, []byte("null"), 0o600); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		if err := syncLocalSettingsPathFor("darwin", root, "/fresh", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, ok := doc["env"].(map[string]any)
+		if !ok {
+			t.Fatal("missing env section after null-file refresh")
+		}
+		if got, _ := env["PATH"].(string); got != "/fresh:"+smart {
+			t.Errorf("env.PATH = %q, want fresh join", got)
+		}
+	})
+
+	// card-review r3 P1: settings.local.json is credential-bearing and
+	// pre-existing writers keep it 0600 — the replacement must not widen the
+	// mode through a 0644 temp file.
+	t.Run("file mode stays 0600", func(t *testing.T) {
+		root := t.TempDir()
+		p := filepath.Join(root, ".claude", "settings.local.json")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if err := os.WriteFile(p, []byte(`{"env":{"PATH":"/old"}}`), 0o600); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		if err := syncLocalSettingsPathFor("darwin", root, "/fresh", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("Stat error: %v", err)
+		}
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Errorf("settings.local.json mode = %o, want 600", got)
+		}
+	})
+
+	// card-review r3 P2: concurrent launcher/update runs share the sibling
+	// lock; every run must leave a valid file and no run may error.
+	t.Run("concurrent runs serialize without loss or error", func(t *testing.T) {
+		root := t.TempDir()
+		const runs = 8
+		errs := make(chan error, runs)
+		for i := 0; i < runs; i++ {
+			go func(i int) {
+				errs <- syncLocalSettingsPathFor("darwin", root, fmt.Sprintf("/run-%d", i), smart)
+			}(i)
+		}
+		for i := 0; i < runs; i++ {
+			if err := <-errs; err != nil {
+				t.Errorf("concurrent run error: %v", err)
+			}
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("final file is not valid JSON: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		if got, _ := env["PATH"].(string); !strings.HasSuffix(got, smart) {
+			t.Errorf("env.PATH = %q, want a complete value ending with SmartPATH", got)
+		}
+	})
 }

@@ -461,11 +461,12 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
 	userValues := loadUpdateUserValues(projectRoot)
+	smartPath := template.BuildSmartPATH()
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
-		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithSmartPATH(smartPath),
 		template.WithPlatform(runtime.GOOS),
 		template.WithVersion(version.GetVersion()),
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
@@ -479,6 +480,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 		return result, recovery.fail("step 5: reinstall templates", deployErr)
+	}
+	// GH #1827 (card t1957): the committed settings.json keeps SmartPATH only
+	// (machine-independent); this machine's session PATH goes to the
+	// gitignored settings.local.json, merged key-by-key over the project file.
+	// Rebuilt from a fresh capture every run — never inherited from the file's
+	// previous value. Best-effort non-blocking; a failure is a warning on
+	// errOut, matching the snapshot writes above.
+	if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
+		_, _ = fmt.Fprintf(errOut, "[clean-reinstall] settings.local.json env.PATH refresh failed: %v\n", err)
 	}
 	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
 	// settings.json render this deploy wrote, before the Step 5.5 merge and the
