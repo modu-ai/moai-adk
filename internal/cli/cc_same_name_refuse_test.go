@@ -140,6 +140,35 @@ func TestCCRefusalNamesTheResolvedTreeNotTheCallingRoot(t *testing.T) {
 	}
 }
 
+// TestCCNativeAliasOfTheMoaiTreeIsNotRefused (card t1791 review round 2
+// P2): a native tree that aliases the MoAI tree (a symlink) is an existing
+// native path — claude re-enters it natively and the launch is not refused.
+// The native side is judged by its own existence, never through a candidate
+// list that dedups same-directory spellings.
+func TestCCNativeAliasOfTheMoaiTreeIsNotRefused(t *testing.T) {
+	root := m2Repo(t)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(root, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	nativeBase := filepath.Join(root, ".claude", "worktrees")
+	if err := os.MkdirAll(nativeBase, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", nativeBase, err)
+	}
+	if err := os.Symlink(moai, filepath.Join(nativeBase, "feat")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	launch := netDriveLaunch(t, root, netCC, []string{"-w", "feat"})
+	if launch.err != nil {
+		t.Fatalf("the native path exists (aliased); the launch must proceed: %v", launch.err)
+	}
+	if !launch.launched {
+		t.Fatal("the launch never ran")
+	}
+}
+
 func TestGLMPassesThroughWhenTheNativeTreeExists(t *testing.T) {
 	root := m2Repo(t)
 	t.Setenv(paths.EnvHome, t.TempDir())
