@@ -293,38 +293,52 @@ func refuseShadowedMoaiTreeName(view launchView, verb string) error {
 }
 
 // moaiPrimaryRoot resolves the primary checkout's root from dir, by the
-// git-dir layout (every step git-native, GIT_* scrubbed, fail closed):
+// git-dir identity first and the layout second (every step git-native,
+// GIT_* scrubbed, fail closed):
 //
-//   - a git common directory named ".git" — a normal repo and any linked
-//     worktree — names its owner: the parent of <main>/.git is the main
+//   - dir's git dir EQUALS the common dir — dir IS the main checkout,
+//     whatever the git dir is called or where it lives (a normal .git, an
+//     external --separate-git-dir metadata, one named ".git"; the basename
+//     misjudged that last one, audit r3 P2). show-toplevel answers the
 //     checkout.
-//   - an external common directory (a --separate-git-dir checkout; its
-//     worktree-list main record is the metadata dir and no core.worktree is
-//     recorded, both measured, audit r2 P2) resolves only when dir IS the
-//     main checkout — its git dir equals the common dir and show-toplevel
-//     answers the checkout. A linked tree over an external git dir has no
-//     git-native address for its main checkout: the layout is refused (fail
-//     closed), never guessed.
+//   - dir's git dir differs — dir is a LINKED worktree, and the main
+//     checkout owns the common dir as its .git. Verified, never assumed:
+//     the common dir must be named ".git" and the candidate's .git entry
+//     must BE it (os.SameFile). Anything else is refused — a linked tree
+//     over an external git dir has no git-native address for its main
+//     checkout (audit r2 P2). Residual: an external metadata dir named
+//     ".git" hosting an unrelated checkout's git dir is structurally
+//     indistinguishable from a normal main checkout and answers the
+//     metadata's parent; no git-native discriminator exists.
 func moaiPrimaryRoot(dir string) (string, error) {
-	common, err := moaiRevParse(dir, "--path-format=absolute", "--git-common-dir")
-	if err != nil {
-		return "", err
-	}
-	if filepath.Base(common) == ".git" {
-		return moaiCanonical(filepath.Dir(common)), nil
-	}
 	gitDir, err := moaiRevParse(dir, "--path-format=absolute", "--git-dir")
 	if err != nil {
 		return "", err
 	}
-	if gitDir != common {
-		return "", fmt.Errorf("the git directory %s is external to the checkout and %s is not its main worktree; the primary checkout cannot be resolved", common, dir)
-	}
-	toplevel, err := moaiRevParse(dir, "--path-format=absolute", "--show-toplevel")
+	common, err := moaiRevParse(dir, "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return "", err
 	}
-	return moaiCanonical(toplevel), nil
+	if gitDir == common {
+		toplevel, err := moaiRevParse(dir, "--path-format=absolute", "--show-toplevel")
+		if err != nil {
+			return "", err
+		}
+		return moaiCanonical(toplevel), nil
+	}
+	if filepath.Base(common) != ".git" {
+		return "", fmt.Errorf("the git directory %s is external to the checkout and %s is not its main worktree; the primary checkout cannot be resolved", common, dir)
+	}
+	candidate := filepath.Dir(common)
+	fiCommon, err := os.Stat(common)
+	if err != nil {
+		return "", err
+	}
+	fiDotGit, err := os.Stat(filepath.Join(candidate, ".git"))
+	if err != nil || !os.SameFile(fiCommon, fiDotGit) {
+		return "", fmt.Errorf("the git directory %s is not the .git of %s; the primary checkout cannot be resolved", common, candidate)
+	}
+	return moaiCanonical(candidate), nil
 }
 
 // moaiRevParse runs one `git -C dir rev-parse` probe with the inherited

@@ -142,6 +142,40 @@ func TestCCRefusesWhenThePrimaryCannotBeResolved(t *testing.T) {
 	}
 }
 
+// TestCCRefusesAnExternalGitDirNamedDotGit (audit r3 P2, rcpt-777ebc5f):
+// an external git dir may itself be named ".git" — the main checkout is
+// judged by show-toplevel, never by the git dir's basename.
+func TestCCRefusesAnExternalGitDirNamedDotGit(t *testing.T) {
+	base := m2Real(t, t.TempDir())
+	repo := filepath.Join(base, "repo")
+	admin := filepath.Join(base, "admin")
+	metadata := filepath.Join(admin, ".git")
+	if err := os.MkdirAll(admin, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", admin, err)
+	}
+	m2Git(t, base, "init", "-q", "--template=", "--separate-git-dir", metadata, "-b", "main", repo)
+	m2Git(t, repo, "config", "user.email", "m2-test@example.com")
+	m2Git(t, repo, "config", "user.name", "M2 Test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m2Git(t, repo, "add", "README.md")
+	m2Git(t, repo, "commit", "-q", "-m", "seed")
+	t.Setenv(paths.EnvHome, t.TempDir())
+	netScrubLaneEnv(t)
+	moai := filepath.Join(repo, ".moai", "worktrees", "feat")
+	if err := os.MkdirAll(moai, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", moai, err)
+	}
+	launch := netDriveLaunch(t, repo, netCC, []string{"-w", "feat"})
+	if launch.err == nil || launch.launched {
+		t.Fatalf("an external .git-named git dir must not misjudge the primary: err=%v launched=%v", launch.err, launch.launched)
+	}
+	if !strings.Contains(launch.err.Error(), moai) {
+		t.Errorf("the refusal names no tree path: %q, want %q", launch.err.Error(), moai)
+	}
+}
+
 func TestCCPassesThroughWhenTheNativeTreeExists(t *testing.T) {
 	root := m2Repo(t)
 	t.Setenv(paths.EnvHome, t.TempDir())
