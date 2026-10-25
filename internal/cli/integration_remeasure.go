@@ -97,11 +97,20 @@ func remeasureBaseBranch(root, worktree string) (string, error) {
 		// with no local counterpart (a clone that checked out another branch)
 		// would otherwise fail when the fork point is computed, AFTER the
 		// command (card-review).
-		verify := exec.Command("git", "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
-		verify.Dir = worktree
-		verify.Env = gitenv.Env()
-		if err := verify.Run(); err != nil {
-			return "", fmt.Errorf("integration remeasure: the integration branch %q has no local branch refs/heads/%s; create it (git branch %s origin/%s) or fix git_strategy, then re-run", branch, branch, branch, branch)
+		//
+		// The check must accept a branch NAME only: rev-parse --verify resolves any
+		// revision expression (`main^{tree}`, `main~1`, `main@{0}`), which passed
+		// the check and then died in the fork-point lookup after the command
+		// (sync-audit iter3 F1). check-ref-format rejects a name that cannot be a
+		// ref, and show-ref --verify accepts only an exact existing ref.
+		ref := "refs/heads/" + branch
+		for _, argv := range [][]string{{"check-ref-format", ref}, {"show-ref", "--verify", "--quiet", ref}} {
+			check := exec.Command("git", argv...)
+			check.Dir = worktree
+			check.Env = gitenv.Env()
+			if err := check.Run(); err != nil {
+				return "", fmt.Errorf("integration remeasure: the integration branch %q has no local branch refs/heads/%s; create it (git branch %s origin/%s) or fix git_strategy, then re-run", branch, branch, branch, branch)
+			}
 		}
 		return branch, nil
 	}

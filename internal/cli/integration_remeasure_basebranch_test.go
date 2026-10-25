@@ -81,8 +81,14 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 		gitFlowEmpty  = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"\"\n"
 		gitFlowPerson = "git_strategy:\n    mode: personal\n    personal:\n        workflow: git-flow\n        develop_branch: develop\n"
 		unknownFlow   = "git_strategy:\n    mode: manual\n    manual:\n        workflow: svn-flow\n"
-		brokenYAML    = "git_strategy: [unterminated\n"
-		noMode        = "git_strategy:\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
+		// A configured branch that is a revision expression, not a branch name:
+		// rev-parse --verify resolved these, so they passed the local-ref check
+		// and the command ran before the fork-point lookup died (iter3 F1).
+		exprTree   = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"main^{tree}\"\n"
+		exprParent = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"develop~1\"\n"
+		exprReflog = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"main@{0}\"\n"
+		brokenYAML = "git_strategy: [unterminated\n"
+		noMode     = "git_strategy:\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
 	)
 	for _, tc := range []struct {
 		name         string
@@ -165,6 +171,18 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 		{
 			name: "a present file that cannot be read is refused", withOrigin: true, primaryCfg: githubFlow, chmod000: true,
 			wantErr: "cannot read",
+		},
+		{
+			name: "a configured revision expression main^{tree} is refused", withOrigin: true, primaryCfg: exprTree,
+			wantErr: "has no local branch",
+		},
+		{
+			name: "a configured revision expression develop~1 is refused", withOrigin: true, developAhead: true, primaryCfg: exprParent,
+			wantErr: "has no local branch",
+		},
+		{
+			name: "a configured revision expression main@{0} is refused", withOrigin: true, primaryCfg: exprReflog,
+			wantErr: "has no local branch",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
