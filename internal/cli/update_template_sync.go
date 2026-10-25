@@ -649,10 +649,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// PATH goes to the gitignored settings.local.json, merged
 				// key-by-key over the project file. Rebuilt from a fresh capture
 				// every run — never inherited from the file's previous value.
+				// Skipped for the codex-only harness, read from the same source
+				// the deployer construction above used: that project carries
+				// zero .claude/** paths and this call would create them.
 				// Best-effort non-blocking; a failure is a warning on errOut,
 				// matching the snapshot writes below.
-				if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
-					_, _ = fmt.Fprintf(errOut, "  settings.local.json env.PATH refresh failed: %v\n", err)
+				if config.ReadHarness(".") != "gpt" {
+					if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
+						_, _ = fmt.Fprintf(errOut, "  settings.local.json env.PATH refresh failed: %v\n", err)
+					}
 				}
 				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
 				// settings.json render this deploy wrote, before the Restore
