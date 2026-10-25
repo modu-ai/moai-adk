@@ -63,6 +63,13 @@ func wrReal(t *testing.T, p string) string {
 // wrGit runs one git command in dir and fails the test on error.
 func wrGit(t *testing.T, dir string, args ...string) string {
 	t.Helper()
+	// Async maintenance/auto-gc must never run inside the fixture: its
+	// `.git/objects/maintenance.lock` churn was the natural CI failure of
+	// TestPlan_IsReadOnly (card t1954, run 40178638653 — "REMOVED
+	// plan-repo/.git/objects/maintenance.lock" between the two hashes;
+	// written and removed by git itself, never by Plan). Blocking it here
+	// keeps the read-only proof about Plan, not about git's own housekeeping.
+	args = append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
