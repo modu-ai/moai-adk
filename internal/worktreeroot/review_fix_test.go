@@ -279,6 +279,9 @@ func TestWalkHash_KeepsReadFailureEntries(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod-000 unreadability is POSIX-only")
 	}
+	if os.Geteuid() == 0 {
+		t.Skip("root reads chmod-000 files; the READERR path cannot be exercised as root")
+	}
 	repo := wrRepo(t, "readerr-repo")
 	before := wrTreeHash(t, repo)
 
