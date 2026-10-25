@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -64,19 +67,22 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 // for the fork point of the ref `refs/heads/` (no branch name), which died with
 // exit status 128.
 //
-// Only an ABSENT or unreadable file lets the remote's default branch (origin/HEAD)
-// stand in. A file that loads but resolves no target (git-flow outside manual
-// mode, an empty develop_branch, an unknown workflow, an empty environment) is a
-// misconfiguration: like every sibling consumer the verb refuses it with the
-// cause-specific guidance, before the command runs, instead of recording a
-// re-measure against a branch the project does not integrate into (sync-audit
-// iter1 F1). When nothing resolves, the verb refuses with guidance rather than
-// call git with an empty ref.
+// Only a file that is really ABSENT lets the remote's default branch (origin/HEAD)
+// stand in. A file that exists but resolves no target (unparsable, empty, no
+// mode, unreadable, git-flow outside manual mode, an empty develop_branch, an
+// unknown workflow, an empty environment) is a misconfiguration: like every
+// sibling consumer the verb refuses it with the cause-specific guidance, before
+// the command runs, instead of recording a re-measure against a branch the
+// project does not integrate into (sync-audit iter1 F1, iter2 R1). When nothing
+// resolves, the verb refuses with guidance rather than call git with an empty ref.
 func remeasureBaseBranch(root, worktree string) (string, error) {
 	cfg := config.LoadGitFlowIntegrationConfig(root)
 	branch := strings.TrimSpace(cfg.IntegrationTarget)
 	if branch == "" {
-		if cfg.EmptyTargetCause() != config.EmptyTargetUnreadable {
+		// EmptyTargetUnreadable also covers a file that EXISTS but is broken,
+		// empty, mode-less or unreadable, so the cause alone cannot gate the
+		// fallback (sync-audit iter2 R1): only a file that is really absent does.
+		if _, statErr := os.Stat(filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml")); !errors.Is(statErr, fs.ErrNotExist) {
 			guidance := cfg.EmptyTargetGuidance(root, "")
 			if guidance == "" {
 				guidance = "the configured git strategy resolves no integration branch"

@@ -81,6 +81,8 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 		gitFlowEmpty  = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"\"\n"
 		gitFlowPerson = "git_strategy:\n    mode: personal\n    personal:\n        workflow: git-flow\n        develop_branch: develop\n"
 		unknownFlow   = "git_strategy:\n    mode: manual\n    manual:\n        workflow: svn-flow\n"
+		brokenYAML    = "git_strategy: [unterminated\n"
+		noMode        = "git_strategy:\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
 	)
 	for _, tc := range []struct {
 		name         string
@@ -89,6 +91,8 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 		primaryCfg   string // "" = no configuration anywhere
 		dropMain     bool   // delete the local main branch (origin/main stays)
 		extraBranch  string // an extra local branch cut from main, e.g. "origin/main"
+		emptyFile    bool   // the configuration file exists and is empty
+		chmod000     bool   // the configuration file exists but cannot be read
 		wantErr      string // substring of the refusal; "" = the verb must succeed
 		wantOut      string
 	}{
@@ -144,11 +148,42 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 			name: "an unknown workflow is refused", withOrigin: true, primaryCfg: unknownFlow,
 			wantErr: "svn-flow",
 		},
+		{
+			// sync-audit iter2 R1: the fallback is for an ABSENT file only. A file
+			// that exists but classifies as unreadable is a misconfiguration too.
+			name: "a present but unparsable file is refused", withOrigin: true, primaryCfg: brokenYAML,
+			wantErr: "cannot read",
+		},
+		{
+			name: "a present but empty file is refused", withOrigin: true, emptyFile: true,
+			wantErr: "cannot read",
+		},
+		{
+			name: "a present file with no git_strategy.mode is refused", withOrigin: true, primaryCfg: noMode,
+			wantErr: "cannot read",
+		},
+		{
+			name: "a present file that cannot be read is refused", withOrigin: true, primaryCfg: githubFlow, chmod000: true,
+			wantErr: "cannot read",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			primary, linked, developTip := remeasureBaseFixture(t, tc.withOrigin, tc.developAhead)
-			if tc.primaryCfg != "" {
+			if tc.primaryCfg != "" || tc.emptyFile {
 				writeGitignoredStrategy(t, primary, tc.primaryCfg)
+			}
+			if tc.chmod000 {
+				cfgPath := filepath.Join(primary, ".moai", "config", "sections", "git-strategy.yaml")
+				if err := os.Chmod(cfgPath, 0); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(cfgPath, 0o600) })
+				// A 0000 file is only unreadable to a non-root caller: as root (or
+				// where the mode is not enforced) the row would prove nothing.
+				if f, openErr := os.Open(cfgPath); openErr == nil {
+					_ = f.Close()
+					t.Skip("this environment reads a 0000 file (running as root, or the mode is not enforced), so the row cannot show an unreadable configuration")
+				}
 			}
 			if tc.extraBranch != "" {
 				gitRun(t, primary, "branch", tc.extraBranch, "main")
