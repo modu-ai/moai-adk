@@ -6,9 +6,9 @@ package cli
 // exit status 128` in a clean linked worktree. The integration branch is read
 // from git-strategy.yaml, which is gitignored, so a checkout that never had the
 // file resolved an empty branch and the verb called git with an empty ref. The
-// shapes below pin the three states the configuration can be in; the verb must
-// resolve a base in the first two and refuse with guidance (never call git with
-// an empty ref) in the third.
+// rows below pin every state the configuration and the remote can be in: the
+// verb resolves a base where it can, refuses with guidance where it cannot, and
+// in every refusal the measured command has NOT run (a marker file proves it).
 
 import (
 	"os"
@@ -18,10 +18,11 @@ import (
 )
 
 // remeasureBaseFixture builds origin.git (main), a primary clone of it and a
-// clean linked worktree on a card branch whose HEAD equals main. withOrigin
-// false gives a primary that has no remote at all. The returned linked path is
-// the tree the verb runs from.
-func remeasureBaseFixture(t *testing.T, withOrigin bool) (primary, linked string) {
+// clean linked worktree on a card branch. withOrigin false gives a primary with
+// no remote at all. developAhead adds a local develop branch one commit ahead
+// of main and cuts the card branch from it, so the fork point against develop
+// differs from the one against main; developTip is develop's tip then.
+func remeasureBaseFixture(t *testing.T, withOrigin, developAhead bool) (primary, linked, developTip string) {
 	t.Helper()
 	base := t.TempDir()
 	seed := filepath.Join(base, "seed")
@@ -44,8 +45,20 @@ func remeasureBaseFixture(t *testing.T, withOrigin bool) (primary, linked string
 		gitRun(t, primary, "remote", "remove", "origin")
 	}
 	linked = filepath.Join(base, "linked")
-	gitRun(t, primary, "worktree", "add", "-q", "-b", "card", linked, "main")
-	return primary, linked
+	from := "main"
+	if developAhead {
+		gitRun(t, primary, "switch", "-q", "-c", "develop")
+		if err := os.WriteFile(filepath.Join(primary, "develop.txt"), []byte("develop\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitRun(t, primary, "add", "develop.txt")
+		gitRun(t, primary, "commit", "-q", "-m", "develop ahead of main")
+		developTip = strings.TrimSpace(gitRun(t, primary, "rev-parse", "HEAD"))
+		gitRun(t, primary, "switch", "-q", "main")
+		from = "develop"
+	}
+	gitRun(t, primary, "worktree", "add", "-q", "-b", "card", linked, from)
+	return primary, linked, developTip
 }
 
 // writeGitignoredStrategy writes git-strategy.yaml into root's gitignored
@@ -59,30 +72,26 @@ func writeGitignoredStrategy(t *testing.T, root, body string) {
 	if err := os.WriteFile(filepath.Join(dir, "git-strategy.yaml"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	exclude := filepath.Join(root, ".git", "info", "exclude")
-	existing, _ := os.ReadFile(exclude)
-	if err := os.WriteFile(exclude, append(existing, []byte("\n.moai/\n")...), 0o600); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
-	const githubFlow = "git_strategy:\n    mode: manual\n    manual:\n        workflow: github-flow\n"
+	const (
+		githubFlow    = "git_strategy:\n    mode: manual\n    manual:\n        workflow: github-flow\n"
+		gitFlowDevel  = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: develop\n"
+		gitFlowEmpty  = "git_strategy:\n    mode: manual\n    manual:\n        workflow: git-flow\n        develop_branch: \"\"\n"
+		gitFlowPerson = "git_strategy:\n    mode: personal\n    personal:\n        workflow: git-flow\n        develop_branch: develop\n"
+		unknownFlow   = "git_strategy:\n    mode: manual\n    manual:\n        workflow: svn-flow\n"
+	)
 	for _, tc := range []struct {
-		name       string
-		withOrigin bool
-		primaryCfg string // "" = no configuration anywhere
-		dropMain   bool   // delete the local main branch (origin/main stays)
-		wantErr    string // substring of the refusal; "" = the verb must succeed
-		wantOut    string
+		name         string
+		withOrigin   bool
+		developAhead bool
+		primaryCfg   string // "" = no configuration anywhere
+		dropMain     bool   // delete the local main branch (origin/main stays)
+		extraBranch  string // an extra local branch cut from main, e.g. "origin/main"
+		wantErr      string // substring of the refusal; "" = the verb must succeed
+		wantOut      string
 	}{
-		{
-			// card-review (codex): origin/HEAD names main but the clone has no
-			// local main, so refs/heads/main would fail in merge-base AFTER the
-			// command. The verb refuses first, naming the missing local branch.
-			name: "origin/HEAD names a branch with no local ref", withOrigin: true, dropMain: true,
-			wantErr: "has no local branch refs/heads/main",
-		},
 		{
 			// Positive control: the configuration lives in the primary (gitignored)
 			// and the linked tree has none; the common root answers.
@@ -96,16 +105,53 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 			wantOut: "re-measure recorded",
 		},
 		{
+			// A local branch named origin/main makes the short form of the symbolic
+			// ref print remotes/origin/main; the full ref is read, so the setup
+			// still resolves to main (sync-audit iter1 F2).
+			name: "a local branch named origin/main does not break the fallback", withOrigin: true, extraBranch: "origin/main",
+			wantOut: "re-measure recorded",
+		},
+		{
+			// A configured target beats origin/HEAD: the recorded base is develop's
+			// fork point, not main's (sync-audit iter1 F4).
+			name: "the configured target outranks origin/HEAD", withOrigin: true, developAhead: true, primaryCfg: gitFlowDevel,
+			wantOut: "re-measure recorded",
+		},
+		{
 			// Nothing to resolve a base from: refuse with guidance, naming the
 			// missing configuration — no git call with an empty ref.
 			name: "no configuration and no remote default branch", withOrigin: false,
 			wantErr: "no integration branch",
 		},
+		{
+			// card-review (codex): origin/HEAD names main but the clone has no
+			// local main, so the base ref would fail AFTER the command. The verb
+			// refuses first, naming the missing local branch.
+			name: "origin/HEAD names a branch with no local ref", withOrigin: true, dropMain: true,
+			wantErr: "has no local branch refs/heads/main",
+		},
+		{
+			// sync-audit iter1 F1: a file that LOADS but resolves no target is a
+			// misconfiguration, not an absent file — origin/HEAD must not stand in.
+			name: "git-flow with an empty develop_branch is refused", withOrigin: true, primaryCfg: gitFlowEmpty,
+			wantErr: "develop_branch is empty",
+		},
+		{
+			name: "git-flow outside manual mode is refused", withOrigin: true, primaryCfg: gitFlowPerson,
+			wantErr: "git-flow resolves a target only when git_strategy.mode is manual",
+		},
+		{
+			name: "an unknown workflow is refused", withOrigin: true, primaryCfg: unknownFlow,
+			wantErr: "svn-flow",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			primary, linked := remeasureBaseFixture(t, tc.withOrigin)
+			primary, linked, developTip := remeasureBaseFixture(t, tc.withOrigin, tc.developAhead)
 			if tc.primaryCfg != "" {
 				writeGitignoredStrategy(t, primary, tc.primaryCfg)
+			}
+			if tc.extraBranch != "" {
+				gitRun(t, primary, "branch", tc.extraBranch, "main")
 			}
 			if tc.dropMain {
 				// The primary leaves main (the linked tree stays on its card
@@ -119,23 +165,36 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 			if err := os.WriteFile(exclude, append(existing, []byte("\n.moai/\n.claude/\n")...), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			marker := filepath.Join(t.TempDir(), "ran")
 			t.Chdir(linked)
-			out, err := runIntegration(t, linked, "remeasure", "--", "true")
+			out, err := runIntegration(t, linked, "remeasure", "--", "touch "+marker)
 			observed := out
 			if err != nil {
 				observed += err.Error()
 			}
 			if strings.Contains(observed, "merge-base") && strings.Contains(observed, "exit status 128") {
-				t.Fatalf("the verb called git with an empty ref (GH #1817): %q", observed)
+				t.Fatalf("the verb died in the fork-point lookup (exit status 128) instead of resolving or refusing first (GH #1817): %q", observed)
 			}
+			_, ranErr := os.Stat(marker)
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(observed, tc.wantErr) {
 					t.Fatalf("want a refusal containing %q, got err=%v out=%q", tc.wantErr, err, out)
+				}
+				if ranErr == nil {
+					t.Fatalf("the measured command ran although the verb refused: %q", observed)
 				}
 				return
 			}
 			if err != nil || !strings.Contains(out, tc.wantOut) {
 				t.Fatalf("want success containing %q, got err=%v out=%q", tc.wantOut, err, out)
+			}
+			if ranErr != nil {
+				t.Fatalf("the verb succeeded but the measured command did not run: %v", ranErr)
+			}
+			if tc.developAhead {
+				if want := "(base " + developTip[:12] + ")"; !strings.Contains(out, want) {
+					t.Fatalf("the recorded base must be develop's fork point %s, got %q", want, out)
+				}
 			}
 		})
 	}

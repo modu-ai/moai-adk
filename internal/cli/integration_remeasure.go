@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/spf13/cobra"
@@ -61,19 +62,28 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 // git-strategy.yaml is gitignored, so a checkout that never had the file (a
 // fresh clone, a CI workspace) resolved an empty branch and the verb asked git
 // for the fork point of the ref `refs/heads/` (no branch name), which died with
-// exit status 128. When the
-// configuration names none, the remote's default branch (origin/HEAD) stands
-// in; when that does not resolve either, the verb refuses with guidance before
-// it runs the command or calls git with an empty ref.
+// exit status 128.
+//
+// Only an ABSENT or unreadable file lets the remote's default branch (origin/HEAD)
+// stand in. A file that loads but resolves no target (git-flow outside manual
+// mode, an empty develop_branch, an unknown workflow, an empty environment) is a
+// misconfiguration: like every sibling consumer the verb refuses it with the
+// cause-specific guidance, before the command runs, instead of recording a
+// re-measure against a branch the project does not integrate into (sync-audit
+// iter1 F1). When nothing resolves, the verb refuses with guidance rather than
+// call git with an empty ref.
 func remeasureBaseBranch(root, worktree string) (string, error) {
-	branch := strings.TrimSpace(configuredIntegrationBranch())
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	branch := strings.TrimSpace(cfg.IntegrationTarget)
 	if branch == "" {
-		cmd := exec.Command("git", "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-		cmd.Dir = worktree
-		cmd.Env = gitenv.Env()
-		if out, err := cmd.Output(); err == nil {
-			branch = strings.TrimPrefix(strings.TrimSpace(string(out)), "origin/")
+		if cfg.EmptyTargetCause() != config.EmptyTargetUnreadable {
+			guidance := cfg.EmptyTargetGuidance(root, "")
+			if guidance == "" {
+				guidance = "the configured git strategy resolves no integration branch"
+			}
+			return "", fmt.Errorf("integration remeasure: no integration target is configured, so the base would be a guess: %s", guidance)
 		}
+		branch = remoteDefaultBranch(worktree)
 	}
 	if branch != "" {
 		// The record names the base through refs/heads/<branch>, so that local
@@ -89,7 +99,28 @@ func remeasureBaseBranch(root, worktree string) (string, error) {
 		}
 		return branch, nil
 	}
-	return "", fmt.Errorf("integration remeasure: no integration branch to measure against: git_strategy in %s/.moai/config/sections/git-strategy.yaml (gitignored; read from the primary checkout) names none and the remote default branch (origin/HEAD) does not resolve; set the git strategy there or run `git remote set-head origin --auto`, then re-run", root)
+	return "", fmt.Errorf("integration remeasure: no integration branch to measure against: %s/.moai/config/sections/git-strategy.yaml (gitignored; read from the primary checkout) is absent or unreadable and the remote default branch (refs/remotes/origin/HEAD) does not resolve; restore the git strategy file there, or, when the remote is named origin, run `git remote set-head origin --auto`, then re-run", root)
+}
+
+// remoteDefaultBranch reads the branch refs/remotes/origin/HEAD points at, or
+// "" when it does not resolve. The FULL ref is read (no --short): a local branch
+// or tag named origin/main makes the short form print remotes/origin/main, which
+// no prefix strip recovers (sync-audit iter1 F2). A target outside
+// refs/remotes/origin/ is not a default branch this verb can name.
+func remoteDefaultBranch(worktree string) string {
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+	cmd.Dir = worktree
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	const prefix = "refs/remotes/origin/"
+	ref := strings.TrimSpace(string(out))
+	if !strings.HasPrefix(ref, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(ref, prefix)
 }
 
 // shellJoinArgs joins the argv the caller passed after -- into the one

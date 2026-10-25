@@ -637,7 +637,8 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 	// An empty base never reaches git: `merge-base refs/heads/ HEAD` dies with
 	// exit status 128 AFTER the command has run (card t1790, GH #1817), so the
 	// refusal comes first and names what is missing.
-	if strings.TrimSpace(baseBranch) == "" {
+	baseBranch = strings.TrimSpace(baseBranch) // the guard and the ref below read the same value
+	if baseBranch == "" {
 		return nil, fmt.Errorf("integration remeasure: no integration branch to measure against; the caller must resolve one (git-strategy.yaml or the remote default branch) before the command runs")
 	}
 	clean, status, err := gitIntegrationWorktreeClean(worktree)
