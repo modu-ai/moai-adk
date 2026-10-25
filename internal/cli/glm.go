@@ -355,7 +355,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
 	// post-validation point the cc flow applies it after its writer precheck —
 	// the glm flow has no moai-side refusal, so this is the admitted point (audit F0).
-	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
+	// The tree it seeds is the one the launch will actually use (card t1791
+	// audit round 2 finding 1): the entry flow enters the backend-model
+	// selection's tree, not StageB's first match.
+	entryDir := existingWorktreeEntryDir(view)
+	if entryDir != "" {
+		seedAdmittedWorktreeHooksFor(entryWorktreeRead(entryDir), cmd.ErrOrStderr())
+	} else {
+		seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
+	}
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
@@ -378,11 +386,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// M8R (card t1640 review P1-2): see cc.go — the existing home-root tree
 	// is entered by directory (the backend starts inside it, no worktree
 	// selection handed over); every other short name passes through.
-	// The view owns the launch argv (see cc.go): always take the normalized
-	// LaunchArgs, then strip the selection when entering by directory.
+	// The view owns the launch argv (see cc.go): on the entry path the
+	// backend receives its own argv with every worktree selection removed
+	// (card t1791 audit round 2) — the launcher separator the consumption
+	// dropped would otherwise leave a selection alive in the backend argv.
 	filteredArgs = view.LaunchArgs
-	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
-		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
+	if entryDir != "" {
+		filteredArgs = stripBackendWorktreeSelections(view.FinalArgv)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

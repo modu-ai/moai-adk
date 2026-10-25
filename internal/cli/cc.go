@@ -311,14 +311,26 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		return err
 	}
 	// A tree another live session is anchored in gets no second writer. The
-	// check only reads; Claude Code writes its own lock on entry.
-	if err := ccWorktreeWriterPrecheck(view.StageB); err != nil {
-		return err
+	// check only reads; Claude Code writes its own lock on entry. The tree
+	// it reads is the one the launch will actually use (card t1791 audit
+	// round 2 finding 1): under a duplicate selection pair the entry enters
+	// the backend-model selection's tree, not StageB's first match — so the
+	// entry flow prechecks the entered tree directly.
+	entryDir := existingWorktreeEntryDir(view)
+	if entryDir != "" {
+		if err := ccWorktreeWriterPrecheck(entryWorktreeRead(entryDir)); err != nil {
+			return err
+		}
+		// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill —
+		// applied only now that the admission above succeeded, so a refused
+		// launch leaves the tree untouched (audit F0, sync-audit-opus.md).
+		seedAdmittedWorktreeHooksFor(entryWorktreeRead(entryDir), cmd.ErrOrStderr())
+	} else {
+		if err := ccWorktreeWriterPrecheck(view.StageB); err != nil {
+			return err
+		}
+		seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	}
-	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill — applied
-	// only now that the admission above succeeded, so a refused launch leaves
-	// the tree untouched (audit F0, sync-audit-opus.md).
-	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
 	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006), entry form repaired by
 	// M8R (card t1640 review P1-2): a short name naming an existing home-root
@@ -330,10 +342,14 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// creates nothing).
 	// The view owns the launch argv (SPEC-LAUNCHER-ARGV-001): what the exec
 	// boundary receives is the view's normalized LaunchArgs, exactly as the
-	// old unconditional rewrite assignment delivered.
+	// old unconditional rewrite assignment delivered — except on the entry
+	// path, where the backend receives its own argv with every worktree
+	// selection removed (card t1791 audit round 2): the launcher separator
+	// the consumption dropped would otherwise leave a selection alive in the
+	// backend argv and re-open the nested-creation path.
 	filteredArgs = view.LaunchArgs
-	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
-		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
+	if entryDir != "" {
+		filteredArgs = stripBackendWorktreeSelections(view.FinalArgv)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

@@ -1,17 +1,20 @@
 package cli
 
-// Regression tests for card t1791 (GH #1813): the -w NAME form must enter an
-// existing same-name .moai/worktrees/<name> MoAI tree instead of passing the
-// name through to claude, whose short-name resolution covers only
-// .claude/worktrees/<name> — the pass-through used to create a duplicate
-// branch tree silently (the 2026-10-08 lane-12 incident). Fixtures are
-// scratch repositories under t.TempDir() with their own MOAI_HOME; the
-// project-root seam is stubbed so nothing escapes the fixture.
+// Regression tests for card t1791 (GH #1813) and its audit rounds: the -w
+// NAME form must enter an existing same-name .moai/worktrees/<name> MoAI
+// tree instead of passing the name through to claude, whose short-name
+// resolution covers only .claude/worktrees/<name> — the pass-through used to
+// create a duplicate branch tree silently (the 2026-10-08 lane-12 incident).
+// The entry judges the VIEW's backend-model selection (FinalArgv, option-
+// model aware) and the backend argv loses every worktree selection on entry.
+// Fixtures are scratch repositories under t.TempDir() with their own
+// MOAI_HOME; the project-root seam is stubbed so nothing escapes the fixture.
 
 import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +39,32 @@ func entryFixture(t *testing.T) string {
 	return primary
 }
 
+// mustMkdirTree creates a directory subtree, failing the test on error.
+func mustMkdirTree(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
+// entryDirFor resolves the entry directory for argv through the full view —
+// the same shape the cc/glm flows judge.
+func entryDirFor(t *testing.T, argv []string) string {
+	t.Helper()
+	return existingWorktreeEntryDir(resolveLaunchView(argv))
+}
+
+// canonical resolves symlinks (the macOS /var alias) so paths derived from
+// the resolver's canonicalization agree with the paths asserted here.
+func canonical(t *testing.T, p string) string {
+	t.Helper()
+	r, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		t.Fatalf("evalsymlinks %s: %v", p, err)
+	}
+	return r
+}
+
 // TestEntryDir_LegacyMoaiTreeIsEntered — the #1813 fix: a short name whose
 // only existing candidate is .moai/worktrees/<name> answers that directory
 // (the launcher enters it by directory and strips the selection), never a
@@ -44,17 +73,8 @@ func TestEntryDir_LegacyMoaiTreeIsEntered(t *testing.T) {
 	primary := entryFixture(t)
 	name := "t1791"
 	moaiTree := filepath.Join(primary, ".moai", "worktrees", name)
-	if err := os.MkdirAll(moaiTree, 0o755); err != nil {
-		t.Fatalf("mkdir moai tree: %v", err)
-	}
-	got := existingWorktreeEntryDir([]string{"-w", name})
-	// The resolver canonicalizes the primary root (EvalSymlinks) — on macOS
-	// /var is an alias of /private/var, so compare canonical forms.
-	want, err := filepath.EvalSymlinks(moaiTree)
-	if err != nil {
-		t.Fatalf("evalsymlinks %s: %v", moaiTree, err)
-	}
-	if got != want {
+	mustMkdirTree(t, moaiTree)
+	if got, want := entryDirFor(t, []string{"-w", name}), canonical(t, moaiTree); got != want {
 		t.Fatalf("entry dir = %q, want the existing .moai tree %q (a pass-through here creates a duplicate .claude branch tree — GH #1813)", got, want)
 	}
 }
@@ -69,11 +89,9 @@ func TestEntryDir_LegacyMoaiAndClaudeIsAmbiguous(t *testing.T) {
 		filepath.Join(".moai", "worktrees", name),
 		filepath.Join(".claude", "worktrees", name),
 	} {
-		if err := os.MkdirAll(filepath.Join(primary, rel), 0o755); err != nil {
-			t.Fatalf("mkdir %s: %v", rel, err)
-		}
+		mustMkdirTree(t, filepath.Join(primary, rel))
 	}
-	if got := existingWorktreeEntryDir([]string{"-w", name}); got != "" {
+	if got := entryDirFor(t, []string{"-w", name}); got != "" {
 		t.Fatalf("entry dir = %q, want \"\" for the two-root ambiguity", got)
 	}
 }
@@ -84,74 +102,114 @@ func TestEntryDir_LegacyMoaiAndClaudeIsAmbiguous(t *testing.T) {
 func TestEntryDir_LegacyClaudeStaysNative(t *testing.T) {
 	primary := entryFixture(t)
 	name := "native"
-	if err := os.MkdirAll(filepath.Join(primary, ".claude", "worktrees", name), 0o755); err != nil {
-		t.Fatalf("mkdir claude tree: %v", err)
-	}
-	if got := existingWorktreeEntryDir([]string{"-w", name}); got != "" {
+	mustMkdirTree(t, filepath.Join(primary, ".claude", "worktrees", name))
+	if got := entryDirFor(t, []string{"-w", name}); got != "" {
 		t.Fatalf("entry dir = %q, want \"\" for the legacy-claude native re-entry", got)
 	}
 }
 
 // TestEntrySelection_StrippedOnEntry — the launcher-side half of the
-// no-creation guarantee: when the entry resolves to a directory, the argv
-// handed to the backend carries no worktree selection at all, so claude can
-// never resolve a short name against its own .claude/worktrees and create a
-// duplicate tree (the #1813 creation path is the pass-through this strips).
+// no-creation guarantee: when the entry resolves to a directory, the BACKEND
+// argv handed to the launch carries no worktree selection at all, so claude
+// can never resolve a short name against its own .claude/worktrees and
+// create a duplicate tree.
 func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 	primary := entryFixture(t)
 	name := "t1791"
-	moaiTree := filepath.Join(primary, ".moai", "worktrees", name)
-	if err := os.MkdirAll(moaiTree, 0o755); err != nil {
-		t.Fatalf("mkdir moai tree: %v", err)
-	}
-	if existingWorktreeEntryDir([]string{"-w", name}) == "" {
+	mustMkdirTree(t, filepath.Join(primary, ".moai", "worktrees", name))
+	view := resolveLaunchView([]string{"-w", name})
+	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve for the strip to be reachable")
 	}
-	rest := stripWorktreeSelection([]string{"-w", name, "-c", "extra"})
+	rest := stripBackendWorktreeSelections(view.FinalArgv)
 	for _, tok := range rest {
-		if tok == name || tok == "-w" {
+		if strings.HasPrefix(tok, "-w") || strings.HasPrefix(tok, "--worktree") || tok == name {
 			t.Fatalf("worktree selection survived the strip: %v", rest)
 		}
 	}
 }
 
 // TestEntryDir_DuplicateSelectionEntersByFinal — a duplicate selection pair
-// enters by the FINAL selection (the same last-wins convention the backend
-// applies; card t1791 audit finding 1): the first strip used to leave the
-// second selection alive in the backend argv, the nested-creation path.
+// enters by the FINAL selection (the backend's own last-wins convention the
+// view's Selection encodes; card t1791 audit round 2 finding 1): the first
+// strip used to leave the second selection alive in the backend argv.
 func TestEntryDir_DuplicateSelectionEntersByFinal(t *testing.T) {
 	primary := entryFixture(t)
 	second := filepath.Join(primary, ".moai", "worktrees", "second")
-	if err := os.MkdirAll(second, 0o755); err != nil {
-		t.Fatalf("mkdir second tree: %v", err)
-	}
-	got := existingWorktreeEntryDir([]string{"-w", "first", "-w", "second"})
-	want, err := filepath.EvalSymlinks(second)
-	if err != nil {
-		t.Fatalf("evalsymlinks %s: %v", second, err)
-	}
-	if got != want {
-		t.Fatalf("entry dir = %q, want the final selection's tree %q", got, want)
+	mustMkdirTree(t, second)
+	got := entryDirFor(t, []string{"-w", "first", "-w", "second"})
+	if got != canonical(t, second) {
+		t.Fatalf("entry dir = %q, want the final selection's tree %q", got, canonical(t, second))
 	}
 }
 
-// TestStrip_DuplicateSelectionsAllRemoved — the strip removes EVERY
-// launcher-segment selection, not just the first (card t1791 audit finding
-// 1): a surviving second selection is the nested-creation path.
-func TestStrip_DuplicateSelectionsAllRemoved(t *testing.T) {
-	rest := stripWorktreeSelection([]string{"-w", "first", "--worktree", "second", "-c", "extra"})
-	if len(rest) != 2 || rest[0] != "-c" || rest[1] != "extra" {
-		t.Fatalf("stripped argv = %v, want [-c extra] (every selection removed)", rest)
+// TestEntryRead_TargetsTheEnteredTree — the writer-precheck read of the
+// entry flow names the ENTERED tree, never the view's first-match StageB
+// read (card t1791 audit round 2 finding 1): under a duplicate pair the
+// lock check must probe the tree that is about to be entered, or the
+// concurrent-writer protection is bypassed.
+func TestEntryRead_TargetsTheEnteredTree(t *testing.T) {
+	primary := entryFixture(t)
+	for _, name := range []string{"safe", "locked"} {
+		mustMkdirTree(t, filepath.Join(primary, ".moai", "worktrees", name))
+	}
+	view := resolveLaunchView([]string{"-w", "safe", "-w", "locked"})
+	entryDir := existingWorktreeEntryDir(view)
+	if entryDir == "" {
+		t.Fatal("precondition: the entry must resolve to the final selection's tree")
+	}
+	read := entryWorktreeRead(entryDir)
+	if !read.Has || !strings.Contains(read.Value, "locked") {
+		t.Fatalf("precheck read = %+v, want the entered tree (locked), not StageB's %q", read, view.StageB.Value)
 	}
 }
 
-// TestStrip_PreservesSeparatorTail — the strip never crosses the first "--"
-// pass-through marker (card t1791 audit finding 2): a literal
-// --worktree-shaped token in the tail is a prompt, not an option, and the
-// marker and tail survive byte-identical.
-func TestStrip_PreservesSeparatorTail(t *testing.T) {
-	rest := stripWorktreeSelection([]string{"-w", "first", "--", "--", "--worktree=first"})
-	if len(rest) != 3 || rest[0] != "--" || rest[1] != "--" || rest[2] != "--worktree=first" {
-		t.Fatalf("stripped argv = %v, want [-- -- --worktree=first] (tail preserved verbatim)", rest)
+// TestEntryDir_OptionValueIsNotASelection — a --worktree token that is the
+// VALUE of another backend option is never a selection (card t1791 audit
+// round 2 finding 2): the backend option model consumes it, the entry does
+// not fire on it, and the backend argv passes through untouched.
+func TestEntryDir_OptionValueIsNotASelection(t *testing.T) {
+	primary := entryFixture(t)
+	second := filepath.Join(primary, ".moai", "worktrees", "second")
+	mustMkdirTree(t, second)
+	argv := []string{"-w", "first", "--append-system-prompt", "--worktree", "second"}
+	view := resolveLaunchView(argv)
+	if got := existingWorktreeEntryDir(view); got != "" {
+		t.Fatalf("entry dir = %q, want \"\" — --worktree here is the prompt option's value, not a selection", got)
+	}
+	// And the non-entry flow hands the backend the untouched LaunchArgs (the
+	// strip runs only on the entry path — cc.go/glm.go wire it there), so
+	// the prompt option and its value survive the launch intact.
+	joined := strings.Join(view.LaunchArgs, " ")
+	if !strings.Contains(joined, "--append-system-prompt --worktree second") {
+		t.Fatalf("the backend argv lost the prompt option or its value: %v", view.LaunchArgs)
+	}
+}
+
+// TestStrip_FinalArgvLosesEverySelection — the backend argv after the
+// launcher consumption loses every worktree selection on the entry path,
+// including one the launcher's own dropped separator had sheltered (card
+// t1791 audit round 2 finding 3): a surviving selection re-opens the
+// nested-creation path after the directory entry.
+func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
+	primary := entryFixture(t)
+	first := filepath.Join(primary, ".moai", "worktrees", "first")
+	mustMkdirTree(t, first)
+	view := resolveLaunchView([]string{"-w", "first", "--", "--worktree=first"})
+	if existingWorktreeEntryDir(view) == "" {
+		t.Fatal("precondition: the entry must resolve")
+	}
+	rest := stripBackendWorktreeSelections(view.FinalArgv)
+	for _, tok := range rest {
+		if strings.Contains(tok, "worktree") || tok == "first" {
+			t.Fatalf("a selection survived the backend-argv strip: %v", rest)
+		}
+	}
+	// A non-selection tail token the backend owns survives the strip.
+	view2 := resolveLaunchView([]string{"-w", "first", "--", "--keep", "prompt"})
+	rest2 := stripBackendWorktreeSelections(view2.FinalArgv)
+	joined := strings.Join(rest2, " ")
+	if !strings.Contains(joined, "--keep") || !strings.Contains(joined, "prompt") {
+		t.Fatalf("backend-owned tail tokens lost: %v", rest2)
 	}
 }

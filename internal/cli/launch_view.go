@@ -205,51 +205,79 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
-// readLastWorktree is worktreeFlagValue with the LAST launcher-segment match
-// deciding (card t1791 audit finding 1): a duplicate selection pair enters by
-// the final selection — the same last-wins convention the backend applies,
-// so what the entry judges is what the backend would have resolved. The scan
-// stops at the first "--" pass-through marker; a bare -w as the final
-// selection answers no value.
-func readLastWorktree(args []string) (string, bool) {
-	value, ok := "", false
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			return value, ok
+// collectBackendWorktreeIndices returns the token indices of EVERY worktree
+// option in the backend argv — each flag token, plus the index of its
+// separate value token where the two-token form carries one — walking by the
+// same backend option model and the same backend-separator stop that
+// selectBackendWorktree reads by (card t1791 audit round 2): a surviving
+// selection after the entry-by-directory is the nested-creation path, and a
+// token another option consumed as its value is never a selection.
+func collectBackendWorktreeIndices(argv []string) []int {
+	var idx []int
+	for i := 0; i < len(argv); i++ {
+		tok := argv[i]
+		if tok == argSeparator {
+			break // the backend's option terminator: past it nothing is an option
 		}
-		switch {
-		case arg == "-w" || arg == "--worktree":
-			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				value, ok = args[i+1], true
-				i++
-			} else {
-				value, ok = "", false
+		if len(tok) < 2 || tok[0] != '-' {
+			continue // a positional (a prompt, or a value already consumed)
+		}
+		var span int
+		var sel worktreeSelection
+		sel, span = backendOptionStep(argv, i, sel)
+		if sel.Present {
+			idx = append(idx, i)
+			if sel.HasValue && span == 1 && i+1 < len(argv) {
+				idx = append(idx, i+1)
 			}
-		case strings.HasPrefix(arg, "--worktree="):
-			value, ok = strings.TrimPrefix(arg, "--worktree="), true
-		case strings.HasPrefix(arg, "-w="):
-			value, ok = strings.TrimPrefix(arg, "-w="), true
 		}
+		i += span
 	}
-	return value, ok
+	return idx
 }
 
-// existingWorktreeEntryDir reports the single existing MoAI tree the launch
-// argv's first -w short name names, or "" (REQ-WHR-006's entry clause, card
-// t1640 review P1-2; legacy-moai widened by card t1791, GH #1813). The entry
-// is BY DIRECTORY: the launcher starts the backend inside the tree and hands
-// it no worktree selection — PM-3 measured claude 2.1.303 rejecting absolute
-// --worktree values at argument validation (operator ruling bd72), so the
-// absolute-path argv rewrite this used to be handed the backend a value it
-// exits 1 on. A home-root or legacy-MOAI (.moai/worktrees/<name>) match is
-// entered by directory; a legacy-CLAUDE (.claude/worktrees/<name>) match
-// answers "" because claude re-enters THAT root natively — its short-name
-// resolution covers only .claude/worktrees, so a legacy-MOAI match must not
-// pass through: the pass-through used to create a duplicate branch tree
-// silently (GH #1813, the 2026-10-08 lane-12 incident). No match at all
-// also answers "": under branch Y of D-5 the launcher creates nothing, and
-// the short-name-without-existing-tree pass-through is the single documented
+// stripBackendWorktreeSelections removes every worktree option the backend
+// argv carries (card t1791 audit round 2, findings 1 and 3): after the
+// entry-by-directory the backend must hold no selection at all — neither the
+// first of a duplicate pair nor one shaped like a prompt past the launcher
+// separator the consumption dropped. Everything else, separators and
+// prompts included, survives byte-identical.
+func stripBackendWorktreeSelections(argv []string) []string {
+	drop := make(map[int]bool)
+	for _, i := range collectBackendWorktreeIndices(argv) {
+		drop[i] = true
+	}
+	if len(drop) == 0 {
+		return argv
+	}
+	out := make([]string, 0, len(argv))
+	for i, tok := range argv {
+		if !drop[i] {
+			out = append(out, tok)
+		}
+	}
+	return out
+}
+
+// existingWorktreeEntryDir reports the single existing MoAI tree the view's
+// backend-model worktree selection names, or "" (REQ-WHR-006's entry clause,
+// card t1640 review P1-2; legacy-moai widened by card t1791, GH #1813;
+// selection-based by the t1791 audit round 2). The entry is BY DIRECTORY:
+// the launcher starts the backend inside the tree and hands it no worktree
+// selection — PM-3 measured claude 2.1.303 rejecting absolute --worktree
+// values at argument validation (operator ruling bd72). The selection read
+// is the VIEW's (v.Selection: the backend option model over FinalArgv —
+// separator-aware, option-value-aware, last-match wins), so what the entry
+// enters is exactly what the backend would have resolved and a token another
+// option consumed as its value is never a selection (audit round 2 finding
+// 2). A home-root or legacy-MOAI (.moai/worktrees/<name>) match is entered
+// by directory; a legacy-CLAUDE (.claude/worktrees/<name>) match answers ""
+// because claude re-enters THAT root natively — its short-name resolution
+// covers only .claude/worktrees, so a legacy-MOAI match must not pass
+// through: the pass-through used to create a duplicate branch tree silently
+// (GH #1813, the 2026-10-08 lane-12 incident). No match at all also answers
+// "": under branch Y of D-5 the launcher creates nothing, and the
+// short-name-without-existing-tree pass-through is the single documented
 // exception to "no creation path names a legacy root" (REQ-WHR-006 branch Y,
 // REQ-WHR-020). An ambiguous name (two or more roots) also answers ""; the
 // ambiguity report belongs to the callers that enumerate candidates
@@ -258,19 +286,19 @@ func readLastWorktree(args []string) (string, bool) {
 // Defined here next to the resolver walk helpers it reuses: worktree
 // selection is derived in ONE file (launch_view.go) and every reader on the
 // launch path receives values (TestLaunchViewSingleParse).
-func existingWorktreeEntryDir(args []string) string {
-	value, ok := readLastWorktree(args)
-	if !ok || value == "" || filepath.IsAbs(value) {
+func existingWorktreeEntryDir(view launchView) string {
+	sel := view.Selection
+	if !sel.Present || !sel.HasValue || sel.Value == "" || filepath.IsAbs(sel.Value) {
 		return ""
 	}
-	if value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
+	if sel.Value == "." || sel.Value == ".." || strings.ContainsAny(sel.Value, `/\`) {
 		return ""
 	}
 	root, err := findProjectRootFn()
 	if err != nil {
 		return ""
 	}
-	cands, err := worktreeroot.Candidates(root, value)
+	cands, err := worktreeroot.Candidates(root, sel.Value)
 	if err != nil || len(cands) != 1 {
 		return ""
 	}
@@ -282,41 +310,13 @@ func existingWorktreeEntryDir(args []string) string {
 	return cands[0].Path
 }
 
-// stripWorktreeSelection removes EVERY -w/--worktree selection from the
-// launcher segment (before the first "--" pass-through marker): the
-// entry-by-directory form starts the backend inside the tree, so the backend
-// must receive no worktree selection at all — a surviving selection (the
-// second of a duplicate pair, or a name alive in the tail) would let claude
-// resolve it against its own .claude/worktrees and create a duplicate there
-// (card t1791 audit findings 1-2). Tokens from the first "--" on are
-// verbatim backend input — a literal --worktree-shaped token there is a
-// prompt, never an option — and are never scanned or stripped, the same
-// scan rule worktreeFlagValue reads by.
-func stripWorktreeSelection(args []string) []string {
-	out := make([]string, 0, len(args))
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			// The pass-through marker and everything after it are verbatim
-			// backend input — never scanned, never stripped.
-			out = append(out, args[i:]...)
-			return out
-		}
-		switch {
-		case arg == "-w" || arg == "--worktree":
-			// Drop the flag, and its value when one is paired — the same
-			// pairing rule worktreeFlagValue reads: the next token is the
-			// value unless it is another flag or the marker.
-			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				i++
-			}
-		case strings.HasPrefix(arg, "--worktree="), strings.HasPrefix(arg, "-w="):
-			// Equals form: the flag and its value are one token.
-		default:
-			out = append(out, arg)
-		}
-	}
-	return out
+// entryWorktreeRead is the writer-precheck and hook-seed read the
+// entry-by-directory flow must use (card t1791 audit round 2 finding 1):
+// the entered tree — an absolute path, so the precheck probes that tree
+// directly — never the view's first-match StageB read, which names the
+// FIRST selection of a duplicate pair while the entry enters the last.
+func entryWorktreeRead(entryDir string) worktreeRead {
+	return worktreeRead{Has: true, Value: entryDir}
 }
 
 // consumeLaunchArgs is runLaunchClaude's consumption loop: the launcher eats
