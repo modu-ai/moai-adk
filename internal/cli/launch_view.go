@@ -67,6 +67,7 @@ type branchAnnotation struct {
 // were present, with last-wins values.
 type launchConsumption struct {
 	PassThrough       []string
+	Origin            []int
 	PermissionMode    string
 	PermissionModeSet bool
 	Continue          bool
@@ -205,115 +206,73 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
-// backendWorktreeCut is one removal the entry strip applies: drop the whole
-// token, or keep only its letters before the in-cluster `w` (the cluster's
-// non-worktree letters, e.g. the `-p` of `-pwplain`, survive — card t1791
-// audit round 3 finding 3).
-type backendWorktreeCut struct {
-	index      int
-	keepPrefix string // non-empty: replace the token with this prefix
-}
-
-// stripWorktreeOptionsForBackend removes every worktree selection from the
-// launch argv the launcher seam will consume, so that AFTER the launcher's
-// own consumption (which drops the first "--" separator) the backend argv
-// holds no worktree option at all (card t1791 audit rounds 2-3). The walk
-// covers two option spaces: the tokens before the first "--" (the launcher
-// segment, whose separator the consumption drops) and the tokens between the
-// first and the second "--" (the backend's option space — the launcher
-// separator is gone by the time the backend parses, so its own terminator is
-// the NEXT marker). A token another option consumed as its value is never a
-// selection; the second "--" and everything past it are the backend's
-// terminator and prompts, kept verbatim; a cluster's non-worktree letters
-// survive the cut of its `w` (and of the attached or following value).
-func stripWorktreeOptionsForBackend(args []string) []string {
-	cuts := make(map[int]backendWorktreeCut)
-	collect := func(from, to int) {
-		for i := from; i < to && i < len(args); i++ {
-			tok := args[i]
-			if tok == argSeparator || len(tok) < 2 || tok[0] != '-' {
-				continue
-			}
-			var span int
-			var sel worktreeSelection
-			sel, span = backendOptionStep(args, i, sel)
-			if !sel.Present {
-				i += span
-				continue
-			}
-			if sel.Spelling == spellingCluster || sel.Spelling == spellingAttached {
-				// In-token selection: cut the letters from the `w` on (the
-				// attached value rides them). The letter index is where the
-				// value spelling began — recover it by scanning the token
-				// the same way scanShortCluster does.
-				cut := len(tok)
-				for j := 1; j < len(tok); j++ {
-					if tok[j] == 'w' {
-						cut = j
-						break
-					}
-					switch activeClaudeOptionModel["-"+string(tok[j])] {
-					case claudeOptionBoolean:
-						continue
-					default:
-						cut = j
-						j = len(tok)
-					}
-				}
-				if cut <= 1 {
-					cuts[i] = backendWorktreeCut{index: i} // nothing survives: drop the token
-				} else {
-					cuts[i] = backendWorktreeCut{index: i, keepPrefix: tok[:cut]}
-				}
-				if sel.HasValue && sel.Spelling == spellingCluster && span == 1 {
-					i++ // the value rode the NEXT token: drop it too
-					cuts[i] = backendWorktreeCut{index: i}
-				}
-				i += span
-				continue
-			}
-			cuts[i] = backendWorktreeCut{index: i}
-			if sel.HasValue && span == 1 && i+1 < len(args) {
-				i++
-				cuts[i] = backendWorktreeCut{index: i}
-			}
-			i += span
-		}
+// stripWorktreeOptionsForBackend removes every worktree selection the
+// backend argv carries, from the LAUNCH argv the launcher seam will consume
+// (card t1791 audit rounds 2-4). The selections are determined by the view's
+// own backend-option-model walk over FinalArgv — the authoritative parse,
+// which already knows the option-value consumptions, the separators and the
+// last-match-wins rule — and mapped back to their LaunchArgs tokens through
+// the consumption's origin chain, so the removal never re-interprets the
+// argv: a token another option consumed as its value is never removed, a
+// token past the backend's own terminator is never touched, and a cluster
+// token loses only its `w` letters (the leading options survive).
+func stripWorktreeOptionsForBackend(view launchView) []string {
+	type cut struct {
+		drop       bool
+		keepPrefix string
 	}
-	// Segment walk: the launcher's option space (before the first "--",
-	// which the consumption drops), then the backend's own option space
-	// (between the first and the second "--" — the launcher separator is
-	// gone by the time the backend parses, so the NEXT marker is the
-	// backend's own terminator). Everything from that terminator on is the
-	// backend's positionals and prompts, kept verbatim and never walked.
-	first := len(args)
-	for i := 0; i < len(args); i++ {
-		if args[i] == argSeparator {
-			first = i
-			break
+	cuts := make(map[int]cut)
+	for f := 0; f < len(view.FinalArgv); f++ {
+		tok := view.FinalArgv[f]
+		if tok == argSeparator {
+			break // the backend's option terminator: past it nothing is an option
 		}
-	}
-	second := len(args)
-	for i := first + 1; i < len(args); i++ {
-		if args[i] == argSeparator {
-			second = i
-			break
+		if len(tok) < 2 || tok[0] != '-' {
+			continue // a positional (a prompt, or a value already consumed)
 		}
+		var span int
+		var sel worktreeSelection
+		sel, span = backendOptionStep(view.FinalArgv, f, sel)
+		if !sel.Present || sel.Index >= len(view.Consumed.Origin) {
+			f += span
+			continue
+		}
+		flagLa := view.Consumed.Origin[sel.Index]
+		if sel.Spelling == spellingCluster || sel.Spelling == spellingAttached {
+			// In-token selection: cut the letters from the `w` on — the
+			// attached value rides them — keeping the cluster's leading
+			// letters (the `-p` of `-pwplain`). A degenerate cut (nothing
+			// before the w) drops the token.
+			w := strings.IndexByte(tok[1:], 'w') + 1
+			if w <= 1 {
+				cuts[flagLa] = cut{drop: true}
+			} else {
+				cuts[flagLa] = cut{keepPrefix: tok[:w]}
+			}
+			if sel.HasValue && span == 1 && f+1 < len(view.FinalArgv) && view.Consumed.Origin[f+1] >= 0 {
+				cuts[view.Consumed.Origin[f+1]] = cut{drop: true}
+			}
+			f += span
+			continue
+		}
+		cuts[flagLa] = cut{drop: true}
+		if sel.HasValue && span == 1 && f+1 < len(view.FinalArgv) && view.Consumed.Origin[f+1] >= 0 {
+			cuts[view.Consumed.Origin[f+1]] = cut{drop: true}
+		}
+		f += span
 	}
-	collect(0, first)
-	collect(first+1, second)
 	if len(cuts) == 0 {
-		return args
+		return view.LaunchArgs
 	}
-	out := make([]string, 0, len(args))
-	for i, tok := range args {
-		cut, hit := cuts[i]
+	out := make([]string, 0, len(view.LaunchArgs))
+	for i, tok := range view.LaunchArgs {
+		c, hit := cuts[i]
 		if !hit {
 			out = append(out, tok)
 			continue
 		}
-		if cut.keepPrefix != "" {
-			out = append(out, cut.keepPrefix)
+		if c.keepPrefix != "" {
+			out = append(out, c.keepPrefix)
 		}
 	}
 	return out
@@ -411,7 +370,13 @@ func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchCons
 		arg := extraArgs[i]
 		if arg == "--" {
 			segment = len(c.PassThrough)
-			c.PassThrough = append(c.PassThrough, extraArgs[i+1:]...)
+			// The tail is the backend's verbatim input; its tokens still map
+			// back to their LaunchArgs indices (card t1791 audit round 4 —
+			// the strip removes selections by their origin wherever they sit).
+			for j := i + 1; j < len(extraArgs); j++ {
+				c.PassThrough = append(c.PassThrough, extraArgs[j])
+				origin = append(origin, j)
+			}
 			break
 		}
 		switch arg {
@@ -444,6 +409,7 @@ func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchCons
 	if segment < 0 {
 		segment = len(c.PassThrough)
 	}
+	c.Origin = origin
 
 	var dropped []int
 	if ownFlag != "" {
@@ -461,12 +427,15 @@ func walkLaunchArgs(extraArgs []string, typed []int, ownFlag string) (launchCons
 				dropped = append(dropped, at[k])
 			}
 			kept := make([]string, 0, len(c.PassThrough)-len(standing))
+			keptOrigin := make([]int, 0, len(c.Origin)-len(standing))
 			for k, tok := range c.PassThrough {
 				if !drop[k] {
 					kept = append(kept, tok)
+					keptOrigin = append(keptOrigin, c.Origin[k])
 				}
 			}
 			c.PassThrough = kept
+			c.Origin = keptOrigin
 		}
 	}
 	c.ChainTarget = extractWorktreeLaunchTarget(c.PassThrough)

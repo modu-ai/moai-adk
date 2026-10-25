@@ -392,7 +392,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// dropped would otherwise leave a selection alive in the backend argv.
 	filteredArgs = view.LaunchArgs
 	if entryDir != "" {
-		filteredArgs = stripWorktreeOptionsForBackend(view.LaunchArgs)
+		filteredArgs = stripWorktreeOptionsForBackend(view)
 		if cherr := os.Chdir(entryDir); cherr != nil {
 			endHandoff()
 			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)

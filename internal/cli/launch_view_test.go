@@ -75,16 +75,16 @@ func TestLaunchViewConsumption(t *testing.T) {
 	}{
 		{"nothing", nil, launchConsumption{}},
 		{"bypass and continue are eaten", []string{"-b", "-c", "--worktree", "plain"},
-			launchConsumption{PassThrough: []string{"--worktree", "plain"}, PermissionMode: "bypassPermissions", PermissionModeSet: true, Continue: true, ChainTarget: "plain"}},
+			launchConsumption{PassThrough: []string{"--worktree", "plain"}, Origin: []int{2, 3}, PermissionMode: "bypassPermissions", PermissionModeSet: true, Continue: true, ChainTarget: "plain"}},
 		{"model forms, last wins", []string{"--model", "a", "-m", "b", "--model=c"},
 			launchConsumption{Model: "c", ModelSet: true}},
 		{"a valueless --permission-mode is dropped", []string{"--permission-mode"}, launchConsumption{}},
 		{"permission mode last wins over -b", []string{"-b", "--permission-mode=plan"},
 			launchConsumption{PermissionMode: "plan", PermissionModeSet: true}},
 		{"the first separator is dropped and the tail is verbatim", []string{"-b", "--", "-m", "x", "--", "y"},
-			launchConsumption{PassThrough: []string{"-m", "x", "--", "y"}, PermissionMode: "bypassPermissions", PermissionModeSet: true}},
+			launchConsumption{PassThrough: []string{"-m", "x", "--", "y"}, Origin: []int{2, 3, 4, 5}, PermissionMode: "bypassPermissions", PermissionModeSet: true}},
 		{"a consumed option brings the value next to the flag", []string{"--worktree", "-b", "--", "card"},
-			launchConsumption{PassThrough: []string{"--worktree", "card"}, PermissionMode: "bypassPermissions", PermissionModeSet: true, ChainTarget: "card"}},
+			launchConsumption{PassThrough: []string{"--worktree", "card"}, Origin: []int{0, 3}, PermissionMode: "bypassPermissions", PermissionModeSet: true, ChainTarget: "card"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

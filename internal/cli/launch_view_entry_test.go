@@ -121,7 +121,7 @@ func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve for the strip to be reachable")
 	}
-	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	rest := stripWorktreeOptionsForBackend(view)
 	for _, tok := range rest {
 		if strings.HasPrefix(tok, "-w") || strings.HasPrefix(tok, "--worktree") || tok == name {
 			t.Fatalf("worktree selection survived the strip: %v", rest)
@@ -199,7 +199,7 @@ func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
 	}
-	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	rest := stripWorktreeOptionsForBackend(view)
 	for _, tok := range rest {
 		if strings.Contains(tok, "worktree") || tok == "first" {
 			t.Fatalf("a selection survived the backend-argv strip: %v", rest)
@@ -207,7 +207,7 @@ func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 	}
 	// A non-selection tail token the backend owns survives the strip.
 	view2 := resolveLaunchView([]string{"-w", "first", "--", "--keep", "prompt"})
-	rest2 := stripWorktreeOptionsForBackend(view2.LaunchArgs)
+	rest2 := stripWorktreeOptionsForBackend(view2)
 	joined := strings.Join(rest2, " ")
 	if !strings.Contains(joined, "--keep") || !strings.Contains(joined, "prompt") {
 		t.Fatalf("backend-owned tail tokens lost: %v", rest2)
@@ -225,7 +225,7 @@ func TestStrip_PreservesUserPermissionModeAndModel(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
 	}
-	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	rest := stripWorktreeOptionsForBackend(view)
 	joined := strings.Join(rest, " ")
 	if !strings.Contains(joined, "--permission-mode plan") {
 		t.Fatalf("the user's explicit permission mode was lost: %v", rest)
@@ -246,7 +246,7 @@ func TestStrip_SecondSeparatorIsTheBackendTerminator(t *testing.T) {
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
 	}
-	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	rest := stripWorktreeOptionsForBackend(view)
 	if len(rest) != 4 || rest[0] != "--" || rest[1] != "--" || rest[2] != "--worktree" || rest[3] != "other" {
 		t.Fatalf("stripped argv = %v, want [-- -- --worktree other] (backend terminator and positionals verbatim)", rest)
 	}
@@ -257,7 +257,7 @@ func TestStrip_SecondSeparatorIsTheBackendTerminator(t *testing.T) {
 // survive the cut (card t1791 audit round 3 finding 3).
 func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
 	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
-	rest := stripWorktreeOptionsForBackend(view.LaunchArgs)
+	rest := stripWorktreeOptionsForBackend(view)
 	if len(rest) != 3 || rest[0] != "--" || rest[1] != "-p" || rest[2] != "hello" {
 		t.Fatalf("stripped argv = %v, want [-- -p hello] (the -p output mode survives the w cut)", rest)
 	}
