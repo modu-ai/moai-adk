@@ -72,9 +72,17 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 		name       string
 		withOrigin bool
 		primaryCfg string // "" = no configuration anywhere
+		dropMain   bool   // delete the local main branch (origin/main stays)
 		wantErr    string // substring of the refusal; "" = the verb must succeed
 		wantOut    string
 	}{
+		{
+			// card-review (codex): origin/HEAD names main but the clone has no
+			// local main, so refs/heads/main would fail in merge-base AFTER the
+			// command. The verb refuses first, naming the missing local branch.
+			name: "origin/HEAD names a branch with no local ref", withOrigin: true, dropMain: true,
+			wantErr: "has no local branch refs/heads/main",
+		},
 		{
 			// Positive control: the configuration lives in the primary (gitignored)
 			// and the linked tree has none; the common root answers.
@@ -98,6 +106,12 @@ func TestIntegrationRemeasureResolvesBaseWithoutLinkedConfig(t *testing.T) {
 			primary, linked := remeasureBaseFixture(t, tc.withOrigin)
 			if tc.primaryCfg != "" {
 				writeGitignoredStrategy(t, primary, tc.primaryCfg)
+			}
+			if tc.dropMain {
+				// The primary leaves main (the linked tree stays on its card
+				// branch), then main is deleted: only origin/main remains.
+				gitRun(t, primary, "switch", "-q", "-c", "elsewhere")
+				gitRun(t, primary, "branch", "-q", "-D", "main")
 			}
 			// The fixture's own runtime state must not read as a dirty tree.
 			exclude := filepath.Join(primary, ".git", "info", "exclude")

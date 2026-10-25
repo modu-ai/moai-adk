@@ -65,16 +65,27 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 // in; when that does not resolve either, the verb refuses with guidance before
 // it runs the command or calls git with an empty ref.
 func remeasureBaseBranch(root, worktree string) (string, error) {
-	if branch := strings.TrimSpace(configuredIntegrationBranch()); branch != "" {
-		return branch, nil
-	}
-	cmd := exec.Command("git", "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-	cmd.Dir = worktree
-	cmd.Env = gitenv.Env()
-	if out, err := cmd.Output(); err == nil {
-		if branch := strings.TrimPrefix(strings.TrimSpace(string(out)), "origin/"); branch != "" {
-			return branch, nil
+	branch := strings.TrimSpace(configuredIntegrationBranch())
+	if branch == "" {
+		cmd := exec.Command("git", "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
+		cmd.Dir = worktree
+		cmd.Env = gitenv.Env()
+		if out, err := cmd.Output(); err == nil {
+			branch = strings.TrimPrefix(strings.TrimSpace(string(out)), "origin/")
 		}
+	}
+	if branch != "" {
+		// The record names the base through refs/heads/<branch>, so that local
+		// branch must exist before the command runs: a remote default branch
+		// with no local counterpart (a clone that checked out another branch)
+		// would otherwise fail in merge-base AFTER the command (card-review).
+		verify := exec.Command("git", "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
+		verify.Dir = worktree
+		verify.Env = gitenv.Env()
+		if err := verify.Run(); err != nil {
+			return "", fmt.Errorf("integration remeasure: the integration branch %q has no local branch refs/heads/%s; create it (git branch %s origin/%s) or fix git_strategy, then re-run", branch, branch, branch, branch)
+		}
+		return branch, nil
 	}
 	return "", fmt.Errorf("integration remeasure: no integration branch to measure against: git_strategy in %s/.moai/config/sections/git-strategy.yaml (gitignored; read from the primary checkout) names none and the remote default branch (origin/HEAD) does not resolve; set the git strategy there or run `git remote set-head origin --auto`, then re-run", root)
 }
