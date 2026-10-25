@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // procVersionPath is the path to the kernel version file used by IsWSL2.
@@ -73,9 +75,11 @@ func isExistingDir(path string) bool {
 // project file's other env entries.
 //
 // The value is rebuilt from the launcher's fresh capture on every run: a
-// previous env.PATH already in the file is never read back, so repeated
-// updates cannot accumulate paths. Every other key in the file — other env
-// entries and any sibling settings keys — is preserved verbatim.
+// previous env.PATH already in the file is never read back, and inherited
+// entries that SmartPATH already covers are dropped in order, so neither
+// repeated file writes nor sessions that inherited an earlier local PATH can
+// accumulate duplicate SmartPATH segments. Every other key in the file —
+// other env entries and any sibling settings keys — is preserved verbatim.
 //
 // The written value is plain data, not template output: it never passes the
 // renderer's unexpanded-token validation, so a PATH segment containing a
@@ -85,17 +89,37 @@ func SyncLocalSettingsPATH(projectRoot, inheritedPath, smartPath string) error {
 }
 
 // syncLocalSettingsPathFor is the GOOS-injected core of SyncLocalSettingsPATH.
+// It mirrors internal/cli's mutateSettingsLocal contract: the whole
+// read-modify-write runs under the sibling `settings.local.json.lock`
+// advisory lock (so a concurrent `moai cc` launch or another `moai update`
+// cannot lose updates), the write is a unique-temp-file + Chmod + rename
+// atomic swap, and the file mode is 0600 — settings.local.json is a
+// credential-bearing file and pre-existing writers keep it 0600.
 func syncLocalSettingsPathFor(goos, projectRoot, inheritedPath, smartPath string) error {
-	value := smartPath
-	if inheritedPath != "" {
-		sep := ":"
-		if goos == "windows" {
-			sep = ";"
-		}
-		value = inheritedPath + sep + smartPath
+	sep := ":"
+	if goos == "windows" {
+		sep = ";"
 	}
+	value := joinPATHDeduped(inheritedPath, smartPath, sep)
 
 	settingsPath := filepath.Join(projectRoot, ".claude", "settings.local.json")
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", filepath.Dir(settingsPath), err)
+	}
+
+	// Acquire the same advisory lock the launch/update writers use, on a
+	// sibling lock file, so the atomic rename of the settings file itself is
+	// never blocked by an open handle.
+	lockF, err := os.OpenFile(settingsPath+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("open settings lock file: %w", err)
+	}
+	defer func() { _ = lockF.Close() }()
+	if err := lockfile.Lock(lockF); err != nil {
+		return fmt.Errorf("acquire settings lock: %w", err)
+	}
+	defer func() { _ = lockfile.Unlock(lockF) }()
+
 	doc := map[string]any{}
 	if raw, err := os.ReadFile(settingsPath); err == nil {
 		if len(raw) > 0 {
@@ -120,17 +144,55 @@ func syncLocalSettingsPathFor(goos, projectRoot, inheritedPath, smartPath string
 	}
 	out = append(out, '\n')
 
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", filepath.Dir(settingsPath), err)
+	tmp, err := os.CreateTemp(filepath.Dir(settingsPath), ".settings-local-*.tmp")
+	if err != nil {
+		return fmt.Errorf("write %s: %w", settingsPath, err)
 	}
-	tmp := settingsPath + ".tmp"
-	if err := os.WriteFile(tmp, out, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", tmp, err)
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }()
+	if _, err := tmp.Write(out); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("write %s: %w", tmpName, err)
 	}
-	if err := os.Rename(tmp, settingsPath); err != nil {
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("chmod %s: %w", tmpName, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close %s: %w", tmpName, err)
+	}
+	if err := os.Rename(tmpName, settingsPath); err != nil {
 		return fmt.Errorf("replace %s: %w", settingsPath, err)
 	}
 	return nil
+}
+
+// joinPATHDeduped appends the SmartPATH segments to an inherited PATH while
+// preserving order and dropping inherited entries that SmartPATH already
+// covers. A launcher run inside a session that inherited a previous local
+// PATH would otherwise re-append the same SmartPATH entries on every update
+// and grow the value on every session restart (card-review r3 P2).
+func joinPATHDeduped(inheritedPath, smartPath, sep string) string {
+	if inheritedPath == "" {
+		return smartPath
+	}
+	smartSeen := make(map[string]bool)
+	for _, seg := range strings.Split(smartPath, sep) {
+		if seg != "" {
+			smartSeen[seg] = true
+		}
+	}
+	kept := make([]string, 0, 8)
+	for _, seg := range strings.Split(inheritedPath, sep) {
+		if seg == "" || smartSeen[seg] {
+			continue
+		}
+		kept = append(kept, seg)
+	}
+	if len(kept) == 0 {
+		return smartPath
+	}
+	return strings.Join(kept, sep) + sep + smartPath
 }
 
 // @MX:ANCHOR: [AUTO] buildSmartPATHFor is the GOOS-injected, deterministic core of BuildSmartPATH

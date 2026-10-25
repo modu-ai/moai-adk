@@ -2,6 +2,7 @@ package template
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -1744,6 +1745,88 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 		}
 		if got := settings.Env["PATH"]; got != smart || strings.Contains(got, "$") {
 			t.Errorf("settings.json env.PATH = %q, want token-free SmartPATH %q", got, smart)
+		}
+	})
+
+	// card-review r3 P2: a session that inherited an earlier local PATH
+	// re-captures the SmartPATH segments in its environment; the join must
+	// drop those inherited duplicates in order instead of re-appending.
+	t.Run("drops inherited segments already covered by SmartPATH", func(t *testing.T) {
+		root := t.TempDir()
+		inherited := "/moai/bin:/usr/local/bin:/venv/bin:/custom"
+		if err := syncLocalSettingsPathFor("darwin", root, inherited, smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := "/venv/bin:/custom:" + smart
+		got, _ := env["PATH"].(string)
+		if got != want {
+			t.Errorf("env.PATH = %q, want deduped %q", got, want)
+		}
+		if strings.Count(got, "/moai/bin") != 1 {
+			t.Errorf("env.PATH = %q, SmartPATH segment duplicated", got)
+		}
+	})
+
+	// card-review r3 P1: settings.local.json is credential-bearing and
+	// pre-existing writers keep it 0600 — the replacement must not widen the
+	// mode through a 0644 temp file.
+	t.Run("file mode stays 0600", func(t *testing.T) {
+		root := t.TempDir()
+		p := filepath.Join(root, ".claude", "settings.local.json")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		if err := os.WriteFile(p, []byte(`{"env":{"PATH":"/old"}}`), 0o600); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		if err := syncLocalSettingsPathFor("darwin", root, "/fresh", smart); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("Stat error: %v", err)
+		}
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Errorf("settings.local.json mode = %o, want 600", got)
+		}
+	})
+
+	// card-review r3 P2: concurrent launcher/update runs share the sibling
+	// lock; every run must leave a valid file and no run may error.
+	t.Run("concurrent runs serialize without loss or error", func(t *testing.T) {
+		root := t.TempDir()
+		const runs = 8
+		errs := make(chan error, runs)
+		for i := 0; i < runs; i++ {
+			go func(i int) {
+				errs <- syncLocalSettingsPathFor("darwin", root, fmt.Sprintf("/run-%d", i), smart)
+			}(i)
+		}
+		for i := 0; i < runs; i++ {
+			if err := <-errs; err != nil {
+				t.Errorf("concurrent run error: %v", err)
+			}
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("final file is not valid JSON: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		if got, _ := env["PATH"].(string); !strings.HasSuffix(got, smart) {
+			t.Errorf("env.PATH = %q, want a complete value ending with SmartPATH", got)
 		}
 	})
 }
