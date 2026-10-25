@@ -1748,6 +1748,28 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 		}
 	})
 
+	// card-review r9 P2: an empty POSIX PATH entry ("::") means the current
+	// directory — it must survive the join with its position intact.
+	t.Run("preserves empty PATH entries with their position", func(t *testing.T) {
+		root := t.TempDir()
+		if err := syncLocalSettingsPathFor("darwin", root, "/custom/bin::/usr/bin", "/moai/bin"); err != nil {
+			t.Fatalf("SyncLocalSettingsPATH error: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(root, ".claude", "settings.local.json"))
+		if err != nil {
+			t.Fatalf("ReadFile error: %v", err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+		env, _ := doc["env"].(map[string]any)
+		want := "/custom/bin::/usr/bin:/moai/bin"
+		if got, _ := env["PATH"].(string); got != want {
+			t.Errorf("env.PATH = %q, want empty entry preserved %q", got, want)
+		}
+	})
+
 	// card-review r3/r4 P2: a session that inherited an earlier local PATH
 	// re-captures the SmartPATH segments in its environment; the join keeps
 	// the inherited entries in first-occurrence order and appends only

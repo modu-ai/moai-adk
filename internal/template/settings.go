@@ -189,7 +189,10 @@ func joinPATHDeduped(inheritedPath, smartPath, sep string) string {
 	seen := make(map[string]bool)
 	kept := make([]string, 0, 16)
 	for _, seg := range strings.Split(inheritedPath, sep) {
-		if seg == "" || seen[seg] {
+		// An empty POSIX PATH entry means the current directory — preserve
+		// it (and its position) like any other entry; only repeated entries
+		// are dropped (card-review r9).
+		if seen[seg] {
 			continue
 		}
 		seen[seg] = true
