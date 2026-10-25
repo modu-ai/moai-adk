@@ -634,6 +634,13 @@ func gitMergeBase(dir, baseRef string) (string, error) {
 // refuses it — so a later reader can see what ran rather than only that it
 // failed.
 func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*RemeasureRecord, error) {
+	// An empty base never reaches git: `merge-base refs/heads/ HEAD` dies with
+	// exit status 128 AFTER the command has run (card t1790, GH #1817), so the
+	// refusal comes first and names what is missing.
+	baseBranch = strings.TrimSpace(baseBranch) // the guard and the ref below read the same value
+	if baseBranch == "" {
+		return nil, fmt.Errorf("integration remeasure: no integration branch to measure against; the caller must resolve one (git-strategy.yaml or the remote default branch) before the command runs")
+	}
 	clean, status, err := gitIntegrationWorktreeClean(worktree)
 	if err != nil {
 		return nil, err
