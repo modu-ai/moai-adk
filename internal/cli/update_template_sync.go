@@ -299,6 +299,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	if err != nil {
 		return fmt.Errorf("construct harness deployer: %w", err)
 	}
+	// SPEC-INIT-HARNESS-001 (audit N1): capture the harness ONCE here — the
+	// same pre-deploy read the deployer switch just resolved — and gate the
+	// settings.local.json PATH refresh below on this value. Reading it again
+	// after the Deploy Templates stage would observe llm.yaml rewritten to
+	// the template default (`claude`), making the codex-only guard inert and
+	// re-creating .claude/** paths in gpt projects.
+	harnessAtStart := config.ReadHarness(".")
 
 	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
 	// carries only the merged/added files. Count the managed re-deployments
@@ -649,12 +656,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// PATH goes to the gitignored settings.local.json, merged
 				// key-by-key over the project file. Rebuilt from a fresh capture
 				// every run — never inherited from the file's previous value.
-				// Skipped for the codex-only harness, read from the same source
-				// the deployer construction above used: that project carries
-				// zero .claude/** paths and this call would create them.
+				// Gated on the PRE-DEPLOY harness captured next to the deployer
+				// construction (audit N1): the post-deploy llm.yaml carries the
+				// template default and would defeat the codex-only guard.
 				// Best-effort non-blocking; a failure is a warning on errOut,
 				// matching the snapshot writes below.
-				if config.ReadHarness(".") != "gpt" {
+				if harnessAtStart != "gpt" {
 					if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
 						_, _ = fmt.Fprintf(errOut, "  settings.local.json env.PATH refresh failed: %v\n", err)
 					}
