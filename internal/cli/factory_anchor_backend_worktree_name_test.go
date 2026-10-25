@@ -302,37 +302,123 @@ func TestLauncherAnchorBackendWorktreeNameSeparateGitDir(t *testing.T) {
 	for _, arm := range leaderArms {
 		for _, v := range backendRootValues {
 			t.Run(arm+"/"+v.dir, func(t *testing.T) {
-				tmp, err := filepath.EvalSymlinks(t.TempDir())
-				if err != nil {
-					t.Fatal(err)
-				}
-				repo := filepath.Join(tmp, "proj")
-				if err := os.MkdirAll(filepath.Join(tmp, "meta"), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				anchorGit(t, tmp, "init", "-q", "--separate-git-dir", filepath.Join(tmp, "meta", "store"), repo)
-				anchorGit(t, repo, "config", "user.email", "anchor-test@example.com")
-				anchorGit(t, repo, "config", "user.name", "Anchor Test")
-				anchorGit(t, repo, "config", "commit.gpgsign", "false")
-				if err := os.MkdirAll(filepath.Join(repo, ".moai"), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
-					t.Fatal(err)
-				}
-				anchorGit(t, repo, "add", "README.md")
-				anchorGit(t, repo, "commit", "-q", "-m", "seed")
-				t.Setenv(config.EnvClaudeProjectDir, repo)
-				withCodexProjectRoot(t, repo)
-				t.Setenv("MOAI_HOME", t.TempDir())
-				netScrubLaneEnv(t)
-				fx := &leaderFixture{root: repo, base: anchorGit(t, repo, "branch", "--show-current")}
+				fx := newSeparateGitDirFixture(t, filepath.Join("meta", "store"))
 				tree := addBackendNamedTree(t, fx, v.dir, "WT-native")
-				t.Chdir(repo)
+				t.Chdir(fx.root)
 				obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", v.value})
 				assertRefusedBeforeMutation(t, v.dir, obs)
 				refusalNames(t, v.dir, obs, tree, "WT-native")
 			})
 		}
 	}
+}
+
+// newSeparateGitDirFixture creates tmp/proj with its git directory at tmp/<meta>
+// (`git init --separate-git-dir`), one seed commit, and the project environment
+// the leader harness reads. The returned fixture's root is tmp/proj.
+func newSeparateGitDirFixture(t *testing.T, meta string) *leaderFixture {
+	t.Helper()
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Join(tmp, "proj")
+	if err := os.MkdirAll(filepath.Dir(filepath.Join(tmp, meta)), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	anchorGit(t, tmp, "init", "-q", "--separate-git-dir", filepath.Join(tmp, meta), repo)
+	anchorGit(t, repo, "config", "user.email", "anchor-test@example.com")
+	anchorGit(t, repo, "config", "user.name", "Anchor Test")
+	anchorGit(t, repo, "config", "commit.gpgsign", "false")
+	if err := os.MkdirAll(filepath.Join(repo, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	anchorGit(t, repo, "add", "README.md")
+	anchorGit(t, repo, "commit", "-q", "-m", "seed")
+	t.Setenv(config.EnvClaudeProjectDir, repo)
+	withCodexProjectRoot(t, repo)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	netScrubLaneEnv(t)
+	return &leaderFixture{root: repo, base: anchorGit(t, repo, "branch", "--show-current")}
+}
+
+// TestLauncherAnchorBackendWorktreeNameSeparateGitDirNamedDotGit: a NON-linked
+// checkout whose separate git directory happens to be named `.git`. Claude
+// 2.1.309 decides "linked" from the checkout's gitdir/commondir pair, not from
+// the directory name: with no commondir file it uses the checkout root, so the
+// metadata directory's parent is not the root.
+func TestLauncherAnchorBackendWorktreeNameSeparateGitDirNamedDotGit(t *testing.T) {
+	pinSnapshotModel(t)
+	for _, arm := range leaderArms {
+		for _, v := range backendRootValues {
+			t.Run(arm+"/"+v.dir, func(t *testing.T) {
+				fx := newSeparateGitDirFixture(t, filepath.Join("meta", ".git"))
+				tree := addBackendNamedTree(t, fx, v.dir, "WT-native")
+				t.Chdir(fx.root)
+				obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", v.value})
+				assertRefusedBeforeMutation(t, v.dir, obs)
+				refusalNames(t, v.dir, obs, tree, "WT-native")
+			})
+		}
+	}
+}
+
+// assertCommonDirRoot launches the leader from the linked worktree lt (on a
+// plain branch) with a WT- tree at <common>/.claude/worktrees/<dir>: for a
+// linked worktree whose common directory is not named `.git` and holds no
+// `.git` of its own, Claude 2.1.309 returns the common directory itself as the
+// root, so the launch must be refused.
+func assertCommonDirRoot(t *testing.T, host, common, lt, base string) {
+	t.Helper()
+	pinSnapshotModel(t)
+	if err := os.MkdirAll(filepath.Join(lt, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	trees := map[string]string{}
+	for _, v := range backendRootValues {
+		trees[v.dir] = filepath.Join(common, ".claude", "worktrees", v.dir)
+		anchorGit(t, host, "worktree", "add", "-q", "-b", "WT-native-"+strings.ReplaceAll(v.dir, "+", "-"), trees[v.dir], base)
+	}
+	for _, arm := range leaderArms {
+		for _, v := range backendRootValues {
+			t.Run(arm+"/"+v.dir, func(t *testing.T) {
+				t.Setenv(config.EnvClaudeProjectDir, lt)
+				withCodexProjectRoot(t, lt)
+				t.Chdir(lt)
+				fx := &leaderFixture{root: lt, base: base}
+				obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--", "-w", v.value})
+				assertRefusedBeforeMutation(t, v.dir, obs)
+				refusalNames(t, v.dir, obs, trees[v.dir], "WT-native-")
+			})
+		}
+	}
+}
+
+// TestLauncherAnchorBackendWorktreeNameBareLinkedWorktree: a linked worktree of
+// a bare repository (common dir `<tmp>/bare.git`).
+func TestLauncherAnchorBackendWorktreeNameBareLinkedWorktree(t *testing.T) {
+	seed := newAnchorRepo(t)
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bare := filepath.Join(tmp, "bare.git")
+	anchorGit(t, tmp, "clone", "-q", "--bare", seed.root, bare)
+	lt := filepath.Join(tmp, "lt")
+	anchorGit(t, bare, "worktree", "add", "-q", lt, seed.base)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	netScrubLaneEnv(t)
+	assertCommonDirRoot(t, bare, bare, lt, seed.base)
+}
+
+// TestLauncherAnchorBackendWorktreeNameSeparateGitDirLinkedWorktree: a linked
+// worktree of a separate-git-dir repository (common dir `<tmp>/meta/store`).
+func TestLauncherAnchorBackendWorktreeNameSeparateGitDirLinkedWorktree(t *testing.T) {
+	fx := newSeparateGitDirFixture(t, filepath.Join("meta", "store"))
+	lt := filepath.Join(filepath.Dir(fx.root), "lt")
+	anchorGit(t, fx.root, "worktree", "add", "-q", "-b", "plain-lt", lt, fx.base)
+	assertCommonDirRoot(t, fx.root, filepath.Join(filepath.Dir(fx.root), "meta", "store"), lt, fx.base)
 }

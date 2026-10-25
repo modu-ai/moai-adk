@@ -103,22 +103,32 @@ func nativeWorktreeDirName(name string) string {
 }
 
 // nativeWorktreePath is the tree `-w <value>` enters under the backend's own
-// .claude/worktrees. Claude 2.1.309 uses the canonical (main) repository root of
-// the launch directory: the directory above the common `.git` when the checkout
-// is a linked worktree, and the checkout's own root when there is no such
-// directory (a separate git dir, a bare repository). The guard reads the same
-// fact with `git rev-parse --git-common-dir` — read-only, repository-scoping
-// variables scrubbed like the other git calls here — and keeps the launch
-// tree's top level (shortWorktreeRoot) wherever the common dir is not named
-// `.git` or git cannot answer (card t1958). It does not use worktreeroot.Resolve,
-// which writes a project-key record and can fail for reasons the backend ignores.
+// .claude/worktrees. Claude 2.1.309 (Zn in its root resolver) decides "linked"
+// from the checkout's gitdir/commondir pair: a checkout that is not a linked
+// worktree is its own root, whatever its git directory is called; for a linked
+// worktree the root is the directory above a common dir named `.git`, the
+// launch tree's top level when the common dir holds a `.git` of its own, and
+// the common dir itself otherwise (a bare repository, a separate git dir). The
+// guard reads the pair with one read-only `git rev-parse --git-dir
+// --git-common-dir` (repository-scoping variables scrubbed like the other git
+// calls here) and keeps the launch tree's top level (shortWorktreeRoot) when
+// git cannot answer. Not modelled: the bundle's back-link equality, symlink and
+// backslash rejections (follow-up). It does not use worktreeroot.Resolve, which
+// writes a project-key record and can fail for reasons the backend ignores
+// (card t1958).
 func nativeWorktreePath(root, value string) string {
 	base := shortWorktreeRoot(root)
-	cmd := exec.Command("git", "-C", base, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	cmd := exec.Command("git", "-C", base, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
 	cmd.Env = gitenv.Env()
 	if out, err := cmd.Output(); err == nil {
-		if common := strings.TrimSpace(string(out)); filepath.IsAbs(common) && filepath.Base(common) == ".git" {
-			base = filepath.Dir(common)
+		if p := strings.Split(strings.TrimSpace(string(out)), "\n"); len(p) == 2 && filepath.IsAbs(p[0]) && filepath.IsAbs(p[1]) && filepath.Clean(p[0]) != filepath.Clean(p[1]) {
+			common := filepath.Clean(p[1])
+			switch _, lerr := os.Lstat(filepath.Join(common, ".git")); {
+			case filepath.Base(common) == ".git":
+				base = filepath.Dir(common)
+			case lerr != nil:
+				base = common
+			}
 		}
 	}
 	return filepath.Join(base, ".claude", "worktrees", nativeWorktreeDirName(value))
