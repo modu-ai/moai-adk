@@ -321,6 +321,37 @@ func TestEntryStrip_CleanRemovalPasses(t *testing.T) {
 	}
 }
 
+// TestEntryDir_SymlinkAliasOfPrimaryIsNotEntered — a candidate that is a
+// symlink alias OF THE PRIMARY checkout resolves to the shared checkout
+// (card t1791 audit round 6 finding 2): entering it would drop the isolation
+// the -w asked for, so the entry answers "".
+func TestEntryDir_SymlinkAliasOfPrimaryIsNotEntered(t *testing.T) {
+	primary := entryFixture(t)
+	alias := filepath.Join(primary, ".moai", "worktrees", "alias")
+	if err := os.Symlink(primary, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if got := entryDirFor(t, []string{"-w", "alias"}); got != "" {
+		t.Fatalf("entry dir = %q, want \"\" — the alias resolves to the primary checkout itself", got)
+	}
+}
+
+// TestEntryStrip_ClusterContinueSurvives — a -cw<name> cluster cut leaves
+// the -c, which the consumption re-injects as Continue: the positional
+// subsequences still match, so the guard reads it clean (card t1791 audit
+// round 6 finding 3).
+func TestEntryStrip_ClusterContinueSurvives(t *testing.T) {
+	primary := entryFixture(t)
+	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	view := resolveLaunchView([]string{"-cwplain"})
+	if existingWorktreeEntryDir(view) == "" {
+		t.Fatal("precondition: the entry must resolve")
+	}
+	if !entryStripIsSemanticallyClean(view) {
+		t.Fatal("the -cw cluster cut (leaving -c for the consumption to re-inject) must read clean")
+	}
+}
+
 func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
 	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
 	rest, _ := stripWorktreeOptionsForBackend(view)

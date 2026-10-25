@@ -360,6 +360,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// selection's tree, not StageB's first match.
 	entryDir := existingWorktreeEntryDir(view)
 	if entryDir != "" {
+		// The entry tree gets the same concurrent-writer refusal the cc flow
+		// applies (card t1791 audit round 6 finding 1): a tree another live
+		// session is anchored in must refuse the glm launch too.
+		if err := ccWorktreeWriterPrecheck(entryWorktreeRead(entryDir)); err != nil {
+			return err
+		}
 		seedAdmittedWorktreeHooksFor(entryWorktreeRead(entryDir), cmd.ErrOrStderr())
 	} else {
 		seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())

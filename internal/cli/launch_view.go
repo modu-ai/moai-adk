@@ -297,58 +297,56 @@ func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 	return out, kept
 }
 
-// backendArgRoles classifies every token of a backend argv by the option
-// model: "option" (a flag), "value" (an option's consumed value), or
-// "positional" (a prompt, or anything past the terminator).
-func backendArgRoles(argv []string) []string {
-	roles := make([]string, len(argv))
+// entryStripIsSemanticallyClean reports whether removing the worktree
+// selections from the launch argv preserves the backend's positional prompt
+// sequence — the corruption class the removal can cause (card t1791 audit
+// round 5 finding 2): a middle-token removal can turn a positional prompt
+// into another option's consumed value (--debug -w plain PROMPT), and a
+// launch that proceeds on such a shift corrupts the prompt. The comparison
+// runs the stripped argv back through the consumption loop (launcher flags
+// it re-injects, -c included, are final semantics either way — audit round
+// 6 finding 3) and compares the positional subsequences.
+func entryStripIsSemanticallyClean(view launchView) bool {
+	stripped, _ := stripWorktreeOptionsForBackend(view)
+	actualBackend := consumeLaunchArgs(stripped).PassThrough
+	return equalPositionals(view.FinalArgv, actualBackend)
+}
+
+// positionalSubsequence walks a backend argv by the option model and returns
+// its positional prompt tokens in order.
+func positionalSubsequence(argv []string) []string {
+	var pos []string
 	for i := 0; i < len(argv); i++ {
 		tok := argv[i]
 		if tok == argSeparator {
-			for j := i; j < len(argv); j++ {
-				roles[j] = "positional"
+			for j := i + 1; j < len(argv); j++ {
+				pos = append(pos, argv[j])
 			}
 			break
 		}
 		if len(tok) < 2 || tok[0] != '-' {
-			roles[i] = "positional"
+			pos = append(pos, tok)
 			continue
 		}
-		roles[i] = "option"
 		var span int
 		var sel worktreeSelection
 		sel, span = backendOptionStep(argv, i, sel)
 		_ = sel
-		if span == 1 && i+1 < len(argv) {
-			roles[i+1] = "value"
-		}
 		i += span
 	}
-	return roles
+	return pos
 }
 
-// entryStripIsSemanticallyClean reports whether removing the worktree
-// selections from the launch argv preserves every surviving token's role in
-// the backend argv the launch will actually produce (card t1791 audit round
-// 5 finding 2): a middle-token removal can turn a positional prompt into
-// another option's consumed value (--debug -w plain PROMPT), and a launch
-// that proceeds on such a shift corrupts the prompt. The comparison runs the
-// stripped argv back through the consumption loop and compares each
-// surviving token's role against the role the authoritative FinalArgv parse
-// gave it.
-func entryStripIsSemanticallyClean(view launchView) bool {
-	stripped, kept := stripWorktreeOptionsForBackend(view)
-	actualBackend := consumeLaunchArgs(stripped).PassThrough
-	if len(actualBackend) != len(kept) {
+// equalPositionals compares the positional prompt subsequences of two
+// backend argvs.
+func equalPositionals(a, b []string) bool {
+	pa := positionalSubsequence(a)
+	pb := positionalSubsequence(b)
+	if len(pa) != len(pb) {
 		return false
 	}
-	origRoles := backendArgRoles(view.FinalArgv)
-	actualRoles := backendArgRoles(actualBackend)
-	for k, orig := range kept {
-		if orig >= len(origRoles) {
-			return false
-		}
-		if origRoles[orig] != actualRoles[k] {
+	for k := range pa {
+		if pa[k] != pb[k] {
 			return false
 		}
 	}
@@ -404,13 +402,18 @@ func existingWorktreeEntryDir(view launchView) string {
 		return ""
 	}
 	// The candidate must be a REAL git worktree whose top level is the
-	// directory itself (card t1791 audit round 5 finding 1): a plain
-	// directory that merely sits under a worktrees root is not isolation —
-	// entering it would run the backend in a subdirectory of the default
-	// checkout. A candidate that fails the check answers "" (the launcher
+	// directory itself (card t1791 audit round 5 finding 1), and that top
+	// level must NOT be the primary checkout (card t1791 audit round 6
+	// finding 2): a symlink alias pointing at the primary resolves to the
+	// shared checkout, and entering it would drop the isolation the -w asked
+	// for. A candidate that fails either check answers "" (the launcher
 	// creates nothing; claude's own pass-through applies).
-	if worktreeTopLevelFn(cands[0].Path) != entryCanonicalPath(cands[0].Path) {
+	top := worktreeTopLevelFn(cands[0].Path)
+	if top == "" || entryCanonicalPath(top) != entryCanonicalPath(cands[0].Path) {
 		return ""
+	}
+	if entryCanonicalPath(top) == entryCanonicalPath(root) {
+		return "" // an alias of the primary checkout: no isolation to enter
 	}
 	return cands[0].Path
 }
