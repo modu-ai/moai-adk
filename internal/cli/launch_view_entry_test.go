@@ -20,8 +20,9 @@ import (
 
 // entryFixture builds a scratch primary repo with its own MOAI_HOME and
 // points the project-root seam at it, returning the primary root. The repo
-// must be a REAL git repository: worktreeroot.resolve derives the project
-// key from the git common dir.
+// must be a REAL git repository with a seed commit: worktreeroot.resolve
+// derives the project key from the git common dir, and the entry validation
+// requires candidates to be linked worktrees of this repository.
 func entryFixture(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
@@ -33,10 +34,34 @@ func entryFixture(t *testing.T) string {
 	if out, err := exec.Command("git", "init", "-q", primary).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, out)
 	}
+	for _, args := range [][]string{
+		{"config", "user.email", "t1791@test.local"},
+		{"config", "user.name", "t1791"},
+		{"commit", "--allow-empty", "-q", "--allow-empty-message", "-m", "seed"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = primary
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
 	orig := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return primary, nil }
 	t.Cleanup(func() { findProjectRootFn = orig })
 	return primary
+}
+
+// mustLinkedTree creates the candidate as a LINKED worktree of the primary
+// (card t1791 audit round 9 finding 2: the entry validates that the
+// candidate belongs to the calling project's repository — a standalone repo
+// at the candidate path is a different repository and is refused).
+func mustLinkedTree(t *testing.T, primary, path string) {
+	t.Helper()
+	mustMkdirTree(t, filepath.Dir(path))
+	cmd := exec.Command("git", "-C", primary, "worktree", "add", "-q", path)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("worktree add %s: %v\n%s", path, err, out)
+	}
 }
 
 // mustMkdirTree creates a directory subtree, failing the test on error.
@@ -73,7 +98,7 @@ func TestEntryDir_LegacyMoaiTreeIsEntered(t *testing.T) {
 	primary := entryFixture(t)
 	name := "t1791"
 	moaiTree := filepath.Join(primary, ".moai", "worktrees", name)
-	mustGitTree(t, moaiTree)
+	mustLinkedTree(t, primary, moaiTree)
 	if got, want := entryDirFor(t, []string{"-w", name}), canonical(t, moaiTree); got != want {
 		t.Fatalf("entry dir = %q, want the existing .moai tree %q (a pass-through here creates a duplicate .claude branch tree — GH #1813)", got, want)
 	}
@@ -116,7 +141,7 @@ func TestEntryDir_LegacyClaudeStaysNative(t *testing.T) {
 func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 	primary := entryFixture(t)
 	name := "t1791"
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", name))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", name))
 	view := resolveLaunchView([]string{"-w", name})
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve for the strip to be reachable")
@@ -136,7 +161,7 @@ func TestEntrySelection_StrippedOnEntry(t *testing.T) {
 func TestEntryDir_DuplicateSelectionEntersByFinal(t *testing.T) {
 	primary := entryFixture(t)
 	second := filepath.Join(primary, ".moai", "worktrees", "second")
-	mustGitTree(t, second)
+	mustLinkedTree(t, primary, second)
 	got := entryDirFor(t, []string{"-w", "first", "-w", "second"})
 	if got != canonical(t, second) {
 		t.Fatalf("entry dir = %q, want the final selection's tree %q", got, canonical(t, second))
@@ -151,7 +176,7 @@ func TestEntryDir_DuplicateSelectionEntersByFinal(t *testing.T) {
 func TestEntryRead_TargetsTheEnteredTree(t *testing.T) {
 	primary := entryFixture(t)
 	for _, name := range []string{"safe", "locked"} {
-		mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", name))
+		mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", name))
 	}
 	view := resolveLaunchView([]string{"-w", "safe", "-w", "locked"})
 	entryDir := existingWorktreeEntryDir(view)
@@ -171,7 +196,7 @@ func TestEntryRead_TargetsTheEnteredTree(t *testing.T) {
 func TestEntryDir_OptionValueIsNotASelection(t *testing.T) {
 	primary := entryFixture(t)
 	second := filepath.Join(primary, ".moai", "worktrees", "second")
-	mustGitTree(t, second)
+	mustLinkedTree(t, primary, second)
 	argv := []string{"-w", "first", "--append-system-prompt", "--worktree", "second"}
 	view := resolveLaunchView(argv)
 	if got := existingWorktreeEntryDir(view); got != "" {
@@ -194,7 +219,7 @@ func TestEntryDir_OptionValueIsNotASelection(t *testing.T) {
 func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 	primary := entryFixture(t)
 	first := filepath.Join(primary, ".moai", "worktrees", "first")
-	mustGitTree(t, first)
+	mustLinkedTree(t, primary, first)
 	view := resolveLaunchView([]string{"-w", "first", "--", "--worktree=first"})
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
@@ -220,7 +245,7 @@ func TestStrip_FinalArgvLosesEverySelection(t *testing.T) {
 // consumption sees them and never injects the saved settings over them.
 func TestStrip_PreservesUserPermissionModeAndModel(t *testing.T) {
 	primary := entryFixture(t)
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", "plain"))
 	view := resolveLaunchView([]string{"-w", "plain", "--permission-mode", "plan", "--model", "opus"})
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
@@ -241,30 +266,30 @@ func TestStrip_PreservesUserPermissionModeAndModel(t *testing.T) {
 // are the backend's positionals — never re-parsed as a worktree selection.
 func TestStrip_SecondSeparatorIsTheBackendTerminator(t *testing.T) {
 	primary := entryFixture(t)
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", "plain"))
 	view := resolveLaunchView([]string{"-w", "plain", "--", "--", "--worktree", "other"})
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
 	}
-	rest, _ := stripWorktreeOptionsForBackend(view)
-	if len(rest) != 4 || rest[0] != "--" || rest[1] != "--" || rest[2] != "--worktree" || rest[3] != "other" {
-		t.Fatalf("stripped argv = %v, want [-- -- --worktree other] (backend terminator and positionals verbatim)", rest)
+	// Assert the FINAL backend argv — the launcher's consumption eats the
+	// first --, so the stripped LaunchArgs hold one more separator than the
+	// backend will see.
+	stripped, _ := stripWorktreeOptionsForBackend(view)
+	backend := consumeLaunchArgs(stripped).PassThrough
+	want := []string{"--", "--", "--", "--worktree", "other"}
+	if len(backend) != len(want) {
+		t.Fatalf("backend argv = %v, want %v (terminator + the exact original positionals)", backend, want)
+	}
+	for k := range want {
+		if backend[k] != want[k] {
+			t.Fatalf("backend argv = %v, want %v (token %d changed)", backend, want, k)
+		}
 	}
 }
 
 // TestStrip_ClusterCutKeepsTheLeadingLetters — a cluster token loses only its
 // `w` and the attached value; the preceding letters are other options and
 // survive the cut (card t1791 audit round 3 finding 3).
-// mustGitTree creates a directory subtree and makes it a real git repo: the
-// entry validation requires a git top level at the candidate (card t1791
-// audit round 5 finding 1).
-func mustGitTree(t *testing.T, path string) {
-	t.Helper()
-	mustMkdirTree(t, path)
-	if out, err := exec.Command("git", "init", "-q", path).CombinedOutput(); err != nil {
-		t.Fatalf("git init %s: %v\n%s", path, err, out)
-	}
-}
 
 // TestEntryDir_NonGitDirectoryIsNotEntered — a candidate that is a plain
 // directory (no git worktree behind it) is NOT isolation: entering it would
@@ -279,32 +304,45 @@ func TestEntryDir_NonGitDirectoryIsNotEntered(t *testing.T) {
 	}
 }
 
-// TestEntryDir_GitWorktreeIsEntered — the validation keeps a REAL git
-// worktree enterable: a candidate initialized as a git repo (top level =
-// the directory) answers its path.
+// TestEntryDir_GitWorktreeIsEntered — the validation keeps a REAL linked
+// git worktree of this repository enterable: a candidate linked to the
+// primary (top level = the directory, same repository) answers its path.
 func TestEntryDir_GitWorktreeIsEntered(t *testing.T) {
 	primary := entryFixture(t)
 	name := "real"
 	tree := filepath.Join(primary, ".moai", "worktrees", name)
-	mustMkdirTree(t, tree)
-	if out, err := exec.Command("git", "init", "-q", tree).CombinedOutput(); err != nil {
-		t.Fatalf("git init worktree: %v\n%s", err, out)
-	}
+	mustLinkedTree(t, primary, tree)
 	if got, want := entryDirFor(t, []string{"-w", name}), canonical(t, tree); got != want {
 		t.Fatalf("entry dir = %q, want the real git worktree %q", got, want)
 	}
 }
 
-// TestEntryStrip_UncleanShiftIsDetected — the semantic-shift guard (card
-// t1791 audit round 5 finding 2): removing the selection from
-// [--debug, -w, plain, PROMPT] turns the positional PROMPT into --debug's
-// consumed value, and the guard must report the shift.
-func TestEntryStrip_UncleanShiftIsDetected(t *testing.T) {
+// TestEntryStrip_TerminatorWallsThePrompt — the terminator construction
+// preserves the prompt and neutralizes the tail (card t1791 audit round 5
+// finding 2 and round 9 finding 1): removing [--worktree, plain] from
+// [-w plain -- --debug -w plain PROMPT] leaves the backend
+// [--, --, --debug, -w, plain, PROMPT] — the first -- is eaten by the
+// launcher's consumption, the second ends option parsing before --debug, so
+// the user's whole typed tail (--debug -w plain PROMPT) stays positional and
+// the tail's selection syntax (-w plain, a re-selection the entry exists to
+// prevent) is inert.
+func TestEntryStrip_TerminatorWallsThePrompt(t *testing.T) {
 	primary := entryFixture(t)
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", "plain"))
 	view := resolveLaunchView([]string{"-w", "plain", "--", "--debug", "-w", "plain", "PROMPT"})
-	if entryStripIsSemanticallyClean(view) {
-		t.Fatal("the shift where a positional becomes an option value must not read clean")
+	if !entryStripIsSemanticallyClean(view) {
+		t.Fatal("the terminator-walled backend argv must read clean — no worktree option survives the consumption")
+	}
+	stripped, _ := stripWorktreeOptionsForBackend(view)
+	pos := positionalSubsequence(consumeLaunchArgs(stripped).PassThrough)
+	want := []string{"--", "--debug", "PROMPT"}
+	if len(pos) != len(want) {
+		t.Fatalf("positionals = %v, want %v", pos, want)
+	}
+	for k := range want {
+		if pos[k] != want[k] {
+			t.Fatalf("positionals = %v, want %v (token %d changed)", pos, want, k)
+		}
 	}
 }
 
@@ -313,7 +351,7 @@ func TestEntryStrip_UncleanShiftIsDetected(t *testing.T) {
 // role shift.
 func TestEntryStrip_CleanRemovalPasses(t *testing.T) {
 	primary := entryFixture(t)
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", "plain"))
 	view := resolveLaunchView([]string{"-w", "plain", "--", "PROMPT"})
 	if !entryStripIsSemanticallyClean(view) {
 		stripped, kept := stripWorktreeOptionsForBackend(view)
@@ -342,7 +380,7 @@ func TestEntryDir_SymlinkAliasOfPrimaryIsNotEntered(t *testing.T) {
 // round 6 finding 3).
 func TestEntryStrip_ClusterContinueSurvives(t *testing.T) {
 	primary := entryFixture(t)
-	mustGitTree(t, filepath.Join(primary, ".moai", "worktrees", "plain"))
+	mustLinkedTree(t, primary, filepath.Join(primary, ".moai", "worktrees", "plain"))
 	view := resolveLaunchView([]string{"-cwplain"})
 	if existingWorktreeEntryDir(view) == "" {
 		t.Fatal("precondition: the entry must resolve")
@@ -437,8 +475,18 @@ func TestGitCommonDir_ScrubbedEnvIgnoresForeignOverride(t *testing.T) {
 
 func TestStrip_ClusterCutKeepsTheLeadingLetters(t *testing.T) {
 	view := resolveLaunchView([]string{"--", "-pwplain", "hello"})
-	rest, _ := stripWorktreeOptionsForBackend(view)
-	if len(rest) != 3 || rest[0] != "--" || rest[1] != "-p" || rest[2] != "hello" {
-		t.Fatalf("stripped argv = %v, want [-- -p hello] (the -p output mode survives the w cut)", rest)
+	// Assert the FINAL backend argv — the launcher's consumption eats the
+	// first --, so the cluster cut's LaunchArgs carry one more separator
+	// than the backend will see; the -p output mode must survive it.
+	stripped, _ := stripWorktreeOptionsForBackend(view)
+	backend := consumeLaunchArgs(stripped).PassThrough
+	want := []string{"-p", "hello"}
+	if len(backend) != len(want) {
+		t.Fatalf("backend argv = %v, want %v (the -p output mode survives the w cut)", backend, want)
+	}
+	for k := range want {
+		if backend[k] != want[k] {
+			t.Fatalf("backend argv = %v, want %v (token %d changed)", backend, want, k)
+		}
 	}
 }

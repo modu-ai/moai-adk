@@ -220,7 +220,7 @@ func readFirstWorktree(args []string) worktreeRead {
 // token loses only its `w` letters (the leading options survive).
 func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 	type cut struct {
-		drop       bool
+		terminator bool // emit the backend terminator at this slot
 		keepPrefix string
 	}
 	cuts := make(map[int]cut)
@@ -243,23 +243,29 @@ func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 		if sel.Spelling == spellingCluster || sel.Spelling == spellingAttached {
 			// In-token selection: cut the letters from the `w` on — the
 			// attached value rides them — keeping the cluster's leading
-			// letters (the `-p` of `-pwplain`). A degenerate cut (nothing
-			// before the w) drops the token.
+			// letters (the `-p` of `-pwplain`). The token shortens in place;
+			// no token is removed from the sequence, so no boundary shifts.
 			w := strings.IndexByte(tok[1:], 'w') + 1
 			if w <= 1 {
-				cuts[flagLa] = cut{drop: true}
+				cuts[flagLa] = cut{terminator: true}
 			} else {
 				cuts[flagLa] = cut{keepPrefix: tok[:w]}
 			}
 			if sel.HasValue && span == 1 && f+1 < len(view.FinalArgv) && view.Consumed.Origin[f+1] >= 0 {
-				cuts[view.Consumed.Origin[f+1]] = cut{drop: true}
+				cuts[view.Consumed.Origin[f+1]] = cut{terminator: true}
 			}
 			f += span
 			continue
 		}
-		cuts[flagLa] = cut{drop: true}
+		// A removed two-token or equals selection shifts every later token
+		// left by its span — the shift that turns a positional prompt into
+		// another option's consumed value (audit rounds 5 and 9). The flag
+		// slot emits the backend terminator instead: option parsing ends
+		// exactly where the removed selection began, so every following
+		// token keeps the role it had.
+		cuts[flagLa] = cut{terminator: true}
 		if sel.HasValue && span == 1 && f+1 < len(view.FinalArgv) && view.Consumed.Origin[f+1] >= 0 {
-			cuts[view.Consumed.Origin[f+1]] = cut{drop: true}
+			cuts[view.Consumed.Origin[f+1]] = cut{terminator: true}
 		}
 		f += span
 	}
@@ -276,10 +282,35 @@ func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 	for f, la := range view.Consumed.Origin {
 		inv[la] = f
 	}
-	out := make([]string, 0, len(view.LaunchArgs))
+	out := make([]string, 0, len(view.LaunchArgs)+2*len(cuts))
 	kept := make([]int, 0, len(view.LaunchArgs))
+	// The launcher's consumption eats the FIRST "--" it walks — so the wall
+	// emits TWO: one for the launcher to eat, one that reaches the backend as
+	// its option terminator. Everything past the wall is the user's own
+	// prompt text, passed verbatim (the tail selections it may contain are
+	// positionals for the backend and are never re-parsed) — the wall is what
+	// keeps them positional instead of absorbed by an earlier option's
+	// variadic tail (card t1791 audit round 9 finding 1).
+	walled := false
 	for i, tok := range view.LaunchArgs {
 		c, hit := cuts[i]
+		if hit && walled {
+			// Past the wall the backend parses nothing as an option, so
+			// selection-syntax tokens are dropped outright — but nothing
+			// else changes: the user's tail passes verbatim.
+			continue
+		}
+		if hit && c.terminator {
+			for k := 0; k < 2; k++ {
+				out = append(out, argSeparator)
+			}
+			walled = true
+			if c.keepPrefix != "" {
+				out = append(out, c.keepPrefix)
+				kept = append(kept, inv[i]) // the cut token survives, shortened
+			}
+			continue
+		}
 		if hit {
 			if c.keepPrefix != "" {
 				out = append(out, c.keepPrefix)
@@ -298,19 +329,33 @@ func stripWorktreeOptionsForBackend(view launchView) ([]string, []int) {
 	return out, kept
 }
 
-// entryStripIsSemanticallyClean reports whether removing the worktree
-// selections from the launch argv preserves the backend's positional prompt
-// sequence — the corruption class the removal can cause (card t1791 audit
-// round 5 finding 2): a middle-token removal can turn a positional prompt
-// into another option's consumed value (--debug -w plain PROMPT), and a
-// launch that proceeds on such a shift corrupts the prompt. The comparison
-// runs the stripped argv back through the consumption loop (launcher flags
-// it re-injects, -c included, are final semantics either way — audit round
-// 6 finding 3) and compares the positional subsequences.
+// entryStripIsSemanticallyClean verifies the entry path's central guarantee
+// on the argv the launch will actually execute: after the launcher's own
+// consumption, the backend argv carries NO worktree option at all (card
+// t1791 audit round 5 finding 2 and round 9 finding 1). The strip builds
+// this by construction — removed selections are replaced by backend
+// terminators, so nothing downstream of a removal can be re-absorbed by
+// another option — and this check observes the built argv to confirm it.
 func entryStripIsSemanticallyClean(view launchView) bool {
 	stripped, _ := stripWorktreeOptionsForBackend(view)
 	actualBackend := consumeLaunchArgs(stripped).PassThrough
-	return equalPositionals(view.FinalArgv, actualBackend)
+	for f := 0; f < len(actualBackend); f++ {
+		tok := actualBackend[f]
+		if tok == argSeparator {
+			break // the backend's own terminator: past it nothing is an option
+		}
+		if len(tok) < 2 || tok[0] != '-' {
+			continue
+		}
+		var span int
+		var sel worktreeSelection
+		sel, span = backendOptionStep(actualBackend, f, sel)
+		if sel.Present {
+			return false
+		}
+		f += span
+	}
+	return true
 }
 
 // positionalSubsequence walks a backend argv by the option model and returns
@@ -336,22 +381,6 @@ func positionalSubsequence(argv []string) []string {
 		i += span
 	}
 	return pos
-}
-
-// equalPositionals compares the positional prompt subsequences of two
-// backend argvs.
-func equalPositionals(a, b []string) bool {
-	pa := positionalSubsequence(a)
-	pb := positionalSubsequence(b)
-	if len(pa) != len(pb) {
-		return false
-	}
-	for k := range pa {
-		if pa[k] != pb[k] {
-			return false
-		}
-	}
-	return true
 }
 
 // existingWorktreeEntryDir reports the single existing MoAI tree the view's
@@ -423,6 +452,16 @@ func existingWorktreeEntryDir(view launchView) string {
 	primaryRoot := entryCanonicalPath(filepath.Dir(common))
 	if entryCanonicalPath(top) == primaryRoot {
 		return "" // an alias of the primary checkout: no isolation to enter
+	}
+	// The candidate must belong to THIS repository: its own git common
+	// directory (resolved with the same scrubbed probes) has to be the same
+	// common directory the calling project resolves to (card t1791 audit
+	// round 9 finding 2). An inherited GIT_DIR can otherwise steer the
+	// candidate discovery at a foreign store, and the entry would run the
+	// backend in a directory unrelated to this project.
+	candCommon, err := gitCommonDirFn(cands[0].Path)
+	if err != nil || entryCanonicalPath(candCommon) != entryCanonicalPath(common) {
+		return ""
 	}
 	return cands[0].Path
 }
