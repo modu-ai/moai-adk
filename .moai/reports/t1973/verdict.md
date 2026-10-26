@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: a980943254276978c84bdaedf3cd073c317014e2
+audited_sha: d5dc6515f3c3e82dfd37a653eaf6e1ece8a4daf4
 
 # t1973 — lane completion verdict (Class B, reproduce-first)
 
@@ -62,3 +62,7 @@ factory_run_rebind.go:215 (step-5 card_dispatch repoint) is untouched by this ca
 - GREEN (all round-1 + round-2 t1973 tests, at a980943254 working tree): `unset GOFLAGS && go test ./internal/homestate/ -run 'TestRed_T1973' -count=1` → exit 0, `ok github.com/modu-ai/moai-adk/internal/homestate 2.296s`; `gofmt -l` clean; `go vet ./internal/homestate/` PASS.
 - Full package regression: `unset GOFLAGS && go test ./internal/homestate/... -count=1` → exit 0, `ok github.com/modu-ai/moai-adk/internal/homestate 246.491s`.
 - Baseline: all measurements in this run against this tree; HEAD re-read immediately before this update (`git rev-parse` → a980943254276978c84bdaedf3cd073c317014e2).
+
+## Rebinding note (2026-10-27) — audited_sha rebound to the post-absorb HEAD
+
+The audit the verdict records (Round-3 post-absorb check by the sync-auditor, PASS, gate leg rcpt-d8421e7ddc1dc81049d70294) is bound to HEAD `d5dc6515f3c3e82dfd37a653eaf6e1ece8a4daf4` — the absorb merge of origin/main 259dbeec6d (t1976 landing). The absorb's own diff touches exactly AGENTS.md + internal/template/templates/AGENTS.md.tmpl (verified by the sync-auditor and the lane; zero card files), so the audited findings stand unchanged at the new HEAD; this machine line rebinds to it per the merge-evidence rule (audited commit must be HEAD or differ only under .moai/reports/t1973/). Prior binding: a980943254276978c84bdaedf3cd073c317014e2 (round-2 repair commit).
