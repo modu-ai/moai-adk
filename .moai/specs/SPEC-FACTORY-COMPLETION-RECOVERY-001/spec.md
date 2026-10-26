@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-COMPLETION-RECOVERY-001
 title: "Factory completion-judgment and recovery repair: leader receipt gate, auto-done recheck, expired-lease reaper, safe reassign, stalled-wait watchdog, CI completion reader, dead-owner run consolidation, near-dup disclosure, relation disposition ledger"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-10-06
 updated: 2026-10-26
 author: manager-spec
