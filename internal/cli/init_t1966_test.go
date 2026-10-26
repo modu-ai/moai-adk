@@ -231,6 +231,41 @@ func TestClearProjectUserName_NoNameKeyStaysByteIdentical(t *testing.T) {
 	}
 }
 
+// N3: a user.yaml that fails to parse must NOT be skipped. Pinned against the
+// iteration-2 code (unconditional PatchFile): a syntax error was reported as an
+// error, and a duplicate key was patched so the name was actually cleared.
+func TestClearProjectUserName_DuplicateKeyStillClearsName(t *testing.T) {
+	path := clearUserNameFixture(t, "user:\n  name: \"Alice\"\n  name: \"Alice\"\n")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatalf("duplicate-key user.yaml: unexpected error %v", err)
+	}
+	// Iteration-2 behavior: the patch blanks the first (effective) name row.
+	if got, _ := os.ReadFile(path); !strings.HasPrefix(string(got), "user:\n  name: \"\"\n") {
+		t.Errorf("duplicate-key user.yaml was not patched (name row not blanked):\n%s", got)
+	}
+}
+
+func TestClearProjectUserName_SyntaxErrorReturnsError(t *testing.T) {
+	path := clearUserNameFixture(t, "user:\n  name: \"Alice\"\n  bad: [unclosed\n")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err == nil {
+		t.Error("syntax-error user.yaml holding a name: clearProjectUserName returned nil, want the patch error")
+	}
+}
+
+// N4: a whitespace-only name is non-empty and is cleared.
+func TestClearProjectUserName_WhitespaceNameIsCleared(t *testing.T) {
+	path := clearUserNameFixture(t, "user:\n  name: \"  \"\n")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); strings.Contains(string(got), `"  "`) {
+		t.Errorf("whitespace-only name survived the clear:\n%s", got)
+	}
+}
+
 func TestClearProjectUserName_NoUserMappingStaysByteIdentical(t *testing.T) {
 	const content = "foo: bar\n"
 	path := clearUserNameFixture(t, content)

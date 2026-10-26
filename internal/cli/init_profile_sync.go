@@ -60,12 +60,15 @@ func clearProjectUserName(projectRoot string) error {
 	// Skip unless a non-empty user.name exists: a zero-byte file, a missing
 	// user mapping or name key, or an already-empty name has nothing to clear,
 	// and patching would error (empty document) or invent a null `name:` row.
+	// A file that does not parse is NOT skipped: it falls through to the patch,
+	// which reports the error (or clears the name), so a malformed file never
+	// silently keeps a name the user cleared.
 	var doc struct {
 		User struct {
 			Name string `yaml:"name"`
 		} `yaml:"user"`
 	}
-	if len(data) == 0 || yaml.Unmarshal(data, &doc) != nil || doc.User.Name == "" {
+	if yaml.Unmarshal(data, &doc) == nil && doc.User.Name == "" {
 		return nil
 	}
 	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: ""}}); err != nil {
