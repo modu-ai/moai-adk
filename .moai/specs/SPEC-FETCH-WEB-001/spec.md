@@ -2,9 +2,9 @@
 id: SPEC-FETCH-WEB-001
 title: "moai fetch web — Go port of the jevfetch pipeline (verbatim web excerpt via two-stage Jev scoring)"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"

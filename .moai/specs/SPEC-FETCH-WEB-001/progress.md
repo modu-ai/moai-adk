@@ -85,7 +85,21 @@ Every Go milestone's first failing run was captured before its implementation ex
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-27
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; backfilled in the next commit
+sync_status: complete
+ac_source: .moai/specs/SPEC-FETCH-WEB-001/acceptance.md   # tier M
+b12_self_test_a: pass   # pre-emission grep -c 'SPEC-FETCH-WEB-001' CHANGELOG.md -> 0 (exit 1); no duplicate entry
+b12_self_test_b: pass   # AC counter on acceptance.md: live=14 excluded=0 ambiguous=0; CHANGELOG entry cites 14 (AC-FW-001..014)
+b12_self_test_c: pass   # every path named in the entry verified present by ls/grep (internal/fetchweb/{blocks,scoring,fetch,output}.go, internal/cli/{fetch_web,mcp_fetch_web}.go, internal/cli/mcp_server.go, internal/jev/cache.go, internal/jevmeasure/bench.go, internal/cli/jevmeasure_cmd.go, skills/moai-fetch-web/SKILL.md, settings.json.tmpl:569, glm-web-tooling.md:40)
+changelog_entry_position: CHANGELOG.md [Unreleased] > Added — first entry (directly under the '### Added' heading)
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed   # single sync commit; owner manager-docs (Authored-By-Agent trailer)
+  plan_md: no status field and no frontmatter block — stateless artifact, nothing to refresh
+  acceptance_md: no status field and no frontmatter block — stateless artifact, nothing to refresh
+mx_tag_validation: 0 tags added, 4 existing verified accurate (cli gate-path WARN x2 with REASON, RunFetchPipeline ANCHOR with REASON, jev package ANCHOR with REASON); no doctrine trigger fires — zero 'go func' sites in the new surfaces, the semaphore and both retry sleeps carry and honor context.Context, no exported function reaches fan_in >= 3
+```
 
 ## §F Phase 4 Mode Selection
 
