@@ -230,15 +230,74 @@ func TestRed_T1973b_P2_BothEmptyEvidenceTreatedAsMatch(t *testing.T) {
 	}
 }
 
-// TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon — round-3 narrowing: the
-// both-empty evidence shape with a NON-WORKING source row (picked/assigned/
-// needs-decision — no lease-holding progress to strand) keeps the t1963
-// abandon-with-pointer behavior the operator-move and leader-start-
-// consolidation paths live on. The round-2 test above (source row in CardRun)
-// still refuses.
+// TestRed_T1973c_AssignedSourceRowCarryingStageIsAbandoned — round 4: the
+// state-keyed narrowing is insufficient — applyLeaseExpiry returns a row to
+// `assigned` KEEPING its stage/worktree, and T21 keeps the existing stage on a
+// question receipt, so an ASSIGNED source row can carry real progress. The
+// both-empty shape must refuse when the source row carries progress info
+// (stage / worktree / spec_id) the target row does not already hold.
+func TestRed_T1973c_AssignedSourceRowCarryingStageIsAbandoned(t *testing.T) {
+	t.Run("assigned source with stage and worktree over a bare target row", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		// The source row: back to assigned by lease expiry, its stage and
+		// worktree still on the row.
+		rbCard(t, db, "run-old", "c1", CardAssigned)
+		rbBind(t, db, "c1", "run-old")
+		if _, err := db.DB.Exec(`UPDATE cards SET stage='run', worktree_path='/wt/c1', spec_id='SPEC-C1', evidence_sha='' WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		// The target row: freshly picked, bare — no stage, no worktree, no
+		// evidence.
+		rbCard(t, db, "run-new", "c1", CardPicked)
+		if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='' WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-new")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+		c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+		if loadErr != nil || c.State != CardAssigned || c.Stage != "run" || c.WorktreePath != "/wt/c1" {
+			t.Fatalf("run-old c1 = (%+v, %v), want the assigned row with its stage/worktree untouched", c, loadErr)
+		}
+	})
+	t.Run("needs-decision source with stage over a bare target row", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbCard(t, db, "run-old", "c1", CardNeedsDecision)
+		rbBind(t, db, "c1", "run-old")
+		if _, err := db.DB.Exec(`UPDATE cards SET stage='run', worktree_path='/wt/c1', evidence_sha='' WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		rbCard(t, db, "run-new", "c1", CardPicked)
+		if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='' WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-new")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+	})
+}
+
+// TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon — the restored t1963
+// dedup, round-4 form: a both-empty pair where the source row is a BARE stub
+// (empty stage, empty worktree, empty spec_id — nothing the target row lacks)
+// keeps the abandon-with-pointer behavior the operator-move and leader-start-
+// consolidation paths live on. (Round-3 form keyed on the source row's state;
+// round 4 keys on the actual remaining progress info instead.)
 func TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon(t *testing.T) {
 	for _, srcState := range []string{CardPicked, CardAssigned, CardNeedsDecision} {
-		t.Run("source state "+srcState, func(t *testing.T) {
+		t.Run("bare source stub in "+srcState, func(t *testing.T) {
 			db := openSandboxFactory(t)
 			opts := rbOpts()
 			rbRun(t, db, "run-old", rbPIDDead)
@@ -246,12 +305,13 @@ func TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon(t *testing.T) {
 			rbCard(t, db, "run-old", "c1", srcState)
 			rbBind(t, db, "c1", "run-old")
 			rbCard(t, db, "run-new", "c1", CardAssigned)
-			if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='' WHERE card_id='c1'`); err != nil {
+			// Both rows bare: no stage, no evidence, no worktree, no spec.
+			if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='' WHERE card_id='c1'`); err != nil {
 				t.Fatal(err)
 			}
 			res, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
 			if err != nil {
-				t.Fatalf("the evidence-less non-working dedup refused: %v", err)
+				t.Fatalf("the evidence-less bare-stub dedup refused: %v", err)
 			}
 			if len(res.Abandoned) != 1 || res.Abandoned[0] != "c1" {
 				t.Fatalf("res = %+v, want c1 abandoned with a pointer", res)
