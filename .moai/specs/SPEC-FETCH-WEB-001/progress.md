@@ -32,3 +32,27 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Mode Selection — orchestrator: lane-7 (factory card t1968), 2026-10-26. Decision: serial (rationale and mode table below).
+
+| Input | Value |
+|---|---|
+| tier | M (SPEC-FETCH-WEB-001) |
+| scope (files) | ~10-14 (internal/fetchweb new pkg, internal/jev client surface, internal/jevmeasure, internal/cli, mcp_server.go, templates skill/settings/rule) |
+| domain count | 3 (Go code, templates, rules/docs) — coding-heavy |
+| file language mix | Go + markdown templates |
+| concurrency benefit | LOW (Anthropic coding-task caveat: new-code sequential work) |
+| agent-team prereqs | not requested (no --team) |
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | New package + multi-file implementation, not a one-liner |
+| serial | **yes** | Coding-heavy new-feature work; milestones M1-M7 sequential in one package |
+| fanout | no | Write fan-out on one card prohibited; research fan-out not needed (design source complete) |
+| sweep | no | Semantic new code, not mechanical bulk; <30 files |
+
+Decision: serial
+Justification: the milestone chain (M1-M7) builds one new package with intra-package dependencies; Anthropic's coding-task parallelism caveat selects sequential single-agent delegation; write-capable concurrency on one card is prohibited regardless. manager-develop (cycle_type=tdd) carries M1-M7 serially.
+
