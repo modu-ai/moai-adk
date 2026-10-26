@@ -2,8 +2,8 @@ auditor-model: glm-5.3
 
 # sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 1
 
-verdict: PASS-WITH-DEBT
-audited_sha: ed6227740e55341193cbea038c9875158eed471b
+verdict: FAIL
+audited_sha: b62aadf26e7355153387b6672b0669467c84e974
 
 Tree: lane worktree `.moai/worktrees/t1968` (branch `WT-jevfetch-a2sys-ai`). Merge base `2a1898ea22`. Date 2026-10-27. Audit plan (`moai verify audit-plan --project-root <toplevel>`): `config_status: ok`, `cross_model_active: true`, gates claude=off / **codex=required** / glm=off (source `config.gates`, `plan_source: config`).
 
@@ -348,3 +348,72 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - iter5 (this audit): PASS-WITH-DEBT 0.93 — F7c closed (both reproductions fixed, corners clean, regressions hold, codex pass, receipt rcpt-2a184bfefac6e098feba3734); one Low optional debt D1 (aside-fallback path provenance, test-pinned). Chain complete: F1-F8, F1b/F5b, F5c/F7b/F8b, F7c all repaired and verified.
 
 AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-2a184bfefac6e098feba3734
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 6 (state-proof: carried P2 x5 + post-verdict drift @ b62aadf26e)
+
+State-proof audit — no repair round has run since iter5; the standing verdict must describe the tree as it is. Audited head `b62aadf26e7355153387b6672b0669467c84e974`. Code is byte-identical to iter5's audited tree: `git log --oneline ed6227740e..HEAD | wc -l` → `8`, all docs/bookkeeping — `git diff --stat ed6227740e..HEAD` → 6 files, `161 insertions(+)`, `2 deletions(-)` (`.moai/reports/t1968/{delta-cache-probe-review,plan-audit,progress,sync-audit,verdict}.md` + `.moai/specs/SPEC-FETCH-WEB-001/progress.md`), zero code files. Audit plan re-read (plain literal-path form, after one worktree-guard refusal of the nested-subshell spelling): `config_status: ok`, `cross_model_active: true`, codex **required** (claude/glm off), `plan_source: config`. No `Binding run conditions` heading in the SPEC progress.md (grep exit 1) — nothing to disposition. File machine lines re-bound to this iteration's verdict+head.
+
+## iter6 Verdict
+
+**FAIL — aggregate 0.84** (harmonic mean of 72 / 93 / 86 / 90). Must-pass firewall: Functionality (72) below threshold — seven confirmed P2 code defects now stand unfixed on the delivered surface (four carried from the post-verdict receipts, three new from this pass's required codex backend, which independently returned **fail** — convergence `overall_verdict: fail` — forcing FAIL per the cross-model contract). This is the expected state-proof outcome: the iter5 PASS-WITH-DEBT 0.93 no longer described this card's true state; the repair round now has an honest defect list to work from.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @b62aadf26e) |
+|---|---|---|---|---|
+| Functionality | 40% | 72 | **FAIL** | `go vet ./internal/jev/... ./internal/fetchweb/... ./internal/jevmeasure/...` → `vet-exit=0`; code identical to iter5's green set (docs-only diff since ed6227740e) — but 7 P2 correctness/conformance defects present in source: cache stale-probe predicate (C1), mixed-aside text loss (C2), aside-in-td fold (C3), fetch_error→bench PASS (C4), incomplete-response caching (N1), cache-hit notice loss (N2), web pipeline Notice drop (N3). |
+| Security | 25% | 93 | PASS | No security-surface finding among the seven (all correctness/telemetry); `git diff --stat ed6227740e..HEAD` shows zero code files — ssrf.go byte-identical to iter3's exhaustively probed state; no dependency change possible in a docs-only delta. |
+| Craft | 20% | 86 | PASS | `vet-exit=0` (above); iter5's measured `coverage: 95.0% of statements` / `golangci-lint → 0 issues.` carry by tree identity (code unchanged) but were NOT re-measured this run — the 7 defects live exactly in the corners the suite does not cover (mixed-aside, td-aside, cache-hit notice, error-status bench). |
+| Consistency | 15% | 90 | PASS | spec.md frontmatter `status: completed` / `updated: 2026-10-27` — legitimate post-audit lifecycle transition (single sync-commit close, ownership-matrix-conformant); the stale iter5 hash binding it created is disposed by this iteration's re-bind; docs-only drift otherwise confined to card bookkeeping. |
+
+## iter6 dispositions — the five carried findings (origin receipts rcpt-ef44873aaf70911dc9776577 + rcpt-bed975a069726f26ce763c28)
+
+- **C1 — PRESENT.** `internal/jev/cache.go:209`: predicate `json.Unmarshal(raw, &e) != nil || e.BodySHA != sha || e.Model == resolvedModel || e.Model == ""` — model-id difference only; no restriction to entries the alias has actually moved past (B5's "prior model" condition), so an explicit-override-authored entry for a newer model is accepted as the stale probe's pick. Confirmed by source read this run + receipt rcpt-ef44873aaf70911dc9776577 + the gpt-6 probe review (`.moai/reports/t1968/delta-cache-probe-review.md`, simulated `selected=jev-1.15.0`). Not re-found by this codex pass (noted in Gaps).
+- **C2 — PRESENT (codex re-found, reproduced).** `internal/fetchweb/blocks.go:184`: fallback guard `if len(*s.blocks) == before` is all-or-nothing — `<aside>Before<p>Middle</p>After</aside>` keeps only `Middle`; bare text runs are invisible to the walk (non-element nodes return early).
+- **C3 — PRESENT (codex re-found, reproduced).** `internal/fetchweb/blocks.go:217-219` + `rowCells`/`cellSkip` (`cellSkip = map[string]bool{"pre": true}` — aside absent): `tr` never descends, so a td's aside never reaches the aside case; its text is folded into the joined row text (`Text:Cell ImportantWarning Aside:false`), never separately scored.
+- **C4 — PRESENT (codex re-found, reproduced).** `internal/jevmeasure/bench.go:209`: the diff switch has `!hasRun` / `!ok` guards but no run-status guard — `case cc.Contained == b.Contained: d.Pass = true` scores a fetch_error run PASS against a Contained=false baseline; the savings formula `cc.SavingsRate = 1 - float64(run.OutputTokens)/float64(snapTokens)` (bench.go:120) then yields 1.0 for a zero-token error run (bogus 100% savings).
+- **C5 (spec-dir drift) — PRESENT, DISPOSED BY THIS AUDIT.** spec.md `status: completed` (legitimate lifecycle transition post-audit) + SPEC progress.md run/sync evidence (+4 lines) — the iter5 `audited_sha` binding no longer described the dir. This iteration re-binds the verdict to `b62aadf26e7355153387b6672b0669467c84e974`; prior iteration prose intact.
+
+## iter6 NEW findings (this pass's codex P2s, each structurally confirmed by my source read before folding)
+
+- **N1** [P2] [blocking] `internal/jev/jev.go:655` — an OK response with a valid model id is cached (`_ = c.cacheStore(entry)`) with no answer-completeness validation (`res.Answers = fromWire(req.Questions, answers, model)` stored as-is); an empty/partial-answer response (transient endpoint fault) is persisted and every later identical request hits it — the transient error persists with `from_cache=true`. fetchweb's F2 guard turns it into fetch_error, but the cache never recovers. Required fix: validate every requested question id is answered (answer/type/probability) before `cacheStore`; do not admit incomplete entries as hits.
+- **N2** [P2] [blocking] `internal/jev/cache.go:236` (`serveCacheHit`) — the Result shaped from a cache entry carries only `StaleCacheWarning`; `res.Notice = c.changeNotice(model)` exists solely on the network path (jev.go:636), so the answered-model ≠ `VerifiedInterpretedModel` notice is never surfaced on a cache hit — existing `jev_ask` consumers get no warning. Required fix: apply the changeNotice/VerifiedInterpretedModel comparison to cache-served results too.
+- **N3** [P2] [blocking] `internal/fetchweb/scoring.go:231` (and `:279`) — both stages collect only `res.StaleCacheWarning` into the sink; `res.Notice` is dropped, so the CLI/MCP never report the model-change fact on the fetch-web path. Required fix: collect `res.Notice` in both stages and forward it as a result warning.
+
+## iter6 Cross-model convergence (audit_multi, target=baseBranch, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **fail**
+- `gate_unmet`: (empty — codex answered)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=fail` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-6df24be9375d1f004fccf0f3`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `required-backend FAIL: codex`
+
+**This verdict is not final until the orchestrator's convergence check passes.**
+
+## iter6 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the tree state matches the dispatch's five-finding description, plus three new codex P2s.** Evidence: the five dispositions above (source reads at cache.go:194-218 / blocks.go:144-234, 376-392, 472-477 / bench.go:86-130, 180-223; spec.md frontmatter lines 1-16) + codex reproductions quoted in its summary + the docs-only diffstat proving no code changed since iter5. Baseline: this run, this tree @b62aadf26e7355153387b6672b0669467c84e974.
+
+**Gaps (explicitly NOT observed):**
+- No fresh behavioral probes and no test run this round (state-proof; iter5's green observations carry by byte-identical code, as prior observations — not re-observed here).
+- Coverage / golangci-lint not re-measured (vet only, exit 0).
+- C1 not re-found by this codex pass — presence rests on my source read + receipt rcpt-ef44873aaf70911dc9776577 + the gpt-6 probe review (which itself could not run Go: sandbox `mkdir /tmp/go-build...: operation not permitted`).
+- One worktree-guard refusal this audit: `moai verify audit-plan --project-root "$(git rev-parse --show-toplevel)"` was refused as too-complex-to-verify; re-run in plain literal-path form and succeeded (output quoted at section head).
+- `moai` binary provenance: server build `b1806498fe` (convergence `build_commit`) is not an ancestor of this tree's HEAD — unchanged from iter3-5.
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- `required-backend FAIL: codex` (convergence residual, verbatim).
+- D1-D6 ledger (`.moai/reports/t1968/progress.md` §5) carried unchanged as context; D1 (aside-fallback path provenance) remains optional debt.
+- Untested territory unchanged (CDATA-era HTML, framesets, proxy-required egress).
+- The T7/kickoff structural limit (a backward-walking card cannot satisfy the pre-run hash check) remains a leader-held landing decision, per progress.md §6.
+
+## Iteration history (cont.)
+
+- iter6 (this audit): state-proof FAIL 0.84 — five carried findings all present (C1-C4 code, C5 drift disposed by re-bind), three NEW P2s from the fresh codex pass (N1-N3, warning/caching family). Repair scope for the iter7 delta: C1-C4 + N1-N3 (7 code defects); C5 needs no repair.
+
+AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-6df24be9375d1f004fccf0f3
