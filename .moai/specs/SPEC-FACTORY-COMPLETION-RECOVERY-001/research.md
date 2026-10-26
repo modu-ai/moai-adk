@@ -80,5 +80,5 @@ acceptance.md §0.1 증거 장부 L1·L7이 정본이다. L7(트리 `41f8db15de`
 
 - 운영자 화면의 run 5개·카드 수(129·33·3·33·12)는 분석의 인용일 뿐, 재측정하지 않았다.
 - 설치된 rc 바이너리와 HEAD의 차이는 보지 않았다(이 카드는 바이너리를 건드리지 않는다).
-- `ProbeProcessIdentity`가 pid 1에 대해 `Live`와 `Indeterminate` 중 무엇을 내는지 직접 관측하지 않았다 — 어느 쪽이든 REQ-FCR-022에서 "산 worker"이므로 결론은 같다.
+- `ProbeProcessIdentity`가 pid 1에 대해 `Live`와 `Indeterminate` 중 무엇을 내는지 직접 관측하지 않았다 — Unix 계열 한정으로, 어느 쪽이든 REQ-FCR-022에서 "산 worker"이므로 결론은 같다. Windows는 §2.1 정정 참조(pid 1이 dead로 읽힐 수 있다).
 - 큐(backlog) 저장소 쪽 배차 기록의 정확한 갱신 경로는 M1 코드로 확인하지 않았다(round-25 기록을 근거로 한 서술).

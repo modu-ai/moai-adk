@@ -35,7 +35,7 @@ flowchart TD
 ```
 
 - 미확정·피어 판정 후보는 채택 후보에서 빠지고 기존 경고 줄을 받는다. 미확정 활성 run이 **하나라도 있으면** 채택 자체를 하지 않는다 — 배치 탐침 누락 시 산 리더가 미확정으로 분류되므로(`internal/homestate/factory_run_retire.go:251-256`, REQ-003b), 그 옆에서 채택·통합하면 산 리더의 카드를 옮길 수 있다.
-- codex 리더 run·산 레거시 피어 run 거부(`internal/cli/factory_run_adopt.go:87-93`·`:100-105`)는 채택 대상에 적용되고, 같은 두 조건은 통합 원천에서도 제외 사유다. 최신 후보가 이 거부에 걸리면 **채택 0** — 더 오래된 후보로 넘어가지 않는다(어느 run을 이어받을지가 실행마다 달라지는 것을 막는다).
+- codex 리더 run·산 레거시 피어 run 거부(`internal/cli/factory_run_adopt.go:87-93`·`:100-105`)는 채택 대상에 적용되고, 같은 두 조건은 통합 원천에서도 제외 사유다. 최신 후보가 이 거부에 걸리면 **채택 0** — 더 오래된 후보로 넘어가지 않는다(어느 run을 이어받을지가 실행마다 달라지는 것을 막는다). `BasisPeer`·`BasisBoot`로만 dead인 run은 죽은 스탬프 run이 아니므로 통합 원천이 아니며, 제외 사유와 함께 stderr 한 줄을 받는다(AC-FCR-018 (viii)).
 - CAS 패배는 현행 코드에서 런치 실패다(`internal/cli/factory_run_adopt.go:106-108` → `internal/cli/cc.go:227-229`·`internal/cli/glm.go:283-285`). REQ-FCR-018은 이를 "오류 없이 새 id 발급 + 경고 한 줄 + 통합 0"으로 바꾼다 — 패배를 오류와 구별하는 판별(스탬프 불일치에 의한 거부인지)은 run-phase가 정한다.
 - 기존 `FindResumableRun`의 "후보 정확히 하나" 계약과 그 시험은 그대로 두고, 최신 선택은 새 선택 단계가 맡는 것을 권장한다 — `TestFindResumableRun*`을 바꾸지 않기 위해서다. 반전되는 시험은 `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates` 하나다.
 - `strictResumeCarrierSeen`은 이제 채택 게이트가 아니다. 다른 호출자가 없어지면 미사용 경고가 나므로, 제거할지 남길지(예: 경고 문구 분기)는 run-phase가 lint 결과로 정한다.
