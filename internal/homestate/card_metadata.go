@@ -361,6 +361,27 @@ func ResolveRebindEvidence(ctx context.Context, card Card, phase string) (string
 	return full, nil
 }
 
+// ResolveLandedEvidence is the squash-landing counterpart of
+// ResolveRebindEvidence (card t1962): a PR that landed as a squash commit
+// leaves its audited PR head outside the worktree HEAD's ancestry, so the
+// evidence is the landing commit the operator recorded (`todo landed --sha`),
+// accepted only when it resolves in dir and is reachable from landedRef.
+// Returns the commit's FULL object name.
+func ResolveLandedEvidence(ctx context.Context, dir, landedSHA, landedRef string) (string, error) {
+	landedRef = strings.TrimSpace(landedRef)
+	if landedRef == "" || strings.HasPrefix(landedRef, "-") {
+		return "", evidenceErr("landed ref %q is not usable", landedRef)
+	}
+	full, err := resolveCommit(ctx, dir, landedSHA)
+	if err != nil {
+		return "", err
+	}
+	if !isAncestor(ctx, dir, full, landedRef) {
+		return "", evidenceErr("commit %s is not reachable from %s", full, landedRef)
+	}
+	return full, nil
+}
+
 // readNewestVerdict locates the newest `<phase>*.md` verdict file and applies
 // the E-VERDICT single-value line rules (verdictLinePattern /
 // auditedSHAPattern in card_evidence_readers.go) WITHOUT the recorded-commit

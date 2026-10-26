@@ -36,6 +36,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -83,6 +84,37 @@ func newFactoryRebindEvidenceCommand() *cobra.Command {
 		"why the evidence is being re-bound (required, 1-500 runes; recorded verbatim in the audit row)")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// resolveRecordedLanding reads the card's operator-recorded landing commit
+// (`moai todo landed --sha`) and verifies it against the landed ref in the
+// card worktree, or the project root once that worktree is gone. An empty
+// commit means the fallback did not apply; note is then the suffix for the
+// verdict refusal — empty when the card carries no landing record, so an
+// unlanded card keeps the verdict's own refusal.
+func resolveRecordedLanding(ctx context.Context, root string, card homestate.Card) (full, note string) {
+	rec, err := newTodoStore().LoadPure()
+	if err != nil {
+		return "", fmt.Sprintf("; landing record unreadable: %v", err)
+	}
+	var sha string
+	for i := range rec.Items {
+		if rec.Items[i].ID == card.CardID && rec.Items[i].Landing != nil {
+			sha = strings.TrimSpace(rec.Items[i].Landing.SHA)
+		}
+	}
+	if sha == "" {
+		return "", ""
+	}
+	dir := card.WorktreePath
+	if st, serr := os.Stat(dir); serr != nil || !st.IsDir() {
+		dir = root
+	}
+	full, err = homestate.ResolveLandedEvidence(ctx, dir, sha, factory.LandedRefFor(root))
+	if err != nil {
+		return "", fmt.Sprintf("; recorded landing commit refused: %v", err)
+	}
+	return full, ""
 }
 
 func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) error {
@@ -135,8 +167,16 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	// that does not resolve as an ancestor of the worktree HEAD, refuses
 	// without writing anything.
 	full, err := homestate.ResolveRebindEvidence(ctx, card, phase)
+	source := phase + " verdict's audited commit"
 	if err != nil {
-		return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w", cardID, phase, err)
+		// A PR that landed as a squash commit leaves the audited PR head
+		// outside the worktree's ancestry (card t1962); the operator's
+		// landing record names the commit that did land.
+		landed, note := resolveRecordedLanding(ctx, root, card)
+		if landed == "" {
+			return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w%s", cardID, phase, err, note)
+		}
+		full, source = landed, "recorded landing commit"
 	}
 	actor, session := metadataActor()
 	now := factoryCardNow()
@@ -185,8 +225,8 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 			CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
 			Field: metadataFieldEvidenceSHA, Old: old, New: full, Reason: reason,
 		}, now); err == nil {
-			_, _ = fmt.Fprintf(out, "%s evidence_sha %s (was %s) — rebound to the newest %s verdict's audited commit\n",
-				cardID, shortSHA(full), dash(shortSHA(old)), phase)
+			_, _ = fmt.Fprintf(out, "%s evidence_sha %s (was %s) — rebound to the newest %s\n",
+				cardID, shortSHA(full), dash(shortSHA(old)), source)
 			return nil
 		}
 	}
