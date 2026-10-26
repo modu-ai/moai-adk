@@ -326,3 +326,124 @@ func TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon(t *testing.T) {
 		})
 	}
 }
+
+// TestRed_T1973d_NeedsDecisionQuestionStranded — round 5: a needs-decision
+// row entering via T21 carries decision_question — an UNRESOLVED operator
+// decision — even when stage/worktree/spec_id/evidence are all empty. The
+// round-4 gate does not compare decision fields, so the pending question is
+// stranded and the target can be leased without the operator's answer.
+func TestRed_T1973d_NeedsDecisionQuestionStranded(t *testing.T) {
+	db := openSandboxFactory(t)
+	opts := rbOpts()
+	rbRun(t, db, "run-old", rbPIDDead)
+	rbRun(t, db, "run-new", rbPIDLive)
+	rbCard(t, db, "run-old", "c1", CardNeedsDecision)
+	rbBind(t, db, "c1", "run-old")
+	// The pending operator question — and nothing else on the row.
+	if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='', decision_gate='question', decision_question='merge #1906 now or hold?', decision_resume='kickoff:...' WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	rbCard(t, db, "run-new", "c1", CardPicked)
+	if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='' WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	before := rbDump(t, db)
+	_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+	rbRefusedWith(t, err, "c1", "run-new")
+	if after := rbDump(t, db); after != before {
+		t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+	if loadErr != nil || c.DecisionQuestion != "merge #1906 now or hold?" {
+		t.Fatalf("run-old c1 = (%+v, %v), want the pending question preserved", c, loadErr)
+	}
+}
+
+// TestT1973_R5_StateTransitionMatrix — the full both-empty transition matrix
+// (round 5, leader ask): source shapes × target shapes, eight cells.
+//
+//	| source shape                        | bare target | identical target |
+//	|-------------------------------------|-------------|------------------|
+//	| picked bare stub                    | abandon     | abandon          |
+//	| assigned bare stub                  | abandon     | abandon          |
+//	| needs-decision w/ pending question  | REFUSE      | abandon          |
+//	| expired→assigned (stage+worktree)   | REFUSE      | abandon          |
+//
+// bare-stub sources with a bare target → abandon (the t1963 path); any
+// stranded progress/decision field over a bare target → refuse; identical-
+// hold pairs → abandon (the dedup). (An identical-hold target of a bare stub
+// is itself bare, so the first two rows collapse in practice but stay pinned
+// per the table.)
+func TestT1973_R5_StateTransitionMatrix(t *testing.T) {
+	const (
+		qGate    = "question"
+		qText    = "merge #1906 now or hold?"
+		qResume  = "kickoff:..."
+		expStage = "run"
+		expWT    = "/wt/c1"
+	)
+	type shape struct {
+		name  string
+		state string
+		set   string // SET fragment applied to the SOURCE row (beyond state)
+	}
+	sources := []shape{
+		{"picked bare stub", CardPicked, ""},
+		{"assigned bare stub", CardAssigned, ""},
+		{"needs-decision w/ pending question", CardNeedsDecision, `decision_gate='` + qGate + `', decision_question='` + qText + `', decision_resume='` + qResume + `'`},
+		{"expired-to-assigned keeping stage/worktree", CardAssigned, `stage='` + expStage + `', worktree_path='` + expWT + `'`},
+	}
+	for _, src := range sources {
+		for _, identical := range []bool{false, true} {
+			target := "bare picked target"
+			if identical {
+				target = "target identically holding the source's info"
+			}
+			t.Run(src.name+" over "+target, func(t *testing.T) {
+				db := openSandboxFactory(t)
+				opts := rbOpts()
+				rbRun(t, db, "run-old", rbPIDDead)
+				rbRun(t, db, "run-new", rbPIDLive)
+				rbCard(t, db, "run-old", "c1", src.state)
+				rbBind(t, db, "c1", "run-old")
+				rbCard(t, db, "run-new", "c1", CardPicked)
+				// Evidence is empty on both sides in every cell (the
+				// both-empty shape this matrix pins); stage blanked on both.
+				if _, err := db.DB.Exec(`UPDATE cards SET stage='', evidence_sha='' WHERE card_id='c1'`); err != nil {
+					t.Fatal(err)
+				}
+				// Apply the source shape's info...
+				if src.set != "" {
+					if _, err := db.DB.Exec(`UPDATE cards SET ` + src.set + ` WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+						t.Fatal(err)
+					}
+				}
+				// ...and mirror it onto the target when the cell says identical.
+				if identical && src.set != "" {
+					if _, err := db.DB.Exec(`UPDATE cards SET ` + src.set + ` WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+						t.Fatal(err)
+					}
+				}
+				wantRefuse := src.set != "" && !identical
+				res, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+				if wantRefuse {
+					rbRefusedWith(t, err, "c1", "run-new")
+					old, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+					if loadErr != nil || old.State != src.state {
+						t.Fatalf("run-old c1 = (%+v, %v), want the source row untouched in %s", old, loadErr, src.state)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("the dedup refused: %v", err)
+				}
+				if len(res.Abandoned) != 1 || res.Abandoned[0] != "c1" {
+					t.Fatalf("res = %+v, want c1 abandoned with a pointer", res)
+				}
+				if got := runStatus(t, db, "run-old"); got != "retired" {
+					t.Fatalf("run-old status = %s, want retired", got)
+				}
+			})
+		}
+	}
+}
