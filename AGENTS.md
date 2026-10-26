@@ -137,7 +137,7 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **An unpushed card branch has its only copy in the worktree.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a new session (`codex -C <path>`) is the fallback only after a refused move, recorded in the progress record. A factory lease's tree is created and registered by `moai factory next`; otherwise use `moai worktree new`. Codex's native `create_worktree` (0.162+) is not used for card trees — `WT-` naming and evidence hoisting apply unchanged. Never reuse the previous card's tree.
+**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a new session (`codex -C <path>`) is the fallback only after a refused move, recorded in the progress record. A factory lease's tree is created and registered by `moai factory next`; otherwise use `moai worktree new`. Codex's native `create_worktree` (0.162+) is not used for card trees — `WT-` naming and evidence hoisting apply unchanged. A fresh tree cuts from the configured base (`worktree_base_branch`; empty or unresolvable falls back to the invoking tree's HEAD — the wrong-base incident class); never reuse the previous card's tree.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
