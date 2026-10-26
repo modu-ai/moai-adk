@@ -1,7 +1,7 @@
 ---
 id: SPEC-FETCH-WEB-001
 title: "moai fetch web — Go port of the jevfetch pipeline (verbatim web excerpt via two-stage Jev scoring)"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -23,6 +23,7 @@ depends_on: [SPEC-JEV-CORE-001]
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-26 | manager-spec | Initial plan-phase authoring. Card t1968. Authoritative design source: leader analysis `.moai/reports/leader-plan-20261023/jevfetch-analysis-20261026.md` (upstream `github.com/a2sys-ai/jevfetch`, MIT, Python 3.12). Scope = that analysis's applications 1-4 verbatim, including its not-porting list and recorded Gaps. Naming fixed by operator directive 2026-10-26: `moai fetch web` / `fetch_web` / `moai-fetch-web` / `Bash(moai fetch web:*)` (avoids the existing `moai web` verb). |
 | 0.2.0 | 2026-10-26 | manager-spec | Plan revision per plan-audit iter1 FAIL 0.80 (report `.moai/reports/t1968/plan-audit.md`; all premises re-verified against source before rewrite). D1: no_match decision order pinned in REQ-FW-006 + AC-FW-004. D2: REQ-FW-015 / AC-FW-013 scoped to this SPEC's own shipped artifacts. D3: REQ-FW-012 composed with REQ-JEVC-008; AC-FW-010 negative cases added. D4: RED basis for AC-FW-010/011 re-based on behavior probes (ledger R8-R10); R1/R6 stderr relabel. D5: B1 exit-2 carve-out vs REQ-JEVC-007 recorded. D6: cache-key mechanism pinned in B5/M5. D7: t1762 boundary rewritten to real paths (`internal/jevledger`; `internal/jev` conflict premise retired as stale). D8: tokenizer-dependency AC guard folded into AC-FW-014. D9: plan milestones converted to headings. B1/B5/B6 lane-adjudicated and resolved. REQ/AC numbering unchanged (16 REQ / 14 AC, Tier M ceilings respected). |
+| 0.2.1 | 2026-10-26 | manager-spec | Delta repair per plan-audit iter2 FAIL 0.82 (report `## iter2`). N1: AC-FW-002's first-block limb scoped to "whenever at least one stage-1 candidate exists" (REQ-FW-006 decision order). N2: B5 stale-selection policy pinned (miss under the resolved id probes the prior-model entry, serve with warning — keep-and-warn); AC-FW-011 method re-staged against that policy. N3: REQ-FW-003 empty-first clause (`empty` precedes passthrough). N4: stale "without a RED cell" list trimmed of AC-FW-010/011 (they cite R8-R10). REQ/AC numbering unchanged; no measured code path touched (RED ledger rows R1-R10 stay valid at pin `4f0e58197d`). |
 
 > Upstream provenance: the pipeline semantics (block kinds, thresholds, statuses, exit codes) are a behavioral port of jevfetch (`jev.py`, `scoring.py`, `pipeline.py`, `blocks.py`). No Python source or dependency enters this repository; the port is Go-only against the existing `internal/jev` client.
 
@@ -51,7 +52,7 @@ Four applications, exactly as scoped by the leader analysis:
 
 - **REQ-FW-001** (Ubiquitous): The block splitter shall split a fetched HTML page into blocks of exactly these kinds — paragraphs, list items, table rows, and code blocks — with each block carrying its heading path (the sequence of ancestor headings), page chrome (navigation, footers, scripts, styles, templates, and similar non-content furniture) removed before splitting, and `<aside>` note content emitted as blocks that are scored separately from the main flow.
 - **REQ-FW-002** (Ubiquitous): The pipeline shall count tokens with the approximate estimator already shipped in `internal/jev` (`EstimateTokens`), shall add no tokenizer dependency of any kind, and every threshold comparison that depends on the count shall be documented at its use site as approximate (the upstream reference counts with tiktoken cl100k; the Go estimator is deliberately conservative and the two may diverge).
-- **REQ-FW-003** (State-driven): **While** a document's total token count after splitting is 2,000 or fewer, the pipeline shall pass the whole document through unfiltered, report status `passthrough`, and make no scoring request at all.
+- **REQ-FW-003** (State-driven): **While** a document's total token count after splitting is 2,000 or fewer, the pipeline shall pass the whole document through unfiltered, report status `passthrough`, and make no scoring request at all — with the `empty` status decision (a page that splits to zero blocks) preceding passthrough, so this guarantee applies only to non-empty documents.
 
 ### §C.2 Two-stage Jev scoring and selection
 
