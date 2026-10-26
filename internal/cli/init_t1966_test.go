@@ -12,6 +12,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
+
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
@@ -241,12 +243,15 @@ func TestClearProjectUserName_NoNameKeyStaysByteIdentical(t *testing.T) {
 func TestClearProjectUserName_DuplicateKeyStillClearsName(t *testing.T) {
 	path := clearUserNameFixture(t, "user:\n  name: \"Alice\"\n  name: \"Alice\"\n")
 	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
-	if err := clearProjectUserName(root); err != nil {
-		t.Fatalf("duplicate-key user.yaml: unexpected error %v", err)
+	const content = "user:\n  name: \"Alice\"\n  name: \"Alice\"\n"
+	err := clearProjectUserName(root)
+	// Write-then-verify (iteration 9): a duplicate-key file cannot be decoded
+	// to prove equivalence, so the clear is refused and the file kept as is.
+	if err == nil || !strings.Contains(err.Error(), refuseText) {
+		t.Errorf("duplicate-key user.yaml: err = %v, want the refusal", err)
 	}
-	// Iteration-2 behavior: the patch blanks the first (effective) name row.
-	if got, _ := os.ReadFile(path); !strings.HasPrefix(string(got), "user:\n  name: \"\"\n") {
-		t.Errorf("duplicate-key user.yaml was not patched (name row not blanked):\n%s", got)
+	if got, _ := os.ReadFile(path); string(got) != content {
+		t.Errorf("duplicate-key user.yaml was modified:\n%s", got)
 	}
 }
 
@@ -329,7 +334,7 @@ func TestClearProjectUserName_MergeKeyInsideUserStillClears(t *testing.T) {
 //	clearBroken like clear, but the loader cannot read the file before or after
 //	            (duplicate keys, carried debt N6): only structure is compared
 //	patchError  yamlpatch reports an error, bytes unchanged
-const refuseText = "uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, or several documents); edit user.name by hand"
+const refuseText = "uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, explicit tags, non-string keys, document markers, or several documents); edit user.name by hand"
 
 type matrixRow struct {
 	id, content, want string
@@ -502,16 +507,18 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		{"C16", "user:\n  name: 123\n  github_username: keep\n", "clear"},
 		{"C17", "user:\n  name: true\n  github_username: keep\n", "clear"},
 		{"C18", "user: {name: Alice, github_username: Alice}\n", "clear"},
-		{"C19", "user: {nameAlice: , name: Alice}\n", "clear"},
+		// C19: the re-encode turns the flow null sibling into '' (audit N10/F15);
+		// the equivalence check now refuses it (was CLEAR with a pinned change).
+		{"C19", "user: {nameAlice: , name: Alice}\n", "refuse"},
 		{"D01", "\"user\":\n  name: Alice\n  github_username: keep\n", "clear"},
 		{"D02", "user:\n  \"name\": Alice\n  github_username: keep\n", "clear"},
 		{"D03", "!!str user:\n  name: Alice\n  github_username: keep\n", "clear"},
 		{"D04", "? user\n:\n  name: Alice\n  github_username: keep\n", "clear"},
 		{"D05", "user:\n  \"n\\u0061me\": Alice\n  github_username: keep\n", "clear"},
-		{"E01", "user:\n  name: Alice\nuser:\n  name: Bob\n", "clearBroken"},
-		{"E02", "user:\n  name: Alice\n  name: Bob\n", "clearBroken"},
+		{"E01", "user:\n  name: Alice\nuser:\n  name: Bob\n", "refuse"},
+		{"E02", "user:\n  name: Alice\n  name: Bob\n", "refuse"},
 		{"E03", "x: 1\nx: 2\n", "refuse"},
-		{"E04", "x: 1\nx: 2\nuser:\n  name: Alice\n", "clearBroken"},
+		{"E04", "x: 1\nx: 2\nuser:\n  name: Alice\n", "refuse"},
 		{"E05", "user:\r\n  name: Alice\r\n  github_username: keep\r\n", "clear"},
 		{"E06", "\xef\xbb\xbfuser:\n  name: Alice\n  github_username: keep\n", "clear"},
 		{"E07", "user:\n  name: Alice\n  github_username: keep\n---\nuser:\n  name: Bob\n", "refuse"},
@@ -563,7 +570,7 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		{"N27", "b: &b {name: Bob}\nuser:\n  <<: *b\n  gh: &g keep\nref: *g\n", "clear"},
 		{"N28", "%YAML 1.1\n---\nuser:\n  name: Alice\n  github_username: keep\n", "clear"},
 		{"N29", "user:\n  name: Alice\n---\n# trailing comment\n", "refuse"},
-		{"N30", "user:\n  <<: {name: Bob}\n  <<: {gh: keep}\n", "clearBroken"},
+		{"N30", "user:\n  <<: {name: Bob}\n  <<: {gh: keep}\n", "refuse"},
 		{"N31", "user: !!map &u\n  name: Alice\n", "refuse"},
 		{"N32", "user:\n  name: !!null Alice\n", "refuse"},
 		{"N33", "!!str user: !!map\n  name: Alice\n", "refuse"},
@@ -581,9 +588,21 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		{"X07", "user:\n  name: Alice\n  # trailing note inside user\nother: 1\n", "clear"},
 		{"X08", "user:\n  name: Alice\n# eof note", "clear"},
 	}
-	// C19: the re-encode of a flow mapping writes the null sibling as ''; pinned
-	// as observed (audit N10/N11: null and "" are different values).
-	pinAfter["C19"] = map[string]any{"nameAlice": ""}
+	// Iteration-9 rows (inputs copied from the auditor's probe files).
+	rows = append(rows,
+		matrixRow{"Y01", "user: {nameAlice: , name: Alice}\nother: {null_value: }\n", "refuse"},
+		matrixRow{"Y02", "user:\n  name: Alice\nother: {null_value: }\n", "clear"},
+		matrixRow{"Y03", "user:\n  name: |\n    Alice\nother: {null_value: }\n", "refuse"},
+		matrixRow{"Y04", "user:\n  name: |\n    Alice\nother:\n  null_value:\n", "clear"},
+		matrixRow{"Y05", "user: {name: \"\\x41lice\", github_username: keep}\u0085... # gone\n# after\n", "refuse"},
+		matrixRow{"Y06", "user: {name: \"\\x41lice\", github_username: keep}\n... # gone\n# after\n", "refuse"},
+		matrixRow{"Y07", "user:\n  name: Alice\u0085... # c\n", "refuse"},
+		matrixRow{"Y08", "user: {name: \"\\x41lice\", github_username: keep}\u2028... # gone\n# after\n", "refuse"},
+	)
+	// F14: whole-file bytes for the plain-name rows that go through the
+	// in-place edit, so dropping Quoted:true (re-encode) is caught.
+	exactAfter["A01"] = "user:\n  name: \"\"\n  github_username: keep\n"
+	exactAfter["N13"] = "# head\n\n# second\nuser:\n\n  # about name\n  name: \"\"\n\n  github_username: keep # gh\n\n# foot\n"
 
 	// P rows: the files the product itself produces must stay inside the
 	// allow-list (CLEAR, effect oracle holding).
@@ -599,6 +618,7 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 	// other byte, the template's comment lines included, survives.
 	exactAfter["P01"] = strings.Replace(p01, `name: "Alice"`, `name: ""`, 1)
 	exactAfter["X04"] = exactAfter["P01"]
+	exactAfter["X05"] = strings.Replace(strings.Replace(p01, `"Alice"`, "Alice", 1), "name: Alice", `name: ""`, 1)
 	rows = append(rows,
 		matrixRow{"X04", p01, "clear"},
 		matrixRow{"X05", strings.Replace(p01, `"Alice"`, "Alice", 1), "clear"},
@@ -642,6 +662,108 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 				if string(after) == row.content || yamlDocCount(t, after) != yamlDocCount(t, []byte(row.content)) {
 					t.Errorf("clearBroken row: file unchanged or document count changed\n%s", after)
 				}
+			}
+		})
+	}
+}
+
+// The runtime verification refuses a patch whose result is not equivalent to
+// the original (here: Y03, the block-scalar name forces a re-encode that turns
+// a flow null into ”), leaves the original byte-identical and removes its
+// temporary copy.
+func TestClearProjectUserName_VerificationRefusalLeavesNoTempFile(t *testing.T) {
+	const content = "user:\n  name: |\n    Alice\nother: {null_value: }\n"
+	path := clearUserNameFixture(t, content)
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	err := clearProjectUserName(root)
+	if err == nil || !strings.Contains(err.Error(), refuseText) {
+		t.Errorf("err = %v, want the refusal", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != content {
+		t.Errorf("original modified:\n%s", got)
+	}
+	entries, _ := os.ReadDir(filepath.Dir(path))
+	if len(entries) != 1 || entries[0].Name() != "user.yaml" {
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("directory listing = %v, want only user.yaml", names)
+	}
+}
+
+// The equivalence check itself, case by case (the re-encoder happens to keep
+// comments, so only a direct unit test can pin each clause).
+func TestClearIsEquivalent(t *testing.T) {
+	const before = "# head\nuser:\n  name: Alice # who\n  gh: keep\nother: 1\n"
+	cases := []struct {
+		name, after string
+		want        bool
+	}{
+		{"only name blanked", "# head\nuser:\n  name: \"\" # who\n  gh: keep\nother: 1\n", true},
+		{"name null, not empty string", "# head\nuser:\n  name: # who\n  gh: keep\nother: 1\n", false},
+		{"name kept", before, false},
+		{"sibling changed", "# head\nuser:\n  name: \"\" # who\n  gh: lost\nother: 1\n", false},
+		{"top-level value changed", "# head\nuser:\n  name: \"\" # who\n  gh: keep\nother: 2\n", false},
+		{"comment lost", "user:\n  name: \"\"\n  gh: keep\nother: 1\n", false},
+		{"second document appended", "# head\nuser:\n  name: \"\" # who\n  gh: keep\nother: 1\n---\nx: 1\n", false},
+		{"undecodable", "user: [\n", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := clearIsEquivalent([]byte(before), []byte(c.after)); got != c.want {
+				t.Errorf("clearIsEquivalent = %v, want %v", got, c.want)
+			}
+		})
+	}
+	const two = "user:\n  name: Alice\n---\nx: 1\n"
+	if clearIsEquivalent([]byte(two), []byte("user:\n  name: \"\"\n")) {
+		t.Error("a dropped second document must not be equivalent")
+	}
+}
+
+// R01-R03 (audit N13): after clearing a user that only inherits its name
+// through a merge key, the name is set again and cleared a second time. Pinned
+// behavior: the second clear succeeds (the re-encoder's explicit `!!merge <<`
+// spelling is accepted inside user) and the loader reads "" again.
+func TestClearProjectUserName_RoundTrip(t *testing.T) {
+	rows := []struct{ id, content string }{
+		{"R01", "user:\n  <<: {name: Alice, github_username: keep}\n"},
+		{"R02", "base: &base\n  name: Alice\n  github_username: keep\nuser:\n  <<: *base\n"},
+		{"R03", "user:\n  <<: {github_username: keep}\n  name: |\n    Alice\n"},
+	}
+	for _, r := range rows {
+		t.Run(r.id, func(t *testing.T) {
+			path := clearUserNameFixture(t, r.content)
+			root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+			err1 := clearProjectUserName(root)
+			// R03's block-scalar name forces a re-encode; whatever the first
+			// clear decided, the pinned property is that a refusal never
+			// alters the file and a success blanks the name.
+			after1, _ := os.ReadFile(path)
+			if err1 != nil {
+				if string(after1) != r.content {
+					t.Fatalf("refused clear altered the file:\n%s", after1)
+				}
+				return
+			}
+			if n, ok := loaderName(after1); !ok || n != "" {
+				t.Fatalf("first clear: loader name %q ok=%v\n%s", n, ok, after1)
+			}
+			if err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: "Bob"}}); err != nil {
+				t.Fatalf("set name: %v", err)
+			}
+			set, _ := os.ReadFile(path)
+			err2 := clearProjectUserName(root)
+			after2, _ := os.ReadFile(path)
+			if err2 != nil {
+				if string(after2) != string(set) {
+					t.Fatalf("refused second clear altered the file:\n%s", after2)
+				}
+				t.Fatalf("second clear refused (pinned: must succeed): %v\n%s", err2, set)
+			}
+			if n, ok := loaderName(after2); !ok || n != "" {
+				t.Errorf("second clear: loader name %q ok=%v\n%s", n, ok, after2)
 			}
 		})
 	}

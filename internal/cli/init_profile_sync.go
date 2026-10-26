@@ -10,7 +10,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -47,6 +50,13 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 	return nil
 }
 
+// clearRefusal is the refusal for a user.yaml the clear cannot edit provably
+// safely: the allow-list rejected its structure, or the patched copy failed the
+// equivalence check.
+func clearRefusal(userPath string) error {
+	return fmt.Errorf("clear user name: %s uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, explicit tags, non-string keys, document markers, or several documents); edit user.name by hand", userPath)
+}
+
 var docEndMarker = regexp.MustCompile(`(?m)^\.\.\.(\s|#|$)`)
 
 // userNameEditSafety is the allow-list behind the clear: it reports whether the
@@ -59,7 +69,11 @@ var docEndMarker = regexp.MustCompile(`(?m)^\.\.\.(\s|#|$)`)
 // present, a direct plain scalar. A `<<` merge inside `user` stays allowed: the
 // patch then only adds or blanks the explicit name row (matrix rows B04-B08).
 func userNameEditSafety(data []byte) (parsed, safe bool) {
-	if docEndMarker.Match(data) {
+	// The YAML parser also reads U+0085 / U+2028 / U+2029 as line breaks, so a `...`
+	// after one is a document end the line-start pattern below cannot see, and the
+	// comments after it are invisible to the node-level equivalence check (audit
+	// F16). Such a file is refused outright.
+	if bytes.ContainsAny(data, "\u0085\u2028\u2029") || docEndMarker.Match(data) {
 		// A `...` marker: the re-encode path drops the comments after it.
 		return true, false
 	}
@@ -92,7 +106,9 @@ func userNameEditSafety(data []byte) (parsed, safe bool) {
 			switch k.ShortTag() {
 			case "!!str":
 			case "!!merge":
-				if topLevel || k.Style&yaml.TaggedStyle != 0 {
+				// The plain `<<` key, or the explicit `!!merge <<` spelling the
+				// re-encoder itself writes (round trip, audit N13), inside user.
+				if topLevel || k.Value != "<<" {
 					return false
 				}
 			default:
@@ -156,10 +172,122 @@ func clearProjectUserName(projectRoot string) error {
 	// untouched (card t1966, F8). A file that does not parse has no node tree to
 	// inspect and falls through to the patch as above.
 	if parsed, safe := userNameEditSafety(data); parsed && !safe {
-		return fmt.Errorf("clear user name: %s uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, or several documents); edit user.name by hand", userPath)
+		return clearRefusal(userPath)
 	}
-	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: "", Quoted: true}}); err != nil {
+	return patchUserNameVerified(userPath, data)
+}
+
+// patchUserNameVerified is the runtime safety net behind the allow-list: it
+// patches a temporary copy in the same directory, proves the result equivalent
+// to the original (apart from user.name, which must be exactly ""), and only then
+// renames the copy over the original. On any failure the original is left
+// byte-identical and the temporary copy removed.
+func patchUserNameVerified(userPath string, before []byte) error {
+	info, err := os.Stat(userPath)
+	if err != nil {
+		return fmt.Errorf("clear user name: %w", err)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(userPath), ".user.yaml.clear-*")
+	if err != nil {
+		return fmt.Errorf("clear user name: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+	_, werr := tmp.Write(before)
+	if cerr := tmp.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr != nil {
+		return fmt.Errorf("clear user name: %w", werr)
+	}
+	if err := os.Chmod(tmpPath, info.Mode().Perm()); err != nil {
+		return fmt.Errorf("clear user name: %w", err)
+	}
+	if err := yamlpatch.PatchFile(tmpPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: "", Quoted: true}}); err != nil {
+		return fmt.Errorf("clear user name: %w", err)
+	}
+	after, err := os.ReadFile(tmpPath)
+	if err != nil {
+		return fmt.Errorf("clear user name: %w", err)
+	}
+	if !clearIsEquivalent(before, after) {
+		return clearRefusal(userPath)
+	}
+	if err := os.Rename(tmpPath, userPath); err != nil {
 		return fmt.Errorf("clear user name: %w", err)
 	}
 	return nil
+}
+
+// decodeYAMLStream decodes every document of b into generic values (merge keys
+// resolved by the decoder); ok is false when any document fails to decode.
+func decodeYAMLStream(b []byte) (docs []any, ok bool) {
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	for {
+		var v any
+		err := dec.Decode(&v)
+		if err == io.EOF {
+			return docs, true
+		}
+		if err != nil {
+			return nil, false
+		}
+		docs = append(docs, v)
+	}
+}
+
+// streamComments collects the head, line and foot comments of every node of
+// every document, sorted, so a lost comment (including one after a document
+// end marker) changes the set.
+func streamComments(b []byte) []string {
+	var out []string
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		for _, c := range []string{n.HeadComment, n.LineComment, n.FootComment} {
+			for _, l := range strings.Split(c, "\n") {
+				if l = strings.TrimSpace(l); l != "" {
+					out = append(out, l)
+				}
+			}
+		}
+		for _, c := range n.Content {
+			walk(c)
+		}
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	for {
+		var n yaml.Node
+		if dec.Decode(&n) != nil {
+			break
+		}
+		walk(&n)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// clearIsEquivalent reports whether after differs from before only in user.name,
+// which must decode to the empty string (not null): same decoded values, same
+// number of documents, same comments.
+func clearIsEquivalent(before, after []byte) bool {
+	b, okB := decodeYAMLStream(before)
+	a, okA := decodeYAMLStream(after)
+	if !okB || !okA || len(b) == 0 || len(b) != len(a) {
+		return false
+	}
+	userOf := func(doc any) map[string]any {
+		top, _ := doc.(map[string]any)
+		user, _ := top["user"].(map[string]any)
+		return user
+	}
+	bu, au := userOf(b[0]), userOf(a[0])
+	if bu == nil || au == nil {
+		return false
+	}
+	if name, present := au["name"]; !present || name != "" {
+		return false
+	}
+	delete(bu, "name")
+	delete(au, "name")
+	return reflect.DeepEqual(b, a) && reflect.DeepEqual(streamComments(before), streamComments(after))
 }
