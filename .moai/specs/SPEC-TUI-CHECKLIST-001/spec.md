@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.1.2 plan 델타 2회차 (manager-spec). 2회차 plan 감사(FAIL 0.75, 감사 HEAD `b422a13d53`)의 결함 N1~N13 과 리더 codex_audit 의 P2(= N8)를 고쳤다. REQ·AC 수는 그대로(23·24). 보존 줄 목록을 `internal/cli` 전체(하위 패키지 포함)에 대한 고정 검색 명령의 출력으로 정하고 23행으로 늘렸으며(N1), AC-TCL-024 는 행마다 하위 테스트 하나와 목록 완전성 하위 테스트를 갖는다(N2). 재개 경로를 실제 실행기의 이벤트 순서(검증 단계 `StepError` 가 먼저)에 맞춰 다시 썼다(N3). update 요약이 그려지는 지점을 템플릿 동기화 본문 끝으로 정했다(결정 D-10). 순서 증거에 O4(M0 트리 재실행)와 카드 id 완전성 검사를 더했다(N6·N7). 증거 원장에 L20~L25 를 더했다(측정 HEAD `b422a13d53`).
 - 2026-10-27 — v0.1.3 plan 델타 3회차 (manager-spec, 천장 정책의 자동 델타 1회). 3회차 plan 감사(FAIL 0.80, 감사 HEAD `69358ecba8`)의 `fix_scope` 안 결함 M1~M4 만 고쳤다. REQ·AC 번호와 수는 그대로(23·24). REQ-TCL-015 가 update 의 심각도 줄(두 명령 작성기 모두)을 명시하고, 요약 없이 끝나는 실행에서 항목 밖 수집기 경고를 한 번 쓰게 했다(M1·M3). REQ-TCL-016 이 그 조항을 오류·취소 경로에 잇는다(M3). AC-TCL-016 에 `update` 하위 테스트, AC-TCL-017 에 실패 뒤 항목 밖 `Collect` 변형과 실제 명령 경로의 "이미 최신" (d) 를 넣었다(M1·M2·M3). design.md §3.3.1·§3.4·§4 를 실제 코드 순서와 실제 명령 경로에 맞추고 update 줄 예산을 다시 셌다(M2·M4). 범위 밖 결함 M5~M9 와 잔여 문구는 progress.md §E.1 의 미해결 부채로 남겼다.
 - 2026-10-27 — v0.2.0 범위 축소 (manager-spec, 천장 뒤 분할 — 리더 결정 기록 §15.98, `.moai/reports/leader-plan-20261023/status-recovery-20261025-2300.md` 852-859행). 감사 경로: 1회차 FAIL 0.71(`d241917d17`) → 2회차 FAIL 0.75(`b422a13d53`) → 3회차 FAIL 0.80(`69358ecba8`) → 델타 4회차 FAIL 0.80(`6f05252d6d`, 차단 N1 — 깨끗한 update 의 24줄 예산이 설계로 성립하지 않음, 델타 자격 불충족). 리더 판정 SPLIT: 이 SPEC 은 (A) 렌더러(`internal/tui/checklist.go`, 네 언어 카탈로그 키, 골든 기준선)와 (B) `moai init` 연결로 좁히고, update 연결은 새 카드 t1978 로 넘긴다. REQ·AC id 는 하나도 지우거나 다시 매기지 않았다(23·24 그대로) — 각 id 의 update 쪽 조각만 걷어내 §3.4 와 plan.md §K 에 `[DEFERRED → t1978]` 로 적었다. 함께 고친 것: 3회차 감사 M5(궤도에 `printer/printer.go`·`severity_line.go`), M6(O4b (i) 범위에 `pkg go.mod go.sum`), M7(AC-TCL-012 `init_writer_replaced`), M8(검색 모양에 `PillWarn`·`PillErr`, 원장 L26), M9(`inventory_complete` 궤도 항목 열거), 4회차 N3(P22 가 update 행이라 함께 이월되어 AC-TCL-024 (2) 괄호 삭제), N5(research.md:127 이월 표시), N6(§6 추적표에서 M5 제거). N1·N2·N4·N7 과 update 쪽 잔여는 plan.md §K 로 이월. Tier 는 L 을 유지한다 — 측정 근거는 plan.md §A.1. 새 원장 L26~L33 은 HEAD `6f05252d6d` 에서 쟀다.
+- 2026-10-27 — v0.2.1 plan 델타 4회차 (manager-spec, 리더 결정 기록 §15.102, `.moai/reports/leader-plan-20261023/status-recovery-20261025-2300.md` 886-891행). 확인 감사 5회차(FAIL 0.73, 감사 HEAD `274441db21`, 차단 B1·B2)를 받아 고쳤다. REQ·AC id 와 수는 그대로(23·24). B1: REQ-TCL-010 의 줄 예산을 "체크리스트가 그리는 줄(머리·환경·그룹 제목·항목·요약) ≤ 24, 그룹당 항목 ≤ 8" 로 다시 정의하고, 기존 직접 출력 줄(`init.go:708` slim 안내, `:750` 시작 줄, `:784` 사용자 자산 요약, `:1034` P5 안내)은 바꾸지 않고 따로 세며 M0 기준선 대비 증가 0 으로 정했다(§3.3). 깨끗한 init 정의에서 "보존 줄 0" 을 지우고 P5 를 넣었으며, 줄 단위를 한 번 정의했다(감사 M2). 화면 전체 줄 상한(24 고정 대 현실값)은 정하지 않았다 — t1978 과 같은 운영자 질문으로 열어 둔다(§5). B2: REQ-TCL-015 의 요약 없는 실행 조항 두 개(`nil` 반환 쓰기, 이미 나간 줄은 다시 쓰지 않음)는 init 전용이라 AC-TCL-017 (a1)·(c)·(e) 에 단언을 더하고 AC-TCL-017 의 `maps` 에 REQ-TCL-015 를 넣었으며, plan.md §K K-3 의 t1978 이월을 철회했다. 함께 고친 것: S1(update `warn`·`fail` 기준선 고정을 기존 시험 경로로 이름 붙임), S2(REQ-TCL-012 의 update 절을 세 고정 실행으로 좁힘), S3(AC-TCL-016 의 주입 지점, design.md §3.7), M1(살아 있는 것처럼 읽히던 update 문장), M3(AC-TCL-003·AC-TCL-004 를 init 계획표 밖 키로 그림). 새 원장 L34~L41 은 HEAD `274441db21` 에서 쟀다.
 
 ## §1 배경과 문제
 
@@ -31,7 +32,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 
 재사용할 부품은 이미 있다. 줄 잔재 없이 제자리에서 다시 그리는 `ProgressLine`(SPEC-V3R6-UPDATE-PROGRESS-001), `StatusIcon`·글리프 상수, `Spinner`, `Theme`·모션 감소 판정, i18n 카탈로그(research.md §1). 새로 만드는 렌더러는 하나뿐이다.
 
-**이 SPEC 의 범위(v0.2.0).** 렌더러와 `moai init` 연결까지다. `moai update` 연결(세션 생성, 템플릿 동기화 항목, update 요약, update 쪽 보존 줄, update 줄 예산)은 카드 t1978 이 맡는다. update 의 깨끗한 실행을 24줄 고정으로 할지 "한 화면"으로 할지는 운영자 판단으로 t1978 에 열려 있다. 이 카드는 update 출력을 바꾸지 않는다(REQ-TCL-012).
+**이 SPEC 의 범위(v0.2.0).** 렌더러와 `moai init` 연결까지다. `moai update` 연결(세션 생성, 템플릿 동기화 항목, update 요약, update 쪽 보존 줄, update 줄 예산)은 카드 t1978 이 맡는다. 이 카드의 줄 예산은 체크리스트가 그리는 줄에만 걸린다(REQ-TCL-010, §3.3). 화면 전체 — 기존 직접 출력 줄까지 합친 — 를 24줄로 고정할지 현실값으로 둘지는 init·update 공통의 운영자 질문으로 열려 있다(리더 결정 기록 §15.102, t1978 과 공유). 이 카드는 update 출력을 바꾸지 않는다(REQ-TCL-012).
 
 ## §2 확정한 결정
 
@@ -63,12 +64,12 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - **REQ-TCL-007** — **While** `NO_COLOR` is set to a non-empty value, the renderer shall emit no SGR colour sequence.
 - **REQ-TCL-008** — **While** `MOAI_REDUCED_MOTION` is set to a value other than empty or `0`, the renderer shall draw running items with the static run glyph and shall emit no Braille spinner frame.
 - **REQ-TCL-009** — Every user-facing string the renderer draws shall come from a `checklist.*` key present in the en, ko, ja, and zh catalogues, the ja and zh values shall differ from the en value except for an allow-listed set of identifier-only values, and an unsupported language shall fall back to en.
-- **REQ-TCL-010** — The init group/item plan shall hold at most 8 items per group, and a clean `moai init` run, as defined in §3.3, shall render in at most 24 terminal lines.
+- **REQ-TCL-010** — The init group/item plan shall hold at most 8 items per group; in a clean `moai init` run as defined in §3.3, the lines the checklist draws — header, environment line, group titles, item lines, and summary block — shall number at most 24, counted in the line unit §3.3 defines, and every direct-print line §3.3 lists as separately counted shall appear with unchanged text exactly as many times as in the M0 baseline run of the same fixture.
 
 ### §3.2 init 연결과 대체
 
 - **REQ-TCL-011** — **While** the process stdout and stderr are both terminals, the command writers are those process streams, `CI` is empty, `TERM` is not `dumb`, and `--verbose` is off, `moai init` shall render the group checklist; the five inputs shall be gathered by one function that every command wiring the checklist calls.
-- **REQ-TCL-012** — **When** any activation condition of REQ-TCL-011 does not hold, `moai init` shall emit the same bytes the baseline tree emits — the tree the fallback goldens were captured from (`cb30e05b3e`, or the re-baseline tree recorded under plan.md §B) — and `moai update`, which this SPEC does not wire, shall emit those baseline bytes in every run.
+- **REQ-TCL-012** — **When** any activation condition of REQ-TCL-011 does not hold, `moai init` shall emit the same bytes the baseline tree emits — the tree the fallback goldens were captured from (`cb30e05b3e`, or the re-baseline tree recorded under plan.md §B) — and, in each of the three fixed update runs of AC-TCL-013 (`clean`, `warn`, `fail`), `moai update`, which this SPEC does not wire, shall emit those baseline bytes.
 - **REQ-TCL-013** — `moai init` shall accept `--verbose`, and `--verbose` shall force the REQ-TCL-012 output path.
 - **REQ-TCL-014** — **While** the checklist is active, bytes written to the command writers while an item is open shall be recorded as that item's detail, and bytes written while no item is open shall reach the real writer immediately and unmodified.
 - **REQ-TCL-015** — **While** the checklist is active, every warning recorded through the init warning collector, and every line that `moai init` emits at warn or error severity through the severity-line helper on either command writer (stdout or stderr), while an item is open shall appear exactly once, expanded under that item; every collector warning recorded while no item is open shall keep its legacy immediate line, if it had one, and shall be listed once in the summary block, or, when the run ends without drawing the summary, shall be written once to the real writer before the command writers are restored unless its text has already reached the real writer; and the consolidated init warning panel shall not be emitted.
@@ -83,8 +84,20 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 
 ### §3.3 깨끗한 실행의 정의 (REQ-TCL-010)
 
-- 깨끗한 init: 빈 임시 디렉터리에 처음 하는 init, 이전 `.moai` 없음, git 있음, 세션 워크트리 꺼짐, 지연 갱신 확인이 "새 버전 없음", 모든 꼬리 단계 성공, 수집기 경고 0, 보존 줄 0.
-- 줄 수에 넣는 것: 명령이 두 작성기에 쓴 모든 줄 — 넘김 규칙으로 보이는 줄, 체크리스트 머리·환경·그룹·항목 줄, 요약 블록. `\r\x1b[2K` 로 덮인 줄은 최종 화면 한 줄로 접어 센다.
+- **깨끗한 init**: 빈 임시 디렉터리에 처음 하는 init, 이전 `.moai` 없음, git 있음, 사용자 홈이 풀림(시험은 임시 홈), 기본 배포(`--all` 없음 — slim), 세션 워크트리 꺼짐, 지연 갱신 확인이 "새 버전 없음", 모든 꼬리 단계 성공, 수집기 경고 0. 보존 행 가운데 나오는 것은 P5(워크트리 안내, `init.go:1034`) 하나뿐이다 — P5 는 init 마다 조건 없이 나오므로 깨끗한 실행에서도 빠지지 않는다(v0.2.0 의 "보존 줄 0" 은 만족할 수 없는 조건이라 지웠다, 확인 감사 5회차 B1). M0 의 `fallback/init-clean-*` 골든과 M4 의 `rich/init-clean.golden` 은 이 같은 고정으로 찍는다.
+- **줄 단위**(한 번만 정의한다, 확인 감사 5회차 M2): 두 작성기 출력에서 `\r\x1b[2K` 로 덮인 줄을 최종 한 줄로 접고 ANSI 시퀀스를 지운 뒤 `\n` 으로 나눈 줄 하나. 터미널 폭 때문에 화면에서 여러 행으로 접히는 줄도 한 줄로 센다. REQ-TCL-010 과 AC-TCL-011 은 이 단위만 쓴다.
+- **체크리스트가 그리는 줄**(상한 24): 머리줄, 환경 줄, 그룹 제목, 항목 줄, 요약 블록(그 안의 빈 줄 포함). 아래 직접 출력 줄에 들지 않는 다른 모든 줄도 이 셈에 넣는다 — 새어 나온 상세 줄이 예산을 넘겨 드러나도록.
+- **따로 세는 직접 출력 줄**(텍스트를 바꾸지 않음, M0 기준선과 같은 횟수 — 증가 0): 아래 다섯 줄. 조각은 줄을 가려내는 고정 부분 문자열이며, 출처 행은 HEAD `274441db21` 에서 읽었다(acceptance.md 원장 L34·L35).
+
+| 출처 | 쓰는 줄 (조각) | 작성기 | 깨끗한 init 의 줄 수 |
+|---|---|---|---|
+| `init.go:708` `emitSlimModeNotice` (`init.go:42-48`) | `Deploying core templates only (slim mode)`, `Common skills and agents install into your user folders` | stdout | 2 |
+| `init.go:750` `p.Info` | `Initializing MoAI project...` | stderr | 1 |
+| `init.go:784` `ensureUserAssetsLockedFn` → `user_asset_phase.go:54`·`:87` `writeInstallSummary` | `user-asset ensure: ` (충돌·분기 행은 깨끗한 실행에서 0) | stdout | 1 |
+| `init.go:1034` `emitWorktreeAdvisory` → `worktree_advisory.go:46`·`:57` (보존 행 P5) | `this checkout is shared across concurrent sessions;` | stdout | 1 |
+
+- **셈(코드 읽기, HEAD `274441db21`)**: 체크리스트가 그리는 줄 23(design.md §1 화면), 따로 세는 직접 출력 줄 5 — 합계 28줄. 체크리스트 셈은 23 ≤ 24 이고, 직접 출력 셈은 기준선과 같아야 한다(증가 0, 감소도 정보 손실이라 허용하지 않는다). `init.go:750` 을 항목 안으로 옮겨 줄을 줄이는 길은 R1·R2·R3 밖 수정이라 AC-TCL-022 가 막는다. 실측은 M0(기준선의 직접 출력 줄)과 M4(리치 골든)가 처음 한다.
+- **화면 전체 줄 상한은 정하지 않는다.** 직접 출력 줄까지 합친 화면 전체를 24줄로 고정할지, 현실값(지금 셈으로 28줄, 80칸 터미널에서는 긴 줄이 여러 행으로 접혀 더 많다)으로 둘지는 운영자 제품 질문이며 t1978 과 같은 질문이다(리더 결정 기록 §15.102). 이 SPEC 은 "체크리스트 줄 ≤ 24, 직접 출력 줄 증가 0" 으로 닫는다.
 - 깨끗한 update 의 정의와 그 줄 예산은 이 SPEC 에서 정하지 않는다 — [DEFERRED → t1978]. 델타 4회차 감사 N1 이 지금 정의(같은 바이너리로 init 한 프로젝트, `--force` 없음)로는 템플릿 동기화가 `internal/cli/update_template_sync.go:1260` 에서 건너뛰어 체크리스트가 그려지지 않고, 동기화가 도는 실행은 종료 행동 블록과 사용자 자산 요약 때문에 24줄을 넘는다고 보였다(design.md §4.1).
 
 ### §3.4 t1978 로 넘긴 요구사항 조각 [DEFERRED → t1978]
@@ -102,6 +115,7 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 | F-7 | update 병합 확인 중 열린 줄 없음 | REQ-TCL-018 |
 | F-8 | update 의 갱신 파일 수·보존 수·경고 수 동치 | REQ-TCL-019 |
 | F-9 | update 쪽 보존 행(design.md §3.3.1 의 P6~P19, P22, P20·P21 의 update 호출 지점) | REQ-TCL-022 |
+| F-10 | (v0.2.1, 확인 감사 5회차 S2) update 출력 바이트 보존을 AC-TCL-013 의 세 고정 실행 밖으로 넓히는 일 — 세 실행이 닿지 않는 공유 파일의 실패 경로 줄(예: `hook_install.go:283`·`:291`·`:293`, `update/backup/settings_snapshot.go:115` `warnLine`)은 이 SPEC 이 지키지 않는다. update 를 연결하면 TTY update 에서 REQ-TCL-012 의 update 절이 더는 성립하지 않으므로 t1978 이 그 절을 고친다 | REQ-TCL-012 |
 
 ### §3.5 t1978 이 기댈 수 있는 인터페이스
 
@@ -110,7 +124,7 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - **렌더러 계약**(REQ-TCL-001 부터 REQ-TCL-009 까지, AC-TCL-001 부터 AC-TCL-009 까지와 AC-TCL-023): `NewChecklist`·`Header`·`Item`·`Update`·`Detail`·`Warn`·`Keep`·`Done`·`Fail`·`Skip`·`Summary`(design.md §2). 계획표와 그룹·항목 키는 호출자가 넘긴다 — 렌더러에 init 전용 지식이 없다. 요약은 보존 수·백업 경로·복구 명령을 선택 필드로 받는다(AC-TCL-005 가 update 모양 요약으로 검사).
 - **이벤트 모델**: 한 번에 열린 항목 하나, 새 `Item` 이 열린 항목을 암묵 `Done` 으로 닫음, 종료 전환 두 번은 panic, 이벤트가 올 때만 다시 그림(결정 D-3).
 - **활성 판정**(REQ-TCL-011): 다섯 입력을 모으는 한 함수 `checklistEnv(cmd, verbose)` 와 시접 세 개(TTY 탐지, 프로세스 스트림, 강제 켜기 — design.md §3.1). update 는 같은 함수를 부르기만 하면 된다.
-- **세션**(REQ-TCL-014, REQ-TCL-016, REQ-TCL-023): 캡처 작성기, 두 명령 작성기 모두의 경고 수신 인터페이스, 보존 줄 알림, 종료 처리(오류·취소·`nil` 조기 반환). 세션은 init 전용 코드가 아니다 — 명령이 세션을 만들지 않으면 아무 일도 하지 않는다.
+- **세션**(REQ-TCL-014, REQ-TCL-015, REQ-TCL-016, REQ-TCL-023): 캡처 작성기, 두 명령 작성기 모두의 경고 수신 인터페이스, 보존 줄 알림, 종료 처리(오류·취소·`nil` 조기 반환). REQ-TCL-015 의 요약 없는 실행 조항 두 개 — 요약 없이 끝나면 항목 밖 수집기 경고를 한 번 쓴다, 이미 실제 작성기에 나간 경고는 다시 쓰지 않는다 — 는 init 전용 조항이며 AC-TCL-017 (a1)·(a2)·(c)·(e) 가 판정한다(v0.2.0 의 t1978 이월은 리더 결정 기록 §15.102 로 철회, plan.md §K K-3). 세션은 init 전용 코드가 아니다 — 명령이 세션을 만들지 않으면 아무 일도 하지 않는다.
 - **카탈로그 규칙**(REQ-TCL-009, AC-TCL-008): 키 집합이 네 언어에서 같아야 한다는 테스트가 이미 있으므로, t1978 이 update 키를 더하면 네 언어에 함께 넣어야 녹색이다.
 - **골든 전략**(design.md §7·§8): 기준선 선행 커밋(M0) 규칙과 렌더러 골든의 `MANIFEST.txt` 규칙. update 대체 경로 기준선 골든 6개(`fallback/update-{clean,warn,fail}-{stdout,stderr}.golden`)는 이 카드의 M0 이 이미 찍는다 — t1978 은 그 골든을 update 연결 전의 기준선으로 쓴다.
 - **보존 줄 목록**(design.md §3.3.1): 이 카드에서 X11 로 분류해 둔 update 행을 t1978 이 P 행으로 되돌린다. 분류 조각과 행 id 는 그대로 둔다.
@@ -123,7 +137,7 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - C-4 새 코드의 사용자 대상 문자열은 카탈로그 키를 거친다(`internal/tui/i18n.go:81-82` 규칙).
 - C-5 테스트 시접을 바꾸는 테스트는 `t.Parallel` 을 쓰지 않고 `t.Cleanup` 으로 원래 값을 되돌린다.
 - C-6 대체 골든과 그 테스트는 코드 변경보다 먼저, 그 둘만 담은 커밋 하나(M0)로 들어간다(design.md §8, AC-TCL-013).
-- C-7 이 카드는 update 연결 코드(update 세션 생성, 템플릿 동기화 항목 삽입, update 요약)를 넣지 않는다. init 과 update 가 함께 쓰는 파일(예: `hook_install.go`, `internal/cli/update/backup/file_snapshot.go`, `severity_line.go`)을 고칠 때는 세션이 없을 때 출력이 그대로인 형태로만 고친다 — AC-TCL-013 의 `update_*` 하위 테스트가 지킨다.
+- C-7 이 카드는 update 연결 코드(update 세션 생성, 템플릿 동기화 항목 삽입, update 요약)를 넣지 않는다. init 과 update 가 함께 쓰는 파일(예: `hook_install.go`, `internal/cli/update/backup/file_snapshot.go`, `severity_line.go`)을 고칠 때는 세션이 없을 때 출력이 그대로인 형태로만 고친다 — AC-TCL-013 의 `update_*` 하위 테스트가 그 세 고정 실행이 닿는 줄에 한해 지킨다(닿지 않는 실패 경로 줄은 §3.4 F-10).
 
 ## §5 범위 밖
 
@@ -138,6 +152,11 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - `moai doctor`, `moai status`, `moai bundle add` 등 init·update 밖의 명령 출력
 - update 의 clean-install 경로, 바이너리 갱신, `--check`, `--shell-env`, `--config`(reconfigure) 경로의 항목화
 - init 의 사용자 자산 보장 단계(`init.go:780-790`) 항목화 — 레인 결정 Q3: t1966 이 `:775-780` 을 바꾸므로 그 카드 착지 뒤 후속 카드로 넘긴다. 이 단계는 `executor.Execute`(`init.go:829`)보다 먼저 돌아 열린 항목이 없으므로 출력이 넘김 규칙으로 지금 그대로 보인다
+
+### Out of Scope — 화면 전체 줄 상한 (운영자 질문, t1978 과 공유)
+
+- 직접 출력 줄까지 합친 init 화면 전체의 줄 상한(24줄 고정인지 현실값인지) — 리더 결정 기록 §15.102 가 정하지 않고 운영자 제품 질문으로 남겼다. 이 SPEC 은 체크리스트가 그리는 줄 ≤ 24 와 직접 출력 줄 증가 0 으로 닫는다(§3.3)
+- 기존 직접 출력 줄(`init.go:708`, `:750`, `:784`, `:1034`)의 문구 축약·이동·항목화
 
 ### Out of Scope — 위저드와 질문
 
@@ -180,7 +199,7 @@ AC 와 REQ 의 대응 선언은 acceptance.md 각 기준 제목의 `maps` 목록
 | AC-TCL-014 | REQ-TCL-013 | M3, M4 |
 | AC-TCL-015 | REQ-TCL-014 | M3 |
 | AC-TCL-016 | REQ-TCL-015 | M4 |
-| AC-TCL-017 | REQ-TCL-016, REQ-TCL-023 | M3, M4 |
+| AC-TCL-017 | REQ-TCL-015, REQ-TCL-016, REQ-TCL-023 | M3, M4 |
 | AC-TCL-018 | REQ-TCL-017 | M4 |
 | AC-TCL-019 | REQ-TCL-018 | M4 |
 | AC-TCL-020 | REQ-TCL-019 | M4 |

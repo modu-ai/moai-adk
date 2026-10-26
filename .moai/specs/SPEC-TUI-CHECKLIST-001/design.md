@@ -32,7 +32,8 @@
   다음 단계: cd demo → moai cc → /moai plan "…"
 ```
 
-- 23줄이다. 상한은 24줄(REQ-TCL-010, 깨끗한 실행의 정의는 spec.md §3.3).
+- 위 블록은 **체크리스트가 그리는 줄**만 보인다 — 23줄이다. 상한은 24줄(REQ-TCL-010; 깨끗한 실행·줄 단위·셈 규칙은 spec.md §3.3).
+- 실제 깨끗한 init 화면에는 따로 세는 **직접 출력 줄 5개**가 더 있다(spec.md §3.3 표, v0.2.1 — 확인 감사 5회차 B1). 체크리스트보다 먼저 넘김 규칙으로 보이는 넷: slim 안내 2줄(stdout, `init.go:708`), `· Initializing MoAI project...`(stderr, `:750`), `user-asset ensure: …` 요약 1줄(stdout, `:784`). 그리고 `pre-commit 훅` 항목이 열린 동안 쓰여 그 항목 아래 펼쳐지는 P5 안내 1줄(`:1034`, 보존 행). 이 다섯 줄은 문구를 바꾸지 않고, M0 기준선과 같은 횟수로 나와야 한다(증가 0). 합계 28줄(코드 읽기). 화면 전체를 몇 줄로 묶을지는 운영자 질문으로 열려 있다(spec.md §5).
 - `설정` 그룹의 항목 순서는 코드 순서를 따른다. R3 는 삽입만 하므로(plan.md §B) 화면 순서가 곧 코드 순서다: 자율 등급 `init.go:928` → 프로필 `:958` → 선택 기능 동의(Jev `:970`, 참여 `:980`) → 하네스와 배포 모드(하네스 `:991`, 배포 모드 `:1001`, evolution `:1009`) → 전역 설정 `:1014`.
 - 실행 중인 항목은 `  ⠋ 템플릿 배포` 처럼 스피너 프레임으로 한 줄만 그리고, 그 줄만 제자리에서 다시 그린다.
 - 실패한 항목은 `  ✗ …` 아래에 들여쓴 상세 줄을 모두 펼친다. 경고가 있는 항목은 `  ! …` 아래에 경고 문장을 펼친다. 보존 줄(§3.3.1)은 항목이 성공해도 펼친다.
@@ -141,7 +142,7 @@ v0.2.0 에서 검색 모양 두 개를 더했다(3회차 감사 M8). 경고·오
 - **궤도 파일**: `internal/cli/init*.go`, `internal/cli/update*.go`, `internal/cli/update/**`, 이 카드가 새로 만드는 `internal/cli/checklist*.go`, 그리고 `hook_install.go`, `hook_install_precommit.go`, `worktree_advisory.go`, `feedback_participation.go`, `migrate_project_assets.go`, `migrate_local_instructions.go`, `session_worktree.go`, `mirror_notice.go`, `user_asset_phase.go`, `uikit/styles.go`, 그리고 v0.2.0 에 더한 `printer/printer.go`, `severity_line.go`. 궤도 밖 파일이 init·update 에서 불리지 않는다는 판단은 궤도 파일에서 작성기를 넘기는 호출을 한 단계 따라가 확인했다(research.md §9 둘째 블록). 그 확인으로 `feedback_participation.go` 가 궤도로 들어왔다(update `internal/cli/update.go:649`·`:714`).
 - **궤도 추적의 한계와 보강(3회차 감사 M5).** 위 추적은 "작성기를 인자로 넘기는 호출"만 따라갔다. init·update 가 **값으로 들고 다니는 출력 타입**의 메서드는 보지 못한다 — init 은 `init.go:388` `newWarnCollector(printer.New(printer.WithWriters(...)))` 로 프린터를 만들어 그 메서드(`Warn`·`Info` 등)로 쓴다. 그래서 출력 타입을 정의한 파일 `printer/printer.go` 와 심각도 줄 도우미 `severity_line.go` 를 궤도에 넣었다. 두 파일의 검색 일치(L20): `printer/printer.go:67`(주석), `:304`(`p.status("warn", …, "Warning: ", …)` — `Warn` 의 본체), `severity_line.go:8`(주석). 분류는 X1·X7. `uikit/styles.go` 는 이미 궤도였다.
 - **궤도 항목 열여섯 개(목록 완전성 하위 테스트의 하위 테스트 이름, 3회차 감사 M9).** `orbit_init_files`(`init*.go`), `orbit_update_files`(`update*.go`), `orbit_update_pkg`(`update/**`), `orbit_checklist_files`(`checklist*.go`), `orbit_hook_install`, `orbit_hook_install_precommit`, `orbit_worktree_advisory`, `orbit_feedback_participation`, `orbit_migrate_project_assets`, `orbit_migrate_local_instructions`, `orbit_session_worktree`, `orbit_mirror_notice`, `orbit_user_asset_phase`, `orbit_uikit_styles`, `orbit_printer`, `orbit_severity_line`. 이 목록이 바뀌면 acceptance.md AC-TCL-024 녹색 경로의 줄도 함께 바뀐다.
-- **검색 모양 밖의 줄**: 위 12개 모양에 걸리지 않는 직접 쓰기(예: `p.Info` 안내)는 검색이 찾지 못한다. 그런 줄 가운데 보존해야 하는 것은 열거 행(P3, P4, P22)으로 따로 둔다. 모양 밖의 새 경고 줄은 남은 위험이다(plan.md §H R-3).
+- **검색 모양 밖의 줄**: 위 12개 모양에 걸리지 않는 직접 쓰기(예: `p.Info` 안내)는 검색이 찾지 못한다. 그런 줄 가운데 보존해야 하는 것은 열거 행(이 SPEC 에서는 P3, P4. update 의 열거 행 P22 는 [DEFERRED → t1978])으로 따로 둔다. 모양 밖의 새 경고 줄은 남은 위험이다(plan.md §H R-3).
 
 보존 행. "위치" 는 그 줄이 쓰일 때 열린 항목이다(design §3.2 항목 경계). "항목 밖" 행은 넘김 규칙으로 보이며, 세션은 그 줄이 정확히 한 번 보이는지만 지킨다.
 
@@ -196,9 +197,10 @@ v0.2.0 에서 검색 모양 두 개를 더했다(3회차 감사 M8). 경고·오
 
 ### §3.4 종료 (REQ-TCL-016, REQ-TCL-023)
 
-- 세션 종료는 `runInit`·`runUpdate` 에서 가장 먼저 등록하는 `defer` 로 둔다. 그래서 가장 나중에 실행되고, 뒤에 등록된 `emitSummary`·세션 워크트리 정리·update 종료 블록보다 늦게 돈다. 종료 함수는 명명된 오류 반환값(`runInit` 의 `(err error)`, `init.go:382`)을 읽는다.
+- 세션 종료는 `runInit` 에서 가장 먼저 등록하는 `defer` 로 둔다(R1). 그래서 가장 나중에 실행되고, 뒤에 등록된 `emitSummary`(`init.go:389`)·세션 워크트리 정리(`:416-423`)보다 늦게 돈다. 종료 함수는 명명된 오류 반환값(`runInit` 의 `(err error)`, `init.go:382`)을 읽는다. ([DEFERRED → t1978] update 에서 같은 자리 — `runUpdate` 의 첫 `defer`, update 종료 블록 `update.go:176` 보다 늦게 — 는 t1978 이 정한다.)
 - **머리줄은 첫 항목이 열릴 때 한 번 그린다.** 항목이 하나도 열리지 않은 실행은 머리줄도 요약도 그리지 않고, 기존 줄만 넘김 규칙으로 보인다(아래 update 이미 최신, init 취소).
 - **요약 없이 끝나는 실행의 수집기 경고(REQ-TCL-015, REQ-TCL-016, 3회차 감사 M3).** 열린 항목 없이 기록된 수집기 경고는 원래 요약이 다시 나열하는데, 요약이 그려지지 않으면 갈 곳이 없다. `Collect` 는 줄을 쓰지 않기 때문이다(`internal/cli/init_warnings.go:49-56`). 그래서 세션 종료는 — 오류·취소·`nil` 조기 반환 모두 — 그런 경고 가운데 문장이 아직 실제 작성기에 나가지 않은 것(즉시 줄이 없는 `Collect` 경고)을 하나씩 정확히 한 번 실제 작성기에 쓴 뒤 작성기를 되돌린다. 즉시 줄이 이미 나간 `Warn` 경고는 다시 쓰지 않는다. 패널은 이 경로에서도 내지 않는다. 실제 사례: init 실행기가 실패하면 `init.go:829-838` 이 `result.Warnings` 를 `p.Collect(w)`(`:837`)로 모은다. 이때 열린 항목은 없다 — 실행기가 `internal/core/project/phase.go:125` `StepError` 로 `templates.deploy` 를 이미 `Fail` 로 닫았기 때문이다(§3.6). 요약은 오류 경로에서 그려지지 않으므로, 이 규칙이 없으면 오늘 패널이 보여 주는 스킬 미러 안내(REQ-IDE-004)가 체크리스트에서 사라진다.
+  - 이 두 조항(요약 없는 실행의 쓰기, 이미 나간 줄은 다시 쓰지 않음)은 init 전용이며 AC-TCL-017 이 판정한다 — (a1) 오류 경로의 항목 밖 `Warn`, (a2) 실패 뒤 항목 밖 `Collect`, (c) 실제 재개 경로(`nil` 반환)의 항목 밖 `Warn`·`Collect`, (e) 세션 단위 `nil` 반환의 항목 밖 `Warn`·`Collect`(v0.2.1, 리더 결정 기록 §15.102). 반례: 종료 때 수집기의 모든 경고를 다시 쓰는 구현은 git 이 없는 환경의 `init.go:427` `p.Warn("git is not installed …")` 처럼 즉시 줄이 이미 나간 경고를 오류 경로와 재개 경로에서 두 번 보이게 한다 — (a1)·(c)·(e) 의 "정확히 1번" 이 그 구현을 막는다.
 - **오류로 끝나거나 위저드가 취소되면**(요약 전, `err != nil` 또는 취소 신호): 열린 항목이 있으면 `Fail` 로 닫고, 아직 화면에 나가지 않은 캡처 바이트를 모두 그대로 쏟아내고, 위 규칙의 수집기 경고를 쓴 뒤 작성기를 되돌린다.
 - **`nil` 로 조기 반환하면**(요약 전): 열린 항목이 있으면 `Done` 으로 닫고, 아직 보이지 않은 보존 줄을 펼치고, 위 규칙의 수집기 경고를 쓴 뒤 작성기를 되돌린다. 상세는 접힌 채 둔다. 이미 끝난 줄은 — `✗` 로 끝난 줄도 — 다시 그리지 않는다(REQ-TCL-002). 실제 코드에서 이 경우는 두 갈래(init 재개, update 이미 최신)이고, 두 갈래 모두 반환 시점에 열린 항목이 없다. 이 SPEC 은 init 재개 갈래만 연결한다. 열린 항목을 `Done` 으로 닫는 조항은 세션 단위 경우(AC-TCL-017 (e))가 지킨다.
   - [DEFERRED → t1978] **update 이미 최신**(실제 명령 경로, 3회차 감사 M2): `runUpdate` → `internal/cli/update.go:604` `runTemplateSyncWithProgress` 가 `update_template_sync.go:1260` 에서 같은 조건(`packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync`)을 먼저 보고, 맞으면 `:1262` 에서 결과 알약을 쓰고 `:1266` `return true, nil` 한다. 항목은 본문 안에서만 열리므로(§3.2) 이때 열린 항목이 없다 — 알약은 넘김 규칙으로 정확히 한 번 보이고(보존 행 P22, 항목 밖), 머리줄·요약은 그려지지 않는다. 뒤이은 `update.go:623-650`(무결성 검사, 모델 키 정리, 참여 질문)도 열린 항목 없이 넘김 규칙으로 보인다. 본문 `runTemplateSyncWithReporter` 의 같은 모양 조기 반환(`:249-255`)은 실제 명령이 닿지 않는다 — `runTemplateSync(cmd` 는 정의(`:120`)만 있고 생산 호출이 없으며, 본문으로 들어가는 생산 경로는 이 바깥 함수의 같은 조건 검사 뒤뿐이다(`:215` `forceBackup` 도 같은 `force` 플래그). 그 경로는 본문을 직접 부르는 테스트만 닿으므로 판정 근거로 쓰지 않는다(AC-TCL-017 (d)).
@@ -232,6 +234,21 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 
 실패 보류는 두지 않는다. 그 이유는 §3.4 재개 경로에 적었다.
 
+### §3.7 명령 수준 테스트의 주입 지점 (v0.2.1, 확인 감사 5회차 S3)
+
+실제 init 에서 경고를 원하는 자리(항목 안·항목 밖)에 넣는 방법을 정한다. 지금 코드에서 성공하는 init 이 열린 항목 없이 `Collect` 를 부르는 생산 지점은 없다 — `p.Collect` 는 `init.go:837`(실행기 실패 경로), `:954`(`config.autonomy` 항목 안), `:1047`(`mcp.entry`), `:1074`(`verify.manifest`)뿐이다(원장 L41). 그래서 항목 밖 주입에는 시험 전용 시접 하나를 새로 둔다.
+
+| 주입 | 쓰는 시접 | 있는 곳 | 그 시점에 열린 항목 |
+|---|---|---|---|
+| 항목 밖 `Warn`·`Collect`(AC-TCL-016 `w-out`·`c-out`, AC-TCL-017 (c) `w-resume`·`c-resume`) | **새 시험 전용 시접** `checklistSessionStartFn`(예시 이름) — 패키지 변수, 생산 값 `nil`. 세션 시작 코드가 수집기를 만든 직후 한 번 `(cmd, 수집기)` 로 부른다. 시험은 여기서 수집기와 `cmd` 를 받아 두고 항목 밖 경고를 기록한다 | 정의는 새 파일 `internal/cli/checklist_session.go`(M3). 호출은 그 세션 시작 코드 안이며, init.go 쪽 호출 줄은 R1(`383-389`)에 이미 넣는 세션 시작 줄 하나뿐이다 — 영역 규칙(REQ-TCL-021)에 새 줄을 더하지 않는다 | 없음(첫 항목은 `executor.Execute` 안에서 열린다, §3.2) |
+| 항목 안 `Warn`·`Collect`·심각도 줄(AC-TCL-016 `w-in`·`c-in`·`s-in`, `init_stdout_severity` 의 `s-out`) | 기존 시접 `newInitPhaseExecutorFn`(`internal/cli/init_executor_seam.go:29`)을 **감싸기만** 한다 — 시험은 원래 함수가 만든 실제 실행기를 안에 두고, `SetReporter` 로 받은 보고기를 감싸 `StepStart("Initialization", …)` 를 넘긴 직후 위 시접으로 받아 둔 수집기·`cmd` 로 `Warn`·`Collect`·`emitSeverityLine(cmd.ErrOrStderr()/cmd.OutOrStdout(), …)` 를 부른다. 실제 실행기가 그대로 배포하므로 꼬리 단계도 실제로 돈다 | 기존 파일, 고치지 않음 | `templates.deploy` |
+| init `warn` 기준선(AC-TCL-013 `init_warn`, M0) | 기존 시접 `applyAutonomyTierBundleFn`(`internal/cli/update_settings_snapshot.go:32`)이 오류를 돌려줌 → `init.go:935` `p.Warn("Failed to apply autonomy tier bundle: …")` | 기존 파일, 고치지 않음 | (기준선은 비활성 경로) |
+| init `fail` 기준선(AC-TCL-013 `init_fail`, M0) | 기존 시접 `newInitPhaseExecutorFn` 이 `template deployment` 오류를 내는 실행기를 돌려줌 → `init.go:876-877` | 기존 파일, 고치지 않음 | (기준선은 비활성 경로) |
+
+- 시접을 바꾸는 테스트는 `t.Parallel` 없이 `t.Cleanup` 으로 되돌린다(spec.md §4 C-5).
+- `checklistSessionStartFn` 은 세션이 꺼져 있으면(빈 세션) 부르지 않는다 — 생산 경로와 대체 경로의 바이트는 그대로다(AC-TCL-013 이 지킨다).
+- update 기준선의 `warn`·`fail` 주입은 AC-TCL-013 이 이름으로 적는다(사용자가 고친 pre-push 훅, `confirmViaPreviewFn`). update 연결 뒤의 꼬리 주입은 [DEFERRED → t1978](plan.md §K K-4).
+
 ## §4 그룹·항목 계획표 (SSOT) — `internal/cli/checklist_plan.go`
 
 한 표에 모은다. 그룹당 항목 8개 이하(REQ-TCL-010). 열의 키는 카탈로그 키 접미사다. 항목 순서는 코드 실행 순서다.
@@ -244,7 +261,9 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 | init | `mcp` | `entry` | `init.go:1045-1048` |
 | init | `verify` | `manifest` | `init.go:1073-1075` |
 
-깨끗한 init 의 줄 수는 §1 의 화면으로 23줄이다(상한 24, REQ-TCL-010). 이 셈도 코드 읽기이며 M4 의 리치 골든(AC-TCL-011)이 처음 실측한다.
+깨끗한 init 에서 **체크리스트가 그리는 줄**은 §1 의 화면으로 23줄이다(상한 24, REQ-TCL-010). 같은 실행의 **따로 세는 직접 출력 줄**은 5줄 — slim 안내 2(`init.go:708`), 시작 줄 1(`:750`), 사용자 자산 요약 1(`:784`), P5 안내 1(`:1034`) — 이며 바꾸지 않고 M0 기준선과 같은 횟수로 나온다(spec.md §3.3 표). 합계 28줄. 두 셈 모두 코드 읽기이며, 직접 출력 줄은 M0 의 `fallback/init-clean-*` 골든이, 체크리스트 줄은 M4 의 리치 골든(AC-TCL-011)이 처음 실측한다. v0.2.0 의 "깨끗한 init 23줄 ≤ 24" 는 이 직접 출력 줄과 늘 나오는 P5 를 빠뜨린 셈이었다(확인 감사 5회차 B1, 리더 결정 기록 §15.102).
+
+init 의 사용자 자산 보장(`init.go:780-790`)은 항목으로 만들지 않는다(레인 결정 Q3). 그 바로 앞 줄(`init.go:780`)을 t1966 이 바꾸기 때문이다. 이 단계는 `executor.Execute`(`init.go:829`)보다 먼저 돌아 열린 항목이 없으므로 출력이 넘김 규칙으로 지금처럼 보이고(그 요약 줄은 위 직접 출력 줄의 하나다), 항목화는 t1966 착지 뒤 후속 카드로 넘긴다.
 
 ### §4.1 update 계획표와 줄 예산 — [DEFERRED → t1978]
 
@@ -257,7 +276,7 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 | update | `deploy` | `validate`, `clean`, `deploy`, `restore` | 단계 표의 Validate Templates(`:467`), 정리 단계(`:498` `cleanManagedPathsStage`), Deploy Templates(`:625`), 그리고 Restore Settings 가로채기의 복원 `:853-959` |
 | update | `verify` | `retention`, `gitignore`, `retrack`, `reconcile` | Restore Settings 가로채기 안, 코드 순서대로: `retention` `:960-974`(오래된 백업 정리), `gitignore` `:976-999`, `retrack` `:1000-1017`(병합 `:1005` + 재기록 `:1015`), `reconcile` `:1018-1059`(`len(reconPending) > 0` 일 때만 연다, `:1027`) |
 
-init 의 사용자 자산 보장(`init.go:780-790`)은 항목으로 만들지 않는다(레인 결정 Q3). 그 바로 앞 줄(`init.go:780`)을 t1966 이 바꾸기 때문이다. 이 단계는 `executor.Execute`(`init.go:829`)보다 먼저 돌아 열린 항목이 없으므로 출력이 넘김 규칙으로 지금처럼 보이고, 항목화는 t1966 착지 뒤 후속 카드로 넘긴다.
+(레인 결정 Q3 — init 사용자 자산 보장 단계를 항목으로 만들지 않음 — 은 이 SPEC 의 계약이라 v0.2.1 에 §4 로 옮겼다, 확인 감사 5회차 M1.)
 
 (t1978 참고) update 의 clean-install 경로(`update_clean_install.go`), 바이너리 갱신, `--check`·`--shell-env`·`--config` 경로는 항목을 열지 않는다. 그 경로의 출력은 넘김 규칙으로 지금 그대로 보인다(spec.md §5).
 
@@ -279,7 +298,7 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 - 종료 행동 블록은 깨끗한 실행에서 아무것도 내지 않는다(`internal/cli/update_action_block.go:89-91`).
 - 훅 설치 줄(`internal/cli/hook_install.go:262` `"Pre-push hook installed"` — `--no-hooks` 가 아니면 update 마다 나옴)과 pre-commit 쪽 같은 줄은 결정 D-10 에 따라 요약 앞의 꼬리, 곧 마지막으로 열린 항목 안에서 쓰이므로 접히고 예산에 들지 않는다. 요약을 결과 알약 자리(`:1144`)에 그리면 이 두 줄이 요약 뒤로 넘어가 25줄이 된다 — D-10 을 택한 이유다.
 - 세지 않은 줄: `--yes` 없이 도는 실행은 본문 진입 전에 바깥 함수의 확인 화면(`:1285-1291` — 빈 줄, `Analyzing merge changes` 구역 머리, 미리보기, 대화형 확인)을 열린 항목 없이 넘김 규칙으로 보인다. 대화형 화면이라(REQ-TCL-018) 위 계산에 넣지 않았다. 깨끗한 실행의 정의(spec.md §3.3)가 `--yes` 를 적지 않는 점은 이 회차 범위 밖의 잔여로 progress.md §E.1 에 남겼다.
-- 위 합계는 코드 읽기로 센 값이다. M5 의 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다(plan.md §H R-4).
+- 위 합계는 코드 읽기로 센 값이다. (v0.1.3 문장, [DEFERRED → t1978]: 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 되돌린다 — update 쪽의 이 규칙은 t1978 이 정한다. 이 SPEC 의 R-4 는 init 만 본다.)
 
 ## §5 출력 채널 (REQ-TCL-017)
 
@@ -315,14 +334,16 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 대체 골든 파일(M0, 모두 `fallback/` 아래):
 
 - `init-{clean,warn,fail}-{stdout,stderr}.golden` — 6개
-- `update-{clean,warn,fail}-{stdout,stderr}.golden` — 6개. 이 카드에서는 update 출력이 공유 파일 변경에도 기준선 그대로라는 회귀 경계이고(spec.md §4 C-7), t1978 의 update 연결 전 기준선이 된다. 고정 실행은 `--force --yes` 로 템플릿 동기화 본문을 끝까지 탄다(AC-TCL-013).
+- `update-{clean,warn,fail}-{stdout,stderr}.golden` — 6개. 이 카드에서는 update 출력이 공유 파일 변경에도 기준선 그대로라는 회귀 경계이고(spec.md §4 C-7, 세 고정 실행이 닿는 줄에 한함 — spec.md §3.4 F-10), t1978 의 update 연결 전 기준선이 된다. `clean`·`warn` 고정 실행은 `--force --yes` 로 템플릿 동기화 본문을 끝까지 탄다. `fail` 은 `--force` 만 주고 확인 시접이 오류를 낸다(AC-TCL-013).
 - [DEFERRED → t1978] `update-verbose-{stdout,stderr}.golden` — 2개. 고정 실행이 verbose 에서만 나오는 줄을 1줄 이상 내야 한다(예: 3-way 병합 실패 대체 경고 `internal/cli/update_noise.go:111-114`). t1978 이 자기 기준선 선행 커밋으로 넣는다.
 
-`warn` 시나리오는 수집기 경고 1건 이상을, `fail` 시나리오는 실패 1건을 주입한다. 정규화는 줄을 지우지 않는다(줄 수 불변, AC-TCL-013).
+`warn` 시나리오는 경고 줄 1건 이상을, `fail` 시나리오는 실패 1건을 주입한다. 주입은 모두 지금 코드에 있는 시험 경로로 한다(M0 은 코드를 고치지 않는다) — init `warn` 은 `applyAutonomyTierBundleFn` 오류(→ `init.go:935` 수집기 경고), init `fail` 은 `newInitPhaseExecutorFn` 실패 실행기, update `warn` 은 고정 프로젝트의 `.git/hooks/pre-push` 에 한 줄을 덧붙여 "사용자가 고친 MoAI 훅" 으로 만든 고정(→ `hook_install.go:214-224` 백업, `:268` 경고 줄), update `fail` 은 `confirmViaPreviewFn`(`update_model_key_strip.go:33`) 오류(→ `update_template_sync.go:1287-1290`). update 에는 수집기가 없으므로 update `warn` 은 수집기 경고가 아니라 경고 줄이다(확인 감사 5회차 S1). 정규화는 줄을 지우지 않는다(줄 수 불변, AC-TCL-013).
 
 리치 골든 파일: `rich/init-clean.golden`, `rich/init-warn.golden`. ([DEFERRED → t1978] `rich/update-clean.golden`, `rich/update-fail.golden`.)
 
-렌더러 골든 이름: `checklist-<surface>-<case>.golden`, case ∈ {clean, fail, warn, nocolor, reduced, ko}. 이 카드의 surface 는 `init` 이다(v0.1.3 의 `checklist-update-clean.golden` 은 [DEFERRED → t1978], AC-TCL-001). 기존 `TestGoldenCount` 하한(`internal/tui/golden/index_test.go:27`, 100개)은 늘어나는 방향이라 영향이 없다. `TestManifest` 는 새 골든(`:73`)과 지운 골든(`:80`)을 모두 잡는다.
+렌더러 골든 이름: `checklist-<surface>-<case>.golden`. 이 카드의 surface 는 둘이다 — `init`(case ∈ {clean, nocolor, reduced, ko}, design.md §4 의 init 계획표)과 `probe`(case ∈ {fail, warn}, init 계획표 밖의 그룹·항목 키로 그리는 시험 전용 계획). v0.1.3 의 `checklist-update-clean.golden` 은 [DEFERRED → t1978](AC-TCL-001).
+
+**probe 계획(v0.2.1, 확인 감사 5회차 M3).** 렌더러가 init 계획표를 하드코딩하지 않음을 기계적으로 보이려고, AC-TCL-003·AC-TCL-004 는 init 계획표에 없는 그룹·항목 키(예: 그룹 `alpha`·`beta`, 항목 `alpha.one`·`alpha.two`·`beta.one`)로 그린다. 그 키의 라벨은 렌더러 테스트(같은 패키지)가 시험 전용 언어 코드(예: `probe`)의 카탈로그를 카탈로그 캐시(`internal/tui/i18n.go:27-28` `catalogCache`·`catalogMu`, 원장 L39)에 잠금 아래 직접 넣어 준비하고 `t.Cleanup` 으로 지운다. 생산 카탈로그 yaml 네 개에는 probe 키를 넣지 않으며(AC-TCL-008 의 키 수 조건 그대로), probe 언어에 없는 키(상태·요약)는 `Translate` 의 en 대체를 탄다(`internal/tui/i18n.go:83-99`). 그래서 probe 골든에도 원시 키 `checklist.` 가 남지 않는다(AC-TCL-023). 이 테스트는 공유 캐시를 바꾸므로 `t.Parallel` 을 쓰지 않는다. 기존 `TestGoldenCount` 하한(`internal/tui/golden/index_test.go:27`, 100개)은 늘어나는 방향이라 영향이 없다. `TestManifest` 는 새 골든(`:73`)과 지운 골든(`:80`)을 모두 잡는다.
 
 ## §8 기준선을 먼저 커밋하는 이유
 

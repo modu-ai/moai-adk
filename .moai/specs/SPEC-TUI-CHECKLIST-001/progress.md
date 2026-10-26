@@ -25,7 +25,18 @@ Plan 단계 산출물 작성 완료 (manager-spec, 카드 t1969, Tier L): spec.m
 - R-M4, R-M4b → t1978 로 이월(plan.md §K K-12).
 - 4회차 N1·N2·N4·N7 → t1978 로 이월(plan.md §K K-1~K-4).
 
-미해결 부채 (v0.1.3 시점 기록 — 처분은 바로 위 v0.2.0 문단):
+델타 4 v0.2.1 (manager-spec, 측정 HEAD `274441db21a4be3cec01b78c0f9d496893d12479`, 리더 결정 기록 §15.102 — 최종 확인 감사 전 마지막 수리): 확인 감사 5회차(FAIL 0.73, `.moai/reports/t1969/plan-audit-verdict-iter5.md`, 차단 B1·B2)의 결함을 한 커밋으로 고쳤다. REQ 23·AC 24 와 id 집합은 그대로다. 처분:
+- B1 → spec.md REQ-TCL-010·§3.3, design.md §1·§4, acceptance.md AC-TCL-011: 체크리스트 줄 ≤ 24 + 직접 출력 줄 다섯(`init.go:708` 2줄, `:750`, `:784`, `:1034` P5)의 기준선 대비 증가 0. 깨끗한 init 정의에서 "보존 줄 0" 을 지우고 P5 를 넣었다. 셈(코드 읽기): 체크리스트 23 + 직접 출력 5 = 28. 화면 전체 상한은 운영자 질문으로 열림(spec.md §5, t1978 공유).
+- M2 → spec.md §3.3 에 줄 단위를 한 번 정의(접기·ANSI 제거 뒤 `\n` 줄, 터미널 행 아님).
+- B2 + 4회차 N4 → acceptance.md AC-TCL-017 (a1) `w-err`, (c) `w-resume`·`c-resume`, (e) `w-nil`·`c-nil` 단언과 반례 `init.go:427`; AC-TCL-017 `maps` 와 spec.md §6 에 REQ-TCL-015; plan.md §K K-3 철회; spec.md §3.5 정합; plan.md 의 매달린 "리더 판단 필요" 제거.
+- S1 → acceptance.md AC-TCL-013 에 여섯 고정의 주입 방법(기존 시험 경로만, update `warn` = 사용자가 고친 pre-push 훅, update `fail` = `confirmViaPreviewFn`), design.md §7.
+- S2 → spec.md REQ-TCL-012 update 절을 세 고정 실행으로 좁힘, §3.4 F-10, plan.md §K K-16.
+- S3 → design.md §3.7 주입 지점 표(새 시험 전용 시접 `checklistSessionStartFn` — M3, 새 파일, 영역 규칙 불변; 기존 `newInitPhaseExecutorFn` 감싸기), acceptance.md AC-TCL-016.
+- M1 → design.md §3.3.1(P22 열거 행), §3.4(`runUpdate` 문장), §4.1 의 Q3 문단을 §4 로 이동; acceptance.md AC-TCL-017 의 "(d)·(e)" → "(c)·(e)", AC-TCL-024 (4) 의 X11 에서 P22 제거.
+- M3 → acceptance.md AC-TCL-003·AC-TCL-004 를 init 계획표 밖 키의 probe 계획으로(골든 `checklist-probe-{fail,warn}.golden`), design.md §7, plan.md §A.1·M2.
+새 원장 L34~L41 을 이 HEAD 에서 쟀다. 레인 결정 Q1~Q3, D-9, 글리프, `main` 흡수 시점 규칙은 다시 열지 않았다.
+
+미해결 부채 (v0.1.3 시점 기록 — 처분은 위 v0.2.0 문단):
 - M5 (SHOULD-FIX) — 궤도 추적이 메서드 수신자 작성기를 보지 못해 `internal/cli/printer/printer.go` 가 X9 로 분류됨(design.md §3.3.1 궤도 정의·X9 행, research.md §9 궤도 추적). 3회차 감사의 근거 위치는 design.md:131·:174 로, 앵커 §3.3.1 안이지만 감사가 fix_scope 결함으로 지정하지 않았으므로 손대지 않았다.
 - M6 (SHOULD-FIX) — AC-TCL-013 O4b (i) 범위가 `-- internal` 뿐이라 `pkg/`·`go.mod`·`go.sum` 변경을 보지 못함(acceptance.md AC-TCL-013).
 - M7 (MINOR) — AC-TCL-012 명령 수준에 조건 2(작성기 교체) 하위 테스트 없음.
