@@ -71,3 +71,4 @@ Why unresolved: 산 리더가 있는 상태에서 두 번째 리더가 죽은 ru
 Default: 채택하지 않음 — 변경 전 동작 (rule: 현재 동작 보존)
 Alternate: 그래도 채택
 Operator verdict: DEFAULT-APPLIED 2026-10-26T01:29:43Z lane-11+manager-spec
+Amendment: 2026-10-26 레인 판정(plan-audit iter1 D8, 판정서 `.moai/reports/t1963/plan-audit-verdict.md`) — 같은 금지를 `OwnerIndeterminate` 활성 run까지 넓힌다(REQ-003b — 판정 불가는 산 쪽으로). 산 소유자 또는 미확정 소유자 활성 run이 하나라도 있으면 채택하지 않는다(REQ-FCR-017, AC-FCR-018 사례 vi). 같은 판정(D9)으로 최신 후보가 codex 리더 run이거나 산 레거시 피어를 가지면 채택 0(다음 후보로 넘어가지 않음)이며, 두 조건의 run은 통합 원천에서도 제외한다.

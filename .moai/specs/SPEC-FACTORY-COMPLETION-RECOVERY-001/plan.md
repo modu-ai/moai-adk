@@ -2,7 +2,7 @@
 
 ## §A — Context
 
-- 트리: `.moai/worktrees/t1538`, 브랜치 `WT-t1538-factory-recovery`, base = local develop `a158b4b5f`(plan-scope 노트 `.moai/reports/t1538/plan-scope.md`).
+- 트리(v0.1.0 시점): `.moai/worktrees/t1538`, 브랜치 `WT-t1538-factory-recovery`, base = local develop `a158b4b5f`(plan-scope 노트 `.moai/reports/t1538/plan-scope.md`). **현재 카드 트리(v0.2.0)**: `.moai/worktrees/t1963`, 브랜치 `WT-run-dead-owner`.
 - 근거: `.moai/reports/dispatch-audit-2026-10-06-codex.md`(코드 기준 main@ec13872f3 — 본 트리 base보다 앞서며 t1513 수리 `de388878e`·t1528 `ec13872f3` 미포함).
 - Tier L(v0.2.0에서 M → L) — 산출물 5종(spec/plan/acceptance/design/research) + progress.md + decision-index.md. 요구 23건·기준 25건(Tier L 천장 25 준수). v0.1.0은 Tier M·요구 16·기준 16이었다.
 - 소관 패키지: `internal/cli`(완료 게이트·auto-done·발급 표시), `internal/factory`(facts 구조체·GTD 스키마·relation), `internal/homestate`(reaper·전이 edge·CI reader·watchdog 기록).
@@ -28,7 +28,7 @@
 
 ```bash
 # 1. 브랜치·기준
-git branch --show-current && git rev-parse --short HEAD   # WT-t1538-factory-recovery / a158b4b5f
+git branch --show-current && git rev-parse --short HEAD   # 기대값: 현재 카드 트리의 브랜치·HEAD (v0.2.0: WT-run-dead-owner)
 
 # 2. 빌드·교차 플랫폼
 go build ./... && GOOS=windows GOARCH=amd64 go build ./...
@@ -50,6 +50,8 @@ M2-B 사전 점검(각 줄은 단일 호출 — 워크트리 가드는 파이프
 ```bash
 # 6. M2-B RED 재관측 — 기대: 세 시험 모두 FAIL, exit 1 (acceptance.md §0 L1)
 go test ./internal/homestate/ -overlay .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/m2b-red-overlay.json -run '^(TestT1963RedTwoDeadRunsOneLeaderStart|TestT1963RedGhostWorkerKeepsRunAlive|TestT1963RedLeaseLeavesDeadRowNonTerminal)$' -count=1 -v
+# 6b. L7 — 산 리더 옆 채택 RED(기대: FAIL, exit 1)
+go test ./internal/homestate/ -overlay .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/m2b-red-l7-overlay.json -run '^TestT1963RedAdoptsDeadRunBesideLiveLeader$' -count=1 -v
 
 # 7. 보존 기준선 — RETIRE-GUARD·t1707 재채택 시험(기대: ok)
 go test ./internal/homestate/ -run '^(TestRetireRunIfDead.*|TestFindResumableRun.*|TestAdoptRun.*|TestReconcile.*|TestLiveRecordsTerminalSetMatchesSharedDefinition)$' -count=1 -v
@@ -69,7 +71,7 @@ go test ./internal/cli/ -run '^(TestAdoptResumedLeaderRun.*|TestStrictResumeCarr
 - **(M2-B) fixture 전용** — 라이브 factory DB를 여는 명령·시험 금지. 샌드박스는 `openSandboxFactory`(`internal/homestate/factory_run_retire_test.go:31`)·`adoptSandbox`(`internal/cli/factory_run_adopt_test.go:16-40`)·`runOwnerSandbox` 형태만 쓴다.
 - **(M2-B) 설치 바이너리 교체 금지** — `make install`·`cp bin/moai ~/go/bin/moai`·rc 빌드 금지. 검증은 `go test`로만.
 - **(M2-B) 새 테이블·새 장부 금지** — 스키마에 테이블을 더하지 않는다. 새 이벤트 종류(`card.rebound`)와 기존 열 갱신만 쓴다.
-- **(M2-B) PRESERVE SPEC-FACTORY-RETIRE-GUARD-001** — `retireRun`(`factory_run_retire.go:422-462`)의 동작과 순서, `--retire` 거부 출력의 기존 줄, 그 SPEC 시험 8건(homestate 5·cli 3). 허용된 유일한 기존 시험 수정은 `TestFactoryRunsHasNoForceFlag`의 허용 플래그 집합 단언을 `[retire]`에서 `[rebind-to retire]`로 넓히는 것이다(Q1 판정 (a)). 나머지 7건은 변경 없이 통과한다.
+- **(M2-B) PRESERVE SPEC-FACTORY-RETIRE-GUARD-001** — `retireRun`(`factory_run_retire.go:422-462`)의 동작과 순서, `--retire` 거부 출력의 기존 줄, 그 SPEC 시험 8건(homestate 5·cli 3). 허용된 유일한 기존 시험 수정은 `TestFactoryRunsHasNoForceFlag`의 허용 플래그 집합 단언을 `[retire]`에서 `[rebind-to retire]`로 넓히는 것이다(Q1 판정 (a)). 나머지 7건은 시험 파일 변경 없이 통과한다. 별도로 공용 픽스처 `mustInsertWorker`(`factory_run_adopt_test.go`)의 pid `1` → `os.Getpid()` 수정 1건이 허용된다(Windows pid 1, 시험 의도 불변 — AC-FCR-025).
 - **(M2-B) PRESERVE** `AdoptRun`(`:112-145`)의 CAS 형태, `FindResumableRun`(`:72-96`)의 계약과 시험, `retireRunUnlessLive`, `moai factory relaunch --from-run`(`internal/cli/factory_relaunch.go:82-115`).
 - 금지: `--no-verify`, `git add -A`, 병합 창 밖 develop 조작, 강제 push.
 
@@ -119,13 +121,13 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 
 | 순서 | 파일 | 변경 |
 |---|---|---|
-| 1 | `internal/homestate/` (신규 파일 권장, 예: `factory_run_rebind.go`) | **통합 연산**(REQ-FCR-020, design.md §3): 한 BEGIN IMMEDIATE 트랜잭션에서 원천 스탬프 CAS → 대상 활성·스탬프 확인 → 산 worker 거부 → 제3 산 run 보유 카드 거부 → 재키/포인터 포기 → `card_dispatch` 재지정 → 원천 `retired` + `run.retired`(`rebound_to`·수 포함). 행 삭제 없음, `leader_approvals` 불변(REQ-FCR-023). 시험 시임: `retireAfterCardRead`(`factory_run_cards.go:93`)와 같은 형태의 중간 실패 주입점 |
-| 2 | `internal/homestate/factory_run_adopt.go` | `runHasLiveRecords`(`:31-39`)의 worker 절을 pid 탐침으로 좁힘(REQ-FCR-022) — 확실히 죽은 pid만 제외, 판정 불가는 산 것으로. 호출자 트랜잭션(`queryRower`) 안에서 계속 동작. 탐침 주입점 추가 |
-| 3 | `internal/homestate/` + `internal/cli/factory_card.go` | **임대 정리**(REQ-FCR-019): `moai factory next`의 기록 트랜잭션 안, 이어받기 읽기(`:1448-1458`) 뒤에 다른 run의 같은 카드 비종결 행을 `OwnerDead` 소유자일 때만 포인터 포기 + `card.rebound`. 소유자 판정은 트랜잭션 밖, 스탬프 동일성은 안에서 |
-| 4 | `internal/cli/factory_run_adopt.go` (+ `cc.go:227`·`glm.go:283` 호출부) | **리더 진입**(REQ-FCR-017/018): resume 인자 게이트 제거(`:165`), `OwnerLive` 활성 run이 없을 때 죽은 스탬프 후보 중 최신을 `AdoptRun`으로 채택, 성공 시 나머지 죽은 스탬프 run(산 worker 없음)마다 통합 연산. CAS 패배 시 변경 전 동작. 최신 선택은 `FindResumableRun`을 바꾸지 않고 새 선택 단계로(시험 보존). `strictResumeCarrierSeen`의 남은 용도는 lint로 판정 |
-| 5 | `internal/cli/factory_handoff_recover.go` | `runs` 명령에 `--rebind-to` 플래그 추가(Q1 판정 (a)) — `--retire`와 함께일 때 통합 연산 호출, 옮긴/포기한 카드 id 출력, 레인 세션 거부(REQ-FCR-021/014). `--rebind-to` 없는 경로와 거부 출력 기존 줄 불변. `TestFactoryRunsHasNoForceFlag`의 허용 집합을 `[rebind-to retire]`로 넓힘(유일한 기존 시험 수정) |
+| 1 | `internal/homestate/` (신규 파일 권장, 예: `factory_run_rebind.go`) | **통합 연산**(REQ-FCR-020, design.md §3): 한 BEGIN IMMEDIATE 트랜잭션에서 원천 분류 `OwnerDead` 확인(리더 진입은 `BasisStamp`도) → 원천 스탬프 CAS → 대상 활성·스탬프 확인 → 산 worker 거부 → 제3 산 run 보유 카드 거부 → 재키/포인터 포기 → `card_dispatch` 재지정 → 원천 `retired` + `run.retired`(`rebound_to`·수·옮긴/포기한 카드 id 목록 포함). 전부 한 커밋 — 카드 이동과 바인딩·은퇴를 나누지 않는다. 행 삭제 없음, `leader_approvals` 불변(REQ-FCR-023). 시험 시임: `retireAfterCardRead`(`factory_run_cards.go:93`)와 같은 형태의 중간 실패 주입점 두 개(두 번째 카드 직후, 카드 이동 뒤·`card_dispatch` 재지정 전) |
+| 2 | `internal/homestate/factory_run_adopt.go` | `runHasLiveRecords`(`:31-39`)의 worker 절을 pid 탐침으로 좁힘(REQ-FCR-022) — 확실히 죽은 pid만 제외, 판정 불가는 산 것으로. 호출자 트랜잭션(`queryRower`) 안에서 계속 동작. 탐침 주입점 추가. 허용된 픽스처 수정 1건: `mustInsertWorker`(`internal/homestate/factory_run_adopt_test.go:20-26`)의 pid `1` → `os.Getpid()`(Windows에서 pid 1이 dead로 읽힐 수 있음, 시험 의도 불변) |
+| 3 | `internal/homestate/` + `internal/cli/factory_card.go` | **임대 정리**(REQ-FCR-019): `moai factory next`의 기록 트랜잭션 안, 이어받기 읽기(`:1448-1458`) 뒤에 다른 run의 같은 카드 비종결 행을 `OwnerDead` 소유자이고, 그 행의 lease가 유효하지 않으며, 그 run에 산 worker가 없을 때만 포인터 포기 + `card.rebound`. 조건 불충족 시 기존 동작(새 행, 원천 불변). 소유자 판정은 트랜잭션 밖, 스탬프 동일성은 안에서. T1 기록과 포기는 한 트랜잭션(포기 전 주입 실패 시험 시임) |
+| 4 | `internal/cli/factory_run_adopt.go` (+ `cc.go:227`·`glm.go:283` 호출부) | **리더 진입**(REQ-FCR-017/018): resume 인자 게이트 제거(`:165`), `OwnerLive`·`OwnerIndeterminate` 활성 run이 없을 때 죽은 스탬프 후보 중 최신을 `AdoptRun`으로 채택(최신이 codex 리더 run이거나 산 레거시 피어를 가지면 채택 0 — 다음 후보로 넘어가지 않음), 성공 시 나머지 죽은 스탬프 run(산 worker 없음·codex 아님·산 레거시 피어 없음)마다 통합 연산, 옮긴/포기한 카드 id를 stderr에. **CAS 패배 시 오류 없이 새 id 발급 + 경고 한 줄 + 통합 0**(현행 `:106-108` → `cc.go:227-229`·`glm.go:283-285`의 런치 실패를 바꿈). 최신 선택은 `FindResumableRun`을 바꾸지 않고 새 선택 단계로(시험 보존). `strictResumeCarrierSeen`의 남은 용도는 lint로 판정 |
+| 5 | `internal/cli/factory_handoff_recover.go` | `runs` 명령에 `--rebind-to` 플래그 추가(Q1 판정 (a)) — `--retire`와 함께일 때 통합 연산 호출, 옮긴/포기한 카드 id 출력, 레인 세션 거부·`--retire` 없는 단독 호출 거부·원천이 `OwnerDead`가 아니면 거부(REQ-FCR-021/020/014). `--rebind-to` 없는 경로와 거부 출력 기존 줄 불변. `TestFactoryRunsHasNoForceFlag`의 허용 집합을 `[rebind-to retire]`로 넓힘(유일한 기존 시험 수정) |
 | 6 | `internal/cli/factory_run_select.go` | 합류 프롬프트 `m<n>`: `CanMerge` = `Dead && InProgress>0 && OwnerLive 활성 run 정확히 1`, 파싱(`:202-224`)에 `m` 접두 추가, 선택 시 통합 연산. `r<n>`·`CanCleanup`(`:86`) 불변 |
-| 7 | 시험 | 아래 AC-FCR-017..025의 시험 이름. **기대 반전 1건**: `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates`(`internal/cli/factory_run_adopt_test.go:134`) — 죽은 스탬프 후보 2개 → 최신 채택 + 나머지 통합으로 개정. 미확정 후보 경고의 의도는 새 시험(AC-FCR-018)이 이어받는다 |
+| 7 | 시험 | 아래 AC-FCR-017..025의 시험 이름(AC-FCR-019 (a)는 런처에 닿는 cli 시험 `TestLeaderStartAdoptCASLoserMints`로 분리). **기대 반전 1건**: `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates`(`internal/cli/factory_run_adopt_test.go:134`) — 죽은 스탬프 후보 2개 → 최신 채택 + 나머지 통합으로 개정. 미확정 후보 경고의 의도는 새 시험(AC-FCR-018)이 이어받는다 |
 
 순서 근거: 1·2는 데이터 이동의 의미론(재키·포기·생존 판정)이라 가장 되돌리기 어렵고 3~6이 모두 그 위에 선다. 4·5·6은 사용자 표면이며 Q1·Q2 판정((a)·(a))을 따른다. M2-B는 M2의 reaper·reassign과 파일이 겹치지 않는다(`factory_run_retire.go`의 은퇴 경로는 읽기만 재사용).
 
@@ -157,6 +159,9 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 - (M2-B) 미확정 소유자 run을 "아마 죽었겠지"로 채택 — 산 리더의 스탬프를 덮어쓸 수 있다(t1707 F2). 자기 스탬프 dead만.
 - (M2-B) worker 생존을 heartbeat 나이로 판정 — 시간 추정은 증명이 아니다. pid 탐침의 확실한 dead만.
 - (M2-B) 라이브 DB로 검증 — 금지(spec.md §E.3).
+- (M2-B) 원천 분류를 보지 않는 통합 — `--retire <산 run> --rebind-to <산 run2>`가 산 리더의 카드를 옮긴다. 단계 (0)으로 막는다(REQ-FCR-020).
+- (M2-B) CAS 패배를 오류로 전파 — 경합한 두 번째 리더의 런치가 실패한다. 오류 없이 새 id 발급 + 경고(REQ-FCR-018).
+- (M2-B) 거부된 최신 후보 대신 다음 후보로 넘어가기 — 어느 run을 이어받는지가 실행마다 달라진다. 채택 0(REQ-FCR-017).
 
 ## §H — Integration notes
 

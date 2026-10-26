@@ -35,7 +35,7 @@
 | 18 | `card_metadata.go:284` `PreviousCardRow`; `factory_card.go:1448`; `card_worktree.go:216` | `:284`; `:1448` `factoryPriorCarryCandidate`(호출 `:1449`); `:211` `PreviousCardWorktree`(질의 `:214-218`) | 일치 |
 | 19 | `FindResumableRun` `:72-96`, "둘 이상이면 경고 후 새 run 발급(`:76-80`)" | 함수 범위는 일치. 그러나 `:76-80`은 후보 수집 루프이고, 경고·발급은 `internal/cli/factory_run_adopt.go:77-81`에서 한다. 분석이 빠뜨린 조건: 후보가 하나여도 `OwnerIndeterminate`나 `BasisPeer`면 채택하지 않는다(`:92`), 그리고 명시적 resume 인자가 필요하다(cli `:165`) | 오류(파일) + 누락 |
 | 20 | `AmbiguousRunsError` `store.go:437-458` | 반환 `:442`, 타입 `:453` | 근접 |
-| 21 | CLI 센티널 `internal/cli/factory.go:517` | `:517` `ambiguousFactoryLeaderSentinel = "AMBIGUOUS_FACTORY_LEADER"` | 일치 |
+| 21 | CLI 센티널 `internal/cli/factory.go:517` | `:517` `ambiguousFactoryLeaderSentinel = "AMBIGUOUS_FACTORY_LEADER"` — 위치는 맞지만 이것은 산 리더 간 모호성용 별개 센티널이다. `AMBIGUOUS_FACTORY:` 접두는 `internal/factorymsg/store.go:458`이 만든다(plan-audit iter1 D11b) | 일치(위치) + 의미 정정 |
 | 22 | "리더 종료 시 은퇴하는 경로 없음" | 은퇴 호출 지점을 전부 찾았다: `store.go:432`, `factory_run_select.go:344`, `factory_handoff_recover.go:134`, **`internal/cli/factory_relaunch.go:106`**(`moai factory relaunch --from-run`, REQ-SRH-013 — 분석이 빠뜨린 세 번째 운영자 은퇴 표면, 같은 가드). 종료 훅 경로는 없다 | 일치 + 누락 1건 |
 
 ### §2.1 — 분석이 다루지 않은 사실 (설계 입력)
@@ -45,7 +45,10 @@
 - 리더 승인은 `leader_approvals(card_uuid, run_id)`로 run에 묶인다(`factory.go:150-160`). REQ-FCR-002는 다른 run의 승인을 거부하므로, 옮긴 카드는 대상 run에서 승인을 새로 받아야 한다(REQ-FCR-023 — 승인 행을 옮기지 않는다).
 - 큐 쪽 "현재 배차" 기록은 다른 저장소(backlog)에 있어 factory 트랜잭션에 넣을 수 없다. 바인딩만 옮기고 큐 기록이 옛 run을 가리키면 완료 게이트는 **닫힌 쪽**으로 실패한다(M1 round-25 기록의 바인딩/기록 정합 수리). 이것은 잔여 위험으로 남긴다(design.md §5).
 - 기존 시험 중 M2-B가 반전하는 것: `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates`(`internal/cli/factory_run_adopt_test.go:134`). Q1 판정 (a)로 허용 집합만 넓어지는 것: `TestFactoryRunsHasNoForceFlag`(`internal/cli/factory_runs_retire_guard_test.go:234-242`, 플래그 집합 정확 일치 단언 — `[retire]` → `[rebind-to retire]`).
-- `TestReconcilePreservesDeadOwnerWithOnlyWorkers`(`internal/homestate/factory_run_adopt_test.go:256`)와 `TestRetireRunIfDeadRetiresWhenOnlyTerminalCardsOrWorkers`는 worker pid로 `1`을 심는다(`mustInsertWorker`, `:20-26`). pid 1은 살아 있거나 판정 불가로 나오므로 REQ-FCR-022 하에서도 "산 worker"로 남아 두 시험의 기대는 바뀌지 않는다.
+- `TestReconcilePreservesDeadOwnerWithOnlyWorkers`(`internal/homestate/factory_run_adopt_test.go:256`)와 `TestRetireRunIfDeadRetiresWhenOnlyTerminalCardsOrWorkers`는 worker pid로 `1`을 심는다(`mustInsertWorker`, `:20-26`). **OS별 정정(plan-audit iter1 D5)**: Unix 계열에서 pid 1은 init/launchd라 살아 있거나 판정 불가로 나올 것으로 추론되지만, Windows 탐침은 `ERROR_INVALID_PARAMETER`를 Dead로 읽고(`internal/homestate/pid_state_windows.go:11-14`) pid 1은 Windows의 유효한 프로세스 id가 아니다 — REQ-FCR-022 하에서 `TestReconcilePreservesDeadOwnerWithOnlyWorkers`가 windows 러너에서 run을 은퇴시켜 실패할 수 있다(코드 판독 추론, 어느 OS에서도 측정 안 함). 그래서 `mustInsertWorker`의 pid를 `os.Getpid()`로 바꾸는 픽스처 수정 1건을 허용한다(AC-FCR-025). `TestRetireRunIfDeadRetiresWhenOnlyTerminalCardsOrWorkers`는 worker 생존을 보지 않는 `retireRun` 경로라 영향이 없다.
+
+- CAS 패배의 현행 동작은 런치 실패다: `internal/cli/factory_run_adopt.go:106-108`이 `AdoptRun` 오류를 반환하고 `internal/cli/cc.go:227-229`·`internal/cli/glm.go:283-285`가 `re-adopt factory run: %w`로 실패한다(plan-audit iter1 D3, 이 개정에서 직접 읽어 확인). REQ-FCR-018의 패자 동작(새 id 발급 + 경고)은 새 동작이다.
+- 상태 연령 표시는 이벤트를 `run_id`로 거른다(`internal/homestate/card_age.go:75-86`) — 재키된 카드의 대상 run 기준 연령은 "unknown"으로 읽힌다(design.md §5 잔여 위험).
 
 ### §2.2 — 수정 대상 아님으로 확인한 것
 
@@ -71,7 +74,7 @@ M1 착지(round-1~25)로 `card_transition.go` 등이 크게 바뀌어, spec.md �
 
 ## §3 — 결함 상태 관측 (RED)
 
-acceptance.md §0 증거 장부 L1이 정본이다. 요약: `.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/`의 오버레이 시험 세 개가 HEAD `c4784db4c2`에서 모두 FAIL(exit 1)했다 — 죽은 run 2개 fixture에서 채택 없음·활성 run 2개, 죽은 pid worker만 가진 run이 active로 남음, 새 run 임대 뒤 옛 run 행이 `run` 상태로 남음.
+acceptance.md §0.1 증거 장부 L1·L7이 정본이다. L7(트리 `41f8db15de`, exit 1): 죽은 스탬프 run 옆에 `OwnerLive` 활성 run이 있어도 후보 탐색이 `adopt="run-dead"`를 반환한다 — 산 리더 옆 채택이 오늘 가능하다. L1·L7은 결함 관측이며, 바뀌지 않는 함수를 단언하므로 착지 뒤에도 RED로 남을 수 있다(전환 판정은 각 AC의 green 명령). 요약: `.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/`의 오버레이 시험 세 개가 HEAD `c4784db4c2`에서 모두 FAIL(exit 1)했다 — 죽은 run 2개 fixture에서 채택 없음·활성 run 2개, 죽은 pid worker만 가진 run이 active로 남음, 새 run 임대 뒤 옛 run 행이 `run` 상태로 남음.
 
 ## §4 — Gaps
 
