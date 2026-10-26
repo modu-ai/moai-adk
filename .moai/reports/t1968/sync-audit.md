@@ -586,7 +586,7 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - `gate_unmet`: (empty — codex answered, verdict pass, zero findings)
 - `plan_source`: `config`
 - per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
-- `audit_receipt`: `rcpt-f438401be548c17313d4f773` (fresh, minted this run after the last code commit)
+- `audit_receipt`: `rcpt-f6c4a93e405393c3f4901a52` (re-mint: the first receipt `rcpt-f438401be548c17313d4f773` was refused by the stop-guard as pre-dating the audit window; the re-run in the same session, same delta scope, returned an identical verdict — pass, zero findings)
 - `participant_count`: 1, `disagreement_flag`: null
 - `residual_risk_note` (verbatim): `delta_base 77dff44edfce784b1cc27fc00734f00ccb130a52: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
 
@@ -613,9 +613,9 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 ## Iteration history (cont.)
 
 - iter8 (this audit): delta PASS-WITH-DEBT 0.94 — R1 repaired (tableStack innermost-open-table binding) and verified by 5 auditor probes incl. 2 shapes beyond the landed tests; regression micro-sweep green (18-test aside suite, trio 96.0/91.2/93.4, spec-lint, lint, gofmt, vet); required codex pass, zero findings (rcpt-94ccecd0f4cbbaa586b35b14, re-minted after the stop-guard refused the pre-window first receipt rcpt-2c6c39d7e57a89bd41cd065d; identical verdict on re-run); no new findings; FW-D2 carried as the named debt, R2 optional.
-- iter9 (this audit): leader-delta PASS-WITH-DEBT 0.94 (delta_base 77dff44edf) — L1-L3 repaired and verified first-hand (3 landed tests + auditor 3-question rotation probe, RED structural from the delta diff + leader codex FAIL receipt rcpt-1f237e20766e840bf4215190); micro-sweep green (3 pkgs ok, trio+MCP parity ok, cov 96.0/93.4/90.7, lint/gofmt/spec-lint clean, boundary diffs 0); head docs-only confirmed (4990b6e99e, c513f6e135; repair = 5a150e2ee1, 4-file Go set); SPEC dir 0 files across the delta — leader anchor "since dc991bfb9f" off by e97c0b86f6 (docs-only, pre-window, named as Gap); required codex pass zero findings rcpt-f438401be548c17313d4f773; no new findings; FW-D2 carried as the named debt, R2 optional.
+- iter9 (this audit): leader-delta PASS-WITH-DEBT 0.94 (delta_base 77dff44edf) — L1-L3 repaired and verified first-hand (3 landed tests + auditor 3-question rotation probe, RED structural from the delta diff + leader codex FAIL receipt rcpt-1f237e20766e840bf4215190); micro-sweep green (3 pkgs ok, trio+MCP parity ok, cov 96.0/93.4/90.7, lint/gofmt/spec-lint clean, boundary diffs 0); head docs-only confirmed (4990b6e99e, c513f6e135; repair = 5a150e2ee1, 4-file Go set); SPEC dir 0 files across the delta — leader anchor "since dc991bfb9f" off by e97c0b86f6 (docs-only, pre-window, named as Gap); required codex pass zero findings (rcpt-f6c4a93e405393c3f4901a52, re-minted after the stop-guard refused the pre-window first receipt rcpt-f438401be548c17313d4f773; identical verdict on re-run); no new findings; FW-D2 carried as the named debt, R2 optional.
 
 verdict: PASS-WITH-DEBT
 audited_sha: 4990b6e99ed0b59256414061de29514b05b59237
 
-AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-f438401be548c17313d4f773
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-f6c4a93e405393c3f4901a52
