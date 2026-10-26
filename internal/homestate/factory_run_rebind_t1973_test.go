@@ -2,6 +2,8 @@ package homestate
 
 import (
 	"context"
+	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -446,4 +448,202 @@ func TestT1973_R5_StateTransitionMatrix(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestRed_T1973e_IdenticalSHABypassStrandsQuestion — round 6 (the THIRD
+// same-family finding): when both rows' evidence_sha hold the same NON-EMPTY
+// value the gate skips the progress comparison entirely (early exit), and T21
+// PRESERVES the existing SHA on a needs-decision entry — so a source carrying
+// a pending operator question over a target that lacks it is abandoned and the
+// dispatch moved, and work continues without the operator's answer.
+func TestRed_T1973e_IdenticalSHABypassStrandsQuestion(t *testing.T) {
+	db := openSandboxFactory(t)
+	opts := rbOpts()
+	rbRun(t, db, "run-old", rbPIDDead)
+	rbRun(t, db, "run-new", rbPIDLive)
+	// The source: needs-decision with a pending question; its evidence_sha is
+	// the SHA T21 preserved from the earlier work.
+	rbCard(t, db, "run-old", "c1", CardNeedsDecision)
+	rbBind(t, db, "c1", "run-old")
+	if _, err := db.DB.Exec(`UPDATE cards SET decision_gate='question', decision_question='merge #1906 now or hold?', decision_resume='kickoff:...' WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	// The target: same SHA (rbCard seeds "sha-c1" on both rows), no question.
+	rbCard(t, db, "run-new", "c1", CardPicked)
+	before := rbDump(t, db)
+	_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+	rbRefusedWith(t, err, "c1", "run-new")
+	if after := rbDump(t, db); after != before {
+		t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+	if loadErr != nil || c.DecisionQuestion != "merge #1906 now or hold?" {
+		t.Fatalf("run-old c1 = (%+v, %v), want the pending question preserved", c, loadErr)
+	}
+}
+
+// TestT1973_R6_WholeRowTransitionMatrix — the round-6 full cross product:
+// source state × target shape × evidence SHA, 5 × 3 × 3 = 45 cells. The
+// expected outcome per cell, stated as a table (srcInfo = the source row
+// carries non-identity info; identical = the target holds that info
+// identically; shaDiff = the two evidence SHAs are non-empty and differ):
+//
+//	| cell                                                        | expected |
+//	|-------------------------------------------------------------|----------|
+//	| bare source (picked/assigned), any target, SHA same/empty   | abandon  |
+//	| bare source, any target, SHA different                      | refuse   |
+//	| info source, identical target, SHA same or empty            | abandon  |
+//	| info source, identical target, SHA different                | refuse   |
+//	| info source, bare or divergent target (any SHA)             | refuse   |
+//
+// i.e. abandon ONLY where every compared source column is at its zero value
+// or held identically by the target; anything else refuses.
+func TestT1973_R6_WholeRowTransitionMatrix(t *testing.T) {
+	sources := []struct{ name, state, set string }{
+		{"picked bare stub", CardPicked, ""},
+		{"assigned bare stub", CardAssigned, ""},
+		{"needs-decision w/ pending question", CardNeedsDecision, `decision_gate='question', decision_question='Q-src?', decision_resume='k:src'`},
+		{"expired-to-assigned keeping stage/worktree", CardAssigned, `stage='run', worktree_path='/wt/src'`},
+		{"running/work row", CardRun, `stage='run', worktree_path='/wt/src', spec_id='SPEC-SRC'`},
+	}
+	// The divergent target set: non-empty values in the very columns the info
+	// sources carry, all different from the source's.
+	const divergentSet = `stage='sync', worktree_path='/wt/tgt', decision_question='Q-tgt?'`
+	targets := []struct {
+		name      string
+		identical bool
+		set       func(srcSet string) string
+	}{
+		{"bare target", false, func(string) string { return "" }},
+		{"identically-holding target", true, func(s string) string { return s }},
+		{"divergently-holding target", false, func(string) string { return divergentSet }},
+	}
+	shas := []struct {
+		name           string
+		srcSHA, tgtSHA string
+		diff           bool
+	}{
+		{"same non-empty SHA", "sha-c1", "sha-c1", false},
+		{"different SHA", "sha-src", "sha-tgt", true},
+		{"empty SHA", "", "", false},
+	}
+	for _, src := range sources {
+		for _, tgtShape := range targets {
+			for _, sha := range shas {
+				name := src.name + " / " + tgtShape.name + " / " + sha.name
+				t.Run(name, func(t *testing.T) {
+					db := openSandboxFactory(t)
+					opts := rbOpts()
+					rbRun(t, db, "run-old", rbPIDDead)
+					rbRun(t, db, "run-new", rbPIDLive)
+					rbCard(t, db, "run-old", "c1", src.state)
+					rbBind(t, db, "c1", "run-old")
+					rbCard(t, db, "run-new", "c1", CardPicked)
+					// Normalize both rows to bare (stage blank; rbCard stamps
+					// it) before applying the cell's shapes.
+					if _, err := db.DB.Exec(`UPDATE cards SET stage='' WHERE card_id='c1'`); err != nil {
+						t.Fatal(err)
+					}
+					if src.set != "" {
+						if _, err := db.DB.Exec(`UPDATE cards SET ` + src.set + ` WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if ts := tgtShape.set(src.set); ts != "" {
+						if _, err := db.DB.Exec(`UPDATE cards SET ` + ts + ` WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha=? WHERE run_id='run-old' AND card_id='c1'`, sha.srcSHA); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha=? WHERE run_id='run-new' AND card_id='c1'`, sha.tgtSHA); err != nil {
+						t.Fatal(err)
+					}
+					srcInfo := src.set != ""
+					wantRefuse := sha.diff || (srcInfo && !tgtShape.identical)
+					res, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+					if wantRefuse {
+						rbRefusedWith(t, err, "c1", "run-new")
+						return
+					}
+					if err != nil {
+						t.Fatalf("the duplicate pair refused: %v", err)
+					}
+					if len(res.Abandoned) != 1 || res.Abandoned[0] != "c1" {
+						t.Fatalf("res = %+v, want c1 abandoned with a pointer", res)
+					}
+					if got := runStatus(t, db, "run-old"); got != "retired" {
+						t.Fatalf("run-old status = %s, want retired", got)
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestT1973_R6_ComparisonMirrorsTheSchema — the column-count guard: the
+// reflect-based duplicate comparison iterates the Card STRUCT, so its coverage
+// is exactly the struct's field set. This test fails the moment the cards
+// schema gains (or loses) a column without Card (and therefore the comparison)
+// following: the struct's json tags must equal PRAGMA table_info(cards), the
+// exclusion list must name real columns, and at least one column must remain
+// compared.
+func TestT1973_R6_ComparisonMirrorsTheSchema(t *testing.T) {
+	db := openSandboxFactory(t)
+	rows, err := db.DB.Query(`PRAGMA table_info(cards)`)
+	if err != nil {
+		t.Fatalf("table_info: %v", err)
+	}
+	schema := map[string]bool{}
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			t.Fatalf("scan table_info: %v", err)
+		}
+		schema[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	_ = rows.Close()
+
+	structCols := map[string]bool{}
+	typ := reflect.TypeOf(Card{})
+	scanCols := cardColumnNames()
+	if typ.NumField() != len(scanCols) {
+		t.Fatalf("Card has %d fields but cardSelectColumns names %d columns — the scan binding is broken", typ.NumField(), len(scanCols))
+	}
+	for i := range typ.NumField() {
+		structCols[scanCols[i]] = true
+	}
+	for col := range structCols {
+		if !schema[col] {
+			t.Errorf("Card scan column %q has no cards column — the struct and the schema diverged", col)
+		}
+	}
+	for col := range schema {
+		if !structCols[col] {
+			t.Errorf("cards column %q has no Card field — divergentColumns cannot see it; add the field or the comparison has a hole", col)
+		}
+	}
+	for col := range cardPairExcludedColumns {
+		if !schema[col] {
+			t.Errorf("cardPairExcludedColumns names %q, which is not a cards column", col)
+		}
+	}
+	compared := 0
+	for col := range schema {
+		if !cardPairExcludedColumns[col] {
+			compared++
+		}
+	}
+	if compared == 0 {
+		t.Fatalf("every cards column is excluded — the duplicate comparison is vacuous")
+	}
+	t.Logf("cards columns: %d total, %d compared, %d excluded", len(schema), compared, len(schema)-compared)
 }

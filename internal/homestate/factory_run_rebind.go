@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -61,58 +62,70 @@ func rebindRefusal(format string, args ...any) error {
 	return fmt.Errorf("%w: "+format, append([]any{ErrRebindRefused}, args...)...)
 }
 
-// consolidationCard is the slice of a source card row the operation needs.
-type consolidationCard struct {
-	id, state, stage, evidenceSHA                  string
-	leaseHolder, leaseExpiresAt                    string
-	worktreePath, specID                           string
-	decisionGate, decisionQuestion, decisionResume string
-	version                                        int64
+// cardPairExcludedColumns names the cards columns EXCLUDED from the
+// duplicate-pair comparison, by their Card struct json tags:
+//
+//   - run_id, card_id — the row's identity key; the target row's values
+//     differ by construction.
+//   - owner_label — session ownership, re-stamped per engagement; the
+//     operator-move path legitimately carries a different holder on each
+//     side of the pair.
+//   - state, version — the transition counters; the two runs advanced them
+//     independently, and the surviving state is the pair's decision, not
+//     stranded work.
+//   - updated_at, heartbeat_at — timestamps; they record when each side
+//     last wrote, never what the row holds.
+//
+// Every OTHER cards column is compared: a duplicate pair is one where each
+// compared column of the SOURCE row is at its zero value, or held identically
+// by the target row.
+var cardPairExcludedColumns = map[string]bool{
+	"run_id": true, "card_id": true, "owner_label": true,
+	"state": true, "version": true, "updated_at": true, "heartbeat_at": true,
 }
 
-// tgtProgress is the same field slice read off the TARGET row: the relative
-// progress comparison needs both sides (card t1973 rounds 4-5).
-type tgtProgress struct {
-	stage, worktree, spec                          string
-	decisionGate, decisionQuestion, decisionResume string
+// cardColumnNames lists the cards column names in cardSelectColumns order —
+// the order scanCard binds to Card's fields, so Card field i IS column i.
+// (The struct's json tags are API-facing names and deliberately differ from
+// column names for owner_label/hint_prefer/hint_after, so the tags cannot name
+// the columns; the scan binding can.)
+func cardColumnNames() []string {
+	return strings.Split(cardSelectColumns, ",")
 }
 
-// strandsProgressOver names the progress fields the source row carries that
-// the target row does not already hold identically — the info an
-// abandon-with-pointer would strand on the abandoned row while the target's
-// fresh row continues without it. Round 3 keyed this decision on the source
-// row's STATE; that missed rows a lease expiry or a question receipt returned
-// to assigned/needs-decision KEEPING their progress (round 4), and round 4
-// missed the pending-decision fields a T21 entry carries even when everything
-// else is empty (round 5) — an unresolved operator question stranded by an
-// abandon lets the target be leased without the operator's answer. So the
-// ACTUAL remaining info decides: stage, worktree path, spec id, and the three
-// pending-decision carriers (decision_gate, decision_question,
-// decision_resume). decider/decided_at are resolution markers written by the
-// transition that answers the question, not pending state, and are
-// deliberately not gated. An empty return means the source row is a bare
-// stub, or the target already carries everything it holds.
-func (c consolidationCard) strandsProgressOver(t tgtProgress) []string {
-	var stranded []string
-	if c.stage != "" && c.stage != t.stage {
-		stranded = append(stranded, "stage")
+// divergentColumns names every compared cards column the source row carries
+// at a non-zero value the target row does not hold identically — the info an
+// abandon-with-pointer would strand on the abandoned row. The comparison
+// iterates the Card STRUCT by reflection, not a maintained field list, so a
+// column added to the schema (and to Card) is covered automatically;
+// TestT1973_R6_ComparisonMirrorsTheSchema guards that Card still mirrors the
+// table. This is the round-6 STRUCTURAL form: three same-family findings
+// (progress fields, decision fields, then the identical-SHA bypass — T21
+// PRESERVES the SHA, so a matching evidence_sha must never short-circuit the
+// comparison) taught that enumerating fields always lags the schema. The
+// evidence_sha column is compared like every other: a differing non-empty
+// SHA diverges, an identical one does not, and neither exits early.
+func divergentColumns(src, tgt Card) []string {
+	cols := cardColumnNames()
+	var diverged []string
+	s, t := reflect.ValueOf(src), reflect.ValueOf(tgt)
+	typ := s.Type()
+	for i := range typ.NumField() {
+		if i >= len(cols) {
+			// The guard test pins field count to column count; unreachable
+			// in a green tree.
+			break
+		}
+		if cardPairExcludedColumns[cols[i]] {
+			continue
+		}
+		sv, tv := s.Field(i), t.Field(i)
+		if sv.IsZero() || sv.Equal(tv) {
+			continue
+		}
+		diverged = append(diverged, cols[i])
 	}
-	if c.worktreePath != "" && c.worktreePath != t.worktree {
-		stranded = append(stranded, "worktree")
-	}
-	if c.specID != "" && c.specID != t.spec {
-		stranded = append(stranded, "spec_id")
-	}
-	if c.decisionGate != "" && c.decisionGate != t.decisionGate {
-		stranded = append(stranded, "decision_gate")
-	}
-	if c.decisionQuestion != "" && c.decisionQuestion != t.decisionQuestion {
-		stranded = append(stranded, "decision_question")
-	}
-	if c.decisionResume != "" && c.decisionResume != t.decisionResume {
-		stranded = append(stranded, "decision_resume")
-	}
-	return stranded
+	return diverged
 }
 
 // RebindRun consolidates the source run into the target run (REQ-FCR-020).
@@ -131,10 +144,12 @@ func (c consolidationCard) strandsProgressOver(t tgtProgress) []string {
 //	    non-terminal row for one of the source's cards (a dead-owner third run
 //	    must also provably hold no live lease and no living worker); otherwise
 //	    re-keys each non-terminal source card to the target, or — when the
-//	    target already holds the card as a NON-TERMINAL row with the same
-//	    evidence — moves the source row to abandoned with a card.rebound
-//	    pointer event (a terminal or evidence-divergent target row refuses
-//	    the whole operation, card t1973),
+//	    target already holds the card as a NON-TERMINAL row that is a
+//	    structural DUPLICATE of the source row (every compared column of the
+//	    source at its zero value or held identically; a terminal target row,
+//	    or any column divergence, refuses the whole operation — card t1973
+//	    round 6) — moves the source row to abandoned with a card.rebound
+//	    pointer event,
 //	(5) repoints the card_dispatch binding of each card step 4 moved (re-keyed or
 //	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
@@ -222,11 +237,11 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		// worker guard is run-scoped: a holder whose registration names
 		// another run (or none) is invisible to refuseLiveWorker, so the
 		// row's own lease decides (card t1973 round 2, P1).
-		if holdsValidLease(Card{State: c.state, LeaseHolder: c.leaseHolder, LeaseExpiresAt: c.leaseExpiresAt}, now) {
+		if holdsValidLease(c, now) {
 			return RebindResult{}, rebindRefusal("card %s of run %s holds a live lease (%s, expires %s); a leased card is not moved",
-				c.id, src.RunID, c.leaseHolder, c.leaseExpiresAt)
+				c.CardID, src.RunID, c.LeaseHolder, c.LeaseExpiresAt)
 		}
-		if err := refuseThirdRunHolder(ctx, tx, c.id, src.RunID, tgt.RunID, others, now, opts.workerProbe()); err != nil {
+		if err := refuseThirdRunHolder(ctx, tx, c.CardID, src.RunID, tgt.RunID, others, now, opts.workerProbe()); err != nil {
 			return RebindResult{}, err
 		}
 	}
@@ -234,58 +249,50 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	var res RebindResult
 	nowText := now.Format(time.RFC3339Nano)
 	for i, c := range cards {
-		var tgtState, tgtEvidence string
-		var tp tgtProgress
-		tgtErr := tx.QueryRowContext(ctx, `SELECT state,evidence_sha,stage,worktree_path,spec_id,decision_gate,decision_question,decision_resume FROM cards WHERE run_id=? AND card_id=?`,
-			tgt.RunID, c.id).Scan(&tgtState, &tgtEvidence, &tp.stage, &tp.worktree, &tp.spec, &tp.decisionGate, &tp.decisionQuestion, &tp.decisionResume)
+		// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
+		tgtCard, tgtErr := scanCard(tx.QueryRowContext(ctx, `SELECT `+cardSelectColumns+` FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.CardID))
 		if tgtErr != nil && !errors.Is(tgtErr, sql.ErrNoRows) {
 			return RebindResult{}, tgtErr
 		}
 		if tgtErr == nil {
 			// A target row is a wall the source's live work is never silently
 			// discarded against (card t1973, P1): a TERMINAL row is a completed
-			// past carrying its own evidence and approval, and a row whose
-			// evidence diverges is different work. Either refuses the whole
-			// operation — the source's row stays live and the conflict needs a
-			// fresh decision, not the target's stale completion.
-			//
-			// Two EMPTY evidence values are a match only when the source row
-			// carries no progress the target row lacks (card t1973 round 2 P2,
-			// rounds 3-5): the t1963-designed dedup — a bare evidence-less
-			// source stub beside the target's fresh row, or a pair whose
-			// stage/worktree/spec_id/pending decision the target already holds
-			// — keeps the abandon-with-pointer behavior the operator-move and
-			// leader-start-consolidation paths live on. A source row that
-			// carries ANY of those fields the target does not already hold
-			// refuses: a lease expiry or a question receipt returns a row to
-			// assigned/needs-decision KEEPING its progress (round 4), and a
-			// T21 entry carries an unresolved operator question even when
-			// everything else is empty (round 5) — the row's STATE cannot make
-			// this decision, its actual remaining info does.
-			bothEmpty := tgtEvidence == "" && c.evidenceSHA == ""
-			stranded := []string(nil)
-			if bothEmpty {
-				stranded = c.strandsProgressOver(tp)
+			// past carrying its own evidence and approval, and refuses the
+			// whole operation. A non-terminal target row is a DUPLICATE of the
+			// source only under the round-6 STRUCTURAL gate: every compared
+			// column of the source row (all of cards minus the identity /
+			// ownership / counter / timestamp exclusions of
+			// cardPairExcludedColumns) is at its zero value or held
+			// identically by the target row — the t1963-designed dedup the
+			// operator-move and leader-start-consolidation paths live on, and
+			// the only shape an abandon-with-pointer serves. Any divergence —
+			// progress fields, pending-decision fields, evidence, anything a
+			// future schema adds — names its columns and refuses. There is no
+			// identical-SHA early exit: T21 preserves the SHA, so a matching
+			// evidence_sha proves nothing about the rest of the row.
+			if IsTerminalCardState(tgtCard.State) {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a TERMINAL %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
+					c.CardID, tgt.RunID, tgtCard.State, tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
-			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || len(stranded) > 0 {
-				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q)%s; the live row of run %s stays and the conflict needs a fresh decision",
-					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(stranded), src.RunID)
+			if diverged := divergentColumns(c, tgtCard); len(diverged) > 0 {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row diverging on %s (target evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
+					c.CardID, tgt.RunID, tgtCard.State, strings.Join(diverged, ", "), tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
 			}
-			res.Abandoned = append(res.Abandoned, c.id)
+			res.Abandoned = append(res.Abandoned, c.CardID)
 		} else {
 			// Re-key: only run_id changes; state, version, stage, lease, evidence
 			// and every other column ride along untouched.
-			r, err := tx.ExecContext(ctx, `UPDATE cards SET run_id=? WHERE run_id=? AND card_id=?`, tgt.RunID, src.RunID, c.id)
+			r, err := tx.ExecContext(ctx, `UPDATE cards SET run_id=? WHERE run_id=? AND card_id=?`, tgt.RunID, src.RunID, c.CardID)
 			if err != nil {
 				return RebindResult{}, err
 			}
 			if n, err := r.RowsAffected(); err != nil || n != 1 {
-				return RebindResult{}, rebindRefusal("card %s of run %s changed during the consolidation", c.id, src.RunID)
+				return RebindResult{}, rebindRefusal("card %s of run %s changed during the consolidation", c.CardID, src.RunID)
 			}
-			res.Moved = append(res.Moved, c.id)
+			res.Moved = append(res.Moved, c.CardID)
 		}
 		if i == 1 {
 			if err := rebindInject(rebindPointSecondCard); err != nil {
@@ -341,18 +348,6 @@ func nonNilStrings(s []string) []string {
 		return []string{}
 	}
 	return s
-}
-
-// bothEmptyNote names the both-empty-evidence shape inside a target-row
-// conflict refusal: a source row carrying progress or a pending decision the
-// target lacks beside an evidence-less target row is not proven to be the same
-// work (card t1973 round 2 P2, rounds 3-5 — the gate is the source row's
-// ACTUAL remaining info, not its state; a bare stub keeps the t1963 abandon).
-func bothEmptyNote(stranded []string) string {
-	if len(stranded) == 0 {
-		return ""
-	}
-	return " — the source row carries progress the target lacks (" + strings.Join(stranded, ", ") + ") and neither row records evidence"
 }
 
 // requireRunStamp re-reads one run inside the transaction and refuses unless
@@ -420,16 +415,19 @@ func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(
 }
 
 // sourceCards reads the source's non-terminal cards in card-id order.
-func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidationCard, error) {
-	// SQL: sqlTerminalStates is a compile-time constant; the run id goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha,lease_holder,lease_expires_at,worktree_path,spec_id,decision_gate,decision_question,decision_resume FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
+// sourceCards reads the source's non-terminal cards in card-id order as FULL
+// Card rows (cardSelectColumns): the round-6 duplicate gate compares the
+// whole row, so the read must carry every column the schema has.
+func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]Card, error) {
+	// SQL: the concatenated fragments are compile-time constants; the run id goes through a placeholder.
+	rows, err := tx.QueryContext(ctx, `SELECT `+cardSelectColumns+` FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
 	if err != nil {
 		return nil, err
 	}
-	var cards []consolidationCard
+	var cards []Card
 	for rows.Next() {
-		var c consolidationCard
-		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA, &c.leaseHolder, &c.leaseExpiresAt, &c.worktreePath, &c.specID, &c.decisionGate, &c.decisionQuestion, &c.decisionResume); err != nil {
+		c, err := scanCard(rows)
+		if err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -515,23 +513,23 @@ WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NO
 // appends the card.rebound event that records where the card went and what the
 // row looked like — nothing is deleted, and the previous state is recoverable
 // from the event. The update is version-checked like every other transition.
-func abandonWithPointer(ctx context.Context, tx *sql.Tx, fromRun, toRun string, c consolidationCard, via string, now time.Time) error {
+func abandonWithPointer(ctx context.Context, tx *sql.Tx, fromRun, toRun string, c Card, via string, now time.Time) error {
 	r, err := tx.ExecContext(ctx, `UPDATE cards SET state=?, version=version+1, updated_at=? WHERE run_id=? AND card_id=? AND version=?`,
-		CardAbandoned, now.Format(time.RFC3339Nano), fromRun, c.id, c.version)
+		CardAbandoned, now.Format(time.RFC3339Nano), fromRun, c.CardID, c.Version)
 	if err != nil {
 		return err
 	}
 	if n, err := r.RowsAffected(); err != nil || n != 1 {
-		return rebindRefusal("card %s of run %s changed under the abandon", c.id, fromRun)
+		return rebindRefusal("card %s of run %s changed under the abandon", c.CardID, fromRun)
 	}
 	return appendEvent(ctx, tx, fromRun, "card.rebound", map[string]any{
-		"card_id":      c.id,
+		"card_id":      c.CardID,
 		"from_run":     fromRun,
 		"to_run":       toRun,
-		"state":        c.state,
-		"version":      c.version,
-		"stage":        c.stage,
-		"evidence_sha": c.evidenceSHA,
+		"state":        c.State,
+		"version":      c.Version,
+		"stage":        c.Stage,
+		"evidence_sha": c.EvidenceSHA,
 		"via":          via,
 	}, now)
 }
