@@ -163,23 +163,58 @@ reading: 오늘의 후보 탐색(`FindResumableRun`)은 산 리더가 있어도 
 ```
 
 ```text
-[L8] RED-now to be observed by the run phase on the pre-fix tree — 통합된 원천으로의 dispatch 재시도 (AC-FCR-017 (10), REQ-FCR-024)
-tree: (run-phase가 수리 전 트리의 `git rev-parse HEAD`를 기록한다)
-fixture: 리더 진입 통합 뒤 `c1`이 `run-new`로 재키되고 `run-old`는 `retired`(`run.retired`에 `rebound_to=run-new`); 큐의 `DispatchCurrent`가 `c1`에 대해 `run-old`를 가리키며 큐 항목은 `picked`
-command: (run-phase가 단일 호출 형태로 기록 — 예: `go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v`를 수리 전 트리에서)
-exit: (관측 대기 — 기대 1)
-stdout: (관측 대기 — 기대: 오류 없음과 함께 `run-old`에 `c1` 행이 다시 생기고 `card_dispatch[c1]`이 `run-old`를 가리킴)
-status: 이 개정(v0.3.5)은 코드를 실행하지 않았다. 결함 경로는 sync-audit F-1의 코드 판독(`internal/factory/gtd_operation.go:364`의 통화 판정 → `:402` `RecordPicked` → `:423` `RecordDispatchEngagement`, run 상태 검사 없음)과 리더의 codex_audit P1(receipt `rcpt-1b9bc18678997c8bca9f3820`, HEAD `2cb473392c`)이 근거다.
+[L8] RED — dispatch retry aimed at a consolidated source (AC-FCR-017 (10), REQ-FCR-024)
+tree: dccb87e60773590f7820045ef94227024adb57e4  (git rev-parse HEAD; the test files below were new and uncommitted, production code unchanged)
+fixture: gtdConsolidatedFixture — run-src (dead stamp) and run-tgt (live); card c1 picked in run-src with the queue's DispatchCurrent naming run-src (queue half of the in-flight dispatch); binding -> run-src; then the real RebindRun consolidates run-src into run-tgt: c1 re-keyed to run-tgt, run-src retired with run.retired{rebound_to:run-tgt}, binding -> run-tgt; the queue still names run-src and the item is picked
+command: go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestRepairGTDDispatchRefusesConsolidatedSource
+    gtd_operation_consolidated_test.go:120: the repair recreated work in a run a consolidation retired: card row in run-src=true, binding="run-src"
+--- FAIL: TestRepairGTDDispatchRefusesConsolidatedSource (1.07s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	1.484s
+FAIL
+reading: pre-fix, repairGTDDispatchRecord(c1, run-src) returned nil, recreated c1's row in the retired run-src and flipped card_dispatch[c1] back to run-src — the L8 prediction, observed.
+source: `.moai/reports/t1963/run-evidence.md` § Ledger entry L8 (verbatim copy, v0.3.7)
 ```
 
 ```text
-[L9] RED-now to be observed by run-phase on the pre-fix tree — 확인과 쓰기 사이의 통합 (AC-FCR-017 (10b), REQ-FCR-024 원자성)
-tree: (run-phase가 수리 전 트리의 `git rev-parse HEAD`를 기록한다 — 기대 기준: 확인과 쓰기가 따로인 `763311a729`)
-fixture: (10)과 같은 fixture에서, 은퇴 표지 확인 뒤·첫 복구 쓰기 전 시임에 `RebindRun`을 주입
-command: (run-phase가 단일 호출 형태로 기록)
-exit: (관측 대기 — 기대 1)
-stdout: (관측 대기 — 기대: 은퇴한 원천에 카드 행 또는 바인딩이 다시 생김)
-status: 이 개정(v0.3.6)은 코드를 실행하지 않았다. 근거는 리더의 codex_audit P2(receipt `rcpt-159c3e2bb9b922a0a2727c9f`, HEAD `763311a729`)와 manager-spec의 코드 판독(`internal/factory/gtd_operation.go:407`·`:411`·`:413`·`:421`·`:434`가 따로 호출됨)이다.
+[L9] RED — consolidation between the retired-run check and the first repair write (AC-FCR-017 (10b), REQ-FCR-024 atomicity)
+tree: 8b10f6706627bb806487b58c79d859645fd7d2ad  (git rev-parse HEAD; production code = the separate-read check + four separate transactions; plus the uncommitted seam var `gtdRepairAfterCheck` called after the check, and the new test)
+fixture: run-src (dead stamp) and run-tgt (live); the queue holds the queue half of an in-flight dispatch to run-src (no factory row yet). The seam, after the check and before the first write, starts a REAL RebindRun(run-src -> run-tgt) on its own database handle and waits up to 3s for it.
+command: go test ./internal/factory -run '^TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair
+    gtd_operation_atomic_test.go:127: work was recreated in the retired source: non-terminal rows in run-src=1, binding="run-src" (repair err=<nil>)
+--- FAIL: TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair (0.95s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	1.345s
+FAIL
+reading: with nothing holding the write lock between the check and the writes, the consolidation committed in the window and RecordPicked/Transition/RecordDispatchEngagement then recreated the card in the run it had retired.
+source: `.moai/reports/t1963/run-evidence.md` § Ledger entry L9 (verbatim copy, v0.3.7)
+```
+
+```text
+[L10] RED — dispatch first write aimed at a consolidated source (REQ-FCR-024 scope)
+tree: 6056e489dfa1f3c76bfe257a03321a0a20443975  (git rev-parse HEAD; production code unchanged; new tests uncommitted)
+fixture: gtdConsolidatedFixtureWith(t, false) — c1 recorded in run-src, bound to run-src, then the real RebindRun consolidates run-src into run-tgt (c1 re-keyed, binding -> run-tgt, run-src retired with rebound_to). The queue holds NO current-dispatch record: a dispatch prepared before the consolidation whose assignment had not yet been recorded.
+command: go test ./internal/factory -run '^TestDispatchFirstWriteRefusesAConsolidatedSource$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestDispatchFirstWriteRefusesAConsolidatedSource
+    gtd_operation_consolidated_test.go:210: the first-write path bound the card to a run a consolidation retired: binding="run-src", row in run-src=false
+--- FAIL: TestDispatchFirstWriteRefusesAConsolidatedSource (1.86s)
+FAIL	github.com/modu-ai/moai-adk/internal/factory	2.257s
+reading: the real Apply path (RecordFactoryCardAssignment -> its hook RecordDispatchEngagementIfEngaged -> RecordDispatchEngagement) re-pointed the card's binding at the retired run, which holds no row for it: recordedCardRow now fails closed (ErrApprovalRunUnresolvable) and the completion gate cannot resolve the card.
+cli mirror (same tree, verbatim):
+$ go test ./internal/cli -run '^TestDispatchMirrorRefusesAConsolidatedSource$' -count=1 -v      exit 1
+    factory_mirror_consolidated_test.go:61: the mirror recreated work in a run a consolidation retired (rows in run-src: 1)
+--- FAIL: TestDispatchMirrorRefusesAConsolidatedSource (1.85s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.339s
+storage-layer unit test (same tree, verbatim): and the storage-layer unit test, six write entry points (`RecordPicked` of a new card and of a moved card, `RecordPickedReconciled`, `RecordDispatchBinding`, `RecordDispatchEngagement` with and without an owner): all six `err = <nil>, want ErrRunRetiredByConsolidation` (`go test ./internal/homestate -run '^TestStorageWritesRefuseAConsolidatedSource$' -count=1 -v`, exit 1; the ordinary-retirement/read-only guard test `TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone` passed on arrival).
+source: `.moai/reports/t1963/run-evidence.md` § L10 (verbatim copy, v0.3.7)
 ```
 
 **장부의 성격(L1·L7)**: L1과 L7은 결함 관측이다. 탐침이 단언하는 함수(`FindResumableRun`·`ReconcileActiveRuns`)는 plan·design상 바뀌지 않고 새 선택 단계가 추가되므로, **올바른 구현 뒤에도 L1·L7은 RED로 남을 수 있다** — 녹색 전환의 증인이 아니다. 전환 판정은 각 AC의 green 명령만 한다. L1의 오버레이 원본은 커밋 `41f8db15de`부터 트리에 있다(L1의 측정 핀 `c4784db4c2`와 소스는 같다).
@@ -254,10 +289,10 @@ status: 이 개정(v0.3.6)은 코드를 실행하지 않았다. 근거는 리더
 
 - **Given** 샌드박스 루트에 죽은 스탬프 run 2개(`run-old`·`run-new`, 생성 시각 `run-old` < `run-new`, 두 스탬프 모두 결코 살아날 수 없는 pid·지문 — `seedDeadRunWithLiveRecords` 형태)가 있고, 비종결 카드가 `run-old`에 `c1(run)`·`c2(picked)`·`c4(needs-decision)`, `run-new`에 `c3(assigned)`·`c4(picked)`로 있으며(`c4`는 두 run에 걸친 중복), 종결 카드 `c5(done)`가 `run-old`에 있고, 어떤 활성 run도 `OwnerLive`·`OwnerIndeterminate`가 아니며, `card_dispatch`가 `c1→run-old`와 `c2→run-old` 두 건, 그리고 종결 카드 `c5(done)`의 `c5→run-old`를 가리키며, `leader_approvals`에 `c1`의 `run-old` 승인 행 1개가 있다. 두 run의 `created_at`은 픽스처가 명시적으로 다르게 심는다(같은 시각이면 `run_id` 내림차순으로 `run-old`가 뽑힌다 — 동률 규칙은 변이 탐침 (e)가 따로 단언한다)
 - **When** resume 인자 없이, `--factory-run` 없이, 새로 발급된 id로 리더 진입 채택 경로를 한 번 실행한다
-- **Then** (1) 활성 run은 정확히 1개이고 그것은 `run-new`이며 스탬프가 현재 프로세스로 바뀌었고 `run.resumed` 이벤트가 1개 붙었다; (2) `run-old`는 `retired`이고 `run.retired` 이벤트 1개가 `classification=dead`·`basis=stamp`·`rebound_to=run-new`·`moved=2`·`abandoned=1`과 카드 id 목록(옮김 `c1`·`c2`, 포기 `c4`)을 담으며, 리더 진입의 stderr에 같은 카드 id가 나온다; (3) `c1`·`c2`는 `run-new` 아래 행으로 재키됐고 run_id 외 모든 열(state·version·stage·updated_at 포함)이 진입 전 값과 같다; (4) `run-old`의 `c4`는 `abandoned`이고 `card.rebound` 이벤트가 이전 state `needs-decision`과 version을 담으며, `run-new`의 `c4`는 바뀌지 않았다; (5) `cards` 전체 행 수가 진입 전과 **정확히 같고**(삭제 0·복사 0), `events` 행 수는 줄지 않았다; (6) `card_dispatch`의 `c1`과 `c2` 두 건 모두 `run-new`를 가리키고(옮긴 카드 전부 — 하나만 재지정하는 구현은 실패), 종결 카드 `c5`의 바인딩은 `run-old`로 **바뀌지 않았으며** 바인딩 해석(`recordedCardRow`)이 `c5`를 `run-old`의 행으로 해석한다(오류 없음, REQ-FCR-020 (5) — 사후 개정 v0.3.3); (7) `ResolveActiveRun(root, "")`이 `run-new`를 반환하고 오류가 없다 — `AMBIGUOUS_FACTORY` 0회; (8) `c1`의 `run-old` 승인 행이 `run_id=run-old`로 바이트 단위로 그대로이고 `leader_approvals` 행 수도 같다(승인 행을 대상 run으로 옮기지 않는다 — REQ-FCR-023); (9) 통합 뒤 `c1`의 옛 `run-old` 승인만 있는 상태로 완료 게이트를 부르면 `ErrApprovalRunMismatch`로 거부되고(완료 0 — run 간 승인 재사용 거부, REQ-FCR-002), `run-new` 아래에서 `c1`에 새 승인을 발급하면 카드가 닫히며, 옛 승인 행은 바이트 단위로 그대로다. 판정 시험: `go test ./internal/cli -run '^TestLeaderStartRekeyedCardNeedsFreshApproval$' -count=1 -v`(통과 형태 `--- PASS: TestLeaderStartRekeyedCardNeedsFreshApproval `(이름 뒤 공백)). **사후 개정(run-phase, 카드 t1963)**: 원래 문구는 "큐 기록이 옛 run을 가리키면 거부, 사유가 바인딩/기록 불일치"였으나 완료 게이트(`holdDoneApprovalGate` → `verifyForClose`, `internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 읽고 큐의 현재 배차 기록은 읽지 않아 충족 불가능했다 — 집행되는 절반으로 고쳤다. 큐 기록 쪽의 결함 경로는 v0.3.5에서 REQ-FCR-024와 아래 (10)으로 닫는다; (10) **큐 기록이 은퇴한 원천을 가리키는 재시도 거부(REQ-FCR-024, 사후 개정 v0.3.5)** — 통합 뒤 큐의 `DispatchCurrent`가 `c1`에 대해 은퇴한 원천 `run-old`를 가리키는 상태에서 dispatch 재시도가 `repairGTDDispatchRecord(c1, run-old)`를 실행하면: 타입 있는 오류로 거부되고, 그 뒤 factory DB 덤프(`cards`·`card_dispatch`·`runs`·`events`)가 재시도 전과 바이트 단위로 같으며, `c1`의 비종결 행은 정확히 하나(`run-new` 아래)이고, `run-new`에 묶인 완료 게이트의 바인딩 해석(`recordedCardRow`)이 여전히 `c1`을 `run-new`의 행으로 해석한다. RED-now: 장부 L8(run-phase가 수리 전 트리에서 관측). 판정 시험: `go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestRepairGTDDispatchRefusesConsolidatedSource `(이름 뒤 공백)); (10b) **확인과 쓰기 사이의 통합(사후 개정 v0.3.6)** — 은퇴 표지 확인 뒤·첫 복구 쓰기 전 시임에 통합(`RebindRun`)을 주입한다: 결과는 (가) 덤프가 바뀌지 않은 거부이거나 (나) 살아남은 run 아래에서 복구 완료, 둘 중 하나이고, **은퇴한 원천에 카드 행이나 바인딩이 다시 만들어지는 결과는 없다**. RED-now: 장부 L9(run-phase가 수리 전 트리에서 관측). 판정은 위 (10)의 시험이 하위 단언으로 함께 한다
+- **Then** (1) 활성 run은 정확히 1개이고 그것은 `run-new`이며 스탬프가 현재 프로세스로 바뀌었고 `run.resumed` 이벤트가 1개 붙었다; (2) `run-old`는 `retired`이고 `run.retired` 이벤트 1개가 `classification=dead`·`basis=stamp`·`rebound_to=run-new`·`moved=2`·`abandoned=1`과 카드 id 목록(옮김 `c1`·`c2`, 포기 `c4`)을 담으며, 리더 진입의 stderr에 같은 카드 id가 나온다; (3) `c1`·`c2`는 `run-new` 아래 행으로 재키됐고 run_id 외 모든 열(state·version·stage·updated_at 포함)이 진입 전 값과 같다; (4) `run-old`의 `c4`는 `abandoned`이고 `card.rebound` 이벤트가 이전 state `needs-decision`과 version을 담으며, `run-new`의 `c4`는 바뀌지 않았다; (5) `cards` 전체 행 수가 진입 전과 **정확히 같고**(삭제 0·복사 0), `events` 행 수는 줄지 않았다; (6) `card_dispatch`의 `c1`과 `c2` 두 건 모두 `run-new`를 가리키고(옮긴 카드 전부 — 하나만 재지정하는 구현은 실패), 종결 카드 `c5`의 바인딩은 `run-old`로 **바뀌지 않았으며** 바인딩 해석(`recordedCardRow`)이 `c5`를 `run-old`의 행으로 해석한다(오류 없음, REQ-FCR-020 (5) — 사후 개정 v0.3.3); (7) `ResolveActiveRun(root, "")`이 `run-new`를 반환하고 오류가 없다 — `AMBIGUOUS_FACTORY` 0회; (8) `c1`의 `run-old` 승인 행이 `run_id=run-old`로 바이트 단위로 그대로이고 `leader_approvals` 행 수도 같다(승인 행을 대상 run으로 옮기지 않는다 — REQ-FCR-023); (9) 통합 뒤 `c1`의 옛 `run-old` 승인만 있는 상태로 완료 게이트를 부르면 `ErrApprovalRunMismatch`로 거부되고(완료 0 — run 간 승인 재사용 거부, REQ-FCR-002), `run-new` 아래에서 `c1`에 새 승인을 발급하면 카드가 닫히며, 옛 승인 행은 바이트 단위로 그대로다. 판정 시험: `go test ./internal/cli -run '^TestLeaderStartRekeyedCardNeedsFreshApproval$' -count=1 -v`(통과 형태 `--- PASS: TestLeaderStartRekeyedCardNeedsFreshApproval `(이름 뒤 공백)). **사후 개정(run-phase, 카드 t1963)**: 원래 문구는 "큐 기록이 옛 run을 가리키면 거부, 사유가 바인딩/기록 불일치"였으나 완료 게이트(`holdDoneApprovalGate` → `verifyForClose`, `internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 읽고 큐의 현재 배차 기록은 읽지 않아 충족 불가능했다 — 집행되는 절반으로 고쳤다. 큐 기록 쪽의 결함 경로는 v0.3.5에서 REQ-FCR-024와 아래 (10)으로 닫는다; (10) **큐 기록이 은퇴한 원천을 가리키는 재시도 거부(REQ-FCR-024, 사후 개정 v0.3.5)** — 통합 뒤 큐의 `DispatchCurrent`가 `c1`에 대해 은퇴한 원천 `run-old`를 가리키는 상태에서 dispatch 재시도가 `repairGTDDispatchRecord(c1, run-old)`를 실행하면: 타입 있는 오류로 거부되고, 그 뒤 factory DB 덤프(`cards`·`card_dispatch`·`runs`·`events`)가 재시도 전과 바이트 단위로 같으며, `c1`의 비종결 행은 정확히 하나(`run-new` 아래)이고, `run-new`에 묶인 완료 게이트의 바인딩 해석(`recordedCardRow`)이 여전히 `c1`을 `run-new`의 행으로 해석한다. RED-now: 장부 L8(run-phase가 수리 전 트리에서 관측). 판정 시험: `go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestRepairGTDDispatchRefusesConsolidatedSource `(이름 뒤 공백)); (10b) **확인과 쓰기 사이의 통합(사후 개정 v0.3.6)** — 은퇴 표지 확인 뒤·첫 복구 쓰기 전 시임에 통합(`RebindRun`)을 주입한다: 결과는 (가) 덤프가 바뀌지 않은 거부이거나 (나) 살아남은 run 아래에서 복구 완료, 둘 중 하나이고, **은퇴한 원천에 카드 행이나 바인딩이 다시 만들어지는 결과는 없다**. RED-now: 장부 L9. 판정 시험: `go test ./internal/factory -run '^TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair$' -count=1 -v`(통과 형태 `--- PASS: TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair `(이름 뒤 공백)); (10c) **원래의 dispatch 첫 쓰기 경로와 미러도 거부된다(REQ-FCR-024 범위, 사후 개정 v0.3.7)** — 통합 뒤 큐에 현재 배차 기록이 없는 상태(통합 전에 준비된 dispatch)에서 원래의 첫 쓰기 경로가 `c1`을 은퇴한 원천에 묶으려 하거나, cli 미러가 그 원천에 작업을 다시 만들려 하면 타입 있는 오류(`ErrRunRetiredByConsolidation`)로 거부되고, 원천에 카드 행·바인딩이 생기지 않는다. 저장 계층의 여섯 쓰기 진입점(새 카드와 옮긴 카드의 `RecordPicked`, `RecordPickedReconciled`, `RecordDispatchBinding`, 소유자 유무별 `RecordDispatchEngagement`)이 모두 거부하고, 통상 은퇴 run과 읽기 전용 경로는 영향받지 않는다. RED-now: 장부 L10. 판정 시험(**각각 따로** 실행): `go test ./internal/factory -run '^TestDispatchFirstWriteRefusesAConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestDispatchFirstWriteRefusesAConsolidatedSource `(이름 뒤 공백)); `go test ./internal/cli -run '^TestDispatchMirrorRefusesAConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestDispatchMirrorRefusesAConsolidatedSource `(이름 뒤 공백)); `go test ./internal/homestate -run '^(TestStorageWritesRefuseAConsolidatedSource|TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone)$' -count=1 -v`(통과 형태 `--- PASS: TestStorageWritesRefuseAConsolidatedSource `와 `--- PASS: TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone `(각 이름 뒤 공백) 둘 다 — 한쪽만 있으면 미측정)
 - **RED-now**: L1 `TestT1963RedTwoDeadRunsOneLeaderStart` — `adopt="" candidates=2`, `remaining active runs=2`. RED인 이유: 후보가 둘이면 채택하지 않고(`internal/homestate/factory_run_adopt.go:92`), 비종결 카드가 있는 run은 조정이 보존한다(`runHasLiveRecords`). 또한 L2 — 진입 채택이 resume 인자를 요구한다(`:165`). 이 작업이 바꾸지 않는 파일 때문의 RED가 아니다.
 - **green (M2-B)**: `go test ./internal/cli -run '^TestLeaderStartConsolidatesDeadOwnerRuns$' -count=1 -v` → exit 0, `--- PASS: TestLeaderStartConsolidatesDeadOwnerRuns `(이름 뒤 공백).
-- **변이 탐침**: (a) 옛 run을 카드 이동 없이 은퇴시키는 구현 → (3)·(6) 실패; (b) 옮기지 않고 복사(INSERT)하는 구현 → (5)의 행 수가 늘고 `run-old`가 은퇴 가드에 막혀 (1)·(2) 실패 — 그래서 `cards` 행 수는 "줄지 않았다"가 아니라 "정확히 같다"로 단언한다; (c) 중복 `c4`를 DELETE하는 구현 → (4)·(5) 실패; (d) 최신이 아닌 run을 채택 → (1) 실패; (e) 동률 규칙 — 같은 시험 안의 하위 단언으로, `created_at`이 같은 두 죽은 스탬프 run을 심으면 `run_id` 내림차순으로 큰 쪽이 채택된다(`run_id` 오름차순이나 삽입 순서로 고르는 구현 → 실패); (f) 승인 행의 `run_id`를 대상 run으로 UPDATE하는 구현 → (8) 실패, 그리고 (9)에서 옛 승인으로 완료가 일어나 실패; (g) 승인의 run 바인딩을 보지 않는 완료 게이트 → (9)에서 옛 승인으로 완료가 일어나 실패; (h) 원천을 가리키는 바인딩을 전부 재지정하는 구현("repoint every binding") → (6)에서 `c5`의 바인딩이 `run-new`로 바뀌고 `recordedCardRow`가 `ErrApprovalRunUnresolvable`을 내 실패; (i) 복구 경로가 통합 은퇴 표지를 무시하는 구현("repair path ignores the retired marker") → (10)에서 `RecordPicked`가 `run-old`에 `c1` 행을 다시 만들고 바인딩이 `run-old`로 되돌아가 덤프 동일성·"비종결 행 정확히 하나" 단언이 실패; (j) 은퇴 표지 확인을 복구 쓰기와 다른 트랜잭션에서 하는 구현("check outside the transaction") → (10b)에서 시임에 주입된 통합이 확인 뒤에 커밋되고, 이어지는 쓰기가 은퇴한 원천에 행·바인딩을 다시 만들어 실패.
+- **변이 탐침**: (a) 옛 run을 카드 이동 없이 은퇴시키는 구현 → (3)·(6) 실패; (b) 옮기지 않고 복사(INSERT)하는 구현 → (5)의 행 수가 늘고 `run-old`가 은퇴 가드에 막혀 (1)·(2) 실패 — 그래서 `cards` 행 수는 "줄지 않았다"가 아니라 "정확히 같다"로 단언한다; (c) 중복 `c4`를 DELETE하는 구현 → (4)·(5) 실패; (d) 최신이 아닌 run을 채택 → (1) 실패; (e) 동률 규칙 — 같은 시험 안의 하위 단언으로, `created_at`이 같은 두 죽은 스탬프 run을 심으면 `run_id` 내림차순으로 큰 쪽이 채택된다(`run_id` 오름차순이나 삽입 순서로 고르는 구현 → 실패); (f) 승인 행의 `run_id`를 대상 run으로 UPDATE하는 구현 → (8) 실패, 그리고 (9)에서 옛 승인으로 완료가 일어나 실패; (g) 승인의 run 바인딩을 보지 않는 완료 게이트 → (9)에서 옛 승인으로 완료가 일어나 실패; (h) 원천을 가리키는 바인딩을 전부 재지정하는 구현("repoint every binding") → (6)에서 `c5`의 바인딩이 `run-new`로 바뀌고 `recordedCardRow`가 `ErrApprovalRunUnresolvable`을 내 실패; (i) 복구 경로가 통합 은퇴 표지를 무시하는 구현("repair path ignores the retired marker") → (10)에서 `RecordPicked`가 `run-old`에 `c1` 행을 다시 만들고 바인딩이 `run-old`로 되돌아가 덤프 동일성·"비종결 행 정확히 하나" 단언이 실패; (j) 은퇴 표지 확인을 복구 쓰기와 다른 트랜잭션에서 하는 구현("check outside the transaction") → (10b)에서 시임에 주입된 통합이 확인 뒤에 커밋되고, 이어지는 쓰기가 은퇴한 원천에 행·바인딩을 다시 만들어 실패; (k) `recordPickedTx`의 행 생성 분기나 바인딩 쓰기(`upsertDispatchBindingTx`)에서 가드를 제거한 구현("guard removed from recordPickedTx/binding write") → (10c)에서 첫 쓰기 경로가 바인딩을 은퇴한 원천으로 향하게 하거나 미러가 원천에 행을 다시 만들고, 저장 계층 시험의 여섯 진입점이 `err = <nil>`을 내 실패(run-phase가 factory·homestate·cli 세 패키지에서 이 변이를 죽였다고 기록 — `.moai/reports/t1963/run-evidence.md` § L10 GREEN).
 
 ### AC-FCR-018 — 자동 채택의 가드와 통합 원천 필터 (REQ-FCR-017/018/020) [release-blocking]
 
