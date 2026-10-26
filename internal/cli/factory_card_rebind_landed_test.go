@@ -20,11 +20,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// squashLandedRepo builds the squash shape: the audited PR head P lives only
-// on branch `pr`; main carries a separate squash commit S (what the PR landed
-// as) and origin/main points at S. The worktree HEAD is main, so P is not an
-// ancestor of it. unlandedQ is a commit on `pr` that never reached origin/main.
-func squashLandedRepo(t *testing.T) (dir, prHead, squash, unlandedQ string) {
+// squashLandedRepo builds the CARD worktree of the squash shape: the audited
+// PR head P lives only on branch `pr`, while the worktree HEAD is main at the
+// base commit, so P is not an ancestor of it. The squash commit itself lives
+// in the queue root's repository (squashLandedRoot), where `todo landed`
+// records and verifies it.
+func squashLandedRepo(t *testing.T) (dir, prHead string) {
 	t.Helper()
 	dir = filepath.Join(t.TempDir(), "repo")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -43,14 +44,7 @@ func squashLandedRepo(t *testing.T) (dir, prHead, squash, unlandedQ string) {
 	write("pr.txt")
 	fcGit(t, dir, "commit", "-q", "-m", "pr head")
 	prHead = fcGit(t, dir, "rev-parse", "HEAD")
-	write("pr2.txt")
-	fcGit(t, dir, "commit", "-q", "-m", "pr follow-up never landed")
-	unlandedQ = fcGit(t, dir, "rev-parse", "HEAD")
 	fcGit(t, dir, "checkout", "-q", "main")
-	write("squash.txt")
-	fcGit(t, dir, "commit", "-q", "-m", "fix: the change (t1) (#1)")
-	squash = fcGit(t, dir, "rev-parse", "HEAD")
-	fcGit(t, dir, "update-ref", "refs/remotes/origin/main", squash)
 
 	reports := filepath.Join(dir, ".moai", "reports", "t1")
 	if err := os.MkdirAll(reports, 0o700); err != nil {
@@ -60,7 +54,23 @@ func squashLandedRepo(t *testing.T) (dir, prHead, squash, unlandedQ string) {
 		[]byte("verdict: PASS\naudited_sha: "+prHead[:12]+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return dir, prHead, squash, unlandedQ
+	return dir, prHead
+}
+
+// squashLandedRoot lands the squash commit S on the queue root's repository
+// (HEAD and origin/main both at S) and returns S plus unlandedQ, a commit
+// that never reached origin/main.
+func squashLandedRoot(t *testing.T, root string) (squash, unlandedQ string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(root, "squash.txt"), []byte("squash\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, root, "add", "squash.txt")
+	fcGit(t, root, "commit", "-q", "-m", "fix: the change (t1) (#1)")
+	squash = fcGit(t, root, "rev-parse", "HEAD")
+	unlandedQ = fcGit(t, root, "commit-tree", squash+"^{tree}", "-p", squash+"^", "-m", "never landed")
+	fcGit(t, root, "update-ref", "refs/remotes/origin/main", squash)
+	return squash, unlandedQ
 }
 
 // squashLandedFixture places the linked card t1 in the run stage with an empty
@@ -70,7 +80,8 @@ func squashLandedFixture(t *testing.T, landedSHA string) (root, uuid, prHead, sq
 	t.Helper()
 	root, store = fcFixture(t)
 	uuid = fcLinkedCard(t, root, store, "t1", "squash landed card")
-	dir, prHead, squash, q := squashLandedRepo(t)
+	dir, prHead := squashLandedRepo(t)
+	squash, q := squashLandedRoot(t, root)
 	if landedSHA == "unlanded" {
 		landedSHA = q
 	}
@@ -164,10 +175,8 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		// The operator recorded the landing against origin/release; the squash
 		// commit is NOT on origin/main, so only the recorded ref can admit it.
 		root, _, _, squash, store := squashLandedFixture(t, "squash")
-		dir := fcCard(t, root, "t1").WorktreePath
-		base := fcGit(t, dir, "rev-list", "--max-parents=0", "HEAD")
-		fcGit(t, dir, "update-ref", "refs/remotes/origin/main", base)
-		fcGit(t, dir, "update-ref", "refs/remotes/origin/release", squash)
+		fcGit(t, root, "update-ref", "refs/remotes/origin/main", squash+"^")
+		fcGit(t, root, "update-ref", "refs/remotes/origin/release", squash)
 		if err := store.Mutate(func(r *factory.BacklogRecord) error {
 			for i := range r.Items {
 				if r.Items[i].ID == "t1" && r.Items[i].Landing != nil {
@@ -183,6 +192,33 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
 			t.Fatalf("evidence_sha = %q, want the landing commit %s admitted by the recorded ref", got, squash)
+		}
+	})
+
+	t.Run("verifies_in_the_queue_root_not_the_card_worktree", func(t *testing.T) {
+		// `todo landed --ref HEAD` is resolved in the queue root's repository,
+		// where HEAD is the squash commit; the card worktree's HEAD is the old
+		// base. Verification must follow the record to the root.
+		root, _, _, squash, store := squashLandedFixture(t, "squash")
+		dir := fcCard(t, root, "t1").WorktreePath
+		if fcGit(t, dir, "rev-parse", "HEAD") == squash {
+			t.Fatal("fixture: the card worktree HEAD must differ from the root HEAD")
+		}
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == "t1" && r.Items[i].Landing != nil {
+					r.Items[i].Landing.Ref = "HEAD"
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := rebindRun(t, "landing recorded against the root HEAD"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
+			t.Fatalf("evidence_sha = %q, want the landing commit %s", got, squash)
 		}
 	})
 

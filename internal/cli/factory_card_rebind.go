@@ -93,8 +93,8 @@ func newFactoryRebindEvidenceCommand() *cobra.Command {
 
 // resolveRecordedLanding reads the card's operator-recorded landing commit
 // (`moai todo landed --sha`) and verifies it against the ref that record
-// names (the configured landed ref when it names none) in the card
-// worktree, or the project root once that worktree is gone. An empty
+// names (the configured landed ref when it names none) in the queue root's
+// repository, where the record was made. An empty
 // commit means the fallback did not apply; note is then the suffix for the
 // verdict refusal — empty when the card carries no landing record, so an
 // unlanded card keeps the verdict's own refusal.
@@ -119,11 +119,10 @@ func resolveRecordedLanding(ctx context.Context, root string, card homestate.Car
 	if ref == "" {
 		ref = factory.LandedRefFor(root)
 	}
-	dir := card.WorktreePath
-	if st, serr := os.Stat(dir); serr != nil || !st.IsDir() {
-		dir = root
-	}
-	full, err = homestate.ResolveLandedEvidence(ctx, dir, sha, ref)
+	// The record was made in the queue root's repository (`todo landed`
+	// resolves its ref there), so it is verified there: a per-worktree ref
+	// such as HEAD means the root's HEAD, not the card worktree's.
+	full, err = homestate.ResolveLandedEvidence(ctx, root, sha, ref)
 	if err != nil {
 		return "", fmt.Sprintf("; recorded landing commit refused: %v", err)
 	}
