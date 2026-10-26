@@ -491,3 +491,73 @@ verdict: FAIL
 audited_sha: 5128570a20f5b21e2dd9235188c9c24a1ce86093
 
 AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-b36c654253019f6a547334cf
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 8 (delta: R1 alone @ 76af1129af)
+
+Delta audit scoped to R1 per my own iter7 enumeration. Repair commit `80f91c894e` (2 files, +150/−1: `internal/fetchweb/blocks.go` +34/−1, `internal/fetchweb/blocks_test.go` +117) — the repairer rejected the dispatch's snapshot/restore sketch and implemented a `tableStack` innermost-open-table binding: `walk`'s table case pushes/pops the stack around its children, `emitRow` binds each row to the stack top (counter fallback for stray rows only), `tableSeq` becomes a pure monotonic id allocator. Audited head `76af1129afa2b99ecd377b4f1c2a24faa09b0b06` — docs-only on top of the repair (`git diff --stat 80f91c894e..HEAD` → `.moai/reports/t1968/progress.md | 2 ++`; confirmed). SPEC dir unchanged since `dc991bfb9f` (`git diff --stat dc991bfb9f..HEAD -- .moai/specs/SPEC-FETCH-WEB-001` → empty; confirmed). Delta base for convergence: `5128570a20f5b21e2dd9235188c9c24a1ce86093` (iter7's audited head; ancestor confirmed via `git merge-base --is-ancestor` → `delta_base_is_ancestor`; `git log --oneline 5128570a20..HEAD` → 3 commits, exactly one code commit = the R1 repair). Delta file list (`git diff --name-only 5128570a20..HEAD`): the two code files + two t1968 docs files only. Audit plan re-read: `config_status: ok`, `cross_model_active: true`, codex **required** (claude/glm off), `plan_source: config`. No `Binding run conditions` heading in the SPEC progress.md — nothing to disposition.
+
+## iter8 Verdict
+
+**PASS-WITH-DEBT — aggregate 0.94** (harmonic mean of 94 / 94 / 95 / 94). R1 is repaired and verified first-hand: my own five probes (below) all PASS at head, including the iter7 probe shape with deliberately renamed strings, both pinned re-corruption shapes, and two adversarial shapes beyond the landed tests (recursion depth-2 nesting; headerless outer table). The RED half of the chain is my own iter7 observation (probe corrupt at `5128570a20`), the GREEN half is this run — a complete cross-iteration RED→GREEN chain on my own probes, not the repairer's. No new findings. The required codex backend independently returned **pass** on the delta with zero findings. Standing residuals recorded, leader-visible: R2 (optional P3 refinement — not a debt) and FW-D2 (probe-based RED on three plan-debt rows — the one carried debt; judged PASS-WITH-DEBT material in iter7 and undisposed here). Must-pass firewall: Functionality and Security both pass; convergence `overall_verdict: pass`.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @76af1129af) |
+|---|---|---|---|---|
+| Functionality | 40% | 94 | PASS | My probe run `go test ./internal/fetchweb/ -run 'TestAuditProbe' -v -count=1` → exit=0, `--- PASS: TestAuditProbe_P1_OuterRowsAfterAsideNestedTableBindOuterHeader (0.00s)` / `_P2_TableAfterKeepsOwnHeader` / `_P3_TwoAsidesDistinctBindings` / `_P4_RecursiveNestingDepth2` / `_P5_HeaderlessOuterTable` (5/5) + `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.328s`; aside/table landed suite name-filtered → exit=0, 18 `--- PASS`, zero `--- FAIL`; trio + spec-lint in the rows below. |
+| Security | 25% | 94 | PASS | Zero security surface in the delta: `git diff --name-only 5128570a20..HEAD` → `.moai/reports/t1968/progress.md`, `.moai/reports/t1968/sync-audit.md`, `internal/fetchweb/blocks.go`, `internal/fetchweb/blocks_test.go` — no fetch/ssrf/net/auth file, no manifest change; the change is table-row metadata binding inside the splitter. |
+| Craft | 20% | 95 | PASS | `go test -count=1 -cover ./internal/fetchweb/ ./internal/jev/... ./internal/jevmeasure/...` → exit=0: `ok ... internal/fetchweb 0.447s coverage: 96.0% of statements` / `ok ... internal/jev 1.814s coverage: 91.2%` / `ok ... internal/jevmeasure 1.212s coverage: 93.4%`; `golangci-lint run internal/fetchweb/...` → `0 issues.` exit 0; `gofmt -l` on both touched files → empty; `go vet ./internal/fetchweb/` → `vet_ok`. |
+| Consistency | 15% | 94 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid` exit 0; repair follows the established `listItemSkip`/`cellSkip` comment+rationale family (diff-read: `tableStack` field note cites R1/iter7 and the rejected alternative); Conventional Commit `fix(SPEC-FETCH-WEB-001): ... (card t1968)`; SPEC dir untouched since `dc991bfb9f`. |
+
+## iter8 dispositions — the enumerated delta (R1 + regression micro-sweep)
+
+- **R1 — REPAIRED, verified first-hand (RED = my iter7 probe @5128570a20, GREEN = my P1 probe @head, strings deliberately different from the landed test).** Outer rows after an aside-carrying row whose aside nests a table bind the OUTER table's header again (`alpha`/`beta`/`gamma` → `TopHdr`; `edep` → `EmbHdr`). The two re-corruption shapes the repairer pinned are confirmed prevented by my own differently-stringed probes: P2 — the table AFTER an outer-with-aside-nested table keeps its own header (`ndata` → `NxtHdr`, `NxtHdr.HeaderIndex == -1`; a counter snapshot/restore would have re-used the aside's id and suppressed this header); P3 — two aside-nested tables in one outer table hold distinct bindings (`ia`→`InA`, `ib`→`InB`, `a1`/`a2`/`tail`→`TopHdr`; a rewind-per-aside would have collided the second with the first).
+- **Adversarial beyond the pinned shapes — nothing new found.** P4 (recursion depth-2: aside-nested table inside a cell of an aside-nested table): `outer1`→`TopHdr`, `l1row`→`L1Hdr`, `l2row`→`L2Hdr`, `after`→`TopHdr` — the stack binds correctly at arbitrary depth. P5 (headerless outer + aside-nested table WITH header): `r2.HeaderIndex == -1` (the inner header is not lent to the outer rows — the iter7 bug shape with no outer header to restore to), `idata`→`NHdr`.
+- **Regression micro-sweep — green.** Aside/table landed suite (F7/F7b/F7c, C2 `MixedAside*`, C3 `AsideInsideCell...`, the three R1 tests `NestedTable...`/`TableAfter...`/`TwoCellAsides...`, table-row family): 18 `--- PASS`, 0 FAIL, exit 0. Graded trio: fetchweb 96.0% / jev 91.2% / jevmeasure 93.4%, exit 0. spec-lint clean. Head docs-only on `80f91c894e` confirmed; SPEC dir unchanged since `dc991bfb9f` confirmed.
+
+## iter8 Findings
+
+None new. Standing (both previously dispositioned, recorded, leader-visible):
+
+- **R2** [P3] [optional] pre-heading half of a merged text-only aside run rides the post-heading path — optional run-split refinement, unchanged from iter7, not a debt.
+- **FW-D2** [debt] [optional-blocking: no] three plan-debt rows rest on probe-based RED with no behavior surface claimed beyond iter1-6 verification — the one carried debt that makes this verdict PASS-WITH-DEBT rather than PASS.
+
+## iter8 Cross-model convergence (audit_multi, target=baseBranch, delta_base=5128570a20, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered, verdict pass, zero findings)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-2c6c39d7e57a89bd41cd065d`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base 5128570a20f5b21e2dd9235188c9c24a1ce86093: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**This verdict is not final until the orchestrator's convergence check passes.**
+
+## iter8 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — R1 is repaired without collateral damage, and the delta introduces no new defect.** Evidence: 5/5 auditor probes PASS (verbatim in Functionality row; probe file was a transient `zz_r1probe_audit_test.go`, removed after the run — `git status --short` empty), 18/18 landed aside/table suite, trio ok ×3 with coverage, lint/gofmt/vet/spec-lint clean, convergence digest above. Baseline: this run, this tree @76af1129afa2b99ecd377b4f1c2a24faa09b0b06; the RED half of the R1 chain is my iter7 probe observation @5128570a20f5b21e2dd9235188c9c24a1ce86093 (base-correct/pre-C3, corrupt @5128570a20 — recorded in the iter7 section).
+
+**Gaps (explicitly NOT observed):**
+- The landed tests' RED-first at `5128570a20` rests on the repair commit's claim; this audit observed post-fix green only (my own base/HEAD chain covers the behavior, not the test binary's RED run).
+- Full `internal/cli` suite not run here (unchanged from iter1-7; owned by integration-branch CI).
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-7.
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- FW-D2 (R8-R10 probe-based RED) — the carried debt; recorded and leader-visible, not blocking.
+- R2 optional refinement (above).
+- Untested territory unchanged from iter3-7: CDATA-era HTML, exotic framesets, proxy-required egress.
+- The `tableSeq` fallback for stray rows outside any table is unreachable via `html.Parse` tree construction (noted in-code as a safe default) — dead-by-construction, not a defect.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+
+## Iteration history (cont.)
+
+- iter8 (this audit): delta PASS-WITH-DEBT 0.94 — R1 repaired (tableStack innermost-open-table binding) and verified by 5 auditor probes incl. 2 shapes beyond the landed tests; regression micro-sweep green (18-test aside suite, trio 96.0/91.2/93.4, spec-lint, lint, gofmt, vet); required codex pass, zero findings (rcpt-2c6c39d7e57a89bd41cd065d); no new findings; FW-D2 carried as the named debt, R2 optional.
+
+verdict: PASS-WITH-DEBT
+audited_sha: 76af1129afa2b99ecd377b4f1c2a24faa09b0b06
+
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-2c6c39d7e57a89bd41cd065d
