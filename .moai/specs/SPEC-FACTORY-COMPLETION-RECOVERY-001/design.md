@@ -45,7 +45,7 @@ flowchart TD
 한 번의 BEGIN IMMEDIATE 트랜잭션. 순서는 `retireRun`(`internal/homestate/factory_run_retire.go:422-462`)의 "상태→스탬프→카드→전환→이벤트"를 넓힌 것이다.
 
 0. 원천 소유자가 분류 시점에 `OwnerDead`인지 확인(리더 진입 경로는 추가로 `BasisStamp`). 아니면 거부 — `--rebind-to`·`m<n>`·리더 진입 세 표면 공통. 이 단계가 없으면 `--retire <산 run> --rebind-to <산 run2>`가 산 리더의 카드를 옮기는 우회로가 된다.
-1. 원천 run을 다시 읽어 `active`이고 분류 당시 스탬프 그대로인지 확인. 아니면 거부.
+1. 원천 run을 다시 읽어 `active`이고 분류 당시 스탬프 그대로인지 확인. 아니면 거부. 원천이 `BasisPeer`·`BasisBoot`로 분류됐다면 **트랜잭션 시작 직전에 소유자를 다시 분류**하고, 더는 dead가 아니면 `ErrRunOwnerNotDead`로 거부한다(사후 개정 v0.3.4, sync-audit F-2 — 스탬프 없는 원천은 스탬프 동일성 확인만으로는 "분류 뒤 살아난 피어"를 볼 수 없다). 한계: 피어 신원은 factory 트랜잭션 밖의 broker DB에 있으므로 이 재분류는 창을 좁힐 뿐 닫지 못한다. 트랜잭션 안의 스탬프 확인은 그대로 둔다.
 2. 대상 run이 `active`이고 분류 당시 스탬프 그대로인지 확인(대상 소유자의 `OwnerLive` 판정은 트랜잭션 전 분류에서 하고, 트랜잭션 안에서는 스탬프 동일성으로 확인). 아니면 거부.
 3. 원천에 산 worker(REQ-FCR-022)가 있으면 거부.
 4. 원천의 비종결 카드 전부에 대해 제3의 활성 run(소유자가 `OwnerDead`가 아닌)에 같은 `card_id` 비종결 행이 있는지 확인. 하나라도 있으면 거부.
@@ -78,7 +78,8 @@ flowchart TD
 
 잔여 위험:
 
-- 큐(backlog) 저장소의 "현재 배차" 기록은 factory 트랜잭션 밖이고, **완료 게이트는 그 기록을 읽지 않는다** — `holdDoneApprovalGate` → `verifyForClose`(`internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 본다. 통합 뒤 완료의 정확성은 바인딩(옮긴 카드의 바인딩만 같은 트랜잭션에서 대상 run으로 재지정, 종결 카드의 바인딩은 원천 유지 — §3 단계 6)과 승인(run에 묶임 — 옛 승인은 `ErrApprovalRunMismatch`로 거부, AC-FCR-017 (9))에만 기댄다. 큐 기록이 옛 run을 가리킨 채 남는 상태가 완료에 어떤 영향을 주는지는 **시험되지 않은 잔여 위험**이다(run-phase 사후 개정, 카드 t1963 — 이전 판의 "닫힌 쪽 실패를 AC-017 (9)가 단언한다"는 서술은 게이트 동작과 맞지 않아 철회).
+- 큐(backlog) 저장소의 "현재 배차" 기록은 factory 트랜잭션 밖이고, **완료 게이트는 그 기록을 읽지 않는다** — `holdDoneApprovalGate` → `verifyForClose`(`internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 본다. 통합 뒤 완료의 정확성은 바인딩(옮긴 카드의 바인딩만 같은 트랜잭션에서 대상 run으로 재지정, 종결 카드의 바인딩은 원천 유지 — §3 단계 6)과 승인(run에 묶임 — 옛 승인은 `ErrApprovalRunMismatch`로 거부, AC-FCR-017 (9))에만 기댄다. 큐 기록이 옛 run을 가리킨 채 남는 상태의 결과는 **코드 판독으로 확인된 결함 경로**다(사후 개정 v0.3.4, sync-audit F-1 — 이전 판의 "시험되지 않은 잔여 위험"은 과소 서술이었다): dispatch가 진행 중(prepared/invoking)일 때 리더가 죽고 그 dispatch 연산이 재시도되면, `repairGTDDispatchRecord`(`internal/factory/gtd_operation.go:348-424`)가 큐의 `todo_dispatch_current`가 가리키는 원천 run에 카드 행이 없음을 보고 `RecordPicked`(`:402`)로 **은퇴한 원천에 카드 행을 다시 만들고**, `RecordDispatchEngagement`(`:423`)로 바인딩을 원천 쪽으로 되돌린다 — 이 경로에는 run 상태 검사가 없다. 데이터 손실은 없지만 카드가 두 run에 비종결 행을 갖게 된다. **시험으로 재현하지 않았다**(큐·factory 두 저장소에 걸친 fixture가 필요). 후속 카드로 이월한다 — 더 작은 수리는 "통합된(은퇴한) 원천으로의 재시도를 거부"(또는 `todo_dispatch_current` 동기화)다. (이전 판의 "닫힌 쪽 실패를 AC-017 (9)가 단언한다"는 서술은 v0.3.2에서 이미 철회됐다.)
+- **운영자 경로의 피어 판정 원천 경합(F-2)**: 분류와 트랜잭션 사이에 살아난 레거시 피어의 카드가 옮겨질 수 있었다(sync-audit가 오버레이로 재현). v0.3.4는 §3 단계 1의 직전 재분류로 그 창을 좁힌다. 피어 신원이 factory 트랜잭션 밖에 있으므로 창은 닫히지 않는다. 리더 진입 경로는 `BasisStamp` 원천만 받아 이 경합이 없다.
 - **상태 연령 저하**: 카드 전이 이벤트는 원천 `run_id`에 남는다. 상태 연령 표시는 이벤트를 `run_id`로 거르므로(`internal/homestate/card_age.go:75-86` `LoadCardEvents`), 재키된 카드의 대상 run 기준 상태 연령은 "unknown"으로 읽힌다. 기록은 사라지지 않지만(원천 run 이벤트로 남음) 대상 run 화면에서는 연령이 보이지 않는다. 이 개정은 고치지 않는다.
 
 ## §6 — worker 생존 (REQ-FCR-022)
