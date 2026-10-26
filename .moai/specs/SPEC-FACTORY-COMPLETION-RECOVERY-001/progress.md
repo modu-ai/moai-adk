@@ -31,9 +31,59 @@ plan_complete_at: 2026-10-06
 
 (run-phase에서 작성 — manager-develop 소관. 첫 M1 커밋 시 spec.md frontmatter가 draft → in-progress로 전이된다.)
 
+### M2-B (카드 t1963, 2026-10-26) — run 수명주기: 죽은 소유자 run 통합
+
+트리 `.moai/worktrees/t1963`, 브랜치 `WT-run-dead-owner`, 시작 HEAD `61cedfea33`(plan-audit delta 판정 PASS-WITH-DEBT 0.94, receipt `rcpt-2fda45f825d6ea42560b6115`). cycle_type=tdd, 모드 serial. 증거 원문(RED 출력·명령·exit·시임·변이 탐침)은 `.moai/reports/t1963/run-evidence.md`. 모든 fixture는 샌드박스 — 라이브 factory DB를 열지 않았다.
+
+| 단계 | 커밋 | 내용 |
+|---|---|---|
+| 1+2 | `18c4306ad0` | 통합 연산 `RebindRun`(REQ-FCR-020/023), `runHasLiveRecords` 죽은 worker 제외(REQ-FCR-022), `mustInsertWorker` pid → `os.Getpid()`(AC-025 픽스처 예외), spec.md `draft → in-progress` |
+| 3 | `bdd595f666` | `moai factory next`의 임대가 죽은 run의 중복 행을 같은 트랜잭션에서 포기(REQ-FCR-019) |
+| 4 | `873899a540` | 리더 진입이 최신 죽은 스탬프 run을 채택하고 나머지를 통합(REQ-FCR-017/018), CAS 패자는 새 id(오류 없음) |
+| 5 | `b949fd55ee` | `runs --retire <id> --rebind-to <live-run>`(REQ-FCR-021, Q1 (a)), `TestFactoryRunsHasNoForceFlag` 허용 집합 `[rebind-to retire]` |
+| 6 | `988cb085da` | 합류 프롬프트 `m<n>`(REQ-FCR-021) |
+| 7 | `19595308cf` | 실패 경계 시험(트리거·테이블 파손 주입) — 신규 코드 커버리지 85% 충족 |
+
+E1 AC 매트릭스(각 AC의 acceptance.md 자체 green 명령, 최종 코드 트리, 단일 호출 `-count=1 -v`, 모두 exit 0 + 이름 줄 `--- PASS`):
+
+| AC | 상태 | 명령(축약) | 관측 |
+|---|---|---|---|
+| AC-FCR-017 | **PASS-WITH-BLOCKER** — Then (1)~(8) 통과, (9)는 SPEC 전제 거짓으로 차단(아래) | `go test ./internal/cli -run '^TestLeaderStartConsolidatesDeadOwnerRuns$'` | `--- PASS: TestLeaderStartConsolidatesDeadOwnerRuns (7.87s)` |
+| AC-FCR-018 | PASS | `go test ./internal/cli -run '^TestLeaderStartAutoAdoptGuards$'` + `TestLeaderStartLeavesExcludedSourcesActive`((viii)) | `--- PASS: TestLeaderStartAutoAdoptGuards (6.51s)` |
+| AC-FCR-019 | PASS | (a) `go test ./internal/cli -run '^TestLeaderStartAdoptCASLoserMints$'`, (b)(c)(d) `go test ./internal/homestate -run '^TestRunConsolidationConcurrentLeaders$'` | 두 `--- PASS` |
+| AC-FCR-020 | PASS | `go test ./internal/homestate -run '^TestRebindRetireIsAtomic$'` | `--- PASS: TestRebindRetireIsAtomic (1.16s)`, 세 주입점 하위 시험 |
+| AC-FCR-021 | PASS | `go test ./internal/homestate -run '^TestRebindRefusesCardHeldByAnotherLiveRun$'` (+ 같은 패키지 live worker·소유자 비사망·스탬프 기준 시험, CLI 표면은 AC-022 시험이 함께) | `--- PASS` |
+| AC-FCR-022 | PASS | `go test ./internal/cli -run '^TestFactoryRunsRetireRebindTo$'`, `go test ./internal/cli -run '^TestLaneChoiceMergeOffer$'` | 두 `--- PASS` |
+| AC-FCR-023 | PASS | `go test ./internal/cli -run '^TestFactoryNextAbandonsDeadRunDuplicate$'` | `--- PASS: TestFactoryNextAbandonsDeadRunDuplicate (19.20s)` |
+| AC-FCR-024 | PASS | `go test ./internal/homestate -run '^TestRunHasLiveRecordsIgnoresDeadWorkers$'` | `--- PASS` |
+| AC-FCR-025 | PASS (regression-guard) | 네 보존 명령(acceptance.md AC-FCR-025) | homestate 25개 최상위 시험 전부 `--- PASS`(+ 신규 `TestAdoptRunStampLossIsTyped`), cli RETIRE-GUARD 2건·`TestFactoryRunsHasNoForceFlag`·t1707 시험 `--- PASS`. 기대 변경은 허용된 셋뿐: 허용 플래그 집합 확대, `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates` 반전, **`TestStrictResumeCarrierSeen` 삭제**(함수 `strictResumeCarrierSeen`을 제거해 시험도 함께 제거 — AC-025 조항 이행) |
+
+**부채 처리(판정서 R10~R12)**: R10 — AC-017 시험이 포기된 `c4`의 `card_dispatch` 바인딩도 `run-new`로 재지정됨을 단언(`TestRebindMovesAbandonsAndRetires`·`TestLeaderStartConsolidatesDeadOwnerRuns`); R11 — worker 순서 변형(죽은 pid 먼저/산 pid 먼저)을 `TestRebindRefusesSourceWithLiveWorker`·`TestRunHasLiveRecordsIgnoresDeadWorkers`에 추가(마지막 행만/첫 행만 탐침하는 변이를 편집·실행해 죽임); R12 — 충돌 카드가 첫 번째인 변형을 `TestRebindRefusesCardHeldByAnotherLiveRun`에 추가(첫 카드를 건너뛰는 변이를 죽임). R3(시임 위치)은 sync 확인 항목 — 주입점 위치: `second-card`=두 번째 카드 처리 직후, `after-cards`=카드 이동 뒤·`card_dispatch` 재지정 전, `before-commit`=모든 쓰기 뒤·`tx.Commit()` 직전(`internal/homestate/factory_run_rebind.go`), 임대 경로 시임=T1 기록 뒤·포기 전.
+
+**차단 보고(E7) — AC-FCR-017 Then (9)**: "큐 기록이 `run-old`를 가리키는 상태로 완료 게이트를 부르면 거부되고 사유가 바인딩/기록 불일치를 든다"는 이 트리에서 성립하지 않는다. 완료 게이트(`holdDoneApprovalGate`→`verifyForClose`)는 `card_dispatch` 바인딩(`recordedCardRow`)과 영수증 표(`findLeaderApprovalPreferringRun`·`VerifyBinding`)만 읽고 큐의 `todo_dispatch_current` 기록은 읽지 않는다. 통합 뒤 `run-new` 아래에 새 승인을 발급하고 게이트를 호출하는 일회용 탐침(커밋하지 않음)이 `err = <nil>`을 냈다(run-evidence.md §Blocker). 그래서 (9)의 둘째 절을 단언하는 시험을 쓰지 않았다 — 쓰면 임의의 거짓 통과이거나 영구 RED다. 실제로 강제되는 절반(영수증의 run 불일치 → `ErrApprovalRunMismatch`, 새 승인 뒤에만 통과, 옛 승인 행 불변)은 `TestLeaderStartRekeyedCardNeedsFreshApproval`이 단언한다. 선택지는 manager-spec 재위임으로 정한다: (a) (9)를 게이트의 실제 동작으로 고쳐 쓴다(위 시험이 이미 증인), (b) 완료 게이트에 큐 기록-바인딩 정합 검사를 새 요구로 추가한다(M1 범위 확대), (c) 통합 호출 표면이 큐의 `RefreshDispatchCurrent`를 함께 갱신한다(두 저장소 비원자 창이 생김).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 (run-phase에서 작성 — manager-develop 소관. E1-E7 자체검증 매트릭스는 plan.md §E 형식.)
+
+```yaml
+# M2-B (card t1963) — M1·M2·M3 서명은 이 블록의 소관이 아니다
+run_complete_at: 2026-10-26
+run_commit_sha: 19595308cf   # 마지막 코드 커밋; 이후 증거 문서 커밋은 백필 대상이 아니다
+run_status: m2b-code-complete-ac-017-then-9-blocked   # AC-017 (9) 차단 보고 대기 — progress.md §E.2
+ac_pass_count: 8          # M2-B 9건 중 AC-018..025
+ac_fail_count: 0
+ac_partial_count: 1       # AC-017 (1)-(8) PASS, (9) SPEC 전제 거짓으로 차단
+preserve_list_post_run_count: 8   # SPEC-FACTORY-RETIRE-GUARD-001 시험 8건: 허용된 기대 변경 1건(플래그 집합) 외 변경 없음
+l44_pre_commit_fetch: not-run     # 원격 fetch 미수행(푸시 금지 지시) — Gaps
+l44_post_push_fetch: not-applicable   # push 하지 않음
+new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/homestate/... ./internal/cli/... -> 0 issues
+cross_platform_build:
+  native: "go build ./... -> exit 0 (darwin)"
+  windows_amd64: "GOOS=windows GOARCH=amd64 go build ./... -> exit 0; GOOS=windows GOARCH=amd64 go vet ./internal/homestate ./internal/cli -> no output"
+total_run_phase_files: 23   # git diff --stat 61cedfea33..HEAD (코드 커밋 시점) — 소스 9, 시험 13, spec.md frontmatter 1
+m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a540, b949fd55ee, 988cb085da, 19595308cf) + 증거 문서 커밋, 푸시·PR 없음"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
