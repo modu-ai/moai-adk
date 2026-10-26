@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Jev decision ledger recorder and per-consumer config surface"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -25,6 +25,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-JEV-CONSUMERS-001, SPEC-JEV-RESOLVED-MOD
 | 2026-10-26 | 0.1.1 | Plan-audit iter-2 repair (FAIL 0.6875 at `d1aa4ed656`). | manager-spec |
 | 2026-10-26 | 0.1.2 | Plan-audit iter-3 repair (FAIL 0.81 at `82aff00a6d`, N1-N6). | manager-spec |
 | 2026-10-26 | 0.2.0 | **Scope reduction by factory-leader ruling (operator-delegated)** after the Tier M audit ceiling ended in FAIL 0.88 at `0c2d2aa4c2` (`.moai/reports/t1762/plan-audit-verdict.md`, R1-R4; `.moai/reports/t1762/iter-3-adversarial-verdict.md`; hold record `.moai/reports/t1762/hold-and-split.md`). Card t1762 becomes split "a" and keeps only M1 (consumer config map, budget constants, template block) and M2 (ledger recorder with the bounded, non-following, regular-file-checked write open). The hook adapter, its call site, shadow byte identity, the deadline anchor and its tolerance, the M3 wall-clock measurement, and the credential wiring move to SPEC-JEV-LEDGER-002 (card t1970). `moai jev cost` moves to SPEC-JEV-LEDGER-003 (card t1971). Surviving REQ and AC ids keep their numbers; every migrated id is listed in §D.1. REQ-JEVL-017/018 and AC-JEVL-017/018 are new. R1 and R2 are repaired inside AC-JEVL-012. | manager-spec |
+| 2026-10-26 | 0.2.1 | Plan-audit repair of the reduced scope (FAIL 0.81 at `954adab25e`, `.moai/reports/t1762/plan-audit-verdict.md`, D1-D9). D1: AC-JEVL-014 permits the yaml library in `internal/config/jev_consumers.go` through a forbidden-import list; `internal/jevledger` stays standard-library only. D2: `threshold` joins the REQ-JEVL-009 field list and AC-JEVL-009. D3: §D.1 gains the REQ-JEVL-009 (part) row (per-attempt rows, `model_id` never the request alias). D4: the §D.1 REQ-JEVL-008 (part) row carries the warning passthrough. D5-D9: binding constant stem in AC-JEVL-013, test-deletion residual risk, REQ-JEVL-014 in Ubiquitous positive form, platform-split pointer on ledger rows E11/E12, directory case (v) in AC-JEVL-012. REQ and AC ids and counts unchanged (12 REQ, 11 AC). | manager-spec |
 
 ## Position in the chain
 
@@ -65,7 +66,7 @@ One recorder and one config surface, both inert in the shipped build, both fail-
 
 ### §C.3 The ledger recorder
 
-**REQ-JEVL-009** (Ubiquitous) The ledger recorder shall append one JSON Lines row per question to `<project root>/.moai/state/jev/decisions.jsonl`. Each row shall carry `model_id`, `request_model`, `rubric_version`, `question_id`, `probability` (the raw answer probability, `null` when unanswered), `mode`, `action`, and `outcome_label`, and also `ts`, `consumer`, `event`, `harness`, `availability`, `input_tokens`, and `call_id`. The recorder shall write `model_id` and `request_model` from two separate inputs and shall never fill one from the other.
+**REQ-JEVL-009** (Ubiquitous) The ledger recorder shall append one JSON Lines row per question to `<project root>/.moai/state/jev/decisions.jsonl`. Each row shall carry `model_id`, `request_model`, `rubric_version`, `question_id`, `probability` (the raw answer probability, `null` when unanswered), `mode`, `action`, and `outcome_label`, and also `ts`, `consumer`, `event`, `harness`, `availability`, `input_tokens`, `call_id`, and `threshold` (the supplied threshold value, `null` when none is supplied, with `0` kept distinct from `null`). The recorder shall write `model_id` and `request_model` from two separate inputs and shall never fill one from the other.
 
 **REQ-JEVL-010** (Ubiquitous) The ledger recorder shall write `outcome_label` as `unlabeled` at record time, and shall write `action` as `none` on every row whose `mode` is `shadow`, whatever value the caller supplies for either field. Labelling an outcome after the fact is not part of this SPEC.
 
@@ -77,7 +78,7 @@ One recorder and one config surface, both inert in the shipped build, both fail-
 
 ### §C.4 Authority and the boundary
 
-**REQ-JEVL-014** (Unwanted) The ledger recorder and the consumer-config resolver shall not make a Jev answer an input to a permission decision, a completion verdict, a merge approval, a queue mutation, an operator gate, or any hook output, and shall not add an endpoint, a credential read, or a network call of their own.
+**REQ-JEVL-014** (Ubiquitous) The ledger recorder and the consumer-config resolver shall limit their effects to returning resolved configuration values and appending ledger rows: every Jev answer shall stay outside the inputs of permission decisions, completion verdicts, merge approvals, queue mutations, operator gates, and hook output, and every endpoint, credential read, and network call shall stay outside both components.
 
 ---
 
@@ -125,7 +126,8 @@ Nothing is silently dropped. Each id below left the active set of this SPEC at 0
 | -002 | REQ-JEVL-005 | Shadow byte identity of stdout, stderr, exit code. |
 | -002 | REQ-JEVL-006 (part) | The hook adapter branches only on the effective mode. |
 | -002 | REQ-JEVL-007 (part) | The hook adapter selects no action on `threshold`. |
-| -002 | REQ-JEVL-008 (part) | Invalid configuration emits nothing to the hook's stdout or stderr. |
+| -002 | REQ-JEVL-008 (part) | Invalid configuration emits nothing to the hook's stdout or stderr, and the adapter passes each consumer's returned warning as `config_warning` on every row of that consumer. |
+| -002 | REQ-JEVL-009 (part) | One row per question per attempted call, including unanswered and timed-out attempts; the adapter supplies the response's interpreted model id, never the request alias, as model_id. |
 | -002 | REQ-JEVL-012 (part) | Ledger failure leaves the hook's exit code unchanged. |
 | -002 | REQ-JEVL-013 (part) | Deadline anchored at process start, timeout row, skip when exhausted, return tolerance. |
 | -002 / -003 | REQ-JEVL-014 (part) | The boundary for the hook adapter (-002) and the cost report (-003); every request through `jev.Client.Ask` (-002). |

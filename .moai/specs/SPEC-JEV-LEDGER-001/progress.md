@@ -8,7 +8,7 @@ plan_status: audit-ready
 plan_complete_at: 2026-10-26T10:21:34Z
 tier: M
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md
-tree_measured: 0c2d2aa4c230d2a6671037cefea260ede18e295d
+tree_measured: 954adab25e7d6d83b63f8fb1c8f1aafa859f50c1
 card: t1762 (split "a")
 note: scope reduced at 0.2.0 by factory-leader ruling (operator-delegated); 11 files, ~770 lines est.; REQ 12/16, AC 11/16 (plan.md §E)
 
@@ -31,6 +31,14 @@ scope_reduction_0_2_0:
   package_decision: recorder in new package internal/jevledger; no file in internal/jev edited (decision-index Q7; card t1968 owns the internal/jev client)
   red_recollected: E1-E12, B1 on 0c2d2aa4c2 (acceptance §L)
   open_gap: the 5 s / 1 s constants remain decisions until -002 measures
+
+reduced_iter1_repair_0_2_1:
+  trigger: plan-audit FAIL 0.81 at audited_sha 954adab25e7d6d83b63f8fb1c8f1aafa859f50c1 (.moai/reports/t1762/plan-audit-verdict.md, blocking D1-D4)
+  version: 0.2.1
+  repaired: D1 (AC-014 forbidden-import list for jev_consumers.go; jevledger stays stdlib-only; plan §B/§D file placement), D2 (threshold in REQ-009 and AC-009), D3 (§D.1 REQ-009 part row), D4 (§D.1 REQ-008 part warning passthrough)
+  optional_repaired: D5 (AC-013 binding JevHook constraint), D6 (test-deletion residual risk), D7 (REQ-014 Ubiquitous positive form), D8 (E11/E12 platform-split pointer), D9 (AC-012 case (v) directory)
+  ids_unchanged: REQ 12/16, AC 11/16
+  red_recollected: E1-E12, B1 on 954adab25e, identical to the 0c2d2aa4c2 record (acceptance §L)
 
 ## §E.2 Run-phase Evidence
 

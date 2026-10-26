@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Plan — Jev decision ledger recorder and per-consumer config surface"
-version: "0.2.0"
+version: "0.2.1"
 created: 2026-10-26
 updated: 2026-10-26
 ---
@@ -9,6 +9,8 @@ updated: 2026-10-26
 # Plan — SPEC-JEV-LEDGER-001
 
 Tree measured for 0.2.0: `0c2d2aa4c230d2a6671037cefea260ede18e295d` (card worktree `t1762`, branch `WT-jev-internal-jev`). Every 0.2.0 claim about existing code comes from a command run against that tree (§I). Between `cb30e05b3e` (the 0.1.0 measurement tree) and `0c2d2aa4c2` only this SPEC's five files changed, so the 0.1.x code citations still hold.
+
+0.2.1 (plan-audit repair, D1-D9) was measured on `954adab25e7d6d83b63f8fb1c8f1aafa859f50c1`. Between `0c2d2aa4c2` and `954adab25e` only this SPEC's five files changed (§I), so every 0.2.0 code citation still holds; the new 0.2.1 citations are listed in §I.
 
 The scope is the split-"a" ruling recorded in spec.md HISTORY 0.2.0: M1 and M2 only. The sections run from the decisions most likely to change to the mechanical steps.
 
@@ -35,7 +37,7 @@ One JSON object per line in `.moai/state/jev/decisions.jsonl`. Field names are s
 | `input_tokens` | int | caller | stored as supplied; its unit label is a -003 concern |
 | `mode` | string | caller (effective mode) | REQ-JEVL-006 |
 | `configured_mode` | string | caller (raw configured mode) | REQ-JEVL-006 |
-| `threshold` | number \| null | caller | recorded only |
+| `threshold` | number \| null | caller | REQ-JEVL-009: always present; the supplied value, `null` when none is supplied; `0` stays `0`. Recorded only — acting on it is out of scope (-002 selects no action on it) |
 | `config_warning` | optional string | caller | REQ-JEVL-008; omitted when empty |
 | `action` | string | recorder | `none` whenever `mode` is `shadow` (REQ-JEVL-010) |
 | `outcome_label` | string | recorder | `unlabeled` at write time (REQ-JEVL-010) |
@@ -54,6 +56,8 @@ The card's seven required fields (`model_id`, `rubric_version`, `question_id`, r
 **Recorder surface.** A recorder value is constructed from a project root and performs no I/O at construction (REQ-JEVL-001). One append method takes one row value and returns a result that names whether the row landed or was dropped and why. It never logs, never prints, and never panics on I/O failure (REQ-JEVL-012). The caller resolves the project root; -002 will pass `resolveHookProjectRoot()`'s value, which this SPEC does not touch.
 
 **Config surface.** `WorkflowJevConfig` gains a `Consumers` field of a map type with a custom decode (§D). A pure resolver function in `internal/config/jev_consumers.go` turns one raw entry into an effective mode, the configured mode, an optional threshold, and a list of warnings as data.
+
+**File placement of the yaml decode (audit D1).** `internal/config/jev_consumers.go` holds both custom `UnmarshalYAML(*yaml.Node) error` methods of §D and the resolver, and therefore imports `gopkg.in/yaml.v3`. This follows the repository convention: lenient per-entry decoders live in a feature-named file that imports the yaml library, not in `types.go` — `internal/config/slot_lease_config.go:14-22` (`SlotLeaseResourceConfig.UnmarshalYAML`) and `internal/config/loader_card_age_alarm.go:13,42` (`CardAgeAlarmConfig.UnmarshalYAML`); `types.go` imports no yaml library. `types.go` gains only the `Consumers` field and the struct declarations. AC-JEVL-014 permits the yaml library in `jev_consumers.go` and forbids `net`, `net/http`, `internal/jev`, and `internal/jevcred` there; the standard-library-only condition binds `internal/jevledger` alone.
 
 **Budget constants.** Two named constants in `internal/config/defaults.go` (the repository rule: thresholds live there): budget 5 s, margin 1 s. A small derivation function takes a budget and a margin and returns the offset, so the offset is never a third stored value and so -002 can feed it test-scale values (250 ms / 50 ms). The constants are inert here: nothing in this SPEC reads them at run time.
 
@@ -88,7 +92,7 @@ workflow:
 
 **Why a typed field cannot carry this (observed at `d1aa4ed656`, files unchanged since).** `loadYAMLFile` runs `yaml.Unmarshal(data, target)` and turns any decode error into `ErrInvalidYAML` (`internal/config/loader.go:494-495`). `loadWorkflowSection` (`:236-251`) on any error logs `slog.Warn("failed to load workflow config, using defaults", ...)` and returns (`:239-241`) before `cfg.Workflow = wrapper.Workflow` (`:247`). A plain `Threshold *float64` therefore resets the **whole** `workflow` section on `threshold: "high"` and emits a log record, breaking REQ-JEVL-007 and REQ-JEVL-008 at once.
 
-**Decode path (D6).** Two custom `UnmarshalYAML(*yaml.Node) error` methods make the decode tolerant at consumer granularity; neither can fail the section:
+**Decode path (D6).** Two custom `UnmarshalYAML(*yaml.Node) error` methods, both in `internal/config/jev_consumers.go` (§B, file placement), make the decode tolerant at consumer granularity; neither can fail the section:
 
 - The map type behind `Consumers`: a mapping node decodes each value on its own; any other node shape gives an empty map plus one section-level warning. Returns nil either way.
 - `JevConsumerConfig`: keeps the raw `mode` and `threshold` nodes as `yaml.Node` values and returns nil for any shape.
@@ -159,6 +163,8 @@ The release-blocking set is judged after M2. AC-JEVL-001's config-side test can 
 - An unterminated final fragment (a crashed partial write) is not repaired; the next row joins it on one line, and the -003 reader will count that line as one malformed line. The recorder does not read the ledger, by design.
 - `O_NOFOLLOW` protects the final path element only. A link at `.moai/state/jev` would let `MkdirAll` and the open succeed and land rows outside the project (audit O-a, probe 4). Out of scope (spec.md §D).
 - The tests run on darwin locally; the Linux behaviour of `ENXIO` / `ELOOP` is left to CI.
+- Deleting a named test after landing is visible only in a review diff (audit D6). The continued-firing answers in acceptance.md rest on the `progress.md` §E.2 list of named `--- PASS` lines, which is read once at the run-phase self-verification; after that, CI runs whole packages and stays green when a test is removed. Review of the diff that removes it is the only surface that catches it.
+- AC-JEVL-012 case (v) (a directory at the ledger path) does not separate a block-list handle check from an `IsRegular` check on the unix set, because the kernel refuses a write-only open of a directory (`EISDIR`) before the handle check runs; case (iv) is the case that pins the handle check there.
 
 ## §I. Commands that grounded the 0.2.0 plan (this run, tree `0c2d2aa4c2`)
 
@@ -173,5 +179,13 @@ The release-blocking set is judged after M2. AC-JEVL-001's config-side test can 
 - `grep -n '^build:\|embed' Makefile` → `build:` at `:34` depends on `embed-manifest-check` (`:72-74`, read-only).
 - `grep -n -A3 '^    jev:' internal/template/templates/.moai/config/sections/workflow.yaml` → `:350` `jev:`, `:351` `enabled: false`.
 - `grep -n 'state/' .gitignore internal/template/templates/.gitignore` → `.gitignore:401:.moai/state/`, `internal/template/templates/.gitignore:243:.moai/state/`.
+
+0.2.1 grounding commands (this run, tree `954adab25e`):
+
+- `git rev-parse HEAD` → `954adab25e7d6d83b63f8fb1c8f1aafa859f50c1`; `git status --short` → empty.
+- `git diff --name-only 0c2d2aa4c2 954adab25e` → the five files of this SPEC directory and nothing else.
+- `grep -n "UnmarshalYAML\|^import\|yaml.v3\|^type " internal/config/slot_lease_config.go internal/config/loader_card_age_alarm.go; echo "exit=$?"` → `loader_card_age_alarm.go:13: "gopkg.in/yaml.v3"`, `loader_card_age_alarm.go:42: func (c *CardAgeAlarmConfig) UnmarshalYAML(node *yaml.Node) error {`, `slot_lease_config.go:17: "gopkg.in/yaml.v3"`, `slot_lease_config.go:22: func (r *SlotLeaseResourceConfig) UnmarshalYAML(node *yaml.Node) error {` (among other lines), `exit=0` (backs §B file placement).
+- `git show 0c2d2aa4c2:.moai/specs/SPEC-JEV-LEDGER-001/spec.md | sed -n '72p;74p;78p'` → the 0.1.2 REQ-JEVL-007/008/009 wording, whose threshold-recording, warning-passthrough, and per-attempt / request-alias duties are now carried by REQ-JEVL-009 here and the spec.md §D.1 rows.
+- The acceptance.md §L ledger E1-E12 and B1 were re-run one by one on `954adab25e`; every output and exit code equals the 0.2.0 record.
 
 0.1.x grounding commands (trees `cb30e05b3e`, `d1aa4ed656`, `82aff00a6d`) remain valid for the cited lines above, because no non-SPEC file changed between those trees and `0c2d2aa4c2`; their list is in git history at `0c2d2aa4c2:.moai/specs/SPEC-JEV-LEDGER-001/plan.md` §I.
