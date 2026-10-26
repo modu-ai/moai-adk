@@ -112,3 +112,112 @@ None of the three needs an operator decision; the operator-fixed items (naming, 
 1. Fix D1 (no_match decision order), D2 (enabled-true scope), D3 (retry × Repeatable) — the blocking set; fold D4-D7 into the same revision while editing (D6 is prerequisite to resolving B5).
 2. Re-commit the plan artifacts, then re-audit: delta scope = D1-D7 anchors plus the mandatory full CN-4 verb run; D8/D9 may ride along or go to run-phase constraints.
 3. Design fidelity otherwise verified complete — no scope changes are being requested; every fix above is wording/mechanism pinning inside the already-approved boundary.
+
+---
+
+## iter2 (delta audit)
+
+auditor-model: glm-5.3
+Iteration: 2/3 · Scope: delta per Retry Loop Contract (D1-D9 + regression sweep; CN-4 ordering re-checked in full by hand) · Bind: audited head `e2fef7f2e575fc48b58efc897010dadca9e5e9c5` (read-time HEAD `116e10cf43` touches only `.moai/reports/t1968/progress.md`, 3 insertions — SPEC artifacts byte-identical; same binding pattern as iter1).
+
+Verdict: **FAIL** — Overall Score: 0.82 (computed 0.825; Tier M threshold 0.80 met; FAIL on 2 blocking findings + required-backend convergence fail — same shape as iter1)
+Plan Artifact Hash: `48468084b31a752b33ab12d9809dde922fcb2fc6b424636343ca767c5deab718` (sha256 over spec.md+plan.md+acceptance.md+progress.md concatenated in that order)
+
+```
+verdict: FAIL
+audited_sha: e2fef7f2e575fc48b58efc897010dadca9e5e9c5
+overall_score: 0.82
+must_pass_failed: 0
+blocking_count: 2
+plan_artifact_hash: 48468084b31a752b33ab12d9809dde922fcb2fc6b424636343ca767c5deab718
+scope: delta
+fix_scope: .moai/specs/SPEC-FETCH-WEB-001/acceptance.md#AC-FW-002 (first-block limb scoping); .moai/specs/SPEC-FETCH-WEB-001/plan.md#B5 + acceptance.md#AC-FW-011 (stale-entry selection policy)
+defect_class: design (N1), design (N2)
+convergence_overall: fail
+required_backend: codex fail
+```
+
+Cross-model receipt: `rcpt-1b52df614f2c394f678f5644` (codex, required gate; `moai verify audit-plan --result-file .moai/state/audit-plan-result.json` → `convergence_check: {ok: true, unmet: []}` — the backend answered; its verdict is fail. Both codex findings were independently adjudicated against the artifacts by this auditor and confirmed — see N1/N2; nothing rests on codex alone.)
+
+### Claim
+
+1. D2, D3, D4, D5, D7, D8, D9 fully resolved. D1 and D6 **partially** resolved — each repair landed correctly at its REQ/primary-AC anchor but left one clause contradicting the repaired order/mechanism; both residuals are blocking (N1, N2).
+2. All nine must-pass criteria pass; the regression sweep found no previously-passing dimension broken by the repair.
+3. Version 0.2.0 + HISTORY row present; B1/B5/B6 resolutions recorded (B5's pinned mechanism is the source of N2).
+
+### Evidence (commands run in this audit, this tree)
+
+- Repair scope: `git show --stat e2fef7f2e5` → only the 4 SPEC artifacts; `git diff --name-only 4f0e58197d..HEAD` → only `.moai/**` (the 4 SPEC files + `.moai/reports/t1968/progress.md`). No measured code path changed since the RED pin → all 10 ledger rows (R1-R10, pin `4f0e58197d`) stay valid. Rows read, not re-executed, per MP-8 execution discipline.
+- D2 premise re-measured this run: `grep -rn "enabled: true" internal/template/templates/ | wc -l` → **127** (matches REQ-FW-015's claim).
+- D7 premise re-verified: `git show 954adab25e:.moai/specs/SPEC-JEV-LEDGER-001/spec.md` → line 11 `module: "internal/jevledger (new) + internal/config + internal/template"`, line 102 "This SPEC does not edit `internal/jev/jev.go` or any other file in `internal/jev`" — exactly as plan.md §A.2 / REQ-FW-016 state. `internal/jevledger` confirmed absent on THIS tree (expected — t1762 in-flight in another lane; the SPEC carries the re-read-at-implementation-time instruction).
+- MP-6: `grep -c syscall` → 0/0/0 across the three artifacts. MP-7: no `[NEEDS CLARIFICATION]` in plan.md (grep exit 1); research.md absent (Tier M).
+- MP-1: REQ-FW-001…016 — 16 unique sequential definitions (occurrence-level repeats are §D/§E cross-references, not duplicate definitions); AC-FW-001…014 — 14 unique. Tier M ceilings respected (16/16 REQ, 14/16 AC).
+- Traceability: §F.1 table hand-adjudicated — all 16 REQs covered, all 14 AC rows map to existing REQs, zero orphan/uncovered (mechanical verb refused, see Gaps).
+- CN-4/MP-9 (hand-run in full): plan milestones are now `### M1`…`### M7` headings (D9 resolved — mechanically collectable form); plan order M1→M7; every green-path binding sits at its own implementing milestone; ordering-keyword hits in acceptance.md are content words ("first block", "first output line") binding nothing across milestones. No conflict.
+- Cross-model: `mcp__moai__audit_multi` (project_root = this worktree, no gates override, target=baseBranch, delta_base=bdc9a86ca1) → codex **fail**, 2 findings; claude/glm are gate-off in this tree's plan (participant_count 1, disagreement_flag null).
+
+### Baseline-attribution
+
+All measurements in this run, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1968`, read-time HEAD `116e10cf433658e2d3cb9e3dd83e86fedfd93466`; task-bound audited head `e2fef7f2e575fc48b58efc897010dadca9e5e9c5` — SPEC content byte-identical between them (the extra commit is 3 lines of lane bookkeeping outside `.moai/specs/`). RED ledger rows read at pin `4f0e58197d`, an ancestor of the audited head with zero non-`.moai` changes in between.
+
+### Gaps
+
+- The Group-4 traceability verb and the Group-6 CN-4 verb were REFUSED by the worktree-session guard — `awk` is refused outright in this isolated session, including `awk -f <scriptfile>`. Both adjudications were performed by hand over the full documents (all three artifacts read in full this run) and are recorded as refused-tool degradation per verification-claim-integrity §3.1 — they are hand-read results, not mechanical verb output.
+- MP-8 boundary unchanged: reading the RED cells confirms what they record, not that the commands measure the premise their author claims.
+- SPEC-JEV-LEDGER-001 is not present in this tree's `.moai/specs/` (in-flight card, another lane) — D7 SHOULD-level note ("referenced SPEC not found"), mitigated by the commit-pinned source citation (`954adab25e`) and the re-read instruction at implementation time.
+
+### Residual-risk
+
+- codex residual_risk_note (verbatim): "delta_base bdc9a86ca13bc323dfd917001bbd97b6b06352d0: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written | required-backend FAIL: codex".
+- B5 lookup step (2) "the configured default interpretation model" names a knob that does not exist on this tree (the alias is a compiled constant per §A.1); implementers will fall through to the map — harmless, but worth one word in the N2 fix.
+
+### Must-Pass Results (iter2)
+
+- [PASS] MP-1 REQ number consistency: 16 sequential unique definitions (hand enumeration; occurrence repeats are cross-references).
+- [PASS] MP-2 EARS/GEARS (requirement layer): all 16 forms valid — REQ-FW-006's rewritten compound Ubiquitous+When chain is GEARS-conformant; REQ-FW-010/016 remain legacy negative equivalents within the compat window (as adjudicated iter1).
+- [PASS] MP-3 YAML frontmatter: 12/12 canonical fields, `version: "0.2.0"`, `updated: 2026-10-26`, no aliases.
+- [N/A] MP-4 language neutrality: single-language (Go) SPEC.
+- [PASS] MP-5 D7 cross-SPEC reconciliation: no retired/superseded/archived references; 3 completed + 1 in-flight (SHOULD note in Gaps).
+- [PASS] MP-6 D8 cross-platform discipline: `syscall` 0/0/0 (auto-pass).
+- [PASS] MP-7 clarification gate: plan.md clean; research.md absent (Tier M — stated reason).
+- [PASS] MP-8 RED-now completeness: all 14 release-blocking criteria two-celled (RED citation incl. document-level pin + green-path milestone); 10-row ledger complete (command/verbatim output incl. stderr-marked rows/exit code/SHA); pins scope-validated via git; no re-execution.
+- [PASS] MP-9 cross-artifact ordering: hand-read full run (verb refused — Gaps); milestone headings now mechanical; no CONFLICT.
+
+### Per-finding verdicts (D1-D9)
+
+| # | Verdict | Evidence |
+|---|---|---|
+| D1 no_match decision order | **partial** | REQ-FW-006 (spec.md:60) pins the order; AC-FW-004 (acceptance.md:15) asserts BOTH branches — core repair good. Residual N1: AC-FW-002's "the first block is kept regardless" limb left un-scoped. |
+| D2 enabled-true scope | **resolved** | REQ-FW-015 (spec.md:81) + AC-FW-013 scoped to THIS SPEC's own shipped artifacts; 127 re-measured this run. |
+| D3 retry × REQ-JEVC-008 | **resolved** | REQ-FW-012 (spec.md:72) gate-conjoined trigger + explicit non-retry When-clause; AC-FW-010 carries the 3 negative cases (non-repeatable, ambiguous-after-delivery, cache-served-no-retry). |
+| D4 RED basis | **resolved** | Behavior probes R8-R10 added; R4 limitation stated in-row; R1/R6 stderr relabeled. (Cosmetic residual N4.) |
+| D5 B1 exit-2 carve-out | **resolved** | plan.md:30 reconciliation sentence recorded; lane-adjudicated. |
+| D6 cache-key mechanism | **partial** | Mechanism pinned (models.json, restart/alias cases) — but the pinned composite-key lookup makes the preserved older-model entry unreachable after alias movement → AC-FW-011's serve-stale branch unimplementable as specified (N2). |
+| D7 t1762 boundary | **resolved** | Stale premise retired; real paths named and verified at `954adab25e`; §I.4 diff-check with positive control; internal/jevledger absent on this tree (expected). |
+| D8 tokenizer guard | **resolved** | go.mod-diff + tiktoken probes folded into AC-FW-014's method. |
+| D9 milestone headings | **resolved** | `### M1`…`### M7` headings; mechanically collectable form. |
+
+### Regression sweep (iter1-passing dimensions)
+
+No regression: version 0.2.0 + HISTORY row (spec.md:4, :25); 16 REQ / 14 AC numbering unchanged and sequential; GEARS forms intact; traceability clean (16/16, hand-read); two-cell discipline holds on ALL 14 release-blocking criteria — each carries a RED citation and a green-path milestone; RED ledger 10 rows pinned `4f0e58197d`, pin validity scope-confirmed (nothing outside `.moai/**` changed since the pin); design-source fidelity spot-check (applications 1-4 table, thresholds 3000/0.6/0.8/2000/300/400-char, fixed naming, 5 Out-of-Scope H3 subsections, carried Gaps) unchanged; B1/B5/B6 resolutions recorded in plan.md §B.
+
+### Category Scores (iter2)
+
+| Dimension | Score | Band | Evidence |
+|-----------|-------|------|----------|
+| Clarity | 0.75 | 0.75 band | D1/D6 clusters resolved at their anchors; one new interpretive cluster (stale-serving path N2, un-scoped limb N1) |
+| Completeness | 0.85 | near 1.0 | mechanism + boundary now pinned; deductions: stale-selection policy unstated (N2), `empty` decision point unpinned (N3) |
+| Testability | 0.75 | 0.75 band | AC-FW-011 alias-moved branch unstageable under B5 as written (N2); AC-FW-002 contradictory on zero-candidate input (N1); rest binary-testable |
+| Traceability | 0.95 | near 1.0 | clean 16/16 hand-read; AC-FW-014 now exercises REQ-FW-016's boundary and REQ-FW-002's dependency limbs |
+
+### Defects Found (iter2)
+
+- **N1 [BLOCKING, class design]** acceptance.md:11 (AC-FW-002) vs spec.md:60 (REQ-FW-006) + acceptance.md:15 (AC-FW-004) — "the first block is kept regardless" contradicts the pinned `no_match` decision order: on a >2,000-token page with zero stage-1 candidates, AC-FW-002 (literal) demands the first block kept while REQ-FW-006/AC-FW-004 demand `no_match` with no keep. Surviving slice of D1; codex finding 2 concurs (independently confirmed here). Required fix: scope the limb — "the first block is kept **whenever at least one stage-1 candidate exists** (REQ-FW-006 decision order)".
+- **N2 [BLOCKING, class design]** plan.md:34 (B5) + spec.md:71 (REQ-FW-011) vs acceptance.md:33 (AC-FW-011) — the pinned cache key (body-SHA + **resolved** model id) leaves preserved older-model entries unreachable after alias movement: a re-query of a body cached under m1 resolves m2, misses at `(SHA, m2)`, and never probes the kept m1 entry — so AC-FW-011's alias-moved branch ("When the stale entry is served…") cannot be staged through the specified lookup. Surviving slice of D6; codex finding 1 concurs with a state-model reproduction (independently confirmed here). Required fix: pin the stale-selection policy in B5 — e.g. "on a miss under the resolved model id, probe the most recent prior-model entry for the same body-SHA and serve it with the staleness warning (keep-and-warn)" — and mirror it in AC-FW-011's method, adding the alias-move → restart → network-closed → re-query case.
+- **N3 [MINOR, class optional]** spec.md:54 (REQ-FW-003) vs AC-FW-004's `empty` branch — the ≤2,000-token While-clause literally claims the 0-block document (`passthrough`, exit 0), and no REQ pins where `empty` is decided. Pre-existing (not introduced by the repair); AC-FW-004 disambiguates and is stageable, so non-blocking. Fix: scope REQ-FW-003 to non-empty documents (one word) or pin empty-first in REQ-FW-007.
+- **N4 [MINOR, class optional]** acceptance.md:5 — preamble still lists AC-FW-010/011 among "criteria without a RED cell" although their bodies cite R8-R10 (stale sentence pre-dating the D4 repair; two-cell compliance unaffected).
+
+### Recommendation
+
+1. One revision closes both blockers: N1 is a one-phrase scoping edit in AC-FW-002; N2 is a one-sentence stale-selection policy in B5, mirrored in AC-FW-011's method (or a restated AC trigger). N3/N4 may ride along in the same edit.
+2. iter3 scope: N1/N2 anchors plus the mandatory full CN-4 re-check. No STOP signal — 0.82 ≥ iter1's 0.80 (no score regression).
