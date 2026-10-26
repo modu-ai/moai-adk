@@ -33,3 +33,15 @@ Review head: d7ca574310. The 8 round-1 fixes were not contested; the reviewer fo
 | N4 | P2 | internal/fetchweb/blocks.go:148 | aside headings mutate shared s.path; body blocks after aside inherit the aside's heading path (provenance + same-heading rescue corrupted) | **repair** — save/restore path around aside |
 
 Ceiling accounting: round 1 + this re-review = 2 runs; ONE re-review remains (round 3) before dispositions are raised to the leader.
+
+## Round 3 (final re-review) — verdict: fail, 3 P2 findings — CEILING EXHAUSTED
+
+Review head: 61436e6e68. Findings (static review, no tests run by reviewer):
+
+| # | Severity | Location | Finding | Disposition |
+|---|----------|----------|---------|-------------|
+| C1 | P2 | internal/fetchweb/blocks.go:155 | N4's fix incomplete: `saved := s.path` shares the backing array — heading truncate+append can overwrite the saved path; aside-following body can still inherit the wrong heading path | **fixed post-ceiling** (slice copy) — round-2 disposition "N4 repaired" was optimistic; corrected here |
+| C2 | P2 | internal/fetchweb/blocks.go:168 | `<pre>`/`<table>` inside `<li>`: collapseText includes them in list text AND walkChildren re-emits them → duplicate blocks + flattened code copy | **fixed post-ceiling** (exclude separately-emitted children from list text) |
+| C3 | P2 | internal/jevmeasure/bench.go:111 | missing case ID in run results maps to zero value (Contained=false, 100% savings); baseline also missing → PASS/exit 0 without any run result | **fixed post-ceiling** (existence checks; missing results fail explicitly) |
+
+**Ceiling disposition (mechanics § The card-review stage):** 3 review rounds run (initial + 2 re-reviews = the ceiling). The 3 findings are fixed WITHOUT a fourth review — the lane does not widen the ceiling. Residual verification authority passes to the independent sync-audit (sync-auditor), which judges the whole card including these fixes. This ceiling disposition is named in the lane's completion report to the leader.
