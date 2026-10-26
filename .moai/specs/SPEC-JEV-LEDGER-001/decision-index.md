@@ -22,13 +22,14 @@ Label: EVIDENCE-NEEDED
 Authority anchor: none. The card states the 5 s / 10 s budgets. The measured host timeouts are PreToolUse 10 s / Stop 5 s / SubagentStop 5 s (Claude Code template) and 10 s (Codex, `internal/codexwiring/codexwiring.go:60`). No measurement exists of the hook's own pre-adapter elapsed time.
 Why unresolved: the margin that keeps the whole process under the host kill depends on the elapsed time of the existing handlers, which has not been measured.
 Operator verdict: LANE-DECIDED 2026-10-26T10:41:41Z lane t1762 (decision D1, recorded by manager-spec). Budget = 5 s, the tightest host timeout (Claude Code Stop/SubagentStop, and the single shared constant). Margin = 1 s. Effective Jev deadline = 4 s from hook process start, the same for pre-tool, stop, and subagent-stop under both harnesses. Gap: handler elapsed time before the adapter runs was NOT measured. The margin is a decision, not a measurement. Implementation M3 measures it per event and harness, records it in progress.md §E.2, and returns a blocker if measured elapsed time plus 4 s would exceed 5 s.
+Measurement rule (iter-3 repair, manager-spec; supersedes the blocking formula in the verdict line above, which added handler time to a deadline already measured from process start): M3 measures the worst-case wall-clock time from wrapper-script start (bash start, `stat`, `command -v moai`, `exec moai hook <event>`; `handle-stop.sh.tmpl:1,18,25,26`) to process exit, including the post-deadline tail (ledger write, deferred `rs.Shutdown()` at `internal/cli/hook.go:409`, exit). Jev is held blocked until its 4 s deadline. M3 takes at least 20 samples per event. Blocking condition: measured p99 > 5 s − S, with S = 0.5 s. S is a decision, not a measurement, and the 1 s margin remains a decision until M3 measures it. The lane has not yet confirmed S.
 
 ### Q3: What unit does "cost per correct decision" use?
 Label: FOUNDER
 Class: implementation-level
-Authority anchor: none verified. `internal/jev` records only `Usage.InputTokens`, and no price constant exists (`grep -rn -i 'price\|usd\|cost' internal/jev/jev.go` shows comments only).
+Authority anchor: none verified. `internal/jev` records only `Usage.InputTokens`, and no price constant exists (`grep -rn -i 'price\|usd\|cost' internal/jev/jev.go` shows comments only). `Usage.InputTokens` is a byte-length estimate (`internal/jev/jev.go:595` sets it from `requestTokens(req)`; `:366-368` says "ESTIMATE, not a tokenizer"), not a billed count.
 Why unresolved: the card names the metric but not its unit.
-Default: charged input tokens per correct decision (rule: the option with the smaller user-visible surface, since it adds no price data)
+Default: estimated input tokens (`Usage.InputTokens`, a byte-length estimate) per correct decision, labelled "estimated" in the `moai jev cost` report; the response's `usage.input_tokens` is not read (rule: the option with the smaller user-visible surface, since it adds no price data and no new field). Iter-3 repair: the wording changed from "charged input tokens" because the recorded figure is an estimate. The applied default and its rule are unchanged.
 Alternate: currency, via a compiled price table
 Operator verdict: DEFAULT-APPLIED 2026-10-26T10:21:34Z manager-spec (plan-phase owner)
 
@@ -54,7 +55,8 @@ Operator verdict: DEFAULT-APPLIED 2026-10-26T10:21:34Z manager-spec (plan-phase 
 Label: FOUNDER
 Class: implementation-level
 Authority anchor: none verified. The ~10 files / ~400 lines ceiling is stated in the dispatch prompt, not in a committed config.
-Why unresolved: the estimate (13 files, ~930 lines including tests) exceeds the stated ceiling, and splitting changes the card set.
+Why unresolved: the estimate exceeds the stated ceiling, and splitting changes the card set. Estimate at the lane decision: 14 distinct files, ~980 lines including tests (the earlier "13 files" and "~930 lines" were a miscount and a stale figure). Estimate after the iter-3 repair: 15 distinct files, ~1080 lines (plan.md §E).
 Default: split into three slices (rule: the option whose undo is a single revert of this SPEC's own commits, since each slice reverts alone)
 Alternate: land as one card
 Operator verdict: LANE-DECIDED 2026-10-26T10:41:41Z lane t1762 (decision D3, recorded by manager-spec). Alternate taken: one card, carried serially M1 -> M2 -> M3 -> M4 with one commit per milestone. The ~13 files / ~980 lines estimate exceeds the illustrative ceiling, and that is recorded in plan.md §E. The split was rejected because its AC partition closed ACs in slices that could not satisfy their green paths (AC-012/016 in slice a, AC-014 in slice b). Per-milestone commits keep per-slice revertibility.
+Estimate note (iter-3, manager-spec): the verdict line above quotes the iter-2 estimate ("~13 files / ~980 lines"; the correct count was 14). The current estimate is 15 files / ~1080 lines. The verdict itself is unchanged.

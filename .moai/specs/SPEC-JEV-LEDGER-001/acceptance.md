@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Acceptance — Jev decision ledger, shadow-mode hook adapter, cost report"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-10-26
 updated: 2026-10-26
 ---
@@ -20,12 +20,12 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 
 ### AC-JEVL-001 — gate off: zero requests, zero rows (REQ-JEVL-001) [release-blocking]
 
-- **Given** `workflow.jev.enabled` is false and a fake consumer is registered through the test seam with a counting transport.
+- **Given** `workflow.jev.enabled` is false, a fake consumer registered through the test seam with a counting request builder, the adapter's `Ask` seam (plan.md §B) wrapped by a counter around the real `jev.Client`, and a counting transport.
 - **When** each of `pre-tool`, `stop`, and `subagent-stop` is dispatched once under `claude` and once under `codex`.
-- **Then** the transport call count is 0, no `.moai/state/jev/` directory exists under the test project root, and the existing `TestDisabled_ConstructsNoRequest` (extended in M2) also asserts that no ledger file was created.
-- RED-now: §L E1 (`ls internal/cli/hook_jev.go` → absent, exit 1). Red because the adapter does not exist, so there is nothing yet to keep at zero.
-- Green path: **partial at M2** (`--- PASS: TestDisabled_ConstructsNoRequest ` with its no-ledger-file assertion), **final at M3** (`--- PASS: TestHookJev_GateOff_ZeroRequests `), each with transport calls = 0.
-- Check spec: (a) runs in `go test ./internal/cli/ ./internal/jev/` on every CI run, after a consumer is registered. With no consumer registered it would pass vacuously, so the test registers one first. (b) failing input: a mutant adapter that skips the gate check → calls = 1. (c) `go test` exit 1 in the required Test job.
+- **Then** the fake consumer's request-builder call count is 0, the `Ask` call count on the adapter's `jev.Client` is 0, the transport call count is 0, and no `.moai/state/jev/` directory exists under the test project root. Positive control in the same test: the same fixture with the gate on shows builder calls ≥ 1 and `Ask` calls ≥ 1.
+- RED-now: §L E1 (`ls internal/cli/hook_jev.go` → absent, exit 1; re-collected at iter-3 on `82aff00a6d`). Red because the adapter, the builder seam, and the `Ask` seam do not exist, so there is nothing yet to keep at zero.
+- Green path: **final at M3** (`--- PASS: TestHookJev_GateOff_ZeroRequests `). No partial milestone: the iter-2 M2 partial extended `TestDisabled_ConstructsNoRequest`, which calls only `Ask`, and `Ask` never writes a ledger, so its no-ledger assertion could not fail. It was removed (plan.md §E).
+- Check spec: (a) runs in `go test ./internal/cli/` on every CI run, after a consumer is registered. With no consumer registered it would pass vacuously, so the test registers one first. (b) failing input: a mutant adapter that skips the gate check → builder call count 1 → red. The transport count alone cannot catch this mutant, because `Ask` itself returns `Disabled` before sending (`internal/jev/jev.go:538-544`). That is why the builder and `Ask` counts are asserted. (c) `go test` exit 1 in the required Test job.
 
 ### AC-JEVL-002 — shipped registry is empty (REQ-JEVL-002) [release-blocking]
 
@@ -77,11 +77,12 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 ### AC-JEVL-007 — threshold bounds (REQ-JEVL-007)
 
 - **Given** a temp project whose `.moai/config/sections/workflow.yaml` sets `workflow.jev.enabled: true`, one other non-default `workflow` setting, and seven consumers whose `threshold` is `0`, `1`, `0.5`, `-0.1`, `1.5`, `"high"` (a YAML string), and absent. One further consumer has a mapping in place of `threshold`.
+  Separately, a second temp project whose `workflow.jev.consumers` is the scalar `"x"` instead of a mapping, with the same `enabled: true` and the same other non-default setting.
 - **When** the file is loaded through the real loader (`internal/config/loader.go`, `loadWorkflowSection`) and each consumer is resolved, with stdout, stderr, and the default `slog` handler captured.
-- **Then** `0`, `1`, and `0.5` are kept. `-0.1`, `1.5`, the string, and the mapping each resolve to absent, with a warning returned as data. Absent resolves to absent without a warning. `0` stays distinguishable from absent. `workflow.jev.enabled` and the other non-default setting keep their file values, not the defaults. All eight consumers are present in the loaded map. Captured stdout and stderr are empty, and the `slog` capture holds no record.
+- **Then** `0`, `1`, and `0.5` are kept. `-0.1`, `1.5`, the string, and the mapping each resolve to absent, with a warning returned as data. Absent resolves to absent without a warning. `0` stays distinguishable from absent. `workflow.jev.enabled` and the other non-default setting keep their file values, not the defaults. All eight consumers are present in the loaded map. Captured stdout and stderr are empty, and the `slog` capture holds no record. For the scalar `consumers: "x"` project, the loaded consumer map is empty, exactly one section-level warning is returned as data, `enabled` and the other setting keep their file values, and stdout, stderr, and the `slog` capture are empty.
 - RED-now: §L E2. Red because no consumer config type exists.
-- Green path: final at M1. `--- PASS: TestResolveJevConsumer_Threshold/* ` and `--- PASS: TestLoadWorkflow_MalformedConsumerQuarantined `.
-- Mutant probes: (1) an open-interval check rejecting `0` → red. (2) A plain `Threshold *float64` field. Here `yaml.Unmarshal` fails on `"high"`, and `loadWorkflowSection` logs `failed to load workflow config, using defaults` and keeps the defaults (`loader.go:239-241`). So `enabled` and the other setting revert, and the `slog` capture is non-empty → red. A resolver-only unit test passes this mutant, which is why the test goes through the loader.
+- Green path: final at M1. `--- PASS: TestResolveJevConsumer_Threshold/* `, `--- PASS: TestLoadWorkflow_MalformedConsumerQuarantined `, and `--- PASS: TestLoadWorkflow_NonMappingConsumersQuarantined `.
+- Mutant probes: (1) an open-interval check rejecting `0` → red. (2) A plain `Threshold *float64` field. Here `yaml.Unmarshal` fails on `"high"`, and `loadWorkflowSection` logs `failed to load workflow config, using defaults` and keeps the defaults (`loader.go:239-241`). So `enabled` and the other setting revert, and the `slog` capture is non-empty → red. A resolver-only unit test passes this mutant, which is why the test goes through the loader. (3) A typed `map[string]JevConsumerConfig` for `consumers` fails on the scalar `"x"` the same way and reverts the whole section → the second project goes red.
 - Check spec: (a) CI. (b) either mutant. (c) Test job.
 
 ### AC-JEVL-008 — invalid config is recorded, never printed (REQ-JEVL-008)
@@ -121,23 +122,38 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 - Green path: unchanged. It stays green as long as `.moai/state/` stays ignored in both the repository and the template `.gitignore`.
 - Check spec: (a) runs at plan time and in the M2 self-verification. (b) failing input: removing `.moai/state/` from `.gitignore` → exit 1. (c) the self-verification table.
 
-### AC-JEVL-012 — write failure is silent (REQ-JEVL-012)
+### AC-JEVL-012 — write failure and non-regular ledger path are silent (REQ-JEVL-011, REQ-JEVL-012)
 
-- **Given** a project root where `.moai/state/jev` is a regular file, so `mkdir` fails.
-- **When** a gated-on dispatch with an answered fake call runs.
-- **Then** the write-failure precondition holds (§C): transport calls ≥ 1, ledger rows = 0, no `decisions.jsonl` anywhere under the root. stdout, stderr, and exit code equal the gate-off baseline, and no panic occurs.
-- RED-now: §L E3.
-- Green path: **partial at M2**: `--- PASS: TestLedger_WriteFailureDropped ` (the recorder drops). **Final at M3**: `--- PASS: TestHookJev_LedgerFailureSilent ` (the adapter stays silent).
-- Check spec: (a) CI. (b) mutant: the error returned and printed → red. (c) Test job.
+- **Given** three project roots, each with the budget and margin injected through the test seam (250 ms budget, 50 ms margin, so the deadline is process start + 200 ms):
+  - (i) `.moai/state/jev` is a regular file, so `mkdir` fails.
+  - (ii) `.moai/state/jev/decisions.jsonl` is a FIFO (`syscall.Mkfifo`) with no reader.
+  - (iii) `.moai/state/jev/decisions.jsonl` is a symbolic link to a file outside the project root whose bytes are recorded before the dispatch.
+- **When** a gated-on dispatch with an answered fake call runs in each root.
+- **Then** in every case the write-failure precondition holds (§C): transport calls ≥ 1 and ledger rows = 0. In (i), no `decisions.jsonl` exists anywhere under the root. In (ii), the FIFO is still a FIFO and no row was written. In (iii), the link target's bytes equal the recorded bytes (zero rows appended) and the link is still a link. In every case, stdout, stderr, and exit code equal the gate-off baseline, no panic occurs, and the dispatch returns at or before process start + 200 ms + T, with **T = 50 ms** (the same T as AC-JEVL-013).
+- **Cleanup guarantee (FIFO).** The FIFO lives under `t.TempDir()`, which the test framework removes. The dispatch runs in a goroutine, and the test waits on it with `select` against a timer of 200 ms + T + 1 s. On expiry the test fails instead of hanging. A `t.Cleanup` registered before the dispatch opens the FIFO's read side with `O_RDONLY|O_NONBLOCK` and closes it, so a mutant blocked in a write open is released and the goroutine ends. The package `go test -timeout` is the outer bound. No load runs outside these guards. Case (ii) is skipped on Windows and case (iii) is skipped where symlink creation fails, each with `t.Skip` and a named reason.
+- RED-now: §L E3 (no row type) and §L E10 (`grep -rn O_NOFOLLOW internal/jev` → no output, exit 1; red because no write-side regular-file open exists).
+- Green path: **partial at M2**: `--- PASS: TestLedger_WriteFailureDropped ` and `--- PASS: TestLedger_NonRegularPathDropped/* ` (FIFO and symlink, each calling the recorder directly). **Final at M3**: `--- PASS: TestHookJev_LedgerFailureSilent/* ` (3 subtests: `mkdir-fails`, `fifo`, `symlink`).
+- Mutant probes: (1) the error returned and printed → stderr differs → red. (2) The plain `O_APPEND|O_CREATE|O_WRONLY` open with no `O_NONBLOCK`: case (ii) blocks, the `select` timer fires → red, and the cleanup releases the goroutine. (3) An open without `O_NOFOLLOW` and without a handle check: case (iii) appends a row to the link target → target bytes differ → red.
+- Check spec: (a) CI on linux/darwin, with all three cases. (b) any mutant above. (c) Test job exit 1.
 
-### AC-JEVL-013 — time budget exceeded → no answer, exit 0 (REQ-JEVL-013) [release-blocking]
+### AC-JEVL-013 — time budget exceeded → no answer, hook output unchanged (REQ-JEVL-013) [release-blocking]
 
-- **Given** a fake transport that blocks until its context is cancelled, the budget and margin injected through the test seam (scaled down, e.g. 250 ms budget and 50 ms margin, with the same derivation the 5 s / 1 s constants use), and a separate case where the elapsed time at adapter entry already exceeds budget − margin.
-- **When** a gated-on dispatch runs for each of the three events under each harness.
-- **Then** in the timeout case the timeout precondition holds (§C): transport calls ≥ 1, and ledger rows equal the consumer's question count, each a no-answer row with `availability: "unreachable"`, `deadline_exceeded: true`, `probability: null`, and `model_id: ""`. The dispatch returns within (budget − margin) + a small tolerance measured from process start, the exit code is 0, and stdout and stderr equal the gate-off baseline. In the exhausted case the skipped precondition holds: transport calls = 0, ledger rows = 0. A separate assertion checks that the compiled constants are a 5 s budget and a 1 s margin, and that the derived deadline is the same value for all three events under both harnesses (no per-harness or per-event branch).
-- RED-now: §L E6 (`grep -n JevHook internal/config/defaults.go` → no output, exit 1). Red because no budget constant exists.
-- Green path: **partial at M1**: `--- PASS: TestJevHookBudgetConstants `. **Final at M3**: `--- PASS: TestHookJev_BudgetExceeded/* ` (6 subtests) and `--- PASS: TestHookJev_BudgetExhaustedSkips `.
-- Check spec: (a) CI, with a transport that would otherwise block forever. (b) mutant: `context.Background()` instead of the deadline → test timeout → red. (c) Test job (the `go test` timeout surfaces as a FAIL).
+- **Given** a fake transport that blocks until its context is cancelled and records the deadline of the context it receives. The budget and margin are injected through the test seam as 250 ms and 50 ms, with the same derivation the 5 s / 1 s constants use, so the deadline is process start + 200 ms. The process start instant is injected too. **T = 50 ms** is the return tolerance throughout this AC. Four cases:
+  - (a) **timeout**: elapsed time at adapter entry ≈ 0.
+  - (b) **intermediate**: 150 ms already elapsed before the adapter is entered (injected start = adapter-entry instant − 150 ms).
+  - (c) **exhausted**: elapsed time at adapter entry already exceeds budget − margin.
+  - (d) **exit-2 baseline**: case (a) with a hook handler whose output carries exit code 2, using the existing fault-registry fixture (`faultRegistry{output: &hook.HookOutput{ExitCode: 2}}`, `internal/cli/hook_fault_injection_test.go:181-189`), under both harnesses.
+- **When** a gated-on dispatch runs for each of the three events under each harness, and the same dispatch runs with the gate off as the baseline.
+- **Then:**
+  - In (a), (b), and (d), the timeout precondition holds (§C): transport calls ≥ 1, and ledger rows equal the consumer's question count, each a no-answer row with `availability: "unreachable"`, `deadline_exceeded: true`, `probability: null`, and `model_id: ""`.
+  - In (a) and (b), the deadline the transport received equals injected process start + 200 ms exactly, and the dispatch returns at or before injected process start + 200 ms + T.
+  - In (a), (b), and (d), stdout bytes, stderr bytes, **and the exit code** equal the gate-off baseline of the same event and harness. In (d), that baseline exit code is 2, and the gated-on dispatch must also exit 2.
+  - In (c), the skipped precondition holds: transport calls = 0, ledger rows = 0.
+  - A separate assertion checks that the compiled constants are a 5 s budget and a 1 s margin, and that the derived deadline is the same value for all three events under both harnesses (no per-harness or per-event branch).
+- RED-now: §L E6 (`grep -n JevHook internal/config/defaults.go` → no output, exit 1; re-collected at iter-3 on `82aff00a6d`). Red because no budget constant exists. The constant name is fixed by M1. If M1 picks a name without the `JevHook` stem, M1 re-points this cell's command to that name in the same commit.
+- Green path: **partial at M1**: `--- PASS: TestJevHookBudgetConstants `. **Final at M3**: `--- PASS: TestHookJev_BudgetExceeded/* ` (6 subtests), `--- PASS: TestHookJev_BudgetIntermediateElapsed/* ` (6 subtests), `--- PASS: TestHookJev_BudgetExceededExit2/* ` (6 subtests), and `--- PASS: TestHookJev_BudgetExhaustedSkips `.
+- Mutant probes: (1) `context.Background()` instead of the deadline → (a) blocks until the test timeout → red. (2) The deadline anchored at adapter entry instead of process start (entry + budget − margin, with a skip only when entry elapsed exceeds budget − margin): it passes (a) and (c), but in (b) the transport sees entry + 200 ms = start + 350 ms ≠ start + 200 ms, and the return lands near start + 350 ms > start + 250 ms → red. (3) The timeout path returns exit 0 or nil regardless of the handler's decision → (d) exits 0 ≠ baseline 2 → red.
+- Check spec: (a) CI, with a transport that would otherwise block forever. (b) any mutant above. (c) Test job (the `go test` timeout surfaces as a FAIL).
 
 ### AC-JEVL-014 — boundary: declared importers, no new endpoint (REQ-JEVL-014) [release-blocking]
 
@@ -153,17 +169,17 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 
 - **Given** a fixture ledger with 3 calls (`call_id` a, b, c; input_tokens 100, 200, 300, repeated across 2 rows each), of which 2 rows are labelled `correct`.
 - **When** `moai jev cost` runs against the fixture.
-- **Then** the output reports calls = 3, input tokens = 600, correct = 2, tokens per correct decision = 300, a model-signal label, exit 0, and the counting transport records 0 calls. With zero correct rows, the per-correct field reads `undefined`.
+- **Then** the output reports calls = 3, estimated input tokens = 600, correct = 2, and estimated input tokens per correct decision = 300. It contains the literal label `estimated input tokens` on each token figure and the literal heading `model signal aggregate`. It exits 0, and the counting transport records 0 calls. With zero correct rows, the per-correct field reads `undefined`. No figure is labelled as charged or billed.
 - RED-now: §L E8 (`ls internal/cli/jev_cost.go` → absent, exit 1).
 - Green path: M4. `--- PASS: TestJevCost_Aggregates `, `--- PASS: TestJevCost_ZeroCorrectUndefined `.
-- Mutant probe: summing tokens per row instead of per call gives 1200, which the test rejects.
+- Mutant probes: (1) summing tokens per row instead of per call gives 1200, which the test rejects. (2) A report that prints the token figures without the `estimated input tokens` label → red.
 - Check spec: (a) CI. (b) the per-row mutant. (c) Test job.
 
 ### AC-JEVL-016 — absent / malformed ledger, and template default (REQ-JEVL-016, REQ-JEVL-002)
 
 - **Given** (i) no ledger file, (ii) an empty one, (iii) one with a non-JSON line between two valid rows of two different calls (`call_id` a with `input_tokens: 100`, `call_id` b with `input_tokens: 200`, one row labelled `correct`). Separately, the template `workflow.yaml`. A counting transport is installed in every case.
 - **When** `moai jev cost` runs, and the template is parsed.
-- **Then** (i)/(ii) report calls = 0, exit 0. (iii) reports calls = 2, input tokens = 300, correct = 1, tokens per correct decision = 300, and `skipped: 1`, exit 0. The valid rows are aggregated, not discarded. The counting transport records 0 calls in all three cases. The template carries `jev.enabled: false` and an empty `consumers` mapping.
+- **Then** (i)/(ii) report calls = 0, exit 0. (iii) reports calls = 2, estimated input tokens = 300, correct = 1, tokens per correct decision = 300, and `skipped: 1`, exit 0. The valid rows are aggregated, not discarded. The counting transport records 0 calls in all three cases. The template carries `jev.enabled: false` and an empty `consumers` mapping.
 - RED-now: §L E9 (`grep -n consumers internal/template/templates/.moai/config/sections/workflow.yaml` → no output, exit 1).
 - Green path: **partial at M1**: `--- PASS: TestTemplateJevConsumersEmpty `. **Final at M4**: `--- PASS: TestJevCost_AbsentAndMalformed/* ` (3 subtests).
 - Mutant probes: (1) the reader aborts on the first malformed line → exit 1 → red. (2) The reader reports zero calls once any line is malformed → calls = 0 in (iii) → red. (3) The reader drops the malformed line without counting it → `skipped:` missing → red.
@@ -190,7 +206,7 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 ## §D. Quality gates and Definition of Done
 
 - All release-blocking ACs (001, 002, 004, 009, 013, 014) PASS **at their final milestone** (plan.md §E closure map) with verbatim `--- PASS` lines in `progress.md` §E.2. A partial-milestone PASS line is evidence of progress, not of AC closure.
-- M3 records the measured hook-handler elapsed time per event and harness (decision-index Q2 gap).
+- M3 records the worst-case wall-clock time from wrapper-script start (bash start, `stat`, `command -v moai`, `exec moai hook <event>`) to process exit, with Jev blocked until its deadline, as at least 20 samples per event plus their p99 (plan.md §B). It returns a blocker report when that p99 exceeds 5 s − S, with S = 0.5 s (decision-index Q2). The 1 s margin remains a decision until this measurement exists.
 - `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 - `go test -cover` ≥ 85% for `internal/jev` and the new `internal/config` file. The new `internal/cli` files are covered by their tests (package-wide coverage is not re-baselined).
 - `golangci-lint run` shows no NEW findings against the baseline.
@@ -219,4 +235,15 @@ Each criterion has the four parts the rule requires: the Given-When-Then, the RE
 
 Why each RED is red for the right reason: E1/E8 because the adapter and report files do not exist. E2/E6/E9 because no consumer type, no budget constant, and no template block exist. E3/E4 because no row type and no ledger path exist. E7 because the allow-list does not name the adapter yet. Each flips only through a file this SPEC's milestones create or edit.
 
-Baseline of the existing test that AC-JEVL-001 extends (own pin: tree `cb30e05b3e5f64774b8dabd87e80c24332f4551d`; not re-run in iter-2): `go test ./internal/jev/ -run '^TestDisabled_ConstructsNoRequest$' -count=1 -v` → `--- PASS: TestDisabled_ConstructsNoRequest (0.00s)` … `ok  	github.com/modu-ai/moai-adk/internal/jev	0.143s`. This is green today on purpose: AC-JEVL-001's RED comes from the missing adapter (E1), not from this test.
+**Iter-3 re-collection (own pin: tree `82aff00a6d3b9d1b3dd6f9c2a6fc68ebf5b8e0d0`, `git rev-parse HEAD` printed in the same invocation as E1').** These cells cover the criteria whose content changed at iter-3: AC-001 (E1'), AC-012 (E3', E10), and AC-013 (E6'). The commands for E1', E3', and E6' are unchanged from E1, E3, and E6. They were re-run because the criteria changed. E10 is new. Collection method: the cited command followed by `; echo "exit=$?"` in one Bash invocation, with no `sh -c` wrapper. The printed `exit=N` is the cited command's own status.
+
+| Id | Command | Verbatim stdout | Exit | Wrapper output observed |
+|---|---|---|---|---|
+| E1' | `ls internal/cli/hook_jev.go` | *(stdout empty; stderr: `ls: internal/cli/hook_jev.go: No such file or directory`)* | 1 | `exit=1` |
+| E3' | `grep -rn outcome_label internal/jev` | *(empty)* | 1 | `exit=1` |
+| E6' | `grep -n JevHook internal/config/defaults.go` | *(empty)* | 1 | `exit=1` |
+| E10 | `grep -rn O_NOFOLLOW internal/jev` | *(empty)* | 1 | `exit=1` |
+
+E10 is red because no write-side regular-file open exists in `internal/jev`. It flips at M2 through `ledger_open_unix.go` (plan.md §F).
+
+The iter-1 baseline of `TestDisabled_ConstructsNoRequest` (tree `cb30e05b3e`, `--- PASS`) is no longer part of AC-JEVL-001. The iter-2 extension of that test was removed at iter-3, because it could not fail (AC-JEVL-001 Green path).

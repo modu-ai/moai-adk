@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Jev decision ledger, shadow-mode hook adapter, and cost-per-correct-decision report"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -23,6 +23,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-JEV-CONSUMERS-001, SPEC-JEV-RESOLVED-MOD
 |---|---|---|---|
 | 2026-10-26 | 0.1.0 | Initial plan-phase draft for card t1762 (Class C, P1, "Jev 1/6"). Predecessor of Jev 2, 3 and 5. Scope: a local-only decision ledger, a common hook adapter that runs in shadow mode on `pre-tool` / `stop` / `subagent-stop` under both harnesses, the `workflow.jev.consumers.<name>` config surface, and a `moai jev cost` report. It ships no compiled consumer, so the shipped build sends zero requests even with the gate on. | manager-spec |
 | 2026-10-26 | 0.1.1 | Plan-audit iter-2 repair (FAIL 0.6875 at `d1aa4ed656`). REQ-JEVL-002/006/007 restated as subject-naming GEARS sentences. REQ-JEVL-013 fixes the adapter deadline at a 5 s budget minus a 1 s margin (4 s) on every event and harness. REQ-JEVL-016 keeps aggregating valid rows and reports `skipped: N`. REQ-JEVL-007 requires a per-consumer tolerant decode. | manager-spec |
+| 2026-10-26 | 0.1.2 | Plan-audit iter-3 repair (FAIL 0.81 at `82aff00a6d`, N1-N6). REQ-JEVL-015 and §D name the cost unit "estimated input tokens" (a byte-length estimate) and label it so in the report. REQ-JEVL-011/012 require a ledger open that follows no symbolic link, never blocks, and writes only to a regular file. The AC, plan, and decision-index changes are recorded in `acceptance.md`, `plan.md`, and `decision-index.md`. | manager-spec |
 
 ## Position in the chain
 
@@ -78,9 +79,9 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 **REQ-JEVL-010** (Ubiquitous) The recorder shall write `outcome_label` as `unlabeled` at record time and `action` as `none` while the effective mode is `shadow`. Labelling an outcome after the fact is not part of this SPEC.
 
-**REQ-JEVL-011** (Ubiquitous) The ledger path shall stay ignored by git (`.moai/state/` in the repository `.gitignore` and in the template `.gitignore`). The recorder shall create the directory at mode 0700 and the file at mode 0600 on POSIX systems, and shall write each row with a single append so that concurrent hook processes never interleave a row.
+**REQ-JEVL-011** (Ubiquitous) The ledger path shall stay ignored by git (`.moai/state/` in the repository `.gitignore` and in the template `.gitignore`). The recorder shall create the directory at mode 0700 and the file at mode 0600 on POSIX systems, and shall write each row with a single append so that concurrent hook processes never interleave a row. The recorder shall open the ledger file without following a symbolic link at the ledger path and without blocking on the open, and shall write a row only when the opened handle is a regular file.
 
-**REQ-JEVL-012** (Event-detected) **When** the ledger directory or file cannot be created or written, the recorder shall drop the row. It shall emit nothing to the hook's stdout or stderr and shall leave the hook's exit code unchanged.
+**REQ-JEVL-012** (Event-detected) **When** the ledger directory or file cannot be created or written, or the opened ledger handle is not a regular file (a symbolic link, a FIFO, a device, or a directory at the ledger path), the recorder shall drop the row and leave the object at that path, and any link target, unchanged. It shall emit nothing to the hook's stdout or stderr and shall leave the hook's exit code unchanged.
 
 ### §C.5 The time budget
 
@@ -92,7 +93,7 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 ### §C.7 The cost report
 
-**REQ-JEVL-015** (Event-driven) **When** an operator runs `moai jev cost`, the command shall read the ledger and print, without any network call, the number of calls, the total charged input tokens, the number of rows labelled `correct`, and the input tokens per correct decision. Each figure shall be labelled as an aggregate over model signals. With zero correct rows, the per-correct figure shall be reported as undefined rather than as a number. The command shall exit 0.
+**REQ-JEVL-015** (Event-driven) **When** an operator runs `moai jev cost`, the command shall read the ledger and print, without any network call, the number of calls, the total estimated input tokens (`Usage.InputTokens`, a byte-length estimate), the number of rows labelled `correct`, and the estimated input tokens per correct decision. Each figure shall be labelled as an aggregate over model signals, and each token figure shall be labelled "estimated". With zero correct rows, the per-correct figure shall be reported as undefined rather than as a number. The command shall exit 0.
 
 **REQ-JEVL-016** (Event-detected) **When** the ledger file is absent or empty, `moai jev cost` shall report zero calls and exit 0. **When** the ledger carries one or more malformed lines, `moai jev cost` shall skip each malformed line, aggregate the remaining valid rows exactly as REQ-JEVL-015 describes, print `skipped: N` where N is the number of malformed lines, and exit 0. In every case the command shall make no Jev call.
 
@@ -116,7 +117,8 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 ### Out of Scope — money
 
-- Price constants or currency conversion. The cost unit is charged input tokens, the only cost quantity `internal/jev` records (`Usage.InputTokens`). A price table would be new, unverified data in the binary.
+- Price constants or currency conversion. The cost unit is estimated input tokens (`Usage.InputTokens`, a byte-length estimate), the only cost quantity `internal/jev` records. It is an estimate of request size, not a billed amount. A price table would be new, unverified data in the binary.
+- Reading the response's server-reported `usage.input_tokens` field. This SPEC neither reads nor records it, so no figure in the report is presented as a billed token count.
 
 ### Out of Scope — other events and surfaces
 
@@ -133,8 +135,8 @@ Each open question carries a row in `decision-index.md`, with the default the pl
 | Id | Question | Plan default |
 |---|---|---|
 | Q1 | Does the ledger write rely on the `SPEC-JEV-CORE-001` REQ-JEVC-011 inert-sibling-record carve-out by name, or does it need a CORE amendment? | Relies on the carve-out by name. Evidence is in `plan.md` §C. |
-| Q2 | How is the adapter's Jev deadline derived inside the 5 s / 10 s budget? | Resolved (lane decision, iter-2): 5 s budget minus 1 s margin = 4 s from process start, on every event and harness. A deadline already passed skips the call. Handler elapsed time is unmeasured; M3 measures it. |
+| Q2 | How is the adapter's Jev deadline derived inside the 5 s / 10 s budget? | Resolved (lane decision, iter-2): 5 s budget minus 1 s margin = 4 s from process start, on every event and harness. A deadline already passed skips the call. The 1 s margin is a decision until M3 measures the worst-case wrapper-start-to-exit wall clock (plan.md §B). |
 | Q6 | One card or three slices? | Resolved (lane decision, iter-2): one card, carried serially M1 → M2 → M3 → M4 with one commit per milestone. |
-| Q3 | What unit does "cost per correct decision" use? | Charged input tokens. |
+| Q3 | What unit does "cost per correct decision" use? | Estimated input tokens (`Usage.InputTokens`, a byte-length estimate), labelled "estimated" in the report. |
 | Q4 | Do non-shadow modes run as shadow in this SPEC? | Yes. Accept, record, and run as shadow. |
 | Q5 | Is the new `moai jev cost` subcommand a "user-visible surface change" in the sense of card acceptance item 5? | No. It is a new, explicitly invoked, read-only report that consults no Jev. Existing surfaces stay byte-identical. |

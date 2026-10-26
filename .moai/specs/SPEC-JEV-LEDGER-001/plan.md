@@ -1,14 +1,14 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Plan — Jev decision ledger, shadow-mode hook adapter, cost report"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-10-26
 updated: 2026-10-26
 ---
 
 # Plan — SPEC-JEV-LEDGER-001
 
-Tree measured: `cb30e05b3e5f64774b8dabd87e80c24332f4551d` (card worktree `t1762`, branch `WT-jev-internal-jev`). Every claim about existing code below comes from a command run against that tree. The commands are listed in §I. The iter-2 repair additions (§B budget, §D decode path, §E closure map) were read against `d1aa4ed656af948c95c2567718c4f9a7be54e191`. The files they cite are unchanged between the two commits: `d1aa4ed656` only adds this SPEC's plan artifacts.
+Tree measured: `cb30e05b3e5f64774b8dabd87e80c24332f4551d` (card worktree `t1762`, branch `WT-jev-internal-jev`). Every claim about existing code below comes from a command run against that tree. The commands are listed in §I. The iter-2 repair additions (§B budget, §D decode path, §E closure map) were read against `d1aa4ed656af948c95c2567718c4f9a7be54e191`. The files they cite are unchanged between the two commits: `d1aa4ed656` only adds this SPEC's plan artifacts. The iter-3 repair additions (§A unit, §B budget measurement and Ask seam, §E file count, §F write-side open) were read against `82aff00a6d3b9d1b3dd6f9c2a6fc68ebf5b8e0d0` (§I).
 
 The sections run from the decisions most likely to change (data model, interfaces, the authority boundary) to the mechanical steps.
 
@@ -32,7 +32,7 @@ One JSON object per line in `.moai/state/jev/decisions.jsonl`. Field names are s
 | `deadline_exceeded` | bool | adapter (`ctx.Err() == context.DeadlineExceeded`) | |
 | `probability` | number \| null | `jev.Answer.Probability` | raw, unthresholded |
 | `choice` / `score` | optional | `jev.Answer` | kind-dependent |
-| `input_tokens` | int | `Usage.InputTokens` | charged tokens for the request. Repeated on every row of one call, so the cost report de-duplicates by `call_id`. |
+| `input_tokens` | int | `Usage.InputTokens` | estimated input tokens for the request: a byte-length estimate, not a billed count (`internal/jev/jev.go:595` sets it from `requestTokens(req)`; `:366-368` documents `EstimateTokens` as "an ESTIMATE, not a tokenizer"). The response's own `usage.input_tokens` (`:405`) is not read (spec §D). Repeated on every row of one call, so the cost report de-duplicates by `call_id`. |
 | `call_id` | string | adapter | groups the rows of one request |
 | `mode` | string | effective mode | always `shadow` in this SPEC |
 | `configured_mode` | string | config | the raw configured value |
@@ -49,17 +49,24 @@ The card requires seven fields: `model_id`, `rubric_version`, `question_id`, raw
 
 **Consumer registration (compiled, empty in this SPEC).** A consumer is a compiled value with: a name, a `rubric_version`, the set of events it accepts, and a pure function that builds a `jev.Request` from the parsed hook input. The function returns "skip" when it has nothing to ask. The registry is a package-level slice that ships empty (REQ-JEVL-002). Tests register a fake through a test-only seam.
 
-**Adapter call site.** `runHookEvent` in `internal/cli/hook.go` is the single dispatcher for every hook subcommand (`hookSubcommands` rows `pre-tool`, `stop`, `subagent-stop` at `internal/cli/hook.go:47,50,59`). Both harnesses pass through it: `harnessModeIsCodex(cmd)` selects the Codex output adapter, and `internal/codexadapter/events.go:68,72,75` maps the same three dispatcher args for Codex. The adapter is called **after** `writeHookOutput` / `writeHookOutputCodex` has returned and **after** the exit-code decision exists (REQ-JEVL-004). It takes the event, the harness, the parsed input, and the process start time. It returns nothing. It uses no shared writer: no `cmd.OutOrStdout()`, no `os.Stderr`.
+**Adapter call site.** `runHookEvent` in `internal/cli/hook.go` is the single dispatcher for every hook subcommand (`hookEventSubcommands` rows (declared at `internal/cli/hook.go:41`) `pre-tool`, `stop`, `subagent-stop` at `internal/cli/hook.go:47,50,59`). Both harnesses pass through it: `harnessModeIsCodex(cmd)` selects the Codex output adapter, and `internal/codexadapter/events.go:68,72,75` maps the same three dispatcher args for Codex. The adapter is called **after** `writeHookOutput` / `writeHookOutputCodex` has returned and **after** the exit-code decision exists (REQ-JEVL-004). It takes the event, the harness, the parsed input, and the process start time. It returns nothing. It uses no shared writer: no `cmd.OutOrStdout()`, no `os.Stderr`.
 
 **Budget.** The hook process has a wall-clock budget: 5 s for Claude Code and 10 s for Codex, the card's figures. Measured host timeouts are recorded for honesty. In `internal/template/templates/.claude/settings.json.tmpl`, the `handle-pre-tool.sh` entries carry `"timeout": 10`, `handle-stop.sh` carries 5, and `handle-subagent-stop.sh` carries 5. For Codex, `internal/codexwiring/codexwiring.go:60` declares `defaultHandlerTimeout = 10`. The tightest host timeout is therefore 5 s (Claude Code `Stop` and `SubagentStop`), so one budget covers all three events and both harnesses. The Codex 10 s is looser and is not used as a separate value.
 
 **Decided (lane decision D1, decision-index Q2):** budget 5 s, safety margin 1 s. The adapter's Jev deadline is `process start + 5 s − 1 s`, which is at most 4 s of process time, identical on `pre-tool`, `stop`, and `subagent-stop` under both harnesses. The `context.WithDeadline` passed to `Ask` is built from that instant, so time already spent by the hook handler shrinks the Jev window. When the deadline has already passed at adapter entry, the call is skipped and no row is written, because nothing was attempted. Two named constants live in `internal/config/defaults.go` per the repository rule that thresholds live there: the 5 s budget and the 1 s margin. The 4 s figure is derived from them, never stored separately.
 
-**Gap, carried to M3:** the elapsed time of the existing hook handlers before the adapter runs has **not** been measured. The 1 s margin is a decision, not a measurement. M3 measures handler elapsed time on each of the three events under both harnesses and records the observed figures in `progress.md` §E.2. If the measured p99 elapsed time plus the 4 s Jev ceiling would exceed the 5 s host timeout, M3 returns a blocker report instead of shipping.
+**Gap, carried to M3:** the 1 s margin is a decision, not a measurement, and it stays a decision until M3 measures it. The deadline is an absolute instant from process start, so handler time is already inside the 4 s and must not be added to it again. What the margin has to absorb lies outside the `moai` process clock or after the deadline:
+
+- **Before process start.** The host runs a wrapper script, not `moai` directly. `internal/template/templates/.claude/hooks/moai/handle-stop.sh.tmpl` starts bash (`:1`), runs `stat` on the hook stderr log (`:18`), checks `command -v moai` (`:25`), and only then runs `exec moai hook stop` (`:26`). `handle-subagent-stop.sh.tmpl:25-26` has the same shape, and `handle-pre-tool.sh.tmpl:70` has the same `command -v moai` check.
+- **After the deadline.** The ledger write, the deferred `rs.Shutdown()` trace flush (`internal/cli/hook.go:409`), and process exit.
+
+**M3 measurement (redefined at iter-3).** M3 measures the worst-case wall-clock time from wrapper-script start to process exit. The measurement runs each event's wrapper script with a fake transport that blocks until its context deadline, so Jev holds the process to the 4 s deadline every time. It takes at least 20 runs per event under the Claude Code wrapper and records each sample and the p99 in `progress.md` §E.2. Blocking condition: **when the measured p99 exceeds 5 s − S, with S = 0.5 s, M3 returns a blocker report instead of shipping.** S is a decision recorded in decision-index Q2, not a measurement. The Codex harness command line was not read in this plan (it is registered by `internal/codexwiring`); M3 measures it the same way or records it as a gap.
+
+**Ask call seam.** The adapter calls `Ask` through a one-method interface that `*jev.Client` satisfies, obtained from a package-level factory in `hook_jev.go`. Production returns `jev.New(enabled)`. Tests substitute a wrapper that counts `Ask` calls and delegates to a real client. AC-JEVL-001 counts both the consumer request-builder calls and these `Ask` calls.
 
 **Fail-open.** `jev.Client.Ask` already returns a typed `Result` with no error (`internal/jev/jev.go`, `func (c *Client) Ask`). A deadline surfaces as `Unreachable` from `send` ("transport failed: ..."). The adapter adds `deadline_exceeded` from `ctx.Err()`. A panic inside a consumer's request builder is recovered and dropped.
 
-**Gate placement.** The adapter checks `workflow.jev.enabled` first and returns before touching the registry, the config, or the filesystem (REQ-JEVL-001). The client is constructed with `jev.New(enabled)`, so the existing gate inside `Ask` still applies as a second layer.
+**Gate placement.** The adapter checks `workflow.jev.enabled` first and returns before touching the registry, the config, or the filesystem (REQ-JEVL-001). The client is constructed with `jev.New(enabled)`, so the existing gate inside `Ask` still applies as a second layer. Because that second layer returns `Disabled` before building a request (`internal/jev/jev.go:538-544`), a transport count alone cannot detect an adapter that skips the first check. AC-JEVL-001 therefore asserts on the request-builder count and the `Ask` count.
 
 ## §C. The authority boundary, and why SPEC-JEV-CORE-001 needs no amendment (card item 5)
 
@@ -110,15 +117,15 @@ Expected sizes are estimates for the card-size ceiling, not measurements.
 | M | Priority | Content | Files (prod / test) | Expected changed lines |
 |---|---|---|---|---|
 | M1 | High | Config: `Consumers` map with the per-consumer tolerant decode (§D), resolution function, defaults constants (5 s budget + 1 s margin), template block, `make build`, plus a loader-level test that loads a real `workflow.yaml` through `internal/config/loader.go` | `internal/config/types.go`, `internal/config/defaults.go`, `internal/config/jev_consumers.go` (new), `internal/config/jev_consumers_test.go` (new), `internal/template/templates/.moai/config/sections/workflow.yaml` | ~80 prod + ~120 test + ~8 yaml |
-| M2 | High | Ledger recorder: row type, append (0700/0600, single write), fail-open drop; extend `TestDisabled_ConstructsNoRequest` so gate off also leaves no ledger file | `internal/jev/ledger.go` (new), `internal/jev/ledger_test.go` (new), `internal/jev/jev_test.go` | ~90 prod + ~140 test |
-| M3 | High | Hook adapter: empty registry, gate-first, budget/deadline, post-output call site; byte-identity and timeout tests on both harnesses; allow-list update | `internal/cli/hook_jev.go` (new), `internal/cli/hook_jev_test.go` (new), `internal/cli/hook.go` (call site, ~6 lines), `internal/cli/doctor_jev_test.go` (allow-list, 2 lines) | ~130 prod + ~220 test |
-| M4 | Medium | `moai jev cost`: reader, de-dup by `call_id`, undefined-when-zero, malformed-line skip | `internal/cli/jev_cost.go` (new), `internal/cli/jev_cost_test.go` (new), `internal/cli/doctor_jev_test.go` (allow-list, 1 line) | ~80 prod + ~100 test |
+| M2 | High | Ledger recorder: row type, append (0700/0600, single write), the write-side regular-file open (§F), fail-open drop | `internal/jev/ledger.go` (new), `internal/jev/ledger_test.go` (new), `internal/jev/ledger_open_unix.go` (new), `internal/jev/ledger_open_windows.go` (new) | ~130 prod + ~180 test |
+| M3 | High | Hook adapter: empty registry, gate-first, `Ask` seam, budget/deadline, post-output call site; byte-identity and timeout tests on both harnesses; allow-list update; the M3 wall-clock measurement (§B) | `internal/cli/hook_jev.go` (new), `internal/cli/hook_jev_test.go` (new), `internal/cli/hook.go` (call site, ~6 lines), `internal/cli/doctor_jev_test.go` (allow-list, 2 lines) | ~130 prod + ~250 test |
+| M4 | Medium | `moai jev cost`: reader, de-dup by `call_id`, undefined-when-zero, malformed-line skip, "estimated" labels | `internal/cli/jev_cost.go` (new), `internal/cli/jev_cost_test.go` (new), `internal/cli/doctor_jev_test.go` (allow-list, 1 line; already counted in M3) | ~80 prod + ~100 test |
 
-**Total estimate: 13 distinct files, ~390 production lines + ~580 test lines + ~8 yaml ≈ 980 changed lines.**
+**Total estimate: 15 distinct files (M1 5, M2 4, M3 4, M4 2 new), ~420 production lines + ~650 test lines + ~8 yaml ≈ 1080 changed lines.** Iter-3 changes: the iter-2 table listed 14 distinct paths (the iter-2 text said 13, a miscount). `internal/jev/jev_test.go` leaves the set, because the AC-JEVL-001 M2 partial was removed (acceptance.md), and the two platform open files join it (§F). The line estimate rises by about 100 for the write-side open and the added AC-012/AC-013 cases. That is above the Tier M ~1000-line guidance by under 10%. The file count is at the Tier M 15-file upper bound.
 
 ### Card-size ceiling: exceeded, carried as serial milestones (lane decision D3)
 
-The scope **exceeds** the illustrative ~10 files / ~400 changed lines ceiling (13 files, ~980 lines including tests). That is recorded here, not hidden. The lane decided to keep **one card**, carried serially M1 → M2 → M3 → M4 inside the lane, with **one commit per milestone**. Each commit names the card id and the milestone, so each milestone reverts on its own. Decision-index Q6 records the decision.
+The scope **exceeds** the illustrative ~10 files / ~400 changed lines ceiling (15 files, ~1080 lines including tests at iter-3; 14 files, ~980 lines when the lane decided). That is recorded here, not hidden. The lane decided to keep **one card**, carried serially M1 → M2 → M3 → M4 inside the lane, with **one commit per milestone**. Each commit names the card id and the milestone, so each milestone reverts on its own. Decision-index Q6 records the decision.
 
 ### AC closure map (each AC closes only where its green path is satisfiable)
 
@@ -132,8 +139,8 @@ An AC is **final** at the earliest milestone after which every test in its green
 | AC-JEVL-016 | M1 (template test) | M4 | The malformed-ledger behaviour needs the reader. |
 | AC-JEVL-009, -010 | — | M2 | Recorder only. |
 | AC-JEVL-011 | — | M2 self-verification | Regression guard, not counted as a pass. |
-| AC-JEVL-001 | M2 (`TestDisabled_ConstructsNoRequest` extension) | M3 | The zero-request assertion needs the adapter. |
-| AC-JEVL-012 | M2 (`TestLedger_WriteFailureDropped`) | M3 | The hook-silent half needs the adapter. |
+| AC-JEVL-001 | — | M3 | Every assertion (builder calls, `Ask` calls, no ledger directory) needs the adapter. The iter-2 M2 partial was removed: it extended `TestDisabled_ConstructsNoRequest`, which calls only `Ask`, and `Ask` never writes a ledger, so the no-ledger assertion could not fail. |
+| AC-JEVL-012 | M2 (`TestLedger_WriteFailureDropped`, `TestLedger_NonRegularPathDropped`, both calling the recorder directly) | M3 | The hook-silent half needs the adapter. |
 | AC-JEVL-002, -003, -004, -005, -008 | — | M3 | Adapter only. |
 | AC-JEVL-014 | M3 (`hook_jev.go` in the allow-list) | M4 | `jev_cost.go` exists only after M4. |
 | AC-JEVL-015 | — | M4 | Cost report only. |
@@ -144,10 +151,11 @@ Order: M1 → M2 → M3 → M4. M2 needs nothing from M1. M3 needs the resolver 
 
 ## §F. Technical approach notes
 
-- **Concurrency.** Each row is marshalled to one byte slice ending in `\n` and written with one `Write` on an `O_APPEND|O_CREATE|O_WRONLY` file. Rows of a few hundred bytes stay well below the practical atomic-append size on local filesystems. A test with parallel goroutines asserts every line parses. Multi-process atomicity on network filesystems is not claimed (§H).
+- **Write-side regular-file open (REQ-JEVL-011/012).** A plain `O_APPEND|O_CREATE|O_WRONLY` open blocks forever on a FIFO with no reader and appends to the target of a symlink. The repository already documents both hazards for the read side: `internal/runtime/regular_file.go:4-8` says that a path-based check followed by an open by name "makes its target the evidence and a FIFO blocks the open". `internal/runtime/regular_open_nofollow.go:12-19` opens with `O_NOFOLLOW` and `O_NONBLOCK`, and `:29-37` then requires the **opened** descriptor to be a regular file and closes it otherwise. The recorder uses the write-side counterpart of that pattern in its own helper, because `openRegularFile` is unexported, read-only, and in another package. On POSIX (`ledger_open_unix.go`, the same build tags as `regular_open_nofollow.go`), the helper opens with `O_WRONLY|O_APPEND|O_CREATE|O_NOFOLLOW|O_NONBLOCK` at mode 0600, calls `Stat` on the opened handle, and closes the handle and drops the row unless the mode is regular. With no reader, a FIFO fails the non-blocking write open at once (`ENXIO`). With a reader, it opens and is refused by the handle check. A symlink fails the open (`ELOOP`) and its target is never touched. On Windows (`ledger_open_windows.go`, mirroring `regular_open_stat.go`), the helper refuses a path that `Lstat` reports as a link, then applies the same handle check. No later step resolves the path again. Every refusal drops the row silently (REQ-JEVL-012).
+- **Concurrency.** Each row is marshalled to one byte slice ending in `\n` and written with one `Write` on the handle the write-side open returned (`O_APPEND`). Rows of a few hundred bytes stay well below the practical atomic-append size on local filesystems. A test with parallel goroutines asserts every line parses. Multi-process atomicity on network filesystems is not claimed (§H).
 - **Project root.** Resolve through the existing `resolveHookProjectRoot()` (env-first: `CLAUDE_PROJECT_DIR`, then `Getwd`), already used in `runHookEvent` for the HOI gate. This avoids the `internal/hook/.moai/` leak class (B7). No new resolver.
 - **Windows.** Modes 0700/0600 are POSIX-only. The append path is the same. Cross-build with `GOOS=windows`.
-- **Cost report de-duplication.** `input_tokens` repeats on each question row of one request, so the report sums once per `call_id`. A call refused before the send (oversize, secret-detected) is not charged by `Ask` (`Usage` is recorded only after `send`), so the row carries `input_tokens: 0` for those.
+- **Cost report de-duplication.** `input_tokens` repeats on each question row of one request, so the report sums once per `call_id`. For a call refused before the send (oversize, secret-detected), `Ask` records no `Usage` (it is recorded only after `send`), so the row carries `input_tokens: 0`. The report prints every token figure under the literal label `estimated input tokens` and heads the aggregate block with the literal `model signal aggregate` (AC-JEVL-015).
 - **No new MX ANCHOR burden.** `runHookEvent` already carries `@MX:ANCHOR`. The adapter is a single new callee, and the anchor's fan-in is unchanged.
 
 ## §G. Risks
@@ -187,3 +195,12 @@ Iter-2 additions (tree `d1aa4ed656af948c95c2567718c4f9a7be54e191`):
 - `grep -n "func loadYAMLFile" -A 25 internal/config/loader.go`: `yaml.Unmarshal(data, target)` at `:494`, error wrapped as `ErrInvalidYAML` at `:495`.
 - `grep -n 'yaml' internal/config/loader.go`: `"gopkg.in/yaml.v3"` at `:11`.
 - `grep -n "JevMinConfidence\|type WorkflowJevConfig" internal/config/types.go`: `:1059` and `:1085`.
+
+Iter-3 additions (tree `82aff00a6d3b9d1b3dd6f9c2a6fc68ebf5b8e0d0`):
+
+- `grep -n "InputTokens\|func requestTokens\|ESTIMATE\|bytesPerTokenEstimate =" internal/jev/jev.go`: `:116` `bytesPerTokenEstimate = 4`, `:263` `Usage.InputTokens`, `:367` "ESTIMATE, not a tokenizer", `:405` the response `InputTokens` field, `:595` `usage := Usage{InputTokens: requestTokens(req), ...}`, `:750` `func requestTokens`.
+- `sed -n 536,546p internal/jev/jev.go`: `Ask` returns `Disabled` before any request when `!c.Enabled`.
+- `grep -n "" internal/runtime/regular_file.go` and `grep -n "" internal/runtime/regular_open_nofollow.go`: the read-side pattern cited in §F.
+- `grep -n "rs.Shutdown\|exitCodeError\|hookEventSubcommands = \|writeHookOutput" internal/cli/hook.go`: `:41` `hookEventSubcommands`, `:409` `defer rs.Shutdown()`, `:439`/`:442` output writes, `:450` the exit-2 return.
+- `grep -n "bash\|stat\|command -v moai\|exec moai" internal/template/templates/.claude/hooks/moai/handle-stop.sh.tmpl`: `:1`, `:18`, `:25`, `:26`. `grep -n "command -v moai\|exec moai"` on `handle-subagent-stop.sh.tmpl` and `handle-pre-tool.sh.tmpl`: `:25-26` and `:70`.
+- `sed -n 170,200p internal/cli/hook_fault_injection_test.go`: the exit-2 fault fixture used by AC-JEVL-013 (`:181-189`).
