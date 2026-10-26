@@ -55,6 +55,11 @@ type Result struct {
 	Blocks []Block
 	// Condition carries the failure reason for fetch_error.
 	Condition string
+	// Warnings collects the non-fatal notices the scoring calls raised —
+	// today the stale-cache warning (REQ-FW-013 keep-and-warn) — so the CLI
+	// and MCP surfaces can carry them to the reader. Warnings never change
+	// the status or the exit code.
+	Warnings []string
 	// TotalTokens / KeptTokens are approximate token counts (see the package
 	// note) of the split document and the kept set.
 	TotalTokens int
@@ -99,13 +104,13 @@ func Process(ctx context.Context, blocks []Block, question string, ask Answerer)
 		return Result{Status: StatusPassthrough, Blocks: blocks, TotalTokens: total, KeptTokens: total}
 	}
 
-	scores, err := scoreTwoStage(ctx, blocks, question, ask)
+	scores, warnings, err := scoreTwoStage(ctx, blocks, question, ask)
 	if err != nil {
-		return Result{Status: StatusFetchError, Condition: err.Error(), TotalTokens: total}
+		return Result{Status: StatusFetchError, Condition: err.Error(), TotalTokens: total, Warnings: warnings}
 	}
 	kept := selectBlocks(blocks, scores)
 	if len(kept) == 0 {
-		return Result{Status: StatusNoMatch, TotalTokens: total}
+		return Result{Status: StatusNoMatch, TotalTokens: total, Warnings: warnings}
 	}
 	keptTokens := 0
 	for _, i := range kept {
@@ -115,7 +120,28 @@ func Process(ctx context.Context, blocks []Block, question string, ask Answerer)
 	for j, i := range kept {
 		out[j] = blocks[i]
 	}
-	return Result{Status: StatusFiltered, Blocks: out, TotalTokens: total, KeptTokens: keptTokens}
+	return Result{Status: StatusFiltered, Blocks: out, TotalTokens: total, KeptTokens: keptTokens, Warnings: warnings}
+}
+
+// warningSink collects the warnings the scoring calls raise, deduplicated —
+// a windowed or batched stage asks many questions per document, and one
+// stale cache serve would otherwise repeat its warning per call. The sink
+// keeps REQ-FW-013's keep-and-warn contract: a served answer's warning must
+// reach the pipeline's reader, not die inside the stage that observed it.
+type warningSink struct {
+	seen map[string]bool
+	list []string
+}
+
+func (w *warningSink) add(s string) {
+	if s == "" || w.seen[s] {
+		return
+	}
+	if w.seen == nil {
+		w.seen = map[string]bool{}
+	}
+	w.seen[s] = true
+	w.list = append(w.list, s)
 }
 
 // blockScore is one block's two-stage outcome.
@@ -125,9 +151,11 @@ type blockScore struct {
 }
 
 // scoreTwoStage runs stage 1 over windows and stage 2 over the candidates,
-// scoring the main flow and the aside stream separately (REQ-FW-001).
-func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Answerer) ([]blockScore, error) {
+// scoring the main flow and the aside stream separately (REQ-FW-001). The
+// warnings the scoring calls raise are collected for the pipeline result.
+func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Answerer) ([]blockScore, []string, error) {
 	scores := make([]blockScore, len(blocks))
+	var warnings warningSink
 	for _, pass := range [2]bool{false, true} { // main flow, then aside
 		idx := filterIndices(blocks, func(b Block) bool { return b.Aside == pass })
 		if len(idx) == 0 {
@@ -138,9 +166,9 @@ func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Ans
 		for k, i := range idx {
 			streamPos[i] = k
 		}
-		s1, err := stage1(ctx, stream, idx, question, ask)
+		s1, err := stage1(ctx, stream, idx, question, ask, &warnings)
 		if err != nil {
-			return nil, err
+			return nil, warnings.list, err
 		}
 		for k, i := range idx {
 			scores[i].stage1 = s1[k]
@@ -153,15 +181,15 @@ func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Ans
 		for k, ci := range candidates {
 			globalCand[k] = idx[ci]
 		}
-		s2, err := stage2(ctx, stream, streamPos, globalCand, question, ask)
+		s2, err := stage2(ctx, stream, streamPos, globalCand, question, ask, &warnings)
 		if err != nil {
-			return nil, err
+			return nil, warnings.list, err
 		}
 		for k, gi := range globalCand {
 			scores[gi].stage2 = s2[k]
 		}
 	}
-	return scores, nil
+	return scores, warnings.list, nil
 }
 
 // stage1 asks one noul question per block over windows of approximately
@@ -170,7 +198,7 @@ func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Ans
 // the per-block answer is self-contained. global maps stream positions to
 // whole-document indices; question ids carry the GLOBAL index (b<i>) so ids
 // stay unique across the main and aside streams.
-func stage1(ctx context.Context, stream []Block, global []int, question string, ask Answerer) ([]float64, error) {
+func stage1(ctx context.Context, stream []Block, global []int, question string, ask Answerer, sink *warningSink) ([]float64, error) {
 	out := make([]float64, len(stream))
 	for _, window := range buildWindows(stream, Stage1WindowTokens) { // approximate bound
 		texts := make([]string, len(window))
@@ -190,6 +218,7 @@ func stage1(ctx context.Context, stream []Block, global []int, question string, 
 		if !res.OK() {
 			return nil, fmt.Errorf("stage-1 scoring unavailable (%s): %s", res.Availability, res.Condition)
 		}
+		sink.add(res.StaleCacheWarning)
 		probs := answersByID(res)
 		for _, i := range window {
 			out[i] = probs[fmt.Sprintf("b%d", global[i])]
@@ -202,30 +231,68 @@ func stage1(ctx context.Context, stream []Block, global []int, question string, 
 // approximately NeighborContextChars CHARACTERS (REQ-FW-005). candidates are
 // GLOBAL indices (also positions into stream's own numbering is avoided: the
 // caller passes stream-local context but global ids); neighbor context is
-// drawn from the candidate's own stream.
-func stage2(ctx context.Context, stream []Block, streamPos map[int]int, candidates []int, question string, ask Answerer) ([]float64, error) {
+// drawn from the candidate's own stream. The questions are BATCHED so every
+// request stays inside jev's size bounds: a candidate set whose combined
+// questions exceed MaxRequestTokens would be refused unsent after stage 1
+// already ran. Each batch is scored independently; the selection over the
+// collected scores is unchanged.
+func stage2(ctx context.Context, stream []Block, streamPos map[int]int, candidates []int, question string, ask Answerer, sink *warningSink) ([]float64, error) {
 	qs := make([]jev.Question, len(candidates))
+	posByID := make(map[string]int, len(candidates))
 	for k, gi := range candidates {
 		contextText := neighborContext(stream, streamPos[gi], NeighborContextChars)
 		qs[k] = jev.Question{
 			ID:   fmt.Sprintf("c%d", gi),
 			Text: fmt.Sprintf("Passage: %q Context: %q — does the passage answer the question %q?", stream[streamPos[gi]].Text, contextText, question),
 		}
+		posByID[qs[k].ID] = k
 	}
-	res := ask.Ask(ctx, jev.Request{
-		State:      question,
-		Questions:  qs,
-		Repeatable: true,
-	})
-	if !res.OK() {
-		return nil, fmt.Errorf("stage-2 scoring unavailable (%s): %s", res.Availability, res.Condition)
-	}
-	probs := answersByID(res)
 	out := make([]float64, len(candidates))
-	for k, gi := range candidates {
-		out[k] = probs[fmt.Sprintf("c%d", gi)]
+	for _, batch := range batchQuestions(question, qs) {
+		res := ask.Ask(ctx, jev.Request{
+			State:      question,
+			Questions:  batch,
+			Repeatable: true,
+		})
+		if !res.OK() {
+			return nil, fmt.Errorf("stage-2 scoring unavailable (%s): %s", res.Availability, res.Condition)
+		}
+		sink.add(res.StaleCacheWarning)
+		probs := answersByID(res)
+		for _, q := range batch {
+			out[posByID[q.ID]] = probs[q.ID]
+		}
 	}
 	return out, nil
+}
+
+// batchQuestions greedily groups questions so each request stays within
+// jev's size bounds: state + every question <= MaxRequestTokens and state +
+// the longest question <= MaxStateAndQuestionTokens — the same accounting
+// jev's checkBounds applies, so no batch the builder emits is refused unsent.
+// A single question that alone exceeds the per-question bound occupies its
+// own batch: jev refuses it, which is the bound's contract, not a batching
+// failure.
+func batchQuestions(state string, qs []jev.Question) [][]jev.Question {
+	stateTokens := jev.EstimateTokens(state)
+	var batches [][]jev.Question
+	var cur []jev.Question
+	curTokens := stateTokens
+	longest := 0
+	for _, q := range qs {
+		n := jev.QuestionTokens(q)
+		if len(cur) > 0 && (curTokens+n > jev.MaxRequestTokens || stateTokens+max(longest, n) > jev.MaxStateAndQuestionTokens) {
+			batches = append(batches, cur)
+			cur, curTokens, longest = nil, stateTokens, 0
+		}
+		cur = append(cur, q)
+		curTokens += n
+		longest = max(longest, n)
+	}
+	if len(cur) > 0 {
+		batches = append(batches, cur)
+	}
+	return batches
 }
 
 // selectBlocks applies REQ-FW-006's decision order:
@@ -326,22 +393,35 @@ func samePath(a, b []string) bool {
 	return true
 }
 
-// neighborContext draws approximately maxChars CHARACTERS of context from
-// the adjacent blocks of stream[i] (previous side first, then next).
+// neighborContext draws approximately maxChars CHARACTERS (runes, not bytes
+// — CJK text is 3 bytes per character, and a byte cut both under-fills the
+// window and can split a rune mid-character) of context from the adjacent
+// blocks of stream[i], previous side first, then next. The joining space
+// counts against the budget.
 func neighborContext(stream []Block, i, maxChars int) string {
 	var b strings.Builder
+	used := 0
 	add := func(text string) {
-		if b.Len() >= maxChars {
+		if used >= maxChars {
 			return
 		}
-		room := maxChars - b.Len()
-		if len(text) > room {
-			text = text[:room]
+		room := maxChars - used
+		if b.Len() > 0 {
+			room-- // reserve the joining space
+			if room <= 0 {
+				return
+			}
+		}
+		r := []rune(text)
+		if len(r) > room {
+			r = r[:room]
 		}
 		if b.Len() > 0 {
 			b.WriteByte(' ')
+			used++
 		}
-		b.WriteString(text)
+		b.WriteString(string(r))
+		used += len(r)
 	}
 	if i > 0 {
 		add(stream[i-1].Text)

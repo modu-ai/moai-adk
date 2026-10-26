@@ -226,6 +226,67 @@ func TestSplitBlocks_ParagraphWhitespaceCollapsed(t *testing.T) {
 	}
 }
 
+// R2 (card t1968 review): a <br> separates adjacent text runs — the original
+// word boundary must survive the whitespace collapse, not merge into one word.
+func TestSplitBlocks_BreakKeepsWordBoundary(t *testing.T) {
+	html := `<body><p>first<br>second</p></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Text != "first second" {
+		t.Fatalf("br-separated text = %v, want one block %q", texts(blocks), "first second")
+	}
+}
+
+// R2: two paragraphs inside one table cell keep their word boundary in the
+// joined row text (a block boundary inside an extracted text run).
+func TestSplitBlocks_BlockBoundaryKeepsWordBoundary(t *testing.T) {
+	html := `<body><table><tr><td><p>para one</p><p>para two</p></td></tr></table></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Text != "para one para two" {
+		t.Fatalf("block-boundary text = %v, want one row %q", texts(blocks), "para one para two")
+	}
+}
+
+// R3 (card t1968 review): a paragraph inside a list item is already part of
+// the item's own text and must not be emitted a second time; nested lists
+// still recurse into their own items.
+func TestSplitBlocks_ListItemParagraphNotReEmitted(t *testing.T) {
+	html := `<body><ul>
+<li><p>only the item text</p></li>
+<li>outer<ul><li><p>inner item</p></li></ul></li>
+</ul></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindListItem, "only the item text"},
+		{KindListItem, "outer"},
+		{KindListItem, "inner item"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text {
+			t.Errorf("block %d = %s %q, want %s %q", i, blocks[i].Kind, blocks[i].Text, w.kind, w.text)
+		}
+	}
+}
+
+// R4 (card t1968 review): only surrounding BLANK LINES are trimmed from a
+// code block; the first real code line keeps its indentation.
+func TestSplitBlocks_CodeFirstLineIndentPreserved(t *testing.T) {
+	html := `<body><pre>
+    indented = true
+    more()
+</pre></body>`
+	blocks := SplitBlocks(html)
+	want := "    indented = true\n    more()"
+	if len(blocks) != 1 || blocks[0].Text != want {
+		t.Fatalf("code text = %q, want %q (first-line indent preserved)", texts(blocks), want)
+	}
+}
+
 // Token accounting rides jev.EstimateTokens (REQ-FW-002): a block's token
 // count is the conservative byte/4 estimate, and document totals sum it.
 func TestBlockTokens_UseEstimator(t *testing.T) {

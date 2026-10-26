@@ -142,6 +142,11 @@ func runFetchWeb(cmd *cobra.Command, args []string) error {
 	if res.Condition != "" {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: %s\n", res.Condition)
 	}
+	// Scoring-call warnings (REQ-FW-013 keep-and-warn) ride the same stderr
+	// notice channel as the condition line: stdout stays the result payload.
+	for _, w := range res.Warnings {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: %s\n", w)
+	}
 	if code := res.Status.ExitCode(); code != 0 {
 		return &exitCodeError{code: code, msg: "moai fetch web: " + string(res.Status)}
 	}

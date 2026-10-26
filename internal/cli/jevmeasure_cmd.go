@@ -149,8 +149,20 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 		}
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 	}
-	if diff.AnyRegression {
-		return &exitCodeError{code: 1, msg: "jevmeasure bench: baseline regression"}
+	// The compare contract is "exit 0 when every case's verdict matches the
+	// baseline" — any Pass==false fails the compare, not only regressions (a
+	// baseline-less new case, a containment flip) — so the exit reflects
+	// every failing case. AnyRegression is the subset of those that are
+	// regressions.
+	anyFail := false
+	for _, c := range diff.Cases {
+		if !c.Pass {
+			anyFail = true
+			break
+		}
+	}
+	if anyFail {
+		return &exitCodeError{code: 1, msg: "jevmeasure bench: baseline diff has failing cases"}
 	}
 	return nil
 }

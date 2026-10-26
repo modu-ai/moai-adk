@@ -84,6 +84,9 @@ func handleFetchWeb(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if res.Condition != "" {
 		out["condition"] = res.Condition
 	}
+	if len(res.Warnings) > 0 {
+		out["warnings"] = res.Warnings // same additive field the CLI --json shape carries
+	}
 	if len(res.Blocks) > 0 {
 		blocks := make([]map[string]any, len(res.Blocks))
 		for i, b := range res.Blocks {

@@ -184,6 +184,49 @@ func TestJevmeasureBench_RunModeExecutesAndRecords(t *testing.T) {
 	}
 }
 
+// R8 (card t1968 review): a baseline-diff case that FAILS without being a
+// regression (a case with no baseline entry) still drives exit 1 — the stated
+// compare contract is "exit 0 when every verdict matches", not "exit 1 only
+// on regressions".
+func TestJevmeasureBench_NonRegressionFailStillExitsOne(t *testing.T) {
+	dir := t.TempDir()
+	casesPath, runPath := benchFixture(t, dir)
+	baseline := filepath.Join(dir, "baseline.json")
+
+	if _, _, code := runBenchCmd(t, "--cases", casesPath, "--run", runPath, "--baseline", baseline); code != 0 {
+		t.Fatalf("baseline write exit = %d, want 0", code)
+	}
+
+	// Grow the case set: case-2 has no baseline entry, so it FAILS the diff
+	// without being a containment regression.
+	cases := []jevmeasure.BenchCase{
+		{ID: "case-1", Question: "what is the port?", ExpectedQuote: "The port is 3041.", PageSnapshot: "<html><body><p>The port is 3041.</p></body></html>"},
+		{ID: "case-2", Question: "what is the name?", ExpectedQuote: "The name is moai.", PageSnapshot: "<html><body><p>The name is moai.</p></body></html>"},
+	}
+	raw, _ := json.Marshal(cases)
+	grown := filepath.Join(dir, "cases-grown.json")
+	if err := os.WriteFile(grown, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runs := []jevmeasure.CaseRun{
+		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", OutputTokens: 3},
+		{CaseID: "case-2", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe name is moai.\n", OutputTokens: 3},
+	}
+	rawRuns, _ := json.Marshal(runs)
+	run2 := filepath.Join(dir, "run2.json")
+	if err := os.WriteFile(run2, rawRuns, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, code := runBenchCmd(t, "--cases", grown, "--run", run2, "--baseline", baseline)
+	if code != 1 {
+		t.Fatalf("new-case FAIL exit = %d, want 1 (any Pass==false fails the compare)\n%s", code, out)
+	}
+	if !strings.Contains(out, "FAIL case-2") {
+		t.Errorf("report must FAIL the baseline-less case:\n%s", out)
+	}
+}
+
 // Argument and file errors surface as command errors (exit 1 via cobra).
 func TestJevmeasureBench_InputErrors(t *testing.T) {
 	if _, _, code := runBenchCmd(t); code != 1 {

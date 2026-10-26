@@ -44,8 +44,9 @@ type jsonResult struct {
 	URL         string      `json:"url,omitempty"`
 	Question    string      `json:"question,omitempty"`
 	Condition   string      `json:"condition,omitempty"`
-	TotalTokens int         `json:"total_tokens"` // approximate (package note)
-	KeptTokens  int         `json:"kept_tokens"`  // approximate (package note)
+	Warnings    []string    `json:"warnings,omitempty"` // scoring-call warnings (REQ-FW-013 keep-and-warn), additive
+	TotalTokens int         `json:"total_tokens"`       // approximate (package note)
+	KeptTokens  int         `json:"kept_tokens"`        // approximate (package note)
 	Blocks      []jsonBlock `json:"blocks"`
 }
 
@@ -57,6 +58,7 @@ func RenderJSON(res Result, url, question string) ([]byte, error) {
 		URL:         url,
 		Question:    question,
 		Condition:   res.Condition,
+		Warnings:    res.Warnings,
 		TotalTokens: res.TotalTokens,
 		KeptTokens:  res.KeptTokens,
 	}

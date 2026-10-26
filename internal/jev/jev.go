@@ -719,16 +719,19 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 		httpReq.Header.Set("User-Agent", UserAgent)
 		httpReq.Header.Set("Authorization", "Bearer "+c.credentialHeader())
 
-		// The semaphore caps in-flight round trips (REQ-FW-012); the slot is
-		// released as soon as the response arrives, so waits and retries do
-		// not hold it.
+		// The semaphore caps in-flight round trips (REQ-FW-012). The slot is
+		// held until the response BODY has been read and closed — a round
+		// trip is in flight while its body streams, so releasing at the
+		// headers would let decode-time reads exceed MaxConcurrency. Waits
+		// and retries still never hold it: both sleep limbs run only after
+		// the slot has been returned.
 		release, semErr := c.semaphore(ctx)
 		if semErr != nil {
 			return Result{Availability: Unreachable, Condition: "request canceled while waiting for a concurrency slot: " + semErr.Error()}, nil, ""
 		}
 		resp, err := doer.Do(httpReq)
-		release()
 		if err != nil {
+			release()
 			last = Result{Availability: Unreachable, Condition: "transport failed: " + err.Error()}
 			// REQ-JEVC-008: retry ONLY a failure that is provably pre-delivery.
 			// An ambiguous failure — a read error, a timeout, anything that is
@@ -739,7 +742,8 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 			}
 			return last, nil, ""
 		}
-		res, answers, model := decode(resp)
+		res, answers, model := decode(resp) // reads the body to EOF and closes it
+		release()
 		// Retry-After limb (REQ-FW-012): a REPEATABLE request facing 429, 529,
 		// or another 5xx with a Retry-After header waits the parsed (and
 		// bounded) delay and retries, consuming the same attempt budget as
@@ -821,10 +825,7 @@ func checkBounds(req Request) (string, bool) {
 	longest := 0
 	total := state
 	for _, q := range req.Questions {
-		n := 0
-		for _, part := range questionParts(q) {
-			n += EstimateTokens(part)
-		}
+		n := QuestionTokens(q)
 		total += n
 		if n > longest {
 			longest = n
@@ -860,6 +861,19 @@ func questionParts(q Question) []string {
 	parts = append(parts, q.Text)
 	parts = append(parts, q.Choices...)
 	return append(parts, q.Levels...)
+}
+
+// QuestionTokens estimates the tokens a question's caller-supplied text
+// contributes to a request — the same accounting checkBounds applies.
+// Exposed so a caller batching questions into multiple requests (fetchweb's
+// stage-2 splitter) sizes each batch with the numbers the bound itself will
+// use, rather than re-deriving an accounting that can drift.
+func QuestionTokens(q Question) int {
+	n := 0
+	for _, part := range questionParts(q) {
+		n += EstimateTokens(part)
+	}
+	return n
 }
 
 // credentialShapedPatterns are the credential shapes the screener refuses. The

@@ -374,6 +374,64 @@ func TestFetchWeb_E2EFakeServers(t *testing.T) {
 	}
 }
 
+// R7 (card t1968 review): a stale-cache warning raised on a scoring call
+// reaches the reader — stderr carries it on the text path (the same notice
+// channel the condition line uses), and --json carries the same warnings
+// additively.
+type warningAsker struct {
+	script map[string]float64
+}
+
+func (w warningAsker) Ask(_ context.Context, req jev.Request) jev.Result {
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: w.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	return jev.Result{
+		Availability:      jev.Available,
+		Answers:           answers,
+		StaleCacheWarning: "jev cache: served an entry answered by jev-1.12.0; the alias has since moved past it (entry kept)",
+	}
+}
+
+func TestFetchWeb_StaleCacheWarningSurfaced(t *testing.T) {
+	gateOn := jevProject(t, true)
+	pageClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return textResponse(r, pageFixture(40)) // ~2,400 tokens: scored path
+	})}
+	script := map[string]float64{}
+	for i := 0; i < 40; i++ {
+		script[fmt.Sprintf("b%d", i)] = 0.05
+	}
+	script["b7"] = 0.95
+	script["c7"] = 0.9
+
+	out, errBuf, code := runFetchWebCmd(t, gateOn, pageClient, warningAsker{script}, "https://x.test/p", "q?")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0 (a warning is not an error)\n%s", code, out)
+	}
+	if !strings.Contains(errBuf, "jev cache:") {
+		t.Errorf("stderr must carry the stale-cache warning, got %q", errBuf)
+	}
+
+	jsonOut, _, code := runFetchWebCmd(t, gateOn, pageClient, warningAsker{script}, "https://x.test/p", "q?", "--json")
+	if code != 0 {
+		t.Fatalf("--json exit = %d, want 0", code)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(jsonOut), &doc); err != nil {
+		t.Fatalf("--json not parseable: %v", err)
+	}
+	if warnings, ok := doc["warnings"].([]any); !ok || len(warnings) == 0 {
+		t.Errorf("--json must carry the warnings additively, got %v", doc["warnings"])
+	}
+}
+
 // AC-FW-014 isolation guard: no test in this file or the fetchweb package
 // references the production Jev endpoint as a dial target.
 func TestFetchWeb_NoLiveEndpointInTests(t *testing.T) {

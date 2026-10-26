@@ -129,6 +129,10 @@ type splitter struct {
 	// headerLocal[table id] = the splitter-level index of that table's
 	// header-row block; absent when the table has none.
 	headerLocal map[int]int
+	// itemDepth counts the walk's position inside list-item bodies: while
+	// > 0, a <p> element is part of the enclosing item's already-emitted
+	// text and is not emitted again as its own block.
+	itemDepth int
 }
 
 // walk visits one node. Sibling advancement belongs to the caller's loop
@@ -144,6 +148,11 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 	case n.Data == "aside":
 		s.walkChildren(n, true)
 	case n.Data == "p":
+		if s.itemDepth > 0 {
+			// A paragraph inside a list item body is already part of that
+			// item's emitted text; re-emitting it duplicates the block.
+			break
+		}
 		if text := collapseText(n, nil); text != "" {
 			s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
 		}
@@ -153,7 +162,12 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		}
 		// Descend anyway: a nested list's own items are blocks in their own
 		// right, excluded from this item's text but not from the document.
+		// The descent is marked: paragraphs inside an item body are already
+		// carried by that item's text; only the nested items re-enter
+		// emission.
+		s.itemDepth++
 		s.walkChildren(n, inAside)
+		s.itemDepth--
 	case n.Data == "pre":
 		if text := preText(n); text != "" {
 			s.emit(Block{Kind: KindCode, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
@@ -246,7 +260,10 @@ func clonePath(path []heading) []string {
 
 // collapseText extracts an element's text with whitespace runs collapsed to
 // single spaces. skip, when non-nil, names tags whose subtrees are excluded
-// (a list item's nested list must not leak into its own text).
+// (a list item's nested list must not leak into its own text). A text
+// boundary element (<br>, a block container) emits a separator on each side
+// so adjacent text runs across the boundary keep their word boundary; the
+// final collapse reduces the separators to single spaces, never to nothing.
 func collapseText(n *html.Node, skip map[string]bool) string {
 	var b strings.Builder
 	var visit func(*html.Node)
@@ -258,8 +275,15 @@ func collapseText(n *html.Node, skip map[string]bool) string {
 			b.WriteString(node.Data)
 			return
 		}
+		boundary := node.Type == html.ElementNode && textBoundaryTags[node.Data]
+		if boundary {
+			b.WriteByte(' ')
+		}
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			visit(c)
+		}
+		if boundary {
+			b.WriteByte(' ')
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -268,11 +292,26 @@ func collapseText(n *html.Node, skip map[string]bool) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
+// textBoundaryTags are the elements whose boundaries end a run of text: the
+// <br> break and the block-level containers that can nest inside an extracted
+// element (a paragraph inside a list item, two paragraphs inside a cell).
+// Without a separator there, directly adjacent text nodes merge into one
+// word ("firstsecond"), losing the original word boundary (REQ-FW-006).
+var textBoundaryTags = map[string]bool{
+	"br": true, "p": true, "div": true, "li": true, "ul": true, "ol": true,
+	"table": true, "thead": true, "tbody": true, "tr": true, "td": true,
+	"th": true, "blockquote": true, "pre": true, "dl": true, "dt": true,
+	"dd": true, "figure": true, "figcaption": true, "section": true,
+	"article": true, "h1": true, "h2": true, "h3": true, "h4": true,
+	"h5": true, "h6": true,
+}
+
 // listNesting excludes nested lists from a list item's own text.
 var listNesting = map[string]bool{"ul": true, "ol": true}
 
 // preText extracts a code block's text preserving line structure. Only the
-// surrounding blank lines are trimmed; interior whitespace is kept verbatim.
+// surrounding blank lines are trimmed; interior whitespace — including the
+// first real code line's leading indentation — is kept verbatim.
 func preText(n *html.Node) string {
 	var b strings.Builder
 	var visit func(*html.Node)
@@ -288,7 +327,23 @@ func preText(n *html.Node) string {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		visit(c)
 	}
-	return strings.Trim(b.String(), "\n\r\t ")
+	return trimBlankLines(b.String())
+}
+
+// trimBlankLines removes blank lines from the start and end of s, preserving
+// every interior line and the leading whitespace of the first real code line.
+// A character-class Trim here would also strip that indentation, changing the
+// code's meaning (REQ-FW-006 verbatim code preservation).
+func trimBlankLines(s string) string {
+	lines := strings.Split(s, "\n")
+	start, end := 0, len(lines)
+	for start < end && strings.TrimSpace(lines[start]) == "" {
+		start++
+	}
+	for end > start && strings.TrimSpace(lines[end-1]) == "" {
+		end--
+	}
+	return strings.Join(lines[start:end], "\n")
 }
 
 // rowCells lists a table row's cell texts in order.

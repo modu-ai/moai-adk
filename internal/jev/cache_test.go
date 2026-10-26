@@ -456,6 +456,69 @@ func TestSemaphore_BoundsInFlight(t *testing.T) {
 	}
 }
 
+// R6 (card t1968 review): the in-flight slot is held until the response BODY
+// has been read and closed, not just until the headers arrive — otherwise the
+// concurrency a server observes (request + streaming body) exceeds
+// MaxConcurrency while decodes are still reading. Observed inside the body
+// read itself.
+func TestSemaphore_HoldsSlotThroughBodyRead(t *testing.T) {
+	const width = 2
+	var reading, maxReading int64
+	release := make(chan struct{})
+	doer := DoerFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       gatingBody{release: release, reading: &reading, max: &maxReading},
+			Header:     http.Header{},
+			Request:    r,
+		}, nil
+	})
+	c := newCachedClient(t, doer)
+	c.MaxConcurrency = width
+	c.CacheDir = "" // no cache: every call is network
+	var wg sync.WaitGroup
+	for i := 0; i < 6; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = c.Ask(context.Background(), cacheQuestion()) // outcome is irrelevant; the probe is the read count
+		}()
+	}
+	// Let every reader arrive at the blocked body, then release them all.
+	time.Sleep(150 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if got := atomic.LoadInt64(&maxReading); got > width {
+		t.Errorf("observed %d concurrent body reads, semaphore width is %d (slot released before the body was read)", got, width)
+	}
+	if got := atomic.LoadInt64(&maxReading); got < 2 {
+		t.Errorf("observed max body reads %d — the probe never exercised concurrency", got)
+	}
+}
+
+// gatingBody counts a concurrent reader, blocks until release closes, then
+// reports EOF.
+type gatingBody struct {
+	release <-chan struct{}
+	reading *int64
+	max     *int64
+}
+
+func (b gatingBody) Read([]byte) (int, error) {
+	cur := atomic.AddInt64(b.reading, 1)
+	for {
+		old := atomic.LoadInt64(b.max)
+		if cur <= old || atomic.CompareAndSwapInt64(b.max, old, cur) {
+			break
+		}
+	}
+	<-b.release
+	atomic.AddInt64(b.reading, -1)
+	return 0, io.EOF
+}
+
+func (b gatingBody) Close() error { return nil }
+
 // DefaultCacheDir points under the home directory, never into a project.
 func TestDefaultCacheDir_UnderHome(t *testing.T) {
 	dir, err := DefaultCacheDir()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
 )
@@ -66,7 +67,7 @@ func TestStage1_CandidateThreshold(t *testing.T) {
 	blocks := mkBlocks(3, 10)
 	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.7, "b1": 0.59, "b2": 0.6}}
 	ident := []int{0, 1, 2}
-	scores, err := stage1(t.Context(), blocks, ident, "q", fake)
+	scores, err := stage1(t.Context(), blocks, ident, "q", fake, &warningSink{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,6 +395,95 @@ func TestNeighborContextAbout400Chars(t *testing.T) {
 	}
 	if !strings.Contains(ctx, strings.Repeat("c", 100)) && !strings.Contains(ctx, "ccc") {
 		t.Errorf("context should draw from the next block")
+	}
+}
+
+// recordingAnswerer scripts probabilities by id like fakeAnswerer and also
+// records every request it serves, in order.
+type recordingAnswerer struct {
+	script map[string]float64
+	reqs   []jev.Request
+}
+
+func (r *recordingAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
+	r.reqs = append(r.reqs, req)
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: r.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers}
+}
+
+// R1 (card t1968 review): stage-2 candidates are batched so EVERY request the
+// pipeline builds stays inside jev's size bounds — a candidate set whose
+// combined questions exceed MaxRequestTokens is split across requests, each
+// scored independently, with the selection unchanged.
+func TestStage2_BatchesWithinRequestBounds(t *testing.T) {
+	// 30 blocks of ~3,000 approximate tokens each (~90k total: scored, not
+	// passed through). Every block a stage-1 candidate; each stage-2 question
+	// carries its ~3,000-token passage plus context, so ONE request over all
+	// 30 candidates would hold ~93k tokens — over the 64k bound.
+	blocks := mkBlocks(30, 3000)
+	script := map[string]float64{}
+	for i := 0; i < 30; i++ {
+		script[fmt.Sprintf("b%d", i)] = 0.9
+		script[fmt.Sprintf("c%d", i)] = 0.9
+	}
+	rec := &recordingAnswerer{script: script}
+	res := Process(context.Background(), blocks, "q", rec)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	var stage2Reqs int
+	asked := map[string]bool{}
+	for _, req := range rec.reqs {
+		if len(req.Questions) == 0 || !strings.HasPrefix(req.Questions[0].ID, "c") {
+			continue // stage-1 window request
+		}
+		stage2Reqs++
+		total := jev.EstimateTokens(req.State)
+		for _, q := range req.Questions {
+			asked[q.ID] = true
+			total += jev.EstimateTokens(q.Text)
+		}
+		if total > jev.MaxRequestTokens {
+			t.Errorf("stage-2 request holds ~%d tokens, over the %d bound — batch it", total, jev.MaxRequestTokens)
+		}
+	}
+	if stage2Reqs < 2 {
+		t.Errorf("a ~93k-token candidate set must split into >= 2 stage-2 requests, got %d", stage2Reqs)
+	}
+	for i := 0; i < 30; i++ {
+		if !asked[fmt.Sprintf("c%d", i)] {
+			t.Errorf("candidate c%d was never asked", i)
+		}
+	}
+}
+
+// R5 (card t1968 review): the neighbor context is measured and cut in
+// CHARACTERS (runes) — CJK text must fill the full window, not a third of it,
+// and must never be cut mid-rune.
+func TestNeighborContext_RuneCutCJK(t *testing.T) {
+	cjk := strings.Repeat("가", 450) // 450 runes, 1,350 UTF-8 bytes
+	blocks := []Block{
+		{Kind: KindParagraph, Text: cjk},
+		{Kind: KindParagraph, Text: "target"},
+		{Kind: KindParagraph, Text: cjk},
+	}
+	ctx := neighborContext(blocks, 1, NeighborContextChars)
+	if !utf8.ValidString(ctx) {
+		t.Errorf("neighbor context split a rune mid-character: %q", ctx)
+	}
+	if got := len([]rune(ctx)); got == 0 || got > NeighborContextChars {
+		t.Errorf("neighbor context = %d runes, want ~(0, %d]", got, NeighborContextChars)
+	}
+	if got := len([]rune(ctx)); got < NeighborContextChars-1 {
+		t.Errorf("CJK context under-filled: %d runes, want ~%d (byte-based cutting yields about a third)", got, NeighborContextChars)
 	}
 }
 
