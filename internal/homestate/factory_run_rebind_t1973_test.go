@@ -229,3 +229,40 @@ func TestRed_T1973b_P2_BothEmptyEvidenceTreatedAsMatch(t *testing.T) {
 		t.Fatalf("run-old c1 = (%+v, %v), want the working row and its progress untouched", c, loadErr)
 	}
 }
+
+// TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon — round-3 narrowing: the
+// both-empty evidence shape with a NON-WORKING source row (picked/assigned/
+// needs-decision — no lease-holding progress to strand) keeps the t1963
+// abandon-with-pointer behavior the operator-move and leader-start-
+// consolidation paths live on. The round-2 test above (source row in CardRun)
+// still refuses.
+func TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon(t *testing.T) {
+	for _, srcState := range []string{CardPicked, CardAssigned, CardNeedsDecision} {
+		t.Run("source state "+srcState, func(t *testing.T) {
+			db := openSandboxFactory(t)
+			opts := rbOpts()
+			rbRun(t, db, "run-old", rbPIDDead)
+			rbRun(t, db, "run-new", rbPIDLive)
+			rbCard(t, db, "run-old", "c1", srcState)
+			rbBind(t, db, "c1", "run-old")
+			rbCard(t, db, "run-new", "c1", CardAssigned)
+			if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='' WHERE card_id='c1'`); err != nil {
+				t.Fatal(err)
+			}
+			res, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+			if err != nil {
+				t.Fatalf("the evidence-less non-working dedup refused: %v", err)
+			}
+			if len(res.Abandoned) != 1 || res.Abandoned[0] != "c1" {
+				t.Fatalf("res = %+v, want c1 abandoned with a pointer", res)
+			}
+			old, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+			if loadErr != nil || old.State != CardAbandoned {
+				t.Fatalf("run-old c1 = (%+v, %v), want abandoned", old, loadErr)
+			}
+			if got := runStatus(t, db, "run-old"); got != "retired" {
+				t.Fatalf("run-old status = %s, want retired", got)
+			}
+		})
+	}
+}

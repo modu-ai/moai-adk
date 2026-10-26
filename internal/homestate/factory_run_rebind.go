@@ -200,15 +200,20 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 			// operation — the source's row stays live and the conflict needs a
 			// fresh decision, not the target's stale completion.
 			//
-			// Two EMPTY evidence values are not a match either (card t1973
-			// round 2, P2): the normal early state — the source row actively
-			// working beside a freshly created target row — carries no proof
-			// the rows are the same work, and an abandon there strands the
-			// source row's stage/worktree/spec_id. The safe default is chosen:
-			// refuse; the cost is one manual re-approval, never lost progress.
-			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || (tgtEvidence == "" && c.evidenceSHA == "") {
+			// Two EMPTY evidence values are a match only for a source row that
+			// holds no working progress (card t1973 round 2 P2, narrowed round
+			// 3): the t1963-designed dedup — an evidence-less picked/assigned/
+			// needs-decision source row beside the target's fresh row — keeps
+			// the abandon-with-pointer behavior the operator-move and
+			// leader-start-consolidation paths live on. A WORKING source row (a
+			// lease-holding state — run, sync, merge-ready, ...) carries the
+			// stage/worktree/spec_id an abandon would strand, so THAT shape
+			// refuses: the cost is one manual re-approval, never lost progress.
+			bothEmpty := tgtEvidence == "" && c.evidenceSHA == ""
+			refuseBothEmpty := bothEmpty && IsLeaseHoldingState(c.state)
+			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || refuseBothEmpty {
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q)%s; the live row of run %s stays and the conflict needs a fresh decision",
-					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(tgtEvidence, c.evidenceSHA), src.RunID)
+					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(refuseBothEmpty), src.RunID)
 			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
@@ -283,10 +288,12 @@ func nonNilStrings(s []string) []string {
 }
 
 // bothEmptyNote names the both-empty-evidence shape inside a target-row
-// conflict refusal: an empty-versus-empty pair is a refusal of its own, not an
-// evidence match (card t1973 round 2, P2).
-func bothEmptyNote(tgtEvidence, srcEvidence string) string {
-	if tgtEvidence == "" && srcEvidence == "" {
+// conflict refusal: a working source row beside an evidence-less target row is
+// not proven to be the same work (card t1973 round 2 P2, narrowed round 3 —
+// only a WORKING source row refuses; an evidence-less non-working source row
+// keeps the t1963 abandon).
+func bothEmptyNote(refuse bool) string {
+	if refuse {
 		return " — neither row records evidence, so the rows are not proven to be the same work"
 	}
 	return ""
