@@ -1,7 +1,7 @@
 verdict: PASS
-audited_sha: 383e6b0ad6e63235376052ab44394f765814a462
-audit_receipt: rcpt-ad3600c3bd7bbdc1ec19761b
-review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
+audited_sha: a37266a447cd13d077db254025daf42a0a9eae57
+audit_receipt: rcpt-24a6126e5e69401402ec6d8a
+review_base: main (merge base cb30e05b3e5f64774b8dabd87e80c24332f4551d)
 
 # t1921 — lane completion verdict
 
@@ -39,4 +39,4 @@ Every figure above was measured in this run against this tree: delegate runs on 
 
 ## Lane verdict
 
-PASS — run criteria met (regression ok + build/vet/lint 0, RED-first observed), card-review receipt clean, independent audit receipted PASS (rcpt-ad3600c3bd7bbdc1ec19761b at audited_sha 383e6b0ad6; commits after it touch only .moai/reports/t1921/), workflow-file check clean. Proceeding to Deliver (`moai factory complete`, PR, title carries t1921). Merge is the leader's.
+PASS — run criteria met (regression ok + build/vet/lint 0, RED-first observed), card-review receipt clean, independent audit receipted PASS re-run on the main-absorbed tree (rcpt-24a6126e5e69401402ec6d8a at audited_sha a37266a447; origin/main absorbed cleanly, build/vet and the regression test re-observed green on the merged tree), workflow-file check clean. Prior-round audits: rcpt-ad3600c3bd7bbdc1ec19761b at 383e6b0ad6, rcpt-74815b962c70a725b1029e9a at 46911ee01c, rcpt-44b010c7dc0c64fdf1145ee2 at 75e37d0f0b. Proceeding to Deliver (`moai factory complete`, PR, title carries t1921). Merge is the leader's.
