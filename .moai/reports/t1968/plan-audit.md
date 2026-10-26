@@ -221,3 +221,107 @@ No regression: version 0.2.0 + HISTORY row (spec.md:4, :25); 16 REQ / 14 AC numb
 
 1. One revision closes both blockers: N1 is a one-phrase scoping edit in AC-FW-002; N2 is a one-sentence stale-selection policy in B5, mirrored in AC-FW-011's method (or a restated AC trigger). N3/N4 may ride along in the same edit.
 2. iter3 scope: N1/N2 anchors plus the mandatory full CN-4 re-check. No STOP signal — 0.82 ≥ iter1's 0.80 (no score regression).
+
+---
+
+## iter3 (anchor delta audit)
+
+auditor-model: glm-5.3
+Iteration: 3/3 (ceiling) · Scope: delta per Retry Loop Contract — N1/N2 anchors + N3/N4 minors + regression sweep + the mandatory full CN-4 re-check (hand-run; verb refused, see Gaps) · Bind: audited head `a664bafcd751b8382b827aca49075b35b5b38bb0` (read-time HEAD `8233ec8b0b` touches only `.moai/reports/t1968/progress.md`; `git diff a664bafcd7..HEAD -- .moai/specs/SPEC-FETCH-WEB-001` is empty — SPEC artifacts byte-identical; same binding pattern as iter1/iter2).
+
+Verdict: **FAIL** — Overall Score: 0.87 (computed 0.875, floor convention per iter2; Tier M threshold 0.80 met on score; FAIL on 1 blocking finding + required-backend convergence fail)
+Plan Artifact Hash: `a536cc0d5b64a399dd2ad0a78b7adc559925d37c223716b45b3b0b114dd0aaab` (sha256 over spec.md+plan.md+acceptance.md+progress.md concatenated in that order, read-time tree)
+
+```
+verdict: FAIL
+audited_sha: a664bafcd751b8382b827aca49075b35b5b38bb0
+overall_score: 0.87
+must_pass_failed: 0
+blocking_count: 1
+plan_artifact_hash: a536cc0d5b64a399dd2ad0a78b7adc559925d37c223716b45b3b0b114dd0aaab
+scope: delta
+fix_scope: .moai/specs/SPEC-FETCH-WEB-001/plan.md#B5 (stale-selection probe applicability condition); .moai/specs/SPEC-FETCH-WEB-001/acceptance.md#AC-FW-009 (explicit-model miss does not serve a different model's entry)
+defect_class: design (N5)
+reread_hunks: (none)
+convergence_overall: fail
+required_backend: codex fail
+```
+
+Cross-model receipt: `rcpt-49e5ad7476113ed1b7798104` (codex, required gate; `moai verify audit-plan --result-file .moai/state/audit-plan-result.json` → `convergence_check: {ok: true, unmet: []}` — the backend answered; its verdict is fail. The single codex finding was independently adjudicated by this auditor against the artifacts and CONFIRMED — see N5; nothing rests on codex alone.)
+
+### Claim
+
+1. N1, N3, N4 fully resolved; N2 resolved at its own anchor (AC-FW-011 is now stageable as specified) — but the N2 repair sentence, as written, over-scopes the stale-selection probe and thereby falsifies AC-FW-009's first limb under a literal staging: new blocking defect N5.
+2. All nine must-pass criteria pass; the regression sweep (diff scope, version/HISTORY, REQ/AC counts, lint) is clean.
+3. Version 0.2.1 + HISTORY row present; the repair diff touches only the four enumerated anchors across the 3 SPEC artifacts (+8/−5 lines) plus report/progress bookkeeping.
+
+### Evidence (commands run in this audit, this tree)
+
+- Repair scope: `git diff --stat e2fef7f2e5..a664bafcd7` → acceptance.md 6, plan.md 2, spec.md 5 (the 3 SPEC files = N1 limb, N2 policy + AC re-staging, N3 clause, N4 list, version 0.2.1 + HISTORY row), plus `.moai/reports/t1968/plan-audit.md` (+109, the iter2 append itself) and `progress.md` (+5). Nothing outside the anchors moved in the SPEC set; no measured code path changed since the RED pin `4f0e58197d` → ledger rows R1-R10 stay valid (read, not re-executed, per MP-8 discipline).
+- Lint (this run, this tree): `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`, exit 0.
+- MP-6: `grep -c syscall` → 0/0/0 (spec/acceptance/plan). MP-7: `grep -rn "NEEDS CLARIFICATION" plan.md` → no match (exit 1); research.md absent (Tier M — expected).
+- MP-1 (hand enumeration over full reads): REQ-FW-001…016, 16 unique sequential; AC-FW-001…014, 14 unique; Tier M ceilings respected (16/16 REQ, 14/16 AC).
+- Frontmatter (MP-3): 12/12 canonical fields, `version: "0.2.1"` quoted semver, `updated: 2026-10-26`, no snake_case aliases; corroborated by the clean `FrontmatterSchemaRule` lint run above.
+- CN-4/MP-9 (hand-run in full): plan order M1→M7 (`### M1`…`### M7` headings); the delta's new clauses order nothing across milestones ("`empty` … preceding passthrough" is in-pipeline status precedence inside M2/M3 scope; AC-FW-011's probe clause sits at its own implementing milestone M5); acceptance.md ordering keywords remain content words ("first block", "first output line"). No CONFLICT.
+- Cross-model: `mcp__moai__audit_multi` (project_root = this worktree, no gates override, target=baseBranch, delta_base=e2fef7f2e5) → codex **fail**, 1 finding (P2); claude/glm gate-off in this tree's plan (participant_count 1, disagreement_flag null); receipt `rcpt-49e5ad7476113ed1b7798104`; convergence check `ok: true, unmet: []`.
+
+### Baseline-attribution
+
+All measurements in this run, worktree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1968`, read-time HEAD `8233ec8b0b18b90768021b54f6f8b7c28a7992cf`; task-bound audited head `a664bafcd751b8382b827aca49075b35b5b38bb0` — SPEC content byte-identical between them (the intervening commit `8233ec8b0b` is lane bookkeeping on `progress.md` only). RED ledger rows read at pin `4f0e58197d`. Tool provenance (§2.2): lint and verify verbs ran on installed `moai` v3.2.0-rc.38 (commit `b1806498fe`, built 2026-10-21); `git diff --name-only b1806498fe..HEAD -- internal/spec` = 0 files — the lint engine source is unchanged between the installed build's commit and this tree's HEAD, so the lint verdict is attributable to an engine code-identical to the tree's own.
+
+### Gaps
+
+- The Group-4 traceability verb and the Group-6 CN-4 verb were REFUSED by the worktree-session guard (all `awk` refused in this isolated session, including `awk -f`; observed iter2 and recorded in plan-auditor memory). Both adjudications were performed by hand over the full documents — all three artifacts read in full this run — and are recorded as refused-tool degradation per verification-claim-integrity §3.1: hand-read results, not mechanical verb output.
+- MP-8 boundary unchanged: reading the RED cells confirms what they record, not that the commands measure the premise their author claims.
+- SPEC-JEV-LEDGER-001 is not present in this tree's `.moai/specs/` (in-flight card, another lane) — D7 SHOULD-level note, mitigated by the commit-pinned citation (`954adab25e`) and the re-read instruction at implementation time (unchanged from iter2).
+- The codex leg's evidence is a state-model comparison of the plan contract, not an executed implementation; this auditor re-derived it independently (both readings hand-traced, see N5) — confirmed on textual analysis alone.
+
+### Residual-risk
+
+- codex residual_risk_note (verbatim): "delta_base e2fef7f2e575fc48b58efc897010dadca9e5e9c5: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written | required-backend FAIL: codex".
+- B5 lookup step (2) "the configured default interpretation model" still names a knob that does not exist on this tree — now disclosed in-line ("no such knob exists on this tree today — the lookup falls through to step (3)"), so non-ambiguous; cosmetic only (unchanged from iter2).
+
+### Must-Pass Results (iter3)
+
+- [PASS] MP-1 REQ number consistency: 16 sequential unique definitions (hand enumeration; occurrence repeats are cross-references).
+- [PASS] MP-2 EARS/GEARS (requirement layer): all 16 forms valid — REQ-FW-003's appended empty-first clause stays inside its State-driven While-form; REQ-FW-006's compound chain, REQ-FW-010/016 legacy negatives within the compat window, all as adjudicated iter1/iter2.
+- [PASS] MP-3 YAML frontmatter: 12/12 canonical fields, `version: "0.2.1"`, `updated: 2026-10-26`, no aliases; lint clean corroborates.
+- [N/A] MP-4 language neutrality: single-language (Go) SPEC.
+- [PASS] MP-5 D7 cross-SPEC reconciliation: no retired/superseded/archived references; 3 completed + 1 in-flight (SHOULD note in Gaps; unchanged).
+- [PASS] MP-6 D8 cross-platform discipline: `syscall` 0/0/0 (auto-pass).
+- [PASS] MP-7 clarification gate: plan.md clean (grep exit 1); research.md absent (Tier M — stated reason).
+- [PASS] MP-8 RED-now completeness: all 14 release-blocking criteria two-celled; 10-row ledger R1-R10 complete at document-level pin `4f0e58197d`; pin validity scope-confirmed (the repair touched markdown artifacts only); no re-execution.
+- [PASS] MP-9 cross-artifact ordering: hand-read full run (verb refused — Gaps); milestone order M1→M7 mechanically collectable; no CONFLICT; the delta's new clauses bind no cross-milestone obligation.
+
+### Per-finding verdicts (iter2's N1-N4 + new)
+
+| # | Verdict | Evidence |
+|---|---|---|
+| N1 first-block limb | **resolved** | acceptance.md:11 — "the first block is kept whenever at least one stage-1 candidate exists (REQ-FW-006 decision order)" mirrors REQ-FW-006's own conditional exactly; attacked from both sides (zero-candidate page → no keep, no contradiction with AC-FW-004(a); ≥1-candidate page → keep, matches REQ-FW-006). No residual. |
+| N2 stale-selection policy | **resolved at its anchor** | plan.md:34 B5 pins "on a miss under the resolved model id, the client probes the most recent prior-model entry for the same body-SHA and serves it with the staleness warning"; AC-FW-011's method (alias move → fresh process → network closed → miss → probe → served stale with warning, entry kept) is now fully stageable. Residual spillover = N5 (the probe sentence is unscoped). |
+| N3 empty-first clause | **resolved** | spec.md:55 — "with the `empty` status decision (a page that splits to zero blocks) preceding passthrough, so this guarantee applies only to non-empty documents"; consistent with REQ-FW-007's `empty` exit 1 and AC-FW-004's empty branch. |
+| N4 stale preamble list | **resolved** | acceptance.md:5 list is now (AC-FW-002, -003, -004, -008, -014) — each of those cites ledger R1 and no own RED cell; AC-FW-010 (R8+R9) and AC-FW-011 (R4+R10) correctly removed. |
+| **N5 probe over-scope (new)** | **BLOCKING** | See Defects Found. Introduced by the N2 repair sentence. |
+
+### Regression sweep (iter1/iter2-passing dimensions)
+
+No regression: version 0.2.1 + HISTORY row (spec.md:4, :26); 16 REQ / 14 AC numbering unchanged and sequential; GEARS forms intact; traceability 16/16 clean (§F.1 table hand-adjudicated — mapping rows untouched by the diff); two-cell discipline holds on all 14 release-blocking criteria; RED ledger 10 rows pinned `4f0e58197d`, pin validity scope-confirmed; `moai spec lint` clean (quoted above); design-source fidelity anchors (thresholds 3000/0.6/0.8/2000/300/400-char, fixed naming, 5 Out-of-Scope H3 subsections, B1/B6 resolutions) unchanged. Score progression 0.80 → 0.82 → 0.87 — no regression, no STOP signal.
+
+### Category Scores (iter3)
+
+| Dimension | Score | Band | Evidence |
+|-----------|-------|------|----------|
+| Clarity | 0.80 | 0.75-0.80 | N1/N2 clusters resolved at their anchors; one new interpretive cluster remains (N5: the probe's applicability condition — flat/temporal/contextual readings diverge on observable behavior) |
+| Completeness | 0.90 | near 1.0 | mechanism + boundary + empty-first all pinned; deduction: the N2 pin is missing its applicability condition (N5) |
+| Testability | 0.85 | 0.75-0.9 | AC-FW-011 now stageable (N2 fixed); deduction: AC-FW-009's first limb is reading- and order-dependent under the unscoped probe (N5) |
+| Traceability | 0.95 | near 1.0 | clean 16/16 hand-read; §F.1 mapping untouched; deduction carried from iter2's band (AC-FW-014 boundary exercise accepted there) |
+
+### Defects Found (iter3)
+
+- **N5 [BLOCKING, class design]** plan.md:34 (B5 stale-selection sentence) vs acceptance.md:29 (AC-FW-009 first limb) + spec.md:72 (REQ-FW-011 model-in-key design) — the repaired sentence "on a miss under the resolved model id, the client probes the most recent prior-model entry for the same body-SHA and serves it with the staleness warning" carries **no applicability condition**, and "the resolved model id" per B5's own lookup sequence includes BOTH step-1 explicit per-request overrides AND step-3 alias resolution. Hand-trace (confirmed; codex state-model concurs and was independently reproduced here): flat reading — cache (B, m1), then request B with explicit m2 → miss at (B, m2) → probe finds (B, m1) → served stale with warning → no network call, no m2 entry written → AC-FW-009's "two distinct cache files exist" FAILS (symmetric in either issuance order; whichever model is requested second never gets its own entry). Temporal reading ("prior" = older model) — the outcome is issuance-order-dependent, and AC-FW-009 pins no order. Defender's reading (probe reserved for alias-resolved lookups) satisfies everything but requires writing a condition the plan text does not carry — exactly the interpretation burden the N2 repair existed to retire. Required fix (one sentence + one clause): scope the probe in B5 — "the stale-selection probe applies to lookups resolved through the alias map (step 3) whose resolved id has moved past the cached entry's model; an explicitly overridden model id (step 1) that misses goes to the network and writes its own entry" — and add to AC-FW-009's method a one-line assertion that an explicit-model miss does not serve a different model's entry (or equivalently pin the no-probe condition for explicit ids).
+
+### Recommendation
+
+1. One revision closes N5: the scoping clause above in plan.md B5 plus the mirrored assertion in AC-FW-009's method. REQ/AC numbering and every other anchor stay untouched.
+2. This is the 3/3 ceiling under the classic retry contract (final escalation: full defect history = iter1 D1-D3 → iter2 N1/N2 → iter3 N5, all progressively narrowed; no stagnation — each iteration's blocking set shrank until this one-sentence spillover). Under the ceiling policy in force, this verdict lists `fix_scope` (two anchors) and therefore earns `auto_delta_rounds` delta audits without asking anyone, eligible while the diff between the audited SHAs stays inside those anchor ranges (plus `progress.md` and `.moai/reports/**`) and the REQ/AC id sets are unchanged — the shape of the N5 fix matches exactly. Absent that, the CLI admission ladder adjudicates at the run-entry seam; this verdict fails on substance (one anchored blocking finding, class design), not label, so the debt-admit arm does not apply.
+3. Operator intervention is NOT requested: the fix is lane-executable in one sentence, and the auto-delta path covers it.
