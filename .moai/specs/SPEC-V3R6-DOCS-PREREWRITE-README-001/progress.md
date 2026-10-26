@@ -6,7 +6,7 @@ Base tree `cb30e05b3e`. Full lane evidence chain (plan audit iters, Kickoff, wai
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan artifacts: spec.md 0.1.2 / plan.md / acceptance.md revision 0.1.2, commits `5fe7d20f46` → `0412f03771` → `7f42ba8c36`
-- plan_status: audit-ready
+plan_status: audit-ready
 - plan_complete_at: 2026-10-26T13:25Z
 - audit chain: iter1 FAIL 0.88 (D1–D3, `rcpt-20423e764fa5dbfdf0b82938`) → repair `0412f03771` → iter2 FAIL (convergence, D4 lost receipt) → iter3 FAIL 0.88 (D4 resolved via `rcpt-bbd227b78fd24413a7a2389c`, D5 found) → repair `7f42ba8c36` → iter4-delta **PASS 0.88** (blocking 0, ≥ Tier M 0.80; verdict `.moai/reports/t1720/plan-audit-verdict-iter4-delta.md`, gitignored)
 - receipts backing the PASS: `rcpt-a62c3d55bd93105e07f1689d` (iter4 auditor's own codex leg, D5 repair commit scope) + `rcpt-5d46314d25f3c294ab256a60` (lane codex_audit pass, delta_base `5fe7d20f46`)
