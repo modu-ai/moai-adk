@@ -146,6 +146,20 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 	})
 
+	t.Run("rebinds_to_the_recorded_landing_when_no_verdict_file_exists", func(t *testing.T) {
+		root, _, _, squash, _ := squashLandedFixture(t, "squash")
+		dir := fcCard(t, root, "t1").WorktreePath
+		if err := os.RemoveAll(filepath.Join(dir, ".moai", "reports", "t1")); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := rebindRun(t, "no verdict file; the operator recorded the landing"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
+			t.Fatalf("evidence_sha = %q, want the recorded landing commit %s", got, squash)
+		}
+	})
+
 	t.Run("refuses_when_no_landing_is_recorded", func(t *testing.T) {
 		root, _, _, _, _ := squashLandedFixture(t, "")
 		before := fcCard(t, root, "t1")
