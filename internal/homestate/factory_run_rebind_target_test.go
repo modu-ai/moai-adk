@@ -50,6 +50,26 @@ func TestRebindRefusesTargetThatDiedBeforeTheTransaction(t *testing.T) {
 	lceAssertNothingMoved(t, db, before)
 }
 
+// The target's owner can no longer be classified live OR dead between
+// classification and the call (REQ-FCR-020, step 2): indeterminate is not live,
+// so the consolidation is refused and nothing moves. Pins the `!= OwnerLive`
+// predicate against a weaker `== OwnerDead` one, which would let an
+// undecidable owner receive the source's cards.
+func TestRebindRefusesTargetWhoseOwnerBecameIndeterminate(t *testing.T) {
+	indeterminateTarget := ReconcileOptions{
+		Classify: func(pid int, _ string) OwnerClassification {
+			if pid == rbPIDLive {
+				return OwnerIndeterminate
+			}
+			return rbOpts().Classify(pid, "")
+		},
+		WorkerProbe: rbOpts().WorkerProbe,
+	}
+	db, before, err := lceReclassified(t, nil, indeterminateTarget)
+	rbRefusedWith(t, err, "run-new", string(OwnerIndeterminate))
+	lceAssertNothingMoved(t, db, before)
+}
+
 // A target that is no longer active (retired in between) is absent from the
 // freshly classified active set: refuse.
 func TestRebindRefusesTargetRetiredBeforeTheTransaction(t *testing.T) {

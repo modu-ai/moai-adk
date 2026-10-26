@@ -86,7 +86,7 @@ func refuseIfRetiredByConsolidation(ctx context.Context, q rowsRowQueryer, runID
 		return err
 	}
 	if retired {
-		return fmt.Errorf("%w: run %s was consolidated into %s — re-dispatch the card against %s", ErrRunRetiredByConsolidation, runID, into, into)
+		return fmt.Errorf("%w: run %s was retired by a consolidation into %s — its work lives in %s now (if that run was retired in turn, follow its own consolidation record)", ErrRunRetiredByConsolidation, runID, into, into)
 	}
 	return nil
 }
