@@ -4,7 +4,7 @@
 
 - 트리(v0.1.0 시점): `.moai/worktrees/t1538`, 브랜치 `WT-t1538-factory-recovery`, base = local develop `a158b4b5f`(plan-scope 노트 `.moai/reports/t1538/plan-scope.md`). **현재 카드 트리(v0.2.0)**: `.moai/worktrees/t1963`, 브랜치 `WT-run-dead-owner`.
 - 근거: `.moai/reports/dispatch-audit-2026-10-06-codex.md`(코드 기준 main@ec13872f3 — 본 트리 base보다 앞서며 t1513 수리 `de388878e`·t1528 `ec13872f3` 미포함).
-- Tier L(v0.2.0에서 M → L) — 산출물 5종(spec/plan/acceptance/design/research) + progress.md + decision-index.md. 요구 24건·기준 25건(Tier L 천장 25 준수 — v0.3.5에서 REQ-FCR-024 추가로 23 → 24). v0.1.0은 Tier M·요구 16·기준 16이었다.
+- Tier L(v0.2.0에서 M → L) — 산출물 5종(spec/plan/acceptance/design/research) + progress.md + decision-index.md. 요구 25건·기준 25건(Tier L 천장 25 — 둘 다 천장에 닿음; v0.3.5에서 REQ-FCR-024 추가로 23 → 24, v0.3.8에서 REQ-FCR-025 추가로 24 → 25). v0.1.0은 Tier M·요구 16·기준 16이었다.
 - 소관 패키지: `internal/cli`(완료 게이트·auto-done·발급 표시), `internal/factory`(facts 구조체·GTD 스키마·relation), `internal/homestate`(reaper·전이 edge·CI reader·watchdog 기록).
 - 앵커는 spec.md §B.2에서 본 트리 기준으로 전수 재확인됐다(14개 중 13개 일치, 1개 부분 이동 — todo_analysis.go:74는 기록 분기이고 임계 상수는 `internal/factory/backlog_analysis.go:33`).
 - **v0.2.0 개정(카드 t1963, 2026-10-26)**: 트리 `.moai/worktrees/t1963`, 브랜치 `WT-run-dead-owner`, HEAD `c4784db4c2`(main 기준). M2에 **M2-B — run 수명주기(죽은 소유자 run 통합)**를 더했다. Tier M → **L**(요구 23·기준 25, Tier L 천장 25 이내) — 산출물에 design.md·research.md 추가, 결정 색인 decision-index.md 동반(`interview.decision_gate: on`). M2-B 앵커는 research.md §2에서 HEAD 기준으로 재확인했고, M2(원래 범위) 앵커의 HEAD 위치 이동은 research.md §2.3에 있다. M1은 이미 run-phase 진행 중(progress.md round-1~25) — 이 개정은 M1 요구·기준 본문을 바꾸지 않는다.
