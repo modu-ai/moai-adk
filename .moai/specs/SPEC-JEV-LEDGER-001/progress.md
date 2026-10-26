@@ -99,9 +99,81 @@ Dispositions and decisions recorded at M1:
 - **Local dogfood `.moai/config/sections/workflow.yaml`** — carries the same `consumers: {}` block as the template, with the local `enabled: true` left untouched. Plan §D said this was not required; the run brief asked for the two to be kept consistent.
 - **`spec.md` / `progress.md` status** — left at `draft`: the run brief forbids editing `spec.md` (a hashed audit subject), and the `draft -> in-progress` frontmatter transition is a `spec.md` edit. Reported as a Gap for the leader.
 
+### M2 — ledger recorder (`internal/jevledger`)
+
+RED (EXPECTED_RED, with one stated limit). Before M2 the cells E3, E4, E5, E6, E7 exited 1 (start tree, listed under M1). A signatures-only skeleton of `ledger.go` (a recorder whose `Append` returns `Result{Reason: "not implemented"}`) was added so the tests compile, then:
+
+```
+$ go test ./internal/jevledger/ -count=1 -timeout 60s -v   -> exit=1, 8 FAIL lines
+ledger_test.go:149: positive control failed: the append did not land (not implemented)
+ledger_test.go:188: append did not land: not implemented
+ledger_test.go:288: append 0 dropped: not implemented
+FAIL: TestLedger_NothingUntilAppend, TestLedgerRow_Fields, TestLedgerRow_UnansweredNullProbability, TestLedgerRow_RecorderOwnsActionAndOutcome, TestLedgerRow_Threshold, TestLedger_ConcurrentAppend, TestLedger_Modes, TestLedger_AppendAfterMalformedLines
+```
+
+The limit: the fail-closed cases (`TestLedger_WriteFailureDropped`, `TestLedger_NonRegularPathDropped/*`, `TestLedger_FIFODropped/*`) and the import-boundary tests PASSED against that skeleton, because a recorder that never writes satisfies every "nothing was written" assertion. That is the never-writes mutant of acceptance.md AC-JEVL-001, and it is why each of those tests is only meaningful together with the mutant table below, where each one went red against a real defect. Their RED-now evidence is the §L cells (E6, E7: the files did not exist) plus those mutants.
+
+GREEN (PASS). `go test ./internal/jevledger/ -count=1 -timeout 120s -v` -> exit 0. Named PASS lines: `--- PASS: TestLedger_NothingUntilAppend`, `--- PASS: TestLedgerRow_Fields`, `--- PASS: TestLedgerRow_UnansweredNullProbability`, `--- PASS: TestLedgerRow_RecorderOwnsActionAndOutcome`, `--- PASS: TestLedgerRow_Threshold`, `--- PASS: TestLedger_ConcurrentAppend`, `--- PASS: TestLedger_Modes`, `--- PASS: TestLedger_AppendAfterMalformedLines`, `--- PASS: TestLedger_WriteFailureDropped`, `--- PASS: TestLedger_NonRegularPathDropped` (+ `/symlink`, `/directory`), `--- PASS: TestLedger_FIFODropped` (+ `/no-reader`, `/with-reader`), `--- PASS: TestLedger_UnencodableRowDropped`, `--- PASS: TestLedgerPackage_ImportBoundary` (+ `/recorder-package`, `/config-resolver-file`, `/classifier-controls`, `/mutants` with 13 subtests), `--- PASS: TestLedgerPackage_NeverReadsLedger`. Existing guard run unchanged: `go test ./internal/cli/ -count=1 -run TestJevCallPath_HasExactlyTheDeclaredConsumers` -> `--- PASS: TestJevCallPath_HasExactlyTheDeclaredConsumers`, exit 0. On windows the FIFO cases are absent by construction: `fifo_other_test.go` carries `TestLedger_FIFOCasesUnsupportedHere` (a named SKIP), which has not been executed on windows here (Gap).
+
+Mutants run against the implementation, each reverted afterwards (`diff` against the saved copies printed nothing):
+
+| AC | Mutant | Result |
+|---|---|---|
+| 009-1 | empty `model_id` filled from `request_model` | RED: `TestLedgerRow_UnansweredNullProbability`, `TestLedgerRow_Fields` |
+| 009-2 | caller's `action` / `outcome_label` pass through | RED: `TestLedgerRow_RecorderOwnsActionAndOutcome` |
+| 009-3 | absent probability written as 0 | RED: `unanswered probability = 0 (present=true), want null` |
+| 009-4 | `threshold` tagged `omitempty` / removed from the output | RED: `row 2 lacks the key "threshold"` / all three rows lack it |
+| 009-5 | absent threshold written as 0 | RED: `unanswered row threshold = 0 (present=true), want null` |
+| 009-6 | supplied threshold 0 written as null | RED: `choice row threshold = <nil> (present=true), want the number 0` |
+| 012-1 | drop printed to stderr | RED: every drop test (`a drop must be silent`) |
+| 012-2 | open without `O_NONBLOCK` | RED: `FIFODropped/no-reader`: `Append did not return within 2s`; the pre-registered cleanup released the goroutine and the binary exited |
+| 012-3 | no `O_NOFOLLOW`, no handle check | RED: `FIFODropped/with-reader` (359 bytes reached the pipe) and `NonRegularPathDropped/symlink` (link target changed) |
+| 012-4 | keeps `O_NOFOLLOW`/`O_NONBLOCK`, drops the handle check | RED in `FIFODropped/with-reader` ONLY (359 bytes reached the pipe); (i), (ii), (iii), (v) stayed green, as the audit predicted |
+| 012-5 | no `O_NOFOLLOW`, keeps the handle check | RED in `NonRegularPathDropped/symlink` only |
+| 012-6 | FIFO fixture in an untagged `_test.go` file | RED: `GOOS=windows go vet ./internal/jevledger/` -> `undefined: syscall.Mkfifo`, exit=1 |
+| 012-7 | a directory at the ledger path used as the ledger directory | RED in `NonRegularPathDropped/directory` only (the row landed inside it) |
+| 010 | row written with two `Write` calls | RED: `line 24 is not JSON` (3 of 3 runs) |
+| 018-1 | open with `O_TRUNC` | RED: `TestLedger_AppendAfterMalformedLines` and 5 more |
+| 018-2 | row dropped when the existing ledger is not valid JSON | RED: `the row was dropped on account of the malformed lines` |
+| 001-1 | `MkdirAll` in `New` | RED: `constructing a recorder created something under the root` |
+| 001-2 | `Append` reports success without writing a row | RED: `line 0 is not JSON: ... ""` |
+| 014 (a) | recorder imports `net/rpc` / `os/exec` / `gopkg.in/yaml.v3` | RED each: `(a) ledger.go imports ...` |
+| 014 (a) | recorder calls `os.Open(` | RED: `ledger.go contains [os.Open(]` |
+| 014 (b) | `jev_consumers.go` imports `net/smtp` | RED: `(b) jev_consumers.go imports net/smtp` |
+
+Not run as real source edits: a recorder importing `internal/jev`, and a third-party HTTP client in either file. The run environment's worktree guard refused the shell loop that carried those module paths (a refused command, reported as a Gap). Those cases are covered by file-based fixtures inside `TestLedgerPackage_ImportBoundary/mutants` (`internal-jev`, `third-party-http-client`, `resolver-internal-jev`, `resolver-third-party-http-client`), which write each import into a real `.go` file and run the scanner on it.
+
+Other M2 verification: `gofmt -l` empty; `go vet` exit 0 for `./internal/jevledger/ ./internal/config/`; `GOOS=windows go vet ./internal/jevledger/ ./internal/config/` exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run ./internal/jevledger/ ./internal/config/` -> `0 issues.`; `go test ./internal/jevledger/ -race -count=5` exit 0; `go test -cover ./internal/jevledger/` -> `coverage: 88.2% of statements` (darwin build set; `open_other.go` is not compiled here, so it is unmeasured); `grep -rn AskUserQuestion internal/jevledger internal/config/jev_consumers.go` -> no output, exit 1.
+
+Disposition of the binding run condition **N1** — `internal/jevledger/boundary_test.go` is stricter than AC-JEVL-014's wording without changing it. (a) The recorder package is checked by an allowlist (standard library only: the first path element has no dot) plus a denylist of `net`, every `net/*`, and `os/exec`. (b) `internal/config/jev_consumers.go` is checked by the same denylist plus the allowlist "standard library or `gopkg.in/yaml.v3`". The rejection cases are recorded as an executable mutant probe, `TestLedgerPackage_ImportBoundary/mutants`: net/http, net/rpc, net/smtp, os/exec, internal/jev, a third-party HTTP client and (for the recorder only) the yaml library, each written into a real file and required to produce exactly one finding; the one allowed non-standard import (yaml in the resolver file) is required to produce none. `classifier-controls` pins the classifier itself. The read-back check is lexical, as the AC says.
+
+Other decisions recorded at M2:
+
+- `Append` returns `Result{Landed bool; Reason string}`; `Reason` is empty when the row landed. `Row` carries `Action` and `OutcomeLabel` as inputs that the recorder overwrites (`OutcomeLabel` always `unlabeled`; `Action` is `none` under `mode == "shadow"` or when empty, otherwise the caller's value passes through).
+- `ts` is written as the caller supplies it; the recorder does not stamp a time.
+- The boundary test sits in `internal/jevledger/boundary_test.go`, a seventh test-side file beyond plan §E's six for M2 (it also reads `../config/jev_consumers.go`).
+- `@MX:ANCHOR` + `@MX:REASON` on `Recorder.Append`; `@MX:WARN` + `@MX:REASON` on the Unix `openLedger`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: complete-pending-audit
+run_complete_at: 2026-10-27
+run_commit_sha: pending-backfill   # M1 07fc4b93f3; the M2 SHA is backfilled in the following commit
+ac_pass_count: 10 (AC-001, 006, 007, 009, 010, 012, 013, 014, 017, 018) by the named PASS lines in section E.2; AC-011 is a regression-guard (cell E10 exit 0), not counted as a pass
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no PRESERVE list; internal/jev and internal/cli have no changed file
+l44_pre_commit_fetch: "git fetch origin main exit 0; git rev-list --count --left-right origin/main...HEAD -> 1 8 (origin/main 84ea2ffa35 is one docs-only commit touching factory-dispatch rules and AGENTS.md; no overlap with this card's files; not absorbed here)"
+l44_post_push_fetch: not-applicable   # this run does not push
+new_warnings_or_lints_introduced: 0   # golangci-lint on both packages: 0 issues
+cross_platform_build:
+  go_build_all: exit 0
+  goos_windows_goarch_amd64_go_build_all: exit 0
+  goos_windows_go_vet_jevledger_and_config: exit 0
+  fifo_cases_on_windows: not executed here (named SKIP present in fifo_other_test.go)
+total_run_phase_files: 12 changed files over two commits (see the final report)
+m1_to_mN_commit_strategy: one commit per milestone, then one docs commit that backfills the M2 SHA above
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
