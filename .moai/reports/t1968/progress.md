@@ -51,3 +51,11 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - 완료 보고(2026-10-27 01:0x): 14/14 AC PASS(귀속 삼조 완비, §E.2 커밋됨), 등급 판정 3종 충족(단위/페이크 E2E/off 게이트 0네트워크), 커버리지 fetchweb 95.5%·jev 90.2%·jevmeasure 93.1%·CLI 명령 파일 ≥90%, 교차플랫폼 빌드 pass, 신규 lint 0, 블로커 없음(E7 스코프 노트 2건 기록만).
 - 레인 독립 검증 배치(2026-10-27 01:1x, 트리 21181431c4): `go build ./...` exit 0 / 3패키지 `go test` 전부 ok / `TestFetchWeb_OffGateZeroNetwork` PASS 재관측 / spec.md `status: in-progress` / `moai spec lint` ✓ No findings / `.github/workflows` diff 0건(운영자 검토 게이트 미발동) — 위임 보고와 불일치 0.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/specs/SPEC-FETCH-WEB-001/progress.md §E.2-§E.3+21181431c4+레인 배치 출력 ladder_path=①disk-evidence — run 단계 종결 승인, sync 단계 진입(manager-docs 스폰).
+
+## 4. Sync stage (2026-10-27 01:2x KST)
+
+- Spawn: manager-docs(depth-1 leaf). 귀환 보고(귀속 삼조 완비): B12 사전 검사 전부 통과(중복 0·AC live=14·경로 전존 확인), **단일 sync 커밋 be1e8b7e2c로 3-phase close**(in-progress→implemented→completed)+포맷 후속 3357a04833(forward-commit-only, t1900 규율), §E.4 기재(pending-backfill-sync), MX 0건 소요(기존 4태그 검증·신규 go func 0건), lint 0·build 0·트리 clean.
+- D3 백필(레인, 기계적 완결): §E.4 `sync_commit_sha: be1e8b7e2c` 기입 — 커밋 77027d5e79, spec lint ✓ 재확인.
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=be1e8b7e2c+3357a04833+77027d5e79+manager-docs 귀속 표 ladder_path=①disk-evidence — sync 단계 종결 승인, 착지 시퀀스 진입(card-review → sync-audit → verdict → complete).
+- card-review: codex_review scope=card 실행 — **판정 fail(advisory), P2 8건**(R1 stage-2 배치 누락·R2 br 단어경계·R3 li>p 중복·R4 코드 들여쓰기·R5 바이트 절단·R6 세마포어 조기 해제·R7 stale 경고 유실·R8 bench 종료코드). 처분: 8/8 수리 채택(R2~R4는 REQ-FW-006 축자 보장 직접 위반). 재검토 천장 2회 중 1회 소진 예정. → 수리 라운드(manager-develop 재스폰) 후 재검토 1회.
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/card-review.md(codex, base 2a1898ea22, head 77027d5e79) ladder_path=①disk-evidence — card-review fail 수용, 수리 재위임 결정.
