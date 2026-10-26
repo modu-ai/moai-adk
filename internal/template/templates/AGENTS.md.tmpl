@@ -131,11 +131,7 @@ A Codex agent must not invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. 
 **Codex factory lanes** work in the card worktree their supervising launcher selects
 (`codex -C <absolute-worktree-path>`); a child already there continues.
 
-**From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
-Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
-path outside this worktree; plain git, `git -C <own absolute path>` and `--git-dir=<own .git>` pass.
-`cd <own worktree> && git …` also passes, which does NOT make it advisable. A refusal here is the
-guard reading the command, not a runtime defect.
+**From inside a worktree session, `<path>` must be that worktree's absolute path** — refusal catalogue: `worktree-integration-ops.md` § Refused Commands in a Worktree-Isolated Session.
 
 **`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` or `.moai/worktrees/` is L1, is absent
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
@@ -144,10 +140,7 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first;
-a Codex lane starts a new session in the new card tree. Create the fresh tree from the remote
-default branch; never reuse the previous card's tree. Where the new card depends on a prior card's
-unmerged code, merge that branch inside the new worktree.
+**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a new session (`codex -C <path>`) is the fallback only after a refused move, recorded in the progress record. Card trees are created only by `moai worktree new`; Codex's native `create_worktree` (0.162+) is not used for card trees — `WT-` naming and evidence hoisting apply unchanged. Create the fresh tree from the configured base; never reuse the previous card's tree.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
