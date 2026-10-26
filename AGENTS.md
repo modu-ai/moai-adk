@@ -8,7 +8,7 @@ nested `AGENTS.md` as a more-specific contract; budget the whole discovery chain
 You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly.
 
 **Budget warning.** Overflow past Codex's project-instruction byte budget is truncated from the
-**tail**, silently, so clauses below are ordered most-critical-first.
+**tail**, silently.
 
 **Direct Codex startup.** When using `codex -C <worktree>` directly, read a present
 worktree-root `AGENTS.local.md` in full before other project work and follow it as local
@@ -188,8 +188,7 @@ Subagent scheduling uses the harness default; MoAI does not override background 
 working-tree state and reuses a passing result within its TTL (default 10 minutes), so list the
 environment variables (`--env NAME,...`) and toolchain identity (`--tool-version-cmd`) the result
 depends on. A reuse is a prior observation, not one made in this run: a verdict citing it names the
-key and `recorded_at` from the reuse notice and lists "output not re-observed" under Gaps (a Gap,
-not a Claim); a claim that needs verbatim output runs the command directly.
+key and `recorded_at` from the reuse notice and lists "output not re-observed" under Gaps; a claim that needs verbatim output runs the command directly.
 
 **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a check row: a completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and artifacts before merge; preserve the separate functional and security checks.
 
@@ -274,7 +273,7 @@ operation, report the blocker.
 library documentation and established patterns, then continue — analysis quality must not depend on MCP availability.
 
 **Keep command output bounded**: quiet flags, targeted queries, or redirect-to-file with the exit
-code and a bounded tail. **Prefer the quiet
+code and a bounded tail. A runtime output limit is a backstop, not the target. **Prefer the quiet
 form of routine commands** — `--no-progress`, `-q`, machine-readable output plus a targeted filter
 — not forms emitting spinners, banners, tables, or color noise.
 
