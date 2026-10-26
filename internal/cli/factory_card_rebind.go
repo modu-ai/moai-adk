@@ -194,26 +194,34 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	if err != nil {
 		return err
 	}
-	phase, err := rebindAuditPhase(card)
-	if err != nil {
-		return err
-	}
 	// Binding safety: the new value is READ from the card's newest verdict
 	// file of the inferred phase and verified in the worktree — never taken
-	// from the caller. A missing or unreadable verdict, or an audited commit
-	// that does not resolve as an ancestor of the worktree HEAD, falls to the
+	// from the caller. A missing or unreadable verdict, an audited commit that
+	// does not resolve as an ancestor of the worktree HEAD, or a row whose
+	// stage names no phase to read a verdict for (a card that landed through
+	// the PR path never passed `factory stage`, card t1964) falls to the
 	// operator's recorded landing commit (see the header) and refuses without
 	// writing anything when that does not apply either.
-	full, err := homestate.ResolveRebindEvidence(ctx, card, phase)
-	source := phase + " verdict's audited commit"
-	evidenceSource := homestate.EvidenceSourceVerdict
-	if err != nil {
+	phase, phaseErr := rebindAuditPhase(card)
+	var (
+		full, source   string
+		verdictErr     = phaseErr
+		evidenceSource = homestate.EvidenceSourceVerdict
+	)
+	if phaseErr == nil {
+		full, verdictErr = homestate.ResolveRebindEvidence(ctx, card, phase)
+		source = phase + " verdict's audited commit"
+	}
+	if verdictErr != nil {
 		// A PR that landed as a squash commit leaves the audited PR head
 		// outside the worktree's ancestry (card t1962); the operator's
 		// landing record names the commit that did land.
 		landed, note := resolveRecordedLanding(ctx, root, db, runID, card)
 		if landed == "" {
-			return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w%s", cardID, phase, err, note)
+			if phaseErr != nil {
+				return fmt.Errorf("%w%s", phaseErr, note)
+			}
+			return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w%s", cardID, phase, verdictErr, note)
 		}
 		full, source, evidenceSource = landed, "recorded landing commit", homestate.EvidenceSourceLanding
 	}
