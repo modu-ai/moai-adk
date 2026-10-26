@@ -456,6 +456,61 @@ func TestSplitBlocks_AsideInsideListItemIsSeparate(t *testing.T) {
 	}
 }
 
+// F7b (t1968 sync-audit iter3): the F7 repair excluded the aside subtree from
+// the item's text, but a BARE-TEXT aside (no block-level child) emitted no
+// block of its own — the walk emits only through block children — so the
+// content was lost from the document entirely (auditor probe: "Side note"
+// absent everywhere). The fallback: an aside whose walk yields no separate
+// block still emits its text as one aside-scored block; the item's exclusion
+// and word boundary stay as F7 set them.
+func TestSplitBlocks_BareTextAsideInsideListItemNotLost(t *testing.T) {
+	html := `<body><ul><li>Main<aside>Side note</aside>Tail</li></ul></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind  BlockKind
+		text  string
+		aside bool
+	}{
+		{KindListItem, "Main Tail", false},
+		{KindParagraph, "Side note", true},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=%v (bare-text aside emitted as its own block, item exclusion kept)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text, w.aside)
+		}
+	}
+}
+
+// F7b control, the top-level shape named in the same finding (pre-existing
+// never-emitted): a bare-text aside outside any item emits too — the fallback
+// is the aside walk's own, not list-specific.
+func TestSplitBlocks_BareTextAsideTopLevelEmitted(t *testing.T) {
+	html := `<body><p>before</p><aside>Bare note</aside><p>after</p></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind  BlockKind
+		text  string
+		aside bool
+	}{
+		{KindParagraph, "before", false},
+		{KindParagraph, "Bare note", true},
+		{KindParagraph, "after", false},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=%v (top-level bare-text aside emitted in document order)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text, w.aside)
+		}
+	}
+}
+
 // F8 (t1968 sync-audit iter2): a <pre> inside a <td> keeps its formatting —
 // the code block is emitted verbatim as its own block (the C2 pattern for
 // pre inside a list item) and the row's text EXCLUDES the pre subtree,
@@ -481,6 +536,21 @@ func TestSplitBlocks_PreInsideCellIsVerbatimCodeBlock(t *testing.T) {
 			t.Errorf("block %d = %s %q, want %s %q (code verbatim, row text excludes it)",
 				i, blocks[i].Kind, blocks[i].Text, w.kind, w.text)
 		}
+	}
+}
+
+// F8b (t1968 sync-audit iter3): the F8 row-level code scan descended into
+// chrome subtrees — unlike the body-level walk, rowCells, and collapseText —
+// so a pre inside nav/template/footer inside a cell re-emitted the chrome's
+// content as a code block (auditor probe: `<td>Visible<nav><pre>CHROME_ONLY
+// </pre></nav></td>` emitted code "CHROME_ONLY"; the body-level control emits
+// nothing). The scan now skips chromeTags subtrees like every other path:
+// only non-chrome pre content is emitted.
+func TestSplitBlocks_PreInsideChromeInCellIsNotEmitted(t *testing.T) {
+	html := `<body><table><tr><td>Visible<nav><pre>CHROME_ONLY</pre></nav></td></tr></table></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindTableRow || blocks[0].Text != "Visible" {
+		t.Fatalf("want exactly one table-row block %q, got %d blocks: %+v", "Visible", len(blocks), blocks)
 	}
 }
 

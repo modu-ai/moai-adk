@@ -167,9 +167,21 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		saved := append([]heading(nil), s.path...)
 		savedDepth := s.itemDepth
 		s.itemDepth = 0
+		before := len(*s.blocks)
 		s.walkChildren(n, true)
 		s.itemDepth = savedDepth
 		s.path = saved
+		// F7b (t1968 sync-audit iter3): a BARE-TEXT aside has no block-level
+		// child, so the walk emitted nothing — and listItemSkip excludes its
+		// text from the enclosing item — the content was lost from the
+		// document entirely. When the aside's walk yields no separate block,
+		// emit its collapsed text as one aside-scored block (the same
+		// exclusion-plus-fallback family as C2/N4), never dropped.
+		if len(*s.blocks) == before {
+			if text := collapseText(n, nil); text != "" {
+				s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
+			}
+		}
 	case n.Data == "p":
 		if s.itemDepth > 0 {
 			// A paragraph inside a list item body is already part of that
@@ -417,6 +429,13 @@ func trimBlankLines(s string) string {
 func (s *splitter) emitRowCodeBlocks(tr *html.Node, inAside bool) {
 	var scan func(*html.Node)
 	scan = func(node *html.Node) {
+		if node.Type == html.ElementNode && chromeTags[node.Data] {
+			// Chrome subtree (F8b, t1968 sync-audit iter3): a pre inside
+			// nav/template/footer inside a cell is chrome like everywhere
+			// else — the body-level walk drops the whole subtree, and this
+			// scan must not re-emit its content as a code block.
+			return
+		}
 		if node.Type == html.ElementNode && node.Data == "pre" {
 			if text := preText(node); text != "" {
 				s.emit(Block{Kind: KindCode, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)

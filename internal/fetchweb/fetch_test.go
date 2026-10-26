@@ -197,6 +197,35 @@ func TestFetchPage_LegitimateReplacementCharPasses(t *testing.T) {
 	}
 }
 
+// F5c (t1968 sync-audit iter3): the iter2 scan tested only the FIRST decoded
+// U+FFFD and accepted whenever the encoded form appeared ANYWHERE in the body,
+// so a source that legitimately encoded U+FFFD early and was corrupted later
+// passed silently (auditor probe: gb18030 legit form + orphan lead byte →
+// err nil, page with TWO U+FFFD). Count-based provenance: one
+// legitimately-encoded U+FFFD in the source accounts for exactly one decoded
+// U+FFFD; any decoded count beyond the source's legitimate count is a
+// substitution and must be a fetch error.
+func TestFetchPage_LegitFFFDPlusLaterCorruptionIsError(t *testing.T) {
+	enc, _ := charset.Lookup("gb18030")
+	if enc == nil {
+		t.Fatal("gb18030 must resolve for this test's premise")
+	}
+	src, err := enc.NewEncoder().String("�")
+	if err != nil {
+		t.Fatalf("gb18030 must encode U+FFFD (probe-confirmed): %v", err)
+	}
+	// "x" + gb18030(U+FFFD) + "y" is legitimate; the trailing 0x81 is an
+	// orphan lead byte the decoder silently substitutes (probe-confirmed).
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=gb18030")
+		_, _ = w.Write([]byte("x" + src + "y\x81"))
+	}))
+	defer srv.Close()
+	if _, err := FetchPage(t.Context(), srv.URL, srv.Client()); err == nil {
+		t.Fatal("legitimate U+FFFD plus a later corrupted byte must be a fetch error, not a silent extra U+FFFD substitution")
+	}
+}
+
 // F5b adjacent residual (named in the iter2 audit): a UTF-8 alias label
 // outside isUTF8Family (unicode-1-1-utf-8) routes through charset.Lookup's
 // decoder, which substitutes invalid bytes silently — the same substitution

@@ -114,12 +114,23 @@ func decodePageBody(body []byte, contentType string) (string, error) {
 	// Scan the decoded text (valid UTF-8 by decoder contract, so the rune
 	// index finds exactly the U+FFFD encodings): any U+FFFD the source
 	// bytes could not legitimately have encoded is a substitution → the
-	// page is undecodable, a fetch error. The legitimacy test is exact for
-	// single-byte charsets (they cannot encode U+FFFD at all); for encodings
-	// that can (gb18030, the UTF-16 family), the U+FFFD's own encoded form
-	// must be present in the raw body or it was not the source of it.
+	// page is undecodable, a fetch error.
+	//
+	// F5c (t1968 sync-audit iter3) makes the provenance COUNT-based: the
+	// iter2 test looked at only the first decoded U+FFFD and accepted when
+	// the encoded form appeared anywhere in the body, so a page that
+	// legitimately encoded U+FFFD early and was corrupted later passed with
+	// a silently-substituted second U+FFFD. Each legitimately-encoded
+	// U+FFFD in the source accounts for exactly one decoded U+FFFD: a
+	// decoded count beyond the source-side count is substitution. For an
+	// encoding that cannot encode U+FFFD at all (every single-byte charset
+	// — the common corruption class), counting is unnecessary and the
+	// encoder error itself is the proof: ANY decoded U+FFFD is a
+	// substitution (the iter2 semantics, kept as the fallback). Both sides
+	// are counted with single-pass byte scans, no regex.
 	if i := bytes.IndexRune(decoded, utf8.RuneError); i >= 0 {
-		if srcFFFD, encErr := enc.NewEncoder().Bytes([]byte("�")); encErr != nil || !bytes.Contains(body, srcFFFD) {
+		if srcFFFD, encErr := enc.NewEncoder().Bytes([]byte("�")); encErr != nil ||
+			bytes.Count(decoded, []byte("�")) > bytes.Count(body, srcFFFD) {
 			return "", fmt.Errorf("fetch web: page charset %q decoded with U+FFFD substitution at byte %d; refused rather than returned corrupted text", label, i)
 		}
 	}
