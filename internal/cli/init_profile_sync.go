@@ -76,7 +76,10 @@ func userNameEditSafety(data []byte) (parsed, safe bool) {
 	// A lone CR (not part of a CRLF pair) is a line break too and slips the
 	// line-start pattern (audit F17).
 	loneCR := bytes.Contains(bytes.ReplaceAll(data, []byte("\r\n"), nil), []byte("\r"))
-	if bytes.ContainsAny(data, "\u0085\u2028\u2029") || loneCR || docEndMarker.Match(data) {
+	// NUL byte rejection (audit F19): UTF-16 text contains NUL bytes and its LF
+	// plus `...` marker slips the byte checks above, so a file with a NUL byte
+	// takes this refusal path. This is not a general non-UTF-8 check.
+	if bytes.ContainsAny(data, "\u0085\u2028\u2029") || loneCR || bytes.IndexByte(data, 0) >= 0 || docEndMarker.Match(data) {
 		// A `...` marker: the re-encode path drops the comments after it.
 		return true, false
 	}

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"gopkg.in/yaml.v3"
 
@@ -602,6 +603,10 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		matrixRow{"W03", "user:\r  name: |\r    Alice\r... # end\r# after\r", "refuse"},
 		matrixRow{"W35", "user:\n  name: |\n    Alice\r... # end\n# after\n", "refuse"},
 		matrixRow{"W36", "user:\n  name: |\n    Alice\r# cr comment\n  gh: k\n", "refuse"},
+		// Iteration-11 rows (NUL byte rejection): UTF-16 text with a BOM, LF line
+		// ends and a `...` marker. Inputs rebuilt with the auditor's encoding.
+		matrixRow{"U01", utf16Fixture(utf16Content, false), "refuse"},
+		matrixRow{"U02", utf16Fixture(utf16Content, true), "refuse"},
 		matrixRow{"Y07", "user:\n  name: Alice\u0085... # c\n", "refuse"},
 		matrixRow{"Y08", "user: {name: \"\\x41lice\", github_username: keep}\u2028... # gone\n# after\n", "refuse"},
 	)
@@ -695,6 +700,58 @@ func TestClearProjectUserName_VerificationRefusalLeavesNoTempFile(t *testing.T) 
 			names = append(names, e.Name())
 		}
 		t.Errorf("directory listing = %v, want only user.yaml", names)
+	}
+}
+
+const utf16Content = "user: {name: \"\\x41lice\", github_username: keep}\n... # end\n# tail comment\n"
+
+// utf16Fixture encodes s as UTF-16 with a BOM (big-endian when be is set).
+func utf16Fixture(s string, be bool) string {
+	var b strings.Builder
+	order := func(u uint16) {
+		if be {
+			b.WriteByte(byte(u >> 8))
+			b.WriteByte(byte(u))
+		} else {
+			b.WriteByte(byte(u))
+			b.WriteByte(byte(u >> 8))
+		}
+	}
+	order(0xFEFF)
+	for _, u := range utf16.Encode([]rune(s)) {
+		order(u)
+	}
+	return b.String()
+}
+
+// NUL byte rejection (audit F19): UTF-16 text contains NUL bytes, so a file
+// with one takes the refusal path; the original stays byte-identical and no
+// temp file is left. This is not a general non-UTF-8 check.
+func TestClearProjectUserName_NULByteRejection(t *testing.T) {
+	for _, tc := range []struct {
+		id string
+		be bool
+	}{{"U01", false}, {"U02", true}} {
+		t.Run(tc.id, func(t *testing.T) {
+			content := utf16Fixture(utf16Content, tc.be)
+			path := clearUserNameFixture(t, content)
+			root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+			err := clearProjectUserName(root)
+			if err == nil || !strings.Contains(err.Error(), refuseText) {
+				t.Errorf("err = %v, want the refusal", err)
+			}
+			if got, _ := os.ReadFile(path); string(got) != content {
+				t.Errorf("original modified")
+			}
+			entries, _ := os.ReadDir(filepath.Dir(path))
+			if len(entries) != 1 || entries[0].Name() != "user.yaml" {
+				var names []string
+				for _, e := range entries {
+					names = append(names, e.Name())
+				}
+				t.Errorf("directory listing = %v, want only user.yaml", names)
+			}
+		})
 	}
 }
 
