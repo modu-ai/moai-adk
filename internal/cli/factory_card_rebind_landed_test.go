@@ -160,6 +160,32 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 	})
 
+	t.Run("verifies_against_the_ref_the_landing_record_names", func(t *testing.T) {
+		// The operator recorded the landing against origin/release; the squash
+		// commit is NOT on origin/main, so only the recorded ref can admit it.
+		root, _, _, squash, store := squashLandedFixture(t, "squash")
+		dir := fcCard(t, root, "t1").WorktreePath
+		base := fcGit(t, dir, "rev-list", "--max-parents=0", "HEAD")
+		fcGit(t, dir, "update-ref", "refs/remotes/origin/main", base)
+		fcGit(t, dir, "update-ref", "refs/remotes/origin/release", squash)
+		if err := store.Mutate(func(r *factory.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == "t1" && r.Items[i].Landing != nil {
+					r.Items[i].Landing.Ref = "origin/release"
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := rebindRun(t, "landing recorded against origin/release"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
+			t.Fatalf("evidence_sha = %q, want the landing commit %s admitted by the recorded ref", got, squash)
+		}
+	})
+
 	t.Run("refuses_when_no_landing_is_recorded", func(t *testing.T) {
 		root, _, _, _, _ := squashLandedFixture(t, "")
 		before := fcCard(t, root, "t1")

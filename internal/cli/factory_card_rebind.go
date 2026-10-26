@@ -92,8 +92,9 @@ func newFactoryRebindEvidenceCommand() *cobra.Command {
 }
 
 // resolveRecordedLanding reads the card's operator-recorded landing commit
-// (`moai todo landed --sha`) and verifies it against the landed ref in the
-// card worktree, or the project root once that worktree is gone. An empty
+// (`moai todo landed --sha`) and verifies it against the ref that record
+// names (the configured landed ref when it names none) in the card
+// worktree, or the project root once that worktree is gone. An empty
 // commit means the fallback did not apply; note is then the suffix for the
 // verdict refusal — empty when the card carries no landing record, so an
 // unlanded card keeps the verdict's own refusal.
@@ -102,20 +103,27 @@ func resolveRecordedLanding(ctx context.Context, root string, card homestate.Car
 	if err != nil {
 		return "", fmt.Sprintf("; landing record unreadable: %v", err)
 	}
-	var sha string
+	var sha, ref string
 	for i := range rec.Items {
 		if rec.Items[i].ID == card.CardID && rec.Items[i].Landing != nil {
 			sha = strings.TrimSpace(rec.Items[i].Landing.SHA)
+			ref = strings.TrimSpace(rec.Items[i].Landing.Ref)
 		}
 	}
 	if sha == "" {
 		return "", ""
 	}
+	// The record names the ref the operator observed the landing against
+	// (`todo landed --ref`); only a record without one falls back to the
+	// configured landed ref.
+	if ref == "" {
+		ref = factory.LandedRefFor(root)
+	}
 	dir := card.WorktreePath
 	if st, serr := os.Stat(dir); serr != nil || !st.IsDir() {
 		dir = root
 	}
-	full, err = homestate.ResolveLandedEvidence(ctx, dir, sha, factory.LandedRefFor(root))
+	full, err = homestate.ResolveLandedEvidence(ctx, dir, sha, ref)
 	if err != nil {
 		return "", fmt.Sprintf("; recorded landing commit refused: %v", err)
 	}
