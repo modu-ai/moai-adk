@@ -1466,6 +1466,13 @@ func factoryBackendSkipsCarriedStage(candidate *homestate.Card) bool {
 	return candidate != nil && factoryNextSkipForBackend()(*candidate)
 }
 
+// factoryNextAbandonFault is the test seam between the lease's T1 record and
+// the abandon of the card's dead-run duplicate row (REQ-FCR-019, card t1963):
+// when set, a non-nil return fails the lease transaction there, and the one-
+// transaction guarantee rolls the T1 record back with it. Production leaves it
+// nil.
+var factoryNextAbandonFault func() error
+
 // factoryCarryWriteFault is the test seam of the carry-over write (card
 // t1930, card-review r12 D3): when set, it is called before the fenced write
 // and a non-nil return fails it — the busy-write shape, without staging a
@@ -1548,7 +1555,11 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 		// a doubled prefix through the caller's plain-error wrap.
 		return factoryNextClaimRefused(factoryRefusal(factoryRefuseBackendSkip, "a Codex lane cannot advance a card recorded at %s", dash(carry.Stage)))
 	}
-	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
+	// The carry-over above is read BEFORE this record: the record also moves the
+	// card's non-terminal row in a dead run to abandoned (REQ-FCR-019), in the
+	// same transaction, and that would change the row the carry-over read looks
+	// at.
+	fresh, err := db.RecordPickedReconciled(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow(), factorymsg.ReconcileOptionsFor(root), factoryNextAbandonFault)
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
 	}

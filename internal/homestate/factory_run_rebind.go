@@ -240,32 +240,42 @@ func requireRunStamp(ctx context.Context, tx *sql.Tx, o RunOwner, role string) e
 	return nil
 }
 
-// refuseLiveWorker refuses when ANY worker row of the run is not positively
-// dead (an undecided probe counts as live). Every row is probed — a check of
-// only the first or only the last row would let a live lane slip through.
-func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(int) ProcessIdentityState) error {
-	rows, err := tx.QueryContext(ctx, `SELECT label, pid FROM workers WHERE run_id=? ORDER BY rowid`, runID)
+// workerRow is one registered worker of a run.
+type workerRow struct {
+	label string
+	pid   int
+}
+
+// workerPIDs lists the run's registered workers in registration order. The
+// cursor is drained and closed before it returns, so the caller can issue its
+// next statement on a single-connection handle.
+func workerPIDs(ctx context.Context, q rowsQueryer, runID string) ([]workerRow, error) {
+	rows, err := q.QueryContext(ctx, `SELECT label, pid FROM workers WHERE run_id=? ORDER BY rowid`, runID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	type worker struct {
-		label string
-		pid   int
-	}
-	var workers []worker
+	var workers []workerRow
 	for rows.Next() {
-		var w worker
+		var w workerRow
 		if err := rows.Scan(&w.label, &w.pid); err != nil {
 			_ = rows.Close()
-			return err
+			return nil, err
 		}
 		workers = append(workers, w)
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
-		return err
+		return nil, err
 	}
-	if err := rows.Close(); err != nil {
+	return workers, rows.Close()
+}
+
+// refuseLiveWorker refuses when ANY worker row of the run is not positively
+// dead (an undecided probe counts as live). Every row is probed — a check of
+// only the first or only the last row would let a live lane slip through.
+func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(int) ProcessIdentityState) error {
+	workers, err := workerPIDs(ctx, tx, runID)
+	if err != nil {
 		return err
 	}
 	for _, w := range workers {

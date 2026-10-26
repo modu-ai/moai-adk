@@ -45,28 +45,12 @@ SELECT 1 FROM cards WHERE run_id=?1 AND state NOT IN `+sqlTerminalStates+`)`, ru
 	if nonTerminal == 1 {
 		return true, nil
 	}
-	rows, err := q.QueryContext(ctx, `SELECT pid FROM workers WHERE run_id=? ORDER BY rowid`, runID)
+	workers, err := workerPIDs(ctx, q, runID)
 	if err != nil {
 		return false, err
 	}
-	var pids []int
-	for rows.Next() {
-		var pid int
-		if err := rows.Scan(&pid); err != nil {
-			_ = rows.Close()
-			return false, err
-		}
-		pids = append(pids, pid)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return false, err
-	}
-	if err := rows.Close(); err != nil {
-		return false, err
-	}
-	for _, pid := range pids {
-		if probe(pid) != ProcessIdentityDead {
+	for _, w := range workers {
+		if probe(w.pid) != ProcessIdentityDead {
 			return true, nil
 		}
 	}
