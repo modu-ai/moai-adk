@@ -5,8 +5,11 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -280,6 +283,116 @@ func TestClearProjectUserName_NameAliasRefusedUntouched(t *testing.T) {
 
 func TestClearProjectUserName_UserAliasRefusedUntouched(t *testing.T) {
 	assertClearRefusedUntouched(t, "base: &identity\n  name: Alice\nuser: *identity\n")
+}
+
+// F9: a name supplied through YAML indirection (merge key or alias key at the
+// top level) has no direct user.name path; patching would append a shadowing
+// top-level `user:` mapping and drop the inherited siblings.
+func TestClearProjectUserName_TopLevelMergeLiteralRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "<<:\n  user:\n    name: Alice\n    github_username: keep\n")
+}
+
+func TestClearProjectUserName_TopLevelMergeAliasRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "b: &b\n  user:\n    name: Alice\n    github_username: keep\n<<: *b\n")
+}
+
+func TestClearProjectUserName_AliasKeyRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "k: &k user\n*k :\n  name: Alice\n  github_username: keep\n")
+}
+
+// N8: an anchor on the user node itself is refused.
+func TestClearProjectUserName_UserAnchorRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "user: &u\n  name: Alice\nother: *u\n")
+}
+
+// A merge key INSIDE user is not a defect: only the name row is blanked.
+func TestClearProjectUserName_MergeKeyInsideUserStillClears(t *testing.T) {
+	path := clearUserNameFixture(t, "base: &base\n  github_username: keep\nuser:\n  <<: *base\n  name: \"Alice\"\n")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	got, _ := os.ReadFile(path)
+	if strings.Contains(string(got), "Alice") || !strings.Contains(string(got), "github_username: keep") {
+		t.Errorf("name not cleared or sibling disturbed:\n%s", got)
+	}
+}
+
+// YAML indirection matrix: every way user.name can reach user.yaml and still be
+// non-empty for the struct decoder. REFUSE rows must return the anchors/aliases
+// error with the bytes unchanged; CLEAR rows must blank the name, keep every
+// other decoded key, and append no new top-level key.
+func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
+	const (
+		refuse = "REFUSE"
+		clear  = "CLEAR"
+	)
+	rows := []struct {
+		name, content, want string
+	}{
+		{"plain direct path", "user:\n  name: Alice\n  github_username: keep\n", clear},
+		{"flow-style user", "user: {name: Alice, github_username: keep}\n", clear},
+		{"anchor on user node", "user: &u\n  name: Alice\nother: *u\n", refuse},
+		{"anchor on name node", "user:\n  name: &n Alice\n  github_username: keep\n", refuse},
+		{"anchor on name key node", "user:\n  &nk name: Alice\n  github_username: keep\n", clear},
+		{"name anchor shared with sibling", "user:\n  name: &identity Alice\n  github_username: *identity\n", refuse},
+		{"unreferenced sibling anchor inside user", "user:\n  name: Alice\n  github_username: &g keep\n  alias: *g\n", clear},
+		{"alias as user value", "base: &identity\n  name: Alice\nuser: *identity\n", refuse},
+		{"alias as name value", "base: &identity Alice\nuser:\n  name: *identity\n", refuse},
+		{"alias as top-level key", "k: &k user\n*k :\n  name: Alice\n  github_username: keep\n", refuse},
+		{"top-level merge literal", "<<:\n  user:\n    name: Alice\n    github_username: keep\n", refuse},
+		{"top-level merge alias", "b: &b\n  user:\n    name: Alice\n    github_username: keep\nz: 1\n<<: *b\n", refuse},
+		{"user merge key, name inside base", "base: &base\n  name: Alice\n  github_username: keep\nuser:\n  <<: *base\n", clear},
+		{"user merge key, explicit name wins", "base: &base\n  github_username: keep\nuser:\n  <<: *base\n  name: Alice\n", clear},
+		{"unrelated top-level anchor", "other: &x 1\nuser:\n  name: Alice\n  github_username: keep\n", clear},
+		{"merge key under non-user nested key", "b: &b\n  x: 1\nuser:\n  name: Alice\n  github_username: keep\nnested:\n  <<: *b\n", clear},
+		{"second document after ---", "user:\n  name: Alice\n  github_username: keep\n---\nuser:\n  name: Bob\n", clear},
+	}
+	decode := func(t *testing.T, b []byte) map[string]any {
+		t.Helper()
+		var m map[string]any
+		if err := yaml.Unmarshal(b, &m); err != nil {
+			t.Fatalf("decode: %v\n%s", err, b)
+		}
+		return m
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			path := clearUserNameFixture(t, row.content)
+			root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+			err := clearProjectUserName(root)
+			after, _ := os.ReadFile(path)
+			switch row.want {
+			case refuse:
+				if err == nil || !strings.Contains(err.Error(), "uses YAML anchors/aliases; edit user.name by hand") {
+					t.Errorf("err = %v, want the anchors/aliases refusal", err)
+				}
+				if string(after) != row.content {
+					t.Errorf("file modified:\n got %q\nwant %q", after, row.content)
+				}
+			case clear:
+				if err != nil {
+					t.Fatalf("unexpected error %v", err)
+				}
+				before, now := decode(t, []byte(row.content)), decode(t, after)
+				if len(before) != len(now) {
+					t.Errorf("top-level keys changed:\n before %v\n after  %v\n%s", before, now, after)
+				}
+				bu, _ := before["user"].(map[string]any)
+				au, _ := now["user"].(map[string]any)
+				// An unquoted scalar is patched to an empty row (`name:`), which a
+				// map decode reads as nil; the typed config loader reads "".
+				if au["name"] != nil && au["name"] != "" {
+					t.Errorf("user.name = %v after clear, want empty\n%s", au["name"], after)
+				}
+				for k, v := range bu {
+					if k != "name" && !reflect.DeepEqual(au[k], v) {
+						t.Errorf("sibling %q = %v, want %v\n%s", k, au[k], v, after)
+					}
+				}
+			}
+		})
+	}
 }
 
 func TestClearProjectUserName_UnrelatedAnchorStillClears(t *testing.T) {

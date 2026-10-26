@@ -45,7 +45,8 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 }
 
 // userNameUsesAnchor reports whether the `user` node or its `name` node is an
-// alias or carries an anchor.
+// alias or carries an anchor, or whether the user mapping is not a direct
+// top-level key at all (supplied by a merge key or an alias key).
 func userNameUsesAnchor(doc *yaml.Node) bool {
 	top := doc
 	if top.Kind == yaml.DocumentNode && len(top.Content) > 0 {
@@ -64,7 +65,10 @@ func userNameUsesAnchor(doc *yaml.Node) bool {
 	}
 	user := child(top, "user")
 	if user == nil {
-		return false
+		// Only reached with a non-empty decoded name: with no direct `user`
+		// key, the name comes from a merge key or an alias key, and patching
+		// would append a top-level `user:` that shadows the inherited mapping.
+		return true
 	}
 	if user.Kind == yaml.AliasNode || user.Anchor != "" {
 		return true
