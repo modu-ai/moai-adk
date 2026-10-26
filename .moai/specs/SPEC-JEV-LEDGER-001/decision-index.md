@@ -21,7 +21,7 @@ Operator verdict: DEFAULT-APPLIED 2026-10-26T10:21:34Z manager-spec (plan-phase 
 Label: EVIDENCE-NEEDED
 Authority anchor: none. The card states the 5 s / 10 s budgets. The measured host timeouts are PreToolUse 10 s / Stop 5 s / SubagentStop 5 s (Claude Code template) and 10 s (Codex, `internal/codexwiring/codexwiring.go:60`). No measurement exists of the hook's own pre-adapter elapsed time.
 Why unresolved: the margin that keeps the whole process under the host kill depends on the elapsed time of the existing handlers, which has not been measured.
-Operator verdict:
+Operator verdict: LANE-DECIDED 2026-10-26T10:41:41Z lane t1762 (decision D1, recorded by manager-spec). Budget = 5 s, the tightest host timeout (Claude Code Stop/SubagentStop, and the single shared constant). Margin = 1 s. Effective Jev deadline = 4 s from hook process start, the same for pre-tool, stop, and subagent-stop under both harnesses. Gap: handler elapsed time before the adapter runs was NOT measured. The margin is a decision, not a measurement. Implementation M3 measures it per event and harness, records it in progress.md §E.2, and returns a blocker if measured elapsed time plus 4 s would exceed 5 s.
 
 ### Q3: What unit does "cost per correct decision" use?
 Label: FOUNDER
@@ -57,4 +57,4 @@ Authority anchor: none verified. The ~10 files / ~400 lines ceiling is stated in
 Why unresolved: the estimate (13 files, ~930 lines including tests) exceeds the stated ceiling, and splitting changes the card set.
 Default: split into three slices (rule: the option whose undo is a single revert of this SPEC's own commits, since each slice reverts alone)
 Alternate: land as one card
-Operator verdict:
+Operator verdict: LANE-DECIDED 2026-10-26T10:41:41Z lane t1762 (decision D3, recorded by manager-spec). Alternate taken: one card, carried serially M1 -> M2 -> M3 -> M4 with one commit per milestone. The ~13 files / ~980 lines estimate exceeds the illustrative ceiling, and that is recorded in plan.md §E. The split was rejected because its AC partition closed ACs in slices that could not satisfy their green paths (AC-012/016 in slice a, AC-014 in slice b). Per-milestone commits keep per-slice revertibility.

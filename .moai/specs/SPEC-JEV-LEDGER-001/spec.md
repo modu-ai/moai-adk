@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Jev decision ledger, shadow-mode hook adapter, and cost-per-correct-decision report"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -22,6 +22,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-JEV-CONSUMERS-001, SPEC-JEV-RESOLVED-MOD
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-10-26 | 0.1.0 | Initial plan-phase draft for card t1762 (Class C, P1, "Jev 1/6"). Predecessor of Jev 2, 3 and 5. Scope: a local-only decision ledger, a common hook adapter that runs in shadow mode on `pre-tool` / `stop` / `subagent-stop` under both harnesses, the `workflow.jev.consumers.<name>` config surface, and a `moai jev cost` report. It ships no compiled consumer, so the shipped build sends zero requests even with the gate on. | manager-spec |
+| 2026-10-26 | 0.1.1 | Plan-audit iter-2 repair (FAIL 0.6875 at `d1aa4ed656`). REQ-JEVL-002/006/007 restated as subject-naming GEARS sentences. REQ-JEVL-013 fixes the adapter deadline at a 5 s budget minus a 1 s margin (4 s) on every event and harness. REQ-JEVL-016 keeps aggregating valid rows and reports `skipped: N`. REQ-JEVL-007 requires a per-consumer tolerant decode. | manager-spec |
 
 ## Position in the chain
 
@@ -53,7 +54,7 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 **REQ-JEVL-001** (Capability gate) **Where** `workflow.jev.enabled` is false, the hook adapter shall construct no Jev request and write no ledger row on any `pre-tool`, `stop`, or `subagent-stop` dispatch, under either harness.
 
-**REQ-JEVL-002** (Ubiquitous) This SPEC shall register no compiled consumer. A consumer runs only when a compiled registration of that name exists **and** `workflow.jev.consumers.<name>` names it. A configured name with no compiled registration shall be ignored, with no request and no row.
+**REQ-JEVL-002** (Ubiquitous) The consumer registry shall ship with no compiled consumer. The hook adapter shall run a consumer only when a compiled registration of that name exists **and** `workflow.jev.consumers.<name>` names it, and shall ignore a configured name that has no compiled registration, sending no request and writing no row for it.
 
 ### §C.2 The adapter
 
@@ -61,15 +62,15 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 **REQ-JEVL-004** (Ubiquitous) The hook adapter shall run only after the hook's output bytes and exit decision are already fixed. It shall have no channel through which an answer reaches the hook's stdout, stderr, exit code, or permission decision. Display-only is therefore a property of the call order, not a convention.
 
-**REQ-JEVL-005** (State-driven) **While** a consumer's effective mode is `shadow`, the hook's stdout bytes, stderr bytes, and exit code shall be byte-identical to the same dispatch with `workflow.jev.enabled` false, under both harnesses.
+**REQ-JEVL-005** (State-driven) **While** a consumer's effective mode is `shadow` (in this SPEC, for every configured mode value: `shadow`, `advise`, `steer`, `confirm`, absent, or unrecognized), the hook's stdout bytes, stderr bytes, and exit code shall be byte-identical to the same dispatch with `workflow.jev.enabled` false, under both harnesses.
 
 ### §C.3 The config surface
 
-**REQ-JEVL-006** (Ubiquitous) `workflow.jev.consumers.<name>.mode` shall accept exactly `shadow`, `advise`, `steer`, and `confirm`. An absent or unrecognized value shall resolve to `shadow`. In this SPEC, every accepted value shall execute as `shadow`. The configured value shall be recorded on each ledger row, and the effective value shall be recorded as `mode`.
+**REQ-JEVL-006** (Ubiquitous) The consumer-config resolver shall accept exactly `shadow`, `advise`, `steer`, and `confirm` as values of `workflow.jev.consumers.<name>.mode`, shall resolve an absent or unrecognized value to `shadow`, and shall return `shadow` as the effective mode for every accepted value in this SPEC. The hook adapter shall branch only on the effective mode, never on the configured value. The ledger recorder shall record the configured value as `configured_mode` and the effective value as `mode` on each row.
 
-**REQ-JEVL-007** (Ubiquitous) `workflow.jev.consumers.<name>.threshold` shall be an optional number in the closed interval [0, 1]. A value outside that interval or of another type shall be treated as absent. The threshold shall be recorded on the ledger row and shall select no action in this SPEC.
+**REQ-JEVL-007** (Ubiquitous) The consumer-config resolver shall treat `workflow.jev.consumers.<name>.threshold` as an optional number in the closed interval [0, 1], and shall resolve a value outside that interval, or of any other YAML type, to absent. The config loader shall decode each consumer entry independently, so that a malformed entry is quarantined to that consumer while the rest of the `workflow` section still loads. The ledger recorder shall record the threshold on each row, and the hook adapter shall select no action on it in this SPEC.
 
-**REQ-JEVL-008** (Event-detected) **When** a consumer's configuration is invalid (an unrecognized mode or an out-of-range threshold), the hook adapter shall record the condition on that consumer's ledger rows and shall emit nothing to the hook's stdout or stderr.
+**REQ-JEVL-008** (Event-detected) **When** a consumer's configuration is invalid (an unrecognized mode, an out-of-range threshold, or a threshold of a non-numeric type), the hook adapter shall record the condition on that consumer's ledger rows and shall emit nothing to the hook's stdout or stderr.
 
 ### §C.4 The ledger
 
@@ -83,7 +84,7 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 ### §C.5 The time budget
 
-**REQ-JEVL-013** (Event-detected) **When** the hook's time budget elapses before an answer arrives (the whole hook process: 5 s under Claude Code, 10 s under Codex), the hook adapter shall treat the call as no answer. It shall record the row with the observed availability and `deadline_exceeded: true`, leave the hook's stdout, stderr, and exit code exactly as they were, and return within the budget. A budget with no time left shall skip the call entirely.
+**REQ-JEVL-013** (Event-detected) **When** the adapter's Jev deadline elapses before an answer arrives, the hook adapter shall treat the call as no answer. The deadline shall be the same on all three events and both harnesses: a 5 s budget (the tightest host timeout, Claude Code `Stop` / `SubagentStop`) minus a 1 s safety margin, measured from hook process start, so no Jev call outlives 4 s of process time. The adapter shall write one row per question with the observed availability, `deadline_exceeded: true`, and `probability: null`, leave the hook's stdout, stderr, and exit code exactly as they were, and return before the deadline plus a bounded tolerance. **When** the deadline has already passed at adapter entry, the hook adapter shall skip the call entirely, sending no request and writing no row.
 
 ### §C.6 Authority and the boundary
 
@@ -93,7 +94,7 @@ One recorder, one adapter seam on the three hook events, one config surface, one
 
 **REQ-JEVL-015** (Event-driven) **When** an operator runs `moai jev cost`, the command shall read the ledger and print, without any network call, the number of calls, the total charged input tokens, the number of rows labelled `correct`, and the input tokens per correct decision. Each figure shall be labelled as an aggregate over model signals. With zero correct rows, the per-correct figure shall be reported as undefined rather than as a number. The command shall exit 0.
 
-**REQ-JEVL-016** (Event-detected) **When** the ledger file is absent, empty, or carries a malformed line, `moai jev cost` shall report zero calls (skipping and counting the malformed lines) and exit 0.
+**REQ-JEVL-016** (Event-detected) **When** the ledger file is absent or empty, `moai jev cost` shall report zero calls and exit 0. **When** the ledger carries one or more malformed lines, `moai jev cost` shall skip each malformed line, aggregate the remaining valid rows exactly as REQ-JEVL-015 describes, print `skipped: N` where N is the number of malformed lines, and exit 0. In every case the command shall make no Jev call.
 
 ---
 
@@ -132,7 +133,8 @@ Each open question carries a row in `decision-index.md`, with the default the pl
 | Id | Question | Plan default |
 |---|---|---|
 | Q1 | Does the ledger write rely on the `SPEC-JEV-CORE-001` REQ-JEVC-011 inert-sibling-record carve-out by name, or does it need a CORE amendment? | Relies on the carve-out by name. Evidence is in `plan.md` §C. |
-| Q2 | How is the adapter's Jev deadline derived inside the 5 s / 10 s budget? | Remaining budget minus a fixed safety margin. A deadline at or below zero skips the call. |
+| Q2 | How is the adapter's Jev deadline derived inside the 5 s / 10 s budget? | Resolved (lane decision, iter-2): 5 s budget minus 1 s margin = 4 s from process start, on every event and harness. A deadline already passed skips the call. Handler elapsed time is unmeasured; M3 measures it. |
+| Q6 | One card or three slices? | Resolved (lane decision, iter-2): one card, carried serially M1 → M2 → M3 → M4 with one commit per milestone. |
 | Q3 | What unit does "cost per correct decision" use? | Charged input tokens. |
 | Q4 | Do non-shadow modes run as shadow in this SPEC? | Yes. Accept, record, and run as shadow. |
 | Q5 | Is the new `moai jev cost` subcommand a "user-visible surface change" in the sense of card acceptance item 5? | No. It is a new, explicitly invoked, read-only report that consults no Jev. Existing surfaces stay byte-identical. |

@@ -1,14 +1,14 @@
 ---
 id: SPEC-JEV-LEDGER-001
 title: "Plan — Jev decision ledger, shadow-mode hook adapter, cost report"
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-10-26
 updated: 2026-10-26
 ---
 
 # Plan — SPEC-JEV-LEDGER-001
 
-Tree measured: `cb30e05b3e5f64774b8dabd87e80c24332f4551d` (card worktree `t1762`, branch `WT-jev-internal-jev`). Every claim about existing code below comes from a command run against that tree. The commands are listed in §I.
+Tree measured: `cb30e05b3e5f64774b8dabd87e80c24332f4551d` (card worktree `t1762`, branch `WT-jev-internal-jev`). Every claim about existing code below comes from a command run against that tree. The commands are listed in §I. The iter-2 repair additions (§B budget, §D decode path, §E closure map) were read against `d1aa4ed656af948c95c2567718c4f9a7be54e191`. The files they cite are unchanged between the two commits: `d1aa4ed656` only adds this SPEC's plan artifacts.
 
 The sections run from the decisions most likely to change (data model, interfaces, the authority boundary) to the mechanical steps.
 
@@ -51,7 +51,11 @@ The card requires seven fields: `model_id`, `rubric_version`, `question_id`, raw
 
 **Adapter call site.** `runHookEvent` in `internal/cli/hook.go` is the single dispatcher for every hook subcommand (`hookSubcommands` rows `pre-tool`, `stop`, `subagent-stop` at `internal/cli/hook.go:47,50,59`). Both harnesses pass through it: `harnessModeIsCodex(cmd)` selects the Codex output adapter, and `internal/codexadapter/events.go:68,72,75` maps the same three dispatcher args for Codex. The adapter is called **after** `writeHookOutput` / `writeHookOutputCodex` has returned and **after** the exit-code decision exists (REQ-JEVL-004). It takes the event, the harness, the parsed input, and the process start time. It returns nothing. It uses no shared writer: no `cmd.OutOrStdout()`, no `os.Stderr`.
 
-**Budget.** The hook process has a wall-clock budget: 5 s for Claude Code and 10 s for Codex, the card's figures. Measured host timeouts are recorded for honesty. In `internal/template/templates/.claude/settings.json.tmpl`, the `handle-pre-tool.sh` entries carry `"timeout": 10`, `handle-stop.sh` carries 5, and `handle-subagent-stop.sh` carries 5. For Codex, `internal/codexwiring/codexwiring.go:60` declares `defaultHandlerTimeout = 10`. The Claude Code budget of 5 s is therefore the smallest host timeout across the three events, so one constant covers all three. The Jev deadline is `budget − elapsed − margin`. When that is ≤ 0 the call is skipped and no row is written (nothing was attempted). Both the budgets and the margin live in `internal/config/defaults.go` as named constants, per the repository rule that thresholds live there. [NEEDS CLARIFICATION: safety margin value — plan default 1 s; decision-index Q2]
+**Budget.** The hook process has a wall-clock budget: 5 s for Claude Code and 10 s for Codex, the card's figures. Measured host timeouts are recorded for honesty. In `internal/template/templates/.claude/settings.json.tmpl`, the `handle-pre-tool.sh` entries carry `"timeout": 10`, `handle-stop.sh` carries 5, and `handle-subagent-stop.sh` carries 5. For Codex, `internal/codexwiring/codexwiring.go:60` declares `defaultHandlerTimeout = 10`. The tightest host timeout is therefore 5 s (Claude Code `Stop` and `SubagentStop`), so one budget covers all three events and both harnesses. The Codex 10 s is looser and is not used as a separate value.
+
+**Decided (lane decision D1, decision-index Q2):** budget 5 s, safety margin 1 s. The adapter's Jev deadline is `process start + 5 s − 1 s`, which is at most 4 s of process time, identical on `pre-tool`, `stop`, and `subagent-stop` under both harnesses. The `context.WithDeadline` passed to `Ask` is built from that instant, so time already spent by the hook handler shrinks the Jev window. When the deadline has already passed at adapter entry, the call is skipped and no row is written, because nothing was attempted. Two named constants live in `internal/config/defaults.go` per the repository rule that thresholds live there: the 5 s budget and the 1 s margin. The 4 s figure is derived from them, never stored separately.
+
+**Gap, carried to M3:** the elapsed time of the existing hook handlers before the adapter runs has **not** been measured. The 1 s margin is a decision, not a measurement. M3 measures handler elapsed time on each of the three events under both harnesses and records the observed figures in `progress.md` §E.2. If the measured p99 elapsed time plus the 4 s Jev ceiling would exceed the 5 s host timeout, M3 returns a blocker report instead of shipping.
 
 **Fail-open.** `jev.Client.Ask` already returns a typed `Result` with no error (`internal/jev/jev.go`, `func (c *Client) Ask`). A deadline surfaces as `Unreachable` from `send` ("transport failed: ..."). The adapter adds `deadline_exceeded` from `ctx.Err()`. A panic inside a consumer's request builder is recovered and dropped.
 
@@ -88,7 +92,14 @@ workflow:
         consumers: {}
 ```
 
-Go side: `WorkflowJevConfig` gains `Consumers map[string]JevConsumerConfig` with `Mode string` and `Threshold *float64`. The pointer distinguishes absent from 0, following `AutonomyKickoffConfig.JevMinConfidence *float64` at `internal/config/types.go:1085`. Resolution (absent → shadow, invalid → shadow + warning text; out-of-range threshold → absent + warning text) is a pure function that returns the warning instead of printing it (REQ-JEVL-008).
+**Why a typed field cannot carry this (observed at `d1aa4ed656`).** `internal/config/loader.go` imports `gopkg.in/yaml.v3` (`:11`). `loadYAMLFile` runs `yaml.Unmarshal(data, target)` and turns any decode error into `parse workflow.yaml: ErrInvalidYAML` (`:494-495`). `loadWorkflowSection` (`:236-251`) seeds a wrapper with the defaults, calls `loadYAMLFile`, and on any error logs `slog.Warn("failed to load workflow config, using defaults", ...)` and returns nil (`:239-241`). In that case `cfg.Workflow = wrapper.Workflow` at `:247` never runs, so the **whole** `workflow` section stays at its defaults. A plain `Threshold *float64` field therefore fails twice on `threshold: "high"`. The decode error throws away every other workflow setting, not just that consumer's. It also emits a `slog.Warn`, which is printed output and breaks REQ-JEVL-008. The value never reaches the resolver at all.
+
+**Decode path (D6).** Two custom `UnmarshalYAML(*yaml.Node) error` methods make the decode tolerant at consumer granularity, so neither can fail the section:
+
+- `JevConsumers` (the map type behind `WorkflowJevConfig.Consumers`). When the node is a mapping, each value node is decoded into a `JevConsumerConfig` on its own. When the node is anything else (a scalar or a sequence), the result is an empty map plus one recorded section-level warning. It returns nil in both cases.
+- `JevConsumerConfig`. It keeps the raw `mode` node and the raw `threshold` node as `yaml.Node` values instead of typed fields, and returns nil for any node shape.
+
+The resolver, a pure function in `internal/config/jev_consumers.go`, then interprets the raw nodes. `mode` becomes the scalar's value when the node is a string scalar and an unrecognized value otherwise. `threshold` becomes a `*float64` when the node is an `!!int` or `!!float` scalar inside [0, 1], and absent plus a warning for any other tag, a non-scalar, or an out-of-range value. Absent stays absent with no warning, and `0` stays distinguishable from absent. Warnings are returned as data and never logged (REQ-JEVL-008). One bad consumer is thereby quarantined, and the rest of the `workflow` section, other consumers included, loads unchanged. `AutonomyKickoffConfig.JevMinConfidence *float64` (`internal/config/types.go:1085`) stays as it is. It is outside this SPEC and is not the pattern to copy here, because its typed decode carries exactly the failure described above.
 
 **Template-first.** The distributed change is `internal/template/templates/.moai/config/sections/workflow.yaml`, edited in the template first, followed by `make build` to regenerate the embedded template. The local `.moai/config/sections/workflow.yaml` is this repository's dogfood config (it carries `enabled: true`). It may gain the same commented `consumers: {}` line, but nothing requires it.
 
@@ -98,24 +109,38 @@ Expected sizes are estimates for the card-size ceiling, not measurements.
 
 | M | Priority | Content | Files (prod / test) | Expected changed lines |
 |---|---|---|---|---|
-| M1 | High | Config: `Consumers` map, resolution function, defaults constants (budgets + margin), template block, `make build` | `internal/config/types.go`, `internal/config/defaults.go`, `internal/config/jev_consumers.go` (new), `internal/config/jev_consumers_test.go` (new), `internal/template/templates/.moai/config/sections/workflow.yaml` | ~60 prod + ~90 test + ~8 yaml |
+| M1 | High | Config: `Consumers` map with the per-consumer tolerant decode (§D), resolution function, defaults constants (5 s budget + 1 s margin), template block, `make build`, plus a loader-level test that loads a real `workflow.yaml` through `internal/config/loader.go` | `internal/config/types.go`, `internal/config/defaults.go`, `internal/config/jev_consumers.go` (new), `internal/config/jev_consumers_test.go` (new), `internal/template/templates/.moai/config/sections/workflow.yaml` | ~80 prod + ~120 test + ~8 yaml |
 | M2 | High | Ledger recorder: row type, append (0700/0600, single write), fail-open drop; extend `TestDisabled_ConstructsNoRequest` so gate off also leaves no ledger file | `internal/jev/ledger.go` (new), `internal/jev/ledger_test.go` (new), `internal/jev/jev_test.go` | ~90 prod + ~140 test |
 | M3 | High | Hook adapter: empty registry, gate-first, budget/deadline, post-output call site; byte-identity and timeout tests on both harnesses; allow-list update | `internal/cli/hook_jev.go` (new), `internal/cli/hook_jev_test.go` (new), `internal/cli/hook.go` (call site, ~6 lines), `internal/cli/doctor_jev_test.go` (allow-list, 2 lines) | ~130 prod + ~220 test |
 | M4 | Medium | `moai jev cost`: reader, de-dup by `call_id`, undefined-when-zero, malformed-line skip | `internal/cli/jev_cost.go` (new), `internal/cli/jev_cost_test.go` (new), `internal/cli/doctor_jev_test.go` (allow-list, 1 line) | ~80 prod + ~100 test |
 
-**Total estimate: 13 distinct files, ~370 production lines + ~550 test lines + ~8 yaml ≈ 930 changed lines.**
+**Total estimate: 13 distinct files, ~390 production lines + ~580 test lines + ~8 yaml ≈ 980 changed lines.**
 
-### Card-size ceiling: exceeded. Proposed split
+### Card-size ceiling: exceeded, carried as serial milestones (lane decision D3)
 
-The scope **exceeds** the ~10 files / ~400 changed lines guidance (13 files, ~930 lines including tests). I am not widening it silently. The proposed split is three landing slices under this one SPEC. Each slice is a separate card with its own commit set, and the SPEC's ACs are partitioned among them:
+The scope **exceeds** the illustrative ~10 files / ~400 changed lines ceiling (13 files, ~980 lines including tests). That is recorded here, not hidden. The lane decided to keep **one card**, carried serially M1 → M2 → M3 → M4 inside the lane, with **one commit per milestone**. Each commit names the card id and the milestone, so each milestone reverts on its own. Decision-index Q6 records the decision.
 
-| Slice | Milestones | ACs it closes | Files | Est. lines |
-|---|---|---|---|---|
-| t1762-a — ledger + config | M1, M2 | AC-JEVL-006, -007, -009, -010, -011, -012, -016 | 8 | ~390 |
-| t1762-b — hook adapter | M3 | AC-JEVL-001, -002, -003, -004, -005, -008, -013, -014 | 4 | ~360 |
-| t1762-c — cost report | M4 | AC-JEVL-015 | 3 | ~180 |
+### AC closure map (each AC closes only where its green path is satisfiable)
 
-Order: a → b → c. Slice b needs the row type and the resolution function from a. Slice c needs only the row type. The alternative is to land as one card and accept the overrun. That is the lane's or the leader's call, and it is recorded here so it is made consciously.
+An AC is **final** at the earliest milestone after which every test in its green path can pass. Where part of its green path is satisfiable earlier, that earlier milestone records a **partial** result: those tests' `--- PASS` lines go into `progress.md` §E.2, and the AC is not marked PASS. An AC is reported PASS only at its final milestone, and the release-blocking set is judged only after M4.
+
+| AC | Partial at | Final at | Why |
+|---|---|---|---|
+| AC-JEVL-006 | M1 (resolver subtests) | M3 | The call-site mutant probe needs the adapter. |
+| AC-JEVL-007 | — | M1 | The resolver and the loader-level test both live in `internal/config`. |
+| AC-JEVL-013 | M1 (constants test) | M3 | The deadline behaviour needs the adapter. |
+| AC-JEVL-016 | M1 (template test) | M4 | The malformed-ledger behaviour needs the reader. |
+| AC-JEVL-009, -010 | — | M2 | Recorder only. |
+| AC-JEVL-011 | — | M2 self-verification | Regression guard, not counted as a pass. |
+| AC-JEVL-001 | M2 (`TestDisabled_ConstructsNoRequest` extension) | M3 | The zero-request assertion needs the adapter. |
+| AC-JEVL-012 | M2 (`TestLedger_WriteFailureDropped`) | M3 | The hook-silent half needs the adapter. |
+| AC-JEVL-002, -003, -004, -005, -008 | — | M3 | Adapter only. |
+| AC-JEVL-014 | M3 (`hook_jev.go` in the allow-list) | M4 | `jev_cost.go` exists only after M4. |
+| AC-JEVL-015 | — | M4 | Cost report only. |
+
+Order: M1 → M2 → M3 → M4. M2 needs nothing from M1. M3 needs the resolver and constants from M1 and the row type from M2. M4 needs the row type from M2 and the template block from M1.
+
+**Rejected alternative: split into t1762-a (M1+M2) / t1762-b (M3) / t1762-c (M4).** It was rejected for two reasons. First, the slicing assigned ACs to slices whose milestones could not satisfy their green paths: AC-012 and AC-016 in slice a needed M3 and M4, and AC-014 in slice b needed M4. Three cards would therefore carry partial ACs across card boundaries, where only a single SPEC record can follow them. Second, the lane decided to keep the card whole. One commit per milestone gives the same per-slice revertibility the split was meant to buy.
 
 ## §F. Technical approach notes
 
@@ -155,3 +180,10 @@ Order: a → b → c. Slice b needs the row type and the resolution function fro
 - `sed -n 215,340p internal/cli/doctor_jev_test.go`: both guard tests and their allow-lists.
 - `git log --oneline -1 -- internal/jev/jev.go`: `09140cc18e`, card t1768 landed.
 - `go test ./internal/jev/ -run '^TestDisabled_ConstructsNoRequest$' -count=1 -v`: `--- PASS: TestDisabled_ConstructsNoRequest (0.00s)` / `ok github.com/modu-ai/moai-adk/internal/jev 0.143s`.
+
+Iter-2 additions (tree `d1aa4ed656af948c95c2567718c4f9a7be54e191`):
+
+- Read `internal/config/loader.go` lines 220-259: `loadWorkflowSection` at `:236-251`, the warn-and-default branch at `:239-241`, and the commit of the decoded section at `:247`.
+- `grep -n "func loadYAMLFile" -A 25 internal/config/loader.go`: `yaml.Unmarshal(data, target)` at `:494`, error wrapped as `ErrInvalidYAML` at `:495`.
+- `grep -n 'yaml' internal/config/loader.go`: `"gopkg.in/yaml.v3"` at `:11`.
+- `grep -n "JevMinConfidence\|type WorkflowJevConfig" internal/config/types.go`: `:1059` and `:1085`.
