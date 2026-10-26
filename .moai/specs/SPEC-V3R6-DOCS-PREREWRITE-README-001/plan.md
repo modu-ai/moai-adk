@@ -20,7 +20,7 @@ Decisions most likely to change come first. M2+M3 are ONE commit (REQ-PRC-003's 
   - Badge (M2a, REQ-PRC-003): line 24 of each README, `Release-v3.2.0-blue.svg` → `Release-v3.1.2-blue.svg`.
   - hugo.toml (M3, same commit): line 55 `version = "v3.1.2"`, line 56 `releaseDate = "2026-08-21"` (v3.1.2's measured publish date, R-20c).
   - Q13 citations (M2b, REQ-README-001, decision QR-3): per locale, line 58 (drop the `moai cg` clause; `moai gpt` clause already names the registered `moai codex` equivalent — keep the sentence accurate without the flagged tokens) and the GPT-gateway callout (ko 291 / en 296 / ja 290 / zh 289 — delete the flagged `moai gpt` citation; the callout's dated withdrawal notice may remain with the citation removed, per Q13's default).
-  - Verification: R-20a/R-20b re-run green at `v3.1.2`/`2026-08-21`; `git log -1 --name-only` of the commit lists all five files; the scoped E-01 count drops by the two non-paragraph lines per file (58, callout) with the paragraph lines remaining for M4.
+  - Verification: R-20a/R-20b re-run green at `v3.1.2`/`2026-08-21`; same-commit property shown by the parent-diff assertion `git diff <commit>^ <commit> -- README.md README.ko.md README.ja.md README.zh.md docs-site/hugo.toml` exhibiting all six line changes (4 badge + 2 hugo) in ONE diff (D3 repair; a file listing alone is not the check); the scoped E-01 count drops by the two non-paragraph lines per file (58, callout) with the paragraph lines remaining for M4.
   - Priority: High.
 - **M4 — Q1 CG paragraphs and the what-is link.** Files: the four READMEs + `docs-site/content/ko/core-concepts/what-is-moai-adk.md`.
   - README.ko.md 386 and 591 (R-08r): each paragraph becomes a one-line link sentence to `/ko/multi-llm/cg-mode/` (REQ-README-002, Q1).
@@ -35,7 +35,7 @@ Decisions most likely to change come first. M2+M3 are ONE commit (REQ-PRC-003's 
 - **No release operations.** Q8's resolution labels existing state only. Creating a v3.2.0 release, publishing drafts, or tagging anything is out of scope (REQ-README-004; the "3.2 rollback" is recorded, not repaired, by this card).
 - **Same-commit clause.** A commit that changes the badge lines but not hugo.toml lines 55–56 (or vice versa) violates REQ-PRC-003 — plan M2+M3 as one commit, never two.
 - **Shared files.** The four READMEs are shared with the FLAG child (t1726) on different lines; the what-is page family is shared with the SWEEP children on different lines. Keep the diff line-scoped so the siblings' merges do not conflict.
-- **Non-flagged lines are frozen.** REQ-README-004 leaves every non-flagged README line byte-identical; drive-by prose fixes (including adjacent factual claims) are out of scope.
+- **Non-flagged lines are frozen.** REQ-README-004 leaves every non-flagged README line byte-identical, with the named exception of the line-24 Release badge of the four READMEs (authority: REQ-PRC-003 / Q8; D1 repair); drive-by prose fixes (including adjacent factual claims) are out of scope.
 - **The lane does not merge its own card.** The landing hand-off follows the card flow (`moai factory complete` PR edge); no hand-run PR, merge, or push.
 
 ## §D Risks
@@ -49,7 +49,7 @@ Decisions most likely to change come first. M2+M3 are ONE commit (REQ-PRC-003's 
 At completion, report per the attribution triple (command / verbatim output / tree SHA):
 1. AC matrix (AC-PRC-001-r, AC-PRC-003 guard, AC-PRC-004-r) with each closing cell's verbatim output.
 2. Diff fence: `git diff --name-only <M1-baseline>..HEAD` listing only the §A.5 surfaces.
-3. Same-commit property: `git log -1 --name-only` of the M2+M3 commit.
+3. Same-commit property: parent-diff assertion `git diff <M2+M3-commit>^ <M2+M3-commit> -- README.md README.ko.md README.ja.md README.zh.md docs-site/hugo.toml` showing all six line changes (4 badge + 2 hugo) in ONE diff (D3 repair).
 4. i18n strict check output (M5).
 5. Fresh external release observation with UTC time (regression-guard record).
 
@@ -58,3 +58,10 @@ At completion, report per the attribution triple (command / verbatim output / tr
 - Umbrella: `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/` (index; pre-split text at `bdb7b764`).
 - i18n rules: `.moai/docs/docs-site-i18n-rules.md` lines 61, 65 (the Q17 obligation, outside the authority register).
 - Card evidence path: `.moai/reports/t1720/`.
+
+## §G Revision history
+
+| Date | Revision | Author | Change |
+|------|----------|--------|--------|
+| 2026-10-26 | 0.1.0 | manager-spec | Initial plan-phase authoring (see spec.md HISTORY). |
+| 2026-10-26 | 0.1.1 | manager-spec | Repair per plan-audit verdict FAIL 0.88 at commit `5fe7d20f46` (card t1720; verdict at `.moai/reports/t1720/plan-audit-verdict.md`, gitignored). M2+M3 verification and §E.3 same-commit check replaced with the parent-diff assertion (D3); §C line-freeze constraint now names the REQ-PRC-003/Q8 badge exception (D1). No milestone added, removed, or reordered. |

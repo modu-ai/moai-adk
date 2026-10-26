@@ -1,4 +1,4 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-README-001 (revision 0.1.0)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-README-001 (revision 0.1.1)
 
 ## A. Pin and conventions
 
@@ -34,16 +34,16 @@
 - RED-now cells: R-20a, R-20b (tree, pinned; red because they name v3.2.0, which the external observation shows has no release object). R-20c is external, recorded with its UTC time, not tree-attributed, never counted as a pass (verification-completeness §2.1 undecidable disposition).
 - Class: regression-guard. Reason: the closing comparison needs the external Latest-release state, which the repository cannot observe; the guard holds because a regression (badge drifting from the public Latest again) is re-detectable by re-observation, but the verdict is recorded as an observation, not a pass.
 - Gate row: Q8 (leader-lens resolution for this card; the umbrella row stays open).
-- Done when (guard): on the closing tree, R-20a shows `Release-v3.1.2-blue.svg` on all four lines, R-20b shows `v3.1.2` / `2026-08-21`, the same-commit property is shown by `git log -1 --name-only` of the M2+M3 commit listing all five files, and a fresh external observation (`gh release list`) is recorded with its UTC time.
+- Done when (guard): on the closing tree, R-20a shows `Release-v3.1.2-blue.svg` on all four lines, R-20b shows `v3.1.2` / `2026-08-21`, the same-commit property is shown by the **parent-diff assertion** (D3 repair): for the single closing commit C (the M2+M3 commit), `git diff C^ C -- README.md README.ko.md README.ja.md README.zh.md docs-site/hugo.toml` shows, in that ONE diff, all six line changes together — the four badge-line changes (line 24 of each README, each hunk changing `Release-v3.2.0-blue.svg` to `Release-v3.1.2-blue.svg`) and the two hugo.toml hunks (lines 55–56, to `version = "v3.1.2"` and `releaseDate = "2026-08-21"`); a two-commit split (badges in one commit, hugo values in another) FAILS this check even when both final values hold and a file listing names all five files, and a fresh external observation (`gh release list`) is recorded with its UTC time.
 
 ### AC-PRC-004-r — the CG retirement passage: README.ko copies and the missing link (REQ-PRC-004, this child's part)
 
 - **AC-PRC-004-r** Given nine Korean docs-site pages carry the exact sentence (R-08), README.ko.md carries it twice (R-08r: 2), seven of the eight non-canonical ko pages already link to the canonical page, and `core-concepts/what-is-moai-adk.md` has no such link (R-08b: 7 lines, what-is absent).
-- When M4 applies the Q1 edits, then README.ko.md carries zero copies of the sentence (R-08r re-run: exit 1, no output) and instead carries a link to `/ko/multi-llm/cg-mode/` (count ≥ 1), the en/ja/zh README counterpart paragraphs are link sentences to their locale's cg-mode page (QR-2 default; their lines are E-01-flagged and close under AC-PRC-001-r), and `docs-site/content/ko/core-concepts/what-is-moai-adk.md` carries the link (R-08b re-run on that path: count ≥ 1; under the QR-1 default its own sentence copy is replaced by the link sentence, so R-08 on that path turns to no output).
+- When M4 applies the Q1 edits, then README.ko.md carries zero copies of the sentence (R-08r re-run: exit 1, no output) and instead carries a link in the destination form `](/ko/multi-llm/cg-mode/)` (count ≥ 1, cell R-08b-r1), the en/ja/zh README counterpart paragraphs are link sentences to their locale's cg-mode page (QR-2 default; their lines are E-01-flagged and close under AC-PRC-001-r), and `docs-site/content/ko/core-concepts/what-is-moai-adk.md` carries the link in the same destination form (cell R-08b-r2: count ≥ 1; under the QR-1 default its own sentence copy is replaced by the link sentence, so R-08 on that path turns to no output).
 - Scope boundary (recorded, not hidden): the seven other ko pages keep their sentence copies after this child lands — they are outside this child's surface (leader-lens scope, spec.md § 2) — so the umbrella's full AC-PRC-004 done check (E-08 listing exactly one file) is NOT achieved by this child alone and stays with the umbrella.
 - RED-now cells: R-08r (red: 2 copies), R-08b (red for what-is: absent from the link baseline), R-08 (context: 9 pages, of which this child's surface covers what-is only).
 - Gate rows: Q1, QR-1.
-- Done when: R-08r exits 1 with no output; a link cell on README.ko.md (`git grep -c -F "multi-llm/cg-mode" <closing> -- README.ko.md`) returns ≥ 1; the R-08b command re-run on what-is returns ≥ 1; and (QR-1 default) R-08 scoped to what-is returns no output.
+- Done when: R-08r exits 1 with no output; the destination-form link cell on README.ko.md (`git grep -c -F "](/ko/multi-llm/cg-mode/)" <closing> -- README.ko.md`; cell R-08b-r1) returns ≥ 1; the destination-form link cell on what-is (`git grep -c -F "](/ko/multi-llm/cg-mode/)" <closing> -- docs-site/content/ko/core-concepts/what-is-moai-adk.md`; cell R-08b-r2) returns ≥ 1; and (QR-1 default) R-08 scoped to what-is returns no output. The link cells grep the link-destination form `](/ko/multi-llm/cg-mode/)` — the on-convention form measured 20/20 on the tree's existing ko pages — so a comment-only mutant (a `<!-- multi-llm/cg-mode -->` remark with zero actual links) fails the check (D2 repair).
 
 ## C. Evidence ledger (verbatim; all tree cells pinned to `cb30e05b3e`)
 
@@ -211,6 +211,20 @@ cb30e05b3e:docs-site/content/ko/multi-llm/_index.md:2
 - Stdout: no output.
 - Reading: all four locales' what-is pages lack the link. This child's surface names the ko page (leader-lens scope); whether the en/ja/zh link additions ride in the same change under Q17 is run-phase scope discipline — they are NOT in this child's named surface and are recorded here so the omission is a decision, not an oversight.
 
+### R-08b-r1 — destination-form cg-mode link on README.ko (RED-now; D2 repair cell)
+
+- Command: `git grep -c -F "](/ko/multi-llm/cg-mode/)" 5fe7d20f46 -- README.ko.md`
+- Exit code: 1 (wrapper-confirmed).
+- Stdout: no output.
+- Reading: README.ko.md carries zero links in the destination form at the audited tree `5fe7d20f46` (the two retirement paragraphs at 386/591 are sentence copies, not links) — RED for the right stated reason. This cell replaces the bare-substring form (`git grep -c -F "multi-llm/cg-mode"`) in the AC-PRC-004-r done-when: that form counted a comment mentioning the path, so a comment-only mutant passed it (plan-audit D2). Positive control (measured this pass, same tree): `git grep -c -F "](/ko/multi-llm/cg-mode/)" 5fe7d20f46 -- docs-site/content/ko/cli-reference/launchers.md docs-site/content/ko/getting-started/windows-guide.md` → 2 and 2, exit 0 — the destination form is the live convention, so the zero above is an absence of the link, not a dead pattern.
+
+### R-08b-r2 — destination-form cg-mode link on ko what-is (RED-now; D2 repair cell)
+
+- Command: `git grep -c -F "](/ko/multi-llm/cg-mode/)" 5fe7d20f46 -- docs-site/content/ko/core-concepts/what-is-moai-adk.md`
+- Exit code: 1 (wrapper-confirmed).
+- Stdout: no output.
+- Reading: same destination form as R-08b-r1, scoped to this child's page; RED at the audited tree `5fe7d20f46` for the same reason (R-08b already showed the page absent from the link baseline). Replaces the R-08b bare-substring re-run in the done-what link check (D2).
+
 ### R-27 — SPEC ID pre-write self-check (protocol; not a RED cell)
 
 - Command: `ID="SPEC-V3R6-DOCS-PREREWRITE-README-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` — exit 0 — stdout: `PASS`
@@ -221,8 +235,8 @@ cb30e05b3e:docs-site/content/ko/multi-llm/_index.md:2
 | AC | REQ | Class | Gate rows | Closing check (re-run on the closing tree, single-invocation cells) |
 |----|-----|-------|-----------|------------------------------|
 | AC-PRC-001-r | REQ-PRC-001 (README part) | release-blocking (gated) | Q13, Q17, QR-2, QR-3 | R-01, R-02, R-03, R-04 each exit 1 with empty stdout; diff confined to the § 2 surface |
-| AC-PRC-003 | REQ-PRC-003 | regression-guard | Q8 (leader-lens) | R-20a shows `Release-v3.1.2-blue.svg` ×4; R-20b shows `v3.1.2` / `2026-08-21`; same-commit property shown via `git log -1 --name-only` of the M2+M3 commit; fresh R-20c observation recorded with its UTC time, not counted as a pass |
-| AC-PRC-004-r | REQ-PRC-004 (this child's part) | release-blocking (gated) | Q1, QR-1 | R-08r exits 1 with no output; README.ko cg-mode link count ≥ 1; R-08b on what-is ≥ 1; (QR-1 default) R-08 scoped to what-is: no output |
+| AC-PRC-003 | REQ-PRC-003 | regression-guard | Q8 (leader-lens) | R-20a shows `Release-v3.1.2-blue.svg` ×4; R-20b shows `v3.1.2` / `2026-08-21`; same-commit property shown via the parent-diff assertion `git diff C^ C -- README.md README.ko.md README.ja.md README.zh.md docs-site/hugo.toml` exhibiting all six line changes (4 badge + 2 hugo) in ONE diff (D3 repair; a two-commit split fails); fresh R-20c observation recorded with its UTC time, not counted as a pass |
+| AC-PRC-004-r | REQ-PRC-004 (this child's part) | release-blocking (gated) | Q1, QR-1 | R-08r exits 1 with no output; destination-form link cells R-08b-r1 (README.ko) and R-08b-r2 (what-is) each ≥ 1; (QR-1 default) R-08 scoped to what-is: no output |
 
 ## E. Gaps (not observed)
 
@@ -232,3 +246,10 @@ cb30e05b3e:docs-site/content/ko/multi-llm/_index.md:2
 - GR-4 — The seven already-linking ko pages keep their sentence copies after this child lands; the umbrella's full AC-PRC-004 closure is not achieved by this child alone.
 - GR-5 — The strict docs i18n check was not run in this pass (this child's page edit is a one-line link addition inside ko; the run-phase verification sweep runs it — plan.md §B M5).
 - GR-6 — Q1, Q13, Q17, QR-1, QR-2, QR-3 carry planner defaults, not operator verdicts. Q8's resolution is a leader-lens card-scoped ruling, and the umbrella Q8 row stays open.
+
+## F. Revision history
+
+| Date | Revision | Author | Change |
+|------|----------|--------|--------|
+| 2026-10-26 | 0.1.0 | manager-spec | Initial plan-phase authoring; all tree cells pinned to `cb30e05b3e` (see spec.md HISTORY). |
+| 2026-10-26 | 0.1.1 | manager-spec | Repair per plan-audit verdict FAIL 0.88 at commit `5fe7d20f46` (card t1720; verdict at `.moai/reports/t1720/plan-audit-verdict.md`, gitignored). D2: the AC-PRC-004-r link cells (README.ko done-when, what-is re-run, §D row) now grep the destination form `](/ko/multi-llm/cg-mode/)` instead of the bare substring; fresh RED-now cells R-08b-r1 / R-08b-r2 added, measured on `5fe7d20f46` (both: no output, exit 1, positive control live). D3: the AC-PRC-003 same-commit check replaced — `git log -1 --name-only` file-listing (passed a two-commit mutant) superseded by the parent-diff assertion over `C^ C` for the single closing commit. D1 is repaired in spec.md (REQ-README-004 badge-line exception). |

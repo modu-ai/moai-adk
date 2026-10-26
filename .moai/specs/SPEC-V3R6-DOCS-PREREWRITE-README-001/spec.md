@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-README-001
 title: "Docs Pre-Rewrite README — stale citations, Q8 badge rollback to v3.1.2, and the CG retirement paragraphs in the four README files (card t1720)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, SPEC-V3R6-DOCS-PREREWRITE
 | Date | Version | Author | Change |
 |------|---------|--------|--------|
 | 2026-10-26 | 0.1.0 | manager-spec | Initial plan-phase authoring for card t1720 (Class C, docs-only), child README of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (umbrella split, operator decisions `d-20261014T055241Z-1bc6` and `d-20261014T060405Z-0fcd`). Ownership imported from the pre-revision umbrella at commit `bdb7b764` by path and SHA (umbrella spec.md child table; acceptance.md cells E-01 to E-04, E-08, E-08b, E-20a, E-20b, E-20c; decision-index.md rows Q1, Q8, Q13, Q17). Every RED-now figure was re-measured on THIS tree, commit `cb30e05b3e` (full `cb30e05b3e5f64774b8dabd87e80c24332f4551d`, tree object `9c08830bdec23b81334840307ee745e468500174`); no umbrella figure is carried over. Q8 is resolved for this card by the leader lens (dispatch to lane-14, 2026-10-26) plus fresh measurement; it is recorded as a leader-lens resolution, not an operator verdict. Status `draft`. |
+| 2026-10-26 | 0.1.1 | manager-spec | Repair per plan-audit verdict FAIL 0.88 at commit `5fe7d20f46` (card t1720; verdict at `.moai/reports/t1720/plan-audit-verdict.md`, gitignored). D1 (critical): REQ-README-004 now carries an explicit named exception for the line-24 Release badge of the four READMEs (authority: REQ-PRC-003 / Q8) — previously the pair REQ-PRC-003 vs REQ-README-004 was unsatisfiable. D2/D3 (major) are repaired in acceptance.md (destination-form link cells with fresh RED-now on `5fe7d20f46`; parent-diff same-commit assertion) and mirrored in plan.md. No requirement added or removed; status stays `draft`. |
 
 ## 1. Overview (WHY)
 
@@ -55,7 +56,7 @@ ID scheme: `REQ-PRC-*` items keep their umbrella IDs and texts (scoped here to t
 - **REQ-README-001** (Event-driven): **When** a line of the four README files belongs to the flagged set — a line the scoped E-01 pattern (acceptance.md R-01) matches and that carries no example marker — the sweep **shall** replace the flagged citation with a current equivalent where one is registered on the tree, and otherwise delete it (Q13), and **shall not** leave any flagged line unchanged (Q24: unmarked lines are fixed).
 - **REQ-README-002** (Ubiquitous): Where a flagged README line is a CG retirement paragraph, the sweep **shall** replace that paragraph with a link sentence pointing at that locale's `multi-llm/cg-mode` page (Q1: ko links to the canonical Korean page; en/ja/zh link to their own locale's cg-mode page, which carries the retirement notice in that locale — umbrella E-01a at `bdb7b764`).
 - **REQ-README-003** (Ubiquitous): Every locale (ko, en, ja, zh) **shall** receive the same fix in the same change — badge line, flagged lines, and retirement paragraphs change in all four README files in one commit (Q17).
-- **REQ-README-004** (Ubiquitous): The sweep **shall** change no file outside the edit surface of § 2 (this SPEC directory and `.moai/reports/t1720/` excepted), **shall** leave every non-flagged line of the four README files byte-identical, and **shall** create no release, no tag, and no push to a protected branch (Q8: no new release or tag is permitted).
+- **REQ-README-004** (Ubiquitous): The sweep **shall** change no file outside the edit surface of § 2 (this SPEC directory and `.moai/reports/t1720/` excepted), **shall** leave every non-flagged line of the four README files byte-identical — **named exception**: the Release badge line (line 24 of each of `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md`; 4 lines, one per locale), which REQ-PRC-003 changes under the Q8 resolution (tag `v3.1.2`); this exception is the badge line's sole authority and adds no other line — and **shall** create no release, no tag, and no push to a protected branch (Q8: no new release or tag is permitted). (D1 repair, plan-audit FAIL 0.88 at `5fe7d20f46`: without this exception REQ-README-004 forbids what REQ-PRC-003 requires.)
 
 ## 4. Pinned facts (measured, `cb30e05b3e`)
 
@@ -153,7 +154,7 @@ Operator verdict:
 ### Out of Scope — rewrite content and adjacent prose
 
 - The 300-line README rewrite and the docs-site information-architecture rewrite (plan stages 5-1 to 5-3).
-- Any README prose line the scoped E-01 pattern does not flag (REQ-README-004 leaves non-flagged lines byte-identical); adjacent factual claims outside the flagged lines are recorded, not edited.
+- Any README prose line the scoped E-01 pattern does not flag (REQ-README-004 leaves non-flagged lines byte-identical, with the line-24 badge exception of REQ-PRC-003/Q8); adjacent factual claims outside the flagged lines are recorded, not edited.
 
 ### Out of Scope — non-README version surfaces
 
