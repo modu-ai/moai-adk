@@ -28,7 +28,7 @@ const (
 	laneMsgLegendMany         = "번호: 해당 run에 합류 / r번호: 정리한 뒤 남은 run에 합류 / q 또는 빈 줄: 취소"
 	laneMsgLegendOne          = "번호: 해당 run에 합류 / q 또는 빈 줄: 취소"
 	laneMsgIneligibleFmt      = "선택 r%d: 정리할 수 없습니다. 리더가 종료되고 진행 중 카드가 없는 run만 정리할 수 있습니다."
-	laneMsgInvalid            = "입력을 이해하지 못했습니다. 번호, r번호, q 중 하나를 입력하세요."
+	laneMsgInvalid            = "입력을 이해하지 못했습니다. 번호, r번호, m번호, q 중 하나를 입력하세요."
 	laneMsgLegendMerge        = "m번호: 진행 중 카드를 살아 있는 run으로 옮겨 합치고 정리한 뒤 합류"
 	laneMsgIneligibleMergeFmt = "선택 m%d: 합칠 수 없습니다. 리더가 종료되고 진행 중 카드가 있으며, 리더가 살아 있는 활성 run이 정확히 1개일 때만 합칠 수 있습니다."
 	laneMsgMergeFailFmt       = "run %s 합치기에 실패했습니다 (%s). 저장소에서 다시 읽은 최신 상태로 목록을 보여 드립니다."
