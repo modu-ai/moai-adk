@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init/update 진행 출력을 그룹 체크리스트로 재설계"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -20,6 +20,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.1.0 초안 (manager-spec, 카드 t1969 plan 단계, Tier L). 근거는 같은 디렉터리의 research.md(파일:행 사실, HEAD `cb30e05b3e`)와 design.md(렌더러 API·이벤트 모델·대체 규칙·i18n 키·골든 전략)다. 형제 카드 t1966 의 init.go 변경 범위는 공유 브랜치 ref `WT-moai-init-moai`(`d7f4d5c288`)에서 읽었다(research.md §7).
 - 2026-10-27 — v0.1.1 plan 델타 1회차 (manager-spec). 1회차 plan 감사(FAIL 0.71, 감사 HEAD `d241917d17`)의 결함 D1~D20 을 고쳤다. REQ 20 → 23 (REQ-TCL-021 init.go 변경 영역 — 제약 C-2 를 REQ 로 올림, REQ-TCL-022 열린 항목 안 경고·오류·안내 줄 보존, REQ-TCL-023 성공 조기 반환은 정상 종료), AC 23 → 24 (AC-TCL-024 보존 줄 주입 시험). 경고 수 정의를 "수집기 수" 하나로 정했다(D6). 레인 결정 Q1~Q3 을 반영해 "리더 확인 대기" 문구를 지웠다(D16). 대체 골든을 `internal/cli/testdata/checklist/fallback/` 하위 디렉터리로 옮겨 기준선 선행 증거를 디렉터리 단위로 잰다(D2). 증거 원장에 L15~L19 를 더했다(측정 HEAD `d241917d17`).
 - 2026-10-27 — v0.1.2 plan 델타 2회차 (manager-spec). 2회차 plan 감사(FAIL 0.75, 감사 HEAD `b422a13d53`)의 결함 N1~N13 과 리더 codex_audit 의 P2(= N8)를 고쳤다. REQ·AC 수는 그대로(23·24). 보존 줄 목록을 `internal/cli` 전체(하위 패키지 포함)에 대한 고정 검색 명령의 출력으로 정하고 23행으로 늘렸으며(N1), AC-TCL-024 는 행마다 하위 테스트 하나와 목록 완전성 하위 테스트를 갖는다(N2). 재개 경로를 실제 실행기의 이벤트 순서(검증 단계 `StepError` 가 먼저)에 맞춰 다시 썼다(N3). update 요약이 그려지는 지점을 템플릿 동기화 본문 끝으로 정했다(결정 D-10). 순서 증거에 O4(M0 트리 재실행)와 카드 id 완전성 검사를 더했다(N6·N7). 증거 원장에 L20~L25 를 더했다(측정 HEAD `b422a13d53`).
+- 2026-10-27 — v0.1.3 plan 델타 3회차 (manager-spec, 천장 정책의 자동 델타 1회). 3회차 plan 감사(FAIL 0.80, 감사 HEAD `69358ecba8`)의 `fix_scope` 안 결함 M1~M4 만 고쳤다. REQ·AC 번호와 수는 그대로(23·24). REQ-TCL-015 가 update 의 심각도 줄(두 명령 작성기 모두)을 명시하고, 요약 없이 끝나는 실행에서 항목 밖 수집기 경고를 한 번 쓰게 했다(M1·M3). REQ-TCL-016 이 그 조항을 오류·취소 경로에 잇는다(M3). AC-TCL-016 에 `update` 하위 테스트, AC-TCL-017 에 실패 뒤 항목 밖 `Collect` 변형과 실제 명령 경로의 "이미 최신" (d) 를 넣었다(M1·M2·M3). design.md §3.3.1·§3.4·§4 를 실제 코드 순서와 실제 명령 경로에 맞추고 update 줄 예산을 다시 셌다(M2·M4). 범위 밖 결함 M5~M9 와 잔여 문구는 progress.md §E.1 의 미해결 부채로 남겼다.
 
 ## §1 배경과 문제
 
@@ -67,8 +68,8 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - **REQ-TCL-012** — **When** any activation condition of REQ-TCL-011 does not hold, the command shall emit the same bytes the baseline tree emits — the tree the fallback goldens were captured from (`cb30e05b3e`, or the re-baseline tree recorded under plan.md §B).
 - **REQ-TCL-013** — `moai init` shall accept `--verbose`; `moai update --verbose` shall keep its current meaning, including its verbose-only stderr lines, and shall also force the REQ-TCL-012 output path.
 - **REQ-TCL-014** — **While** the checklist is active, bytes written to the command writers while an item is open shall be recorded as that item's detail, and bytes written while no item is open shall reach the real writer immediately and unmodified.
-- **REQ-TCL-015** — **While** the checklist is active, every warning recorded through the init warning collector or emitted at warn or error severity through the severity-line helper while an item is open shall appear exactly once, expanded under that item; every collector warning recorded while no item is open shall keep its legacy immediate line, if it had one, and shall be listed once in the summary block; and the consolidated init warning panel shall not be emitted.
-- **REQ-TCL-016** — **When** a checklist run ends before the summary with a non-nil error or a wizard cancel, the session shall mark the open item failed, write every captured byte not yet shown verbatim to the real writer, and restore the command writers.
+- **REQ-TCL-015** — **While** the checklist is active, every warning recorded through the init warning collector, and every line that `moai init` or `moai update` emits at warn or error severity through the severity-line helper on either command writer (stdout or stderr), while an item is open shall appear exactly once, expanded under that item; every collector warning recorded while no item is open shall keep its legacy immediate line, if it had one, and shall be listed once in the summary block, or, when the run ends without drawing the summary, shall be written once to the real writer before the command writers are restored unless its text has already reached the real writer; and the consolidated init warning panel shall not be emitted.
+- **REQ-TCL-016** — **When** a checklist run ends before the summary with a non-nil error or a wizard cancel, the session shall mark the open item failed, write every captured byte not yet shown verbatim to the real writer, write the collector warnings REQ-TCL-015 assigns to a run without a summary, and restore the command writers.
 - **REQ-TCL-017** — The checklist shall render on stderr for `moai init` and on stdout for `moai update`.
 - **REQ-TCL-018** — **While** an interactive prompt runs, the checklist session shall hold no unfinished line, and the wizard flow, the survey questions, and their content shall stay byte-identical to the baseline tree.
 - **REQ-TCL-019** — The deployed file set, every reported count, and every command outcome shall equal those of the legacy surface for the same run, and the summary's warning count shall equal the collector count the legacy completion card reports.

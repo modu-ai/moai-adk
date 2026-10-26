@@ -144,19 +144,19 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 | P7 | `update_template_sync.go:672`, `:679` | `file_snapshot.go:95`, `:99` → `warnLine` | errOut | 경고 | 배포 단계 항목 |
 | P8 | `update_template_sync.go:697` | `"manifest save after deploy"` | errOut | 오류 | 배포 단계 항목 |
 | P9 | `update_template_sync.go:948` | `"deployment_mode re-assert warning"` | out(stdout) | 경고 | 복원 단계 항목 |
-| P10 | `update_template_sync.go:996`, `:1016`, `:1056` | `"manifest retrack (.gitignore)"`, `"(mergeable set)"`, `"(reconciled set)"` | errOut | 오류 | 복원·조정 단계 항목 |
+| P10 | `update_template_sync.go:996`, `:1016`, `:1056` | `"manifest retrack (.gitignore)"`, `"(mergeable set)"`, `"(reconciled set)"` | errOut | 오류 | `:996` 은 `verify.gitignore`, `:1016` 은 `verify.retrack`, `:1056` 은 `verify.reconcile` (§4 코드 순서) |
 | P11 | `update_template_sync.go:884` (복원 콜백) | `internal/cli/update_noise.go:120` `"'moai update -c' to resync templates for"` | errOut | 안내 | 복원 단계 항목 |
 | P12 | `update_template_sync.go:844` | `"moai: migration warning"` (`cmd.ErrOrStderr()`) | stderr | 경고 | 백업 단계 항목 |
 | P13 | `update_template_sync.go:695` (`recordTemplateTree`) | `internal/cli/update_template_sync_guard.go:35` `"template tree not recorded"` | errOut | 경고 | 배포 단계 항목 |
-| P14 | `update_template_sync.go:1005` (`mergeUserFilesSettlingSnapshot`) | `internal/cli/update/merge/merge.go:310` `"merge failed, preserving user version"`, `:327` `"merged with conflicts (user version preferred)"` | out(stdout) | 경고 | 복원 단계 항목 |
+| P14 | `update_template_sync.go:1005` (`mergeUserFilesSettlingSnapshot`) | `internal/cli/update/merge/merge.go:310` `"merge failed, preserving user version"`, `:327` `"merged with conflicts (user version preferred)"` | out(stdout) | 경고 | `verify.retrack` (병합 `:1005` 에서 열린다, §4) |
 | P15 | `update_template_sync.go:928` (`renderRetainedKeyAdvisory`) | `internal/cli/update_tux.go:329-334` `"setting(s) kept values that differ from the current template default"` 과 그 아래 `· 섹션: 키` 목록 줄 | out(stdout) | 경고 | 복원 단계 항목 |
 | P16 | `update_template_sync.go:512` (`archiveLegacySkills`), `:548`·`:583` (`reportArchiveShortfall`) | `internal/cli/update_archive.go:344` `"archive drift backup: "`, `:427` `"Legacy skill archive"` | out(stdout) | 경고 | 검증·정리 단계 항목 |
-| P17 | `update_template_sync.go:995`, `:1015`, `:1055` (`retrackManifestFiles`) | `internal/cli/update_manifest_retrack.go:57` `"manifest retrack skip"` | errOut | 경고 | 복원·조정 단계 항목 |
+| P17 | `update_template_sync.go:995`, `:1015`, `:1055` (`retrackManifestFiles`) | `internal/cli/update_manifest_retrack.go:57` `"manifest retrack skip"` | errOut | 경고 | `:995` 은 `verify.gitignore`, `:1015` 은 `verify.retrack`, `:1055` 은 `verify.reconcile` (§4 코드 순서) |
 | P18 | `update_template_sync.go:1211` (`stampMigrationDeployMode`) | `internal/cli/update_migrate.go:154`, `:161` `"deployment_mode write warning"` | errOut | 경고 | 꼬리 — 마지막으로 열린 항목(결정 D-10) |
 | P19 | `update_template_sync.go:1216` (`warnStampSkew`) | `update_template_sync_guard.go:105` `"template stamp disagrees with deployed bytes"` | out(stdout) | 경고 | 꼬리 — 마지막으로 열린 항목 |
 | P20 | `init.go:1022`, `update_template_sync.go:1177` (`installPrePushHookOptional`) | `internal/cli/hook_install.go:278` `"existing pre-push hook preserved"` | init stderr, update stdout | 안내 | init `hooks.prepush`, update 꼬리 |
 | P21 | `init.go:1027`, `update_template_sync.go:1182` (`installPreCommitHookOptional`) | `internal/cli/hook_install_precommit.go:400` `"existing pre-commit hook preserved"` | init stderr, update stdout | 안내 | init `hooks.precommit`, update 꼬리 |
-| P22 | `update_template_sync.go:249-255` (이미 최신, `nil` 조기 반환) | `:252` 결과 알약 `report.OutcomeAlreadyUpToDate` — 열거 행 | out(stdout) | 안내 | `templates.version` (REQ-TCL-023 로 닫힘) |
+| P22 | `update_template_sync.go:1260-1266` (이미 최신 — 실제 명령이 닿는 바깥 함수 `runTemplateSyncWithProgress` 의 조기 반환, `update.go:604`) | `:1262` 결과 알약 `report.OutcomeAlreadyUpToDate` — 열거 행 | out(stdout) | 안내 | 항목 밖 — 본문보다 앞이라 열린 항목이 없고, 넘김 규칙으로 정확히 한 번 보인다(§3.4). 본문의 같은 모양 `:249-255` 는 생산 호출이 닿지 않아 열거하지 않는다 |
 | P23 | `init.go:859` → `internal/cli/init_resume.go` | `:168` `"Warning: global settings env update failed"`, `:175` `"Pre-push hook installation failed"`, `:178` `"Pre-commit hook installation failed"`, `:201` `"Warning: manifest retrack (config sections) failed"` | stderr | 경고·오류 | 항목 밖(재개는 검증 항목이 `✗` 로 닫힌 뒤 돈다, §3.4) |
 
 제외 행. 검색에 걸리지만 보존 행이 아닌 일치와 그 이유.
@@ -176,14 +176,17 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 
 - 경고·오류 보존 행이 항목 안에서 쓰이면 그 항목 줄을 `!` 로 끝낸다. 안내 행은 글리프를 바꾸지 않는다. 어느 쪽도 경고 수에 더하지 않는다(결정 D-9).
 - 항목 밖 행은 넘김 규칙으로 이미 한 번 보인다. 세션은 그 줄을 다시 펼치지 않는다.
+- 심각도 줄 도우미의 warn·err 줄(`emitSeverityLine(…, sevWarn|sevErr, …)`)은 위 검색 모양에 없고 보존 행도 아니다. 이 줄들은 경고 신호 경로(REQ-TCL-015)가 덮는다 — init 의 `init.go:901`·`:907`(X1)뿐 아니라 update 의 두 작성기 모두: stderr 쪽 `hook_install.go:268`·`:273`·`:283`·`:291`, `hook_install_precommit.go:389`·`:395`·`:405`·`:413`, `update_migrate.go:158`, `update_template_sync.go:958`·`:961`, `update_snapshot_hook.go:34`, stdout 쪽 `hook_install.go:293`, `hook_install_precommit.go:415`(트리 `69358ecba8` 에서 다시 읽음). 그래서 세션의 두 작성기가 모두 경고 수신 인터페이스를 구현한다. 판정은 AC-TCL-016 `update` 하위 테스트(3회차 감사 M1).
 - AC-TCL-024 는 보존 행마다 하위 테스트를 하나씩 두고, 목록 완전성 하위 테스트(`inventory_complete`)가 위 검색과 같은 12개 모양을 Go 코드로 `internal/cli/**/*.go`(테스트 제외)에 돌려 두 방향을 본다 — (가) 분류되지 않은 일치가 하나라도 있으면 실패, (나) 보존 행의 분류 조각이 그 파일에서 사라졌으면 실패. 궤도 파일의 일치를 파일 단위 제외로 처리하면 실패한다. 테스트 안의 분류 표는 이 표의 행 id 와 같다. 분류 조각은 메시지 문자열이라 호출 지점을 도우미로 감싸도 파일에 남는다. 조각 자체를 바꿔야 하거나 검색이 새 일치를 내면 run 단계는 막힘 보고를 내고, manager-spec 이 이 표를 고친 뒤 테스트 표를 맞춘다(SPEC 본문은 run 단계가 고치지 않는다).
 
 ### §3.4 종료 (REQ-TCL-016, REQ-TCL-023)
 
 - 세션 종료는 `runInit`·`runUpdate` 에서 가장 먼저 등록하는 `defer` 로 둔다. 그래서 가장 나중에 실행되고, 뒤에 등록된 `emitSummary`·세션 워크트리 정리·update 종료 블록보다 늦게 돈다. 종료 함수는 명명된 오류 반환값(`runInit` 의 `(err error)`, `init.go:382`)을 읽는다.
-- **오류로 끝나거나 위저드가 취소되면**(요약 전, `err != nil` 또는 취소 신호): 열린 항목이 있으면 `Fail` 로 닫고, 아직 화면에 나가지 않은 캡처 바이트를 모두 그대로 쏟아낸 뒤 작성기를 되돌린다.
-- **`nil` 로 조기 반환하면**(요약 전): 열린 항목이 있으면 `Done` 으로 닫고, 아직 보이지 않은 보존 줄을 펼친 뒤 작성기를 되돌린다. 상세는 접힌 채 둔다. 이미 끝난 줄은 — `✗` 로 끝난 줄도 — 다시 그리지 않는다(REQ-TCL-002). 실제 코드에서 이 경우는 두 갈래다.
-  - **update 이미 최신**(`internal/cli/update_template_sync.go:249-255`): `templates.version` 항목이 열린 채 결과 알약(`:252`, 보존 행 P22)을 쓰고 `nil` 을 돌려준다. 세션은 그 항목을 `✓` 로 닫고 알약을 한 번 펼친다. 요약은 그리지 않는다.
+- **머리줄은 첫 항목이 열릴 때 한 번 그린다.** 항목이 하나도 열리지 않은 실행은 머리줄도 요약도 그리지 않고, 기존 줄만 넘김 규칙으로 보인다(아래 update 이미 최신, init 취소).
+- **요약 없이 끝나는 실행의 수집기 경고(REQ-TCL-015, REQ-TCL-016, 3회차 감사 M3).** 열린 항목 없이 기록된 수집기 경고는 원래 요약이 다시 나열하는데, 요약이 그려지지 않으면 갈 곳이 없다. `Collect` 는 줄을 쓰지 않기 때문이다(`internal/cli/init_warnings.go:49-56`). 그래서 세션 종료는 — 오류·취소·`nil` 조기 반환 모두 — 그런 경고 가운데 문장이 아직 실제 작성기에 나가지 않은 것(즉시 줄이 없는 `Collect` 경고)을 하나씩 정확히 한 번 실제 작성기에 쓴 뒤 작성기를 되돌린다. 즉시 줄이 이미 나간 `Warn` 경고는 다시 쓰지 않는다. 패널은 이 경로에서도 내지 않는다. 실제 사례: init 실행기가 실패하면 `init.go:829-838` 이 `result.Warnings` 를 `p.Collect(w)`(`:837`)로 모은다. 이때 열린 항목은 없다 — 실행기가 `internal/core/project/phase.go:125` `StepError` 로 `templates.deploy` 를 이미 `Fail` 로 닫았기 때문이다(§3.6). 요약은 오류 경로에서 그려지지 않으므로, 이 규칙이 없으면 오늘 패널이 보여 주는 스킬 미러 안내(REQ-IDE-004)가 체크리스트에서 사라진다.
+- **오류로 끝나거나 위저드가 취소되면**(요약 전, `err != nil` 또는 취소 신호): 열린 항목이 있으면 `Fail` 로 닫고, 아직 화면에 나가지 않은 캡처 바이트를 모두 그대로 쏟아내고, 위 규칙의 수집기 경고를 쓴 뒤 작성기를 되돌린다.
+- **`nil` 로 조기 반환하면**(요약 전): 열린 항목이 있으면 `Done` 으로 닫고, 아직 보이지 않은 보존 줄을 펼치고, 위 규칙의 수집기 경고를 쓴 뒤 작성기를 되돌린다. 상세는 접힌 채 둔다. 이미 끝난 줄은 — `✗` 로 끝난 줄도 — 다시 그리지 않는다(REQ-TCL-002). 실제 코드에서 이 경우는 두 갈래이고, 두 갈래 모두 반환 시점에 열린 항목이 없다. 열린 항목을 `Done` 으로 닫는 조항은 세션 단위 경우(AC-TCL-017 (e))가 지킨다.
+  - **update 이미 최신**(실제 명령 경로, 3회차 감사 M2): `runUpdate` → `internal/cli/update.go:604` `runTemplateSyncWithProgress` 가 `update_template_sync.go:1260` 에서 같은 조건(`packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync`)을 먼저 보고, 맞으면 `:1262` 에서 결과 알약을 쓰고 `:1266` `return true, nil` 한다. 항목은 본문 안에서만 열리므로(§3.2) 이때 열린 항목이 없다 — 알약은 넘김 규칙으로 정확히 한 번 보이고(보존 행 P22, 항목 밖), 머리줄·요약은 그려지지 않는다. 뒤이은 `update.go:623-650`(무결성 검사, 모델 키 정리, 참여 질문)도 열린 항목 없이 넘김 규칙으로 보인다. 본문 `runTemplateSyncWithReporter` 의 같은 모양 조기 반환(`:249-255`)은 실제 명령이 닿지 않는다 — `runTemplateSync(cmd` 는 정의(`:120`)만 있고 생산 호출이 없으며, 본문으로 들어가는 생산 경로는 이 바깥 함수의 같은 조건 검사 뒤뿐이다(`:215` `forceBackup` 도 같은 `force` 플래그). 그 경로는 본문을 직접 부르는 테스트만 닿으므로 판정 근거로 쓰지 않는다(AC-TCL-017 (d)).
   - **init 재개**(`init.go:854-864`): 실제 이벤트 순서는 아래와 같고, 재개가 시작될 때 열린 항목은 없다(research.md §8, 원장 L21).
     1. `internal/core/project/phase.go:66` `StepStart("Detection")` → `:72` `StepComplete` (`templates.detect`)
     2. (모드를 주지 않았으면) `:82` `StepStart("Methodology Detection")` → `:96` `StepComplete`, (주었으면) `:103` `StepStart("Validation", …)` → `:104` `StepComplete` (`templates.validate` 를 연다)
@@ -224,18 +227,34 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 | init | `hooks` | `prepush`, `precommit` | `init.go:1022-1029` |
 | init | `mcp` | `entry` | `init.go:1045-1048` |
 | init | `verify` | `manifest` | `init.go:1073-1075` |
-| update | `templates` | `version`, `load`, `manifest`, `analyze` | `update_template_sync.go:242-343` |
-| update | `backup` | `config`, `namespace` | 단계 루프의 `Backup` 가로채기(`update_template_sync.go:734-`) |
-| update | `deploy` | `validate`, `clean`, `deploy`, `restore`, `reconcile` | 단계 표(`update_template_sync.go:450-`)와 조정(`:1028`) |
-| update | `verify` | `gitignore`, `retrack`, `retention` | `update_template_sync.go:948-1016` |
+| update | `templates` | `version`, `load`, `manifest`, `analyze` | 본문 `runTemplateSyncWithReporter` 의 `update_template_sync.go:206-343`. `version` 은 본문 진입(`:206`)에서 열어 `:226` 배포 모드 줄과 `:234` 동기화 머리 줄을 상세로 접는다. `load` `:268`, `manifest` `:282`, `analyze` `:317-343` |
+| update | `backup` | `config`, `namespace` | 단계 루프의 `Backup` 가로채기 — `config` `:737`, `namespace` `:768`(마이그레이션 경고 `:844` 까지) |
+| update | `deploy` | `validate`, `clean`, `deploy`, `restore` | 단계 표의 Validate Templates(`:467`), 정리 단계(`:498` `cleanManagedPathsStage`), Deploy Templates(`:625`), 그리고 Restore Settings 가로채기의 복원 `:853-959` |
+| update | `verify` | `retention`, `gitignore`, `retrack`, `reconcile` | Restore Settings 가로채기 안, 코드 순서대로: `retention` `:960-974`(오래된 백업 정리), `gitignore` `:976-999`, `retrack` `:1000-1017`(병합 `:1005` + 재기록 `:1015`), `reconcile` `:1018-1059`(`len(reconPending) > 0` 일 때만 연다, `:1027`) |
 
 init 의 사용자 자산 보장(`init.go:780-790`)은 항목으로 만들지 않는다(레인 결정 Q3). 그 바로 앞 줄(`init.go:780`)을 t1966 이 바꾸기 때문이다. 이 단계는 `executor.Execute`(`init.go:829`)보다 먼저 돌아 열린 항목이 없으므로 출력이 넘김 규칙으로 지금처럼 보이고, 항목화는 t1966 착지 뒤 후속 카드로 넘긴다.
 
 update 의 clean-install 경로(`update_clean_install.go`), 바이너리 갱신, `--check`·`--shell-env`·`--config` 경로는 항목을 열지 않는다. 그 경로의 출력은 넘김 규칙으로 지금 그대로 보인다(spec.md §5).
 
-update 행의 "대응하는 지금 코드" 열은 단계가 사는 구간을 가리킬 뿐 순서를 보장하지 않는다. 실제 화면 순서는 코드 실행 순서다(§1 규칙). update 는 확인 화면을 `runTemplateSyncWithProgress`(`update_template_sync.go:1244-1297`)에서 띄운 뒤 본문 `runTemplateSyncWithReporter` 를 부르고, 조정(`:1028`)은 복원 단계 안의 정리 줄(`:948-1016`)보다 뒤에 돈다. M5 는 항목 키를 코드 순서대로 다시 맞추고, 순서가 표와 다르면 막힘 보고로 이 표를 고친다.
+update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과 그 항목이 덮는 구간이다. 표의 항목 순서가 곧 코드 실행 순서이고 화면 순서다(§1 규칙). 델타 3회차에 트리 `69358ecba8` 에서 다시 읽은 순서(3회차 감사 M4): 확인 화면은 바깥 함수 `runTemplateSyncWithProgress`(`update_template_sync.go:1244-1297`)에서 본문보다 먼저 돈다. 본문의 단계 표(`:451-711`)는 Backup → Validate Templates → 정리 → Deploy Templates → Restore Settings 순서다. Restore Settings 가로채기 안의 순서는 복원(`:853`) → 오래된 백업 정리(`:960`) → `.gitignore` 병합(`:977`) → 병합·재기록(`:1005`·`:1015`) → 조정(`:1027`)이다. 2회차 표는 조정을 `deploy` 그룹에, 그보다 앞서 도는 정리 줄을 `verify` 그룹에 두어 화면이 `deploy → verify → deploy` 로 그룹을 다시 열었다. 지금 표는 조정을 `verify` 그룹 끝으로 옮기고 `verify` 항목을 코드 순서로 다시 놓았다. M5 는 이 순서로 항목을 열고, 실제 순서가 표와 다르면 막힘 보고로 이 표를 고친다.
 
-**update 줄 예산.** 깨끗한 update 는 정체성 띠 1 + 머리 1 + 환경 1 + 그룹 4 + 항목 14 + 요약(완료 줄·백업 경로·복구 명령) 3 = 24줄로 상한에 딱 닿는다. 종료 행동 블록은 깨끗한 실행에서 아무것도 내지 않는다(`internal/cli/update_action_block.go:89-91`). 훅 설치 줄(`internal/cli/hook_install.go:262` `"Pre-push hook installed"` — `--no-hooks` 가 아니면 update 마다 나옴)과 pre-commit 쪽 같은 줄은 결정 D-10 에 따라 요약 앞의 꼬리, 곧 마지막으로 열린 항목 안에서 쓰이므로 접히고 예산에 들지 않는다. 요약을 결과 알약 자리(`:1144`)에 그리면 이 두 줄이 요약 뒤로 넘어가 26줄이 된다 — D-10 을 택한 이유다. M5 의 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다(plan.md §H R-4).
+**update 줄 예산(델타 3회차 재계산).** 그룹 제목은 그룹이 바뀔 때 한 번 그린다(§2 `Item`). 표의 그룹 순서 `templates → backup → deploy → verify` 에서 다시 열리는 그룹이 없으므로 그룹 제목은 4줄이다. 2회차 표를 코드 순서대로 그리면 `deploy` 가 다시 열려 그룹 제목 5줄, 합계 25줄로 상한을 넘었다(3회차 감사 M4).
+
+| 줄 | 수 | 근거 |
+|---|---|---|
+| 정체성 띠 | 1 | 넘김 규칙(`internal/cli/update_tux.go:77-82`) |
+| 머리·환경 | 2 | 첫 항목 `templates.version` 이 열릴 때(§3.4) |
+| 그룹 제목 | 4 | `templates`, `backup`, `deploy`, `verify` 각 한 번 |
+| 항목 | 13 | `templates` 4 + `backup` 2 + `deploy` 4 + `verify` 3(`retention`, `gitignore`, `retrack`). `reconcile` 은 `len(reconPending) > 0` 일 때만 열리는데(`:1027`), 깨끗한 update(spec.md §3.3 — 사용자 수정 없음)에는 조정할 파일이 없다(코드 읽기) |
+| 요약 | 3 | 완료 줄·백업 경로·복구 명령 |
+| 합계 | 23 | 상한 24 에 1줄 여유 |
+
+- `reconcile` 이 열리는 실행이라도(깨끗한 실행이 아님) 항목 14, 합계 24 로 상한 안이다.
+- 본문 진입 직후의 두 줄 — `:226` 배포 모드 줄(기록이 있을 때)과 `:234` 동기화 머리 줄 — 은 `version` 항목을 본문 진입에서 열어 그 상세로 접는다. 2회차 계산은 이 두 줄을 세지 않았다.
+- 종료 행동 블록은 깨끗한 실행에서 아무것도 내지 않는다(`internal/cli/update_action_block.go:89-91`).
+- 훅 설치 줄(`internal/cli/hook_install.go:262` `"Pre-push hook installed"` — `--no-hooks` 가 아니면 update 마다 나옴)과 pre-commit 쪽 같은 줄은 결정 D-10 에 따라 요약 앞의 꼬리, 곧 마지막으로 열린 항목 안에서 쓰이므로 접히고 예산에 들지 않는다. 요약을 결과 알약 자리(`:1144`)에 그리면 이 두 줄이 요약 뒤로 넘어가 25줄이 된다 — D-10 을 택한 이유다.
+- 세지 않은 줄: `--yes` 없이 도는 실행은 본문 진입 전에 바깥 함수의 확인 화면(`:1285-1291` — 빈 줄, `Analyzing merge changes` 구역 머리, 미리보기, 대화형 확인)을 열린 항목 없이 넘김 규칙으로 보인다. 대화형 화면이라(REQ-TCL-018) 위 계산에 넣지 않았다. 깨끗한 실행의 정의(spec.md §3.3)가 `--yes` 를 적지 않는 점은 이 회차 범위 밖의 잔여로 progress.md §E.1 에 남겼다.
+- 위 합계는 코드 읽기로 센 값이다. M5 의 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다(plan.md §H R-4).
 
 ## §5 출력 채널 (REQ-TCL-017)
 
