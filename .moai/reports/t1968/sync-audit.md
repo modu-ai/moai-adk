@@ -2,8 +2,8 @@ auditor-model: glm-5.3
 
 # sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 1
 
-verdict: FAIL
-audited_sha: 20ee7feb19917b8bf499b7da25bfd936bb0370f4
+verdict: PASS-WITH-DEBT
+audited_sha: ed6227740e55341193cbea038c9875158eed471b
 
 Tree: lane worktree `.moai/worktrees/t1968` (branch `WT-jevfetch-a2sys-ai`). Merge base `2a1898ea22`. Date 2026-10-27. Audit plan (`moai verify audit-plan --project-root <toplevel>`): `config_status: ok`, `cross_model_active: true`, gates claude=off / **codex=required** / glm=off (source `config.gates`, `plan_source: config`).
 
@@ -278,3 +278,73 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - iter4 (this audit): FAIL 0.92 — F5c/F7b/F8b all repaired, probe-verified in both directions, no residual on any of the three; the F7b fallback itself opened F7c (heading text promoted/merged by the fallback extraction, blocks.go:181). Delta for iter5: F7c alone — a small localized fix (heading-skipping extraction in the fallback + empty-remainder guard + two regression tests), same pattern family as every repair this chain has landed.
 
 AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-45724dbd741931c15f94b203
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 5 (delta: F7c @ 11668653dd)
+
+Delta audit of the F7c repair (`11668653dd`, +57/−3, 2 files — `internal/fetchweb/blocks.go` + `blocks_test.go` only). Audited head `ed6227740e55341193cbea038c9875158eed471b` (docs-only on top of the repair: `git diff --name-only 11668653dd..HEAD` → `.moai/reports/t1968/progress.md` only — confirmed). Audit plan re-read (`moai verify audit-plan --project-root <this worktree>`): `config_status: ok`, `cross_model_active: true`, codex **required** (claude/glm off), `plan_source: config`. No `Binding run conditions` heading in the SPEC progress.md — nothing to disposition. File machine lines updated to this iteration's verdict+head (the same file-level convention iter4 followed; prior iteration prose intact).
+
+## iter5 Verdict
+
+**PASS-WITH-DEBT — aggregate 0.93** (harmonic mean of 94 / 93 / 93 / 93). The single enumerated repair holds: both iter4 F7c reproductions probe-verified fixed, every corner probed clean, F7b/F7/F3 regressions hold, and the required codex backend returned **pass** (convergence `overall_verdict: pass`). One disclosed debt survives (below) — optional-class per iter4's own enumeration ("acceptable as documented residual if omitted"), pinned by a landed test that asserts the residual behavior; not blocking.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @ed6227740e) |
+|---|---|---|---|---|
+| Functionality | 40% | 94 | PASS | My probe: `PROBE heading-only-aside n=0` / `PROBE heading+body-aside n=1 \| paragraph "note body" aside=true path=[Main]` (heading NOT merged) / blank-trailing, blank-leading, two-headings all `n=0` / `text-heading-text` → `"head text tail text"` (word boundary kept) / `div-nested` → `"deep body"`; F7b/F7/F3 regressions hold; 6/6 F-series tests `--- PASS`; trio `ok ... fetchweb 0.347s` / `jevmeasure 0.521s` / `jev 1.728s`; cli filter exit 0, `PASS-count=10` / `FAIL-count=0`. |
+| Security | 25% | 93 | PASS | No security-relevant surface in this delta: `git diff --name-only 20ee7feb19917b8bf499b7da25bfd936bb0370f4..HEAD -- internal/fetchweb/ssrf.go internal/fetchweb/fetch.go` → empty (iter3's exhaustive F1b probe evidence carries; iter4's F5c verification carries); `git diff 2a1898ea22...HEAD -- go.mod go.sum` → empty; `--- PASS: TestFetchWeb_OffGateZeroNetwork` inside the cli filter run (0 FAIL). |
+| Craft | 20% | 93 | PASS | `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.374s coverage: 95.0% of statements` (fresh, `-count=1 -cover`); `golangci-lint run ./internal/fetchweb/...` → `0 issues.`; `gofmt -l` → empty (exit 0); `go test -race` → `ok ... 1.511s`; `BUILD-DARWIN-OK` + `BUILD-WINDOWS-OK`. |
+| Consistency | 15% | 93 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid` (exit 0); jevledger boundary `git diff --name-only cb30e05b3e...HEAD -- internal/jevledger` empty with non-empty control (3 `internal/jev` files); `git diff --name-only 537cfac148..HEAD -- internal/template` empty; docs-only head confirmed; `asideFallbackSkip` follows the `listItemSkip`/`cellSkip` naming+comment family (observed in diff). |
+
+Must-pass firewall: Functionality (94) and Security (93) both above threshold — no firewall trigger. No blocking findings.
+
+## iter5 F7c disposition
+
+**Repaired, verified, closed.** The two iter4 reproductions, re-run by my own transient in-package probe (`zz_audit_probe6_test.go`; created, run, deleted; `git status --short` empty after — `TREE-CLEAN-CONFIRMED`):
+
+- `<aside><h2>Note title</h2></aside>` → `PROBE heading-only-aside n=0` — no phantom paragraph (iter4 observed `paragraph "Note title" aside=true`).
+- `<h2>Main</h2><aside><h3>Side</h3>note body</aside>` → `paragraph "note body" aside=true path=[Main]` — the heading's text is NOT merged into the body (iter4 observed `"Side note body"`).
+
+Corners beyond the enumerated scope, all clean: heading + trailing-blank-only remainder → `n=0` (the `strings.Fields` collapse in `collapseText` drives the empty-remainder guard exactly as the comment claims); blank-before-heading → `n=0`; two-headings-only → `n=0`; heading + spaced body → `"real body"` (leading space trimmed); text on both sides of a skipped heading → `"head text tail text"` (F3-family word boundary preserved across the skip); heading + body under an invisible `<div>` → `"deep body"` (fallback still reaches deep text). The skip map is scoped to the one fallback call site (`collapseText(n, asideFallbackSkip)` at blocks.go:185; all other call sites unchanged — grep-verified). F7b regressions hold both shapes: in-li `list-item "Main Tail"` + `paragraph "Side note" aside=true`; top-level `before / "Bare note"(true) / after` in order; F7 block-form (`walk`-emitted `<p>` wins, fallback idle); F3 golden `First Third` + `Second` unchanged.
+
+## iter5 Debt (the one disclosed residual — optional, not blocking)
+
+- **D1** [Low] [optional] `internal/fetchweb/blocks.go:185` — bare text following an aside-internal heading carries the restored pre-aside path (`[Main]`) where the p-wrapped control carries `[Main / Side]`: HeadingPath provenance only; text content, aside flag, and emission are all correct. Test-pinned by `TestSplitBlocks_AsideFallbackExcludesHeadingText` (asserts `[Main]` with the residual named in-line) and documented in the repair commit. Follow-up card only if aside-fallback path fidelity is ever needed downstream.
+
+## iter5 Cross-model convergence (audit_multi, target=baseBranch, delta_base=20ee7feb19, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-2a184bfefac6e098feba3734`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base 20ee7feb19917b8bf499b7da25bfd936bb0370f4: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**This verdict is not final until the orchestrator's convergence check passes.** Codex found nothing on the F7c delta; my own probes (above) independently closed the same scope.
+
+## iter5 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the F7c repair holds and the prior green set is intact.** Evidence: probe outputs quoted above; 6/6 F-series tests `--- PASS` name-filtered (`TestSplitBlocks_BareTextAsideInsideListItemNotLost`, `TestSplitBlocks_BareTextAsideTopLevelEmitted`, `TestSplitBlocks_PreInsideChromeInCellIsNotEmitted`, `TestFetchPage_LegitFFFDPlusLaterCorruptionIsError`, `TestSplitBlocks_HeadingOnlyAsideEmitsNothing`, `TestSplitBlocks_AsideFallbackExcludesHeadingText`); `go test -count=1 ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → `ok ... 0.347s` / `ok ... 0.521s` / `ok ... 1.728s`; cli filter (graded trio + MCP parity + bench legs) → `exit=0`, `PASS-count=10`, `FAIL-count=0`, `ok github.com/modu-ai/moai-adk/internal/cli 0.990s`; coverage / lint / gofmt / race / builds / spec-lint quoted in the dimension table; boundary diffs (jevledger, template, go.mod/go.sum) quoted above. Baseline: this run, this tree @ed6227740e55341193cbea038c9875158eed471b.
+
+**Gaps (explicitly NOT observed):**
+- Full `internal/cli` suite still not run here (unchanged from iter1-4; owned by integration-branch CI).
+- Convergence covered codex only (claude/glm off per plan); codex was prose-scoped to the delta, not mechanically bounded (its own residual note, quoted verbatim above).
+- RED-first for the 2 new tests is the repair commit's documented claim — this audit observed the post-fix state only.
+- One worktree-guard refusal this audit: a chained `git diff ... $(moai version ...)` nested-subshell form was refused ("too complex to verify that it stays inside the worktree"); re-observed in plain split form immediately after — all three diff checks then executed and are quoted above.
+- `moai` binary provenance: build `b1806498fe` (`moai version` observed) is NOT an ancestor of this tree's HEAD (`git merge-base --is-ancestor b1806498fe HEAD` → not-ancestor) — spec-lint verdict judged immaterial for document validation, unchanged from iter3/4.
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- Convergence `residual_risk_note` verbatim above (delta scoping in prose only; single participant).
+- D1 (HeadingPath provenance for the aside-fallback bare remainder) — the debt this verdict carries.
+- F5c's narrow count corner (overlapping byte patterns inflating the body-side encoded-form count) — accepted in iter3, unchanged.
+- Untested territory unchanged from iter3/4: CDATA-era HTML, exotic framesets, proxy-required egress.
+
+## Iteration history (cont.)
+
+- iter5 (this audit): PASS-WITH-DEBT 0.93 — F7c closed (both reproductions fixed, corners clean, regressions hold, codex pass, receipt rcpt-2a184bfefac6e098feba3734); one Low optional debt D1 (aside-fallback path provenance, test-pinned). Chain complete: F1-F8, F1b/F5b, F5c/F7b/F8b, F7c all repaired and verified.
+
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-2a184bfefac6e098feba3734
