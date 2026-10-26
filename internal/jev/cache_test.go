@@ -799,3 +799,101 @@ func cacheEntries(t *testing.T, dir string) []cacheEntry {
 type DoerFunc func(*http.Request) (*http.Response, error)
 
 func (f DoerFunc) Do(r *http.Request) (*http.Response, error) { return f(r) }
+
+// L1 (t1968 leader audit): the wire questions travel as a MAP (toWire), so
+// two requests differing only in question order marshal to one body, share
+// one cache key, and the second is served as a hit. The stored entry carries
+// the STORING request's answer order; the hit must reassemble the answers
+// into the CURRENT request's question order — positional reuse of the stored
+// slice would answer [q2,q1] with the first request's [a1,a2].
+func TestCache_HitReassemblesAnswersToCurrentRequestOrder(t *testing.T) {
+	twoQ := func(first, second string) Request {
+		return Request{
+			State: "the state under judgment",
+			Questions: []Question{
+				{ID: first, Text: "Is " + first + " alive?", Kind: KindNoul},
+				{ID: second, Text: "Is " + second + " alive?", Kind: KindNoul},
+			},
+			Repeatable: true,
+		}
+	}
+	body := `{"model":"jev-1.13.0","answers":{"q1":{"type":"noul","noul":0.9},"q2":{"type":"noul","noul":0.1}},"usage":{"input_tokens":7}}`
+	prime := &cachedDoer{script: []doerStep{{status: 200, body: body}}}
+	c := newCachedClient(t, prime)
+	if first := c.Ask(context.Background(), twoQ("q1", "q2")); !first.OK() {
+		t.Fatalf("prime failed: %s", first.NoticeLine())
+	}
+
+	// Same question set, opposite order: the wire body is identical (a map),
+	// so a fresh process must be served from the cache with the network closed.
+	fresh := New(true)
+	fresh.LoadCredential = c.LoadCredential
+	fresh.CacheDir = c.CacheDir
+	refuse := &refusingDoer{}
+	fresh.HTTP = refuse
+	second := fresh.Ask(context.Background(), twoQ("q2", "q1"))
+	if !second.OK() {
+		t.Fatalf("cache hit failed: %s", second.NoticeLine())
+	}
+	if refuse.calls != 0 {
+		t.Fatalf("identical wire body must be a cache hit, saw %d network calls", refuse.calls)
+	}
+	if len(second.Answers) != 2 {
+		t.Fatalf("answers = %d, want 2", len(second.Answers))
+	}
+	if second.Answers[0].QuestionID != "q2" || second.Answers[1].QuestionID != "q1" {
+		t.Errorf("a hit must answer in the CURRENT request's order (q2 first), got [%s %s]",
+			second.Answers[0].QuestionID, second.Answers[1].QuestionID)
+	}
+	if second.Answers[0].Probability != 0.1 || second.Answers[1].Probability != 0.9 {
+		t.Errorf("answers must keep their own values (identity, not position), got p(first)=%v p(second)=%v",
+			second.Answers[0].Probability, second.Answers[1].Probability)
+	}
+}
+
+// L2 (t1968 leader audit): a stale cache serve on a fresh client whose
+// change notice has not yet fired sets BOTH Notice (entry model differs from
+// VerifiedInterpretedModel) and StaleCacheWarning (prior-model entry).
+// NoticeLine() surfaced only Notice, so the staleness fact was silently
+// lost; the one line consumers emit must carry both facts.
+func TestCache_StaleServeNoticeLineCarriesBothFacts(t *testing.T) {
+	// body1 primed under jev-1.12.0 — differs from verified jev-1.13.0, so
+	// the change notice fires on a fresh client.
+	doer := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.12.0")}}}
+	c := newCachedClient(t, doer)
+	if !c.Ask(context.Background(), cacheQuestion()).OK() {
+		t.Fatal("prime failed")
+	}
+	// The alias moves to jev-1.14.0 over a different body: jev-1.12.0 joins
+	// the alias's recorded history as a prior model.
+	mover := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.14.0")}}}
+	mc := New(true)
+	mc.LoadCredential = c.LoadCredential
+	mc.CacheDir = c.CacheDir
+	mc.HTTP = mover
+	moved := Request{State: "a different state", Questions: cacheQuestion().Questions}
+	if !mc.Ask(context.Background(), moved).OK() {
+		t.Fatal("alias-move call failed")
+	}
+
+	// Fresh process, network closed: the stale serve sets BOTH fields.
+	fresh := New(true)
+	fresh.LoadCredential = c.LoadCredential
+	fresh.CacheDir = c.CacheDir
+	refuse := &refusingDoer{}
+	fresh.HTTP = refuse
+	res := fresh.Ask(context.Background(), cacheQuestion())
+	if !res.OK() {
+		t.Fatalf("stale serve failed: %s", res.NoticeLine())
+	}
+	if res.Notice == "" || res.StaleCacheWarning == "" {
+		t.Fatalf("scenario must set both fields, got notice %q warning %q", res.Notice, res.StaleCacheWarning)
+	}
+	line := res.NoticeLine()
+	if !strings.Contains(line, res.StaleCacheWarning) {
+		t.Errorf("the surfaced line must carry the staleness warning too, got %q", line)
+	}
+	if strings.Contains(line, "\n") {
+		t.Errorf("the surfaced line must stay ONE line: %q", line)
+	}
+}

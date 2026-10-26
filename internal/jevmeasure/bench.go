@@ -80,6 +80,13 @@ type CaseComparison struct {
 	CaseID string `json:"case_id"`
 	// Contained reports whether the expected quote appears in the output.
 	Contained bool `json:"contained"`
+	// Missing marks a case with NO run result (L3, t1968 leader audit): the
+	// run map lookup would otherwise yield a zero CaseRun — not
+	// fetch_error, zero output tokens — that aggregates a bogus 100%
+	// savings into the row and the mean. A missing run is a comparison
+	// failure named by id, never a perfect run; it carries no savings
+	// figure and is excluded from the summary mean (C4/iter6 semantics).
+	Missing bool `json:"missing,omitempty"`
 	// OutputTokens / SnapshotTokens are APPROXIMATE token counts.
 	OutputTokens   int `json:"output_tokens"`
 	SnapshotTokens int `json:"snapshot_tokens"`
@@ -102,7 +109,10 @@ type BenchReport struct {
 // snapshot's token count, plus the set summary. A run that ended in
 // fetch_error demonstrates no savings — its zero kept tokens would otherwise
 // read as a bogus 100% rate — so it carries no savings figure and is
-// excluded from the summary mean (C4, t1968 sync-audit iter6).
+// excluded from the summary mean (C4, t1968 sync-audit iter6). A case with
+// NO run result is the same class of non-comparison: its row is marked
+// missing and excluded from the mean (L3, t1968 leader audit) — the
+// baseline-diff layer additionally FAILs it ("no run result for this case").
 func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 	runByID := make(map[string]CaseRun, len(runs))
 	for _, r := range runs {
@@ -112,11 +122,15 @@ func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 	sum := 0.0
 	comparable := 0
 	for _, c := range cases {
-		run := runByID[c.ID]
+		run, has := runByID[c.ID]
 		snapTokens := fetchweb.DocTokens(fetchweb.SplitBlocks(c.PageSnapshot))
-		failed := run.Status == string(fetchweb.StatusFetchError)
+		// A missing run result is a failed comparison, not a perfect one:
+		// the zero CaseRun's empty status is not fetch_error and its zero
+		// output tokens would read as a bogus 100% savings (L3).
+		failed := !has || run.Status == string(fetchweb.StatusFetchError)
 		cc := CaseComparison{
 			CaseID:         c.ID,
+			Missing:        !has,
 			Contained:      c.ExpectedQuote != "" && strings.Contains(run.Output, c.ExpectedQuote),
 			OutputTokens:   run.OutputTokens,
 			SnapshotTokens: snapTokens,

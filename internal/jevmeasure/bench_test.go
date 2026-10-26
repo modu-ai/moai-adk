@@ -291,3 +291,57 @@ func TestBaselineDiff_FetchErrorRunFailsAndExcludedFromSavings(t *testing.T) {
 			report.Summary.MeanSavingsRate, byCase["install-req"].SavingsRate)
 	}
 }
+
+// L3 (t1968 leader audit): a case with NO run result must not aggregate as
+// a perfect run. The run map lookup yielded a zero CaseRun whose empty
+// status is not fetch_error, so the row computed SavingsRate=1 (100%
+// savings from zero output tokens) and pulled the summary mean up. A
+// missing run is a comparison failure, not a 100%-savings success
+// (C4/iter6 semantics: absent = not comparable, never silent 100%): the row
+// names the case missing, carries no savings figure, and the overall
+// verdict FAILs it per the existing compare contract.
+func TestCompareRun_MissingRunExcludedFromSavings(t *testing.T) {
+	dir := t.TempDir()
+	baselinePath := filepath.Join(dir, "baseline.json")
+	cases := benchCases()
+	runs := RunBench(context.Background(), cases, stubBenchAsker{marker: "You need Go"})
+	if _, err := WriteBaseline(baselinePath, cases, runs); err != nil {
+		t.Fatal(err)
+	}
+	// A run file that carries only install-req: absent-quote has no result.
+	partial := runs[:0:0]
+	for _, r := range runs {
+		if r.CaseID == "install-req" {
+			partial = append(partial, r)
+		}
+	}
+	report := CompareRun(cases, partial)
+	byID := map[string]CaseComparison{}
+	for _, c := range report.Cases {
+		byID[c.CaseID] = c
+	}
+	if !byID["absent-quote"].Missing {
+		t.Error("the case with no run result must be NAMED missing in its row")
+	}
+	if got := byID["absent-quote"].SavingsRate; got != 0 {
+		t.Errorf("a case with no run result must carry no savings figure, got %v (bogus 100%% from zero output tokens)", got)
+	}
+	present := byID["install-req"]
+	if present.Missing {
+		t.Error("the case with a run result must not read as missing")
+	}
+	if report.Summary.MeanSavingsRate != present.SavingsRate {
+		t.Errorf("the mean must exclude the missing case (want exactly install-req's %v), got %v",
+			present.SavingsRate, report.Summary.MeanSavingsRate)
+	}
+	// The overall verdict: the existing compare contract FAILs a missing run.
+	diff, err := DiffAgainstBaseline(baselinePath, cases, partial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range diff.Cases {
+		if c.CaseID == "absent-quote" && c.Pass {
+			t.Error("a missing run must FAIL the overall compare per the existing contract")
+		}
+	}
+}

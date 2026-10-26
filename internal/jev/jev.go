@@ -298,10 +298,17 @@ type Result struct {
 func (r Result) OK() bool { return r.Availability == Available }
 
 // NoticeLine renders the at-most-one notice line a consumer may emit
-// (REQ-JEVC-007). It returns the change notice when one is set, then the
-// cache staleness warning, then the unavailability condition. An available
-// result with neither notice nor warning returns empty.
+// (REQ-JEVC-007). When the change notice and the cache staleness warning
+// are BOTH set — a stale cache serve on a client whose notice has not fired
+// — the two facts ride the one line together; the one-line budget must not
+// silently drop the staleness warning (L2, t1968 leader audit). Otherwise
+// it returns the change notice when one is set, then the cache staleness
+// warning, then the unavailability condition. An available result with
+// neither notice nor warning returns empty.
 func (r Result) NoticeLine() string {
+	if r.Notice != "" && r.StaleCacheWarning != "" {
+		return r.Notice + " " + r.StaleCacheWarning
+	}
 	if r.Notice != "" {
 		return r.Notice
 	}
@@ -551,6 +558,40 @@ func fromWire(questions []Question, answers map[string]wireAnswer, model string)
 	return out
 }
 
+// answersInRequestOrder reassembles cached answers into the CURRENT
+// request's question order (L1, t1968 leader audit): the wire questions
+// travel as a MAP, so two requests differing only in question order marshal
+// to one body and share one cache key — a hit that positionally reused the
+// stored slice would answer the asking request in the STORING request's
+// order. Matching is by question IDENTITY from the cached entry, never by
+// position; answers for ids the request did not carry follow, sorted by id,
+// matching fromWire's deterministic tail.
+func answersInRequestOrder(questions []Question, answers []Answer) []Answer {
+	byID := make(map[string]Answer, len(answers))
+	for _, a := range answers {
+		byID[a.QuestionID] = a
+	}
+	out := make([]Answer, 0, len(answers))
+	used := make(map[string]bool, len(questions))
+	for _, q := range questions {
+		if a, ok := byID[q.ID]; ok {
+			out = append(out, a)
+			used[q.ID] = true
+		}
+	}
+	extra := make([]string, 0)
+	for _, a := range answers {
+		if !used[a.QuestionID] {
+			extra = append(extra, a.QuestionID)
+		}
+	}
+	sort.Strings(extra)
+	for _, id := range extra {
+		out = append(out, byID[id])
+	}
+	return out
+}
+
 // answersComplete reports whether every requested question id carries an
 // answer (N1, t1968 sync-audit iter6). An OK response that answered only
 // part of the request is a transient endpoint fault, not a verdict — it is
@@ -639,6 +680,11 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 			// the network for a complete answer.
 			if entry, hit, stale, _ := c.cacheLookup(sha, keyModel, aliasResolved); hit && answersComplete(req.Questions, entry.Answers) {
 				served := serveCacheHit(entry, stale)
+				// L1 (t1968 leader audit): the hit must answer in the CURRENT
+				// request's question order — the stored slice carries the
+				// storing request's order, and the wire's question MAP makes
+				// the two requests share this one key.
+				served.Answers = answersInRequestOrder(req.Questions, served.Answers)
 				// N2: the change notice applies to cache serves too, against
 				// the ENTRY's model — consumers of a served answer learn the
 				// model-versus-verified divergence the same way the network
