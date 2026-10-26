@@ -94,6 +94,12 @@ var moaiMCPTools = []ToolDef{
 	// workflow.jev.enabled — the shipped default is false, and while the
 	// chain's fitness gate stands unrun no surface may present it as available.
 	{Name: "jev_ask", WriteCapable: false},
+	// fetch_web (SPEC-FETCH-WEB-001 REQ-FW-009): the verbatim-excerpt web
+	// reader over the same pipeline the `moai fetch web` CLI command runs.
+	// Read-only with respect to project state (it fetches a page and scores
+	// it; it writes nothing), but deliberately NOT on the gate-session
+	// read-only subset: a gate session performs no network reads.
+	{Name: "fetch_web", WriteCapable: false},
 	// Factory card + queue tools (SPEC-FACTORY-SELF-DISPATCH-001
 	// REQ-SD-014): the MCP forms of `moai factory next/stage/complete/decide`
 	// and `moai todo add/list`, each the same implementation its CLI

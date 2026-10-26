@@ -1089,8 +1089,8 @@ func TestSelfReview_CatalogueAndGuideCarryTheNewRows(t *testing.T) {
 				t.Errorf("%s does not name `%s` in the project_root inventory", p, tool)
 			}
 		}
-		if !strings.Contains(body, "Four of the thirty-two") {
-			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Four of the thirty-two\")", p)
+		if !strings.Contains(body, "Four of the thirty-three") {
+			t.Errorf("%s still carries the stale REQUIRE-count sentence (want \"Four of the thirty-three\")", p)
 		}
 	}
 }
