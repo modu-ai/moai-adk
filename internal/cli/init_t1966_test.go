@@ -596,6 +596,12 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		matrixRow{"Y04", "user:\n  name: |\n    Alice\nother:\n  null_value:\n", "clear"},
 		matrixRow{"Y05", "user: {name: \"\\x41lice\", github_username: keep}\u0085... # gone\n# after\n", "refuse"},
 		matrixRow{"Y06", "user: {name: \"\\x41lice\", github_username: keep}\n... # gone\n# after\n", "refuse"},
+		// Iteration-10 rows (lone CR before a `...` marker; W36 is the control
+		// without a marker). Inputs copied from the auditor's probe file.
+		matrixRow{"W01", "user: {name: \"\\x41lice\"}\r... # end\r# after\n", "refuse"},
+		matrixRow{"W03", "user:\r  name: |\r    Alice\r... # end\r# after\r", "refuse"},
+		matrixRow{"W35", "user:\n  name: |\n    Alice\r... # end\n# after\n", "refuse"},
+		matrixRow{"W36", "user:\n  name: |\n    Alice\r# cr comment\n  gh: k\n", "refuse"},
 		matrixRow{"Y07", "user:\n  name: Alice\u0085... # c\n", "refuse"},
 		matrixRow{"Y08", "user: {name: \"\\x41lice\", github_username: keep}\u2028... # gone\n# after\n", "refuse"},
 	)
@@ -681,6 +687,29 @@ func TestClearProjectUserName_VerificationRefusalLeavesNoTempFile(t *testing.T) 
 	}
 	if got, _ := os.ReadFile(path); string(got) != content {
 		t.Errorf("original modified:\n%s", got)
+	}
+	entries, _ := os.ReadDir(filepath.Dir(path))
+	if len(entries) != 1 || entries[0].Name() != "user.yaml" {
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("directory listing = %v, want only user.yaml", names)
+	}
+}
+
+// F18 (FS07): the file changed after the bytes were read for the verification.
+// The stale copy must not be renamed over the concurrent update.
+func TestPatchUserNameVerified_StaleBeforeDoesNotOverwrite(t *testing.T) {
+	path := clearUserNameFixture(t, "user:\n  name: Alice\n  gh: concurrent-update\n")
+	const stale = "user:\n  name: Alice\n  gh: keep\n"
+	err := patchUserNameVerified(path, []byte(stale))
+	if err == nil || !strings.Contains(err.Error(), "changed during the edit") {
+		t.Errorf("err = %v, want the changed-during-the-edit error", err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "user:\n  name: Alice\n  gh: concurrent-update\n" {
+		t.Errorf("concurrent update was overwritten or touched:\n%s", got)
 	}
 	entries, _ := os.ReadDir(filepath.Dir(path))
 	if len(entries) != 1 || entries[0].Name() != "user.yaml" {

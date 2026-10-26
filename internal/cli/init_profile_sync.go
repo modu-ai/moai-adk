@@ -73,7 +73,10 @@ func userNameEditSafety(data []byte) (parsed, safe bool) {
 	// after one is a document end the line-start pattern below cannot see, and the
 	// comments after it are invisible to the node-level equivalence check (audit
 	// F16). Such a file is refused outright.
-	if bytes.ContainsAny(data, "\u0085\u2028\u2029") || docEndMarker.Match(data) {
+	// A lone CR (not part of a CRLF pair) is a line break too and slips the
+	// line-start pattern (audit F17).
+	loneCR := bytes.Contains(bytes.ReplaceAll(data, []byte("\r\n"), nil), []byte("\r"))
+	if bytes.ContainsAny(data, "\u0085\u2028\u2029") || loneCR || docEndMarker.Match(data) {
 		// A `...` marker: the re-encode path drops the comments after it.
 		return true, false
 	}
@@ -212,6 +215,13 @@ func patchUserNameVerified(userPath string, before []byte) error {
 	}
 	if !clearIsEquivalent(before, after) {
 		return clearRefusal(userPath)
+	}
+	// Re-read right before the rename: if another writer changed the file since
+	// `before` was read, renaming the verified copy would revert that change.
+	// This narrows the window but cannot eliminate it - the other user.yaml
+	// writers take no lock this code could share.
+	if current, err := os.ReadFile(userPath); err != nil || !bytes.Equal(current, before) {
+		return fmt.Errorf("clear user name: %s changed during the edit; nothing was written, retry", userPath)
 	}
 	if err := os.Rename(tmpPath, userPath); err != nil {
 		return fmt.Errorf("clear user name: %w", err)
