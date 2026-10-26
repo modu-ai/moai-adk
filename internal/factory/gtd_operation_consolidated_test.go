@@ -60,6 +60,15 @@ func gtdFactoryDump(t *testing.T, root string) string {
 // current-dispatch record still names run-src and the item is picked.
 func gtdConsolidatedFixture(t *testing.T) (string, *BacklogStore, string) {
 	t.Helper()
+	return gtdConsolidatedFixtureWith(t, true)
+}
+
+// gtdConsolidatedFixtureWith is the same state with or without the queue half
+// of the in-flight dispatch: queueHalf=false is a dispatch that was prepared
+// before the consolidation but never recorded its assignment, so the queue holds
+// no current-dispatch record for the card.
+func gtdConsolidatedFixtureWith(t *testing.T, queueHalf bool) (string, *BacklogStore, string) {
+	t.Helper()
 	root, s, card := gtdReconcileFixture(t)
 	ctx := context.Background()
 	db, err := homestate.OpenFactory(root)
@@ -73,7 +82,9 @@ func gtdConsolidatedFixture(t *testing.T) (string, *BacklogStore, string) {
 	}
 	_ = db.Close()
 	gtdPlaceRow(t, root, card, "run-src")
-	gtdAssignWithSeveredFactoryHalf(t, s, "run-src", card, "worker-1") // the queue half of the in-flight dispatch
+	if queueHalf {
+		gtdAssignWithSeveredFactoryHalf(t, s, "run-src", card, "worker-1") // the queue half of the in-flight dispatch
+	}
 	db, err = homestate.OpenFactory(root)
 	if err != nil {
 		t.Fatal(err)
@@ -105,8 +116,12 @@ func gtdConsolidatedFixture(t *testing.T) (string, *BacklogStore, string) {
 	if got := gtdBindingRun(t, root, card); got != "run-tgt" {
 		t.Fatalf("fixture: binding = %q, want run-tgt", got)
 	}
-	if cur, ok := gtdCurrentDispatchRun(t, s, card); !ok || cur != "run-src" {
+	cur, ok := gtdCurrentDispatchRun(t, s, card)
+	if queueHalf && (!ok || cur != "run-src") {
 		t.Fatalf("fixture: queue current dispatch = (%q, %v), want run-src", cur, ok)
+	}
+	if !queueHalf && ok {
+		t.Fatalf("fixture: queue current dispatch = %q, want none", cur)
 	}
 	return root, s, card
 }
@@ -175,5 +190,43 @@ func TestRepairGTDDispatchStillRepairsAnOrdinarilyRetiredRun(t *testing.T) {
 	err = repairGTDDispatchRecord(ctx, s, gtdFactoryDBForStore(s), card, "run-plain")
 	if errors.Is(err, homestate.ErrRunRetiredByConsolidation) {
 		t.Fatalf("an ordinary retirement was treated as a consolidation: %v", err)
+	}
+}
+
+// REQ-FCR-024, the ORIGINAL dispatch first-write path (codex review P1 on
+// 8b10f67066): a dispatch prepared before a consolidation whose assignment had
+// not yet been recorded, retried after it, runs RecordFactoryCardAssignment — the
+// real Apply path — whose factory hook writes the dispatch binding. Aimed at the
+// run the consolidation retired it would flip the card's binding to a run that
+// holds no row for it, so the completion gate's row resolution fails closed.
+// The refusal sits at the storage layer; the hook's failure rolls the queue's
+// assignment back with it.
+func TestDispatchFirstWriteRefusesAConsolidatedSource(t *testing.T) {
+	root, s, card := gtdConsolidatedFixtureWith(t, false)
+	before := gtdFactoryDump(t, root)
+
+	err := RecordFactoryCardAssignment(root, "run-src", card, "worker-1", "")
+	if err == nil {
+		t.Fatalf("the first-write path bound the card to a run a consolidation retired: binding=%q, row in run-src=%v",
+			gtdBindingRun(t, root, card), gtdRowExists(t, root, "run-src", card))
+	}
+	if !errors.Is(err, homestate.ErrRunRetiredByConsolidation) {
+		t.Fatalf("err = %v, want a typed refusal wrapping homestate.ErrRunRetiredByConsolidation", err)
+	}
+	if after := gtdFactoryDump(t, root); after != before {
+		t.Fatalf("factory DB changed although the write was refused:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	// The queue's assignment rolled back with the failed hook.
+	record, lerr := s.LoadPure()
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	for _, a := range record.Runtime.Assignments {
+		if a.CardID == card && a.RunID == "run-src" {
+			t.Fatalf("the queue kept an assignment for the retired run: %+v", a)
+		}
+	}
+	if cur, ok := gtdCurrentDispatchRun(t, s, card); ok {
+		t.Fatalf("the queue's current dispatch = %q after the refused write, want none", cur)
 	}
 }

@@ -160,6 +160,13 @@ func recordPickedTx(ctx context.Context, tx *sql.Tx, runID, cardID string, field
 	nowText := now.Format(time.RFC3339Nano)
 	cur, err := loadCard(ctx, tx, runID, cardID)
 	if errors.Is(err, ErrCardNotFound) {
+		// Creating a row is the write a consolidation-retired run must not take
+		// again: its cards live in the surviving run, and a row recreated here is a
+		// non-terminal row in a run that can never be retired (REQ-FCR-024). The
+		// check runs in this write's own transaction, so it covers every writer.
+		if err := refuseIfRetiredByConsolidation(ctx, tx, runID); err != nil {
+			return Card{}, err
+		}
 		c := Card{RunID: runID, CardID: cardID, State: CardPicked, Version: 1, UpdatedAt: nowText}
 		fields.apply(&c)
 		// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.

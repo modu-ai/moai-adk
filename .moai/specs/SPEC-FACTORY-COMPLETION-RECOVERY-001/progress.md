@@ -93,6 +93,8 @@ m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a
 
 사후 개정 v0.3.6 원자성 메모 (추가): REQ-FCR-024의 원자성 절(은퇴 표지 확인과 모든 복구 쓰기를 하나의 factory 쓰기 트랜잭션에)은 `homestate.RepairDispatchAtomic`(`internal/homestate/factory_dispatch_repair.go`)으로 구현됐고 `repairGTDDispatchRecord`가 큐 잠금 판정 뒤 그것을 호출한다 — 별도 사전 확인은 제거했다. 판정 시험 `TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair`(`internal/factory`, AC-FCR-017 (10b), 장부 L9)는 확인과 첫 쓰기 사이 시임에 실제 `RebindRun`을 주입한다: 한 트랜잭션에서는 통합이 복구의 쓰기 잠금 뒤에서 기다렸다가 복구 커밋 뒤에 카드를 살아남은 run으로 옮기고, 변이 (j) "확인을 트랜잭션 밖에서"는 은퇴한 원천에 행·바인딩이 다시 만들어져 실패한다. 단위 시험: `TestRepairDispatchAtomic*`(전부 또는 전무 롤백, 유효 lease 거부·소유자 재각인 의미 유지). 증거는 `.moai/reports/t1963/run-evidence.md`의 "Atomic repair" 절.
 
+사후 개정 요구 범위 메모 (추가, REQ-FCR-024): codex 리뷰(8b10f67066 기준)의 P1 — 거부가 `repairGTDDispatchRecord`에만 있고 원래 dispatch 첫 쓰기 경로(`RecordFactoryCardAssignment`→`RecordDispatchEngagementIfEngaged`, cli 미러 `writeFactoryAssignment`)는 막히지 않았다 — 는 재현됐다(장부 L10: 통합된 원천으로 간 첫 쓰기가 바인딩을 은퇴한 run으로 돌리고, 미러는 그 run에 행을 다시 만든다). 저장소 계층에서 닫았다: `recordPickedTx`의 행 생성 분기와 `upsertDispatchBindingTx`가 같은 트랜잭션 안에서 같은 표지 술어로 `ErrRunRetiredByConsolidation`을 낸다. 이는 REQ-FCR-024의 문구("복구/재시도 경로")보다 넓다 — 모든 행 생성·바인딩 쓰기가 대상이므로 요구의 범위 문장을 manager-spec이 넓혀야 한다. 시험: `TestDispatchFirstWriteRefusesAConsolidatedSource`(`internal/factory`), `TestDispatchMirrorRefusesAConsolidatedSource`(`internal/cli`), `TestStorageWritesRefuseAConsolidatedSource`·`TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone`(`internal/homestate`).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ### PARTIAL close — M2-B only (card t1963, 2026-10-26)
