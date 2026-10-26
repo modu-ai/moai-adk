@@ -191,6 +191,19 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 - 정규화 규칙(테스트가 이 순서로 적용하는 정규식 전부. 이 밖의 치환은 없다):
   - 프로젝트 임시 경로: 테스트가 만든 `t.TempDir()` 절대 경로 문자열 → `<ROOT>` (정규식이 아닌 고정 문자열 치환)
   - 백업 디렉터리 시각: `\b\d{8}_\d{6}\b` → `<TS>` (배치 형식 `20060102_150405`, `internal/cli/update/backup/retention_realdata_test.go:53`)
+  - 훅 백업 파일 시각: `\b\d{8}T\d{6}Z\b` → `<TS>` (훅 백업 형식 `20060102T150405Z`, `internal/cli/hook_install_shared.go:176` `now.UTC().Format("20060102T150405Z")`. `update_warn` stderr 의 `hook_install.go:268` 경고 줄이 담는 백업 경로 `pre-push.bak.<시각>` 을 지운다. 바로 위 밑줄 형식 규칙은 이 형식을 잡지 못한다 — 6회차 감사 N-A, 결정 기록 §15.104)
+    - 사실 칸(트리 `9f7ae0b16f`): 명령 `python3 -I <스크래치>/ts_probe.py` — 이 정규식을 일부러 만든 다섯 줄(양성 2: 백업 시각, 같은 시각 뒤 `.1` 형제 접미사 / 음성 3: 시각 없음, 9자리 날짜, 7자리 날짜)에 적용. 종료 코드 0. stdout 그대로:
+
+      ```text
+      pos changed previous hook backed up at <ROOT>/.git/hooks/pre-push.bak.<TS>
+      pos-suffix changed previous hook backed up at <ROOT>/.git/hooks/pre-push.bak.<TS>.1
+      neg-none unchanged user-modified pre-push hook was replaced
+      neg-9digit unchanged pre-push.bak.202601011T120000Z
+      neg-7digit unchanged pre-push.bak.2026010T120000Z
+      ```
+
+      확인 도구는 Python `re` 이다. 이 정규식이 쓰는 `\b`·`\d`·`{n}` 은 ASCII 입력에서 Go RE2 와 같은 뜻이지만, Go 로 같은 확인을 돌리지는 않았다 — M0 의 `update_warn` 녹색이 그 확인이다.
+    - 뮤턴트: 이 치환 없이 찍은 `update_warn` stderr 골든 → 다음 실행(O4b 의 M0 트리 재실행 포함)에서 백업 시각이 바뀌어 골든 불일치로 빨강.
   - 버전: `\bv\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?\b` → `<VER>`
   - Go 런타임: `\bgo1\.\d+(\.\d+)?\b` → `<GO>` (update 정체성 띠의 `runtime.Version()`, `internal/cli/update_tux.go:80`)
   - 경과 시간: `\b\d+(\.\d+)?(ms|s)\b` → `<DUR>`
