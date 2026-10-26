@@ -190,6 +190,10 @@ func rbBase(t *testing.T) (*FactoryDB, ReconcileOptions) {
 	rbBind(t, db, "c1", "run-old")
 	rbBind(t, db, "c2", "run-old")
 	rbBind(t, db, "c4", "run-old")
+	// The terminal c5 stays in the retired source run, so its binding must keep
+	// naming that run (REQ-FCR-020 (5), SPEC v0.3.3): repointing it would leave a
+	// binding whose target run holds no row for the card.
+	rbBind(t, db, "c5", "run-old")
 	rbApproval(t, db, "uuid-c1", "run-old", "c1")
 	return db, rbOpts()
 }
@@ -279,11 +283,22 @@ func TestRebindMovesAbandonsAndRetires(t *testing.T) {
 	if n := rbCount(t, db, `SELECT count(*) FROM events`); n < eventsBefore {
 		t.Errorf("events rows shrank: %d < %d", n, eventsBefore)
 	}
-	// Every binding that named the source — the abandoned card's too (debt R10).
+	// Every binding of a card the operation moved — re-keyed or abandoned with a
+	// pointer (debt R10) — follows it to the target run.
 	for _, id := range []string{"c1", "c2", "c4"} {
 		if got := rbBound(t, db, id); got != "run-new" {
 			t.Errorf("card_dispatch[%s] = %s, want run-new", id, got)
 		}
+	}
+	// The terminal c5 stayed in the retired source run: its binding is
+	// UNCHANGED and still resolves to that run's row. Repointing every binding
+	// that named the source would send it to a run holding no row for c5, and
+	// the completion gate's row resolution would fail closed (SPEC v0.3.3).
+	if got := rbBound(t, db, "c5"); got != "run-old" {
+		t.Errorf("card_dispatch[c5] = %s, want it unchanged at run-old", got)
+	}
+	if row, linked, err := recordedCardRow(context.Background(), db.DB, "c5"); err != nil || !linked || row.RunID != "run-old" || row.State != CardDone {
+		t.Errorf("recordedCardRow(c5) = (%+v, linked=%v, err=%v), want the run-old done row", row, linked, err)
 	}
 	if got := runStatus(t, db, "run-old"); got != "retired" {
 		t.Errorf("source status = %s, want retired", got)

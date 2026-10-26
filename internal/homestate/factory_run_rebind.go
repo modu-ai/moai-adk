@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -83,7 +84,8 @@ type consolidationCard struct {
 //	    non-terminal source card to the target, or — when the target already
 //	    holds the card — moves the source row to abandoned with a
 //	    card.rebound pointer event,
-//	(5) repoints every card_dispatch binding that names the source,
+//	(5) repoints the card_dispatch binding of each card step 4 moved (re-keyed or
+//	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
 //
 // Any refusal and any failure rolls everything back. No row is deleted, and
@@ -182,9 +184,16 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	if err := rebindInject(rebindPointAfterCards); err != nil {
 		return RebindResult{}, err
 	}
-	// Step 5 — every binding that names the source, the abandoned cards' too.
-	if _, err := tx.ExecContext(ctx, `UPDATE card_dispatch SET run_id=?, recorded_at=? WHERE run_id=?`, tgt.RunID, nowText, src.RunID); err != nil {
-		return RebindResult{}, err
+	// Step 5 — the binding of every card step 4 moved, re-keyed or abandoned with
+	// a pointer. A card that stays behind in the retired source (a terminal one)
+	// keeps its binding: its row still lives in the source run, and a binding
+	// sent to the target would name a run holding no row for it, which the
+	// completion gate's row resolution reports as unresolvable (fails closed).
+	// One parameterised UPDATE per card id, scoped to bindings that name the source.
+	for _, id := range slices.Concat(res.Moved, res.Abandoned) {
+		if _, err := tx.ExecContext(ctx, `UPDATE card_dispatch SET run_id=?, recorded_at=? WHERE card_id=? AND run_id=?`, tgt.RunID, nowText, id, src.RunID); err != nil {
+			return RebindResult{}, err
+		}
 	}
 	// Step 6 — flip the source under the classified stamp, then record why.
 	flip, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,

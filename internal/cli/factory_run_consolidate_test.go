@@ -142,6 +142,7 @@ func TestLeaderStartConsolidatesDeadOwnerRuns(t *testing.T) {
 	lcBind(t, db, "c1", "run-old")
 	lcBind(t, db, "c2", "run-old")
 	lcBind(t, db, "c4", "run-old") // the abandoned card's binding follows too (debt R10)
+	lcBind(t, db, "c5", "run-old") // the terminal card stays in run-old: its binding must not move (v0.3.3)
 	if _, err := db.DB.Exec(`INSERT INTO leader_approvals(card_uuid,run_id,card_id,factory_version,evidence_hash,issuer,issuer_role,issued_at) VALUES('uuid-c1','run-old','c1',3,'hash','leader','leader','2026-10-14T00:00:00Z')`); err != nil {
 		t.Fatal(err)
 	}
@@ -233,11 +234,22 @@ func TestLeaderStartConsolidatesDeadOwnerRuns(t *testing.T) {
 	if n := lcInt(t, root, `SELECT count(*) FROM events`); n < eventsBefore {
 		t.Errorf("events rows shrank: %d < %d", n, eventsBefore)
 	}
-	// (6) every binding that named run-old now names run-new.
+	// (6) every binding of a MOVED card (re-keyed or abandoned with a pointer)
+	// now names run-new; the terminal c5 stayed in run-old, so its binding is
+	// unchanged and still resolves to that run's row (SPEC v0.3.3).
 	for _, id := range []string{"c1", "c2", "c4"} {
 		if got := lcQuery(t, root, `SELECT run_id FROM card_dispatch WHERE card_id=?`, id); got != "run-new" {
 			t.Errorf("card_dispatch[%s] = %s, want run-new", id, got)
 		}
+	}
+	if got := lcQuery(t, root, `SELECT run_id FROM card_dispatch WHERE card_id='c5'`); got != "run-old" {
+		t.Errorf("card_dispatch[c5] = %s, want it unchanged at run-old", got)
+	}
+	verifyDB := openAdoptFactory(t, root)
+	c5Row, c5Linked, c5Err := verifyDB.RecordedCardRowReadonly(context.Background(), "c5")
+	_ = verifyDB.Close()
+	if c5Err != nil || !c5Linked || c5Row.RunID != "run-old" || c5Row.State != "done" {
+		t.Errorf("recorded row of c5 = (%+v, linked=%v, err=%v), want the run-old done row with no error", c5Row, c5Linked, c5Err)
 	}
 	// (7) the run resolves: one active run, no AMBIGUOUS_FACTORY.
 	resolved, rerr := factorymsg.ResolveActiveRun(context.Background(), root, "")
