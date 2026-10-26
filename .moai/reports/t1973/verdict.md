@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: c7d2523a2e8a4d98aaf4c3f43bcccad74c581fb0
+audited_sha: 0b03ab21413d913ab3c4d421bb59fbe96d0a35d2
 
 # t1973 — lane completion verdict (Class B, reproduce-first)
 
@@ -85,3 +85,11 @@ The both-empty evidence refusal now applies ONLY when the SOURCE row is in a lea
 ### Gaps (round 3)
 
 - The load-gated full `internal/cli` run had not completed at verdict-write time (machine load above the entry gate); its verdict lands as a follow-up observation, and origin/main CI is the authoritative full-suite verdict after the leader merges the PR.
+
+## Rebinding note 2 (2026-10-27) — audited_sha rebound to eef35b5abe
+
+audited_sha rebound again to `eef35b5abefac01efa03292507e5862d3258d301` per the leader's direct read (the previous binding c7d2523a2e predated the round-2b repair). The independent sync-audit Round-5 (sync-audit-verdict.md, PASS, gate leg rcpt-d0fbe175c2272a995bba07d6) audits exactly this commit; the delta between c7d2523a2e and eef35b5abe is this file's own rebinding notes only (.moai/reports/t1973/ scope).
+
+## Rebinding note 3 (2026-10-27) — audited_sha rebound to 0b03ab2141
+
+audited_sha rebound to `0b03ab21413d913ab3c4d421bb59fbe96d0a35d2` (the structural whole-row gate commit). The independent sync-audit Round-7 (sync-audit-verdict.md, PASS, gate leg rcpt-5f54398825fb644b32c99e05, delta_base 148f049343) audits exactly this commit; the delta between eef35b5abe and 0b03ab2141 is this file's own rebinding notes plus the round-2b repair commits the rounds cover (.moai/reports/t1973/ scope for the rebinding notes; the repair commits are the audited content itself).
