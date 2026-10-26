@@ -190,7 +190,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 07fc4b93f3, M2 fe227a31c1
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: complete-pending-audit
+sync_status: complete   # 3-phase close; sync audit iteration 3 PASS-WITH-DEBT 0.89 @5418ffa31ab3 (receipt rcpt-dc38b1a966aa78915098cf7d)
 sync_complete_at: 2026-10-27
 sync_commit_sha: d4eff5d8a31619abd4f83fe1d22d05be9f828905   # the single sync commit; backfilled by the lane in the next commit (a commit cannot cite its own hash)
 sync_scope: auto                    # sync-coverage-scope-contract.md
@@ -209,7 +209,7 @@ frontmatter_status_transitions:
 canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
 mx_validation: not-run   # sync sub-step not exercised here; the run phase recorded @MX:ANCHOR on Recorder.Append and @MX:WARN on the Unix openLedger (E.2)
 lane_run_evidence_not_reobserved_by_sync: "at ef620b8f8d the lane re-ran go test ./internal/jevledger/ ./internal/config/ -count=1 (ok), go vet and GOOS=windows go vet on both (exit 0), gofmt -l (empty)"
-sync_audit_iterations: "iteration 1 .moai/reports/t1762/sync-audit-iter1.md (5a3579e310, FAIL 0.73); iteration 2 .moai/reports/t1762/sync-audit-verdict.md (6df6a76d7e2cb57d3bde0692faea99fd7648f88e, PASS-WITH-DEBT 0.88, receipt rcpt-73f00376213086df4f2c9936)"
+sync_audit_iterations: "iteration 1 .moai/reports/t1762/sync-audit-iter1.md (5a3579e310, FAIL 0.73); iteration 2 .moai/reports/t1762/sync-audit-verdict.md (6df6a76d7e2cb57d3bde0692faea99fd7648f88e, PASS-WITH-DEBT 0.88, receipt rcpt-73f00376213086df4f2c9936); iteration 3 .moai/reports/t1762/sync-audit-verdict-iter3.md (5418ffa31ab344a4c8cd3ce8cd461b0496708f24, PASS-WITH-DEBT 0.89, receipt rcpt-dc38b1a966aa78915098cf7d)"
 sync_audit_debts_remaining: "run-phase D1-D7 accepted by the leader as run debts for a follow-up card; sync-phase D8-D10 disposed by this edit (D8 line anchors and wording re-measured below, D10 trailing attribution removed from the CHANGELOG entry)"
 ```
 
