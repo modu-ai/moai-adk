@@ -175,10 +175,14 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		// child, so the walk emitted nothing — and listItemSkip excludes its
 		// text from the enclosing item — the content was lost from the
 		// document entirely. When the aside's walk yields no separate block,
-		// emit its collapsed text as one aside-scored block (the same
-		// exclusion-plus-fallback family as C2/N4), never dropped.
+		// emit its collapsed NON-HEADING text as one aside-scored block (the
+		// same exclusion-plus-fallback family as C2/N4), never dropped. F7c
+		// (t1968 sync-audit iter4): the extraction skips heading subtrees —
+		// a heading is structure, not content — and a heading-only remainder
+		// collapses to the empty string, so the guard below emits nothing and
+		// a heading-only aside stays block-free as it was before F7b.
 		if len(*s.blocks) == before {
-			if text := collapseText(n, nil); text != "" {
+			if text := collapseText(n, asideFallbackSkip); text != "" {
 				s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
 			}
 		}
@@ -374,6 +378,20 @@ var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table":
 // code block whose interior whitespace IS the code's formatting — the row's
 // whitespace collapse would destroy it.
 var cellSkip = map[string]bool{"pre": true}
+
+// asideFallbackSkip excludes heading subtrees from the F7b aside fallback's
+// text extraction (F7c, t1968 sync-audit iter4): a heading's text is
+// structure — it joined the aside-local path during the walk, exactly as a
+// body-level heading does — not paragraph content. Without the skip, a
+// heading-only aside manufactured a scored paragraph from pure structure
+// (`<aside><h2>Note title</h2></aside>` → paragraph "Note title"), and a
+// heading+body aside merged the heading's words into the body text
+// ("Side note body" where the p-wrapped control emits "note body"). The
+// skipped heading leaves a boundary separator, so a heading-only remainder
+// collapses to the empty string and the fallback's guard emits no block.
+var asideFallbackSkip = map[string]bool{
+	"h1": true, "h2": true, "h3": true, "h4": true, "h5": true, "h6": true,
+}
 
 // preText extracts a code block's text preserving line structure. Only the
 // surrounding blank lines are trimmed; interior whitespace — including the

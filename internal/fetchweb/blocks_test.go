@@ -511,6 +511,42 @@ func TestSplitBlocks_BareTextAsideTopLevelEmitted(t *testing.T) {
 	}
 }
 
+// F7c (t1968 sync-audit iter4): the F7b fallback's collapseText(n, nil)
+// included HEADING text, so an aside whose only child is a heading — which
+// emits nothing at body level and emitted nothing at the base commit, before
+// the fallback existed — manufactured a scored paragraph from pure structure
+// (auditor probe: `<aside><h2>Note title</h2></aside>` → paragraph
+// "Note title" aside=true; on a page whose only block this is, status flips
+// empty→passthrough). The fallback extraction now skips heading subtrees; a
+// heading-only remainder collapses to the empty string and the fallback's
+// empty guard emits no block.
+func TestSplitBlocks_HeadingOnlyAsideEmitsNothing(t *testing.T) {
+	html := `<body><aside><h2>Note title</h2></aside></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 0 {
+		t.Fatalf("want 0 blocks, got %d: %+v (a heading is structure, not a scored paragraph)", len(blocks), blocks)
+	}
+}
+
+// F7c control (same finding): the heading's text merged into the fallback
+// paragraph ("Side note body") where the p-wrapped control emits only the
+// body's text ("note body"). The extraction now skips heading subtrees, so
+// the fallback carries only the aside's non-heading text runs. The internal
+// heading's path segment is NOT preserved for the bare remainder (residual,
+// documented in the repair report): the fallback runs after the aside-local
+// path is restored, so the block carries [Main] where the p-wrapped control
+// would carry [Main / Side].
+func TestSplitBlocks_AsideFallbackExcludesHeadingText(t *testing.T) {
+	html := `<body><h2>Main</h2><aside><h3>Side</h3>note body</aside></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "note body" || !blocks[0].Aside {
+		t.Fatalf("want exactly one aside paragraph %q, got %d blocks: %+v", "note body", len(blocks), blocks)
+	}
+	if !reflect.DeepEqual(blocks[0].HeadingPath, []string{"Main"}) {
+		t.Errorf("fallback path = %v, want [Main] (restored pre-aside path; internal [Main / Side] is the documented residual)", blocks[0].HeadingPath)
+	}
+}
+
 // F8 (t1968 sync-audit iter2): a <pre> inside a <td> keeps its formatting —
 // the code block is emitted verbatim as its own block (the C2 pattern for
 // pre inside a list item) and the row's text EXCLUDES the pre subtree,
