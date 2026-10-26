@@ -199,7 +199,7 @@ workflow:
 workflow:
     audit:
         codex:
-            model: ""   # 如 gpt-5.6-sol — codex 可提供的模型 id
+            model: ""   # 如 gpt-6.1-terra — codex 可提供的模型 id
             effort: ""  # 如 high — low | medium | high | xhigh | max
         glm:
             model: ""   # 如 glm-5.3

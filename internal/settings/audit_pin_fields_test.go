@@ -77,8 +77,8 @@ func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	}
 
 	codexModel := auditPinField(t, "workflow.audit.codex.model")
-	if codexModel.Type != TypeRadio {
-		t.Errorf("workflow.audit.codex.model: Type = %v, want TypeRadio (t1278 — operator-confirmed closed set)", codexModel.Type)
+	if codexModel.Type != TypeSelect {
+		t.Errorf("workflow.audit.codex.model: Type = %v, want TypeSelect (t1980 — the set grew to 4 ids; the console renders it as a select)", codexModel.Type)
 	}
 	wantCodexModels := append([]string{}, config.ValidCodexAuditModels()...)
 	sort.Strings(wantCodexModels)
@@ -87,6 +87,16 @@ func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	}
 	if codexModel.Section != SectionWorkflow {
 		t.Errorf("workflow.audit.codex.model: Section = %v, want SectionWorkflow", codexModel.Section)
+	}
+	// t1980 — terra joins the closed set; a non-member id stays rejected.
+	if codexModel.Validate == nil {
+		t.Fatal("workflow.audit.codex.model has no validator (closed-set membership)")
+	}
+	if !codexModel.Validate("gpt-6.1-terra") {
+		t.Error("workflow.audit.codex.model validator rejected gpt-6.1-terra (t1980 closed-set member)")
+	}
+	if codexModel.Validate("sentinel-not-a-model") {
+		t.Error("workflow.audit.codex.model validator accepted a non-member id")
 	}
 
 	codexEffort := auditPinField(t, "workflow.audit.codex.effort")
@@ -146,7 +156,7 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	edits := []yamlpatch.KeyEdit{
 		{Path: []string{"workflow", "audit", "claude", "model"}, Value: "claude-opus-5-5"},
 		{Path: []string{"workflow", "audit", "claude", "effort"}, Value: "medium"},
-		{Path: []string{"workflow", "audit", "codex", "model"}, Value: "gpt-6.1-sol"},
+		{Path: []string{"workflow", "audit", "codex", "model"}, Value: "gpt-6.1-terra"},
 		{Path: []string{"workflow", "audit", "codex", "effort"}, Value: "high"},
 		{Path: []string{"workflow", "audit", "glm", "model"}, Value: "glm-5.3"},
 		{Path: []string{"workflow", "audit", "glm", "effort"}, Value: "max"},
@@ -170,8 +180,8 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	if audit.Claude.Model != "claude-opus-5-5" || audit.Claude.Effort != "medium" {
 		t.Errorf("claude pin round-trip: got %+v, want {claude-opus-5-5 medium}", audit.Claude)
 	}
-	if audit.Codex.Model != "gpt-6.1-sol" || audit.Codex.Effort != "high" {
-		t.Errorf("codex pin round-trip: got %+v, want {gpt-6.1-sol high}", audit.Codex)
+	if audit.Codex.Model != "gpt-6.1-terra" || audit.Codex.Effort != "high" {
+		t.Errorf("codex pin round-trip: got %+v, want {gpt-6.1-terra high}", audit.Codex)
 	}
 	if audit.GLM.Model != "glm-5.3" || audit.GLM.Effort != "max" {
 		t.Errorf("glm pin round-trip: got %+v, want {glm-5.3 max}", audit.GLM)
@@ -196,7 +206,7 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	if wrapper.Workflow.Audit.GLM.Model != "" {
 		t.Errorf("cleared glm model = %q, want empty (web save with empty value persists empty strings)", wrapper.Workflow.Audit.GLM.Model)
 	}
-	if wrapper.Workflow.Audit.Codex.Model != "gpt-6.1-sol" {
+	if wrapper.Workflow.Audit.Codex.Model != "gpt-6.1-terra" {
 		t.Errorf("codex pin lost by the glm clear edit: %q", wrapper.Workflow.Audit.Codex.Model)
 	}
 }

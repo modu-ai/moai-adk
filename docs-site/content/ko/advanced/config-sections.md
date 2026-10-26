@@ -205,7 +205,7 @@ workflow:
 workflow:
     audit:
         codex:
-            model: ""   # 예: gpt-5.6-sol — codex가 서빙할 수 있는 모델 id
+            model: ""   # 예: gpt-6.1-terra — codex가 서빙할 수 있는 모델 id
             effort: ""  # 예: high — low | medium | high | xhigh | max
         glm:
             model: ""   # 예: glm-5.3

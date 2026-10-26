@@ -131,6 +131,39 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 	}
 }
 
+// TestValidCodexAuditModelsClosedSet pins the codex audit model closed set
+// (card t1980): the runtime default stays first, terra joins as a selectable
+// member, and the set carries no duplicates — the schema derives its options
+// and validator straight from this accessor, so a duplicate would render twice.
+func TestValidCodexAuditModelsClosedSet(t *testing.T) {
+	got := ValidCodexAuditModels()
+	if len(got) == 0 || got[0] != DefaultCodexAuditModel {
+		t.Errorf("ValidCodexAuditModels() = %v, want the runtime default %q first", got, DefaultCodexAuditModel)
+	}
+	if !containsString(got, "gpt-6.1-terra") {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra as a member (card t1980)", got)
+	}
+	seen := map[string]bool{}
+	for _, id := range got {
+		if seen[id] {
+			t.Errorf("ValidCodexAuditModels() carries duplicate member %q", id)
+		}
+		seen[id] = true
+	}
+	if got[len(got)-1] != "gpt-6.1-terra" {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra appended last (newest id last)", got)
+	}
+}
+
+func containsString(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 // containsLine reports whether the marshaled bytes contain the given key with
 // surrounding whitespace tolerance (yaml.v3 indents nested keys).
 func containsLine(data []byte, key string) bool {

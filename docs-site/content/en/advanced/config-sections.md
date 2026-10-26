@@ -199,7 +199,7 @@ Pins which model and effort the cross-model audit backends (`codex_audit`, `glm_
 workflow:
     audit:
         codex:
-            model: ""   # e.g. gpt-5.6-sol — a codex-servable model id
+            model: ""   # e.g. gpt-6.1-terra — a codex-servable model id
             effort: ""  # e.g. high — low | medium | high | xhigh | max
         glm:
             model: ""   # e.g. glm-5.3

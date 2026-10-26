@@ -199,7 +199,7 @@ workflow:
 workflow:
     audit:
         codex:
-            model: ""   # 例: gpt-5.6-sol — codex が提供できるモデル id
+            model: ""   # 例: gpt-6.1-terra — codex が提供できるモデル id
             effort: ""  # 例: high — low | medium | high | xhigh | max
         glm:
             model: ""   # 例: glm-5.3

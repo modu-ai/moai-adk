@@ -102,6 +102,7 @@ const (
 	CodexModelSol   = DefaultCodexAuditModel
 	CodexModelLuna  = "gpt-6-luna"
 	CodexModelAstra = "gpt-6-astra"
+	CodexModelTerra = "gpt-6.1-terra"
 )
 
 // CodexAgentModel maps a Claude model alias from an agent definition's
@@ -152,11 +153,13 @@ const (
 // ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
 // (card t1278): the runtime default first, then the two ids with real
 // stored-value evidence (gpt-5.6-sol — operator screenshot 2026-09-30 ·
-// primary-checkout workflow.yaml; gpt-5.6 — the schema example). A stored
-// foreign id keeps round-tripping through the RC2 passthrough-preserve in
-// parseSchemaForm; widening is a one-line change here.
+// primary-checkout workflow.yaml; gpt-5.6 — the schema example), and
+// gpt-6.1-terra appended last (card t1980 — the newest auditable codex id;
+// codex CLI >= 0.159.0 serves it). A stored foreign id keeps round-tripping
+// through the RC2 passthrough-preserve in parseSchemaForm; widening is a
+// one-line change here.
 func ValidCodexAuditModels() []string {
-	return []string{DefaultCodexAuditModel, "gpt-5.6-sol", "gpt-5.6"}
+	return []string{DefaultCodexAuditModel, "gpt-5.6-sol", "gpt-5.6", CodexModelTerra}
 }
 
 // ValidProjectContinuations returns the closed set for
