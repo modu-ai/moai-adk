@@ -530,7 +530,7 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - `gate_unmet`: (empty — codex answered, verdict pass, zero findings)
 - `plan_source`: `config`
 - per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
-- `audit_receipt`: `rcpt-2c6c39d7e57a89bd41cd065d`
+- `audit_receipt`: `rcpt-94ccecd0f4cbbaa586b35b14` (re-mint: the first receipt `rcpt-2c6c39d7e57a89bd41cd065d` was refused by the stop-guard as pre-dating the audit window; the re-run in the same session, same delta scope, returned an identical verdict)
 - `participant_count`: 1, `disagreement_flag`: null
 - `residual_risk_note` (verbatim): `delta_base 5128570a20f5b21e2dd9235188c9c24a1ce86093: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
 
@@ -555,9 +555,9 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 
 ## Iteration history (cont.)
 
-- iter8 (this audit): delta PASS-WITH-DEBT 0.94 — R1 repaired (tableStack innermost-open-table binding) and verified by 5 auditor probes incl. 2 shapes beyond the landed tests; regression micro-sweep green (18-test aside suite, trio 96.0/91.2/93.4, spec-lint, lint, gofmt, vet); required codex pass, zero findings (rcpt-2c6c39d7e57a89bd41cd065d); no new findings; FW-D2 carried as the named debt, R2 optional.
+- iter8 (this audit): delta PASS-WITH-DEBT 0.94 — R1 repaired (tableStack innermost-open-table binding) and verified by 5 auditor probes incl. 2 shapes beyond the landed tests; regression micro-sweep green (18-test aside suite, trio 96.0/91.2/93.4, spec-lint, lint, gofmt, vet); required codex pass, zero findings (rcpt-94ccecd0f4cbbaa586b35b14, re-minted after the stop-guard refused the pre-window first receipt rcpt-2c6c39d7e57a89bd41cd065d; identical verdict on re-run); no new findings; FW-D2 carried as the named debt, R2 optional.
 
 verdict: PASS-WITH-DEBT
 audited_sha: 76af1129afa2b99ecd377b4f1c2a24faa09b0b06
 
-AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-2c6c39d7e57a89bd41cd065d
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-94ccecd0f4cbbaa586b35b14
