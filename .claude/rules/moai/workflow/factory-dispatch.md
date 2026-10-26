@@ -156,7 +156,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 [HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
 
 <!-- moai:role-core-start -->
-[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.
+[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane moves in-session via `/cd`; conversation context never carries.
 <!-- moai:role-core-end -->
 
 Transition detail (Claude Code lanes; measured in-session: CC 2.1.300 lane-22; lane-4): the lane requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), enters the leased worktree by absolute path, and verifies `git rev-parse --show-toplevel` equals that path before any card work. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Under manual dispatch the lane leaves with `ExitWorktree(keep)` and waits; under the relaunch clear policy it ends the session. Codex lanes move in-session via `/cd <tree abs path>` (0.149+), toplevel verified; relaunch only after a refusal.
