@@ -660,6 +660,123 @@ func TestSplitBlocks_AsideInsideCellIsSeparateBlock(t *testing.T) {
 	}
 }
 
+// R1 (t1968 sync-audit iter7): the C3 repair hands an in-cell aside to
+// s.walk, and a nested <table> inside that aside advances the shared table
+// counter mid-outer-table — every outer row emitted AFTER the aside-carrying
+// row then bound its HeaderIndex to the INNER table's header row (auditor
+// probe: the outer `cell2` row carried header "InnerH" instead of "OuterH";
+// correct at the pre-C3 base). Table-id issuance is now decoupled from the
+// raw counter — a row binds to the innermost OPEN table — so the nested table
+// keeps its own blocks and header binding while the outer table's later rows
+// keep theirs.
+func TestSplitBlocks_NestedTableInCellAsideKeepsOuterHeaderBinding(t *testing.T) {
+	html := `<body><table>
+	<tr><th>OuterH</th></tr>
+	<tr><td>cell1<aside><table><tr><th>InnerH</th></tr><tr><td>inner1</td></tr></table></aside></td></tr>
+	<tr><td>cell2</td></tr>
+	</table></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind        BlockKind
+		text        string
+		aside       bool
+		headerIndex int
+	}{
+		{KindTableRow, "OuterH", false, -1},
+		{KindTableRow, "cell1", false, 0},
+		{KindTableRow, "InnerH", true, -1},
+		{KindTableRow, "inner1", true, 2},
+		{KindTableRow, "cell2", false, 0},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside || blocks[i].HeaderIndex != w.headerIndex {
+			t.Errorf("block %d = %s %q aside=%v header=%d, want %s %q aside=%v header=%d",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, blocks[i].HeaderIndex, w.kind, w.text, w.aside, w.headerIndex)
+		}
+	}
+	if header := blocks[4].HeaderIndex; blocks[header].Text != "OuterH" {
+		t.Errorf("cell2's HeaderIndex %d points at %q, want the OuterH header row", header, blocks[header].Text)
+	}
+}
+
+// R1 collateral (t1968 sync-audit iter8 repair): the table AFTER an outer
+// table that contains an aside-nested table must keep its OWN header. A
+// snapshot/restore of the counter around the aside handoff would restore the
+// counter to the outer table's id, so this next table would re-use the nested
+// table's id — its header row is then suppressed (headerLocal already
+// carries the id) and its body rows bind the INNER header. The stack binding
+// keeps the counter monotonic, so ids never collide.
+func TestSplitBlocks_TableAfterAsideNestedTableKeepsOwnHeader(t *testing.T) {
+	html := `<body><table>
+	<tr><th>OuterH</th></tr>
+	<tr><td>cell1<aside><table><tr><th>InnerH</th></tr><tr><td>inner1</td></tr></table></aside></td></tr>
+	<tr><td>cell2</td></tr>
+	</table>
+	<table>
+	<tr><th>SecondH</th></tr>
+	<tr><td>second1</td></tr>
+	</table></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		text        string
+		headerIndex int
+	}{
+		{"OuterH", -1}, {"cell1", 0}, {"InnerH", -1}, {"inner1", 2},
+		{"cell2", 0}, {"SecondH", -1}, {"second1", 5},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Text != w.text || blocks[i].HeaderIndex != w.headerIndex {
+			t.Errorf("block %d = %q header=%d, want %q header=%d (each table's rows bind their own header)",
+				i, blocks[i].Text, blocks[i].HeaderIndex, w.text, w.headerIndex)
+		}
+	}
+}
+
+// R1 collateral (t1968 sync-audit iter8 repair): TWO aside-nested tables in
+// one outer table must hold distinct ids. A counter snapshot/restore would
+// rewind to the outer id before each aside handoff, so the second nested
+// table would re-use the first one's id — its header suppressed, its rows
+// bound to the FIRST nested table's header (InA). With the stack binding both
+// nested tables allocate fresh ids and every row binds its own header.
+func TestSplitBlocks_TwoCellAsidesWithTablesDistinctBindings(t *testing.T) {
+	html := `<body><table>
+	<tr><th>OuterH</th></tr>
+	<tr><td>a1<aside><table><tr><th>InA</th></tr><tr><td>ia</td></tr></table></aside></td></tr>
+	<tr><td>a2<aside><table><tr><th>InB</th></tr><tr><td>ib</td></tr></table></aside></td></tr>
+	<tr><td>cell2</td></tr>
+	</table></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		text        string
+		aside       bool
+		headerIndex int
+	}{
+		{"OuterH", false, -1},
+		{"a1", false, 0},
+		{"InA", true, -1},
+		{"ia", true, 2},
+		{"a2", false, 0},
+		{"InB", true, -1},
+		{"ib", true, 5},
+		{"cell2", false, 0},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Text != w.text || blocks[i].Aside != w.aside || blocks[i].HeaderIndex != w.headerIndex {
+			t.Errorf("block %d = %q aside=%v header=%d, want %q aside=%v header=%d",
+				i, blocks[i].Text, blocks[i].Aside, blocks[i].HeaderIndex, w.text, w.aside, w.headerIndex)
+		}
+	}
+}
+
 // F8 (t1968 sync-audit iter2): a <pre> inside a <td> keeps its formatting —
 // the code block is emitted verbatim as its own block (the C2 pattern for
 // pre inside a list item) and the row's text EXCLUDES the pre subtree,

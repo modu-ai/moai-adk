@@ -125,8 +125,23 @@ type splitter struct {
 	// heading element itself: the blocks that FOLLOW the heading (its later
 	// siblings, and their descendants) carry it in their path.
 	path []heading
-	// tableSeq numbers tables in document order.
+	// tableSeq allocates table ids in walk order. It only ever grows — it is
+	// a pure allocator, never a "current table" indicator; row binding reads
+	// tableStack, not this counter.
 	tableSeq int
+	// tableStack is the chain of tables whose walk is currently open,
+	// outermost first. A row binds to the innermost open table (the stack
+	// top), so a nested table inside an in-cell aside — the C3 handoff in
+	// emitRowSubBlocks — allocates its own id and opens/closes around its own
+	// rows without disturbing the enclosing table's binding. Reading the raw
+	// counter at emission instead bound every outer row AFTER the
+	// aside-carrying row to the nested table's header (R1, t1968 sync-audit
+	// iter7: `cell2` carried header "InnerH" where "OuterH" was correct). A
+	// snapshot/restore of the counter around the handoff would fix that row
+	// but re-use the aside's ids — the next table's header would be
+	// suppressed and a second aside's nested table would collide with the
+	// first — so the binding is positional and the counter stays monotonic.
+	tableStack []int
 	// rowTable[tableRowBlockIndex] = the table a row belongs to.
 	rowTable map[int]int
 	// headerLocal[table id] = the splitter-level index of that table's
@@ -223,7 +238,9 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		}
 	case n.Data == "table":
 		s.tableSeq++
+		s.tableStack = append(s.tableStack, s.tableSeq)
 		s.walkChildren(n, inAside)
+		s.tableStack = s.tableStack[:len(s.tableStack)-1]
 	case n.Data == "tr":
 		s.emitRow(n, inAside)
 		s.emitRowSubBlocks(n, inAside)
@@ -266,7 +283,17 @@ func (s *splitter) emitRow(n *html.Node, inAside bool) {
 	if len(cells) == 0 {
 		return
 	}
+	// Bind to the innermost OPEN table, not the raw counter (R1, t1968
+	// sync-audit iter7 — see the tableStack field note): a nested table inside
+	// an in-cell aside has already opened and closed by the time a later row
+	// of the outer table emits, so the stack top is still the outer table's
+	// id. The counter fallback preserves the pre-stack behavior for a stray
+	// row outside any table (unreachable via html.Parse's HTML5 tree
+	// construction, which drops such rows, but kept as a safe default).
 	table := s.tableSeq
+	if depth := len(s.tableStack); depth > 0 {
+		table = s.tableStack[depth-1]
+	}
 	if _, seen := s.headerLocal[table]; !seen && rowIsHeader(n) {
 		s.headerLocal[table] = len(*s.blocks)
 	}
@@ -518,6 +545,11 @@ func (s *splitter) emitRowSubBlocks(tr *html.Node, inAside bool) {
 		if node.Type == html.ElementNode && node.Data == "aside" {
 			// C3: the aside subtree is aside-scored content — hand it to the
 			// aside walk, whose own emission flags every block it produces.
+			// R1 (t1968 sync-audit iter7): a nested <table> inside this aside
+			// advances tableSeq mid-outer-table, but no counter restore is
+			// needed HERE — rows bind to tableStack's top, and the nested
+			// table's open/close is balanced inside this walk, so the outer
+			// table's later rows rebind to their own id (see tableStack).
 			s.walk(node, true)
 			return // the walk covers the subtree; scanning on would duplicate
 		}
