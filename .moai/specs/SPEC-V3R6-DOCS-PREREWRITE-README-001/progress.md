@@ -26,7 +26,7 @@ Exit-verification, all cells GREEN at `2956448055` (measured in this run, this t
 |---|---|
 | R-01 | absent-CLI-forms grep across 4 READMEs → empty, exit 1 (GREEN) |
 | R-08r | scoped CG-sentence grep → empty, exit 1 (GREEN) |
-| R-08b-r1 | `git grep -c -F "](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/)" 2956448055 -- README.ko.md` → `HEAD:README.ko.md:2`, exit 0 (GREEN) |
+| R-08b-r1 | `git grep -c -F "](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/)" 2956448055 -- README.ko.md` → `2956448055:README.ko.md:2`, exit 0 (GREEN) |
 | R-08b-r2 | what-is cg-mode link = 1 |
 | R-20a | `Release-v3.1.2` 4× (1 per README), exit 0 |
 | R-20b | hugo.toml v3.1.2 / 2026-08-21 |
