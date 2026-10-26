@@ -146,7 +146,15 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 	case chromeTags[n.Data]:
 		// dropped subtree
 	case n.Data == "aside":
+		// An aside's headings describe the aside, not the document around
+		// it: save the path on entry and restore it on exit, so the blocks
+		// AFTER the aside inherit their own ancestors' headings, not the
+		// aside's (wrong provenance and wrong same-heading rescue
+		// grouping). The header copy suffices: headings only append or
+		// truncate past the saved length, never rewrite entries below it.
+		saved := s.path
 		s.walkChildren(n, true)
+		s.path = saved
 	case n.Data == "p":
 		if s.itemDepth > 0 {
 			// A paragraph inside a list item body is already part of that
@@ -260,14 +268,24 @@ func clonePath(path []heading) []string {
 
 // collapseText extracts an element's text with whitespace runs collapsed to
 // single spaces. skip, when non-nil, names tags whose subtrees are excluded
-// (a list item's nested list must not leak into its own text). A text
-// boundary element (<br>, a block container) emits a separator on each side
-// so adjacent text runs across the boundary keep their word boundary; the
-// final collapse reduces the separators to single spaces, never to nothing.
+// (a list item's nested list must not leak into its own text). Chrome
+// subtrees (chromeTags — a script inside a paragraph, a style inside a table
+// cell) are ALWAYS excluded, with a separator so the text runs on either
+// side keep their word boundary across the removed subtree. A text boundary
+// element (<br>, a block container) emits a separator on each side so
+// adjacent text runs across the boundary keep their word boundary; the final
+// collapse reduces the separators to single spaces, never to nothing.
 func collapseText(n *html.Node, skip map[string]bool) string {
 	var b strings.Builder
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
+		if node.Type == html.ElementNode && chromeTags[node.Data] {
+			// Chrome nested inside an extracted element is dropped with its
+			// subtree; without the separator the surrounding runs would
+			// merge into one word across the hole.
+			b.WriteByte(' ')
+			return
+		}
 		if node.Type == html.ElementNode && skip != nil && skip[node.Data] {
 			return
 		}

@@ -82,16 +82,18 @@ func TestStage1_CandidateThreshold(t *testing.T) {
 	}
 }
 
-// REQ-FW-004: stage-1 windows hold approximately 3,000 tokens. A 12-block
-// document of ~9-token blocks is one window (108 tokens); a document over
-// the window bound splits so that no window exceeds it (approximate counts).
+// REQ-FW-004: stage-1 windows hold approximately 3,000 BODY tokens. A
+// 12-block document of ~9-token blocks is one window (108 tokens); a
+// document over the window bound splits so that no window exceeds it
+// (approximate counts; the request bound of stage1Windows does not govern
+// at this question size).
 func TestStage1_WindowsBoundTokens(t *testing.T) {
 	var blocks []Block
 	// 700 blocks x ~9 tokens ≈ 6,300 tokens -> must split into >1 window.
 	for i := 0; i < 700; i++ {
 		blocks = append(blocks, Block{Kind: KindParagraph, Text: fmt.Sprintf("block number %03d alpha beta gamma", i)})
 	}
-	windows := buildWindows(blocks, Stage1WindowTokens)
+	windows := stage1Windows(blocks, "q")
 	if len(windows) < 2 {
 		t.Fatalf("6300-token doc produced %d windows, want >= 2", len(windows))
 	}
@@ -484,6 +486,78 @@ func TestNeighborContext_RuneCutCJK(t *testing.T) {
 	}
 	if got := len([]rune(ctx)); got < NeighborContextChars-1 {
 		t.Errorf("CJK context under-filled: %d runes, want ~%d (byte-based cutting yields about a third)", got, NeighborContextChars)
+	}
+}
+
+// boundsAnswerer enforces jev's request size bounds at the Answerer seam,
+// mirroring what the real client's checkBounds does: a request whose state
+// plus questions exceeds either bound is refused unsent with Oversize. It
+// scripts probabilities by question id like fakeAnswerer.
+type boundsAnswerer struct {
+	script map[string]float64
+	calls  int
+	over   int // requests refused as oversize
+}
+
+func (b *boundsAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
+	b.calls++
+	state := jev.EstimateTokens(req.State)
+	longest, total := 0, state
+	for _, q := range req.Questions {
+		n := jev.QuestionTokens(q)
+		total += n
+		longest = max(longest, n)
+	}
+	if state+longest > jev.MaxStateAndQuestionTokens || total > jev.MaxRequestTokens {
+		b.over++
+		return jev.Result{Availability: jev.Oversize, Condition: fmt.Sprintf(
+			"request is ~%d tokens (state+longest ~%d), over the %d/%d bounds; refused unsent",
+			total, state+longest, jev.MaxRequestTokens, jev.MaxStateAndQuestionTokens)}
+	}
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: b.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers}
+}
+
+// N1 (card t1968 review round 2): stage-1 windows are sized by the ACTUAL
+// request the window assembles — the joined body PLUS every block's
+// question, each quoting the user question and its own passage — not by body
+// tokens alone. Many short blocks under a long question keep the body under
+// the window size while the assembled request blows past jev's bounds; the
+// real client refuses it unsent and the pipeline surfaces fetch_error on an
+// ordinary page.
+func TestStage1_WindowsSizedByRequestNotBodyAlone(t *testing.T) {
+	// 300 blocks x ~10 tokens ≈ 3,000 body tokens (ONE body-budget window,
+	// past the 2,000-token passthrough bound) under a ~500-token question:
+	// each question carries the user question + its passage + framing
+	// (~524 tokens), so one request over the whole window holds ~160k
+	// tokens — far over the 64k bound.
+	question := strings.Repeat("q", 2000)
+	var blocks []Block
+	for i := 0; i < 300; i++ {
+		blocks = append(blocks, Block{Kind: KindParagraph, Text: fmt.Sprintf("block number %03d alpha beta gamma", i)})
+	}
+	script := map[string]float64{}
+	for i := 0; i < 300; i++ {
+		script[fmt.Sprintf("b%d", i)] = 0.05 // no candidates: no_match after scoring
+	}
+	fake := &boundsAnswerer{script: script}
+	res := Process(context.Background(), blocks, question, fake)
+	if res.Status != StatusNoMatch {
+		t.Fatalf("status = %q, want no_match — an in-bounds scoring pass must not become fetch_error (condition %q)", res.Status, res.Condition)
+	}
+	if fake.over != 0 {
+		t.Errorf("%d stage-1 requests exceeded jev's size bounds — windows must split by request size, not body size", fake.over)
+	}
+	if fake.calls < 2 {
+		t.Errorf("the ~160k-token window must split into >= 2 requests, got %d", fake.calls)
 	}
 }
 

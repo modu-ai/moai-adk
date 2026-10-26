@@ -220,6 +220,43 @@ func TestCache_ExplicitOverrideMiss_GoesToNetworkOwnEntry(t *testing.T) {
 	}
 }
 
+// N2 (card t1968 review round 2): with an explicit model override pinned,
+// the wire still carries the request alias, so the RESPONSE names the model
+// that actually answered. When the two differ, the entry must be keyed and
+// attributed by the RESPONSE's id — never the override's — and a later
+// override lookup must not serve that wrong-model answer as a clean hit.
+func TestCache_OverrideMismatchStoresUnderResponseModel(t *testing.T) {
+	// Override pins jev-1.13.0; the endpoint answers jev-1.14.0.
+	doer := &cachedDoer{script: []doerStep{
+		{status: 200, body: cacheOKBody("jev-1.14.0")},
+		{status: 200, body: cacheOKBody("jev-1.14.0")},
+	}}
+	c := newCachedClient(t, doer)
+	c.ModelOverride = "jev-1.13.0"
+	first := c.Ask(context.Background(), cacheQuestion())
+	if !first.OK() {
+		t.Fatalf("override call failed: %s", first.NoticeLine())
+	}
+	for _, e := range cacheEntries(t, c.CacheDir) {
+		if e.Model != "jev-1.14.0" {
+			t.Errorf("entry keyed under %q; the response id jev-1.14.0 is the only authoritative key", e.Model)
+		}
+	}
+	// The second override call must NOT be a clean hit on the mismatched
+	// entry: the override probes its own id, misses (never another model's
+	// entry), and goes to the network.
+	second := c.Ask(context.Background(), cacheQuestion())
+	if !second.OK() {
+		t.Fatalf("second override call failed: %s", second.NoticeLine())
+	}
+	if got := atomic.LoadInt64(&doer.calls); got != 2 {
+		t.Errorf("a mismatched override answer was served as a clean cache hit; network calls = %d, want 2", got)
+	}
+	if second.StaleCacheWarning != "" {
+		t.Errorf("override lookups never serve stale cross-model entries, got warning %q", second.StaleCacheWarning)
+	}
+}
+
 // AC-FW-011's alias-moved case: a fresh process re-queries the same body
 // after the alias moved; the miss probes the prior-model entry, serves it
 // with a staleness warning naming the cached model id, and KEEPS the entry.

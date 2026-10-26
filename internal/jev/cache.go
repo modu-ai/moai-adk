@@ -93,9 +93,11 @@ func bodySHA(body []byte) string {
 // such knob exists on this tree — the sequence falls through); (3) alias
 // resolution from the persisted alias→model map. An explicit override
 // returns with aliasResolved=false: its misses NEVER probe another model's
-// entry — they go to the network and write their own (the N5 applicability
-// condition). An unresolvable id (empty map entry, first-ever call) returns
-// ok=false and the call simply proceeds to the network.
+// entry — they go to the network, whose stored entry is attributed to the
+// model id the response reported (the override's own exactly when the
+// endpoint answers with it) — the N5 applicability condition. An
+// unresolvable id (empty map entry, first-ever call) returns ok=false and
+// the call simply proceeds to the network.
 func (c *Client) resolveModel() (model string, aliasResolved bool, ok bool) {
 	if c.ModelOverride != "" {
 		return c.ModelOverride, false, true

@@ -192,22 +192,31 @@ func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Ans
 	return scores, warnings.list, nil
 }
 
-// stage1 asks one noul question per block over windows of approximately
-// Stage1WindowTokens tokens (REQ-FW-004). One request per window: state is
-// the window's joined block text, and each question quotes its own block so
-// the per-block answer is self-contained. global maps stream positions to
-// whole-document indices; question ids carry the GLOBAL index (b<i>) so ids
-// stay unique across the main and aside streams.
+// stage1Question builds one block's stage-1 question text. Extracted so the
+// window sizer and the ask loop build the identical string and cannot drift
+// apart on the framing a request actually carries.
+func stage1Question(question, passage string) string {
+	return fmt.Sprintf("Is this passage relevant to the question %q? Passage: %q", question, passage)
+}
+
+// stage1 asks one noul question per block over windows whose BODY stays
+// within approximately Stage1WindowTokens tokens (REQ-FW-004) and whose
+// assembled REQUEST stays inside jev's size bounds (see stage1Windows). One
+// request per window: state is the window's joined block text, and each
+// question quotes its own block so the per-block answer is self-contained.
+// global maps stream positions to whole-document indices; question ids carry
+// the GLOBAL index (b<i>) so ids stay unique across the main and aside
+// streams.
 func stage1(ctx context.Context, stream []Block, global []int, question string, ask Answerer, sink *warningSink) ([]float64, error) {
 	out := make([]float64, len(stream))
-	for _, window := range buildWindows(stream, Stage1WindowTokens) { // approximate bound
+	for _, window := range stage1Windows(stream, question) { // approximate bounds
 		texts := make([]string, len(window))
 		qs := make([]jev.Question, len(window))
 		for k, i := range window {
 			texts[k] = stream[i].Text
 			qs[k] = jev.Question{
 				ID:   fmt.Sprintf("b%d", global[i]),
-				Text: fmt.Sprintf("Is this passage relevant to the question %q? Passage: %q", question, stream[i].Text),
+				Text: stage1Question(question, stream[i].Text),
 			}
 		}
 		res := ask.Ask(ctx, jev.Request{
@@ -432,22 +441,49 @@ func neighborContext(stream []Block, i, maxChars int) string {
 	return b.String()
 }
 
-// buildWindows groups a stream into consecutive windows (as index slices
-// into the stream) whose approximate token totals stay within bound. An
-// oversized single block occupies its own window rather than being split
-// (its text is one indivisible unit).
-func buildWindows(stream []Block, boundTokens int) [][]int {
+// stage1Windows groups a stream into consecutive windows (as index slices
+// into the stream) for stage-1 scoring. Two bounds govern a window:
+//
+//   - the BODY budget: the window's joined block text stays within
+//     Stage1WindowTokens (the approximate window semantics, REQ-FW-004);
+//   - the REQUEST bound (card t1968 review N1): the request a window
+//     assembles — its state (the joined body) plus every block's question,
+//     each quoting the user question and its own passage — stays within
+//     jev's size bounds, the same accounting jev's checkBounds applies
+//     (state + all questions <= MaxRequestTokens; state + the longest
+//     question <= MaxStateAndQuestionTokens). Body tokens alone miss the
+//     per-request overhead: many short blocks or a long question push the
+//     assembled request past the bound while the body is still under the
+//     window size, and jev refuses the request unsent after stage 1 already
+//     committed the window — surfacing as fetch_error on ordinary pages.
+//
+// The separator between joined texts is counted per part and each part's
+// tokens round up individually, so the tracked state slightly OVER-estimates
+// the estimate of the joined string — the safe direction: the bound refuses
+// earlier, never later. An oversized single block keeps its own window: jev
+// refusing it is the bound's contract, not a windowing failure.
+func stage1Windows(stream []Block, question string) [][]int {
 	var windows [][]int
 	var cur []int
-	curTokens := 0
+	bodyTokens, stateTokens, qTokens, longest := 0, 0, 0, 0
 	for i, b := range stream {
 		bt := b.Tokens()
-		if len(cur) > 0 && curTokens+bt > boundTokens {
+		n := jev.QuestionTokens(jev.Question{Text: stage1Question(question, b.Text)})
+		sep := 0
+		if len(cur) > 0 {
+			sep = jev.EstimateTokens("\n\n")
+		}
+		nextState, nextQ, nextLongest := stateTokens+sep+bt, qTokens+n, max(longest, n)
+		if len(cur) > 0 && (bodyTokens+bt > Stage1WindowTokens ||
+			nextState+nextQ > jev.MaxRequestTokens ||
+			nextState+nextLongest > jev.MaxStateAndQuestionTokens) {
 			windows = append(windows, cur)
-			cur, curTokens = nil, 0
+			cur, bodyTokens = nil, 0
+			sep, nextState, nextQ, nextLongest = 0, bt, n, n
 		}
 		cur = append(cur, i)
-		curTokens += bt
+		bodyTokens += bt
+		stateTokens, qTokens, longest = nextState, nextQ, nextLongest
 	}
 	if len(cur) > 0 {
 		windows = append(windows, cur)

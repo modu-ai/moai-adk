@@ -287,6 +287,54 @@ func TestSplitBlocks_CodeFirstLineIndentPreserved(t *testing.T) {
 	}
 }
 
+// N3 (card t1968 review round 2): script/style subtrees nested INSIDE a
+// paragraph, list item, or table cell are page chrome — the walk drops them
+// at block level, and the recursive text extraction must drop them too, or
+// their code/style text is scored as content and emitted in quotes. The
+// surrounding text runs keep their word boundary across the removed subtree.
+func TestSplitBlocks_ScriptStyleInsideBlocksAreChrome(t *testing.T) {
+	html := `<body>
+	<p>Visible price<script>var tracker=1;</script>stays</p>
+	<ul><li>item one<style>.li{color:red}</style>continues</li></ul>
+	<table><tr><td>value<noscript>no js</noscript>nine</td></tr></table>
+	</body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 3 {
+		t.Fatalf("want 3 blocks (p, li, row), got %d: %+v", len(blocks), blocks)
+	}
+	want := []string{"Visible price stays", "item one continues", "value nine"}
+	for i, w := range want {
+		if blocks[i].Text != w {
+			t.Errorf("block %d text = %q, want %q (chrome subtree dropped, word boundary kept)", i, blocks[i].Text, w)
+		}
+	}
+}
+
+// N4 (card t1968 review round 2): a heading inside an aside is the aside's
+// own structure — it must not leak onto the main-flow blocks that FOLLOW the
+// aside (neither their provenance nor their same-heading rescue grouping).
+// The aside's own blocks keep the heading; the main flow after it does not.
+func TestSplitBlocks_AsideHeadingDoesNotLeakPath(t *testing.T) {
+	html := `<body>
+	<h2>Main</h2>
+	<p>before the aside</p>
+	<aside><h3>Side note</h3><p>aside body</p></aside>
+	<p>after the aside</p>
+	</body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 3 {
+		t.Fatalf("want 3 blocks (the h3 is a heading, not a block), got %d: %+v", len(blocks), blocks)
+	}
+	// The aside's own body legitimately carries its heading under Main.
+	if !reflect.DeepEqual(blocks[1].HeadingPath, []string{"Main", "Side note"}) || !blocks[1].Aside {
+		t.Errorf("aside body path = %v (Aside=%v), want [Main Side note] (Aside=true)", blocks[1].HeadingPath, blocks[1].Aside)
+	}
+	// The main-flow block AFTER the aside inherits only its own ancestors.
+	if !reflect.DeepEqual(blocks[2].HeadingPath, []string{"Main"}) {
+		t.Errorf("post-aside block path = %v, want [Main] — the aside's heading leaked into the main flow", blocks[2].HeadingPath)
+	}
+}
+
 // Token accounting rides jev.EstimateTokens (REQ-FW-002): a block's token
 // count is the conservative byte/4 estimate, and document totals sum it.
 func TestBlockTokens_UseEstimator(t *testing.T) {

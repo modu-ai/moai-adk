@@ -352,8 +352,10 @@ type Client struct {
 	// ModelOverride is the explicit per-request interpretation model id for
 	// the cache key — step 1 of the lookup sequence (plan B5). Empty means
 	// alias resolution from the persisted map. An override's cache miss goes
-	// to the network and writes its OWN entry; it never serves another
-	// model's stale entry (the N5 applicability condition).
+	// to the network — never another model's entry (the N5 applicability
+	// condition) — and the entry a network answer writes is attributed to
+	// the model id the response reported, which is the override's own
+	// exactly when the endpoint answers with it.
 	ModelOverride string
 	// MaxConcurrency caps concurrently in-flight requests (REQ-FW-012's
 	// semaphore limb). Zero means no cap; New sets a default.
@@ -633,16 +635,19 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 			res.Answers = fromWire(req.Questions, answers, model)
 			res.Notice = c.changeNotice(model)
 			if c.CacheDir != "" {
-				// Store under the override when one is pinned (the entry is
-				// then the override's OWN), else under the answered model; the
-				// alias map moves only on alias-resolved observations.
-				keyModel := model
-				if c.ModelOverride != "" {
-					keyModel = c.ModelOverride
-				}
+				// Stored under the model id the RESPONSE reported — the
+				// only authoritative attribution. The wire carries the
+				// request alias even under a pinned override, so the
+				// response id is what the call actually resolved to;
+				// keying a mismatched answer under the override would
+				// serve later override lookups a wrong-model answer as a
+				// clean hit (card t1968 review N2). The entry is the
+				// override's own exactly when the endpoint answers with
+				// the override id; the alias map still moves only on
+				// alias-resolved observations.
 				entry := cacheEntry{
 					BodySHA:   sha,
-					Model:     keyModel,
+					Model:     model,
 					Answers:   res.Answers,
 					Usage:     Usage{InputTokens: requestTokens(req), Model: model, RequestModel: ModelID},
 					CreatedAt: time.Now(),
