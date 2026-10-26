@@ -3,7 +3,7 @@ auditor-model: glm-5.3
 # sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 1
 
 verdict: FAIL
-audited_sha: 80a54e3ef88d6b3ade91893f8c413cfc0644600b
+audited_sha: 17554129fecf6e457d419a480742f47c4b557d11
 
 Tree: lane worktree `.moai/worktrees/t1968` (branch `WT-jevfetch-a2sys-ai`). Merge base `2a1898ea22`. Date 2026-10-27. Audit plan (`moai verify audit-plan --project-root <toplevel>`): `config_status: ok`, `cross_model_active: true`, gates claude=off / **codex=required** / glm=off (source `config.gates`, `plan_source: config`).
 
@@ -143,3 +143,72 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 ## Iteration history (cont.)
 
 - iter2 (this audit): FAIL 0.86 — F1-F5 all substantively repaired and verified (F2/F3/F4 clean; F1 with range gap F1b; F5 with slice F5b); two pre-existing conformance seams surfaced (F7/F8). Delta for iter3: F1b, F5b, F7, F8 — all localized to ssrf.go / fetch.go / blocks.go, same pattern family as this round's repairs.
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 3 (delta: F1b/F5b/F7/F8 @ 0169d87655)
+
+Delta audit of the F1b/F5b/F7/F8 repairs (`0169d87655`, +316/−17, 6 files — ssrf/fetch/blocks + tests). Audited head `17554129fe` (full `17554129fecf6e457d419a480742f47c4b557d11`; docs-only on top of `0169d87655`: `git diff --name-only 0169d87655..17554129fe` → `.moai/reports/t1968/progress.md` only — confirmed). Audit plan re-read: `config_status: ok`, codex **required** (claude/glm off), `plan_source: config`.
+
+## iter3 Verdict
+
+**FAIL — aggregate 0.90** (harmonic mean of 84 / 93 / 92 / 93). Must-pass firewall: both dimensions above threshold this round — but the required codex backend independently returned **fail** (convergence `overall_verdict: fail`), which forces FAIL per the cross-model contract, AND three Medium blocking defects survive/renewed in the delivered delta (F5c, F7b, F8b — each independently reproduced by my own probe in this run, then cross-confirmed by codex).
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @17554129fe) |
+|---|---|---|---|---|
+| Functionality | 40% | 84 | PASS (marginal) | `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.558s` / `internal/jevmeasure 0.938s` / `internal/jev 1.905s`; graded trio `--- PASS: TestFetchWeb_StatusExitContract` (7/7 sub-tests) + `ok internal/cli 1.024s`; all four delta items probe-verified in their primary scenarios — but F7b (content loss) and F8b (chrome leak) are seams the repair itself opened, plus F5c slice. |
+| Security | 25% | 93 | PASS | F1b fully closed: probe mask exact at both /10 edges (100.63.255.255 allowed / 100.64.0.0–100.127.255.255 refused / 100.128.0.0 allowed), `255.255.255.255 refused`, all 11 prior refusal classes retained, `::ffff:100.64.0.1` caught, harness seam refuses 100.64.0.1 and still admits loopback, dial-level redirect refusal `dial tcp 100.100.100.200:80: fetch web: non-public address 100.100.100.200 refused` (target independent of the landed tests); `git diff 2a1898ea22...HEAD -- go.mod go.sum` empty. |
+| Craft | 20% | 92 | PASS | `coverage: 95.0% of statements` (fetchweb, fresh); `golangci-lint run ./internal/fetchweb/...` → `0 issues.`; `gofmt -l` → clean (exit 0); `BUILD-DARWIN-OK` + `BUILD-WINDOWS-OK`; RED-first documented in the repair commit. |
+| Consistency | 15% | 93 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid` (exit 0); jevledger boundary empty with non-empty control (3 `internal/jev` files); `git diff 537cfac148..HEAD -- internal/template` empty; docs-only head confirmed. |
+
+## iter3 F1b/F5b/F7/F8 dispositions (the enumerated delta)
+
+- **F1b — repaired, verified, closed.** `isSharedAddressSpace` matches the /10 exactly (`ip4[0] == 100 && ip4[1]&0xC0 == 0x40` → 64–127); `ip.Equal(net.IPv4bcast)` explicit; every pre-repair refusal retained in the predicate chain. My 22-case boundary probe: both edges exact, broadcast refused, loopback/RFC1918/ULA/link-local×2/metadata/unspecified/multicast all still refused, mapped-IPv6 caught, genuine public v4+v6 pass; harness seam unchanged (loopback-only admission). Dial-level: redirect to `100.100.100.200` refused at the Control hook. **No residual.**
+- **F5b — repaired for its primary scenarios, one slice survives (F5c).** Corrupted euc-kr → `page charset "euc-kr" decoded with U+FFFD substitution at byte 21; refused rather than returned corrupted text`; windows-1252 undefined 0x81 → same refusal; legitimate gb18030 U+FFFD passes with the character preserved (`page="x�y"`, err nil). Single-byte charsets (the common corruption class) are exactly closed — their encoders cannot encode U+FFFD, so any decoded U+FFFD is refused. Surviving slice: mixed legit-first + later corruption (F5c below).
+- **F7 — repaired for block-form asides, bare-text asides regress (F7b).** `<li>Main<aside><p>Note</p></aside></li>` → `list-item "Main" aside=false` + `paragraph "Note" aside=true` (probe-observed); itemDepth scoping correct for aside-nested lists (`N1` carries `aside=true`); F3 golden behavior unchanged (`First Third` + `Second`). But `<li>Main<aside>Side note</aside>Tail</li>` now loses "Side note" entirely (F7b below).
+- **F8 — repaired for direct pre-in-cell, chrome-nested pre leaks (F8b).** `<td>Price <pre>  first\n    second</pre> tail</td><td>qty</td>` → `table-row "Price tail | qty"` (code excluded, separator+order kept) + `code "  first\n    second"` verbatim, interior whitespace preserved; pre-less row emits no phantom code block. But a pre nested inside a chrome element in a cell re-emits chrome content (F8b below).
+
+## iter3 Findings (each reproduced by my own transient probe first, then cross-confirmed by codex — not relayed)
+
+- **F5c** [Medium] [blocking] `internal/fetchweb/fetch.go:122` — the substitution scan checks only the FIRST decoded U+FFFD and accepts if the encoding's encoded-FFFD byte sequence appears ANYWHERE in the raw body, so a body with a legitimately-encoded U+FFFD before the first corrupted byte passes silently: probe `PROBE F5b residual legit+corrupt: err=<nil> page="x�y�"` (gb18030 legit form + orphan lead byte); codex independently reproduced on gb18030, UTF-16LE, and UTF-8 alias labels. Single-byte charsets are immune (encoder cannot encode U+FFFD). Required fix: count-based provenance — count decoded U+FFFD occurrences, count the encoded form's occurrences in the raw body, refuse when decoded-count exceeds encoded-count (closes both my probe and codex's exact case with no positional back-mapping).
+- **F7b** [Medium] [blocking] `internal/fetchweb/blocks.go:358` — `listItemSkip` now excludes aside subtrees from the item text, but the aside walk emits nothing for bare/inlinen content (no p/h/li/pre), so `<li>Main<aside>Side note</aside>Tail</li>` yields only `list-item "Main Tail"` — "Side note" is lost from the document entirely (probe-observed). Pre-repair the text survived as (contaminated) item text; the repair converted contamination into loss. Top-level bare-text asides never emitted either (pre-existing), but the in-li case is a regression introduced by this delta. Required fix: on aside exit, if the aside walk emitted no block, emit its `collapseText` as one `Aside:true` block (mirrors the C2 pre-fallback family), keeping the li exclusion.
+- **F8b** [Medium] [blocking] `internal/fetchweb/blocks.go:419` — `emitRowCodeBlocks`'s scan descends into `chromeTags` subtrees, unlike the body-level walk (`case chromeTags[n.Data]:` drops the subtree) and unlike `rowCells`/`collapseText` (chrome-skipped): `<td>Visible<nav><pre>CHROME_ONLY</pre></nav></td>` emits `code "CHROME_ONLY"` (probe-observed; body-level control `<nav><pre>BODY_CHROME</pre></nav>` emits nothing). REQ-FW-001 chrome removal violated on the row path by the new scan. Required fix: in the scan, return early (skip the subtree) when `chromeTags[node.Data]` before matching `pre` — same one-line shape as the C2/F4 chrome skips.
+
+## iter3 Cross-model convergence (audit_multi, target=baseBranch, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **fail**
+- `gate_unmet`: (empty — codex answered)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=fail` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-c1403000fb995d627d77e814`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `required-backend FAIL: codex`
+
+**This verdict is not final until the orchestrator's convergence check passes.** All three codex P2 findings were reproduced by my own probes before folding (F5c via my first probe run; F7b/F8b via the second); the finding list is confirmed, not relayed.
+
+## iter3 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the four delta repairs landed and the prior green set holds.** Evidence: `go test -count=1 ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → `ok ... 0.558s` / `ok ... 0.938s` / `ok ... 1.905s`; graded trio + MCP parity + bench legs filter → `ok github.com/modu-ai/moai-adk/internal/cli 1.024s` with `--- PASS: TestFetchWeb_StatusExitContract` (7/7 sub-tests: filtered/no_match-a/no_match-b/passthrough/empty/fetch_error/json); `go test -count=1 -cover ./internal/fetchweb/` → `coverage: 95.0%`; `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`; `git diff --name-only cb30e05b3e...HEAD -- internal/jevledger` empty (control `internal/jev` → 3 files); `git diff 2a1898ea22...HEAD -- go.mod go.sum` empty; `git diff --name-only 537cfac148..HEAD -- internal/template` empty; `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` both exit 0. Baseline: this run, this tree @17554129fe.
+
+**Claim — delta probes are my own.** Evidence: two transient in-package probes (`zz_audit_probe_test.go`, `zz_audit_probe2_test.go`; created, run, deleted; `git status --short` empty after each) — F1b 22-case mask + harness seam + dial-level redirect; F5b four directions incl. the mixed residual; F7 separation + F3-regression + nested-aside; F8 verbatim + separator + phantom-block; codex C2/C3 verification with body-level control. All probe outputs quoted inline above. Baseline: this run, this tree @17554129fe.
+
+**Gaps (explicitly NOT observed):**
+- Full `internal/cli` suite still not run here (unchanged from iter1/iter2; owned by integration-branch CI).
+- Convergence covered codex only (claude/glm off per plan).
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+- Repo-wide `golangci-lint run` reports 1 staticcheck SA1019 (`internal/discovery/leader_readers_darwin.go:93` `unix.SYS_PROC_INFO` deprecated) where iter2 observed `0 issues.` — the file is untouched by this branch (last touch `9238e7b02f`, identical at merge base and HEAD; scoped `./internal/fetchweb/...` → `0 issues.`), so it is inherited from the base or a lint-cache warming difference; not a delta defect, unobserved as reproducible-in-delta.
+- `moai` binary provenance: build `b1806498fe` (v3.2.0-rc.38) is NOT an ancestor of this tree's HEAD — the spec-lint verdict above was produced by a build whose commit is outside the branch lineage; judged immaterial for document validation (the SPEC files under test are in this tree).
+
+**Residual-risk:**
+- `required-backend FAIL: codex` (convergence residual_risk_note, verbatim).
+- F5c's count-based fix has its own narrow corner (overlapping byte patterns inflating the body-side encoded-form count) — strictly narrower than the current first-occurrence+global-contains test.
+- Proxy-required egress environments lose fetch capability entirely (`t.Proxy = nil` — deliberate, documented; unchanged from iter2).
+- Even after F5c/F7b/F8b, the verbatim pipeline's guarantees hold for the markup/encoding families probed here; untested territory (CDATA-era HTML, exotic framesets) remains.
+
+## Iteration history (cont.)
+
+- iter3 (this audit): FAIL 0.90 — F1b closed clean (probe-exhaustive, no residual); F5b/F7/F8 each repaired for their primary scenarios but the repairs opened/kept three Medium blocking seams: F5c (mixed-legit-FFFD substitution passes), F7b (bare-text aside in li lost), F8b (chrome-nested pre in cell re-emitted). Delta for iter4: F5c, F7b, F8b — all three localized to fetch.go:122 / blocks.go:358 / blocks.go:419, each a one- to three-line fix in the same pattern family as this round's repairs.
+
+AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-c1403000fb995d627d77e814
