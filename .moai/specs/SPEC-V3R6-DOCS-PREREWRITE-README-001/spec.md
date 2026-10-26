@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-PREREWRITE-README-001
 title: "Docs Pre-Rewrite README — stale citations, Q8 badge rollback to v3.1.2, and the CG retirement paragraphs in the four README files (card t1720)"
 version: "0.1.2"
-status: draft
+status: completed
 created: 2026-10-26
 updated: 2026-10-26
 author: manager-spec
