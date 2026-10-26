@@ -20,6 +20,7 @@ Card: t1968 · Tier M · plan-phase artifacts authored 2026-10-26. Scope source:
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-26
+audit_ready: true
 
 ## §E.2 Run-phase Evidence
 
