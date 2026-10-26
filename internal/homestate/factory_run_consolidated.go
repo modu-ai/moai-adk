@@ -77,6 +77,24 @@ func runRetiredByConsolidation(ctx context.Context, q rowsRowQueryer, runID stri
 	return "", false, nil
 }
 
+// RefuseIfRetiredByConsolidation is the marker read as a guard on the pool
+// handle: an error wrapping ErrRunRetiredByConsolidation when runID was
+// consolidated away, nil otherwise. It is the early probe of a caller that must
+// refuse before a write outside this database (card t1963, CARRY-5); the
+// transaction-scoped guard of the write itself stays the atomic check.
+func (f *FactoryDB) RefuseIfRetiredByConsolidation(ctx context.Context, runID string) error {
+	return refuseIfRetiredByConsolidation(ctx, f.DB, runID)
+}
+
+// RefuseTxIfRetiredByConsolidation is the same guard on the caller's open
+// write transaction, for a writer outside this package whose insert must not
+// attach work to a consolidated run (card t1963, CARRY-6: the lane-worker
+// registration). Inside the caller's transaction it reads under the lock the
+// insert needs.
+func RefuseTxIfRetiredByConsolidation(ctx context.Context, tx *sql.Tx, runID string) error {
+	return refuseIfRetiredByConsolidation(ctx, tx, runID)
+}
+
 // refuseIfRetiredByConsolidation is the marker read as a guard: an error
 // wrapping ErrRunRetiredByConsolidation, naming the run and the run its cards
 // went to, when the run was consolidated away.
