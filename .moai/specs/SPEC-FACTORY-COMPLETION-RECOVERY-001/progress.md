@@ -91,6 +91,8 @@ m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a
 
 사후 개정 v0.3.5 커버리지 메모 (추가): 요구 REQ-FCR-024(통합으로 은퇴한 run을 향한 dispatch 복구 거부, sync-audit F-1 종결)는 커밋 `978cdaacc9`로 구현됐다 — 판정 시험 `TestRepairGTDDispatchRefusesConsolidatedSource`(`internal/factory`, AC-FCR-017 (10), 장부 L8)와 읽기 함수 시험 `TestRunRetiredByConsolidation`(`internal/homestate`); 변이 탐침 (i) "복구 경로가 은퇴 표지를 무시"는 (10)에서 실패한다. REQ-FCR-019의 임대 경로 재분류(`BasisPeer`·`BasisBoot` 원천은 임대 트랜잭션 직전 재분류, 살아났으면 포기 건너뜀)는 AC-FCR-023 c10 하위 사례 `TestRecordPickedReclassifiesPeerAndBootSources`로 단언하고 "no re-check" 변이가 이를 죽인다. 남는 한계: 두 검사 모두 별도 읽기라 확인과 쓰기 사이에 통합이 커밋되는 경합은 배제하지 않는다. 증거는 `.moai/reports/t1963/run-evidence.md`의 "F-1 and lease re-check fix" 절.
 
+사후 개정 v0.3.6 원자성 메모 (추가): REQ-FCR-024의 원자성 절(은퇴 표지 확인과 모든 복구 쓰기를 하나의 factory 쓰기 트랜잭션에)은 `homestate.RepairDispatchAtomic`(`internal/homestate/factory_dispatch_repair.go`)으로 구현됐고 `repairGTDDispatchRecord`가 큐 잠금 판정 뒤 그것을 호출한다 — 별도 사전 확인은 제거했다. 판정 시험 `TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair`(`internal/factory`, AC-FCR-017 (10b), 장부 L9)는 확인과 첫 쓰기 사이 시임에 실제 `RebindRun`을 주입한다: 한 트랜잭션에서는 통합이 복구의 쓰기 잠금 뒤에서 기다렸다가 복구 커밋 뒤에 카드를 살아남은 run으로 옮기고, 변이 (j) "확인을 트랜잭션 밖에서"는 은퇴한 원천에 행·바인딩이 다시 만들어져 실패한다. 단위 시험: `TestRepairDispatchAtomic*`(전부 또는 전무 롤백, 유효 lease 거부·소유자 재각인 의미 유지). 증거는 `.moai/reports/t1963/run-evidence.md`의 "Atomic repair" 절.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ### PARTIAL close — M2-B only (card t1963, 2026-10-26)

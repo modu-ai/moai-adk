@@ -25,10 +25,19 @@ var ErrRunRetiredByConsolidation = errors.New("factory run was retired by a cons
 // RunRetiredByConsolidation reports whether runID was retired by a
 // consolidation and, if so, the run its cards went to. A run that is active,
 // retired the ordinary way, or absent reads false with a nil error; only a
-// failing store is an error.
+// failing store is an error. It reads outside any transaction; an operation
+// that must not race a consolidation uses the transaction-scoped form through
+// RepairDispatchAtomic instead.
 func (f *FactoryDB) RunRetiredByConsolidation(ctx context.Context, runID string) (into string, retired bool, err error) {
+	return runRetiredByConsolidation(ctx, f.DB, runID)
+}
+
+// runRetiredByConsolidation is the marker read on the caller's queryer — the
+// pool handle, or a write transaction that already holds the lock a
+// consolidation needs.
+func runRetiredByConsolidation(ctx context.Context, q rowsRowQueryer, runID string) (into string, retired bool, err error) {
 	var status string
-	switch err := f.DB.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); {
+	switch err := q.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", false, nil
 	case err != nil:
@@ -37,7 +46,7 @@ func (f *FactoryDB) RunRetiredByConsolidation(ctx context.Context, runID string)
 	if status != "retired" {
 		return "", false, nil
 	}
-	rows, err := f.DB.QueryContext(ctx, `SELECT payload_json FROM events WHERE run_id=? AND kind='run.retired' ORDER BY seq DESC`, runID)
+	rows, err := q.QueryContext(ctx, `SELECT payload_json FROM events WHERE run_id=? AND kind='run.retired' ORDER BY seq DESC`, runID)
 	if err != nil {
 		return "", false, err
 	}
@@ -68,11 +77,11 @@ func (f *FactoryDB) RunRetiredByConsolidation(ctx context.Context, runID string)
 	return "", false, nil
 }
 
-// RefuseIfRetiredByConsolidation is RunRetiredByConsolidation as a guard: it
-// returns an error wrapping ErrRunRetiredByConsolidation, naming the run and
-// the run its cards went to, when the run was consolidated away.
-func (f *FactoryDB) RefuseIfRetiredByConsolidation(ctx context.Context, runID string) error {
-	into, retired, err := f.RunRetiredByConsolidation(ctx, runID)
+// refuseIfRetiredByConsolidation is the marker read as a guard: an error
+// wrapping ErrRunRetiredByConsolidation, naming the run and the run its cards
+// went to, when the run was consolidated away.
+func refuseIfRetiredByConsolidation(ctx context.Context, q rowsRowQueryer, runID string) error {
+	into, retired, err := runRetiredByConsolidation(ctx, q, runID)
 	if err != nil {
 		return err
 	}

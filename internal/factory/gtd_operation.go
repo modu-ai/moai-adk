@@ -323,6 +323,11 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 	return nil
 }
 
+// gtdRepairAfterCheck is a test-only seam (REQ-FCR-024 atomicity, AC-FCR-017
+// (10b)): nil in production, a test uses it to run a consolidation in the window
+// between the retired-run check and the first repair write.
+var gtdRepairAfterCheck func()
+
 // repairGTDDispatchRecord completes the factory-record half of a dispatch
 // whose apply landed the assignment save but failed the factory writes
 // (review round-20 P1, T2 half added by round-21): the card row —
@@ -396,42 +401,26 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 		if owner == "" {
 			return fmt.Errorf("queue item %s carries no runtime assignment for run %s — the authoritative owner is unknown", cardID, runID)
 		}
-		// A run a consolidation retired no longer owns this card: recreating
-		// its row there and flipping the binding back would leave a
-		// non-terminal row in a run that can never be retired and a binding
-		// to a run nobody owns (REQ-FCR-024). The check sits after the queue
-		// adjudication and before the first factory write. It is a separate
-		// read from the writes below, so a consolidation committing between
-		// the two is not excluded — that window is the existing cross-store
-		// gap, narrowed to this one read.
-		if err := db.RefuseIfRetiredByConsolidation(ctx, runID); err != nil {
-			return err
-		}
-		now := time.Now().UTC()
-		card, err := db.LoadCard(ctx, runID, cardID)
-		if errors.Is(err, homestate.ErrCardNotFound) {
-			if card, err = db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "dispatch", now); err != nil {
-				return err
-			}
-		} else if err != nil {
-			return err
-		}
-		if card.State == homestate.CardPicked {
-			// The mirror's T2: the authoritative assignment owns the row.
-			if _, err := db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "dispatch", Owner: owner, Now: now}); err != nil {
-				return err
-			}
-		}
-		// A row assigned-or-later under the dispatch's owner needs no move —
-		// the assignment half landed and the card's progress is orthogonal to
-		// the binding this repair restores (review round-22 cont.). A row
-		// under a DIFFERENT owner is the prior dispatch's residue (review
-		// round-23 P1-a): the engagement write moves the owner and re-points
-		// the binding in one transaction, refusing while the row holds a
-		// valid lease (round-24 P1-4) — the completion gate selects the
-		// approval by the row's owner, so a left-behind mismatch would keep
-		// the prior owner's approval armed.
-		return db.RecordDispatchEngagement(ctx, cardID, runID, owner, canonicalOwnerLabel, now)
+		// One factory write transaction carries the retired-run check AND every
+		// write (REQ-FCR-024): a run a consolidation retired no longer owns this
+		// card, and recreating its row there or flipping the binding back would
+		// leave a non-terminal row in a run that can never be retired and a
+		// binding to a run nobody owns. The check cannot be a separate read — the
+		// queue lock does not stop a consolidation, so one committing between the
+		// check and the writes would be missed; inside the transaction the
+		// factory write lock is already held, and the consolidation waits.
+		//
+		// The writes are the mirror's T1 (the row, when the run holds none), its
+		// T2 (picked -> assigned under the authoritative owner), and the
+		// engagement. A row assigned-or-later under the dispatch's owner needs no
+		// move — the assignment half landed and the card's progress is orthogonal
+		// to the binding this repair restores (review round-22 cont.). A row under
+		// a DIFFERENT owner is the prior dispatch's residue (review round-23
+		// P1-a): the engagement moves the owner and re-points the binding in the
+		// same commit, refusing while the row holds a valid lease (round-24 P1-4)
+		// — the completion gate selects the approval by the row's owner, so a
+		// left-behind mismatch would keep the prior owner's approval armed.
+		return db.RepairDispatchAtomic(ctx, cardID, runID, owner, canonicalOwnerLabel, time.Now().UTC(), gtdRepairAfterCheck)
 	})
 }
 
