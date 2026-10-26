@@ -5,6 +5,7 @@ status: draft
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
 plan_complete_at: 2026-10-26T10:21:34Z
 tier: M
 artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md
@@ -39,6 +40,13 @@ reduced_iter1_repair_0_2_1:
   optional_repaired: D5 (AC-013 binding JevHook constraint), D6 (test-deletion residual risk), D7 (REQ-014 Ubiquitous positive form), D8 (E11/E12 platform-split pointer), D9 (AC-012 case (v) directory)
   ids_unchanged: REQ 12/16, AC 11/16
   red_recollected: E1-E12, B1 on 954adab25e, identical to the 0c2d2aa4c2 record (acceptance §L)
+
+## Binding run conditions
+
+Copied verbatim from .moai/reports/t1762/plan-audit-verdict.md (PASS-WITH-DEBT, audited_sha d6dc623eb803d061225f022598435fce61c1651e) at the plan-to-run Kickoff; the sync auditors re-read them (.claude/rules/moai/workflow/auto-semantics.md §9.1).
+
+- debt: N1 dispose_in=run AC-JEVL-014의 import 검사는 금지 목록 방식이라 `net/rpc`, `net/smtp`, `os/exec`(두 대상 모두), 제3자 HTTP 클라이언트(`jev_consumers.go`)가 통과한다. run 단계 경계 테스트는 AC 문구를 바꾸지 않고 더 엄격하게 짤 수 있다: (a)는 `net`·`net/*`·`os/exec`도 거부, (b)는 "표준 라이브러리 + `gopkg.in/yaml.v3`만 허용"으로 판정하고 그 거부 사례를 변이 탐침으로 기록한다.
+- debt: N4 dispose_in=run `JevConsumerConfig`(원시 `yaml.Node` 필드)를 어느 파일에 선언할지 run 단계에서 정하고 progress.md에 기록한다. `types.go`에 두면 `types.go`가 yaml을 import하게 되어 plan §B의 "types.go imports no yaml library" 진술과 어긋난다. 어느 AC도 깨지지 않는다.
 
 ## §E.2 Run-phase Evidence
 
