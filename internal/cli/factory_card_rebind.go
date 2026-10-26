@@ -130,7 +130,10 @@ func resolveRecordedLanding(ctx context.Context, root string, db *homestate.Fact
 		if perr != nil {
 			return "", fmt.Sprintf("; recorded landing refused: unreadable observation time %q", observed)
 		}
-		if at.Before(start) {
+		// `todo landed` records ObservedAt at second precision, the engagement
+		// start carries fractions: compare at the record's precision, so only a
+		// strictly earlier second is "before" the engagement.
+		if at.Before(start.Truncate(time.Second)) {
 			return "", fmt.Sprintf("; recorded landing refused: observed %s, before this run engaged the card (%s) — it belongs to an earlier issuance",
 				at.UTC().Format(time.RFC3339), start.UTC().Format(time.RFC3339))
 		}

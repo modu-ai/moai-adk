@@ -71,6 +71,20 @@ func TestCardEngagementStart(t *testing.T) {
 		}
 	})
 
+	t.Run("the_event_the_factory_itself_writes_when_it_picks_a_card_is_found", func(t *testing.T) {
+		// Hand-inserted payloads would pass even if the factory's own events
+		// stopped carrying card_id, which would turn the engagement check into
+		// a silent no-op; this one is written by the pick path itself.
+		rebindPick(t, db, "run-real", "t7", "")
+		got, found, err := db.CardEngagementStart(ctx, "run-real", "t7")
+		if err != nil || !found {
+			t.Fatalf("found=%v err=%v, want the pick event to count as the engagement start", found, err)
+		}
+		if !got.Equal(rebindNow) {
+			t.Fatalf("start = %s, want the pick instant %s", got, rebindNow)
+		}
+	})
+
 	t.Run("the_earliest_event_by_time_wins_not_by_text", func(t *testing.T) {
 		// "…05.5Z" sorts before "…05Z" as text ('.' < 'Z') but is the LATER instant.
 		insert("run-y", `{"card_id":"t1"}`, "2026-10-26T09:00:05.5Z")

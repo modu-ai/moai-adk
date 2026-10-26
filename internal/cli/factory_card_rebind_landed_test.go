@@ -357,6 +357,31 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 	})
 
+	t.Run("accepts_a_landing_recorded_in_the_second_the_run_engaged_the_card", func(t *testing.T) {
+		// `todo landed` stores ObservedAt at second precision while the card's
+		// events carry fractions: 00:00:00Z can be 0.9 s AFTER an engagement at
+		// 00:00:00.1Z, so only a strictly earlier second is "before".
+		root, _, _, squash, _ := squashLandedFixture(t, "squash") // observed 2026-10-26T00:00:00Z
+		engageCard(t, root, "2026-10-26T00:00:00.100Z")
+		if out, err := rebindRun(t, "recorded in the same second as the engagement"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
+			t.Fatalf("evidence_sha = %q, want %s", got, squash)
+		}
+	})
+
+	t.Run("refuses_a_landing_recorded_in_the_second_before_the_engagement", func(t *testing.T) {
+		// The fraction forgiveness stops at the second: 23:59:59Z is earlier
+		// than an engagement at 00:00:00.100Z of the next second.
+		root, _, _, _, store := squashLandedFixture(t, "squash")
+		engageCard(t, root, "2026-10-26T00:00:00.100Z")
+		setLandingObservedAt(t, store, "2026-10-25T23:59:59Z")
+		if _, err := rebindRun(t, "recorded one second before the engagement"); err == nil || !strings.Contains(err.Error(), "before this run engaged") {
+			t.Fatalf("err = %v, want the before-engagement refusal", err)
+		}
+	})
+
 	t.Run("refuses_an_unreadable_observation_time", func(t *testing.T) {
 		root, _, _, _, store := squashLandedFixture(t, "squash")
 		engageCard(t, root, "2026-10-25T00:00:00Z")
