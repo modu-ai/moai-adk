@@ -1,7 +1,7 @@
 ---
 id: SPEC-FETCH-WEB-001
 title: "moai fetch web — Go port of the jevfetch pipeline (verbatim web excerpt via two-stage Jev scoring)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -22,6 +22,7 @@ depends_on: [SPEC-JEV-CORE-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-26 | manager-spec | Initial plan-phase authoring. Card t1968. Authoritative design source: leader analysis `.moai/reports/leader-plan-20261023/jevfetch-analysis-20261026.md` (upstream `github.com/a2sys-ai/jevfetch`, MIT, Python 3.12). Scope = that analysis's applications 1-4 verbatim, including its not-porting list and recorded Gaps. Naming fixed by operator directive 2026-10-26: `moai fetch web` / `fetch_web` / `moai-fetch-web` / `Bash(moai fetch web:*)` (avoids the existing `moai web` verb). |
+| 0.2.0 | 2026-10-26 | manager-spec | Plan revision per plan-audit iter1 FAIL 0.80 (report `.moai/reports/t1968/plan-audit.md`; all premises re-verified against source before rewrite). D1: no_match decision order pinned in REQ-FW-006 + AC-FW-004. D2: REQ-FW-015 / AC-FW-013 scoped to this SPEC's own shipped artifacts. D3: REQ-FW-012 composed with REQ-JEVC-008; AC-FW-010 negative cases added. D4: RED basis for AC-FW-010/011 re-based on behavior probes (ledger R8-R10); R1/R6 stderr relabel. D5: B1 exit-2 carve-out vs REQ-JEVC-007 recorded. D6: cache-key mechanism pinned in B5/M5. D7: t1762 boundary rewritten to real paths (`internal/jevledger`; `internal/jev` conflict premise retired as stale). D8: tokenizer-dependency AC guard folded into AC-FW-014. D9: plan milestones converted to headings. B1/B5/B6 lane-adjudicated and resolved. REQ/AC numbering unchanged (16 REQ / 14 AC, Tier M ceilings respected). |
 
 > Upstream provenance: the pipeline semantics (block kinds, thresholds, statuses, exit codes) are a behavioral port of jevfetch (`jev.py`, `scoring.py`, `pipeline.py`, `blocks.py`). No Python source or dependency enters this repository; the port is Go-only against the existing `internal/jev` client.
 
@@ -56,7 +57,7 @@ Four applications, exactly as scoped by the leader analysis:
 
 - **REQ-FW-004** (Ubiquitous): Stage 1 of the scoring pipeline shall present blocks to Jev in windows of approximately 3,000 tokens and shall mark as a candidate every block whose relevance probability against the question is 0.6 or greater.
 - **REQ-FW-005** (Ubiquitous): Stage 2 shall re-examine each candidate standalone **and** with a neighbor context of approximately 400 characters, and shall keep a candidate whose standalone-plus-context probability is 0.8 or greater; a candidate scoring below 0.8 shall still be kept **While** a same-heading neighbor block scores 0.6 or greater.
-- **REQ-FW-006** (Ubiquitous): The selection stage shall preserve these guarantees: the first block of the document is always kept; **When** the kept set totals fewer than 300 tokens, blocks are added back in descending stage-1 score order until the threshold is met or blocks are exhausted; every kept table row is accompanied by its table's header row; and kept blocks are emitted in original document order with their text **verbatim** — no paraphrase, no truncation, no rewording.
+- **REQ-FW-006** (Ubiquitous): The selection stage shall decide `no_match` first: **When** zero blocks become stage-1 candidates, the pipeline reports `no_match` and no selection guarantee below applies. Once at least one stage-1 candidate exists, the selection stage shall preserve these guarantees: the first block of the document is always kept; **When** the kept set totals fewer than 300 tokens, blocks are added back in descending stage-1 score order until the threshold is met or blocks are exhausted; every kept table row is accompanied by its table's header row; and kept blocks are emitted in original document order with their text **verbatim** — no paraphrase, no truncation, no rewording. (Decision order pinned per plan-audit D1: `no_match` = zero stage-1 candidates; the first-block keep and the 300-token backfill apply only when at least one candidate exists, so `no_match` is reachable on any non-empty page where nothing scores ≥ 0.6 at stage 1.)
 
 ### §C.3 Command, output contract, MCP surface
 
@@ -68,7 +69,7 @@ Four applications, exactly as scoped by the leader analysis:
 ### §C.4 internal/jev client hardening — CLIENT surface only
 
 - **REQ-FW-011** (Ubiquitous): The client shall cache Jev responses on disk under `~/.moai/cache/jev/`, keyed by a SHA of the request body **combined with the interpretation model id** (never the `jev-latest` alias), written by atomic replace so a concurrent reader never observes a partial cache file, and a cache hit shall be served without a network request.
-- **REQ-FW-012** (Event-driven): **When** the endpoint responds 429, 529, or another 5xx with a `Retry-After` header, the client shall parse the header and delay the retry by the parsed amount (within a bounded maximum and a bounded retry count); and the client shall cap concurrently in-flight requests with a semaphore.
+- **REQ-FW-012** (Event-driven): **When** the endpoint responds 429, 529, or another 5xx with a `Retry-After` header, and the failing call satisfies the retry conditions REQ-JEVC-008 already permits (only calls whose repetition is provably free of side effects), the client shall parse the header and delay the retry by the parsed amount (within a bounded maximum and a bounded retry count); **When** a request is non-repeatable or its failure is ambiguous after delivery, the client shall not retry it (composing with `SPEC-JEV-CORE-001` REQ-JEVC-008 and its existing `TestRetry_*` safeguards, not overriding them); and the client shall cap concurrently in-flight requests with a semaphore.
 - **REQ-FW-013** (Ubiquitous): The client's usage aggregation shall separate new network requests from cache-served answers, and **When** a cache entry was written against an interpretation model id that the alias has since moved past, the client shall emit a staleness warning naming the cached model id.
 
 ### §C.5 Bench — internal/jevmeasure
@@ -77,11 +78,11 @@ Four applications, exactly as scoped by the leader analysis:
 
 ### §C.6 Template packaging
 
-- **REQ-FW-015** (Capability gate): **Where** the templates are deployed, this SPEC's shipped artifacts shall be: the skill `moai-fetch-web` (whose SKILL.md states when to prefer it over WebFetch, and how `--json` output and the `no_match` status are to be handled), the settings permission rule `Bash(moai fetch web:*)`, a row in the GLM web-tooling routing rule stating "jev active → `fetch_web` first", and a Codex `network_access` note for the command — all template-neutral (no machine-specific values, no `enabled: true` anywhere under `internal/template/templates/`).
+- **REQ-FW-015** (Capability gate): **Where** the templates are deployed, this SPEC's shipped artifacts shall be: the skill `moai-fetch-web` (whose SKILL.md states when to prefer it over WebFetch, and how `--json` output and the `no_match` status are to be handled), the settings permission rule `Bash(moai fetch web:*)`, a row in the GLM web-tooling routing rule stating "jev active → `fetch_web` first", and a Codex `network_access` note for the command — all template-neutral: no machine-specific values, and no `enabled: true` introduced by THIS SPEC's own shipped artifacts (in particular not `workflow.jev.enabled`). The template tree already carries 127 `enabled: true` occurrences owned by other templates (measured 2026-10-26, this tree); this SPEC removes none of them, and the existing template-neutrality CI guard stays green.
 
 ### §C.7 Boundary against the concurrent ledger/consumers card
 
-- **REQ-FW-016** (Unwanted): This SPEC's changes inside `internal/jev` shall be confined to the **client** surface — the disk cache, the Retry-After backoff, the concurrency semaphore, the usage new-vs-cache separation, and the alias-staleness warning; the **ledger and consumers** surfaces of `internal/jev` are owned by in-flight card **t1762** (a different lane) and shall not be modified, renamed, or restructured by this SPEC's implementation.
+- **REQ-FW-016** (Unwanted): This SPEC's changes inside `internal/jev` shall be confined to the **client** surface — the disk cache, the Retry-After backoff, the concurrency semaphore, the usage new-vs-cache separation, and the alias-staleness warning — and `internal/jev` has no other concurrent claimant: the ledger/consumers work of in-flight card **t1762** (`SPEC-JEV-LEDGER-001`) lives in its own new package `internal/jevledger` plus its own `internal/config` and `internal/template` surfaces and does not edit `internal/jev` (verified against t1762's SPEC text at commit `954adab25e`). This SPEC's implementation shall not modify, rename, or restructure `internal/jevledger` or t1762's config/template artifacts; if a needed seam is discovered there, the implementation returns a blocker rather than editing across the boundary.
 
 ## §D — Constraints
 
@@ -104,7 +105,7 @@ Four applications, exactly as scoped by the leader analysis:
 - No httpx, bs4, tiktoken, or any Python packaging; the port is a behavioral reimplementation in Go.
 
 ### Out of Scope — jev ledger / consumers surfaces
-- The `internal/jev` ledger and consumers surfaces belong to in-flight card t1762 (another lane). This SPEC does not touch them (REQ-FW-016); if a needed seam is discovered there, the implementation returns a blocker rather than editing across the boundary.
+- The ledger/consumers work of in-flight card t1762 (`SPEC-JEV-LEDGER-001`, another lane) lives in its own new package `internal/jevledger` plus its `internal/config` and `internal/template` surfaces — none of it inside `internal/jev`. This SPEC does not touch those paths (REQ-FW-016); if a needed seam is discovered there, the implementation returns a blocker rather than editing across the boundary.
 
 ### Out of Scope — Bench reproduction of upstream numbers
 - The 47% time-reduction claim is not verified, not asserted in tests, and not cited as an expected value. The bench harness ships; upstream's numeric results do not.
@@ -116,5 +117,6 @@ Four applications, exactly as scoped by the leader analysis:
 
 - `SPEC-JEV-CORE-001` — the `internal/jev` package, the `workflow.jev.enabled` key, the credential reader (dependency).
 - `SPEC-JEV-OPTIN-MEASURE-001` / `SPEC-JEV-CONSUMERS-001` — measurement gate and consumer discipline this SPEC's bench work extends.
+- `SPEC-JEV-LEDGER-001` — the ledger/consumers card (t1762) whose `internal/jevledger` / config / template surfaces this SPEC's boundary guard protects (REQ-FW-016).
 - Leader analysis (authoritative scope source): `.moai/reports/leader-plan-20261023/jevfetch-analysis-20261026.md`.
 - Upstream reference (design only): `https://github.com/a2sys-ai/jevfetch`.

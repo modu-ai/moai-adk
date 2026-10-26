@@ -23,16 +23,16 @@ Card t1968. Authoritative scope: `.moai/reports/leader-plan-20261023/jevfetch-an
 
 ### §A.2 Scope boundary — t1762 (concurrent card, another lane)
 
-Card **t1762** owns the `internal/jev` **ledger/consumers** surfaces. This SPEC's `internal/jev` edits are confined to the **client cache/retry surface**: disk cache, Retry-After backoff, semaphore, usage new-vs-cache separation, alias-staleness warning. If implementation discovers a needed seam on the t1762 side, it returns a blocker report — it does not edit across the boundary. Merge-order risk: both cards touch `internal/jev/jev.go`; whoever lands second rebases mechanically (the surfaces are disjoint by this constraint).
+Card **t1762** (`SPEC-JEV-LEDGER-001`) owns the ledger/consumers work, and it lives in a **new package `internal/jevledger`** plus its own `internal/config` and `internal/template` surfaces — its SPEC states it "does not edit `internal/jev/jev.go` or any other file in `internal/jev`" (read at commit `954adab25e`; re-read the then-current t1762 artifact at implementation time, per the audit's staleness caveat). The earlier premise that both cards touch `internal/jev/jev.go` is therefore RETIRED as stale: `internal/jev` is exclusively this SPEC's to harden on the **client surface** (disk cache, Retry-After backoff, semaphore, usage new-vs-cache separation, alias-staleness warning). The boundary this SPEC must respect is `internal/jevledger` and t1762's config/template artifacts: this SPEC's implementation does not modify, rename, or restructure them; if a needed seam is discovered there, it returns a blocker report. Residual merge-order risk is confined to `internal/config` and `internal/template` (both cards may touch nearby files); whoever lands second rebases mechanically.
 
 ## §B. Reviewable decisions (review these first)
 
-- **B1 — Off-gate behavior (pin).** While `workflow.jev.enabled=false`: zero network requests **including the page fetch** (the pipeline cannot run without Jev, so fetching the page would be spend-adjacent I/O with no use), a stderr notice naming WebFetch as the fallback, **exit code 2**. Exit 2 (not 1): the command is *unavailable*, the same class as `fetch_error`, and scripts distinguishing "no answer on the page" (1) from "could not / would not fetch" (2) keep working. Upstream jevfetch has no off-gate; this is a moai addition pinned here.
+- **B1 — Off-gate behavior (pin).** While `workflow.jev.enabled=false`: zero network requests **including the page fetch** (the pipeline cannot run without Jev, so fetching the page would be spend-adjacent I/O with no use), a stderr notice naming WebFetch as the fallback, **exit code 2**. Exit 2 (not 1): the command is *unavailable*, the same class as `fetch_error`, and scripts distinguishing "no answer on the page" (1) from "could not / would not fetch" (2) keep working. Upstream jevfetch has no off-gate; this is a moai addition pinned here. Reconciliation with `SPEC-JEV-CORE-001` REQ-JEVC-007 ("every consumer of an unavailable result shall … exit 0, and continue the workflow"): REQ-JEVC-007 binds in-process consumers that continue a workflow; `moai fetch web` is a dedicated one-shot read-only command, not a workflow continuation, and reports its own unavailability through its exit-code contract (exit 2, the `fetch_error` class). This carve-out is the lane's recorded reading (B1 lane-adjudicated); no operator escalation required.
 - **B2 — Exit-code mapping (port contract).** 0 = `filtered`/`passthrough`; 1 = `no_match`/`empty`; 2 = `fetch_error` (+ off-gate per B1). This matches upstream's observable contract and is asserted per status in unit tests.
 - **B3 — Package layout.** New package `internal/fetchweb` owns blocks + scoring + pipeline + the page fetcher; the CLI layer (`internal/cli`) and MCP dispatch stay thin (arg parsing → pipeline call → output shaping). No logic in `internal/cli`.
 - **B4 — Token approximation accepted.** All thresholds (3000-token windows, 2000-token passthrough, 300-token backfill, 400-char context is *characters*, not tokens) use `internal/jev.EstimateTokens`. Windows may split at slightly different points than upstream's tiktoken counts; golden cases are authored against the Go estimator's counts, not upstream's.
-- **B5 — Cache key uses the interpreted model id** recorded from each response (never `jev-latest`). A stale entry (alias moved to a newer model) is *kept* (still a valid answer for its model) but warned about; no silent invalidation, no deletion.
-- **B6 — Bench command surface.** A `jevmeasure` bench-case loader (question, expected quote, page snapshot) + a compare command writing a `baseline.json` and diffing a run against it. It records containment and token-savings; it asserts **no** upstream numeric claim (Gap carried).
+- **B5 — Cache key uses the interpreted model id, never `jev-latest`; mechanism pinned (D6).** The `Request` type carries no model field, so the id is resolved before send by this lookup sequence: (1) an explicit per-request override when the caller provides one; (2) the configured default interpretation model; (3) alias resolution from the persisted last-observed alias→model map stored under the cache dir (`~/.moai/cache/jev/models.json`, updated whenever a network answer reports its interpreted model id). A cache lookup is keyed by body-SHA + that resolved id. **Restart-then-offline hit**: the map is disk-persisted, so a fresh process resolves the same id and serves the cached answer with the network closed. **Alias movement**: on a network answer whose reported model differs from the map's entry, the map is updated and the older entry's cached answers are *kept* (still valid answers for their model) but served with a staleness warning naming the cached model id — no silent invalidation, no deletion (keep-and-warn, lane-adjudicated B5, resolvable now that this mechanism is pinned).
+- **B6 — Bench command surface.** A `moai jevmeasure bench` subcommand: bench-case loader (question, expected quote, page snapshot) + `--baseline <path>` compare mode writing a `baseline.json` and diffing a run against it (the concrete subcommand name is pinned here for the M6 delegation). It records containment and token-savings; it asserts **no** upstream numeric claim (Gap carried).
 
 ## §C. Pre-flight (run before M1)
 
@@ -63,13 +63,33 @@ grep -r "Retired\|superseded" internal/jev/jevmeasure 2>/dev/null || echo "no SP
 
 ## §F. Milestones (priority order = reversibility order)
 
-- **M1 (High) — `internal/fetchweb` block splitting + token accounting.** Block kinds, heading paths, chrome removal, `<aside>` separation; golden-case fixtures. Data model most likely to change on review. (REQ-FW-001, REQ-FW-002; AC-FW-001)
-- **M2 (High) — Two-stage scoring + selection rules.** Stage-1 windows/0.6; stage-2 standalone+neighbor/0.8, same-heading 0.6; first-block keep, <300-token backfill, header-row accompaniment, verbatim order-preserving emission. Against a fake answerer injected at the Jev seam. (REQ-FW-004..006; AC-FW-002, AC-FW-003)
-- **M3 (High) — CLI command + output contract + off-gate.** `moai fetch web`, statuses, exit codes, `--json`, bounded page fetch, WebFetch fallback notice. (REQ-FW-003, REQ-FW-007, REQ-FW-008; AC-FW-004..007)
-- **M4 (Medium) — MCP `fetch_web`.** Catalog entry + dispatch sharing the M3 pipeline. (REQ-FW-009; AC-FW-006)
-- **M5 (Medium) — `internal/jev` client hardening.** Disk cache (SHA+model key, atomic replace), Retry-After backoff, semaphore, usage separation, alias-staleness warning. Disjoint from t1762 by §A.2. (REQ-FW-011..013, REQ-FW-016; AC-FW-009..011)
-- **M6 (Medium) — `internal/jevmeasure` bench.** Case format, baseline.json compare command, containment + token-savings report. (REQ-FW-014; AC-FW-012)
-- **M7 (Low, mechanical) — Template packaging.** Skill `moai-fetch-web`, permission rule, glm-web-tooling routing row, Codex `network_access` note; `make build` template-parity + neutrality guard. (REQ-FW-015; AC-FW-013)
+### M1 (High) — `internal/fetchweb` block splitting + token accounting
+
+Block kinds, heading paths, chrome removal, `<aside>` separation; golden-case fixtures. Data model most likely to change on review. (REQ-FW-001, REQ-FW-002; AC-FW-001)
+
+### M2 (High) — Two-stage scoring + selection rules
+
+Stage-1 windows/0.6; stage-2 standalone+neighbor/0.8, same-heading 0.6; no_match decided first (zero stage-1 candidates, REQ-FW-006 decision order); first-block keep, <300-token backfill, header-row accompaniment, verbatim order-preserving emission. Against a fake answerer injected at the Jev seam. (REQ-FW-004..006; AC-FW-002, AC-FW-003)
+
+### M3 (High) — CLI command + output contract + off-gate
+
+`moai fetch web`, statuses, exit codes, `--json`, bounded page fetch, WebFetch fallback notice. (REQ-FW-003, REQ-FW-007, REQ-FW-008; AC-FW-004..007)
+
+### M4 (Medium) — MCP `fetch_web`
+
+Catalog entry + dispatch sharing the M3 pipeline. (REQ-FW-009; AC-FW-006)
+
+### M5 (Medium) — `internal/jev` client hardening
+
+Disk cache (body-SHA + resolved-model-id key per B5's pinned mechanism, atomic replace), Retry-After backoff composing with REQ-JEVC-008, semaphore, usage new-vs-cache separation, alias-staleness warning. `internal/jev` is exclusively this SPEC's under the revised §A.2 boundary. (REQ-FW-011..013, REQ-FW-016; AC-FW-009..011)
+
+### M6 (Medium) — `internal/jevmeasure` bench
+
+Case format, `moai jevmeasure bench --baseline` compare command (B6), containment + token-savings report. (REQ-FW-014; AC-FW-012)
+
+### M7 (Low, mechanical) — Template packaging
+
+Skill `moai-fetch-web`, permission rule, glm-web-tooling routing row, Codex `network_access` note; `make build` template-parity + neutrality guard. (REQ-FW-015; AC-FW-013)
 
 ## §G. Anti-patterns
 
