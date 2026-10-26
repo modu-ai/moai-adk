@@ -52,7 +52,7 @@ The launcher table (per-harness entry forms):
 | Work in a tree from the current Codex session | `git -C <absolute-worktree-path>` and direct file operations there |
 | Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. Project L1 trees under `.claude/worktrees/` or `.moai/worktrees/` are removed only after their sessions end |
 
-`moai worktree new <name>` creates a harness-neutral L1 tree at `.moai/worktrees/<name>` without entering it. A Codex factory lane uses it for each card, then launches the interactive card session with `codex -C <absolute-worktree-path>`; it does not use `moai codex -w` to create the tree. The Codex app's Worktree selector creates a Codex-managed tree separately. A raw `git worktree add` bypasses MoAI's name validation, base selection, and post-create Git configuration.
+`moai worktree new <name>` creates a harness-neutral L1 tree at `.moai/worktrees/<name>` without entering it. Card trees come from the `moai factory next` lease (it creates and registers them); sessions move by the AGENTS.md §3 doctrine — `/cd` in-session, `codex -C` only after a refused move. `moai codex -w` never creates a tree, the app's Worktree selector is a separate Codex-managed path, and a raw `git worktree add` bypasses MoAI's creation guards.
 
 [HARD] **`moai worktree done` closes L2 trees only.** `done` refuses both project roots. Remove an L1 tree only after its session ends and its branch is integrated, using the session-end prompt where available or `git worktree unlock` + `git worktree remove`.
 

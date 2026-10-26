@@ -49,6 +49,11 @@ func (f *FactoryDB) ResumeRun(ctx context.Context, runID string, verifiedPID int
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// A run a consolidation retired is never re-activated: the upsert below
+	// would flip it to 'active' and switch the REQ-FCR-024 storage guard off.
+	if err := refuseIfRetiredByConsolidation(ctx, tx, runID); err != nil {
+		return err
+	}
 	// The WHERE on the conflict branch is the already-active no-op: a row
 	// that resolved active between the discovery read and this write keeps
 	// its owner stamp, and RowsAffected reports the outcome for the event.

@@ -99,6 +99,19 @@ type ReconcileOptions struct {
 	// LegacyPeerRecordAbsent reports that the run has no lead-peer record at all —
 	// not merely one the Fallback failed to read. Nil disables the boot proof.
 	LegacyPeerRecordAbsent func(runID string) bool
+	// WorkerProbe reports the liveness of a registered worker's pid
+	// (REQ-FCR-022). Nil uses the platform probe. Only a positive Dead makes a
+	// worker row not count as a live record; an undecided probe counts as live.
+	WorkerProbe func(pid int) ProcessIdentityState
+}
+
+// workerProbe resolves the worker liveness probe: the caller's override, else
+// the platform pid probe.
+func (o ReconcileOptions) workerProbe() func(int) ProcessIdentityState {
+	if o.WorkerProbe != nil {
+		return o.WorkerProbe
+	}
+	return platformPIDState
 }
 
 // SystemBootTime reports when this host last booted, or false where the
@@ -352,7 +365,7 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		// by the retirement it races with (sync-audit t1707 F3). The
 		// authoritative preserved/retired outcome is what the transaction
 		// decided, not the pre-read.
-		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis)
+		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis, opts.workerProbe())
 		if err != nil {
 			return Reconciliation{}, err
 		}
@@ -468,14 +481,14 @@ func (f *FactoryDB) retireRun(ctx context.Context, owner RunOwner) error {
 // (sync-audit t1707 F3). It reports whether the run was retired: false means
 // live records were found inside the transaction and the run stays active for
 // the caller's preserved list.
-func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) (retired bool, err error) {
+func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis, probe func(int) ProcessIdentityState) (retired bool, err error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	live, err := runHasLiveRecords(ctx, tx, runID)
+	live, err := runHasLiveRecords(ctx, tx, runID, probe)
 	if err != nil {
 		return false, err
 	}
