@@ -1,6 +1,6 @@
 # progress — SPEC-JEV-LEDGER-001
 
-status: draft
+status: completed
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -177,4 +177,33 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 07fc4b93f3, M2 fe227a31c1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete-pending-audit
+sync_complete_at: 2026-10-27
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the lane backfills the real SHA in the next commit
+sync_scope: auto                    # sync-coverage-scope-contract.md
+coverage_scope: SPEC-JEV-LEDGER-001 only (CHANGELOG.md [Unreleased] entry, spec.md frontmatter status/updated, this section); no code, no docs-site, no README change (no user-facing documentation surface is touched by this SPEC)
+tier: M
+ac_source: .moai/specs/SPEC-JEV-LEDGER-001/acceptance.md (resolved, non-empty)
+ac_headings_declared: 11   # grep -n '^### AC-JEVL' acceptance.md; no [RETIRED]/[REF] token present (grep -c = 0); the B12 awk counter was not run (worktree guard forbids awk in this brief) - Gap
+b12_self_test_a: pass   # grep -c 'SPEC-JEV-LEDGER-001' CHANGELOG.md printed 0 before emission (exit 1 = no match)
+b12_self_test_b: pass-by-headings   # CHANGELOG states 11 AC headings = the 11 '### AC-JEVL' headings; counter itself not run (see Gap)
+b12_self_test_c: pass   # every path named in the CHANGELOG entry listed by ls (internal/jevledger/{ledger.go,open_unix.go,open_other.go,ledger_test.go,fifo_unix_test.go,fifo_other_test.go,boundary_test.go}, internal/config/{jev_consumers.go,jev_consumers_test.go,cache.go,defaults.go}); configCacheSchemaVersion = 14 at cache.go:57
+changelog_entry_position: "CHANGELOG.md ## [Unreleased] -> ### Added, first entry"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed on this single sync commit (status and updated only)
+  progress_md_status_line: draft -> completed
+  plan_md_acceptance_md: not touched (no status field; updated: left as authored)
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
+mx_validation: not-run   # sync sub-step not exercised here; the run phase recorded @MX:ANCHOR on Recorder.Append and @MX:WARN on the Unix openLedger (E.2)
+lane_run_evidence_not_reobserved_by_sync: "at ef620b8f8d the lane re-ran go test ./internal/jevledger/ ./internal/config/ -count=1 (ok), go vet and GOOS=windows go vet on both (exit 0), gofmt -l (empty)"
+```
+
+### Disposition of the binding run conditions
+
+Both conditions in `## Binding run conditions` were disposed in the run phase; the sync phase re-read the cited artifacts and confirmed each path and name below exists by `grep` / `ls` in this tree (existence only; the tests were not re-run by the sync phase).
+
+- **N1 (dispose_in=run) — DISPOSED.** Run-phase disposition: §E.2 "Disposition of the binding run condition **N1**". `internal/jevledger/boundary_test.go` is stricter than AC-JEVL-014's wording without changing it: the recorder package is checked by a standard-library allowlist plus a `net`, `net/*`, `os/exec` denylist; `internal/config/jev_consumers.go` by the same denylist plus the allowlist "standard library or `gopkg.in/yaml.v3`". The rejection cases are the executable mutant probe `TestLedgerPackage_ImportBoundary/mutants` (net/http, net/rpc, net/smtp, os/exec, internal/jev, a third-party HTTP client, and the yaml library for the recorder only). Verified present: `func TestLedgerPackage_ImportBoundary` at `boundary_test.go:89`, subtests `classifier-controls` (`:116`) and `mutants` (`:148`), the `net-rpc` case (`:154`), and `func TestLedgerPackage_NeverReadsLedger` (`:206`).
+- **N4 (dispose_in=run) — DISPOSED.** Run-phase disposition: §E.2 "Dispositions and decisions recorded at M1", first bullet (**N4**). `JevConsumerConfig` (raw `yaml.Node` fields) is declared in `internal/config/jev_consumers.go` (`type JevConsumerConfig struct` at `:41`, beside the `UnmarshalYAML` methods at `:71` and `:94`), so `internal/config/types.go` gains only the `Consumers JevConsumers` field and imports no yaml library, and plan section B's "types.go imports no yaml library" stays true. The run phase's own check was `grep -n 'yaml.v3\|"gopkg' internal/config/types.go` (two comment lines, no import line); the sync phase did not re-run it.
+
+Gaps (sync phase): the B12 awk counter was not run (brief forbade awk), so the AC count rests on the heading grep; the repository-wide suite, `moai spec audit` and the lane evidence at `ef620b8f8d` were not re-observed here; `mx_validation` was not exercised; Windows execution of the FIFO cases remains unobserved (carried from §E.2).
