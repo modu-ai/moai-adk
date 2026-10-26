@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -116,6 +118,104 @@ func squashLandedFixture(t *testing.T, landedSHA string) (root, uuid, prHead, sq
 	return root, uuid, prHead, squash, store
 }
 
+// engageCard records the first factory event naming card t1 in the run, the
+// instant the card's engagement is measured from.
+func engageCard(t *testing.T, root, at string) {
+	t.Helper()
+	db := fcOpen(t, root)
+	if _, err := db.DB.Exec(`INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,?,?,?)`,
+		fcRun, "card.assigned", `{"card_id":"t1"}`, at); err != nil {
+		t.Fatalf("record engagement event: %v", err)
+	}
+	_ = db.Close()
+}
+
+// setLandingObservedAt rewrites the observation time on card t1's landing record.
+func setLandingObservedAt(t *testing.T, store *factory.BacklogStore, at string) {
+	t.Helper()
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == "t1" && r.Items[i].Landing != nil {
+				r.Items[i].Landing.ObservedAt = at
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestFactoryRebindEvidenceRefusals pins the verb's refusals ahead of the
+// verdict and landing paths: each one writes nothing.
+func TestFactoryRebindEvidenceRefusals(t *testing.T) {
+	rebind := func(t *testing.T, id string) error {
+		t.Helper()
+		_, _, err := runFactory(t, "rebind-evidence", id, "--run", fcRun, "--reason", "refusal coverage")
+		return err
+	}
+	t.Run("an_id_that_is_not_a_card_id", func(t *testing.T) {
+		fcFixture(t)
+		if err := rebind(t, "bad/id"); err == nil || !strings.Contains(err.Error(), "is not a card id") {
+			t.Fatalf("err = %v, want the not-a-card-id refusal", err)
+		}
+	})
+	t.Run("no_factory_store_yet", func(t *testing.T) {
+		fcFixture(t)
+		if err := rebind(t, "t1"); err == nil || !strings.Contains(err.Error(), "has no factory record") {
+			t.Fatalf("err = %v, want the no-factory-record refusal", err)
+		}
+	})
+	t.Run("the_card_has_no_row_in_the_run", func(t *testing.T) {
+		root, _ := fcFixture(t)
+		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardRun, Stage: homestate.CardRun})
+		if err := rebind(t, "t1"); err == nil || !strings.Contains(err.Error(), "has no factory record under run") {
+			t.Fatalf("err = %v, want the no-row-in-run refusal", err)
+		}
+	})
+	t.Run("the_audit_phase_cannot_be_inferred", func(t *testing.T) {
+		root, _ := fcFixture(t)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned})
+		if err := rebind(t, "t1"); err == nil || !strings.Contains(err.Error(), "cannot infer the audit phase") {
+			t.Fatalf("err = %v, want the audit-phase refusal", err)
+		}
+		if n := mdAuditCount(t, root); n != 0 {
+			t.Errorf("audit rows = %d, want 0 on a refusal", n)
+		}
+	})
+	t.Run("a_second_run_on_a_converged_and_audited_record_is_a_duplicate", func(t *testing.T) {
+		root, _, _ := rebindFixture(t)
+		if out, err := rebindRun(t, "first rebind"); err != nil {
+			t.Fatalf("first rebind: %v\nout: %s", err, out)
+		}
+		before := fcCard(t, root, "t1")
+		if _, err := rebindRun(t, "second rebind"); err == nil || !strings.Contains(err.Error(), "converged-and-audited duplicate") {
+			t.Fatalf("err = %v, want the duplicate refusal", err)
+		}
+		if after := fcCard(t, root, "t1"); after.Version != before.Version {
+			t.Errorf("a duplicate refusal changed the record: v%d → v%d", before.Version, after.Version)
+		}
+		if n := mdAuditCount(t, root); n != 1 {
+			t.Errorf("audit rows = %d, want the single row of the first run", n)
+		}
+	})
+	t.Run("a_command_without_a_context_still_runs", func(t *testing.T) {
+		fcFixture(t) // no factory store yet, so the call stops at the no-record refusal
+		err := runFactoryRebindEvidence(&cobra.Command{}, "t1", "no context supplied", fcRun)
+		if err == nil || !strings.Contains(err.Error(), "has no factory record") {
+			t.Fatalf("err = %v, want the no-factory-record refusal", err)
+		}
+	})
+	t.Run("an_empty_stage_falls_back_to_the_state", func(t *testing.T) {
+		// State run with no stage infers the sync-audit phase; with no verdict
+		// file and no landing record the verb then refuses for the verdict.
+		root, _ := fcFixture(t)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardRun, WorktreePath: t.TempDir()})
+		if err := rebind(t, "t1"); err == nil || !strings.Contains(err.Error(), "no sync-audit verdict") {
+			t.Fatalf("err = %v, want a sync-audit verdict refusal", err)
+		}
+	})
+}
+
 func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 	t.Run("rebinds_to_the_recorded_squash_commit_then_approve_and_the_gate_pass", func(t *testing.T) {
 		root, uuid, _, squash, _ := squashLandedFixture(t, "squash")
@@ -129,6 +229,9 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		rows := mdAuditRows(t, root, "t1")
 		if len(rows) != 1 || rows[0].New != squash {
 			t.Fatalf("audit rows = %+v, want exactly one rebind-evidence row ending at %s", rows, squash)
+		}
+		if rows[0].Source != homestate.EvidenceSourceLanding {
+			t.Errorf("audit row source = %q, want %q", rows[0].Source, homestate.EvidenceSourceLanding)
 		}
 		if _, _, err := runFactory(t, "approve", "t1", "--run", fcRun, "--issuer", "lead"); err != nil {
 			t.Fatalf("approve after the rebind: %v", err)
@@ -154,6 +257,9 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 		if got := fcCard(t, root, "t1").EvidenceSHA; got != base || got == squash {
 			t.Fatalf("evidence_sha = %q, want the verdict's audited commit %s, not the landing commit %s", got, base, squash)
+		}
+		if rows := mdAuditRows(t, root, "t1"); len(rows) != 1 || rows[0].Source != homestate.EvidenceSourceVerdict {
+			t.Fatalf("audit rows = %+v, want one row with source %q", rows, homestate.EvidenceSourceVerdict)
 		}
 	})
 
@@ -219,6 +325,48 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
 			t.Fatalf("evidence_sha = %q, want the landing commit %s", got, squash)
+		}
+	})
+
+	t.Run("refuses_a_landing_recorded_before_the_run_engaged_the_card", func(t *testing.T) {
+		// A reissued card keeps its id, so the previous issuance's landing
+		// record is still on the queue row; it predates this run's engagement.
+		root, _, _, _, _ := squashLandedFixture(t, "squash")
+		engageCard(t, root, "2026-10-26T09:00:00Z") // fixture landing observed 2026-10-26T00:00:00Z
+		before := fcCard(t, root, "t1")
+		_, err := rebindRun(t, "stale landing from an earlier issuance")
+		if err == nil || !strings.Contains(err.Error(), "before this run engaged") {
+			t.Fatalf("err = %v, want a refusal naming a landing recorded before this run engaged the card", err)
+		}
+		if after := fcCard(t, root, "t1"); after.EvidenceSHA != before.EvidenceSHA || after.Version != before.Version {
+			t.Errorf("a refusal changed the record: %q v%d → %q v%d", before.EvidenceSHA, before.Version, after.EvidenceSHA, after.Version)
+		}
+		if n := mdAuditCount(t, root); n != 0 {
+			t.Errorf("audit rows = %d, want 0 on a refusal", n)
+		}
+	})
+
+	t.Run("accepts_a_landing_recorded_after_the_run_engaged_the_card", func(t *testing.T) {
+		root, _, _, squash, _ := squashLandedFixture(t, "squash")
+		engageCard(t, root, "2026-10-25T00:00:00Z")
+		if out, err := rebindRun(t, "landing recorded after the run engaged the card"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != squash {
+			t.Fatalf("evidence_sha = %q, want %s", got, squash)
+		}
+	})
+
+	t.Run("refuses_an_unreadable_observation_time", func(t *testing.T) {
+		root, _, _, _, store := squashLandedFixture(t, "squash")
+		engageCard(t, root, "2026-10-25T00:00:00Z")
+		setLandingObservedAt(t, store, "yesterday")
+		_, err := rebindRun(t, "the record carries no readable observation time")
+		if err == nil || !strings.Contains(err.Error(), "observation time") {
+			t.Fatalf("err = %v, want a refusal naming the unreadable observation time", err)
+		}
+		if n := mdAuditCount(t, root); n != 0 {
+			t.Errorf("audit rows = %d, want 0 on a refusal", n)
 		}
 	})
 

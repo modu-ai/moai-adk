@@ -38,6 +38,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -98,20 +99,41 @@ func newFactoryRebindEvidenceCommand() *cobra.Command {
 // commit means the fallback did not apply; note is then the suffix for the
 // verdict refusal — empty when the card carries no landing record, so an
 // unlanded card keeps the verdict's own refusal.
-func resolveRecordedLanding(ctx context.Context, root string, card homestate.Card) (full, note string) {
+//
+// The record is stored per card id, not per run, so a reissued card still
+// carries the previous issuance's landing. A record observed before this run
+// first engaged the card is refused; when the run holds no event for the card
+// the engagement start is unknown and the record is judged on its commit alone
+// (refusal needs positive evidence).
+func resolveRecordedLanding(ctx context.Context, root string, db *homestate.FactoryDB, runID string, card homestate.Card) (full, note string) {
 	rec, err := newTodoStore().LoadPure()
 	if err != nil {
 		return "", fmt.Sprintf("; landing record unreadable: %v", err)
 	}
-	var sha, ref string
+	var sha, ref, observed string
 	for i := range rec.Items {
 		if rec.Items[i].ID == card.CardID && rec.Items[i].Landing != nil {
 			sha = strings.TrimSpace(rec.Items[i].Landing.SHA)
 			ref = strings.TrimSpace(rec.Items[i].Landing.Ref)
+			observed = strings.TrimSpace(rec.Items[i].Landing.ObservedAt)
 		}
 	}
 	if sha == "" {
 		return "", ""
+	}
+	start, known, err := db.CardEngagementStart(ctx, runID, card.CardID)
+	if err != nil {
+		return "", fmt.Sprintf("; run engagement start unreadable: %v", err)
+	}
+	if known {
+		at, perr := time.Parse(time.RFC3339Nano, observed)
+		if perr != nil {
+			return "", fmt.Sprintf("; recorded landing refused: unreadable observation time %q", observed)
+		}
+		if at.Before(start) {
+			return "", fmt.Sprintf("; recorded landing refused: observed %s, before this run engaged the card (%s) — it belongs to an earlier issuance",
+				at.UTC().Format(time.RFC3339), start.UTC().Format(time.RFC3339))
+		}
 	}
 	// The record names the ref the operator observed the landing against
 	// (`todo landed --ref`); only a record without one falls back to the
@@ -181,15 +203,16 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	// writing anything when that does not apply either.
 	full, err := homestate.ResolveRebindEvidence(ctx, card, phase)
 	source := phase + " verdict's audited commit"
+	evidenceSource := homestate.EvidenceSourceVerdict
 	if err != nil {
 		// A PR that landed as a squash commit leaves the audited PR head
 		// outside the worktree's ancestry (card t1962); the operator's
 		// landing record names the commit that did land.
-		landed, note := resolveRecordedLanding(ctx, root, card)
+		landed, note := resolveRecordedLanding(ctx, root, db, runID, card)
 		if landed == "" {
 			return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w%s", cardID, phase, err, note)
 		}
-		full, source = landed, "recorded landing commit"
+		full, source, evidenceSource = landed, "recorded landing commit", homestate.EvidenceSourceLanding
 	}
 	actor, session := metadataActor()
 	now := factoryCardNow()
@@ -216,7 +239,7 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 		for attempt := 0; attempt < 2; attempt++ {
 			if err := db.RecordCardMetadataCatchUp(ctx, homestate.CardMetadataEvent{
 				CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
-				Field: metadataFieldEvidenceSHA, Old: auditOld, New: full, Reason: reason,
+				Field: metadataFieldEvidenceSHA, Old: auditOld, New: full, Reason: reason, Source: evidenceSource,
 			}, now); err == nil {
 				_, _ = fmt.Fprintf(out, "%s evidence_sha %s (attested; the record already carried it, no store re-mutated)\n", cardID, shortSHA(full))
 				return nil
@@ -236,7 +259,7 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	for attempt := 0; attempt < 2; attempt++ {
 		if err := db.RecordCardMetadataEvent(ctx, homestate.CardMetadataEvent{
 			CardID: cardID, Kind: metadataKindRebindEvidence, Actor: actor, Session: session,
-			Field: metadataFieldEvidenceSHA, Old: old, New: full, Reason: reason,
+			Field: metadataFieldEvidenceSHA, Old: old, New: full, Reason: reason, Source: evidenceSource,
 		}, now); err == nil {
 			_, _ = fmt.Fprintf(out, "%s evidence_sha %s (was %s) — rebound to the newest %s\n",
 				cardID, shortSHA(full), dash(shortSHA(old)), source)

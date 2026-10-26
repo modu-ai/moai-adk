@@ -66,7 +66,16 @@ type CardMetadataEvent struct {
 	// ClassifiedAt is the classification stamp a reclassify write used
 	// (empty on set-spec rows and on catch-up attestations).
 	ClassifiedAt string
+	// Source names where a rebind-evidence value came from — EvidenceSourceVerdict
+	// or EvidenceSourceLanding (card t1962); empty on every other verb's rows.
+	Source string
 }
+
+// The evidence sources a rebind-evidence audit row records.
+const (
+	EvidenceSourceVerdict = "verdict"
+	EvidenceSourceLanding = "landing"
+)
 
 // cardMetadataPayload is the JSON payload column's shape.
 type cardMetadataPayload struct {
@@ -77,6 +86,7 @@ type cardMetadataPayload struct {
 	New          string `json:"new"`
 	Reason       string `json:"reason"`
 	ClassifiedAt string `json:"classified_at,omitempty"`
+	Source       string `json:"source,omitempty"`
 }
 
 // RecordCardMetadataEvent appends exactly one audit row after both stores
@@ -107,6 +117,7 @@ func (f *FactoryDB) appendCardMetadataRow(ctx context.Context, ev CardMetadataEv
 	payload, err := json.Marshal(cardMetadataPayload{
 		Actor: ev.Actor, Session: ev.Session, Field: ev.Field,
 		Old: ev.Old, New: ev.New, Reason: ev.Reason, ClassifiedAt: ev.ClassifiedAt,
+		Source: ev.Source,
 	})
 	if err != nil {
 		return err
@@ -382,6 +393,39 @@ func ResolveLandedEvidence(ctx context.Context, dir, landedSHA, landedRef string
 		return "", evidenceErr("commit %s is not reachable from %s", full, landedRef)
 	}
 	return full, nil
+}
+
+// CardEngagementStart returns the instant the factory first recorded an event
+// for the card inside the run: the card's engagement start. A landing record
+// observed before it belongs to an earlier issuance of the same card id and
+// cannot be this run's evidence (card t1962). found is false when the run holds
+// no event naming the card, so the caller can tell "unknown" from "early".
+func (f *FactoryDB) CardEngagementStart(ctx context.Context, runID, cardID string) (time.Time, bool, error) {
+	// SQL: every value goes through a ? placeholder. The timestamps are
+	// RFC3339Nano text of varying length, so they are compared as times in Go,
+	// never lexicographically in SQL.
+	rows, err := f.DB.QueryContext(ctx,
+		`SELECT created_at FROM events WHERE run_id=? AND json_extract(payload_json,'$.card_id')=?`, runID, cardID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	var first time.Time
+	found := false
+	for rows.Next() {
+		var at string
+		if err := rows.Scan(&at); err != nil {
+			return time.Time{}, false, err
+		}
+		t, perr := time.Parse(time.RFC3339Nano, at)
+		if perr != nil {
+			continue
+		}
+		if !found || t.Before(first) {
+			first, found = t, true
+		}
+	}
+	return first, found, rows.Err()
 }
 
 // readNewestVerdict locates the newest `<phase>*.md` verdict file and applies
