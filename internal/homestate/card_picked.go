@@ -16,6 +16,12 @@ var (
 	hex64Pattern  = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
+// ValidSpecID reports whether s matches the card-record SPEC grammar — the
+// same pattern CardFields.validate applies. Lease-path propagation gates on
+// it so a queue's as-is spec (the store is not a SPEC registry) never turns
+// a working lease into a validation refusal.
+func ValidSpecID(s string) bool { return specIDPattern.MatchString(s) }
+
 // ContractRef is the optional pointer from a card record to a signed
 // contract: the contract's SPEC identifier, its signed digest, the signing
 // time, and the locator of the signing event in the moai-owned contract store
