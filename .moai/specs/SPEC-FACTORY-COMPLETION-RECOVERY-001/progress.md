@@ -123,7 +123,7 @@ Scope ruling (coordinator, recorded in `.moai/reports/t1963/progress.md`): this 
 sync_scope: partial-m2b-only
 sync_complete_at: 2026-10-26
 m2b_sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
-sync_status: m2b-milestone-synced-spec-open
+sync_status: complete (card t1963 M2-B milestone close; SPEC-FACTORY-COMPLETION-RECOVERY-001 stays in-progress — AC-FCR-006..013 follow-up)
 run_head_at_sync: e7b91190e2   # delta 8 re-sync (delta 7 re-sync was at 8fb83939e2; delta 6 re-sync was at 4f4a1e6603; delta 5 re-sync was at f46fff0659; delta 4 re-sync was at 41fa30b8d0; sync commits: 5b6893cea3 at dd227d16c4; 2cb473392c at eebf84f867; a88485bb8e at be39581b12; a23f95cc88 at 4f69c46cd4)
 ac_source: .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/acceptance.md (tier L)
 ac_live_total: 25          # 25 criteria by '### AC-FCR-' headings and unique AC-FCR-NNN set; the B12 counter prints 25 again on this tree (live=25 excluded=0 ambiguous=0) after 763311a729 spelled the AC-017 shorthand
@@ -136,6 +136,7 @@ frontmatter_status_transitions:
 canary_compliance_check: not-applicable
 mx_validation: "tags present in source (see below); sidecar index not built (moai mx scan writes the index and was not run)"
 ```
+The `sync_status` first token `complete` records this card's sync stage only (leader ruling of the factory-complete sync-audit gate, `internal/factorylane/merge.go:251-271`); the SPEC is NOT closed — `spec.md` `status: in-progress`, `sync_commit_sha` stays withheld, `m2b_sync_commit_sha: pending-backfill`.
 
 **Still open — no implementation in this tree (grep evidence, this run):** AC-FCR-006..011 (M2-original: expired-lease reaper over all runs, operator reassign edge, stalled-wait watchdog, CI completion reader) and AC-FCR-012/013 (M3: near-duplicate issuance disclosure, relation disposition ledger). `grep -rlEi 'ExpiredLeaseReaper|OperatorReassign|StalledWaitWatchdog|CICompletionReader|GTDRelationDisposition|RecoveryNeverCompletes' internal cmd` printed nothing, and the test names acceptance.md gives for them (for example `TestTodoAddNearDupDisclosure`) do not exist; only the pre-existing `TestTodoAddNearDuplicateRecordsOnly` is present. Per acceptance.md §0 an empty-sweep selector is unmeasured, never a pass. M1 (AC-FCR-001..005, 014..016) landed earlier in PR #1812; it is not re-closed here.
 
