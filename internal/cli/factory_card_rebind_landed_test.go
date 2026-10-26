@@ -128,6 +128,24 @@ func TestFactoryRebindEvidenceSquashLanded(t *testing.T) {
 		}
 	})
 
+	t.Run("a_resolvable_verdict_wins_over_a_recorded_landing", func(t *testing.T) {
+		root, _, _, squash, _ := squashLandedFixture(t, "squash")
+		dir := fcCard(t, root, "t1").WorktreePath
+		// The verdict audits the base commit, an ancestor of HEAD, so the
+		// verdict path resolves and the landing record must not be consulted.
+		base := fcGit(t, dir, "rev-list", "--max-parents=0", "HEAD")
+		verdict := filepath.Join(dir, ".moai", "reports", "t1", "sync-audit-iter2.md")
+		if err := os.WriteFile(verdict, []byte("verdict: PASS\naudited_sha: "+base[:12]+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := rebindRun(t, "verdict resolves, landing is only the fallback"); err != nil {
+			t.Fatalf("rebind-evidence: %v\nout: %s", err, out)
+		}
+		if got := fcCard(t, root, "t1").EvidenceSHA; got != base || got == squash {
+			t.Fatalf("evidence_sha = %q, want the verdict's audited commit %s, not the landing commit %s", got, base, squash)
+		}
+	})
+
 	t.Run("refuses_when_no_landing_is_recorded", func(t *testing.T) {
 		root, _, _, _, _ := squashLandedFixture(t, "")
 		before := fcCard(t, root, "t1")

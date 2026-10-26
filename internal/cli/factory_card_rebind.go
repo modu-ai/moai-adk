@@ -14,7 +14,12 @@
 //     (newest-selection rule of readAuditVerdict; the phase is inferred from
 //     the card's stage) and must satisfy the T10 commit conditions in the
 //     card worktree — a caller cannot pass an arbitrary SHA, so an audit
-//     claim cannot be forged through this verb;
+//     claim cannot be forged through this verb. The one other source (card
+//     t1962) is the landing commit the OPERATOR recorded with `todo landed
+//     --sha`, consulted only when the verdict path refuses (a squash-landed
+//     PR leaves the audited head outside the worktree's ancestry) and only
+//     when that commit is reachable from the landed ref; the verdict wins
+//     whenever it resolves;
 //   - the record write is version-fenced exactly like set-spec's record
 //     layer (internal/homestate/card_metadata.go);
 //   - exactly one card_metadata_events audit row (kind rebind-evidence,
@@ -164,8 +169,9 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 	// Binding safety: the new value is READ from the card's newest verdict
 	// file of the inferred phase and verified in the worktree — never taken
 	// from the caller. A missing or unreadable verdict, or an audited commit
-	// that does not resolve as an ancestor of the worktree HEAD, refuses
-	// without writing anything.
+	// that does not resolve as an ancestor of the worktree HEAD, falls to the
+	// operator's recorded landing commit (see the header) and refuses without
+	// writing anything when that does not apply either.
 	full, err := homestate.ResolveRebindEvidence(ctx, card, phase)
 	source := phase + " verdict's audited commit"
 	if err != nil {

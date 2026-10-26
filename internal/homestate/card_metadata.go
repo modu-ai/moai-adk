@@ -320,9 +320,10 @@ func (f *FactoryDB) SetCardStageEvidence(ctx context.Context, runID, cardID, sta
 
 // SetCardEvidenceSHA is the rebind-evidence record layer (card t1930 defect ④):
 // a version-fenced mutation of evidence_sha alone. The VALUE this lands must
-// come from ResolveRebindEvidence — the newest verdict file's audited_sha —
-// never from the caller's own input; the record layer cannot enforce that
-// provenance, so the verb does.
+// come from ResolveRebindEvidence (the newest verdict file's audited_sha) or,
+// when the verdict path refuses, ResolveLandedEvidence (the operator-recorded
+// landing commit, card t1962) — never from the caller's own input; the record
+// layer cannot enforce that provenance, so the verb does.
 func (f *FactoryDB) SetCardEvidenceSHA(ctx context.Context, runID, cardID, sha string, expectedVersion int64, now time.Time) (Card, error) {
 	if strings.TrimSpace(sha) == "" {
 		return Card{}, fmt.Errorf("%w: evidence sha is required", ErrInvalidCardInput)
@@ -337,9 +338,10 @@ func (f *FactoryDB) SetCardEvidenceSHA(ctx context.Context, runID, cardID, sha s
 // rule readAuditVerdict uses: highest -iter number, then latest mtime) and
 // returns the FULL object name of the commit that verdict's audited_sha
 // names, verified by the T10 reader's own conditions — the commit resolves in
-// the card worktree and is an ancestor of, or equal to, its HEAD. It is the
-// only value the rebind-evidence verb may write, so a lane cannot forge an
-// audit claim by passing an arbitrary SHA.
+// the card worktree and is an ancestor of, or equal to, its HEAD. Together with
+// ResolveLandedEvidence it is the only source of a value the rebind-evidence
+// verb may write, so a lane cannot forge an audit claim by passing an
+// arbitrary SHA.
 func ResolveRebindEvidence(ctx context.Context, card Card, phase string) (string, error) {
 	if !ValidCardID(card.CardID) {
 		return "", evidenceErr("card id %q is not a safe path segment", card.CardID)
