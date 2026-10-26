@@ -26,23 +26,24 @@ Exit-verification, all cells GREEN at `2956448055` (measured in this run, this t
 |---|---|
 | R-01 | absent-CLI-forms grep across 4 READMEs → empty, exit 1 (GREEN) |
 | R-08r | scoped CG-sentence grep → empty, exit 1 (GREEN) |
-| R-08b-r1 | launchers/windows-guide positive control = 2 |
+| R-08b-r1 | `git grep -c -F "](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/)" 2956448055 -- README.ko.md` → `HEAD:README.ko.md:2`, exit 0 (GREEN) |
 | R-08b-r2 | what-is cg-mode link = 1 |
 | R-20a | `Release-v3.1.2` 4× (1 per README), exit 0 |
 | R-20b | hugo.toml v3.1.2 / 2026-08-21 |
 | AC-PRC-003-r | `git diff 2956448055^ 2956448055` carries all six line changes in ONE diff |
 
-hns-oss-docs-verify recipe (inlined, GR-C): hugo build warning-free; sitemap OK; URL blacklist 0; Mermaid 0; 4-locale file-existence + section parity; README 4-file H2 parity 12/12/12/12; added body emoji 0.
+hns-oss-docs-verify recipe (inlined): hugo build warning-free; sitemap OK; URL blacklist 0; Mermaid 0; 4-locale file-existence + section parity; README 4-file H2 parity 12/12/12/12; added body emoji 0.
 
 Gaps (recorded, bounded):
 - GR-A — 7 out-of-scope ko docs-site pages keep their CG-paragraph copies per spec; umbrella AC-PRC-004 full closure is outside this child (umbrella closes it).
 - GR-B — pre-existing stale examples / emoji elsewhere: outside the edit surface (plan §A.5 PRESERVE).
-- GR-C — `docs-i18n-check.sh` absent from the tree; the inlined recipe was used as the substitute.
+- GR-C — repaired (sync-audit F1; the earlier "absent from the tree" claim was false — stale skill digest): `scripts/docs-i18n-check.sh` IS git-tracked (base, run tree, and HEAD). Strict run re-executed in this repair run: `DOCS_I18N_STRICT=1 bash scripts/docs-i18n-check.sh` → exit 0, "Errors:   0 / Warnings: 0 / OK: all 4 locales pass parity, frontmatter, H1, and glossary checks." The inlined verify recipe ran in addition, not as a substitute.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: audit-ready
-- run_complete_at: 2026-10-26T13:40Z
+run_status: audit-ready
+audit_ready: true
+run_complete_at: 2026-10-26T13:40Z
 - closing tree: `2956448055` (`295644805581277c9b1a6e855849fcc7f7a8dfa2`)
 - card-review: codex `mcp__moai__codex_review` scope=card (base `cb30e05b3e`, head `2956448055`) → **pass, 0 findings** — receipt `.moai/reports/t1720/card-review.md` (gitignored)
 
