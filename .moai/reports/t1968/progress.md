@@ -32,3 +32,6 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
   - D8/D9 MINOR: 토크나이저 의존 금지 축을 지키는 AC 없음; 마일스톤이 불릿(기계 점검 CN-4가 0건 관측).
   - B1=exit 2 유지+D5 문장 / B5=D6 고정 뒤 keep-but-warn / B6=하위명령명만 명기 — 전부 레인 판정, 운영자 결정 불요.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/plan-audit.md+rcpt-4be9e80d666fee983a5eccb3 ladder_path=①disk-evidence — FAIL 수용, 수리 재위임(manager-spec, D1~D9 + 소스 대조 요구), iter2 델타 감사 예정.
+- 2026-10-26 21:3x 수리 귀환 — 착지 검증: SPEC 4파일 수정(레인 트리 직접), 격리 트리 무관 확인. D1~D3 원 소스 대조 수리(127건 계수·REQ-JEVC-008+TestRetry_* 3건 직독·t1762 실경로=jevledger 신설 954adab25e — 감사 전제 대비 심화), D4~D9 적용, B1/B5/B6 확정 기록(벤치 하위명령 `moai jevmeasure bench --baseline`). RED 장부 10행 전부 재실행·적색, 4f0e58197d 고정. lint exit 0. v0.2.0, REQ 16/AC 14 천장 이내.
+- 커밋: e2fef7f2e5 `docs(SPEC-FETCH-WEB-001): plan revision per plan-audit iter1 (card t1968)` — Authored-By-Agent: manager-spec. (ac-baseline-guard report-only: acceptance COUNT 14 미기록 통과)
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/plan-audit.md iter1 D1-D9+수리 요약+e2fef7f2e5 ladder_path=①disk-evidence — 수리 승인, iter2 델타 감사 스폰(append 형식, audited head e2fef7f2e5).
