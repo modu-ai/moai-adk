@@ -285,6 +285,14 @@ var uiStrings = map[string]UIStrings{
 // GetLocalizedQuestion returns a localized copy of the question.
 // If no translation exists for the locale, returns the original question.
 func GetLocalizedQuestion(q *Question, locale string) Question {
+	localized := localizeQuestion(q, locale)
+	if d := q.DescriptionByLocale[locale]; d != "" {
+		localized.Description = d
+	}
+	return localized
+}
+
+func localizeQuestion(q *Question, locale string) Question {
 	// English is the default, no translation needed
 	if locale == "en" || locale == "" {
 		return *q

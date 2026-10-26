@@ -16,11 +16,43 @@ func TestInputValidator_NonRequiredEmptyClearsPrefill(t *testing.T) {
 	locale := "en"
 	q := &Question{ID: "user_name", Type: QuestionTypeInput, Default: "Alice", Required: false}
 
-	if err := inputValidator(q, result, &locale)("   "); err != nil {
+	validate := inputValidator(q, result, &locale)
+	if err := validate("   "); err != nil {
 		t.Fatalf("validator returned %v for empty non-required input", err)
 	}
 	if result.UserName != "" {
 		t.Errorf("UserName = %q after clearing a pre-filled non-required input, want empty", result.UserName)
+	}
+	// F3: the explicit-clear flag is recorded by the answer path itself.
+	if !result.UserNameCleared {
+		t.Error("UserNameCleared = false after an empty answer, want true")
+	}
+	if err := validate("Bob"); err != nil {
+		t.Fatal(err)
+	}
+	if result.UserNameCleared || result.UserName != "Bob" {
+		t.Errorf("after re-entering a value: UserNameCleared=%v UserName=%q, want false/Bob", result.UserNameCleared, result.UserName)
+	}
+}
+
+// F2: the reconfigure screen does not pre-fill user_name and keeps the
+// existing name on an empty answer, so its description keeps the "leave empty
+// to skip" meaning in every locale.
+func TestReconfigureUserNameDescription_KeepsSkipMeaning(t *testing.T) {
+	q := QuestionByID(ReconfigureQuestions(t.TempDir()), "user_name")
+	if q == nil {
+		t.Fatal("user_name missing from the reconfigure set")
+	}
+	want := map[string]string{
+		"en": "Leave empty to skip.",
+		"ko": "비워두면 건너뜁니다.",
+		"ja": "空欄でスキップできます。",
+		"zh": "留空则跳过。",
+	}
+	for loc, frag := range want {
+		if got := GetLocalizedQuestion(q, loc).Description; !strings.Contains(got, frag) {
+			t.Errorf("reconfigure %s user_name description %q lacks %q", loc, got, frag)
+		}
 	}
 }
 

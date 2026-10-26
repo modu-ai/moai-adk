@@ -163,3 +163,34 @@ func TestRunInit_ClearedUserNameDoesNotResaveProfileName(t *testing.T) {
 		t.Errorf("user.yaml re-saved the profile name after the wizard cleared it:\n%s", data)
 	}
 }
+
+// F1 (sync audit of d22e7d554d): on the RESUME path no template is redeployed,
+// so an explicit user_name clear must be patched into the user.yaml the
+// interrupted run left behind.
+func TestInitResume_ClearedUserNameReachesUserYAML(t *testing.T) {
+	resumeHome(t)
+	projectDir := filepath.Join(t.TempDir(), "resume-clear-proj")
+	resumeSeedRun(t, projectDir, "claude")
+
+	userYAML := filepath.Join(projectDir, ".moai", "config", "sections", "user.yaml")
+	if err := os.WriteFile(userYAML, []byte("user:\n  name: \"Alice\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	prev := runWizardFn
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
+		return &wizard.WizardResult{UserNameCleared: true}, nil
+	}
+	t.Cleanup(func() { runWizardFn = prev })
+
+	if err := resumeRun(t, projectDir, ""); err != nil {
+		t.Fatalf("resume failed: %v", err)
+	}
+	data, err := os.ReadFile(userYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "Alice") {
+		t.Errorf("successful resume retained user.name after an explicit clear:\n%s", data)
+	}
+}

@@ -7,8 +7,8 @@
 ┃   Japanese (日本語) - 日本語                                                  
 ┃   Chinese (中文)    - 中文                                                    
   Enter your name                                                               
-  How MoAI addresses you. Persisted to user.yaml (user.name). Clear the field to
-  leave it unset.                                                               
+  How MoAI addresses you. Persisted to user.yaml (user.name). Leave empty to    
+  skip.                                                                         
   >                                                                             
   Enter project name                                                            
   The name of your project.                                                     

@@ -251,6 +251,20 @@ func ReconfigureQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	git := GitQuestions()
 
+	// The reconfigure screen does not pre-fill user_name and keeps the existing
+	// name on an empty answer, so it keeps the "leave empty to skip" wording
+	// instead of the init description (card t1966, F2).
+	for i := range base {
+		if base[i].ID == "user_name" {
+			base[i].Description = "How MoAI addresses you. Persisted to user.yaml (user.name). Leave empty to skip."
+			base[i].DescriptionByLocale = map[string]string{
+				"ko": "MoAI가 부를 이름입니다. user.yaml(user.name)에 저장됩니다. 비워두면 건너뜁니다.",
+				"ja": "MoAIがあなたを呼ぶ名前です。user.yaml（user.name）に保存されます。空欄でスキップできます。",
+				"zh": "MoAI 对您的称呼。保存到 user.yaml（user.name）。留空则跳过。",
+			}
+		}
+	}
+
 	// Splice point: immediately after report_format. Falling back to the end of
 	// the base set keeps the order correct if the base set is ever reordered.
 	splice := len(base)
