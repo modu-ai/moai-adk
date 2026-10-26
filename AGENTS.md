@@ -271,7 +271,7 @@ absent — no success signal is not evidence the effect did not land. After thre
 operation, report the blocker.
 
 **Work without MCP servers.** Where one is unavailable, fall back to web search and fetch for
-library documentation, then continue — analysis quality must not depend on MCP availability.
+library documentation and established patterns, then continue — analysis quality must not depend on MCP availability.
 
 **Keep command output bounded**: quiet flags, targeted queries, or redirect-to-file with the exit
 code and a bounded tail. **Prefer the quiet
