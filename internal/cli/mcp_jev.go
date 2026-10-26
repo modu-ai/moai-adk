@@ -38,9 +38,16 @@ const jevAskToolName = "jev_ask"
 // handler calls it only AFTER the gate has passed, so with the gate off the
 // seam is never invoked and a test observes a zero-construction count instead
 // of trusting an absence of network activity. Replaced in tests.
+//
+// The disk cache (SPEC-FETCH-WEB-001 REQ-FW-011) is wired here from
+// jev.DefaultCacheDir (~/.moai/cache/jev); an unresolvable home leaves the
+// cache off — fail-open, the call proceeds networked.
 var newJevAskClient = func() *jev.Client {
 	c := jev.New(true)
 	c.LoadCredential = jevcred.Load
+	if dir, err := jev.DefaultCacheDir(); err == nil {
+		c.CacheDir = dir
+	}
 	return c
 }
 

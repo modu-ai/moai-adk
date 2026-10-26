@@ -55,6 +55,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ModelID is the request alias every request carries: the model value the
@@ -268,6 +269,10 @@ type Usage struct {
 	// RequestModel is the request alias this call sent. It is recorded in its own
 	// field, separate from Model.
 	RequestModel string `json:"request_model"`
+	// FromCache marks a record whose answer was served from the disk cache
+	// (REQ-FW-013): no network request was made. The new-vs-cache separation
+	// lives in this flag so a cost question is answerable from the log alone.
+	FromCache bool `json:"from_cache"`
 }
 
 // Result is what every call returns. There is no error return: see the package
@@ -282,17 +287,26 @@ type Result struct {
 	// Notice is set only on the change notice: the first answered call of a
 	// client whose interpreted model id differs from VerifiedInterpretedModel.
 	Notice string
+	// StaleCacheWarning is set when a cache serve came from a prior-model
+	// entry after the alias moved past it (REQ-FW-013, keep-and-warn): the
+	// answer is still the model's own answer, and the entry is kept, but the
+	// reader is told which version produced it.
+	StaleCacheWarning string
 }
 
 // OK reports whether the call produced answers.
 func (r Result) OK() bool { return r.Availability == Available }
 
 // NoticeLine renders the at-most-one notice line a consumer may emit
-// (REQ-JEVC-007). It returns the change notice when one is set. Otherwise an
-// available result has nothing to notice and returns empty.
+// (REQ-JEVC-007). It returns the change notice when one is set, then the
+// cache staleness warning, then the unavailability condition. An available
+// result with neither notice nor warning returns empty.
 func (r Result) NoticeLine() string {
 	if r.Notice != "" {
 		return r.Notice
+	}
+	if r.StaleCacheWarning != "" {
+		return r.StaleCacheWarning
 	}
 	if r.Availability == Available {
 		return ""
@@ -326,14 +340,32 @@ type Client struct {
 	Endpoint string
 	// MaxRetries bounds retries of a request that is BOTH declared repeatable
 	// and failed provably before delivery. Every other failure is never
-	// retried, whatever this holds.
+	// retried, whatever this holds. The Retry-After backoff consumes the SAME
+	// budget (REQ-FW-012 composing with REQ-JEVC-008, not overriding it).
 	MaxRetries int
+
+	// CacheDir enables the disk cache when non-empty (REQ-FW-011): responses
+	// cached under a body-SHA + resolved-model-id key, served without a
+	// network request. Production callers set it from DefaultCacheDir()
+	// (~/.moai/cache/jev); tests ALWAYS override it with a temp dir.
+	CacheDir string
+	// ModelOverride is the explicit per-request interpretation model id for
+	// the cache key — step 1 of the lookup sequence (plan B5). Empty means
+	// alias resolution from the persisted map. An override's cache miss goes
+	// to the network and writes its OWN entry; it never serves another
+	// model's stale entry (the N5 applicability condition).
+	ModelOverride string
+	// MaxConcurrency caps concurrently in-flight requests (REQ-FW-012's
+	// semaphore limb). Zero means no cap; New sets a default.
+	MaxConcurrency int
 
 	mu    sync.Mutex
 	usage []Usage
 	// changeNoticed records that this client already issued the change notice.
 	// Guarded by mu.
 	changeNoticed bool
+	// sem is the lazily-built concurrency semaphore. Guarded by mu.
+	sem chan struct{}
 }
 
 // New returns a client for the given gate state, wired to the compiled endpoint.
@@ -342,9 +374,10 @@ type Client struct {
 // packages stay independently testable.
 func New(enabled bool) *Client {
 	return &Client{
-		Enabled:    enabled,
-		Endpoint:   EndpointURL,
-		MaxRetries: 1,
+		Enabled:        enabled,
+		Endpoint:       EndpointURL,
+		MaxRetries:     1,
+		MaxConcurrency: defaultMaxConcurrency,
 	}
 }
 
@@ -572,6 +605,25 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 		return Result{Availability: Malformed, Condition: "request could not be encoded: " + err.Error()}
 	}
 
+	// Disk cache (REQ-FW-011): a hit is served with no network request at
+	// all. The lookup key is the body SHA combined with the RESOLVED model
+	// id — never the request alias. Cache errors are fail-open: a damaged or
+	// unreadable cache degrades to a network call, never to a failed one.
+	sha := bodySHA(body)
+	if c.CacheDir != "" {
+		if keyModel, aliasResolved, resolvable := c.resolveModel(); resolvable {
+			if entry, hit, stale, _ := c.cacheLookup(sha, keyModel, aliasResolved); hit {
+				served := serveCacheHit(entry, stale)
+				u := entry.Usage
+				u.RequestModel = ModelID
+				u.FromCache = true
+				c.record(u)
+				served.Usage = u
+				return served
+			}
+		}
+	}
+
 	res, answers, model := c.send(ctx, body, req.Repeatable)
 	// Attribution is decided on the response, never assumed. An OK response that
 	// names no valid interpreted model has no attributable answer, so none is
@@ -580,6 +632,26 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 		if ValidInterpretedModel(model) {
 			res.Answers = fromWire(req.Questions, answers, model)
 			res.Notice = c.changeNotice(model)
+			if c.CacheDir != "" {
+				// Store under the override when one is pinned (the entry is
+				// then the override's OWN), else under the answered model; the
+				// alias map moves only on alias-resolved observations.
+				keyModel := model
+				if c.ModelOverride != "" {
+					keyModel = c.ModelOverride
+				}
+				entry := cacheEntry{
+					BodySHA:   sha,
+					Model:     keyModel,
+					Answers:   res.Answers,
+					Usage:     Usage{InputTokens: requestTokens(req), Model: model, RequestModel: ModelID},
+					CreatedAt: time.Now(),
+				}
+				_ = c.cacheStore(entry)
+				if c.ModelOverride == "" {
+					_ = c.updateAliasMap(model)
+				}
+			}
 		} else {
 			res = Result{
 				Availability: Unattributed,
@@ -647,7 +719,15 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 		httpReq.Header.Set("User-Agent", UserAgent)
 		httpReq.Header.Set("Authorization", "Bearer "+c.credentialHeader())
 
+		// The semaphore caps in-flight round trips (REQ-FW-012); the slot is
+		// released as soon as the response arrives, so waits and retries do
+		// not hold it.
+		release, semErr := c.semaphore(ctx)
+		if semErr != nil {
+			return Result{Availability: Unreachable, Condition: "request canceled while waiting for a concurrency slot: " + semErr.Error()}, nil, ""
+		}
 		resp, err := doer.Do(httpReq)
+		release()
 		if err != nil {
 			last = Result{Availability: Unreachable, Condition: "transport failed: " + err.Error()}
 			// REQ-JEVC-008: retry ONLY a failure that is provably pre-delivery.
@@ -659,7 +739,22 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 			}
 			return last, nil, ""
 		}
-		return decode(resp)
+		res, answers, model := decode(resp)
+		// Retry-After limb (REQ-FW-012): a REPEATABLE request facing 429, 529,
+		// or another 5xx with a Retry-After header waits the parsed (and
+		// bounded) delay and retries, consuming the same attempt budget as
+		// the pre-delivery limb — one budget, not two. A non-repeatable
+		// request is never retried whatever the header says, composing with
+		// REQ-JEVC-008 rather than overriding it.
+		if retryableStatus(resp.StatusCode) && repeatable && attempt+1 < attempts {
+			if d, ok := parseRetryAfter(resp.Header.Get("Retry-After")); ok {
+				if sleepErr := retryAfterSleep(ctx, d); sleepErr == nil {
+					continue
+				}
+				return res, nil, "" // canceled while waiting
+			}
+		}
+		return res, answers, model
 	}
 	return last, nil, ""
 }

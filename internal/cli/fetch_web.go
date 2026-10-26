@@ -39,10 +39,15 @@ var fetchWebPageClientFn = func() *http.Client {
 }
 
 // fetchWebAskerFn is the Jev seam: a fully wired production client, or a
-// test stub. Called only after the gate has passed.
+// test stub. Called only after the gate has passed. The disk cache
+// (REQ-FW-011) rides jev.DefaultCacheDir (~/.moai/cache/jev); an
+// unresolvable home leaves it off (fail-open).
 var fetchWebAskerFn = func() fetchweb.Answerer {
 	c := jev.New(true)
 	c.LoadCredential = jevcred.Load
+	if dir, err := jev.DefaultCacheDir(); err == nil {
+		c.CacheDir = dir
+	}
 	return c
 }
 
