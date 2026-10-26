@@ -159,7 +159,7 @@ Other decisions recorded at M2:
 ```yaml
 run_status: complete-pending-audit
 run_complete_at: 2026-10-27
-run_commit_sha: pending-backfill   # M1 07fc4b93f3; the M2 SHA is backfilled in the following commit
+run_commit_sha: fe227a31c1497c770b9c3157048ba24a1bfa730f   # M2; M1 is 07fc4b93f3a444f24ccd28c9789216402569c7f8
 ac_pass_count: 10 (AC-001, 006, 007, 009, 010, 012, 013, 014, 017, 018) by the named PASS lines in section E.2; AC-011 is a regression-guard (cell E10 exit 0), not counted as a pass
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # no PRESERVE list; internal/jev and internal/cli have no changed file
@@ -171,8 +171,8 @@ cross_platform_build:
   goos_windows_goarch_amd64_go_build_all: exit 0
   goos_windows_go_vet_jevledger_and_config: exit 0
   fifo_cases_on_windows: not executed here (named SKIP present in fifo_other_test.go)
-total_run_phase_files: 12 changed files over two commits (see the final report)
-m1_to_mN_commit_strategy: one commit per milestone, then one docs commit that backfills the M2 SHA above
+total_run_phase_files: 15 (git diff --stat ff7a0a0875 HEAD at the M2 commit; +1917 -9 lines; plan section E estimated 11 distinct files, ~770 lines; the extra files are progress.md, the local workflow.yaml, cache.go and boundary_test.go)
+m1_to_mN_commit_strategy: one commit per milestone (M1 07fc4b93f3, M2 fe227a31c1), then one docs commit that backfills this SHA
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
