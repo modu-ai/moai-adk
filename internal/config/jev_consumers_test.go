@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -464,6 +465,151 @@ func TestJevConsumers_SurviveYAMLAndJSONRoundTrips(t *testing.T) {
 	}{})
 	if err != nil || !strings.Contains(string(empty), "consumers: {}") {
 		t.Errorf("an empty consumers block must marshal as an empty mapping, got %q (err %v)", empty, err)
+	}
+}
+
+// jevBombConsumer returns the body of one consumer whose `key` holds a depth-n
+// alias chain: each anchor is a two-element list of the previous anchor, so
+// expanding the chain yields 2^n leaves from a few hundred bytes of YAML.
+func jevBombConsumer(name, key string, depth int) string {
+	var b strings.Builder
+	b.WriteString("            " + name + ":\n")
+	b.WriteString("                a0: &a0 [z, z]\n")
+	for i := 1; i <= depth; i++ {
+		fmt.Fprintf(&b, "                a%d: &a%d [*a%d, *a%d]\n", i, i, i-1, i-1)
+	}
+	fmt.Fprintf(&b, "                %s: *a%d\n", key, depth)
+	return b.String()
+}
+
+// jevCacheBytes loads the project through the cache-writing path and returns
+// the size of the cache file it wrote, plus the loaded config.
+func jevCacheBytes(t *testing.T, configDir string) (int64, *Config) {
+	t.Helper()
+	cfg, err := NewLoader().LoadWithCache(configDir)
+	if err != nil {
+		t.Fatalf("LoadWithCache: %v", err)
+	}
+	info, err := os.Stat(cacheFilePath(configDir))
+	if err != nil {
+		t.Fatalf("the cache file was not written, so its size established nothing: %v", err)
+	}
+	return info.Size(), cfg
+}
+
+// F1 (sync audit of card t1762): a malformed threshold or mode must not keep
+// its alias graph. The config cache marshals Config to JSON, which follows
+// aliases, so a retained chain of depth 16 turned 479 bytes of YAML into
+// ~122 MB. The bound is stated against a benign malformed config of the same
+// shape: the bomb may cost no more than a small constant over it.
+func TestJevConsumers_AliasBombStaysBoundedInCache(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	t.Setenv(EnvConfigCacheDisabled, "")
+	const depth = 16
+	const slack = 16 * 1024
+
+	head := "workflow:\n" + jevOtherSetting + "    jev:\n        enabled: true\n        consumers:\n"
+	tail := "            ok: {mode: advise, threshold: 0.25}\n"
+
+	benignDir := jevWriteWorkflow(t, t.TempDir(), head+
+		"            c1: {threshold: [z, z]}\n            c2: {mode: [z, z]}\n"+tail)
+	baseline, _ := jevCacheBytes(t, benignDir)
+
+	bombBody := head + jevBombConsumer("c1", "threshold", depth) + jevBombConsumer("c2", "mode", depth) + tail
+	if len(bombBody) > 4096 {
+		t.Fatalf("the fixture grew to %d bytes; the point is that it is tiny", len(bombBody))
+	}
+	bombDir := jevWriteWorkflow(t, t.TempDir(), bombBody)
+	got, cfg := jevCacheBytes(t, bombDir)
+	if got > baseline+slack {
+		t.Fatalf("cache file is %d bytes for a %d-byte config; a benign malformed config of the same shape caches in %d (allowed slack %d): the alias chain was retained and expanded",
+			got, len(bombBody), baseline, slack)
+	}
+
+	check := func(label string, c *Config) {
+		t.Helper()
+		if !c.Workflow.Jev.Enabled || !c.Workflow.CommitIdentityGuard.Enabled {
+			t.Errorf("%s: the workflow section was reset", label)
+		}
+		for _, name := range []string{"c1", "c2"} {
+			r, ok := c.Workflow.Jev.Consumers.Resolve(name)
+			if !ok || r.Effective != JevModeShadow || r.Threshold != nil || len(r.Warnings) != 1 {
+				t.Errorf("%s: %s resolved to %+v (found=%v), want shadow, no threshold and one warning", label, name, r, ok)
+			}
+		}
+		if r, _ := c.Workflow.Jev.Consumers.Resolve("ok"); r.Configured != "advise" || r.Threshold == nil || *r.Threshold != 0.25 {
+			t.Errorf("%s: the valid neighbour did not survive: %+v", label, r)
+		}
+	}
+	check("fresh load", cfg)
+
+	// The second load is a cache HIT: it reads the JSON back, so the retained
+	// shape must also resolve identically after the round trip.
+	cached, err := NewLoader().LoadWithCache(bombDir)
+	if err != nil {
+		t.Fatalf("cache-hit load: %v", err)
+	}
+	check("cache hit", cached)
+}
+
+// F2 (sync audit of card t1762): saving a workflow section and reading it back
+// must not reset it. MarshalYAML wrote `mode` before `threshold`, so an anchor
+// defined in `threshold` and referenced from inside `mode` was emitted after
+// its alias and the re-read failed with `unknown anchor`.
+func TestJevConsumers_SaveThenReloadWithAnchors(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	t.Setenv(EnvConfigCacheDisabled, "1")
+	body := "workflow:\n" + jevOtherSetting +
+		"    jev:\n" +
+		"        enabled: true\n" +
+		"        consumers:\n" +
+		"            c1:\n" +
+		"                threshold: &shared 0.5\n" +
+		"                mode: {nested: *shared}\n" +
+		"            c2: {mode: advise, threshold: 0.25}\n"
+	configDir := jevWriteWorkflow(t, t.TempDir(), body)
+	first, err := NewLoader().Load(configDir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	jevAssertSettingsKept(t, first)
+
+	// Save the way ConfigManager.Save does, into a fresh directory.
+	saveRoot := t.TempDir()
+	sectionsDir := filepath.Join(saveRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := saveSection(sectionsDir, "workflow.yaml", workflowFileWrapper{Workflow: first.Workflow}); err != nil {
+		t.Fatalf("saveSection: %v", err)
+	}
+	saved, err := os.ReadFile(filepath.Join(sectionsDir, "workflow.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var second *Config
+	_, _, records := jevCapture(t, func() {
+		second, err = NewLoader().Load(filepath.Join(saveRoot, ".moai"))
+	})
+	if err != nil || second == nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if records != 0 {
+		t.Errorf("reloading the saved file logged %d record(s): the section failed to decode and was reset\n%s", records, saved)
+	}
+	jevAssertSettingsKept(t, second)
+	if n := len(second.Workflow.Jev.Consumers.Entries); n != 2 {
+		t.Fatalf("reloaded %d consumers, want 2\n%s", n, saved)
+	}
+	if r, _ := second.Workflow.Jev.Consumers.Resolve("c1"); r.Threshold == nil || *r.Threshold != 0.5 || len(r.Warnings) != 1 {
+		t.Errorf("c1 after the round trip: %+v, want threshold 0.5 and the mode warning", r)
+	}
+	if r, _ := second.Workflow.Jev.Consumers.Resolve("c2"); r.Configured != "advise" || r.Threshold == nil || *r.Threshold != 0.25 {
+		t.Errorf("c2 after the round trip: %+v", r)
+	}
+	if strings.ContainsAny(string(saved[strings.Index(string(saved), "consumers"):]), "&*") {
+		t.Errorf("the saved consumers block still carries anchors or aliases:\n%s", saved)
 	}
 }
 

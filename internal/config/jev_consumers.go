@@ -8,7 +8,8 @@ package config
 // section defaults. A typed `Threshold *float64` would therefore turn one
 // mistyped consumer (`threshold: "high"`) into a reset of the WHOLE workflow
 // section plus a log record. So both types below decode without ever
-// returning an error: a consumer keeps its raw mode/threshold YAML nodes, and
+// returning an error: a consumer keeps its mode/threshold values as retained
+// YAML nodes (scalars in full, any other kind as its kind only), and
 // ResolveJevConsumer interprets them later, returning every condition as data.
 //
 // This file imports the standard library and the yaml library only, following
@@ -33,8 +34,9 @@ const (
 )
 
 // JevConsumerConfig is one entry of workflow.jev.consumers. Mode and Threshold
-// hold the raw YAML nodes (Kind 0 means the key was absent); ResolveJevConsumer
-// is their only reader. Invalid is set instead when the entry itself is not a
+// hold the retained YAML nodes (Kind 0 means the key was absent; a non-scalar
+// value is kept as its kind alone, see jevRetain); ResolveJevConsumer is their
+// only reader. Invalid is set instead when the entry itself is not a
 // mapping. Declared here rather than in types.go because it names yaml.Node,
 // and types.go imports no yaml library (SPEC-JEV-LEDGER-001 progress.md §E.2,
 // debt N4).
@@ -76,9 +78,9 @@ func (c *JevConsumerConfig) UnmarshalYAML(node *yaml.Node) error {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			switch node.Content[i].Value {
 			case "mode":
-				c.Mode = *jevDeref(node.Content[i+1])
+				c.Mode = jevRetain(node.Content[i+1])
 			case "threshold":
-				c.Threshold = *jevDeref(node.Content[i+1])
+				c.Threshold = jevRetain(node.Content[i+1])
 			}
 		}
 	case jevIsNull(node):
@@ -215,6 +217,20 @@ func jevDeref(n *yaml.Node) *yaml.Node {
 		n = n.Alias
 	}
 	return n
+}
+
+// jevRetain returns what the resolver needs of a mode or threshold value and
+// nothing more. A scalar keeps its value, tag and style (the resolver reads the
+// resolved tag and decodes the number); every other kind keeps only its kind,
+// with no content, anchor or alias link. Retaining the original node would keep
+// its alias graph, which the config cache's JSON encoding expands (a 479-byte
+// document became ~122 MB) and which a YAML save can emit out of order.
+func jevRetain(n *yaml.Node) yaml.Node {
+	n = jevDeref(n)
+	if n.Kind == yaml.ScalarNode {
+		return yaml.Node{Kind: yaml.ScalarNode, Style: n.Style, Tag: n.Tag, Value: n.Value}
+	}
+	return yaml.Node{Kind: n.Kind, Tag: n.ShortTag()}
 }
 
 func jevIsNull(n *yaml.Node) bool {
