@@ -50,7 +50,7 @@ Gaps (recorded, bounded):
 Single sync commit (this commit) carries the 3-phase close: spec.md frontmatter `status: draft → completed` (merged `draft → implemented → completed` per the adjacent run/sync close) + `updated: 2026-10-26`; stages only `progress.md` + `spec.md` of this SPEC directory. No CHANGELOG (release-time artifact; release lens forbids it), no codemaps, no README/docs-site edits, no push, no tag.
 
 sync_complete_at: 2026-10-26
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "96f443c9e9c8518a76dd3058280d11e914c412cf"
 sync_status: completed
 b12_self_test_a: not-applicable — CHANGELOG emission forbidden by the release lens for this card (no `[Unreleased]` entry written; pre-emission grep therefore not run)
 frontmatter_status_transitions:
