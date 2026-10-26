@@ -1,8 +1,8 @@
 auditor-model: codex (codex_audit target=baseBranch, build b1806498fe)
 verdict: PASS
 findings: 0
-audit_receipt: rcpt-44b010c7dc0c64fdf1145ee2
-audited_sha: 75e37d0f0bae19622b2214cfe5b54b62edc64a0b
+audit_receipt: rcpt-74815b962c70a725b1029e9a
+audited_sha: 46911ee01c998d87de3079a3c29bf59c0b5258c1
 review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
 
 # t1921 — sync-audit verdict
@@ -12,7 +12,7 @@ review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
 
 ## Verdict
 
-**PASS** — codex_audit over the card diff vs main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa): verdict `pass`, zero findings, receipt **rcpt-44b010c7dc0c64fdf1145ee2** (build b1806498fe). Audit receipt id: rcpt-44b010c7dc0c64fdf1145ee2.
+**PASS** — codex_audit over the card diff vs main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa), re-run at HEAD 46911ee01c so the audited_sha covers the sync commit: verdict `pass`, zero findings, receipt **rcpt-74815b962c70a725b1029e9a** (build b1806498fe). Prior-round audit at 75e37d0f0b also PASS, receipt rcpt-44b010c7dc0c64fdf1145ee2.
 
 ## Evidence
 
