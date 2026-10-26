@@ -10,7 +10,7 @@ updated: 2026-10-27
 ## §A 맥락
 
 - 카드 t1969, Class C, P1. 워크트리 `.moai/worktrees/t1969`, 브랜치 `WT-moai-init-update`, plan 시점 HEAD `cb30e05b3e`(로컬 `main` 과 같음).
-- 산출물: spec.md(REQ 23개), acceptance.md(AC 24개, 증거 원장 L1~L19), design.md, research.md, progress.md.
+- 산출물: spec.md(REQ 23개), acceptance.md(AC 24개, 증거 원장 L1~L25), design.md, research.md, progress.md.
 - 개발 방식: TDD(RED-GREEN-REFACTOR). 단, M0 은 특성화(기준선) 커밋이다.
 
 ### §A.0 회차 기록
@@ -18,7 +18,8 @@ updated: 2026-10-27
 | 회차 | 측정 HEAD | 결과 | 바뀐 것 |
 |---|---|---|---|
 | 초안 v0.1.0 | `cb30e05b3e` | plan 감사 1회차 FAIL 0.71(감사 HEAD `d241917d17`, 차단 6·권장 6·경미 8, MP-8 실패) | — |
-| 델타 1 v0.1.1 | `d241917d17` | 재감사 대기 | 결함 D1~D20 수리. REQ 20→23(REQ-TCL-021·022·023), AC 23→24(AC-TCL-024), 원장 L15~L19, 대체 골든 하위 디렉터리 `fallback/`, 순서 증거 O1~O3, 경고 수 정의 D-9, 보존 줄 목록(design.md §3.3.1), 레인 결정 Q1~Q3 반영 |
+| 델타 1 v0.1.1 | `d241917d17` | plan 감사 2회차 FAIL 0.75(감사 HEAD `b422a13d53`, 차단 6·권장 4·경미 3), 리더 codex_audit 실패(P2 1건 = N8) | 결함 D1~D20 수리. REQ 20→23(REQ-TCL-021, REQ-TCL-022, REQ-TCL-023), AC 23→24(AC-TCL-024), 원장 L15~L19, 대체 골든 하위 디렉터리 `fallback/`, 순서 증거 O1~O3, 경고 수 정의 D-9, 보존 줄 목록(design.md §3.3.1), 레인 결정 Q1~Q3 반영 |
+| 델타 2 v0.1.2 | `b422a13d53` | 재감사 대기(마지막 감사 회차) | 결함 N1~N13·codex P2 수리. REQ·AC 수 그대로(23·24). 보존 줄 목록을 `internal/cli` 전체 고정 검색(원장 L20)으로 정하고 11→23행, 제외 행 X1~X10(N1). AC-TCL-024 행마다 하위 테스트 + `inventory_complete`(N2). 재개 경로를 실제 이벤트 순서로(N3, 원장 L21). AC-TCL-012 `*_stdout_not_tty`(N4). AC-TCL-022 누적 diff + 병합 검사(N5, 원장 L22·L23). O4 와 카드 id 완전성 검사(N6·N7, 원장 L24). O3 범위 수정(N8, 원장 L25). AC-TCL-014 시접(N9). §B 1(c) 사실 수정(N10). 결정 D-10(update 요약 위치). §C 재측정을 마일스톤마다로 |
 
 ### §A.1 Tier 판정 — L
 
@@ -48,12 +49,12 @@ updated: 2026-10-27
 1. **t1966 이 먼저 착지하면** 이 카드는 M3 시작 전(= `internal/cli` 의 testdata 밖 파일을 처음 고치기 전)에 `main` 을 흡수한다. 흡수 뒤:
    - (a) research.md §7 표를 새 행번호로 다시 재고, 영역 기준 SHA 를 흡수 커밋으로 바꾸고 R1·R2·R3 경계를 갱신한다(manager-spec 재위임 — 본문 수정이므로).
    - (b) `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` 를 흡수된 트리에서 돌린다. 녹색이면 기준선은 그대로 유효하다.
-   - (c) 빨강이면(t1966 이 init·update 출력 문구를 바꿈) **재촬영 절차**를 탄다: manager-spec 델타 회차가 AC-TCL-013 을 다시 쓰고, 이 카드의 코드가 없는 트리(흡수 커밋 그 자체 — M3 전이므로 카드 코드가 없다)에서 골든을 다시 찍어 골든만 담은 커밋 하나로 넣는다. REQ-TCL-012 의 "기준선 트리"는 그 흡수 커밋이 되고, 순서 증거 O1 은 "M0 과 재촬영 커밋 두 줄"로, O3 은 재촬영 커밋을 기준으로 다시 쓴다.
+   - (c) 빨강이면(t1966 이 init·update 출력 문구를 바꿈) **재촬영 절차**를 탄다: manager-spec 델타 회차가 AC-TCL-013 을 다시 쓰고, 흡수 커밋 그 자체에서 골든을 다시 찍어 골든만 담은 커밋 하나로 넣는다. 흡수 커밋에는 이 카드의 코드가 **있다** — M0(대체 테스트와 골든), M1(`internal/tui/messages/*.yaml` 카탈로그), M2(`internal/tui/checklist.go` 렌더러)가 M3 전에 커밋되기 때문이다. 다만 그 코드는 아직 어떤 CLI 경로에도 연결되지 않아(연결은 M3~M5) init·update 의 출력 바이트를 바꾸지 않는다. 그래서 흡수 커밋의 출력은 "카드 코드가 출력에 닿지 않은 기준선"으로 쓸 수 있다. REQ-TCL-012 의 "기준선 트리"는 그 흡수 커밋이 되고, 순서 증거 O1 은 "M0 과 재촬영 커밋 두 줄"로 바뀐다. O3 은 범위를 `internal/cli`(`internal/cli/testdata` 와 `internal/cli/checklist_fallback_test.go` 제외)로, 조상 기준을 재촬영 커밋으로 바꾼다 — 범위를 `internal` 그대로 두면 재촬영 커밋보다 앞선 M1·M2 의 `internal/tui` 커밋이 빨강을 낸다. O4b 의 `<기준선 트리>` 는 흡수 커밋이다.
    - M3 이후에 흡수해야 하는 상황이 오면 이 카드의 코드가 섞인 트리에서는 기준선을 찍을 수 없으므로, 진행을 멈추고 리더에게 막힘 보고를 낸다.
 2. **이 카드가 먼저 착지하면** t1966 이 흡수한다. 겹치는 줄이 없으므로 텍스트 충돌은 없을 것으로 본다. 다만 t1966 이 `resuming` 계산을 위저드 앞으로 옮기므로(hunk `@@ -561,0 +586,20 @@`, `@@ -775,6 +800 @@`) 의미 충돌이 없는지 흡수 쪽이 확인한다.
 3. 어느 쪽이든 흡수 뒤 `go build ./...` 와 AC-TCL-013·AC-TCL-017 을 다시 돌린다.
 
-범위 검사(AC-TCL-019 뒤 절, AC-TCL-021, AC-TCL-022, AC-TCL-013 O3)는 이 카드의 커밋만 센다(`git log --no-merges --grep=t1969`). 그래서 흡수만으로 빨개지지 않는다.
+범위 검사(AC-TCL-019 뒤 절, AC-TCL-021, AC-TCL-013 O3)는 이 카드의 커밋만 센다(`git log --no-merges --grep=t1969 <기준>..HEAD ^main`). 그래서 흡수만으로 빨개지지 않고, 흡수한 다른 카드의 커밋이 메시지에서 `t1969` 를 언급해도 세지 않는다. 카드 id 를 빠뜨린 이 카드의 커밋은 acceptance.md §A 의 카드 id 완전성 검사가 잡는다. AC-TCL-022 는 커밋 선택 대신 영역 기준과 HEAD 의 누적 diff 를 잰다.
 
 ## §C 사전 점검 (run 시작 시)
 
@@ -71,7 +72,8 @@ go build ./...
 ```
 
 - 넷째 줄 출력이 비어 있지 않으면(이 카드 밖에서 init.go 가 바뀜) §B 1번 절차로 간다.
-- 다섯째~일곱째 줄은 t1966 진행을 다시 잰다. ref SHA 가 research.md §7 의 기록(델타 1회차 측정 `1eebf7ba6d`)과 다르거나 hunk 머리가 바뀌었으면 research.md §7 을 갱신하고, R1·R2·R3 와 최소 간격(현재 53줄)을 다시 계산한다. 간격이 0 이하가 되면(겹침) 진행을 멈추고 리더에게 막힘 보고를 낸다.
+- 다섯째~일곱째 줄은 t1966 진행을 다시 잰다. ref SHA 가 research.md §7 의 기록(델타 2회차 측정 `4e3b0a8714`)과 다르거나 hunk 머리가 바뀌었으면 research.md §7 을 갱신하고, R1·R2·R3 와 최소 간격(현재 53줄)을 다시 계산한다. 간격이 0 이하가 되면(겹침) 진행을 멈추고 리더에게 막힘 보고를 낸다.
+- **재측정은 한 번으로 끝내지 않는다**(2회차 감사 남은 위험 1). 셋째·다섯째·여섯째·일곱째 줄(`origin/main` 의 init.go 이력, t1966 ref, t1966 hunk)을 run 시작 때, M3·M4·M5 시작 때, 착지 직전에 다시 돌려 progress.md §E.2 에 남긴다. 특히 M4 는 init.go 를 처음 고치는 마일스톤이라, 그 시작 측정이 R1~R3 근처 새 hunk 를 보면 M4 를 시작하지 않고 막힘 보고를 낸다. 착지 직전 측정에서 겹침이 보이면 착지하지 않는다.
 - **t1966 레인 알림.** run 시작 때 한 번, t1966 레인에 사실 통지를 보낸다: "t1969 가 init.go 의 R1 383-389·R3 919-1075(삽입만)·R2 1077-1087 을 고친다(기준 `cb30e05b3e`). 728·750·780-790·858-866 은 건드리지 않는다." 통지는 사실 전달이며 요청이 아니다(cross-session-messaging 규칙). 전달 결과(큐 적재·보류·분실)를 progress.md 에 남기고, 완료 판단은 통지 응답이 아니라 위 재측정으로 한다.
 - 공유 ref 는 커밋된 것만 보인다. t1966 워크트리의 미커밋 변경은 이 점검으로 보이지 않는다(Gap G-1).
 
@@ -89,7 +91,8 @@ go build ./...
 
 - `internal/cli/checklist_fallback_test.go` 와 `internal/cli/testdata/checklist/fallback/` 골든 14개(design.md §7: init·update 각각 clean·warn·fail 의 stdout·stderr 12개 + update verbose stdout·stderr 2개)를 **현재 코드**로 찍어 넣는다.
 - 정규화는 acceptance.md AC-TCL-013 에 열거한 정규식만 쓴다. 정규화가 줄 수를 바꾸지 않음을 테스트가 단언한다. `warn`·`fail` 골든에 주입 문장이 있음을 단언한다(양성 대조). verbose 고정 실행이 verbose 전용 줄을 1줄 이상 내도록 픽스처를 만든다(AC-TCL-014).
-- 이 커밋은 위 두 경로 밖의 파일을 담지 않는다(AC-TCL-013 O2). 커밋 직후 AC-TCL-013 이 녹색이어야 한다.
+- 이 커밋은 위 두 경로 밖의 파일을 담지 않는다(AC-TCL-013 O2). 대체 테스트는 git 이력을 읽지 않는다(O4b 가 저장소가 아닌 뽑아낸 트리에서 돈다).
+- **커밋 직후, 다음 커밋 전에 O4a 를 기록한다**: `git rev-parse HEAD` 와 `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` 를 각각 한 번 돌려, 측정 HEAD(40자)와 여섯 `--- PASS:` 줄을 progress.md §E.2 에 그대로 남긴다. 빨강이면 다음 마일스톤으로 가지 않고 M0 을 고친다 — 아직 뒤 커밋이 없으므로 M0 커밋 자체를 고쳐 쓰고(두 번째 커밋을 더하면 O1 이 두 줄이 된다), 새 HEAD 로 O4a 를 처음부터 다시 기록한다. 빨간 기록도 지우지 않고 남긴다. 이 기록은 레인의 주장이고, sync 감사의 O4b 재실행이 증거다(acceptance.md AC-TCL-013 O4).
 - 이유: design.md §8.
 
 ### M1 — 어휘: 카탈로그 키 — Priority High
@@ -108,26 +111,28 @@ go build ./...
 - 시작 전 §B 1번 조건(t1966 착지 여부)을 확인한다.
 - `internal/cli/checklist_session.go`: 입력 수집 함수 `checklistEnv`, 활성 판정과 시접 세 개(design.md §3.1), 캡처 작성기, 경고 수신, 보존 줄 수신, 종료(오류·취소·`nil` 조기 반환), init `--verbose` 등록.
 - `internal/cli/checklist_plan.go`: design.md §4 표.
+- 보고기 이벤트 대응(design.md §3.6 표)과 항목 경계 네 경우(design.md §3.2, 결정 D-10).
 - AC-TCL-010, AC-TCL-012(판정 단위), AC-TCL-014(init 부분), AC-TCL-015, AC-TCL-017(error 부분).
 
 ### M4 — init 연결 — Priority Medium
 
-- init.go R1·R2·R3(§B), `init_warnings.go`(세션에 경고 알림·활성 시 패널 생략·항목 밖 경고를 요약에 넘김), `reporter.go`(세션이 있으면 체크리스트 보고기), `severity_line.go`(경고 수신 인터페이스), init 쪽 보존 줄 지점 P1~P5(design.md §3.3.1).
+- 시작 전 §C 의 t1966 재측정을 다시 돈다(init.go 를 처음 고치는 마일스톤).
+- init.go R1·R2·R3(§B), `init_warnings.go`(세션에 경고 알림·활성 시 패널 생략·항목 밖 경고를 요약에 넘김), `reporter.go`(세션이 있으면 체크리스트 보고기), `severity_line.go`(경고 수신 인터페이스), init 쪽 보존 행 P1~P5, P20·P21(init 지점), P23(design.md §3.3.1).
 - 리치 골든 `rich/init-clean.golden`, `rich/init-warn.golden`.
-- AC-TCL-011(init), AC-TCL-012(init 명령 수준), AC-TCL-016, AC-TCL-017(cancel, resumed_success), AC-TCL-018(init), AC-TCL-019(init), AC-TCL-020(init), AC-TCL-022, AC-TCL-024(init 하위 테스트).
+- AC-TCL-011(init), AC-TCL-012(init 명령 수준), AC-TCL-016, AC-TCL-017(cancel, resumed_after_validate_fail — 실제 실행기), AC-TCL-018(init), AC-TCL-019(init), AC-TCL-020(init), AC-TCL-022, AC-TCL-024(init 행 하위 테스트와 `inventory_complete`).
 
 ### M5 — update 연결 — Priority Medium
 
 - `update.go` 의 `runUpdate` 앞부분(`:156-176` 근처)에서 세션 시작·종료, 언어 해석.
-- `update_template_sync.go`: 단계 앞에 항목 한 줄씩 삽입. 세션이 켜져 있으면 `Section`·진행 막대(`:396`, `:1081`) 를 그리지 않고 결과를 요약으로 돌린다. `ProgressLine` 호출 10곳(L12)은 고치지 않는다. update 쪽 보존 줄 지점 P6~P11.
+- `update_template_sync.go`: 단계 앞에 항목 한 줄씩 삽입(순서는 코드 실행 순서 — design.md §4). 세션이 켜져 있으면 `Section`·진행 막대(`:396`, `:1081`)·결과 알약(`:1144`)을 그리지 않고, 요약은 본문이 `return nil`(`:1218`) 하기 직전에 한 번 그린다(결정 D-10). `ProgressLine` 호출 10곳(L12)은 고치지 않는다. update 쪽 보존 행 P6~P19, P20·P21(update 지점), P22.
 - 리치 골든 `rich/update-clean.golden`, `rich/update-fail.golden`.
-- AC-TCL-011(update), AC-TCL-012(update 명령 수준), AC-TCL-014(update), AC-TCL-018(update), AC-TCL-019(update), AC-TCL-020(update), AC-TCL-024(update 하위 테스트).
+- AC-TCL-011(update), AC-TCL-012(update 명령 수준), AC-TCL-014(update), AC-TCL-017(update_up_to_date), AC-TCL-018(update), AC-TCL-019(update), AC-TCL-020(update), AC-TCL-024(update 행 하위 테스트).
 
 ### M6 — 마감 — Priority Low
 
 - AC 전체 재실행과 progress.md §E.2·§E.3 기록.
-- AC-TCL-013 순서 증거 O1·O2·O3 실행과 기록.
-- `TestChecklistInitHunkConfinement` 의 마지막 실행(명령·그대로의 출력·종료 코드·측정 SHA)을 기록한 **뒤** 제거(AC-TCL-022 의 일회성 성격).
+- AC-TCL-013 순서 증거 O1·O2·O3 실행과 기록, O4a 기록의 측정 HEAD 와 O1 SHA 대조, acceptance.md §A 카드 id 완전성 검사 실행과 기록. O4b 는 sync 감사가 돈다.
+- `TestChecklistInitHunkConfinement` 의 마지막 실행(두 명령·그대로의 출력·종료 코드·측정 SHA)을 기록한 **뒤** 제거(AC-TCL-022 의 일회성 성격).
 - lint·커버리지·교차 빌드.
 
 ## §F 자체 검증 산출물 (run 단계 보고)
@@ -138,9 +143,9 @@ go build ./...
 - E2 `go build ./...`, `GOOS=windows GOARCH=amd64 go build ./...`
 - E3 `go test -cover ./internal/tui`
 - E4 `golangci-lint run --timeout=2m` 새 지적
-- E5 AC-TCL-013 순서 증거 O1·O2·O3 원문
-- E6 AC-TCL-022 의 `@@` 줄 원문
-- E7 §C 사전 점검 출력과 t1966 레인 알림의 전달 결과
+- E5 AC-TCL-013 순서 증거 O1·O2·O3 원문, O4a 기록(M0 직후의 측정 HEAD 와 여섯 `--- PASS:` 줄), 카드 id 완전성 검사 원문
+- E6 AC-TCL-022 의 누적 diff `@@` 줄 원문과 병합 검사 출력
+- E7 §C 사전 점검 출력(run 시작, M3·M4·M5 시작, 착지 직전)과 t1966 레인 알림의 전달 결과
 
 ## §G 레인 결정 (Kickoff 기록에서 리더에게 알림)
 
@@ -155,17 +160,18 @@ go build ./...
 
 | ID | 위험 | 영향 | 대응 |
 |---|---|---|---|
-| R-1 | t1966 과 init.go 동시 변경 | 흡수 때 충돌·의미 충돌 | §B 영역 분리(최소 53줄 간격), §C 재측정과 t1966 레인 알림, 흡수 뒤 AC-TCL-013·AC-TCL-017 재실행, AC-TCL-022 |
+| R-1 | t1966 과 init.go 동시 변경 | 흡수 때 충돌·의미 충돌 | §B 영역 분리(최소 53줄 간격), §C 재측정(run 시작, M3·M4·M5 시작, 착지 직전)과 t1966 레인 알림, 흡수 뒤 AC-TCL-013·AC-TCL-017 재실행, AC-TCL-022. 공유 ref 는 커밋된 변경만 보이므로 측정 사이에 커밋된 t1966 변경은 다음 측정에서 드러난다 |
 | R-2 | 캡처가 대화형 화면을 삼킴 | 사용자가 질문을 못 봄 | 위저드·확인은 `cmd` 작성기를 쓰지 않음(research.md §4). AC-TCL-019 가 열린 줄 0 을 확인. 실제 TTY 육안 확인은 Gap G-2 |
-| R-3 | 접힌 상세에 경고·오류·안내가 섞여 사라짐 | 정보 손실 | 경고는 신호(수집기·`emitSeverityLine`)로, 직접 쓰기 줄은 보존 줄 목록(design.md §3.3.1, REQ-TCL-022)으로 따로 알린다. 문자열로 "경고처럼 보이는 줄" 을 고르지 않는다. AC-TCL-024 가 네 지점을 주입해 확인한다. 목록 밖에 새 직접 쓰기 경고가 생기면 접힌다 — 남은 위험 |
+| R-3 | 접힌 상세에 경고·오류·안내가 섞여 사라짐 | 정보 손실 | 경고는 신호(수집기·`emitSeverityLine`)로, 직접 쓰기 줄은 보존 줄 목록(design.md §3.3.1, REQ-TCL-022)으로 따로 알린다. 목록은 `internal/cli` 전체 고정 검색(원장 L20)의 모든 일치를 분류하고, AC-TCL-024 가 23행을 하나씩 주입하며 `inventory_complete` 가 새 일치를 바로 잡는다. 남은 위험 셋: (가) 12개 검색 모양에 걸리지 않는 새 직접 쓰기(예: 새 `p.Info` 안내), (나) 궤도 밖 파일이 새로 init·update 에서 불리게 되는 변경(궤도는 한 단계 호출 추적으로 정했다 — research.md §9), (다) `internal/cli` 밖 패키지가 명령 작성기를 받아 쓰는 경우(이번 검색 범위 밖) |
 | R-4 | 24줄 예산 초과 | 한 화면에 안 들어감 | 항목 묶음(design.md §4), AC-TCL-011. update 깨끗한 실행은 예산에 딱 닿는다(design.md §4 줄 예산). M5 실측이 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다 |
 | R-5 | ja·zh 초안 품질 | 어색한 문구 | 원어민 검수는 범위 밖(Gap G-5), 키 동치·en 과 다름은 AC-TCL-008 |
-| R-6 | 활성 판정 오탐 — 터미널인데 출력이 리디렉트된 경우 | 체크리스트가 파일에 기록됨 | 입력 수집을 한 함수로 모으고 fd 를 따로 판정(design.md §3.1). AC-TCL-012 명령 수준 하위 테스트 `*_stderr_not_tty` 가 호출 지점 오류까지 잡는다 |
+| R-6 | 활성 판정 오탐 — 터미널인데 출력이 리디렉트된 경우 | 체크리스트가 파일에 기록됨 | 입력 수집을 한 함수로 모으고 fd 를 따로 판정(design.md §3.1). AC-TCL-012 명령 수준 하위 테스트 `*_stdout_not_tty`(`moai update > log`)와 `*_stderr_not_tty` 가 두 방향의 호출 지점 오류를 잡는다 |
 | R-7 | `ProgressLine` 의 비TTY 줄이 상세로 접힐 때 형식 변화 | 실패 펼침 모양이 예상과 다름 | AC-TCL-003 골든과 M5 실패 골든 |
 | R-8 | 렌더러가 하나라는 제약(카드)과 보고기 어댑터 | 사실상 두 번째 렌더러처럼 보임 | 어댑터는 이벤트만 넘기고 그리지 않는다. 그리는 코드는 `checklist.go` 하나 |
 | R-9 | 세션 종료 `defer` 순서 착오 | 패널·종료 블록이 캡처에 갇힘 | design.md §3.4, AC-TCL-017 |
 | R-10 | `TERM=dumb`·Windows 콘솔의 줄 지우기 지원 | 잔재 문자 | `TERM=dumb` 는 대체 경로. Windows 실제 콘솔 확인은 Gap G-3 |
 | R-11 | AC-TCL-022 테스트가 git 이력을 읽음 | 얕은 클론 CI 에서 M4~M6 사이 빨강 | 테스트는 이력 부족을 분명한 메시지로 실패시킨다. M6 에서 지운다. M4~M6 사이 원격 CI 후보 푸시가 있으면 그 실패를 이 사유로 분류한다 |
+| R-12 | `internal/cli/update/backup` 의 `fmt.Fprintf(os.Stderr, "Warning: …")` 10곳(design.md §3.3.1 X10)이 명령 작성기를 거치지 않음 | 캡처되지 않아 사라지지는 않지만, 실행 중 항목 줄이 그려진 상태에서 나오면 그 줄 위에 섞여 찍힌다(오류 경로에서만 — 깨끗한 실행에는 나오지 않는다) | 이 카드는 `update/backup` 의 함수 모양을 바꾸지 않는다(다른 호출자가 있다). 후속 카드 후보로 리더에게 알린다. AC-TCL-024 는 이 줄을 주입하지 않는다 |
 
 ## §I 가정과 Gap
 
@@ -180,14 +186,17 @@ go build ./...
 
 Gap:
 
-- G-1 트리 격리 가드가 `git -C <t1966 워크트리>` 를 거부했다. 대신 공유 ref `WT-moai-init-moai` 를 이 트리에서 읽었다(델타 1회차 재측정 `1eebf7ba6d`). t1966 워크트리의 커밋되지 않은 변경은 보지 못했다. §C 가 run 시작 때 다시 잰다.
+- G-1 트리 격리 가드가 `git -C <t1966 워크트리>` 를 거부했다. 대신 공유 ref `WT-moai-init-moai` 를 이 트리에서 읽었다(델타 2회차 재측정 `4e3b0a871488d45f2b56e76dbf29958abd3317cb`, hunk 머리 10개 그대로). t1966 워크트리의 커밋되지 않은 변경은 보지 못했다. §C 가 run 시작과 M3·M4·M5 시작, 착지 직전에 다시 잰다.
 - G-2 실제 TTY 에서 위저드·확인 화면과 체크리스트가 섞이지 않는지 육안 확인을 하지 않았다(plan 단계라 코드가 없음).
 - G-3 Windows 콘솔에서의 `\r\x1b[2K` 동작을 확인하지 않았다.
 - G-4 이 계획의 `moai spec lint` 판정은 `go run ./cmd/moai` 로 이 트리에서 빌드한 바이너리가 냈다(progress.md §E.1).
 - G-5 ja·zh 문구 원어민 검수 없음.
 - G-6 긴 라벨 자르기 동작은 정하지 않았다.
 - G-7 §A.1 의 줄 수는 추정이다.
-- G-8 update 깨끗한 실행의 24줄 적합성은 실측하지 않았다(design.md §4 의 줄 예산은 계산값).
+- G-8 update 깨끗한 실행의 24줄 적합성은 실측하지 않았다(design.md §4 의 줄 예산은 계산값). 델타 2회차에서 훅 설치 두 줄이 요약 뒤로 넘어가면 예산을 넘는다는 것을 코드 읽기로 찾아 결정 D-10 으로 막았다 — 실행 관측은 아니다.
+- G-9 O4b 의 `git archive` → `tar -xf` → `go test -C <뽑아낸 트리>` 절차는 plan 단계에서 돌려 보지 않았다(M0 이 아직 없다). sync 감사가 처음 돈다.
+- G-10 보존 줄 목록의 궤도(design.md §3.3.1)는 궤도 파일에서 작성기를 넘기는 호출을 한 단계만 따라가 정했다. 두 단계 이상 떨어진 호출은 추적하지 않았다(plan §H R-3 (나)).
+- G-11 재개 경로의 이벤트 순서(design.md §3.4)는 `phase.go`·`init.go`·`reporter.go` 를 읽어 정했고 실행으로 관측하지 않았다. AC-TCL-017 (c) 가 실제 실행기로 처음 관측한다.
 
 ## §J 참고
 

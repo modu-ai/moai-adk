@@ -1,6 +1,6 @@
 # SPEC-TUI-CHECKLIST-001 — 인수 기준
 
-문서 핀: 원장 L1~L14 의 RED-now 측정은 트리 `cb30e05b3e`(워크트리 `.moai/worktrees/t1969`, 브랜치 `WT-moai-init-update`)에서 했다. 자기 핀이 없는 기준은 이 핀을 따른다. L15~L19 는 트리 `d241917d17a3754541ef5ad52536d68023faf142` 에서 쟀고 그 핀을 따로 단다. 두 트리는 코드가 같다(`d241917d17` 은 SPEC 디렉터리만 더한 plan 커밋 — 1회차 감사 E-3).
+문서 핀: 원장 L1~L14 의 RED-now 측정은 트리 `cb30e05b3e`(워크트리 `.moai/worktrees/t1969`, 브랜치 `WT-moai-init-update`)에서 했다. 자기 핀이 없는 기준은 이 핀을 따른다. L15~L19 는 트리 `d241917d17a3754541ef5ad52536d68023faf142` 에서, L20~L25 는 트리 `b422a13d5377639d58fc672c986b81c678fe3318` 에서 쟀고 각 행에 핀을 따로 단다. 세 트리는 코드가 같다(`d241917d17`·`b422a13d53` 은 SPEC 디렉터리만 바꾼 plan 커밋 — 1회차 감사 E-3, 2회차 감사 E-1 `git diff --name-only cb30e05b3e HEAD`).
 
 이 파일은 검증 층이다. 요구사항(REQ)의 GEARS 문장은 spec.md §3 에 있고, 여기서는 각 기준을 Given-When-Then 과 이진 판정으로 적는다. 각 기준 제목의 `maps` 목록이 REQ 대응을 선언한다.
 
@@ -9,7 +9,8 @@
 - **명령 형식.** 모든 명령은 파이프·리다이렉트·`&&`·`;` 없는 한 번의 호출이다. 이 셸의 `grep` 은 ugrep 셸 함수라 일치 0건에서도 종료 코드 0 을 낸다(research.md §0). 그래서 모든 검색은 `/usr/bin/grep` 으로 적는다.
 - **선택자 공허 방지.** `go test -run` 은 일치하는 테스트가 0개여도 `ok … [no tests to run]` 와 종료 코드 0 을 낸다(원장 L11 — AC-TCL-001 의 녹색 명령을 오늘 그대로 돌린 결과다). 그래서 테스트 기반 기준의 녹색 판정은 종료 코드 0 **그리고** 출력에 기준이 이름 붙인 `--- PASS: <테스트명> ` 줄(이름 뒤 공백 포함)이 하나도 빠짐없이 있는 것이다. 선택자는 `^…$` 로 묶고, `-v` 와 `-count=1` 을 항상 붙인다.
 - **기준 종류.** release-blocking 기준은 RED-now 네 요소(명령, 그대로의 stdout, 종료 코드, 트리 SHA)를 갖춘다. 오늘 이미 녹색인 범위 경계 검사는 regression-guard 로 분류하고 통과로 세지 않는다.
-- **이 카드의 커밋.** 범위 검사는 이 카드의 커밋만 센다 — 메시지에 카드 id `t1969` 가 있고 병합 커밋이 아닌 것(`git log --no-merges --grep=t1969`). `main` 을 흡수해도 다른 카드의 커밋이 범위 검사를 빨갛게 만들지 않는다(1회차 감사 D7).
+- **이 카드의 커밋.** 범위 검사는 이 카드의 커밋만 센다 — 메시지에 카드 id `t1969` 가 있고, 병합 커밋이 아니며, 로컬 `main` 에서 닿지 않는 것: `git log --no-merges --grep=t1969 <기준>..HEAD ^main`. `^main` 은 흡수한 `main` 의 커밋을 — 그 메시지가 조율 문구로 `t1969` 를 언급하더라도 — 뺀다(1회차 감사 D7, 2회차 감사 N7 (나)).
+- **카드 id 완전성(2회차 감사 N7 (가)).** id 를 빠뜨린 이 카드의 커밋은 위 선택에서 사라진다. 그래서 범위 검사를 쓰는 모든 기준(AC-TCL-013 O3, AC-TCL-019 뒤 절, AC-TCL-021, AC-TCL-022)은 이 검사가 함께 성립할 때만 녹색이다: `git log --no-merges --invert-grep --grep=t1969 --format=%h cb30e05b3e..HEAD ^main -- internal` → 빈 출력. `git log` 는 출력이 있어도 종료 0 이므로 판정은 출력으로 한다 — SHA 가 한 줄이라도 나오면(보호 경로 `internal/` 을 건드린, id 없는 커밋) 빨강. 오늘 빈 출력, 종료 0(원장 L24, regression-guard). 일부러 만든 양성·음성 사례에서 이 명령이 id 없는 커밋 하나를 정확히 낸다(research.md §10).
 
 ## §B 증거 원장 (RED-now)
 
@@ -36,10 +37,18 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 | L17 | `d241917d17` | `/usr/bin/grep -rln "TestChecklistPreservedLinesExactlyOnce" internal/cli` | (빈 출력) | (없음) | 1 |
 | L18 | `d241917d17` | `/usr/bin/grep -rn "func checklistEnv" internal/cli` | (빈 출력) | (없음) | 1 |
 | L19 | `d241917d17` | `ls internal/cli/testdata/checklist/fallback` | (빈 출력) | `ls: internal/cli/testdata/checklist/fallback: No such file or directory` | 1 |
+| L20 | `b422a13d53` | `/usr/bin/grep -rni --exclude='*_test.go' -e "SymWarning()" -e "SymError()" -e "CheckLine(\"warn\"" -e "CheckLine(\"err\"" -e "warnLine(" -e "Fprintf(errOut" -e "Fprintln(errOut" -e "Fprint(errOut" -e "Fprintf(warn," -e "OrStderr()," -e "sevNote," -e "warning:" internal/cli` | 360줄 — research.md §9 첫 블록에 그대로 옮김 | (없음) | 0 |
+| L21 | `b422a13d53` | `/usr/bin/grep -n -e "StepStart(\"Detection\"" -e "StepStart(\"Methodology Detection\"" -e "StepStart(\"Validation\"" -e "StepError(err)" -e "ErrProjectExists" internal/core/project/phase.go` | `66:	pe.reporter.StepStart("Detection", "Analyzing project structure")` / `82:		pe.reporter.StepStart("Methodology Detection", "Determining development mode")` / `103:		pe.reporter.StepStart("Validation", fmt.Sprintf("Using mode: %s", opts.DevelopmentMode))` / `111:	pe.reporter.StepStart("Validation", "Validating project structure")` / `113:		pe.reporter.StepError(err)` / `125:		pe.reporter.StepError(err)` / `194:			return fmt.Errorf("%w", ErrProjectExists)` | (없음) | 0 |
+| L22 | `b422a13d53` | `git diff -U0 cb30e05b3e HEAD -- internal/cli/init.go` | (빈 출력) | (없음) | 0 |
+| L23 | `b422a13d53` | `git log --merges --format=%h cb30e05b3e..HEAD -- internal/cli/init.go` | (빈 출력) | (없음) | 0 |
+| L24 | `b422a13d53` | `git log --no-merges --invert-grep --grep=t1969 --format=%h cb30e05b3e..HEAD ^main -- internal` | (빈 출력) | (없음) | 0 |
+| L25 | `b422a13d53` | `git log --no-merges --grep=t1969 --format=%h cb30e05b3e..HEAD ^main -- internal ":(exclude)internal/cli/testdata" ":(exclude)internal/cli/checklist_fallback_test.go"` | (빈 출력) | (없음) | 0 |
 
 - L11 은 RED 가 아니라 **대조군**이다. 아직 없는 테스트를 고르는 선택자가 `PASS` 와 종료 코드 0 을 낸다. §A 의 `--- PASS:` 요구가 여기서 나온다. 종료 코드만 보는 판정은 이 SPEC 의 모든 테스트 기반 기준을 오늘 녹색으로 만든다.
 - L12·L14 는 기준선이다. L13 은 오늘 이미 비어 있어 AC-TCL-021 은 regression-guard 다.
-- L15 는 AC-TCL-022 의 RED 전제("이 카드의 init.go hunk 가 0개")를 직접 잰다. 종료 코드 0 과 빈 출력은 hunk 가 하나도 없다는 뜻이다. L16 은 그 녹색 테스트가 아직 없음을 잰다.
+- L15 는 델타 1회차의 AC-TCL-022 RED 전제(작업 트리 대 기준)였다. 델타 2회차에서 AC-TCL-022 가 커밋 사이 누적 diff 로 바뀌어 RED 는 L22 가 잰다(종료 0, 빈 출력 = 기준 이후 init.go hunk 0개). L23 은 init.go 를 건드린 병합 커밋이 없음을 잰다(오늘 녹색 — 범위 보호 조건). L16 은 그 녹색 테스트가 아직 없음을 잰다.
+- L20 은 보존 줄 목록(design.md §3.3.1)이 분류하는 검색의 기준선이다. RED 가 아니라 목록 완전성 하위 테스트가 Go 코드로 다시 돌릴 검색의 원본이다. L21 은 재개 경로의 실제 이벤트 순서의 근거다(AC-TCL-017 (c)).
+- L24·L25 는 오늘 이미 빈 출력이다 — 범위 보호 조건(L24)과 순서 증거 선택자(L25)의 기준선이며 RED 가 아니다. 두 명령이 실제로 무언가를 잡는지는 일부러 만든 저장소에서 확인했다(research.md §10 — 양성 사례 하나, 음성 사례 하나).
 
 ## §C 인수 기준
 
@@ -135,10 +144,10 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-012 — 활성 판정과 입력 수집 (maps REQ-TCL-011)
 
-- Given design.md §3.1 의 다섯 조건과 그 입력을 모으는 한 함수 `checklistEnv`, When (1) 판정 단위로 조건마다 하나씩만 거짓으로 바꾼 경우와 모두 참인 경우를 판정하고, (2) 명령 수준에서 TTY 탐지 시접과 프로세스 스트림 시접(design.md §3.1)을 써 "stdout TTY·stderr 비TTY", `CI=1`, `TERM=dumb` 각각으로 init 과 update 를 돌리면, Then (1) 모두 참일 때만 활성이고, (2) 세 경우 모두 출력이 AC-TCL-013 의 깨끗한 실행 대체 골든과 같으며, 대조로 같은 시접에서 모든 조건이 참이면 체크리스트 머리줄이 나온다.
+- Given design.md §3.1 의 다섯 조건과 그 입력을 모으는 한 함수 `checklistEnv`, When (1) 판정 단위로 조건마다 하나씩만 거짓으로 바꾼 경우와 모두 참인 경우를 판정하고, (2) 명령 수준에서 TTY 탐지 시접과 프로세스 스트림 시접(design.md §3.1 — 강제 켜기 시접은 쓰지 않는다)을 써 "stdout 비TTY·stderr TTY", "stdout TTY·stderr 비TTY", `CI=1`, `TERM=dumb` 각각으로 init 과 update 를 돌리면, Then (1) 모두 참일 때만 활성이고, (2) 네 경우 모두 두 작성기 출력이 AC-TCL-013 의 깨끗한 실행 대체 골든과 바이트 단위로 같고 어느 작성기에도 `\x1b[` 가 없으며, 대조로 같은 시접에서 모든 조건이 참이면 체크리스트 머리줄이 나온다. "stdout 비TTY" 경우는 터미널에서 `moai update > log` 를 한 상황이다 — update 는 체크리스트를 stdout 에 그리므로(REQ-TCL-017) 이 경우 대체 경로가 아니면 이스케이프가 log 파일에 들어간다.
 - 종류: release-blocking. RED 이유: L7·L10·L18 — 판정 함수, 입력 수집 함수, 세션 코드가 없다.
-- 녹색 경로(M3 판정 단위, M4·M5 명령 수준): `go test ./internal/cli -run '^TestChecklistActivationPredicate$' -count=1 -v` → `--- PASS: TestChecklistActivationPredicate `, `--- PASS: TestChecklistActivationPredicate/all_true `, `--- PASS: TestChecklistActivationPredicate/stdout_not_tty `, `--- PASS: TestChecklistActivationPredicate/stderr_not_tty `, `--- PASS: TestChecklistActivationPredicate/writer_replaced `, `--- PASS: TestChecklistActivationPredicate/ci_set `, `--- PASS: TestChecklistActivationPredicate/term_dumb `, `--- PASS: TestChecklistActivationPredicate/verbose_on `. 그리고 `go test ./internal/cli -run '^TestChecklistGateCommandLevel$' -count=1 -v` → `--- PASS: TestChecklistGateCommandLevel/init_stderr_not_tty `, `--- PASS: TestChecklistGateCommandLevel/init_ci_set `, `--- PASS: TestChecklistGateCommandLevel/init_term_dumb `, `--- PASS: TestChecklistGateCommandLevel/update_stderr_not_tty `, `--- PASS: TestChecklistGateCommandLevel/update_ci_set `, `--- PASS: TestChecklistGateCommandLevel/update_term_dumb `, `--- PASS: TestChecklistGateCommandLevel/control_all_true `.
-- 뮤턴트: 조건 하나(예: `TERM=dumb`)를 빼먹은 판정 → 해당 하위 테스트 실패. 늘 비활성인 판정 → `all_true`·`control_all_true` 실패(양방향). 호출 지점이 stderr 판정에 stdout 의 TTY 결과를 넘기는 구현 → `*_stderr_not_tty` 가 체크리스트를 그려 골든 불일치로 실패.
+- 녹색 경로(M3 판정 단위, M4·M5 명령 수준): `go test ./internal/cli -run '^TestChecklistActivationPredicate$' -count=1 -v` → `--- PASS: TestChecklistActivationPredicate `, `--- PASS: TestChecklistActivationPredicate/all_true `, `--- PASS: TestChecklistActivationPredicate/stdout_not_tty `, `--- PASS: TestChecklistActivationPredicate/stderr_not_tty `, `--- PASS: TestChecklistActivationPredicate/writer_replaced `, `--- PASS: TestChecklistActivationPredicate/ci_set `, `--- PASS: TestChecklistActivationPredicate/term_dumb `, `--- PASS: TestChecklistActivationPredicate/verbose_on `. 그리고 `go test ./internal/cli -run '^TestChecklistGateCommandLevel$' -count=1 -v` → `--- PASS: TestChecklistGateCommandLevel/init_stdout_not_tty `, `--- PASS: TestChecklistGateCommandLevel/init_stderr_not_tty `, `--- PASS: TestChecklistGateCommandLevel/init_ci_set `, `--- PASS: TestChecklistGateCommandLevel/init_term_dumb `, `--- PASS: TestChecklistGateCommandLevel/update_stdout_not_tty `, `--- PASS: TestChecklistGateCommandLevel/update_stderr_not_tty `, `--- PASS: TestChecklistGateCommandLevel/update_ci_set `, `--- PASS: TestChecklistGateCommandLevel/update_term_dumb `, `--- PASS: TestChecklistGateCommandLevel/control_all_true `.
+- 뮤턴트: 조건 하나(예: `TERM=dumb`)를 빼먹은 판정 → 해당 하위 테스트 실패. 늘 비활성인 판정 → `all_true`·`control_all_true` 실패(양방향). 호출 지점이 stderr 판정에 stdout 의 TTY 결과를 넘기는 구현 → `*_stderr_not_tty` 가 체크리스트를 그려 골든 불일치로 실패. `checklistEnv` 가 두 조건을 모두 stderr 작성기의 TTY 결과로 정하는 구현(2회차 감사 N4) → `update_stdout_not_tty` 에서 stderr 는 TTY 라 체크리스트가 켜져 stdout 버퍼에 머리줄과 `\x1b[` 가 들어가 실패, `init_stdout_not_tty` 도 같은 이유로 실패. 판정 단위의 `stdout_not_tty` 는 수집 함수를 거치지 않으므로 이 뮤턴트를 잡지 못하며, 명령 수준 두 하위 테스트가 그 몫을 진다.
 - 계속 발화: `internal/cli` 기본 실행.
 
 ### AC-TCL-013 — 대체 경로는 기준선과 같은 바이트, 기준선이 먼저 (maps REQ-TCL-012)
@@ -152,19 +161,22 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
   - 경과 시간: `\b\d+(\.\d+)?(ms|s)\b` → `<DUR>`
 - 종류: release-blocking. RED 이유: L8·L19 — 기준선 골든 디렉터리가 없다. 이 기준은 기준선 커밋이 구현 커밋보다 앞서야 성립한다(design.md §8).
 - 녹색 경로(M0 에서 녹색으로 들어오고, M4·M5 뒤에도 녹색이어야 함): `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` → `--- PASS: TestChecklistFallbackMatchesBaseline/init_clean `, `--- PASS: TestChecklistFallbackMatchesBaseline/init_warn `, `--- PASS: TestChecklistFallbackMatchesBaseline/init_fail `, `--- PASS: TestChecklistFallbackMatchesBaseline/update_clean `, `--- PASS: TestChecklistFallbackMatchesBaseline/update_warn `, `--- PASS: TestChecklistFallbackMatchesBaseline/update_fail `.
-- 순서 증거(M6 에서 각각 한 번의 호출로 돌리고 progress.md §E.2 에 그대로 기록. 셋 다 성립해야 녹색):
-  - O1 `git log --format=%h cb30e05b3e..HEAD -- internal/cli/testdata/checklist/fallback internal/cli/checklist_fallback_test.go` → 정확히 한 줄, 그 SHA 가 M0 이다. 둘째 줄이 있으면(구현 뒤 골든 수정·재촬영·테스트 정규화 변경) 빨강.
+- 순서 증거(O4a 만 M0 직후, 나머지는 M6 에서 각각 한 번의 호출로 돌리고 progress.md §E.2 에 그대로 기록. O1~O4 와 §A 의 카드 id 완전성 검사가 모두 성립해야 녹색). `<기준선 트리>` 는 `cb30e05b3e`, 재촬영 경로에서는 재촬영 커밋의 부모인 흡수 커밋이다(plan.md §B 1(c)).
+  - O1 `git log --format=%H cb30e05b3e..HEAD -- internal/cli/testdata/checklist/fallback internal/cli/checklist_fallback_test.go` → 정확히 한 줄, 그 SHA 가 M0 이다. 둘째 줄이 있으면(구현 뒤 골든 수정·재촬영·테스트 정규화 변경) 빨강. 재촬영 경로에서는 정확히 두 줄(재촬영 커밋과 M0).
   - O2 `git show --name-only --format= <M0>` → `internal/cli/checklist_fallback_test.go` 와 `internal/cli/testdata/checklist/fallback/` 아래 경로만. 다른 경로가 하나라도 있으면(코드 변경 혼입) 빨강.
-  - O3 `git log --no-merges --grep=t1969 --format=%h cb30e05b3e..HEAD -- internal ':(exclude)internal/cli/testdata'` 가 내는 SHA 각각에 대해 `git merge-base --is-ancestor <M0> <SHA>` → 종료 0, 그리고 그 SHA 는 M0 과 다르다. 하나라도 종료 1 이면(M0 보다 먼저 들어간 코드 변경) 빨강.
-- 뮤턴트: 기준선을 구현 뒤에 다시 찍어 수정 커밋으로 넣는 절차 → O1 이 두 줄. M0 에 `init.go` 를 섞는 절차 → O2. CLI 쪽 변경(`init_warnings.go` 등)을 M0 보다 먼저 커밋하는 절차 → O3. 경고 줄을 지우는 넓은 정규화 → 줄 수 불변 조건과 `warn` 골든의 주입 문장 조건이 잡는다.
-- 계속 발화: 골든 비교는 `internal/cli` 기본 실행, 골든 부재는 `t.Fatalf`. 순서 증거 O1~O3 는 이 카드 범위의 일회성 검사이며 sync 감사가 다시 돈다. `main` 흡수로 기준선이 바뀌어야 하면 plan.md §B 의 재촬영 절차가 이 기준을 다시 쓴다.
+  - O3 `git log --no-merges --grep=t1969 --format=%h cb30e05b3e..HEAD ^main -- internal ":(exclude)internal/cli/testdata" ":(exclude)internal/cli/checklist_fallback_test.go"` 가 내는 SHA 각각에 대해 `git merge-base --is-ancestor <M0> <SHA>` → 종료 0. 하나라도 종료 1 이면(M0 보다 먼저 들어간 코드 변경) 빨강. 범위에서 M0 이 담는 두 경로를 빼므로 M0 자신은 이 목록에 나오지 않는다 — 1회차 범위(`internal` 에서 testdata 만 뺌)는 M0 의 테스트 파일 때문에 M0 을 냈고 "M0 과 다르다" 조건과 부딪혔다(2회차 감사 N8, 리더 codex_audit P2). 고친 명령은 일부러 만든 저장소에서 양성 사례(M0 뒤 코드 커밋 세 개 → 세 SHA, 모두 종료 0, M0 없음)와 음성 사례(M0 앞 코드 커밋 → 그 SHA, 종료 1)를 의도대로 냈다(research.md §10). 오늘 이 트리에서는 빈 출력(원장 L25). 재촬영 경로에서는 범위를 `internal/cli`(위 두 경로와 `internal/cli/testdata` 제외)로, 조상 기준을 재촬영 커밋으로 바꾼다 — M1·M2 의 `internal/tui` 커밋은 재촬영 커밋보다 앞서도 CLI 출력에 닿지 않기 때문이다.
+  - O4 (2회차 감사 N6). 커밋 그래프는 순서를 증언하지만 골든의 출처는 증언하지 못한다(`verification-claim-integrity.md` §2.3). 그래서 "골든을 변경 전 바이너리가 찍었다"를 주장하지 않고, 그래프와 재실행이 확인해 줄 수 있는 사실로 바꿔 잰다 — M0 트리의 코드가 기준선 코드와 같고, 그 트리에서 대체 테스트가 녹색이다. 그러면 골든은 출처와 상관없이 변경 전 코드의 출력과 같다.
+    - O4a (M0 커밋 직후, 다음 커밋 전, 레인 기록): `git rev-parse HEAD` 와 `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` 를 각각 한 번 돌려 progress.md §E.2 에 그대로 남긴다 — 여섯 `--- PASS:` 줄과 측정 HEAD(40자). M6 에서 그 측정 HEAD 가 O1 이 내는 SHA 와 같아야 한다. 이력을 고치면 M0 의 SHA 가 바뀌어 빨강이다. 이 기록은 레인의 주장이며 그래프가 증언하지 않는다 — 그래서 O4b 가 따로 있다.
+    - O4b (sync 감사가 다시 잼, 판정의 증거): (i) `git diff --name-only <기준선 트리> <M0>~1 -- internal` → 빈 출력(M0 앞까지 코드가 기준선과 같음). (ii) `git archive --output=<스크래치>/m0.tar <M0>` → `mkdir -p <스크래치>/m0` → `tar -xf <스크래치>/m0.tar -C <스크래치>/m0` → `go test -C <스크래치>/m0 ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` → 여섯 `--- PASS:` 줄. 이 저장소의 작업 트리는 건드리지 않는다. 그래서 M0 의 대체 테스트는 git 이력을 읽지 않아야 한다(뽑아낸 트리는 저장소가 아니다).
+- 뮤턴트: 기준선을 구현 뒤에 다시 찍어 수정 커밋으로 넣는 절차 → O1 이 두 줄. M0 에 `init.go` 를 섞는 절차 → O2. CLI 쪽 변경(`init_warnings.go` 등)을 M0 보다 먼저 커밋하는 절차 → O3. id 없이 그런 커밋을 넣는 절차 → §A 카드 id 완전성 검사. 구현 뒤 다시 찍은 골든을 리베이스로 M0 에 합치는 절차(2회차 감사 N6 (가)) → O4a 의 측정 HEAD ≠ O1 SHA, 그리고 바뀐 대체 출력을 담은 골든은 O4b 의 M0 트리(기준선 코드)에서 빨강. M0 에 새 동작을 손으로 적은 골든을 넣는 절차(N6 (나)) → O4b 에서 빨강, O4a 기록에도 `--- FAIL:` 이 남는다. 경고 줄을 지우는 넓은 정규화 → 줄 수 불변 조건과 `warn` 골든의 주입 문장 조건이 잡는다.
+- 계속 발화: 골든 비교는 `internal/cli` 기본 실행, 골든 부재는 `t.Fatalf`. 순서 증거 O1~O4 는 이 카드 범위의 일회성 검사이며 sync 감사가 다시 돈다(O4b 는 sync 감사만 돈다). `main` 흡수로 기준선이 바뀌어야 하면 plan.md §B 의 재촬영 절차가 이 기준을 다시 쓴다.
 
 ### AC-TCL-014 — `--verbose` (maps REQ-TCL-013)
 
-- Given init 과 update, 그리고 M0 이 함께 넣은 `fallback/update-verbose-stdout.golden`·`fallback/update-verbose-stderr.golden` — 그 고정 실행은 verbose 에서만 나오는 줄을 1줄 이상 낸다(예: 3-way 병합 실패 대체 경고, `internal/cli/update_noise.go:111-114`), When `--verbose` 를 주고 활성 판정 시접을 켠 상태로 돌리면, Then 체크리스트가 켜지지 않고, update 의 stdout·stderr 가 두 verbose 골든과 같으며, `update-verbose-stderr.golden` 에는 `update-clean-stderr.golden` 에 없는 줄이 1줄 이상 있고 두 verbose 골든 쌍은 비-verbose 쌍과 다르다. init 출력은 `fallback/init-clean-stderr.golden`·`init-clean-stdout.golden` 과 같다. init 의 `--help` 출력에 `--verbose` 가 있다.
+- Given init 과 update, 그리고 M0 이 함께 넣은 `fallback/update-verbose-stdout.golden`·`fallback/update-verbose-stderr.golden` — 그 고정 실행은 verbose 에서만 나오는 줄을 1줄 이상 낸다(예: 3-way 병합 실패 대체 경고, `internal/cli/update_noise.go:111-114`), When TTY 탐지 시접과 프로세스 스트림 시접으로 활성 조건 다섯 가운데 `--verbose` 를 뺀 네 조건을 참으로 두고(강제 켜기 시접은 쓰지 않는다 — 그 시접은 판정을 통째로 참으로 만들어 `--verbose` 도 끌 수 없다, design.md §3.1) `--verbose` 를 주어 돌리면, Then 체크리스트가 켜지지 않고, update 의 stdout·stderr 가 두 verbose 골든과 같다. 그리고 **같은 고정 실행**을 같은 시접 상태에서 `--verbose` 없이 한 번 더 돌린 update stderr 와 비교하면, verbose stderr 에만 있는 줄이 1줄 이상 있고 그 가운데 하나는 verbose 전용 경고 문장(`3-way merge failed for`, `internal/cli/update_noise.go:111-114`)을 담는다. init 출력은 `fallback/init-clean-stderr.golden`·`init-clean-stdout.golden` 과 같다. init 의 `--help` 출력에 `--verbose` 가 있다.
 - 종류: release-blocking. RED 이유: L6 — init 에 `--verbose` 가 없다. L8·L19 — 기준선이 없다.
 - 녹색 경로(M3·M5): `go test ./internal/cli -run '^TestChecklistVerboseForcesFallback$' -count=1 -v` → `--- PASS: TestChecklistVerboseForcesFallback/init `, `--- PASS: TestChecklistVerboseForcesFallback/update `, `--- PASS: TestChecklistVerboseForcesFallback/update_verbose_differs `. 보조: `/usr/bin/grep -rn "Flags().Bool(\"verbose\"" internal/cli` 결과에 update 등록(`update.go:89`)과 init 등록 두 줄, 종료 0.
-- 뮤턴트: init 에 플래그만 등록하고 판정에 쓰지 않는 구현 → 시접을 켠 상태에서 체크리스트가 켜져 실패. verbose stderr 경로를 깨뜨리는 구현 → stderr 골든 불일치. verbose 와 비-verbose 가 같은 출력을 내는 픽스처 → `update_verbose_differs` 실패.
+- 뮤턴트: init 에 플래그만 등록하고 판정에 쓰지 않는 구현 → 나머지 네 조건이 참이라 체크리스트가 켜져 실패. 판정에서 `--verbose` 를 무시하고 강제 켜기 시접으로 테스트를 녹색으로 만드는 테스트 뮤턴트 → 이 기준이 그 시접을 금지하므로 리뷰에서 걸리고, 그 시접 아래에서는 "켜지지 않는다" 단언 자체가 빨갛다. verbose stderr 경로를 깨뜨리는 구현 → stderr 골든 불일치. verbose 와 비-verbose 가 같은 출력을 내는 픽스처 → `update_verbose_differs` 실패. 다른 픽스처(`update-clean`)와 비교해 픽스처 차이로 녹색이 되는 테스트(2회차 감사 N13) → 이 기준은 같은 실행의 두 출력만 비교하므로 성립하지 않는다.
 - 계속 발화: `internal/cli` 기본 실행.
 
 ### AC-TCL-015 — 항목 안은 접고, 밖은 넘김 (maps REQ-TCL-014)
@@ -185,10 +197,15 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-017 — 중도 종료와 성공 조기 반환 (maps REQ-TCL-016, REQ-TCL-023)
 
-- Given 활성 세션에서 (a) 항목을 연 채 상세 `detail-x` 를 쓰고 오류를 반환하는 실행, (b) 위저드 취소 시접으로 첫 항목 전에 돌아오는 실행, (c) 중단 체크포인트가 있는 프로젝트에서 재개 경로(`init.go:858-864`)로 `nil` 을 반환하는 실행, When 끝나면, Then (a) 는 `✗` 줄과 `detail-x` 가 나오고, (b) 는 취소 문구(`Initialization cancelled.`, `init.go:575`)가 나오며, (c) 는 열린 항목이 `✓` 로 닫히고 `✗` 가 하나도 없으며 `Initialized MoAI project (resumed` 가 정확히 1번 나온다. 세 경우 모두 끝난 뒤 `cmd.OutOrStdout()`·`cmd.ErrOrStderr()` 가 원래 작성기를 돌려준다.
-- 종류: release-blocking. RED 이유: L10.
-- 녹색 경로(M3·M4): `go test ./internal/cli -run '^TestChecklistAbortFlushes$' -count=1 -v` → `--- PASS: TestChecklistAbortFlushes/error `, `--- PASS: TestChecklistAbortFlushes/cancel `, `--- PASS: TestChecklistAbortFlushes/resumed_success `.
-- 뮤턴트: 작성기를 되돌리지 않는 구현 → 원래 작성기 검사 실패. 취소 때 캡처를 버리는 구현 → 취소 문구 부재로 실패. 모든 조기 반환을 실패로 닫는 구현 → `resumed_success` 의 `✗` 로 실패. 재개 안내를 접는 구현 → 안내 0번으로 실패.
+- Given 활성 세션에서 (a) 항목을 연 채 상세 `detail-x` 를 쓰고 오류를 반환하는 실행, (b) 위저드 취소 시접으로 첫 항목 전에 돌아오는 실행, (c) 실제 init 이 초기화해 둔 프로젝트에 중단 체크포인트(중단된 설치 기록 또는 깨진 사용자 매니페스트, `init.go:850-853` 주석)를 둔 `t.TempDir()` 고정에서 **실제 실행기**로 돈 init — 하위 테스트는 실행기 시접 `newInitPhaseExecutorFn`(`internal/cli/init_executor_seam.go:29`)을 바꾸지 않는다, (d) 이미 현재 버전인 프로젝트에서 돈 update(`internal/cli/update_template_sync.go:249-255` 의 `nil` 조기 반환), When 끝나면, Then
+  - (a) `✗` 줄과 `detail-x` 가 나온다.
+  - (b) 취소 문구(`Initialization cancelled.`, `init.go:575`)가 나온다.
+  - (c) 실제 이벤트 순서(design.md §3.4, 원장 L21 — 검증 단계가 `StepError` 를 먼저 낸 뒤 재개가 돈다)대로, `templates.detect` 줄이 `✓` 로, `templates.validate` 줄이 `✗` 로 끝나고 그 아래 들여쓴 `project already initialized`(`ErrProjectExists`, `internal/core/project/errors.go:12`)가 보인다. 출력 전체에서 `✗` 는 정확히 1번, `Initialized MoAI project (resumed` 는 정확히 1번, 요약 머리 문자열은 0번이고, 명령은 `nil` 을 돌려준다. `✗` 줄이 끝난 뒤 그 줄을 다시 그리는 `\r\x1b[2K` 는 없다(REQ-TCL-002·REQ-TCL-023).
+  - (d) `templates.version` 줄이 `✓` 로 끝나고, 이미 최신이라는 결과 알약 문장이 정확히 1번(보존 행 P22), `✗` 는 0번, 요약 머리 문자열은 0번이다.
+  - 네 경우 모두 끝난 뒤 `cmd.OutOrStdout()`·`cmd.ErrOrStderr()` 가 원래 작성기를 돌려준다.
+- 종류: release-blocking. RED 이유: L10 — 세션 코드가 없다. (c) 의 기대 화면은 L21(실행기 이벤트 순서)과 design.md §3.4 가 근거다.
+- 녹색 경로(M3·M4·M5): `go test ./internal/cli -run '^TestChecklistAbortFlushes$' -count=1 -v` → `--- PASS: TestChecklistAbortFlushes/error `, `--- PASS: TestChecklistAbortFlushes/cancel `, `--- PASS: TestChecklistAbortFlushes/resumed_after_validate_fail `, `--- PASS: TestChecklistAbortFlushes/update_up_to_date `.
+- 뮤턴트: 작성기를 되돌리지 않는 구현 → 원래 작성기 검사 실패. 취소 때 캡처를 버리는 구현 → 취소 문구 부재로 실패. 가짜 실행기로 `StepError` 없이 재개 경로만 태운 테스트(2회차 감사 N3) → `✗` 정확히 1번 조건이 빨갛다 — 실제 순서를 재현해야만 녹색이다. 재개가 성공하면 실패 줄을 `✓` 로 다시 그리는 구현 → `✗` 0번과 다시 그리기 시퀀스로 실패. 실패를 보류해 재개 단계 출력을 검증 항목 상세로 접는 구현 → 보존 행 P23 의 문장이 사라져 AC-TCL-024 `p23_init_resume_warnings` 로 실패. 모든 `nil` 조기 반환을 실패로 닫는 구현 → (d) 의 `✗` 로 실패. `nil` 조기 반환 때 캡처를 버리는 구현 → (d) 의 결과 알약 0번으로 실패. 조기 반환에도 요약을 그리는 구현 → 요약 머리 1번으로 실패. 재개 안내를 접는 구현 → 안내 0번으로 실패.
 - 계속 발화: `internal/cli` 기본 실행.
 
 ### AC-TCL-018 — 출력 채널 (maps REQ-TCL-017)
@@ -203,7 +220,7 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 - Given 병합 확인과 init 위저드 진입 지점의 시접, When 그 시접이 불릴 때 세션 상태를 기록하면, Then 열린 항목이 0개다. 그리고 이 카드의 커밋은 위저드 패키지를 바꾸지 않았다.
 - 종류: release-blocking(앞 절), regression-guard(뒤 절). RED 이유: L10.
-- 녹색 경로(M4·M5): `go test ./internal/cli -run '^TestChecklistNoOpenLineDuringPrompt$' -count=1 -v` → `--- PASS: TestChecklistNoOpenLineDuringPrompt/init `, `--- PASS: TestChecklistNoOpenLineDuringPrompt/update `. 보조: `git log --no-merges --grep=t1969 --name-only --format= cb30e05b3e..HEAD -- internal/cli/wizard` → (빈 출력), 종료 0. 이 카드의 커밋만 보므로 t1966 의 위저드 변경을 흡수해도 빨개지지 않는다.
+- 녹색 경로(M4·M5): `go test ./internal/cli -run '^TestChecklistNoOpenLineDuringPrompt$' -count=1 -v` → `--- PASS: TestChecklistNoOpenLineDuringPrompt/init `, `--- PASS: TestChecklistNoOpenLineDuringPrompt/update `. 보조: `git log --no-merges --grep=t1969 --name-only --format= cb30e05b3e..HEAD ^main -- internal/cli/wizard` → (빈 출력), 종료 0, 그리고 §A 의 카드 id 완전성 검사가 빈 출력. 이 카드의 커밋만 보므로 t1966 의 위저드 변경을 흡수해도 빨개지지 않는다.
 - 뮤턴트: `analyze` 항목을 닫지 않고 확인 화면을 띄우는 구현 → 열린 항목 1개로 실패.
 - 계속 발화: 앞 절은 기본 실행. 뒤 절은 이 카드 범위 확인용 일회성 검사이며 sync 감사가 다시 돈다(병합 뒤에는 멈춘다 — 의도된 한계).
 
@@ -217,7 +234,7 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-021 — 배포 템플릿 불변 (maps REQ-TCL-020)
 
-- Given 이 카드의 모든 커밋, When `git log --no-merges --grep=t1969 --name-only --format= cb30e05b3e..HEAD -- internal/template/templates` 를 돌리면, Then 출력이 비어 있고 종료 0 이다.
+- Given 이 카드의 모든 커밋, When `git log --no-merges --grep=t1969 --name-only --format= cb30e05b3e..HEAD ^main -- internal/template/templates` 를 돌리면, Then 출력이 비어 있고 종료 0 이며, §A 의 카드 id 완전성 검사도 빈 출력이다.
 - 종류: regression-guard. 오늘 이미 녹색(L13 이 같은 범위의 트리 비교로 빈 출력)이므로 통과로 세지 않는다.
 - 녹색 경로: 전 구간 유지. M6 와 sync 감사가 다시 돈다.
 - 뮤턴트: 템플릿에 체크리스트 설정 키를 넣는 구현 → 출력에 경로가 나와 실패.
@@ -225,11 +242,12 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-022 — init.go 변경 영역 제한 (maps REQ-TCL-021)
 
-- Given 이 카드의 커밋들과 plan.md §B 의 영역 기준 SHA(처음 값 `cb30e05b3e`), When `git log --no-merges --grep=t1969 -p -U0 --format= <영역 기준>..HEAD -- internal/cli/init.go` 의 hunk 머리를 읽으면, Then hunk 가 1개 이상이고, 모든 hunk 의 이전 쪽 범위 `-a,b` 가 한 영역 안에 있다 — `b>0` 이면 시작 줄 `a` 와 끝 줄 `a+b-1` 이 모두, `b=0`(삽입)이면 `a` 가 R1 `[383,389]`, R3 `[919,1075]`, R2 `[1077,1087]` 가운데 하나에 들며, R3 안의 hunk 는 모두 `b=0` 이다.
-- 종류: release-blocking. RED 이유: L15 — 이 카드의 init.go hunk 가 0개(빈 출력, 종료 0)라 "1개 이상"이 거짓이다. L16 — 녹색 테스트가 아직 없다. 빨간 이유는 "연결이 아직 없다"이며, 범위 밖 변경 때문이 아니다.
-- 녹색 경로(M4): M4 가 넣는 `TestChecklistInitHunkConfinement` 가 위 명령의 출력을 해석해 판정한다 → `go test ./internal/cli -run '^TestChecklistInitHunkConfinement$' -count=1 -v` → `--- PASS: TestChecklistInitHunkConfinement `. git 이 없거나 이력이 얕으면 건너뛰지 않고 분명한 메시지로 실패한다.
-- 뮤턴트: 보고기 줄(`init.go:728`)을 고친 구현 → 시작 줄 728 이 범위 밖이라 실패. 1070 에서 시작해 1100 까지 지우는 hunk → 끝 줄 1100 이 범위 밖이라 실패. R3 안의 기존 줄을 고치는 hunk(`b>0`) → R3 삽입 전용 조건으로 실패.
-- 계속 발화: 이 카드 범위의 일회성 조율 검사라 테스트는 M6 에서 지운다. 지우기 전 마지막 실행(명령·그대로의 출력·측정 SHA)을 progress.md §E.2 에 남기고, §F 완료 정의는 그 기록으로 판정한다. sync 감사는 그 기록을 읽는다.
+- Given 이 카드의 커밋들과 plan.md §B 의 영역 기준 SHA(처음 값 `cb30e05b3e`), When (1) `git diff -U0 <영역 기준> HEAD -- internal/cli/init.go` 의 hunk 머리를 읽고, (2) `git log --merges --format=%h <영역 기준>..HEAD -- internal/cli/init.go` 를 돌리면, Then (2) 의 출력이 비어 있고, (1) 의 hunk 가 1개 이상이며, 모든 hunk 의 이전 쪽 범위 `-a,b` 가 한 영역 안에 있다 — `b>0` 이면 시작 줄 `a` 와 끝 줄 `a+b-1` 이 모두, `b=0`(삽입)이면 `a` 가 R1 `[383,389]`, R3 `[919,1075]`, R2 `[1077,1087]` 가운데 하나에 들며, R3 안의 hunk 는 모두 `b=0` 이다. 그리고 §A 의 카드 id 완전성 검사가 빈 출력이다.
+- 좌표계(2회차 감사 N5). (1) 은 영역 기준과 HEAD 두 트리를 바로 비교하므로, init.go 를 고친 이 카드의 커밋이 몇 개이든 hunk 좌표는 영역 기준 파일의 행번호다 — REQ-TCL-021 의 "영역 기준 대비"와 같은 좌표다. 1회차의 `git log -p` 는 커밋마다 그 부모 대비 좌표를 내서, 앞 커밋의 삽입만큼 뒤 커밋의 좌표가 밀렸다. 일부러 만든 저장소에서 두 커밋(10행 뒤 3줄 삽입, 원래 15행 수정)을 넣으면 `git log -p` 는 둘째 커밋을 `@@ -18 +18 @@` 로, 누적 diff 는 `@@ -15 +18 @@` 로 낸다(research.md §10). (1) 이 "이 카드의 변경만"을 담는 근거는 둘이다 — 영역 기준 이후 init.go 를 건드린 병합이 없다는 (2), 그리고 `internal/` 을 건드린 커밋이 모두 이 카드의 것이라는 §A 완전성 검사. `main` 흡수는 M3 전에만 하고 그때 영역 기준을 흡수 커밋으로 옮기므로(plan.md §B 1(a)), M4 의 init.go 변경은 언제나 영역 기준 뒤에 있다.
+- 종류: release-blocking. RED 이유: L22 — 영역 기준 이후 init.go hunk 가 0개(빈 출력, 종료 0)라 "1개 이상"이 거짓이다. L16 — 녹색 테스트가 아직 없다. 빨간 이유는 "연결이 아직 없다"이며, 범위 밖 변경 때문이 아니다. (2) 는 오늘 빈 출력이다(L23, 범위 보호 조건).
+- 녹색 경로(M4): M4 가 넣는 `TestChecklistInitHunkConfinement` 가 위 두 명령의 출력을 해석해 판정한다 → `go test ./internal/cli -run '^TestChecklistInitHunkConfinement$' -count=1 -v` → `--- PASS: TestChecklistInitHunkConfinement `. git 이 없거나 이력이 얕으면 건너뛰지 않고 분명한 메시지로 실패한다.
+- 뮤턴트: 보고기 줄(`init.go:728`)을 고친 구현 → 시작 줄 728 이 범위 밖이라 실패. 1070 에서 시작해 1100 까지 지우는 hunk → 끝 줄 1100 이 범위 밖이라 실패. R3 안의 기존 줄을 고치는 hunk(`b>0`) → R3 삽입 전용 조건으로 실패. R3 에 14줄을 넣은 뒤 다른 커밋에서 R2 를 고치는 올바른 구현 → 누적 좌표로 R2 안에 들어 녹색(1회차 명령은 이 구현을 잘못된 이유로 빨갛게 만들었다). 범위 밖 변경을 다른 커밋으로 나눠 밀린 좌표로 범위 안에 숨기는 구현 → 누적 좌표에서는 밀리지 않아 실패. init.go 변경을 `main` 흡수 병합에 섞는 절차 → (2) 가 병합 SHA 를 내 실패.
+- 계속 발화: 이 카드 범위의 일회성 조율 검사라 테스트는 M6 에서 지운다. 지우기 전 마지막 실행(두 명령·그대로의 출력·측정 SHA)을 progress.md §E.2 에 남기고, §F 완료 정의는 그 기록으로 판정한다. sync 감사는 그 기록을 읽는다.
 
 ### AC-TCL-023 — 글리프 허용 목록과 원시 키 부재 (maps REQ-TCL-001, REQ-TCL-003, REQ-TCL-009)
 
@@ -241,11 +259,16 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-024 — 보존 줄은 성공 항목에서도 한 번 (maps REQ-TCL-022)
 
-- Given 활성 세션과 design.md §3.3.1 보존 줄 목록에서 고른 네 지점에 주입한 실패·안내 — (a) update 배포 모드 재주장 실패(`internal/cli/update_template_sync.go:948`), (b) init 설정 스냅숏 쓰기 실패(`init.go:885` → `internal/cli/update/backup/file_snapshot.go:95` → `settings_snapshot.go:115`), (c) init 지연 갱신 안내(`init.go:1058` → `internal/cli/init_update_notice.go:107`, 시접 `deferredUpdateCheck`), (d) init 워크트리 안내(`init.go:1034` → `internal/cli/worktree_advisory.go:57`), When 각 항목이 성공으로 끝나면, Then 각 문장이 실제 작성기 출력에 정확히 한 번 나오고, (a)·(b) 를 담은 항목 줄은 `!` 로, (c)·(d) 를 담은 항목 줄은 `✓` 로 끝나며, 요약의 경고 수는 주입 전과 같다(결정 D-9).
-- 종류: release-blocking. RED 이유: L17 — 이 테스트가 없다. L7·L10 — 세션 코드가 없다. 오늘(비활성 경로)은 네 문장이 모두 보이지만, 체크리스트가 켜진 경로 자체가 없어 이 기준의 활성 조건을 만들 수 없다.
-- 녹색 경로(M4·M5): `go test ./internal/cli -run '^TestChecklistPreservedLinesExactlyOnce$' -count=1 -v` → `--- PASS: TestChecklistPreservedLinesExactlyOnce/update_deploy_mode_reassert `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/init_settings_snapshot `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/init_update_notice `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/init_worktree_advisory `.
-- 뮤턴트: 보존 줄 목록을 무시하고 성공 항목의 상세를 모두 접는 구현 → 네 문장 0번으로 실패. 성공 항목의 상세를 모두 펼치는 구현 → AC-TCL-015(`inside` 미노출)와 AC-TCL-011(줄 예산)이 잡는다. 보존 줄을 즉시 넘기고 종료 때 또 펼치는 구현 → 2번으로 실패. 안내를 경고로 세는 구현 → 경고 수와 `✓` 조건으로 실패.
-- 계속 발화: `internal/cli` 기본 실행. 보존 줄 목록에 지점을 더하면 이 테스트에 하위 테스트를 더한다(design.md §3.3.1).
+- Given 활성 세션과 design.md §3.3.1 보존 행 P1~P23. 각 하위 테스트는 **한 행만** 맡아 그 행의 모든 호출 지점에 실패·안내를 차례로 주입한다(예: P4 는 `init.go:863` 과 `:1058` 두 지점, P20 은 init `:1022` 와 update `update_template_sync.go:1177` 두 지점). When 실행을 끝까지 돌리면, Then
+  - (1) 그 행의 문장이 실제 작성기 출력에 정확히 한 번 나온다.
+  - (2) 위치가 항목 안인 경고·오류 행은 그 항목 줄을 `!` 로, 안내 행은 그 항목 줄을 `✓` 로 끝낸다(P22 는 REQ-TCL-023 의 `✓`). 위치가 항목 밖인 행(P3, P4 의 `:863`, P23)은 글리프를 보지 않는다.
+  - (3) 요약이 그려지는 실행에서 요약의 경고 수는 주입 전과 같다(결정 D-9).
+  - (4) `inventory_complete` 하위 테스트는 원장 L20 과 같은 12개 모양을 Go 코드로 `internal/cli/**/*.go`(테스트 파일 제외)에 돌려 — (가) 보존 행·제외 행 어디에도 분류되지 않은 일치가 없고, (나) 모든 보존 행의 분류 조각이 그 파일에 아직 있으며, (다) 궤도 파일(design.md §3.3.1 정의)의 일치가 파일 단위 제외로 처리되지 않았음을 단언한다.
+- 종류: release-blocking. RED 이유: L17 — 이 테스트가 없다. L7·L10 — 세션 코드가 없다. 오늘(비활성 경로)은 모든 문장이 보이지만, 체크리스트가 켜진 경로 자체가 없어 이 기준의 활성 조건을 만들 수 없다. L20 이 완전성 하위 테스트가 다시 돌릴 검색의 기준선이다.
+- 녹색 경로(M4·M5): `go test ./internal/cli -run '^TestChecklistPreservedLinesExactlyOnce$' -count=1 -v` → 아래 24줄이 모두 있어야 한다.
+  `--- PASS: TestChecklistPreservedLinesExactlyOnce/p01_init_snapshot_stage `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p02_init_snapshot_settle `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p03_init_resumed_notice `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p04_init_update_notice `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p05_init_worktree_advisory `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p06_update_env_path_refresh `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p07_update_snapshot_stage `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p08_update_manifest_save `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p09_update_deploy_mode_reassert `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p10_update_manifest_retrack `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p11_update_resync_hint `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p12_update_migration_warning `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p13_update_template_tree `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p14_update_merge_fallback `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p15_update_retained_keys `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p16_update_skill_archive `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p17_update_retrack_skip `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p18_update_deploy_mode_write `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p19_update_stamp_skew `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p20_prepush_preserved `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p21_precommit_preserved `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p22_update_up_to_date `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/p23_init_resume_warnings `, `--- PASS: TestChecklistPreservedLinesExactlyOnce/inventory_complete `.
+- 뮤턴트: 네 지점만 세션에 알리고 나머지 행은 그대로 둔 구현(2회차 감사 N2) → 알리지 않은 행의 하위 테스트가 그 문장 0번으로 빨갛다 — 행마다 하위 테스트가 있으므로 어느 한 행도 빠질 수 없다. 테스트 표에서 행 하나를 지워 하위 테스트를 없앤 테스트 뮤턴트 → 그 행의 검색 일치가 미분류가 되어 `inventory_complete` (가) 로 실패하고, 녹색 경로의 24줄 가운데 한 줄이 빠진다. 궤도 파일의 새 직접 쓰기 경고를 파일 단위 제외로 흘려보내는 뮤턴트 → (다) 로 실패. 보존 지점의 메시지를 지우거나 바꾼 구현 → (나) 로 실패. 성공 항목의 상세를 모두 펼치는 구현 → AC-TCL-015(`inside` 미노출)와 AC-TCL-011(줄 예산)이 잡는다. 보존 줄을 즉시 넘기고 종료 때 또 펼치는 구현 → 2번으로 실패. 안내를 경고로 세는 구현 → 경고 수와 `✓` 조건으로 실패. 요약을 결과 알약 자리(`update_template_sync.go:1144`)에 그려 꼬리 행 P18·P19 를 항목 밖으로 내보내는 구현 → 문장은 한 번 보이지만 (2) 의 `!` 조건이 빨갛고, AC-TCL-011 의 update 줄 수가 훅 설치 두 줄만큼 넘는다(결정 D-10).
+- 계속 발화: `internal/cli` 기본 실행. 검색 모양에 걸리는 새 직접 쓰기 줄이 궤도 파일에 생기면 `inventory_complete` 가 그 자리에서 빨개진다 — 사람이 목록을 기억해 고칠 필요가 없다. 궤도 밖 파일의 일치는 규칙상 X9 라 다른 명령을 고치는 카드가 이 테스트를 빨갛게 만들지 않는다. 궤도 밖 파일이 새로 init·update 에서 불리게 되는 변경은 이 테스트가 보지 못한다(남은 위험, plan.md §H R-3). 이 카드 안에서 새 일치가 생기면 run 단계는 막힘 보고를 내고 manager-spec 이 design.md §3.3.1 에 행을 더한다.
 
 ## §D 경계 사례
 
@@ -265,8 +288,9 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 ## §F 완료 정의
 
 - AC-TCL-001 부터 AC-TCL-020 까지, AC-TCL-023, AC-TCL-024 가 §A 의 녹색 판정을 만족한다.
-- AC-TCL-022 는 M6 에서 테스트를 지우기 **전** 마지막 실행 기록(명령, 그대로의 출력, 종료 코드, 측정 SHA)이 §A 의 녹색 판정을 만족한 것으로 판정한다. 지운 뒤의 `[no tests to run]` 은 판정에 쓰지 않는다.
+- AC-TCL-022 는 M6 에서 테스트를 지우기 **전** 마지막 실행 기록(두 명령, 그대로의 출력, 종료 코드, 측정 SHA)이 §A 의 녹색 판정을 만족한 것으로 판정한다. 지운 뒤의 `[no tests to run]` 은 판정에 쓰지 않는다.
 - AC-TCL-021 은 regression-guard 로 유지된다.
-- AC-TCL-013 의 순서 증거 O1·O2·O3 가 모두 성립한다.
+- AC-TCL-013 의 순서 증거 O1·O2·O3·O4(O4a 기록의 측정 HEAD = O1 SHA, O4b 재실행 녹색)가 모두 성립한다.
+- §A 의 카드 id 완전성 검사가 M6 에서 빈 출력이다.
 - `go test ./internal/tui/golden -run '^(TestManifest|TestGoldenCount)$' -count=1 -v` → `--- PASS: TestManifest `, `--- PASS: TestGoldenCount `.
 - progress.md §E.2 에 각 기준의 명령·그대로의 출력·종료 코드·측정 HEAD 가 기록돼 있다.

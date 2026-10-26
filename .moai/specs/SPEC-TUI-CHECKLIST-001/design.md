@@ -1,6 +1,6 @@
 # SPEC-TUI-CHECKLIST-001 — 설계
 
-이 문서는 run 단계가 따를 형태를 정한다. 함수·파일 이름은 방향을 보여 주는 예시이며, 같은 계약을 지키면 run 단계가 기존 관례에 맞춰 바꿀 수 있다. 이름이 바뀌면 acceptance.md 의 선택자도 함께 고친다. 바꿀 수 없는 것은 계약이다 — 이벤트 순서, 캡처 규칙, 보존 줄 목록, 대체 규칙, 키 이름 규칙. 인용 행번호는 `cb30e05b3e` 기준이며, 델타 1회차에서 HEAD `d241917d17`(코드는 같음)에서 다시 읽었다.
+이 문서는 run 단계가 따를 형태를 정한다. 함수·파일 이름은 방향을 보여 주는 예시이며, 같은 계약을 지키면 run 단계가 기존 관례에 맞춰 바꿀 수 있다. 이름이 바뀌면 acceptance.md 의 선택자도 함께 고친다. 바꿀 수 없는 것은 계약이다 — 이벤트 순서, 캡처 규칙, 보존 줄 목록, 대체 규칙, 키 이름 규칙. 인용 행번호는 `cb30e05b3e` 기준이며, 델타 1회차에서 HEAD `d241917d17`, 델타 2회차에서 HEAD `b422a13d53`(셋 다 코드는 같음 — `b422a13d53` 까지의 커밋은 SPEC 디렉터리만 바꿨다)에서 다시 읽었다.
 
 ## §1 화면 모양 (리치 모드, 깨끗한 init)
 
@@ -78,7 +78,7 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 
 ## §3 이벤트 모델과 CLI 쪽 세션 — `internal/cli/checklist_session.go` (새 파일)
 
-### §3.1 활성 판정과 입력 수집 (REQ-TCL-011, 012)
+### §3.1 활성 판정과 입력 수집 (REQ-TCL-011, REQ-TCL-012)
 
 다섯 입력은 한 함수 `checklistEnv(cmd, verbose)` 가 모은다. init 과 update 는 이 함수만 부르고, 입력을 따로 읽지 않는다. 다음이 모두 참일 때만 체크리스트를 켠다. 하나라도 거짓이면 세션은 빈 세션(모든 메서드가 아무 일도 하지 않음)이 되고, 명령은 기준선 출력 그대로 동작한다.
 
@@ -92,7 +92,7 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 
 - TTY 탐지 시접: 작성기마다 터미널 여부를 돌려준다. 명령 수준 테스트는 "stdout 참·stderr 거짓"처럼 두 값을 따로 준다.
 - 프로세스 스트림 시접: 조건 2 의 비교 대상(프로세스 stdout·stderr)을 돌려준다. 명령 수준 테스트는 자기가 끼운 버퍼를 프로세스 스트림으로 알려 조건 2 를 참으로 만들고, 나머지 한 조건만 거짓으로 둔다. 이 시접이 없으면 버퍼를 쓰는 모든 명령 수준 테스트에서 조건 2 가 늘 거짓이라 다른 조건의 검사가 공허해진다(AC-TCL-012).
-- 강제 켜기 시접: 판정 결과를 통째로 참으로 만든다. 리치 골든(AC-TCL-011)과 연결 테스트가 쓴다.
+- 강제 켜기 시접: 판정 결과를 통째로 참으로 만든다. `--verbose` 도 이 시접 앞에서는 체크리스트를 끄지 못한다. 그래서 이 시접은 리치 골든(AC-TCL-011)과 연결 테스트(AC-TCL-015, AC-TCL-016, AC-TCL-017, AC-TCL-018, AC-TCL-019, AC-TCL-020, AC-TCL-024)만 쓰고, 조건 하나를 거짓으로 두고 판정을 보는 테스트(AC-TCL-012 명령 수준, AC-TCL-014)는 쓰지 않는다. 그 테스트들은 TTY 탐지 시접과 프로세스 스트림 시접으로 나머지 조건을 참으로 두고, 검사하는 조건 하나만 실제 값으로 둔다.
 
 ### §3.2 캡처 규칙 (REQ-TCL-014)
 
@@ -102,7 +102,12 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 - **항목이 열려 있지 않을 때** 쓰인 바이트는 즉시, 바꾸지 않고 실제 작성기로 넘긴다. 위저드 전 경고(`init.go:427`), 사용자 자산 보장 출력(`init.go:784`), 세션 워크트리 안내(`init.go:405-423`), update 정체성 띠(`update.go:212-214`), update 종료 블록(`update.go:176`)이 여기에 해당한다.
 - 기존 `ProgressLine` 호출은 그대로 둔다. 세션 작성기는 `*os.File` 이 아니므로 `ProgressLine` 은 비TTY 형태(이스케이프 없는 줄, `internal/tui/progress_line.go:218-224`)로 쓰고, 그 줄이 상세로 접힌다.
 
-### §3.3 경고 신호와 경고 수 (REQ-TCL-015, 019)
+**항목 경계(결정 D-10).** 열린 항목은 네 경우에만 닫힌다 — 다음 `Item` 이 열릴 때(암묵 `Done`), `Summary` 가 그려질 때(암묵 `Done`), 세션이 끝날 때(§3.4), 단계 보고기가 실패를 알릴 때(`Fail`, §3.6). 그 밖에는 열린 채로 다음 바이트를 상세로 받는다.
+
+- init: 첫 항목은 `executor.Execute`(`init.go:829`) 안의 첫 보고기 이벤트(`internal/core/project/phase.go:66` `StepStart("Detection", …)`)로 열린다. 요약은 R2(`init.go:1077-1087`)에서 그린다. 그래서 `init.go:829` 앞의 출력(위저드 전 경고 `:411`·`:427`, 취소 `:575`, 자산 보장 `:784`, 남은 스냅숏 판정 `:812`·`:815`)과 요약 뒤의 출력은 넘김 규칙으로 바로 보인다.
+- update: 항목은 템플릿 동기화 안에서만 열린다(`runTemplateSyncWithProgress` `internal/cli/update_template_sync.go:1244` → 본문 `runTemplateSyncWithReporter`). 요약은 본문이 `return nil`(`:1218`) 하기 직전에 그린다. 단계 루프 뒤 꼬리(`:1081-1216` — 진행 막대, 결과 알약 자리, 훅 설치 `:1177`·`:1182`, 배포 모드 기록 `:1211`, 스탬프 검사 `:1216`)는 마지막으로 열린 항목 안에서 돈다. 진행 막대(`:1081`)와 결과 알약(`:1144` `renderUpdateOutcome`)은 세션이 켜져 있으면 그리지 않고 그 데이터를 요약으로 넘긴다(결정 D-6). 템플릿 동기화 밖의 update 출력(`internal/cli/update.go:604` 앞의 미리보기·마이그레이션 줄, 뒤의 무결성 검사 `:631`·참여 질문 `:647`·종료 블록 `:176`, 최종 상태 검증 `update_template_sync.go:1323`)은 열린 항목이 없으므로 넘김 규칙으로 보인다.
+
+### §3.3 경고 신호와 경고 수 (REQ-TCL-015, REQ-TCL-019)
 
 - `warnCollector.Warn`·`Collect`(`internal/cli/init_warnings.go:41-56`)는 세션이 켜져 있으면 세션에 경고를 알린다.
   - 열린 항목이 있으면 그 항목의 경고가 된다(`Warn` 이 프린터로 내는 즉시 줄은 상세로 접히고, 경고 문장은 항목 아래 한 번 펼친다).
@@ -113,31 +118,78 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 
 #### §3.3.1 보존 줄 목록 (REQ-TCL-022)
 
-경고 신호를 거치지 않고 작성기에 직접 쓰는 줄 가운데, 항목이 성공해도 접히면 안 되는 줄이다. 델타 1회차에서 HEAD `d241917d17` 의 각 줄을 읽어 확인했다. run 단계는 각 지점이 세션에 "보존 줄"로 알리게 한다(방법은 run 단계가 고른다 — 예: 세션 작성기의 보존 메서드, 또는 호출 지점의 작은 도우미). 문자열 모양으로 "경고처럼 보이는 줄"을 고르지 않는다.
+경고 신호를 거치지 않고 작성기에 직접 쓰는 줄 가운데, 항목이 성공해도 접히면 안 되는 줄이다. run 단계는 각 지점이 세션에 "보존 줄"로 알리게 한다(방법은 run 단계가 고른다 — 예: 세션 작성기의 보존 메서드, 또는 호출 지점의 작은 도우미). 문자열 모양으로 "경고처럼 보이는 줄"을 고르지 않는다.
 
-| # | 호출 지점 | 실제로 쓰는 줄 | 작성기 | 종류 |
-|---|---|---|---|---|
-| P1 | `init.go:885`, `:890` (`backup.StageDeployed{Settings,MCP}Snapshot`) | `internal/cli/update/backup/file_snapshot.go:95`, `:99` → `warnLine`(`settings_snapshot.go:115` `fmt.Fprintf(warn, "%s %v\n", prefix, err)`) | stderr | 경고 |
-| P2 | `init.go:944`, `:945` (`backup.Settle{Settings,MCP}Snapshot`) | `file_snapshot.go:139` → `warnLine` | stderr | 경고 |
-| P3 | `init.go:862` (재개 성공) | `p.Info("Initialized MoAI project (resumed: …)")` | stderr | 안내 |
-| P4 | `init.go:863`, `:1058` (`flushUpdateNotice`) | `internal/cli/init_update_notice.go:107` `p.Info("A newer moai binary is available … Run 'moai update' …")` | stderr | 안내 |
-| P5 | `init.go:1034` (`emitWorktreeAdvisory`) | `internal/cli/worktree_advisory.go:57` `emitSeverityLine(out, sevNote, …)` | stdout | 안내 |
-| P6 | `update_template_sync.go:666` | `"  settings.local.json env.PATH refresh failed: %v\n"` | errOut | 경고 |
-| P7 | `update_template_sync.go:672`, `:679` | `file_snapshot.go:95`, `:99` → `warnLine` | errOut | 경고 |
-| P8 | `update_template_sync.go:697` | `"  manifest save after deploy: %v\n"` | errOut | 오류 |
-| P9 | `update_template_sync.go:948` | `"  %s deployment_mode re-assert warning: %v\n"` (`uikit.SymWarning()`) | out(stdout) | 경고 |
-| P10 | `update_template_sync.go:996`, `:1016`, `:1056` | `"  manifest retrack (…): %v\n"` | errOut | 오류 |
-| P11 | `update_template_sync.go:884` (복원 콜백) | `internal/cli/update_noise.go:120` `emitSeverityLine(errOut, sevNote, …, "'moai update -c' to resync templates for %s", …)` | errOut | 안내 |
+**목록의 완전성은 기억이 아니라 고정 검색으로 정한다(델타 2회차, 2회차 감사 N1).** 아래 한 번의 호출이 `internal/cli` 와 그 하위 패키지 전체(테스트 파일 제외)에서 직접 쓰기 경고·오류·안내의 모양을 찾는다. HEAD `b422a13d53` 에서 360줄, 종료 0 을 냈다(acceptance.md 원장 L20, 출력 원문은 research.md §9).
 
-- 경고·오류 보존 줄은 항목 줄을 `!` 로 끝낸다. 안내 보존 줄은 글리프를 바꾸지 않는다. 둘 다 경고 수에 더하지 않는다(결정 D-9).
-- 보존 줄이 항목 밖에서 쓰이면 넘김 규칙으로 이미 한 번 보인다. 세션은 그 줄을 다시 펼치지 않는다.
-- 목록에 지점을 더하면 AC-TCL-024 에 하위 테스트를 더한다. 이 목록 밖의 직접 쓰기 줄(예: 훅 설치 상태 줄 `init.go:1022`, `:1027`)은 상태 안내라 항목이 성공하면 접힌다.
+```
+/usr/bin/grep -rni --exclude='*_test.go' -e "SymWarning()" -e "SymError()" -e "CheckLine(\"warn\"" -e "CheckLine(\"err\"" -e "warnLine(" -e "Fprintf(errOut" -e "Fprintln(errOut" -e "Fprint(errOut" -e "Fprintf(warn," -e "OrStderr()," -e "sevNote," -e "warning:" internal/cli
+```
 
-### §3.4 종료 (REQ-TCL-016, 023)
+검색의 모든 일치는 아래 둘 가운데 정확히 한 곳에 분류된다 — 보존 행(P1~P23), 또는 제외 행(X1~X10). 분류는 "파일 + 그 줄의 메시지 조각"으로 하고 행번호로 하지 않는다(코드 수정으로 행이 밀려도 분류가 살아 있게). init·update 궤도 파일(아래 정의)의 일치는 한 줄씩 분류하고, 궤도 밖 파일은 파일 단위로 X9 에 둔다.
+
+- **궤도 파일**: `internal/cli/init*.go`, `internal/cli/update*.go`, `internal/cli/update/**`, 이 카드가 새로 만드는 `internal/cli/checklist*.go`, 그리고 `hook_install.go`, `hook_install_precommit.go`, `worktree_advisory.go`, `feedback_participation.go`, `migrate_project_assets.go`, `migrate_local_instructions.go`, `session_worktree.go`, `mirror_notice.go`, `user_asset_phase.go`, `uikit/styles.go`. 궤도 밖 파일이 init·update 에서 불리지 않는다는 판단은 궤도 파일에서 작성기를 넘기는 호출을 한 단계 따라가 확인했다(research.md §9 둘째 블록). 그 확인으로 `feedback_participation.go` 가 궤도로 들어왔다(update `internal/cli/update.go:649`·`:714`).
+- **검색 모양 밖의 줄**: 위 12개 모양에 걸리지 않는 직접 쓰기(예: `p.Info` 안내)는 검색이 찾지 못한다. 그런 줄 가운데 보존해야 하는 것은 열거 행(P3, P4, P22)으로 따로 둔다. 모양 밖의 새 경고 줄은 남은 위험이다(plan.md §H R-3).
+
+보존 행. "위치" 는 그 줄이 쓰일 때 열린 항목이다(design §3.2 항목 경계). "항목 밖" 행은 넘김 규칙으로 보이며, 세션은 그 줄이 정확히 한 번 보이는지만 지킨다.
+
+| # | 호출 지점 | 실제로 쓰는 줄 (분류 조각) | 작성기 | 종류 | 위치 |
+|---|---|---|---|---|---|
+| P1 | `init.go:885`, `:890` | `internal/cli/update/backup/file_snapshot.go:95`, `:99` → `warnLine`(`internal/cli/update/backup/settings_snapshot.go:115` `fmt.Fprintf(warn, "%s %v\n", prefix, err)`) | stderr | 경고 | `templates.deploy` |
+| P2 | `init.go:944`, `:945` | `file_snapshot.go:139` → `warnLine` | stderr | 경고 | 열린 R3 항목(`config.autonomy`) |
+| P3 | `init.go:862` (재개 성공) | `p.Info("Initialized MoAI project (resumed: …)")` — 열거 행 | stderr | 안내 | 항목 밖(§3.4 재개 경로) |
+| P4 | `init.go:863`, `:1058` | `internal/cli/init_update_notice.go:107` `p.Info("A newer moai binary is available …")` — 열거 행 | stderr | 안내 | `:863` 항목 밖, `:1058` `mcp.entry` |
+| P5 | `init.go:1034` | `internal/cli/worktree_advisory.go:57` `emitSeverityLine(out, sevNote, …)` | stdout | 안내 | `hooks.precommit` |
+| P6 | `update_template_sync.go:666` | `"settings.local.json env.PATH refresh failed"` | errOut | 경고 | 배포 단계 항목 |
+| P7 | `update_template_sync.go:672`, `:679` | `file_snapshot.go:95`, `:99` → `warnLine` | errOut | 경고 | 배포 단계 항목 |
+| P8 | `update_template_sync.go:697` | `"manifest save after deploy"` | errOut | 오류 | 배포 단계 항목 |
+| P9 | `update_template_sync.go:948` | `"deployment_mode re-assert warning"` | out(stdout) | 경고 | 복원 단계 항목 |
+| P10 | `update_template_sync.go:996`, `:1016`, `:1056` | `"manifest retrack (.gitignore)"`, `"(mergeable set)"`, `"(reconciled set)"` | errOut | 오류 | 복원·조정 단계 항목 |
+| P11 | `update_template_sync.go:884` (복원 콜백) | `internal/cli/update_noise.go:120` `"'moai update -c' to resync templates for"` | errOut | 안내 | 복원 단계 항목 |
+| P12 | `update_template_sync.go:844` | `"moai: migration warning"` (`cmd.ErrOrStderr()`) | stderr | 경고 | 백업 단계 항목 |
+| P13 | `update_template_sync.go:695` (`recordTemplateTree`) | `internal/cli/update_template_sync_guard.go:35` `"template tree not recorded"` | errOut | 경고 | 배포 단계 항목 |
+| P14 | `update_template_sync.go:1005` (`mergeUserFilesSettlingSnapshot`) | `internal/cli/update/merge/merge.go:310` `"merge failed, preserving user version"`, `:327` `"merged with conflicts (user version preferred)"` | out(stdout) | 경고 | 복원 단계 항목 |
+| P15 | `update_template_sync.go:928` (`renderRetainedKeyAdvisory`) | `internal/cli/update_tux.go:329-334` `"setting(s) kept values that differ from the current template default"` 과 그 아래 `· 섹션: 키` 목록 줄 | out(stdout) | 경고 | 복원 단계 항목 |
+| P16 | `update_template_sync.go:512` (`archiveLegacySkills`), `:548`·`:583` (`reportArchiveShortfall`) | `internal/cli/update_archive.go:344` `"archive drift backup: "`, `:427` `"Legacy skill archive"` | out(stdout) | 경고 | 검증·정리 단계 항목 |
+| P17 | `update_template_sync.go:995`, `:1015`, `:1055` (`retrackManifestFiles`) | `internal/cli/update_manifest_retrack.go:57` `"manifest retrack skip"` | errOut | 경고 | 복원·조정 단계 항목 |
+| P18 | `update_template_sync.go:1211` (`stampMigrationDeployMode`) | `internal/cli/update_migrate.go:154`, `:161` `"deployment_mode write warning"` | errOut | 경고 | 꼬리 — 마지막으로 열린 항목(결정 D-10) |
+| P19 | `update_template_sync.go:1216` (`warnStampSkew`) | `update_template_sync_guard.go:105` `"template stamp disagrees with deployed bytes"` | out(stdout) | 경고 | 꼬리 — 마지막으로 열린 항목 |
+| P20 | `init.go:1022`, `update_template_sync.go:1177` (`installPrePushHookOptional`) | `internal/cli/hook_install.go:278` `"existing pre-push hook preserved"` | init stderr, update stdout | 안내 | init `hooks.prepush`, update 꼬리 |
+| P21 | `init.go:1027`, `update_template_sync.go:1182` (`installPreCommitHookOptional`) | `internal/cli/hook_install_precommit.go:400` `"existing pre-commit hook preserved"` | init stderr, update stdout | 안내 | init `hooks.precommit`, update 꼬리 |
+| P22 | `update_template_sync.go:249-255` (이미 최신, `nil` 조기 반환) | `:252` 결과 알약 `report.OutcomeAlreadyUpToDate` — 열거 행 | out(stdout) | 안내 | `templates.version` (REQ-TCL-023 로 닫힘) |
+| P23 | `init.go:859` → `internal/cli/init_resume.go` | `:168` `"Warning: global settings env update failed"`, `:175` `"Pre-push hook installation failed"`, `:178` `"Pre-commit hook installation failed"`, `:201` `"Warning: manifest retrack (config sections) failed"` | stderr | 경고·오류 | 항목 밖(재개는 검증 항목이 `✗` 로 닫힌 뒤 돈다, §3.4) |
+
+제외 행. 검색에 걸리지만 보존 행이 아닌 일치와 그 이유.
+
+| # | 일치 | 이유 |
+|---|---|---|
+| X1 | `init.go:901`, `:907` (`emitSeverityLine(…, sevWarn, …)`) | 경고 신호 경로가 덮는다(REQ-TCL-015, §3.3) |
+| X2 | `init.go:1022`, `:1027`, `init_resume.go:174`, `:177`, `update.go:508`, `:774` | 작성기를 넘기는 호출·필드일 뿐 쓰는 줄이 아니다. 쓰는 줄은 P20·P21·P23 과 넘김 규칙이 다룬다 |
+| X3 | `update.go:231`, `:367`, `:381`, `:458`, `:463`, `:485`, `:536`, `:589`, `:647`, `:712`, `:742`; `update_integrity_probe.go:150`, `:158`(`update.go:631`); `update_dryrun_preview.go:67`, `:85`, `:109`(`update.go:380`); `update_archive.go:389`(`update.go:373`); `migrate_project_assets.go:672`, `:692`(`update_template_sync.go:1323`); `feedback_participation.go:102`, `:107`(`update.go:649`, `:714`) | 템플릿 동기화 밖에서 쓰인다 — 열린 항목이 없어 넘김 규칙으로 그대로 보인다(§3.2) |
+| X4 | `init.go:411`, `:575`, `:1086` | `:411`·`:575` 는 첫 항목보다 앞(넘김), `:1086` 은 활성 때 요약이 대신하는 완료 카드(결정 D-6) |
+| X5 | `update_clean_install.go:491`, `:550`, `:557`, `:590`, `:601`, `:613`, `:618`; `update_version.go:357` | 항목을 열지 않는 경로(clean-install, 바이너리 갱신·재실행 — spec.md §5) |
+| X6 | `init_warnings.go:82`, `:83` | 활성 때 내지 않는 경고 패널(REQ-TCL-015) |
+| X7 | `update_action_block.go:81`, `update/backup/settings_snapshot.go:111`, `uikit/styles.go:28`, `:31`; 주석 일치 `update_participation.go:85`, `update.go:1148`, `update_snapshot_hook.go:33`, `update_noise.go:85`, `:113`, `update_manifest_heal.go:14` | 쓰는 줄이 아니다(장부 행 생성, 함수 선언, 글리프 정의, 주석). `settings_snapshot.go:115`(쓰는 줄)는 P1·P2·P7 의 본체다 |
+| X8 | `update_model_key_strip.go:137` (`sevNote`, 보존된 설정 키 안내); `update_recovery_manifest.go:79` (`"Warning: could not write"`, 실패 경로의 복구 안내) | `:137` 은 사용자 행동이 필요 없는 상태 안내라 성공 항목에서 접힌다. `:79` 는 실패 경로에서만 쓰이며 REQ-TCL-016 이 캡처 바이트를 모두 쏟는다 |
+| X9 | 궤도 밖 파일 전부(파일 단위; research.md §9 첫 블록에서 궤도 접두가 아닌 모든 줄) | init·update 경로가 부르지 않는 다른 명령의 코드 |
+| X10 | `update/backup/backup.go:122`; `update/backup/snapshot.go:95`, `:101`, `:105`; `update/backup/restore.go:125`, `:158`, `:222`, `:248`, `:282`, `:308` (`fmt.Fprintf(os.Stderr, "Warning: …")`) | **캡처 밖 쓰기.** 명령 작성기가 아니라 프로세스 stderr 에 바로 쓰므로 세션이 보지도 접지도 못한다 — 사라지지 않고 정확히 한 번 보인다. 다만 실행 중 줄 위에 섞여 찍힐 수 있다(plan.md §H R-12). 작성기를 받도록 `update/backup` 을 고치는 일은 이 카드 범위 밖이다 |
+
+- 경고·오류 보존 행이 항목 안에서 쓰이면 그 항목 줄을 `!` 로 끝낸다. 안내 행은 글리프를 바꾸지 않는다. 어느 쪽도 경고 수에 더하지 않는다(결정 D-9).
+- 항목 밖 행은 넘김 규칙으로 이미 한 번 보인다. 세션은 그 줄을 다시 펼치지 않는다.
+- AC-TCL-024 는 보존 행마다 하위 테스트를 하나씩 두고, 목록 완전성 하위 테스트(`inventory_complete`)가 위 검색과 같은 12개 모양을 Go 코드로 `internal/cli/**/*.go`(테스트 제외)에 돌려 두 방향을 본다 — (가) 분류되지 않은 일치가 하나라도 있으면 실패, (나) 보존 행의 분류 조각이 그 파일에서 사라졌으면 실패. 궤도 파일의 일치를 파일 단위 제외로 처리하면 실패한다. 테스트 안의 분류 표는 이 표의 행 id 와 같다. 분류 조각은 메시지 문자열이라 호출 지점을 도우미로 감싸도 파일에 남는다. 조각 자체를 바꿔야 하거나 검색이 새 일치를 내면 run 단계는 막힘 보고를 내고, manager-spec 이 이 표를 고친 뒤 테스트 표를 맞춘다(SPEC 본문은 run 단계가 고치지 않는다).
+
+### §3.4 종료 (REQ-TCL-016, REQ-TCL-023)
 
 - 세션 종료는 `runInit`·`runUpdate` 에서 가장 먼저 등록하는 `defer` 로 둔다. 그래서 가장 나중에 실행되고, 뒤에 등록된 `emitSummary`·세션 워크트리 정리·update 종료 블록보다 늦게 돈다. 종료 함수는 명명된 오류 반환값(`runInit` 의 `(err error)`, `init.go:382`)을 읽는다.
-- **오류로 끝나거나 위저드가 취소되면**(요약 전, `err != nil` 또는 취소 신호): 열린 항목을 `Fail` 로 닫고, 아직 화면에 나가지 않은 캡처 바이트를 모두 그대로 쏟아낸 뒤 작성기를 되돌린다.
-- **`nil` 로 조기 반환하면**(요약 전, 예: 재개 경로 `init.go:858-864`): 열린 항목을 `Done` 으로 닫고, 보존 줄(P3·P4 등)을 펼친 뒤 작성기를 되돌린다. 상세는 접힌 채 둔다.
+- **오류로 끝나거나 위저드가 취소되면**(요약 전, `err != nil` 또는 취소 신호): 열린 항목이 있으면 `Fail` 로 닫고, 아직 화면에 나가지 않은 캡처 바이트를 모두 그대로 쏟아낸 뒤 작성기를 되돌린다.
+- **`nil` 로 조기 반환하면**(요약 전): 열린 항목이 있으면 `Done` 으로 닫고, 아직 보이지 않은 보존 줄을 펼친 뒤 작성기를 되돌린다. 상세는 접힌 채 둔다. 이미 끝난 줄은 — `✗` 로 끝난 줄도 — 다시 그리지 않는다(REQ-TCL-002). 실제 코드에서 이 경우는 두 갈래다.
+  - **update 이미 최신**(`internal/cli/update_template_sync.go:249-255`): `templates.version` 항목이 열린 채 결과 알약(`:252`, 보존 행 P22)을 쓰고 `nil` 을 돌려준다. 세션은 그 항목을 `✓` 로 닫고 알약을 한 번 펼친다. 요약은 그리지 않는다.
+  - **init 재개**(`init.go:854-864`): 실제 이벤트 순서는 아래와 같고, 재개가 시작될 때 열린 항목은 없다(research.md §8, 원장 L21).
+    1. `internal/core/project/phase.go:66` `StepStart("Detection")` → `:72` `StepComplete` (`templates.detect`)
+    2. (모드를 주지 않았으면) `:82` `StepStart("Methodology Detection")` → `:96` `StepComplete`, (주었으면) `:103` `StepStart("Validation", …)` → `:104` `StepComplete` (`templates.validate` 를 연다)
+    3. `:111` `StepStart("Validation", "Validating project structure")` → `:112` `phaseValidate` 가 `:194` `ErrProjectExists`("project already initialized", `internal/core/project/errors.go:12`)를 돌려줌 → `:113` `StepError(err)` → `:114` 오류 반환. 보고기 어댑터는 `StepError` 에서 `templates.validate` 를 `Fail("project already initialized")` 로 닫는다(§3.6).
+    4. `init.go:829` 오류 → `:854` "already initialized" 확인 → `:858` `resuming` → `:859` `resumeInitializedProject`(그 안의 경고 줄은 항목 밖, 보존 행 P23) → `:862` 재개 안내(P3) → `:863` 갱신 안내(P4) → `:864` `return nil`.
+    화면은 이렇게 끝난다 — `✓ 프로젝트 구조 감지`, `✗ 프로젝트 검증` 과 그 아래 들여쓴 `project already initialized`, 재개 단계가 넘김 규칙으로 쓴 줄, `Initialized MoAI project (resumed: …)` 한 번. 요약은 없다. 실패 항목은 재개가 성공해도 `✗` 로 남는다 — 검증은 실제로 실패했고, 재개는 그 실패에서 이어 가는 회복이기 때문이다. 이 줄을 `✓` 로 바꾸려면 보고기가 실패를 보류해야 하는데, 그러면 재개 단계의 경고 줄이 열린 검증 항목의 상세로 접히므로 택하지 않는다.
 
 ### §3.5 대화형 입력 경계 (REQ-TCL-018)
 
@@ -147,6 +199,19 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 ### §3.6 보고기 연결
 
 init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고기를 받는다. 이 줄은 t1966 의 변경 범위(`init.go:730-749` 삭제) 바로 옆이라 건드리지 않는다. 대신 `newSpinnerReporter`(`internal/cli/reporter.go:42-44`)가 받은 printer 에서 세션을 꺼낼 수 있으면(수집기가 세션 접근자를 노출) 체크리스트 보고기를 돌려준다. 보고기의 `StepStart` 이름을 §4 표의 `templates` 항목으로 옮긴다.
+
+이벤트 대응(실행기가 내는 이름은 `internal/core/project/phase.go:66`, `:82`, `:103`, `:111`, `:122`, 원장 L21):
+
+| 보고기 이벤트 | 체크리스트 동작 |
+|---|---|
+| `StepStart("Detection", …)` | `templates.detect` 를 연다 |
+| `StepStart("Methodology Detection", …)`, `StepStart("Validation", …)` | `templates.validate` 를 연다. 이미 열려 있으면 그대로 둔다(한 항목 한 줄 — 명시 모드에서는 `"Validation"` 이 두 번 온다) |
+| `StepStart("Initialization", …)` | `templates.deploy` 를 연다 |
+| `StepUpdate(msg)` | 열린 항목의 스피너를 한 칸 움직이고 `msg` 를 상세로 기록한다 |
+| `StepComplete(msg)` | `msg` 를 상세로 기록한다. 항목을 닫지 않는다 — 닫는 것은 §3.2 항목 경계의 네 경우뿐이다 |
+| `StepError(err)` | 열린 항목을 `Fail(err.Error())` 로 닫는다. 기존 보고기가 `r.spin.Fail` 로 줄을 닫는 것(`internal/cli/reporter.go:108`)과 같은 시점이다 |
+
+실패 보류는 두지 않는다. 그 이유는 §3.4 재개 경로에 적었다.
 
 ## §4 그룹·항목 계획표 (SSOT) — `internal/cli/checklist_plan.go`
 
@@ -168,7 +233,9 @@ init 의 사용자 자산 보장(`init.go:780-790`)은 항목으로 만들지 �
 
 update 의 clean-install 경로(`update_clean_install.go`), 바이너리 갱신, `--check`·`--shell-env`·`--config` 경로는 항목을 열지 않는다. 그 경로의 출력은 넘김 규칙으로 지금 그대로 보인다(spec.md §5).
 
-**update 줄 예산.** 깨끗한 update 는 정체성 띠 1 + 머리 1 + 환경 1 + 그룹 4 + 항목 14 + 요약(완료 줄·백업 경로·복구 명령) 3 = 24줄로 상한에 딱 닿는다. 종료 행동 블록은 깨끗한 실행에서 아무것도 내지 않는다(`internal/cli/update_action_block.go:89-91`). M5 의 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다(plan.md §H R-4).
+update 행의 "대응하는 지금 코드" 열은 단계가 사는 구간을 가리킬 뿐 순서를 보장하지 않는다. 실제 화면 순서는 코드 실행 순서다(§1 규칙). update 는 확인 화면을 `runTemplateSyncWithProgress`(`update_template_sync.go:1244-1297`)에서 띄운 뒤 본문 `runTemplateSyncWithReporter` 를 부르고, 조정(`:1028`)은 복원 단계 안의 정리 줄(`:948-1016`)보다 뒤에 돈다. M5 는 항목 키를 코드 순서대로 다시 맞추고, 순서가 표와 다르면 막힘 보고로 이 표를 고친다.
+
+**update 줄 예산.** 깨끗한 update 는 정체성 띠 1 + 머리 1 + 환경 1 + 그룹 4 + 항목 14 + 요약(완료 줄·백업 경로·복구 명령) 3 = 24줄로 상한에 딱 닿는다. 종료 행동 블록은 깨끗한 실행에서 아무것도 내지 않는다(`internal/cli/update_action_block.go:89-91`). 훅 설치 줄(`internal/cli/hook_install.go:262` `"Pre-push hook installed"` — `--no-hooks` 가 아니면 update 마다 나옴)과 pre-commit 쪽 같은 줄은 결정 D-10 에 따라 요약 앞의 꼬리, 곧 마지막으로 열린 항목 안에서 쓰이므로 접히고 예산에 들지 않는다. 요약을 결과 알약 자리(`:1144`)에 그리면 이 두 줄이 요약 뒤로 넘어가 26줄이 된다 — D-10 을 택한 이유다. M5 의 실측이 24줄을 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다(plan.md §H R-4).
 
 ## §5 출력 채널 (REQ-TCL-017)
 
@@ -214,8 +281,10 @@ update 의 clean-install 경로(`update_clean_install.go`), 바이너리 갱신,
 
 ## §8 기준선을 먼저 커밋하는 이유
 
-`--verbose`·비TTY 출력이 기준선과 바이트 단위로 같다는 주장(REQ-TCL-012, 013)은 변경 전 출력을 기준으로 한다. 기준선과 구현이 한 커밋에 들어가면 순서를 git 이 증언할 수 없다(`verification-claim-integrity.md` §2.3 — 커밋 그래프만이 순서의 증인이다). 그래서 M0 은 `internal/cli/checklist_fallback_test.go` 와 `internal/cli/testdata/checklist/fallback/` 골든만 담은 커밋 하나로 끝내고, 그 뒤에 코드 변경을 시작한다. M0 커밋은 그 시점 코드에서 이미 녹색이어야 한다(기준선을 바로 그 코드로 찍었으므로).
+`--verbose`·비TTY 출력이 기준선과 바이트 단위로 같다는 주장(REQ-TCL-012, REQ-TCL-013)은 변경 전 출력을 기준으로 한다. 기준선과 구현이 한 커밋에 들어가면 순서를 git 이 증언할 수 없다(`verification-claim-integrity.md` §2.3 — 커밋 그래프만이 순서의 증인이다). 그래서 M0 은 `internal/cli/checklist_fallback_test.go` 와 `internal/cli/testdata/checklist/fallback/` 골든만 담은 커밋 하나로 끝내고, 그 뒤에 코드 변경을 시작한다. M0 커밋은 그 시점 코드에서 이미 녹색이어야 한다(기준선을 바로 그 코드로 찍었으므로).
 
-이 순서를 사후에 깨는 세 가지 길 — 구현 뒤 골든을 다시 찍어 수정 커밋으로 넣기, M0 에 코드 변경을 섞기, CLI 쪽 코드 변경을 M0 보다 먼저 커밋하기 — 은 AC-TCL-013 의 순서 증거 O1·O2·O3 이 각각 막는다. 골든을 별도 하위 디렉터리에 두는 이유가 이것이다: O1 이 디렉터리 하나에 대한 커밋 수로 판정할 수 있고, 같은 상위 디렉터리에 나중에 들어오는 리치 골든이 O1 을 흐리지 않는다.
+이 순서를 사후에 깨는 세 가지 길 — 구현 뒤 골든을 다시 찍어 수정 커밋으로 넣기, M0 에 코드 변경을 섞기, CLI 쪽 코드 변경을 M0 보다 먼저 커밋하기 — 은 AC-TCL-013 의 순서 증거 O1·O2·O3 이 각각 막는다.
+
+O1~O3 은 커밋 그래프의 **모양**만 본다. 넷째 길 — 이력을 고쳐 다시 찍은 골든을 M0 에 합치거나, M0 에 새 동작을 손으로 적은 골든을 넣는 것 — 은 모양을 바꾸지 않으므로 O4 가 따로 막는다. 커밋 그래프는 순서를 증언하지만 골든을 누가 무엇으로 만들었는지는 증언하지 못한다(`verification-claim-integrity.md` §2.3). 그래서 O4 는 "골든을 변경 전 바이너리가 만들었다"를 주장하지 않고, 그래프가 확인해 줄 수 있는 더 강한 사실로 바꿔 잰다 — **M0 트리의 코드가 기준선 코드와 같고, 그 트리에서 대체 테스트가 녹색이다.** 그러면 골든은 출처와 상관없이 변경 전 코드의 출력과 바이트 단위로 같다. 새 동작을 담은 골든은 M0 트리에서 빨갛다. 이력을 고치면 M0 의 SHA 가 바뀌어 M0 시점 기록(O4a)의 측정 HEAD 와 어긋난다. 구체 명령은 acceptance.md AC-TCL-013 O4. 골든을 별도 하위 디렉터리에 두는 이유가 이것이다: O1 이 디렉터리 하나에 대한 커밋 수로 판정할 수 있고, 같은 상위 디렉터리에 나중에 들어오는 리치 골든이 O1 을 흐리지 않는다.
 
 기존 `internal/cli/testdata/tuxiu/` 골든(`internal/cli/tuxiu_characterization_test.go:14-17`)은 과거에 손으로 찍어 둔 두 묶음을 서로 비교할 뿐 실행 출력을 읽지 않는다. 그래서 이번 변경을 지켜 주지 못하며, 대체 경로 기준선이 따로 필요하다.

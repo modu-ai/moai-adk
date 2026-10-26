@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init/update 진행 출력을 그룹 체크리스트로 재설계"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -19,6 +19,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 
 - 2026-10-27 — v0.1.0 초안 (manager-spec, 카드 t1969 plan 단계, Tier L). 근거는 같은 디렉터리의 research.md(파일:행 사실, HEAD `cb30e05b3e`)와 design.md(렌더러 API·이벤트 모델·대체 규칙·i18n 키·골든 전략)다. 형제 카드 t1966 의 init.go 변경 범위는 공유 브랜치 ref `WT-moai-init-moai`(`d7f4d5c288`)에서 읽었다(research.md §7).
 - 2026-10-27 — v0.1.1 plan 델타 1회차 (manager-spec). 1회차 plan 감사(FAIL 0.71, 감사 HEAD `d241917d17`)의 결함 D1~D20 을 고쳤다. REQ 20 → 23 (REQ-TCL-021 init.go 변경 영역 — 제약 C-2 를 REQ 로 올림, REQ-TCL-022 열린 항목 안 경고·오류·안내 줄 보존, REQ-TCL-023 성공 조기 반환은 정상 종료), AC 23 → 24 (AC-TCL-024 보존 줄 주입 시험). 경고 수 정의를 "수집기 수" 하나로 정했다(D6). 레인 결정 Q1~Q3 을 반영해 "리더 확인 대기" 문구를 지웠다(D16). 대체 골든을 `internal/cli/testdata/checklist/fallback/` 하위 디렉터리로 옮겨 기준선 선행 증거를 디렉터리 단위로 잰다(D2). 증거 원장에 L15~L19 를 더했다(측정 HEAD `d241917d17`).
+- 2026-10-27 — v0.1.2 plan 델타 2회차 (manager-spec). 2회차 plan 감사(FAIL 0.75, 감사 HEAD `b422a13d53`)의 결함 N1~N13 과 리더 codex_audit 의 P2(= N8)를 고쳤다. REQ·AC 수는 그대로(23·24). 보존 줄 목록을 `internal/cli` 전체(하위 패키지 포함)에 대한 고정 검색 명령의 출력으로 정하고 23행으로 늘렸으며(N1), AC-TCL-024 는 행마다 하위 테스트 하나와 목록 완전성 하위 테스트를 갖는다(N2). 재개 경로를 실제 실행기의 이벤트 순서(검증 단계 `StepError` 가 먼저)에 맞춰 다시 썼다(N3). update 요약이 그려지는 지점을 템플릿 동기화 본문 끝으로 정했다(결정 D-10). 순서 증거에 O4(M0 트리 재실행)와 카드 id 완전성 검사를 더했다(N6·N7). 증거 원장에 L20~L25 를 더했다(측정 HEAD `b422a13d53`).
 
 ## §1 배경과 문제
 
@@ -43,6 +44,7 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 | D-7 | init 요약에는 "보존 수" 를 넣지 않는다. update 요약만 보존 수를 넣는다. | `InitResult` 에 보존 수 필드가 없다(research.md §2). |
 | D-8 | 출력 채널은 바꾸지 않는다. init 은 stderr, update 는 stdout. | 상태 채널 규칙과 기존 update 출력 위치(design.md §5). |
 | D-9 | 요약의 경고 수는 init 경고 수집기의 수(`warnCollector.Count()`, `internal/cli/init_warnings.go:59-63`)다. 심각도 줄(`emitSeverityLine`)과 보존 줄은 펼쳐 보이되 수에 더하지 않는다. | 기존 완료 카드도 같은 수를 보고한다(`init.go:1087` `p.Count()`). 수를 바꾸면 "보고하는 수를 바꾸지 않는다"(REQ-TCL-019)를 어긴다. |
+| D-10 | 열린 항목은 다음 항목이 열릴 때, 요약이 그려질 때, 세션이 끝날 때, 그리고 단계 보고기가 실패를 알릴 때만 닫힌다. update 요약은 템플릿 동기화 본문(`runTemplateSyncWithReporter`)이 `return nil`(`internal/cli/update_template_sync.go:1218`) 하기 직전, 즉 `warnStampSkew`(`:1216`) 뒤에 한 번 그린다. 단계 루프 뒤의 꼬리(`:1081-1216`)는 마지막으로 열린 항목 안에서 돈다. | 꼬리의 훅 설치 줄(`internal/cli/hook_install.go:262` — update 마다 나옴)이 요약 뒤로 넘어가면 깨끗한 update 가 24줄을 넘는다. 꼬리의 직접 쓰기 경고(`update_migrate.go:154`·`:161`, `update_template_sync_guard.go:105`)는 보존 줄 목록이 지킨다(design.md §3.2·§3.3.1). |
 
 ## §3 요구사항 (GEARS)
 
@@ -72,8 +74,8 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - **REQ-TCL-019** — The deployed file set, every reported count, and every command outcome shall equal those of the legacy surface for the same run, and the summary's warning count shall equal the collector count the legacy completion card reports.
 - **REQ-TCL-020** — Every file under `internal/template/templates/` shall stay byte-identical to the baseline tree.
 - **REQ-TCL-021** — This card's commits shall change `internal/cli/init.go` only inside the regions R1, R2, and R3 of plan.md §B, measured against the region base recorded there, and R3 changes shall be pure insertions.
-- **REQ-TCL-022** — **While** the checklist is active, every line in the preserved-line inventory of design.md §3.3.1 — direct-write warnings, error lines, and user-action notices that bypass the warning signal — shall appear exactly once on the real writer even when its enclosing item finishes successfully; a preserved warning or error line shall end its item with `!`, and a preserved notice shall change neither the item glyph nor the warning count.
-- **REQ-TCL-023** — **When** a checklist run returns early with a nil error, the session shall close the open item as done, write every captured preserved line not yet shown, and restore the command writers.
+- **REQ-TCL-022** — The preserved-line inventory of design.md §3.3.1 shall classify every hit of its fixed source sweep over `internal/cli` and its subpackages, and **while** the checklist is active, every inventoried line — direct-write warnings, error lines, and user-action notices that bypass the warning signal — shall appear exactly once on the real writer even when its enclosing item finishes successfully; a preserved warning or error line written while an item is open shall end that item with `!`, and a preserved notice shall change neither the item glyph nor the warning count.
+- **REQ-TCL-023** — **When** a checklist run returns early with a nil error, the session shall close the open item, if one is open, as done, write every captured preserved line not yet shown, leave every finished line — a failed one included — as drawn, and restore the command writers.
 
 ### §3.3 깨끗한 실행의 정의 (REQ-TCL-010)
 
