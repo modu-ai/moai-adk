@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"gopkg.in/yaml.v3"
 
@@ -46,6 +47,8 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 	return nil
 }
 
+var docEndMarker = regexp.MustCompile(`(?m)^\.\.\.(\s|#|$)`)
+
 // userNameEditSafety is the allow-list behind the clear: it reports whether the
 // file parses (parsed) and, if so, whether yamlpatch is guaranteed to write the
 // very node the loader reads and to rewrite nothing else (safe). The patch
@@ -56,6 +59,10 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 // present, a direct plain scalar. A `<<` merge inside `user` stays allowed: the
 // patch then only adds or blanks the explicit name row (matrix rows B04-B08).
 func userNameEditSafety(data []byte) (parsed, safe bool) {
+	if docEndMarker.Match(data) {
+		// A `...` marker: the re-encode path drops the comments after it.
+		return true, false
+	}
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	var first yaml.Node
 	if dec.Decode(&first) != nil {
@@ -72,15 +79,29 @@ func userNameEditSafety(data []byte) (parsed, safe bool) {
 	if top.Kind != yaml.MappingNode {
 		return true, false
 	}
+	// plainKeys accepts only plain string keys. yamlpatch finds a key by its raw
+	// text while the loader decodes it through its tag, so a tagged key (!!binary,
+	// !!int, an explicit !!merge, a custom tag) can point the two at different
+	// nodes. The one exception is the plain `<<` merge key inside `user`.
 	plainKeys := func(m *yaml.Node, topLevel bool) bool {
 		for i := 0; i+1 < len(m.Content); i += 2 {
 			k := m.Content[i]
-			if k.Kind != yaml.ScalarNode || k.Anchor != "" || (topLevel && k.ShortTag() == "!!merge") {
+			if k.Kind != yaml.ScalarNode || k.Anchor != "" {
+				return false
+			}
+			switch k.ShortTag() {
+			case "!!str":
+			case "!!merge":
+				if topLevel || k.Style&yaml.TaggedStyle != 0 {
+					return false
+				}
+			default:
 				return false
 			}
 		}
 		return true
 	}
+	tagged := func(n *yaml.Node) bool { return n.Style&yaml.TaggedStyle != 0 }
 	value := func(m *yaml.Node, key string) *yaml.Node {
 		for i := 0; i+1 < len(m.Content); i += 2 {
 			if m.Content[i].Value == key {
@@ -93,11 +114,11 @@ func userNameEditSafety(data []byte) (parsed, safe bool) {
 		return true, false
 	}
 	user := value(top, "user")
-	if user == nil || user.Kind != yaml.MappingNode || user.Anchor != "" || !plainKeys(user, false) {
+	if user == nil || user.Kind != yaml.MappingNode || user.Anchor != "" || tagged(user) || !plainKeys(user, false) {
 		return true, false
 	}
 	name := value(user, "name")
-	if name != nil && (name.Kind != yaml.ScalarNode || name.Anchor != "") {
+	if name != nil && (name.Kind != yaml.ScalarNode || name.Anchor != "" || tagged(name)) {
 		return true, false
 	}
 	return true, true
@@ -137,7 +158,7 @@ func clearProjectUserName(projectRoot string) error {
 	if parsed, safe := userNameEditSafety(data); parsed && !safe {
 		return fmt.Errorf("clear user name: %s uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, or several documents); edit user.name by hand", userPath)
 	}
-	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: ""}}); err != nil {
+	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: "", Quoted: true}}); err != nil {
 		return fmt.Errorf("clear user name: %w", err)
 	}
 	return nil

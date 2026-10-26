@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -334,6 +335,44 @@ type matrixRow struct {
 	id, content, want string
 }
 
+// exactAfter, when a row id is present, is the whole file expected after a CLEAR
+// (every other byte preserved). pinAfter maps user siblings whose decoded value
+// is expected to change in the re-encode (null -> empty string), pinned as
+// observed.
+var (
+	exactAfter = map[string]string{}
+	pinAfter   = map[string]map[string]any{}
+)
+
+// commentTexts collects every comment of the YAML stream (head, line, foot) so
+// a lost comment, including one after the document end, fails the oracle.
+func commentTexts(b []byte) []string {
+	var out []string
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		for _, c := range []string{n.HeadComment, n.LineComment, n.FootComment} {
+			for _, l := range strings.Split(c, "\n") {
+				if l = strings.TrimSpace(l); l != "" {
+					out = append(out, l)
+				}
+			}
+		}
+		for _, c := range n.Content {
+			walk(c)
+		}
+	}
+	dec := yaml.NewDecoder(strings.NewReader(string(b)))
+	for {
+		var n yaml.Node
+		if dec.Decode(&n) != nil {
+			break
+		}
+		walk(&n)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func yamlDocCount(t *testing.T, b []byte) int {
 	t.Helper()
 	dec := yaml.NewDecoder(strings.NewReader(string(b)))
@@ -362,17 +401,13 @@ func loaderName(b []byte) (name string, ok bool) {
 	return doc.User.Name, true
 }
 
-func nilToEmpty(v any) any {
-	if v == nil {
-		return ""
-	}
-	return v
-}
-
 // assertClearEffect is the effect oracle for every CLEAR row: loader name is
-// empty, every other decoded user key is unchanged, nothing outside user
-// changed, top-level key count and document count are unchanged.
-func assertClearEffect(t *testing.T, before, after []byte) {
+// empty, every other decoded user key is unchanged (null and "" are DIFFERENT
+// values; a changed notation must be pinned per row), nothing outside user
+// changed, top-level key count and document count are unchanged, no comment of
+// the stream was lost, and the optional exact bytes match.
+func assertClearEffect(t *testing.T, row matrixRow, before, after []byte) {
+	pin, exact := pinAfter[row.id], exactAfter[row.id]
 	t.Helper()
 	if n, ok := loaderName(after); !ok || n != "" {
 		t.Errorf("loader name after clear = %q (readable=%v), want empty\n%s", n, ok, after)
@@ -390,8 +425,16 @@ func assertClearEffect(t *testing.T, before, after []byte) {
 	bu, _ := bm["user"].(map[string]any)
 	au, _ := am["user"].(map[string]any)
 	for k, v := range bu {
-		if k != "name" && !reflect.DeepEqual(nilToEmpty(au[k]), nilToEmpty(v)) {
-			t.Errorf("user key %q = %v, want %v\n%s", k, au[k], v, after)
+		if k == "name" {
+			continue
+		}
+		want := v
+		if pinned, ok := pin[k]; ok {
+			want = pinned
+		}
+		got, present := au[k]
+		if !present || !reflect.DeepEqual(got, want) {
+			t.Errorf("user key %q = %#v (present=%v), want %#v\n%s", k, got, present, want, after)
 		}
 	}
 	for k := range au {
@@ -400,9 +443,15 @@ func assertClearEffect(t *testing.T, before, after []byte) {
 		}
 	}
 	for k, v := range bm {
-		if k != "user" && !reflect.DeepEqual(nilToEmpty(am[k]), nilToEmpty(v)) {
-			t.Errorf("top-level key %q = %v, want %v\n%s", k, am[k], v, after)
+		if got, present := am[k]; k != "user" && (!present || !reflect.DeepEqual(got, v)) {
+			t.Errorf("top-level key %q = %#v, want %#v\n%s", k, got, v, after)
 		}
+	}
+	if bc, ac := commentTexts(before), commentTexts(after); !reflect.DeepEqual(bc, ac) {
+		t.Errorf("comments changed:\n before %q\n after  %q\n%s", bc, ac, after)
+	}
+	if exact != "" && string(after) != exact {
+		t.Errorf("bytes differ from the expected whole file:\n got %q\nwant %q", after, exact)
 	}
 }
 
@@ -440,8 +489,9 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		{"C04", "user:\n  &nk name: Alice\n  github_username: keep\n", "refuse"},
 		{"C05", "k: &name name\nuser:\n  *name : Alice\n  github_username: keep\n", "refuse"},
 		{"C06", "k: &name other\nuser:\n  *name : Alice\n  name: Carol\n  github_username: keep\n", "refuse"},
-		{"C07", "user:\n  name: !!str Alice\n  github_username: keep\n", "clear"},
-		{"C08", "user:\n  name: !!binary QWxpY2U=\n  github_username: keep\n", "clear"},
+		// C07/C08: an explicit tag on the name value is refused (iteration-8 rule).
+		{"C07", "user:\n  name: !!str Alice\n  github_username: keep\n", "refuse"},
+		{"C08", "user:\n  name: !!binary QWxpY2U=\n  github_username: keep\n", "refuse"},
 		{"C09", "user:\n  name: |\n    Alice\n  github_username: keep\n", "clear"},
 		{"C10", "user:\n  name: >\n    Alice\n    Smith\n  github_username: keep\n", "clear"},
 		{"C11", "user:\n  name: Alice\n    Smith\n  github_username: keep\n", "clear"},
@@ -479,7 +529,61 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 		{"E19", "user:\n  name:\n    - a\n    - b\n", "refuse"},
 		// F01: the earlier 17-row table's row 7 (anchored sibling VALUE inside user).
 		{"F01", "user:\n  name: Alice\n  github_username: &g keep\n  alias: *g\n", "clear"},
+		// G01/G02: a top-level merge key next to a direct plain user (separate
+		// failure point from A11 for the top-level-merge rule, audit N12).
+		{"G01", "b: &b\n  x: 1\n<<: *b\nuser:\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"G02", "<<: {x: 1}\nuser:\n  name: Alice\n  github_username: keep\n", "refuse"},
+		// Iteration-8 auditor shapes (inputs copied from its probe file).
+		{"N01", "!!merge user:\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"N02", "user:\n  !!merge foo: {name: Bob}\n  name: Alice\n", "refuse"},
+		{"N03", "! <<: {user: {name: Alice}}\n", "refuse"},
+		{"N04", "!foo <<: {x: 1}\nuser:\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"N05", "!!binary user:\n  name: X\nuser:\n  name: Alice\n", "refuse"},
+		{"N06", "!!binary dXNlcg==:\n  name: Alice\n", "refuse"},
+		{"N07", "user:\n  !!binary bmFtZQ==: Alice\n  github_username: keep\n", "refuse"},
+		{"N08", "user:\n  !!binary name: QWxpY2U=\n  name: Alice\n", "refuse"},
+		{"N09", "user:\n  ? name\n  : Alice\n  github_username: keep\n", "clear"},
+		{"N10", "user: # me\n  name: Alice # mine\n  github_username: keep\n", "clear"},
+		{"N11", "user:\n  name: Alice\n  github_username: keep\n---\n", "refuse"},
+		{"N12", "user:\n  name: Alice\n  github_username: keep\n...\n", "refuse"},
+		{"N13", "# head\n\n# second\nuser:\n\n  # about name\n  name: Alice\n\n  github_username: keep # gh\n\n# foot\n", "clear"},
+		{"N14", "Alice\n", "refuse"},
+		{"N15", "user:\nname: Alice\n", "noop"},
+		{"N16", "user:\n  user:\n    name: Bob\n  name: Alice\n", "clear"},
+		{"N17", "user:\n  name: |\n    Alice\n    Smith\n  github_username: keep\nother: x\n", "clear"},
+		{"N18", "team: Alice\nuser:\n  name: Alice\n  github_username: Alice\n", "clear"},
+		{"N19", "user:\n  name: " + strings.Repeat("A", 5000) + "\n  github_username: keep\n", "clear"},
+		{"N20", "user:\n  name:\tAlice\n  github_username: keep\n", "clear"},
+		{"N21", "# c\r\nuser:\r\n  # n\r\n  name: \"Alice\"\r\n", "clear"},
+		{"N22", "user:\n  name: Alice\n  github_username: keep", "clear"},
+		{"N23", "user:\n  name: \"Alice\"", "clear"},
+		{"N24", "user:\n  name: \"A: b # c 'd' \\\"e\\\"\"\n  github_username: keep\n", "clear"},
+		{"N25", "user:\n  name: Alice\n  <<: {name: Bob}\n", "clear"},
+		{"N26", "b: &b {name: Bob}\nuser:\n  name: Alice\n  <<: *b\n", "clear"},
+		{"N27", "b: &b {name: Bob}\nuser:\n  <<: *b\n  gh: &g keep\nref: *g\n", "clear"},
+		{"N28", "%YAML 1.1\n---\nuser:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"N29", "user:\n  name: Alice\n---\n# trailing comment\n", "refuse"},
+		{"N30", "user:\n  <<: {name: Bob}\n  <<: {gh: keep}\n", "clearBroken"},
+		{"N31", "user: !!map &u\n  name: Alice\n", "refuse"},
+		{"N32", "user:\n  name: !!null Alice\n", "refuse"},
+		{"N33", "!!str user: !!map\n  name: Alice\n", "refuse"},
+		{"N34", "user:\n    # who\n    name: Alice   # trailing\n    github_username: keep\n", "clear"},
+		{"N35", "user: {name: Alice, github_username: keep} # flow\n", "clear"},
+		{"N36", "user:\n  name: 김구스\n  github_username: keep\n", "clear"},
+		{"N37", "user:\n  name: ' '\n", "clear"},
+		{"N38", "k: &kk other\n*kk : 1\nuser:\n  name: Alice\n", "refuse"},
+		{"N39", "&ka other: 1\nuser:\n  name: Alice\n", "refuse"},
+		{"N40", "user:\n  github_username: keep\n---\nuser:\n  name: Bob\n", "noop"},
+		{"X01", "user:\n  <<: {name: Alice, github_username: keep}\n  !!binary name: ignored\n", "refuse"},
+		{"X02", "user:\n  name: Alice\n... # keep end comment\n# keep after end\n", "refuse"},
+		{"X03", "user:\n  name: Alice\n  github_username: keep # keep end comment\n# keep after end\n", "clear"},
+		{"X06", "user:\n  name: Alice\n\n# --- section two ---\n# explains other\nother:\n  x: 1 # why\n", "clear"},
+		{"X07", "user:\n  name: Alice\n  # trailing note inside user\nother: 1\n", "clear"},
+		{"X08", "user:\n  name: Alice\n# eof note", "clear"},
 	}
+	// C19: the re-encode of a flow mapping writes the null sibling as ''; pinned
+	// as observed (audit N10/N11: null and "" are different values).
+	pinAfter["C19"] = map[string]any{"nameAlice": ""}
 
 	// P rows: the files the product itself produces must stay inside the
 	// allow-list (CLEAR, effect oracle holding).
@@ -491,7 +595,13 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 	if strings.Contains(p01, "{{") {
 		t.Fatalf("template has directives beyond .UserName; render it properly:\n%s", p01)
 	}
+	// P01/X04: the product's own rendered template is edited in place - every
+	// other byte, the template's comment lines included, survives.
+	exactAfter["P01"] = strings.Replace(p01, `name: "Alice"`, `name: ""`, 1)
+	exactAfter["X04"] = exactAfter["P01"]
 	rows = append(rows,
+		matrixRow{"X04", p01, "clear"},
+		matrixRow{"X05", strings.Replace(p01, `"Alice"`, "Alice", 1), "clear"},
 		matrixRow{"P01", p01, "clear"},
 		matrixRow{"P01b", "user:\n  name: \"Alice\"\n", "clear"}, // generateConfigsFallback shape
 		matrixRow{"P02", initWrittenUserYAML(t), "clear"},
@@ -524,7 +634,7 @@ func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error %v", err)
 				}
-				assertClearEffect(t, []byte(row.content), after)
+				assertClearEffect(t, row, []byte(row.content), after)
 			case "clearBroken":
 				if err != nil {
 					t.Fatalf("unexpected error %v", err)
