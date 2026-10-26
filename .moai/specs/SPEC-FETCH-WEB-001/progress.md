@@ -123,3 +123,7 @@ Mode Selection — orchestrator: lane-7 (factory card t1968), 2026-10-26. Decisi
 Decision: serial
 Justification: the milestone chain (M1-M7) builds one new package with intra-package dependencies; Anthropic's coding-task parallelism caveat selects sequential single-agent delegation; write-capable concurrency on one card is prohibited regardless. manager-develop (cycle_type=tdd) carries M1-M7 serially.
 
+
+## §G Override and Refusal Record
+
+- 2026-10-26T20:24:18Z SPEC-FETCH-WEB-001 required-backend-refusal outcome=refused reasons="unparseable or missing score"
