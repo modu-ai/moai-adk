@@ -80,10 +80,13 @@ type consolidationCard struct {
 //	(2) re-reads the target: active, stamp unchanged, classified OwnerLive,
 //	(3) refuses a source that holds a worker not positively dead,
 //	(4) refuses when any third active run whose owner is not dead holds a
-//	    non-terminal row for one of the source's cards; otherwise re-keys each
-//	    non-terminal source card to the target, or — when the target already
-//	    holds the card — moves the source row to abandoned with a
-//	    card.rebound pointer event,
+//	    non-terminal row for one of the source's cards (a dead-owner third run
+//	    must also provably hold no live lease and no living worker); otherwise
+//	    re-keys each non-terminal source card to the target, or — when the
+//	    target already holds the card as a NON-TERMINAL row with the same
+//	    evidence — moves the source row to abandoned with a card.rebound
+//	    pointer event (a terminal or evidence-divergent target row refuses
+//	    the whole operation, card t1973),
 //	(5) repoints the card_dispatch binding of each card step 4 moved (re-keyed or
 //	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
@@ -167,7 +170,7 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		return RebindResult{}, err
 	}
 	for _, c := range cards {
-		if err := refuseThirdRunHolder(ctx, tx, c.id, src.RunID, tgt.RunID, others); err != nil {
+		if err := refuseThirdRunHolder(ctx, tx, c.id, src.RunID, tgt.RunID, others, now, opts.workerProbe()); err != nil {
 			return RebindResult{}, err
 		}
 	}
@@ -175,11 +178,22 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	var res RebindResult
 	nowText := now.Format(time.RFC3339Nano)
 	for i, c := range cards {
-		var held int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.id).Scan(&held); err != nil {
-			return RebindResult{}, err
+		var tgtState, tgtEvidence string
+		tgtErr := tx.QueryRowContext(ctx, `SELECT state,evidence_sha FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.id).Scan(&tgtState, &tgtEvidence)
+		if tgtErr != nil && !errors.Is(tgtErr, sql.ErrNoRows) {
+			return RebindResult{}, tgtErr
 		}
-		if held > 0 {
+		if tgtErr == nil {
+			// A target row is a wall the source's live work is never silently
+			// discarded against (card t1973, P1): a TERMINAL row is a completed
+			// past carrying its own evidence and approval, and a row whose
+			// evidence diverges is different work. Either refuses the whole
+			// operation — the source's row stays live and the conflict needs a
+			// fresh decision, not the target's stale completion.
+			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
+					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, src.RunID)
+			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
 			}
@@ -344,23 +358,27 @@ func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidation
 // right now, and moving it from under the live holder would split the record.
 // A third run absent from the pre-transaction classification appeared after
 // it and counts as not dead; one that classified dead must still carry the
-// stamp it was classified on.
-func refuseThirdRunHolder(ctx context.Context, tx *sql.Tx, cardID, srcID, tgtID string, others map[string]RunOwner) error {
+// stamp it was classified on — AND must provably hold nothing live: a lane can
+// outlive its leader (REQ-FCR-019), so the holder row's valid lease and the
+// run's registered workers are checked before the dead-owner skip applies
+// (card t1973, P2). A lease that has not expired, a worker the probe cannot
+// call positively dead, or a worker listing that cannot be read, all refuse.
+func refuseThirdRunHolder(ctx context.Context, tx *sql.Tx, cardID, srcID, tgtID string, others map[string]RunOwner, now time.Time, probe func(int) ProcessIdentityState) error {
 	// SQL: sqlTerminalStates is a compile-time constant; every value goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT c.run_id, r.lead_pid, r.lead_process_start FROM cards c JOIN runs r ON r.run_id=c.run_id
+	rows, err := tx.QueryContext(ctx, `SELECT c.run_id, c.state, c.lease_holder, c.lease_expires_at, r.lead_pid, r.lead_process_start FROM cards c JOIN runs r ON r.run_id=c.run_id
 WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NOT IN `+sqlTerminalStates+` ORDER BY c.run_id`, cardID, srcID, tgtID)
 	if err != nil {
 		return err
 	}
 	type holder struct {
-		run   string
-		pid   int
-		start string
+		run, state, leaseHolder, leaseExpires string
+		pid                                   int
+		start                                 string
 	}
 	var holders []holder
 	for rows.Next() {
 		var h holder
-		if err := rows.Scan(&h.run, &h.pid, &h.start); err != nil {
+		if err := rows.Scan(&h.run, &h.state, &h.leaseHolder, &h.leaseExpires, &h.pid, &h.start); err != nil {
 			_ = rows.Close()
 			return err
 		}
@@ -376,6 +394,23 @@ WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NO
 	for _, h := range holders {
 		o, known := others[h.run]
 		if known && retirable(o.Classification) && o.LeadPID == h.pid && o.LeadProcessStart == h.start {
+			// The leader is dead under the classified stamp, but the run may
+			// still hold live work: a valid lease on the row, or a registered
+			// worker that is not positively dead, refuses instead of skipping.
+			if holdsValidLease(Card{State: h.state, LeaseHolder: h.leaseHolder, LeaseExpiresAt: h.leaseExpires}, now) {
+				return rebindRefusal("card %s is held by run %s under a live lease (%s, expires %s); a card a third run still works is not moved",
+					cardID, h.run, h.leaseHolder, h.leaseExpires)
+			}
+			workers, err := workerPIDs(ctx, tx, h.run)
+			if err != nil {
+				return err
+			}
+			for _, w := range workers {
+				if probe(w.pid) != ProcessIdentityDead {
+					return rebindRefusal("card %s is held by run %s which still has live worker %q (pid %d); a card a third run still works is not moved",
+						cardID, h.run, w.label, w.pid)
+				}
+			}
 			continue
 		}
 		class := "unclassified"
