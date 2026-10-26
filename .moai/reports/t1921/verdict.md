@@ -1,3 +1,8 @@
+verdict: PASS
+audited_sha: 383e6b0ad6e63235376052ab44394f765814a462
+audit_receipt: rcpt-ad3600c3bd7bbdc1ec19761b
+review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
+
 # t1921 — lane completion verdict
 
 - card: t1921 (Class B, serial) · run tnbn7e · lane-7
@@ -34,4 +39,4 @@ Every figure above was measured in this run against this tree: delegate runs on 
 
 ## Lane verdict
 
-**PASS** — run criteria met (regression ok + build/vet/lint 0, RED-first observed), card-review receipt clean, independent audit receipted PASS, workflow-file check clean. Proceeding to Deliver (`moai factory complete`, draft PR, title carries t1921). Merge is the leader's.
+PASS — run criteria met (regression ok + build/vet/lint 0, RED-first observed), card-review receipt clean, independent audit receipted PASS (rcpt-ad3600c3bd7bbdc1ec19761b at audited_sha 383e6b0ad6; commits after it touch only .moai/reports/t1921/), workflow-file check clean. Proceeding to Deliver (`moai factory complete`, PR, title carries t1921). Merge is the leader's.
