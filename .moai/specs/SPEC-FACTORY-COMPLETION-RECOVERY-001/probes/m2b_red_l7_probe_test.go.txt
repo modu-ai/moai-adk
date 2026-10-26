@@ -1,0 +1,30 @@
+package homestate
+
+import (
+	"context"
+	"testing"
+)
+
+// t1963 plan-phase RED probe L7 (overlay only, never a run-phase test). It
+// asserts REQ-FCR-017's guard — no adoption while an active run classifies
+// OwnerLive — and is expected to FAIL on the pre-implementation tree, where
+// the finder offers the dead run beside a live leader.
+func TestT1963RedAdoptsDeadRunBesideLiveLeader(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-dead", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	mustRecordRun(t, db, FactoryRun{RunID: "run-live", ManifestJSON: "{}", LeadPID: 21, LeadProcessStart: "here"})
+	mustInsertCard(t, db, "run-dead", "c1", "run")
+	perPID := func(pid int, _ string) OwnerClassification {
+		if pid == 21 {
+			return OwnerLive
+		}
+		return OwnerDead
+	}
+	adopt, candidates, err := db.FindResumableRun(context.Background(), ReconcileOptions{Classify: perPID})
+	if err != nil {
+		t.Fatalf("find: %v", err)
+	}
+	if adopt.RunID != "" {
+		t.Errorf("RED live-leader guard: adopt=%q candidates=%d while run-live is OwnerLive, want no adoption", adopt.RunID, len(candidates))
+	}
+}

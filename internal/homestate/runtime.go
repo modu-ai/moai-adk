@@ -35,6 +35,11 @@ func (f *FactoryDB) RecordRun(ctx context.Context, row FactoryRun) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// A run a consolidation retired is never re-activated: the upsert below
+	// would flip it to 'active' and switch the REQ-FCR-024 storage guard off.
+	if err := refuseIfRetiredByConsolidation(ctx, tx, row.RunID); err != nil {
+		return err
+	}
 	// The owner stamp joins the row's own transaction rather than a follow-up
 	// write: a stamp lost against the row it describes leaves an active run
 	// with an empty owner column, which stays indeterminate — never
