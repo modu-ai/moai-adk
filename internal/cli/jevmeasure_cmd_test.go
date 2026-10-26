@@ -140,3 +140,65 @@ func TestJevmeasureBench_RunModeGatedOff(t *testing.T) {
 		t.Errorf("%d Jev calls escaped the gate", trip.calls)
 	}
 }
+
+// Live run mode with the gate ON: the pipeline executes against the injected
+// answerer, --run-out records the run, and the plain comparison report is
+// emitted.
+func TestJevmeasureBench_RunModeExecutesAndRecords(t *testing.T) {
+	gateOn := jevProject(t, true)
+	dir := t.TempDir()
+	cases := []jevmeasure.BenchCase{{
+		ID:            "case-1",
+		Question:      "what is the port?",
+		ExpectedQuote: "The port is 3041.",
+		PageSnapshot:  "<html><body><p>The port is 3041.</p></body></html>",
+	}}
+	raw, _ := json.Marshal(cases)
+	casesPath := filepath.Join(dir, "cases.json")
+	if err := os.WriteFile(casesPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runOut := filepath.Join(dir, "run.json")
+
+	origRoot, origAsker := findProjectRootFn, fetchWebAskerFn
+	findProjectRootFn = func() (string, error) { return gateOn, nil }
+	fetchWebAskerFn = func() fetchweb.Answerer {
+		return stubAsker{script: map[string]float64{"b0": 0.95, "c0": 0.9}}
+	}
+	t.Cleanup(func() { findProjectRootFn, fetchWebAskerFn = origRoot, origAsker })
+
+	out, _, code := runBenchCmd(t, "--cases", casesPath, "--run-out", runOut)
+	if code != 0 {
+		t.Fatalf("live run exit = %d, want 0\n%s", code, out)
+	}
+	recorded, err := os.ReadFile(runOut)
+	if err != nil {
+		t.Fatalf("run result not recorded: %v", err)
+	}
+	var runs []jevmeasure.CaseRun
+	if err := json.Unmarshal(recorded, &runs); err != nil || len(runs) != 1 {
+		t.Fatalf("recorded run unparsable or wrong size: %v %s", err, recorded)
+	}
+	if !strings.Contains(out, "contained") {
+		t.Errorf("comparison report missing:\n%s", out)
+	}
+}
+
+// Argument and file errors surface as command errors (exit 1 via cobra).
+func TestJevmeasureBench_InputErrors(t *testing.T) {
+	if _, _, code := runBenchCmd(t); code != 1 {
+		t.Errorf("missing --cases must be an error, exit = %d", code)
+	}
+	if _, _, code := runBenchCmd(t, "--cases", "/nonexistent/cases.json"); code != 1 {
+		t.Errorf("unreadable cases file must be an error, exit = %d", code)
+	}
+	dir := t.TempDir()
+	casesPath, _ := benchFixture(t, dir)
+	bad := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(bad, []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, code := runBenchCmd(t, "--cases", casesPath, "--run", bad); code != 1 {
+		t.Errorf("unparsable run file must be an error, exit = %d", code)
+	}
+}

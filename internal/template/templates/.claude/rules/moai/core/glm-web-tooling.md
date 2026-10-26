@@ -37,6 +37,12 @@ Distinguish the current session backend from retired configuration:
 | `WebFetch` | `mcp__web_reader__webReader` | `web_reader` | HTTP (remote, Bearer auth) |
 | `Read` on an image file | `mcp__zai-mcp-server__analyze_image` (+ 7 sibling vision tools) | `zai-mcp-server` | stdio npx (local, GLM-4.6V) |
 
+Verbatim-excerpt priority: jev active → fetch_web first. Where the task needs the
+exact passage rather than a summary AND the project has `workflow.jev.enabled: true`,
+route the fetch to the moai `fetch_web` tool (CLI `moai fetch web`) BEFORE
+`mcp__web_reader__webReader` — the web reader remains the fallback while Jev is off
+and the summary path when a paraphrase suffices.
+
 [ZONE:Evolvable] [HARD] While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in `WebSearch` or `WebFetch`, nor `Read` on an image file. They SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool (default `analyze_image`).
 
 ### Claude-backed sessions
