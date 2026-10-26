@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-COMPLETION-RECOVERY-001
 title: "Factory completion-judgment and recovery repair: leader receipt gate, auto-done recheck, expired-lease reaper, safe reassign, stalled-wait watchdog, CI completion reader, dead-owner run consolidation, near-dup disclosure, relation disposition ledger"
-version: "0.3.1"
+version: "0.3.2"
 status: in-progress
 created: 2026-10-06
 updated: 2026-10-26
@@ -21,6 +21,7 @@ tier: L
 - **2026-10-26 (같은 날, plan-audit iter1 FAIL 0.74 반영)** — 판정서 `.moai/reports/t1963/plan-audit-verdict.md`(audited_sha `41f8db15de`)의 D1~D15 Required fix를 한 개정으로 적용: AC-018 RED를 장부 L7로 재수립(D1), REQ-020 단계 (0) 원천 분류 전제 + AC-021 (d)(e)(D2), REQ-018 CAS 패자 동작을 새 동작으로 명시 + AC-019(a)를 cli 시험으로 분리(D3), REQ-019 lease·산 worker 가드 + AC-023 대조 행(D4), Windows pid 1 픽스처 예외(D5), AC-017 (9) 닫힌 쪽 실패 단언(D6), 분할 트랜잭션 변이 시임(D7), 미확정 활성 run 존재 시 채택 금지(D8), codex·레거시 피어 원천 제외 + 최신 후보 거부 시 채택 0(D9), `run.retired` 카드 id 목록·stderr 출력·상태 연령 잔여 위험(D10), 인용 교정(D11), AC-022 형식(D12), L1 증인 성격 명시(D13), plan 기대값 갱신(D14), REQ 본문의 구현 식별자를 `앵커:` 꼬리로 분리(D15). D8·D9·D10의 선택지는 레인 판정. 요구·기준 수는 그대로(23·25).
 - **2026-10-26 — v0.3.0 (plan-audit iter2 FAIL 0.81 반영)** — 판정서 `.moai/reports/t1963/plan-audit-verdict.md`(audited_sha `52a4cb65fd`)의 N1~N13 Required fix를 한 개정으로 적용. 전부 기준 문구·시험 시임 보강이며, 요구 의미는 N7이 요구한 최소 문장 하나(REQ-FCR-018: `BasisPeer`·`BasisBoot`로만 dead인 run도 통합하지 않고 stderr 한 줄)만 더했다. AC-017 (8)(9) 승인 행 시드·불일치 사유 단언(N1)·동률 규칙(N9), AC-018 (v-a)(v-b) 분리(N8)·(vii) `--resume` 경로(N2)·(viii) 통합 원천 필터(N7), AC-019 (d) 원천 스탬프 교체(N3)·CAS 아닌 오류는 계속 실패(N10), AC-020 주입점 (c) 커밋 직전(N4), AC-022 (e) 정상 `m<n>` 선택(N6), AC-023 `c6a`/`c6b` 분리(N5), AC-024 (d) 후보 경로(N12), research Gaps 정정(N11), 버전 0.3.0(N13). 요구·기준 수는 그대로(23·25).
 - **2026-10-26 — v0.3.1 (plan-audit iter3 부채 반영)** — 판정서 `.moai/reports/t1963/plan-audit-verdict.md`(audited_sha `cd42a46fa0`, 내용 점수 0.88, 차단 결함 0)의 부채 R1·R2·R4~R9를 기존 기준의 하위 사례로 닫았다: AC-018 (viii) `BasisBoot` 원천(R1), AC-023 `c9` 경로의 죽은 pid worker 행(R2)·`card.rebound`의 `from_run`(R7), AC-021 (a) 충돌 카드가 첫 번째가 아님(R4)·(c) worker 2개(R5, 레인 지시), AC-024 (e) worker 2개(R5, 판정서 위치), AC-017 바인딩 2건 재지정(R6)·`run.retired`의 `classification`·`basis`(R7), AC-022 (a) 운영자 경로 승인 행 불변(R8), AC-019 (b)(d)·AC-021 거부 덤프에 `events` 포함(R9). R3(시임 위치)은 문구로 닫을 수 없어 plan.md §H의 sync 확인 항목 한 줄로 넘겼다. 요구·설계 의미 변경 없음, 요구·기준 수 그대로(23·25).
+- **2026-10-26 — v0.3.2: post-admission amendment during run-phase (card t1963); plan-audit ceiling spent; flagged to sync-auditor.** manager-develop의 run-phase 차단 보고(트리 HEAD `63b2d4710e`, `.moai/reports/t1963/run-evidence.md`)와 레인 판정(`.moai/reports/t1963/progress.md`)에 따른 두 가지 수정만: (1) AC-FCR-017 Then (9)를 집행되는 절반으로 고침 — 완료 게이트는 큐의 현재 배차 기록을 읽지 않으므로(`internal/cli/leader_approval_gate.go:63`·`:91`) 원래 문구는 충족 불가능했다. 새 문구는 옛 승인만으로는 `ErrApprovalRunMismatch`로 거부, `run-new` 아래 새 승인으로 닫힘, 옛 승인 행 불변(`TestLeaderStartRekeyedCardNeedsFreshApproval`). design.md §5의 "큐 기록을 본다" 서술은 시험되지 않은 잔여 위험으로 정정. (2) AC-FCR-025 허용 수정 목록에 cli 픽스처 `selSeedDead(workers=true)`의 worker pid `1` → `os.Getpid()` 추가(`mustInsertWorker` 예외와 같은 근거). 요구 의미 변경 없음, 요구·기준 수 그대로(23·25).
 
 ## §B — Problem
 

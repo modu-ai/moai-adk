@@ -78,7 +78,7 @@ flowchart TD
 
 잔여 위험:
 
-- 큐(backlog) 저장소의 "현재 배차" 기록은 factory 트랜잭션 밖이다. 통합이 `card_dispatch`를 옮긴 뒤 큐 기록이 옛 run을 가리키면 완료 게이트는 거부(닫힌 쪽)한다. 열린 쪽 실패(잘못된 완료)가 생기지 않음은 AC-FCR-017 Then (9)가 단언한다.
+- 큐(backlog) 저장소의 "현재 배차" 기록은 factory 트랜잭션 밖이고, **완료 게이트는 그 기록을 읽지 않는다** — `holdDoneApprovalGate` → `verifyForClose`(`internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 본다. 통합 뒤 완료의 정확성은 바인딩(같은 트랜잭션에서 대상 run으로 재지정)과 승인(run에 묶임 — 옛 승인은 `ErrApprovalRunMismatch`로 거부, AC-FCR-017 (9))에만 기댄다. 큐 기록이 옛 run을 가리킨 채 남는 상태가 완료에 어떤 영향을 주는지는 **시험되지 않은 잔여 위험**이다(run-phase 사후 개정, 카드 t1963 — 이전 판의 "닫힌 쪽 실패를 AC-017 (9)가 단언한다"는 서술은 게이트 동작과 맞지 않아 철회).
 - **상태 연령 저하**: 카드 전이 이벤트는 원천 `run_id`에 남는다. 상태 연령 표시는 이벤트를 `run_id`로 거르므로(`internal/homestate/card_age.go:75-86` `LoadCardEvents`), 재키된 카드의 대상 run 기준 상태 연령은 "unknown"으로 읽힌다. 기록은 사라지지 않지만(원천 run 이벤트로 남음) 대상 run 화면에서는 연령이 보이지 않는다. 이 개정은 고치지 않는다.
 
 ## §6 — worker 생존 (REQ-FCR-022)
