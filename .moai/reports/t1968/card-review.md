@@ -20,3 +20,7 @@
 | R8 | P2 | internal/cli/jevmeasure_cmd.go:152 | non-regression comparison FAILs don't set exit code (AnyRegression only) | **repair** — any Pass==false → exit 1 per the stated compare contract |
 
 Disposition summary: 8/8 accepted for repair (round 1) — R2/R3/R4 directly violate the SPEC's verbatim-emission guarantee; R6/R7 violate the card's own client contracts; R5 is a CJK correctness defect; R1/R8 are contract-correctness defects. No finding not-adopted. Re-review ceiling: 2 (this was review 1).
+
+## Round 2 (re-review) — pending
+
+Repair commit: 05934379a4 (8/8 fixed-with-RED-evidence per manager-develop report; lane re-observation: build OK, fetchweb/jev fresh-run ok, off-gate + E2E + R6/R7 repair tests PASS at 05934379a4).

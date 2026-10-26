@@ -59,3 +59,5 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=be1e8b7e2c+3357a04833+77027d5e79+manager-docs 귀속 표 ladder_path=①disk-evidence — sync 단계 종결 승인, 착지 시퀀스 진입(card-review → sync-audit → verdict → complete).
 - card-review: codex_review scope=card 실행 — **판정 fail(advisory), P2 8건**(R1 stage-2 배치 누락·R2 br 단어경계·R3 li>p 중복·R4 코드 들여쓰기·R5 바이트 절단·R6 세마포어 조기 해제·R7 stale 경고 유실·R8 bench 종료코드). 처분: 8/8 수리 채택(R2~R4는 REQ-FW-006 축자 보장 직접 위반). 재검토 천장 2회 중 1회 소진 예정. → 수리 라운드(manager-develop 재스폰) 후 재검토 1회.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/card-review.md(codex, base 2a1898ea22, head 77027d5e79) ladder_path=①disk-evidence — card-review fail 수용, 수리 재위임 결정.
+- 2026-10-27 02:1x 수리 귀환 — 커밋 05934379a4, **8/8 fixed-with-RED-evidence**(각 축마다 사전 실패 관측→사후 green), 전 테스트 ok(off-gate·E2E·MCP 패리티 포함), -race ok, GOOS=windows 빌드 0, lint 0. 레인 재관측 일치(build OK·2패키지 fresh ok·핵심 4테스트 PASS).
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=05934379a4+수리 보고 귀속 표+레인 재관측 출력 ladder_path=①disk-evidence — 수리 승인, card-review 2차(재검토, 천장 2회 중 1회) 실행.
