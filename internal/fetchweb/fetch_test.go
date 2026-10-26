@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/html/charset"
 )
 
 // fetch_test.go — SPEC-FETCH-WEB-001 M3. The bounded page fetcher: a timeout
@@ -114,5 +116,98 @@ func TestFetchPage_InvalidBytesWithoutCharsetIsError(t *testing.T) {
 func TestFetchPage_NonHTTPSchemeIsError(t *testing.T) {
 	if _, err := FetchPage(t.Context(), "file:///etc/passwd", http.DefaultClient); err == nil || !strings.Contains(err.Error(), "scheme") {
 		t.Fatalf("err = %v, want a named non-HTTP(S) scheme refusal", err)
+	}
+}
+
+// F5b (t1968 sync-audit iter2): a DECLARED charset whose bytes are corrupted
+// decodes with silent U+FFFD substitution — the x/text decoder replaces
+// invalid sequences instead of erroring, so a truncated euc-kr page passed as
+// "verbatim" with exit 0. A substitution means the page is undecodable: a
+// fetch error, never a corrupted passthrough.
+func TestFetchPage_DeclaredCharsetCorruptedBytesIsError(t *testing.T) {
+	// EUC-KR lead byte 0xA1 with no valid trail byte: an incomplete sequence
+	// the decoder silently replaces with U+FFFD (probe-confirmed).
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=euc-kr")
+		_, _ = w.Write([]byte("<html><body><p>Price \xa1</p></body></html>"))
+	}))
+	defer srv.Close()
+	if _, err := FetchPage(t.Context(), srv.URL, srv.Client()); err == nil {
+		t.Fatal("corrupted euc-kr body must be a fetch error, not a silent U+FFFD substitution returned as page text")
+	}
+}
+
+// F5b, the latin-1 shape: a latin-1-declared page carrying a byte that is
+// invalid in that charset must be a fetch error. iso-8859-1 resolves to
+// windows-1252 in the label table (probe-confirmed), where 0x81 is undefined
+// and decodes to U+FFFD by substitution — passthrough is mojibake with exit 0.
+func TestFetchPage_Latin1InvalidByteIsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=iso-8859-1")
+		_, _ = w.Write([]byte("cost \x81 total"))
+	}))
+	defer srv.Close()
+	if _, err := FetchPage(t.Context(), srv.URL, srv.Client()); err == nil {
+		t.Fatal("latin-1-declared body with an undefined byte must be a fetch error, not a U+FFFD-substituted passthrough")
+	}
+}
+
+// F5b control: the scan rejects SUBSTITUTED output, not every non-UTF-8
+// decode — a cleanly-encoded euc-kr page (B0 A1 = 가) still passes.
+func TestFetchPage_ValidEUCKRPasses(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=euc-kr")
+		_, _ = w.Write([]byte("<html><body><p>\xb0\xa1</p></body></html>"))
+	}))
+	defer srv.Close()
+	page, err := FetchPage(t.Context(), srv.URL, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(page, "가") {
+		t.Errorf("valid euc-kr page = %q, want the decoded text %q", page, "가")
+	}
+}
+
+// F5b qualifier: a page whose SOURCE legitimately encodes U+FFFD in its
+// declared charset is not a substitution. GB18030 can encode U+FFFD
+// (4-byte form, probe-confirmed), so a page carrying that exact sequence
+// passes — the scan must not reject a replacement character the document
+// really contained.
+func TestFetchPage_LegitimateReplacementCharPasses(t *testing.T) {
+	enc, _ := charset.Lookup("gb18030")
+	if enc == nil {
+		t.Fatal("gb18030 must resolve for this test's premise")
+	}
+	src, err := enc.NewEncoder().String("�")
+	if err != nil {
+		t.Fatalf("gb18030 must encode U+FFFD (probe-confirmed): %v", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=gb18030")
+		_, _ = w.Write([]byte("x" + src + "y"))
+	}))
+	defer srv.Close()
+	page, err := FetchPage(t.Context(), srv.URL, srv.Client())
+	if err != nil {
+		t.Fatalf("legitimately-encoded U+FFFD must pass, got %v", err)
+	}
+	if !strings.ContainsRune(page, '�') {
+		t.Errorf("page = %q, want the source's legitimate U+FFFD preserved", page)
+	}
+}
+
+// F5b adjacent residual (named in the iter2 audit): a UTF-8 alias label
+// outside isUTF8Family (unicode-1-1-utf-8) routes through charset.Lookup's
+// decoder, which substitutes invalid bytes silently — the same substitution
+// scan must catch it there too.
+func TestFetchPage_ExoticUTF8AliasInvalidBytesIsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=unicode-1-1-utf-8")
+		_, _ = w.Write([]byte("plain \xff text"))
+	}))
+	defer srv.Close()
+	if _, err := FetchPage(t.Context(), srv.URL, srv.Client()); err == nil {
+		t.Fatal("invalid bytes under an exotic UTF-8 alias label must be a fetch error, not substituted passthrough")
 	}
 }

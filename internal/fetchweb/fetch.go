@@ -1,6 +1,7 @@
 package fetchweb
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -73,12 +74,15 @@ func FetchPage(ctx context.Context, rawURL string, client *http.Client) (string,
 // sync-audit). Precedence: a UTF-8 BOM is definitive for UTF-8 (and is
 // stripped, so it never surfaces as page text); otherwise the Content-Type
 // charset label is honored; otherwise the body is taken as UTF-8 — but only
-// if it actually is. A declared charset that is unknown, or bytes that fail
-// their declared decoding, is a fetch error: a latin-1 or EUC-KR page read
-// as raw bytes would be mojibake returned as "verbatim" text with exit 0,
-// which the verbatim guarantee forbids. The HTML meta charset declaration is
-// deliberately NOT sniffed — with no header charset the fallback is UTF-8
-// (validation included), and a mis-declared page fails loudly instead.
+// if it actually is. A declared charset that is unknown, bytes that fail
+// their declared decoding, or bytes the decoder can only decode by SILENT
+// U+FFFD SUBSTITUTION (F5b, t1968 sync-audit iter2), is a fetch error: a
+// latin-1 or EUC-KR page read as raw bytes — or truncated and handed back
+// with replacement characters — would be mojibake returned as "verbatim"
+// text with exit 0, which the verbatim guarantee forbids. The HTML meta
+// charset declaration is deliberately NOT sniffed — with no header charset
+// the fallback is UTF-8 (validation included), and a mis-declared page
+// fails loudly instead.
 func decodePageBody(body []byte, contentType string) (string, error) {
 	// A UTF-8 BOM wins over any header label: it is byte-level evidence.
 	if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
@@ -102,6 +106,22 @@ func decodePageBody(body []byte, contentType string) (string, error) {
 	decoded, err := enc.NewDecoder().Bytes(body)
 	if err != nil {
 		return "", fmt.Errorf("fetch web: page charset %q could not be decoded: %w", label, err)
+	}
+	// F5b (t1968 sync-audit iter2): a SUCCESSFUL decode can still be a
+	// corrupted one — the x/text decoders substitute U+FFFD for invalid
+	// sequences instead of erroring, so a truncated euc-kr page or a
+	// latin-1 page with an undefined byte passed as "verbatim" with exit 0.
+	// Scan the decoded text (valid UTF-8 by decoder contract, so the rune
+	// index finds exactly the U+FFFD encodings): any U+FFFD the source
+	// bytes could not legitimately have encoded is a substitution → the
+	// page is undecodable, a fetch error. The legitimacy test is exact for
+	// single-byte charsets (they cannot encode U+FFFD at all); for encodings
+	// that can (gb18030, the UTF-16 family), the U+FFFD's own encoded form
+	// must be present in the raw body or it was not the source of it.
+	if i := bytes.IndexRune(decoded, utf8.RuneError); i >= 0 {
+		if srcFFFD, encErr := enc.NewEncoder().Bytes([]byte("�")); encErr != nil || !bytes.Contains(body, srcFFFD) {
+			return "", fmt.Errorf("fetch web: page charset %q decoded with U+FFFD substitution at byte %d; refused rather than returned corrupted text", label, i)
+		}
 	}
 	// A decoded page may be up to ~3x the raw bound in bytes (one source
 	// byte can widen to three UTF-8 bytes); the raw-bound check above bounds

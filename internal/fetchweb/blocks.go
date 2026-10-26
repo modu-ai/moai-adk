@@ -158,8 +158,17 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		// truncates the stack and the following append reuses the freed
 		// slot of the shared backing array — overwriting the saved entry —
 		// so the restored path would carry the aside's heading.
+		//
+		// The itemDepth save/reset (F7, t1968 sync-audit iter2) scopes the
+		// list-paragraph suppression per aside entry: an aside inside a list
+		// item is scored separately from that item, so its paragraphs are
+		// NOT "already part of the item's emitted text" and must be emitted
+		// as the aside's own blocks.
 		saved := append([]heading(nil), s.path...)
+		savedDepth := s.itemDepth
+		s.itemDepth = 0
 		s.walkChildren(n, true)
+		s.itemDepth = savedDepth
 		s.path = saved
 	case n.Data == "p":
 		if s.itemDepth > 0 {
@@ -191,6 +200,7 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		s.walkChildren(n, inAside)
 	case n.Data == "tr":
 		s.emitRow(n, inAside)
+		s.emitRowCodeBlocks(n, inAside)
 	case headingLevels[n.Data] > 0:
 		// Headings are structure, not blocks: their text joins the path for
 		// the blocks that follow. A same-or-higher level heading pops deeper
@@ -338,10 +348,20 @@ var textBoundaryTags = map[string]bool{
 
 // listItemSkip excludes from a list item's own text the children that are
 // separately emitted as their own blocks during the descent: nested lists
-// (their items are blocks in their own right) and pre/table (emitted as code
-// and table-row blocks). Folding them into the item text would duplicate the
-// content and flatten a code block's preserved whitespace.
-var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table": true}
+// (their items are blocks in their own right), pre/table (emitted as code
+// and table-row blocks), and aside (F7, t1968 sync-audit iter2 — the aside's
+// subtree is scored as separately-flagged aside blocks, so an aside inside a
+// list item gets the same separation as at top level instead of riding the
+// item's text). Folding them into the item text would duplicate the content,
+// flatten a code block's preserved whitespace, or contaminate the item's
+// verbatim text with aside content.
+var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table": true, "aside": true}
+
+// cellSkip excludes from a table cell's row text the subtrees emitted as
+// their own blocks (F8, t1968 sync-audit iter2): a pre inside a cell is a
+// code block whose interior whitespace IS the code's formatting — the row's
+// whitespace collapse would destroy it.
+var cellSkip = map[string]bool{"pre": true}
 
 // preText extracts a code block's text preserving line structure. Only the
 // surrounding blank lines are trimmed; interior whitespace — including the
@@ -387,12 +407,37 @@ func trimBlankLines(s string) string {
 	return strings.Join(lines[start:end], "\n")
 }
 
+// emitRowCodeBlocks emits the code blocks nested inside a table row (F8,
+// t1968 sync-audit iter2). The walk never descends into cells (emitRow reads
+// them as text), so a pre inside a td was unreachable — its only trace was
+// the flattened, whitespace-collapsed row text. The row's extraction now
+// excludes pre subtrees (cellSkip), and this scan emits each one verbatim as
+// its own code block, following its row in document order — the same
+// exclusion+separate-emission pattern C2 applies to pre inside list items.
+func (s *splitter) emitRowCodeBlocks(tr *html.Node, inAside bool) {
+	var scan func(*html.Node)
+	scan = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "pre" {
+			if text := preText(node); text != "" {
+				s.emit(Block{Kind: KindCode, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
+			}
+			return // a pre nested in a pre is carried by the outer block's text
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			scan(c)
+		}
+	}
+	for c := tr.FirstChild; c != nil; c = c.NextSibling {
+		scan(c)
+	}
+}
+
 // rowCells lists a table row's cell texts in order.
 func rowCells(tr *html.Node) []string {
 	var cells []string
 	for c := tr.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && (c.Data == "td" || c.Data == "th") {
-			cells = append(cells, collapseText(c, nil))
+			cells = append(cells, collapseText(c, cellSkip))
 		}
 	}
 	return cells

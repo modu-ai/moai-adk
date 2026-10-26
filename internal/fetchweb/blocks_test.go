@@ -427,6 +427,63 @@ func TestSplitBlocks_AsideSameLevelHeadingRestoreIsACopy(t *testing.T) {
 	}
 }
 
+// F7 (t1968 sync-audit iter2): an <aside> inside an <li> gets the SAME
+// separation as at top level — the parent item's text excludes the aside
+// subtree (the listItemSkip exclusion + boundary separator), and the aside's
+// own paragraphs form aside-flagged blocks (the list-paragraph suppression
+// is scoped per aside entry, not inherited from the enclosing item). Before
+// the repair the aside's text rode the item block ("Main Note", aside=false)
+// and never reached the aside scoring stream at all.
+func TestSplitBlocks_AsideInsideListItemIsSeparate(t *testing.T) {
+	html := `<body><ul><li>First<aside><p>Side note</p></aside>Third</li></ul></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind  BlockKind
+		text  string
+		aside bool
+	}{
+		{KindListItem, "First Third", false},
+		{KindParagraph, "Side note", true},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=%v (aside subtree scored separately, word boundary kept)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text, w.aside)
+		}
+	}
+}
+
+// F8 (t1968 sync-audit iter2): a <pre> inside a <td> keeps its formatting —
+// the code block is emitted verbatim as its own block (the C2 pattern for
+// pre inside a list item) and the row's text EXCLUDES the pre subtree,
+// keeping only the cell's own text runs across the boundary separator.
+// Before the repair the row text flattened the code ("first second") and no
+// code block was emitted — the walk never descends into cells, so the pre
+// was otherwise unreachable.
+func TestSplitBlocks_PreInsideCellIsVerbatimCodeBlock(t *testing.T) {
+	html := "<body><table><tr><td>Usage:<pre>  first\n    second</pre></td><td>after</td></tr></table></body>"
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindTableRow, "Usage: | after"},
+		{KindCode, "  first\n    second"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text {
+			t.Errorf("block %d = %s %q, want %s %q (code verbatim, row text excludes it)",
+				i, blocks[i].Kind, blocks[i].Text, w.kind, w.text)
+		}
+	}
+}
+
 // Token accounting rides jev.EstimateTokens (REQ-FW-002): a block's token
 // count is the conservative byte/4 estimate, and document totals sum it.
 func TestBlockTokens_UseEstimator(t *testing.T) {

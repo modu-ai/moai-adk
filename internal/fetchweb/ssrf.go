@@ -39,16 +39,32 @@ type ipPolicy func(ip net.IP) error
 
 // refuseNonPublicIP is the production policy (F1a): the fetch surface
 // connects to PUBLIC addresses only. Refused ranges: loopback, RFC1918
-// private and RFC4193 unique-local (net.IP.IsPrivate covers both), link-local
-// unicast and multicast (169.254.0.0/16 — the cloud metadata range — and
-// fe80::/10), unspecified, and multicast. IPv4-mapped IPv6 forms normalize
-// through net.ParseIP before the checks, so ::ffff:127.0.0.1 is caught.
+// private and RFC4193 unique-local (net.IP.IsPrivate covers both), the RFC
+// 6598 shared address space 100.64.0.0/10 (F1b — CGNAT carrier ranges and
+// the Tailscale mesh; reachable internal nodes, not public web servers),
+// link-local unicast and multicast (169.254.0.0/16 — the cloud metadata
+// range — and fe80::/10), unspecified, multicast, and the IPv4
+// limited-broadcast address. IPv4-mapped IPv6 forms normalize through
+// net.ParseIP before the checks, so ::ffff:127.0.0.1 is caught.
 func refuseNonPublicIP(ip net.IP) error {
-	if ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() &&
-		!ip.IsLinkLocalMulticast() && !ip.IsUnspecified() && !ip.IsMulticast() {
+	if ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !isSharedAddressSpace(ip) &&
+		!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsUnspecified() &&
+		!ip.IsMulticast() && !ip.Equal(net.IPv4bcast) {
 		return nil
 	}
 	return fmt.Errorf("non-public address %s refused", ip)
+}
+
+// isSharedAddressSpace reports whether ip is inside the RFC 6598 shared
+// address space 100.64.0.0/10 (F1b): 100.64.0.0–100.127.255.255. No net.IP
+// helper covers it — IsPrivate stops at RFC1918/RFC4193 — so the /10 prefix
+// is matched on the 4-byte form directly (first octet 100, top two bits of
+// the second octet fixed at 01).
+func isSharedAddressSpace(ip net.IP) bool {
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 100 && ip4[1]&0xC0 == 0x40
+	}
+	return false
 }
 
 // harnessIPPolicy is the TEST-HARNESS policy (the override seam): loopback is
