@@ -169,6 +169,7 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 - **merge-base 측정 의무**: "이 카드가 무엇을 바꿨는가"는 `CARD_BASE=$(git merge-base develop HEAD)`로 재구한 뒤 판정 — 리터럴 base SHA 핀 금지(흡수가 리터럴 핀 범위를 오염시킨다). **ref는 실제 흡수한 ref다**: §H의 통합 경로가 develop 직렬 창(현행 계약)이므로 흡수 대상은 로컬 develop — origin/main 기준은 develop이 흡수한 다른 카드 변경까지 본 카드 기여로 계산하는 오류를 낸다(게이트 격리 재현: origin/main 기준 `foreign.go, own.md` vs develop 기준 `own.md`).
 - **t1513 술어 재조정 확인(병합 창 필수 항목)**: main 흡수로 `de388878e`(t1513 슬롯 술어 수리)가 본 트리에 들어오면 `factorySerialSlotHeld` 주변 테스트가 충돌할 수 있다. 병합 직후 §C.4의 grep 목록 테스트를 돌리고, 술어 본체와 본 카드 변경의 간섭 여부를 판독한다. 본 카드는 술어 의미론을 쓰지 않으므로 충돌 시 원칙은 **t1513 착지분이 이긴다** — 본 카드의 watchdog(REQ-FCR-009)이 무소유자 행을 다시 만지는 형태로 해결하지 않는다.
 - **앵커 재확인**: 흡수 후 run-phase 첫 커밋 전에 spec.md §B.2 표의 앵커를 흡수 트리에서 재확인 — 행 번호 이동 시 본 SPEC을 갱신 없이는 진행하지 않는다(manager-spec 재위임).
+- **sync 확인 항목 (M2-B, 부채 R3)**: AC-FCR-019·020·023의 실패 주입 시임이 코드에서 실제로 "모든 쓰기 뒤·커밋 직전" 등 명시된 위치에 놓였는지 sync 코드 리뷰가 확인한다(시험으로는 증명할 수 없음).
 
 ## §I — Cross-references
 
