@@ -83,5 +83,21 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=11668653dd+수리 보고+레인 재관측 출력 ladder_path=①disk-evidence — F7c 수리 승인, sync-audit iter5 스폰(최종).
 - 2026-10-27 08:1x iter5 귀환 — **PASS-WITH-DEBT 0.93**(94/93/93/93, rcpt-2a184bfefac6e098feba3734) @ed6227740e. F7c 폐쇄(양방향 프루프+모서리), F7b/F7/F3 유지, F계열 6/6, 트리오+cli 10 PASS+race+빌드 녹색, 커버리지 95.0%, lint/gofmt/spec-lint 0, convergence pass(gate_unmet 空). 잔여: D1 Low 옵션(aside 폴백 경로 — 후속 카드 조건부)·F5c 코너 iter3 수용·미시험 영역 기재. **sync 게이트 충족 — 착지 시퀀스 진입.**
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/sync-audit.md iter5+rcpt-2a184bfefac6e098feba3734 ladder_path=gate:sync-gate-met — sync 감사 통과 수용, 레인 verdict 작성 + factory complete 실행.
+
+## 5. 이월 부채 목록 (PASS-WITH-DEBT 0.93 — 리더 수용 판정용, 2026-10-27 08:4x 정리)
+
+| # | 등급 | 내용 | 처분 상태 |
+|---|------|------|----------|
+| D1 | Low·optional | aside 폴백 본문 텍스트가 복원된 [Main] 경로 사용([Main / Side] 아님) — 테스트 고정·커밋 문서화 | 경로 충실도가 필요해질 때만 후속 카드 |
+| D2 | Low·accepted | F5c 카운트 코너: 정당 U+FFFD 인코딩과 별개 오염이 같은 페이지에 공존하면 정당으로 통과 | iter3 감사 수용, 코드 주석 문서화 |
+| D3 | Low·noted | 미시험 영역: CDATA 섹션·frameset 문서·프록시 환경 상호작용 | 감사자 기재, 후속 여지 |
+| D4 | Gap·discipline | 전체 internal/cli 수트+저장소 전체 판정 미 로컬 관측(부하 타임아웃, FAIL 0건) — 통합 브랜치 CI 소관 | 착지 시 PENDING, CI가 판정 |
+| D5 | Gap·discipline | RED-first 증거: M7은 계획 장부 행 기반(마크다운 특성), 수리 RED는 보고서 축자 출력+감사자 독립 프루브로 보강 — 전 RED 런의 감사자 직접 관측은 아님 | 커밋 주장+교차 검증 상태 |
+| D6 | Process | card-review 천장 처분: C1~C3를 4차 검토 없이 수리(천장 준수) — 잔여 검증은 sync-audit 프루브가 대행 | 완료 보고서에 리더 명세용 기재 |
+
+## 6. 착지 재개 (2026-10-27 08:4x — 리더 set-spec 후)
+
+- 리더 처분 수신: `factory set-spec t1968 --spec SPEC-FETCH-WEB-001` 성공("was -", 기록 v7) — 게이트 키 임시 인에이블+workflow.yaml 바이트 동일 복원(리더 보고). 스테이지 체인 재개 지시 + merge-ready 직전 HEAD 보고 요청(리더 codex_audit용).
+- decision record: decided_by=leader(socket 50218) evidence_refs=기록 v7+리더 메시지 ladder_path=leader-metadata-act — SPEC 포인터 결원 해소, 레인 체인 재개 승인.
 - 2026-10-27 08:3x 착지 시도 — 기계적 막힘 발견: complete는 merge-ready 요구 → stage 사슬(plan v6→plan-audit v6 성공) → kickoff(T7)가 **기록 행의 SPEC id** 요구 — 카드가 SPEC 무상으로 피킹되어 기록 행 spec_id=""(피킹이 t1921 전파 코드 반영 전 바이너리에서 실행). 기계 줄 추출 파일 2건 작성·커밋(d5488474e9, fd341f0148 — plan-audit-final: iter4 PASS 결합 근거 명기 / sync-audit-final: iter5 PASS-WITH-DEBT). set-spec 동사로 기록 교정 시도 — (1) 설치 바이너리 rc.38에 동사 부재, (2) 트리 바이너리 임시 빌드(/tmp/moai-t1968)로 시도 시 **lane 경계 거부**(메타데이터 동사는 리더/운영자 행위 — MOAI_FACTORY_ROLE=lane). env 사칭 금지 확정.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=내부/homestate/card_evidence_readers.go:186+factory_card_metadata.go:115+거부 출력 3건 ladder_path=⑤gate-boundary(leader-held) — **명시적 대기**: 카드는 증거상 완결(전 AC PASS·sync 감사 0.93 PASS-WITH-DEBT·verdict.md)이나 팩토리 기록의 SPEC 포인터가 비어 T7→merge-ready→complete 기계 사슬 진입 불가. 처분권=리더: (a) 리더 측 set-spec(신선 바이너리 필요 — rc.38에 동사 부재) 또는 (b) 리더 증거 판정 대안. 대기 기록: reason=기록 SPEC 포인터 결원, whom=리더, recheck=리더 응답 또는 다음 크론. cron 유지(카드 비종결).
