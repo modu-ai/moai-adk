@@ -33,9 +33,13 @@ var fetchWebJSON bool
 // fetchWebPageClientFn is the page-fetch client seam: the gate is read
 // BEFORE this is consulted, so a gated-off run constructs no transport at
 // all (the zero-network property is a counted observation in tests, not an
-// absence). Replaced in tests.
+// absence). Replaced in tests. The production client is the SSRF-guarded
+// fetchweb.NewPageClient (F1, t1968 sync-audit): dial-level refusal of
+// non-public addresses on every hop, redirect cap, non-HTTP(S) scheme
+// refusal — the URL arrives from model output, so the fetch surface must not
+// be steerable at loopback/private/link-local targets.
 var fetchWebPageClientFn = func() *http.Client {
-	return &http.Client{Timeout: fetchweb.FetchTimeout}
+	return fetchweb.NewPageClient()
 }
 
 // fetchWebAskerFn is the Jev seam: a fully wired production client, or a

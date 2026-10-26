@@ -23,6 +23,10 @@ type fakeAnswerer struct {
 	script   map[string]float64
 	calls    int
 	failTest *testing.T
+	// omit lists question ids the fake answers with NOTHING: the response
+	// comes back OK (Available) but its answer list lacks the id — the
+	// OK-but-answerless shape F2 (t1968 sync-audit) guards against.
+	omit map[string]bool
 }
 
 func (f *fakeAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
@@ -32,6 +36,9 @@ func (f *fakeAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
 	}
 	answers := make([]jev.Answer, 0, len(req.Questions))
 	for _, q := range req.Questions {
+		if f.omit[q.ID] {
+			continue
+		}
 		answers = append(answers, jev.Answer{
 			QuestionID:  q.ID,
 			Kind:        jev.KindNoul,
@@ -379,6 +386,44 @@ type unavailableAnswerer struct{}
 
 func (unavailableAnswerer) Ask(_ context.Context, _ jev.Request) jev.Result {
 	return jev.Result{Availability: jev.RateLimited, Condition: "endpoint returned HTTP 429"}
+}
+
+// F2 (t1968 sync-audit): an OK scoring response whose answer list carries
+// NONE of the asked question ids is a judgment failure, not a data verdict —
+// every unanswered id must surface as fetch_error (exit 2), never silently
+// read as probability 0 and reported as no_match (exit 1).
+func TestProcess_Stage1AnswerlessIsError(t *testing.T) {
+	blocks := mkBlocks(3, 700) // ~2,100 tokens: scored
+	fake := &fakeAnswerer{
+		script: map[string]float64{"b0": 0.9, "b1": 0.9, "b2": 0.9},
+		omit:   map[string]bool{"b0": true, "b1": true, "b2": true},
+	}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFetchError {
+		t.Fatalf("status = %q, want fetch_error on an answerless OK response (not no_match)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "could not judge") {
+		t.Errorf("condition = %q, want the could-not-judge distinction", res.Condition)
+	}
+}
+
+// F2 (t1968 sync-audit), stage-2 leg: answers may go missing on either stage.
+// Stage 1 answers fully (b0 is a candidate at 0.9) but the stage-2 response
+// omits the candidate's id — the gap must be a fetch_error, not a stage-2
+// score of 0 that drops the candidate into a misleading no_match.
+func TestProcess_Stage2AnswerlessIsError(t *testing.T) {
+	blocks := mkBlocks(3, 700) // ~2,100 tokens: scored
+	fake := &fakeAnswerer{
+		script: map[string]float64{"b0": 0.9, "b1": 0.1, "b2": 0.1, "c0": 0.9},
+		omit:   map[string]bool{"c0": true},
+	}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFetchError {
+		t.Fatalf("status = %q, want fetch_error when stage 2 answers nothing (not no_match)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "could not judge") {
+		t.Errorf("condition = %q, want the could-not-judge distinction", res.Condition)
+	}
 }
 
 // Stage-2 neighbor context is ~400 CHARACTERS drawn from adjacent blocks.

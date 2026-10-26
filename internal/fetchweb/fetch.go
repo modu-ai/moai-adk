@@ -4,13 +4,21 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"net/url"
+	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/net/html/charset"
 )
 
 // fetch.go — SPEC-FETCH-WEB-001 M3. The bounded page fetcher (REQ-FW-007):
 // a timeout and a maximum response size, both enforced here so no caller can
 // forget them. The client is INJECTED — this package never constructs a
-// transport, and no test can reach a real target page (REQ-FW-010).
+// transport for a fetch, and no test can reach a real target page
+// (REQ-FW-010); the one client it does construct, NewPageClient (ssrf.go),
+// is the guarded production client, never a test transport.
 
 const (
 	// FetchTimeout bounds one page fetch. Callers set it on the injected
@@ -24,12 +32,19 @@ const (
 )
 
 // FetchPage GETs url through the injected client and returns the response
-// body. Non-2xx statuses and bodies over MaxResponseBytes are errors.
-func FetchPage(ctx context.Context, url string, client *http.Client) (string, error) {
+// body decoded to UTF-8. Non-2xx statuses, non-HTTP(S) URL schemes, bodies
+// over MaxResponseBytes, and bodies that cannot be decoded honestly (F5,
+// t1968 sync-audit) are errors.
+func FetchPage(ctx context.Context, rawURL string, client *http.Client) (string, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	// The initial URL's scheme is validated here so the refusal is named and
+	// client-independent (F1: the redirect policy covers the later hops).
+	if u, err := url.Parse(rawURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return "", fmt.Errorf("fetch web: unsupported URL scheme (only http and https are fetched): %q", rawURL)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("fetch web: bad url: %w", err)
 	}
@@ -51,5 +66,70 @@ func FetchPage(ctx context.Context, url string, client *http.Client) (string, er
 	if len(body) > MaxResponseBytes {
 		return "", fmt.Errorf("fetch web: page body over the %d-byte bound; refused rather than truncated", MaxResponseBytes)
 	}
-	return string(body), nil
+	return decodePageBody(body, resp.Header.Get("Content-Type"))
+}
+
+// decodePageBody decodes the fetched bytes to a UTF-8 string (F5, t1968
+// sync-audit). Precedence: a UTF-8 BOM is definitive for UTF-8 (and is
+// stripped, so it never surfaces as page text); otherwise the Content-Type
+// charset label is honored; otherwise the body is taken as UTF-8 — but only
+// if it actually is. A declared charset that is unknown, or bytes that fail
+// their declared decoding, is a fetch error: a latin-1 or EUC-KR page read
+// as raw bytes would be mojibake returned as "verbatim" text with exit 0,
+// which the verbatim guarantee forbids. The HTML meta charset declaration is
+// deliberately NOT sniffed — with no header charset the fallback is UTF-8
+// (validation included), and a mis-declared page fails loudly instead.
+func decodePageBody(body []byte, contentType string) (string, error) {
+	// A UTF-8 BOM wins over any header label: it is byte-level evidence.
+	if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
+		body = body[3:]
+		if !utf8.Valid(body) {
+			return "", fmt.Errorf("fetch web: page has a UTF-8 BOM but is not valid UTF-8; refused rather than returned mojibake")
+		}
+		return string(body), nil
+	}
+	label := charsetLabel(contentType)
+	if isUTF8Family(label) {
+		if !utf8.Valid(body) {
+			return "", fmt.Errorf("fetch web: page is not valid UTF-8 (charset %q); refused rather than returned mojibake", label)
+		}
+		return string(body), nil
+	}
+	enc, _ := charset.Lookup(label) // label is non-UTF-8 and non-empty here; the name return is unused
+	if enc == nil {
+		return "", fmt.Errorf("fetch web: Content-Type charset %q is not a known encoding; refused rather than guessed", label)
+	}
+	decoded, err := enc.NewDecoder().Bytes(body)
+	if err != nil {
+		return "", fmt.Errorf("fetch web: page charset %q could not be decoded: %w", label, err)
+	}
+	// A decoded page may be up to ~3x the raw bound in bytes (one source
+	// byte can widen to three UTF-8 bytes); the raw-bound check above bounds
+	// the page itself, and this bounded blowup needs no second cap.
+	return string(decoded), nil
+}
+
+// charsetLabel extracts the charset parameter from a Content-Type header
+// value; empty when the header is absent or carries no charset.
+func charsetLabel(contentType string) string {
+	if contentType == "" {
+		return ""
+	}
+	_, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return ""
+	}
+	return params["charset"]
+}
+
+// isUTF8Family covers the labels that mean "the bytes are UTF-8 already":
+// the empty label (the UTF-8 fallback), UTF-8's spellings, and ASCII — a
+// strict subset of UTF-8, so the UTF-8 validation below is the right check
+// for it too.
+func isUTF8Family(label string) bool {
+	switch strings.ToLower(strings.TrimSpace(label)) {
+	case "", "utf-8", "utf8", "us-ascii", "ascii", "ansi_x3.4-1968":
+		return true
+	}
+	return false
 }

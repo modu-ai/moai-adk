@@ -48,8 +48,9 @@ type Answerer interface {
 type Result struct {
 	// Status is one of filtered / passthrough / no_match / empty /
 	// fetch_error (REQ-FW-007). fetch_error is produced here only for an
-	// unavailable scoring call — "could not judge" is an error, not a
-	// no_match — and by the page fetcher for transport failures.
+	// unavailable scoring call or one whose answer list is missing a
+	// requested id — "could not judge" is an error, not a no_match (F2,
+	// t1968 sync-audit) — and by the page fetcher for transport failures.
 	Status Status
 	// Blocks are the kept blocks in document order, text verbatim.
 	Blocks []Block
@@ -230,7 +231,16 @@ func stage1(ctx context.Context, stream []Block, global []int, question string, 
 		sink.add(res.StaleCacheWarning)
 		probs := answersByID(res)
 		for _, i := range window {
-			out[i] = probs[fmt.Sprintf("b%d", global[i])]
+			id := fmt.Sprintf("b%d", global[i])
+			p, ok := probs[id]
+			if !ok {
+				// F2 (t1968 sync-audit): an OK response whose answer list
+				// lacks a requested id is a judgment failure — "could not
+				// judge" — not a probability-0 data verdict. Read as a zero
+				// it would surface as no_match (exit 1), hiding the failure.
+				return nil, fmt.Errorf("stage-1 scoring incomplete: no answer for question %s (could not judge, not a no-match)", id)
+			}
+			out[i] = p
 		}
 	}
 	return out, nil
@@ -269,7 +279,14 @@ func stage2(ctx context.Context, stream []Block, streamPos map[int]int, candidat
 		sink.add(res.StaleCacheWarning)
 		probs := answersByID(res)
 		for _, q := range batch {
-			out[posByID[q.ID]] = probs[q.ID]
+			p, ok := probs[q.ID]
+			if !ok {
+				// F2 (t1968 sync-audit), stage-2 leg: a missing answer here
+				// read as 0 would drop the candidate into a misleading
+				// verdict — the same could-not-judge error path as stage 1.
+				return nil, fmt.Errorf("stage-2 scoring incomplete: no answer for question %s (could not judge, not a no-match)", q.ID)
+			}
+			out[posByID[q.ID]] = p
 		}
 	}
 	return out, nil

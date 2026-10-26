@@ -303,6 +303,47 @@ func TestSplitBlocks_ListItemPreAndTableNotFoldedIntoText(t *testing.T) {
 	}
 }
 
+// F3 (t1968 sync-audit): a skipped subtree INSIDE a list item's text (the
+// nested list C2 excludes) must leave a boundary separator, like the chrome
+// branch does — otherwise the text runs on either side merge across the hole
+// ("FirstThird"), losing the word boundary. Document order of the surviving
+// runs is preserved: the item's text reads "First Third" and the nested item
+// stays its own block.
+func TestSplitBlocks_ListItemSkipKeepsWordBoundary(t *testing.T) {
+	html := `<body><ul><li>First<ul><li>Second</li></ul>Third</li></ul></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindListItem, "First Third"},
+		{KindListItem, "Second"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text {
+			t.Errorf("block %d = %s %q, want %s %q (word boundary across the skipped subtree)", i, blocks[i].Kind, blocks[i].Text, w.kind, w.text)
+		}
+	}
+}
+
+// F4 (t1968 sync-audit): chrome exclusion reached collapseText in N3 but not
+// preText — a script/style subtree inside <pre> leaked its raw text into the
+// emitted code block. The subtree is dropped with a boundary separator (the
+// chrome-branch mechanism); the code text either side is unchanged.
+func TestSplitBlocks_ScriptInsidePreIsChrome(t *testing.T) {
+	html := `<body><pre>safe<script>hidden()</script>end</pre></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindCode {
+		t.Fatalf("want one code block, got %d: %+v", len(blocks), blocks)
+	}
+	if got, want := blocks[0].Text, "safe end"; got != want {
+		t.Errorf("code text = %q, want %q (chrome subtree dropped, word boundary kept, code text otherwise verbatim)", got, want)
+	}
+}
+
 // R4 (card t1968 review): only surrounding BLANK LINES are trimmed from a
 // code block; the first real code line keeps its indentation.
 func TestSplitBlocks_CodeFirstLineIndentPreserved(t *testing.T) {

@@ -11,7 +11,10 @@
 //
 // The package never dials anything by itself: the page fetcher takes an
 // injected transport and the scorer takes an Answerer seam, so no test can
-// reach a real endpoint by accident (REQ-FW-010).
+// reach a real endpoint by accident (REQ-FW-010). The one client the package
+// does construct — NewPageClient, for the production call sites — is the
+// SSRF-guarded client (ssrf.go): its dialer refuses non-public addresses and
+// its redirect policy refuses non-HTTP(S) hops.
 package fetchweb
 
 import (
@@ -290,6 +293,12 @@ func collapseText(n *html.Node, skip map[string]bool) string {
 			return
 		}
 		if node.Type == html.ElementNode && skip != nil && skip[node.Data] {
+			// The skipped subtree (a nested list, pre, or table inside a list
+			// item) is emitted as its own block during the descent; the hole
+			// it leaves here needs the same boundary separator the chrome
+			// branch writes, or the text runs on either side merge across it
+			// ("FirstThird" — F3, t1968 sync-audit).
+			b.WriteByte(' ')
 			return
 		}
 		if node.Type == html.TextNode {
@@ -336,11 +345,18 @@ var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table":
 
 // preText extracts a code block's text preserving line structure. Only the
 // surrounding blank lines are trimmed; interior whitespace — including the
-// first real code line's leading indentation — is kept verbatim.
+// first real code line's leading indentation — is kept verbatim. Chrome
+// subtrees (script/style — F4, t1968 sync-audit) are dropped with a boundary
+// separator, the same exclusion collapseText applies; the code text either
+// side of the hole is otherwise untouched.
 func preText(n *html.Node) string {
 	var b strings.Builder
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
+		if node.Type == html.ElementNode && chromeTags[node.Data] {
+			b.WriteByte(' ')
+			return
+		}
 		if node.Type == html.TextNode {
 			b.WriteString(node.Data)
 			return
