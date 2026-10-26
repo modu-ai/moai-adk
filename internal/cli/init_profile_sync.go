@@ -44,6 +44,35 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 	return nil
 }
 
+// userNameUsesAnchor reports whether the `user` node or its `name` node is an
+// alias or carries an anchor.
+func userNameUsesAnchor(doc *yaml.Node) bool {
+	top := doc
+	if top.Kind == yaml.DocumentNode && len(top.Content) > 0 {
+		top = top.Content[0]
+	}
+	child := func(m *yaml.Node, key string) *yaml.Node {
+		if m.Kind != yaml.MappingNode {
+			return nil
+		}
+		for i := 0; i+1 < len(m.Content); i += 2 {
+			if m.Content[i].Value == key {
+				return m.Content[i+1]
+			}
+		}
+		return nil
+	}
+	user := child(top, "user")
+	if user == nil {
+		return false
+	}
+	if user.Kind == yaml.AliasNode || user.Anchor != "" {
+		return true
+	}
+	name := child(user, "name")
+	return name != nil && (name.Kind == yaml.AliasNode || name.Anchor != "")
+}
+
 // clearProjectUserName blanks user.name in the project's user.yaml. SyncToProjectConfig
 // only writes a non-empty name, and a resumed init redeploys no template, so a name
 // the interrupted run left behind would survive an explicit clear (card t1966, F1).
@@ -70,6 +99,14 @@ func clearProjectUserName(projectRoot string) error {
 	}
 	if yaml.Unmarshal(data, &doc) == nil && doc.User.Name == "" {
 		return nil
+	}
+	// yamlpatch does not resolve aliases and edits the anchor node itself, so a
+	// user or user.name node that is an alias or carries an anchor is refused
+	// untouched (card t1966, F8). A file that does not parse has no node tree to
+	// inspect and falls through to the patch as above.
+	var root yaml.Node
+	if yaml.Unmarshal(data, &root) == nil && userNameUsesAnchor(&root) {
+		return fmt.Errorf("clear user name: %s uses YAML anchors/aliases; edit user.name by hand", userPath)
 	}
 	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: ""}}); err != nil {
 		return fmt.Errorf("clear user name: %w", err)

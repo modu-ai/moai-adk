@@ -254,6 +254,46 @@ func TestClearProjectUserName_SyntaxErrorReturnsError(t *testing.T) {
 	}
 }
 
+// F8: yamlpatch does not resolve aliases and edits the anchor node itself, so
+// a user.yaml where user or user.name takes part in an anchor/alias pair is
+// refused untouched instead of patched.
+func assertClearRefusedUntouched(t *testing.T, content string) {
+	t.Helper()
+	path := clearUserNameFixture(t, content)
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	err := clearProjectUserName(root)
+	if err == nil || !strings.Contains(err.Error(), "uses YAML anchors/aliases; edit user.name by hand") {
+		t.Errorf("err = %v, want the anchors/aliases refusal", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != content {
+		t.Errorf("file was modified:\n got %q\nwant %q", got, content)
+	}
+}
+
+func TestClearProjectUserName_SharedAnchorRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "user:\n  name: &identity Alice\n  github_username: *identity\n")
+}
+
+func TestClearProjectUserName_NameAliasRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "base: &identity Alice\nuser:\n  name: *identity\n")
+}
+
+func TestClearProjectUserName_UserAliasRefusedUntouched(t *testing.T) {
+	assertClearRefusedUntouched(t, "base: &identity\n  name: Alice\nuser: *identity\n")
+}
+
+func TestClearProjectUserName_UnrelatedAnchorStillClears(t *testing.T) {
+	path := clearUserNameFixture(t, "other: &x 1\nuser:\n  name: \"Alice\"\n  note: keep\n")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatalf("unrelated anchor: unexpected error %v", err)
+	}
+	got, _ := os.ReadFile(path)
+	if strings.Contains(string(got), "Alice") || !strings.Contains(string(got), "other: &x 1") {
+		t.Errorf("name not cleared or sibling disturbed:\n%s", got)
+	}
+}
+
 // N4: a whitespace-only name is non-empty and is cleared.
 func TestClearProjectUserName_WhitespaceNameIsCleared(t *testing.T) {
 	path := clearUserNameFixture(t, "user:\n  name: \"  \"\n")
