@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -48,6 +49,21 @@ func classify(path string, allowYAML bool) string {
 	return ""
 }
 
+// importFinding judges one import-path literal exactly as it is spelled in the
+// source: strconv.Unquote resolves both the double-quoted and the backtick
+// form, and a literal it cannot resolve is itself a finding, never an allowed
+// import. It returns "" when the import is allowed.
+func importFinding(file, literal string, allowYAML bool) string {
+	path, err := strconv.Unquote(literal)
+	if err != nil {
+		return file + " has an unparsable import path " + literal + ": " + err.Error()
+	}
+	if why := classify(path, allowYAML); why != "" {
+		return file + " imports " + path + ": " + why
+	}
+	return ""
+}
+
 // scanImports parses the import clauses of files and returns one finding per
 // refused import, plus the number of files that were actually parsed.
 func scanImports(t *testing.T, files []string, allowYAML bool) (findings []string, scanned int) {
@@ -60,9 +76,8 @@ func scanImports(t *testing.T, files []string, allowYAML bool) (findings []strin
 		}
 		scanned++
 		for _, imp := range f.Imports {
-			path := strings.Trim(imp.Path.Value, `"`)
-			if why := classify(path, allowYAML); why != "" {
-				findings = append(findings, filepath.Base(file)+" imports "+path+": "+why)
+			if finding := importFinding(filepath.Base(file), imp.Path.Value, allowYAML); finding != "" {
+				findings = append(findings, finding)
 			}
 		}
 	}
@@ -142,6 +157,21 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		}
 	})
 
+	// A literal that cannot be resolved to a path is a finding in its own right:
+	// the scanner must not let an import it cannot read through as allowed.
+	t.Run("unparsable-literal-is-a-finding", func(t *testing.T) {
+		for _, literal := range []string{`"net/http`, "`net/http", `net/http`, `'xy'`, ``} {
+			if importFinding("x.go", literal, false) == "" {
+				t.Errorf("an import literal that does not resolve (%q) was allowed", literal)
+			}
+		}
+		for _, literal := range []string{`"fmt"`, "`fmt`"} {
+			if got := importFinding("x.go", literal, false); got != "" {
+				t.Errorf("the standard-library import %s was refused: %s", literal, got)
+			}
+		}
+	})
+
 	// Mutant probe (run condition N1): each refused import, written into a real
 	// file and fed through the scanner, must produce a finding. A scanner that
 	// silently matched no file, or matched everything, fails here.
@@ -149,25 +179,39 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		cases := []struct {
 			name, imp string
 			allowYAML bool
+			raw       bool // spell the import path as a backtick string literal
 		}{
-			{"net-http", "net/http", false},
-			{"net-rpc", "net/rpc", false},
-			{"net-smtp", "net/smtp", false},
-			{"os-exec", "os/exec", false},
-			{"internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false},
-			{"third-party-http-client", "github.com/go-resty/resty/v2", false},
-			{"yaml-in-recorder", yamlLibrary, false},
-			{"resolver-net-http", "net/http", true},
-			{"resolver-net-rpc", "net/rpc", true},
-			{"resolver-net-smtp", "net/smtp", true},
-			{"resolver-os-exec", "os/exec", true},
-			{"resolver-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", true},
-			{"resolver-third-party-http-client", "github.com/go-resty/resty/v2", true},
+			{"net-http", "net/http", false, false},
+			{"net-rpc", "net/rpc", false, false},
+			{"net-smtp", "net/smtp", false, false},
+			{"os-exec", "os/exec", false, false},
+			{"internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, false},
+			{"third-party-http-client", "github.com/go-resty/resty/v2", false, false},
+			{"yaml-in-recorder", yamlLibrary, false, false},
+			{"resolver-net-http", "net/http", true, false},
+			{"resolver-net-rpc", "net/rpc", true, false},
+			{"resolver-net-smtp", "net/smtp", true, false},
+			{"resolver-os-exec", "os/exec", true, false},
+			{"resolver-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", true, false},
+			{"resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, false},
+			// The same refusals spelled with backticks (sync audit F3): a scanner
+			// that only trims double quotes passes every one of these.
+			{"raw-net-http", "net/http", false, true},
+			{"raw-os-exec", "os/exec", false, true},
+			{"raw-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, true},
+			{"raw-yaml-in-recorder", yamlLibrary, false, true},
+			{"raw-resolver-net-http", "net/http", true, true},
+			{"raw-resolver-os-exec", "os/exec", true, true},
+			{"raw-resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, true},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				file := filepath.Join(t.TempDir(), "mutant.go")
-				src := "package mutant\n\nimport _ \"" + tc.imp + "\"\n"
+				quote := `"`
+				if tc.raw {
+					quote = "`"
+				}
+				src := "package mutant\n\nimport _ " + quote + tc.imp + quote + "\n"
 				if err := os.WriteFile(file, []byte(src), 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -179,12 +223,14 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		}
 		// The yaml library in the resolver file is the one allowed non-stdlib
 		// import: it must NOT be a finding, or the green path is unreachable.
-		file := filepath.Join(t.TempDir(), "ok.go")
-		if err := os.WriteFile(file, []byte("package ok\n\nimport _ \""+yamlLibrary+"\"\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if findings, _ := scanImports(t, []string{file}, true); len(findings) != 0 {
-			t.Errorf("the yaml library is refused in the resolver file: %v", findings)
+		for _, quote := range []string{`"`, "`"} {
+			file := filepath.Join(t.TempDir(), "ok.go")
+			if err := os.WriteFile(file, []byte("package ok\n\nimport _ "+quote+yamlLibrary+quote+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if findings, _ := scanImports(t, []string{file}, true); len(findings) != 0 {
+				t.Errorf("the yaml library is refused in the resolver file (%s quoting): %v", quote, findings)
+			}
 		}
 	})
 }
