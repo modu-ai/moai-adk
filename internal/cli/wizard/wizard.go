@@ -32,11 +32,12 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 //
 // It is the SINGLE init entry point: the former mode-parameterised variant is
 // retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
-// sees the same three pages and no flag changes what is asked.
+// sees the same four pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	// The full 2-page init set (Basic / Agents & Autonomy), the Q5 regroup.
-	// Both pages are unconditional — every user sees them
-	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
+	// The full init set: five questions on four pages (Basic / Agents &
+	// Autonomy / Judgment Capability / Participation). All pages are
+	// unconditional — every user sees them (SPEC-CLI-WIZARD-RESTRUCTURE-001
+	// REQ-WIZ-001/002).
 	questions := InitQuestions(projectRoot)
 
 	// Pre-fill the identity/locale defaults from the caller (profile values).
@@ -45,11 +46,10 @@ func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error
 	// Pre-populate the boolean defaults so Condition funcs and the
 	// non-interactive path see them from the start.
 	result := &WizardResult{
-		LSPEnabled:                true,
-		EnforceQuality:            true,
-		CoverageExemptionsEnabled: false,
-		DesignEnabled:             true,
-		ClaudeDesignEnabled:       true,
+		LSPEnabled:          true,
+		EnforceQuality:      true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
 	}
 
 	// Run wizard with pre-populated result
@@ -93,11 +93,10 @@ func RunWithLocale(questions []Question, styles *Styles, locale string) (*Wizard
 	// claude_design_enabled) hold true even on this entry point (used by
 	// update_wizard.go) where their questions are no longer asked.
 	result := &WizardResult{
-		LSPEnabled:                true,
-		EnforceQuality:            true,
-		CoverageExemptionsEnabled: false,
-		DesignEnabled:             true,
-		ClaudeDesignEnabled:       true,
+		LSPEnabled:          true,
+		EnforceQuality:      true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
 	}
 	if err := runWithResult(questions, styles, locale, result); err != nil {
 		return nil, err
@@ -309,11 +308,25 @@ const selectFieldUsableWidth = 76
 // + every option row) for a select whose OptionsFunc carries the dynamic
 // option set. huh v2 subtracts the title/description rows from this value to
 // size the option viewport, so passing the exact total renders every option
-// with no blank card rows (REQ-ITI-015, AC-ITI-016). The description wrap is
-// recomputed at the usable width so a long description never hides options.
+// with no blank card rows (REQ-ITI-015, AC-ITI-016). The height is fixed when
+// the field is built while the description follows the live locale, so the
+// description rows are taken from the LONGEST wrapped description across the
+// base text and every translated locale (card t1966): a height sized for the
+// English text alone hides options when another locale wraps to more rows.
 func selectHeight(q *Question) int {
-	descLines := lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(q.Description))
+	descLines := wrappedDescriptionRows(q.Description)
+	for locale := range translations {
+		if rows := wrappedDescriptionRows(GetLocalizedQuestion(q, locale).Description); rows > descLines {
+			descLines = rows
+		}
+	}
 	return 1 + descLines + len(q.Options)
+}
+
+// wrappedDescriptionRows is the row count of a description wrapped at the
+// select field's usable width.
+func wrappedDescriptionRows(desc string) int {
+	return lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(desc))
 }
 
 // alignOptionLabels renders one option per label/desc pair with the
@@ -441,17 +454,30 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 		inp = inp.EchoMode(huh.EchoModePassword)
 	}
 
-	if q.Default != "" {
+	// The placeholder advertises the empty-input fallback, which only a required
+	// input applies (see inputValidator); a non-required pre-fill is cleared by
+	// emptying the field, so no placeholder promises otherwise.
+	if q.Default != "" && q.Required {
 		inp = inp.Placeholder(q.Default)
 	}
 
 	// Validation and value storage.
+	inp = inp.Validate(inputValidator(q, result, locale))
+
+	return inp
+}
+
+// inputValidator returns the validate-and-store callback for an input question.
+// Empty input falls back to the question default ONLY for a required input; a
+// non-required input (user_name) stores the empty value, so a pre-filled
+// default can be cleared.
+func inputValidator(q *Question, result *WizardResult, locale *string) func(string) error {
 	qID := q.ID
 	required := q.Required
 	defVal := q.Default
-	inp = inp.Validate(func(val string) error {
+	return func(val string) error {
 		v := strings.TrimSpace(val)
-		if v == "" && defVal != "" {
+		if v == "" && required && defVal != "" {
 			v = defVal
 		}
 		if required && v == "" {
@@ -460,9 +486,7 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 		}
 		saveAnswer(qID, v, result, locale)
 		return nil
-	})
-
-	return inp
+	}
 }
 
 // saveAnswer stores an answer in the result.
@@ -479,6 +503,7 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		return
 	case "user_name":
 		result.UserName = value
+		result.UserNameCleared = value == ""
 	case "project_name":
 		result.ProjectName = value
 	case "development_mode":

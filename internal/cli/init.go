@@ -100,11 +100,10 @@ func init() {
 	// Page-3 non-interactive override flags (REQ-IWE-008).
 	// (--project-mode was removed by SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001:
 	// project.mode had no Go reader.)
-	// Registered false but read with a true default (the LSPEnabled seed in
-	// runInit), so the effective default matches the wizard's lsp_enabled
-	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
-	// still wins.
-	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: true)")
+	// Registered with the same true default the help text states and the wizard's
+	// lsp_enabled seed uses; explicitness is probed with Changed() (see
+	// getBoolFlagWithDefault), so --enable-lsp=false still wins.
+	initCmd.Flags().Bool("enable-lsp", true, "Enable LSP integration (default: true)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 
@@ -234,11 +233,10 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 		opts.DesignEnabled = result.DesignEnabled
 	}
 
-	// coverage_exemptions_enabled is no longer asked (REQ-WIZ-013), so this
-	// result field is permanently zero and the assignment is inert; it is
-	// retained so the wizard→opts mapping stays complete if the question ever
-	// returns.
-	opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
+	// coverage_exemptions_enabled is not asked (REQ-WIZ-013) and has no CLI
+	// flag: opts.CoverageExemptionsEnabled keeps the false the runInit literal
+	// seeds. Card t1966: the inert result→opts copy is removed; a restored
+	// question must reintroduce the mapping with its flag-precedence rule.
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
@@ -255,6 +253,13 @@ func getBoolFlagWithDefault(cmd *cobra.Command, name string, defaultVal bool) bo
 		return defaultVal
 	}
 	return val
+}
+
+// alreadyInitializedError is the shared refusal for a re-run of init on an
+// initialized project: the pre-wizard probe and the executor's validation
+// report it identically.
+func alreadyInitializedError(cause error) error {
+	return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", cause)
 }
 
 // validateInitFlags validates flag values before execution.
@@ -328,6 +333,25 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	llm := getStringFlag(cmd, "llm")
 	if llm != "" && llm != string(agentWiringClaude) {
 		return fmt.Errorf("invalid --llm value %q: must be claude — moai init deploys the claude harness only", llm)
+	}
+
+	// B7: validate --bundles names EARLY — a typo must fail before the deploy,
+	// not after the project is already initialized (where the re-run refuses
+	// with 'already initialized' and the missing install has no path forward).
+	if raw := getStringFlag(cmd, "bundles"); strings.TrimSpace(raw) != "" {
+		cat, catErr := template.LoadEmbeddedCatalog()
+		if catErr != nil {
+			return fmt.Errorf("load catalog for bundle validation: %w", catErr)
+		}
+		var unknown []string
+		for _, name := range parseBundleSelection(raw) {
+			if _, ok := cat.Catalog.OptionalPacks[name]; !ok {
+				unknown = append(unknown, name)
+			}
+		}
+		if len(unknown) > 0 {
+			return fmt.Errorf("invalid --bundles value: unknown bundle(s) %s — valid bundles: run 'moai bundle add --help' or check catalog.yaml", strings.Join(unknown, ", "))
+		}
 	}
 
 	return nil
@@ -559,6 +583,26 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// not be written over a persisted choice (see applyJevFromWizard).
 	wizardRan := false
 
+	// Card t1619 (codex review P2): the resume route is decided before the ensure moves any
+	// state. The ensure reconciles and clears the pending-install journal and fails on a
+	// corrupt user manifest, so a checkpoint read after it would miss the interruption it
+	// exists to detect, and the resume's quarantine would never run. A run with a checkpoint
+	// skips the ensure: the resume runs it under the user lock, after the quarantine.
+	// Card t1966: read before the wizard so the already-initialized probe below can use it.
+	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+
+	// Card t1966: the already-initialized probe runs BEFORE the wizard. An initialized
+	// project that is neither forced nor resumable gets the `moai update` guidance
+	// before any question is asked, instead of after the answers are collected. The
+	// executor's own validation stays the authority for every other case (the probe
+	// only fires on positive evidence, so a validator error falls through to it).
+	if !nonInteractive && isInteractiveStdin() && !getBoolFlag(cmd, "force") && !resuming {
+		if vr, vErr := project.NewValidator(nil).Validate(opts.ProjectRoot); vErr == nil && !vr.Valid &&
+			slices.ContainsFunc(vr.Errors, func(e string) bool { return strings.Contains(e, "already initialized") }) {
+			return alreadyInitializedError(project.ErrProjectExists)
+		}
+	}
+
 	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
 		uikit.PrintBanner(version.GetVersion())
@@ -591,17 +635,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 		if result.UserName != "" {
 			opts.UserName = result.UserName
+		} else if result.UserNameCleared {
+			// Card t1966: an explicit clear drops the profile-supplied name.
+			opts.UserName = ""
 		}
 
-		// Apply wizard results to opts (wizard values override empty flags).
-		// Project name, model policy, and report format are no longer asked on
-		// the init path (SPEC-INIT-QUIET-WIZARD-001): the project name falls to
-		// the directory-name default, the model profile to medium, and the
-		// report format to html+md — the same values a user accepting every
-		// former default received.
-		if opts.DevelopmentMode == "" {
-			opts.DevelopmentMode = result.DevelopmentMode
-		}
+		// Project name, model policy, report format, and development mode are
+		// not asked on the init path (SPEC-INIT-QUIET-WIZARD-001): the project
+		// name falls to the directory-name default, the model profile to medium,
+		// the report format to html+md, and the development mode to tdd (the
+		// --mode flag is its only override; see below) — the same values a user
+		// accepting every former default received. Card t1966: the former
+		// result.DevelopmentMode mapping was dead (never asked) and is removed.
 		// Git mode, provider, and credentials are NOT wizard-supplied on the
 		// init path: mode/provider come from remote detection above, and the
 		// remaining Git values stay flag-fed (--github-username,
@@ -727,26 +772,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// (REQ-TUX2-010/011).
 	executor.SetReporter(newSpinnerReporter(p))
 
-	// B7 (review-fix round 2 addendum): validate --bundle names EARLY — a
-	// typo must fail before the deploy, not after the project is already
-	// initialized (where the re-run refuses with 'already initialized' and
-	// the missing install has no path forward).
-	if raw := getStringFlag(cmd, "bundles"); strings.TrimSpace(raw) != "" {
-		cat, catErr := template.LoadEmbeddedCatalog()
-		if catErr != nil {
-			return fmt.Errorf("load catalog for bundle validation: %w", catErr)
-		}
-		var unknown []string
-		for _, name := range parseBundleSelection(raw) {
-			if _, ok := cat.Catalog.OptionalPacks[name]; !ok {
-				unknown = append(unknown, name)
-			}
-		}
-		if len(unknown) > 0 {
-			return fmt.Errorf("unknown bundle(s) %s — valid bundles: run 'moai bundle add --help' or check catalog.yaml", strings.Join(unknown, ", "))
-		}
-	}
-
 	p.Info("Initializing MoAI project...")
 
 	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
@@ -772,12 +797,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// The marker would create .moai/ before executor.Execute, and validator.go:130 reads
 	// that directory as "already initialized", so the retry of a failed ensure would be
 	// refused. They open after the executor instead (the block below the layout step).
-	// Card t1619 (codex review P2): the resume route is decided before the ensure moves any
-	// state. The ensure reconciles and clears the pending-install journal and fails on a
-	// corrupt user manifest, so a checkpoint read after it would miss the interruption it
-	// exists to detect, and the resume's quarantine would never run. A run with a checkpoint
-	// skips this ensure: the resume runs it under the user lock, after the quarantine.
-	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+	// A run with a checkpoint (resuming, read before the wizard) skips this ensure.
 	if !resuming {
 		if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 			selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
@@ -863,7 +883,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 				flushUpdateNotice(p)
 				return nil
 			}
-			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
+			return alreadyInitializedError(err)
 		}
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
 		// the template walk partway, so files after the failing one were never

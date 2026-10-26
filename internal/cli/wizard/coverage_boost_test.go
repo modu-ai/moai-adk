@@ -162,6 +162,9 @@ func TestBuildInputField_ValidateCallback_EmptyWithDefault(t *testing.T) {
 		ID:      "project_name",
 		Type:    QuestionTypeInput,
 		Default: "my-default-project",
+		// Card t1966: the empty-input default fallback applies to required
+		// inputs only (a non-required pre-fill is clearable).
+		Required: true,
 	}
 
 	field := buildInputField(q, result, &locale)

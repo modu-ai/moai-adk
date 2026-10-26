@@ -13,7 +13,7 @@ import (
 // (.moai/config/sections/user.yaml and language.yaml). The wizard's answers for the
 // user name and the conversation language take precedence over the profile values,
 // the same precedence the template deploy gives opts. A nil wizardResult, or an empty
-// answer, leaves the profile value in place.
+// answer that is not an explicit clear, leaves the profile value in place.
 func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizardResult *wizard.WizardResult) error {
 	if wizardResult != nil {
 		if wizardResult.ConversationLang != "" {
@@ -21,6 +21,9 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 		}
 		if wizardResult.UserName != "" {
 			prefs.UserName = wizardResult.UserName
+		} else if wizardResult.UserNameCleared {
+			// Card t1966: an explicit clear must not re-save the profile name.
+			prefs.UserName = ""
 		}
 	}
 	return profile.SyncToProjectConfig(projectRoot, prefs)
