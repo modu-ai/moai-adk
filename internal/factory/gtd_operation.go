@@ -396,6 +396,17 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 		if owner == "" {
 			return fmt.Errorf("queue item %s carries no runtime assignment for run %s — the authoritative owner is unknown", cardID, runID)
 		}
+		// A run a consolidation retired no longer owns this card: recreating
+		// its row there and flipping the binding back would leave a
+		// non-terminal row in a run that can never be retired and a binding
+		// to a run nobody owns (REQ-FCR-024). The check sits after the queue
+		// adjudication and before the first factory write. It is a separate
+		// read from the writes below, so a consolidation committing between
+		// the two is not excluded — that window is the existing cross-store
+		// gap, narrowed to this one read.
+		if err := db.RefuseIfRetiredByConsolidation(ctx, runID); err != nil {
+			return err
+		}
 		now := time.Now().UTC()
 		card, err := db.LoadCard(ctx, runID, cardID)
 		if errors.Is(err, homestate.ErrCardNotFound) {
