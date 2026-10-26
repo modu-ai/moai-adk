@@ -1050,14 +1050,19 @@ type CardMetadataVerbsConfig struct {
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
-// System One judgment capability (REQ-JEVC-015). It carries a bare Enabled flag
-// and nothing else: the request model alias (jev-latest) and the endpoint URL
-// are compiled constants in internal/jev (the interpreted model id is recorded
-// from each response), so there is no operator-visible knob that could change
-// the alias without a release, and no configuration path by which a request
-// could be aimed somewhere else.
+// System One judgment capability (REQ-JEVC-015) and the per-consumer settings
+// (SPEC-JEV-LEDGER-001). The request model alias (jev-latest) and the endpoint
+// URL are compiled constants in internal/jev (the interpreted model id is
+// recorded from each response), so there is no operator-visible knob that could
+// change the alias without a release, and no configuration path by which a
+// request could be aimed somewhere else. Consumers carries only a mode and a
+// threshold per named consumer; its tolerant decode lives in jev_consumers.go.
 type WorkflowJevConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// Consumers is workflow.jev.consumers: consumer name -> mode and threshold.
+	// No consumer is compiled in this release, so an entry has no effect yet.
+	Consumers JevConsumers `yaml:"consumers"`
 }
 
 // AutonomyConfig mirrors workflow.autonomy.* (SPEC-AUTONOMY-CONTRACT-001
