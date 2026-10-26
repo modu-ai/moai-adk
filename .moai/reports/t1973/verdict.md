@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: d5dc6515f3c3e82dfd37a653eaf6e1ece8a4daf4
+audited_sha: c7d2523a2e8a4d98aaf4c3f43bcccad74c581fb0
 
 # t1973 — lane completion verdict (Class B, reproduce-first)
 
@@ -66,3 +66,22 @@ factory_run_rebind.go:215 (step-5 card_dispatch repoint) is untouched by this ca
 ## Rebinding note (2026-10-27) — audited_sha rebound to the post-absorb HEAD
 
 The audit the verdict records (Round-3 post-absorb check by the sync-auditor, PASS, gate leg rcpt-d8421e7ddc1dc81049d70294) is bound to HEAD `d5dc6515f3c3e82dfd37a653eaf6e1ece8a4daf4` — the absorb merge of origin/main 259dbeec6d (t1976 landing). The absorb's own diff touches exactly AGENTS.md + internal/template/templates/AGENTS.md.tmpl (verified by the sync-auditor and the lane; zero card files), so the audited findings stand unchanged at the new HEAD; this machine line rebinds to it per the merge-evidence rule (audited commit must be HEAD or differ only under .moai/reports/t1973/). Prior binding: a980943254276978c84bdaedf3cd073c317014e2 (round-2 repair commit).
+
+## Round 3 — 2026-10-27 (leader merge-hold: round-2 both-empty refusal broke two main paths; narrowed)
+
+- trigger: leader CI reproduction — round-2 P2 (both-empty evidence refusal) broke `TestLeaderStartConsolidatesDeadOwnerRuns` and `TestFactoryRunsRetireRebindTo/a_operator_moves_the_cards_and_retires_the_source` (legitimate t1963 paths living in main). Reproduced by the lane at tree `64fcc418eb`: `unset GOFLAGS && go test ./internal/cli/ -run 'TestFactoryRunsRetireRebindTo|TestLeaderStartConsolidatesDeadOwnerRuns' -count=1` → exit 1 (`active runs = "run-old,run-new", want exactly run-new`; `err = factory run consolidation refused: card cardB: run run-tgt already holds a assigned row (evidence "", source "") ...`). Round-2 P1 (source-card lease) and round-1 P1 (terminal target) were NOT implicated.
+- commits this round: `324af52281` absorb merge of origin/main `422b51a80d` (t1977 landing; leader-ordered, --no-ff; diff touches docs-site/hugo.toml + internal/template/testdata/binding_ledger.json only — zero card files) → `c7d2523a2e` narrowing fix. No push.
+
+### Narrowing decision + rationale (lane judgment, recorded per leader directive)
+
+The both-empty evidence refusal now applies ONLY when the SOURCE row is in a lease-holding (working) state — `run`, `sync`, `merge-ready`, ... — whose stage/worktree/spec_id an abandon would strand. An evidence-less NON-working source row (`picked` / `assigned` / `needs-decision`) keeps the t1963 abandon-with-pointer dedup the operator-move and leader-start-consolidation paths live on. Distinction axis: the source ROW's state. The run classification cannot distinguish (a consolidation source is always classified dead — step 0 refuses otherwise), and the target row's state cannot either (`picked` appears on both sides of the line). Round-2's RED test is unchanged — its source row is `CardRun`, still refused; new pin test `TestT1973_R3_BothEmptyNonWorkingSourceKeepsAbandon` (picked/assigned/needs-decision) pins the restored abandon from the other side.
+
+### Round-3 evidence
+
+- Reproduced the regression at `64fcc418eb` (exit 1, verbatim above); after the narrowing: the two CLI tests `ok github.com/modu-ai/moai-adk/internal/cli 15.977s` exit 0, and again post-absorb `ok ... 46.662s` exit 0; all t1973 suites `ok github.com/modu-ai/moai-adk/internal/homestate 2.540s` exit 0, post-absorb `ok ... 7.176s` exit 0.
+- Full-package: `go test ./internal/homestate/ -count=1` → `ok github.com/modu-ai/moai-adk/internal/homestate 160.860s` exit 0. The full `internal/cli` suite under the same tree exceeded every local ceiling purely on machine load (1-min load 32-81, memory rule gate ≤32): 10m run and 45m run each ended in `panic: test timed out` with ZERO `--- FAIL` assertion lines — every cli test reached before the alarm passed. A load-gated full cli re-run (waits for load < 32, -timeout 120m) was still in flight at verdict-write time; the leader's origin/main CI owns the repository-wide verdict after landing regardless.
+- Baseline: HEAD re-read immediately before this update (`git rev-parse` → c7d2523a2e8a4d98aaf4c3f43bcccad74c581fb0).
+
+### Gaps (round 3)
+
+- The load-gated full `internal/cli` run had not completed at verdict-write time (machine load above the entry gate); its verdict lands as a follow-up observation, and origin/main CI is the authoritative full-suite verdict after the leader merges the PR.
