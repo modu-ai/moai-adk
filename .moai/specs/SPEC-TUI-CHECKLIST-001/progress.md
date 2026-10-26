@@ -60,6 +60,22 @@ Plan 단계 산출물 작성 완료 (manager-spec, 카드 t1969, Tier L): spec.m
 
 손대지 않은 것(앵커 밖, 다음 감사가 볼 수 있음): design.md §6 의 "지시자 개수가 같아야"(322행)는 AC-TCL-008 의 새 조건보다 약하다. design.md §3.2 항목 경계 문장(109행)은 그대로 두고 §4 에서 건너뜀 항목이 열린 채 바이트를 받지 않음을 적었다. spec.md HISTORY 줄은 이번 위임 범위(version·updated 줄)가 아니라 더하지 않았다. `.moai/config/sections/*.yaml` 을 `:1073` 앞 단계가 읽는지는 따라가지 않았다 — AC-TCL-024 (3a) 가 그 경우를 막힘 보고로 돌린다.
 
+### Plan-phase delta 6 (card t1969, decision record 15.108)
+
+입력: 8회차 plan 감사(`.moai/reports/t1969/plan-audit-verdict-iter8.md`, 감사 HEAD `aee74a15132a4ca72c25df2441473d37418ef1d8`, 차단 N8-1, 선택 N8-2~N8-7). 리더 결정 기록 §15.108 — §15.107 의 예외(차단 결함이 델타 5 가 남긴 잔여 문장이지 새 설계 결함이 아님). REQ·AC id 집합은 그대로(REQ-TCL-001~023, AC-TCL-001~024). spec.md version `0.2.2` → `0.2.3`(`updated` 는 이미 2026-10-27).
+
+hunk:
+- N8-1 (차단) → acceptance.md §F 완료 정의의 AC-TCL-022 항목 한 hunk: M6 삭제 전 기록과 sync 감사의 최종 HEAD 재실행(측정 SHA = 최종 HEAD, 40자)이 **모두** §A 녹색이어야 성립, 기록만으로는 판정하지 않음, 지운 뒤의 `[no tests to run]` 은 판정에 쓰지 않음. AC-TCL-022 본문(계속 발화)과 같은 규칙이다.
+- N8-3 → spec.md frontmatter version 한 줄과 HISTORY v0.2.2(델타 5, §15.107, 커밋 `aee74a1513`)·v0.2.3(이 델타, §15.108) 두 행.
+- N8-4 → design.md §6 "지시자 개수가 같아야" → "(인자 번호, 동사) 목록이 같아야" (한 줄).
+- N8-5 → design.md §3.2 항목 경계 문장 끝에 "호출자가 여는 즉시 `Skip` 으로 닫는 조건부 생략 항목(§4)은 이 규칙 밖" 한 구절 (한 줄).
+- 이 단락 자체(progress.md §E.1).
+
+미룬 것(deferred):
+- N8-2 — 소스 확인: `internal/cli/update_namespace_protect.go:64`·`internal/cli/update_cleanup.go:208` 의 형식은 `2006-01-02T15-04-05Z`(시각 부분 하이픈)라 acceptance.md:208 의 콜론 규칙이 R-2 대상을 잡지 못한다는 지적은 맞다. 미룬 이유: 감사가 두 수리안(정규식 확장 대 이름 변경)을 내놓아 선택이 필요하고, 정규식을 바꾸면 같은 줄의 사실 칸(트리 `eb2a9dfc21` 의 탐침 출력)을 다시 재야 해 한 줄 편집으로 닫히지 않는다. 막힘 규칙(acceptance.md:212)이 조용한 통과를 막는다.
+- N8-6 — spec.md §6 추적표와 plan.md M4 목록 두 파일에 걸친 편집이라 한 줄 기준을 넘는다(조건부 `Skip` 여는 줄을 plan.md M4 에 적는 일도 함께 따라온다).
+- N8-7 — AC-TCL-008 의 번호 규칙을 Go `fmt` 규칙(직전 인자 번호 + 1)으로 바꾸는 것은 테스트의 판정 알고리즘을 바꾸는 AC 본문 결정이라 문구 정렬이 아니다. `%!` 검사가 상당 부분을 받친다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

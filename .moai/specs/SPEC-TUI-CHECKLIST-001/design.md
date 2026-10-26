@@ -106,7 +106,7 @@ func (c *Checklist) Summary(s ChecklistSummary) // 항목 밖 경고 목록 포�
 - **항목이 열려 있지 않을 때** 쓰인 바이트는 즉시, 바꾸지 않고 실제 작성기로 넘긴다. 위저드 전 경고(`init.go:427`), 사용자 자산 보장 출력(`init.go:784`), 세션 워크트리 안내(`init.go:405-423`)가 여기에 해당한다. (update 정체성 띠 `update.go:212-214`, update 종료 블록 `update.go:176` 도 같은 규칙에 들 것이나, update 연결은 [DEFERRED → t1978].)
 - 기존 `ProgressLine` 호출은 그대로 둔다. 세션 작성기는 `*os.File` 이 아니므로 `ProgressLine` 은 비TTY 형태(이스케이프 없는 줄, `internal/tui/progress_line.go:218-224`)로 쓰고, 그 줄이 상세로 접힌다.
 
-**항목 경계(결정 D-10).** 열린 항목은 네 경우에만 닫힌다 — 다음 `Item` 이 열릴 때(암묵 `Done`), `Summary` 가 그려질 때(암묵 `Done`), 세션이 끝날 때(§3.4), 단계 보고기가 실패를 알릴 때(`Fail`, §3.6). 그 밖에는 열린 채로 다음 바이트를 상세로 받는다.
+**항목 경계(결정 D-10).** 열린 항목은 네 경우에만 닫힌다 — 다음 `Item` 이 열릴 때(암묵 `Done`), `Summary` 가 그려질 때(암묵 `Done`), 세션이 끝날 때(§3.4), 단계 보고기가 실패를 알릴 때(`Fail`, §3.6). 그 밖에는 열린 채로 다음 바이트를 상세로 받는다. 호출자가 여는 즉시 `Skip` 으로 닫는 조건부 생략 항목(§4)은 이 규칙 밖이다.
 
 - init: 첫 항목은 `executor.Execute`(`init.go:829`) 안의 첫 보고기 이벤트(`internal/core/project/phase.go:66` `StepStart("Detection", …)`)로 열린다. 요약은 R2(`init.go:1077-1087`)에서 그린다. 그래서 `init.go:829` 앞의 출력(위저드 전 경고 `:411`·`:427`, 취소 `:575`, 자산 보장 `:784`, 남은 스냅숏 판정 `:812`·`:815`)과 요약 뒤의 출력은 넘김 규칙으로 바로 보인다.
 - [DEFERRED → t1978] update: 항목은 템플릿 동기화 안에서만 열린다(`runTemplateSyncWithProgress` `internal/cli/update_template_sync.go:1244` → 본문 `runTemplateSyncWithReporter`). 요약은 본문이 `return nil`(`:1218`) 하기 직전에 그린다. 단계 루프 뒤 꼬리(`:1081-1216` — 진행 막대, 결과 알약 자리, 훅 설치 `:1177`·`:1182`, 배포 모드 기록 `:1211`, 스탬프 검사 `:1216`)는 마지막으로 열린 항목 안에서 돈다. 진행 막대(`:1081`)와 결과 알약(`:1144` `renderUpdateOutcome`)은 세션이 켜져 있으면 그리지 않고 그 데이터를 요약으로 넘긴다(결정 D-6). 템플릿 동기화 밖의 update 출력(`internal/cli/update.go:604` 앞의 미리보기·마이그레이션 줄, 뒤의 무결성 검사 `:631`·참여 질문 `:647`·종료 블록 `:176`, 최종 상태 검증 `update_template_sync.go:1323`)은 열린 항목이 없으므로 넘김 규칙으로 보인다.
@@ -326,7 +326,7 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 
 - `checklist.summary.` 키는 모두 이 카드가 넣는다 — 렌더러의 요약 필드이며(AC-TCL-005 가 update 모양 요약으로 검사) init 이 쓰지 않는 필드(`changed`, `preserved`, `backup`, `recover`)도 렌더러 계약에 속한다.
 - 언어 해석: init 은 위저드 답 또는 프로필 로케일을 쓰고 둘 다 없으면 `en`. ([DEFERRED → t1978] update 는 `.moai/config/sections/language.yaml` 의 `conversation_language`.) 미지원 값은 `Translate` 가 `en` 으로 대체한다(`internal/tui/i18n.go:83-99`).
-- 값에 서식 지시자(`%d`, `%s`)가 있으면 네 카탈로그의 지시자 개수가 같아야 한다(AC-TCL-008 이 비교).
+- 값에 서식 지시자(`%d`, `%s`)가 있으면 네 카탈로그의 (인자 번호, 동사) 목록이 같아야 한다(AC-TCL-008 이 비교).
 - ja·zh 값은 en 값과 달라야 한다. 예외는 식별자만 담은 값(초기 허용 목록: `MCP`)뿐이며, 허용 목록은 AC-TCL-008 테스트 안에 둔다.
 - ja·zh 문구는 이 카드에서 초안을 넣는다. 원어민 검수는 범위 밖이다(spec.md §5, Gap G-5).
 
