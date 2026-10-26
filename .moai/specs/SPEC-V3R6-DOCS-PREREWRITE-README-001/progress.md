@@ -53,7 +53,7 @@ Single sync commit (this commit) carries the 3-phase close: spec.md frontmatter 
 
 sync_complete_at: 2026-10-26
 sync_commit_sha: "96f443c9e9c8518a76dd3058280d11e914c412cf"
-sync_status: completed
+sync_status: complete (3-phase close — run 9655ffb355 + 2956448055, sync close 96f443c9e9, backfill afd26932a6, post-absorb HEAD cb36e91e76)
 b12_self_test_a: not-applicable — CHANGELOG emission forbidden by the release lens for this card (no `[Unreleased]` entry written; pre-emission grep therefore not run)
 frontmatter_status_transitions:
   spec_md_status: draft → completed (merged 3-phase close, single sync commit, owner manager-docs)
