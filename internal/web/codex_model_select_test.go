@@ -39,3 +39,28 @@ func TestCodexModelPinRendersAsSelectWithTerra(t *testing.T) {
 		}
 	}
 }
+
+// TestCodexEffortPinRendersAsSelectWithTerraVocabulary is the effort-side
+// golden (card t1980 scope expansion): the effort pin renders as a select
+// over terra's reasoning.effort vocabulary — none through max — with the
+// empty 'unset' option intact.
+func TestCodexEffortPinRendersAsSelectWithTerraVocabulary(t *testing.T) {
+	f, ok := settings.Field("workflow.audit.codex.effort")
+	if !ok {
+		t.Fatal("workflow.audit.codex.effort missing from the schema")
+	}
+	html := mustRender(t, func(sb *strings.Builder) error {
+		return schemaFieldWidget(pageView{}, f).Render(context.Background(), sb)
+	})
+	if !strings.Contains(html, "<select") {
+		t.Errorf("workflow.audit.codex.effort did not render as a select:\n%s", html)
+	}
+	for _, effort := range []string{"none", "low", "medium", "high", "xhigh", "max"} {
+		if !strings.Contains(html, `value="`+effort+`"`) {
+			t.Errorf("the effort select lost the %q option:\n%s", effort, html)
+		}
+	}
+	if !strings.Contains(html, `value=""`) {
+		t.Errorf("the effort select lost the empty 'unset' option:\n%s", html)
+	}
+}

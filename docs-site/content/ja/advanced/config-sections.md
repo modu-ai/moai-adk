@@ -200,7 +200,7 @@ workflow:
     audit:
         codex:
             model: ""   # 例: gpt-6.1-terra — codex が提供できるモデル id
-            effort: ""  # 例: high — low | medium | high | xhigh | max
+            effort: ""  # 例: xhigh — none | low | medium | high | xhigh | max
         glm:
             model: ""   # 例: glm-5.3
             effort: ""  # 例: max — low | high | max（z.ai の reasoning 状態名）

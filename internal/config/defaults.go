@@ -1778,15 +1778,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				Model:  DefaultClaudeAuditModel,
 				Effort: DefaultClaudeAuditEffort,
 			},
-			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
-			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
-			// neutrality) per operator directive 2026-09-30 — the supersession
-			// is also recorded at the AuditConfig.Codex doc comment
-			// (internal/config/audit_models.go). Unchanged by
-			// SPEC-AGENT-TIER-001.
+			// Codex pin {gpt-6.1-terra, xhigh} (card t1980 scope expansion,
+			// operator directive — supersedes the SPEC-MODEL-MATRIX-UPDATE-001
+			// {gpt-6.1-sol, high} pin, which itself superseded REQ-AMP-005
+			// neutrality per operator directive 2026-09-30). Derived from the
+			// closed-set constants — no inline pin literals here.
 			Codex: ModelEffort{
 				Model:  DefaultCodexAuditModel,
-				Effort: "high",
+				Effort: DefaultCodexAuditEffort,
 			},
 			// GLM pin {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006,
 			// operator directive — SUPERSEDES the t1368 EMPTY GLM pin). The

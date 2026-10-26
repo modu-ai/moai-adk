@@ -146,6 +146,14 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	token := extractProgressToken(req)
+	// Card t1980 scope expansion: the per-call codex effort override rides the
+	// CONTEXT, not a signature change — the backendCallFn seam's parameter list
+	// is fixed by the independence invariant, and the ctx already reaches every
+	// backend. performCodexAudit reads it back and injects it into the leg's
+	// params, where resolveCodexAuditModelEffort applies it over the pin.
+	if codexEffort := req.GetString("codex_effort", ""); strings.TrimSpace(codexEffort) != "" {
+		ctx = withCodexEffortOverride(ctx, codexEffort)
+	}
 	notifyMCPProgress(ctx, token, 0, "audit_multi start - converging the claude/codex/glm backends...")
 	result := runMultiAudit(ctx, claudeVerdict, target, focus, cfg, token)
 	notifyMCPProgress(ctx, token, 1, "audit_multi done - convergence result assembled")

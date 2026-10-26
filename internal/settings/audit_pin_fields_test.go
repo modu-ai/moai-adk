@@ -100,13 +100,19 @@ func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	}
 
 	codexEffort := auditPinField(t, "workflow.audit.codex.effort")
-	want := append([]string{}, v4EffortValues()...)
-	sort.Strings(want)
-	got := optionValues(t, codexEffort)
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("workflow.audit.codex.effort options = %v, want %v (the codex/Claude effort vocabulary)", got, want)
-		}
+	if codexEffort.Type != TypeSelect {
+		t.Errorf("workflow.audit.codex.effort: Type = %v, want TypeSelect (t1980 scope expansion — the effort select sits beside the model select)", codexEffort.Type)
+	}
+	wantEfforts := append([]string{}, config.ValidCodexAuditEfforts()...)
+	sort.Strings(wantEfforts)
+	if gotEfforts := optionValues(t, codexEffort); !slices.Equal(gotEfforts, wantEfforts) {
+		t.Errorf("workflow.audit.codex.effort options = %v, want %v (terra reasoning.effort vocabulary — NOT the claude v4 set)", gotEfforts, wantEfforts)
+	}
+	if !codexEffort.Validate("none") || !codexEffort.Validate("xhigh") {
+		t.Error("workflow.audit.codex.effort validator rejected a terra vocabulary member (none/xhigh)")
+	}
+	if codexEffort.Validate("sentinel-not-an-effort") {
+		t.Error("workflow.audit.codex.effort validator accepted a non-member effort")
 	}
 
 	glmModel := auditPinField(t, "workflow.audit.glm.model")

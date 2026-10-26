@@ -200,7 +200,7 @@ workflow:
     audit:
         codex:
             model: ""   # 如 gpt-6.1-terra — codex 可提供的模型 id
-            effort: ""  # 如 high — low | medium | high | xhigh | max
+            effort: ""  # 如 xhigh — none | low | medium | high | xhigh | max
         glm:
             model: ""   # 如 glm-5.3
             effort: ""  # 如 max — low | high | max（z.ai 的 reasoning 状态名）

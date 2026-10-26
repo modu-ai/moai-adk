@@ -71,7 +71,8 @@ func TestCodexAuditPin_UnservableFallsBackToBackendDefault(t *testing.T) {
 
 // Edge case (§D.2) — effort set with an EMPTY model is no pin (the model is
 // the gate): resolution falls through to the audit terminal fallback
-// ({gpt-6.1-sol, high} per REQ-MMU-001 — previously "no model, no effort").
+// ({gpt-6.1-terra, xhigh} since the card t1980 scope expansion — previously
+// "no model, no effort").
 func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, "workflow:\n  audit:\n    codex:\n      model: \"\"\n      effort: high\n")
@@ -119,10 +120,61 @@ func TestCodexAuditPin_ExplicitModelOverridesPin(t *testing.T) {
 	}
 }
 
+// Card t1980 scope expansion — an explicit caller `effort` argument outranks
+// the pinned effort (the per-call override that makes `max` selectable per
+// invocation), exactly as the explicit `model` argument does above. The pinned
+// model is untouched by an effort-only override.
+func TestCodexAuditPin_ExplicitEffortOverridesPin(t *testing.T) {
+	root := t.TempDir()
+	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
+	sess := withCodexSession(t, codexSessionScript("clean"))
+
+	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
+		"prompt": "review this",
+		"effort": "max",
+		"cwd":    root,
+	}); err != nil {
+		t.Fatalf("audit rpc: %v", err)
+	}
+
+	turn := sentParams(t, sess.sent, 2)
+	if got, _ := turn["effort"].(string); got != "max" {
+		t.Errorf("turn/start effort = %q, want the explicit override %q", got, "max")
+	}
+	if got, _ := turn["model"].(string); got != "gpt-6.1-sol" {
+		t.Errorf("turn/start model = %q, want the pinned %q (an effort-only override must not move the model)", got, "gpt-6.1-sol")
+	}
+}
+
+// Card t1980 scope expansion — the effort override also applies on the
+// terminal-fallback arm (absent pin): the caller's effort lands on the
+// fallback pin's model instead of being dropped.
+func TestCodexAuditPin_ExplicitEffortOverridesFallback(t *testing.T) {
+	root := t.TempDir() // no workflow.yaml → the terminal fallback arm
+	sess := withCodexSession(t, codexSessionScript("clean"))
+
+	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
+		"prompt": "review this",
+		"effort": "max",
+		"cwd":    root,
+	}); err != nil {
+		t.Fatalf("audit rpc: %v", err)
+	}
+
+	turn := sentParams(t, sess.sent, 2)
+	if got, _ := turn["effort"].(string); got != "max" {
+		t.Errorf("turn/start effort = %q, want the explicit override %q on the fallback arm", got, "max")
+	}
+	if got, _ := turn["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("turn/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
+	}
+}
+
 // AC-AMP-003 states (a)/(b), retargeted by SPEC-MODEL-MATRIX-UPDATE-001
 // REQ-MMU-001 — no pin sub-keys / absent workflow.yaml: the audit path lands
-// on the terminal fallback pin {gpt-6.1-sol, high} (previously the byte-free
-// legacy shape; the task path still resolves pin-free — REQ-AMP-008).
+// on the terminal fallback pin ({gpt-6.1-terra, xhigh} since the card t1980
+// scope expansion; previously the byte-free legacy shape; the task path still
+// resolves pin-free — REQ-AMP-008).
 func TestCodexAuditPin_AbsentPinLandsOnDefaultPin(t *testing.T) {
 	root := t.TempDir() // no workflow.yaml, no llm.yaml → the terminal fallback applies
 	sess := withCodexSession(t, codexSessionScript("clean"))

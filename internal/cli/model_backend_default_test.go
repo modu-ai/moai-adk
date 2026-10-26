@@ -38,8 +38,8 @@ func TestCodexResolution_IgnoresPerAgentLLMCells(t *testing.T) {
 	// (REQ-AMP-005 neutrality superseded by operator directive 2026-09-30).
 	if got, gotErr := resolveCodexAuditModelEffort(map[string]any{"cwd": root}); gotErr != nil {
 		t.Fatalf("resolveCodexAuditModelEffort: %v", gotErr)
-	} else if got != (config.ModelEffort{Model: "gpt-6.1-sol", Effort: "high"}) {
-		t.Errorf("codex audit without pin = %+v, want {gpt-6.1-sol high}", got)
+	} else if got != (config.ModelEffort{Model: "gpt-6.1-terra", Effort: "xhigh"}) {
+		t.Errorf("codex audit without pin = %+v, want {gpt-6.1-terra xhigh} (card t1980 scope expansion)", got)
 	}
 	// An explicit caller model still wins, sent verbatim.
 	if got := resolveCodexModelEffort(map[string]any{"cwd": root, "model": " gpt-6.1-sol "}); got != (config.ModelEffort{Model: "gpt-6.1-sol"}) {

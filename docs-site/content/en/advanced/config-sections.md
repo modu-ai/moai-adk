@@ -200,7 +200,7 @@ workflow:
     audit:
         codex:
             model: ""   # e.g. gpt-6.1-terra — a codex-servable model id
-            effort: ""  # e.g. high — low | medium | high | xhigh | max
+            effort: ""  # e.g. xhigh — none | low | medium | high | xhigh | max
         glm:
             model: ""   # e.g. glm-5.3
             effort: ""  # e.g. max — low | high | max (z.ai reasoning-state names)

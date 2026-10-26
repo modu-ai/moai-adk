@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -132,16 +133,20 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 }
 
 // TestValidCodexAuditModelsClosedSet pins the codex audit model closed set
-// (card t1980): the runtime default stays first, terra joins as a selectable
-// member, and the set carries no duplicates — the schema derives its options
-// and validator straight from this accessor, so a duplicate would render twice.
+// (card t1980 + its scope expansion): the default is gpt-6.1-terra and comes
+// first, gpt-6.1-sol survives the default flip as a literal member, and the
+// set carries no duplicates — the schema derives its options and validator
+// straight from this accessor, so a duplicate would render twice.
 func TestValidCodexAuditModelsClosedSet(t *testing.T) {
 	got := ValidCodexAuditModels()
 	if len(got) == 0 || got[0] != DefaultCodexAuditModel {
 		t.Errorf("ValidCodexAuditModels() = %v, want the runtime default %q first", got, DefaultCodexAuditModel)
 	}
-	if !containsString(got, "gpt-6.1-terra") {
-		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra as a member (card t1980)", got)
+	if got[0] != "gpt-6.1-terra" {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra as the default first (card t1980 scope expansion)", got)
+	}
+	if !containsString(got, "gpt-6.1-sol") {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-sol as a member after the default flip", got)
 	}
 	seen := map[string]bool{}
 	for _, id := range got {
@@ -150,8 +155,20 @@ func TestValidCodexAuditModelsClosedSet(t *testing.T) {
 		}
 		seen[id] = true
 	}
-	if got[len(got)-1] != "gpt-6.1-terra" {
-		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra appended last (newest id last)", got)
+}
+
+// TestValidCodexAuditEffortsClosedSet pins the codex effort closed set
+// (card t1980 scope expansion): terra's reasoning.effort vocabulary
+// (none|low|medium|high|xhigh|max) — NOT the Claude v4 vocabulary the claude
+// pin keeps — with the xhigh default a member.
+func TestValidCodexAuditEffortsClosedSet(t *testing.T) {
+	got := ValidCodexAuditEfforts()
+	want := []string{"none", "low", "medium", "high", "xhigh", "max"}
+	if !slices.Equal(got, want) {
+		t.Errorf("ValidCodexAuditEfforts() = %v, want %v (terra reasoning.effort vocabulary)", got, want)
+	}
+	if containsString(got, DefaultCodexAuditEffort) == false || DefaultCodexAuditEffort != "xhigh" {
+		t.Errorf("DefaultCodexAuditEffort = %q, want xhigh as a set member", DefaultCodexAuditEffort)
 	}
 }
 
