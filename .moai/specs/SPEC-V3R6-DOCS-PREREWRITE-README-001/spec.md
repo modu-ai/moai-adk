@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-README-001
 title: "Docs Pre-Rewrite README — stale citations, Q8 badge rollback to v3.1.2, and the CG retirement paragraphs in the four README files (card t1720)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-26
 updated: 2026-10-26
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, SPEC-V3R6-DOCS-PREREWRITE
 |------|---------|--------|--------|
 | 2026-10-26 | 0.1.0 | manager-spec | Initial plan-phase authoring for card t1720 (Class C, docs-only), child README of SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (umbrella split, operator decisions `d-20261014T055241Z-1bc6` and `d-20261014T060405Z-0fcd`). Ownership imported from the pre-revision umbrella at commit `bdb7b764` by path and SHA (umbrella spec.md child table; acceptance.md cells E-01 to E-04, E-08, E-08b, E-20a, E-20b, E-20c; decision-index.md rows Q1, Q8, Q13, Q17). Every RED-now figure was re-measured on THIS tree, commit `cb30e05b3e` (full `cb30e05b3e5f64774b8dabd87e80c24332f4551d`, tree object `9c08830bdec23b81334840307ee745e468500174`); no umbrella figure is carried over. Q8 is resolved for this card by the leader lens (dispatch to lane-14, 2026-10-26) plus fresh measurement; it is recorded as a leader-lens resolution, not an operator verdict. Status `draft`. |
 | 2026-10-26 | 0.1.1 | manager-spec | Repair per plan-audit verdict FAIL 0.88 at commit `5fe7d20f46` (card t1720; verdict at `.moai/reports/t1720/plan-audit-verdict.md`, gitignored). D1 (critical): REQ-README-004 now carries an explicit named exception for the line-24 Release badge of the four READMEs (authority: REQ-PRC-003 / Q8) — previously the pair REQ-PRC-003 vs REQ-README-004 was unsatisfiable. D2/D3 (major) are repaired in acceptance.md (destination-form link cells with fresh RED-now on `5fe7d20f46`; parent-diff same-commit assertion) and mirrored in plan.md. No requirement added or removed; status stays `draft`. |
+| 2026-10-26 | 0.1.2 | manager-spec | Repair per plan-audit iter3 verdict FAIL 0.88 at commit `0412f03771` (card t1720; verdict at `.moai/reports/t1720/plan-audit-verdict-iter3.md`, gitignored; codex receipt `rcpt-bbd227b78fd24413a7a2389c`). D5 (major, blocking, ac-wording): the README-side link-form expectation moves from the docs-site root-relative form to the README's own measured absolute form `](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/)` (README.ko.md: 29/29 docs-site link lines absolute, zero root-relative). REQ-README-002 itself is form-neutral and unchanged. Repairs live in acceptance.md (R-08b-r1 cell, AC-PRC-004-r When-clause/done-when, §D row) and plan.md (M4). No requirement added or removed; status stays `draft`. |
 
 ## 1. Overview (WHY)
 
