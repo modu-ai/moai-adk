@@ -1332,7 +1332,9 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		if err := factoryLeaseBeforeClaim("b2", it.ID); err != nil {
 			return homestate.Card{}, false, false, err
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, hubFields(it.ID))
+		fields := hubFields(it.ID)
+		fields.SpecID = factoryCreationSpecField(it)
+		return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane, fields)
 	}
 	// (c) the highest-ranked eligible queued card (REQ-TCD-007/-008). The
 	// queue is kept sorted by classification inside the add's locked write
@@ -1419,6 +1421,11 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			// Reuse the assignment unchanged, then re-select through arm (a).
 			// Hub hints are creation inputs, not edits to an assigned row.
 			fields = homestate.CardFields{}
+		}
+		if promotedRow == nil {
+			if it, ok := queueItemIn(queueRec, promoted); ok {
+				fields.SpecID = factoryCreationSpecField(it)
+			}
 		}
 		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane, fields)
 	case sawQueued > 0:
@@ -1527,6 +1534,18 @@ func factoryPriorWorktreeReusable(ctx context.Context, root, cardID, path string
 		return true
 	}
 	return sameDirPath(path, filepath.Join(root, sessionWorktreeSubdir, cardID))
+}
+
+// factoryCreationSpecField returns the record-creation SpecID for a queue
+// item: the item's spec when well-formed (the row-level validation would
+// accept it), nil otherwise — a malformed queue spec keeps today's behavior
+// (no propagation, no new claim refusal). Creation-input only: callers gate
+// on "no row exists", mirroring factoryGeneratedHubFields's t1533 rule.
+func factoryCreationSpecField(item factory.BacklogItem) *string {
+	if item.SpecID == nil || !homestate.ValidSpecID(*item.SpecID) {
+		return nil
+	}
+	return item.SpecID
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
@@ -2183,6 +2202,9 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	// tail drifts as the chain moves, and overwriting with it re-ordered a
 	// bundle member against its own stored chain.
 	hubHint := factoryGeneratedHubFields(factoryHubChainFields(queueRec, hubRows, cardID, nil), nom.row)
+	if nom.row == nil {
+		hubHint.SpecID = factoryCreationSpecField(nom.item)
+	}
 
 	// A claim that neither leased nor errored lost a race (the same signal the
 	// unnominated arms re-select on); an error is a failure of the claim.
