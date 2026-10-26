@@ -85,7 +85,7 @@ Every Go milestone's first failing run was captured before its implementation ex
 
 ## §E.4 Sync-phase Audit-Ready Signal
 ```yaml
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; backfilled in the next commit
+sync_commit_sha: be1e8b7e2c   # D3 backfill — the sync commit carrying the implemented → completed 3-phase close (formatting follow-up 3357a04833)
 sync_complete_at: 2026-10-27
 sync_status: complete
 ac_source: .moai/specs/SPEC-FETCH-WEB-001/acceptance.md   # tier M
