@@ -133,10 +133,18 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 					ErrRebindRefused, ErrRunOwnerNotDead, src.RunID, o.Classification, src.Classification, src.Basis)
 			}
 		case tgt.RunID:
+			// The target's fresh classification is applied, not discarded: a
+			// dead owner leaves the row's stamp unchanged, so requireRunStamp
+			// inside the transaction cannot see it (REQ-FCR-020, step 2).
+			if o.Classification != OwnerLive {
+				return RebindResult{}, rebindRefusal("target run %s owner classified %s on re-classification before the transaction, a consolidation target must be live", tgt.RunID, o.Classification)
+			}
 		default:
 			others[o.RunID] = o
 		}
 	}
+	// A target missing from the active set (retired or deleted since
+	// classification) is refused by requireRunStamp inside the transaction.
 
 	now := time.Now().UTC()
 	tx, err := f.DB.BeginTx(ctx, nil)
