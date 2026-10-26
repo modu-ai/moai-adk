@@ -180,7 +180,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 07fc4b93f3, M2 fe227a31c1
 ```yaml
 sync_status: complete-pending-audit
 sync_complete_at: 2026-10-27
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the lane backfills the real SHA in the next commit
+sync_commit_sha: d4eff5d8a31619abd4f83fe1d22d05be9f828905   # the single sync commit; backfilled by the lane in the next commit (a commit cannot cite its own hash)
 sync_scope: auto                    # sync-coverage-scope-contract.md
 coverage_scope: SPEC-JEV-LEDGER-001 only (CHANGELOG.md [Unreleased] entry, spec.md frontmatter status/updated, this section); no code, no docs-site, no README change (no user-facing documentation surface is touched by this SPEC)
 tier: M
