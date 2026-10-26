@@ -553,11 +553,69 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - The `tableSeq` fallback for stray rows outside any table is unreachable via `html.Parse` tree construction (noted in-code as a safe default) — dead-by-construction, not a defect.
 - The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
 
+## iter9 Verdict
+
+**PASS-WITH-DEBT — aggregate 0.94** (harmonic mean of 95 / 95 / 94 / 94). L1-L3 all repaired and verified first-hand: the three landed tests PASS verbosely in this run, plus my own independent transient probe at a shape the landed tests do not carry (a 3-question rotation — a fix that SORTED answers by id instead of following the request order would pass the landed 2-question shape and fail mine). The RED half is confirmed structurally from the delta diff itself (the reassembly call, the `Missing` field + `failed := !has ||`, and the `NoticeLine` merge branch are all `+` lines of this delta — none existed at the base) and by the leader's codex FAIL receipt `rcpt-1f237e20766e840bf4215190` @77dff44edf; I did not re-run a runtime RED at the base (see Gaps). No new findings. The required codex backend returned **pass** with zero findings on the delta (fresh receipt below). FW-D2 (the one carried debt) and R2 (optional) stand undisposed — hence PASS-WITH-DEBT rather than PASS. Must-pass firewall: Functionality and Security both PASS; convergence `overall_verdict: pass`.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @4990b6e99e) |
+|---|---|---|---|---|
+| Functionality | 40% | 95 | PASS | Landed tests: `--- PASS: TestCache_HitReassemblesAnswersToCurrentRequestOrder (0.01s)`, `--- PASS: TestCache_StaleServeNoticeLineCarriesBothFacts (0.00s)` (jev), `--- PASS: TestCompareRun_MissingRunExcludedFromSavings (0.00s)` (jevmeasure); my probe `--- PASS: TestAuditProbe9_CacheHitOrderRotation3 (0.01s)` (3-question rotation, 0 network calls, identity-preserved probabilities; transient file, deleted, `git status --short` = 0 lines); `go test -count=1 ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → `ok ... 0.350s` / `ok ... 0.784s` / `ok ... 1.733s` (full R/N/C/F + iter4-8 landed set inside these packages). |
+| Security | 25% | 95 | PASS | Zero security surface in the delta: `git show --stat 5a150e2ee1` → exactly `internal/jev/cache_test.go`, `internal/jev/jev.go`, `internal/jevmeasure/bench.go`, `internal/jevmeasure/bench_test.go` — no fetch/ssrf/net/auth/secret file; `git diff --name-only 2a1898ea22...HEAD -- go.mod go.sum` → 0 files. The change is in-memory answer reassembly, a notice-string merge, and comparison marking. |
+| Craft | 20% | 94 | PASS | `go test -count=1 -cover ./internal/jev/... ./internal/jevmeasure/... ./internal/fetchweb/...` → `ok ... internal/jev 1.771s coverage: 90.7%` / `ok ... internal/jevmeasure 0.899s coverage: 93.4%` / `ok ... internal/fetchweb 0.409s coverage: 96.0%` (jev 91.2→90.7: new statements, all above threshold); `golangci-lint run internal/jev/... internal/jevmeasure/... internal/fetchweb/...` → `0 issues.`; `gofmt -l` → 0 files; one test per repair, each asserting the failure mode the leader named. |
+| Consistency | 15% | 94 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`; repairs follow the established in-code citation family (`L1/L2/L3, t1968 leader audit` + rationale, matching `N1/N2/C4/iter6` style already in these files); Conventional Commit `fix(SPEC-FETCH-WEB-001): leader-audit L1-L3 repairs (card t1968)`; boundaries intact: template (`537cfac148..HEAD`) / jevledger (`2a1898ea22...HEAD`) → 0 files each; SPEC dir 0 files across the delta — the leader's anchor "since dc991bfb9f" is off by one docs commit (see dispositions). |
+
+## iter9 dispositions — the enumerated delta (L1-L3 + regression micro-sweep)
+
+- **L1 — REPAIRED, verified first-hand at two shapes.** The hit path now sets `served.Answers = answersInRequestOrder(req.Questions, served.Answers)` (jev.go:685 region; identity by question ID from the cached entry, sorted tail matching `fromWire`). Landed probe (the leader's exact spec): [q1,q2] primed → [q2,q1] request served with 0 network calls, answers `[q2 q1]`, probabilities `[0.1 0.9]` — order follows the CURRENT request, values keep their own identity. My independent probe P9: [q1,q2,q3] primed (p 0.9/0.5/0.1) → [q3,q1,q2] request → 0 network calls, order exactly `[q3 q1 q2]`, probabilities `[0.1 0.9 0.5]` — a sort-by-id fix would have failed this shape. RED structural: the reassembly call is a `+` line of this delta; at base the stored slice was positionally reused.
+- **L2 — REPAIRED, surface confirmed by source read.** `NoticeLine()` now returns `r.Notice + " " + r.StaleCacheWarning` when both are set (jev.go:309-311); the one-line budget no longer drops the staleness warning. `handleJevAsk` surfaces it: mcp_jev.go:128 `if notice := res.NoticeLine(); notice != ""` → `out["notice"] = notice` — the merged line reaches the MCP consumer through the existing single key. The landed test proves the scenario is REACHABLE end-to-end: through public `Ask`, a fresh client's stale serve asserts `res.Notice != "" && res.StaleCacheWarning != ""` before checking the merged line carries both, stays one line, no `\n`.
+- **L3 — REPAIRED.** `CompareRun` marks `Missing: !has` on the row, treats `failed := !has || fetch_error`, so the missing case carries no savings figure and is excluded from the mean; `DiffAgainstBaseline` FAILs it per the existing contract. Landed test (the leader's exact spec: baseline 2 cases, run file 1): `byID["absent-quote"].Missing == true`, `SavingsRate == 0` (not the bogus 1.0 from zero output tokens), mean == exactly the present case's rate, and the diff row for the missing case is not `Pass`. RED structural: at base `run := runByID[c.ID]` yielded a zero `CaseRun` whose empty status is not `fetch_error` → SavingsRate 1 aggregated into the mean.
+- **Regression micro-sweep — green.** `go test -count=1 ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → 3× `ok` (covers the full landed repair set R/N/C/F + iter4-8, incl. the R1 tableStack trio and all jev guards — the jev package suite is the guard set). Graded trio + MCP parity filter in `internal/cli` → `ok github.com/modu-ai/moai-adk/internal/cli 1.209s`. spec-lint clean; lint `0 issues.`; gofmt 0; boundary diffs (template, jevledger, go.mod/go.sum) all 0 files. **Head docs-only confirmed**: `4990b6e99e` → `.moai/reports/t1968/progress.md +2` only; `c513f6e135` → `progress.md +2` only; the repair itself is exactly `5a150e2ee1` with the 4-file Go set. **SPEC-dir anchor**: unchanged across the audited delta (`77dff44edf..HEAD` → 0 files) — but the leader's stated anchor "unchanged since `dc991bfb9f`" is off by one docs commit: `e97c0b86f6` (§E.1 bare audit_ready signal) touched the SPEC dir after `dc991bfb9f`, landed between iter8's audit and the delta base — before this audit window opened; docs-only, pre-window, recorded as a Gap note, not a defect.
+
+## iter9 Findings
+
+None new. Standing (both previously dispositioned, recorded, leader-visible):
+
+- **R2** [P3] [optional] pre-heading half of a merged text-only aside run rides the post-heading path — optional run-split refinement, unchanged from iter7/iter8, not a debt.
+- **FW-D2** [debt] [optional-blocking: no] three plan-debt rows rest on probe-based RED with no behavior surface claimed beyond iter1-6 verification — the one carried debt that keeps this verdict PASS-WITH-DEBT rather than PASS.
+
+## iter9 Cross-model convergence (audit_multi, target=baseBranch, delta_base=77dff44edf, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered, verdict pass, zero findings)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-f438401be548c17313d4f773` (fresh, minted this run after the last code commit)
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base 77dff44edfce784b1cc27fc00734f00ccb130a52: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**This verdict is not final until the orchestrator's convergence check passes.**
+
+## iter9 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — L1-L3 are repaired without collateral damage, and the delta introduces no new defect.** Evidence: 3/3 landed L1/L2/L3 tests `--- PASS` verbatim + my independent rotation probe `--- PASS` (probe file `zz_audit_probe9_test.go` transient: created, run, deleted; `git status --short` → 0 lines after); 3× package `ok`; cli trio+parity `ok`; coverage 96.0/93.4/90.7; lint/gofmt/spec-lint clean; convergence digest above. Baseline: this run, this tree @4990b6e99ed0b59256414061de29514b05b59237; delta measured `77dff44edfce784b1cc27fc00734f00ccb130a52..HEAD`.
+
+**Gaps (explicitly NOT observed):**
+- Pre-repair RED at `77dff44edf` was not re-run by my own runtime probe (would require leaving the audited tree); RED rests on the delta diff's structure (all three fixes are `+` lines absent at base) plus the leader's codex FAIL receipt `rcpt-1f237e20766e840bf4215190`.
+- The leader's SPEC-dir anchor ("unchanged since `dc991bfb9f`") is off by `e97c0b86f6` (docs-only, pre-window); the substantive invariant — SPEC unchanged across the audited delta — was verified directly (0 files).
+- Full `internal/cli` suite not run here (unchanged from iter1-8; owned by integration-branch CI; the delta does not touch cli).
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-8.
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- FW-D2 (R8-R10 probe-based RED) — the carried debt; recorded and leader-visible, not blocking.
+- R2 optional refinement (above).
+- `answersInRequestOrder`'s sorted-tail branch (answers for ids the request did not carry) is unreachable through `Ask`'s cache-hit path — the cache key pins the question set, so a hit implies the same id set — defensive determinism matching `fromWire`'s documented tail; dead-by-cache-key, not a defect.
+- Untested territory unchanged from iter3-8: CDATA-era HTML, exotic framesets, proxy-required egress.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+
 ## Iteration history (cont.)
 
 - iter8 (this audit): delta PASS-WITH-DEBT 0.94 — R1 repaired (tableStack innermost-open-table binding) and verified by 5 auditor probes incl. 2 shapes beyond the landed tests; regression micro-sweep green (18-test aside suite, trio 96.0/91.2/93.4, spec-lint, lint, gofmt, vet); required codex pass, zero findings (rcpt-94ccecd0f4cbbaa586b35b14, re-minted after the stop-guard refused the pre-window first receipt rcpt-2c6c39d7e57a89bd41cd065d; identical verdict on re-run); no new findings; FW-D2 carried as the named debt, R2 optional.
+- iter9 (this audit): leader-delta PASS-WITH-DEBT 0.94 (delta_base 77dff44edf) — L1-L3 repaired and verified first-hand (3 landed tests + auditor 3-question rotation probe, RED structural from the delta diff + leader codex FAIL receipt rcpt-1f237e20766e840bf4215190); micro-sweep green (3 pkgs ok, trio+MCP parity ok, cov 96.0/93.4/90.7, lint/gofmt/spec-lint clean, boundary diffs 0); head docs-only confirmed (4990b6e99e, c513f6e135; repair = 5a150e2ee1, 4-file Go set); SPEC dir 0 files across the delta — leader anchor "since dc991bfb9f" off by e97c0b86f6 (docs-only, pre-window, named as Gap); required codex pass zero findings rcpt-f438401be548c17313d4f773; no new findings; FW-D2 carried as the named debt, R2 optional.
 
 verdict: PASS-WITH-DEBT
-audited_sha: 76af1129afa2b99ecd377b4f1c2a24faa09b0b06
+audited_sha: 4990b6e99ed0b59256414061de29514b05b59237
 
-AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-94ccecd0f4cbbaa586b35b14
+AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-f438401be548c17313d4f773
