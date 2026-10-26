@@ -66,7 +66,16 @@ type CardMetadataEvent struct {
 	// ClassifiedAt is the classification stamp a reclassify write used
 	// (empty on set-spec rows and on catch-up attestations).
 	ClassifiedAt string
+	// Source names where a rebind-evidence value came from — EvidenceSourceVerdict
+	// or EvidenceSourceLanding (card t1962); empty on every other verb's rows.
+	Source string
 }
+
+// The evidence sources a rebind-evidence audit row records.
+const (
+	EvidenceSourceVerdict = "verdict"
+	EvidenceSourceLanding = "landing"
+)
 
 // cardMetadataPayload is the JSON payload column's shape.
 type cardMetadataPayload struct {
@@ -77,6 +86,7 @@ type cardMetadataPayload struct {
 	New          string `json:"new"`
 	Reason       string `json:"reason"`
 	ClassifiedAt string `json:"classified_at,omitempty"`
+	Source       string `json:"source,omitempty"`
 }
 
 // RecordCardMetadataEvent appends exactly one audit row after both stores
@@ -107,6 +117,7 @@ func (f *FactoryDB) appendCardMetadataRow(ctx context.Context, ev CardMetadataEv
 	payload, err := json.Marshal(cardMetadataPayload{
 		Actor: ev.Actor, Session: ev.Session, Field: ev.Field,
 		Old: ev.Old, New: ev.New, Reason: ev.Reason, ClassifiedAt: ev.ClassifiedAt,
+		Source: ev.Source,
 	})
 	if err != nil {
 		return err
@@ -320,9 +331,10 @@ func (f *FactoryDB) SetCardStageEvidence(ctx context.Context, runID, cardID, sta
 
 // SetCardEvidenceSHA is the rebind-evidence record layer (card t1930 defect ④):
 // a version-fenced mutation of evidence_sha alone. The VALUE this lands must
-// come from ResolveRebindEvidence — the newest verdict file's audited_sha —
-// never from the caller's own input; the record layer cannot enforce that
-// provenance, so the verb does.
+// come from ResolveRebindEvidence (the newest verdict file's audited_sha) or,
+// when the verdict path refuses, ResolveLandedEvidence (the operator-recorded
+// landing commit, card t1962) — never from the caller's own input; the record
+// layer cannot enforce that provenance, so the verb does.
 func (f *FactoryDB) SetCardEvidenceSHA(ctx context.Context, runID, cardID, sha string, expectedVersion int64, now time.Time) (Card, error) {
 	if strings.TrimSpace(sha) == "" {
 		return Card{}, fmt.Errorf("%w: evidence sha is required", ErrInvalidCardInput)
@@ -337,9 +349,10 @@ func (f *FactoryDB) SetCardEvidenceSHA(ctx context.Context, runID, cardID, sha s
 // rule readAuditVerdict uses: highest -iter number, then latest mtime) and
 // returns the FULL object name of the commit that verdict's audited_sha
 // names, verified by the T10 reader's own conditions — the commit resolves in
-// the card worktree and is an ancestor of, or equal to, its HEAD. It is the
-// only value the rebind-evidence verb may write, so a lane cannot forge an
-// audit claim by passing an arbitrary SHA.
+// the card worktree and is an ancestor of, or equal to, its HEAD. Together with
+// ResolveLandedEvidence it is the only source of a value the rebind-evidence
+// verb may write, so a lane cannot forge an audit claim by passing an
+// arbitrary SHA.
 func ResolveRebindEvidence(ctx context.Context, card Card, phase string) (string, error) {
 	if !ValidCardID(card.CardID) {
 		return "", evidenceErr("card id %q is not a safe path segment", card.CardID)
@@ -359,6 +372,60 @@ func ResolveRebindEvidence(ctx context.Context, card Card, phase string) (string
 		return "", err
 	}
 	return full, nil
+}
+
+// ResolveLandedEvidence is the squash-landing counterpart of
+// ResolveRebindEvidence (card t1962): a PR that landed as a squash commit
+// leaves its audited PR head outside the worktree HEAD's ancestry, so the
+// evidence is the landing commit the operator recorded (`todo landed --sha`),
+// accepted only when it resolves in dir and is reachable from landedRef.
+// Returns the commit's FULL object name.
+func ResolveLandedEvidence(ctx context.Context, dir, landedSHA, landedRef string) (string, error) {
+	landedRef = strings.TrimSpace(landedRef)
+	if landedRef == "" || strings.HasPrefix(landedRef, "-") {
+		return "", evidenceErr("landed ref %q is not usable", landedRef)
+	}
+	full, err := resolveCommit(ctx, dir, landedSHA)
+	if err != nil {
+		return "", err
+	}
+	if !isAncestor(ctx, dir, full, landedRef) {
+		return "", evidenceErr("commit %s is not reachable from %s", full, landedRef)
+	}
+	return full, nil
+}
+
+// CardEngagementStart returns the instant the factory first recorded an event
+// for the card inside the run: the card's engagement start. A landing record
+// observed before it belongs to an earlier issuance of the same card id and
+// cannot be this run's evidence (card t1962). found is false when the run holds
+// no event naming the card, so the caller can tell "unknown" from "early".
+func (f *FactoryDB) CardEngagementStart(ctx context.Context, runID, cardID string) (time.Time, bool, error) {
+	// SQL: every value goes through a ? placeholder. The timestamps are
+	// RFC3339Nano text of varying length, so they are compared as times in Go,
+	// never lexicographically in SQL.
+	rows, err := f.DB.QueryContext(ctx,
+		`SELECT created_at FROM events WHERE run_id=? AND json_extract(payload_json,'$.card_id')=?`, runID, cardID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	var first time.Time
+	found := false
+	for rows.Next() {
+		var at string
+		if err := rows.Scan(&at); err != nil {
+			return time.Time{}, false, err
+		}
+		t, perr := time.Parse(time.RFC3339Nano, at)
+		if perr != nil {
+			continue
+		}
+		if !found || t.Before(first) {
+			first, found = t, true
+		}
+	}
+	return first, found, rows.Err()
 }
 
 // readNewestVerdict locates the newest `<phase>*.md` verdict file and applies
