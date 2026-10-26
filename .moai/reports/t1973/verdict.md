@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: 139c7bb2f89af3bd8f268b6330dcf5c6d2fd8e91
+audited_sha: a980943254276978c84bdaedf3cd073c317014e2
 
 # t1973 — lane completion verdict (Class B, reproduce-first)
 
@@ -39,3 +39,26 @@ factory_run_rebind.go:215 (step-5 card_dispatch repoint) is untouched by this ca
 ## Residual-risk
 
 - The new refusal strings could interact with string-matching tests elsewhere; the full homestate package regression (174.977s, exit 0) covers the package, and origin/main CI owns the repository-wide verdict after landing.
+
+---
+
+## Round 2 — 2026-10-27 (leader codex_audit FAIL on 139c7bb2f8, repaired)
+
+- audit receipt: rcpt-5120c225117dd37429a99ea0 @26b6b502b9 (static review, review_base main / merge base cb30e05b3e) — verdict FAIL, both findings inside the RebindRun path repaired in round 1; in-card repairs.
+- commits this round: `3c2c65caf4` (RED tests, failing at tree 26b6b502b9) → `a980943254` (repair). No push, no absorb.
+
+### Finding P1 — source card's own valid lease unchecked (factory_run_rebind.go:165)
+
+- RED: `TestRed_T1973b_P1_SourceCardHoldingValidLeaseIsRekeyed` (2 subtests: valid lease with no source worker row; holder registered as a worker of a different run) — command `unset GOFLAGS && go test ./internal/homestate/ -run 'TestRed_T1973b' -count=1` at tree 26b6b502b9 → exit 1, each subtest "operation succeeded, want a refusal naming [c1 run-old]".
+- Repair: `consolidationCard` carries `lease_holder`/`lease_expires_at` (sourceCards SELECT extended), and the pre-write guard loop refuses a source card holding a valid (unexpired) lease via the package's existing `holdsValidLease` — the leader's death does not kill a card lease, and the worker guard is run-scoped so a holder registered elsewhere stays invisible to `refuseLiveWorker`.
+
+### Finding P2 — both-empty evidence read as a match (factory_run_rebind.go:193)
+
+- RED: `TestRed_T1973b_P2_BothEmptyEvidenceTreatedAsMatch` — same command/run → exit 1, "operation succeeded, want a refusal naming [c1 run-new]".
+- Repair: the target-row conflict check now refuses the both-empty evidence shape as unproven-same-work. Choice made (and stated): the SIMPLE SAFE DEFAULT (refuse), not progress-info comparison — the refuse-side cost is one manual re-approval, while the abandon-side cost is the source row's stranded stage/worktree/spec_id. Named in the refusal via `bothEmptyNote`.
+
+### Round-2 evidence
+
+- GREEN (all round-1 + round-2 t1973 tests, at a980943254 working tree): `unset GOFLAGS && go test ./internal/homestate/ -run 'TestRed_T1973' -count=1` → exit 0, `ok github.com/modu-ai/moai-adk/internal/homestate 2.296s`; `gofmt -l` clean; `go vet ./internal/homestate/` PASS.
+- Full package regression: `unset GOFLAGS && go test ./internal/homestate/... -count=1` → exit 0, `ok github.com/modu-ai/moai-adk/internal/homestate 246.491s`.
+- Baseline: all measurements in this run against this tree; HEAD re-read immediately before this update (`git rev-parse` → a980943254276978c84bdaedf3cd073c317014e2).
