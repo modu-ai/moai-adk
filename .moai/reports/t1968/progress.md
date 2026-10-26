@@ -21,3 +21,14 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - SPEC progress.md §E.1: plan_status: audit-ready, plan_complete_at 2026-10-26 — 확인.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/specs/SPEC-FETCH-WEB-001/{spec,plan,acceptance,progress}.md+bdc9a86ca1+SPEC-JEV-CORE-001/spec.md ladder_path=disk-evidence — plan 산출물 착지·커밋 승인, 감사 교차 진입.
 - Spawn: plan-auditor(독립 감사 교차 — 설계 원문 충실도·2-cell 채택·GEARS·경계·Tier M 예산·B1/B5/B6 판단) → 판정 파일 .moai/reports/t1968/plan-audit.md, audited head bdc9a86ca1 고정 지시. 2026-10-26 20:5x KST 진행 중.
+- 2026-10-26 21:2x 귀환(~28분, 교차모델 감사) — 판정 파일 착지 직독 확인. **iter1 FAIL — 0.80**(Tier M 역치 0.80 충족, BLOCKING 3건 + codex 게이트 fail, 필수 9항목 전부 통과). receipts=rcpt-4be9e80d666fee983a5eccb3.
+  - D1 BLOCKING: REQ-FW-006 무조건 첫 블록 유지 → 비어있지 않은 페이지에서 no_match 도달 불가. 수리: 결정 순서 고정(no_match = 1단계 후보 0) in spec.md §C.2 + AC-FW-004.
+  - D2 BLOCKING: "templates/ 아래 enabled: true 0건" 전제가 도착 시점에 거짓(기존 127건). 수리: REQ-FW-015/AC-FW-013을 이 SPEC 자체 산출물로 범위 한정.
+  - D3 BLOCKING: REQ-FW-012 재시도 위임이 SPEC-JEV-CORE-001 REQ-JEVC-008(Repeatable 게이팅·TestRetry_* 3건)을 덮어씀. 수리: 조합 + AC-FW-010에 음성 케이스.
+  - D4 SHOULD: AC-FW-010/011의 RED 근거 R4(grep cache/jev)가 무판별 — 행위 프루브로(grep Retry-After, 현재 0건); R1/R6 stderr-stdout 재표기.
+  - D5 SHOULD: B1 exit-2가 REQ-JEVC-007("exit 0")과 미조정 — 일회성 명령 예외 문장 추가.
+  - D6 SHOULD: 캐시 키 모델 id가 응답 파생 — lookup/이동/재시작 기계론을 B5/M5에 고정(B5 선결).
+  - D7 SHOULD: t1762 실제 변경 = internal/jevledger 신설, internal/jev 미접촉(954adab25e) — §A.2 전제 구답; 경계 가드에 실경로 명명.
+  - D8/D9 MINOR: 토크나이저 의존 금지 축을 지키는 AC 없음; 마일스톤이 불릿(기계 점검 CN-4가 0건 관측).
+  - B1=exit 2 유지+D5 문장 / B5=D6 고정 뒤 keep-but-warn / B6=하위명령명만 명기 — 전부 레인 판정, 운영자 결정 불요.
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/plan-audit.md+rcpt-4be9e80d666fee983a5eccb3 ladder_path=①disk-evidence — FAIL 수용, 수리 재위임(manager-spec, D1~D9 + 소스 대조 요구), iter2 델타 감사 예정.
