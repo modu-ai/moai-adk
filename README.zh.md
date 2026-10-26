@@ -55,7 +55,7 @@ moai codex -l                 # Codex 泳道
 
 `-f`（长形式 `--factory`）打开主导，`-l`（长形式 `--lane`）以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。`moai codex` 没有主导入口，只能以泳道身份加入。
 
-一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除；`moai cg` 会显示迁移提示后退出（可先用 `moai migrate cg` 预览）。`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行。
+一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除。GPT 模型通过 `moai codex` 运行。
 
 ### 后端怎么搭配
 
@@ -286,7 +286,7 @@ cd my-project
 默认路径（插件模式）下，技能与命令不再复制进项目 —— 由 moai 插件承载。`.claude/` 表面的其余部分（代理、规则、钩子注册、设置）照旧部署。要把技能和命令保留为本地文件，用 `--no-plugin`（完整本地部署 —— 含 `.mcp.json` 的 moai 条目与 Codex 镜像）；要把可选包目录也一并本地部署，用 `--all`。部署模式记录在 `.moai/config/sections/llm.yaml` 的 `deployment_mode`，`moai update` 按该记录保持同样的范围。插件安装未能得到确认的项目会记录在安全的一侧，即 `local`。
 
 
-> **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧 `moai gpt`
+> **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧
 > 启动器已移除。GPT 模型请通过原生 harness 使用：`moai codex`（Codex CLI）。上方的 `--llm gpt`
 > init 值不受影响 —— 它选择的是 Codex 专用部署，而不是已撤回的启动器。
 ```bash
@@ -381,7 +381,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### CG 停用与配置迁移
 
-`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
+CG 启动器已停用。迁移步骤请参阅 [CG 停用与配置迁移](https://adk.mo.ai.kr/zh/multi-llm/cg-mode/)。
 
 ```bash
 moai migrate cg
@@ -586,7 +586,7 @@ moai cc -w feature-billing --spawn   # billing 开新窗口，保留当前会话
 
 ### CG 停用与配置迁移
 
-`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
+CG 启动器已停用。迁移步骤请参阅 [CG 停用与配置迁移](https://adk.mo.ai.kr/zh/multi-llm/cg-mode/)。
 
 ```bash
 moai migrate cg
