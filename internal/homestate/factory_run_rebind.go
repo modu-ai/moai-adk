@@ -120,7 +120,20 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	}
 	others := make(map[string]RunOwner, len(active))
 	for _, o := range active {
-		if o.RunID != src.RunID && o.RunID != tgt.RunID {
+		switch o.RunID {
+		case src.RunID:
+			// Step 1, re-classification: a source proved dead through the lead
+			// peer or the boot proof has no row-level stamp ((0,'')) for the
+			// transaction to compare, so this fresh classification — taken just
+			// before BEGIN — is the only check that its owner is still dead.
+			// The window is narrowed, not closed: the peer identity lives in the
+			// broker database, outside this transaction.
+			if (src.Basis == BasisPeer || src.Basis == BasisBoot) && !retirable(o.Classification) {
+				return RebindResult{}, fmt.Errorf("%w: %w: run %s owner classified %s on re-classification before the transaction (it was %s on basis %q)",
+					ErrRebindRefused, ErrRunOwnerNotDead, src.RunID, o.Classification, src.Classification, src.Basis)
+			}
+		case tgt.RunID:
+		default:
 			others[o.RunID] = o
 		}
 	}

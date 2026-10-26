@@ -62,6 +62,8 @@ E1 AC 매트릭스(각 AC의 acceptance.md 자체 green 명령, 최종 코드 �
 
 **차단 보고(E7) — AC-FCR-017 Then (9)**: "큐 기록이 `run-old`를 가리키는 상태로 완료 게이트를 부르면 거부되고 사유가 바인딩/기록 불일치를 든다"는 이 트리에서 성립하지 않는다. 완료 게이트(`holdDoneApprovalGate`→`verifyForClose`)는 `card_dispatch` 바인딩(`recordedCardRow`)과 영수증 표(`findLeaderApprovalPreferringRun`·`VerifyBinding`)만 읽고 큐의 `todo_dispatch_current` 기록은 읽지 않는다. 통합 뒤 `run-new` 아래에 새 승인을 발급하고 게이트를 호출하는 일회용 탐침(커밋하지 않음)이 `err = <nil>`을 냈다(run-evidence.md §Blocker). 그래서 (9)의 둘째 절을 단언하는 시험을 쓰지 않았다 — 쓰면 임의의 거짓 통과이거나 영구 RED다. 실제로 강제되는 절반(영수증의 run 불일치 → `ErrApprovalRunMismatch`, 새 승인 뒤에만 통과, 옛 승인 행 불변)은 `TestLeaderStartRekeyedCardNeedsFreshApproval`이 단언한다. 선택지는 manager-spec 재위임으로 정한다: (a) (9)를 게이트의 실제 동작으로 고쳐 쓴다(위 시험이 이미 증인), (b) 완료 게이트에 큐 기록-바인딩 정합 검사를 새 요구로 추가한다(M1 범위 확대), (c) 통합 호출 표면이 큐의 `RefreshDispatchCurrent`를 함께 갱신한다(두 저장소 비원자 창이 생김).
 
+**사후 개정 상태 메모 (추가, 기존 줄은 그대로)**: 위 AC-FCR-017의 "PASS-WITH-BLOCKER"와 "차단 보고" 문구는 SPEC 개정 `b20b174350`으로 대체됐다. (9)는 집행되는 절반으로 다시 쓰였고, 그 판정 시험 `TestLeaderStartRekeyedCardNeedsFreshApproval`이 통과한다 — AC-FCR-017은 (1)~(9) 전부 PASS다. 이어진 개정·수리: `34f296b660`(REQ-FCR-020 (5)는 옮긴 카드의 바인딩만 재지정 — 수리 커밋 `dd227d16c4`), `e5890c786c`(REQ-FCR-020 (1): BasisPeer·BasisBoot 원천은 트랜잭션 직전 재분류 — AC-FCR-021 (f), sync-audit F-2 수리). 증거는 `.moai/reports/t1963/run-evidence.md`의 "Post-amendment", "Finding-fix", "F-2 fix" 절.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 (run-phase에서 작성 — manager-develop 소관. E1-E7 자체검증 매트릭스는 plan.md §E 형식.)
@@ -84,6 +86,8 @@ cross_platform_build:
 total_run_phase_files: 23   # git diff --stat 61cedfea33..HEAD (코드 커밋 시점) — 소스 9, 시험 13, spec.md frontmatter 1
 m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a540, b949fd55ee, 988cb085da, 19595308cf) + 증거 문서 커밋, 푸시·PR 없음"
 ```
+
+사후 개정 상태 메모 (추가): 위 블록의 `run_status: m2b-code-complete-ac-017-then-9-blocked`와 `ac_partial_count: 1`은 개정 `b20b174350` 이전 기록이다. 현재 상태는 AC-FCR-017..025 전부 PASS(`ac_pass_count` 9, 부분 0)이며, 이 블록의 값은 고치지 않고 이 메모가 대체한다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
