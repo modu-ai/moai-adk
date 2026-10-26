@@ -265,7 +265,7 @@ func assertClearRefusedUntouched(t *testing.T, content string) {
 	path := clearUserNameFixture(t, content)
 	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
 	err := clearProjectUserName(root)
-	if err == nil || !strings.Contains(err.Error(), "uses YAML anchors/aliases; edit user.name by hand") {
+	if err == nil || !strings.Contains(err.Error(), refuseText) {
 		t.Errorf("err = %v, want the anchors/aliases refusal", err)
 	}
 	if got, _ := os.ReadFile(path); string(got) != content {
@@ -318,83 +318,270 @@ func TestClearProjectUserName_MergeKeyInsideUserStillClears(t *testing.T) {
 	}
 }
 
-// YAML indirection matrix: every way user.name can reach user.yaml and still be
-// non-empty for the struct decoder. REFUSE rows must return the anchors/aliases
-// error with the bytes unchanged; CLEAR rows must blank the name, keep every
-// other decoded key, and append no new top-level key.
-func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
-	const (
-		refuse = "REFUSE"
-		clear  = "CLEAR"
-	)
-	rows := []struct {
-		name, content, want string
-	}{
-		{"plain direct path", "user:\n  name: Alice\n  github_username: keep\n", clear},
-		{"flow-style user", "user: {name: Alice, github_username: keep}\n", clear},
-		{"anchor on user node", "user: &u\n  name: Alice\nother: *u\n", refuse},
-		{"anchor on name node", "user:\n  name: &n Alice\n  github_username: keep\n", refuse},
-		{"anchor on name key node", "user:\n  &nk name: Alice\n  github_username: keep\n", clear},
-		{"name anchor shared with sibling", "user:\n  name: &identity Alice\n  github_username: *identity\n", refuse},
-		{"unreferenced sibling anchor inside user", "user:\n  name: Alice\n  github_username: &g keep\n  alias: *g\n", clear},
-		{"alias as user value", "base: &identity\n  name: Alice\nuser: *identity\n", refuse},
-		{"alias as name value", "base: &identity Alice\nuser:\n  name: *identity\n", refuse},
-		{"alias as top-level key", "k: &k user\n*k :\n  name: Alice\n  github_username: keep\n", refuse},
-		{"top-level merge literal", "<<:\n  user:\n    name: Alice\n    github_username: keep\n", refuse},
-		{"top-level merge alias", "b: &b\n  user:\n    name: Alice\n    github_username: keep\nz: 1\n<<: *b\n", refuse},
-		{"user merge key, name inside base", "base: &base\n  name: Alice\n  github_username: keep\nuser:\n  <<: *base\n", clear},
-		{"user merge key, explicit name wins", "base: &base\n  github_username: keep\nuser:\n  <<: *base\n  name: Alice\n", clear},
-		{"unrelated top-level anchor", "other: &x 1\nuser:\n  name: Alice\n  github_username: keep\n", clear},
-		{"merge key under non-user nested key", "b: &b\n  x: 1\nuser:\n  name: Alice\n  github_username: keep\nnested:\n  <<: *b\n", clear},
-		{"second document after ---", "user:\n  name: Alice\n  github_username: keep\n---\nuser:\n  name: Bob\n", clear},
-	}
-	decode := func(t *testing.T, b []byte) map[string]any {
-		t.Helper()
-		var m map[string]any
-		if err := yaml.Unmarshal(b, &m); err != nil {
-			t.Fatalf("decode: %v\n%s", err, b)
+// YAML indirection matrix (iteration-7 audit rows A01..E19, reconstructed from
+// the verdict table; P01..P03 are files the product itself writes). Expected
+// outcomes under the allow-list guard:
+//
+//	refuse      error with the generic text, bytes unchanged
+//	clear       name blanked; effect oracle holds (see assertClearEffect)
+//	noop        nothing to clear: no error, bytes unchanged
+//	clearBroken like clear, but the loader cannot read the file before or after
+//	            (duplicate keys, carried debt N6): only structure is compared
+//	patchError  yamlpatch reports an error, bytes unchanged
+const refuseText = "uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, or several documents); edit user.name by hand"
+
+type matrixRow struct {
+	id, content, want string
+}
+
+func yamlDocCount(t *testing.T, b []byte) int {
+	t.Helper()
+	dec := yaml.NewDecoder(strings.NewReader(string(b)))
+	n := 0
+	for {
+		var node yaml.Node
+		if err := dec.Decode(&node); err != nil {
+			break
 		}
-		return m
+		n++
 	}
+	return n
+}
+
+// loaderName reads user.name the way the config loader does (merge-resolving
+// struct decode); ok is false when the loader cannot read the file.
+func loaderName(b []byte) (name string, ok bool) {
+	var doc struct {
+		User struct {
+			Name string `yaml:"name"`
+		} `yaml:"user"`
+	}
+	if yaml.Unmarshal(b, &doc) != nil {
+		return "", false
+	}
+	return doc.User.Name, true
+}
+
+func nilToEmpty(v any) any {
+	if v == nil {
+		return ""
+	}
+	return v
+}
+
+// assertClearEffect is the effect oracle for every CLEAR row: loader name is
+// empty, every other decoded user key is unchanged, nothing outside user
+// changed, top-level key count and document count are unchanged.
+func assertClearEffect(t *testing.T, before, after []byte) {
+	t.Helper()
+	if n, ok := loaderName(after); !ok || n != "" {
+		t.Errorf("loader name after clear = %q (readable=%v), want empty\n%s", n, ok, after)
+	}
+	if b, a := yamlDocCount(t, before), yamlDocCount(t, after); b != a {
+		t.Errorf("document count %d -> %d\n%s", b, a, after)
+	}
+	var bm, am map[string]any
+	if yaml.Unmarshal(before, &bm) != nil || yaml.Unmarshal(after, &am) != nil {
+		t.Fatalf("decode failed\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+	if len(bm) != len(am) {
+		t.Errorf("top-level keys %d -> %d\n%s", len(bm), len(am), after)
+	}
+	bu, _ := bm["user"].(map[string]any)
+	au, _ := am["user"].(map[string]any)
+	for k, v := range bu {
+		if k != "name" && !reflect.DeepEqual(nilToEmpty(au[k]), nilToEmpty(v)) {
+			t.Errorf("user key %q = %v, want %v\n%s", k, au[k], v, after)
+		}
+	}
+	for k := range au {
+		if _, had := bu[k]; !had && k != "name" {
+			t.Errorf("user key %q appeared\n%s", k, after)
+		}
+	}
+	for k, v := range bm {
+		if k != "user" && !reflect.DeepEqual(nilToEmpty(am[k]), nilToEmpty(v)) {
+			t.Errorf("top-level key %q = %v, want %v\n%s", k, am[k], v, after)
+		}
+	}
+}
+
+func TestClearProjectUserName_IndirectionMatrix(t *testing.T) {
+	rows := []matrixRow{
+		{"A01", "user:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"A02", "user: {name: Alice, github_username: keep}\n", "clear"},
+		{"A03", "{user: {name: Alice, github_username: keep}}\n", "clear"},
+		{"A04", "b: &b\n  name: Alice\n  github_username: keep\nuser: *b\n", "refuse"},
+		{"A05", "k: &k user\n*k :\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"A06", "k: &user user\n*user :\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"A07", "k: &user other\n*user :\n  name: Alice\nuser:\n  name: Carol\n  github_username: keep\n", "refuse"},
+		{"A08", "<<:\n  user:\n    name: Alice\n    github_username: keep\n", "refuse"},
+		{"A09", "b: &b\n  user:\n    name: Alice\n    github_username: keep\n<<: *b\n", "refuse"},
+		{"A10", "a: &a\n  x: 1\nb: &b\n  user:\n    name: Alice\n    github_username: keep\n<<: [*a, *b]\n", "refuse"},
+		{"A11", "b: &b\n  user:\n    name: Bob\n<<: *b\nuser:\n  name: Alice\n  github_username: keep\n", "refuse"},
+		{"A12", "b: &b\n  user:\n    name: Alice\n    github_username: keep\n<<: *b\nuser:\n  other: x\n", "noop"},
+		{"A13", "b: &b\n  user:\n    name: Alice\n    github_username: keep\n!!merge <<: *b\n", "refuse"},
+		{"A14", "\"<<\": x\nuser:\n  other: y\n", "noop"},
+		{"A15", "other: &x 1\nuser:\n  name: Alice\n  github_username: keep\nref: *x\n", "clear"},
+		{"A16", "b: &b\n  x: 1\nuser:\n  name: Alice\n  github_username: keep\nnested:\n  <<: *b\n", "clear"},
+		{"A17", "--- &r\nuser:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"A18", "- user\n- name\n", "refuse"},
+		{"B01", "user: &u\n  name: Alice\nother: *u\n", "refuse"},
+		{"B02", "user: &u\n  name: Alice\n", "refuse"},
+		{"B03", "user: &u {name: Alice, github_username: keep}\n", "refuse"},
+		{"B04", "user:\n  <<: {name: Alice, github_username: keep}\n", "clear"},
+		{"B05", "base: &base\n  name: Alice\n  github_username: keep\nuser:\n  <<: *base\n", "clear"},
+		{"B06", "a: &a\n  name: Alice\nb: &b\n  github_username: keep\nuser:\n  <<: [*a, *b]\n", "clear"},
+		{"B07", "base: &base\n  github_username: keep\nuser:\n  <<: *base\n  name: Alice\n", "clear"},
+		{"B08", "base: &base\n  name: &n Alice\n  github_username: keep\nuser:\n  <<: *base\nref: *n\n", "clear"},
+		{"C01", "base: &identity Alice\nuser:\n  name: *identity\n", "refuse"},
+		{"C02", "user:\n  name: &identity Alice\n  github_username: *identity\n", "refuse"},
+		{"C03", "user:\n  name: &n Alice\n  github_username: keep\n", "refuse"},
+		{"C04", "user:\n  &nk name: Alice\n  github_username: keep\n", "refuse"},
+		{"C05", "k: &name name\nuser:\n  *name : Alice\n  github_username: keep\n", "refuse"},
+		{"C06", "k: &name other\nuser:\n  *name : Alice\n  name: Carol\n  github_username: keep\n", "refuse"},
+		{"C07", "user:\n  name: !!str Alice\n  github_username: keep\n", "clear"},
+		{"C08", "user:\n  name: !!binary QWxpY2U=\n  github_username: keep\n", "clear"},
+		{"C09", "user:\n  name: |\n    Alice\n  github_username: keep\n", "clear"},
+		{"C10", "user:\n  name: >\n    Alice\n    Smith\n  github_username: keep\n", "clear"},
+		{"C11", "user:\n  name: Alice\n    Smith\n  github_username: keep\n", "clear"},
+		{"C12", "user:\n  name: \"Alice\"\n  github_username: keep\n", "clear"},
+		{"C13", "user:\n  name: 'Alice'\n  github_username: keep\n", "clear"},
+		{"C14", "user:\n  name: Alice # who\n  github_username: keep\n", "clear"},
+		{"C15", "user:\n  name:\n    Alice\n  github_username: keep\n", "clear"},
+		{"C16", "user:\n  name: 123\n  github_username: keep\n", "clear"},
+		{"C17", "user:\n  name: true\n  github_username: keep\n", "clear"},
+		{"C18", "user: {name: Alice, github_username: Alice}\n", "clear"},
+		{"C19", "user: {nameAlice: , name: Alice}\n", "clear"},
+		{"D01", "\"user\":\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"D02", "user:\n  \"name\": Alice\n  github_username: keep\n", "clear"},
+		{"D03", "!!str user:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"D04", "? user\n:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"D05", "user:\n  \"n\\u0061me\": Alice\n  github_username: keep\n", "clear"},
+		{"E01", "user:\n  name: Alice\nuser:\n  name: Bob\n", "clearBroken"},
+		{"E02", "user:\n  name: Alice\n  name: Bob\n", "clearBroken"},
+		{"E03", "x: 1\nx: 2\n", "refuse"},
+		{"E04", "x: 1\nx: 2\nuser:\n  name: Alice\n", "clearBroken"},
+		{"E05", "user:\r\n  name: Alice\r\n  github_username: keep\r\n", "clear"},
+		{"E06", "\xef\xbb\xbfuser:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"E07", "user:\n  name: Alice\n  github_username: keep\n---\nuser:\n  name: Bob\n", "refuse"},
+		{"E08", "---\n---\nuser:\n  name: Alice\n", "noop"},
+		{"E09", "---\nuser:\n  name: Alice\n  github_username: keep\n", "clear"},
+		{"E10", "user:\n  name:\n", "noop"},
+		{"E11", "user:\n  name: \"\"\n", "noop"},
+		{"E12", "user:\n  name: ~\n", "noop"},
+		{"E13", "user:\n  github_username: keep\n", "noop"},
+		{"E14", "foo: bar\n", "noop"},
+		{"E15", "", "noop"},
+		{"E16", "# only a comment\n", "noop"},
+		{"E17", "user:\n", "noop"},
+		{"E18", "user:\n  name: Alice\n  bad: [unclosed\n", "patchError"},
+		{"E19", "user:\n  name:\n    - a\n    - b\n", "refuse"},
+		// F01: the earlier 17-row table's row 7 (anchored sibling VALUE inside user).
+		{"F01", "user:\n  name: Alice\n  github_username: &g keep\n  alias: *g\n", "clear"},
+	}
+
+	// P rows: the files the product itself produces must stay inside the
+	// allow-list (CLEAR, effect oracle holding).
+	tmpl, err := os.ReadFile(filepath.Join("..", "template", "templates", ".moai", "config", "sections", "user.yaml.tmpl"))
+	if err != nil {
+		t.Fatalf("read the user.yaml template: %v", err)
+	}
+	p01 := strings.Replace(string(tmpl), `{{yamlEscape .UserName}}`, "Alice", 1)
+	if strings.Contains(p01, "{{") {
+		t.Fatalf("template has directives beyond .UserName; render it properly:\n%s", p01)
+	}
+	rows = append(rows,
+		matrixRow{"P01", p01, "clear"},
+		matrixRow{"P01b", "user:\n  name: \"Alice\"\n", "clear"}, // generateConfigsFallback shape
+		matrixRow{"P02", initWrittenUserYAML(t), "clear"},
+		matrixRow{"P03", resumeLeftoverUserYAML(t), "clear"},
+	)
+
 	for _, row := range rows {
-		t.Run(row.name, func(t *testing.T) {
+		t.Run(row.id, func(t *testing.T) {
 			path := clearUserNameFixture(t, row.content)
 			root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
 			err := clearProjectUserName(root)
 			after, _ := os.ReadFile(path)
 			switch row.want {
-			case refuse:
-				if err == nil || !strings.Contains(err.Error(), "uses YAML anchors/aliases; edit user.name by hand") {
-					t.Errorf("err = %v, want the anchors/aliases refusal", err)
+			case "refuse":
+				if err == nil || !strings.Contains(err.Error(), refuseText) {
+					t.Errorf("err = %v, want the refusal", err)
 				}
 				if string(after) != row.content {
 					t.Errorf("file modified:\n got %q\nwant %q", after, row.content)
 				}
-			case clear:
+			case "noop":
+				if err != nil || string(after) != row.content {
+					t.Errorf("noop row: err=%v modified=%v", err, string(after) != row.content)
+				}
+			case "patchError":
+				if err == nil || string(after) != row.content {
+					t.Errorf("patchError row: err=%v modified=%v", err, string(after) != row.content)
+				}
+			case "clear":
 				if err != nil {
 					t.Fatalf("unexpected error %v", err)
 				}
-				before, now := decode(t, []byte(row.content)), decode(t, after)
-				if len(before) != len(now) {
-					t.Errorf("top-level keys changed:\n before %v\n after  %v\n%s", before, now, after)
+				assertClearEffect(t, []byte(row.content), after)
+			case "clearBroken":
+				if err != nil {
+					t.Fatalf("unexpected error %v", err)
 				}
-				bu, _ := before["user"].(map[string]any)
-				au, _ := now["user"].(map[string]any)
-				// An unquoted scalar is patched to an empty row (`name:`), which a
-				// map decode reads as nil; the typed config loader reads "".
-				if au["name"] != nil && au["name"] != "" {
-					t.Errorf("user.name = %v after clear, want empty\n%s", au["name"], after)
-				}
-				for k, v := range bu {
-					if k != "name" && !reflect.DeepEqual(au[k], v) {
-						t.Errorf("sibling %q = %v, want %v\n%s", k, au[k], v, after)
-					}
+				if string(after) == row.content || yamlDocCount(t, after) != yamlDocCount(t, []byte(row.content)) {
+					t.Errorf("clearBroken row: file unchanged or document count changed\n%s", after)
 				}
 			}
 		})
 	}
 }
 
+// initWrittenUserYAML returns the user.yaml a fresh `moai init` writes when the
+// wizard supplies the name "Alice".
+func initWrittenUserYAML(t *testing.T) string {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	origWizard := runWizardFn
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
+		return &wizard.WizardResult{UserName: "Alice", GitMode: "manual"}, nil
+	}
+	t.Cleanup(func() { runWizardFn = origWizard })
+	origInteractive := isInteractiveStdin
+	isInteractiveStdin = func() bool { return true }
+	t.Cleanup(func() { isInteractiveStdin = origInteractive })
+	origDeps := deps
+	deps = nil
+	t.Cleanup(func() { deps = origDeps })
+	projectDir := filepath.Join(t.TempDir(), "p02-proj")
+	if err := runInit(newInitTestCmd(), []string{projectDir}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "user.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, ok := loaderName(data); !ok || n != "Alice" {
+		t.Fatalf("precondition: init-written user.yaml name = %q (readable=%v)\n%s", n, ok, data)
+	}
+	return string(data)
+}
+
+// resumeLeftoverUserYAML returns the user.yaml an interrupted init leaves behind.
+func resumeLeftoverUserYAML(t *testing.T) string {
+	t.Helper()
+	resumeHome(t)
+	projectDir := filepath.Join(t.TempDir(), "p03-proj")
+	resumeSeedRun(t, projectDir, "claude")
+	data, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "user.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, ok := loaderName(data); !ok || n == "" {
+		t.Fatalf("precondition: the interrupted run left no non-empty name (name=%q readable=%v):\n%s", n, ok, data)
+	}
+	return string(data)
+}
 func TestClearProjectUserName_UnrelatedAnchorStillClears(t *testing.T) {
 	path := clearUserNameFixture(t, "other: &x 1\nuser:\n  name: \"Alice\"\n  note: keep\n")
 	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))

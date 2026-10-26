@@ -5,7 +5,9 @@ package cli
 // (init_resume.go) so the two paths cannot drift (card t1591, Item D).
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -44,18 +46,42 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 	return nil
 }
 
-// userNameUsesAnchor reports whether the `user` node or its `name` node is an
-// alias or carries an anchor, or whether the user mapping is not a direct
-// top-level key at all (supplied by a merge key or an alias key).
-func userNameUsesAnchor(doc *yaml.Node) bool {
-	top := doc
+// userNameEditSafety is the allow-list behind the clear: it reports whether the
+// file parses (parsed) and, if so, whether yamlpatch is guaranteed to write the
+// very node the loader reads and to rewrite nothing else (safe). The patch
+// re-encodes the first document only and matches keys by their Value text, so
+// the file must be exactly one document, a top-level mapping with no alias,
+// anchored or top-level merge KEY; `user` must be a direct plain mapping value
+// (no alias, no anchor) whose keys are not aliases or anchored; and `name`, when
+// present, a direct plain scalar. A `<<` merge inside `user` stays allowed: the
+// patch then only adds or blanks the explicit name row (matrix rows B04-B08).
+func userNameEditSafety(data []byte) (parsed, safe bool) {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	var first yaml.Node
+	if dec.Decode(&first) != nil {
+		return false, false
+	}
+	var extra yaml.Node
+	if err := dec.Decode(&extra); err != io.EOF {
+		return true, false // several documents (or a broken later one)
+	}
+	top := &first
 	if top.Kind == yaml.DocumentNode && len(top.Content) > 0 {
 		top = top.Content[0]
 	}
-	child := func(m *yaml.Node, key string) *yaml.Node {
-		if m.Kind != yaml.MappingNode {
-			return nil
+	if top.Kind != yaml.MappingNode {
+		return true, false
+	}
+	plainKeys := func(m *yaml.Node, topLevel bool) bool {
+		for i := 0; i+1 < len(m.Content); i += 2 {
+			k := m.Content[i]
+			if k.Kind != yaml.ScalarNode || k.Anchor != "" || (topLevel && k.ShortTag() == "!!merge") {
+				return false
+			}
 		}
+		return true
+	}
+	value := func(m *yaml.Node, key string) *yaml.Node {
 		for i := 0; i+1 < len(m.Content); i += 2 {
 			if m.Content[i].Value == key {
 				return m.Content[i+1]
@@ -63,18 +89,18 @@ func userNameUsesAnchor(doc *yaml.Node) bool {
 		}
 		return nil
 	}
-	user := child(top, "user")
-	if user == nil {
-		// Only reached with a non-empty decoded name: with no direct `user`
-		// key, the name comes from a merge key or an alias key, and patching
-		// would append a top-level `user:` that shadows the inherited mapping.
-		return true
+	if !plainKeys(top, true) {
+		return true, false
 	}
-	if user.Kind == yaml.AliasNode || user.Anchor != "" {
-		return true
+	user := value(top, "user")
+	if user == nil || user.Kind != yaml.MappingNode || user.Anchor != "" || !plainKeys(user, false) {
+		return true, false
 	}
-	name := child(user, "name")
-	return name != nil && (name.Kind == yaml.AliasNode || name.Anchor != "")
+	name := value(user, "name")
+	if name != nil && (name.Kind != yaml.ScalarNode || name.Anchor != "") {
+		return true, false
+	}
+	return true, true
 }
 
 // clearProjectUserName blanks user.name in the project's user.yaml. SyncToProjectConfig
@@ -108,9 +134,8 @@ func clearProjectUserName(projectRoot string) error {
 	// user or user.name node that is an alias or carries an anchor is refused
 	// untouched (card t1966, F8). A file that does not parse has no node tree to
 	// inspect and falls through to the patch as above.
-	var root yaml.Node
-	if yaml.Unmarshal(data, &root) == nil && userNameUsesAnchor(&root) {
-		return fmt.Errorf("clear user name: %s uses YAML anchors/aliases; edit user.name by hand", userPath)
+	if parsed, safe := userNameEditSafety(data); parsed && !safe {
+		return fmt.Errorf("clear user name: %s uses YAML structure this command cannot edit safely (anchors, aliases, merge keys, or several documents); edit user.name by hand", userPath)
 	}
 	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: ""}}); err != nil {
 		return fmt.Errorf("clear user name: %w", err)
