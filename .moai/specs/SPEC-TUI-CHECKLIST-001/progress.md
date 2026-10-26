@@ -48,6 +48,18 @@ Plan 단계 산출물 작성 완료 (manager-spec, 카드 t1969, Tier L): spec.m
 - 잔여 R-M4 — 깨끗한 update 의 정의(spec.md §3.3)가 `--yes` 를 적지 않는다. `--yes` 없는 실행의 확인 화면 줄은 줄 예산에 넣지 않았다(design.md §4). AC-TCL-011 의 고정 실행이 `--yes` 로 돈다는 전제가 문서 어디에도 고정되어 있지 않다.
 - 잔여 R-M4b (문구만) — design.md §3.5 "update 의 확인은 `analyze` 항목을 닫은 뒤 열린다" 는 본문이 직접 확인을 띄우는 경우(`skipConfirm` 거짓, `update_template_sync.go:355`)를 적은 것이다. 실제 명령에서는 확인이 바깥 함수(`:1287`)에서 항목이 열리기 전에 돈다(design.md §4). 두 경우 모두 "질문 중 열린 줄 없음"은 성립하므로 결함이 아니라 문구 보강 대상이다. §3.5 는 fix_scope 밖.
 
+### Plan-phase delta 5 (card t1969, decision record 15.107)
+
+입력: 교차 모델 감사(리더 audit_multi, 영수증 `rcpt-b881bc20c399d54e51107c54`, codex 판정 fail)의 P2 결함 4건과 R-2, 감사 HEAD `eb2a9dfc21`. 리더 결정 기록 §15.107 의 앵커 제한 수리. REQ·AC id 집합은 그대로(REQ-TCL-001~023, AC-TCL-001~024). spec.md 는 version `0.2.1` → `0.2.2` 만 바꿨다(`updated` 는 이미 2026-10-27).
+
+- (1) 확인 — `internal/cli/init.go:1073` `retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())` → `internal/cli/update_manifest_retrack.go:80-99` → `retrackManifestFiles` → `:57` `"  manifest retrack skip %s: %v"` 후 `continue`. 나머지 파일 `Save` 가 성공하면 `nil` 이라 `init.go:1074` `p.Collect` 는 불리지 않는다. 수리: design.md §3.3.1 범위 문단(149), P17 행(169), X11 행(191) — P17 init 지점을 범위 안 보존 행으로, update 지점은 이월 유지. acceptance.md AC-TCL-024 — maps REQ-TCL-022(보존 줄은 성공 항목에서도 한 번)라 이 기준을 골랐다: Given 행 목록, (3a) `p17_init_manifest_retrack`, 녹색 경로 25 → 26줄, 이월 괄호, 뮤턴트 두 개.
+- (2) 확인 — `hook_install.go:181-183`·`hook_install_precommit.go:297-299` `if skip { return nil }`, 설치 줄 `:262`·`:381` 은 `if !skip` 안; `init.go:1045` `mcpDeclined := !opts.MCPProvision` → `:194-196` `return nil`; `opts.MCPProvision = true` 는 `:623`(대화형) 뿐. 암묵 `Done` 규칙은 design.md §2(77행). 수리: design.md §4 표 두 행과 조건부 생략 문단(260-270, 기존 키 `checklist.status.skipped`, 새 키 없음). acceptance.md AC-TCL-001 — maps REQ-TCL-003(`○` 건너뜀)이라 이 기준을 골랐다: 명령 수준 절 `TestChecklistInitConditionalSkip`(`no_hooks`·`mcp_declined`·`control_not_skipped`), RED 칸(트리 `eb2a9dfc21`, `/usr/bin/grep -rn TestChecklistInitConditionalSkip internal/cli` → 빈 출력, 종료 1), 뮤턴트 세 개.
+- (3) 확인 — `go run <스크래치>/fmtprobe/main.go`(go1.26.8 darwin/arm64) → `Changed 7` / `変更 %!s(int=7)件`. 수리: acceptance.md AC-TCL-008 Given(인자별 (번호, 동사) 목록 일치 + 대표 인자 `fmt.Sprintf` 결과에 `%!` 없음)과 뮤턴트·사실 칸 한 개.
+- (4) 확인 — 다만 리더 지시의 "AC-TCL-013" 은 AC-TCL-022 다(`TestChecklistInitHunkConfinement` 는 acceptance.md AC-TCL-022, 옛 317행 "계속 발화"). 그 문장이 판정을 M6 삭제 전 기록에만 맡겨, 기록 뒤 커밋이 `init.go:728` 을 고쳐도 녹색이었다. 수리: AC-TCL-022 뮤턴트 두 개와 계속 발화(sync 감사가 최종 HEAD 에서 두 명령을 다시 돌려 판정 파일에 남김, 측정 SHA = 최종 HEAD). AC-TCL-013 정규화 목록의 기존 규칙은 그대로다.
+- (5) R-2 — AC-TCL-013 정규화 목록에 하이픈 ISO 규칙 `\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b` → `<ISO_TS>`(사실 칸 `python3 -I <스크래치>/iso_probe.py`, 양성 2·음성 3, 종료 0)와 "목록 밖 값은 막힘으로 실패" 한 줄.
+
+손대지 않은 것(앵커 밖, 다음 감사가 볼 수 있음): design.md §6 의 "지시자 개수가 같아야"(322행)는 AC-TCL-008 의 새 조건보다 약하다. design.md §3.2 항목 경계 문장(109행)은 그대로 두고 §4 에서 건너뜀 항목이 열린 채 바이트를 받지 않음을 적었다. spec.md HISTORY 줄은 이번 위임 범위(version·updated 줄)가 아니라 더하지 않았다. `.moai/config/sections/*.yaml` 을 `:1073` 앞 단계가 읽는지는 따라가지 않았다 — AC-TCL-024 (3a) 가 그 경우를 막힘 보고로 돌린다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

@@ -146,7 +146,7 @@ v0.2.0 에서 검색 모양 두 개를 더했다(3회차 감사 M8). 경고·오
 
 보존 행. "위치" 는 그 줄이 쓰일 때 열린 항목이다(design §3.2 항목 경계). "항목 밖" 행은 넘김 규칙으로 보이며, 세션은 그 줄이 정확히 한 번 보이는지만 지킨다.
 
-**v0.2.0 범위.** 이 SPEC 이 판정하는 보존 행은 P1, P2, P3, P4, P5, P20(init 지점 `init.go:1022`), P21(init 지점 `init.go:1027`), P23 이다. P6~P19 와 P22, 그리고 P20·P21 의 update 지점은 `[DEFERRED → t1978]` 이다. 이 SPEC 의 목록 완전성 하위 테스트는 그 행의 분류 조각을 제외 행 X11 로 분류해 두고(줄 단위), t1978 이 X11 을 다시 P 행으로 되돌린다. 행 id·분류 조각·위치 열은 t1978 의 근거로 그대로 둔다. 같은 분류 조각을 init 행과 update 행이 함께 쓰는 경우(P1 과 P7 의 `file_snapshot.go:95`·`:99` → `warnLine`)에는 조각을 init 행(P1)이 소유하고, X11 은 update 행의 호출 지점만 적는다.
+**v0.2.0 범위.** 이 SPEC 이 판정하는 보존 행은 P1, P2, P3, P4, P5, P17(init 지점 `init.go:1073`, v0.2.2), P20(init 지점 `init.go:1022`), P21(init 지점 `init.go:1027`), P23 이다. P6~P16, P18, P19 와 P22, 그리고 P17·P20·P21 의 update 지점은 `[DEFERRED → t1978]` 이다. 이 SPEC 의 목록 완전성 하위 테스트는 그 행의 분류 조각을 제외 행 X11 로 분류해 두고(줄 단위), t1978 이 X11 을 다시 P 행으로 되돌린다. 행 id·분류 조각·위치 열은 t1978 의 근거로 그대로 둔다. 같은 분류 조각을 init 행과 update 행이 함께 쓰는 경우(P1 과 P7 의 `file_snapshot.go:95`·`:99` → `warnLine`)에는 조각을 init 행(P1)이 소유하고, X11 은 update 행의 호출 지점만 적는다. P17 의 `update_manifest_retrack.go:57` 도 같다 — 조각은 P17 의 init 지점이 소유하고, X11 은 P17 의 update 지점만 적는다(v0.2.2).
 
 | # | 호출 지점 | 실제로 쓰는 줄 (분류 조각) | 작성기 | 종류 | 위치 |
 |---|---|---|---|---|---|
@@ -166,7 +166,7 @@ v0.2.0 에서 검색 모양 두 개를 더했다(3회차 감사 M8). 경고·오
 | P14 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:1005` (`mergeUserFilesSettlingSnapshot`) | `internal/cli/update/merge/merge.go:310` `"merge failed, preserving user version"`, `:327` `"merged with conflicts (user version preferred)"` | out(stdout) | 경고 | `verify.retrack` (병합 `:1005` 에서 열린다, §4) |
 | P15 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:928` (`renderRetainedKeyAdvisory`) | `internal/cli/update_tux.go:329-334` `"setting(s) kept values that differ from the current template default"` 과 그 아래 `· 섹션: 키` 목록 줄 | out(stdout) | 경고 | 복원 단계 항목 |
 | P16 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:512` (`archiveLegacySkills`), `:548`·`:583` (`reportArchiveShortfall`) | `internal/cli/update_archive.go:344` `"archive drift backup: "`, `:427` `"Legacy skill archive"` | out(stdout) | 경고 | 검증·정리 단계 항목 |
-| P17 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:995`, `:1015`, `:1055` (`retrackManifestFiles`) | `internal/cli/update_manifest_retrack.go:57` `"manifest retrack skip"` | errOut | 경고 | `:995` 은 `verify.gitignore`, `:1015` 은 `verify.retrack`, `:1055` 은 `verify.reconcile` (§4 코드 순서) |
+| P17 | init `init.go:1073` (`retrackSectionFiles`, `internal/cli/update_manifest_retrack.go:80-99` → `retrackManifestFiles`); update `update_template_sync.go:995`, `:1015`, `:1055` (`retrackManifestFiles`) | `internal/cli/update_manifest_retrack.go:57` `"manifest retrack skip"` | init stderr(`cmd.ErrOrStderr()`), update errOut | 경고 | init `verify.manifest`. `:57` 은 파일 하나를 건너뛰고 `continue` 하므로 단계는 성공(`nil`)을 돌려줄 수 있다 — 그래도 이 줄은 성공 항목의 상세로 접히지 않고 항목 아래 정확히 한 번 펼친다(v0.2.2, 결정 기록 §15.107). update 지점은 [DEFERRED → t1978, 이 SPEC 에서 X11 — 조각은 P17 init 지점 소유]: `:995` 은 `verify.gitignore`, `:1015` 은 `verify.retrack`, `:1055` 은 `verify.reconcile`(§4 코드 순서). update 의 `retrackSectionFiles` 지점(`update_template_sync.go:957`, `update.go:697`, `update_restore.go:80`)도 같은 줄에 닿으며 t1978 몫이다. 재개 경로 `init_resume.go:199` 의 같은 줄은 항목 밖(P23 과 같은 자리, 넘김 규칙) |
 | P18 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:1211` (`stampMigrationDeployMode`) | `internal/cli/update_migrate.go:154`, `:161` `"deployment_mode write warning"` | errOut | 경고 | 꼬리 — 마지막으로 열린 항목(결정 D-10) |
 | P19 [DEFERRED → t1978, 이 SPEC 에서 X11] | `update_template_sync.go:1216` (`warnStampSkew`) | `update_template_sync_guard.go:105` `"template stamp disagrees with deployed bytes"` | out(stdout) | 경고 | 꼬리 — 마지막으로 열린 항목 |
 | P20 | `init.go:1022`, `update_template_sync.go:1177` (`installPrePushHookOptional`) | `internal/cli/hook_install.go:278` `"existing pre-push hook preserved"` | init stderr, update stdout | 안내 | init `hooks.prepush`; update 꼬리는 [DEFERRED → t1978] |
@@ -188,7 +188,7 @@ v0.2.0 에서 검색 모양 두 개를 더했다(3회차 감사 M8). 경고·오
 | X8 | `update_model_key_strip.go:137` (`sevNote`, 보존된 설정 키 안내); `update_recovery_manifest.go:79` (`"Warning: could not write"`, 실패 경로의 복구 안내) | `:137` 은 사용자 행동이 필요 없는 상태 안내라 성공 항목에서 접힌다. `:79` 는 실패 경로에서만 쓰이며 REQ-TCL-016 이 캡처 바이트를 모두 쏟는다 |
 | X9 | 궤도 밖 파일 전부(파일 단위; research.md §9 첫 블록에서 궤도 접두가 아닌 모든 줄, 원장 L26 의 `loop.go:233`, `:265`, `doctor_render.go:148`, `:149`) | init·update 경로가 작성기를 인자로 넘겨 부르지 않는 다른 명령의 코드. 출력 타입을 값으로 들고 다니는 경로는 이 판단에 들지 않으므로 그 타입의 파일(`printer/printer.go`, `severity_line.go`, `uikit/styles.go`)은 궤도에 넣었다(3회차 감사 M5) |
 | X10 | `update/backup/backup.go:122`; `update/backup/snapshot.go:95`, `:101`, `:105`; `update/backup/restore.go:125`, `:158`, `:222`, `:248`, `:282`, `:308` (`fmt.Fprintf(os.Stderr, "Warning: …")`) | **캡처 밖 쓰기.** 명령 작성기가 아니라 프로세스 stderr 에 바로 쓰므로 세션이 보지도 접지도 못한다 — 사라지지 않고 정확히 한 번 보인다. 다만 실행 중 줄 위에 섞여 찍힐 수 있다(plan.md §H R-12). 작성기를 받도록 `update/backup` 을 고치는 일은 이 카드 범위 밖이다 |
-| X11 | (v0.2.0) update 쪽 보존 행 후보 — P6, P7(호출 지점만), P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, P18, P19 의 분류 조각(위 P 표의 셋째 열, 줄 단위); 원장 L26 의 `update_wizard.go:39`, `:102`, `:105`, `update_tux.go:120` | `[DEFERRED → t1978]`. 이 SPEC 은 update 를 연결하지 않으므로 update 에는 활성 세션이 없고, 이 줄들은 오늘처럼 그대로 보인다(AC-TCL-013 `update_*` 회귀 경계). 줄 단위로 분류해 두어 목록 완전성은 유지하고, t1978 이 각 조각을 보존 행 또는 다른 제외 행으로 다시 분류한다. `update_wizard.go` 세 줄과 `update_tux.go:120`(`! N conflict` 알약, `templates.analyze` 안 — 3회차 감사 M8)의 보존 여부 판정도 t1978 몫이다 |
+| X11 | (v0.2.0) update 쪽 보존 행 후보 — P6, P7(호출 지점만), P8, P9, P10, P11, P12, P13, P14, P15, P16, P17(update 호출 지점만 — 조각은 P17 init 지점 소유, v0.2.2), P18, P19 의 분류 조각(위 P 표의 셋째 열, 줄 단위); 원장 L26 의 `update_wizard.go:39`, `:102`, `:105`, `update_tux.go:120` | `[DEFERRED → t1978]`. 이 SPEC 은 update 를 연결하지 않으므로 update 에는 활성 세션이 없고, 이 줄들은 오늘처럼 그대로 보인다(AC-TCL-013 `update_*` 회귀 경계). 줄 단위로 분류해 두어 목록 완전성은 유지하고, t1978 이 각 조각을 보존 행 또는 다른 제외 행으로 다시 분류한다. `update_wizard.go` 세 줄과 `update_tux.go:120`(`! N conflict` 알약, `templates.analyze` 안 — 3회차 감사 M8)의 보존 여부 판정도 t1978 몫이다 |
 
 - 경고·오류 보존 행이 항목 안에서 쓰이면 그 항목 줄을 `!` 로 끝낸다. 안내 행은 글리프를 바꾸지 않는다. 어느 쪽도 경고 수에 더하지 않는다(결정 D-9).
 - 항목 밖 행은 넘김 규칙으로 이미 한 번 보인다. 세션은 그 줄을 다시 펼치지 않는다.
@@ -257,9 +257,16 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 |---|---|---|---|
 | init | `templates` | `detect`, `validate`, `deploy` | 보고기 `StepStart` 이름 Detection·Validation·Initialization (`internal/cli/testdata/tuxiu/postm4/init.notty.stderr.golden:2-9` 이 보여 주는 순서) |
 | init | `config` | `autonomy`, `profile`, `optins`, `harness`, `globals` | 자율 등급 `init.go:928-939`, 프로필 `:958-960`, 동의(Jev `:970-972`, 참여 `:980-982`), 하네스·배포 모드·evolution `:991-1011`, 전역 설정 `:1014-1016` |
-| init | `hooks` | `prepush`, `precommit` | `init.go:1022-1029` |
-| init | `mcp` | `entry` | `init.go:1045-1048` |
+| init | `hooks` | `prepush`, `precommit` | `init.go:1022-1029`. `--no-hooks` 이면 두 항목 모두 건너뜀 `○` |
+| init | `mcp` | `entry` | `init.go:1045-1048`. `opts.MCPProvision` 이 거짓이면 건너뜀 `○` |
 | init | `verify` | `manifest` | `init.go:1073-1075` |
+
+**조건부 생략 항목은 건너뜀으로 닫는다(v0.2.2, 결정 기록 §15.107).** 아래 두 단계는 조건이 맞으면 아무 일도 하지 않고 `nil` 을 돌려준다. 이때 항목을 여는 줄만 넣으면 다음 `Item` 이 그 항목을 암묵 `Done` 으로 닫아(§2), 하지 않은 일이 `✓` 로 그려진다.
+
+- `hooks.prepush`·`hooks.precommit`: `init.go:1022`·`:1027` 이 `getBoolFlag(cmd, "no-hooks")` 를 `skip` 으로 넘기고, `installPrePushHookOptional`(`internal/cli/hook_install.go:255`)·`installPreCommitHookOptional`(`internal/cli/hook_install_precommit.go:374`)은 설치기의 `if skip { return nil }`(`hook_install.go:181-183`, `hook_install_precommit.go:297-299`)을 거쳐 `nil` 을 돌려주고, 설치 줄(`hook_install.go:262`, `hook_install_precommit.go:381`)도 `if !skip` 안이라 쓰지 않는다.
+- `mcp.entry`: `init.go:1045` `mcpDeclined := !opts.MCPProvision` → `provisionMCPEntryUnlessDeclined`(`init.go:193`)가 `:194-196` 에서 `nil` 을 돌려준다. `opts.MCPProvision` 은 대화형 경로에서만 참이 된다(`init.go:623`) — 비대화형 init 은 늘 이 경우다.
+
+그래서 이 세 항목은 R3 에 넣는 여는 줄이 같은 조건(`--no-hooks`, `!opts.MCPProvision`)을 보고, 조건이 맞으면 항목을 열자마자 `Skip("checklist.status.skipped")`(§2, §6 의 기존 키 — 새 키 없음)로 닫아 `○` 로 그린다. 이 항목은 열린 채 바이트를 받지 않으므로 §3.2 항목 경계의 네 닫힘 경우(열린 항목에 대한 규칙)는 그대로다. R3 는 삽입만이라(`b=0`) 이 조건도 여는 줄 쪽에 둔다. 따라오는 일 두 가지: `--no-hooks` 이면 `init.go:1034` P5 안내는 열린 항목 없이 쓰여 넘김 규칙으로 정확히 한 번 보인다(위치가 `hooks.precommit` 에서 항목 밖으로 바뀔 뿐 횟수는 같다). §1 의 `✓ MCP 서버 항목` 은 대화형 경로의 화면이며, 비대화형 고정이면 같은 자리에 `○` 한 줄이 온다 — 줄 수는 같다. AC-TCL-001 의 명령 수준 하위 테스트가 판정한다.
 
 깨끗한 init 에서 **체크리스트가 그리는 줄**은 §1 의 화면으로 23줄이다(상한 24, REQ-TCL-010). 같은 실행의 **따로 세는 직접 출력 줄**은 5줄 — slim 안내 2(`init.go:708`), 시작 줄 1(`:750`), 사용자 자산 요약 1(`:784`), P5 안내 1(`:1034`) — 이며 바꾸지 않고 M0 기준선과 같은 횟수로 나온다(spec.md §3.3 표). 합계 28줄. 두 셈 모두 코드 읽기이며, 직접 출력 줄은 M0 의 `fallback/init-clean-*` 골든이, 체크리스트 줄은 M4 의 리치 골든(AC-TCL-011)이 처음 실측한다. v0.2.0 의 "깨끗한 init 23줄 ≤ 24" 는 이 직접 출력 줄과 늘 나오는 P5 를 빠뜨린 셈이었다(확인 감사 5회차 B1, 리더 결정 기록 §15.102).
 

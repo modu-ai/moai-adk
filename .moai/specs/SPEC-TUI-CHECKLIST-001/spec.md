@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
