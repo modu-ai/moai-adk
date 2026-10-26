@@ -64,6 +64,7 @@ func rebindRefusal(format string, args ...any) error {
 // consolidationCard is the slice of a source card row the operation needs.
 type consolidationCard struct {
 	id, state, stage, evidenceSHA string
+	leaseHolder, leaseExpiresAt   string
 	version                       int64
 }
 
@@ -170,6 +171,14 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		return RebindResult{}, err
 	}
 	for _, c := range cards {
+		// The source leader's death does not kill a card lease, and the
+		// worker guard is run-scoped: a holder whose registration names
+		// another run (or none) is invisible to refuseLiveWorker, so the
+		// row's own lease decides (card t1973 round 2, P1).
+		if holdsValidLease(Card{State: c.state, LeaseHolder: c.leaseHolder, LeaseExpiresAt: c.leaseExpiresAt}, now) {
+			return RebindResult{}, rebindRefusal("card %s of run %s holds a live lease (%s, expires %s); a leased card is not moved",
+				c.id, src.RunID, c.leaseHolder, c.leaseExpiresAt)
+		}
 		if err := refuseThirdRunHolder(ctx, tx, c.id, src.RunID, tgt.RunID, others, now, opts.workerProbe()); err != nil {
 			return RebindResult{}, err
 		}
@@ -190,9 +199,16 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 			// evidence diverges is different work. Either refuses the whole
 			// operation — the source's row stays live and the conflict needs a
 			// fresh decision, not the target's stale completion.
-			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA {
-				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
-					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, src.RunID)
+			//
+			// Two EMPTY evidence values are not a match either (card t1973
+			// round 2, P2): the normal early state — the source row actively
+			// working beside a freshly created target row — carries no proof
+			// the rows are the same work, and an abandon there strands the
+			// source row's stage/worktree/spec_id. The safe default is chosen:
+			// refuse; the cost is one manual re-approval, never lost progress.
+			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || (tgtEvidence == "" && c.evidenceSHA == "") {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q)%s; the live row of run %s stays and the conflict needs a fresh decision",
+					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(tgtEvidence, c.evidenceSHA), src.RunID)
 			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
@@ -266,6 +282,16 @@ func nonNilStrings(s []string) []string {
 	return s
 }
 
+// bothEmptyNote names the both-empty-evidence shape inside a target-row
+// conflict refusal: an empty-versus-empty pair is a refusal of its own, not an
+// evidence match (card t1973 round 2, P2).
+func bothEmptyNote(tgtEvidence, srcEvidence string) string {
+	if tgtEvidence == "" && srcEvidence == "" {
+		return " — neither row records evidence, so the rows are not proven to be the same work"
+	}
+	return ""
+}
+
 // requireRunStamp re-reads one run inside the transaction and refuses unless
 // it is still active under the owner stamp the caller classified it on.
 func requireRunStamp(ctx context.Context, tx *sql.Tx, o RunOwner, role string) error {
@@ -333,14 +359,14 @@ func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(
 // sourceCards reads the source's non-terminal cards in card-id order.
 func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidationCard, error) {
 	// SQL: sqlTerminalStates is a compile-time constant; the run id goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
+	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha,lease_holder,lease_expires_at FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
 	if err != nil {
 		return nil, err
 	}
 	var cards []consolidationCard
 	for rows.Next() {
 		var c consolidationCard
-		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA); err != nil {
+		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA, &c.leaseHolder, &c.leaseExpiresAt); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
