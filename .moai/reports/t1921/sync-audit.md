@@ -1,8 +1,8 @@
 auditor-model: codex (codex_audit target=baseBranch, build b1806498fe)
 verdict: PASS
 findings: 0
-audit_receipt: rcpt-74815b962c70a725b1029e9a
-audited_sha: 46911ee01c998d87de3079a3c29bf59c0b5258c1
+audit_receipt: rcpt-ad3600c3bd7bbdc1ec19761b
+audited_sha: 383e6b0ad6e63235376052ab44394f765814a462
 review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
 
 # t1921 — sync-audit verdict
@@ -12,7 +12,7 @@ review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
 
 ## Verdict
 
-**PASS** — codex_audit over the card diff vs main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa), re-run at HEAD 46911ee01c so the audited_sha covers the sync commit: verdict `pass`, zero findings, receipt **rcpt-74815b962c70a725b1029e9a** (build b1806498fe). Prior-round audit at 75e37d0f0b also PASS, receipt rcpt-44b010c7dc0c64fdf1145ee2.
+**PASS** — codex_audit over the card diff vs main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa), run with this worktree detached AT the recorded sync evidence commit 383e6b0ad6 so the audited tree is exactly that commit: verdict `pass`, zero findings, receipt **rcpt-ad3600c3bd7bbdc1ec19761b** (build b1806498fe). Prior-round audits: rcpt-44b010c7dc0c64fdf1145ee2 at 75e37d0f0b, rcpt-74815b962c70a725b1029e9a at 46911ee01c — all PASS, all zero findings; the later commits touch only .moai/reports docs.
 
 ## Evidence
 
