@@ -14,5 +14,10 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 
 ## 2. Plan stage
 
-- Spawn: manager-spec(depth-1 leaf, frontmatter 기본 모델/effort, 무격리 — 레인 트리 착지 예정, 귀환 후 착지 검증 예정). 프롬프트 축약: 적용안 1~4 전문 + 제약(새 키·비용 금지 기본 off / Python 의존 금지·토큰 근사 / 템플릿 중립성 / internal/jev는 클라이언트 캐시·재시도만, t1762=장부·consumers 경계) + 완료 판정(블록 분할 골든·채점 선택 규칙·출력 형식·종료 코드 단위 테스트, 페이크 Jev 서버 E2E 1건, jev off 네트워크 0건 테스트) + GEARS 2-cell 기준.
-- 2026-10-26 20:4x KST 시작 — 진행 중.
+- Spawn: manager-spec(depth-1 leaf, frontmatter 기본 모델/effort, 무격리). 프롬프트: 적용안 1~4 전문 + 제약(새 키·비용 금지 기본 off / Python 의존 금지·토큰 근사 / 템플릿 중립성 / internal/jev는 클라이언트 캐시·재시도만, t1762=장부·consumers 경계) + 완료 판정 + GEARS 2-cell 기준.
+- 2026-10-26 20:56 귀환 — 착지 검증: `git worktree list`에 agent-* 항목 없음(레인 트리 직접 기록), SPEC-FETCH-WEB-001/ 4파일 존재 직독. 보고: Tier M, 16 REQ/14 AC(천장 16/16 이내), `moai spec lint` → `✓ No findings` exit 0(트리 ec9091a80c 관측), RED-now 증거 장부 7행(ec9091a80c 고정), 설계 결정 7건, 킥오프 심사 여지 B1/B5/B6.
+- 커밋: bdc9a86ca1 `feat(SPEC-FETCH-WEB-001): plan-phase artifacts (M, 3 artifacts)` — Authored-By-Agent: manager-spec 트레일러 포함(소유권 행렬 WHO 신호).
+- depends_on 사전 점검: SPEC-JEV-CORE-001 status: completed, tier L — 직독 확인.
+- SPEC progress.md §E.1: plan_status: audit-ready, plan_complete_at 2026-10-26 — 확인.
+- decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/specs/SPEC-FETCH-WEB-001/{spec,plan,acceptance,progress}.md+bdc9a86ca1+SPEC-JEV-CORE-001/spec.md ladder_path=disk-evidence — plan 산출물 착지·커밋 승인, 감사 교차 진입.
+- Spawn: plan-auditor(독립 감사 교차 — 설계 원문 충실도·2-cell 채택·GEARS·경계·Tier M 예산·B1/B5/B6 판단) → 판정 파일 .moai/reports/t1968/plan-audit.md, audited head bdc9a86ca1 고정 지시. 2026-10-26 20:5x KST 진행 중.
