@@ -87,7 +87,46 @@ m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(sync-phase에서 작성 — manager-docs 소관. sync_commit_sha는 sync 커밋에서 pending-backfill로 기록 후 후속 커밋에서 백필.)
+### PARTIAL close — M2-B only (card t1963, 2026-10-26)
+
+Scope ruling (coordinator, recorded in `.moai/reports/t1963/progress.md`): this sync closes ONLY the M2-B milestone (AC-FCR-017..025, REQ-FCR-017..023). The SPEC is NOT closed: `spec.md` stays `status: in-progress`; no `implemented`/`completed` transition is made by this commit. The signal below is therefore a milestone signal, not a SPEC-close signal. The field is named `m2b_…` on purpose: the plain close-marker field name is withheld because the SPEC is not complete and the era/audit gate reads that field as completion; it is reserved for the final SPEC close.
+
+```yaml
+sync_scope: partial-m2b-only
+sync_complete_at: 2026-10-26
+m2b_sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: m2b-milestone-synced-spec-open
+run_head_at_sync: dd227d16c4
+ac_source: .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/acceptance.md (tier L)
+ac_live_total: 25          # B12 counter: live=25 excluded=0 ambiguous=0 (this run)
+ac_closed_by_this_sync: 9  # AC-FCR-017..025
+requirements_closed_by_this_sync: 7   # REQ-FCR-017..023 of 23
+changelog_entry_position: "[Unreleased] > Added, first bullet"
+frontmatter_status_transitions:
+  spec_md_status: "in-progress (unchanged)"
+  spec_md_updated: 2026-10-26
+canary_compliance_check: not-applicable
+mx_validation: "tags present in source (see below); sidecar index not built (moai mx scan writes the index and was not run)"
+```
+
+**Still open — no implementation in this tree (grep evidence, this run):** AC-FCR-006..011 (M2-original: expired-lease reaper over all runs, operator reassign edge, stalled-wait watchdog, CI completion reader) and AC-FCR-012/013 (M3: near-duplicate issuance disclosure, relation disposition ledger). `grep -rlEi 'ExpiredLeaseReaper|OperatorReassign|StalledWaitWatchdog|CICompletionReader|GTDRelationDisposition|RecoveryNeverCompletes' internal cmd` printed nothing, and the test names acceptance.md gives for them (for example `TestTodoAddNearDupDisclosure`) do not exist; only the pre-existing `TestTodoAddNearDuplicateRecordsOnly` is present. Per acceptance.md §0 an empty-sweep selector is unmeasured, never a pass. M1 (AC-FCR-001..005, 014..016) landed earlier in PR #1812; it is not re-closed here.
+
+**Post-admission SPEC amendments during run (plan-audit ceiling spent; no 4th plan-audit):**
+- `b20b174350` (spec v0.3.2): (1) AC-FCR-017 Then (9) was unsatisfiable as written — the completion gate (`holdDoneApprovalGate` -> `verifyForClose`, `internal/cli/leader_approval_gate.go:63`/`:91`) reads the card_dispatch binding and the approval receipt, never the queue's `todo_dispatch_current` record. Restated to the enforced half (old approval refused with `ErrApprovalRunMismatch`, fresh approval under the new run closes, old approval row untouched; witness `TestLeaderStartRekeyedCardNeedsFreshApproval`); design.md §5 now states the queue-record claim as an untested residual risk. (2) AC-FCR-025 fixture exception extended to cli `selSeedDead(workers=true)` worker pid `1` -> `os.Getpid()` (Windows reads pid 1 as dead under the new worker rule; same ground as the `mustInsertWorker` exception). Test commit `1895a22bb7`.
+- `34f296b660` (spec v0.3.3): REQ-FCR-020 step (5) said to repoint EVERY `card_dispatch` binding naming the source, but consolidation moves only non-terminal cards (`sourceCards`, `internal/homestate/factory_run_rebind.go`), so a terminal card staying in the retired source got a binding to a target run with no row and `recordedCardRow` failed closed (`ErrApprovalRunUnresolvable`). Narrowed to bindings of cards actually moved or abandoned-with-pointer; AC-FCR-017 (6) gained the terminal `c5` sub-case and mutant probe (h). Fix commit `dd227d16c4`. Found by the Stop-hook codex review, confirmed by lane code read and then by RED tests.
+- Both amendments changed requirement/criterion text after admission; no requirement or criterion id was added (still 23 / 25). Flagged to the sync-auditor for independent review.
+
+**Audited hash vs final hash.** The plan-audit delta verdict (PASS-WITH-DEBT 0.94, `.moai/reports/t1963/plan-audit-verdict.md`) audited `61cedfea33`; its receipt is `rcpt-2fda45f825d6ea42560b6115`, and that receipt carries no SHA field, so it cannot by itself bind a tree. The plan artifacts at HEAD `dd227d16c4` are NOT the audited ones: the two amendments above edited spec.md, acceptance.md, design.md and research.md after the audit (`b20b174350` 4 files +7/-6, `34f296b660` 4 files +9/-8, per the lane record). The final plan-artifact `ComputeHash` was not computed in this sync (Gap), so no hash-equality claim is made.
+
+**Carried-over card-review findings** (verbatim dispositions from `.moai/reports/t1963/card-review.md`; review via `codex exec review --base c4784db4c2` CLI fallback, NO review receipt, advisory; findings 1-3 not reproduced by the lane):
+- Finding 1 [P2] `internal/homestate/factory_run_rebind.go:193-196` — the queue's current dispatch record (`todo_dispatch_current`) is not updated on consolidation, so a retried dispatch whose operation was `prepared`/`invoking` on the source can run `repairGTDDispatchRecord`, recreate the card row in the retired source and flip the binding back. Disposition CARRIED OVER: the fix spans the queue/todo store outside the factory transaction (SPEC non-goal: no cross-store write); follow-up card needed to sync the queue record on consolidation or make the retry path refuse a consolidated source.
+- Finding 2 [P2] `internal/homestate/factory_run_rebind.go:246-249` — for a `BasisPeer` (legacy, `runs.lead_pid` = 0) source the in-transaction stamp check does not re-verify owner identity, so a legacy peer registering after classification still lets the consolidation move its cards and retire the run (operator path only; leader entry requires `BasisStamp`). Disposition CARRIED OVER with escalation: the peer identity lives in the broker database outside the factory transaction. Lane-recommended default if closed: refuse `BasisPeer` sources in the rebind operation with a message naming `moai factory runs --retire <id>`; a design decision for the leader and sync-auditor.
+- Finding 3 [P2] `internal/homestate/factory_run_rebind.go:169` (Stop-hook codex gate, cached verdict fail at `dd227d16c4`) — moved cards keep their transition events under the source `run_id`, so state age reads `unknown` on the target run (known residual risk: design.md §5, research.md §2.1, plan-audit D10). Codex additionally claims `factoryAgeAlarms`/`ComputeCardAges` can then fall back to a recent `updated_at` and suppress a stagnation alarm for a long-stalled consolidated card. That alarm-suppression consequence was NOT verified by the lane, is not in the SPEC, and is recorded as an open question for the follow-up card. Disposition CARRIED OVER, not fixed here.
+- (Finding 0, terminal-card binding repoint, was FIXED in `dd227d16c4` — see amendment `34f296b660`.)
+
+**Continuing sync debts (accepted as debt, not fixed here — fixing them edits plan.md/acceptance.md body, outside this agent's ownership and outside M2-B):** D17 (name t1533's four excluded files in plan.md §D) and D18 (`REQ-FCR-002b` -> `REQ-FCR-002(b)` at acceptance.md:78 and plan.md:69) are M1-era wording debts from the plan-audit ledger above. R3 (injection-seam placement review, registered in plan.md §H) is a sync confirmation item: the run records the seam positions (`second-card` = right after the second card is handled, `after-cards` = after card moves and before the `card_dispatch` repoint, `before-commit` = after all writes and just before `tx.Commit()`, in `internal/homestate/factory_run_rebind.go`; lease-path seam = after the T1 record and before the abandon). This sync did not independently re-read the seams against the criteria; R3 stays open for the sync-auditor.
+
+**MX validation (sync sub-step).** `@MX` tags are present on the new code: `@MX:ANCHOR` + `@MX:WARN` on `RebindRun` (`internal/homestate/factory_run_rebind.go:95-98`), `@MX:WARN` on `RecordPickedReconciled` (`factory_run_lease_rebound.go:43-44`), `@MX:WARN` on `adoptResumedLeaderRun` (`internal/cli/factory_run_adopt.go:79-80`) and on the lane-join loop (`internal/cli/factory_run_select.go:308-309`). `moai mx query --file-prefix internal/homestate/factory_run --format table` (read-only) returned `(결과 없음)` with `provenance: unknown`: the sidecar index has not been built in this tree, so the query cannot confirm the tags. `moai mx scan` writes the index and was not run.
 
 ## §F Phase 4 Mode Selection
 
