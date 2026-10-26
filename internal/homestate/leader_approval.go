@@ -288,6 +288,13 @@ func ensureRunRowTx(ctx context.Context, tx *sql.Tx, runID, nowText string) erro
 // upsertDispatchBindingTx records cardID -> runID as the card's current
 // factory engagement inside the caller's transaction.
 func upsertDispatchBindingTx(ctx context.Context, tx *sql.Tx, cardID, runID, nowText string) error {
+	// A binding to a run a consolidation retired would name a run that holds no
+	// row for the card, and the completion gate's row resolution fails closed on
+	// it (REQ-FCR-024). Every binding writer funnels through here, in its own
+	// transaction, so the one check covers them all.
+	if err := refuseIfRetiredByConsolidation(ctx, tx, runID); err != nil {
+		return err
+	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO card_dispatch(card_id,run_id,recorded_at) VALUES(?,?,?) ON CONFLICT(card_id) DO UPDATE SET run_id=excluded.run_id,recorded_at=excluded.recorded_at`,
 		cardID, runID, nowText)
 	return err
