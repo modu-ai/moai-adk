@@ -161,7 +161,7 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, proce
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("factory run %s no longer carries the classified owner stamp; adoption refused", adopt.RunID)
+		return &adoptStampChangedError{runID: adopt.RunID}
 	}
 	payload := fmt.Sprintf(`{"basis":%q,"outcome":"adopted"}`, basis)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.resumed',?,?)`, adopt.RunID, payload, now); err != nil {
