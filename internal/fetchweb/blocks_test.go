@@ -531,19 +531,132 @@ func TestSplitBlocks_HeadingOnlyAsideEmitsNothing(t *testing.T) {
 // F7c control (same finding): the heading's text merged into the fallback
 // paragraph ("Side note body") where the p-wrapped control emits only the
 // body's text ("note body"). The extraction now skips heading subtrees, so
-// the fallback carries only the aside's non-heading text runs. The internal
-// heading's path segment is NOT preserved for the bare remainder (residual,
-// documented in the repair report): the fallback runs after the aside-local
-// path is restored, so the block carries [Main] where the p-wrapped control
-// would carry [Main / Side].
+// the fallback carries only the aside's non-heading text runs. C2 resolved
+// the path residual this test once pinned ([Main] for the bare remainder
+// where the p-wrapped control carried [Main / Side]): the bare run is now
+// emitted in position, before the aside-local path is restored, so it
+// carries the same [Main / Side] path the p-wrapped control does.
 func TestSplitBlocks_AsideFallbackExcludesHeadingText(t *testing.T) {
 	html := `<body><h2>Main</h2><aside><h3>Side</h3>note body</aside></body>`
 	blocks := SplitBlocks(html)
 	if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "note body" || !blocks[0].Aside {
 		t.Fatalf("want exactly one aside paragraph %q, got %d blocks: %+v", "note body", len(blocks), blocks)
 	}
-	if !reflect.DeepEqual(blocks[0].HeadingPath, []string{"Main"}) {
-		t.Errorf("fallback path = %v, want [Main] (restored pre-aside path; internal [Main / Side] is the documented residual)", blocks[0].HeadingPath)
+	if !reflect.DeepEqual(blocks[0].HeadingPath, []string{"Main", "Side"}) {
+		t.Errorf("fallback path = %v, want [Main Side] (the aside-local heading precedes the run, same as the p-wrapped control)", blocks[0].HeadingPath)
+	}
+}
+
+// C2 (t1968 sync-audit iter6): the F7b fallback was all-or-nothing — it
+// emitted the aside's collapsed text only when NO child had emitted a block,
+// so a MIXED aside (`Important<p>Details</p>Tail`) kept only Details and the
+// bare text runs on either side were lost from the document entirely. Bare
+// runs are now extracted per run, in document order, as aside-scored content
+// regardless of the child blocks beside them.
+func TestSplitBlocks_MixedAsideBareTextRunsNotLost(t *testing.T) {
+	html := `<body><aside>Important<p>Details</p>Tail</aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind  BlockKind
+		text  string
+		aside bool
+	}{
+		{KindParagraph, "Important", true},
+		{KindParagraph, "Details", true},
+		{KindParagraph, "Tail", true},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (bare runs of a mixed aside must not be lost)", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=%v (bare runs in document order, aside-scored)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text, w.aside)
+		}
+	}
+}
+
+// C2 document-order control: the bare run BEFORE the block child precedes it
+// in the split, and a run between two blocks lands between them.
+func TestSplitBlocks_MixedAsideRunOrder(t *testing.T) {
+	html := `<body><aside>head<ul><li>item</li></ul>tail</aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindParagraph, "head"},
+		{KindListItem, "item"},
+		{KindParagraph, "tail"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true (run, block, run in document order)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+	}
+}
+
+// C2 splice control: a bare run preceding a table inside the aside is
+// spliced in front of the table's rows, and the row→header binding survives
+// the splice — spliceAsideRun shifts rowTable keys and headerLocal positions
+// recorded at or past the splice point, so resolveHeaders still binds the
+// body row to its header after the shift.
+func TestSplitBlocks_MixedAsideRunBeforeTableKeepsHeaderBinding(t *testing.T) {
+	html := `<body><aside>intro<table><tr><th>H1</th></tr><tr><td>data</td></tr></table>tail</aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindParagraph, "intro"},
+		{KindTableRow, "H1"},
+		{KindTableRow, "data"},
+		{KindParagraph, "tail"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true (run spliced before the table's rows)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+	}
+	if blocks[2].HeaderIndex != 1 {
+		t.Errorf("the body row's HeaderIndex = %d, want 1 (bound to the header row AFTER the splice)", blocks[2].HeaderIndex)
+	}
+}
+
+// C3 (t1968 sync-audit iter6): an <aside> inside a <td> folded into the row
+// text (the walk never descends into cells, so the aside case never ran and
+// cellSkip did not exclude it) — the aside's content rode the row block and
+// never reached the aside scoring stream. The row's text extraction now
+// excludes aside subtrees, and the row scan emits them as separate
+// aside-scored blocks, the same exclusion+separate-emission pattern F8
+// applies to pre inside a cell.
+func TestSplitBlocks_AsideInsideCellIsSeparateBlock(t *testing.T) {
+	html := `<body><table><tr><td>Main<aside><p>Note</p></aside></td></tr></table></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind  BlockKind
+		text  string
+		aside bool
+	}{
+		{KindTableRow, "Main", false},
+		{KindParagraph, "Note", true},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (cell text excludes the aside; the aside emits its own block)", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || blocks[i].Aside != w.aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=%v",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text, w.aside)
+		}
 	}
 }
 

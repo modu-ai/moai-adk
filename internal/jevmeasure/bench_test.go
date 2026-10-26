@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/fetchweb"
 	"github.com/modu-ai/moai-adk/internal/jev"
 )
 
@@ -225,5 +226,68 @@ func TestBaselineDiff_MissingRunResultFails(t *testing.T) {
 	}
 	if !byID["install-req"].Pass {
 		t.Errorf("the case with a real run result must keep its verdict: %+v", byID["install-req"])
+	}
+}
+
+// C4 (t1968 sync-audit iter6): a fetch_error run is not comparable to any
+// baseline verdict. The old diff scored it PASS against a Contained=false
+// baseline row (an error output contains nothing), and the savings formula
+// turned its zero output tokens into a bogus 100% savings inside the summary
+// mean. A failed run now FAILs the comparison with its reason named, and its
+// savings are excluded from the case row and the mean.
+func TestBaselineDiff_FetchErrorRunFailsAndExcludedFromSavings(t *testing.T) {
+	dir := t.TempDir()
+	baselinePath := filepath.Join(dir, "baseline.json")
+	cases := benchCases()
+	// Baseline rows recorded by a healthy run (absent-quote: Contained=false).
+	healthy := RunBench(context.Background(), cases, stubBenchAsker{marker: "You need Go"})
+	if _, err := WriteBaseline(baselinePath, cases, healthy); err != nil {
+		t.Fatal(err)
+	}
+	// The current run for absent-quote ends in fetch_error (an unavailable
+	// scoring call, say): empty output, zero kept tokens.
+	failed := append([]CaseRun(nil), healthy...)
+	for i := range failed {
+		if failed[i].CaseID == "absent-quote" {
+			failed[i].Status = string(fetchweb.StatusFetchError)
+			failed[i].Output = ""
+			failed[i].OutputTokens = 0
+		}
+	}
+
+	// The diff: a failed run FAILs — containment equality against a
+	// not-contained baseline row is not a pass for an error.
+	diff, err := DiffAgainstBaseline(baselinePath, cases, failed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]CaseDiff{}
+	for _, c := range diff.Cases {
+		byID[c.CaseID] = c
+	}
+	if byID["absent-quote"].Pass {
+		t.Error("a fetch_error run must FAIL the comparison, not pass against a Contained=false baseline row")
+	}
+	if byID["absent-quote"].Reason == "" {
+		t.Error("the fetch_error FAIL must name its reason")
+	}
+	if !byID["install-req"].Pass {
+		t.Errorf("the healthy case must keep its verdict: %+v", byID["install-req"])
+	}
+
+	// Savings exclusion: the error run's row carries no savings figure and
+	// the summary mean averages only the comparable cases — a zero-token
+	// error run must not read as 100% savings.
+	report := CompareRun(cases, failed)
+	byCase := map[string]CaseComparison{}
+	for _, c := range report.Cases {
+		byCase[c.CaseID] = c
+	}
+	if s := byCase["absent-quote"].SavingsRate; s != 0 {
+		t.Errorf("a fetch_error run's savings must stay 0, got %v", s)
+	}
+	if report.Summary.MeanSavingsRate != byCase["install-req"].SavingsRate {
+		t.Errorf("mean %v must exclude the fetch_error case (want %v, the sole comparable rate)",
+			report.Summary.MeanSavingsRate, byCase["install-req"].SavingsRate)
 	}
 }

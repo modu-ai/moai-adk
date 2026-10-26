@@ -164,28 +164,38 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		// item is scored separately from that item, so its paragraphs are
 		// NOT "already part of the item's emitted text" and must be emitted
 		// as the aside's own blocks.
+		//
+		// C2 (t1968 sync-audit iter6): bare text runs of a MIXED aside are
+		// content in their own right. The F7b fallback was all-or-nothing —
+		// it emitted the aside's collapsed text only when NO child had
+		// emitted a block, so `Important<p>Details</p>Tail` kept only
+		// Details and both bare runs were lost. The walk now processes each
+		// child in order; the bare run preceding a block-emitting child is
+		// spliced in front of that child's blocks (F7b/F7c semantics per
+		// run: heading subtrees excluded, a heading-only remainder collapses
+		// to nothing), and a trailing run is appended — every bare run lands
+		// in document order as aside-scored content.
 		saved := append([]heading(nil), s.path...)
 		savedDepth := s.itemDepth
 		s.itemDepth = 0
-		before := len(*s.blocks)
-		s.walkChildren(n, true)
+		runStart := n.FirstChild
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			pathBefore := clonePath(s.path)
+			before := len(*s.blocks)
+			s.walk(child, true) // a no-op for non-element nodes
+			if len(*s.blocks) == before {
+				continue // emitted nothing: the child extends the bare run
+			}
+			if text := collapseRun(runStart, child, asideFallbackSkip); text != "" {
+				s.spliceAsideRun(before, text, pathBefore)
+			}
+			runStart = child.NextSibling
+		}
+		if text := collapseRun(runStart, nil, asideFallbackSkip); text != "" {
+			s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
+		}
 		s.itemDepth = savedDepth
 		s.path = saved
-		// F7b (t1968 sync-audit iter3): a BARE-TEXT aside has no block-level
-		// child, so the walk emitted nothing — and listItemSkip excludes its
-		// text from the enclosing item — the content was lost from the
-		// document entirely. When the aside's walk yields no separate block,
-		// emit its collapsed NON-HEADING text as one aside-scored block (the
-		// same exclusion-plus-fallback family as C2/N4), never dropped. F7c
-		// (t1968 sync-audit iter4): the extraction skips heading subtrees —
-		// a heading is structure, not content — and a heading-only remainder
-		// collapses to the empty string, so the guard below emits nothing and
-		// a heading-only aside stays block-free as it was before F7b.
-		if len(*s.blocks) == before {
-			if text := collapseText(n, asideFallbackSkip); text != "" {
-				s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
-			}
-		}
 	case n.Data == "p":
 		if s.itemDepth > 0 {
 			// A paragraph inside a list item body is already part of that
@@ -216,7 +226,7 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		s.walkChildren(n, inAside)
 	case n.Data == "tr":
 		s.emitRow(n, inAside)
-		s.emitRowCodeBlocks(n, inAside)
+		s.emitRowSubBlocks(n, inAside)
 	case headingLevels[n.Data] > 0:
 		// Headings are structure, not blocks: their text joins the path for
 		// the blocks that follow. A same-or-higher level heading pops deeper
@@ -308,6 +318,16 @@ func clonePath(path []heading) []string {
 // adjacent text runs across the boundary keep their word boundary; the final
 // collapse reduces the separators to single spaces, never to nothing.
 func collapseText(n *html.Node, skip map[string]bool) string {
+	return collapseRun(n.FirstChild, nil, skip)
+}
+
+// collapseRun collapses the text of the sibling run [first, end) — end nil
+// means to the last sibling — with the same visitor collapseText applies
+// over one node's children. C2's per-run extraction walks an aside's
+// children one at a time and needs the collapsed text of an explicit
+// SIBLING RANGE (the bare run between two block-emitting children), which a
+// single node's children cannot express.
+func collapseRun(first, end *html.Node, skip map[string]bool) string {
 	var b strings.Builder
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
@@ -342,10 +362,39 @@ func collapseText(n *html.Node, skip map[string]bool) string {
 			b.WriteByte(' ')
 		}
 	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
+	for c := first; c != nil && c != end; c = c.NextSibling {
 		visit(c)
 	}
 	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+// spliceAsideRun inserts one bare-run paragraph at index at, in front of the
+// blocks a block-emitting child of an aside just produced (C2, t1968
+// sync-audit iter6), and shifts the table bookkeeping the just-walked
+// subtree recorded at or past the splice point (rowTable keys, headerLocal
+// positions) so resolveHeaders still binds rows to their headers after the
+// shift.
+func (s *splitter) spliceAsideRun(at int, text string, path []string) {
+	b := Block{Kind: KindParagraph, HeadingPath: path, Text: text, Aside: true, HeaderIndex: -1}
+	blocks := *s.blocks
+	blocks = append(blocks, Block{})
+	copy(blocks[at+1:], blocks[at:])
+	blocks[at] = b
+	*s.blocks = blocks
+	shifted := make(map[int]int, len(s.rowTable))
+	for k, v := range s.rowTable {
+		if k >= at {
+			shifted[k+1] = v
+		} else {
+			shifted[k] = v
+		}
+	}
+	s.rowTable = shifted
+	for id, pos := range s.headerLocal {
+		if pos >= at {
+			s.headerLocal[id] = pos + 1
+		}
+	}
 }
 
 // textBoundaryTags are the elements whose boundaries end a run of text: the
@@ -374,10 +423,12 @@ var textBoundaryTags = map[string]bool{
 var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table": true, "aside": true}
 
 // cellSkip excludes from a table cell's row text the subtrees emitted as
-// their own blocks (F8, t1968 sync-audit iter2): a pre inside a cell is a
+// their own blocks (F8 + C3, t1968 sync-audit): a pre inside a cell is a
 // code block whose interior whitespace IS the code's formatting — the row's
-// whitespace collapse would destroy it.
-var cellSkip = map[string]bool{"pre": true}
+// whitespace collapse would destroy it — and an aside inside a cell is
+// aside-scored content that must reach the aside stream, not fold into the
+// row's text.
+var cellSkip = map[string]bool{"pre": true, "aside": true}
 
 // asideFallbackSkip excludes heading subtrees from the F7b aside fallback's
 // text extraction (F7c, t1968 sync-audit iter4): a heading's text is
@@ -437,14 +488,18 @@ func trimBlankLines(s string) string {
 	return strings.Join(lines[start:end], "\n")
 }
 
-// emitRowCodeBlocks emits the code blocks nested inside a table row (F8,
-// t1968 sync-audit iter2). The walk never descends into cells (emitRow reads
-// them as text), so a pre inside a td was unreachable — its only trace was
-// the flattened, whitespace-collapsed row text. The row's extraction now
-// excludes pre subtrees (cellSkip), and this scan emits each one verbatim as
-// its own code block, following its row in document order — the same
-// exclusion+separate-emission pattern C2 applies to pre inside list items.
-func (s *splitter) emitRowCodeBlocks(tr *html.Node, inAside bool) {
+// emitRowSubBlocks emits the separately-scored blocks nested inside a table
+// row (F8 + C3, t1968 sync-audit). The walk never descends into cells
+// (emitRow reads them as text), so a pre or an aside inside a td was
+// unreachable — the pre's only trace was the flattened, whitespace-collapsed
+// row text (F8), and the aside's content rode the row's text without ever
+// reaching the aside scoring stream (C3). The row's extraction excludes both
+// subtrees (cellSkip), and this scan emits each one after its row in
+// document order: the pre verbatim as its own code block, the aside handed
+// to the aside walk itself (whose paragraphs and bare runs, C2, become
+// aside-flagged blocks) — the same exclusion+separate-emission pattern the
+// list-item skip applies.
+func (s *splitter) emitRowSubBlocks(tr *html.Node, inAside bool) {
 	var scan func(*html.Node)
 	scan = func(node *html.Node) {
 		if node.Type == html.ElementNode && chromeTags[node.Data] {
@@ -459,6 +514,12 @@ func (s *splitter) emitRowCodeBlocks(tr *html.Node, inAside bool) {
 				s.emit(Block{Kind: KindCode, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
 			}
 			return // a pre nested in a pre is carried by the outer block's text
+		}
+		if node.Type == html.ElementNode && node.Data == "aside" {
+			// C3: the aside subtree is aside-scored content — hand it to the
+			// aside walk, whose own emission flags every block it produces.
+			s.walk(node, true)
+			return // the walk covers the subtree; scanning on would duplicate
 		}
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			scan(c)

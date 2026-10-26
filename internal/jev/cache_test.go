@@ -307,6 +307,207 @@ func TestCache_StaleServeKeepAndWarn(t *testing.T) {
 	}
 }
 
+// C1 (t1968 sync-audit iter6): the stale probe's candidate set is the
+// alias's own move history — the model ids the alias→model map previously
+// recorded. An explicit-override-authored entry is NOT one of them: a model
+// the alias never resolved to must not be served as a later alias lookup's
+// stale pick. With no prior alias model on record the probe admits nothing
+// and the miss goes to the network.
+func TestCache_StaleProbeIgnoresOverrideAuthoredEntries(t *testing.T) {
+	// The alias's first recorded model is jev-1.14.0, primed over body2.
+	prime := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.14.0")}}}
+	c := newCachedClient(t, prime)
+	other := Request{State: "a different state", Questions: cacheQuestion().Questions}
+	if !c.Ask(context.Background(), other).OK() {
+		t.Fatal("prime failed")
+	}
+
+	// An explicit override answers body1 under jev-1.15.0. Override calls
+	// never update the alias map, so jev-1.15.0 is absent from the alias's
+	// history — whatever entries they write.
+	over := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.15.0")}}}
+	oc := New(true)
+	oc.LoadCredential = c.LoadCredential
+	oc.CacheDir = c.CacheDir
+	oc.ModelOverride = "jev-1.15.0"
+	oc.HTTP = over
+	if !oc.Ask(context.Background(), cacheQuestion()).OK() {
+		t.Fatal("override call failed")
+	}
+
+	// A fresh process's alias lookup of body1 resolves jev-1.14.0, misses,
+	// and must NOT serve the override-authored entry: no prior alias model
+	// is recorded, so the probe admits nothing and the call goes to the
+	// network for a fresh answer.
+	fresh := New(true)
+	fresh.LoadCredential = c.LoadCredential
+	fresh.CacheDir = c.CacheDir
+	net := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.14.0")}}}
+	fresh.HTTP = net
+	res := fresh.Ask(context.Background(), cacheQuestion())
+	if !res.OK() {
+		t.Fatalf("fresh call failed: %s", res.NoticeLine())
+	}
+	if got := atomic.LoadInt64(&net.calls); got != 1 {
+		t.Errorf("stale probe served an override-authored entry (a model the alias never recorded); want a network call, saw %d", got)
+	}
+	if res.StaleCacheWarning != "" {
+		t.Errorf("no stale serve is permitted against the alias's empty history, got warning %q", res.StaleCacheWarning)
+	}
+}
+
+// C1 control: when the alias DID previously record a model, its entry wins
+// the stale probe even when a LATER override-authored entry for the same
+// body exists — the pick is the alias's prior model, not the newest file.
+func TestCache_StaleProbePicksAliasPriorModelNotNewestForeignEntry(t *testing.T) {
+	// body1 primed under the alias's first model jev-1.13.0.
+	doer := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.13.0")}}}
+	c := newCachedClient(t, doer)
+	if !c.Ask(context.Background(), cacheQuestion()).OK() {
+		t.Fatal("prime failed")
+	}
+	// A later explicit override writes an entry for the same body under
+	// jev-1.15.0 (the newest CreatedAt of the two).
+	over := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.15.0")}}}
+	oc := New(true)
+	oc.LoadCredential = c.LoadCredential
+	oc.CacheDir = c.CacheDir
+	oc.ModelOverride = "jev-1.15.0"
+	oc.HTTP = over
+	if !oc.Ask(context.Background(), cacheQuestion()).OK() {
+		t.Fatal("override call failed")
+	}
+	// The alias moves to jev-1.14.0 over a different body: jev-1.13.0 joins
+	// the alias's recorded history.
+	mover := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.14.0")}}}
+	mc := New(true)
+	mc.LoadCredential = c.LoadCredential
+	mc.CacheDir = c.CacheDir
+	mc.HTTP = mover
+	moved := Request{State: "a different state", Questions: cacheQuestion().Questions}
+	if !mc.Ask(context.Background(), moved).OK() {
+		t.Fatal("alias-move call failed")
+	}
+
+	// Fresh process, network closed, same body1: the probe must serve the
+	// alias's own prior model jev-1.13.0 — never the newer override-authored
+	// jev-1.15.0 entry.
+	fresh := New(true)
+	fresh.LoadCredential = c.LoadCredential
+	fresh.CacheDir = c.CacheDir
+	fresh.HTTP = &refusingDoer{}
+	res := fresh.Ask(context.Background(), cacheQuestion())
+	if !res.OK() {
+		t.Fatalf("stale serve failed: %s", res.NoticeLine())
+	}
+	if !strings.Contains(res.StaleCacheWarning, "jev-1.13.0") {
+		t.Errorf("stale pick must be the alias's prior model jev-1.13.0, got %q", res.StaleCacheWarning)
+	}
+	if strings.Contains(res.StaleCacheWarning, "jev-1.15.0") {
+		t.Errorf("an override-authored entry leaked into the alias's stale pick: %q", res.StaleCacheWarning)
+	}
+}
+
+// N1 (t1968 sync-audit iter6): an OK response that answers only PART of the
+// request is a transient endpoint fault, not a verdict. Caching it would
+// persist the fault — every later identical request would hit the incomplete
+// entry with from_cache=true. Only complete answers are stored.
+func TestCache_IncompleteResponseNotCached(t *testing.T) {
+	twoQ := Request{
+		State: "the state under judgment",
+		Questions: []Question{
+			{ID: "q1", Text: "Is the premise alive?", Kind: KindNoul},
+			{ID: "q2", Text: "Is the backup plan real?", Kind: KindNoul},
+		},
+		Repeatable: true,
+	}
+	doer := &cachedDoer{script: []doerStep{
+		// Answers q1 only, then the complete pair.
+		{status: 200, body: `{"model":"jev-1.13.0","answers":{"q1":{"type":"noul","noul":0.9}},"usage":{"input_tokens":7}}`},
+		{status: 200, body: `{"model":"jev-1.13.0","answers":{"q1":{"type":"noul","noul":0.9},"q2":{"type":"noul","noul":0.4}},"usage":{"input_tokens":7}}`},
+	}}
+	c := newCachedClient(t, doer)
+	first := c.Ask(context.Background(), twoQ)
+	if !first.OK() {
+		t.Fatalf("partial-but-OK call failed: %s", first.NoticeLine())
+	}
+	if len(first.Answers) != 1 {
+		t.Fatalf("partial response carries 1 answer, got %d", len(first.Answers))
+	}
+	// The second identical call must NOT be served the incomplete entry: it
+	// goes back to the network for the full answer.
+	second := c.Ask(context.Background(), twoQ)
+	if !second.OK() {
+		t.Fatalf("second call failed: %s", second.NoticeLine())
+	}
+	if got := atomic.LoadInt64(&doer.calls); got != 2 {
+		t.Errorf("the incomplete response was cached and re-served; network calls = %d, want 2", got)
+	}
+	if second.Usage.FromCache {
+		t.Error("the second call must not read as a cache serve")
+	}
+}
+
+// N1 serve leg: an incomplete entry already on disk (the shape a pre-repair
+// client could have written) is not admitted as a hit either — the lookup
+// misses and the call goes to the network.
+func TestCache_IncompleteEntryNotServedAsHit(t *testing.T) {
+	net := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.13.0")}}}
+	c := newCachedClient(t, net)
+	c.ModelOverride = "jev-1.13.0"
+	body, err := json.Marshal(toWire(cacheQuestion()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.cacheStore(cacheEntry{
+		BodySHA:   bodySHA(body),
+		Model:     "jev-1.13.0",
+		Answers:   []Answer{{QuestionID: "unrelated", Kind: KindNoul, Probability: 0.5}},
+		CreatedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	res := c.Ask(context.Background(), cacheQuestion())
+	if !res.OK() {
+		t.Fatalf("call failed: %s", res.NoticeLine())
+	}
+	if got := atomic.LoadInt64(&net.calls); got != 1 {
+		t.Errorf("an incomplete entry was served as a hit; network calls = %d, want 1", got)
+	}
+	if res.Usage.FromCache {
+		t.Error("the serve must not read from_cache=true")
+	}
+}
+
+// N2 (t1968 sync-audit iter6): the change notice (answered model differs
+// from VerifiedInterpretedModel) applied only to the network path — a cache
+// serve returned no notice, so consumers learned of the model change only
+// when the network produced it. The comparison now runs on cache-served
+// results too, against the ENTRY's model id.
+func TestCache_HitCarriesChangeNotice(t *testing.T) {
+	prime := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.14.0")}}}
+	a := newCachedClient(t, prime)
+	a.ModelOverride = "jev-1.14.0"
+	if !a.Ask(context.Background(), cacheQuestion()).OK() {
+		t.Fatal("prime failed")
+	}
+	// A FRESH client (its once-per-client notice has not fired) hits the
+	// cache with the network closed: the served result must carry the
+	// change notice naming the entry's model.
+	b := New(true)
+	b.LoadCredential = a.LoadCredential
+	b.CacheDir = a.CacheDir
+	b.ModelOverride = "jev-1.14.0"
+	b.HTTP = &refusingDoer{}
+	res := b.Ask(context.Background(), cacheQuestion())
+	if !res.OK() {
+		t.Fatalf("cache hit failed: %s", res.NoticeLine())
+	}
+	if res.Notice == "" || !strings.Contains(res.Notice, "jev-1.14.0") {
+		t.Errorf("cache serve must carry the change notice for the entry's model, got %q", res.Notice)
+	}
+}
+
 // AC-FW-011: usage aggregation separates new network requests from
 // cache-served answers.
 func TestUsage_FromCacheSeparation(t *testing.T) {

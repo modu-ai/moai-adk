@@ -99,7 +99,10 @@ type BenchReport struct {
 }
 
 // CompareRun computes per-case containment and token-savings versus each
-// snapshot's token count, plus the set summary.
+// snapshot's token count, plus the set summary. A run that ended in
+// fetch_error demonstrates no savings — its zero kept tokens would otherwise
+// read as a bogus 100% rate — so it carries no savings figure and is
+// excluded from the summary mean (C4, t1968 sync-audit iter6).
 func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 	runByID := make(map[string]CaseRun, len(runs))
 	for _, r := range runs {
@@ -107,16 +110,18 @@ func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 	}
 	var report BenchReport
 	sum := 0.0
+	comparable := 0
 	for _, c := range cases {
 		run := runByID[c.ID]
 		snapTokens := fetchweb.DocTokens(fetchweb.SplitBlocks(c.PageSnapshot))
+		failed := run.Status == string(fetchweb.StatusFetchError)
 		cc := CaseComparison{
 			CaseID:         c.ID,
 			Contained:      c.ExpectedQuote != "" && strings.Contains(run.Output, c.ExpectedQuote),
 			OutputTokens:   run.OutputTokens,
 			SnapshotTokens: snapTokens,
 		}
-		if snapTokens > 0 {
+		if snapTokens > 0 && !failed {
 			cc.SavingsRate = 1 - float64(run.OutputTokens)/float64(snapTokens)
 		}
 		report.Cases = append(report.Cases, cc)
@@ -124,10 +129,13 @@ func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 		if cc.Contained {
 			report.Summary.Contained++
 		}
-		sum += cc.SavingsRate
+		if !failed {
+			sum += cc.SavingsRate
+			comparable++
+		}
 	}
-	if n := len(report.Cases); n > 0 {
-		report.Summary.MeanSavingsRate = sum / float64(n)
+	if comparable > 0 {
+		report.Summary.MeanSavingsRate = sum / float64(comparable)
 	}
 	return report
 }
@@ -176,7 +184,11 @@ type BaselineDiff struct {
 // counting as a regression. A case missing from the baseline fails with the
 // reason named, and so does a case with NO run result: the run map lookup
 // would otherwise yield the zero value (not-contained, zero output tokens),
-// which silently matched a baseline row that recorded not-contained.
+// which silently matched a baseline row that recorded not-contained. A run
+// that ended in fetch_error FAILs unconditionally (C4, t1968 sync-audit
+// iter6): an error output contains nothing, so its Contained=false would
+// otherwise pass the equality against a not-contained baseline row — "could
+// not judge" is not a verdict match.
 func DiffAgainstBaseline(path string, cases []BenchCase, runs []CaseRun) (BaselineDiff, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -190,22 +202,26 @@ func DiffAgainstBaseline(path string, cases []BenchCase, runs []CaseRun) (Baseli
 	for _, c := range base.Cases {
 		baseByID[c.CaseID] = c
 	}
-	hasRun := make(map[string]bool, len(runs))
+	runByID := make(map[string]CaseRun, len(runs))
 	for _, r := range runs {
-		hasRun[r.CaseID] = true
+		runByID[r.CaseID] = r
 	}
 	current := CompareRun(cases, runs)
 	diff := BaselineDiff{}
 	for _, cc := range current.Cases {
 		d := CaseDiff{CaseID: cc.CaseID}
 		b, ok := baseByID[cc.CaseID]
+		run, has := runByID[cc.CaseID]
 		switch {
-		case !hasRun[cc.CaseID]:
+		case !has:
 			d.Pass = false
 			d.Reason = "no run result for this case"
 		case !ok:
 			d.Pass = false
 			d.Reason = "no baseline entry for this case"
+		case run.Status == string(fetchweb.StatusFetchError):
+			d.Pass = false
+			d.Reason = "run ended in fetch_error; containment is not comparable (could not judge, not a no-match)"
 		case cc.Contained == b.Contained:
 			d.Pass = true
 		case b.Contained && !cc.Contained:

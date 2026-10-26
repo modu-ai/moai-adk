@@ -129,6 +129,7 @@ func Process(ctx context.Context, blocks []Block, question string, ask Answerer)
 // stale cache serve would otherwise repeat its warning per call. The sink
 // keeps REQ-FW-013's keep-and-warn contract: a served answer's warning must
 // reach the pipeline's reader, not die inside the stage that observed it.
+// The model-change notice (N3) rides the same sink for the same reason.
 type warningSink struct {
 	seen map[string]bool
 	list []string
@@ -228,7 +229,11 @@ func stage1(ctx context.Context, stream []Block, global []int, question string, 
 		if !res.OK() {
 			return nil, fmt.Errorf("stage-1 scoring unavailable (%s): %s", res.Availability, res.Condition)
 		}
+		// N3 (t1968 sync-audit iter6): the notice (model-change) reaches the
+		// sink beside the stale-cache warning, so it rides Result.Warnings to
+		// the CLI/MCP output instead of dying inside the stage.
 		sink.add(res.StaleCacheWarning)
+		sink.add(res.Notice)
 		probs := answersByID(res)
 		for _, i := range window {
 			id := fmt.Sprintf("b%d", global[i])
@@ -276,7 +281,9 @@ func stage2(ctx context.Context, stream []Block, streamPos map[int]int, candidat
 		if !res.OK() {
 			return nil, fmt.Errorf("stage-2 scoring unavailable (%s): %s", res.Availability, res.Condition)
 		}
+		// N3, stage-2 leg: same collection as stage 1.
 		sink.add(res.StaleCacheWarning)
+		sink.add(res.Notice)
 		probs := answersByID(res)
 		for _, q := range batch {
 			p, ok := probs[q.ID]

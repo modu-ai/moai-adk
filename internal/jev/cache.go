@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -72,6 +73,15 @@ type cacheEntry struct {
 // modelsMap is the persisted alias→model map.
 type modelsMap struct {
 	Models map[string]string `json:"models"`
+	// Prior records, per alias, the model ids the map held before the
+	// current one — the alias's own move history. The stale probe's
+	// candidate set is restricted to it (C1, t1968 sync-audit iter6): an
+	// entry keyed under a model the alias NEVER resolved to (an
+	// explicit-override-authored entry, say) must not be served as the
+	// alias's stale pick. A map file from before this field existed
+	// unmarshals with Prior nil — the probe then admits nothing and the
+	// miss goes to the network, the fail-safe direction.
+	Prior map[string][]string `json:"prior,omitempty"`
 }
 
 // cacheKey hashes the body SHA and model id into the cache file name. The
@@ -190,8 +200,22 @@ func (c *Client) cacheLookup(sha, model string, aliasResolved bool) (entry cache
 }
 
 // priorModelEntry finds the most recent cache entry for the same body SHA
-// keyed under a DIFFERENT model id.
+// keyed under a model the alias→model map PREVIOUSLY recorded for the alias
+// (C1, t1968 sync-audit iter6). The old predicate accepted any entry whose
+// model id merely differed from the resolved one, so an
+// explicit-override-authored entry — a model the alias never pointed at —
+// could win the probe as the newest file. The probe may serve the alias's
+// own prior answers only: with no prior alias model on record the probe
+// admits nothing and the caller's miss stands (network).
 func (c *Client) priorModelEntry(sha, resolvedModel string) (*cacheEntry, error) {
+	m, err := readModelsMap(c.CacheDir)
+	if err != nil {
+		return nil, err
+	}
+	allowed := make(map[string]bool, len(m.Prior[ModelID]))
+	for _, id := range m.Prior[ModelID] {
+		allowed[id] = true
+	}
 	files, err := filepath.Glob(filepath.Join(c.CacheDir, "*.json"))
 	if err != nil || len(files) == 0 {
 		return nil, err
@@ -206,7 +230,7 @@ func (c *Client) priorModelEntry(sha, resolvedModel string) (*cacheEntry, error)
 			continue
 		}
 		var e cacheEntry
-		if json.Unmarshal(raw, &e) != nil || e.BodySHA != sha || e.Model == resolvedModel || e.Model == "" {
+		if json.Unmarshal(raw, &e) != nil || e.BodySHA != sha || e.Model == resolvedModel || e.Model == "" || !allowed[e.Model] {
 			continue
 		}
 		if prior == nil || e.CreatedAt.After(prior.CreatedAt) {
@@ -228,8 +252,10 @@ func (c *Client) cacheStore(entry cacheEntry) error {
 }
 
 // serveCacheHit shapes a Result from a cached entry. The change notice is
-// not re-derived: the notice belongs to the observation that produced the
-// entry, and a serve is not an observation.
+// applied by the caller (Ask), against the entry's model id: the notice
+// warns the CONSUMER that the answer's model differs from the verified one,
+// and a cache serve hands that model to the same consumers — the comparison
+// belongs at serve time too (N2, t1968 sync-audit iter6).
 func serveCacheHit(entry cacheEntry, stale bool) Result {
 	usage := entry.Usage
 	usage.FromCache = true
@@ -248,7 +274,9 @@ func serveCacheHit(entry cacheEntry, stale bool) Result {
 
 // updateAliasMap records the interpreted model a network answer reported for
 // the request alias, persisting the map. Only alias-resolved calls update
-// it: an explicit override observes nothing about where the alias points.
+// it: an explicit override observes nothing about where the alias points. A
+// move appends the displaced id to the alias's Prior history — the candidate
+// set the stale probe is restricted to (C1).
 func (c *Client) updateAliasMap(model string) error {
 	m, err := readModelsMap(c.CacheDir)
 	if err != nil {
@@ -256,6 +284,12 @@ func (c *Client) updateAliasMap(model string) error {
 	}
 	if m.Models[ModelID] == model {
 		return nil
+	}
+	if old := m.Models[ModelID]; old != "" && !slices.Contains(m.Prior[ModelID], old) {
+		if m.Prior == nil {
+			m.Prior = map[string][]string{}
+		}
+		m.Prior[ModelID] = append(m.Prior[ModelID], old)
 	}
 	m.Models[ModelID] = model
 	return writeModelsMap(c.CacheDir, m)

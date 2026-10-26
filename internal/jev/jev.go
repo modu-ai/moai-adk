@@ -551,6 +551,25 @@ func fromWire(questions []Question, answers map[string]wireAnswer, model string)
 	return out
 }
 
+// answersComplete reports whether every requested question id carries an
+// answer (N1, t1968 sync-audit iter6). An OK response that answered only
+// part of the request is a transient endpoint fault, not a verdict — it is
+// neither stored nor admitted as a cache hit, so the fault cannot persist
+// past the outage. Extra answers for ids the request did not carry are not
+// incompleteness.
+func answersComplete(questions []Question, answers []Answer) bool {
+	have := make(map[string]bool, len(answers))
+	for _, a := range answers {
+		have[a.QuestionID] = true
+	}
+	for _, q := range questions {
+		if !have[q.ID] {
+			return false
+		}
+	}
+	return true
+}
+
 // Ask runs one call. The order of checks is load-bearing:
 //
 //  1. the GATE, because a disabled capability must construct no request at all
@@ -614,8 +633,17 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 	sha := bodySHA(body)
 	if c.CacheDir != "" {
 		if keyModel, aliasResolved, resolvable := c.resolveModel(); resolvable {
-			if entry, hit, stale, _ := c.cacheLookup(sha, keyModel, aliasResolved); hit {
+			// N1 serve leg: an entry that does not answer every requested
+			// question (the shape a pre-repair client could have written) is
+			// not admitted as a hit — the lookup misses and the call goes to
+			// the network for a complete answer.
+			if entry, hit, stale, _ := c.cacheLookup(sha, keyModel, aliasResolved); hit && answersComplete(req.Questions, entry.Answers) {
 				served := serveCacheHit(entry, stale)
+				// N2: the change notice applies to cache serves too, against
+				// the ENTRY's model — consumers of a served answer learn the
+				// model-versus-verified divergence the same way the network
+				// path reports it.
+				served.Notice = c.changeNotice(entry.Model)
 				u := entry.Usage
 				u.RequestModel = ModelID
 				u.FromCache = true
@@ -645,14 +673,24 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 				// override's own exactly when the endpoint answers with
 				// the override id; the alias map still moves only on
 				// alias-resolved observations.
-				entry := cacheEntry{
-					BodySHA:   sha,
-					Model:     model,
-					Answers:   res.Answers,
-					Usage:     Usage{InputTokens: requestTokens(req), Model: model, RequestModel: ModelID},
-					CreatedAt: time.Now(),
+				//
+				// N1 (t1968 sync-audit iter6): only COMPLETE answers are
+				// stored. An OK response missing some requested ids is a
+				// transient endpoint fault; caching it would persist the
+				// fault — every later identical request would hit the
+				// incomplete entry from_cache=true. The alias map still
+				// records the reported model: the id is authoritative even
+				// when the answer set is not.
+				if answersComplete(req.Questions, res.Answers) {
+					entry := cacheEntry{
+						BodySHA:   sha,
+						Model:     model,
+						Answers:   res.Answers,
+						Usage:     Usage{InputTokens: requestTokens(req), Model: model, RequestModel: ModelID},
+						CreatedAt: time.Now(),
+					}
+					_ = c.cacheStore(entry)
 				}
-				_ = c.cacheStore(entry)
 				if c.ModelOverride == "" {
 					_ = c.updateAliasMap(model)
 				}

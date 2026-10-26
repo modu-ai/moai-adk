@@ -27,6 +27,11 @@ type fakeAnswerer struct {
 	// comes back OK (Available) but its answer list lacks the id — the
 	// OK-but-answerless shape F2 (t1968 sync-audit) guards against.
 	omit map[string]bool
+	// notice is returned as res.Notice on every call; stage2Notice, when
+	// set, replaces it on stage-2 requests (first question id prefixed "c")
+	// — the N3 collection probe.
+	notice       string
+	stage2Notice string
 }
 
 func (f *fakeAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
@@ -46,7 +51,11 @@ func (f *fakeAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
 			Model:       jev.VerifiedInterpretedModel,
 		})
 	}
-	return jev.Result{Availability: jev.Available, Answers: answers}
+	notice := f.notice
+	if f.stage2Notice != "" && len(req.Questions) > 0 && strings.HasPrefix(req.Questions[0].ID, "c") {
+		notice = f.stage2Notice
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers, Notice: notice}
 }
 
 // mkBlocks builds n paragraph blocks whose texts are distinct. tokens each
@@ -159,16 +168,39 @@ func TestSelection_Stage2KeepAndRescue(t *testing.T) {
 	}
 }
 
-// A block under a heading with NO candidate sibling scoring >= 0.6 is not
-// rescued (the neighbor rule needs a qualifying neighbor).
+// AC-FW-002 limb (2) exception input, REBUILT above the ~2,000-token
+// passthrough bound (FW-D1, plan-audit-rebaseline2): the original fixture
+// was a single ~5-token block that short-circuited through Process's
+// passthrough, so scoring never ran and the assertion passed vacuously (a
+// fail-on-call answerer made zero calls against it). The document now sits
+// past the bound: the FIRST block is a stage-1 candidate with stage-2 < 0.8
+// and NO qualifying same-heading neighbor — it is kept by the FIRST-BLOCK
+// guarantee, not by rescue — while a LATER candidate in the same situation
+// (b2, heading B, stage-2 0.2, no qualifying neighbor) is dropped: the
+// neighbor rule needs a qualifying neighbor.
 func TestSelection_RescueNeedsQualifyingNeighbor(t *testing.T) {
 	blocks := []Block{
-		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "only block under A"},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "first block candidate under A " + strings.Repeat("a", 2196)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "quiet sibling under A " + strings.Repeat("b", 2190)},
+		{Kind: KindParagraph, HeadingPath: []string{"B"}, Text: "later candidate under B " + strings.Repeat("c", 2192)},
+		{Kind: KindParagraph, HeadingPath: []string{"B"}, Text: "quiet sibling under B " + strings.Repeat("d", 2190)},
 	}
-	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.61, "c0": 0.2}}
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.65, "b1": 0.1, "b2": 0.7, "b3": 0.1,
+		"c0": 0.2, "c2": 0.2,
+	}}
 	res := Process(context.Background(), blocks, "q", fake)
-	if !keptHas(res, "only block under A") {
-		t.Fatalf("the document's first block must be kept once a candidate exists: %v", texts(res.Blocks))
+	if fake.calls == 0 {
+		t.Fatal("fixture is vacuous: the document must be scored, not passed through")
+	}
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered (a candidate exists)", res.Status)
+	}
+	if !keptHas(res, blocks[0].Text) {
+		t.Errorf("the first block must be kept by the first-block guarantee (stage-2 0.2, no qualifying neighbor): %v", texts(res.Blocks))
+	}
+	if keptHas(res, blocks[2].Text) {
+		t.Errorf("b2 (stage-2 0.2, no same-heading neighbor >= 0.6) must not be rescued: %v", texts(res.Blocks))
 	}
 }
 
@@ -424,6 +456,52 @@ func TestProcess_Stage2AnswerlessIsError(t *testing.T) {
 	if !strings.Contains(res.Condition, "could not judge") {
 		t.Errorf("condition = %q, want the could-not-judge distinction", res.Condition)
 	}
+}
+
+// N3 (t1968 sync-audit iter6): both stages collected only the stale-cache
+// warning into the sink — res.Notice (the model-change notice) was dropped,
+// so the CLI/MCP surfaces never reported the model-change fact on the
+// fetch-web path. Each stage's notice must reach Result.Warnings.
+func TestProcess_StageNoticeReachesWarnings(t *testing.T) {
+	// Stage-1 leg: no candidates (all below 0.6), so stage 2 never runs —
+	// the stage-1 notice must still reach the warnings.
+	blocks := mkBlocks(4, 550) // ~2,200 tokens: scored, not passed through
+	const s1 = "stage-1 model-change notice"
+	fake1 := &fakeAnswerer{script: map[string]float64{}, notice: s1}
+	for i := 0; i < 4; i++ {
+		fake1.script[fmt.Sprintf("b%d", i)] = 0.05
+	}
+	res1 := Process(context.Background(), blocks, "q", fake1)
+	if res1.Status != StatusNoMatch {
+		t.Fatalf("status = %q, want no_match (zero candidates)", res1.Status)
+	}
+	if !warningsHave(res1.Warnings, s1) {
+		t.Errorf("the stage-1 notice must reach Result.Warnings, got %v", res1.Warnings)
+	}
+
+	// Stage-2 leg: stage 1 returns no notice, stage 2 does — it must reach
+	// the warnings too.
+	const s2 = "stage-2 model-change notice"
+	fake2 := &fakeAnswerer{
+		script:       map[string]float64{"b0": 0.9, "b1": 0.1, "b2": 0.1, "b3": 0.1, "c0": 0.9},
+		stage2Notice: s2,
+	}
+	res2 := Process(context.Background(), blocks, "q", fake2)
+	if res2.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res2.Status)
+	}
+	if !warningsHave(res2.Warnings, s2) {
+		t.Errorf("the stage-2 notice must reach Result.Warnings, got %v", res2.Warnings)
+	}
+}
+
+func warningsHave(warnings []string, want string) bool {
+	for _, w := range warnings {
+		if w == want {
+			return true
+		}
+	}
+	return false
 }
 
 // Stage-2 neighbor context is ~400 CHARACTERS drawn from adjacent blocks.
