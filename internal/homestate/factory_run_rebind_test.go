@@ -114,35 +114,43 @@ func rbDump(t *testing.T, db *FactoryDB) string {
 	t.Helper()
 	var b strings.Builder
 	for _, table := range []string{"cards", "card_dispatch", "runs", "events", "leader_approvals", "workers"} {
-		b.WriteString("## " + table + "\n")
-		// SQL: the table name comes from the fixed list above.
-		rows, err := db.DB.Query(`SELECT * FROM ` + table + ` ORDER BY rowid`)
-		if err != nil {
-			t.Fatalf("dump %s: %v", table, err)
-		}
-		cols, err := rows.Columns()
-		if err != nil {
-			t.Fatalf("dump %s columns: %v", table, err)
-		}
-		for rows.Next() {
-			vals := make([]any, len(cols))
-			for i := range vals {
-				vals[i] = new(sql.NullString)
-			}
-			if err := rows.Scan(vals...); err != nil {
-				t.Fatalf("dump %s scan: %v", table, err)
-			}
-			parts := make([]string, len(vals))
-			for i, v := range vals {
-				parts[i] = v.(*sql.NullString).String
-			}
-			b.WriteString(strings.Join(parts, "|") + "\n")
-		}
-		if err := rows.Err(); err != nil {
-			t.Fatalf("dump %s rows: %v", table, err)
-		}
-		_ = rows.Close()
+		b.WriteString(rbDumpOne(t, db, table))
 	}
+	return b.String()
+}
+
+// rbDumpOne renders one table, header included.
+func rbDumpOne(t *testing.T, db *FactoryDB, table string) string {
+	t.Helper()
+	var b strings.Builder
+	b.WriteString("## " + table + "\n")
+	// SQL: the table name comes from a fixed list in the callers.
+	rows, err := db.DB.Query(`SELECT * FROM ` + table + ` ORDER BY rowid`)
+	if err != nil {
+		t.Fatalf("dump %s: %v", table, err)
+	}
+	cols, err := rows.Columns()
+	if err != nil {
+		t.Fatalf("dump %s columns: %v", table, err)
+	}
+	for rows.Next() {
+		vals := make([]any, len(cols))
+		for i := range vals {
+			vals[i] = new(sql.NullString)
+		}
+		if err := rows.Scan(vals...); err != nil {
+			t.Fatalf("dump %s scan: %v", table, err)
+		}
+		parts := make([]string, len(vals))
+		for i, v := range vals {
+			parts[i] = v.(*sql.NullString).String
+		}
+		b.WriteString(strings.Join(parts, "|") + "\n")
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("dump %s rows: %v", table, err)
+	}
+	_ = rows.Close()
 	return b.String()
 }
 
@@ -324,10 +332,7 @@ func TestRebindMovesAbandonsAndRetires(t *testing.T) {
 
 func rbDumpTable(t *testing.T, db *FactoryDB, table string) string {
 	t.Helper()
-	full := rbDump(t, db)
-	_, rest, _ := strings.Cut(full, "## "+table+"\n")
-	body, _, _ := strings.Cut(rest, "## ")
-	return body
+	return rbDumpOne(t, db, table)
 }
 
 // AC-FCR-020 — an injected failure at any of the three points rolls the whole

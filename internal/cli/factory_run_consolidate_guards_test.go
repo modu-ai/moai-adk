@@ -300,3 +300,34 @@ func TestLeaderStartAdoptCASLoserMints(t *testing.T) {
 		}
 	})
 }
+
+// AC-FCR-021 (c) at the leader-entry surface: an older dead-stamp run whose
+// worker is still alive is refused by the consolidation — it stays active with
+// its cards in place, and one stderr line names the run and the worker.
+func TestLeaderStartLeavesSourceWithLiveWorkerActive(t *testing.T) {
+	root := adoptSandbox(t)
+	db := openAdoptFactory(t, root)
+	lcDeadRun(t, db, "run-a", "2026-10-02T00:00:00Z")
+	lcCard(t, db, "run-a", "ca", "run")
+	lcDeadRun(t, db, "run-b", "2026-10-01T00:00:00Z")
+	lcCard(t, db, "run-b", "cb", "run")
+	if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES('lane-live',?,'run-b','2026-10-14T00:00:00Z','2026-10-14T00:00:00Z')`, os.Getpid()); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	adopted, warn, err := lcAdopt(t, root, nil, "")
+	if err != nil || adopted != "run-a" {
+		t.Fatalf("adopt = (%q, %v), want run-a", adopted, err)
+	}
+	if got := lcQuery(t, root, `SELECT status FROM runs WHERE run_id='run-b'`); got != "active" {
+		t.Errorf("run-b status = %s, want active (a live worker holds it)", got)
+	}
+	if got := lcQuery(t, root, `SELECT run_id FROM cards WHERE card_id='cb'`); got != "run-b" {
+		t.Errorf("cb lives under %s, want run-b", got)
+	}
+	if !strings.Contains(warn, "run-b") || !strings.Contains(warn, "lane-live") {
+		t.Errorf("stderr %q does not name run-b and its live worker", warn)
+	}
+}
