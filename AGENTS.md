@@ -16,8 +16,7 @@ project guidance. If it exists but cannot be read, stop and report the failure.
 
 This file is the canonical cross-harness contract, loaded directly by Codex and Claude Code.
 `.claude/rules/moai/**` expands the Claude Code mechanisms (`.agents/skills/**` mirrors skills for
-Codex) and does not override a cross-harness clause here. Compression removed rationale and
-incident records, never an obligation.
+Codex) and does not override a cross-harness clause here.
 
 **Capability bindings.** Names below are the neutral tool classes; a row exists only where a
 harness driving this contract lacks the capability.
@@ -42,8 +41,7 @@ When a tool schema is deferred, load it through the harness's discovery mechanis
 capability every harness driving this contract has, so it earns no row; what is Claude-only is the
 per-agent grant, not the reach. Where a harness loads a skill by reading it, the deployed skill is
 `.agents/skills/<name>/SKILL.md` for Codex and `.claude/skills/<name>/SKILL.md` for Claude (the
-`both` profile installs both); `Skill("moai-workflow-tdd")` names the corresponding SKILL.md — an
-address, not a Claude-only instruction. Codex-side loading is **deferred**: read the mirrored
+`both` profile installs both); `Skill("moai-workflow-tdd")` names the corresponding SKILL.md. Codex-side loading is **deferred**: read the mirrored
 SKILL.md directly; no loader resolves `Skill("...")` calls.
 
 ---
@@ -78,11 +76,11 @@ The primary checkout is shared by concurrent sessions, and branch state there is
 `git switch`; `git checkout -b` / `git switch -c` / `git branch`; `git reset --hard` /
 `git checkout -- <path>` (discards work of unknown provenance); `git stash` (repository-global —
 absorbs another session's uncommitted changes); `git rebase` / `git merge` onto the checked-out
-branch. Each relocates or rewrites state every concurrent session shares. Read-only inspection, `git fetch`, and pushing the
+branch. Read-only inspection, `git fetch`, and pushing the
 already-checked-out branch are permitted. Commits to the already-checked-out branch are permitted
 except on a branch the workflow declares commit-protected (the git-strategy mode decides which;
 with the BranchGuard opted in, `workflow.branch_guard.deny_commits_on` names them and the guard
-refuses commit-creating commands there).
+refuses commit-creating commands on them in the primary checkout).
 
 **Re-read branch and commit state immediately before any commit or push** — never a value read
 earlier in the turn, never the branch reported at session start:
@@ -281,7 +279,7 @@ form of routine commands** — `--no-progress`, `-q`, machine-readable output pl
 — not forms emitting spinners, banners, tables, or color noise.
 
 **Weigh session length as a cost axis.** Prefer one warm session for the same work; a new or cold
-session re-pays the always-loaded prefix.
+session re-pays the always-loaded prefix. Split only when the benefit justifies that cost.
 
 ---
 
@@ -317,8 +315,8 @@ duplicate those values inline.
 
 ## 11. moai CLI Verbs
 
-The verbs this contract relies on: `moai init <project> --llm claude|codex|both`, `moai update`,
-`moai hook <event>` (hook dispatcher entry point; drives hooks.json / settings.json), `moai doctor`
+The verbs this contract relies on: `moai init <project> --llm claude|codex|both` (scaffold a project and select its LLM harness),
+`moai update` (sync templates and refresh already-enabled wiring), `moai hook <event>` (hook dispatcher entry point; drives hooks.json / settings.json), `moai doctor`
 (diagnose installation and wiring health), `moai worktree` (lifecycle: new / sync / remove / clean /
 recover / hoist / done / snapshot / verify / restore / sweep), `moai cc` / `moai glm` (explicit Claude
 or GLM session launchers), `moai migrate cg` (preview legacy CG migration; role changes require
