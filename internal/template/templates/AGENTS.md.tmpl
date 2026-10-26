@@ -131,7 +131,7 @@ A Codex agent must not invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. 
 **Codex factory lanes** work in the card worktree their supervising launcher selects
 (`codex -C <absolute-worktree-path>`); a child already there continues.
 
-**From inside a worktree session, `<path>` must be that worktree's absolute path** — refusal catalogue: `worktree-integration-ops.md` § Refused Commands in a Worktree-Isolated Session.
+**From inside a worktree session, `<path>` must be that worktree's absolute path** — refusal catalogue: `worktree-integration-ops.md` § Refused Commands.
 
 **`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` or `.moai/worktrees/` is L1, is absent
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
@@ -140,7 +140,7 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a new session (`codex -C <path>`) is the fallback only after a refused move, recorded in the progress record. A factory lease's tree is created and registered by `moai factory next`; otherwise use `moai worktree new`. Codex's native `create_worktree` (0.162+) is not used for card trees — `WT-` naming and evidence hoisting apply unchanged. A fresh tree cuts from the configured base (`worktree_base_branch`; empty or unresolvable falls back to the invoking tree's HEAD — the wrong-base incident class); never reuse the previous card's tree.
+**Start a new card in a new worktree.** Claude Code exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a `codex -C <path>` session (recorded in the progress record) only after a refused move. Factory leases create and register the tree (`moai factory next`); else `moai worktree new`. Codex `create_worktree` (0.162+) is unused for card trees — `WT-` naming and evidence hoisting unchanged. Fresh trees cut from `worktree_base_branch` (empty/unresolvable: the invoking tree's HEAD — wrong-base incident class); never reuse the previous card's tree.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
