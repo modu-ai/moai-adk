@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
@@ -48,11 +50,23 @@ func syncInitProfile(projectRoot string, prefs profile.ProfilePreferences, wizar
 // A missing user.yaml has nothing to clear.
 func clearProjectUserName(projectRoot string) error {
 	userPath := filepath.Join(projectRoot, ".moai", "config", "sections", "user.yaml")
-	if _, err := os.Stat(userPath); err != nil {
+	data, err := os.ReadFile(userPath)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return fmt.Errorf("clear user name: %w", err)
+	}
+	// Skip unless a non-empty user.name exists: a zero-byte file, a missing
+	// user mapping or name key, or an already-empty name has nothing to clear,
+	// and patching would error (empty document) or invent a null `name:` row.
+	var doc struct {
+		User struct {
+			Name string `yaml:"name"`
+		} `yaml:"user"`
+	}
+	if len(data) == 0 || yaml.Unmarshal(data, &doc) != nil || doc.User.Name == "" {
+		return nil
 	}
 	if err := yamlpatch.PatchFile(userPath, []yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: ""}}); err != nil {
 		return fmt.Errorf("clear user name: %w", err)

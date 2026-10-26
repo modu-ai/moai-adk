@@ -194,3 +194,51 @@ func TestInitResume_ClearedUserNameReachesUserYAML(t *testing.T) {
 		t.Errorf("successful resume retained user.name after an explicit clear:\n%s", data)
 	}
 }
+
+// N1/N2 (iteration-2 sync audit): clearProjectUserName acts only when a
+// non-empty user.name exists.
+func clearUserNameFixture(t *testing.T, content string) (path string) {
+	t.Helper()
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path = filepath.Join(dir, "user.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestClearProjectUserName_ZeroByteFileIsNoError(t *testing.T) {
+	path := clearUserNameFixture(t, "")
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Errorf("zero-byte user.yaml: clearProjectUserName returned %v, want nil", err)
+	}
+}
+
+func TestClearProjectUserName_NoNameKeyStaysByteIdentical(t *testing.T) {
+	const content = "user:\n  other: x\n"
+	path := clearUserNameFixture(t, content)
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != content {
+		t.Errorf("user mapping without a name key was rewritten:\n got %q\nwant %q", got, content)
+	}
+}
+
+func TestClearProjectUserName_NoUserMappingStaysByteIdentical(t *testing.T) {
+	const content = "foo: bar\n"
+	path := clearUserNameFixture(t, content)
+	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	if err := clearProjectUserName(root); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != content {
+		t.Errorf("file without a user mapping was rewritten:\n got %q\nwant %q", got, content)
+	}
+}
