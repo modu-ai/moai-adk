@@ -1,7 +1,13 @@
+auditor-model: codex (codex_audit target=baseBranch, build b1806498fe)
+verdict: PASS
+findings: 0
+audit_receipt: rcpt-44b010c7dc0c64fdf1145ee2
+audited_sha: 75e37d0f0bae19622b2214cfe5b54b62edc64a0b
+review_base: main (merge base c4784db4c22537b724ddcfeb0370a2435f48b3fa)
+
 # t1921 — sync-audit verdict
 
 - card: t1921 · lane-7 · run tnbn7e · tree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1921 (branch WT-spec-less-lane)
-- audited_sha: 75e37d0f0bae19622b2214cfe5b54b62edc64a0b (the head the independent audit read)
 - post-audit commits (no code): 383e6b0ad6 (CHANGELOG entry only) · 6e46235f75 (evidence docs only)
 
 ## Verdict
