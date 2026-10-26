@@ -65,7 +65,31 @@ func rebindRefusal(format string, args ...any) error {
 type consolidationCard struct {
 	id, state, stage, evidenceSHA string
 	leaseHolder, leaseExpiresAt   string
+	worktreePath, specID          string
 	version                       int64
+}
+
+// strandsProgressOver names the progress fields (stage, worktree path, spec
+// id) the source row carries that the target row does not already hold
+// identically — the info an abandon-with-pointer would strand on the abandoned
+// row while the target's fresh row continues without it. Round 3 keyed this
+// decision on the source row's STATE; that missed rows a lease expiry or a
+// question receipt returned to assigned/needs-decision KEEPING their progress
+// (card t1973 round 4), so the ACTUAL remaining info decides now. An empty
+// return means the source row is a bare stub, or the target already carries
+// everything it holds.
+func (c consolidationCard) strandsProgressOver(tgtStage, tgtWorktree, tgtSpec string) []string {
+	var stranded []string
+	if c.stage != "" && c.stage != tgtStage {
+		stranded = append(stranded, "stage")
+	}
+	if c.worktreePath != "" && c.worktreePath != tgtWorktree {
+		stranded = append(stranded, "worktree")
+	}
+	if c.specID != "" && c.specID != tgtSpec {
+		stranded = append(stranded, "spec_id")
+	}
+	return stranded
 }
 
 // RebindRun consolidates the source run into the target run (REQ-FCR-020).
@@ -187,8 +211,8 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	var res RebindResult
 	nowText := now.Format(time.RFC3339Nano)
 	for i, c := range cards {
-		var tgtState, tgtEvidence string
-		tgtErr := tx.QueryRowContext(ctx, `SELECT state,evidence_sha FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.id).Scan(&tgtState, &tgtEvidence)
+		var tgtState, tgtEvidence, tgtStage, tgtWorktree, tgtSpec string
+		tgtErr := tx.QueryRowContext(ctx, `SELECT state,evidence_sha,stage,worktree_path,spec_id FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.id).Scan(&tgtState, &tgtEvidence, &tgtStage, &tgtWorktree, &tgtSpec)
 		if tgtErr != nil && !errors.Is(tgtErr, sql.ErrNoRows) {
 			return RebindResult{}, tgtErr
 		}
@@ -200,20 +224,25 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 			// operation — the source's row stays live and the conflict needs a
 			// fresh decision, not the target's stale completion.
 			//
-			// Two EMPTY evidence values are a match only for a source row that
-			// holds no working progress (card t1973 round 2 P2, narrowed round
-			// 3): the t1963-designed dedup — an evidence-less picked/assigned/
-			// needs-decision source row beside the target's fresh row — keeps
-			// the abandon-with-pointer behavior the operator-move and
-			// leader-start-consolidation paths live on. A WORKING source row (a
-			// lease-holding state — run, sync, merge-ready, ...) carries the
-			// stage/worktree/spec_id an abandon would strand, so THAT shape
-			// refuses: the cost is one manual re-approval, never lost progress.
+			// Two EMPTY evidence values are a match only when the source row
+			// carries no progress the target row lacks (card t1973 round 2 P2,
+			// rounds 3-4): the t1963-designed dedup — a bare evidence-less
+			// source stub beside the target's fresh row, or a pair whose
+			// stage/worktree/spec_id the target already holds — keeps the
+			// abandon-with-pointer behavior the operator-move and leader-start-
+			// consolidation paths live on. A source row that carries ANY of
+			// stage/worktree/spec_id the target does not already hold refuses
+			// (round 4: a lease expiry or a question receipt returns a row to
+			// assigned/needs-decision KEEPING its progress, so the row's STATE
+			// cannot make this decision — its actual remaining info does).
 			bothEmpty := tgtEvidence == "" && c.evidenceSHA == ""
-			refuseBothEmpty := bothEmpty && IsLeaseHoldingState(c.state)
-			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || refuseBothEmpty {
+			stranded := []string(nil)
+			if bothEmpty {
+				stranded = c.strandsProgressOver(tgtStage, tgtWorktree, tgtSpec)
+			}
+			if IsTerminalCardState(tgtState) || tgtEvidence != c.evidenceSHA || len(stranded) > 0 {
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row (evidence %q, source %q)%s; the live row of run %s stays and the conflict needs a fresh decision",
-					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(refuseBothEmpty), src.RunID)
+					c.id, tgt.RunID, tgtState, tgtEvidence, c.evidenceSHA, bothEmptyNote(stranded), src.RunID)
 			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
@@ -288,15 +317,15 @@ func nonNilStrings(s []string) []string {
 }
 
 // bothEmptyNote names the both-empty-evidence shape inside a target-row
-// conflict refusal: a working source row beside an evidence-less target row is
-// not proven to be the same work (card t1973 round 2 P2, narrowed round 3 —
-// only a WORKING source row refuses; an evidence-less non-working source row
-// keeps the t1963 abandon).
-func bothEmptyNote(refuse bool) string {
-	if refuse {
-		return " — neither row records evidence, so the rows are not proven to be the same work"
+// conflict refusal: a source row carrying progress the target lacks beside an
+// evidence-less target row is not proven to be the same work (card t1973
+// round 2 P2, rounds 3-4 — the gate is the source row's ACTUAL remaining
+// progress, not its state; a bare stub keeps the t1963 abandon).
+func bothEmptyNote(stranded []string) string {
+	if len(stranded) == 0 {
+		return ""
 	}
-	return ""
+	return " — the source row carries progress the target lacks (" + strings.Join(stranded, ", ") + ") and neither row records evidence"
 }
 
 // requireRunStamp re-reads one run inside the transaction and refuses unless
@@ -366,14 +395,14 @@ func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(
 // sourceCards reads the source's non-terminal cards in card-id order.
 func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidationCard, error) {
 	// SQL: sqlTerminalStates is a compile-time constant; the run id goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha,lease_holder,lease_expires_at FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
+	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha,lease_holder,lease_expires_at,worktree_path,spec_id FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
 	if err != nil {
 		return nil, err
 	}
 	var cards []consolidationCard
 	for rows.Next() {
 		var c consolidationCard
-		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA, &c.leaseHolder, &c.leaseExpiresAt); err != nil {
+		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA, &c.leaseHolder, &c.leaseExpiresAt, &c.worktreePath, &c.specID); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
