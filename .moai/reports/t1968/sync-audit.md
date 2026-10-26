@@ -3,7 +3,7 @@ auditor-model: glm-5.3
 # sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 1
 
 verdict: FAIL
-audited_sha: b62aadf26e7355153387b6672b0669467c84e974
+audited_sha: 5128570a20f5b21e2dd9235188c9c24a1ce86093
 
 Tree: lane worktree `.moai/worktrees/t1968` (branch `WT-jevfetch-a2sys-ai`). Merge base `2a1898ea22`. Date 2026-10-27. Audit plan (`moai verify audit-plan --project-root <toplevel>`): `config_status: ok`, `cross_model_active: true`, gates claude=off / **codex=required** / glm=off (source `config.gates`, `plan_source: config`).
 
@@ -417,3 +417,77 @@ Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan
 - iter6 (this audit): state-proof FAIL 0.84 — five carried findings all present (C1-C4 code, C5 drift disposed by re-bind), three NEW P2s from the fresh codex pass (N1-N3, warning/caching family). Repair scope for the iter7 delta: C1-C4 + N1-N3 (7 code defects); C5 needs no repair.
 
 AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-6df24be9375d1f004fccf0f3
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 7 (delta: C1-C4 + N1-N3 + VAC/FW-D1 @ 5128570a20)
+
+Delta audit over the iter7 repair commit `9c81001ef9` (9 files, +678/−66: cache/jev, blocks/scoring, bench + tests). Audited head `5128570a20f5b21e2dd9235188c9c24a1ce86093` — docs-only on top of the repair (`git diff --stat 9c81001ef9..5128570a20` → `.moai/reports/t1968/progress.md | 1 +`; confirmed). SPEC dir unchanged since `dc991bfb9f` (`git log --oneline dc991bfb9f..HEAD -- .moai/specs/` → empty; confirmed). Delta base for convergence: `b62aadf26e7355153387b6672b0669467c84e974` (iter6's audited head; ancestor confirmed, `git log b62aadf26e..HEAD` → 6 commits, exactly one code commit). Audit plan re-read: `config_status: ok`, `cross_model_active: true`, codex **required** (claude/glm off), `plan_source: config`. No `Binding run conditions` heading in the SPEC progress.md — nothing to disposition.
+
+## iter7 Verdict
+
+**FAIL — aggregate 0.92** (harmonic mean of 88 / 94 / 93 / 93). All seven enumerated defects (C1-C4 + N1-N3) are repaired and verified, and the VAC/FW-D1 debt is discharged first-hand — but the C3 repair introduced **one new confirmed P2 regression (R1 below)**: an aside inside a table cell that itself contains a nested table advances `tableSeq`, so every outer row AFTER the aside-carrying row mis-binds its header to the inner table. Reproduced by my own probe at HEAD and at the pre-repair base (correct at base, corrupted at HEAD — first-hand, not relayed). The required codex backend independently returned **fail** on the delta with two P2s; I reproduced both (R1 confirmed blocking; R2 is the deliberate D1 discharge plus a provenance nuance, optional). Must-pass firewall: Functionality FAIL (blocking finding on the delivered surface); convergence `overall_verdict: fail` forces FAIL per the cross-model contract.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @5128570a20) |
+|---|---|---|---|---|
+| Functionality | 40% | 88 | **FAIL** | 7/7 enumerated repairs verified (12 delta tests `--- PASS` name-filtered + 3 corner probes PASS); trio `ok ... fetchweb 0.350s` / `jevmeasure 0.655s` / `jev 1.592s`; BUT probe R1: outer row `cell2` → `headerIndex=2` → header row `"InnerH"` at HEAD vs `headerIndex=0` → `"OuterH"` at base — blocking regression introduced by the C3 walk. |
+| Security | 25% | 94 | PASS | Zero security surface in the delta: `git diff --name-only b62aadf26e..HEAD -- internal/fetchweb/ssrf.go internal/fetchweb/fetch.go` → empty; `go.mod`/`go.sum` diff empty; `--- PASS: TestFetchWeb_OffGateZeroNetwork` inside the cli filter run (PASS-count=10, FAIL 0). |
+| Craft | 20% | 93 | PASS | `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.475s coverage: 95.9% of statements` (fresh `-count=1 -cover`, up from 95.0%); `golangci-lint run` (jev/fetchweb/jevmeasure) → `0 issues.`; `gofmt -l` empty; `go vet` exit 0; `go test -race` ok x2; `GOOS=windows`/`GOOS=darwin` builds exit 0. |
+| Consistency | 15% | 93 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid` exit 0; jevledger boundary diff empty with non-empty control (`internal/jev/cache.go internal/jev/cache_test.go internal/jev/jev.go`); template diff empty; repair follows the `listItemSkip`/`cellSkip` naming+comment family; conventional commit with card id. |
+
+## iter7 dispositions — the enumerated delta (C1-C4 + N1-N3 + VAC/FW-D1)
+
+- **C1 — REPAIRED, verified.** `priorModelEntry` builds an allowed set from `modelsMap.Prior[ModelID]` and adds `|| !allowed[e.Model]` to the predicate; `updateAliasMap` appends the displaced id on alias moves only (override calls never update the map; `Prior` nil on pre-field maps → probe admits nothing → network, the fail-safe direction). Landed tests `TestCache_StaleProbeIgnoresOverrideAuthoredEntries` + control `...PicksAliasPriorModelNotNewestForeignEntry` PASS. My corner probe: hand-written pre-field `models.json` (`{"models":{"jev-latest":"jev-1.14.0"}}`, no `prior`) + override-authored foreign entry → fresh alias lookup made exactly 1 network call, no stale serve, no warning — PASS.
+- **C2 — REPAIRED, verified.** Per-run extraction in document order (`collapseRun` + `spliceAsideRun`, which shifts `rowTable`/`headerLocal` past the splice point); F7b/F7c semantics per run. Landed tests `MixedAsideBareTextRunsNotLost` / `MixedAsideRunOrder` / `MixedAsideRunBeforeTableKeepsHeaderBinding` PASS. The F7c/D1 path residual is discharged as a side effect — deliberately: the D1-pinning test's assertion was updated `[Main]` → `[Main Side]` with an in-code rationale (diff-read).
+- **C3 — REPAIRED for the enumerated shape, but INTRODUCED R1 (below).** `cellSkip` now excludes aside; `emitRowSubBlocks` hands the aside subtree to the aside walk. `TestSplitBlocks_AsideInsideCellIsSeparateBlock` PASS — yet the nested-table corner regressed (my probe, both sides observed).
+- **C4 — REPAIRED, verified.** `run.Status == fetch_error` → `CaseDiff` FAIL with reason, gate positioned BEFORE the `Contained == b.Contained` equality; failed runs excluded from savings rows and the summary mean (`comparable` counter). Landed test PASS. My corner probe: an all-failed set → no panic, `SavingsRate` 0, `MeanSavingsRate` 0 — PASS.
+- **N1 — REPAIRED, verified.** `answersComplete` gates the store (`jev.go`) AND hit admission (`hit && answersComplete(...)`); 2 landed tests (store leg + serve leg) PASS. My probe: extra answers for unrequested ids are not incompleteness; empty answer set is — PASS.
+- **N2 — REPAIRED, verified.** `served.Notice = c.changeNotice(entry.Model)` on the cache-serve leg; `TestCache_HitCarriesChangeNotice` PASS.
+- **N3 — REPAIRED, verified.** `sink.add(res.Notice)` beside the stale-cache warning in BOTH stages; `TestProcess_StageNoticeReachesWarnings` PASS.
+- **VAC / FW-D1 — DISCHARGED, first-hand.** The rebuilt fixture (4 blocks ≈ 2,200 tokens each, past the passthrough bound) carries an in-test anti-vacuous guard (`fake.calls == 0` → Fatal). I extracted the pre-repair tree (`git archive 2836a2802f` → `/tmp/t1968-prefix-a7`), overlaid ONLY the rebuilt `scoring_test.go`, and ran it there: `--- PASS: TestSelection_RescueNeedsQualifyingNeighbor (0.00s)` / `ok ... 0.400s`. The fixture enters the selection path on PRE-fix production code and passes — AC-FW-002's decision order was already correct; the old fixture tested nothing. FW-D1 closed.
+
+## iter7 Findings (each reproduced by my own transient probe at HEAD and at base before folding — not relayed)
+
+- **R1** [P2] [blocking] `internal/fetchweb/blocks.go:521` (`emitRowSubBlocks`, aside branch) — a nested `<table>` inside an aside inside a `td` is walked by the new `s.walk(node, true)`, and the walk's `table` case advances `s.tableSeq`; every outer row emitted AFTER the aside-carrying row then records the INNER table id in `rowTable` and binds its `HeaderIndex` to the inner table's header row. Probe (document: outer table with header `OuterH`, row 2 cell containing an aside wrapping an inner table with header `InnerH`, then outer row 3 `cell2`): at HEAD `cell2` → `headerIndex=2` → header row `"InnerH"`; at base `cell2` → `headerIndex=0` → `"OuterH"` (correct). Wrong header metadata feeds the selection stage's table-header accompaniment — wrong rows kept/dropped downstream. Introduced by this delta (base behavior correct in this corner). Required fix: snapshot `s.tableSeq` (and the current-table binding) before the aside handoff in `emitRowSubBlocks` and restore it after — or decouple table-id issuance from walk descent so an aside-internal table never renumbers the enclosing table's subsequent rows; add a RED test from the probe document.
+- **R2** [P3] [optional] `internal/fetchweb/blocks.go:186` — in a text-only aside with an internal heading and bare text on BOTH sides (`preface<h3>Side</h3>tail`), the merged run carries the post-heading path: at HEAD one paragraph `"preface tail"`, `aside=true`, `path=[Main Side]`; at base the same merged paragraph carried `path=[Main]`. The direction is the deliberate D1 discharge (the p-wrapped control carries `[Main Side]`; the landed test now asserts it), and no text is lost in either version — the residual is only that the PRE-heading half of the merged run rides the post-heading path. Refinement (split runs at heading boundaries, attribute each side its own path) is optional follow-up, not blocking. Reported as codex P2; dispositioned down on first-hand reproduction: base behavior was itself the documented debt, HEAD matches the control.
+
+## iter7 Cross-model convergence (audit_multi, target=baseBranch, delta_base=b62aadf26e, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **fail**
+- `gate_unmet`: (empty — codex answered; its verdict was fail)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=fail` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-b36c654253019f6a547334cf`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base b62aadf26e7355153387b6672b0669467c84e974: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written | required-backend FAIL: codex`
+
+**This verdict is not final until the orchestrator's convergence check passes.** Codex's two P2s were both reproduced by my own probes before folding; R1 confirmed as a real regression, R2 dispositioned optional (see Findings).
+
+## iter7 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the seven enumerated repairs and the VAC/FW-D1 discharge all hold; the delta additionally introduces one new blocking regression (R1).** Evidence: 12 delta tests name-filtered `--- PASS` (verbatim lines in the Functionality row and dispositions); trio/cli-filter/coverage/lint/race/build/spec-lint/boundary outputs quoted in the dimension table (all this run); R1/R2 probe outputs quoted verbatim in Findings, observed at HEAD and at the extracted pre-repair base; FW-D1 pre-fix run quoted in dispositions. Baseline: this run, this tree @5128570a20f5b21e2dd9235188c9c24a1ce86093 (base observations against `git archive 2836a2802f` extracted to `/tmp/t1968-prefix-a7`).
+
+**Gaps (explicitly NOT observed):**
+- Full `internal/cli` suite still not run here (unchanged from iter1-6; owned by integration-branch CI).
+- RED-first for the 12 new tests rests on the repair commit's claim; this audit observed post-fix green only (my own base/HEAD delta probes cover R1, R2, and the VAC fixture).
+- `moai` binary provenance: server build `b1806498fe` (convergence `build_commit`) is not an ancestor of this tree's HEAD — unchanged from iter3-6.
+- One permission refusal this audit: `rm -rf /tmp/t1968-prefix-probe` was denied by the permission system; worked around with a fresh unique scratch directory (`/tmp/t1968-prefix-a7`), which is left in place (scratch, no repo impact).
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- `required-backend FAIL: codex` (convergence residual, verbatim).
+- **FW-D2 residual (R8-R10 probe-based RED)** — judged honestly: PASS-WITH-DEBT material, NOT blocking. The three plan-debt rows rest on probe-based evidence with no behavior surface claimed beyond what iter1-6 verified; they are recorded, owned, and do not touch the delivered surface's correctness. It is not the driver of this FAIL — R1 is.
+- R2 provenance nuance (optional, above).
+- Untested territory unchanged from iter3-6: CDATA-era HTML, exotic framesets, proxy-required egress.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+
+## Iteration history (cont.)
+
+- iter7 (this audit): delta FAIL 0.92 — all 7 enumerated defects (C1-C4 + N1-N3) repaired and verified; VAC/FW-D1 discharged first-hand (pre-fix archive run); full regression sweep green (coverage 95.9%); but C3's aside walk introduced R1 (nested-table-in-cell-aside corrupts subsequent outer-row header binding — my probe, base-correct/HEAD-corrupted), confirmed independently by the required codex backend (rcpt-b36c654253019f6a547334cf, verdict fail). Repair scope for the iter8 delta: R1 alone (plus optionally R2's run-split refinement).
+
+verdict: FAIL
+audited_sha: 5128570a20f5b21e2dd9235188c9c24a1ce86093
+
+AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-b36c654253019f6a547334cf
