@@ -2,9 +2,9 @@
 id: SPEC-JEV-LEDGER-001
 title: "Jev decision ledger recorder and per-consumer config surface"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
