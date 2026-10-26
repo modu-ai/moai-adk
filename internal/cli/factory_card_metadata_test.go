@@ -128,10 +128,12 @@ func mdAuditRows(t *testing.T, root, cardID string) []homestate.CardMetadataEven
 			New          string `json:"new"`
 			Reason       string `json:"reason"`
 			ClassifiedAt string `json:"classified_at"`
+			Source       string `json:"source"`
 		}
 		if err := json.Unmarshal([]byte(payload), &decoded); err != nil {
 			t.Fatalf("decode audit payload: %v", err)
 		}
+		ev.Source = decoded.Source
 		ev.Actor, ev.Session, ev.Field = decoded.Actor, decoded.Session, decoded.Field
 		ev.Old, ev.New, ev.Reason, ev.ClassifiedAt = decoded.Old, decoded.New, decoded.Reason, decoded.ClassifiedAt
 		out = append(out, ev)

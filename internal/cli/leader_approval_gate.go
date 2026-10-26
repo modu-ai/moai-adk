@@ -341,6 +341,9 @@ func newFactoryApproveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if strings.TrimSpace(row.EvidenceSHA) == "" {
+				return fmt.Errorf("factory approve: card %s records no evidence hash to bind — run `moai factory rebind-evidence %s --run %s --reason <why>` first (a squash-landed card takes its landing commit from `moai todo landed --sha`)", cardID, cardID, runID)
+			}
 			if strings.TrimSpace(issuer) == "" {
 				issuer = strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 			}
