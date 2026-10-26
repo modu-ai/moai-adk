@@ -3,7 +3,7 @@ auditor-model: glm-5.3
 # sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 1
 
 verdict: FAIL
-audited_sha: 537cfac1489a18953f4b03c0161b4968726288f6
+audited_sha: 80a54e3ef88d6b3ade91893f8c413cfc0644600b
 
 Tree: lane worktree `.moai/worktrees/t1968` (branch `WT-jevfetch-a2sys-ai`). Merge base `2a1898ea22`. Date 2026-10-27. Audit plan (`moai verify audit-plan --project-root <toplevel>`): `config_status: ok`, `cross_model_active: true`, gates claude=off / **codex=required** / glm=off (source `config.gates`, `plan_source: config`).
 
@@ -76,3 +76,70 @@ All five codex findings (P1→F1, P2→F2/F3/F4/F5) were reproduced by source tr
 3. F5: charset decode or explicit refusal; include a latin-1 golden case.
 4. F1: IP-validation on dial + redirect (leader may alternatively take an explicit scope decision with a follow-up card — that disposition belongs to the leader/operator, not the lane).
 5. Re-run this sync audit as a delta scoped to F1-F5 after repair; the confirming re-audit is scoped to the enumerated defect delta.
+
+---
+
+# sync-audit — t1968 (SPEC-FETCH-WEB-001), iteration 2 (delta: F1-F5 @ 53ffddd499)
+
+Delta audit of the F1-F5 repairs. Audited head `80a54e3ef8` (docs-only on top of `53ffddd499`; `git diff --name-only 53ffddd499..80a54e3ef8` → `.moai/reports/t1968/progress.md` only — confirmed). Audit plan re-read: `config_status: ok`, codex **required** (claude/glm off), `plan_source: config`.
+
+## iter2 Verdict
+
+**FAIL — aggregate 0.86** (harmonic mean of 85 / 76 / 91 / 92). Must-pass firewall: Security (76) below threshold → FAIL. Required codex backend independently returned **fail** (convergence `overall_verdict: fail`), which forces FAIL per the cross-model contract.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @80a54e3ef8) |
+|---|---|---|---|---|
+| Functionality | 40% | 85 | PASS (marginal) | `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.577s`; graded trio re-observed (`--- PASS: TestFetchWeb_OffGateZeroNetwork`, `--- PASS: TestFetchWeb_E2EFakeServers`, `--- PASS: TestFetchWeb_StatusExitContract` 7/7 sub-tests, 4× `TestFetchWebTool_*`); `ok internal/jevmeasure 0.553s` / `ok internal/jev 1.714s` — but F5 retains a confirmed silent-substitution slice (F5b) and two pre-existing conformance corners surfaced (F7/F8). |
+| Security | 25% | 76 | **FAIL** | F1 substantively repaired (dial-level Control on every resolved IP, 5-hop cap, per-hop scheme refusal, proxy disabled, initial-URL scheme check, harness seam loopback-only; all probe/ssrf-test verified) — BUT `refuseNonPublicIP` allows `100.64.0.0/10` (CGNAT/shared — Tailscale mesh range) and `255.255.255.255`: probe output `PROBE: 100.64.0.1 ALLOWED by refuseNonPublicIP` / `PROBE: 100.100.100.200 ALLOWED` / `PROBE: 255.255.255.255 ALLOWED` (F1b). No new deps (`git diff 2a1898ea22...HEAD -- go.mod go.sum` empty). |
+| Craft | 20% | 91 | PASS | `coverage: 94.5% of statements` (fetchweb); `golangci-lint run` → `0 issues.`; `gofmt -l` → clean exit 0; `build-darwin-ok` + `build-windows-ok`. |
+| Consistency | 15% | 92 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings` (exit 0); t1762 boundary intact (`git diff --name-only cb30e05b3e...HEAD -- internal/jevledger` empty, control `internal/jev` → 3 files); templates untouched since iter1 (`git diff 537cfac148..HEAD -- internal/template` empty); MX:ANCHOR added on `NewPageClient`. |
+
+## iter2 F1-F5 dispositions (the enumerated delta)
+
+- **F1 — repaired, one confirmed gap (F1b).** `ssrf.go` implements the canonical pattern: `dialControl` validates the post-DNS resolved IP at connect time on every hop (closes classic check-then-dial rebinding — validation IS the dial-time address; each redirect hop re-dials → re-validates); unparseable address and nil IP fail closed; `checkRedirect` caps at `MaxRedirectHops=5` and refuses non-HTTP(S) per hop; `t.Proxy = nil` (a proxy hop would void dial validation); `DialTLSContext = nil` rides DialContext so HTTPS dials are guarded; `FetchPage` refuses non-HTTP(S) initial URLs; `harnessIPPolicy` admits loopback ONLY (private/link-local/multicast stay refused — proven by the 192.168/169.254 redirect tests); off-gate semantics intact (gate read before `fetchWebPageClientFn` is consulted; REQ-FW-010 injection seam untouched); both production surfaces route through the single construction point (`fetch_web.go:42`, `mcp_fetch_web.go:74` → `RunFetchPipeline(..., fetchWebPageClientFn(), ...)`). 6/6 ssrf tests PASS incl. production-client loopback refusal. **Residual TOCTOU: none across the hook boundary** — Control fires per connection attempt on the exact address the kernel will connect to; the bypass that survives is a RANGE gap (F1b), not a timing gap.
+- **F2 — repaired, verified.** Both stages: `p, ok := probs[id]; if !ok { return …("could not judge, not a no-match") }` (scoring.go:234-241, :282-288) → `scoreStream` error → `Result{Status: StatusFetchError}` (scoring.go:110) → exit 2. `TestProcess_Stage1AnswerlessIsError` asserts `StatusFetchError` + the distinguishing condition; stage-2 twin present. PASS observed.
+- **F3 — repaired, verified.** Skip branch now writes `' '` (blocks.go:296-301); golden test `TestSplitBlocks_ListItemSkipKeepsWordBoundary` asserts exactly iter1's defect case → `First Third` + `Second` in order. PASS observed.
+- **F4 — repaired, verified.** `preText` drops `chromeTags` subtrees with a boundary separator (blocks.go:352-355); `TestSplitBlocks_ScriptInsidePreIsChrome` PASS.
+- **F5 — repaired for its core scenario, one slice survives (F5b).** BOM-strip+validate, Content-Type charset honored (`TestFetchPage_HonorsContentTypeCharset`), unknown label refused, strict UTF-8 fallback errors on invalid bytes — all PASS. BUT a declared non-UTF-8 charset whose bytes are corrupted substitutes U+FFFD silently instead of erroring (F5b below): the decoder's error path never fires for such bodies, so the "fetch_error rather than silently corrupted output" clause of the iter1 prescription is only partially delivered.
+
+## iter2 Findings (all four independently reproduced by my own probe in this run, not relayed from codex)
+
+- **F1b** [High] [blocking] `internal/fetchweb/ssrf.go:47` — `refuseNonPublicIP` allows the shared address space `100.64.0.0/10` (CGNAT; the Tailscale mesh range — reachable internal nodes on a common developer-machine configuration) and IPv4 broadcast `255.255.255.255`. Probe: `PROBE: 100.64.0.1 ALLOWED by refuseNonPublicIP` / `PROBE: 100.100.100.200 ALLOWED` / `PROBE: 255.255.255.255 ALLOWED`. Same threat class as F1 (fetched content forwarded verbatim to the external scoring endpoint), environment-gated reachability. Required fix: extend the refusal set with an explicit `100.64.0.0/10` CIDR contains-check (and broadcast/other reserved ranges at discretion), plus regression tests on initial and redirect hops.
+- **F5b** [Medium] [blocking] `internal/fetchweb/fetch.go:102` — a declared non-UTF-8 charset (e.g. `charset=euc-kr`) whose bytes are truncated/corrupted decodes with silent U+FFFD substitution and returns `passthrough` exit 0. Probe: `PROBE euc-kr truncated: err=<nil> page="<html><body><p>Price <U+FFFD>"` + `PROBE VERDICT: silent U+FFFD substitution, no fetch_error`. The x/text decoder substitutes instead of erroring, so the declared-charset leg never reaches its error path — a surviving slice of F5's own prescription. Required fix: scan the decoded output for the U+FFFD substitution sequence and return `fetch_error` when it was produced by substitution (single-byte charsets like latin-1 cannot false-positive).
+- **F7** [Medium] [blocking] `internal/fetchweb/blocks.go:174` — `<li>Main<aside><p>Note</p></aside></li>` yields one block `kind=list-item text="Main Note" aside=false` (probe-observed): the parent absorbs the aside's text (verbatim contamination) and the aside never forms its own block, so it is absent from the aside scoring stream. Pre-existing seam (present at iter1, not introduced by the repair), but requirement-level (aside stream + verbatim). Required fix: exclude `aside` subtrees from parent list-item extraction and keep the list-paragraph suppression state scoped per aside entry.
+- **F8** [Medium] [blocking] `internal/fetchweb/blocks.go:395` — `<td><pre>  first\n    second</pre></td>` yields `kind=table-row text="first second"` (probe-observed): interior indentation and newlines collapse and no code block is emitted — the verbatim guarantee broken for code in table cells, the same class F4 fixed for `pre` under `body`. Pre-existing seam. Required fix: whitespace-preserving extraction for code blocks inside table cells, deduplicated against the row text.
+
+## iter2 Cross-model convergence (audit_multi, target=baseBranch, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **fail**
+- `gate_unmet`: (empty — codex answered)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=fail` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-d145a5b0a39ff328c52489bb`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `required-backend FAIL: codex`
+
+**This verdict is not final until the orchestrator's convergence check passes.** Every codex finding was reproduced by my own probe before folding; the F1b/F5b/F7/F8 list is confirmed, not relayed.
+
+## iter2 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — repairs landed and prior green set holds.** Evidence: `go test -count=1 ./internal/fetchweb/` → `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.577s`; graded trio + MCP parity → `--- PASS` (12 named tests, `ok internal/cli 0.990s`); `ok internal/jevmeasure 0.553s`, `ok internal/jev 1.714s`; jevledger boundary empty with non-empty control; `go.mod`/`go.sum` diff empty; spec-lint `✓ No findings` exit 0; coverage `94.5%`; lint `0 issues.`; gofmt clean; darwin+windows builds ok; templates untouched since iter1. Baseline: this run, this tree @80a54e3ef8.
+
+**Claim — the four new findings are real.** Evidence: transient in-package probe (`zz_audit_probe_test.go`, created, run, deleted; `git status --short` empty after) — outputs quoted inline in F1b/F5b/F7/F8. Baseline: this run, this tree @80a54e3ef8.
+
+**Gaps (explicitly NOT observed):**
+- Full `internal/cli` suite still not run here (unchanged from iter1; owned by integration-branch CI).
+- Convergence covered codex only (claude/glm off per plan).
+- The orchestrator's `--result-file` convergence check has not run; verdict not final until it passes.
+
+**Residual-risk:**
+- `required-backend FAIL: codex` (convergence residual_risk_note, verbatim).
+- Proxy-required egress environments lose fetch capability entirely (`t.Proxy = nil` — deliberate, documented; correctness over reachability).
+- Exotic UTF-8 alias labels outside `isUTF8Family` (e.g. `unicode-1-1-utf-8`) route through `charset.Lookup`'s replacement decoder — adjacent to F5b, fixed by the same substitution scan.
+- DNS rebinding across the Control/connect boundary: no gap found — validation is on the connected address itself; the OS does not re-resolve between hook and syscall.
+
+## Iteration history (cont.)
+
+- iter2 (this audit): FAIL 0.86 — F1-F5 all substantively repaired and verified (F2/F3/F4 clean; F1 with range gap F1b; F5 with slice F5b); two pre-existing conformance seams surfaced (F7/F8). Delta for iter3: F1b, F5b, F7, F8 — all localized to ssrf.go / fetch.go / blocks.go, same pattern family as this round's repairs.
