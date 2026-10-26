@@ -23,20 +23,24 @@ import (
 // Korean catalogue (native written register). Tests assert on these
 // constants, so a wording change is one edit.
 const (
-	laneMsgHeaderMany      = "활성 factory run이 2개 이상입니다. 합류할 run을 고르세요."
-	laneMsgHeaderOne       = "활성 factory run이 1개 남았습니다. 합류할 run을 고르거나 취소하세요."
-	laneMsgLegendMany      = "번호: 해당 run에 합류 / r번호: 정리한 뒤 남은 run에 합류 / q 또는 빈 줄: 취소"
-	laneMsgLegendOne       = "번호: 해당 run에 합류 / q 또는 빈 줄: 취소"
-	laneMsgIneligibleFmt   = "선택 r%d: 정리할 수 없습니다. 리더가 종료되고 진행 중 카드가 없는 run만 정리할 수 있습니다."
-	laneMsgInvalid         = "입력을 이해하지 못했습니다. 번호, r번호, q 중 하나를 입력하세요."
-	laneMsgCleanupFailFmt  = "run %s 정리에 실패했습니다 (%s). 저장소에서 다시 읽은 최신 상태로 목록을 보여 드립니다."
-	laneMsgCancelled       = "합류를 취소했습니다. 이 선택으로 추가된 변경은 없습니다."
-	laneLivenessLive       = "live (생존)"
-	laneLivenessDead       = "dead (종료)"
-	laneLivenessIndetermin = "indeterminate (판정 불가)"
-	laneEmptyCell          = "-"
-	laneColSep             = " | "
-	lanePrompt             = "선택> "
+	laneMsgHeaderMany         = "활성 factory run이 2개 이상입니다. 합류할 run을 고르세요."
+	laneMsgHeaderOne          = "활성 factory run이 1개 남았습니다. 합류할 run을 고르거나 취소하세요."
+	laneMsgLegendMany         = "번호: 해당 run에 합류 / r번호: 정리한 뒤 남은 run에 합류 / q 또는 빈 줄: 취소"
+	laneMsgLegendOne          = "번호: 해당 run에 합류 / q 또는 빈 줄: 취소"
+	laneMsgIneligibleFmt      = "선택 r%d: 정리할 수 없습니다. 리더가 종료되고 진행 중 카드가 없는 run만 정리할 수 있습니다."
+	laneMsgInvalid            = "입력을 이해하지 못했습니다. 번호, r번호, q 중 하나를 입력하세요."
+	laneMsgLegendMerge        = "m번호: 진행 중 카드를 살아 있는 run으로 옮겨 합치고 정리한 뒤 합류"
+	laneMsgIneligibleMergeFmt = "선택 m%d: 합칠 수 없습니다. 리더가 종료되고 진행 중 카드가 있으며, 리더가 살아 있는 활성 run이 정확히 1개일 때만 합칠 수 있습니다."
+	laneMsgMergeFailFmt       = "run %s 합치기에 실패했습니다 (%s). 저장소에서 다시 읽은 최신 상태로 목록을 보여 드립니다."
+	laneMsgMergedFmt          = "run %s의 진행 중 카드를 run %s로 옮기고 정리했습니다. 옮긴 카드: %s / 포기 처리한 카드: %s"
+	laneMsgCleanupFailFmt     = "run %s 정리에 실패했습니다 (%s). 저장소에서 다시 읽은 최신 상태로 목록을 보여 드립니다."
+	laneMsgCancelled          = "합류를 취소했습니다. 이 선택으로 추가된 변경은 없습니다."
+	laneLivenessLive          = "live (생존)"
+	laneLivenessDead          = "dead (종료)"
+	laneLivenessIndetermin    = "indeterminate (판정 불가)"
+	laneEmptyCell             = "-"
+	laneColSep                = " | "
+	lanePrompt                = "선택> "
 )
 
 // laneColumnLabels are the table's column labels, one per rendered cell.
@@ -52,6 +56,7 @@ const (
 	choiceCancel runChoiceKind = iota
 	choiceJoin
 	choiceCleanupThenJoin
+	choiceMergeThenJoin
 )
 
 type runChoice struct {
@@ -87,6 +92,28 @@ func buildLaneRows(facts []homestate.RunFacts, names map[int]string) []laneRunRo
 		})
 	}
 	return rows
+}
+
+// laneMergeEligible reports whether row i may be merged (card t1963,
+// REQ-FCR-021): its owner is dead, it still holds in-progress cards, and
+// exactly one listed run has a live owner — that run is the merge target, so
+// with none or several live runs there is no single place to move the cards.
+// It reads the display cells the rows already carry, so the row type and the
+// existing `r<n>` eligibility are untouched.
+func laneMergeEligible(rows []laneRunRow, i int) bool {
+	if i < 0 || i >= len(rows) {
+		return false
+	}
+	if rows[i].Liveness != laneLivenessDead || rows[i].InProgress == 0 {
+		return false
+	}
+	live := 0
+	for _, r := range rows {
+		if r.Liveness == laneLivenessLive {
+			live++
+		}
+	}
+	return live == 1
 }
 
 func laneLiveness(c homestate.OwnerClassification) string {
@@ -168,6 +195,12 @@ func (c textRunChooser) render(rows []laneRunRow) error {
 	if len(rows) == 1 {
 		header, legend = laneMsgHeaderOne, laneMsgLegendOne
 	}
+	for i := range rows {
+		if laneMergeEligible(rows, i) {
+			legend += "\n" + laneMsgLegendMerge
+			break
+		}
+	}
 	_, err := fmt.Fprintf(c.out, "%s\n%s\n%s%s\n", header, strings.Join(laneColumnLabels(), laneColSep), renderLaneTable(rows), legend)
 	return err
 }
@@ -204,20 +237,29 @@ func parseLaneChoice(line string, rows []laneRunRow) (runChoice, string) {
 	if entry == "" || entry == "q" {
 		return runChoice{Kind: choiceCancel}, ""
 	}
-	cleanup := strings.HasPrefix(entry, "r")
-	digits := strings.TrimPrefix(entry, "r")
+	kind, digits := choiceJoin, entry
+	switch {
+	case strings.HasPrefix(entry, "r"):
+		kind, digits = choiceCleanupThenJoin, strings.TrimPrefix(entry, "r")
+	case strings.HasPrefix(entry, "m"):
+		kind, digits = choiceMergeThenJoin, strings.TrimPrefix(entry, "m")
+	}
 	n, ok := parseRowNumber(digits, len(rows))
 	if !ok {
 		return runChoice{}, laneMsgInvalid
 	}
 	row := rows[n-1]
-	if !cleanup {
-		return runChoice{Kind: choiceJoin, RunID: row.RunID}, ""
+	switch kind {
+	case choiceCleanupThenJoin:
+		if !row.CanCleanup {
+			return runChoice{}, fmt.Sprintf(laneMsgIneligibleFmt, n)
+		}
+	case choiceMergeThenJoin:
+		if !laneMergeEligible(rows, n-1) {
+			return runChoice{}, fmt.Sprintf(laneMsgIneligibleMergeFmt, n)
+		}
 	}
-	if !row.CanCleanup {
-		return runChoice{}, fmt.Sprintf(laneMsgIneligibleFmt, n)
-	}
-	return runChoice{Kind: choiceCleanupThenJoin, RunID: row.RunID}, ""
+	return runChoice{Kind: kind, RunID: row.RunID}, ""
 }
 
 // parseRowNumber accepts ASCII digits only (no sign, no padding) naming a
@@ -300,6 +342,17 @@ func chooseLaneRun(root string, timing *factoryLaunchTiming) (func(), error) {
 			if rerr != nil {
 				laneNotice(laneMsgCleanupFailFmt, choice.RunID, rerr)
 			}
+		case choiceMergeThenJoin:
+			// Same shape as the cleanup arm: a refusal is printed and the
+			// facts re-read; a completed merge leaves the live target, and
+			// the join half fires once exactly one run remains.
+			res, target, merr := mergeChosenRun(root, choice.RunID)
+			afterCleanup = merr == nil
+			if merr != nil {
+				laneNotice(laneMsgMergeFailFmt, choice.RunID, merr)
+			} else {
+				laneNotice(laneMsgMergedFmt, choice.RunID, target, joinOrNone(res.Moved), joinOrNone(res.Abandoned))
+			}
 		default:
 			laneNotice("%s", laneMsgCancelled)
 			return func() {}, errors.New(joinCancelledSentinel)
@@ -329,6 +382,44 @@ func readLaneRunFacts(root string) (_ []homestate.RunFacts, _ map[int]string, er
 		return nil, nil, err
 	}
 	return facts, leaderNamesByPID(root), nil
+}
+
+// mergeChosenRun is the chooser's merge call: it moves the dead run's cards
+// under the one active run with a live owner and retires it, through the
+// consolidation operation. The eligibility rule is re-checked here against the
+// store, not trusted from the rows the operator was shown — a source that is
+// not dead, or a listing with no single live target, is refused and changes
+// nothing, whatever a chooser returned.
+func mergeChosenRun(root, sourceID string) (res homestate.RebindResult, targetID string, err error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return res, "", err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	opts := factorymsg.ReconcileOptionsFor(root)
+	owners, err := db.ClassifyRuns(context.Background(), opts)
+	if err != nil {
+		return res, "", err
+	}
+	var src, tgt *homestate.RunOwner
+	liveRuns := 0
+	for i := range owners {
+		if owners[i].RunID == sourceID {
+			src = &owners[i]
+		}
+		if owners[i].Status == "active" && owners[i].Classification == homestate.OwnerLive {
+			liveRuns++
+			tgt = &owners[i]
+		}
+	}
+	if src == nil {
+		return res, "", fmt.Errorf("factory run %s not found", sourceID)
+	}
+	if liveRuns != 1 {
+		return res, "", fmt.Errorf("%d active runs have a live owner; a merge needs exactly one target", liveRuns)
+	}
+	res, err = db.RebindRun(context.Background(), homestate.RebindRequest{Source: *src, Target: *tgt}, opts)
+	return res, tgt.RunID, err
 }
 
 // retireChosenRun is the chooser's ONE retirement call. It goes through
