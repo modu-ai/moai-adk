@@ -1,0 +1,145 @@
+package homestate
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+// factory_run_rebind_t1973_test.go — card t1973: reproductions of the two
+// out-of-scope findings the t1966 sync-audit recorded against the consolidation
+// loop (codex leg rcpt-ee107d9287, never reproduced by an auditor).
+//
+// P1 — a TERMINAL row of the target holding the same card_id silently consumes
+// the source run's LIVE work: held>0 abandons the source row without ever
+// looking at the target row's state or evidence.
+//
+// P2 — a third run whose leader classified dead (matching stamp) is skipped
+// even when it still holds a valid lease on the card and/or a living worker:
+// the skip clause checks the leader's stamp and nothing else.
+
+// TestRed_T1973_P1_StaleDoneTargetEatsLiveWork — the target already holds the
+// SAME card as a terminal row with its own recorded evidence and approval. The
+// consolidation must be REFUSED (the source's live row preserved, a fresh
+// approval demanded), not silently abandoned under the target's past done row.
+func TestRed_T1973_P1_StaleDoneTargetEatsLiveWork(t *testing.T) {
+	t.Run("terminal done target row with its own evidence and approval", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		// The source's LIVE work on the card.
+		rbCard(t, db, "run-old", "c1", CardMergeReady)
+		rbBind(t, db, "c1", "run-old")
+		// The target's PAST completion of the same card id: a done row with its
+		// own evidence and a recorded approval.
+		rbCard(t, db, "run-new", "c1", CardDone)
+		if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='sha-stale-done-c1' WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		rbApproval(t, db, "uuid-c1-target", "run-new", "c1")
+		before := rbDump(t, db)
+
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-new")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+		// The live work survived: the source row is untouched and its run stays
+		// active for a fresh decision.
+		c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+		if loadErr != nil || c.State != CardMergeReady {
+			t.Fatalf("run-old c1 = (%+v, %v), want the untouched merge-ready row", c, loadErr)
+		}
+		if got := runStatus(t, db, "run-old"); got != "active" {
+			t.Fatalf("run-old status = %s, want active after the refusal", got)
+		}
+	})
+	t.Run("terminal target row even with matching evidence", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		// rbCard seeds evidence "sha-c1" on both rows: terminal alone refuses.
+		rbCard(t, db, "run-new", "c1", CardDone)
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-new")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+	})
+	t.Run("non-terminal target row with divergent evidence", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		// The target re-picked the same card and its row carries DIFFERENT
+		// evidence: the two rows are not the same work.
+		rbCard(t, db, "run-new", "c1", CardPicked)
+		if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='sha-other-work-c1' WHERE run_id='run-new' AND card_id='c1'`); err != nil {
+			t.Fatal(err)
+		}
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-new")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+	})
+}
+
+// TestRed_T1973_P2_LivingWorkerAndLeaseInThirdRun — a third run whose LEADER
+// classified dead under the very stamp the skip clause matches still holds the
+// card under a VALID lease and/or with a LIVING worker (a lane can outlive its
+// leader). The consolidation must be REFUSED, not skipped past.
+func TestRed_T1973_P2_LivingWorkerAndLeaseInThirdRun(t *testing.T) {
+	t.Run("valid lease on the dead-leader third run's row", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbRun(t, db, "run-third", rbPIDDead) // leader dead, stamp matches the skip clause
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		// The third run holds the same card in a lease-holding state with an
+		// unexpired lease — a live lane, whatever its leader's stamp says.
+		rbCard(t, db, "run-third", "c1", CardRun)
+		expiry := time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339Nano)
+		if _, err := db.DB.Exec(`UPDATE cards SET lease_holder='lane-third', lease_expires_at=? WHERE run_id='run-third' AND card_id='c1'`, expiry); err != nil {
+			t.Fatal(err)
+		}
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-third")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+		if got := rbBound(t, db, "c1"); got != "run-old" {
+			t.Fatalf("card_dispatch[c1] = %s, want it unchanged at run-old", got)
+		}
+	})
+	t.Run("living worker registered on the dead-leader third run", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbRun(t, db, "run-third", rbPIDDead)
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		// No lease on the third run's row, but a registered worker whose pid
+		// the probe reports LIVE.
+		rbCard(t, db, "run-third", "c1", CardAssigned)
+		rbWorker(t, db, "run-third", "lane-third", rbPIDWorkerLive)
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-third")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+	})
+}
