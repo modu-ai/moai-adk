@@ -143,3 +143,89 @@ func TestRed_T1973_P2_LivingWorkerAndLeaseInThirdRun(t *testing.T) {
 		}
 	})
 }
+
+// TestRed_T1973b_P1_SourceCardHoldingValidLeaseIsRekeyed — round 2, P1: the
+// SOURCE run's own card holds a valid lease. The source leader's death does not
+// kill a card lease, and refuseLiveWorker only probes workers registered UNDER
+// the source run — a holder whose registration names another run (or none) is
+// invisible to it. The leased row must not be re-keyed or abandoned.
+func TestRed_T1973b_P1_SourceCardHoldingValidLeaseIsRekeyed(t *testing.T) {
+	t.Run("valid lease on the source card, no source worker row", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		// The lane leased the card but its worker row names ANOTHER run, so
+		// refuseLiveWorker's run-scoped worker listing cannot see it.
+		expiry := time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339Nano)
+		if _, err := db.DB.Exec(`UPDATE cards SET lease_holder='lane-x', lease_expires_at=? WHERE run_id='run-old' AND card_id='c1'`, expiry); err != nil {
+			t.Fatal(err)
+		}
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-old")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+		c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+		if loadErr != nil || c.State != CardRun || c.LeaseHolder != "lane-x" {
+			t.Fatalf("run-old c1 = (%+v, %v), want the leased run row untouched", c, loadErr)
+		}
+	})
+	t.Run("holder registered as a worker of a different run", func(t *testing.T) {
+		db := openSandboxFactory(t)
+		opts := rbOpts()
+		rbRun(t, db, "run-old", rbPIDDead)
+		rbRun(t, db, "run-new", rbPIDLive)
+		rbCard(t, db, "run-old", "c1", CardRun)
+		rbBind(t, db, "c1", "run-old")
+		expiry := time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339Nano)
+		if _, err := db.DB.Exec(`UPDATE cards SET lease_holder='lane-x', lease_expires_at=? WHERE run_id='run-old' AND card_id='c1'`, expiry); err != nil {
+			t.Fatal(err)
+		}
+		// Even a LIVE worker row does not block when it is registered under the
+		// target: the card's own lease must decide.
+		rbWorker(t, db, "run-new", "lane-x", rbPIDWorkerLive)
+		before := rbDump(t, db)
+		_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+		rbRefusedWith(t, err, "c1", "run-old")
+		if after := rbDump(t, db); after != before {
+			t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+		}
+	})
+}
+
+// TestRed_T1973b_P2_BothEmptyEvidenceTreatedAsMatch — round 2, P2: two EMPTY
+// evidence values are not a match. The normal early state (the source row
+// actively working, the target row freshly created/picked with no evidence yet)
+// would abandon the source row, and its stage/worktree/spec_id never reach the
+// target. The both-empty shape must refuse.
+func TestRed_T1973b_P2_BothEmptyEvidenceTreatedAsMatch(t *testing.T) {
+	db := openSandboxFactory(t)
+	opts := rbOpts()
+	rbRun(t, db, "run-old", rbPIDDead)
+	rbRun(t, db, "run-new", rbPIDLive)
+	rbCard(t, db, "run-old", "c1", CardRun)
+	rbBind(t, db, "c1", "run-old")
+	// The freshly created target row: non-terminal, no evidence recorded yet.
+	rbCard(t, db, "run-new", "c1", CardPicked)
+	if _, err := db.DB.Exec(`UPDATE cards SET evidence_sha='' WHERE card_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	// The source row carries progress the abandon pointer would strand.
+	if _, err := db.DB.Exec(`UPDATE cards SET stage='run', worktree_path='/wt/c1', spec_id='SPEC-X' WHERE run_id='run-old' AND card_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	before := rbDump(t, db)
+	_, err := db.RebindRun(context.Background(), rbRequest(t, db, opts, true), opts)
+	rbRefusedWith(t, err, "c1", "run-new")
+	if after := rbDump(t, db); after != before {
+		t.Fatalf("dump changed after the refusal:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	c, loadErr := db.LoadCard(context.Background(), "run-old", "c1")
+	if loadErr != nil || c.State != CardRun || c.Stage != "run" || c.WorktreePath != "/wt/c1" {
+		t.Fatalf("run-old c1 = (%+v, %v), want the working row and its progress untouched", c, loadErr)
+	}
+}
