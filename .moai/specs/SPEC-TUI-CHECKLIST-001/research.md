@@ -44,6 +44,8 @@
 
 ## §3 update 출력 경로
 
+> [DEFERRED → t1978] (v0.2.0) update 연결은 카드 t1978 로 넘어갔다. 이 절과 §8 의 update 사실은 증거로 남기며, 이 SPEC 의 살아 있는 요구사항이 아니다. 이 SPEC 이 update 에 대해 지키는 것은 "출력이 기준선 그대로"(REQ-TCL-012) 하나뿐이다.
+
 - `--verbose` 는 이미 있다(`internal/cli/update.go:89`). 뜻: 인정된 경고까지 다 보이고 보존 파일 목록을 경로별로 나열. 패키지 변수 `updateVerboseMode` 로 전달(`:166-167`).
 - 주 출력 작성기는 stdout: `out := cmd.OutOrStdout()`(`update.go:156`). 종료 행동 블록이 `defer renderUpdateTerminalBlock(out, th)`(`:176`).
 - 정체성 띠: `update.go:212-214`, `renderIdentityBand`(`internal/cli/update_tux.go:77-82`).
@@ -124,7 +126,7 @@ t1966 브랜치의 같은 diff 는 init.go 외에 `internal/cli/wizard/*`, `inte
 1회차 감사 D3 이 든 지점을 각 줄을 읽어 다시 확인했다. 결과는 design.md §3.3.1 보존 줄 목록의 근거다.
 
 - `init.go:858-864` — 재개 경로. `p.Info("Initialized MoAI project (resumed: …)")`(`:862`), `flushUpdateNotice(p)`(`:863`), `return nil`(`:864`). **델타 2회차 정정(2회차 감사 N3):** 델타 1회차는 "열린 보고기 항목이 있는 채로 성공 반환한다"고 적었으나 사실이 아니다. 재개 경로는 `executor.Execute` 가 "already initialized" 오류를 낸 뒤에만 탄다(`init.go:829`, `:854`). 그 오류는 검증 단계에서 나고, 실행기는 오류를 돌려주기 전에 보고기를 실패로 닫는다 — `internal/core/project/phase.go:111` `StepStart("Validation", "Validating project structure")` → `:112` `phaseValidate` → `:194` `return fmt.Errorf("%w", ErrProjectExists)` → `:113` `pe.reporter.StepError(err)` → `:114` `return nil, err`(원장 L21, 같은 파일 `:90-142`·`:172-199` 를 읽음). 기존 보고기도 `StepError` 에서 `r.spin.Fail("%v", err)` 로 줄을 닫는다(`internal/cli/reporter.go:102-118` 을 읽음). 그래서 재개가 시작될 때 열린 항목은 없고, 재개 단계(`resumeInitializedProject`, `internal/cli/init_resume.go`)의 출력은 넘김 규칙으로 보인다. 실행기의 보고기 이벤트 이름은 `"Detection"`(`:66`), `"Methodology Detection"`(`:82`, 모드를 주지 않았을 때), `"Validation"`(`:103` 명시 모드 검증, `:111` 구조 검증), `"Initialization"`(`:122`)이다. 이 순서는 코드 읽기이며 실행 관측이 아니다(plan.md §I G-11).
-- `update_template_sync.go:249-255` — update 의 "이미 최신" 조기 반환. `plVersion.Done("Already up-to-date")`(`:250`) 뒤 결과 알약(`:252`)을 쓰고 `return nil`(`:255`). 체크리스트가 켜지면 `templates.version` 항목이 열린 채 이 알약이 쓰이므로, 보존 행 P22 로 두지 않으면 사용자가 보는 유일한 결과 줄이 접힌다(델타 2회차에 찾음).
+- [DEFERRED → t1978, 그리고 정정됨] `update_template_sync.go:249-255` — 본문 `runTemplateSyncWithReporter` 안의 "이미 최신" 조기 반환. `plVersion.Done("Already up-to-date")`(`:250`) 뒤 결과 알약(`:252`)을 쓰고 `return nil`(`:255`). 델타 2회차의 이 문단은 "체크리스트가 켜지면 `templates.version` 항목이 열린 채 이 알약이 쓰인다"고 적었으나 **틀렸다**: 실제 `moai update` 는 `update.go:604` `runTemplateSyncWithProgress` 를 거치고, 그 바깥 함수가 같은 조건을 `:1260` 에서 먼저 보고 `:1262` 에서 알약을 쓴 뒤 `:1266` 에서 돌아온다 — 본문의 `:249-255` 는 본문을 직접 부르는 테스트만 닿는다(3회차 감사 M2, design.md §3.4, 4회차 감사 N5). 이 사실은 update 연결의 배경이며 이 SPEC 의 요구사항이 아니다.
 - `update_template_sync.go:1081-1218` — 단계 루프 뒤의 꼬리. 진행 막대(`:1081`), 결과 알약(`:1144` `renderUpdateOutcome`), 조정 결과(`:1148`), 훅 설치(`:1177` `installPrePushHookOptional`, `:1182` pre-commit), 배포 모드 기록(`:1211` `stampMigrationDeployMode` → `internal/cli/update_migrate.go:154`·`:161`), 스탬프 검사(`:1216` `warnStampSkew` → `internal/cli/update_template_sync_guard.go:105`), `return nil`(`:1218`). 훅 설치는 `--no-hooks` 가 아니면 매번 `"Pre-push hook installed (.git/hooks/pre-push)"`(`internal/cli/hook_install.go:262`)를 쓴다 — `:255-284` 를 읽음. 이것이 결정 D-10 의 근거다. 본문 함수는 `runTemplateSyncWithReporter` 이고, 그 뒤 `runTemplateSyncWithProgress` 가 `:1323` 에서 `verifyMigrationFinalState` 를 부른다(`:1296-1325` 를 읽음).
 - `init.go:885`, `:890` — `backup.StageDeployedSettingsSnapshot` / `StageDeployedMCPSnapshot(…, cmd.ErrOrStderr())`. 쓰기 실패는 `internal/cli/update/backup/file_snapshot.go:95`, `:99` 의 `warnLine` 으로 간다. `warnLine` 본체는 `internal/cli/update/backup/settings_snapshot.go:111-116`, 쓰는 줄은 `:115` `fmt.Fprintf(warn, "%s %v\n", prefix, err)`.
 - `init.go:944`, `:945` — `backup.SettleSettingsSnapshot` / `SettleMCPSnapshot`. 승격 실패는 `file_snapshot.go:139` 의 `warnLine`.
@@ -133,7 +135,7 @@ t1966 브랜치의 같은 diff 는 init.go 외에 `internal/cli/wizard/*`, `inte
 - `internal/cli/update_template_sync.go` — `/usr/bin/grep -n -e "errOut" -e "SymWarning"` 결과에서 확인한 직접 쓰기: `:666` `"  settings.local.json env.PATH refresh failed: %v\n"`, `:672`·`:679` 스냅숏 단계(`errOut` 전달), `:697` `"  manifest save after deploy: %v\n"`, `:948` `"  %s deployment_mode re-assert warning: %v\n"`(`out` 으로, `uikit.SymWarning()`), `:996`·`:1016`·`:1056` `"  manifest retrack (…): %v\n"`. `:958`·`:961` 은 `emitSeverityLine(errOut, sevWarn, …)` 이라 경고 신호 경로(REQ-TCL-015)가 덮는다.
 - `internal/cli/update_noise.go:111-114` — `--verbose` 일 때만 `emitSeverityLine(errOut, sevWarn, …, "3-way merge failed for %s, falling back to 2-way", …)`. verbose 전용 stderr 줄의 근거(1회차 감사 D4). `:119-120` — 대체 횟수가 임계값에 닿으면 `sevNote` 안내 한 번.
 - `internal/cli/init_warnings.go:58-63` — `Count()` 는 `len(w.warnings)`. `Collect`(`:52-56`)와 `Warn`(`:41-47`)만 이 목록에 더한다. `emitSeverityLine` 은 수집기를 거치지 않으므로(`init.go:901`, `:907`) 기존 완료 카드의 경고 수(`init.go:1087` `p.Count()`)에 들어가지 않는다(1회차 감사 D6, 결정 D-9).
-- `internal/cli/update_action_block.go:88-91` — `renderUpdateTerminalBlock` 은 장부가 비면 아무것도 쓰지 않는다. `internal/cli/update_tux.go:77-82` — 정체성 띠는 한 줄(`◆ MoAI-ADK` + 버전 알약 + `runtime.Version()`).
+- `internal/cli/update_action_block.go:88-91` — `renderUpdateTerminalBlock` 은 장부가 비면 아무것도 쓰지 않는다. [DEFERRED → t1978] 단, 동기화가 끝까지 도는 update 에서는 장부에 세 행이 무조건 기록되어(`update_template_sync.go:1165`, `:1167`, `:1190`) 장부가 비지 않는다 — 4회차 감사 N1 (나), design.md §4.1. `internal/cli/update_tux.go:77-82` — 정체성 띠는 한 줄(`◆ MoAI-ADK` + 버전 알약 + `runtime.Version()`).
 - 백업 디렉터리 시각 형식: `internal/cli/update/backup/retention_realdata_test.go:53` `time.Parse("20060102_150405", name)` — 테스트 파일에서 읽은 형식이며, 이름을 만드는 생산 코드는 이번에 읽지 않았다. AC-TCL-013 정규식 `\b\d{8}_\d{6}\b` 의 근거다.
 
 ## §9 보존 줄 목록의 고정 검색과 궤도 추적 (델타 2회차, HEAD `b422a13d53`)
@@ -565,6 +567,8 @@ writeTemplateSnapshotBestEffort -> internal/cli/update_snapshot_hook.go
 ```
 
 추적이 찾은 파일 가운데 첫 검색에 걸린 것은 `feedback_participation.go` 하나였고, 궤도로 넣었다(제외 행 X3 — update 의 템플릿 동기화 뒤에 쓰인다). 나머지 파일(`session_worktree.go`, `mirror_notice.go`, `migrate_local_instructions.go`, `user_asset_phase.go`, `update_*.go` 등)은 궤도 정의에 이미 들거나 검색 일치가 없었다. 이 추적은 한 단계뿐이다(plan.md §I G-10).
+
+**한계(3회차 감사 M5, v0.2.0 에 보강).** 이 추적은 작성기를 **인자로 넘기는** 호출만 본다. init 이 값으로 들고 다니는 출력 타입의 메서드 — `init.go:388` 이 만든 프린터의 `Warn`(`printer/printer.go:304`) — 는 보지 못해 `printer/printer.go` 가 X9 로 잘못 분류됐다. 그래서 출력 타입을 정의한 `printer/printer.go`·`severity_line.go` 를 궤도에 넣었다(design.md §3.3.1). 두 파일의 일치 세 줄은 위 첫 블록에 이미 있다(`printer.go:67`, `:304`, `severity_line.go:8`).
 
 ## §10 순서 증거·범위 검사 명령의 양성·음성 사례 (델타 2회차)
 
