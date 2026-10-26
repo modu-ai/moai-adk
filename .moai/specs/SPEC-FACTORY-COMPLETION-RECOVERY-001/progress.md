@@ -89,6 +89,8 @@ m1_to_mN_commit_strategy: "M2-B 단계별 커밋(18c4306ad0, bdd595f666, 873899a
 
 사후 개정 상태 메모 (추가): 위 블록의 `run_status: m2b-code-complete-ac-017-then-9-blocked`와 `ac_partial_count: 1`은 개정 `b20b174350` 이전 기록이다. 현재 상태는 AC-FCR-017..025 전부 PASS(`ac_pass_count` 9, 부분 0)이며, 이 블록의 값은 고치지 않고 이 메모가 대체한다.
 
+사후 개정 v0.3.5 커버리지 메모 (추가): 요구 REQ-FCR-024(통합으로 은퇴한 run을 향한 dispatch 복구 거부, sync-audit F-1 종결)는 커밋 `978cdaacc9`로 구현됐다 — 판정 시험 `TestRepairGTDDispatchRefusesConsolidatedSource`(`internal/factory`, AC-FCR-017 (10), 장부 L8)와 읽기 함수 시험 `TestRunRetiredByConsolidation`(`internal/homestate`); 변이 탐침 (i) "복구 경로가 은퇴 표지를 무시"는 (10)에서 실패한다. REQ-FCR-019의 임대 경로 재분류(`BasisPeer`·`BasisBoot` 원천은 임대 트랜잭션 직전 재분류, 살아났으면 포기 건너뜀)는 AC-FCR-023 c10 하위 사례 `TestRecordPickedReclassifiesPeerAndBootSources`로 단언하고 "no re-check" 변이가 이를 죽인다. 남는 한계: 두 검사 모두 별도 읽기라 확인과 쓰기 사이에 통합이 커밋되는 경합은 배제하지 않는다. 증거는 `.moai/reports/t1963/run-evidence.md`의 "F-1 and lease re-check fix" 절.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ### PARTIAL close — M2-B only (card t1963, 2026-10-26)

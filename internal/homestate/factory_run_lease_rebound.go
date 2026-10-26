@@ -74,6 +74,22 @@ func (f *FactoryDB) RecordPickedReconciled(ctx context.Context, runID, cardID st
 	if leaseReboundBeforeTx != nil {
 		leaseReboundBeforeTx()
 	}
+	// A run proved dead through the lead peer or the boot proof has no row-level
+	// stamp for the transaction below to compare, so those owners are classified
+	// again right before BEGIN and a run that is no longer dead keeps its row
+	// (REQ-FCR-019). The window is narrowed, not closed: the peer identity lives
+	// in the broker database, outside the transaction.
+	if hasUnstampedDeadOwner(byRun) {
+		fresh, err := f.classifyRuns(ctx, opts, "")
+		if err != nil {
+			return Card{}, err
+		}
+		for _, o := range fresh {
+			if prev, ok := byRun[o.RunID]; ok && unstampedDead(prev) {
+				byRun[o.RunID] = o
+			}
+		}
+	}
 	probe := opts.workerProbe()
 	var result Card
 	err = f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
@@ -107,6 +123,21 @@ func (f *FactoryDB) RecordPickedReconciled(ctx context.Context, runID, cardID st
 		return Card{}, err
 	}
 	return result, nil
+}
+
+// unstampedDead reports a run classified dead on a proof that carries no
+// row-level stamp: the lead peer or the boot proof.
+func unstampedDead(o RunOwner) bool {
+	return retirable(o.Classification) && (o.Basis == BasisPeer || o.Basis == BasisBoot)
+}
+
+func hasUnstampedDeadOwner(byRun map[string]RunOwner) bool {
+	for _, o := range byRun {
+		if unstampedDead(o) {
+			return true
+		}
+	}
+	return false
 }
 
 // rivalRows reads the card's non-terminal rows of every run except runID.
