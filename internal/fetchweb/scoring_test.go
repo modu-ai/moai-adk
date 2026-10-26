@@ -217,7 +217,7 @@ func TestSelection_BackfillUnder300Tokens(t *testing.T) {
 	if !keptHas(res, blocks[2].Text) {
 		t.Errorf("backfill must add highest-scored non-kept candidate b2 first, got %v", texts(res.Blocks))
 	}
-	if tokensOf(res.Blocks) < BackfillTokens && len(res.Blocks) != n {
+	if tokensOf(res.Blocks) < BackfillTokens && len(res.Blocks) < n {
 		t.Errorf("backfill stopped before both the %d-token threshold and exhaustion: %d blocks, %d tokens",
 			BackfillTokens, len(res.Blocks), tokensOf(res.Blocks))
 	}
@@ -287,7 +287,7 @@ func TestSelection_DocumentOrderEmission(t *testing.T) {
 	for i, b := range res.Blocks {
 		pos[b.Text] = i
 	}
-	if !(pos[blocks[0].Text] < pos[blocks[1].Text] && pos[blocks[1].Text] < pos[blocks[3].Text]) {
+	if pos[blocks[0].Text] >= pos[blocks[1].Text] || pos[blocks[1].Text] >= pos[blocks[3].Text] {
 		t.Errorf("emission not in document order: %v", texts(res.Blocks))
 	}
 }

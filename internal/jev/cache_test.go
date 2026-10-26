@@ -139,9 +139,10 @@ func TestCache_ModelIdInKey_TwoFiles(t *testing.T) {
 		{status: 200, body: cacheOKBody("jev-1.14.0")},
 	}}
 	a := newCachedClient(t, doer)
-	b := newCachedClient(t, doer)
-	a.CacheDir = a.CacheDir // separate clients, SAME dir
-	b.CacheDir = a.CacheDir
+	b := New(true)
+	b.LoadCredential = a.LoadCredential
+	b.HTTP = doer
+	b.CacheDir = a.CacheDir // separate clients, SAME dir
 	a.ModelOverride = "jev-1.13.0"
 	b.ModelOverride = "jev-1.14.0"
 	if !a.Ask(context.Background(), cacheQuestion()).OK() {

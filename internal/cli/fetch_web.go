@@ -121,7 +121,7 @@ func runFetchWeb(cmd *cobra.Command, args []string) error {
 		enabled, _ = jevEnabled(root) // read failure reads as disabled (fail-safe)
 	}
 	if !enabled {
-		fmt.Fprintln(cmd.ErrOrStderr(), fetchWebOffGateNotice)
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), fetchWebOffGateNotice)
 		return &exitCodeError{code: 2, msg: "moai fetch web: gated off (workflow.jev.enabled is false)"}
 	}
 
@@ -131,16 +131,16 @@ func runFetchWeb(cmd *cobra.Command, args []string) error {
 	if fetchWebJSON {
 		raw, err := fetchweb.RenderJSON(res, url, question)
 		if err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: rendering failed: %v\n", err)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: rendering failed: %v\n", err)
 			return &exitCodeError{code: 2, msg: "moai fetch web: rendering failed"}
 		}
 		out = string(raw)
 	} else {
 		out = fetchweb.RenderMarkdown(res)
 	}
-	fmt.Fprint(cmd.OutOrStdout(), out)
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), out)
 	if res.Condition != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: %s\n", res.Condition)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai fetch web: %s\n", res.Condition)
 	}
 	if code := res.Status.ExitCode(); code != 0 {
 		return &exitCodeError{code: code, msg: "moai fetch web: " + string(res.Status)}

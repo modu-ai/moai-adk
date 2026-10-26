@@ -102,7 +102,7 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 			enabled, _ = jevEnabled(root)
 		}
 		if !enabled {
-			fmt.Fprintln(cmd.ErrOrStderr(), "jevmeasure bench: workflow.jev.enabled is false — no bench execution, no network request. Record a run (--run) to compare offline, or enable Jev.")
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "jevmeasure bench: workflow.jev.enabled is false — no bench execution, no network request. Record a run (--run) to compare offline, or enable Jev.")
 			return &exitCodeError{code: 2, msg: "jevmeasure bench: gated off (workflow.jev.enabled is false)"}
 		}
 		runs = jevmeasure.RunBench(cmd.Context(), cases, fetchWebAskerFn())
@@ -120,7 +120,7 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 	if baselinePath == "" {
 		report := jevmeasure.CompareRun(cases, runs)
 		raw, _ := json.MarshalIndent(report, "", "  ")
-		fmt.Fprintln(cmd.OutOrStdout(), string(raw))
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(raw))
 		return nil
 	}
 
@@ -130,7 +130,7 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		raw, _ := json.MarshalIndent(report, "", "  ")
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\n(baseline written to %s)\n", raw, baselinePath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n(baseline written to %s)\n", raw, baselinePath)
 		return nil
 	}
 
@@ -147,7 +147,7 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 		if c.Reason != "" {
 			line += ": " + c.Reason
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), line)
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 	}
 	if diff.AnyRegression {
 		return &exitCodeError{code: 1, msg: "jevmeasure bench: baseline regression"}
