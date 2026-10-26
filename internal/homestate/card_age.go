@@ -6,8 +6,10 @@ package homestate
 // (REQ-CAA-007): no card-row write, no event append, no lease change.
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -74,15 +76,184 @@ type CardEvent struct {
 // (every run when runID is empty), oldest first — one bounded query per
 // status render (REQ-CAA-003/004/005). A row whose payload does not parse is
 // skipped: the anchors fall back rather than fail the read. It never writes.
+//
+// For a non-empty runID it also returns the events of the cards a
+// consolidation moved INTO runID from the run(s) they came from
+// (REQ-FCR-025): the history of a re-keyed card stays under its source run, so
+// it is read through here, each event's RunID rewritten to runID and merged in
+// Seq order. With an empty runID (every run) the same cards' events are
+// returned once each with RunID set to the run the card finally lives in, the
+// chain A→B→C resolved to C. No stored row is rewritten, copied, or deleted.
 func (f *FactoryDB) LoadCardEvents(ctx context.Context, runID string) ([]CardEvent, error) {
-	// SQL: the fragment is a compile-time constant; runID goes through a ? placeholder.
-	query := `SELECT run_id, kind, payload_json, created_at, seq FROM events WHERE kind IN ('card.transition','lease.expired')`
-	var args []any
-	if strings.TrimSpace(runID) != "" {
-		query += ` AND run_id=?`
-		args = append(args, runID)
+	if strings.TrimSpace(runID) == "" {
+		// All runs: each event keeps its stored row, except that a moved
+		// card's events carry the run the card finally lives in — replacing
+		// the source copy, so the alarm's [RunID, CardID] grouping finds them.
+		out, err := f.queryCardEvents(ctx, cardEventsAllSQL)
+		if err != nil {
+			return nil, err
+		}
+		hops, err := f.consolidationHops(ctx)
+		if err != nil || len(hops) == 0 {
+			return out, err
+		}
+		final := finalRuns(hops)
+		for i, e := range out {
+			if to, ok := final[[2]string{e.RunID, e.CardID}]; ok {
+				out[i].RunID = to
+			}
+		}
+		return out, nil
 	}
-	rows, err := f.DB.QueryContext(ctx, query+` ORDER BY seq`, args...)
+	out, err := f.queryCardEvents(ctx, cardEventsByRunSQL, runID)
+	if err != nil {
+		return nil, err
+	}
+	sources, err := f.movedCardSources(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	if len(sources) == 0 {
+		return out, nil
+	}
+	for _, src := range slices.Sorted(maps.Keys(sources)) {
+		moved, err := f.queryCardEvents(ctx, cardEventsByRunSQL, src)
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range moved {
+			if sources[src][e.CardID] {
+				e.RunID = runID
+				out = append(out, e)
+			}
+		}
+	}
+	slices.SortStableFunc(out, func(a, b CardEvent) int { return cmp.Compare(a.Seq, b.Seq) })
+	return out, nil
+}
+
+// SQL for the card-event reads: compile-time constants, every value through a
+// ? placeholder.
+const (
+	cardEventsAllSQL   = `SELECT run_id, kind, payload_json, created_at, seq FROM events WHERE kind IN ('card.transition','lease.expired') ORDER BY seq`
+	cardEventsByRunSQL = `SELECT run_id, kind, payload_json, created_at, seq FROM events WHERE kind IN ('card.transition','lease.expired') AND run_id=? ORDER BY seq`
+	retiredEventsSQL   = `SELECT run_id, payload_json FROM events WHERE kind='run.retired' ORDER BY seq`
+)
+
+// consolidationHop is one parsed `run.retired` consolidation: the cards moved
+// from run src into run to.
+type consolidationHop struct {
+	src, to string
+	moved   []string
+}
+
+// consolidationHops reads every consolidation recorded as a `run.retired`
+// event. A payload that does not parse, names no target, or names the run
+// itself is skipped, never fatal. The rows are drained and closed before it
+// returns (the pool holds one connection).
+func (f *FactoryDB) consolidationHops(ctx context.Context) ([]consolidationHop, error) {
+	rows, err := f.DB.QueryContext(ctx, retiredEventsSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var hops []consolidationHop
+	for rows.Next() {
+		var src, payload string
+		if err := rows.Scan(&src, &payload); err != nil {
+			return nil, err
+		}
+		var p struct {
+			ReboundTo  string   `json:"rebound_to"`
+			MovedCards []string `json:"moved_cards"`
+		}
+		if json.Unmarshal([]byte(payload), &p) != nil || p.ReboundTo == "" || p.ReboundTo == src {
+			continue
+		}
+		hops = append(hops, consolidationHop{src: src, to: p.ReboundTo, moved: p.MovedCards})
+	}
+	return hops, rows.Err()
+}
+
+// finalRuns maps every (run, card) pair a consolidation moved to the run the
+// card finally lives in, following A→B→C chains; a visited set bounds a corrupt
+// cycle. A card a consolidation abandoned is in no hop's moved list, so it
+// resolves to the run that held it.
+func finalRuns(hops []consolidationHop) map[[2]string]string {
+	next := map[[2]string]string{}
+	for _, h := range hops {
+		for _, id := range h.moved {
+			next[[2]string{h.src, id}] = h.to
+		}
+	}
+	final := make(map[[2]string]string, len(next))
+	for key := range next {
+		run, seen := key[0], map[string]bool{key[0]: true}
+		for {
+			to, ok := next[[2]string{run, key[1]}]
+			if !ok || seen[to] {
+				break
+			}
+			seen[to], run = true, to
+		}
+		final[key] = run
+	}
+	return final
+}
+
+// movedCardSources finds the runs whose cards were consolidated into target,
+// directly or through a chain (A→B→C): for each source run, the set of its
+// cards that arrived at target. A `run.retired` event whose `rebound_to` names
+// a run lists in `moved_cards` the cards re-keyed into it; a card the
+// consolidation abandoned (`abandoned_cards`) stays out. A hop only carries the
+// cards the next hop carried on, and a visited set bounds a corrupt cycle. A
+// run.retired payload that does not parse is skipped, never fatal.
+func (f *FactoryDB) movedCardSources(ctx context.Context, target string) (map[string]map[string]bool, error) {
+	hops, err := f.consolidationHops(ctx)
+	if err != nil {
+		return nil, err
+	}
+	into := map[string][]consolidationHop{}
+	for _, h := range hops {
+		into[h.to] = append(into[h.to], h)
+	}
+
+	type frontier struct {
+		run     string
+		allowed map[string]bool // nil: every card of the run
+	}
+	sources := map[string]map[string]bool{}
+	visited := map[string]bool{target: true}
+	queue := []frontier{{run: target}}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, h := range into[cur.run] {
+			if visited[h.src] {
+				continue
+			}
+			moved := map[string]bool{}
+			for _, id := range h.moved {
+				if cur.allowed == nil || cur.allowed[id] {
+					moved[id] = true
+				}
+			}
+			visited[h.src] = true
+			if len(moved) == 0 {
+				continue
+			}
+			sources[h.src] = moved
+			queue = append(queue, frontier{run: h.src, allowed: moved})
+		}
+	}
+	return sources, nil
+}
+
+// queryCardEvents runs one of the card-event queries and parses its rows. The
+// rows are drained and closed before it returns (the pool holds one
+// connection).
+func (f *FactoryDB) queryCardEvents(ctx context.Context, query string, args ...any) ([]CardEvent, error) {
+	rows, err := f.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

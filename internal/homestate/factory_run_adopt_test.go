@@ -2,6 +2,7 @@ package homestate
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 )
@@ -16,11 +17,13 @@ func mustInsertCard(t *testing.T, db *FactoryDB, runID, cardID, state string) {
 	}
 }
 
-// mustInsertWorker seeds one registered worker row for a run.
+// mustInsertWorker seeds one registered worker row for a run. The worker pid is
+// this test process: a pid that is live on every platform (REQ-FCR-022 probes
+// worker pids, and pid 1 reads dead on Windows).
 func mustInsertWorker(t *testing.T, db *FactoryDB, runID, label string) {
 	t.Helper()
 	if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES(?,?,?,?,?)`,
-		label, 1, runID, "2026-10-14T00:00:00Z", "2026-10-14T00:00:00Z"); err != nil {
+		label, os.Getpid(), runID, "2026-10-14T00:00:00Z", "2026-10-14T00:00:00Z"); err != nil {
 		t.Fatalf("insert worker %s: %v", label, err)
 	}
 }
