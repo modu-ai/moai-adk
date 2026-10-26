@@ -187,3 +187,43 @@ func TestBaseline_WriteThenDeterministicDiff(t *testing.T) {
 		t.Error("AnyRegression must be true when a case flipped to not-contained")
 	}
 }
+
+// C3 (card t1968 review round 3): a case with NO run result must FAIL the
+// baseline diff explicitly. The run map lookup yields the zero value
+// (not-contained, zero output tokens), which matched a baseline row that
+// recorded not-contained — so a missing run entry passed the comparison
+// silently.
+func TestBaselineDiff_MissingRunResultFails(t *testing.T) {
+	dir := t.TempDir()
+	baselinePath := filepath.Join(dir, "baseline.json")
+	cases := benchCases()
+	runs := RunBench(context.Background(), cases, stubBenchAsker{marker: "You need Go"})
+	if _, err := WriteBaseline(baselinePath, cases, runs); err != nil {
+		t.Fatal(err)
+	}
+	// Drop the absent-quote entry: its case stays in cases and in the
+	// baseline (recorded not-contained), but no run result exists for it.
+	partial := runs[:0:0]
+	for _, r := range runs {
+		if r.CaseID != "absent-quote" {
+			partial = append(partial, r)
+		}
+	}
+	diff, err := DiffAgainstBaseline(baselinePath, cases, partial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]CaseDiff{}
+	for _, c := range diff.Cases {
+		byID[c.CaseID] = c
+	}
+	if byID["absent-quote"].Pass {
+		t.Error("a case with no run result must FAIL the diff, not pass on the zero value")
+	}
+	if byID["absent-quote"].Reason == "" {
+		t.Error("the missing-run FAIL must name its reason")
+	}
+	if !byID["install-req"].Pass {
+		t.Errorf("the case with a real run result must keep its verdict: %+v", byID["install-req"])
+	}
+}

@@ -227,6 +227,54 @@ func TestJevmeasureBench_NonRegressionFailStillExitsOne(t *testing.T) {
 	}
 }
 
+// C3 (card t1968 review round 3): a run result file holding no entry for a
+// baseline case must exit 1. The zero-value lookup made the missing case read
+// not-contained, which matched a not-contained baseline row and passed the
+// compare silently (exit 0) despite no run result existing.
+func TestJevmeasureBench_MissingRunResultFailsCompare(t *testing.T) {
+	dir := t.TempDir()
+	// case-1's quote is contained in its run output; case-2's is not (its
+	// baseline verdict is not-contained — exactly the row the zero value
+	// silently matched).
+	cases := []jevmeasure.BenchCase{
+		{ID: "case-1", Question: "what is the port?", ExpectedQuote: "The port is 3041.", PageSnapshot: "<html><body><p>The port is 3041.</p></body></html>"},
+		{ID: "case-2", Question: "what license?", ExpectedQuote: "MIT LICENSE GRANTS", PageSnapshot: "<html><body><p>The license section is elsewhere.</p></body></html>"},
+	}
+	raw, _ := json.Marshal(cases)
+	casesPath := filepath.Join(dir, "cases.json")
+	if err := os.WriteFile(casesPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fullRuns := []jevmeasure.CaseRun{
+		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", OutputTokens: 3},
+		{CaseID: "case-2", Status: "no_match", Output: "# no_match\n", OutputTokens: 1},
+	}
+	rawRuns, _ := json.Marshal(fullRuns)
+	fullRunPath := filepath.Join(dir, "run-full.json")
+	if err := os.WriteFile(fullRunPath, rawRuns, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	baseline := filepath.Join(dir, "baseline.json")
+	if _, _, code := runBenchCmd(t, "--cases", casesPath, "--run", fullRunPath, "--baseline", baseline); code != 0 {
+		t.Fatalf("baseline write exit = %d, want 0", code)
+	}
+
+	// The partial run holds case-1's entry only — case-2 has no run result.
+	partialRuns := fullRuns[:1]
+	rawPartial, _ := json.Marshal(partialRuns)
+	partialPath := filepath.Join(dir, "run-partial.json")
+	if err := os.WriteFile(partialPath, rawPartial, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, _, code := runBenchCmd(t, "--cases", casesPath, "--run", partialPath, "--baseline", baseline)
+	if code != 1 {
+		t.Fatalf("missing-run exit = %d, want 1 (never a silent zero-value pass)\n%s", code, out)
+	}
+	if !strings.Contains(out, "FAIL case-2") {
+		t.Errorf("report must FAIL the run-less case:\n%s", out)
+	}
+}
+
 // Argument and file errors surface as command errors (exit 1 via cobra).
 func TestJevmeasureBench_InputErrors(t *testing.T) {
 	if _, _, code := runBenchCmd(t); code != 1 {

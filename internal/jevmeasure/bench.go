@@ -174,7 +174,9 @@ type BaselineDiff struct {
 // from contained to not-contained is a regression; a flip the other way
 // still fails the equality (the baseline is stale for that case) without
 // counting as a regression. A case missing from the baseline fails with the
-// reason named.
+// reason named, and so does a case with NO run result: the run map lookup
+// would otherwise yield the zero value (not-contained, zero output tokens),
+// which silently matched a baseline row that recorded not-contained.
 func DiffAgainstBaseline(path string, cases []BenchCase, runs []CaseRun) (BaselineDiff, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -188,12 +190,19 @@ func DiffAgainstBaseline(path string, cases []BenchCase, runs []CaseRun) (Baseli
 	for _, c := range base.Cases {
 		baseByID[c.CaseID] = c
 	}
+	hasRun := make(map[string]bool, len(runs))
+	for _, r := range runs {
+		hasRun[r.CaseID] = true
+	}
 	current := CompareRun(cases, runs)
 	diff := BaselineDiff{}
 	for _, cc := range current.Cases {
 		d := CaseDiff{CaseID: cc.CaseID}
 		b, ok := baseByID[cc.CaseID]
 		switch {
+		case !hasRun[cc.CaseID]:
+			d.Pass = false
+			d.Reason = "no run result for this case"
 		case !ok:
 			d.Pass = false
 			d.Reason = "no baseline entry for this case"

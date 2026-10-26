@@ -273,6 +273,36 @@ func TestSplitBlocks_ListItemParagraphNotReEmitted(t *testing.T) {
 	}
 }
 
+// C2 (card t1968 review round 3): a <pre> or <table> inside a list item is
+// emitted as its own block kind during the descent (code block, table rows) —
+// it must not ALSO fold into the item's text, which duplicated the content
+// and flattened the code's preserved whitespace (same principle as R3,
+// extended to the separately-emitted block kinds).
+func TestSplitBlocks_ListItemPreAndTableNotFoldedIntoText(t *testing.T) {
+	html := `<body><ul>
+	<li>intro<pre>code()</pre></li>
+	<li>row text<table><tr><td>cell</td></tr></table></li>
+	</ul></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindListItem, "intro"},
+		{KindCode, "code()"},
+		{KindListItem, "row text"},
+		{KindTableRow, "cell"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text {
+			t.Errorf("block %d = %s %q, want %s %q (no folded duplicate)", i, blocks[i].Kind, blocks[i].Text, w.kind, w.text)
+		}
+	}
+}
+
 // R4 (card t1968 review): only surrounding BLANK LINES are trimmed from a
 // code block; the first real code line keeps its indentation.
 func TestSplitBlocks_CodeFirstLineIndentPreserved(t *testing.T) {
@@ -332,6 +362,27 @@ func TestSplitBlocks_AsideHeadingDoesNotLeakPath(t *testing.T) {
 	// The main-flow block AFTER the aside inherits only its own ancestors.
 	if !reflect.DeepEqual(blocks[2].HeadingPath, []string{"Main"}) {
 		t.Errorf("post-aside block path = %v, want [Main] — the aside's heading leaked into the main flow", blocks[2].HeadingPath)
+	}
+}
+
+// C1 (card t1968 review round 3): the aside's path save must be a true COPY,
+// not the slice header. A SAME-LEVEL heading inside the aside truncates the
+// stack and the following append reuses the freed slot of the shared backing
+// array — overwriting the saved entry — so the main flow after the aside
+// inherited the aside's heading. (The N4 test's h3-under-h2 never truncates,
+// which is why it alone could not catch this.)
+func TestSplitBlocks_AsideSameLevelHeadingRestoreIsACopy(t *testing.T) {
+	html := `<body>
+	<h2>Main</h2>
+	<aside><h2>Note</h2><p>aside body</p></aside>
+	<p>body</p>
+	</body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 2 {
+		t.Fatalf("want 2 blocks (aside body, then main body), got %d: %+v", len(blocks), blocks)
+	}
+	if !reflect.DeepEqual(blocks[1].HeadingPath, []string{"Main"}) {
+		t.Errorf("post-aside body path = %v, want [Main] — the aside's same-level heading overwrote the saved stack", blocks[1].HeadingPath)
 	}
 }
 

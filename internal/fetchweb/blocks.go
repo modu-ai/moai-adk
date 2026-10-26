@@ -150,9 +150,12 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		// it: save the path on entry and restore it on exit, so the blocks
 		// AFTER the aside inherit their own ancestors' headings, not the
 		// aside's (wrong provenance and wrong same-heading rescue
-		// grouping). The header copy suffices: headings only append or
-		// truncate past the saved length, never rewrite entries below it.
-		saved := s.path
+		// grouping). The save must be a true COPY of the stack, not the
+		// slice header: a same-or-higher level heading inside the aside
+		// truncates the stack and the following append reuses the freed
+		// slot of the shared backing array — overwriting the saved entry —
+		// so the restored path would carry the aside's heading.
+		saved := append([]heading(nil), s.path...)
 		s.walkChildren(n, true)
 		s.path = saved
 	case n.Data == "p":
@@ -165,7 +168,7 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 			s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
 		}
 	case n.Data == "li":
-		if text := collapseText(n, listNesting); text != "" {
+		if text := collapseText(n, listItemSkip); text != "" {
 			s.emit(Block{Kind: KindListItem, HeadingPath: clonePath(s.path), Text: text, Aside: inAside, HeaderIndex: -1}, 0)
 		}
 		// Descend anyway: a nested list's own items are blocks in their own
@@ -324,8 +327,12 @@ var textBoundaryTags = map[string]bool{
 	"h5": true, "h6": true,
 }
 
-// listNesting excludes nested lists from a list item's own text.
-var listNesting = map[string]bool{"ul": true, "ol": true}
+// listItemSkip excludes from a list item's own text the children that are
+// separately emitted as their own blocks during the descent: nested lists
+// (their items are blocks in their own right) and pre/table (emitted as code
+// and table-row blocks). Folding them into the item text would duplicate the
+// content and flatten a code block's preserved whitespace.
+var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table": true}
 
 // preText extracts a code block's text preserving line structure. Only the
 // surrounding blank lines are trimmed; interior whitespace — including the
