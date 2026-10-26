@@ -84,10 +84,9 @@ Every Go milestone's first failing run was captured before its implementation ex
 - **M7** — markdown artifact milestone; RED basis is the plan-phase ledger rows R6 (`ls internal/template/templates/.claude/skills/moai-fetch-web` → `No such file or directory`, exit 1) and R7 (permission rule zero hits in settings.json.tmpl) at pin `4f0e58197d`, plus the first packaging-test run failing on the routing-row literal before the template text carried it.
 
 ## §E.4 Sync-phase Audit-Ready Signal
-
 ```yaml
-sync_complete_at: 2026-10-27
 sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; backfilled in the next commit
+sync_complete_at: 2026-10-27
 sync_status: complete
 ac_source: .moai/specs/SPEC-FETCH-WEB-001/acceptance.md   # tier M
 b12_self_test_a: pass   # pre-emission grep -c 'SPEC-FETCH-WEB-001' CHANGELOG.md -> 0 (exit 1); no duplicate entry
