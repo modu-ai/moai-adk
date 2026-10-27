@@ -181,12 +181,13 @@ func codexServableModel(model string) bool {
 // codexServable (an unservable pin falls back to the backend default — never
 // break the review gate); an explicit caller `model` argument still outranks the
 // pinned model, mirroring the legacy precedence (the paired pin effort stays).
-// Card t1980 scope expansion: an explicit caller `effort` argument outranks the
-// pinned effort the same way — the per-call override that makes `max`
-// selectable per invocation — on the pin arm AND on the terminal-fallback arm.
-// An effort with an empty model pins nothing (the model is the gate). A
-// workflow.yaml that cannot be read or parsed returns the error — the audit
-// never runs with an assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+// Card t1980 scope expansion: the reasoning effort is a CONFIG-KEY surface
+// only — workflow.audit.codex.effort (vocabulary none|low|medium|high|xhigh|max,
+// default xhigh) — never a per-call argument; the closed-set validation fires
+// on the stored pin effort the audit path consumes. An effort with an empty
+// model pins nothing (the model is the gate). A workflow.yaml that cannot be
+// read or parsed returns the error — the audit never runs with an
+// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, error) {
 	cwd, _ := params["cwd"].(string)
 	if strings.TrimSpace(cwd) == "" {
@@ -196,45 +197,24 @@ func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, er
 	if pinErr != nil {
 		return config.ModelEffort{}, pinErr
 	}
-	explicitEffort := ""
-	if e, ok := params["effort"].(string); ok {
-		explicitEffort = strings.TrimSpace(e)
-	}
-	// Card t1980 audit repair P2: the closed-set validation fires in EVERY
-	// branch — an effort outside terra's reasoning.effort vocabulary is an
-	// error the caller can correct, never a token to transmit (the same
-	// never-run-with-an-assumed-value contract as the unparseable-pin error
-	// below; it surfaces as a fail-open inconclusive naming the cause).
-	if explicitEffort != "" && !config.ValidCodexAuditEffort(explicitEffort) {
-		return config.ModelEffort{}, fmt.Errorf("codex audit effort %q is not in the closed set %v", explicitEffort, config.ValidCodexAuditEfforts())
-	}
 	if pin := pins.Codex; pin.Model != "" && codexServableModel(pin.Model) {
+		// Card t1980 audit repair P2: a hand-edited pin effort outside terra's
+		// reasoning.effort vocabulary is an error the operator can correct,
+		// never a token to transmit (the same never-run-with-an-assumed-value
+		// contract as the unparseable-pin error; it surfaces as a fail-open
+		// inconclusive naming the cause).
 		if pin.Effort != "" && !config.ValidCodexAuditEffort(pin.Effort) {
 			return config.ModelEffort{}, fmt.Errorf("workflow.audit.codex.effort %q is not in the closed set %v", pin.Effort, config.ValidCodexAuditEfforts())
 		}
 		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
 			pin.Model = strings.TrimSpace(explicit)
 		}
-		if explicitEffort != "" {
-			pin.Effort = explicitEffort
-		}
 		return pin, nil
 	}
 	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
-		// Card t1980 audit repair P2: the explicit-model branch keeps the
-		// effort override — dropping it here made `max` unselectable on this
-		// arm even though the pin arm honors it.
-		me := resolveCodexModelEffort(params)
-		if explicitEffort != "" {
-			me.Effort = explicitEffort
-		}
-		return me, nil
+		return resolveCodexModelEffort(params), nil
 	}
-	me := config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}
-	if explicitEffort != "" {
-		me.Effort = explicitEffort
-	}
-	return me, nil
+	return config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}, nil
 }
 
 // VerdictInconclusive is the fail-open verdict value. It rides the same
@@ -1236,27 +1216,6 @@ func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, para
 // codexAuditModelCtxKey carries the {model, effort} handleCodexAudit already
 // resolved, so provenance and the transmitted model are the same read.
 type codexAuditModelCtxKey struct{}
-
-// codexAuditEffortCtxKey carries a per-call effort override handed to the
-// audit_multi codex leg (card t1980 scope expansion): handleAuditMulti reads
-// its codex_effort argument into the context and performCodexAudit injects it
-// into the leg's params, where resolveCodexAuditModelEffort applies it over
-// the pin. The context is the carrier because the backendCallFn seam's
-// signature is fixed (the independence invariant) and the ctx already flows
-// to every backend.
-type codexAuditEffortCtxKey struct{}
-
-// withCodexEffortOverride records a per-call codex effort override on ctx.
-func withCodexEffortOverride(ctx context.Context, effort string) context.Context {
-	return context.WithValue(ctx, codexAuditEffortCtxKey{}, effort)
-}
-
-// codexEffortOverrideFromContext reads the per-call codex effort override
-// from ctx; empty when none was recorded.
-func codexEffortOverrideFromContext(ctx context.Context) string {
-	effort, _ := ctx.Value(codexAuditEffortCtxKey{}).(string)
-	return strings.TrimSpace(effort)
-}
 
 // codexReviewSessionParams returns the session-open params for a review path,
 // carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
@@ -2283,10 +2242,6 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	target := req.GetString("target", codexTargetUncommitted)
 	focus := req.GetString("focus", "")
 	model := req.GetString("model", "")
-	// Card t1980 scope expansion: the per-call reasoning-effort override —
-	// rides params into resolveCodexAuditModelEffort, which applies it over
-	// the pin (or the terminal fallback).
-	effort := req.GetString("effort", "")
 	token := extractProgressToken(req)
 
 	// SPEC-MCP-WORKTREE-ROOT-001 REQ-1/REQ-3: the caller may name the tree codex
@@ -2367,7 +2322,6 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	params := map[string]any{
 		"target": target,
 		"model":  model,
-		"effort": effort,
 		"cwd":    root,
 	}
 	// A native baseBranch review resolves its base ONCE, before the call, and

@@ -121,155 +121,54 @@ func TestCodexAuditPin_ExplicitModelOverridesPin(t *testing.T) {
 	}
 }
 
-// Card t1980 scope expansion — an explicit caller `effort` argument outranks
-// the pinned effort (the per-call override that makes `max` selectable per
-// invocation), exactly as the explicit `model` argument does above. The pinned
-// model is untouched by an effort-only override.
-func TestCodexAuditPin_ExplicitEffortOverridesPin(t *testing.T) {
-	root := t.TempDir()
-	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
-	sess := withCodexSession(t, codexSessionScript("clean"))
+// Card t1980 CI repair (leader ruling §15.125): the per-call effort MCP
+// parameter was REMOVED — the audit-tool input schemas are snapshot-frozen
+// (TestSelfReview_AuditToolSchemasUnchanged) and the reasoning effort is a
+// CONFIG-KEY surface only. These tests exercise that config-key path: the
+// workflow.audit.codex.effort file pin reaches the resolver and is
+// transmitted verbatim, and a hand-edited non-member pin effort is rejected.
 
-	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
-		"prompt": "review this",
-		"effort": "max",
-		"cwd":    root,
-	}); err != nil {
-		t.Fatalf("audit rpc: %v", err)
-	}
-
-	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["effort"].(string); got != "max" {
-		t.Errorf("turn/start effort = %q, want the explicit override %q", got, "max")
-	}
-	if got, _ := turn["model"].(string); got != "gpt-6.1-sol" {
-		t.Errorf("turn/start model = %q, want the pinned %q (an effort-only override must not move the model)", got, "gpt-6.1-sol")
-	}
-}
-
-// Card t1980 scope expansion — the effort override also applies on the
-// terminal-fallback arm (absent pin): the caller's effort lands on the
-// fallback pin's model instead of being dropped.
-func TestCodexAuditPin_ExplicitEffortOverridesFallback(t *testing.T) {
-	root := t.TempDir() // no workflow.yaml → the terminal fallback arm
-	sess := withCodexSession(t, codexSessionScript("clean"))
-
-	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
-		"prompt": "review this",
-		"effort": "max",
-		"cwd":    root,
-	}); err != nil {
-		t.Fatalf("audit rpc: %v", err)
-	}
-
-	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["effort"].(string); got != "max" {
-		t.Errorf("turn/start effort = %q, want the explicit override %q on the fallback arm", got, "max")
-	}
-	if got, _ := turn["model"].(string); got != codexAuditDefaultModel {
-		t.Errorf("turn/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
-	}
-}
-
-// Card t1980 audit repair P2 (a) — an explicit model AND an explicit effort
-// together are BOTH honored when the stored pin is ABSENT: the explicit-model
-// branch (resolveCodexModelEffort) must not discard the effort override.
-// (With a servable pin present, the pin arm already applies both overrides.)
-func TestCodexAuditPin_ExplicitModelAndEffortTogether(t *testing.T) {
-	root := t.TempDir() // no workflow.yaml → the explicit-model branch
-	sess := withCodexSession(t, codexSessionScript("clean"))
-
-	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
-		"prompt": "review this",
-		"model":  "o4-mini",
-		"effort": "max",
-		"cwd":    root,
-	}); err != nil {
-		t.Fatalf("audit rpc: %v", err)
-	}
-
-	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["model"].(string); got != "o4-mini" {
-		t.Errorf("turn/start model = %q, want the explicit override %q", got, "o4-mini")
-	}
-	if got, _ := turn["effort"].(string); got != "max" {
-		t.Errorf("turn/start effort = %q, want the explicit override %q (the explicit-model branch must not drop it)", got, "max")
-	}
-}
-
-// Card t1980 audit repair P2 (b) — 'none' is a member of terra's
-// reasoning.effort vocabulary and must survive the explicit-model branch
-// verbatim (an empty turn/start effort field would mean "not sent", not none).
-func TestCodexAuditPin_ExplicitModelWithEffortNone(t *testing.T) {
-	root := t.TempDir() // no workflow.yaml → the explicit-model branch
-	sess := withCodexSession(t, codexSessionScript("clean"))
-
-	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
-		"prompt": "review this",
-		"model":  "o4-mini",
-		"effort": "none",
-		"cwd":    root,
-	}); err != nil {
-		t.Fatalf("audit rpc: %v", err)
-	}
-
-	if got, _ := sentParams(t, sess.sent, 2)["effort"].(string); got != "none" {
-		t.Errorf("turn/start effort = %q, want %q", got, "none")
-	}
-}
-
-// Card t1980 audit repair P2 (c) — the effort closed-set validation fires in
-// EVERY resolution branch: the pin path (override AND stored pin effort), the
-// explicit-model path, and the terminal-fallback path all reject a non-member
-// instead of transmitting it.
-func TestCodexAuditPin_EffortClosedSetValidationEveryBranch(t *testing.T) {
-	cases := []struct {
-		name   string
-		pin    string // auditCodexPinYAML body, "" = no workflow.yaml
-		model  string
-		effort string
-	}{
-		{"pin path rejects a bad override", auditCodexPinYAML("gpt-6.1-sol", "high"), "", "ultra"},
-		{"pin path rejects a bad stored pin effort", auditCodexPinYAML("gpt-6.1-sol", "ultra"), "", ""},
-		{"explicit-model path rejects a bad override", auditCodexPinYAML("gpt-6.1-sol", "high"), "o4-mini", "ultra"},
-		{"fallback path rejects a bad override", "", "", "ultra"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			if tc.pin != "" {
-				writeCodexWorkflowYAML(t, root, tc.pin)
-			}
-			params := map[string]any{"prompt": "review this", "cwd": root}
-			if tc.model != "" {
-				params["model"] = tc.model
-			}
-			if tc.effort != "" {
-				params["effort"] = tc.effort
-			}
-			_, err := resolveCodexAuditModelEffort(params)
-			if err == nil {
-				t.Fatalf("resolveCodexAuditModelEffort(%v) = no error, want a closed-set rejection", params)
-			}
-			if !strings.Contains(err.Error(), "effort") || !strings.Contains(err.Error(), "closed set") {
-				t.Errorf("error %q does not name the effort closed set", err)
-			}
-		})
-	}
-}
-
-// Card t1980 audit repair P2 (c), valid arm — every vocabulary member passes
-// the pin path, none included.
-func TestCodexAuditPin_EffortClosedSetAcceptsEveryMember(t *testing.T) {
+// TestCodexAuditPin_ConfigKeyEffortTransmitted pins the config-key path over
+// the terra vocabulary: a file pin carrying each member of the closed set is
+// transmitted verbatim on the turn/start effort field (none included — an
+// absent field would mean not sent, not none).
+func TestCodexAuditPin_ConfigKeyEffortTransmitted(t *testing.T) {
 	for _, effort := range []string{"none", "low", "medium", "high", "xhigh", "max"} {
 		root := t.TempDir()
-		writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
-		me, err := resolveCodexAuditModelEffort(map[string]any{"cwd": root, "effort": effort})
-		if err != nil {
-			t.Fatalf("effort %q: %v", effort, err)
+		writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", effort))
+		sess := withCodexSession(t, codexSessionScript("clean"))
+
+		if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
+			"prompt": "review this",
+			"cwd":    root,
+		}); err != nil {
+			t.Fatalf("effort %s: audit rpc: %v", effort, err)
 		}
-		if me.Effort != effort {
-			t.Errorf("effort %q: resolved %+v, want the override kept", effort, me)
+
+		turn := sentParams(t, sess.sent, 2)
+		if got, _ := turn["effort"].(string); got != effort {
+			t.Errorf("config-key effort %s: turn/start effort = %q, want the pinned value verbatim", effort, got)
+		}
+	}
+}
+
+// TestCodexAuditPin_ConfigKeyEffortClosedSetValidation pins the closed-set
+// rejection on the config-key path: a hand-edited workflow.yaml pin effort
+// outside the closed set is an ERROR at the resolver — the audit never
+// transmits an assumed effort (the unparseable-pin contract). A padded
+// member is rejected too: the resolver trims model inputs, not effort
+// tokens.
+func TestCodexAuditPin_ConfigKeyEffortClosedSetValidation(t *testing.T) {
+	for _, bad := range []string{"ultra", "Maximum", "maximal"} {
+		root := t.TempDir()
+		writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", bad))
+		_, err := resolveCodexAuditModelEffort(map[string]any{"cwd": root})
+		if err == nil {
+			t.Errorf("pin effort %q: no error, want a closed-set rejection", bad)
+			continue
+		}
+		if !strings.Contains(err.Error(), "closed set") {
+			t.Errorf("pin effort %q: error %q does not name the closed set", bad, err)
 		}
 	}
 }

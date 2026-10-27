@@ -663,13 +663,6 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 		"model":  "", // model/effort resolution is delegated to the SSOT at the single-backend layer
 		"prompt": prompt,
 	}
-	// Card t1980 scope expansion: a per-call effort override handed to
-	// audit_multi rides the context here and lands in the leg's params, where
-	// resolveCodexAuditModelEffort applies it over the pin. Absent ⇒ the pin
-	// resolves unchanged (byte-identical pre-expansion behavior).
-	if eff := codexEffortOverrideFromContext(ctx); eff != "" {
-		params["effort"] = eff
-	}
 	if strings.TrimSpace(focus) != "" {
 		params["focus"] = focus
 	}

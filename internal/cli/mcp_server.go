@@ -36,7 +36,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
@@ -568,8 +567,7 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the configured git_strategy.worktree_base_branch first (when set and resolvable), then the remote default head, then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
-		mcp.WithString("model", mcp.Description("Optional model override; omitted ⇒ the workflow.audit.codex pin (default gpt-6.1-terra), else codex's own configured default.")),
-		mcp.WithString("effort", mcp.Enum(config.ValidCodexAuditEfforts()...), mcp.Description("Optional reasoning-effort override (gpt-6.1-terra's reasoning.effort vocabulary; 'none' disables reasoning); overrides workflow.audit.codex.effort (default xhigh). Transmitted on adversarial (turn/start) reviews.")),
+		mcp.WithString("model", mcp.Description("Optional model override; omitted ⇒ the workflow.audit.codex pin, else codex's own configured default.")),
 		mcp.WithString("delta_base", mcp.Description(deltaBaseDescription)),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
@@ -739,7 +737,6 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		mcp.WithObject("claude_verdict", mcp.Description("Conditional Claude-main anchor (review-output schema). Ignored for GPT/GLM/unknown launch providers, which run an independent Claude subscription audit.")),
 		mcp.WithString("target", mcp.Description("Optional review target (file path, diff ref, or scope label).")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
-		mcp.WithString("codex_effort", mcp.Enum(config.ValidCodexAuditEfforts()...), mcp.Description("Optional per-call reasoning-effort override for the codex leg (gpt-6.1-terra's reasoning.effort vocabulary; 'none' disables reasoning); overrides the workflow.audit.codex.effort pin for THIS invocation only. Other backends are unaffected.")),
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
 		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
 		// A4 (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): binds this fan-out
