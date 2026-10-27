@@ -111,9 +111,7 @@ func (f *FactoryDB) RecordPickedReconciled(ctx context.Context, runID, cardID st
 			if !deadRunResidue(ctx, tx, row, byRun[row.RunID], now, probe) {
 				continue
 			}
-			if err := abandonWithPointer(ctx, tx, row.RunID, runID, consolidationCard{
-				id: cardID, state: row.State, stage: row.Stage, evidenceSHA: row.EvidenceSHA, version: row.Version,
-			}, "lease", now); err != nil {
+			if err := abandonWithPointer(ctx, tx, row.RunID, runID, row, "lease", now); err != nil {
 				return nil, err
 			}
 		}
