@@ -160,8 +160,37 @@ type baselineDoc struct {
 	Cases []CaseComparison `json:"cases"`
 }
 
-// WriteBaseline compares a run and stores it as the baseline at path.
+// WriteBaseline compares a run and stores it as the baseline at path. A
+// baseline is a recorded measurement, so a run set that is not one is
+// refused outright (P2, card t1968 codex review): a run that ended in
+// fetch_error stored its empty output like a legit measurement
+// (Contained=false), and a later run of the same case then compared PASS
+// against the poisoned baseline. Refusal mirrors the CompareRun/L3
+// semantics — failed or missing is not comparable, never a verdict — and
+// covers both directions of the case↔run correspondence: a case with no run
+// result (L3) and a run naming no bench case (an entry the diff, which walks
+// cases, could never compare). On refusal NOTHING is written and the
+// returned report is the zero value.
 func WriteBaseline(path string, cases []BenchCase, runs []CaseRun) (BenchReport, error) {
+	runByID := make(map[string]CaseRun, len(runs))
+	for _, r := range runs {
+		runByID[r.CaseID] = r
+	}
+	caseByID := make(map[string]bool, len(cases))
+	for _, c := range cases {
+		caseByID[c.ID] = true
+		if _, has := runByID[c.ID]; !has {
+			return BenchReport{}, fmt.Errorf("jevmeasure: baseline refused: case %s has no run result", c.ID)
+		}
+	}
+	for _, r := range runs {
+		if !caseByID[r.CaseID] {
+			return BenchReport{}, fmt.Errorf("jevmeasure: baseline refused: run %s has no bench case", r.CaseID)
+		}
+		if r.Status == string(fetchweb.StatusFetchError) {
+			return BenchReport{}, fmt.Errorf("jevmeasure: baseline refused: run %s ended in fetch_error", r.CaseID)
+		}
+	}
 	report := CompareRun(cases, runs)
 	raw, err := json.MarshalIndent(baselineDoc{Cases: report.Cases}, "", "  ")
 	if err != nil {

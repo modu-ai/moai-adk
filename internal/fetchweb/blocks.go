@@ -570,13 +570,20 @@ var asideFallbackSkip = map[string]bool{
 // first real code line's leading indentation — is kept verbatim. Chrome
 // subtrees (script/style — F4, t1968 sync-audit) are dropped with a boundary
 // separator, the same exclusion collapseText applies; the code text either
-// side of the hole is otherwise untouched.
+// side of the hole is otherwise untouched. A <br> is a line break in the
+// code itself (P2, card t1968 codex review): it emits a newline boundary so
+// the text runs on either side keep their lines; every other byte of code
+// spacing stands verbatim.
 func preText(n *html.Node) string {
 	var b strings.Builder
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
 		if node.Type == html.ElementNode && chromeTags[node.Data] {
 			b.WriteByte(' ')
+			return
+		}
+		if node.Type == html.ElementNode && node.Data == "br" {
+			b.WriteByte('\n')
 			return
 		}
 		if node.Type == html.TextNode {

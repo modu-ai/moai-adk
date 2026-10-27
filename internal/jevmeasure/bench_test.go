@@ -292,6 +292,74 @@ func TestBaselineDiff_FetchErrorRunFailsAndExcludedFromSavings(t *testing.T) {
 	}
 }
 
+// P2-a (card t1968 codex review, repair round): WriteBaseline must refuse a
+// run set that is not a measurement, mirroring the CompareRun/L3 semantics.
+// A run that ended in fetch_error stored its empty output like a legit
+// measurement (Contained=false), and a later run of the same case then
+// compared PASS against the poisoned baseline; a case with no run result (or
+// a run naming an unknown case) leaves the same hole L3 names in the
+// comparison. Refusal returns an error and writes NO file.
+func TestWriteBaseline_RefusesFailedOrMissingRuns(t *testing.T) {
+	cases := benchCases()
+	healthy := RunBench(context.Background(), cases, stubBenchAsker{marker: "You need Go"})
+	dir := t.TempDir()
+
+	// Control: a healthy full run still writes.
+	okPath := filepath.Join(dir, "ok-baseline.json")
+	if _, err := WriteBaseline(okPath, cases, healthy); err != nil {
+		t.Fatalf("healthy run must write: %v", err)
+	}
+	if _, err := os.Stat(okPath); err != nil {
+		t.Fatalf("healthy baseline not written: %v", err)
+	}
+
+	// A run ending in fetch_error is refused and nothing is written.
+	failed := append([]CaseRun(nil), healthy...)
+	for i := range failed {
+		if failed[i].CaseID == "absent-quote" {
+			failed[i].Status = string(fetchweb.StatusFetchError)
+			failed[i].Output = ""
+			failed[i].OutputTokens = 0
+		}
+	}
+	errPath := filepath.Join(dir, "failed-baseline.json")
+	if _, err := WriteBaseline(errPath, cases, failed); err == nil {
+		t.Error("WriteBaseline must refuse a run containing fetch_error")
+	}
+	if _, statErr := os.Stat(errPath); !os.IsNotExist(statErr) {
+		t.Errorf("refused baseline must write nothing, stat err = %v", statErr)
+	}
+
+	// A case with no run result is refused (L3 existence semantics).
+	partial := healthy[:0:0]
+	for _, r := range healthy {
+		if r.CaseID != "absent-quote" {
+			partial = append(partial, r)
+		}
+	}
+	missPath := filepath.Join(dir, "missing-baseline.json")
+	if _, err := WriteBaseline(missPath, cases, partial); err == nil {
+		t.Error("WriteBaseline must refuse a case with no run result")
+	}
+	if _, statErr := os.Stat(missPath); !os.IsNotExist(statErr) {
+		t.Errorf("refused baseline must write nothing, stat err = %v", statErr)
+	}
+
+	// A run naming a case that does not exist is refused: the diff walks
+	// cases, so such an entry could never be compared — storing it bakes an
+	// unverifiable verdict into the baseline.
+	stray := append(append([]CaseRun(nil), healthy...), CaseRun{
+		CaseID: "no-such-case", Status: string(fetchweb.StatusFiltered), Output: "x",
+	})
+	strayPath := filepath.Join(dir, "stray-baseline.json")
+	if _, err := WriteBaseline(strayPath, cases, stray); err == nil {
+		t.Error("WriteBaseline must refuse a run with no matching bench case")
+	}
+	if _, statErr := os.Stat(strayPath); !os.IsNotExist(statErr) {
+		t.Errorf("refused baseline must write nothing, stat err = %v", statErr)
+	}
+}
+
 // L3 (t1968 leader audit): a case with NO run result must not aggregate as
 // a perfect run. The run map lookup yielded a zero CaseRun whose empty
 // status is not fetch_error, so the row computed SavingsRate=1 (100%

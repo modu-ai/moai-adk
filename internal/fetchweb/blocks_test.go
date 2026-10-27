@@ -359,6 +359,29 @@ func TestSplitBlocks_CodeFirstLineIndentPreserved(t *testing.T) {
 	}
 }
 
+// P2-b (card t1968 codex review, repair round): a <br> inside pre/code is a
+// line break in the code itself. The text-node walk used to skip the element
+// silently, joining the runs on either side into one line
+// ("echo firstecho second") — corrupted code semantics reaching every short
+// page that passes through unfiltered. The break must extract as a newline
+// boundary; all other verbatim spacing stands (D3/iter10 pre-verbatim).
+func TestSplitBlocks_BreakInsidePreIsNewline(t *testing.T) {
+	html := `<body><pre><code>echo first<br>echo second</code></pre></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindCode {
+		t.Fatalf("want one code block, got %d: %+v", len(blocks), blocks)
+	}
+	if got, want := blocks[0].Text, "echo first\necho second"; got != want {
+		t.Errorf("code text = %q, want %q (br as newline boundary)", got, want)
+	}
+	// <br/> parses to the same element — same boundary.
+	html2 := `<body><pre><code>set -e<br/>cd /src</code></pre></body>`
+	blocks2 := SplitBlocks(html2)
+	if len(blocks2) != 1 || blocks2[0].Text != "set -e\ncd /src" {
+		t.Errorf("code text = %q, want %q (br/ as newline boundary)", texts(blocks2), "set -e\ncd /src")
+	}
+}
+
 // N3 (card t1968 review round 2): script/style subtrees nested INSIDE a
 // paragraph, list item, or table cell are page chrome — the walk drops them
 // at block level, and the recursive text extraction must drop them too, or
