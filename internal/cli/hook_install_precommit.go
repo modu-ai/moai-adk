@@ -397,7 +397,9 @@ func installPreCommitHookOptional(projectRoot string, skip bool, out, warn io.Wr
 		}
 		return nil
 	case errors.Is(err, ErrUserHookExists):
+		end := beginPreserved(out, preservedNotice)
 		emitSeverityLine(out, sevNote, th, "existing pre-commit hook preserved (no MoAI-ADK marker found)")
+		end()
 		return nil
 	case errors.Is(err, errPreCommitBackupFailed):
 		// REQ-PCP-010 sub-case (a): no backup could be written, so the hook was

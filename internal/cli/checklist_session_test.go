@@ -267,6 +267,10 @@ func TestChecklistAbortFlushes(t *testing.T) {
 			}
 		}
 	})
+	// The two runInit-level subtests (SPEC-TUI-CHECKLIST-001 M4) live with the
+	// init wiring tests.
+	t.Run("cancel", checklistAbortCancel)
+	t.Run("resumed_after_validate_fail", checklistAbortResumed)
 }
 
 // TestChecklistSummaryListsOutsideWarnings: a warning raised outside any item

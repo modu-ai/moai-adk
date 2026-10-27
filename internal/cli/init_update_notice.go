@@ -104,8 +104,10 @@ func startDeferredUpdateNotice(cmd *cobra.Command) func(p printer.Printer) {
 				// affects the init result (acceptance.md §A scenario 1).
 				return
 			}
+			end := preservePrinterLines(p, preservedNotice)
 			p.Info("A newer moai binary is available: %s (current: %s). Run 'moai update' to upgrade and refresh templates.",
 				res.LatestVersion, res.CurrentVersion)
+			end()
 		case <-time.After(deferredNoticeGrace):
 			// Check still in flight — init exit must not block on network
 			// I/O (REQ-TUX2-004). The abandoned goroutine drains into the

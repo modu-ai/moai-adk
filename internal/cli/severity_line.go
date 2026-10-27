@@ -70,7 +70,7 @@ func emitSeverityLine(w io.Writer, s updateSeverity, th tui.Theme, format string
 	// error line belongs to that item: the item takes it and ends with the
 	// warning glyph. Any other writer, or no open item, writes as before.
 	if s == sevWarn || s == sevErr {
-		if r, ok := w.(warningReceiver); ok && r.receiveWarning(line) {
+		if r, ok := w.(warningReceiver); ok && r.ReceiveWarning(line) {
 			return
 		}
 	}

@@ -486,7 +486,7 @@ func beginPreserved(w io.Writer, kind preservedKind) (end func()) {
 // warningReceiver is implemented by the session writers: emitSeverityLine hands
 // a warn/err line to the open item through it instead of writing it.
 type warningReceiver interface {
-	receiveWarning(line string) bool
+	ReceiveWarning(line string) bool
 }
 
 // sessionWriter replaces a command writer while the session is active. Bytes
@@ -556,8 +556,8 @@ func (w *sessionWriter) flushPartialLocked() {
 	_, _ = io.WriteString(w.real, line)
 }
 
-// receiveWarning implements warningReceiver.
-func (w *sessionWriter) receiveWarning(line string) bool {
+// ReceiveWarning implements warningReceiver.
+func (w *sessionWriter) ReceiveWarning(line string) bool {
 	w.s.mu.Lock()
 	defer w.s.mu.Unlock()
 	it := w.s.openLocked()
