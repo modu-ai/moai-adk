@@ -15,8 +15,9 @@ import (
 )
 
 // instructionsLoadedHandler processes InstructionsLoaded events.
-// It validates character budget compliance for the instruction file
-// (AGENTS.md; legacy projects: CLAUDE.md) and rules files.
+// It validates character budget compliance for the instruction files
+// (CLAUDE.md / CLAUDE.local.md; legacy projects read their AGENTS
+// counterparts only as the labelled legacy AGENTS fallback) and rules files.
 type instructionsLoadedHandler struct{}
 
 // NewInstructionsLoadedHandler creates a new InstructionsLoaded event handler.
@@ -76,13 +77,25 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 		}
 	}
 
-	// Also check the project's instruction file in CWD: AGENTS.md first
-	// (AGENTS.md-primary product), falling back to a legacy CLAUDE.md.
+	// Also check the project's instruction files in CWD: the canonical CLAUDE
+	// pair first, a legacy AGENTS file only as the labelled fallback
+	// (REQ-CIF-003 — the fallback label is observable in the warn-level log).
 	if input.CWD != "" {
-		if mdPath := resolveInstructionFile(input.CWD); mdPath != "" {
+		if mdPath, label := resolveInstructionFileDetail(input.CWD); mdPath != "" {
+			if label != "" {
+				slog.Warn("instruction file resolved via "+legacyAGENTSFallbackLabel, "path", mdPath)
+			}
 			if budgetErr := h.checkCharacterBudget(mdPath); budgetErr != nil {
 				slog.Warn("instruction file exceeds budget", "path", mdPath, "error", budgetErr)
 				// Don't block on instruction-file budget violations, just log
+			}
+		}
+		if localPath, localLabel := resolveLocalInstructionFileDetail(input.CWD); localPath != "" {
+			if localLabel != "" {
+				slog.Warn("local instruction file resolved via "+legacyAGENTSFallbackLabel, "path", localPath)
+			}
+			if budgetErr := h.checkCharacterBudget(localPath); budgetErr != nil {
+				slog.Warn("local instruction file exceeds budget", "path", localPath, "error", budgetErr)
 			}
 		}
 	}
@@ -142,23 +155,48 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 // @MX:SPEC:SPEC-INSTRUCTIONS-BUDGET-001
 const sessionCharBudget = 210000
 
-// resolveInstructionFile names the project's instruction file: AGENTS.md when
-// present (AGENTS.md-primary product), else the legacy CLAUDE.md, else "".
-func resolveInstructionFile(projectRoot string) string {
-	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
-		p := filepath.Join(projectRoot, name)
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
+// legacyAGENTSFallbackLabel is the literal token every legacy-fallback
+// resolution reports (REQ-CIF-003): a legacy AGENTS file is read only as an
+// explicit, labelled fallback that modifies nothing.
+const legacyAGENTSFallbackLabel = "legacy AGENTS fallback"
+
+// resolveInstructionPairDetail resolves one legacy/canonical pair: the
+// canonical name when present, else the legacy name (labelled), else none.
+func resolveInstructionPairDetail(projectRoot, canonical, legacy string) (string, string) {
+	if _, err := os.Stat(filepath.Join(projectRoot, canonical)); err == nil {
+		return filepath.Join(projectRoot, canonical), ""
 	}
-	return ""
+	if _, err := os.Stat(filepath.Join(projectRoot, legacy)); err == nil {
+		return filepath.Join(projectRoot, legacy), legacyAGENTSFallbackLabel
+	}
+	return "", ""
+}
+
+// resolveInstructionFileDetail names the project's shared instruction file
+// with its resolution label ("" canonical, legacy AGENTS fallback legacy).
+func resolveInstructionFileDetail(projectRoot string) (string, string) {
+	return resolveInstructionPairDetail(projectRoot, "CLAUDE.md", "AGENTS.md")
+}
+
+// resolveLocalInstructionFileDetail names the project's local instruction
+// file with its resolution label (same semantics, local pair).
+func resolveLocalInstructionFileDetail(projectRoot string) (string, string) {
+	return resolveInstructionPairDetail(projectRoot, "CLAUDE.local.md", "AGENTS.local.md")
+}
+
+// resolveInstructionFile names the project's instruction file: CLAUDE.md when
+// present (canonical, SPEC-CLAUDE-INSTRUCTION-FILES-001), else the legacy
+// AGENTS.md, else "".
+func resolveInstructionFile(projectRoot string) string {
+	path, _ := resolveInstructionFileDetail(projectRoot)
+	return path
 }
 
 // instructionFileSet derives the instruction-file set for projectRoot
 // mechanically at metric time (SPEC-INSTRUCTIONS-BUDGET-001 §D.1 — never a
 // hand-written path list):
 //
-//  1. the instruction-file anchor (AGENTS.md; legacy projects: CLAUDE.md);
+//  1. the instruction-file anchor (CLAUDE.md; legacy projects: AGENTS.md);
 //  2. the transitive closure of `^@` import lines in the anchor — repo-
 //     relative paths resolved under projectRoot; missing members are skipped,
 //     imports escaping projectRoot are not followed, and the traversal is
@@ -182,7 +220,7 @@ func instructionFileSet(projectRoot string) []string {
 	}
 
 	// Anchor + transitive @-import closure (breadth-first, cycle-safe). The
-	// anchor is AGENTS.md; a legacy project still carrying only CLAUDE.md is
+	// anchor is CLAUDE.md; a legacy project still carrying only AGENTS.md is
 	// measured through that instead.
 	queue := []string{}
 	if anchor := resolveInstructionFile(projectRoot); anchor != "" {

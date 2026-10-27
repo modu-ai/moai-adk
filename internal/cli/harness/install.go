@@ -81,18 +81,19 @@ func RunInstall(opts InstallOptions) error {
 	// points at the just-scaffolded main.md so the auto-trigger chain has its
 	// entry point. REQ-HAW-004: an instruction-file read/write failure
 	// surfaces here as a wrapped error and does NOT report success.
-	// AGENTS.md is the instruction file of the AGENTS.md-primary product; a
-	// legacy project still carrying only CLAUDE.md gets the marker there.
-	instructionPath := filepath.Join(opts.ProjectRoot, "AGENTS.md")
+	// CLAUDE.md is the canonical instruction file
+	// (SPEC-CLAUDE-INSTRUCTION-FILES-001); a legacy project still carrying
+	// only AGENTS.md gets the marker there.
+	instructionPath := filepath.Join(opts.ProjectRoot, "CLAUDE.md")
 	if _, err := os.Stat(instructionPath); err != nil {
-		legacyPath := filepath.Join(opts.ProjectRoot, "CLAUDE.md")
+		legacyPath := filepath.Join(opts.ProjectRoot, "AGENTS.md")
 		if _, lerr := os.Stat(legacyPath); lerr == nil {
 			instructionPath = legacyPath
 		}
 	}
 	if err := harness.InjectMarker(instructionPath, opts.SpecID, opts.Domain,
 		[]string{harnessMainImportPath}); err != nil {
-		return fmt.Errorf("harness install: inject AGENTS.md marker: %w", err)
+		return fmt.Errorf("harness install: inject CLAUDE.md marker: %w", err)
 	}
 
 	return nil

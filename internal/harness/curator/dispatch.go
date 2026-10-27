@@ -38,12 +38,12 @@ type SurfaceTarget struct {
 }
 
 // TierSurfaceMap is the canonical tier → SurfaceTarget mapping (REQ-HEV3-003,
-// design.md §B.1). Tier 3 → AGENTS.local.md append-only (retargeted by
-// SPEC-INSTRUCTION-FILES-UNIFY-001 REQ-IFU-014); Tier 4 → AGENTS.md digest
-// (retargeted from the retired CLAUDE.md by the AGENTS.md-primary conversion).
+// design.md §B.1). Tier 3 → CLAUDE.local.md append-only; Tier 4 → CLAUDE.md
+// digest (retargeted to the canonical CLAUDE pair by
+// SPEC-CLAUDE-INSTRUCTION-FILES-001 REQ-CIF-013).
 var TierSurfaceMap = map[int]SurfaceTarget{
-	3: {Path: "AGENTS.local.md", BlockType: BlockTypeLearnedLocal, Tier: 3},
-	4: {Path: "AGENTS.md", BlockType: BlockTypeLearnedWorkflow, Tier: 4},
+	3: {Path: "CLAUDE.local.md", BlockType: BlockTypeLearnedLocal, Tier: 3},
+	4: {Path: "CLAUDE.md", BlockType: BlockTypeLearnedWorkflow, Tier: 4},
 }
 
 // AutoDetectionSurfacePath identifies the harness.yaml auto_detection block as

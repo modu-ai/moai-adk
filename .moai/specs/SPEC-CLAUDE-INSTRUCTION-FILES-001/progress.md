@@ -24,6 +24,21 @@ run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오�
 - **GREEN**: `go test ./internal/template/ ./internal/template/agentemit/` ok(369.9s/0.6s) · `./internal/core/project/` ok · `./internal/config/ ./internal/constitution/ ./internal/cli/harness/` ok · cli 대상(init/resume/headroom/import-resolution) ok. `go build ./...` exit 0 · windows build exit 0 · lint = 기준선 1건 동일(NEW 0).
 - **Gaps**: internal/cli 전체 스위트 실행은 M5 총괄로 연기(리소스 규율) — 대상 실행으로 방향 민감 표면 커버.
 
+### M2 — 마이그레이션 동사 방향 전환 + 무손실 원칙 + 자체 저장소 전환 (RED→GREEN, 커밋 `8884b02f4a`)
+
+- **E8 RED (구현 전, 구 방향 구현 against)**: 9개 테스트 그룹 전부 FAIL — `TestMigrateLocalInstructions_{RefusesCoexistence(공유쌍 exit 0), MovesWithBackup(canonical 부재), RerunIsNoop, RefusesNonRegular(exit 0), RefusesUnreadable(exit 0), SourceChangedDuringRead(exit 0), FinalRenameRefusal(exit 0), DestinationWriteFailure(exit 0), EEXISTForeignDestination(exit 0), RollbackRenameFailure(exit 0)}` — verbatim 출력 §E.2 원본 기록(커밋 시점 로그).
+- **구현**: 쌍 테이블(공유+로컬 양쪽 필수) · 결정 우선(공재=전면 거부·무기록) · Lstat 비정규 거부(경로이탈=링크 추종 거부로 대표, 인자 없는 고정 이름) · 백업 사본(바이트·권한) → 읽기→쓰기 가드(mtime+내용) → `writeExclusiveKeepPartial`(O_EXCL) → 최종 단일 원자적 `os.Rename`(원본→신규 타임스탬프 백업 경로) · 실패 출구 전부 무조건 보존(상태 무관) + 보존된 사본 기반 보고 · rollback rename 자체 실패=양쪽 제자리+잔여 경로 보고 · **N12 반영**: EEXIST 목적지=타 프로세스 소유(O_EXCL 자기 생성만 소유권 증명) — 보존·이동 없이 양쪽 부재 변화 없이 거부, 코드 주석+테스트 행으로 명시.
+- **advisory 방향 반전**(update/doctor 공용 1문본) + doctor L3 CLAUDE-우선.
+- **자체 저장소 전환 (M4 코어, M2 커밋에 동반)**: 이유 — zone-registry `file:` 플립(M1 재명의 배포 정합에 필수)은 저장소 루트 CLAUDE.md 없이는 local-arm 검증이 불가해 M1↔M4 순환. verb 실물 실행(`go run ./cmd/moai migrate local-instructions`): 양쌍 이동, `cmp` 바이트 동일 관측(LOCAL/SHARED 모두), 원본 보존 `.moai/backups/local-instructions/20261027T083748Z-*/`(gitignored, 역사 항목 불변). zone-registry+template mirror 플립(cmp IDENTICAL), token_budget_guard 루트 슬롯·미러 CLAUDE 축, `.gitignore` `/AGENTS.local.md`·`/CLAUDE.local.md` 제거(추적 쌍 유지), git rename 100% 유사도로 기록.
+- **GREEN**: `go test ./internal/cli/ -run '^TestMigrateLocalInstructions|^TestLocalInstructions'` ok · `./internal/config/` ok · `./internal/constitution/` ok · template 대상(AgentsLocal|SweepGuard|Section20) ok.
+
+### M3 — 런타임 리더/작성기 재타겟 (RED→GREEN, 2026-10-27)
+
+- **E8 RED**: curator 행동 RED — `TestSurfaceForTier_Tier3` FAIL(`Tier 3 Path = "AGENTS.local.md", want CLAUDE.local.md`)·`Tier4` FAIL(`Path = "AGENTS.md", want CLAUDE.md`)·`TestPrepareTierDispatch_Tier3` FAIL(동일 축). hook reader — 신규 API(`resolveInstructionFileDetail`)는 구현 전 상태가 컴파일 실패(`undefined: resolveInstructionFileDetail/resolveLocalInstructionFileDetail`, verbatim 캡처)이며 이것이 신규 API의 사전 관측; 방향 민감 기존 테스트(`TestInstructionFileSetDerivation` 앵커 CLAUDE 재타겟)는 동일 컴파일 단에서 관측.
+- **구현 (N13 반영)**: `instructions_loaded.go` — `resolveInstructionPairDetail(root, canonical, legacy)` 일반화 + 공유/로커 양 세부 resolver, CLAUDE-우선, 레거시 진입 시 리터럴 라벨 `legacy AGENTS fallback` 반환 + 핸들러 warn 로그로 관측 가능화 + 핸들러가 로컬 쌍도 예산 검사; **`TestResolveInstructionPairPreference` 테이블 = 양쌍(공유·로컬) × 3형(coexist/canonical-only/legacy-only) — 선택·라벨 토큰·사전/사후 해시 불변 단언, 로컬 쌍 우선 mutant 통과 불가(N13 소실 관측)**. `curator/dispatch.go` TierSurfaceMap Tier3→CLAUDE.local.md·Tier4→CLAUDE.md. `layer5.go` @import/마커 문자열. `observer.go` eagerWeightSources 순서·주석. `harness/install.go` 마커 주입 CLAUDE-우선+레거시 AGENTS 폴백·오류 문구. `update/plan/plan.go` 4-이름 리스크 분류 유지(AGENTS.md·CLAUDE.md 둘 다 high+SectionMerge — 직독 확인, 편집 불요).
+- **frozen 계약 (AC-CIF-013)**: `go test ./internal/contract/` ok — 4-이름 목록·pin 불변 (현행 green 유지 관측).
+- **GREEN**: `./internal/hook/` ok(383s 전체) · `./internal/harness/curator/` ok · `./internal/harness/ ./internal/contract/` ok · `./internal/cli/harness/` ok.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

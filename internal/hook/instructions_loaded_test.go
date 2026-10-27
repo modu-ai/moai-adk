@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,9 +195,9 @@ func writeBudgetFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"AGENTS.md":                         "# Agents\n\n@chained.md\n@chained.md\n@missing.md\n",
+		"CLAUDE.md":                         "# Project\n\n@chained.md\n@chained.md\n@missing.md\n",
 		"chained.md":                        "# Chained\n\nThe standing contract body.\n",
-		"CLAUDE.md":                         "# Project\n\nLegacy local instruction prose.\n",
+		"AGENTS.md":                         "# Agents\n\nLegacy local instruction prose.\n",
 		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n\nNo frontmatter block.\n",
 		".claude/rules/moai/scoped.md":      "---\npaths:\n  - \"**/scoped/**\"\n---\n\n# Scoped rule\n",
 		".claude/rules/moai/notes.txt":      "not markdown\n",
@@ -221,7 +222,7 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	root := writeBudgetFixture(t)
 	want := []string{
 		filepath.Join(root, ".claude", "rules", "moai", "always-core.md"),
-		filepath.Join(root, "AGENTS.md"),
+		filepath.Join(root, "CLAUDE.md"),
 		filepath.Join(root, "chained.md"),
 	}
 	if got := instructionFileSet(root); !reflect.DeepEqual(got, want) {
@@ -265,9 +266,9 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 		t.Errorf("indented paths: wrongly scoped the rule: %d members, want %d", len(res), len(grown)+2)
 	}
 
-	// Legacy anchor: a project still carrying ONLY CLAUDE.md is measured
-	// through it (resolveInstructionFile fallback). The AGENTS.md-bearing
-	// fixture above must never reach this branch — CLAUDE.md there is inert.
+	// Legacy anchor: a project still carrying ONLY AGENTS.md is measured
+	// through it (resolveInstructionFile fallback). The CLAUDE.md-bearing
+	// fixture above must never reach this branch — AGENTS.md there is inert.
 	legacyRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(legacyRoot, ".moai"), 0o750); err != nil {
 		t.Fatal(err)
@@ -276,7 +277,7 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacyFiles := map[string]string{
-		"CLAUDE.md":                         "# Legacy project\n\n@AGENTS.md\n",
+		"AGENTS.md":                         "# Legacy project\n",
 		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
 	}
 	for rel, content := range legacyFiles {
@@ -287,10 +288,98 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	}
 	legacyWant := []string{
 		filepath.Join(legacyRoot, ".claude", "rules", "moai", "always-core.md"),
-		filepath.Join(legacyRoot, "CLAUDE.md"),
+		filepath.Join(legacyRoot, "AGENTS.md"),
 	}
 	if got := instructionFileSet(legacyRoot); !reflect.DeepEqual(got, legacyWant) {
 		t.Errorf("legacy anchor set = %v, want %v", got, legacyWant)
+	}
+}
+
+// TestResolveInstructionPairPreference pins REQ-CIF-003 / AC-CIF-003 (N13:
+// BOTH pairs, not just the shared one — a local-pair-preference mutant fails
+// here): the reader prefers the canonical CLAUDE name on every pair, reads a
+// legacy AGENTS file only as the explicit fallback labelled with the literal
+// token `legacy AGENTS fallback`, and modifies neither file in any case
+// (pre/post digests identical).
+func TestResolveInstructionPairPreference(t *testing.T) {
+	t.Parallel()
+
+	pairs := []struct {
+		name             string
+		canonical, legacy string
+	}{
+		{"shared pair", "CLAUDE.md", "AGENTS.md"},
+		{"local pair", "CLAUDE.local.md", "AGENTS.local.md"},
+	}
+	shapes := []struct {
+		name       string
+		files      []string
+		wantPick   string // "" = none
+		wantLegacy bool
+	}{
+		{"coexist", nil, "canonical", false},
+		{"canonical-only", nil, "canonical", false},
+		{"legacy-only", nil, "legacy", true},
+	}
+	for _, pair := range pairs {
+		for _, shape := range shapes {
+			t.Run(pair.name+"/"+shape.name, func(t *testing.T) {
+				t.Parallel()
+				root := t.TempDir()
+				var files []string
+				switch shape.name {
+				case "coexist":
+					files = []string{pair.canonical, pair.legacy}
+				case "canonical-only":
+					files = []string{pair.canonical}
+				case "legacy-only":
+					files = []string{pair.legacy}
+				}
+				digests := map[string][32]byte{}
+				for _, f := range files {
+					body := "body of " + f + "\n"
+					if err := os.WriteFile(filepath.Join(root, f), []byte(body), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					digests[f] = sha256.Sum256([]byte(body))
+				}
+
+				var gotPath, gotLabel string
+				if pair.name == "shared pair" {
+					gotPath, gotLabel = resolveInstructionFileDetail(root)
+				} else {
+					gotPath, gotLabel = resolveLocalInstructionFileDetail(root)
+				}
+
+				var wantPath string
+				switch shape.wantPick {
+				case "canonical":
+					wantPath = filepath.Join(root, pair.canonical)
+				case "legacy":
+					wantPath = filepath.Join(root, pair.legacy)
+				}
+				if gotPath != wantPath {
+					t.Errorf("resolved = %q, want %q", gotPath, wantPath)
+				}
+				wantLabel := ""
+				if shape.wantLegacy {
+					wantLabel = "legacy AGENTS fallback"
+				}
+				if gotLabel != wantLabel {
+					t.Errorf("label = %q, want %q", gotLabel, wantLabel)
+				}
+				// Immutability: resolution modifies neither file.
+				for f, want := range digests {
+					data, err := os.ReadFile(filepath.Join(root, f))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got := sha256.Sum256(data); got != want {
+						t.Errorf("%s modified by resolution", f)
+					}
+				}
+			})
+		}
 	}
 }
 
@@ -331,7 +420,7 @@ func TestAggregateInstructionCharsMovement(t *testing.T) {
 	}
 
 	const growBy = 137
-	path := filepath.Join(root, "AGENTS.md")
+	path := filepath.Join(root, "CLAUDE.md")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
