@@ -126,6 +126,70 @@ func TestFactorySameOwnerReacquiresExpiredLease(t *testing.T) {
 	}
 }
 
+func TestExpiredReacquirePreservesClaimDeadlineAndPRSnapshot(t *testing.T) {
+	root, _ := nmBase(t, factory.BacklogStatePicked)
+	nmIsolatedWorktrees(t, "t1")
+	setReacquireRegistration(t, root)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+		HeartbeatAt:    fcNow.Add(-2 * time.Minute).Format(time.RFC3339Nano)})
+	nmLaneEnv(t, "lane-1", "")
+	before := fcCard(t, root, "t1")
+	db := fcOpen(t, root)
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	_, leased, _, err := factoryNextNominatedClaim(ctx, db, root, fcRun, "lane-1", factoryNominee{item: factory.BacklogItem{ID: "t1"}, row: &before}, homestate.CardFields{})
+	if leased || !errors.Is(err, errFactoryRecordBusy) {
+		t.Errorf("expired claim: leased=%v err=%v, want bounded record-busy refusal", leased, err)
+	}
+	if after := fcCard(t, root, "t1"); after != before {
+		t.Fatal("deadline refusal changed the card")
+	}
+	gh := flCountGhCalls(t, func() (string, error) { return "[]", nil })
+	q := factoryNextPRSnapshot(context.Background(), root, fcRun, "lane-1", "t1", false)
+	if q.err != nil || gh() != 1 {
+		t.Errorf("eligible expired claim PR snapshot: calls=%d err=%v, want one query", gh(), q.err)
+	}
+	q = factoryNextPRSnapshot(context.Background(), root, fcRun, "lane-2", "t1", false)
+	if !errors.Is(q.err, errFactoryNextPRNotTaken) || gh() != 1 {
+		t.Errorf("other lane PR snapshot: calls=%d err=%v, want no extra query", gh(), q.err)
+	}
+}
+
+func TestExpiredReacquireBusyRecordIsBounded(t *testing.T) {
+	root, _ := nmBase(t, factory.BacklogStatePicked)
+	nmIsolatedWorktrees(t, "t1")
+	setReacquireRegistration(t, root)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+		HeartbeatAt:    fcNow.Add(-2 * time.Minute).Format(time.RFC3339Nano)})
+	before := fcCard(t, root, "t1")
+	db, err := homestate.OpenFactoryBounded(root, factoryLeaseClaimBusyTimeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	release := flHoldRecord(t, root)
+	old := factoryLeaseClaimDeadlineOverride
+	factoryLeaseClaimDeadlineOverride = 200 * time.Millisecond
+	t.Cleanup(func() { factoryLeaseClaimDeadlineOverride = old })
+	start := time.Now()
+	_, leased, _, err := factoryNextNominatedClaim(context.Background(), db, root, fcRun, "lane-1", factoryNominee{item: factory.BacklogItem{ID: "t1"}, row: &before}, homestate.CardFields{})
+	elapsed := time.Since(start)
+	release()
+	if leased || !errors.Is(err, errFactoryRecordBusy) {
+		t.Fatalf("busy record: leased=%v err=%v", leased, err)
+	}
+	if elapsed > 200*time.Millisecond+factoryLeaseClaimBusyTimeout+flOverheadCeil {
+		t.Fatalf("claim took %s, beyond its deadline and busy allowance", elapsed)
+	}
+	if after := fcCard(t, root, "t1"); after != before {
+		t.Fatal("busy refusal changed the card")
+	}
+}
+
 func setReacquireRegistration(t *testing.T, root string) {
 	t.Helper()
 	db := fcOpen(t, root)
