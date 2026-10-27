@@ -83,7 +83,7 @@ func newTestChecklist(lang string, th *Theme, elapsed time.Duration) (*Checklist
 // runCleanInit drives the init-shaped scenario: five groups, twelve items, one
 // spinner tick each, then the init-shaped summary.
 func runCleanInit(c *Checklist) {
-	c.Header("checklist.header.init", EnvSummary{Platform: "darwin/arm64", Version: "v3.3.0", Dir: "~/work/demo"})
+	c.Header("checklist.header.init", EnvSummary{Platform: "darwin/arm64", Version: "v3.3.0", Dir: "work/demo"})
 	plan := [][2]string{
 		{"templates", "detect"}, {"templates", "validate"}, {"templates", "deploy"},
 		{"config", "autonomy"}, {"config", "profile"}, {"config", "optins"}, {"config", "harness"}, {"config", "globals"},

@@ -24,6 +24,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -91,7 +92,8 @@ func checklistEnv(cmd *cobra.Command, verbose bool) checklistInputs {
 // not comparable is never "the same".
 func sameWriter(a, b io.Writer) (same bool) {
 	defer func() {
-		if recover() != nil {
+		if r := recover(); r != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			same = false
 		}
 	}()
@@ -239,7 +241,7 @@ func checklistProjectDir(cmd *cobra.Command, args []string) string {
 	default:
 		root, _ = os.Getwd()
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
+	if home, err := userHomeDirFn(); err == nil && home != "" {
 		if rest, ok := strings.CutPrefix(root, home+string(filepath.Separator)); ok {
 			return "~" + string(filepath.Separator) + rest
 		}
