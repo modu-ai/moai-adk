@@ -398,7 +398,24 @@ m1_to_mN_commit_strategy: per-milestone commits (M0, progress record, M1, M2, M3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-27
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete (manager-docs sync-phase; run-end audit iter4 PASS 0.93 at 3fa99789b6)
+sync_audit: ".moai/reports/t1969/sync-audit-verdict-iter4.md (PASS, audited_sha 3fa99789b622f9cb9bff3c00a4f95ecbc8f98012); card review .moai/reports/t1969/card-review.md; leader audit_multi pass rcpt-c87eef68479d141f4999aa83 (leader-relayed, not observed by manager-docs)"
+ac_source: ".moai/specs/SPEC-TUI-CHECKLIST-001/acceptance.md (tier L)"
+ac_count_live: 23
+b12_self_test_a: pass   # grep -c SPEC-TUI-CHECKLIST-001 CHANGELOG.md was 0 before emission
+b12_self_test_b: pass   # AC counter over acceptance.md returned 23; CHANGELOG entry states 23
+b12_self_test_c: pass   # every file path cited in the CHANGELOG entry verified with ls
+changelog_entry_position: "CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-TUI-CHECKLIST-001 entry (after SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001)"
+docs_site_readme_codemaps: "no change — user-visible init output is not described in README or docs-site; update wiring and docs belong to card t1978"
+frontmatter_status_transitions:
+  - "spec.md: in-progress -> completed (this single sync commit; status + updated only)"
+  - "plan.md: updated refresh only (stateless; already 2026-10-27)"
+  - "acceptance.md / design.md / research.md / progress.md: no frontmatter block, nothing to refresh"
+canary_compliance_check: not-applicable
+```
 
 ## §F Phase 4 Mode Selection
 
