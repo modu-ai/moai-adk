@@ -26,7 +26,7 @@ contract in .claude/rules/moai/workflow/spec-workflow-detail.md § Report Persis
 ("Plan-artifact hash subject list (Go verbatim)"); consult that contract for the
 authoritative subject list rather than restating it here. The Go implementation
 is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the
-whitespace-normalized UTF-8 content of each present subject file (missing files
+byte-exact content of each present subject file (missing files
 are skipped, making inclusion tier-conditional by construction).
 
 Store hash as `plan_artifact_hash` for Step 2 cache lookup.

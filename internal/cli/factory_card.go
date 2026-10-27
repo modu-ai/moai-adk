@@ -191,10 +191,13 @@ func factoryLaneLabel(verb, actor string) (string, error) {
 // factoryUnknownAttributionError is the REQ-MN-003 unknown-attribution
 // refusal, one wording for both surfaces: the caller carries no positive
 // operator mark and no lane identity, and the ABSENCE of lane variables
-// confers nothing.
+// confers nothing. The wording states how the mark is actually obtained
+// (GH #1924): no code path stamps the operator role — stamping is the
+// operator's manual act, and the launcher stamps only lane sessions.
 func factoryUnknownAttributionError(surface string) error {
-	return fmt.Errorf("%s: refused — %s: set %s=%s in the operator session (the launcher or the operator environment stamps it); the absence of lane variables confers nothing",
-		surface, factoryUnknownAttributionSentinel, config.EnvFactoryRole, config.FactoryRoleOperator)
+	return fmt.Errorf("%s: refused — %s: set %s=%s in the operator session (stamping is manual by design: prefix the command with %s=%s yourself — the launcher stamps only %s sessions); the absence of lane variables confers nothing",
+		surface, factoryUnknownAttributionSentinel, config.EnvFactoryRole, config.FactoryRoleOperator,
+		config.EnvFactoryRole, config.FactoryRoleOperator, config.FactoryRoleLane)
 }
 
 // factoryDecideGate is the REQ-MN-003 operator gate BOTH decide surfaces run:
