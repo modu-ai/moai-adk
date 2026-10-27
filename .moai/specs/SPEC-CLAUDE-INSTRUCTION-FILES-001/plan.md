@@ -13,18 +13,17 @@ spec.md §A의 검증된 현행 지도가 구현의 출발점이다. 변경 표�
 
 ## §B Known Issues
 
-- **t1984 겹침**: `AGENTS.md.tmpl`, docs, 공유 감사 launcher/RPC 3파일(`internal/cli/codex_audit_launch.go`/`codex_audit_mcp.go`/`mcp_codex_audit.go`)이 t1984(lane-15)와 겹친다. 두 레인이 동시에 쓰면 안 된다.
+- **t1984 순서-겹침(의존 아님)**: `harness_fs.go`·`install.go`·`AGENTS.md.tmpl`·docs가 t1984(lane-15)와 겹치지만 이는 순서-겹침이다(리더 §15.124 확정 순서로 직렬화). 감사 launcher/RPC 3파일(`codex_audit_launch.go`/`codex_audit_mcp.go`/`mcp_codex_audit.go`)은 instruction-file 참조 0건(레인·리더 양측 grep 측정)으로 t1984 소유 — 본 카드는 결코 편집하지 않는다.
 - **이 저장소 자체가 첫 이관 대상**: 세션 하네스가 매 턴 AGENTS.md/AGENTS.local.md를 주입 중이다. 자체 전환은 run 단계에서 마이그레이션 verb 실행과 같은 커밋 경계에 둔다.
 - **테스트 242 match-line**: 테스트 참조 대부분은 생성 방향 반전으로 자연 따라온다. historical/data-fixture 116줄은 건드리지 않는다(REQ-CIF-015).
 - **`internal/cli/harness/install.go`의 CLAUDE.md 마커 블록**: 현재도 CLAUDE.md를 명명한다(주석 직독 확인). 방향 전환 후 이 파일의 표적이 정규 이름이 되도록 검증만 하면 된다 — 신규 메커니즘 불요.
 
 ## §C Pre-flight (게이트)
 
-**[HARD] 순서 전제 — t1984.** 본 카드의 RUN 단계는 (a) card t1984가 착지(병합)되고 (b) 리더가 t1985를 해제한 뒤에만 시작한다. RUN 첫 커밋 전에:
+**[HARD] run 진입 게이트 (리더 §15.124 확정 순서).** t1984 선행 조건은 없다 — 순서는 다음과 같다: t1985가 plan→run→sync를 **merge-ready까지 먼저** 수행해 직렬 슬롯을 해제하고, t1984의 임대·plan은 t1985 merge-ready 뒤에 시작하며, t1985의 PR 병합·main 흡수가 t1984 RUN에 선행한다. 본 카드의 run 진입은 오직 (a) iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + (b) 리더 킥오프 판정으로만 열린다. RUN 첫 커밋 전에:
 
-1. t1984 브랜치를 본 워크트리에 흡수(`git merge`/rebase — 겹치는 `AGENTS.md.tmpl`·docs·감사 launcher/RPC의 t1984 측 변경을 먼저 받는다).
-2. 흡수 후 `internal/cli/codex_audit_launch.go`/`codex_audit_mcp.go`/`mcp_codex_audit.go`의 존재·변경 여부를 재독; 본 카드는 이 3파일을 편집하지 않는다(spec.md §D Out of Scope).
-3. RED 기준선 재측정: acceptance.md §D.1의 RED-now 명령을 흡수 후 트리에서 재실행해 SHA를 다시 고정한다(이관 후 재측정·재고정).
+1. RED 기준선 재측정: acceptance.md §D.1의 RED-now 명령을 run 진입 트리에서 재실행해 SHA를 다시 고정한다(트리 이동 후 재측정·재고정).
+2. 감사 launcher/RPC 3파일(`internal/cli/codex_audit_launch.go`/`codex_audit_mcp.go`/`mcp_codex_audit.go`)을 재독해 t1984 소유·본 카드 비편집 상태가 유지됨을 확인한다(spec.md §D Out of Scope — 이 파일들은 instruction-file 참조 0건, 의미상 무관하며 동시 쓰기만 금지).
 
 **검증 도구**: `go test` 대상 패키지 스코프, `golangci-lint`, `moai spec lint`(본 SPEC). 정적 확인(grep/ls)과 실행 검증을 모든 AC에서 구분해 기록한다 — 미실행은 결코 PASS가 아니다.
 
@@ -49,25 +48,26 @@ spec.md §A의 검증된 현행 지도가 구현의 출발점이다. 변경 표�
 
 역가능성(reversibility) 내림차순 — 방향 결정·데이터 이동이 앞, 기계적 따라오기가 뒤.
 
-### M0 — 사전 흡수 게이트 (Priority: High, 결정 블로커)
-- t1984 착지 확인·브랜치 흡수, 겹침 파일 재독, RED 기준선 재측정·SHA 재고정 (§C).
-- 산출: 흡수 커밋 + 재측정 기록(progress.md §E.2).
+### M0 — run 진입 게이트 (Priority: High, 결정 블로커)
+- iter2+ 독립 감사 PASS(최신 plan HEAD 결속) + 리더 킥오프 판정 확인. RED 기준선을 run 진입 트리에서 재측정·SHA 재고정, 감사 launcher/RPC 3파일 t1984 소유·비편집 재확인 (§C).
+- 산출: 재측정 기록(progress.md §E.2).
 
 ### M1 — 정규 이름·생성 경로 전환 (Priority: High)
-- `internal/defs/files.go`: ClaudeMD/AgentsMD 주석·문서 반전(CLAUDE 정규, AGENTS 레거시).
-- `AGENTS.md.tmpl` → `CLAUDE.md.tmpl` 재명명(내용은 t1984 흡수본 기준) + deployer 투영 전환.
+- `internal/defs/files.go`: ClaudeMD/AgentsMD 주석·역할 반전(CLAUDE 정규, AGENTS 레거시 — 두 상수 모두 유지).
+- 배포 주장 재타겟: `TestCodexOnlyForceUpdateVariant` 계열(`internal/template/harness_fs_test.go`)이 AGENTS.md 대신 CLAUDE.md 배치를 단언하도록 전환 — AC-CIF-001의 행동 기준(동작으로 입증, 산문 판정 아님)이며 M1이 이 그린패스를 소유.
+- `AGENTS.md.tmpl` → `CLAUDE.md.tmpl` 재명명(내용은 현재 AGENTS.md.tmpl 기준 — t1985가 먼저 착지하므로 t1984의 후속 편차는 t1984 카드에서 재정렬) + deployer 투영 전환.
 - `initializer.go` / `validator.go` / `init_resume.go` 프로브 방향 전환.
 - `harness_fs.go` `normalizeHarnessReferences` 방향 반전(REQ-CIF-004) — 생성물이 AGENTS 참조를 만들지 않음을 테스트.
 - AC: AC-CIF-001, 002, 004, 016(프로브 부분).
 
 ### M2 — 마이그레이션 동사 방향 전환 + 무손실 원칙 (Priority: High, 데이터 이동)
 - `migrate_local_instructions.go` 방향 반전(AGENTS.local.md → CLAUDE.local.md; shared AGENTS.md → CLAUDE.md 경로 추가). 기존 프리미티브 재사용(REQ-CIF-005).
-- 신규: 읽기-쓰기 사이 원본 변경 감지 중단(REQ-CIF-010), 바이트 정확 백업·권한 보존 검증, 경로이탈 거부.
-- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단.
+- 신규: 읽기-쓰기 사이 원본 변경 감지 중단 + **최종 remove 직전 원본 mtime/내용 재검증**(변경 시 중단·양쪽 보존, REQ-CIF-010), 바이트 정확 백업·권한 보존 검증, 경로이탈 거부. atomic-rename 재설계는 불채택(기존 프리미티브 재사용 제약, REQ-CIF-005).
+- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단(읽기→쓰기 창 + 쓰기→remove 창 주입).
 - AC: AC-CIF-005~010.
 
 ### M3 — 런타임 리더/작성기 재타겟 (Priority: Medium)
-- `doctor_harness.go`, `instructions_loaded.go`(`resolveInstructionFile` CLAUDE-우선 + 레거시 AGENTS 폴백 라벨), `curator/dispatch.go` TierSurfaceMap, `layer5.go` @import 문자열, `token_budget_guard.go` 측정 표면, `harness/install.go` 검증, `update/plan/plan.go` 리스크 분류 유지(4이름).
+- `doctor_harness.go`, `instructions_loaded.go`(`resolveInstructionFile` CLAUDE-우선 + 레거시 AGENTS 폴백에 리터럴 라벨 토큰 `legacy AGENTS fallback` 부착, REQ-CIF-003), `curator/dispatch.go` TierSurfaceMap, `layer5.go` @import 문자열, `token_budget_guard.go` 측정 표면, `harness/install.go` 검증, `update/plan/plan.go` 리스크 분류 유지(4이름).
 - frozen 계약 불변 테스트(`derived_test.go`/`frozen_compat_test.go`) 통과 확인(REQ-CIF-014).
 - AC: AC-CIF-003, 012, 013, 016(나머지).
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLAUDE-INSTRUCTION-FILES-001
 title: "활성 instruction-file 표면의 CLAUDE.md/CLAUDE.local.md 정규 쌍 전환"
-version: "0.1.1"
+version: "0.2.0"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -21,6 +21,7 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 |---------|------|--------|
 | 0.1.0 | 2026-10-27 | 최초 plan-phase 초안 (card t1985, lane-16). 운영자 지시(2026-10-27) — 활성 정규 쌍을 CLAUDE.md(공유) + CLAUDE.local.md(로컬/비공개)로 전환 — 를 GEARS 요구사항으로 인코딩. 현행 지도는 HEAD `cb30e05b3e`에서 소스 직독으로 재검증했고, 스코프 맵 `/tmp/moai-factory-analysis-20261027/adk-native-codex-withdrawal-claude-guidance-scope.json`의 `instruction_migration.inventory`(763 match lines / 208 files, 분류 계수이며 삭제 개수가 아님)과 `acceptance_fixture_definitions` GUIDE-01..12(제안이며 미실행)를 본 SPEC의 AC에 조정해 흡수함(GUIDE-09는 t1984 소유로 미채택). Tier M 예산(REQ≤16, AC≤16)에 맞추어 초기 17+17안을 16+16으로 통합 작성. 선행 `SPEC-INSTRUCTION-FILES-UNIFY-001`(completed, AGENTS.md 정규화)의 방향을 반전하는 후속이며, 해당 SPEC의 `superseded` 전환은 run/sync 단계에서 소유자별로 수행한다. |
 | 0.1.1 | 2026-10-27 | **Tier M 한도 정합화 (리더 수리 지시와 동일 내용, 처방과 다른 번호 체계로 적용).** 초기 초안 17 REQ/17 AC가 Tier M 상한(각 16)을 초과해, 통합 후 16/16으로 재작성 — 요구사항 통합: 정규화+템플릿(구 004+005→신 004, 마이그레이션 계열 전반 재부번), AC 통합: 정규화·템플릿(→AC-CIF-004), 부분 실패+동시 변경(→AC-CIF-010), doctor·init_resume 프로브 합치(→AC-CIF-016). 리더 처방은 비연속 ID 잔존안이었으나 감사 통과 전 초안이라 연속 재부번을 택했고 RED-now 기준선과 GUIDE 조정표는 현재 ID로 전부 정합. `maps REQ-…` 커버리지 형식 전환 및 "CLAUDEE" 오타 수정 포함. `moai spec lint` 무결("✓ No findings") 관측. |
+| 0.2.0 | 2026-10-27 | **감사 iter1 FAIL(0.85, MP-8 + codex 필수 게이트) 수리 + 순서 전환(리더 §15.124 확정).** Part A(순서): t1984 흡수 게이트 삭제 — t1985가 plan→run→sync를 merge-ready까지 먼저 수행(직렬 슬롯 해제), t1984의 임대·plan은 t1985 merge-ready 뒤, t1985 PR 병합·main 흡수가 t1984 RUN에 선행. run 진입 게이트 = iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오프 판정뿐. 겹침(harness_fs.go·install.go·AGENTS.md.tmpl·docs)은 순서-겹침이지 의존 아님; 감사 launcher/RPC 3파일은 instruction-file 참조 0건(레인·리더 양측 측정)이므로 t1984 소유·본 카드 비편집 원칙만 유지. Part B(D1~D4): D1 — AC-CIF-007/009/010/011 RED-now 셀 신설(§D.1 행 7~10, 방향/이름 축으로 red 사유 명시), AC-CIF-006 포인터 명시; D2 — AC-CIF-001의 불가능한 Then(상수 grep)을 **관측 가능한 동작**(배포 테스트 `TestCodexOnlyForceUpdateVariant` 계열의 CLAUDE.md 재타겟 + init·리더 경로 실행 관측)으로 교체(§D.1 행 1을 행동 기반 RED로 재기록 — 오늘 그 테스트는 AGENTS.md 배치를 단언하며 PASS, plan M1이 재타겟 소유; 마커 토큰안은 산문 지정 규칙에 가까워 리더 당부로 폐기); D3 — REQ-CIF-010 확장: 최종 remove 직전 원본 mtime/내용 재검증(변경 시 중단·보존), AC-CIF-010 fixture (b)에 write 후/remove 전 변경 주입 추가(atomic-rename 처방은 프리미티브 재사용 제약 위반이라 미채택); D4 — AC-CIF-016 Given/When에 `moai update` 레거시 fixture 실행 포함(보존·충돌 순서 단언), 예산 16/16 유지. 선택 D5(REQ-CIF-012/015 정규 GEARS 전환)·D6(REQ-CIF-003 레거시 폴백 라벨 토큰 `legacy AGENTS fallback` 명명·AC-CIF-003 Then에 고정) 적용, D7은 Part A로 대체(흡수 문구 삭제). |
 
 ## §A Context
 
@@ -48,7 +49,7 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 
 ### ASSUMPTIONS
 
-1. **t1984 선행**: 본 카드의 RUN 단계는 t1984(네이티브 Codex 철수, lane-15) 착지 후 리더 해제로만 시작한다. t1984는 `AGENTS.md.tmpl`·docs·공유 감사 launcher/RPC(`internal/cli/codex_audit_launch.go` / `codex_audit_mcp.go` / `mcp_codex_audit.go`)와 겹친다 — 두 레인이 해당 파일을 동시에 쓰지 않는다.
+1. **t1984와의 순서(의존 아님)**: 리더 확정(§15.124) 순서 — t1985가 plan→run→sync를 merge-ready까지 먼저 수행해 직렬 슬롯을 해제하고, t1984(네이티브 Codex 철수)의 임대·plan은 t1985 merge-ready 뒤에 시작하며, t1985의 PR 병합·main 흡수가 t1984 RUN에 선행한다. `harness_fs.go`·`install.go`·`AGENTS.md.tmpl`·docs 겹침은 **순서-겹침**이지 의존이 아니다. 감사 launcher/RPC 3파일(`codex_audit_launch.go` / `codex_audit_mcp.go` / `mcp_codex_audit.go`)은 instruction-file 참조 0건(레인·리더 양측 grep 측정)으로 본 SPEC과 의미상 무관하다 — t1984 소유·본 카드 비편집 원칙만 유지된다.
 2. **레거시 읽기 폴백 유지**: 방향 반전은 현재 제품이 레거시 CLAUDE.md에 대해 하던 것과 대칭으로, 레거시 AGENTS.md를 읽기 폴백으로 유지한다(미이관 저장소의 사용자 콘텐츠 보존). 폴백은 보존-보고이며 자동 해소하지 않는다.
 3. **frozen 계약 불변**: 4-이름 frozen 덮개는 이관 중에도 유지되며, 본 SPEC은 이를 줄이지 않는다.
 4. **분류 불확실성의 기본 처지**: 공유/비공개 모호 콘텐츠는 미해결로 보존되고 로컬에 남는다 — 자동 게시 금지.
@@ -66,7 +67,7 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 
 - **REQ-CIF-001** — The system shall treat `CLAUDE.md` as the sole shared active instruction file and `CLAUDE.local.md` as the sole local/private active instruction file, in every creation, navigation, reference, install, update, migration, documentation, template, and test path of the product.
 - **REQ-CIF-002** — When `moai init` scaffolds a project for any `--llm` value, the system shall deploy `CLAUDE.md` from the canonical shared template and shall not create `AGENTS.md` or `AGENTS.local.md`.
-- **REQ-CIF-003** — Where a runtime reader resolves the project's instruction file(s), the reader shall prefer the canonical CLAUDE pair and shall read a legacy AGENTS file only as an explicit, clearly-labelled legacy fallback that modifies nothing.
+- **REQ-CIF-003** — Where a runtime reader resolves the project's instruction file(s), the reader shall prefer the canonical CLAUDE pair and shall read a legacy AGENTS file only as an explicit legacy fallback labelled with the literal token `legacy AGENTS fallback` that modifies nothing.
 
 ### C.2 참조 정규화와 템플릿
 
@@ -79,18 +80,18 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 - **REQ-CIF-007** — When the canonical file and its legacy counterpart both exist and their contents differ, the migration shall refuse without modifying either file and shall report both paths with the hand-merge instruction; the system shall not overwrite either file.
 - **REQ-CIF-008** — Where a migration has already verifiably completed (canonical present, legacy absent), re-running the migration verb shall be a noop that writes no file and creates no second backup.
 - **REQ-CIF-009** — The migration shall refuse symlinked, non-regular, unreadable, and path-escaping inputs without following, resolving, or overwriting the target.
-- **REQ-CIF-010** — When the source file's content or modification time changes between the migration's read and its write, the migration shall abort before the destination write and shall leave both files exactly as they were.
+- **REQ-CIF-010** — When the source file's content or modification time changes between the migration's read and its write, the migration shall abort before the destination write and shall leave both files exactly as they were; and immediately before the final remove, the migration shall re-verify the source's content and modification time and, on any change, shall abort and preserve both the original (with the user's latest content) and the already-written destination.
 - **REQ-CIF-011** — When the backup, the exclusive write, or the final remove fails, the migration shall roll back any partial destination write and shall report the exact partial outcome; the verb shall not report a migrated result unless the final remove succeeded.
 
 ### C.4 프라이버시, 분류, 학습 표면
 
-- **REQ-CIF-012** — The system shall not log instruction-file bodies and shall not move private or local content into the shared `CLAUDE.md`; ambiguous shared/private classification shall remain unresolved, stay local, and be reported — the system shall not auto-publish it.
+- **REQ-CIF-012** — While the migration or any instruction-file transition is handling instruction-file content, the system shall keep instruction-file bodies out of logs and reports, shall keep private and local content out of the shared `CLAUDE.md`, and shall preserve ambiguous shared/private classification as unresolved, local, and reported — never auto-published.
 - **REQ-CIF-013** — The harness curator's Tier-3 learning surface shall target `CLAUDE.local.md` (append-only) and its Tier-4 surface the `CLAUDE.md` digest, and the always-loaded token-budget guard's measured surface shall follow the canonical CLAUDE names.
 
 ### C.5 계약과 역사 보존
 
 - **REQ-CIF-014** — The frozen instruction-file contract shall keep covering all four names — `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.local.md` — in `internal/contract/frozen.go` and `internal/hook/pre_tool.go`, and the pinning test shall keep the two lists equal, throughout and after the migration.
-- **REQ-CIF-015** — The system shall not rewrite or delete historical AGENTS backups (`.moai/backups/local-instructions/**`) or past audit evidence (`.moai/reports/**`) during or after the migration.
+- **REQ-CIF-015** — While the migration or the repository's own transition is running, the system shall preserve historical AGENTS backups (`.moai/backups/local-instructions/**`) and past audit evidence (`.moai/reports/**`) unchanged.
 
 ### C.6 자체 저장소 전환과 룰 표면
 
@@ -100,7 +101,7 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 
 ### Out of Scope — MCP 감사 launcher의 CLAUDE guidance 입력 경로 (GUIDE-09)
 
-`internal/cli/codex_audit_launch.go` / `codex_audit_mcp.go` / `mcp_codex_audit.go`의 신규 bounded explicit guidance 입력은 **card t1984 소유**다. 본 SPEC의 run 단계는 이 파일들을 편집하지 않으며, 명세되지 않은 CLI config 옵션을 발명하지 않는다. t1984 착지 뒤 조정이 필요하면 후속 카드로 분리한다.
+GUIDE-09(신규 bounded explicit guidance 입력)는 **t1984 단일 담당(solo ownership)이며, 구체 AC는 t1984 plan에서 확정한다**. 본 SPEC은 이 파일 3개(`internal/cli/codex_audit_launch.go`·`codex_audit_mcp.go`·`mcp_codex_audit.go`)를 편집하지 않는다(동시 쓰기 금지), 그리고 명세되지 않은 CLI config 옵션을 발명하지 않는다.
 
 - 신규 MCP 감사 guidance 주입 경로 설계·구현
 - 감사 launcher/RPC 파일의 동시 편집 (t1984와 절대 병행 금지)
@@ -123,7 +124,7 @@ related_specs: [SPEC-INSTRUCTION-FILES-UNIFY-001, SPEC-LOCAL-INSTRUCTIONS-MIGRAT
 ## §E Cross-references
 
 - 선행: `SPEC-INSTRUCTION-FILES-UNIFY-001` (AGENTS.md 정규화 — 본 SPEC이 방향 반전; 완료 시 superseded 전환은 run/sync 소유), `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (REQ-IFU-007~012/020~022의 원 소유), `SPEC-AGENTS-MD-CANON-001`
-- 게이트: card t1984 (lane-15) — run 단계 시작 전 착지·흡수 필요 (plan.md §C Pre-flight)
+- 순서(의존 아님): card t1984 (lane-15) — t1985 merge-ready가 t1984 임대·plan에 선행, t1985 PR 병합·main 흡수가 t1984 RUN에 선행 (리더 §15.124 확정; plan.md §C Pre-flight)
 - 스코프 맵: `/tmp/moai-factory-analysis-20261027/adk-native-codex-withdrawal-claude-guidance-scope.json` (operator-sanctioned, 2026-10-27; GUIDE-01..12는 제안 → acceptance.md에서 조정)
 - 계약: `internal/contract/frozen.go` / `internal/hook/pre_tool.go` frozen instruction-files invariant
 - 산출물: `plan.md`, `acceptance.md`, `progress.md` (같은 디렉터리)
