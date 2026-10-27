@@ -354,12 +354,35 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	4.005s
 - acceptance.md AC-TCL-011 의 녹색 경로가 요구하는 하위 시험 넷(`init_no_unconverted`, `init`, `direct_lines_unchanged`, `no_raw_keys`) 모두 PASS 이고 `rich_golden` 도 PASS. 따라서 AC-TCL-011 (1)·(2)·(3) 은 PASS 로 갱신한다.
 - 이번 재측정에서 다시 돌리지 않은 것(Gaps): 다른 AC 의 녹색 경로는 다시 돌리지 않았다 — `b0ef26b645` 가 시험 파일 하나만 바꿨고 그 상태 줄(M1..M4 항목)은 바뀌지 않아서다. 해당 AC 의 증거는 위 M1..M4 항목(각 커밋 시점)에 그대로 있다. 최종 HEAD 에서의 전체 `internal/cli` 시험·커버리지·lint 재실행은 하지 않았다(위임 지시: 범위 시험만). 이 시험의 변이체(픽스처 가드가 판별력을 잃는 경우)는 이번에 새로 만들어 보지 않았고 b0ef26b645 커밋 자체의 기록에 의존한다.
 
+### G1 — 끝난 항목의 접힌 상세 비움 (AC-TCL-017, REQ-TCL-016) — 코드 `aa29a4028f`, SPEC 문서 `6393ba7cfd` (HEAD `6393ba7cfdf881a6ab374341d71fd923a5ae821a`)
+
+- 배경: run 종료 감사 2회차 G1 — `end(err)` 가 열린 항목만 펼쳐서, 이미 `Done` 으로 닫힌 항목 밑에 접혀 있던 상세가 실제 작성기에 나가지 않았다. 수정 커밋 `aa29a4028f` 는 `internal/tui/checklist.go`(+15), `internal/cli/checklist_session.go`(+3), `internal/cli/checklist_session_test.go`(+26: `TestChecklistAbortFlushes/error_after_finished_items`)를 바꾼다(`git show --stat aa29a4028f`).
+- RED: **delegate 보고, 이 실행에서 다시 관측하지 않음.** `aa29a4028f` 커밋 메시지는 "RED: TestChecklistAbortFlushes/error_after_finished_items failed at af5452f4c9 (fold-a and fold-b appeared 0 times) before this fix" 라고 적는다. 그러나 `af5452f4c9` 는 SPEC 문서만 바꾸는 커밋이고(`git show --stat af5452f4c9` → spec.md·design.md·acceptance.md), 이 하위 테스트는 `aa29a4028f` 에서 처음 추가된다. 따라서 RED 는 수정 전 코드에 새 테스트만 얹은 커밋되지 않은 작업 트리 상태에서 잰 것이고, 커밋 그래프로는 RED 순서를 증명할 수 없다(`verification-claim-integrity.md` §2.3). 이 실행은 추적 코드를 고치지 않는다는 지시를 지켜 RED 를 재현하지 않았다 → Gaps.
+- GREEN (이 실행, HEAD `6393ba7cfd`): `go test ./internal/cli -run '^TestChecklistAbortFlushes$' -count=1 -v` 출력의 `--- PASS`·`ok` 줄:
+
+```text
+--- PASS: TestChecklistAbortFlushes (1.73s)
+    --- PASS: TestChecklistAbortFlushes/error (0.00s)
+    --- PASS: TestChecklistAbortFlushes/error_collect_after_fail (0.00s)
+    --- PASS: TestChecklistAbortFlushes/nil_return_open_item (0.00s)
+    --- PASS: TestChecklistAbortFlushes/error_after_finished_items (0.00s)
+    --- PASS: TestChecklistAbortFlushes/cancel (0.28s)
+    --- PASS: TestChecklistAbortFlushes/resumed_after_validate_fail (1.44s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.902s
+```
+
+- 선택자가 실제로 여섯 하위 테스트를 돌렸다(빈 sweep 아님): 위 `--- PASS` 줄 7개와 `no tests to run` 부재를 출력에서 직접 확인했다.
+- acceptance.md AC-TCL-017 갱신 확인 (`6393ba7cfd`, `git show 6393ba7cfd -- .moai/specs/SPEC-TUI-CHECKLIST-001/acceptance.md`): 녹색 경로 줄이 `--- PASS: TestChecklistAbortFlushes/error_after_finished_items ` 로 끝나고(여섯째 하위 테스트), `(v0.2.12, run 종료 감사 2회차 G1 Required fix (3)) error_after_finished_items 는 세션 단위로 첫 항목을 열고 상세 fold-a 를 쓴 뒤 …` 단언 줄과 `뮤턴트(v0.2.12, run 종료 감사 2회차 G1): end(err) 가 열린 항목만 펼치고 …` 줄이 추가됐다.
+- 화면 전체 줄 수: spec.md §3.3 의 v0.2.12 이력 줄과 §5 "화면 전체 줄 상한은 정하지 않는다" 항, design.md §1(36행)·§4(272행)가 같은 값을 적는다 — design.md:36 "실제 깨끗한 `moai init` 화면은 23 + 5 + 30 = 58줄이다", design.md:272 "따로 세는 넘김 줄 30(임베드 카탈로그에 따라 달라진다, v0.2.10)을 더하면 실제 깨끗한 `moai init` 화면은 58줄이다". (`grep -n '23 + 5 + 30\|= 58\|58' spec.md design.md` 로 위치 확인; 이 값은 코드 읽기이고, 58 의 직접 실측은 `TestChecklistScreenBudget/init` 의 `total 58` 로그가 이미 보였던 값(위 M4 항목)이다.)
+- 이번 갱신에서 다시 돌리지 않은 것: 전체 `internal/cli` 시험, 커버리지, lint, 크로스 플랫폼 빌드는 `aa29a4028f` 뒤로 다시 재지 않았다(위임 지시: 지정한 범위 시험 하나만). `aa29a4028f` 의 `internal/tui/checklist.go` 변경에 대한 `internal/tui` 시험도 이 실행에서 돌리지 않았다. 이 항목은 SPEC lint 를 인용하지 않으며 lint 를 돌리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-27
-run_commit_sha: b0ef26b6452a59a7f83f10c400a7106bc9b6906c   # 마지막 런 단계 코드·시험 커밋; 216df772dc 는 SPEC 문서 커밋
-run_status: complete   # AC-TCL-011 은 b0ef26b645 + 216df772dc 개정 뒤 PASS (§E.2 "AC-TCL-011 재측정")
+run_commit_sha: aa29a4028f0139f2938265a3ec238a1454093e86   # 마지막 런 단계 코드·시험 커밋(G1 수정). b0ef26b645 뒤의 나머지 4개는 비코드 커밋 — 216df772dc·af5452f4c9·6393ba7cfd(SPEC 문서), 0b766e62c0(증거 기록); `git log --format='%h %s' b0ef26b645..HEAD` 가 이 5개(위 4 + aa29a4028f)를 보인다
+run_status: complete   # AC-TCL-011 은 b0ef26b645 + 216df772dc 개정 뒤 PASS (§E.2 "AC-TCL-011 재측정"); G1 은 aa29a4028f 뒤 TestChecklistAbortFlushes 여섯 하위 테스트 PASS (§E.2 "G1")
 ac_pass_count: 23   # 이 카드 범위 23개(AC-001..007, 009..024) 중; 증거는 §E.2 M1..M4 항목과 AC-TCL-011 재측정
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # wizard / templates / .github/workflows / progress_line.go / status.go / glyphs.go / printer / 기존 골든 변경 없음
@@ -369,7 +392,7 @@ new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues
 cross_platform_build:
   native: pass
   windows_amd64: pass
-total_run_phase_files: 46   # git diff --name-only cb30e05b3e HEAD(M4 커밋 시점) 52개 중 .moai/specs/* 6개 제외; M6 에서 hunk 시험 파일 1개 제거 예정
+total_run_phase_files: 46   # HEAD 6393ba7cfd 에서 측정: `git diff --name-only cb30e05b3e HEAD` 52개 중 `.moai/specs/*` 6개 제외 = 46 (`git diff --name-only cb30e05b3e HEAD | grep -v '^\.moai/specs/' | wc -l`). hunk 시험 파일(`TestChecklistInitHunkConfinement`)은 M6 커밋 d233718eed 에서 이미 제거되었고 `ls internal/cli/checklist_hunk_confinement_test.go` 는 파일 없음
 m1_to_mN_commit_strategy: per-milestone commits (M0, progress record, M1, M2, M3, M4, M6); M5 은 카드 t1978 로 이월
 ```
 
