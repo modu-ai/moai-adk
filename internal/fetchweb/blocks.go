@@ -286,10 +286,14 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 //
 // R2 (t1968 sync-audit iter7/8 P3, debt-closure round): a HEADING child is a
 // run boundary too — the run before it is emitted with the PRE-heading path
-// before the heading's own walk advances the path. A heading emits no block
-// (its text is structure), so the pre-heading run is appended rather than
-// spliced: nothing after runStart has emitted a block it would need to
-// precede. A heading-only boundary (empty run before it) emits nothing, so a
+// before the heading's own walk advances the path. A heading's own text is
+// structure — the heading itself emits no block, so the pre-heading run is
+// appended rather than spliced: nothing after runStart has emitted a block it
+// would need to precede. The heading's SUBTREE, however, can emit blocks
+// (`<h3><pre>CODE</pre></h3>`); F1 (t1968 sync-audit iter11) counts that
+// emission toward `emitted`, mirroring the default branch, so a WRAPPER whose
+// heading carries blocks keeps its trailing run instead of dropping it. A
+// heading-only boundary (empty run before it) emits nothing, so a
 // heading-only aside stays empty and the leading-heading shape
 // (`<aside><h3>Side</h3>note</aside>`) keeps its single post-heading
 // paragraph. The boundary applies where the heading is the container's own
@@ -318,7 +322,17 @@ func (s *splitter) walkAsideRuns(n *html.Node, emitTrailingAlways bool) {
 				s.emit(Block{Kind: KindParagraph, HeadingPath: pathBefore, Text: text, Aside: true, HeaderIndex: -1}, 0)
 				emitted = true
 			}
+			before := len(*s.blocks)
 			s.walk(child, true)
+			if len(*s.blocks) > before {
+				// F1 (t1968 sync-audit iter11): the heading's subtree can
+				// emit blocks of its own (`<h3><pre>CODE</pre></h3>` — a
+				// heading is not guaranteed text-only). That emission marks
+				// the container mixed exactly like a block-emitting default
+				// child, so a WRAPPER's trailing run after the heading is
+				// content, not a lost remainder.
+				emitted = true
+			}
 			runStart = child.NextSibling
 			continue
 		}

@@ -617,6 +617,83 @@ func TestSplitBlocks_AsideHeadingSplitComposesWithBlocks(t *testing.T) {
 	}
 }
 
+// F1 (t1968 sync-audit iter11, P2): the R2 heading boundary descended into
+// the heading's subtree but never counted that descent's emissions — a
+// heading is not guaranteed text-only (`<h3><pre>CODE</pre></h3>` emits a
+// code block). With `emitted` unset, a WRAPPER container read as pure inline
+// content and silently dropped its trailing run after the heading:
+// `<aside><div><h3><pre>CODE</pre></h3>TAIL</div></aside>` kept only CODE and
+// lost TAIL. The heading branch now mirrors the default branch — an emission
+// from the heading's subtree marks the container mixed, so the trailing run
+// is content. It carries the heading's path (R2: a run after the heading is
+// described by it), exactly as the aside-level split's post-heading run does.
+func TestSplitBlocks_AsideWrapperHeadingWithBlockChildKeepsTrailingRun(t *testing.T) {
+	html := `<body><aside><div><h3><pre>CODE</pre></h3>TAIL</div></aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+		path []string
+	}{
+		{KindCode, "CODE", []string{"CODE"}},
+		{KindParagraph, "TAIL", []string{"CODE"}},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (a wrapper's trailing run after a block-carrying heading must not be dropped)",
+			len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true", i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+		if !reflect.DeepEqual(blocks[i].HeadingPath, w.path) {
+			t.Errorf("block %q path = %v, want %v (the trailing run follows the heading, so it carries the heading's path)", w.text, blocks[i].HeadingPath, w.path)
+		}
+	}
+}
+
+// F1 p-child variant: a p inside the heading emits the same way — the
+// wrapper's trailing run after it is content, carrying the heading's path.
+func TestSplitBlocks_AsideWrapperHeadingWithPChildKeepsTrailingRun(t *testing.T) {
+	html := `<body><aside><div><h3><p>PBODY</p></h3>WTAIL</div></aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+		path []string
+	}{
+		{KindParagraph, "PBODY", []string{"PBODY"}},
+		{KindParagraph, "WTAIL", []string{"PBODY"}},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (a wrapper's trailing run after a block-carrying heading must not be dropped)",
+			len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true", i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+		if !reflect.DeepEqual(blocks[i].HeadingPath, w.path) {
+			t.Errorf("block %q path = %v, want %v (the trailing run follows the heading, so it carries the heading's path)", w.text, blocks[i].HeadingPath, w.path)
+		}
+	}
+}
+
+// F1 aside-level control: at the aside itself emitTrailingAlways is already
+// true, so the heading-with-block-child shape is unchanged by the fix — the
+// code block emits, the heading text is structure, and there is no trailing
+// run to keep.
+func TestSplitBlocks_AsideLevelHeadingWithBlockChildControl(t *testing.T) {
+	html := `<body><aside><h3><pre>CODE</pre></h3></aside></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindCode || blocks[0].Text != "CODE" || !blocks[0].Aside {
+		t.Fatalf("want exactly one aside code block %q, got %d blocks: %v", "CODE", len(blocks), texts(blocks))
+	}
+	if !reflect.DeepEqual(blocks[0].HeadingPath, []string{"CODE"}) {
+		t.Errorf("code block path = %v, want [CODE]", blocks[0].HeadingPath)
+	}
+}
+
 // C2 (t1968 sync-audit iter6): the F7b fallback was all-or-nothing — it
 // emitted the aside's collapsed text only when NO child had emitted a block,
 // so a MIXED aside (`Important<p>Details</p>Tail`) kept only Details and the
@@ -1002,8 +1079,8 @@ func TestSplitBlocks_NestedListInnerWrapperNotDuplicated(t *testing.T) {
 
 // Class-close sweep (leader codex-audit round 3): a corpus over the wrapper
 // space {aside, section, article, li, td, div, blockquote, figure} × child
-// shapes {bare-only, block-only, mixed, multi-mixed, nested-wrapper-blocks},
-// all inside an aside. The invariant: NO bare text run anywhere in the
+// shapes {bare-only, block-only, mixed, multi-mixed, nested-wrapper-blocks,
+// heading-with-block-child}, all inside an aside. The invariant: NO bare text run anywhere in the
 // subtree is dropped when any block is emitted from the same subtree — every
 // planted word appears, in document order, among the emitted blocks' texts.
 // (`td` outside a table has its tag dropped by the HTML5 parser — its
@@ -1040,6 +1117,25 @@ func TestSplitBlocks_AsideWrapperCorpusNoBareRunLost(t *testing.T) {
 			func(tag string) []string {
 				return []string{"N1_" + tag, "NP1_" + tag, "N2_" + tag, "B1_" + tag}
 			}},
+		// F1 axis (t1968 sync-audit iter11): a heading whose own subtree
+		// carries a block-emitting child, first in the wrapper with a
+		// trailing run after it. The auditor named this axis's absence as
+		// the blind spot that let the trailing-run drop through: every other
+		// shape reaches `emitted` through the default branch, which counts
+		// its child's emissions — only the heading branch could emit from a
+		// descent without marking the container mixed. The p variant keeps
+		// all eight wrappers on one uniform assertion: a p inside an item
+		// body is suppressed and folds into the li text in document order
+		// (the item corpus's documented fold), where a pre would emit after
+		// the li text and invert emission order by design — the pre-in-
+		// heading exact shape is pinned by
+		// TestSplitBlocks_AsideWrapperHeadingWithBlockChildKeepsTrailingRun.
+		// (`aside` and the hoisted `td` keep the trailing run through
+		// emitTrailingAlways, and `li` folds both words into its item text —
+		// controls; the remaining five wrappers need the fix.)
+		{"heading-with-block-child",
+			func(tag string) string { return "<h3><p>P_" + tag + "</p></h3>T_" + tag },
+			func(tag string) []string { return []string{"P_" + tag, "T_" + tag} }},
 	}
 	for _, w := range wrappers {
 		for _, sh := range shapes {
