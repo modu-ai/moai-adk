@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -61,10 +62,70 @@ func rebindRefusal(format string, args ...any) error {
 	return fmt.Errorf("%w: "+format, append([]any{ErrRebindRefused}, args...)...)
 }
 
-// consolidationCard is the slice of a source card row the operation needs.
-type consolidationCard struct {
-	id, state, stage, evidenceSHA string
-	version                       int64
+// cardPairExcludedColumns names the cards columns EXCLUDED from the
+// duplicate-pair comparison, by their Card struct json tags:
+//
+//   - run_id, card_id — the row's identity key; the target row's values
+//     differ by construction.
+//   - owner_label — session ownership, re-stamped per engagement; the
+//     operator-move path legitimately carries a different holder on each
+//     side of the pair.
+//   - state, version — the transition counters; the two runs advanced them
+//     independently, and the surviving state is the pair's decision, not
+//     stranded work.
+//   - updated_at, heartbeat_at — timestamps; they record when each side
+//     last wrote, never what the row holds.
+//
+// Every OTHER cards column is compared: a duplicate pair is one where each
+// compared column of the SOURCE row is at its zero value, or held identically
+// by the target row.
+var cardPairExcludedColumns = map[string]bool{
+	"run_id": true, "card_id": true, "owner_label": true,
+	"state": true, "version": true, "updated_at": true, "heartbeat_at": true,
+}
+
+// cardColumnNames lists the cards column names in cardSelectColumns order —
+// the order scanCard binds to Card's fields, so Card field i IS column i.
+// (The struct's json tags are API-facing names and deliberately differ from
+// column names for owner_label/hint_prefer/hint_after, so the tags cannot name
+// the columns; the scan binding can.)
+func cardColumnNames() []string {
+	return strings.Split(cardSelectColumns, ",")
+}
+
+// divergentColumns names every compared cards column the source row carries
+// at a non-zero value the target row does not hold identically — the info an
+// abandon-with-pointer would strand on the abandoned row. The comparison
+// iterates the Card STRUCT by reflection, not a maintained field list, so a
+// column added to the schema (and to Card) is covered automatically;
+// TestT1973_R6_ComparisonMirrorsTheSchema guards that Card still mirrors the
+// table. This is the round-6 STRUCTURAL form: three same-family findings
+// (progress fields, decision fields, then the identical-SHA bypass — T21
+// PRESERVES the SHA, so a matching evidence_sha must never short-circuit the
+// comparison) taught that enumerating fields always lags the schema. The
+// evidence_sha column is compared like every other: a differing non-empty
+// SHA diverges, an identical one does not, and neither exits early.
+func divergentColumns(src, tgt Card) []string {
+	cols := cardColumnNames()
+	var diverged []string
+	s, t := reflect.ValueOf(src), reflect.ValueOf(tgt)
+	typ := s.Type()
+	for i := range typ.NumField() {
+		if i >= len(cols) {
+			// The guard test pins field count to column count; unreachable
+			// in a green tree.
+			break
+		}
+		if cardPairExcludedColumns[cols[i]] {
+			continue
+		}
+		sv, tv := s.Field(i), t.Field(i)
+		if sv.IsZero() || sv.Equal(tv) {
+			continue
+		}
+		diverged = append(diverged, cols[i])
+	}
+	return diverged
 }
 
 // RebindRun consolidates the source run into the target run (REQ-FCR-020).
@@ -80,10 +141,15 @@ type consolidationCard struct {
 //	(2) re-reads the target: active, stamp unchanged, classified OwnerLive,
 //	(3) refuses a source that holds a worker not positively dead,
 //	(4) refuses when any third active run whose owner is not dead holds a
-//	    non-terminal row for one of the source's cards; otherwise re-keys each
-//	    non-terminal source card to the target, or — when the target already
-//	    holds the card — moves the source row to abandoned with a
-//	    card.rebound pointer event,
+//	    non-terminal row for one of the source's cards (a dead-owner third run
+//	    must also provably hold no live lease and no living worker); otherwise
+//	    re-keys each non-terminal source card to the target, or — when the
+//	    target already holds the card as a NON-TERMINAL row that is a
+//	    structural DUPLICATE of the source row (every compared column of the
+//	    source at its zero value or held identically; a terminal target row,
+//	    or any column divergence, refuses the whole operation — card t1973
+//	    round 6) — moves the source row to abandoned with a card.rebound
+//	    pointer event,
 //	(5) repoints the card_dispatch binding of each card step 4 moved (re-keyed or
 //	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
@@ -167,7 +233,15 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		return RebindResult{}, err
 	}
 	for _, c := range cards {
-		if err := refuseThirdRunHolder(ctx, tx, c.id, src.RunID, tgt.RunID, others); err != nil {
+		// The source leader's death does not kill a card lease, and the
+		// worker guard is run-scoped: a holder whose registration names
+		// another run (or none) is invisible to refuseLiveWorker, so the
+		// row's own lease decides (card t1973 round 2, P1).
+		if holdsValidLease(c, now) {
+			return RebindResult{}, rebindRefusal("card %s of run %s holds a live lease (%s, expires %s); a leased card is not moved",
+				c.CardID, src.RunID, c.LeaseHolder, c.LeaseExpiresAt)
+		}
+		if err := refuseThirdRunHolder(ctx, tx, c.CardID, src.RunID, tgt.RunID, others, now, opts.workerProbe()); err != nil {
 			return RebindResult{}, err
 		}
 	}
@@ -175,26 +249,50 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	var res RebindResult
 	nowText := now.Format(time.RFC3339Nano)
 	for i, c := range cards {
-		var held int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.id).Scan(&held); err != nil {
-			return RebindResult{}, err
+		// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
+		tgtCard, tgtErr := scanCard(tx.QueryRowContext(ctx, `SELECT `+cardSelectColumns+` FROM cards WHERE run_id=? AND card_id=?`, tgt.RunID, c.CardID))
+		if tgtErr != nil && !errors.Is(tgtErr, sql.ErrNoRows) {
+			return RebindResult{}, tgtErr
 		}
-		if held > 0 {
+		if tgtErr == nil {
+			// A target row is a wall the source's live work is never silently
+			// discarded against (card t1973, P1): a TERMINAL row is a completed
+			// past carrying its own evidence and approval, and refuses the
+			// whole operation. A non-terminal target row is a DUPLICATE of the
+			// source only under the round-6 STRUCTURAL gate: every compared
+			// column of the source row (all of cards minus the identity /
+			// ownership / counter / timestamp exclusions of
+			// cardPairExcludedColumns) is at its zero value or held
+			// identically by the target row — the t1963-designed dedup the
+			// operator-move and leader-start-consolidation paths live on, and
+			// the only shape an abandon-with-pointer serves. Any divergence —
+			// progress fields, pending-decision fields, evidence, anything a
+			// future schema adds — names its columns and refuses. There is no
+			// identical-SHA early exit: T21 preserves the SHA, so a matching
+			// evidence_sha proves nothing about the rest of the row.
+			if IsTerminalCardState(tgtCard.State) {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a TERMINAL %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
+					c.CardID, tgt.RunID, tgtCard.State, tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
+			}
+			if diverged := divergentColumns(c, tgtCard); len(diverged) > 0 {
+				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row diverging on %s (target evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
+					c.CardID, tgt.RunID, tgtCard.State, strings.Join(diverged, ", "), tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
+			}
 			if err := abandonWithPointer(ctx, tx, src.RunID, tgt.RunID, c, "consolidation", now); err != nil {
 				return RebindResult{}, err
 			}
-			res.Abandoned = append(res.Abandoned, c.id)
+			res.Abandoned = append(res.Abandoned, c.CardID)
 		} else {
 			// Re-key: only run_id changes; state, version, stage, lease, evidence
 			// and every other column ride along untouched.
-			r, err := tx.ExecContext(ctx, `UPDATE cards SET run_id=? WHERE run_id=? AND card_id=?`, tgt.RunID, src.RunID, c.id)
+			r, err := tx.ExecContext(ctx, `UPDATE cards SET run_id=? WHERE run_id=? AND card_id=?`, tgt.RunID, src.RunID, c.CardID)
 			if err != nil {
 				return RebindResult{}, err
 			}
 			if n, err := r.RowsAffected(); err != nil || n != 1 {
-				return RebindResult{}, rebindRefusal("card %s of run %s changed during the consolidation", c.id, src.RunID)
+				return RebindResult{}, rebindRefusal("card %s of run %s changed during the consolidation", c.CardID, src.RunID)
 			}
-			res.Moved = append(res.Moved, c.id)
+			res.Moved = append(res.Moved, c.CardID)
 		}
 		if i == 1 {
 			if err := rebindInject(rebindPointSecondCard); err != nil {
@@ -317,16 +415,19 @@ func refuseLiveWorker(ctx context.Context, tx *sql.Tx, runID string, probe func(
 }
 
 // sourceCards reads the source's non-terminal cards in card-id order.
-func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidationCard, error) {
-	// SQL: sqlTerminalStates is a compile-time constant; the run id goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT card_id,state,version,stage,evidence_sha FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
+// sourceCards reads the source's non-terminal cards in card-id order as FULL
+// Card rows (cardSelectColumns): the round-6 duplicate gate compares the
+// whole row, so the read must carry every column the schema has.
+func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]Card, error) {
+	// SQL: the concatenated fragments are compile-time constants; the run id goes through a placeholder.
+	rows, err := tx.QueryContext(ctx, `SELECT `+cardSelectColumns+` FROM cards WHERE run_id=? AND state NOT IN `+sqlTerminalStates+` ORDER BY card_id`, runID)
 	if err != nil {
 		return nil, err
 	}
-	var cards []consolidationCard
+	var cards []Card
 	for rows.Next() {
-		var c consolidationCard
-		if err := rows.Scan(&c.id, &c.state, &c.version, &c.stage, &c.evidenceSHA); err != nil {
+		c, err := scanCard(rows)
+		if err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -344,23 +445,27 @@ func sourceCards(ctx context.Context, tx *sql.Tx, runID string) ([]consolidation
 // right now, and moving it from under the live holder would split the record.
 // A third run absent from the pre-transaction classification appeared after
 // it and counts as not dead; one that classified dead must still carry the
-// stamp it was classified on.
-func refuseThirdRunHolder(ctx context.Context, tx *sql.Tx, cardID, srcID, tgtID string, others map[string]RunOwner) error {
+// stamp it was classified on — AND must provably hold nothing live: a lane can
+// outlive its leader (REQ-FCR-019), so the holder row's valid lease and the
+// run's registered workers are checked before the dead-owner skip applies
+// (card t1973, P2). A lease that has not expired, a worker the probe cannot
+// call positively dead, or a worker listing that cannot be read, all refuse.
+func refuseThirdRunHolder(ctx context.Context, tx *sql.Tx, cardID, srcID, tgtID string, others map[string]RunOwner, now time.Time, probe func(int) ProcessIdentityState) error {
 	// SQL: sqlTerminalStates is a compile-time constant; every value goes through a placeholder.
-	rows, err := tx.QueryContext(ctx, `SELECT c.run_id, r.lead_pid, r.lead_process_start FROM cards c JOIN runs r ON r.run_id=c.run_id
+	rows, err := tx.QueryContext(ctx, `SELECT c.run_id, c.state, c.lease_holder, c.lease_expires_at, r.lead_pid, r.lead_process_start FROM cards c JOIN runs r ON r.run_id=c.run_id
 WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NOT IN `+sqlTerminalStates+` ORDER BY c.run_id`, cardID, srcID, tgtID)
 	if err != nil {
 		return err
 	}
 	type holder struct {
-		run   string
-		pid   int
-		start string
+		run, state, leaseHolder, leaseExpires string
+		pid                                   int
+		start                                 string
 	}
 	var holders []holder
 	for rows.Next() {
 		var h holder
-		if err := rows.Scan(&h.run, &h.pid, &h.start); err != nil {
+		if err := rows.Scan(&h.run, &h.state, &h.leaseHolder, &h.leaseExpires, &h.pid, &h.start); err != nil {
 			_ = rows.Close()
 			return err
 		}
@@ -376,6 +481,23 @@ WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NO
 	for _, h := range holders {
 		o, known := others[h.run]
 		if known && retirable(o.Classification) && o.LeadPID == h.pid && o.LeadProcessStart == h.start {
+			// The leader is dead under the classified stamp, but the run may
+			// still hold live work: a valid lease on the row, or a registered
+			// worker that is not positively dead, refuses instead of skipping.
+			if holdsValidLease(Card{State: h.state, LeaseHolder: h.leaseHolder, LeaseExpiresAt: h.leaseExpires}, now) {
+				return rebindRefusal("card %s is held by run %s under a live lease (%s, expires %s); a card a third run still works is not moved",
+					cardID, h.run, h.leaseHolder, h.leaseExpires)
+			}
+			workers, err := workerPIDs(ctx, tx, h.run)
+			if err != nil {
+				return err
+			}
+			for _, w := range workers {
+				if probe(w.pid) != ProcessIdentityDead {
+					return rebindRefusal("card %s is held by run %s which still has live worker %q (pid %d); a card a third run still works is not moved",
+						cardID, h.run, w.label, w.pid)
+				}
+			}
 			continue
 		}
 		class := "unclassified"
@@ -391,23 +513,23 @@ WHERE c.card_id=? AND c.run_id NOT IN (?,?) AND r.status='active' AND c.state NO
 // appends the card.rebound event that records where the card went and what the
 // row looked like — nothing is deleted, and the previous state is recoverable
 // from the event. The update is version-checked like every other transition.
-func abandonWithPointer(ctx context.Context, tx *sql.Tx, fromRun, toRun string, c consolidationCard, via string, now time.Time) error {
+func abandonWithPointer(ctx context.Context, tx *sql.Tx, fromRun, toRun string, c Card, via string, now time.Time) error {
 	r, err := tx.ExecContext(ctx, `UPDATE cards SET state=?, version=version+1, updated_at=? WHERE run_id=? AND card_id=? AND version=?`,
-		CardAbandoned, now.Format(time.RFC3339Nano), fromRun, c.id, c.version)
+		CardAbandoned, now.Format(time.RFC3339Nano), fromRun, c.CardID, c.Version)
 	if err != nil {
 		return err
 	}
 	if n, err := r.RowsAffected(); err != nil || n != 1 {
-		return rebindRefusal("card %s of run %s changed under the abandon", c.id, fromRun)
+		return rebindRefusal("card %s of run %s changed under the abandon", c.CardID, fromRun)
 	}
 	return appendEvent(ctx, tx, fromRun, "card.rebound", map[string]any{
-		"card_id":      c.id,
+		"card_id":      c.CardID,
 		"from_run":     fromRun,
 		"to_run":       toRun,
-		"state":        c.state,
-		"version":      c.version,
-		"stage":        c.stage,
-		"evidence_sha": c.evidenceSHA,
+		"state":        c.State,
+		"version":      c.Version,
+		"stage":        c.Stage,
+		"evidence_sha": c.EvidenceSHA,
 		"via":          via,
 	}, now)
 }
