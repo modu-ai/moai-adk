@@ -160,3 +160,10 @@ fold internal/atomicfile/section.go
 # #1896 스쿼시 병합에서 fold-judgments −8행으로 유실됐습니다 — 본 refresh가
 # 그 확인 내용을 이 주석으로 재수록합니다. fold 가드 검사 결과는 본문 작성 후
 # moai graph check와 함께 진행 기록에 남습니다.
+
+# --- 2026-10-27 refresh (worktree t1991, HEAD 4c4217a19d, card t1991) ---
+# 위 단위들은 이번 refresh 본문과 대조해 그대로 성립함을 확인했으므로 모두 남겨
+# 둡니다. 이번 창(9286f6b6ba..4c4217a19d)에서 새로 내린 fold·omission 판정은
+# 없습니다 — 신규 패키지 internal/jevledger와 신규 파일(homestate 런 통합 다섯
+# 파일, config/jev_consumers.go, cli/todo_classify_cmd.go)은 fold 하지 않고
+# modules.md t1991 판 표가 이름을 들어 직접 기술합니다.
