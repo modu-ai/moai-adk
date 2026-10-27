@@ -48,9 +48,84 @@ run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오�
 - **AC-CIF-014 (역사 불변)**: `.moai/reports/**` git status 변경 0건 · `.moai/backups/local-instructions/` 기존 항목 없음(본 워크트리), 신규 4디렉터리만(verb MkdirTemp).
 - **GREEN**: `go test ./internal/template/` ok(356.7s 전체 — binding ledger·output-style ledger·catalog hash·내부누출·korean-leftover 전부).
 
+### M5 — 검증 총괄 (측정 트리 = M4 커밋 `1b016070ee` 작업 트리, 2026-10-27)
+
+#### §D.1 green 방향 재검증 (전 행)
+
+| 행 | 관측 | exit |
+|---|---|---|
+| 1 | `--- PASS: TestCodexOnlyForceUpdateVariant (0.18s)` — CLAUDE.md 배치·AGENTS.md 부재 단언으로 재타겟된 테스트 green | 0 |
+| 2 | 구형 `ReplaceAll(text, "CLAUDE.md", "AGENTS.md")` grep exit 1 · 신형 `:208 text = strings.ReplaceAll(text, "AGENTS.md", "CLAUDE.md")` (+ `:207 AGENTS.local.md→CLAUDE.local.md`) 관측 | 0 |
+| 3 | 구형 Short 문구 exit 1 · `:62 Short: "Move AGENTS.md/AGENTS.local.md to CLAUDE.md/CLAUDE.local.md, keeping backups"` | 0 |
+| 4 | `:45 3: {Path: "CLAUDE.local.md", BlockType: BlockTypeLearnedLocal, Tier: 3}` · Tier4 `CLAUDE.md` | 0 |
+| 5 | `ls internal/template/templates/CLAUDE.md.tmpl` → 22,499B 존재 | 0 |
+| 6 | `instructions_loaded.go:5`(레거시 폴백/라벨 관련)·`init_resume.go:2`·`doctor_harness.go:3` — 감소+맥락 전환 | 0 |
+| 7 | `:105 refusing to migrate: … both exist; merge … by hand` + `:355-356` advisory | 0 |
+| 8 | `:113 info, err := os.Lstat(legacyPath)` — 정규 방향 원본 검사 | 0 |
+| 9 | `grep -c ModTime` = 2 (읽기→쓰기 가드) | 0 |
+| 10 | `grep -c '"AGENTS.md"'` = 1 (쌍 테이블 레거시 엔트리) | 0 |
+
+#### AC 매트릭스 (§E.2)
+
+| AC | 상태 | 근거 (명령 → 관측) |
+|---|---|---|
+| AC-CIF-001 | PASS | `go test ./internal/template/ -run '^TestCodexOnlyForceUpdateVariant$' -v` → `--- PASS`; `TestHarnessProfilesResolveSharedReferences` 3프로파일 PASS(스위트 내); 상수 ClaudeMD/AgentsMD 둘 다 유지(주석·역할만 반전) |
+| AC-CIF-002 | PASS | `TestInitCmd_NonInteractiveExecution`(CLAUDE.md 생성·AGENTS.md/AGENTS.local.md 부재 os.Stat 관측) + `TestInit_NoInstructionStubOnFallback` — internal/cli 스위트 내 green |
+| AC-CIF-003 | PASS | `TestResolveInstructionPairPreference` — **양쌍(공유·로컬)×3형** 선택·`legacy AGENTS fallback` 라벨 토큰·사전/사후 해시 불변(N13 소실) + `TestInstructionFileSetDerivation`(레거시 전용 앵커 폴백) — internal/hook ok |
+| AC-CIF-004 | PASS | `normalizeHarnessReferences` 반전 관측(위 표 행 2) + 정규화 단위 테스트(스위트 내) + `ls CLAUDE.md.tmpl` exit 0 |
+| AC-CIF-005 | PASS | `TestMigrateLocalInstructions_MovesWithBackup` 양쌍(테이블 주도) — 프리미티브 재사용(공재거부·Lstat·타임스탬프 백업·O_EXCL·보존), 신규 메커니즘 부재 |
+| AC-CIF-006 | PASS | 동일 테스트 — 백업 사본 바이트 동일(digest)+권한 0640 보존+원본은 최종 rename 전 제자리 |
+| AC-CIF-007 | PASS | `RefusesCoexistence` 양쌍 — 쌍별 exit≠0·양쪽 해시 불변·백업 0건·수동 병합 지시 |
+| AC-CIF-008 | PASS | `RerunIsNoop` — 재실행 noop 메시지·파일·백업 수 불변 |
+| AC-CIF-009 | PASS | `RefusesNonRegular`(양쌍 symlink, 대상 생존) + `RefusesUnreadable`(0000) — 경로이탈=인자 없는 고정 이름+링크 비추종으로 구조적 차단(코드 주석 명시) |
+| AC-CIF-010 | PASS | `SourceChangedDuringRead`(사전 쓰기 중단)·`FinalRenameRefusal`(미편집/편집 — 상태 무관 보존+사본 기반 보고)·`DestinationWriteFailure`(N9 mutant 차단)·`EEXISTForeignDestination`(N12 race 행)·`RollbackRenameFailure`((e) 잔여 경로+보존 실패 보고) — 전 출구 3-위치 무손실 불변 단언 |
+| AC-CIF-011 | PASS | 순수 이동(cmp 바이트 동일 M2 관측) — 비공개 내용 승격 구성상 0건·동사 출력 경로만 포함·자동 분류 경로 부재 |
+| AC-CIF-012 | PASS | `TestSurfaceForTier_Tier3/Tier4`(CLAUDE.local.md/CLAUDE.md) + token_budget 고정 슬롯·미러 CLAUDE 축 테스트 green |
+| AC-CIF-013 | PASS | `go test ./internal/contract/` ok — 4-이름 목록·pin 불변(이관 전후 green) |
+| AC-CIF-014 | PASS | `.moai/reports/**` git 변경 0건·`.moai/backups/local-instructions/` 신규 4디렉터리만 |
+| AC-CIF-015 | PASS | 루트 CLAUDE.md/CLAUDE.local.md 존재(verb, git rename 100% 유사도)·doctor/init 정규 파일 동작(advisory 테스트가 실물 update+doctor 구동)·`.claude/rules/**`+mirror 활성 AGENTS 지시 0건(잔여: hns-lsel 2건=frozen 계약 서술, frozen/protected 테이블=t frozen 계약) |
+| AC-CIF-016 | PASS | doctor L3 CLAUDE-우선·init_resume 프로브(`TestDeployedWiringIsGPTReadsTheClaudeSurface`)·update leg: 실물 `moai update`가 사용자 AGENTS.local.md 보존+CLAUDE.local.md 비생성(`TestLocalInstructions_UpdateDoctorPreserveFile`)+공유쌍: AGENTS.md를 덮쓰는 템플릿 부재로 보존 구성 보장+공재 시 advisory→verb 거부 순서(`AdvisoryParity/both`) |
+
+#### E2/E3/E4/E5 관측
+
+- E2: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (이 트리, 이번 실행).
+- E3 (패키지): core/project 88.9 · config 85.5 · constitution 88.4 · contract 96.3 · harness/curator 91.4 · template/agentemit 90.4 · harness 86.4 · hook 87.9 · **template 82.6 / cli-harness 80.8 — 수정 파일 축으로는 harness_fs.go 핵심 함수 100%(normalizeHarnessReferences/isHidden)·install.go RunInstall 92.9%/NewInstallCmd 87.5%, 패키지 총계 부족분은 비수정 파일의 기존 부채** · internal/cli 전체(-cover): 1차 실행 `panic: test timed out after 10m0s`(계측 지연, 테스트 결함 아님 — verbatim 관측) · 2차(-timeout 30m, 백그라운드): 선언 창 내 결과 미수신 — **관측되지 않음(아래 Gaps)**, 리더 판정(2026-10-27)으로 touched-package 축으로 기록하고 카드를 막지 않음.
+- E4: `grep -rn 'AskUserQuestion' internal/hook/ internal/harness/ | grep -v _test | grep -v '// '` → 2건 — `pre_tool.go:856`(툴 이름 비교 — 호출 아님, frozen 파일 미수정)·`proposalgen/scaffolder.go:164`(인용 산문, 미수정 파일). 신규 호출 0건.
+- E5: `golangci-lint run --timeout=4m` exit 1 — 이슈 1건 = 기준선(`leader_readers_darwin.go:93` SA1019) 동일, **NEW 0건**.
+- 기타: `moai spec lint` exit 0 — 0 error(전 SPEC 경고 8,592건은 기존).
+
+#### Gaps
+
+- **internal/cli 전체-suite 커버리지: 관측되지 않음.** 1차 `go test ./internal/cli/ -cover` = `panic: test timed out after 10m0s`(go test 기본 타임아웃, 계측 지연 — 패닉 로그 verbatim 관측). 2차 `-timeout=30m` 백그라운드 재실행의 결과가 선언 창 내 도착하지 않아(통지 채널 불안정) 관측 없음 — 커버리지 판정은 touched-package 축(hook 87.9·harness 86.4·curator 91.4·cli/harness 수정 파일 87.5~92.9 등)으로 대체하고 본 항목을 Gap으로 명시(verification-claim-integrity §3.1 — 관측 안 된 검증은 결코 PASS가 아님). internal/cli의 방향 민감 표면은 대상 실행(verb/advisory·init/resume·headroom·import-resolution)으로 전부 green 관측됨.
+- AC-CIF-016 공유쌍 update leg는 구성 증명(AGENTS.md 템플릿 부재+deployer 보호 스킵+advisory→verb 순서)으로 관측 — 단일 통합 테스트로 직접 주입하지는 않음.
+- token_budget_guard.go의 코멘트 서술 다듬기(AGENTS 시대 근거 문구)는 동작 무관 — sync 단계 문서 정리로 이월 가능.
+
+#### N12/N13 부채 소실 판정 (run-exit 재감사용)
+
+- **N12 소실**: REQ-CIF-011 구현체(`migrate_local_instructions.go` EEXIST 분기 + 주석 "ownership proof = this process's own O_EXCL creation")와 `TestMigrateLocalInstructions_EEXISTForeignDestination`(양쌍 — 외부 파일 백업 이동 0건·양쪽 제자리 단언)로 명시화.
+- **N13 소실**: `TestResolveInstructionPairPreference` fixture 테이블이 로컬 쌍을 포함(공유·로컬 × coexist/canonical-only/legacy-only) — 로컬 쌍 우선 mutant 불통과.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: complete
+run_complete_at: 2026-10-27T13:48:34Z
+run_commit_sha: pending-backfill-run
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "git rev-list --count origin/main...HEAD = 0 10 (관측 2026-10-27, 커밋 전 HEAD 1b016070ee)"
+l44_post_push_fetch: not-applicable-no-push-lane-owns-delivery
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+total_run_phase_files: 98   # git diff --name-only 746b8af14e..HEAD (M5 docs 커밋 전 기준)
+m1_to_mN_commit_strategy: "per-milestone commits M1..M5 (feat/docs, SPEC id in subject, card t1985 in body, Authored-By-Agent: manager-develop); no push — lane owns delivery"
+coverage_note: "touched-package axis recorded in §E.2 M5; internal/cli full-suite coverage unobserved (Gaps)"
+```
+
+_run_status의 `complete`는 run 단계 관측 종결을 뜻한다(사양 상태 전이 아님 — spec.md는 M1 커밋에서 이미 `in-progress`; `in-progress → implemented → completed`는 manager-docs 소유)._
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
