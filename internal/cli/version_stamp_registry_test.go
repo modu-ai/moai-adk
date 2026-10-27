@@ -827,8 +827,12 @@ func trackedPopulation(t *testing.T, root string) []string {
 		t.Fatalf("list tracked files: %v", err)
 	}
 	var population []string
+	// git prints a name without quoting spaces, so the raw line is the exact
+	// file name and must not be trimmed: a trimmed "go.mod " would hide behind
+	// the go.mod exclusion. Names git has to quote (control characters, quotes,
+	// backslash, non-ASCII under core.quotePath) are listed quoted, do not
+	// resolve to a file, and surface through the judged/handed count.
 	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
 		if line == "" || versionStampExcluded(line) {
 			continue
 		}
