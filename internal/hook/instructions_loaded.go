@@ -123,6 +123,12 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 
 // checkCharacterBudget verifies that a file does not exceed the 40,000 character limit.
 func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error {
+	if !regularReadableFile(filePath) {
+		// Non-regular entry (FIFO/socket/device): reading could block the
+		// hook forever — treat as unreadable and continue (sync-audit F2).
+		slog.Debug("skipping non-regular instruction file", "path", filePath)
+		return nil
+	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		// File may have been deleted or is inaccessible - log and continue
@@ -160,13 +166,25 @@ const sessionCharBudget = 210000
 // explicit, labelled fallback that modifies nothing.
 const legacyAGENTSFallbackLabel = "legacy AGENTS fallback"
 
+// regularReadableFile reports whether path reads as a regular file. os.Stat
+// follows symlinks (a link to a regular file stays readable) and identifies
+// FIFOs, sockets, and devices as non-regular — a writer-less FIFO at an
+// instruction-file path must resolve as absent, never reach ReadFile
+// (sync-audit F2: an unguarded open would hang the session-start hook;
+// the migration verb carries the same Lstat discipline for moving).
+func regularReadableFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
+}
+
 // resolveInstructionPairDetail resolves one legacy/canonical pair: the
 // canonical name when present, else the legacy name (labelled), else none.
+// Non-regular entries (FIFO, socket, device) resolve as absent.
 func resolveInstructionPairDetail(projectRoot, canonical, legacy string) (string, string) {
-	if _, err := os.Stat(filepath.Join(projectRoot, canonical)); err == nil {
+	if regularReadableFile(filepath.Join(projectRoot, canonical)) {
 		return filepath.Join(projectRoot, canonical), ""
 	}
-	if _, err := os.Stat(filepath.Join(projectRoot, legacy)); err == nil {
+	if regularReadableFile(filepath.Join(projectRoot, legacy)) {
 		return filepath.Join(projectRoot, legacy), legacyAGENTSFallbackLabel
 	}
 	return "", ""
@@ -241,9 +259,12 @@ func instructionFileSet(projectRoot string) []string {
 		if seen[cur] {
 			continue
 		}
+		if !regularReadableFile(cur) {
+			continue // missing or non-regular member (FIFO would hang): skip
+		}
 		data, err := os.ReadFile(cur)
 		if err != nil {
-			continue // missing/unreadable member: skip silently-and-continue
+			continue // unreadable member: skip silently-and-continue
 		}
 		add(cur)
 		for _, imp := range parseImports(string(data)) {

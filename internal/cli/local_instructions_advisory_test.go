@@ -118,6 +118,42 @@ func TestLocalInstructions_UpdateDoctorAdvisoryParity(t *testing.T) {
 	}
 }
 
+// TestUpdatePreservesLegacyAgentsInstructions pins sync-audit F1
+// (AC-CIF-016 D4 update leg): on a legacy AGENTS.md-only project,
+// `moai update` must NOT create a fresh CLAUDE.md — the canonical reader
+// would then read only the new file and deactivate the user's
+// instructions, and the migration verb would refuse as coexistence.
+// Update skips the creation, keeps the user file byte-identical, and
+// emits the migration advisory instead.
+func TestUpdatePreservesLegacyAgentsInstructions(t *testing.T) {
+	root := snapNewUpdateProject(t, "0.0.0") // older template_version: the sync runs
+	body := "# user's own instructions\nnever lose this line\n"
+	writeLocalFile(t, root, "AGENTS.md", body)
+	want := sha256.Sum256([]byte(body))
+
+	updateOut, _, err := snapRunUpdate(t, root)
+	if err != nil {
+		t.Fatalf("moai update: %v\nout:\n%s", err, updateOut)
+	}
+
+	// The canonical file must not be created alongside the legacy one.
+	if _, serr := os.Lstat(filepath.Join(root, "CLAUDE.md")); serr == nil {
+		t.Error("update created CLAUDE.md alongside the user's AGENTS.md — the reader would deactivate the user's instructions (F1)")
+	}
+	// The user's instructions survive byte-identical.
+	if got := localFileDigest(t, filepath.Join(root, "AGENTS.md")); got != want {
+		t.Error("AGENTS.md was modified by update")
+	}
+	// The advisory names the migration verb.
+	if !strings.Contains(updateOut, localInstructionsVerb) {
+		t.Errorf("update stdout does not carry the migration advisory:\n%s", updateOut)
+	}
+	// Guard against a vacuous pass: the sync really deployed into this tree.
+	if _, derr := os.Lstat(filepath.Join(root, ".claude")); derr != nil {
+		t.Fatalf("template sync did not deploy (.claude absent): %v", derr)
+	}
+}
+
 // The advisory text is one function for all surfaces; both of its advising
 // branches name the verb and the legacy file it concerns.
 func TestLocalInstructionsAdvisory_Text(t *testing.T) {

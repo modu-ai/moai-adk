@@ -375,3 +375,36 @@ func emitLocalInstructionsAdvisory(w io.Writer, root string) {
 		_, _ = fmt.Fprintln(w, msg)
 	}
 }
+
+// sharedInstructionAdvisory returns the operator advisory for the SHARED
+// instruction pair, or "" when no legacy AGENTS.md is present. The
+// deployment layer skips creating CLAUDE.md next to a legacy AGENTS.md
+// (sync-audit F1); this advisory names the migration verb as the way out.
+func sharedInstructionAdvisory(canonicalPresent, legacyPresent bool) string {
+	switch {
+	case !legacyPresent:
+		return ""
+	case canonicalPresent:
+		return fmt.Sprintf("Advisory: %s and %s both exist; merge %s into %s by hand and remove it "+
+			"(`moai migrate local-instructions` refuses while both exist).",
+			"CLAUDE.md", "AGENTS.md", "AGENTS.md", "CLAUDE.md")
+	default:
+		return fmt.Sprintf("Advisory: %s is a legacy instruction file and template deployment of %s was skipped to keep it active; "+
+			"run `moai migrate local-instructions` to move it to %s.",
+			"AGENTS.md", "CLAUDE.md", "CLAUDE.md")
+	}
+}
+
+// emitSharedInstructionAdvisory writes the shared-pair advisory for root to
+// w, if any. Read-only, like the local-pair emitter.
+func emitSharedInstructionAdvisory(w io.Writer, root string) {
+	legacyPath := filepath.Join(root, "AGENTS.md")
+	canonPath := filepath.Join(root, "CLAUDE.md")
+	legacy, canonical, err := instructionPairPresent(legacyPath, canonPath)
+	if err != nil {
+		return
+	}
+	if msg := sharedInstructionAdvisory(canonical, legacy); msg != "" {
+		_, _ = fmt.Fprintln(w, msg)
+	}
+}
