@@ -445,7 +445,7 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 	// would write — for the Codex faces those are the deploy-path
 	// converted bytes, same as the install writes.
 	if slug == RootCodexAgents || slug == RootAgentsSkills {
-		data = codexInstructionFace(template.NormalizeCodexRoleForDeploy(data))
+		data = template.NormalizeCodexRoleForDeploy(data)
 	}
 	return data, nil
 }

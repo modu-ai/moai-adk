@@ -19,20 +19,23 @@ import (
 )
 
 // referenceLadenTOML is the role-TOML source shape the ledger's 7a/13b axes
-// name: Claude-tree references a Codex consumer can never resolve.
+// name: Claude-tree references a Codex consumer can never resolve. The name
+// axis carries the LEGACY instruction file (AGENTS.md) — the canonical
+// deployment produces CLAUDE.md (SPEC-CLAUDE-INSTRUCTION-FILES-001), so the
+// installed face must convert the legacy name, not the canonical one.
 const referenceLadenTOML = `name = "manager-x"
 instructions = """
 Read the shared rules at .claude/rules/moai/core.md and the workflow
-guide .claude/skills/moai/workflows/run.md. The product brief is CLAUDE.md.
+guide .claude/skills/moai/workflows/run.md. The product brief is AGENTS.md.
 """
 `
 
 // referenceLadenSkill is the 13a shape: a skill directory source carrying
-// CLAUDE.md and .claude/rules/moai/ references, installed to the Codex root.
+// legacy-name and .claude/rules/moai/ references, installed to the Codex root.
 const referenceLadenSkill = `---
 name: moai-alpha
 ---
-Use the rules under .claude/rules/moai/ and the brief CLAUDE.md.
+Use the rules under .claude/rules/moai/ and the brief AGENTS.md.
 `
 
 // installWithTOML runs a first install over a fixture whose Codex role TOML
@@ -52,13 +55,13 @@ func installWithTOML(t *testing.T, tomlBytes []byte) (installed []byte, installe
 	return data, installedPath
 }
 
-// TestCodexAgentTOMLReferencesConverted — AC-006 (ledger 7a, REQ-CNV-001).
-// Given a role TOML source carrying .claude/rules, .claude/skills and
-// CLAUDE.md references, the installed TOML must carry the target harness's
-// deployed faces — never a verbatim copy. RED-now reason: the install path's
-// fileTarget (install.go:392) reads the source with a plain fs.ReadFile and
-// records those bytes verbatim — the deploy-path converter
-// (template.NormalizeCodexRoleForDeploy) is never wired here.
+// TestCodexAgentTOMLReferencesConverted — AC-006 (ledger 7a, REQ-CNV-001;
+// name-axis retargeted to the canonical deployment by
+// SPEC-CLAUDE-INSTRUCTION-FILES-001 — the SPEC's intent is conversion
+// consistency with what deployment actually produces, not the AGENTS name).
+// Given a role TOML source carrying .claude/rules, .claude/skills and legacy
+// AGENTS.md references, the installed TOML must carry the deployed faces —
+// .moai/policies, .moai/workflows, and CLAUDE.md — never a verbatim copy.
 func TestCodexAgentTOMLReferencesConverted(t *testing.T) {
 	installed, _ := installWithTOML(t, []byte(referenceLadenTOML))
 	got := string(installed)
@@ -67,24 +70,27 @@ func TestCodexAgentTOMLReferencesConverted(t *testing.T) {
 	for _, pair := range [][2]string{
 		{".claude/rules/moai/", ".moai/policies/"},
 		{".claude/skills/moai/workflows/", ".moai/workflows/"},
-		{"CLAUDE.md", "AGENTS.md"},
+		{"AGENTS.md", "CLAUDE.md"},
 	} {
 		if strings.Contains(got, pair[0]) {
-			t.Errorf("RED (intended): installed TOML still carries the unconverted reference %q — the install path copied the source verbatim", pair[0])
+			t.Errorf("installed TOML still carries the unconverted reference %q — the install path copied the source verbatim", pair[0])
 		}
 		if strings.Contains(got, pair[1]) {
 			converted++
 		}
 	}
 	if converted == 0 {
-		t.Errorf("RED (intended): no converted face found in the installed TOML — NormalizeCodexRoleForDeploy is not wired into the install path (install.go:392)")
+		t.Errorf("no converted face found in the installed TOML — NormalizeCodexRoleForDeploy is not wired into the install path")
 	}
 }
 
 // TestCodexUserSkillInstallNoClaudeOnlyRefs — AC-007 arm 13a (ledger 13a,
-// REQ-CNV-001, reproduce-or-refute). Given a skill directory source carrying
-// CLAUDE-only references, the installed COPY under the Codex skill root
-// (.agents/skills) must not carry references the Codex side cannot resolve.
+// REQ-CNV-001, reproduce-or-refute; name-axis retargeted to the canonical
+// deployment by SPEC-CLAUDE-INSTRUCTION-FILES-001). Given a skill directory
+// source carrying unresolvable references, the installed COPY under the
+// Codex skill root (.agents/skills) must not carry references the deployed
+// shape cannot resolve: .claude/** paths and the retired AGENTS.md name.
+// CLAUDE.md itself is the deployed instruction file and stays resolvable.
 func TestCodexUserSkillInstallNoClaudeOnlyRefs(t *testing.T) {
 	f := newFixture(t)
 	f.src[".claude/skills/moai-alpha/SKILL.md"] = &fstest.MapFile{Data: []byte(referenceLadenSkill)}
@@ -97,10 +103,13 @@ func TestCodexUserSkillInstallNoClaudeOnlyRefs(t *testing.T) {
 		t.Fatalf("read installed skill: %v", err)
 	}
 	got := string(data)
-	for _, ref := range []string{".claude/rules/moai/", "CLAUDE.md"} {
+	for _, ref := range []string{".claude/rules/moai/", "AGENTS.md"} {
 		if strings.Contains(got, ref) {
-			t.Errorf("REPRODUCED 13a: the installed Codex-root skill still carries the unconverted reference %q", ref)
+			t.Errorf("the installed Codex-root skill still carries the unconverted reference %q", ref)
 		}
+	}
+	if !strings.Contains(got, "CLAUDE.md") {
+		t.Error("the installed Codex-root skill lost the instruction-file reference — the canonical name must survive the conversion")
 	}
 }
 

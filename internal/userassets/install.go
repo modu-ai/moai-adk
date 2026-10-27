@@ -537,29 +537,23 @@ func (in *Installer) fileTarget(slug RootSlug, rel, sourcePath string, e templat
 
 // targetBytes reads one target's source bytes and applies the Codex-face
 // normalization — the SAME conversion the deploy path writes
-// (template.NormalizeCodexRoleForDeploy), then the Codex instruction-file
-// face. The returned bytes are exactly what applyTarget writes and what the
-// recorded sha256 hashes.
+// (template.NormalizeCodexRoleForDeploy). The returned bytes are exactly
+// what applyTarget writes and what the recorded sha256 hashes.
+//
+// Card-review R4 (SPEC-CLAUDE-INSTRUCTION-FILES-001): no post-mapping back
+// to AGENTS names — the canonical deployment produces CLAUDE.md for every
+// harness value (REQ-CIF-001/004), so installed references must target
+// CLAUDE.md; the deploy-path normalization already converts legacy
+// AGENTS.md references to the canonical name.
 func (in *Installer) targetBytes(tgt installTarget) ([]byte, error) {
 	data, err := fs.ReadFile(in.Source, tgt.sourcePath)
 	if err != nil {
 		return nil, err
 	}
 	if tgt.codexFace {
-		data = codexInstructionFace(template.NormalizeCodexRoleForDeploy(data))
+		data = template.NormalizeCodexRoleForDeploy(data)
 	}
 	return data, nil
-}
-
-// codexInstructionFace maps the canonical CLAUDE instruction-file names to
-// the Codex-side discovery face. SPEC-CLAUDE-INSTRUCTION-FILES-001
-// canonicalized product references to CLAUDE.md (REQ-CIF-004), while the
-// Codex install roots still resolve AGENTS.md — an installed Codex asset
-// must carry the face its reader discovers (REQ-CNV-001, AC-006/007).
-func codexInstructionFace(data []byte) []byte {
-	text := strings.ReplaceAll(string(data), "CLAUDE.local.md", "AGENTS.local.md")
-	text = strings.ReplaceAll(text, "CLAUDE.md", "AGENTS.md")
-	return []byte(text)
 }
 
 func bundleLabel(e template.Entry) string {

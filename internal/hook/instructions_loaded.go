@@ -201,7 +201,12 @@ func resolveInstructionFile(projectRoot string) string {
 //     relative paths resolved under projectRoot; missing members are skipped,
 //     imports escaping projectRoot are not followed, and the traversal is
 //     cycle-safe via a visited set;
-//  3. every *.md under .claude/rules/moai/ whose frontmatter — when the file
+//  3. the LOCAL instruction file (CLAUDE.local.md; legacy:
+//     AGENTS.local.md) and its own @-import closure — the local pair is
+//     auto-loaded alongside the anchor, so the aggregate budget must sum
+//     it too (card-review R5: a tree can pass every per-file limit while
+//     the total exceeds the session budget);
+//  4. every *.md under .claude/rules/moai/ whose frontmatter — when the file
 //     starts with a --- block — lacks a top-level `paths:` key (the
 //     always-loaded rule set).
 //
@@ -221,10 +226,14 @@ func instructionFileSet(projectRoot string) []string {
 
 	// Anchor + transitive @-import closure (breadth-first, cycle-safe). The
 	// anchor is CLAUDE.md; a legacy project still carrying only AGENTS.md is
-	// measured through that instead.
+	// measured through that instead. The local instruction file seeds the
+	// same closure (card-review R5).
 	queue := []string{}
 	if anchor := resolveInstructionFile(projectRoot); anchor != "" {
 		queue = append(queue, anchor)
+	}
+	if local, _ := resolveLocalInstructionFileDetail(projectRoot); local != "" {
+		queue = append(queue, local)
 	}
 	for len(queue) > 0 {
 		cur := queue[0]

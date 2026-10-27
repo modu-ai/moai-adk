@@ -383,6 +383,65 @@ func TestResolveInstructionPairPreference(t *testing.T) {
 	}
 }
 
+// TestInstructionFileSetIncludesLocalPair pins card-review R5: the
+// auto-loaded LOCAL instruction file and its @-import closure count toward
+// the aggregate session budget — the summed check must see them, so a tree
+// passing every per-file limit still warns when the sum exceeds the budget.
+func TestInstructionFileSetIncludesLocalPair(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	for _, dir := range []string{
+		filepath.Join(root, ".moai"),
+		filepath.Join(root, ".claude", "rules", "moai"),
+	} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n",
+		"CLAUDE.local.md":                   "# Local\n\n@local-chained.md\n",
+		"local-chained.md":                  "# Local chained body\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, rel), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	set := instructionFileSet(root)
+	for _, want := range []string{
+		filepath.Join(root, "CLAUDE.md"),
+		filepath.Join(root, "CLAUDE.local.md"),
+		filepath.Join(root, "local-chained.md"),
+		filepath.Join(root, ".claude", "rules", "moai", "always-core.md"),
+	} {
+		found := false
+		for _, p := range set {
+			if p == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("instructionFileSet omits %s — the local pair and its imports must join the aggregate", want)
+		}
+	}
+
+	// The aggregate counts the local members: removing them must shrink it.
+	withLocal := aggregateInstructionChars(root)
+	if err := os.Remove(filepath.Join(root, "CLAUDE.local.md")); err != nil {
+		t.Fatal(err)
+	}
+	// local-chained.md stays on disk but is no longer imported.
+	withoutLocal := aggregateInstructionChars(root)
+	if withLocal <= withoutLocal {
+		t.Errorf("aggregate with the local pair = %d, without = %d — the local members must add to the sum", withLocal, withoutLocal)
+	}
+}
+
 // TestInstructionFileSetCycleSafe pins the visited-set behavior: a mutual
 // @-import between AGENTS.md and CLAUDE.md must terminate and yield both
 // members exactly once.
