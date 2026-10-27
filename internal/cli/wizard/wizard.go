@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"strings"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
@@ -305,53 +304,15 @@ const optionColumnWidthCap = 80
 // form: content spans columns 2-77).
 const selectFieldUsableWidth = 76
 
-// selectHeight computes the TOTAL field height (one title row + the wrapped
-// description + every wrapped option row) a select occupies in the given
-// locale. huh v2 subtracts the title/description rows from the field height to
-// size the option viewport, so this total leaves no blank card row below the
-// last option (REQ-ITI-015, AC-ITI-016; checked by the TestSelectCard_* renders
-// at 80 columns). Description and option rows are counted at
-// selectFieldUsableWidth from the locale's own text (audit F6). huh fixes a
-// select's height when it is set, so liveSelect re-applies this value from the
-// live locale after each message instead of fixing it at build time.
-func selectHeight(q *Question, locale string) int {
-	lq := GetLocalizedQuestion(q, locale)
-	return 1 + wrappedDescriptionRows(lq.Description) + wrappedOptionRows(lq.Options)
-}
-
-// selectSlotHeight is the constant height a select occupies in the form
-// layout: the tallest description and the most option rows across the base text
-// and every translated locale, so it is never below selectHeight of any locale.
-// huh measures a group once, in the start locale, and hands a field its height
-// cap only if the field is taller than the group at that moment (group.go
-// WithHeight); a slot that does not change with the locale keeps both
-// measurements valid after a locale switch (audit iter16 F1, F2).
-func selectSlotHeight(q *Question) int {
-	descRows := wrappedDescriptionRows(q.Description)
-	optionRows := wrappedOptionRows(q.Options)
-	for locale := range translations {
-		lq := GetLocalizedQuestion(q, locale)
-		descRows = max(descRows, wrappedDescriptionRows(lq.Description))
-		optionRows = max(optionRows, wrappedOptionRows(lq.Options))
-	}
-	return 1 + descRows + optionRows
-}
-
-// wrappedOptionRows is the total row count of the rendered option rows
-// (alignOptionLabels' label + " - " + description text) wrapped at the select
-// field's usable width; an option that fits still counts one row.
-func wrappedOptionRows(opts []Option) int {
-	rows := 0
-	for _, o := range alignOptionLabels(opts) {
-		rows += wrappedDescriptionRows(o.Key)
-	}
-	return rows
-}
-
-// wrappedDescriptionRows is the row count of a description wrapped at the
-// select field's usable width.
-func wrappedDescriptionRows(desc string) int {
-	return lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(desc))
+// selectHeight computes the TOTAL field height (title + wrapped description
+// + every option row) for a select whose OptionsFunc carries the dynamic
+// option set. huh v2 subtracts the title/description rows from this value to
+// size the option viewport, so passing the exact total renders every option
+// with no blank card rows (REQ-ITI-015, AC-ITI-016). The description wrap is
+// recomputed at the usable width so a long description never hides options.
+func selectHeight(q *Question) int {
+	descLines := lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(q.Description))
+	return 1 + descLines + len(q.Options)
 }
 
 // alignOptionLabels renders one option per label/desc pair with the
@@ -385,90 +346,8 @@ func alignOptionLabels(opts []Option) []huh.Option[string] {
 	return out
 }
 
-// liveSelect wraps a huh select so its card follows the live locale while its
-// footprint in the form does not. huh v2 fixes a select's height when it is set
-// (there is no HeightFunc), while the title, description, and options are
-// reactive through the locale binding; the wrapper re-applies the card height
-// after every message, from the locale in effect, so the bordered card
-// occupies exactly the rows of the locale it shows (no empty card row below the
-// last option). View then pads the card with plain rows (no border) up to the
-// constant slot, so the height the group measures is the same in every locale.
-type liveSelect struct {
-	*huh.Select[string]
-	q      *Question
-	locale *string
-	// slot is the locale-independent height this select occupies in the form
-	// (selectSlotHeight).
-	slot int
-	// limit is the height cap the enclosing group hands down (huh clamps a
-	// field to the form height); 0 means uncapped.
-	limit int
-	// card is the height last applied to the select (fit).
-	card int
-}
-
-// fit applies the live-locale card height, honoring the group's cap.
-func (s *liveSelect) fit() {
-	h := selectHeight(s.q, *s.locale)
-	if s.limit > 0 && s.limit < h {
-		h = s.limit
-	}
-	s.card = h
-	s.Height(h)
-}
-
-// View renders the card followed by plain blank rows (no border) up to the slot,
-// so the field's rendered height — what the group measures — does not depend on
-// the locale. The padding is the slot minus the applied card height, so
-// whatever rows huh adds around the card count once, identically, in every
-// locale.
-func (s *liveSelect) View() string {
-	view := s.Select.View()
-	if pad := s.slot - s.card; pad > 0 {
-		view += strings.Repeat("\n", pad)
-	}
-	return view
-}
-
-// Update delegates to the select, then re-fits the height so the viewport is
-// sized from the title/description/options the message just applied.
-func (s *liveSelect) Update(msg tea.Msg) (huh.Model, tea.Cmd) {
-	_, cmd := s.Select.Update(msg)
-	s.fit()
-	return s, cmd
-}
-
-// WithHeight records the group's cap instead of fixing the height outright.
-func (s *liveSelect) WithHeight(h int) huh.Field {
-	s.limit = h
-	s.fit()
-	return s
-}
-
-// WithTheme, WithKeyMap, WithWidth and WithPosition return the wrapper (not the
-// inner select) so the group keeps the live-height behavior.
-func (s *liveSelect) WithTheme(t huh.Theme) huh.Field {
-	s.Select.WithTheme(t)
-	return s
-}
-
-func (s *liveSelect) WithKeyMap(k *huh.KeyMap) huh.Field {
-	s.Select.WithKeyMap(k)
-	return s
-}
-
-func (s *liveSelect) WithWidth(w int) huh.Field {
-	s.Select.WithWidth(w)
-	return s
-}
-
-func (s *liveSelect) WithPosition(p huh.FieldPosition) huh.Field {
-	s.Select.WithPosition(p)
-	return s
-}
-
 // buildSelectField creates a huh.Select field for a select-type question.
-func buildSelectField(q *Question, result *WizardResult, locale *string) *liveSelect {
+func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Select[string] {
 	var selected string
 
 	// Set default value as initial selection.
@@ -510,6 +389,7 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *liveSe
 		}, locale).
 		Options(optionsFn()...).
 		OptionsFunc(optionsFn, locale).
+		Height(selectHeight(q)).
 		Value(&selected)
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
@@ -518,9 +398,7 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *liveSe
 		return nil
 	})
 
-	ls := &liveSelect{Select: sel, q: q, locale: locale, slot: selectSlotHeight(q)}
-	ls.fit()
-	return ls
+	return sel
 }
 
 // secretInputIDs lists wizard question IDs whose entered value is a secret
