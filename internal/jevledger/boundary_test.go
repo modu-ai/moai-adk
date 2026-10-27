@@ -14,7 +14,9 @@ import (
 // resolver stay outside the request path. The import check is written
 // STRICTER than the AC wording (binding run condition N1): instead of a short
 // denylist, it is an allowlist plus a network/exec denylist, so net/rpc,
-// net/smtp, os/exec and a third-party HTTP client are all refused.
+// net/smtp, os/exec and a third-party HTTP client are all refused, and
+// syscall is refused outside the open-flags files (open_unix.go /
+// open_other.go), the only two that need it (debt D4).
 //
 // The read-back check is lexical; a read through another spelling is a
 // residual risk owned by review.
@@ -36,11 +38,16 @@ func networkOrExec(path string) bool {
 
 // classify returns "" when the import is allowed and the reason otherwise.
 // allowYAML widens the allowlist by the yaml library for the one file that
-// holds the two UnmarshalYAML(*yaml.Node) methods.
-func classify(path string, allowYAML bool) string {
+// holds the two UnmarshalYAML(*yaml.Node) methods. allowSyscall widens it by
+// syscall for the open-flags files only (open_unix.go / open_other.go): the
+// recorder core must not grow syscall use unnoticed (sync audit debt D4 of
+// card t1762, repaired by card t1979).
+func classify(path string, allowYAML, allowSyscall bool) string {
 	switch {
 	case networkOrExec(path):
 		return "can reach the network or start a process"
+	case path == "syscall" && !allowSyscall:
+		return "imports syscall, allowed only in the open-flags files"
 	case allowYAML && path == yamlLibrary:
 		return ""
 	case !stdlib(path):
@@ -53,12 +60,12 @@ func classify(path string, allowYAML bool) string {
 // source: strconv.Unquote resolves both the double-quoted and the backtick
 // form, and a literal it cannot resolve is itself a finding, never an allowed
 // import. It returns "" when the import is allowed.
-func importFinding(file, literal string, allowYAML bool) string {
+func importFinding(file, literal string, allowYAML, allowSyscall bool) string {
 	path, err := strconv.Unquote(literal)
 	if err != nil {
 		return file + " has an unparsable import path " + literal + ": " + err.Error()
 	}
-	if why := classify(path, allowYAML); why != "" {
+	if why := classify(path, allowYAML, allowSyscall); why != "" {
 		return file + " imports " + path + ": " + why
 	}
 	return ""
@@ -66,7 +73,7 @@ func importFinding(file, literal string, allowYAML bool) string {
 
 // scanImports parses the import clauses of files and returns one finding per
 // refused import, plus the number of files that were actually parsed.
-func scanImports(t *testing.T, files []string, allowYAML bool) (findings []string, scanned int) {
+func scanImports(t *testing.T, files []string, allowYAML, allowSyscall bool) (findings []string, scanned int) {
 	t.Helper()
 	fset := token.NewFileSet()
 	for _, file := range files {
@@ -76,7 +83,7 @@ func scanImports(t *testing.T, files []string, allowYAML bool) (findings []strin
 		}
 		scanned++
 		for _, imp := range f.Imports {
-			if finding := importFinding(filepath.Base(file), imp.Path.Value, allowYAML); finding != "" {
+			if finding := importFinding(filepath.Base(file), imp.Path.Value, allowYAML, allowSyscall); finding != "" {
 				findings = append(findings, finding)
 			}
 		}
@@ -103,12 +110,18 @@ func nonTestGoFiles(t *testing.T, dir string) []string {
 
 func TestLedgerPackage_ImportBoundary(t *testing.T) {
 	t.Run("recorder-package", func(t *testing.T) {
-		findings, scanned := scanImports(t, nonTestGoFiles(t, "."), false)
-		if scanned == 0 {
+		files := nonTestGoFiles(t, ".")
+		if len(files) == 0 {
 			t.Fatal("the scan counted no file in internal/jevledger, so it established nothing")
 		}
-		for _, f := range findings {
-			t.Errorf("(a) %s", f)
+		for _, file := range files {
+			// syscall is allowed only where the open flags live (open_unix.go,
+			// open_other.go), never in the recorder core (debt D4).
+			allowSyscall := strings.HasPrefix(filepath.Base(file), "open_")
+			findings, _ := scanImports(t, []string{file}, false, allowSyscall)
+			for _, f := range findings {
+				t.Errorf("(a) %s", f)
+			}
 		}
 	})
 
@@ -117,7 +130,7 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		if _, err := os.Stat(resolver); err != nil {
 			t.Fatalf("jev_consumers.go was not found, so the scan below would be vacuous: %v", err)
 		}
-		findings, scanned := scanImports(t, []string{resolver}, true)
+		findings, scanned := scanImports(t, []string{resolver}, true, false)
 		if scanned != 1 {
 			t.Fatalf("scanned %d files, want exactly jev_consumers.go", scanned)
 		}
@@ -127,31 +140,35 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 	})
 
 	// Positive controls: the classifier refuses what it must, and allows the
-	// yaml library only where the AC allows it.
+	// yaml library only where the AC allows it, and syscall only in the
+	// open-flags files.
 	t.Run("classifier-controls", func(t *testing.T) {
 		for _, path := range []string{
-			"net", "net/http", "net/rpc", "net/smtp", "net/http/httputil", "os/exec",
+			"net", "net/http", "net/rpc", "net/smtp", "net/http/httputil", "os/exec", "syscall",
 			"github.com/modu-ai/moai-adk/internal/jev", "github.com/modu-ai/moai-adk/internal/jevcred",
 			"github.com/go-resty/resty/v2", yamlLibrary,
 		} {
-			if classify(path, false) == "" {
+			if classify(path, false, false) == "" {
 				t.Errorf("(a) classifier allows %q", path)
 			}
 		}
 		for _, path := range []string{
-			"net", "net/http", "net/rpc", "net/smtp", "os/exec",
+			"net", "net/http", "net/rpc", "net/smtp", "os/exec", "syscall",
 			"github.com/modu-ai/moai-adk/internal/jev", "github.com/modu-ai/moai-adk/internal/jevcred",
 			"github.com/go-resty/resty/v2",
 		} {
-			if classify(path, true) == "" {
+			if classify(path, true, false) == "" {
 				t.Errorf("(b) classifier allows %q", path)
 			}
 		}
-		if classify(yamlLibrary, true) != "" {
+		if classify(yamlLibrary, true, false) != "" {
 			t.Error("(b) classifier refuses the yaml library in the resolver file")
 		}
-		for _, path := range []string{"encoding/json", "fmt", "os", "path/filepath", "syscall", "time"} {
-			if classify(path, false) != "" || classify(path, true) != "" {
+		if classify("syscall", false, true) != "" {
+			t.Error("classifier refuses syscall in an open-flags file")
+		}
+		for _, path := range []string{"encoding/json", "errors", "fmt", "io/fs", "os", "path/filepath", "time"} {
+			if classify(path, false, false) != "" || classify(path, true, false) != "" {
 				t.Errorf("classifier refuses the standard-library package %q", path)
 			}
 		}
@@ -161,12 +178,12 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 	// the scanner must not let an import it cannot read through as allowed.
 	t.Run("unparsable-literal-is-a-finding", func(t *testing.T) {
 		for _, literal := range []string{`"net/http`, "`net/http", `net/http`, `'xy'`, ``} {
-			if importFinding("x.go", literal, false) == "" {
+			if importFinding("x.go", literal, false, false) == "" {
 				t.Errorf("an import literal that does not resolve (%q) was allowed", literal)
 			}
 		}
 		for _, literal := range []string{`"fmt"`, "`fmt`"} {
-			if got := importFinding("x.go", literal, false); got != "" {
+			if got := importFinding("x.go", literal, false, false); got != "" {
 				t.Errorf("the standard-library import %s was refused: %s", literal, got)
 			}
 		}
@@ -179,30 +196,34 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		cases := []struct {
 			name, imp string
 			allowYAML bool
+			allowSys  bool // widen the allowlist by syscall, as the open-flags files do
 			raw       bool // spell the import path as a backtick string literal
 		}{
-			{"net-http", "net/http", false, false},
-			{"net-rpc", "net/rpc", false, false},
-			{"net-smtp", "net/smtp", false, false},
-			{"os-exec", "os/exec", false, false},
-			{"internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, false},
-			{"third-party-http-client", "github.com/go-resty/resty/v2", false, false},
-			{"yaml-in-recorder", yamlLibrary, false, false},
-			{"resolver-net-http", "net/http", true, false},
-			{"resolver-net-rpc", "net/rpc", true, false},
-			{"resolver-net-smtp", "net/smtp", true, false},
-			{"resolver-os-exec", "os/exec", true, false},
-			{"resolver-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", true, false},
-			{"resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, false},
+			{"net-http", "net/http", false, false, false},
+			{"net-rpc", "net/rpc", false, false, false},
+			{"net-smtp", "net/smtp", false, false, false},
+			{"os-exec", "os/exec", false, false, false},
+			{"syscall-in-recorder", "syscall", false, false, false},
+			{"internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, false, false},
+			{"third-party-http-client", "github.com/go-resty/resty/v2", false, false, false},
+			{"yaml-in-recorder", yamlLibrary, false, false, false},
+			{"resolver-net-http", "net/http", true, false, false},
+			{"resolver-net-rpc", "net/rpc", true, false, false},
+			{"resolver-net-smtp", "net/smtp", true, false, false},
+			{"resolver-os-exec", "os/exec", true, false, false},
+			{"resolver-syscall", "syscall", true, false, false},
+			{"resolver-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", true, false, false},
+			{"resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, false, false},
 			// The same refusals spelled with backticks (sync audit F3): a scanner
 			// that only trims double quotes passes every one of these.
-			{"raw-net-http", "net/http", false, true},
-			{"raw-os-exec", "os/exec", false, true},
-			{"raw-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, true},
-			{"raw-yaml-in-recorder", yamlLibrary, false, true},
-			{"raw-resolver-net-http", "net/http", true, true},
-			{"raw-resolver-os-exec", "os/exec", true, true},
-			{"raw-resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, true},
+			{"raw-net-http", "net/http", false, false, true},
+			{"raw-os-exec", "os/exec", false, false, true},
+			{"raw-internal-jev", "github.com/modu-ai/moai-adk/internal/jev", false, false, true},
+			{"raw-yaml-in-recorder", yamlLibrary, false, false, true},
+			{"raw-syscall-in-recorder", "syscall", false, false, true},
+			{"raw-resolver-net-http", "net/http", true, false, true},
+			{"raw-resolver-os-exec", "os/exec", true, false, true},
+			{"raw-resolver-third-party-http-client", "github.com/go-resty/resty/v2", true, false, true},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -215,7 +236,7 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 				if err := os.WriteFile(file, []byte(src), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				findings, scanned := scanImports(t, []string{file}, tc.allowYAML)
+				findings, scanned := scanImports(t, []string{file}, tc.allowYAML, tc.allowSys)
 				if scanned != 1 || len(findings) != 1 {
 					t.Errorf("scanned=%d findings=%v, want the import %q refused", scanned, findings, tc.imp)
 				}
@@ -228,8 +249,19 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 			if err := os.WriteFile(file, []byte("package ok\n\nimport _ "+quote+yamlLibrary+quote+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if findings, _ := scanImports(t, []string{file}, true); len(findings) != 0 {
+			if findings, _ := scanImports(t, []string{file}, true, false); len(findings) != 0 {
 				t.Errorf("the yaml library is refused in the resolver file (%s quoting): %v", quote, findings)
+			}
+		}
+		// syscall in an open-flags file is the one allowed syscall import: it
+		// must NOT be a finding, or open_unix.go itself could never pass (D4).
+		for _, quote := range []string{`"`, "`"} {
+			file := filepath.Join(t.TempDir(), "open_ok.go")
+			if err := os.WriteFile(file, []byte("package ok\n\nimport _ "+quote+"syscall"+quote+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if findings, _ := scanImports(t, []string{file}, false, true); len(findings) != 0 {
+				t.Errorf("syscall is refused in an open-flags file (%s quoting): %v", quote, findings)
 			}
 		}
 	})
@@ -237,7 +269,10 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 
 // readBack lists the spellings of reading a file that the recorder must never
 // contain (REQ-JEVL-011: the recorder never opens the ledger for reading).
-var readBack = []string{"os.Open(", "os.ReadFile(", "O_RDONLY"}
+// os.O_RDWR is listed as its qualified spelling (sync audit debt D5 of card
+// t1762, repaired by card t1979): a bare "O_RDWR" would false-positive on a
+// hypothetical constant of the same name, and an open that can read is a read.
+var readBack = []string{"os.Open(", "os.ReadFile(", "O_RDONLY", "os.O_RDWR"}
 
 func findReadBack(src string) []string {
 	var hits []string

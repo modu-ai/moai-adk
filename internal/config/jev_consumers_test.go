@@ -188,6 +188,35 @@ func TestJevConsumers_AliasEntry(t *testing.T) {
 	}
 }
 
+// D2 (sync audit of card t1762, repaired by card t1979): an item-level YAML
+// merge key (`c1: {<<: *base}`) used to drop the merged mode/threshold with
+// no warning at all — the entry decoded empty. The merge is still not
+// applied (applying it would retain the alias graph that F1 removed), but
+// the merge key is now reported as data.
+func TestJevConsumers_EntryMergeKeyWarns(t *testing.T) {
+	var wrapper struct {
+		Consumers JevConsumers `yaml:"consumers"`
+	}
+	src := "consumers:\n  base: &base {mode: advise, threshold: 0.25}\n  c1:\n    <<: *base\n  ok: {mode: steer}\n"
+	if err := yaml.Unmarshal([]byte(src), &wrapper); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	w := wrapper.Consumers.SectionWarnings()
+	if len(w) != 1 || !strings.Contains(w[0], "merge key") {
+		t.Fatalf("section warnings = %v, want exactly one naming the merge key", w)
+	}
+	r, ok := wrapper.Consumers.Resolve("c1")
+	if !ok {
+		t.Fatal("c1 not present after the merge key")
+	}
+	if r.Configured != "" || r.Threshold != nil || len(r.Warnings) != 0 {
+		t.Errorf("merged values must not be applied and add no per-entry warning, got %+v", r)
+	}
+	if got, _ := wrapper.Consumers.Resolve("ok"); got.Configured != "steer" {
+		t.Errorf("the valid neighbour did not survive: %+v", got)
+	}
+}
+
 // jevCapture swaps the process-wide sinks a stray write could reach, runs fn,
 // and returns everything that was written to any of them.
 func jevCapture(t *testing.T, fn func()) (stdout, stderr string, records int) {
@@ -482,6 +511,38 @@ func jevBombConsumer(name, key string, depth int) string {
 	return b.String()
 }
 
+// jevMapBombConsumer returns the body of one consumer whose `key` holds a
+// mapping-chain alias bomb: each anchor is a two-key map whose values are the
+// previous anchor, so expanding the chain yields 2^n leaves. Catches a retain
+// helper that keeps a mapping's Content (mutation M3 of the t1762 audit,
+// debt D1 — the sequence bomb above does not see that mutation).
+func jevMapBombConsumer(name, key string, depth int) string {
+	var b strings.Builder
+	b.WriteString("            " + name + ":\n")
+	b.WriteString("                m0: &m0 {x: z, y: z}\n")
+	for i := 1; i <= depth; i++ {
+		fmt.Fprintf(&b, "                m%d: &m%d {x: *m%d, y: *m%d}\n", i, i, i-1, i-1)
+	}
+	fmt.Fprintf(&b, "                %s: *m%d\n", key, depth)
+	return b.String()
+}
+
+// jevMergeBombConsumer returns the body of one consumer whose `key` holds a
+// merge-key alias bomb: `key: {<<: *m<depth>}` merges the deep chain into a
+// mapping value. A retained mapping Content carries the merge key's alias
+// link, so the cache expands the chain through it (the second shape D1 asks
+// for).
+func jevMergeBombConsumer(name, key string, depth int) string {
+	var b strings.Builder
+	b.WriteString("            " + name + ":\n")
+	b.WriteString("                m0: &m0 {x: z, y: z}\n")
+	for i := 1; i <= depth; i++ {
+		fmt.Fprintf(&b, "                m%d: &m%d {x: *m%d, y: *m%d}\n", i, i, i-1, i-1)
+	}
+	fmt.Fprintf(&b, "                %s: {<<: *m%d}\n", key, depth)
+	return b.String()
+}
+
 // jevCacheBytes loads the project through the cache-writing path and returns
 // the size of the cache file it wrote, plus the loaded config.
 func jevCacheBytes(t *testing.T, configDir string) (int64, *Config) {
@@ -512,10 +573,12 @@ func TestJevConsumers_AliasBombStaysBoundedInCache(t *testing.T) {
 	tail := "            ok: {mode: advise, threshold: 0.25}\n"
 
 	benignDir := jevWriteWorkflow(t, t.TempDir(), head+
-		"            c1: {threshold: [z, z]}\n            c2: {mode: [z, z]}\n"+tail)
+		"            c1: {threshold: [z, z]}\n            c2: {mode: [z, z]}\n"+
+		"            c3: {mode: {x: z, y: z}}\n            c4: {threshold: {<<: {x: z}}}\n"+tail)
 	baseline, _ := jevCacheBytes(t, benignDir)
 
-	bombBody := head + jevBombConsumer("c1", "threshold", depth) + jevBombConsumer("c2", "mode", depth) + tail
+	bombBody := head + jevBombConsumer("c1", "threshold", depth) + jevBombConsumer("c2", "mode", depth) +
+		jevMapBombConsumer("c3", "mode", depth) + jevMergeBombConsumer("c4", "threshold", depth) + tail
 	if len(bombBody) > 4096 {
 		t.Fatalf("the fixture grew to %d bytes; the point is that it is tiny", len(bombBody))
 	}
@@ -531,7 +594,7 @@ func TestJevConsumers_AliasBombStaysBoundedInCache(t *testing.T) {
 		if !c.Workflow.Jev.Enabled || !c.Workflow.CommitIdentityGuard.Enabled {
 			t.Errorf("%s: the workflow section was reset", label)
 		}
-		for _, name := range []string{"c1", "c2"} {
+		for _, name := range []string{"c1", "c2", "c3", "c4"} {
 			r, ok := c.Workflow.Jev.Consumers.Resolve(name)
 			if !ok || r.Effective != JevModeShadow || r.Threshold != nil || len(r.Warnings) != 1 {
 				t.Errorf("%s: %s resolved to %+v (found=%v), want shadow, no threshold and one warning", label, name, r, ok)
