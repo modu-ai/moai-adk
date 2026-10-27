@@ -105,6 +105,13 @@ run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오�
 - **N12 소실**: REQ-CIF-011 구현체(`migrate_local_instructions.go` EEXIST 분기 + 주석 "ownership proof = this process's own O_EXCL creation")와 `TestMigrateLocalInstructions_EEXISTForeignDestination`(양쌍 — 외부 파일 백업 이동 0건·양쪽 제자리 단언)로 명시화.
 - **N13 소실**: `TestResolveInstructionPairPreference` fixture 테이블이 로컬 쌍을 포함(공유·로컬 × coexist/canonical-only/legacy-only) — 로컬 쌍 우선 mutant 불통과.
 
+### 수리 사이클 — PR #1944 CI 재분류 + 카드 귀속분 수리 (커밋 `8241597156`, 2026-10-28)
+
+- **재분류 (표는 리더 보고 msg 6a4f0e0e)**: 카드 귀속 3(fmt-check 2파일 gofmt 위반·Jev 링키지 토큰 부재·userassets codus-face 미변환) / 상속 2(spec-lint = main이 55b20438fd[t1963, 2026-10-26]부터 SPEC Lint 3연속 failure — 전이 트레일러 파인딩, t1963 소유 · graph-freshness 기존 판정) / 미귀속-플레이크 의심 1(windows worktree 2테스트 — 본 카드 무편집 패키지·로컬 PASS·새 head 전체 CI 재실행으로 재판정[리더 중계]) / 파생 2(Race remainder·Runtime Gate = 앞 2근원 집계).
+- **수리 3건**: (1) gofmt 2파일 — `make fmt-check` 클린 관측 (2) CLAUDE.local.md §29에 Jev 수정 예외 조항 토큰 재삽입 — first-commit 축 불변 실측(해당 경로 토큰 최초 등장 185569ef3f, 재삽입 후 동일 — `git log --reverse -S` 관측) (3) `internal/userassets/{install,remove}.go`: `NormalizeCodexRoleForDeploy` 뒤 `codexInstructionFace`(CLAUDE.md/CLAUDE.local.md→AGENTS 면) 사후 매핑 — template 쪽 REQ-CIF-004 반전(배포물 CLAUDE 지향)은 무손상, codex 사용자-설치 면의 제품 계약(REQ-CNV-001 AC-006/007, 변환 기대 AGENTS.md) 유지.
+- **범위 해석 기록 (리더 승인 msg 참조)**: internal/userassets/{install,remove}.go 편집은 lane 합의 허용 규정("t1984 금지 14파일 밖 + 지침 파일 참조 표면 + 그 시험")의 '지침 파일 참조 표면'에 해당 — 해당 변환 코드는 지침 파일 참조 표면 그 자체이며, card-review R2가 세운 선례(배포 표면=정규 이름 지향)와 대칭으로 codex 설치 면은 자기 독자(reader)가 발견하는 면을 유지. 리더가 동일 독해로 승인(2026-10-28).
+- **검증 (자원 규칙: 스코프 단일 패키지 -run·슬롯 `go-test` 임대/해제·timeout 래퍼·부하 기록 1차 70.72/44.10/38.54 → 2차 82.32/54.56/43.06)**: `go test ./internal/userassets/ -run '…Converted$|…NoClaudeOnlyRefs$'` ok 0.394s · `./internal/contract/kickoff/ -run '^TestJevAmendmentLinkage$'` ok 14.286s · `./internal/template/ -run '^TestJevDoctrineAmendment$'` ok 0.531s.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
