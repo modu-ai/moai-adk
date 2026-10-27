@@ -124,6 +124,22 @@ hunk(기준 `c4349ba30f` 의 줄 번호):
 
 미룬 것(deferred): 없음.
 
+### Plan-phase scope split (card t1969, decision record 15.123)
+
+입력: plan 감사 12회차(FAIL 0.90, 차단 D1, `.moai/reports/t1969/plan-audit-verdict-iter12.md`) — 호출 지점 표의 ko·ja·zh 칸에 정확성 규칙이 없다. 리더 결정 기록 §15.123(합의된 안전 고정, 수리 아님, 1회 실행·1커밋): 후속 카드 t1989(이 카드에 의존)가 AC-TCL-008, 그 번역 서식·일관성 검사, 호출 지점 표, D1~D5 를 맡는다. 기준 HEAD `f6a603fa627917767f7a47fbc00333b609bc645c` — 넘기기 전 문구는 그 커밋에 있다. spec.md version `0.2.6` → `0.2.7`.
+
+지운 것: acceptance.md 의 AC-TCL-008 제목과 본문 전부(Given, 호출 지점 표와 키 수 가드, 형식 지시 없는 키 목록, RED·녹색 경로, 뮤턴트, 사실 칸 `fmtprobe`·`table9`·`encol9`, 계속 발화). design.md §6 의 서식 지시 키 문장과 ja·zh ≠ en·허용 목록 문장, §7 probe 단락의 "AC-TCL-008 의 키 수 조건" 괄호. plan.md M1 의 `TestChecklistCatalogFourLocales` 줄과 "en 과 다른 문구여야 한다(허용 목록 예외만)" 절. spec.md §6 추적표의 AC-TCL-008 행, §3.5 의 카탈로그 규칙 줄. REQ-TCL-009 에서 AC-TCL-008 에만 대응하던 절(네 카탈로그에 있는 키, ja·zh ≠ en 과 허용 목록). spec.md §3.1 끝에 이전 줄 하나를 더했다.
+
+다시 가리킨 것: plan.md §H R-5(키 동치·en 과 다름 → 카드 t1989), plan.md §A 산출물 줄(AC 23개), plan.md §F E1(AC-TCL-008 을 뺀 23개), acceptance.md §F 완료 정의 범위(AC-TCL-008 건너뜀), spec.md §3.5 렌더러 계약 범위, acceptance.md 범위 문단(8번 기준을 넘김).
+
+새 수: REQ 23(REQ-TCL-001~023, id 그대로), AC 23(AC-TCL-001~007, AC-TCL-009~024, 다시 매기지 않음). REQ-TCL-009 는 덮개가 남는다 — AC-TCL-009(미지원 언어 대체), AC-TCL-011, AC-TCL-023(원시 키 부재)의 `maps`. 덮개 없는 REQ 는 없다.
+
+Tier·예산 다시 셈: Tier L 유지. 예산 상한은 Tier L 이 REQ 25·AC 25(spec-workflow.md § SPEC Complexity Tier)이고 새 수는 23·23 으로 둘 다 안이다. Tier M 상한(16·16)에는 여전히 넘는다. plan.md §A.1 의 파일·줄 근거는 이 회차에 바뀌지 않는다 — 지운 것은 문서 검사 하나이고, 만들거나 고칠 파일 목록(카탈로그 yaml 네 개 포함)은 그대로다.
+
+덮개가 없어진 조건(t1989 로 넘김): 네 카탈로그 `checklist.*` 키 집합 동치, 값이 비어 있지 않음, 값 ≠ 키, 이모지 범위, ja·zh 값 ≠ en 과 허용 목록, en 키 수 = design.md §6 이 카드 범위 키 수, 서식 지시 키의 언어별 출력 일치(호출 지점 표).
+
+미룬 것(deferred): 위 조건 전부 — 카드 t1989.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

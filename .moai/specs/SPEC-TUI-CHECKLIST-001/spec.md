@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.6"
+version: "0.2.7"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -29,6 +29,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.4 plan 델타 7회차 (manager-spec, 리더 결정 기록 §15.111, 1회 승인·1커밋). codex P2 두 건(영수증 `rcpt-50fb41f52e6c83eab02ffa04`, 레인 실행 `rcpt-ac0ee402340ec744d7eb4a7a`, 둘 다 `eff053068d`)과 남은 선택 결함을 고쳤다. AC-TCL-008 의 서식 서명을 Go `fmt` 의 실제 인자 소비 규칙으로 정의하고 실제 `fmt.Sprintf` 대표 값 횟수 비교로 재게 했다. AC-TCL-016 비활성 대조 실행이 만들어지도록 시험 시접 `checklistSessionStartFn` 을 수집기 수준(활성·비활성 모두, 생산 값 `nil`)으로 옮겼다(design.md §3.7). 함께: N8-6(§6 추적표 AC-TCL-001 에 M4, plan.md M4 목록), N9-1(acceptance.md §F 의 AC-TCL-022 판정 문구), N9-2(위 v0.2.1 보충 행), N8-2(AC-TCL-013 ISO 시각 규칙의 구분자 `[:-]`). REQ·AC id 와 수는 그대로(23·24). 처분 상세는 progress.md §E.1 델타 7 단락.
 - 2026-10-27 — v0.2.5 plan 델타 8회차 (manager-spec, 리더 결정 기록 §15.115, 1회 승인·1커밋). codex 가 AC-TCL-008 의 손으로 쓴 소비 규칙에서 셋째 `fmt` 문법 구석(번호 뒤 문자 그대로의 퍼센트, `%[1]s %[2]% %s` 와 `%[1]s %[2]% %[2]s` 가 둘 다 `A % B`)을 찾았다. 리더 판정대로 규칙을 다시 고치지 않고 지웠다 — AC-TCL-008 은 실제 Go `fmt` 실행만으로 판정한다(en 값에서 `%!` 없는 첫 기준 인자 조합을 `fmt` 로 찾고, 네 언어 출력의 `%!` 부재와 기준 인자별 출현 횟수를 비교), 고정 회귀 묶음을 단언한다. design.md §6 문구를 맞췄다. 함께 닫은 선택 결함: design.md §3.7 시접 부르는 곳의 둘째 예(수집기가 생기기 전에 도는 세션 시작 함수)를 수집기가 세션을 받는 지점으로 고침, AC-TCL-017 (c) 의 "세션 시작 때" → "수집기가 만들어진 직후", 해석기 대 `fmt` 단언(해석기가 없어져 성립하지 않음). REQ·AC id 와 수는 그대로(23·24), AC-TCL-008 의 뜻(네 언어 서식 안전)도 그대로. 처분 상세는 progress.md §E.1 델타 8 단락.
 - 2026-10-27 — v0.2.6 plan 델타 9회차 (manager-spec, 리더 결정 기록 §15.119, 1회 승인·1커밋). 리더 audit_multi(영수증 `rcpt-5abf31cc8a860a40811fc6b9`, codex 필수, FAIL)의 P2 두 건 — 인자를 빠뜨린 번역이 v0.2.5 의 범용 판정 절차를 통과함(en `Project %.2s: %s` 대 ja `プロジェクト %[2]s`), 깨진 en 값(`broken %`)에서 절차의 탐색이 끝나지 않음 — 을 받아, 범용 판정 절차를 계약에서 빼고 AC-TCL-008 의 서식 조건을 고정 호출 지점 표(형식 키 × 네 언어 × 호출 지점의 실제 인자, 칸마다 기대 출력, `fmt.Sprintf` 바이트 비교)와 키 수 가드로 바꿨다. en 값과 en 기대 출력은 이 SPEC 이 정하고, ko·ja·zh 기대 출력은 M1 이 카탈로그 값과 같은 커밋에서 채운다. design.md §6 문구를 맞췄다. REQ·AC id 와 수는 그대로(23·24), AC-TCL-008 의 뜻과 서식 밖 조건도 그대로. 처분 상세는 progress.md §E.1 델타 9 단락.
+- 2026-10-27 — v0.2.7 plan 범위 분할 (manager-spec, 리더 결정 기록 §15.123, 1회 실행·1커밋, 수리가 아닌 안전 고정). plan 감사 12회차(FAIL 0.90, 차단 D1 — 호출 지점 표의 ko·ja·zh 칸에 정확성 규칙이 없음)를 받아, 리더가 후속 카드 t1989(이 카드에 의존)를 내고 AC-TCL-008 과 그 번역 서식·일관성 검사, 호출 지점 표, D1~D5 를 그 카드로 넘겼다. 이 SPEC 에서 AC-TCL-008 의 제목·본문·뮤턴트·사실 칸·표·키 수 가드, design.md §6 의 서식·ja·zh ≠ en 문장, plan.md M1 의 AC-TCL-008 테스트 줄, §6 추적표 행, §3.5 카탈로그 규칙 줄을 지웠고, REQ-TCL-009 에서 AC-TCL-008 에만 대응하던 네 카탈로그 존재·ja·zh ≠ en 절을 걷어냈다(§3.1 끝의 이전 줄). REQ 23개 그대로, AC 24 → 23. 나머지 id 는 다시 매기지 않았다. 처분 상세는 progress.md §E.1 범위 분할 단락.
 
 ## §1 배경과 문제
 
@@ -69,8 +70,10 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 - **REQ-TCL-006** — The renderer shall end a completed run with a summary block carrying the changed count, the preserved count where the caller supplies one, the warning count defined by decision D-9, the elapsed time, and every data field of the completion surface it replaces.
 - **REQ-TCL-007** — **While** `NO_COLOR` is set to a non-empty value, the renderer shall emit no SGR colour sequence.
 - **REQ-TCL-008** — **While** `MOAI_REDUCED_MOTION` is set to a value other than empty or `0`, the renderer shall draw running items with the static run glyph and shall emit no Braille spinner frame.
-- **REQ-TCL-009** — Every user-facing string the renderer draws shall come from a `checklist.*` key present in the en, ko, ja, and zh catalogues, the ja and zh values shall differ from the en value except for an allow-listed set of identifier-only values, and an unsupported language shall fall back to en.
+- **REQ-TCL-009** — Every user-facing string the renderer draws shall come from a `checklist.*` catalogue key, and an unsupported language shall fall back to en.
 - **REQ-TCL-010** — The init group/item plan shall hold at most 8 items per group; in a clean `moai init` run as defined in §3.3, the lines the checklist draws — header, environment line, group titles, item lines, and summary block — shall number at most 24, counted in the line unit §3.3 defines, and every direct-print line §3.3 lists as separately counted shall appear with unchanged text exactly as many times as in the M0 baseline run of the same fixture.
+
+번역 문자열의 정확성 요구(네 카탈로그의 `checklist.*` 키 집합 동치, 값이 비어 있지 않고 키와 다름, 이모지 범위, ja·zh 값이 en 과 다름과 그 허용 목록, en 키 수, 서식 지시 키의 언어별 출력 일치)는 지운 것이 아니라 카드 t1989 로 넘겼다(리더 결정 기록 §15.123) — 넘기기 전 문구는 커밋 `f6a603fa62` 의 REQ-TCL-009 와 acceptance.md 8번 기준에 있다.
 
 ### §3.2 init 연결과 대체
 
@@ -127,11 +130,10 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 
 이 SPEC 이 착지하면 t1978 은 아래를 그대로 쓴다. 이 계약은 이 SPEC 의 REQ 와 AC 가 지키므로, t1978 은 다시 증명하지 않고 연결만 더한다.
 
-- **렌더러 계약**(REQ-TCL-001 부터 REQ-TCL-009 까지, AC-TCL-001 부터 AC-TCL-009 까지와 AC-TCL-023): `NewChecklist`·`Header`·`Item`·`Update`·`Detail`·`Warn`·`Keep`·`Done`·`Fail`·`Skip`·`Summary`(design.md §2). 계획표와 그룹·항목 키는 호출자가 넘긴다 — 렌더러에 init 전용 지식이 없다. 요약은 보존 수·백업 경로·복구 명령을 선택 필드로 받는다(AC-TCL-005 가 update 모양 요약으로 검사).
+- **렌더러 계약**(REQ-TCL-001 부터 REQ-TCL-009 까지, AC-TCL-001 부터 AC-TCL-007 까지, AC-TCL-009, AC-TCL-023): `NewChecklist`·`Header`·`Item`·`Update`·`Detail`·`Warn`·`Keep`·`Done`·`Fail`·`Skip`·`Summary`(design.md §2). 계획표와 그룹·항목 키는 호출자가 넘긴다 — 렌더러에 init 전용 지식이 없다. 요약은 보존 수·백업 경로·복구 명령을 선택 필드로 받는다(AC-TCL-005 가 update 모양 요약으로 검사).
 - **이벤트 모델**: 한 번에 열린 항목 하나, 새 `Item` 이 열린 항목을 암묵 `Done` 으로 닫음, 종료 전환 두 번은 panic, 이벤트가 올 때만 다시 그림(결정 D-3).
 - **활성 판정**(REQ-TCL-011): 다섯 입력을 모으는 한 함수 `checklistEnv(cmd, verbose)` 와 시접 세 개(TTY 탐지, 프로세스 스트림, 강제 켜기 — design.md §3.1). update 는 같은 함수를 부르기만 하면 된다.
 - **세션**(REQ-TCL-014, REQ-TCL-015, REQ-TCL-016, REQ-TCL-023): 캡처 작성기, 두 명령 작성기 모두의 경고 수신 인터페이스, 보존 줄 알림, 종료 처리(오류·취소·`nil` 조기 반환). REQ-TCL-015 의 요약 없는 실행 조항 두 개 — 요약 없이 끝나면 항목 밖 수집기 경고를 한 번 쓴다, 이미 실제 작성기에 나간 경고는 다시 쓰지 않는다 — 는 init 전용 조항이며 AC-TCL-017 (a1)·(a2)·(c)·(e) 가 판정한다(v0.2.0 의 t1978 이월은 리더 결정 기록 §15.102 로 철회, plan.md §K K-3). 세션은 init 전용 코드가 아니다 — 명령이 세션을 만들지 않으면 아무 일도 하지 않는다.
-- **카탈로그 규칙**(REQ-TCL-009, AC-TCL-008): 키 집합이 네 언어에서 같아야 한다는 테스트가 이미 있으므로, t1978 이 update 키를 더하면 네 언어에 함께 넣어야 녹색이다.
 - **골든 전략**(design.md §7·§8): 기준선 선행 커밋(M0) 규칙과 렌더러 골든의 `MANIFEST.txt` 규칙. update 대체 경로 기준선 골든 6개(`fallback/update-{clean,warn,fail}-{stdout,stderr}.golden`)는 이 카드의 M0 이 이미 찍는다 — t1978 은 그 골든을 update 연결 전의 기준선으로 쓴다.
 - **보존 줄 목록**(design.md §3.3.1): 이 카드에서 X11 로 분류해 둔 update 행을 t1978 이 P 행으로 되돌린다. 분류 조각과 행 id 는 그대로 둔다.
 
@@ -196,7 +198,6 @@ AC 와 REQ 의 대응 선언은 acceptance.md 각 기준 제목의 `maps` 목록
 | AC-TCL-005 | REQ-TCL-006 | M2 |
 | AC-TCL-006 | REQ-TCL-007 | M2 |
 | AC-TCL-007 | REQ-TCL-008 | M2 |
-| AC-TCL-008 | REQ-TCL-009 | M1 |
 | AC-TCL-009 | REQ-TCL-009 | M2 |
 | AC-TCL-010 | REQ-TCL-010 | M3 |
 | AC-TCL-011 | REQ-TCL-010, REQ-TCL-009 | M4 |

@@ -11,7 +11,7 @@ updated: 2026-10-27
 
 - 카드 t1969, Class C, P1. 워크트리 `.moai/worktrees/t1969`, 브랜치 `WT-moai-init-update`, plan 시점 HEAD `cb30e05b3e`(로컬 `main` 과 같음). 범위 축소 회차의 측정 HEAD `6f05252d6ddf62362a60cadbfc3350e0d068dbc4`(코드는 `cb30e05b3e` 와 같음 — acceptance.md 원장 L32).
 - 범위(v0.2.0, 리더 결정 기록 §15.98): 렌더러(`internal/tui/checklist.go`, 네 언어 카탈로그 키, 골든 기준선) + `moai init` 연결. update 연결은 카드 t1978(이 카드 착지 뒤 시작). 이월 목록은 §K.
-- 산출물: spec.md(REQ 23개 — id 그대로, update 조각만 걷어냄), acceptance.md(AC 24개 — id 그대로, 증거 원장 L1~L41), design.md, research.md, progress.md. 델타 4회차(v0.2.1)의 측정 HEAD 는 `274441db21a4be3cec01b78c0f9d496893d12479`(코드는 `cb30e05b3e` 와 같음).
+- 산출물: spec.md(REQ 23개 — id 그대로, update 조각만 걷어냄), acceptance.md(AC 23개 — id 그대로, v0.2.7 에 AC-TCL-008 을 t1989 로 넘김, 증거 원장 L1~L41), design.md, research.md, progress.md. 델타 4회차(v0.2.1)의 측정 HEAD 는 `274441db21a4be3cec01b78c0f9d496893d12479`(코드는 `cb30e05b3e` 와 같음).
 - 개발 방식: TDD(RED-GREEN-REFACTOR). 단, M0 은 특성화(기준선) 커밋이다.
 
 ### §A.0 회차 기록
@@ -108,8 +108,7 @@ go build ./...
 
 ### M1 — 어휘: 카탈로그 키 — Priority High
 
-- design.md §6 의 이 카드 범위 키를 en·ko·ja·zh 에 넣는다(update 전용 키는 t1978). ja·zh 는 초안이며 en 과 다른 문구여야 한다(허용 목록 예외만).
-- `TestChecklistCatalogFourLocales`(AC-TCL-008) 먼저 RED, 그다음 키 추가로 GREEN.
+- design.md §6 의 이 카드 범위 키를 en·ko·ja·zh 에 넣는다(update 전용 키는 t1978). ja·zh 는 초안이다.
 
 ### M2 — 렌더러 — Priority High
 
@@ -147,7 +146,7 @@ go build ./...
 
 각 항목은 명령·그대로의 출력·측정 HEAD 를 함께 적는다.
 
-- E1 AC 표(AC-TCL-001 부터 AC-TCL-024 까지, §A 의 `--- PASS:` 판정. AC-TCL-022 는 제거 전 기록. `[DEFERRED → t1978]` 조각은 표에 넣지 않는다)
+- E1 AC 표(AC-TCL-001 부터 AC-TCL-024 까지 가운데 AC-TCL-008 을 뺀 23개, §A 의 `--- PASS:` 판정. AC-TCL-022 는 제거 전 기록. `[DEFERRED → t1978]` 조각은 표에 넣지 않는다)
 - E2 `go build ./...`, `GOOS=windows GOARCH=amd64 go build ./...`
 - E3 `go test -cover ./internal/tui`
 - E4 `golangci-lint run --timeout=2m` 새 지적
@@ -175,7 +174,7 @@ go build ./...
 | R-2 | 캡처가 대화형 화면을 삼킴 | 사용자가 질문을 못 봄 | 위저드는 `cmd` 작성기를 쓰지 않음(research.md §4). AC-TCL-019 가 열린 줄 0 을 확인. 실제 TTY 육안 확인은 Gap G-2 |
 | R-3 | 접힌 상세에 경고·오류·안내가 섞여 사라짐 | 정보 손실 | 경고는 신호(수집기·`emitSeverityLine`)로, 직접 쓰기 줄은 보존 줄 목록(design.md §3.3.1, REQ-TCL-022)으로 따로 알린다. 목록은 `internal/cli` 전체 고정 검색 14개 모양(원장 L20·L26)의 모든 일치를 분류하고, AC-TCL-024 가 init 행을 하나씩 주입하며 `inventory_complete` 가 새 일치를 바로 잡는다. 남은 위험 셋: (가) 14개 검색 모양에 걸리지 않는 새 직접 쓰기(예: 새 `p.Info` 안내), (나) 궤도 밖 파일이 새로 init 에서 불리게 되는 변경(궤도는 한 단계 호출 추적과 출력 타입 파일로 정했다 — research.md §9), (다) `internal/cli` 밖 패키지가 명령 작성기를 받아 쓰는 경우(이번 검색 범위 밖) |
 | R-4 | init 체크리스트 줄 24 초과, 또는 직접 출력 줄 횟수가 기준선과 다름 | 한 화면 목표 위반 또는 정보 손실 | 항목 묶음(design.md §4), AC-TCL-011(체크리스트 줄 ≤ 24, 직접 출력 줄 다섯의 기준선 대비 증가 0·감소 0). 깨끗한 init 은 체크리스트 23줄 + 직접 출력 5줄(spec.md §3.3, 코드 읽기). M0 기준선에서 다섯 조각이 정확히 한 번씩 나오지 않거나 M4 실측이 넘으면 기준을 느슨하게 하지 않고 manager-spec 에 되돌린다. 화면 전체 상한은 운영자 질문(§G). update 예산은 t1978(§K) |
-| R-5 | ja·zh 초안 품질 | 어색한 문구 | 원어민 검수는 범위 밖(Gap G-5), 키 동치·en 과 다름은 AC-TCL-008 |
+| R-5 | ja·zh 초안 품질 | 어색한 문구 | 원어민 검수는 범위 밖(Gap G-5), 키 동치·en 과 다름은 카드 t1989 |
 | R-6 | 활성 판정 오탐 — 터미널인데 출력이 리디렉트된 경우 | 체크리스트가 파일에 기록됨 | 입력 수집을 한 함수로 모으고 fd 를 따로 판정(design.md §3.1). AC-TCL-012 명령 수준 하위 테스트 `init_stdout_not_tty`(`moai init > log`)·`init_stderr_not_tty`·`init_writer_replaced` 가 호출 지점 오류를 잡는다 |
 | R-7 | `ProgressLine` 의 비TTY 줄이 상세로 접힐 때 형식 변화 | 실패 펼침 모양이 예상과 다름 | AC-TCL-003 골든. `/usr/bin/grep -ln "ProgressLine(" internal/cli/init.go internal/cli/init_warnings.go internal/cli/init_resume.go internal/cli/reporter.go internal/cli/init_update_notice.go` → 빈 출력, 종료 1(이번 회차, `6f05252d6d`) — 이 다섯 파일에는 호출이 없다. 그 밖의 init 호출 경로는 재지 않았다. update 쪽 위험은 t1978 |
 | R-8 | 렌더러가 하나라는 제약(카드)과 보고기 어댑터 | 사실상 두 번째 렌더러처럼 보임 | 어댑터는 이벤트만 넘기고 그리지 않는다. 그리는 코드는 `checklist.go` 하나 |

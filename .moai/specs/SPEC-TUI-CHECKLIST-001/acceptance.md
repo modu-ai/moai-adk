@@ -2,7 +2,7 @@
 
 문서 핀: 원장 L1~L14 의 RED-now 측정은 트리 `cb30e05b3e`(워크트리 `.moai/worktrees/t1969`, 브랜치 `WT-moai-init-update`)에서 했다. 자기 핀이 없는 기준은 이 핀을 따른다. L15~L19 는 트리 `d241917d17a3754541ef5ad52536d68023faf142` 에서, L20~L25 는 트리 `b422a13d5377639d58fc672c986b81c678fe3318` 에서 쟀고 각 행에 핀을 따로 단다. 세 트리는 코드가 같다(`d241917d17`·`b422a13d53` 은 SPEC 디렉터리만 바꾼 plan 커밋 — 1회차 감사 E-3, 2회차 감사 E-1 `git diff --name-only cb30e05b3e HEAD`). L26~L33 은 범위 축소 회차(v0.2.0)에 트리 `6f05252d6ddf62362a60cadbfc3350e0d068dbc4` 에서 쟀다. 그 트리도 코드는 `cb30e05b3e` 와 같다(L32 — 기준 이후 바뀐 경로는 SPEC 디렉터리 여섯 파일뿐). L34~L41 은 델타 4회차(v0.2.1)에 트리 `274441db21a4be3cec01b78c0f9d496893d12479` 에서 쟀다. 그 트리도 코드는 `cb30e05b3e` 와 같다(확인 감사 5회차 E-1 의 L32 재실행 — 바뀐 경로는 SPEC 디렉터리뿐).
 
-**범위(v0.2.0).** 이 파일은 렌더러와 `moai init` 연결을 판정한다. update 연결 쪽 하위 테스트·조건은 `[DEFERRED → t1978]` 로 표시하고 이 SPEC 의 녹색 판정에 넣지 않는다. 이월 목록은 plan.md §K. AC id 는 하나도 지우거나 다시 매기지 않았다.
+**범위(v0.2.0).** 이 파일은 렌더러와 `moai init` 연결을 판정한다. update 연결 쪽 하위 테스트·조건은 `[DEFERRED → t1978]` 로 표시하고 이 SPEC 의 녹색 판정에 넣지 않는다. 이월 목록은 plan.md §K. AC id 는 다시 매기지 않았다. v0.2.7 에 네 언어 카탈로그 기준(8번) 하나를 카드 t1989 로 넘겨 지웠고(리더 결정 기록 §15.123), 나머지 id 는 그대로다.
 
 이 파일은 검증 층이다. 요구사항(REQ)의 GEARS 문장은 spec.md §3 에 있고, 여기서는 각 기준을 Given-When-Then 과 이진 판정으로 적는다. 각 기준 제목의 `maps` 목록이 REQ 대응을 선언한다.
 
@@ -132,57 +132,6 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 - 녹색 경로(M2): `go test ./internal/tui -run '^TestChecklistReducedMotion$' -count=1 -v` → `--- PASS: TestChecklistReducedMotion `. 이 테스트는 `t.Setenv` 를 쓰므로 `t.Parallel` 을 쓰지 않는다.
 - 뮤턴트: 항상 `●` 만 쓰는 렌더러 → 대조(환경 변수 비움)에서 `⠋` 부재로 실패.
 - 계속 발화: 패키지 기본 실행.
-
-### AC-TCL-008 — 네 언어 카탈로그 동치 (maps REQ-TCL-009)
-
-- Given en·ko·ja·zh 카탈로그, When `checklist.` 로 시작하는 키 집합을 비교하면, Then 네 집합이 같고, 값이 모두 비어 있지 않고 키 자신과 다르며, 형식 지시를 담은 키는 아래 호출 지점 표의 모든 칸에서 `fmt.Sprintf(카탈로그 값, 그 행의 인자...)` 가 그 칸의 기대 문자열과 바이트 단위로 같고(서식 판정은 이 표뿐이다), 값에 U+1F300–1FAFF·U+2600–27BF·U+1F000–1F2FF 문자가 없으며, ja 값과 zh 값이 같은 키의 en 값과 다르다. 마지막 조건의 예외는 테스트 안의 허용 목록(초기값: 값이 `MCP` 하나뿐인 키)에 이름이 오른 키뿐이다. en 키 수는 design.md §6 표에서 이 카드 범위로 표시된 키 수와 같다(`[DEFERRED → t1978]` 로 표시된 update 전용 키는 넣지 않는다 — t1978 이 네 언어에 함께 더한다).
-- 호출 지점 표(v0.2.6, 결정 기록 §15.119). 테스트 안에 이 표를 그대로 둔다. 행은 형식 지시를 담은 `checklist.*` 키 하나, 인자는 그 키를 부르는 호출 지점이 넘기는 실제 형과 고정 값(값은 AC-TCL-005 의 고정값), 칸은 네 언어 각각의 기대 출력이다. 판정: 모든 행·모든 언어에서 `fmt.Sprintf(카탈로그 값, 인자...)` 가 기대 문자열과 바이트 단위로 같다. 키 수 가드: 네 카탈로그 가운데 하나라도 값에 `%` 바이트가 있는 `checklist.*` 키는 표에 행이 있어야 하고, 표의 모든 키는 네 카탈로그에 있어야 한다 — 어느 쪽이든 어긋나면 실패.
-
-  | 키 | 인자 (형 = 값) | en 값 | en 기대 출력 | ko·ja·zh 기대 출력 |
-  |---|---|---|---|---|
-  | `checklist.summary.created_files` | `int` = 2 | `%d files created` | `2 files created` | M1 이 채움 |
-  | `checklist.summary.created_dirs` | `int` = 13 | `%d directories` | `13 directories` | M1 이 채움 |
-  | `checklist.summary.changed` | `int` = 7 | `%d changed` | `7 changed` | M1 이 채움 |
-  | `checklist.summary.preserved` | `int` = 3 | `%d preserved` | `3 preserved` | M1 이 채움 |
-  | `checklist.summary.warnings` | `int` = 1 | `warnings %d` | `warnings 1` | M1 이 채움 |
-  | `checklist.summary.elapsed` | `string` = `1.5s` (렌더러가 고정 시계로 잰 경과를 만든 문자열) | `elapsed %s` | `elapsed 1.5s` | M1 이 채움 |
-  | `checklist.summary.deploy_mode` | `string` = `plugin` | `deploy mode: %s` | `deploy mode: plugin` | M1 이 채움 |
-  | `checklist.summary.next_steps` | `string` = `cd demo` | `next steps: %s` | `next steps: cd demo` | M1 이 채움 |
-  | `checklist.summary.backup` | `string` = `/tmp/bk` | `backup: %s` | `backup: /tmp/bk` | M1 이 채움 |
-  | `checklist.summary.recover` | `string` = `restore-cmd` | `recover: %s` | `recover: restore-cmd` | M1 이 채움 |
-
-  en 값과 en 기대 출력은 이 SPEC 이 정한다(이 카드의 en 문구). ko·ja·zh 기대 출력은 문구가 run 단계 산출물이라 plan 단계에서 적지 않는다 — M1 이 카탈로그 값을 넣는 같은 커밋에서 테스트 표의 그 세 칸을 채우고, 판정은 위 바이트 비교와 키 수 가드가 한다. 형식 지시가 없는 키(`checklist.header.init`, `checklist.group.*`, `checklist.item.*`, `checklist.status.*`, `checklist.summary.done`·`failed`·`warnings_outside`)는 표에 없다 — 그 값에 `%` 를 넣으면 가드가 빨개진다. 표 밖 키에 형식 지시가 필요하거나 en 값·인자를 바꿔야 하면 run 단계는 막힘 보고를 내고 manager-spec 이 이 표를 고친다.
-- 종류: release-blocking. RED 이유: L2·L3·L4·L5 — 네 카탈로그 모두 `checklist.` 키가 0개다.
-- 녹색 경로(M1): `go test ./internal/tui -run '^TestChecklistCatalogFourLocales$' -count=1 -v` → `--- PASS: TestChecklistCatalogFourLocales `. 보조 관측: `/usr/bin/grep -c "^checklist\." internal/tui/messages/zh.yaml` → en 과 같은 양수, 종료 0.
-- 뮤턴트: ja 에 키를 빠뜨리면 `Translate` 가 en 으로 대체해 화면은 멀쩡해 보인다 → 집합 비교가 잡는다. 값에 키 이름을 그대로 넣는 뮤턴트 → 값 ≠ 키 조건이 잡는다. ja·zh 값을 en 문구 그대로 복사하는 뮤턴트 → ja·zh ≠ en 조건이 잡는다. (v0.2.2, 결정 기록 §15.107) en `Changed %d` 에 ja `変更 %s件` 처럼 지시자 개수는 같고 동사가 다른 값 → v0.2.1 의 개수 비교는 녹색이지만 화면에 `変更 %!s(int=7)件` 이 찍힌다. 이 기준에서는 그 키 행의 ja 칸 비교에서 `変更 %!s(int=7)件` 이 기대 문자열과 달라 실패한다. 사실 칸(트리 `eb2a9dfc21`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/fmtprobe/main.go`(두 줄 `fmt.Println(fmt.Sprintf("Changed %d", 7))`, `fmt.Println(fmt.Sprintf("変更 %s件", 7))`) → stdout `Changed 7` / `変更 %!s(int=7)件`, 종료 0. (v0.2.6, 결정 기록 §15.119) 인자를 빠뜨린 번역 — en `Project %.2s: %s` 에 ja `プロジェクト %[2]s` → v0.2.5 의 범용 판정 절차는 첫 인자가 두 출력 모두에 0번 나와 같다고 보았다(아래 `old drop` — en 의 `%.2s` 가 첫 인자를 두 글자로 잘라 그 값이 출력에 온전히 남지 않는다). 표에서는 ja 칸 기대 문자열과 달라 실패한다(`table drop`). 깨진 en 값 `broken %` → v0.2.5 절차에는 끝나는 조건이 없었고 인자 10개 상한에서도 2047 조합이 모두 실패했다(`old broken`). 표에서는 en 칸 비교 한 번으로 실패한다(`table broken`). 표에 없는 형식 키를 카탈로그에 더한 구현 → 키 수 가드로 실패(`table guard`). 표의 키를 카탈로그에서 지운 구현 → 가드로 실패(`table missing`). 사실 칸(트리 `c4349ba30f`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/table9/main.go` — 앞부분은 v0.2.5 절차를 그대로(인자 상한 10) 돌리고, 뒷부분은 예시 행 하나(`k.project`, 인자 `"MOAI-X"`, `"demo"`, 기대 en `Project MO: demo`, ja `プロジェクト MO: demo`)로 표 판정(바이트 비교 + 키 수 가드)을 돌린 탐침이다 → 종료 0, stdout 그대로:
-
-  ```text
-  old drop: equal (en="Project <s: <s2>" other="プロジェクト <s2>")
-  old broken: no sentinel set after 2047 combinations
-  table drop: [k.project/ja got "プロジェクト demo" want "プロジェクト MO: demo"]
-  table good: []
-  table broken: [k.project/en got "broken %!(NOVERB)%!(EXTRA string=MOAI-X, string=demo)" want "Project MO: demo"]
-  table guard: [format-bearing key k.extra (en) not in table format-bearing key k.extra (ja) not in table]
-  table missing: [table key k.project missing in en catalog table key k.project missing in ja catalog]
-  ```
-
-  표의 en 열 사실 칸(같은 트리, 같은 `go version`): 명령 `go run <스크래치>/encol9/main.go` — 표의 행 열 개의 en 값을 그 행의 인자로 `fmt.Sprintf` 해 `키|출력` 으로 찍음 → 종료 0, stdout 그대로:
-
-  ```text
-  checklist.summary.created_files|2 files created
-  checklist.summary.created_dirs|13 directories
-  checklist.summary.changed|7 changed
-  checklist.summary.preserved|3 preserved
-  checklist.summary.warnings|warnings 1
-  checklist.summary.elapsed|elapsed 1.5s
-  checklist.summary.deploy_mode|deploy mode: plugin
-  checklist.summary.next_steps|next steps: cd demo
-  checklist.summary.backup|backup: /tmp/bk
-  checklist.summary.recover|recover: restore-cmd
-  ```
-
-  렌더러가 없는 키를 불러 원시 키가 화면에 남는 뮤턴트 → AC-TCL-023 과 AC-TCL-011 의 골든 원시 키 검사가 잡는다.
-- 계속 발화: 패키지 기본 실행. 키를 하나 더하고 한 언어를 잊으면 바로 빨개진다.
 
 ### AC-TCL-009 — 한국어 폭 정렬과 미지원 언어 대체 (maps REQ-TCL-009)
 
@@ -404,7 +353,7 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ## §F 완료 정의
 
-- AC-TCL-001 부터 AC-TCL-020 까지, AC-TCL-023, AC-TCL-024 가 §A 의 녹색 판정을 만족한다. `[DEFERRED → t1978]` 로 표시한 하위 테스트·조건은 판정에 넣지 않으며, 이 카드의 테스트에 그 하위 테스트를 두지 않는다(건너뜀 하위 테스트로 남기지 않는다).
+- AC-TCL-001 부터 AC-TCL-007 까지, AC-TCL-009 부터 AC-TCL-020 까지, AC-TCL-023, AC-TCL-024 가 §A 의 녹색 판정을 만족한다. `[DEFERRED → t1978]` 로 표시한 하위 테스트·조건은 판정에 넣지 않으며, 이 카드의 테스트에 그 하위 테스트를 두지 않는다(건너뜀 하위 테스트로 남기지 않는다).
 - AC-TCL-022 는 두 증거가 **모두** 성립할 때만 성립한다. (가) M6 에서 테스트를 지우기 **전** 마지막 실행 기록 — `go test` 실행이므로 §A 의 녹색 판정(종료 0 과 `--- PASS: TestChecklistInitHunkConfinement ` 줄)을 만족하고, 두 명령·그대로의 출력·종료 코드·측정 SHA 를 함께 적는다. (나) sync 감사가 판정할 최종 HEAD 에서 두 git 명령 (1)·(2) 를 각각 한 번 다시 돌린 결과 — 이 둘은 `go test` 가 아니라 §A 의 `--- PASS:` 판정이 적용되지 않으므로 출력으로 판정한다: (1) 종료 0, hunk 머리 1개 이상, 모든 hunk 의 이전 쪽 범위가 R1 `[383,389]`·R3 `[919,1075]`·R2 `[1077,1087]` 가운데 하나에 들고 R3 안의 hunk 는 모두 `b=0`; (2) 종료 0, 빈 출력; 측정 SHA 는 최종 HEAD(40자) — AC-TCL-022 계속 발화와 같은 조건이다. 기록만으로는 판정하지 않으며, 재실행 측정 SHA 가 최종 HEAD 가 아니면 빨강이다. 지운 뒤의 `[no tests to run]` 은 판정에 쓰지 않는다. §A 의 카드 id 완전성 검사는 이 최종 HEAD 재실행에 들지 않는다 — AC-TCL-022 본문의 재실행은 두 명령뿐이고, 완전성 검사는 아래 항목대로 M6 에서 판정한다. (1) 은 커밋 선택이 아니라 두 트리의 diff 라, id 없는 커밋이 init.go 를 바꿔도 영역 조건이 그대로 잡는다(v0.2.3, 결정 기록 §15.108; v0.2.4, §15.111).
 - AC-TCL-021 은 regression-guard 로 유지된다.
 - AC-TCL-013 의 순서 증거 O1·O2·O3·O4(O4a 기록의 측정 HEAD = O1 SHA, O4b 재실행 녹색)가 모두 성립한다.

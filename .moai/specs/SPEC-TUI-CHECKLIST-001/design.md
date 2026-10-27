@@ -326,8 +326,6 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 
 - `checklist.summary.` 키는 모두 이 카드가 넣는다 — 렌더러의 요약 필드이며(AC-TCL-005 가 update 모양 요약으로 검사) init 이 쓰지 않는 필드(`changed`, `preserved`, `backup`, `recover`)도 렌더러 계약에 속한다.
 - 언어 해석: init 은 위저드 답 또는 프로필 로케일을 쓰고 둘 다 없으면 `en`. ([DEFERRED → t1978] update 는 `.moai/config/sections/language.yaml` 의 `conversation_language`.) 미지원 값은 `Translate` 가 `en` 으로 대체한다(`internal/tui/i18n.go:83-99`).
-- 값에 서식 지시자가 있는 키는 AC-TCL-008 의 호출 지점 표(키 × 네 언어 × 호출 지점의 실제 인자, 칸마다 기대 출력)에 행이 있어야 하며, `fmt.Sprintf(값, 인자...)` 가 기대 출력과 바이트 단위로 같아야 한다. 표와 카탈로그의 형식 키 집합은 키 수 가드가 맞춘다.
-- ja·zh 값은 en 값과 달라야 한다. 예외는 식별자만 담은 값(초기 허용 목록: `MCP`)뿐이며, 허용 목록은 AC-TCL-008 테스트 안에 둔다.
 - ja·zh 문구는 이 카드에서 초안을 넣는다. 원어민 검수는 범위 밖이다(spec.md §5, Gap G-5).
 
 ## §7 골든 전략
@@ -350,7 +348,7 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 
 렌더러 골든 이름: `checklist-<surface>-<case>.golden`. 이 카드의 surface 는 둘이다 — `init`(case ∈ {clean, nocolor, reduced, ko}, design.md §4 의 init 계획표)과 `probe`(case ∈ {fail, warn}, init 계획표 밖의 그룹·항목 키로 그리는 시험 전용 계획). v0.1.3 의 `checklist-update-clean.golden` 은 [DEFERRED → t1978](AC-TCL-001).
 
-**probe 계획(v0.2.1, 확인 감사 5회차 M3).** 렌더러가 init 계획표를 하드코딩하지 않음을 기계적으로 보이려고, AC-TCL-003·AC-TCL-004 는 init 계획표에 없는 그룹·항목 키(예: 그룹 `alpha`·`beta`, 항목 `alpha.one`·`alpha.two`·`beta.one`)로 그린다. 그 키의 라벨은 렌더러 테스트(같은 패키지)가 시험 전용 언어 코드(예: `probe`)의 카탈로그를 카탈로그 캐시(`internal/tui/i18n.go:27-28` `catalogCache`·`catalogMu`, 원장 L39)에 잠금 아래 직접 넣어 준비하고 `t.Cleanup` 으로 지운다. 생산 카탈로그 yaml 네 개에는 probe 키를 넣지 않으며(AC-TCL-008 의 키 수 조건 그대로), probe 언어에 없는 키(상태·요약)는 `Translate` 의 en 대체를 탄다(`internal/tui/i18n.go:83-99`). 그래서 probe 골든에도 원시 키 `checklist.` 가 남지 않는다(AC-TCL-023). 이 테스트는 공유 캐시를 바꾸므로 `t.Parallel` 을 쓰지 않는다. 기존 `TestGoldenCount` 하한(`internal/tui/golden/index_test.go:27`, 100개)은 늘어나는 방향이라 영향이 없다. `TestManifest` 는 새 골든(`:73`)과 지운 골든(`:80`)을 모두 잡는다.
+**probe 계획(v0.2.1, 확인 감사 5회차 M3).** 렌더러가 init 계획표를 하드코딩하지 않음을 기계적으로 보이려고, AC-TCL-003·AC-TCL-004 는 init 계획표에 없는 그룹·항목 키(예: 그룹 `alpha`·`beta`, 항목 `alpha.one`·`alpha.two`·`beta.one`)로 그린다. 그 키의 라벨은 렌더러 테스트(같은 패키지)가 시험 전용 언어 코드(예: `probe`)의 카탈로그를 카탈로그 캐시(`internal/tui/i18n.go:27-28` `catalogCache`·`catalogMu`, 원장 L39)에 잠금 아래 직접 넣어 준비하고 `t.Cleanup` 으로 지운다. 생산 카탈로그 yaml 네 개에는 probe 키를 넣지 않으며, probe 언어에 없는 키(상태·요약)는 `Translate` 의 en 대체를 탄다(`internal/tui/i18n.go:83-99`). 그래서 probe 골든에도 원시 키 `checklist.` 가 남지 않는다(AC-TCL-023). 이 테스트는 공유 캐시를 바꾸므로 `t.Parallel` 을 쓰지 않는다. 기존 `TestGoldenCount` 하한(`internal/tui/golden/index_test.go:27`, 100개)은 늘어나는 방향이라 영향이 없다. `TestManifest` 는 새 골든(`:73`)과 지운 골든(`:80`)을 모두 잡는다.
 
 ## §8 기준선을 먼저 커밋하는 이유
 
