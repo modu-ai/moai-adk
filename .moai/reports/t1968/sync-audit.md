@@ -823,3 +823,67 @@ verdict: PASS
 audited_sha: 7ca691c9bee470dae10c288672e1f6c75446f224
 
 AUDIT-VERDICT: PASS spec=SPEC-FETCH-WEB-001 receipts=rcpt-76b136df51590ab19cbf1f90
+
+## iter13 (L-CI1/L-CI2 CI-repair delta; delta_base 7ca691c9be, repairs 26b91ee3af + c42499175c, head 9e5d9005fb)
+
+auditor-model: glm-5.3
+
+## iter13 Verdict
+
+**PASS — aggregate 0.95** (harmonic mean of 96 / 95 / 95 / 94; must-pass firewall: Functionality and Security both PASS). Both CI repairs are REAL and verified first-hand: L-CI1 (i18n keys present as real translations in all 4 locales, both parity tests PASS) and L-CI2 (home-guard PASS with verbatim "0 new", guard/scanner/seed untouched — `git diff --stat 9c22f71192..HEAD -- internal/testguard/` is empty). The regression micro-sweep is green everywhere (web + testguard packages ok, fetchweb 175 PASS/0 FAIL, jev 89 PASS/0 FAIL, graded trio + MCP parity + JevCallPath ok, spec-lint clean, lint 0 issues, gofmt/vet clean). Every iter10-12 landed repair test still exists and passes; the corpus axis is intact (wrapper 48 / item 21 / untested 7 = 76). The required codex backend returned `pass` with zero findings (receipt `rcpt-0c135a743cbb4735d6c0dda3`; convergence `overall_verdict: pass`). No new finding surfaced. The debt ledger stands fully disposed and unchanged (D1/D2/D3/FW-D2 closed iter11, R2 closed with its carrier defect fixed iter12, D4 out-of-scope observation, D5/D6 historic). **DEBT-FREE PASS — the gate condition is met, plainly: nothing this card owes verification for is left without an enforced owner, and my probes found nothing new.**
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @9e5d9005fb) |
+|---|---|---|---|---|
+| Functionality | 40% | 96 | PASS | L-CI1: `--- PASS: TestDataI18nKeysSubsetOfDictionary` + `--- PASS: TestI18nKeySetParity` (`ok … internal/web 0.914s`); keys read first-hand at i18n.js:841-842 (en "Fetch web (gated)") / 1131-1132 (ko "웹 가져오기(게이트)") / 1977-1978 (ja "ウェブ取得(ゲート)") / 2823-2824 (zh "网页获取(门控)") — real localized title+desc per locale, byte-shape identical to siblings (`f.mcp.tools.<tool>.enabled.title/.desc`, e.g. session_list:741-742). L-CI2: `repo_guard_test.go:96: scanned 3531 test files: 160 violations, seed 184 entries, 0 new, 24 stale seed entries` → `--- PASS: TestHomeGuard_RepositoryHasNoNewHomeAccess`; annotation read first-hand at cache_test.go:782 (line-above `// home-guard:allow string literal in an error message, not a home access`, exactly 1 occurrence, matching guard regex `//\s*home-guard:allow\s+\S` in scan.go:30). Micro-sweep: `ok … internal/web 41.328s` + `ok … internal/testguard 2.864s`; fetchweb `-v` full package `175` `--- PASS` / `0` `--- FAIL`, `ok … 0.305s`; jev `89` / `0`, `ok … 1.511s`; cli `ok github.com/modu-ai/moai-adk/internal/cli 8.601s` (OffGateZeroNetwork + StatusExitContract + E2EFakeServers + StaleCacheWarning + NoLiveEndpoint + FactoryNextNominateMCPParity + JevCallPath*). |
+| Security | 25% | 95 | PASS | Repair scope exact from `git show --stat`: 26b91ee3af = `internal/web/assets/i18n.js | 8 ++++++++` (1 file), c42499175c = `internal/jev/cache_test.go | 1 +` (1 file); head 9e5d9005fb = `.moai/reports/t1968/progress.md | 2 ++` (docs-only). Zero net/fetch/auth/secret surface in the delta (a display-string dictionary + a test comment). Guard NOT weakened: `git diff --stat 9c22f71192..HEAD -- internal/testguard/` → empty (exit 0, no output — scanner, guard, seed untouched); the fix uses the guard's own documented line-above annotation mechanism instead of any bypass. |
+| Craft | 20% | 95 | PASS | `go test -count=1 -cover ./internal/fetchweb/ ./internal/jev/ ./internal/web/` → `coverage: 95.6%` / `91.1%` / `73.6%` (card-own packages fetchweb+jev both ≥85; web's 73.6% is pre-existing repository state — zero Go files changed in web this window, delta is an embedded .js asset only, so Go statement coverage is untouched by this card). `golangci-lint run internal/web/... internal/jev/... internal/fetchweb/...` → `0 issues.`; `gofmt -l` → no files; `go vet` → clean. Both repairs are minimal (8 lines + 1 line) and use existing documented mechanisms rather than inventing new ones. |
+| Consistency | 15% | 94 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`; SPEC core unchanged since dc991bfb9f: spec/plan/acceptance → 0 files (`SPECCORE_EXIT=0`, empty list), whole-card-dir delta = exactly `+audit_ready: true` in progress.md (pre-window T8a signal, unchanged from iter9-12). Window `git diff --name-only 7ca691c9be..9e5d9005fb` = exactly progress.md + sync-audit.md (report docs) + cache_test.go + i18n.js; `git log c42499175c..HEAD` = the single docs-only head. Conventional Commits (`fix(web): …`, `fix(jev): …`) with card refs and CI-failure attribution in both bodies. |
+
+## iter13 dispositions
+
+- **L-CI1 — REPAIRED-VERIFIED.** The dictionary carries `f.mcp.tools.fetch_web.enabled.title/.desc` in all 4 locales as real translations (not placeholders — read first-hand, quoted in the Functionality evidence), structurally byte-shape-identical to the sibling `f.mcp.tools.*` entries (title = short label, desc = one full sentence naming the tool and the zero-network gate). Both the subset test and the 4-locale parity test PASS in this run. The commit message's "no allowlist entry needed" claim is consistent: parity holds by dictionary membership, not exemption.
+- **L-CI2 — REPAIRED-VERIFIED.** The flagged `~/.moai/cache/jev` literal is inside a `t.Errorf` format string (a message about a path, not a home access); the guard's documented line-above `home-guard:allow <reason>` annotation now covers exactly that line, and the repository guard passes with "0 new". No weakening anywhere: the testguard tree is byte-identical from 9c22f71192 through HEAD (empty diff), so scanner, guard logic, and seed are untouched; the 24 stale seed entries are pre-existing and do not fail by the guard's own design.
+- **iter10-12 audit-trail repairs — ALL STILL HOLD.** Aside wrapper text loss (F1 it11): `TestSplitBlocks_AsideWrapperHeadingWithBlockChildKeepsTrailingRun` / `_AsideWrapperHeadingWithPChildKeepsTrailingRun` / `_AsideLevelHeadingWithBlockChildControl` all `--- PASS` (grep of this run's fetchweb log). Heading-emitted gap (R2/D1): `TestSplitBlocks_AsideHeadingSplitsBareRunPaths` / `_AsideHeadingSplitComposesWithBlocks` / `_HeadingOnlyAsideEmitsNothing` / `_AsideFallbackExcludesHeadingText` all PASS. itemDepth duplication (F1 it10): `TestSplitBlocks_AsideWrapperInListItemCorpusNoDuplication` present, 21 subtests, 0 FAIL. Cache dir scan: `TestUsage_FromCacheSeparation` PASS (FW-D2) and `TestDefaultCacheDir_UnderHome` PASS inside jev's 89/0. Corpus axis intact: wrapper corpus 48 subtests (8 wrappers × 6 shapes incl. the heading-with-block-child axis), untested-territory 7 — total 76, matching iter12's landed counts exactly.
+- **Ledger standing — fully disposed, unchanged.** D1+R2 / D2 / D3 / FW-D2: closed (iter11), landed tests green in this run. D4: out-of-scope observation (restated below in my own words). D5/D6: historic process rows. No `Binding run conditions` heading exists in progress.md (reconfirmed: the grep found no such heading) — the binding-run-conditions clause does not bind.
+- **D4 restated (verdict-text requirement).** What D4 records is simply this: I did not run the full `internal/cli` suite or a repository-wide verdict locally, and that is not an unpaid debt of this card, because the card's own delta contains no cli Go files at all, and every commit that lands must pass the integration CI that owns the repository-wide verdict under the merge gate — a verification with an enforced downstream owner is done, not owed. The card-relevant cli surface (trio, MCP parity, JevCallPath) IS locally green in this run.
+
+## iter13 Cross-model convergence (audit_multi, target=baseBranch, delta_base=7ca691c9be, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered with a verdict: pass, 0 findings)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-0c135a743cbb4735d6c0dda3`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base 7ca691c9bee470dae10c288672e1f6c75446f224: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**The orchestrator's `--result-file` convergence check remains to be run; this PASS is not final until it passes.**
+
+## iter13 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — both CI repairs are genuine, minimal, and guard-preserving; the regression surface is fully green; the debt-free PASS gate condition is met.** Evidence: 2/2 CI-repair test observations verbatim (i18n pair PASS; home-guard "0 new" PASS); 4-locale dictionary read first-hand; annotation read first-hand; guard-tree empty diff; window/head/SPEC-core scope confirmations from `git show --stat` / `git diff --name-only`; micro-sweep counts 175/0 (fetchweb), 89/0 (jev), web ok, testguard ok, cli trio+parity+JevCallPath ok; corpus counts 48/21/7; cover 95.6/91.1/73.6; lint `0 issues.`; gofmt/vet clean; spec-lint `✓ No findings`; convergence pass with fresh receipt. Baseline: this run, this tree @9e5d9005fb175cf8cd205f9f2caf7790812f58f4; delta measured `7ca691c9be..9e5d9005fb` (card-own repairs = `26b91ee3af` + `c42499175c`).
+
+**Gaps (explicitly NOT observed):**
+- The orchestrator's `--result-file` convergence check has not run (this auditor does not write it); PASS not final until it passes.
+- CI (ubuntu) itself not re-run by me — the repairs are verified against the same test functions CI failed on, locally, in this tree; CI's own re-run belongs to the PR.
+- Cross-GOOS builds not re-run this iteration (the head commit message records the lane's WIN-build re-observation; not observed by me).
+- Full `internal/cli` suite and repository-wide verdict not run here — D4 classification unchanged (out-of-scope observation; CI owns it under the merge gate).
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-12.
+- /tmp scratch from this audit (`/tmp/t1968-fw13.log`, `/tmp/t1968-jev13.log`, `/tmp/t1968-cli13.log`) — machine-local, carries no evidence beyond what is quoted here.
+
+**Residual-risk:**
+- Convergence was single-participant (codex only; claude/glm gates off per plan) and codex was scoped to the delta in prose only — `residual_risk_note` quoted verbatim above. This auditor's own first-hand repair verification (both tests, both file reads, guard diff, full micro-sweep) is the corroborating leg.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+- Untested territory: proxy-required egress remains out-of-scope-by-design (unchanged).
+- The i18n translations were verified real and structurally consistent by direct read; translation *quality* beyond structural fidelity is a native-reader judgment I make as a non-native render check only (ko/ja/zh strings are genuine localized prose, not machine placeholders).
+
+## Iteration history (cont.)
+
+- iter13 (this audit): L-CI1/L-CI2 CI-repair delta DEBT-FREE PASS 0.95 (delta_base 7ca691c9be, repairs 26b91ee3af + c42499175c, head 9e5d9005fb) — fetch_web i18n keys real in 4/4 locales (both parity tests PASS), home-guard "0 new" PASS via the documented annotation with the guard tree byte-identical (9c22f71192..HEAD testguard diff empty); micro-sweep green (web ok, testguard ok, fetchweb 175/0, jev 89/0, trio/parity/JevCallPath ok, corpus 48/21/7 intact, lint/gofmt/vet/spec-lint clean, cover 95.6/91.1); all iter10-12 landed repair tests still pass; codex pass 0 findings (rcpt-0c135a743cbb4735d6c0dda3); ledger fully disposed, no new findings; D4 restated.
+
+verdict: PASS
+audited_sha: 9e5d9005fb175cf8cd205f9f2caf7790812f58f4
+
+AUDIT-VERDICT: PASS spec=SPEC-FETCH-WEB-001 receipts=rcpt-0c135a743cbb4735d6c0dda3
