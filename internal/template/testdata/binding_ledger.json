@@ -5883,7 +5883,7 @@
     "start_line": 141
    },
    "before_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
-   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.",
+   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane moves in-session via `/cd`; conversation context never carries.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [

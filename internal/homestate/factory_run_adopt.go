@@ -22,20 +22,46 @@ const sqlTerminalStates = `('done','failed','abandoned')`
 
 // runHasLiveRecords reports whether the run still carries records a lifecycle
 // decision must respect: cards outside the shared terminal set or registered
-// workers (card t1707). Live records are what separate "the leader died
-// mid-run" from "this run is genuinely over".
+// workers that are not positively dead (card t1707, REQ-FCR-022). Live records
+// are what separate "the leader died mid-run" from "this run is genuinely
+// over".
 //
-// q is the queryer seam (card_record.go queryRower) so the check can run on a
-// caller's transaction: the pool holds a single connection, and a read issued
-// through the pool handle while a transaction holds it would deadlock.
-func runHasLiveRecords(ctx context.Context, q queryRower, runID string) (bool, error) {
-	var live int
+// A worker row counts as live unless its pid probes positively dead; a probe
+// that cannot decide counts as live — the safe direction, since a wrongly kept
+// run has a working operator escape and a wrongly released one does not.
+// `workers` carries no process-start fingerprint, so the probe is the pid
+// alone; pid reuse can only make a dead worker look alive.
+//
+// q is the queryer seam so the check can run on a caller's transaction: the
+// pool holds a single connection, and a read issued through the pool handle
+// while a transaction holds it would deadlock. Every statement is drained
+// before the next starts and before any pid is probed.
+func runHasLiveRecords(ctx context.Context, q rowsRowQueryer, runID string, probe func(int) ProcessIdentityState) (bool, error) {
+	var nonTerminal int
 	if err := q.QueryRowContext(ctx, `SELECT EXISTS(
-SELECT 1 FROM cards WHERE run_id=?1 AND state NOT IN `+sqlTerminalStates+`)
-OR EXISTS(SELECT 1 FROM workers WHERE run_id=?1)`, runID).Scan(&live); err != nil {
+SELECT 1 FROM cards WHERE run_id=?1 AND state NOT IN `+sqlTerminalStates+`)`, runID).Scan(&nonTerminal); err != nil {
 		return false, err
 	}
-	return live == 1, nil
+	if nonTerminal == 1 {
+		return true, nil
+	}
+	workers, err := workerPIDs(ctx, q, runID)
+	if err != nil {
+		return false, err
+	}
+	for _, w := range workers {
+		if probe(w.pid) != ProcessIdentityDead {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// rowsRowQueryer is the read surface runHasLiveRecords needs: single-row and
+// multi-row queries on the pool handle or on a caller's transaction.
+type rowsRowQueryer interface {
+	queryRower
+	rowsQueryer
 }
 
 // FindResumableRun resolves the single run a resume-shaped leader start may
@@ -81,7 +107,7 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 		default:
 			continue
 		}
-		live, err := runHasLiveRecords(ctx, f.DB, o.RunID)
+		live, err := runHasLiveRecords(ctx, f.DB, o.RunID, opts.workerProbe())
 		if err != nil {
 			return RunOwner{}, nil, err
 		}
@@ -135,7 +161,7 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, proce
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("factory run %s no longer carries the classified owner stamp; adoption refused", adopt.RunID)
+		return &adoptStampChangedError{runID: adopt.RunID}
 	}
 	payload := fmt.Sprintf(`{"basis":%q,"outcome":"adopted"}`, basis)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.resumed',?,?)`, adopt.RunID, payload, now); err != nil {

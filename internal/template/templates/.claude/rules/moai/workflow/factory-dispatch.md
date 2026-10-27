@@ -7,7 +7,7 @@ paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claud
 
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("Factory Dispatch Protocol").
 
-> **Loading scope**: Role-gated — delivered by injection, not session-start loading. Factory leader and lane sessions receive this rule's role core through the SessionStart hook (sources startup, clear, compact); the unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive for this full body. The always-loaded stub is `factory-dispatch-core.md`; the top-level `paths:` key is a non-delivery placement.
+> **Loading scope**: Role-gated — delivered by injection, not session-start loading. Factory leader and lane sessions receive this rule's role core through the SessionStart hook (sources startup, clear, compact); the unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive for this full body. The always-loaded stub is `factory-dispatch-core.md`; the top-level `paths:` key is a non-delivery placement. Duplicated skill listings are a known cost.
 
 > **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the native Codex artifact contract, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
@@ -156,12 +156,12 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 [HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
 
 <!-- moai:role-core-start -->
-[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.
+[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane moves in-session via `/cd`; conversation context never carries.
 <!-- moai:role-core-end -->
 
-Transition detail (Claude Code lanes): the lane requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), enters the leased worktree by absolute path, and verifies `git rev-parse --show-toplevel` equals that path before any card work. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Under manual dispatch (`--no-auto-dispatch`, `MOAI_FACTORY_AUTO_DISPATCH=manual`) the lane leaves with `ExitWorktree(keep)` and waits for the leader's dispatch instead of leasing, and under the relaunch clear policy (the completion output tells it to end the session) it ends the session. Codex lanes keep their own session-end transition.
+Transition detail (Claude Code lanes; measured in-session: CC 2.1.300 lane-22; lane-4): the lane requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), enters the leased worktree by absolute path, and verifies `git rev-parse --show-toplevel` equals that path before any card work. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Under manual dispatch the lane leaves with `ExitWorktree(keep)` and waits; under the relaunch clear policy it ends the session. Codex lanes move in-session via `/cd <tree abs path>` (0.149+), toplevel verified; relaunch only after a refusal.
 
-When the next card reuses a lane, the leader re-sends the full pointer instruction instead of assuming the session remembers.
+On lane reuse the leader re-sends the full pointer instruction.
 
 The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
