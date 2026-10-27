@@ -155,6 +155,19 @@ hunk: acceptance.md 문서 핀 한 문장, 원장 L42·L43 과 그 설명 한 �
 
 미룬 것(deferred): 없음.
 
+### Plan-phase delta 11 (card t1969, leader ruling — AC-TCL-019 extension)
+
+입력: 델타 10 단락이 남긴 AC-TCL-019 뒤 절의 같은 맹점. 리더 판정: "AC-TCL-019 확장 승인, AC-TCL-021 과 같은 모양", 다른 것은 바꾸지 않는다. 기준 HEAD `27f404a9d39eb206832a741f50fb3e4d6a288f90`. spec.md version `0.2.8` → `0.2.9`.
+
+측정(일부러 만든 저장소, 레포 밖 scratch, git 2.54.0 (Apple Git-157); 작성 날짜·이름은 고정했으나 커밋 시각은 실제 시각이라 SHA 는 다시 만들면 달라진다; 기준 `4d7c09825db3fa2d0b911c3e3db8abdbde6e9e3d`, 로컬 `main` `1dac172db32e5e2a94eb3f83f83c73e42c2129ab`, 카드 커밋 `421c3428afe4c723a879349629f51cba2766dfa2`):
+- 깨끗한 흡수 HEAD `37cdc46c503cb6c933d4c170166be97afa9c22eb`: 옛 명령 빈 출력 종료 0, 새 명령(`--merges --cc`) 빈 출력 종료 0.
+- 병합 해결이 `evil.go` 를 더한 HEAD `9e7fdf1f01b7cab7f68ef58b49a214203dd68e50`: 옛 명령 빈 출력 종료 0(RED), 새 명령 `internal/cli/wizard/evil.go` 종료 0(빨강).
+- 이 트리(`27f404a9d3`)에서 두 명령 모두 빈 출력 종료 0(원장 L44·L45). 범위의 병합 커밋은 0개다.
+
+hunk: acceptance.md 문서 핀 한 문장, 원장 L44·L45 와 그 설명 한 문장, AC-TCL-019 녹색 경로의 보조 검사((2) 추가)·뮤턴트·사실 칸. plan.md §B 범위 검사 단락 한 문장. spec.md frontmatter version 과 HISTORY v0.2.9 행, 이 단락. REQ·AC id 와 수는 그대로(REQ 23, AC 23).
+
+미룬 것(deferred): 없음.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

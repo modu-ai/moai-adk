@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.8"
+version: "0.2.9"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -31,6 +31,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.6 plan 델타 9회차 (manager-spec, 리더 결정 기록 §15.119, 1회 승인·1커밋). 리더 audit_multi(영수증 `rcpt-5abf31cc8a860a40811fc6b9`, codex 필수, FAIL)의 P2 두 건 — 인자를 빠뜨린 번역이 v0.2.5 의 범용 판정 절차를 통과함(en `Project %.2s: %s` 대 ja `プロジェクト %[2]s`), 깨진 en 값(`broken %`)에서 절차의 탐색이 끝나지 않음 — 을 받아, 범용 판정 절차를 계약에서 빼고 AC-TCL-008 의 서식 조건을 고정 호출 지점 표(형식 키 × 네 언어 × 호출 지점의 실제 인자, 칸마다 기대 출력, `fmt.Sprintf` 바이트 비교)와 키 수 가드로 바꿨다. en 값과 en 기대 출력은 이 SPEC 이 정하고, ko·ja·zh 기대 출력은 M1 이 카탈로그 값과 같은 커밋에서 채운다. design.md §6 문구를 맞췄다. REQ·AC id 와 수는 그대로(23·24), AC-TCL-008 의 뜻과 서식 밖 조건도 그대로. 처분 상세는 progress.md §E.1 델타 9 단락.
 - 2026-10-27 — v0.2.7 plan 범위 분할 (manager-spec, 리더 결정 기록 §15.123, 1회 실행·1커밋, 수리가 아닌 안전 고정). plan 감사 12회차(FAIL 0.90, 차단 D1 — 호출 지점 표의 ko·ja·zh 칸에 정확성 규칙이 없음)를 받아, 리더가 후속 카드 t1989(이 카드에 의존)를 내고 AC-TCL-008 과 그 번역 서식·일관성 검사, 호출 지점 표, D1~D5 를 그 카드로 넘겼다. 이 SPEC 에서 AC-TCL-008 의 제목·본문·뮤턴트·사실 칸·표·키 수 가드, design.md §6 의 서식·ja·zh ≠ en 문장, plan.md M1 의 AC-TCL-008 테스트 줄, §6 추적표 행, §3.5 카탈로그 규칙 줄을 지웠고, REQ-TCL-009 에서 AC-TCL-008 에만 대응하던 네 카탈로그 존재·ja·zh ≠ en 절을 걷어냈다(§3.1 끝의 이전 줄). REQ 23개 그대로, AC 24 → 23. 나머지 id 는 다시 매기지 않았다. 처분 상세는 progress.md §E.1 범위 분할 단락.
 - 2026-10-27 — v0.2.8 plan 델타 10회차 (manager-spec, 리더 판정 — 감사 16회차 뒤 남은 결함은 codex P2 하나, 1회 실행·1커밋). AC-TCL-021 의 범위 검사가 `--no-merges` 라 병합 커밋이 들여온 템플릿 변경(충돌 해결·악성 병합)을 보지 못했다. 결합 diff 검사 `git log --merges --cc --name-only` 를 (2) 로 더해, 깨끗한 `main` 흡수는 빈 출력으로 두고 병합이 들여온 변경만 빨갛게 했다. 일부러 만든 저장소의 RED(옛 명령 빈 출력)·빨강(새 명령이 경로를 냄)·깨끗한 흡수 대조(빈 출력)를 사실 칸과 뮤턴트로, 이 트리의 기준선을 원장 L42·L43 으로 적었다. REQ·AC id 와 수는 그대로(23·23). 처분 상세는 progress.md §E.1 델타 10 단락.
+- 2026-10-27 — v0.2.9 plan 델타 11회차 (manager-spec, 리더 판정 — AC-TCL-019 확장 승인, AC-TCL-021 과 같은 모양, 1회 실행·1커밋). AC-TCL-019 뒤 절의 위저드 검사가 `--no-merges` 라 병합 커밋이 들여온 위저드 변경(충돌 해결·악성 병합)을 보지 못했다. 결합 diff 검사 `git log --merges --cc --name-only … -- internal/cli/wizard` 를 (2) 로 더했다. 일부러 만든 저장소의 RED(옛 명령 빈 출력)·빨강(새 명령이 경로를 냄)·깨끗한 흡수 대조(빈 출력)를 사실 칸과 뮤턴트로, 이 트리의 기준선을 원장 L44·L45 로 적었다. REQ·AC id 와 수는 그대로(23·23). 처분 상세는 progress.md §E.1 델타 11 단락.
 
 ## §1 배경과 문제
 
