@@ -306,9 +306,16 @@ func transitionTx(ctx context.Context, f *FactoryDB, tx *sql.Tx, req TransitionR
 	if err != nil {
 		return Card{}, err
 	}
+	// A rejected abandon must not expire or otherwise mutate the card.
+	if req.To == CardAbandoned && req.Decider != DeciderHuman {
+		return Card{}, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
+	}
 	// An expired lease is returned before any other transition (T27/T28),
 	// whatever the request asked for and whatever version it carried.
 	if cur.LeaseExpired(now) {
+		if req.To == CardAbandoned {
+			return Card{}, fmt.Errorf("%w: card %s lease held by %q expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseHolder, cur.LeaseExpiresAt)
+		}
 		if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
 			return Card{}, err
 		}

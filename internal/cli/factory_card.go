@@ -365,6 +365,11 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time, holderAlive func(hom
 	if factorySerialSlotFree(c.State) || c.OwnerLabel == "" {
 		return false
 	}
+	// Expiry collection retains the completed implementation stage. A live
+	// lane waiting to land that card is not doing serial implementation work.
+	if c.State == homestate.CardAssigned && c.Stage == homestate.CardMergeReady {
+		return false
+	}
 	// An expiry-collected assigned row (card t1828, sync-audit F1): its
 	// heartbeat names the work session, so the same generation-aware liveness
 	// reader decides it — a live session holds, a dead one frees.
@@ -1876,8 +1881,9 @@ func factorySelfDispatchEnabled(root string) bool {
 // a lane that nominates the card (spec § C.2), nil when the row is leasable by
 // that lane: a row at `picked` with no owner (an operator pick) or a row
 // `assigned` to this lane (arm (a)). Every in-flight state is `owned` for any
-// holder, this lane included; the terminal and parked states — and any value
-// outside the nineteen — are `recorded`.
+// holder, this lane included. The nominated path separately validates the
+// same-owner expired-lease case before reaching the transactional recovery.
+// Terminal and parked states are `recorded`.
 func factoryRecordRefusal(row homestate.Card, lane string) *factoryNominateRefusal {
 	switch row.State {
 	case homestate.CardPicked:
@@ -2007,7 +2013,8 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	// of its lane (measured 2026-10-07: nine assigned rows in run tmhxo0
 	// refused the one lease a lane was dispatched to run). A nomination of a
 	// card NOT assigned to this lane is a NEW card and still passes false.
-	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	reacquire := nom.row != nil && nom.row.OwnerLabel == lane && nom.row.LeaseHolder == lane && nom.row.State != homestate.CardMerging && nom.row.LeaseExpired(now)
+	assignedHere := nom.row != nil && ((nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane) || reacquire)
 	// holderAlive (card t1828): the same generation-aware holder-liveness
 	// read the selection arms take — an expired lease of a live same-incarnation
 	// holder still holds the slot.
@@ -2025,7 +2032,13 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			}
 		}
 	}
-	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld, serialHolder); r != nil {
+	validationRow := nom.row
+	if reacquire {
+		copy := *nom.row
+		copy.State = homestate.CardAssigned
+		validationRow = &copy
+	}
+	if r := factoryKeepSetRefusal(nom.item, validationRow, lane, nom.serialHeld, serialHolder); r != nil {
 		return nom, r, nil
 	}
 	// Another lane's bundle member is never a nominee (card t1454
@@ -2232,6 +2245,16 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
 		return homestate.Card{}, false, false, err
+	}
+	if nom.row != nil && nom.row.State != homestate.CardAssigned && nom.row.OwnerLabel == lane && nom.row.LeaseHolder == lane && nom.row.LeaseExpired(factoryCardNow()) {
+		followRecord := func(next homestate.Card) error {
+			return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+		}
+		card, err := db.ReacquireExpiredLease(ctx, runID, nom.row.CardID, lane, nom.row.Version, factoryCardNow(), followRecord)
+		if err != nil {
+			return factoryNextClaimRefused(err)
+		}
+		return card, true, false, nil
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
