@@ -8,7 +8,7 @@
 ┃   safety checks                                                               
 ┃   Bypass permissions            - Skip all prompts; requires sandbox proof    
 ┃   (Docker/gVisor/etc.)                                                        
-┃                                                                               
+                                                                                
                                                                                 
 
 ↑ up • ↓ down • / filter • shift+tab back • enter select
