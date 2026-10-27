@@ -1181,6 +1181,86 @@ func TestSplitBlocks_AsideCellCorpusNoBareRunLost(t *testing.T) {
 	}
 }
 
+// D3 (t1968 §5 debt ledger — untested territory, debt-closure round):
+// characterization corpus for CDATA sections and frameset documents. These
+// are OBSERVED-behavior pins (probe-verified against x/net/html's HTML5
+// tree construction), not new behavior: the policies below document what
+// the splitter does with the shapes so a parser upgrade that changes them
+// surfaces here. Proxy-env interactions remain out of scope by design.
+func TestSplitBlocks_UntestedTerritoryCorpusCDATAAndFrameset(t *testing.T) {
+	t.Run("cdata-in-html-content-is-bogus-comment", func(t *testing.T) {
+		// HTML5 tree construction treats <![CDATA[...]]> outside foreign
+		// content as a BOGUS COMMENT ending at the first '>' — the section's
+		// interior is not character data, and markup-looking text after that
+		// '>' remains as ordinary text. Policy: the comment node is dropped
+		// (structure, not content); the tail text stays, joined across the
+		// hole.
+		blocks := SplitBlocks(`<body><p>before <![CDATA[raw <b>bold</b> cdata]]> after</p></body>`)
+		if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "before bold cdata]]> after" {
+			t.Fatalf("want one paragraph %q, got %v", "before bold cdata]]> after", texts(blocks))
+		}
+	})
+	t.Run("cdata-only-cell-yields-empty-row", func(t *testing.T) {
+		// A cell whose entire content is one CDATA bogus comment (no '>' in
+		// its interior) collapses to empty cell text: the row block still
+		// emits, with empty text. Policy: comment-only content is dropped,
+		// not substituted.
+		blocks := SplitBlocks(`<body><table><tr><th>H</th></tr><tr><td><![CDATA[a | b]]></td></tr></table></body>`)
+		if len(blocks) != 2 || blocks[0].Kind != KindTableRow || blocks[0].Text != "H" ||
+			blocks[1].Kind != KindTableRow || blocks[1].Text != "" {
+			t.Fatalf("want rows [H ] with the CDATA-only cell empty, got %v", texts(blocks))
+		}
+	})
+	t.Run("cdata-in-pre-dropped-without-separator", func(t *testing.T) {
+		// preText drops the comment node and keeps the surrounding code text
+		// with its original spacing (verbatim preservation; the hole is not
+		// given a separator, so the two adjacent spaces survive).
+		blocks := SplitBlocks(`<body><pre>code <![CDATA[x < y]]> tail</pre></body>`)
+		if len(blocks) != 1 || blocks[0].Kind != KindCode || blocks[0].Text != "code  tail" {
+			t.Fatalf("want code %q, got %v", "code  tail", texts(blocks))
+		}
+	})
+	t.Run("cdata-in-foreign-content-is-text", func(t *testing.T) {
+		// In foreign content (math — svg is chrome and dropped whole) a
+		// CDATA section IS character data per HTML5: the splitter emits it
+		// as part of the enclosing paragraph's text, markup characters
+		// intact. This is the "content emitted as text where appropriate"
+		// arm of the policy.
+		blocks := SplitBlocks(`<body><p>a <math><![CDATA[x<y]]></math> b</p></body>`)
+		if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "a x<y b" {
+			t.Fatalf("want paragraph %q, got %v", "a x<y b", texts(blocks))
+		}
+	})
+	t.Run("cdata-in-aside-dropped-run-keeps-boundary", func(t *testing.T) {
+		// The aside fallback's run extraction drops the bogus comment; the
+		// surrounding bare text keeps its word boundary.
+		blocks := SplitBlocks(`<body><aside>note <![CDATA[raw cdata]]> tail</aside></body>`)
+		if len(blocks) != 1 || blocks[0].Kind != KindParagraph || !blocks[0].Aside || blocks[0].Text != "note tail" {
+			t.Fatalf("want one aside paragraph %q, got %v", "note tail", texts(blocks))
+		}
+	})
+	t.Run("frameset-document-no-crash-no-blocks", func(t *testing.T) {
+		// A frameset document has no body: the walk sees frameset/frame/
+		// noframes, none of which are block containers, and noframes is a
+		// RAW TEXT element — its interior stays one unparsed text node.
+		// Policy: nothing is emitted (no crash, no phantom blocks); the
+		// frames' TARGET documents are separate fetches, out of a
+		// single-page split's scope by design.
+		blocks := SplitBlocks(`<html><head><title>FS</title></head><frameset cols="50%,50%"><frame src="a.html"><frame src="b.html"><noframes><p>fallback content</p></noframes></frameset></html>`)
+		if len(blocks) != 0 {
+			t.Fatalf("want 0 blocks from a frameset document, got %v", texts(blocks))
+		}
+	})
+	t.Run("frameset-noframes-plain-text-also-silent", func(t *testing.T) {
+		// Plain text (no markup) inside noframes is still raw text under a
+		// non-content container: the same policy — silent, no crash.
+		blocks := SplitBlocks(`<html><frameset rows="*"><frame src="x.html"><noframes>plain fallback text</noframes></frameset></html>`)
+		if len(blocks) != 0 {
+			t.Fatalf("want 0 blocks, got %v", texts(blocks))
+		}
+	})
+}
+
 // Recursion guards: the recursive extraction must not SPLIT runs that were
 // one paragraph. A wrapper with no block-emitting descendant is pure inline
 // content and merges into the enclosing run (F7b semantics — the audit
