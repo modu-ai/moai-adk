@@ -8,7 +8,7 @@
 //	C1 macOS-bias absolute path placeholder (/Users/)        — binary FAIL
 //	C2 bare-narrative V3R[0-9] version sigil                 — advisory WARN
 //	C4 feedback_ / memory.md substring reference             — advisory WARN
-//	C5 CLAUDE.local.md maintainer-only local file reference  — binary FAIL
+//	C5 AGENTS.local.md retired legacy local file ref — binary FAIL
 //	C6 PR #N specific pull-request number reference          — binary FAIL
 //	C8 GOOS=<os> Go cross-compile env var (false positive)   — PRESERVE
 //	C9 natural-language canonical-form privilege marker      — binary FAIL
@@ -157,16 +157,19 @@ var neutralityClasses = []neutralityClass{
 		),
 	},
 	{
-		// C5 names the maintainer-only legacy local file. `AGENTS.local.md` —
-		// the user-owned local file the deployed CLAUDE.md imports last — is an
-		// ALLOWED template reference (SPEC-INSTRUCTION-FILES-UNIFY-001
-		// REQ-IFU-015), so the pattern is the literal filename and never a
-		// `*.local.md` family match. TestTemplateNeutralityC5_LocalFileNames
-		// pins both halves.
-		name:      "C5-claude-local-ref",
+		// C5 names the retired legacy local file. `CLAUDE.local.md` — the
+		// user-owned local instruction file the deployed CLAUDE.md declares —
+		// is an ALLOWED template reference (SPEC-CLAUDE-INSTRUCTION-FILES-001
+		// REQ-CIF-001/013 inverted the pair), so the pattern is the literal
+		// legacy filename and never a `*.local.md` family match.
+		// The protected-zone table legitimately names AGENTS.local.md: the
+		// frozen instruction-files contract keeps protecting all four names
+		// (REQ-CIF-014), and a protection pattern is not an active reference.
+		// TestTemplateNeutralityC5_LocalFileNames pins both halves.
+		name:      "C5-agents-local-ref",
 		severity:  neutralityBinary,
-		pattern:   regexp.MustCompile(`CLAUDE\.local\.md`),
-		allowList: allowListSet(), // empty — binary FAIL on any hit
+		pattern:   regexp.MustCompile(`AGENTS\.local\.md`),
+		allowList: allowListSet(".moai/config/sections/protected-zone.yaml"),
 	},
 	{
 		name:      "C6-pr-number-ref",
@@ -441,22 +444,23 @@ func TestTemplateNeutralityAuditC8Preserve(t *testing.T) {
 	}
 }
 
-// TestTemplateNeutralityC5_LocalFileNames pins REQ-IFU-015 on fixtures rather
-// than on the live tree: a template file referencing `AGENTS.local.md` (the
-// deployed CLAUDE.md's final import) produces NO C5 hit, and one referencing
-// `CLAUDE.local.md` does — so widening C5 to a `*.local.md` family pattern, or
-// dropping it, turns this test red.
+// TestTemplateNeutralityC5_LocalFileNames pins the inverted pair
+// (SPEC-CLAUDE-INSTRUCTION-FILES-001) on fixtures rather than on the live
+// tree: a template file referencing `CLAUDE.local.md` (the deployed CLAUDE.md's
+// declared local instruction file) produces NO C5 hit, and one referencing
+// `AGENTS.local.md` (the retired legacy name) does — so widening C5 to a
+// `*.local.md` family pattern, or dropping it, turns this test red.
 func TestTemplateNeutralityC5_LocalFileNames(t *testing.T) {
 	t.Parallel()
 
 	var c5 neutralityClass
 	for _, c := range neutralityClasses {
-		if c.name == "C5-claude-local-ref" {
+		if c.name == "C5-agents-local-ref" {
 			c5 = c
 		}
 	}
 	if c5.pattern == nil {
-		t.Fatal("C5-claude-local-ref class not registered")
+		t.Fatal("C5-agents-local-ref class not registered")
 	}
 
 	cases := []struct {
@@ -464,8 +468,8 @@ func TestTemplateNeutralityC5_LocalFileNames(t *testing.T) {
 		body    string
 		wantHit bool
 	}{
-		{name: "agents_local_allowed", body: "# CLAUDE.md\n\n@AGENTS.md\n\n@AGENTS.local.md\n", wantHit: false},
-		{name: "claude_local_forbidden", body: "Read CLAUDE.local.md for local rules.\n", wantHit: true},
+		{name: "agents_local_forbidden", body: "Read AGENTS.local.md for local rules.\n", wantHit: true},
+		{name: "claude_local_allowed", body: "# CLAUDE.md\n\n@CLAUDE.md\n\n@CLAUDE.local.md\n", wantHit: false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

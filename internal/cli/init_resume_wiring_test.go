@@ -82,10 +82,11 @@ func TestInitResumeDoesNotInferBothFromInstructionFile(t *testing.T) {
 
 // TestDeployedWiringIsGPTReadsTheClaudeSurface — the legacy layout fallback
 // (used only when no selection record exists) keys on the claude-side surface.
-// The codex-only deployer writes no .claude/ tree, so .claude/ absent with
-// CLAUDE.md present is the gpt layout. AGENTS.md is not a discriminator: no
-// harness writes AGENTS.md any more, and an AGENTS.md probe read the claude
-// layout as gpt.
+// The codex-only deployer writes no .claude/ tree, so .claude/ absent with the
+// instruction file present is the gpt layout — under EITHER name: CLAUDE.md
+// (canonical) or a legacy AGENTS.md the pre-migration deployer wrote
+// (card-review R1). A .claude/-bearing tree never reads as gpt, whichever
+// instruction name it carries.
 func TestDeployedWiringIsGPTReadsTheClaudeSurface(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -93,7 +94,9 @@ func TestDeployedWiringIsGPTReadsTheClaudeSurface(t *testing.T) {
 		want  bool
 	}{
 		{"codex-only layout", []string{"CLAUDE.md"}, true},
+		{"legacy codex-only layout (AGENTS.md only)", []string{"AGENTS.md"}, true},
 		{"claude-side layout", []string{".claude/", "CLAUDE.md"}, false},
+		{"legacy claude-side layout", []string{".claude/", "AGENTS.md"}, false},
 		{"claude surface only", []string{".claude/"}, false},
 		{"empty project", nil, false},
 	}

@@ -49,7 +49,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	if err := prepareOperationalProject(root, bin, env); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{".moai/config/sections", ".codex/hooks.json", ".codex/config.toml", "AGENTS.md"} {
+	for _, path := range []string{".moai/config/sections", ".codex/hooks.json", ".codex/config.toml", "CLAUDE.md"} {
 		if _, err := os.Stat(filepath.Join(root, path)); err != nil {
 			t.Errorf("production init artifact %s: %v", path, err)
 		}
