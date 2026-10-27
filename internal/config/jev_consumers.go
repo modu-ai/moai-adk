@@ -67,7 +67,9 @@ type JevConsumerResolution struct {
 	Warnings   []string
 }
 
-// UnmarshalYAML keeps the raw nodes of one consumer entry and never fails.
+// UnmarshalYAML keeps the retained form of one consumer entry's mode and
+// threshold — a scalar in full, any other kind as its kind alone (see
+// jevRetain) — and never fails.
 //
 // @MX:NOTE: [AUTO] Never return an error from this decoder: it would reset the whole workflow section (loader.go loadWorkflowSection)
 func (c *JevConsumerConfig) UnmarshalYAML(node *yaml.Node) error {
@@ -92,7 +94,9 @@ func (c *JevConsumerConfig) UnmarshalYAML(node *yaml.Node) error {
 }
 
 // UnmarshalYAML decodes each consumer on its own and never fails: a value that
-// is not a mapping gives an empty map plus one section-level warning.
+// is not a mapping gives an empty map plus one section-level warning, and an
+// entry-level YAML merge key (`c1: {<<: *base}`) is reported the same way
+// rather than dropped silently.
 func (j *JevConsumers) UnmarshalYAML(node *yaml.Node) error {
 	*j = JevConsumers{}
 	node = jevDeref(node)
@@ -104,6 +108,9 @@ func (j *JevConsumers) UnmarshalYAML(node *yaml.Node) error {
 			if key.Kind != yaml.ScalarNode {
 				j.Warnings = append(j.Warnings, fmt.Sprintf("consumers key at line %d is a %s, want a name; entry ignored", key.Line, yamlKindName(key.Kind)))
 				continue
+			}
+			if jevHasMergeKey(node.Content[i+1]) {
+				j.Warnings = append(j.Warnings, fmt.Sprintf("consumer %q uses a YAML merge key (<<); mode and threshold merged through it are ignored, write them on the entry", key.Value))
 			}
 			var entry JevConsumerConfig
 			_ = entry.UnmarshalYAML(node.Content[i+1]) // never fails
@@ -127,7 +134,15 @@ func (j JevConsumers) MarshalYAML() (any, error) {
 	return j.Entries, nil
 }
 
-// MarshalYAML writes only the keys that were present.
+// MarshalYAML writes only the keys that were present. A non-scalar mode or
+// threshold is saved as `mode: {}` / `threshold: []` — the kind alone of what
+// jevRetain kept — so the operator's original text for a malformed value does
+// NOT survive a save. This is intended (sync audit debt D3 of card t1762,
+// repaired by card t1979): retaining the original node would keep its alias
+// graph, which the config cache's JSON encoding expands (F1) and which a save
+// can emit out of order (F2). The resolve-time warning is the record of the
+// bad value, not the saved text; the operator rewrites the entry from the
+// warning.
 func (c JevConsumerConfig) MarshalYAML() (any, error) {
 	out := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	for _, kv := range []struct {
@@ -217,6 +232,28 @@ func jevDeref(n *yaml.Node) *yaml.Node {
 		n = n.Alias
 	}
 	return n
+}
+
+// jevHasMergeKey reports whether an entry body is a mapping that carries a
+// `<<` merge key. The merged mode/threshold values are NOT applied: applying
+// them would retain the alias graph that jevRetain exists to remove (the F1
+// cache bomb). The choice is warn-over-support — the merge key is reported as
+// data (sync audit debt D2 of card t1762, repaired by card t1979) — because a
+// warning preserves the operator's sight of the dropped setting at no
+// explosion risk. A merge key nested inside the mode or threshold value is
+// not an item-level merge and is already warned by the resolver ("mode is a
+// mapping" / "threshold is a mapping").
+func jevHasMergeKey(n *yaml.Node) bool {
+	n = jevDeref(n)
+	if n.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if k := n.Content[i]; k.Kind == yaml.ScalarNode && k.Value == "<<" {
+			return true
+		}
+	}
+	return false
 }
 
 // jevRetain returns what the resolver needs of a mode or threshold value and
