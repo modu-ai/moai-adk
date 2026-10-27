@@ -510,14 +510,29 @@ func TestCache_HitCarriesChangeNotice(t *testing.T) {
 
 // AC-FW-011: usage aggregation separates new network requests from
 // cache-served answers.
+//
+// FW-D2 deepening (t1968 debt-closure round, mutation-check finding): the
+// test originally asserted the usage LOG only. The RESULT's Usage.FromCache —
+// the surface an API consumer reads off the returned Result — was unasserted
+// (a mutation disabling the cache-hit FromCache assignment escaped
+// detection). Both surfaces are asserted now: log records and the per-call
+// Result.
 func TestUsage_FromCacheSeparation(t *testing.T) {
 	doer := &cachedDoer{script: []doerStep{{status: 200, body: cacheOKBody("jev-1.13.0")}}}
 	c := newCachedClient(t, doer)
-	if !c.Ask(context.Background(), cacheQuestion()).OK() {
+	net := c.Ask(context.Background(), cacheQuestion())
+	if !net.OK() {
 		t.Fatal("network call failed")
 	}
-	if !c.Ask(context.Background(), cacheQuestion()).OK() {
+	if net.Usage.FromCache {
+		t.Error("network result Usage.FromCache must be false")
+	}
+	cached := c.Ask(context.Background(), cacheQuestion())
+	if !cached.OK() {
 		t.Fatal("cached call failed")
+	}
+	if !cached.Usage.FromCache {
+		t.Error("cache-served result Usage.FromCache must be true (consumer surface, was unasserted)")
 	}
 	log := c.UsageLog()
 	if len(log) != 2 {
