@@ -1,6 +1,21 @@
 # 진입점
 
-## 현재 진입점 보완 — 656e4d3 (card t1640 판)
+## 현재 진입점 보완 — 4c4217a1 (card t1991 판)
+
+기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 진입점이다. 새 동사는 하나(`moai todo classify`), 새 플래그는 하나(`--rebind-to`)이고 나머지는 기존 동사의 동작 변화다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+- `moai todo classify <id> --mode <serial|parallelizable> --reason <text>`(신규, `internal/cli/todo_classify_cmd.go`의 `newTodoClassifyCmd`가 `internal/cli/todo.go`에 등록 — card t1737, SPEC-FACTORY-DEFAULT-MODE-001). 사람의 재분류 판단 하나를 큐의 한 번의 잠금 쓰기로 기록한다. 결정자 플래그는 받지 않고, 거절은 큐 파일을 바이트 단위로 그대로 둔다.
+- `moai factory runs --retire <죽은 런> --rebind-to <산 런>`(신규 플래그, `internal/cli/factory_handoff_recover.go`의 `runRebindRetire` — card t1963). 죽은 런의 진행 중 카드를 산 런으로 옮기고 원본을 은퇴시키는 통합이다. 리더·운영자 전용이라 레인 세션은 거절되고, `--retire` 없이 `--rebind-to`만 주면 아무것도 바꾸지 않고 거절한다. 플래그가 없으면 은퇴 동작은 그대로다.
+- 리더 시작(`moai cc -f` / `moai glm -f`) — `internal/cli/factory_run_adopt.go`의 `leaderEntryRunAdoption`이 이어받기 인자 없이 최신 죽은 런을 입양하고(`PlanLeaderEntry` 분류), 나머지 죽은 런을 그 안으로 합친다(`consolidateDeadRuns`). 살아 있거나 판정 불가인 런이 하나라도 있으면 아무것도 입양하지 않고 후보마다 경고 한 줄과 의도적 `--factory-run` 명령을 낸다. 은퇴한 런 id로의 런 시작은 `recordFactoryRunStart`가 큐 쪽 기록 **앞에서** 거절한다.
+- 레인 합류(`moai cc -l` / `moai glm -l`)의 런 선택기(`internal/cli/factory_run_select.go`)에 `m<번호>`가 더해졌다 — 죽은 런을 유일한 산 런에 합쳐 정리한 뒤 합류한다(`mergeChosenRun`).
+- `moai factory merge ready`(`internal/cli/factory_merge.go`) — `--spec`이 더는 필수 플래그가 아니다. 생략하거나 카드 id를 넘기면 팩토리 기록의 SpecID를 따르고, 기록이 비었거나 없는 카드만 SPEC 없는 검증 파일 경로를 탄다(card t1959, GH #1913). agentic-trunk에서 primary 체크아웃만 `main`을 쥔 프로젝트는 통합 창 대신 PR 경로 안내를 받는다.
+- `moai factory complete` — PR 경로가 `gh pr merge` 자동 병합 요청을 보내지 않는다(리더가 병합, card t1831 M5b). 이미 `pr-open`인 카드는 현재 홀더 구성과 무관하게 PR 경로를 유지한다.
+- `moai factory rebind-evidence <card> --run <run> --reason <text>`(`internal/cli/factory_card_rebind.go`) — 감사 판정 경로가 막히면 운영자가 `todo landed --sha`로 기록한 착지 커밋을 증거로 받고(card t1962), 단계가 빈 행은 착지 기록에서 다시 묶는다(card t1964). `moai factory approve`는 증거 해시가 없는 카드를 거절하며 다른 런을 지정하면 완료 게이트가 읽는 런을 stderr로 알린다.
+- `moai integration remeasure`(`internal/cli/integration_remeasure.go`) — 기준 브랜치를 명령 실행 전에 해석하고 못 구하면 안내와 함께 거절한다(card t1790, GH #1817).
+- `moai init` · `moai update` · 클린 재설치 — 셋 모두 `template.SyncLocalSettingsPATH`로 gitignore된 `.claude/settings.local.json`의 `env.PATH`를 새로 쓴다(card t1957, GH #1827). codex 전용 하네스에서는 건너뛴다.
+- 배선되지 않은 표면 하나: `internal/jevledger`의 `Recorder.Append`는 비테스트 호출자가 아직 없다 — 훅 진입점 어디도 장부에 쓰지 않는다.
+
+## 이전 진입점 보완 — 656e4d3 (card t1640 판)
 
 - `moai worktree list [--json]`(신규, `internal/cli/worktree/list.go`) — 등록 트리의 클래스·루트·브랜치·더티·미푸시 커밋 수·앵커 여부 9필드 읽기 전용 재고. 아무것도 쓰지 않는다.
 - `moai worktree migrate [--apply|--verify|--rollback]`(신규, `internal/cli/worktree/migrate.go`) — moai-made 트리를 홈 루트로 옮기는 이관 엔진(기본 plan). 트리별 매니페스트→인텐트→`git worktree move`→상태파일 재키→팩토리 카드 재결속→매니페스트 대조 순이며 저널은 `pending`/`settle`로 죽은 실행의 수렴을 보장한다.

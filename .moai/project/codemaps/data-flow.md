@@ -1,6 +1,16 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — 656e4d3 (card t1640 판)
+## 현재 흐름 보완 — 4c4217a1 (card t1991 판)
+
+기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 흐름은 셋이다.
+
+**① 죽은 런 통합 흐름**(card t1963·t1973, SPEC-FACTORY-COMPLETION-RECOVERY-001). 리더가 다시 시작하면 새 프로세스는 새 소유자 스탬프를 얻고 이전 런은 구조적으로 죽었지만 그 카드는 아직 진행 중이다. 흐름은 다섯 걸음이다. (1) 런처(`internal/cli/factory_run_adopt.go`)가 `PlanLeaderEntry`로 활성 런을 한 번 분류한다 — 읽기 전용이며, 살아 있거나 판정 불가인 런이 하나라도 있으면 `Blocked`가 서서 입양이 없다. (2) 자기 스탬프로 죽은 런 중 최신 것을 `AdoptRun`이 소유자 스탬프 compare-and-set으로 입양한다 — 경쟁에서 진 리더는 실패하지 않고 새 id를 유지한다(`ErrAdoptStampChanged`). (3) 나머지 죽은 런마다 `RebindRun`이 한 번의 쓰기 트랜잭션에서 소유자 죽음·대상 생존·워커 부재·제3 런 점유 없음을 다시 읽어 확인하고, 비종결 카드를 대상 런으로 옮긴다(대상이 같은 카드를 이미 쥔 구조적 중복 행만 `card.rebound` 포인터와 함께 abandoned로 — 한 열이라도 갈리면 전체 거절). (4) 카드 배차 결속을 대상으로 다시 가리키고 원본을 `retired`로 뒤집으며 `moved_cards`·`abandoned_cards`·`rebound_to`가 실린 `run.retired` 이벤트 하나를 남긴다. (5) 이후 이 이벤트 쌍(`status='retired'` + `rebound_to`)이 은퇴한 런을 가리키는 쓰기를 모두 막는다 — 런 기록·재개·카드 행 생성·결속 쓰기·레인 등록·배차 복구(`RepairDispatchAtomic`이 검사와 쓰기를 한 트랜잭션에 묶는다). 읽는 쪽은 옮겨진 카드의 이력을 원본 런에서 따라온다: `LoadCardEvents`가 원본 런 이벤트를 합치고(A→B→C 사슬은 마지막 런으로 귀속), `CardEngagementStart`가 첫 이벤트 시각을 같은 규칙으로 읽는다. 저장된 행은 어느 것도 고치거나 지우지 않는다. 같은 `RebindRun`을 `moai factory runs --retire --rebind-to`와 레인 합류 선택기의 `m<번호>`도 부른다. 임대 쪽(`RecordPickedReconciled`)은 새 임대와 같은 트랜잭션에서 죽은 런이 남긴 같은 카드의 중복 행을 abandoned로 옮긴다.
+
+**② Jev 결정 장부 흐름**(card t1762, SPEC-JEV-LEDGER-001) — 아직 호출자가 없는 반쪽 흐름이다. 설정 쪽: `workflow.jev.consumers`는 오류 없이 디코드되어 노드 그대로 보관되고 `ResolveJevConsumer`가 나중에 값으로 해석하며, 네 mode 모두 유효 모드 `shadow`가 된다. 기록 쪽: `jevledger.New(projectRoot)`는 I/O가 없고 `Append(Row)`가 호출될 때 `OutcomeLabel=unlabeled`(shadow면 `Action=none`)를 덮어 한 줄로 직렬화한 뒤 `.moai/state/jev/decisions.jsonl`의 열린 핸들에 `O_APPEND` 쓰기 한 번으로 붙인다. 디렉터리·파일을 만들지 못하거나 열린 핸들이 일반 파일이 아니면(링크·FIFO·장치·디렉터리) 행을 버리고 이유를 반환값으로만 알린다. 장부를 읽는 경로가 없고 비테스트 호출자도 아직 없어, 지금 이 흐름은 실행 중에 어떤 바이트도 만들지 않는다.
+
+**③ settings PATH 분리 흐름**(card t1957, GH #1827). `moai init`·`moai update`·클린 재설치는 커밋되는 `.claude/settings.json`에 SmartPATH만 렌더하고, 같은 실행에서 `SyncLocalSettingsPATH`가 런처의 상속 PATH에서 SmartPATH가 이미 덮는 항목을 뺀 값을 `settings.local.json`의 `env.PATH`에 쓴다. 쓰기는 형제 잠금 파일 아래 읽고-고치고-쓰기, 임시 파일 rename, 0600이며 이전 `env.PATH`는 읽어 오지 않는다. 다른 키는 그대로 보존된다. 갱신 실패는 경고로 남고 실행을 막지 않는다.
+
+## 이전 흐름 보완 — 656e4d3 (card t1640 판)
 
 이 창에서 실제로 움직인 흐름은 넷이다. **① 홈 루트 착지 흐름** — MoAI의 홈 루트 트리 생성 경로들(`moai worktree new`·런처의 `--branch` 암 `moai cc -w <name> --branch <existing>`(REQ-WHR-005b)·`moai factory next`의 카드 머티리얼라이저)이 `worktreeroot.Resolve`의 일회성 프로젝트 키(오너 마커+common-dir 기록)로 `<MoaiHome>/worktrees/projects/<key>/<name>`에 착지하고, legacy 뿌리는 `Candidates`의 폴백 후보로만 남는다. 런처의 짧은 이름 `-w`는 생성 경로가 아니다 — 존재 트리 진입(pass-through 또는 chdir)만 한다(REQ-WHR-006 브랜치-Y, 델타 감사 F5 정정). 별도로 훅의 생성기(`internal/hook/worktree_create.go`)는 claude-native 트리를 legacy `.claude/worktrees`에 직접 만든다(리졸버 미경유). **② 이관 흐름** — `moai worktree migrate`가 트리별로 매니페스트(HEAD·브랜치·미푸시·ignored 다이제스트)→인텐트→이동→레지스트리 재키(`RekeyWorktreeEntry`)→카드 재결속→대조를 저널(`pending`/`settle`) 아래 수행하고, 죽은 실행은 `--rollback`이 역순으로 되돌린다. 이동 저널의 역조회(`MovedBy`)가 정리 가드가 freshly-migrated 트리를 건드리지 않게 한다. **③ 런처 진입 흐름** — 짧은 `-w` 이름이 Candidates에서 home 후보 하나로 유일 해석되면 chdir 후 argv에서 선택을 벗겨 백엔드에 절대 경로 `--worktree`가 가지 않는다. **④ 팩토리 임대 흐름의 보강** — `factoryNextLeaseOnceEligibility` 진입에서 착지 베이스가 ctx 주입되고(REQ-WHR-007) 외래 트리 거부·carry-over가 리졸버 리프+legacy 리프를 모두 검사한다. 부수: `factory status`의 카드 나이 경보(t1838, 읽기 전용), `contract decide`의 Jev 통지 전파(t1803), agentemit 렌더 게이트(t1649 — `make build`가 drift를 잡는다).
 
