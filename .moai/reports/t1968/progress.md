@@ -84,16 +84,17 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - 2026-10-27 08:1x iter5 귀환 — **PASS-WITH-DEBT 0.93**(94/93/93/93, rcpt-2a184bfefac6e098feba3734) @ed6227740e. F7c 폐쇄(양방향 프루프+모서리), F7b/F7/F3 유지, F계열 6/6, 트리오+cli 10 PASS+race+빌드 녹색, 커버리지 95.0%, lint/gofmt/spec-lint 0, convergence pass(gate_unmet 空). 잔여: D1 Low 옵션(aside 폴백 경로 — 후속 카드 조건부)·F5c 코너 iter3 수용·미시험 영역 기재. **sync 게이트 충족 — 착지 시퀀스 진입.**
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=.moai/reports/t1968/sync-audit.md iter5+rcpt-2a184bfefac6e098feba3734 ladder_path=gate:sync-gate-met — sync 감사 통과 수용, 레인 verdict 작성 + factory complete 실행.
 
-## 5. 이월 부채 목록 (PASS-WITH-DEBT 0.93 — 리더 수용 판정용, 2026-10-27 08:4x 정리)
+## 5. 이월 부채 목록 (PASS-WITH-DEBT 0.93 — 리더 수용 판정용, 2026-10-27 08:4x 정리 · 부채 폐쇄 라운드 처분 2026-10-27 12:2x 갱신)
 
 | # | 등급 | 내용 | 처분 상태 |
 |---|------|------|----------|
-| D1 | Low·optional | aside 폴백 본문 텍스트가 복원된 [Main] 경로 사용([Main / Side] 아님) — 테스트 고정·커밋 문서화 | 경로 충실도가 필요해질 때만 후속 카드 |
-| D2 | Low·accepted | F5c 카운트 코너: 정당 U+FFFD 인코딩과 별개 오염이 같은 페이지에 공존하면 정당으로 통과 | iter3 감사 수용, 코드 주석 문서화 |
-| D3 | Low·noted | 미시험 영역: CDATA 섹션·frameset 문서·프록시 환경 상호작용 | 감사자 기재, 후속 여지 |
+| D1 | Low·optional | aside 폴백 본문 텍스트가 복원된 [Main] 경로 사용([Main / Side] 아님) — 테스트 고정·커밋 문서화 | **폐쇄(1단계)** — 9c81001ef9에서 C2 수리의 부수효과로 해소(테스트 [Main]→[Main Side] 갱신+사유 기재, iter7 감사 직독 확인). R2(머지 런의 제목 경계 분할)도 **폐쇄** — WIP 체크포인트 03078897d6(blocks.go·blocks_test.go +94): walkAsideRuns에서 제목 자식=런 경계, RED `got 1: [lead tail]` 관측→GREEN 2블록 [Main]/[Main Side] |
+| D2 | Low·accepted | F5c 카운트 코너: 정당 U+FFFD 인코딩과 별개 오염이 같은 페이지에 공존하면 정당으로 통과 | **폐쇄** — 0fd0ee44b0: 위치 기반 출처(allFFFDLegit — 디코더를 한 판단씩 구동, 각 디코딩 FFFD의 소스 스팬==인코딩 형식인 검사; 카운트 검사는 워크 불가 캐릭터셋 폴백으로 잔존·문서화). RED: gb18030 정당 1+가짜 형태 포함 오염(계수 2≤2 통과) 관측→fetch_error. 캐릭터셋 제외 불필요(일반 사례 성공) |
+| D3 | Low·noted | 미시험 영역: CDATA 섹션·frameset 문서·프록시 환경 상호작용 | **부분 폐쇄(설계상)** — 4595501732: 특성화 코퍼스 7 서브테스트(CDATA=보거스 코멘트·셀 공락·pre 무분리·외래 콘텐츠(math)=텍스트 방출; frameset/noframes=무충돌·0블록, 정책 기재). 프록시 환경 상호작용은 부채 원문 자체가 범위 밖 — 미시도(지시 준수) |
 | D4 | Gap·discipline | 전체 internal/cli 수트+저장소 전체 판정 미 로컬 관측(부하 타임아웃, FAIL 0건) — 통합 브랜치 CI 소관 | 착지 시 PENDING, CI가 판정 |
 | D5 | Gap·discipline | RED-first 증거: M7은 계획 장부 행 기반(마크다운 특성), 수리 RED는 보고서 축자 출력+감사자 독립 프루브로 보강 — 전 RED 런의 감사자 직접 관측은 아님 | 커밋 주장+교차 검증 상태 |
 | D6 | Process | card-review 천장 처분: C1~C3를 4차 검토 없이 수리(천장 준수) — 잔여 검증은 sync-audit 프루브가 대행 | 완료 보고서에 리더 명세용 기재 |
+| FW-D2 | Process | 계획 장부 R8-R10 행이 심볼 프루브 RED로 수리됨(동작 테스트 별도 존재) — 동작 단언 깊이 부족 (sync-audit-rebaseline.md debt 줄) | **폐쇄** — 12d3611a6a: 3행 변이 검사(파괴→관측→복원). R8 지연 무시→FAIL 1.099ms·R9 세마포어 무력화→양 테스트 FAIL·R10 serveCacheHit 라인 변이→**탈출**(Ask의 라이브 대입이 로그+Result 양면 소유, Result.Usage.FromCache 소비자 면 미단언)→단언 심화 후 라이브 대입 변이→양면 FAIL→복원. 생존 프로덕션 변경 0(테스트 파일만) |
 
 ## 6. 착지 재개 (2026-10-27 08:4x — 리더 set-spec 후)
 
@@ -134,3 +135,12 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=leader(socket 50218) evidence_refs=리더 메시지+03078897d6 ladder_path=leader-handoff — Claude 레인 인계, 대기 전환. 추가 감사/수리 시도 없음, 신규 카드 착수 금지.
 - 2026-10-27 10:2x L1~L3 수리 귀환 — 커밋 5a150e2ee1: L1(answersInRequestOrder — 질문 신원 재구성, RED [q1q2]→[q2q1] 스왑 관측)·L2(NoticeLine 병합 — handleJevAsk 도달 경로 확인 mcp_jev.go:128)·L3(존재 검사 — missing:true 행·절감 0·평균 제외, RED 가짜 1.0 관측) 3건 RED→GREEN. 전 수트 ok(jev/jevmeasure/fetchweb+R/N/C/F+iter4-8+tableStack), cli 타깃 21 PASS, 빌드/lint 0. 갭: 전체 수트 미실행(레인 로컬 규율), moai gate --staged 플래그 불명으로 미관측. 레인 재관측 일치(BUILD_OK·2패키지 ok·등급 ok).
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=5a150e2ee1+수리 보고+레인 재관측 ladder_path=①disk-evidence — L1~L3 수리 승인, sync-audit iter9 델타 스폰(delta_base 77dff44edf, 리더 지시 절차).
+
+## 8. 부채 폐쇄 라운드 완료 (2026-10-27 12:2x KST — manager-develop 귀환, 인계 계획의 '추가 편집·커밋 착지')
+
+- 진행 주체: 부채 폐쇄 에이전트(manager-develop, §7 인계 기록이 예측한 '실행 중 에이전트'). 체크포인트 03078897d6 위에 착지한 forward 커밋 4건: 0fd0ee44b0(D2 위치 출처) · 4595501732(D3 특성화 코퍼스) · 12d3611a6a(FW-D2 변이 검사 심화) · 본 기록 커밋. R2/D1 1단계는 03078897d6에 포함(레인 체크포인트 — amend 금지 규율 준수).
+- 처분: D1 폐쇄(9c81001ef9, 선행)+R2 폐쇄 / D2 폐쇄(캐릭터셋 제외 불필요 — 일반 사례 성공, 폴백 문서화) / D3 부분 폐쇄(설계상: CDATA·frameset 특성화 7서브테스트, 프록시=원문 범위 밖 미시도) / FW-D2 폐쇄(3행 변이 검사, R10 탈출 1건→Result 소비자 면 단언 심화로 해소, 생존 프로덕션 변경 0). 상세+커밋 SHA: §5 갱신 표.
+- RED-first: R2 `want 2 blocks, got 1: [lead tail]` / D2 가짜 형태 코너 통과(spurious-pattern probe로 사전 재현) — 축자 관측 후 GREEN. D3는 특성화(관측 핀, 7/7 첫 실행 PASS).
+- 검증 배치(트리 12d3611a6a, 이번 실행 관측): go build OK · GOOS=windows GOARCH=amd64 OK · gofmt 0 · vet OK · 3패키지 fresh(-count=1) ok(fetchweb 0.377s·jev 1.572s·jevmeasure 0.503s) · cli 필터(TestFetchWeb 6종+JevCallPath 2종+MCPParity) ok 8.176s · golangci-lint fetchweb+jev 0 issues · 코퍼스 72 PASS/0 FAIL(64→72, D3 +8라인).
+- 잔여: D4(CI 소관)·D5(감사 프로세스)·D6(보고 명세) — 부채 폐쇄 라운드 범위 밖, §5 미변경. 전체 cli 수트·저장소 전체 판정=CI(관측 시 PENDING).
+- decision record: decided_by=manager-develop(부채 폐쇄 스폰, 리더 게이트 정정 이행) evidence_refs=03078897d6+0fd0ee44b0+4595501732+12d3611a6a+§5 갱신 표+검증 배치 출력 ladder_path=①disk-evidence — 4항목 처분 보고, 리더/조정자 판정 대기(감사자 범위 밖 관찰 분류 확인 → 부채 없는 PASS → 리더 codex).
