@@ -733,6 +733,10 @@ var versionStampTokenLine = regexp.MustCompile(`(?m)^\s*Version = "([^"]+)"`)
 // document. Not one blanket clause: the groups hide different amounts for
 // different reasons, and a single clause would hide that.
 //
+// go.mod and go.sum are the dependency manifests: they carry third-party
+// module versions, which can coincide with the project token (card t1987:
+// modernc.org/gc/v3 v3.2.0) and never carry a stamp of our own.
+//
 // Matching follows the semantics the exclusion counts were measured with: a
 // trailing slash is a directory prefix, a bare name is an exact path, and a
 // star crosses path segments. The stars matter — a segment-bound star would
@@ -744,6 +748,8 @@ var versionStampExclusionGroups = []string{
 	"CHANGELOG.md",
 	"*_test.go",
 	"docs-site/content/*/changelog*",
+	"go.mod",
+	"go.sum",
 }
 
 // versionStampExclusionGlobRes holds the compiled forms of the groups that
