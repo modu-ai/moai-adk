@@ -548,6 +548,75 @@ func TestSplitBlocks_AsideFallbackExcludesHeadingText(t *testing.T) {
 	}
 }
 
+// R2 (t1968 sync-audit iter7/8 P3, debt-closure round): a heading that is a
+// DIRECT child of an aside-scoped container splits the bare run at the
+// heading boundary — the run BEFORE the heading carries the pre-heading path
+// (it precedes the heading in the document, so the heading does not describe
+// it), the run after carries the heading's path. Before the split, the
+// text-only shape merged both sides into one paragraph riding the
+// post-heading path ("lead tail" [Main Side]), so the pre-heading half was
+// attributed a heading it comes before. The boundary mirrors what a
+// block-emitting child does (C2), with one difference: a heading emits no
+// block of its own, so the pre-heading run is appended, not spliced.
+//
+// Deliberate limit, kept from F7b: a heading nested inside a wrapper that
+// emits no block does NOT split the enclosing run — that wrapper is pure
+// inline content that merges into the enclosing paragraph
+// (TestSplitBlocks_AsideBareOnlyWrapperMergesIntoRun); splitting inside it
+// would contradict the merge rule. The split applies where the heading is
+// the container's own child.
+func TestSplitBlocks_AsideHeadingSplitsBareRunPaths(t *testing.T) {
+	html := `<body><h2>Main</h2><aside>lead<h3>Side</h3>tail</aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		text string
+		path []string
+	}{
+		{"lead", []string{"Main"}},
+		{"tail", []string{"Main", "Side"}},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (the aside-internal heading must split the bare run)", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != KindParagraph || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true", i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, KindParagraph, w.text)
+		}
+		if !reflect.DeepEqual(blocks[i].HeadingPath, w.path) {
+			t.Errorf("block %q path = %v, want %v (each side of the heading boundary carries its own path)", w.text, blocks[i].HeadingPath, w.path)
+		}
+	}
+}
+
+// R2 mixed control: the heading boundary composes with a following
+// block-emitting child — three runs ("lead", "mid", "tail") land in document
+// order around the paragraph block, each carrying the path of its own side of
+// the boundary.
+func TestSplitBlocks_AsideHeadingSplitComposesWithBlocks(t *testing.T) {
+	html := `<body><h2>Main</h2><aside>lead<h3>Side</h3>mid<p>Body</p>tail</aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		text string
+		path []string
+	}{
+		{"lead", []string{"Main"}},
+		{"mid", []string{"Main", "Side"}},
+		{"Body", []string{"Main", "Side"}},
+		{"tail", []string{"Main", "Side"}},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %q aside=%v, want %q aside=true", i, blocks[i].Text, blocks[i].Aside, w.text)
+		}
+		if !reflect.DeepEqual(blocks[i].HeadingPath, w.path) {
+			t.Errorf("block %q path = %v, want %v", w.text, blocks[i].HeadingPath, w.path)
+		}
+	}
+}
+
 // C2 (t1968 sync-audit iter6): the F7b fallback was all-or-nothing — it
 // emitted the aside's collapsed text only when NO child had emitted a block,
 // so a MIXED aside (`Important<p>Details</p>Tail`) kept only Details and the

@@ -284,6 +284,18 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 // walk, so a wrapper's interior runs are spliced around the blocks its
 // descendants emit, recursively, still in document order.
 //
+// R2 (t1968 sync-audit iter7/8 P3, debt-closure round): a HEADING child is a
+// run boundary too — the run before it is emitted with the PRE-heading path
+// before the heading's own walk advances the path. A heading emits no block
+// (its text is structure), so the pre-heading run is appended rather than
+// spliced: nothing after runStart has emitted a block it would need to
+// precede. A heading-only boundary (empty run before it) emits nothing, so a
+// heading-only aside stays empty and the leading-heading shape
+// (`<aside><h3>Side</h3>note</aside>`) keeps its single post-heading
+// paragraph. The boundary applies where the heading is the container's own
+// child; a heading inside a no-block wrapper stays merged into the enclosing
+// run per the emitTrailingAlways rule below.
+//
 // emitTrailingAlways distinguishes the aside itself (true: an aside of pure
 // inline content is still a note, so its trailing run is emitted — the F7b
 // fallback) from a wrapper (false): a wrapper whose interior produced NO
@@ -297,6 +309,19 @@ func (s *splitter) walkAsideRuns(n *html.Node, emitTrailingAlways bool) {
 	emitted := false
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		pathBefore := clonePath(s.path)
+		if child.Type == html.ElementNode && headingLevels[child.Data] > 0 {
+			// R2 heading boundary: emit the pre-heading run under its own
+			// (pre-heading) path, then advance the run start past the
+			// heading. A non-empty emission marks the container mixed, so a
+			// WRAPPER's trailing run after the heading is content too.
+			if text := collapseRun(runStart, child, asideFallbackSkip); text != "" {
+				s.emit(Block{Kind: KindParagraph, HeadingPath: pathBefore, Text: text, Aside: true, HeaderIndex: -1}, 0)
+				emitted = true
+			}
+			s.walk(child, true)
+			runStart = child.NextSibling
+			continue
+		}
 		before := len(*s.blocks)
 		s.walk(child, true) // a no-op for non-element nodes
 		if len(*s.blocks) == before {
