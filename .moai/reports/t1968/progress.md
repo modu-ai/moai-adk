@@ -166,3 +166,5 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=재현 출력 2건 ladder_path=leader-directive(귀속 절차) — 카드 diff 귀속 확정, 최소 수리 재위임(manager-develop).
 - 2026-10-27 20:5x L-CI1/L-CI2 수리 귀환 — 커밋 26b91ee3af(i18n 사전 키 2개×4 로케일, 형제 키 구조 그대로·실번역)+c42499175c(home-guard:allow 주석 — 가드·스캐너·시드 무변경). 레인 재관측: 두 CI 실패 테스트 전부 PASS(web·cli·testguard)+전체 스윕 5패키지 ok+WIN_BUILD_OK.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=26b91ee3af+c42499175c+레인 재관측 ladder_path=①disk-evidence — CI 수리 승인, iter13 독립 감사 스폰(CI 실패 수리 포함 전면 재검증).
+- 2026-10-28 00:0x 리더 push 승인 이행 — HEAD 재확인 64fc5a5b3e(트리 clean) → `git push origin WT-jevfetch-a2sys-ai` 1회 성공(8fc7743ef2..64fc5a5b3e, force 없음) → **원격 PR #1940 헤드 = 64fc5a5b3e** 갱신 → `@codex review` 1회 요청(PR 댓글 id 6453981546 기록). 병합은 Cloud(운영자 역할 분담), complete는 관측 병합 후 merged-pr 경로만 — 로컬 main 병합 금지 유지. Go 단일 -run 부하 상한 48(slot go-test·timeout·acquire 직후 재측정) 운영자 결정 기록. CI 관측 전환.
+- decision record: decided_by=leader(socket 35717) evidence_refs=리더 push 승인 메시지 ladder_path=leader-push-approval — push 승인 절차 완료, CI+codex 관측 대기.
