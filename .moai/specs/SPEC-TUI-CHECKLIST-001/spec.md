@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.10"
+version: "0.2.11"
 status: in-progress
 created: 2026-10-27
 updated: 2026-10-27
@@ -33,6 +33,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.8 plan 델타 10회차 (manager-spec, 리더 판정 — 감사 16회차 뒤 남은 결함은 codex P2 하나, 1회 실행·1커밋). AC-TCL-021 의 범위 검사가 `--no-merges` 라 병합 커밋이 들여온 템플릿 변경(충돌 해결·악성 병합)을 보지 못했다. 결합 diff 검사 `git log --merges --cc --name-only` 를 (2) 로 더해, 깨끗한 `main` 흡수는 빈 출력으로 두고 병합이 들여온 변경만 빨갛게 했다. 일부러 만든 저장소의 RED(옛 명령 빈 출력)·빨강(새 명령이 경로를 냄)·깨끗한 흡수 대조(빈 출력)를 사실 칸과 뮤턴트로, 이 트리의 기준선을 원장 L42·L43 으로 적었다. REQ·AC id 와 수는 그대로(23·23). 처분 상세는 progress.md §E.1 델타 10 단락.
 - 2026-10-27 — v0.2.9 plan 델타 11회차 (manager-spec, 리더 판정 — AC-TCL-019 확장 승인, AC-TCL-021 과 같은 모양, 1회 실행·1커밋). AC-TCL-019 뒤 절의 위저드 검사가 `--no-merges` 라 병합 커밋이 들여온 위저드 변경(충돌 해결·악성 병합)을 보지 못했다. 결합 diff 검사 `git log --merges --cc --name-only … -- internal/cli/wizard` 를 (2) 로 더했다. 일부러 만든 저장소의 RED(옛 명령 빈 출력)·빨강(새 명령이 경로를 냄)·깨끗한 흡수 대조(빈 출력)를 사실 칸과 뮤턴트로, 이 트리의 기준선을 원장 L44·L45 로 적었다. REQ·AC id 와 수는 그대로(23·23). 처분 상세는 progress.md §E.1 델타 11 단락.
 - 2026-10-27 — v0.2.10 리더 판정 반영 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F1 에 대한 리더 판정, 카드 t1969). 판정 원문: "AC-TCL-011's C counts only the lines the checklist draws; output that passes through with items unopened (user_asset_phase etc.) is counted in a separate bucket; the budget 24 is unchanged." §3.3 에 "따로 세는 넘김 줄" 정의를 더하고 체크리스트 셈에서 그 줄을 뺐다. acceptance.md AC-TCL-011 의 Given 을 고정 사용자 자산 픽스처(예산 셈)와 M0 고정(직접 출력 줄·골든 비교)으로 나누고, 넘김 줄 개수 단언과 "넘김 줄을 C 에 넣는 셈은 빨갛다" 는 뮤턴트를 적었다. 예산 24, 다섯 직접 출력 조각, REQ·AC id 와 수(23·23)는 그대로이며 구현(`internal/cli/checklist_wiring_test.go`)은 바꾸지 않았다.
+- 2026-10-27 — v0.2.11 목록 행 X12 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F3, 카드 t1969). 목록 완전성 테스트(`internal/cli/checklist_inventory_test.go`)가 `checklist_session.go` 의 `procErr`·`severityWarnLine(` 를 X12 로 분류하는데 design.md §3.3.1 과 acceptance.md AC-TCL-024 는 X1~X11 만 적었다. design.md §3.3.1 제외 표에 X12 행(분류 조각·이유)을 더하고 범위 문장과 AC-TCL-024 (4) 의 "X1~X11" 을 "X1~X12" 로 고쳤다. 기존 행으로 덮지 않은 까닭: 테스트 표의 행 id 가 이 표와 같아야 하고, 그 파일은 표를 잴 때 없던 이 카드의 세션 층이다. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
 
 ## §1 배경과 문제
 
