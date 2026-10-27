@@ -165,6 +165,10 @@ func (c *Checklist) Item(groupKey, itemKey string) *ChecklistItem {
 	return it
 }
 
+// Open returns the item that is currently open, or nil when none is. A
+// command-side session uses it to route captured output to the open item.
+func (c *Checklist) Open() *ChecklistItem { return c.open }
+
 // Summary closes any open item and draws the summary block.
 func (c *Checklist) Summary(s ChecklistSummary) {
 	if c.open != nil {

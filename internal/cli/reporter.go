@@ -39,7 +39,13 @@ func newPrinterReporter(p printer.Printer) *printerReporter {
 // NO_COLOR and MOAI_REDUCED_MOTION surfaces degrade inside the handle to
 // plain single-frame lines (REQ-TUX2-011) — the reporter needs no fallback
 // logic of its own.
-func newSpinnerReporter(p printer.Printer) *printerReporter {
+//
+// When p carries an active group-checklist session (SPEC-TUI-CHECKLIST-001) the
+// step events drive the checklist items instead of a spinner.
+func newSpinnerReporter(p printer.Printer) project.ProgressReporter {
+	if cs, ok := p.(interface{ checklistSession() *checklistSession }); ok && cs.checklistSession().isActive() {
+		return newChecklistReporter(cs.checklistSession())
+	}
 	return &printerReporter{p: p, useSpinner: true}
 }
 

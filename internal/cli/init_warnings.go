@@ -29,7 +29,13 @@ type warnCollector struct {
 	mu       sync.Mutex
 	warnings []string
 	emitted  bool
+	// sess is the group-checklist session (SPEC-TUI-CHECKLIST-001). Nil, or an
+	// inactive session, leaves every method below on its legacy behaviour.
+	sess *checklistSession
 }
+
+// checklistSession returns the bound checklist session; nil when none is bound.
+func (w *warnCollector) checklistSession() *checklistSession { return w.sess }
 
 // newWarnCollector wraps p with warning collection (REQ-TUX2-013).
 func newWarnCollector(p printer.Printer) *warnCollector {
@@ -43,7 +49,11 @@ func (w *warnCollector) Warn(format string, args ...any) {
 	w.mu.Lock()
 	w.warnings = append(w.warnings, msg)
 	w.mu.Unlock()
+	if w.sess.captureWarning(msg) {
+		return // shown once, under the open checklist item
+	}
 	w.Printer.Warn("%s", msg)
+	w.sess.noteOutside(msg, true)
 }
 
 // Collect records a warning WITHOUT an individual re-emission — used for
@@ -51,8 +61,11 @@ func (w *warnCollector) Warn(format string, args ...any) {
 // so the summary panel remains their single emission point.
 func (w *warnCollector) Collect(msg string) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
 	w.warnings = append(w.warnings, msg)
+	w.mu.Unlock()
+	if !w.sess.captureWarning(msg) {
+		w.sess.noteOutside(msg, false)
+	}
 }
 
 // Count reports the number of collected warnings.
@@ -67,6 +80,9 @@ func (w *warnCollector) Count() int {
 // The caller passes the stderr writer — warning text never reaches stdout
 // (REQ-TUX2-014).
 func (w *warnCollector) emitSummary(errOut io.Writer) {
+	if w.sess.isActive() {
+		return // the checklist summary lists the warnings once
+	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.emitted || len(w.warnings) == 0 {

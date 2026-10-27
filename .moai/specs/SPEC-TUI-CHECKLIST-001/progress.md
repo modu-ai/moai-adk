@@ -267,6 +267,27 @@ ok  	github.com/modu-ai/moai-adk/internal/tui	0.087s
 - 골든 목록: `UPDATE_GOLDEN=1 go test ./internal/tui/golden -run '^(TestManifest|TestGoldenCount)$' -count=1 -v` → `--- PASS: TestGoldenCount`, `--- PASS: TestManifest`, `MANIFEST.txt` +6줄.
 - 품질: `gofmt -l internal/tui` 출력 없음; `go vet ./internal/tui/...` 종료 0; `go test ./internal/tui/... -count=1 -cover` → `internal/tui coverage: 94.5% of statements`; `golangci-lint run --timeout=2m ./internal/tui/...` → `0 issues.`; `checklist.go` 함수별 커버리지 최저 `Skip 80.0%`, `NewChecklist 85.7%`.
 
+### M3 — CLI 세션 계층 `checklist_session.go` / `checklist_plan.go` (AC-TCL-010 일부, AC-TCL-012 술어, REQ-TCL-010..012, 015, 017 의 세션 단위)
+
+- M3 범위: init.go 는 아직 건드리지 않았다(M4). 세션 계층 단독으로 구동하는 시험만 이 단계에서 녹색이다. runInit 수준 하위 시험(`cancel`, `resumed_after_validate_fail`, 명령 수준 게이트, 풍부 골든, AC-016/018..020/022/024)은 M4 로 넘긴다.
+- `Open()` 접근자를 렌더러에 추가(`internal/tui/checklist.go`) — RED: `c.Open undefined`, GREEN: `TestChecklistOpenAccessor` 포함 tui 체크리스트 시험 14개 PASS (M2 이후 이 세션 앞부분에서 관측).
+- RED (구현 없음, `go test ./internal/cli -run '^(TestChecklistPlanGroupCap|TestChecklistActivationPredicate|TestChecklistCapturePassThrough|TestChecklistAbortFlushes|TestChecklistInactiveSessionIsNoOp|TestChecklistSessionRestoresWriters|TestChecklistReporterMapping)$' -count=1`):
+
+```text
+undefined: checklistForceOnFn
+undefined: checklistSession
+undefined: beginChecklistSession
+undefined: initChecklistPlan
+undefined: checklistInputs
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+- GREEN (`go test ./internal/cli -run '^(TestChecklistPlanGroupCap|TestChecklistActivationPredicate|TestChecklistCapturePassThrough|TestChecklistAbortFlushes|TestChecklistInactiveSessionIsNoOp|TestChecklistSessionRestoresWriters|TestChecklistReporterMapping|TestSpinnerReporterDrivesSpinnerHandle|TestChecklistFallbackMatchesBaseline)$' -count=1 -v`) — 각 `--- PASS:` 줄 관측: `TestChecklistFallbackMatchesBaseline` (+6 하위 init_clean/init_warn/init_fail/update_clean/update_warn/update_fail), `TestChecklistPlanGroupCap`, `TestChecklistActivationPredicate` (+7 하위 all_true/stdout_not_tty/stderr_not_tty/writer_replaced/ci_set/term_dumb/verbose_on), `TestChecklistCapturePassThrough` (+3 success/fail_expands/partial_line_is_flushed_as_detail), `TestChecklistSessionRestoresWriters` (+2 nil/error), `TestChecklistInactiveSessionIsNoOp`, `TestChecklistAbortFlushes` (+3 error/error_collect_after_fail/nil_return_open_item), `TestChecklistReporterMapping`, `TestSpinnerReporterDrivesSpinnerHandle`; 끝줄 `ok  	github.com/modu-ai/moai-adk/internal/cli	5.850s`. 기준선 시험(M0) 6개 하위가 새 코드 뒤에도 그대로 PASS — 폴백 경로 바이트 동일.
+- 변이체 (`end()` 의 `it.Fail(err.Error())` 를 `it.Done()` 으로): `TestChecklistAbortFlushes/error` FAIL — `output lacks "✗"`, `output lacks "detail-x"`. 되돌린 뒤 `ok  	github.com/modu-ai/moai-adk/internal/cli	0.689s`.
+- 추가 시험 `TestChecklistSummaryListsOutsideWarnings` (항목 밖 경고는 즉시 줄 1회 + 요약 목록 1회=2회, Collect 경로는 요약 목록 1회, 패널 없음) PASS.
+- 품질: `gofmt -l internal/cli internal/tui` 출력 없음; `go vet ./internal/tui/... ./internal/cli/` 종료 0; `golangci-lint run --timeout=3m ./internal/cli/... ./internal/tui/...` → `0 issues.` (신규 `unused` 2건은 시험 추가·`preservedNone` 사용으로 해소).
+- 설계 결정: `newSpinnerReporter` 반환형을 `project.ProgressReporter` 로 넓혀 활성 세션이면 체크리스트 보고자를 돌려준다(사용처 init.go:728 과 reporter_test.go:95 모두 네 개의 Step* 메서드만 호출). `emitSeverityLine` 은 활성 세션 writer 가 열린 항목을 갖고 있을 때만 경고/오류 줄을 항목으로 넘기고, 그 외에는 이전과 바이트 동일.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

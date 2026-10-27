@@ -65,5 +65,14 @@ func severityGlyph(s updateSeverity, th tui.Theme) string {
 // a best-effort presentation path that has nowhere to escalate a report
 // failure).
 func emitSeverityLine(w io.Writer, s updateSeverity, th tui.Theme, format string, args ...any) {
-	_, _ = fmt.Fprintf(w, "%s %s\n", severityGlyph(s, th), fmt.Sprintf(format, args...))
+	line := fmt.Sprintf("%s %s", severityGlyph(s, th), fmt.Sprintf(format, args...))
+	// While a group-checklist item is open (SPEC-TUI-CHECKLIST-001) a warning or
+	// error line belongs to that item: the item takes it and ends with the
+	// warning glyph. Any other writer, or no open item, writes as before.
+	if s == sevWarn || s == sevErr {
+		if r, ok := w.(warningReceiver); ok && r.receiveWarning(line) {
+			return
+		}
+	}
+	_, _ = fmt.Fprintf(w, "%s\n", line)
 }

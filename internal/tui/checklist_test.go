@@ -536,3 +536,33 @@ func TestChecklistRecordAfterDoneIsIgnored(t *testing.T) {
 		t.Errorf("finished item wrote %q", buf.String()[before:])
 	}
 }
+
+// Open reports the currently open item so a command-side session can route
+// captured bytes to it; it is nil before the first Item and after every close.
+func TestChecklistOpenAccessor(t *testing.T) {
+	c, _ := newTestChecklist("en", nil, time.Second)
+	if c.Open() != nil {
+		t.Fatal("Open() non-nil before any Item")
+	}
+	first := c.Item("templates", "detect")
+	if c.Open() != first {
+		t.Fatal("Open() is not the item just opened")
+	}
+	second := c.Item("templates", "validate") // implicit Done of first
+	if c.Open() != second {
+		t.Fatal("Open() did not follow the implicit close")
+	}
+	second.Fail("boom")
+	if c.Open() != nil {
+		t.Fatal("Open() non-nil after Fail")
+	}
+	c.Item("config", "autonomy").Skip("checklist.status.skipped")
+	if c.Open() != nil {
+		t.Fatal("Open() non-nil after Skip")
+	}
+	last := c.Item("config", "profile")
+	c.Summary(ChecklistSummary{})
+	if c.Open() != nil || !last.done {
+		t.Fatal("Summary did not close the open item")
+	}
+}
