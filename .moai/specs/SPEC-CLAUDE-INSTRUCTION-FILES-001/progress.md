@@ -132,7 +132,7 @@ _run_status의 `complete`는 run 단계 관측 종결을 뜻한다(사양 상태
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-27T14:00:03Z
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lane backfills the real SHA in the next commit
+sync_commit_sha: 95592f1308
 changelog_entries_added: 1
 changelog_entry_position: "[Unreleased] > Changed — SPEC-CLAUDE-INSTRUCTION-FILES-001 (appended after the SPEC-CI-CODEX-REVIEW-001 entry)"
 frontmatter_status_transitions:
