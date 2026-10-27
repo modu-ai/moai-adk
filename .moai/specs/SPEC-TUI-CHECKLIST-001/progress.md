@@ -400,7 +400,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M0, progress record, M1, M2, M3
 
 ```yaml
 sync_complete_at: 2026-10-27
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: aae3355d5dd1cb7754866ca13256474396b03a69   # backfilled in the following commit (card t1969)
 sync_status: complete (manager-docs sync-phase; run-end audit iter4 PASS 0.93 at 3fa99789b6)
 sync_audit: ".moai/reports/t1969/sync-audit-verdict-iter4.md (PASS, audited_sha 3fa99789b622f9cb9bff3c00a4f95ecbc8f98012); card review .moai/reports/t1969/card-review.md; leader audit_multi pass rcpt-c87eef68479d141f4999aa83 (leader-relayed, not observed by manager-docs)"
 ac_source: ".moai/specs/SPEC-TUI-CHECKLIST-001/acceptance.md (tier L)"
