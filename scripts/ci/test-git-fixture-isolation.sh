@@ -1,11 +1,16 @@
 #!/bin/sh
 set -eu
+# A caller may itself be inside a Git hook. Fixture setup must not inherit
+# the caller's repository, index or object store.
+unset GIT_CONFIG GIT_DIR GIT_COMMON_DIR GIT_WORK_TREE GIT_INDEX_FILE \
+  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
+  GIT_PREFIX GIT_SUPER_PREFIX GIT_CEILING_DIRECTORIES GIT_QUARANTINE_PATH
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 git -C "$tmp" init -q
-git -C "$tmp" config user.name Fixture
-git -C "$tmp" config user.email fixture@example.invalid
+git -C "$tmp" config --local user.name Fixture
+git -C "$tmp" config --local user.email fixture@example.invalid
 printf 'protected\n' > "$tmp/protected.txt"
 git -C "$tmp" add protected.txt
 git -C "$tmp" commit -qm baseline

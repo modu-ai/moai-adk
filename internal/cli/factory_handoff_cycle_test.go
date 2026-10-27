@@ -13,8 +13,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// todoFixture clears MOAI_HOME; keep its fallback home inside the test too.
+func isolateFactoryHandoffHome(t *testing.T) {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+}
+
 // An open PR is pending integration, not an active implementation lease.
 func TestFactoryPROpenReleasesLaneForIndependentCard(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 	sdClearLaneEnv(t)
 	if _, _, err := runTodo(t, "add", "independent follow-up"); err != nil {
@@ -63,6 +72,7 @@ func TestFactoryExpiredLeaseReacquireRefusalsPreserveState(t *testing.T) {
 		{"live lease", "lane-1", "lane-1", factory.BacklogStatePicked, fcNow.Add(time.Hour)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			isolateFactoryHandoffHome(t)
 			root, store := nmBase(t, tc.queue)
 			fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun, OwnerLabel: tc.owner, LeaseHolder: tc.holder, LeaseExpiresAt: tc.expires.Format(time.RFC3339Nano)})
 			nmLaneEnv(t, "lane-1", "")
@@ -79,6 +89,7 @@ func TestFactoryExpiredLeaseReacquireRefusalsPreserveState(t *testing.T) {
 }
 
 func TestFactoryExpiredLeaseReacquireKeepsDirtyTreeAndRejectsDuplicate(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, store := nmBase(t, factory.BacklogStatePicked)
 	setReacquireRegistration(t, root)
 	tree := filepath.Join(t.TempDir(), "card")
@@ -106,6 +117,7 @@ func TestFactoryExpiredLeaseReacquireKeepsDirtyTreeAndRejectsDuplicate(t *testin
 }
 
 func TestFactorySameOwnerReacquiresExpiredLease(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, _ := nmBase(t, factory.BacklogStatePicked)
 	nmIsolatedWorktrees(t, "t1")
 	setReacquireRegistration(t, root)
@@ -127,6 +139,7 @@ func TestFactorySameOwnerReacquiresExpiredLease(t *testing.T) {
 }
 
 func TestExpiredReacquirePreservesClaimDeadlineAndPRSnapshot(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, _ := nmBase(t, factory.BacklogStatePicked)
 	nmIsolatedWorktrees(t, "t1")
 	setReacquireRegistration(t, root)
@@ -158,6 +171,7 @@ func TestExpiredReacquirePreservesClaimDeadlineAndPRSnapshot(t *testing.T) {
 }
 
 func TestExpiredReacquireBusyRecordIsBounded(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, _ := nmBase(t, factory.BacklogStatePicked)
 	nmIsolatedWorktrees(t, "t1")
 	setReacquireRegistration(t, root)

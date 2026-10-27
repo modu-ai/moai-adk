@@ -828,6 +828,7 @@ func TestFactoryLeaseDriftLogVerbTailHoldsWithOutputOverhead(t *testing.T) {
 }
 
 func TestExpiredReacquireUnderDriftLogLock(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, store := nmBase(t, factory.BacklogStatePicked)
 	nmIsolatedWorktrees(t, "t1")
 	setReacquireRegistration(t, root)
