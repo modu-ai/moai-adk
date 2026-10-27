@@ -302,9 +302,56 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
 - 품질: `gofmt -l internal/cli internal/tui` 출력 없음; `go vet ./internal/tui/... ./internal/cli/...` 깨끗; `golangci-lint run --timeout=5m ./internal/cli/... ./internal/tui/...` → `0 issues.`; `go build ./...` 정상; `GOOS=windows GOARCH=amd64 go build ./...` 정상; `GOOS=windows GOARCH=amd64 go vet ./internal/cli/ ./internal/tui/` 깨끗.
 - 기록할 일탈/갭: 인벤토리 표에 design.md §3.3.1 에 없는 X12 행(이 카드의 세션 계층 코드 `checklist_session.go` 의 `procErr`, `severityWarnLine(`)을 추가했다 → manager-spec 이 표에 추가해야 한다. p17/p23 은 Windows·root 에서 실행되지 않는다(`!windows` 빌드 태그, root 에서는 `requireNotRoot` 가 실패). 골든은 카탈로그에 의존하는 개수(설치 394, unconverted 30줄)를 포함한다.
 
+### M4 커밋 뒤 확인 (AC-TCL-019, 021, 022, O1)
+
+- M4 커밋: `72f1f0aa07880da438d2147b7e20acefcb07fdab` (`feat(SPEC-TUI-CHECKLIST-001): M4 init wiring, preserved-line routing, rich golden and tests for AC-010..020, 022, 024 (card t1969)`).
+- AC-TCL-022 (커밋된 HEAD 에서): `go test ./internal/cli -run '^TestChecklistInitHunkConfinement$' -count=1 -v` →
+
+```text
+=== RUN   TestChecklistInitHunkConfinement
+=== RUN   TestChecklistInitHunkConfinement/judge_mutants
+=== RUN   TestChecklistInitHunkConfinement/card_changes
+    checklist_hunk_confinement_test.go:126: measured 11 hunks at HEAD 72f1f0aa07880da438d2147b7e20acefcb07fdab
+--- PASS: TestChecklistInitHunkConfinement (0.07s)
+    --- PASS: TestChecklistInitHunkConfinement/judge_mutants (0.00s)
+    --- PASS: TestChecklistInitHunkConfinement/card_changes (0.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.004s
+```
+
+- 같은 HEAD 에서 원시 명령 `git diff -U0 cb30e05b3e HEAD -- internal/cli/init.go` 의 헝크 머리: `@@ -388 +388,3 @@`, `@@ -927,0 +930 @@`, `@@ -955,0 +959 @@`, `@@ -961,0 +966 @@`, `@@ -983,0 +989 @@`, `@@ -1012,0 +1019 @@`, `@@ -1017,0 +1025 @@`, `@@ -1025,0 +1034 @@`, `@@ -1035,0 +1045 @@`, `@@ -1059,0 +1070 @@`, `@@ -1081,7 +1092 @@` → R1(383..389) 안 1건, R3(919..1075) 안 삽입 9건(b=0), R2(1077..1087) 안 1건(1081..1087). `git log --merges --format=%h cb30e05b3e..HEAD -- internal/cli/init.go` → 출력 없음(종료 0).
+- AC-TCL-019 (wizard): `git log --no-merges --grep=t1969 --name-only --format= cb30e05b3e..HEAD ^main -- internal/cli/wizard` → 출력 없음; `git log --merges --cc --name-only --format= cb30e05b3e..HEAD ^main -- internal/cli/wizard` → 출력 없음.
+- AC-TCL-021 (templates): 같은 두 명령을 `internal/template/templates` 에 → 둘 다 출력 없음. 단, 두 명령 모두 "변경 없음" 증거이므로 양성 대조(변경 있는 경로에서 적중)를 별도로 돌리지 않았다 → 아래 Gaps.
+- 카드 id 완전성: `git log --no-merges --invert-grep --grep=t1969 --format=%h cb30e05b3e..HEAD ^main -- internal` → 출력 없음.
+- O1: `git log --format=%H cb30e05b3e..HEAD -- internal/cli/testdata/checklist/fallback internal/cli/checklist_fallback_test.go` → `5f14cff995dd0258833fc19e37123bf96d44ca7a` (M0 커밋 하나뿐).
+
+### M6 — 마무리: 일회성 시험 제거, 최종 품질 게이트
+
+- `internal/cli/checklist_hunk_confinement_test.go` 는 위 마지막 실행을 기록한 뒤 제거했다(일회성 조율 시험; 최종 HEAD 재실행은 sync 감사 소관). `inventoryRoot` 는 인벤토리 시험이 계속 쓴다.
+- 최종 게이트 (M6 커밋 직전 트리): `go build ./...` 종료 0(출력 없음); `GOOS=windows GOARCH=amd64 go build ./...` 종료 0; `GOOS=windows GOARCH=amd64 go vet ./internal/cli/ ./internal/tui/` 종료 0; `go vet ./internal/tui/... ./internal/cli/...` 출력 없음; `gofmt -l internal/cli internal/tui` 출력 없음; `golangci-lint run --timeout=5m ./internal/cli/... ./internal/tui/...` → `0 issues.`.
+- 커버리지: `go test ./internal/tui/... -count=1 -cover` → `ok  	github.com/modu-ai/moai-adk/internal/tui	0.290s	coverage: 94.5% of statements` (internal/tui/internal 94.7%). 신규 cli 파일(`go test ./internal/cli -run Checklist -coverprofile=… ; go tool cover -func`): `checklist_init.go` openOrSkipItem 100.0 / preserveAll 85.7 / preservePrinterLines 66.7 / writeWarningLine 66.7 / renderInitCompletion 100.0; `checklist_session.go` 대부분 함수 80~100%, 최저 `sameWriter 75.0`, `checklistProfileLang 75.0`, `recordLocked 75.0`. `checklist_plan.go` 는 함수 없이 데이터만 있어 함수 행이 없다. 파일 단위 집계 퍼센트는 계산하지 않았다 → Gaps(85% 기준을 파일 단위로 증명하지 못함; 함수 단위 최저 66.7%).
+- `go test ./internal/tui/golden -run '^(TestManifest|TestGoldenCount)$' -count=1 -v` → `--- PASS: TestGoldenCount`(112), `--- PASS: TestManifest`.
+- `go test ./internal/cli/update/... -count=1` → update, backup, deploy, merge, plan, report, skillresidue 7개 패키지 모두 `ok`.
+- `go test ./internal/cli -run 'Checklist' -count=1 -coverprofile=…` → 실패는 `TestChecklistScreenBudget/init` 하나뿐: `checklist_wiring_test.go:300: checklist-drawn lines C = 53 (total 58, direct 5), want <= 24` (AC-TCL-011(1) 차단 사항, 위 M4 항목 참조).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-27
+run_commit_sha: pending-backfill
+run_status: blocked-on-spec-amendment   # AC-TCL-011(1) 이외 구현 완료; 11(1) 은 spec §3.3 개정 필요
+ac_pass_count: 22   # 이 카드 범위 23개(AC-001..007, 009..024) 중; 증거는 §E.2 M1..M4 항목
+ac_fail_count: 1   # AC-TCL-011(1): C=53 > 24 (비-항목 stdout 30줄 포함; spec 집계는 23)
+preserve_list_post_run_count: 0   # wizard / templates / .github/workflows / progress_line.go / status.go / glyphs.go / printer / 기존 골든 변경 없음
+l44_pre_commit_fetch: not-run   # origin 흡수 금지 지시; main == cb30e05b3e 만 로컬에서 확인
+l44_post_push_fetch: not-applicable   # 푸시 금지 지시
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues
+cross_platform_build:
+  native: pass
+  windows_amd64: pass
+total_run_phase_files: 46   # git diff --name-only cb30e05b3e HEAD(M4 커밋 시점) 52개 중 .moai/specs/* 6개 제외; M6 에서 hunk 시험 파일 1개 제거 예정
+m1_to_mN_commit_strategy: per-milestone commits (M0, progress record, M1, M2, M3, M4, M6); M5 은 카드 t1978 로 이월
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
