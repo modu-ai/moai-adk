@@ -779,6 +779,7 @@ func TestDefaultCacheDir_UnderHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.HasSuffix(filepath.ToSlash(dir), ".moai/cache/jev") {
+		// home-guard:allow string literal in an error message, not a home access
 		t.Errorf("DefaultCacheDir = %q, want under ~/.moai/cache/jev", dir)
 	}
 }
