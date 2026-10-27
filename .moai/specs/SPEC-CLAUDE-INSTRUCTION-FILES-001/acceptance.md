@@ -44,7 +44,7 @@
 - RED-now: §D.1 표 2행 + 표 5행. Green path: M1 — 정규화 단위 테스트 PASS + ls exit 0.
 
 ### AC-CIF-005 — 마이그레이션 방향 반전·프리미티브 재사용 (maps REQ-CIF-005, GUIDE-02/03) [실행, 릴리스-블로킹]
-- **Given** AGENTS.local.md(또는 AGENTS.md)만 있는 임시 저장소 **When** 마이그레이션 verb 실행 **Then** CLAUDE.local.md(또는 CLAUDE.md)로 이동하고 기존 프리미티브(공재 거부·Lstat 검사·타임스탬프 백업·O_EXCL·rollback)를 재사용한다(신규 메커니즘 부재 — 코드 검증 정적 확인).
+- **Given** AGENTS.local.md만 있는 임시 저장소와 AGENTS.md만 있는 임시 저장소 **각각**(두 이관 경로 모두 필수 — 테이블 주도, 어느 한쪽도 생략 불가) **When** 마이그레이션 verb 실행 **Then** 각각 CLAUDE.local.md·CLAUDE.md로 이동하고(쌍별 단언) 기존 프리미티브(공재 거부·Lstat 검사·타임스탬프 백업·O_EXCL·rollback)를 재사용한다(신규 메커니즘 부재 — 코드 검증 정적 확인).
 - RED-now: §D.1 표 3행(현재 반대 방향). Green path: M2.
 
 ### AC-CIF-006 — 무손실 바이트 정확 백업 (maps REQ-CIF-006, GUIDE-02) [실행, 릴리스-블로킹]
@@ -52,7 +52,7 @@
 - RED-now: §D.1 표 3행(방향이 반대라 이 동작 자체가 존재하지 않음 — AC-CIF-005와 동일 원인). Green path: M2.
 
 ### AC-CIF-007 — 공재·상이 거부 (maps REQ-CIF-007, GUIDE-04) [실행, 릴리스-블로킹]
-- **Given** CLAUDE.local.md와 AGENTS.local.md가 모두 존재하고 내용이 다른 fixture **When** 마이그레이션 실행 **Then** exit non-zero, 양쪽 파일 모두 변경 없음(사전/사후 해시 동일), 오류 메시지가 두 경로와 수동 병합 지시를 보고.
+- **Given** CLAUDE.local.md+AGENTS.local.md 쌍과 CLAUDE.md+AGENTS.md 쌍 **각각**이 모두 존재하고 내용이 다른 fixture(both pairs 필수 — 테이블 주도; 로컬 쌍만 거부하고 공유 쌍을 덮어쓰는 mutant는 이 AC에 실패해야 한다, N8) **When** 마이그레이션 실행 **Then** **쌍별로** exit non-zero, 양쪽 파일 모두 변경 없음(사전/사후 해시 동일 — 공유 쌍 포함), 오류 메시지가 두 경로와 수동 병합 지시를 보고.
 - RED-now: §D.1 표 7행 — 공재 거부 프리미티브는 이미 존재하나 **구 방향의 목적지**(AGENTS.local.md로의 병합)만 보호한다; 정규 목적지 CLAUDE.local.md를 향한 충돌 거부는 오늘 시험 대상으로 존재하지 않는다(red 사유는 방향/이름 축, D1). Green path: M2 — 거부 테이블 테스트.
 
 ### AC-CIF-008 — 멱등 재실행 noop (maps REQ-CIF-008, GUIDE-07) [실행]
@@ -64,7 +64,7 @@
 - RED-now: §D.1 표 8행 — Lstat 비정규 검사는 **구 원본 경로**(`claudePath` = CLAUDE.local.md)에만 묶여 있다; 정규 방향의 원본(AGENTS.local.md/AGENTS.md)에 대한 거부 경로는 오늘 존재하지 않는다(red 사유는 방향/이름 축, D1). Green path: M2 — 거부 테이블.
 
 ### AC-CIF-010 — 원자적 최종 단계·무손실 불변 (maps REQ-CIF-010, REQ-CIF-011; GUIDE-06/11) [실행, 릴리스-블로킹]
-- **Given** (a) 최종 단계 거부 주입 fixture — `os.Rename`(원본→신규 타임스탬프 백업 경로)이 EXDEV 등으로 거부 (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (c) 목적지 쓰기(`writeExclusive`) 실패 주입 fixture (d) **목적지 생성 뒤 사용자가 목적지를 편집 + 최종 rename 거부(EXDEV) 동시 주입** fixture **When** 마이그레이션 실행 **Then** (a) 안전 중단 — 원본은 제자리, 사용자가 건드리지 않은 목적지는 rollback되어 반쪽 상태 없음, "Migrated" 성공 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (c) 원본 불변·그대로, 정확한 부분 결과 보고, rollback 후 반쪽 상태 없음 (d) **편집된 목적지는 rollback-remove로 삭제되지 않고 백업 엔트리로 `os.Rename` 보존**된다(최종 단계와 동일 프리미티브 패턴) — 사용자의 목적지 편집이 소실되지 않음. **무손실 불변(모든 출구에서 단언)**: 어느 출구에서든 사용자의 최신 콘텐츠는 정규 경로, 백업, 또는 미변경 레거시 경로에 존재한다 — 최종 단계는 재검사+`os.Remove` 쌍이 아니라 단일 원자적 `os.Rename`이므로 재검사→remove 사이 소실 창(TOCTOU)이 원천적으로 없다(REQ-CIF-010, N2/N5/N6).
+- **Given** (a) 최종 단계 거부 주입 fixture — `os.Rename`(원본→신규 타임스탬프 백업 경로)이 EXDEV 등으로 거부 (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (c) 목적지 쓰기(`writeExclusive`) 실패 주입 fixture (d) **목적지 생성 뒤 사용자가 목적지를 편집 + 최종 rename 거부(EXDEV) 동시 주입** fixture **When** 마이그레이션 실행 **Then** (a) 안전 중단 — 원본은 제자리, 부분 목적지는 **상태와 무관하게(미편집/편집 분류 없이) 백업 엔트리로 원자적 rename 보존**되고 정확한 부분 결과는 보존된 사본에서 보고되며, "Migrated" 성공 없음·반쪽 상태 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (c) 원본 불변·그대로, 정확한 부분 결과 보고, rollback 후 반쪽 상태 없음 (d) 주입된 목적지 편집 내용이 **백업 엔트리에 그대로 생존** — 무조건 보존이므로 어떤 목적지 상태에서나 성립(REQ-CIF-011, N7). **무손실 불변(모든 출구에서 단언)**: 어느 출구에서든 사용자의 최신 콘텐츠는 정규 경로, 백업, 또는 미변경 레거시 경로에 존재한다 — 최종 단계는 재검사+`os.Remove` 쌍이 아니라 단일 원자적 `os.Rename`이므로 재검사→remove 사이 소실 창(TOCTOU)이 원천적으로 없다(REQ-CIF-010, N2/N5/N6).
 - RED-now: §D.1 표 9행 — 읽기→쓰기 가드(mtime/내용 비교)와 원자적 최종 `os.Rename` 어느 쪽 코드도 동사에 전혀 없다(grep 0건, exit 1). Green path: M2 — 실패·거부 주입 테스트(a/b-1/c/d) + 정상 이동에서 rename 후 백업 엔트리 존재 관측.
 
 ### AC-CIF-011 — 프라이버시·모호 분류 보존 (maps REQ-CIF-012, GUIDE-03/12) [실행+정적, 릴리스-블로킹]
