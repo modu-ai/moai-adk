@@ -619,3 +619,76 @@ verdict: PASS-WITH-DEBT
 audited_sha: 4990b6e99ed0b59256414061de29514b05b59237
 
 AUDIT-VERDICT: PASS-WITH-DEBT spec=SPEC-FETCH-WEB-001 receipts=rcpt-f6c4a93e405393c3f4901a52
+
+## iter10 (class-close delta: leader codex round-3 findings 1+2; delta_base b089e437c1, repair 308817a3f9, head 40ec49ed9b)
+
+auditor-model: glm-5.3
+
+## iter10 Verdict
+
+**FAIL — aggregate 0.91** (harmonic mean of 86 / 95 / 91 / 94). Both leader findings ARE repaired and verified first-hand (finding 1: the leader's exact input yields `[Important Details Tail]`, all aside-scored, plus corpus 40/40 and 5 adversarial extension shapes of my own; finding 2: both FIFO canaries PASS, grep sweep confirms zero unbounded read sites). But the class-close demand is NOT met: the same repair opened a fresh P2 regression — `walk`'s default case routes aside-scoped wrappers through `walkAsideRuns` without checking `itemDepth`, so a wrapper inside a list-item body duplicates text the li block already carries. Verified first-hand at two shapes (P7/P9 below), refuted at a third (P8 is F7-compliant, not a defect). The required codex backend returned **fail** on this delta with the same finding (receipt below). Must-pass firewall: Functionality FAIL → overall FAIL; convergence `overall_verdict: fail`.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @40ec49ed9b) |
+|---|---|---|---|---|
+| Functionality | 40% | 86 | FAIL | Leader finding 1 repaired: my probe `--- PASS: TestAuditProbe10_P1_LeaderExactWrapperInput` (`<aside><div>Important<p>Details</p>Tail</div></aside>` → exactly 3 aside paragraphs `[Important Details Tail]`); corpus+guards filter → `exit=0`, `45` `--- PASS`, `0` `--- FAIL`; extension probes `--- PASS` ×5 (P2 depth-3 nested wrappers A9..F9 in order, P3 sibling wrappers G1..O1 in order, P4 inline-in-wrapper-run stays one paragraph, P5 deep bare-only wrapper merges `[Q1 Q2 Q3 Q4 Q5]`, P6 one-paragraph guard `Z1 Z2 Z3`). Leader finding 2 repaired: `--- PASS: TestPriorModelEntry_EmptyHistoryReadsNoCacheFile`, `--- PASS: TestPriorModelEntry_ProbesOnlyKnownPriorModelKeys`. **F1 regression (fresh, this delta)**: `--- FAIL: TestAuditProbe10_P7_WrapperInsideListItem` → `want [LEAD TAIL CODE], got [LEAD TAIL LEAD CODE TAIL]` and `--- FAIL: TestAuditProbe10_P9_NestedListInnerWrapper` → `[TOP A3 C3 A3 B3 C3]` (A3/C3 duplicated across the inner-li text and separate paragraphs). |
+| Security | 25% | 95 | PASS | Zero security surface: `git diff --stat b089e437c1..40ec49ed9b` → `blocks.go`, `blocks_test.go`, `cache.go`, `cache_canary_unix_test.go`, `progress.md` only; `git diff --name-only 2a1898ea22...HEAD -- internal/jevledger go.mod go.sum` → 0 files. The F1 defect duplicates extracted text — no net/fetch/auth/secret surface touched. |
+| Craft | 20% | 91 | PASS | `go test -count=1 -cover ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → `internal/fetchweb 0.540s coverage: 96.0%` / `internal/jevmeasure 0.727s coverage: 93.4%` / `internal/jev 1.884s coverage: 91.1%` (jev 90.7→91.1 with the canary file); `golangci-lint run internal/fetchweb/... internal/jev/... internal/jevmeasure/...` → `0 issues.`; `gofmt -l` → 0 files; `go vet` → vet_ok. Corpus is table-driven with in-order word matching, but its 8×5 space has no itemDepth axis — the one dimension where the class stayed open (F1). |
+| Consistency | 15% | 94 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`; boundaries `template 0 files` / `jevledger+manifests 0 files` / `specdir-delta 0 files`; head docs-only confirmed (`308817a3f9..40ec49ed9b` → `progress.md +2` only); repairs follow the `L1-L3, t1968 leader audit`-style in-code citation family; Conventional Commit `fix(SPEC-FETCH-WEB-001): leader-audit round-3 P2 repairs + class close (card t1968)`. SPEC-dir anchor "since dc991bfb9f" remains off by the pre-window docs commit `e97c0b86f6` (same as iter9; across THIS delta the SPEC dir is 0 files — Gap note, not a defect). |
+
+## iter10 dispositions — the enumerated delta (findings 1+2, corpus sweep, grep sweep, regression sweep)
+
+- **Finding 1 (aside wrapper text loss) — REPAIRED, verified first-hand at 6 shapes.** `walkAsideRuns` (blocks.go:283) extracted as the shared per-run walk; the aside case calls it with `emitTrailingAlways=true` (F7b fallback intact — P6/Z1-Z2-Z3 one paragraph), the default case with `false` so a bare-only wrapper merges into the enclosing run (P5 `[Q1 Q2 Q3 Q4 Q5]` proves the merge at depth 3). The leader's exact input produces `[Important] [Details] [Tail]` in document order, aside-scored, nothing dropped.
+- **Finding 2 (cache directory scan) — REPAIRED, canary judged fit for the pinned class.** `priorModelEntry` (cache.go:218) returns `nil, nil` on empty alias history before any read; otherwise probes only `cacheKey(sha, id)` files for recorded prior ids, skipping damaged/mis-keyed content. Canaries: the FIFO (`zz-canary.json`, no writer) makes any read loop over `*.json` block in `open` — the 2s deadline is the observable failure; both tests PASS in this run. Limits: a stat-only enumeration would not block (none exists — see grep sweep); named as residual, not a gap in the fix.
+- **Corpus sweep — re-run green, but the class is NOT closed in nature.** `TestSplitBlocks_AsideWrapperCorpusNoBareRunLost` + guards → 45 `--- PASS` / 0 `--- FAIL` (40 corpus subtests included). The declared 8-wrapper × 5-shape space is closed, and my 5 extension shapes (depth-3, sibling wrappers interleaved with runs, inline+block inside a nested wrapper, deep bare-only merge) all pass. But no corpus shape places a wrapper inside a list-item body (`itemDepth > 0`) — exactly where F1 lives; `<aside><li>…</li></aside>` (direct li, itemDepth reset by the aside entry) is a different code path and stays green.
+- **Grep sweep — all read sites bounded.** `grep -rn 'ReadDir\|filepath.Glob\|os.ReadFile\|os.Open' internal/jev/*.go` (non-test) → exactly 3 hits: cache.go:128 (fixed-name `models.json` map), :183 (direct `cacheKey(sha, model)` file), :232 (known-prior-key loop). Zero `ReadDir`, zero `Glob` in the package.
+- **Regression micro-sweep — green.** `go test -count=1 ./internal/fetchweb/ ./internal/jevmeasure/ ./internal/jev/` → 3× `ok`; coverage trio 96.0 / 93.4 / 91.1; cli superset filter (`Jev|FetchWeb|Bench|Parity`) → `ok github.com/modu-ai/moai-adk/internal/cli 147.210s`; spec-lint clean; lint `0 issues.`; gofmt 0; vet ok; boundary diffs (template `537cfac148...`, jevledger+manifests `2a1898ea22...`, SPEC dir over this delta) all 0 files; head `40ec49ed9b` docs-only on `308817a3f9` confirmed. Both probe files transient; `git status --short` → 0 lines after each run.
+
+## iter10 Findings
+
+- **F1** [P2] [blocking] `internal/fetchweb/blocks.go:246-258` (default case) — a default-case wrapper inside a list-item body inside an aside re-extracts bare runs the li block already carries, duplicating output text and token counts. Verified first-hand: `<aside><ul><li><div>LEAD<pre>CODE</pre>TAIL</div></li></ul></aside>` → `[LEAD TAIL, LEAD, CODE, TAIL]` (want `[LEAD TAIL, CODE]`); nested-list variant → `[TOP, A3 C3, A3, B3, C3]`. Regression vs base: at `b089e437c1` the default case was plain `walkChildren` (the `if inAside` branch is a `+` line of this delta); codex's overlay repros PASS at `b089e437c1f4` / FAIL at `40ec49ed9b04`. Not affected: an aside nested inside an li (my P8) — `listItemSkip` excludes the aside subtree from li text, so its separate emission is the designed F7 behavior, not duplication. **Required fix**: in the default case, when `s.itemDepth > 0` take `s.walkChildren(n, inAside)` — the li's collapseText already carries the wrapper's inline content, and only separate-block descendants (pre, nested li, nested aside via its own case) need descent; land P7/P9 as exact-output regression tests. (Confidence high — observed twice; severity P2 matching the leader's round-3 scale.)
+
+Standing (both previously dispositioned, recorded, leader-visible):
+
+- **R2** [P3] [optional] pre-heading half of a merged text-only aside run rides the post-heading path — unchanged from iter7/8/9, not a debt.
+- **FW-D2** [debt] [optional-blocking: no] three plan-debt rows rest on probe-based RED — the carried debt, unchanged.
+
+## iter10 Cross-model convergence (audit_multi, target=baseBranch, delta_base=b089e437c1, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **fail**
+- `gate_unmet`: (empty — codex answered with a verdict: fail, 1 P2 finding)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=fail` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-55882ad72f24ae2112378904`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base b089e437c1f4e91b612b6db654b3d10b8f062fa0: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written | required-backend FAIL: codex`
+
+**Codex's finding was verified first-hand before adoption (P7/P9 FAIL as claimed; its "nested aside" extension narrowed — P8 observed compliant). This auditor's FAIL verdict and the convergence fail agree; the orchestrator's `--result-file` check remains to be run.**
+
+## iter10 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — both round-3 findings are repaired, but the class-close demand fails: the repair introduces F1, a fresh P2 duplication regression on wrapper-inside-list-item shapes.** Evidence: 6/6 repair probes PASS + 45/45 corpus+guards + 2/2 canaries + grep sweep 3 bounded sites + full micro-sweep green (quoted in the dimension table); F1 reproduced by my own transient probes (`zz_audit_probe10_test.go`, `zz_audit_probe10b_test.go` — both deleted, `git status --short` = 0 lines after each). Baseline: this run, this tree @40ec49ed9b04b8c6ae60c637ee453fd49983774d; delta measured `b089e437c1..40ec49ed9b`; RED structural (the default-case `if inAside` branch is a `+` line of this delta; base default = plain `walkChildren`) plus codex overlay PASS@base/FAIL@head.
+
+**Gaps (explicitly NOT observed):**
+- Pre-repair runtime RED at `b089e437c1` not re-run by me (would require leaving the audited tree); rests on the diff's structure + codex's two-commit overlay runs.
+- Codex's "nested list and nested aside show the same regression" claim: the nested-list half verified (P9); the nested-aside half observed COMPLIANT at my P8 shape — its exact nested-aside repro shape unknown, so that extension is unverified, not adopted.
+- The orchestrator's `--result-file` convergence check has not run.
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-9.
+- Full `internal/cli` suite not run beyond the `Jev|FetchWeb|Bench|Parity` filter (delta does not touch cli).
+
+**Residual-risk:**
+- F1 (above) — output body and token counts duplicated for wrapper-in-list-item-inside-aside shapes; blocking, drives this FAIL.
+- The corpus's missing itemDepth axis: any future wrapper-class repair re-verified only against the 8×5 corpus would miss the same dimension; add a list-item-interior shape to the corpus when F1 is fixed.
+- FW-D2 (carried debt) and R2 (optional) stand undisposed.
+- Untested territory unchanged from iter3-9: CDATA-era HTML, exotic framesets, proxy-required egress.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+
+## Iteration history (cont.)
+
+- iter10 (this audit): class-close delta FAIL 0.91 (delta_base b089e437c1, repair 308817a3f9, head 40ec49ed9b) — leader findings 1+2 REPAIRED and verified first-hand (P1 exact input, corpus 40/40 + guards = 45 PASS, 5 extension shapes, canaries 2/2, grep sweep 3 bounded read sites); micro-sweep green (3 pkgs ok, cover 96.0/93.4/91.1, cli superset filter ok 147.2s, spec-lint/lint/gofmt/vet clean, boundaries 0/0/0, head docs-only); BUT fresh blocking F1: wrapper inside list-item body inside aside duplicates li-carried text (P7/P9 first-hand FAIL; P8 nested-aside observed compliant); required codex fail on the same finding (rcpt-55882ad72f24ae2112378904); FW-D2 carried, R2 optional.
+
+verdict: FAIL
+audited_sha: 40ec49ed9b04b8c6ae60c637ee453fd49983774d
+
+AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-55882ad72f24ae2112378904
