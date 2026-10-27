@@ -120,7 +120,7 @@ go build ./...
 ### M3 — CLI 세션과 계획표 — Priority Medium
 
 - 시작 전 §B 1번 조건(t1966 착지 여부)을 확인한다.
-- `internal/cli/checklist_session.go`: 입력 수집 함수 `checklistEnv`, 활성 판정과 시접 세 개(design.md §3.1), 캡처 작성기, 두 작성기 모두의 경고 수신, 보존 줄 수신, 종료(오류·취소·`nil` 조기 반환 — REQ-TCL-015 의 요약 없는 실행 조항 두 개 포함), init `--verbose` 등록, 그리고 시험 전용 시접 `checklistSessionStartFn`(생산 값 `nil`, 세션 시작 때 수집기와 `cmd` 로 한 번 부름 — design.md §3.7, AC-TCL-016·AC-TCL-017 (c) 의 항목 밖 주입). 세션은 명령 중립이다 — t1978 이 같은 세션을 update 에 쓴다.
+- `internal/cli/checklist_session.go`: 입력 수집 함수 `checklistEnv`, 활성 판정과 시접 세 개(design.md §3.1), 캡처 작성기, 두 작성기 모두의 경고 수신, 보존 줄 수신, 종료(오류·취소·`nil` 조기 반환 — REQ-TCL-015 의 요약 없는 실행 조항 두 개 포함), init `--verbose` 등록, 그리고 시험 전용 시접 `checklistSessionStartFn`(생산 값 `nil`, 수집기가 만들어진 직후 활성·비활성 모두에서 수집기와 `cmd` 로 한 번 부름 — design.md §3.7, AC-TCL-016(비활성 대조 포함)·AC-TCL-017 (c) 의 항목 밖 주입). 세션은 명령 중립이다 — t1978 이 같은 세션을 update 에 쓴다.
 - `internal/cli/checklist_plan.go`: design.md §4 의 init 표.
 - 보고기 이벤트 대응(design.md §3.6 표)과 항목 경계 네 경우(design.md §3.2, 결정 D-10).
 - AC-TCL-010, AC-TCL-012(판정 단위), AC-TCL-014(init), AC-TCL-015, AC-TCL-017(error 부분).
@@ -130,7 +130,7 @@ go build ./...
 - 시작 전 §C 의 t1966 재측정을 다시 돈다(init.go 를 처음 고치는 마일스톤).
 - init.go R1·R2·R3(§B), `init_warnings.go`(세션에 경고 알림·활성 시 패널 생략·항목 밖 경고를 요약에 넘김), `reporter.go`(세션이 있으면 체크리스트 보고기), `severity_line.go`(경고 수신 인터페이스), 보존 행 P1~P5, P20·P21(init 지점), P23(design.md §3.3.1), 목록 완전성 하위 테스트(14개 모양, X11 분류 포함, 궤도 항목 열여섯 개).
 - 리치 골든 `rich/init-clean.golden`, `rich/init-warn.golden`.
-- AC-TCL-011, AC-TCL-012(init 명령 수준, `init_writer_replaced` 포함), AC-TCL-013(`update_*` 회귀 경계 재실행), AC-TCL-016, AC-TCL-017(cancel, resumed_after_validate_fail — 실제 실행기, nil_return_open_item), AC-TCL-018, AC-TCL-019, AC-TCL-020, AC-TCL-022, AC-TCL-024.
+- AC-TCL-001(명령 수준 `TestChecklistInitConditionalSkip` — R3 여는 줄의 조건부 `Skip`, design.md §4), AC-TCL-011, AC-TCL-012(init 명령 수준, `init_writer_replaced` 포함), AC-TCL-013(`update_*` 회귀 경계 재실행), AC-TCL-016, AC-TCL-017(cancel, resumed_after_validate_fail — 실제 실행기, nil_return_open_item), AC-TCL-018, AC-TCL-019, AC-TCL-020, AC-TCL-022, AC-TCL-024.
 
 ### M5 — update 연결 — [DEFERRED → t1978]
 

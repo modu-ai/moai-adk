@@ -240,13 +240,13 @@ init 은 `executor.SetReporter(newSpinnerReporter(p))`(`init.go:728`)로 보고�
 
 | 주입 | 쓰는 시접 | 있는 곳 | 그 시점에 열린 항목 |
 |---|---|---|---|
-| 항목 밖 `Warn`·`Collect`(AC-TCL-016 `w-out`·`c-out`, AC-TCL-017 (c) `w-resume`·`c-resume`) | **새 시험 전용 시접** `checklistSessionStartFn`(예시 이름) — 패키지 변수, 생산 값 `nil`. 세션 시작 코드가 수집기를 만든 직후 한 번 `(cmd, 수집기)` 로 부른다. 시험은 여기서 수집기와 `cmd` 를 받아 두고 항목 밖 경고를 기록한다 | 정의는 새 파일 `internal/cli/checklist_session.go`(M3). 호출은 그 세션 시작 코드 안이며, init.go 쪽 호출 줄은 R1(`383-389`)에 이미 넣는 세션 시작 줄 하나뿐이다 — 영역 규칙(REQ-TCL-021)에 새 줄을 더하지 않는다 | 없음(첫 항목은 `executor.Execute` 안에서 열린다, §3.2) |
-| 항목 안 `Warn`·`Collect`·심각도 줄(AC-TCL-016 `w-in`·`c-in`·`s-in`, `init_stdout_severity` 의 `s-out`) | 기존 시접 `newInitPhaseExecutorFn`(`internal/cli/init_executor_seam.go:29`)을 **감싸기만** 한다 — 시험은 원래 함수가 만든 실제 실행기를 안에 두고, `SetReporter` 로 받은 보고기를 감싸 `StepStart("Initialization", …)` 를 넘긴 직후 위 시접으로 받아 둔 수집기·`cmd` 로 `Warn`·`Collect`·`emitSeverityLine(cmd.ErrOrStderr()/cmd.OutOrStdout(), …)` 를 부른다. 실제 실행기가 그대로 배포하므로 꼬리 단계도 실제로 돈다 | 기존 파일, 고치지 않음 | `templates.deploy` |
+| 항목 밖 `Warn`·`Collect`(AC-TCL-016 `w-out`·`c-out` — 활성 실행과 비활성 대조 실행 모두, AC-TCL-017 (c) `w-resume`·`c-resume`) | **새 시험 전용 시접** `checklistSessionStartFn`(예시 이름) — 패키지 변수, 생산 값 `nil`. **수집기 수준**에서 부른다(v0.2.4, 결정 기록 §15.111): init 실행마다 수집기가 만들어진 직후 정확히 한 번, 세션이 켜졌든 꺼졌든(빈 세션이든) `(cmd, 수집기)` 로 부른다. 값이 `nil` 이면 부르지 않는다. 시험은 여기서 수집기와 `cmd` 를 받아 두고 항목 밖 경고를 기록한다 | 정의는 새 파일 `internal/cli/checklist_session.go`(M3). 부르는 곳은 init.go 밖이다 — 예: 수집기 생성자 `newWarnCollector`(`internal/cli/init_warnings.go`), 또는 R1 이 늘 부르는 세션 시작 함수(비활성이면 빈 세션을 돌려준다). 어느 쪽인지는 run 단계가 고른다. init.go 쪽 변경은 R1(`383-389`) 안 — 세션 시작 줄과 수집기 생성 줄 `:388`(plan.md §B 가 이미 "388 수정 가능" 으로 둠) — 뿐이라 영역 규칙(REQ-TCL-021)에 새 줄을 더하지 않는다 | 없음 — 두 경로 모두 첫 항목보다 앞이다(활성의 첫 항목은 `executor.Execute` 안에서 열린다, §3.2. 비활성에는 항목이 없다) |
+| 항목 안 `Warn`·`Collect`·심각도 줄(AC-TCL-016 `w-in`·`c-in`·`s-in`, `init_stdout_severity` 의 `s-out`) | 기존 시접 `newInitPhaseExecutorFn`(`internal/cli/init_executor_seam.go:29`)을 **감싸기만** 한다 — 시험은 원래 함수가 만든 실제 실행기를 안에 두고, `SetReporter` 로 받은 보고기를 감싸 `StepStart("Initialization", …)` 를 넘긴 직후 위 시접으로 받아 둔 수집기·`cmd` 로 `Warn`·`Collect`·`emitSeverityLine(cmd.ErrOrStderr()/cmd.OutOrStdout(), …)` 를 부른다. 실제 실행기가 그대로 배포하므로 꼬리 단계도 실제로 돈다. 실행기와 보고기 이벤트는 비활성 경로에서도 돌므로 AC-TCL-016 의 비활성 대조 실행도 같은 감싼 실행기로 같은 순서로 주입한다 | 기존 파일, 고치지 않음 | 활성: `templates.deploy`. 비활성: 없음(기준선 출력 경로) |
 | init `warn` 기준선(AC-TCL-013 `init_warn`, M0) | 기존 시접 `applyAutonomyTierBundleFn`(`internal/cli/update_settings_snapshot.go:32`)이 오류를 돌려줌 → `init.go:935` `p.Warn("Failed to apply autonomy tier bundle: …")` | 기존 파일, 고치지 않음 | (기준선은 비활성 경로) |
 | init `fail` 기준선(AC-TCL-013 `init_fail`, M0) | 기존 시접 `newInitPhaseExecutorFn` 이 `template deployment` 오류를 내는 실행기를 돌려줌 → `init.go:876-877` | 기존 파일, 고치지 않음 | (기준선은 비활성 경로) |
 
 - 시접을 바꾸는 테스트는 `t.Parallel` 없이 `t.Cleanup` 으로 되돌린다(spec.md §4 C-5).
-- `checklistSessionStartFn` 은 세션이 꺼져 있으면(빈 세션) 부르지 않는다 — 생산 경로와 대체 경로의 바이트는 그대로다(AC-TCL-013 이 지킨다).
+- `checklistSessionStartFn` 은 활성·비활성 두 경로에서 같은 자리(수집기가 만들어진 직후, 첫 항목 전)에서 한 번 불린다 — AC-TCL-016 의 비활성 대조 실행이 활성 실행과 같은 수집기 경고 네 개(`w-in`·`c-in`·`w-out`·`c-out`)를 갖도록(v0.2.4, 결정 기록 §15.111. v0.2.3 까지의 "세션이 꺼져 있으면 부르지 않는다" 는 대조 실행을 만들 수 없게 했다). 생산 값은 `nil` 이고 `nil` 이면 부르지 않으므로 생산 경로와 대체 경로의 바이트는 그대로다 — AC-TCL-013 의 대체 테스트는 이 시접을 설정하지 않으며, M0 골든은 시접이 없는 기준선 코드로 찍는다. 시접을 활성 경로에서만 부르는 구현은 AC-TCL-016 대조 실행의 완료 카드 경고 수가 2(`w-in`·`c-in` 뿐)가 되어 빨강이다.
 - update 기준선의 `warn`·`fail` 주입은 AC-TCL-013 이 이름으로 적는다(사용자가 고친 pre-push 훅, `confirmViaPreviewFn`). update 연결 뒤의 꼬리 주입은 [DEFERRED → t1978](plan.md §K K-4).
 
 ## §4 그룹·항목 계획표 (SSOT) — `internal/cli/checklist_plan.go`
@@ -326,7 +326,7 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 
 - `checklist.summary.` 키는 모두 이 카드가 넣는다 — 렌더러의 요약 필드이며(AC-TCL-005 가 update 모양 요약으로 검사) init 이 쓰지 않는 필드(`changed`, `preserved`, `backup`, `recover`)도 렌더러 계약에 속한다.
 - 언어 해석: init 은 위저드 답 또는 프로필 로케일을 쓰고 둘 다 없으면 `en`. ([DEFERRED → t1978] update 는 `.moai/config/sections/language.yaml` 의 `conversation_language`.) 미지원 값은 `Translate` 가 `en` 으로 대체한다(`internal/tui/i18n.go:83-99`).
-- 값에 서식 지시자(`%d`, `%s`)가 있으면 네 카탈로그의 (인자 번호, 동사) 목록이 같아야 한다(AC-TCL-008 이 비교).
+- 값에 서식 지시자(`%d`, `%s`)가 있으면 네 카탈로그의 서명 — 각 지시자가 Go `fmt` 규칙으로 실제로 소비하는 (인자 번호, 동사) 쌍의 목록 — 이 같아야 한다(AC-TCL-008 이 정의하고 실제 `fmt.Sprintf` 로 비교).
 - ja·zh 값은 en 값과 달라야 한다. 예외는 식별자만 담은 값(초기 허용 목록: `MCP`)뿐이며, 허용 목록은 AC-TCL-008 테스트 안에 둔다.
 - ja·zh 문구는 이 카드에서 초안을 넣는다. 원어민 검수는 범위 밖이다(spec.md §5, Gap G-5).
 

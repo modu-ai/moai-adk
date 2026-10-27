@@ -76,6 +76,23 @@ hunk:
 - N8-6 — spec.md §6 추적표와 plan.md M4 목록 두 파일에 걸친 편집이라 한 줄 기준을 넘는다(조건부 `Skip` 여는 줄을 plan.md M4 에 적는 일도 함께 따라온다).
 - N8-7 — AC-TCL-008 의 번호 규칙을 Go `fmt` 규칙(직전 인자 번호 + 1)으로 바꾸는 것은 테스트의 판정 알고리즘을 바꾸는 AC 본문 결정이라 문구 정렬이 아니다. `%!` 검사가 상당 부분을 받친다.
 
+### Plan-phase delta 7 (card t1969, decision record 15.111)
+
+입력: codex P2 두 건(영수증 `rcpt-50fb41f52e6c83eab02ffa04`, 레인 실행 `rcpt-ac0ee402340ec744d7eb4a7a`, 둘 다 `eff053068d`)과 이월 선택 결함 N8-6·N9-1·N9-2·N8-2. 리더 결정 기록 §15.111(1회 승인, 1커밋). 기준 HEAD `eff053068d9421bc76401bf9220dfff484249b32`. REQ·AC id 집합은 그대로(REQ-TCL-001~023, AC-TCL-001~024). spec.md version `0.2.3` → `0.2.4`.
+
+hunk(기준 `eff053068d` 의 줄 번호):
+- codex P2-a (AC-TCL-008 서명) → acceptance.md:138(Given: 서명 = Go `fmt` 가 실제로 소비하는 (인자 번호, 동사) 쌍을 번호 순으로 늘어놓은 목록, 소비 규칙, `%[3]s %[1]s %d` 유효, `%s %s %[3]s` 와 `%[2]s %s %[3]s` 는 다른 서명, 실제 `fmt.Sprintf` 대표 값 횟수 비교), acceptance.md:141(뮤턴트 하나, 사실 칸 둘 — `fmtprobe7`·`extraprobe7`, 트리 `eff053068d`, go1.26.8), design.md:329(§6 문구 정렬). 이 회차가 델타 6 의 이월 N8-7 을 닫는다.
+- codex P2-b (AC-TCL-016 비활성 대조) → design.md:243-244(§3.7 표 두 행: 시접을 수집기 수준으로 — 활성·비활성 모두 수집기 생성 직후 한 번, 부르는 곳은 init.go 밖, init.go 변경은 R1 안의 세션 시작 줄·`:388` 뿐), design.md:249(비활성에서도 부름, 생산 값 `nil` 이면 부르지 않음 → AC-TCL-013 바이트 보존), acceptance.md:244-245(대조 실행의 구성과 주입), acceptance.md:255(뮤턴트 둘). 따라온 hunk: plan.md:123(M3 시접 설명이 "세션 시작 때" 라 같은 모순을 담아 함께 고침).
+- N8-6 → spec.md:188(현재 190) `M2, M4`, plan.md:133(M4 목록에 AC-TCL-001 명령 수준). plan.md 의 다른 마일스톤 표는 AC 별 마일스톤을 적지 않아 고칠 곳이 없다.
+- N9-1 → acceptance.md:365(§F: 기록은 `go test` 라 §A 판정, 최종 HEAD 재실행은 git 명령이라 출력·종료 코드·측정 SHA 와 영역 조건으로 판정, 완전성 검사는 재실행에 들지 않고 M6 에서 판정).
+- N9-2 → spec.md HISTORY 에 `eb2a9dfc21`(§15.104) 행과 v0.2.4 행, frontmatter version.
+- N8-2 → acceptance.md:208 한 줄: 구분자 `[:-]` 로 넓혀 생산 형식 `2006-01-02T15-04-05Z`(`update_namespace_protect.go:64`, `update_cleanup.go:208`·`:445`)을 잡고, 사실 칸을 Go RE2 탐침(`isoprobe7`, 트리 `eff053068d`)으로 다시 쟀다. 콜론 형식도 그대로 잡으므로 기존 판정을 줄이지 않는다.
+- 이 단락 자체(progress.md §E.1).
+
+REQ-TCL-021 이 성립하는 이유(P2-b): 시접 `checklistSessionStartFn` 을 부르는 곳은 `internal/cli/checklist_session.go` 나 `internal/cli/init_warnings.go`(수집기 생성자) — 어느 쪽이든 init.go 밖이다. init.go 쪽 변경은 R1 `[383,389]` 안의 세션 시작 줄과 `:388` 수집기 생성 줄(plan.md §B 가 이미 "388 수정 가능" 으로 둠)뿐이라 영역 밖 hunk 가 생기지 않는다.
+
+미룬 것(deferred): 없음. 남은 관찰: AC-TCL-022 의 최종 HEAD 재실행에는 카드 id 완전성 검사가 들지 않는다(본문대로). (1) 은 트리 diff 라 영역 판정 자체는 영향받지 않는다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
