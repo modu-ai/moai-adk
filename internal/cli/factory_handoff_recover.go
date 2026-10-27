@@ -114,12 +114,26 @@ func newFactoryCommand() *cobra.Command {
 // exits listed (SPEC-FACTORY-RETIRE-GUARD-001); the refusal is a temporary
 // safeguard until retirement can transfer the cards. Retiring an already-retired
 // run succeeds without a write and lists the cards it still strands.
+//
+// With --rebind-to the retirement becomes a consolidation (card t1963,
+// SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-021): the dead run's
+// in-progress cards move under the named live run and the dead run retires, in
+// one transaction. It is the leader and operator path only — a lane session is
+// refused — and without the flag nothing about the retirement changes.
 func newFactoryRunsCommand() *cobra.Command {
-	var retire string
+	var retire, rebindTo string
 	cmd := &cobra.Command{
 		Use:   "runs",
 		Short: "Report factory runs with their owner liveness, and retire a dead-owner run",
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
+			if rebindTo != "" {
+				if retire == "" {
+					return fmt.Errorf("factory runs: --rebind-to needs --retire <dead-run>: it names where the retired run's cards go, and nothing was changed")
+				}
+				if factoryLaneRefusal() {
+					return fmt.Errorf("factory runs --rebind-to: refused — %s: consolidating runs is the leader and operator path's act, not a lane session's; nothing was changed", factoryLaneBoundarySentinel)
+				}
+			}
 			root, err := checkedFactoryRoot()
 			if err != nil {
 				return err
@@ -130,6 +144,9 @@ func newFactoryRunsCommand() *cobra.Command {
 			}
 			defer closeFactoryInto(&err, db, "factory state")
 			opts := factorymsg.ReconcileOptionsFor(root)
+			if rebindTo != "" {
+				return runRebindRetire(cmd, db, opts, retire, rebindTo)
+			}
 			if retire != "" {
 				classification, retireErr := db.RetireRunIfDead(cmd.Context(), retire, opts)
 				var cardsErr *homestate.RunInProgressCardsError
@@ -163,7 +180,44 @@ func newFactoryRunsCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&retire, "retire", "", "Retire the named run — refused unless its owner classifies dead and it holds no in-progress cards")
+	cmd.Flags().StringVar(&rebindTo, "rebind-to", "", "With --retire: move the dead run's in-progress cards under this live run, then retire it (leader and operator only)")
 	return cmd
+}
+
+// runRebindRetire is `runs --retire <source> --rebind-to <target>`: it
+// classifies both runs, hands them to the consolidation operation and prints
+// the cards that moved and the ones abandoned with a pointer. Every refusal is
+// the operation's own — an owner that is not dead, a target that is not live, a
+// live worker, a card another live run holds — and changes nothing.
+func runRebindRetire(cmd *cobra.Command, db *homestate.FactoryDB, opts homestate.ReconcileOptions, source, target string) error {
+	owners, err := db.ClassifyRuns(cmd.Context(), opts)
+	if err != nil {
+		return err
+	}
+	var src, tgt *homestate.RunOwner
+	for i := range owners {
+		switch owners[i].RunID {
+		case source:
+			src = &owners[i]
+		case target:
+			tgt = &owners[i]
+		}
+	}
+	if src == nil {
+		return fmt.Errorf("factory run %s not found", source)
+	}
+	if tgt == nil {
+		return fmt.Errorf("factory run %s not found (the --rebind-to target)", target)
+	}
+	res, err := db.RebindRun(cmd.Context(), homestate.RebindRequest{Source: *src, Target: *tgt}, opts)
+	if err != nil {
+		return err
+	}
+	out := cmd.OutOrStdout()
+	_, _ = fmt.Fprintf(out, "rebound %s into %s (owner %s)\n", source, target, src.Classification)
+	_, _ = fmt.Fprintf(out, "moved cards: %s\n", joinOrNone(res.Moved))
+	_, _ = fmt.Fprintf(out, "abandoned cards: %s\n", joinOrNone(res.Abandoned))
+	return nil
 }
 
 func init() { rootCmd.AddCommand(newFactoryCommand()) }

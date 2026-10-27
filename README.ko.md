@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.2.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -55,7 +55,7 @@ moai codex -l                 # Codex 레인
 
 `-f`(긴 형태 `--factory`)가 리더를 열고, `-l`(긴 형태 `--lane`)이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. `moai codex`에는 리더 진입이 없어 레인으로만 합류할 수 있다.
 
-한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었고, `moai cg`는 이전 안내를 띄우고 종료한다(`moai migrate cg`로 먼저 확인). `moai gpt`는 없으며 GPT 모델은 `moai codex`로 돌린다.
+한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었다. GPT 모델은 `moai codex`로 돌린다.
 
 ### 어느 백엔드로 돌릴까
 
@@ -288,8 +288,8 @@ cd my-project
 `moai update`는 이 매니페스트를 기준으로 사용자 설치를 갱신한다: 배포본이 바뀐 추적 파일은 제자리에서 다시 쓰고, 직접 편집한 파일은 보존하며 `~/.moai/` 아래에 백업하고, 선택을 해제한 번들의 파일은 걷어내고, 기존 프로젝트의 템플릿 관리 스킬·에이전트는 첫 update에서 사용자 폴더로 이전한다. `moai bundle add|remove <이름>`으로 설치 번들 선택을 조정하고, `moai doctor`가 User Install과 Project Lock 어긋남을 보고한다. 선언된 v1 한계 하나: MoAI 프로필 루트(`~/.moai/claude-profiles/<이름>`)로 실행한 세션은 공유 사용자 에셋을 보지 못한다.
 
 
-> **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
-> 런처는 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
+> **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 런처는
+> 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
 > `--llm gpt` init 값은 영향을 받지 않습니다 — 철회된 런처가 아니라 Codex 단독 배포를 선택하는 값입니다.
 ```bash
 moai init my-project --llm gpt   # Codex 단독 프로젝트
@@ -383,7 +383,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 
 ### CG 폐기와 설정 이전
 
-`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
+CG 런처는 폐기되었습니다. 이전 절차와 안내는 [CG 폐기와 설정 이전](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/) 문서를 참고하세요.
 
 ```bash
 moai migrate cg
@@ -588,7 +588,7 @@ SPEC마다 독립된 작업 트리를 주어 두 에이전트가 서로 밟지 �
 
 ### CG 폐기와 설정 이전
 
-`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
+CG 런처는 폐기되었습니다. 이전 절차와 안내는 [CG 폐기와 설정 이전](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/) 문서를 참고하세요.
 
 ```bash
 moai migrate cg

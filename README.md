@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.2.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -55,7 +55,7 @@ moai codex -l                 # a Codex lane
 
 `-f` (long form `--factory`) opens the leader, and `-l` (long form `--lane`) joins the running factory as a lane. Neither takes an argument. The operator never picks a lane number; it is assigned automatically. Lanes are launched **by hand, one fresh terminal each**, because a session cannot launch another session. `moai codex` has no leader entry and can only join as a lane.
 
-A launch carries one entry token, so `-f` together with `-l` is an error. A value after either token (`moai cc -f <value>`, `moai cc -l lane-2`) is refused with a one-line error that names the correct form. The `-k` entry of the former multi-session board mode is removed, and `moai cg` exits with a migration notice (preview it with `moai migrate cg`). `moai gpt` does not exist: GPT models run through `moai codex`.
+A launch carries one entry token, so `-f` together with `-l` is an error. A value after either token (`moai cc -f <value>`, `moai cc -l lane-2`) is refused with a one-line error that names the correct form. The `-k` entry of the former multi-session board mode is removed. GPT models run through `moai codex`.
 
 ### Which backend to run
 
@@ -293,7 +293,7 @@ moai init my-project --llm gpt   # Codex-only project
 
 A project initialized before this choice existed has no `llm.harness` key and keeps the `claude` behavior on update — nothing to migrate.
 
-> **GPT gateway withdrawn (2026-09-16).** The former `moai gpt` launcher — Claude Code driven by GPT
+> **GPT gateway withdrawn (2026-09-16).** The former launcher — Claude Code driven by GPT
 > models through the built-in translation gateway — has been removed. GPT models are reached through
 > their native harness instead: `moai codex` (Codex CLI). The `--llm gpt` init value above is
 > unaffected; it selects the Codex-only deployment, not the withdrawn launcher.
@@ -384,7 +384,7 @@ Session lineage is handled separately by the **Origin-Trail Chain**. It is indep
 
 ### CG retirement and migration
 
-`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
+The CG launcher has been retired. See [CG retirement and migration](https://adk.mo.ai.kr/en/multi-llm/cg-mode/) for the migration guide.
 
 ```bash
 moai migrate cg
@@ -589,7 +589,7 @@ Each SPEC gets its own working tree so two agents never step on each other. The 
 
 ### CG retirement and migration
 
-`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
+The CG launcher has been retired. See [CG retirement and migration](https://adk.mo.ai.kr/en/multi-llm/cg-mode/) for the migration guide.
 
 ```bash
 moai migrate cg
