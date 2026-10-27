@@ -1,5 +1,5 @@
 verdict: PASS
-audited_sha: 0b03ab21413d913ab3c4d421bb59fbe96d0a35d2
+audited_sha: 27e248839fecc41b91d7211d8e5bd8c6b35700d6
 
 # t1973 — lane completion verdict (Class B, reproduce-first)
 
@@ -93,3 +93,7 @@ audited_sha rebound again to `eef35b5abefac01efa03292507e5862d3258d301` per the 
 ## Rebinding note 3 (2026-10-27) — audited_sha rebound to 0b03ab2141
 
 audited_sha rebound to `0b03ab21413d913ab3c4d421bb59fbe96d0a35d2` (the structural whole-row gate commit). The independent sync-audit Round-7 (sync-audit-verdict.md, PASS, gate leg rcpt-5f54398825fb644b32c99e05, delta_base 148f049343) audits exactly this commit; the delta between eef35b5abe and 0b03ab2141 is this file's own rebinding notes plus the round-2b repair commits the rounds cover (.moai/reports/t1973/ scope for the rebinding notes; the repair commits are the audited content itself).
+
+## Rebinding note 4 (2026-10-27) — audited_sha synced to 27e248839f
+
+audited_sha synced to `27e248839fecc41b91d7211d8e5bd8c6b35700d6` (the post-absorb HEAD) per the leader's rebind of the card's evidence_sha to the same commit. The independent sync-audit Round-8 (sync-audit-verdict.md, PASS, gate leg rcpt-5df311471c95f09a8b7bd505) corroborates the tree identity: the absorb's own diff touches zero card files, the audited internal/homestate code at this HEAD is byte-identical to 0b03ab2141, and the merge-tree result tree equals HEAD's tree. The delta between 0b03ab2141 and 27e248839f is the origin/main-side landings plus this file's rebinding notes only.
