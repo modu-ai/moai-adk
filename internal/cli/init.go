@@ -103,7 +103,7 @@ func init() {
 	// Registered with the same true default the help text states and the wizard's
 	// lsp_enabled seed uses; explicitness is probed with Changed() (see
 	// getBoolFlagWithDefault), so --enable-lsp=false still wins.
-	initCmd.Flags().Bool("enable-lsp", true, "Enable LSP integration (default: true)")
+	initCmd.Flags().Bool("enable-lsp", true, "Enable LSP integration")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 

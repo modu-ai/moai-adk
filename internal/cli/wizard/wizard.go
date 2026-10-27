@@ -313,14 +313,33 @@ const selectFieldUsableWidth = 76
 // description rows are taken from the LONGEST wrapped description across the
 // base text and every translated locale (card t1966): a height sized for the
 // English text alone hides options when another locale wraps to more rows.
+// Option rows are counted the same way: each rendered row wraps at the field's
+// usable width, so the option rows come from the locale whose options occupy
+// the most rows (audit F6).
 func selectHeight(q *Question) int {
 	descLines := wrappedDescriptionRows(q.Description)
+	optionRows := wrappedOptionRows(q.Options)
 	for locale := range translations {
-		if rows := wrappedDescriptionRows(GetLocalizedQuestion(q, locale).Description); rows > descLines {
+		lq := GetLocalizedQuestion(q, locale)
+		if rows := wrappedDescriptionRows(lq.Description); rows > descLines {
 			descLines = rows
 		}
+		if rows := wrappedOptionRows(lq.Options); rows > optionRows {
+			optionRows = rows
+		}
 	}
-	return 1 + descLines + len(q.Options)
+	return 1 + descLines + optionRows
+}
+
+// wrappedOptionRows is the total row count of the rendered option rows
+// (alignOptionLabels' label + " - " + description text) wrapped at the select
+// field's usable width; an option that fits still counts one row.
+func wrappedOptionRows(opts []Option) int {
+	rows := 0
+	for _, o := range alignOptionLabels(opts) {
+		rows += wrappedDescriptionRows(o.Key)
+	}
+	return rows
 }
 
 // wrappedDescriptionRows is the row count of a description wrapped at the

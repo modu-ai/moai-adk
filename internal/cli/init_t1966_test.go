@@ -125,3 +125,24 @@ func TestInitCmd_EnableLSPRegisteredDefaultMatchesHelp(t *testing.T) {
 		t.Errorf("--enable-lsp DefValue = %q, want \"true\" (help says default: true)", f.DefValue)
 	}
 }
+
+// Audit F4: the flag is registered with default true, so cobra appends its own
+// default marker; the usage string must not state the default a second time.
+func TestInitCmd_EnableLSPHelpStatesDefaultOnce(t *testing.T) {
+	var line string
+	for _, l := range strings.Split(initCmd.Flags().FlagUsages(), "\n") {
+		if strings.Contains(l, "--enable-lsp") {
+			line = l
+			break
+		}
+	}
+	if line == "" {
+		t.Fatal("--enable-lsp missing from the rendered flag usages")
+	}
+	if n := strings.Count(line, "default"); n != 1 {
+		t.Errorf("--enable-lsp help states the default %d times, want once: %q", n, line)
+	}
+	if f := initCmd.Flags().Lookup("enable-lsp"); f == nil || f.DefValue != "true" {
+		t.Errorf("--enable-lsp DefValue must stay \"true\"")
+	}
+}

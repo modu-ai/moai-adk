@@ -57,3 +57,68 @@ func TestSelectHeight_CoversLongestLocaleDescription(t *testing.T) {
 		t.Errorf("selectHeight = %d, want >= %d (longest locale description)", got, need)
 	}
 }
+
+// optionRowsAt is the number of rows the rendered option rows of opts occupy
+// at the select field's usable width (a row that fits still counts 1).
+func optionRowsAt(opts []Option) int {
+	total := 0
+	for _, o := range alignOptionLabels(opts) {
+		total += lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(o.Key))
+	}
+	return total
+}
+
+// Item 10 (audit F6): selectHeight must count every option row at the width
+// the renderer wraps it to, not one row per option.
+func TestSelectHeight_CountsWrappedOptionRows(t *testing.T) {
+	long := strings.Repeat("a deliberately long option description that wraps ", 4)
+	q := &Question{
+		ID:          "t1966_wrap_probe",
+		Type:        QuestionTypeSelect,
+		Title:       "t",
+		Description: "short",
+		Options: []Option{
+			{Label: "first", Value: "first", Desc: long},
+			{Label: "second", Value: "second", Desc: "fits"},
+			{Label: "third", Value: "third", Desc: long},
+		},
+	}
+	if optionRowsAt(q.Options) <= len(q.Options) {
+		t.Fatalf("precondition: option rows must wrap (%d rows for %d options)", optionRowsAt(q.Options), len(q.Options))
+	}
+	need := 1 + wrappedDescriptionRows(q.Description) + optionRowsAt(q.Options)
+	if got := selectHeight(q); got < need {
+		t.Errorf("selectHeight = %d, want >= %d (wrapped option rows counted)", got, need)
+	}
+}
+
+// Item 10 (audit F6): for every real select question and every locale, the
+// height covers the longest description plus that locale's rendered option rows.
+func TestSelectHeight_CoversOptionRowsPerLocale(t *testing.T) {
+	root := t.TempDir()
+	questions := append(DefaultQuestions(root), InitQuestions(root)...)
+	locales := []string{"en", "ko", "ja", "zh"}
+	checked := 0
+	for i := range questions {
+		q := &questions[i]
+		if q.Type != QuestionTypeSelect {
+			continue
+		}
+		longestDesc := 0
+		for _, locale := range locales {
+			if rows := wrappedDescriptionRows(GetLocalizedQuestion(q, locale).Description); rows > longestDesc {
+				longestDesc = rows
+			}
+		}
+		for _, locale := range locales {
+			need := 1 + longestDesc + optionRowsAt(GetLocalizedQuestion(q, locale).Options)
+			if got := selectHeight(q); got < need {
+				t.Errorf("%s/%s: selectHeight = %d, want >= %d", q.ID, locale, got, need)
+			}
+			checked++
+		}
+	}
+	if checked == 0 {
+		t.Fatal("control failed: no select question was checked")
+	}
+}
