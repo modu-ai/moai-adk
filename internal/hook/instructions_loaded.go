@@ -268,7 +268,12 @@ func instructionFileSet(projectRoot string) []string {
 		}
 		add(cur)
 		for _, imp := range parseImports(string(data)) {
-			if resolved := resolveUnder(projectRoot, imp); resolved != "" && !seen[resolved] {
+			// Audit P2-2: a relative import resolves from the IMPORTING
+			// file's directory (per the official memory#import-additional-
+			// files semantics), then the project-boundary check applies —
+			// resolving every import from the project root silently
+			// dropped nested ../ targets outside the root spelling.
+			if resolved := resolveUnder(projectRoot, filepath.Dir(cur), imp); resolved != "" && !seen[resolved] {
 				queue = append(queue, resolved)
 			}
 		}
@@ -312,13 +317,14 @@ func parseImports(content string) []string {
 	return imports
 }
 
-// resolveUnder resolves a repo-relative import path under projectRoot,
+// resolveUnder resolves an import path from the importing file's directory
+// (audit P2-2: per the official memory#import-additional-files semantics),
 // refusing absolute paths and any target that escapes projectRoot.
-func resolveUnder(projectRoot, rel string) string {
+func resolveUnder(projectRoot, dir, rel string) string {
 	if rel == "" || filepath.IsAbs(rel) {
 		return ""
 	}
-	cleaned := filepath.Clean(filepath.Join(projectRoot, rel))
+	cleaned := filepath.Clean(filepath.Join(dir, rel))
 	escaped, err := filepath.Rel(projectRoot, cleaned)
 	if err != nil || escaped == ".." || strings.HasPrefix(escaped, ".."+string(filepath.Separator)) {
 		return ""

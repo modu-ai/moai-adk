@@ -273,18 +273,29 @@ func relFromRoot(root, path string) string {
 }
 
 // sourceChangedSinceRead reports whether the file at path differs from the
-// bytes and mtime captured at the migration's read.
+// bytes and mtime captured at the migration's read. The re-check opens the
+// path NONBLOCKING and verifies the HANDLE's own Stat is a regular file
+// before reading (audit P2-3): a swap to a same-mtime FIFO must be refused
+// by the handle's mode, never waited out by a blocking read.
 func sourceChangedSinceRead(path string, body []byte, mtime time.Time) (bool, error) {
-	info, err := os.Lstat(path)
+	f, err := openInstructionHandle(path)
 	if err != nil {
-		return false, err
+		return true, err // unopenable (a writer-less FIFO refuses O_NONBLOCK too)
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return true, err
+	}
+	if !info.Mode().IsRegular() {
+		return true, nil // non-regular swap (FIFO/socket/device): refuse
 	}
 	if !info.ModTime().Equal(mtime) {
 		return true, nil
 	}
-	cur, err := os.ReadFile(path)
+	cur, err := io.ReadAll(f)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 	return !bytes.Equal(cur, body), nil
 }

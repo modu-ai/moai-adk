@@ -442,6 +442,58 @@ func TestInstructionFileSetIncludesLocalPair(t *testing.T) {
 	}
 }
 
+// TestInstructionImportsResolveRelativeToImporter pins audit P2-2: a
+// relative import resolves from the IMPORTING file's directory (the
+// official memory#import-additional-files semantics), then the
+// project-boundary check applies. A nested docs/local.md importing
+// ../chunk.md must pull the project-root chunk.md into the aggregate —
+// root-relative resolution silently dropped it — and an escaping
+// ../../target is still refused.
+func TestInstructionImportsResolveRelativeToImporter(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n\n@docs/local.md\n",
+		"docs/local.md":                     "# Nested\n\n@../chunk.md\n@../../outside.md\n",
+		"chunk.md":                          "# " + strings.Repeat("chunk-body ", 4000) + "\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	set := instructionFileSet(root)
+	var hasChunk, hasOutside bool
+	for _, p := range set {
+		if strings.HasSuffix(p, "chunk.md") {
+			hasChunk = true
+		}
+		if strings.HasSuffix(p, "outside.md") {
+			hasOutside = true
+		}
+	}
+	if !hasChunk {
+		t.Error("the nested ../chunk.md import was not resolved relative to its importing file — the aggregate undercounts (P2-2)")
+	}
+	if hasOutside {
+		t.Error("an import escaping the project root was followed — the boundary check must still apply")
+	}
+	// The aggregate counts the chunk's chars, not a 120-char stub.
+	agg := aggregateInstructionChars(root)
+	if agg < 40000 {
+		t.Errorf("aggregate = %d chars, want the nested chunk's ~44000 included (P2-2)", agg)
+	}
+}
+
 // TestInstructionFileSetCycleSafe pins the visited-set behavior: a mutual
 // @-import between AGENTS.md and CLAUDE.md must terminate and yield both
 // members exactly once.

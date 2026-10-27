@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -183,6 +185,10 @@ func TestMigrateLocalInstructions_MovesWithBackup(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := sha256.Sum256([]byte(body))
+			// Audit P2-4: compare against the ORIGINAL's ACTUAL on-disk
+			// permission bits — a fixed 0o640 literal does not hold on
+			// windows, where the write may degrade the mode.
+			wantPerm := filePerm(t, path)
 
 			out, _, err := runMigrateLocalInstructions(t, root)
 			if err != nil {
@@ -191,8 +197,8 @@ func TestMigrateLocalInstructions_MovesWithBackup(t *testing.T) {
 			if got := localFileDigest(t, filepath.Join(root, pair.canonical)); got != want {
 				t.Errorf("%s content differs from the original %s", pair.canonical, pair.legacy)
 			}
-			if got := filePerm(t, filepath.Join(root, pair.canonical)); got != 0o640 {
-				t.Errorf("%s perm = %v, want the original's 0640", pair.canonical, got)
+			if got := filePerm(t, filepath.Join(root, pair.canonical)); got != wantPerm {
+				t.Errorf("%s perm = %v, want the original's actual %v", pair.canonical, got, wantPerm)
 			}
 			if _, err := os.Lstat(path); !os.IsNotExist(err) {
 				t.Errorf("%s still present at the project root (err=%v) — the final rename must remove it", pair.legacy, err)
@@ -204,6 +210,9 @@ func TestMigrateLocalInstructions_MovesWithBackup(t *testing.T) {
 			for _, rel := range entries {
 				if got := localFileDigest(t, filepath.Join(root, filepath.FromSlash(rel))); got != want {
 					t.Errorf("backup entry %s is not byte-identical to the original", rel)
+				}
+				if got := filePerm(t, filepath.Join(root, filepath.FromSlash(rel))); got != wantPerm {
+					t.Errorf("backup entry %s perm = %v, want the original's actual %v", rel, got, wantPerm)
 				}
 			}
 			if !strings.Contains(out, "Migrated") || !strings.Contains(out, pair.canonical) {
@@ -287,18 +296,39 @@ func TestMigrateLocalInstructions_RefusesNonRegular(t *testing.T) {
 	}
 }
 
-// AC-CIF-009: an unreadable legacy file (mode 0000) is refused without
-// touching anything.
+// AC-CIF-009: an unreadable legacy file is refused without touching
+// anything. Audit P2-4: the permission model is platform-specific — unix
+// uses mode 0000 (skipped under root, where mode bits do not block reads);
+// windows uses an icacls read-deny ACL (skipped when icacls is absent).
 func TestMigrateLocalInstructions_RefusesUnreadable(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: mode bits do not block reads")
-	}
 	for _, pair := range migrationPairs {
 		t.Run(pair.legacy, func(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, pair.legacy)
-			if err := os.WriteFile(path, []byte("secret\n"), 0o000); err != nil {
+			if err := os.WriteFile(path, []byte("secret\n"), 0o600); err != nil {
 				t.Fatal(err)
+			}
+			switch runtime.GOOS {
+			case "windows":
+				icacls, err := exec.LookPath("icacls")
+				if err != nil {
+					t.Skip("icacls unavailable: no portable unreadable fixture on this windows host")
+				}
+				// Deny Everyone (S-1-1-0) read access.
+				cmd := exec.Command(icacls, path, "/deny", "*S-1-1-0:(R)")
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Skipf("icacls deny failed (%v): %s", err, out)
+				}
+				t.Cleanup(func() {
+					_ = exec.Command(icacls, path, "/remove:d", "*S-1-1-0").Run()
+				})
+			default:
+				if os.Geteuid() == 0 {
+					t.Skip("running as root: mode bits do not block reads")
+				}
+				if err := os.Chmod(path, 0o000); err != nil {
+					t.Fatal(err)
+				}
 			}
 			_, _, err := runMigrateLocalInstructions(t, root)
 			if err == nil {

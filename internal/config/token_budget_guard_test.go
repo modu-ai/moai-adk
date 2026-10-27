@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -312,7 +313,7 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 2 // + CLAUDE.md + moai.md fixed slots (the AGENTS.md slot retired with the CLAUDE.md-canonical conversion)
+	wantTotal := wantRuleCount + 3 // + CLAUDE.md + CLAUDE.local.md + moai.md fixed slots (감사 P2-1: the auto-loaded local pair joined; this repo carries no @-imports, so the closure adds none)
 	if len(surface) != wantTotal {
 		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
@@ -341,6 +342,57 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("always-loaded surface omits %s; the contract layer must be enumerated (REQ-AMC-008)", claude)
+	}
+
+	// 감사 P2-1: the auto-loaded LOCAL instruction file is enumerated too.
+	local := filepath.Join(root, "CLAUDE.local.md")
+	found = false
+	for _, p := range surface {
+		if p == local {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("always-loaded surface omits %s; the local pair must be enumerated (P2-1)", local)
+	}
+}
+
+// TestAlwaysLoadedMeasuresLocalInstructions pins audit P2-1: the token
+// measurement must sum the auto-loaded local instruction file — adding a
+// ~90,000-token CLAUDE.local.md to a small fixture has to move the total.
+func TestAlwaysLoadedMeasuresLocalInstructions(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	before, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ~90,001 estimated tokens (chars/4) of local instructions.
+	local := filepath.Join(root, "CLAUDE.local.md")
+	if err := os.WriteFile(local, bytes.Repeat([]byte("a"), 360_004), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	after, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after-before < 90_000 {
+		t.Errorf("local instructions moved the total by %d tokens, want >= 90000 — the local pair is missing from the measurement (P2-1)", after-before)
 	}
 }
 

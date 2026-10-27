@@ -282,12 +282,86 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	sort.Strings(ruleFiles)
 
 	// 고정 표면 슬롯을 항상 고정 순서로 추가한다. SPEC-CLAUDE-INSTRUCTION-FILES-001:
-	// 루트 CLAUDE.md가 정규 지시 파일이다(구 AGENTS.md 슬롯의 후계).
+	// 루트 CLAUDE.md가 정규 지시 파일이다(구 AGENTS.md 슬롯의 후계). 감사 P2-1:
+	// 자동 로드되는 로컬 지시 파일(CLAUDE.local.md, 레거시 AGENTS.local.md 폴백)과
+	// 두 지시 파일의 @-import 폐쇄도 상주 토큰에 산입한다 — 로컬 파일을 빼면
+	// 개별 상한을 전부 통과한 채 총량이 과소계상된다.
 	fixed := []string{
 		filepath.Join(repoRoot, "CLAUDE.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}
-	return append(ruleFiles, fixed...), nil
+	for _, name := range []string{"CLAUDE.local.md", "AGENTS.local.md"} {
+		p := filepath.Join(repoRoot, name)
+		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+			fixed = append(fixed, p)
+			break // canonical first; the legacy name only when canonical is absent
+		}
+	}
+	return append(append(ruleFiles, fixed...), instructionImportMembers(repoRoot)...), nil
+}
+
+// instructionImportMembers(감사 P2-1)는 두 지시 파일(공유+로컬, 레거시 폴백 각각)에서
+// 시작하는 @-import 폐쇄를 폭 우선으로 수집한다. 상대 경로는 가져오기 파일의
+// 디렉터리 기준으로 해석하고(공식 memory#import-additional-files 규범 — 감사 P2-2와
+// 동일 시맨틱) 프로젝트 경계 이탈·절대 경로는 따라가지 않으며, 비정규 항목은 열지
+// 않는다. 방문 집합으로 순환 안전.
+func instructionImportMembers(repoRoot string) []string {
+	var seeds []string
+	for _, pair := range [][2]string{
+		{"CLAUDE.md", "AGENTS.md"},
+		{"CLAUDE.local.md", "AGENTS.local.md"},
+	} {
+		for _, name := range pair {
+			p := filepath.Join(repoRoot, name)
+			if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+				seeds = append(seeds, p)
+				break
+			}
+		}
+	}
+	seen := make(map[string]bool)
+	seedSet := make(map[string]bool, len(seeds))
+	for _, s := range seeds {
+		seedSet[s] = true
+	}
+	var closure []string
+	queue := seeds
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if seen[cur] {
+			continue
+		}
+		seen[cur] = true
+		if info, err := os.Stat(cur); err != nil || !info.Mode().IsRegular() {
+			continue // 비정규 항목(FIFO 등)은 열지 않는다
+		}
+		data, err := os.ReadFile(cur)
+		if err != nil {
+			continue
+		}
+		if !seedSet[cur] {
+			closure = append(closure, cur) // 시드 자체는 고정 슬롯과 중복 — 순수 폐쇄만
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if !strings.HasPrefix(trimmed, "@") {
+				continue
+			}
+			fields := strings.Fields(trimmed[len("@"):])
+			if len(fields) == 0 || filepath.IsAbs(fields[0]) {
+				continue
+			}
+			resolved := filepath.Clean(filepath.Join(filepath.Dir(cur), fields[0]))
+			if rel, err := filepath.Rel(repoRoot, resolved); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				continue
+			}
+			if !seen[resolved] {
+				queue = append(queue, resolved)
+			}
+		}
+	}
+	return closure
 }
 
 // measureAlwaysLoaded는 repoRoot 기준 always-loaded 표면의 추정 토큰을 합산한다. 총 토큰
