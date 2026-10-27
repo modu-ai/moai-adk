@@ -334,14 +334,34 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.004s
 - `go test ./internal/cli/update/... -count=1` → update, backup, deploy, merge, plan, report, skillresidue 7개 패키지 모두 `ok`.
 - `go test ./internal/cli -run 'Checklist' -count=1 -coverprofile=…` → 실패는 `TestChecklistScreenBudget/init` 하나뿐: `checklist_wiring_test.go:300: checklist-drawn lines C = 53 (total 58, direct 5), want <= 24` (AC-TCL-011(1) 차단 사항, 위 M4 항목 참조).
 
+### AC-TCL-011 재측정 — b0ef26b645 시험 + 216df772dc 개정 뒤 (HEAD `216df772dc9df9cae18d7f5d5c22cbc74c7d10c7`)
+
+- 위 M4·M6 항목의 "AC-TCL-011(1) 차단 사항"(C = 53)은 그 시점의 측정이다. 이후 `b0ef26b645` 가 `internal/cli/checklist_wiring_test.go` 의 예산 시험을 고정 사용자 자산 픽스처(n = 0, n = 30) 위로 옮겼고, `216df772dc`(manager-spec, 리더 판정)가 spec.md §3.3 과 acceptance.md AC-TCL-011 을 그 시험에 맞게 개정했다. 실행자: manager-develop(run 단계 위임), 트리 `.moai/worktrees/t1969`(브랜치 `WT-moai-init-update`).
+- 런 단계 코드·시험 커밋 확인: `git log --oneline -8 --stat --format='%h %s' -- internal` 의 최신 항목이 `b0ef26b645`(`internal/cli/checklist_wiring_test.go` 만 변경)이고, `216df772dc` 는 `internal/` 을 건드리지 않는다(SPEC 문서 커밋).
+- 명령 `go test ./internal/cli -run '^TestChecklistScreenBudget$' -count=1 -v` (HEAD 위와 같음, 종료 0), 출력 발췌(로그 WARN/INFO 줄 제외):
+
+```text
+--- PASS: TestChecklistScreenBudget (3.26s)
+    --- PASS: TestChecklistScreenBudget/init_no_unconverted (0.85s)
+    --- PASS: TestChecklistScreenBudget/init (0.75s)
+    --- PASS: TestChecklistScreenBudget/direct_lines_unchanged (0.00s)
+    --- PASS: TestChecklistScreenBudget/rich_golden (0.00s)
+    --- PASS: TestChecklistScreenBudget/no_raw_keys (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.005s
+```
+
+- acceptance.md AC-TCL-011 의 녹색 경로가 요구하는 하위 시험 넷(`init_no_unconverted`, `init`, `direct_lines_unchanged`, `no_raw_keys`) 모두 PASS 이고 `rich_golden` 도 PASS. 따라서 AC-TCL-011 (1)·(2)·(3) 은 PASS 로 갱신한다.
+- 이번 재측정에서 다시 돌리지 않은 것(Gaps): 다른 AC 의 녹색 경로는 다시 돌리지 않았다 — `b0ef26b645` 가 시험 파일 하나만 바꿨고 그 상태 줄(M1..M4 항목)은 바뀌지 않아서다. 해당 AC 의 증거는 위 M1..M4 항목(각 커밋 시점)에 그대로 있다. 최종 HEAD 에서의 전체 `internal/cli` 시험·커버리지·lint 재실행은 하지 않았다(위임 지시: 범위 시험만). 이 시험의 변이체(픽스처 가드가 판별력을 잃는 경우)는 이번에 새로 만들어 보지 않았고 b0ef26b645 커밋 자체의 기록에 의존한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-27
-run_commit_sha: pending-backfill
-run_status: blocked-on-spec-amendment   # AC-TCL-011(1) 이외 구현 완료; 11(1) 은 spec §3.3 개정 필요
-ac_pass_count: 22   # 이 카드 범위 23개(AC-001..007, 009..024) 중; 증거는 §E.2 M1..M4 항목
-ac_fail_count: 1   # AC-TCL-011(1): C=53 > 24 (비-항목 stdout 30줄 포함; spec 집계는 23)
+run_commit_sha: b0ef26b6452a59a7f83f10c400a7106bc9b6906c   # 마지막 런 단계 코드·시험 커밋; 216df772dc 는 SPEC 문서 커밋
+run_status: complete   # AC-TCL-011 은 b0ef26b645 + 216df772dc 개정 뒤 PASS (§E.2 "AC-TCL-011 재측정")
+ac_pass_count: 23   # 이 카드 범위 23개(AC-001..007, 009..024) 중; 증거는 §E.2 M1..M4 항목과 AC-TCL-011 재측정
+ac_fail_count: 0
 preserve_list_post_run_count: 0   # wizard / templates / .github/workflows / progress_line.go / status.go / glyphs.go / printer / 기존 골든 변경 없음
 l44_pre_commit_fetch: not-run   # origin 흡수 금지 지시; main == cb30e05b3e 만 로컬에서 확인
 l44_post_push_fetch: not-applicable   # 푸시 금지 지시
