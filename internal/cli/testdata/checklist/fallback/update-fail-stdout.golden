@@ -1,0 +1,37 @@
+◆ MoAI-ADK [<VER>] <GO> · claude
+Worktree migration: 0 moved, 0 skipped, 0 failed
+[residue-cleanup] Removed 3 deprecated paths
+user-asset update: 0 installed, 0 refreshed, 0 removed, 0 collision-skipped, 0 divergence-preserved
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-project/references/navigator.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/SKILL.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/moai-adk-integration.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/tools-integration.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/references/examples.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/SKILL.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/codemaps.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/design.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/gtd.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-build-entry.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-builder.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan/spec-assembly.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/doc-generation.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/meta-harness.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/review.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/context-loading.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/task-decomposition.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/delivery.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/doc-execution.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/quality-gates-quality.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-develop.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-docs.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-lead.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-spec.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/plan-auditor.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/sync-auditor.toml
+user-asset prune: 0 removed, 0 divergence-preserved
+
+Analyzing merge changes ---

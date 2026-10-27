@@ -1,0 +1,3 @@
+· Initializing MoAI project...
+[returned error] initialization failed: initialization: template deployment: deploy templates: template render ".claude/hooks/moai/handle-agent-hook.sh.tmpl": unexpanded dynamic token detected: found "$REPO"
+  The project tree is INCOMPLETE — template deployment stopped at the failing template, so the files after it were never written. Do not use this directory as-is: fix the template error, then re-run 'moai init --force' to reinitialize from scratch
