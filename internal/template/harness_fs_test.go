@@ -152,6 +152,45 @@ func TestCodexOnlyForceUpdateVariant(t *testing.T) {
 	}
 }
 
+// TestDeployCreatesCanonicalWhenLegacyIsADirectory pins sync-audit F7: a
+// DIRECTORY named AGENTS.md is not an active legacy instruction file — the
+// deployer's legacy guard must classify by regular-file-ness, so the
+// canonical CLAUDE.md is still created on such a tree.
+func TestDeployCreatesCanonicalWhenLegacyIsADirectory(t *testing.T) {
+	cat, err := LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	embedded, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("embedded templates: %v", err)
+	}
+	d, err := NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, NewRenderer(embedded))
+	if err != nil {
+		t.Fatalf("new force-update deployer: %v", err)
+	}
+	rd, ok := d.(ResultDeployer)
+	if !ok {
+		t.Fatal("force-update deployer must satisfy ResultDeployer")
+	}
+
+	root := t.TempDir()
+	// A directory squatting on the legacy name — not an instruction file.
+	if err := os.Mkdir(filepath.Join(root, "AGENTS.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := rd.Deploy(context.Background(), root, mgr, NewTemplateContext()); err != nil {
+		t.Fatalf("deploy: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Errorf("CLAUDE.md not created on a tree whose AGENTS.md is a directory (F7): %v", err)
+	}
+}
+
 // TestCodexOnlyHiddenPathsErrNotExist pins the Open/Stat hiding contract
 // directly: hidden paths answer fs.ErrNotExist through both entry points.
 func TestCodexOnlyHiddenPathsErrNotExist(t *testing.T) {
