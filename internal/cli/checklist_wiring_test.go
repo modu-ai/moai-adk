@@ -262,6 +262,48 @@ func checklistFragmentLines(frag string, collapsed ...string) []string {
 	return hits
 }
 
+// checklistPassThroughFragment marks the lines writeInstallSummary prints for a
+// converted asset the Codex face could not map. The ensure writes them straight
+// to the command writer before any checklist item opens, so the checklist does
+// not draw them.
+const checklistPassThroughFragment = "unconverted reference (no Codex-side mapping"
+
+// fixedUserAssetEnsure returns an ensure seam that prints a fixed header (the
+// "user-asset ensure: " direct fragment) and n pass-through lines, whatever the
+// embedded catalog holds.
+func fixedUserAssetEnsure(n int) func(string, []string, io.Writer) error {
+	return func(_ string, _ []string, out io.Writer) error {
+		_, _ = io.WriteString(out, "user-asset ensure: 12 installed, 0 refreshed, 0 removed, 0 collision-skipped, 0 divergence-preserved\n")
+		for i := 0; i < n; i++ {
+			_, _ = io.WriteString(out, "  unconverted reference (no Codex-side mapping — report to the harness maintainers): fixture/asset-"+strings.Repeat("x", i%3+1)+"\n")
+		}
+		return nil
+	}
+}
+
+// checklistBudgetCounts splits the collapsed lines into the checklist-drawn
+// bucket C, the five direct-print fragments, and the user-asset pass-through
+// lines (the ensure's own output, not drawn by the checklist).
+func checklistBudgetCounts(lines []string) (c, direct, passthrough int) {
+	for _, l := range lines {
+		isDirect := false
+		for _, frag := range checklistDirectFragments {
+			if strings.Contains(l, frag) {
+				isDirect = true
+				break
+			}
+		}
+		switch {
+		case isDirect:
+			direct++
+		case strings.Contains(l, checklistPassThroughFragment):
+			passthrough++
+		}
+	}
+	c = len(lines) - direct - passthrough
+	return c, direct, passthrough
+}
+
 // TestChecklistScreenBudget is AC-TCL-011: the lines the checklist draws stay
 // within the budget, the five direct lines neither grow nor shrink against the
 // M0 baseline, and the collapsed output equals the rich golden.
@@ -284,25 +326,48 @@ func TestChecklistScreenBudget(t *testing.T) {
 	richOutN := checklistFallbackNormalize(cOut, root)
 	richErrN := checklistFallbackNormalize(cErr, root)
 
-	t.Run("init", func(t *testing.T) {
-		direct := 0
-		all := append(checklistLines(cOut), checklistLines(cErr)...)
-		for _, l := range all {
-			for _, frag := range checklistDirectFragments {
-				if strings.Contains(l, frag) {
-					direct++
-					break
+	// The "init" budget runs on a fixed user-asset fixture, never on the embedded
+	// catalog, so the count cannot drift with the catalog (394 installed / 30
+	// unconverted today). The ensure seam prints the header (one of the five
+	// direct fragments) and n pass-through lines, exactly as writeInstallSummary
+	// does for a real run. n=30 mirrors the unconverted count the real catalog
+	// produces at this commit and is large enough that counting those lines in C
+	// would break the budget (23 + 30 > 24): a calculation that mixed them in
+	// cannot pass.
+	for _, tc := range []struct {
+		name string
+		n    int
+	}{
+		{name: "init_no_unconverted", n: 0},
+		{name: "init", n: 30},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stubEnsure(t, fixedUserAssetEnsure(tc.n))
+			_, so, se, rerr := checklistRichRun(t, nil)
+			if rerr != nil {
+				t.Fatalf("init: %v\n%s", rerr, se)
+			}
+			all := append(checklistLines(checklistCollapse(so)), checklistLines(checklistCollapse(se))...)
+			c, direct, passthrough := checklistBudgetCounts(all)
+			if c > 24 {
+				t.Errorf("checklist-drawn lines C = %d (total %d, direct %d, pass-through %d), want <= 24", c, len(all), direct, passthrough)
+			}
+			if direct != 5 {
+				t.Errorf("direct lines = %d, want 5", direct)
+			}
+			if passthrough != tc.n {
+				t.Errorf("pass-through (user-asset ensure) lines = %d, want %d", passthrough, tc.n)
+			}
+			if tc.n > 0 {
+				// Guard on the fixture: the mutant calculation (every line outside
+				// the five direct fragments, pass-through included) must break the
+				// budget here, or the fixture proves nothing.
+				if mc := len(all) - direct; mc <= 24 {
+					t.Errorf("fixture too small to discriminate: mutant C = %d <= 24", mc)
 				}
 			}
-		}
-		c := len(all) - direct
-		if c > 24 {
-			t.Errorf("checklist-drawn lines C = %d (total %d, direct %d), want <= 24", c, len(all), direct)
-		}
-		if direct != 5 {
-			t.Errorf("direct lines = %d, want 5", direct)
-		}
-	})
+		})
+	}
 
 	t.Run("direct_lines_unchanged", func(t *testing.T) {
 		for _, frag := range checklistDirectFragments {
