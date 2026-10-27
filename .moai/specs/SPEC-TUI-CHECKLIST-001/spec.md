@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.12"
+version: "0.2.13"
 status: in-progress
 created: 2026-10-27
 updated: 2026-10-27
@@ -35,6 +35,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.10 리더 판정 반영 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F1 에 대한 리더 판정, 카드 t1969). 판정 원문: "AC-TCL-011's C counts only the lines the checklist draws; output that passes through with items unopened (user_asset_phase etc.) is counted in a separate bucket; the budget 24 is unchanged." §3.3 에 "따로 세는 넘김 줄" 정의를 더하고 체크리스트 셈에서 그 줄을 뺐다. acceptance.md AC-TCL-011 의 Given 을 고정 사용자 자산 픽스처(예산 셈)와 M0 고정(직접 출력 줄·골든 비교)으로 나누고, 넘김 줄 개수 단언과 "넘김 줄을 C 에 넣는 셈은 빨갛다" 는 뮤턴트를 적었다. 예산 24, 다섯 직접 출력 조각, REQ·AC id 와 수(23·23)는 그대로이며 구현(`internal/cli/checklist_wiring_test.go`)은 바꾸지 않았다.
 - 2026-10-27 — v0.2.11 목록 행 X12 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F3, 카드 t1969). 목록 완전성 테스트(`internal/cli/checklist_inventory_test.go`)가 `checklist_session.go` 의 `procErr`·`severityWarnLine(` 를 X12 로 분류하는데 design.md §3.3.1 과 acceptance.md AC-TCL-024 는 X1~X11 만 적었다. design.md §3.3.1 제외 표에 X12 행(분류 조각·이유)을 더하고 범위 문장과 AC-TCL-024 (4) 의 "X1~X11" 을 "X1~X12" 로 고쳤다. 기존 행으로 덮지 않은 까닭: 테스트 표의 행 id 가 이 표와 같아야 하고, 그 파일은 표를 잴 때 없던 이 카드의 세션 층이다. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
 - 2026-10-27 — v0.2.12 AC-TCL-017 하위 테스트·화면 전체 줄 수 (manager-spec, 출처: run 종료 감사 2회차 `.moai/reports/t1969/sync-audit-verdict-iter2.md` G1 Required fix (3)·G2 와 리더 승인, 카드 t1969). G1 후속: AC-TCL-017 녹색 경로에 `TestChecklistAbortFlushes/error_after_finished_items`(앞 항목들이 `Done` 으로 닫힌 뒤 오류로 끝나는 실행에서 끝난 항목의 접힌 상세가 실제 작성기에 한 번씩 나감)를 더하고 그 단언과 뮤턴트를 적었다(커밋 `aa29a4028f` 의 테스트). G2: §5 와 design.md §1·§4 의 화면 전체 현실값을 v0.2.10 의 넘김 줄 묶음까지 넣어 고쳤다 — 체크리스트 23 + 직접 출력 5 + 넘김 30(임베드 카탈로그 의존) = 58줄. 운영자 질문(화면 전체 상한)과 체크리스트 줄 예산 24 는 그대로. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
+- 2026-10-27 — v0.2.13 plan.md 화면 전체 줄 수와 SPEC 전체 낡은 합계 검색 (manager-spec, 출처: run 종료 감사 3회차 `.moai/reports/t1969/sync-audit-verdict-iter3.md` G2r SHOULD-FIX 와 리더 판정, 카드 t1969). 고친 곳: plan.md:167 열린 운영자 질문의 "현실값(지금 셈 28줄)" 을 v0.2.12 의 §5·design.md §1·§4 와 같은 값 — 체크리스트가 그리는 줄 23 + 직접 출력 줄 5 + 넘김 줄 30(임베드 카탈로그에 따라 달라진다) = 58줄 — 으로 바꿨다. 일부러 남긴 곳: spec.md:115(§3.3 의 셈 줄; 합계 28 은 체크리스트와 직접 출력만이고 넘김 줄은 따로 센다고 범위를 밝힌 셈), spec.md:25·:37(이력), spec.md:48·:171·:173 과 acceptance.md:162(화면 전체 상한이 열린 질문이라는 서술, 숫자 없음), acceptance.md:97("화면 전체를 매번 다시 그리는" 렌더러 뮤턴트, 줄 수와 무관), acceptance.md:165(v0.2.0 의 셈 결함을 그리는 뮤턴트 문장), plan.md:176(체크리스트 23줄 + 직접 출력 5줄만 적고 화면 전체 합계를 주장하지 않음). progress.md 는 manager-develop 소유라 손대지 않았다. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
 
 ## §1 배경과 문제
 
