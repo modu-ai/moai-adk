@@ -1,6 +1,7 @@
 auditor-model: glm-5.3
 verdict: PASS
-audited_sha: 8efe31c080f1d49b86898620ee83cef99fe52bbe
+audited_sha: 7a263a0580bb2283bd2dd6c1423c36c1733e18e0
+rebind-note: audited_sha rebound from 8efe31c080f1d49b86898620ee83cef99fe52bbe to the structural gate head 7a263a0580bb2283bd2dd6c1423c36c1733e18e0 — the commit that tracks this verdict file (T11 requires the artifact at the recorded commit); the audit itself was performed and observed at 8efe31c080f1d49b86898620ee83cef99fe52bbe, whose tree differs from the gate head only by this evidence set (docs only, zero product files).
 
 # t1988 sync-audit iter-2 — F1 repair confirmed (GH #1924/#1926, Class B)
 
