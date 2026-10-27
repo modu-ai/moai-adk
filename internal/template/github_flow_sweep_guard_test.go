@@ -46,7 +46,7 @@ const sweepTotalFloor = 1379
 // `.moai/specs/**` are out of scope — history and SPEC bodies).
 func sweepSurface() []sweepSubtree {
 	return []sweepSubtree{
-		{Name: "root-docs", Files: []string{"AGENTS.md", "AGENTS.local.md", "CLAUDE.md", "README.md", "README.ko.md", "README.ja.md", "README.zh.md"}, Floor: 6},
+		{Name: "root-docs", Files: []string{"CLAUDE.md", "CLAUDE.local.md", "README.md", "README.ko.md", "README.ja.md", "README.zh.md"}, Floor: 6},
 		{Name: "rules", Dir: ".claude/rules", Exts: []string{".md"}, Floor: 101},
 		{Name: "agents", Dir: ".claude/agents", Exts: []string{".md"}, Floor: 19},
 		{Name: "skills", Dir: ".claude/skills", Exts: []string{".md"}, Floor: 231},

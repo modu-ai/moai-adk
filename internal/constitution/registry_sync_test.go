@@ -127,20 +127,17 @@ func deployedRegistryMirror(t *testing.T, sourceRoot string) string {
 	targetRoot := t.TempDir()
 	for rel := range paths {
 		sourceRel := rel
-		// SPEC-CLAUDE-INSTRUCTION-FILES-001 transitional bridge (M1 rename,
-		// registry flips with the M4 self-repo transition): the registry still
-		// enumerates AGENTS.md as the deployed instruction file, while the
-		// shipped template source is CLAUDE.md.tmpl as of M1.
-		if rel == "AGENTS.md" {
+		if rel == "CLAUDE.md" {
 			sourceRel = "CLAUDE.md.tmpl"
 		}
 		data, err := os.ReadFile(filepath.Join(sourceRoot, sourceRel))
 		if err != nil {
 			t.Fatalf("read shipped source %s: %v", sourceRel, err)
 		}
-		// AGENTS currently contains no substitutions; require explicit rendering
-		// if it gains any rather than silently validating unrendered directives.
-		if rel == "AGENTS.md" && strings.Contains(string(data), "{{") {
+		// CLAUDE.md currently contains no substitutions; require explicit
+		// rendering if it gains any rather than silently validating unrendered
+		// directives.
+		if rel == "CLAUDE.md" && strings.Contains(string(data), "{{") {
 			t.Fatal("CLAUDE.md.tmpl gained substitutions; render them in this deployment fixture")
 		}
 		target := filepath.Join(targetRoot, rel)

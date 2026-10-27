@@ -77,7 +77,7 @@ moai constitution list --format json
 
 ```yaml
 # ============================================================
-# 001-010: AGENTS.md HARD clauses (§1 Hard Rules)
+# 001-010: CLAUDE.md HARD clauses (§1 Hard Rules)
 # ============================================================
 - id: CONST-V3R2-001
   zone: Frozen
@@ -130,13 +130,13 @@ moai constitution list --format json
 - id: CONST-V3R2-007
   zone: Frozen
   zone_class: frozen-canonical
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#0-core-identity-and-capabilities"
   clause: "You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. Delegate complex implementation and domain-specialist work; handle simple, bounded operations directly."
   canary_gate: true
 
 # ============================================================
-# 008-020: AGENTS.md HARD clauses (§1 Hard Rules — orchestrator behavior)
+# 008-020: CLAUDE.md HARD clauses (§1 Hard Rules — orchestrator behavior)
 # ============================================================
 - id: CONST-V3R2-008
   zone: Evolvable
@@ -173,7 +173,7 @@ moai constitution list --format json
 - id: CONST-V3R2-012
   zone: Frozen
   zone_class: frozen-canonical
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#0-core-identity-and-capabilities"
   clause: "Every question directed at the user MUST use the question-channel capability."
   canary_gate: true
@@ -181,7 +181,7 @@ moai constitution list --format json
 - id: CONST-V3R2-013
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#13-safe-development-protocol"
   clause: "unclear intent gets a clarifying round before execution."
   canary_gate: false
@@ -189,7 +189,7 @@ moai constitution list --format json
 - id: CONST-V3R2-014
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#13-safe-development-protocol"
   clause: "before non-trivial code, state the approach, the files it changes, and why; get approval through the §0 question channel."
   canary_gate: false
@@ -197,7 +197,7 @@ moai constitution list --format json
 - id: CONST-V3R2-015
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#13-safe-development-protocol"
   clause: "a change spanning 3+ files is decomposed into logical units (task list) and executed file-by-file, dependencies before parallel execution, one writer per working tree."
   canary_gate: false
@@ -205,7 +205,7 @@ moai constitution list --format json
 - id: CONST-V3R2-016
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#13-safe-development-protocol"
   clause: "every change reports potential issues, suggested tests, known limitations, and further-validation recommendations."
   canary_gate: false
@@ -213,7 +213,7 @@ moai constitution list --format json
 - id: CONST-V3R2-017
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#13-safe-development-protocol"
   clause: "a failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes."
   canary_gate: false
@@ -221,7 +221,7 @@ moai constitution list --format json
 - id: CONST-V3R2-018
   zone: Frozen
   zone_class: frozen-canonical
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#0-core-identity-and-capabilities"
   clause: "Every question directed at the user MUST use the question-channel capability. Free-form prose questions in response text are prohibited."
   canary_gate: true
@@ -229,7 +229,7 @@ moai constitution list --format json
 - id: CONST-V3R2-019
   zone: Frozen
   zone_class: frozen-canonical
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#0-core-identity-and-capabilities"
   clause: "When a tool schema is deferred, load it through the harness's discovery mechanism before invocation."
   canary_gate: true
@@ -240,7 +240,7 @@ moai constitution list --format json
 - id: CONST-V3R2-020
   zone: Evolvable
   zone_class: frozen-safety
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#4-how-verification-is-run"
   clause: "Subagent scheduling uses the harness default; MoAI does not override background settings. Permission prompts remain in the main session. Keep one writer per working tree."
   canary_gate: false
@@ -248,7 +248,7 @@ moai constitution list --format json
 - id: CONST-V3R2-021
   zone: Evolvable
   zone_class: evolvable-experimental
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use isolation: worktree when spawned via Agent()"
   canary_gate: false
@@ -256,7 +256,7 @@ moai constitution list --format json
 - id: CONST-V3R2-022
   zone: Evolvable
   zone_class: evolvable-experimental
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: worktree"
   canary_gate: false
@@ -264,7 +264,7 @@ moai constitution list --format json
 - id: CONST-V3R2-023
   zone: Evolvable
   zone_class: evolvable-experimental
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] One-shot sub-agents making cross-file changes SHOULD use isolation: worktree"
   canary_gate: false
@@ -272,7 +272,7 @@ moai constitution list --format json
 - id: CONST-V3R2-024
   zone: Evolvable
   zone_class: evolvable-experimental
-  file: AGENTS.md
+  file: CLAUDE.md
   anchor: "#3-worktrees"
   clause: "[SUPERSEDED by worktree-opt-in policy — see worktree-integration.md § Terminology Glossary] GitHub workflow fixer agents MUST use isolation: worktree for branch isolation"
   canary_gate: false

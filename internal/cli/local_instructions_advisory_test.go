@@ -49,25 +49,27 @@ func updateThenDoctor(t *testing.T, root string) (updateOut, doctorOut string) {
 	return out, docOut
 }
 
-// AC-IFU-015 (REQ-IFU-011): `moai update` then `moai doctor` both exit 0 and
-// leave CLAUDE.local.md byte-identical across the whole sequence.
+// AC-IFU-015 (REQ-IFU-011, direction-reversed by SPEC-CLAUDE-INSTRUCTION-
+// FILES-001): `moai update` then `moai doctor` both exit 0 and leave the
+// legacy AGENTS.local.md byte-identical across the whole sequence — the
+// migration is never implicit.
 func TestLocalInstructions_UpdateDoctorPreserveFile(t *testing.T) {
 	root := snapNewUpdateProject(t, "0.0.0") // older template_version: the sync runs
 	body := "# 사용자 지침\nruntime-written: /abs/path\n"
-	writeLocalFile(t, root, codexClaudeLocalName, body)
-	path := filepath.Join(root, codexClaudeLocalName)
+	writeLocalFile(t, root, legacyLocalInstructionName, body)
+	path := filepath.Join(root, legacyLocalInstructionName)
 	before := localFileDigest(t, path)
 
 	updateThenDoctor(t, root)
 
 	if _, err := os.Lstat(path); err != nil {
-		t.Fatalf("CLAUDE.local.md gone after update+doctor: %v", err)
+		t.Fatalf("AGENTS.local.md gone after update+doctor: %v", err)
 	}
 	if got := localFileDigest(t, path); got != before {
-		t.Error("CLAUDE.local.md changed across update+doctor")
+		t.Error("AGENTS.local.md changed across update+doctor")
 	}
-	if _, err := os.Lstat(filepath.Join(root, codexLocalInstructionName)); !os.IsNotExist(err) {
-		t.Errorf("update+doctor created AGENTS.local.md (err=%v) — migration must be explicit", err)
+	if _, err := os.Lstat(filepath.Join(root, canonicalLocalInstructionName)); !os.IsNotExist(err) {
+		t.Errorf("update+doctor created CLAUDE.local.md (err=%v) — migration must be explicit", err)
 	}
 	// Guard against a vacuous pass: the sync really deployed into this tree.
 	if _, err := os.Lstat(filepath.Join(root, ".claude")); err != nil {
@@ -75,17 +77,18 @@ func TestLocalInstructions_UpdateDoctorPreserveFile(t *testing.T) {
 	}
 }
 
-// AC-IFU-030 (REQ-IFU-012): each of the two commands' stdout carries the
-// migration advisory — parity across both is the assertion.
+// AC-IFU-030 (REQ-IFU-012, direction-reversed): each of the two commands'
+// stdout carries the migration advisory exactly when a legacy local file is
+// present — parity across both is the assertion.
 func TestLocalInstructions_UpdateDoctorAdvisoryParity(t *testing.T) {
 	cases := []struct {
 		name   string
 		files  []string
 		advise bool
 	}{
-		{"claude-only", []string{codexClaudeLocalName}, true},
-		{"both", []string{codexClaudeLocalName, codexLocalInstructionName}, true},
-		{"agents-only", []string{codexLocalInstructionName}, false},
+		{"legacy-only", []string{legacyLocalInstructionName}, true},
+		{"both", []string{legacyLocalInstructionName, canonicalLocalInstructionName}, true},
+		{"canonical-only", []string{canonicalLocalInstructionName}, false},
 		{"neither", nil, false},
 	}
 	for _, tc := range cases {
@@ -115,19 +118,19 @@ func TestLocalInstructions_UpdateDoctorAdvisoryParity(t *testing.T) {
 	}
 }
 
-// The advisory text is one function for all three surfaces; both of its
-// advising branches name the verb and the file it concerns.
+// The advisory text is one function for all surfaces; both of its advising
+// branches name the verb and the legacy file it concerns.
 func TestLocalInstructionsAdvisory_Text(t *testing.T) {
 	if got := localInstructionsAdvisory(false, false); got != "" {
 		t.Errorf("neither: advisory = %q, want empty", got)
 	}
 	if got := localInstructionsAdvisory(true, false); got != "" {
-		t.Errorf("agents-only: advisory = %q, want empty", got)
+		t.Errorf("canonical-only: advisory = %q, want empty", got)
 	}
-	for _, both := range []bool{false, true} {
-		got := localInstructionsAdvisory(both, true)
-		if !strings.Contains(got, localInstructionsVerb) || !strings.Contains(got, codexClaudeLocalName) {
-			t.Errorf("agents=%v claude=true: advisory = %q, want it to name %q and %q", both, got, localInstructionsVerb, codexClaudeLocalName)
+	for _, canonical := range []bool{false, true} {
+		got := localInstructionsAdvisory(canonical, true)
+		if !strings.Contains(got, localInstructionsVerb) || !strings.Contains(got, legacyLocalInstructionName) {
+			t.Errorf("canonical=%v legacy=true: advisory = %q, want it to name %q and %q", canonical, got, localInstructionsVerb, legacyLocalInstructionName)
 		}
 	}
 }

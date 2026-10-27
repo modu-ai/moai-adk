@@ -56,8 +56,8 @@ func TestAlwaysLoadedTokenBudget(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping always-loaded budget guard")
 	}
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	total, surface, err := measureAlwaysLoaded(root)
@@ -86,8 +86,8 @@ func TestCodexContractByteCeiling(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping Codex contract byte guard")
 	}
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	breaches, err := MeasureContractBytes(root)
@@ -155,7 +155,7 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai", "core"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			// The mirror ships as `CLAUDE.md.tmpl` (SPEC-CLAUDE-INSTRUCTION-
@@ -266,7 +266,7 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 			}
 			return nil
 		}
-		if d.Name() != "AGENTS.md" {
+		if d.Name() != "CLAUDE.md" {
 			return nil
 		}
 		info, statErr := d.Info()
@@ -284,7 +284,7 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 	// Non-vacuity: the root contract MUST be among the discovered files. Without
 	// this the walk finding nothing would pass the budget assertion trivially,
 	// and a guard that cannot fail is not a guard.
-	rootAgents := filepath.Join(root, "AGENTS.md")
+	rootAgents := filepath.Join(root, "CLAUDE.md")
 	if !slices.Contains(found, rootAgents) {
 		t.Fatalf("root contract %s was not discovered by the walk (found %v) — the guard would pass vacuously", rootAgents, found)
 	}
@@ -312,7 +312,7 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 2 // + AGENTS.md + moai.md fixed slots (the CLAUDE.md slot retired with the AGENTS.md-primary conversion)
+	wantTotal := wantRuleCount + 2 // + CLAUDE.md + moai.md fixed slots (the AGENTS.md slot retired with the CLAUDE.md-canonical conversion)
 	if len(surface) != wantTotal {
 		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
@@ -326,20 +326,21 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 		}
 	}
 
-	// AC-AMC-017: the enumeration MUST contain the root AGENTS.md. It is an
-	// @-import of CLAUDE.md and therefore always-loaded; an enumeration that omits
-	// it scores the relocation of clauses INTO AGENTS.md as a reduction while the
-	// always-loaded context is unchanged (REQ-AMC-013).
-	agents := filepath.Join(root, "AGENTS.md")
+	// AC-AMC-017 (CLAUDE.md-canonical, SPEC-CLAUDE-INSTRUCTION-FILES-001): the
+	// enumeration MUST contain the root CLAUDE.md — the always-loaded contract
+	// layer; an enumeration that omits it scores relocation of clauses INTO it
+	// as a reduction while the always-loaded context is unchanged
+	// (REQ-AMC-013).
+	claude := filepath.Join(root, "CLAUDE.md")
 	found := false
 	for _, p := range surface {
-		if p == agents {
+		if p == claude {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("always-loaded surface omits %s; the Codex contract layer must be enumerated (REQ-AMC-008)", agents)
+		t.Errorf("always-loaded surface omits %s; the contract layer must be enumerated (REQ-AMC-008)", claude)
 	}
 }
 

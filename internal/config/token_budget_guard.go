@@ -128,19 +128,16 @@ func contractDocuments(repoRoot string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	agents := filepath.Join(repoRoot, "AGENTS.md")
+	claude := filepath.Join(repoRoot, "CLAUDE.md")
 	var docs []string
 	for _, p := range surface {
-		if p == agents {
+		if p == claude {
 			docs = append(docs, p)
 		}
 	}
 	if len(docs) == 0 {
-		return nil, nil // 열거에 AGENTS.md 가 없다 — AC-AMC-017 이 잡는 조건이다
+		return nil, nil // 열거에 CLAUDE.md 가 없다 — AC-AMC-017 이 잡는 조건이다
 	}
-	// SPEC-CLAUDE-INSTRUCTION-FILES-001 M1 rename fallout: the mirror is
-	// CLAUDE.md.tmpl now. The root-file axis above still reads AGENTS.md until
-	// the M3 reader retarget + M4 self-repo transition land together.
 	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "CLAUDE.md.tmpl"))
 	return docs, nil
 }
@@ -284,9 +281,10 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(ruleFiles)
 
-	// 고정 표면 슬롯을 항상 고정 순서로 추가한다.
+	// 고정 표면 슬롯을 항상 고정 순서로 추가한다. SPEC-CLAUDE-INSTRUCTION-FILES-001:
+	// 루트 CLAUDE.md가 정규 지시 파일이다(구 AGENTS.md 슬롯의 후계).
 	fixed := []string{
-		filepath.Join(repoRoot, "AGENTS.md"),
+		filepath.Join(repoRoot, "CLAUDE.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}
 	return append(ruleFiles, fixed...), nil
