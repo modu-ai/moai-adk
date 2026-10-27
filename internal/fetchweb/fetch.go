@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/net/html/charset"
+	"golang.org/x/text/encoding"
 )
 
 // fetch.go — SPEC-FETCH-WEB-001 M3. The bounded page fetcher (REQ-FW-007):
@@ -116,21 +117,13 @@ func decodePageBody(body []byte, contentType string) (string, error) {
 	// bytes could not legitimately have encoded is a substitution → the
 	// page is undecodable, a fetch error.
 	//
-	// F5c (t1968 sync-audit iter3) makes the provenance COUNT-based: the
-	// iter2 test looked at only the first decoded U+FFFD and accepted when
-	// the encoded form appeared anywhere in the body, so a page that
-	// legitimately encoded U+FFFD early and was corrupted later passed with
-	// a silently-substituted second U+FFFD. Each legitimately-encoded
-	// U+FFFD in the source accounts for exactly one decoded U+FFFD: a
-	// decoded count beyond the source-side count is substitution. For an
-	// encoding that cannot encode U+FFFD at all (every single-byte charset
-	// — the common corruption class), counting is unnecessary and the
-	// encoder error itself is the proof: ANY decoded U+FFFD is a
-	// substitution (the iter2 semantics, kept as the fallback). Both sides
-	// are counted with single-pass byte scans, no regex.
+	// F5c (t1968 sync-audit iter3) made the provenance COUNT-based (each
+	// legitimately-encoded U+FFFD in the source accounts for exactly one
+	// decoded U+FFFD); D2 (t1968 debt-closure round) upgrades it to
+	// POSITIONAL provenance — see allFFFDLegit for both the corner the
+	// count comparison misses and the walk that closes it.
 	if i := bytes.IndexRune(decoded, utf8.RuneError); i >= 0 {
-		if srcFFFD, encErr := enc.NewEncoder().Bytes([]byte("�")); encErr != nil ||
-			bytes.Count(decoded, []byte("�")) > bytes.Count(body, srcFFFD) {
+		if !allFFFDLegit(body, decoded, enc) {
 			return "", fmt.Errorf("fetch web: page charset %q decoded with U+FFFD substitution at byte %d; refused rather than returned corrupted text", label, i)
 		}
 	}
@@ -138,6 +131,85 @@ func decodePageBody(body []byte, contentType string) (string, error) {
 	// byte can widen to three UTF-8 bytes); the raw-bound check above bounds
 	// the page itself, and this bounded blowup needs no second cap.
 	return string(decoded), nil
+}
+
+// allFFFDLegit reports whether every U+FFFD in decoded — the whole-buffer
+// decoding of body under enc — originates from source bytes that legitimately
+// encode U+FFFD under enc (F5b/F5c/D2, t1968 sync-audit + debt-closure
+// round). The caller guarantees decoded contains at least one U+FFFD.
+//
+// An encoding whose encoder cannot encode U+FFFD (every single-byte charset —
+// the common corruption class) can never produce one legitimately: any
+// decoded U+FFFD is a substitution (the F5b semantics).
+//
+// Otherwise the check is POSITIONAL (D2): the F5c count comparison balances
+// one legitimately-encoded U+FFFD against ANY occurrence of its encoded byte
+// form in the source — including a SPURIOUS occurrence inside corrupted
+// bytes (probe-confirmed: gb18030 0x81 followed by the 4-byte FFFD form
+// decodes the 0x81 and the form's first byte as one valid pair, swallowing
+// that byte, and the form's remainder substitutes; decoded count 2 equals
+// source form count 2, so the count check balanced and the corrupted page
+// passed). The walk below drives the decoder one decision at a time —
+// feeding source prefixes of growing length and re-feeding unconsumed bytes,
+// the same re-send transform.Reader performs — so each decoded U+FFFD is
+// observed together with the exact source span that produced it; legitimate
+// means that span IS enc's encoding of U+FFFD.
+//
+// Reliability fallback: a decoder the walk cannot mirror — output diverging
+// from the whole-buffer decode, output without consumption (stateful
+// buffering), or a position no prefix length advances — cannot be
+// position-mapped, and the check degrades to the F5c count comparison for
+// that page rather than guess. Single-byte and CJK charsets (the corruption
+// classes this guard exists for) walk cleanly.
+func allFFFDLegit(body, decoded []byte, enc encoding.Encoding) bool {
+	srcFFFD, encErr := enc.NewEncoder().Bytes([]byte("�"))
+	if encErr != nil {
+		return false // the charset cannot encode U+FFFD: none is legitimate
+	}
+	countOK := bytes.Count(decoded, []byte("�")) <= bytes.Count(body, srcFFFD)
+	dec := enc.NewDecoder()
+	// One decoder decision at minimal prefix length emits at most a few
+	// runes; 64 bytes is far past that, and a pathological larger emission
+	// surfaces as walk/whole-buffer divergence → the count fallback below.
+	buf := make([]byte, 64)
+	var out []byte
+	pos := 0
+	for pos < len(body) {
+		advanced := false
+		for k := pos + 1; k <= len(body); k++ {
+			nDst, nSrc, _ := dec.Transform(buf, body[pos:k], k == len(body))
+			if nSrc == 0 {
+				if nDst > 0 {
+					// Output without consumption: stateful buffered state
+					// the walk cannot attribute positionally.
+					return countOK
+				}
+				continue // incomplete at this prefix length: feed one more byte
+			}
+			advanced = true
+			if nDst > 0 {
+				out = append(out, buf[:nDst]...)
+				if bytes.ContainsRune(buf[:nDst], utf8.RuneError) &&
+					!bytes.Equal(body[pos:pos+nSrc], srcFFFD) {
+					return false // a U+FFFD whose source span is not the encoded form
+				}
+			}
+			pos += nSrc
+			break
+		}
+		if !advanced {
+			// No prefix length up to the whole remaining source made the
+			// decoder advance: not walkable positionally.
+			return countOK
+		}
+	}
+	if !bytes.Equal(out, decoded) {
+		// Stepwise output diverged from the whole-buffer decode: the
+		// decoder's behavior depends on call framing this walk cannot
+		// reproduce — degrade to the count check rather than guess.
+		return countOK
+	}
+	return true
 }
 
 // charsetLabel extracts the charset parameter from a Content-Type header

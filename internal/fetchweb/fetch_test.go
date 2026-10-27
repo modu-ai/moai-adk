@@ -197,6 +197,42 @@ func TestFetchPage_LegitimateReplacementCharPasses(t *testing.T) {
 	}
 }
 
+// D2 (t1968 §5 debt ledger — the F5c count corner, debt-closure round):
+// count-based provenance balances one legitimately-encoded U+FFFD against
+// ANY occurrence of its encoded byte form in the source — including a
+// SPURIOUS occurrence inside corrupted bytes. Probe-confirmed shape: a
+// gb18030 page that legitimately encodes U+FFFD early and later carries
+// 0x81 followed by the FFFD form again — the 0x81 and the form's first byte
+// decode as one VALID pair (swallowing that byte, so the second occurrence
+// of the form is never decoded as such), and the form's tail leaves an
+// invalid byte the decoder silently substitutes. Decoded U+FFFD count (2)
+// equals the source form count (2), so the count check balanced and the page
+// passed with a substituted U+FFFD. Positional provenance: each decoded
+// U+FFFD must arise from a source span that IS the encoding of U+FFFD; the
+// substitution's span (the lone invalid byte) is not, so the page is a fetch
+// error.
+func TestFetchPage_LegitFFFDPlusCorruptionWithSpuriousPatternIsError(t *testing.T) {
+	enc, _ := charset.Lookup("gb18030")
+	if enc == nil {
+		t.Fatal("gb18030 must resolve for this test's premise")
+	}
+	src, err := enc.NewEncoder().String("�")
+	if err != nil {
+		t.Fatalf("gb18030 must encode U+FFFD (probe-confirmed): %v", err)
+	}
+	// "x" + gb18030(U+FFFD) + "y" is legitimate; "\x81" + a second copy of
+	// the FFFD form is the spurious-occurrence corruption (0x81 + 0x84 pair
+	// swallows the form's first byte; the remainder substitutes).
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=gb18030")
+		_, _ = w.Write([]byte("x" + src + "y\x81" + src))
+	}))
+	defer srv.Close()
+	if _, err := FetchPage(t.Context(), srv.URL, srv.Client()); err == nil {
+		t.Fatal("legitimate U+FFFD plus corruption whose bytes spuriously contain the encoded form must be a fetch error, not a silently-substituted passthrough")
+	}
+}
+
 // F5c (t1968 sync-audit iter3): the iter2 scan tested only the FIRST decoded
 // U+FFFD and accepted whenever the encoded form appeared ANYWHERE in the body,
 // so a source that legitimately encoded U+FFFD early and was corrupted later
