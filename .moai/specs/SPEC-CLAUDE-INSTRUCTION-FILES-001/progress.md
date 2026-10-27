@@ -110,7 +110,7 @@ run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오�
 ```yaml
 run_status: complete
 run_complete_at: 2026-10-27T13:48:34Z
-run_commit_sha: pending-backfill-run
+run_commit_sha: bcdc715517
 ac_pass_count: 16
 ac_fail_count: 0
 preserve_list_post_run_count: 0
