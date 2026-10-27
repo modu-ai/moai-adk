@@ -122,6 +122,18 @@ func ValidCodexAuditEfforts() []string {
 	return []string{"none", "low", "medium", "high", "xhigh", "max"}
 }
 
+// ValidCodexAuditEffort reports whether e is a member of the codex audit
+// effort closed set. Single-sourced beside the accessor so the resolver's
+// membership check and the web console's option list cannot drift.
+func ValidCodexAuditEffort(e string) bool {
+	for _, v := range ValidCodexAuditEfforts() {
+		if v == e {
+			return true
+		}
+	}
+	return false
+}
+
 // CodexAgentModel maps a Claude model alias from an agent definition's
 // frontmatter to the Codex model id its emitted role file pins: opus and
 // sonnet -> sol, haiku -> luna, fable -> astra. ok is false for any other

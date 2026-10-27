@@ -200,7 +200,18 @@ func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, er
 	if e, ok := params["effort"].(string); ok {
 		explicitEffort = strings.TrimSpace(e)
 	}
+	// Card t1980 audit repair P2: the closed-set validation fires in EVERY
+	// branch — an effort outside terra's reasoning.effort vocabulary is an
+	// error the caller can correct, never a token to transmit (the same
+	// never-run-with-an-assumed-value contract as the unparseable-pin error
+	// below; it surfaces as a fail-open inconclusive naming the cause).
+	if explicitEffort != "" && !config.ValidCodexAuditEffort(explicitEffort) {
+		return config.ModelEffort{}, fmt.Errorf("codex audit effort %q is not in the closed set %v", explicitEffort, config.ValidCodexAuditEfforts())
+	}
 	if pin := pins.Codex; pin.Model != "" && codexServableModel(pin.Model) {
+		if pin.Effort != "" && !config.ValidCodexAuditEffort(pin.Effort) {
+			return config.ModelEffort{}, fmt.Errorf("workflow.audit.codex.effort %q is not in the closed set %v", pin.Effort, config.ValidCodexAuditEfforts())
+		}
 		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
 			pin.Model = strings.TrimSpace(explicit)
 		}
@@ -210,7 +221,14 @@ func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, er
 		return pin, nil
 	}
 	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
-		return resolveCodexModelEffort(params), nil
+		// Card t1980 audit repair P2: the explicit-model branch keeps the
+		// effort override — dropping it here made `max` unselectable on this
+		// arm even though the pin arm honors it.
+		me := resolveCodexModelEffort(params)
+		if explicitEffort != "" {
+			me.Effort = explicitEffort
+		}
+		return me, nil
 	}
 	me := config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}
 	if explicitEffort != "" {

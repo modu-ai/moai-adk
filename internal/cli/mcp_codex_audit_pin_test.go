@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -167,6 +168,109 @@ func TestCodexAuditPin_ExplicitEffortOverridesFallback(t *testing.T) {
 	}
 	if got, _ := turn["model"].(string); got != codexAuditDefaultModel {
 		t.Errorf("turn/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
+	}
+}
+
+// Card t1980 audit repair P2 (a) — an explicit model AND an explicit effort
+// together are BOTH honored when the stored pin is ABSENT: the explicit-model
+// branch (resolveCodexModelEffort) must not discard the effort override.
+// (With a servable pin present, the pin arm already applies both overrides.)
+func TestCodexAuditPin_ExplicitModelAndEffortTogether(t *testing.T) {
+	root := t.TempDir() // no workflow.yaml → the explicit-model branch
+	sess := withCodexSession(t, codexSessionScript("clean"))
+
+	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
+		"prompt": "review this",
+		"model":  "o4-mini",
+		"effort": "max",
+		"cwd":    root,
+	}); err != nil {
+		t.Fatalf("audit rpc: %v", err)
+	}
+
+	turn := sentParams(t, sess.sent, 2)
+	if got, _ := turn["model"].(string); got != "o4-mini" {
+		t.Errorf("turn/start model = %q, want the explicit override %q", got, "o4-mini")
+	}
+	if got, _ := turn["effort"].(string); got != "max" {
+		t.Errorf("turn/start effort = %q, want the explicit override %q (the explicit-model branch must not drop it)", got, "max")
+	}
+}
+
+// Card t1980 audit repair P2 (b) — 'none' is a member of terra's
+// reasoning.effort vocabulary and must survive the explicit-model branch
+// verbatim (an empty turn/start effort field would mean "not sent", not none).
+func TestCodexAuditPin_ExplicitModelWithEffortNone(t *testing.T) {
+	root := t.TempDir() // no workflow.yaml → the explicit-model branch
+	sess := withCodexSession(t, codexSessionScript("clean"))
+
+	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
+		"prompt": "review this",
+		"model":  "o4-mini",
+		"effort": "none",
+		"cwd":    root,
+	}); err != nil {
+		t.Fatalf("audit rpc: %v", err)
+	}
+
+	if got, _ := sentParams(t, sess.sent, 2)["effort"].(string); got != "none" {
+		t.Errorf("turn/start effort = %q, want %q", got, "none")
+	}
+}
+
+// Card t1980 audit repair P2 (c) — the effort closed-set validation fires in
+// EVERY resolution branch: the pin path (override AND stored pin effort), the
+// explicit-model path, and the terminal-fallback path all reject a non-member
+// instead of transmitting it.
+func TestCodexAuditPin_EffortClosedSetValidationEveryBranch(t *testing.T) {
+	cases := []struct {
+		name   string
+		pin    string // auditCodexPinYAML body, "" = no workflow.yaml
+		model  string
+		effort string
+	}{
+		{"pin path rejects a bad override", auditCodexPinYAML("gpt-6.1-sol", "high"), "", "ultra"},
+		{"pin path rejects a bad stored pin effort", auditCodexPinYAML("gpt-6.1-sol", "ultra"), "", ""},
+		{"explicit-model path rejects a bad override", auditCodexPinYAML("gpt-6.1-sol", "high"), "o4-mini", "ultra"},
+		{"fallback path rejects a bad override", "", "", "ultra"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.pin != "" {
+				writeCodexWorkflowYAML(t, root, tc.pin)
+			}
+			params := map[string]any{"prompt": "review this", "cwd": root}
+			if tc.model != "" {
+				params["model"] = tc.model
+			}
+			if tc.effort != "" {
+				params["effort"] = tc.effort
+			}
+			_, err := resolveCodexAuditModelEffort(params)
+			if err == nil {
+				t.Fatalf("resolveCodexAuditModelEffort(%v) = no error, want a closed-set rejection", params)
+			}
+			if !strings.Contains(err.Error(), "effort") || !strings.Contains(err.Error(), "closed set") {
+				t.Errorf("error %q does not name the effort closed set", err)
+			}
+		})
+	}
+}
+
+// Card t1980 audit repair P2 (c), valid arm — every vocabulary member passes
+// the pin path, none included.
+func TestCodexAuditPin_EffortClosedSetAcceptsEveryMember(t *testing.T) {
+	for _, effort := range []string{"none", "low", "medium", "high", "xhigh", "max"} {
+		root := t.TempDir()
+		writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
+		me, err := resolveCodexAuditModelEffort(map[string]any{"cwd": root, "effort": effort})
+		if err != nil {
+			t.Fatalf("effort %q: %v", effort, err)
+		}
+		if me.Effort != effort {
+			t.Errorf("effort %q: resolved %+v, want the override kept", effort, me)
+		}
 	}
 }
 
