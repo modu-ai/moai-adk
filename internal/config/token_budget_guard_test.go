@@ -358,6 +358,72 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 }
 
+// TestAlwaysLoadedSurfaceDeduplicatesImports pins card-review R7: a path
+// reachable BOTH as an always-loaded rule and through the instruction
+// file's @-import closure is summed once — a duplicate would fail the
+// budget guard without any real content growth.
+func TestAlwaysLoadedSurfaceDeduplicatesImports(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n\n@.claude/rules/moai/always-core.md\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule := filepath.Join(root, ".claude", "rules", "moai", "always-core.md")
+	count := 0
+	for _, p := range surface {
+		if p == rule {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("the imported always-loaded rule appears %d times in the surface, want exactly 1 (R7): %v", count, surface)
+	}
+}
+
+// TestAlwaysLoadedMeasuresLegacySharedInstructions pins card-review R6: on
+// an AGENTS.md-only (legacy) project, the shared instruction content stays
+// in the measurement — the shared slot has the same canonical/legacy
+// priority selection as the local pair.
+func TestAlwaysLoadedMeasuresLegacySharedInstructions(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claude", "rules", "moai", "always-core.md"), []byte("# Always-loaded core rule\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	before, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// ~90,001 estimated tokens of legacy shared instructions, no CLAUDE.md.
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), bytes.Repeat([]byte("a"), 360_004), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	after, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after-before < 90_000 {
+		t.Errorf("legacy shared instructions moved the total by %d tokens, want >= 90000 — the shared slot lost the legacy fallback (R6)", after-before)
+	}
+}
+
 // TestAlwaysLoadedMeasuresLocalInstructions pins audit P2-1: the token
 // measurement must sum the auto-loaded local instruction file — adding a
 // ~90,000-token CLAUDE.local.md to a small fixture has to move the total.

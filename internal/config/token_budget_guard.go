@@ -282,22 +282,37 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	sort.Strings(ruleFiles)
 
 	// 고정 표면 슬롯을 항상 고정 순서로 추가한다. SPEC-CLAUDE-INSTRUCTION-FILES-001:
-	// 루트 CLAUDE.md가 정규 지시 파일이다(구 AGENTS.md 슬롯의 후계). 감사 P2-1:
-	// 자동 로드되는 로컬 지시 파일(CLAUDE.local.md, 레거시 AGENTS.local.md 폴백)과
-	// 두 지시 파일의 @-import 폐쇄도 상주 토큰에 산입한다 — 로컬 파일을 빼면
-	// 개별 상한을 전부 통과한 채 총량이 과소계상된다.
+	// 루트 CLAUDE.md가 정규 지시 파일이다(구 AGENTS.md 슬롯의 후계). 감사 P2-1 +
+	// card-review R6: 공유·로컬 슬롯 모두 정규/레거시 우선 선택(CLAUDE.md →
+	// AGENTS.md, CLAUDE.local.md → AGENTS.local.md, IsRegular) — 레거시 전용
+	// 프로젝트에서 측정이 사라지지 않는다. 두 지시 파일의 @-import 폐쇄도 함께
+	// 산입하며, card-review R7: 규칙 트리·고정 슬롯·폐쇄의 합집합에서 경로별
+	// 중복을 제거한다 — 같은 파일을 두 번 세면 내용 증가 없이 예산 가드가 실패한다.
 	fixed := []string{
-		filepath.Join(repoRoot, "CLAUDE.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}
-	for _, name := range []string{"CLAUDE.local.md", "AGENTS.local.md"} {
-		p := filepath.Join(repoRoot, name)
-		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
-			fixed = append(fixed, p)
-			break // canonical first; the legacy name only when canonical is absent
+	for _, pair := range [][2]string{
+		{"CLAUDE.md", "AGENTS.md"},
+		{"CLAUDE.local.md", "AGENTS.local.md"},
+	} {
+		for _, name := range pair {
+			p := filepath.Join(repoRoot, name)
+			if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+				fixed = append(fixed, p)
+				break // canonical first; the legacy name only when canonical is absent
+			}
 		}
 	}
-	return append(append(ruleFiles, fixed...), instructionImportMembers(repoRoot)...), nil
+	union := append(append(ruleFiles, fixed...), instructionImportMembers(repoRoot)...)
+	seen := make(map[string]bool, len(union))
+	deduped := make([]string, 0, len(union))
+	for _, p := range union {
+		if !seen[p] {
+			seen[p] = true
+			deduped = append(deduped, p)
+		}
+	}
+	return deduped, nil
 }
 
 // instructionImportMembers(감사 P2-1)는 두 지시 파일(공유+로컬, 레거시 폴백 각각)에서
