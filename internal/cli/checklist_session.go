@@ -434,6 +434,9 @@ func (s *checklistSession) end(err error) {
 		}
 		s.curKey = ""
 	}
+	if err != nil && s.cl != nil {
+		s.cl.FlushFolded()
+	}
 	if !s.summaryDrawn {
 		th := resolveTheme()
 		for _, o := range s.outside {

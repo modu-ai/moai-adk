@@ -267,6 +267,32 @@ func TestChecklistAbortFlushes(t *testing.T) {
 			}
 		}
 	})
+	t.Run("error_after_finished_items", func(t *testing.T) {
+		r := newChecklistRig(t)
+		r.sess.openItem("templates", "detect")
+		_, _ = r.cmd.ErrOrStderr().Write([]byte("fold-a\n"))
+		r.sess.closeOpenItem() // explicit Done
+		r.sess.openItem("templates", "validate")
+		_, _ = r.cmd.ErrOrStderr().Write([]byte("fold-b\n"))
+		r.sess.openItem("templates", "deploy") // implicit Done of validate
+		_, _ = r.cmd.ErrOrStderr().Write([]byte("fold-c\n"))
+		r.sess.end(errors.New("boom"))
+
+		got := r.all()
+		for _, once := range []string{"fold-a", "fold-b", "fold-c"} {
+			if n := strings.Count(got, once); n != 1 {
+				t.Errorf("%q appears %d times, want exactly 1:\n%s", once, n, got)
+			}
+		}
+		if a, b := strings.Index(got, "fold-a"), strings.Index(got, "fold-b"); a > b {
+			t.Errorf("finished items' detail out of item order:\n%s", got)
+		}
+		for _, label := range []string{checklistLabel("templates.detect"), checklistLabel("templates.validate")} {
+			if n := strings.Count(checklistCollapse(got), label); n != 1 {
+				t.Errorf("finished line %q drawn %d times, want 1 (no redraw):\n%s", label, n, got)
+			}
+		}
+	})
 	// The two runInit-level subtests (SPEC-TUI-CHECKLIST-001 M4) live with the
 	// init wiring tests.
 	t.Run("cancel", checklistAbortCancel)

@@ -115,6 +115,9 @@ type Checklist struct {
 	started      time.Time
 	currentGroup string
 	open         *ChecklistItem
+	// folded holds the entries of finished items that finish did not draw, in
+	// item order, until FlushFolded writes them.
+	folded []string
 }
 
 // NewChecklist builds a renderer that draws to opts.Out.
@@ -248,6 +251,16 @@ func (c *Checklist) drawHeader() {
 	}
 }
 
+// FlushFolded writes, once and in item order, the entries of finished items
+// that were never drawn, and forgets them. Finished item lines are not redrawn.
+// An aborted run calls it so no captured line is lost (REQ-TCL-016).
+func (c *Checklist) FlushFolded() {
+	for _, l := range c.folded {
+		c.writeln(checklistDetailIndent + l)
+	}
+	c.folded = nil
+}
+
 // tr resolves a catalogue key in the configured language.
 func (c *Checklist) tr(key string) string { return Translate(key, c.lang) }
 
@@ -367,6 +380,8 @@ func (i *ChecklistItem) finish(glyph string, tail []string, show func(checklistE
 	for _, e := range i.entries {
 		if show(e) {
 			c.writeln(checklistDetailIndent + e.text)
+		} else {
+			c.folded = append(c.folded, e.text)
 		}
 	}
 	for _, t := range tail {
