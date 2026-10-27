@@ -14,10 +14,6 @@ type WizardResult struct {
 	// chosen language).
 	ConversationLang string // conversation_language code: en, ko, ja, zh
 	UserName         string // user.name display value (empty allowed)
-	// UserNameCleared records that user_name was answered empty (an explicit
-	// clear) rather than never asked; downstream saves must not restore a
-	// profile-supplied name in that case.
-	UserNameCleared bool
 
 	// Core settings
 	ProjectName string // Project name (required)
@@ -84,18 +80,14 @@ const (
 
 // Question defines a single wizard question.
 type Question struct {
-	ID          string       // Unique identifier
-	Type        QuestionType // Select or Input
-	Title       string       // Question title
-	Description string       // Additional description
-	// DescriptionByLocale optionally overrides the translated Description per
-	// locale (per-path wording, e.g. the reconfigure user_name). English is
-	// Description itself.
-	DescriptionByLocale map[string]string
-	Options             []Option                 // Options for select questions
-	Default             string                   // Default value
-	Required            bool                     // Whether the field is required
-	Condition           func(*WizardResult) bool // Condition for showing this question
+	ID          string                   // Unique identifier
+	Type        QuestionType             // Select or Input
+	Title       string                   // Question title
+	Description string                   // Additional description
+	Options     []Option                 // Options for select questions
+	Default     string                   // Default value
+	Required    bool                     // Whether the field is required
+	Condition   func(*WizardResult) bool // Condition for showing this question
 	// Group is an optional partition label for the unified multi-group form
 	// (SPEC-CLI-TUX-V3-002 REQ-TUX2-006): consecutive unconditional questions
 	// sharing the same Group label render on one form page. Empty is valid

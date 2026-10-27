@@ -635,9 +635,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 		if result.UserName != "" {
 			opts.UserName = result.UserName
-		} else if result.UserNameCleared {
-			// Card t1966: an explicit clear drops the profile-supplied name.
-			opts.UserName = ""
 		}
 
 		// Project name, model policy, report format, and development mode are

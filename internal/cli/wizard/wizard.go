@@ -454,30 +454,17 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 		inp = inp.EchoMode(huh.EchoModePassword)
 	}
 
-	// The placeholder advertises the empty-input fallback, which only a required
-	// input applies (see inputValidator); a non-required pre-fill is cleared by
-	// emptying the field, so no placeholder promises otherwise.
-	if q.Default != "" && q.Required {
+	if q.Default != "" {
 		inp = inp.Placeholder(q.Default)
 	}
 
 	// Validation and value storage.
-	inp = inp.Validate(inputValidator(q, result, locale))
-
-	return inp
-}
-
-// inputValidator returns the validate-and-store callback for an input question.
-// Empty input falls back to the question default ONLY for a required input; a
-// non-required input (user_name) stores the empty value, so a pre-filled
-// default can be cleared.
-func inputValidator(q *Question, result *WizardResult, locale *string) func(string) error {
 	qID := q.ID
 	required := q.Required
 	defVal := q.Default
-	return func(val string) error {
+	inp = inp.Validate(func(val string) error {
 		v := strings.TrimSpace(val)
-		if v == "" && required && defVal != "" {
+		if v == "" && defVal != "" {
 			v = defVal
 		}
 		if required && v == "" {
@@ -486,7 +473,9 @@ func inputValidator(q *Question, result *WizardResult, locale *string) func(stri
 		}
 		saveAnswer(qID, v, result, locale)
 		return nil
-	}
+	})
+
+	return inp
 }
 
 // saveAnswer stores an answer in the result.
@@ -503,7 +492,6 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		return
 	case "user_name":
 		result.UserName = value
-		result.UserNameCleared = value == ""
 	case "project_name":
 		result.ProjectName = value
 	case "development_mode":

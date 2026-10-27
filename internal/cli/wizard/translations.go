@@ -35,7 +35,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"user_name": {
 			Title:       "이름 입력",
-			Description: "MoAI가 부를 이름입니다. user.yaml(user.name)에 저장됩니다. 입력란을 비우면 이름 없이 진행합니다.",
+			Description: "MoAI가 부를 이름입니다. user.yaml(user.name)에 저장됩니다. 비워두면 건너뜁니다.",
 		},
 		"project_name": {
 			Title:       "프로젝트 이름 입력",
@@ -111,7 +111,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"user_name": {
 			Title:       "お名前を入力",
-			Description: "MoAIがあなたを呼ぶ名前です。user.yaml（user.name）に保存されます。入力欄を空にすると未設定のままになります。",
+			Description: "MoAIがあなたを呼ぶ名前です。user.yaml（user.name）に保存されます。空欄でスキップできます。",
 		},
 		"project_name": {
 			Title:       "プロジェクト名を入力",
@@ -187,7 +187,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"user_name": {
 			Title:       "输入您的姓名",
-			Description: "MoAI 对您的称呼。保存到 user.yaml（user.name）。清空输入框则不设置。",
+			Description: "MoAI 对您的称呼。保存到 user.yaml（user.name）。留空则跳过。",
 		},
 		"project_name": {
 			Title:       "输入项目名称",
@@ -285,14 +285,6 @@ var uiStrings = map[string]UIStrings{
 // GetLocalizedQuestion returns a localized copy of the question.
 // If no translation exists for the locale, returns the original question.
 func GetLocalizedQuestion(q *Question, locale string) Question {
-	localized := localizeQuestion(q, locale)
-	if d := q.DescriptionByLocale[locale]; d != "" {
-		localized.Description = d
-	}
-	return localized
-}
-
-func localizeQuestion(q *Question, locale string) Question {
 	// English is the default, no translation needed
 	if locale == "en" || locale == "" {
 		return *q
