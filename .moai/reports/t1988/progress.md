@@ -1,5 +1,14 @@
 # t1988 — GH #1926·#1924 재현·분류·수리 (Class B, run 기록)
 
+## 체크포인트 (2026-10-27 11:58 KST 부근, 리더 지시 — 새 작업 금지·대기)
+
+- 상태: PR #1939 OPEN @ HEAD `21703fd867` (pr-open 기록 완료, 리더 병합 창 대기)
+- CI 봉쇄: main의 graph-freshness 적색(codemaps 53파일 stale, 임계 40)이 t1991 착지 전까지 모든 PR 검사(머지 ref 기준)를 봉쇄 — 본 카드 몫의 codemaps 수리는 t1991 소속으로 취소(착수했던 리프 작업은 산출 전 정지, 트리 무편집 확인: `git status --porcelain` 공)
+- 병합: 리더 게이트(최신 head 전체 검사 + 리뷰 + 독립 PASS 무부채 + 양측 인계) — merged-pr 재실행도 리더가 다음 창에 수행
+- t1984: 동결 유지 — §15.124 인계는 다음 조정자로 이관, 근거 기록 `.moai/reports/t1984/dispatch-record.md` 존속
+- 잔여 후보: F2(템플릿 범위 diff 시 lane-local 필수 세트에 internal/template 해시 테스트 추가)·F3(kickoff 거부문의 런타임 해시 정의 포인터)
+- run 전환: tnbn7e owner dead → tnjorw(pid 2314) live — 카드 레코드는 tnbn7e에 존속
+
 Tree: `.moai/worktrees/t1988` branch `WT-triage-github-issues`, base main `cb30e05b3e` (확인: `git rev-parse --show-toplevel` 일치).
 빌드: `make build` exit 0 — 프로브는 이 트리 빌드 `./bin/moai`로 수행(§2.2 tool-provenance: 설치 빌드 rc.38 @b1806498fe는 트리 HEAD의 조상 아님을 커밋 그래프로 확인).
 
