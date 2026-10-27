@@ -273,14 +273,20 @@ func relFromRoot(root, path string) string {
 }
 
 // sourceChangedSinceRead reports whether the file at path differs from the
-// bytes and mtime captured at the migration's read. The re-check opens the
-// path NONBLOCKING and verifies the HANDLE's own Stat is a regular file
-// before reading (audit P2-3): a swap to a same-mtime FIFO must be refused
-// by the handle's mode, never waited out by a blocking read.
+// bytes and mtime captured at the migration's read. The re-check never
+// follows a symlink (sync-audit F8): a non-unix Lstat pre-check refuses a
+// link by mode, and the unix handle opens O_NOFOLLOW — a link swapped into
+// the window resolves as "changed", never as its target's identical
+// mtime/content. The open is NONBLOCKING and verifies the HANDLE's own
+// Stat is a regular file before reading (audit P2-3): a same-mtime FIFO is
+// refused by the handle's mode, never waited out by a blocking read.
 func sourceChangedSinceRead(path string, body []byte, mtime time.Time) (bool, error) {
+	if info, lerr := os.Lstat(path); lerr == nil && info.Mode()&os.ModeSymlink != 0 {
+		return true, nil // link swap: refuse without following (REQ-CIF-009)
+	}
 	f, err := openInstructionHandle(path)
 	if err != nil {
-		return true, err // unopenable (a writer-less FIFO refuses O_NONBLOCK too)
+		return true, err // unopenable (a writer-less FIFO refuses O_NONBLOCK too; a link refuses O_NOFOLLOW)
 	}
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
