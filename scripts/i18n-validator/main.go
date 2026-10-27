@@ -47,6 +47,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // @MX:NOTE: [AUTO] Entry point for i18n-validator. Two-oracle design (--all-files + --diff).
@@ -482,6 +484,7 @@ func runWithBudgetAfter(root string, budget time.Duration, after func(time.Durat
 // findRepoRoot locates the root of the current git repository.
 func findRepoRoot() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err

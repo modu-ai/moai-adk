@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/core/quality"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // SpecIDPattern matches any SPEC ID in the format SPEC-{DOMAIN}-{NUMBER}.
@@ -363,7 +364,12 @@ func (o *worktreeOrchestrator) findWorktreeForSpec(ctx context.Context, specID s
 // the symbolic ref for origin/HEAD. Falls back to "main" if the git command
 // fails or returns an empty result.
 func detectDefaultBranch(ctx context.Context, root string) string {
-	out, err := exec.CommandContext(ctx, "git", "-C", root, "symbolic-ref", "refs/remotes/origin/HEAD", "--short").Output()
+	if root == "" {
+		return "main"
+	}
+	cmd := exec.CommandContext(ctx, "git", "-C", root, "symbolic-ref", "refs/remotes/origin/HEAD", "--short")
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
 	if err != nil {
 		return "main"
 	}
