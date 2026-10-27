@@ -48,7 +48,7 @@
 - RED-now: §D.1 표 3행(현재 반대 방향). Green path: M2.
 
 ### AC-CIF-006 — 무손실 바이트 정확 백업 (maps REQ-CIF-006, GUIDE-02) [실행, 릴리스-블로킹]
-- **Given** 알려진 바이트 내용과 권한(0600 등)의 AGENTS.local.md **When** 마이그레이션 실행 **Then** 백업 복사본이 원본과 바이트 동일(`cmp` exit 0)하고 권한 비트가 보존되며 최종 remove 성공 전까지 원본이 그 자리에 남는다.
+- **Given** 알려진 바이트 내용과 권한(0600 등)의 AGENTS.local.md **When** 마이그레이션 실행 **Then** 백업 복사본이 원본과 바이트 동일(`cmp` exit 0)하고 권한 비트가 보존되며 최종 원자적 rename(원본→백업 경로) 성공 전까지 원본이 그 자리에 남는다.
 - RED-now: §D.1 표 3행(방향이 반대라 이 동작 자체가 존재하지 않음 — AC-CIF-005와 동일 원인). Green path: M2.
 
 ### AC-CIF-007 — 공재·상이 거부 (maps REQ-CIF-007, GUIDE-04) [실행, 릴리스-블로킹]
@@ -64,8 +64,8 @@
 - RED-now: §D.1 표 8행 — Lstat 비정규 검사는 **구 원본 경로**(`claudePath` = CLAUDE.local.md)에만 묶여 있다; 정규 방향의 원본(AGENTS.local.md/AGENTS.md)에 대한 거부 경로는 오늘 존재하지 않는다(red 사유는 방향/이름 축, D1). Green path: M2 — 거부 테이블.
 
 ### AC-CIF-010 — 원자적 최종 단계·무손실 불변 (maps REQ-CIF-010, REQ-CIF-011; GUIDE-06/11) [실행, 릴리스-블로킹]
-- **Given** (a) 최종 단계 거부 주입 fixture — `os.Rename`(원본→신규 타임스탬프 백업 경로)이 EXDEV 등으로 거부 (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (c) 목적지 쓰기(`writeExclusive`) 실패 주입 fixture **When** 마이그레이션 실행 **Then** (a) 안전 중단 — 원본은 제자리, 이미 쓰인 목적지는 rollback되어 반쪽 상태 없음, "Migrated" 성공 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (c) 원본 불변·그대로, 정확한 부분 결과 보고, rollback 후 반쪽 상태 없음. **무손실 불변(모든 출구에서 단언)**: 어느 출구에서든 사용자의 최신 콘텐츠는 정규 경로 또는 백업에 존재한다 — 최종 단계는 재검사+`os.Remove` 쌍이 아니라 단일 원자적 `os.Rename`이므로 재검사→remove 사이 소실 창(TOCTOU)이 원천적으로 없다(REQ-CIF-010, N2).
-- RED-now: §D.1 표 9행 — 읽기→쓰기 가드(mtime/내용 비교)와 원자적 최종 `os.Rename` 어느 쪽 코드도 동사에 전혀 없다(grep 0건, exit 1). Green path: M2 — 실패·거부 주입 테스트(a/b-1/c) + 정상 이동에서 rename 후 백업 엔트리 존재 관측.
+- **Given** (a) 최종 단계 거부 주입 fixture — `os.Rename`(원본→신규 타임스탬프 백업 경로)이 EXDEV 등으로 거부 (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (c) 목적지 쓰기(`writeExclusive`) 실패 주입 fixture (d) **목적지 생성 뒤 사용자가 목적지를 편집 + 최종 rename 거부(EXDEV) 동시 주입** fixture **When** 마이그레이션 실행 **Then** (a) 안전 중단 — 원본은 제자리, 사용자가 건드리지 않은 목적지는 rollback되어 반쪽 상태 없음, "Migrated" 성공 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (c) 원본 불변·그대로, 정확한 부분 결과 보고, rollback 후 반쪽 상태 없음 (d) **편집된 목적지는 rollback-remove로 삭제되지 않고 백업 엔트리로 `os.Rename` 보존**된다(최종 단계와 동일 프리미티브 패턴) — 사용자의 목적지 편집이 소실되지 않음. **무손실 불변(모든 출구에서 단언)**: 어느 출구에서든 사용자의 최신 콘텐츠는 정규 경로, 백업, 또는 미변경 레거시 경로에 존재한다 — 최종 단계는 재검사+`os.Remove` 쌍이 아니라 단일 원자적 `os.Rename`이므로 재검사→remove 사이 소실 창(TOCTOU)이 원천적으로 없다(REQ-CIF-010, N2/N5/N6).
+- RED-now: §D.1 표 9행 — 읽기→쓰기 가드(mtime/내용 비교)와 원자적 최종 `os.Rename` 어느 쪽 코드도 동사에 전혀 없다(grep 0건, exit 1). Green path: M2 — 실패·거부 주입 테스트(a/b-1/c/d) + 정상 이동에서 rename 후 백업 엔트리 존재 관측.
 
 ### AC-CIF-011 — 프라이버시·모호 분류 보존 (maps REQ-CIF-012, GUIDE-03/12) [실행+정적, 릴리스-블로킹]
 - **Given** 비공개 문구를 포함한 AGENTS.local.md와 모호 공유/비공개 혼합 내용 fixture **When** 마이그레이션 및 자체 저장소 전환 실행 **Then** 비공개 문구가 CLAUDE.md에 0건(grep), 모든 로그·보고 출력에서 본문 미포함(출력 스캔), 모호 내용은 미해결로 보고되고 자동 게시되지 않는다.
