@@ -3,6 +3,7 @@ package wizard
 // Card t1966 — wizard regression tests (items 4, 10).
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -122,6 +123,47 @@ func TestSelectHeight_MatchesLocaleRows(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("control failed: no select question was checked")
+	}
+}
+
+// Audit iter16 F1/F2: the slot a select occupies in the form is the same for
+// every locale and never below any locale's own height — the longest description
+// and the most option rows across the base text and every translation. (If it
+// followed the live locale, the group would be measured at the start locale's
+// height only.)
+func TestSelectSlotHeight_CoversEveryLocale(t *testing.T) {
+	const id = "t1966_slot_probe"
+	translations["ko"][id] = QuestionTranslation{Title: "t", Description: strings.Repeat("긴 설명 문장이 여러 줄로 감싸집니다 ", 10)}
+	t.Cleanup(func() { delete(translations["ko"], id) })
+	probe := Question{
+		ID:          id,
+		Type:        QuestionTypeSelect,
+		Title:       "t",
+		Description: "short",
+		Options:     []Option{{Label: "a", Value: "a"}, {Label: "b", Value: "b"}},
+	}
+
+	checked := 0
+	for _, q := range append(selectQuestions(t), probe) {
+		slot := selectSlotHeight(&q)
+		tallest := 0
+		for _, locale := range allLocales {
+			h := selectHeight(&q, locale)
+			tallest = max(tallest, h)
+			if slot < h {
+				t.Errorf("%s/%s: slot %d is below the locale's own height %d", q.ID, locale, slot, h)
+			}
+			checked++
+		}
+		if slot < tallest {
+			t.Errorf("%s: slot %d is below the tallest locale height %d", q.ID, slot, tallest)
+		}
+	}
+	if checked == 0 {
+		t.Fatal("control failed: no select question was checked")
+	}
+	if got, want := selectSlotHeight(&probe), selectHeight(&probe, "ko"); got != want {
+		t.Errorf("probe slot = %d, want the ko height %d (the ko description is the longest)", got, want)
 	}
 }
 
@@ -295,10 +337,12 @@ func TestSelectCard_LocaleRoundTrip(t *testing.T) {
 	}
 }
 
-// Audit D1, group cap: on a terminal too short for the whole card, the form
-// hands the select a height cap (huh clamps a field to the form height) and the
-// live-locale height must not override it — the card stays clamped, and
-// scrolls, exactly as it did when the height was fixed at build time.
+// Audit D1 + audit iter16 F4, group cap: on a terminal too short for the whole
+// card, the form hands the select a height cap and the card must stay inside it
+// AND scroll — every option, the wrapped last one included, is reachable with
+// the cursor. A card that ignores the cap is clipped by the group viewport with
+// its last option unreachable (the cap-removal mutant of the audit survived the
+// earlier `0 < rows < full` assertion, which a clipped card also satisfies).
 func TestSelectCard_RespectsGroupHeightCap(t *testing.T) {
 	autonomy := autonomyQuestion(t)
 	d := ptycaptest.NewFormDriver(t, buildUnifiedForm(InitQuestions(t.TempDir()), &WizardResult{}, "en"))
@@ -308,5 +352,138 @@ func TestSelectCard_RespectsGroupHeightCap(t *testing.T) {
 	full := selectHeight(autonomy, "en")
 	if got := len(cardRowsOf(d.View())); got == 0 || got >= full {
 		t.Errorf("card rows on a 9-line terminal = %d, want a clamped card (0 < rows < %d):\n%s", got, full, ptycaptest.StripANSI(d.View()))
+	}
+	walkOptions(t, "9-line terminal", d, autonomy, "en", 0)
+	if !strings.Contains(squash(strings.Join(cardRowsOf(d.View()), "\n")), squash("(Docker/gVisor/etc.)")) {
+		t.Errorf("the last option's wrapped row is hidden:\n%s", ptycaptest.StripANSI(d.View()))
+	}
+}
+
+// --- Audit iter16 (F1, F2): the group measures the form once, at the start locale ---
+//
+// huh sizes a group when a WindowSizeMsg arrives and hands a field the group's
+// height cap only if the field is taller than the group at that moment. Both
+// happen in the START locale, so a locale switch must not change what the group
+// measures: F1 was the stepper scrolling off the first page after a switch to a
+// taller locale, F2 a field that grew after the switch holding no cap, its last
+// option unreachable.
+
+var shiftTab = tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+
+// switchedInitDriver builds the init form in locale `from` on an 80-column,
+// `height`-row terminal, picks `to` in conversation_language and confirms it,
+// so the form stands on user_name (page 1) in the target locale.
+func switchedInitDriver(t *testing.T, from, to string, height int) *ptycaptest.FormDriver {
+	t.Helper()
+	d := ptycaptest.NewFormDriver(t, buildUnifiedForm(InitQuestions(t.TempDir()), &WizardResult{}, from))
+	if height != 40 {
+		d.Send(tea.WindowSizeMsg{Width: 80, Height: height})
+	}
+	for range languageIndex(t, to) {
+		d.Down()
+	}
+	d.Enter() // conversation_language -> user_name
+	return d
+}
+
+// assertStepperFirst fails when the frame's first line is not the step
+// indicator (the group scrolled), the AC-ITI-021 property.
+func assertStepperFirst(t *testing.T, label, frame string) {
+	t.Helper()
+	plain := ptycaptest.StripANSI(frame)
+	if first := strings.TrimSpace(strings.Split(plain, "\n")[0]); !strings.Contains(first, "/") {
+		t.Errorf("%s: the step indicator is not the first line (page scrolled):\n%s", label, plain)
+	}
+}
+
+// assertFrameShows fails when the whole frame (card border and cursor removed)
+// does not contain text, compared independent of where lines wrapped.
+func assertFrameShows(t *testing.T, label, frame, text string) {
+	t.Helper()
+	plain := strings.ReplaceAll(strings.ReplaceAll(ptycaptest.StripANSI(frame), "┃", ""), "▸", "")
+	if !strings.Contains(squash(plain), squash(text)) {
+		t.Errorf("%s: the frame hides part of the question:\n%s", label, ptycaptest.StripANSI(frame))
+	}
+}
+
+// questionText is a question's title, description and every rendered option
+// row, in the locale.
+func questionText(q *Question, locale string) string {
+	lq := GetLocalizedQuestion(q, locale)
+	text := lq.Title + lq.Description
+	for _, o := range alignOptionLabels(lq.Options) {
+		text += o.Key
+	}
+	return text
+}
+
+// walkOptions moves the cursor of the focused select q from option `cursor` up
+// to the first option, then down through every option, and requires each
+// option's complete rendered text (every wrapped row) to be visible, with the
+// cursor on screen, while it is selected.
+func walkOptions(t *testing.T, label string, d *ptycaptest.FormDriver, q *Question, locale string, cursor int) {
+	t.Helper()
+	for range cursor {
+		d.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	}
+	for i, o := range alignOptionLabels(GetLocalizedQuestion(q, locale).Options) {
+		if i > 0 {
+			d.Down()
+		}
+		frame := d.View()
+		if !strings.Contains(ptycaptest.StripANSI(frame), "▸") {
+			t.Errorf("%s: option %d: no cursor visible:\n%s", label, i, ptycaptest.StripANSI(frame))
+		}
+		got := squash(strings.ReplaceAll(strings.Join(cardRowsOf(frame), "\n"), "▸", ""))
+		if !strings.Contains(got, squash(o.Key)) {
+			t.Errorf("%s: option %d (%q) is not fully visible while selected:\n%s", label, i, o.Key, ptycaptest.StripANSI(frame))
+		}
+	}
+}
+
+// F1: after any locale switch, on a tall terminal, the first line of every page
+// the user can reach is the stepper, and the select cards show every option
+// with no empty card row below the last — all 16 start x target pairs.
+func TestLocaleSwitch_StepperStaysFirstAndCardsFit(t *testing.T) {
+	autonomy := autonomyQuestion(t)
+	lang := QuestionByID(InitQuestions(t.TempDir()), "conversation_language")
+	for _, from := range allLocales {
+		for _, to := range allLocales {
+			t.Run(from+"-to-"+to, func(t *testing.T) {
+				t.Parallel()
+				d := switchedInitDriver(t, from, to, 40)
+				assertStepperFirst(t, "user_name focused", d.View())
+				assertFrameShows(t, "user_name focused: language card", d.View(), questionText(lang, to))
+				d.Enter() // user_name -> page 2
+				assertSelectCard(t, "page 2", d.View(), autonomy, to)
+				d.Send(shiftTab) // page 2 -> user_name
+				assertStepperFirst(t, "page 1 back, user_name focused", d.View())
+				d.Send(shiftTab) // -> conversation_language
+				assertSelectCard(t, "page 1 back, conversation_language focused", d.View(), lang, to)
+			})
+		}
+	}
+}
+
+// F2: on a short terminal every option of both select questions can be brought
+// into view with the cursor, including the wrapped second row of the last
+// autonomy option, whichever locale the form started in and switched to.
+func TestLocaleSwitch_ShortTerminalReachesEveryOption(t *testing.T) {
+	autonomy := autonomyQuestion(t)
+	lang := QuestionByID(InitQuestions(t.TempDir()), "conversation_language")
+	for _, height := range []int{9, 10, 12} {
+		for _, from := range allLocales {
+			for _, to := range allLocales {
+				t.Run(fmt.Sprintf("h%d-%s-to-%s", height, from, to), func(t *testing.T) {
+					t.Parallel()
+					d := switchedInitDriver(t, from, to, height)
+					d.Enter() // user_name -> page 2
+					walkOptions(t, "autonomy_tier", d, autonomy, to, 0)
+					d.Send(shiftTab) // page 2 -> user_name
+					d.Send(shiftTab) // -> conversation_language, cursor on the chosen locale
+					walkOptions(t, "conversation_language", d, lang, to, languageIndex(t, to))
+				})
+			}
+		}
 	}
 }

@@ -5,6 +5,7 @@
 ┃   Korean (한국어)   - 한국어                                                  
 ┃   Japanese (日本語) - 日本語                                                  
 ┃   Chinese (中文)    - 中文                                                    
+                                                                                
   이름 입력                                                                     
   MoAI가 부를 이름입니다. user.yaml(user.name)에 저장됩니다. 비워두면           
   건너뜁니다.                                                                   
