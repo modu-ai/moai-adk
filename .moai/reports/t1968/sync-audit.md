@@ -763,3 +763,63 @@ verdict: FAIL
 audited_sha: d4305a908cb5f5e2284616e83eb11b1e574f5a5b
 
 AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-38f461e2c01f6ccd52cc9c13
+
+## iter12 (F1(it11) fix delta; delta_base d4305a908c, repair e4e4515d0b, head 7ca691c9be)
+
+auditor-model: glm-5.3
+
+## iter12 Verdict
+
+**PASS — aggregate 0.95** (harmonic mean of 96 / 95 / 94 / 94; must-pass firewall: Functionality and Security both PASS). The F1(it11) blocking defect is REPAIRED and verified first-hand at 10 shapes (my 3 iter11 repro shapes now green + 7 fresh adversarial extensions), the three landed regression tests exist and pass, the wrapper corpus carries the heading-with-block-child axis (40→48 subtests, corpus total 68→76, 0 FAIL), the full regression micro-sweep is green, and the required codex backend returned `pass` with zero findings (receipt `rcpt-76b136df51590ab19cbf1f90`; convergence `overall_verdict: pass`). No new finding surfaced: my only probe mismatches were 4 want-value artifacts (nil-vs-empty slice ×2; the documented run-after-heading path-carry `[CODE]` ×2), adjudicated as designed behavior, not defects — the product emitted correct kind/text/order/aside on every shape. The debt ledger stands fully disposed: D1/D2/D3/FW-D2 closed (iter11, landed tests still green in this run), D4 out-of-scope observation, D5/D6 historic, R2 closed in mechanism with its carrier defect now fixed. DEBT-FREE PASS — the gate condition is met.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @7ca691c9be) |
+|---|---|---|---|---|
+| Functionality | 40% | 96 | PASS | 10/10 overlay probes PASS (`--- PASS: TestAuditProbe12_A_ReproPreInHeadingWrapper`, `_B_ReproPInHeadingWrapper`, `_C_AsideLevelControl` = my iter11 repros now green; `_C2_AsideLevelWithTrailingRun`, `_D_PreRunBeforeHeading` (PRE→CODE→TAIL document order), `_E_TwoHeadingsWithBlocks`, `_F_NestedWrappers`, `_G_HeadingLastNoTrailingRun` (no spurious emission), `_H_DeepBlockInHeadingSubtree` (pre inside em inside h3), `_I_HeadingTextPlusBlockChild` = fresh extensions; probes injected via `go test -overlay`, zero tree modification). Landed regressions present and green: `TestSplitBlocks_AsideWrapperHeadingWithBlockChildKeepsTrailingRun` / `_AsideWrapperHeadingWithPChildKeepsTrailingRun` / `_AsideLevelHeadingWithBlockChildControl` (blocks_test.go:630/657/686). Aside suite `PASS=93 FAIL=0` rc=0; corpus `total_subtests=76 FAIL=0` (wrapper 48 = 8 wrappers × 6 shapes, was 40; item 21; untested 7 — the 68→76 claim verified by count); full package `ok github.com/modu-ai/moai-adk/internal/fetchweb 0.229s`; graded trio + parity + JevCallPath: `--- PASS: TestFetchWeb_OffGateZeroNetwork / StatusExitContract (7 subtests incl. fetch_error_exits_2) / E2EFakeServers / StaleCacheWarningSurfaced / NoLiveEndpointInTests / TestFactoryNextNominateMCPParity (4 subtests) / TestJevCallPath_HasExactlyTheDeclaredConsumers / _UnreachableFromDecisionSurfaces` (`ok … internal/cli 9.788s`). |
+| Security | 25% | 95 | PASS | Delta file set exactly `internal/fetchweb/blocks.go` + `internal/fetchweb/blocks_test.go` (`git show --stat e4e4515d0b` verbatim; 2 files changed, 116 insertions, 6 deletions); head `7ca691c9be` docs-only (`.moai/reports/t1968/progress.md | 3 +++`); ssrf.go untouched; no net/fetch/auth/secret surface in the delta — pure in-memory text-extraction accounting (`len(*s.blocks)` growth check); package suite green inside the `-cover` run. |
+| Craft | 20% | 94 | PASS | `coverage: 95.6%` (fetchweb, up from 95.5) / `90.6%` (jev) / `93.4%` (jevmeasure); `golangci-lint run internal/fetchweb/...` → `0 issues.`; `gofmt -l` → 0; `go vet` → `VET_OK`. The iter11 Craft critique (corpus missing the heading-with-block-child axis — the blind spot class) is discharged: the axis landed with a uniform p-variant across all 8 wrappers plus exact-output pinning for the pre-variant. The fix mirrors the default branch's existing accounting (minimal diff, 10 code lines + citation comment `F1 (t1968 sync-audit iter11)`); RED-first claimed in the commit and consistent with the exact-output test shapes. |
+| Consistency | 15% | 94 | PASS | `moai spec lint SPEC-FETCH-WEB-001` → `✓ No findings — all SPEC documents are valid`; SPEC core unchanged: `git diff --name-only dc991bfb9f..HEAD -- …spec.md …plan.md …acceptance.md` → 0 files, whole-dir delta exactly `+audit_ready: true` (pre-window T8a signal e97c0b86f6 — reconfirmed); window SPEC delta `git diff --name-only d4305a908c..HEAD -- .moai/specs/` → 0 files; in-code citation family maintained (`R2 (t1968 sync-audit iter7/8 P3…)`, `F1 (t1968 sync-audit iter11)`); Conventional Commit `fix(fetchweb): …` with card ref; doc comments updated in the same edit as the mechanism change. |
+
+## iter12 dispositions
+
+- **F1(it11) — REPAIRED-VERIFIED (the sole delta scope item).** The heading branch in `walkAsideRuns` (blocks.go:316-337) now captures `before := len(*s.blocks)` around `s.walk(child, true)` and sets `emitted = true` on growth, mirroring the default branch (blocks.go:339-344). Verified at 10 shapes (Evidence column): both iter11 repro shapes emit the trailing run with the heading's path; the aside-level control is unchanged (`emitTrailingAlways` semantics untouched); 7 fresh extensions (pre-heading run, two consecutive block-carrying headings, nested wrappers both levels, heading-last-no-trailing-run with no spurious emission, deep subtree emitter `pre>em>h3`, heading-text+block-child) all exact-match. The iter11 residual "corpus axis gap" is closed by the same commit.
+- **Ledger standing — fully disposed, no reopening.** D1+R2 / D2 / D3 / FW-D2: closed (iter11); their landed tests are inside this run's `PASS=93 FAIL=0` aside suite (no regression). D4: out-of-scope observation, unchanged (zero card-own cli files; window delta touches only fetchweb; CI owns the repository-wide verdict under the merge gate). D5/D6: historic process rows. R2-optional: disposed iter11. No `Binding run conditions` heading exists in progress.md — the binding-run-conditions clause does not bind (verified this run: grep → no match).
+- **Window claims confirmed.** e4e4515d0b touches blocks.go + blocks_test.go only; 7ca691c9be is docs-only on top; window d4305a908c..7ca691c9be = 2 report docs + 2 fetchweb files, `.moai/specs/` delta 0; `git status --short` → 0 lines at audit end (my probes ran under `-overlay` from /tmp; no tree writes, no agents).
+
+## iter12 Cross-model convergence (audit_multi, target=baseBranch, delta_base=d4305a908c, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered with a verdict: pass, 0 findings)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-76b136df51590ab19cbf1f90`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base d4305a908cb5f5e2284616e83eb11b1e574f5a5b: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**The orchestrator's `--result-file` convergence check remains to be run; this PASS is not final until it passes.**
+
+## iter12 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the F1(it11) repair is genuine, minimal, and regenerates nothing; the debt-free PASS gate condition is met.** Evidence: 10/10 overlay probes PASS; aside suite 93/0; corpus 76 subtests/0 FAIL; full package ok; trio/parity/JevCallPath 8 top-level PASS in `ok … 9.788s`; cover 95.6/90.6/93.4; lint `0 issues.`; gofmt 0 / `VET_OK`; spec-lint `✓ No findings`; SPEC core 0 files, window `.moai/specs/` delta 0; commit-scope and docs-only-head claims confirmed from `git show --stat`; convergence pass with receipt. Baseline: this run, this tree @7ca691c9bee470dae10c288672e1f6c75446f224; delta measured `d4305a908c..7ca691c9be` (card-own repair = `e4e4515d0b`).
+
+**Gaps (explicitly NOT observed):**
+- The orchestrator's `--result-file` convergence check has not run (this auditor is read-only); PASS not final until it passes.
+- Cross-GOOS builds (darwin/windows `BUILD_OK` of iter10/11) not re-run this iteration; compile health is covered by the test/lint/vet runs, not by a windows build observation.
+- Full `internal/cli` suite and repository-wide verdict not run here — D4 classification unchanged (out-of-scope observation; CI owns it under the merge gate).
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-11.
+- /tmp scratch from this audit (`/tmp/t1968-audit12/`: overlay JSON + probe file + logs) not removed — the removal command was permission-denied; machine-local only, carries no evidence beyond what is quoted here.
+
+**Residual-risk:**
+- Convergence was single-participant (codex only; claude/glm gates off per plan) and codex was scoped to the delta in prose only — `residual_risk_note` quoted verbatim above. The auditor's own 10-shape verification is the corroborating leg.
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md §6.
+- Untested territory: proxy-required egress remains out-of-scope-by-design (unchanged).
+
+## Iteration history (cont.)
+
+- iter12 (this audit): F1(it11) fix delta DEBT-FREE PASS 0.95 (delta_base d4305a908c, repair e4e4515d0b, head 7ca691c9be) — heading-subtree emissions counted toward `emitted` (blocks.go:325-335), verified at 10 auditor shapes incl. my 3 iter11 repros; 3 landed regressions + wrapper-corpus axis 40→48 (total 68→76) confirmed; sweep green (aside 93/0, full pkg ok, trio/parity/JevCallPath, cover 95.6/90.6/93.4, lint/gofmt/vet/spec-lint clean, SPEC dir 0 delta, head docs-only, tree clean); codex pass 0 findings (rcpt-76b136df51590ab19cbf1f90); ledger fully disposed, no new findings; D4/D5/D6 unchanged classifications.
+
+verdict: PASS
+audited_sha: 7ca691c9bee470dae10c288672e1f6c75446f224
+
+AUDIT-VERDICT: PASS spec=SPEC-FETCH-WEB-001 receipts=rcpt-76b136df51590ab19cbf1f90
