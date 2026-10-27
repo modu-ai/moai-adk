@@ -1,8 +1,8 @@
 # t1988 verdict — GH #1926·#1924 트리아지·수리 (Class B)
 
 verdict: PASS
-audited_sha: 8efe31c080f1d49b86898620ee83cef99fe52bbe
-machine-line-note: audited head 8efe31c080에서 레인 검증 배치와 codex_review가 관측됐고, 그로부터 현 HEAD까지의 델타는 .moai/reports/t1988/ 아래 증거 문서뿐임(diff --stat 관측) — merge_specless 판독기의 보고서 전용 델타 예외에 부합.
+audited_sha: 6e3cfbc4f798259f8b251f7870fdb9d338c90d5a
+machine-line-note: 재관측 기록 — 카드 브랜치가 origin/main(4c4217a19d, t1973·t1762·t1977 착지분)을 흡수한 병합 커밋 6e3cfbc4f7에서 TestManifestHashFormat(ok 0.544s)과 TestFactoryUnknownAttributionErrorStatesManualStamp(ok 1.283s)을 직독 재실행했고 카탈로그 핀은 재생성 무변경으로 확인. 본 판정의 4파일 수정은 흡수 트리에서도 동일하게 유효. 최초 관측 헤드는 8efe31c080.
 
 ## Claim
 1. #1924 거부문 결함("launcher가 operator 마크를 stamp한다")은 실재하며 본 카드에서 수리됐다 — 거부문이 수동 접두 형태를 정확히 안내한다.
