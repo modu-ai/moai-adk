@@ -7,7 +7,7 @@
 plan_status: pending-audit
 plan_complete_at: 2026-10-27
 artifacts: spec.md (16 REQ, GEARS), plan.md (M0~M5), acceptance.md (AC-CIF-001~016, GUIDE-01..12 조정표, RED-now 기준선 @cb30e05b3e)
-run_gate: t1984 착지 + 리더 해제 전까지 run 금지 (plan.md §C Pre-flight)
+run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오프 판정까지 run 금지; t1984는 본 카드 merge-ready 뒤 임대·plan, 본 카드의 PR 병합·main 흡수가 t1984 RUN에 선행 (plan.md §C, 리더 §15.124 확정 순서)
 
 ## §E.2 Run-phase Evidence
 

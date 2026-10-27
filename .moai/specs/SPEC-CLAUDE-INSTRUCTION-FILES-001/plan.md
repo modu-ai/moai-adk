@@ -55,15 +55,15 @@ spec.md §A의 검증된 현행 지도가 구현의 출발점이다. 변경 표�
 ### M1 — 정규 이름·생성 경로 전환 (Priority: High)
 - `internal/defs/files.go`: ClaudeMD/AgentsMD 주석·역할 반전(CLAUDE 정규, AGENTS 레거시 — 두 상수 모두 유지).
 - 배포 주장 재타겟: `TestCodexOnlyForceUpdateVariant` 계열(`internal/template/harness_fs_test.go`)이 AGENTS.md 대신 CLAUDE.md 배치를 단언하도록 전환 — AC-CIF-001의 행동 기준(동작으로 입증, 산문 판정 아님)이며 M1이 이 그린패스를 소유.
-- `AGENTS.md.tmpl` → `CLAUDE.md.tmpl` 재명명(내용은 현재 AGENTS.md.tmpl 기준 — t1985가 먼저 착지하므로 t1984의 후속 편차는 t1984 카드에서 재정렬) + deployer 투영 전환.
+- `AGENTS.md.tmpl` → `CLAUDE.md.tmpl` 재명명(내용은 현재 AGENTS.md.tmpl 기준 — t1985가 먼저 착지하므로 t1984의 후속 편차는 t1984 카드에서 재정렬) + deployer 투영 전환. 생성 매니페스트 `internal/template/embed_manifest_gen.go:647`의 embed 지시자 이름 갱신 포함, 재생성(생성 파일 — 이 외 수기 편집 없음, N3).
 - `initializer.go` / `validator.go` / `init_resume.go` 프로브 방향 전환.
 - `harness_fs.go` `normalizeHarnessReferences` 방향 반전(REQ-CIF-004) — 생성물이 AGENTS 참조를 만들지 않음을 테스트.
 - AC: AC-CIF-001, 002, 004, 016(프로브 부분).
 
 ### M2 — 마이그레이션 동사 방향 전환 + 무손실 원칙 (Priority: High, 데이터 이동)
 - `migrate_local_instructions.go` 방향 반전(AGENTS.local.md → CLAUDE.local.md; shared AGENTS.md → CLAUDE.md 경로 추가). 기존 프리미티브 재사용(REQ-CIF-005).
-- 신규: 읽기-쓰기 사이 원본 변경 감지 중단 + **최종 remove 직전 원본 mtime/내용 재검증**(변경 시 중단·양쪽 보존, REQ-CIF-010), 바이트 정확 백업·권한 보존 검증, 경로이탈 거부. atomic-rename 재설계는 불채택(기존 프리미티브 재사용 제약, REQ-CIF-005).
-- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단(읽기→쓰기 창 + 쓰기→remove 창 주입).
+- 신규: 읽기-쓰기 사이 원본 변경 감지 중단(REQ-CIF-010 전단 가드 유지) + **최종 단계를 재검사+`os.Remove` 대신 단일 원자적 `os.Rename`(원본→신규 타임스탬프 백업 경로)로 전환** — 재검사→remove 사이 창(TOCTOU)을 원천 제거, 그 순간 존재하는 바이트가 구성상 백업에 남는다(N2). 신규 메커니즘이 아님: 백업 디렉터리(REQ-CIF-006 프리미티브)·`writeExclusive`·rollback 재사용, `os.Rename`은 stdlib — 기각된 전면 atomic-rename 재설계는 별개. 바이트 정확 백업·권한 보존 검증, 경로이탈 거부.
+- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단(읽기→쓰기 창 주입)/최종 rename 거부(EXDEV 등 — 원본 제자리·목적지 rollback·반쪽 상태 없음)/목적지 쓰기 실패. 모든 출구에서 사용자 최신 콘텐츠가 정규 경로 또는 백업에 존재함을 단언.
 - AC: AC-CIF-005~010.
 
 ### M3 — 런타임 리더/작성기 재타겟 (Priority: Medium)

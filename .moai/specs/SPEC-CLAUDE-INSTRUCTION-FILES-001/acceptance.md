@@ -63,9 +63,9 @@
 - **Given** symlink·FIFO·읽기불가(0000)·경로이탈 입력 fixture **When** 마이그레이션 실행 **Then** 각각 exit non-zero로 거부하고 링크 대상·원본을 따라가거나 덮어쓰지 않는다(Lstat 결과 관측).
 - RED-now: §D.1 표 8행 — Lstat 비정규 검사는 **구 원본 경로**(`claudePath` = CLAUDE.local.md)에만 묶여 있다; 정규 방향의 원본(AGENTS.local.md/AGENTS.md)에 대한 거부 경로는 오늘 존재하지 않는다(red 사유는 방향/이름 축, D1). Green path: M2 — 거부 테이블.
 
-### AC-CIF-010 — 부분 실패 원자성·동시 변경 중단 (maps REQ-CIF-010, REQ-CIF-011; GUIDE-06/11) [실행, 릴리스-블로킹]
-- **Given** (a) 최종 remove 실패, 백업 실패, 쓰기 실패 주입 fixture (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (b-2) **주입점 정확히 명시: `writeExclusive`(O_EXCL) 목적지 쓰기 성공 직후부터 `os.Remove`(원본) 호출 직전까지의 창에서** 원본이 수정되는 fixture **When** 마이그레이션 실행 **Then** (a) 부분 목적지 쓰기가 rollback되고 정확한 부분 결과가 보고되며 "Migrated" 성공이 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (b-2) remove 직전 재검증에서 변경이 감지되어 중단 — 사용자의 최신 편집(원본)과 이미 쓰인 목적지가 모두 보존되고, remove로 최신 편집이 소실되지 않음(REQ-CIF-010 확장, D3 — 테스트는 이 창에 실제 파일 수정을 주입해 AC로서 판정한다).
-- RED-now: §D.1 표 9행 — 동시 변경 검증(mtime/내용 재검사) 코드가 동사에 전혀 없다(grep 0건, exit 1). Green path: M2 — 실패 주입 테스트(읽기→쓰기 창 + 쓰기→remove 창).
+### AC-CIF-010 — 원자적 최종 단계·무손실 불변 (maps REQ-CIF-010, REQ-CIF-011; GUIDE-06/11) [실행, 릴리스-블로킹]
+- **Given** (a) 최종 단계 거부 주입 fixture — `os.Rename`(원본→신규 타임스탬프 백업 경로)이 EXDEV 등으로 거부 (b-1) 읽기와 쓰기 사이 원본 mtime/내용 변경 fixture (c) 목적지 쓰기(`writeExclusive`) 실패 주입 fixture **When** 마이그레이션 실행 **Then** (a) 안전 중단 — 원본은 제자리, 이미 쓰인 목적지는 rollback되어 반쪽 상태 없음, "Migrated" 성공 없음 (b-1) 목적지 쓰기 전 중단, 양쪽 내용 보존 (c) 원본 불변·그대로, 정확한 부분 결과 보고, rollback 후 반쪽 상태 없음. **무손실 불변(모든 출구에서 단언)**: 어느 출구에서든 사용자의 최신 콘텐츠는 정규 경로 또는 백업에 존재한다 — 최종 단계는 재검사+`os.Remove` 쌍이 아니라 단일 원자적 `os.Rename`이므로 재검사→remove 사이 소실 창(TOCTOU)이 원천적으로 없다(REQ-CIF-010, N2).
+- RED-now: §D.1 표 9행 — 읽기→쓰기 가드(mtime/내용 비교)와 원자적 최종 `os.Rename` 어느 쪽 코드도 동사에 전혀 없다(grep 0건, exit 1). Green path: M2 — 실패·거부 주입 테스트(a/b-1/c) + 정상 이동에서 rename 후 백업 엔트리 존재 관측.
 
 ### AC-CIF-011 — 프라이버시·모호 분류 보존 (maps REQ-CIF-012, GUIDE-03/12) [실행+정적, 릴리스-블로킹]
 - **Given** 비공개 문구를 포함한 AGENTS.local.md와 모호 공유/비공개 혼합 내용 fixture **When** 마이그레이션 및 자체 저장소 전환 실행 **Then** 비공개 문구가 CLAUDE.md에 0건(grep), 모든 로그·보고 출력에서 본문 미포함(출력 스캔), 모호 내용은 미해결로 보고되고 자동 게시되지 않는다.
