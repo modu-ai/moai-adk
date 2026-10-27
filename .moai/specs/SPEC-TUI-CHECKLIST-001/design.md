@@ -326,7 +326,7 @@ update 행의 "대응하는 지금 코드" 열은 각 항목이 열리는 줄과
 
 - `checklist.summary.` 키는 모두 이 카드가 넣는다 — 렌더러의 요약 필드이며(AC-TCL-005 가 update 모양 요약으로 검사) init 이 쓰지 않는 필드(`changed`, `preserved`, `backup`, `recover`)도 렌더러 계약에 속한다.
 - 언어 해석: init 은 위저드 답 또는 프로필 로케일을 쓰고 둘 다 없으면 `en`. ([DEFERRED → t1978] update 는 `.moai/config/sections/language.yaml` 의 `conversation_language`.) 미지원 값은 `Translate` 가 `en` 으로 대체한다(`internal/tui/i18n.go:83-99`).
-- 값에 서식 지시자(`%d`, `%s`)가 있으면 네 카탈로그 값이 같은 인자를 같은 횟수로 써야 한다. 판정은 실제 Go `fmt` 실행으로만 하며 손으로 쓴 해석기는 두지 않는다 — 절차와 고정 회귀 묶음은 AC-TCL-008.
+- 값에 서식 지시자가 있는 키는 AC-TCL-008 의 호출 지점 표(키 × 네 언어 × 호출 지점의 실제 인자, 칸마다 기대 출력)에 행이 있어야 하며, `fmt.Sprintf(값, 인자...)` 가 기대 출력과 바이트 단위로 같아야 한다. 표와 카탈로그의 형식 키 집합은 키 수 가드가 맞춘다.
 - ja·zh 값은 en 값과 달라야 한다. 예외는 식별자만 담은 값(초기 허용 목록: `MCP`)뿐이며, 허용 목록은 AC-TCL-008 테스트 안에 둔다.
 - ja·zh 문구는 이 카드에서 초안을 넣는다. 원어민 검수는 범위 밖이다(spec.md §5, Gap G-5).
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.5"
+version: "0.2.6"
 status: draft
 created: 2026-10-27
 updated: 2026-10-27
@@ -28,6 +28,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.3 plan 델타 6회차 (manager-spec, 리더 결정 기록 §15.108 — §15.107 의 예외: 8회차 차단 결함이 델타 5 가 남긴 잔여 문장이라 새 설계 결함이 아님). 8회차 plan 감사(`.moai/reports/t1969/plan-audit-verdict-iter8.md`, 감사 HEAD `aee74a1513`)의 차단 N8-1 을 고쳐 acceptance.md §F 완료 정의를 AC-TCL-022 본문(기록 + 최종 HEAD 재실행 모두 녹색)에 맞췄고, N8-3 으로 이 HISTORY 에 v0.2.2·v0.2.3 행을 더했다. 한 줄로 닫히는 선택 결함 N8-4·N8-5 도 고쳤다. REQ·AC id 와 수는 그대로(23·24). 나머지 선택 결함의 처분은 progress.md §E.1 델타 6 단락.
 - 2026-10-27 — v0.2.4 plan 델타 7회차 (manager-spec, 리더 결정 기록 §15.111, 1회 승인·1커밋). codex P2 두 건(영수증 `rcpt-50fb41f52e6c83eab02ffa04`, 레인 실행 `rcpt-ac0ee402340ec744d7eb4a7a`, 둘 다 `eff053068d`)과 남은 선택 결함을 고쳤다. AC-TCL-008 의 서식 서명을 Go `fmt` 의 실제 인자 소비 규칙으로 정의하고 실제 `fmt.Sprintf` 대표 값 횟수 비교로 재게 했다. AC-TCL-016 비활성 대조 실행이 만들어지도록 시험 시접 `checklistSessionStartFn` 을 수집기 수준(활성·비활성 모두, 생산 값 `nil`)으로 옮겼다(design.md §3.7). 함께: N8-6(§6 추적표 AC-TCL-001 에 M4, plan.md M4 목록), N9-1(acceptance.md §F 의 AC-TCL-022 판정 문구), N9-2(위 v0.2.1 보충 행), N8-2(AC-TCL-013 ISO 시각 규칙의 구분자 `[:-]`). REQ·AC id 와 수는 그대로(23·24). 처분 상세는 progress.md §E.1 델타 7 단락.
 - 2026-10-27 — v0.2.5 plan 델타 8회차 (manager-spec, 리더 결정 기록 §15.115, 1회 승인·1커밋). codex 가 AC-TCL-008 의 손으로 쓴 소비 규칙에서 셋째 `fmt` 문법 구석(번호 뒤 문자 그대로의 퍼센트, `%[1]s %[2]% %s` 와 `%[1]s %[2]% %[2]s` 가 둘 다 `A % B`)을 찾았다. 리더 판정대로 규칙을 다시 고치지 않고 지웠다 — AC-TCL-008 은 실제 Go `fmt` 실행만으로 판정한다(en 값에서 `%!` 없는 첫 기준 인자 조합을 `fmt` 로 찾고, 네 언어 출력의 `%!` 부재와 기준 인자별 출현 횟수를 비교), 고정 회귀 묶음을 단언한다. design.md §6 문구를 맞췄다. 함께 닫은 선택 결함: design.md §3.7 시접 부르는 곳의 둘째 예(수집기가 생기기 전에 도는 세션 시작 함수)를 수집기가 세션을 받는 지점으로 고침, AC-TCL-017 (c) 의 "세션 시작 때" → "수집기가 만들어진 직후", 해석기 대 `fmt` 단언(해석기가 없어져 성립하지 않음). REQ·AC id 와 수는 그대로(23·24), AC-TCL-008 의 뜻(네 언어 서식 안전)도 그대로. 처분 상세는 progress.md §E.1 델타 8 단락.
+- 2026-10-27 — v0.2.6 plan 델타 9회차 (manager-spec, 리더 결정 기록 §15.119, 1회 승인·1커밋). 리더 audit_multi(영수증 `rcpt-5abf31cc8a860a40811fc6b9`, codex 필수, FAIL)의 P2 두 건 — 인자를 빠뜨린 번역이 v0.2.5 의 범용 판정 절차를 통과함(en `Project %.2s: %s` 대 ja `プロジェクト %[2]s`), 깨진 en 값(`broken %`)에서 절차의 탐색이 끝나지 않음 — 을 받아, 범용 판정 절차를 계약에서 빼고 AC-TCL-008 의 서식 조건을 고정 호출 지점 표(형식 키 × 네 언어 × 호출 지점의 실제 인자, 칸마다 기대 출력, `fmt.Sprintf` 바이트 비교)와 키 수 가드로 바꿨다. en 값과 en 기대 출력은 이 SPEC 이 정하고, ko·ja·zh 기대 출력은 M1 이 카탈로그 값과 같은 커밋에서 채운다. design.md §6 문구를 맞췄다. REQ·AC id 와 수는 그대로(23·24), AC-TCL-008 의 뜻과 서식 밖 조건도 그대로. 처분 상세는 progress.md §E.1 델타 9 단락.
 
 ## §1 배경과 문제
 

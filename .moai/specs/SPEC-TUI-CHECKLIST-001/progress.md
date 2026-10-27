@@ -109,6 +109,21 @@ hunk(기준 `d239bc3e75` 의 줄 번호):
 
 미룬 것(deferred): 없음.
 
+### Plan-phase delta 9 (card t1969, decision record 15.119)
+
+입력: 리더 audit_multi(영수증 `rcpt-5abf31cc8a860a40811fc6b9`, codex 필수, FAIL)의 P2 두 건 — (1) 인자를 빠뜨린 번역 en `Project %.2s: %s` 대 ja `プロジェクト %[2]s` 가 v0.2.5 절차에서 같다고 판정됨(plan 감사 D1 과 같음), (2) 깨진 en `broken %` 에서 절차의 탐색에 끝나는 조건이 없음(D2 와 같음). 리더 결정 기록 §15.119(1회 승인, 1커밋): 구석을 하나 더 막지 말고 판정 방법을 바꾼다. 기준 HEAD `c4349ba30f1eb9ca96a9162a32e723e945cee794`. REQ·AC id 집합은 그대로(REQ-TCL-001~023, AC-TCL-001~024). spec.md version `0.2.5` → `0.2.6`.
+
+hunk(기준 `c4349ba30f` 의 줄 번호):
+- acceptance.md:138: 범용 판정 절차·회귀 묶음 문장을 지우고 "형식 키는 호출 지점 표의 모든 칸에서 `fmt.Sprintf(카탈로그 값, 인자...)` 가 기대 문자열과 바이트 단위로 같다" 로. 서식 밖 조건(키 집합 동일, 비어 있지 않음, 값 ≠ 키, 이모지 범위, ja·zh ≠ en 과 허용 목록, en 키 수)은 그대로.
+- acceptance.md:138 뒤 새 항목: 호출 지점 표 열 행(`checklist.summary.` 의 `created_files`·`created_dirs`·`changed`·`preserved`·`warnings`·`elapsed`·`deploy_mode`·`next_steps`·`backup`·`recover`), 인자 형과 값(AC-TCL-005 고정값), en 값, en 기대 출력, ko·ja·zh 칸은 "M1 이 채움". 키 수 가드(값에 `%` 바이트가 있는 키 ⊆ 표, 표 키 ⊆ 네 카탈로그). 형식 지시 없는 키 목록, 막힘 보고 경로.
+- acceptance.md:141-154: 뮤턴트를 표 기준으로 다시 씀(빠뜨린 인자, 깨진 en, 가드 두 방향). 사실 칸은 실제로 돌린 탐침 — `table9`(트리 `c4349ba30f`, go1.26.8: v0.2.5 절차가 두 반례에서 실패하는 것과 표 판정이 잡는 것), `encol9`(표의 en 기대 출력 열 개). v0.2.5 의 `fmtexec8`·`extraprobe7` 사실 칸은 지운 절차의 근거라 지웠다. `eb2a9dfc21` 의 `fmtprobe` 사실 칸은 표 판정에도 쓰여 남겼다.
+- design.md:329: §6 문구를 호출 지점 표와 키 수 가드로.
+- spec.md frontmatter version 과 HISTORY v0.2.6 행, 이 단락.
+
+정직한 한계: en 값과 en 기대 출력은 이 회차에 처음 정한 이 카드의 en 문구다(design.md §1 의 ko 화면을 옮겨 만든 초안 — 이전 SPEC 에는 en 문구가 없었다). 형식 키를 이 열 개로 정한 것도 이 회차의 판단이다. `elapsed` 인자를 문자열(렌더러가 고정 시계로 잰 경과를 만든 값)로 둔 것도 그렇다. ko·ja·zh 기대 출력은 적지 않았다 — 문구가 run 단계 산출물이기 때문이며, M1 이 같은 커밋에서 채우고 가드와 바이트 비교가 판정한다. plan.md M1 항목은 이번 위임 범위(손대지 않을 파일) 밖이라 "표의 세 칸을 채운다" 를 적지 않았다 — AC-TCL-008 본문이 그 의무를 적는다.
+
+미룬 것(deferred): 없음.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

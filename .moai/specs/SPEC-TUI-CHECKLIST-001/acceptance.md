@@ -135,20 +135,50 @@ stdout 이 비어 있으면 `(빈 출력)` 으로 적고, stderr 는 따로 적�
 
 ### AC-TCL-008 — 네 언어 카탈로그 동치 (maps REQ-TCL-009)
 
-- Given en·ko·ja·zh 카탈로그, When `checklist.` 로 시작하는 키 집합을 비교하면, Then 네 집합이 같고, 값이 모두 비어 있지 않고 키 자신과 다르며, 같은 키의 `%` 서식이 네 언어에서 같은 인자를 같은 횟수로 쓰고(이 판정은 실제 Go `fmt` 실행으로만 한다. 테스트에도 이 문서에도 손으로 쓴 서식 해석기나 지시자 문법 규칙은 없으며, `%%`·`%[n]`·`*` 의 뜻은 `fmt` 가 정한다. 절차: (i) en 값을 인자 수 0, 1, 2, … 와 자리마다의 형(`string`·`int`)을 차례로 바꿔 가며 `fmt.Sprintf` 해, 출력에 `%!` 가 없는 첫 조합을 그 키의 기준 인자로 삼는다. 기준 인자는 자리마다 서로 다른 값이다(문자열 `"<s1>"`, `"<s2>"`, …, 정수 90001, 90002, … — 자리 번호가 값에 들어 있다). 그런 조합이 없으면 en 값 자체가 깨진 것이라 실패. (ii) 네 언어 값을 같은 기준 인자로 각각 `fmt.Sprintf` 한다. (iii) 어느 출력에도 `%!` 가 없고, 기준 인자마다 출력에 나온 횟수가 en 출력과 같아야 한다. 출력 안의 위치는 비교하지 않는다 — 어순이 다른 언어는 `%[2]s` 처럼 번호를 붙여 같은 인자를 다른 자리에 쓰기 때문이다. 테스트 안에 고정 회귀 묶음을 두고 같은 절차의 판정을 단언한다: `%[1]s %[2]% %s` 와 `%[1]s %[2]% %[2]s` → 같음, `%s %s %[3]s` 와 `%[2]s %s %[3]s` → 다름, `%[3]s %[1]s %d` → 유효(자기 자신과 같음), en `Changed %d` 와 ja `変更 %s件` → 다름(`%!`), 대조 en `%s of %s` 와 `%[2]sの%[1]s` → 같음), 값에 U+1F300–1FAFF·U+2600–27BF·U+1F000–1F2FF 문자가 없으며, ja 값과 zh 값이 같은 키의 en 값과 다르다. 마지막 조건의 예외는 테스트 안의 허용 목록(초기값: 값이 `MCP` 하나뿐인 키)에 이름이 오른 키뿐이다. en 키 수는 design.md §6 표에서 이 카드 범위로 표시된 키 수와 같다(`[DEFERRED → t1978]` 로 표시된 update 전용 키는 넣지 않는다 — t1978 이 네 언어에 함께 더한다).
+- Given en·ko·ja·zh 카탈로그, When `checklist.` 로 시작하는 키 집합을 비교하면, Then 네 집합이 같고, 값이 모두 비어 있지 않고 키 자신과 다르며, 형식 지시를 담은 키는 아래 호출 지점 표의 모든 칸에서 `fmt.Sprintf(카탈로그 값, 그 행의 인자...)` 가 그 칸의 기대 문자열과 바이트 단위로 같고(서식 판정은 이 표뿐이다), 값에 U+1F300–1FAFF·U+2600–27BF·U+1F000–1F2FF 문자가 없으며, ja 값과 zh 값이 같은 키의 en 값과 다르다. 마지막 조건의 예외는 테스트 안의 허용 목록(초기값: 값이 `MCP` 하나뿐인 키)에 이름이 오른 키뿐이다. en 키 수는 design.md §6 표에서 이 카드 범위로 표시된 키 수와 같다(`[DEFERRED → t1978]` 로 표시된 update 전용 키는 넣지 않는다 — t1978 이 네 언어에 함께 더한다).
+- 호출 지점 표(v0.2.6, 결정 기록 §15.119). 테스트 안에 이 표를 그대로 둔다. 행은 형식 지시를 담은 `checklist.*` 키 하나, 인자는 그 키를 부르는 호출 지점이 넘기는 실제 형과 고정 값(값은 AC-TCL-005 의 고정값), 칸은 네 언어 각각의 기대 출력이다. 판정: 모든 행·모든 언어에서 `fmt.Sprintf(카탈로그 값, 인자...)` 가 기대 문자열과 바이트 단위로 같다. 키 수 가드: 네 카탈로그 가운데 하나라도 값에 `%` 바이트가 있는 `checklist.*` 키는 표에 행이 있어야 하고, 표의 모든 키는 네 카탈로그에 있어야 한다 — 어느 쪽이든 어긋나면 실패.
+
+  | 키 | 인자 (형 = 값) | en 값 | en 기대 출력 | ko·ja·zh 기대 출력 |
+  |---|---|---|---|---|
+  | `checklist.summary.created_files` | `int` = 2 | `%d files created` | `2 files created` | M1 이 채움 |
+  | `checklist.summary.created_dirs` | `int` = 13 | `%d directories` | `13 directories` | M1 이 채움 |
+  | `checklist.summary.changed` | `int` = 7 | `%d changed` | `7 changed` | M1 이 채움 |
+  | `checklist.summary.preserved` | `int` = 3 | `%d preserved` | `3 preserved` | M1 이 채움 |
+  | `checklist.summary.warnings` | `int` = 1 | `warnings %d` | `warnings 1` | M1 이 채움 |
+  | `checklist.summary.elapsed` | `string` = `1.5s` (렌더러가 고정 시계로 잰 경과를 만든 문자열) | `elapsed %s` | `elapsed 1.5s` | M1 이 채움 |
+  | `checklist.summary.deploy_mode` | `string` = `plugin` | `deploy mode: %s` | `deploy mode: plugin` | M1 이 채움 |
+  | `checklist.summary.next_steps` | `string` = `cd demo` | `next steps: %s` | `next steps: cd demo` | M1 이 채움 |
+  | `checklist.summary.backup` | `string` = `/tmp/bk` | `backup: %s` | `backup: /tmp/bk` | M1 이 채움 |
+  | `checklist.summary.recover` | `string` = `restore-cmd` | `recover: %s` | `recover: restore-cmd` | M1 이 채움 |
+
+  en 값과 en 기대 출력은 이 SPEC 이 정한다(이 카드의 en 문구). ko·ja·zh 기대 출력은 문구가 run 단계 산출물이라 plan 단계에서 적지 않는다 — M1 이 카탈로그 값을 넣는 같은 커밋에서 테스트 표의 그 세 칸을 채우고, 판정은 위 바이트 비교와 키 수 가드가 한다. 형식 지시가 없는 키(`checklist.header.init`, `checklist.group.*`, `checklist.item.*`, `checklist.status.*`, `checklist.summary.done`·`failed`·`warnings_outside`)는 표에 없다 — 그 값에 `%` 를 넣으면 가드가 빨개진다. 표 밖 키에 형식 지시가 필요하거나 en 값·인자를 바꿔야 하면 run 단계는 막힘 보고를 내고 manager-spec 이 이 표를 고친다.
 - 종류: release-blocking. RED 이유: L2·L3·L4·L5 — 네 카탈로그 모두 `checklist.` 키가 0개다.
 - 녹색 경로(M1): `go test ./internal/tui -run '^TestChecklistCatalogFourLocales$' -count=1 -v` → `--- PASS: TestChecklistCatalogFourLocales `. 보조 관측: `/usr/bin/grep -c "^checklist\." internal/tui/messages/zh.yaml` → en 과 같은 양수, 종료 0.
-- 뮤턴트: ja 에 키를 빠뜨리면 `Translate` 가 en 으로 대체해 화면은 멀쩡해 보인다 → 집합 비교가 잡는다. 값에 키 이름을 그대로 넣는 뮤턴트 → 값 ≠ 키 조건이 잡는다. ja·zh 값을 en 문구 그대로 복사하는 뮤턴트 → ja·zh ≠ en 조건이 잡는다. (v0.2.2, 결정 기록 §15.107) en `Changed %d` 에 ja `変更 %s件` 처럼 지시자 개수는 같고 동사가 다른 값 → v0.2.1 의 개수 비교는 녹색이지만 화면에 `変更 %!s(int=7)件` 이 찍힌다. 이 기준에서는 기준 인자(`int`)로 ja 값을 실행한 출력의 `%!` 로 실패한다. 사실 칸(트리 `eb2a9dfc21`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/fmtprobe/main.go`(두 줄 `fmt.Println(fmt.Sprintf("Changed %d", 7))`, `fmt.Println(fmt.Sprintf("変更 %s件", 7))`) → stdout `Changed 7` / `変更 %!s(int=7)件`, 종료 0. (v0.2.5, 결정 기록 §15.115) 손으로 쓴 서식 해석기(v0.2.2 의 "나온 순서대로 1, 2, …" 규칙과 v0.2.4 의 "직전 번호 + 1" 소비 규칙 모두)는 `fmt` 문법의 구석마다 `fmt` 와 어긋났다 — codex 가 v0.2.4 규칙에서 셋째 구석을 찾았다: `%[2]%` 처럼 번호 뒤에 오는 문자 그대로의 퍼센트 다음에는 규칙의 인자 계산이 `fmt` 와 어긋난다(`fmt` 는 `%[1]s %[2]% %s` 와 `%[1]s %[2]% %[2]s` 를 둘 다 `A % B` 로 찍는다 — 아래 사실 칸 `raw1`·`raw2`). 그래서 이 기준은 해석기를 두지 않고, 해석기를 넣는 구현은 위 고정 회귀 묶음의 판정과 어긋나는 순간 빨개진다. `%!` 만 보고 횟수를 비교하지 않는 구현 → `%[2]s %s %[3]s` 는 `%!` 없이 `B C C` 를 내므로 녹색이 되지만, 횟수 비교(기준 인자 1번 0회·3번 2회)와 회귀 묶음의 "다름" 단언으로 실패한다. 번호를 붙인 서식은 쓰지 않은 인자를 `%!(EXTRA …)` 로 알리지 않으므로 횟수 비교가 필요하다 — 사실 칸(트리 `eff053068d`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/extraprobe7/main.go`(`fmt.Sprintf("%[2]s", "A", "B")`, `fmt.Sprintf("%s", "A", "B")`) → stdout `B` / `A%!(EXTRA string=B)`, 종료 0. 절차와 회귀 묶음의 사실 칸(트리 `d239bc3e75`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/fmtexec8/main.go` — 위 절차 (i)~(iii) 를 해석기 없이 그대로 구현한 탐침(인자 수 상한 4)으로, 먼저 두 값을 인자 `"A"`, `"B"` 로 그대로 찍고 이어서 묶음의 각 쌍을 판정한다 → 종료 0, stdout 그대로:
+- 뮤턴트: ja 에 키를 빠뜨리면 `Translate` 가 en 으로 대체해 화면은 멀쩡해 보인다 → 집합 비교가 잡는다. 값에 키 이름을 그대로 넣는 뮤턴트 → 값 ≠ 키 조건이 잡는다. ja·zh 값을 en 문구 그대로 복사하는 뮤턴트 → ja·zh ≠ en 조건이 잡는다. (v0.2.2, 결정 기록 §15.107) en `Changed %d` 에 ja `変更 %s件` 처럼 지시자 개수는 같고 동사가 다른 값 → v0.2.1 의 개수 비교는 녹색이지만 화면에 `変更 %!s(int=7)件` 이 찍힌다. 이 기준에서는 그 키 행의 ja 칸 비교에서 `変更 %!s(int=7)件` 이 기대 문자열과 달라 실패한다. 사실 칸(트리 `eb2a9dfc21`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/fmtprobe/main.go`(두 줄 `fmt.Println(fmt.Sprintf("Changed %d", 7))`, `fmt.Println(fmt.Sprintf("変更 %s件", 7))`) → stdout `Changed 7` / `変更 %!s(int=7)件`, 종료 0. (v0.2.6, 결정 기록 §15.119) 인자를 빠뜨린 번역 — en `Project %.2s: %s` 에 ja `プロジェクト %[2]s` → v0.2.5 의 범용 판정 절차는 첫 인자가 두 출력 모두에 0번 나와 같다고 보았다(아래 `old drop` — en 의 `%.2s` 가 첫 인자를 두 글자로 잘라 그 값이 출력에 온전히 남지 않는다). 표에서는 ja 칸 기대 문자열과 달라 실패한다(`table drop`). 깨진 en 값 `broken %` → v0.2.5 절차에는 끝나는 조건이 없었고 인자 10개 상한에서도 2047 조합이 모두 실패했다(`old broken`). 표에서는 en 칸 비교 한 번으로 실패한다(`table broken`). 표에 없는 형식 키를 카탈로그에 더한 구현 → 키 수 가드로 실패(`table guard`). 표의 키를 카탈로그에서 지운 구현 → 가드로 실패(`table missing`). 사실 칸(트리 `c4349ba30f`, `go version go1.26.8 darwin/arm64`): 명령 `go run <스크래치>/table9/main.go` — 앞부분은 v0.2.5 절차를 그대로(인자 상한 10) 돌리고, 뒷부분은 예시 행 하나(`k.project`, 인자 `"MOAI-X"`, `"demo"`, 기대 en `Project MO: demo`, ja `プロジェクト MO: demo`)로 표 판정(바이트 비교 + 키 수 가드)을 돌린 탐침이다 → 종료 0, stdout 그대로:
 
   ```text
-  raw1 A % B
-  raw2 A % B
-  "%[1]s %[2]% %s" vs "%[1]s %[2]% %[2]s" -> equal (n=2 en="<s1> % <s2>" other="<s1> % <s2>")
-  "%s %s %[3]s" vs "%[2]s %s %[3]s" -> different (counts [1 1 1] vs [0 1 2])
-  "%[3]s %[1]s %d" vs "%[3]s %[1]s %d" -> equal (n=3 en="<s3> <s1> 90002" other="<s3> <s1> 90002")
-  "Changed %d" vs "変更 %s件" -> different (%! in "変更 %!s(int=90001)件")
-  "Changed %d" vs "変更 %d件" -> equal (n=1 en="Changed 90001" other="変更 90001件")
-  "%s of %s" vs "%[2]sの%[1]s" -> equal (n=2 en="<s1> of <s2>" other="<s2>の<s1>")
+  old drop: equal (en="Project <s: <s2>" other="プロジェクト <s2>")
+  old broken: no sentinel set after 2047 combinations
+  table drop: [k.project/ja got "プロジェクト demo" want "プロジェクト MO: demo"]
+  table good: []
+  table broken: [k.project/en got "broken %!(NOVERB)%!(EXTRA string=MOAI-X, string=demo)" want "Project MO: demo"]
+  table guard: [format-bearing key k.extra (en) not in table format-bearing key k.extra (ja) not in table]
+  table missing: [table key k.project missing in en catalog table key k.project missing in ja catalog]
+  ```
+
+  표의 en 열 사실 칸(같은 트리, 같은 `go version`): 명령 `go run <스크래치>/encol9/main.go` — 표의 행 열 개의 en 값을 그 행의 인자로 `fmt.Sprintf` 해 `키|출력` 으로 찍음 → 종료 0, stdout 그대로:
+
+  ```text
+  checklist.summary.created_files|2 files created
+  checklist.summary.created_dirs|13 directories
+  checklist.summary.changed|7 changed
+  checklist.summary.preserved|3 preserved
+  checklist.summary.warnings|warnings 1
+  checklist.summary.elapsed|elapsed 1.5s
+  checklist.summary.deploy_mode|deploy mode: plugin
+  checklist.summary.next_steps|next steps: cd demo
+  checklist.summary.backup|backup: /tmp/bk
+  checklist.summary.recover|recover: restore-cmd
   ```
 
   렌더러가 없는 키를 불러 원시 키가 화면에 남는 뮤턴트 → AC-TCL-023 과 AC-TCL-011 의 골든 원시 키 검사가 잡는다.
