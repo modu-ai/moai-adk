@@ -400,12 +400,46 @@ func ResolveLandedEvidence(ctx context.Context, dir, landedSHA, landedRef string
 // observed before it belongs to an earlier issuance of the same card id and
 // cannot be this run's evidence (card t1962). found is false when the run holds
 // no event naming the card, so the caller can tell "unknown" from "early".
+//
+// A card a consolidation moved INTO runID keeps its earlier events under the
+// run it came from, so the start is the earliest over the run's own events and
+// those of every source run the card was moved from (REQ-FCR-025, the same
+// movedCardSources walk LoadCardEvents uses, chains A→B→C included). An
+// abandoned card contributes nothing from its source run. Read-only.
 func (f *FactoryDB) CardEngagementStart(ctx context.Context, runID, cardID string) (time.Time, bool, error) {
+	sources, err := f.movedCardSources(ctx, runID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	runs := []string{runID}
+	for src, moved := range sources {
+		if moved[cardID] {
+			runs = append(runs, src)
+		}
+	}
+	var first time.Time
+	found := false
+	for _, run := range runs {
+		t, ok, err := f.earliestCardEvent(ctx, run, cardID)
+		if err != nil {
+			return time.Time{}, false, err
+		}
+		if ok && (!found || t.Before(first)) {
+			first, found = t, true
+		}
+	}
+	return first, found, nil
+}
+
+// earliestCardEvent is the earliest parsable event instant naming cardID that
+// run holds. The rows are drained and closed before it returns (the pool holds
+// one connection).
+func (f *FactoryDB) earliestCardEvent(ctx context.Context, run, cardID string) (time.Time, bool, error) {
 	// SQL: every value goes through a ? placeholder. The timestamps are
 	// RFC3339Nano text of varying length, so they are compared as times in Go,
 	// never lexicographically in SQL.
 	rows, err := f.DB.QueryContext(ctx,
-		`SELECT created_at FROM events WHERE run_id=? AND json_extract(payload_json,'$.card_id')=?`, runID, cardID)
+		`SELECT created_at FROM events WHERE run_id=? AND json_extract(payload_json,'$.card_id')=?`, run, cardID)
 	if err != nil {
 		return time.Time{}, false, err
 	}

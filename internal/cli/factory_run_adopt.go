@@ -14,23 +14,35 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// factory_run_adopt.go — the launcher-side half of the leader-resume run
-// re-adoption (card t1707): when a RESUME-shaped leader start would mint a
-// fresh run id because the id's only carrier (the launch environment) is gone,
-// the launcher re-adopts the prior run instead, so every card record, worker
-// registration, and lane binding the run carries survives the leader process
-// change.
+// factory_run_adopt.go — the launcher-side half of the leader-start run
+// adoption. A leader restart is a new process, so the previous run's owner
+// stamp is dead while its cards, worker registrations and lane bindings are
+// alive (card t1707). The launcher therefore adopts the prior run instead of
+// minting a fresh id over it, and — since card t1963, SPEC-FACTORY-COMPLETION-
+// RECOVERY-001 REQ-FCR-017/018 — it does so without a resume argument and
+// folds every OTHER dead-owner run into the adopted one, so a leader start
+// leaves one active run instead of one more zombie.
 
 // leaderResumeAdoptionBasis is the basis the adoption records in the run's
 // run.resumed event, so the audit trail names why the run id survived.
 const leaderResumeAdoptionBasis = "leader-resume-adoption"
 
+// leaderAdoptOptions resolves the reconcile options the leader-entry adoption
+// classifies under. A seam so a test can pin the boot proof's host-boot time;
+// production is the shared option set every retirement path passes.
+var leaderAdoptOptions = factorymsg.ReconcileOptionsFor
+
+// leaderAdoptBeforeAdopt is a test-only seam between the classification and
+// the adoption compare-and-set: nil in production, a test uses it to change an
+// owner stamp (a second leader winning the race) or to break the database
+// handle in that window.
+var leaderAdoptBeforeAdopt func(db *homestate.FactoryDB)
+
 // leaderRunIDWasMinted reports whether the run id the leader entry published
-// was freshly minted — the condition under which resume re-adoption may
-// replace it. An id the operator supplied explicitly (a pasted
-// `leader-<run-id>` name, a still-set environment marker, or `--factory-run`)
-// is deliberate and is never overridden; only the NewRunID() fallback step of
-// leaderRunID mints.
+// was freshly minted — the condition under which adoption may replace it. An
+// id the operator supplied explicitly (a pasted `leader-<run-id>` name, a
+// still-set environment marker, or `--factory-run`) is deliberate and is never
+// overridden; only the NewRunID() fallback step of leaderRunID mints.
 func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
 	if priorEnvRunID != "" {
 		return false
@@ -41,26 +53,31 @@ func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
 	return true
 }
 
-// adoptResumedLeaderRun re-adopts the prior run on a resume-shaped leader
-// start (card t1707). shouldAdopt is the call site's combined gate: the launch
-// carries a resume carrier AND the published id was freshly minted AND no
-// explicit --factory-run was given. On adoption the launcher republishes the
-// adopted id AND its conventional address into the environment BEFORE the
-// SessionStart notice and the messaging store open read them —
-// enterFactoryLeaderMode stamped this launch's minted id into the address
-// variable, and the notice must advertise the adopted run (sync-audit t1707
-// F4) — which rebinds leader messaging to the adopted run (the third clause of
-// the card fix).
+// adoptResumedLeaderRun adopts the newest dead-owner run on a leader start and
+// consolidates the others into it. shouldAdopt is the call site's gate: the
+// published id was freshly minted AND no explicit --factory-run was given.
+// On adoption the launcher republishes the adopted id AND its conventional
+// address into the environment BEFORE the SessionStart notice and the
+// messaging store open read them — enterFactoryLeaderMode stamped this
+// launch's minted id into the address variable, and the notice must advertise
+// the adopted run (sync-audit t1707 F4).
 //
-// Zero candidates adopts nothing (a genuinely fresh start mints as before);
-// anything the finder did not return as adoptable — several candidates, or a
-// single candidate whose owner is only indeterminate (sync-audit t1707 F2) —
-// adopts nothing and writes one warn line per candidate to warn naming the
-// run, its owner classification, and the deliberate re-adoption command, the
-// card's "refuse or warn and offer re-adoption". adopt "" with a nil error
-// means "mint as before"; an error is a factory database failure and
-// propagates, matching recordFactoryRunStart's own failure contract at the
-// same call site.
+// Nothing is adopted — the minted id stands and one warn line per candidate
+// names the run, its owner classification and the deliberate --factory-run
+// command — when no run holds live records, when any active run classifies
+// live or indeterminate (it may be a live leader), when no candidate is dead on
+// its own stamp, and when the newest candidate is led by codex or holds a live
+// legacy peer record: the newest is the only run considered, so which run a
+// start resumes never depends on which one happened to be rejected.
+//
+// The adoption is the owner-stamp compare-and-set. A leader that loses it
+// does not fail: it keeps the minted id, writes one warn line naming the
+// contested run, and consolidates nothing. Any other adoption error is a
+// database failure and propagates, matching recordFactoryRunStart's own
+// failure contract at the same call site.
+//
+// @MX:WARN: [AUTO] decides which run a restarted leader owns and which dead runs are retired behind it
+// @MX:REASON: adopting beside a live or unknown leader would overwrite its stamp and move its cards (t1707 F2); every guard here fails toward adopting nothing
 func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopted string, err error) {
 	if !shouldAdopt {
 		return "", nil
@@ -70,99 +87,138 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 		return "", openErr
 	}
 	defer closeFactoryInto(&err, db, "factory state")
-	adopt, candidates, err := db.FindResumableRun(context.Background(), factorymsg.ReconcileOptionsFor(root))
+	ctx := context.Background()
+	opts := leaderAdoptOptions(root)
+	plan, err := db.PlanLeaderEntry(ctx, opts)
 	if err != nil {
 		return "", err
 	}
-	if adopt.RunID == "" {
-		for _, c := range candidates {
-			_, _ = fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
-		}
+	if plan.Blocked || len(plan.Stamped) == 0 {
+		warnLeaderCandidates(warn, plan.Candidates, "")
 		return "", nil
 	}
-	// The automatic path shares the explicit path's cross-backend guard
-	// (card-review round 2): a codex-led run is never adopted by a claude
-	// leader, deliberately or automatically — it is warned with the same
-	// re-adoption/retire offer instead of being taken over silently.
-	if err := refuseCodexLeaderRun(root, adopt.RunID); err != nil {
-		if !errors.Is(err, ErrRunLedByCodex) {
-			return "", err
-		}
-		_, _ = fmt.Fprintf(warn, "factory leader resume: run %s is led by codex — a claude leader does not adopt it; retire it first or relaunch the codex leader deliberately\n", adopt.RunID)
-		return "", nil
-	}
-	// REQ-RNC-022 parity with the explicit path (codex_audit round 2): a run
-	// holding a LIVE legacy peer record — a worker registered by a binary
-	// before the leader/lane rename — is not adoptable, because the messaging
-	// layer refuses to address that peer alongside this leader. The same
-	// refusal enterSelectedFactoryRun applies, warned here rather than
-	// failing the launch.
-	if value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, adopt.RunID); err != nil {
+	adopt := plan.Stamped[0]
+	refusal, err := leaderAdoptionRefusal(root, adopt.RunID)
+	if err != nil {
 		return "", err
-	} else if live {
-		_, _ = fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first\n", adopt.RunID, value, adopt.RunID)
+	}
+	if refusal != "" {
+		_, _ = fmt.Fprintln(warn, refusal)
+		warnLeaderCandidates(warn, plan.Candidates, adopt.RunID)
 		return "", nil
 	}
-	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
+	if leaderAdoptBeforeAdopt != nil {
+		leaderAdoptBeforeAdopt(db)
+	}
+	start := homestate.CurrentProcessFingerprint()
+	if err := db.AdoptRun(ctx, adopt, os.Getpid(), start, leaderResumeAdoptionBasis); err != nil {
+		if errors.Is(err, homestate.ErrAdoptStampChanged) {
+			_, _ = fmt.Fprintf(warn, "factory leader resume: run %s was adopted by another leader first — this leader starts a fresh run and consolidates nothing\n", adopt.RunID)
+			return "", nil
+		}
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
 	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(adopt.RunID))
+	target := homestate.RunOwner{
+		RunID: adopt.RunID, Status: "active", LeadPID: os.Getpid(), LeadProcessStart: start,
+		Classification: homestate.OwnerLive, Basis: homestate.BasisStamp,
+	}
+	consolidateDeadRuns(ctx, db, root, plan, target, opts, warn)
 	return adopt.RunID, nil
 }
 
-// strictResumeCarrierSeen reports whether the args carry an EXPLICIT resume
-// option — the auto-adoption adjudication, deliberately narrower than
-// scanResumeArgs's refusal-side detection (codex_audit t1707 round 3): the
-// guard's isShortClusterCarryingR fires on an `r` anywhere inside a short
-// cluster (`-derror`), which is the safe side for a REFUSAL but the wrong
-// side for adoption — a false fire would hand a brand-new session an
-// existing run's ownership and messaging. Adoption therefore judges only the
-// unambiguous spellings of the same vocabulary: the standalone
-// `--resume`/`-r` options, the equals form, and the attached `-r<value>`
-// cluster whose first option IS the resume flag. A missed adoption is
-// fail-safe since the live-records guard: the minted run simply joins the
-// prior one in the AMBIGUOUS_FACTORY refusal instead of taking it over.
-func strictResumeCarrierSeen(args []string) bool {
-	separators := 0
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == argSeparator {
-			separators++
-			if separators >= 2 {
-				return false // prompt text: nothing after the second separator is an option
-			}
+// warnLeaderCandidates writes the adopt-nothing warning, one line per
+// candidate, skipping the run (if any) whose own refusal line was written.
+func warnLeaderCandidates(warn io.Writer, candidates []homestate.RunOwner, skip string) {
+	for _, c := range candidates {
+		if c.RunID == skip {
 			continue
 		}
-		if arg == resumeFlag || arg == resumeFlagShort {
-			return true
-		}
-		if _, isEquals := resumeEqualsValue(arg); isEquals {
-			return true
-		}
-		if strings.HasPrefix(arg, "-r") && arg != resumeFlagShort {
-			return true // the attached-value short form `-r<session-id>`
-		}
-		// A required-value option consumes the next token, so a value that
-		// merely looks like a resume option is never judged as one.
-		if segmentClass(arg, separators == 0) == claudeOptionRequiredValue {
-			if i+1 < len(args) && args[i+1] != argSeparator {
-				i++
-			}
-		}
+		_, _ = fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
 	}
-	return false
 }
 
-// leaderEntryRunAdoption is the leader branch's resume re-adoption entry
-// (card t1707), shared by the cc and glm leader branches — glm mirrors cc
-// exactly except for the backend constant. It computes the call site's
-// combined gate — an EXPLICIT resume carrier (strictResumeCarrierSeen) AND a
-// freshly minted id AND no explicit --factory-run — and re-adopts the prior
-// run when it holds.
-func leaderEntryRunAdoption(root string, args []string, leaderLabel, priorRunID, explicitRun string, warn io.Writer) (string, error) {
-	resumeSeen := strictResumeCarrierSeen(args)
-	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
+// leaderAdoptionRefusal reports why a claude leader may not take over the run:
+// the automatic path shares the explicit path's cross-backend guard (card-review
+// round 2) and the legacy-record guard (REQ-RNC-022). It returns the warn line,
+// or "" when the run is adoptable; an error is a database failure.
+func leaderAdoptionRefusal(root, runID string) (string, error) {
+	if err := refuseCodexLeaderRun(root, runID); err != nil {
+		if !errors.Is(err, ErrRunLedByCodex) {
+			return "", err
+		}
+		return fmt.Sprintf("factory leader resume: run %s is led by codex — a claude leader does not adopt it; retire it first or relaunch the codex leader deliberately", runID), nil
+	}
+	value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, runID)
+	if err != nil {
+		return "", err
+	}
+	if live {
+		return fmt.Sprintf("factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first", runID, value, runID), nil
+	}
+	return "", nil
+}
+
+// consolidateDeadRuns folds every other dead-stamp run into the run just
+// adopted, one consolidation per source, and names on stderr what moved. A
+// source the filter excludes — led by codex, holding a live legacy peer, or
+// proved dead only through its peer or the boot proof — or that the operation
+// refuses stays active with its cards untouched, and one line says why. The
+// adoption already happened, so a failure here is reported and the launch goes
+// on: the next leader start finds the run still in the plan.
+func consolidateDeadRuns(ctx context.Context, db *homestate.FactoryDB, root string, plan homestate.LeaderEntryPlan, target homestate.RunOwner, opts homestate.ReconcileOptions, warn io.Writer) {
+	stamped := make(map[string]bool, len(plan.Stamped))
+	for _, s := range plan.Stamped {
+		stamped[s.RunID] = true
+	}
+	stays := func(runID, format string, args ...any) {
+		_, _ = fmt.Fprintf(warn, "factory leader resume: run %s stays active — %s\n", runID, fmt.Sprintf(format, args...))
+	}
+	for _, src := range plan.Stamped {
+		if src.RunID == target.RunID {
+			continue
+		}
+		refusal, err := leaderAdoptionRefusal(root, src.RunID)
+		if err != nil {
+			stays(src.RunID, "%v", err)
+			continue
+		}
+		if refusal != "" {
+			stays(src.RunID, "%s", strings.TrimPrefix(refusal, "factory leader resume: "))
+			continue
+		}
+		res, err := db.RebindRun(ctx, homestate.RebindRequest{Source: src, Target: target, RequireStampBasis: true}, opts)
+		if err != nil {
+			stays(src.RunID, "the consolidation was refused: %v", err)
+			continue
+		}
+		_, _ = fmt.Fprintf(warn, "factory leader resume: consolidated run %s into %s — moved cards: %s; abandoned cards: %s\n",
+			src.RunID, target.RunID, joinOrNone(res.Moved), joinOrNone(res.Abandoned))
+	}
+	for _, c := range plan.Candidates {
+		if stamped[c.RunID] {
+			continue
+		}
+		stays(c.RunID, "its owner was proved dead through the %s proof, not its own stamp; retire it deliberately with `moai factory runs --retire %s`", c.Basis, c.RunID)
+	}
+}
+
+func joinOrNone(ids []string) string {
+	if len(ids) == 0 {
+		return "none"
+	}
+	return strings.Join(ids, ", ")
+}
+
+// leaderEntryRunAdoption is the leader branch's adoption entry (card t1707,
+// widened by card t1963), shared by the cc and glm leader branches — glm
+// mirrors cc exactly except for the backend constant. The gate is a freshly
+// minted id and no explicit --factory-run; the launch arguments no longer
+// matter (decision Q2: no --resume is needed), and are accepted only so the
+// call sites hand over the same launch view they always did.
+func leaderEntryRunAdoption(root string, _ []string, leaderLabel, priorRunID, explicitRun string, warn io.Writer) (string, error) {
+	return adoptResumedLeaderRun(root, explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
 }
 
 // recordLeaderRunStart records the leader entry's run start: on the adopted
