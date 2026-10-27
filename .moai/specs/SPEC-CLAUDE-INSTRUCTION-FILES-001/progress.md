@@ -129,4 +129,21 @@ _run_status의 `complete`는 run 단계 관측 종결을 뜻한다(사양 상태
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-10-27T14:00:03Z
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lane backfills the real SHA in the next commit
+changelog_entries_added: 1
+changelog_entry_position: "[Unreleased] > Changed — SPEC-CLAUDE-INSTRUCTION-FILES-001 (appended after the SPEC-CI-CODEX-REVIEW-001 entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed on the single sync commit (3-phase close)"
+  plan_md: "stateless — no status field (file carries no YAML frontmatter block; nothing to refresh)"
+  acceptance_md: "stateless — no status field (file carries no YAML frontmatter block; nothing to refresh)"
+b12_self_test_a: "grep -c 'SPEC-CLAUDE-INSTRUCTION-FILES-001' CHANGELOG.md = 0 observed before emission (exit 1, no duplicate)"
+b12_self_test_b: "AC live count = 16 (AC_FILE=acceptance.md, tier M; live=16 excluded=0 ambiguous=0); CHANGELOG entry references the same 16 criteria AC-CIF-001..016"
+b12_self_test_c: "every path named in the entry verified present (internal/defs/files.go, internal/cli/migrate_local_instructions.go, internal/template/harness_fs.go, internal/cli/harness/install.go, internal/cli/update.go, internal/cli/doctor.go)"
+readme_sync: "README.md / README.ko.md / README.ja.md / README.zh.md harness-table rows and common-assets paragraph corrected (AGENTS.md -> CLAUDE.md); docs-site untouched (out of card scope)"
+lint_observation: "moai spec lint SPEC-CLAUDE-INSTRUCTION-FILES-001 = 'No findings' observed pre-commit at HEAD 5637461a26"
+```
+
+_sync_status의 `complete`는 sync 단계 산출물 종결을 뜻한다(3-phase close: `in-progress → implemented → completed` 전이가 본 싱크 커밋에 탑재)._

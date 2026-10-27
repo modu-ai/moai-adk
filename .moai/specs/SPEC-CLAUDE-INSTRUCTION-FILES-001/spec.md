@@ -2,7 +2,7 @@
 id: SPEC-CLAUDE-INSTRUCTION-FILES-001
 title: "활성 instruction-file 표면의 CLAUDE.md/CLAUDE.local.md 정규 쌍 전환"
 version: "0.2.5"
-status: in-progress
+status: completed
 created: 2026-10-27
 updated: 2026-10-27
 author: manager-spec

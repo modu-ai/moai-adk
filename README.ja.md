@@ -277,8 +277,8 @@ cd my-project
 
 | 選択 | プロジェクトルートに生成されるもの |
 |---|---|
-| `claude` (デフォルト) | `.claude/` サーフェス全体と `AGENTS.md` — 従来のデフォルト動作 |
-| `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
+| `claude` (デフォルト) | `.claude/` サーフェス全体と `CLAUDE.md` |
+| `gpt` | Codex のみのデプロイ: `CLAUDE.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリーと `.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません。既存プロジェクトの `AGENTS.md`/`AGENTS.local.md` は `moai migrate local-instructions` が `CLAUDE.md`/`CLAUDE.local.md` へ無損失で移動します |
 | `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
 
 #### デプロイモード: プラグイン既定とフルローカルデプロイ
