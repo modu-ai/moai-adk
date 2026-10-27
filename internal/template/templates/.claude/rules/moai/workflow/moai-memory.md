@@ -29,7 +29,7 @@ Auto memory (level 6 above) is a native Claude Code feature (requires v2.1.59 or
 | Index loading | `MEMORY.md` is loaded at the start of every session, and the index truncates at **200 lines or 25KB, whichever comes first** — upstream-enforced, announced in the Claude Code CHANGELOG under **2.1.83**. The cut is **not silent**: an over-limit write is an explicit error (2.1.210) and the truncation warning names how many lines were cut (2.1.268). See § MEMORY.md Index Budget |
 | Topic files | `debugging.md`, `api-conventions.md`, etc. are NOT loaded at startup; Claude reads them on demand. They are plain markdown with **no mandated frontmatter schema** |
 | Subagents | Subagents can maintain their own auto memory (see the Claude Code sub-agents documentation) |
-| Inspect | `/memory` lists the loaded CLAUDE.md and rules files, toggles auto memory, and links to the auto-memory folder |
+| Inspect | `/memory` lists the loaded instruction (CLAUDE.md) and rules files, toggles auto memory, and links to the auto-memory folder |
 
 Full reference: `.claude/skills/moai-foundation-cc/reference/claude-code-memory-official.md`.
 
@@ -197,8 +197,8 @@ reopens.
 **Why at write time rather than by folding.** Folding is a repair, and a repair that must be
 re-run is a loop — the index refills at its own rate between folds, so each fold's saving is spent
 before the next one is due. Deciding the destination when the line is authored removes the refill
-instead of absorbing it. On a store measured while this clause was written, **86% of entry lines
-were card-scoped** — fold-eligible from the day they were written — against a small remainder that
+instead of absorbing it. Measured on this repository's store: **95 of 110 entry lines (86%) were
+card-scoped**, i.e. fold-eligible from the day they were written, against **16 lines** that
 genuinely had to stay.
 
 **The acceptance criterion for any change to this section is reachability, never size.** Count the
@@ -237,7 +237,7 @@ The following content MUST NOT be stored in memory files:
 | Code patterns / conventions | Architecture diagrams, file path conventions already in the codebase |
 | Git history | `git log` output, who changed what |
 | Debug recipes | Step-by-step fix instructions already captured in the fix commit |
-| CLAUDE.md mirrors | Anything already documented in CLAUDE.md or `.claude/rules/` |
+| Instruction mirrors | Anything already documented in CLAUDE.md or `.claude/rules/` |
 | Ephemeral state | In-progress task lists, current session context |
 
 Use the `MOAI_MEMORY_AUDIT=0` environment variable to temporarily disable taxonomy enforcement during bulk memory migrations.

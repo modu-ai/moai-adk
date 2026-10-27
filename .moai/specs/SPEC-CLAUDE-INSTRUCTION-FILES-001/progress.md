@@ -39,6 +39,15 @@ run_gate: iter2+ 독립 감사 PASS(최신 plan HEAD에 결속) + 리더 킥오�
 - **frozen 계약 (AC-CIF-013)**: `go test ./internal/contract/` ok — 4-이름 목록·pin 불변 (현행 green 유지 관측).
 - **GREEN**: `./internal/hook/` ok(383s 전체) · `./internal/harness/curator/` ok · `./internal/harness/ ./internal/contract/` ok · `./internal/cli/harness/` ok.
 
+### M4 — 룰/스킬/미러 스윕 (자체 전환 본체는 M2 커밋에 동반, 2026-10-27)
+
+- **스윕**: `.claude/rules/**` 13파일 + local 2파일, `.claude/skills/**` 11파일, `.claude/output-styles/moai/moai.md`, template mirror 13+6파일 — 전부 활성 참조(§13·§4.0 인용, paths: 스코프, 마커 계약, 메모리 위계)로 판별되어 CLAUDE 축으로 재지정. **의도적 보존**: hns-lsel-* 2건(REQ-CIF-014 frozen 4-이름 계약 서술 — AGENTS.md 보호 이름 생존이 서술의 전제), protected-zone/frozen 테이블(frozen 계약), t1984 소유 3파일, `.moai/policies/**`(AC 범위 밖·일부 금지).
+- **미러 큐레이션 존중**: agent-common-protocol-reference.md 미러는 내부 토큰 제거 fork — cp 재유입(누출 검출) 후 복원, 해당 미러는 원래부터 AGENTS 참조 0건이었음이 확인됨.
+- **ledger 재동결 (TMD-001 캐스케이드)**: binding_ledger.json 6행(ALB-0049/0080/0121/0135/0138/0197) after_text=CLAUDE 본문, before_text=git 앵커(a2a184ad3) 원문 보존 · output_style_ledger.json 2행(moai-0015/0245) 재동결(before=after=신규 본문) + moai.md anchor_body_sha256 재계산(5380fc2f…) · catalog.yaml 해시 재생성(gen-catalog-hashes --all, moai·moai-workflow-testing 갱신).
+- **AC-CIF-011 (프라이버시)**: 전환은 순수 이동(병합 없음) — CLAUDE.md ≡ 구 AGENTS.md 바이트 동일(cmp 관측)이므로 로컬 비공개 내용의 승격은 구성상 0건. 동사 출력·오류는 경로만 포함(본문 없음). 모호 콘텐츠 자동 분류·게시 경로 부재(수동 병합 안내만).
+- **AC-CIF-014 (역사 불변)**: `.moai/reports/**` git status 변경 0건 · `.moai/backups/local-instructions/` 기존 항목 없음(본 워크트리), 신규 4디렉터리만(verb MkdirTemp).
+- **GREEN**: `go test ./internal/template/` ok(356.7s 전체 — binding ledger·output-style ledger·catalog hash·내부누출·korean-leftover 전부).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
