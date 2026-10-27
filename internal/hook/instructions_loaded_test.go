@@ -305,7 +305,7 @@ func TestResolveInstructionPairPreference(t *testing.T) {
 	t.Parallel()
 
 	pairs := []struct {
-		name             string
+		name              string
 		canonical, legacy string
 	}{
 		{"shared pair", "CLAUDE.md", "AGENTS.md"},

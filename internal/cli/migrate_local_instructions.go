@@ -23,9 +23,9 @@ const localInstructionsBackupDir = ".moai/backups/local-instructions"
 // carry the production behavior; tests override them to inject the read->write
 // window edit, a refused rename, and a failed destination write.
 var (
-	migrateGuardHook func()                        // called between the read and the destination write
-	migrateRename    = os.Rename                   // the final atomic step and the preserve rename
-	migrateWriteDest = writeExclusiveKeepPartial   // the destination's exclusive write
+	migrateGuardHook func()                      // called between the read and the destination write
+	migrateRename    = os.Rename                 // the final atomic step and the preserve rename
+	migrateWriteDest = writeExclusiveKeepPartial // the destination's exclusive write
 )
 
 // instructionPair is one legacy->canonical migration path. Both pairs are
