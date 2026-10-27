@@ -219,15 +219,16 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiz
 
 // deployedWiringIsGPT reads the deployed layout as the interrupted --llm
 // record when no selection record exists (gate round 51-3, legacy fallback).
-// The codex-only deployer writes no .claude/ surface and projects AGENTS.md,
-// so .claude/ absent with AGENTS.md present names the gpt layout. The probe is
-// .claude/, not CLAUDE.md: no harness writes CLAUDE.md any more, so a
-// CLAUDE.md probe read every claude and both project as gpt.
+// The codex-only deployer writes no .claude/ surface and projects CLAUDE.md,
+// so .claude/ absent with CLAUDE.md present names the gpt layout. The probe is
+// .claude/, not AGENTS.md: no harness writes AGENTS.md any more
+// (SPEC-CLAUDE-INSTRUCTION-FILES-001), so an AGENTS.md probe read every
+// claude and both project as gpt.
 func deployedWiringIsGPT(projectRoot string) bool {
 	if _, err := os.Stat(filepath.Join(projectRoot, ".claude")); err == nil {
 		return false // the claude-side deployer ran (claude and both alike)
 	}
-	_, err := os.Stat(filepath.Join(projectRoot, "AGENTS.md"))
+	_, err := os.Stat(filepath.Join(projectRoot, "CLAUDE.md"))
 	return err == nil
 }
 
@@ -239,7 +240,7 @@ func deployedWiringIsGPT(projectRoot string) bool {
 // would rewrite llm.yaml over the old harness's files and still report success,
 // without the claude harness's own files — a mismatched tree. The deployed
 // harness is read in order: the selection record the failing run left; with no
-// record, the GPT layout, .claude/ absent with AGENTS.md present. With none of
+// record, the GPT layout, .claude/ absent with CLAUDE.md present. With none of
 // this evidence, nothing is refused.
 func refuseResumeHarnessChange(projectRoot string) error {
 	if recorded, ok := readResumeWiring(projectRoot); ok {

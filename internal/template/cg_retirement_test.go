@@ -32,10 +32,10 @@ func TestCGEmbeddedRetirementPreservesRoutingAndAudit(t *testing.T) {
 			t.Errorf("rendered retired instruction: %s", retired)
 		}
 	}
-	// AGENTS.md-primary product: the standing contract (and its CG-migration
-	// row) ships as AGENTS.md.tmpl; the native Agent Teams allowance lives in
+	// CLAUDE.md-primary product: the standing contract (and its CG-migration
+	// row) ships as CLAUDE.md.tmpl; the native Agent Teams allowance lives in
 	// the orchestration-modes doctrine the contract cross-references.
-	agents := render("AGENTS.md.tmpl")
+	agents := render("CLAUDE.md.tmpl")
 	if !strings.Contains(agents, "moai migrate cg") {
 		t.Error("explicit migration missing")
 	}

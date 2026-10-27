@@ -56,16 +56,16 @@ func hasHarness(llm, harness string) bool {
 	return strings.Contains(llm, "harness: "+harness) || strings.Contains(llm, `harness: "`+harness+`"`)
 }
 
-// TestInitResumeDoesNotInferBothFromAGENTSFile — finding 1, the "do not infer
-// from file presence" rule. A claude-only project carries AGENTS.md (the
+// TestInitResumeDoesNotInferBothFromInstructionFile — finding 1, the "do not
+// infer from file presence" rule. A claude-only project carries CLAUDE.md (the
 // template writes it for every harness); a user who hand-wrote their own
-// AGENTS.md must still resume as claude. The recorded selection decides, not
-// the presence of an AGENTS.md file.
-func TestInitResumeDoesNotInferBothFromAGENTSFile(t *testing.T) {
+// CLAUDE.md must still resume as claude. The recorded selection decides, not
+// the presence of a CLAUDE.md file.
+func TestInitResumeDoesNotInferBothFromInstructionFile(t *testing.T) {
 	resumeHome(t)
-	projectDir := filepath.Join(t.TempDir(), "claude-agents-proj")
+	projectDir := filepath.Join(t.TempDir(), "claude-claude-proj")
 	resumeSeedRun(t, projectDir, "claude")
-	if err := os.WriteFile(filepath.Join(projectDir, "AGENTS.md"), []byte("# hand-written\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "CLAUDE.md"), []byte("# hand-written\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -83,16 +83,17 @@ func TestInitResumeDoesNotInferBothFromAGENTSFile(t *testing.T) {
 // TestDeployedWiringIsGPTReadsTheClaudeSurface — the legacy layout fallback
 // (used only when no selection record exists) keys on the claude-side surface.
 // The codex-only deployer writes no .claude/ tree, so .claude/ absent with
-// AGENTS.md present is the gpt layout. CLAUDE.md is not a discriminator: no
-// harness writes it any more, and a CLAUDE.md probe read the claude layout as gpt.
+// CLAUDE.md present is the gpt layout. AGENTS.md is not a discriminator: no
+// harness writes AGENTS.md any more, and an AGENTS.md probe read the claude
+// layout as gpt.
 func TestDeployedWiringIsGPTReadsTheClaudeSurface(t *testing.T) {
 	cases := []struct {
 		name  string
 		paths []string // a trailing "/" names a directory
 		want  bool
 	}{
-		{"codex-only layout", []string{"AGENTS.md"}, true},
-		{"claude-side layout", []string{".claude/", "AGENTS.md"}, false},
+		{"codex-only layout", []string{"CLAUDE.md"}, true},
+		{"claude-side layout", []string{".claude/", "CLAUDE.md"}, false},
 		{"claude surface only", []string{".claude/"}, false},
 		{"empty project", nil, false},
 	}

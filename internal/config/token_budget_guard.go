@@ -138,7 +138,10 @@ func contractDocuments(repoRoot string) ([]string, error) {
 	if len(docs) == 0 {
 		return nil, nil // 열거에 AGENTS.md 가 없다 — AC-AMC-017 이 잡는 조건이다
 	}
-	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "AGENTS.md.tmpl"))
+	// SPEC-CLAUDE-INSTRUCTION-FILES-001 M1 rename fallout: the mirror is
+	// CLAUDE.md.tmpl now. The root-file axis above still reads AGENTS.md until
+	// the M3 reader retarget + M4 self-repo transition land together.
+	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "CLAUDE.md.tmpl"))
 	return docs, nil
 }
 

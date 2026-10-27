@@ -72,21 +72,27 @@ func TestCodexOnlyDeployerWalkIntegrity(t *testing.T) {
 	seen := make(map[string]bool, len(list))
 	for _, p := range list {
 		seen[p] = true
-		if p == ".claude" || strings.HasPrefix(p, ".claude/") || p == "CLAUDE.md" || p == ".mcp.json" ||
+		if p == ".claude" || strings.HasPrefix(p, ".claude/") || p == ".mcp.json" ||
 			p == ".claudeignore" || p == ".moai/status_line.sh" || p == ".moai/status_line.sh.tmpl" {
 			t.Errorf("hidden path %q visible in codex-only template listing (REQ-IH-005)", p)
+		}
+		// SPEC-CLAUDE-INSTRUCTION-FILES-001: CLAUDE.md is the canonical shared
+		// instruction file deployed on every harness value — it is NOT a
+		// hidden claude-only surface any more, and the retired AGENTS.md must
+		// never appear as a deploy target (REQ-CIF-001/004).
+		if p == "AGENTS.md" || p == "AGENTS.local.md" {
+			t.Errorf("retired AGENTS instruction file %q visible in template listing", p)
 		}
 	}
 	for _, want := range []string{
 		".moai/config/sections/llm.yaml",
 		// DEPLOY-TARGET name, not the template-source name. `ListTemplates`
-		// strips the `.tmpl` suffix (deployer.go), so the mirror — which ships
-		// as `AGENTS.md.tmpl` to stay out of Codex's filename-keyed discovery
-		// inside this repo (card t925) — appears here as `AGENTS.md`.
+		// strips the `.tmpl` suffix (deployer.go), so the canonical template —
+		// which ships as `CLAUDE.md.tmpl` — appears here as `CLAUDE.md`.
 		// The two layers are easy to confuse: `harnessFS.Stat` in
 		// apply_harness_test.go sees template-SOURCE names and must be given
-		// `AGENTS.md.tmpl`, while this listing sees deploy targets.
-		"AGENTS.md",
+		// `CLAUDE.md.tmpl`, while this listing sees deploy targets.
+		"CLAUDE.md",
 		".gitignore",
 	} {
 		if !seen[want] {
@@ -123,18 +129,23 @@ func TestCodexOnlyForceUpdateVariant(t *testing.T) {
 	// A template context is REQUIRED, not incidental: the deployer only strips
 	// the `.tmpl` suffix on the render branch, which it takes when a renderer
 	// AND a context are both present. Passing nil here would deploy the mirror
-	// verbatim as `AGENTS.md.tmpl` and the assertion below would report a
+	// verbatim as `CLAUDE.md.tmpl` and the assertion below would report a
 	// regression that production does not have — both production deploy sites
 	// (initializer.go, mirror_notice.go) pass a context (card t925).
 	if err := rd.Deploy(context.Background(), root, mgr, NewTemplateContext()); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-		t.Errorf("AGENTS.md missing from force-update codex deploy: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Errorf("CLAUDE.md missing from force-update codex deploy: %v", err)
+	}
+	// SPEC-CLAUDE-INSTRUCTION-FILES-001: the retired AGENTS.md must not be
+	// deployed alongside the canonical file (REQ-CIF-001).
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err == nil {
+		t.Error("AGENTS.md deployed by the force-update codex deployer — retired name must not be created")
 	}
 	// ...and the template-source name must NOT survive into the project.
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md.tmpl")); err == nil {
-		t.Error("AGENTS.md.tmpl leaked into the deployed project — the .tmpl suffix must be stripped")
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md.tmpl")); err == nil {
+		t.Error("CLAUDE.md.tmpl leaked into the deployed project — the .tmpl suffix must be stripped")
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude")); err == nil {
 		t.Error(".claude/ deployed by the force-update codex deployer")
@@ -156,7 +167,7 @@ func TestCodexOnlyHiddenPathsErrNotExist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new deployer: %v", err)
 	}
-	for _, p := range []string{".claude/skills/moai/SKILL.md", "CLAUDE.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
+	for _, p := range []string{".claude/skills/moai/SKILL.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
 		// ExtractTemplate wraps ErrTemplateNotFound — the hidden contract is
 		// "reads as absent", whichever error shape the entry point wraps.
 		if _, err := d.ExtractTemplate(p); err == nil {
@@ -216,19 +227,20 @@ func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
 			if got, err := os.ReadFile(owned); err != nil || string(got) != "user policy note\n" {
 				t.Errorf("user policy note changed: bytes=%q error=%v", got, err)
 			}
-			for _, rel := range []string{".moai/policies/core/moai-constitution.md", ".moai/workflows/plan.md", "AGENTS.md"} {
+			for _, rel := range []string{".moai/policies/core/moai-constitution.md", ".moai/workflows/plan.md", "CLAUDE.md"} {
 				if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
 					t.Errorf("required shared reference %s: %v", rel, err)
 				}
 			}
-			// AGENTS.md-primary product: AGENTS.md (deployed from
-			// AGENTS.md.tmpl) is the sole instruction file for every harness
-			// value; CLAUDE.md is never deployed on any profile.
-			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-				t.Errorf("AGENTS.md presence = %v, want true on every profile", err == nil)
+			// CLAUDE.md-canonical product (SPEC-CLAUDE-INSTRUCTION-FILES-001):
+			// CLAUDE.md (deployed from CLAUDE.md.tmpl) is the sole instruction
+			// file for every harness value; AGENTS.md is never deployed on any
+			// profile.
+			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+				t.Errorf("CLAUDE.md presence = %v, want true on every profile", err == nil)
 			}
-			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err == nil {
-				t.Error("CLAUDE.md presence = true, want false on every profile")
+			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err == nil {
+				t.Error("AGENTS.md presence = true, want false on every profile")
 			}
 			// SPEC-USER-ASSET-INSTALL-001 (REQ-005): NO common agent or
 			// skill lands project-side in any profile — the user installer

@@ -136,11 +136,11 @@ func TestInit_BasicInitialization(t *testing.T) {
 	assertFileExists(t, filepath.Join(root, ".moai", "config", "sections", "quality.yaml"))
 	assertFileExists(t, filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
 
-	// AGENTS.md-primary product: the fallback path (nil deployer) writes no
-	// instruction file at all — AGENTS.md comes from the template deployer and
-	// CLAUDE.md is never written by any harness value.
+	// CLAUDE.md-canonical product: the fallback path (nil deployer) writes no
+	// instruction file at all — CLAUDE.md comes from the template deployer and
+	// AGENTS.md is never written by any harness value.
 	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
-		t.Error("CLAUDE.md must not be created by init")
+		t.Error("CLAUDE.md must not be created by the fallback path")
 	}
 
 	// Verify result
@@ -339,10 +339,10 @@ func TestInit_InvalidDevelopmentModeFallsBackToTDD(t *testing.T) {
 	}
 }
 
-// TestInit_NoInstructionStubOnFallback pins the AGENTS.md-primary conversion:
-// with no deployer the fallback path must not mint an instruction-file stub.
-// AGENTS.md is deployed from AGENTS.md.tmpl by the template deployer, and no
-// harness value of init writes CLAUDE.md.
+// TestInit_NoInstructionStubOnFallback pins the CLAUDE.md-canonical
+// conversion: with no deployer the fallback path must not mint an
+// instruction-file stub. CLAUDE.md is deployed from CLAUDE.md.tmpl by the
+// template deployer, and no harness value of init writes AGENTS.md.
 func TestInit_NoInstructionStubOnFallback(t *testing.T) {
 	root := t.TempDir()
 	init := NewInitializer(nil, nil, nil)

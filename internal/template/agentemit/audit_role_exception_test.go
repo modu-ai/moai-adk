@@ -24,7 +24,7 @@ import (
 const auditReturnMarker = "Return the complete verdict or report text as your final response"
 
 // parentWriteRowMarker and parentWriteMarker identify the parent-side
-// instruction on the surface Codex reads natively (the deployed AGENTS.md):
+// instruction on the surface Codex reads natively (the deployed CLAUDE.md):
 // the launcher the parent starts writes the file from the returned text.
 const (
 	parentWriteRowMarker = "| audit-verdict-file |"
@@ -98,10 +98,10 @@ func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 		}
 	}
 
-	// Parent-side instruction on the surface Codex reads (deployed AGENTS.md).
-	contract, err := os.ReadFile(filepath.Join(templatesDir, "AGENTS.md.tmpl"))
+	// Parent-side instruction on the surface Codex reads (deployed CLAUDE.md).
+	contract, err := os.ReadFile(filepath.Join(templatesDir, "CLAUDE.md.tmpl"))
 	if err != nil {
-		t.Fatalf("read AGENTS.md template: %v", err)
+		t.Fatalf("read CLAUDE.md template: %v", err)
 	}
 	var row string
 	for _, line := range strings.Split(string(contract), "\n") {
@@ -111,9 +111,9 @@ func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 		}
 	}
 	if row == "" {
-		t.Errorf("AGENTS.md template carries no %q capability row", parentWriteRowMarker)
+		t.Errorf("CLAUDE.md template carries no %q capability row", parentWriteRowMarker)
 	} else if !strings.Contains(row, parentWriteMarker) {
-		t.Errorf("AGENTS.md audit-verdict-file row lacks the parent-write instruction %q: %s", parentWriteMarker, row)
+		t.Errorf("CLAUDE.md audit-verdict-file row lacks the parent-write instruction %q: %s", parentWriteMarker, row)
 	}
 
 	// Manifest mutants the emitter must refuse: an audit role dropped from

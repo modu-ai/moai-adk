@@ -15,8 +15,11 @@ const contractHeadroomBytes = 2048
 func TestContractDocumentsKeepHeadroom(t *testing.T) {
 	root := filepath.Join("..", "..")
 	docs := []string{
+		// Root axis stays AGENTS.md until the M4 self-repo transition lands
+		// (SPEC-CLAUDE-INSTRUCTION-FILES-001); the mirror axis follows the M1
+		// template rename.
 		filepath.Join(root, "AGENTS.md"),
-		filepath.Join(root, "internal", "template", "templates", "AGENTS.md.tmpl"),
+		filepath.Join(root, "internal", "template", "templates", "CLAUDE.md.tmpl"),
 	}
 	limit := CodexContractByteCeiling - contractHeadroomBytes
 	for _, p := range docs {

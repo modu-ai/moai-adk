@@ -83,8 +83,9 @@ type InitOptions struct {
 	// REQ-IH-005): one of {claude, codex, both}, empty meaning claude. While
 	// "codex" the initializer deploys no claude surface at all — the .claude/
 	// directory scaffold (Step 2) is skipped, so the project root carries zero
-	// .claude/** paths. The instruction file is AGENTS.md for every harness
-	// value; the initializer never writes CLAUDE.md.
+	// .claude/** paths. The instruction file is CLAUDE.md for every harness
+	// value (SPEC-CLAUDE-INSTRUCTION-FILES-001); the initializer never writes
+	// AGENTS.md.
 	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
 	// DeployMode is the resolved deploy-mode record (SPEC-INIT-SHRINK-001
@@ -300,10 +301,10 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("workflow toggles write failed", "error", err)
 	}
 
-	// Step 4: Initialize manifest. (The former "Create CLAUDE.md" step is
-	// retired with the AGENTS.md-primary product: every harness value of
-	// `moai init --llm` receives AGENTS.md from the template deployer
-	// (AGENTS.md.tmpl) and no CLAUDE.md is ever written.)
+	// Step 4: Initialize manifest. (No "Create AGENTS.md" step exists: every
+	// harness value of `moai init --llm` receives CLAUDE.md from the template
+	// deployer (CLAUDE.md.tmpl, SPEC-CLAUDE-INSTRUCTION-FILES-001) and no
+	// AGENTS.md is ever written.)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

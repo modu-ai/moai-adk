@@ -644,5 +644,5 @@ import "embed"
 //go:embed templates/.moai/status_line.sh.tmpl
 //go:embed templates/.moai/workflows/README.md
 //go:embed templates/.worktreeinclude
-//go:embed templates/AGENTS.md.tmpl
+//go:embed templates/CLAUDE.md.tmpl
 var embeddedRaw embed.FS

@@ -141,7 +141,7 @@ func TestRuntimeNamespaceRulesCatchKnownLeaks(t *testing.T) {
 		".moai/state/.gitkeep",            // placeholder exception
 		".moai/README.md",                 // shipped doc
 		".claude/CLAUDE.md",               // non-.moai template content
-		"AGENTS.md.tmpl",                  // root template
+		"CLAUDE.md.tmpl",                  // root template
 	}
 	for _, p := range clean {
 		if runtimeNamespaceOffender(p) {

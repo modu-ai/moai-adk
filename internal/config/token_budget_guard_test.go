@@ -158,13 +158,12 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			// The mirror ships as `AGENTS.md.tmpl` — the `.tmpl` suffix keeps it
-			// out of Codex's filename-keyed discovery in THIS repo while the
-			// deployer strips the suffix so a user project still receives
-			// `AGENTS.md` (card t925). The ceiling binds the deployed bytes, so
-			// the fixture must use the shipped name or this dimension silently
-			// measures nothing.
-			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
+			// The mirror ships as `CLAUDE.md.tmpl` (SPEC-CLAUDE-INSTRUCTION-
+			// FILES-001 M1 rename; the deployer strips the suffix so a user
+			// project receives `CLAUDE.md`). The ceiling binds the deployed
+			// bytes, so the fixture must use the shipped name or this
+			// dimension silently measures nothing.
+			if err := os.WriteFile(filepath.Join(mirrorDir, "CLAUDE.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			breaches, err := MeasureContractBytes(root)

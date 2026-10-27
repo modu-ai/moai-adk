@@ -162,8 +162,8 @@ obligations:
   # ── M1 standing-policy obligations (operator decision Q1) ─────────────
   - id: policy-standing-delivery
     required: true
-    claude_path: AGENTS.md.tmpl
-    codex_path: "blocked:M1 — standing contract delivered through the root AGENTS.md"
+    claude_path: CLAUDE.md.tmpl
+    codex_path: "blocked:M1 — standing contract delivered through the root CLAUDE.md"
     check: TestStandingPolicyParity
     ac: AC-POL-01
   - id: policy-scoped-delivery
@@ -180,7 +180,7 @@ obligations:
     ac: AC-TPL-01
   - id: policy-host-isolation
     required: true
-    claude_path: AGENTS.md.tmpl
+    claude_path: CLAUDE.md.tmpl
     codex_path: "blocked:M1 — host-only procedures never called from the other harness"
     check: TestStandingPolicyParity
     ac: AC-POL-01
