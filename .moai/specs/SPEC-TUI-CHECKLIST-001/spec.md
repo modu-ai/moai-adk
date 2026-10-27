@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUI-CHECKLIST-001
 title: "moai init 진행 출력을 그룹 체크리스트로 재설계 (렌더러 + init 연결)"
-version: "0.2.11"
+version: "0.2.12"
 status: in-progress
 created: 2026-10-27
 updated: 2026-10-27
@@ -34,6 +34,7 @@ related_specs: [SPEC-V3R6-UPDATE-PROGRESS-001, SPEC-CLI-TUX-INIT-UPDATE-001, SPE
 - 2026-10-27 — v0.2.9 plan 델타 11회차 (manager-spec, 리더 판정 — AC-TCL-019 확장 승인, AC-TCL-021 과 같은 모양, 1회 실행·1커밋). AC-TCL-019 뒤 절의 위저드 검사가 `--no-merges` 라 병합 커밋이 들여온 위저드 변경(충돌 해결·악성 병합)을 보지 못했다. 결합 diff 검사 `git log --merges --cc --name-only … -- internal/cli/wizard` 를 (2) 로 더했다. 일부러 만든 저장소의 RED(옛 명령 빈 출력)·빨강(새 명령이 경로를 냄)·깨끗한 흡수 대조(빈 출력)를 사실 칸과 뮤턴트로, 이 트리의 기준선을 원장 L44·L45 로 적었다. REQ·AC id 와 수는 그대로(23·23). 처분 상세는 progress.md §E.1 델타 11 단락.
 - 2026-10-27 — v0.2.10 리더 판정 반영 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F1 에 대한 리더 판정, 카드 t1969). 판정 원문: "AC-TCL-011's C counts only the lines the checklist draws; output that passes through with items unopened (user_asset_phase etc.) is counted in a separate bucket; the budget 24 is unchanged." §3.3 에 "따로 세는 넘김 줄" 정의를 더하고 체크리스트 셈에서 그 줄을 뺐다. acceptance.md AC-TCL-011 의 Given 을 고정 사용자 자산 픽스처(예산 셈)와 M0 고정(직접 출력 줄·골든 비교)으로 나누고, 넘김 줄 개수 단언과 "넘김 줄을 C 에 넣는 셈은 빨갛다" 는 뮤턴트를 적었다. 예산 24, 다섯 직접 출력 조각, REQ·AC id 와 수(23·23)는 그대로이며 구현(`internal/cli/checklist_wiring_test.go`)은 바꾸지 않았다.
 - 2026-10-27 — v0.2.11 목록 행 X12 (manager-spec, 출처: run 종료 감사 1회차 `.moai/reports/t1969/sync-audit-verdict-iter1.md` F3, 카드 t1969). 목록 완전성 테스트(`internal/cli/checklist_inventory_test.go`)가 `checklist_session.go` 의 `procErr`·`severityWarnLine(` 를 X12 로 분류하는데 design.md §3.3.1 과 acceptance.md AC-TCL-024 는 X1~X11 만 적었다. design.md §3.3.1 제외 표에 X12 행(분류 조각·이유)을 더하고 범위 문장과 AC-TCL-024 (4) 의 "X1~X11" 을 "X1~X12" 로 고쳤다. 기존 행으로 덮지 않은 까닭: 테스트 표의 행 id 가 이 표와 같아야 하고, 그 파일은 표를 잴 때 없던 이 카드의 세션 층이다. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
+- 2026-10-27 — v0.2.12 AC-TCL-017 하위 테스트·화면 전체 줄 수 (manager-spec, 출처: run 종료 감사 2회차 `.moai/reports/t1969/sync-audit-verdict-iter2.md` G1 Required fix (3)·G2 와 리더 승인, 카드 t1969). G1 후속: AC-TCL-017 녹색 경로에 `TestChecklistAbortFlushes/error_after_finished_items`(앞 항목들이 `Done` 으로 닫힌 뒤 오류로 끝나는 실행에서 끝난 항목의 접힌 상세가 실제 작성기에 한 번씩 나감)를 더하고 그 단언과 뮤턴트를 적었다(커밋 `aa29a4028f` 의 테스트). G2: §5 와 design.md §1·§4 의 화면 전체 현실값을 v0.2.10 의 넘김 줄 묶음까지 넣어 고쳤다 — 체크리스트 23 + 직접 출력 5 + 넘김 30(임베드 카탈로그 의존) = 58줄. 운영자 질문(화면 전체 상한)과 체크리스트 줄 예산 24 는 그대로. REQ·AC id 와 수(23·23)와 테스트·구현은 그대로다.
 
 ## §1 배경과 문제
 
@@ -111,7 +112,7 @@ D-1·D-6·범위 밖 Q3 은 레인 판단(사다리 마지막 단계)으로 정�
 | `init.go:1034` `emitWorktreeAdvisory` → `worktree_advisory.go:46`·`:57` (보존 행 P5) | `this checkout is shared across concurrent sessions;` | stdout | 1 |
 
 - **셈(코드 읽기, HEAD `274441db21`)**: 체크리스트가 그리는 줄 23(design.md §1 화면), 따로 세는 직접 출력 줄 5 — 합계 28줄(넘김 줄은 이 합계 밖에서 따로 센다). 체크리스트 셈은 23 ≤ 24 이고, 직접 출력 셈은 기준선과 같아야 한다(증가 0, 감소도 정보 손실이라 허용하지 않는다). `init.go:750` 을 항목 안으로 옮겨 줄을 줄이는 길은 R1·R2·R3 밖 수정이라 AC-TCL-022 가 막는다. 실측은 M0(기준선의 직접 출력 줄)과 M4(리치 골든)가 처음 한다.
-- **화면 전체 줄 상한은 정하지 않는다.** 직접 출력 줄까지 합친 화면 전체를 24줄로 고정할지, 현실값(지금 셈으로 28줄, 80칸 터미널에서는 긴 줄이 여러 행으로 접혀 더 많다)으로 둘지는 운영자 제품 질문이며 t1978 과 같은 질문이다(리더 결정 기록 §15.102). 이 SPEC 은 "체크리스트 줄 ≤ 24, 직접 출력 줄 증가 0" 으로 닫는다.
+- **화면 전체 줄 상한은 정하지 않는다.** 직접 출력 줄까지 합친 화면 전체를 24줄로 고정할지, 현실값(실제 깨끗한 `moai init` 화면은 체크리스트가 그리는 줄 23 + 직접 출력 줄 5 + 넘김 줄 30(임베드 카탈로그에 따라 달라진다) = 58줄이고, 80칸 터미널에서는 긴 줄이 여러 행으로 접혀 더 많다)으로 둘지는 운영자 제품 질문이며 t1978 과 같은 질문이다(리더 결정 기록 §15.102). 이 SPEC 은 "체크리스트 줄 ≤ 24, 직접 출력 줄 증가 0" 으로 닫는다.
 - 깨끗한 update 의 정의와 그 줄 예산은 이 SPEC 에서 정하지 않는다 — [DEFERRED → t1978]. 델타 4회차 감사 N1 이 지금 정의(같은 바이너리로 init 한 프로젝트, `--force` 없음)로는 템플릿 동기화가 `internal/cli/update_template_sync.go:1260` 에서 건너뛰어 체크리스트가 그려지지 않고, 동기화가 도는 실행은 종료 행동 블록과 사용자 자산 요약 때문에 24줄을 넘는다고 보였다(design.md §4.1).
 
 ### §3.4 t1978 로 넘긴 요구사항 조각 [DEFERRED → t1978]
