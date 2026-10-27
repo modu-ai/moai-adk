@@ -108,6 +108,19 @@ func nonTestGoFiles(t *testing.T, dir string) []string {
 	return out
 }
 
+// allowSyscallInFile reports whether file is one of the two files that hold
+// the open flags (open_unix.go / open_other.go), the only places syscall is
+// allowed in this package. The allowlist is EXACT — a basename of open_*.go
+// is not enough (leader audit F-B, repair cycle R2 of card t1979): the prefix
+// form admitted syscall in any file merely named open_<anything>.go.
+func allowSyscallInFile(file string) bool {
+	switch filepath.Base(file) {
+	case "open_unix.go", "open_other.go":
+		return true
+	}
+	return false
+}
+
 func TestLedgerPackage_ImportBoundary(t *testing.T) {
 	t.Run("recorder-package", func(t *testing.T) {
 		files := nonTestGoFiles(t, ".")
@@ -117,11 +130,25 @@ func TestLedgerPackage_ImportBoundary(t *testing.T) {
 		for _, file := range files {
 			// syscall is allowed only where the open flags live (open_unix.go,
 			// open_other.go), never in the recorder core (debt D4).
-			allowSyscall := strings.HasPrefix(filepath.Base(file), "open_")
-			findings, _ := scanImports(t, []string{file}, false, allowSyscall)
+			findings, _ := scanImports(t, []string{file}, false, allowSyscallInFile(file))
 			for _, f := range findings {
 				t.Errorf("(a) %s", f)
 			}
+		}
+	})
+
+	// Negative control (leader audit F-B, repair cycle R2): the syscall
+	// allowlist is exactly the two open-flags files. A file merely NAMED
+	// open_*.go — open_zzexample.go here, synthetic, in a t.TempDir() outside
+	// the package and outside the repo — must be REFUSED syscall.
+	t.Run("syscall-allowlist-is-exact", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "open_zzexample.go")
+		if err := os.WriteFile(file, []byte("package mutant\n\nimport _ \"syscall\"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		findings, scanned := scanImports(t, []string{file}, false, allowSyscallInFile(file))
+		if scanned != 1 || len(findings) != 1 {
+			t.Errorf("scanned=%d findings=%v, want the syscall import in open_zzexample.go refused", scanned, findings)
 		}
 	})
 
