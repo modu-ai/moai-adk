@@ -161,8 +161,9 @@ The registry check added by card t392 sweeps every tracked file for the authorit
 | `CHANGELOG.md` | Same — absent from the numstat of bump commit `61921f1ba` | 1 |
 | `*_test.go` | Test header comments and SPEC frontmatter fixtures — no refresh obligation | 4 |
 | the per-locale changelog pages under the docs-site content tree (a `changelog*` glob) | Change-history pages | 0 |
+| `go.mod`, `go.sum` | Dependency manifests: they carry third-party module versions that can coincide with the project token (card t1987: `modernc.org/gc/v3 v3.2.0` against `v3.2.0`) and never carry a stamp of our own | 0 at `051f209b0`; `go.sum` once a dependency lands on the token |
 
-The six groups are disjoint and together hide 129 of the 163 tracked files carrying the authoritative token at that tree; the sweep sees the remaining 34.
+The first six groups are disjoint and together hide 129 of the 163 tracked files carrying the authoritative token at that tree; the sweep sees the remaining 34. The manifests row was added after that measurement and is not part of those counts.
 
 Two checks now stand side by side. One catches the list naming a **path that does not exist**
 (t388). The other catches a file carrying the authoritative version token that the **registry
