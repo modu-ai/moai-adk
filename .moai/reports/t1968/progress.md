@@ -122,5 +122,15 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=leader(socket 50218, 사용자 조건 전달) evidence_refs=리더 메시지 ladder_path=leader-gate-correction — 게이트 정정 수용, 부채 폐쇄 라운드 예정(F1 수리 후). ack 송신(msg 01013f30).
 - 2026-10-27 11:1x F1 수리 귀환 — 커밋 7819301554(+150/−1): itemDepth==0 게이트(li 본문은 li 텍스트 소유, 별도 블록 자손만 재진입; P8 중첩 aside F7 형태 불변 — aside 분기 itemDepth 리셋) + P7/P9 정확 회귀 + **신규 itemDepth 코퍼스 축**(7 래퍼×3 형태=21 서브테스트, exactly-once 불변; td는 파서 텍스트 융합으로 제외 사유 기재). 전체 스윕 64 PASS/0 FAIL(3라운드 40/40 유지), 커버리지 96.0/93.4/91.1, 빌드/lint/vet 0. 레인 재관측 일치(BUILD_OK·fetchweb ok·off-gate ok).
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=7819301554+수리 보고+레인 재관측 ladder_path=①disk-evidence — F1 수리 승인, **부채 폐쇄 라운드** 스폰(리더 게이트 정정 이행: D1+R2/D2/D3/FW-D2).
+
+## 7. 인계 기록 (2026-10-27 11:0x KST — Claude 레인 리밋 임박, Codex/GLM 조정자 전환)
+
+리더 지시(uds 50218) 이행 상태:
+
+- **체크포인트**: 더티 파일 즉시 커밋 완료 — 03078897d6(blocks.go·blocks_test.go, +94; 부채 폐쇄 에이전트의 D1+R2 경로 충실도 진행 중 편집, 원본 보존). **주의: 부채 폐쇄 에이전트가 아직 실행 중** — 추가 편집·커밋이 이 체크포인트 위에 착지할 수 있음. 다음 조정자는 현 HEAD를 기준으로 에이전트 산출을 재평가(컴파일·테스트 가정 금지, 직접 관측).
+- **카드 상태**: merge-ready v12(체인 T7~T13 완주) · 리더 codex 3차 FAIL rcpt-33f78f4f(blocks.go:204 aside 래퍼 본문 누락, cache.go:219 캐시 미스 전체 스캔) → 클래스 폐쇄 수리 완료 308817a3f9(코퍼스 40/40·캐너리·grep 3 bounded) → iter10 FAIL 0.91(rcpt-55882ad7, F1 itemDepth) → F1 수리 완료 7819301554(코퍼스 64/64) → **부채 폐쇄 라운드 실행 중**(D1+R2/D2/D3/FW-D2). 게이트 정정(사용자 조건): PASS-WITH-DEBT 불통과 — **부채 없는 독립 PASS + 같은 HEAD 리더 codex PASS**가 complete 조건. complete ON HOLD.
+- **다음 조정자 단계**: (1) 실행 중 에이전트 산출 확정(커밋 유무·테스트 상태 직접 관측), (2) 부채 폐쇄 완료 확인 또는 미완 항목 수리 계속, (3) 감사자에게 남는 항목의 범위 밖 관찰 분류를 판정 원문에서 확인(리더/레인이 대신 분류하지 않음), (4) 부채 없는 독립 PASS 도달 시 흡수 1회(origin/main a8372b21f5 6커밋 — 감사 대상 코드 무변경 diff 보고 필수) → 리더 codex → complete → merged-pr → sweep.
+- **흔적**: 전체 감사 사슬은 sync-audit.md iter1-10 + plan-audit.md + plan-audit-rebaseline{,2}.md + 본 파일. 부채 장부: §5 + sync-audit-rebaseline.md debt 줄. 리더 소켓: uds 50218.
+- decision record: decided_by=leader(socket 50218) evidence_refs=리더 메시지+03078897d6 ladder_path=leader-handoff — Claude 레인 인계, 대기 전환. 추가 감사/수리 시도 없음, 신규 카드 착수 금지.
 - 2026-10-27 10:2x L1~L3 수리 귀환 — 커밋 5a150e2ee1: L1(answersInRequestOrder — 질문 신원 재구성, RED [q1q2]→[q2q1] 스왑 관측)·L2(NoticeLine 병합 — handleJevAsk 도달 경로 확인 mcp_jev.go:128)·L3(존재 검사 — missing:true 행·절감 0·평균 제외, RED 가짜 1.0 관측) 3건 RED→GREEN. 전 수트 ok(jev/jevmeasure/fetchweb+R/N/C/F+iter4-8+tableStack), cli 타깃 21 PASS, 빌드/lint 0. 갭: 전체 수트 미실행(레인 로컬 규율), moai gate --staged 플래그 불명으로 미관측. 레인 재관측 일치(BUILD_OK·2패키지 ok·등급 ok).
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=5a150e2ee1+수리 보고+레인 재관측 ladder_path=①disk-evidence — L1~L3 수리 승인, sync-audit iter9 델타 스폰(delta_base 77dff44edf, 리더 지시 절차).
