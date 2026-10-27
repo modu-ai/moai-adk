@@ -705,14 +705,23 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 // operator-supplied count, or homestate.LaneCapacityDerived when the leader
 // start carried none — the marker the join reads as capacity-open.
 func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes int) (err error) {
-	if err := factory.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
-		return err
-	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return err
 	}
 	defer closeFactoryInto(&err, db, "factory state")
+	// A run id a consolidation retired is refused BEFORE the queue-side runtime
+	// write (card t1963, CARRY-5): the queue record below would otherwise be
+	// written for a run that RecordRun then refuses. This probe is ordering
+	// only. RecordRun's in-transaction guard stays the atomic check, so a
+	// consolidation committing between this probe and RecordRun can still leave
+	// the queue-side record behind: the window is narrowed, not closed.
+	if err := db.RefuseIfRetiredByConsolidation(context.Background(), runID); err != nil {
+		return err
+	}
+	if err := factory.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
+		return err
+	}
 	// The owner stamp written here is the RECORDING process, and it is correct
 	// only for the instant it describes. On a replace-shaped door (syscall.Exec)
 	// this process IS the session and the stamp stays correct; on the spawn and
