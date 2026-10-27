@@ -1,0 +1,8 @@
+◆ Probe run
+◆ Alpha
+  ✓ Alpha one
+  ! Alpha two
+    careful about two
+◆ Beta
+  ✓ Beta one
+    preserved line stays

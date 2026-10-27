@@ -222,6 +222,51 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	8.923s
 ```
 
+### M1 — 카탈로그 키 (`checklist.*` 33개 x en/ko/ja/zh)
+
+- RED(임시 시험 `TestChecklistCatalogProbe`, 키 33개가 네 언어에 모두 있고 비어 있지 않고 키 이름과 다른지 확인): 변경 전 `--- FAIL: TestChecklistCatalogProbe (0.00s)`, 누락 132줄(33 x 4), `FAIL github.com/modu-ai/moai-adk/internal/tui 0.259s`.
+- GREEN: 키 추가 뒤 `--- PASS: TestChecklistCatalogProbe`, 기존 `TestKoEnKeysParity` / `TestI18nFallbackToEn` / `TestNoEmojiInProductionCatalog` 모두 PASS (`ok ... 0.258s`). 임시 시험 파일은 t1989 의 카탈로그 검사와 겹치지 않도록 지웠다(번역 형식 검사는 이 카드 범위 밖).
+- 커밋 `7ab8a28c7458caecd0b99a023c14d345cba3f468`.
+
+### M2 — 렌더러 `internal/tui/checklist.go` (AC-TCL-001..007, 009, 023)
+
+- 순서 이탈과 복구(정직한 기록): 구현 초안(`checklist.go`)을 시험보다 먼저 한 번 썼다. 시험 우선 규칙에 맞춰 그 파일을 작업 트리 밖(scratchpad)으로 옮기고 시험만 남긴 채 RED 를 관측한 뒤, 같은 초안을 되돌려 놓았다(문자 그대로의 "삭제 후 재작성"이 아니라 "치워 두었다가 복원"이다 — Residual-risk 에 적는다). RED 는 아래 한 번과 변이체 둘로 확보했다.
+- RED (구현 없음, `go test ./internal/tui -run '^TestChecklist' -count=1`):
+
+```text
+# github.com/modu-ai/moai-adk/internal/tui [github.com/modu-ai/moai-adk/internal/tui.test]
+internal/tui/checklist_test.go:77:72: undefined: Checklist
+internal/tui/checklist_test.go:79:7: undefined: NewChecklist
+internal/tui/checklist_test.go:79:20: undefined: ChecklistOptions
+internal/tui/checklist_test.go:85:22: undefined: Checklist
+internal/tui/checklist_test.go:86:36: undefined: EnvSummary
+internal/tui/checklist_test.go:100:12: undefined: ChecklistSummary
+FAIL	github.com/modu-ai/moai-adk/internal/tui [build failed]
+```
+
+- 시험이 처음 잡은 실제 결함: `ascii_profile` 하위 시험이 ASCII 프로필에서 맨 리셋 `\x1b[m` 을 발견(색 변수 없음). 색 변수가 없는 리셋은 제외하도록 시험을 고쳤고 `MonochromeTheme` 경로는 처음부터 SGR 0건이었다.
+- 변이체 A (`drawRunning` 이 첫 그리기에도 지우기 접두를 붙임): `TestChecklistRedrawOnlyRunningLine` 실패 — `clear prefixes = 5, want 4 (3 Update + 1 Done)` 와 `erase prefix at 32 follows a newline, so it would erase a finished line`. 되돌린 뒤 녹색.
+- 변이체 B (`Done` 이 모든 상세를 펼침): `TestChecklistGoldenClean`, `TestChecklistFailExpandsDetail`, `TestChecklistWarnExpandsOnlyWarned` 세 시험 모두 FAIL. 되돌린 뒤 녹색.
+- GREEN (`go test ./internal/tui -run '^(TestChecklistGoldenClean|...|TestChecklistGlyphWhitelist)$' -count=1 -v`):
+
+```text
+--- PASS: TestChecklistGoldenClean (0.00s)
+--- PASS: TestChecklistRedrawOnlyRunningLine (0.00s)
+--- PASS: TestChecklistFailExpandsDetail (0.00s)
+--- PASS: TestChecklistWarnExpandsOnlyWarned (0.00s)
+--- PASS: TestChecklistSummaryFields (0.00s)
+--- PASS: TestChecklistNoColorHasNoSGR (0.00s)
+--- PASS: TestChecklistReducedMotion (0.00s)
+--- PASS: TestChecklistKoreanAndFallback (0.00s)
+--- PASS: TestChecklistGlyphWhitelist (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/tui	0.087s
+```
+
+- 골든 6개(`internal/tui/testdata/checklist-{init-clean,init-ko,init-nocolor,init-reduced,probe-fail,probe-warn}.golden`) 육안 확인: 글리프가 줄 맨 앞(`  ✓ 라벨`), 실행 중 줄은 최종 화면에서 완료 줄로 대체, 성공 항목 상세는 접힘, 실패/경고 항목만 4칸 들여쓴 상세, 깨끗한 init 은 23줄(예산 24 이내). `checklist-init-clean` 과 `-nocolor` 는 바이트 동일(최종 화면은 `go test` 에서 색이 벗겨져 같다; 무색 시험은 원시 출력에서 SGR 0건을 따로 단언한다).
+- 골든 목록: `UPDATE_GOLDEN=1 go test ./internal/tui/golden -run '^(TestManifest|TestGoldenCount)$' -count=1 -v` → `--- PASS: TestGoldenCount`, `--- PASS: TestManifest`, `MANIFEST.txt` +6줄.
+- 품질: `gofmt -l internal/tui` 출력 없음; `go vet ./internal/tui/...` 종료 0; `go test ./internal/tui/... -count=1 -cover` → `internal/tui coverage: 94.5% of statements`; `golangci-lint run --timeout=2m ./internal/tui/...` → `0 issues.`; `checklist.go` 함수별 커버리지 최저 `Skip 80.0%`, `NewChecklist 85.7%`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

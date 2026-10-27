@@ -1,0 +1,23 @@
+◆ MoAI-ADK init
+  darwin/arm64 · v3.3.0 · ~/work/demo
+◆ Templates
+  ✓ Detect project structure
+  ✓ Validate project
+  ✓ Deploy templates
+◆ Settings
+  ✓ Autonomy tier
+  ✓ Profile and language
+  ✓ Optional feature consent
+  ✓ Harness and deploy mode
+  ✓ Global settings
+◆ Hooks
+  ✓ pre-push hook
+  ✓ pre-commit hook
+◆ MCP
+  ✓ MCP server entry
+◆ Verify
+  ✓ Record manifest
+
+  Done · 2 files created · 13 directories · 0 warnings · 1.4s
+  Deploy mode: plugin
+  Next steps: /moai plan
