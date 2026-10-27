@@ -1,5 +1,9 @@
 # t1988 verdict — GH #1926·#1924 트리아지·수리 (Class B)
 
+verdict: PASS
+audited_sha: 8efe31c080f1d49b86898620ee83cef99fe52bbe
+machine-line-note: audited head 8efe31c080에서 레인 검증 배치와 codex_review가 관측됐고, 그로부터 현 HEAD까지의 델타는 .moai/reports/t1988/ 아래 증거 문서뿐임(diff --stat 관측) — merge_specless 판독기의 보고서 전용 델타 예외에 부합.
+
 ## Claim
 1. #1924 거부문 결함("launcher가 operator 마크를 stamp한다")은 실재하며 본 카드에서 수리됐다 — 거부문이 수동 접두 형태를 정확히 안내한다.
 2. #1926의 set-spec 부재 주장은 구형 설치 빌드에 한정된 관측으로, 현재 main 소스에는 존재한다(t1840/bf0a35f10e). 게이트 기본 false·picked 한정은 설계상 동작이다.
