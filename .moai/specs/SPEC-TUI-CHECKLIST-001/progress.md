@@ -140,6 +140,21 @@ Tier·예산 다시 셈: Tier L 유지. 예산 상한은 Tier L 이 REQ 25·AC 2
 
 미룬 것(deferred): 위 조건 전부 — 카드 t1989.
 
+### Plan-phase delta 10 (card t1969, leader ruling after audit iter16)
+
+입력: 리더가 전한 codex P2 — AC-TCL-021 의 `git log --no-merges --grep=t1969 …` 은 병합 커밋이 들여온 템플릿 변경(충돌 해결·악성 병합)을 보지 못한다(감사자가 임시 저장소에서 재현). 리더 판정: 검사 범위를 넓히고 재현을 음성 대조로 더한다, 다른 것은 바꾸지 않는다. 기준 HEAD `d6f566c442c2eb16e00931aa08752335d504f366`. spec.md version `0.2.7` → `0.2.8`.
+
+측정(일부러 만든 저장소, 레포 밖 scratch, git 2.54.0 (Apple Git-157), 고정 날짜·이름이라 SHA 재현 가능; 기준 `fe5d48ef1851fa06afe2f275f835ffcdd04118e1`, 로컬 `main` `ce31c645638c8c9d0a6f5d8965e68f92e80b531e`, 카드 커밋 `41b952a305325c4d1ffb55915e0c53dce3a9c0bb`):
+- 깨끗한 흡수 HEAD `fa21a881a4548f0ce4d994e198533be9d4be5cee`: 옛 명령 빈 출력 종료 0, 새 명령(`--merges --cc`) 빈 출력 종료 0.
+- 병합 해결이 `evil.md` 를 더한 HEAD `3f4e5b53a1f9ddd4c4ac426b52e4c37006e32781`: 옛 명령 빈 출력 종료 0(RED), 새 명령 `internal/template/templates/evil.md` 종료 0(빨강).
+- 이 트리(`d6f566c442`)에서 두 명령 모두 빈 출력 종료 0(원장 L42·L43).
+
+hunk: acceptance.md 문서 핀 한 문장, 원장 L42·L43 과 그 설명 한 문장, AC-TCL-021 의 Given-When-Then((2) 추가)·종류·뮤턴트·사실 칸. plan.md §B 범위 검사 단락 한 문장. spec.md frontmatter version 과 HISTORY v0.2.8 행, 이 단락. REQ·AC id 와 수는 그대로(REQ 23, AC 23).
+
+같은 맹점을 훑은 결과(고치지 않음, 리더 판정 범위 밖): AC-TCL-022 (2) 는 `--merges` 로 병합을 직접 보고 (1) 은 트리 diff 라 이 맹점이 없다. AC-TCL-019 뒤 절의 위저드 검사(`--no-merges … -- internal/cli/wizard`)는 같은 모양이라 같은 맹점이 있다. §A 카드 id 완전성 검사와 AC-TCL-013 O3 도 `--no-merges` 지만 목적이 커밋 선택이라 같은 결함 종류로 보지 않는다. 처분은 리더 판단에 남긴다.
+
+미룬 것(deferred): 없음.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
