@@ -1,5 +1,13 @@
 # t1988 — GH #1926·#1924 재현·분류·수리 (Class B, run 기록)
 
+## 리뷰 신선도 수리 기록 (2026-10-28, 리더 지시 2건)
+
+**① 감사 SHA↔head 델타 실측** (`git diff --stat`, HEAD `1ab5ac7532`):
+- `6e3cfbc4f7..HEAD`(verdict.md audited — merge-specless 판독기 바인딩): **보고서 2파일 전용** (progress.md +9, verdict.md ±4) — reports-only 예외 유지, 삼중 조건 만족.
+- `7a263a0580..HEAD`(sync-audit-verdict.md audited — T11 기록 바인딩): **문서 전용 아님** — 108파일/+11,949. 원인: 그 범위 안에 origin/main 흡수 머지 `6e3cfbc4f7`(t1973 리바인드 정리·t1762 jevledger·t1977 docs-site — **이미 main에 착지·감사된 콘텐츠**)가 포함. 본 카드 고유 제품 델타는 e3b7e71450+8efe31c080의 4파일로 불변. T11/T13 게이트는 흡수 이전 정확 일치로 통과했고(소급 유효), 병합 시점 재검사는 verdict.md 바인딩(①)만 읽으므로 영향 없음.
+
+**② codex review 재요청 1회**: `gh pr comment 1939 --body "@codex review"` → 요청 댓글 https://github.com/modu-ai/moai-adk/pull/1939#issuecomment-6452187560 (id 6452187560). 재요청 반복·수기 marker 없음. 봇 응답(codex-review-state completed·지적 없음 @현재 head) 관측 중 — 수령 댓글 id는 확정 대로 이 섹션에 추가 기록.
+
 ## 체크포인트 (2026-10-27 11:58 KST 부근, 리더 지시 — 새 작업 금지·대기)
 
 - 상태: PR #1939 OPEN @ HEAD `21703fd867` (pr-open 기록 완료, 리더 병합 창 대기)
