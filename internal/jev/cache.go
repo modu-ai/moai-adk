@@ -207,31 +207,35 @@ func (c *Client) cacheLookup(sha, model string, aliasResolved bool) (entry cache
 // could win the probe as the newest file. The probe may serve the alias's
 // own prior answers only: with no prior alias model on record the probe
 // admits nothing and the caller's miss stands (network).
+//
+// Leader codex-audit round 3, finding 2: the probe no longer scans the cache
+// directory. The candidate set is KNOWN — one cacheKey(sha, model) file per
+// prior alias model — so each is probed directly, and with no prior alias
+// model on record the probe returns without reading anything at all, where
+// the directory scan read and JSON-parsed every cache file on every miss,
+// its cost growing with the cache size. A file whose content does not match
+// its own key (damaged or mis-keyed) is skipped, not adopted.
 func (c *Client) priorModelEntry(sha, resolvedModel string) (*cacheEntry, error) {
 	m, err := readModelsMap(c.CacheDir)
 	if err != nil {
 		return nil, err
 	}
-	allowed := make(map[string]bool, len(m.Prior[ModelID]))
-	for _, id := range m.Prior[ModelID] {
-		allowed[id] = true
-	}
-	files, err := filepath.Glob(filepath.Join(c.CacheDir, "*.json"))
-	if err != nil || len(files) == 0 {
-		return nil, err
+	priorIDs := m.Prior[ModelID]
+	if len(priorIDs) == 0 {
+		return nil, nil
 	}
 	var prior *cacheEntry
-	for _, f := range files {
-		if filepath.Base(f) == modelsMapName {
+	for _, id := range priorIDs {
+		if id == "" || id == resolvedModel {
 			continue
 		}
-		raw, err := os.ReadFile(f)
+		raw, err := os.ReadFile(filepath.Join(c.CacheDir, cacheKey(sha, id)+".json"))
 		if err != nil {
-			continue
+			continue // no entry under this prior model: next candidate
 		}
 		var e cacheEntry
-		if json.Unmarshal(raw, &e) != nil || e.BodySHA != sha || e.Model == resolvedModel || e.Model == "" || !allowed[e.Model] {
-			continue
+		if json.Unmarshal(raw, &e) != nil || e.BodySHA != sha || e.Model != id {
+			continue // not this body's entry under this model: damaged or mis-keyed
 		}
 		if prior == nil || e.CreatedAt.After(prior.CreatedAt) {
 			e := e

@@ -189,26 +189,14 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		// spliced in front of that child's blocks (F7b/F7c semantics per
 		// run: heading subtrees excluded, a heading-only remainder collapses
 		// to nothing), and a trailing run is appended — every bare run lands
-		// in document order as aside-scored content.
+		// in document order as aside-scored content. The aside itself is a
+		// run container whose trailing run is content unconditionally (the
+		// F7b fallback); wrapper children recurse through the same walk
+		// (leader codex-audit round 3 — see walkAsideRuns).
 		saved := append([]heading(nil), s.path...)
 		savedDepth := s.itemDepth
 		s.itemDepth = 0
-		runStart := n.FirstChild
-		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			pathBefore := clonePath(s.path)
-			before := len(*s.blocks)
-			s.walk(child, true) // a no-op for non-element nodes
-			if len(*s.blocks) == before {
-				continue // emitted nothing: the child extends the bare run
-			}
-			if text := collapseRun(runStart, child, asideFallbackSkip); text != "" {
-				s.spliceAsideRun(before, text, pathBefore)
-			}
-			runStart = child.NextSibling
-		}
-		if text := collapseRun(runStart, nil, asideFallbackSkip); text != "" {
-			s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
-		}
+		s.walkAsideRuns(n, true)
 		s.itemDepth = savedDepth
 		s.path = saved
 	case n.Data == "p":
@@ -256,7 +244,62 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		s.path = append(s.path, heading{level: lvl, text: collapseText(n, nil)})
 		s.walkChildren(n, inAside)
 	default:
-		s.walkChildren(n, inAside)
+		if inAside {
+			// Leader codex-audit round 3, finding 1 (C2 class): a default-case
+			// element inside an aside is a run container too — the same
+			// per-run extraction the aside itself applies, so bare runs
+			// nested inside wrapper children (`<aside><div>Important
+			// <p>Details</p>Tail</div></aside>`) are no longer swallowed by
+			// the child's own block emission. Outside asides the plain
+			// descent stands: body-level bare text is not a block by design.
+			s.walkAsideRuns(n, false)
+		} else {
+			s.walkChildren(n, inAside)
+		}
+	}
+}
+
+// walkAsideRuns processes the children of an aside-scoped container with the
+// C2 per-run bare-text extraction: each bare run preceding a block-emitting
+// child is spliced in front of that child's blocks, and a trailing run is
+// appended after them — every run lands in document order as aside-scored
+// content.
+//
+// Leader codex-audit round 3, finding 1: the extraction previously ran only
+// over an aside's DIRECT children, so bare runs nested inside a wrapper
+// child that itself contains block-emitting descendants never reached it.
+// Every default-case element inside an aside now recurses through this same
+// walk, so a wrapper's interior runs are spliced around the blocks its
+// descendants emit, recursively, still in document order.
+//
+// emitTrailingAlways distinguishes the aside itself (true: an aside of pure
+// inline content is still a note, so its trailing run is emitted — the F7b
+// fallback) from a wrapper (false): a wrapper whose interior produced NO
+// block is pure inline content that merges into the ENCLOSING run — emitting
+// it separately would split runs that were one paragraph
+// (`<aside>head<div>deep body</div>tail</aside>` is ONE paragraph) — while a
+// wrapper whose interior DID produce a block is mixed, and its trailing run
+// is content exactly like the aside's own.
+func (s *splitter) walkAsideRuns(n *html.Node, emitTrailingAlways bool) {
+	runStart := n.FirstChild
+	emitted := false
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		pathBefore := clonePath(s.path)
+		before := len(*s.blocks)
+		s.walk(child, true) // a no-op for non-element nodes
+		if len(*s.blocks) == before {
+			continue // emitted nothing: the child extends the bare run
+		}
+		emitted = true
+		if text := collapseRun(runStart, child, asideFallbackSkip); text != "" {
+			s.spliceAsideRun(before, text, pathBefore)
+		}
+		runStart = child.NextSibling
+	}
+	if emitTrailingAlways || emitted {
+		if text := collapseRun(runStart, nil, asideFallbackSkip); text != "" {
+			s.emit(Block{Kind: KindParagraph, HeadingPath: clonePath(s.path), Text: text, Aside: true, HeaderIndex: -1}, 0)
+		}
 	}
 }
 

@@ -2,6 +2,7 @@ package fetchweb
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
@@ -841,5 +842,158 @@ func TestDocTokens_SumsBlocks(t *testing.T) {
 	}
 	if got := DocTokens(blocks); got != 3 {
 		t.Errorf("DocTokens = %d, want 3", got)
+	}
+}
+
+// Leader codex-audit round 3, finding 1 (C2 class): the per-run extraction
+// ran only over an aside's DIRECT children, so a wrapper child that itself
+// contains block-emitting descendants swallowed the bare runs inside it —
+// `<aside><div>Important<p>Details</p>Tail</div></aside>` emitted only
+// Details; Important and Tail were lost from the document entirely. The
+// extraction is recursive: a wrapper's interior runs are spliced around the
+// blocks its descendants emit, in document order, aside-scored.
+func TestSplitBlocks_MixedAsideBareRunsInsideWrapperNotLost(t *testing.T) {
+	html := `<body><aside><div>Important<p>Details</p>Tail</div></aside></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindParagraph, "Important"},
+		{KindParagraph, "Details"},
+		{KindParagraph, "Tail"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (bare runs nested inside a wrapper child must not be lost)", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true (wrapper interior runs in document order, aside-scored)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+	}
+}
+
+// Class-close sweep (leader codex-audit round 3): a corpus over the wrapper
+// space {aside, section, article, li, td, div, blockquote, figure} × child
+// shapes {bare-only, block-only, mixed, multi-mixed, nested-wrapper-blocks},
+// all inside an aside. The invariant: NO bare text run anywhere in the
+// subtree is dropped when any block is emitted from the same subtree — every
+// planted word appears, in document order, among the emitted blocks' texts.
+// (`td` outside a table has its tag dropped by the HTML5 parser — its
+// children are hoisted to the aside — so that row exercises the direct
+// C2 path; every other wrapper keeps its element and exercises the
+// recursive extraction.)
+func TestSplitBlocks_AsideWrapperCorpusNoBareRunLost(t *testing.T) {
+	wrappers := []string{"aside", "section", "article", "li", "td", "div", "blockquote", "figure"}
+	shapes := []struct {
+		name  string
+		inner func(tag string) string
+		words func(tag string) []string
+	}{
+		{"bare-only",
+			func(tag string) string { return "BARE_" + tag },
+			func(tag string) []string { return []string{"BARE_" + tag} }},
+		{"block-only",
+			func(tag string) string { return "<p>P1_" + tag + "</p><p>P2_" + tag + "</p>" },
+			func(tag string) []string { return []string{"P1_" + tag, "P2_" + tag} }},
+		{"mixed",
+			func(tag string) string { return "B1_" + tag + "<p>P1_" + tag + "</p>B2_" + tag },
+			func(tag string) []string { return []string{"B1_" + tag, "P1_" + tag, "B2_" + tag} }},
+		{"multi-mixed",
+			func(tag string) string {
+				return "B1_" + tag + "<p>P1_" + tag + "</p>B2_" + tag + "<p>P2_" + tag + "</p>B3_" + tag
+			},
+			func(tag string) []string {
+				return []string{"B1_" + tag, "P1_" + tag, "B2_" + tag, "P2_" + tag, "B3_" + tag}
+			}},
+		{"nested-wrapper-blocks",
+			func(tag string) string {
+				return "<div>N1_" + tag + "<p>NP1_" + tag + "</p>N2_" + tag + "</div>B1_" + tag
+			},
+			func(tag string) []string {
+				return []string{"N1_" + tag, "NP1_" + tag, "N2_" + tag, "B1_" + tag}
+			}},
+	}
+	for _, w := range wrappers {
+		for _, sh := range shapes {
+			tag := w + "-" + sh.name
+			page := "<body><h2>C</h2><aside><" + w + ">" + sh.inner(tag) + "</" + w + "></aside></body>"
+			t.Run(w+"/"+sh.name, func(t *testing.T) {
+				blocks := SplitBlocks(page)
+				var got []string
+				for _, b := range blocks {
+					if !b.Aside {
+						t.Errorf("block %q is not aside-scored (every block from inside the aside carries Aside=true)", b.Text)
+					}
+					got = append(got, b.Text)
+				}
+				if len(got) == 0 {
+					t.Fatalf("extractor emitted no block: planted content lost wholesale from %s", page)
+				}
+				joined := strings.Fields(strings.Join(got, " "))
+				want := sh.words(tag)
+				matched := 0
+				for _, word := range joined {
+					if matched < len(want) && word == want[matched] {
+						matched++
+					}
+				}
+				if matched != len(want) {
+					t.Errorf("%s/%s: bare text runs dropped: planted %v, matched %d/%d in document order among %v",
+						w, sh.name, want, matched, len(want), got)
+				}
+			})
+		}
+	}
+}
+
+// A real td needs a table. Cells are never walked as containers — the cell's
+// text (bare runs and folded p text alike) rides the row block — so the
+// no-loss invariant holds through the row text, with the pre emitted after
+// the row as its own verbatim code block.
+func TestSplitBlocks_AsideCellCorpusNoBareRunLost(t *testing.T) {
+	html := `<body><aside><table><tr><td>MIXTD1<p>PTD1</p>MIXTD2<pre>  code</pre></td></tr></table></aside></body>`
+	blocks := SplitBlocks(html)
+	var got []string
+	for _, b := range blocks {
+		if !b.Aside {
+			t.Errorf("block %q is not aside-scored", b.Text)
+		}
+		got = append(got, b.Text)
+	}
+	want := []string{"MIXTD1", "PTD1", "MIXTD2", "code"}
+	joined := strings.Fields(strings.Join(got, " "))
+	matched := 0
+	for _, word := range joined {
+		if matched < len(want) && word == want[matched] {
+			matched++
+		}
+	}
+	if matched != len(want) {
+		t.Errorf("cell bare runs dropped: planted %v, matched %d/%d among %v", want, matched, len(want), got)
+	}
+}
+
+// Recursion guards: the recursive extraction must not SPLIT runs that were
+// one paragraph. A wrapper with no block-emitting descendant is pure inline
+// content and merges into the enclosing run (F7b semantics — the audit
+// probe `<aside>...<div>deep body</div>...` stays one paragraph), and an
+// inline element (span) never starts a run of its own.
+func TestSplitBlocks_AsideBareOnlyWrapperMergesIntoRun(t *testing.T) {
+	html := `<body><aside>head<div>deep body</div>tail</aside></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "head deep body tail" || !blocks[0].Aside {
+		t.Fatalf("want exactly one aside paragraph %q, got %d blocks: %v (a wrapper with no interior block merges into the enclosing run)",
+			"head deep body tail", len(blocks), texts(blocks))
+	}
+}
+
+func TestSplitBlocks_AsideInlineWrapperRunNotSplit(t *testing.T) {
+	html := `<body><aside>Hello <span>world</span> again</aside></body>`
+	blocks := SplitBlocks(html)
+	if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "Hello world again" || !blocks[0].Aside {
+		t.Fatalf("want exactly one aside paragraph %q, got %d blocks: %v (an inline wrapper never splits the run around it)",
+			"Hello world again", len(blocks), texts(blocks))
 	}
 }
