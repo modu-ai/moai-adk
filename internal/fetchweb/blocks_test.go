@@ -874,6 +874,63 @@ func TestSplitBlocks_MixedAsideBareRunsInsideWrapperNotLost(t *testing.T) {
 	}
 }
 
+// F1 regression (t1968 sync-audit iter10, probe P7): the round-3 recursive
+// run extraction must not reach inside a list-item body. The li block already
+// carries the wrapper's inline text (listItemSkip folds it in while excluding
+// the separately-emitted pre), so re-splicing the wrapper's bare runs around
+// the pre duplicates the item's text — `<aside><ul><li><div>LEAD<pre>CODE
+// </pre>TAIL</div></li></ul></aside>` emitted [LEAD TAIL, LEAD, CODE, TAIL].
+// Inside an item body only separate-block descendants (pre/table, nested li,
+// nested aside via its own case) re-enter emission.
+func TestSplitBlocks_WrapperInsideListItemNotDuplicated(t *testing.T) {
+	page := `<body><aside><ul><li><div>LEAD<pre>CODE</pre>TAIL</div></li></ul></aside></body>`
+	blocks := SplitBlocks(page)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindListItem, "LEAD TAIL"},
+		{KindCode, "CODE"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (a wrapper inside a list-item body must not re-extract the runs the li block already carries)",
+			len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true (li text carries the runs; the pre is its own code block)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+	}
+}
+
+// F1 regression, nested-list variant (t1968 sync-audit iter10, probe P9): the
+// inner li carries its wrapper's inline text ("A3 C3"); the wrapper's pre is
+// the only descendant that re-enters emission. The duplication showed as
+// [TOP, A3 C3, A3, B3, C3].
+func TestSplitBlocks_NestedListInnerWrapperNotDuplicated(t *testing.T) {
+	page := `<body><aside><ul><li>TOP<ul><li><div>A3<pre>B3</pre>C3</div></li></ul></li></ul></aside></body>`
+	blocks := SplitBlocks(page)
+	want := []struct {
+		kind BlockKind
+		text string
+	}{
+		{KindListItem, "TOP"},
+		{KindListItem, "A3 C3"},
+		{KindCode, "B3"},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v (an inner-list wrapper's runs belong to the inner li's text, not separate paragraphs)",
+			len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Kind != w.kind || blocks[i].Text != w.text || !blocks[i].Aside {
+			t.Errorf("block %d = %s %q aside=%v, want %s %q aside=true (nested items in order; the pre is its own code block)",
+				i, blocks[i].Kind, blocks[i].Text, blocks[i].Aside, w.kind, w.text)
+		}
+	}
+}
+
 // Class-close sweep (leader codex-audit round 3): a corpus over the wrapper
 // space {aside, section, article, li, td, div, blockquote, figure} × child
 // shapes {bare-only, block-only, mixed, multi-mixed, nested-wrapper-blocks},
@@ -942,6 +999,86 @@ func TestSplitBlocks_AsideWrapperCorpusNoBareRunLost(t *testing.T) {
 				if matched != len(want) {
 					t.Errorf("%s/%s: bare text runs dropped: planted %v, matched %d/%d in document order among %v",
 						w, sh.name, want, matched, len(want), got)
+				}
+			})
+		}
+	}
+}
+
+// Class-close sweep, itemDepth axis (t1968 sync-audit iter10 F1): the round-3
+// recursive extraction must not reach inside list-item bodies — the li block
+// already carries a wrapper's inline text (collapseText folds it through
+// listItemSkip's block exclusions), so re-extracting bare runs around a
+// block-emitting descendant duplicates the item's text. The corpus: the same
+// wrapper set as the round-3 sweep, each planted INSIDE a list-item body,
+// over child shapes {wrapper-with-blocks, wrapper-with-mixed, nested}. The
+// invariant inverts the round-3 one: no-loss AND no-duplication — every
+// planted word (item text and shape content alike) appears EXACTLY ONCE
+// among the emitted blocks' texts. Emission order is not asserted here: the
+// li text block lands before its descendants' separate blocks by design (the
+// li case emits then descends), so order is pinned by the P7/P9 exact-output
+// regressions above instead.
+// (`td` is omitted: the parser drops the tag outside a table and its children
+// fuse into the item text as directly adjacent text nodes — no element
+// boundary, so no separator fires and the planted words merge into single
+// tokens, unassertable at word granularity; the td-in-cell path is covered by
+// TestSplitBlocks_AsideCellCorpusNoBareRunLost below. `li` inside a
+// div-inside-li is restructured by the parser into a sibling item, which
+// still exercises the fixed path whenever the shape nests a wrapper inside
+// the restructured item's body. `aside` hits its own case, which scopes
+// itemDepth per entry — the F7/P8 shape, a control.)
+func TestSplitBlocks_AsideWrapperInListItemCorpusNoDuplication(t *testing.T) {
+	wrappers := []string{"aside", "section", "article", "li", "div", "blockquote", "figure"}
+	shapes := []struct {
+		name  string
+		inner func(tag string) string
+		words func(tag string) []string
+	}{
+		{"wrapper-with-blocks",
+			func(tag string) string { return "<pre>P1_" + tag + "</pre><pre>P2_" + tag + "</pre>" },
+			func(tag string) []string {
+				return []string{"HEAD_" + tag, "P1_" + tag, "P2_" + tag, "TAIL_" + tag}
+			}},
+		{"wrapper-with-mixed",
+			func(tag string) string { return "B1_" + tag + "<pre>P1_" + tag + "</pre>B2_" + tag },
+			func(tag string) []string {
+				return []string{"HEAD_" + tag, "B1_" + tag, "P1_" + tag, "B2_" + tag, "TAIL_" + tag}
+			}},
+		{"nested",
+			func(tag string) string {
+				return "B1_" + tag + "<div>N1_" + tag + "<pre>P1_" + tag + "</pre>N2_" + tag + "</div>B2_" + tag
+			},
+			func(tag string) []string {
+				return []string{"HEAD_" + tag, "B1_" + tag, "N1_" + tag, "P1_" + tag, "N2_" + tag, "B2_" + tag, "TAIL_" + tag}
+			}},
+	}
+	for _, w := range wrappers {
+		for _, sh := range shapes {
+			tag := w + "-" + sh.name
+			page := "<body><aside><ul><li>HEAD_" + tag + "<" + w + ">" + sh.inner(tag) + "</" + w + ">TAIL_" + tag + "</li></ul></aside></body>"
+			t.Run(w+"/"+sh.name, func(t *testing.T) {
+				blocks := SplitBlocks(page)
+				counts := map[string]int{}
+				for _, b := range blocks {
+					if !b.Aside {
+						t.Errorf("block %q is not aside-scored (every block from inside the aside carries Aside=true)", b.Text)
+					}
+					for _, word := range strings.Fields(b.Text) {
+						counts[word]++
+					}
+				}
+				if len(blocks) == 0 {
+					t.Fatalf("extractor emitted no block: planted content lost wholesale from %s", page)
+				}
+				for _, word := range sh.words(tag) {
+					switch counts[word] {
+					case 0:
+						t.Errorf("%s/%s: planted word %q lost (0 occurrences among %v)", w, sh.name, word, texts(blocks))
+					case 1:
+					default:
+						t.Errorf("%s/%s: planted word %q duplicated (%d occurrences among %v — the li block already carries it)",
+							w, sh.name, word, counts[word], texts(blocks))
+					}
 				}
 			})
 		}

@@ -244,7 +244,7 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 		s.path = append(s.path, heading{level: lvl, text: collapseText(n, nil)})
 		s.walkChildren(n, inAside)
 	default:
-		if inAside {
+		if inAside && s.itemDepth == 0 {
 			// Leader codex-audit round 3, finding 1 (C2 class): a default-case
 			// element inside an aside is a run container too — the same
 			// per-run extraction the aside itself applies, so bare runs
@@ -252,6 +252,18 @@ func (s *splitter) walk(n *html.Node, inAside bool) {
 			// <p>Details</p>Tail</div></aside>`) are no longer swallowed by
 			// the child's own block emission. Outside asides the plain
 			// descent stands: body-level bare text is not a block by design.
+			//
+			// The extraction is scoped to itemDepth == 0 (F1, t1968 sync-audit
+			// iter10): inside a list-item body the li block already carries the
+			// wrapper's inline text (collapseText folds it through
+			// listItemSkip), so splicing the wrapper's bare runs around a
+			// block-emitting descendant duplicates the item's text
+			// (`<aside><ul><li><div>LEAD<pre>CODE</pre>TAIL</div></li></ul>
+			// </aside>` emitted LEAD and TAIL twice). The plain descent lets
+			// only separate-block descendants (pre/table, nested li, nested
+			// aside via its own case) re-enter emission. An aside nested in an
+			// item resets itemDepth on entry, so wrappers inside THAT aside
+			// keep the recursive extraction — the F7 shape.
 			s.walkAsideRuns(n, false)
 		} else {
 			s.walkChildren(n, inAside)
