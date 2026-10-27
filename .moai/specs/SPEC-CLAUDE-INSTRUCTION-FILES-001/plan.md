@@ -63,7 +63,7 @@ spec.md §A의 검증된 현행 지도가 구현의 출발점이다. 변경 표�
 ### M2 — 마이그레이션 동사 방향 전환 + 무손실 원칙 (Priority: High, 데이터 이동)
 - `migrate_local_instructions.go` 방향 반전(AGENTS.local.md → CLAUDE.local.md; shared AGENTS.md → CLAUDE.md 경로 추가). 기존 프리미티브 재사용(REQ-CIF-005).
 - 신규: 읽기-쓰기 사이 원본 변경 감지 중단(REQ-CIF-010 전단 가드 유지) + **최종 단계를 재검사+`os.Remove` 대신 단일 원자적 `os.Rename`(원본→신규 타임스탬프 백업 경로)로 전환** — 재검사→remove 사이 창(TOCTOU)을 원천 제거, 그 순간 존재하는 바이트가 구성상 백업에 남는다(N2). 신규 메커니즘이 아님: 백업 디렉터리(REQ-CIF-006 프리미티브)·`writeExclusive`·rollback 재사용, `os.Rename`은 stdlib — 기각된 전면 atomic-rename 재설계는 별개. 바이트 정확 백업·권한 보존 검증, 경로이탈 거부.
-- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단(읽기→쓰기 창 주입)/최종 rename 거부(EXDEV 등 — 원본 제자리·목적지 rollback·반쪽 상태 없음)/목적지 쓰기 실패. 모든 출구에서 사용자 최신 콘텐츠가 정규 경로 또는 백업에 존재함을 단언.
+- 테이블 주도 테스트: 정상 이동/공재 거부/양쪽 상이 거부/멱등 noop/symlink·비정규·읽기불가/부분 실패 rollback/동시 변경 중단(읽기→쓰기 창 주입)/최종 rename 거부(EXDEV 등 — 원본 제자리·목적지 rollback·반쪽 상태 없음)/목적지 쓰기 실패. 모든 출구에서 사용자 최신 콘텐츠가 정규 경로, 백업, 또는 미변경 레거시 경로에 존재함을 단언.
 - AC: AC-CIF-005~010.
 
 ### M3 — 런타임 리더/작성기 재타겟 (Priority: Medium)
