@@ -170,7 +170,57 @@ hunk: acceptance.md 문서 핀 한 문장, 원장 L44·L45 와 그 설명 한 �
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+런 단계 기록(manager-develop, cycle_type=tdd). 모든 줄은 이 트리 `.moai/worktrees/t1969`(브랜치 `WT-moai-init-update`)에서 실제로 돌린 명령과 그 출력이다. 증거 앞에 측정 HEAD 를 적는다.
+
+### 사전 점검 (HEAD `f029bf4ad32ffd8c24d8e8ed75708f26fb759909`, M0 앞)
+
+- `git branch --show-current` → `WT-moai-init-update`
+- `git rev-parse --short HEAD` → `f029bf4ad3`
+- 섹션 B 검사 `git log --oneline cb30e05b3e..main -- internal/cli/init.go internal/cli/wizard internal/template/templates internal/tui` → 빈 출력(종료 0). 로컬 `main` = `cb30e05b3e`, `git rev-list --count --left-right HEAD...main` → `15	0`(이 브랜치가 앞서고 `main` 에 새 커밋 없음). t1966 의 wizard·init 변경은 `main` 에 들어오지 않았다 — 막힘 아님. 위임 지시(섹션 B)에 따라 origin/main 은 흡수하지 않는다(plan.md §B·킥오프 기록의 N-C "M0 앞 흡수"와 다르며 위임 지시를 따랐다).
+- `git log --oneline -3 origin/main -- internal/cli/init.go` → `8c36a7904b t1909: remove general moai codex ...`, `cd19e5494d merge: absorb main ec193e4777 ...`, `75a6a9ff60 fix(SPEC-USERASSET-DEPLOY-GUARD-001): ...`
+- `git diff --stat cb30e05b3e -- internal/cli/init.go` → 빈 출력(종료 0)
+- t1966 브랜치 `git rev-parse WT-moai-init-moai` → `6d38362acb5688c5d7fabddc0cbc2b83febe162b`; `git diff -U0 cb30e05b3e...WT-moai-init-moai -- internal/cli/init.go` 의 hunk 머리: `@@ -103,5 +103,4`, `-237,5 +236,4`, `-259,0 +258,7`, `-332,0 +338,19`, `-561,0 +586,20`, `-596,9 +640,7`, `-730,20 +771,0`, `-775,6 +797`, `-866 +883`. 이 카드의 R3 [919,1075]·R2 [1077,1087]·R1 [383,389] 와 겹치는 hunk 는 없다(가장 가까운 것이 `-866`).
+- `go build ./...` → 종료 0. `GOOS=windows GOARCH=amd64 go build ./...` → 종료 0.
+- t1966 레인 통지: 피어 메시지 채널이 이 서브에이전트에 없음(도구 없음) — 전달 결과 없음. 틈(Gap)으로 기록한다.
+
+### M0 — 기준선 특성화 (AC-TCL-013)
+
+- RED(골든 부재). 명령 `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v`, 출력(발췌, 골든 디렉터리가 비어 있는 트리):
+
+```text
+--- FAIL: TestChecklistFallbackMatchesBaseline (7.16s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/init_clean (1.68s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/init_warn (1.26s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/init_fail (0.63s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/update_clean (1.31s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/update_warn (1.33s)
+    --- FAIL: TestChecklistFallbackMatchesBaseline/update_fail (0.96s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	8.314s
+```
+
+  각 하위 테스트의 실패 문구는 `baseline golden .../<name>-stdout.golden is missing` 이다(여섯 모두 고정 실행을 끝낸 뒤 골든 비교에서 멈춤).
+- 골든 생성: `UPDATE_GOLDEN=1 go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` (변경 전 코드, 골든 12개). 줄 수: init-clean stdout 34 / stderr 24, init-warn 34 / 30, init-fail 33 / 3, update-clean 80 / 0, update-warn 80 / 1, update-fail 37 / 1.
+- 뮤턴트: 정규화 규칙 `\b\d{8}T\d{6}Z\b` 를 지운 채 `update_warn` 을 돌림 → `FAIL`, `expected: "! user-modified pre-push hook was replaced; previous hook backed up at .git/hooks/pre-push.bak.<TS>"` / `actual: "... pre-push.bak.20261027T070543Z"`. 규칙을 되돌린 뒤 녹색.
+- 양성 대조(테스트 안 단언): init_clean — 직접 출력 조각(슬림 안내 두 줄, `user-asset ensure: `, 워크트리 안내 `shared across concurrent sessions`, `Initializing MoAI project...`) 각각 정확히 1번; init_warn — `Failed to apply autonomy tier bundle`; init_fail — `template deployment`; update_clean — `Pre-push hook installed` 정확히 1번; update_warn — `user-modified pre-push hook was replaced`; update_fail — `confirm merge for`. 모두 통과.
+- 같은 테스트 `-count=2` 연속 실행 모두 통과(결정성). `<ISO_TS>` 규칙은 이번 여섯 실행의 어느 골든도 바꾸지 않았다(골든에 `ISO_TS` 0건, 규칙은 그대로 둠).
+
+#### O4a — M0 커밋 직후, 다음 커밋 전
+
+- `git rev-parse HEAD` → `5f14cff995dd0258833fc19e37123bf96d44ca7a`
+- `go test ./internal/cli -run '^TestChecklistFallbackMatchesBaseline$' -count=1 -v` (측정 HEAD 위와 같음):
+
+```text
+--- PASS: TestChecklistFallbackMatchesBaseline (7.87s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/init_clean (0.83s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/init_warn (0.88s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/init_fail (0.87s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/update_clean (2.25s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/update_warn (1.82s)
+    --- PASS: TestChecklistFallbackMatchesBaseline/update_fail (1.22s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.923s
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -179,3 +229,30 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: serial
+
+### 입력 매개변수
+
+- tier: L (spec.md `tier` 기준 5개 산출물)
+- scope: 신규 파일 약 20개 이상(렌더러·세션·계획·카탈로그 4개·골든·테스트) + `internal/cli/init.go` 3개 영역 삽입
+- domain count: 2 (`internal/tui`, `internal/cli`) + 카탈로그 4개 로케일
+- file language mix: Go 소스·테스트, YAML 카탈로그, 골든 텍스트
+- concurrency benefit: LOW (코딩 중심, 마일스톤 간 의존: M1 카탈로그 → M2 렌더러 → M3 세션 → M4 연결)
+- delegate: manager-develop, effort: high, cycle_type: tdd (위임 지시 섹션 A)
+- Agent Teams 전제: 해당 없음(명시 요청 없음)
+
+### 모드 평가표
+
+| 모드 | 선택 | 근거 |
+|------|------|------|
+| direct | 아니오 | 의미 변경이 있는 신규 구현 |
+| serial | 예 | 코딩 중심, 마일스톤 순서 의존, 한 트리에 쓰는 작성자 하나 |
+| fanout | 아니오 | 병렬 독립 연구 아님 |
+| sweep | 아니오 | 균일한 기계적 변환 아님 |
+
+### 판단 근거
+
+코딩 중심 작업이고 마일스톤이 앞 단계 산출물(카탈로그 키, 렌더러 API)에 의존하므로 병렬화 이득이 낮다. 한 작업 트리에는 작성자 하나만 쓴다. Kickoff 는 리더가 자율 형태로 승인했고(감사 PASS 0.92), 이 기록은 첫 구현 커밋 앞에 남긴다.
