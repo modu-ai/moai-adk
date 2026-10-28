@@ -168,23 +168,34 @@ func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 	return report
 }
 
+// baselineFormatKeptText is the format marker WriteBaseline stamps on every
+// baseline it writes. DiffAgainstBaseline refuses a baseline whose marker is
+// absent (written by a pre-marker build) or unrecognized: those verdicts were
+// computed under the pre-23d02c65e3 containment semantics — rendered markdown,
+// the maskable measure — and carry no kept-text provenance, so an equality
+// PASS against them can mask a real containment regression (F3, card t1968
+// iter15 codex gate; operator-approved fail-closed direction).
+const baselineFormatKeptText = "kept-text-1"
+
 // baselineDoc is the stored baseline.json: the comparison a recorded run
 // produced, against which later runs diff deterministically.
 type baselineDoc struct {
-	Cases []CaseComparison `json:"cases"`
+	Format string           `json:"format"`
+	Cases  []CaseComparison `json:"cases"`
 }
 
-// WriteBaseline compares a run and stores it as the baseline at path. A
-// baseline is a recorded measurement, so a run set that is not one is
-// refused outright (P2, card t1968 codex review): a run that ended in
-// fetch_error stored its empty output like a legit measurement
-// (Contained=false), and a later run of the same case then compared PASS
-// against the poisoned baseline. Refusal mirrors the CompareRun/L3
-// semantics — failed or missing is not comparable, never a verdict — and
-// covers both directions of the case↔run correspondence: a case with no run
-// result (L3) and a run naming no bench case (an entry the diff, which walks
-// cases, could never compare). On refusal NOTHING is written and the
-// returned report is the zero value.
+// WriteBaseline compares a run and stores it as the baseline at path,
+// stamped with the kept-text format marker (F3, card t1968) so a later diff
+// can tell this build's provenance from an older build's. A baseline is a
+// recorded measurement, so a run set that is not one is refused outright
+// (P2, card t1968 codex review): a run that ended in fetch_error stored its
+// empty output like a legit measurement (Contained=false), and a later run
+// of the same case then compared PASS against the poisoned baseline.
+// Refusal mirrors the CompareRun/L3 semantics — failed or missing is not
+// comparable, never a verdict — and covers both directions of the
+// case↔run correspondence: a case with no run result (L3) and a run naming
+// no bench case (an entry the diff, which walks cases, could never compare).
+// On refusal NOTHING is written and the returned report is the zero value.
 func WriteBaseline(path string, cases []BenchCase, runs []CaseRun) (BenchReport, error) {
 	runByID := make(map[string]CaseRun, len(runs))
 	for _, r := range runs {
@@ -206,7 +217,7 @@ func WriteBaseline(path string, cases []BenchCase, runs []CaseRun) (BenchReport,
 		}
 	}
 	report := CompareRun(cases, runs)
-	raw, err := json.MarshalIndent(baselineDoc{Cases: report.Cases}, "", "  ")
+	raw, err := json.MarshalIndent(baselineDoc{Format: baselineFormatKeptText, Cases: report.Cases}, "", "  ")
 	if err != nil {
 		return report, err
 	}
@@ -234,7 +245,12 @@ type BaselineDiff struct {
 	AnyRegression bool       `json:"any_regression"`
 }
 
-// DiffAgainstBaseline compares a run with the baseline at path. A case
+// DiffAgainstBaseline compares a run with the baseline at path. The baseline
+// must carry this build's kept-text format marker: a baseline whose marker is
+// absent or unrecognized is REFUSED outright — error, empty diff, no
+// comparison (F3, card t1968 iter15 codex gate) — because its verdicts were
+// computed under containment semantics this diff cannot attribute, and an
+// equality PASS against them can mask a real containment regression. A case
 // PASSES iff its containment verdict equals the baseline's verdict; a flip
 // from contained to not-contained is a regression; a flip the other way
 // still fails the equality (the baseline is stale for that case) without
@@ -254,6 +270,9 @@ func DiffAgainstBaseline(path string, cases []BenchCase, runs []CaseRun) (Baseli
 	var base baselineDoc
 	if err := json.Unmarshal(raw, &base); err != nil {
 		return BaselineDiff{}, fmt.Errorf("jevmeasure: baseline not a JSON baseline: %w", err)
+	}
+	if base.Format != baselineFormatKeptText {
+		return BaselineDiff{}, fmt.Errorf("jevmeasure: baseline format predates kept-text containment; re-baseline with the current build")
 	}
 	baseByID := make(map[string]CaseComparison, len(base.Cases))
 	for _, c := range base.Cases {
