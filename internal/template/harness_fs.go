@@ -5,10 +5,12 @@
 // does exactly two things — the same two things SlimFS does for the catalog
 // axis, done here for the harness axis:
 //
-//  1. HIDING — claude-only surfaces (.claude/**, CLAUDE.md, .mcp.json,
+//  1. HIDING — claude-only surfaces (.claude/**, .mcp.json,
 //     .claudeignore, .moai/status_line.sh(.tmpl)) become invisible to
 //     fs.WalkDir: Open/Stat/ReadDir on them return fs.ErrNotExist
-//     (REQ-IH-005 negative half).
+//     (REQ-IH-005 negative half). CLAUDE.md is NOT hidden — it is the
+//     canonical shared instruction file of every harness value
+//     (SPEC-CLAUDE-INSTRUCTION-FILES-001 REQ-CIF-001).
 //
 //  2. REMAPPING — the canonical skill catalog (.claude/skills/<name>,
 //     34 directories) is re-homed under .agents/skills/<name>: ReadDir of
@@ -46,8 +48,11 @@ import (
 // codex-only deployment (REQ-IH-005; design.md D4 rows 8-11). status_line.sh
 // carries both its raw and .tmpl forms; the deployer strips the .tmpl suffix
 // from walk paths, so the walk may present either.
+//
+// SPEC-CLAUDE-INSTRUCTION-FILES-001: CLAUDE.md is no longer hidden — it is the
+// canonical shared instruction file deployed on every harness value
+// (REQ-CIF-001), and no AGENTS template exists to hide in its place.
 var codexHiddenPaths = []string{
-	"CLAUDE.md",
 	".mcp.json",
 	".claudeignore",
 	".moai/status_line.sh",
@@ -194,7 +199,13 @@ func normalizeHarnessReferences(data []byte) []byte {
 	text = strings.ReplaceAll(text, ".claude/skills/moai/workflows/", ".moai/workflows/")
 	text = strings.ReplaceAll(text, ".claude/rules/moai/", ".moai/policies/")
 	text = strings.ReplaceAll(text, ".claude/skills/", ".agents/skills/")
-	text = strings.ReplaceAll(text, "CLAUDE.md", "AGENTS.md")
+	// SPEC-CLAUDE-INSTRUCTION-FILES-001 REQ-CIF-004: deployed content resolves
+	// to the canonical CLAUDE names — no active AGENTS reference survives the
+	// projection. The local pair is replaced first; the shared pair's pattern
+	// is not a substring of it, so the order is a readability choice, not a
+	// correctness one.
+	text = strings.ReplaceAll(text, "AGENTS.local.md", "CLAUDE.local.md")
+	text = strings.ReplaceAll(text, "AGENTS.md", "CLAUDE.md")
 	return []byte(text)
 }
 

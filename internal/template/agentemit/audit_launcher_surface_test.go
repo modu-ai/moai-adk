@@ -115,7 +115,7 @@ func TestAuditRoleLauncherInstructionSurface(t *testing.T) {
 	}
 
 	// The parent-side row on the surface Codex reads natively.
-	contract, err := os.ReadFile(filepath.Join(templatesDir, "AGENTS.md.tmpl"))
+	contract, err := os.ReadFile(filepath.Join(templatesDir, "CLAUDE.md.tmpl"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,9 +126,9 @@ func TestAuditRoleLauncherInstructionSurface(t *testing.T) {
 		}
 	}
 	if row == "" {
-		t.Fatal("AGENTS.md template has no audit-verdict-file row")
+		t.Fatal("CLAUDE.md template has no audit-verdict-file row")
 	}
-	check("AGENTS.md audit-verdict-file row", row)
+	check("CLAUDE.md audit-verdict-file row", row)
 	for _, role := range readOnly {
 		if !strings.Contains(row, "`"+role+"`") {
 			t.Errorf("audit-verdict-file row does not name read-only role %s", role)

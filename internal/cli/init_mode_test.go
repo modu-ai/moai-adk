@@ -101,7 +101,7 @@ func assertDeployedPresent(t *testing.T, root string) {
 	for _, rel := range []string{
 		".claude/agents",
 		".claude/rules",
-		"AGENTS.md",
+		"CLAUDE.md",
 		".moai/config",
 	} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {

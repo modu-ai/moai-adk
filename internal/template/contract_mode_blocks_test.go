@@ -45,8 +45,8 @@ type grTarget struct {
 }
 
 // grTargets are the block-bearing documents (the SSOT is handled apart).
-// The AGENTS.md-primary product carries the contract-mode guidance for the
-// primary instruction file as plain contract prose (AGENTS.md §2/§7), not as
+// The CLAUDE.md-canonical product carries the contract-mode guidance for the
+// primary instruction file as plain contract prose (CLAUDE.md §2/§7), not as
 // marker blocks, so no primary-file row is registered here.
 var grTargets = []grTarget{
 	{path: ".claude/rules/moai/core/askuser-protocol.md", ids: []string{"contract-ambiguity"}, alwaysLoaded: true, emitter: true},
@@ -1028,16 +1028,16 @@ func TestJevDoctrineAmendment(t *testing.T) {
 		}
 		// Migrated surface (card t1290): the full §29 body, including the
 		// design.md §11.1 amendment text, lives in .moai/docs/jev-local-
-		// operations.md; the tracked AGENTS.local.md carries the compressed
+		// operations.md; the tracked CLAUDE.local.md carries the compressed
 		// §29 — its principle markers plus the pointer to that document.
 		docs := grRead(t, root, ".moai/docs/jev-local-operations.md")
 		if !strings.Contains(docs, want) {
 			t.Error(".moai/docs/jev-local-operations.md lacks the design.md §11.1 amendment text")
 		}
-		local := grRead(t, root, "AGENTS.local.md")
+		local := grRead(t, root, "CLAUDE.local.md")
 		start := strings.Index(local, "\n## 29.")
 		if start < 0 {
-			t.Fatal("AGENTS.local.md has no §29")
+			t.Fatal("CLAUDE.local.md has no §29")
 		}
 		sec := local[start+1:]
 		if end := strings.Index(sec, "\n## "); end >= 0 {
@@ -1051,7 +1051,7 @@ func TestJevDoctrineAmendment(t *testing.T) {
 		// 판정 금지") instead of the pre-amendment display-only phrases.
 		for _, marker := range []string{"자문 입력", "단독 판정 금지"} {
 			if !strings.Contains(sec, marker) {
-				t.Errorf("AGENTS.local.md §29 compressed principle lacks %q", marker)
+				t.Errorf("CLAUDE.local.md §29 compressed principle lacks %q", marker)
 			}
 		}
 		progress := grRead(t, root, grJevProgress)

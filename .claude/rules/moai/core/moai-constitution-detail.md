@@ -118,7 +118,7 @@ ASSUMPTIONS I'M MAKING:
 ```
 
 
-Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: AGENTS.md §13 (Context-First Discovery).
+Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: CLAUDE.md §13 (Context-First Discovery).
 
 
 ### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]

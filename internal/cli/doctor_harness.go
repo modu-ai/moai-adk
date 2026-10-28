@@ -81,13 +81,14 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		failures = append(failures, "L2 "+l2Detail)
 	}
 
-	// L3: instruction-file marker block paired. AGENTS.md is the instruction
-	// file of the AGENTS.md-primary product; a legacy project still carrying
-	// only CLAUDE.md is read through that instead.
-	l3Target := filepath.Join(projectRoot, "AGENTS.md")
+	// L3: instruction-file marker block paired. CLAUDE.md is the canonical
+	// instruction file (SPEC-CLAUDE-INSTRUCTION-FILES-001 REQ-CIF-003); a
+	// legacy project still carrying only AGENTS.md is checked through that
+	// instead.
+	l3Target := filepath.Join(projectRoot, "CLAUDE.md")
 	if _, err := os.Stat(l3Target); err != nil {
-		if _, lerr := os.Stat(filepath.Join(projectRoot, "CLAUDE.md")); lerr == nil {
-			l3Target = filepath.Join(projectRoot, "CLAUDE.md")
+		if _, lerr := os.Stat(filepath.Join(projectRoot, "AGENTS.md")); lerr == nil {
+			l3Target = filepath.Join(projectRoot, "AGENTS.md")
 		}
 	}
 	l3, l3Detail := checkLayer3Marker(l3Target)

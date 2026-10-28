@@ -15,8 +15,9 @@ import (
 )
 
 // instructionsLoadedHandler processes InstructionsLoaded events.
-// It validates character budget compliance for the instruction file
-// (AGENTS.md; legacy projects: CLAUDE.md) and rules files.
+// It validates character budget compliance for the instruction files
+// (CLAUDE.md / CLAUDE.local.md; legacy projects read their AGENTS
+// counterparts only as the labelled legacy AGENTS fallback) and rules files.
 type instructionsLoadedHandler struct{}
 
 // NewInstructionsLoadedHandler creates a new InstructionsLoaded event handler.
@@ -76,13 +77,25 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 		}
 	}
 
-	// Also check the project's instruction file in CWD: AGENTS.md first
-	// (AGENTS.md-primary product), falling back to a legacy CLAUDE.md.
+	// Also check the project's instruction files in CWD: the canonical CLAUDE
+	// pair first, a legacy AGENTS file only as the labelled fallback
+	// (REQ-CIF-003 — the fallback label is observable in the warn-level log).
 	if input.CWD != "" {
-		if mdPath := resolveInstructionFile(input.CWD); mdPath != "" {
+		if mdPath, label := resolveInstructionFileDetail(input.CWD); mdPath != "" {
+			if label != "" {
+				slog.Warn("instruction file resolved via "+legacyAGENTSFallbackLabel, "path", mdPath)
+			}
 			if budgetErr := h.checkCharacterBudget(mdPath); budgetErr != nil {
 				slog.Warn("instruction file exceeds budget", "path", mdPath, "error", budgetErr)
 				// Don't block on instruction-file budget violations, just log
+			}
+		}
+		if localPath, localLabel := resolveLocalInstructionFileDetail(input.CWD); localPath != "" {
+			if localLabel != "" {
+				slog.Warn("local instruction file resolved via "+legacyAGENTSFallbackLabel, "path", localPath)
+			}
+			if budgetErr := h.checkCharacterBudget(localPath); budgetErr != nil {
+				slog.Warn("local instruction file exceeds budget", "path", localPath, "error", budgetErr)
 			}
 		}
 	}
@@ -110,6 +123,12 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 
 // checkCharacterBudget verifies that a file does not exceed the 40,000 character limit.
 func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error {
+	if !regularReadableFile(filePath) {
+		// Non-regular entry (FIFO/socket/device): reading could block the
+		// hook forever — treat as unreadable and continue (sync-audit F2).
+		slog.Debug("skipping non-regular instruction file", "path", filePath)
+		return nil
+	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		// File may have been deleted or is inaccessible - log and continue
@@ -142,28 +161,70 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 // @MX:SPEC:SPEC-INSTRUCTIONS-BUDGET-001
 const sessionCharBudget = 210000
 
-// resolveInstructionFile names the project's instruction file: AGENTS.md when
-// present (AGENTS.md-primary product), else the legacy CLAUDE.md, else "".
-func resolveInstructionFile(projectRoot string) string {
-	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
-		p := filepath.Join(projectRoot, name)
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
+// legacyAGENTSFallbackLabel is the literal token every legacy-fallback
+// resolution reports (REQ-CIF-003): a legacy AGENTS file is read only as an
+// explicit, labelled fallback that modifies nothing.
+const legacyAGENTSFallbackLabel = "legacy AGENTS fallback"
+
+// regularReadableFile reports whether path reads as a regular file. os.Stat
+// follows symlinks (a link to a regular file stays readable) and identifies
+// FIFOs, sockets, and devices as non-regular — a writer-less FIFO at an
+// instruction-file path must resolve as absent, never reach ReadFile
+// (sync-audit F2: an unguarded open would hang the session-start hook;
+// the migration verb carries the same Lstat discipline for moving).
+func regularReadableFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
+}
+
+// resolveInstructionPairDetail resolves one legacy/canonical pair: the
+// canonical name when present, else the legacy name (labelled), else none.
+// Non-regular entries (FIFO, socket, device) resolve as absent.
+func resolveInstructionPairDetail(projectRoot, canonical, legacy string) (string, string) {
+	if regularReadableFile(filepath.Join(projectRoot, canonical)) {
+		return filepath.Join(projectRoot, canonical), ""
 	}
-	return ""
+	if regularReadableFile(filepath.Join(projectRoot, legacy)) {
+		return filepath.Join(projectRoot, legacy), legacyAGENTSFallbackLabel
+	}
+	return "", ""
+}
+
+// resolveInstructionFileDetail names the project's shared instruction file
+// with its resolution label ("" canonical, legacy AGENTS fallback legacy).
+func resolveInstructionFileDetail(projectRoot string) (string, string) {
+	return resolveInstructionPairDetail(projectRoot, "CLAUDE.md", "AGENTS.md")
+}
+
+// resolveLocalInstructionFileDetail names the project's local instruction
+// file with its resolution label (same semantics, local pair).
+func resolveLocalInstructionFileDetail(projectRoot string) (string, string) {
+	return resolveInstructionPairDetail(projectRoot, "CLAUDE.local.md", "AGENTS.local.md")
+}
+
+// resolveInstructionFile names the project's instruction file: CLAUDE.md when
+// present (canonical, SPEC-CLAUDE-INSTRUCTION-FILES-001), else the legacy
+// AGENTS.md, else "".
+func resolveInstructionFile(projectRoot string) string {
+	path, _ := resolveInstructionFileDetail(projectRoot)
+	return path
 }
 
 // instructionFileSet derives the instruction-file set for projectRoot
 // mechanically at metric time (SPEC-INSTRUCTIONS-BUDGET-001 §D.1 — never a
 // hand-written path list):
 //
-//  1. the instruction-file anchor (AGENTS.md; legacy projects: CLAUDE.md);
+//  1. the instruction-file anchor (CLAUDE.md; legacy projects: AGENTS.md);
 //  2. the transitive closure of `^@` import lines in the anchor — repo-
 //     relative paths resolved under projectRoot; missing members are skipped,
 //     imports escaping projectRoot are not followed, and the traversal is
 //     cycle-safe via a visited set;
-//  3. every *.md under .claude/rules/moai/ whose frontmatter — when the file
+//  3. the LOCAL instruction file (CLAUDE.local.md; legacy:
+//     AGENTS.local.md) and its own @-import closure — the local pair is
+//     auto-loaded alongside the anchor, so the aggregate budget must sum
+//     it too (card-review R5: a tree can pass every per-file limit while
+//     the total exceeds the session budget);
+//  4. every *.md under .claude/rules/moai/ whose frontmatter — when the file
 //     starts with a --- block — lacks a top-level `paths:` key (the
 //     always-loaded rule set).
 //
@@ -182,11 +243,15 @@ func instructionFileSet(projectRoot string) []string {
 	}
 
 	// Anchor + transitive @-import closure (breadth-first, cycle-safe). The
-	// anchor is AGENTS.md; a legacy project still carrying only CLAUDE.md is
-	// measured through that instead.
+	// anchor is CLAUDE.md; a legacy project still carrying only AGENTS.md is
+	// measured through that instead. The local instruction file seeds the
+	// same closure (card-review R5).
 	queue := []string{}
 	if anchor := resolveInstructionFile(projectRoot); anchor != "" {
 		queue = append(queue, anchor)
+	}
+	if local, _ := resolveLocalInstructionFileDetail(projectRoot); local != "" {
+		queue = append(queue, local)
 	}
 	for len(queue) > 0 {
 		cur := queue[0]
@@ -194,13 +259,21 @@ func instructionFileSet(projectRoot string) []string {
 		if seen[cur] {
 			continue
 		}
+		if !regularReadableFile(cur) {
+			continue // missing or non-regular member (FIFO would hang): skip
+		}
 		data, err := os.ReadFile(cur)
 		if err != nil {
-			continue // missing/unreadable member: skip silently-and-continue
+			continue // unreadable member: skip silently-and-continue
 		}
 		add(cur)
 		for _, imp := range parseImports(string(data)) {
-			if resolved := resolveUnder(projectRoot, imp); resolved != "" && !seen[resolved] {
+			// Audit P2-2: a relative import resolves from the IMPORTING
+			// file's directory (per the official memory#import-additional-
+			// files semantics), then the project-boundary check applies —
+			// resolving every import from the project root silently
+			// dropped nested ../ targets outside the root spelling.
+			if resolved := resolveUnder(projectRoot, filepath.Dir(cur), imp); resolved != "" && !seen[resolved] {
 				queue = append(queue, resolved)
 			}
 		}
@@ -244,13 +317,14 @@ func parseImports(content string) []string {
 	return imports
 }
 
-// resolveUnder resolves a repo-relative import path under projectRoot,
+// resolveUnder resolves an import path from the importing file's directory
+// (audit P2-2: per the official memory#import-additional-files semantics),
 // refusing absolute paths and any target that escapes projectRoot.
-func resolveUnder(projectRoot, rel string) string {
+func resolveUnder(projectRoot, dir, rel string) string {
 	if rel == "" || filepath.IsAbs(rel) {
 		return ""
 	}
-	cleaned := filepath.Clean(filepath.Join(projectRoot, rel))
+	cleaned := filepath.Clean(filepath.Join(dir, rel))
 	escaped, err := filepath.Rel(projectRoot, cleaned)
 	if err != nil || escaped == ".." || strings.HasPrefix(escaped, ".."+string(filepath.Separator)) {
 		return ""

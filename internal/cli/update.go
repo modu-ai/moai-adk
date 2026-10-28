@@ -297,8 +297,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// Advisory only: update never moves, renames, or deletes either local
 		// instruction file (REQ-IFU-011). The rename is `moai migrate
-		// local-instructions`, run by the operator.
+		// local-instructions`, run by the operator. The shared-pair advisory
+		// fires when the deployer skipped CLAUDE.md creation next to a legacy
+		// AGENTS.md (SPEC-CLAUDE-INSTRUCTION-FILES-001, sync-audit F1).
 		emitLocalInstructionsAdvisory(out, cwd)
+		emitSharedInstructionAdvisory(out, cwd)
 	}
 
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any

@@ -11,7 +11,7 @@ import (
 // cannot hold sync or merge. Historical reports and runtime test fixtures are excluded.
 func TestReviewRetirementActivePolicies(t *testing.T) {
 	root := findProjectRootForMirrorTest(t)
-	files := []string{"AGENTS.md.tmpl", ".claude/agents/moai/manager-lead.md"}
+	files := []string{"CLAUDE.md.tmpl", ".claude/agents/moai/manager-lead.md"}
 	for _, n := range []string{"factory-dispatch.md", "factory-dispatch-core.md", "factory-dispatch-detail.md", "factory-dispatch-gates.md", "factory-dispatch-mechanics.md", "factory-dispatch-cards.md"} {
 		files = append(files, ".claude/rules/moai/workflow/"+n)
 	}

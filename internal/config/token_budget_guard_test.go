@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -56,8 +57,8 @@ func TestAlwaysLoadedTokenBudget(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping always-loaded budget guard")
 	}
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	total, surface, err := measureAlwaysLoaded(root)
@@ -86,8 +87,8 @@ func TestCodexContractByteCeiling(t *testing.T) {
 	if !ok {
 		t.Skip("repo root (go.mod) not found; skipping Codex contract byte guard")
 	}
-	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
-		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
 	breaches, err := MeasureContractBytes(root)
@@ -155,16 +156,15 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai", "core"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			// The mirror ships as `AGENTS.md.tmpl` — the `.tmpl` suffix keeps it
-			// out of Codex's filename-keyed discovery in THIS repo while the
-			// deployer strips the suffix so a user project still receives
-			// `AGENTS.md` (card t925). The ceiling binds the deployed bytes, so
-			// the fixture must use the shipped name or this dimension silently
-			// measures nothing.
-			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
+			// The mirror ships as `CLAUDE.md.tmpl` (SPEC-CLAUDE-INSTRUCTION-
+			// FILES-001 M1 rename; the deployer strips the suffix so a user
+			// project receives `CLAUDE.md`). The ceiling binds the deployed
+			// bytes, so the fixture must use the shipped name or this
+			// dimension silently measures nothing.
+			if err := os.WriteFile(filepath.Join(mirrorDir, "CLAUDE.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			breaches, err := MeasureContractBytes(root)
@@ -267,7 +267,7 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 			}
 			return nil
 		}
-		if d.Name() != "AGENTS.md" {
+		if d.Name() != "CLAUDE.md" {
 			return nil
 		}
 		info, statErr := d.Info()
@@ -285,7 +285,7 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 	// Non-vacuity: the root contract MUST be among the discovered files. Without
 	// this the walk finding nothing would pass the budget assertion trivially,
 	// and a guard that cannot fail is not a guard.
-	rootAgents := filepath.Join(root, "AGENTS.md")
+	rootAgents := filepath.Join(root, "CLAUDE.md")
 	if !slices.Contains(found, rootAgents) {
 		t.Fatalf("root contract %s was not discovered by the walk (found %v) — the guard would pass vacuously", rootAgents, found)
 	}
@@ -313,7 +313,7 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 2 // + AGENTS.md + moai.md fixed slots (the CLAUDE.md slot retired with the AGENTS.md-primary conversion)
+	wantTotal := wantRuleCount + 3 // + CLAUDE.md + CLAUDE.local.md + moai.md fixed slots (감사 P2-1: the auto-loaded local pair joined; this repo carries no @-imports, so the closure adds none)
 	if len(surface) != wantTotal {
 		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
@@ -327,20 +327,138 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 		}
 	}
 
-	// AC-AMC-017: the enumeration MUST contain the root AGENTS.md. It is an
-	// @-import of CLAUDE.md and therefore always-loaded; an enumeration that omits
-	// it scores the relocation of clauses INTO AGENTS.md as a reduction while the
-	// always-loaded context is unchanged (REQ-AMC-013).
-	agents := filepath.Join(root, "AGENTS.md")
+	// AC-AMC-017 (CLAUDE.md-canonical, SPEC-CLAUDE-INSTRUCTION-FILES-001): the
+	// enumeration MUST contain the root CLAUDE.md — the always-loaded contract
+	// layer; an enumeration that omits it scores relocation of clauses INTO it
+	// as a reduction while the always-loaded context is unchanged
+	// (REQ-AMC-013).
+	claude := filepath.Join(root, "CLAUDE.md")
 	found := false
 	for _, p := range surface {
-		if p == agents {
+		if p == claude {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("always-loaded surface omits %s; the Codex contract layer must be enumerated (REQ-AMC-008)", agents)
+		t.Errorf("always-loaded surface omits %s; the contract layer must be enumerated (REQ-AMC-008)", claude)
+	}
+
+	// 감사 P2-1: the auto-loaded LOCAL instruction file is enumerated too.
+	local := filepath.Join(root, "CLAUDE.local.md")
+	found = false
+	for _, p := range surface {
+		if p == local {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("always-loaded surface omits %s; the local pair must be enumerated (P2-1)", local)
+	}
+}
+
+// TestAlwaysLoadedSurfaceDeduplicatesImports pins card-review R7: a path
+// reachable BOTH as an always-loaded rule and through the instruction
+// file's @-import closure is summed once — a duplicate would fail the
+// budget guard without any real content growth.
+func TestAlwaysLoadedSurfaceDeduplicatesImports(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n\n@.claude/rules/moai/always-core.md\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule := filepath.Join(root, ".claude", "rules", "moai", "always-core.md")
+	count := 0
+	for _, p := range surface {
+		if p == rule {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("the imported always-loaded rule appears %d times in the surface, want exactly 1 (R7): %v", count, surface)
+	}
+}
+
+// TestAlwaysLoadedMeasuresLegacySharedInstructions pins card-review R6: on
+// an AGENTS.md-only (legacy) project, the shared instruction content stays
+// in the measurement — the shared slot has the same canonical/legacy
+// priority selection as the local pair.
+func TestAlwaysLoadedMeasuresLegacySharedInstructions(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claude", "rules", "moai", "always-core.md"), []byte("# Always-loaded core rule\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	before, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// ~90,001 estimated tokens of legacy shared instructions, no CLAUDE.md.
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), bytes.Repeat([]byte("a"), 360_004), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	after, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after-before < 90_000 {
+		t.Errorf("legacy shared instructions moved the total by %d tokens, want >= 90000 — the shared slot lost the legacy fallback (R6)", after-before)
+	}
+}
+
+// TestAlwaysLoadedMeasuresLocalInstructions pins audit P2-1: the token
+// measurement must sum the auto-loaded local instruction file — adding a
+// ~90,000-token CLAUDE.local.md to a small fixture has to move the total.
+func TestAlwaysLoadedMeasuresLocalInstructions(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	before, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ~90,001 estimated tokens (chars/4) of local instructions.
+	local := filepath.Join(root, "CLAUDE.local.md")
+	if err := os.WriteFile(local, bytes.Repeat([]byte("a"), 360_004), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	after, _, err := measureAlwaysLoaded(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after-before < 90_000 {
+		t.Errorf("local instructions moved the total by %d tokens, want >= 90000 — the local pair is missing from the measurement (P2-1)", after-before)
 	}
 }
 

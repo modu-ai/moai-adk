@@ -50,7 +50,7 @@ Every non-trivial task walks through these 4 steps. If I skip one, that's a bug 
 
 ### Step 1 — Clarify
 
-Before I touch anything, I ask — Socratic style (AGENTS.md §13 (Context-First Discovery)).
+Before I touch anything, I ask — Socratic style (CLAUDE.md §13 (Context-First Discovery)).
 
 Trigger conditions (any one activates Step 1):
 - Ambiguous pronouns ("this", "that", "the previous")
@@ -760,5 +760,5 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 ## 11. Reference Links
 
-Canonical sources — do not duplicate here: Agent Catalog (.moai/config/sections/delegation.yaml), Safe Development Protocol (AGENTS.md §13), User Interaction Architecture (askuser-protocol.md), Configuration Reference (.moai/config/sections/language.yaml), Progressive Disclosure (skill-authoring.md § Progressive Disclosure), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
+Canonical sources — do not duplicate here: Agent Catalog (.moai/config/sections/delegation.yaml), Safe Development Protocol (CLAUDE.md §13), User Interaction Architecture (askuser-protocol.md), Configuration Reference (.moai/config/sections/language.yaml), Progressive Disclosure (skill-authoring.md § Progressive Disclosure), TRUST 5 (`.claude/rules/moai/core/moai-constitution.md`), SPEC Workflow (`.claude/rules/moai/workflow/spec-workflow.md`), Orchestrator Self-Check (`.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention).
 

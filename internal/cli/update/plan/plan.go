@@ -23,8 +23,9 @@ const MaxConfigSize = 10 * 1024 * 1024 // 10MB
 func ClassifyFileRisk(filename string, exists bool) string {
 	base := filepath.Base(filename)
 
-	// High risk files — AGENTS.md is the primary instruction file of the
-	// AGENTS.md-primary product; CLAUDE.md stays listed for legacy projects.
+	// High risk files — CLAUDE.md is the canonical instruction file
+	// (SPEC-CLAUDE-INSTRUCTION-FILES-001); AGENTS.md stays listed for legacy
+	// projects.
 	highRiskFiles := []string{"AGENTS.md", "CLAUDE.md", "settings.json"}
 	if slices.Contains(highRiskFiles, base) {
 		return "high"

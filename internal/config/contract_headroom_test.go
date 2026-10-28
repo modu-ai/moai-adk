@@ -15,8 +15,8 @@ const contractHeadroomBytes = 2048
 func TestContractDocumentsKeepHeadroom(t *testing.T) {
 	root := filepath.Join("..", "..")
 	docs := []string{
-		filepath.Join(root, "AGENTS.md"),
-		filepath.Join(root, "internal", "template", "templates", "AGENTS.md.tmpl"),
+		filepath.Join(root, "CLAUDE.md"),
+		filepath.Join(root, "internal", "template", "templates", "CLAUDE.md.tmpl"),
 	}
 	limit := CodexContractByteCeiling - contractHeadroomBytes
 	for _, p := range docs {

@@ -277,8 +277,8 @@ cd my-project
 
 | 选择 | 项目根目录生成的内容 |
 |---|---|
-| `claude`（默认） | 完整的 `.claude/` 表面与 `AGENTS.md` — 沿用至今的默认行为 |
-| `gpt` | 仅 Codex 部署：只安装 `AGENTS.md` 与 Codex 表面（`.codex/`、`.agents/skills/`、`.moai/`）。不会生成 `.claude/` 目录、`CLAUDE.md` 和 `.mcp.json`。Claude 专属运行时功能（AskUserQuestion、子代理、output style、斜杠命令、Workflow 脚本）不可用 |
+| `claude`（默认） | 完整的 `.claude/` 表面与 `CLAUDE.md` |
+| `gpt` | 仅 Codex 部署：只安装 `CLAUDE.md` 与 Codex 表面（`.codex/`、`.agents/skills/`、`.moai/`）。不会生成 `.claude/` 目录和 `.mcp.json`。Claude 专属运行时功能（AskUserQuestion、子代理、output style、斜杠命令、Workflow 脚本）不可用。现有项目的 `AGENTS.md`/`AGENTS.local.md` 由 `moai migrate local-instructions` 无损移动为 `CLAUDE.md`/`CLAUDE.local.md` |
 | `both` | 在 `claude` 部署之上追加 `.codex/` 接入。`.mcp.json` 供应强制开启 |
 
 #### 部署模式：插件默认与完整本地部署

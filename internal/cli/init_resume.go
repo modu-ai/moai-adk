@@ -219,16 +219,22 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiz
 
 // deployedWiringIsGPT reads the deployed layout as the interrupted --llm
 // record when no selection record exists (gate round 51-3, legacy fallback).
-// The codex-only deployer writes no .claude/ surface and projects AGENTS.md,
-// so .claude/ absent with AGENTS.md present names the gpt layout. The probe is
-// .claude/, not CLAUDE.md: no harness writes CLAUDE.md any more, so a
-// CLAUDE.md probe read every claude and both project as gpt.
+// The codex-only deployer writes no .claude/ surface and projects the
+// instruction file, so .claude/ absent with the instruction file present —
+// CLAUDE.md (canonical) OR a legacy AGENTS.md the pre-migration deployer
+// wrote (card-review R1) — names the gpt layout. The probe is .claude/ first:
+// a claude or both deployment always carries .claude/, whichever instruction
+// name its era wrote, so a legacy claude tree never reads as gpt.
 func deployedWiringIsGPT(projectRoot string) bool {
 	if _, err := os.Stat(filepath.Join(projectRoot, ".claude")); err == nil {
 		return false // the claude-side deployer ran (claude and both alike)
 	}
-	_, err := os.Stat(filepath.Join(projectRoot, "AGENTS.md"))
-	return err == nil
+	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+		if _, err := os.Stat(filepath.Join(projectRoot, name)); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // refuseResumeHarnessChange refuses a resume whose deployed harness is not the
@@ -239,7 +245,7 @@ func deployedWiringIsGPT(projectRoot string) bool {
 // would rewrite llm.yaml over the old harness's files and still report success,
 // without the claude harness's own files — a mismatched tree. The deployed
 // harness is read in order: the selection record the failing run left; with no
-// record, the GPT layout, .claude/ absent with AGENTS.md present. With none of
+// record, the GPT layout, .claude/ absent with CLAUDE.md present. With none of
 // this evidence, nothing is refused.
 func refuseResumeHarnessChange(projectRoot string) error {
 	if recorded, ok := readResumeWiring(projectRoot); ok {

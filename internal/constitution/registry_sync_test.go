@@ -127,17 +127,18 @@ func deployedRegistryMirror(t *testing.T, sourceRoot string) string {
 	targetRoot := t.TempDir()
 	for rel := range paths {
 		sourceRel := rel
-		if rel == "AGENTS.md" {
-			sourceRel = "AGENTS.md.tmpl"
+		if rel == "CLAUDE.md" {
+			sourceRel = "CLAUDE.md.tmpl"
 		}
 		data, err := os.ReadFile(filepath.Join(sourceRoot, sourceRel))
 		if err != nil {
 			t.Fatalf("read shipped source %s: %v", sourceRel, err)
 		}
-		// AGENTS currently contains no substitutions; require explicit rendering
-		// if it gains any rather than silently validating unrendered directives.
-		if rel == "AGENTS.md" && strings.Contains(string(data), "{{") {
-			t.Fatal("AGENTS.md.tmpl gained substitutions; render them in this deployment fixture")
+		// CLAUDE.md currently contains no substitutions; require explicit
+		// rendering if it gains any rather than silently validating unrendered
+		// directives.
+		if rel == "CLAUDE.md" && strings.Contains(string(data), "{{") {
+			t.Fatal("CLAUDE.md.tmpl gained substitutions; render them in this deployment fixture")
 		}
 		target := filepath.Join(targetRoot, rel)
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {

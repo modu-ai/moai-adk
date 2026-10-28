@@ -241,10 +241,27 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			return fmt.Errorf("template deploy release mirror link %q: %w", destRelPath, err)
 		}
 
+		// Legacy-guard (SPEC-CLAUDE-INSTRUCTION-FILES-001, sync-audit F1 +
+		// F7): never CREATE the canonical instruction file alongside a
+		// user's legacy AGENTS.md — the canonical reader would then read
+		// only the fresh CLAUDE.md and deactivate the user's instructions,
+		// and the migration verb would refuse as coexistence. The legacy
+		// probe requires a REGULAR file: a directory squatting on the name
+		// is not an active instruction file and must not block creation.
+		// Skip the creation; the advisory layer points at the migration verb.
+		if destRelPath == "CLAUDE.md" {
+			if linfo, lerr := os.Stat(filepath.Join(projectRoot, "AGENTS.md")); lerr == nil && linfo.Mode().IsRegular() {
+				if _, cerr := os.Stat(destPath); os.IsNotExist(cerr) {
+					result.recordProtectedSkip(destRelPath)
+					return nil
+				}
+			}
+		}
+
 		// Existing file protection: skip files that already exist at the
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
-		// of init, or a pre-existing AGENTS.md).
+		// of init, or a pre-existing CLAUDE.md).
 		// Skip this check in forceUpdate mode (used for template updates) —
 		// EXCEPT on published-skill paths (R-011): update mode exists to
 		// refresh template-managed content, not to overwrite a user-owned

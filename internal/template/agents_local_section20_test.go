@@ -1,5 +1,5 @@
 // agents_local_section20_test.go — SPEC-AGENT-CORE4-001 REQ-AC4-012(a): the
-// AGENTS.local.md §2.0 text no longer describes the agent copies as hand-edited
+// CLAUDE.local.md §2.0 text no longer describes the agent copies as hand-edited
 // or C2 as the source layer, and names the agent source directory instead.
 //
 // The check reads the section and nothing else, so it survives later edits of
@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-// agentsLocalPath is the repository-root AGENTS.local.md, relative to this package.
-const agentsLocalPath = "../../AGENTS.local.md"
+// agentsLocalPath is the repository-root CLAUDE.local.md, relative to this package.
+const agentsLocalPath = "../../CLAUDE.local.md"
 
 // section20Heading prefixes the §2.0 heading line; the section runs to the next "### " heading.
 const section20Heading = "### [HARD] §2.0"
@@ -37,7 +37,7 @@ var oldSection20Phrases = []string{
 	"emitted from `.md`",
 }
 
-// section20Of returns the §2.0 section of the AGENTS.local.md text.
+// section20Of returns the §2.0 section of the CLAUDE.local.md text.
 func section20Of(text string) (string, bool) {
 	lines := strings.Split(text, "\n")
 	start := -1
@@ -74,13 +74,13 @@ func staleSection20Phrases(section string) []string {
 func TestAgentsLocalSection20Text(t *testing.T) {
 	raw, err := os.ReadFile(agentsLocalPath)
 	if err != nil {
-		t.Fatalf("read AGENTS.local.md: %v", err)
+		t.Fatalf("read CLAUDE.local.md: %v", err)
 	}
 	section, found := section20Of(string(raw))
 
 	t.Run("section_2_0_exists", func(t *testing.T) {
 		if !found {
-			t.Fatalf("AGENTS.local.md has no heading starting %q", section20Heading)
+			t.Fatalf("CLAUDE.local.md has no heading starting %q", section20Heading)
 		}
 		if strings.Count(section, "\n") < 3 {
 			t.Errorf("section is only %d line(s) long; the heading's body was not located", strings.Count(section, "\n")+1)

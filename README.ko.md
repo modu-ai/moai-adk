@@ -277,13 +277,13 @@ cd my-project
 
 | 선택 | 프로젝트 루트에 생기는 것 |
 |---|---|
-| `claude` (기본값) | `.claude/` 표면 전체와 `AGENTS.md` — 지금까지의 기본 동작 |
-| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
+| `claude` (기본값) | `.claude/` 표면 전체와 `CLAUDE.md` |
+| `gpt` | Codex 단독 배포: `CLAUDE.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리와 `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다. 기존 프로젝트의 `AGENTS.md`/`AGENTS.local.md`는 `moai migrate local-instructions`가 무손실로 `CLAUDE.md`/`CLAUDE.local.md`로 옮긴다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
 #### 공용 에셋은 사용자 폴더에
 
-공용 스킬과 에이전트는 더 이상 프로젝트 파일이 아니다. 어떤 하니스를 고르든 `moai init`은 핵심 스킬 세트와 에이전트를 사용자 폴더 — `~/.claude/`, `~/.agents/`, `~/.codex/` — 에 설치하고, 놓은 파일 하나하나를 `~/.moai/user-assets.json`에 기록한다(파일별 해시, 소속 번들, 설치한 moai 버전). `--bundles <이름>` 플래그로 첫 init에서 추가 번들을 함께 설치할 수 있다. 프로젝트 트리에는 프로젝트 고유 내용만 남는다: 설정, 룰, 훅, `AGENTS.md`/`CLAUDE.md`, 템플릿 잠금 파일, `.mcp.json`. 예전의 moai 플러그인 운반체는 은퇴했다 — 플러그인과 마켓플레이스 매니페스트는 더 이상 배포되지 않으며, `.moai/config/sections/llm.yaml`의 `deployment_mode`는 기록으로만 남는다.
+공용 스킬과 에이전트는 더 이상 프로젝트 파일이 아니다. 어떤 하니스를 고르든 `moai init`은 핵심 스킬 세트와 에이전트를 사용자 폴더 — `~/.claude/`, `~/.agents/`, `~/.codex/` — 에 설치하고, 놓은 파일 하나하나를 `~/.moai/user-assets.json`에 기록한다(파일별 해시, 소속 번들, 설치한 moai 버전). `--bundles <이름>` 플래그로 첫 init에서 추가 번들을 함께 설치할 수 있다. 프로젝트 트리에는 프로젝트 고유 내용만 남는다: 설정, 룰, 훅, `CLAUDE.md`, 템플릿 잠금 파일, `.mcp.json`. 예전의 moai 플러그인 운반체는 은퇴했다 — 플러그인과 마켓플레이스 매니페스트는 더 이상 배포되지 않으며, `.moai/config/sections/llm.yaml`의 `deployment_mode`는 기록으로만 남는다.
 
 `moai update`는 이 매니페스트를 기준으로 사용자 설치를 갱신한다: 배포본이 바뀐 추적 파일은 제자리에서 다시 쓰고, 직접 편집한 파일은 보존하며 `~/.moai/` 아래에 백업하고, 선택을 해제한 번들의 파일은 걷어내고, 기존 프로젝트의 템플릿 관리 스킬·에이전트는 첫 update에서 사용자 폴더로 이전한다. `moai bundle add|remove <이름>`으로 설치 번들 선택을 조정하고, `moai doctor`가 User Install과 Project Lock 어긋남을 보고한다. 선언된 v1 한계 하나: MoAI 프로필 루트(`~/.moai/claude-profiles/<이름>`)로 실행한 세션은 공유 사용자 에셋을 보지 못한다.
 

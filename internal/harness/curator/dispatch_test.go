@@ -7,8 +7,9 @@ import (
 	"testing"
 )
 
-// TestSurfaceForTier_Tier3 verifies REQ-HEV3-003 as retargeted by REQ-IFU-014:
-// Tier 3 → AGENTS.local.md (BlockTypeLearnedLocal).
+// TestSurfaceForTier_Tier3 verifies REQ-HEV3-003 as retargeted by
+// SPEC-CLAUDE-INSTRUCTION-FILES-001 (REQ-CIF-013): Tier 3 → CLAUDE.local.md
+// (BlockTypeLearnedLocal).
 func TestSurfaceForTier_Tier3(t *testing.T) {
 	t.Parallel()
 
@@ -19,12 +20,13 @@ func TestSurfaceForTier_Tier3(t *testing.T) {
 	if surface.BlockType != BlockTypeLearnedLocal {
 		t.Errorf("Tier 3 BlockType = %d, want BlockTypeLearnedLocal (%d)", surface.BlockType, BlockTypeLearnedLocal)
 	}
-	if surface.Path != "AGENTS.local.md" {
-		t.Errorf("Tier 3 Path = %q, want AGENTS.local.md", surface.Path)
+	if surface.Path != "CLAUDE.local.md" {
+		t.Errorf("Tier 3 Path = %q, want CLAUDE.local.md", surface.Path)
 	}
 }
 
-// TestSurfaceForTier_Tier4 verifies REQ-HEV3-003: Tier 4 → AGENTS.md (BlockTypeLearnedWorkflow).
+// TestSurfaceForTier_Tier4 verifies REQ-HEV3-003 (REQ-CIF-013): Tier 4 →
+// CLAUDE.md (BlockTypeLearnedWorkflow).
 func TestSurfaceForTier_Tier4(t *testing.T) {
 	t.Parallel()
 
@@ -35,8 +37,8 @@ func TestSurfaceForTier_Tier4(t *testing.T) {
 	if surface.BlockType != BlockTypeLearnedWorkflow {
 		t.Errorf("Tier 4 BlockType = %d, want BlockTypeLearnedWorkflow (%d)", surface.BlockType, BlockTypeLearnedWorkflow)
 	}
-	if surface.Path != "AGENTS.md" {
-		t.Errorf("Tier 4 Path = %q, want AGENTS.md", surface.Path)
+	if surface.Path != "CLAUDE.md" {
+		t.Errorf("Tier 4 Path = %q, want CLAUDE.md", surface.Path)
 	}
 }
 
@@ -102,7 +104,7 @@ func TestPrepareTierDispatch_Tier4(t *testing.T) {
 	t.Parallel()
 
 	input := CuratorProposalInput{
-		TargetPath:   "AGENTS.md",
+		TargetPath:   "CLAUDE.md",
 		PatternKey:   "feature+plan+autopilot+success",
 		Observations: 10,
 		BlockType:    BlockTypeLearnedWorkflow,
@@ -121,12 +123,13 @@ func TestPrepareTierDispatch_Tier4(t *testing.T) {
 	}
 }
 
-// TestPrepareTierDispatch_Tier3 verifies the Tier-3 path (AGENTS.local.md, REQ-IFU-014).
+// TestPrepareTierDispatch_Tier3 verifies the Tier-3 path (CLAUDE.local.md,
+// REQ-CIF-013).
 func TestPrepareTierDispatch_Tier3(t *testing.T) {
 	t.Parallel()
 
 	input := CuratorProposalInput{
-		TargetPath:   "AGENTS.local.md",
+		TargetPath:   "CLAUDE.local.md",
 		PatternKey:   "feature+run+autopilot+success",
 		Observations: 5,
 		BlockType:    BlockTypeLearnedLocal,
@@ -140,8 +143,8 @@ func TestPrepareTierDispatch_Tier3(t *testing.T) {
 	if surface.Tier != 3 {
 		t.Errorf("surface.Tier = %d, want 3", surface.Tier)
 	}
-	if surface.Path != "AGENTS.local.md" {
-		t.Errorf("surface.Path = %q, want AGENTS.local.md", surface.Path)
+	if surface.Path != "CLAUDE.local.md" {
+		t.Errorf("surface.Path = %q, want CLAUDE.local.md", surface.Path)
 	}
 	if content.Tier != 3 {
 		t.Errorf("content.Tier = %d, want 3", content.Tier)

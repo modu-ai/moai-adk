@@ -11,13 +11,15 @@ const (
 	// ManifestJSON is the MoAI manifest file that tracks deployed templates.
 	ManifestJSON = "manifest.json"
 
-	// ClaudeMD is the legacy Claude Code execution directive file. Retired as
-	// a deploy payload — the name survives for legacy-project detection and
-	// the frozen-instruction-files contract only.
+	// ClaudeMD is the canonical shared instruction file (CLAUDE.md-canonical
+	// product, SPEC-CLAUDE-INSTRUCTION-FILES-001): every `moai init --llm`
+	// value scaffolds it and no AGENTS.md.
 	ClaudeMD = "CLAUDE.md"
 
-	// AgentsMD is the cross-harness primary instruction file (AGENTS.md-primary
-	// product): every `moai init --llm` value scaffolds it and no CLAUDE.md.
+	// AgentsMD is the legacy cross-harness instruction file. Retired as a
+	// deploy payload — the name survives for legacy-project detection
+	// (reader fallback, migration sources) and the frozen-instruction-files
+	// contract only.
 	AgentsMD = "AGENTS.md"
 )
 

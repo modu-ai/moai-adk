@@ -7,7 +7,7 @@ package cli
 //
 // The legacy evidence a pre-removal interrupted init may have left is the
 // selection record (.moai/state/resume-wiring naming gpt/both) or the GPT
-// layout (AGENTS.md with no .claude/). Both are seeded by hand here: init can
+// layout (CLAUDE.md with no .claude/). Both are seeded by hand here: init can
 // no longer produce them, and the hand-seeded record is byte-identical to the
 // one the failing run wrote.
 
@@ -30,7 +30,7 @@ func requireClaudeSideLayout(t *testing.T, projectDir string) {
 }
 
 // makeLegacyGPTLayout rewrites a claude-seeded project into the GPT layout the
-// legacy refusal reads: AGENTS.md present, the .claude/ surface absent. The
+// legacy refusal reads: CLAUDE.md present, the .claude/ surface absent. The
 // codex-only deployer's file set is exactly that, so the probe cannot tell the
 // hand-made layout from a deployed one.
 func makeLegacyGPTLayout(t *testing.T, projectDir string) {
@@ -38,8 +38,8 @@ func makeLegacyGPTLayout(t *testing.T, projectDir string) {
 	if err := os.RemoveAll(filepath.Join(projectDir, ".claude")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(projectDir, "AGENTS.md")); err != nil {
-		if err := os.WriteFile(filepath.Join(projectDir, "AGENTS.md"), []byte("# AGENTS\n"), 0o644); err != nil {
+	if _, err := os.Stat(filepath.Join(projectDir, "CLAUDE.md")); err != nil {
+		if err := os.WriteFile(filepath.Join(projectDir, "CLAUDE.md"), []byte("# CLAUDE\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -133,7 +133,7 @@ func TestInitResumeRefusesLegacyGPTBothRecord(t *testing.T) {
 }
 
 // TestInitResumeRefusesGPTLayoutWithoutRecord — the layout arm. With no
-// record, the deployed GPT layout (AGENTS.md, no .claude/) is the deployed
+// record, the deployed GPT layout (CLAUDE.md, no .claude/) is the deployed
 // harness, and a claude resume over it is refused.
 func TestInitResumeRefusesGPTLayoutWithoutRecord(t *testing.T) {
 	resumeHome(t)

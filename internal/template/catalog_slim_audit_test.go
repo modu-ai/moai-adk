@@ -142,7 +142,7 @@ func TestSlimFS_PreservesCoreEntries(t *testing.T) {
 // T3.4 path verification (pre-checked against templates/ tree):
 //   - .claude/output-styles/moai/moai.md         → OK
 //   - .moai/config/sections/harness.yaml         → OK
-//   - AGENTS.md.tmpl                             → OK
+//   - CLAUDE.md.tmpl                             → OK
 //   - .gitignore                                 → OK
 //
 // Note: .moai/config/sections/quality.yaml is only present as quality.yaml.tmpl
@@ -158,7 +158,7 @@ func TestSlimFS_PreservesNonCatalogFiles(t *testing.T) {
 	nonCatalogPaths := []string{
 		".claude/output-styles/moai/moai.md",
 		".moai/config/sections/harness.yaml",
-		"AGENTS.md.tmpl",
+		"CLAUDE.md.tmpl",
 		".gitignore",
 	}
 

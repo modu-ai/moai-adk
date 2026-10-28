@@ -277,13 +277,13 @@ The wizard asks which agent harness to deploy and wire; `--llm` gives the same c
 
 | Selection | What lands at the project root |
 |---|---|
-| `claude` (default) | The full `.claude/` surface plus `AGENTS.md` — today's default behavior |
-| `gpt` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
+| `claude` (default) | The full `.claude/` surface plus `CLAUDE.md` |
+| `gpt` | Codex only deployment: `CLAUDE.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available. An existing project's `AGENTS.md`/`AGENTS.local.md` move losslessly to `CLAUDE.md`/`CLAUDE.local.md` via `moai migrate local-instructions` |
 | `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
 
 #### Common assets in user folders
 
-Common skills and agents are no longer project files. On every harness, `moai init` installs the core skill set and agents into your user folders — `~/.claude/`, `~/.agents/`, and `~/.codex/` — and records every file it placed in `~/.moai/user-assets.json` (per-file hash, owning bundle, and the moai version that wrote it). Pass `--bundles <names>` to opt into additional bundles on first init. The project tree keeps only project-specific content: settings, rules, hooks, `AGENTS.md`/`CLAUDE.md`, the template lock file, and `.mcp.json`. The former moai plugin carrier is retired — no plugin or marketplace manifest ships, and `deployment_mode` in `.moai/config/sections/llm.yaml` remains only as a record.
+Common skills and agents are no longer project files. On every harness, `moai init` installs the core skill set and agents into your user folders — `~/.claude/`, `~/.agents/`, and `~/.codex/` — and records every file it placed in `~/.moai/user-assets.json` (per-file hash, owning bundle, and the moai version that wrote it). Pass `--bundles <names>` to opt into additional bundles on first init. The project tree keeps only project-specific content: settings, rules, hooks, `CLAUDE.md`, the template lock file, and `.mcp.json`. The former moai plugin carrier is retired — no plugin or marketplace manifest ships, and `deployment_mode` in `.moai/config/sections/llm.yaml` remains only as a record.
 
 `moai update` refreshes the user install against that manifest: shipped changes are rewritten in place, a file you edited by hand is preserved and backed up under `~/.moai/`, files of a deselected bundle are pruned, and an existing project's template-managed skills and agents migrate into the user folders on the first update. `moai bundle add|remove <name>` adjusts the installed bundle selection, and `moai doctor` reports User Install and Project Lock drift. One declared v1 limitation: sessions launched through a MoAI profile root (`~/.moai/claude-profiles/<name>`) do not see the shared user assets.
 

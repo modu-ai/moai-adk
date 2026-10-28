@@ -539,6 +539,12 @@ func (in *Installer) fileTarget(slug RootSlug, rel, sourcePath string, e templat
 // normalization — the SAME conversion the deploy path writes
 // (template.NormalizeCodexRoleForDeploy). The returned bytes are exactly
 // what applyTarget writes and what the recorded sha256 hashes.
+//
+// Card-review R4 (SPEC-CLAUDE-INSTRUCTION-FILES-001): no post-mapping back
+// to AGENTS names — the canonical deployment produces CLAUDE.md for every
+// harness value (REQ-CIF-001/004), so installed references must target
+// CLAUDE.md; the deploy-path normalization already converts legacy
+// AGENTS.md references to the canonical name.
 func (in *Installer) targetBytes(tgt installTarget) ([]byte, error) {
 	data, err := fs.ReadFile(in.Source, tgt.sourcePath)
 	if err != nil {

@@ -125,7 +125,7 @@ Two measured constraints make the lane enter the release worktree rather than dr
 
     [HARD] **`acquire` asserts the caller's tree first.** Detail: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
 
-    [HARD] **Re-read `HEAD` immediately before the commit and again before the push.** `AGENTS.md` §2 binds this everywhere; the release worktree is where it has already earned its keep.
+    [HARD] **Re-read `HEAD` immediately before the commit and again before the push.** `CLAUDE.md` §2 binds this everywhere; the release worktree is where it has already earned its keep.
 
 - **Conflicts belong to the lane that owns the change.** The integrating lane resolves what its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's merged change — is a blocker report to the lead, not a forced merge.
 - **Push the release branch; the batch pull request stays with the lead.** A rejected push means another lane pushed first — fetch, integrate, push again; never force. Until that branch's batch PR merges, the disposal rule above still binds.

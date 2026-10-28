@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,9 +195,9 @@ func writeBudgetFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"AGENTS.md":                         "# Agents\n\n@chained.md\n@chained.md\n@missing.md\n",
+		"CLAUDE.md":                         "# Project\n\n@chained.md\n@chained.md\n@missing.md\n",
 		"chained.md":                        "# Chained\n\nThe standing contract body.\n",
-		"CLAUDE.md":                         "# Project\n\nLegacy local instruction prose.\n",
+		"AGENTS.md":                         "# Agents\n\nLegacy local instruction prose.\n",
 		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n\nNo frontmatter block.\n",
 		".claude/rules/moai/scoped.md":      "---\npaths:\n  - \"**/scoped/**\"\n---\n\n# Scoped rule\n",
 		".claude/rules/moai/notes.txt":      "not markdown\n",
@@ -221,7 +222,7 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	root := writeBudgetFixture(t)
 	want := []string{
 		filepath.Join(root, ".claude", "rules", "moai", "always-core.md"),
-		filepath.Join(root, "AGENTS.md"),
+		filepath.Join(root, "CLAUDE.md"),
 		filepath.Join(root, "chained.md"),
 	}
 	if got := instructionFileSet(root); !reflect.DeepEqual(got, want) {
@@ -265,9 +266,9 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 		t.Errorf("indented paths: wrongly scoped the rule: %d members, want %d", len(res), len(grown)+2)
 	}
 
-	// Legacy anchor: a project still carrying ONLY CLAUDE.md is measured
-	// through it (resolveInstructionFile fallback). The AGENTS.md-bearing
-	// fixture above must never reach this branch — CLAUDE.md there is inert.
+	// Legacy anchor: a project still carrying ONLY AGENTS.md is measured
+	// through it (resolveInstructionFile fallback). The CLAUDE.md-bearing
+	// fixture above must never reach this branch — AGENTS.md there is inert.
 	legacyRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(legacyRoot, ".moai"), 0o750); err != nil {
 		t.Fatal(err)
@@ -276,7 +277,7 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacyFiles := map[string]string{
-		"CLAUDE.md":                         "# Legacy project\n\n@AGENTS.md\n",
+		"AGENTS.md":                         "# Legacy project\n",
 		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
 	}
 	for rel, content := range legacyFiles {
@@ -287,10 +288,209 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	}
 	legacyWant := []string{
 		filepath.Join(legacyRoot, ".claude", "rules", "moai", "always-core.md"),
-		filepath.Join(legacyRoot, "CLAUDE.md"),
+		filepath.Join(legacyRoot, "AGENTS.md"),
 	}
 	if got := instructionFileSet(legacyRoot); !reflect.DeepEqual(got, legacyWant) {
 		t.Errorf("legacy anchor set = %v, want %v", got, legacyWant)
+	}
+}
+
+// TestResolveInstructionPairPreference pins REQ-CIF-003 / AC-CIF-003 (N13:
+// BOTH pairs, not just the shared one — a local-pair-preference mutant fails
+// here): the reader prefers the canonical CLAUDE name on every pair, reads a
+// legacy AGENTS file only as the explicit fallback labelled with the literal
+// token `legacy AGENTS fallback`, and modifies neither file in any case
+// (pre/post digests identical).
+func TestResolveInstructionPairPreference(t *testing.T) {
+	t.Parallel()
+
+	pairs := []struct {
+		name              string
+		canonical, legacy string
+	}{
+		{"shared pair", "CLAUDE.md", "AGENTS.md"},
+		{"local pair", "CLAUDE.local.md", "AGENTS.local.md"},
+	}
+	shapes := []struct {
+		name       string
+		files      []string
+		wantPick   string // "" = none
+		wantLegacy bool
+	}{
+		{"coexist", nil, "canonical", false},
+		{"canonical-only", nil, "canonical", false},
+		{"legacy-only", nil, "legacy", true},
+	}
+	for _, pair := range pairs {
+		for _, shape := range shapes {
+			t.Run(pair.name+"/"+shape.name, func(t *testing.T) {
+				t.Parallel()
+				root := t.TempDir()
+				var files []string
+				switch shape.name {
+				case "coexist":
+					files = []string{pair.canonical, pair.legacy}
+				case "canonical-only":
+					files = []string{pair.canonical}
+				case "legacy-only":
+					files = []string{pair.legacy}
+				}
+				digests := map[string][32]byte{}
+				for _, f := range files {
+					body := "body of " + f + "\n"
+					if err := os.WriteFile(filepath.Join(root, f), []byte(body), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					digests[f] = sha256.Sum256([]byte(body))
+				}
+
+				var gotPath, gotLabel string
+				if pair.name == "shared pair" {
+					gotPath, gotLabel = resolveInstructionFileDetail(root)
+				} else {
+					gotPath, gotLabel = resolveLocalInstructionFileDetail(root)
+				}
+
+				var wantPath string
+				switch shape.wantPick {
+				case "canonical":
+					wantPath = filepath.Join(root, pair.canonical)
+				case "legacy":
+					wantPath = filepath.Join(root, pair.legacy)
+				}
+				if gotPath != wantPath {
+					t.Errorf("resolved = %q, want %q", gotPath, wantPath)
+				}
+				wantLabel := ""
+				if shape.wantLegacy {
+					wantLabel = "legacy AGENTS fallback"
+				}
+				if gotLabel != wantLabel {
+					t.Errorf("label = %q, want %q", gotLabel, wantLabel)
+				}
+				// Immutability: resolution modifies neither file.
+				for f, want := range digests {
+					data, err := os.ReadFile(filepath.Join(root, f))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got := sha256.Sum256(data); got != want {
+						t.Errorf("%s modified by resolution", f)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestInstructionFileSetIncludesLocalPair pins card-review R5: the
+// auto-loaded LOCAL instruction file and its @-import closure count toward
+// the aggregate session budget — the summed check must see them, so a tree
+// passing every per-file limit still warns when the sum exceeds the budget.
+func TestInstructionFileSetIncludesLocalPair(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	for _, dir := range []string{
+		filepath.Join(root, ".moai"),
+		filepath.Join(root, ".claude", "rules", "moai"),
+	} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n",
+		"CLAUDE.local.md":                   "# Local\n\n@local-chained.md\n",
+		"local-chained.md":                  "# Local chained body\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, rel), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	set := instructionFileSet(root)
+	for _, want := range []string{
+		filepath.Join(root, "CLAUDE.md"),
+		filepath.Join(root, "CLAUDE.local.md"),
+		filepath.Join(root, "local-chained.md"),
+		filepath.Join(root, ".claude", "rules", "moai", "always-core.md"),
+	} {
+		found := false
+		for _, p := range set {
+			if p == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("instructionFileSet omits %s — the local pair and its imports must join the aggregate", want)
+		}
+	}
+
+	// The aggregate counts the local members: removing them must shrink it.
+	withLocal := aggregateInstructionChars(root)
+	if err := os.Remove(filepath.Join(root, "CLAUDE.local.md")); err != nil {
+		t.Fatal(err)
+	}
+	// local-chained.md stays on disk but is no longer imported.
+	withoutLocal := aggregateInstructionChars(root)
+	if withLocal <= withoutLocal {
+		t.Errorf("aggregate with the local pair = %d, without = %d — the local members must add to the sum", withLocal, withoutLocal)
+	}
+}
+
+// TestInstructionImportsResolveRelativeToImporter pins audit P2-2: a
+// relative import resolves from the IMPORTING file's directory (the
+// official memory#import-additional-files semantics), then the
+// project-boundary check applies. A nested docs/local.md importing
+// ../chunk.md must pull the project-root chunk.md into the aggregate —
+// root-relative resolution silently dropped it — and an escaping
+// ../../target is still refused.
+func TestInstructionImportsResolveRelativeToImporter(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":                         "# Project\n\n@docs/local.md\n",
+		"docs/local.md":                     "# Nested\n\n@../chunk.md\n@../../outside.md\n",
+		"chunk.md":                          "# " + strings.Repeat("chunk-body ", 4000) + "\n",
+		".claude/rules/moai/always-core.md": "# Always-loaded core rule\n",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	set := instructionFileSet(root)
+	var hasChunk, hasOutside bool
+	for _, p := range set {
+		if strings.HasSuffix(p, "chunk.md") {
+			hasChunk = true
+		}
+		if strings.HasSuffix(p, "outside.md") {
+			hasOutside = true
+		}
+	}
+	if !hasChunk {
+		t.Error("the nested ../chunk.md import was not resolved relative to its importing file — the aggregate undercounts (P2-2)")
+	}
+	if hasOutside {
+		t.Error("an import escaping the project root was followed — the boundary check must still apply")
+	}
+	// The aggregate counts the chunk's chars, not a 120-char stub.
+	agg := aggregateInstructionChars(root)
+	if agg < 40000 {
+		t.Errorf("aggregate = %d chars, want the nested chunk's ~44000 included (P2-2)", agg)
 	}
 }
 
@@ -331,7 +531,7 @@ func TestAggregateInstructionCharsMovement(t *testing.T) {
 	}
 
 	const growBy = 137
-	path := filepath.Join(root, "AGENTS.md")
+	path := filepath.Join(root, "CLAUDE.md")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

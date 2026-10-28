@@ -428,6 +428,6 @@ On receiving a blocker report, the orchestrator:
 3. Constructs a fresh subagent prompt with the user's answers injected
 4. Re-delegates to the subagent
 
-### AGENTS.md Reference
+### CLAUDE.md Reference
 
-Agents follow MoAI's core execution directives defined in AGENTS.md (auto-loaded, no restating needed).
+Agents follow MoAI's core execution directives defined in CLAUDE.md (auto-loaded, no restating needed).

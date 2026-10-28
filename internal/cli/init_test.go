@@ -97,13 +97,16 @@ func TestInitCmd_NonInteractiveExecution(t *testing.T) {
 		t.Error("expected .moai/ directory to be created")
 	}
 
-	// AGENTS.md-primary product: init scaffolds AGENTS.md and never CLAUDE.md
-	agentsMD := filepath.Join(root, "AGENTS.md")
-	if _, statErr := os.Stat(agentsMD); os.IsNotExist(statErr) {
-		t.Error("expected AGENTS.md to be created")
+	// CLAUDE.md-canonical product (SPEC-CLAUDE-INSTRUCTION-FILES-001): init
+	// scaffolds CLAUDE.md and never AGENTS.md or AGENTS.local.md.
+	claudeMD := filepath.Join(root, "CLAUDE.md")
+	if _, statErr := os.Stat(claudeMD); os.IsNotExist(statErr) {
+		t.Error("expected CLAUDE.md to be created")
 	}
-	if _, statErr := os.Stat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(statErr) {
-		t.Error("CLAUDE.md must not be created by init")
+	for _, retired := range []string{"AGENTS.md", "AGENTS.local.md"} {
+		if _, statErr := os.Stat(filepath.Join(root, retired)); !os.IsNotExist(statErr) {
+			t.Errorf("%s must not be created by init", retired)
+		}
 	}
 }
 

@@ -22,7 +22,7 @@ import (
 
 // deployedRulesOnlyCharBudget caps the deployed always-loaded RULES-ONLY
 // subtotal at 150000 UTF-16 code units (REQ-ALB-002, amended: the measured
-// axis is the 13-rule subtotal — AGENTS.md and its import closure stay in
+// axis is the 13-rule subtotal — CLAUDE.md and its import closure stay in
 // the member log but leave the guarded total). The value is the runtime
 // instruction budget for the rules axis itself, adopted by the operator's
 // 2026-10-08 disposition (a) re-deriving the constant on the rules-only
@@ -124,7 +124,7 @@ func frontmatterPathsScoped(content []byte) bool {
 // importTargets parses the @-import lines of a root-instruction file and
 // returns the resolvable, in-project import paths (relative to the importing
 // file's directory, slash form). Project-external imports (absolute, ~-)
-// and the AGENTS.local.md local instruction file are skipped. A `..`-bearing
+// and the CLAUDE.local.md local instruction file are skipped. A `..`-bearing
 // import is resolved against the importing file's directory FIRST and
 // excluded only when the resolved path genuinely escapes the project
 // boundary: a nested file's `@../shared.md` lands inside the project
@@ -140,7 +140,7 @@ func importTargets(importingFileRel string, content []byte) []string {
 		}
 		p := strings.TrimSpace(trimmed[1:])
 		switch {
-		case p == "", p == "AGENTS.local.md":
+		case p == "", p == "CLAUDE.local.md":
 			continue
 		case strings.HasPrefix(p, "/"), strings.HasPrefix(p, "~"):
 			continue // project-external: absolute or home-anchored
@@ -159,12 +159,12 @@ func importTargets(importingFileRel string, content []byte) []string {
 //
 //   - every .claude/rules/**/*.md carrying no top-level paths: key
 //     (indented paths: and missing frontmatter closers stay always-loaded);
-//   - the deployed root instruction file AGENTS.md (the SPEC-era CLAUDE.md
+//   - the deployed root instruction file CLAUDE.md (the SPEC-era CLAUDE.md
 //     slot holder — CLAUDE.md was removed upstream; ledger head exclusion
 //     note);
 //   - the @-import transitive closure of the root instruction file,
 //     interpreted in the deployed tree (project-external imports and
-//     @AGENTS.local.md skipped).
+//     @CLAUDE.local.md skipped).
 //
 // The M2-era AC-ALB-008 carve-out (role-gated rules re-added as members at
 // their full-body size) was an M2 accommodation — the role files carried no
@@ -214,7 +214,7 @@ func deriveDeployedAlwaysLoadedMembers(t *testing.T, root string) []deployedSurf
 	})
 
 	// 2. Root instruction file + 3. its @-import transitive closure.
-	const rootInstruction = "AGENTS.md"
+	const rootInstruction = "CLAUDE.md"
 	add(rootInstruction)
 	seen := map[string]bool{rootInstruction: true}
 	queue := []string{rootInstruction}
@@ -279,7 +279,7 @@ func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 	t.Logf("deployed-rules-only-subtotal=%d", rulesOnly)
 
 	// REQ-ALB-002 (amended): the guarded axis is the RULES-ONLY subtotal —
-	// the 13 always-loaded rule members. AGENTS.md and its import closure
+	// the 13 always-loaded rule members. CLAUDE.md and its import closure
 	// stay in the member log above but are excluded from the guarded total.
 	// A budget failure names the axis, the subtotal, the budget, the file
 	// count, and the five largest members with sizes.
@@ -293,7 +293,7 @@ func TestDeployedAlwaysLoadedCharBudget(t *testing.T) {
 		for _, m := range largest {
 			sb.WriteString(" " + m.Path + "=" + strconv.Itoa(m.UTF16) + ";")
 		}
-		t.Errorf("deployed always-loaded rules-only subtotal exceeds budget: rules-only=%d budget=%d (axis: rules-only subtotal; AGENTS.md excluded) files=%d; five largest:%s",
+		t.Errorf("deployed always-loaded rules-only subtotal exceeds budget: rules-only=%d budget=%d (axis: rules-only subtotal; CLAUDE.md excluded) files=%d; five largest:%s",
 			rulesOnly, deployedRulesOnlyCharBudget, len(members), sb.String())
 	}
 
@@ -424,16 +424,16 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 		root := deployEmbeddedTemplatesForTest(t)
 		before := deriveDeployedAlwaysLoadedMembers(t, root)
 
-		agentsAbs := filepath.Join(root, "AGENTS.md")
+		agentsAbs := filepath.Join(root, "CLAUDE.md")
 		data, err := os.ReadFile(agentsAbs)
 		if err != nil {
-			t.Fatalf("read deployed AGENTS.md: %v", err)
+			t.Fatalf("read deployed CLAUDE.md: %v", err)
 		}
 		imported := "Imported fixture body reachable through the @-import closure mutation.\n"
 		importLine := "\n@" + fixtureImportRel + "\n"
 		withImport := string(data) + importLine
 		if err := os.WriteFile(agentsAbs, []byte(withImport), 0o644); err != nil {
-			t.Fatalf("append import line to deployed AGENTS.md: %v", err)
+			t.Fatalf("append import line to deployed CLAUDE.md: %v", err)
 		}
 		writeFixture(t, root, fixtureImportRel, imported)
 		after := deriveDeployedAlwaysLoadedMembers(t, root)
@@ -441,7 +441,7 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 		if !memberExists(after, fixtureImportRel) {
 			t.Errorf("imported fixture missing from derived members: %s", fixtureImportRel)
 		}
-		// Expected growth = the imported file + the import line AGENTS.md
+		// Expected growth = the imported file + the import line CLAUDE.md
 		// itself absorbed (it is a measured member).
 		wantGrowth := utf16CodeUnits(imported) + utf16CodeUnits(importLine)
 		if got := surfaceTotal(after) - surfaceTotal(before); got != wantGrowth {
@@ -488,10 +488,10 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 
 		writeFixture(t, root, entryRel, entryBody+nestedImportLine)
 		writeFixture(t, root, sharedRel, sharedBody)
-		agentsAbs := filepath.Join(root, "AGENTS.md")
+		agentsAbs := filepath.Join(root, "CLAUDE.md")
 		data, err := os.ReadFile(agentsAbs)
 		if err != nil {
-			t.Fatalf("read deployed AGENTS.md: %v", err)
+			t.Fatalf("read deployed CLAUDE.md: %v", err)
 		}
 		if err := os.WriteFile(agentsAbs, []byte(string(data)+entryLine), 0o644); err != nil {
 			t.Fatalf("append import line: %v", err)
@@ -511,14 +511,14 @@ func TestDeployedAlwaysLoadedSurfaceDerivation(t *testing.T) {
 	t.Run("escaping_import_excluded", func(t *testing.T) {
 		// Boundary pair (ii): an import whose RESOLVED path leaves the
 		// project is not followed — the only total change is the import
-		// line AGENTS.md itself absorbs.
+		// line CLAUDE.md itself absorbs.
 		root := deployEmbeddedTemplatesForTest(t)
 		before := deriveDeployedAlwaysLoadedMembers(t, root)
 
-		agentsAbs := filepath.Join(root, "AGENTS.md")
+		agentsAbs := filepath.Join(root, "CLAUDE.md")
 		data, err := os.ReadFile(agentsAbs)
 		if err != nil {
-			t.Fatalf("read deployed AGENTS.md: %v", err)
+			t.Fatalf("read deployed CLAUDE.md: %v", err)
 		}
 		escLine := "\n@../outside-the-project.md\n"
 		if err := os.WriteFile(agentsAbs, []byte(string(data)+escLine), 0o644); err != nil {
