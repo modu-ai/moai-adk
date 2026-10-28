@@ -7,6 +7,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -272,6 +273,82 @@ func TestJevmeasureBench_MissingRunResultFailsCompare(t *testing.T) {
 	}
 	if !strings.Contains(out, "FAIL case-2") {
 		t.Errorf("report must FAIL the run-less case:\n%s", out)
+	}
+}
+
+// F1 (card t1968 iter18 codex gate, GLM-ruled F3 write-seam extension): a run
+// record written by a PRE-kept-text build — a bare run list whose entries
+// carry output but NO kept_text — launders through the --run import into
+// WriteBaseline, which stamps format kept-text-1 on Contained=false verdicts
+// the old maskable logic computed; a later no_match run of the same case then
+// PASSes the equality, masking a real containment regression. The baseline
+// side of the seam is gated (DiffAgainstBaseline refuses marker-less
+// baselines); the import must REFUSE a pre-marker run record BEFORE anything
+// is written, on the exit-1 channel, so WriteBaseline is never reached with
+// unverifiable provenance.
+func TestJevmeasureBench_RunImportRefusesPreMarkerRunRecord(t *testing.T) {
+	dir := t.TempDir()
+	cases := []jevmeasure.BenchCase{{
+		ID:            "case-1",
+		Question:      "what is the port?",
+		ExpectedQuote: "The port is 3041.",
+		PageSnapshot:  "<html><body><p>The port is 3041.</p></body></html>",
+	}}
+	raw, _ := json.Marshal(cases)
+	casesPath := filepath.Join(dir, "cases.json")
+	if err := os.WriteFile(casesPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The pre-marker build's on-disk shape: a bare run list, kept_text ABSENT,
+	// output carrying the expected quote — the entry the old maskable measure
+	// judged contained from the rendered markdown.
+	oldRun := filepath.Join(dir, "run-old.json")
+	oldRaw := `[{"case_id":"case-1","status":"passthrough","output":"# passthrough\n## (no heading)\nThe port is 3041.\n","output_tokens":3}]`
+	if err := os.WriteFile(oldRun, []byte(oldRaw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The later run this laundering masks: a legitimate no_match (kept_text
+	// present and empty — the empty/absent distinction the gate must keep).
+	noMatch := filepath.Join(dir, "run-nomatch.json")
+	noMatchRaw := `[{"case_id":"case-1","status":"no_match","output":"# no_match\n","kept_text":"","output_tokens":0}]`
+	if err := os.WriteFile(noMatch, []byte(noMatchRaw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	baseline := filepath.Join(dir, "baseline.json")
+
+	cmd := newJevmeasureCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"bench", "--cases", casesPath, "--run", oldRun, "--baseline", baseline})
+	err := cmd.Execute()
+
+	// Evidence block — runs only at a tree where the import launders: capture
+	// the stamped baseline and the later no_match run's verdict against it.
+	laundered := ""
+	if err == nil {
+		if rawBase, readErr := os.ReadFile(baseline); readErr == nil {
+			out2, _, code2 := runBenchCmd(t, "--cases", casesPath, "--run", noMatch, "--baseline", baseline)
+			laundered = fmt.Sprintf("baseline written: %s; later no_match run exit=%d, out=%q", rawBase, code2, out2)
+		}
+	}
+
+	// The contract under test: refuse BEFORE anything is written.
+	if err == nil {
+		t.Fatalf("the --run import must REFUSE a pre-marker run record (F1 iter18 write-seam laundering); instead it laundered: exit 0, %s", laundered)
+	}
+	code := 1
+	if c, ok := ResolveExitCode(err); ok {
+		code = c
+	}
+	if code != 1 {
+		t.Errorf("the refusal must ride the existing exit-1 channel, got exit %d (%v)", code, err)
+	}
+	if !strings.Contains(err.Error(), "predates kept-text containment") {
+		t.Errorf("the refusal must name the format gap, got %q", err.Error())
+	}
+	if _, statErr := os.Stat(baseline); !os.IsNotExist(statErr) {
+		rawBase, _ := os.ReadFile(baseline)
+		t.Errorf("a refused import must write no baseline, stat err = %v, content %s", statErr, rawBase)
 	}
 }
 
