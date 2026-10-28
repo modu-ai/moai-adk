@@ -781,7 +781,7 @@ func TestProcess_Stage1WindowBudgetRefusesOversizedDocument(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a multi-thousand-block document")
 	}
-	const budget = 64 // must equal the fix's MaxStage1WindowsPerFetch
+	const budget = 64                     // must equal the fix's MaxStage1WindowsPerFetch
 	question := strings.Repeat("q", 8000) // ~2,000 tokens, quoted inside every stage-1 question
 	blocks := make([]Block, 2100)
 	for i := range blocks {

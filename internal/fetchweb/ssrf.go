@@ -72,10 +72,10 @@ var ianaIPv4Special = []struct {
 	prefix [4]byte
 	mask   [4]byte
 }{
-	{prefix: [4]byte{192, 0, 0, 0}, mask: [4]byte{255, 255, 255, 0}},  // 192.0.0.0/24
+	{prefix: [4]byte{192, 0, 0, 0}, mask: [4]byte{255, 255, 255, 0}},   // 192.0.0.0/24
 	{prefix: [4]byte{192, 88, 99, 0}, mask: [4]byte{255, 255, 255, 0}}, // 192.88.99.0/24
-	{prefix: [4]byte{198, 18, 0, 0}, mask: [4]byte{255, 254, 0, 0}},   // 198.18.0.0/15
-	{prefix: [4]byte{240, 0, 0, 0}, mask: [4]byte{240, 0, 0, 0}},      // 240.0.0.0/4
+	{prefix: [4]byte{198, 18, 0, 0}, mask: [4]byte{255, 254, 0, 0}},    // 198.18.0.0/15
+	{prefix: [4]byte{240, 0, 0, 0}, mask: [4]byte{240, 0, 0, 0}},       // 240.0.0.0/4
 }
 
 // ianaIPv6Special holds the IANA-registered IPv6 special-purpose ranges no
