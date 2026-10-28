@@ -947,6 +947,42 @@ func TestSplitBlocks_TwoCellAsidesWithTablesDistinctBindings(t *testing.T) {
 	}
 }
 
+// P2 (card t1968 codex review, repair round): a <table> nested DIRECTLY in a
+// <td> is neither emitted nor excluded. emitRowSubBlocks.scan had branches
+// for pre and aside but none for table, so the nested table's rows never
+// became table blocks and its flattened text rode inside the parent cell's
+// text. The nested table must emit through the same table machinery the
+// body-level walk uses (its own table id via tableStack, header rows binding
+// to ITS OWN header), and the parent cell's text must exclude the nested
+// subtree (cellSkip) so the parent row reads only its own content.
+func TestSplitBlocks_NestedTableInCellEmitsOwnBlocks(t *testing.T) {
+	html := `<body><table>
+	<tr><th>OuterH</th></tr>
+	<tr><td>lead <table><tr><th>InnerH</th></tr><tr><td>inner1</td></tr></table> tail</td></tr>
+	<tr><td>cell2</td></tr>
+	</table></body>`
+	blocks := SplitBlocks(html)
+	want := []struct {
+		text        string
+		headerIndex int
+	}{
+		{"OuterH", -1},
+		{"lead tail", 0},
+		{"InnerH", -1},
+		{"inner1", 2},
+		{"cell2", 0},
+	}
+	if len(blocks) != len(want) {
+		t.Fatalf("want %d blocks, got %d: %v", len(want), len(blocks), texts(blocks))
+	}
+	for i, w := range want {
+		if blocks[i].Text != w.text || blocks[i].HeaderIndex != w.headerIndex {
+			t.Errorf("block %d = %q header=%d, want %q header=%d (inner rows bind the inner header; the parent cell excludes the inner table's text)",
+				i, blocks[i].Text, blocks[i].HeaderIndex, w.text, w.headerIndex)
+		}
+	}
+}
+
 // F8 (t1968 sync-audit iter2): a <pre> inside a <td> keeps its formatting —
 // the code block is emitted verbatim as its own block (the C2 pattern for
 // pre inside a list item) and the row's text EXCLUDES the pre subtree,
