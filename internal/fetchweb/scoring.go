@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
@@ -433,17 +434,25 @@ func selectBlocks(blocks []Block, scores []blockScore) []int {
 }
 
 // neighborGroupKey identifies one rescue group: the scoring stream (Aside
-// flag, REQ-FW-001 separate scoring) plus the heading path. The NUL join is
-// an encoding, not text: heading TEXT cannot contain NUL (html.Parse does
-// not pass NUL through to text nodes), so distinct paths cannot collide on
-// the key.
+// flag, REQ-FW-001 separate scoring) plus the heading path. The key is the
+// path LENGTH, a NUL, then the NUL-joined path. Heading TEXT cannot contain
+// NUL (html.Parse does not pass NUL through to text nodes), so within one
+// length the join is injective — and the length prefix keeps paths of
+// DIFFERENT lengths apart: `[]` (no heading) and `[""]` (an empty heading
+// text, which real pages emit from <h2></h2>) joined to the same string
+// until F2, card t1968 iter15, let the rescue cross heading groups. The
+// length's digits cannot contain NUL, so the first NUL ends the length
+// field unambiguously and no length/text pair can splice into another.
 type neighborGroupKey struct {
 	aside bool
 	path  string
 }
 
 func neighborKey(b Block) neighborGroupKey {
-	return neighborGroupKey{aside: b.Aside, path: strings.Join(b.HeadingPath, "\x00")}
+	return neighborGroupKey{
+		aside: b.Aside,
+		path:  strconv.Itoa(len(b.HeadingPath)) + "\x00" + strings.Join(b.HeadingPath, "\x00"),
+	}
 }
 
 // qualifyingNeighborCounts aggregates, in ONE pass over the document, how
