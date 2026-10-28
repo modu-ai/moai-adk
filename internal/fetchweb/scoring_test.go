@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
@@ -681,6 +682,49 @@ func TestStage1_WindowsSizedByRequestNotBodyAlone(t *testing.T) {
 	}
 	if fake.calls < 2 {
 		t.Errorf("the ~160k-token window must split into >= 2 requests, got %d", fake.calls)
+	}
+}
+
+// P2 performance (card t1968 codex review, repair round): sortByScoreDesc
+// was a quadratic insertion sort, so the backfill leg of selectBlocks cost
+// O(n²) on large documents. selectBlocks must stay near n·log(n) as the
+// block count doubles: the growth ratio from n to 2n is bounded at 3.4 —
+// comfortably above n·log(n) (~2.2 from 8k to 16k) and comfortably below the
+// 4.0 a quadratic sort exhibits. The fixture is the insertion sort's worst
+// case: one sole candidate (kept set under the 300-token backfill floor, so
+// the sort runs over the whole order) with the remaining blocks' stage-1
+// scores ASCENDING in document order — the reverse of the descending order
+// the sort must produce.
+func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "para", HeaderIndex: -1}
+		}
+		scores[0] = blockScore{stage1: 0.9} // sole candidate; stage2 0 -> first-block keep only
+		for i := 1; i < n; i++ {
+			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
+		}
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(8000)
+	t2 := run(16000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 8k to 16k blocks: ratio %.2f (8k=%s, 16k=%s) — quadratic backfill sort; must stay near n·log(n) (~2.2)",
+			ratio, t1, t2)
 	}
 }
 
