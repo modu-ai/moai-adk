@@ -151,23 +151,22 @@ func TestPageClient_RefusesBroadcastRedirectTarget(t *testing.T) {
 // P2 (card t1968 codex review, repair round): refuseNonPublicIP misses the
 // remaining IANA-registered special-purpose ranges — IPv4 192.0.0.0/24 (IETF
 // Protocol Assignments), 192.88.99.0/24 (Deprecated 6to4 Relay Anycast),
-// 198.18.0.0/15 (Benchmarking), 240.0.0.0/4 (Reserved), and IPv6 64:ff9b::/96
-// (NAT64 translation), 100::/64 (Discard-Only), 2001::/23 (IETF Protocol
-// Assignments, incl. Teredo 2001::/32), 2001:db8::/32 (Documentation),
-// 2002::/16 (6to4). Verified against the IANA IPv4/IPv6 Special-Purpose
-// Address Registries (retrieved 2026-10-28). None of these is a public web
-// origin; the benchmarking range especially is a documented bypass target.
+// 198.18.0.0/15 (Benchmarking), 240.0.0.0/4 (Reserved), and IPv6 100::/64
+// (Discard-Only), 2001::/23 (IETF Protocol Assignments, incl. Teredo
+// 2001::/32), 2001:db8::/32 (Documentation), 2002::/16 (6to4). Verified
+// against the IANA IPv4/IPv6 Special-Purpose Address Registries (retrieved
+// 2026-10-28). None of these is a public web origin; the benchmarking range
+// especially is a documented bypass target. 64:ff9b::/96 (NAT64) is NOT here:
+// F1 (card t1968 iter15) decides it per embedded IPv4 — see
+// TestRefuseNonPublicIP_NAT64EmbeddedPolicy.
 func TestRefuseNonPublicIP_IANASpecialPurposeRanges(t *testing.T) {
 	for _, s := range []string{
-		"198.18.0.1",   // 198.18.0.0/15 benchmarking
-		"198.19.255.1", // 198.18.0.0/15 far edge
-		"192.0.0.1",    // 192.0.0.0/24 IETF protocol assignments
-		"192.88.99.1",  // 192.88.99.0/24 deprecated 6to4 relay anycast
-		"240.0.0.1",    // 240.0.0.0/4 reserved
-		"250.1.2.3",    // 240.0.0.0/4 far edge
-		// NAT64-translated form: 64:ff9b::/96 wrapping a public IPv4.
-		"64:ff9b::192.0.2.128",
-		"64:ff9b:0:0:0:0:c000:280",
+		"198.18.0.1",       // 198.18.0.0/15 benchmarking
+		"198.19.255.1",     // 198.18.0.0/15 far edge
+		"192.0.0.1",        // 192.0.0.0/24 IETF protocol assignments
+		"192.88.99.1",      // 192.88.99.0/24 deprecated 6to4 relay anycast
+		"240.0.0.1",        // 240.0.0.0/4 reserved
+		"250.1.2.3",        // 240.0.0.0/4 far edge
 		"100::1",           // discard-only
 		"2001::1",          // 2001::/23 IETF protocol assignments (Teredo)
 		"2001:db8::1",      // documentation
@@ -187,6 +186,57 @@ func TestRefuseNonPublicIP_IANASpecialPurposeRanges(t *testing.T) {
 		if err := refuseNonPublicIP(net.ParseIP(s)); err != nil {
 			t.Errorf("%s is public, want allowed, got %v", s, err)
 		}
+	}
+}
+
+// F1 (card t1968 iter15, operator-approved repair): RFC 6052 NAT64. An
+// address inside the well-known prefix 64:ff9b::/96 embeds an IPv4
+// destination in its low 32 bits, and a DNS64/NAT64 IPv6-only client
+// legitimately dials such an address for a PUBLIC embedded IPv4 — so the
+// prefix must not be refused wholesale; the EMBEDDED address decides,
+// through the same public-address predicate (no second policy). BOTH
+// directions are asserted: a public embed passes (the base 41fe0c5396
+// behavior the wholesale refusal regressed), and embeds of every refused
+// range — loopback, RFC1918, CGNAT, link-local, IANA special — stay
+// refused. 64:ff9b::192.0.2.128 moves here from the IANA-range test: its
+// embedded 192.0.2.128 (RFC 5737 documentation) passes the pre-existing
+// IPv4 predicate by the documented round-6 scope decision, so the NAT64
+// form passes with it.
+func TestRefuseNonPublicIP_NAT64EmbeddedPolicy(t *testing.T) {
+	for _, s := range []string{
+		"64:ff9b::93.184.216.34",    // public embed (example.com), dotted form
+		"64:ff9b:0:0:0:0:5db8:d822", // same address, hex form
+		"64:ff9b::192.0.2.128",      // RFC 5737 docs embed: passes the IPv4 predicate
+	} {
+		if err := refuseNonPublicIP(net.ParseIP(s)); err != nil {
+			t.Errorf("%s embeds a public IPv4, want allowed, got %v", s, err)
+		}
+	}
+	for _, s := range []string{
+		"64:ff9b::127.0.0.1",       // embedded loopback — the hole the wholesale refusal closed
+		"64:ff9b::10.0.0.1",        // embedded RFC1918 private
+		"64:ff9b::192.168.1.1",     // embedded RFC1918 private
+		"64:ff9b::100.64.0.1",      // embedded RFC 6598 CGNAT
+		"64:ff9b::169.254.169.254", // embedded link-local (cloud metadata)
+		"64:ff9b::198.18.0.1",      // embedded IANA benchmarking special
+	} {
+		if err := refuseNonPublicIP(net.ParseIP(s)); err == nil {
+			t.Errorf("%s embeds a refused IPv4, want refused, got allowed", s)
+		}
+	}
+}
+
+// F1: the dial guard routes NAT64 forms through that same policy — the
+// Control hook parses the dial address and hands the IP to refuseNonPublicIP
+// (production path of NewPageClient), so the embedded address, not the
+// prefix, decides before any connect.
+func TestDialControl_NAT64RoutesThroughPolicy(t *testing.T) {
+	hook := dialControl(refuseNonPublicIP)
+	if err := hook("tcp", "[64:ff9b::93.184.216.34]:443", nil); err != nil {
+		t.Errorf("dial of a NAT64 public embed must pass the guard, got %v", err)
+	}
+	if err := hook("tcp", "[64:ff9b::127.0.0.1]:80", nil); err == nil || !strings.Contains(err.Error(), "non-public") {
+		t.Errorf("err = %v, want a non-public refusal of the NAT64 loopback embed", err)
 	}
 }
 
