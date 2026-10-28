@@ -148,6 +148,48 @@ func TestPageClient_RefusesBroadcastRedirectTarget(t *testing.T) {
 	}
 }
 
+// P2 (card t1968 codex review, repair round): refuseNonPublicIP misses the
+// remaining IANA-registered special-purpose ranges — IPv4 192.0.0.0/24 (IETF
+// Protocol Assignments), 192.88.99.0/24 (Deprecated 6to4 Relay Anycast),
+// 198.18.0.0/15 (Benchmarking), 240.0.0.0/4 (Reserved), and IPv6 64:ff9b::/96
+// (NAT64 translation), 100::/64 (Discard-Only), 2001::/23 (IETF Protocol
+// Assignments, incl. Teredo 2001::/32), 2001:db8::/32 (Documentation),
+// 2002::/16 (6to4). Verified against the IANA IPv4/IPv6 Special-Purpose
+// Address Registries (retrieved 2026-10-28). None of these is a public web
+// origin; the benchmarking range especially is a documented bypass target.
+func TestRefuseNonPublicIP_IANASpecialPurposeRanges(t *testing.T) {
+	for _, s := range []string{
+		"198.18.0.1",   // 198.18.0.0/15 benchmarking
+		"198.19.255.1", // 198.18.0.0/15 far edge
+		"192.0.0.1",    // 192.0.0.0/24 IETF protocol assignments
+		"192.88.99.1",  // 192.88.99.0/24 deprecated 6to4 relay anycast
+		"240.0.0.1",    // 240.0.0.0/4 reserved
+		"250.1.2.3",    // 240.0.0.0/4 far edge
+		// NAT64-translated form: 64:ff9b::/96 wrapping a public IPv4.
+		"64:ff9b::192.0.2.128",
+		"64:ff9b:0:0:0:0:c000:280",
+		"100::1",           // discard-only
+		"2001::1",          // 2001::/23 IETF protocol assignments (Teredo)
+		"2001:db8::1",      // documentation
+		"2001:db8:ffff::1", // documentation far edge
+		"2002::1",          // 6to4
+		"2002:c000:0201::1",
+	} {
+		if err := refuseNonPublicIP(net.ParseIP(s)); err == nil {
+			t.Errorf("%s must be refused (IANA special-purpose range), got allowed", s)
+		}
+	}
+	// The boundary OUTSIDE each new range stays public: 198.16.x and 198.20.x
+	// flank the /15 benchmarking block, 2001:0200:: sits just past 2001::/23
+	// (APNIC unicast), 2001:dc8:: just past the documentation /32, and 2003::
+	// past the 6to4 /16. Over-refusing here would block real destinations.
+	for _, s := range []string{"198.16.255.1", "198.20.0.1", "2001:0200::1", "2001:dc8::1", "2003::1", "8.8.8.8"} {
+		if err := refuseNonPublicIP(net.ParseIP(s)); err != nil {
+			t.Errorf("%s is public, want allowed, got %v", s, err)
+		}
+	}
+}
+
 // F1b unit boundaries: the /10 prefix is exact — its in-range edges and the
 // limited-broadcast address are refused; 100.63.x and 100.128.x (public) and
 // ordinary public addresses stay allowed. No existing refusal is weakened.
