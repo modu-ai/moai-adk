@@ -104,6 +104,31 @@ func TestRunBench_RecordsOutput(t *testing.T) {
 	}
 }
 
+// P2 (card t1968 codex review, repair round): containment must measure the
+// KEPT BLOCK TEXT, not the rendered markdown. RenderMarkdown's first line is
+// the "# <status>" status line, so an ExpectedQuote equal to a status name
+// ("no_match") counted as contained with ZERO excerpts kept. A status echo
+// alone is not containment.
+func TestCompareRun_ContainmentIgnoresStatusLine(t *testing.T) {
+	cases := []BenchCase{{
+		ID:            "status-echo",
+		Question:      "what is the port?",
+		ExpectedQuote: "no_match", // equals the pipeline status name
+		PageSnapshot:  paddedSnapshot(),
+	}}
+	// No passage carries the marker: every stage-1 score is low, no candidate
+	// exists, and the pipeline ends in no_match with an empty kept set.
+	runs := RunBench(context.Background(), cases, stubBenchAsker{marker: "zz-no-passage-carries-this-zz"})
+	if runs[0].Status != string(fetchweb.StatusNoMatch) {
+		t.Fatalf("fixture premise: status = %q, want no_match (zero candidates)", runs[0].Status)
+	}
+	report := CompareRun(cases, runs)
+	if report.Cases[0].Contained {
+		t.Errorf("Containment counted the STATUS LINE: ExpectedQuote %q matched the status render line while the kept set is empty (run.Output = %q)",
+			cases[0].ExpectedQuote, runs[0].Output)
+	}
+}
+
 // The comparison report: per-case containment and token-savings rate versus
 // the snapshot's token count (approximate counts), plus a set summary.
 func TestCompareRun_ContainmentAndSavings(t *testing.T) {
