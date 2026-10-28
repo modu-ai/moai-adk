@@ -129,8 +129,7 @@ func TestAsk_CtxCancelDuringAliasLockWaitSkipsUpdate(t *testing.T) {
 		MaxRetries:     1,
 	}
 	type outcome struct {
-		res     Result
-		sinceCx time.Duration
+		res Result
 	}
 	done := make(chan outcome, 1)
 	go func() {
