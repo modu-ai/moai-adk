@@ -1216,3 +1216,65 @@ verdict: FAIL
 audited_sha: fa7b97b6a23033c2d6f1afb412eedca4694b833f
 
 AUDIT-VERDICT: FAIL spec=SPEC-FETCH-WEB-001 receipts=rcpt-f5ccdd49c63afba059cfcef5
+
+## iter19 (F1(it18) write-seam repair round; delta_base fa7b97b6a2, repairs 517b95b723..c47a8d9917, head 0d670aae06)
+
+auditor-model: glm-5.3
+
+## iter19 Verdict
+
+**PASS — aggregate 0.95** (harmonic mean of 97 / 96 / 93 / 96; must-pass firewall: Functionality and Security both PASS). The GLM-ruled F1(it18) write-seam repair is REAL, COMPLETE, and verified first-hand in every demanded direction with MY OWN probe shapes (not the landed fixtures): (a) the iter18 laundering entry itself — a pre-marker bare run list, kept_text ABSENT, quote in output — is REFUSED by `LoadRuns` with the exact named error `jevmeasure: run record format predates kept-text containment; re-run with the current build`, and through the CLI the refusal rides the exit-1 channel with NO baseline written (`D1_EXIT=1`, rendered ERROR box, `ls baseline1.json` → `No such file or directory`); (b) a CURRENT-format run doc round-trips unchanged (`B: format="kept-text-1" round-trip ok`), WriteBaseline stamps kept-text-1 on top of the imported run, and the diff still DETECTS the iter18 masked degrade (`[{CaseID:audit19-doc Pass:false Regression:true Reason:expected quote was contained at baseline and is now absent}]`, `D3_EXIT=1`); (c) the absence-vs-empty distinction actually distinguishes — a real no_match run written by the current recorder (`kept_text:""`) is ACCEPTED (`C1: no_match accepted, kept_text="" status="no_match"`, CLI `D4_EXIT=0`), while the SAME entry is refused in every pre-marker shape whether kept_text is absent (`C2`), PRESENT-but-empty (`C3` — the gate keys on the document marker, not field presence), marker-less (`C4`), or unrecognized (`C5`); (d) the CLI surfaces the refusal on the exit-1 channel (`D1_EXIT=1` + ERROR box quoted below). RED `517b95b723` is test-only (77 insertions, 1 file); GREEN `c47a8d9917` is exactly the gate surface + fixture migration; `LoadRuns`/`WriteRuns` are now the sole production reader/writer of run records (the CLI's inline marshal/unmarshal is gone). Full sweep green. **The required codex convergence leg returned PASS** (receipt `rcpt-543aec8f51bbbe2eec2aafef`, 0 findings). No blocking findings; two optional notes below.
+
+| Dimension | Weight | Score | Verdict | Evidence (verbatim, this run, this tree @0d670aae06) |
+|---|---|---|---|---|
+| Functionality | 40% | 97 | PASS | Probe A `A: refused err="jevmeasure: run record format predates kept-text containment; re-run with the current build" (runs=[])`; probe B `B: format="kept-text-1" round-trip ok; degrade detected — [{CaseID:audit19-doc Pass:false Regression:true Reason:expected quote was contained at baseline and is now absent}]`; probe C `C1: no_match accepted, kept_text="" status="no_match"` + `C2..C5: refused err="jevmeasure: run record format predates kept-text containment; re-run with the current build"`; CLI `D1_EXIT=1` + ERROR box `Jevmeasure: run record format predates kept-text containment; re-run with the current build.` + baseline absent; `D2_EXIT=0` `(baseline written to ...)` + `"format": "kept-text-1"` + `"contained": true`; `D3_EXIT=1` `FAIL audit19-doc: expected quote was contained at baseline and is now absent`; `D4_EXIT=0`. Landed tests `--- PASS: TestLoadRuns_RefusesPreMarkerRunRecord` (3 subtests) / `--- PASS: TestWriteRuns_StampsFormatAndRoundTrips` / `--- PASS: TestJevmeasureBench_RunImportRefusesPreMarkerRunRecord`. Sweep `ok ... internal/jevmeasure 0.493s coverage: 92.9%` / `ok ... internal/fetchweb 0.465s coverage: 96.1%` exit=0. |
+| Security | 25% | 96 | PASS | No new network/auth/secret surface: delta production Go = `internal/jevmeasure/bench.go` (+70) + `internal/cli/jevmeasure_cmd.go` (rewiring only) per `git diff --stat fa7b97b6a2..HEAD`; off-gate zero-network re-observed `--- PASS: TestFetchWeb_OffGateZeroNetwork`; `BUILD_OK` + `GOOS=windows` build green. The write-seam repair CLOSES the measurement-integrity hole (F1(it18)): refuse-before-write verified (`D1` — baseline never created), so unverifiable-provenance verdicts can no longer be stamped kept-text-1. Residuals unchanged: RFC 8215/5737 carve-outs documented in-code; proxy egress out-of-scope-by-design (D3). |
+| Craft | 20% | 93 | PASS | RED-first held: `517b95b723` test-only (`jevmeasure_cmd_test.go | 77 ++`, 1 file), GREEN `c47a8d9917` = gate + fixture migration (diff read in full); gate mirrors the baseline-gate idiom (same marker const, fail-closed named error with the run-side remedy). `gofmt -l internal/jevmeasure internal/cli` → empty; `golangci-lint run internal/jevmeasure/... internal/cli/...` → `0 issues.` Coverage: jevmeasure 92.9% (≥85 met) — dipped from iter18's 93.8 because the +70 production lines carry defensive error branches, incl. one unreachable `MarshalIndent` error path (runDoc holds only strings/ints) — optional cleanup only. 3 unit probes + 4 CLI probes run and removed; `TREE_STATUS_LINES=0` after cleanup. |
+| Consistency | 15% | 96 | PASS | Scope discipline mechanically held: `git diff --stat fa7b97b6a2..HEAD` names ONLY `internal/jevmeasure/{bench.go,bench_test.go}` + `internal/cli/{jevmeasure_cmd.go,jevmeasure_cmd_test.go}` + the 2 card-record files (progress.md +6/-0, sync-audit.md append) — no other packages, standing set untouched by construction. SPEC dir delta `fa7b97b6a2..HEAD` → 0 files (§5 trivially unchanged); no `Binding run conditions` heading in SPEC progress.md (grep -c → 0). Conventional Commits `test(jevmeasure)`/`fix(jevmeasure)`/`docs(t1968)` with card refs; in-code citation carries the F1/iter18 provenance. |
+
+## iter19 dispositions
+
+- **F1(it18) [P2] — old-format RUN records launder into kept-text-1 baselines (the write seam) — REPAIRED-VERIFIED, all four demanded directions.** Recorder half: `WriteRuns` stamps `{"format":"kept-text-1","runs":[...]}` at `--run-out` (probe B marker observed; CLI fixture migration asserts it). Import half: `LoadRuns` refuses a bare run list (the pre-marker on-disk shape), a marker-less object, and an unrecognized marker BEFORE WriteBaseline is reachable (probes A/C2-C5; CLI D1 exit 1, no baseline written). Absence-vs-empty: the document marker — not kept_text field presence — vouches, so a real no_match round-trips (probes C1, D3/D4) while the same entry in a pre-marker shape refuses even with kept_text explicitly present-but-empty (C3). Delivered exactly per the iter18 Required fix; RED-first (517b test-only failing at the tree, GREEN minimal).
+- **Round integrity — sweep fresh-green.** jevmeasure+fetchweb suites `ok` exit 0 (cover 92.9/96.1); CLI bench class 8/8 PASS incl. the new import-refusal test + `TestFetchWeb_OffGateZeroNetwork`; native `BUILD_OK`, `WIN_BUILD_OK_JEVMEASURE`; gofmt empty; lint `0 issues.`; probes cleaned, tree clean throughout.
+- **Ledger standing — §5 unchanged (SPEC dir 0 files); progress record additive-only (0 deletion lines); no new debt rows; no `Binding run conditions` heading (standing since iter11).** D4 (full cli suite / repo-wide verdict = CI-owned) unchanged; leader directive of 10-28 forbids local full-cli re-runs and this audit complies (bench class + off-gate test only).
+- **Findings — none blocking.** O1 [optional] jevmeasure coverage 93.8→92.9: the WriteRuns `MarshalIndent` error branch is unreachable for runDoc (strings/ints only) — dead defensive branch, optional cleanup. O2 [optional] `{"format":"kept-text-1"}` with an absent `runs` key loads as zero runs; downstream the landed L3 missing-run handling fails loud (no silent perfect aggregate), so no masking vector — note only.
+
+## iter19 Cross-model convergence (audit_multi, target=baseBranch, delta_base=fa7b97b6a2, project_root=this worktree)
+
+Digest for the orchestrator's check (write to `<toplevel>/.moai/state/audit-plan-result.json`, then `moai verify audit-plan --project-root <toplevel> --result-file <path>`):
+
+- `overall_verdict`: **pass**
+- `gate_unmet`: (empty — codex answered with a verdict: pass, 0 findings)
+- `plan_source`: `config`
+- per_backend_verdicts: `backend=codex, gate=required, verdict=pass` (sole participant; claude/glm gates off per plan)
+- `audit_receipt`: `rcpt-543aec8f51bbbe2eec2aafef`
+- `participant_count`: 1, `disagreement_flag`: null
+- `residual_risk_note` (verbatim): `delta_base fa7b97b6a23033c2d6f1afb412eedca4694b833f: no claude or glm leg produced a verdict on it; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written`
+
+**The orchestrator's `--result-file` convergence check remains to be run; this auditor's verdict is not final until that check passes. This auditor's independent four-direction verification (probes A-C + CLI D1-D4) is the corroborating leg.**
+
+## iter19 Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+**Claim — the operator-ruled F1(it18) write-seam repair is genuine, complete, CLI-surfaced, and scope-disciplined; the sweep is fresh-green; the required codex gate PASSES with a receipt; the card carries no blocking finding this round.** Evidence: my 3 unit probes + 4 CLI probes (all verbatim above), the landed RED/GREEN tests PASS, sweep trio + CLI class + builds + gofmt + lint all observed this run; convergence pass with receipt. Baseline: this run, this tree @0d670aae069c401b22893451ba09f4048949a381; delta measured `fa7b97b6a2..0d670aae06` (repairs 517b95b723..c47a8d9917; 0d670aae06 docs-only). Verdict-file receipt minted this run: `rcpt-7e6ad335d1aab690`.
+
+**Gaps (explicitly NOT observed):**
+- The orchestrator's `--result-file` convergence check has not run (this auditor does not write it).
+- No claude or glm leg produced a verdict (gates off per plan); codex scoped to the delta in prose only (delta_base) — `residual_risk_note` quoted verbatim above.
+- Full `internal/cli` suite, repository-wide verdict, and CI (ubuntu/windows execution) not run here — D4 unchanged (leader directive forbids local full-cli; CI owns it).
+- `moai` binary provenance: convergence `build_commit` `b1806498fe` is not an ancestor of this tree's HEAD — unchanged from iter3-18.
+- Windows stub behavior compile-verified only (`WIN_BUILD_OK_JEVMEASURE`), not executed.
+- Cross-PROCESS flock contention not directly spawned (standing gap class since iter16; landed race test exercises the real file layer — not re-run this round per delta scope).
+
+**Residual-risk:**
+- Convergence was single-participant (codex only) and prose-scoped to the delta — this auditor's four-direction first-hand verification is the corroborating leg; a second modeling of the delta by an uncorrelated backend did not occur.
+- A run document carrying a forged `kept-text-1` marker with hand-edited verdicts would import cleanly — the marker vouches for format, not content authenticity; threat model stays card-internal dev machines (unchanged envelope, same as the baseline gate).
+- The T7/kickoff structural limit remains a leader-held landing decision, per progress.md. Proxy-required egress remains out-of-scope-by-design (D3).
+
+## Iteration history (cont.)
+
+- iter19 (this audit): F1(it18) write-seam repair VERIFIED CLEAN in all four demanded directions (refusal with named error + no baseline written via CLI exit-1; current-format round-trip + kept-text-1 stamp + diff detects the masked degrade; absence-vs-empty distinguished by the document marker — real no_match accepted, same entry refused in every pre-marker shape incl. kept_text-present-but-empty; CLI channel verified) — RED test-only / GREEN minimal, scope mechanically held (jevmeasure+cli only), sweep green (cover 92.9/96.1, CLI class 8/8, builds, lint/gofmt clean, SPEC dir 0, §5 unchanged, tree clean) — PASS 0.95 (delta_base fa7b97b6a2, head 0d670aae06); codex convergence PASS rcpt-543aec8f51bbbe2eec2aafef (0 findings); no blocking findings (O1 dead marshal branch, O2 empty-runs doc note — both optional).
+
+verdict: PASS
+audited_sha: 0d670aae069c401b22893451ba09f4048949a381
+
+AUDIT-VERDICT: PASS spec=SPEC-FETCH-WEB-001 receipts=rcpt-543aec8f51bbbe2eec2aafef
