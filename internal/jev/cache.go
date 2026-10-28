@@ -300,6 +300,16 @@ var errAliasLockSkipped = errors.New("jev cache: alias-map lock not acquired wit
 // contention (the guarded read-modify-write is milliseconds against a
 // hundreds-of-ms bound).
 func (c *Client) updateAliasMap(ctx context.Context, model string) error {
+	// The cache dir must exist before the lock's OpenFile (iter16 F2): a
+	// first-ever call on a fresh machine would otherwise ENOENT before
+	// writeModelsMap's own MkdirAll precondition (inside atomicWrite) ever
+	// ran — the alias map never persisted and restart-offline lookups
+	// missed. The mkdir lives here, in shared code BEFORE the lock call,
+	// so the non-unix build (no-op lock stub) gets the dir creation too.
+	// MkdirAll is idempotent; the common existing-dir call is unchanged.
+	if err := os.MkdirAll(c.CacheDir, 0o700); err != nil {
+		return err
+	}
 	// The whole read-modify-write holds the cache dir's alias-map lock (P2,
 	// card t1968 codex review round 9): concurrent requests during a model
 	// switch must not each read the same prior mapping — a last writer
