@@ -36,6 +36,17 @@ const (
 	// NeighborContextChars is the stage-2 neighbor context size, in
 	// CHARACTERS (not tokens — upstream's figure is a character count).
 	NeighborContextChars = 400
+	// MaxStage1WindowsPerFetch caps the number of paid stage-1 scoring
+	// requests one fetch may issue, summed over the main and aside streams
+	// (P2 security, card t1968 codex review). Stage 1 pays one Ask per
+	// window; without a cap a page of tiny blocks under a long question
+	// grows the window count without bound (~46 calls at 1MiB of tiny <p>
+	// blocks, ~230 at 5MiB). 64 windows sits far above every ordinary page
+	// (a dense but real 1MiB page of ~500-byte paragraphs needs ~20) while
+	// refusing the pathological shapes; an over-budget document is REFUSED
+	// with a named condition — the MaxResponseBytes over-bound semantics —
+	// never truncated into a partial judgment.
+	MaxStage1WindowsPerFetch = 64
 )
 
 // Answerer is the Jev call seam. *jev.Client satisfies it; tests inject a
@@ -159,6 +170,24 @@ type blockScore struct {
 func scoreTwoStage(ctx context.Context, blocks []Block, question string, ask Answerer) ([]blockScore, []string, error) {
 	scores := make([]blockScore, len(blocks))
 	var warnings warningSink
+	// P2 security (card t1968 codex review): the per-fetch scoring budget is
+	// enforced BEFORE any paid call. The window count both streams will
+	// assemble is computed up front — stage1 recomputes the same pure
+	// partition per stream; the duplicate O(n) pass is negligible beside the
+	// paid Ask it guards — and a document past the cap is refused outright,
+	// mirroring the MaxResponseBytes over-bound semantics: a named condition,
+	// no partial judgment.
+	totalWindows := 0
+	for _, pass := range [2]bool{false, true} {
+		idx := filterIndices(blocks, func(b Block) bool { return b.Aside == pass })
+		if len(idx) == 0 {
+			continue
+		}
+		totalWindows += len(stage1Windows(pick(blocks, idx), question))
+	}
+	if totalWindows > MaxStage1WindowsPerFetch {
+		return nil, warnings.list, fmt.Errorf("stage-1 scoring budget exceeded: %d windows for %d blocks is past the %d-window per-fetch cap; page refused rather than partially scored", totalWindows, len(blocks), MaxStage1WindowsPerFetch)
+	}
 	for _, pass := range [2]bool{false, true} { // main flow, then aside
 		idx := filterIndices(blocks, func(b Block) bool { return b.Aside == pass })
 		if len(idx) == 0 {
