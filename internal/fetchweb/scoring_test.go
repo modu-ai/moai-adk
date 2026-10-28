@@ -728,6 +728,45 @@ func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
 	}
 }
 
+// P2 performance (card t1968 codex review, repair round):
+// sameHeadingNeighborQualifies rescanned ALL blocks per candidate, so a
+// document of many candidates with no qualifying sibling (distinct heading
+// paths, sub-threshold neighbors) cost O(n²) inside selectBlocks. The
+// judgment must come from a per-pass aggregate: the growth ratio from n to
+// 2n is bounded at 3.4 — above n·log(n) (~2.2 from 5k to 10k), below the
+// 4.0 the per-candidate full scan exhibits. Every block here is a candidate
+// (stage1 0.7) whose stage-2 fails, under its own DISTINCT heading path —
+// the rescue check must examine every one and find no sibling.
+func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{fmt.Sprintf("H%d", i)}, Text: "para", HeaderIndex: -1}
+			scores[i] = blockScore{stage1: 0.7} // candidate; stage2 0 -> the rescue judgment runs
+		}
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(5000)
+	t2 := run(10000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 5k to 10k candidates: ratio %.2f (5k=%s, 10k=%s) — per-candidate neighbor rescan; must aggregate once per pass (~n·log(n) overall)",
+			ratio, t1, t2)
+	}
+}
+
 // helpers
 
 func keptHas(res Result, text string) bool {
