@@ -38,6 +38,41 @@ func TestRenderMarkdown_Contract(t *testing.T) {
 	}
 }
 
+// P3 security (card t1968 codex review, repair round): RenderMarkdown wrote
+// blk.Text verbatim to terminal-bound output, so raw C0 control bytes — an
+// ESC/BEL pair (OSC 52 exfil shapes) — reached the terminal as live control
+// bytes; only --json escaped (encoding/json). The render surface must
+// replace every C0/C1 control character except \n and \t with a visible
+// \xHH representation. Block.Text itself stays verbatim — the verbatim
+// guarantee is on extraction, not presentation — and multi-byte UTF-8 text
+// (CJK) must survive the escaper untouched: C1 handling is per RUNE, never
+// per byte (a byte-wise escaper would corrupt UTF-8 continuation bytes).
+func TestRenderMarkdown_EscapesTerminalControlBytes(t *testing.T) {
+	res := Result{
+		Status: StatusFiltered,
+		Blocks: []Block{
+			{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "keep\x1b]52;c;payload\x07tail"},
+			{Kind: KindParagraph, HeadingPath: []string{"한글 제목"}, Text: "한글 본문 그대로"},
+			{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "c1\u0085check"},
+		},
+	}
+	out := RenderMarkdown(res)
+	if !strings.Contains(out, `\x1b`) || !strings.Contains(out, `\x07`) {
+		t.Errorf("render must carry the visible escaped form of ESC and BEL, got %q", out)
+	}
+	if !strings.Contains(out, `\x85`) || strings.ContainsRune(out, 0x85) {
+		t.Errorf("the C1 rune U+0085 must render as the literal %q, not the raw rune: %q", `\x85`, out)
+	}
+	if !strings.Contains(out, "한글 본문 그대로") || !strings.Contains(out, "한글 제목") {
+		t.Errorf("multi-byte UTF-8 text must pass through the render untouched, got %q", out)
+	}
+	for i := 0; i < len(out); i++ {
+		if b := out[i]; b != '\n' && b != '\t' && b < 0x20 {
+			t.Errorf("raw control byte 0x%02x at offset %d reached the render", b, i)
+		}
+	}
+}
+
 func TestRenderMarkdown_EmptyStatusesHaveNoBlocks(t *testing.T) {
 	for _, st := range []Status{StatusEmpty, StatusNoMatch, StatusFetchError} {
 		out := RenderMarkdown(Result{Status: st})
