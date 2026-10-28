@@ -47,12 +47,22 @@ type ipPolicy func(ip net.IP) error
 // limited-broadcast address, and the remaining IANA-registered
 // special-purpose ranges (isIANASpecial — P2, card t1968 codex review).
 // IPv4-mapped IPv6 forms normalize through net.ParseIP before the checks,
-// so ::ffff:127.0.0.1 is caught.
+// so ::ffff:127.0.0.1 is caught. An address inside the RFC 6052 NAT64
+// well-known prefix 64:ff9b::/96 is decided on its EMBEDDED IPv4 (F1, card
+// t1968 iter15): the embedded address is the real destination a DNS64
+// client reaches, so it — not the prefix — runs through this same
+// predicate; an embedded loopback/private/CGNAT/link-local stays refused,
+// an embedded public address passes.
 func refuseNonPublicIP(ip net.IP) error {
-	if ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !isSharedAddressSpace(ip) &&
-		!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsUnspecified() &&
-		!ip.IsMulticast() && !ip.Equal(net.IPv4bcast) && !isIANASpecial(ip) {
-		return nil
+	if ip != nil {
+		if embedded := nat64Embedded(ip); embedded != nil {
+			return refuseNonPublicIP(embedded)
+		}
+		if !ip.IsLoopback() && !ip.IsPrivate() && !isSharedAddressSpace(ip) &&
+			!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsUnspecified() &&
+			!ip.IsMulticast() && !ip.Equal(net.IPv4bcast) && !isIANASpecial(ip) {
+			return nil
+		}
 	}
 	return fmt.Errorf("non-public address %s refused", ip)
 }
@@ -80,19 +90,18 @@ var ianaIPv4Special = []struct {
 
 // ianaIPv6Special holds the IANA-registered IPv6 special-purpose ranges no
 // net.IP helper covers (same review; verified against the IANA IPv6
-// Special-Purpose Address Registry — retrieved 2026-10-28): 64:ff9b::/96
-// NAT64 translation, 100::/64 Discard-Only, 2001::/23 IETF Protocol
-// Assignments (Teredo 2001::/32 included), 2001:db8::/32 Documentation,
-// 2002::/16 6to4. 2001:db8::/32 sits OUTSIDE 2001::/23 (0x0db8 > 0x01ff),
-// so it needs its own entry. Unique-local (fc00::/7) is IsPrivate;
-// link-local fe80::/10 and multicast ff00::/8 are covered above.
+// Special-Purpose Address Registry — retrieved 2026-10-28): 100::/64
+// Discard-Only, 2001::/23 IETF Protocol Assignments (Teredo 2001::/32
+// included), 2001:db8::/32 Documentation, 2002::/16 6to4. 2001:db8::/32
+// sits OUTSIDE 2001::/23 (0x0db8 > 0x01ff), so it needs its own entry.
+// Unique-local (fc00::/7) is IsPrivate; link-local fe80::/10 and multicast
+// ff00::/8 are covered above. 64:ff9b::/96 (NAT64) is NOT here — F1 (card
+// t1968 iter15) removed the wholesale refusal: an address in that prefix
+// embeds a per-address IPv4 destination, decided by nat64Embedded below.
 var ianaIPv6Special = []struct {
 	prefix [16]byte
 	mask   [16]byte
 }{
-	// 64:ff9b::/96 — first 12 bytes.
-	{prefix: [16]byte{0x00, 0x64, 0xff, 0x9b}, mask: [16]byte{
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 	// 100::/64 — first 8 bytes.
 	{prefix: [16]byte{0x01, 0x00}, mask: [16]byte{
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
@@ -138,6 +147,36 @@ func matchesSpecialPrefix(ip, prefix, mask []byte) bool {
 		}
 	}
 	return true
+}
+
+// nat64Range is the RFC 6052 NAT64 well-known prefix 64:ff9b::/96 (first 12
+// bytes fixed). It sat in ianaIPv6Special until F1 (card t1968 iter15): the
+// prefix embeds a per-address IPv4 destination in its low 32 bits, so a
+// wholesale refusal blocked PUBLIC embeds a DNS64/NAT64 IPv6-only client
+// legitimately dials. Same prefix/mask shape as the tables above.
+var nat64Range = struct {
+	prefix [16]byte
+	mask   [16]byte
+}{
+	prefix: [16]byte{0x00, 0x64, 0xff, 0x9b}, mask: [16]byte{
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+}
+
+// nat64Embedded reports whether ip sits inside 64:ff9b::/96 and, if so,
+// returns the IPv4 address embedded in its low 32 bits for the caller to
+// run through the SAME public-address predicate — no second policy. IPv4
+// and IPv4-mapped forms carry no NAT64 prefix and return nil, so the
+// predicate's recursion terminates: the extracted IPv4's 16-byte form is
+// ::ffff:-mapped, which never matches the 64:ff9b:: prefix.
+func nat64Embedded(ip net.IP) net.IP {
+	if ip.To4() != nil {
+		return nil
+	}
+	ip16 := ip.To16()
+	if ip16 == nil || !matchesSpecialPrefix(ip16, nat64Range.prefix[:], nat64Range.mask[:]) {
+		return nil
+	}
+	return net.IPv4(ip16[12], ip16[13], ip16[14], ip16[15])
 }
 
 // isSharedAddressSpace reports whether ip is inside the RFC 6598 shared
