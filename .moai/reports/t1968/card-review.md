@@ -57,3 +57,14 @@ Commit 16dc4ae0b4 (+162/−7, 5 files): C1 true-copy aside save (RED: `[Note]` �
 Verdict: **fail** (advisory) — 1 new P2 finding:
 
 - **[P2] blocks.go:505 spliceAsideRun copies the whole rowTable map per aside insertion** — O(N×M) work+allocation for an aside with M crossings after an N-row table; scoring budget (post-split) and HTTP timeout do not bound it. Verified against source by the lane (full-map rebuild confirmed at spliceAsideRun). Disposition: same perf class as the operator-approved items 3/4 — repair spawned RED-first (8th item, extension reported to leader).
+
+---
+
+## Round 9 (2026-10-29, post-F1F2 card diff review — codex_review scope=card, base 0beb3fa510)
+
+Verdict: **fail** (advisory) — 2 new P2 findings, both verified against source by the lane:
+
+- **[P2] scoring.go:413 backfill recomputes totalKeptTokens per iteration** — `totalKeptTokens(blocks, kept)` inside the loop condition iterates the whole kept set each iteration → O(n²) with many 0-token rows. Verified: loop at selectBlocks backfill calls the full-scan helper per candidate. Proposed: running accumulator adding only the newly added block's tokens.
+- **[P2] jev/cache.go:285 updateAliasMap read-modify-write race** — concurrent requests during a model switch both read the prior mapping; last writer wins loses the other's Prior append → offline stale probe misses the actually-saved previous model. Verified: no inter-process lock around readModelsMap→mutate→writeModelsMap. Proposed: process-level lock (flock in CacheDir) around the whole update.
+
+Disposition: reported to leader per the out-of-scope rule (prior notice before starting) — repair awaiting approval.
