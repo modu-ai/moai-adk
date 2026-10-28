@@ -4,11 +4,17 @@ unset GIT_CONFIG GIT_DIR GIT_COMMON_DIR GIT_WORK_TREE GIT_INDEX_FILE \
   GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
   GIT_PREFIX GIT_SUPER_PREFIX GIT_CEILING_DIRECTORIES GIT_QUARANTINE_PATH
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+# Resolve Go's existing cache locations before replacing HOME. Otherwise a
+# clean environment puts module and build caches inside the disposable home.
+GOPATH=$(go env GOPATH)
+GOMODCACHE=$(go env GOMODCACHE)
+GOCACHE=$(go env GOCACHE)
+export GOPATH GOMODCACHE GOCACHE
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 mkdir "$tmp/home"
 HOME="$tmp/home" USERPROFILE="$tmp/home" GOTELEMETRY=off \
-  go test "$root/internal/cli" -run '^(TestFactoryPROpenReleasesLaneForIndependentCard|TestFactorySameOwnerReacquiresExpiredLease|TestFactoryExpiredLeaseReacquireKeepsDirtyTreeAndRejectsDuplicate|TestFactoryExpiredLeaseReacquireRefusalsPreserveState|TestExpiredReacquirePreservesClaimDeadlineAndPRSnapshot|TestExpiredReacquireBusyRecordIsBounded|TestExpiredReacquireUnderDriftLogLock)$' -count=1 -timeout 5m
+  go test "$root/internal/cli" -run '^(TestFactoryPROpenReleasesLaneForIndependentCard|TestFactorySameOwnerReacquiresExpiredLease|TestFactoryExpiredLeaseReacquireKeepsDirtyTreeAndRejectsDuplicate|TestFactoryExpiredLeaseReacquireRefusalsPreserveState|TestExpiredReacquirePreservesClaimDeadlineAndPRSnapshot|TestExpiredReacquireBusyRecordIsBounded|TestExpiredReacquireUnderDriftLogLock|TestFactoryNextAfterMergeReadyExpiryCollection)$' -count=1 -timeout 5m
 if [ -e "$tmp/home/.moai" ]; then
   echo 'factory handoff tests left state in the caller HOME' >&2
   exit 1

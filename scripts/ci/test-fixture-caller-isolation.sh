@@ -4,6 +4,11 @@ unset GIT_CONFIG GIT_DIR GIT_COMMON_DIR GIT_WORK_TREE GIT_INDEX_FILE \
   GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE \
   GIT_PREFIX GIT_SUPER_PREFIX GIT_CEILING_DIRECTORIES GIT_QUARANTINE_PATH
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+# Keep the invoking user's Go caches outside the disposable HOME.
+GOPATH=$(go env GOPATH)
+GOMODCACHE=$(go env GOMODCACHE)
+GOCACHE=$(go env GOCACHE)
+export GOPATH GOMODCACHE GOCACHE
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 mkdir -p "$tmp/home" "$tmp/foreign"

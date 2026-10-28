@@ -220,6 +220,7 @@ func TestCollectedMergeReadyDoesNotHoldImplementationSlot(t *testing.T) {
 }
 
 func TestFactoryNextAfterMergeReadyExpiryCollection(t *testing.T) {
+	isolateFactoryHandoffHome(t)
 	root, _ := expiredLeaseFixture(t)
 	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
 	db := fcOpen(t, root)
