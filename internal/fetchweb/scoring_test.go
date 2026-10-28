@@ -205,6 +205,45 @@ func TestSelection_RescueNeedsQualifyingNeighbor(t *testing.T) {
 	}
 }
 
+// F2 (card t1968 iter15, operator-approved repair): the rescue group key
+// must distinguish `[]` (no heading) from `[""]` (an empty heading text —
+// real pages emit it: <h2></h2> pushes an empty heading at the splitter).
+// The NUL join of the per-pass aggregate mapped both paths to the same key,
+// so a candidate under [""] was rescued by a sibling under [] — a CROSS
+// heading-group rescue the base 41fe0c5396 never performed (base keeps 1,
+// the collision kept 2). Two blocks past the ~2,000-token passthrough
+// bound, each ~1,200 tokens so the kept set of one block sits far above
+// the 300-token backfill floor: b0 under [] (candidate 0.9, stage-2 0.3,
+// kept by the first-block guarantee) and b1 under [""] (candidate 0.7,
+// stage-2 0.3, no qualifying sibling in its own group) must not rescue
+// each other.
+func TestSelection_EmptyHeadingNotNeighborOfNoHeading(t *testing.T) {
+	// The [""] premise, witnessed at the splitter: an empty heading element
+	// emits a one-component empty heading path.
+	doc := SplitBlocks("<html><body><h2></h2><p>x</p></body></html>")
+	if len(doc) != 1 || len(doc[0].HeadingPath) != 1 || doc[0].HeadingPath[0] != "" {
+		t.Fatalf("SplitBlocks of <h2></h2> gave %d blocks, heading path %q; want one block under [\"\"]", len(doc), doc[0].HeadingPath)
+	}
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: nil, Text: "first block no heading " + strings.Repeat("a", 4770)},
+		{Kind: KindParagraph, HeadingPath: []string{""}, Text: "second block empty heading " + strings.Repeat("b", 4770)},
+	}
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.9, "b1": 0.7,
+		"c0": 0.3, "c1": 0.3,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	if !keptHas(res, blocks[0].Text) {
+		t.Errorf("the [] first block must be kept by the first-block guarantee: %v", texts(res.Blocks))
+	}
+	if keptHas(res, blocks[1].Text) {
+		t.Errorf("the [\"\"] block must not be rescued by a [] sibling — distinct heading groups: %v", texts(res.Blocks))
+	}
+}
+
 // REQ-FW-006 decision order: zero stage-1 candidates -> no_match, and the
 // first-block keep does NOT apply.
 func TestSelection_NoMatchWhenZeroCandidates(t *testing.T) {
