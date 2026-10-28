@@ -9,9 +9,18 @@ on:
     # Weekly scan: Monday at 06:00 UTC
     - cron: "0 6 * * 1"
 
+# A run for a push to main is never cancelled by a later push: a cancelled
+# conclusion would land on that main SHA as a `cancelled` check run, and
+# scripts/release.sh counts any completed conclusion other than
+# success/neutral/skipped on the tagged commit as a CI gate failure. The weekly
+# schedule runs on the default-branch ref (refs/heads/main), so the same
+# expression covers it. develop is excluded with main (mirrors ci.yml). Pull
+# request refs (refs/pull/N/merge) keep cancelling superseded runs, which are
+# dead weight once the next push lands. A workflow expression cannot read the
+# repo's config, so whoever moves the integration target updates this mirror.
 concurrency:
   group: codeql-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 # Least-privilege baseline. The analyze job overrides this with
 # security-events: write (required to upload CodeQL results). The detect and
