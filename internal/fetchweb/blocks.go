@@ -103,7 +103,7 @@ func SplitBlocks(pageHTML string) []Block {
 	if err != nil {
 		return nil
 	}
-	s := &splitter{headerLocal: map[int]int{}, rowTable: map[int]int{}}
+	s := &splitter{}
 	var out []Block
 	s.blocks = &out
 	// html.Parse returns a DocumentNode (not an ElementNode), so the descent
@@ -142,11 +142,25 @@ type splitter struct {
 	// suppressed and a second aside's nested table would collide with the
 	// first — so the binding is positional and the counter stays monotonic.
 	tableStack []int
-	// rowTable[tableRowBlockIndex] = the table a row belongs to.
-	rowTable map[int]int
-	// headerLocal[table id] = the splitter-level index of that table's
-	// header-row block; absent when the table has none.
-	headerLocal map[int]int
+	// rowOf[i] = the table id block i belongs to when block i is a
+	// table-row block; -1 for every other block. Keyed by CURRENT block
+	// position and shifted by the same move spliceAsideRun applies to the
+	// blocks slice itself, so index i always describes blocks[i]. The map
+	// this slice replaced was keyed by block index too but REBUILT whole on
+	// every aside splice — re-keying every row of every earlier table,
+	// O(rows×splices) with an allocation per splice (P2 perf, card t1968
+	// repair round); the slice only ever pays for the tail it shifts.
+	rowOf []int
+	// headerAt[i] = the table id whose header row sits at block position i;
+	// -1 when block i is not a header row. Same position-keyed shift as
+	// rowOf, so resolveHeaders reads current positions with no per-splice
+	// bookkeeping of its own.
+	headerAt []int
+	// tableHeadered[table id] = that table's first row was a header row.
+	// Keyed by the stable table id — ids are allocated once by tableSeq and
+	// never shift — so emitRow's first-header check needs no position
+	// bookkeeping at all.
+	tableHeadered []bool
 	// itemDepth counts the walk's position inside list-item bodies: while
 	// > 0, a <p> element is part of the enclosing item's already-emitted
 	// text and is not emitted again as its own block.
@@ -363,10 +377,12 @@ func (s *splitter) walkChildren(n *html.Node, inAside bool) {
 
 // emit appends a block. table is 0 for non-table-row blocks.
 func (s *splitter) emit(b Block, table int) {
-	idx := len(*s.blocks)
 	if b.Kind == KindTableRow {
-		s.rowTable[idx] = table
+		s.rowOf = append(s.rowOf, table)
+	} else {
+		s.rowOf = append(s.rowOf, -1)
 	}
+	s.headerAt = append(s.headerAt, -1)
 	*s.blocks = append(*s.blocks, b)
 }
 
@@ -388,8 +404,10 @@ func (s *splitter) emitRow(n *html.Node, inAside bool) {
 	if depth := len(s.tableStack); depth > 0 {
 		table = s.tableStack[depth-1]
 	}
-	if _, seen := s.headerLocal[table]; !seen && rowIsHeader(n) {
-		s.headerLocal[table] = len(*s.blocks)
+	isHeader := false
+	if !s.tableHasHeader(table) && rowIsHeader(n) {
+		isHeader = true
+		s.noteTableHeader(table)
 	}
 	s.emit(Block{
 		Kind:        KindTableRow,
@@ -398,18 +416,45 @@ func (s *splitter) emitRow(n *html.Node, inAside bool) {
 		Aside:       inAside,
 		HeaderIndex: -1,
 	}, table)
+	if isHeader {
+		s.headerAt[len(s.headerAt)-1] = table
+	}
+}
+
+// tableHasHeader reports whether table's first row was a header row. An id
+// beyond the allocated range (the stray-row counter fallback below emitRow's
+// binding) reads as headerless — the same miss the map lookup it replaced
+// produced for an unknown id.
+func (s *splitter) tableHasHeader(table int) bool {
+	return table >= 0 && table < len(s.tableHeadered) && s.tableHeadered[table]
+}
+
+// noteTableHeader marks table headered, growing the per-table record to
+// cover its id first.
+func (s *splitter) noteTableHeader(table int) {
+	for len(s.tableHeadered) <= table {
+		s.tableHeadered = append(s.tableHeadered, false)
+	}
+	s.tableHeadered[table] = true
 }
 
 // resolveHeaders fills each table row's HeaderIndex from the recorded
-// per-table header position.
+// per-table header position. The position-keyed headerAt record is inverted
+// into a table→position map in one pass here — positions stayed current
+// through every splice, so no deferred shifting is replayed.
 func (s *splitter) resolveHeaders() {
 	blocks := *s.blocks
+	headerByTable := make(map[int]int, len(s.headerAt))
+	for i, table := range s.headerAt {
+		if table >= 0 {
+			headerByTable[table] = i
+		}
+	}
 	for i := range blocks {
 		if blocks[i].Kind != KindTableRow {
 			continue
 		}
-		table := s.rowTable[i]
-		if h, ok := s.headerLocal[table]; ok && h != i {
+		if h, ok := headerByTable[s.rowOf[i]]; ok && h != i {
 			blocks[i].HeaderIndex = h
 		}
 	}
@@ -491,10 +536,14 @@ func collapseRun(first, end *html.Node, skip map[string]bool) string {
 
 // spliceAsideRun inserts one bare-run paragraph at index at, in front of the
 // blocks a block-emitting child of an aside just produced (C2, t1968
-// sync-audit iter6), and shifts the table bookkeeping the just-walked
-// subtree recorded at or past the splice point (rowTable keys, headerLocal
-// positions) so resolveHeaders still binds rows to their headers after the
-// shift.
+// sync-audit iter6), and shifts the position-keyed table bookkeeping
+// (rowOf, headerAt) with the same move the blocks slice itself takes, so
+// index i keeps describing blocks[i] and resolveHeaders still binds rows to
+// their headers after the shift. The shift costs only the tail it moves —
+// the same tail the blocks copy already moves — instead of re-keying every
+// row of every earlier table (P2 perf, card t1968 repair round: an aside of
+// M crossings after an N-row table paid O(N×M) map reinsertions and an
+// N-entry allocation per splice here).
 func (s *splitter) spliceAsideRun(at int, text string, path []string) {
 	b := Block{Kind: KindParagraph, HeadingPath: path, Text: text, Aside: true, HeaderIndex: -1}
 	blocks := *s.blocks
@@ -502,20 +551,12 @@ func (s *splitter) spliceAsideRun(at int, text string, path []string) {
 	copy(blocks[at+1:], blocks[at:])
 	blocks[at] = b
 	*s.blocks = blocks
-	shifted := make(map[int]int, len(s.rowTable))
-	for k, v := range s.rowTable {
-		if k >= at {
-			shifted[k+1] = v
-		} else {
-			shifted[k] = v
-		}
-	}
-	s.rowTable = shifted
-	for id, pos := range s.headerLocal {
-		if pos >= at {
-			s.headerLocal[id] = pos + 1
-		}
-	}
+	s.rowOf = append(s.rowOf, -1)
+	copy(s.rowOf[at+1:], s.rowOf[at:])
+	s.rowOf[at] = -1
+	s.headerAt = append(s.headerAt, -1)
+	copy(s.headerAt[at+1:], s.headerAt[at:])
+	s.headerAt[at] = -1
 }
 
 // textBoundaryTags are the elements whose boundaries end a run of text: the
@@ -661,7 +702,7 @@ func (s *splitter) emitRowSubBlocks(tr *html.Node, inAside bool) {
 			// P2 (card t1968 codex review): a <table> nested directly in a
 			// cell emits through the same table machinery the body-level walk
 			// uses — the walk's table case opens its own id on tableStack, so
-			// its rows bind to THEIR table and its header row (headerLocal)
+			// its rows bind to THEIR table and its header row (headerAt)
 			// binds to it, exactly like the aside-nested table of R1 iter7.
 			// Scanning on would descend into the rows without ever emitting
 			// them (no tr branch here) while emitRow had already folded their

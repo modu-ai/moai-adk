@@ -774,8 +774,8 @@ func TestSplitBlocks_MixedAsideRunOrder(t *testing.T) {
 
 // C2 splice control: a bare run preceding a table inside the aside is
 // spliced in front of the table's rows, and the row→header binding survives
-// the splice — spliceAsideRun shifts rowTable keys and headerLocal positions
-// recorded at or past the splice point, so resolveHeaders still binds the
+// the splice — spliceAsideRun shifts the position-keyed table bookkeeping
+// (rowOf/headerAt) with the splice, so resolveHeaders still binds the
 // body row to its header after the shift.
 func TestSplitBlocks_MixedAsideRunBeforeTableKeepsHeaderBinding(t *testing.T) {
 	html := `<body><aside>intro<table><tr><th>H1</th></tr><tr><td>data</td></tr></table>tail</aside></body>`
@@ -878,8 +878,8 @@ func TestSplitBlocks_NestedTableInCellAsideKeepsOuterHeaderBinding(t *testing.T)
 // table that contains an aside-nested table must keep its OWN header. A
 // snapshot/restore of the counter around the aside handoff would restore the
 // counter to the outer table's id, so this next table would re-use the nested
-// table's id — its header row is then suppressed (headerLocal already
-// carries the id) and its body rows bind the INNER header. The stack binding
+// table's id — its header row is then suppressed (the table is already
+// marked headered) and its body rows bind the INNER header. The stack binding
 // keeps the counter monotonic, so ids never collide.
 func TestSplitBlocks_TableAfterAsideNestedTableKeepsOwnHeader(t *testing.T) {
 	html := `<body><table>
@@ -1451,6 +1451,9 @@ func TestSplitBlocks_AsideInlineWrapperRunNotSplit(t *testing.T) {
 // linear (~2.0), below the ~4.0 the full-map rebuild exhibits. The fixture
 // is the finding's exact shape: an N-row table then an aside whose M
 // text/p interleavings each splice one bare run in front of a paragraph.
+// The sizes keep a post-fix single run in the tens of milliseconds — at the
+// 2.5k/1.25k the failure was first witnessed with, the fixed code finishes
+// in ~4ms and the ratio decays into scheduler noise on a loaded machine.
 func TestSplitBlocks_AsideSpliceTableIndexScaling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("timing-sensitive scaling guard")
@@ -1477,11 +1480,11 @@ func TestSplitBlocks_AsideSpliceTableIndexScaling(t *testing.T) {
 		}
 		return best
 	}
-	t1 := run(2500, 1250)
-	t2 := run(5000, 2500)
+	t1 := run(10000, 5000)
+	t2 := run(20000, 10000)
 	ratio := float64(t2) / float64(t1)
 	if ratio > 3.4 {
-		t.Errorf("SplitBlocks growth from 2.5k rows/1.25k splices to 5k/2.5k: ratio %.2f (n=%s, 2n=%s) — full rowTable rebuild per aside splice; must stay near linear (~2.0)",
+		t.Errorf("SplitBlocks growth from 10k rows/5k splices to 20k/10k: ratio %.2f (n=%s, 2n=%s) — full rowTable rebuild per aside splice; must stay near linear (~2.0)",
 			ratio, t1, t2)
 	}
 }
