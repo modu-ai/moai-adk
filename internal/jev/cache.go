@@ -282,6 +282,17 @@ func serveCacheHit(entry cacheEntry, stale bool) Result {
 // move appends the displaced id to the alias's Prior history — the candidate
 // set the stale probe is restricted to (C1).
 func (c *Client) updateAliasMap(model string) error {
+	// The whole read-modify-write holds the cache dir's alias-map lock (P2,
+	// card t1968 codex review round 9): concurrent requests during a model
+	// switch must not each read the same prior mapping — a last writer
+	// would erase the other's Prior append and the stale probe would later
+	// miss an actually-saved previous model. File-replace atomicity does
+	// not serialize the read side, so the flock does.
+	lock, err := lockAliasMap(c.CacheDir)
+	if err != nil {
+		return err
+	}
+	defer unlockAliasMap(lock)
 	m, err := readModelsMap(c.CacheDir)
 	if err != nil {
 		return err
