@@ -52,7 +52,7 @@ func benchFixture(t *testing.T, dir string) (casesPath, runPath string) {
 	}
 	runs := []jevmeasure.CaseRun{{
 		CaseID: "case-1", Status: "passthrough",
-		Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", OutputTokens: 3,
+		Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3,
 	}}
 	rawRuns, _ := json.Marshal(runs)
 	runPath = filepath.Join(dir, "run.json")
@@ -209,8 +209,8 @@ func TestJevmeasureBench_NonRegressionFailStillExitsOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	runs := []jevmeasure.CaseRun{
-		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", OutputTokens: 3},
-		{CaseID: "case-2", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe name is moai.\n", OutputTokens: 3},
+		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3},
+		{CaseID: "case-2", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe name is moai.\n", KeptText: "The name is moai.", OutputTokens: 3},
 	}
 	rawRuns, _ := json.Marshal(runs)
 	run2 := filepath.Join(dir, "run2.json")
@@ -246,8 +246,8 @@ func TestJevmeasureBench_MissingRunResultFailsCompare(t *testing.T) {
 		t.Fatal(err)
 	}
 	fullRuns := []jevmeasure.CaseRun{
-		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", OutputTokens: 3},
-		{CaseID: "case-2", Status: "no_match", Output: "# no_match\n", OutputTokens: 1},
+		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3},
+		{CaseID: "case-2", Status: "no_match", Output: "# no_match\n", KeptText: "", OutputTokens: 1},
 	}
 	rawRuns, _ := json.Marshal(fullRuns)
 	fullRunPath := filepath.Join(dir, "run-full.json")

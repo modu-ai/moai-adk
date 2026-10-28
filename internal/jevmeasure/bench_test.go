@@ -187,12 +187,13 @@ func TestBaseline_WriteThenDeterministicDiff(t *testing.T) {
 		}
 	}
 
-	// Regression: a run whose output lost the quote flips install-req to
+	// Regression: a run whose kept text lost the quote flips install-req to
 	// FAIL while absent-quote stays at its baseline verdict.
 	degraded := append([]CaseRun(nil), runs...)
 	for i := range degraded {
 		if degraded[i].CaseID == "install-req" {
 			degraded[i].Output = "# no_match\n"
+			degraded[i].KeptText = ""
 		}
 	}
 	diff2, err := DiffAgainstBaseline(baselinePath, cases, degraded)
@@ -270,12 +271,13 @@ func TestBaselineDiff_FetchErrorRunFailsAndExcludedFromSavings(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The current run for absent-quote ends in fetch_error (an unavailable
-	// scoring call, say): empty output, zero kept tokens.
+	// scoring call, say): empty output, no kept text, zero kept tokens.
 	failed := append([]CaseRun(nil), healthy...)
 	for i := range failed {
 		if failed[i].CaseID == "absent-quote" {
 			failed[i].Status = string(fetchweb.StatusFetchError)
 			failed[i].Output = ""
+			failed[i].KeptText = ""
 			failed[i].OutputTokens = 0
 		}
 	}

@@ -32,8 +32,14 @@ type CaseRun struct {
 	CaseID string `json:"case_id"`
 	Status string `json:"status"`
 	// Output is the pipeline's markdown render (status line + verbatim kept
-	// blocks).
+	// blocks) — the display surface.
 	Output string `json:"output"`
+	// KeptText is the join of the pipeline's kept block texts — what the
+	// containment comparison measures. The markdown render's status line and
+	// per-block heading lines are presentation, not kept text: an
+	// ExpectedQuote equal to a status name ("no_match") must not count as
+	// contained with zero excerpts (P2, card t1968 codex review).
+	KeptText string `json:"kept_text"`
 	// OutputTokens is the kept set's APPROXIMATE token count, recorded from
 	// the pipeline result at run time (re-deriving it from the rendered
 	// markdown would re-parse prose as HTML).
@@ -65,10 +71,15 @@ func RunBench(ctx context.Context, cases []BenchCase, ask fetchweb.Answerer) []C
 	for _, c := range cases {
 		blocks := fetchweb.SplitBlocks(c.PageSnapshot)
 		res := fetchweb.Process(ctx, blocks, c.Question, ask)
+		keptTexts := make([]string, len(res.Blocks))
+		for i, b := range res.Blocks {
+			keptTexts[i] = b.Text
+		}
 		runs = append(runs, CaseRun{
 			CaseID:       c.ID,
 			Status:       string(res.Status),
 			Output:       fetchweb.RenderMarkdown(res),
+			KeptText:     strings.Join(keptTexts, "\n\n"),
 			OutputTokens: res.KeptTokens,
 		})
 	}
@@ -78,7 +89,10 @@ func RunBench(ctx context.Context, cases []BenchCase, ask fetchweb.Answerer) []C
 // CaseComparison is one case's containment + savings outcome.
 type CaseComparison struct {
 	CaseID string `json:"case_id"`
-	// Contained reports whether the expected quote appears in the output.
+	// Contained reports whether the expected quote appears in the run's KEPT
+	// BLOCK TEXT (CaseRun.KeptText) — not in the rendered markdown, whose
+	// status line an ExpectedQuote equal to a status name would otherwise
+	// match with zero excerpts kept (P2, card t1968 codex review).
 	Contained bool `json:"contained"`
 	// Missing marks a case with NO run result (L3, t1968 leader audit): the
 	// run map lookup would otherwise yield a zero CaseRun — not
@@ -131,7 +145,7 @@ func CompareRun(cases []BenchCase, runs []CaseRun) BenchReport {
 		cc := CaseComparison{
 			CaseID:         c.ID,
 			Missing:        !has,
-			Contained:      c.ExpectedQuote != "" && strings.Contains(run.Output, c.ExpectedQuote),
+			Contained:      c.ExpectedQuote != "" && strings.Contains(run.KeptText, c.ExpectedQuote),
 			OutputTokens:   run.OutputTokens,
 			SnapshotTokens: snapTokens,
 		}
