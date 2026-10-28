@@ -738,7 +738,7 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 					_ = c.cacheStore(entry)
 				}
 				if c.ModelOverride == "" {
-					_ = c.updateAliasMap(model)
+					_ = c.updateAliasMap(ctx, model)
 				}
 			}
 		} else {

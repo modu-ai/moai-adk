@@ -12,10 +12,15 @@ package jev
 // unreachable there; revisit with LockFileEx if a multi-process Windows
 // deployment ever needs it.
 
-import "os"
+import (
+	"context"
+	"os"
+)
 
-// lockAliasMap is the no-op stub for non-unix platforms.
-func lockAliasMap(dir string) (*os.File, error) {
+// lockAliasMap is the no-op stub for non-unix platforms. ctx is accepted
+// for signature parity with the unix build and ignored: the stub never
+// waits, so there is nothing for a bound to cut short.
+func lockAliasMap(ctx context.Context, dir string) (*os.File, error) {
 	return nil, nil
 }
 

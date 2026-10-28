@@ -276,20 +276,44 @@ func serveCacheHit(entry cacheEntry, stale bool) Result {
 	return res
 }
 
+// errAliasLockSkipped marks an alias-map update skipped because the
+// alias-map lock could not be acquired inside its bound (ctx done or max
+// wait). updateAliasMap treats it as "skip the update, return nil": the
+// pre-lock code lost this append silently in the same contended case, so a
+// skip is never worse — and an already-answered Ask is never held hostage
+// to a contending holder (iter16 F1). Defined here, in shared code, because
+// the skip DECISION is platform-independent even though only the unix lock
+// reports the bound.
+var errAliasLockSkipped = errors.New("jev cache: alias-map lock not acquired within bound")
+
 // updateAliasMap records the interpreted model a network answer reported for
 // the request alias, persisting the map. Only alias-resolved calls update
 // it: an explicit override observes nothing about where the alias points. A
 // move appends the displaced id to the alias's Prior history — the candidate
 // set the stale probe is restricted to (C1).
-func (c *Client) updateAliasMap(model string) error {
+//
+// The lock wait is bounded by ctx (iter16 F1): when the bound expires the
+// update is SKIPPED and nil returned — the caller already holds a final
+// network answer and must not block on a contending cache holder past its
+// own deadline. The serialization the lock exists for is preserved in every
+// case that acquires within the bound, which is every well-behaved
+// contention (the guarded read-modify-write is milliseconds against a
+// hundreds-of-ms bound).
+func (c *Client) updateAliasMap(ctx context.Context, model string) error {
 	// The whole read-modify-write holds the cache dir's alias-map lock (P2,
 	// card t1968 codex review round 9): concurrent requests during a model
 	// switch must not each read the same prior mapping — a last writer
 	// would erase the other's Prior append and the stale probe would later
 	// miss an actually-saved previous model. File-replace atomicity does
 	// not serialize the read side, so the flock does.
-	lock, err := lockAliasMap(c.CacheDir)
+	lock, err := lockAliasMap(ctx, c.CacheDir)
 	if err != nil {
+		if errors.Is(err, errAliasLockSkipped) {
+			// Bounded wait expired: skip the update. The displaced id's
+			// cache entry is already stored (cacheStore ran before this);
+			// only the alias-map bookkeeping is deferred to a later call.
+			return nil
+		}
 		return err
 	}
 	defer unlockAliasMap(lock)
