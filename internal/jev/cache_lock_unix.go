@@ -25,14 +25,17 @@ func lockAliasMap(dir string) (*os.File, error) {
 		return nil, err
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("jev cache: alias-map lock failed: %w", err)
 	}
 	return f, nil
 }
 
-// unlockAliasMap releases the alias-map lock and closes the lock file.
+// unlockAliasMap releases the alias-map lock and closes the lock file. A
+// failure on either is a best-effort cleanup the caller cannot act on (the
+// update has already landed; the OS drops the flock at process exit anyway),
+// so the error paths are deliberately discarded rather than escalated.
 func unlockAliasMap(f *os.File) {
-	syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-	f.Close()
+	_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	_ = f.Close()
 }
