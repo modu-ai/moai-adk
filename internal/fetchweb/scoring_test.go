@@ -806,6 +806,49 @@ func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
 	}
 }
 
+// P2 performance (card t1968 codex review round 9, operator-approved repair):
+// the backfill loop's break condition recomputed totalKeptTokens — a scan of
+// the WHOLE kept map — on EVERY iteration, so a document whose backfill never
+// reaches the 300-token floor paid O(n²): the loop ran to exhaustion while the
+// kept map grew to n. The kept-token total must be maintained as a running
+// accumulator: selectBlocks stays near n·log(n) as the block count doubles,
+// the growth ratio from n to 2n bounded at 3.4 — above n·log(n) (~2.2 from 6k
+// to 12k), below the 4.0 the per-iteration full scan exhibits. The fixture is
+// the scan's worst case: one sole candidate (its kept set holds 0 tokens, far
+// under the floor, so backfill runs to exhaustion) and EVERY block EMPTY-TEXT
+// — each newly kept row adds 0 tokens, the break never fires, and the kept
+// map grows to n while every iteration rescans it.
+func TestSelectBlocks_BackfillKeptScanScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "", HeaderIndex: -1}
+			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
+		}
+		scores[0] = blockScore{stage1: 0.9} // sole candidate; stage2 0 -> first-block keep only
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(6000)
+	t2 := run(12000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 6k to 12k blocks: ratio %.2f (6k=%s, 12k=%s) — per-iteration kept-map scan in the backfill loop; the kept-token total must run as an accumulator (~n·log(n) overall)",
+			ratio, t1, t2)
+	}
+}
+
 // P2 security (card t1968 codex review, repair round): the stage-1 window
 // loop issues one paid Ask per window with no per-fetch spend cap — a page
 // of tiny blocks under a long question yields a window count that grows
