@@ -49,3 +49,11 @@ Review head: 61436e6e68. Findings (static review, no tests run by reviewer):
 ## Post-ceiling repair record (C1-C3)
 
 Commit 16dc4ae0b4 (+162/−7, 5 files): C1 true-copy aside save (RED: `[Note]` → want `[Main]` observed pre-fix), C2 listItemSkip excludes separately-emitted kinds from li text (RED: duplicate/flattened blocks observed pre-fix), C3 DiffAgainstBaseline existence check (RED: missing-run PASS/exit 0 observed pre-fix). Lane re-observation at 16dc4ae0b4: BUILD_OK, fetchweb/jevmeasure fresh ok, off-gate/block/bench targeted tests ok. Gaps (honest): full internal/cli suite not observed green locally — default 10m timeout under machine load (avg 147-290, foreign concurrent suites), no test FAIL; repository-wide verdict PENDING on integration-branch CI. Residual-risk (recorded by the repairer): skipped-subtree text runs inside li still merge adjacent words (`a<pre/>b` → "ab") — pre-existing ul/ol skip semantics, out of C2's scope, unchanged.
+
+---
+
+## Round 8 (2026-10-28, post-repair-round card diff review — codex_review scope=card, base 0beb3fa510)
+
+Verdict: **fail** (advisory) — 1 new P2 finding:
+
+- **[P2] blocks.go:505 spliceAsideRun copies the whole rowTable map per aside insertion** — O(N×M) work+allocation for an aside with M crossings after an N-row table; scoring budget (post-split) and HTTP timeout do not bound it. Verified against source by the lane (full-map rebuild confirmed at spliceAsideRun). Disposition: same perf class as the operator-approved items 3/4 — repair spawned RED-first (8th item, extension reported to leader).
