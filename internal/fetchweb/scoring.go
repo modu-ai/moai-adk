@@ -352,6 +352,10 @@ func selectBlocks(blocks []Block, scores []blockScore) []int {
 	}
 
 	kept := map[int]bool{}
+	// P2 performance (card t1968 codex review): the rescue judgment reads a
+	// per-pass AGGREGATE, not a per-candidate rescan — sameHeadingNeighbor
+	// rescans made selection O(n²) on candidate-heavy documents.
+	neighborQual := qualifyingNeighborCounts(blocks, scores)
 	for i, s := range scores {
 		if !candidate[i] {
 			continue
@@ -360,7 +364,7 @@ func selectBlocks(blocks []Block, scores []blockScore) []int {
 			kept[i] = true
 			continue
 		}
-		if sameHeadingNeighborQualifies(blocks, scores, i) {
+		if hasQualifyingSibling(neighborQual, blocks, scores, i) {
 			kept[i] = true
 		}
 	}
@@ -399,32 +403,47 @@ func selectBlocks(blocks []Block, scores []blockScore) []int {
 	return out
 }
 
-// sameHeadingNeighborQualifies reports whether any block in the SAME scoring
-// stream (same Aside flag — REQ-FW-001 separate scoring) with the SAME
-// heading path (a sibling under the same heading, excluding the block
-// itself) has a stage-1 score at or above the rescue threshold.
-func sameHeadingNeighborQualifies(blocks []Block, scores []blockScore, i int) bool {
-	for j, b := range blocks {
-		if j == i || b.Aside != blocks[i].Aside || !samePath(b.HeadingPath, blocks[i].HeadingPath) {
-			continue
-		}
-		if scores[j].stage1 >= NeighborRescueThreshold {
-			return true
-		}
-	}
-	return false
+// neighborGroupKey identifies one rescue group: the scoring stream (Aside
+// flag, REQ-FW-001 separate scoring) plus the heading path. The NUL join is
+// an encoding, not text: heading TEXT cannot contain NUL (html.Parse does
+// not pass NUL through to text nodes), so distinct paths cannot collide on
+// the key.
+type neighborGroupKey struct {
+	aside bool
+	path  string
 }
 
-func samePath(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k := range a {
-		if a[k] != b[k] {
-			return false
+func neighborKey(b Block) neighborGroupKey {
+	return neighborGroupKey{aside: b.Aside, path: strings.Join(b.HeadingPath, "\x00")}
+}
+
+// qualifyingNeighborCounts aggregates, in ONE pass over the document, how
+// many blocks per (stream, heading-path) group carry a stage-1 score at or
+// above the rescue threshold (P2 performance, card t1968 codex review: the
+// per-candidate rescan of the same information was O(n²) selection).
+func qualifyingNeighborCounts(blocks []Block, scores []blockScore) map[neighborGroupKey]int {
+	counts := make(map[neighborGroupKey]int, len(blocks))
+	for i, b := range blocks {
+		if scores[i].stage1 >= NeighborRescueThreshold {
+			counts[neighborKey(b)]++
 		}
 	}
-	return true
+	return counts
+}
+
+// hasQualifyingSibling reports whether any block in the SAME scoring stream
+// (same Aside flag — REQ-FW-001 separate scoring) with the SAME heading path
+// (a sibling under the same heading, excluding the block itself) has a
+// stage-1 score at or above the rescue threshold. It reads the per-pass
+// aggregate; a candidate whose own score qualifies is itself counted in the
+// aggregate, so its own entry is subtracted — qualifying alone still needs a
+// DIFFERENT qualifying sibling.
+func hasQualifyingSibling(counts map[neighborGroupKey]int, blocks []Block, scores []blockScore, i int) bool {
+	n := counts[neighborKey(blocks[i])]
+	if scores[i].stage1 >= NeighborRescueThreshold {
+		n--
+	}
+	return n > 0
 }
 
 // neighborContext draws approximately maxChars CHARACTERS (runes, not bytes
