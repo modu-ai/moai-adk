@@ -3,6 +3,7 @@ package fetchweb
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
@@ -565,16 +566,14 @@ func totalKeptTokens(blocks []Block, kept map[int]bool) int {
 }
 
 // sortByScoreDesc sorts order by descending stage-1 score, ties broken by
-// document order (stable).
+// document order (stable). P2 performance (card t1968 codex review): the
+// previous quadratic insertion sort made the backfill leg of selectBlocks
+// O(n²) on large documents; the stdlib stable sort with the stage-1-only
+// comparator is O(n·log n) and keeps equal-score entries in their incoming
+// order — the same tie order the insertion sort produced (it swapped only on
+// strict inversion, so equal scores never exchanged).
 func sortByScoreDesc(order []int, scores []blockScore) {
-	for i := 1; i < len(order); i++ {
-		for j := i; j > 0; j-- {
-			if scores[order[j]].stage1 > scores[order[j-1]].stage1 ||
-				(scores[order[j]].stage1 == scores[order[j-1]].stage1 && order[j] < order[j-1]) {
-				order[j], order[j-1] = order[j-1], order[j]
-			} else {
-				break
-			}
-		}
-	}
+	sort.SliceStable(order, func(a, b int) bool {
+		return scores[order[a]].stage1 > scores[order[b]].stage1
+	})
 }
