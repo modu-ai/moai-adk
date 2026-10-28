@@ -55,9 +55,8 @@ func benchFixture(t *testing.T, dir string) (casesPath, runPath string) {
 		CaseID: "case-1", Status: "passthrough",
 		Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3,
 	}}
-	rawRuns, _ := json.Marshal(runs)
 	runPath = filepath.Join(dir, "run.json")
-	if err := os.WriteFile(runPath, rawRuns, 0o600); err != nil {
+	if err := jevmeasure.WriteRuns(runPath, runs); err != nil {
 		t.Fatal(err)
 	}
 	return casesPath, runPath
@@ -99,13 +98,13 @@ func TestJevmeasureBench_CompareAndBaseline(t *testing.T) {
 		t.Errorf("report must carry per-case PASS verdicts:\n%s", out)
 	}
 
-	// Degrade the run: the quote disappears.
+	// Degrade the run: the quote disappears (kept_text legitimately empty —
+	// a no_match, not a format gap).
 	runs := []jevmeasure.CaseRun{{
-		CaseID: "case-1", Status: "no_match", Output: "# no_match\n", OutputTokens: 0,
+		CaseID: "case-1", Status: "no_match", Output: "# no_match\n", KeptText: "", OutputTokens: 0,
 	}}
-	rawRuns, _ := json.Marshal(runs)
 	degraded := filepath.Join(dir, "degraded.json")
-	if err := os.WriteFile(degraded, rawRuns, 0o600); err != nil {
+	if err := jevmeasure.WriteRuns(degraded, runs); err != nil {
 		t.Fatal(err)
 	}
 	out, _, code = runBenchCmd(t, "--cases", casesPath, "--run", degraded, "--baseline", baseline)
@@ -176,9 +175,15 @@ func TestJevmeasureBench_RunModeExecutesAndRecords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run result not recorded: %v", err)
 	}
-	var runs []jevmeasure.CaseRun
-	if err := json.Unmarshal(recorded, &runs); err != nil || len(runs) != 1 {
+	var doc struct {
+		Format string               `json:"format"`
+		Runs   []jevmeasure.CaseRun `json:"runs"`
+	}
+	if err := json.Unmarshal(recorded, &doc); err != nil || len(doc.Runs) != 1 {
 		t.Fatalf("recorded run unparsable or wrong size: %v %s", err, recorded)
+	}
+	if doc.Format != "kept-text-1" {
+		t.Fatalf("recorded run document must carry the kept-text-1 marker (F1 iter18), got %q (%s)", doc.Format, recorded)
 	}
 	if !strings.Contains(out, "contained") {
 		t.Errorf("comparison report missing:\n%s", out)
@@ -213,9 +218,8 @@ func TestJevmeasureBench_NonRegressionFailStillExitsOne(t *testing.T) {
 		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3},
 		{CaseID: "case-2", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe name is moai.\n", KeptText: "The name is moai.", OutputTokens: 3},
 	}
-	rawRuns, _ := json.Marshal(runs)
 	run2 := filepath.Join(dir, "run2.json")
-	if err := os.WriteFile(run2, rawRuns, 0o600); err != nil {
+	if err := jevmeasure.WriteRuns(run2, runs); err != nil {
 		t.Fatal(err)
 	}
 
@@ -250,9 +254,8 @@ func TestJevmeasureBench_MissingRunResultFailsCompare(t *testing.T) {
 		{CaseID: "case-1", Status: "passthrough", Output: "# passthrough\n## (no heading)\nThe port is 3041.\n", KeptText: "The port is 3041.", OutputTokens: 3},
 		{CaseID: "case-2", Status: "no_match", Output: "# no_match\n", KeptText: "", OutputTokens: 1},
 	}
-	rawRuns, _ := json.Marshal(fullRuns)
 	fullRunPath := filepath.Join(dir, "run-full.json")
-	if err := os.WriteFile(fullRunPath, rawRuns, 0o600); err != nil {
+	if err := jevmeasure.WriteRuns(fullRunPath, fullRuns); err != nil {
 		t.Fatal(err)
 	}
 	baseline := filepath.Join(dir, "baseline.json")
@@ -262,9 +265,8 @@ func TestJevmeasureBench_MissingRunResultFailsCompare(t *testing.T) {
 
 	// The partial run holds case-1's entry only — case-2 has no run result.
 	partialRuns := fullRuns[:1]
-	rawPartial, _ := json.Marshal(partialRuns)
 	partialPath := filepath.Join(dir, "run-partial.json")
-	if err := os.WriteFile(partialPath, rawPartial, 0o600); err != nil {
+	if err := jevmeasure.WriteRuns(partialPath, partialRuns); err != nil {
 		t.Fatal(err)
 	}
 	out, _, code := runBenchCmd(t, "--cases", casesPath, "--run", partialPath, "--baseline", baseline)

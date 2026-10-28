@@ -12,6 +12,7 @@ package jevmeasure
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -60,6 +61,75 @@ func LoadBenchCases(path string) ([]BenchCase, error) {
 		return nil, fmt.Errorf("jevmeasure: bench case file %s holds no cases", path)
 	}
 	return cases, nil
+}
+
+// runFormatKeptText is the format marker the current build's run recorder
+// (WriteRuns) stamps on every run document it writes, and the marker LoadRuns
+// demands of a run document it reads back. It aliases the baseline marker
+// (baselineFormatKeptText, below): one containment-semantics version governs
+// both documents, so a future semantics change bumps the two together.
+const runFormatKeptText = baselineFormatKeptText
+
+// errRunRecordFormat is LoadRuns's fail-closed refusal: a run record whose
+// kept-text provenance cannot be verified must never reach WriteBaseline,
+// which would stamp the current marker on verdicts another semantics computed
+// (F1, card t1968 iter18 codex gate — the write-seam laundering the baseline
+// gate's mirror image).
+var errRunRecordFormat = errors.New("jevmeasure: run record format predates kept-text containment; re-run with the current build")
+
+// runDoc is the recorded run document (--run-out writes it, --run reads it):
+// the run list stamped with the kept-text format marker. The marker — not
+// kept_text field presence — is what distinguishes a CURRENT build's record
+// from a pre-marker one: a real no_match run legitimately writes
+// kept_text:"", and a plain string unmarshal cannot tell that empty from an
+// absent field's zero value.
+type runDoc struct {
+	Format string    `json:"format"`
+	Runs   []CaseRun `json:"runs"`
+}
+
+// LoadRuns reads a recorded run document and refuses, fail-closed, any record
+// whose kept-text provenance it cannot verify (F1, card t1968 iter18): a bare
+// run list (the pre-marker build's on-disk shape — every --run-out written
+// before the marker existed), a marker-less object, or an unrecognized marker.
+// Unrefused, such a record launders through WriteBaseline into a
+// kept-text-1-stamped baseline whose Contained verdicts the old maskable
+// logic computed; refusing HERE means the refusal fires before anything is
+// written. The caller keeps the error on its existing exit-1 channel.
+func LoadRuns(path string) ([]CaseRun, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("jevmeasure: run record unreadable: %w", err)
+	}
+	// A bare run list parses as a run list — that parsability is itself the
+	// old format: refuse it as a format problem, not a syntax one.
+	var legacy []CaseRun
+	if json.Unmarshal(raw, &legacy) == nil {
+		return nil, errRunRecordFormat
+	}
+	var doc runDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("jevmeasure: run record not a JSON run document: %w", err)
+	}
+	if doc.Format != runFormatKeptText {
+		return nil, errRunRecordFormat
+	}
+	return doc.Runs, nil
+}
+
+// WriteRuns records a run set at path as a run document stamped with the
+// kept-text format marker — the recorder half of the LoadRuns gate (F1, card
+// t1968 iter18): refusing every other format at import is only safe while
+// this build's own records carry the marker.
+func WriteRuns(path string, runs []CaseRun) error {
+	raw, err := json.MarshalIndent(runDoc{Format: runFormatKeptText, Runs: runs}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("jevmeasure: run record write failed: %w", err)
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		return fmt.Errorf("jevmeasure: run record write failed: %w", err)
+	}
+	return nil
 }
 
 // RunBench executes the fetchweb pipeline over each case's snapshot. Token

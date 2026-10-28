@@ -485,6 +485,96 @@ func TestWriteBaseline_StampsKeptTextFormat(t *testing.T) {
 	}
 }
 
+// F1 (card t1968 iter18 codex gate, GLM-ruled F3 write-seam extension): a run
+// record written by a PRE-kept-text build — a bare run list whose entries
+// carry output but no kept_text — must be REFUSED at the import (LoadRuns),
+// before WriteBaseline is ever reached. Unrefused, the run launders into a
+// kept-text-1-stamped baseline whose Contained=false verdicts the old
+// maskable logic computed, and a later no_match run PASSes against them. The
+// refusal mirrors the baseline gate (F3, iter15): a bare list (the pre-marker
+// build's on-disk shape), a marker-less object, and an unrecognized marker
+// all fail closed, naming the remedy.
+func TestLoadRuns_RefusesPreMarkerRunRecord(t *testing.T) {
+	dir := t.TempDir()
+	// The pre-marker entry: kept_text ABSENT while output carries the quote —
+	// verdicts computed from the rendered markdown, unattributable to this
+	// build's kept-text semantics.
+	entry := `{"case_id":"install-req","status":"filtered","output":"# filtered\nYou need Go 1.23 or later.\n","output_tokens":8}`
+	write := func(name, body string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"bare run list (pre-marker build shape)", `[` + entry + `]`},
+		{"no format marker", `{"runs":[` + entry + `]}`},
+		{"unrecognized format marker", `{"format":"kept-text-2","runs":[` + entry + `]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runs, err := LoadRuns(write("run.json", tc.body))
+			if err == nil {
+				t.Fatalf("LoadRuns must REFUSE a pre-marker run record (F1 iter18 fail-closed); it returned %+v, whose kept-text provenance cannot be verified", runs)
+			}
+			if !strings.Contains(err.Error(), "predates kept-text containment") {
+				t.Errorf("the refusal must name the format gap and the remedy, got %q", err.Error())
+			}
+		})
+	}
+}
+
+// F1 (card t1968 iter18): the write/read round-trip that makes refusing every
+// other run format safe — WriteRuns stamps the kept-text marker, LoadRuns
+// accepts this build's own documents, and a legitimately EMPTY kept_text (a
+// real no_match kept nothing) survives the round-trip: the document marker,
+// not kept_text field presence, distinguishes a current no_match record from
+// a pre-marker one.
+func TestWriteRuns_StampsFormatAndRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "run.json")
+	runs := []CaseRun{
+		{CaseID: "install-req", Status: string(fetchweb.StatusFiltered), Output: "# filtered\n", KeptText: "You need Go 1.23 or later.", OutputTokens: 8},
+		{CaseID: "absent-quote", Status: string(fetchweb.StatusNoMatch), Output: "# no_match\n", KeptText: "", OutputTokens: 0},
+	}
+	if err := WriteRuns(path, runs); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Format string `json:"format"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc.Format != "kept-text-1" {
+		t.Fatalf("written run document format = %q, want kept-text-1 (raw: %s)", doc.Format, raw)
+	}
+	loaded, err := LoadRuns(path)
+	if err != nil {
+		t.Fatalf("a run document written by this build must load without refusal, got %v", err)
+	}
+	if len(loaded) != len(runs) {
+		t.Fatalf("round-trip lost entries: %+v", loaded)
+	}
+	for i := range runs {
+		if loaded[i] != runs[i] {
+			t.Errorf("round-trip entry %d = %+v, want %+v", i, loaded[i], runs[i])
+		}
+	}
+	if loaded[1].KeptText != "" {
+		t.Errorf("a legitimate no_match kept_text (empty) must survive the round-trip, got %q", loaded[1].KeptText)
+	}
+}
+
 // L3 (t1968 leader audit): a case with NO run result must not aggregate as
 // a perfect run. The run map lookup yielded a zero CaseRun whose empty
 // status is not fetch_error, so the row computed SavingsRate=1 (100%

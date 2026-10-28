@@ -86,12 +86,13 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 
 	var runs []jevmeasure.CaseRun
 	if runPath != "" {
-		raw, err := os.ReadFile(runPath)
+		// The import is the run-side format gate (F1, card t1968 iter18): a
+		// pre-marker run record is refused HERE, before WriteBaseline can be
+		// reached, on this command's existing exit-1 error channel.
+		var err error
+		runs, err = jevmeasure.LoadRuns(runPath)
 		if err != nil {
-			return fmt.Errorf("jevmeasure bench: run result unreadable: %w", err)
-		}
-		if err := json.Unmarshal(raw, &runs); err != nil {
-			return fmt.Errorf("jevmeasure bench: run result not a JSON run list: %w", err)
+			return err
 		}
 	} else {
 		// Live execution: the gate is read FIRST and short-circuits — a
@@ -107,12 +108,11 @@ func runJevmeasureBench(cmd *cobra.Command, _ []string) error {
 		}
 		runs = jevmeasure.RunBench(cmd.Context(), cases, fetchWebAskerFn())
 		if runOutPath != "" {
-			raw, err := json.MarshalIndent(runs, "", "  ")
-			if err == nil {
-				err = os.WriteFile(runOutPath, raw, 0o600)
-			}
-			if err != nil {
-				return fmt.Errorf("jevmeasure bench: run result write failed: %w", err)
+			// Records the run stamped with the kept-text format marker — the
+			// recorder half of the import gate, so this build's own records
+			// are always loadable (F1, card t1968 iter18).
+			if err := jevmeasure.WriteRuns(runOutPath, runs); err != nil {
+				return err
 			}
 		}
 	}
