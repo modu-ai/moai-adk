@@ -544,12 +544,15 @@ var textBoundaryTags = map[string]bool{
 var listItemSkip = map[string]bool{"ul": true, "ol": true, "pre": true, "table": true, "aside": true}
 
 // cellSkip excludes from a table cell's row text the subtrees emitted as
-// their own blocks (F8 + C3, t1968 sync-audit): a pre inside a cell is a
-// code block whose interior whitespace IS the code's formatting — the row's
-// whitespace collapse would destroy it — and an aside inside a cell is
-// aside-scored content that must reach the aside stream, not fold into the
-// row's text.
-var cellSkip = map[string]bool{"pre": true, "aside": true}
+// their own blocks (F8 + C3 + P2, t1968 sync-audit / card t1968 codex
+// review): a pre inside a cell is a code block whose interior whitespace IS
+// the code's formatting — the row's whitespace collapse would destroy it; an
+// aside inside a cell is aside-scored content that must reach the aside
+// stream, not fold into the row's text; and a table nested directly in a
+// cell is emitted as its own table-row blocks, so the parent row reads only
+// its own content around the boundary separator (the same exclusion
+// listItemSkip applies to nested tables).
+var cellSkip = map[string]bool{"pre": true, "aside": true, "table": true}
 
 // asideFallbackSkip excludes heading subtrees from the F7b aside fallback's
 // text extraction (F7c, t1968 sync-audit iter4): a heading's text is
@@ -652,6 +655,18 @@ func (s *splitter) emitRowSubBlocks(tr *html.Node, inAside bool) {
 			// table's open/close is balanced inside this walk, so the outer
 			// table's later rows rebind to their own id (see tableStack).
 			s.walk(node, true)
+			return // the walk covers the subtree; scanning on would duplicate
+		}
+		if node.Type == html.ElementNode && node.Data == "table" {
+			// P2 (card t1968 codex review): a <table> nested directly in a
+			// cell emits through the same table machinery the body-level walk
+			// uses — the walk's table case opens its own id on tableStack, so
+			// its rows bind to THEIR table and its header row (headerLocal)
+			// binds to it, exactly like the aside-nested table of R1 iter7.
+			// Scanning on would descend into the rows without ever emitting
+			// them (no tr branch here) while emitRow had already folded their
+			// flattened text into the parent cell.
+			s.walk(node, inAside)
 			return // the walk covers the subtree; scanning on would duplicate
 		}
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
