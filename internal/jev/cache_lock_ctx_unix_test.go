@@ -159,3 +159,24 @@ func TestAsk_CtxCancelDuringAliasLockWaitSkipsUpdate(t *testing.T) {
 		t.Fatal("Ask did not return after ctx cancellation — the alias-map lock wait ignores ctx")
 	}
 }
+
+// updateAliasMap on a CacheDir that does not exist yet (a first-ever call
+// on a fresh machine) must create the dir and record the model — the
+// restart-offline hit depends on the map persisting. At the current tree
+// the lock's OpenFile fails ENOENT before writeModelsMap's own MkdirAll
+// precondition (inside atomicWrite) ever runs, so the update errors and
+// the map is never written (iter16 F2).
+func TestUpdateAliasMap_MissingCacheDirCreatedAndRecorded(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "jev-cache") // does not exist
+	c := &Client{CacheDir: dir}
+	if err := c.updateAliasMap(context.Background(), "jev-1.20.0"); err != nil {
+		t.Fatalf("updateAliasMap on a missing cache dir errored: %v", err)
+	}
+	m, err := readModelsMap(dir)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got := m.Models[ModelID]; got != "jev-1.20.0" {
+		t.Fatalf("alias map did not record the model: got %q, want jev-1.20.0", got)
+	}
+}
