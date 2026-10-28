@@ -62,3 +62,9 @@ t1968 — SPEC-FETCH-WEB-001 (jevfetch port: `moai fetch web` + MCP `fetch_web`,
 - 워크트리 가드: 복합 git 명령·`$(...)` 치환 거부 — plain git 단일 명령만
 - GLM 사용량 한도 429 사례 다수 — 리셋 시각 확인 후 스폰 (2026-10-27 15:47:38 KST 사례 참조)
 - 스폰 모델/effort: 판정 역할 opus/high 원칙 — GLM 세션 판정은 감사자 모델 표기 유지(auditor-model 필드)
+
+## 갱신 (2026-10-29 01:2x — F1+F2 라운드 완료 후)
+
+- **F1+F2 수리 라운드 완료**: F1 RED `494da7dfb2`→GREEN `bc714668e3`, F2 RED `0fc93ca686`→GREEN `32dedccb58`. 게이트 전부 green(3패키지 ok·빌드·WIN빌드·gofmt·lint 0 issues — iter15 대비 신규 0). 범위 4파일 +171−34 정확. 기록 커밋 `530ae989f6`(progress.md).
+- **"다음 한 단계" 갱신**: 1번(에이전트 완료 대기) 소진 — GLM 세션은 2번(card-review)부터: `mcp__moai__codex_review {scope:"card", project_root:<본 워크트리>}` → iter16 sync-auditor 스폰(delta **41fe0c5396..HEAD**, 현재 tip `530ae989f6`) → 리더 보고 → audit_multi.
+- 멈춤 조건·범위 규칙·임대/크론 상태 불변.
