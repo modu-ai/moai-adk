@@ -211,3 +211,5 @@ Worktree: `.moai/worktrees/t1968` · branch `WT-jevfetch-a2sys-ai`
 - decision record: decided_by=GLM leader(socket 32924) evidence_refs=GLM 리더 메시지 ladder_path=leader-directive — 본 세션 카드 완주 개시, card-review 재실행.
 - 2026-10-29 02:0x card-review 9라운드 신규 P2 2건 사전 통보 발송(범위 밖 규칙 — 착수 전 리더 통보): [P2] scoring.go:413 백필 totalKeptTokens 전체 스캔 O(n²)·[P2] jev/cache.go:285 updateAliasMap RMW 무잠금 경쟁(Prior 상실). 소스 대조 실재 확인·card-review.md 9라운드 기록 커밋 28aae8ce1c. 승인 대기 — 미승인 시 F1·F2 4커밋만으로 iter16 진행.
 - decision record: decided_by=lane-7(세션 c3c88f9e) evidence_refs=card-review round 9+소스 직독 2영역 ladder_path=out-of-scope-prior-notice — 리더 승인 대기(수리 착수 없음).
+- 2026-10-29 02:3x **운영자 2건 수리 승인 수신(리더 AskUserQuestion 응답 전달, 주체 미확인)** — 범위: (1) scoring.go:413 백필 누적기화 (2) jev/cache.go:285 updateAliasMap 잠금 보호(flock 등, Prior 상실 방지). 절차: RED-first(성장 프로브·동시 RMW 경쟁 시험 단독 커밋)→GREEN→기존 게이트→iter16(delta 41fe0c5396..HEAD)→리더 보고→audit_multi. 슬롯·부하≤48·timeout·cli 전체 금지·push 금지 불변. 완료 후 세션 종료.
+- decision record: decided_by=operator(리더 AskUserQuestion 응답 전달) evidence_refs=GLM 리더 메시지 ladder_path=operator-repair-approval — 2건 수리 라운드 개시, manager-develop 스폰.
