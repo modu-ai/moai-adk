@@ -402,16 +402,24 @@ func selectBlocks(blocks []Block, scores []blockScore) []int {
 	kept[0] = true
 
 	// Backfill in descending stage-1 score order until ~BackfillTokens
-	// tokens (approximate) or exhaustion.
-	if totalKeptTokens(blocks, kept) < BackfillTokens {
+	// tokens (approximate) or exhaustion. The kept-token total runs as an
+	// accumulator — the break condition adds only the newly kept block's
+	// tokens instead of rescanning the whole kept map per iteration (P2,
+	// card t1968 codex review round 9: a document that never reaches the
+	// floor paid O(n²) as the map grew to n).
+	keptTokens := totalKeptTokens(blocks, kept)
+	if keptTokens < BackfillTokens {
 		order := make([]int, len(blocks))
 		for i := range order {
 			order[i] = i
 		}
 		sortByScoreDesc(order, scores)
 		for _, i := range order {
-			if totalKeptTokens(blocks, kept) >= BackfillTokens {
+			if keptTokens >= BackfillTokens {
 				break
+			}
+			if !kept[i] {
+				keptTokens += blocks[i].Tokens()
 			}
 			kept[i] = true
 		}
