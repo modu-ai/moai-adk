@@ -13,7 +13,9 @@ import (
 
 // RenderMarkdown renders the result in the port's text shape. Kept blocks
 // appear in document order, text verbatim — no paraphrase, no truncation.
-// The empty and error statuses render the status line only.
+// The empty and error statuses render the status line only. Control
+// characters are escaped at this RENDER surface (escapeControlChars) — the
+// verbatim-extraction guarantee lives on Block.Text, not on presentation.
 func RenderMarkdown(res Result) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n", res.Status)
@@ -23,6 +25,28 @@ func RenderMarkdown(res Result) string {
 			heading = "(no heading)"
 		}
 		fmt.Fprintf(&b, "## %s\n%s\n", heading, blk.Text)
+	}
+	return escapeControlChars(b.String())
+}
+
+// escapeControlChars returns s with every C0/C1 control character except
+// \n and \t replaced by its visible \xHH form (P3, card t1968 codex
+// review): RenderMarkdown feeds terminal-bound output, and a page's
+// verbatim text can carry ESC/BEL (OSC 52 exfil shapes) or C1 codepoints
+// that must not reach the terminal as live control bytes — only --json
+// escaped before (encoding/json). The escaper is RUNE-based, never
+// byte-based: C1 is U+0080–U+009F as codepoints, and their UTF-8
+// encodings share bytes with multi-byte scripts — a byte-wise 0x80–0x9f
+// replacement would corrupt CJK text.
+func escapeControlChars(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x80 && r <= 0x9f) {
+			fmt.Fprintf(&b, "\\x%02x", r)
+			continue
+		}
+		b.WriteRune(r)
 	}
 	return b.String()
 }
