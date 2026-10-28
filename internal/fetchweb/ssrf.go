@@ -43,16 +43,101 @@ type ipPolicy func(ip net.IP) error
 // 6598 shared address space 100.64.0.0/10 (F1b — CGNAT carrier ranges and
 // the Tailscale mesh; reachable internal nodes, not public web servers),
 // link-local unicast and multicast (169.254.0.0/16 — the cloud metadata
-// range — and fe80::/10), unspecified, multicast, and the IPv4
-// limited-broadcast address. IPv4-mapped IPv6 forms normalize through
-// net.ParseIP before the checks, so ::ffff:127.0.0.1 is caught.
+// range — and fe80::/10), unspecified, multicast, the IPv4
+// limited-broadcast address, and the remaining IANA-registered
+// special-purpose ranges (isIANASpecial — P2, card t1968 codex review).
+// IPv4-mapped IPv6 forms normalize through net.ParseIP before the checks,
+// so ::ffff:127.0.0.1 is caught.
 func refuseNonPublicIP(ip net.IP) error {
 	if ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !isSharedAddressSpace(ip) &&
 		!ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsUnspecified() &&
-		!ip.IsMulticast() && !ip.Equal(net.IPv4bcast) {
+		!ip.IsMulticast() && !ip.Equal(net.IPv4bcast) && !isIANASpecial(ip) {
 		return nil
 	}
 	return fmt.Errorf("non-public address %s refused", ip)
+}
+
+// ianaIPv4Special holds the IANA-registered IPv4 special-purpose ranges no
+// net.IP helper covers (P2, card t1968 codex review; verified against the
+// IANA IPv4 Special-Purpose Address Registry,
+// iana.org/assignments/iana-ipv4-special-registry — retrieved 2026-10-28):
+// 192.0.0.0/24 IETF Protocol Assignments, 192.88.99.0/24 Deprecated (6to4
+// Relay Anycast), 198.18.0.0/15 Benchmarking (a documented SSRF filter
+// bypass target), 240.0.0.0/4 Reserved. The registry's other IPv4 entries
+// are already refused above: loopback, RFC1918, CGNAT, link-local,
+// multicast, unspecified, limited broadcast. 192.0.2.0/24 and friends (RFC
+// 5737 documentation) sit outside this round's reviewed additions and stay
+// governed by the pre-existing policy.
+var ianaIPv4Special = []struct {
+	prefix [4]byte
+	mask   [4]byte
+}{
+	{prefix: [4]byte{192, 0, 0, 0}, mask: [4]byte{255, 255, 255, 0}},  // 192.0.0.0/24
+	{prefix: [4]byte{192, 88, 99, 0}, mask: [4]byte{255, 255, 255, 0}}, // 192.88.99.0/24
+	{prefix: [4]byte{198, 18, 0, 0}, mask: [4]byte{255, 254, 0, 0}},   // 198.18.0.0/15
+	{prefix: [4]byte{240, 0, 0, 0}, mask: [4]byte{240, 0, 0, 0}},      // 240.0.0.0/4
+}
+
+// ianaIPv6Special holds the IANA-registered IPv6 special-purpose ranges no
+// net.IP helper covers (same review; verified against the IANA IPv6
+// Special-Purpose Address Registry — retrieved 2026-10-28): 64:ff9b::/96
+// NAT64 translation, 100::/64 Discard-Only, 2001::/23 IETF Protocol
+// Assignments (Teredo 2001::/32 included), 2001:db8::/32 Documentation,
+// 2002::/16 6to4. 2001:db8::/32 sits OUTSIDE 2001::/23 (0x0db8 > 0x01ff),
+// so it needs its own entry. Unique-local (fc00::/7) is IsPrivate;
+// link-local fe80::/10 and multicast ff00::/8 are covered above.
+var ianaIPv6Special = []struct {
+	prefix [16]byte
+	mask   [16]byte
+}{
+	// 64:ff9b::/96 — first 12 bytes.
+	{prefix: [16]byte{0x00, 0x64, 0xff, 0x9b}, mask: [16]byte{
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+	// 100::/64 — first 8 bytes.
+	{prefix: [16]byte{0x01, 0x00}, mask: [16]byte{
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+	// 2001::/23 — first 23 bits: mask ff ff fe 00.
+	{prefix: [16]byte{0x20, 0x01}, mask: [16]byte{0xff, 0xff, 0xfe}},
+	// 2001:db8::/32 — first 4 bytes.
+	{prefix: [16]byte{0x20, 0x01, 0x0d, 0xb8}, mask: [16]byte{0xff, 0xff, 0xff, 0xff}},
+	// 2002::/16 — first 2 bytes.
+	{prefix: [16]byte{0x20, 0x02}, mask: [16]byte{0xff, 0xff}},
+}
+
+// isIANASpecial reports whether ip is inside one of the IANA-registered
+// special-purpose ranges above — prefix/mask byte comparison in the
+// isSharedAddressSpace style, table-driven. IPv4-mapped IPv6 forms take the
+// IPv4 table via To4, matching the policy's normalization.
+func isIANASpecial(ip net.IP) bool {
+	if ip4 := ip.To4(); ip4 != nil {
+		for _, r := range ianaIPv4Special {
+			if matchesSpecialPrefix(ip4, r.prefix[:], r.mask[:]) {
+				return true
+			}
+		}
+		return false
+	}
+	ip16 := ip.To16()
+	for _, r := range ianaIPv6Special {
+		if matchesSpecialPrefix(ip16, r.prefix[:], r.mask[:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesSpecialPrefix reports whether every masked byte of ip equals the
+// prefix entry.
+func matchesSpecialPrefix(ip, prefix, mask []byte) bool {
+	if len(ip) != len(prefix) {
+		return false
+	}
+	for i := range prefix {
+		if ip[i]&mask[i] != prefix[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // isSharedAddressSpace reports whether ip is inside the RFC 6598 shared
