@@ -812,6 +812,12 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 	// unconditional so the tool is countable and its gate-off contract is
 	// invocable; the per-tool mcp.yaml enablement map still applies above.
 	registerJevAskTool(add)
+
+	// --- fetch_web → RunFetchPipeline (SPEC-FETCH-WEB-001 REQ-FW-009): the
+	// verbatim-excerpt web reader sharing the CLI command's one pipeline
+	// entry point. Same gate-off contract: zero network while the gate is
+	// false, a WebFetch-pointing fetch_error result.
+	registerFetchWebTool(add)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from

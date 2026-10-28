@@ -1,0 +1,904 @@
+package fetchweb
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+	"unicode/utf8"
+
+	"github.com/modu-ai/moai-adk/internal/jev"
+)
+
+// scoring_test.go — SPEC-FETCH-WEB-001 M2 (AC-FW-002, AC-FW-003). Two-stage
+// Jev scoring and selection rules against a fake answerer pinned per rule,
+// plus the passthrough short-circuit with an answerer that FAILS the test on
+// any call.
+
+// fakeAnswerer scripts probabilities by question id (stage-1 ids are "b<i>",
+// stage-2 ids "c<i>") and counts calls. An id absent from the script yields
+// 0. When failOnCall is set, any Ask fails the test — the passthrough probe's
+// zero-call assertion.
+type fakeAnswerer struct {
+	script   map[string]float64
+	calls    int
+	failTest *testing.T
+	// omit lists question ids the fake answers with NOTHING: the response
+	// comes back OK (Available) but its answer list lacks the id — the
+	// OK-but-answerless shape F2 (t1968 sync-audit) guards against.
+	omit map[string]bool
+	// notice is returned as res.Notice on every call; stage2Notice, when
+	// set, replaces it on stage-2 requests (first question id prefixed "c")
+	// — the N3 collection probe.
+	notice       string
+	stage2Notice string
+}
+
+func (f *fakeAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
+	f.calls++
+	if f.failTest != nil {
+		f.failTest.Fatalf("answerer was called but the pipeline promised zero scoring calls; state=%q", req.State)
+	}
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		if f.omit[q.ID] {
+			continue
+		}
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: f.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	notice := f.notice
+	if f.stage2Notice != "" && len(req.Questions) > 0 && strings.HasPrefix(req.Questions[0].ID, "c") {
+		notice = f.stage2Notice
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers, Notice: notice}
+}
+
+// mkBlocks builds n paragraph blocks whose texts are distinct. tokens each
+// sets the per-block approximate token count (bytes = tokens*4), so callers
+// can size a document past the ~2,000-token passthrough bound.
+func mkBlocks(n, tokens int) []Block {
+	blocks := make([]Block, n)
+	for i := range blocks {
+		head := fmt.Sprintf("block number %02d alpha beta gamma", i)
+		if pad := tokens*4 - len(head); pad > 0 {
+			head += strings.Repeat("p", pad)
+		}
+		blocks[i] = Block{
+			Kind:        KindParagraph,
+			HeadingPath: []string{"Doc"},
+			Text:        head,
+		}
+	}
+	return blocks
+}
+
+// REQ-FW-004: a block whose relevance probability is >= 0.6 becomes a
+// candidate; below 0.6 it does not.
+func TestStage1_CandidateThreshold(t *testing.T) {
+	blocks := mkBlocks(3, 10)
+	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.7, "b1": 0.59, "b2": 0.6}}
+	ident := []int{0, 1, 2}
+	scores, err := stage1(t.Context(), blocks, ident, "q", fake, &warningSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []bool{true, false, true}
+	for i, w := range want {
+		if got := scores[i] >= Stage1Threshold; got != w {
+			t.Errorf("block %d: candidate = %v (p=%.2f), want %v", i, got, scores[i], w)
+		}
+	}
+	if fake.calls == 0 {
+		t.Fatal("stage 1 made no scoring call")
+	}
+}
+
+// REQ-FW-004: stage-1 windows hold approximately 3,000 BODY tokens. A
+// 12-block document of ~9-token blocks is one window (108 tokens); a
+// document over the window bound splits so that no window exceeds it
+// (approximate counts; the request bound of stage1Windows does not govern
+// at this question size).
+func TestStage1_WindowsBoundTokens(t *testing.T) {
+	var blocks []Block
+	// 700 blocks x ~9 tokens ≈ 6,300 tokens -> must split into >1 window.
+	for i := 0; i < 700; i++ {
+		blocks = append(blocks, Block{Kind: KindParagraph, Text: fmt.Sprintf("block number %03d alpha beta gamma", i)})
+	}
+	windows := stage1Windows(blocks, "q")
+	if len(windows) < 2 {
+		t.Fatalf("6300-token doc produced %d windows, want >= 2", len(windows))
+	}
+	for wi, w := range windows {
+		total := 0
+		for _, i := range w {
+			total += blocks[i].Tokens()
+		}
+		if total > Stage1WindowTokens && len(w) > 1 {
+			t.Errorf("window %d holds %d tokens over the ~%d bound with %d blocks", wi, total, Stage1WindowTokens, len(w))
+		}
+	}
+	// Window membership covers every block exactly once, in document order.
+	seen := 0
+	for _, w := range windows {
+		seen += len(w)
+	}
+	if seen != len(blocks) {
+		t.Errorf("windows cover %d blocks, want %d", seen, len(blocks))
+	}
+}
+
+// REQ-FW-005: a candidate with stage-2 p >= 0.8 is kept; below 0.8 it is
+// kept ONLY when a same-heading neighbor scores >= 0.6 at stage 1.
+func TestSelection_Stage2KeepAndRescue(t *testing.T) {
+	// Four blocks of ~550 approximate tokens each (total ~2,200 > the
+	// passthrough bound, so the document is scored; the kept set of three
+	// blocks sits far above the 300-token backfill floor, so backfill cannot
+	// re-add the dropped block). b0 candidate 0.9 (stage2 0.85 -> keep).
+	// b1 candidate 0.7 (stage2 0.5, same-heading neighbor b0 at 0.9 ->
+	// rescue keep). b2 candidate 0.8 (stage2 0.3 -> rescue keep via b0).
+	// b3 under a DIFFERENT heading with no candidate sibling: stage2 0.3,
+	// no rescue -> dropped.
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "first block under heading A " + strings.Repeat("a", 2180)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "second block also under A " + strings.Repeat("b", 2170)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "third block under A too " + strings.Repeat("c", 2175)},
+		{Kind: KindParagraph, HeadingPath: []string{"B"}, Text: "lonely block under heading B " + strings.Repeat("d", 2170)},
+	}
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.9, "b1": 0.7, "b2": 0.8, "b3": 0.65,
+		"c0": 0.85, "c1": 0.5, "c2": 0.3, "c3": 0.3,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	if !keptHas(res, blocks[0].Text) || !keptHas(res, blocks[1].Text) {
+		t.Errorf("stage-2 keep or same-heading rescue failed: %d blocks", len(res.Blocks))
+	}
+	if !keptHas(res, blocks[2].Text) {
+		t.Errorf("same-heading rescue (neighbor b0 >= 0.6) failed to keep b2: %d blocks", len(res.Blocks))
+	}
+	if keptHas(res, blocks[3].Text) {
+		t.Errorf("b3 (stage2 0.3, no same-heading candidate neighbor) must be dropped: %d blocks", len(res.Blocks))
+	}
+}
+
+// AC-FW-002 limb (2) exception input, REBUILT above the ~2,000-token
+// passthrough bound (FW-D1, plan-audit-rebaseline2): the original fixture
+// was a single ~5-token block that short-circuited through Process's
+// passthrough, so scoring never ran and the assertion passed vacuously (a
+// fail-on-call answerer made zero calls against it). The document now sits
+// past the bound: the FIRST block is a stage-1 candidate with stage-2 < 0.8
+// and NO qualifying same-heading neighbor — it is kept by the FIRST-BLOCK
+// guarantee, not by rescue — while a LATER candidate in the same situation
+// (b2, heading B, stage-2 0.2, no qualifying neighbor) is dropped: the
+// neighbor rule needs a qualifying neighbor.
+func TestSelection_RescueNeedsQualifyingNeighbor(t *testing.T) {
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "first block candidate under A " + strings.Repeat("a", 2196)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "quiet sibling under A " + strings.Repeat("b", 2190)},
+		{Kind: KindParagraph, HeadingPath: []string{"B"}, Text: "later candidate under B " + strings.Repeat("c", 2192)},
+		{Kind: KindParagraph, HeadingPath: []string{"B"}, Text: "quiet sibling under B " + strings.Repeat("d", 2190)},
+	}
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.65, "b1": 0.1, "b2": 0.7, "b3": 0.1,
+		"c0": 0.2, "c2": 0.2,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if fake.calls == 0 {
+		t.Fatal("fixture is vacuous: the document must be scored, not passed through")
+	}
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered (a candidate exists)", res.Status)
+	}
+	if !keptHas(res, blocks[0].Text) {
+		t.Errorf("the first block must be kept by the first-block guarantee (stage-2 0.2, no qualifying neighbor): %v", texts(res.Blocks))
+	}
+	if keptHas(res, blocks[2].Text) {
+		t.Errorf("b2 (stage-2 0.2, no same-heading neighbor >= 0.6) must not be rescued: %v", texts(res.Blocks))
+	}
+}
+
+// F2 (card t1968 iter15, operator-approved repair): the rescue group key
+// must distinguish `[]` (no heading) from `[""]` (an empty heading text —
+// real pages emit it: <h2></h2> pushes an empty heading at the splitter).
+// The NUL join of the per-pass aggregate mapped both paths to the same key,
+// so a candidate under [""] was rescued by a sibling under [] — a CROSS
+// heading-group rescue the base 41fe0c5396 never performed (base keeps 1,
+// the collision kept 2). Two blocks past the ~2,000-token passthrough
+// bound, each ~1,200 tokens so the kept set of one block sits far above
+// the 300-token backfill floor: b0 under [] (candidate 0.9, stage-2 0.3,
+// kept by the first-block guarantee) and b1 under [""] (candidate 0.7,
+// stage-2 0.3, no qualifying sibling in its own group) must not rescue
+// each other.
+func TestSelection_EmptyHeadingNotNeighborOfNoHeading(t *testing.T) {
+	// The [""] premise, witnessed at the splitter: an empty heading element
+	// emits a one-component empty heading path.
+	doc := SplitBlocks("<html><body><h2></h2><p>x</p></body></html>")
+	if len(doc) != 1 || len(doc[0].HeadingPath) != 1 || doc[0].HeadingPath[0] != "" {
+		t.Fatalf("SplitBlocks of <h2></h2> gave %d blocks, heading path %q; want one block under [\"\"]", len(doc), doc[0].HeadingPath)
+	}
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: nil, Text: "first block no heading " + strings.Repeat("a", 4770)},
+		{Kind: KindParagraph, HeadingPath: []string{""}, Text: "second block empty heading " + strings.Repeat("b", 4770)},
+	}
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.9, "b1": 0.7,
+		"c0": 0.3, "c1": 0.3,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	if !keptHas(res, blocks[0].Text) {
+		t.Errorf("the [] first block must be kept by the first-block guarantee: %v", texts(res.Blocks))
+	}
+	if keptHas(res, blocks[1].Text) {
+		t.Errorf("the [\"\"] block must not be rescued by a [] sibling — distinct heading groups: %v", texts(res.Blocks))
+	}
+}
+
+// REQ-FW-006 decision order: zero stage-1 candidates -> no_match, and the
+// first-block keep does NOT apply.
+func TestSelection_NoMatchWhenZeroCandidates(t *testing.T) {
+	blocks := mkBlocks(4, 550) // ~2,200 tokens: past the passthrough bound
+	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.5, "b1": 0.1, "b2": 0.59, "b3": 0.0}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusNoMatch {
+		t.Fatalf("status = %q, want no_match (zero stage-1 candidates)", res.Status)
+	}
+	if len(res.Blocks) != 0 {
+		t.Errorf("no_match must emit no blocks, got %v", texts(res.Blocks))
+	}
+}
+
+// REQ-FW-006: once >= 1 candidate exists the first block is always kept.
+func TestSelection_FirstBlockAlwaysKept(t *testing.T) {
+	blocks := mkBlocks(5, 550)
+	// Only the LAST block is a candidate with a high stage-2; the first
+	// block is not a candidate at all and must still be kept.
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.1, "b1": 0.2, "b2": 0.3, "b3": 0.1, "b4": 0.95,
+		"c4": 0.9,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	if len(res.Blocks) == 0 || res.Blocks[0].Text != blocks[0].Text {
+		t.Errorf("first block of the document must lead the kept set, got %v", texts(res.Blocks))
+	}
+}
+
+// REQ-FW-006: a kept set under 300 tokens is backfilled in descending
+// stage-1 score order until the threshold is met or blocks run out.
+func TestSelection_BackfillUnder300Tokens(t *testing.T) {
+	// ~65-token blocks. Candidates: b0 (0.95), b2 (0.9), b4 (0.8), b6 (0.7);
+	// stage-2 keeps only b0 (0.9) and drops the rest. Kept = {b0} = 65 tokens
+	// << 300. Backfill must add candidates by stage-1 score desc: b2 (0.9),
+	// b4 (0.8), b6 (0.7), then non-candidates by score until ~300 tokens.
+	n := 34 // 34 blocks x ~65 tokens ≈ 2,210: past passthrough
+	blocks := mkBlocks(n, 65)
+	script := map[string]float64{"b0": 0.95, "b2": 0.9, "b4": 0.8, "b6": 0.7, "c0": 0.9}
+	for i := 0; i < n; i++ {
+		if _, ok := script[fmt.Sprintf("b%d", i)]; !ok {
+			script[fmt.Sprintf("b%d", i)] = 0.05
+		}
+	}
+	fake := &fakeAnswerer{script: script}
+	res := Process(context.Background(), blocks, "q", fake)
+	// Backfilled set must be in document order in the output, but the ORDER
+	// OF ADDITION is by score: verify b2 present (added first after b0's 9
+	// tokens).
+	if !keptHas(res, blocks[2].Text) {
+		t.Errorf("backfill must add highest-scored non-kept candidate b2 first, got %v", texts(res.Blocks))
+	}
+	if tokensOf(res.Blocks) < BackfillTokens && len(res.Blocks) < n {
+		t.Errorf("backfill stopped before both the %d-token threshold and exhaustion: %d blocks, %d tokens",
+			BackfillTokens, len(res.Blocks), tokensOf(res.Blocks))
+	}
+}
+
+// Backfill prefers by stage-1 score: two candidate blocks both dropped at
+// stage 2, the higher-scored one is added first (observable via a document
+// that can only fit one more before the threshold).
+func TestSelection_BackfillScoreOrder(t *testing.T) {
+	// 40 + 1,120 + 1,160 approximate tokens = 2,320: scored, not passed
+	// through.
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: strings.Repeat("x", 160)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: strings.Repeat("y", 4480)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: strings.Repeat("z", 4640)},
+	}
+	// b0 first block kept; b1, b2 candidates dropped at stage 2; kept = {b0}
+	// = 40 tokens < 300 -> backfill picks b1 (0.9) over b2 (0.5); after b1
+	// the set is 1,160 -> stop, b2 not added.
+	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.62, "b1": 0.9, "b2": 0.5, "c0": 0.1, "c1": 0.1, "c2": 0.1}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if !keptHas(res, strings.Repeat("y", 4480)) {
+		t.Errorf("backfill must add the higher-scored b1 first, got %d blocks", len(res.Blocks))
+	}
+	if keptHas(res, strings.Repeat("z", 4640)) {
+		t.Errorf("backfill must stop once >= 300 tokens; b0(40)+b1(1120) is past it, b2 must not be added")
+	}
+}
+
+// REQ-FW-006: every kept table row is accompanied by its table's header row.
+func TestSelection_TableHeaderAccompaniment(t *testing.T) {
+	pad := strings.Repeat("t", 2380) // ~600 tokens per block; 4 blocks ≈ 2,400 > bound
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: []string{"Flags"}, Text: "paragraph before the table " + pad},
+		{Kind: KindTableRow, HeadingPath: []string{"Flags"}, Text: "Flag | Meaning " + pad, HeaderIndex: 1},
+		{Kind: KindTableRow, HeadingPath: []string{"Flags"}, Text: "--json | Emit JSON " + pad, HeaderIndex: 1},
+		{Kind: KindTableRow, HeadingPath: []string{"Flags"}, Text: "--quiet | Silence " + pad, HeaderIndex: 1},
+	}
+	// Only the --json row survives scoring; its header must accompany it.
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.1, "b1": 0.2, "b2": 0.9, "b3": 0.1, "c2": 0.85,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if !keptHas(res, blocks[2].Text) {
+		t.Fatalf("the scored table row must be kept, got %d blocks", len(res.Blocks))
+	}
+	if !keptHas(res, blocks[1].Text) {
+		t.Errorf("kept table row must be accompanied by its header row, got %d blocks", len(res.Blocks))
+	}
+	if keptHas(res, blocks[3].Text) {
+		t.Errorf("the unscored row must stay dropped (kept set is past the backfill floor)")
+	}
+}
+
+// REQ-FW-006: kept blocks are emitted in original document order.
+func TestSelection_DocumentOrderEmission(t *testing.T) {
+	blocks := mkBlocks(4, 550)
+	fake := &fakeAnswerer{script: map[string]float64{
+		"b0": 0.1, "b1": 0.9, "b2": 0.1, "b3": 0.9, "c1": 0.9, "c3": 0.9,
+	}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if len(res.Blocks) < 3 {
+		t.Fatalf("want first block + both candidates, got %v", texts(res.Blocks))
+	}
+	// b0 (first) precedes b1 which precedes b3.
+	pos := map[string]int{}
+	for i, b := range res.Blocks {
+		pos[b.Text] = i
+	}
+	if pos[blocks[0].Text] >= pos[blocks[1].Text] || pos[blocks[1].Text] >= pos[blocks[3].Text] {
+		t.Errorf("emission not in document order: %v", texts(res.Blocks))
+	}
+}
+
+// REQ-FW-003 + AC-FW-003: a non-empty document at or under 2,000 tokens
+// passes through whole with ZERO scoring calls.
+func TestProcess_PassthroughUnder2000TokensZeroCalls(t *testing.T) {
+	blocks := mkBlocks(10, 10) // ~100 tokens
+	fake := &fakeAnswerer{failTest: t, script: map[string]float64{}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusPassthrough {
+		t.Fatalf("status = %q, want passthrough", res.Status)
+	}
+	if len(res.Blocks) != len(blocks) {
+		t.Errorf("passthrough must keep every block, got %d of %d", len(res.Blocks), len(blocks))
+	}
+	for i := range blocks {
+		if res.Blocks[i].Text != blocks[i].Text {
+			t.Errorf("passthrough block %d not verbatim", i)
+		}
+	}
+}
+
+// A document just OVER the bound is scored, not passed through.
+func TestProcess_Over2000TokensIsScored(t *testing.T) {
+	var blocks []Block
+	for len(blocks) == 0 || DocTokens(blocks) <= PassthroughTokens {
+		blocks = append(blocks, Block{Kind: KindParagraph, Text: strings.Repeat("w", 400)}) // 100 tokens each
+	}
+	fake := &fakeAnswerer{script: map[string]float64{}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusNoMatch && res.Status != StatusFiltered {
+		t.Errorf("over-bound document must be scored, got %q", res.Status)
+	}
+	if fake.calls == 0 {
+		t.Error("over-bound document made no scoring call")
+	}
+}
+
+// Empty precedes passthrough (REQ-FW-003): zero blocks -> empty.
+func TestProcess_EmptyPrecedesPassthrough(t *testing.T) {
+	fake := &fakeAnswerer{failTest: t, script: map[string]float64{}}
+	res := Process(context.Background(), nil, "q", fake)
+	if res.Status != StatusEmpty {
+		t.Fatalf("status = %q, want empty (empty precedes passthrough)", res.Status)
+	}
+}
+
+// An aside block is scored in its own stream: a main-flow sibling cannot
+// rescue an aside candidate, and vice versa (REQ-FW-001 separate scoring).
+func TestProcess_AsideScoredSeparately(t *testing.T) {
+	// Two ~1,100-token blocks (total ~2,200: scored). The kept main block
+	// alone is past the backfill floor, so backfill cannot re-add the aside.
+	blocks := []Block{
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "main candidate block " + strings.Repeat("m", 4360)},
+		{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "aside block " + strings.Repeat("n", 4350), Aside: true},
+	}
+	// Main block candidate 0.9/stage2 0.9 (kept); aside candidate 0.7,
+	// stage-2 0.5, would be "rescued" if streams mixed (main sibling 0.9
+	// under same heading). Separate scoring drops it.
+	fake := &fakeAnswerer{script: map[string]float64{"b0": 0.9, "b1": 0.7, "c0": 0.9, "c1": 0.5}}
+	res := Process(context.Background(), blocks, "q", fake)
+	if !keptHas(res, blocks[0].Text) {
+		t.Fatalf("main-flow keep failed: %d blocks", len(res.Blocks))
+	}
+	if keptHas(res, blocks[1].Text) {
+		t.Errorf("aside block must not be rescued by a main-flow neighbor (separate scoring): %d blocks", len(res.Blocks))
+	}
+}
+
+// A scoring call that comes back unavailable fails the pipeline into
+// fetch_error, not no_match: "could not judge" is not "nothing matched".
+func TestProcess_UnavailableScoringIsError(t *testing.T) {
+	blocks := mkBlocks(3, 700) // ~2,100 tokens: scored
+	fake := &unavailableAnswerer{}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFetchError {
+		t.Fatalf("status = %q, want fetch_error on unavailable scoring", res.Status)
+	}
+	if res.Condition == "" {
+		t.Error("fetch_error must carry a condition")
+	}
+}
+
+type unavailableAnswerer struct{}
+
+func (unavailableAnswerer) Ask(_ context.Context, _ jev.Request) jev.Result {
+	return jev.Result{Availability: jev.RateLimited, Condition: "endpoint returned HTTP 429"}
+}
+
+// F2 (t1968 sync-audit): an OK scoring response whose answer list carries
+// NONE of the asked question ids is a judgment failure, not a data verdict —
+// every unanswered id must surface as fetch_error (exit 2), never silently
+// read as probability 0 and reported as no_match (exit 1).
+func TestProcess_Stage1AnswerlessIsError(t *testing.T) {
+	blocks := mkBlocks(3, 700) // ~2,100 tokens: scored
+	fake := &fakeAnswerer{
+		script: map[string]float64{"b0": 0.9, "b1": 0.9, "b2": 0.9},
+		omit:   map[string]bool{"b0": true, "b1": true, "b2": true},
+	}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFetchError {
+		t.Fatalf("status = %q, want fetch_error on an answerless OK response (not no_match)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "could not judge") {
+		t.Errorf("condition = %q, want the could-not-judge distinction", res.Condition)
+	}
+}
+
+// F2 (t1968 sync-audit), stage-2 leg: answers may go missing on either stage.
+// Stage 1 answers fully (b0 is a candidate at 0.9) but the stage-2 response
+// omits the candidate's id — the gap must be a fetch_error, not a stage-2
+// score of 0 that drops the candidate into a misleading no_match.
+func TestProcess_Stage2AnswerlessIsError(t *testing.T) {
+	blocks := mkBlocks(3, 700) // ~2,100 tokens: scored
+	fake := &fakeAnswerer{
+		script: map[string]float64{"b0": 0.9, "b1": 0.1, "b2": 0.1, "c0": 0.9},
+		omit:   map[string]bool{"c0": true},
+	}
+	res := Process(context.Background(), blocks, "q", fake)
+	if res.Status != StatusFetchError {
+		t.Fatalf("status = %q, want fetch_error when stage 2 answers nothing (not no_match)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "could not judge") {
+		t.Errorf("condition = %q, want the could-not-judge distinction", res.Condition)
+	}
+}
+
+// N3 (t1968 sync-audit iter6): both stages collected only the stale-cache
+// warning into the sink — res.Notice (the model-change notice) was dropped,
+// so the CLI/MCP surfaces never reported the model-change fact on the
+// fetch-web path. Each stage's notice must reach Result.Warnings.
+func TestProcess_StageNoticeReachesWarnings(t *testing.T) {
+	// Stage-1 leg: no candidates (all below 0.6), so stage 2 never runs —
+	// the stage-1 notice must still reach the warnings.
+	blocks := mkBlocks(4, 550) // ~2,200 tokens: scored, not passed through
+	const s1 = "stage-1 model-change notice"
+	fake1 := &fakeAnswerer{script: map[string]float64{}, notice: s1}
+	for i := 0; i < 4; i++ {
+		fake1.script[fmt.Sprintf("b%d", i)] = 0.05
+	}
+	res1 := Process(context.Background(), blocks, "q", fake1)
+	if res1.Status != StatusNoMatch {
+		t.Fatalf("status = %q, want no_match (zero candidates)", res1.Status)
+	}
+	if !warningsHave(res1.Warnings, s1) {
+		t.Errorf("the stage-1 notice must reach Result.Warnings, got %v", res1.Warnings)
+	}
+
+	// Stage-2 leg: stage 1 returns no notice, stage 2 does — it must reach
+	// the warnings too.
+	const s2 = "stage-2 model-change notice"
+	fake2 := &fakeAnswerer{
+		script:       map[string]float64{"b0": 0.9, "b1": 0.1, "b2": 0.1, "b3": 0.1, "c0": 0.9},
+		stage2Notice: s2,
+	}
+	res2 := Process(context.Background(), blocks, "q", fake2)
+	if res2.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res2.Status)
+	}
+	if !warningsHave(res2.Warnings, s2) {
+		t.Errorf("the stage-2 notice must reach Result.Warnings, got %v", res2.Warnings)
+	}
+}
+
+func warningsHave(warnings []string, want string) bool {
+	for _, w := range warnings {
+		if w == want {
+			return true
+		}
+	}
+	return false
+}
+
+// Stage-2 neighbor context is ~400 CHARACTERS drawn from adjacent blocks.
+func TestNeighborContextAbout400Chars(t *testing.T) {
+	blocks := []Block{
+		{Kind: KindParagraph, Text: strings.Repeat("a", 300)},
+		{Kind: KindParagraph, Text: strings.Repeat("b", 80)},
+		{Kind: KindParagraph, Text: strings.Repeat("c", 300)},
+	}
+	ctx := neighborContext(blocks, 1, NeighborContextChars)
+	if l := len(ctx); l == 0 || l > NeighborContextChars+2 {
+		t.Errorf("neighbor context length = %d, want ~(0, %d]", l, NeighborContextChars)
+	}
+	if !strings.Contains(ctx, strings.Repeat("a", 100)) && !strings.Contains(ctx, "aaa") {
+		t.Errorf("context should draw from the previous block")
+	}
+	if !strings.Contains(ctx, strings.Repeat("c", 100)) && !strings.Contains(ctx, "ccc") {
+		t.Errorf("context should draw from the next block")
+	}
+}
+
+// recordingAnswerer scripts probabilities by id like fakeAnswerer and also
+// records every request it serves, in order.
+type recordingAnswerer struct {
+	script map[string]float64
+	reqs   []jev.Request
+}
+
+func (r *recordingAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
+	r.reqs = append(r.reqs, req)
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: r.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers}
+}
+
+// R1 (card t1968 review): stage-2 candidates are batched so EVERY request the
+// pipeline builds stays inside jev's size bounds — a candidate set whose
+// combined questions exceed MaxRequestTokens is split across requests, each
+// scored independently, with the selection unchanged.
+func TestStage2_BatchesWithinRequestBounds(t *testing.T) {
+	// 30 blocks of ~3,000 approximate tokens each (~90k total: scored, not
+	// passed through). Every block a stage-1 candidate; each stage-2 question
+	// carries its ~3,000-token passage plus context, so ONE request over all
+	// 30 candidates would hold ~93k tokens — over the 64k bound.
+	blocks := mkBlocks(30, 3000)
+	script := map[string]float64{}
+	for i := 0; i < 30; i++ {
+		script[fmt.Sprintf("b%d", i)] = 0.9
+		script[fmt.Sprintf("c%d", i)] = 0.9
+	}
+	rec := &recordingAnswerer{script: script}
+	res := Process(context.Background(), blocks, "q", rec)
+	if res.Status != StatusFiltered {
+		t.Fatalf("status = %q, want filtered", res.Status)
+	}
+	var stage2Reqs int
+	asked := map[string]bool{}
+	for _, req := range rec.reqs {
+		if len(req.Questions) == 0 || !strings.HasPrefix(req.Questions[0].ID, "c") {
+			continue // stage-1 window request
+		}
+		stage2Reqs++
+		total := jev.EstimateTokens(req.State)
+		for _, q := range req.Questions {
+			asked[q.ID] = true
+			total += jev.EstimateTokens(q.Text)
+		}
+		if total > jev.MaxRequestTokens {
+			t.Errorf("stage-2 request holds ~%d tokens, over the %d bound — batch it", total, jev.MaxRequestTokens)
+		}
+	}
+	if stage2Reqs < 2 {
+		t.Errorf("a ~93k-token candidate set must split into >= 2 stage-2 requests, got %d", stage2Reqs)
+	}
+	for i := 0; i < 30; i++ {
+		if !asked[fmt.Sprintf("c%d", i)] {
+			t.Errorf("candidate c%d was never asked", i)
+		}
+	}
+}
+
+// R5 (card t1968 review): the neighbor context is measured and cut in
+// CHARACTERS (runes) — CJK text must fill the full window, not a third of it,
+// and must never be cut mid-rune.
+func TestNeighborContext_RuneCutCJK(t *testing.T) {
+	cjk := strings.Repeat("가", 450) // 450 runes, 1,350 UTF-8 bytes
+	blocks := []Block{
+		{Kind: KindParagraph, Text: cjk},
+		{Kind: KindParagraph, Text: "target"},
+		{Kind: KindParagraph, Text: cjk},
+	}
+	ctx := neighborContext(blocks, 1, NeighborContextChars)
+	if !utf8.ValidString(ctx) {
+		t.Errorf("neighbor context split a rune mid-character: %q", ctx)
+	}
+	if got := len([]rune(ctx)); got == 0 || got > NeighborContextChars {
+		t.Errorf("neighbor context = %d runes, want ~(0, %d]", got, NeighborContextChars)
+	}
+	if got := len([]rune(ctx)); got < NeighborContextChars-1 {
+		t.Errorf("CJK context under-filled: %d runes, want ~%d (byte-based cutting yields about a third)", got, NeighborContextChars)
+	}
+}
+
+// boundsAnswerer enforces jev's request size bounds at the Answerer seam,
+// mirroring what the real client's checkBounds does: a request whose state
+// plus questions exceeds either bound is refused unsent with Oversize. It
+// scripts probabilities by question id like fakeAnswerer.
+type boundsAnswerer struct {
+	script map[string]float64
+	calls  int
+	over   int // requests refused as oversize
+}
+
+func (b *boundsAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
+	b.calls++
+	state := jev.EstimateTokens(req.State)
+	longest, total := 0, state
+	for _, q := range req.Questions {
+		n := jev.QuestionTokens(q)
+		total += n
+		longest = max(longest, n)
+	}
+	if state+longest > jev.MaxStateAndQuestionTokens || total > jev.MaxRequestTokens {
+		b.over++
+		return jev.Result{Availability: jev.Oversize, Condition: fmt.Sprintf(
+			"request is ~%d tokens (state+longest ~%d), over the %d/%d bounds; refused unsent",
+			total, state+longest, jev.MaxRequestTokens, jev.MaxStateAndQuestionTokens)}
+	}
+	answers := make([]jev.Answer, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		answers = append(answers, jev.Answer{
+			QuestionID:  q.ID,
+			Kind:        jev.KindNoul,
+			Probability: b.script[q.ID],
+			Model:       jev.VerifiedInterpretedModel,
+		})
+	}
+	return jev.Result{Availability: jev.Available, Answers: answers}
+}
+
+// N1 (card t1968 review round 2): stage-1 windows are sized by the ACTUAL
+// request the window assembles — the joined body PLUS every block's
+// question, each quoting the user question and its own passage — not by body
+// tokens alone. Many short blocks under a long question keep the body under
+// the window size while the assembled request blows past jev's bounds; the
+// real client refuses it unsent and the pipeline surfaces fetch_error on an
+// ordinary page.
+func TestStage1_WindowsSizedByRequestNotBodyAlone(t *testing.T) {
+	// 300 blocks x ~10 tokens ≈ 3,000 body tokens (ONE body-budget window,
+	// past the 2,000-token passthrough bound) under a ~500-token question:
+	// each question carries the user question + its passage + framing
+	// (~524 tokens), so one request over the whole window holds ~160k
+	// tokens — far over the 64k bound.
+	question := strings.Repeat("q", 2000)
+	var blocks []Block
+	for i := 0; i < 300; i++ {
+		blocks = append(blocks, Block{Kind: KindParagraph, Text: fmt.Sprintf("block number %03d alpha beta gamma", i)})
+	}
+	script := map[string]float64{}
+	for i := 0; i < 300; i++ {
+		script[fmt.Sprintf("b%d", i)] = 0.05 // no candidates: no_match after scoring
+	}
+	fake := &boundsAnswerer{script: script}
+	res := Process(context.Background(), blocks, question, fake)
+	if res.Status != StatusNoMatch {
+		t.Fatalf("status = %q, want no_match — an in-bounds scoring pass must not become fetch_error (condition %q)", res.Status, res.Condition)
+	}
+	if fake.over != 0 {
+		t.Errorf("%d stage-1 requests exceeded jev's size bounds — windows must split by request size, not body size", fake.over)
+	}
+	if fake.calls < 2 {
+		t.Errorf("the ~160k-token window must split into >= 2 requests, got %d", fake.calls)
+	}
+}
+
+// P2 performance (card t1968 codex review, repair round): sortByScoreDesc
+// was a quadratic insertion sort, so the backfill leg of selectBlocks cost
+// O(n²) on large documents. selectBlocks must stay near n·log(n) as the
+// block count doubles: the growth ratio from n to 2n is bounded at 3.4 —
+// comfortably above n·log(n) (~2.2 from 8k to 16k) and comfortably below the
+// 4.0 a quadratic sort exhibits. The fixture is the insertion sort's worst
+// case: one sole candidate (kept set under the 300-token backfill floor, so
+// the sort runs over the whole order) with the remaining blocks' stage-1
+// scores ASCENDING in document order — the reverse of the descending order
+// the sort must produce.
+func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "para", HeaderIndex: -1}
+		}
+		scores[0] = blockScore{stage1: 0.9} // sole candidate; stage2 0 -> first-block keep only
+		for i := 1; i < n; i++ {
+			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
+		}
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(8000)
+	t2 := run(16000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 8k to 16k blocks: ratio %.2f (8k=%s, 16k=%s) — quadratic backfill sort; must stay near n·log(n) (~2.2)",
+			ratio, t1, t2)
+	}
+}
+
+// P2 performance (card t1968 codex review, repair round):
+// sameHeadingNeighborQualifies rescanned ALL blocks per candidate, so a
+// document of many candidates with no qualifying sibling (distinct heading
+// paths, sub-threshold neighbors) cost O(n²) inside selectBlocks. The
+// judgment must come from a per-pass aggregate: the growth ratio from n to
+// 2n is bounded at 3.4 — above n·log(n) (~2.2 from 5k to 10k), below the
+// 4.0 the per-candidate full scan exhibits. Every block here is a candidate
+// (stage1 0.7) whose stage-2 fails, under its own DISTINCT heading path —
+// the rescue check must examine every one and find no sibling.
+func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{fmt.Sprintf("H%d", i)}, Text: "para", HeaderIndex: -1}
+			scores[i] = blockScore{stage1: 0.7} // candidate; stage2 0 -> the rescue judgment runs
+		}
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(5000)
+	t2 := run(10000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 5k to 10k candidates: ratio %.2f (5k=%s, 10k=%s) — per-candidate neighbor rescan; must aggregate once per pass (~n·log(n) overall)",
+			ratio, t1, t2)
+	}
+}
+
+// P2 performance (card t1968 codex review round 9, operator-approved repair):
+// the backfill loop's break condition recomputed totalKeptTokens — a scan of
+// the WHOLE kept map — on EVERY iteration, so a document whose backfill never
+// reaches the 300-token floor paid O(n²): the loop ran to exhaustion while the
+// kept map grew to n. The kept-token total must be maintained as a running
+// accumulator: selectBlocks stays near n·log(n) as the block count doubles,
+// the growth ratio from n to 2n bounded at 3.4 — above n·log(n) (~2.2 from 6k
+// to 12k), below the 4.0 the per-iteration full scan exhibits. The fixture is
+// the scan's worst case: one sole candidate (its kept set holds 0 tokens, far
+// under the floor, so backfill runs to exhaustion) and EVERY block EMPTY-TEXT
+// — each newly kept row adds 0 tokens, the break never fires, and the kept
+// map grows to n while every iteration rescans it.
+func TestSelectBlocks_BackfillKeptScanScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(n int) time.Duration {
+		blocks := make([]Block, n)
+		scores := make([]blockScore, n)
+		for i := range blocks {
+			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "", HeaderIndex: -1}
+			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
+		}
+		scores[0] = blockScore{stage1: 0.9} // sole candidate; stage2 0 -> first-block keep only
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			selectBlocks(blocks, scores)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(6000)
+	t2 := run(12000)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("selectBlocks growth from 6k to 12k blocks: ratio %.2f (6k=%s, 12k=%s) — per-iteration kept-map scan in the backfill loop; the kept-token total must run as an accumulator (~n·log(n) overall)",
+			ratio, t1, t2)
+	}
+}
+
+// P2 security (card t1968 codex review, repair round): the stage-1 window
+// loop issues one paid Ask per window with no per-fetch spend cap — a page
+// of tiny blocks under a long question yields a window count that grows
+// without bound (a 1MiB page of tiny <p> blocks reaches ~46 calls; 5MiB
+// ~230). The pipeline must enforce a per-fetch scoring budget BEFORE any
+// Ask — one paid call per window, bounded — and refuse the page outright
+// (the MaxResponseBytes over-bound semantics: a named condition, no partial
+// judgment) instead of truncating. This fixture (~2,100 one-token blocks
+// under a ~2,000-token question) assembles ~68 windows, past the 64-window
+// budget the fix declares; the counting answerer observes every call.
+func TestProcess_Stage1WindowBudgetRefusesOversizedDocument(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a multi-thousand-block document")
+	}
+	const budget = 64                     // must equal the fix's MaxStage1WindowsPerFetch
+	question := strings.Repeat("q", 8000) // ~2,000 tokens, quoted inside every stage-1 question
+	blocks := make([]Block, 2100)
+	for i := range blocks {
+		blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "para", HeaderIndex: -1}
+	}
+	counter := &fakeAnswerer{script: map[string]float64{}}
+	res := Process(context.Background(), blocks, question, counter)
+	if counter.calls > budget {
+		t.Errorf("stage-1 window spend blew the budget: %d Ask calls, budget %d — the pipeline must refuse before asking, not spend unbounded", counter.calls, budget)
+	}
+	if res.Status != StatusFetchError {
+		t.Errorf("status = %q, want fetch_error (page refused at the scoring budget, not partially judged)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "budget") {
+		t.Errorf("condition = %q, want the refusal to name the scoring budget", res.Condition)
+	}
+}
+
+// helpers
+
+func keptHas(res Result, text string) bool {
+	for _, b := range res.Blocks {
+		if b.Text == text {
+			return true
+		}
+	}
+	return false
+}
+
+func texts(blocks []Block) []string {
+	out := make([]string, len(blocks))
+	for i, b := range blocks {
+		out[i] = b.Text
+	}
+	return out
+}
+
+func tokensOf(blocks []Block) int { return DocTokens(blocks) }

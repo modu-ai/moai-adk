@@ -98,7 +98,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-32 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`session_list`、`todo_claim`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
+33 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`glm_audit`、`glm_review`、`claude_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_shortest_path`、`graph_trace_calls`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`、`factory_renew`、`audit_cache`、`glm_job_cancel`、`glm_job_result`、`glm_job_status`、`glm_task`、`goal_arm`、`goal_status`、`jev_ask`、`fetch_web`、`session_list`、`todo_claim`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`factory_renew` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
