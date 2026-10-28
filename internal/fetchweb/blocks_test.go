@@ -1,9 +1,11 @@
 package fetchweb
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
 )
@@ -1436,5 +1438,50 @@ func TestSplitBlocks_AsideInlineWrapperRunNotSplit(t *testing.T) {
 	if len(blocks) != 1 || blocks[0].Kind != KindParagraph || blocks[0].Text != "Hello world again" || !blocks[0].Aside {
 		t.Fatalf("want exactly one aside paragraph %q, got %d blocks: %v (an inline wrapper never splits the run around it)",
 			"Hello world again", len(blocks), texts(blocks))
+	}
+}
+
+// P2 performance (card t1968 codex review, repair round): spliceAsideRun
+// rebuilt the WHOLE rowTable map per bare-run splice, so an aside of M
+// text/p crossings following an N-row table re-keyed all N row entries M
+// times — O(N×M) work and an N-entry allocation per splice that neither
+// the scoring budget nor the HTTP timeout bounds; only entries at-or-past
+// the splice point need work. SplitBlocks must stay near-linear as the
+// fixture doubles: the growth ratio from n to 2n is bounded at 3.4 — above
+// linear (~2.0), below the ~4.0 the full-map rebuild exhibits. The fixture
+// is the finding's exact shape: an N-row table then an aside whose M
+// text/p interleavings each splice one bare run in front of a paragraph.
+func TestSplitBlocks_AsideSpliceTableIndexScaling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing-sensitive scaling guard")
+	}
+	run := func(rows, crossings int) time.Duration {
+		var b strings.Builder
+		b.WriteString("<body><table>")
+		for range rows {
+			b.WriteString("<tr><td>cell</td></tr>")
+		}
+		b.WriteString("</table><aside>")
+		for i := range crossings {
+			fmt.Fprintf(&b, "run%d<p>para%d</p>", i, i)
+		}
+		b.WriteString("</aside></body>")
+		page := b.String()
+		best := time.Duration(1 << 62)
+		for range 3 {
+			start := time.Now()
+			SplitBlocks(page)
+			if d := time.Since(start); d < best {
+				best = d
+			}
+		}
+		return best
+	}
+	t1 := run(2500, 1250)
+	t2 := run(5000, 2500)
+	ratio := float64(t2) / float64(t1)
+	if ratio > 3.4 {
+		t.Errorf("SplitBlocks growth from 2.5k rows/1.25k splices to 5k/2.5k: ratio %.2f (n=%s, 2n=%s) — full rowTable rebuild per aside splice; must stay near linear (~2.0)",
+			ratio, t1, t2)
 	}
 }
