@@ -767,6 +767,39 @@ func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
 	}
 }
 
+// P2 security (card t1968 codex review, repair round): the stage-1 window
+// loop issues one paid Ask per window with no per-fetch spend cap — a page
+// of tiny blocks under a long question yields a window count that grows
+// without bound (a 1MiB page of tiny <p> blocks reaches ~46 calls; 5MiB
+// ~230). The pipeline must enforce a per-fetch scoring budget BEFORE any
+// Ask — one paid call per window, bounded — and refuse the page outright
+// (the MaxResponseBytes over-bound semantics: a named condition, no partial
+// judgment) instead of truncating. This fixture (~2,100 one-token blocks
+// under a ~2,000-token question) assembles ~68 windows, past the 64-window
+// budget the fix declares; the counting answerer observes every call.
+func TestProcess_Stage1WindowBudgetRefusesOversizedDocument(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a multi-thousand-block document")
+	}
+	const budget = 64 // must equal the fix's MaxStage1WindowsPerFetch
+	question := strings.Repeat("q", 8000) // ~2,000 tokens, quoted inside every stage-1 question
+	blocks := make([]Block, 2100)
+	for i := range blocks {
+		blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{"A"}, Text: "para", HeaderIndex: -1}
+	}
+	counter := &fakeAnswerer{script: map[string]float64{}}
+	res := Process(context.Background(), blocks, question, counter)
+	if counter.calls > budget {
+		t.Errorf("stage-1 window spend blew the budget: %d Ask calls, budget %d — the pipeline must refuse before asking, not spend unbounded", counter.calls, budget)
+	}
+	if res.Status != StatusFetchError {
+		t.Errorf("status = %q, want fetch_error (page refused at the scoring budget, not partially judged)", res.Status)
+	}
+	if !strings.Contains(res.Condition, "budget") {
+		t.Errorf("condition = %q, want the refusal to name the scoring budget", res.Condition)
+	}
+}
+
 // helpers
 
 func keptHas(res Result, text string) bool {
