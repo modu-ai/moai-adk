@@ -387,6 +387,104 @@ func TestWriteBaseline_RefusesFailedOrMissingRuns(t *testing.T) {
 	}
 }
 
+// F3 (card t1968 iter15 codex gate, operator scope-widened): a baseline
+// written by an OLDER build (pre-23d02c65e3) stores CaseComparison verdicts
+// computed against the rendered markdown — the maskable containment the P2
+// repair replaced — and carries no kept-text provenance. The auditor's
+// scenario, mirrored below: an old-format row recorded Contained=false for a
+// case, and a later no_match run of the same case (Contained=false under the
+// current semantics) PASSED the equality — a real containment regression
+// crossing the semantics change passed silently. DiffAgainstBaseline must
+// REFUSE such a baseline outright (fail-closed): error, empty diff, no
+// comparison. The refusal covers an absent marker (a pre-format build) and an
+// unrecognized one (a build this diff cannot attribute semantics to).
+func TestBaselineDiff_RefusesOldFormatBaseline(t *testing.T) {
+	dir := t.TempDir()
+	cases := benchCases()
+	// The later run: install-req keeps its quote; absent-quote ends in
+	// no_match with an empty kept set — the run whose masked equality against
+	// the old Contained=false row is the regression the refusal must close.
+	runs := []CaseRun{
+		{CaseID: "install-req", Status: string(fetchweb.StatusFiltered), Output: "# filtered\nYou need Go 1.23 or later.\n", KeptText: "You need Go 1.23 or later.", OutputTokens: 8},
+		{CaseID: "absent-quote", Status: string(fetchweb.StatusNoMatch), Output: "# no_match\n", KeptText: "", OutputTokens: 0},
+	}
+	// The pre-marker rows an older build stored for this case set: a
+	// Contained=false entry for absent-quote is the poisoned verdict.
+	rows := `{"case_id":"install-req","contained":true,"output_tokens":8,"snapshot_tokens":2100,"savings_rate":0.99},` +
+		`{"case_id":"absent-quote","contained":false,"output_tokens":9,"snapshot_tokens":12,"savings_rate":0.25}`
+
+	t.Run("no format marker", func(t *testing.T) {
+		path := filepath.Join(dir, "baseline-no-marker.json")
+		if err := os.WriteFile(path, []byte(`{"cases":[`+rows+`]}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		diff, err := DiffAgainstBaseline(path, cases, runs)
+		if err == nil {
+			t.Fatalf("DiffAgainstBaseline must REFUSE a baseline with no format marker (F3 fail-closed); the comparison ran and reported %+v — the no_match run PASSes against the old Contained=false row, masking the regression", diff.Cases)
+		}
+		if !strings.Contains(err.Error(), "re-baseline") {
+			t.Errorf("the refusal must tell the operator to re-baseline, got %q", err.Error())
+		}
+		if len(diff.Cases) != 0 || diff.AnyRegression {
+			t.Errorf("a refused baseline must yield an empty diff, got %+v", diff)
+		}
+	})
+
+	t.Run("unrecognized format marker", func(t *testing.T) {
+		path := filepath.Join(dir, "baseline-odd-marker.json")
+		if err := os.WriteFile(path, []byte(`{"format":"kept-text-2","cases":[`+rows+`]}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		diff, err := DiffAgainstBaseline(path, cases, runs)
+		if err == nil {
+			t.Fatalf("DiffAgainstBaseline must REFUSE a baseline whose format marker it does not recognize (F3 fail-closed); the comparison ran and reported %+v", diff.Cases)
+		}
+		if !strings.Contains(err.Error(), "re-baseline") {
+			t.Errorf("the refusal must tell the operator to re-baseline, got %q", err.Error())
+		}
+		if len(diff.Cases) != 0 || diff.AnyRegression {
+			t.Errorf("a refused baseline must yield an empty diff, got %+v", diff)
+		}
+	})
+}
+
+// F3 (card t1968 iter15): WriteBaseline stamps the kept-text format marker on
+// every baseline it writes, and DiffAgainstBaseline accepts its own build's
+// baseline — the write/diff round-trip that makes refusing every other format
+// safe. The marker value is pinned here as an on-disk contract: a build that
+// changes it must treat existing baselines as old-format and refuse them.
+func TestWriteBaseline_StampsKeptTextFormat(t *testing.T) {
+	dir := t.TempDir()
+	baselinePath := filepath.Join(dir, "baseline.json")
+	cases := benchCases()
+	runs := RunBench(context.Background(), cases, stubBenchAsker{marker: "You need Go"})
+	if _, err := WriteBaseline(baselinePath, cases, runs); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(baselinePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Format string `json:"format"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc.Format != "kept-text-1" {
+		t.Fatalf("written baseline format = %q, want kept-text-1 (raw: %s)", doc.Format, raw)
+	}
+	diff, err := DiffAgainstBaseline(baselinePath, cases, runs)
+	if err != nil {
+		t.Fatalf("a baseline written by this build must diff without refusal, got %v", err)
+	}
+	for _, c := range diff.Cases {
+		if !c.Pass {
+			t.Errorf("round-trip diff must PASS every case, got %+v", c)
+		}
+	}
+}
+
 // L3 (t1968 leader audit): a case with NO run result must not aggregate as
 // a perfect run. The run map lookup yielded a zero CaseRun whose empty
 // status is not fetch_error, so the row computed SavingsRate=1 (100%
