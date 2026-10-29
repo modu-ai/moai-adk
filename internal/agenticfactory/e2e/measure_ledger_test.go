@@ -104,8 +104,8 @@ func TestMeasure_LedgerWrite_CallsPerUpdate(t *testing.T) {
 	}
 }
 
-// Observation: the state-ledger comment is deleted on GitHub between two
-// updates. What does the first update after the deletion leave behind?
+// The state-ledger comment is deleted on GitHub between two updates. The first
+// update after the deletion must leave exactly one comment (or report an error).
 func TestMeasure_LedgerWrite_DeletedRemotely_Observed(t *testing.T) {
 	f := &fakeGH{}
 	m := newMirror(f)
@@ -117,13 +117,16 @@ func TestMeasure_LedgerWrite_DeletedRemotely_Observed(t *testing.T) {
 	f.comments = nil // deleted by a person
 	f.mu.Unlock()
 	err := m.WriteLedger(ctx, ledgerAt(2, core.StateImplementing))
-	t.Logf("OBSERVED deleted-remotely first update: err=%v comments=%d gets=%d posts=%d patches=%d",
+	t.Logf("MEASURED deleted-remotely first update: err=%v comments=%d gets=%d posts=%d patches=%d",
 		err, len(f.comments), f.Gets, f.Posts, f.Patches)
+	if err != nil || len(f.comments) != 1 {
+		t.Errorf("after a remote deletion the first update must leave exactly one comment or report an error: err=%v comments=%d", err, len(f.comments))
+	}
 }
 
-// Observation: a person edits the ledger comment, then the SAME ledger is
-// written again. Is the comment brought back to the authoritative content, or
-// does an unchanged-content shortcut leave the person's edit in place?
+// A person edits the ledger comment, then the SAME ledger is written again. The
+// comment must be brought back to the authoritative content: a shortcut that
+// skips an unchanged-content write must not leave the person's edit in place.
 func TestMeasure_LedgerWrite_ExternalEdit_Observed(t *testing.T) {
 	f := &fakeGH{}
 	m := newMirror(f)
@@ -138,7 +141,10 @@ func TestMeasure_LedgerWrite_ExternalEdit_Observed(t *testing.T) {
 	f.mu.Unlock()
 	callsBefore := f.calls()
 	err := m.WriteLedger(ctx, l)
-	t.Logf("OBSERVED external edit then same ledger: err=%v restored=%v extra-calls=%d", err, f.comments[0].Body == authoritative, f.calls()-callsBefore)
+	t.Logf("MEASURED external edit then same ledger: err=%v restored=%v extra-calls=%d", err, f.comments[0].Body == authoritative, f.calls()-callsBefore)
+	if err != nil || f.comments[0].Body != authoritative {
+		t.Errorf("a person's edit survived a rewrite of the same ledger: err=%v", err)
+	}
 }
 
 // Safety: the same update twice never creates a second comment. The cost of the

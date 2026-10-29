@@ -58,6 +58,26 @@ func changingUpdates(t *testing.T, mk func(r *ctxRemote) ctxFlusher, n int) (ctx
 	return changing, total
 }
 
+// Observation: a person edits the context comment, then the SAME text is
+// submitted again. ctxledger keys an intent by the digest of the exact text and
+// never resends confirmed text, so the edit may survive; this logs what happens
+// (for the lane that owns the sender) rather than asserting an unspecified rule.
+func TestMeasure_CtxLedger_ExternalEdit_Observed(t *testing.T) {
+	r := &ctxRemote{}
+	l := &ctxledger.Ledger{Remote: r, Store: effect.NewMemIntentStore(), Timeouts: effect.Timeouts{LedgerComment: time.Second}}
+	ctx := context.Background()
+	_, _ = l.Submit(ctx, ctxBody("authoritative text"))
+	_ = l.Flush(ctx)
+	authoritative := r.comments[0].Body
+	r.mu.Lock()
+	r.comments[0].Body = ctxledger.Marker(1948) + "\nedited by a person"
+	r.mu.Unlock()
+	before := r.calls()
+	_, _ = l.Submit(ctx, ctxBody("authoritative text"))
+	err := l.Flush(ctx)
+	t.Logf("OBSERVED ctxledger external edit then same text: err=%v restored=%v extra-calls=%d", err, r.comments[0].Body == authoritative, r.calls()-before)
+}
+
 // Observation only: after the update that hit a deleted comment, does another
 // Flush recover, and what do the stored intents say?
 func TestMeasure_CtxLedger_DeletedRemotely_RetryObserved(t *testing.T) {
