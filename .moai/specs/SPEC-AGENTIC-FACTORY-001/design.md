@@ -141,6 +141,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | 상승 대상 | 상한에 닿거나 재확인 시각을 넘겼을 때 넘길 대상 |
 
 - 값(시각, 횟수, 상승 대상의 기본값)은 이 SPEC이 정하지 않는다. 필드의 존재만 정한다(spec.md §H 0.6.7).
+- lane-18 구현 관찰(0.6.7, 커밋 `deb7551aac`, 리더 전달·이 작성자는 다시 읽지 않음): 새 `PARKED` 상태로 들어가는 쓰기는 Wait 기록을 요구한다. 그 Wait 기록이 위 여섯 필드를 모두 갖는지는 확인하지 않았다(알려진 것은 `MaxRetries`·`escalate_to` 요구뿐, §6.1). spec.md §H 0.6.7.
 - `PARKED` overlay의 기존 세 요소(사유, 근거, 정상 재개 조건)는 그대로이며, 여섯 필드가 함께 있어야 한다. "진단"이 근거를, "다음 자동 동작"·"재확인 시각"이 재개 조건을 대신하지 않는다.
 
 ### 2.2 전이표 E01~E27
@@ -151,10 +152,10 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 |---|---|---|---|---|---|
 | E01 | READY | claim | 채택 계약·의존·scope·예산, 활성 owner 없음, 준비 receipt와 READY ACK(§4.2) | BUILDING/SPEC. epoch·attempt·예약을 원자적으로 확정 | ControlService(dispatcher) |
 | E02 | READY | 의존 미완료 | 원격 의존 증거 | READY + PARKED `dependency` | ControlService |
-| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. 책임은 agent(Holder)에 남음. 새 Issue를 받을지는 acquire 검사가 판정 — 책임과 실행 자리는 따로 있는 두 자원이 아니며 효과로 읽는다(0.6.7 리더 판정, 리더 세션 경유). S46 문언: "종결 책임 leader로, agent claim·slot 반환" — spec.md §H 0.6.7 | ControlService(agent, leader) |
+| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff. lane-18 필드 이름: `PR URL`·`base`·`adopted SPEC`·`task result`·`check status`·`handoff id`·`LeaderAccepted`·`PR number`·`HEAD`·`branch`·`worktree`·`WriterStopped`·`BoundaryHead` — §4.8) | REVIEWING. 책임은 agent(Holder)에 남음. 새 Issue를 받을지는 acquire 검사가 판정 — 책임과 실행 자리는 따로 있는 두 자원이 아니며 효과로 읽는다(0.6.7 리더 판정, 리더 세션 경유). S46 문언: "종결 책임 leader로, agent claim·slot 반환" — spec.md §H 0.6.7 | ControlService(agent, leader) |
 | E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop_unknown` | ControlService |
 | E05 | BUILDING/REVIEWING | 안전 인계 | process·tool·원격 quiescence, 잔여 send·write 정리, 원본 보존 | 새 epoch·attempt로 BUILDING, 보존 후 재검증 | ControlService |
-| E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 그 Issue의 책임 agent에 배차(0.6.7 리더 결정. S46 문언은 "가용 agent에 배차" — spec.md §H 0.6.7), 그 agent의 다른 Issue를 덮어쓰지 않음 | ControlService(leader) |
+| E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 그 Issue의 책임 agent에 배차(0.6.7 리더 결정. S46 문언은 "가용 agent에 배차" — spec.md §H 0.6.7), 그 agent의 다른 Issue를 덮어쓰지 않음. lane-18 구현 관찰: 수리는 원래 책임 세션에만 허용(`67defdeb1f`), 수리 attempt 이름은 `repair-<n>`(`06f8ccc3c7`) — 리더 전달, 이 작성자는 다시 읽지 않음. 세션 기준과 이 칸의 agent 기준의 차이는 spec.md §H 0.6.7 | ControlService(leader) |
 | E07 | REVIEWING | advisory 무응답 | 정책 fallback 허용 | 단계 유지, leader 판단 receipt. 감사 게이트 불변 | ControlService |
 | E08 | REVIEWING | 병합 허용 | §11 병합 게이트 전부 | MERGING + durable effect intent | ControlService |
 | E09 | REVIEWING | HEAD·base·환경 변경 | provider 사실·manifest 차이 | REVIEWING + 관련 증거 무효. 변경이 필요하면 E06 | ControlService |
@@ -463,7 +464,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 | `ConsumerACK` | 소비자 id, ACK한 revision, ACK 시각 |
 | `SourceTombstone` | 사라진 원천 id, 관측 근거(단일 404는 근거 아님) |
 | `PRQueue` | 저장소, 열린 PR 인계 수, 수리 적체 수, `wip_limit`, 계산 시각 |
-| `PRHandoff` | PR URL, 원격 HEAD/base, 계약·SPEC revision, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence 증거, 보존한 worktree·branch·변경 |
+| `PRHandoff` | PR URL, 원격 HEAD/base, 계약·SPEC revision, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence 증거, 보존한 worktree·branch·변경. **lane-18 필드 이름(0.6.7, 커밋 `2251e77393`, 리더 전달·이 작성자는 다시 읽지 않음)**: 새 필수 필드 `PR URL`(http/https), `base`, `adopted SPEC`, `task result`, `check status`. 유지 필드 `handoff id`, `LeaderAccepted`, `PR number`, `HEAD`, `branch`, `worktree`, `WriterStopped`, `BoundaryHead`. 옛 receipt도 읽을 수 있다(읽기 호환). 이 행의 "계약", "원 writer", "quiescence 증거", "보존한 변경"과 lane-18 필드의 대응은 판단하지 않았다(spec.md §H 0.6.7) |
 | `EffectIntent` / `EffectReceipt` | effect id, dedup key, 종류, 대상, 보내기 전 기록 시각, 결과·원격 readback |
 
 ## §5 정책
