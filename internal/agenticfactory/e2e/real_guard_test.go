@@ -77,8 +77,6 @@ func TestGuard_OtherSettingsAreas_WeakenProtection(t *testing.T) {
 func TestGuard_AllowedWritesAndReads_Pass(t *testing.T) {
 	for _, tc := range []struct{ method, path string }{
 		{"POST", "/repos/o/r/issues"},
-		{"POST", "/repos/o/r/issues/1948/comments"},
-		{"PATCH", "/repos/o/r/issues/comments/501"},
 		{"POST", "/repos/o/r/labels"},
 		{"PATCH", "/repos/o/r/labels/kind%2Fbug"}, // an encoded slash stays inside one label segment
 		{"GET", "/repos/o/r/branches/main/protection"},
@@ -133,7 +131,19 @@ func TestGuard_LabelNamedProtection_IsNotMistakenForTheSetting(t *testing.T) {
 	if err := effect.CheckRequest("PATCH", "/repos/o/r/labels/protection", nil); err != nil {
 		t.Errorf("a label named protection was refused: %v", err)
 	}
-	if err := effect.CheckRequest("POST", "/repos/o/r/issues/12/comments", nil); err != nil {
-		t.Errorf("an ordinary comment was refused: %v", err)
+}
+
+// Since lane-20 797f4f8174 comment and Issue writes are no longer on the plain
+// allowlist: the static guard refuses them as identity-unknown, and they pass only
+// through Enforcer.Check, which establishes who is writing (real_enforcer_test.go).
+func TestGuard_CommentAndIssueWrites_NeedTheIdentityCheck(t *testing.T) {
+	for _, tc := range []struct{ method, path string }{
+		{"POST", "/repos/o/r/issues/1948/comments"},
+		{"PATCH", "/repos/o/r/issues/comments/501"},
+		{"PATCH", "/repos/o/r/issues/1948"},
+	} {
+		if got := refusal(t, effect.CheckRequest(tc.method, tc.path, nil)).Reason; got != effect.ReasonIdentityUnknown {
+			t.Errorf("%s %s -> %s, want identity-unknown (decided only by Enforcer.Check)", tc.method, tc.path, got)
+		}
 	}
 }
