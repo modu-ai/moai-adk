@@ -58,10 +58,10 @@ func changingUpdates(t *testing.T, mk func(r *ctxRemote) ctxFlusher, n int) (ctx
 	return changing, total
 }
 
-// Observation: a person edits the context comment, then the SAME text is
-// submitted again. ctxledger keys an intent by the digest of the exact text and
-// never resends confirmed text, so the edit may survive; this logs what happens
-// (for the lane that owns the sender) rather than asserting an unspecified rule.
+// A person edits the context comment, then the SAME text is submitted again.
+// Until lane-20 e30bec0c0b the digest-keyed intent was never resent, so the edit
+// survived (measured restored=false, extra-calls=0); since then the remote body
+// is checked and the comment is restored (restored=true, extra-calls=2).
 func TestMeasure_CtxLedger_ExternalEdit_Observed(t *testing.T) {
 	r := &ctxRemote{}
 	l := &ctxledger.Ledger{Remote: r, Store: effect.NewMemIntentStore(), Timeouts: effect.Timeouts{LedgerComment: time.Second}}
@@ -75,7 +75,10 @@ func TestMeasure_CtxLedger_ExternalEdit_Observed(t *testing.T) {
 	before := r.calls()
 	_, _ = l.Submit(ctx, ctxBody("authoritative text"))
 	err := l.Flush(ctx)
-	t.Logf("OBSERVED ctxledger external edit then same text: err=%v restored=%v extra-calls=%d", err, r.comments[0].Body == authoritative, r.calls()-before)
+	t.Logf("MEASURED ctxledger external edit then same text: err=%v restored=%v extra-calls=%d", err, r.comments[0].Body == authoritative, r.calls()-before)
+	if err != nil || r.comments[0].Body != authoritative {
+		t.Errorf("a person's edit survived a resubmission of the same text: err=%v", err)
+	}
 }
 
 // Observation only: after the update that hit a deleted comment, does another
