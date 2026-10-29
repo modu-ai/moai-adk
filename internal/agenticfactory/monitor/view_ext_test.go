@@ -28,17 +28,52 @@ func extCollector(e fakeExt) *Collector {
 	return c
 }
 
-func TestIntakeStagesAreShownWithReasonAndAreMasked(t *testing.T) {
+func TestIntakeItemsUseTheCanonicalStagesAndDeriveTheirState(t *testing.T) {
 	v := extCollector(fakeExt{intake: []IntakeItem{
-		{Issue: 7, Stage: StageIssueCreated, State: "confirmed"},
-		{Issue: 8, Stage: StageParked, State: "parked", Reason: "lookup unsure token=abc123def456ghi789"},
+		{Key: "k1", Issue: 7, Stage: StageIssueConfirmed},
+		{Key: "k2", Stage: StageAccepted, Parked: "backpressure"},
+		{Key: "k3", Stage: StageBranchRegistered, Block: &IntakeBlock{Step: StageBranchRegistered, Detail: "push refused token=abc123def456ghi789", Retryable: true, Resume: "retry after the remote answers"}},
+		{Key: "k4", Stage: StageAccepted, Block: &IntakeBlock{Step: StageAccepted, Detail: "lost response", Unknown: true, Resume: "FindIssue decides"}},
+		{Key: "k5", Issue: 9, Stage: StageReadyAcked, Started: true},
 	}}).View(context.Background(), nil)
-	if !v.Intake.Confirmed || len(v.Intake.Value) != 2 || v.Intake.Source != SrcClaimStore {
+	if !v.Intake.Confirmed || len(v.Intake.Value) != 5 || v.Intake.Source != SrcClaimStore {
 		t.Fatalf("intake = %+v", v.Intake)
 	}
-	if strings.Contains(v.Intake.Value[1].Reason, "abc123def456ghi789") {
-		t.Errorf("reason leaks secret: %q", v.Intake.Value[1].Reason)
+	want := []string{"ISSUE_CONFIRMED", "PARKED", "BLOCKED", "EFFECT_UNKNOWN", "READY_ACKED"}
+	for i, it := range v.Intake.Value {
+		if it.State != want[i] {
+			t.Errorf("item %d state = %s, want %s", i, it.State, want[i])
+		}
 	}
+	if strings.Contains(v.Intake.Value[2].Block.Detail, "abc123def456ghi789") {
+		t.Errorf("block detail leaks a secret: %q", v.Intake.Value[2].Block.Detail)
+	}
+	if !v.Intake.Value[4].Started || v.Intake.Value[4].Stage != StageReadyAcked {
+		t.Error("started must be shown beside the stage, not as a stage")
+	}
+}
+
+// The monitor has no stage vocabulary of its own: only the six canonical stage names exist.
+func TestNoStageOutsideTheCanonicalSixExists(t *testing.T) {
+	for _, st := range []IntakeStage{StageAccepted, StageIssueConfirmed, StageBranchRegistered, StageAgentReserved, StageWTPrepared, StageReadyAcked} {
+		if string(st) != strings.ToUpper(string(st)) || strings.ContainsAny(string(st), "- ") {
+			t.Errorf("stage %q is not in the canonical SHOUTING_SNAKE form", st)
+		}
+	}
+	for _, old := range []string{"ack", "issue-created", "wt-ready", "started", "failed", "parked"} {
+		if _, err := marshalStage(old); err == nil {
+			t.Errorf("old stage name %q still accepted", old)
+		}
+	}
+}
+
+func marshalStage(s string) (IntakeStage, error) {
+	for _, st := range []IntakeStage{StageAccepted, StageIssueConfirmed, StageBranchRegistered, StageAgentReserved, StageWTPrepared, StageReadyAcked} {
+		if string(st) == s {
+			return st, nil
+		}
+	}
+	return "", errors.New("not a canonical stage")
 }
 
 func TestContextItemsDistinguishStaleFromInaccessible(t *testing.T) {

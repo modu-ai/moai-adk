@@ -8,9 +8,26 @@
 // reset header. No limit value is hardcoded: the budget is learned from response headers, and the
 // backoff numbers come from configuration or the documented defaults below.
 //
+// Consumer contract per Kind (what a caller of Client/Classify must do). Adding or changing a Kind means
+// updating this table in the same change and telling the consumers (lane 18's mirror and claim code,
+// lane 22's tests); TestEveryKindHasAConsumerContract fails when a Kind is missing from the table.
+//
+//	ok                 use the body.
+//	not-modified       use the cached body; nothing changed.
+//	rate-limited       STOP sending on that host resource until RetryAt; keep the work and retry later,
+//	                   bounded by Backoff.MaxAttempts; no block record until the attempts run out.
+//	transient          retry at RetryAt, bounded by Backoff.MaxAttempts, then give up.
+//	permission-denied  STOP, no retry; record a block (PARKED, reason permission-denied).
+//	unclassified-403   STOP, no retry; record a block (PARKED, reason unclassified-403); do not guess.
+//	other              caller decides (a 404 is not evidence of deletion or of missing permission).
+//
+// After MaxAttempts consecutive rate-limited/transient answers for one path the client returns
+// ErrGiveUp: treat it like a denial (STOP, record a block).
+//
 // Documentation relied on (fetched 2026-10-29):
 //   - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
 //   - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+//   - https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api
 package forge
 
 import (
@@ -23,6 +40,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
@@ -31,6 +49,7 @@ type Request struct {
 	Method string
 	Path   string
 	Header map[string]string
+	Body   []byte // request body for writes; empty for GET
 }
 
 // Response is a host-neutral response. Header keys are lower-case.
@@ -49,6 +68,10 @@ type Transport interface {
 // ErrDenied marks a permission or authentication refusal. It is never retried; the caller parks.
 var ErrDenied = errors.New("forge: permission denied (not retried; park the work)")
 
+// ErrGiveUp means the same path was rate-limited or failing transiently Backoff.MaxAttempts times in a
+// row. The caller stops and records a block; the client never loops on its own.
+var ErrGiveUp = errors.New("forge: retry attempts exhausted (stop and record a block)")
+
 // Backoff holds the wait parameters. There are no hidden defaults: Validate rejects a zero value.
 type Backoff struct {
 	MinSecondaryWait time.Duration // wait when a limit is signalled with no Retry-After and no reset
@@ -61,36 +84,23 @@ func (b Backoff) Validate() error {
 	if b.MinSecondaryWait <= 0 || b.Base <= 0 || b.Max <= 0 || b.MaxAttempts <= 0 {
 		return errors.New("forge: backoff needs MinSecondaryWait, Base, Max and MaxAttempts from configuration")
 	}
-	return nil
-}
-
-// Documented carries the two values the GitHub documentation states outright, with where they come from.
-type Documented struct {
-	Source           string
-	MinSecondaryWait time.Duration // "wait at least one minute" when a secondary limit gives no hint
-	MinWriteGap      time.Duration // "wait at least one second between each" write
-}
-
-// DocDefaults returns the documented values. Base, Max and MaxAttempts are NOT in the documentation
-// ("a set number of retries") and must be configured.
-func DocDefaults() Documented {
-	return Documented{
-		Source:           "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
-		MinSecondaryWait: time.Minute,
-		MinWriteGap:      time.Second,
+	if b.Max < b.MinSecondaryWait || b.Max < b.Base {
+		return errors.New("forge: backoff Max must not be below MinSecondaryWait or Base (a cap may not shorten the documented minimum)")
 	}
+	return nil
 }
 
 // Kind is the outcome class of a response.
 type Kind string
 
 const (
-	KindOK          Kind = "ok"
-	KindNotModified Kind = "not-modified"
-	KindLimited     Kind = "rate-limited"
-	KindDenied      Kind = "permission-denied"
-	KindTransient   Kind = "transient"
-	KindOther       Kind = "other"
+	KindOK           Kind = "ok"
+	KindNotModified  Kind = "not-modified"
+	KindLimited      Kind = "rate-limited"
+	KindDenied       Kind = "permission-denied"
+	KindUnclassified Kind = "unclassified-403" // 403 with no rate-limit signal and no permission wording: stop, do not guess
+	KindTransient    Kind = "transient"
+	KindOther        Kind = "other"
 )
 
 // Verdict is Classify's answer. RetryAt is set for limited and transient responses.
@@ -98,6 +108,9 @@ type Verdict struct {
 	Kind    Kind
 	RetryAt time.Time
 	Reason  string
+	// Signal says what decided a rate-limit verdict: "header" (Retry-After, an exhausted remaining count)
+	// or "wording" (the host's message text only). It is empty for other kinds.
+	Signal string
 }
 
 func lower(h map[string]string) map[string]string {
@@ -131,6 +144,20 @@ func parseRetryAfter(v string, now time.Time) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// parseReset reads a reset header: epoch seconds (GitHub x-ratelimit-reset, GitLab RateLimit-Reset)
+// or an HTTP date (GitLab RateLimit-ResetTime).
+func parseReset(h map[string]string) (time.Time, bool) {
+	if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok {
+		return t, true
+	}
+	if v := h["ratelimit-resettime"]; v != "" {
+		if t, err := http.ParseTime(strings.TrimSpace(v)); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
 func parseEpoch(v string) (time.Time, bool) {
 	n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
 	if err != nil || n <= 0 {
@@ -140,6 +167,9 @@ func parseEpoch(v string) (time.Time, bool) {
 }
 
 func grow(base time.Duration, attempt int, max time.Duration) time.Duration {
+	if max < base {
+		max = base // a cap never shortens the base wait, even when the config was not validated
+	}
 	d := base
 	for i := 0; i < attempt && d < max; i++ {
 		d *= 2
@@ -163,73 +193,149 @@ func Classify(r Response, now time.Time, b Backoff, attempt int) Verdict {
 	case r.Status == http.StatusUnauthorized:
 		return Verdict{Kind: KindDenied, Reason: "authentication failed"}
 	case r.Status == http.StatusTooManyRequests || r.Status == http.StatusForbidden:
-		_, hasRA := parseRetryAfter(h["retry-after"], now)
 		exhausted := firstOf(h, "x-ratelimit-remaining", "ratelimit-remaining") == "0"
-		worded := strings.Contains(strings.ToLower(string(r.Body)), "rate limit")
-		if r.Status == http.StatusForbidden && !hasRA && !exhausted && !worded {
-			return Verdict{Kind: KindDenied, Reason: "forbidden without a rate-limit signal"}
-		}
 		if t, ok := parseRetryAfter(h["retry-after"], now); ok {
-			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "retry-after"}
+			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "retry-after", Signal: "header"}
 		}
-		if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok && exhausted {
-			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "reset time"}
+		if t, ok := parseReset(h); ok && exhausted {
+			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "reset time", Signal: "header"}
 		}
-		return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "no hint; configured minimum"}
+		if exhausted || r.Status == http.StatusTooManyRequests {
+			return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "no hint; configured minimum", Signal: "header"}
+		}
+		// A 403 with no usable header. GitHub's documentation separates a secondary rate limit from a
+		// permission error by the message text only (rate-limits page: the response carries "an error
+		// message that indicates that you exceeded a secondary rate limit"; troubleshooting page, both
+		// fetched 2026-10-29: "Resource not accessible by integration" / "... by personal access token"
+		// for missing permissions). The exact secondary-limit text is not published, so the wording is
+		// a fallback signal used ONLY here, when no header decided. Every outcome of this branch is on
+		// the safe side: the rate-limit reading waits at least the configured minimum and is bounded by
+		// MaxAttempts, and anything else stops. The "not accessible" wording changes the reason shown,
+		// never the behaviour: denied and unclassified both stop without a retry.
+		body := strings.ToLower(string(r.Body))
+		if r.Status == http.StatusForbidden && strings.Contains(body, "rate limit") {
+			return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "secondary limit wording; configured minimum", Signal: "wording"}
+		}
+		if strings.Contains(body, "not accessible") {
+			return Verdict{Kind: KindDenied, Reason: "resource not accessible (permission)"}
+		}
+		return Verdict{Kind: KindUnclassified, Reason: "403 with neither a rate-limit signal nor permission wording"}
 	case r.Status >= 500:
 		return Verdict{Kind: KindTransient, RetryAt: now.Add(grow(b.Base, attempt, b.Max)), Reason: fmt.Sprintf("status %d", r.Status)}
 	}
 	return Verdict{Kind: KindOther, Reason: fmt.Sprintf("status %d", r.Status)}
 }
 
-// Budget is one call budget shared by every caller using the same credential. It learns the limit
-// from response headers; it never assumes one.
-type Budget struct {
-	Reserve int // calls to keep unspent; from configuration
-
-	mu           sync.Mutex
+// bucket is the budget state of one host resource (GitHub reports the resource in
+// x-ratelimit-resource; "" is the bucket for responses and requests that name none).
+type bucket struct {
 	remaining    int
 	known        bool
 	resetAt      time.Time
 	blockedUntil time.Time
 }
 
-// Observe reads the rate-limit headers of a response.
+// Budget is the call budget shared by every caller using the same credential, kept per host resource
+// so an exhausted search quota does not stop ordinary calls. It learns limits from response headers;
+// it never assumes one. ReserveCalls is the number of calls kept unspent for writes more urgent than a
+// report. Budget implements core.Budget, the hook lane 18's writers call before a report write.
+type Budget struct {
+	ReserveCalls   int              // from configuration
+	ReportResource string           // host resource report writes count against ("" = default bucket)
+	Now            func() time.Time // optional clock for Reserve; defaults to time.Now
+
+	mu sync.Mutex
+	b  map[string]*bucket
+}
+
+func (b *Budget) at(res string) *bucket {
+	if b.b == nil {
+		b.b = map[string]*bucket{}
+	}
+	if x, ok := b.b[res]; ok {
+		return x
+	}
+	x := &bucket{}
+	b.b[res] = x
+	return x
+}
+
+// ResourceOf returns the host resource a response was counted against ("" when it names none).
+func ResourceOf(r Response) string { return resourceOf(lower(r.Header)) }
+
+func resourceOf(h map[string]string) string {
+	return firstOf(h, "x-ratelimit-resource", "ratelimit-name")
+}
+
+// Observe reads the rate-limit headers of a response into the bucket the response names.
 func (b *Budget) Observe(r Response, now time.Time) {
 	h := lower(r.Header)
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	x := b.at(resourceOf(h))
 	if v := firstOf(h, "x-ratelimit-remaining", "ratelimit-remaining"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
-			b.remaining, b.known = n, true
+			x.remaining, x.known = n, true
 		}
 	}
-	if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok {
-		b.resetAt = t
+	if t, ok := parseReset(h); ok {
+		x.resetAt = t
 	}
 }
 
-// Block forbids calls until the given time.
-func (b *Budget) Block(until time.Time) {
+// Block forbids calls on the default bucket until the given time; BlockFor does it for one resource.
+func (b *Budget) Block(until time.Time) { b.BlockFor("", until) }
+
+func (b *Budget) BlockFor(res string, until time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if until.After(b.blockedUntil) {
-		b.blockedUntil = until
+	if x := b.at(res); until.After(x.blockedUntil) {
+		x.blockedUntil = until
 	}
 }
 
-// Allow says whether a call may go out now, and otherwise when to look again.
-func (b *Budget) Allow(now time.Time) (bool, time.Time) {
+// Allow says whether an ordinary call may go out now on the default bucket, and otherwise when to look again.
+func (b *Budget) Allow(now time.Time) (bool, time.Time) { return b.AllowFor("", now) }
+
+// AllowFor is Allow for one resource. Ordinary calls stop at the reserve.
+func (b *Budget) AllowFor(res string, now time.Time) (bool, time.Time) {
+	return b.allow(res, now, b.ReserveCalls)
+}
+
+// Reserve implements core.Budget. A report write is told to wait (false) when ordinary calls are
+// stopped for its resource; anything more urgent than a report is never held, so it reports true.
+func (b *Budget) Reserve(p core.Priority) bool {
+	if p < core.PriorityReport {
+		return true
+	}
+	now := time.Now()
+	if b.Now != nil {
+		now = b.Now()
+	}
+	ok, _ := b.AllowFor(b.ReportResource, now)
+	return ok
+}
+
+var _ core.Budget = (*Budget)(nil)
+
+// AllowReserved is AllowFor for state and safety writes: they may spend the reserve, down to the
+// host's own zero.
+func (b *Budget) AllowReserved(res string, now time.Time) (bool, time.Time) {
+	return b.allow(res, now, 0)
+}
+
+func (b *Budget) allow(res string, now time.Time, floor int) (bool, time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if now.Before(b.blockedUntil) {
-		return false, b.blockedUntil
+	x := b.at(res)
+	if now.Before(x.blockedUntil) {
+		return false, x.blockedUntil
 	}
-	if b.known && b.remaining <= b.Reserve && now.Before(b.resetAt) {
-		return false, b.resetAt
+	if x.known && x.remaining <= floor && now.Before(x.resetAt) {
+		return false, x.resetAt
 	}
-	if b.known && !now.Before(b.resetAt) && !b.resetAt.IsZero() {
-		b.known = false // the window rolled over; forget the stale count
+	if x.known && !x.resetAt.IsZero() && !now.Before(x.resetAt) {
+		x.known = false // the window rolled over; forget the stale count
 	}
 	return true, time.Time{}
 }
@@ -249,6 +355,7 @@ type Client struct {
 	mu       sync.Mutex
 	cache    map[string]entry
 	attempts map[string]int
+	learned  map[string]string // path -> host resource, from the last response for that path
 }
 
 // Result is the outcome of one Get. When Deferred is set nothing usable came back and the caller
@@ -265,13 +372,16 @@ type Result struct {
 // Get fetches a path with the stored validators. A permission denial returns ErrDenied.
 func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	now := c.Now()
-	if ok, until := c.B.Allow(now); !ok {
+	c.mu.Lock()
+	if c.cache == nil {
+		c.cache, c.attempts, c.learned = map[string]entry{}, map[string]int{}, map[string]string{}
+	}
+	res0 := c.learned[path]
+	c.mu.Unlock()
+	if ok, until := c.B.AllowFor(res0, now); !ok {
 		return Result{Deferred: true, NotBefore: until}, nil
 	}
 	c.mu.Lock()
-	if c.cache == nil {
-		c.cache, c.attempts = map[string]entry{}, map[string]int{}
-	}
 	e, have := c.cache[path]
 	attempt := c.attempts[path]
 	c.mu.Unlock()
@@ -285,12 +395,18 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	}
 	resp, err := c.T.Do(ctx, req)
 	if err != nil {
-		c.bump(path)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: transport error", ErrGiveUp)
+		}
 		return Result{Deferred: true, NotBefore: now.Add(grow(c.Backoff.Base, attempt, c.Backoff.Max))}, nil
 	}
 	c.B.Observe(resp, now)
 	v := Classify(resp, now, c.Backoff, attempt)
 	h := lower(resp.Header)
+	resName := resourceOf(h)
+	c.mu.Lock()
+	c.learned[path] = resName
+	c.mu.Unlock()
 	res := Result{}
 	if n, err := strconv.Atoi(h["x-poll-interval"]); err == nil && n > 0 {
 		res.PollInterval = time.Duration(n) * time.Second
@@ -313,27 +429,32 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 		res.Body, res.FromCache = e.body, true
 		return res, nil
 	case KindLimited:
-		c.B.Block(v.RetryAt)
-		c.bump(path)
+		c.B.BlockFor(resName, v.RetryAt)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: %s", ErrGiveUp, v.Reason)
+		}
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
 	case KindTransient:
-		c.bump(path)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: %s", ErrGiveUp, v.Reason)
+		}
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
-	case KindDenied:
+	case KindDenied, KindUnclassified:
 		return Result{}, fmt.Errorf("%w: %s", ErrDenied, v.Reason)
 	}
 	return Result{}, fmt.Errorf("forge: unexpected response: %s", v.Reason)
 }
 
-func (c *Client) bump(path string) {
+func (c *Client) bump(path string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.attempts == nil {
-		c.cache, c.attempts = map[string]entry{}, map[string]int{}
+		c.cache, c.attempts, c.learned = map[string]entry{}, map[string]int{}, map[string]string{}
 	}
 	c.attempts[path]++
+	return c.attempts[path]
 }
 
 // EffectError maps a verdict to the error the effect executor understands, so a rate limit waits for
@@ -342,7 +463,7 @@ func EffectError(v Verdict) error {
 	switch v.Kind {
 	case KindLimited:
 		return &effect.LimitedError{RetryAt: v.RetryAt}
-	case KindDenied:
+	case KindDenied, KindUnclassified:
 		return fmt.Errorf("%w: %s", effect.ErrDenied, v.Reason)
 	}
 	return nil
@@ -365,4 +486,26 @@ func ClassifyError(err error, now time.Time, b Backoff, attempt int) (Verdict, b
 		return Verdict{}, false
 	}
 	return Classify(Response{Status: se.Status, Header: se.Header, Body: se.Body}, now, b, attempt), true
+}
+
+// ForEffect maps a failed call to what the effect executor understands: a rate limit waits for its
+// RetryAt (when a valid Backoff is configured), a permission or missing-repository answer parks the
+// intent, and anything else is returned unchanged. The decision uses the status code only.
+func ForEffect(err error, now time.Time, b Backoff) error {
+	var se *StatusError
+	if !errors.As(err, &se) {
+		return err
+	}
+	if b.Validate() == nil {
+		if v, ok := ClassifyError(err, now, b, 0); ok {
+			if mapped := EffectError(v); mapped != nil {
+				return mapped
+			}
+		}
+	}
+	switch se.Status {
+	case 401, 403, 404:
+		return fmt.Errorf("%w: http %d", effect.ErrDenied, se.Status)
+	}
+	return err
 }

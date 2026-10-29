@@ -51,6 +51,9 @@ func (g GH) Send(ctx context.Context, in effect.Intent) (string, error) {
 	if !g.AllowWrite {
 		return "", fmt.Errorf("%w: gh writes disabled (external write needs user approval)", effect.ErrNotSent)
 	}
+	if err := effect.CheckRequest("POST", "/repos/"+g.Repo+"/issues", nil); err != nil { // protection guard
+		return "", err
+	}
 	var p issuePayload
 	if err := json.Unmarshal([]byte(in.Payload), &p); err != nil || p.Title == "" {
 		return "", fmt.Errorf("%w: issue payload invalid", effect.ErrNotSent)

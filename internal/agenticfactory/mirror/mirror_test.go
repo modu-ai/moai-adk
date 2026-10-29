@@ -163,7 +163,8 @@ func TestFailuresBecomeBlocksWithoutRetry(t *testing.T) {
 		want core.BlockReason
 	}{
 		{"401", httpFail(401), core.ReasonAuthFailed},
-		{"403", httpFail(403), core.ReasonPermissionDenied},
+		{"403 resource not accessible", httpFail(403, "body", `{"message":"Resource not accessible by integration"}`), core.ReasonPermissionDenied},
+		{"403 with no signal", httpFail(403), core.ReasonUnclassified},
 		{"429", httpFail(429), core.ReasonRateLimited},
 		{"not installed", result{err: exec.ErrNotFound}, core.ReasonNotInstalled},
 	}

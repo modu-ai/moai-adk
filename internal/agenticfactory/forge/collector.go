@@ -87,16 +87,23 @@ type Adaptive struct {
 	Safety   time.Duration // poll interval while a webhook feed is healthy
 }
 
-// Report is what one Tick produced.
+// Report is what one Tick produced. Changes are delivered at least once: they are repeated on every
+// Tick until the caller confirms delivery with Ack, so a crash between Tick and delivery loses nothing.
 type Report struct {
-	Changes []Change
-	Next    time.Time // earliest time the collector wants to be called again
-	Parked  bool
-	Reason  string
+	Changes  []Change
+	Next     time.Time // earliest time the collector wants to be called again
+	Parked   bool
+	Reason   string
+	Baseline bool // Changes came from a first observation (nothing acknowledged yet): initial state, not new events
+
+	snap  []byte // observed body this report describes; Ack makes it the acknowledged baseline
+	feedN int    // how many pushed (webhook) events this report carries
 }
 
-// Collector is the single collector of one repository: it fetches one path, keeps the last body,
-// passes on only changes, and picks its own next wake time.
+// Collector is the single collector of one repository: it fetches one path, remembers what it last
+// saw and what the consumer last acknowledged, passes on only the difference, and picks its own next
+// wake time. The acknowledged baseline lives in memory only; persisting it (the collector contract's
+// cursor and consumer ACK) is not implemented, so after a restart the first report is a Baseline.
 type Collector struct {
 	Client   *Client
 	Path     string
@@ -105,28 +112,57 @@ type Collector struct {
 	Feed     WebhookFeed
 
 	mu       sync.Mutex
-	last     []byte
+	last     []byte // acknowledged by the consumer
+	seen     []byte // latest observed from the host
+	feedBuf  []Change
 	interval time.Duration
 	next     time.Time
 	parked   bool
 }
 
-// Tick runs the collector at `now`. Before its own next time it does nothing (no call).
+// Ack confirms that the consumer received everything in rep. Until then the same changes come back.
+func (c *Collector) Ack(rep Report) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if rep.snap != nil {
+		c.last = rep.snap
+	}
+	if rep.feedN > 0 {
+		n := min(rep.feedN, len(c.feedBuf))
+		c.feedBuf = append([]Change(nil), c.feedBuf[n:]...)
+	}
+}
+
+// Tick runs the collector at `now`. Before its own next time it makes no call.
 func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	rep := c.tick(ctx, now)
+	rep.Changes = append(rep.Changes, c.feedBuf...)
+	rep.feedN = len(c.feedBuf)
+	if c.seen != nil {
+		if ch, err := c.Differ(c.last, c.seen); err == nil {
+			rep.Changes = append(rep.Changes, ch...)
+		} else if rep.Reason == "" {
+			rep.Reason = err.Error()
+		}
+		rep.snap, rep.Baseline = c.seen, c.last == nil
+	}
+	return rep
+}
+
+func (c *Collector) tick(ctx context.Context, now time.Time) Report {
 	if c.parked {
 		return Report{Parked: true, Reason: "parked: permission denied", Next: now.Add(c.Interval.Max)}
 	}
 	var rep Report
 	if c.Feed != nil && c.Feed.Healthy() {
-		rep.Changes = append(rep.Changes, c.Feed.Drain()...)
+		c.feedBuf = append(c.feedBuf, c.Feed.Drain()...)
 		if now.Before(c.next) {
 			rep.Next = minTime(c.next, now.Add(c.Interval.Safety))
 			return rep
 		}
-		defer func() { c.next = now.Add(c.Interval.Safety) }()
-		if c.next.IsZero() { // first contact: nothing to compare yet, rely on the feed until the safety poll
+		if c.next.IsZero() { // first contact: rely on the feed until the safety poll
 			c.next = now.Add(c.Interval.Safety)
 			rep.Next = c.next
 			return rep
@@ -137,7 +173,7 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 
 	res, err := c.Client.Get(ctx, c.Path)
 	switch {
-	case errors.Is(err, ErrDenied):
+	case errors.Is(err, ErrDenied) || errors.Is(err, ErrGiveUp):
 		c.parked = true
 		rep.Parked, rep.Reason = true, "permission denied; not retried"
 		rep.Next = now.Add(c.Interval.Max)
@@ -154,19 +190,18 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	if c.interval == 0 {
 		c.interval = c.Interval.Min
 	}
+	moved := false
 	if res.Changed {
-		ch, derr := c.Differ(c.last, res.Body)
+		fresh, derr := c.Differ(c.seen, res.Body)
 		if derr != nil {
 			rep.Reason = derr.Error()
 		} else {
-			rep.Changes = append(rep.Changes, ch...)
-			c.last = res.Body
+			c.seen = res.Body
+			moved = len(fresh) > 0
 		}
-		if len(ch) > 0 {
-			c.interval = max(c.Interval.Min, c.interval/2)
-		} else {
-			c.interval = min(c.Interval.Max, c.interval*2)
-		}
+	}
+	if moved {
+		c.interval = max(c.Interval.Min, c.interval/2)
 	} else {
 		c.interval = min(c.Interval.Max, c.interval*2)
 	}

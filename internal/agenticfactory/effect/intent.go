@@ -33,6 +33,7 @@ const (
 	WorktreePrepare Kind = "worktree-prepare"
 	CheckObserve    Kind = "check-observe"
 	LedgerComment   Kind = "ledger-comment"
+	LabelApply      Kind = "label-apply"
 )
 
 // Status is the life of one intent.
@@ -54,10 +55,11 @@ type Intent struct {
 	Kind       Kind   `json:"kind"`
 	Issue      int    `json:"issue"`
 	Target     string `json:"target"`
-	Digest     string `json:"digest"`               // digest of the request payload
-	Payload    string `json:"payload,omitempty"`    // already-masked text to send, when the effect carries one
-	Seq        int    `json:"seq,omitempty"`        // order among intents for one target
-	NotBefore  int64  `json:"not_before,omitempty"` // unix seconds; no send before this (rate limit)
+	Digest     string `json:"digest"`                // digest of the request payload
+	Payload    string `json:"payload,omitempty"`     // already-masked text to send, when the effect carries one
+	Seq        int    `json:"seq,omitempty"`         // order among intents for one target
+	NotBefore  int64  `json:"not_before,omitempty"`  // unix seconds; no send before this (rate limit)
+	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
 	ProviderID string `json:"provider_id,omitempty"`
@@ -126,7 +128,9 @@ type Lookuper interface {
 }
 
 // IntentStore persists intents. It is a local cache behind this interface: the authority is the
-// online control ref, and consumer ACK and cursor (the collector contract) are not implemented yet.
+// online control ref. Not implemented yet: the collector contract's consumer ACK and cursor.
+// (Retry-After / X-RateLimit-* backoff, conditional GET with ETag, and the shared call budget ARE
+// implemented, in package forge; this executor honours them through LimitedError and ErrDenied.)
 type IntentStore interface {
 	Get(key string) (Intent, bool, error)
 	Put(Intent) error
@@ -135,7 +139,7 @@ type IntentStore interface {
 
 // Timeouts bounds each stage.
 type Timeouts struct {
-	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve, LedgerComment time.Duration
+	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve, LedgerComment, LabelApply time.Duration
 }
 
 // For returns the timeout for a kind, 0 when unset.
@@ -151,6 +155,8 @@ func (t Timeouts) For(k Kind) time.Duration {
 		return t.CheckObserve
 	case LedgerComment:
 		return t.LedgerComment
+	case LabelApply:
+		return t.LabelApply
 	}
 	return 0
 }
@@ -211,6 +217,12 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	switch {
 	case serr == nil:
 		in.Status, in.ProviderID = StatusConfirmed, id
+	case errors.Is(serr, ErrRefused):
+		in.Status, in.LastError = StatusParked, serr.Error()
+		var re *RefusedError
+		if errors.As(serr, &re) {
+			in.ParkReason = string(re.Reason)
+		}
 	case errors.Is(serr, ErrDenied):
 		in.Status, in.LastError = StatusParked, serr.Error()
 	case errors.As(serr, new(*LimitedError)):

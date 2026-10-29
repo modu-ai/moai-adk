@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"strings"
 	"testing"
 	"time"
@@ -59,7 +62,8 @@ func TestLimitVersusDenialFollowsStatusAndHeaders(t *testing.T) {
 		{"403 exhausted with reset", httpFail(403, "x-ratelimit-remaining", "0", "x-ratelimit-reset", fmt.Sprint(reset.Unix())), core.ReasonRateLimited, reset},
 		{"403 secondary limit wording in the body", httpFail(403, "body", `{"message":"You have exceeded a secondary rate limit."}`), core.ReasonRateLimited, t0.Add(time.Minute)},
 		{"429", httpFail(429, "retry-after", "30"), core.ReasonRateLimited, t0.Add(30 * time.Second)},
-		{"403 with no signal is a denial", httpFail(403), core.ReasonPermissionDenied, time.Time{}},
+		{"403 resource not accessible is a permission denial", httpFail(403, "body", `{"message":"Resource not accessible by integration"}`), core.ReasonPermissionDenied, time.Time{}},
+		{"403 with no signal is unclassified, not a guessed denial", httpFail(403), core.ReasonUnclassified, time.Time{}},
 		{"401", httpFail(401), core.ReasonAuthFailed, time.Time{}},
 	}
 	for _, c := range cases {
@@ -152,5 +156,93 @@ func TestErrorTextIsMaskedBeforeItIsReturned(t *testing.T) {
 		if strings.Contains(err.Error(), leak) {
 			t.Errorf("%q leaked into the error: %v", leak, err)
 		}
+	}
+}
+
+// Every forge.Kind must be handled by the consumer. The Kinds are read from the
+// forge source, so adding one there fails this test until outcome() decides what
+// to do with it. An unhandled Kind must never fall through silently.
+func TestEveryForgeKindIsHandled(t *testing.T) {
+	known := map[string]forge.Kind{
+		"KindOK": forge.KindOK, "KindNotModified": forge.KindNotModified, "KindLimited": forge.KindLimited,
+		"KindDenied": forge.KindDenied, "KindUnclassified": forge.KindUnclassified,
+		"KindTransient": forge.KindTransient, "KindOther": forge.KindOther,
+	}
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "../forge/forge.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var inSource []string
+	for _, d := range f.Decls {
+		gd, ok := d.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, sp := range gd.Specs {
+			vs := sp.(*ast.ValueSpec)
+			id, ok := vs.Type.(*ast.Ident)
+			if !ok || id.Name != "Kind" {
+				continue
+			}
+			for _, n := range vs.Names {
+				inSource = append(inSource, n.Name)
+			}
+		}
+	}
+	if len(inSource) < len(known) {
+		t.Fatalf("found only %v in the forge source", inSource)
+	}
+	se := &forge.StatusError{Status: 418}
+	for _, name := range inSource {
+		k, ok := known[name]
+		if !ok {
+			t.Errorf("forge.%s is new: decide how the mirror handles it (add it to outcome and to this test)", name)
+			continue
+		}
+		err := outcome(forge.Verdict{Kind: k, Reason: "test"}, se, t0)
+		if errors.Is(err, errUnhandledKind) {
+			t.Errorf("forge.%s reached the unhandled default", name)
+		}
+	}
+	// A Kind the code has never seen must be refused loudly.
+	if err := outcome(forge.Verdict{Kind: "invented-by-a-later-change"}, se, t0); !errors.Is(err, errUnhandledKind) {
+		t.Errorf("an unknown kind must hit the unhandled default, got %v", err)
+	}
+}
+
+// The handling contract per Kind: stop with a recorded block for a limit, a
+// denial and an unclassified 403; anything else is a plain typed status error.
+func TestKindOutcomes(t *testing.T) {
+	se := &forge.StatusError{Status: 403}
+	cases := []struct {
+		kind   forge.Kind
+		block  bool
+		reason core.BlockReason
+	}{
+		{forge.KindLimited, true, core.ReasonRateLimited},
+		{forge.KindDenied, true, core.ReasonPermissionDenied},
+		{forge.KindUnclassified, true, core.ReasonUnclassified},
+		{forge.KindTransient, false, ""},
+		{forge.KindOther, false, ""},
+		{forge.KindOK, false, ""},
+		{forge.KindNotModified, false, ""},
+	}
+	for _, c := range cases {
+		err := outcome(forge.Verdict{Kind: c.kind, Reason: "r", RetryAt: t0.Add(time.Minute)}, se, t0)
+		var be *BlockedError
+		if got := errors.As(err, &be); got != c.block {
+			t.Errorf("%s: block=%v, want %v (%v)", c.kind, got, c.block, err)
+			continue
+		}
+		if c.block && be.Reason != c.reason {
+			t.Errorf("%s: reason %q, want %q", c.kind, be.Reason, c.reason)
+		}
+	}
+	// A 401 is an authentication failure even though forge files it under Denied.
+	err := outcome(forge.Verdict{Kind: forge.KindDenied}, &forge.StatusError{Status: 401}, t0)
+	var be *BlockedError
+	if !errors.As(err, &be) || be.Reason != core.ReasonAuthFailed {
+		t.Errorf("401: %v", err)
 	}
 }

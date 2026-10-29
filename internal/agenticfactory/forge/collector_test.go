@@ -26,17 +26,20 @@ func TestAdaptiveCollectorSendsChangesOnlyAndStretchesWhenIdle(t *testing.T) {
 	col := collectorWith(f, &now, nil)
 
 	rep := col.Tick(t.Context(), now)
-	if len(rep.Changes) != 1 || rep.Changes[0].Key != "1" || rep.Changes[0].Kind != ChangeAdded {
+	if len(rep.Changes) != 1 || rep.Changes[0].Key != "1" || rep.Changes[0].Kind != ChangeAdded || !rep.Baseline {
 		t.Fatalf("first tick = %+v", rep)
 	}
+	col.Ack(rep)
 	first := rep.Next.Sub(now)
 	now = rep.Next
 	rep = col.Tick(t.Context(), now) // 304: nothing changed
 	if len(rep.Changes) != 0 || rep.Next.Sub(now) <= first {
 		t.Fatalf("idle tick must stretch the interval: %+v first=%v next=%v", rep, first, rep.Next.Sub(now))
 	}
+	col.Ack(rep)
 	now = rep.Next
 	rep = col.Tick(t.Context(), now)
+	col.Ack(rep)
 	now = rep.Next
 	rep = col.Tick(t.Context(), now) // content changed
 	kinds := map[string]ChangeKind{}
@@ -148,5 +151,55 @@ func TestDiffByKeyDetectsAddModifyRemove(t *testing.T) {
 	}
 	if _, err := d(nil, []byte(`not json`)); err == nil {
 		t.Error("bad json accepted")
+	}
+}
+
+func TestUnacknowledgedChangesComeBackEvenWhenTheHostAnswers304(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(200, `[{"number":1,"state":"open"}]`, "etag", `"a"`), resp(304, "")}}
+	col := collectorWith(f, &now, nil)
+	rep := col.Tick(t.Context(), now) // delivery fails: no Ack
+	now = rep.Next
+	again := col.Tick(t.Context(), now)
+	if len(again.Changes) != 1 || again.Changes[0].Key != "1" {
+		t.Fatalf("a change that was never acknowledged was lost: %+v", again.Changes)
+	}
+	col.Ack(again)
+	now = again.Next
+	if third := col.Tick(t.Context(), now); len(third.Changes) != 0 {
+		t.Errorf("an acknowledged change was delivered again: %+v", third.Changes)
+	}
+}
+
+func TestRestartReportsABaselineNotNewEvents(t *testing.T) {
+	now := t0
+	body := `[{"number":1},{"number":2}]`
+	col := collectorWith(&fakeT{resps: []Response{resp(200, body, "etag", `"a"`)}}, &now, nil)
+	rep := col.Tick(t.Context(), now)
+	col.Ack(rep)
+	restarted := collectorWith(&fakeT{resps: []Response{resp(200, body, "etag", `"a"`)}}, &now, nil) // in-memory state is gone
+	r2 := restarted.Tick(t.Context(), now)
+	if !r2.Baseline || len(r2.Changes) != 2 {
+		t.Fatalf("restart report = %+v, want a flagged baseline", r2)
+	}
+	restarted.Ack(r2)
+	later := restarted.Tick(t.Context(), r2.Next)
+	if later.Baseline {
+		t.Error("baseline flag stuck after acknowledgement")
+	}
+}
+
+func TestWebhookEventsSurviveUntilAcknowledged(t *testing.T) {
+	now := t0
+	feed := &fakeFeed{healthy: true, events: []Change{{Key: "7", Kind: ChangeModified}}}
+	col := collectorWith(&fakeT{resps: []Response{resp(200, `[]`)}}, &now, feed)
+	r1 := col.Tick(t.Context(), now)
+	r2 := col.Tick(t.Context(), now.Add(time.Second)) // not acknowledged
+	if len(r1.Changes) != 1 || len(r2.Changes) != 1 {
+		t.Fatalf("r1=%v r2=%v", r1.Changes, r2.Changes)
+	}
+	col.Ack(r2)
+	if r3 := col.Tick(t.Context(), now.Add(2*time.Second)); len(r3.Changes) != 0 {
+		t.Errorf("acknowledged event repeated: %v", r3.Changes)
 	}
 }
