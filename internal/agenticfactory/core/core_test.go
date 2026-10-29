@@ -137,3 +137,27 @@ func TestOwnershipUnverifiedMapsToBlockReason(t *testing.T) {
 		t.Error("Busy is a retry, not a block reason")
 	}
 }
+
+func TestAgentIdentity(t *testing.T) {
+	a := Agent{SessionID: "11111111-2222-3333-4444-555555555555", Number: 3}
+	if a.DisplayName() != "agent-3" || a.DisplayName() == a.SessionID {
+		t.Errorf("display name = %q", a.DisplayName())
+	}
+	if _, err := ParseSessionID(a.SessionID); err != nil {
+		t.Errorf("uuid must parse: %v", err)
+	}
+	for _, bad := range []string{"", "short", "a/b/c/d/e/f/g/h", "has space 12345678", strings.Repeat("a", 65)} {
+		if _, err := ParseSessionID(bad); !errors.Is(err, ErrIDInvalid) {
+			t.Errorf("%q must be rejected, got %v", bad, err)
+		}
+	}
+}
+
+func TestBacklogFullMapsToCapacityShort(t *testing.T) {
+	if r, ok := ReasonFor(ErrBacklogFull); !ok || r != ReasonCapacityShort {
+		t.Errorf("got %q ok=%v", r, ok)
+	}
+	if r, ok := ReasonFor(ErrStoreUnavailable); !ok || r != ReasonStoreUnavailable {
+		t.Errorf("got %q ok=%v", r, ok)
+	}
+}

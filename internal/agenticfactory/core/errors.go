@@ -14,6 +14,10 @@ var (
 	ErrDuplicateDispatch   = errors.New("agenticfactory: same work already dispatched")
 	ErrOwnershipUnverified = errors.New("agenticfactory: ownership could not be verified, write refused")
 	ErrStoreUnavailable    = errors.New("agenticfactory: claim store unavailable")
+	ErrDuplicateHandoff    = errors.New("agenticfactory: a handoff receipt for this HEAD already exists")
+	ErrRepairOnly          = errors.New("agenticfactory: issue has a published PR, only a repair claim is allowed")
+	ErrIdentityMismatch    = errors.New("agenticfactory: session id, agent number and owned claims do not match")
+	ErrBacklogFull         = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
 )
 
 // Validation errors.
@@ -41,6 +45,8 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonOwnershipUnverified, true
 	case errors.Is(err, ErrStoreUnavailable):
 		return ReasonStoreUnavailable, true
+	case errors.Is(err, ErrBacklogFull):
+		return ReasonCapacityShort, true
 	}
 	return "", false
 }
