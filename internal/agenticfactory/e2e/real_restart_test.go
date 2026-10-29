@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"errors"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 // its state; nothing lives only in the old process.
 func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 	dir := t.TempDir()
-	st, err := claim.Open(dir)
+	st, err := claim.OpenWithLimit(dir, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := claim.Open(dir)
+	reopened, err := claim.OpenWithLimit(dir, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after != before {
+	if !reflect.DeepEqual(after, before) {
 		t.Errorf("record changed across reopen: %+v -> %+v", before, after)
 	}
 	// The original ticket keeps working against the reopened store.
@@ -54,7 +55,7 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 func TestReal_DuplicateHandoff_SecondCompleteRefused(t *testing.T) {
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateLanding)
-	l := runner.Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy surface"}
+	l := fullLanding
 	first, err := r.Complete(tk, l)
 	if err != nil {
 		t.Fatal(err)

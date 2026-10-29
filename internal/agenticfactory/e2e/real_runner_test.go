@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
@@ -103,7 +104,7 @@ func TestReal_StaleHeadEvidence_ChangesNothing(t *testing.T) {
 	if _, err := r.Verify(tk, passAll(headB)); !errors.Is(err, core.ErrStaleHead) {
 		t.Fatalf("stale evidence: %v, want ErrStaleHead", err)
 	}
-	if after := state(t, r, tk); after != before {
+	if after := state(t, r, tk); !reflect.DeepEqual(after, before) {
 		t.Errorf("record changed on refused verify: %+v -> %+v", before, after)
 	}
 }
@@ -131,10 +132,11 @@ func TestReal_UnknownMerge_StaysInLandingNeverDone(t *testing.T) {
 // reasoned N/A; nothing after done may pause it.
 func TestReal_Done_RequiresAllThreeRecords(t *testing.T) {
 	cases := map[string]runner.Landing{
-		"no-local-sync": {RemoteMerged: true, Deploy: "N/A: none"},
-		"no-deploy":     {RemoteMerged: true, LocalSyncRecorded: true},
-		"na-no-reason":  {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A:  "},
-		"bare-na":       {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A"},
+		"no-local-sync": {RemoteMerged: true, IssueClosed: true, Deploy: "N/A: none"},
+		"no-deploy":     {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true},
+		"na-no-reason":  {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A:  "},
+		"bare-na":       {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A"},
+		"no-close":      {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: none"},
 	}
 	for name, l := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -151,7 +153,7 @@ func TestReal_Done_RequiresAllThreeRecords(t *testing.T) {
 
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateLanding)
-	rec, err := r.Complete(tk, runner.Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy surface"})
+	rec, err := r.Complete(tk, fullLanding)
 	if err != nil || rec.State != core.StateDone {
 		t.Fatalf("complete = %+v, %v", rec, err)
 	}

@@ -13,7 +13,7 @@ import (
 
 func realStore(t *testing.T) (*claim.Store, core.IssueRef, core.RunID) {
 	t.Helper()
-	st, err := claim.Open(t.TempDir())
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,6 +66,23 @@ func TestReal_CompetingClaim_ExactlyOneHolder(t *testing.T) {
 	// A later, uncontended claimant is Held, never Busy.
 	if _, err := st.Acquire(ref, "late", "d-late", run); !errors.Is(err, core.ErrHeld) {
 		t.Errorf("late claimant: %v, want ErrHeld", err)
+	}
+}
+
+// S46 item: a store opened without an explicit open-PR limit refuses to admit
+// any claim (no silent unlimited default), and a limit below 1 is rejected.
+func TestReal_NoExplicitPRLimit_RefusesClaims(t *testing.T) {
+	st, err := claim.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, _ := core.NewIssueRef(1948)
+	run, _ := core.ParseRunID("run-1")
+	if _, err := st.Acquire(ref, "w1", "d-1", run); !errors.Is(err, core.ErrBacklogUnset) {
+		t.Errorf("claim without a limit: %v, want ErrBacklogUnset", err)
+	}
+	if _, err := claim.OpenWithLimit(t.TempDir(), 0); !errors.Is(err, core.ErrLimitInvalid) {
+		t.Errorf("limit 0: %v, want ErrLimitInvalid", err)
 	}
 }
 

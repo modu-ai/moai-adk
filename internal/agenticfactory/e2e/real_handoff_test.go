@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"errors"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -74,7 +75,7 @@ func TestRealHandoff_Refusals_ChangeNothing(t *testing.T) {
 			if _, err := r.HandOff(tk, h); !errors.Is(err, tc.want) {
 				t.Fatalf("handoff: %v, want %v", err, tc.want)
 			}
-			if after := state(t, r, tk); after != before {
+			if after := state(t, r, tk); !reflect.DeepEqual(after, before) {
 				t.Errorf("record changed by a refused handoff: %+v -> %+v", before, after)
 			}
 		})
@@ -90,6 +91,16 @@ func TestRealHandoff_RepairClaim_BranchBoundAndSingleHolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	run, _ := core.ParseRunID("run-1")
+	// A repair needs the PR reopened first (E10); without it the claim is refused.
+	if _, err := r.ClaimRepair(tk.Issue, "fixer", "d-fix", run, branch); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("repair before reopen: %v, want ErrTransitionInvalid", err)
+	}
+	if _, err := r.Reopen(tk.Issue, ""); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Errorf("reopen without a reason: %v, want ErrEvidenceIncomplete", err)
+	}
+	if _, err := r.Reopen(tk.Issue, "required check failed on the PR head"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := r.ClaimRepair(tk.Issue, "fixer", "d-fix", run, "some-other-branch"); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("repair on a different branch: %v, want ErrTransitionInvalid", err)
 	}
@@ -118,7 +129,9 @@ func TestRealHandoff_RepairClaim_BranchBoundAndSingleHolder(t *testing.T) {
 // recording the first PR's done frees the slot.
 func TestRealHandoff_BacklogCap_HoldsNewClaimUntilDone(t *testing.T) {
 	st, _, run := realStore(t)
-	st.MaxOpenPRs = 1
+	if err := st.SetMaxOpenPRs(1); err != nil {
+		t.Fatal(err)
+	}
 	r := runner.New(st)
 	first := landingFor(t, r, 1948, "w1")
 	if _, err := r.HandOff(first, goodHandoff()); err != nil {
@@ -128,8 +141,7 @@ func TestRealHandoff_BacklogCap_HoldsNewClaimUntilDone(t *testing.T) {
 	if _, err := r.Claim(next, "w2", "d-w2", run); !errors.Is(err, core.ErrBacklogFull) {
 		t.Fatalf("claim at the cap: %v, want ErrBacklogFull", err)
 	}
-	land := runner.Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy surface"}
-	if _, err := r.CompleteHandedOff(first.Issue, land); err != nil {
+	if _, err := r.CompleteHandedOff(first.Issue, fullLanding); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Claim(next, "w2", "d-w2", run); err != nil {
