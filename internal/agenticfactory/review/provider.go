@@ -9,6 +9,8 @@ package review
 import (
 	"context"
 	"errors"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // CodexOptInKey is the single place the opt-in key name lives. The name is
@@ -45,13 +47,13 @@ const (
 
 // Request asks a provider to judge one full HEAD SHA.
 type Request struct {
-	HeadSHA string
+	HeadSHA core.HeadSHA
 	Kind    Kind
 }
 
 // Result is what a provider reports for the HEAD it actually judged.
 type Result struct {
-	HeadSHA string
+	HeadSHA core.HeadSHA
 	Verdict Verdict
 }
 

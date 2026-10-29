@@ -2,17 +2,18 @@ package review
 
 import (
 	"fmt"
-	"regexp"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // State is one of the four delivery states of a review command (REQ-AF-003).
-type State string
+type State = core.Delivery
 
 const (
-	StateSent      State = "sent"
-	StateReceived  State = "received"
-	StateExecuted  State = "executed"
-	StateCompleted State = "completed"
+	StateSent      = core.DeliverySent
+	StateReceived  = core.DeliveryReceived
+	StateExecuted  = core.DeliveryExecuted
+	StateCompleted = core.DeliveryCompleted
 )
 
 // Source is the evidence that may set a State.
@@ -36,16 +37,11 @@ var sourceFor = map[State]Source{
 }
 
 // Producer is the role binding the control service observed at registration.
-type Producer struct {
-	Role    string
-	Session string
-	Attempt int
-	Epoch   int
-}
+type Producer = core.Binding
 
 // Record binds one provider verdict to the full HEAD SHA it judged.
 type Record struct {
-	HeadSHA  string
+	HeadSHA  core.HeadSHA
 	Kind     Kind
 	Provider string
 	Verdict  Verdict
@@ -86,14 +82,12 @@ const (
 	ReasonNotPass    Reason = "not-pass"
 )
 
-var fullSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
-
 // Admit applies the merge-gate rule (REQ-AF-018, REQ-AF-020): only a
 // completed, same-HEAD, debt-free PASS from a session other than the writer
 // counts. Skipped, missing, failed, stale, and PASS-WITH-DEBT do not.
-func (r Record) Admit(candidateHead, writerSession string) Reason {
+func (r Record) Admit(candidateHead core.HeadSHA, writerSession string) Reason {
 	switch {
-	case !fullSHA.MatchString(candidateHead) || !fullSHA.MatchString(r.HeadSHA):
+	case !fullHead(candidateHead) || !fullHead(r.HeadSHA):
 		return ReasonBadSHA
 	case r.HeadSHA != candidateHead:
 		return ReasonStale
@@ -113,4 +107,9 @@ func (r Record) Admit(candidateHead, writerSession string) Reason {
 func (r Record) String() string {
 	return fmt.Sprintf("review{head=%s kind=%s provider=%s verdict=%s role=%s session=%s}",
 		r.HeadSHA, r.Kind, r.Provider, r.Verdict, r.Producer.Role, r.Producer.Session)
+}
+
+func fullHead(h core.HeadSHA) bool {
+	_, err := core.ParseHeadSHA(string(h))
+	return err == nil
 }

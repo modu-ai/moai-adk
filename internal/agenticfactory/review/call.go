@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // BlockReason is the recorded reason a provider call stopped (REQ-AF-014).
-type BlockReason string
+type BlockReason = core.BlockReason
 
 const (
 	BlockNone             BlockReason = ""
-	BlockAuthFailed       BlockReason = "auth-failed"
-	BlockPermissionDenied BlockReason = "permission-denied"
-	BlockRateLimited      BlockReason = "rate-limited"
-	BlockNotConfigured    BlockReason = "not-configured"
+	BlockAuthFailed                   = core.ReasonAuthFailed
+	BlockPermissionDenied             = core.ReasonPermissionDenied
+	BlockRateLimited                  = core.ReasonRateLimited
+	BlockNotConfigured                = core.ReasonNotConfigured
 )
 
 // StatusError is a provider failure that carries an HTTP-style status code.

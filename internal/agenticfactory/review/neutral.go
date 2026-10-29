@@ -1,5 +1,7 @@
 package review
 
+import "github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+
 // ProviderOperator marks a review the operator recorded through the
 // ControlService evidence path (design §11.1 (b)).
 const ProviderOperator = "operator"
@@ -9,7 +11,7 @@ const ProviderOperator = "operator"
 // provider must be allowed, the record must be a code or security review, an
 // operator record must carry the operator role, and the producer must differ
 // from every writer session (current and earlier attempts).
-func (r Record) AdmitNeutral(candidateHead string, writerSessions []string, codexOptedIn bool) Reason {
+func (r Record) AdmitNeutral(candidateHead core.HeadSHA, writerSessions []string, codexOptedIn bool) Reason {
 	switch r.Provider {
 	case ProviderGLM:
 		return ReasonProducer
