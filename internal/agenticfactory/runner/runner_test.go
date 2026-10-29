@@ -196,9 +196,9 @@ func TestVerifyVerdictMapping(t *testing.T) {
 		wantWhy core.BlockReason
 	}{
 		{"fail goes back to implementing", func(v *Verification) { v.Results[1].Verdict = VerdictFail }, core.StateImplementing, ""},
-		{"debt blocks", func(v *Verification) { v.Results[2].Verdict = VerdictPassWithDebt }, core.StateBlocked, core.ReasonDebtPresent},
-		{"skipped check blocks", func(v *Verification) { v.Results[0].Verdict = "skipped" }, core.StateBlocked, core.ReasonCheckNotPassed},
-		{"unknown audit verdict blocks", func(v *Verification) { v.Results[2].Verdict = "" }, core.StateBlocked, core.ReasonVerdictNotPass},
+		{"debt records a gate", func(v *Verification) { v.Results[2].Verdict = VerdictPassWithDebt }, core.StateVerifying, core.ReasonDebtPresent},
+		{"skipped check records a gate", func(v *Verification) { v.Results[0].Verdict = "skipped" }, core.StateVerifying, core.ReasonCheckNotPassed},
+		{"unknown audit verdict records a gate", func(v *Verification) { v.Results[2].Verdict = "" }, core.StateVerifying, core.ReasonVerdictNotPass},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -210,11 +210,11 @@ func TestVerifyVerdictMapping(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rec.State != c.wantSt || rec.Reason != c.wantWhy {
-				t.Errorf("got %v/%q want %v/%q", rec.State, rec.Reason, c.wantSt, c.wantWhy)
+			if rec.State != c.wantSt || gateReason(rec) != c.wantWhy {
+				t.Errorf("got %v/%q want %v/%q", rec.State, gateReason(rec), c.wantSt, c.wantWhy)
 			}
-			if c.wantSt == core.StateBlocked && rec.Return != core.StateVerifying {
-				t.Errorf("return_stage = %v", rec.Return)
+			if c.wantWhy != "" && (rec.Park != nil || rec.Return != "" || rec.Reason != "" || rec.Stage != core.StageBuilding) {
+				t.Errorf("a gate is a record on the stage, not a pause: %+v", rec)
 			}
 		})
 	}
@@ -355,5 +355,72 @@ func TestPartialFailureKeepsStage(t *testing.T) {
 	}
 	if cur, _ := r.Store.Load(ref); cur.State != core.StateVerifying {
 		t.Errorf("stage moved: %v", cur.State)
+	}
+}
+
+// Merge-gate behaviour change: a non-pass no longer pauses the Issue. The gate is
+// a record on the verifying stage; judging the same HEAD with the same evidence
+// records the same gate and nothing else, and only new evidence passes.
+func TestAGateIsRecordedOnceAndOnlyNewEvidenceOrAHeadPassesIt(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	bad := func() Verification {
+		v := passAllFor(tk, headA)
+		v.Results[2].Verdict = VerdictPassWithDebt
+		return v
+	}
+	first, err := r.Verify(tk, bad())
+	if err != nil || first.Gate == nil || first.State != core.StateVerifying {
+		t.Fatalf("first: %+v %v", first, err)
+	}
+	for i := 0; i < 3; i++ {
+		again, err := r.Verify(tk, bad())
+		if err != nil {
+			t.Fatalf("again %d: %v", i, err)
+		}
+		if again.State != first.State || again.Stage != first.Stage || *again.Gate != *first.Gate || again.Park != nil || again.Return != "" {
+			t.Fatalf("the same evidence must record the same gate and change nothing else: %+v vs %+v", again, first)
+		}
+	}
+	// the gate does not let the Issue land
+	if _, err := landOK(r, tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("land with an open gate: %v", err)
+	}
+	// new evidence for the same HEAD (a rerun without debt) passes and clears the gate
+	passed, err := r.Verify(tk, passAllFor(tk, headA))
+	if err != nil || passed.State != core.StateReady || passed.Gate != nil {
+		t.Fatalf("new evidence: %+v %v", passed, err)
+	}
+}
+
+func TestANewHeadAfterAFailStartsFromACleanGate(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	v := passAllFor(tk, headA)
+	v.Results[2].Verdict = VerdictPassWithDebt
+	if rec, err := r.Verify(tk, v); err != nil || rec.Gate == nil {
+		t.Fatalf("gate: %+v %v", rec, err)
+	}
+	fail := passAllFor(tk, headA)
+	fail.Results[1].Verdict = VerdictFail
+	if rec, err := r.Verify(tk, fail); err != nil || rec.State != core.StateImplementing || rec.Gate != nil {
+		t.Fatalf("fail clears the gate: %+v %v", rec, err)
+	}
+	if rec, err := r.Submit(tk, headB, false); err != nil || rec.Gate != nil || string(rec.Head) != headB {
+		t.Fatalf("submit: %+v %v", rec, err)
+	}
+}
+
+func TestPauseTakesOnlyOverlayReasons(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	for _, why := range append(core.GateReasons(), core.ReasonForeignClosing, core.ReasonNotIssueAuthor) {
+		if _, err := r.Pause(tk, core.StateBlocked, why, "later"); !errors.Is(err, core.ErrReasonNotAllowed) {
+			t.Errorf("pause with %s: %v", why, err)
+		}
+	}
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later")
+	if err != nil || rec.Park == nil || rec.Park.Reason != core.ReasonRateLimited || rec.Stage != core.StageBuilding {
+		t.Errorf("overlay pause: %+v %v", rec, err)
 	}
 }

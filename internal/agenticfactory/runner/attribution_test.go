@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
@@ -47,11 +48,11 @@ func verifyWith(t *testing.T, a Attributor, mutate func(*Verification)) claimRec
 // evidence can count: without an attribution source everything is refused.
 func TestWithoutAnAttributionSourceEvidenceIsRefused(t *testing.T) {
 	rec := verifyWith(t, nil, nil)
-	if rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed || rec.Return != core.StateVerifying {
+	if rec.State != core.StateVerifying || gateReason(rec) != core.ReasonProducerNotAllowed || rec.Park != nil {
 		t.Fatalf("record: %+v", rec)
 	}
-	if !strings.Contains(rec.Resume, core.AttributionLocked) {
-		t.Errorf("the lock must be named in the resume condition: %q", rec.Resume)
+	if !strings.Contains(rec.Gate.Detail, core.AttributionLocked) {
+		t.Errorf("the lock must be named in the gate detail: %q", rec.Gate.Detail)
 	}
 }
 
@@ -71,14 +72,14 @@ func TestEveryProducerCheckedKindNeedsItsOwnRole(t *testing.T) {
 	for name, wrong := range cases {
 		a := goodRoles()
 		a.roles[name] = wrong
-		if rec := verifyWith(t, a, nil); rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
+		if rec := verifyWith(t, a, nil); rec.State != core.StateVerifying || gateReason(rec) != core.ReasonProducerNotAllowed {
 			t.Errorf("%s attributed as %s: %+v", name, wrong, rec)
 		}
 	}
 	// A producer the lookup does not know is unattributable.
 	a := goodRoles()
 	delete(a.roles, "independent-audit")
-	if rec := verifyWith(t, a, nil); rec.Reason != core.ReasonProducerNotAllowed {
+	if rec := verifyWith(t, a, nil); gateReason(rec) != core.ReasonProducerNotAllowed {
 		t.Errorf("unknown producer: %+v", rec)
 	}
 }
@@ -92,7 +93,7 @@ func TestQAEvidenceNeedsTheQARoleWhenPresent(t *testing.T) {
 	}
 	a := goodRoles()
 	a.roles["qa"] = core.RoleReviewer
-	if rec := verifyWith(t, a, add); rec.Reason != core.ReasonProducerNotAllowed {
+	if rec := verifyWith(t, a, add); gateReason(rec) != core.ReasonProducerNotAllowed {
 		t.Errorf("qa by the wrong role: %+v", rec)
 	}
 }
@@ -109,7 +110,7 @@ func TestSelfDeclaredRoleInTheEvidenceIsIgnored(t *testing.T) {
 			}
 		}
 	})
-	if rec.Reason != core.ReasonProducerNotAllowed {
+	if gateReason(rec) != core.ReasonProducerNotAllowed {
 		t.Errorf("a self-declared session decided the verdict: %+v", rec)
 	}
 }
@@ -129,7 +130,7 @@ func TestWriterHandoffMustComeFromTheIssuedHolderAndEpoch(t *testing.T) {
 				}
 			}
 		})
-		if rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
+		if rec.State != core.StateVerifying || gateReason(rec) != core.ReasonProducerNotAllowed {
 			t.Errorf("%s: %+v", name, rec)
 		}
 	}
@@ -145,7 +146,7 @@ func TestUnattributedFailDoesNotCountAsAFail(t *testing.T) {
 			}
 		}
 	})
-	if rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
+	if rec.State != core.StateVerifying || gateReason(rec) != core.ReasonProducerNotAllowed {
 		t.Errorf("record: %+v", rec)
 	}
 }
@@ -153,8 +154,15 @@ func TestUnattributedFailDoesNotCountAsAFail(t *testing.T) {
 func TestChecksNeedNoAttribution(t *testing.T) {
 	// Only checks fail here; with a good lookup the verdict mapping is unchanged.
 	rec := verifyWith(t, goodRoles(), func(v *Verification) { v.Results[0].Verdict = "skipped" })
-	if rec.Reason != core.ReasonCheckNotPassed {
+	if gateReason(rec) != core.ReasonCheckNotPassed {
 		t.Errorf("record: %+v", rec)
 	}
 	_ = errors.New
+}
+
+func gateReason(rec claim.Record) core.BlockReason {
+	if rec.Gate == nil {
+		return ""
+	}
+	return rec.Gate.Reason
 }

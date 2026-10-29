@@ -85,17 +85,17 @@ func TestForeignClosingKeywordBlocksThePR(t *testing.T) {
 			if !errors.Is(err, core.ErrForeignClosing) {
 				t.Fatalf("want ErrForeignClosing, got %v", err)
 			}
-			if rec.State != core.StateBlocked || rec.Reason != core.ReasonForeignClosing || rec.Return != core.StateReady || rec.PreflightHead != "" {
-				t.Fatalf("record: %+v", rec)
+			if rec.State != core.StateReady || rec.Refusal == nil || rec.Refusal.Reason != core.ReasonForeignClosing || rec.PreflightHead != "" || rec.Park != nil {
+				t.Fatalf("a refusal leaves the state alone and records itself: %+v", rec)
 			}
-			if !strings.Contains(rec.Resume, "#3000") || !strings.Contains(rec.Resume, "Refs") {
-				t.Errorf("the resume condition must name the Issue and the fix: %q", rec.Resume)
+			if !strings.Contains(rec.Refusal.Detail, "#3000") || !strings.Contains(rec.Refusal.Detail, "Refs") {
+				t.Errorf("the refusal must name the Issue and the fix: %q", rec.Refusal.Detail)
 			}
 			if last := rec.History[len(rec.History)-1]; last.Kind != "preflight-refused" || !strings.Contains(last.Note, "#3000") {
 				t.Errorf("history: %+v", last)
 			}
-			if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
-				t.Errorf("the PR must not be published while blocked: %v", err)
+			if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrEvidenceIncomplete) {
+				t.Errorf("the PR must not be published after a refusal: %v", err)
 			}
 		})
 	}
@@ -105,13 +105,12 @@ func TestRewordedTextAfterTheBlockLetsThePRThrough(t *testing.T) {
 	host := hostWith(map[int]int64{1948: 7, 3000: 99})
 	r, tk := ready(t, host, core.Collaboration{})
 	if _, err := r.PreflightPR(tk, headA, ownRepo, "Fixes #3000"); err == nil {
-		t.Fatal("want a block")
+		t.Fatal("want a refusal")
 	}
-	if _, err := r.Resume(tk, true); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := r.PreflightPR(tk, headA, ownRepo, "Refs #3000"); err != nil {
-		t.Fatalf("reworded: %v", err)
+	// no resume step any more: the next preflight on reworded text clears the refusal
+	rec, err := r.PreflightPR(tk, headA, ownRepo, "Refs #3000")
+	if err != nil || rec.Refusal != nil {
+		t.Fatalf("reworded: %+v %v", rec, err)
 	}
 	if rec, err := r.Land(tk, headA); err != nil || rec.State != core.StateLanding {
 		t.Errorf("land: %+v %v", rec, err)

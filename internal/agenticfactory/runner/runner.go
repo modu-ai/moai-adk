@@ -228,8 +228,10 @@ func (r *Runner) Submit(t Ticket, head string, dirty bool) (claim.Record, error)
 
 // Verify judges the evidence set against the candidate HEAD. Stale or
 // incomplete evidence is an error and changes nothing. A FAIL sends the Issue
-// back to implementing; a non-pass pauses it as blocked; all-pass makes it
-// ready.
+// back to implementing; a non-pass records a merge gate on the verifying stage
+// (the state does not change and nothing is paused); all-pass makes it ready.
+// Judging the same HEAD with the same evidence records the same gate again and
+// nothing else: only a new HEAD or new evidence can turn it into a pass.
 func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 	return r.step(t, core.StateVerifying, func(rec *claim.Record) error {
 		if v.Head != string(rec.Head) {
@@ -248,17 +250,19 @@ func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 			}
 		}
 		if detail := r.producerProblem(t, v.Results); detail != "" {
-			pauseIn(rec, core.StateBlocked, core.ReasonProducerNotAllowed, detail)
+			rec.Gate = &core.Gate{Reason: core.ReasonProducerNotAllowed, Detail: detail,
+				Resume: "a producer in the required role registers the evidence on the same HEAD", Head: rec.Head}
 			return nil
 		}
 		reason, failed := judge(v.Results)
 		switch {
 		case failed:
-			rec.State = core.StateImplementing
+			rec.State, rec.Gate = core.StateImplementing, nil
 		case reason != "":
-			pauseIn(rec, core.StateBlocked, reason, "same-HEAD rerun passes without debt")
+			rec.Gate = &core.Gate{Reason: reason, Detail: fmt.Sprintf("verification of %.12s did not pass: %s", rec.Head, reason),
+				Resume: "same-HEAD rerun passes without debt", Head: rec.Head}
 		default:
-			rec.State = core.StateReady
+			rec.State, rec.Gate = core.StateReady, nil
 		}
 		return nil
 	})
@@ -400,6 +404,10 @@ func deployOK(d string) bool {
 func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume string) (claim.Record, error) {
 	if err := core.ValidatePause(to, reason); err != nil {
 		return claim.Record{}, err
+	}
+	if !core.IsParkable(reason) {
+		// Gate and refusal reasons are records on a stage, not pauses.
+		return claim.Record{}, fmt.Errorf("%w: %q cannot pause an Issue", core.ErrReasonNotAllowed, reason)
 	}
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if !rec.State.IsProgress() || rec.State.IsTerminal() {
@@ -578,8 +586,10 @@ func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
 
 // PreflightPR checks the PR text (description and commit messages) before the PR
 // is published. A closing keyword (close/fix/resolve and their forms) that would
-// close an Issue the acting user may not close stops the PR: the Issue becomes
-// blocked with the reason foreign-closing-keyword and the Issues are named. Each
+// close an Issue the acting user may not close stops the PR: the operation is
+// refused with the reason foreign-closing-keyword, the Issues are named, the
+// state does not change and Land stays shut (behaviour change: it used to
+// pause the Issue as blocked and wait for a resume). Each
 // target is decided by the same permission decision as any other close
 // (core.Authorize with OpClose), so there is no second rule: your own Issues pass,
 // another author's Issue passes only where collaboration allows closing it. A
@@ -610,11 +620,13 @@ func (r *Runner) PreflightPR(t Ticket, head, ownRepo string, texts ...string) (c
 			return fmt.Errorf("%w: preflight on %.12s, candidate %.12s", core.ErrStaleHead, h, rec.Head)
 		}
 		if len(problems) == 0 {
-			rec.PreflightHead = h
+			rec.PreflightHead, rec.Refusal = h, nil
 			return nil
 		}
+		// A refusal (SPEC column R): the state does not change, the refusal is
+		// recorded, and Land stays shut because no HEAD is preflighted.
 		detail := "PR text would close: " + strings.Join(problems, ", ")
-		pauseIn(rec, core.StateBlocked, core.ReasonForeignClosing, detail+"; reword the keyword to Refs #N and resume")
+		rec.Refusal = &core.Refusal{Reason: core.ReasonForeignClosing, Detail: detail + "; reword the keyword to Refs #N and run the preflight again"}
 		rec.PreflightHead = ""
 		rec.AddEvent(claim.Event{Kind: "preflight-refused", Head: string(h), Note: detail})
 		refused = fmt.Errorf("%w: %s", core.ErrForeignClosing, detail)

@@ -74,9 +74,9 @@ func parkableReason(r BlockReason) bool {
 
 // Park is the PARKED overlay: one reason, its evidence and the resume condition.
 type Park struct {
-	Reason   BlockReason
-	Evidence string
-	Resume   string
+	Reason   BlockReason `json:"reason"`
+	Evidence string      `json:"evidence"`
+	Resume   string      `json:"resume_condition"`
 }
 
 func (p Park) Validate() error {
@@ -120,3 +120,7 @@ func isClassified(r BlockReason) bool {
 	}
 	return false
 }
+
+// IsParkable reports whether r may sit in a PARKED overlay. Gate (G) and
+// refusal (R) reasons may not.
+func IsParkable(r BlockReason) bool { return parkableReason(r) }
