@@ -159,7 +159,7 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 	}
 	r.Service = &notify.Service{
 		Records: d.Store, Waits: runner.New(d.Store), Repairs: d.Store,
-		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Number: number},
+		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Timeout: checkObserveTimeout, Number: number},
 		Notifier: r.Inbox, Escalator: r.Inbox,
 		State: r.Cursors, Now: d.Now, ReNotifyAfter: s.NotifyRenotifyAfter,
 	}
