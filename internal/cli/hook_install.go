@@ -275,7 +275,9 @@ func installPrePushHookOptional(projectRoot string, skip bool, out, warn io.Writ
 		}
 		return nil
 	case errors.Is(err, ErrUserHookExists):
+		end := beginPreserved(out, preservedNotice)
 		emitSeverityLine(out, sevNote, th, "existing pre-push hook preserved (no MoAI-ADK marker found)")
+		end()
 		return nil
 	case errors.Is(err, errPrePushBackupFailed):
 		// No backup could be written, so the hook was left exactly as found —

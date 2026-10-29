@@ -1,0 +1,24 @@
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+✓ Pre-push hook installed (.git/hooks/pre-push)
+✓ Pre-commit hook installed (.git/hooks/pre-commit)
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│  [13 dirs]  [2 files]                           │
+│  Deploy mode: local (full local deploy)         │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd proj                                   │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯

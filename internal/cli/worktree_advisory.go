@@ -54,6 +54,8 @@ func worktreeAdvisoryText(projectRoot string) string {
 // Failures to read the config degrade silently to the recommendation wording
 // (the default `auto_create: false` policy) — the advisory is non-blocking.
 func emitWorktreeAdvisory(out io.Writer, projectRoot string) {
+	end := beginPreserved(out, preservedNotice)
+	defer end()
 	emitSeverityLine(out, sevNote, resolveTheme(), "%s", worktreeAdvisoryText(projectRoot))
 }
 

@@ -112,5 +112,11 @@ func warnLine(warn io.Writer, prefix string, err error) {
 	if warn == nil {
 		return
 	}
-	_, _ = fmt.Fprintf(warn, "%s %v\n", prefix, err)
+	line := fmt.Sprintf("%s %v", prefix, err)
+	// A group-checklist session writer (SPEC-TUI-CHECKLIST-001) turns the line
+	// into its open item's warning; any other writer gets the line as before.
+	if r, ok := warn.(interface{ ReceiveWarning(string) bool }); ok && r.ReceiveWarning(line) {
+		return
+	}
+	_, _ = fmt.Fprintf(warn, "%s\n", line)
 }

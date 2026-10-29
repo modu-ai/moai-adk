@@ -409,7 +409,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// wraps the printer so every Warn is re-emitted exactly once as a
 	// consolidated stderr summary panel when init terminates — success or
 	// failure (REQ-TUX2-013).
-	p := newWarnCollector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
+	sess := beginChecklistSession(cmd, args)
+	defer func() { sess.end(err) }()
+	p := sess.collector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
 	defer p.emitSummary(cmd.ErrOrStderr())
 
 	// SPEC-SESSION-WORKTREE-001 M2/M4: session-worktree auto-entry + exit
@@ -942,6 +944,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// USER-scope acceptEdits record only, SPEC-AUT-PERMMODES-001 REQ-004) and
 	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	sess.openItem(clGroupConfig, clItemConfigAutonomy)
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
@@ -970,12 +973,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
+	sess.openItem(clGroupConfig, clItemConfigProfile)
 	// Sync profile preferences to project config (after template deployment). The
 	// helper is shared with the resume dispatch, so the two paths cannot drift (t1591 Item D).
 	if err := syncInitProfile(opts.ProjectRoot, prefs, wizardResult); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
+	sess.openItem(clGroupConfig, clItemConfigOptins)
 	// SPEC-JEV-OPTIN-MEASURE-001 (REQ-JEVO-002): route the wizard's Jev answer
 	// into the SAME internal/settings seam the `moai web` settings screen
 	// drives. Placed after template deployment because the seam patches
@@ -998,6 +1003,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		p.Warn("Failed to persist the participation opt-in: %v", err)
 	}
 
+	sess.openItem(clGroupConfig, clItemConfigHarness)
 	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
 	// llm.harness on every init run — all three closed-set values INCLUDING the
 	// claude default. agentWiringSelection is already the single resolution
@@ -1027,11 +1033,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		p.Warn("Failed to scaffold evolution directory: %v", err)
 	}
 
+	sess.openItem(clGroupConfig, clItemConfigGlobals)
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
 		p.Warn("Failed to update global settings env: %v", err)
 	}
 
+	sess.openOrSkipItem(clGroupHooks, clItemHooksPrePush, getBoolFlag(cmd, "no-hooks"))
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
 	// Status/warning lines are human-facing -> stderr (REQ-CTX-016). Card
 	// t1527 D5: an install failure reaches the warning collector, so the
@@ -1040,6 +1048,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		p.Warn("Pre-push hook installation failed: %v", pushErr)
 	}
 
+	sess.openOrSkipItem(clGroupHooks, clItemHooksPreCommit, getBoolFlag(cmd, "no-hooks"))
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
 	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
 		p.Warn("Pre-commit hook installation failed: %v", commitErr)
@@ -1050,6 +1059,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
 
+	sess.openOrSkipItem(clGroupMCP, clItemMCPEntry, !opts.MCPProvision)
 	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
 	// into the single neutral .mcp.json entry. The interactive path sets it
 	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
@@ -1074,6 +1084,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// below", which is only true with the panel last).
 	flushUpdateNotice(p)
 
+	sess.openItem(clGroupVerify, clItemVerifyManifest)
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
 	// lsp/quality/design, ApplyHarness rewriting llm.yaml) happens AFTER the
 	// deploy tracked the rendered sections, so the manifest saves the
@@ -1095,13 +1106,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// its "initialized" verdict is the last thing the operator reads before
 	// the collected warning summary panel (see the comment above). The card's
 	// warning count is taken HERE, after every collector source above.
-	cardName := opts.ProjectName
-	if cardName == "" {
-		cardName = filepath.Base(opts.ProjectRoot)
-	}
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count(), string(deployMode)))
+	renderInitCompletion(cmd, sess, p, opts.ProjectName, opts.ProjectRoot, len(result.CreatedDirs), len(result.CreatedFiles), string(deployMode))
 
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the

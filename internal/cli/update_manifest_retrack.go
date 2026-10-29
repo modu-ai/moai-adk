@@ -54,7 +54,7 @@ func retrackManifestFiles(projectRoot string, mgr manifest.Manager, errOut io.Wr
 		if err := mgr.Track(rel, manifest.TemplateManaged, entry.TemplateHash); err != nil {
 			// One unreadable file must not abandon the bookkeeping for the
 			// rest; record it and keep going.
-			_, _ = fmt.Fprintf(errOut, "  manifest retrack skip %s: %v\n", rel, err)
+			writeWarningLine(errOut, fmt.Sprintf("  manifest retrack skip %s: %v", rel, err))
 			continue
 		}
 		dirty = true

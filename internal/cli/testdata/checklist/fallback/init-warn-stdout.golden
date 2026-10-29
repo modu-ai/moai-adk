@@ -1,0 +1,34 @@
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for all project harness templates. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+Common skills and agents install into your user folders. Use --bundles to opt into optional user assets.
+user-asset ensure: 394 installed, 0 refreshed, 0 removed, 0 collision-skipped, 0 divergence-preserved
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-project/references/navigator.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/SKILL.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/moai-adk-integration.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/tools-integration.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/references/examples.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/SKILL.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/codemaps.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/design.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/gtd.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-build-entry.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-builder.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan/spec-assembly.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/doc-generation.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/meta-harness.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/review.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/context-loading.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/task-decomposition.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/delivery.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/doc-execution.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/quality-gates-quality.md
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-develop.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-docs.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-lead.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-spec.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/plan-auditor.toml
+  unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/sync-auditor.toml
+· this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai glm -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
