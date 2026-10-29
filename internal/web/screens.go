@@ -191,6 +191,14 @@ func (a *app) handleBrowserAPI(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(a.buildBrowserSelection(r.Context()))
 }
 
+func (a *app) handlePRTrackingAPI(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(a.buildPRTracking(r.Context()))
+}
+
 func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return

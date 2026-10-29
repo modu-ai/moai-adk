@@ -645,6 +645,31 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
+			@panel("PR tracking", prMeta(m.PR), "", "", "Read-only. Phases come from the monitor; unconfirmed values show as a gap.", "roomy") {
+				<div class="vlist" id="pr-tracking">
+					if m.PR.Note != "" {
+						<p class="warn">{ m.PR.Note }</p>
+					}
+					for _, r := range m.PR.Rows {
+						<div class="vrow">
+							<span class="mono">{ "#" + itoa(r.Issue) }</span>
+							<span class="panel__meta">{ "agent " + r.Agent }</span>
+							<span class="mono panel__meta">{ "session " + r.SessionID }</span>
+							<span class="panel__meta">{ r.State + " · " + r.Stage }</span>
+							<span class="mono panel__meta">{ r.Head }</span>
+							<span class="panel__meta">{ "checks " + r.Checks }</span>
+							if r.ChecksStale {
+								@badge("outline", "checks stale")
+							}
+							<span class="mono panel__meta">{ r.PR }</span>
+							<span class="panel__meta">{ r.Track + " · " + r.Phase }</span>
+							if r.Completed {
+								@badge("outline", "completed")
+							}
+						</div>
+					}
+				</div>
+			}
 			@panel("Browser", browserMeta(m.Browser), "", "", "Read-only. The adapter calls only the saved choice and never falls back to another.", "roomy") {
 				<div class="vlist" id="browser-selection">
 					for _, c := range m.Browser.Choices {
