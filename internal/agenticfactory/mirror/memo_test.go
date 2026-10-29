@@ -123,8 +123,8 @@ func TestReadNeverUsesTheMemo(t *testing.T) {
 	}
 }
 
-func TestMemoIsPerIssueAndASensitiveLedgerNeverReachesGh(t *testing.T) {
-	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":10}`}, {out: ""}, {out: `{"id":20}`}}}
+func TestMemoIsPerIssueAndASensitiveLedgerReachesGhOnlyAsARestrictedRecord(t *testing.T) {
+	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":10}`}, {out: ""}, {out: `{"id":20}`}, {out: "{}"}}}
 	m := writable(f)
 	c := context.Background()
 	a := ledgerWith("password=hunter2 and ghp_abcdefghijklmnopqrstuvwxyz0123")
@@ -134,8 +134,8 @@ func TestMemoIsPerIssueAndASensitiveLedgerNeverReachesGh(t *testing.T) {
 	if err := m.WriteLedger(c, a); !errors.Is(err, core.ErrUnsanitized) {
 		t.Fatalf("a sensitive ledger must be refused: %v", err)
 	}
-	if len(f.calls) != 0 {
-		t.Fatalf("a refused ledger reached gh: %v", calls(f))
+	if len(f.calls) != 2 || !strings.Contains(calls(f)[1], "RESTRICTED") {
+		t.Fatalf("a refused ledger posts only the RESTRICTED record (list + create): %v", calls(f))
 	}
 	if err := m.WriteLedger(c, b); err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestMemoIsPerIssueAndASensitiveLedgerNeverReachesGh(t *testing.T) {
 	if strings.Contains(all, "hunter2") || strings.Contains(all, "ghp_abcdef") {
 		t.Errorf("secret reached a gh call:\n%s", all)
 	}
-	if !strings.Contains(calls(f)[1], "issues/2000/comments") || !strings.Contains(calls(f)[3], "issues/1948/comments") {
+	if !strings.Contains(calls(f)[3], "issues/2000/comments") || !strings.Contains(calls(f)[4], "PATCH repos/o/r/issues/comments/10") {
 		t.Errorf("each issue needs its own comment: %v", calls(f))
 	}
 }
@@ -204,7 +204,7 @@ func TestHumanDeletedTheCommentUnchangedBodyIsNotRepairedUntilInvalidated(t *tes
 	}
 }
 
-func TestEmailAndHomePathAreRefusedAndNeverReachGh(t *testing.T) {
+func TestEmailAndHomePathAreRefusedAndNeverLeakToGh(t *testing.T) {
 	f := &fakeGH{}
 	m := writable(f)
 	l := ledgerWith("mail dev.person@example.co.kr, log /Users/goos/MoAI/x.log")
@@ -212,8 +212,12 @@ func TestEmailAndHomePathAreRefusedAndNeverReachGh(t *testing.T) {
 	if !errors.Is(err, core.ErrUnsanitized) {
 		t.Fatalf("want ErrUnsanitized, got %v", err)
 	}
-	if len(f.calls) != 0 {
-		t.Fatalf("a refused ledger reached gh: %v", calls(f))
+	for _, call := range calls(f) {
+		for _, leak := range []string{"example.co.kr", "dev.person", "/Users/goos"} {
+			if strings.Contains(call, leak) {
+				t.Errorf("a refused ledger leaked %q into gh: %s", leak, call)
+			}
+		}
 	}
 	for _, leak := range []string{"example.co.kr", "dev.person", "/Users/goos"} {
 		if strings.Contains(err.Error(), leak) {

@@ -40,7 +40,7 @@ type Record struct {
 	Head      core.HeadSHA     `json:"head,omitempty"`
 	Delivery  core.Delivery    `json:"delivery,omitempty"`
 	Deploy    string           `json:"deploy,omitempty"`
-	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
+	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.

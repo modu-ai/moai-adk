@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -338,13 +339,38 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if err != nil {
 		return err
 	}
-	// A ledger that holds a secret or personal data is not posted at all, masked
-	// or not (design 4.4): the refusal names the categories, never the values.
-	if err := core.RefuseIfSensitive(string(raw)); err != nil {
+	// A ledger that holds a secret or personal data is not posted (design 4.4):
+	// a RESTRICTED record takes its place, with exactly a status, a short summary
+	// naming the categories, and the SHA-256 of the masked form. The caller still
+	// gets the refusal.
+	var refused error
+	body := Marker + "\n```json\n" + string(raw) + "\n```\n"
+	if masked, cats := core.Sanitize(string(raw)); len(cats) > 0 {
+		names := make([]string, len(cats))
+		for i, c := range cats {
+			names[i] = string(c)
+		}
+		digest := sha256.Sum256([]byte(masked))
+		rec, err := json.MarshalIndent(map[string]string{
+			"status":  "RESTRICTED",
+			"summary": "ledger withheld, it carries: " + strings.Join(names, ", "),
+			"sha256":  hex.EncodeToString(digest[:]),
+		}, "", "  ")
+		if err != nil {
+			return err
+		}
+		body = Marker + "\n```json\n" + string(rec) + "\n```\n"
+		refused = fmt.Errorf("%w: found %s", core.ErrUnsanitized, strings.Join(names, ", "))
+	}
+	if err := m.postLedger(ctx, l.Issue.Number, body); err != nil {
 		return err
 	}
-	body := Marker + "\n```json\n" + string(raw) + "\n```\n"
-	issue := l.Issue.Number
+	return refused
+}
+
+// postLedger writes body as the Issue's ledger comment: nothing when the memo
+// says it is already there, a patch when the comment is known, else a create.
+func (m *Mirror) postLedger(ctx context.Context, issue int, body string) error {
 	sum := sha256.Sum256([]byte(body))
 
 	mem := m.recall(issue)
