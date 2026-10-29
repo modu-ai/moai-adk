@@ -21,7 +21,8 @@ func unmappable(format string, a ...any) error {
 
 // FromLegacy maps an old record to a position. S46 has no stage for the old
 // verifying and ready (before the PR handoff E03 everything is BUILDING), so
-// both map to BUILDING/IMPLEMENT and the check evidence stays in the record.
+// the stage follows the evidence the record carries (see legacyByEvidence) and
+// the check evidence stays in the record.
 // A paused record keeps its stage and gains the overlay; on-hold maps to the
 // operator-hold reason, which S46 does not name (canon unconfirmed, OD-12).
 func FromLegacy(l Legacy) (Position, error) {
@@ -33,33 +34,34 @@ func FromLegacy(l Legacy) (Position, error) {
 }
 
 func legacyStage(l Legacy) (Position, error) {
-	building := func(sub SubStage) Position { return Position{Stage: StageBuilding, Sub: sub} }
-	implementing := SubImplement
-	if l.HasReceipt {
-		implementing = SubFix
-	}
 	switch l.State {
 	case StateQueued:
 		return Position{Stage: StageReady}, nil
-	case StateClaimed:
-		if l.HasReceipt {
-			return building(SubFix), nil
-		}
-		return building(SubSpec), nil
-	case StateImplementing, StateVerifying, StateReady:
-		return building(implementing), nil
-	case StateLanding:
-		switch {
-		case l.Merged:
-			return Position{Stage: StageMerging, RemoteIntegrated: true}, nil
-		case l.HasReceipt && l.LeaderAccepted:
-			return Position{Stage: StageReviewing}, nil
-		}
-		return building(SubImplement), nil
 	case StateDone:
 		return Position{Stage: StageDone}, nil
+	case StateClaimed, StateImplementing, StateVerifying, StateReady, StateLanding:
+		return legacyByEvidence(l), nil
 	}
 	return Position{}, unmappable("state %q", l.State)
+}
+
+// legacyByEvidence decides the stage of an in-flight record from what it
+// carries, not from its old name (S46 E03 judges REVIEWING by the handoff
+// evidence): a merge seen is MERGING, a receipt the leader accepted is
+// REVIEWING, anything else is still BUILDING. A merge seen is checked first
+// because it implies the receipt was accepted.
+func legacyByEvidence(l Legacy) Position {
+	switch {
+	case l.Merged:
+		return Position{Stage: StageMerging, RemoteIntegrated: true}
+	case l.HasReceipt && l.LeaderAccepted:
+		return Position{Stage: StageReviewing}
+	case l.HasReceipt:
+		return Position{Stage: StageBuilding, Sub: SubFix}
+	case l.State == StateClaimed:
+		return Position{Stage: StageBuilding, Sub: SubSpec}
+	}
+	return Position{Stage: StageBuilding, Sub: SubImplement}
 }
 
 func legacyPaused(l Legacy) (Position, error) {
