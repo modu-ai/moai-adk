@@ -12,6 +12,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ctxledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
 // Per-Issue context ledger regression on lane-20's ctxledger. The remote is a
@@ -28,23 +29,24 @@ type ctxRemote struct {
 	// loseNextCreate applies the create and then reports a transport failure.
 	loseNextCreate bool
 
-	// updateErr, when set, is returned by every Update without applying it.
-	updateErr error
+	// updateErr / findErr / createErr, when set, are returned by every such call
+	// without applying it.
+	updateErr, findErr, createErr error
 }
 
-// statusErr is a typed HTTP failure: the caller can read the status code
-// instead of parsing the message.
-type statusErr struct {
-	Status int
-	Msg    string
+// httpStatus is the typed HTTP failure the production runner returns
+// (forge.StatusError): callers read the status code, never the wording.
+func httpStatus(code int, body string) error {
+	return &forge.StatusError{Status: code, Body: []byte(body)}
 }
-
-func (e *statusErr) Error() string { return fmt.Sprintf("HTTP %d: %s", e.Status, e.Msg) }
 
 func (r *ctxRemote) Find(_ context.Context, _ int, marker string) (ctxledger.Comment, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Finds++
+	if r.findErr != nil {
+		return ctxledger.Comment{}, false, r.findErr
+	}
 	for _, c := range r.comments {
 		if strings.Contains(c.Body, marker) {
 			return c, true, nil
@@ -57,6 +59,9 @@ func (r *ctxRemote) Create(_ context.Context, _ int, body string) (ctxledger.Com
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Creates++
+	if r.createErr != nil {
+		return ctxledger.Comment{}, r.createErr
+	}
 	r.nextID++
 	c := ctxledger.Comment{ID: r.nextID, Body: body}
 	r.comments = append(r.comments, c)
